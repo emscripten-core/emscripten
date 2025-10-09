@@ -209,9 +209,11 @@ commands:
       - run:
           name: "Ccache stats and configuration"
           command: |
-            ls ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
+            ls -l ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
+            ls -l ~/cache/sysroot/include/emscripten/heap.h
             cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin.o.ccache-log
             date
+            cat ~/cache/build/libcompiler_rt/absvdi2.o.ccache-log
             ccache -s
             ccache --print-stats
             ccache -p
@@ -574,8 +576,6 @@ jobs:
       EMCC_CORES: 16
       EMCC_USE_NINJA: 1
       EM_COMPILER_WRAPPER: "ccache"
-      CCACHE_DEBUG: 1
-      CCACHE_DEBUGLEVEL: 1
     steps:
       - checkout
       - run:
@@ -611,6 +611,10 @@ jobs:
             - restore_cache:
                 name: "Restore Ccache cache"
                 key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
+      - run:
+          name: Configure ccache
+          command: |
+            cp .circleci/ccache.conf ~/.ccache
       - build-libs
       - run:
           name: Clean build directory
