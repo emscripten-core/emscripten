@@ -536,12 +536,12 @@
         },
         "EmscriptenAudioWorkletNodeCreateOptions": {
             "__size__": 32,
-            "numberOfInputs": 0,
-            "numberOfOutputs": 4,
-            "outputChannelCounts": 8,
             "channelCount": 16,
             "channelCountMode": 24,
-            "channelInterpretation": 28
+            "channelInterpretation": 28,
+            "numberOfInputs": 0,
+            "numberOfOutputs": 4,
+            "outputChannelCounts": 8
         },
         "EmscriptenBatteryEvent": {
             "__size__": 32,
