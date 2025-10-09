@@ -674,8 +674,6 @@ async function createWasm() {
   function receiveInstance(instance, module) {
     wasmExports = instance.exports;
 
-    
-
     assignWasmExports(wasmExports);
 
     updateMemoryViews();
@@ -937,7 +935,6 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'alignMemory',
   'mmapAlloc',
   'HandleAllocator',
-  'getNativeTypeSize',
   'getUniqueRunDependency',
   'addOnPreRun',
   'addOnInit',

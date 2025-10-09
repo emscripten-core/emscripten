@@ -601,15 +601,10 @@ function(${args}) {
             warn('To build in STANDALONE_WASM mode without a main(), use emcc --no-entry');
           }
         }
-        if (!RELOCATABLE) {
-          // emit a stub that will fail at runtime
-          LibraryManager.library[symbol] = new Function(`abort('missing function: ${symbol}');`);
-          // We have already warned/errored about this function, so for the purposes of Closure use, mute all type checks
-          // regarding this function, marking ot a variadic function that can take in anything and return anything.
-          // (not useful to warn/error multiple times)
-          LibraryManager.library[symbol + '__docs'] = '/** @type {function(...*):?} */';
-          isStub = true;
-        } else {
+
+        // emit a stub that will fail at runtime
+        var stubFunctionBody = `abort('missing function: ${symbol}');`
+        if (RELOCATABLE) {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
           // resolved assert in debug builds or trap in release builds.
@@ -623,10 +618,10 @@ function(${args}) {
           if (ASSERTIONS) {
             assertion += `if (!${target} || ${target}.stub) abort("external symbol '${symbol}' is missing. perhaps a side module was not linked in? if this function was expected to arrive from a system library, try to build the MAIN_MODULE with EMCC_FORCE_STDLIBS=1 in the environment");\n`;
           }
-          const functionBody = assertion + `return ${target}(...args);`;
-          LibraryManager.library[symbol] = new Function('...args', functionBody);
-          isStub = true;
+          stubFunctionBody = assertion + `return ${target}(...args);`;
         }
+        isStub = true;
+        LibraryManager.library[symbol] = new Function('...args', stubFunctionBody);
       }
 
       librarySymbols.push(mangled);
@@ -636,13 +631,13 @@ function(${args}) {
 
       // Check for dependencies on `__internal` symbols from user libraries.
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
-      deps.forEach((dep) => {
+      for (const dep of deps) {
         if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
           warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
         }
-      });
+      }
 
-      let isFunction = false;
+      const isFunction = typeof snippet == 'function';
       let isNativeAlias = false;
 
       const postsetId = symbol + '__postset';
@@ -680,8 +675,7 @@ function(${args}) {
       } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
         addImplicitDeps(snippet, deps);
-      } else if (typeof snippet == 'function') {
-        isFunction = true;
+      } else if (isFunction) {
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         addImplicitDeps(snippet, deps);
         if (CHECK_DEPS && !isUserSymbol) {
@@ -727,6 +721,7 @@ function(${args}) {
           // Handle arrow functions
           contentText = `var ${mangled} = ` + contentText + ';';
         } else if (contentText.startsWith('class ')) {
+          // Handle class declarations (which also have typeof == 'function'.)
           contentText = contentText.replace(/^class /, `class ${mangled} `);
         } else {
           // Handle regular (non-arrow) functions

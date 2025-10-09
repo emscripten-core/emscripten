@@ -258,10 +258,10 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
   wasmExports = applySignatureConversions(wasmExports);
 #endif
 
-#if !DECLARE_ASM_MODULE_EXPORTS
-  exportWasmSymbols(wasmExports);
-#else
+#if DECLARE_ASM_MODULE_EXPORTS
   assignWasmExports(wasmExports);
+#else
+  exportWasmSymbols(wasmExports);
 #endif
 
 #if !IMPORTED_MEMORY
