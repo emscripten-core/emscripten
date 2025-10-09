@@ -85,6 +85,7 @@ int main() {
   // adding another keypress callback on the same target
   ret = emscripten_set_keypress_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, useCapture, key_callback_2);
   ASSERT_RESULT(emscripten_set_keypress_callback);
+
   checkCount(3);
 
   // adding another keypress callback on the same target with different user data
@@ -130,9 +131,6 @@ int main() {
   ASSERT_RESULT(emscripten_remove_callback);
 
   checkCount(2);
-
-  emscripten_async_call(test_done, 0, 5000);
-
 
   return 0;
 }
