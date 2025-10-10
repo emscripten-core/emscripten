@@ -51,13 +51,13 @@ from tools import webassembly
 from tools.settings import settings
 from tools.system_libs import DETERMINISTIC_PREFIX
 
-emmake = shared.bat_suffix(path_from_root('emmake'))
-emconfig = shared.bat_suffix(path_from_root('em-config'))
-emsize = shared.bat_suffix(path_from_root('emsize'))
-empath_split = shared.bat_suffix(path_from_root('empath-split'))
-emprofile = shared.bat_suffix(path_from_root('emprofile'))
-emstrip = shared.bat_suffix(path_from_root('emstrip'))
-emsymbolizer = shared.bat_suffix(path_from_root('emsymbolizer'))
+emmake = utils.bat_suffix(path_from_root('emmake'))
+emconfig = utils.bat_suffix(path_from_root('em-config'))
+emsize = utils.bat_suffix(path_from_root('emsize'))
+empath_split = utils.bat_suffix(path_from_root('empath-split'))
+emprofile = utils.bat_suffix(path_from_root('emprofile'))
+emstrip = utils.bat_suffix(path_from_root('emstrip'))
+emsymbolizer = utils.bat_suffix(path_from_root('emsymbolizer'))
 
 
 def is_bitcode(filename):
@@ -756,7 +756,7 @@ f.close()
     output = self.run_process([EMCC, '--print-prog-name=clang'], stdout=PIPE).stdout
     expected = CLANG_CC
     if WINDOWS:
-      expected = os.path.normpath(shared.unsuffixed(CLANG_CC))
+      expected = os.path.normpath(utils.unsuffixed(CLANG_CC))
     self.assertContained(expected, output)
 
   @crossplatform
@@ -2947,7 +2947,7 @@ More info: https://emscripten.org
       testname = self.id().split('.')[-1]
       filename = utils.removeprefix(testname, 'test_js_optimizer_') + '.js'
     filename = test_file('js_optimizer', filename)
-    expected_file = shared.unsuffixed(filename) + '-output.js'
+    expected_file = utils.unsuffixed(filename) + '-output.js'
     # test calling optimizer
     js = self.run_process(config.NODE_JS + [path_from_root('tools/acorn-optimizer.mjs'), filename] + passes, stdin=PIPE, stdout=PIPE).stdout
     if common.EMTEST_REBASELINE:
@@ -3982,7 +3982,7 @@ More info: https://emscripten.org
     else:
       self.run_process([FILE_PACKAGER, 'test.data', '--js-output=test.js', '--depfile=test.data.d', '--from-emcc', '--preload', '.'])
       output = read_file('test.data.d')
-    file_packager = utils.normalize_path(shared.replace_suffix(FILE_PACKAGER, '.py'))
+    file_packager = utils.normalize_path(utils.replace_suffix(FILE_PACKAGER, '.py'))
     file_packager = file_packager.replace(' ', '\\ ')
     lines = output.splitlines()
     split = lines.index(': \\')
@@ -6903,7 +6903,7 @@ print(os.environ.get('NM'))
       [['--cflags', '--libs'], '-sUSE_SDL=2'],
     ]:
       print(args, expected)
-      out = self.run_process([shared.bat_suffix(cache.get_sysroot_dir('bin/sdl2-config'))] + args,
+      out = self.run_process([utils.bat_suffix(cache.get_sysroot_dir('bin/sdl2-config'))] + args,
                              stdout=PIPE, stderr=PIPE).stdout
       self.assertContained(expected, out)
       print('via emmake')

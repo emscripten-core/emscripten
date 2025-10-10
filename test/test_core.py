@@ -4067,7 +4067,7 @@ caught outer int: 123
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.cflags.copy()
     if not expected:
-      outfile = shared.replace_suffix(main, '.out')
+      outfile = utils.replace_suffix(main, '.out')
       expected = read_file(outfile)
     if not side:
       side, ext = os.path.splitext(main)
