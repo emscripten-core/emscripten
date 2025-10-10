@@ -752,6 +752,14 @@ f.close()
     self.assertContained(llvm_root, resource_dir)
 
   @crossplatform
+  def test_print_prog_name(self):
+    output = self.run_process([EMCC, '--print-prog-name=clang'], stdout=PIPE).stdout
+    expected = CLANG_CC
+    if WINDOWS:
+      expected = os.path.normpath(shared.unsuffixed(CLANG_CC))
+    self.assertContained(expected, output)
+
+  @crossplatform
   @parameterized({
     '': [[]],
     'lto': [['-flto']],
