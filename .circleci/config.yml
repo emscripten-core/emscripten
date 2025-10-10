@@ -4,7 +4,7 @@ parameters:
   action:
     type: enum
     enum: ["build-test", "warm-cache"]
-    default: warm-cache
+    default: build-test
 
 orbs:
   win: circleci/windows@5.0
