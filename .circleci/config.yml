@@ -1371,6 +1371,10 @@ workflows:
 
   warm-cache:
     when:
-      equal: [ "custom_webhook", << pipeline.event.name >> ]
+      and:
+        - equal: [ "custom_webhook", << pipeline.event.name >> ]
+        - matches:
+            pattern: ".*warm-cache.*"
+            value: << pipeline.trigger_parameters.webhook.body >>
     jobs:
       - build-linux
