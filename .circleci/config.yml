@@ -617,6 +617,14 @@ jobs:
             mkdir -p ~/.ccache
             cat .circleci/ccache.conf
             cp .circleci/ccache.conf ~/.ccache
+      - when:
+          condition:
+            not:
+              equal: [ "main", << pipeline.git.branch >> ]
+          steps:
+            - run:
+                name: Set ccache readonly
+                command: echo "read_only = true" >> ./.ccache/ccache.conf
       - build-libs
       - run:
           name: Clean build directory
