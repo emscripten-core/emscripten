@@ -1,5 +1,11 @@
 version: 2.1
 
+parameters:
+  action:
+    type: enum
+    enum: ["build-test", "warm-cache"]
+    default: build-test
+
 orbs:
   win: circleci/windows@5.0
 
@@ -237,7 +243,9 @@ commands:
           # will use cached results. This prevents untrusted PRs from polluting caches used
           # by other branches.
           condition:
-            equal: [ "main", << pipeline.git.branch >> ]
+            or:
+              - equal: [ "main", << pipeline.git.branch >> ]
+              - equal: [ "warm-cache", << pipeline.parameters.action >> ]
           steps:
             - save_cache:
                 name: "Save Ccache cache"
@@ -606,7 +614,9 @@ jobs:
       - when:
           condition:
             not:
-              equal: [ "main", << pipeline.git.branch >> ]
+              or:
+                - equal: [ "main", << pipeline.git.branch >> ]
+                - equal: [ "warm-cache", << pipeline.parameters.action >> ]
           steps:
             - restore_cache:
                 name: "Restore Ccache cache"
@@ -1287,6 +1297,8 @@ jobs:
 
 workflows:
   build-test:
+    when:
+      equal: [ build-test, << pipeline.parameters.action >> ]
     jobs:
       - ruff
       - mypy
@@ -1355,3 +1367,9 @@ workflows:
       - test-mac-arm64:
           requires:
             - build-linux
+
+  warm-cache:
+    when:
+      equal: [ warm-cache, << pipeline.parameters.action >> ]
+    jobs:
+      - build-linux
