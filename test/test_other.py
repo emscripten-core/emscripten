@@ -4948,6 +4948,35 @@ call_native_alias: 44
 '''
     self.do_runf('main.c', expected, cflags=['--js-library', 'foo.js'] + args)
 
+  @parameterized({
+    '': ([],),
+    'closure': (['--closure=1'],),
+  })
+  def test_jslib_export_alias(self, args):
+    create_file('lib.js', '''
+      addToLibrary({
+        $foo: 'main',
+        $bar: '__indirect_function_table',
+        $baz: 'memory',
+      });
+    ''')
+    create_file('extern_pre.js', r'''
+      Module = {
+        onRuntimeInitialized: () => {
+          const assert = require('assert');
+          console.log("onRuntimeInitialized");
+          console.log('foo:', typeof Module.foo)
+          console.log('bar:', typeof Module.bar)
+          console.log('baz:', typeof Module.baz)
+          assert(Module.foo instanceof Function);
+          assert(Module.bar instanceof WebAssembly.Table);
+          assert(Module.baz instanceof WebAssembly.Memory);
+          console.log('done');
+        }
+      };
+    ''')
+    self.do_runf('hello_world.c', 'done\n', cflags=['--js-library=lib.js', '--extern-pre-js=extern_pre.js', '-sEXPORTED_RUNTIME_METHODS=foo,bar,baz'] + args)
+
   def test_postjs_errors(self):
     create_file('post.js', '#preprocess\n#error This is an error')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--post-js', 'post.js'])
