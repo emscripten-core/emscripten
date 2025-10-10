@@ -624,7 +624,7 @@ jobs:
           steps:
             - run:
                 name: Set ccache readonly
-                command: echo "read_only = true" >> ./.ccache/ccache.conf
+                command: echo "read_only = true" >> ~/.ccache/ccache.conf
       - build-libs
       - run:
           name: Clean build directory
