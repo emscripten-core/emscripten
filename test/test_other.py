@@ -689,19 +689,20 @@ f.close()
     self.assertIn('transformed!', read_file('a.out.js'))
 
   @crossplatform
+  @also_with_wasm64
   def test_emcc_cflags(self):
-    output = self.run_process([EMCC, '--cflags'], stdout=PIPE)
+    output = self.run_process([EMCC, '--cflags'] + self.get_cflags(), stdout=PIPE)
     flags = output.stdout.strip()
-    self.assertContained('-target wasm32-unknown-emscripten', flags)
+    self.assertContained(r'-target wasm\d\d-unknown-emscripten', flags, regex=True)
     self.assertContained('--sysroot=', flags)
-    output = self.run_process([EMXX, '--cflags'], stdout=PIPE)
+    output = self.run_process([EMXX, '--cflags'] + self.get_cflags(), stdout=PIPE)
     flags = output.stdout.strip()
-    self.assertContained('-target wasm32-unknown-emscripten', flags)
+    self.assertContained(r'-target wasm\d\d-unknown-emscripten', flags, regex=True)
     self.assertContained('--sysroot=', flags)
     # check they work
     cmd = [CLANG_CC, test_file('hello_world.c')] + shlex.split(flags.replace('\\', '\\\\')) + ['-c', '-o', 'out.o']
     self.run_process(cmd)
-    self.run_process([EMCC, 'out.o'])
+    self.run_process([EMCC, 'out.o'] + self.get_cflags())
     self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   @crossplatform
@@ -4946,6 +4947,35 @@ call_native: 43
 call_native_alias: 44
 '''
     self.do_runf('main.c', expected, cflags=['--js-library', 'foo.js'] + args)
+
+  @parameterized({
+    '': ([],),
+    'closure': (['--closure=1'],),
+  })
+  def test_jslib_export_alias(self, args):
+    create_file('lib.js', '''
+      addToLibrary({
+        $foo: 'main',
+        $bar: '__indirect_function_table',
+        $baz: 'memory',
+      });
+    ''')
+    create_file('extern_pre.js', r'''
+      Module = {
+        onRuntimeInitialized: () => {
+          const assert = require('assert');
+          console.log("onRuntimeInitialized");
+          console.log('foo:', typeof Module.foo)
+          console.log('bar:', typeof Module.bar)
+          console.log('baz:', typeof Module.baz)
+          assert(Module.foo instanceof Function);
+          assert(Module.bar instanceof WebAssembly.Table);
+          assert(Module.baz instanceof WebAssembly.Memory);
+          console.log('done');
+        }
+      };
+    ''')
+    self.do_runf('hello_world.c', 'done\n', cflags=['--js-library=lib.js', '--extern-pre-js=extern_pre.js', '-sEXPORTED_RUNTIME_METHODS=foo,bar,baz'] + args)
 
   def test_postjs_errors(self):
     create_file('post.js', '#preprocess\n#error This is an error')

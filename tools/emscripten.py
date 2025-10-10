@@ -980,6 +980,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
     assert alias in exports, f'expected alias target ({alias}) to be exported'
     alias_inverse_map.setdefault(alias, []).append(sym)
 
+  do_module_exports = (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and settings.MODULARIZE != 'instance'
   receiving.append('\nfunction assignWasmExports(wasmExports) {')
   for sym, sig in exports.items():
     is_function = sig is not None
@@ -988,11 +989,13 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
     if generate_dyncall_assignment and is_function and sym.startswith('dynCall_'):
       sig_str = sym.replace('dynCall_', '')
       assignment += f" = dynCalls['{sig_str}']"
-    if (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(mangled) and settings.MODULARIZE != 'instance':
+    if do_module_exports and should_export(mangled):
       assignment += f" = Module['{mangled}']"
     if sym in alias_inverse_map:
       for target in alias_inverse_map[sym]:
         assignment += f" = {target}"
+        if do_module_exports and target in settings.EXPORTED_RUNTIME_METHODS:
+          assignment += f" = Module['{target}']"
     if is_function and install_debug_wrapper(sym):
       nargs = len(sig.params)
       receiving.append(f"  {assignment} = createExportWrapper('{sym}', {nargs});")
