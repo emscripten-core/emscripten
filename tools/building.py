@@ -31,7 +31,7 @@ from .shared import run_process, check_call, exit_with_error
 from .shared import path_from_root
 from .shared import asmjs_mangle, DEBUG
 from .shared import LLVM_DWARFDUMP, demangle_c_symbol_name
-from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
+from .shared import get_emscripten_temp_dir, is_c_symbol
 from .utils import WINDOWS
 from .settings import settings
 from .feature_matrix import UNSUPPORTED
@@ -384,9 +384,9 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
     return check_call(cmd, stdout=PIPE).stdout
 
   acorn_optimizer.counter += 1
-  basename = shared.unsuffixed(original_filename)
+  basename = utils.unsuffixed(original_filename)
   if '.jso' in basename:
-    basename = shared.unsuffixed(basename)
+    basename = utils.unsuffixed(basename)
   output_file = basename + '.jso%d.js' % acorn_optimizer.counter
   shared.get_temp_files().note(output_file)
   cmd += ['-o', output_file]
@@ -1181,7 +1181,7 @@ def get_binaryen_feature_flags():
 
 
 def check_binaryen(bindir):
-  opt = os.path.join(bindir, exe_suffix('wasm-opt'))
+  opt = os.path.join(bindir, utils.exe_suffix('wasm-opt'))
   if not os.path.exists(opt):
     exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % opt)
   try:

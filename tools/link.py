@@ -34,11 +34,11 @@ from . import utils
 from . import webassembly
 from . import extract_metadata
 from .cmdline import OFormat
-from .utils import read_file, write_file, delete_file
+from .utils import read_file, write_file, delete_file, safe_copy
 from .utils import removeprefix, exit_with_error
-from .shared import in_temp, safe_copy, do_replace
+from .utils import unsuffixed, unsuffixed_basename, get_file_suffix
+from .shared import in_temp, do_replace
 from .shared import DEBUG, WINDOWS, DYLIB_EXTENSIONS
-from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
 from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
@@ -910,7 +910,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   elif settings.SINGLE_FILE or settings.WASM == 0:
     # In SINGLE_FILE or WASM2JS mode the wasm file is not part of the output at
     # all so we generate it the temp directory.
-    wasm_target = in_temp(shared.replace_suffix(target, '.wasm'))
+    wasm_target = in_temp(utils.replace_suffix(target, '.wasm'))
   else:
     # Otherwise the wasm file is produced alongside the final target.
     wasm_target = get_secondary_target(target, '.wasm')
@@ -1567,7 +1567,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
 
   # wasm side modules have suffix .wasm
-  if settings.SIDE_MODULE and shared.suffix(target) in ('.js', '.mjs'):
+  if settings.SIDE_MODULE and utils.suffix(target) in ('.js', '.mjs'):
     diagnostics.warning('emcc', 'JavaScript output suffix requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
   if options.sanitize:
@@ -2633,7 +2633,7 @@ def generate_worker_js(target, options, js_target, target_basename):
     proxy_worker_filename = get_subresource_location_js(js_target)
   else:
     # compiler output goes in .worker.js file
-    move_file(js_target, shared.replace_suffix(js_target, get_worker_js_suffix()))
+    move_file(js_target, utils.replace_suffix(js_target, get_worker_js_suffix()))
     worker_target_basename = target_basename + '.worker'
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 
@@ -2998,7 +2998,7 @@ def package_files(options, target):
     rtn.append(object_file)
 
   cmd = building.get_command_with_possible_response_file(
-    [shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args)
+    [shared.FILE_PACKAGER, utils.replace_suffix(target, '.data')] + file_args)
   if options.preload_files:
     # Preloading files uses --pre-js code that runs before the module is loaded.
     file_code = shared.check_call(cmd, stdout=PIPE).stdout

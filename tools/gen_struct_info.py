@@ -266,7 +266,7 @@ def inspect_headers(headers, cflags):
 
     if os.path.exists(js_file_path):
       os.unlink(js_file_path)
-      wasm_file_path = shared.replace_suffix(js_file_path, '.wasm')
+      wasm_file_path = utils.replace_suffix(js_file_path, '.wasm')
       os.unlink(wasm_file_path)
 
   # Parse the output of the program into a dict.

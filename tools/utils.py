@@ -3,10 +3,16 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+"""General purpose utility functions.  The code in this file should mostly be
+not emscripten-specific, but general purpose enough to be useful in any command
+line utility."""
+
+import functools
+import logging
 import os
 import shutil
+import stat
 import sys
-import functools
 from pathlib import Path
 
 from . import diagnostics
@@ -16,6 +22,8 @@ WINDOWS = sys.platform.startswith('win')
 MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 
+logger = logging.getLogger('utils')
+
 
 def exit_with_error(msg, *args):
   diagnostics.error(msg, *args)
@@ -23,6 +31,46 @@ def exit_with_error(msg, *args):
 
 def path_from_root(*pathelems):
   return str(Path(__rootpath__, *pathelems))
+
+
+def suffix(name):
+  """Return the file extension"""
+  return os.path.splitext(name)[1]
+
+
+def exe_suffix(cmd):
+  return cmd + '.exe' if WINDOWS else cmd
+
+
+def bat_suffix(cmd):
+  return cmd + '.bat' if WINDOWS else cmd
+
+
+def replace_suffix(filename, new_suffix):
+  assert new_suffix[0] == '.'
+  return os.path.splitext(filename)[0] + new_suffix
+
+
+def unsuffixed(name):
+  """Return the filename without the extension.
+
+  If there are multiple extensions this strips only the final one.
+  """
+  return os.path.splitext(name)[0]
+
+
+def unsuffixed_basename(name):
+  return os.path.basename(unsuffixed(name))
+
+
+def get_file_suffix(filename):
+  """Parses the essential suffix of a filename, discarding Unix-style version
+  numbers in the name. For example for 'libz.so.1.2.8' returns '.so'"""
+  while filename:
+    filename, suffix = os.path.splitext(filename)
+    if not suffix[1:].isdigit():
+      return suffix
+  return ''
 
 
 def normalize_path(path):
@@ -38,6 +86,29 @@ def normalize_path(path):
 
 def safe_ensure_dirs(dirname):
   os.makedirs(dirname, exist_ok=True)
+
+
+def make_writable(filename):
+  assert os.path.exists(filename)
+  old_mode = stat.S_IMODE(os.stat(filename).st_mode)
+  os.chmod(filename, old_mode | stat.S_IWUSR)
+
+
+def safe_copy(src, dst):
+  logger.debug('copy: %s -> %s', src, dst)
+  src = os.path.abspath(src)
+  dst = os.path.abspath(dst)
+  if os.path.isdir(dst):
+    dst = os.path.join(dst, os.path.basename(src))
+  if src == dst:
+    return
+  if dst == os.devnull:
+    return
+  # Copies data and permission bits, but not other metadata such as timestamp
+  shutil.copy(src, dst)
+  # We always want the target file to be writable even when copying from
+  # read-only source. (e.g. a read-only install of emscripten).
+  make_writable(dst)
 
 
 # TODO(sbc): Replace with str.removeprefix once we update to python3.9

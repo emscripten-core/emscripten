@@ -24,7 +24,7 @@ def get(ports, settings, shared):
     dest_include_path = ports.get_include_dir('bullet')
     for base, _, files in os.walk(src_path):
       for f in files:
-        if shared.suffix(f) != '.h':
+        if os.path.splitext(f)[1] != '.h':
           continue
         fullpath = os.path.join(base, f)
         relpath = os.path.relpath(fullpath, src_path)
