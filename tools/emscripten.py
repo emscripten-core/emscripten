@@ -991,6 +991,8 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
       assignment += f" = dynCalls['{sig_str}']"
     if do_module_exports and should_export(mangled):
       assignment += f" = Module['{mangled}']"
+    if settings.ASSERTIONS:
+      receiving.append(f"  assert(wasmExports['{sym}'], 'missing Wasm export: {sym}');")
     if sym in alias_inverse_map:
       for target in alias_inverse_map[sym]:
         assignment += f" = {target}"
