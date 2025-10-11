@@ -307,6 +307,7 @@ sigs = {
   _embind_register_std_string__sig: 'vpp',
   _embind_register_std_wstring__sig: 'vppp',
   _embind_register_user_type__sig: 'vpp',
+  _embind_register_user_type_definition__sig: 'vppp',
   _embind_register_value_array__sig: 'vpppppp',
   _embind_register_value_array_element__sig: 'vppppppppp',
   _embind_register_value_object__sig: 'vpppppp',
