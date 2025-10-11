@@ -15783,3 +15783,6 @@ addToLibrary({
     with_fast_size = os.path.getsize('with_fast.wasm')
     
     self.assertLessEqual(with_fast_size, no_fast_size)
+
+ 
+ 

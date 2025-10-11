@@ -461,7 +461,6 @@ def get_binaryen_passes():
   if will_metadce():
     passes += ['--no-stack-ir']
 
-  # fast-math optimization
   if settings.FAST_MATH:
     passes += ['--fast-math']
 

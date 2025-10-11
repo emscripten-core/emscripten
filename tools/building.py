@@ -792,8 +792,6 @@ def get_last_binaryen_opts():
   opts = [f'--optimize-level={settings.OPT_LEVEL}',
           f'--shrink-level={settings.SHRINK_LEVEL}',
           '--optimize-stack-ir']
-  if settings.FAST_MATH:
-    opts.append('--fast-math')
   return opts
 
 
