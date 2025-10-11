@@ -126,6 +126,17 @@ typedef struct AudioParamFrame
 
 typedef bool (*EmscriptenWorkletNodeProcessCallback)(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData4);
 
+typedef enum {
+    WEBAUDIO_CHANNEL_COUNT_MODE_MAX = 0,
+    WEBAUDIO_CHANNEL_COUNT_MODE_CLAMPED_MAX = 1,
+    WEBAUDIO_CHANNEL_COUNT_MODE_EXPLICIT = 2
+} WEBAUDIO_CHANNEL_COUNT_MODE;
+
+typedef enum {
+    WEBAUDIO_CHANNEL_INTERPRETATION_SPEAKERS = 0,
+    WEBAUDIO_CHANNEL_INTERPRETATION_DISCRETE = 1
+} WEBAUDIO_CHANNEL_INTERPRETATION;
+
 typedef struct EmscriptenAudioWorkletNodeCreateOptions
 {
 	// How many audio nodes does this node take inputs from? Default=1
@@ -134,6 +145,10 @@ typedef struct EmscriptenAudioWorkletNodeCreateOptions
 	int numberOfOutputs;
 	// For each output, specifies the number of audio channels (1=mono/2=stereo/etc.) for that output. Default=an array of ones for each output channel.
 	int *outputChannelCounts;
+	unsigned long channelCount;
+	WEBAUDIO_CHANNEL_COUNT_MODE channelCountMode;
+	WEBAUDIO_CHANNEL_INTERPRETATION channelInterpretation;
+
 } EmscriptenAudioWorkletNodeCreateOptions;
 
 // Instantiates the given AudioWorkletProcessor as an AudioWorkletNode, which continuously calls the specified processCallback() function on the browser's audio thread to perform audio processing.
