@@ -45,11 +45,14 @@ std::unique_ptr<Test> class_unique_ptr_returning_fn() {
   return std::make_unique<Test>();
 }
 
-enum Bar { kValueOne, kValueTwo, kValueThree };
-
+enum FirstEnum { kValueOne, kValueTwo, kValueThree };
+enum SecondEnum { kValueA, kValueB, kValueC };
+enum ThirdEnum { kValueAlpha, kValueBeta, kValueGamma };
 enum EmptyEnum {};
 
-Bar enum_returning_fn() { return kValueOne; }
+FirstEnum enum_returning_fn() { return kValueOne; }
+SecondEnum num_enum_returning_fn() { return kValueA; }
+ThirdEnum str_enum_returning_fn() { return kValueAlpha; }
 
 struct ValArr {
   int x, y, z;
@@ -59,6 +62,7 @@ EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 
 struct ValObj {
   Bar bar;
+  Baz baz;
   std::string string;
   CallbackType callback;
   ValObj() : callback(val::undefined()) {}
@@ -178,16 +182,26 @@ EMSCRIPTEN_BINDINGS(Test) {
 
   constant("an_int", 5);
   constant("a_bool", false);
-  constant("an_enum", Bar::kValueOne);
+  constant("an_enum", FirstEnum::kValueOne);
   constant("a_class_instance", Test());
 
-  enum_<Bar>("Bar")
-      .value("valueOne", Bar::kValueOne)
-      .value("valueTwo", Bar::kValueTwo)
-      .value("valueThree", Bar::kValueThree);
+  enum_<FirstEnum>("FirstEnum", enum_value_type::object)
+      .value("kValueOne", FirstEnum::kValueOne)
+      .value("kValueTwo", FirstEnum::kValueTwo)
+      .value("kValueThree", FirstEnum::kValueThree);
+  enum_<SecondEnum>("SecondEnum", enum_value_type::number)
+      .value("kValueA", SecondEnum::kValueA)
+      .value("kValueB", SecondEnum::kValueB)
+      .value("kValueC", SecondEnum::kValueC);
+  enum_<ThirdEnum>("ThirdEnum", enum_value_type::string)
+      .value("kValueAlpha", ThirdEnum::kValueAlpha)
+      .value("kValueBeta", ThirdEnum::kValueBeta)
+      .value("kValueGamma", ThirdEnum::kValueGamma);
   enum_<EmptyEnum>("EmptyEnum");
 
   function("enum_returning_fn", &enum_returning_fn);
+  function("num_enum_returning_fn", &num_enum_returning_fn);
+  function("str_enum_returning_fn", &str_enum_returning_fn);
 
   value_array<ValArr>("ValArr")
       .element(&ValArr::x)
@@ -203,6 +217,7 @@ EMSCRIPTEN_BINDINGS(Test) {
   value_object<ValObj>("ValObj")
       .field("string", &ValObj::string)
       .field("bar", &ValObj::bar)
+      .field("baz", &ValObj::baz)
       .field("callback", &ValObj::callback);
   function("getValObj", &getValObj);
   function("setValObj", &setValObj);

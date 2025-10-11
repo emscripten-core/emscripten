@@ -35,6 +35,8 @@ export interface BarValue<T extends number> {
 }
 export type Bar = BarValue<0>|BarValue<1>|BarValue<2>;
 
+export type Baz = 'valueA'|'valueB'|'valueC';
+
 export interface EmptyEnumValue<T extends number> {
   value: T;
 }
@@ -93,6 +95,7 @@ export type ValArr = [ number, number, number ];
 export type ValObj = {
   string: EmbindString,
   bar: Bar,
+  baz: Baz,
   callback: (message: string) => void
 };
 
@@ -112,8 +115,10 @@ interface EmbindModule {
   a_class_instance: Test;
   an_enum: Bar;
   Bar: {valueOne: BarValue<0>, valueTwo: BarValue<1>, valueThree: BarValue<2>};
+  Baz: {valueA: 'valueA', valueB: 'valueB', valueC: 'valueC'};
   EmptyEnum: {};
   enum_returning_fn(): Bar;
+  str_enum_returning_fn(): Baz;
   IntVec: {
     new(): IntVec;
   };
