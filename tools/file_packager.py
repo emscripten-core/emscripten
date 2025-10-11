@@ -255,7 +255,7 @@ def generate_object_file(data_files):
   embed_files = [f for f in data_files if f.mode == 'embed']
   assert embed_files
 
-  asm_file = shared.replace_suffix(options.obj_output, '.s')
+  asm_file = utils.replace_suffix(options.obj_output, '.s')
 
   used = set()
   for f in embed_files:
