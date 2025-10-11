@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 4.0.17 (in development)
 -----------------------
+- Mutable Wasm globals can now be exported from native code.  Currently these
+  cannot be declared in C/C++ but can be defined and exported in assembly code.
+  This currently only works for mutable globals since immutables are already
+  (and continue to be) exported as plain JS numbers. (#25530)
 - Minimum Firefox version was bumped up to Firefox 68 ESR, since older Firefox
   versions are not able to run the parallel browser harness: (#25493)
   - Firefox: v65 -> v68
