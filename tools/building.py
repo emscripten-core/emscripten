@@ -789,9 +789,12 @@ def minify_wasm_js(js_file, wasm_file, expensive_optimizations, debug_info):
 # get the flags to pass into the very last binaryen tool invocation, that runs
 # the final set of optimizations
 def get_last_binaryen_opts():
-  return [f'--optimize-level={settings.OPT_LEVEL}',
+  opts = [f'--optimize-level={settings.OPT_LEVEL}',
           f'--shrink-level={settings.SHRINK_LEVEL}',
           '--optimize-stack-ir']
+  if settings.FAST_MATH:
+    opts.append('--fast-math')
+  return opts
 
 
 # run binaryen's wasm-metadce to dce both js and wasm
