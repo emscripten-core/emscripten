@@ -11,6 +11,7 @@
 #include <assert.h>
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
+#include <emscripten/threading.h>
 #include <bits/errno.h>
 #include <stdlib.h>
 
