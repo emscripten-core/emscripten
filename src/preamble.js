@@ -719,13 +719,10 @@ function getWasmImports() {
     wasmExports = instance.exports;
 
 #if MAIN_MODULE
-    // No relocation needed here.. but calling this just so that updateGOT is
-    // called.
 #if RELOCATABLE
-    var origExports = wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
-#else
-    var origExports = wasmExports = relocateExports(wasmExports);
+    wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
 #endif
+    var origExports = wasmExports;
 #endif
 
 #if ASYNCIFY
