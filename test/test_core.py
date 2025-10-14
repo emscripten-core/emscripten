@@ -9682,7 +9682,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'dylink': [True],
   })
   @no_esm_integration('https://github.com/emscripten-core/emscripten/issues/25543')
+  @no_omit_asm_module_exports('https://github.com/emscripten-core/emscripten/issues/25556')
   def test_wasm_global(self, dynlink):
+    if '-flto' in self.cflags or '-flto=thin' in self.cflags:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25555')
     if dynlink:
       self.check_dylink()
       self.set_setting('MAIN_MODULE', 2)
