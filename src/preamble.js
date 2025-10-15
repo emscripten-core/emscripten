@@ -487,7 +487,7 @@ async function getWasmBinary(binaryFile) {
 
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
-var wasmImportsProxyHandler = {
+var splitImportsProxyHandler = {
   get(target, env, receiver) {
     if (env.startsWith('placeholder')) {
       let secondaryFile;
@@ -682,7 +682,7 @@ function getWasmImports() {
 #endif
   };
 #if SPLIT_MODULE
-  imports = new Proxy(imports, wasmImportsProxyHandler);
+  imports = new Proxy(imports, splitImportsProxyHandler);
 #endif
   return imports;
 }
