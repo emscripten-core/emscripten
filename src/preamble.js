@@ -491,25 +491,25 @@ var wasmImportsProxyHandler = {
   get(target, env, receiver) {
     if (env.startsWith('placeholder')) {
       var splitModuleProxyHandler = {
-        get(target, prop, receiver) {
+        get(target, base, receiver) {
           return (...args) => {
 #if ASYNCIFY == 2
-            throw new Error('Placeholder function "' + prop + '" should not be called when using JSPI.');
+            throw new Error('Placeholder function "' + base + '" should not be called when using JSPI.');
 #else
             // TODO: Implement multi-split module loading
-            err(`placeholder function called: ${prop}`);
+            err(`placeholder function called: ${base}`);
             var imports = {'primary': wasmExports};
             // Replace '.wasm' suffix with '.deferred.wasm'.
             var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
-            loadSplitModule(deferred, imports, prop);
+            loadSplitModule(deferred, imports, base);
             err('instantiated deferred module, continuing');
 #if RELOCATABLE
             // When the table is dynamically laid out, the placeholder functions names
             // are offsets from the table base. In the main module, the table base is
             // always 1.
-            prop = 1 + parseInt(prop);
+            base = 1 + parseInt(base);
 #endif
-            return wasmTable.get({{{ toIndexType('prop') }}})(...args);
+            return wasmTable.get({{{ toIndexType('base') }}})(...args);
 #endif
           }
         }
