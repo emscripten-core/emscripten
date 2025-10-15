@@ -504,11 +504,15 @@ var splitImportsProxyHandler = {
             throw new Error('Placeholder function "' + base + '" should not be called when using JSPI.');
 #else
             // TODO: Implement multi-split module loading
-            err(`placeholder function called: ${base}`);
+#if RUNTIME_DEBUG
+            dbg(`placeholder function called: ${base}`);
+#endif
             var imports = {'primary': wasmExports};
             // Replace '.wasm' suffix with '.deferred.wasm'.
             loadSplitModule(secondaryFile, imports, base);
-            err('instantiated deferred module, continuing');
+#if RUNTIME_DEBUG
+            dbg('instantiated deferred module, continuing');
+#endif
 #if RELOCATABLE
             // When the table is dynamically laid out, the placeholder functions names
             // are offsets from the table base. In the main module, the table base is
