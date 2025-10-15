@@ -502,7 +502,8 @@ var splitModuleProxyHandler = {
 #endif
             var imports = {'primary': wasmExports};
             // Replace '.wasm' suffix with '.deferred.wasm'.
-            loadSplitModule(secondaryFile, imports, base);
+            var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
+            loadSplitModule(deferred, imports, base);
 #if RUNTIME_DEBUG
             dbg('instantiated deferred module, continuing');
 #endif
