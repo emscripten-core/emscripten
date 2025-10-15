@@ -258,6 +258,11 @@ void _embind_register_user_type(
     TYPEID type,
     const char* typeName);
 
+void _embind_register_user_type_definition(
+    TYPEID type,
+    const char* typeName,
+    const char* typeDefinition);
+
 // Register an InitFunc in the global linked list of init functions.
 void _embind_register_bindings(struct InitFunc* f);
 
@@ -2042,6 +2047,12 @@ template <typename T>
 inline void register_type(const char* name) {
   using namespace internal;
   _embind_register_user_type(TypeID<T>::get(), name);
+}
+
+template <typename T>
+inline void register_type(const char* name, const char* definition) {
+  using namespace internal;
+  _embind_register_user_type_definition(TypeID<T>::get(), name, definition);
 }
 
 // EMSCRIPTEN_BINDINGS creates a static struct to initialize the binding which

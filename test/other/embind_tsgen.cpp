@@ -64,6 +64,9 @@ struct ValObj {
   ValObj() : callback(val::undefined()) {}
 };
 
+EMSCRIPTEN_DECLARE_VAL_TYPE(AliasedVal);
+
+
 ValObj getValObj() {
   ValObj o;
   return o;
@@ -102,6 +105,9 @@ Obj* get_nonnull_pointer() { return new Obj(); }
 int function_with_callback_param(CallbackType ct) {
   ct(val("hello"));
   return 0;
+}
+
+void function_consuming_aliased_val(AliasedVal) {
 }
 
 int global_fn(int, int) { return 0; }
@@ -246,7 +252,11 @@ EMSCRIPTEN_BINDINGS(Test) {
   function("function_with_callback_param",
            &function_with_callback_param);
 
+  function("function_consuming_aliased_val",
+           &function_consuming_aliased_val);
+
   register_type<CallbackType>("(message: string) => void");
+  register_type<AliasedVal>("AliasedVal", "number");
 
   class_<BaseClass>("BaseClass").function("fn", &BaseClass::fn);
 
