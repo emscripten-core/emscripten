@@ -1,7 +1,7 @@
 .. _sdk-download-and-install:
 
 ====================
-Download and install
+Download & Install
 ====================
 
 .. note:: You can also :ref:`build Emscripten from source
@@ -35,26 +35,59 @@ the first time with:
    download => Download ZIP" on the `emsdk GitHub page
    <https://github.com/emscripten-core/emsdk>`_.
 
-Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from
-GitHub and set them as :term:`active <Active Tool/SDK>`:
+Getting the tools
+^^^^^^^^^^^^
+To get the latest tools from GitHub and set them as :term:`active <Active Tool/SDK>` run the following :ref:`emsdk <emsdk>` commands.
+
+**Linux/Mac**
 
   ::
 
-    # Fetch the latest version of the emsdk (not needed the first time you clone)
-    git pull
+   #Fetch the latest version of the emsdk (not needed the first time you clone)
+   git pull
+   
+   # Download and install the latest SDK tools.
+   ./emsdk install latest
+   
+   # Make the "latest" SDK "active" for the current user. (writes .emscripten file)
+   ./emsdk activate latest
+   
+   # Activate PATH and other environment variables in the current terminal
+   source ./emsdk_env.sh
 
-    # Download and install the latest SDK tools.
-    ./emsdk install latest
+**Windows**
 
-    # Make the "latest" SDK "active" for the current user. (writes .emscripten file)
-    ./emsdk activate latest
+  ::
 
-    # Activate PATH and other environment variables in the current terminal
-    source ./emsdk_env.sh
+   #Fetch the latest version of the emsdk (not needed the first time you clone)
+   git pull
+   
+   # Download and install the latest SDK tools.
+   emsdk.bat install latest
+   
+   # Make the "latest" SDK "active" for the current user. (writes .emscripten file)
+   emsdk.bat activate latest
+   
+   # Activate PATH and other environment variables in the current terminal (optional)
+   emsdk_env.bat
+
+
+.. tip:: For Windows machines here is a useful routine to follow:
+
+  ::
+
+   # To open the emscripten command line in your IDE terminal run the following
+
+   # Navigate to newly created emsdk folder
+   cd emsdk
+   
+   # Run the emcmdprompt.bat file
+   emcmdprompt.bat
+   
+   # To use the compilation commands remember to navigate one folder up
+   cd..
 
   .. tip:: If you want to avoid executing `source ./emsdk_env.sh` every time you open a new terminal, you can follow the instructions given by the `emsdk activate` command above to add this command to your startup scripts.
-
-  .. note:: On Windows, run ``emsdk.bat`` instead of ``./emsdk``, and ``emsdk_env.bat`` instead of ``source ./emsdk_env.sh``.
 
   .. note:: On Windows, if you use the ``activate`` command, the step of ``emsdk_env.bat`` is optional. If you want to know more, see :ref:`activate SDK version <emsdk-set-active-tools>`.
 
