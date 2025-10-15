@@ -111,7 +111,7 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     settings.WASM_EXPORTS = base_metadata.all_exports
   else:
     settings.WASM_EXPORTS = metadata.all_exports
-  settings.WASM_GLOBAL_EXPORTS = list(metadata.global_exports.keys())
+  settings.DATA_EXPORTS = list(metadata.data_exports.keys())
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
   # start with the MVP features, and add any detected features.
@@ -269,9 +269,9 @@ def trim_asm_const_body(body):
   return body
 
 
-def create_global_exports(global_exports):
+def create_data_exports(data_exports):
   lines = []
-  for k, v in global_exports.items():
+  for k, v in data_exports.items():
     if shared.is_internal_global(k):
       continue
 
@@ -408,11 +408,11 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     other_exports = base_metadata.other_exports
     # We want the real values from the final metadata but we only want to
     # include names from the base_metadata.  See phase_link() in link.py.
-    global_exports = {k: v for k, v in metadata.global_exports.items() if k in base_metadata.global_exports}
+    data_exports = {k: v for k, v in metadata.data_exports.items() if k in base_metadata.data_exports}
   else:
     function_exports = metadata.function_exports
     other_exports = metadata.other_exports
-    global_exports = metadata.global_exports
+    data_exports = metadata.data_exports
 
   if settings.ASYNCIFY == 1:
     function_exports['asyncify_start_unwind'] = webassembly.FuncType([webassembly.Type.I32], [])
@@ -421,7 +421,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
   parts = [pre]
-  parts += create_module(metadata, function_exports, global_exports, other_exports,
+  parts += create_module(metadata, function_exports, data_exports, other_exports,
                          forwarded_json['librarySymbols'], forwarded_json['nativeAliases'])
   parts.append(post)
   settings.ALIASES = list(forwarded_json['nativeAliases'].keys())
@@ -991,6 +991,8 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
       assignment += f" = dynCalls['{sig_str}']"
     if do_module_exports and should_export(mangled):
       assignment += f" = Module['{mangled}']"
+    if settings.ASSERTIONS:
+      receiving.append(f"  assert(wasmExports['{sym}'], 'missing Wasm export: {sym}');")
     if sym in alias_inverse_map:
       for target in alias_inverse_map[sym]:
         assignment += f" = {target}"
@@ -1006,10 +1008,10 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
   return '\n'.join(receiving)
 
 
-def create_module(metadata, function_exports, global_exports, other_exports, library_symbols, aliases):
+def create_module(metadata, function_exports, data_exports, other_exports, library_symbols, aliases):
   module = []
   module.append(create_receiving(function_exports, other_exports, library_symbols, aliases))
-  module.append(create_global_exports(global_exports))
+  module.append(create_data_exports(data_exports))
 
   sending = create_sending(metadata, library_symbols)
   if settings.WASM_ESM_INTEGRATION:

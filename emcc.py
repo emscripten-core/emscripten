@@ -250,10 +250,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
     return 0
 
-  if '-print-resource-dir' in args:
-    shared.check_call([clang] + args)
-    return 0
-
   if '-print-libgcc-file-name' in args or '--print-libgcc-file-name' in args:
     settings.limit_settings(None)
     compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
@@ -291,6 +287,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
   phase_setup(options, state)
+
+  if '-print-resource-dir' in args or any(a.startswith('--print-prog-name') for a in args):
+    shared.exec_process([clang] + compile.get_cflags(tuple(args)) + args)
+    assert False, 'exec_process should not return'
 
   if '--cflags' in args:
     # Just print the flags we pass to clang and exit.  We need to do this after
@@ -513,7 +513,7 @@ def phase_compile_inputs(options, state, newargs):
     else:
       cmd = get_clang_command() + newargs
     shared.exec_process(cmd)
-    assert False, 'exec_process does not return'
+    assert False, 'exec_process should not return'
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags

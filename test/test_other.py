@@ -752,6 +752,14 @@ f.close()
     self.assertContained(llvm_root, resource_dir)
 
   @crossplatform
+  def test_print_prog_name(self):
+    output = self.run_process([EMCC, '--print-prog-name=clang'], stdout=PIPE).stdout
+    expected = CLANG_CC
+    if WINDOWS:
+      expected = os.path.normpath(shared.unsuffixed(CLANG_CC))
+    self.assertContained(expected, output)
+
+  @crossplatform
   @parameterized({
     '': [[]],
     'lto': [['-flto']],
@@ -7946,33 +7954,20 @@ addToLibrary({
     out = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('native code called abort()', out)
 
-  @is_slow_test
-  def test_mallocs(self):
-    def run(opts):
-      print(opts)
-      sizes = {}
-      for malloc, name in (
-        ('dlmalloc', 'dlmalloc'),
-        (None, 'default'),
-        ('emmalloc', 'emmalloc'),
-        ('mimalloc', 'mimalloc'),
-      ):
-        print(malloc, name)
-        args = opts[:]
-        if malloc:
-          args += ['-sMALLOC=%s' % malloc]
-        print(args)
-        self.emcc('hello_libcxx.cpp', args=args)
-        sizes[name] = os.path.getsize('a.out.wasm')
-      print(sizes)
-      # dlmalloc is the default
-      self.assertEqual(sizes['dlmalloc'], sizes['default'])
-      # emmalloc is much smaller
-      self.assertLess(sizes['emmalloc'], sizes['dlmalloc'] - 5000)
-      # mimalloc is much larger
-      self.assertGreater(sizes['mimalloc'], sizes['dlmalloc'] - 25000)
-    run([])
-    run(['-O2'])
+  @parameterized({
+    '': ([], 190000),
+    'O2': (['-O2'], 132000),
+    'emmalloc': (['-sMALLOC=emmalloc'], 185000),
+    'dlmalloc': (['-sMALLOC=dlmalloc'], 190000),
+    'mimalloc': (['-sMALLOC=mimalloc'], 245000),
+    'emmalloc_O2': (['-sMALLOC=emmalloc', '-O2'], 125000),
+    'dlmalloc_O2': (['-sMALLOC=dlmalloc', '-O2'], 132000),
+    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 180000),
+  })
+  # This test verifies the output code size of the different -sMALLOC= modes.
+  def test_malloc_size(self, args, max_size):
+    self.emcc('hello_libcxx.cpp', args=args)
+    self.assertLess(os.path.getsize('a.out.wasm'), max_size)
 
   def test_emmalloc_2GB(self):
     def test(args, text=None):
