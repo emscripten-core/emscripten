@@ -490,7 +490,7 @@ async function getWasmBinary(binaryFile) {
 var splitModuleProxyHandler = {
   get(target, moduleName, receiver) {
     if (moduleName.startsWith('placeholder')) {
-      var innerHandler = {
+      return new Proxy({}, {
         get(target, base, receiver) {
           return (...args) => {
 #if ASYNCIFY == 2
@@ -517,8 +517,7 @@ var splitModuleProxyHandler = {
 #endif
           }
         }
-      };
-      return new Proxy({}, innerHandler);
+      });
     }
     return target[moduleName];
   }
