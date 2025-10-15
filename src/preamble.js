@@ -490,6 +490,13 @@ async function getWasmBinary(binaryFile) {
 var wasmImportsProxyHandler = {
   get(target, env, receiver) {
     if (env.startsWith('placeholder')) {
+      let secondaryFile;
+      if (env == 'placeholder') {
+        secondaryFile = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
+      } else {
+        let moduleID = env.split('.')[1];
+        secondaryFile = wasmBinaryFile.slice(0, -5) + '.' + moduleID + '.wasm';
+      }
       var splitModuleProxyHandler = {
         get(target, base, receiver) {
           return (...args) => {
@@ -500,8 +507,7 @@ var wasmImportsProxyHandler = {
             err(`placeholder function called: ${base}`);
             var imports = {'primary': wasmExports};
             // Replace '.wasm' suffix with '.deferred.wasm'.
-            var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
-            loadSplitModule(deferred, imports, base);
+            loadSplitModule(secondaryFile, imports, base);
             err('instantiated deferred module, continuing');
 #if RELOCATABLE
             // When the table is dynamically laid out, the placeholder functions names
