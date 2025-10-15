@@ -487,10 +487,10 @@ async function getWasmBinary(binaryFile) {
 
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
-var splitImportsProxyHandler = {
+var splitModuleProxyHandler = {
   get(target, moduleName, receiver) {
     if (moduleName.startsWith('placeholder')) {
-      var splitModuleProxyHandler = {
+      var innerHandler = {
         get(target, base, receiver) {
           return (...args) => {
 #if ASYNCIFY == 2
@@ -517,7 +517,7 @@ var splitImportsProxyHandler = {
           }
         }
       };
-      return new Proxy({}, splitModuleProxyHandler);
+      return new Proxy({}, innerHandler);
     }
     return target[moduleName];
   }
@@ -679,7 +679,7 @@ function getWasmImports() {
 #endif
   };
 #if SPLIT_MODULE
-  imports = new Proxy(imports, splitImportsProxyHandler);
+  imports = new Proxy(imports, splitModuleProxyHandler);
 #endif
   return imports;
 }
