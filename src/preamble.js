@@ -488,8 +488,8 @@ async function getWasmBinary(binaryFile) {
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
 var wasmImportsProxyHandler = {
-  get(target, namespace, receiver) {
-    if (namespace.startsWith('placeholder')) {
+  get(target, env, receiver) {
+    if (env.startsWith('placeholder')) {
       var splitModuleProxyHandler = {
         get(target, prop, receiver) {
           return (...args) => {
@@ -516,7 +516,7 @@ var wasmImportsProxyHandler = {
       };
       return new Proxy({}, splitModuleProxyHandler);
     }
-    return target[namespace];
+    return target[env];
   }
 };
 #endif
