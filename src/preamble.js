@@ -488,13 +488,13 @@ async function getWasmBinary(binaryFile) {
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
 var splitImportsProxyHandler = {
-  get(target, env, receiver) {
-    if (env.startsWith('placeholder')) {
+  get(target, moduleName, receiver) {
+    if (moduleName.startsWith('placeholder')) {
       let secondaryFile;
-      if (env == 'placeholder') {
+      if (moduleName == 'placeholder') {
         secondaryFile = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
       } else {
-        let moduleID = env.split('.')[1];
+        let moduleID = moduleName.split('.')[1];
         secondaryFile = wasmBinaryFile.slice(0, -5) + '.' + moduleID + '.wasm';
       }
       var splitModuleProxyHandler = {
@@ -522,7 +522,7 @@ var splitImportsProxyHandler = {
       };
       return new Proxy({}, splitModuleProxyHandler);
     }
-    return target[env];
+    return target[moduleName];
   }
 };
 #endif
