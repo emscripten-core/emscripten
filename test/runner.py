@@ -275,7 +275,7 @@ def error_on_legacy_suite_names(args):
 # order to run the tests in. Generally this is slowest-first to maximize
 # parallelization, but if running with fail-fast, then the tests with recent
 # known failure frequency are run first, followed by slowest first.
-def create_test_run_sorter(failfast):
+def create_test_run_sorter(sort_failing_tests_at_front):
   previous_test_run_results = common.load_previous_test_run_results()
 
   def read_approx_fail_freq(test_name):
@@ -297,8 +297,8 @@ def create_test_run_sorter(failfast):
     y = str(y)
 
     # Look at the number of times this test has failed, and order by failures count first
-    # Only do this in --failfast, if we are looking to fail early. (otherwise sorting by last test run duration is more productive)
-    if failfast:
+    # Only do this if we are looking to fail early. (otherwise sorting by last test run duration is more productive)
+    if sort_failing_tests_at_front:
       x_fail_freq = read_approx_fail_freq(x)
       y_fail_freq = read_approx_fail_freq(y)
       if x_fail_freq != y_fail_freq:
@@ -370,7 +370,7 @@ def load_test_suites(args, modules, options):
       tests = flattened_tests(loaded_tests)
       suite = suite_for_module(m, tests, options)
       if options.failing_and_slow_first:
-        tests = sorted(tests, key=cmp_to_key(create_test_run_sorter(options.failfast)))
+        tests = sorted(tests, key=cmp_to_key(create_test_run_sorter(options.max_failures < len(tests) / 2)))
       for test in tests:
         if not found_start:
           # Skip over tests until we find the start
@@ -480,7 +480,8 @@ def parse_args():
   parser.add_argument('--browser-auto-config', type=bool, default=True,
                       help='Use the default CI browser configuration.')
   parser.add_argument('tests', nargs='*')
-  parser.add_argument('--failfast', action='store_true')
+  parser.add_argument('--failfast', action='store_true', help='If true, test run will abort on first failed test.')
+  parser.add_argument('--max-failures', type=int, default=2**31 - 1, help='If specified, test run will abort after N failed tests.')
   parser.add_argument('--failing-and-slow-first', action='store_true', help='Run failing tests first, then sorted by slowest first. Combine with --failfast for fast fail-early CI runs.')
   parser.add_argument('--start-at', metavar='NAME', help='Skip all tests up until <NAME>')
   parser.add_argument('--continue', dest='_continue', action='store_true',
@@ -492,7 +493,15 @@ def parse_args():
   parser.add_argument('--repeat', type=int, default=1,
                       help='Repeat each test N times (default: 1).')
   parser.add_argument('--bell', action='store_true', help='Play a sound after the test suite finishes.')
-  return parser.parse_args()
+
+  options = parser.parse_args()
+
+  if options.failfast:
+    if options.max_failures != 0:
+      utils.exit_with_error('--failfast and --max-failures are mutually exclusive!')
+    options.max_failures = 0
+
+  return options
 
 
 def configure():
