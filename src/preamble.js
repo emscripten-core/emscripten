@@ -490,20 +490,25 @@ async function getWasmBinary(binaryFile) {
 var splitModuleProxyHandler = {
   get(target, moduleName, receiver) {
     if (moduleName.startsWith('placeholder')) {
+      let secondaryFile;
+      if (moduleName == 'placeholder') { // old format
+        secondaryFile = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
+      } else { // new format
+        let moduleID = moduleName.split('.')[1];
+        secondaryFile = wasmBinaryFile.slice(0, -5) + '.' + moduleID + '.wasm';
+      }
       return new Proxy({}, {
         get(target, base, receiver) {
           return (...args) => {
 #if ASYNCIFY == 2
             throw new Error('Placeholder function "' + base + '" should not be called when using JSPI.');
 #else
-            // TODO: Implement multi-split module loading
 #if RUNTIME_DEBUG
             dbg(`placeholder function called: ${base}`);
 #endif
             var imports = {'primary': wasmExports};
             // Replace '.wasm' suffix with '.deferred.wasm'.
-            var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
-            loadSplitModule(deferred, imports, base);
+            loadSplitModule(secondaryFile, imports, base);
 #if RUNTIME_DEBUG
             dbg('instantiated deferred module, continuing');
 #endif
