@@ -44,11 +44,16 @@ def cap_max_workers_in_pool(max_workers, is_browser):
   return max_workers
 
 
-def run_test(test, failfast_event, lock, progress_counter, num_tests):
-  # If failfast mode is in effect and any of the tests have failed,
-  # and then we should abort executing further tests immediately.
-  if failfast_event and failfast_event.is_set():
+def run_test(test, allowed_failures_counter, lock, progress_counter, num_tests):
+  # If we have exceeded the number of allowed failures during the test run,
+  # abort executing further tests immediately.
+  if allowed_failures_counter and allowed_failures_counter.value < 0:
     return None
+
+  def test_failed():
+    if allowed_failures_counter is not None:
+      with lock:
+        allowed_failures_counter.value -= 1
 
   olddir = os.getcwd()
   result = BufferedParallelTestResult(lock, progress_counter, num_tests)
@@ -61,14 +66,13 @@ def run_test(test, failfast_event, lock, progress_counter, num_tests):
     test(result)
 
     # Alert all other multiprocess pool runners that they need to stop executing further tests.
-    if failfast_event is not None and result.test_result not in ['success', 'skipped']:
-      failfast_event.set()
+    if result.test_result not in ['success', 'skipped']:
+      test_failed()
   except unittest.SkipTest as e:
     result.addSkip(test, e)
   except Exception as e:
     result.addError(test, e)
-    if failfast_event is not None:
-      failfast_event.set()
+    test_failed()
   # Before attempting to delete the tmp dir make sure the current
   # working directory is not within it.
   os.chdir(olddir)
@@ -97,7 +101,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   def __init__(self, max_cores, options):
     super().__init__()
     self.max_cores = max_cores
-    self.failfast = options.failfast
+    self.max_failures = options.max_failures
     self.failing_and_slow_first = options.failing_and_slow_first
 
   def addTest(self, test):
@@ -126,17 +130,17 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         initargs=(worker_id_counter, worker_id_lock),
       ) as pool:
         if python_multiprocessing_structures_are_buggy():
-          # When multuprocessing shared structures are buggy we don't support failfast
+          # When multiprocessing shared structures are buggy we don't support failfast
           # or the progress bar.
-          failfast_event = progress_counter = lock = None
-          if self.failfast:
-            errlog('The version of python being used is not compatible with --failfast')
+          allowed_failures_counter = progress_counter = lock = None
+          if self.max_failures < 2**31 - 1:
+            errlog('The version of python being used is not compatible with --failfast and --max-failures options. See https://github.com/python/cpython/issues/71936')
             sys.exit(1)
         else:
-          failfast_event = manager.Event() if self.failfast else None
+          allowed_failures_counter = manager.Value('i', self.max_failures)
           progress_counter = manager.Value('i', 0)
           lock = manager.Lock()
-        results = pool.starmap(run_test, ((t, failfast_event, lock, progress_counter, len(tests)) for t in tests), chunksize=1)
+        results = pool.starmap(run_test, ((t, allowed_failures_counter, lock, progress_counter, len(tests)) for t in tests), chunksize=1)
         # Send a task to each worker to tear down the browser and server. This
         # relies on the implementation detail in the worker pool that all workers
         # are cycled through once.
@@ -145,9 +149,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         if num_tear_downs != use_cores:
           errlog(f'Expected {use_cores} teardowns, got {num_tear_downs}')
 
-    # Filter out the None results which can occur in failfast mode.
-    if self.failfast:
-      results = [r for r in results if r is not None]
+    # Filter out the None results which can occur if # of allowed errors was exceeded and the harness aborted.
+    results = [r for r in results if r is not None]
 
     if self.failing_and_slow_first:
       previous_test_run_results = common.load_previous_test_run_results()
