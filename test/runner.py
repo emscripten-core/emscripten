@@ -370,7 +370,7 @@ def load_test_suites(args, modules, options):
       tests = flattened_tests(loaded_tests)
       suite = suite_for_module(m, tests, options)
       if options.failing_and_slow_first:
-        tests = sorted(tests, key=cmp_to_key(create_test_run_sorter(options.max_failures < len(tests)/2)))
+        tests = sorted(tests, key=cmp_to_key(create_test_run_sorter(options.max_failures < len(tests) / 2)))
       for test in tests:
         if not found_start:
           # Skip over tests until we find the start
