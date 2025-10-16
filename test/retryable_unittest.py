@@ -33,4 +33,4 @@ class RetryableTestCase(unittest.TestCase):
         else:
           raise Exception('Internal error in RetryableTestCase: did not detect an error')
 
-        common.record_flaky_test(self.id(), test_retry_count - retries_left, test_retry_count, str(err))
+        common.record_flaky_test(self.id(), EMTEST_RETRY_COUNT - retries_left, EMTEST_RETRY_COUNT, str(err))
