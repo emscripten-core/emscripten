@@ -154,8 +154,8 @@ min_browser_versions = {
   Feature.GROWABLE_ARRAYBUFFERS: {
     'chrome': 111,
     'firefox': 145,
-    'safari': 160400,
-    'node': 260000,
+    'safari': UNSUPPORTED,
+    'node': 240000,
   },
 }
 
