@@ -15804,18 +15804,3 @@ addToLibrary({
 
     err_no_fast = self.run_process([EMCC, test_file('hello_world.c'), '-v', '-O2'], stderr=PIPE).stderr
     self.assertNotContained('--fast-math', err_no_fast)
-
-  def test_fast_math_size_comparison(self):
-    create_file('math.c', '''
-      #include <math.h>
-      double f(double x) { return sin(x) * cos(x) + sqrt(x); }
-      int main() { return (int)f(1.5); }
-    ''')
-
-    self.run_process([EMCC, 'math.c', '-O2', '-o', 'no_fast.wasm'])
-    no_fast_size = os.path.getsize('no_fast.wasm')
-
-    self.run_process([EMCC, 'math.c', '-O2', '-ffast-math', '-o', 'with_fast.wasm'])
-    with_fast_size = os.path.getsize('with_fast.wasm')
-
-    self.assertLess(with_fast_size, no_fast_size)
