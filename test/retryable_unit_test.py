@@ -1,5 +1,4 @@
 import common
-import logging
 import os
 import unittest
 
@@ -17,7 +16,7 @@ class RetryableTestCase(unittest.TestCase):
     num_errors = len(result.errors)
 
     while retries_left >= 0:
-      super(RetryableTestCase, self).run(result)
+      super().run(result)
 
       # The test passed if it didn't accumulate an error.
       if len(result.failures) == num_fails and len(result.errors) == num_errors:
