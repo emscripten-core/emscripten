@@ -617,10 +617,6 @@ class TestCoreBase(RunnerCore):
   def test_float32_precise(self):
     self.do_core_test('test_float32_precise.c')
 
-  def test_flaky(self):
-    import random
-    self.assertTrue(random.randint(0,2) == 0)
-
   def test_negative_zero(self):
     self.do_core_test('test_negative_zero.c')
 
