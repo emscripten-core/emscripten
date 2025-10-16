@@ -645,7 +645,6 @@ async function instantiateAsync(binary, binaryFile, imports) {
 #endif // SOURCE_PHASE_IMPORTS
 
 #if !WASM_ESM_INTEGRATION
-
 function getWasmImports() {
 #if PTHREADS || WASM_WORKERS || (IMPORTED_MEMORY && MODULARIZE == 'instance')
   assignWasmImports();
