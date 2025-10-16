@@ -2598,7 +2598,8 @@ F1 -> ''
 
   @requires_network
   def test_remote_ports(self):
-    self.emcc('hello_world.c', ['--use-port=emdawnwebgpu'])
+    # Emdawnwebgpu uses C++ internally, so we use a cpp file here so emcc defaults to linking C++.
+    self.emcc('hello_world.cpp', ['--use-port=emdawnwebgpu'])
 
   @crossplatform
   def test_external_ports_simple(self):
@@ -9680,13 +9681,15 @@ end
 
   @also_with_wasm64
   def test_closure_webgpu(self):
-    # This test can be removed if USE_WEBGPU is later included in INCLUDE_FULL_LIBRARY.
-    self.build('hello_world.c', cflags=[
+    if config.FROZEN_CACHE and self.get_setting('MEMORY64'):
+      # CI configuration doesn't run `embuilder` with wasm64 on ports
+      self.skipTest("test doesn't work with frozen cache")
+    # Emdawnwebgpu uses C++ internally, so we use a cpp file here so emcc defaults to linking C++.
+    self.build('hello_world.cpp', cflags=[
       '--closure=1',
       '-Werror=closure',
-      '-Wno-error=deprecated',
       '-sINCLUDE_FULL_LIBRARY',
-      '-sUSE_WEBGPU',
+      '--use-port=emdawnwebgpu',
     ])
 
   # Tests --closure-args command line flag
@@ -12317,16 +12320,8 @@ int main(void) {
     for engine in config.WASM_ENGINES:
       self.assertContained(expected, self.run_js('test.wasm', engine))
 
-  @parameterized({
-    '': ([],),
-    'assertions': (['-sASSERTIONS'],),
-    'closure': (['-sASSERTIONS', '--closure=1'],),
-    'dylink': (['-sMAIN_MODULE'],),
-  })
-  def test_webgpu_compiletest(self, args):
-    self.run_process([EMXX, test_file('webgpu_jsvalstore.cpp'), '-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASYNCIFY'] + args)
-
   @flaky('https://github.com/emscripten-core/emscripten/issues/25343')
+  @crossplatform
   @also_with_wasm64
   @parameterized({
     '': ([],),
@@ -12334,7 +12329,10 @@ int main(void) {
     'closure_assertions': (['--closure=1', '-Werror=closure', '-sASSERTIONS'],),
   })
   def test_emdawnwebgpu_link_test(self, args):
-    self.run_process([EMXX, test_file('test_emdawnwebgpu_link_test.cpp'), '--use-port=emdawnwebgpu', '-sASYNCIFY'] + args)
+    if config.FROZEN_CACHE and self.get_setting('MEMORY64'):
+      # CI configuration doesn't run `embuilder` with wasm64 on ports
+      self.skipTest("test doesn't work with frozen cache")
+    self.emcc(test_file('test_emdawnwebgpu_link_test.cpp'), ['--use-port=emdawnwebgpu', '-sASYNCIFY'] + args)
 
   def test_signature_mismatch(self):
     create_file('a.c', 'void foo(); int main() { foo(); return 0; }')
