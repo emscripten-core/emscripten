@@ -4876,7 +4876,11 @@ res64 - external 64\n''', header='''\
 
   @with_all_eh_sjlj
   @with_dylink_reversed
-  def test_dylink_exceptions_try_catch(self):
+  @parameterized({
+    '': ([],),
+    'dyncalls': (['-sDYNCALLS'],),
+  })
+  def test_dylink_exceptions_try_catch(self, args):
     self.dylink_test(main=r'''
       #include <stdio.h>
       extern void side();
@@ -4898,7 +4902,7 @@ res64 - external 64\n''', header='''\
           printf("side: caught %.1f\n", f);
         }
       }
-      ''', expected=['main: caught 3\nside: caught 5.3\n'])
+      ''', expected=['main: caught 3\nside: caught 5.3\n'], cflags=args)
 
   @with_all_eh_sjlj
   @with_dylink_reversed
