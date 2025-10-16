@@ -488,26 +488,38 @@ async function getWasmBinary(binaryFile) {
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
 var splitModuleProxyHandler = {
-  get(target, prop, receiver) {
-    return (...args) => {
+  get(target, moduleName, receiver) {
+    if (moduleName.startsWith('placeholder')) {
+      return new Proxy({}, {
+        get(target, base, receiver) {
+          return (...args) => {
 #if ASYNCIFY == 2
-      throw new Error('Placeholder function "' + prop + '" should not be called when using JSPI.');
+            throw new Error('Placeholder function "' + base + '" should not be called when using JSPI.');
 #else
-      err(`placeholder function called: ${prop}`);
-      var imports = {'primary': wasmExports};
-      // Replace '.wasm' suffix with '.deferred.wasm'.
-      var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
-      loadSplitModule(deferred, imports, prop);
-      err('instantiated deferred module, continuing');
+            // TODO: Implement multi-split module loading
+#if RUNTIME_DEBUG
+            dbg(`placeholder function called: ${base}`);
+#endif
+            var imports = {'primary': wasmExports};
+            // Replace '.wasm' suffix with '.deferred.wasm'.
+            var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
+            loadSplitModule(deferred, imports, base);
+#if RUNTIME_DEBUG
+            dbg('instantiated deferred module, continuing');
+#endif
 #if RELOCATABLE
-      // When the table is dynamically laid out, the placeholder functions names
-      // are offsets from the table base. In the main module, the table base is
-      // always 1.
-      prop = 1 + parseInt(prop);
+            // When the table is dynamically laid out, the placeholder functions names
+            // are offsets from the table base. In the main module, the table base is
+            // always 1.
+            base = 1 + parseInt(base);
 #endif
-      return wasmTable.get({{{ toIndexType('prop') }}})(...args);
+            return wasmTable.get({{{ toIndexType('base') }}})(...args);
 #endif
+          }
+        }
+      });
     }
+    return target[moduleName];
   }
 };
 #endif
@@ -653,21 +665,22 @@ function getWasmImports() {
 #endif
 #endif
   // prepare imports
-  return {
+  var imports = {
 #if MINIFY_WASM_IMPORTED_MODULES
     'a': wasmImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
     'env': wasmImports,
     '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
-#if SPLIT_MODULE
-    'placeholder': new Proxy({}, splitModuleProxyHandler),
-#endif
 #if RELOCATABLE
     'GOT.mem': new Proxy(wasmImports, GOTHandler),
     'GOT.func': new Proxy(wasmImports, GOTHandler),
 #endif
-  }
+  };
+#if SPLIT_MODULE
+  imports = new Proxy(imports, splitModuleProxyHandler);
+#endif
+  return imports;
 }
 
 // Create the wasm instance.

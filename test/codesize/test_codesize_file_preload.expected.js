@@ -447,9 +447,10 @@ async function instantiateAsync(binary, binaryFile, imports) {
 
 function getWasmImports() {
   // prepare imports
-  return {
+  var imports = {
     "a": wasmImports
   };
+  return imports;
 }
 
 // Create the wasm instance.
