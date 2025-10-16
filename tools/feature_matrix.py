@@ -153,9 +153,9 @@ min_browser_versions = {
   # builds by avoiding need to poll resizes to ArrayBuffer views in Workers.
   Feature.GROWABLE_ARRAYBUFFERS: {
     'chrome': 111,
-    'firefox': 128,
+    'firefox': 145,
     'safari': 160400,
-    'node': 200000,
+    'node': 260000,
   },
 }
 

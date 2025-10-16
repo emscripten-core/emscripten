@@ -231,10 +231,19 @@ def skipExecIf(cond, message):
 
 
 def test_browser_should_skip_feature(skip_env_var, feature):
-  if os.getenv(skip_env_var) is None:
-    min_required = min_browser_versions[feature]
-    return get_firefox_version() < min_required['firefox'] or get_safari_version() < min_required['safari']
-  return int(os.getenv(skip_env_var)) != 0
+  if os.getenv(skip_env_var) is not None:
+    return int(os.getenv(skip_env_var)) != 0
+
+  min_required = min_browser_versions[feature]
+  not_supported = get_firefox_version() < min_required['firefox'] or get_safari_version() < min_required['safari']
+
+  if not_supported and int(os.getenv('EMTEST_AUTOSKIP', '0')):
+    return True
+
+#  if not_supported and os.getenv('EMTEST_AUTOSKIP') is None:
+#    TODO: failTest(f'This test requires a browser that supports {feature} but your browser does not support this. Run with {skip_env_var}=1 or EMTEST_AUTOSKIP=1 to skip this test automatically.')
+
+  return False
 
 
 def webgl2_disabled():
