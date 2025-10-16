@@ -6,10 +6,10 @@ EMTEST_RETRY_COUNT = int(os.getenv('EMTEST_RETRY_COUNT', '0'))
 
 
 class RetryableTestCase(unittest.TestCase):
-  ''' This class patches in to the Python unittest TestCase object to incorporate
+  '''This class patches in to the Python unittest TestCase object to incorporate
   support for an environment variable EMTEST_RETRY_COUNT=x, which enables a
   failed test to be automatically re-run to test if the failure might have been
-  due to an instability. '''
+  due to an instability.'''
 
   def run(self, result=None):
     retries_left = EMTEST_RETRY_COUNT
