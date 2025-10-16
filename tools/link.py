@@ -374,6 +374,8 @@ def get_binaryen_passes():
       passes += ['--pass-arg=post-emscripten-side-module']
   if optimizing:
     passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
+  if settings.FAST_MATH:
+    passes += ['--fast-math']
   # when optimizing, use the fact that low memory is never used (1024 is a
   # hardcoded value in the binaryen pass). we also cannot do it when the stack
   # is first, as then the stack is in the low memory that should be unused.

@@ -15796,3 +15796,30 @@ addToLibrary({
     self.assertIn('main.cpp', out)
     self.assertIn('foo.cpp', out)
     self.assertIn('/emsdk/emscripten/system/lib/libc/musl/src/string/strcmp.c', out)
+
+  def test_fast_math_debug_output(self):
+    create_file('test.c', '''
+      #include <math.h>
+      int main() { return (int)(sin(1.0) * 100); }
+    ''')
+
+    err = self.run_process([EMCC, 'test.c', '-v', '-O2', '-ffast-math'], stderr=PIPE).stderr
+    self.assertContained('--fast-math', err)
+
+    err_no_fast = self.run_process([EMCC, 'test.c', '-v', '-O2'], stderr=PIPE).stderr
+    self.assertNotContained('--fast-math', err_no_fast)
+
+  def test_fast_math_size_comparison(self):
+    create_file('math.c', '''
+      #include <math.h>
+      double f(double x) { return sin(x) * cos(x) + sqrt(x); }
+      int main() { return (int)f(1.5); }
+    ''')
+
+    self.run_process([EMCC, 'math.c', '-O2', '-o', 'no_fast.wasm'])
+    no_fast_size = os.path.getsize('no_fast.wasm')
+
+    self.run_process([EMCC, 'math.c', '-O2', '-ffast-math', '-o', 'with_fast.wasm'])
+    with_fast_size = os.path.getsize('with_fast.wasm')
+
+    self.assertLessEqual(with_fast_size, no_fast_size)
