@@ -244,6 +244,8 @@ class BufferedParallelTestResult:
     self.lock = lock
     self.progress_counter = progress_counter
     self.num_tests = num_tests
+    self.failures = []
+    self.errors = []
 
   @property
   def test(self):
@@ -336,12 +338,14 @@ class BufferedParallelTestResult:
     errlog(f'{self.compute_progress()}{with_color(RED, msg)}')
     self.buffered_result = BufferedTestFailure(test, err)
     self.test_result = 'failed'
+    self.failures += [test]
 
   def addError(self, test, err):
     msg = f'{test} ... ERROR'
     errlog(f'{self.compute_progress()}{with_color(RED, msg)}')
     self.buffered_result = BufferedTestError(test, err)
     self.test_result = 'errored'
+    self.errors += [test]
 
 
 class BufferedTestBase:
