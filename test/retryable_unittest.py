@@ -2,15 +2,17 @@ import common
 import os
 import unittest
 
-# This class patches in to the Python unittest TestCase object to incorporate
-# support for an environment variable EMTEST_RETRY_COUNT=x, which enables a
-# failed test to be automatically re-run to test if the failure might have been
-# due to an instability.
+EMTEST_RETRY_COUNT = int(os.getenv('EMTEST_RETRY_COUNT', '0'))
+
+
 class RetryableTestCase(unittest.TestCase):
+  ''' This class patches in to the Python unittest TestCase object to incorporate
+  support for an environment variable EMTEST_RETRY_COUNT=x, which enables a
+  failed test to be automatically re-run to test if the failure might have been
+  due to an instability. '''
+
   def run(self, result=None):
-    self.origTestMethodName = self._testMethodName
-    test_retry_count = int(os.getenv('EMTEST_RETRY_COUNT', '0'))
-    retries_left = test_retry_count
+    retries_left = EMTEST_RETRY_COUNT
 
     num_fails = len(result.failures)
     num_errors = len(result.errors)

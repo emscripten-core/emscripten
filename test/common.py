@@ -10,7 +10,7 @@ from subprocess import PIPE, STDOUT
 from typing import Dict, Tuple
 from urllib.parse import unquote, unquote_plus, urlparse, parse_qs
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
-from retryable_unit_test import RetryableTestCase
+from retryable_unittest import RetryableTestCase
 import contextlib
 import difflib
 import hashlib
