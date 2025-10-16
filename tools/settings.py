@@ -128,10 +128,6 @@ DEPRECATED_SETTINGS = {
     'PROXY_TO_WORKER_FILENAME': 'under consideration for removal (See https://github.com/emscripten-core/emscripten/issues/25440)',
 }
 
-REMOVED_SETTINGS = {
-    'USE_WEBGPU': 'replaced by --use-port=emdawnwebgpu, which implements a newer but incompatible version of webgpu.h - see tools/ports/emdawnwebgpu.py',
-}
-
 # Settings that don't need to be externalized when serializing to json because they
 # are not used by the JS compiler.
 INTERNAL_SETTINGS = {
