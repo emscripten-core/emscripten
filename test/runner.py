@@ -498,7 +498,7 @@ def parse_args():
 
   if options.failfast:
     if options.max_failures != 0:
-      exit_with_error('--failfast and --max-failures are mutually exclusive!')
+      utils.exit_with_error('--failfast and --max-failures are mutually exclusive!')
     options.max_failures = 0
 
   return options
