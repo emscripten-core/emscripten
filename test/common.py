@@ -10,6 +10,7 @@ from subprocess import PIPE, STDOUT
 from typing import Dict, Tuple
 from urllib.parse import unquote, unquote_plus, urlparse, parse_qs
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+from retryable_unittest import RetryableTestCase
 import contextlib
 import difflib
 import hashlib
@@ -286,8 +287,8 @@ def is_slow_test(func):
   return decorated
 
 
-def record_flaky_test(test_name, attempt_count, exception_msg):
-  logging.info(f'Retrying flaky test "{test_name}" (attempt {attempt_count}/{EMTEST_RETRY_FLAKY} failed):\n{exception_msg}')
+def record_flaky_test(test_name, attempt_count, max_attempts, exception_msg):
+  logging.info(f'Retrying flaky test "{test_name}" (attempt {attempt_count}/{max_attempts} failed):\n{exception_msg}')
   open(flaky_tests_log_filename, 'a').write(f'{test_name}\n')
 
 
@@ -313,7 +314,7 @@ def flaky(note=''):
           return func(self, *args, **kwargs)
         except (AssertionError, subprocess.TimeoutExpired) as exc:
           preserved_exc = exc
-          record_flaky_test(self.id(), i, exc)
+          record_flaky_test(self.id(), i, EMTEST_RETRY_FLAKY, exc)
 
       raise AssertionError('Flaky test has failed too many times') from preserved_exc
 
@@ -1032,7 +1033,7 @@ class RunnerMeta(type):
     return type.__new__(mcs, name, bases, new_attrs)
 
 
-class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
+class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   # default temporary directory settings. set_temp_dir may be called later to
   # override these
   temp_dir = shared.TEMP_DIR
@@ -2774,7 +2775,7 @@ class BrowserCore(RunnerCore):
             self.assertContained(expected, output)
           except self.failureException as e:
             if extra_tries > 0:
-              record_flaky_test(self.id(), EMTEST_RETRY_FLAKY - extra_tries, e)
+              record_flaky_test(self.id(), EMTEST_RETRY_FLAKY - extra_tries, EMTEST_RETRY_FLAKY, e)
               if not self.capture_stdio:
                 print('[enabling stdio/stderr reporting]')
                 self.capture_stdio = True
