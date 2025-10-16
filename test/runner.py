@@ -481,7 +481,7 @@ def parse_args():
                       help='Use the default CI browser configuration.')
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', action='store_true', help='If true, test run will abort on first failed test.')
-  parser.add_argument('--max-failures', type=int, default=2**31 - 1, help='Specifies the maximum number of allowed failures before aborting the test run.')
+  parser.add_argument('--max-failures', type=int, default=2**31 - 1, help='If specified, test run will abort after N failed tests.')
   parser.add_argument('--failing-and-slow-first', action='store_true', help='Run failing tests first, then sorted by slowest first. Combine with --failfast for fast fail-early CI runs.')
   parser.add_argument('--start-at', metavar='NAME', help='Skip all tests up until <NAME>')
   parser.add_argument('--continue', dest='_continue', action='store_true',
