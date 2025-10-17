@@ -8593,8 +8593,8 @@ Module.onRuntimeInitialized = () => {
           assert(typeof _emscripten_stack_get_base === 'function');
           assert(typeof _emscripten_stack_get_end === 'function');
           assert(typeof _emscripten_stack_get_current === 'function');
-          assert(typeof Module['___heap_base'] === 'number');
-          assert(Module['___heap_base'] > 0);
+          assert(typeof ___heap_base === 'number');
+          assert(___heap_base > 0);
           out('able to run memprof');
         }
       };
