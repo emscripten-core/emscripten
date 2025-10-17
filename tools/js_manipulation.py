@@ -107,18 +107,19 @@ def isidentifier(name):
 
 
 def make_dynCall(sig, args):
-  # wasm2c and asyncify are not yet compatible with direct wasm table calls
   if settings.MEMORY64:
     args = list(args)
     args[0] = f'Number({args[0]})'
+  # wasm2c and asyncify are not yet compatible with direct wasm table calls so use
+  # the legacy DYNCALLS mechanism.
   if settings.DYNCALLS or not is_legal_sig(sig):
     args = ','.join(args)
-    if not settings.MAIN_MODULE and not settings.SIDE_MODULE:
-      # Optimize dynCall accesses in the case when not building with dynamic
-      # linking enabled.
-      return 'dynCall_%s(%s)' % (sig, args)
-    else:
-      return 'Module["dynCall_%s"](%s)' % (sig, args)
+    if settings.MAIN_MODULE or settings.SIDE_MODULE:
+      # In dynamic linking mode not all of the dynCall_xxx function are defined
+      # in the main module so might not be available as global symbols.
+      # See `registerDynCallSymbols` in `libdylink.js`.
+      return "dynCalls['%s'](%s)" % (sig, args)
+    return 'dynCall_%s(%s)' % (sig, args)
   else:
     call_args = ",".join(args[1:])
     return f'getWasmTableEntry({args[0]})({call_args})'

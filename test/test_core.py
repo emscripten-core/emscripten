@@ -4876,7 +4876,11 @@ res64 - external 64\n''', header='''\
 
   @with_all_eh_sjlj
   @with_dylink_reversed
-  def test_dylink_exceptions_try_catch(self):
+  @parameterized({
+    '': ([],),
+    'dyncalls': (['-sDYNCALLS'],),
+  })
+  def test_dylink_exceptions_try_catch(self, args):
     self.dylink_test(main=r'''
       #include <stdio.h>
       extern void side();
@@ -4898,7 +4902,7 @@ res64 - external 64\n''', header='''\
           printf("side: caught %.1f\n", f);
         }
       }
-      ''', expected=['main: caught 3\nside: caught 5.3\n'])
+      ''', expected=['main: caught 3\nside: caught 5.3\n'], cflags=args)
 
   @with_all_eh_sjlj
   @with_dylink_reversed
@@ -8583,32 +8587,19 @@ Module.onRuntimeInitialized = () => {
     # This test checks for the global variables required to run the memory
     # profiler.  It would fail if these variables were made no longer global
     # or if their identifiers were changed.
-    create_file('main.c', '''
-      int check_memprof_requirements();
-
-      int main() {
-        return check_memprof_requirements();
-      }
-    ''')
-    create_file('lib.js', '''
-      addToLibrary({
-        check_memprof_requirements: () => {
-          if (typeof _emscripten_stack_get_base === 'function' &&
-              typeof _emscripten_stack_get_end === 'function' &&
-              typeof _emscripten_stack_get_current === 'function' &&
-              typeof Module['___heap_base'] === 'number' &&
-              Module['___heap_base'] > 0) {
-             out('able to run memprof');
-             return 0;
-           } else {
-             out('missing the required variables to run memprof');
-             return 1;
-           }
+    create_file('pre.js', '''
+      Module = {
+        onRuntimeInitialized: () => {
+          assert(typeof _emscripten_stack_get_base === 'function');
+          assert(typeof _emscripten_stack_get_end === 'function');
+          assert(typeof _emscripten_stack_get_current === 'function');
+          assert(typeof Module['___heap_base'] === 'number');
+          assert(Module['___heap_base'] > 0);
+          out('able to run memprof');
         }
-      });
+      };
     ''')
-    self.cflags += ['--memoryprofiler', '--js-library', 'lib.js']
-    self.do_runf('main.c', 'able to run memprof')
+    self.do_runf('hello_world.c', 'able to run memprof', cflags=['--memoryprofiler', '--pre-js=pre.js'])
 
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict(self):
