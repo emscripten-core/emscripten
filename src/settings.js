@@ -2276,5 +2276,5 @@ var LEGACY_SETTINGS = [
   ['HEADLESS', [0], 'No longer supported, use headless browsers or Node.js with JSDOM'],
   ['USE_OFFSET_COVERTER', [0], 'No longer supported, not needed with modern v8 versions'],
   ['ASYNCIFY_LAZY_LOAD_CODE', [0], 'No longer supported'],
-  ['USE_WEBGPU', [0], 'replaced by --use-port=emdawnwebgpu, which implements a newer but incompatible version of webgpu.h - see tools/ports/emdawnwebgpu.py'],
+  ['USE_WEBGPU', [0], 'No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py'],
 ];
