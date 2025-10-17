@@ -11,7 +11,7 @@ import subprocess
 import sys
 from subprocess import PIPE, CalledProcessError
 
-from tools import shared, utils
+from tools import utils
 
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
 DEFAULT_TIMEOUT = 5 * 60
@@ -22,7 +22,7 @@ def make_command(filename, engine, args=None):
   # if no engine is needed, indicated by None, then there is a native executable
   # provided which we can just run
   if engine[0] is None:
-    executable = shared.replace_suffix(os.path.abspath(filename), '.exe')
+    executable = utils.replace_suffix(os.path.abspath(filename), '.exe')
     return [executable] + args
   # Emscripten supports multiple javascript runtimes.  The default is nodejs but
   # it can also use d8 (the v8 engine shell) or jsc (JavaScript Core aka
@@ -43,7 +43,7 @@ def make_command(filename, engine, args=None):
     command_flags += ['run']
   if is_wasmer or is_wasmtime:
     # in a wasm runtime, run the wasm, not the js
-    filename = shared.replace_suffix(filename, '.wasm')
+    filename = utils.replace_suffix(filename, '.wasm')
   # Separates engine flags from script flags
   flag_separator = ['--'] if is_d8 or is_jsc else []
   return engine + command_flags + [filename] + flag_separator + args

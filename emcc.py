@@ -35,7 +35,6 @@ from enum import Enum, auto, unique
 
 from tools import shared, system_libs, utils, cmdline
 from tools import diagnostics, building, compile
-from tools.shared import unsuffixed_basename, get_file_suffix
 from tools.shared import exit_with_error, DEBUG
 from tools.shared import in_temp
 from tools.shared import DYLIB_EXTENSIONS
@@ -44,7 +43,7 @@ from tools.response_file import substitute_response_files
 from tools import config
 from tools import cache
 from tools.settings import default_setting, user_settings, settings, COMPILE_TIME_SETTINGS
-from tools.utils import read_file
+from tools.utils import read_file, unsuffixed_basename, get_file_suffix
 
 logger = logging.getLogger('emcc')
 
@@ -566,7 +565,7 @@ def phase_compile_inputs(options, state, newargs):
     if not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
       if options.save_temps:
-        shutil.copyfile(output_file, shared.unsuffixed_basename(input_file) + '.o')
+        shutil.copyfile(output_file, utils.unsuffixed_basename(input_file) + '.o')
     return output_file
 
   # Compile input files individually to temporary locations.

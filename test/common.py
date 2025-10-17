@@ -38,7 +38,7 @@ import queue
 import clang_native
 import jsrun
 import line_endings
-from tools.shared import EMCC, EMXX, DEBUG, exe_suffix
+from tools.shared import EMCC, EMXX, DEBUG
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
@@ -126,7 +126,7 @@ class FirefoxConfig:
   data_dir_flag = '-profile '
   default_flags = ('-new-instance',)
   headless_flags = '-headless'
-  executable_name = exe_suffix('firefox')
+  executable_name = utils.exe_suffix('firefox')
 
   @staticmethod
   def configure(data_dir):
@@ -158,13 +158,13 @@ PREVIOUS_TEST_RUN_RESULTS_FILE = path_from_root('out/previous_test_run_results.j
 
 DEFAULT_BROWSER_DATA_DIR = path_from_root('out/browser-profile')
 
-WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
+WEBIDL_BINDER = utils.bat_suffix(path_from_root('tools/webidl_binder'))
 
-EMBUILDER = shared.bat_suffix(path_from_root('embuilder'))
-EMMAKE = shared.bat_suffix(path_from_root('emmake'))
-EMCMAKE = shared.bat_suffix(path_from_root('emcmake'))
-EMCONFIGURE = shared.bat_suffix(path_from_root('emconfigure'))
-EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
+EMBUILDER = utils.bat_suffix(path_from_root('embuilder'))
+EMMAKE = utils.bat_suffix(path_from_root('emmake'))
+EMCMAKE = utils.bat_suffix(path_from_root('emcmake'))
+EMCONFIGURE = utils.bat_suffix(path_from_root('emconfigure'))
+EMRUN = utils.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
@@ -241,7 +241,7 @@ def get_browser_config():
 
 
 def compiler_for(filename, force_c=False):
-  if shared.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
+  if utils.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
     return EMXX
   else:
     return EMCC
@@ -1532,7 +1532,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     compiler = [compiler_for(filename, force_c)]
 
     if force_c:
-      assert shared.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
+      assert utils.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
       compiler.append('-xc')
 
     all_cflags = self.get_cflags(main_file=True)
@@ -1544,7 +1544,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if output_basename:
       output = output_basename + output_suffix
     else:
-      output = shared.unsuffixed_basename(filename) + output_suffix
+      output = utils.unsuffixed_basename(filename) + output_suffix
     cmd = compiler + [str(filename), '-o', output] + all_cflags
     if libraries:
       cmd += libraries
@@ -1984,7 +1984,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     so = '.wasm' if self.is_wasm() else '.js'
 
     def ccshared(src, linkto=None):
-      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so, '-sSIDE_MODULE'] + self.get_cflags()
+      cmdv = [EMCC, src, '-o', utils.unsuffixed(src) + so, '-sSIDE_MODULE'] + self.get_cflags()
       if linkto:
         cmdv += linkto
       self.run_process(cmdv)
@@ -2060,7 +2060,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def do_run_in_out_file_test(self, srcfile, **kwargs):
     srcfile = maybe_test_file(srcfile)
     out_suffix = kwargs.pop('out_suffix', '')
-    outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
+    outfile = utils.unsuffixed(srcfile) + out_suffix + '.out'
     if EMTEST_REBASELINE:
       expected = None
     else:
