@@ -263,17 +263,6 @@ def normalize_path(path):
   return utils.normalize_path(path.strip()).rstrip(os.sep)
 
 
-#  Parses a paths file that can specify module names and multiple paths per
-#  module. A module is defined by a name on a line, followed by paths on
-#  subsequent lines. Modules are separated by empty lines.
-#  For example:
-#
-#  module1
-#  path/to/a
-#  path/to/b
-#
-#  module2
-#  path/to/c
 def parse_paths_file(paths_file_content):
   module_to_paths = {}
   path_to_module = {}

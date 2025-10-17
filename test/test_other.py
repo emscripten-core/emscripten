@@ -15764,10 +15764,10 @@ addToLibrary({
       main.cpp
       foo.cpp
 
-      lib0
+      lib1
       /emsdk/emscripten/system
 
-      lib1
+      lib2
       /emsdk/emscripten/system/lib/libc/musl
       /emsdk/emscripten/system/lib/libcxx
     ''')
@@ -15789,13 +15789,13 @@ addToLibrary({
     # foo.cpp
     self.assertTrue(has_defined_function('test_myapp.wasm', r'foo\\28\\29'))
     # /emsdk/emscripten/system
-    self.assertTrue(has_defined_function('test_lib0.wasm', '__abort_message'))
-    self.assertTrue(has_defined_function('test_lib0.wasm', 'pthread_cond_wait'))
+    self.assertTrue(has_defined_function('test_lib1.wasm', '__abort_message'))
+    self.assertTrue(has_defined_function('test_lib1.wasm', 'pthread_cond_wait'))
     # /emsdk/emscripten/system/lib/libc/musl
-    self.assertTrue(has_defined_function('test_lib1.wasm', 'strcmp'))
+    self.assertTrue(has_defined_function('test_lib2.wasm', 'strcmp'))
     # /emsdk/emscripten/system/lib/libcxx
-    self.assertTrue(has_defined_function('test_lib1.wasm', r'std::__2::ios_base::getloc\\28\\29\\20const'))
-    self.assertTrue(has_defined_function('test_lib1.wasm', r'std::uncaught_exceptions\\28\\29'))
+    self.assertTrue(has_defined_function('test_lib2.wasm', r'std::__2::ios_base::getloc\\28\\29\\20const'))
+    self.assertTrue(has_defined_function('test_lib2.wasm', r'std::uncaught_exceptions\\28\\29'))
 
     # Check --print-sources option
     out = self.run_process([empath_split, 'test.wasm', '--print-sources'], stdout=PIPE).stdout
