@@ -152,7 +152,7 @@ min_browser_versions = {
   # Growable SharedArrayBuffers improves memory growth feature in multithreaded
   # builds by avoiding need to poll resizes to ArrayBuffer views in Workers.
   Feature.GROWABLE_ARRAYBUFFERS: {
-    'chrome': 111,
+    'chrome': 136,
     'firefox': 145,
     'safari': UNSUPPORTED,
     'node': 240000,
