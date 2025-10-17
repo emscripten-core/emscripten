@@ -759,11 +759,11 @@ fi
 
   def test_embuilder_wildcards(self):
     restore_and_set_up()
-    glob_match = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libemmall*.a')
-    self.run_process([EMBUILDER, 'clear', 'libemmall*'])
+    glob_match = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libemmalloc*.a')
+    self.run_process([EMBUILDER, 'clear', 'libemmalloc*'])
     self.assertFalse(glob.glob(glob_match))
-    self.run_process([EMBUILDER, 'build', 'libemmall*'])
-    self.assertEqual(len(glob.glob(glob_match)), 1)
+    self.run_process([EMBUILDER, 'build', 'libemmalloc*'])
+    self.assertGreater(len(glob.glob(glob_match)), 3)
 
   def test_embuilder_with_use_port_syntax(self):
     restore_and_set_up()
