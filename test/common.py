@@ -2335,12 +2335,6 @@ def make_test_server(in_queue, out_queue, port):
           raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
-
-        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0')
-        self.send_header('Expires', '0')
-        self.send_header('Pragma', 'no-cache')
-        self.send_header('Vary', '*') # Safari insists on caching if this header is not present in addition to the above
-
         self.send_header('Connection', 'close')
         self.end_headers()
         self.wfile.write(b'OK')
