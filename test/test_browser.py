@@ -15,7 +15,7 @@ import time
 import unittest
 import zlib
 from functools import wraps
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer, SimpleHTTPRequestHandler
 from pathlib import Path
 from urllib.request import urlopen
 
@@ -5630,6 +5630,46 @@ Module["preRun"] = () => {
     # TODO(sbc): Look into plugins that do bundling.
     shutil.copy('hello.wasm', 'dist/')
     self.run_browser('index.html', '/report_result?exit:0')
+
+  def test_cross_origin(self):
+    # Verfies that the emscripten-generted JS and Wasm can be hosted on a different origin.
+    # This test create a second HTTP server running on port 9999 that servers files from `subdir`.
+    # The main html is the servers from the normal 8888 server while the JS and Wasm are hosted
+    # on at 9999.
+    os.mkdir('subdir')
+    create_file('subdir/foo.txt', 'hello')
+    self.compile_btest('hello_world.c', ['-o', 'subdir/hello.js', '-sCROSS_ORIGIN', '-sPROXY_TO_PTHREAD', '-pthread', '-sEXIT_RUNTIME'])
+
+    class MyReqestHandler(SimpleHTTPRequestHandler):
+      def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory='subdir', **kwargs)
+
+      # Add COOP, COEP, CORP, and no-caching headers
+      def end_headers(self):
+        self.send_header('Accept-Ranges', 'bytes')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
+        self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
+        self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
+
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0')
+        self.send_header('Expires', '0')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Vary', '*') # Safari insists on caching if this header is not present in addition to the above
+
+        return SimpleHTTPRequestHandler.end_headers(self)
+
+    create_file('test.html', '''
+      <script src="http://localhost:9999/hello.js"></script>
+    ''')
+
+    server = HttpServerThread(ThreadingHTTPServer(('localhost', 9999), MyReqestHandler))
+    server.start()
+    try:
+      self.run_browser('test.html', '/report_result?exit:0')
+    finally:
+      server.stop()
+      server.join()
 
 
 class emrun(RunnerCore):

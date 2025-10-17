@@ -2187,6 +2187,12 @@ var GROWABLE_ARRAYBUFFERS = false;
 // so we disable it by default to save on code size.
 var WASM_JS_TYPES = false;
 
+// If the emscripten-generated program is hosted on separate origin then
+// starting new pthread worker can violate CSP rules.  Enabling
+// CROSS_ORIGIN uses an inline worker to instead load the worker script
+// indirectly using `importScripts`
+var CROSS_ORIGIN = false;
+
 // For renamed settings the format is:
 // [OLD_NAME, NEW_NAME]
 // For removed settings (which now effectively have a fixed value and can no
