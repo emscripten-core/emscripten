@@ -285,10 +285,10 @@ def create_data_exports(data_exports):
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
     mangled = asmjs_mangle(k)
-    if settings.MINIMAL_RUNTIME:
-      lines.append("var %s = %s;" % (mangled, v))
-    else:
+    if should_export(mangled) and not settings.MINIMAL_RUNTIME:
       lines.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
+    else:
+      lines.append("var %s = %s;" % (mangled, v))
 
   return '\n'.join(lines)
 
