@@ -15805,64 +15805,14 @@ addToLibrary({
     err_no_fast = self.run_process([EMCC, test_file('hello_world.c'), '-v', '-O2'], stderr=PIPE).stderr
     self.assertNotContained('--fast-math', err_no_fast)
 
-  def test_fast_math_codesize(self):
-    create_file('kernel.c', r'''
-      #include <math.h>
-      #include <stdio.h>
-      
-      static double mandelbrot_iter(double cx, double cy, int max_iter) {
-        double x = 0.0, y = 0.0;
-        for (int i = 0; i < max_iter; i++) {
-          if (x*x + y*y > 4.0) return (double)i;
-          double tx = x*x - y*y + cx;
-          y = 2.0*x*y + cy;
-          x = tx;
-        }
-        return (double)max_iter;
-      }
-      
-      static double newton_raphson(double x, int iterations) {
-        for (int i = 0; i < iterations; i++) {
-          double fx = x*x*x - x - 1.0;
-          double fpx = 3.0*x*x - 1.0;
-          if (fabs(fpx) < 1e-10) break;
-          x = x - fx / fpx;
-        }
-        return x;
-      }
-      
-      int main() {
-        double result = 0.0;
-        
-        for (int i = 0; i < 100; i++) {
-          double x = (i - 50) * 0.02;
-          for (int j = 0; j < 100; j++) {
-            double y = (j - 50) * 0.02;
-            result += mandelbrot_iter(x, y, 50);
-          }
-        }
-        
-        for (int i = 0; i < 50; i++) {
-          result += newton_raphson(1.5 + i * 0.1, 20);
-        }
-        
-        for (int i = 0; i < 1000; i++) {
-          double angle = i * 0.01;
-          result += sin(angle) * cos(angle) + tan(angle);
-        }
-        
-        printf("Result: %f\n", result);
-        return 0;
-      }
-    ''')
-    
-    self.run_process([EMCC, 'kernel.c', '-O2', '-o', 'no_fast.wasm'])
+  def test_fast_math(self):
+    self.run_process([EMCC, test_file('other/test_fast_math.c'), '-O2', '-o', 'no_fast.wasm'])
     no_fast_size = os.path.getsize('no_fast.wasm')
-    self.run_process([EMCC, 'kernel.c', '-O2', '-ffast-math', '-o', 'with_fast.wasm'])
+    self.run_process([EMCC, test_file('other/test_fast_math.c'), '-O2', '-ffast-math', '-o', 'with_fast.wasm'])
     with_fast_size = os.path.getsize('with_fast.wasm')
     print(f'no_fast_size={no_fast_size} with_fast_size={with_fast_size}')
     
     self.assertLessEqual(with_fast_size, no_fast_size)
     
-    err = self.run_process([EMCC, 'kernel.c', '-v', '-O2', '-ffast-math'], stderr=PIPE).stderr
+    err = self.run_process([EMCC, test_file('other/test_fast_math.c'), '-v', '-O2', '-ffast-math'], stderr=PIPE).stderr
     self.assertContained('--fast-math', err)
