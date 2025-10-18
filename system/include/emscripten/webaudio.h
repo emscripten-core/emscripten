@@ -145,8 +145,11 @@ typedef struct EmscriptenAudioWorkletNodeCreateOptions
 	int numberOfOutputs;
 	// For each output, specifies the number of audio channels (1=mono/2=stereo/etc.) for that output. Default=an array of ones for each output channel.
 	int *outputChannelCounts;
+	// Number of channels used when up-mixing and down-mixing connections to any inputs to the node. Default=2
 	unsigned long channelCount;
+	// How channels will be counted when up-mixing and down-mixing connections to any inputs to the node? Default=max
 	WEBAUDIO_CHANNEL_COUNT_MODE channelCountMode;
+	// How individual channels will be treated when up-mixing and down-mixing connections to any inputs to the node? Default=speakers
 	WEBAUDIO_CHANNEL_INTERPRETATION channelInterpretation;
 
 } EmscriptenAudioWorkletNodeCreateOptions;
