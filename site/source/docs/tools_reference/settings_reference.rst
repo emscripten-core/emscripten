@@ -3341,3 +3341,15 @@ It's currently only available under a flag in certain browsers,
 so we disable it by default to save on code size.
 
 Default value: false
+
+.. _cross_origin:
+
+CROSS_ORIGIN
+============
+
+If the emscripten-generated program is hosted on separate origin then
+starting new pthread worker can violate CSP rules.  Enabling
+CROSS_ORIGIN uses an inline worker to instead load the worker script
+indirectly using `importScripts`
+
+Default value: false

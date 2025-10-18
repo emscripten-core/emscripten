@@ -22,6 +22,8 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - `-sUSE_WEBGPU` was removed in favor of the external port Emdawnwebgpu which
   are used via `--use-port=emdawnwebgpu`. See 4.0.10 release notes for details.
+- A new `CROSS_ORIGIN` setting was added in order to work around issues hosting
+  emscripten programs across different origins (#25581)
 
 4.0.17 - 10/17/25
 -----------------
