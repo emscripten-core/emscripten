@@ -122,7 +122,6 @@ DEPRECATED_SETTINGS = {
     'CLOSURE_WARNINGS': 'use -Wclosure/-Wno-closure instead',
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
-    'USE_WEBGPU': 'please try migrating to --use-port=emdawnwebgpu, which implements a newer, incompatible version of webgpu.h (see tools/ports/emdawnwebgpu.py for more info)',
     'LINKABLE': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)',
     'RELOCATABLE': ' under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)',
     'PROXY_TO_WORKER': 'under consideration for removal (See https://github.com/emscripten-core/emscripten/issues/25440)',

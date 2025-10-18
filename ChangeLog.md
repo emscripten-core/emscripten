@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.18 (in development)
 -----------------------
+- `-sUSE_WEBGPU` was removed in favor of the external port Emdawnwebgpu which
+  are used via `--use-port=emdawnwebgpu`. See 4.0.10 release notes for details.
 
 4.0.17 - 10/17/25
 -----------------

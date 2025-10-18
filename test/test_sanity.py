@@ -759,10 +759,10 @@ fi
 
   def test_embuilder_wildcards(self):
     restore_and_set_up()
-    glob_match = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libwebgpu*.a')
-    self.run_process([EMBUILDER, 'clear', 'libwebgpu*'])
+    glob_match = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libemmalloc*.a')
+    self.run_process([EMBUILDER, 'clear', 'libemmalloc*'])
     self.assertFalse(glob.glob(glob_match))
-    self.run_process([EMBUILDER, 'build', 'libwebgpu*'])
+    self.run_process([EMBUILDER, 'build', 'libemmalloc*'])
     self.assertGreater(len(glob.glob(glob_match)), 3)
 
   def test_embuilder_with_use_port_syntax(self):

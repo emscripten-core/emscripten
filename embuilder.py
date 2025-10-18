@@ -100,8 +100,6 @@ MINIMAL_TASKS = [
     'libunwind-legacyexcept',
     'libunwind-wasmexcept',
     'libnoexit',
-    'libwebgpu',
-    'libwebgpu_cpp',
     'bullet',
 ]
 

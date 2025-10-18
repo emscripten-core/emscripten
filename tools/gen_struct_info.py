@@ -98,7 +98,6 @@ DEFAULT_JSON_FILES = [
     utils.path_from_root('src/struct_info.json'),
     utils.path_from_root('src/struct_info_internal.json'),
     utils.path_from_root('src/struct_info_cxx.json'),
-    utils.path_from_root('src/struct_info_webgpu.json'),
 ]
 
 

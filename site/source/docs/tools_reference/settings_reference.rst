@@ -886,20 +886,6 @@ WebGL initialization afterwards will use this GL context to render.
 
 Default value: false
 
-.. _use_webgpu:
-
-USE_WEBGPU
-==========
-
-Enables the built-in implementation of ``<webgpu/webgpu.h>``.
-Deprecated: Please try migrating to ``--use-port=emdawnwebgpu``,
-which implements a newer, incompatible version of webgpu.h (see
-tools/ports/emdawnwebgpu.py for more info).
-
-.. note:: This setting is deprecated
-
-Default value: false
-
 .. _stb_image:
 
 STB_IMAGE

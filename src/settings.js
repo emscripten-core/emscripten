@@ -581,14 +581,6 @@ var GL_FFP_ONLY = false;
 // [link]
 var GL_PREINITIALIZED_CONTEXT = false;
 
-// Enables the built-in implementation of ``<webgpu/webgpu.h>``.
-// Deprecated: Please try migrating to ``--use-port=emdawnwebgpu``,
-// which implements a newer, incompatible version of webgpu.h (see
-// tools/ports/emdawnwebgpu.py for more info).
-// [link]
-// [deprecated]
-var USE_WEBGPU = false;
-
 // Enables building of stb-image, a tiny public-domain library for decoding
 // images, allowing decoding of images without using the browser's built-in
 // decoders. The benefit is that this can be done synchronously, however, it
@@ -2284,4 +2276,5 @@ var LEGACY_SETTINGS = [
   ['HEADLESS', [0], 'No longer supported, use headless browsers or Node.js with JSDOM'],
   ['USE_OFFSET_COVERTER', [0], 'No longer supported, not needed with modern v8 versions'],
   ['ASYNCIFY_LAZY_LOAD_CODE', [0], 'No longer supported'],
+  ['USE_WEBGPU', [0], 'No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py'],
 ];
