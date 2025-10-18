@@ -39,7 +39,8 @@ from .utils import removeprefix, exit_with_error
 from .utils import unsuffixed, unsuffixed_basename, get_file_suffix
 from .shared import in_temp, do_replace
 from .shared import DEBUG, WINDOWS, DYLIB_EXTENSIONS
-from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
+from .settings import settings, default_setting, user_settings
+from .settings import JS_ONLY_SETTINGS, DEPRECATED_SETTINGS, INCOMPATIBLE_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
 
 logger = logging.getLogger('link')
@@ -653,35 +654,7 @@ def add_system_js_lib(lib):
 
 
 def report_incompatible_settings():
-  # List of incompatible settings, of the form (SETTINGS_A, SETTING_B, OPTIONAL_REASON_FOR_INCOMPAT)
-  incompatible_settings = [
-    ('MINIMAL_RUNTIME', 'RELOCATABLE', None),
-    ('WASM2JS', 'RELOCATABLE', None),
-    ('MODULARIZE', 'PROXY_TO_WORKER', 'if you want to run in a worker with -sMODULARIZE, you likely want to do the worker side setup manually'),
-    ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),
-    ('EVAL_CTORS', 'WASM2JS', None),
-    ('EVAL_CTORS', 'RELOCATABLE', 'movable segments'),
-    # In Asyncify exports can be called more than once, and this seems to not
-    # work properly yet (see test_emscripten_scan_registers).
-    ('EVAL_CTORS', 'ASYNCIFY', None),
-    ('PTHREADS_PROFILING', 'NO_ASSERTIONS', 'only works with ASSERTIONS enabled'),
-    ('SOURCE_PHASE_IMPORTS', 'NO_EXPORT_ES6', None),
-    ('STANDALONE_WASM', 'MINIMAL_RUNTIME', None),
-    ('STRICT_JS', 'MODULARIZE', None),
-    ('STRICT_JS', 'EXPORT_ES6', None),
-    ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'they are mutually exclusive'),
-    ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'SINGLE_FILE', None),
-    ('MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'SINGLE_FILE', None),
-    ('SEPARATE_DWARF', 'WASM2JS', 'as there is no wasm file'),
-    ('GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS', 'NO_GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS', None),
-    ('MODULARIZE', 'NODEJS_CATCH_REJECTION', None),
-    ('MODULARIZE', 'NODEJS_CATCH_EXIT', None),
-    ('LEGACY_VM_SUPPORT', 'MEMORY64', None),
-    ('CROSS_ORIGIN', 'NO_DYNAMIC_EXECUTION', None),
-    ('CROSS_ORIGIN', 'NO_PTHREADS', None),
-  ]
-
-  for a, b, reason in incompatible_settings:
+  for a, b, reason in INCOMPATIBLE_SETTINGS:
     invert_b = b.startswith('NO_')
     if invert_b:
       b = b[3:]
