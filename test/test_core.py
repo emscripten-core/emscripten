@@ -4067,7 +4067,7 @@ caught outer int: 123
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.cflags.copy()
     if not expected:
-      outfile = shared.replace_suffix(main, '.out')
+      outfile = utils.replace_suffix(main, '.out')
       expected = read_file(outfile)
     if not side:
       side, ext = os.path.splitext(main)
@@ -8593,8 +8593,8 @@ Module.onRuntimeInitialized = () => {
           assert(typeof _emscripten_stack_get_base === 'function');
           assert(typeof _emscripten_stack_get_end === 'function');
           assert(typeof _emscripten_stack_get_current === 'function');
-          assert(typeof Module['___heap_base'] === 'number');
-          assert(Module['___heap_base'] > 0);
+          assert(typeof ___heap_base === 'number');
+          assert(___heap_base > 0);
           out('able to run memprof');
         }
       };

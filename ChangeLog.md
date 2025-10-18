@@ -18,8 +18,13 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.17 (in development)
+4.0.18 (in development)
 -----------------------
+- `-sUSE_WEBGPU` was removed in favor of the external port Emdawnwebgpu which
+  are used via `--use-port=emdawnwebgpu`. See 4.0.10 release notes for details.
+
+4.0.17 - 10/17/25
+-----------------
 - Mutable Wasm globals can now be exported from native code.  Currently these
   cannot be declared in C/C++ but can be defined and exported in assembly code.
   This currently only works for mutable globals since immutables are already
@@ -34,8 +39,6 @@ See docs/process.md for more on how version tagging works.
 - Passing '-sENVIRONMENT=worker' is now disallowed due to being ambiguous in
   its meaning. Instead, use '-sENVIRONMENT=web,worker' or
   '-sENVIRONMENT=node,worker' to refer to either Web or Node.js multithreading.
-- `-sUSE_WEBGPU` was removed in favor of the external port Emdawnwebgpu which
-  are used via `--use-port=emdawnwebgpu`. See 4.0.10 release notes for details.
 
 4.0.16 - 10/07/25
 -----------------

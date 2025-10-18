@@ -488,7 +488,7 @@ fi
       with env_modify({'EM_CACHE': self.in_dir('test_cache')}):
         self.run_process([EMCC, test_file('hello_world.c'), '-c'])
     finally:
-      for_all_files(path_from_root('system/include'), shared.make_writable)
+      for_all_files(path_from_root('system/include'), utils.make_writable)
 
   @parameterized({
     '': [False, False],
@@ -831,7 +831,7 @@ fi
 
     # Remove from PATH every directory that contains clang.exe so that bootstrap.py cannot
     # accidentally succeed by virtue of locating tools in PATH.
-    new_path = [d for d in env['PATH'].split(os.pathsep) if not os.path.isfile(os.path.join(d, shared.exe_suffix('clang')))]
+    new_path = [d for d in env['PATH'].split(os.pathsep) if not os.path.isfile(os.path.join(d, utils.exe_suffix('clang')))]
     env['PATH'] = os.pathsep.join(new_path)
 
     # Running bootstrap.py should not fail

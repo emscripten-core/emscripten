@@ -502,7 +502,7 @@ var emscriptenMemoryProfiler = {
     html += '. STACK_MAX: ' + toHex(stackMax, width) + '.';
     html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(stackBase - stackCurrent) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(stackBase - self.stackTopWatermark);
 
-    var heap_base = Module['___heap_base'];
+    var heap_base = ___heap_base;
     var heap_end = _sbrk({{{ to64('0') }}});
     html += "<br />DYNAMIC memory area size: " + self.formatBytes(heap_end - heap_base);
     html += ". start: " + toHex(heap_base, width);

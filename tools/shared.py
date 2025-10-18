@@ -3,6 +3,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+"""Shared code specific to emscripten.  General purpose and low-level helpers belong instead in
+utils.py."""
+
 from .toolchain_profiler import ToolchainProfiler
 
 from subprocess import PIPE
@@ -10,11 +13,9 @@ import atexit
 import logging
 import os
 import re
-import shutil
 import shlex
 import subprocess
 import signal
-import stat
 import sys
 import tempfile
 
@@ -38,7 +39,7 @@ elif EMCC_LOGGING:
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
-from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, set_version_globals, memoize
+from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, set_version_globals, memoize, bat_suffix
 from . import cache, tempfiles
 from . import diagnostics
 from . import config
@@ -480,7 +481,7 @@ def llvm_tool_path_with_suffix(tool, suffix):
   if suffix:
     tool += '-' + suffix
   llvm_root = os.path.expanduser(config.LLVM_ROOT)
-  return os.path.join(llvm_root, exe_suffix(tool))
+  return os.path.join(llvm_root, utils.exe_suffix(tool))
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -495,25 +496,12 @@ def clang_tool_path(tool):
   return llvm_tool_path_with_suffix(tool, config.CLANG_ADD_VERSION)
 
 
-def exe_suffix(cmd):
-  return cmd + '.exe' if WINDOWS else cmd
-
-
-def bat_suffix(cmd):
-  return cmd + '.bat' if WINDOWS else cmd
-
-
-def replace_suffix(filename, new_suffix):
-  assert new_suffix[0] == '.'
-  return os.path.splitext(filename)[0] + new_suffix
-
-
 # In MINIMAL_RUNTIME mode, keep suffixes of generated files simple
 # ('.mem' instead of '.js.mem'; .'symbols' instead of '.js.symbols' etc)
 # Retain the original naming scheme in traditional runtime.
 def replace_or_append_suffix(filename, new_suffix):
   assert new_suffix[0] == '.'
-  return replace_suffix(filename, new_suffix) if settings.MINIMAL_RUNTIME else filename + new_suffix
+  return utils.replace_suffix(filename, new_suffix) if settings.MINIMAL_RUNTIME else filename + new_suffix
 
 
 # Temp dir. Create a random one, unless EMCC_DEBUG is set, in which case use the canonical
@@ -644,56 +632,6 @@ def asmjs_mangle(name):
   if is_user_export(name):
     return '_' + name
   return name
-
-
-def suffix(name):
-  """Return the file extension"""
-  return os.path.splitext(name)[1]
-
-
-def unsuffixed(name):
-  """Return the filename without the extension.
-
-  If there are multiple extensions this strips only the final one.
-  """
-  return os.path.splitext(name)[0]
-
-
-def unsuffixed_basename(name):
-  return os.path.basename(unsuffixed(name))
-
-
-def get_file_suffix(filename):
-  """Parses the essential suffix of a filename, discarding Unix-style version
-  numbers in the name. For example for 'libz.so.1.2.8' returns '.so'"""
-  while filename:
-    filename, suffix = os.path.splitext(filename)
-    if not suffix[1:].isdigit():
-      return suffix
-  return ''
-
-
-def make_writable(filename):
-  assert os.path.exists(filename)
-  old_mode = stat.S_IMODE(os.stat(filename).st_mode)
-  os.chmod(filename, old_mode | stat.S_IWUSR)
-
-
-def safe_copy(src, dst):
-  logging.debug('copy: %s -> %s', src, dst)
-  src = os.path.abspath(src)
-  dst = os.path.abspath(dst)
-  if os.path.isdir(dst):
-    dst = os.path.join(dst, os.path.basename(src))
-  if src == dst:
-    return
-  if dst == os.devnull:
-    return
-  # Copies data and permission bits, but not other metadata such as timestamp
-  shutil.copy(src, dst)
-  # We always want the target file to be writable even when copying from
-  # read-only source. (e.g. a read-only install of emscripten).
-  make_writable(dst)
 
 
 def do_replace(input_, pattern, replacement):

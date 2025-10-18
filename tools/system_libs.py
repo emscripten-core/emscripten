@@ -140,7 +140,7 @@ def objectfile_sort_key(filename):
 
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
-  suffix = shared.suffix(libname)
+  suffix = utils.suffix(libname)
 
   inputs = sorted(inputs, key=objectfile_sort_key)
   if suffix in ('.bc', '.o'):
@@ -229,13 +229,13 @@ rule archive
   description = AR $out
 
 '''
-  suffix = shared.suffix(libname)
+  suffix = utils.suffix(libname)
   build_dir = os.path.dirname(filename)
 
   if suffix == '.o':
     assert len(input_files) == 1
     input_file = escape_ninja_path(input_files[0])
-    depfile = shared.unsuffixed_basename(input_file) + '.d'
+    depfile = utils.unsuffixed_basename(input_file) + '.d'
     out += f'build {escape_ninja_path(libname)}: direct_cc {input_file}\n'
     out += f'  with_depfile = {depfile}\n'
   else:
@@ -245,7 +245,7 @@ rule archive
       # insensitive filesystem to handle, for example, _exit.o and _Exit.o.
       # This is done even on case sensitive filesystem so that builds are
       # reproducible across platforms.
-      object_basename = shared.unsuffixed_basename(src).lower()
+      object_basename = utils.unsuffixed_basename(src).lower()
       o = os.path.join(build_dir, object_basename + '.o')
       object_uuid = 0
       # Find a unique basename
@@ -253,7 +253,7 @@ rule archive
         object_uuid += 1
         o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
       objects.append(o)
-      ext = shared.suffix(src)
+      ext = utils.suffix(src)
       if ext == '.s':
         cmd = 'asm'
         flags = asflags
@@ -447,7 +447,7 @@ class Library:
     if self.get_ext() != '.a':
       return fullpath
     # For libraries (.a) files, we pass the abbreviated `-l` form.
-    base = shared.unsuffixed_basename(fullpath)
+    base = utils.unsuffixed_basename(fullpath)
     return '-l' + utils.removeprefix(base, 'lib')
 
   def get_files(self):
@@ -493,7 +493,7 @@ class Library:
     objects = set()
     cflags = self.get_cflags()
     for src in self.get_files():
-      ext = shared.suffix(src)
+      ext = utils.suffix(src)
       if ext in {'.s', '.S', '.c'}:
         cmd = shared.EMCC
       else:
@@ -508,7 +508,7 @@ class Library:
         cmd += cflags
       cmd = self.customize_build_cmd(cmd, src)
 
-      object_basename = shared.unsuffixed_basename(src).lower()
+      object_basename = utils.unsuffixed_basename(src).lower()
       o = os.path.join(build_dir, object_basename + '.o')
       if o in objects:
         # If we have seen a file with the same name before, we need a separate
@@ -529,7 +529,7 @@ class Library:
         src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
         # No -o in command, use original file name.
-        o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
+        o = os.path.join(build_dir, utils.unsuffixed_basename(src) + '.o')
       else:
         commands.append(cmd + [src, '-o', o])
       objects.add(o)
@@ -2476,7 +2476,7 @@ def safe_copytree(src, dst, excludes=None):
     if entry.is_dir():
       safe_copytree(srcname, dstname, excludes)
     else:
-      shared.safe_copy(srcname, dstname)
+      utils.safe_copy(srcname, dstname)
 
 
 def install_system_headers(stamp):
