@@ -1316,6 +1316,7 @@ var __emscripten_stack_restore = makeInvalidEarlyAccess('__emscripten_stack_rest
 var __emscripten_stack_alloc = makeInvalidEarlyAccess('__emscripten_stack_alloc');
 var _emscripten_stack_get_current = makeInvalidEarlyAccess('_emscripten_stack_get_current');
 var memory = makeInvalidEarlyAccess('memory');
+var _global_val = Module['_global_val'] = makeInvalidEarlyAccess('_global_val');
 var __indirect_function_table = makeInvalidEarlyAccess('__indirect_function_table');
 var wasmMemory = makeInvalidEarlyAccess('wasmMemory');
 
@@ -1340,11 +1341,11 @@ function assignWasmExports(wasmExports) {
   _emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'];
   assert(wasmExports['memory'], 'missing Wasm export: memory');
   memory = wasmMemory = wasmExports['memory'];
+  assert(wasmExports['global_val'], 'missing Wasm export: global_val');
+  _global_val = Module['_global_val'] = wasmExports['global_val'].value;
   assert(wasmExports['__indirect_function_table'], 'missing Wasm export: __indirect_function_table');
   __indirect_function_table = wasmExports['__indirect_function_table'];
 }
-
-var _global_val = Module['_global_val'] = 65536;
 
 var wasmImports = {
   

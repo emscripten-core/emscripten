@@ -240,18 +240,6 @@ def get_main_reads_params(module, export_map):
   return True
 
 
-def get_data_exports(module, exports):
-  data_exports = {}
-  for export in exports:
-    if export.kind == webassembly.ExternType.GLOBAL:
-      g = module.get_global(export.index)
-      # Data symbols (addresses) are exported as immutable Wasm globals.
-      # mutable globals are handled via get_other_exports
-      if not g.mutable:
-        data_exports[export.name] = str(get_global_value(g))
-  return data_exports
-
-
 def get_function_exports(module):
   rtn = {}
   for e in module.get_exports():
@@ -261,17 +249,7 @@ def get_function_exports(module):
 
 
 def get_other_exports(module):
-  rtn = []
-  for e in module.get_exports():
-    if e.kind == webassembly.ExternType.FUNC:
-      continue
-    if e.kind == webassembly.ExternType.GLOBAL:
-      g = module.get_global(e.index)
-      # Immutable globals are handled specially.  See get_data_exports
-      if not g.mutable:
-        continue
-    rtn.append(e.name)
-  return rtn
+  return [e for e in module.get_exports() if e.kind != webassembly.ExternType.FUNC]
 
 
 def read_module_imports(module, metadata):
@@ -320,9 +298,8 @@ class Metadata:
   features: List[str]
   invoke_funcs: List[str]
   main_reads_params: bool
-  data_exports: Dict[str, str]
   function_exports: Dict[str, webassembly.FuncType]
-  other_exports: List[str]
+  other_exports: List[webassembly.Export]
   all_exports: List[str]
 
 
@@ -357,7 +334,6 @@ def extract_metadata(filename):
     metadata.em_js_funcs = em_js_funcs
     metadata.features = features
     metadata.main_reads_params = get_main_reads_params(module, export_map)
-    metadata.data_exports = get_data_exports(module, exports)
 
     read_module_imports(module, metadata)
 
