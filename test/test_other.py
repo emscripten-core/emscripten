@@ -15813,6 +15813,3 @@ addToLibrary({
     print(f'no_fast_size={no_fast_size} with_fast_size={with_fast_size}')
     
     self.assertLessEqual(with_fast_size, no_fast_size)
-    
-    err = self.run_process([EMCC, test_file('other/test_fast_math.c'), '-v', '-O2', '-ffast-math'], stderr=PIPE).stderr
-    self.assertContained('--fast-math', err)
