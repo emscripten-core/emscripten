@@ -15796,3 +15796,20 @@ addToLibrary({
     self.assertIn('main.cpp', out)
     self.assertIn('foo.cpp', out)
     self.assertIn('/emsdk/emscripten/system/lib/libc/musl/src/string/strcmp.c', out)
+
+  def test_binaryen_fast_math(self):
+    # Use a simple input; contents don't matter for -v flag inspection
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-v', '-O2', '-ffast-math'], stderr=PIPE).stderr
+    self.assertContained('--fast-math', err)
+
+    err_no_fast = self.run_process([EMCC, test_file('hello_world.c'), '-v', '-O2'], stderr=PIPE).stderr
+    self.assertNotContained('--fast-math', err_no_fast)
+
+  def test_fast_math(self):
+    self.run_process([EMCC, test_file('other/test_fast_math.c'), '-O2', '-o', 'no_fast.wasm'])
+    no_fast_size = os.path.getsize('no_fast.wasm')
+    self.run_process([EMCC, test_file('other/test_fast_math.c'), '-O2', '-ffast-math', '-o', 'with_fast.wasm'])
+    with_fast_size = os.path.getsize('with_fast.wasm')
+    print(f'no_fast_size={no_fast_size} with_fast_size={with_fast_size}')
+    
+    self.assertLessEqual(with_fast_size, no_fast_size)

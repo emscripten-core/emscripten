@@ -260,6 +260,11 @@ var ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = [];
 
 var WARN_DEPRECATED = true;
 
+// Enable fast math optimizations in wasm-opt when -ffast-math is passed.
+// This enables aggressive floating-point optimizations that may violate
+// IEEE 754 semantics but can improve performance.
+var FAST_MATH = 0;
+
 // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
 // those always when possible.
 // We currently set this to false for certain browser when large memory sizes
