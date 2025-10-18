@@ -361,6 +361,11 @@ The JavaScript code does not need to worry about lifetime management.
     var person = Module.findPersonAtLocation([10.2, 156.5]);
     console.log('Found someone! Their name is ' + person.name + ' and they are ' + person.age + ' years old');
 
+.. note::
+    Fields that correspond to bound C++ objects (such as ``class_<T>``) produce JavaScript
+    properties that are handles to C++ state. Those properties obey the normal lifetime
+    rules of their bound type and may require explicit cleanup in JavaScript.
+    See :ref:`Object Ownership <embind-object-ownership>` for more details.
 
 Advanced class concepts
 =======================
