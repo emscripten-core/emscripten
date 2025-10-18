@@ -114,6 +114,8 @@ class ChromeConfig:
     '--disable-background-networking',
     # Disable native password pop-ups
     '--password-store=basic',
+    # Send console messages to browser stderr
+    '--enable-logging=stderr',
   )
   headless_flags = '--headless=new --window-size=1024,768'
 
