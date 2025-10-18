@@ -77,6 +77,7 @@ void main_loop() {
   int res;
   fd_set fdr;
   fd_set fdw;
+  struct timeval tv;
 
   // see if there are any connections to accept or read / write from
   FD_ZERO(&fdr);
@@ -87,7 +88,9 @@ void main_loop() {
   if (client.fd) FD_SET(client.fd, &fdr);
   if (client.fd) FD_SET(client.fd, &fdw);
 #endif
-  res = select(64, &fdr, &fdw, NULL, NULL);
+  tv.tv_sec = 0;
+  tv.tv_usec = 0;
+  res = select(64, &fdr, &fdw, NULL, &tv);
   if (res == -1) {
     perror("select failed");
     exit(EXIT_SUCCESS);
