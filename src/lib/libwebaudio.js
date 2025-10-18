@@ -319,8 +319,8 @@ var LibraryWebAudio = {
       numberOfOutputs: optionsOutputs,
       outputChannelCount: readChannelCountArray({{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.outputChannelCounts, 'i32*') }}}, optionsOutputs),
       channelCount: {{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.channelCount, 'u32') }}} || undefined,
-      channelCountMode: ['clamped-max','explicit'][{{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.channelCountMode, 'i32') }}}],
-      channelInterpretation: ['discrete'][{{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.channelInterpretation, 'i32') }}}],
+      channelCountMode: [/*'max'*/,'clamped-max','explicit'][{{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.channelCountMode, 'i32') }}}],
+      channelInterpretation: [/*'speakers'*/,'discrete'][{{{ makeGetValue('options', C_STRUCTS.EmscriptenAudioWorkletNodeCreateOptions.channelInterpretation, 'i32') }}}],
       processorOptions: {
         callback,
         userData,
