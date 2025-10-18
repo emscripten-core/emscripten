@@ -677,6 +677,8 @@ def report_incompatible_settings():
     ('MODULARIZE', 'NODEJS_CATCH_REJECTION', None),
     ('MODULARIZE', 'NODEJS_CATCH_EXIT', None),
     ('LEGACY_VM_SUPPORT', 'MEMORY64', None),
+    ('CROSS_ORIGIN', 'NO_DYNAMIC_EXECUTION', None),
+    ('CROSS_ORIGIN', 'NO_PTHREADS', None),
   ]
 
   for a, b, reason in incompatible_settings:
