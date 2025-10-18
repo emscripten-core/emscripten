@@ -134,6 +134,34 @@ INTERNAL_SETTINGS = {
     'SIDE_MODULE_IMPORTS',
 }
 
+# List of incompatible settings, of the form (SETTINGS_A, SETTING_B, OPTIONAL_REASON_FOR_INCOMPAT)
+INCOMPATIBLE_SETTINGS = [
+    ('MINIMAL_RUNTIME', 'RELOCATABLE', None),
+    ('WASM2JS', 'RELOCATABLE', None),
+    ('MODULARIZE', 'PROXY_TO_WORKER', 'if you want to run in a worker with -sMODULARIZE, you likely want to do the worker side setup manually'),
+    ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),
+    ('EVAL_CTORS', 'WASM2JS', None),
+    ('EVAL_CTORS', 'RELOCATABLE', 'movable segments'),
+    # In Asyncify exports can be called more than once, and this seems to not
+    # work properly yet (see test_emscripten_scan_registers).
+    ('EVAL_CTORS', 'ASYNCIFY', None),
+    ('PTHREADS_PROFILING', 'NO_ASSERTIONS', 'only works with ASSERTIONS enabled'),
+    ('SOURCE_PHASE_IMPORTS', 'NO_EXPORT_ES6', None),
+    ('STANDALONE_WASM', 'MINIMAL_RUNTIME', None),
+    ('STRICT_JS', 'MODULARIZE', None),
+    ('STRICT_JS', 'EXPORT_ES6', None),
+    ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'they are mutually exclusive'),
+    ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'SINGLE_FILE', None),
+    ('MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'SINGLE_FILE', None),
+    ('SEPARATE_DWARF', 'WASM2JS', 'as there is no wasm file'),
+    ('GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS', 'NO_GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS', None),
+    ('MODULARIZE', 'NODEJS_CATCH_REJECTION', None),
+    ('MODULARIZE', 'NODEJS_CATCH_EXIT', None),
+    ('LEGACY_VM_SUPPORT', 'MEMORY64', None),
+    ('CROSS_ORIGIN', 'NO_DYNAMIC_EXECUTION', None),
+    ('CROSS_ORIGIN', 'NO_PTHREADS', None),
+]
+
 user_settings: Dict[str, str] = {}
 
 
