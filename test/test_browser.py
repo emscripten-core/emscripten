@@ -1789,14 +1789,14 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   @requires_graphics_hardware
   @parameterized({
-    'Hello_Triangle': ('Chapter_2/Hello_Triangle/CH02_HelloTriangle.o', [], []),
-    'Simple_VertexShader': ('Chapter_8/Simple_VertexShader/CH08_SimpleVertexShader.o', [], []),
-    'Simple_Texture2D': ('Chapter_9/Simple_Texture2D/CH09_SimpleTexture2D.o', [], []),
-    'Simple_TextureCubemap': ('Chapter_9/Simple_TextureCubemap/CH09_TextureCubemap.o', [], []),
-    'TextureWrap': ('Chapter_9/TextureWrap/CH09_TextureWrap.o', [], []),
-    'MultiTexture': ('Chapter_10/MultiTexture/CH10_MultiTexture.o', ['Chapter_10/MultiTexture/basemap.tga', 'Chapter_10/MultiTexture/lightmap.tga'], []),
+    'Hello_Triangle': ('CH02_HelloTriangle.o', [], []),
+    'Simple_VertexShader': ('CH08_SimpleVertexShader.o', [], []),
+    'Simple_Texture2D': ('CH09_SimpleTexture2D.o', [], []),
+    'Simple_TextureCubemap': ('CH09_TextureCubemap.o', [], []),
+    'TextureWrap': ('CH09_TextureWrap.o', [], []),
+    'MultiTexture': ('CH10_MultiTexture.o', ['Chapter_10/MultiTexture/basemap.tga', 'Chapter_10/MultiTexture/lightmap.tga'], []),
     # run this individual test with optimizations and closure for more coverage
-    'ParticleSystem': ('Chapter_13/ParticleSystem/CH13_ParticleSystem.o', ['Chapter_13/ParticleSystem/smoke.tga'], ['-O2']),
+    'ParticleSystem': ('CH13_ParticleSystem.o', ['Chapter_13/ParticleSystem/smoke.tga'], ['-O2']),
   })
   def test_glbook(self, program, images, cflags):
     self.cflags.append('-Wno-int-conversion')
@@ -1819,9 +1819,9 @@ simulateKeyUp(100, undefined, 'Numpad4');
     for image in images:
       cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
-    lib = [l for l in libs if os.path.basename(program) in os.path.basename(l)][0]
+    lib = [l for l in libs if program in os.path.basename(l)][0]
 
-    self.reftest(lib, book_path(os.path.basename(program).replace('.o', '.png')), cflags=cflags)
+    self.reftest(lib, book_path(program.replace('.o', '.png')), cflags=cflags)
 
   @requires_graphics_hardware
   @parameterized({
