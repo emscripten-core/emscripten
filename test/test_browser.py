@@ -1802,6 +1802,16 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.cflags.append('-Wno-int-conversion')
     self.cflags.append('-Wno-pointer-sign')
 
+    libs = self.get_library('third_party/glbook', [
+      'Chapter_2/Hello_Triangle/CH02_HelloTriangle.o',
+      'Chapter_8/Simple_VertexShader/CH08_SimpleVertexShader.o',
+      'Chapter_9/Simple_Texture2D/CH09_SimpleTexture2D.o',
+      'Chapter_9/Simple_TextureCubemap/CH09_TextureCubemap.o',
+      'Chapter_9/TextureWrap/CH09_TextureWrap.o',
+      'Chapter_10/MultiTexture/CH10_MultiTexture.o',
+      'Chapter_13/ParticleSystem/CH13_ParticleSystem.o',
+    ], configure=None)
+
     def book_path(path):
       return test_file('third_party/glbook', path)
 
@@ -1809,7 +1819,8 @@ simulateKeyUp(100, undefined, 'Numpad4');
     for image in images:
       cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
-    lib = self.get_library('third_party/glbook', [program], configure=None, cache_name_extra=os.path.basename(program))[0]
+    lib = [l for l in libs if os.path.basename(program) in os.path.basename(l)][0]
+
     self.reftest(lib, book_path(os.path.basename(program).replace('.o', '.png')), cflags=cflags)
 
   @requires_graphics_hardware
