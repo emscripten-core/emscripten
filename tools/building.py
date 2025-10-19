@@ -15,7 +15,16 @@ import sys
 from subprocess import PIPE
 from typing import Dict, Set
 
-from . import cache, config, diagnostics, response_file, shared, utils, webassembly
+from . import (
+  cache,
+  config,
+  diagnostics,
+  js_optimizer,
+  response_file,
+  shared,
+  utils,
+  webassembly,
+)
 from .feature_matrix import UNSUPPORTED
 from .settings import settings
 from .shared import (
@@ -354,8 +363,7 @@ def opt_level_to_str(opt_level, shrink_level=0):
     return f'-O{min(opt_level, 3)}'
 
 
-def js_optimizer(filename, passes):
-  from . import js_optimizer
+def run_js_optimizer(filename, passes):
   try:
     return js_optimizer.run_on_file(filename, passes)
   except subprocess.CalledProcessError as e:
@@ -975,7 +983,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
       wasm2js_js = wasm2js_js.replace('\n }', '\n}')
       temp = shared.get_temp_files().get('.js').name
       utils.write_file(temp, wasm2js_js)
-      temp = js_optimizer(temp, passes)
+      temp = run_js_optimizer(temp, passes)
       wasm2js_js = utils.read_file(temp)
   # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
   # minify the wasm2js output as well, which is ok since it isn't

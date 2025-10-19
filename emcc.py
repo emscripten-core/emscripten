@@ -315,7 +315,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     linker_args = separate_linker_flags(newargs)[1]
     linker_args = [f.value for f in linker_args]
     # Delay import of link.py to avoid processing this file when only compiling
-    from tools import link
+    from tools import link  # noqa: PLC0415
     link.run_post_link(options.input_files[0], options, linker_args)
     return 0
 

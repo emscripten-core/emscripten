@@ -387,7 +387,7 @@ def kill_browser_process():
     # so clear that record out.
     processname_killed_atexit = ''
 
-  if len(processname_killed_atexit):
+  if processname_killed_atexit:
     if emrun_options.android:
       logv("Terminating Android app '" + processname_killed_atexit + "'.")
       subprocess.call([ADB, 'shell', 'am', 'force-stop', processname_killed_atexit])
