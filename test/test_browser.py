@@ -1788,35 +1788,29 @@ simulateKeyUp(100, undefined, 'Numpad4');
     assert 'gl-matrix' not in read_file('test.html'), 'Should not include glMatrix when not needed'
 
   @requires_graphics_hardware
-  def test_glbook(self):
+  @parameterized({
+    'Hello_Triangle': ('Chapter_2/Hello_Triangle/CH02_HelloTriangle.o', [], []),
+    'Simple_VertexShader': ('Chapter_8/Simple_VertexShader/CH08_SimpleVertexShader.o', [], []),
+    'Simple_Texture2D': ('Chapter_9/Simple_Texture2D/CH09_SimpleTexture2D.o', [], []),
+    'Simple_TextureCubemap': ('Chapter_9/Simple_TextureCubemap/CH09_TextureCubemap.o', [], []),
+    'TextureWrap': ('Chapter_9/TextureWrap/CH09_TextureWrap.o', [], []),
+    'MultiTexture': ('Chapter_10/MultiTexture/CH10_MultiTexture.o', ['Chapter_10/MultiTexture/basemap.tga', 'Chapter_10/MultiTexture/lightmap.tga'], []),
+    # run this individual test with optimizations and closure for more coverage
+    'ParticleSystem': ('Chapter_13/ParticleSystem/CH13_ParticleSystem.o', ['Chapter_13/ParticleSystem/smoke.tga'], ['-O2']),
+    })
+  def test_glbook(self, program, images, cflags):
     self.cflags.append('-Wno-int-conversion')
     self.cflags.append('-Wno-pointer-sign')
-    programs = self.get_library('third_party/glbook', [
-      'Chapter_2/Hello_Triangle/CH02_HelloTriangle.o',
-      'Chapter_8/Simple_VertexShader/CH08_SimpleVertexShader.o',
-      'Chapter_9/Simple_Texture2D/CH09_SimpleTexture2D.o',
-      'Chapter_9/Simple_TextureCubemap/CH09_TextureCubemap.o',
-      'Chapter_9/TextureWrap/CH09_TextureWrap.o',
-      'Chapter_10/MultiTexture/CH10_MultiTexture.o',
-      'Chapter_13/ParticleSystem/CH13_ParticleSystem.o',
-    ], configure=None)
 
     def book_path(path):
       return test_file('third_party/glbook', path)
 
-    for program in programs:
-      print(program)
-      basename = os.path.basename(program)
-      args = ['-lGL', '-lEGL', '-lX11']
-      if basename == 'CH10_MultiTexture.o':
-        shutil.copy(book_path('Chapter_10/MultiTexture/basemap.tga'), '.')
-        shutil.copy(book_path('Chapter_10/MultiTexture/lightmap.tga'), '.')
-        args += ['--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga']
-      elif basename == 'CH13_ParticleSystem.o':
-        shutil.copy(book_path('Chapter_13/ParticleSystem/smoke.tga'), '.')
-        args += ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
+    cflags += ['-lGL', '-lEGL', '-lX11']
+    for image in images:
+      cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
-      self.reftest(program, book_path(basename.replace('.o', '.png')), cflags=args)
+    lib = self.get_library('third_party/glbook', [program], configure=None)[0]
+    self.reftest(lib, book_path(os.path.basename(program).replace('.o', '.png')), cflags=cflags)
 
   @requires_graphics_hardware
   @parameterized({
