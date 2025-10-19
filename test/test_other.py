@@ -15811,5 +15811,5 @@ addToLibrary({
     self.run_process([EMCC, test_file('other/test_fast_math.c'), '-O2', '-ffast-math', '-o', 'with_fast.wasm'])
     with_fast_size = os.path.getsize('with_fast.wasm')
     print(f'no_fast_size={no_fast_size} with_fast_size={with_fast_size}')
-    
+
     self.assertLessEqual(with_fast_size, no_fast_size)
