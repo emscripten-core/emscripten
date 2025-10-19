@@ -94,6 +94,7 @@ if 'EM_BUILD_VERBOSE' in os.environ:
 # 0: Disabled (reuse the browser instance to run all tests. Default)
 # 1: Restart a fresh browser instance for every browser test.
 # 2,3,...: Restart a fresh browser instance after given number of tests have been run in it.
+# Helps with e.g. https://bugzil.la/1992558
 EMTEST_RESTART_BROWSER_EVERY_N_TESTS = int(os.getenv('EMTEST_RESTART_BROWSER_EVERY_N_TESTS', '0'))
 
 # If we are drawing a parallel swimlane graph of test output, we need to use a temp
