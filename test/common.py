@@ -90,6 +90,12 @@ EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
+# Triggers the browser to restart after every given number of tests.
+# 0: Disabled (reuse the browser instance to run all tests. Default)
+# 1: Restart a fresh browser instance for every browser test.
+# 2,3,...: Restart a fresh browser instance after given number of tests have been run in it.
+EMTEST_RESTART_BROWSER_EVERY_N_TESTS = int(os.getenv('EMTEST_RESTART_BROWSER_EVERY_N_TESTS', '0'))
+
 # If we are drawing a parallel swimlane graph of test output, we need to use a temp
 # file to track which tests were flaky so they can be graphed in orange color to
 # visually stand out.
@@ -2569,6 +2575,7 @@ class BrowserCore(RunnerCore):
   BROWSER_TIMEOUT = 60
 
   unresponsive_tests = 0
+  num_tests_ran = 0
 
   def __init__(self, *args, **kwargs):
     self.capture_stdio = EMTEST_CAPTURE_STDIO
@@ -2585,6 +2592,7 @@ class BrowserCore(RunnerCore):
     logger.info('Restarting browser process')
     cls.browser_terminate()
     cls.browser_open(cls.HARNESS_URL)
+    BrowserCore.num_tests_ran = 0
 
   @classmethod
   def browser_open(cls, url):
@@ -2652,7 +2660,7 @@ class BrowserCore(RunnerCore):
       # Give the browser time to spawn its subprocesses. Use an increasing
       # timeout as a crude way to account for system load.
       if parallel_harness or is_safari():
-        time.sleep(2 + count * 0.3)
+        time.sleep(min(2 + count * 0.3, 10))
         procs_after = list_processes_by_name(config.executable_name)
 
         # Take a snapshot again to find which processes exist after launching
@@ -2736,6 +2744,12 @@ class BrowserCore(RunnerCore):
       self.skipTest('skipping test execution: ' + self.skip_exec)
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
       self.skipTest('too many unresponsive tests, skipping remaining tests')
+
+    if EMTEST_RESTART_BROWSER_EVERY_N_TESTS and BrowserCore.num_tests_ran >= EMTEST_RESTART_BROWSER_EVERY_N_TESTS:
+      logger.warning(f'[EMTEST_RESTART_BROWSER_EVERY_N_TESTS={EMTEST_RESTART_BROWSER_EVERY_N_TESTS} workaround: restarting browser]')
+      self.browser_restart()
+    BrowserCore.num_tests_ran += 1
+
     self.assert_out_queue_empty('previous test')
     if DEBUG:
       print('[browser launch:', html_file, ']')
