@@ -746,13 +746,7 @@ function getWasmImports() {
     __RELOC_FUNCS__.push(wasmExports['__wasm_apply_data_relocs']);
 #endif
 
-#if DECLARE_ASM_MODULE_EXPORTS
     assignWasmExports(wasmExports);
-#else
-    // If we didn't declare the asm exports as top level enties this function
-    // is in charge of programmatically exporting them on the global object.
-    exportWasmSymbols(wasmExports);
-#endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
     instrumentWasmTableWithAbort();
