@@ -9,28 +9,29 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
-from tools.toolchain_profiler import ToolchainProfiler
-
-import os
 import json
-import subprocess
 import logging
+import os
 import pprint
 import shutil
+import subprocess
 import sys
 import textwrap
 
-from tools import building
-from tools import config
-from tools import diagnostics
-from tools import js_manipulation
-from tools import shared
-from tools import utils
-from tools import webassembly
-from tools import extract_metadata
-from tools.utils import exit_with_error, path_from_root, removeprefix
-from tools.shared import DEBUG, asmjs_mangle, in_temp
+from tools import (
+  building,
+  config,
+  diagnostics,
+  extract_metadata,
+  js_manipulation,
+  shared,
+  utils,
+  webassembly,
+)
 from tools.settings import settings, user_settings
+from tools.shared import DEBUG, asmjs_mangle, in_temp
+from tools.toolchain_profiler import ToolchainProfiler
+from tools.utils import exit_with_error, path_from_root, removeprefix
 
 sys.path.append(path_from_root('third_party'))
 import leb128

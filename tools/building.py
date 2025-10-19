@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from .toolchain_profiler import ToolchainProfiler
-
 import importlib
 import json
 import logging
@@ -14,27 +12,35 @@ import shlex
 import shutil
 import subprocess
 import sys
-from typing import Set, Dict
 from subprocess import PIPE
+from typing import Dict, Set
 
-from . import cache
-from . import diagnostics
-from . import response_file
-from . import shared
-from . import webassembly
-from . import config
-from . import utils
-from .shared import CLANG_CC, CLANG_CXX
-from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD
-from .shared import LLVM_OBJCOPY
-from .shared import run_process, check_call, exit_with_error
-from .shared import path_from_root
-from .shared import asmjs_mangle, DEBUG
-from .shared import LLVM_DWARFDUMP, demangle_c_symbol_name
-from .shared import get_emscripten_temp_dir, is_c_symbol
-from .utils import WINDOWS
-from .settings import settings
+from . import cache, config, diagnostics, response_file, shared, utils, webassembly
 from .feature_matrix import UNSUPPORTED
+from .settings import settings
+from .shared import (
+  CLANG_CC,
+  CLANG_CXX,
+  DEBUG,
+  EMAR,
+  EMCC,
+  EMRANLIB,
+  EMXX,
+  LLVM_DWARFDUMP,
+  LLVM_NM,
+  LLVM_OBJCOPY,
+  WASM_LD,
+  asmjs_mangle,
+  check_call,
+  demangle_c_symbol_name,
+  exit_with_error,
+  get_emscripten_temp_dir,
+  is_c_symbol,
+  path_from_root,
+  run_process,
+)
+from .toolchain_profiler import ToolchainProfiler
+from .utils import WINDOWS
 
 logger = logging.getLogger('building')
 

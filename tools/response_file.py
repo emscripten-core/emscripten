@@ -7,8 +7,8 @@ import logging
 import os
 import shlex
 import tempfile
-from .utils import WINDOWS
 
+from .utils import WINDOWS
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 

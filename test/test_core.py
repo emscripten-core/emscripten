@@ -12,26 +12,67 @@ import re
 import shutil
 import time
 import unittest
-from pathlib import Path
 from functools import wraps
+from pathlib import Path
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner')
 
-from tools.shared import PIPE
-from tools.shared import EMCC, EMAR, EMXX, FILE_PACKAGER, LLVM_PROFDATA, LLVM_COV
-from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
-from tools import shared, building, config, utils, webassembly
-import common
-from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
-from common import skip_if, no_windows, is_slow_test, parameterized, parameterize, all_engines
-from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_without_bigint
-from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
-from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
-from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
-from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_eh, requires_jspi
-from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON, needs_make
 import clang_native
+import common
+from common import (
+  EMBUILDER,
+  NON_ZERO,
+  PYTHON,
+  WEBIDL_BINDER,
+  RunnerCore,
+  all_engines,
+  also_with_minimal_runtime,
+  also_with_modularize,
+  also_with_nodefs,
+  also_with_nodefs_both,
+  also_with_noderawfs,
+  also_with_standalone_wasm,
+  also_with_wasmfs,
+  also_without_bigint,
+  can_do_standalone,
+  compiler_for,
+  create_file,
+  crossplatform,
+  disabled,
+  env_modify,
+  flaky,
+  is_slow_test,
+  needs_make,
+  no_2gb,
+  no_4gb,
+  no_wasm64,
+  no_windows,
+  node_pthreads,
+  parameterize,
+  parameterized,
+  path_from_root,
+  read_binary,
+  read_file,
+  requires_dev_dependency,
+  requires_jspi,
+  requires_native_clang,
+  requires_node,
+  requires_node_canary,
+  requires_v8,
+  requires_wasm2js,
+  requires_wasm_eh,
+  skip_if,
+  test_file,
+  with_all_eh_sjlj,
+  with_all_fs,
+  with_all_sjlj,
+  with_env_modify,
+)
+
+from tools import building, config, shared, utils, webassembly
+from tools.shared import EMAR, EMCC, EMXX, FILE_PACKAGER, LLVM_COV, LLVM_PROFDATA, PIPE
+from tools.utils import LINUX, MACOS, WINDOWS, delete_file, write_file
 
 # decorators for limiting which modes a test can run in
 

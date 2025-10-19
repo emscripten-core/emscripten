@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from .toolchain_profiler import ToolchainProfiler
-
 import base64
 import glob
 import hashlib
@@ -13,35 +11,51 @@ import logging
 import os
 import re
 import shlex
-import stat
 import shutil
+import stat
 import time
 from subprocess import PIPE
 from urllib.parse import quote
 
-from . import building
-from . import cache
-from . import config
-from . import diagnostics
-from . import emscripten
-from . import feature_matrix
-from . import filelock
-from . import js_manipulation
-from . import ports
-from . import shared
-from . import system_libs
-from . import utils
-from . import webassembly
-from . import extract_metadata
+from . import (
+  building,
+  cache,
+  config,
+  diagnostics,
+  emscripten,
+  extract_metadata,
+  feature_matrix,
+  filelock,
+  js_manipulation,
+  ports,
+  shared,
+  system_libs,
+  utils,
+  webassembly,
+)
 from .cmdline import OFormat
-from .utils import read_file, write_file, delete_file, safe_copy
-from .utils import removeprefix, exit_with_error
-from .utils import unsuffixed, unsuffixed_basename, get_file_suffix
-from .shared import in_temp, do_replace
-from .shared import DEBUG, WINDOWS, DYLIB_EXTENSIONS
-from .settings import settings, default_setting, user_settings
-from .settings import JS_ONLY_SETTINGS, DEPRECATED_SETTINGS, INCOMPATIBLE_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
+from .settings import (
+  DEPRECATED_SETTINGS,
+  INCOMPATIBLE_SETTINGS,
+  JS_ONLY_SETTINGS,
+  default_setting,
+  settings,
+  user_settings,
+)
+from .shared import DEBUG, DYLIB_EXTENSIONS, WINDOWS, do_replace, in_temp
+from .toolchain_profiler import ToolchainProfiler
+from .utils import (
+  delete_file,
+  exit_with_error,
+  get_file_suffix,
+  read_file,
+  removeprefix,
+  safe_copy,
+  unsuffixed,
+  unsuffixed_basename,
+  write_file,
+)
 
 logger = logging.getLogger('link')
 

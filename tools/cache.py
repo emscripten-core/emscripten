@@ -11,7 +11,7 @@ import logging
 import os
 from pathlib import Path
 
-from . import filelock, config, utils
+from . import config, filelock, utils
 from .settings import settings
 
 logger = logging.getLogger('cache')

@@ -10,15 +10,13 @@ import sys
 import tempfile
 import time
 import unittest
-from tools import emprofile
-from tools import utils
 
 import common
 from common import errlog
 
-from tools.colored_logger import with_color, CYAN, GREEN, RED
+from tools import emprofile, utils
+from tools.colored_logger import CYAN, GREEN, RED, with_color
 from tools.utils import WINDOWS
-
 
 NUM_CORES = None
 seen_class = set()

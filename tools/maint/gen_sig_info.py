@@ -11,13 +11,12 @@ for the majority of JS library functions.
 """
 
 import argparse
+import glob
 import json
 import os
-import sys
-import subprocess
 import re
-import glob
-
+import subprocess
+import sys
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(os.path.dirname(__scriptdir__))

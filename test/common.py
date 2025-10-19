@@ -3,14 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from enum import Enum
-from functools import wraps
-from pathlib import Path
-from subprocess import PIPE, STDOUT
-from typing import Dict, Tuple
-from urllib.parse import unquote, unquote_plus, urlparse, parse_qs
-from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
-from retryable_unittest import RetryableTestCase
 import contextlib
 import difflib
 import hashlib
@@ -19,7 +11,7 @@ import itertools
 import json
 import logging
 import os
-import psutil
+import queue
 import re
 import shlex
 import shutil
@@ -31,18 +23,33 @@ import tempfile
 import textwrap
 import threading
 import time
-import webbrowser
 import unittest
-import queue
+import webbrowser
+from enum import Enum
+from functools import wraps
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from subprocess import PIPE, STDOUT
+from typing import Dict, Tuple
+from urllib.parse import parse_qs, unquote, unquote_plus, urlparse
 
 import clang_native
 import jsrun
 import line_endings
-from tools.shared import EMCC, EMXX, DEBUG
-from tools.shared import get_canonical_temp_dir, path_from_root
-from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
+import psutil
+from retryable_unittest import RetryableTestCase
+
+from tools import building, config, feature_matrix, shared, utils
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools import shared, feature_matrix, building, config, utils
+from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir, path_from_root
+from tools.utils import (
+  MACOS,
+  WINDOWS,
+  exit_with_error,
+  read_binary,
+  read_file,
+  write_binary,
+)
 
 logger = logging.getLogger('common')
 

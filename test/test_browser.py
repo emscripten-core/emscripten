@@ -15,21 +15,56 @@ import time
 import unittest
 import zlib
 from functools import wraps
-from http.server import BaseHTTPRequestHandler, HTTPServer, ThreadingHTTPServer, SimpleHTTPRequestHandler
+from http.server import (
+  BaseHTTPRequestHandler,
+  HTTPServer,
+  SimpleHTTPRequestHandler,
+  ThreadingHTTPServer,
+)
 from pathlib import Path
 from urllib.request import urlopen
 
 import common
-from common import BrowserCore, RunnerCore, path_from_root, has_browser, Reporting, is_chrome, is_firefox, is_safari, CHROMIUM_BASED_BROWSERS
-from common import create_file, parameterized, ensure_dir, disabled, flaky, test_file, WEBIDL_BINDER
-from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree, skip_if, skip_if_simple
-from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
-from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
-from common import HttpServerThread, requires_dev_dependency
-from tools import shared
-from tools import ports
+from common import (
+  CHROMIUM_BASED_BROWSERS,
+  EMRUN,
+  WEBIDL_BINDER,
+  BrowserCore,
+  HttpServerThread,
+  Reporting,
+  RunnerCore,
+  also_with_asan,
+  also_with_minimal_runtime,
+  also_with_wasm2js,
+  also_with_wasmfs,
+  copytree,
+  create_file,
+  disabled,
+  ensure_dir,
+  find_browser_test_file,
+  flaky,
+  has_browser,
+  is_chrome,
+  is_firefox,
+  is_safari,
+  no_2gb,
+  no_4gb,
+  no_wasm64,
+  parameterize,
+  parameterized,
+  path_from_root,
+  read_file,
+  requires_dev_dependency,
+  requires_wasm2js,
+  skip_if,
+  skip_if_simple,
+  test_file,
+  with_all_sjlj,
+)
+
+from tools import ports, shared
 from tools.feature_matrix import UNSUPPORTED
-from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
+from tools.shared import DEBUG, EMCC, FILE_PACKAGER, PIPE, WINDOWS
 from tools.utils import delete_dir, memoize
 
 

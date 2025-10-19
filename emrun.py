@@ -38,10 +38,11 @@ import time
 from operator import itemgetter
 
 if sys.version_info.major == 2:
+  from urllib import unquote
+
   import SocketServer as socketserver
   from BaseHTTPServer import HTTPServer
   from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from urllib import unquote
   from urlparse import urlsplit
 else:
   import socketserver

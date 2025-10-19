@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from tools.toolchain_profiler import ToolchainProfiler
-
 import json
 import logging
 import os
@@ -14,11 +12,20 @@ import sys
 from enum import Enum, auto, unique
 from subprocess import PIPE
 
-from tools import shared, utils, ports, diagnostics, config
-from tools import cache, feature_matrix, colored_logger
+from tools import (
+  cache,
+  colored_logger,
+  config,
+  diagnostics,
+  feature_matrix,
+  ports,
+  shared,
+  utils,
+)
+from tools.settings import MEM_SIZE_SETTINGS, settings, user_settings
 from tools.shared import exit_with_error
-from tools.settings import settings, user_settings, MEM_SIZE_SETTINGS
-from tools.utils import removeprefix, read_file
+from tools.toolchain_profiler import ToolchainProfiler
+from tools.utils import read_file, removeprefix
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
 SIMD_NEON_FLAGS = ['-mfpu=neon']

@@ -6,18 +6,18 @@
 """Shared code specific to emscripten.  General purpose and low-level helpers belong instead in
 utils.py."""
 
-from .toolchain_profiler import ToolchainProfiler
-
-from subprocess import PIPE
 import atexit
 import logging
 import os
 import re
 import shlex
-import subprocess
 import signal
+import subprocess
 import sys
 import tempfile
+from subprocess import PIPE
+
+from .toolchain_profiler import ToolchainProfiler
 
 # We depend on python 3.8 features
 if sys.version_info < (3, 8): # noqa: UP036
@@ -39,15 +39,19 @@ elif EMCC_LOGGING:
 logging.basicConfig(format='%(name)s:%(levelname)s: %(message)s', level=log_level)
 colored_logger.enable()
 
-from .utils import path_from_root, exit_with_error, safe_ensure_dirs, WINDOWS, set_version_globals, memoize, bat_suffix
-from . import cache, tempfiles
-from . import diagnostics
-from . import config
-from . import filelock
-from . import utils
-from .settings import settings
 import contextlib
 
+from . import cache, config, diagnostics, filelock, tempfiles, utils
+from .settings import settings
+from .utils import (
+  WINDOWS,
+  bat_suffix,
+  exit_with_error,
+  memoize,
+  path_from_root,
+  safe_ensure_dirs,
+  set_version_globals,
+)
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))

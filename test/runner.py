@@ -28,8 +28,8 @@ import os
 import platform
 import random
 import sys
-import unittest
 import time
+import unittest
 from functools import cmp_to_key
 
 # Setup
@@ -37,12 +37,12 @@ from functools import cmp_to_key
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, __rootpath__)
 
+import common
 import jsrun
 import parallel_testsuite
-import common
 from common import errlog
-from tools import shared, config, utils
 
+from tools import config, shared, utils
 
 sys.path.append(utils.path_from_root('third_party/websockify'))
 
@@ -421,7 +421,7 @@ def run_tests(options, suites):
     os.makedirs('out', exist_ok=True)
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
-    import xmlrunner # type: ignore
+    import xmlrunner  # type: ignore
     testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2,
                                          failfast=options.failfast)
     print('Writing XML test output to ' + os.path.abspath(output.name))

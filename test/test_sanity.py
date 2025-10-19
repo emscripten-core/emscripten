@@ -6,26 +6,33 @@
 import glob
 import os
 import platform
+import re
 import shutil
 import stat
-import time
-import re
 import tempfile
+import time
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
 import common
-from common import RunnerCore, path_from_root, env_modify, test_file
-from common import create_file, ensure_dir, make_executable, with_env_modify
-from common import crossplatform, parameterized, EMBUILDER
+from common import (
+  EMBUILDER,
+  RunnerCore,
+  create_file,
+  crossplatform,
+  ensure_dir,
+  env_modify,
+  make_executable,
+  parameterized,
+  path_from_root,
+  test_file,
+  with_env_modify,
+)
+
+from tools import cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
-from tools.shared import EMCC
-from tools.shared import config
-from tools.utils import delete_file, delete_dir
-from tools import cache
-from tools import shared, utils
-from tools import response_file
-from tools import ports
+from tools.shared import EMCC, config
+from tools.utils import delete_dir, delete_file
 
 SANITY_FILE = cache.get_path('sanity.txt')
 commands = [[EMCC], [shared.bat_suffix(path_from_root('test/runner')), 'blahblah']]

@@ -10,9 +10,16 @@ import re
 import shlex
 
 import common
-from common import RunnerCore
-from common import parameterized, node_pthreads
-from common import test_file, read_file, read_binary, create_file, compiler_for
+from common import (
+  RunnerCore,
+  compiler_for,
+  create_file,
+  node_pthreads,
+  parameterized,
+  read_binary,
+  read_file,
+  test_file,
+)
 
 from tools import building, shared
 
