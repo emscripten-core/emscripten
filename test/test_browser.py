@@ -1809,7 +1809,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     for image in images:
       cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
-    lib = self.get_library(f'third_party/glbook', [program], configure=None, cache_name_extra=os.path.basename(program))[0]
+    lib = self.get_library('third_party/glbook', [program], configure=None, cache_name_extra=os.path.basename(program))[0]
     self.reftest(lib, book_path(os.path.basename(program).replace('.o', '.png')), cflags=cflags)
 
   @requires_graphics_hardware
