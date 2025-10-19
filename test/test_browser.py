@@ -1797,7 +1797,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     'MultiTexture': ('Chapter_10/MultiTexture/CH10_MultiTexture.o', ['Chapter_10/MultiTexture/basemap.tga', 'Chapter_10/MultiTexture/lightmap.tga'], []),
     # run this individual test with optimizations and closure for more coverage
     'ParticleSystem': ('Chapter_13/ParticleSystem/CH13_ParticleSystem.o', ['Chapter_13/ParticleSystem/smoke.tga'], ['-O2']),
-    })
+  })
   def test_glbook(self, program, images, cflags):
     self.cflags.append('-Wno-int-conversion')
     self.cflags.append('-Wno-pointer-sign')
