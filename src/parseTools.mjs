@@ -805,24 +805,16 @@ function addAtPostRun(code) {
 }
 
 function makeRetainedCompilerSettings() {
-  const ignore = new Set();
-  if (STRICT) {
-    for (const setting of LEGACY_SETTINGS) {
-      ignore.add(setting);
-    }
-  }
-
   const ret = {};
-  for (const x in global) {
-    if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
-      const value = global[x];
+  for (const [name, value] of Object.entries(global)) {
+    if (name[0] !== '_' && name == name.toUpperCase()) {
       if (
         typeof value == 'number' ||
         typeof value == 'boolean' ||
         typeof value == 'string' ||
-        Array.isArray(x)
+        Array.isArray(name)
       ) {
-        ret[x] = value;
+        ret[name] = value;
       }
     }
   }
