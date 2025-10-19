@@ -15,10 +15,16 @@ $ErrorActionPreference = 'Stop'
 $launcher = $env:EMSDK_PYTHON
 $launcherArgs = @()
 if (!$launcher) {
-  # Use the global Python launcher that manages all Python installations.
-  $launcher = Get-Command py.exe
-  # ...but ask for Python 3
-  $launcherArgs += '-3'
+  try {
+    $launcher = Get-Command py.exe -ErrorAction Stop
+    $launcherArgs += '-3'
+  } catch {
+    try {
+      $launcher = Get-Command python -ErrorAction Stop
+    } catch {
+      $launcher = 'python'
+    }
+  }
 }
 
 # Ignore PYTHON* environment variables.
@@ -29,4 +35,28 @@ Remove-Item -ErrorAction Ignore Env:\_PYTHON_SYSCONFIGDATA_NAME
 
 $pythonScript = $MyInvocation.MyCommand.Path -replace '\.ps1$', '.py'
 
-& $launcher $launcherArgs $pythonScript $MyInvocation.UnboundArguments
+# Use $args which is more reliable for argument passing
+$allArgs = @()
+if ($args) {
+    $allArgs += $args
+} elseif ($MyInvocation.UnboundArguments) {
+    $allArgs += $MyInvocation.UnboundArguments
+}
+$processInfo = New-Object System.Diagnostics.ProcessStartInfo
+$processInfo.FileName = $launcher
+$processInfo.Arguments = ($launcherArgs + $pythonScript + $allArgs) -join ' '
+$processInfo.RedirectStandardOutput = $true
+$processInfo.RedirectStandardError = $true
+$processInfo.UseShellExecute = $false
+$processInfo.CreateNoWindow = $true
+$process = New-Object System.Diagnostics.Process
+$process.StartInfo = $processInfo
+$process.Start() | Out-Null
+$stdout = $process.StandardOutput.ReadToEnd()
+$stderr = $process.StandardError.ReadToEnd()
+$process.WaitForExit()
+if ($stdout) { Write-Output $stdout }
+if ($stderr) { Write-Output $stderr }
+
+# Exit with the same code as the underlying command
+exit $process.ExitCode
