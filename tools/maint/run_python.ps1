@@ -23,10 +23,4 @@ if (!$launcher) {
 
 # Ignore PYTHON* environment variables.
 $launcherArgs += '-E'
-# -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
-# of cpython used in cross compilation via setup.py, so remove it explicitly.
-Remove-Item -ErrorAction Ignore Env:\_PYTHON_SYSCONFIGDATA_NAME
-
-$pythonScript = $MyInvocation.MyCommand.Path -replace '\.ps1$', '.py'
-
 & $launcher $launcherArgs $pythonScript $MyInvocation.UnboundArguments
