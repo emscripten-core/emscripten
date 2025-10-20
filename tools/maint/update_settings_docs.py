@@ -26,6 +26,7 @@ root_dir = os.path.dirname(os.path.dirname(script_dir))
 sys.path.insert(0, root_dir)
 
 from tools.utils import path_from_root, read_file, safe_ensure_dirs
+from tools.settings import LEGACY_SETTINGS, DEPRECATED_SETTINGS
 
 header = '''\
 .. _settings-reference:
@@ -52,6 +53,31 @@ all_tags = {
   'experimental': 'This is an experimental setting',
   'deprecated': 'This setting is deprecated',
 }
+
+deprecated_header = '''
+.. _deprecated-settings:
+
+===================
+Deprecated Settings
+===================
+
+The following settings have been proposed for removal from emscripten.  These settings
+still function but may be removed in a future version.  If your project is using of
+the these settings please open a bug (or reply to one of the existing bugs).
+
+'''
+
+legacy_header = '''
+.. _legacy-settings:
+
+===============
+Legacy Settings
+===============
+
+The following settings no longer have any effect but are still accepted by emscripten
+for backwards compatbility with older versions:
+
+'''
 
 output_file = path_from_root('site/source/docs/tools_reference/settings_reference.rst')
 
@@ -80,8 +106,6 @@ def write_file(f):
   current_comment = []
   current_tags = []
   for line in read_file(path_from_root('src/settings.js')).splitlines():
-    if 'LEGACY_SETTINGS' in line:
-      break
     if not line:
       current_comment = []
       current_tags = []
@@ -106,6 +130,19 @@ def write_file(f):
       write_setting(f, setting_name, setting_default, comment, current_tags)
       current_comment = []
       current_tags = []
+
+  f.write(deprecated_header)
+
+  for name, desc in DEPRECATED_SETTINGS.items():
+    f.write(f' - ``{name}``: {desc}\n')
+
+  f.write(legacy_header)
+
+  for name, values, *extra_fields in LEGACY_SETTINGS:
+    desc = f'Valid values: {values}'
+    if extra_fields:
+      desc = f'{extra_fields[0]} ({desc})'
+    f.write(f' - ``{name}``: {desc}\n')
 
 
 def main(args):
