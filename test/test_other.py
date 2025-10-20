@@ -9469,6 +9469,7 @@ int main() {
 
   @is_slow_test
   @also_with_wasm2js
+  @also_with_minimal_runtime
   @parameterized({
     '': (False, False),
     'debug': (True, False),

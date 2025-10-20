@@ -410,10 +410,6 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
-#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
-#include "binaryDecode.js"
-#endif
-
 #if !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
 var wasmBinaryFile;
 
