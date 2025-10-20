@@ -1857,6 +1857,8 @@ var SINGLE_FILE = false;
 // instead of base64. This generates a smaller binary that compresses well.
 // Set this to false to revert back to earlier base64 encoding if you run into
 // issues with the binary encoding. (and please let us know of any such issues)
+// If no issues arise, this option will permanently become the default in the
+// future.
 // [link]
 var SINGLE_FILE_BINARY_ENCODE = true;
 

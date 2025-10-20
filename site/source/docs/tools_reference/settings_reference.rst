@@ -2832,6 +2832,8 @@ If true, binary Wasm content is encoded using a custom UTF-8 embedding
 instead of base64. This generates a smaller binary that compresses well.
 Set this to false to revert back to earlier base64 encoding if you run into
 issues with the binary encoding. (and please let us know of any such issues)
+If no issues arise, this option will permanently become the default in the
+future.
 
 Default value: true
 
