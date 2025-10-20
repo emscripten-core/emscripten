@@ -9,6 +9,7 @@ import glob
 import importlib
 import itertools
 import json
+import locale
 import os
 import random
 import re
@@ -13164,7 +13165,6 @@ exec "$@"
     open('a.rsp.cp437', 'w', encoding='cp437').write('äö.c') # Write a response file with Windows CP-437 encoding ...
     self.run_process([EMCC, '@a.rsp.cp437']) # ... and test that with the explicit suffix present, it is properly decoded
 
-    import locale
     preferred_encoding = locale.getpreferredencoding(do_setlocale=False)
     print('Python locale preferredencoding: ' + preferred_encoding)
     open('a.rsp', 'w', encoding=preferred_encoding).write('äö.c') # Write a response file using Python preferred encoding
