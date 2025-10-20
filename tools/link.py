@@ -2964,10 +2964,10 @@ def binary_encode(filename):
   i = 0
   for d in data:
     d += 1 # Offset all bytes up by +1 to make zero (a very common value) be encoded with only one byte as 0x01. This is possible since we can encode 255 as 0x100 in UTF-8.
-    if d == ord("'"):
-      buf = [ord('\\'), d] # Escape single quote ' character with a backspace since we are writing a string inside single quotes. (' -> 2 bytes)
-    elif d == ord('"'):
-      buf = [ord('\\'), d] # Escape double quote " character with a backspace since optimizer may turn the string into being delimited with double quotes. (" -> 2 bytes)
+    if d == ord('"'):
+      # Escape double quote " character with a backspace since we are writing the binary string inside double quotes.
+      # Also closure optimizer will turn the string into being delimited with double quotes, even if it were single quotes to start with. (" -> 2 bytes)
+      buf = [ord('\\'), d]
     elif d == ord('\r'):
       buf = [ord('\\'), ord('r')] # Escape carriage return 0x0D as \r -> 2 bytes
     elif d == ord('\n'):

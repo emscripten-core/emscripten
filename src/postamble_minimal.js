@@ -150,7 +150,7 @@ function initRuntime(wasmExports) {
 // Initialize wasm (asynchronous)
 
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
-Module['wasm'] = binaryDecode('<<< WASM_BINARY_DATA >>>');
+Module['wasm'] = binaryDecode("<<< WASM_BINARY_DATA >>>");
 #elif SINGLE_FILE && WASM == 1 && !WASM2JS
 Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #endif
