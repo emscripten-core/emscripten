@@ -2823,6 +2823,18 @@ then you can safely ignore this warning.
 
 Default value: false
 
+.. _single_file_binary_encode:
+
+SINGLE_FILE_BINARY_ENCODE
+=========================
+
+If true, binary Wasm content is encoded using a custom UTF-8 embedding
+instead of base64. This generates a smaller binary that compresses well.
+Set this to false to revert back to earlier base64 encoding if you run into
+issues with the binary encoding. (and please let us know of any such issues)
+
+Default value: true
+
 .. _auto_js_libraries:
 
 AUTO_JS_LIBRARIES
