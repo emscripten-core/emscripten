@@ -163,6 +163,10 @@ def base64_encode(filename):
   return b64.decode('ascii')
 
 
+def base64_or_binary_encode(b):
+  return binary_encode(b) if settings.SINGLE_FILE and settings.SINGLE_FILE_BINARY_ENCODE else base64_encode(b)
+
+
 def align_to_wasm_page_boundary(address):
   page_size = webassembly.WASM_PAGE_SIZE
   return ((address + (page_size - 1)) // page_size) * page_size
@@ -2435,7 +2439,7 @@ def phase_binaryen(target, options, wasm_target):
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
     js = read_file(final_js)
 
-    js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
+    js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_or_binary_encode(wasm_target))
     delete_file(wasm_target)
     write_file(final_js, js)
 
@@ -2945,9 +2949,44 @@ def move_file(src, dst):
   shutil.move(src, dst)
 
 
+def binary_encode(filename):
+  """This function encodes the given binary byte array to a UTF-8 string, by
+  first adding +1 to all the bytes [0, 255] to form values [1, 256], and then
+  encoding each of those values as UTF-8, except for specific byte values that
+  are escaped as two bytes. This kind of encoding results in a string that will
+  compress well by both gzip and brotli, unlike base64 encoding binary data
+  would do, and avoids emitting the null byte inside a string.
+  """
+
+  data = utils.read_binary(filename)
+
+  out = bytearray(len(data) * 2) # Size output buffer conservatively
+  i = 0
+  for d in data:
+    d += 1 # Offset all bytes up by +1 to make zero (a very common value) be encoded with only one byte as 0x01. This is possible since we can encode 255 as 0x100 in UTF-8.
+    if d == ord("'"):
+      buf = [ord('\\'), d] # Escape single quote ' character with a backspace since we are writing a string inside single quotes. (' -> 2 bytes)
+    elif d == ord('"'):
+      buf = [ord('\\'), d] # Escape double quote " character with a backspace since optimizer may turn the string into being delimited with double quotes. (" -> 2 bytes)
+    elif d == ord('\r'):
+      buf = [ord('\\'), ord('r')] # Escape carriage return 0x0D as \r -> 2 bytes
+    elif d == ord('\n'):
+      buf = [ord('\\'), ord('n')] # Escape newline 0x0A as \n -> 2 bytes
+    elif d == ord('\\'):
+      buf = [ord('\\'), ord('\\')] # Escape backslash \ as \\ -> 2 bytes
+    else:
+      buf = chr(d).encode('utf-8') # Otherwise write the original value encoded in UTF-8 (1 or 2 bytes).
+    for b in buf: # Write the bytes to output buffer
+      out[i] = b
+      i += 1
+  return out[0:i].decode('utf-8') # Crop output buffer to the actual used size
+
+
 # Returns the subresource location for run-time access
 def get_subresource_location(path, mimetype='application/octet-stream'):
   if settings.SINGLE_FILE:
+    if settings.SINGLE_FILE_BINARY_ENCODE:
+      return binary_encode(utils.read_binary(path))
     return f'data:{mimetype};base64,{base64_encode(path)}'
   else:
     return os.path.basename(path)

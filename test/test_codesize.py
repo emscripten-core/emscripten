@@ -43,6 +43,7 @@ class codesize(RunnerCore):
     'random_printf_wasm2js': ('random_printf', True),
     'hello_webgl_wasm': ('hello_webgl', False),
     'hello_webgl_wasm2js': ('hello_webgl', True),
+    'hello_webgl2_wasm_singlefile': ('hello_webgl2_wasm_singlefile', False),
     'hello_webgl2_wasm': ('hello_webgl2', False),
     'hello_webgl2_wasm2js': ('hello_webgl2', True),
     'math': ('math', False),
@@ -87,6 +88,7 @@ class codesize(RunnerCore):
                            '-lGL',
                            '-sMODULARIZE']
     hello_webgl2_sources = hello_webgl_sources + ['-sMAX_WEBGL_VERSION=2']
+    hello_webgl2_wasm_singlefile_sources = hello_webgl2_sources + ['-sSINGLE_FILE']
     hello_wasm_worker_sources = [test_file('wasm_worker/wasm_worker_code_size.c'), '-sWASM_WORKERS', '-sENVIRONMENT=web']
     audio_worklet_sources = [test_file('webaudio/audioworklet.c'), '-sWASM_WORKERS', '-sAUDIO_WORKLET', '-sENVIRONMENT=web', '-sTEXTDECODER=1']
     embind_hello_sources = [test_file('codesize/embind_hello_world.cpp'), '-lembind']
@@ -98,6 +100,7 @@ class codesize(RunnerCore):
       'hello_webgl': hello_webgl_sources,
       'math': math_sources,
       'hello_webgl2': hello_webgl2_sources,
+      'hello_webgl2_wasm_singlefile': hello_webgl2_wasm_singlefile_sources,
       'hello_wasm_worker': hello_wasm_worker_sources,
       'audio_worklet': audio_worklet_sources,
       'embind_val': embind_val_sources,

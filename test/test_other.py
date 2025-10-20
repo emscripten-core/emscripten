@@ -9475,8 +9475,9 @@ int main() {
     'closure': (False, True),
   })
   @parameterized({
-    '': (True,),
-    'disabled': (False,),
+    '': (1,),
+    'disabled': (0,),
+    'binary_encode': (2,),
   })
   def test_single_file(self, debug_enabled, closure_enabled, single_file_enabled):
     cmd = [EMCC, test_file('hello_world.c')] + self.get_cflags()
@@ -9486,6 +9487,8 @@ int main() {
       cmd += ['-sSINGLE_FILE']
     else:
       expect_wasm = self.is_wasm()
+
+    cmd += [f'-sSINGLE_FILE_BINARY_ENCODE={int(single_file_enabled == 2)}']
 
     if debug_enabled:
       cmd += ['-g']
