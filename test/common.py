@@ -1084,8 +1084,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.skipTest('dynamic linking not supported with llvm-libc')
     if self.is_wasm2js():
       self.skipTest('dynamic linking not supported with wasm2js')
-    if '-fsanitize=undefined' in self.cflags:
-      self.skipTest('dynamic linking not supported with UBSan')
     # MEMORY64=2 mode doesn't currently support dynamic linking because
     # The side modules are lowered to wasm32 when they are built, making
     # them unlinkable with wasm64 binaries.
