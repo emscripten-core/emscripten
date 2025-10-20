@@ -414,3 +414,13 @@ class codesize(RunnerCore):
   def test_small_js_flags(self):
     self.emcc('browser_test_hello_world.c', ['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
     self.check_output_sizes('a.out.js')
+
+  # This test verifies that gzipped binary-encoded a SINGLE_FILE build results in a smaller size
+  # than gzipped base64-encoded version.
+  def test_binary_encode_is_smaller_than_base64_encode(self):
+    self.emcc('hello_world.c', ['-O2', '-sSINGLE_FILE', '-sSINGLE_FILE_BINARY_ENCODE'])
+    size_binary_encode = len(gzip.compress(read_binary('a.out.js')))
+    self.emcc('hello_world.c', ['-O2', '-sSINGLE_FILE', '-sSINGLE_FILE_BINARY_ENCODE=0'])
+    size_base64 = len(gzip.compress(read_binary('a.out.js')))
+    print(f'Binary encoded file size: {size_binary_encode}, base64 encoded file size: {size_base64}')
+    self.assertLess(size_binary_encode, size_base64)
