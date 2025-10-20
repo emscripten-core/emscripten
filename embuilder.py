@@ -127,6 +127,9 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libwasmfs-debug',
     'libwasmfs_no_fs',
     'giflib',
+    'sdl2',
+    'sdl2_gfx',
+    'sdl3',
 ]
 
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(ports.port_variants.keys()))

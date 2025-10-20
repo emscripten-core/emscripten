@@ -1854,15 +1854,14 @@ int main() {
     self.do_core_test('test_set_align.c')
 
   @no_modularize_instance('uses Module object directly')
-  @no_js_math('JS_MATH is not compatible with LINKABLE')
   @parameterized({
     '': (['-sEXPORTED_FUNCTIONS=_main,_save_me_aimee'],),
     # test EXPORT_ALL too
-    'export_all': (['-Wno-deprecated', '-sEXPORT_ALL', '-sLINKABLE'],),
+    'export_all': (['-sEXPORT_ALL', '-sMAIN_MODULE'],),
   })
   def test_emscripten_api(self, args):
-    if '-sLINKABLE' in args and '-lllvmlibc' in self.cflags:
-      self.skipTest('LLVM-libc overlay mode is not compatible with whole-archive (LINKABLE)')
+    if '-sMAIN_MODULE' in args:
+      self.check_dylink()
     self.do_core_test('test_emscripten_api.c', cflags=args)
 
   def test_emscripten_run_script_string_int(self):
@@ -6646,8 +6645,7 @@ void* operator new(size_t size) {
 
   @needs_dylink
   def test_relocatable_void_function(self):
-    self.set_setting('RELOCATABLE')
-    self.do_core_test('test_relocatable_void_function.c', cflags=['-Wno-deprecated'])
+    self.do_core_test('test_relocatable_void_function.c', cflags=['-sMAIN_MODULE=2'])
 
   @wasm_simd
   @parameterized({
