@@ -571,7 +571,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
   ret = generate_js(data_target, data_files, metadata)
 
-  if options.force or len(data_files):
+  if options.force or data_files:
     if options.jsoutput is None:
       print(ret)
     else:

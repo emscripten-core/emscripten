@@ -89,7 +89,7 @@ class WebsockifyServerHarness:
       self.processes.append(process)
 
     try:
-      import websockify  # type: ignore
+      import websockify  # type: ignore # noqa: PLC0415
     except ModuleNotFoundError:
       raise Exception('Unable to import module websockify. Run "python3 -m pip install websockify" or set environment variable EMTEST_SKIP_PYTHON_DEV_PACKAGES=1 to skip this test.') from None
 
