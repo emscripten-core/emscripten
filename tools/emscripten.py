@@ -940,8 +940,8 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
 
     return '\n'.join(receiving)
 
-  # When not declaring asm exports this section is empty and we instead programmatically export
-  # symbols on the global object by calling exportWasmSymbols after initialization
+  # When not declaring asm exports `assignWasmExports` is instead defined as a simple
+  # library function.
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
