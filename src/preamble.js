@@ -427,8 +427,7 @@ function findWasmBinary() {
   return binaryDecode("<<< WASM_BINARY_DATA >>>");
 #elif SINGLE_FILE
   return base64Decode('<<< WASM_BINARY_DATA >>>');
-#elif AUDIO_WORKLET || !EXPORT_ES6
-  // For an Audio Worklet, we cannot use `new URL()`.
+#elif AUDIO_WORKLET || !EXPORT_ES6 // For an Audio Worklet, we cannot use `new URL()`.
   return locateFile('{{{ WASM_BINARY_FILE }}}');
 #else
 
