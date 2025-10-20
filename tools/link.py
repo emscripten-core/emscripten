@@ -164,7 +164,7 @@ def base64_encode(filename):
 
 
 def base64_or_binary_encode(b):
-  return binary_encode(b) if settings.SINGLE_FILE and settings.SINGLE_FILE_BINARY_ENCODE else base64_encode(b)
+  return binary_encode(b) if settings.SINGLE_FILE_BINARY_ENCODE else base64_encode(b)
 
 
 def align_to_wasm_page_boundary(address):
