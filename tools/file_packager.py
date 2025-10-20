@@ -85,9 +85,8 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import shared, utils, js_manipulation, diagnostics
+from tools import diagnostics, js_manipulation, shared, utils
 from tools.response_file import substitute_response_files
-
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 

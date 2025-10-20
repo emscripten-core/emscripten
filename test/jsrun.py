@@ -3,13 +3,14 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import common
 import logging
 import os
 import shlex
 import subprocess
 import sys
 from subprocess import PIPE, CalledProcessError
+
+import common
 
 from tools import utils
 

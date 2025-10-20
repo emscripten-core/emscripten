@@ -9,10 +9,9 @@ Also, provides utiliy functions to use ANSI colors in the terminal.
 """
 
 import ctypes
-import sys
 import logging
+import sys
 from functools import wraps
-
 
 # ANSI colors
 RED = 1

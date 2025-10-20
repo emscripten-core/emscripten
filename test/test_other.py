@@ -5,8 +5,6 @@
 
 # noqa: E241
 
-from functools import wraps
-from datetime import datetime
 import glob
 import importlib
 import itertools
@@ -21,35 +19,90 @@ import subprocess
 import sys
 import tarfile
 import time
+from datetime import datetime
+from functools import wraps
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner other')
 
-from tools.building import get_building_env
-from tools.shared import config
-from tools.shared import EMCC, EMXX, EMAR, EMRANLIB, FILE_PACKAGER, LLVM_NM
-from tools.shared import CLANG_CC, CLANG_CXX, LLVM_AR, LLVM_DWARFDUMP, LLVM_DWP, WASM_LD
-from common import RunnerCore, path_from_root, is_slow_test, ensure_dir, disabled, make_executable
-from common import env_modify, no_mac, no_windows, only_windows, requires_native_clang, with_env_modify
-from common import create_file, parameterized, NON_ZERO, node_pthreads, TEST_ROOT, test_file
-from common import EMBUILDER, requires_v8, requires_node, requires_wasm64, requires_node_canary, requires_dev_dependency
-from common import requires_wasm_eh, crossplatform, with_all_eh_sjlj, with_all_sjlj, requires_jspi
-from common import also_with_standalone_wasm, also_with_wasm2js, also_with_noderawfs
-from common import also_with_modularize, also_with_wasmfs, with_all_fs
-from common import also_with_minimal_runtime, also_without_bigint, also_with_wasm64, also_with_asan, flaky
-from common import EMTEST_BUILD_VERBOSE, PYTHON, WEBIDL_BINDER, EMCMAKE, EMCONFIGURE
-from common import requires_network, parameterize, copytree, all_engines
-from tools import shared, building, utils, response_file, cache
-from tools.utils import read_file, write_file, delete_file, read_binary, MACOS, WINDOWS
+import clang_native
 import common
 import jsrun
-import clang_native
 import line_endings
-from tools import webassembly
+from common import (
+  EMBUILDER,
+  EMCMAKE,
+  EMCONFIGURE,
+  EMTEST_BUILD_VERBOSE,
+  NON_ZERO,
+  PYTHON,
+  TEST_ROOT,
+  WEBIDL_BINDER,
+  RunnerCore,
+  all_engines,
+  also_with_asan,
+  also_with_minimal_runtime,
+  also_with_modularize,
+  also_with_noderawfs,
+  also_with_standalone_wasm,
+  also_with_wasm2js,
+  also_with_wasm64,
+  also_with_wasmfs,
+  also_without_bigint,
+  copytree,
+  create_file,
+  crossplatform,
+  disabled,
+  ensure_dir,
+  env_modify,
+  flaky,
+  is_slow_test,
+  make_executable,
+  no_mac,
+  no_windows,
+  node_pthreads,
+  only_windows,
+  parameterize,
+  parameterized,
+  path_from_root,
+  requires_dev_dependency,
+  requires_jspi,
+  requires_native_clang,
+  requires_network,
+  requires_node,
+  requires_node_canary,
+  requires_v8,
+  requires_wasm64,
+  requires_wasm_eh,
+  test_file,
+  with_all_eh_sjlj,
+  with_all_fs,
+  with_all_sjlj,
+  with_env_modify,
+)
+
+from tools import building, cache, response_file, shared, utils, webassembly
+from tools.building import get_building_env
 from tools.settings import settings
+from tools.shared import (
+  CLANG_CC,
+  CLANG_CXX,
+  EMAR,
+  EMCC,
+  EMRANLIB,
+  EMXX,
+  FILE_PACKAGER,
+  LLVM_AR,
+  LLVM_DWARFDUMP,
+  LLVM_DWP,
+  LLVM_NM,
+  WASM_LD,
+  config,
+)
 from tools.system_libs import DETERMINISTIC_PREFIX
+from tools.utils import MACOS, WINDOWS, delete_file, read_binary, read_file, write_file
 
 emmake = utils.bat_suffix(path_from_root('emmake'))
 emconfig = utils.bat_suffix(path_from_root('em-config'))

@@ -7,10 +7,10 @@ import copy
 import difflib
 import os
 import re
-from typing import Set, Dict, Any
+from typing import Any, Dict, Set
 
-from .utils import path_from_root, exit_with_error
 from . import diagnostics
+from .utils import exit_with_error, path_from_root
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
 MEM_SIZE_SETTINGS = {

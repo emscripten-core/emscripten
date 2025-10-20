@@ -7,8 +7,8 @@
 import json
 import os
 import re
-import sys
 import subprocess
+import sys
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __testdir__ = os.path.dirname(os.path.dirname(__file__))
@@ -17,11 +17,11 @@ print(__rootpath__)
 sys.path.insert(0, __rootpath__)
 sys.path.insert(0, __testdir__)
 
-from tools.shared import WINDOWS, CLANG_CXX, EMCC
-from tools.shared import run_process
-from tools.config import V8_ENGINE
-from common import EMRUN, test_file
 import clang_native
+from common import EMRUN, test_file
+
+from tools.config import V8_ENGINE
+from tools.shared import CLANG_CXX, EMCC, WINDOWS, run_process
 
 # System info
 system_info = subprocess.check_output([EMRUN, '--system_info'], stderr=subprocess.STDOUT, text=True)

@@ -5,8 +5,8 @@
 
 import re
 
+from . import shared, utils
 from .settings import settings
-from . import utils, shared
 
 emscripten_license = '''\
 /**

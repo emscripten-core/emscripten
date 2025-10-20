@@ -24,6 +24,7 @@ lint.select = [
   "COM",
   "E",
   "F",
+  "I",
   "PERF",
   "PIE",
   "PL",

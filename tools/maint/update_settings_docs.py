@@ -17,8 +17,8 @@ settings.js.  For example [compile] and [link].
 """
 
 import os
-import sys
 import subprocess
+import sys
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))

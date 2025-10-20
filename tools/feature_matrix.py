@@ -8,8 +8,8 @@
 import logging
 from enum import IntEnum, auto
 
-from .settings import settings, user_settings
 from . import diagnostics
+from .settings import settings, user_settings
 
 logger = logging.getLogger('feature_matrix')
 

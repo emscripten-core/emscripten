@@ -4,14 +4,13 @@
 # found in the LICENSE file.
 
 import logging
-from typing import List, Dict
 from dataclasses import dataclass
+from typing import Dict, List
 
-from . import webassembly, utils
-from .webassembly import OpCode, AtomicOpCode, MemoryOpCode
-from .shared import exit_with_error
+from . import utils, webassembly
 from .settings import settings
-
+from .shared import exit_with_error
+from .webassembly import AtomicOpCode, MemoryOpCode, OpCode
 
 logger = logging.getLogger('extract_metadata')
 
