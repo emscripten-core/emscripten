@@ -585,7 +585,6 @@ function createExportWrapper(name, nargs) {
 var wasmBinaryFile;
 
 function findWasmBinary() {
-  // For an Audio Worklet, we cannot use `new URL()`.
   return locateFile('a.out.wasm');
 }
 
