@@ -295,7 +295,7 @@ To update our libraries to a newer musl release:
 
 Emscripten has a lot of settings and features which makes combinatorial testing
 practically unfeasible.  In order to manage the complexity and reduce
-technical dept we constantly strive to deprecate and remove settings and features
+technical debt we constantly strive to deprecate and remove settings and features
 that are no longer in use.
 
 In order to manage these deprecations in a way that minimizes user impact and
