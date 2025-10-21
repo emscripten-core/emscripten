@@ -4,7 +4,7 @@
 /** @noinline */
 function binaryDecode(bin) {
   for (var i = 0, l = bin.length, o = new Uint8Array(l); i < l; ++i) {
-    o[i] = bin.charCodeAt(i) - 1;
+    o[i] = bin.charCodeAt(i);
   }
   return o;
 }
