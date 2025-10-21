@@ -532,7 +532,7 @@ def cleanup_emscripten_temp():
     if entry.startswith(('emtest_', 'emscripten_')):
       try:
         utils.delete_dir(os.path.join(shared.TEMP_DIR, entry))
-      except Exception as e:
+      except Exception:
         pass
 
 
