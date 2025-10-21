@@ -53,10 +53,7 @@ def run_test(test, allowed_failures_counter, lock, progress_counter, num_tests):
       with lock:
         allowed_failures_counter.value -= 1
 
-  olddir = os.getcwd()
   result = BufferedParallelTestResult(lock, progress_counter, num_tests)
-  temp_dir = tempfile.mkdtemp(prefix='emtest_')
-  test.set_temp_dir(temp_dir)
   try:
     if test.__class__ not in seen_class:
       seen_class.add(test.__class__)
@@ -71,10 +68,6 @@ def run_test(test, allowed_failures_counter, lock, progress_counter, num_tests):
   except Exception as e:
     result.addError(test, e)
     test_failed()
-  # Before attempting to delete the tmp dir make sure the current
-  # working directory is not within it.
-  os.chdir(olddir)
-  common.force_delete_dir(temp_dir)
   return result
 
 
