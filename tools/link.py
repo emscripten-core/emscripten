@@ -2621,7 +2621,7 @@ def minify_html(filename):
         in_escape = False
         if ch == '0':
           out.append('\x00') # Convert '\\0' (5Ch 00h) into '\0' (00h)
-        elif ch == 'x' and data[i] == '0' and data[i+1] == '0':
+        elif ch == 'x' and data[i] == '0' and data[i + 1] == '0':
           out.append('\x00') # Oddly html-minifier generates both "\\0" and "\\x00", so handle that too.
           i += 2
         else:
