@@ -1853,6 +1853,15 @@ var WASMFS = false;
 // [link]
 var SINGLE_FILE = false;
 
+// If true, binary Wasm content is encoded using a custom UTF-8 embedding
+// instead of base64. This generates a smaller binary that compresses well.
+// Set this to false to revert back to earlier base64 encoding if you run into
+// issues with the binary encoding. (and please let us know of any such issues)
+// If no issues arise, this option will permanently become the default in the
+// future.
+// [link]
+var SINGLE_FILE_BINARY_ENCODE = true;
+
 // If set to 1, all JS libraries will be automatically available at link time.
 // This gets set to 0 in STRICT mode (or with MINIMAL_RUNTIME) which mean you
 // need to explicitly specify -lfoo.js in at link time in order to access

@@ -8855,16 +8855,18 @@ int main() {
 
   @is_slow_test
   @also_with_wasm2js
+  @also_with_minimal_runtime
   @parameterized({
     '': (False, False),
     'debug': (True, False),
     'closure': (False, True),
   })
   @parameterized({
-    '': (True,),
-    'disabled': (False,),
+    '': (True,False),
+    'disabled': (False,False),
+    'binary_encode': (True,True),
   })
-  def test_single_file(self, debug_enabled, closure_enabled, single_file_enabled):
+  def test_single_file(self, debug_enabled, closure_enabled, single_file_enabled, single_file_binary_encoded):
     cmd = [EMCC, test_file('hello_world.c')] + self.get_cflags()
 
     if single_file_enabled:
@@ -8872,6 +8874,8 @@ int main() {
       cmd += ['-sSINGLE_FILE']
     else:
       expect_wasm = self.is_wasm()
+
+    cmd += [f'-sSINGLE_FILE_BINARY_ENCODE={int(single_file_binary_encoded)}']
 
     if debug_enabled:
       cmd += ['-g']
