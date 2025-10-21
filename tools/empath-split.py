@@ -262,7 +262,7 @@ def parse_paths_file(paths_file_content):
   module_to_paths = {}
   path_to_module = {}
   cur_module = None
-  cur_paths = set()
+  cur_paths = []
 
   for line in paths_file_content.splitlines():
     line = line.strip()
@@ -272,7 +272,7 @@ def parse_paths_file(paths_file_content):
           diagnostics.warn(f"Module '{cur_module}' has no paths specified.")
         module_to_paths[cur_module] = cur_paths
         cur_module = None
-        cur_paths = set()
+        cur_paths = []
       continue
 
     if not cur_module:
@@ -281,7 +281,7 @@ def parse_paths_file(paths_file_content):
       path = normalize_path(line)
       if path in path_to_module:
         exit_with_error("Path '{path}' cannot be assigned to module '{cur_module}; it is already assigned to module '{path_to_module[path]}'")
-      cur_paths.add(path)
+      cur_paths.append(path)
       path_to_module[path] = cur_module
 
   if cur_module:
@@ -319,11 +319,11 @@ def main():
     for i, (module, paths) in enumerate(module_to_paths.items()):
       if i != 0: # Unless we are the first entry add a newline separator
         f.write('\n')
-      funcs = set()
+      funcs = []
       for path in paths:
         if not path_to_funcs[path]:
           diagnostics.warn(f'{path} does not match any functions')
-        funcs.update(path_to_funcs[path])
+        funcs += path_to_funcs[path]
       if not funcs:
         diagnostics.warn(f"Module '{module}' does not match any functions")
 
@@ -339,8 +339,6 @@ def main():
       f.write(f'{module}\n')
       for func in funcs:
         f.write(func + '\n')
-      if i < len(module_to_paths) - 1:
-        f.write('\n')
     f.flush()
 
     cmd = [args.wasm_split, '--multi-split', args.wasm, '--manifest', manifest]
