@@ -2504,7 +2504,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   base_js_target = os.path.basename(js_target)
 
   if settings.PROXY_TO_WORKER:
-    proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or target_basename) + '.js'
+    proxy_worker_filename = f'"{settings.PROXY_TO_WORKER_FILENAME or target_basename}.js"'
     script.inline = worker_js_script(proxy_worker_filename)
   else:
     # Normal code generation path
