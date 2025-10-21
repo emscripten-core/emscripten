@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import json
 import math
 import os
 import re
@@ -10,7 +11,6 @@ import shutil
 import sys
 import time
 import unittest
-import json
 import zlib
 from pathlib import Path
 from typing import List
@@ -19,12 +19,12 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner.py benchmark')
 
 import clang_native
-import jsrun
 import common
-from tools.shared import CLANG_CC, CLANG_CXX
-from common import test_file, read_file, read_binary, needs_make
-from tools.shared import run_process, PIPE, EMCC, config
-from tools import building, utils, shared
+import jsrun
+from common import needs_make, read_binary, read_file, test_file
+
+from tools import building, utils
+from tools.shared import CLANG_CC, CLANG_CXX, EMCC, PIPE, config, run_process
 
 # standard arguments for timing:
 # 0: no runtime, just startup
@@ -250,7 +250,7 @@ class EmscriptenBenchmarker(Benchmarker):
     self.cmd = cmd
     run_process(cmd, env=self.env)
     if self.binaryen_opts:
-      run_binaryen_opts(shared.replace_suffix(final, '.wasm'), self.binaryen_opts)
+      run_binaryen_opts(utils.replace_suffix(final, '.wasm'), self.binaryen_opts)
     self.filename = final
 
   def run(self, args):
@@ -260,12 +260,12 @@ class EmscriptenBenchmarker(Benchmarker):
     ret = [self.filename]
     if 'WASM=0' in self.cmd:
       if 'MINIMAL_RUNTIME=0' not in self.cmd:
-        ret.append(shared.replace_suffix(self.filename, '.asm.js'))
-        ret.append(shared.replace_suffix(self.filename, '.mem'))
+        ret.append(utils.replace_suffix(self.filename, '.asm.js'))
+        ret.append(utils.replace_suffix(self.filename, '.mem'))
       else:
         ret.append(self.filename + '.mem')
     else:
-      ret.append(shared.replace_suffix(self.filename, '.wasm'))
+      ret.append(utils.replace_suffix(self.filename, '.wasm'))
     return ret
 
 
@@ -346,7 +346,7 @@ class CheerpBenchmarker(Benchmarker):
     return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
 
   def get_output_files(self):
-    return [self.filename, shared.replace_suffix(self.filename, '.wasm')]
+    return [self.filename, utils.replace_suffix(self.filename, '.wasm')]
 
 
 # Benchmarkers

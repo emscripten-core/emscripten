@@ -20,14 +20,9 @@ import sys
 import time
 from contextlib import contextmanager
 
-from tools import cache
-from tools import shared
-from tools import system_libs
-from tools import ports
-from tools import utils
+from tools import cache, ports, shared, system_libs, utils
 from tools.settings import settings
 from tools.system_libs import USE_NINJA
-
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
@@ -100,8 +95,6 @@ MINIMAL_TASKS = [
     'libunwind-legacyexcept',
     'libunwind-wasmexcept',
     'libnoexit',
-    'libwebgpu',
-    'libwebgpu_cpp',
     'bullet',
 ]
 

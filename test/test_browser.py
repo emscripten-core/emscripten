@@ -5,7 +5,9 @@
 
 import argparse
 import os
+import plistlib
 import random
+import re
 import shlex
 import shutil
 import subprocess
@@ -13,21 +15,57 @@ import time
 import unittest
 import zlib
 from functools import wraps
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import (
+  BaseHTTPRequestHandler,
+  HTTPServer,
+  SimpleHTTPRequestHandler,
+  ThreadingHTTPServer,
+)
 from pathlib import Path
 from urllib.request import urlopen
 
 import common
-from common import BrowserCore, RunnerCore, path_from_root, has_browser, Reporting, is_chrome, is_firefox, CHROMIUM_BASED_BROWSERS
-from common import create_file, parameterized, ensure_dir, disabled, flaky, test_file, WEBIDL_BINDER
-from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree, skip_if, skip_if_simple
-from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
-from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
-from common import HttpServerThread, requires_dev_dependency
-from tools import shared
-from tools import ports
-from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
-from tools.utils import delete_dir
+from common import (
+  CHROMIUM_BASED_BROWSERS,
+  EMRUN,
+  WEBIDL_BINDER,
+  BrowserCore,
+  HttpServerThread,
+  Reporting,
+  RunnerCore,
+  also_with_asan,
+  also_with_minimal_runtime,
+  also_with_wasm2js,
+  also_with_wasmfs,
+  copytree,
+  create_file,
+  disabled,
+  ensure_dir,
+  find_browser_test_file,
+  flaky,
+  has_browser,
+  is_chrome,
+  is_firefox,
+  is_safari,
+  no_2gb,
+  no_4gb,
+  no_wasm64,
+  parameterize,
+  parameterized,
+  path_from_root,
+  read_file,
+  requires_dev_dependency,
+  requires_wasm2js,
+  skip_if,
+  skip_if_simple,
+  test_file,
+  with_all_sjlj,
+)
+
+from tools import ports, shared
+from tools.feature_matrix import UNSUPPORTED
+from tools.shared import DEBUG, EMCC, FILE_PACKAGER, PIPE, WINDOWS
+from tools.utils import delete_dir, memoize
 
 
 def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
@@ -40,7 +78,12 @@ def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
       s.send_header("Content-Length", str(length))
       s.send_header("Access-Control-Allow-Origin", "http://localhost:%s" % port)
       s.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
-      s.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+
+      s.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0')
+      s.send_header('Expires', '0')
+      s.send_header('Pragma', 'no-cache')
+      s.send_header('Vary', '*') # Safari insists on caching if this header is not present in addition to the above
+
       s.send_header("Access-Control-Expose-Headers", "Content-Length, Accept-Ranges")
       s.send_header("Content-type", "application/octet-stream")
       if support_byte_ranges:
@@ -136,11 +179,39 @@ def is_swiftshader(_):
   return is_chrome() and '--use-gl=swiftshader' in common.EMTEST_BROWSER
 
 
+@memoize
+def get_safari_version():
+  if not is_safari():
+    return UNSUPPORTED
+  plist_path = os.path.join(common.EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
+  version_str = plistlib.load(open(plist_path, 'rb')).get('CFBundleShortVersionString')
+  # Split into parts (major.minor.patch)
+  parts = (version_str.split('.') + ['0', '0', '0'])[:3]
+  # Convert each part into integers, discarding any trailing string, e.g. '13a' -> 13.
+  parts = [int(re.match(r"\d+", s).group()) if re.match(r"\d+", s) else 0 for s in parts]
+  # Return version as XXYYZZ
+  return parts[0] * 10000 + parts[1] * 100 + parts[2]
+
+
 no_swiftshader = skip_if_simple('not compatible with swiftshader', is_swiftshader)
 
 no_chrome = skip_if('no_chrome', lambda _: is_chrome(), 'chrome is not supported')
 
 no_firefox = skip_if('no_firefox', lambda _: is_firefox(), 'firefox is not supported')
+
+no_safari = skip_if('no_safari', lambda _: is_safari(), 'safari is not supported')
+
+
+def requires_version(name, version_getter):
+  assert callable(version_getter)
+
+  def decorator(min_required_version, note=''):
+    return skip_if_simple(name, lambda _: version_getter() < min_required_version, f'{name} v{version_getter()} is not supported (need v{min_required_version} at minimum) {note}')
+
+  return decorator
+
+
+requires_safari_version = requires_version('safari', get_safari_version)
 
 
 def is_jspi(args):
@@ -189,6 +260,7 @@ requires_graphics_hardware = skipExecIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWAR
 requires_webgl2 = unittest.skipIf(webgl2_disabled(), "This test requires WebGL2 to be available")
 requires_webgpu = unittest.skipIf(webgpu_disabled(), "This test requires WebGPU to be available")
 requires_sound_hardware = skipExecIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), 'This test requires sound hardware')
+requires_microphone_access = skipExecIf(os.getenv('EMTEST_LACKS_MICROPHONE_ACCESS'), 'This test accesses microphone, which may need accepting a user prompt to enable it.')
 requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
 requires_es6_workers = unittest.skipIf(os.getenv('EMTEST_LACKS_ES6_WORKERS'), 'This test requires a browser with ES6 Module Workers support')
 requires_growable_arraybuffers = unittest.skipIf(os.getenv('EMTEST_LACKS_GROWABLE_ARRAYBUFFERS'), 'This test requires a browser that supports growable ArrayBuffers')
@@ -281,6 +353,7 @@ window.close = () => {
   def test_sdl1_es6(self):
     self.reftest('hello_world_sdl.c', 'htmltest.png', cflags=['-sUSE_SDL', '-lGL', '-sEXPORT_ES6'])
 
+  @no_safari('TODO: Fails in NEW Safari 26.0.1 (21622.1.22.11.15), but not in OLD Safari 17.6 (17618.3.11.11.7, 17618) or Safari 18.5 (20621.2.5.11.8)')
   def test_emscripten_log(self):
     self.btest_exit('test_emscripten_log.cpp', cflags=['-Wno-deprecated-pragma', '-gsource-map', '-g2'])
 
@@ -1435,6 +1508,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.run_process([FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
     self.btest(Path('browser/separate_metadata_later.cpp'), '1', cflags=['-sFORCE_FILESYSTEM'])
 
+  @requires_safari_version(260001, 'TODO: Fails with "Assertion failed: false"') # Fails in Safari 18.5 (20621.2.5.11.8) with Intel x64 CPU only. Passes on Safari 18.5 (20621.2.5.11.8) with ARM M1, Safari 17.6 (17618.3.11.11.7, 17618)/x64 and Safari 26.0.1 (21622.1.22.11.15)/M4
   def test_idbstore(self):
     secret = str(time.time())
     for stage in (0, 1, 2, 3, 0, 1, 2, 0, 0, 1, 4, 2, 5, 0, 4, 6, 5):
@@ -1610,12 +1684,6 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.assertExists('worker.js')
     self.run_browser('main.html', '/report_result?hello from worker, and :' + ('data for w' if file_data else '') + ':')
 
-    # code should run standalone too
-    # To great memories >4gb we need the canary version of node
-    if self.is_4gb():
-      self.require_node_canary()
-    self.assertContained('you should not see this text when in a worker!', self.run_js('worker.js'))
-
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
   def test_mmap_lazyfile(self):
     create_file('lazydata.dat', 'hello world')
@@ -1755,10 +1823,21 @@ simulateKeyUp(100, undefined, 'Numpad4');
     assert 'gl-matrix' not in read_file('test.html'), 'Should not include glMatrix when not needed'
 
   @requires_graphics_hardware
-  def test_glbook(self):
+  @parameterized({
+    'Hello_Triangle': ('CH02_HelloTriangle.o', [], []),
+    'Simple_VertexShader': ('CH08_SimpleVertexShader.o', [], []),
+    'Simple_Texture2D': ('CH09_SimpleTexture2D.o', [], []),
+    'Simple_TextureCubemap': ('CH09_TextureCubemap.o', [], []),
+    'TextureWrap': ('CH09_TextureWrap.o', [], []),
+    'MultiTexture': ('CH10_MultiTexture.o', ['Chapter_10/MultiTexture/basemap.tga', 'Chapter_10/MultiTexture/lightmap.tga'], []),
+    # run this individual test with optimizations and closure for more coverage
+    'ParticleSystem': ('CH13_ParticleSystem.o', ['Chapter_13/ParticleSystem/smoke.tga'], ['-O2']),
+  })
+  def test_glbook(self, program, images, cflags):
     self.cflags.append('-Wno-int-conversion')
     self.cflags.append('-Wno-pointer-sign')
-    programs = self.get_library('third_party/glbook', [
+
+    libs = self.get_library('third_party/glbook', [
       'Chapter_2/Hello_Triangle/CH02_HelloTriangle.o',
       'Chapter_8/Simple_VertexShader/CH08_SimpleVertexShader.o',
       'Chapter_9/Simple_Texture2D/CH09_SimpleTexture2D.o',
@@ -1771,19 +1850,13 @@ simulateKeyUp(100, undefined, 'Numpad4');
     def book_path(path):
       return test_file('third_party/glbook', path)
 
-    for program in programs:
-      print(program)
-      basename = os.path.basename(program)
-      args = ['-lGL', '-lEGL', '-lX11']
-      if basename == 'CH10_MultiTexture.o':
-        shutil.copy(book_path('Chapter_10/MultiTexture/basemap.tga'), '.')
-        shutil.copy(book_path('Chapter_10/MultiTexture/lightmap.tga'), '.')
-        args += ['--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga']
-      elif basename == 'CH13_ParticleSystem.o':
-        shutil.copy(book_path('Chapter_13/ParticleSystem/smoke.tga'), '.')
-        args += ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
+    cflags += ['-lGL', '-lEGL', '-lX11']
+    for image in images:
+      cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
-      self.reftest(program, book_path(basename.replace('.o', '.png')), cflags=args)
+    lib = [l for l in libs if program in os.path.basename(l)][0]
+
+    self.reftest(lib, book_path(program.replace('.o', '.png')), cflags=cflags)
 
   @requires_graphics_hardware
   @parameterized({
@@ -2282,6 +2355,7 @@ void *getBindBuffer() {
   def test_openal_error(self, args):
     self.btest_exit('openal/test_openal_error.c', cflags=args)
 
+  @requires_microphone_access
   def test_openal_capture_sanity(self):
     self.btest_exit('openal/test_openal_capture_sanity.c')
 
@@ -2507,7 +2581,7 @@ void *getBindBuffer() {
     self.btest('test_emscripten_async_wget2_data.cpp', expected='0')
 
   def test_emscripten_async_wget_side_module(self):
-    self.emcc(test_file('test_emscripten_async_wget_side_module.c'), ['-o', 'lib.wasm', '-O2', '-sSIDE_MODULE'])
+    self.emcc('test_emscripten_async_wget_side_module.c', ['-o', 'lib.wasm', '-O2', '-sSIDE_MODULE'])
     self.btest_exit('test_emscripten_async_wget_main_module.c', cflags=['-O2', '-sMAIN_MODULE=2'])
 
   @parameterized({
@@ -2797,6 +2871,7 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2_pbo.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @no_firefox('fails on CI likely due to GPU drivers there')
+  @no_safari('TODO: Fails with report_result?5') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   @requires_graphics_hardware
   def test_webgl2_sokol_mipmap(self):
     self.reftest('third_party/sokol/mipmap-emsc.c', 'third_party/sokol/mipmap-emsc.png',
@@ -2955,6 +3030,7 @@ Module["preRun"] = () => {
   @also_with_wasmfs
   @requires_graphics_hardware
   @with_all_sjlj
+  @requires_safari_version(170601, 'TODO: Test enables Wasm exceptions') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), passes in Safari 18.5 (20621.2.5.11.8) and Safari 26.0.1 (21622.1.22.11.15)
   def test_sdl2_image_formats(self):
     shutil.copy(test_file('screenshot.png'), '.')
     shutil.copy(test_file('screenshot.jpg'), '.')
@@ -3205,7 +3281,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_misc.c', cflags=['-sUSE_SDL=2', '-sMAIN_MODULE'])
 
   def test_sdl2_misc_via_object(self):
-    self.emcc(test_file('browser/test_sdl2_misc.c'), ['-c', '-sUSE_SDL=2', '-o', 'test.o'])
+    self.emcc('browser/test_sdl2_misc.c', ['-c', '-sUSE_SDL=2', '-o', 'test.o'])
     self.compile_btest('test.o', ['-sEXIT_RUNTIME', '-sUSE_SDL=2', '-o', 'test.html'])
     self.run_browser('test.html', '/report_result?exit:0')
 
@@ -3356,6 +3432,7 @@ Module["preRun"] = () => {
       create_file('filey.txt', 'sync_tunnel\nsync_tunnel_bool\n')
     self.btest('test_async_returnvalue.c', '0', cflags=['-sASSERTIONS', '-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('browser/test_async_returnvalue.js')] + args)
 
+  @no_safari('TODO: Never reports a result, so times out') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   def test_async_bad_list(self):
     self.btest('test_async_bad_list.c', '0', cflags=['-sASYNCIFY', '-sASYNCIFY_ONLY=waka', '--profiling'])
 
@@ -3408,6 +3485,7 @@ Module["preRun"] = () => {
     self.run_browser('a.html', '/report_result?0')
 
   @no_firefox('source phase imports not implemented yet in firefox')
+  @no_safari('TODO: croaks on line "import source wasmModule from \'./out.wasm\';"') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   def test_source_phase_imports(self):
     self.compile_btest('browser_test_hello_world.c', ['-sEXPORT_ES6', '-sSOURCE_PHASE_IMPORTS', '-Wno-experimental', '-o', 'out.mjs'])
     create_file('a.html', '''
@@ -3544,7 +3622,7 @@ Module["preRun"] = () => {
 
   @requires_shared_array_buffer
   def test_dlopen_blocking(self):
-    self.emcc(test_file('other/test_dlopen_blocking_side.c'), ['-o', 'libside.so', '-sSIDE_MODULE', '-pthread', '-Wno-experimental'])
+    self.emcc('other/test_dlopen_blocking_side.c', ['-o', 'libside.so', '-sSIDE_MODULE', '-pthread', '-Wno-experimental'])
     # Attempt to use dlopen the side module (without preloading) should fail on the main thread
     # since the syncronous `readBinary` function does not exist.
     self.btest_exit('other/test_dlopen_blocking.c', assert_returncode=1, cflags=['-sMAIN_MODULE=2', '-sAUTOLOAD_DYLIBS=0', 'libside.so'])
@@ -3794,6 +3872,7 @@ Module["preRun"] = () => {
 
   # Test the old GCC atomic __sync_op_and_fetch builtin operations.
   @also_with_wasm2js
+  @requires_safari_version(170601, 'TODO: browser.test_pthread_gcc_atomic_op_and_fetch_wasm2js fails with "abort:Assertion failed: nand_and_fetch_data == -1"') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), passes in Safari 18.5 (20621.2.5.11.8) and Safari 26.0.1 (21622.1.22.11.15)
   def test_pthread_gcc_atomic_op_and_fetch(self):
     self.cflags += ['-Wno-sync-fetch-and-nand-semantics-changed']
     self.btest_exit('pthread/test_pthread_gcc_atomic_op_and_fetch.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
@@ -3891,6 +3970,7 @@ Module["preRun"] = () => {
     '': ([],),
     'spinlock': (['-DSPINLOCK_TEST'],),
   })
+  @requires_safari_version(170601, 'TODO: browser.test_pthread_mutex and browser.test_pthread_mutex_spinlock both hang Safari') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), passes in Safari 18.5 (20621.2.5.11.8) and Safari 26.0.1 (21622.1.22.11.15)
   def test_pthread_mutex(self, args):
     self.btest_exit('pthread/test_pthread_mutex.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args)
 
@@ -3943,7 +4023,7 @@ Module["preRun"] = () => {
   def test_pthread_printf(self, args):
      self.btest_exit('pthread/test_pthread_printf.c', cflags=['-pthread', '-sPTHREAD_POOL_SIZE'] + args)
 
-  # Test that pthreads are able to do cout. Failed due to https://bugzilla.mozilla.org/show_bug.cgi?id=1154858.
+  # Test that pthreads are able to do cout. Failed due to https://bugzil.la/1154858.
   def test_pthread_iostream(self):
     self.btest_exit('pthread/test_pthread_iostream.cpp', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
@@ -4078,6 +4158,7 @@ Module["preRun"] = () => {
     'no_leak': ['test_pthread_lsan_no_leak', []],
   })
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/15978')
+  @no_safari('TODO: browser.test_pthread_lsan_leak fails with /report_result?0') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   def test_pthread_lsan(self, name, args):
     self.btest(Path('pthread', name + '.cpp'), expected='1', cflags=['-fsanitize=leak', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
@@ -4089,6 +4170,7 @@ Module["preRun"] = () => {
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
     'no_leak': ['test_pthread_lsan_no_leak', []],
   })
+  @no_safari('TODO: browser.test_pthread_asan_leak fails with /report_result?0') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   def test_pthread_asan(self, name, args):
     self.btest(Path('pthread', name + '.cpp'), expected='1', cflags=['-fsanitize=address', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
@@ -4102,6 +4184,7 @@ Module["preRun"] = () => {
   @no_2gb('ASAN + GLOBAL_BASE')
   @no_4gb('ASAN + GLOBAL_BASE')
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/20006')
+  @no_safari('TODO: Hangs') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   @also_with_wasmfs
   def test_pthread_asan_use_after_free_2(self):
     # similiar to test_pthread_asan_use_after_free, but using a pool instead
@@ -4120,6 +4203,7 @@ Module["preRun"] = () => {
     args += ['--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js')]
     self.btest('core/pthread/test_pthread_exit_runtime.c', expected='onExit status: 42', cflags=args)
 
+  @no_safari('TODO: Fails with report_result?unexpected: [object ErrorEvent]') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   def test_pthread_trap(self):
     create_file('pre.js', '''
     if (typeof window === 'object' && window) {
@@ -4241,6 +4325,9 @@ Module["preRun"] = () => {
   # Tests that it is possible to initialize and render WebGL content in a
   # pthread by using OffscreenCanvas.
   @no_chrome('https://crbug.com/961765')
+  # The non-chained version suffers from browser priority inversion deadlock problem: offscreenCanvas.getContext("webgl2") does not make progress in a pthread until main thread yields to event loop.
+  # The chained version of this test suffers from bug https://bugzil.la/1992576
+  @no_firefox('https://bugzil.la/1972240 (priority inversion deadlock) + https://bugzil.la/1992576 (chained OffscreenCanvas transfer)')
   @parameterized({
     '': ([],),
     # -DTEST_CHAINED_WEBGL_CONTEXT_PASSING:
@@ -4430,6 +4517,12 @@ Module["preRun"] = () => {
   @requires_offscreen_canvas
   def test_webgl_resize_offscreencanvas_from_main_thread(self, args1, args2, args3):
     cmd = args1 + args2 + args3 + ['-pthread', '-lGL', '-sGL_DEBUG']
+
+    if is_firefox() and '-sOFFSCREENCANVAS_SUPPORT' in cmd and '-sPROXY_TO_PTHREAD' in cmd:
+      # Firefox is unable to transfer the same OffscreenCanvas multiple times across Workers
+      # (in a chained fashion, e.g. main thread -> proxy-to-pthread main thread -> back to main thread -> user pthread)
+      self.skipTest('https://bugzil.la/1992576')
+
     print(str(cmd))
     self.btest_exit('test_webgl_resize_offscreencanvas_from_main_thread.c', cflags=cmd)
 
@@ -4458,26 +4551,16 @@ Module["preRun"] = () => {
     'closure': (['-sASSERTIONS', '--closure=1'],),
     'closure_advanced': (['-sASSERTIONS', '--closure=1', '-O3'],),
     'main_module': (['-sMAIN_MODULE=1'],),
+    'pthreads': (['-pthread', '-sOFFSCREENCANVAS_SUPPORT'],),
   })
   @requires_webgpu
   def test_webgpu_basic_rendering(self, args):
-    self.btest_exit('webgpu_basic_rendering.cpp', cflags=['-Wno-error=deprecated', '-sUSE_WEBGPU'] + args)
+    self.btest_exit('webgpu_basic_rendering.cpp', cflags=['--use-port=emdawnwebgpu', '-sEXIT_RUNTIME'] + args)
 
   @requires_webgpu
   def test_webgpu_required_limits(self):
-    self.btest_exit('webgpu_required_limits.c', cflags=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASYNCIFY'])
-
-  @requires_webgpu
-  def test_webgpu_basic_rendering_pthreads(self):
-    self.btest_exit('webgpu_basic_rendering.cpp', cflags=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-pthread', '-sOFFSCREENCANVAS_SUPPORT'])
-
-  @requires_webgpu
-  def test_webgpu_get_device(self):
-    self.btest_exit('webgpu_get_device.cpp', cflags=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-sASSERTIONS', '--closure=1'])
-
-  @requires_webgpu
-  def test_webgpu_get_device_pthreads(self):
-    self.btest_exit('webgpu_get_device.cpp', cflags=['-Wno-error=deprecated', '-sUSE_WEBGPU', '-pthread'])
+    self.set_setting('DEFAULT_TO_CXX')  # emdawnwebgpu uses C++ internally
+    self.btest_exit('webgpu_required_limits.c', cflags=['--use-port=emdawnwebgpu'])
 
   # Tests the feature that shell html page can preallocate the typed array and place it
   # to Module.buffer before loading the script page.
@@ -5299,6 +5382,7 @@ Module["preRun"] = () => {
 
   # Tests that emmalloc supports up to 4GB Wasm heaps.
   @no_firefox('no 4GB support yet')
+  @requires_safari_version(170601, 'Assertion failed: emscripten_get_heap_size() == MAX_HEAP') # Fails in Safari 17.6 (17618.3.11.11.7, 17618)
   @no_4gb('uses MAXIMUM_MEMORY')
   def test_emmalloc_4gb(self):
     # For now, keep this in browser as this suite runs serially, which
@@ -5367,6 +5451,7 @@ Module["preRun"] = () => {
     'jspi': (['-Wno-experimental', '-sASYNCIFY=2'],),
     'jspi_wasm_bigint': (['-Wno-experimental', '-sASYNCIFY=2', '-sWASM_BIGINT'],),
   })
+  @no_safari('TODO: Fails with abort:Assertion failed: err == 0') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   def test_wasmfs_opfs(self, args):
     if '-sASYNCIFY=2' in args:
       self.require_jspi()
@@ -5376,6 +5461,7 @@ Module["preRun"] = () => {
     self.btest_exit(test, cflags=args + ['-DWASMFS_RESUME'])
 
   @no_firefox('no OPFS support yet')
+  @no_safari('TODO: Fails with exception:Did not get expected EIO when unlinking file') # Fails in Safari 17.6 (17618.3.11.11.7, 17618) and Safari 26.0.1 (21622.1.22.11.15)
   def test_wasmfs_opfs_errors(self):
     test = test_file('wasmfs/wasmfs_opfs_errors.c')
     postjs = test_file('wasmfs/wasmfs_opfs_errors_post.js')
@@ -5450,6 +5536,7 @@ Module["preRun"] = () => {
   def test_assert_failure(self):
     self.btest('test_assert_failure.c', 'abort:Assertion failed: false && "this is a test"')
 
+  @no_safari('TODO: Fails with report_result?exception:rejected!') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   def test_pthread_unhandledrejection(self):
     # Check that an unhandled promise rejection is propagated to the main thread
     # as an error. This test is failing if it hangs!
@@ -5584,6 +5671,46 @@ Module["preRun"] = () => {
     shutil.copy('hello.wasm', 'dist/')
     self.run_browser('index.html', '/report_result?exit:0')
 
+  def test_cross_origin(self):
+    # Verfies that the emscripten-generted JS and Wasm can be hosted on a different origin.
+    # This test create a second HTTP server running on port 9999 that servers files from `subdir`.
+    # The main html is the servers from the normal 8888 server while the JS and Wasm are hosted
+    # on at 9999.
+    os.mkdir('subdir')
+    create_file('subdir/foo.txt', 'hello')
+    self.compile_btest('hello_world.c', ['-o', 'subdir/hello.js', '-sCROSS_ORIGIN', '-sPROXY_TO_PTHREAD', '-pthread', '-sEXIT_RUNTIME'])
+
+    class MyReqestHandler(SimpleHTTPRequestHandler):
+      def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory='subdir', **kwargs)
+
+      # Add COOP, COEP, CORP, and no-caching headers
+      def end_headers(self):
+        self.send_header('Accept-Ranges', 'bytes')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
+        self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
+        self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
+
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0')
+        self.send_header('Expires', '0')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Vary', '*') # Safari insists on caching if this header is not present in addition to the above
+
+        return SimpleHTTPRequestHandler.end_headers(self)
+
+    create_file('test.html', '''
+      <script src="http://localhost:9999/hello.js"></script>
+    ''')
+
+    server = HttpServerThread(ThreadingHTTPServer(('localhost', 9999), MyReqestHandler))
+    server.start()
+    try:
+      self.run_browser('test.html', '/report_result?exit:0')
+    finally:
+      server.stop()
+      server.join()
+
 
 class emrun(RunnerCore):
   def test_emrun_info(self):
@@ -5632,7 +5759,7 @@ class emrun(RunnerCore):
     self.assertContained('remember to add `--` between arguments', err)
 
   def test_emrun(self):
-    self.emcc(test_file('test_emrun.c'), ['--emrun', '-o', 'test_emrun.html'])
+    self.emcc('test_emrun.c', ['--emrun', '-o', 'test_emrun.html'])
     if not has_browser():
       self.skipTest('need a browser')
 

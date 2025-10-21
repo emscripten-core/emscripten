@@ -54,24 +54,21 @@ Please note that the 'f' for 'FLOAT_DEFINE' is just the format passed to printf(
 anything printf() understands.
 """
 
-import sys
+import argparse
+import json
 import os
 import re
-import json
-import argparse
-import tempfile
 import shlex
 import subprocess
+import sys
+import tempfile
 import typing
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import building
-from tools import shared
-from tools import system_libs
-from tools import utils
+from tools import building, shared, system_libs, utils
 
 QUIET = (__name__ != '__main__')
 DEBUG = False
@@ -98,7 +95,6 @@ DEFAULT_JSON_FILES = [
     utils.path_from_root('src/struct_info.json'),
     utils.path_from_root('src/struct_info_internal.json'),
     utils.path_from_root('src/struct_info_cxx.json'),
-    utils.path_from_root('src/struct_info_webgpu.json'),
 ]
 
 
@@ -266,7 +262,7 @@ def inspect_headers(headers, cflags):
 
     if os.path.exists(js_file_path):
       os.unlink(js_file_path)
-      wasm_file_path = shared.replace_suffix(js_file_path, '.wasm')
+      wasm_file_path = utils.replace_suffix(js_file_path, '.wasm')
       os.unlink(wasm_file_path)
 
   # Parse the output of the program into a dict.

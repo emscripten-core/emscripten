@@ -7,8 +7,9 @@ import logging
 import os
 import shlex
 import tempfile
-from .utils import WINDOWS
 
+from . import shared
+from .utils import WINDOWS
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 
@@ -55,7 +56,6 @@ def create_response_file(args, directory):
 
   # Register the created .rsp file to be automatically cleaned up once this
   # process finishes, so that caller does not have to remember to do it.
-  from . import shared
   shared.get_temp_files().note(response_filename)
 
   return response_filename

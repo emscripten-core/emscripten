@@ -10,9 +10,16 @@ import re
 import shlex
 
 import common
-from common import RunnerCore
-from common import parameterized, node_pthreads
-from common import test_file, read_file, read_binary, create_file, compiler_for
+from common import (
+  RunnerCore,
+  compiler_for,
+  create_file,
+  node_pthreads,
+  parameterized,
+  read_binary,
+  read_file,
+  test_file,
+)
 
 from tools import building, shared
 
@@ -402,5 +409,5 @@ class codesize(RunnerCore):
     self.run_codesize_test('hello_world.c', cflags=['-sSTRICT', '-O3', '--preload-file=somefile.txt'], check_full_js=True)
 
   def test_small_js_flags(self):
-    self.emcc(test_file('browser_test_hello_world.c'), ['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
+    self.emcc('browser_test_hello_world.c', ['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
     self.check_output_sizes('a.out.js')

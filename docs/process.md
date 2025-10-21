@@ -291,6 +291,46 @@ To update our libraries to a newer musl release:
    [`update_musl.py`][update_musl_emscripten] for that.
 
 
+## Deprecating settings and features
+
+Emscripten has a lot of settings and features which makes combinatorial testing
+practically unfeasible.  In order to manage the complexity and reduce
+technical debt we constantly strive to deprecate and remove settings and features
+that are no longer in use.
+
+In order to manage these deprecations in a way that minimizes user impact and
+unintended consequences we have designed the following process.  A primary
+purpose of this process is to engage with the user community in order to assess
+the impact of removing a given feature.  At any point in the process we could
+decide collectively to abandon the deprecation, or to delay it.
+
+1. Create an "Intent to deprecate" bug for the setting or feature.
+
+2. Send a message to the emscripten-discuss mailing with the title `[PSA] Indent
+   to deprecate XXX` where `XXX` is the name of the feature or setting in
+   question.  Please include a link to the bug created above.
+
+3. If possible, update emscripten such that it will generate a `deprecated`
+   warning when the feature is used.  For settings this is normally as simple
+   as adding it to `DEPRECATED_SETTINGS` in `settings.py`.
+
+4. Perform a global search of public github repositories for usage of the
+   feature.   If you work for a company with a large internal codebase (e.g.
+   Google) please also search globally there.
+
+5. Feedback from steps (2), (3) and (4) should be summarized in the bug where
+   discussions about the impact of deprecation can then proceed.
+
+6. After at least 4 emscripten releases, or 2 months (whichever is shorter) a
+   final decision on the deprecation may be agreed upon.  The final decision
+   will be made by the Emscripten maintainers.
+
+7. If the decision is to proceed the feature can then be removed.   If the
+   decision goes the other way the deprecation warning should be removed.   When
+   the feature is removed, it should, where possible, continue to be detected
+   by the code so that users of the old feature see an actionable message.  An
+   entry in `ChangeLog.md` should also be added.
+
 [site_repo]: https://github.com/kripken/emscripten-site
 [releases_repo]: https://chromium.googlesource.com/emscripten-releases
 [waterfall]: https://ci.chromium.org/p/emscripten-releases/g/main/console

@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from .toolchain_profiler import ToolchainProfiler
-
 import base64
 import glob
 import hashlib
@@ -13,34 +11,51 @@ import logging
 import os
 import re
 import shlex
-import stat
 import shutil
+import stat
 import time
 from subprocess import PIPE
 from urllib.parse import quote
 
-from . import building
-from . import cache
-from . import config
-from . import diagnostics
-from . import emscripten
-from . import feature_matrix
-from . import filelock
-from . import js_manipulation
-from . import ports
-from . import shared
-from . import system_libs
-from . import utils
-from . import webassembly
-from . import extract_metadata
+from . import (
+  building,
+  cache,
+  config,
+  diagnostics,
+  emscripten,
+  extract_metadata,
+  feature_matrix,
+  filelock,
+  js_manipulation,
+  ports,
+  shared,
+  system_libs,
+  utils,
+  webassembly,
+)
 from .cmdline import OFormat
-from .utils import read_file, write_file, delete_file
-from .utils import removeprefix, exit_with_error
-from .shared import in_temp, safe_copy, do_replace
-from .shared import DEBUG, WINDOWS, DYLIB_EXTENSIONS
-from .shared import unsuffixed, unsuffixed_basename, get_file_suffix
-from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
+from .settings import (
+  DEPRECATED_SETTINGS,
+  INCOMPATIBLE_SETTINGS,
+  JS_ONLY_SETTINGS,
+  default_setting,
+  settings,
+  user_settings,
+)
+from .shared import DEBUG, DYLIB_EXTENSIONS, WINDOWS, do_replace, in_temp
+from .toolchain_profiler import ToolchainProfiler
+from .utils import (
+  delete_file,
+  exit_with_error,
+  get_file_suffix,
+  read_file,
+  removeprefix,
+  safe_copy,
+  unsuffixed,
+  unsuffixed_basename,
+  write_file,
+)
 
 logger = logging.getLogger('link')
 
@@ -165,6 +180,8 @@ def setup_environment_settings():
   # The worker environment is automatically added if any of the pthread or Worker features are used.
   # Note: we need to actually modify ENVIRONMENTS variable here before the parsing,
   # because some JS code reads it back so modifying parsed info alone is not sufficient.
+  maybe_web_worker = not settings.ENVIRONMENT or 'worker' in settings.ENVIRONMENT
+
   if settings.SHARED_MEMORY and settings.ENVIRONMENT:
     settings.ENVIRONMENT.append('worker')
 
@@ -172,7 +189,7 @@ def setup_environment_settings():
   if any(x for x in settings.ENVIRONMENT if x not in VALID_ENVIRONMENTS):
     exit_with_error(f'Invalid environment specified in "ENVIRONMENT": {settings.ENVIRONMENT}. Should be one of: {",".join(VALID_ENVIRONMENTS)}')
 
-  settings.ENVIRONMENT_MAY_BE_WEB = not settings.ENVIRONMENT or 'web' in settings.ENVIRONMENT or 'worker' in settings.ENVIRONMENT
+  settings.ENVIRONMENT_MAY_BE_WEB = not settings.ENVIRONMENT or 'web' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_WEBVIEW = not settings.ENVIRONMENT or 'webview' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in settings.ENVIRONMENT
@@ -183,11 +200,11 @@ def setup_environment_settings():
       diagnostics.warning('unused-command-line-argument', 'ignoring MIN_NODE_VERSION because `node` environment is not enabled')
     settings.MIN_NODE_VERSION = feature_matrix.UNSUPPORTED
 
-  if not (settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
+  if not (settings.ENVIRONMENT_MAY_BE_WEB or maybe_web_worker or settings.ENVIRONMENT_MAY_BE_WEBVIEW):
     for browser in ('FIREFOX', 'SAFARI', 'CHROME'):
       key = f'MIN_{browser}_VERSION'
       if key in user_settings and settings[key] != feature_matrix.UNSUPPORTED:
-        diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web` and `webview` environments are not enabled', key)
+        diagnostics.warning('unused-command-line-argument', 'ignoring %s because `web`, `worker` and `webview` environments are not enabled', key)
       settings[key] = feature_matrix.UNSUPPORTED
 
 
@@ -651,33 +668,7 @@ def add_system_js_lib(lib):
 
 
 def report_incompatible_settings():
-  # List of incompatible settings, of the form (SETTINGS_A, SETTING_B, OPTIONAL_REASON_FOR_INCOMPAT)
-  incompatible_settings = [
-    ('MINIMAL_RUNTIME', 'RELOCATABLE', None),
-    ('WASM2JS', 'RELOCATABLE', None),
-    ('MODULARIZE', 'PROXY_TO_WORKER', 'if you want to run in a worker with -sMODULARIZE, you likely want to do the worker side setup manually'),
-    ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),
-    ('EVAL_CTORS', 'WASM2JS', None),
-    ('EVAL_CTORS', 'RELOCATABLE', 'movable segments'),
-    # In Asyncify exports can be called more than once, and this seems to not
-    # work properly yet (see test_emscripten_scan_registers).
-    ('EVAL_CTORS', 'ASYNCIFY', None),
-    ('PTHREADS_PROFILING', 'NO_ASSERTIONS', 'only works with ASSERTIONS enabled'),
-    ('SOURCE_PHASE_IMPORTS', 'NO_EXPORT_ES6', None),
-    ('STANDALONE_WASM', 'MINIMAL_RUNTIME', None),
-    ('STRICT_JS', 'MODULARIZE', None),
-    ('STRICT_JS', 'EXPORT_ES6', None),
-    ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'they are mutually exclusive'),
-    ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'SINGLE_FILE', None),
-    ('MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'SINGLE_FILE', None),
-    ('SEPARATE_DWARF', 'WASM2JS', 'as there is no wasm file'),
-    ('GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS', 'NO_GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS', None),
-    ('MODULARIZE', 'NODEJS_CATCH_REJECTION', None),
-    ('MODULARIZE', 'NODEJS_CATCH_EXIT', None),
-    ('LEGACY_VM_SUPPORT', 'MEMORY64', None),
-  ]
-
-  for a, b, reason in incompatible_settings:
+  for a, b, reason in INCOMPATIBLE_SETTINGS:
     invert_b = b.startswith('NO_')
     if invert_b:
       b = b[3:]
@@ -908,7 +899,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   elif settings.SINGLE_FILE or settings.WASM == 0:
     # In SINGLE_FILE or WASM2JS mode the wasm file is not part of the output at
     # all so we generate it the temp directory.
-    wasm_target = in_temp(shared.replace_suffix(target, '.wasm'))
+    wasm_target = in_temp(utils.replace_suffix(target, '.wasm'))
   else:
     # Otherwise the wasm file is produced alongside the final target.
     wasm_target = get_secondary_target(target, '.wasm')
@@ -1423,7 +1414,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.REQUIRED_EXPORTS += ['emscripten_get_sbrk_ptr', 'emscripten_stack_get_base']
 
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportWasmSymbols']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$assignWasmExports']
 
   if settings.ALLOW_MEMORY_GROWTH:
     # Setting ALLOW_MEMORY_GROWTH turns off ABORTING_MALLOC, as in that mode we default to
@@ -1565,7 +1556,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
 
   # wasm side modules have suffix .wasm
-  if settings.SIDE_MODULE and shared.suffix(target) in ('.js', '.mjs'):
+  if settings.SIDE_MODULE and utils.suffix(target) in ('.js', '.mjs'):
     diagnostics.warning('emcc', 'JavaScript output suffix requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
   if options.sanitize:
@@ -1577,10 +1568,12 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.REQUIRED_EXPORTS += [
       'malloc',
       'calloc',
+      'realloc',
       'memalign',
       'free',
       'emscripten_builtin_malloc',
       'emscripten_builtin_calloc',
+      'emscripten_builtin_realloc',
       'emscripten_builtin_memalign',
       'emscripten_builtin_free',
     ]
@@ -1709,7 +1702,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.WEBGL_USE_GARBAGE_FREE_APIS = 1
     # Some browsers have issues using the WebGL2 garbage-free APIs when the
     # memory offsets are over 2^31 or 2^32
-    # For firefox see: https://bugzilla.mozilla.org/show_bug.cgi?id=1838218
+    # For firefox see: https://bugzil.la/1838218
     if settings.MIN_FIREFOX_VERSION != feature_matrix.UNSUPPORTED and settings.MAXIMUM_MEMORY > 2 ** 31:
       settings.WEBGL_USE_GARBAGE_FREE_APIS = 0
     # For chrome see: https://crbug.com/324992397
@@ -2631,7 +2624,7 @@ def generate_worker_js(target, options, js_target, target_basename):
     proxy_worker_filename = get_subresource_location_js(js_target)
   else:
     # compiler output goes in .worker.js file
-    move_file(js_target, shared.replace_suffix(js_target, get_worker_js_suffix()))
+    move_file(js_target, utils.replace_suffix(js_target, get_worker_js_suffix()))
     worker_target_basename = target_basename + '.worker'
     proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
 
@@ -2996,7 +2989,7 @@ def package_files(options, target):
     rtn.append(object_file)
 
   cmd = building.get_command_with_possible_response_file(
-    [shared.FILE_PACKAGER, shared.replace_suffix(target, '.data')] + file_args)
+    [shared.FILE_PACKAGER, utils.replace_suffix(target, '.data')] + file_args)
   if options.preload_files:
     # Preloading files uses --pre-js code that runs before the module is loaded.
     file_code = shared.check_call(cmd, stdout=PIPE).stdout

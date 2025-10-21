@@ -186,11 +186,6 @@ function calculateLibraries() {
     libraries.push('libglemu.js');
   }
 
-  if (USE_WEBGPU) {
-    libraries.push('libwebgpu.js');
-    libraries.push('libhtml5_webgpu.js');
-  }
-
   if (!STRICT) {
     libraries.push('liblegacy.js');
   }
@@ -433,6 +428,11 @@ function exportSymbol(name) {
 function exportRuntimeSymbols() {
   // optionally export something.
   function shouldExport(name) {
+    // Native exports are not available to be exported initially.  Instead,
+    // they get exported later in `assignWasmExports`.
+    if (nativeAliases[name]) {
+      return false;
+    }
     // If requested to be exported, export it.
     if (EXPORTED_RUNTIME_METHODS.has(name)) {
       // Unless we are in MODULARIZE=instance mode then HEAP objects are

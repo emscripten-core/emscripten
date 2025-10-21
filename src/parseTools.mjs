@@ -805,24 +805,16 @@ function addAtPostRun(code) {
 }
 
 function makeRetainedCompilerSettings() {
-  const ignore = new Set();
-  if (STRICT) {
-    for (const setting of LEGACY_SETTINGS) {
-      ignore.add(setting);
-    }
-  }
-
   const ret = {};
-  for (const x in global) {
-    if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
-      const value = global[x];
+  for (const [name, value] of Object.entries(global)) {
+    if (name[0] !== '_' && name == name.toUpperCase()) {
       if (
         typeof value == 'number' ||
         typeof value == 'boolean' ||
         typeof value == 'string' ||
-        Array.isArray(x)
+        Array.isArray(name)
       ) {
-        ret[x] = value;
+        ret[name] = value;
       }
     }
   }
@@ -964,16 +956,6 @@ function buildStringArray(array) {
 
 function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
-}
-
-// Called when global runtime symbols such as wasmMemory, wasmExports and
-// wasmTable are set. In this case we maybe need to re-export them on the
-// Module object.
-function receivedSymbol(sym) {
-  if (EXPORTED_RUNTIME_METHODS.has(sym)) {
-    return `Module['${sym}'] = ${sym};`;
-  }
-  return '';
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
@@ -1232,7 +1214,6 @@ addToCompileTimeContext({
   nodeDetectionCode,
   receiveI64ParamAsI53,
   receiveI64ParamAsI53Unchecked,
-  receivedSymbol,
   runIfMainThread,
   runIfWorkerThread,
   runtimeKeepalivePop,

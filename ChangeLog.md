@@ -18,8 +18,33 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.16 (in development)
+4.0.18 (in development)
 -----------------------
+- The `emrun.py` script no longer support running on python2. (#25597)
+- `-sUSE_WEBGPU` was removed in favor of the external port Emdawnwebgpu which
+  are used via `--use-port=emdawnwebgpu`. See 4.0.10 release notes for details.
+- A new `CROSS_ORIGIN` setting was added in order to work around issues hosting
+  emscripten programs across different origins (#25581)
+
+4.0.17 - 10/17/25
+-----------------
+- Mutable Wasm globals can now be exported from native code.  Currently these
+  cannot be declared in C/C++ but can be defined and exported in assembly code.
+  This currently only works for mutable globals since immutables are already
+  (and continue to be) exported as plain JS numbers. (#25530)
+- Minimum Firefox version was bumped up to Firefox 68 ESR, since older Firefox
+  versions are not able to run the parallel browser harness: (#25493)
+  - Firefox: v65 -> v68
+- For windows users, colored console output for error messages and logging now
+  requires Windows 10 or above. (#25502)
+- Fixed an issue from previous release 4.0.16 where "-sENVIRONMENT=worker" was
+  erroneously made to imply "-sENVIRONMENT=web,worker" (#25514)
+- Passing '-sENVIRONMENT=worker' is now disallowed due to being ambiguous in
+  its meaning. Instead, use '-sENVIRONMENT=web,worker' or
+  '-sENVIRONMENT=node,worker' to refer to either Web or Node.js multithreading.
+
+4.0.16 - 10/07/25
+-----------------
 - A warning was added about usage of embind without C++17 or above. (#25424)
 - The minimum supported versions of Node, Chrome and Firefox were bumped
   enabling the removal of the `globalThis` polyfill and universally enabling
