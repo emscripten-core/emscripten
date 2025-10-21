@@ -2986,7 +2986,7 @@ def binary_encode(filename):
 def get_subresource_location(path, mimetype='application/octet-stream'):
   if settings.SINGLE_FILE:
     if settings.SINGLE_FILE_BINARY_ENCODE:
-      return binary_encode(utils.read_binary(path))
+      return binary_encode(path)
     return f'data:{mimetype};base64,{base64_encode(path)}'
   else:
     return os.path.basename(path)
