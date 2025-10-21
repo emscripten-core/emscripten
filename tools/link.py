@@ -163,10 +163,6 @@ def base64_encode(filename):
   return b64.decode('ascii')
 
 
-def base64_or_binary_encode(b):
-  return binary_encode(b) if settings.SINGLE_FILE_BINARY_ENCODE else base64_encode(b)
-
-
 def align_to_wasm_page_boundary(address):
   page_size = webassembly.WASM_PAGE_SIZE
   return ((address + (page_size - 1)) // page_size) * page_size
@@ -2441,7 +2437,11 @@ def phase_binaryen(target, options, wasm_target):
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
     js = read_file(final_js)
 
-    js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_or_binary_encode(wasm_target))
+    if settings.SINGLE_FILE_BINARY_ENCODE:
+      js = do_replace(js, '"<<< WASM_BINARY_DATA >>>"', binary_encode(wasm_target))
+    else:
+      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
+    assert '<<< WASM_BINARY_DATA >>>' not in js
     delete_file(wasm_target)
     write_file(final_js, js)
 
@@ -2523,7 +2523,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
       # has be synchronously ready.
       script.un_src()
       script.inline = '''
-          fetch('%s').then((result) => result.arrayBuffer())
+          fetch(%s).then((result) => result.arrayBuffer())
                      .then((buf) => {
                              Module.wasmBinary = buf;
                              %s;
@@ -2542,7 +2542,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
             // Current browser does not support WebAssembly, load the .wasm.js JavaScript fallback
             // before the main JS runtime.
             var wasm2js = document.createElement('script');
-            wasm2js.src = '%s';
+            wasm2js.src = %s;
             wasm2js.onload = loadMainJs;
             document.body.appendChild(wasm2js);
           } else {
@@ -2663,7 +2663,7 @@ def generate_worker_js(target, options, js_target, target_basename):
     # compiler output goes in .worker.js file
     move_file(js_target, utils.replace_suffix(js_target, get_worker_js_suffix()))
     worker_target_basename = target_basename + '.worker'
-    proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
+    proxy_worker_filename = f'"{settings.PROXY_TO_WORKER_FILENAME or worker_target_basename}.js"'
 
   target_contents = worker_js_script(proxy_worker_filename)
   utils.write_file(target, target_contents, options.output_eol)
@@ -2672,9 +2672,10 @@ def generate_worker_js(target, options, js_target, target_basename):
 def worker_js_script(proxy_worker_filename):
   web_gl_client_src = read_file(utils.path_from_root('src/webGLClient.js'))
   proxy_client_src = building.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
-  if not settings.SINGLE_FILE and not os.path.dirname(proxy_worker_filename):
-    proxy_worker_filename = './' + proxy_worker_filename
-  proxy_client_src = do_replace(proxy_client_src, '<<< filename >>>', proxy_worker_filename)
+  if not settings.SINGLE_FILE and not os.path.dirname(proxy_worker_filename[1:-1]):
+    proxy_worker_filename = f'"./{proxy_worker_filename[1:-1]}"'
+  proxy_client_src = do_replace(proxy_client_src, '"<<< filename >>>"', proxy_worker_filename)
+  assert '<<< filename >>>' not in proxy_client_src
   return web_gl_client_src + '\n' + proxy_client_src
 
 
@@ -2994,13 +2995,19 @@ def binary_encode(filename):
 
   data = utils.read_binary(filename)
 
-  out = bytearray(len(data) * 2) # Size output buffer conservatively
-  i = 0
+  # Decide whether to enclose the generated binary data in single-quotes '' or
+  # double-quotes "" by looking at which character ends up requiring fewer
+  # escapes of that string character.
+  num_single_quotes = data.count(ord("'"))
+  num_double_quotes = data.count(ord('"'))
+  quote_char = ord("'") if num_single_quotes < num_double_quotes else ord('"')
+
+  out = bytearray(len(data) * 2 + 2) # Size output buffer conservatively
+  out[0] = quote_char # Emit string start quote
+  i = 1
   for d in data:
-    if d == ord('"'):
-      # Escape double quote " character with a backspace since we are writing the binary string inside double quotes.
-      # Also closure optimizer will turn the string into being delimited with double quotes, even if it were single quotes to start with. (" -> 2 bytes)
-      buf = [ord('\\'), d]
+    if d == quote_char:
+      buf = [ord('\\'), d] # Escape the string quote character with a backslash since we are writing the binary data inside a string.
     elif d == ord('\r'):
       buf = [ord('\\'), ord('r')] # Escape carriage return 0x0D as \r -> 2 bytes
     elif d == ord('\n'):
@@ -3012,6 +3019,8 @@ def binary_encode(filename):
     for b in buf: # Write the bytes to output buffer
       out[i] = b
       i += 1
+  out[i] = quote_char # Emit string end quote
+  i += 1
   return out[0:i].decode('utf-8') # Crop output buffer to the actual used size
 
 
@@ -3020,9 +3029,9 @@ def get_subresource_location(path, mimetype='application/octet-stream'):
   if settings.SINGLE_FILE:
     if settings.SINGLE_FILE_BINARY_ENCODE:
       return binary_encode(path)
-    return f'data:{mimetype};base64,{base64_encode(path)}'
+    return f'"data:{mimetype};base64,{base64_encode(path)}"'
   else:
-    return os.path.basename(path)
+    return f'"{os.path.basename(path)}"'
 
 
 def get_subresource_location_js(path):
