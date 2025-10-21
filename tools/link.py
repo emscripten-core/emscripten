@@ -2441,7 +2441,6 @@ def phase_binaryen(target, options, wasm_target):
       js = do_replace(js, '"<<< WASM_BINARY_DATA >>>"', binary_encode(wasm_target))
     else:
       js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
-    assert '<<< WASM_BINARY_DATA >>>' not in js
     delete_file(wasm_target)
     write_file(final_js, js)
 
@@ -2675,7 +2674,6 @@ def worker_js_script(proxy_worker_filename):
   if not settings.SINGLE_FILE and not os.path.dirname(proxy_worker_filename[1:-1]):
     proxy_worker_filename = f'"./{proxy_worker_filename[1:-1]}"'
   proxy_client_src = do_replace(proxy_client_src, '"<<< filename >>>"', proxy_worker_filename)
-  assert '<<< filename >>>' not in proxy_client_src
   return web_gl_client_src + '\n' + proxy_client_src
 
 
