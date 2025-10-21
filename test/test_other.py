@@ -1582,12 +1582,11 @@ int f() {
     self.assertContained(['unknown file type', "libfoo.a: archive member 'native.o' is neither Wasm object file nor LLVM bitcode"], stderr)
 
   def test_export_all(self):
-    lib = r'''
+    create_file('main.c', r'''
       #include <stdio.h>
       void libf1() { printf("libf1\n"); }
       void libf2() { printf("libf2\n"); }
-    '''
-    create_file('lib.c', lib)
+    ''')
 
     create_file('pre.js', '''
       Module.onRuntimeInitialized = () => {
@@ -1598,8 +1597,10 @@ int f() {
 
     # Explicitly test with -Oz to ensure libc_optz is included alongside
     # libc when `--whole-archive` is used.
-    self.emcc('lib.c', ['-Oz', '-sEXPORT_ALL', '-sLINKABLE', '-Wno-deprecated', '--pre-js', 'pre.js'], output_filename='a.out.js')
-    self.assertContained('libf1\nlibf2\n', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'libf1\nlibf2\n', cflags=['-Oz', '-sEXPORT_ALL', '-sMAIN_MODULE', '--pre-js', 'pre.js'])
+
+    # Without the `-sEXPORT_ALL` these symbols will not be visible from JS
+    self.do_runf('main.c', '_libf1 is not defined', assert_returncode=NON_ZERO, cflags=['-Oz', '-sMAIN_MODULE', '--pre-js', 'pre.js'])
 
   def test_export_keepalive(self):
     create_file('main.c', r'''
@@ -2534,23 +2535,23 @@ F1 -> ''
     self.emcc('browser/test_sdl2_mixer_wav.c', ['--use-port=sdl2_mixer:formats=ogg'], output_filename='a.out.js')
 
   def test_sdl2_linkable(self):
-    # Ensure that SDL2 can be built with LINKABLE.  This implies there are no undefined
-    # symbols in the library (because LINKABLE includes the entire library).
-    self.emcc('browser/test_sdl2_misc.c', ['-sLINKABLE', '-Wno-deprecated', '-sUSE_SDL=2'], output_filename='a.out.js')
-    self.emcc('browser/test_sdl2_misc.c', ['-sLINKABLE', '-Wno-deprecated', '--use-port=sdl2'], output_filename='a.out.js')
+    # Ensure that SDL2 can be built with MAIN_MODULE.  This implies there are no undefined
+    # symbols in the library (because MAIN_MODULE=1 includes the entire library).
+    self.emcc('browser/test_sdl2_misc.c', ['-sMAIN_MODULE', '-sUSE_SDL=2'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_misc.c', ['-sMAIN_MODULE', '--use-port=sdl2'], output_filename='a.out.js')
 
   def test_sdl3_linkable(self):
-    # Ensure that SDL3 can be built with LINKABLE.  This implies there are no undefined
-    # symbols in the library (because LINKABLE includes the entire library).
+    # Ensure that SDL3 can be built with MAIN_MODULE.  This implies there are no undefined
+    # symbols in the library (because MAIN_MODULE=1 includes the entire library).
     self.cflags.append('-Wno-experimental')
-    self.emcc('browser/test_sdl3_misc.c', ['-sLINKABLE', '-Wno-deprecated', '-sUSE_SDL=3'], output_filename='a.out.js')
-    self.emcc('browser/test_sdl3_misc.c', ['-sLINKABLE', '-Wno-deprecated', '--use-port=sdl3'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl3_misc.c', ['-sMAIN_MODULE', '-sUSE_SDL=3'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl3_misc.c', ['-sMAIN_MODULE', '--use-port=sdl3'], output_filename='a.out.js')
 
   @requires_network
   def test_sdl2_gfx_linkable(self):
     # Same as above but for sdl2_gfx library
-    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sLINKABLE', '-Wno-deprecated', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
-    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sLINKABLE', '-Wno-deprecated', '--use-port=sdl2_gfx'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '--use-port=sdl2_gfx'], output_filename='a.out.js')
 
   @requires_network
   def test_libpng(self):
@@ -5120,9 +5121,9 @@ int main() {
 ''')
 
     for emulate_casts in (0, 1):
-      for relocatable in (0, 1):
-        # wasm2js is not compatible with relocatable mode
-        if not wasm and relocatable:
+      for dylink in (0, 1):
+        # wasm2js is not compatible with dynamic linking
+        if dylink and not wasm:
           continue
         cmd = [EMXX, 'src.cpp'] + opts
         if not wasm:
@@ -5131,8 +5132,8 @@ int main() {
           cmd += ['-sSAFE_HEAP']
         if emulate_casts:
           cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
-        if relocatable:
-          cmd += ['-sRELOCATABLE'] # disables asm-optimized safe heap
+        if dylink:
+          cmd += ['-sMAIN_MODULE=2'] # disables asm-optimized safe heap
         print(cmd)
         self.run_process(cmd)
         returncode = 0 if emulate_casts or not wasm else NON_ZERO
@@ -12136,10 +12137,10 @@ exec "$@"
     self.assertContained('hello, world!', output)
 
   def test_wasm2js_no_dylink(self):
-    for arg in ('-sMAIN_MODULE', '-sSIDE_MODULE', '-sRELOCATABLE'):
+    for arg in ('-sMAIN_MODULE', '-sSIDE_MODULE'):
       print(arg)
       err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM=0', arg])
-      self.assertContained('emcc: error: WASM2JS is not compatible with RELOCATABLE', err)
+      self.assertContained(r'emcc: error: WASM2JS is not compatible with .*_MODULE \(wasm2js does not support dynamic linking\)', err, regex=True)
 
   def test_wasm2js_standalone(self):
     self.do_run_in_out_file_test('hello_world.c', cflags=['-sSTANDALONE_WASM', '-sWASM=0'])
@@ -12375,12 +12376,12 @@ exec "$@"
     with env_modify({'EMCC_CFLAGS': '-O2 BAD_ARG', 'EMCC_FORCE_STDLIBS': '1', 'EMCC_ONLY_FORCED_STDLIBS': '1'}):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
 
-  def test_relocatable_limited_exports(self):
-    # Building with RELOCATABLE should *not* automatically export all sybmols.
-    self.run_process([EMCC, test_file('hello_world.c'), '-sRELOCATABLE', '-o', 'out.wasm'])
+  def test_dylink_limited_exports(self):
+    # Building with MAIN_MODULE=2 should *not* automatically export all sybmols.
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMAIN_MODULE=2', '-o', 'out.wasm'])
 
-    # Building with RELOCATABLE + LINKABLE should include and export all of the standard library
-    self.run_process([EMCC, test_file('hello_world.c'), '-sRELOCATABLE', '-sLINKABLE', '-o', 'out_linkable.wasm'])
+    # Building with MAIN_MODULE=1 should include and export all of the standard library
+    self.run_process([EMCC, test_file('hello_world.c'), '-sMAIN_MODULE', '-o', 'out_linkable.wasm'])
 
     exports = self.parse_wasm('out.wasm')[1]
     exports_linkable = self.parse_wasm('out_linkable.wasm')[1]
@@ -12571,18 +12572,13 @@ exec "$@"
     ''')
     self.do_runf('test.c', cflags=['-sERROR_ON_UNDEFINED_SYMBOLS=0'])
 
-  @parameterized({
-    'relocatable': ('-sRELOCATABLE',),
-    'linkable': ('-sLINKABLE',),
-    'main_module': ('-sMAIN_MODULE',),
-  })
-  def test_check_undefined(self, flag):
+  def test_dylink_undefined(self):
     # positive case: no undefined symbols
-    self.run_process([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('hello_world.c')])
+    self.run_process([EMCC, '-sMAIN_MODULE', test_file('hello_world.c')])
     self.run_js('a.out.js')
 
     # negative case: foo is undefined in test_check_undefined.c
-    err = self.expect_fail([EMCC, flag, '-sERROR_ON_UNDEFINED_SYMBOLS', test_file('other/test_check_undefined.c')])
+    err = self.expect_fail([EMCC, '-sMAIN_MODULE', test_file('other/test_check_undefined.c')])
     self.assertContained('undefined symbol: foo', err)
 
   @also_with_wasm64
@@ -13473,7 +13469,7 @@ int main() {
     self.assertContained('-sSINGLE_FILE is not supported with -sWASM_WORKERS', err)
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sPROXY_TO_WORKER'])
     self.assertContained('-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS', err)
-    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sRELOCATABLE'])
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sMAIN_MODULE'])
     self.assertContained('dynamic linking is not supported with -sWASM_WORKERS', err)
 
   def test_clock_nanosleep(self):
@@ -15197,3 +15193,18 @@ addToLibrary({
     self.assertIn('main.cpp', out)
     self.assertIn('foo.cpp', out)
     self.assertIn('/emsdk/emscripten/system/lib/libc/musl/src/string/strcmp.c', out)
+
+  def test_relocatable(self):
+    # This setting is due for removal:
+    # https://github.com/emscripten-core/emscripten/issues/25262
+    self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sRELOCATABLE'])
+
+  def test_linkable(self):
+    # This setting is due for removal:
+    # https://github.com/emscripten-core/emscripten/issues/25262
+    self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sLINKABLE'])
+
+  def test_linkable_relocatable(self):
+    # These setting is due for removal:
+    # https://github.com/emscripten-core/emscripten/issues/25262
+    self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sLINKABLE', '-sRELOCATABLE'])
