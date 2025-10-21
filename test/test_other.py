@@ -1087,6 +1087,7 @@ f.close()
   @crossplatform
   def test_cmake_find_modules(self):
     # This test expects SDL2 and SDL3 to be installed
+    print("XXX test_cmake_find_modules: FROZEN_CACHE=", config.FROZEN_CACHE)
     self.run_process([EMBUILDER, 'build', 'sdl2', 'sdl3'])
     output = self.run_process([EMCMAKE, 'cmake', test_file('cmake/find_modules')], stdout=PIPE).stdout
     self.assertContained(' test: OpenGL::GL IMPORTED_LIBNAME: GL', output)
