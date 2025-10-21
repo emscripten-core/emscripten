@@ -15157,7 +15157,7 @@ addToLibrary({
       #include <iostream>
       void foo() { std::cout << "foo" << std::endl; }
     ''')
-    create_file('path_list', r'''
+    create_file('path_list.txt', r'''
       myapp
       main.cpp
       foo.cpp
@@ -15171,7 +15171,7 @@ addToLibrary({
     ''')
 
     self.run_process([EMCC, 'main.cpp', 'foo.cpp', '-gsource-map', '-g2', '-o', 'test.js'])
-    self.run_process([empath_split, 'test.wasm', 'path_list', '-g', '-o', 'test_primary.wasm', '--out-prefix=test_'])
+    self.run_process([empath_split, 'test.wasm', 'path_list.txt', '-g', '-o', 'test_primary.wasm', '--out-prefix=test_'])
 
     # Check if functions are correctly assigned and split with the specified
     # paths. When one path contains another, the inner path should take its
