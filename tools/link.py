@@ -2602,6 +2602,39 @@ def minify_html(filename):
   start_time = time.time()
   shared.check_call(shared.get_npm_cmd('html-minifier-terser') + [filename, '-o', filename] + opts, env=shared.env_with_node_in_path())
 
+  # HTML minifier will turn all null bytes into an escaped two-byte sequence "\0". Turn those back to single byte sequences.
+  def unescape_nulls(filename):
+    with open(filename, "r", encoding="utf-8") as f:
+      data = f.read()
+
+    out = []
+    in_escape = False
+    i = 0
+    while i < len(data):
+      ch = data[i]
+      i += 1
+      if ch == '\\':
+        if in_escape:
+          out.append('\\\\')
+        in_escape = not in_escape
+      elif in_escape:
+        in_escape = False
+        if ch == '0':
+          out.append('\x00') # Convert '\\0' (5Ch 00h) into '\0' (00h)
+        elif ch == 'x' and data[i] == '0' and data[i+1] == '0':
+          out.append('\x00') # Oddly html-minifier generates both "\\0" and "\\x00", so handle that too.
+          i += 2
+        else:
+          out.append('\\')
+          out.append(ch)
+      else:
+        out.append(ch)
+
+    with open(filename, "wb") as f:
+      f.write(''.join(out).encode("utf-8"))
+
+  unescape_nulls(filename)
+
   elapsed_time = time.time() - start_time
   size_after = os.path.getsize(filename)
   delta = size_after - size_before
