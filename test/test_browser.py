@@ -15,21 +15,56 @@ import time
 import unittest
 import zlib
 from functools import wraps
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import (
+  BaseHTTPRequestHandler,
+  HTTPServer,
+  SimpleHTTPRequestHandler,
+  ThreadingHTTPServer,
+)
 from pathlib import Path
 from urllib.request import urlopen
 
 import common
-from common import BrowserCore, RunnerCore, path_from_root, has_browser, Reporting, is_chrome, is_firefox, is_safari, CHROMIUM_BASED_BROWSERS
-from common import create_file, parameterized, ensure_dir, disabled, flaky, test_file, WEBIDL_BINDER
-from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree, skip_if, skip_if_simple
-from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
-from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
-from common import HttpServerThread, requires_dev_dependency
-from tools import shared
-from tools import ports
+from common import (
+  CHROMIUM_BASED_BROWSERS,
+  EMRUN,
+  WEBIDL_BINDER,
+  BrowserCore,
+  HttpServerThread,
+  Reporting,
+  RunnerCore,
+  also_with_asan,
+  also_with_minimal_runtime,
+  also_with_wasm2js,
+  also_with_wasmfs,
+  copytree,
+  create_file,
+  disabled,
+  ensure_dir,
+  find_browser_test_file,
+  flaky,
+  has_browser,
+  is_chrome,
+  is_firefox,
+  is_safari,
+  no_2gb,
+  no_4gb,
+  no_wasm64,
+  parameterize,
+  parameterized,
+  path_from_root,
+  read_file,
+  requires_dev_dependency,
+  requires_wasm2js,
+  skip_if,
+  skip_if_simple,
+  test_file,
+  with_all_sjlj,
+)
+
+from tools import ports, shared
 from tools.feature_matrix import UNSUPPORTED
-from tools.shared import EMCC, WINDOWS, FILE_PACKAGER, PIPE, DEBUG
+from tools.shared import DEBUG, EMCC, FILE_PACKAGER, PIPE, WINDOWS
 from tools.utils import delete_dir, memoize
 
 
@@ -1788,10 +1823,21 @@ simulateKeyUp(100, undefined, 'Numpad4');
     assert 'gl-matrix' not in read_file('test.html'), 'Should not include glMatrix when not needed'
 
   @requires_graphics_hardware
-  def test_glbook(self):
+  @parameterized({
+    'Hello_Triangle': ('CH02_HelloTriangle.o', [], []),
+    'Simple_VertexShader': ('CH08_SimpleVertexShader.o', [], []),
+    'Simple_Texture2D': ('CH09_SimpleTexture2D.o', [], []),
+    'Simple_TextureCubemap': ('CH09_TextureCubemap.o', [], []),
+    'TextureWrap': ('CH09_TextureWrap.o', [], []),
+    'MultiTexture': ('CH10_MultiTexture.o', ['Chapter_10/MultiTexture/basemap.tga', 'Chapter_10/MultiTexture/lightmap.tga'], []),
+    # run this individual test with optimizations and closure for more coverage
+    'ParticleSystem': ('CH13_ParticleSystem.o', ['Chapter_13/ParticleSystem/smoke.tga'], ['-O2']),
+  })
+  def test_glbook(self, program, images, cflags):
     self.cflags.append('-Wno-int-conversion')
     self.cflags.append('-Wno-pointer-sign')
-    programs = self.get_library('third_party/glbook', [
+
+    libs = self.get_library('third_party/glbook', [
       'Chapter_2/Hello_Triangle/CH02_HelloTriangle.o',
       'Chapter_8/Simple_VertexShader/CH08_SimpleVertexShader.o',
       'Chapter_9/Simple_Texture2D/CH09_SimpleTexture2D.o',
@@ -1804,19 +1850,13 @@ simulateKeyUp(100, undefined, 'Numpad4');
     def book_path(path):
       return test_file('third_party/glbook', path)
 
-    for program in programs:
-      print(program)
-      basename = os.path.basename(program)
-      args = ['-lGL', '-lEGL', '-lX11']
-      if basename == 'CH10_MultiTexture.o':
-        shutil.copy(book_path('Chapter_10/MultiTexture/basemap.tga'), '.')
-        shutil.copy(book_path('Chapter_10/MultiTexture/lightmap.tga'), '.')
-        args += ['--preload-file', 'basemap.tga', '--preload-file', 'lightmap.tga']
-      elif basename == 'CH13_ParticleSystem.o':
-        shutil.copy(book_path('Chapter_13/ParticleSystem/smoke.tga'), '.')
-        args += ['--preload-file', 'smoke.tga', '-O2'] # test optimizations and closure here as well for more coverage
+    cflags += ['-lGL', '-lEGL', '-lX11']
+    for image in images:
+      cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
-      self.reftest(program, book_path(basename.replace('.o', '.png')), cflags=args)
+    lib = [l for l in libs if program in os.path.basename(l)][0]
+
+    self.reftest(lib, book_path(program.replace('.o', '.png')), cflags=cflags)
 
   @requires_graphics_hardware
   @parameterized({
@@ -5630,6 +5670,46 @@ Module["preRun"] = () => {
     # TODO(sbc): Look into plugins that do bundling.
     shutil.copy('hello.wasm', 'dist/')
     self.run_browser('index.html', '/report_result?exit:0')
+
+  def test_cross_origin(self):
+    # Verfies that the emscripten-generted JS and Wasm can be hosted on a different origin.
+    # This test create a second HTTP server running on port 9999 that servers files from `subdir`.
+    # The main html is the servers from the normal 8888 server while the JS and Wasm are hosted
+    # on at 9999.
+    os.mkdir('subdir')
+    create_file('subdir/foo.txt', 'hello')
+    self.compile_btest('hello_world.c', ['-o', 'subdir/hello.js', '-sCROSS_ORIGIN', '-sPROXY_TO_PTHREAD', '-pthread', '-sEXIT_RUNTIME'])
+
+    class MyReqestHandler(SimpleHTTPRequestHandler):
+      def __init__(self, *args, **kwargs):
+        super().__init__(*args, directory='subdir', **kwargs)
+
+      # Add COOP, COEP, CORP, and no-caching headers
+      def end_headers(self):
+        self.send_header('Accept-Ranges', 'bytes')
+        self.send_header('Access-Control-Allow-Origin', '*')
+        self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
+        self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
+        self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
+
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0')
+        self.send_header('Expires', '0')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Vary', '*') # Safari insists on caching if this header is not present in addition to the above
+
+        return SimpleHTTPRequestHandler.end_headers(self)
+
+    create_file('test.html', '''
+      <script src="http://localhost:9999/hello.js"></script>
+    ''')
+
+    server = HttpServerThread(ThreadingHTTPServer(('localhost', 9999), MyReqestHandler))
+    server.start()
+    try:
+      self.run_browser('test.html', '/report_result?exit:0')
+    finally:
+      server.stop()
+      server.join()
 
 
 class emrun(RunnerCore):

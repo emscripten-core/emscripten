@@ -9,28 +9,29 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
-from tools.toolchain_profiler import ToolchainProfiler
-
-import os
 import json
-import subprocess
 import logging
+import os
 import pprint
 import shutil
+import subprocess
 import sys
 import textwrap
 
-from tools import building
-from tools import config
-from tools import diagnostics
-from tools import js_manipulation
-from tools import shared
-from tools import utils
-from tools import webassembly
-from tools import extract_metadata
-from tools.utils import exit_with_error, path_from_root, removeprefix
-from tools.shared import DEBUG, asmjs_mangle, in_temp
+from tools import (
+  building,
+  config,
+  diagnostics,
+  extract_metadata,
+  js_manipulation,
+  shared,
+  utils,
+  webassembly,
+)
 from tools.settings import settings, user_settings
+from tools.shared import DEBUG, asmjs_mangle, in_temp
+from tools.toolchain_profiler import ToolchainProfiler
+from tools.utils import exit_with_error, path_from_root, removeprefix
 
 sys.path.append(path_from_root('third_party'))
 import leb128
@@ -285,10 +286,10 @@ def create_data_exports(data_exports):
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
     mangled = asmjs_mangle(k)
-    if settings.MINIMAL_RUNTIME:
-      lines.append("var %s = %s;" % (mangled, v))
-    else:
+    if should_export(mangled) and not settings.MINIMAL_RUNTIME:
       lines.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
+    else:
+      lines.append("var %s = %s;" % (mangled, v))
 
   return '\n'.join(lines)
 
@@ -939,8 +940,8 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
 
     return '\n'.join(receiving)
 
-  # When not declaring asm exports this section is empty and we instead programmatically export
-  # symbols on the global object by calling exportWasmSymbols after initialization
+  # When not declaring asm exports `assignWasmExports` is instead defined as a simple
+  # library function.
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
@@ -992,7 +993,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
     if do_module_exports and should_export(mangled):
       assignment += f" = Module['{mangled}']"
     if settings.ASSERTIONS:
-      receiving.append(f"  assert(wasmExports['{sym}'], 'missing Wasm export: {sym}');")
+      receiving.append(f"  assert(typeof wasmExports['{sym}'] != 'undefined', 'missing Wasm export: {sym}');")
     if sym in alias_inverse_map:
       for target in alias_inverse_map[sym]:
         assignment += f" = {target}"

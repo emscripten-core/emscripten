@@ -3,14 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from enum import Enum
-from functools import wraps
-from pathlib import Path
-from subprocess import PIPE, STDOUT
-from typing import Dict, Tuple
-from urllib.parse import unquote, unquote_plus, urlparse, parse_qs
-from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
-from retryable_unittest import RetryableTestCase
 import contextlib
 import difflib
 import hashlib
@@ -19,7 +11,7 @@ import itertools
 import json
 import logging
 import os
-import psutil
+import queue
 import re
 import shlex
 import shutil
@@ -31,18 +23,33 @@ import tempfile
 import textwrap
 import threading
 import time
-import webbrowser
 import unittest
-import queue
+import webbrowser
+from enum import Enum
+from functools import wraps
+from http.server import SimpleHTTPRequestHandler, ThreadingHTTPServer
+from pathlib import Path
+from subprocess import PIPE, STDOUT
+from typing import Dict, Tuple
+from urllib.parse import parse_qs, unquote, unquote_plus, urlparse
 
 import clang_native
 import jsrun
 import line_endings
-from tools.shared import EMCC, EMXX, DEBUG, exe_suffix
-from tools.shared import get_canonical_temp_dir, path_from_root
-from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
+import psutil
+from retryable_unittest import RetryableTestCase
+
+from tools import building, config, feature_matrix, shared, utils
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools import shared, feature_matrix, building, config, utils
+from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir, path_from_root
+from tools.utils import (
+  MACOS,
+  WINDOWS,
+  exit_with_error,
+  read_binary,
+  read_file,
+  write_binary,
+)
 
 logger = logging.getLogger('common')
 
@@ -90,6 +97,13 @@ EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 if 'EM_BUILD_VERBOSE' in os.environ:
   exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
+# Triggers the browser to restart after every given number of tests.
+# 0: Disabled (reuse the browser instance to run all tests. Default)
+# 1: Restart a fresh browser instance for every browser test.
+# 2,3,...: Restart a fresh browser instance after given number of tests have been run in it.
+# Helps with e.g. https://bugzil.la/1992558
+EMTEST_RESTART_BROWSER_EVERY_N_TESTS = int(os.getenv('EMTEST_RESTART_BROWSER_EVERY_N_TESTS', '0'))
+
 # If we are drawing a parallel swimlane graph of test output, we need to use a temp
 # file to track which tests were flaky so they can be graphed in orange color to
 # visually stand out.
@@ -114,6 +128,8 @@ class ChromeConfig:
     '--disable-background-networking',
     # Disable native password pop-ups
     '--password-store=basic',
+    # Send console messages to browser stderr
+    '--enable-logging=stderr',
   )
   headless_flags = '--headless=new --window-size=1024,768'
 
@@ -126,7 +142,7 @@ class FirefoxConfig:
   data_dir_flag = '-profile '
   default_flags = ('-new-instance',)
   headless_flags = '-headless'
-  executable_name = exe_suffix('firefox')
+  executable_name = utils.exe_suffix('firefox')
 
   @staticmethod
   def configure(data_dir):
@@ -158,13 +174,13 @@ PREVIOUS_TEST_RUN_RESULTS_FILE = path_from_root('out/previous_test_run_results.j
 
 DEFAULT_BROWSER_DATA_DIR = path_from_root('out/browser-profile')
 
-WEBIDL_BINDER = shared.bat_suffix(path_from_root('tools/webidl_binder'))
+WEBIDL_BINDER = utils.bat_suffix(path_from_root('tools/webidl_binder'))
 
-EMBUILDER = shared.bat_suffix(path_from_root('embuilder'))
-EMMAKE = shared.bat_suffix(path_from_root('emmake'))
-EMCMAKE = shared.bat_suffix(path_from_root('emcmake'))
-EMCONFIGURE = shared.bat_suffix(path_from_root('emconfigure'))
-EMRUN = shared.bat_suffix(shared.path_from_root('emrun'))
+EMBUILDER = utils.bat_suffix(path_from_root('embuilder'))
+EMMAKE = utils.bat_suffix(path_from_root('emmake'))
+EMCMAKE = utils.bat_suffix(path_from_root('emcmake'))
+EMCONFIGURE = utils.bat_suffix(path_from_root('emconfigure'))
+EMRUN = utils.bat_suffix(shared.path_from_root('emrun'))
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
@@ -241,7 +257,7 @@ def get_browser_config():
 
 
 def compiler_for(filename, force_c=False):
-  if shared.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
+  if utils.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
     return EMXX
   else:
     return EMCC
@@ -1068,8 +1084,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.skipTest('dynamic linking not supported with llvm-libc')
     if self.is_wasm2js():
       self.skipTest('dynamic linking not supported with wasm2js')
-    if '-fsanitize=undefined' in self.cflags:
-      self.skipTest('dynamic linking not supported with UBSan')
     # MEMORY64=2 mode doesn't currently support dynamic linking because
     # The side modules are lowered to wasm32 when they are built, making
     # them unlinkable with wasm64 binaries.
@@ -1423,11 +1437,11 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
         left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
         left_over_files = [f for f in left_over_files if not any(f.startswith(p) for p in ignorable_file_prefixes)]
-        if len(left_over_files):
-          errlog('ERROR: After running test, there are ' + str(len(left_over_files)) + ' new temporary files/directories left behind:')
+        if left_over_files:
+          errlog(f'ERROR: After running test, there are {len(left_over_files)} new temporary files/directories left behind:')
           for f in left_over_files:
             errlog('leaked file: ', f)
-          self.fail('Test leaked ' + str(len(left_over_files)) + ' temporary files!')
+          self.fail(f'Test leaked {len(left_over_files)} temporary files!')
 
   def get_setting(self, key, default=None):
     return self.settings_mods.get(key, default)
@@ -1532,7 +1546,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     compiler = [compiler_for(filename, force_c)]
 
     if force_c:
-      assert shared.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
+      assert utils.suffix(filename) != '.c', 'force_c is not needed for source files ending in .c'
       compiler.append('-xc')
 
     all_cflags = self.get_cflags(main_file=True)
@@ -1544,7 +1558,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if output_basename:
       output = output_basename + output_suffix
     else:
-      output = shared.unsuffixed_basename(filename) + output_suffix
+      output = utils.unsuffixed_basename(filename) + output_suffix
     cmd = compiler + [str(filename), '-o', output] + all_cflags
     if libraries:
       cmd += libraries
@@ -1984,7 +1998,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     so = '.wasm' if self.is_wasm() else '.js'
 
     def ccshared(src, linkto=None):
-      cmdv = [EMCC, src, '-o', shared.unsuffixed(src) + so, '-sSIDE_MODULE'] + self.get_cflags()
+      cmdv = [EMCC, src, '-o', utils.unsuffixed(src) + so, '-sSIDE_MODULE'] + self.get_cflags()
       if linkto:
         cmdv += linkto
       self.run_process(cmdv)
@@ -2060,7 +2074,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def do_run_in_out_file_test(self, srcfile, **kwargs):
     srcfile = maybe_test_file(srcfile)
     out_suffix = kwargs.pop('out_suffix', '')
-    outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
+    outfile = utils.unsuffixed(srcfile) + out_suffix + '.out'
     if EMTEST_REBASELINE:
       expected = None
     else:
@@ -2335,12 +2349,6 @@ def make_test_server(in_queue, out_queue, port):
           raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
-
-        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0')
-        self.send_header('Expires', '0')
-        self.send_header('Pragma', 'no-cache')
-        self.send_header('Vary', '*') # Safari insists on caching if this header is not present in addition to the above
-
         self.send_header('Connection', 'close')
         self.end_headers()
         self.wfile.write(b'OK')
@@ -2573,6 +2581,7 @@ class BrowserCore(RunnerCore):
   BROWSER_TIMEOUT = 60
 
   unresponsive_tests = 0
+  num_tests_ran = 0
 
   def __init__(self, *args, **kwargs):
     self.capture_stdio = EMTEST_CAPTURE_STDIO
@@ -2589,6 +2598,7 @@ class BrowserCore(RunnerCore):
     logger.info('Restarting browser process')
     cls.browser_terminate()
     cls.browser_open(cls.HARNESS_URL)
+    BrowserCore.num_tests_ran = 0
 
   @classmethod
   def browser_open(cls, url):
@@ -2656,7 +2666,7 @@ class BrowserCore(RunnerCore):
       # Give the browser time to spawn its subprocesses. Use an increasing
       # timeout as a crude way to account for system load.
       if parallel_harness or is_safari():
-        time.sleep(2 + count * 0.3)
+        time.sleep(min(2 + count * 0.3, 10))
         procs_after = list_processes_by_name(config.executable_name)
 
         # Take a snapshot again to find which processes exist after launching
@@ -2740,6 +2750,12 @@ class BrowserCore(RunnerCore):
       self.skipTest('skipping test execution: ' + self.skip_exec)
     if BrowserCore.unresponsive_tests >= BrowserCore.MAX_UNRESPONSIVE_TESTS:
       self.skipTest('too many unresponsive tests, skipping remaining tests')
+
+    if EMTEST_RESTART_BROWSER_EVERY_N_TESTS and BrowserCore.num_tests_ran >= EMTEST_RESTART_BROWSER_EVERY_N_TESTS:
+      logger.warning(f'[EMTEST_RESTART_BROWSER_EVERY_N_TESTS={EMTEST_RESTART_BROWSER_EVERY_N_TESTS} workaround: restarting browser]')
+      self.browser_restart()
+    BrowserCore.num_tests_ran += 1
+
     self.assert_out_queue_empty('previous test')
     if DEBUG:
       print('[browser launch:', html_file, ']')

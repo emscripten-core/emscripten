@@ -6,26 +6,33 @@
 import glob
 import os
 import platform
+import re
 import shutil
 import stat
-import time
-import re
 import tempfile
+import time
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
 import common
-from common import RunnerCore, path_from_root, env_modify, test_file
-from common import create_file, ensure_dir, make_executable, with_env_modify
-from common import crossplatform, parameterized, EMBUILDER
+from common import (
+  EMBUILDER,
+  RunnerCore,
+  create_file,
+  crossplatform,
+  ensure_dir,
+  env_modify,
+  make_executable,
+  parameterized,
+  path_from_root,
+  test_file,
+  with_env_modify,
+)
+
+from tools import cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
-from tools.shared import EMCC
-from tools.shared import config
-from tools.utils import delete_file, delete_dir
-from tools import cache
-from tools import shared, utils
-from tools import response_file
-from tools import ports
+from tools.shared import EMCC, config
+from tools.utils import delete_dir, delete_file
 
 SANITY_FILE = cache.get_path('sanity.txt')
 commands = [[EMCC], [shared.bat_suffix(path_from_root('test/runner')), 'blahblah']]
@@ -488,7 +495,7 @@ fi
       with env_modify({'EM_CACHE': self.in_dir('test_cache')}):
         self.run_process([EMCC, test_file('hello_world.c'), '-c'])
     finally:
-      for_all_files(path_from_root('system/include'), shared.make_writable)
+      for_all_files(path_from_root('system/include'), utils.make_writable)
 
   @parameterized({
     '': [False, False],
@@ -759,10 +766,10 @@ fi
 
   def test_embuilder_wildcards(self):
     restore_and_set_up()
-    glob_match = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libwebgpu*.a')
-    self.run_process([EMBUILDER, 'clear', 'libwebgpu*'])
+    glob_match = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libemmalloc*.a')
+    self.run_process([EMBUILDER, 'clear', 'libemmalloc*'])
     self.assertFalse(glob.glob(glob_match))
-    self.run_process([EMBUILDER, 'build', 'libwebgpu*'])
+    self.run_process([EMBUILDER, 'build', 'libemmalloc*'])
     self.assertGreater(len(glob.glob(glob_match)), 3)
 
   def test_embuilder_with_use_port_syntax(self):
@@ -831,7 +838,7 @@ fi
 
     # Remove from PATH every directory that contains clang.exe so that bootstrap.py cannot
     # accidentally succeed by virtue of locating tools in PATH.
-    new_path = [d for d in env['PATH'].split(os.pathsep) if not os.path.isfile(os.path.join(d, shared.exe_suffix('clang')))]
+    new_path = [d for d in env['PATH'].split(os.pathsep) if not os.path.isfile(os.path.join(d, utils.exe_suffix('clang')))]
     env['PATH'] = os.pathsep.join(new_path)
 
     # Running bootstrap.py should not fail

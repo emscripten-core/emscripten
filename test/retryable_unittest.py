@@ -1,6 +1,7 @@
-import common
 import os
 import unittest
+
+import common
 
 EMTEST_RETRY_COUNT = int(os.getenv('EMTEST_RETRY_COUNT', '0'))
 

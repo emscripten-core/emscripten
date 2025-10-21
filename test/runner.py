@@ -28,8 +28,8 @@ import os
 import platform
 import random
 import sys
-import unittest
 import time
+import unittest
 from functools import cmp_to_key
 
 # Setup
@@ -37,12 +37,12 @@ from functools import cmp_to_key
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, __rootpath__)
 
+import common
 import jsrun
 import parallel_testsuite
-import common
 from common import errlog
-from tools import shared, config, utils
 
+from tools import config, shared, utils
 
 sys.path.append(utils.path_from_root('third_party/websockify'))
 
@@ -398,7 +398,7 @@ def flattened_tests(loaded_tests):
 
 
 def suite_for_module(module, tests, options):
-  suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest', 'test_browser', 'test_codesize')
+  suite_supported = module.__name__ not in ('test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress')
   if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1
@@ -421,7 +421,7 @@ def run_tests(options, suites):
     os.makedirs('out', exist_ok=True)
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
-    import xmlrunner # type: ignore
+    import xmlrunner  # type: ignore  # noqa: PLC0415
     testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2,
                                          failfast=options.failfast)
     print('Writing XML test output to ' + os.path.abspath(output.name))
@@ -497,7 +497,7 @@ def parse_args():
   options = parser.parse_args()
 
   if options.failfast:
-    if options.max_failures != 0:
+    if options.max_failures != 2**31 - 1:
       utils.exit_with_error('--failfast and --max-failures are mutually exclusive!')
     options.max_failures = 0
 

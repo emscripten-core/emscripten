@@ -132,7 +132,18 @@ var frameId = 0;
 
 // Worker
 
-var filename = '<<< filename >>>';
+var filename = "<<< filename >>>";
+
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
+#include "binaryDecode.js"
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) filename = "data:text/javascript;base64," + Buffer.from(binaryDecode(filename)).toString('base64');
+else
+#endif
+  filename = URL.createObjectURL(new Blob([binaryDecode(filename)], {type: 'application/javascript'}));
+
+#endif
 
 var worker = new Worker(filename);
 

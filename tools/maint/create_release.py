@@ -4,10 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from datetime import datetime
 import os
 import subprocess
 import sys
+from datetime import datetime
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))

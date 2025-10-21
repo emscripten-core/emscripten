@@ -6,9 +6,9 @@
 
 """Add or verify emscripten license header in source files."""
 
-import sys
 import os
 import subprocess
+import sys
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 __rootpath__ = os.path.dirname(os.path.dirname(script_dir))

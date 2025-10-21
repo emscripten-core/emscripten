@@ -18,8 +18,16 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.17 (in development)
+4.0.18 (in development)
 -----------------------
+- The `emrun.py` script no longer support running on python2. (#25597)
+- `-sUSE_WEBGPU` was removed in favor of the external port Emdawnwebgpu which
+  are used via `--use-port=emdawnwebgpu`. See 4.0.10 release notes for details.
+- A new `CROSS_ORIGIN` setting was added in order to work around issues hosting
+  emscripten programs across different origins (#25581)
+
+4.0.17 - 10/17/25
+-----------------
 - Mutable Wasm globals can now be exported from native code.  Currently these
   cannot be declared in C/C++ but can be defined and exported in assembly code.
   This currently only works for mutable globals since immutables are already

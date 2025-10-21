@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from .toolchain_profiler import ToolchainProfiler
-
 import importlib
 import json
 import logging
@@ -14,27 +12,44 @@ import shlex
 import shutil
 import subprocess
 import sys
-from typing import Set, Dict
 from subprocess import PIPE
+from typing import Dict, Set
 
-from . import cache
-from . import diagnostics
-from . import response_file
-from . import shared
-from . import webassembly
-from . import config
-from . import utils
-from .shared import CLANG_CC, CLANG_CXX
-from .shared import LLVM_NM, EMCC, EMAR, EMXX, EMRANLIB, WASM_LD
-from .shared import LLVM_OBJCOPY
-from .shared import run_process, check_call, exit_with_error
-from .shared import path_from_root
-from .shared import asmjs_mangle, DEBUG
-from .shared import LLVM_DWARFDUMP, demangle_c_symbol_name
-from .shared import get_emscripten_temp_dir, exe_suffix, is_c_symbol
-from .utils import WINDOWS
-from .settings import settings
+from . import (
+  cache,
+  config,
+  diagnostics,
+  js_optimizer,
+  response_file,
+  shared,
+  utils,
+  webassembly,
+)
 from .feature_matrix import UNSUPPORTED
+from .settings import settings
+from .shared import (
+  CLANG_CC,
+  CLANG_CXX,
+  DEBUG,
+  EMAR,
+  EMCC,
+  EMRANLIB,
+  EMXX,
+  LLVM_DWARFDUMP,
+  LLVM_NM,
+  LLVM_OBJCOPY,
+  WASM_LD,
+  asmjs_mangle,
+  check_call,
+  demangle_c_symbol_name,
+  exit_with_error,
+  get_emscripten_temp_dir,
+  is_c_symbol,
+  path_from_root,
+  run_process,
+)
+from .toolchain_profiler import ToolchainProfiler
+from .utils import WINDOWS
 
 logger = logging.getLogger('building')
 
@@ -348,8 +363,7 @@ def opt_level_to_str(opt_level, shrink_level=0):
     return f'-O{min(opt_level, 3)}'
 
 
-def js_optimizer(filename, passes):
-  from . import js_optimizer
+def run_js_optimizer(filename, passes):
   try:
     return js_optimizer.run_on_file(filename, passes)
   except subprocess.CalledProcessError as e:
@@ -384,9 +398,9 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
     return check_call(cmd, stdout=PIPE).stdout
 
   acorn_optimizer.counter += 1
-  basename = shared.unsuffixed(original_filename)
+  basename = utils.unsuffixed(original_filename)
   if '.jso' in basename:
-    basename = shared.unsuffixed(basename)
+    basename = utils.unsuffixed(basename)
   output_file = basename + '.jso%d.js' % acorn_optimizer.counter
   shared.get_temp_files().note(output_file)
   cmd += ['-o', output_file]
@@ -559,9 +573,6 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
 
   if settings.MODULARIZE and settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
-
-  if settings.USE_WEBGPU:
-    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]
 
   if settings.AUDIO_WORKLET:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/audio-worklet-externs.js')]
@@ -972,7 +983,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
       wasm2js_js = wasm2js_js.replace('\n }', '\n}')
       temp = shared.get_temp_files().get('.js').name
       utils.write_file(temp, wasm2js_js)
-      temp = js_optimizer(temp, passes)
+      temp = run_js_optimizer(temp, passes)
       wasm2js_js = utils.read_file(temp)
   # Closure compiler: in mode 1, we just minify the shell. In mode 2, we
   # minify the wasm2js output as well, which is ok since it isn't
@@ -1181,7 +1192,7 @@ def get_binaryen_feature_flags():
 
 
 def check_binaryen(bindir):
-  opt = os.path.join(bindir, exe_suffix('wasm-opt'))
+  opt = os.path.join(bindir, utils.exe_suffix('wasm-opt'))
   if not os.path.exists(opt):
     exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % opt)
   try:

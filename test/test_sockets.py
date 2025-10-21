@@ -5,8 +5,8 @@
 
 import multiprocessing
 import os
-import socket
 import shutil
+import socket
 import sys
 import time
 from subprocess import Popen
@@ -17,11 +17,22 @@ if __name__ == '__main__':
 
 import clang_native
 import common
-from common import BrowserCore, no_windows, create_file, test_file, read_file
-from common import parameterized, requires_native_clang, crossplatform, PYTHON, NON_ZERO
-from common import requires_dev_dependency
+from common import (
+  NON_ZERO,
+  PYTHON,
+  BrowserCore,
+  create_file,
+  crossplatform,
+  no_windows,
+  parameterized,
+  read_file,
+  requires_dev_dependency,
+  requires_native_clang,
+  test_file,
+)
+
 from tools import config
-from tools.shared import EMCC, path_from_root, run_process, CLANG_CC
+from tools.shared import CLANG_CC, EMCC, path_from_root, run_process
 
 npm_checked = False
 
@@ -78,7 +89,7 @@ class WebsockifyServerHarness:
       self.processes.append(process)
 
     try:
-      import websockify  # type: ignore
+      import websockify  # type: ignore # noqa: PLC0415
     except ModuleNotFoundError:
       raise Exception('Unable to import module websockify. Run "python3 -m pip install websockify" or set environment variable EMTEST_SKIP_PYTHON_DEV_PACKAGES=1 to skip this test.') from None
 

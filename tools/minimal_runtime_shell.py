@@ -1,15 +1,13 @@
+import logging
+import os
 import re
 import sys
-import os
-import logging
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from . import building
-from . import shared
-from . import utils
+from . import building, shared, utils
 from .settings import settings
 
 logger = logging.getLogger('minimal_runtime_shell')
