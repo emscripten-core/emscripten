@@ -317,6 +317,8 @@ def main():
   with tempfile.NamedTemporaryFile(suffix=".manifest", mode='w+', delete=not args.preserve_manifest) as f:
     manifest = f.name
     for i, (module, paths) in enumerate(module_to_paths.items()):
+      if i != 0: # Unless we are the first entry add a newline separator
+        f.write('\n')
       funcs = set()
       for path in paths:
         if not path_to_funcs[path]:
