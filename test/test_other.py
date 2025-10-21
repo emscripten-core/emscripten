@@ -21,6 +21,7 @@ import struct
 import subprocess
 import sys
 import tarfile
+import tempfile
 import time
 from datetime import datetime
 from functools import wraps
@@ -153,6 +154,13 @@ def uses_canonical_tmp(func):
   """
   @wraps(func)
   def decorated(self, *args, **kwargs):
+    if self.runningInParallel():
+      # Because the canonical temp directory is a global/central location, when
+      # tests use it in parallel they need to temporarily override the temp directory
+      # to ovoid clobbering each each.
+      new_temp = tempfile.mkdtemp(prefix='emtest_tmpdir_', dir=self.temp_dir)
+      self.set_temp_dir(new_temp)
+
     # Before running the test completely remove the canonical_tmp
     if os.path.exists(self.canonical_temp_dir):
       shutil.rmtree(self.canonical_temp_dir)
@@ -166,6 +174,9 @@ def uses_canonical_tmp(func):
       # test fails we would not clean it up, and if leak detection
       # is set we will show that error instead of the actual one.
       shutil.rmtree(self.canonical_temp_dir)
+      if self.runningInParallel():
+        self.set_temp_dir(None)
+        shutil.rmtree(new_temp)
 
   return decorated
 
