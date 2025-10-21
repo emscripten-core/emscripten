@@ -1632,16 +1632,13 @@ addToLibrary({
         dynCalls[name.substr(8)] = exportedSymbol;
       }
 #endif
-      // Globals are currently statically enumerated into the output JS.
-      // TODO: If the number of Globals grows large, consider giving them a
-      // similar DECLARE_ASM_MODULE_EXPORTS = 0 treatment.
-      if (typeof exportedSymbol.value === 'undefined') {
+      // Export all symbols (both functions and globals) to the global scope
+      // when DECLARE_ASM_MODULE_EXPORTS=0
 #if MINIMAL_RUNTIME
-        globalThis[name] = exportedSymbol;
+      globalThis[name] = exportedSymbol;
 #else
-        globalThis[name] = Module[name] = exportedSymbol;
+      globalThis[name] = Module[name] = exportedSymbol;
 #endif
-      }
     }
     exportAliases(wasmExports);
   },
