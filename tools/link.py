@@ -1568,10 +1568,12 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.REQUIRED_EXPORTS += [
       'malloc',
       'calloc',
+      'realloc',
       'memalign',
       'free',
       'emscripten_builtin_malloc',
       'emscripten_builtin_calloc',
+      'emscripten_builtin_realloc',
       'emscripten_builtin_memalign',
       'emscripten_builtin_free',
     ]
