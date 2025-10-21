@@ -1260,7 +1260,7 @@
             ],
             "EmscriptenWebSocketCreateAttributes": [
                 "protocols"
-]
+            ]
         }
     },
     {
