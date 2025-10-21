@@ -6,13 +6,8 @@
 import shutil
 from subprocess import PIPE
 
-from common import (
-  RunnerCore,
-  create_file,
-  parameterized,
-  read_file,
-  test_file,
-)
+from common import RunnerCore, create_file, read_file, test_file
+from decorators import parameterized
 
 from tools.shared import EMCC
 from tools.utils import delete_file
