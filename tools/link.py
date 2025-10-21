@@ -2604,7 +2604,7 @@ def minify_html(filename):
 
   # HTML minifier will turn all null bytes into an escaped two-byte sequence "\0". Turn those back to single byte sequences.
   def unescape_nulls(filename):
-    with open(filename, "r", encoding="utf-8") as f:
+    with open(filename, encoding="utf-8") as f:
       data = f.read()
 
     out = []
