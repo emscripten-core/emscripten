@@ -14,12 +14,11 @@ from common import (
   RunnerCore,
   compiler_for,
   create_file,
-  node_pthreads,
-  parameterized,
   read_binary,
   read_file,
   test_file,
 )
+from decorators import node_pthreads, parameterized
 
 from tools import building, shared
 

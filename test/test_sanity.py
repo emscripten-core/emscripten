@@ -19,15 +19,13 @@ from common import (
   EMBUILDER,
   RunnerCore,
   create_file,
-  crossplatform,
   ensure_dir,
   env_modify,
   make_executable,
-  parameterized,
   path_from_root,
   test_file,
-  with_env_modify,
 )
+from decorators import crossplatform, parameterized, with_env_modify
 
 from tools import cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
