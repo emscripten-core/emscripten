@@ -1855,18 +1855,15 @@ int main() {
 
   @no_modularize_instance('uses Module object directly')
   @no_js_math('JS_MATH is not compatible with LINKABLE')
-  def test_emscripten_api(self):
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
-    self.do_core_test('test_emscripten_api.c')
-
-    # Sanitizers are not compatible with LINKABLE (dynamic linking).
-    # LLVM-libc overlay mode is not compatible with whole-archive (LINKABLE)
-    if not is_sanitizing(self.cflags) and not self.is_wasm64() and '-lllvmlibc' not in self.cflags:
-      # test EXPORT_ALL
-      self.clear_setting('EXPORTED_FUNCTIONS')
-      self.set_setting('EXPORT_ALL')
-      self.set_setting('LINKABLE')
-      self.do_core_test('test_emscripten_api.c', cflags=['-Wno-deprecated'])
+  @parameterized({
+    '': (['-sEXPORTED_FUNCTIONS=_main,_save_me_aimee'],),
+    # test EXPORT_ALL too
+    'export_all': (['-Wno-deprecated', '-sEXPORT_ALL', '-sLINKABLE'],),
+  })
+  def test_emscripten_api(self, args):
+    if '-sLINKABLE' in args and '-lllvmlibc' in self.cflags:
+      self.skipTest('LLVM-libc overlay mode is not compatible with whole-archive (LINKABLE)')
+    self.do_core_test('test_emscripten_api.c', cflags=args)
 
   def test_emscripten_run_script_string_int(self):
     src = r'''
