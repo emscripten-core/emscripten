@@ -85,6 +85,15 @@ LibraryJSEventLoop = {
   $emClearImmediate_deps: ['$emSetImmediate'],
   $emClearImmediate: undefined,
 
+  emscripten_queue_microtask__deps: ['$emSetImmediate', '$callUserCallback'],
+  emscripten_queue_microtask: (cb, userData) => {
+    {{{ runtimeKeepalivePush(); }}}
+    return queueMicrotask(() => {
+      {{{ runtimeKeepalivePop(); }}}
+      callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(userData));
+    });
+  },
+
   emscripten_set_immediate__deps: ['$emSetImmediate', '$callUserCallback'],
   emscripten_set_immediate: (cb, userData) => {
     {{{ runtimeKeepalivePush(); }}}
