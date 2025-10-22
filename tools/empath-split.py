@@ -314,7 +314,7 @@ def main():
   path_to_funcs = get_path_to_functions_map(args.wasm, sourcemap, all_paths)
 
   # Write .manifest file
-  with tempfile.NamedTemporaryFile(suffix=".manifest", mode='w+', delete=not args.preserve_manifest) as f:
+  with tempfile.NamedTemporaryFile(suffix=".manifest", mode='w+', delete=args.preserve_manifest) as f:
     manifest = f.name
     for i, (module, paths) in enumerate(module_to_paths.items()):
       if i != 0: # Unless we are the first entry add a newline separator
