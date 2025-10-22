@@ -525,6 +525,19 @@ def configure():
   common.configure_test_browser()
 
 
+def cleanup_emscripten_temp():
+  """Deletes all files and directories under Emscripten
+  that look like they might have been created by Emscripten."""
+  for entry in os.listdir(shared.TEMP_DIR):
+    if entry.startswith(('emtest_', 'emscripten_')):
+      entry = os.path.join(shared.TEMP_DIR, entry)
+      try:
+        if os.path.isdir(entry):
+          utils.delete_dir(entry)
+      except Exception:
+        pass
+
+
 def main():
   options = parse_args()
 
@@ -573,6 +586,7 @@ def main():
   check_js_engines()
 
   # Remove any old test files before starting the run
+  cleanup_emscripten_temp()
   utils.delete_file(common.flaky_tests_log_filename)
   utils.delete_file(common.browser_spawn_lock_filename)
   utils.delete_file(f'{common.browser_spawn_lock_filename}_counter')
