@@ -137,7 +137,8 @@ INTERNAL_SETTINGS = {
 # List of incompatible settings, of the form (SETTINGS_A, SETTING_B, OPTIONAL_REASON_FOR_INCOMPAT)
 INCOMPATIBLE_SETTINGS = [
     ('MINIMAL_RUNTIME', 'RELOCATABLE', None),
-    ('WASM2JS', 'RELOCATABLE', None),
+    ('WASM2JS', 'MAIN_MODULE', 'wasm2js does not support dynamic linking'),
+    ('WASM2JS', 'SIDE_MODULE', 'wasm2js does not support dynamic linking'),
     ('MODULARIZE', 'PROXY_TO_WORKER', 'if you want to run in a worker with -sMODULARIZE, you likely want to do the worker side setup manually'),
     ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),
     ('EVAL_CTORS', 'WASM2JS', None),

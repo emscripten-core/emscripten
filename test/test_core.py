@@ -26,6 +26,15 @@ from common import (
   PYTHON,
   WEBIDL_BINDER,
   RunnerCore,
+  compiler_for,
+  create_file,
+  env_modify,
+  path_from_root,
+  read_binary,
+  read_file,
+  test_file,
+)
+from decorators import (
   all_engines,
   also_with_minimal_runtime,
   also_with_modularize,
@@ -36,11 +45,8 @@ from common import (
   also_with_wasmfs,
   also_without_bigint,
   can_do_standalone,
-  compiler_for,
-  create_file,
   crossplatform,
   disabled,
-  env_modify,
   flaky,
   is_slow_test,
   needs_make,
@@ -51,9 +57,6 @@ from common import (
   node_pthreads,
   parameterize,
   parameterized,
-  path_from_root,
-  read_binary,
-  read_file,
   requires_dev_dependency,
   requires_jspi,
   requires_native_clang,
@@ -63,7 +66,6 @@ from common import (
   requires_wasm2js,
   requires_wasm_eh,
   skip_if,
-  test_file,
   with_all_eh_sjlj,
   with_all_fs,
   with_all_sjlj,
@@ -1854,15 +1856,14 @@ int main() {
     self.do_core_test('test_set_align.c')
 
   @no_modularize_instance('uses Module object directly')
-  @no_js_math('JS_MATH is not compatible with LINKABLE')
   @parameterized({
     '': (['-sEXPORTED_FUNCTIONS=_main,_save_me_aimee'],),
     # test EXPORT_ALL too
-    'export_all': (['-Wno-deprecated', '-sEXPORT_ALL', '-sLINKABLE'],),
+    'export_all': (['-sEXPORT_ALL', '-sMAIN_MODULE'],),
   })
   def test_emscripten_api(self, args):
-    if '-sLINKABLE' in args and '-lllvmlibc' in self.cflags:
-      self.skipTest('LLVM-libc overlay mode is not compatible with whole-archive (LINKABLE)')
+    if '-sMAIN_MODULE' in args:
+      self.check_dylink()
     self.do_core_test('test_emscripten_api.c', cflags=args)
 
   def test_emscripten_run_script_string_int(self):
@@ -6646,8 +6647,7 @@ void* operator new(size_t size) {
 
   @needs_dylink
   def test_relocatable_void_function(self):
-    self.set_setting('RELOCATABLE')
-    self.do_core_test('test_relocatable_void_function.c', cflags=['-Wno-deprecated'])
+    self.do_core_test('test_relocatable_void_function.c', cflags=['-sMAIN_MODULE=2'])
 
   @wasm_simd
   @parameterized({

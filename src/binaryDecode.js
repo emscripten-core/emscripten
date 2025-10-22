@@ -3,8 +3,9 @@
 // function, leading into incorrect results.
 /** @noinline */
 function binaryDecode(bin) {
-  for (var i = 0, l = bin.length, o = new Uint8Array(l); i < l; ++i) {
-    o[i] = bin.charCodeAt(i) - 1;
+  for (var i = 0, l = bin.length, o = new Uint8Array(l), c; i < l; ++i) {
+    c = bin.charCodeAt(i);
+    o[i] = ~c >> 8 & c; // Recover the null byte in a manner that is compatible with https://crbug.com/453961758
   }
   return o;
 }

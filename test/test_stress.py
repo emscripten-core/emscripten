@@ -16,13 +16,8 @@ import multiprocessing
 import subprocess
 import threading
 
-from common import (
-  NON_ZERO,
-  RunnerCore,
-  also_with_modularize,
-  is_slow_test,
-  node_pthreads,
-)
+from common import NON_ZERO, RunnerCore
+from decorators import also_with_modularize, is_slow_test, node_pthreads
 
 
 class stress(RunnerCore):
