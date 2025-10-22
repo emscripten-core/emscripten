@@ -993,7 +993,7 @@ var INCOMING_MODULE_JS_API = [
   'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
   'loadSplitModule', 'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
-  'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
+  'onExit', 'onFree', 'onFullScreen', 'onMalloc',
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
   'preinitializedWebGLContext', 'preloadPlugins',
@@ -1144,19 +1144,6 @@ var RUNTIME_LINKED_LIBS = [];
 // in a worker. See emscripten.h
 // [link]
 var BUILD_AS_WORKER = false;
-
-// If set to 1, we build the project into a js file that will run in a worker,
-// and generate an html file that proxies input and output to/from it.
-// [link]
-// [deprecated]
-var PROXY_TO_WORKER = false;
-
-// If set, the script file name the main thread loads.  Useful if your project
-// doesn't run the main emscripten- generated script immediately but does some
-// setup before
-// [link]
-// [deprecated]
-var PROXY_TO_WORKER_FILENAME = '';
 
 // If set to 1, compiles in a small stub main() in between the real main() which
 // calls pthread_create() to run the application main() in a pthread.  This is
