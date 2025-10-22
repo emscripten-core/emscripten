@@ -530,8 +530,10 @@ def cleanup_emscripten_temp():
   that look like they might have been created by Emscripten."""
   for entry in os.listdir(shared.TEMP_DIR):
     if entry.startswith(('emtest_', 'emscripten_')):
+      entry = os.path.join(shared.TEMP_DIR, entry)
       try:
-        utils.delete_dir(os.path.join(shared.TEMP_DIR, entry))
+        if os.path.isdir(entry):
+          utils.delete_dir(entry)
       except Exception:
         pass
 
