@@ -11,6 +11,7 @@ import itertools
 import json
 import locale
 import os
+import platform
 import random
 import re
 import select
@@ -12987,6 +12988,11 @@ void foo() {}
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
   })
   def test_pthread_growth(self, cflags, pthread_pool_size = 1):
+    if WINDOWS and platform.machine() == 'ARM64':
+      # https://github.com/emscripten-core/emscripten/issues/25627
+      # TODO: Switch this to a "require Node.js 24" check
+      self.require_node_canary()
+
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     if '-sGROWABLE_ARRAYBUFFERS' in cflags:
       self.node_args.append('--experimental-wasm-rab-integration')
