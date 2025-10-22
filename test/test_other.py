@@ -2216,14 +2216,17 @@ Module['postRun'] = () => {
       int* get_address();
 
       void* thread_main(void* arg) {
-        assert(*get_address() == 123);
-        printf("%d\n", *get_address());
+        int* addr = get_address();
+        printf("thread_main: %p, %d\n", addr, *addr);
+        assert(*addr == 123);
         return NULL;
       }
 
       int main() {
-        assert(*get_address() == 42);
-        *get_address() = 123;
+        int* addr = get_address();
+        printf("in main: %p, %d\n", addr, *addr);
+        assert(*addr == 42);
+        *addr = 123;
         pthread_t t;
         pthread_create(&t, NULL, thread_main, NULL);
         pthread_join(t, NULL);
@@ -2232,10 +2235,10 @@ Module['postRun'] = () => {
       ''')
 
     self.do_runf('main.c', '123', cflags=['-pthread', '-Wno-experimental',
-                                             '-sPROXY_TO_PTHREAD',
-                                             '-sEXIT_RUNTIME',
-                                             '-sMAIN_MODULE=2',
-                                             'side.wasm'])
+                                          '-sPROXY_TO_PTHREAD',
+                                          '-sEXIT_RUNTIME',
+                                          '-sMAIN_MODULE=2',
+                                          'side.wasm'])
 
   def test_dylink_pthread_warning(self):
     err = self.expect_fail([EMCC, '-Werror', '-sMAIN_MODULE', '-pthread', test_file('hello_world.c')])
@@ -5102,7 +5105,15 @@ int main() {
     'wasm2js': (False, False),
     'wasm2js_safe_heap': (False, True),
   })
-  def test_bad_function_pointer_cast(self, opts, wasm, safe):
+  @parameterized({
+    '': (False,),
+    'emulate_casts': (True,),
+  })
+  @parameterized({
+    '': (False,),
+    'dylink': (True,),
+  })
+  def test_bad_function_pointer_cast(self, opts, wasm, safe, emulate_casts, dylink):
     create_file('src.cpp', r'''
 #include <stdio.h>
 
@@ -5120,31 +5131,28 @@ int main() {
 }
 ''')
 
-    for emulate_casts in (0, 1):
-      for dylink in (0, 1):
-        # wasm2js is not compatible with dynamic linking
-        if dylink and not wasm:
-          continue
-        cmd = [EMXX, 'src.cpp'] + opts
-        if not wasm:
-          cmd += ['-sWASM=0']
-        if safe:
-          cmd += ['-sSAFE_HEAP']
-        if emulate_casts:
-          cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
-        if dylink:
-          cmd += ['-sMAIN_MODULE=2'] # disables asm-optimized safe heap
-        print(cmd)
-        self.run_process(cmd)
-        returncode = 0 if emulate_casts or not wasm else NON_ZERO
-        output = self.run_js('a.out.js', assert_returncode=returncode)
-        if emulate_casts or wasm == 0:
-          # success!
-          self.assertContained('Hello, world.', output)
-        else:
-          # otherwise, the error depends on the mode we are in
-          # wasm trap raised by the vm
-          self.assertContained('function signature mismatch', output)
+    # wasm2js is not compatible with dylink mode
+    if not wasm and dylink:
+      self.skipTest("wasm2js + dylink")
+    cmd = [EMXX, 'src.cpp'] + opts
+    if not wasm:
+      cmd += ['-sWASM=0']
+    if safe:
+      cmd += ['-sSAFE_HEAP']
+    if emulate_casts:
+      cmd += ['-sEMULATE_FUNCTION_POINTER_CASTS']
+    if dylink:
+      cmd += ['-sMAIN_MODULE=2'] # disables asm-optimized safe heap
+    self.run_process(cmd)
+    returncode = 0 if emulate_casts or not wasm else NON_ZERO
+    output = self.run_js('a.out.js', assert_returncode=returncode)
+    if emulate_casts or wasm == 0:
+      # success!
+      self.assertContained('Hello, world.', output)
+    else:
+      # otherwise, the error depends on the mode we are in
+      # wasm trap raised by the vm
+      self.assertContained('function signature mismatch', output)
 
   def test_bad_export(self):
     for exports in ('_main', '_main,foo'):
