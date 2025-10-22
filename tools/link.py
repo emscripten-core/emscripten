@@ -1089,9 +1089,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # Use settings
 
-  if settings.JS_MATH:
-    if settings.MAIN_MODULE == 1:
-      exit_with_error('JS_MATH is not compatible with dynamic linking (MAIN_MODULE=1)')
+  if settings.JS_MATH and settings.MAIN_MODULE == 1:
+    # MODULE_MODULE=1 adds`--whole-archive` around all the system libraries which
+    # results in duplicate math symbols when JS_MATH is used.
+    exit_with_error('JS_MATH is not compatible with dynamic linking (MAIN_MODULE=1)')
 
   if settings.WASM == 2 and settings.SINGLE_FILE:
     exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
