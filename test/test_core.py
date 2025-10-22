@@ -1863,6 +1863,8 @@ int main() {
   })
   def test_emscripten_api(self, args):
     if '-sMAIN_MODULE' in args:
+      if self.get_setting('JS_MATH'):
+        self.skipTest('JS_MATH is not compatible with MAIN_MODULE')
       self.check_dylink()
     self.do_core_test('test_emscripten_api.c', cflags=args)
 
