@@ -20,10 +20,10 @@ flags. For example, include paths and macro defintions.
 
 import os
 
-from . cmdline import SIMD_INTEL_FEATURE_TOWER, SIMD_NEON_FLAGS
-from . import shared, building, cache, ports
-from . settings import settings
-from . utils import memoize
+from . import building, cache, ports, shared
+from .cmdline import SIMD_INTEL_FEATURE_TOWER, SIMD_NEON_FLAGS
+from .settings import settings
+from .utils import memoize
 
 
 def get_target_flags():

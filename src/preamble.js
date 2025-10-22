@@ -423,27 +423,34 @@ function getWasmBinary(file) {}
 #else
 
 function findWasmBinary() {
-#if SINGLE_FILE
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+  return binaryDecode("<<< WASM_BINARY_DATA >>>");
+#elif SINGLE_FILE
   return base64Decode('<<< WASM_BINARY_DATA >>>');
+#elif AUDIO_WORKLET || !EXPORT_ES6 // For an Audio Worklet, we cannot use `new URL()`.
+  return locateFile('{{{ WASM_BINARY_FILE }}}');
 #else
-#if EXPORT_ES6 && !AUDIO_WORKLET
-  if (Module['locateFile']) {
-#endif
-    return locateFile('{{{ WASM_BINARY_FILE }}}');
-#if EXPORT_ES6 && !AUDIO_WORKLET // For an Audio Worklet, we cannot use `new URL()`.
-  }
+
 #if ENVIRONMENT_MAY_BE_SHELL
   if (ENVIRONMENT_IS_SHELL) {
     return '{{{ WASM_BINARY_FILE }}}';
   }
 #endif
+
+  if (Module['locateFile']) {
+    return locateFile('{{{ WASM_BINARY_FILE }}}');
+  }
+
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
   return new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
-#endif
+
 #endif
 }
 
 function getBinarySync(file) {
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
+  return file;
+#else
 #if SINGLE_FILE
   if (ArrayBuffer.isView(file)) {
     return file;
@@ -463,6 +470,7 @@ function getBinarySync(file) {
   throw 'both async and sync fetching of the wasm failed';
 #else
   throw 'sync fetching of the wasm failed: you can preload it to Module["wasmBinary"] manually, or emcc.py will do that for you when generating HTML (but not JS)';
+#endif
 #endif
 }
 
@@ -746,13 +754,7 @@ function getWasmImports() {
     __RELOC_FUNCS__.push(wasmExports['__wasm_apply_data_relocs']);
 #endif
 
-#if DECLARE_ASM_MODULE_EXPORTS
     assignWasmExports(wasmExports);
-#else
-    // If we didn't declare the asm exports as top level enties this function
-    // is in charge of programmatically exporting them on the global object.
-    exportWasmSymbols(wasmExports);
-#endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
     instrumentWasmTableWithAbort();

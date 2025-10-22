@@ -12,8 +12,8 @@ the generated changes.
 import argparse
 import json
 import os
-import subprocess
 import statistics
+import subprocess
 import sys
 
 script_dir = os.path.dirname(os.path.abspath(__file__))

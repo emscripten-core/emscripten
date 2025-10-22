@@ -55,12 +55,7 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import building
-from tools import diagnostics
-from tools import emsymbolizer
-from tools import shared
-from tools import utils
-from tools import webassembly
+from tools import building, diagnostics, emsymbolizer, shared, utils, webassembly
 from tools.utils import exit_with_error
 
 

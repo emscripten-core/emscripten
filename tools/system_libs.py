@@ -3,25 +3,22 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import re
-from time import time
-from .toolchain_profiler import ToolchainProfiler
-
 import itertools
 import logging
 import os
-import shutil
-import textwrap
+import re
 import shlex
+import shutil
 import subprocess
+import textwrap
 from enum import IntEnum, auto
 from glob import iglob
+from time import time
 from typing import List, Optional
 
-from . import shared, building, utils
-from . import diagnostics
-from . import cache
+from . import building, cache, diagnostics, shared, utils
 from .settings import settings
+from .toolchain_profiler import ToolchainProfiler
 from .utils import read_file
 
 logger = logging.getLogger('system_libs')

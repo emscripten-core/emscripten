@@ -85,9 +85,8 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import shared, utils, js_manipulation, diagnostics
+from tools import diagnostics, js_manipulation, shared, utils
 from tools.response_file import substitute_response_files
-
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
@@ -572,7 +571,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
   ret = generate_js(data_target, data_files, metadata)
 
-  if options.force or len(data_files):
+  if options.force or data_files:
     if options.jsoutput is None:
       print(ret)
     else:

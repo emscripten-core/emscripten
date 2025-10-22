@@ -3,14 +3,14 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import logging
 import os
 import shutil
 import sys
-import logging
 from typing import List, Optional
 
-from . import utils, diagnostics
-from .utils import path_from_root, exit_with_error, __rootpath__
+from . import diagnostics, utils
+from .utils import __rootpath__, exit_with_error, path_from_root
 
 logger = logging.getLogger('config')
 
