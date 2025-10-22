@@ -223,7 +223,21 @@ def find_config_file():
   #    see below)
   # 5. User home directory config (~/.emscripten), if found.
 
+  if '--em-config' in sys.argv:
+    i = sys.argv.index('--em-config')
+    if len(sys.argv) <= i + 1:
+      exit_with_error('--em-config must be followed by a filename')
+    del sys.argv[i]
+    # Now the i'th argument is the emconfig filename
+    return sys.argv.pop(i)
+
+  if 'EM_CONFIG' in os.environ:
+    return os.environ['EM_CONFIG']
+
   embedded_config = path_from_root('.emscripten')
+  if os.path.isfile(embedded_config):
+    return embedded_config
+
   # For compatibility with `emsdk --embedded` mode also look two levels up.  The
   # layout of the emsdk puts emcc two levels below emsdk.  For example:
   #  - emsdk/upstream/emscripten/emcc
@@ -238,25 +252,11 @@ def find_config_file():
   # See: https://github.com/emscripten-core/emsdk/pull/367
   emsdk_root = os.path.dirname(os.path.dirname(path_from_root()))
   emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
-  user_home_config = os.path.expanduser('~/.emscripten')
-
-  if '--em-config' in sys.argv:
-    i = sys.argv.index('--em-config')
-    if len(sys.argv) <= i + 1:
-      exit_with_error('--em-config must be followed by a filename')
-    del sys.argv[i]
-    # Now the i'th argument is the emconfig filename
-    return sys.argv.pop(i)
-
-  if 'EM_CONFIG' in os.environ:
-    return os.environ['EM_CONFIG']
-
-  if os.path.isfile(embedded_config):
-    return embedded_config
 
   if os.path.isfile(emsdk_embedded_config):
     return emsdk_embedded_config
 
+  user_home_config = os.path.expanduser('~/.emscripten')
   if os.path.isfile(user_home_config):
     return user_home_config
 
