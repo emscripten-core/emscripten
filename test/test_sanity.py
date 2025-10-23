@@ -177,7 +177,7 @@ class sanity(RunnerCore):
 
   @with_env_modify({'EM_CONFIG': None})
   def test_firstrun(self):
-    default_config = EM_CONFIG
+    default_config = path_from_root('.emscripten')
     output = self.do([EMCC, '-v'])
     self.assertContained('emcc: warning: config file not found: %s.  You can create one by hand or run `emcc --generate-config`' % default_config, output)
 
@@ -524,6 +524,10 @@ fi
 
     # Make a syntax error in the original config file so that attempting to access it would fail.
     utils.write_file(EM_CONFIG, 'asdfasdfasdfasdf\n')
+
+    # Test both relative and absolute paths to the config
+    self.run_process([EMCC, '--em-config', os.path.abspath('custom_config')] + MINIMAL_HELLO_WORLD)
+    self.assertContained('hello, world!', self.run_js('a.out.js'))
 
     self.run_process([EMCC, '--em-config', 'custom_config'] + MINIMAL_HELLO_WORLD)
     self.assertContained('hello, world!', self.run_js('a.out.js'))
