@@ -360,7 +360,7 @@ def should_run_binaryen_optimizer():
   return settings.OPT_LEVEL >= 2
 
 
-def get_binaryen_passes():
+def get_binaryen_passes(options):
   passes = []
   optimizing = should_run_binaryen_optimizer()
   # wasm-emscripten-finalize will strip the features section for us
@@ -392,7 +392,7 @@ def get_binaryen_passes():
       passes += ['--pass-arg=post-emscripten-side-module']
   if optimizing:
     passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
-  if settings.FAST_MATH:
+  if options.fast_math:
     passes += ['--fast-math']
   # when optimizing, use the fact that low memory is never used (1024 is a
   # hardcoded value in the binaryen pass). we also cannot do it when the stack
@@ -2292,7 +2292,7 @@ def phase_binaryen(target, options, wasm_target):
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
-  passes = get_binaryen_passes()
+  passes = get_binaryen_passes(options)
   if passes:
     # if asyncify is used, we will use it in the next stage, and so if it is
     # the only reason we need intermediate debug info, we can stop keeping it
