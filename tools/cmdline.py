@@ -112,6 +112,7 @@ class EmccOptions:
     self.sanitize_minimal_runtime = False
     self.sanitize = set()
     self.lib_dirs = []
+    self.fast_math = False
 
 
 def is_int(s):
@@ -302,7 +303,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
       elif requested_level == 'fast':
         # -Ofast typically includes -ffast-math semantics
-        settings.FAST_MATH = 1
+        options.fast_math = True
         requested_level = 3
         settings.SHRINK_LEVEL = 0
       else:
@@ -552,7 +553,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif arg == '-fignore-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
     elif arg == '-ffast-math':
-      settings.FAST_MATH = 1
+      options.fast_math = True
     elif check_arg('--default-obj-ext'):
       exit_with_error('--default-obj-ext is no longer supported by emcc')
     elif arg.startswith('-fsanitize=cfi'):
