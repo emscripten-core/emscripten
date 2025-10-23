@@ -1319,12 +1319,12 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   # Shared test code between main suite and others
 
-  def expect_fail(self, cmd, expect_traceback=False, **args):
+  def expect_fail(self, cmd, expect_traceback=False, **kwargs):
     """Run a subprocess and assert that it returns non-zero.
 
     Return the stderr of the subprocess.
     """
-    proc = self.run_process(cmd, check=False, stderr=PIPE, **args)
+    proc = self.run_process(cmd, check=False, stderr=PIPE, **kwargs)
     self.assertNotEqual(proc.returncode, 0, 'subprocess unexpectedly succeeded. stderr:\n' + proc.stderr)
     # When we check for failure we expect a user-visible error, not a traceback.
     # However, on windows a python traceback can happen randomly sometimes,
@@ -1336,6 +1336,13 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if EMTEST_VERBOSE:
       sys.stderr.write(proc.stderr)
     return proc.stderr
+
+  def assert_fail(self, cmd, expected, **kwargs):
+    """Just like expect_fail, but also check for expected message in stderr.
+    """
+    err = self.expect_fail(cmd, **kwargs)
+    self.assertContained(expected, err)
+    return err
 
   # excercise dynamic linker.
   #

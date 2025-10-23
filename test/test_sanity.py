@@ -373,10 +373,9 @@ fi
     ''')
 
     wipe()
+    expected = 'error: inline EM_CONFIG data no longer supported.  Please use a config file.'
     with env_modify({'EM_CONFIG': get_basic_config()}):
-      out = self.expect_fail([EMCC, 'main.cpp', '-Wno-deprecated', '-o', 'a.out.js'])
-
-    self.assertContained('error: inline EM_CONFIG data no longer supported.  Please use a config file.', out)
+      self.assert_fail([EMCC, 'main.cpp', '-Wno-deprecated', '-o', 'a.out.js'], expected)
 
   def clear_cache(self):
     self.run_process([EMCC, '--clear-cache'])
@@ -676,8 +675,7 @@ fi
       make_fake_tool(self.in_dir('fake', f'llvm-nm-{version}'), expected_llvm_version)
 
     make_fake('9.9')
-    out = self.expect_fail([EMCC, '-v'])
-    self.assertContained('No such file or directory', out)
+    self.assert_fail([EMCC, '-v'], 'No such file or directory')
     with env_modify({'EM_LLVM_ADD_VERSION': '9.9', 'EM_CLANG_ADD_VERSION': '9.9'}):
       self.check_working([EMCC])
 
@@ -799,8 +797,8 @@ fi
 
     # Touching package.json should cause compiler to fail with bootstrap message
     Path(utils.path_from_root('package.json')).touch()
-    err = self.expect_fail([EMCC, test_file('hello_world.c')])
-    self.assertContained('emcc: error: emscripten setup is not complete ("npm packages" is out-of-date). Run `bootstrap` to update', err)
+    expected = 'emcc: error: emscripten setup is not complete ("npm packages" is out-of-date). Run `bootstrap` to update'
+    self.assert_fail([EMCC, test_file('hello_world.c')], expected)
 
     # Running bootstrap.py should fix that
     bootstrap = shared.bat_suffix(shared.path_from_root('bootstrap'))
