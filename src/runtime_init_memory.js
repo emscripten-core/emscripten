@@ -9,8 +9,6 @@
 #error "this file should not be be included when IMPORTED_MEMORY is set"
 #endif
 
-var wasmMemory;
-
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
 
 function initMemory() {

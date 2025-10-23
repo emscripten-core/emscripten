@@ -9,28 +9,29 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
-from tools.toolchain_profiler import ToolchainProfiler
-
-import os
 import json
-import subprocess
 import logging
+import os
 import pprint
 import shutil
+import subprocess
 import sys
 import textwrap
 
-from tools import building
-from tools import config
-from tools import diagnostics
-from tools import js_manipulation
-from tools import shared
-from tools import utils
-from tools import webassembly
-from tools import extract_metadata
-from tools.utils import exit_with_error, path_from_root, removeprefix
-from tools.shared import DEBUG, asmjs_mangle, in_temp
+from tools import (
+  building,
+  config,
+  diagnostics,
+  extract_metadata,
+  js_manipulation,
+  shared,
+  utils,
+  webassembly,
+)
 from tools.settings import settings, user_settings
+from tools.shared import DEBUG, asmjs_mangle, in_temp
+from tools.toolchain_profiler import ToolchainProfiler
+from tools.utils import exit_with_error, path_from_root, removeprefix
 
 sys.path.append(path_from_root('third_party'))
 import leb128
@@ -111,7 +112,7 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     settings.WASM_EXPORTS = base_metadata.all_exports
   else:
     settings.WASM_EXPORTS = metadata.all_exports
-  settings.WASM_GLOBAL_EXPORTS = list(metadata.global_exports.keys())
+  settings.DATA_EXPORTS = list(metadata.data_exports.keys())
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
   # start with the MVP features, and add any detected features.
@@ -269,9 +270,9 @@ def trim_asm_const_body(body):
   return body
 
 
-def create_global_exports(global_exports):
+def create_data_exports(data_exports):
   lines = []
-  for k, v in global_exports.items():
+  for k, v in data_exports.items():
     if shared.is_internal_global(k):
       continue
 
@@ -285,10 +286,10 @@ def create_global_exports(global_exports):
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
     mangled = asmjs_mangle(k)
-    if settings.MINIMAL_RUNTIME:
-      lines.append("var %s = %s;" % (mangled, v))
-    else:
+    if should_export(mangled) and not settings.MINIMAL_RUNTIME:
       lines.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
+    else:
+      lines.append("var %s = %s;" % (mangled, v))
 
   return '\n'.join(lines)
 
@@ -408,11 +409,11 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     other_exports = base_metadata.other_exports
     # We want the real values from the final metadata but we only want to
     # include names from the base_metadata.  See phase_link() in link.py.
-    global_exports = {k: v for k, v in metadata.global_exports.items() if k in base_metadata.global_exports}
+    data_exports = {k: v for k, v in metadata.data_exports.items() if k in base_metadata.data_exports}
   else:
     function_exports = metadata.function_exports
     other_exports = metadata.other_exports
-    global_exports = metadata.global_exports
+    data_exports = metadata.data_exports
 
   if settings.ASYNCIFY == 1:
     function_exports['asyncify_start_unwind'] = webassembly.FuncType([webassembly.Type.I32], [])
@@ -421,8 +422,10 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
   parts = [pre]
-  parts += create_module(metadata, function_exports, global_exports, other_exports, forwarded_json['librarySymbols'])
+  parts += create_module(metadata, function_exports, data_exports, other_exports,
+                         forwarded_json['librarySymbols'], forwarded_json['nativeAliases'])
   parts.append(post)
+  settings.ALIASES = list(forwarded_json['nativeAliases'].keys())
 
   full_js_module = ''.join(parts)
   full_js_module = apply_static_code_hooks(forwarded_json, full_js_module)
@@ -906,7 +909,7 @@ def should_export(sym):
   return settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and sym in settings.EXPORTED_FUNCTIONS)
 
 
-def create_receiving(function_exports, other_exports, library_symbols):
+def create_receiving(function_exports, other_exports, library_symbols, aliases):
   generate_dyncall_assignment = 'dynCalls' in library_symbols
   receiving = ['\n// Imports from the Wasm binary.']
 
@@ -919,6 +922,9 @@ def create_receiving(function_exports, other_exports, library_symbols):
         exports.append(f'{sym} as {mangled}')
       else:
         exports.append(sym)
+    for alias, target in aliases.items():
+      exports.append(f'{target} as {alias}')
+
     receiving.append('import {')
     receiving.append('  ' + ',\n  '.join(exports))
     receiving.append(f"}} from './{settings.WASM_BINARY_FILE}';")
@@ -934,8 +940,8 @@ def create_receiving(function_exports, other_exports, library_symbols):
 
     return '\n'.join(receiving)
 
-  # When not declaring asm exports this section is empty and we instead programmatically export
-  # symbols on the global object by calling exportWasmSymbols after initialization
+  # When not declaring asm exports `assignWasmExports` is instead defined as a simple
+  # library function.
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
@@ -948,29 +954,34 @@ def create_receiving(function_exports, other_exports, library_symbols):
   for name in other_exports:
     exports[name] = None
 
+  mangled = [asmjs_mangle(s) for s in exports] + list(aliases.keys())
   if settings.ASSERTIONS:
     # In debug builds we generate trapping functions in case
     # folks try to call/use a reference that was taken before the
     # wasm module is available.
-    for sym in exports:
-      mangled = asmjs_mangle(sym)
-      assignment = mangled
-      if (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(mangled) and settings.MODULARIZE != 'instance':
-        assignment += f" = Module['{mangled}']"
-      receiving.append(f"var {assignment} = makeInvalidEarlyAccess('{mangled}');")
+    for sym in mangled:
+      assignment = sym
+      if (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(sym) and settings.MODULARIZE != 'instance':
+        assignment += f" = Module['{sym}']"
+      receiving.append(f"var {assignment} = makeInvalidEarlyAccess('{sym}');")
   else:
     # Declare all exports in a single var statement
     sep = ',\n  '
-    mangled = [asmjs_mangle(s) for s in exports]
     receiving.append(f'var {sep.join(mangled)};\n')
 
   if settings.MODULARIZE == 'instance':
-    mangled = [asmjs_mangle(e) for e in exports]
     esm_exports = [e for e in mangled if should_export(e)]
     if esm_exports:
       esm_exports = ', '.join(esm_exports)
       receiving.append(f'export {{ {esm_exports} }};')
 
+  alias_inverse_map = {}
+  logger.debug(json.dumps(aliases))
+  for sym, alias in aliases.items():
+    assert alias in exports, f'expected alias target ({alias}) to be exported'
+    alias_inverse_map.setdefault(alias, []).append(sym)
+
+  do_module_exports = (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and settings.MODULARIZE != 'instance'
   receiving.append('\nfunction assignWasmExports(wasmExports) {')
   for sym, sig in exports.items():
     is_function = sig is not None
@@ -979,8 +990,15 @@ def create_receiving(function_exports, other_exports, library_symbols):
     if generate_dyncall_assignment and is_function and sym.startswith('dynCall_'):
       sig_str = sym.replace('dynCall_', '')
       assignment += f" = dynCalls['{sig_str}']"
-    if (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(mangled) and settings.MODULARIZE != 'instance':
-       assignment += f" = Module['{mangled}']"
+    if do_module_exports and should_export(mangled):
+      assignment += f" = Module['{mangled}']"
+    if settings.ASSERTIONS:
+      receiving.append(f"  assert(typeof wasmExports['{sym}'] != 'undefined', 'missing Wasm export: {sym}');")
+    if sym in alias_inverse_map:
+      for target in alias_inverse_map[sym]:
+        assignment += f" = {target}"
+        if do_module_exports and target in settings.EXPORTED_RUNTIME_METHODS:
+          assignment += f" = Module['{target}']"
     if is_function and install_debug_wrapper(sym):
       nargs = len(sig.params)
       receiving.append(f"  {assignment} = createExportWrapper('{sym}', {nargs});")
@@ -991,10 +1009,10 @@ def create_receiving(function_exports, other_exports, library_symbols):
   return '\n'.join(receiving)
 
 
-def create_module(metadata, function_exports, global_exports, other_exports, library_symbols):
+def create_module(metadata, function_exports, data_exports, other_exports, library_symbols, aliases):
   module = []
-  module.append(create_receiving(function_exports, other_exports, library_symbols))
-  module.append(create_global_exports(global_exports))
+  module.append(create_receiving(function_exports, other_exports, library_symbols, aliases))
+  module.append(create_data_exports(data_exports))
 
   sending = create_sending(metadata, library_symbols)
   if settings.WASM_ESM_INTEGRATION:

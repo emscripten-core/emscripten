@@ -8,10 +8,8 @@ import os
 import shlex
 import shutil
 import sys
-from tools import shared
-from tools import config
-from tools import utils
-from subprocess import CalledProcessError
+
+from tools import config, shared, utils
 
 
 #
@@ -63,11 +61,7 @@ variables so that emcc etc. are used. Typical usage:
       return 1
 
   print(f'emcmake: {shlex.join(args)} in directory {os.getcwd()}', file=sys.stderr)
-  try:
-    shared.check_call(args)
-    return 0
-  except CalledProcessError as e:
-    return e.returncode
+  shared.exec_process(args)
 
 
 if __name__ == '__main__':

@@ -157,7 +157,7 @@ export function mergeInto(obj, other, options = null) {
         const deps = other[key];
         if (!Array.isArray(deps)) {
           error(
-            `JS library directive ${key}=${deps.toString()} is of type '${type}', but it should be an array`,
+            `JS library directive ${key}=${deps} is of type '${type}', but it should be an array`,
           );
         }
         for (let dep of deps) {
@@ -199,22 +199,23 @@ export function isJsOnlySymbol(symbol) {
   return symbol[0] == '$';
 }
 
+export const decoratorSuffixes = [
+  '__sig',
+  '__proxy',
+  '__asm',
+  '__deps',
+  '__postset',
+  '__docs',
+  '__nothrow',
+  '__noleakcheck',
+  '__internal',
+  '__user',
+  '__async',
+  '__i53abi',
+];
+
 export function isDecorator(ident) {
-  const suffixes = [
-    '__sig',
-    '__proxy',
-    '__asm',
-    '__deps',
-    '__postset',
-    '__docs',
-    '__nothrow',
-    '__noleakcheck',
-    '__internal',
-    '__user',
-    '__async',
-    '__i53abi',
-  ];
-  return suffixes.some((suffix) => ident.endsWith(suffix));
+  return decoratorSuffixes.some((suffix) => ident.endsWith(suffix));
 }
 
 export function readFile(filename) {
@@ -242,8 +243,12 @@ function read(filename) {
   return readFile(filename);
 }
 
-export function printErr(x) {
-  process.stderr.write(x + '\n');
+export function printErr(...args) {
+  console.error(...args);
+}
+
+export function debugLog(...args) {
+  if (VERBOSE) printErr(...args);
 }
 
 export class Benchmarker {
@@ -326,6 +331,7 @@ export function runInMacroContext(code, options) {
 
 addToCompileTimeContext({
   assert,
+  decoratorSuffixes,
   error,
   isDecorator,
   isJsOnlySymbol,

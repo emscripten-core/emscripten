@@ -72,7 +72,7 @@ jobs:
             echo "Test expectations are out-of-date on the target branch."
             echo "Please run the 'Rebaseline Tests' github action on the target"
             echo "branch (normally 'main') before proceeding."
-            ecoh ""
+            echo ""
             echo "You can also run './tools/maint/rebaseline_tests.py --new-branch'"
             echo "and use it to create a seperate PR."
             exit 1

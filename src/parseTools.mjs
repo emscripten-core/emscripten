@@ -24,6 +24,8 @@ import {
   srcDir,
 } from './utility.mjs';
 
+import { nativeAliases } from './modules.mjs';
+
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
 const WASM_PAGE_SIZE = 64 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
@@ -803,24 +805,16 @@ function addAtPostRun(code) {
 }
 
 function makeRetainedCompilerSettings() {
-  const ignore = new Set();
-  if (STRICT) {
-    for (const setting of LEGACY_SETTINGS) {
-      ignore.add(setting);
-    }
-  }
-
   const ret = {};
-  for (const x in global) {
-    if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
-      const value = global[x];
+  for (const [name, value] of Object.entries(global)) {
+    if (name[0] !== '_' && name == name.toUpperCase()) {
       if (
         typeof value == 'number' ||
         typeof value == 'boolean' ||
         typeof value == 'string' ||
-        Array.isArray(x)
+        Array.isArray(name)
       ) {
-        ret[x] = value;
+        ret[name] = value;
       }
     }
   }
@@ -962,16 +956,6 @@ function buildStringArray(array) {
 
 function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
-}
-
-// Called when global runtime symbols such as wasmMemory, wasmExports and
-// wasmTable are set. In this case we maybe need to re-export them on the
-// Module object.
-function receivedSymbol(sym) {
-  if (EXPORTED_RUNTIME_METHODS.has(sym)) {
-    return `Module['${sym}'] = ${sym};`;
-  }
-  return '';
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
@@ -1132,7 +1116,7 @@ function nodeDetectionCode() {
     // optimize code size.
     return 'true';
   }
-  return "typeof process == 'object' && process.versions?.node && process.type != 'renderer'";
+  return "globalThis.process?.versions?.node && globalThis.process?.type != 'renderer'";
 }
 
 function nodePthreadDetection() {
@@ -1153,6 +1137,17 @@ function nodeWWDetection() {
   } else {
     return "require('worker_threads').workerData === 'em-ww'";
   }
+}
+
+function makeExportAliases() {
+  var res = ''
+  for (var [alias, ex] of Object.entries(nativeAliases)) {
+    if (ASSERTIONS) {
+      res += `  assert(wasmExports['${ex}'], 'alias target "${ex}" not found in wasmExports');\n`;
+    }
+    res += `  globalThis['${alias}'] = wasmExports['${ex}'];\n`;
+  }
+  return res;
 }
 
 addToCompileTimeContext({
@@ -1204,6 +1199,7 @@ addToCompileTimeContext({
   isSymbolNeeded,
   makeDynCall,
   makeEval,
+  makeExportAliases,
   makeGetValue,
   makeHEAPView,
   makeModuleReceive,
@@ -1218,7 +1214,6 @@ addToCompileTimeContext({
   nodeDetectionCode,
   receiveI64ParamAsI53,
   receiveI64ParamAsI53Unchecked,
-  receivedSymbol,
   runIfMainThread,
   runIfWorkerThread,
   runtimeKeepalivePop,

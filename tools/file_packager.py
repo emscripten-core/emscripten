@@ -85,9 +85,8 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import shared, utils, js_manipulation, diagnostics
+from tools import diagnostics, js_manipulation, shared, utils
 from tools.response_file import substitute_response_files
-
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
@@ -255,7 +254,7 @@ def generate_object_file(data_files):
   embed_files = [f for f in data_files if f.mode == 'embed']
   assert embed_files
 
-  asm_file = shared.replace_suffix(options.obj_output, '.s')
+  asm_file = utils.replace_suffix(options.obj_output, '.s')
 
   used = set()
   for f in embed_files:
@@ -572,7 +571,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
 
   ret = generate_js(data_target, data_files, metadata)
 
-  if options.force or len(data_files):
+  if options.force or data_files:
     if options.jsoutput is None:
       print(ret)
     else:
@@ -612,7 +611,7 @@ def generate_js(data_target, data_files, metadata):
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
   ret += '''
-  Module['expectedDataFileDownloads'] ??= 0;
+  if (!Module['expectedDataFileDownloads']) Module['expectedDataFileDownloads'] = 0;
   Module['expectedDataFileDownloads']++;'''
 
   if not options.export_es6:
@@ -626,7 +625,7 @@ def generate_js(data_target, data_files, metadata):
     if (isPthread || isWasmWorker) return;\n'''
 
   if options.support_node:
-    ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
+    ret += "    var isNode = globalThis.process && globalThis.process.versions && globalThis.process.versions.node && globalThis.process.type != 'renderer';\n"
 
   if options.support_node and options.export_es6:
         ret += '''if (isNode) {
@@ -682,7 +681,7 @@ def generate_js(data_target, data_files, metadata):
             await Module['FS_preloadFile'](name, null, data, true, true, false, true);
             Module['removeRunDependency'](`fp ${name}`);
           } catch (e) {
-            err(`Preloading file ${name} failed`);
+            err(`Preloading file ${name} failed`, e);
           }\n'''
     create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
           Module['FS_createDataFile'](name, null, data, true, true, true);
@@ -771,7 +770,7 @@ def generate_js(data_target, data_files, metadata):
       }
       var PACKAGE_NAME = '%s';
       var REMOTE_PACKAGE_BASE = '%s';
-      var REMOTE_PACKAGE_NAME = Module['locateFile']?.(REMOTE_PACKAGE_BASE, '') ?? REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
+      var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
     metadata['remote_package_size'] = remote_package_size
     ret += "      var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n"
 
@@ -938,15 +937,14 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          var fsPromises = require('fs/promises');
-          var contents = await fsPromises.readFile(packageName);
-          return contents.buffer;
+          var contents = require('fs').readFileSync(packageName);
+          return new Uint8Array(contents).buffer;
         }'''.strip()
 
     ret += '''
       async function fetchRemotePackage(packageName, packageSize) {
         %(node_support_code)s
-        Module['dataFileDownloads'] ??= {};
+        if (!Module['dataFileDownloads']) Module['dataFileDownloads'] = {};
         try {
           var response = await fetch(packageName);
         } catch (e) {
@@ -958,10 +956,10 @@ def generate_js(data_target, data_files, metadata):
 
         const chunks = [];
         const headers = response.headers;
-        const total = Number(headers.get('Content-Length') ?? packageSize);
+        const total = Number(headers.get('Content-Length') || packageSize);
         let loaded = 0;
 
-        Module['setStatus']?.('Downloading data...');
+        Module['setStatus'] && Module['setStatus']('Downloading data...');
         const reader = response.body.getReader();
 
         while (1) {
@@ -979,7 +977,7 @@ def generate_js(data_target, data_files, metadata):
             totalSize += download.total;
           }
 
-          Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
+          Module['setStatus'] && Module['setStatus'](`Downloading data... (${totalLoaded}/${totalSize})`);
         }
 
         const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
@@ -994,7 +992,7 @@ def generate_js(data_target, data_files, metadata):
     code += '''
       async function processPackageData(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file failed.');
-        assert(arrayBuffer.constructor.name === ArrayBuffer.name, 'bad input to processPackageData');
+        assert(arrayBuffer.constructor.name === ArrayBuffer.name, 'bad input to processPackageData ' + arrayBuffer.constructor.name);
         var byteArray = new Uint8Array(arrayBuffer);
         var curr;
         %s
@@ -1004,7 +1002,7 @@ def generate_js(data_target, data_files, metadata):
     # we need to find the datafile in the same dir as the html file
 
     code += '''
-      Module['preloadResults'] ??= {};\n'''
+      if (!Module['preloadResults']) Module['preloadResults'] = {};\n'''
 
     if options.use_preload_cache:
       code += '''
@@ -1034,7 +1032,7 @@ def generate_js(data_target, data_files, metadata):
           await preloadFallback(e)%s;
         }
 
-        Module['setStatus']?.('Downloading...');\n''' % catch_handler
+        Module['setStatus'] && Module['setStatus']('Downloading...');\n''' % catch_handler
     else:
       # Not using preload cache, so we might as well start the xhr ASAP,
       # potentially before JS parsing of the main codebase if it's after us.
@@ -1065,7 +1063,8 @@ def generate_js(data_target, data_files, metadata):
     if (Module['calledRun']) {
       runWithFS(Module)%s;
     } else {
-      (Module['preRun'] ??= []).push(runWithFS); // FS is not initialized yet, wait for it
+      if (!Module['preRun']) Module['preRun'] = [];
+      Module['preRun'].push(runWithFS); // FS is not initialized yet, wait for it
     }\n''' % catch_handler
 
   if options.separate_metadata:
@@ -1073,9 +1072,12 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          var fsPromises = require('fs/promises');
-          var contents = await fsPromises.readFile(metadataUrl, 'utf8');
-          return loadPackage(JSON.parse(contents));
+          var contents = require('fs').readFileSync(metadataUrl, 'utf8');
+          // The await here is needed, even though JSON.parse is a sync API.  It works
+          // around a issue with `removeRunDependency` otherwise being called to early
+          // on the metadata object.
+          var json = await JSON.parse(contents);
+          return loadPackage(json);
         }'''.strip()
 
     ret += '''
@@ -1084,20 +1086,21 @@ def generate_js(data_target, data_files, metadata):
 
   async function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
-    var metadataUrl = Module['locateFile']?.('%(metadata_file)s', '') ?? '%(metadata_file)s';
+    var metadataUrl = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
     %(node_support_code)s
     var response = await fetch(metadataUrl);
     if (!response.ok) {
       throw new Error(`${response.status}: ${response.url}`);
     }
     var json = await response.json();
-    return loadPackage(json);
+    await loadPackage(json);
   }
 
   if (Module['calledRun']) {
     runMetaWithFS();
   } else {
-    (Module['preRun'] ??= []).push(runMetaWithFS);
+    if (!Module['preRun']) Module['preRun'] = [];
+    Module['preRun'].push(runMetaWithFS);
   }\n''' % {'node_support_code': node_support_code, 'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
   else:
     ret += '''

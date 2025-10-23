@@ -5,27 +5,29 @@
 
 import glob
 import os
-import platform
+import re
 import shutil
 import stat
 import time
-import re
-import tempfile
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
-import common
-from common import RunnerCore, path_from_root, env_modify, test_file
-from common import create_file, ensure_dir, make_executable, with_env_modify
-from common import crossplatform, parameterized, EMBUILDER
+from common import (
+  EMBUILDER,
+  RunnerCore,
+  create_file,
+  ensure_dir,
+  env_modify,
+  make_executable,
+  path_from_root,
+  test_file,
+)
+from decorators import crossplatform, parameterized, with_env_modify
+
+from tools import cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
-from tools.shared import EMCC
-from tools.shared import config
-from tools.utils import delete_file, delete_dir
-from tools import cache
-from tools import shared, utils
-from tools import response_file
-from tools import ports
+from tools.shared import EMCC, config
+from tools.utils import delete_dir, delete_file
 
 SANITY_FILE = cache.get_path('sanity.txt')
 commands = [[EMCC], [shared.bat_suffix(path_from_root('test/runner')), 'blahblah']]
@@ -175,32 +177,31 @@ class sanity(RunnerCore):
 
   @with_env_modify({'EM_CONFIG': None})
   def test_firstrun(self):
-    default_config = path_from_root('.emscripten')
+    default_config = EM_CONFIG
     output = self.do([EMCC, '-v'])
     self.assertContained('emcc: warning: config file not found: %s.  You can create one by hand or run `emcc --generate-config`' % default_config, output)
 
-    try:
-      temp_bin = tempfile.mkdtemp()
+    temp_bin = os.path.abspath('bin')
+    os.mkdir(temp_bin)
 
-      def make_new_executable(name):
-        utils.write_file(os.path.join(temp_bin, name), '')
-        make_executable(os.path.join(temp_bin, name))
+    def make_new_executable(name):
+      utils.write_file(os.path.join(temp_bin, name), '')
+      make_executable(os.path.join(temp_bin, name))
 
-      make_new_executable('wasm-ld')
-      make_new_executable('node')
+    make_new_executable('wasm-ld')
+    make_new_executable('node')
 
-      with env_modify({'PATH': temp_bin + os.pathsep + os.environ['PATH']}):
-        output = self.do([EMCC, '--generate-config'])
-    finally:
-      shutil.rmtree(temp_bin)
-      config_data = utils.read_file(default_config)
+    with env_modify({'PATH': temp_bin + os.pathsep + os.environ['PATH']}):
+      output = self.do([EMCC, '--generate-config'])
+
+    config_data = utils.read_file(default_config)
 
     self.assertContained('An Emscripten settings file has been generated at:', output)
     self.assertContained(default_config, output)
     self.assertContained('It contains our best guesses for the important paths, which are:', output)
     self.assertContained('LLVM_ROOT', output)
     self.assertContained('NODE_JS', output)
-    if platform.system() != 'Windows':
+    if not utils.WINDOWS:
       # os.chmod can't make files executable on Windows
       self.assertIdentical(temp_bin, re.search("^ *LLVM_ROOT *= (.*)$", output, re.M).group(1))
       possible_nodes = [os.path.join(temp_bin, 'node')]
@@ -488,7 +489,7 @@ fi
       with env_modify({'EM_CACHE': self.in_dir('test_cache')}):
         self.run_process([EMCC, test_file('hello_world.c'), '-c'])
     finally:
-      for_all_files(path_from_root('system/include'), shared.make_writable)
+      for_all_files(path_from_root('system/include'), utils.make_writable)
 
   @parameterized({
     '': [False, False],
@@ -519,29 +520,13 @@ fi
 
   def test_emconfig(self):
     restore_and_set_up()
-
-    fd, custom_config_filename = tempfile.mkstemp(prefix='.emscripten_config_')
-
-    orig_config = utils.read_file(EM_CONFIG)
-
-    # Move the ~/.emscripten to a custom location.
-    with os.fdopen(fd, "w") as f:
-      f.write(get_basic_config())
+    create_file('custom_config', get_basic_config())
 
     # Make a syntax error in the original config file so that attempting to access it would fail.
-    utils.write_file(EM_CONFIG, 'asdfasdfasdfasdf\n\'\'\'' + orig_config)
+    utils.write_file(EM_CONFIG, 'asdfasdfasdfasdf\n')
 
-    temp_dir = tempfile.mkdtemp(prefix='emscripten_temp_')
-
-    with common.chdir(temp_dir):
-      self.run_process([EMCC, '--em-config', custom_config_filename] + MINIMAL_HELLO_WORLD + ['-O2'])
-      result = self.run_js('a.out.js')
-
-    self.assertContained('hello, world!', result)
-
-    # Clean up created temp files.
-    os.remove(custom_config_filename)
-    shutil.rmtree(temp_dir)
+    self.run_process([EMCC, '--em-config', 'custom_config'] + MINIMAL_HELLO_WORLD)
+    self.assertContained('hello, world!', self.run_js('a.out.js'))
 
   def test_emcc_ports(self):
     restore_and_set_up()
@@ -759,10 +744,10 @@ fi
 
   def test_embuilder_wildcards(self):
     restore_and_set_up()
-    glob_match = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libwebgpu*.a')
-    self.run_process([EMBUILDER, 'clear', 'libwebgpu*'])
+    glob_match = os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'libemmalloc*.a')
+    self.run_process([EMBUILDER, 'clear', 'libemmalloc*'])
     self.assertFalse(glob.glob(glob_match))
-    self.run_process([EMBUILDER, 'build', 'libwebgpu*'])
+    self.run_process([EMBUILDER, 'build', 'libemmalloc*'])
     self.assertGreater(len(glob.glob(glob_match)), 3)
 
   def test_embuilder_with_use_port_syntax(self):
@@ -831,7 +816,7 @@ fi
 
     # Remove from PATH every directory that contains clang.exe so that bootstrap.py cannot
     # accidentally succeed by virtue of locating tools in PATH.
-    new_path = [d for d in env['PATH'].split(os.pathsep) if not os.path.isfile(os.path.join(d, shared.exe_suffix('clang')))]
+    new_path = [d for d in env['PATH'].split(os.pathsep) if not os.path.isfile(os.path.join(d, utils.exe_suffix('clang')))]
     env['PATH'] = os.pathsep.join(new_path)
 
     # Running bootstrap.py should not fail

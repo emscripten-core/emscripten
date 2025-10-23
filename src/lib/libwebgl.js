@@ -754,7 +754,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // context on a canvas, calling .getContext() will always return that
       // context independent of which 'webgl' or 'webgl2'
       // context version was passed. See:
-      //   https://bugs.webkit.org/show_bug.cgi?id=222758
+      //   https://webkit.org/b/222758
       // and:
       //   https://github.com/emscripten-core/emscripten/issues/13295.
       // TODO: Once the bug is fixed and shipped in Safari, adjust the Safari
@@ -811,7 +811,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         // Bug on Safari on iOS and macOS: texImage2D() and texSubImage2D() do
         // not allow uploading pixel data to half float textures, rendering them
         // useless.
-        // See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
+        // See https://webkit.org/b/183321, https://webkit.org/b/169999,
         // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
         ctx.texImage2D(0xDE1/*GL_TEXTURE_2D*/, 0, 0x1908/*GL_RGBA*/, 1, 1, 0, 0x1908/*GL_RGBA*/, 0x8d61/*HALF_FLOAT_OES*/, new Uint16Array(4));
         var broken = ctx.getError();
@@ -821,7 +821,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
           ctx.realGetSupportedExtensions = ctx.getSupportedExtensions;
           ctx.getSupportedExtensions = function() {
 #if GL_ASSERTIONS
-            warnOnce('Removed broken support for half-float textures. See e.g. https://bugs.webkit.org/show_bug.cgi?id=183321');
+            warnOnce('Removed broken support for half-float textures. See e.g. https://webkit.org/b/183321');
 #endif
             // .getSupportedExtensions() can return null if context is lost, so
             // coerce to empty array.
@@ -859,17 +859,6 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       if (gl.getContextAttributes().antialias) {
         context.defaultFboForbidBlitFramebuffer = true;
       }
-#if MIN_FIREFOX_VERSION < 67
-      else {
-        // The WebGL 2 blit path doesn't work in Firefox < 67 (except in fullscreen).
-        // https://bugzilla.mozilla.org/show_bug.cgi?id=1523030
-        var firefoxMatch = navigator.userAgent.toLowerCase().match(/firefox\/(\d\d)/);
-        if (firefoxMatch != null) {
-          var firefoxVersion = firefoxMatch[1];
-          context.defaultFboForbidBlitFramebuffer = firefoxVersion < 67;
-        }
-      }
-#endif
 #endif
 
       // Create render targets to the FBO
@@ -1240,7 +1229,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
       // However, Firefox exposes the WebGL 1 version on WebGL 2 as well and
       // thus we look for the WebGL 1 version again if the WebGL 2 version
-      // isn't present. https://bugzilla.mozilla.org/show_bug.cgi?id=1328882
+      // isn't present. https://bugzil.la/1328882
       if (context.version < 2 || !GLctx.disjointTimerQueryExt)
 #endif
       {
@@ -4317,9 +4306,7 @@ var glPassthroughFuncs = [
 ];
 
 function createGLPassthroughFunctions(lib, funcs) {
-  funcs.forEach((data) => {
-    const num = data[0];
-    const names = data[1];
+  for (const [num, names] of funcs) {
     const args = range(num).map((i) => 'x' + i ).join(', ');
     const stub = `(${args}) => GLctx.NAME(${args})`;
     const sigEnd = range(num).map(() => 'i').join('');
@@ -4341,26 +4328,47 @@ function createGLPassthroughFunctions(lib, funcs) {
       lib[cName] = eval(stub.replace('NAME', name));
       assert(lib[cName + '__sig'] || LibraryManager.library[cName + '__sig'], 'missing sig for ' + cName);
     });
-  });
+  }
 }
 
 createGLPassthroughFunctions(LibraryGL, glPassthroughFuncs);
 
 autoAddDeps(LibraryGL, '$GL');
 
+function renameSymbol(lib, oldName, newName) {
+  lib[newName] = lib[oldName];
+  delete lib[oldName];
+  for (const suffix of decoratorSuffixes) {
+    const oldDecorator = oldName + suffix;
+    if (lib.hasOwnProperty(oldDecorator)) {
+      const newDecorator = newName + suffix;
+      lib[newDecorator] = lib[oldDecorator];
+      delete lib[oldDecorator];
+    }
+  }
+}
+
 function recordGLProcAddressGet(lib) {
   // GL proc address retrieval - allow access through glX and emscripten_glX, to
   // allow name collisions with user-implemented things having the same name
   // (see gl.c)
-  Object.keys(lib).forEach((x) => {
-    if (x.startsWith('gl') && !isDecorator(x)) {
-      lib['emscripten_' + x] = x;
-      var sig = LibraryManager.library[x + '__sig'];
+  //
+  // We do this by renaming `glX` symbols to `emscripten_glX` and then setting
+  // `glX` as an alias of `emscripten_glX`.  The reason for this renaming is to
+  // ensure that `emscripten_glX` is always available, even in cases where native
+  // code defines `glX`.
+  const glSyms = [];
+  for (const sym of Object.keys(lib)) {
+    if (sym.startsWith('gl') && !isDecorator(sym)) {
+      const newSym = 'emscripten_' + sym;
+      renameSymbol(lib, sym, newSym);
+      lib[sym] = newSym;
+      var sig = LibraryManager.library[sym + '__sig'];
       if (sig) {
-        lib['emscripten_' + x + '__sig'] = sig;
+        lib[newSym + '__sig'] = sig;
       }
     }
-  });
+  }
 }
 
 recordGLProcAddressGet(LibraryGL);

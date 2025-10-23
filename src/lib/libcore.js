@@ -1615,14 +1615,16 @@ addToLibrary({
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
-  // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
-  // at runtime rather than statically in JS code.
-  $exportWasmSymbols__deps: ['$asmjsMangle',
+  // When DECLARE_ASM_MODULE_EXPORTS is set, this function is programatically
+  // ceated during linking.  See `create_receiving` in `emscripten.py`.
+  // When DECLARE_ASM_MODULE_EXPORTS=0 is set, `assignWasmExports` is instead
+  // defined here as a normal JS library function.
+  $assignWasmExports__deps: ['$asmjsMangle',
 #if DYNCALLS || !WASM_BIGINT
     , '$dynCalls'
 #endif
   ],
-  $exportWasmSymbols: (wasmExports) => {
+  $assignWasmExports: (wasmExports) => {
     for (var [name, exportedSymbol] of Object.entries(wasmExports)) {
       name = asmjsMangle(name);
 #if DYNCALLS || !WASM_BIGINT
@@ -1641,7 +1643,7 @@ addToLibrary({
 #endif
       }
     }
-
+    exportAliases(wasmExports);
   },
 #endif
 
@@ -2150,8 +2152,6 @@ addToLibrary({
 #endif // MINIMAL_RUNTIME
 
   $asmjsMangle: (x) => {
-    if (x == 'memory') return 'wasmMemory';
-    if (x == '__indirect_function_table') return 'wasmTable';
     if (x == '__main_argc_argv') {
       x = 'main';
     }
@@ -2269,9 +2269,6 @@ addToLibrary({
     }
   },
 
-  $getNativeTypeSize__deps: ['$POINTER_SIZE'],
-  $getNativeTypeSize: {{{ getNativeTypeSize }}},
-
   $wasmTable__docs: '/** @type {WebAssembly.Table} */',
 #if RELOCATABLE
   // In RELOCATABLE mode we create the table in JS.
@@ -2287,7 +2284,16 @@ addToLibrary({
 });
 `,
 #else
-  $wasmTable: undefined,
+  // `wasmTable` is a JS alias for the Wasm `__indirect_function_table` export
+  $wasmTable: '__indirect_function_table',
+#endif
+
+#if IMPORTED_MEMORY
+  // This gets defined in src/runtime_init_memory.js
+  $wasmMemory: undefined,
+#else
+  // `wasmMemory` is a JS alias for the Wasm `memory` export
+  $wasmMemory: 'memory',
 #endif
 
   $getUniqueRunDependency: (id) => {
@@ -2482,13 +2488,11 @@ addToLibrary({
   $ASSERTIONS: {{{ ASSERTIONS }}},
 });
 
-function autoAddDeps(object, name) {
-  for (var item in object) {
-    if (!item.endsWith('__deps')) {
-      if (!object[item + '__deps']) {
-        object[item + '__deps'] = [];
-      }
-      object[item + '__deps'].push(name);
+function autoAddDeps(lib, name) {
+  for (const item of Object.keys(lib)) {
+    if (!isDecorator(item)) {
+      lib[item + '__deps'] ??= [];
+      lib[item + '__deps'].push(name);
     }
   }
 }
@@ -2551,10 +2555,10 @@ function wrapSyscallFunction(x, library, isWasi) {
   }
 
   var isVariadic = !isWasi && t.includes(', varargs');
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
-  var canThrow = false;
-#else
+#if SYSCALLS_REQUIRE_FILESYSTEM
   var canThrow = library[x + '__nothrow'] !== true;
+#else
+  var canThrow = false;
 #endif
 
   library[x + '__deps'] ??= [];

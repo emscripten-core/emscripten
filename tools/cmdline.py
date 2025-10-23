@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from tools.toolchain_profiler import ToolchainProfiler
-
 import json
 import logging
 import os
@@ -14,11 +12,20 @@ import sys
 from enum import Enum, auto, unique
 from subprocess import PIPE
 
-from tools import shared, utils, ports, diagnostics, config
-from tools import cache, feature_matrix, colored_logger
+from tools import (
+  cache,
+  colored_logger,
+  config,
+  diagnostics,
+  feature_matrix,
+  ports,
+  shared,
+  utils,
+)
+from tools.settings import MEM_SIZE_SETTINGS, settings, user_settings
 from tools.shared import exit_with_error
-from tools.settings import settings, user_settings, MEM_SIZE_SETTINGS
-from tools.utils import removeprefix, read_file
+from tools.toolchain_profiler import ToolchainProfiler
+from tools.utils import read_file, removeprefix
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
@@ -510,22 +517,18 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('--threadprofiler'):
       settings_changes.append('PTHREADS_PROFILING=1')
     elif arg in ('-fcolor-diagnostics', '-fdiagnostics-color', '-fdiagnostics-color=always'):
-      diagnostics.color_enabled = True
-    elif arg in ('-fno-color-diagnostics', '-fdiagnostics-color=never'):
-      diagnostics.color_enabled = False
-    elif arg == '-fansi-escape-codes':
-      diagnostics.force_ansi = True
+      colored_logger.enable(force=True)
+    elif arg in ('-fno-color-diagnostics', '-fno-diagnostics-color', '-fdiagnostics-color=never'):
+      colored_logger.disable()
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
       settings.DISABLE_EXCEPTION_THROWING = 1
       settings.WASM_EXCEPTIONS = 0
     elif arg == '-mbulk-memory':
-      settings.BULK_MEMORY = 1
       feature_matrix.enable_feature(feature_matrix.Feature.BULK_MEMORY,
                                     '-mbulk-memory',
                                     override=True)
     elif arg == '-mno-bulk-memory':
-      settings.BULK_MEMORY = 0
       feature_matrix.disable_feature(feature_matrix.Feature.BULK_MEMORY)
     elif arg == '-msign-ext':
       feature_matrix.enable_feature(feature_matrix.Feature.SIGN_EXT,
@@ -572,9 +575,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       settings.USE_PTHREADS = 0
     elif arg == '-pthreads':
       exit_with_error('unrecognized command-line option `-pthreads`; did you mean `-pthread`?')
-    elif arg in ('-fno-diagnostics-color', '-fdiagnostics-color=never'):
-      colored_logger.disable()
-      diagnostics.color_enabled = False
     elif arg == '-fno-rtti':
       settings.USE_RTTI = 0
     elif arg == '-frtti':

@@ -223,14 +223,6 @@ var event;
 var devicePixelRatio;
 
 /*
- * AudioWorkletGlobalScope globals
- */
-var registerProcessor = function(name, obj) {};
-var currentFrame;
-var currentTime;
-var sampleRate;
-
-/*
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;

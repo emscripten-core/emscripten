@@ -11,6 +11,7 @@ llvm-ranlib internally.
 """
 
 import sys
+
 from tools import shared
 
 shared.exec_process([shared.LLVM_RANLIB] + sys.argv[1:])

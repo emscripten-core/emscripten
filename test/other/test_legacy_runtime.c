@@ -3,7 +3,7 @@
 
 int main () {
   intptr_t addr = EM_ASM_INT({
-     return allocate(intArrayFromString("hello from js"), ALLOC_NORMAL);
+     return stringToNewUTF8("hello from js");
   });
   printf("%s\n", (char*)addr);
   return 0;

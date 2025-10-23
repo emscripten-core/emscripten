@@ -1743,17 +1743,17 @@ var LibrarySDL = {
     // We actually do the whole screen in Unlock...
   },
 
-#if !ASYNCIFY
+#if ASYNCIFY
+  SDL_Delay__deps: ['emscripten_sleep'],
+  SDL_Delay__async: true,
+  SDL_Delay: (delay) => _emscripten_sleep(delay),
+#else
   SDL_Delay: (delay) => {
     if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
     // horrible busy-wait, but in a worker it at least does not block rendering
     var now = Date.now();
     while (Date.now() - now < delay) {}
   },
-#else
-  SDL_Delay__deps: ['emscripten_sleep'],
-  SDL_Delay__async: true,
-  SDL_Delay: (delay) => _emscripten_sleep(delay),
 #endif
 
   SDL_WM_SetCaption__proxy: 'sync',
@@ -2521,7 +2521,7 @@ var LibrarySDL = {
           source['connect'](SDL.audioContext['destination']);
 
           SDL.fillWebAudioBufferFromHeap(ptr, sizeSamplesPerChannel, soundBuffer);
-          // Workaround https://bugzilla.mozilla.org/show_bug.cgi?id=883675 by setting the buffer only after filling. The order is important here!
+          // Workaround https://bugzil.la/883675 by setting the buffer only after filling. The order is important here!
           source['buffer'] = soundBuffer;
 
           // Schedule the generated sample buffer to be played out at the correct time right after the previously scheduled
@@ -2775,7 +2775,7 @@ var LibrarySDL = {
 
     // To allow user code to work around browser bugs with audio playback on <audio> elements an Web Audio, enable
     // the user code to hook in a callback to decide on a file basis whether each file should use Web Audio or <audio> for decoding and playback.
-    // In particular, see https://bugzilla.mozilla.org/show_bug.cgi?id=654787 and ?id=1012801 for tradeoffs.
+    // In particular, see https://bugzil.la/654787 and https://bugzil.la/1012801 for tradeoffs.
     var canPlayWithWebAudio = Module['SDL_canPlayWithWebAudio'] === undefined || Module['SDL_canPlayWithWebAudio'](filename, arrayBuffer);
 
     if (bytes !== undefined && SDL.webAudioAvailable() && canPlayWithWebAudio) {
@@ -3172,7 +3172,7 @@ var LibrarySDL = {
     surfData.ctx.font = fontString;
     // use bottom alignment, because it works
     // same in all browsers, more info here:
-    // https://bugzilla.mozilla.org/show_bug.cgi?id=737852
+    // https://bugzil.la/737852
     surfData.ctx.textBaseline = 'bottom';
     surfData.ctx.fillText(text, 0, h|0);
     surfData.ctx.restore();

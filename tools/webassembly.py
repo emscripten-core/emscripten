@@ -6,15 +6,15 @@
 """Utilities for manipulating WebAssembly binaries from python.
 """
 
-from collections import namedtuple
-from enum import IntEnum
-from functools import wraps
 import logging
 import os
 import sys
+from collections import namedtuple
+from enum import IntEnum
+from functools import wraps
 
-from .utils import memoize
 from . import utils
+from .utils import memoize
 
 sys.path.append(utils.path_from_root('third_party'))
 

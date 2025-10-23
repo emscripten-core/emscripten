@@ -61,7 +61,7 @@ var ENVIRONMENT_IS_WEB = !!globalThis.window;
 var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
-var ENVIRONMENT_IS_NODE = typeof process == 'object' && process.versions?.node && process.type != 'renderer';
+var ENVIRONMENT_IS_NODE = globalThis.process?.versions?.node && globalThis.process?.type != 'renderer';
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
 
 // --pre-jses are emitted after the Module integration code, so that they can
@@ -95,7 +95,7 @@ function locateFile(path) {
 var readAsync, readBinary;
 
 if (ENVIRONMENT_IS_NODE) {
-  const isNode = typeof process == 'object' && process.versions?.node && process.type != 'renderer';
+  const isNode = globalThis.process?.versions?.node && globalThis.process?.type != 'renderer';
   if (!isNode) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 
   // These modules will usually be used on Node.js. Load them eagerly to avoid
@@ -585,7 +585,7 @@ function createExportWrapper(name, nargs) {
 var wasmBinaryFile;
 
 function findWasmBinary() {
-    return locateFile('a.out.wasm');
+  return locateFile('a.out.wasm');
 }
 
 function getBinarySync(file) {
@@ -658,10 +658,11 @@ async function instantiateAsync(binary, binaryFile, imports) {
 
 function getWasmImports() {
   // prepare imports
-  return {
+  var imports = {
     'env': wasmImports,
     'wasi_snapshot_preview1': wasmImports,
-  }
+  };
+  return imports;
 }
 
 // Create the wasm instance.
@@ -673,8 +674,6 @@ async function createWasm() {
   /** @param {WebAssembly.Module=} module*/
   function receiveInstance(instance, module) {
     wasmExports = instance.exports;
-
-    
 
     assignWasmExports(wasmExports);
 
@@ -850,6 +849,8 @@ async function createWasm() {
         err(text);
       }
     };
+
+  
 // End JS library code
 
 // include: postlibrary.js
@@ -935,7 +936,6 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'alignMemory',
   'mmapAlloc',
   'HandleAllocator',
-  'getNativeTypeSize',
   'getUniqueRunDependency',
   'addOnPreRun',
   'addOnInit',
@@ -1056,7 +1056,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'err',
   'callMain',
   'abort',
-  'wasmMemory',
   'wasmExports',
   'HEAPF32',
   'HEAPF64',
@@ -1084,6 +1083,7 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'warnOnce',
   'readEmAsmArgsArray',
   'wasmTable',
+  'wasmMemory',
   'noExitRuntime',
   'addRunDependency',
   'removeRunDependency',
@@ -1315,21 +1315,33 @@ var _emscripten_stack_get_end = makeInvalidEarlyAccess('_emscripten_stack_get_en
 var __emscripten_stack_restore = makeInvalidEarlyAccess('__emscripten_stack_restore');
 var __emscripten_stack_alloc = makeInvalidEarlyAccess('__emscripten_stack_alloc');
 var _emscripten_stack_get_current = makeInvalidEarlyAccess('_emscripten_stack_get_current');
+var memory = makeInvalidEarlyAccess('memory');
+var __indirect_function_table = makeInvalidEarlyAccess('__indirect_function_table');
 var wasmMemory = makeInvalidEarlyAccess('wasmMemory');
-var wasmTable = makeInvalidEarlyAccess('wasmTable');
 
 function assignWasmExports(wasmExports) {
+  assert(typeof wasmExports['add'] != 'undefined', 'missing Wasm export: add');
   _add = Module['_add'] = createExportWrapper('add', 2);
+  assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
   _fflush = createExportWrapper('fflush', 1);
+  assert(typeof wasmExports['emscripten_stack_init'] != 'undefined', 'missing Wasm export: emscripten_stack_init');
   _emscripten_stack_init = wasmExports['emscripten_stack_init'];
+  assert(typeof wasmExports['emscripten_stack_get_free'] != 'undefined', 'missing Wasm export: emscripten_stack_get_free');
   _emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'];
+  assert(typeof wasmExports['emscripten_stack_get_base'] != 'undefined', 'missing Wasm export: emscripten_stack_get_base');
   _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
+  assert(typeof wasmExports['emscripten_stack_get_end'] != 'undefined', 'missing Wasm export: emscripten_stack_get_end');
   _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
+  assert(typeof wasmExports['_emscripten_stack_restore'] != 'undefined', 'missing Wasm export: _emscripten_stack_restore');
   __emscripten_stack_restore = wasmExports['_emscripten_stack_restore'];
+  assert(typeof wasmExports['_emscripten_stack_alloc'] != 'undefined', 'missing Wasm export: _emscripten_stack_alloc');
   __emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'];
+  assert(typeof wasmExports['emscripten_stack_get_current'] != 'undefined', 'missing Wasm export: emscripten_stack_get_current');
   _emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'];
-  wasmMemory = wasmExports['memory'];
-  wasmTable = wasmExports['__indirect_function_table'];
+  assert(typeof wasmExports['memory'] != 'undefined', 'missing Wasm export: memory');
+  memory = wasmMemory = wasmExports['memory'];
+  assert(typeof wasmExports['__indirect_function_table'] != 'undefined', 'missing Wasm export: __indirect_function_table');
+  __indirect_function_table = wasmExports['__indirect_function_table'];
 }
 
 var _global_val = Module['_global_val'] = 65536;

@@ -12,26 +12,69 @@ import re
 import shutil
 import time
 import unittest
-from pathlib import Path
 from functools import wraps
+from pathlib import Path
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner')
 
-from tools.shared import PIPE
-from tools.shared import EMCC, EMAR, EMXX, FILE_PACKAGER, LLVM_PROFDATA, LLVM_COV
-from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
-from tools import shared, building, config, utils, webassembly
-import common
-from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
-from common import skip_if, no_windows, is_slow_test, parameterized, parameterize, all_engines
-from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_without_bigint
-from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
-from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
-from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
-from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_eh, requires_jspi
-from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON, needs_make
 import clang_native
+import common
+from common import (
+  EMBUILDER,
+  NON_ZERO,
+  PYTHON,
+  WEBIDL_BINDER,
+  RunnerCore,
+  compiler_for,
+  create_file,
+  env_modify,
+  path_from_root,
+  read_binary,
+  read_file,
+  test_file,
+)
+from decorators import (
+  all_engines,
+  also_with_minimal_runtime,
+  also_with_modularize,
+  also_with_nodefs,
+  also_with_nodefs_both,
+  also_with_noderawfs,
+  also_with_standalone_wasm,
+  also_with_wasmfs,
+  also_without_bigint,
+  can_do_standalone,
+  crossplatform,
+  disabled,
+  flaky,
+  is_slow_test,
+  needs_make,
+  no_2gb,
+  no_4gb,
+  no_wasm64,
+  no_windows,
+  node_pthreads,
+  parameterize,
+  parameterized,
+  requires_dev_dependency,
+  requires_jspi,
+  requires_native_clang,
+  requires_node,
+  requires_node_canary,
+  requires_v8,
+  requires_wasm2js,
+  requires_wasm_eh,
+  skip_if,
+  with_all_eh_sjlj,
+  with_all_fs,
+  with_all_sjlj,
+  with_env_modify,
+)
+
+from tools import building, config, shared, utils, webassembly
+from tools.shared import EMAR, EMCC, EMXX, FILE_PACKAGER, LLVM_COV, LLVM_PROFDATA, PIPE
+from tools.utils import LINUX, MACOS, WINDOWS, delete_file, write_file
 
 # decorators for limiting which modes a test can run in
 
@@ -47,7 +90,7 @@ def esm_integration(func):
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.setup_esm_integration()
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
@@ -55,14 +98,14 @@ def esm_integration(func):
 def no_modularize_instance(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if self.get_setting('MODULARIZE') == 'instance' or self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
 
   return decorator
@@ -71,23 +114,23 @@ def no_modularize_instance(note):
 def no_esm_integration(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
 
   return decorator
 
 
-def wasm_simd(f):
-  assert callable(f)
+def wasm_simd(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_simd()
     if self.get_setting('MEMORY64') == 2:
@@ -99,48 +142,48 @@ def wasm_simd(f):
     self.cflags.append('-msimd128')
     self.cflags.append('-fno-lax-vector-conversions')
     self.v8_args.append('--experimental-wasm-simd')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
   return decorated
 
 
-def asan(f):
-  assert callable(f)
+def asan(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
   @no_2gb('asan doesnt support GLOBAL_BASE')
   @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def decorated(self, *args, **kwargs):
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
 
-def wasm_relaxed_simd(f):
-  assert callable(f)
+def wasm_relaxed_simd(func):
+  assert callable(func)
 
-  @wraps(f)
-  def decorated(self):
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
     # We don't actually run any tests yet, so don't require any engines.
     if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     self.cflags.append('-mrelaxed-simd')
-    f(self)
+    return func(self, *args, **kwargs)
   return decorated
 
 
-def needs_non_trapping_float_to_int(f):
-  assert callable(f)
+def needs_non_trapping_float_to_int(func):
+  assert callable(func)
 
-  @wraps(f)
-  def decorated(self):
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
     if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
-    f(self)
+    return func(self, *args, **kwargs)
   return decorated
 
 
@@ -183,13 +226,7 @@ def with_dylink_reversed(func):
   return decorated
 
 
-def no_wasm2js(note=''):
-  assert not callable(note)
-
-  def decorated(f):
-    return skip_if(f, 'is_wasm2js', note)
-  return decorated
-
+no_wasm2js = skip_if('no_wasm2js', lambda t: t.is_wasm2js())
 
 # Some tests are marked as only-wasm2js because they test basic codegen in a way
 # that is mainly useful for the wasm2js compiler and not LLVM. LLVM tests its
@@ -201,18 +238,13 @@ def no_wasm2js(note=''):
 # However, it is still useful to test wasm2js there as LLVM emits patterns of
 # shifts and such around those values to ensure they operate as 16-bit, and we
 # want coverage of that.
-def only_wasm2js(note=''):
-  assert not callable(note)
-
-  def decorated(f):
-    return skip_if(f, 'is_wasm2js', note, negate=True)
-  return decorated
+only_wasm2js = skip_if('only_wasm2js', lambda t: not t.is_wasm2js())
 
 
-def with_asyncify_and_jspi(f):
-  assert callable(f)
+def with_asyncify_and_jspi(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, jspi, *args, **kwargs):
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
@@ -221,17 +253,17 @@ def with_asyncify_and_jspi(f):
       self.require_jspi()
     else:
       self.set_setting('ASYNCIFY')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'jspi': (True,)})
   return metafunc
 
 
-def also_with_asyncify_and_jspi(f):
-  assert callable(f)
+def also_with_asyncify_and_jspi(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, asyncify, *args, **kwargs):
     if asyncify and self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
@@ -242,7 +274,7 @@ def also_with_asyncify_and_jspi(f):
       self.set_setting('ASYNCIFY')
     else:
       assert asyncify == 0
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (0,),
                           'asyncify': (1,),
@@ -257,10 +289,10 @@ def no_optimize(note=''):
     assert callable(func)
 
     @wraps(func)
-    def decorated(self):
+    def decorated(self, *args, **kwargs):
       if self.is_optimizing():
         self.skipTest(note)
-      func(self)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -268,14 +300,14 @@ def no_optimize(note=''):
 def no_asan(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=address' in self.cflags:
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -283,14 +315,14 @@ def no_asan(note):
 def no_lsan(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=leak' in self.cflags:
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -298,14 +330,14 @@ def no_lsan(note):
 def no_ubsan(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if '-fsanitize=undefined' in self.cflags:
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -313,14 +345,14 @@ def no_ubsan(note):
 def no_sanitize(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if any(a.startswith('-fsanitize=') for a in self.cflags):
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -328,14 +360,14 @@ def no_sanitize(note):
 def no_wasmfs(note):
   assert not callable(note)
 
-  def decorator(f):
-    assert callable(f)
+  def decorator(func):
+    assert callable(func)
 
-    @wraps(f)
+    @wraps(func)
     def decorated(self, *args, **kwargs):
       if self.get_setting('WASMFS'):
         self.skipTest(note)
-      f(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
     return decorated
   return decorator
 
@@ -344,10 +376,10 @@ def make_no_decorator_for_setting(name):
   def outer_decorator(note):
     assert not callable(note)
 
-    def decorator(f):
-      assert callable(f)
+    def decorator(func):
+      assert callable(func)
 
-      @wraps(f)
+      @wraps(func)
       def decorated(self, *args, **kwargs):
         if '=' in name:
           key, val = name.split('=', 1)
@@ -358,19 +390,19 @@ def make_no_decorator_for_setting(name):
           self.skipTest(note)
         if f'-s{key}={val}' in self.cflags or self.get_setting(key) == int(val):
           self.skipTest(note)
-        f(self, *args, **kwargs)
+        return func(self, *args, **kwargs)
       return decorated
     return decorator
   return outer_decorator
 
 
-def with_both_text_decoder(f):
-  assert callable(f)
+def with_both_text_decoder(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def decorated(self, textdecoder, *args, **kwargs):
     self.set_setting('TEXTDECODER', textdecoder)
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(decorated, {'': (1,), 'force_textdecoder': (2,)})
 
@@ -1824,19 +1856,15 @@ int main() {
     self.do_core_test('test_set_align.c')
 
   @no_modularize_instance('uses Module object directly')
-  @no_js_math('JS_MATH is not compatible with LINKABLE')
-  def test_emscripten_api(self):
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
-    self.do_core_test('test_emscripten_api.c')
-
-    # Sanitizers are not compatible with LINKABLE (dynamic linking).
-    # LLVM-libc overlay mode is not compatible with whole-archive (LINKABLE)
-    if not is_sanitizing(self.cflags) and not self.is_wasm64() and '-lllvmlibc' not in self.cflags:
-      # test EXPORT_ALL
-      self.clear_setting('EXPORTED_FUNCTIONS')
-      self.set_setting('EXPORT_ALL')
-      self.set_setting('LINKABLE')
-      self.do_core_test('test_emscripten_api.c', cflags=['-Wno-deprecated'])
+  @parameterized({
+    '': (['-sEXPORTED_FUNCTIONS=_main,_save_me_aimee'],),
+    # test EXPORT_ALL too
+    'export_all': (['-sEXPORT_ALL', '-sMAIN_MODULE'],),
+  })
+  def test_emscripten_api(self, args):
+    if '-sMAIN_MODULE' in args:
+      self.check_dylink()
+    self.do_core_test('test_emscripten_api.c', cflags=args)
 
   def test_emscripten_run_script_string_int(self):
     src = r'''
@@ -4078,7 +4106,7 @@ caught outer int: 123
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.cflags.copy()
     if not expected:
-      outfile = shared.replace_suffix(main, '.out')
+      outfile = utils.replace_suffix(main, '.out')
       expected = read_file(outfile)
     if not side:
       side, ext = os.path.splitext(main)
@@ -4887,7 +4915,11 @@ res64 - external 64\n''', header='''\
 
   @with_all_eh_sjlj
   @with_dylink_reversed
-  def test_dylink_exceptions_try_catch(self):
+  @parameterized({
+    '': ([],),
+    'dyncalls': (['-sDYNCALLS'],),
+  })
+  def test_dylink_exceptions_try_catch(self, args):
     self.dylink_test(main=r'''
       #include <stdio.h>
       extern void side();
@@ -4909,7 +4941,7 @@ res64 - external 64\n''', header='''\
           printf("side: caught %.1f\n", f);
         }
       }
-      ''', expected=['main: caught 3\nside: caught 5.3\n'])
+      ''', expected=['main: caught 3\nside: caught 5.3\n'], cflags=args)
 
   @with_all_eh_sjlj
   @with_dylink_reversed
@@ -6615,8 +6647,7 @@ void* operator new(size_t size) {
 
   @needs_dylink
   def test_relocatable_void_function(self):
-    self.set_setting('RELOCATABLE')
-    self.do_core_test('test_relocatable_void_function.c', cflags=['-Wno-deprecated'])
+    self.do_core_test('test_relocatable_void_function.c', cflags=['-sMAIN_MODULE=2'])
 
   @wasm_simd
   @parameterized({
@@ -8594,32 +8625,19 @@ Module.onRuntimeInitialized = () => {
     # This test checks for the global variables required to run the memory
     # profiler.  It would fail if these variables were made no longer global
     # or if their identifiers were changed.
-    create_file('main.c', '''
-      int check_memprof_requirements();
-
-      int main() {
-        return check_memprof_requirements();
-      }
-    ''')
-    create_file('lib.js', '''
-      addToLibrary({
-        check_memprof_requirements: () => {
-          if (typeof _emscripten_stack_get_base === 'function' &&
-              typeof _emscripten_stack_get_end === 'function' &&
-              typeof _emscripten_stack_get_current === 'function' &&
-              typeof Module['___heap_base'] === 'number' &&
-              Module['___heap_base'] > 0) {
-             out('able to run memprof');
-             return 0;
-           } else {
-             out('missing the required variables to run memprof');
-             return 1;
-           }
+    create_file('pre.js', '''
+      Module = {
+        onRuntimeInitialized: () => {
+          assert(typeof _emscripten_stack_get_base === 'function');
+          assert(typeof _emscripten_stack_get_end === 'function');
+          assert(typeof _emscripten_stack_get_current === 'function');
+          assert(typeof ___heap_base === 'number');
+          assert(___heap_base > 0);
+          out('able to run memprof');
         }
-      });
+      };
     ''')
-    self.cflags += ['--memoryprofiler', '--js-library', 'lib.js']
-    self.do_runf('main.c', 'able to run memprof')
+    self.do_runf('hello_world.c', 'able to run memprof', cflags=['--memoryprofiler', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized'])
 
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict(self):
@@ -9687,6 +9705,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.check_dylink()
       self.set_setting('MAIN_MODULE', 2)
     self.do_core_test('test_externref_emjs.c')
+
+  @parameterized({
+    '': [False],
+    'dylink': [True],
+  })
+  @no_esm_integration('https://github.com/emscripten-core/emscripten/issues/25543')
+  @no_omit_asm_module_exports('https://github.com/emscripten-core/emscripten/issues/25556')
+  def test_wasm_global(self, dynlink):
+    if '-flto' in self.cflags or '-flto=thin' in self.cflags:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25555')
+    if dynlink:
+      self.check_dylink()
+      self.set_setting('MAIN_MODULE', 2)
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.cflags.append('-DESM_INTEGRATION')
+    self.do_core_test('test_wasm_global.c', cflags=['-sEXPORTED_FUNCTIONS=_main,_my_global'])
 
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
