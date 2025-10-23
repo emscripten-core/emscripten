@@ -230,24 +230,33 @@ var LibraryDylink = {
       }
 #endif
 
-      GOT[symName] ||= new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
-      if (replace || GOT[symName].value == 0) {
+
+      var existingEntry = GOT[symName] && GOT[symName].value != 0;
+      if (replace || !existingEntry) {
 #if DYLINK_DEBUG == 2
         dbg(`updateGOT: before: ${symName} : ${GOT[symName].value}`);
 #endif
+        var newValue;
         if (typeof value == 'function') {
-          GOT[symName].value = {{{ to64('addFunction(value)') }}};
+          newValue = {{{ to64('addFunction(value)') }}};
 #if DYLINK_DEBUG == 2
           dbg(`updateGOT: FUNC: ${symName} : ${GOT[symName].value}`);
 #endif
         } else if (typeof value == {{{ POINTER_JS_TYPE }}}) {
-          GOT[symName].value = value;
+          newValue = value;
         } else {
-          err(`unhandled export type for '${symName}': ${typeof value}`);
+          // The GOT can only contain addresses (i.e data addresses or function
+          // addresses so we currently ignore other types export here.
+#if DYLINK_DEBUG
+          dbg(`updateGOT: ignoring ${symName} due to its type: ${typeof value}`);
+#endif
+          continue;
         }
 #if DYLINK_DEBUG == 2
-        dbg(`updateGOT:  after: ${symName} : ${GOT[symName].value} (${value})`);
+        dbg(`updateGOT:  after: ${symName} : ${newValue} (${value})`);
 #endif
+        GOT[symName] ||= new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true});
+        GOT[symName].value = newValue;
       }
 #if DYLINK_DEBUG
       else if (GOT[symName].value != value) {
@@ -260,29 +269,43 @@ var LibraryDylink = {
 #endif
   },
 
+  $isImmutableGlobal__internal: true,
+  $isImmutableGlobal: (val) => {
+    if (val instanceof WebAssembly.Global) {
+      try {
+        val.value = val.value;
+      } catch {
+        return true;
+      }
+    }
+    return false;
+  },
+
   // Applies relocations to exported things.
   $relocateExports__internal: true,
-  $relocateExports__deps: ['$updateGOT'],
+  $relocateExports__deps: ['$updateGOT', '$isImmutableGlobal'],
   $relocateExports__docs: '/** @param {boolean=} replace */',
   $relocateExports: (exports, memoryBase, replace) => {
-    var relocated = {};
-
-    for (var e in exports) {
-      var value = exports[e];
+    function relocateExport(name, value) {
 #if SPLIT_MODULE
       // Do not modify exports synthesized by wasm-split
-      if (e.startsWith('%')) {
-        relocated[e] = value
-        continue;
+      if (name.startsWith('%')) {
+        return value;
       }
 #endif
-      // Detect wasm global exports. These represent data addresses
+      // Detect immuable wasm global exports. These represent data addresses
       // which are relative to `memoryBase`
-      if (value instanceof WebAssembly.Global) {
-        value = value.value;
-        value += {{{ to64('memoryBase') }}};
+      if (isImmutableGlobal(value)) {
+        return value.value + {{{ to64('memoryBase') }}};
       }
-      relocated[e] = value;
+
+      // Return unmodified value (no relocation required).
+      return value;
+    }
+
+    var relocated = {};
+    for (var e in exports) {
+      relocated[e] = relocateExport(e, exports[e])
     }
     updateGOT(relocated, replace);
     return relocated;

@@ -27,6 +27,7 @@ export default [{
     '**/test/',
     'src/polyfill/',
     'src/lib/',
+    'src/binaryDecode.js',
     'src/minimum_runtime_check.js',
     'src/runtime_*.js',
     'src/shell*.js',

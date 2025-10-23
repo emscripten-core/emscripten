@@ -16,8 +16,8 @@
 // underscore.
 var WASM_EXPORTS = [];
 
-// Similar to above but only includes the global/data symbols.
-var WASM_GLOBAL_EXPORTS = [];
+// Similar to above but only includes the data symbols (address exports).
+var DATA_EXPORTS = [];
 
 // An array of all symbols exported from all the side modules specified on the
 // command line.

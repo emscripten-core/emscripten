@@ -20,31 +20,38 @@ emcc can be influenced by a few environment variables:
                slows down compilation).
 """
 
-from tools.toolchain_profiler import ToolchainProfiler
-
 import logging
 import os
 import shlex
 import shutil
 import sys
-import time
 import tarfile
+import time
 from dataclasses import dataclass
 from enum import Enum, auto, unique
 
-
-from tools import shared, system_libs, utils, cmdline
-from tools import diagnostics, building, compile
-from tools.shared import unsuffixed_basename, get_file_suffix
-from tools.shared import exit_with_error, DEBUG
-from tools.shared import in_temp
-from tools.shared import DYLIB_EXTENSIONS
+from tools import (
+  building,
+  cache,
+  cmdline,
+  compile,
+  config,
+  diagnostics,
+  shared,
+  system_libs,
+  utils,
+)
 from tools.cmdline import CLANG_FLAGS_WITH_ARGS
 from tools.response_file import substitute_response_files
-from tools import config
-from tools import cache
-from tools.settings import default_setting, user_settings, settings, COMPILE_TIME_SETTINGS
-from tools.utils import read_file
+from tools.settings import (
+  COMPILE_TIME_SETTINGS,
+  default_setting,
+  settings,
+  user_settings,
+)
+from tools.shared import DEBUG, DYLIB_EXTENSIONS, exit_with_error, in_temp
+from tools.toolchain_profiler import ToolchainProfiler
+from tools.utils import get_file_suffix, read_file, unsuffixed_basename
 
 logger = logging.getLogger('emcc')
 
@@ -250,10 +257,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
     return 0
 
-  if '-print-resource-dir' in args:
-    shared.check_call([clang] + args)
-    return 0
-
   if '-print-libgcc-file-name' in args or '--print-libgcc-file-name' in args:
     settings.limit_settings(None)
     compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
@@ -292,6 +295,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   phase_setup(options, state)
 
+  if '-print-resource-dir' in args or any(a.startswith('--print-prog-name') for a in args):
+    shared.exec_process([clang] + compile.get_cflags(tuple(args)) + args)
+    assert False, 'exec_process should not return'
+
   if '--cflags' in args:
     # Just print the flags we pass to clang and exit.  We need to do this after
     # phase_setup because the setup sets things like SUPPORT_LONGJMP.
@@ -308,7 +315,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     linker_args = separate_linker_flags(newargs)[1]
     linker_args = [f.value for f in linker_args]
     # Delay import of link.py to avoid processing this file when only compiling
-    from tools import link
+    from tools import link  # noqa: PLC0415
     link.run_post_link(options.input_files[0], options, linker_args)
     return 0
 
@@ -513,7 +520,7 @@ def phase_compile_inputs(options, state, newargs):
     else:
       cmd = get_clang_command() + newargs
     shared.exec_process(cmd)
-    assert False, 'exec_process does not return'
+    assert False, 'exec_process should not return'
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
@@ -566,7 +573,7 @@ def phase_compile_inputs(options, state, newargs):
     if not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
       if options.save_temps:
-        shutil.copyfile(output_file, shared.unsuffixed_basename(input_file) + '.o')
+        shutil.copyfile(output_file, utils.unsuffixed_basename(input_file) + '.o')
     return output_file
 
   # Compile input files individually to temporary locations.

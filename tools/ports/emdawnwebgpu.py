@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-# https://dawn.googlesource.com/dawn/+/faa7054b5b65c3ce3774151952a68aa7668aa20b/src/emdawnwebgpu/pkg/README.md
+# https://dawn.googlesource.com/dawn/+/01940842b667a7812d0e4ca0ef4367fbec294241/src/emdawnwebgpu/pkg/README.md
 r"""
 This "remote port" instructs Emscripten (4.0.10+) how to automatically download
 the actual port for Emdawnwebgpu. See README below for instructions.
@@ -150,14 +150,14 @@ if __name__ == '__main__':
     print('Please see documentation inside this file for details on how to use this port.')
     sys.exit(1)
 
-_VERSION = 'v20250926.144300'
+_VERSION = 'v20251002.162335'
 
 # Remote-specific port information
 
 # - Where to download the port
 EXTERNAL_PORT = f'https://github.com/google/dawn/releases/download/{_VERSION}/emdawnwebgpu_pkg-{_VERSION}.zip'
 # - Hash to verify the download integrity
-SHA512 = 'a186cf7f33266c9dfeca7d99ffac769a91b2129e34054f1e857cd82e8b033896da34cf758088bbdeeb128aa713df9953851f83ba6d677c438a929d245a789948'
+SHA512 = 'ed15672c2c495a77c764929e6979f4e155bf8b9c46dee5b0f234f3208a708bc2b846d89eef345b725d03454b56d549531f48fc84ff2afe7627d14115893b0fb0'
 # - Path of the port inside the zip file
 PORT_FILE = 'emdawnwebgpu_pkg/emdawnwebgpu.port.py'
 
@@ -168,7 +168,7 @@ LICENSE = "Some files: BSD 3-Clause License. Other files: Emscripten's license (
 
 # - Visible in emcc --use-port=emdawnwebgpu:help
 DESCRIPTION = "Emdawnwebgpu implements webgpu.h on WebGPU, replacing -sUSE_WEBGPU. **For info on usage and filing feedback, see link below.**"
-URL = 'https://dawn.googlesource.com/dawn/+/faa7054b5b65c3ce3774151952a68aa7668aa20b/src/emdawnwebgpu/pkg/README.md'
+URL = 'https://dawn.googlesource.com/dawn/+/01940842b667a7812d0e4ca0ef4367fbec294241/src/emdawnwebgpu/pkg/README.md'
 
 
 # Emscripten <4.0.10 won't notice EXTERNAL_PORT and will try to use this.
@@ -176,5 +176,6 @@ def get(ports, settings, shared):
     raise Exception('Remote ports require Emscripten 4.0.10+.')
 
 
+# (Make this look like a port so that the error message above can be hit.)
 def clear(ports, settings, shared):
     pass

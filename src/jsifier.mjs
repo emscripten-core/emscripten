@@ -206,7 +206,6 @@ const checkDependenciesSkip = new Set([
 const checkDependenciesIgnore = new Set([
   // These are added in bulk to whole library files are so are not precise
   '$PThread',
-  '$WebGPU',
   '$SDL',
   '$GLUT',
   '$GLEW',
@@ -288,7 +287,7 @@ function handleI64Signatures(symbol, snippet, sig, i53abi) {
     const newArgs = [];
     let argConversions = '';
     if (sig.length > argNames.length + 1) {
-      error(`handleI64Signatures: signature too long for ${symbol}`);
+      error(`handleI64Signatures: signature '${sig}' too long for ${symbol}(${argNames.join(', ')})`);
       return snippet;
     }
     for (let i = 0; i < argNames.length; i++) {

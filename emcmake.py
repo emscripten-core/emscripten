@@ -8,9 +8,8 @@ import os
 import shlex
 import shutil
 import sys
-from tools import shared
-from tools import config
-from tools import utils
+
+from tools import config, shared, utils
 
 
 #

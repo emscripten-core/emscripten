@@ -1,5 +1,6 @@
 version: 2.1
 
+
 orbs:
   win: circleci/windows@5.0
 
@@ -1057,7 +1058,7 @@ jobs:
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
-          test_targets: "other skip:other.test_native_link_error_message"
+          test_targets: "other jslib skip:other.test_native_link_error_message"
   test-browser-chrome:
     executor: focal
     environment:
