@@ -352,7 +352,7 @@ def main():
     shared.run_process(cmd)
   finally:
     if not args.preserve_manifest:
-      os.remove(manifest);
+      os.remove(manifest)
 
 
 if __name__ == '__main__':
