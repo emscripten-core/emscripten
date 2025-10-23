@@ -15208,6 +15208,14 @@ addToLibrary({
     self.assertIn('foo.cpp', out)
     self.assertIn('/emsdk/emscripten/system/lib/libc/musl/src/string/strcmp.c', out)
 
+  def test_binaryen_fast_math(self):
+    # Use a simple input; contents don't matter for -v flag inspection
+    err = self.run_process([EMCC, test_file('hello_world.c'), '-v', '-O2', '-ffast-math'], stderr=PIPE).stderr
+    self.assertContained('--fast-math', err)
+
+    err_no_fast = self.run_process([EMCC, test_file('hello_world.c'), '-v', '-O2'], stderr=PIPE).stderr
+    self.assertNotContained('--fast-math', err_no_fast)
+
   def test_relocatable(self):
     # This setting is due for removal:
     # https://github.com/emscripten-core/emscripten/issues/25262
