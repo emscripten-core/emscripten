@@ -234,14 +234,11 @@ var LibraryDylink = {
       var existingEntry = GOT[symName] && GOT[symName].value != 0;
       if (replace || !existingEntry) {
 #if DYLINK_DEBUG == 2
-        dbg(`updateGOT: before: ${symName} : ${GOT[symName].value}`);
+        dbg(`updateGOT: before: ${symName} : ${GOT[symName]?.value}`);
 #endif
         var newValue;
         if (typeof value == 'function') {
           newValue = {{{ to64('addFunction(value)') }}};
-#if DYLINK_DEBUG == 2
-          dbg(`updateGOT: FUNC: ${symName} : ${GOT[symName].value}`);
-#endif
         } else if (typeof value == {{{ POINTER_JS_TYPE }}}) {
           newValue = value;
         } else {
@@ -1254,9 +1251,9 @@ var LibraryDylink = {
       return loadDynamicLibrary(filename, combinedFlags, localScope, handle)
     } catch (e) {
 #if ASSERTIONS
-      err(`Error in loading dynamic library ${filename}: ${e}`);
+      err(`error loading dynamic library ${filename}: ${e}`);
 #endif
-      dlSetError(`Could not load dynamic lib: ${filename}\n${e}`);
+      dlSetError(`could not load dynamic lib: ${filename}\n${e}`);
       return 0;
     }
   },
