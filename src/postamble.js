@@ -289,7 +289,9 @@ function checkUnflushedContent() {
 #endif // ASSERTIONS
 
 var wasmExports;
+#if SPLIT_MODULE
 var wasmRawExports;
+#endif
 
 #if MODULARIZE == 'instance'
 // In MODULARIZE=instance mode we delay most of the initialization work until

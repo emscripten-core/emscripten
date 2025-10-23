@@ -734,7 +734,9 @@ function getWasmImports() {
     reportUndefinedSymbols();
 #endif
 
+#if SPLIT_MODULE
   wasmRawExports = wasmExports;
+#endif
 #if MEMORY64 || CAN_ADDRESS_2GB
     wasmExports = applySignatureConversions(wasmExports);
 #endif
