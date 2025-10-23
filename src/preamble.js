@@ -514,7 +514,7 @@ var splitModuleProxyHandler = {
 #if RUNTIME_DEBUG
             dbg(`placeholder function called: ${base}`);
 #endif
-            var imports = {'primary': wasmExports};
+            var imports = {'primary': wasmRawExports};
             // Replace '.wasm' suffix with '.deferred.wasm'.
             loadSplitModule(secondaryFile, imports, base);
 #if RUNTIME_DEBUG
@@ -734,6 +734,7 @@ function getWasmImports() {
     reportUndefinedSymbols();
 #endif
 
+  wasmRawExports = wasmExports;
 #if MEMORY64 || CAN_ADDRESS_2GB
     wasmExports = applySignatureConversions(wasmExports);
 #endif
