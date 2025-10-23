@@ -15209,13 +15209,13 @@ addToLibrary({
     self.assertTrue(has_defined_function('test_lib2.wasm', r'std::uncaught_exceptions\\28\\29'))
 
     # When --preserve-manifest is NOT given, the files should be deleted
-    match = re.search(r'wasm-split(\.exe)?\s+.*--manifest\s+(\S+)', out)
+    match = re.search(r'wasm-split(?:\.exe)?\s+.*--manifest\s+(\S+)', out)
     manifest = match.group(1)
     self.assertNotExists(manifest)
 
     # When --preserve-manifest is given, the files should be preserved
     out = self.run_process(empath_split_cmd + ['--preserve-manifest'], stdout=PIPE, stderr=subprocess.DEVNULL).stdout
-    match = re.search(r'wasm-split(\.exe)?\s+.*--manifest\s+(\S+)', out)
+    match = re.search(r'wasm-split(?:\.exe)?\s+.*--manifest\s+(\S+)', out)
     manifest = match.group(1)
     self.assertExists(manifest)
     delete_file(manifest)
