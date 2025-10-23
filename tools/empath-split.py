@@ -21,13 +21,26 @@ $ emcc -gsource-map b.c -o b.o
 $ emcc -g2 -gsource-map a.o b.o -o result.js
 See https://emscripten.org/docs/porting/Debugging.html for more details.
 
-This takes a wasm file and a paths file, which is a text file containing a list
-of paths as inputs. The paths file should contain a single path per line. A
-single split module will be generated per specified path. If a specified path
-contains another specified path, functions contained in the inner path will be
-split as the inner path's module, and the rest of the functions will be split as
-the outer path's module. Functions that do not belong to any of the specified
-paths will remain in the primary module.
+This takes a wasm file and a paths file as inputs. The paths file defines how
+to split modules. The format is similar to the manifest file for wasm-split, but
+with paths instead of function names. A module is defined by a name on a line,
+followed by paths on subsequent lines. Modules are separated by empty lines.
+For example:
+module1
+path/to/a
+path/to/b
+
+module2
+path/to/c
+
+This will create two modules, 'module1' and 'module2'. 'module1' will contain
+functions from source files under path/to/a and path/to/b. 'module2' will
+contain functions from source files under path/to/c.
+
+If a specified path contains another specified path, functions contained in the
+inner path will be split as the inner path's module, and the rest of the
+functions will be split as the outer path's module. Functions that do not belong
+to any of the specified paths will remain in the primary module.
 
 The paths in the paths file can be either absolute or relative, but they should
 match those of 'sources' field in the source map file. Sometimes a source map's
@@ -238,6 +251,50 @@ def get_path_to_functions_map(wasm, sourcemap, paths):
   return path_to_funcs
 
 
+# 1. Strip whitespaces
+# 2. Normalize separators
+# 3. Make /a/b/c and /a/b/c/ equivalent
+def normalize_path(path):
+  return utils.normalize_path(path.strip()).rstrip(os.sep)
+
+
+def parse_paths_file(paths_file_content):
+  module_to_paths = {}
+  path_to_module = {}
+  cur_module = None
+  cur_paths = []
+
+  for line in paths_file_content.splitlines():
+    line = line.strip()
+    if not line:
+      if cur_module:
+        if not cur_paths:
+          diagnostics.warn(f"Module '{cur_module}' has no paths specified.")
+        module_to_paths[cur_module] = cur_paths
+        cur_module = None
+        cur_paths = []
+      continue
+
+    if not cur_module:
+      cur_module = line
+    else:
+      path = normalize_path(line)
+      if path in path_to_module:
+        exit_with_error("Path '{path}' cannot be assigned to module '{cur_module}; it is already assigned to module '{path_to_module[path]}'")
+      cur_paths.append(path)
+      path_to_module[path] = cur_module
+
+  if cur_module:
+    if not cur_paths:
+      diagnostics.warn(f"Module '{cur_module}' has no paths specified.")
+    module_to_paths[cur_module] = cur_paths
+
+  if not module_to_paths:
+    exit_with_error('The paths file is empty or invalid.')
+
+  return module_to_paths
+
+
 def main():
   args, forwarded_args = parse_args()
   check_errors(args)
@@ -247,32 +304,41 @@ def main():
     print_sources(sourcemap)
     return
 
-  paths = utils.read_file(args.paths_file).splitlines()
-  paths = [utils.normalize_path(path.strip()) for path in paths if path.strip()]
-  # To make /a/b/c and /a/b/c/ equivalent
-  paths = [path.rstrip(os.sep) for path in paths]
-  # Remove duplicates
-  paths = list(dict.fromkeys(paths))
+  content = utils.read_file(args.paths_file)
+  module_to_paths = parse_paths_file(content)
 
   # Compute {path: list of functions} map
-  path_to_funcs = get_path_to_functions_map(args.wasm, sourcemap, paths)
+  all_paths = []
+  for paths in module_to_paths.values():
+    all_paths.extend(paths)
+  path_to_funcs = get_path_to_functions_map(args.wasm, sourcemap, all_paths)
 
   # Write .manifest file
   with tempfile.NamedTemporaryFile(suffix=".manifest", mode='w+', delete=args.preserve_manifest) as f:
     manifest = f.name
-    for i, path in enumerate(paths):
-      f.write(f'{i}\n')
-      if not path_to_funcs[path]:
-        diagnostics.warn(f'{path} does not match any functions')
-      if args.verbose:
-        print(f'{path}: {len(path_to_funcs[path])} functions')
-        for func in path_to_funcs[path]:
-          print('  ' + func)
-        print()
-      for func in path_to_funcs[path]:
-        f.write(func + '\n')
-      if i < len(paths) - 1:
+    for i, (module, paths) in enumerate(module_to_paths.items()):
+      if i != 0: # Unless we are the first entry add a newline separator
         f.write('\n')
+      funcs = []
+      for path in paths:
+        if not path_to_funcs[path]:
+          diagnostics.warn(f'{path} does not match any functions')
+        funcs += path_to_funcs[path]
+      if not funcs:
+        diagnostics.warn(f"Module '{module}' does not match any functions")
+
+      if args.verbose:
+        print(f'{module}: {len(funcs)} functions')
+        for path in paths:
+          if path in path_to_funcs:
+            print(f'  {path}: {len(path_to_funcs[path])} functions')
+          for func in path_to_funcs[path]:
+            print('    ' + func)
+        print()
+
+      f.write(f'{module}\n')
+      for func in funcs:
+        f.write(func + '\n')
     f.flush()
 
     cmd = [args.wasm_split, '--multi-split', args.wasm, '--manifest', manifest]

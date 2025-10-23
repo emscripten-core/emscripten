@@ -15169,16 +15169,21 @@ addToLibrary({
       #include <iostream>
       void foo() { std::cout << "foo" << std::endl; }
     ''')
-    create_file('path_list', r'''
+    create_file('path_list.txt', r'''
+      myapp
       main.cpp
       foo.cpp
+
+      lib1
       /emsdk/emscripten/system
+
+      lib2
       /emsdk/emscripten/system/lib/libc/musl
       /emsdk/emscripten/system/lib/libcxx
     ''')
 
     self.run_process([EMCC, 'main.cpp', 'foo.cpp', '-gsource-map', '-g2', '-o', 'test.js'])
-    self.run_process([empath_split, 'test.wasm', 'path_list', '-g', '-o', 'test_primary.wasm', '--out-prefix=test_'])
+    self.run_process([empath_split, 'test.wasm', 'path_list.txt', '-g', '-o', 'test_primary.wasm', '--out-prefix=test_'])
 
     # Check if functions are correctly assigned and split with the specified
     # paths. When one path contains another, the inner path should take its
@@ -15190,17 +15195,17 @@ addToLibrary({
         return pattern.search(f.read()) is not None
 
     # main.cpp
-    self.assertTrue(has_defined_function('test_0.wasm', '__original_main'))
+    self.assertTrue(has_defined_function('test_myapp.wasm', '__original_main'))
     # foo.cpp
-    self.assertTrue(has_defined_function('test_1.wasm', r'foo\\28\\29'))
+    self.assertTrue(has_defined_function('test_myapp.wasm', r'foo\\28\\29'))
     # /emsdk/emscripten/system
-    self.assertTrue(has_defined_function('test_2.wasm', '__abort_message'))
-    self.assertTrue(has_defined_function('test_2.wasm', 'pthread_cond_wait'))
+    self.assertTrue(has_defined_function('test_lib1.wasm', '__abort_message'))
+    self.assertTrue(has_defined_function('test_lib1.wasm', 'pthread_cond_wait'))
     # /emsdk/emscripten/system/lib/libc/musl
-    self.assertTrue(has_defined_function('test_3.wasm', 'strcmp'))
+    self.assertTrue(has_defined_function('test_lib2.wasm', 'strcmp'))
     # /emsdk/emscripten/system/lib/libcxx
-    self.assertTrue(has_defined_function('test_4.wasm', r'std::__2::ios_base::getloc\\28\\29\\20const'))
-    self.assertTrue(has_defined_function('test_4.wasm', r'std::uncaught_exceptions\\28\\29'))
+    self.assertTrue(has_defined_function('test_lib2.wasm', r'std::__2::ios_base::getloc\\28\\29\\20const'))
+    self.assertTrue(has_defined_function('test_lib2.wasm', r'std::uncaught_exceptions\\28\\29'))
 
     # Check --print-sources option
     out = self.run_process([empath_split, 'test.wasm', '--print-sources'], stdout=PIPE).stdout
