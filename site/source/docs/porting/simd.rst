@@ -1276,7 +1276,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vabaq
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vabal
-     - ⚫ Not implemented, will trigger compiler error
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vabd
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vabdq
@@ -1440,7 +1440,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vpmin
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vpminnm
-     - ⚫ Not implemented, will trigger compiler error
+     - ❌ Will be emulated with slow instructions, or scalarized
    * - vqabs
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vqabsb
