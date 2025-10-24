@@ -415,7 +415,7 @@ def get_binaryen_passes(options):
     passes += ['--fpcast-emu']
   if settings.ASYNCIFY == 1:
     passes += ['--asyncify']
-    if settings.MAIN_MODULE or settings.SIDE_MODULE:
+    if settings.RELOCATABLE or settings.MAIN_MODULE:
       passes += ['--pass-arg=asyncify-relocatable']
     if settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
@@ -523,7 +523,7 @@ def get_worker_js_suffix():
 
 def setup_pthreads():
   # pthreads + dynamic linking has certain limitations
-  if settings.SIDE_MODULE or settings.MAIN_MODULE or settings.RELOCATABLE:
+  if settings.MAIN_MODULE or settings.RELOCATABLE:
     diagnostics.warning('experimental', 'dynamic linking + pthreads is experimental')
   if settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
     diagnostics.warning('pthreads-mem-growth', '-pthread + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
@@ -1150,6 +1150,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       settings.INCLUDE_FULL_LIBRARY = 1
     # Called from preamble.js once the main module is instantiated.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
+    settings.REQUIRED_EXPORTS += ['__stack_pointer']
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
@@ -1168,13 +1169,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       '$registerTLSInit',
     ]
 
-  if settings.RELOCATABLE:
+  if settings.MAIN_MODULE or settings.RELOCATABLE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
       '$reportUndefinedSymbols',
       '$relocateExports',
       '$GOTHandler',
-      '__heap_base',
-      '__stack_pointer',
     ]
 
     if settings.ASYNCIFY == 1:
@@ -1392,6 +1391,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.RELOCATABLE:
     settings.REQUIRED_EXPORTS += ['__wasm_apply_data_relocs']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmTable']
 
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     diagnostics.warning('unused-command-line-argument', 'GLOBAL_BASE is not compatible with SIDE_MODULE')
@@ -1529,6 +1529,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       not settings.AUTODEBUG and \
       not settings.ASSERTIONS and \
       not settings.RELOCATABLE and \
+      not settings.MAIN_MODULE and \
           settings.MINIFY_WASM_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1

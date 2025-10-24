@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.19 (in development)
 -----------------------
+- When using dynamic linking the main module is no longer built as a relocatable
+  binaryen.  This should reduce the overhead of dynamic linking for the main
+  program, for example, eliminating relocations. (#25522)
 
 4.0.18 - 10/24/25
 -----------------
