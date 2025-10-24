@@ -10,7 +10,7 @@ int foo() {
 EMSCRIPTEN_KEEPALIVE void say_hello() {
   printf("Hello! answer: %d\n", foo());
 
-  int64_t* ptr = (int64_t*)malloc(sizeof(int64_t) * 10);
+  void* ptr = malloc(10);
   if (ptr == NULL) {
     return;
   }
