@@ -15183,7 +15183,8 @@ addToLibrary({
     ''')
 
     self.run_process([EMCC, 'main.cpp', 'foo.cpp', '-gsource-map', '-g2', '-o', 'test.js'])
-    self.run_process([empath_split, 'test.wasm', 'path_list.txt', '-g', '-o', 'test_primary.wasm', '--out-prefix=test_'])
+    empath_split_cmd = [empath_split, 'test.wasm', 'path_list.txt', '-g', '-o', 'test_primary.wasm', '--out-prefix=test_', '-v']
+    out = self.run_process(empath_split_cmd, stdout=PIPE).stdout
 
     # Check if functions are correctly assigned and split with the specified
     # paths. When one path contains another, the inner path should take its
@@ -15206,6 +15207,18 @@ addToLibrary({
     # /emsdk/emscripten/system/lib/libcxx
     self.assertTrue(has_defined_function('test_lib2.wasm', r'std::__2::ios_base::getloc\\28\\29\\20const'))
     self.assertTrue(has_defined_function('test_lib2.wasm', r'std::uncaught_exceptions\\28\\29'))
+
+    # When --preserve-manifest is NOT given, the files should be deleted
+    match = re.search(r'wasm-split(?:\.exe)?\s+.*--manifest\s+(\S+)', out)
+    manifest = match.group(1)
+    self.assertNotExists(manifest)
+
+    # When --preserve-manifest is given, the files should be preserved
+    out = self.run_process(empath_split_cmd + ['--preserve-manifest'], stdout=PIPE, stderr=subprocess.DEVNULL).stdout
+    match = re.search(r'wasm-split(?:\.exe)?\s+.*--manifest\s+(\S+)', out)
+    manifest = match.group(1)
+    self.assertExists(manifest)
+    delete_file(manifest)
 
     # Check --print-sources option
     out = self.run_process([empath_split, 'test.wasm', '--print-sources'], stdout=PIPE).stdout
