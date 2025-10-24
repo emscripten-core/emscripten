@@ -19,8 +19,8 @@
   var packedVersionToHumanReadable = n => [n / 10000 | 0, (n / 100 | 0) % 100, n % 100].join('.');
 
   var TARGET_NOT_SUPPORTED = {{{ TARGET_NOT_SUPPORTED }}};
-
-  var currentNodeVersion = typeof process !== 'undefined' && process?.versions?.node ? humanReadableVersionToPacked(process.versions.node) : TARGET_NOT_SUPPORTED;
+  var isNode = typeof process !== 'undefined' && process.versions && process.versions.node;
+  var currentNodeVersion = isNode ? humanReadableVersionToPacked(process.versions.node) : TARGET_NOT_SUPPORTED;
 #if MIN_NODE_VERSION == TARGET_NOT_SUPPORTED
   if (currentNodeVersion < TARGET_NOT_SUPPORTED) {
     throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
