@@ -4,20 +4,20 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os
-import sys
-import subprocess
-import re
 import json
+import os
+import re
 import shutil
+import subprocess
+import sys
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
+from tools import building, config, shared, utils
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import path_from_root
-from tools import building, config, shared, utils
 
 temp_files = shared.get_temp_files()
 

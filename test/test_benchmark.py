@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import json
 import math
 import os
 import re
@@ -10,7 +11,6 @@ import shutil
 import sys
 import time
 import unittest
-import json
 import zlib
 from pathlib import Path
 from typing import List
@@ -19,12 +19,13 @@ if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner.py benchmark')
 
 import clang_native
-import jsrun
 import common
-from tools.shared import CLANG_CC, CLANG_CXX
-from common import test_file, read_file, read_binary, needs_make
-from tools.shared import run_process, PIPE, EMCC, config
+import jsrun
+from common import read_binary, read_file, test_file
+from decorators import needs_make
+
 from tools import building, utils
+from tools.shared import CLANG_CC, CLANG_CXX, EMCC, PIPE, config, run_process
 
 # standard arguments for timing:
 # 0: no runtime, just startup

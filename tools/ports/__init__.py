@@ -3,24 +3,20 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
-import hashlib
-import os
-from pathlib import Path
-import shutil
 import glob
+import hashlib
 import importlib.util
-from inspect import signature
-import sys
+import logging
+import os
+import shutil
 import subprocess
-from typing import Set, Dict
+import sys
+from inspect import signature
+from pathlib import Path
+from typing import Dict, Set
 from urllib.request import urlopen
 
-from tools import cache
-from tools import config
-from tools import shared
-from tools import system_libs
-from tools import utils
+from tools import cache, config, shared, system_libs, utils
 from tools.settings import settings
 from tools.toolchain_profiler import ToolchainProfiler
 

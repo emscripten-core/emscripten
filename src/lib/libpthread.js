@@ -454,6 +454,16 @@ var LibraryPThread = {
       worker = new Worker(new URL('{{{ pthreadWorkerScript }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
 #else // EXPORT_ES6
       var pthreadMainJs = _scriptName;
+#if CROSS_ORIGIN && ENVIRONMENT_MAY_BE_WEB
+      // In order to support cross origin loading of worker threads load the
+      // worker via a tiny inline `importScripts` call.   For some reason its
+      // fine to `importScripts` across origins, in cases where new Worker
+      // itself does not allow this.
+      // https://github.com/emscripten-core/emscripten/issues/21937
+      if (ENVIRONMENT_IS_WEB) {
+        pthreadMainJs = URL.createObjectURL(new Blob([`importScripts('${_scriptName}')`], { type: 'application/javascript' }));
+      }
+#endif
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
       // We can't use makeModuleReceiveWithVar here since we want to also
       // call URL.createObjectURL on the mainScriptUrlOrBlob.

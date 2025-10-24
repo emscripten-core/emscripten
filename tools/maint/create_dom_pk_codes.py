@@ -31,8 +31,8 @@
 # Use #include <emscripten/dom_pk_codes.h> in your code to access these IDs.
 
 import os
-import sys
 import random
+import sys
 
 input_strings = [
   (0x0, 'Unidentified',          'DOM_PK_UNKNOWN'),

@@ -186,11 +186,6 @@ function calculateLibraries() {
     libraries.push('libglemu.js');
   }
 
-  if (USE_WEBGPU) {
-    libraries.push('libwebgpu.js');
-    libraries.push('libhtml5_webgpu.js');
-  }
-
   if (!STRICT) {
     libraries.push('liblegacy.js');
   }

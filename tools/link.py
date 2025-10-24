@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from .toolchain_profiler import ToolchainProfiler
-
 import base64
 import glob
 import hashlib
@@ -13,34 +11,51 @@ import logging
 import os
 import re
 import shlex
-import stat
 import shutil
+import stat
 import time
 from subprocess import PIPE
 from urllib.parse import quote
 
-from . import building
-from . import cache
-from . import config
-from . import diagnostics
-from . import emscripten
-from . import feature_matrix
-from . import filelock
-from . import js_manipulation
-from . import ports
-from . import shared
-from . import system_libs
-from . import utils
-from . import webassembly
-from . import extract_metadata
+from . import (
+  building,
+  cache,
+  config,
+  diagnostics,
+  emscripten,
+  extract_metadata,
+  feature_matrix,
+  filelock,
+  js_manipulation,
+  ports,
+  shared,
+  system_libs,
+  utils,
+  webassembly,
+)
 from .cmdline import OFormat
-from .utils import read_file, write_file, delete_file, safe_copy
-from .utils import removeprefix, exit_with_error
-from .utils import unsuffixed, unsuffixed_basename, get_file_suffix
-from .shared import in_temp, do_replace
-from .shared import DEBUG, WINDOWS, DYLIB_EXTENSIONS
-from .settings import settings, default_setting, user_settings, JS_ONLY_SETTINGS, DEPRECATED_SETTINGS
 from .minimal_runtime_shell import generate_minimal_runtime_html
+from .settings import (
+  DEPRECATED_SETTINGS,
+  INCOMPATIBLE_SETTINGS,
+  JS_ONLY_SETTINGS,
+  default_setting,
+  settings,
+  user_settings,
+)
+from .shared import DEBUG, DYLIB_EXTENSIONS, WINDOWS, do_replace, in_temp
+from .toolchain_profiler import ToolchainProfiler
+from .utils import (
+  delete_file,
+  exit_with_error,
+  get_file_suffix,
+  read_file,
+  removeprefix,
+  safe_copy,
+  unsuffixed,
+  unsuffixed_basename,
+  write_file,
+)
 
 logger = logging.getLogger('link')
 
@@ -146,6 +161,10 @@ def base64_encode(filename):
   data = utils.read_binary(filename)
   b64 = base64.b64encode(data)
   return b64.decode('ascii')
+
+
+def base64_or_binary_encode(b):
+  return binary_encode(b) if settings.SINGLE_FILE_BINARY_ENCODE else base64_encode(b)
 
 
 def align_to_wasm_page_boundary(address):
@@ -341,7 +360,7 @@ def should_run_binaryen_optimizer():
   return settings.OPT_LEVEL >= 2
 
 
-def get_binaryen_passes():
+def get_binaryen_passes(options):
   passes = []
   optimizing = should_run_binaryen_optimizer()
   # wasm-emscripten-finalize will strip the features section for us
@@ -373,6 +392,8 @@ def get_binaryen_passes():
       passes += ['--pass-arg=post-emscripten-side-module']
   if optimizing:
     passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
+  if options.fast_math:
+    passes += ['--fast-math']
   # when optimizing, use the fact that low memory is never used (1024 is a
   # hardcoded value in the binaryen pass). we also cannot do it when the stack
   # is first, as then the stack is in the low memory that should be unused.
@@ -501,14 +522,9 @@ def get_worker_js_suffix():
 
 
 def setup_pthreads():
-  if settings.RELOCATABLE:
-    # pthreads + dynamic linking has certain limitations
-    if settings.SIDE_MODULE:
-      diagnostics.warning('experimental', '-sSIDE_MODULE + pthreads is experimental')
-    elif settings.MAIN_MODULE:
-      diagnostics.warning('experimental', '-sMAIN_MODULE + pthreads is experimental')
-    elif settings.LINKABLE:
-      diagnostics.warning('experimental', '-sLINKABLE + pthreads is experimental')
+  # pthreads + dynamic linking has certain limitations
+  if settings.SIDE_MODULE or settings.MAIN_MODULE or settings.RELOCATABLE:
+    diagnostics.warning('experimental', 'dynamic linking + pthreads is experimental')
   if settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
     diagnostics.warning('pthreads-mem-growth', '-pthread + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
 
@@ -653,33 +669,7 @@ def add_system_js_lib(lib):
 
 
 def report_incompatible_settings():
-  # List of incompatible settings, of the form (SETTINGS_A, SETTING_B, OPTIONAL_REASON_FOR_INCOMPAT)
-  incompatible_settings = [
-    ('MINIMAL_RUNTIME', 'RELOCATABLE', None),
-    ('WASM2JS', 'RELOCATABLE', None),
-    ('MODULARIZE', 'PROXY_TO_WORKER', 'if you want to run in a worker with -sMODULARIZE, you likely want to do the worker side setup manually'),
-    ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),
-    ('EVAL_CTORS', 'WASM2JS', None),
-    ('EVAL_CTORS', 'RELOCATABLE', 'movable segments'),
-    # In Asyncify exports can be called more than once, and this seems to not
-    # work properly yet (see test_emscripten_scan_registers).
-    ('EVAL_CTORS', 'ASYNCIFY', None),
-    ('PTHREADS_PROFILING', 'NO_ASSERTIONS', 'only works with ASSERTIONS enabled'),
-    ('SOURCE_PHASE_IMPORTS', 'NO_EXPORT_ES6', None),
-    ('STANDALONE_WASM', 'MINIMAL_RUNTIME', None),
-    ('STRICT_JS', 'MODULARIZE', None),
-    ('STRICT_JS', 'EXPORT_ES6', None),
-    ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'they are mutually exclusive'),
-    ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'SINGLE_FILE', None),
-    ('MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'SINGLE_FILE', None),
-    ('SEPARATE_DWARF', 'WASM2JS', 'as there is no wasm file'),
-    ('GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS', 'NO_GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS', None),
-    ('MODULARIZE', 'NODEJS_CATCH_REJECTION', None),
-    ('MODULARIZE', 'NODEJS_CATCH_EXIT', None),
-    ('LEGACY_VM_SUPPORT', 'MEMORY64', None),
-  ]
-
-  for a, b, reason in incompatible_settings:
+  for a, b, reason in INCOMPATIBLE_SETTINGS:
     invert_b = b.startswith('NO_')
     if invert_b:
       b = b[3:]
@@ -1096,9 +1086,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # Use settings
 
-  if settings.JS_MATH:
-    if settings.MAIN_MODULE == 1:
-      exit_with_error('JS_MATH is not compatible with dynamic linking (MAIN_MODULE=1)')
+  if settings.JS_MATH and settings.MAIN_MODULE == 1:
+    # MODULE_MODULE=1 adds`--whole-archive` around all the system libraries which
+    # results in duplicate math symbols when JS_MATH is used.
+    exit_with_error('JS_MATH is not compatible with dynamic linking (MAIN_MODULE=1)')
 
   if settings.WASM == 2 and settings.SINGLE_FILE:
     exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
@@ -1425,7 +1416,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.REQUIRED_EXPORTS += ['emscripten_get_sbrk_ptr', 'emscripten_stack_get_base']
 
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$exportWasmSymbols']
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$assignWasmExports']
 
   if settings.ALLOW_MEMORY_GROWTH:
     # Setting ALLOW_MEMORY_GROWTH turns off ABORTING_MALLOC, as in that mode we default to
@@ -1579,10 +1570,12 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.REQUIRED_EXPORTS += [
       'malloc',
       'calloc',
+      'realloc',
       'memalign',
       'free',
       'emscripten_builtin_malloc',
       'emscripten_builtin_calloc',
+      'emscripten_builtin_realloc',
       'emscripten_builtin_memalign',
       'emscripten_builtin_free',
     ]
@@ -2294,7 +2287,7 @@ def phase_binaryen(target, options, wasm_target):
   # run wasm-opt if we have work for it: either passes, or if we are using
   # source maps (which requires some extra processing to keep the source map
   # but remove DWARF)
-  passes = get_binaryen_passes()
+  passes = get_binaryen_passes(options)
   if passes:
     # if asyncify is used, we will use it in the next stage, and so if it is
     # the only reason we need intermediate debug info, we can stop keeping it
@@ -2446,7 +2439,7 @@ def phase_binaryen(target, options, wasm_target):
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
     js = read_file(final_js)
 
-    js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
+    js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_or_binary_encode(wasm_target))
     delete_file(wasm_target)
     write_file(final_js, js)
 
@@ -2606,6 +2599,39 @@ def minify_html(filename):
   size_before = os.path.getsize(filename)
   start_time = time.time()
   shared.check_call(shared.get_npm_cmd('html-minifier-terser') + [filename, '-o', filename] + opts, env=shared.env_with_node_in_path())
+
+  # HTML minifier will turn all null bytes into an escaped two-byte sequence "\0". Turn those back to single byte sequences.
+  def unescape_nulls(filename):
+    with open(filename, encoding="utf-8") as f:
+      data = f.read()
+
+    out = []
+    in_escape = False
+    i = 0
+    while i < len(data):
+      ch = data[i]
+      i += 1
+      if ch == '\\':
+        if in_escape:
+          out.append('\\\\')
+        in_escape = not in_escape
+      elif in_escape:
+        in_escape = False
+        if ch == '0':
+          out.append('\x00') # Convert '\\0' (5Ch 00h) into '\0' (00h)
+        elif ch == 'x' and data[i] == '0' and data[i + 1] == '0':
+          out.append('\x00') # Oddly html-minifier generates both "\\0" and "\\x00", so handle that too.
+          i += 2
+        else:
+          out.append('\\')
+          out.append(ch)
+      else:
+        out.append(ch)
+
+    with open(filename, "wb") as f:
+      f.write(''.join(out).encode("utf-8"))
+
+  unescape_nulls(filename)
 
   elapsed_time = time.time() - start_time
   size_after = os.path.getsize(filename)
@@ -2956,9 +2982,42 @@ def move_file(src, dst):
   shutil.move(src, dst)
 
 
+def binary_encode(filename):
+  """This function encodes the given binary byte array to a UTF-8 string, by
+  encoding each byte values as UTF-8, except for specific byte values that
+  are escaped as two bytes. This kind of encoding results in a string that will
+  compress well by both gzip and brotli, unlike base64 encoding binary data
+  would do.
+  """
+
+  data = utils.read_binary(filename)
+
+  out = bytearray(len(data) * 2) # Size output buffer conservatively
+  i = 0
+  for d in data:
+    if d == ord('"'):
+      # Escape double quote " character with a backspace since we are writing the binary string inside double quotes.
+      # Also closure optimizer will turn the string into being delimited with double quotes, even if it were single quotes to start with. (" -> 2 bytes)
+      buf = [ord('\\'), d]
+    elif d == ord('\r'):
+      buf = [ord('\\'), ord('r')] # Escape carriage return 0x0D as \r -> 2 bytes
+    elif d == ord('\n'):
+      buf = [ord('\\'), ord('n')] # Escape newline 0x0A as \n -> 2 bytes
+    elif d == ord('\\'):
+      buf = [ord('\\'), ord('\\')] # Escape backslash \ as \\ -> 2 bytes
+    else:
+      buf = chr(d).encode('utf-8') # Otherwise write the original value encoded in UTF-8 (1 or 2 bytes).
+    for b in buf: # Write the bytes to output buffer
+      out[i] = b
+      i += 1
+  return out[0:i].decode('utf-8') # Crop output buffer to the actual used size
+
+
 # Returns the subresource location for run-time access
 def get_subresource_location(path, mimetype='application/octet-stream'):
   if settings.SINGLE_FILE:
+    if settings.SINGLE_FILE_BINARY_ENCODE:
+      return binary_encode(path)
     return f'data:{mimetype};base64,{base64_encode(path)}'
   else:
     return os.path.basename(path)

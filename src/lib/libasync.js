@@ -21,6 +21,9 @@ addToLibrary({
 
 #if ASYNCIFY
   $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
+#if ASSERTIONS
+    '$createNamedFunction',
+#endif
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
@@ -143,6 +146,9 @@ addToLibrary({
 #endif
 #if MAIN_MODULE
       wrapper.orig = original;
+#endif
+#if ASSERTIONS
+      wrapper = createNamedFunction(`__asyncify_wrapper_${original.name}`, wrapper);
 #endif
       return wrapper;
     },

@@ -581,14 +581,6 @@ var GL_FFP_ONLY = false;
 // [link]
 var GL_PREINITIALIZED_CONTEXT = false;
 
-// Enables the built-in implementation of ``<webgpu/webgpu.h>``.
-// Deprecated: Please try migrating to ``--use-port=emdawnwebgpu``,
-// which implements a newer, incompatible version of webgpu.h (see
-// tools/ports/emdawnwebgpu.py for more info).
-// [link]
-// [deprecated]
-var USE_WEBGPU = false;
-
 // Enables building of stb-image, a tiny public-domain library for decoding
 // images, allowing decoding of images without using the browser's built-in
 // decoders. The benefit is that this can be done synchronously, however, it
@@ -1861,6 +1853,15 @@ var WASMFS = false;
 // [link]
 var SINGLE_FILE = false;
 
+// If true, binary Wasm content is encoded using a custom UTF-8 embedding
+// instead of base64. This generates a smaller binary that compresses well.
+// Set this to false to revert back to earlier base64 encoding if you run into
+// issues with the binary encoding. (and please let us know of any such issues)
+// If no issues arise, this option will permanently become the default in the
+// future.
+// [link]
+var SINGLE_FILE_BINARY_ENCODE = true;
+
 // If set to 1, all JS libraries will be automatically available at link time.
 // This gets set to 0 in STRICT mode (or with MINIMAL_RUNTIME) which mean you
 // need to explicitly specify -lfoo.js in at link time in order to access
@@ -2195,93 +2196,8 @@ var GROWABLE_ARRAYBUFFERS = false;
 // so we disable it by default to save on code size.
 var WASM_JS_TYPES = false;
 
-// For renamed settings the format is:
-// [OLD_NAME, NEW_NAME]
-// For removed settings (which now effectively have a fixed value and can no
-// longer be changed) the format is:
-// [OPTION_NAME, POSSIBLE_VALUES, ERROR_EXPLANATION], where POSSIBLE_VALUES is
-// an array of values that will still be silently accepted by the compiler.
-// First element in the list is the canonical/fixed value going forward.
-// This allows existing build systems to keep specifying one of the supported
-// settings, for backwards compatibility.
-// When a setting has been removed, and we want to error on all values of it,
-// we can set POSSIBLE_VALUES to an impossible value (like "disallowed" for a
-// numeric setting, or -1 for a string setting).
-var LEGACY_SETTINGS = [
-  ['BINARYEN', 'WASM'],
-  ['TOTAL_STACK', 'STACK_SIZE'],
-  ['BINARYEN_ASYNC_COMPILATION', 'WASM_ASYNC_COMPILATION'],
-  ['UNALIGNED_MEMORY', [0], 'forced unaligned memory not supported in fastcomp'],
-  ['FORCE_ALIGNED_MEMORY', [0], 'forced aligned memory is not supported in fastcomp'],
-  ['PGO', [0], 'pgo no longer supported'],
-  ['QUANTUM_SIZE', [4], 'altering the QUANTUM_SIZE is not supported'],
-  ['FUNCTION_POINTER_ALIGNMENT', [2], 'Starting from Emscripten 1.37.29, no longer available (https://github.com/emscripten-core/emscripten/pull/6091)'],
-  // Reserving function pointers is not needed - allowing table growth allows any number of new functions to be added.
-  ['RESERVED_FUNCTION_POINTERS', 'ALLOW_TABLE_GROWTH'],
-  ['BUILD_AS_SHARED_LIB', [0], 'Starting from Emscripten 1.38.16, no longer available (https://github.com/emscripten-core/emscripten/pull/7433)'],
-  ['SAFE_SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SAFE_SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
-  ['SPLIT_MEMORY', [0], 'Starting from Emscripten 1.38.19, SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465)'],
-  ['BINARYEN_METHOD', ['native-wasm'], 'Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-sWASM - default), or to JavaScript (-sWASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836)'],
-  ['BINARYEN_TRAP_MODE', [-1], 'The wasm backend does not support a trap mode (it always clamps, in effect)'],
-  ['PRECISE_I64_MATH', [1, 2], 'Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935)'],
-  ['MEMFS_APPEND_TO_TYPED_ARRAYS', [1], 'Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918)'],
-  ['ERROR_ON_MISSING_LIBRARIES', [1], 'missing libraries are always an error now'],
-  ['EMITTING_JS', [1], 'The new STANDALONE_WASM flag replaces this (replace EMITTING_JS=0 with STANDALONE_WASM=1)'],
-  ['SKIP_STACK_IN_SMALL', [0, 1], 'SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly'],
-  ['SAFE_STACK', [0], 'Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2'],
-  ['MEMORY_GROWTH_STEP', 'MEMORY_GROWTH_LINEAR_STEP'],
-  ['ELIMINATE_DUPLICATE_FUNCTIONS', [0, 1], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
-  ['ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS', [0], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
-  ['ELIMINATE_DUPLICATE_FUNCTIONS_PASSES', [5], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
-  // WASM_OBJECT_FILES is handled in emcc.py, supporting both 0 and 1 for now.
-  ['WASM_OBJECT_FILES', [0, 1], 'For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow'],
-  ['TOTAL_MEMORY', 'INITIAL_MEMORY'],
-  ['WASM_MEM_MAX', 'MAXIMUM_MEMORY'],
-  ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],
-  ['BINARYEN_PASSES', [''], 'Use BINARYEN_EXTRA_PASSES to add additional passes'],
-  ['SWAPPABLE_ASM_MODULE', [0], 'Fully swappable asm modules are no longer supported'],
-  ['ASM_JS', [1], 'asm.js output is not supported anymore'],
-  ['FINALIZE_ASM_JS', [0, 1], 'asm.js output is not supported anymore'],
-  ['ASYNCIFY_WHITELIST', 'ASYNCIFY_ONLY'],
-  ['ASYNCIFY_BLACKLIST', 'ASYNCIFY_REMOVE'],
-  ['EXCEPTION_CATCHING_WHITELIST', 'EXCEPTION_CATCHING_ALLOWED'],
-  ['SEPARATE_ASM', [0], 'Separate asm.js only made sense for fastcomp with asm.js output'],
-  ['SEPARATE_ASM_MODULE_NAME', [''], 'Separate asm.js only made sense for fastcomp with asm.js output'],
-  ['FAST_UNROLLED_MEMCPY_AND_MEMSET', [0, 1], 'The wasm backend implements memcpy/memset in C'],
-  ['DOUBLE_MODE', [0, 1], 'The wasm backend always implements doubles normally'],
-  ['PRECISE_F32', [0, 1, 2], 'The wasm backend always implements floats normally'],
-  ['ALIASING_FUNCTION_POINTERS', [0, 1], 'The wasm backend always uses a single index space for function pointers, in a single Table'],
-  ['AGGRESSIVE_VARIABLE_ELIMINATION', [0, 1], 'Wasm ignores asm.js-specific optimization flags'],
-  ['SIMPLIFY_IFS', [1], 'Wasm ignores asm.js-specific optimization flags'],
-  ['DEAD_FUNCTIONS', [[]], 'The wasm backend does not support dead function removal'],
-  ['WASM_BACKEND', [-1], 'Only the wasm backend is now supported (note that setting it as -s has never been allowed anyhow)'],
-  ['EXPORT_BINDINGS', [0, 1], 'No longer needed'],
-  ['RUNNING_JS_OPTS', [0], 'Fastcomp cared about running JS which could alter asm.js validation, but not upstream'],
-  ['EXPORT_FUNCTION_TABLES', [0], 'No longer needed'],
-  ['BINARYEN_SCRIPTS', [''], 'No longer needed'],
-  ['WARN_UNALIGNED', [0, 1], 'No longer needed'],
-  ['ASM_PRIMITIVE_VARS', [[]], 'No longer needed'],
-  ['WORKAROUND_IOS_9_RIGHT_SHIFT_BUG', [0], 'Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older'],
-  ['RUNTIME_FUNCS_TO_IMPORT', [[]], 'No longer needed'],
-  ['LIBRARY_DEPS_TO_AUTOEXPORT', [[]], 'No longer needed'],
-  ['EMIT_EMSCRIPTEN_METADATA', [0], 'No longer supported'],
-  ['SHELL_FILE', [''], 'No longer supported'],
-  ['LLD_REPORT_UNDEFINED', [1], 'Disabling is no longer supported'],
-  ['MEM_INIT_METHOD', [0], 'No longer supported'],
-  ['USE_PTHREADS', [0, 1], 'No longer needed. Use -pthread instead'],
-  ['USES_DYNAMIC_ALLOC', [1], 'No longer supported. Use -sMALLOC=none'],
-  ['REVERSE_DEPS', ['auto', 'all', 'none'], 'No longer needed'],
-  ['RUNTIME_LOGGING', 'RUNTIME_DEBUG'],
-  ['MIN_EDGE_VERSION', [0x7FFFFFFF], 'No longer supported'],
-  ['MIN_IE_VERSION', [0x7FFFFFFF], 'No longer supported'],
-  ['WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG', [0], 'No longer supported'],
-  ['AUTO_ARCHIVE_INDEXES', [0, 1], 'No longer needed'],
-  ['USE_ES6_IMPORT_META', [1], 'Disabling is no longer supported'],
-  ['EXTRA_EXPORTED_RUNTIME_METHODS', [[]], 'No longer supported, use EXPORTED_RUNTIME_METHODS'],
-  ['SUPPORT_ERRNO', [0], 'No longer supported'],
-  ['DEMANGLE_SUPPORT', [0], 'No longer supported'],
-  ['MAYBE_WASM2JS', [0], 'No longer supported (use -sWASM=2)'],
-  ['HEADLESS', [0], 'No longer supported, use headless browsers or Node.js with JSDOM'],
-  ['USE_OFFSET_COVERTER', [0], 'No longer supported, not needed with modern v8 versions'],
-  ['ASYNCIFY_LAZY_LOAD_CODE', [0], 'No longer supported'],
-];
+// If the emscripten-generated program is hosted on separate origin then
+// starting new pthread worker can violate CSP rules.  Enabling
+// CROSS_ORIGIN uses an inline worker to instead load the worker script
+// indirectly using `importScripts`
+var CROSS_ORIGIN = false;

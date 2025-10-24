@@ -149,7 +149,9 @@ function initRuntime(wasmExports) {
 
 // Initialize wasm (asynchronous)
 
-#if SINGLE_FILE && WASM == 1 && !WASM2JS
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+Module['wasm'] = binaryDecode("<<< WASM_BINARY_DATA >>>");
+#elif SINGLE_FILE && WASM == 1 && !WASM2JS
 Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #endif
 
@@ -258,11 +260,7 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
   wasmExports = applySignatureConversions(wasmExports);
 #endif
 
-#if DECLARE_ASM_MODULE_EXPORTS
   assignWasmExports(wasmExports);
-#else
-  exportWasmSymbols(wasmExports);
-#endif
 
 #if !IMPORTED_MEMORY
   updateMemoryViews();

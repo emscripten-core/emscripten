@@ -6,8 +6,8 @@ file in the test directory.
 """
 
 import os
-import sys
 import subprocess
+import sys
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))

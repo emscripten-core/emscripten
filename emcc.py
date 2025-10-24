@@ -20,30 +20,38 @@ emcc can be influenced by a few environment variables:
                slows down compilation).
 """
 
-from tools.toolchain_profiler import ToolchainProfiler
-
 import logging
 import os
 import shlex
 import shutil
 import sys
-import time
 import tarfile
+import time
 from dataclasses import dataclass
 from enum import Enum, auto, unique
 
-
-from tools import shared, system_libs, utils, cmdline
-from tools import diagnostics, building, compile
-from tools.shared import exit_with_error, DEBUG
-from tools.shared import in_temp
-from tools.shared import DYLIB_EXTENSIONS
+from tools import (
+  building,
+  cache,
+  cmdline,
+  compile,
+  config,
+  diagnostics,
+  shared,
+  system_libs,
+  utils,
+)
 from tools.cmdline import CLANG_FLAGS_WITH_ARGS
 from tools.response_file import substitute_response_files
-from tools import config
-from tools import cache
-from tools.settings import default_setting, user_settings, settings, COMPILE_TIME_SETTINGS
-from tools.utils import read_file, unsuffixed_basename, get_file_suffix
+from tools.settings import (
+  COMPILE_TIME_SETTINGS,
+  default_setting,
+  settings,
+  user_settings,
+)
+from tools.shared import DEBUG, DYLIB_EXTENSIONS, exit_with_error, in_temp
+from tools.toolchain_profiler import ToolchainProfiler
+from tools.utils import get_file_suffix, read_file, unsuffixed_basename
 
 logger = logging.getLogger('emcc')
 
@@ -307,7 +315,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     linker_args = separate_linker_flags(newargs)[1]
     linker_args = [f.value for f in linker_args]
     # Delay import of link.py to avoid processing this file when only compiling
-    from tools import link
+    from tools import link  # noqa: PLC0415
     link.run_post_link(options.input_files[0], options, linker_args)
     return 0
 

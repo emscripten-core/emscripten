@@ -25,9 +25,8 @@ import os
 import shlex
 import shutil
 import sys
-from tools import building
-from tools import shared
-from tools import utils
+
+from tools import building, shared, utils
 
 
 #

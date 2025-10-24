@@ -92,7 +92,10 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
   EmscriptenAudioWorkletNodeCreateOptions options = {
     .numberOfInputs = 0,
     .numberOfOutputs = 1,
-    .outputChannelCounts = outputChannelCounts
+    .outputChannelCounts = outputChannelCounts,
+    .channelCount = 1,
+    .channelCountMode = WEBAUDIO_CHANNEL_COUNT_MODE_EXPLICIT,
+    .channelInterpretation = WEBAUDIO_CHANNEL_INTERPRETATION_SPEAKERS,
   };
 
   // Instantiate the noise-generator Audio Worklet Processor.

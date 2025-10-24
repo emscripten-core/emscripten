@@ -5,6 +5,7 @@
 # found in the LICENSE file.
 
 import sys
+
 import emcc
 from tools import shared
 

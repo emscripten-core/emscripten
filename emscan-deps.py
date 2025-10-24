@@ -11,7 +11,7 @@ This script acts as a frontend replacement for clang-scan-deps.
 
 import sys
 
-from tools import shared, cmdline, compile
+from tools import cmdline, compile, shared
 
 argv = sys.argv[1:]
 

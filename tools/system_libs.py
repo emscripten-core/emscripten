@@ -3,25 +3,22 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import re
-from time import time
-from .toolchain_profiler import ToolchainProfiler
-
 import itertools
 import logging
 import os
-import shutil
-import textwrap
+import re
 import shlex
+import shutil
 import subprocess
+import textwrap
 from enum import IntEnum, auto
 from glob import iglob
+from time import time
 from typing import List, Optional
 
-from . import shared, building, utils
-from . import diagnostics
-from . import cache
+from . import building, cache, diagnostics, shared, utils
 from .settings import settings
+from .toolchain_profiler import ToolchainProfiler
 from .utils import read_file
 
 logger = logging.getLogger('system_libs')
@@ -1947,21 +1944,6 @@ class libGL(MTLibrary):
     )
 
 
-class libwebgpu(MTLibrary):
-  name = 'libwebgpu'
-
-  src_dir = 'system/lib/webgpu'
-  src_files = ['webgpu.cpp']
-
-
-class libwebgpu_cpp(MTLibrary):
-  name = 'libwebgpu_cpp'
-
-  cflags = ['-std=c++11']
-  src_dir = 'system/lib/webgpu'
-  src_files = ['webgpu_cpp.cpp']
-
-
 class libembind(MTLibrary):
   name = 'libembind'
   never_force = True
@@ -2424,11 +2406,6 @@ def get_libs_to_link(options):
     add_library('libsockets_proxy')
   else:
     add_library('libsockets')
-
-  if settings.USE_WEBGPU:
-    add_library('libwebgpu')
-    if settings.LINK_AS_CXX:
-      add_library('libwebgpu_cpp')
 
   if settings.WASM_WORKERS and (not settings.SINGLE_FILE and
                                 not settings.RELOCATABLE and
