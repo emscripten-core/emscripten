@@ -2243,7 +2243,7 @@ Module['postRun'] = () => {
 
   def test_dylink_pthread_warning(self):
     err = self.expect_fail([EMCC, '-Werror', '-sMAIN_MODULE', '-pthread', test_file('hello_world.c')])
-    self.assertContained('error: -sMAIN_MODULE + pthreads is experimental', err)
+    self.assertContained('error: dynamic linking + pthreads is experimental', err)
 
   @node_pthreads
   def test_dylink_pthread_em_asm(self):
