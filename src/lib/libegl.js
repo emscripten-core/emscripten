@@ -637,10 +637,6 @@ var LibraryEGL = {
   eglSwapBuffers__deps: ['$GLctx'],
   eglSwapBuffers__proxy: 'sync',
   eglSwapBuffers: (dpy, surface) => {
-#if PROXY_TO_WORKER
-    if (Browser.doSwapBuffers) Browser.doSwapBuffers();
-#endif
-
     if (!EGL.defaultDisplayInitialized) {
       EGL.setErrorCode(0x3001 /* EGL_NOT_INITIALIZED */);
     } else if (!GLctx) {
