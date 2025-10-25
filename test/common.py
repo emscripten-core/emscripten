@@ -30,7 +30,6 @@ from pathlib import Path
 from subprocess import PIPE, STDOUT
 from typing import Dict, Tuple
 from urllib.parse import parse_qs, unquote, unquote_plus, urlparse
-from .utils import WINDOWS
 
 import clang_native
 import jsrun
