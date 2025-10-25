@@ -137,7 +137,7 @@ class ChromeConfig:
 
 class FirefoxConfig:
   data_dir_flag = '-profile '
-  default_flags = ('-new-instance',)
+  default_flags = ('-new-instance', '-wait-for-browser') if WINDOWS else ('-new-instance',)
   headless_flags = '-headless'
   executable_name = utils.exe_suffix('firefox')
 
@@ -2081,13 +2081,13 @@ class BrowserCore(RunnerCore):
       # Give the browser time to spawn its subprocesses. Use an increasing
       # timeout as a crude way to account for system load.
       if parallel_harness or is_safari():
-        time.sleep(min(2 + count * 0.3, 10))
+        time.sleep(min(5 + count * 0.3, 10))
         procs_after = list_processes_by_name(config.executable_name)
 
         # Take a snapshot again to find which processes exist after launching
         # the browser. Then the newly launched browser processes are determined
         # by the delta before->after.
-        cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
+        cls.browser_procs += list(set(procs_after).difference(set(procs_before)))
         if len(cls.browser_procs) == 0:
           exit_with_error('Could not detect the launched browser subprocesses. The test harness will not be able to close the browser after testing is done, so aborting the test run here.')
 
