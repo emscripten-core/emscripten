@@ -560,7 +560,8 @@
             "accelerationZ": 16,
             "rotationRateAlpha": 48,
             "rotationRateBeta": 56,
-            "rotationRateGamma": 64
+            "rotationRateGamma": 64,
+            "supportedFields": 72
         },
         "EmscriptenDeviceOrientationEvent": {
             "__size__": 32,

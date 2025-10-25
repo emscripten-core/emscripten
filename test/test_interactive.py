@@ -25,6 +25,9 @@ class interactive(BrowserCore):
     print('Running the interactive tests. Make sure the browser allows popups from localhost.')
     print()
 
+  def test_html5_core(self):
+    self.btest_exit('test_html5_core.c', cflags=['-DKEEP_ALIVE'])
+
   def test_html5_fullscreen(self):
     self.btest('test_html5_fullscreen.c', expected='0', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-sEXPORTED_FUNCTIONS=_requestFullscreen,_enterSoftFullscreen,_main', '--shell-file', test_file('test_html5_fullscreen.html')])
 
