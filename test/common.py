@@ -30,6 +30,7 @@ from pathlib import Path
 from subprocess import PIPE, STDOUT
 from typing import Dict, Tuple
 from urllib.parse import parse_qs, unquote, unquote_plus, urlparse
+from .utils import LINUX
 
 import clang_native
 import jsrun
@@ -137,7 +138,7 @@ class ChromeConfig:
 
 class FirefoxConfig:
   data_dir_flag = '-profile '
-  default_flags = ('-new-instance', '-wait-for-browser')
+  default_flags = ('-new-instance',) if LINUX else ('-new-instance', '-wait-for-browser')
   headless_flags = '-headless'
   executable_name = utils.exe_suffix('firefox')
 
