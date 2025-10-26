@@ -2676,6 +2676,9 @@ Module["preRun"] = () => {
       self.cflags.append('--pre-js=pre.js')
     self.btest_exit('test_html5_core.c', cflags=opts)
 
+  def test_html5_remove_callback(self):
+    self.btest_exit('test_html5_remove_callback.c')
+
   @parameterized({
     '': ([],),
     'closure': (['-O2', '-g1', '--closure=1'],),
