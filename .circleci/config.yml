@@ -106,11 +106,22 @@ commands:
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/emsdk/.emscripten
             cat ~/emsdk/.emscripten
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
-  install-node-latest:
-    description: "install latest version of node"
+  install-node-oldest:
+    description: "install node (oldest)"
     steps:
       - install-node-version:
-         node_version: "19.0.0"
+          # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
+          node_version: "12.22.9"
+  install-node-lts:
+    description: "install node (current LTS)"
+    steps:
+      - install-node-version:
+         node_version: "22.21.0"
+  install-node-newest:
+    description: "install node (newest)"
+    steps:
+      - install-node-version:
+         node_version: "24.10.0"
   install-node-canary:
     description: "install canary version of node"
     steps:
@@ -957,9 +968,7 @@ jobs:
             "
       # Run some basic tests with the minimum version of node that we currently
       # support in the generated code.
-      # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
-      - install-node-version:
-          node_version: "12.22.9"
+      - install-node-oldest
       - run-tests:
           title: "node (oldest / 12.22.9)"
           extra-cflags: "-sMIN_NODE_VERSION=122209"
@@ -1023,10 +1032,28 @@ jobs:
             core2.test_unistd_unlink_rawfs
             core2.test_unistd_write_broken_link_rawfs
             "
+      # Run a few test with the most recent LTS version of node
+      - install-node-lts
+      - run-tests:
+          # Run tests that on older versions of node would require flags, but
+          # those flags should not be injected on newer versions.
+          title: "node (lts)"
+          test_targets: "-v
+            other.test_gen_struct_info
+            other.test_native_call_before_init
+            other.test_node_unhandled_rejection
+            other.test_js_optimizer_verbose
+            other.test_min_node_version
+            other.test_node_emscripten_num_logical_cores
+            core2.test_pthread_create
+            core2.test_i64_invoke_bigint
+            core2.test_sse2
+            core2.test_source_map
+            core2.test_exceptions_wasm_legacy
+            core2.test_pthread_unhandledrejection
+            "
       # Run a few test with the most recent version of node
-      # In particular we have some tests that require node flags on older
-      # versions of node but not with the most recent version.
-      - install-node-latest
+      - install-node-newest
       - run-tests:
           # Run tests that on older versions of node would require flags, but
           # those flags should not be injected on newer versions.
@@ -1043,7 +1070,8 @@ jobs:
             core2.test_sse2
             core2.test_source_map
             core2.test_exceptions_wasm_legacy
-            core2.test_pthread_unhandledrejection"
+            core2.test_pthread_unhandledrejection
+            "
       - upload-test-results
   test-other:
     executor: focal
