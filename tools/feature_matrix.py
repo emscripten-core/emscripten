@@ -132,7 +132,7 @@ min_browser_versions = {
     # unflagged version of Node.js 260000 that ships Wasm EH enabled, after
     # Emscripten unit testing has migrated to Node.js 26, and Emsdk ships
     # Node.js 26)
-    'node': 240000,
+    'node': 220000,
   },
 }
 
