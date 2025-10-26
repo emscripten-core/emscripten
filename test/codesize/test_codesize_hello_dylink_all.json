@@ -1,7 +1,7 @@
 {
   "a.out.js": 245826,
-  "a.out.nodebug.wasm": 597777,
-  "total": 843603,
+  "a.out.nodebug.wasm": 597769,
+  "total": 843595,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -4847,7 +4847,6 @@
     "$sub128",
     "$sw_write",
     "$swab",
-    "$swapc",
     "$swprintf",
     "$swscanf",
     "$symlink",
