@@ -11,14 +11,11 @@ executors:
   linux-python:
     docker:
       - image: cimg/python:3.10.7
-    environment:
-      EMCC_CORES: "4"
   focal:
     docker:
       - image: emscripten/emscripten-ci:focal
     environment:
       LANG: "C.UTF-8"
-      EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
       EMTEST_BUILD_VERBOSE: "2"
@@ -264,6 +261,7 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
+      - run: python3 -c "import multiprocessing; print(multiprocessing.cpu_count())"
       - run:
           name: submodule update
           command: git submodule update --init
@@ -585,11 +583,11 @@ jobs:
     # we want it to finish asap
     resource_class: xlarge
     environment:
-      EMCC_CORES: 16
       EMCC_USE_NINJA: 1
       EM_COMPILER_WRAPPER: "ccache"
     steps:
       - checkout
+      - run: python3 -c "import multiprocessing; print(multiprocessing.cpu_count())"
       - run:
           name: get wasmer
           command: |
