@@ -1,7 +1,5 @@
 #include <stdio.h>
 #include <emscripten.h>
-#include <stdlib.h> // For malloc and free
-#include <stdint.h> // For int64_t
 
 int foo() {
   return 42;
