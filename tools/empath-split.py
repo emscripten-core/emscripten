@@ -276,7 +276,9 @@ def parse_paths_file(paths_file_content):
       continue
 
     if not cur_module:
-      cur_module = line
+      cur_module = line[:-1]
+      if not cur_module:
+        exit_with_error("Module name is empty")
     else:
       path = normalize_path(line)
       if path in path_to_module:
