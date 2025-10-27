@@ -383,14 +383,28 @@ var LibraryWebAudio = {
     srcNode.connect(dstNode.destination || dstNode, outputIndex, inputIndex);
   },
 
-  emscripten_current_thread_is_audio_worklet: () => ENVIRONMENT_IS_AUDIO_WORKLET,
-
-  emscripten_audio_worklet_post_function_v: (audioContext, funcPtr) => {
-    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: [] }); // "WaSm Call"
+  $emAudioWorkletPostFunction__internal: true,
+  $emAudioWorkletPostFunction(audioContext, funcPtr, args) {
+#if ASSERTIONS
+    assert(funcPtr);
+#endif
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    if (audioContext) emAudioExpectContext(audioContext, 'emAudioWorkletPostFunction');
+#endif
+    // _wsc = "WaSm Call"
+    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args});
   },
 
+  emscripten_current_thread_is_audio_worklet: () => ENVIRONMENT_IS_AUDIO_WORKLET,
+
+  emscripten_audio_worklet_post_function_v__deps: ['$emAudioWorkletPostFunction'],
+  emscripten_audio_worklet_post_function_v: (audioContext, funcPtr) => {
+    emAudioWorkletPostFunction(audioContext, funcPtr, []);
+  },
+
+  $emscripten_audio_worklet_post_function_1__deps: ['$emAudioWorkletPostFunction'],
   $emscripten_audio_worklet_post_function_1: (audioContext, funcPtr, arg0) => {
-    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: [arg0] }); // "WaSm Call"
+    emAudioWorkletPostFunction(audioContext, funcPtr, [arg0]);
   },
 
   emscripten_audio_worklet_post_function_vi__deps: ['$emscripten_audio_worklet_post_function_1'],
@@ -403,8 +417,9 @@ var LibraryWebAudio = {
     emscripten_audio_worklet_post_function_1(audioContext, funcPtr, arg0)
   },
 
+  $emscripten_audio_worklet_post_function_2__deps: ['$emAudioWorkletPostFunction'],
   $emscripten_audio_worklet_post_function_2: (audioContext, funcPtr, arg0, arg1) => {
-    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: [arg0, arg1] }); // "WaSm Call"
+    emAudioWorkletPostFunction(audioContext, funcPtr, [arg0, arg1]);
   },
 
   emscripten_audio_worklet_post_function_vii__deps: ['$emscripten_audio_worklet_post_function_2'],
@@ -417,8 +432,9 @@ var LibraryWebAudio = {
     emscripten_audio_worklet_post_function_2(audioContext, funcPtr, arg0, arg1);
   },
 
+  $emscripten_audio_worklet_post_function_3__deps: ['$emAudioWorkletPostFunction'],
   $emscripten_audio_worklet_post_function_3: (audioContext, funcPtr, arg0, arg1, arg2) => {
-    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: [arg0, arg1, arg2] }); // "WaSm Call"
+    emAudioWorkletPostFunction(audioContext, funcPtr, [arg0, arg1, arg2]);
   },
   emscripten_audio_worklet_post_function_viii__deps: ['$emscripten_audio_worklet_post_function_3'],
   emscripten_audio_worklet_post_function_viii: (audioContext, funcPtr, arg0, arg1, arg2) => {
@@ -429,16 +445,14 @@ var LibraryWebAudio = {
     emscripten_audio_worklet_post_function_3(audioContext, funcPtr, arg0, arg1, arg2);
   },
 
-  emscripten_audio_worklet_post_function_sig__deps: ['$readEmAsmArgs'],
+  emscripten_audio_worklet_post_function_sig__deps: ['$readEmAsmArgs', '$emAudioWorkletPostFunction'],
   emscripten_audio_worklet_post_function_sig: (audioContext, funcPtr, sigPtr, varargs) => {
 #if ASSERTIONS
-    assert(audioContext >= 0);
-    assert(funcPtr);
     assert(sigPtr);
     assert(UTF8ToString(sigPtr)[0] != 'v', 'Do NOT specify the return argument in the signature string for a call to emscripten_audio_worklet_post_function_sig(), just pass the function arguments.');
     assert(varargs);
 #endif
-    (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: readEmAsmArgs(sigPtr, varargs) });
+    emAudioWorkletPostFunction(audioContext, funcPtr, readEmAsmArgs(sigPtr, varargs));
   }
 };
 
