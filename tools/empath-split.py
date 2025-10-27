@@ -337,7 +337,7 @@ def main():
             print('    ' + func)
         print()
 
-      f.write(f'{module}\n')
+      f.write(f'{module}:\n')
       for func in funcs:
         f.write(func + '\n')
     f.close()
