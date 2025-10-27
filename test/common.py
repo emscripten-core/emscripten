@@ -151,6 +151,10 @@ class FirefoxConfig:
 
   @staticmethod
   def open_url_args(url):
+    # Firefox is able to launch URLs by passing them as positional arguments,
+    # but not when the -wait-for-browser flag is in use (which we need to be
+    # able to track browser liveness). So explicitly use -url option parameter
+    # to specify the page to launch. https://bugzil.la/1996614
     return ['-url', url]
 
 
