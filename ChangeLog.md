@@ -20,6 +20,12 @@ See docs/process.md for more on how version tagging works.
 
 4.0.19 (in development)
 -----------------------
+- The `RETAIN_COMPILER_SETTINGS` setting and the corresponding
+  `emscripten_get_compiler_setting` API no longer store or report internal
+  compiler settings (those listed in `setttings_internal.js`).  We made an
+  exception here for `EMSCRIPTEN_VERSION` which is the only internal setting
+  where we could find usage of `emscripten_get_compiler_setting` (in a global
+  GitHub search). (#25667)
 
 4.0.18 - 10/24/25
 -----------------
