@@ -1809,7 +1809,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
                                     'emscripten_stack_get_base',
                                     'emscripten_stack_get_end']
 
-  settings.EMSCRIPTEN_VERSION = utils.EMSCRIPTEN_VERSION
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
   settings.LINK_AS_CXX = (shared.run_via_emxx or settings.DEFAULT_TO_CXX) and not options.nostdlibxx

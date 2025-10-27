@@ -106,10 +106,6 @@ var WASI_MODULE_NAME = "wasi_snapshot_preview1";
 // implicitly linked libraries added by the JS compiler.
 var JS_LIBRARIES = [];
 
-// This will contain the emscripten version. This can be useful in combination
-// with RETAIN_COMPILER_SETTINGS
-var EMSCRIPTEN_VERSION = '';
-
 // Will be set to 0 if -fno-rtti is used on the command line.
 var USE_RTTI = true;
 
