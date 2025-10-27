@@ -137,7 +137,7 @@ class ChromeConfig:
 
 class FirefoxConfig:
   data_dir_flag = '-profile '
-  default_flags = ('-new-instance', '-wait-for-browser') if WINDOWS else ('-new-instance',)
+  default_flags = ('-new-instance', '-wait-for-browser')
   headless_flags = '-headless'
   executable_name = utils.exe_suffix('firefox')
 
