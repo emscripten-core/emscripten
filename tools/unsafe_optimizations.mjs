@@ -207,7 +207,7 @@ function optPassMergeVarInitializationAssignments(ast) {
 }
 
 function runOnJsText(js, pretty = false) {
-  const ast = acorn.parse(js, {ecmaVersion: 2021});
+  const ast = acorn.parse(js, {ecmaVersion: 'latest'});
 
   optPassRemoveRedundantOperatorNews(ast);
 
