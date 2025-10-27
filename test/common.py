@@ -134,6 +134,10 @@ class ChromeConfig:
   def configure(data_dir):
     """Chrome has no special configuration step."""
 
+  @staticmethod
+  def open_url_args(url):
+    return [url]
+
 
 class FirefoxConfig:
   data_dir_flag = '-profile '
@@ -144,6 +148,10 @@ class FirefoxConfig:
   @staticmethod
   def configure(data_dir):
     shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
+
+  @staticmethod
+  def open_url_args(url):
+    return ['-url', url]
 
 
 class SafariConfig:
@@ -159,6 +167,10 @@ class SafariConfig:
   @staticmethod
   def configure(data_dir):
     """ Safari has no special configuration step."""
+
+  @staticmethod
+  def open_url_args(url):
+    return [url]
 
 
 # Special value for passing to assert_returncode which means we expect that program
@@ -2059,7 +2071,7 @@ class BrowserCore(RunnerCore):
     if (WINDOWS and is_firefox()) or is_safari():
       cls.launch_browser_harness_with_proc_snapshot_workaround(parallel_harness, config, browser_args, url)
     else:
-      cls.browser_procs = [subprocess.Popen(browser_args + [url])]
+      cls.browser_procs = [subprocess.Popen(browser_args + config.open_url_args(url))]
 
   @classmethod
   def launch_browser_harness_with_proc_snapshot_workaround(cls, parallel_harness, config, browser_args, url):
@@ -2076,7 +2088,7 @@ class BrowserCore(RunnerCore):
         procs_before = list_processes_by_name(config.executable_name)
 
       # Browser launch
-      cls.browser_procs = [subprocess.Popen(browser_args + [url])]
+      cls.browser_procs = [subprocess.Popen(browser_args + config.open_url_args(url))]
 
       # Give the browser time to spawn its subprocesses. Use an increasing
       # timeout as a crude way to account for system load.
