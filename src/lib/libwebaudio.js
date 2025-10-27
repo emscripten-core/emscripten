@@ -23,10 +23,48 @@ var LibraryWebAudio = {
 #endif
     EmAudio[++EmAudioCounter] = object;
 #if WEBAUDIO_DEBUG
-    console.log(`Registered new WebAudio object ${object} with ID ${EmAudioCounter}`);
+    dbg(`Registered new WebAudio object ${object} with ID ${EmAudioCounter}`);
 #endif
     return EmAudioCounter;
   },
+
+#if ASSERTIONS || WEBAUDIO_DEBUG
+  $_emAudioExpectHandle__internal: true,
+  $_emAudioExpectHandle: (handle, methodName) => {
+#if WEBAUDIO_DEBUG
+    dbg(`called ${methodName}() with ID ${handle}`);
+#endif
+#if ASSERTIONS
+    var obj = EmAudio[handle];
+    assert(obj, `Called ${methodName}() on a nonexisting handle ${handle}`);
+    return obj;
+#endif
+  },
+
+  $emAudioExpectContext__internal: true,
+  $emAudioExpectContext: (handle, methodName) => {
+    var obj = _emAudioExpectHandle(handle, methodName);
+#if ASSERTIONS
+    assert(obj instanceof (window.AudioContext || window.webkitAudioContext), `${methodName}() called with ${handle} that is not an AudioContext, but of type ${typeof obj}`);
+#endif
+  },
+
+  $emAudioExpectNode__internal: true,
+  $emAudioExpectNode: (handle, methodName) => {
+    var obj = _emAudioExpectHandle(handle, methodName);
+#if ASSERTIONS
+    assert(obj instanceof window.AudioNode, `${methodName}() called with a handle ${handle} that is not an AudioNode, but of type ${typeof obj}`);
+#endif
+  },
+
+  $emAudioExpectNodeOrContext_internal: true,
+  $emAudioExpectNodeOrContext: (handle, methodName) => {
+    var obj = _emAudioExpectHandle(handle, methodName);
+#if ASSERTIONS
+    assert(obj instanceof window.AudioNode || obj instanceof (window.AudioContext || window.webkitAudioContext), `${methodName}() called with a handle ${handle} that is not an AudioContext or AudioNode, but of type ${typeof obj}`);
+#endif
+  },
+#endif
 
   // Call this function from JavaScript to destroy a Wasm-side handle to an AudioContext.
   // After calling this function, it is no longer possible to reference this AudioContext
@@ -68,7 +106,7 @@ var LibraryWebAudio = {
     } : undefined;
 
 #if WEBAUDIO_DEBUG
-    console.log(`Creating new WebAudio context with parameters:`);
+    dbg(`Creating new WebAudio context with parameters:`);
     console.dir(opts);
 #endif
 
@@ -88,49 +126,36 @@ var LibraryWebAudio = {
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, state, userData);
     }
 #if WEBAUDIO_DEBUG
-    console.log(`emscripten_resume_audio_context_async() resuming...`);
+    dbg('emscripten_resume_audio_context_async() resuming...');
 #endif
     EmAudio[contextHandle].resume().then(() => { cb(1/*running*/) }).catch(() => { cb(0/*suspended*/) });
   },
 
   emscripten_resume_audio_context_sync: (contextHandle) => {
-#if ASSERTIONS
-    assert(EmAudio[contextHandle], `Called emscripten_resume_audio_context_sync() on a nonexisting context handle ${contextHandle}`);
-    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_resume_audio_context_sync() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
-#endif
-#if WEBAUDIO_DEBUG
-    console.log(`AudioContext.resume() on WebAudio context with ID ${contextHandle}`);
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    emAudioExpectContext(contextHandle, 'emscripten_resume_audio_context_sync');
 #endif
     EmAudio[contextHandle].resume();
   },
 
   emscripten_audio_context_state: (contextHandle) => {
-#if ASSERTIONS
-    assert(EmAudio[contextHandle], `Called emscripten_audio_context_state() on a nonexisting context handle ${contextHandle}`);
-    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_audio_context_state() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    emAudioExpectContext(contextHandle, 'emscripten_audio_context_state');
 #endif
     return ['suspended', 'running', 'closed', 'interrupted'].indexOf(EmAudio[contextHandle].state);
   },
 
   emscripten_destroy_audio_context: (contextHandle) => {
-#if ASSERTIONS
-    assert(EmAudio[contextHandle], `Called emscripten_destroy_audio_context() on an already freed context handle ${contextHandle}`);
-    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_destroy_audio_context() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
-#endif
-#if WEBAUDIO_DEBUG
-    console.log(`Destroyed WebAudio context with ID ${contextHandle}`);
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    emAudioExpectContext(contextHandle, 'emscripten_destroy_audio_context');
 #endif
     EmAudio[contextHandle].suspend();
     delete EmAudio[contextHandle];
   },
 
   emscripten_destroy_web_audio_node: (objectHandle) => {
-#if ASSERTIONS
-    assert(EmAudio[objectHandle], `Called emscripten_destroy_web_audio_node() on a nonexisting/already freed object handle ${objectHandle}`);
-    assert(EmAudio[objectHandle].disconnect, `Called emscripten_destroy_web_audio_node() on a handle ${objectHandle} that is not an Web Audio Node, but of type ${typeof EmAudio[objectHandle]}`);
-#endif
-#if WEBAUDIO_DEBUG
-    console.log(`Destroyed Web Audio Node with ID ${objectHandle}`);
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    emAudioExpectNode(objectHandle, 'emscripten_destroy_web_audio_node');
 #endif
     // Explicitly disconnect the node from Web Audio graph before letting it GC,
     // to work around browser bugs such as https://webkit.org/b/222098#c23
@@ -147,10 +172,8 @@ var LibraryWebAudio = {
     '$stackAlloc', '$stackRestore', '$stackSave'],
   emscripten_start_wasm_audio_worklet_thread_async: (contextHandle, stackLowestAddress, stackSize, callback, userData) => {
 
-#if ASSERTIONS
-    assert(contextHandle, `Called emscripten_start_wasm_audio_worklet_thread_async() with a null Web Audio Context handle!`);
-    assert(EmAudio[contextHandle], `Called emscripten_start_wasm_audio_worklet_thread_async() with a nonexisting/already freed Web Audio Context handle ${contextHandle}!`);
-    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_start_wasm_audio_worklet_thread_async() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    emAudioExpectContext(contextHandle, 'emscripten_start_wasm_audio_worklet_thread_async');
 #endif
 
     var audioContext = EmAudio[contextHandle];
@@ -166,12 +189,12 @@ var LibraryWebAudio = {
 #endif
 
 #if WEBAUDIO_DEBUG
-    console.log(`emscripten_start_wasm_audio_worklet_thread_async() adding audioworklet.js...`);
+    dbg(`emscripten_start_wasm_audio_worklet_thread_async() adding audioworklet.js...`);
 #endif
 
     var audioWorkletCreationFailed = () => {
 #if ASSERTIONS || WEBAUDIO_DEBUG
-      console.error(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
+      dbg(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
 #endif
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
@@ -190,7 +213,7 @@ var LibraryWebAudio = {
 
     audioWorklet.addModule({{{ wasmWorkerJs }}}).then(() => {
 #if WEBAUDIO_DEBUG
-      console.log(`emscripten_start_wasm_audio_worklet_thread_async() addModule() completed`);
+      dbg(`emscripten_start_wasm_audio_worklet_thread_async() addModule() completed`);
 #endif
 
 #if MIN_FIREFOX_VERSION < 138 || MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
@@ -250,10 +273,8 @@ var LibraryWebAudio = {
   },
 
   emscripten_create_wasm_audio_worklet_processor_async: (contextHandle, options, callback, userData) => {
-#if ASSERTIONS
-    assert(contextHandle, `Called emscripten_create_wasm_audio_worklet_processor_async() with a null Web Audio Context handle!`);
-    assert(EmAudio[contextHandle], `Called emscripten_create_wasm_audio_worklet_processor_async() with a nonexisting/already freed Web Audio Context handle ${contextHandle}!`);
-    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_create_wasm_audio_worklet_processor_async() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    emAudioExpectContext(contextHandle, 'emscripten_create_wasm_audio_worklet_processor_async');
 #endif
 
     var processorName = UTF8ToString({{{ makeGetValue('options', C_STRUCTS.WebAudioWorkletProcessorCreateOptions.name, '*') }}});
@@ -299,10 +320,8 @@ var LibraryWebAudio = {
 
   emscripten_create_wasm_audio_worklet_node__deps: ['$emscriptenGetContextQuantumSize'],
   emscripten_create_wasm_audio_worklet_node: (contextHandle, name, options, callback, userData) => {
-#if ASSERTIONS
-    assert(contextHandle, `Called emscripten_create_wasm_audio_worklet_node() with a null Web Audio Context handle!`);
-    assert(EmAudio[contextHandle], `Called emscripten_create_wasm_audio_worklet_node() with a nonexisting/already freed Web Audio Context handle ${contextHandle}!`);
-    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_create_wasm_audio_worklet_node() on a context handle ${contextHandle} that is not an AudioContext, but of type ${typeof EmAudio[contextHandle]}`);
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    emAudioExpectContext(contextHandle, 'emscripten_create_wasm_audio_worklet_node');
 #endif
 
     function readChannelCountArray(heapIndex, numOutputs) {
@@ -329,7 +348,7 @@ var LibraryWebAudio = {
     } : undefined;
 
 #if WEBAUDIO_DEBUG
-    console.log(`Creating AudioWorkletNode "${UTF8ToString(name)}" on context=${contextHandle} with options:`);
+    dbg(`Creating AudioWorkletNode "${UTF8ToString(name)}" on context=${contextHandle} with options:`);
     console.dir(opts);
 #endif
     return emscriptenRegisterAudioObject(new AudioWorkletNode(EmAudio[contextHandle], UTF8ToString(name), opts));
@@ -338,32 +357,28 @@ var LibraryWebAudio = {
 
   emscripten_audio_context_quantum_size__deps: ['$emscriptenGetContextQuantumSize'],
   emscripten_audio_context_quantum_size: (contextHandle) => {
-#if ASSERTIONS
-    assert(EmAudio[contextHandle], `Called emscripten_audio_context_quantum_size() with an invalid Web Audio Context handle ${contextHandle}`);
-    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_audio_context_quantum_size() on handle ${contextHandle} that is not an AudioContext, but of type ${EmAudio[contextHandle]}`);
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    emAudioExpectContext(contextHandle, 'emscripten_audio_context_quantum_size')
 #endif
     return emscriptenGetContextQuantumSize(contextHandle);
   },
 
   emscripten_audio_context_sample_rate: (contextHandle) => {
-#if ASSERTIONS
-    assert(EmAudio[contextHandle], `Called emscripten_audio_context_sample_rate() with an invalid Web Audio Context handle ${contextHandle}`);
-    assert(EmAudio[contextHandle] instanceof (window.AudioContext || window.webkitAudioContext), `Called emscripten_audio_context_sample_rate() on handle ${contextHandle} that is not an AudioContext, but of type ${EmAudio[contextHandle]}`);
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    emAudioExpectContext(contextHandle, 'emscripten_audio_context_sample_rate');
 #endif
     return EmAudio[contextHandle]['sampleRate'];
   },
 
   emscripten_audio_node_connect: (source, destination, outputIndex, inputIndex) => {
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    emAudioExpectNode(source, 'emscripten_audio_node_connect');
+    emAudioExpectNodeOrContext(destination, 'emscripten_audio_node_connect');
+#endif
     var srcNode = EmAudio[source];
     var dstNode = EmAudio[destination];
-#if ASSERTIONS
-    assert(srcNode, `Called emscripten_audio_node_connect() with an invalid AudioNode handle ${source}`);
-    assert(srcNode instanceof window.AudioNode, `Called emscripten_audio_node_connect() on handle ${source} that is not an AudiotNode, but of type ${srcNode}`);
-    assert(dstNode, `Called emscripten_audio_node_connect() with an invalid AudioNode handle ${destination}!`);
-    assert(dstNode instanceof (window.AudioContext || window.webkitAudioContext) || dstNode instanceof window.AudioNode, `Called emscripten_audio_node_connect() on handle ${destination} that is not an AudioContext or AudioNode, but of type ${dstNode}`);
-#endif
 #if WEBAUDIO_DEBUG
-    console.log(`Connecting audio node ID ${source} to audio node ID ${destination} (${srcNode} to ${dstNode})`);
+    dbg(`Connecting audio node ID ${source} to audio node ID ${destination} (${srcNode} to ${dstNode})`);
 #endif
     srcNode.connect(dstNode.destination || dstNode, outputIndex, inputIndex);
   },
@@ -426,5 +441,12 @@ var LibraryWebAudio = {
     (audioContext ? EmAudio[audioContext].audioWorklet['port'] : port).postMessage({'_wsc': funcPtr, args: readEmAsmArgs(sigPtr, varargs) });
   }
 };
+
+#if ASSERTIONS || WEBAUDIO_DEBUG
+autoAddDeps(LibraryWebAudio, '$_emAudioExpectHandle');
+autoAddDeps(LibraryWebAudio, '$emAudioExpectNode');
+autoAddDeps(LibraryWebAudio, '$emAudioExpectContext');
+autoAddDeps(LibraryWebAudio, '$emAudioExpectNodeOrContext');
+#endif
 
 addToLibrary(LibraryWebAudio);
