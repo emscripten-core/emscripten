@@ -2668,12 +2668,12 @@ def generate_worker_js(target, options, js_target, target_basename):
   utils.write_file(target, target_contents, options.output_eol)
 
 
-def worker_js_script(proxy_worker_filename):
+def worker_js_script(proxy_worker_filename_enclosed_in_quotes):
   web_gl_client_src = read_file(utils.path_from_root('src/webGLClient.js'))
   proxy_client_src = building.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
-  if not settings.SINGLE_FILE and not os.path.dirname(proxy_worker_filename[1:-1]):
-    proxy_worker_filename = f'"./{proxy_worker_filename[1:-1]}"'
-  proxy_client_src = do_replace(proxy_client_src, '"<<< filename >>>"', proxy_worker_filename)
+  if not settings.SINGLE_FILE and not os.path.dirname(proxy_worker_filename_enclosed_in_quotes[1:-1]):
+    proxy_worker_filename_enclosed_in_quotes = f'"./{proxy_worker_filename_enclosed_in_quotes[1:-1]}"'
+  proxy_client_src = do_replace(proxy_client_src, '"<<< filename >>>"', proxy_worker_filename_enclosed_in_quotes)
   return web_gl_client_src + '\n' + proxy_client_src
 
 
