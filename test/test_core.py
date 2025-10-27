@@ -1920,9 +1920,7 @@ int main() {
   def test_emscripten_get_compiler_setting(self):
     if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
-    expected = read_file(test_file('core/emscripten_get_compiler_setting.out'))
-    expected = expected.replace('waka', utils.EMSCRIPTEN_VERSION)
-    self.do_runf('core/emscripten_get_compiler_setting.c', expected, cflags=['-sRETAIN_COMPILER_SETTINGS'])
+    self.do_core_test('emscripten_get_compiler_setting.c', cflags=['-sRETAIN_COMPILER_SETTINGS'])
 
   def test_emscripten_get_compiler_setting_error(self):
     # with assertions, a runtime error is shown if you try to use the API without RETAIN_COMPILER_SETTINGS
