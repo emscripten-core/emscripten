@@ -64,7 +64,7 @@ from decorators import (
 )
 
 from tools import ports, shared
-from tools.feature_matrix import UNSUPPORTED, min_browser_versions, Feature
+from tools.feature_matrix import UNSUPPORTED, Feature, min_browser_versions
 from tools.shared import DEBUG, EMCC, FILE_PACKAGER, PIPE, WINDOWS
 from tools.utils import delete_dir, memoize
 
