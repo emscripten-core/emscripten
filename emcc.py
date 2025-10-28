@@ -484,11 +484,6 @@ def phase_setup(options, state):
     else:
       settings.SUPPORT_LONGJMP = 'emscripten'
 
-  # SDL2 requires eglGetProcAddress() to work.
-  # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
-  if settings.USE_SDL == 2 or settings.USE_SDL_MIXER == 2 or settings.USE_SDL_GFX == 2:
-    default_setting('GL_ENABLE_GET_PROC_ADDRESS', 1)
-
 
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(options, state, newargs):

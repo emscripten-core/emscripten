@@ -609,7 +609,7 @@ var GL_WORKAROUND_SAFARI_GETCONTEXT_BUG = true;
 // In WebGL, glGetProcAddress() causes a substantial code size and performance impact, since WebGL
 // does not natively provide such functionality, and it must be emulated. Using glGetProcAddress()
 // is not recommended. If you still need to use this, e.g. when porting an existing renderer,
-// you can link with -sGL_ENABLE_GET_PROC_ADDRESS=1 to get support for this functionality.
+// you can link with -sGL_ENABLE_GET_PROC_ADDRESS to get support for this functionality.
 // [link]
 var GL_ENABLE_GET_PROC_ADDRESS = true;
 
