@@ -278,3 +278,6 @@ var OUTPUT_FORMAT = '';
 var LOAD_SOURCE_MAP = false;
 
 var ALIASES = [];
+
+// List of public setting names (Used by RETAIN_COMPILER_SETTINGS)
+var PUBLIC_SETTINGS = [];

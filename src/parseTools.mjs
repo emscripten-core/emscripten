@@ -806,17 +806,8 @@ function addAtPostRun(code) {
 
 function makeRetainedCompilerSettings() {
   const ret = {};
-  for (const [name, value] of Object.entries(global)) {
-    if (name[0] !== '_' && name == name.toUpperCase()) {
-      if (
-        typeof value == 'number' ||
-        typeof value == 'boolean' ||
-        typeof value == 'string' ||
-        Array.isArray(name)
-      ) {
-        ret[name] = value;
-      }
-    }
+  for (const name of PUBLIC_SETTINGS) {
+    ret[name] = globalThis[name];
   }
   return ret;
 }

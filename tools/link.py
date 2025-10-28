@@ -1793,6 +1793,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
                                     'emscripten_stack_get_end']
 
   settings.EMSCRIPTEN_VERSION = utils.EMSCRIPTEN_VERSION
+  if settings.RETAIN_COMPILER_SETTINGS:
+    settings.PUBLIC_SETTINGS = [k for k in settings.attrs.keys() if k not in settings.internal_settings]
+    # Also include EMSCRIPTEN_VERSION from the internal settings since there are
+    # known usage of this with `emscripten_get_compiler_setting`.
+    settings.PUBLIC_SETTINGS.append('EMSCRIPTEN_VERSION')
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
   settings.LINK_AS_CXX = (shared.run_via_emxx or settings.DEFAULT_TO_CXX) and not options.nostdlibxx
