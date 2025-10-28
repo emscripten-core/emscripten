@@ -1386,9 +1386,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # make_invoke depends on stackSave and stackRestore
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
 
-  if settings.RELOCATABLE:
-    settings.REQUIRED_EXPORTS += ['__wasm_apply_data_relocs']
-
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     diagnostics.warning('unused-command-line-argument', 'GLOBAL_BASE is not compatible with SIDE_MODULE')
 
