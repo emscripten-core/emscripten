@@ -339,9 +339,6 @@ def separate_linker_flags(newargs):
   - Compiler flags are those to be passed to `clang -c`.
   """
 
-  if settings.RUNTIME_LINKED_LIBS:
-    newargs += settings.RUNTIME_LINKED_LIBS
-
   compiler_args = []
   linker_args = []
 
