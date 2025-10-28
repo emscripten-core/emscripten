@@ -37,6 +37,7 @@ from .cmdline import OFormat
 from .minimal_runtime_shell import generate_minimal_runtime_html
 from .settings import (
   DEPRECATED_SETTINGS,
+  EXPERIMENTAL_SETTINGS,
   INCOMPATIBLE_SETTINGS,
   JS_ONLY_SETTINGS,
   default_setting,
@@ -664,7 +665,11 @@ def add_system_js_lib(lib):
   settings.JS_LIBRARIES.append(lib)
 
 
-def report_incompatible_settings():
+def check_settings():
+  for name, msg in EXPERIMENTAL_SETTINGS.items():
+    if getattr(settings, name):
+      diagnostics.warning('experimental', msg)
+
   for a, b, reason in INCOMPATIBLE_SETTINGS:
     invert_b = b.startswith('NO_')
     if invert_b:
@@ -826,19 +831,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   settings.OUTPUT_FORMAT = options.oformat.name
 
-  if settings.JS_BASE64_API:
-    diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
-
-  if settings.GROWABLE_ARRAYBUFFERS:
-    diagnostics.warning('experimental', '-sGROWABLE_ARRAYBUFFERS is still experimental and not yet supported in browsers')
-
-  if settings.SUPPORT_BIG_ENDIAN:
-    diagnostics.warning('experimental', '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.')
-    if settings.WASM2JS:
-      exit_with_error('WASMJ2S is currently not compatible with SUPPORT_BIG_ENDIAN')
+  if settings.SUPPORT_BIG_ENDIAN and settings.WASM2JS:
+    exit_with_error('WASMJ2S is currently not compatible with SUPPORT_BIG_ENDIAN')
 
   if settings.WASM_ESM_INTEGRATION:
-    diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
     default_setting('MODULARIZE', 'instance')
     if not settings.EXPORT_ES6:
       exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6')
@@ -856,9 +852,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
     if settings.ABORT_ON_WASM_EXCEPTIONS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
-
-  if settings.WASM_JS_TYPES:
-    diagnostics.warning('experimental', '-sWASM_JS_TYPES is only supported under a flag in certain browsers')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
@@ -1770,9 +1763,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.ASYNCIFY == 2:
       diagnostics.warning('experimental', '-sASYNCIFY=2 (JSPI) is still experimental')
 
-  if settings.SOURCE_PHASE_IMPORTS:
-    diagnostics.warning('experimental', '-sSOURCE_PHASE_IMPORTS is still experimental and not yet supported in browsers')
-
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
@@ -1875,7 +1865,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
     settings.MAYBE_CLOSURE_COMPILER = 1
 
-  report_incompatible_settings()
+  check_settings()
 
   return target, wasm_target
 
@@ -2249,7 +2239,6 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     generate_worker_js(target, options, js_target, target_basename)
 
   if settings.SPLIT_MODULE:
-    diagnostics.warning('experimental', 'the SPLIT_MODULE setting is experimental and subject to change')
     do_split_module(wasm_target, options)
 
   if options.executable:
