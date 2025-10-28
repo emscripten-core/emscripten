@@ -1324,7 +1324,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest_exit('test_webgl_context_attributes_glut.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglut', '-lGLEW'])
     self.btest_exit('test_webgl_context_attributes_sdl.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lSDL', '-lGLEW'])
     if not self.is_wasm64():
-      self.btest_exit('test_webgl_context_attributes_sdl2.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-sUSE_SDL=2', '-lGLEW', '-sGL_ENABLE_GET_PROC_ADDRESS=1'])
+      self.btest_exit('test_webgl_context_attributes_sdl2.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-sUSE_SDL=2', '-lGLEW'])
     self.btest_exit('test_webgl_context_attributes_glfw.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglfw', '-lGLEW'])
 
     # perform tests with attributes desactivated
