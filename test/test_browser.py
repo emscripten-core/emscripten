@@ -201,7 +201,7 @@ def get_firefox_version():
   exe_path = shlex.split(common.EMTEST_BROWSER)[0]
   ini_path = os.path.join(os.path.dirname(exe_path), "platform.ini")
   # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
-  m = re.search(r"^Milestone=([^\n\r]+)", open(ini_path).read(), re.MULTILINE)
+  m = re.search(r"^Milestone=(.*)$", open(ini_path).read(), re.MULTILINE)
   milestone = m.group(1).strip()
   version = int(re.match(r"(\d+)", milestone).group(1))
   # On Nightly and BEta, e.g. 145.0a1, pretend it to still mean version 144,
