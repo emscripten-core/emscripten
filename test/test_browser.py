@@ -206,7 +206,7 @@ def get_firefox_version():
   version = int(re.match(r"(\d+)", milestone).group(1))
   # On Nightly and BEta, e.g. 145.0a1, pretend it to still mean version 144,
   # since it is a pre-release version
-  if any(c in milestone for c in ("a", "b")):
+  if any(c in milestone for c in ('a', 'b')):
     version -= 1
   return version
 
