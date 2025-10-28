@@ -12,7 +12,6 @@ import shlex
 import shutil
 import subprocess
 import time
-import unittest
 import zlib
 from functools import wraps
 from http.server import (
@@ -299,6 +298,10 @@ def skipIfFeatureNotAvailable(skip_env_var, feature, message):
     return decorated
 
   return decorator
+
+
+def webgl2_disabled():
+  return os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE') or browser_should_skip_feature('EMTEST_LACKS_WEBGL2', Feature.WEBGL2)
 
 
 requires_graphics_hardware = skipIfFeatureNotAvailable('EMTEST_LACKS_GRAPHICS_HARDWARE', None, 'This test requires graphics hardware')
