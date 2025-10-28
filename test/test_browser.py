@@ -267,7 +267,7 @@ def skipExecIf(cond, message):
   return decorator
 
 
-def test_browser_should_skip_feature(skip_env_var, feature):
+def browser_should_skip_feature(skip_env_var, feature):
   if os.getenv(skip_env_var) is not None:
     return int(os.getenv(skip_env_var)) != 0
 
@@ -284,11 +284,11 @@ def test_browser_should_skip_feature(skip_env_var, feature):
 
 
 def webgl2_disabled():
-  return os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE') or test_browser_should_skip_feature('EMTEST_LACKS_WEBGL2', Feature.WEBGL2)
+  return os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE') or browser_should_skip_feature('EMTEST_LACKS_WEBGL2', Feature.WEBGL2)
 
 
 def webgpu_disabled():
-  return os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE') or test_browser_should_skip_feature('EMTEST_LACKS_WEBGPU', Feature.WEBGPU)
+  return os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE') or browser_should_skip_feature('EMTEST_LACKS_WEBGPU', Feature.WEBGPU)
 
 
 requires_graphics_hardware = skipExecIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), 'This test requires graphics hardware')
@@ -296,13 +296,13 @@ requires_webgl2 = unittest.skipIf(webgl2_disabled(), "This test requires WebGL2 
 requires_webgpu = unittest.skipIf(webgpu_disabled(), "This test requires WebGPU to be available")
 requires_sound_hardware = skipExecIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), 'This test requires sound hardware')
 requires_microphone_access = skipExecIf(os.getenv('EMTEST_LACKS_MICROPHONE_ACCESS'), 'This test accesses microphone, which may need accepting a user prompt to enable it.')
-requires_offscreen_canvas = unittest.skipIf(test_browser_should_skip_feature('EMTEST_LACKS_OFFSCREEN_CANVAS', Feature.OFFSCREENCANVAS_SUPPORT), 'This test requires a browser with OffscreenCanvas')
-requires_es6_workers = unittest.skipIf(test_browser_should_skip_feature('EMTEST_LACKS_ES6_WORKERS', Feature.WORKER_ES6_MODULES), 'This test requires a browser with ES6 Module Workers support')
-requires_growable_arraybuffers = unittest.skipIf(test_browser_should_skip_feature('EMTEST_LACKS_GROWABLE_ARRAYBUFFERS', Feature.GROWABLE_ARRAYBUFFERS), 'This test requires a browser that supports growable ArrayBuffers')
+requires_offscreen_canvas = unittest.skipIf(browser_should_skip_feature('EMTEST_LACKS_OFFSCREEN_CANVAS', Feature.OFFSCREENCANVAS_SUPPORT), 'This test requires a browser with OffscreenCanvas')
+requires_es6_workers = unittest.skipIf(browser_should_skip_feature('EMTEST_LACKS_ES6_WORKERS', Feature.WORKER_ES6_MODULES), 'This test requires a browser with ES6 Module Workers support')
+requires_growable_arraybuffers = unittest.skipIf(browser_should_skip_feature('EMTEST_LACKS_GROWABLE_ARRAYBUFFERS', Feature.GROWABLE_ARRAYBUFFERS), 'This test requires a browser that supports growable ArrayBuffers')
 # N.b. not all SharedArrayBuffer requiring tests are annotated with this decorator, since at this point there are so many of such tests.
 # As a middle ground, if a test has a name 'thread' or 'wasm_worker' in it, then it does not need decorating. To run all single-threaded tests in
 # the suite, one can run "EMTEST_LACKS_SHARED_ARRAY_BUFFER=1 test/runner browser skip:browser.test_*thread* skip:browser.test_*wasm_worker* skip:browser.test_*audio_worklet*"
-requires_shared_array_buffer = unittest.skipIf(test_browser_should_skip_feature('EMTEST_LACKS_SHARED_ARRAY_BUFFER', Feature.THREADS), 'This test requires a browser with SharedArrayBuffer support')
+requires_shared_array_buffer = unittest.skipIf(browser_should_skip_feature('EMTEST_LACKS_SHARED_ARRAY_BUFFER', Feature.THREADS), 'This test requires a browser with SharedArrayBuffer support')
 
 
 class browser(BrowserCore):

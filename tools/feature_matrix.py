@@ -100,18 +100,24 @@ min_browser_versions = {
     'safari': UNSUPPORTED,
     'node': 230000,
   },
+  # Emscripten itself does not use this feature but we use it in our browser
+  # tests.
   Feature.WEBGL2: {
     'chrome': 56,
     'firefox': 51,
     'safari': 150000,
     'node': UNSUPPORTED,
   },
+  # Emscripten itself does not use this feature but we use it in our browser
+  # tests.
   Feature.WEBGPU: {
     'chrome': 113,
     'firefox': 141,
     'safari': 260000,
     'node': UNSUPPORTED,
   },
+  # Emscripten itself does not use this feature but we use it in our browser
+  # tests.
   # https://caniuse.com/mdn-api_worker_worker_ecmascript_modules: The ability to
   # call new Worker(url, { type: 'module' });
   Feature.WORKER_ES6_MODULES: {
@@ -151,6 +157,8 @@ min_browser_versions = {
   },
   # Growable SharedArrayBuffers improves memory growth feature in multithreaded
   # builds by avoiding need to poll resizes to ArrayBuffer views in Workers.
+  # This feature is not used anywhere else except the test harness to detect
+  # browser version.
   Feature.GROWABLE_ARRAYBUFFERS: {
     'chrome': 136,
     'firefox': 145,
