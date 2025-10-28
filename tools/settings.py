@@ -102,9 +102,6 @@ COMPILE_TIME_SETTINGS = {
     'LTO',
     'OPT_LEVEL',
     'DEBUG_LEVEL',
-
-    # This is legacy setting that we happen to handle very early on
-    'RUNTIME_LINKED_LIBS',
 }.union(PORTS_SETTINGS)
 
 # Unlike `LEGACY_SETTINGS`, deprecated settings can still be used
