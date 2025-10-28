@@ -26,6 +26,9 @@ See docs/process.md for more on how version tagging works.
   exception here for `EMSCRIPTEN_VERSION` which is the only internal setting
   where we could find usage of `emscripten_get_compiler_setting` (in a global
   GitHub search). (#25667)
+- The long-deprecated `RUNTIME_LINKED_LIBS` setting was removed. You can now
+  simply link shared libraries on the command line when linking your main module
+  (e.g. `emcc -sMAIN_MODULE main.c /path/to/libfoo.so`) (#25673)
 
 4.0.18 - 10/24/25
 -----------------

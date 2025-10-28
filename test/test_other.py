@@ -6644,20 +6644,7 @@ int main(int argc, char** argv) {
     self.assertLess(side_dce_fail[1], 0.95 * side_dce_work[1]) # removing that function saves a chunk
 
   def test_RUNTIME_LINKED_LIBS(self):
-    # Verify that the legacy `-sRUNTIME_LINKED_LIBS` option acts the same as passing a
-    # library on the command line directly.
-    create_file('side.c', 'int foo() { return 42; }')
-    create_file('main.c', '#include <assert.h>\nextern int foo(); int main() { assert(foo() == 42); return 0; }')
-
-    self.run_process([EMCC, '-O2', 'side.c', '-sSIDE_MODULE', '-o', 'side.wasm'])
-    self.run_process([EMCC, '-O2', 'main.c', '-sMAIN_MODULE', '-o', 'main.js', 'side.wasm'])
-    self.run_js('main.js')
-
-    err = self.run_process([EMCC, '-O2', 'main.c', '-sMAIN_MODULE', '-o', 'main2.js', '-sRUNTIME_LINKED_LIBS=side.wasm'], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: RUNTIME_LINKED_LIBS is deprecated', err)
-    self.run_js('main2.js')
-
-    self.assertBinaryEqual('main.wasm', 'main2.wasm')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sRUNTIME_LINKED_LIBS=side.wasm'], 'list shared libraries directly on the command line instead')
 
   @parameterized({
     '': ([],),

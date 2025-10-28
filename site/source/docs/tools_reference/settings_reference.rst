@@ -1660,17 +1660,6 @@ Corresponds to MAIN_MODULE (also supports modes 1 and 2)
 
 Default value: 0
 
-.. _runtime_linked_libs:
-
-RUNTIME_LINKED_LIBS
-===================
-
-Deprecated, list shared libraries directly on the command line instead.
-
-.. note:: This setting is deprecated
-
-Default value: []
-
 .. _build_as_worker:
 
 BUILD_AS_WORKER
@@ -3403,7 +3392,6 @@ The following settings have been proposed for removal from emscripten.  These se
 still function but may be removed in a future version.  If your project is using of
 the these settings please open a bug (or reply to one of the existing bugs).
 
- - ``RUNTIME_LINKED_LIBS``: you can simply list the libraries directly on the commandline now
  - ``CLOSURE_WARNINGS``: use -Wclosure/-Wno-closure instead
  - ``LEGALIZE_JS_FFI``: to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
@@ -3496,3 +3484,4 @@ for backwards compatbility with older versions:
  - ``USE_OFFSET_COVERTER``: No longer supported, not needed with modern v8 versions (Valid values: [0])
  - ``ASYNCIFY_LAZY_LOAD_CODE``: No longer supported (Valid values: [0])
  - ``USE_WEBGPU``: No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py (Valid values: [0])
+ - ``RUNTIME_LINKED_LIBS``: list shared libraries directly on the command line instead (Valid values: [[]])
