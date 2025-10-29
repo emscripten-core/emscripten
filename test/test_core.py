@@ -190,9 +190,18 @@ def needs_dylink(func):
   assert callable(func)
 
   @wraps(func)
-  def decorated(self, *args, **kwargs):
+  def decorated(self, relocatable, *args, **kwargs):
     self.check_dylink()
+    if relocatable:
+      # Since `-sMAIN_MODULE` no longer implies `-sRELOCATABLE` but we want
+      # to keep that cominbation working we run all the `@needs_dylink` tests
+      # both with and without the explicit `-sRELOCATABLE`
+      self.set_setting('RELOCATABLE')
+      self.cflags.append('-Wno-deprecated')
     return func(self, *args, **kwargs)
+
+  parameterize(decorated, {'': (False,),
+                           'relocatable': (True,)})
 
   return decorated
 
@@ -3431,6 +3440,10 @@ Var: 42
     if is_sanitizing(self.cflags):
       return
 
+    if self.get_setting('RELOCATABLE'):
+      # The relocatable version of this test produces slightly different exports.
+      return
+
     def get_data_exports(wasm):
       wat = self.get_wasm_text(wasm)
       lines = wat.splitlines()
@@ -4592,13 +4605,13 @@ res64 - external 64\n''', header='''\
   def test_dylink_global_var(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
-      extern int x;
+      extern int foo;
       int main() {
-        printf("extern is %d.\n", x);
+        printf("extern is %d.\n", foo);
         return 0;
       }
     ''', side=r'''
-      int x = 123;
+      int foo = 123;
     ''', expected=['extern is 123.\n'], force_c=True)
 
   @needs_dylink
@@ -4626,15 +4639,15 @@ res64 - external 64\n''', header='''\
   def test_dylink_global_var_modded(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
-      extern int x;
+      extern int foo;
       int main() {
-        printf("extern is %d.\n", x);
+        printf("extern is %d.\n", foo);
         return 0;
       }
     ''', side=r'''
-      int x = 123;
+      int foo = 123;
       struct Initter {
-        Initter() { x = 456; }
+        Initter() { foo = 456; }
       };
       Initter initter;
     ''', expected=['extern is 456.\n'])
@@ -4977,8 +4990,10 @@ res64 - external 64\n''', header='''\
   def test_dylink_exceptions_try_catch_6(self):
     create_file('main.cpp', r'''
       #include <assert.h>
+      #include <stdio.h>
       #include <dlfcn.h>
       int main() {
+        printf("in main\n");
         void* handle = dlopen("liblib.so", RTLD_LAZY);
         assert(handle);
         void (*side)(void) = (void (*)(void))dlsym(handle, "side");
@@ -4995,6 +5010,7 @@ res64 - external 64\n''', header='''\
     create_file('liblib.cpp', r'''
       #include <stdio.h>
       extern "C" void side() {
+        printf("in side\n");
         try {
           throw 3;
         } catch (int x){
@@ -5020,7 +5036,7 @@ res64 - external 64\n''', header='''\
     self.set_setting('MAIN_MODULE', 1)
     self.clear_setting('SIDE_MODULE')
 
-    self.do_runf("main.cpp", "side: caught int 3\n")
+    self.do_runf('main.cpp', 'side: caught int 3\n')
 
   @with_dylink_reversed
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
@@ -9371,11 +9387,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.dylink_testf(main, so_name=very_long_name,
                       main_cflags=['-sPTHREAD_POOL_SIZE=2'])
 
+  @needs_dylink
   @parameterized({
     '': (['-sNO_AUTOLOAD_DYLIBS'],),
     'autoload': ([],),
   })
-  @needs_dylink
   @node_pthreads
   def test_pthread_dylink_entry_point(self, args):
     self.cflags += ['-Wno-experimental', '-pthread']

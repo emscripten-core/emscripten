@@ -10,7 +10,7 @@ assert(!FULL_ES3, 'cannot emulate both ES3 and legacy GL');
 
 {{{
   const copySigs = (func) => {
-    if (!RELOCATABLE) return '';
+    if (!MAIN_MODULE && !RELOCATABLE) return '';
     return ` _${func}.sig = _emscripten_${func}.sig = orig_${func}.sig;`;
   };
   const fromPtr = (arg) => {

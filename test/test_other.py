@@ -5157,7 +5157,7 @@ int main() {
     delete_file('a.out.js')
 
     # Test that -sDYNAMIC_EXECUTION=0 and -sMAIN_MODULE are allowed together.
-    self.do_runf('hello_world.c', cflags=['-O1', '-sDYNAMIC_EXECUTION=0', '-sMAIN_MODULE'])
+    self.do_runf('hello_world.c', cflags=['-O1', '-sDYNAMIC_EXECUTION=0', '-sMAIN_MODULE=2'])
 
     create_file('test.c', r'''
       #include <emscripten/emscripten.h>
@@ -11681,11 +11681,13 @@ int main(void) {
   @also_with_wasm64
   @parameterized({
     '': ([],),
+    'assertions': (['-sASSERTIONS'],),
     'closure': (['--closure=1', '-Werror=closure'],),
     'closure_assertions': (['--closure=1', '-Werror=closure', '-sASSERTIONS'],),
+    'dylink': (['-sMAIN_MODULE=2'],),
   })
   def test_emdawnwebgpu_link_test(self, args):
-    if config.FROZEN_CACHE and self.get_setting('MEMORY64'):
+    if config.FROZEN_CACHE and (self.get_setting('MEMORY64') or '-sMAIN_MODULE=2' in args):
       # CI configuration doesn't run `embuilder` with wasm64 on ports
       self.skipTest("test doesn't work with frozen cache")
     self.emcc(test_file('test_emdawnwebgpu_link_test.cpp'), ['--use-port=emdawnwebgpu', '-sASYNCIFY'] + args)
@@ -12353,14 +12355,14 @@ exec "$@"
     self.set_setting('EXPORTED_FUNCTIONS', '_main,_malloc')
     self.do_runf('core/test_em_js.cpp')
 
-  def test_em_js_main_module_address(self):
+  def test_em_js_dylink_address(self):
     # This works under static linking but is known to fail with dynamic linking
     # See https://github.com/emscripten-core/emscripten/issues/18494
     self.do_runf('other/test_em_js_main_module_address.c')
 
-    self.set_setting('MAIN_MODULE', 2)
-    expected = 'Aborted(Assertion failed: Missing signature argument to addFunction: function foo() { err("hello"); })'
-    self.do_runf('other/test_em_js_main_module_address.c', expected, assert_returncode=NON_ZERO)
+    self.emcc('other/test_em_js_main_module_address.c', ['-sSIDE_MODULE'], output_filename='libside.so')
+    expected = 'Aborted(Assertion failed: Missing signature argument to addFunction: () => { err("hello"); })'
+    self.do_run('', expected, cflags=['-sMAIN_MODULE=2', 'libside.so'], assert_returncode=NON_ZERO)
 
   def test_em_js_external_usage(self):
     # Verify that EM_JS functions can be called from other source files, even in the case
@@ -13412,12 +13414,17 @@ int main() {
   @requires_v8
   def test_extended_const(self):
     # Export at least one global so that we exercise the parsing of the global section.
-    self.do_runf('hello_world.c', cflags=['-sEXPORTED_FUNCTIONS=_main,___stdout_used', '-mextended-const', '-sMAIN_MODULE=2'])
-    wat = self.get_wasm_text('hello_world.wasm')
+    create_file('test.c', r'''
+      #include <stdio.h>
+      int g_data[10] = {1};
+      void test() {
+        printf("some rodata %d\n", g_data[0]);
+      }
+    ''')
+    self.emcc('test.c', ['-mextended-const', '-sSIDE_MODULE'])
+    wat = self.get_wasm_text('a.out.wasm')
     # Test that extended-const expressions are used in the data segments.
     self.assertContained(r'\(data (\$\S+ )?\(offset \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat, regex=True)
-    # Test that extended-const expressions are used in at least one global initializer.
-    self.assertContained(r'\(global \$\S+ i32 \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat, regex=True)
 
   # Smoketest for MEMORY64 setting.  Most of the testing of MEMORY64 is by way of the wasm64
   # variant of the core test suite.
