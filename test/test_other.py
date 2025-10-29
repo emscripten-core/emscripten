@@ -13411,7 +13411,6 @@ int main() {
 
   @requires_v8
   def test_extended_const(self):
-    self.v8_args += ['--experimental-wasm-extended-const']
     # Export at least one global so that we exercise the parsing of the global section.
     self.do_runf('hello_world.c', cflags=['-sEXPORTED_FUNCTIONS=_main,___stdout_used', '-mextended-const', '-sMAIN_MODULE=2'])
     wat = self.get_wasm_text('hello_world.wasm')
@@ -13476,10 +13475,6 @@ int main() {
     asyncify_size = os.path.getsize('a.out.wasm')
 
     self.run_process([EMXX, 'main.cpp', '-sASYNCIFY=2'] + shared_args)
-
-    # enable stack switching and other relevant features (like reference types
-    # for the return value of externref)
-    self.v8_args.append('--experimental-wasm-stack-switching')
 
     self.assertContained(expected, self.run_js('a.out.js'))
     stack_switching_size = os.path.getsize('a.out.wasm')
