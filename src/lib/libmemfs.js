@@ -259,7 +259,7 @@ addToLibrary({
       write(stream, buffer, offset, length, position, canOwn) {
 #if ASSERTIONS
         // The data buffer should be a typed array view
-        assert(!(buffer instanceof ArrayBuffer));
+        assert(ArrayBuffer.isView(buffer));
 #endif
 #if ALLOW_MEMORY_GROWTH
         // If the buffer is located in main memory (HEAP), and if
