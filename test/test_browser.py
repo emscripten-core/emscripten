@@ -12,7 +12,6 @@ import shlex
 import shutil
 import subprocess
 import time
-import unittest
 import zlib
 from functools import wraps
 from http.server import (
@@ -65,7 +64,7 @@ from decorators import (
 )
 
 from tools import ports, shared
-from tools.feature_matrix import UNSUPPORTED
+from tools.feature_matrix import UNSUPPORTED, Feature, min_browser_versions
 from tools.shared import DEBUG, EMCC, FILE_PACKAGER, PIPE, WINDOWS
 from tools.utils import delete_dir, memoize
 
@@ -195,6 +194,23 @@ def get_safari_version():
   return parts[0] * 10000 + parts[1] * 100 + parts[2]
 
 
+@memoize
+def get_firefox_version():
+  if not is_firefox():
+    return UNSUPPORTED
+  exe_path = shlex.split(common.EMTEST_BROWSER)[0]
+  ini_path = os.path.join(os.path.dirname(exe_path), "platform.ini")
+  # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
+  m = re.search(r"^Milestone=(.*)$", open(ini_path).read(), re.MULTILINE)
+  milestone = m.group(1).strip()
+  version = int(re.match(r"(\d+)", milestone).group(1))
+  # On Nightly and Beta, e.g. 145.0a1, pretend it to still mean version 144,
+  # since it is a pre-release version
+  if any(c in milestone for c in ('a', 'b')):
+    version -= 1
+  return version
+
+
 no_swiftshader = skip_if_simple('not compatible with swiftshader', is_swiftshader)
 
 no_chrome = skip_if('no_chrome', lambda _: is_chrome(), 'chrome is not supported')
@@ -235,13 +251,50 @@ def also_with_threads(f):
   return decorated
 
 
-def skipExecIf(cond, message):
+def browser_should_skip_feature(skip_env_var, feature):
+  # If an env. var. EMTEST_LACKS_x to skip the given test is set (to either
+  # value 0 or 1), don't bother checking if current browser supports the feature
+  # - just unconditionally run the test, or skip the test.
+  if os.getenv(skip_env_var) is not None:
+    return int(os.getenv(skip_env_var)) != 0
+
+  # If there is no Feature object associated with this capability, then we
+  # should run the test.
+  if feature is None:
+    return False
+
+  # If EMTEST_AUTOSKIP=0, also never skip.
+  if os.getenv('EMTEST_AUTOSKIP') == '0':
+    return False
+
+  # Otherwise EMTEST_AUTOSKIP=1 or EMTEST_AUTOSKIP is not set: check whether
+  # the current browser supports the test or not.
+  min_required = min_browser_versions[feature]
+  not_supported = get_firefox_version() < min_required['firefox'] or get_safari_version() < min_required['safari']
+
+  # Current browser does not support the test, and EMTEST_AUTOSKIP is not set?
+  # Then error out to have end user decide what to do in this situation.
+  if not_supported and os.getenv('EMTEST_AUTOSKIP') is None:
+    return 'error'
+
+  # Report whether to skip the test based on browser support.
+  return not_supported
+
+
+def skipIfFeatureNotAvailable(skip_env_var, feature, message):
+  for env_var in skip_env_var if type(skip_env_var) == list else [skip_env_var]:
+    should_skip = browser_should_skip_feature(env_var, feature)
+    if should_skip:
+      break
+
   def decorator(f):
     assert callable(f)
 
     @wraps(f)
     def decorated(self, *args, **kwargs):
-      if cond:
+      if should_skip == 'error':
+        raise Exception(f'This test requires a browser that supports {feature.name} but your browser {common.EMTEST_BROWSER} does not support this. Run with {skip_env_var}=1 or EMTEST_AUTOSKIP=1 to skip this test automatically.')
+      elif should_skip:
         self.skip_exec = message
       f(self, *args, **kwargs)
 
@@ -251,25 +304,21 @@ def skipExecIf(cond, message):
 
 
 def webgl2_disabled():
-  return os.getenv('EMTEST_LACKS_WEBGL2') or os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE')
+  return browser_should_skip_feature('EMTEST_LACKS_WEBGL2', Feature.WEBGL2) or browser_should_skip_feature('EMTEST_LACKS_GRAPHICS_HARDWARE', Feature.WEBGL2)
 
 
-def webgpu_disabled():
-  return os.getenv('EMTEST_LACKS_WEBGPU') or os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE')
-
-
-requires_graphics_hardware = skipExecIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE'), 'This test requires graphics hardware')
-requires_webgl2 = unittest.skipIf(webgl2_disabled(), "This test requires WebGL2 to be available")
-requires_webgpu = unittest.skipIf(webgpu_disabled(), "This test requires WebGPU to be available")
-requires_sound_hardware = skipExecIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), 'This test requires sound hardware')
-requires_microphone_access = skipExecIf(os.getenv('EMTEST_LACKS_MICROPHONE_ACCESS'), 'This test accesses microphone, which may need accepting a user prompt to enable it.')
-requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
-requires_es6_workers = unittest.skipIf(os.getenv('EMTEST_LACKS_ES6_WORKERS'), 'This test requires a browser with ES6 Module Workers support')
-requires_growable_arraybuffers = unittest.skipIf(os.getenv('EMTEST_LACKS_GROWABLE_ARRAYBUFFERS'), 'This test requires a browser that supports growable ArrayBuffers')
+requires_graphics_hardware = skipIfFeatureNotAvailable('EMTEST_LACKS_GRAPHICS_HARDWARE', None, 'This test requires graphics hardware')
+requires_webgl2 = skipIfFeatureNotAvailable(['EMTEST_LACKS_WEBGL2', 'EMTEST_LACKS_GRAPHICS_HARDWARE'], Feature.WEBGL2, 'This test requires WebGL2 to be available')
+requires_webgpu = skipIfFeatureNotAvailable(['EMTEST_LACKS_WEBGPU', 'EMTEST_LACKS_GRAPHICS_HARDWARE'], Feature.WEBGPU, 'This test requires WebGPU to be available')
+requires_sound_hardware = skipIfFeatureNotAvailable('EMTEST_LACKS_SOUND_HARDWARE', None, 'This test requires sound hardware')
+requires_microphone_access = skipIfFeatureNotAvailable('EMTEST_LACKS_MICROPHONE_ACCESS', None, 'This test accesses microphone, which may need accepting a user prompt to enable it.')
+requires_offscreen_canvas = skipIfFeatureNotAvailable('EMTEST_LACKS_OFFSCREEN_CANVAS', Feature.OFFSCREENCANVAS_SUPPORT, 'This test requires a browser with OffscreenCanvas')
+requires_es6_workers = skipIfFeatureNotAvailable('EMTEST_LACKS_ES6_WORKERS', Feature.WORKER_ES6_MODULES, 'This test requires a browser with ES6 Module Workers support')
+requires_growable_arraybuffers = skipIfFeatureNotAvailable('EMTEST_LACKS_GROWABLE_ARRAYBUFFERS', Feature.GROWABLE_ARRAYBUFFERS, 'This test requires a browser that supports growable ArrayBuffers')
 # N.b. not all SharedArrayBuffer requiring tests are annotated with this decorator, since at this point there are so many of such tests.
 # As a middle ground, if a test has a name 'thread' or 'wasm_worker' in it, then it does not need decorating. To run all single-threaded tests in
 # the suite, one can run "EMTEST_LACKS_SHARED_ARRAY_BUFFER=1 test/runner browser skip:browser.test_*thread* skip:browser.test_*wasm_worker* skip:browser.test_*audio_worklet*"
-requires_shared_array_buffer = unittest.skipIf(os.getenv('EMTEST_LACKS_SHARED_ARRAY_BUFFER'), 'This test requires a browser with SharedArrayBuffer support')
+requires_shared_array_buffer = skipIfFeatureNotAvailable('EMTEST_LACKS_SHARED_ARRAY_BUFFER', Feature.THREADS, 'This test requires a browser with SharedArrayBuffer support')
 
 
 class browser(BrowserCore):
