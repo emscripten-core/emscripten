@@ -113,7 +113,7 @@ var K = [], L = a => {
     O[a].connect(c.destination || c, b, h);
 }, O = {}, Q = 0, R = globalThis.TextDecoder && new TextDecoder, S = (a = 0) => {
     for (var c = I, b = a, h = b + void 0; c[b] && !(b >= h); ) ++b;
-    if (16 < b - a && c.buffer && R) return R.decode(c.slice(a, b));
+    if (16 < b - a && c.buffer && R) return R.decode(c.buffer instanceof ArrayBuffer ? c.subarray(a, b) : c.slice(a, b));
     for (h = ""; a < b; ) {
         var d = c[a++];
         if (d & 128) {
