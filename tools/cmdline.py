@@ -227,7 +227,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
   options = EmccOptions()
-  user_js_defines = []
   should_exit = False
   skip = False
 
@@ -588,7 +587,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         value = '1'
       if key in settings.keys():
         exit_with_error(f'{arg}: cannot change built-in settings values with a -jsD directive. Pass -s{key}={value} instead!')
-      user_js_defines += [(key, value)]
+      # Apply user -jsD settings
+      settings[key] = value
       newargs[i] = ''
     elif check_flag('-shared'):
       options.shared = True
@@ -642,7 +642,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     sys.exit(0)
 
   newargs = [a for a in newargs if a]
-  return options, user_js_defines, newargs
+  return options, newargs
 
 
 def expand_byte_size_suffixes(value):
@@ -854,7 +854,7 @@ def parse_arguments(args):
       newargs[i] += newargs[i + 1]
       newargs[i + 1] = ''
 
-  options, user_js_defines, newargs = parse_args(newargs)
+  options, newargs = parse_args(newargs)
 
   if options.post_link or options.oformat == OFormat.BARE:
     diagnostics.warning('experimental', '--oformat=bare/--post-link are experimental and subject to change.')
@@ -870,10 +870,6 @@ def parse_arguments(args):
   strict_cmdline = user_settings.get('STRICT')
   if strict_cmdline:
     settings.STRICT = int(strict_cmdline)
-
-  # Apply user -jsD settings
-  for s in user_js_defines:
-    settings[s[0]] = s[1]
 
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   apply_user_settings()
