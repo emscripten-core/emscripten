@@ -1417,29 +1417,18 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         }
       ''')
 
-    # _test_dylink_dso_needed can be potentially called several times by a test.
-    # reset dylink-related options first.
-    self.clear_setting('MAIN_MODULE')
-    self.clear_setting('SIDE_MODULE')
-
-    # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
-    if not self.has_changed_setting('INITIAL_MEMORY'):
-      self.set_setting('INITIAL_MEMORY', '32mb')
-
-    so = '.wasm' if self.is_wasm() else '.js'
-
     def ccshared(src, linkto=None):
-      cmdv = [EMCC, src, '-o', utils.unsuffixed(src) + so, '-sSIDE_MODULE'] + self.get_cflags()
+      cmdv = [EMCC, src, '-o', utils.unsuffixed(src) + '.wasm', '-sSIDE_MODULE'] + self.get_cflags()
       if linkto:
         cmdv += linkto
       self.run_process(cmdv)
 
     ccshared('liba.cpp')
-    ccshared('libb.c', ['liba' + so])
-    ccshared('libc.c', ['liba' + so])
+    ccshared('libb.c', ['liba.wasm'])
+    ccshared('libc.c', ['liba.wasm'])
 
     self.set_setting('MAIN_MODULE')
-    extra_args = ['-L.', 'libb' + so, 'libc' + so]
+    extra_args = ['-L.', 'libb.wasm', 'libc.wasm']
     do_run(r'''
       #ifdef __cplusplus
       extern "C" {
@@ -1459,8 +1448,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', cflags=extra_args)
 
     extra_args = []
-    for libname in ('liba', 'libb', 'libc'):
-      extra_args += ['--embed-file', libname + so]
+    for libname in ('liba.wasm', 'libb.wasm', 'libc.wasm'):
+      extra_args += ['--embed-file', libname]
     do_run(r'''
       #include <assert.h>
       #include <dlfcn.h>
@@ -1471,9 +1460,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         void (*bfunc_ptr)(), (*cfunc_ptr)();
 
         // FIXME for RTLD_LOCAL binding symbols to loaded lib is not currently working
-        bdso = dlopen("libb%(so)s", RTLD_NOW|RTLD_GLOBAL);
+        bdso = dlopen("libb.wasm", RTLD_NOW|RTLD_GLOBAL);
         assert(bdso != NULL);
-        cdso = dlopen("libc%(so)s", RTLD_NOW|RTLD_GLOBAL);
+        cdso = dlopen("libc.wasm", RTLD_NOW|RTLD_GLOBAL);
         assert(cdso != NULL);
 
         bfunc_ptr = (void (*)())dlsym(bdso, "bfunc");
