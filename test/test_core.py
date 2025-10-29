@@ -141,7 +141,6 @@ def wasm_simd(func):
       self.skipTest('SIMD tests are too slow with -O3 in the new LLVM pass manager, https://github.com/emscripten-core/emscripten/issues/13427')
     self.cflags.append('-msimd128')
     self.cflags.append('-fno-lax-vector-conversions')
-    self.v8_args.append('--experimental-wasm-simd')
     return func(self, *args, **kwargs)
   return decorated
 
