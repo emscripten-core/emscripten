@@ -1056,7 +1056,7 @@ This option is mutually exclusive with EXCEPTION_CATCHING_ALLOWED.
 This option only applies to Emscripten (JavaScript-based) exception handling
 and does not control the native Wasm exception handling.
 
-[compile+link] - affects user code at compile and system libraries at link
+.. note:: Applicable during both linking and compilation
 
 Default value: 1
 
@@ -1073,7 +1073,7 @@ This option is mutually exclusive with DISABLE_EXCEPTION_CATCHING.
 This option only applies to Emscripten (JavaScript-based) exception handling
 and does not control the native Wasm exception handling.
 
-[compile+link] - affects user code at compile and system libraries at link
+.. note:: Applicable during both linking and compilation
 
 Default value: []
 
@@ -1092,11 +1092,11 @@ time, then you will get errors on undefined symbols, as the exception
 throwing code is not linked in. If so you should either unset the option (if
 you do want exceptions) or fix the compilation of the source files so that
 indeed no exceptions are used).
-TODO(sbc): Move to settings_internal (current blocked due to use in test
-code).
 
 This option only applies to Emscripten (JavaScript-based) exception handling
 and does not control the native Wasm exception handling.
+
+.. note:: Applicable during both linking and compilation
 
 Default value: false
 
@@ -1628,6 +1628,8 @@ Automatically set for SIDE_MODULE or MAIN_MODULE.
 
 .. note:: Applicable during both linking and compilation
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _main_module:
@@ -1687,6 +1689,8 @@ PROXY_TO_WORKER
 If set to 1, we build the project into a js file that will run in a worker,
 and generate an html file that proxies input and output to/from it.
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _proxy_to_worker_filename:
@@ -1697,6 +1701,8 @@ PROXY_TO_WORKER_FILENAME
 If set, the script file name the main thread loads.  Useful if your project
 doesn't run the main emscripten- generated script immediately but does some
 setup before
+
+.. note:: This setting is deprecated
 
 Default value: ''
 
@@ -1738,6 +1744,10 @@ MAIN_MODULE and SIDE_MODULE both imply this, so it not normally necessary
 to set this explicitly. Note that MAIN_MODULE and SIDE_MODULE mode 2 do
 *not* set this, so that we still do normal DCE on them, and in that case
 you must keep relevant things alive yourself using exporting.
+
+.. note:: Applicable during both linking and compilation
+
+.. note:: This setting is deprecated
 
 Default value: false
 
@@ -2442,6 +2452,8 @@ SDL2_IMAGE_FORMATS
 Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm,
 tga, xcf, xpm, xv
 
+.. note:: Applicable during both linking and compilation
+
 Default value: []
 
 .. _sdl2_mixer_formats:
@@ -2450,6 +2462,8 @@ SDL2_MIXER_FORMATS
 ==================
 
 Formats to support in SDL2_mixer. Valid values: ogg, mp3, mod, mid
+
+.. note:: Applicable during both linking and compilation
 
 Default value: ["ogg"]
 
@@ -2471,7 +2485,8 @@ SHARED_MEMORY
 =============
 
 If 1, target compiling a shared Wasm Memory.
-[compile+link] - affects user code at compile and system libraries at link.
+
+.. note:: Applicable during both linking and compilation
 
 Default value: false
 
@@ -2483,7 +2498,8 @@ WASM_WORKERS
 Enables support for Wasm Workers.  Wasm Workers enable applications
 to create threads using a lightweight web-specific API that builds on top
 of Wasm SharedArrayBuffer + Atomics API.
-[compile+link] - affects user code at compile and system libraries at link.
+
+.. note:: Applicable during both linking and compilation
 
 Default value: 0
 
@@ -3004,9 +3020,10 @@ little bit of code size and performance when catching exceptions.
 - 1: Default setjmp/longjmp/handling, depending on the mode of exceptions.
   'wasm' if '-fwasm-exceptions' is used, 'emscripten' otherwise.
 
-[compile+link] - at compile time this enables the transformations needed for
-longjmp support at codegen time, while at link it allows linking in the
-library support.
+At compile time this enables the transformations needed for longjmp support
+at codegen time, while at link it allows linking in the library support.
+
+.. note:: Applicable during both linking and compilation
 
 Default value: true
 
@@ -3200,6 +3217,8 @@ fed into wasm-split (the binaryen tool).
 As well as this the generated JS code will contains help functions
 to loading split modules.
 
+.. note:: This is an experimental setting
+
 Default value: false
 
 .. _autoload_dylibs:
@@ -3306,6 +3325,8 @@ This is only currently implemented in the pre-release/nightly version of node,
 and not yet supported by browsers.
 Requires EXPORT_ES6
 
+.. note:: This is an experimental setting
+
 Default value: false
 
 .. _wasm_esm_integration:
@@ -3315,6 +3336,8 @@ WASM_ESM_INTEGRATION
 
 Experimental support for wasm ESM integration.
 Requires EXPORT_ES6 and MODULARIZE=instance
+
+.. note:: This is an experimental setting
 
 Default value: false
 
@@ -3353,6 +3376,8 @@ WASM_JS_TYPES
 Experimental support for WebAssembly js-types proposal.
 It's currently only available under a flag in certain browsers,
 so we disable it by default to save on code size.
+
+.. note:: This is an experimental setting
 
 Default value: false
 

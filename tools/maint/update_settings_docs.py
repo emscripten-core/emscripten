@@ -25,8 +25,13 @@ root_dir = os.path.dirname(os.path.dirname(script_dir))
 
 sys.path.insert(0, root_dir)
 
-from tools.settings import DEPRECATED_SETTINGS, LEGACY_SETTINGS
-from tools.utils import path_from_root, read_file, safe_ensure_dirs
+from tools.settings import (
+  COMPILE_TIME_SETTINGS,
+  DEPRECATED_SETTINGS,
+  EXPERIMENTAL_SETTINGS,
+  LEGACY_SETTINGS,
+)
+from tools.utils import exit_with_error, path_from_root, read_file, safe_ensure_dirs
 
 header = '''\
 .. _settings-reference:
@@ -82,6 +87,16 @@ for backwards compatbility with older versions:
 output_file = path_from_root('site/source/docs/tools_reference/settings_reference.rst')
 
 
+def check_tags(setting_name, tags):
+  if setting_name in COMPILE_TIME_SETTINGS and 'compile' not in tags and 'compile+link' not in tags:
+    print(tags)
+    exit_with_error(f'setting {setting_name} in COMPILE_TIME_SETTINGS but missing [compile] tag')
+  if setting_name in DEPRECATED_SETTINGS and 'deprecated' not in tags:
+    exit_with_error(f'setting {setting_name} in DEPRECATED_SETTINGS but missing [deprecated] tag')
+  if setting_name in EXPERIMENTAL_SETTINGS and 'experimental' not in tags:
+    exit_with_error(f'setting {setting_name} in EXPERIMENTAL_SETTINGS but missing [experimental] tag')
+
+
 def write_setting(f, setting_name, setting_default, comment, tags):
   # Convert markdown backticks to rst double backticks
   f.write('\n.. _' + setting_name.lower() + ':\n')
@@ -127,6 +142,7 @@ def write_file(f):
       # Split it and strip the final ';'.
       _, setting_name, _, setting_default = line.strip(';').split(None, 3)
       comment = '\n'.join(current_comment).strip()
+      check_tags(setting_name, current_tags)
       write_setting(f, setting_name, setting_default, comment, current_tags)
       current_comment = []
       current_tags = []
