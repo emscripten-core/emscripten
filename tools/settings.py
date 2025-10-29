@@ -112,7 +112,6 @@ COMPILE_TIME_SETTINGS = {
 #
 # All settings here should be tagged as `[deprecated]` in settings.js
 DEPRECATED_SETTINGS = {
-    'RUNTIME_LINKED_LIBS': 'you can simply list the libraries directly on the commandline now',
     'CLOSURE_WARNINGS': 'use -Wclosure/-Wno-closure instead',
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
@@ -257,6 +256,7 @@ LEGACY_SETTINGS = [
     ['USE_OFFSET_COVERTER', [0], 'No longer supported, not needed with modern v8 versions'],
     ['ASYNCIFY_LAZY_LOAD_CODE', [0], 'No longer supported'],
     ['USE_WEBGPU', [0], 'No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py'],
+    ['RUNTIME_LINKED_LIBS', [[]], 'list shared libraries directly on the command line instead'],
 ]
 
 user_settings: Dict[str, str] = {}
