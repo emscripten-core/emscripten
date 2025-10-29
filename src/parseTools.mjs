@@ -1043,9 +1043,10 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // No need to worry about this in non-shared memory builds
   if (!SHARED_MEMORY) return unshared;
 
-  // If asked to get an unshared view to what we know will be a shared view, or if in -Oz,
-  // then unconditionally do a .slice() for smallest code size.
-  if (SHRINK_LEVEL == 2 || heap == 'HEAPU8') return shared;
+  // If asked to get an unshared view to what we know will be a shared view, or
+  // if in -Oz, then unconditionally do a .slice() for smallest code size.
+  // This is guaranteed to work but could be slower since it performs a copy.
+  if (SHRINK_LEVEL == 2 || heap.startsWith('HEAP')) return shared;
 
   // Otherwise, generate a runtime type check: must do a .slice() if looking at
   // a SAB, or can use .subarray() otherwise.  Note: We compare with
