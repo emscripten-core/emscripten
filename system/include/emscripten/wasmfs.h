@@ -96,6 +96,9 @@ backend_t wasmfs_create_jsimpl_backend(void);
 
 backend_t wasmfs_create_icase_backend(backend_t backend);
 
+// creates a squashfs backend, backed by a squashfs file inside the filesystem
+backend_t wasmfs_create_squashfs_backend(const char* squashFSFile __attribute__((nonnull)));
+
 // Similar to fflush(0), but also flushes all internal buffers inside WasmFS.
 // This is necessary because in a Web environment we must buffer at an
 // additional level after libc, since console.log() prints entire lines, that
