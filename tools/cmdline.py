@@ -11,6 +11,7 @@ import shlex
 import sys
 from enum import Enum, auto, unique
 from subprocess import PIPE
+from typing import List, Set
 
 from tools import (
   cache,
@@ -60,59 +61,58 @@ class OFormat(Enum):
 
 
 class EmccOptions:
-  def __init__(self):
-    self.target = ''
-    self.output_file = None
-    self.input_files = []
-    self.no_minify = False
-    self.post_link = False
-    self.save_temps = False
-    self.executable = False
-    self.oformat = None
-    self.requested_debug = None
-    self.emit_symbol_map = False
-    self.use_closure_compiler = None
-    self.js_transform = None
-    self.pre_js = [] # before all js
-    self.post_js = [] # after all js
-    self.extern_pre_js = [] # before all js, external to optimized code
-    self.extern_post_js = [] # after all js, external to optimized code
-    self.preload_files = []
-    self.embed_files = []
-    self.exclude_files = []
-    self.ignore_dynamic_linking = False
-    self.shell_path = None
-    self.source_map_base = ''
-    self.emit_tsd = ''
-    self.emrun = False
-    self.cpu_profiler = False
-    self.memory_profiler = False
-    self.use_preload_cache = False
-    self.use_preload_plugins = False
-    self.valid_abspaths = []
-    # Specifies the line ending format to use for all generated text files.
-    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
-    # Linux & MacOS)
-    self.output_eol = os.linesep
-    self.no_entry = False
-    self.shared = False
-    self.relocatable = False
-    self.reproduce = None
-    self.syntax_only = False
-    self.dash_c = False
-    self.dash_E = False
-    self.dash_S = False
-    self.dash_M = False
-    self.input_language = None
-    self.nostdlib = False
-    self.nostdlibxx = False
-    self.nodefaultlibs = False
-    self.nolibc = False
-    self.nostartfiles = False
-    self.sanitize_minimal_runtime = False
-    self.sanitize = set()
-    self.lib_dirs = []
-    self.fast_math = False
+  cpu_profiler = False
+  dash_E = False
+  dash_M = False
+  dash_S = False
+  dash_c = False
+  embed_files: List[str] = []
+  emit_symbol_map = False
+  emit_tsd = ''
+  emrun = False
+  exclude_files: List[str] = []
+  executable = False
+  extern_post_js: List[str] = [] # after all js, external to optimized code
+  extern_pre_js: List[str] = [] # before all js, external to optimized code
+  fast_math = False
+  ignore_dynamic_linking = False
+  input_files: List[str] = []
+  input_language = None
+  js_transform = None
+  lib_dirs: List[str] = []
+  memory_profiler = False
+  no_entry = False
+  no_minify = False
+  nodefaultlibs = False
+  nolibc = False
+  nostartfiles = False
+  nostdlib = False
+  nostdlibxx = False
+  oformat = None
+  # Specifies the line ending format to use for all generated text files.
+  # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
+  # Linux & MacOS)
+  output_eol = os.linesep
+  output_file = None
+  post_js: List[str] = [] # after all js
+  post_link = False
+  pre_js: List[str] = [] # before all js
+  preload_files: List[str] = []
+  relocatable = False
+  reproduce = None
+  requested_debug = None
+  sanitize: Set[str] = set()
+  sanitize_minimal_runtime = False
+  save_temps = False
+  shared = False
+  shell_path = None
+  source_map_base = ''
+  syntax_only = False
+  target = ''
+  use_closure_compiler = None
+  use_preload_cache = False
+  use_preload_plugins = False
+  valid_abspaths: List[str] = []
 
 
 def is_int(s):
