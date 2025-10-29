@@ -204,7 +204,7 @@ def get_firefox_version():
   m = re.search(r"^Milestone=(.*)$", open(ini_path).read(), re.MULTILINE)
   milestone = m.group(1).strip()
   version = int(re.match(r"(\d+)", milestone).group(1))
-  # On Nightly and BEta, e.g. 145.0a1, pretend it to still mean version 144,
+  # On Nightly and Beta, e.g. 145.0a1, pretend it to still mean version 144,
   # since it is a pre-release version
   if any(c in milestone for c in ('a', 'b')):
     version -= 1
@@ -282,7 +282,10 @@ def browser_should_skip_feature(skip_env_var, feature):
 
 
 def skipIfFeatureNotAvailable(skip_env_var, feature, message):
-  should_skip = browser_should_skip_feature(skip_env_var, feature)
+  for env_var in skip_env_var if type(skip_env_var) == list else [skip_env_var]:
+    should_skip = browser_should_skip_feature(env_var, feature)
+    if should_skip:
+      break
 
   def decorator(f):
     assert callable(f)
@@ -301,12 +304,12 @@ def skipIfFeatureNotAvailable(skip_env_var, feature, message):
 
 
 def webgl2_disabled():
-  return os.getenv('EMTEST_LACKS_GRAPHICS_HARDWARE') or browser_should_skip_feature('EMTEST_LACKS_WEBGL2', Feature.WEBGL2)
+  return browser_should_skip_feature('EMTEST_LACKS_WEBGL2', Feature.WEBGL2) or browser_should_skip_feature('EMTEST_LACKS_GRAPHICS_HARDWARE', Feature.WEBGL2)
 
 
 requires_graphics_hardware = skipIfFeatureNotAvailable('EMTEST_LACKS_GRAPHICS_HARDWARE', None, 'This test requires graphics hardware')
-requires_webgl2 = skipIfFeatureNotAvailable('EMTEST_LACKS_WEBGL2', Feature.WEBGL2, 'This test requires WebGL2 to be available')
-requires_webgpu = skipIfFeatureNotAvailable('EMTEST_LACKS_WEBGPU', Feature.WEBGPU, 'This test requires WebGPU to be available')
+requires_webgl2 = skipIfFeatureNotAvailable(['EMTEST_LACKS_WEBGL2', 'EMTEST_LACKS_GRAPHICS_HARDWARE'], Feature.WEBGL2, 'This test requires WebGL2 to be available')
+requires_webgpu = skipIfFeatureNotAvailable(['EMTEST_LACKS_WEBGPU', 'EMTEST_LACKS_GRAPHICS_HARDWARE'], Feature.WEBGPU, 'This test requires WebGPU to be available')
 requires_sound_hardware = skipIfFeatureNotAvailable('EMTEST_LACKS_SOUND_HARDWARE', None, 'This test requires sound hardware')
 requires_microphone_access = skipIfFeatureNotAvailable('EMTEST_LACKS_MICROPHONE_ACCESS', None, 'This test accesses microphone, which may need accepting a user prompt to enable it.')
 requires_offscreen_canvas = skipIfFeatureNotAvailable('EMTEST_LACKS_OFFSCREEN_CANVAS', Feature.OFFSCREENCANVAS_SUPPORT, 'This test requires a browser with OffscreenCanvas')
