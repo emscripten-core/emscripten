@@ -1162,8 +1162,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       '$reportUndefinedSymbols',
       '$relocateExports',
       '$GOTHandler',
-      '__heap_base',
-      '__stack_pointer',
     ]
 
     if settings.ASYNCIFY == 1:
