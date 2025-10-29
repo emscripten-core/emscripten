@@ -805,13 +805,10 @@ var LibraryDylink = {
 #if MAIN_MODULE
         function addEmAsm(addr, body) {
           var args = [];
-          var arity = 0;
-          for (; arity < 16; arity++) {
-            if (body.indexOf('$' + arity) != -1) {
-              args.push('$' + arity);
-            } else {
-              break;
-            }
+          for (var arity = 0; ; arity++) {
+            var argName = '$' + arity;
+            if (!body.includes(argName)) break;
+            args.push(argName);
           }
           args = args.join(',');
           var func = `(${args}) => { ${body} };`;
@@ -842,8 +839,8 @@ var LibraryDylink = {
           cSig = cSig.slice(1, -1)
           if (cSig != 'void') {
             cSig = cSig.split(',');
-            for (var i in cSig) {
-              var jsArg = cSig[i].split(' ').pop();
+            for (var arg of cSig) {
+              var jsArg = arg.split(' ').pop();
               jsArgs.push(jsArg.replace('*', ''));
             }
           }
@@ -860,8 +857,8 @@ var LibraryDylink = {
             var jsString = UTF8ToString({{{ from64Expr('start') }}});
             // EM_JS strings are stored in the data section in the form
             // SIG<::>BODY.
-            var parts = jsString.split('<::>');
-            addEmJs(name.replace('__em_js__', ''), parts[0], parts[1]);
+            var [sig, body] = jsString.split('<::>');
+            addEmJs(name.replace('__em_js__', ''), sig, body);
             delete moduleExports[name];
           }
         }
