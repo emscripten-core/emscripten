@@ -227,7 +227,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
   options = EmccOptions()
-  settings_changes = []
   user_js_defines = []
   should_exit = False
   skip = False
@@ -423,7 +422,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       if newargs[i] == '--memoryprofiler':
         options.memory_profiler = True
       newargs[i] = ''
-      settings_changes.append('EMSCRIPTEN_TRACING=1')
+      settings.EMSCRIPTEN_TRACING = 1
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       settings.EMIT_SYMBOL_MAP = 1
@@ -489,7 +488,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_arg('--memory-init-file'):
       exit_with_error('--memory-init-file is no longer supported')
     elif check_flag('--proxy-to-worker'):
-      settings_changes.append('PROXY_TO_WORKER=1')
+      settings.PROXY_TO_WORKER = 1
     elif check_arg('--valid-abspath'):
       options.valid_abspaths.append(consume_arg())
     elif check_flag('--separate-asm'):
@@ -515,7 +514,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('--cpuprofiler'):
       options.cpu_profiler = True
     elif check_flag('--threadprofiler'):
-      settings_changes.append('PTHREADS_PROFILING=1')
+      settings.PTHREADS_PROFILING = 1
     elif arg in ('-fcolor-diagnostics', '-fdiagnostics-color', '-fdiagnostics-color=always'):
       colored_logger.enable(force=True)
     elif arg in ('-fno-color-diagnostics', '-fno-diagnostics-color', '-fdiagnostics-color=never'):
@@ -643,7 +642,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     sys.exit(0)
 
   newargs = [a for a in newargs if a]
-  return options, settings_changes, user_js_defines, newargs
+  return options, user_js_defines, newargs
 
 
 def expand_byte_size_suffixes(value):
@@ -855,14 +854,12 @@ def parse_arguments(args):
       newargs[i] += newargs[i + 1]
       newargs[i + 1] = ''
 
-  options, settings_changes, user_js_defines, newargs = parse_args(newargs)
+  options, user_js_defines, newargs = parse_args(newargs)
 
   if options.post_link or options.oformat == OFormat.BARE:
     diagnostics.warning('experimental', '--oformat=bare/--post-link are experimental and subject to change.')
 
-  explicit_settings_changes, newargs = parse_s_args(newargs)
-  settings_changes += explicit_settings_changes
-
+  settings_changes, newargs = parse_s_args(newargs)
   for s in settings_changes:
     key, value = s.split('=', 1)
     key, value = normalize_boolean_setting(key, value)
