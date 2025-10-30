@@ -73,17 +73,12 @@ var WASM2JS = false;
 
 // Whether we should link in the runtime for ubsan.
 // 0 means do not link ubsan, 1 means link minimal ubsan runtime.
-// This is not meant to be used with `-s`. Instead, to use ubsan, use clang flag
-// -fsanitize=undefined. To use minimal runtime, also pass
-// `-fsanitize-minimal-runtime`.
 var UBSAN_RUNTIME = 0;
 
-// Whether we should link in LSan's runtime library. This is intended to be used
-// by -fsanitize=leak instead of used directly.
+// Whether we should link in LSan's runtime library.
 var USE_LSAN = false;
 
-// Whether we should link in ASan's runtime library. This is intended to be used
-// by -fsanitize=leak instead of used directly.
+// Whether we should link in ASan's runtime library.
 var USE_ASAN = false;
 
 // Whether embind has been enabled.
