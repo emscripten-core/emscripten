@@ -630,7 +630,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if 'EMTEST_SKIP_WASM_EH' in os.environ:
       self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_WASM_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    if self.try_require_node_version(24):
+    if self.try_require_node_version(22):
       self.node_args.append('--experimental-wasm-exnref')
       return
 
