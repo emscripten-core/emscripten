@@ -39,6 +39,7 @@ import {
   warnOnce,
   warningOccured,
   localFile,
+  timer,
 } from './utility.mjs';
 import {LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
 
@@ -918,7 +919,9 @@ var proxiedFunctionTable = [
       }),
     );
   } else {
+    timer.start('finalCombiner')
     finalCombiner();
+    timer.stop('finalCombiner')
   }
 
   if (errorOccured()) {
