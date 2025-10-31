@@ -2437,6 +2437,67 @@ Module['postRun'] = () => {
     self.assertEqual(get_runtime_paths('libside1.so'), ['$ORIGIN'])
     self.assertEqual(get_runtime_paths('a.out.wasm'), ['$ORIGIN'])
 
+  def test_dylink_dependencies_rpath_nested(self):
+    create_file('pre.js', r'''
+      Module.preRun.push(() => {
+        Module.ENV.LD_LIBRARY_PATH = "/lib1";
+      });
+    ''')
+    create_file('side1.c', r'''
+    #include <stdio.h>
+
+    void side2();
+
+    void side1() {
+        printf("side1\n");
+        side2();
+    }
+    ''')
+    create_file('side2.c', r'''
+    #include <stdio.h>
+    void side3();
+
+    void side2() {
+        printf("side2\n");
+        side3();
+    }
+    ''')
+    create_file('side3.c', r'''
+    #include <stdio.h>
+
+    void side3() {
+        printf("side3\n");
+    }
+    ''')
+    create_file('main.c', r'''
+    #include <dlfcn.h>
+    #include <stdio.h>
+
+    typedef void (*F)(void);
+
+    int main() {
+        void* handle = dlopen("libside1.so", RTLD_NOW);
+        F side1 = (F)dlsym(handle, "side1");
+
+        printf("main\n");
+        side1();
+        return 0;
+    }
+    ''')
+    os.mkdir('libs')
+    os.mkdir('lib1')
+    self.emcc('side3.c', ['-fPIC', '-sSIDE_MODULE', '-olibs/libside3.so'])
+    self.emcc('side2.c', ['-fPIC', '-sSIDE_MODULE', '-olibs/libside2.so', '-Wl,-rpath,$ORIGIN', 'libs/libside3.so'])
+    self.emcc('side1.c', ['-fPIC', '-sSIDE_MODULE', '-Wl,-rpath,$ORIGIN/../libs', '-olib1/libside1.so', 'libs/libside2.so'])
+    settings = ['-sMAIN_MODULE=2', '-sDYLINK_DEBUG', "-sEXPORTED_FUNCTIONS=[_printf,_main]", "-sEXPORTED_RUNTIME_METHODS=ENV"]
+    preloads = []
+    for file in ['lib1/libside1.so', 'libs/libside2.so', 'libs/libside3.so']:
+      preloads += ['--preload-file', file]
+    cmd = [EMCC, 'main.c', '-fPIC', '--pre-js', 'pre.js'] + settings + preloads
+    self.run_process(cmd)
+
+    self.run_js('a.out.js')
+
   def test_dylink_LEGACY_GL_EMULATION(self):
     # LEGACY_GL_EMULATION wraps JS library functions. This test ensure that when it does
     # so it preserves the `.sig` attributes needed by dynamic linking.
