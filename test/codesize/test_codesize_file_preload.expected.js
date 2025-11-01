@@ -1808,12 +1808,13 @@ var FS = {
       }
     }
     // sync all mounts
-    mounts.forEach(mount => {
-      if (!mount.type.syncfs) {
-        return done(null);
+    for (var mount of mounts) {
+      if (mount.type.syncfs) {
+        mount.type.syncfs(mount, populate, done);
+      } else {
+        done(null);
       }
-      mount.type.syncfs(mount, populate, done);
-    });
+    }
   },
   mount(type, opts, mountpoint) {
     var root = mountpoint === "/";
@@ -1868,8 +1869,7 @@ var FS = {
     var node = lookup.node;
     var mount = node.mounted;
     var mounts = FS.getMounts(mount);
-    Object.keys(FS.nameTable).forEach(hash => {
-      var current = FS.nameTable[hash];
+    for (var [hash, current] of Object.entries(FS.nameTable)) {
       while (current) {
         var next = current.name_next;
         if (mounts.includes(current.mount)) {
@@ -1877,7 +1877,7 @@ var FS = {
         }
         current = next;
       }
-    });
+    }
     // no longer a mountpoint
     node.mounted = null;
     // remove this mount from the child mounts
@@ -2933,14 +2933,12 @@ var FS = {
     });
     // override each stream op with one that tries to force load the lazy file first
     var stream_ops = {};
-    var keys = Object.keys(node.stream_ops);
-    keys.forEach(key => {
-      var fn = node.stream_ops[key];
+    for (const [key, fn] of Object.entries(node.stream_ops)) {
       stream_ops[key] = (...args) => {
         FS.forceLoadFile(node);
         return fn(...args);
       };
-    });
+    }
     function writeChunks(stream, buffer, offset, length, position) {
       var contents = stream.node.contents;
       if (position >= contents.length) return 0;
