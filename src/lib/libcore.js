@@ -1711,16 +1711,9 @@ addToLibrary({
   // input events on, and registers a context resume() for them. This lets
   // audio work properly in an automatic way, as browsers won't let audio run
   // without user interaction.
-  // If @elements is not provided, we default to the document and canvas
-  // elements, which handle common use cases.
-  // TODO(sbc): Remove seemingly unused elements argument
-  $autoResumeAudioContext__docs: '/** @param {Array<Object>=} elements */',
-  $autoResumeAudioContext: (ctx, elements) => {
-    if (!elements) {
-      elements = [document, document.getElementById('canvas')];
-    }
+  $autoResumeAudioContext: (ctx) => {
     for (var event of ['keydown', 'mousedown', 'touchstart']) {
-      for (var element of elements) {
+      for (var element of [document, document.getElementById('canvas')]) {
         element?.addEventListener(event, () => {
           if (ctx.state === 'suspended') ctx.resume();
         }, { 'once': true });
