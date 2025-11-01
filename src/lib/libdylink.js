@@ -978,7 +978,9 @@ var LibraryDylink = {
         .then(loadModule);
     }
 
-    metadata.neededDynlibs.forEach((needed) => loadDynamicLibrary(needed, flags, localScope));
+    for (var needed of metadata.neededDynlibs) {
+      loadDynamicLibrary(needed, flags, localScope)
+    }
     return loadModule();
   },
 

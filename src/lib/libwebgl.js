@@ -1236,14 +1236,14 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
       }
 
-      getEmscriptenSupportedExtensions(GLctx).forEach((ext) => {
+      for (var ext of getEmscriptenSupportedExtensions(GLctx)) {
         // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders
         // are not enabled by default.
         if (!ext.includes('lose_context') && !ext.includes('debug')) {
           // Call .getExtension() to enable that extension permanently.
           GLctx.getExtension(ext);
         }
-      });
+      }
     },
 #endif
 
@@ -3504,9 +3504,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
 #if GL_EXPLICIT_UNIFORM_LOCATION
     // Collect explicit uniform locations from the vertex and fragment shaders.
-    [program['vs'], program['fs']].forEach((s) => {
-      Object.keys(s.explicitUniformLocations).forEach((shaderLocation) => {
-        var loc = s.explicitUniformLocations[shaderLocation];
+    for (var s of [program['vs'], program['fs']]) {
+      for (var [shaderLocation, loc] of Object.entries(s.explicitUniformLocations)) {
         // Record each explicit uniform location temporarily as a non-array uniform
         // with size=1. This is not true, but on the first glGetUniformLocation() call
         // the array sizes will get populated to correct sizes.
@@ -3518,21 +3517,21 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         // Make sure we will never automatically assign locations within the range
         // used for explicit layout(location=x) variables.
         program.uniformIdCounter = Math.max(program.uniformIdCounter, loc + 1);
-      });
-    });
+      }
+    }
 #endif
 
 #if GL_EXPLICIT_UNIFORM_BINDING
     function copyKeys(dst, src) {
-      Object.keys(src).forEach((key) => { dst[key] = src[key] });
+      for (var key of Object.keys(src)) { dst[key] = src[key] };
     }
     // Collect sampler and ubo binding locations from the vertex and fragment shaders.
     program.explicitUniformBindings = {};
     program.explicitSamplerBindings = {};
-    [program['vs'], program['fs']].forEach((s) => {
+    for (var s of [program['vs'], program['fs']]) {
       copyKeys(program.explicitUniformBindings, s.explicitUniformBindings);
       copyKeys(program.explicitSamplerBindings, s.explicitSamplerBindings);
-    });
+    }
     // Record that we need to apply these explicit bindings when glUseProgram() is
     // first called on this program.
     program.explicitProgramBindingsApplied = 0;
@@ -3561,8 +3560,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if MIN_WEBGL_VERSION < 2
       if (GL.currentContext.version >= 2) {
 #endif
-        Object.keys(p.explicitUniformBindings).forEach((ubo) => {
-          var bindings = p.explicitUniformBindings[ubo];
+        for (var [ubo, bindings] of Object.entries(p.explicitUniformBindings)) {
           for (var i = 0; i < bindings[1]; ++i) {
             var blockIndex = GLctx.getUniformBlockIndex(p, ubo + (bindings[1] > 1 ? `[${i}]` : ''));
 #if GL_DEBUG
@@ -3570,20 +3568,19 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
             GLctx.uniformBlockBinding(p, blockIndex, bindings[0]+i);
           }
-        });
+        }
 #if MIN_WEBGL_VERSION < 2
       }
 #endif
 #endif
-      Object.keys(p.explicitSamplerBindings).forEach((sampler) => {
-        var bindings = p.explicitSamplerBindings[sampler];
+      for (var [sampler, bindings] of Object.entries(p.explicitSamplerBindings)) {
         for (var i = 0; i < bindings[1]; ++i) {
 #if GL_DEBUG
           dbg('Applying initial sampler binding point ' + (bindings[0]+i) + ' for sampler "' + sampler + (i > 0 ? '['+i+']' : '') +  '"');
 #endif
           GLctx.uniform1i(GLctx.getUniformLocation(p, sampler + (i ? `[${i}]` : '')), bindings[0]+i);
         }
-      });
+      }
       p.explicitProgramBindingsApplied = 1;
     }
   },
@@ -4310,7 +4307,7 @@ function createGLPassthroughFunctions(lib, funcs) {
     const args = range(num).map((i) => 'x' + i ).join(', ');
     const stub = `(${args}) => GLctx.NAME(${args})`;
     const sigEnd = range(num).map(() => 'i').join('');
-    names.split(' ').forEach((name) => {
+    for (var name of names.split(' ')) {
       let sig;
       if (name.endsWith('*')) {
         name = name.slice(0, -1);
@@ -4327,7 +4324,7 @@ function createGLPassthroughFunctions(lib, funcs) {
       assert(!(cName in lib), "Cannot reimplement the existing function " + cName);
       lib[cName] = eval(stub.replace('NAME', name));
       assert(lib[cName + '__sig'] || LibraryManager.library[cName + '__sig'], 'missing sig for ' + cName);
-    });
+    }
   }
 }
 

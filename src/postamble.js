@@ -64,10 +64,10 @@ var mainArgs = undefined;
   var argc = args.length;
   var argv = stackAlloc((argc + 1) * {{{ POINTER_SIZE }}});
   var argv_ptr = argv;
-  args.forEach((arg) => {
+  for (var arg of args) {
     {{{ makeSetValue('argv_ptr', 0, 'stringToUTF8OnStack(arg)', '*') }}};
     argv_ptr += {{{ POINTER_SIZE }}};
-  });
+  }
   {{{ makeSetValue('argv_ptr', 0, 0, '*') }}};
 #else
   var argc = 0;
@@ -264,7 +264,7 @@ function checkUnflushedContent() {
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
-    ['stdout', 'stderr'].forEach((name) => {
+    for (var name of ['stdout', 'stderr']) {
       var info = FS.analyzePath('/dev/' + name);
       if (!info) return;
       var stream = info.object;
@@ -273,7 +273,7 @@ function checkUnflushedContent() {
       if (tty?.output?.length) {
         has = true;
       }
-    });
+    }
 #endif
   } catch(e) {}
   out = oldOut;

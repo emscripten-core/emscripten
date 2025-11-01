@@ -37,19 +37,19 @@ addToLibrary({
         var parts = path.split('/');
         return parts[parts.length-1];
       }
-      // We also accept FileList here, by using Array.prototype
-      Array.prototype.forEach.call(mount.opts["files"] || [], function(file) {
+      // We also accept FileList here
+      for (var file of (mount.opts["files"] || [])) {
         WORKERFS.createNode(ensureParent(file.name), base(file.name), WORKERFS.FILE_MODE, 0, file, file.lastModifiedDate);
-      });
-      (mount.opts["blobs"] || []).forEach((obj) => {
+      }
+      for (var obj of (mount.opts["blobs"] || [])) {
         WORKERFS.createNode(ensureParent(obj["name"]), base(obj["name"]), WORKERFS.FILE_MODE, 0, obj["data"]);
-      });
-      (mount.opts["packages"] || []).forEach((pack) => {
-        pack['metadata'].files.forEach((file) => {
+      }
+      for (var pack of (mount.opts["packages"] || [])) {
+        for (var file of pack['metadata'].files) {
           var name = file.filename.slice(1); // remove initial slash
           WORKERFS.createNode(ensureParent(name), base(name), WORKERFS.FILE_MODE, 0, pack['blob'].slice(file.start, file.end));
-        });
-      });
+        }
+      }
       return root;
     },
     createNode(parent, name, mode, dev, contents, mtime) {

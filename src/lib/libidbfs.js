@@ -114,7 +114,9 @@ addToLibrary({
       });
     },
     quit: () => {
-      Object.values(IDBFS.dbs).forEach((value) => value.close());
+      for (var value of Object.values(IDBFS.dbs)) {
+        value.close()
+      }
       IDBFS.dbs = {};
     },
     getDB: (name, callback) => {
@@ -312,22 +314,21 @@ addToLibrary({
       var total = 0;
 
       var create = [];
-      Object.keys(src.entries).forEach((key) => {
-        var e = src.entries[key];
+      for (var [key, e] of Object.entries(src.entries)) {
         var e2 = dst.entries[key];
         if (!e2 || e['timestamp'].getTime() != e2['timestamp'].getTime()) {
           create.push(key);
           total++;
         }
-      });
+      }
 
       var remove = [];
-      Object.keys(dst.entries).forEach((key) => {
+      for (var key of Object.keys(dst.entries)) {
         if (!src.entries[key]) {
           remove.push(key);
           total++;
         }
-      });
+      }
 
       if (!total) {
         return callback(null);
@@ -359,7 +360,7 @@ addToLibrary({
 
       // sort paths in ascending order so directory entries are created
       // before the files inside them
-      create.sort().forEach((path) => {
+      for (const path of create.sort()) {
         if (dst.type === 'local') {
           IDBFS.loadRemoteEntry(store, path, (err, entry) => {
             if (err) return done(err);
@@ -371,17 +372,17 @@ addToLibrary({
             IDBFS.storeRemoteEntry(store, path, entry, done);
           });
         }
-      });
+      }
 
       // sort paths in descending order so files are deleted before their
       // parent directories
-      remove.sort().reverse().forEach((path) => {
+      for (var path of remove.sort().reverse()) {
         if (dst.type === 'local') {
           IDBFS.removeLocalEntry(path, done);
         } else {
           IDBFS.removeRemoteEntry(store, path, done);
         }
-      });
+      }
     }
   }
 });

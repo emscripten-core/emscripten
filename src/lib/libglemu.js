@@ -626,10 +626,10 @@ var LibraryGLEmulation = {
         if (GL.debug) {
           dbg('[using program with shaders]');
           if (program) {
-            GL.programShaders[program].forEach((shader) => {
+            for (var shader of GL.programShaders[program]) {
               dbg(`  shader ${shader}, original source: ${GL.shaderOriginalSources[shader]}`);
               dbg(`         Source: ${GL.shaderSources[shader]}`);
-            });
+            }
           }
         }
 #endif
