@@ -7965,7 +7965,7 @@ void* operator new(size_t size) {
     no_maps_filename = 'no-maps.out.js'
 
     assert '-gsource-map' not in self.cflags
-    self.emcc('src.cpp', output_filename=out_filename)
+    self.emcc('src.cpp', ['-o', out_filename])
     # the file name may find its way into the generated code, so make sure we
     # can do an apples-to-apples comparison by compiling with the same file name
     shutil.move(out_filename, no_maps_filename)
@@ -7973,9 +7973,7 @@ void* operator new(size_t size) {
     no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
     self.cflags.append('-gsource-map')
 
-    self.emcc(os.path.abspath('src.cpp'),
-              self.get_cflags(),
-              out_filename)
+    self.emcc(os.path.abspath('src.cpp'), ['-o', out_filename])
     map_referent = out_filename if self.is_wasm2js() else wasm_filename
     # after removing the @line and @sourceMappingURL comments, the build
     # result should be identical to the non-source-mapped debug version.

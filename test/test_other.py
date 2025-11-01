@@ -1409,7 +1409,7 @@ f.close()
     ''')
 
     self.cflags.remove('-Werror')
-    self.emcc('libA.c', ['-shared'], output_filename='libA.so')
+    self.emcc('libA.c', ['-shared', '-o', 'libA.so'])
 
     self.emcc('a2.c', ['-r', '-L.', '-lA', '-o', 'a2.o'])
     self.emcc('b2.c', ['-r', '-L.', '-lA', '-o', 'b2.o'])
@@ -1558,8 +1558,8 @@ int f() {
     ''')
 
     self.cflags.remove('-Werror')
-    self.emcc('libA.c', ['-shared'], output_filename='libA.so')
-    self.emcc('main.c', ['libA.so', 'libA.so'], output_filename='a.out.js')
+    self.emcc('libA.c', ['-shared', '-o', 'libA.so'])
+    self.emcc('main.c', ['libA.so', 'libA.so', '-o', 'a.out.js'])
     self.assertContained('result: 1', self.run_js('a.out.js'))
 
   @no_mac('https://github.com/emscripten-core/emscripten/issues/16649')
@@ -1653,7 +1653,7 @@ int f() {
       EMSCRIPTEN_KEEPALIVE void libf2() { printf("libf2\n"); }
     ''')
 
-    self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2', '-sEXPORT_ALL', '-sEXPORT_ES6'], output_filename='test.mjs')
+    self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2', '-sEXPORT_ALL', '-sEXPORT_ES6', '-o', 'test.mjs'])
 
     # We must expose __dirname and require globally because emscripten
     # uses those under the hood.
@@ -1714,11 +1714,11 @@ int f() {
     ''')
 
     # libfunc2 should not be linked by default, even with EXPORT_ALL
-    self.emcc('lib.c', ['-sEXPORT_ALL', '--pre-js', 'pre.js'], output_filename='a.out.js')
+    self.emcc('lib.c', ['-sEXPORT_ALL', '--pre-js', 'pre.js', '-o', 'a.out.js'])
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('_libfunc2 is not defined', err)
 
-    self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js'], output_filename='a.out.js')
+    self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js', '-o', 'a.out.js'])
     self.assertContained('libfunc\n', self.run_js('a.out.js'))
 
   @all_engines
@@ -2524,28 +2524,28 @@ F1 -> ''
 
   @requires_network
   def test_sdl2_mixer_wav(self):
-    self.emcc('browser/test_sdl2_mixer_wav.c', ['-sUSE_SDL_MIXER=2'], output_filename='a.out.js')
-    self.emcc('browser/test_sdl2_mixer_wav.c', ['--use-port=sdl2_mixer'], output_filename='a.out.js')
-    self.emcc('browser/test_sdl2_mixer_wav.c', ['--use-port=sdl2_mixer:formats=ogg'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_mixer_wav.c', ['-sUSE_SDL_MIXER=2', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl2_mixer_wav.c', ['--use-port=sdl2_mixer', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl2_mixer_wav.c', ['--use-port=sdl2_mixer:formats=ogg', '-o', 'a.out.js'])
 
   def test_sdl2_linkable(self):
     # Ensure that SDL2 can be built with MAIN_MODULE.  This implies there are no undefined
     # symbols in the library (because MAIN_MODULE=1 includes the entire library).
-    self.emcc('browser/test_sdl2_misc.c', ['-sMAIN_MODULE', '-sUSE_SDL=2'], output_filename='a.out.js')
-    self.emcc('browser/test_sdl2_misc.c', ['-sMAIN_MODULE', '--use-port=sdl2'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_misc.c', ['-sMAIN_MODULE', '-sUSE_SDL=2', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl2_misc.c', ['-sMAIN_MODULE', '--use-port=sdl2', '-o', 'a.out.js'])
 
   def test_sdl3_linkable(self):
     # Ensure that SDL3 can be built with MAIN_MODULE.  This implies there are no undefined
     # symbols in the library (because MAIN_MODULE=1 includes the entire library).
     self.cflags.append('-Wno-experimental')
-    self.emcc('browser/test_sdl3_misc.c', ['-sMAIN_MODULE', '-sUSE_SDL=3'], output_filename='a.out.js')
-    self.emcc('browser/test_sdl3_misc.c', ['-sMAIN_MODULE', '--use-port=sdl3'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl3_misc.c', ['-sMAIN_MODULE', '-sUSE_SDL=3', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl3_misc.c', ['-sMAIN_MODULE', '--use-port=sdl3', '-o', 'a.out.js'])
 
   @requires_network
   def test_sdl2_gfx_linkable(self):
     # Same as above but for sdl2_gfx library
-    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '-sUSE_SDL_GFX=2'], output_filename='a.out.js')
-    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '--use-port=sdl2_gfx'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '-sUSE_SDL_GFX=2', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl2_misc.c', ['-Wl,-fatal-warnings', '-sMAIN_MODULE', '--use-port=sdl2_gfx', '-o', 'a.out.js'])
 
   @requires_network
   def test_libpng(self):
@@ -2628,7 +2628,7 @@ F1 -> ''
   @requires_network
   def test_freetype_with_pthreads(self):
     # Verify that freetype supports compilation requiring pthreads
-    self.emcc('test_freetype.c', ['-pthread', '-sUSE_FREETYPE'], output_filename='a.out.js')
+    self.emcc('test_freetype.c', ['-pthread', '-sUSE_FREETYPE', '-o', 'a.out.js'])
 
   @requires_network
   def test_icu(self):
@@ -2638,8 +2638,8 @@ F1 -> ''
   @requires_network
   def test_sdl2_ttf(self):
     # This is a compile-only to test to verify that sdl2-ttf (and freetype and harfbuzz) are buildable.
-    self.emcc('browser/test_sdl2_ttf.c', args=['-sUSE_SDL=2', '-sUSE_SDL_TTF=2'], output_filename='a.out.js')
-    self.emcc('browser/test_sdl2_ttf.c', args=['--use-port=sdl2', '--use-port=sdl2_ttf'], output_filename='a.out.js')
+    self.emcc('browser/test_sdl2_ttf.c', args=['-sUSE_SDL=2', '-sUSE_SDL_TTF=2', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl2_ttf.c', args=['--use-port=sdl2', '--use-port=sdl2_ttf', '-o', 'a.out.js'])
 
   @requires_network
   def test_contrib_ports(self):
@@ -3184,7 +3184,7 @@ More info: https://emscripten.org
       (['-gsource-map', '-Og', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, False),
     ]:
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
-      self.emcc(test_file(source_file), flags, js_file)
+      self.emcc(test_file(source_file), flags + ['-o', js_file])
       self.assertExists(js_file)
       assertion = self.assertIn if expect_dwarf else self.assertNotIn
       self.verify_dwarf(wasm_file, assertion)
@@ -6063,7 +6063,7 @@ int main(void) {
   @requires_node
   def test_require(self):
     inname = test_file('hello_world.c')
-    self.emcc(inname, args=['-sASSERTIONS=0'], output_filename='a.out.js')
+    self.emcc(inname, args=['-sASSERTIONS=0', '-o', 'a.out.js'])
     create_file('run.js', 'require("./a.out.js")')
     output = self.run_js('run.js')
     self.assertEqual('hello, world!\n', output)
@@ -6128,7 +6128,7 @@ int main(void) {
     ''')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
     self.cflags += ['-sEXPORT_ES6', '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0', '--pre-js=pre.js']
-    self.emcc('hello_world.c', output_filename='hello_world.mjs')
+    self.emcc('hello_world.c', ['-o', 'hello_world.mjs'])
     self.assertContained('add-dep\nremove-dep\nhello, world!\ngot module\n', self.run_js('run.mjs'))
 
   def test_modularize_instantiation_error(self):
@@ -6186,7 +6186,7 @@ int main(void) {
       main();
     ''')
 
-    self.emcc('main.c', output_filename='test.js')
+    self.emcc('main.c', ['-o' 'test.js'])
     output = self.run_js('main.js')
     self.assertNotContained('hello, world!', output)
     self.assertContained('hello, earth!', output)
@@ -9494,7 +9494,7 @@ int main() {
       prefixes = [p.replace('<cwd>', cwd) for p in prefixes]
     self.set_setting('SOURCE_MAP_PREFIXES', prefixes)
     args = ['-gsource-map=inline' if sources else '-gsource-map']
-    self.emcc(src_file, args=args, output_filename='test.js')
+    self.emcc(src_file, args=args + ['-o', 'test.js'])
     output = read_file('test.wasm.map')
     # Check source file resolution
     p = wasm_sourcemap.Prefixes(prefixes, base_path=cwd)
@@ -12360,7 +12360,7 @@ exec "$@"
     # See https://github.com/emscripten-core/emscripten/issues/18494
     self.do_runf('other/test_em_js_main_module_address.c')
 
-    self.emcc('other/test_em_js_main_module_address.c', ['-sSIDE_MODULE'], output_filename='libside.so')
+    self.emcc('other/test_em_js_main_module_address.c', ['-sSIDE_MODULE', '-o', 'libside.so'])
     expected = 'Aborted(Assertion failed: Missing signature argument to addFunction: () => { err("hello"); })'
     self.do_run('', expected, cflags=['-sMAIN_MODULE=2', 'libside.so'], assert_returncode=NON_ZERO)
 
@@ -14998,10 +14998,10 @@ addToLibrary({
 
     removed_fs_assert_content = "IDBFS is no longer included by default"
 
-    self.emcc('hello_world.c', output_filename='hello_world.js')
+    self.emcc('hello_world.c', ['-o', 'hello_world.js'])
     self.assertContained(removed_fs_assert_content, read_file('hello_world.js'))
 
-    self.emcc('hello_world.c', ['-lidbfs.js'], output_filename='hello_world.js')
+    self.emcc('hello_world.c', ['-lidbfs.js', '-o', 'hello_world.js'])
     self.assertNotContained(removed_fs_assert_content, read_file('hello_world.js'))
 
   @crossplatform
