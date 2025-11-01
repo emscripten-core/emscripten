@@ -205,6 +205,25 @@ var LibraryHTML5 = {
       return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
     },
 
+    removeSingleHandler(eventHandler) {
+      if (!eventHandler.target) {
+#if ASSERTIONS
+        err('removeSingleHandler: the target element for event handler registration does not exist, when processing the following event handler registration:');
+        console.dir(eventHandler);
+#endif
+        return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
+      }
+      for (var i = 0; i < JSEvents.eventHandlers.length; ++i) {
+        if (JSEvents.eventHandlers[i].target === eventHandler.target
+          && JSEvents.eventHandlers[i].eventTypeId === eventHandler.eventTypeId
+          && JSEvents.eventHandlers[i].callbackfunc === eventHandler.callbackfunc
+          && JSEvents.eventHandlers[i].userData === eventHandler.userData) {
+          JSEvents._removeHandler(i--);
+        }
+      }
+      return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
+    },
+
 #if PTHREADS
     getTargetThreadForEventCallback(targetThread) {
       switch (targetThread) {
@@ -298,6 +317,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target: findEventTarget(target),
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: keyEventHandlerFunc,
       useCapture
@@ -412,6 +433,18 @@ var LibraryHTML5 = {
   },
 #endif
 
+  emscripten_remove_callback__proxy: 'sync',
+  emscripten_remove_callback__deps: ['$JSEvents', '$findEventTarget'],
+  emscripten_remove_callback: (target, userData, eventTypeId, callback) => {
+    var eventHandler = {
+      target: findEventTarget(target),
+      userData,
+      eventTypeId,
+      callbackfunc: callback,
+    };
+    return JSEvents.removeSingleHandler(eventHandler);
+  },
+
   emscripten_set_keypress_callback_on_thread__proxy: 'sync',
   emscripten_set_keypress_callback_on_thread__deps: ['$registerKeyEventCallback'],
   emscripten_set_keypress_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
@@ -503,6 +536,8 @@ var LibraryHTML5 = {
       allowsDeferredCalls: eventTypeString != 'mousemove' && eventTypeString != 'mouseenter' && eventTypeString != 'mouseleave', // Mouse move events do not allow fullscreen/pointer lock requests to be handled in them!
 #endif
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: mouseEventHandlerFunc,
       useCapture
@@ -599,6 +634,8 @@ var LibraryHTML5 = {
       allowsDeferredCalls: true,
 #endif
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: wheelHandlerFunc,
       useCapture
@@ -674,6 +711,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target,
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: uiEventHandlerFunc,
       useCapture
@@ -721,6 +760,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target: findEventTarget(target),
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: focusEventHandlerFunc,
       useCapture
@@ -779,6 +820,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target: findEventTarget(target),
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: deviceOrientationEventHandlerFunc,
       useCapture
@@ -850,6 +893,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target: findEventTarget(target),
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: deviceMotionEventHandlerFunc,
       useCapture
@@ -936,6 +981,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target,
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: orientationChangeEventHandlerFunc,
       useCapture
@@ -1047,6 +1094,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target,
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: fullscreenChangeEventhandlerFunc,
       useCapture
@@ -1548,6 +1597,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target,
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: pointerlockChangeEventHandlerFunc,
       useCapture
@@ -1592,6 +1643,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target,
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: pointerlockErrorEventHandlerFunc,
       useCapture
@@ -1746,6 +1799,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target,
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: visibilityChangeEventHandlerFunc,
       useCapture
@@ -1864,6 +1919,8 @@ var LibraryHTML5 = {
       allowsDeferredCalls: eventTypeString == 'touchstart' || eventTypeString == 'touchend',
 #endif
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: touchEventHandlerFunc,
       useCapture
@@ -1950,6 +2007,8 @@ var LibraryHTML5 = {
       allowsDeferredCalls: true,
 #endif
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: gamepadEventHandlerFunc,
       useCapture
@@ -2036,6 +2095,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target: findEventTarget(target),
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: beforeUnloadEventHandlerFunc,
       useCapture
@@ -2089,6 +2150,8 @@ var LibraryHTML5 = {
     var eventHandler = {
       target: battery,
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: batteryEventHandlerFunc,
       useCapture
