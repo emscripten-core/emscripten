@@ -1325,12 +1325,10 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       sys.stderr.write(rtn.stderr)
     return rtn
 
-  def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
+  def emcc(self, filename, args=[], **kwargs):  # noqa
     filename = maybe_test_file(filename)
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
     cmd = [compiler_for(filename), filename] + self.get_cflags(compile_only=compile_only) + args
-    if output_filename:
-      cmd += ['-o', output_filename]
     self.run_process(cmd, **kwargs)
 
   # Shared test code between main suite and others
