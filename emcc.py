@@ -40,7 +40,7 @@ from tools import (
   system_libs,
   utils,
 )
-from tools.cmdline import CLANG_FLAGS_WITH_ARGS
+from tools.cmdline import CLANG_FLAGS_WITH_ARGS, options
 from tools.response_file import substitute_response_files
 from tools.settings import (
   COMPILE_TIME_SETTINGS,
@@ -225,7 +225,7 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
 
   ## Process argument and setup the compiler
   state = EmccState(args)
-  options, newargs = cmdline.parse_arguments(state.orig_args)
+  newargs = cmdline.parse_arguments(state.orig_args)
 
   if not shared.SKIP_SUBPROCS:
     shared.check_sanity()
@@ -290,7 +290,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
-  phase_setup(options, state)
+  phase_setup(state)
 
   if '-print-resource-dir' in args or any(a.startswith('--print-prog-name') for a in args):
     shared.exec_process([clang] + compile.get_cflags(tuple(args)) + args)
@@ -384,7 +384,7 @@ def separate_linker_flags(newargs):
 
 
 @ToolchainProfiler.profile_block('setup')
-def phase_setup(options, state):
+def phase_setup(state):
   """Second phase: configure and setup the compiler based on the specified settings and arguments.
   """
 
