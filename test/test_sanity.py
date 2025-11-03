@@ -780,6 +780,12 @@ fi
     self.run_process([EMBUILDER, 'build', f'{external_port_path}:dependency=sdl2', '--force'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_external-sdl2.a'))
 
+  def test_embuilder_transitive_pic(self):
+    restore_and_set_up()
+    self.run_process([EMBUILDER, 'clear', 'sdl2*'])
+    self.run_process([EMBUILDER, '--pic', 'clear', 'sdl2*'])
+    self.run_process([EMCC, '-sMAIN_MODULE=2', '-sUSE_SDL=2', '-sUSE_SDL_GFX=2', test_file('hello_world.c')])
+
   def test_binaryen_version(self):
     restore_and_set_up()
     with open(EM_CONFIG, 'a') as f:
