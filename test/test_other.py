@@ -15164,7 +15164,7 @@ addToLibrary({
   # Tests encoding of all byte pairs for binary encoding in SINGLE_FILE mode.
   def test_binary_encode(self):
     # Encode values 0 .. 65535 into test data
-    test_data = bytearray(struct.pack('<' + 'H'*65536, *range(65536)))
+    test_data = bytearray(struct.pack('<' + 'H' * 65536, *range(65536)))
     open('data.tmp', 'wb').write(test_data)
     binary_encoded = binary_encode('data.tmp')
     test_js = '''var u16 = new Uint16Array(binaryDecode(src).buffer);
