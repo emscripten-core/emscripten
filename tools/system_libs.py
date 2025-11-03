@@ -63,7 +63,11 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE or settings.MAIN_MODULE:
-    flags += ['-fPIC']
+    # Explictly include `-sRELOCATABLE` when building system libraries.
+    # `-fPIC` alone is not enough to configure trigger the building and
+    # caching of `pic` libraries (see `get_lib_dir` in `cache.py`)
+    # FIXME(sbc): `-fPIC` should really be enough here.
+    flags += ['-fPIC', '-sRELOCATABLE']
     if preprocess:
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
