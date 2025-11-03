@@ -2837,6 +2837,9 @@ child-src directive to allow blob:. If you aren't using Content Security
 Policy, or your CSP header doesn't include either script-src or child-src,
 then you can safely ignore this warning.
 
+Note that SINGLE_FILE with binary encoding requires the HTML/JS files to be
+served with UTF-8 encoding. See the details on SINGLE_FILE_BINARY_ENCODE.
+
 Default value: false
 
 .. _single_file_binary_encode:
@@ -2850,6 +2853,19 @@ Set this to false to revert back to earlier base64 encoding if you run into
 issues with the binary encoding. (and please let us know of any such issues)
 If no issues arise, this option will permanently become the default in the
 future.
+
+NOTE: Binary encoding requires that the HTML/JS files are served with UTF-8
+encoding, and will not work with the default legacy Windows-1252 encoding
+that browsers might use on Windows. To enable UTF-8 encoding in a
+hand-crafted index.html file, apply any of:
+1. Add <meta charset="utf-8"> inside the <head> section of HTML, or
+2. Add <meta http-equiv="content-type" content="text/html; charset=UTF-8" />
+   inside <head>, or
+3. Add <meta http-equiv="content-type" content="application/json; charset=utf-8" />
+   inside <head> (if using -o foo.js with SINGLE_FILE mode to build HTML+JS), or
+4. pass the header `Content-Type: text/html; charset=utf-8` and/or header
+   `Content-Type: application/javascript; charset=utf-8` when serving the
+   relevant files that contain binary encoded content.
 
 Default value: true
 
