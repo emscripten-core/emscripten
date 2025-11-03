@@ -26,7 +26,6 @@ import shlex
 import shutil
 import sys
 import tarfile
-import time
 from dataclasses import dataclass
 from enum import Enum, auto, unique
 
@@ -171,10 +170,8 @@ def create_reproduce_file(name, args):
       reproduce_file.add(rsp_name, os.path.join(root, 'response.txt'))
 
 
-#
-# Main run() function
-#
-def run(args):
+@ToolchainProfiler.profile()
+def main(args):
   if shared.run_via_emxx:
     clang = shared.CLANG_CXX
   else:
@@ -589,14 +586,6 @@ def phase_compile_inputs(options, state, newargs):
       pass
 
   return [f.value for f in linker_args]
-
-
-@ToolchainProfiler.profile()
-def main(args):
-  start_time = time.time()
-  ret = run(args)
-  logger.debug('total time: %.2f seconds', (time.time() - start_time))
-  return ret
 
 
 if __name__ == '__main__':
