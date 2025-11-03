@@ -2332,7 +2332,7 @@ def get_libs_to_link(options):
   def add_forced_libs():
     for forced in force_include:
       if forced not in system_libs_map:
-        shared.exit_with_error('invalid forced library: %s', forced)
+        utils.exit_with_error('invalid forced library: %s', forced)
       add_library(forced)
 
   if options.nodefaultlibs:
@@ -2395,7 +2395,7 @@ def get_libs_to_link(options):
       add_library('libmimalloc')
       if settings.USE_ASAN:
         # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
-        shared.exit_with_error('mimalloc is not compatible with -fsanitize=address')
+        utils.exit_with_error('mimalloc is not compatible with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')

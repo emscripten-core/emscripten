@@ -48,9 +48,9 @@ from tools.settings import (
   settings,
   user_settings,
 )
-from tools.shared import DEBUG, DYLIB_EXTENSIONS, exit_with_error, in_temp
+from tools.shared import DEBUG, DYLIB_EXTENSIONS, in_temp
 from tools.toolchain_profiler import ToolchainProfiler
-from tools.utils import get_file_suffix, read_file, unsuffixed_basename
+from tools.utils import exit_with_error, get_file_suffix, read_file, unsuffixed_basename
 
 logger = logging.getLogger('emcc')
 

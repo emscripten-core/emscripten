@@ -183,7 +183,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
     shell = building.read_and_preprocess(shell_temp)
 
   if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
-    shared.exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
+    utils.exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
 
   shell = shell.replace('{{{ TARGET_BASENAME }}}', settings.TARGET_BASENAME)
   shell = shell.replace('{{{ EXPORT_NAME }}}', settings.EXPORT_NAME)

@@ -24,9 +24,8 @@ from tools import (
   utils,
 )
 from tools.settings import MEM_SIZE_SETTINGS, settings, user_settings
-from tools.shared import exit_with_error
 from tools.toolchain_profiler import ToolchainProfiler
-from tools.utils import read_file, removeprefix
+from tools.utils import exit_with_error, read_file, removeprefix
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
 SIMD_NEON_FLAGS = ['-mfpu=neon']

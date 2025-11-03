@@ -20,7 +20,7 @@ flags. For example, include paths and macro defintions.
 
 import os
 
-from . import building, cache, ports, shared
+from . import building, cache, ports, shared, utils
 from .cmdline import SIMD_INTEL_FEATURE_TOWER, SIMD_NEON_FLAGS
 from .settings import settings
 from .utils import memoize
@@ -110,7 +110,7 @@ def get_cflags(user_args):
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     if '-msimd128' not in user_args and '-mrelaxed-simd' not in user_args:
-      shared.exit_with_error('passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
+      utils.exit_with_error('passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
     cflags += ['-D__SSE__=1']
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):

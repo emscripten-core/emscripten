@@ -9,7 +9,7 @@ from typing import Dict, List
 
 from . import utils, webassembly
 from .settings import settings
-from .shared import exit_with_error
+from .utils import exit_with_error
 from .webassembly import AtomicOpCode, MemoryOpCode, OpCode
 
 logger = logging.getLogger('extract_metadata')
