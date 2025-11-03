@@ -1877,6 +1877,8 @@ var SINGLE_FILE = false;
 // 4. pass the header `Content-Type: text/html; charset=utf-8` and/or header
 //    `Content-Type: application/javascript; charset=utf-8` when serving the
 //    relevant files that contain binary encoded content.
+// If none of these are possible, disable binary encoding with
+// -sSINGLE_FILE_BINARY_ENCODE=0 to fall back to base64 encoding.
 // [link]
 var SINGLE_FILE_BINARY_ENCODE = true;
 
