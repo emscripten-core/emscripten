@@ -1715,9 +1715,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # need to be able to call these explicitly.
     settings.REQUIRED_EXPORTS += ['__funcs_on_exit']
 
-  # The worker code in src/postamble.js depends on realloc
   if settings.BUILD_AS_WORKER:
+    # The worker code in src/build_as_worker.js depends on realloc
     settings.REQUIRED_EXPORTS += ['realloc']
+    options.post_js.append(utils.path_from_root('src/build_as_worker.js'))
 
   if not settings.DISABLE_EXCEPTION_CATCHING:
     settings.REQUIRED_EXPORTS += [
