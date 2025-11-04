@@ -216,10 +216,10 @@ def main():
   args = parser.parse_args()
 
   if args.operation != 'rebuild' and len(args.targets) == 0:
-    shared.exit_with_error('no build targets specified')
+    utils.exit_with_error('no build targets specified')
 
   if args.operation == 'rebuild' and not USE_NINJA:
-    shared.exit_with_error('"rebuild" operation is only valid when using Ninja')
+    utils.exit_with_error('"rebuild" operation is only valid when using Ninja')
 
   # process flags
 

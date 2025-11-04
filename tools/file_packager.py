@@ -362,7 +362,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   try:
     args = substitute_response_files(sys.argv[1:])
   except OSError as e:
-    shared.exit_with_error(e)
+    utils.exit_with_error(e)
 
   if '--help' in args:
     print(__doc__.strip())
