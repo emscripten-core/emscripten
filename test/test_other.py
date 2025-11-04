@@ -9974,6 +9974,23 @@ int main() {
     compile(['-sMIN_SAFARI_VERSION=140100', '-mbulk-memory'])
     verify_features_sec_linked('nontrapping-fptoint', False)
 
+  def test_no_bulk_memory(self):
+    # The test_wasm_features test (above) uses the feature section to confirm
+    # if a feature is present, but that doesn't work in optimizing builds
+    # since we strip the feature section in release builds.
+    # This test confirms that no DATACOUNT section is present in the final
+    # binary.
+
+    def has_data_count(filename):
+      with webassembly.Module(filename) as wasm:
+        return wasm.get_section(webassembly.SecType.DATACOUNT)
+
+    self.emcc('hello_world.c', ['-O3', '-o', 'bulk.js'])
+    self.assertTrue(has_data_count('bulk.wasm'))
+
+    self.emcc('hello_world.c', ['-O3', '-o', 'nobulk.js', '-mno-bulk-memory', '-mno-bulk-memory-opt'])
+    self.assertFalse(has_data_count('nobulk.wasm'))
+
   @crossplatform
   def test_html_preprocess(self):
     src_file = test_file('module/test_stdin.c')
