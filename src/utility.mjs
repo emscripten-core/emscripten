@@ -251,38 +251,59 @@ export function debugLog(...args) {
   if (VERBOSE) printErr(...args);
 }
 
-export class Benchmarker {
-  totals = {};
+class Profiler {
   ids = [];
   lastTime = 0;
 
+  constructor() {
+    this.start('overall')
+    this.startTime = performance.now();
+  }
+
+  log(msg) {
+    const depth = this.ids.length;
+    const indent = ' '.repeat(depth)
+    printErr('[prof] ' + indent + msg);
+  }
+
   start(id) {
-    const now = Date.now();
-    if (this.ids.length > 0) {
-      this.totals[this.ids[this.ids.length - 1]] += now - this.lastTime;
-    }
-    this.lastTime = now;
-    this.ids.push(id);
-    this.totals[id] ||= 0;
+    this.log(`-> ${id}`)
+    const now = performance.now();
+    this.ids.push([id, now]);
   }
 
   stop(id) {
-    const now = Date.now();
-    assert(id === this.ids[this.ids.length - 1]);
-    this.totals[id] += now - this.lastTime;
-    this.lastTime = now;
-    this.ids.pop();
+    const [poppedId, startTime] = this.ids.pop();
+    assert(id === poppedId);
+    const now = performance.now();
+    const duration = now - startTime;
+    this.log(`<- ${id} [${duration.toFixed(1)} ms]`)
   }
 
-  print(text) {
-    const ids = Object.keys(this.totals);
-    if (ids.length > 0) {
-      ids.sort((a, b) => this.totals[b] - this.totals[a]);
-      printErr(
-        text + ' times: \n' + ids.map((id) => id + ' : ' + this.totals[id] + ' ms').join('\n'),
-      );
+  terminate() {
+    while (this.ids.length) {
+      const lastID = this.ids[this.ids.length - 1][0];
+      this.stop(lastID);
     }
+    // const overall = performance.now() - this.startTime
+    // printErr(`overall total: ${overall.toFixed(1)} ms`);
   }
+}
+
+class NullProfiler {
+  start(_id) {}
+  stop(_id) {}
+  terminate() {}
+}
+
+// Enable JS compiler profiling if EMPROFILE is "2".  This mode reports profile
+// data to stderr.
+const EMPROFILE = process.env.EMPROFILE == '2';
+
+export const timer = EMPROFILE ? new Profiler() : new NullProfiler();
+
+if (EMPROFILE) {
+  process.on('exit', () => timer.terminate());
 }
 
 /**
@@ -311,9 +332,11 @@ export function applySettings(obj) {
 }
 
 export function loadSettingsFile(f) {
+  timer.start('loadSettingsFile')
   const settings = {};
   vm.runInNewContext(readFile(f), settings, {filename: f});
   applySettings(settings);
+  timer.stop('loadSettingsFile')
   return settings;
 }
 

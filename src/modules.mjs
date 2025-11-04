@@ -22,6 +22,7 @@ import {
   runInMacroContext,
   mergeInto,
   localFile,
+  timer,
 } from './utility.mjs';
 import {preprocess, processMacros} from './parseTools.mjs';
 
@@ -224,6 +225,7 @@ function getTempDir() {
 }
 
 function preprocessFiles(filenames) {
+  timer.start('preprocessFiles')
   const results = {};
   for (const filename of filenames) {
     debugLog(`pre-processing JS library: ${filename}`);
@@ -237,6 +239,7 @@ function preprocessFiles(filenames) {
       popCurrentFile();
     }
   }
+  timer.stop('preprocessFiles')
   return results;
 }
 
@@ -262,15 +265,22 @@ export const LibraryManager = {
   },
 
   load() {
+    timer.start('load')
+
     assert(!this.loaded);
     this.loaded = true;
     // Save the list for has() queries later.
     this.libraries = calculateLibraries();
 
     const preprocessed = preprocessFiles(this.libraries);
+
+    timer.start('executeJS')
     for (const [filename, contents] of Object.entries(preprocessed)) {
       this.executeJSLibraryFile(filename, contents);
     }
+    timer.stop('executeJS')
+
+    timer.stop('load')
   },
 
   executeJSLibraryFile(filename, contents) {
