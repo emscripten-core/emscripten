@@ -666,6 +666,10 @@ def add_system_js_lib(lib):
 
 
 def check_settings():
+  for s, reason in DEPRECATED_SETTINGS.items():
+    if s in user_settings:
+      diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
+
   for name, msg in EXPERIMENTAL_SETTINGS.items():
     if getattr(settings, name):
       diagnostics.warning('experimental', msg)
@@ -787,10 +791,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     target = 'a.out.js'
 
   final_suffix = get_file_suffix(target)
-
-  for s, reason in DEPRECATED_SETTINGS.items():
-    if s in user_settings:
-      diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
 
   # Set the EXPORT_ES6 default early since it affects the setting of the
   # default oformat below.
