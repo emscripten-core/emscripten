@@ -46,10 +46,9 @@ from .shared import (
   get_emscripten_temp_dir,
   is_c_symbol,
   path_from_root,
-  run_process,
 )
 from .toolchain_profiler import ToolchainProfiler
-from .utils import WINDOWS
+from .utils import WINDOWS, run_process
 
 logger = logging.getLogger('building')
 

@@ -26,7 +26,7 @@ import shlex
 import shutil
 import sys
 
-from tools import building, shared, utils
+from tools import building, utils
 
 
 #
@@ -58,10 +58,10 @@ variables so that emcc etc. are used. Typical usage:
   # 'sdl2-config.bat' in PATH.
   print(f'emmake: "{shlex.join(args)}" in "{os.getcwd()}"', file=sys.stderr)
   if utils.WINDOWS:
-    return shared.run_process(args, check=False, shell=True, env=env).returncode
+    return utils.run_process(args, check=False, shell=True, env=env).returncode
   else:
     os.environ.update(env)
-    shared.exec_process(args)
+    utils.exec(args)
 
 
 if __name__ == '__main__':
