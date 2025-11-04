@@ -692,6 +692,124 @@ def check_settings():
       exit_with_error(msg)
 
 
+@ToolchainProfiler.profile()
+def setup_sanitizers(options):
+  assert(options.sanitize)
+
+  if settings.WASM_WORKERS:
+    exit_with_error('WASM_WORKERS is not currently compatible with `-fsanitize` tools')
+  # These symbols are needed by `withBuiltinMalloc` which used to implement
+  # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS
+  # symbol graph generated when we run the compiler with `--symbols-only`.
+  settings.REQUIRED_EXPORTS += [
+    'malloc',
+    'calloc',
+    'realloc',
+    'memalign',
+    'free',
+    'emscripten_builtin_malloc',
+    'emscripten_builtin_calloc',
+    'emscripten_builtin_realloc',
+    'emscripten_builtin_memalign',
+    'emscripten_builtin_free',
+  ]
+
+  if ('leak' in options.sanitize or 'address' in options.sanitize) and not settings.ALLOW_MEMORY_GROWTH:
+    # Increase the minimum memory requirements to account for extra memory
+    # that the sanitizers might need (in addition to the shadow memory
+    # requirements handled below).
+    # These values are designed be an over-estimate of the actual requirements and
+    # are based on experimentation with different tests/programs under asan and
+    # lsan.
+    inc_initial_memory(50 * 1024 * 1024)
+    if settings.PTHREADS:
+      inc_initial_memory(50 * 1024 * 1024)
+
+  if options.sanitize & UBSAN_SANITIZERS:
+    if options.sanitize_minimal_runtime:
+      settings.UBSAN_RUNTIME = 1
+    else:
+      settings.UBSAN_RUNTIME = 2
+
+  if 'leak' in options.sanitize:
+    settings.USE_LSAN = 1
+    default_setting('EXIT_RUNTIME', 1)
+
+  if 'address' in options.sanitize:
+    settings.USE_ASAN = 1
+    default_setting('EXIT_RUNTIME', 1)
+    if not settings.UBSAN_RUNTIME:
+      settings.UBSAN_RUNTIME = 2
+
+    settings.REQUIRED_EXPORTS += emscripten.ASAN_C_HELPERS
+
+    if settings.ASYNCIFY and not settings.ASYNCIFY_ONLY:
+      # we do not want asyncify to instrument these helpers - they just access
+      # memory as small getters/setters, so they cannot pause anyhow, and also
+      # we access them in the runtime as we prepare to rewind, which would hit
+      # an asyncify assertion, if asyncify instrumented them.
+      #
+      # note that if ASYNCIFY_ONLY was set by the user then we do not need to
+      # do anything (as the user's list won't contain these functions), and if
+      # we did add them, the pass would assert on incompatible lists, hence the
+      # condition in the above if.
+      settings.ASYNCIFY_REMOVE.append("__asan_*")
+
+    if settings.ASAN_SHADOW_SIZE != -1:
+      diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
+
+    if 'GLOBAL_BASE' in user_settings:
+      exit_with_error("ASan does not support custom GLOBAL_BASE")
+
+    # Increase the INITIAL_MEMORY and shift GLOBAL_BASE to account for
+    # the ASan shadow region which starts at address zero.
+    # The shadow region is 1/8th the size of the total memory and is
+    # itself part of the total memory.
+    # We use the following variables in this calculation:
+    # - user_mem : memory usable/visible by the user program.
+    # - shadow_size : memory used by asan for shadow memory.
+    # - total_mem : the sum of the above. this is the size of the wasm memory (and must be aligned to WASM_PAGE_SIZE)
+    user_mem = settings.MAXIMUM_MEMORY
+    if not settings.ALLOW_MEMORY_GROWTH and settings.INITIAL_MEMORY != -1:
+      user_mem = settings.INITIAL_MEMORY
+
+    # Given the know value of user memory size we can work backwards
+    # to find the total memory and the shadow size based on the fact
+    # that the user memory is 7/8ths of the total memory.
+    # (i.e. user_mem == total_mem * 7 / 8
+    # TODO-Bug?: this does not look to handle 4GB MAXIMUM_MEMORY correctly.
+    total_mem = user_mem * 8 / 7
+
+    # But we might need to re-align to wasm page size
+    total_mem = int(align_to_wasm_page_boundary(total_mem))
+
+    # The shadow size is 1/8th the resulting rounded up size
+    shadow_size = total_mem // 8
+
+    # We start our global data after the shadow memory.
+    # We don't need to worry about alignment here.  wasm-ld will take care of that.
+    settings.GLOBAL_BASE = shadow_size
+
+    # Adjust INITIAL_MEMORY (if needed) to account for the shifted global base.
+    if settings.INITIAL_MEMORY != -1:
+      if settings.ALLOW_MEMORY_GROWTH:
+        settings.INITIAL_MEMORY += align_to_wasm_page_boundary(shadow_size)
+      else:
+        settings.INITIAL_MEMORY = total_mem
+
+    if settings.SAFE_HEAP:
+      # SAFE_HEAP instruments ASan's shadow memory accesses.
+      # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
+      # by SAFE_HEAP as a null pointer dereference.
+      exit_with_error('ASan does not work with SAFE_HEAP')
+
+    if settings.MEMORY64:
+      exit_with_error('MEMORY64 does not yet work with ASAN')
+
+  if settings.GENERATE_SOURCE_MAP:
+    settings.LOAD_SOURCE_MAP = 1
+
+
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   """Future modifications should consider refactoring to reduce complexity.
@@ -1549,122 +1667,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     diagnostics.warning('emcc', 'JavaScript output suffix requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
   if options.sanitize:
-    if settings.WASM_WORKERS:
-      exit_with_error('WASM_WORKERS is not currently compatible with `-fsanitize` tools')
-    # These symbols are needed by `withBuiltinMalloc` which used to implement
-    # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS
-    # symbol graph generated when we run the compiler with `--symbols-only`.
-    settings.REQUIRED_EXPORTS += [
-      'malloc',
-      'calloc',
-      'realloc',
-      'memalign',
-      'free',
-      'emscripten_builtin_malloc',
-      'emscripten_builtin_calloc',
-      'emscripten_builtin_realloc',
-      'emscripten_builtin_memalign',
-      'emscripten_builtin_free',
-    ]
-
-  if ('leak' in options.sanitize or 'address' in options.sanitize) and not settings.ALLOW_MEMORY_GROWTH:
-    # Increase the minimum memory requirements to account for extra memory
-    # that the sanitizers might need (in addition to the shadow memory
-    # requirements handled below).
-    # These values are designed be an over-estimate of the actual requirements and
-    # are based on experimentation with different tests/programs under asan and
-    # lsan.
-    inc_initial_memory(50 * 1024 * 1024)
-    if settings.PTHREADS:
-      inc_initial_memory(50 * 1024 * 1024)
-
-  if options.sanitize & UBSAN_SANITIZERS:
-    if options.sanitize_minimal_runtime:
-      settings.UBSAN_RUNTIME = 1
-    else:
-      settings.UBSAN_RUNTIME = 2
-
-  if 'leak' in options.sanitize:
-    settings.USE_LSAN = 1
-    default_setting('EXIT_RUNTIME', 1)
-
-  if 'address' in options.sanitize:
-    settings.USE_ASAN = 1
-    default_setting('EXIT_RUNTIME', 1)
-    if not settings.UBSAN_RUNTIME:
-      settings.UBSAN_RUNTIME = 2
-
-    settings.REQUIRED_EXPORTS += emscripten.ASAN_C_HELPERS
-
-    if settings.ASYNCIFY and not settings.ASYNCIFY_ONLY:
-      # we do not want asyncify to instrument these helpers - they just access
-      # memory as small getters/setters, so they cannot pause anyhow, and also
-      # we access them in the runtime as we prepare to rewind, which would hit
-      # an asyncify assertion, if asyncify instrumented them.
-      #
-      # note that if ASYNCIFY_ONLY was set by the user then we do not need to
-      # do anything (as the user's list won't contain these functions), and if
-      # we did add them, the pass would assert on incompatible lists, hence the
-      # condition in the above if.
-      settings.ASYNCIFY_REMOVE.append("__asan_*")
-
-    if settings.ASAN_SHADOW_SIZE != -1:
-      diagnostics.warning('emcc', 'ASAN_SHADOW_SIZE is ignored and will be removed in a future release')
-
-    if 'GLOBAL_BASE' in user_settings:
-      exit_with_error("ASan does not support custom GLOBAL_BASE")
-
-    # Increase the INITIAL_MEMORY and shift GLOBAL_BASE to account for
-    # the ASan shadow region which starts at address zero.
-    # The shadow region is 1/8th the size of the total memory and is
-    # itself part of the total memory.
-    # We use the following variables in this calculation:
-    # - user_mem : memory usable/visible by the user program.
-    # - shadow_size : memory used by asan for shadow memory.
-    # - total_mem : the sum of the above. this is the size of the wasm memory (and must be aligned to WASM_PAGE_SIZE)
-    user_mem = settings.MAXIMUM_MEMORY
-    if not settings.ALLOW_MEMORY_GROWTH and settings.INITIAL_MEMORY != -1:
-      user_mem = settings.INITIAL_MEMORY
-
-    # Given the know value of user memory size we can work backwards
-    # to find the total memory and the shadow size based on the fact
-    # that the user memory is 7/8ths of the total memory.
-    # (i.e. user_mem == total_mem * 7 / 8
-    # TODO-Bug?: this does not look to handle 4GB MAXIMUM_MEMORY correctly.
-    total_mem = user_mem * 8 / 7
-
-    # But we might need to re-align to wasm page size
-    total_mem = int(align_to_wasm_page_boundary(total_mem))
-
-    # The shadow size is 1/8th the resulting rounded up size
-    shadow_size = total_mem // 8
-
-    # We start our global data after the shadow memory.
-    # We don't need to worry about alignment here.  wasm-ld will take care of that.
-    settings.GLOBAL_BASE = shadow_size
-
-    # Adjust INITIAL_MEMORY (if needed) to account for the shifted global base.
-    if settings.INITIAL_MEMORY != -1:
-      if settings.ALLOW_MEMORY_GROWTH:
-        settings.INITIAL_MEMORY += align_to_wasm_page_boundary(shadow_size)
-      else:
-        settings.INITIAL_MEMORY = total_mem
-
-    if settings.SAFE_HEAP:
-      # SAFE_HEAP instruments ASan's shadow memory accesses.
-      # Since the shadow memory starts at 0, the act of accessing the shadow memory is detected
-      # by SAFE_HEAP as a null pointer dereference.
-      exit_with_error('ASan does not work with SAFE_HEAP')
-
-    if settings.MEMORY64:
-      exit_with_error('MEMORY64 does not yet work with ASAN')
+    setup_sanitizers(options)
 
   if settings.USE_ASAN or settings.SAFE_HEAP:
     # ASan and SAFE_HEAP check address 0 themselves
     settings.CHECK_NULL_WRITES = 0
-
-  if options.sanitize and settings.GENERATE_SOURCE_MAP:
-    settings.LOAD_SOURCE_MAP = 1
 
   if 'GLOBAL_BASE' not in user_settings and not settings.SHRINK_LEVEL and not settings.OPT_LEVEL and not settings.USE_ASAN:
     # When optimizing for size it helps to put static data first before
