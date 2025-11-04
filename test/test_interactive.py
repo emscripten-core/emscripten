@@ -13,7 +13,7 @@ if __name__ == '__main__':
 from common import BrowserCore, create_file, test_file
 from decorators import also_with_minimal_runtime, parameterized
 
-from tools.shared import WINDOWS
+from tools.utils import WINDOWS
 
 
 class interactive(BrowserCore):

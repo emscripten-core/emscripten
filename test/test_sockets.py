@@ -28,8 +28,8 @@ from decorators import (
 )
 
 from tools import config
-from tools.shared import CLANG_CC, EMCC, path_from_root
-from tools.utils import run_process
+from tools.shared import CLANG_CC, EMCC
+from tools.utils import path_from_root, run_process
 
 npm_checked = False
 

@@ -65,8 +65,8 @@ from decorators import (
 
 from tools import ports, shared
 from tools.feature_matrix import Feature
-from tools.shared import DEBUG, EMCC, FILE_PACKAGER, PIPE, WINDOWS
-from tools.utils import delete_dir
+from tools.shared import DEBUG, EMCC, FILE_PACKAGER, PIPE
+from tools.utils import WINDOWS, delete_dir
 
 
 def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):

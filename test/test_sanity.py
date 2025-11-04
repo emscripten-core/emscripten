@@ -807,7 +807,7 @@ fi
     self.assert_fail([EMCC, test_file('hello_world.c')], expected)
 
     # Running bootstrap.py should fix that
-    bootstrap = shared.bat_suffix(shared.path_from_root('bootstrap'))
+    bootstrap = shared.bat_suffix(path_from_root('bootstrap'))
     self.run_process([bootstrap])
 
     # Now the compiler should work again
@@ -828,4 +828,4 @@ fi
     env['PATH'] = os.pathsep.join(new_path)
 
     # Running bootstrap.py should not fail
-    self.run_process([shared.bat_suffix(shared.path_from_root('bootstrap'))], env=env)
+    self.run_process([shared.bat_suffix(path_from_root('bootstrap'))], env=env)

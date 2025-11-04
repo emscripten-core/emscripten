@@ -124,7 +124,7 @@ def create_reproduce_file(name, args):
 
   root = unsuffixed_basename(name)
   with tarfile.open(name, 'w') as reproduce_file:
-    reproduce_file.add(shared.path_from_root('emscripten-version.txt'), os.path.join(root, 'version.txt'))
+    reproduce_file.add(utils.path_from_root('emscripten-version.txt'), os.path.join(root, 'version.txt'))
 
     with shared.get_temp_files().get_file(suffix='.tar') as rsp_name:
       with open(rsp_name, 'w') as rsp:

@@ -44,13 +44,11 @@ import contextlib
 from . import cache, config, diagnostics, filelock, tempfiles, utils
 from .settings import settings
 from .utils import (
-  WINDOWS,
   bat_suffix,
   exit_with_error,
   memoize,
   path_from_root,
   safe_ensure_dirs,
-  set_version_globals,
 )
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
@@ -213,7 +211,7 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
 
 
 def get_npm_cmd(name, missing_ok=False):
-  if WINDOWS:
+  if utils.WINDOWS:
     cmd = [path_from_root('node_modules/.bin', name + '.cmd')]
   else:
     cmd = config.NODE_JS + [path_from_root('node_modules/.bin', name)]
@@ -626,7 +624,7 @@ def get_llvm_target():
 
 
 def init():
-  set_version_globals()
+  utils.set_version_globals()
   setup_temp_dirs()
 
 
