@@ -114,6 +114,10 @@ class EmccOptions:
   valid_abspaths: List[str] = []
 
 
+# Global/singleton EmccOptions
+options = EmccOptions()
+
+
 def is_int(s):
   try:
     int(s)
@@ -151,7 +155,7 @@ def version_string():
   return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {utils.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
-def is_valid_abspath(options, path_name):
+def is_valid_abspath(path_name):
   # Any path that is underneath the emscripten repository root must be ok.
   if utils.normalize_path(path_name).startswith(utils.normalize_path(utils.path_from_root())):
     return True
@@ -225,7 +229,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
-  options = EmccOptions()
   should_exit = False
   skip = False
 
@@ -495,7 +498,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       path_name = arg[2:]
       # Look for '/' explicitly so that we can also diagnose identically if -I/foo/bar is passed on Windows.
       # Python since 3.13 does not treat '/foo/bar' as an absolute path on Windows.
-      if (path_name.startswith('/') or os.path.isabs(path_name)) and not is_valid_abspath(options, path_name):
+      if (path_name.startswith('/') or os.path.isabs(path_name)) and not is_valid_abspath(path_name):
         # Of course an absolute path to a non-system-specific library or header
         # is fine, and you can ignore this warning. The danger are system headers
         # that are e.g. x86 specific and non-portable. The emscripten bundled
@@ -640,8 +643,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
   if should_exit:
     sys.exit(0)
 
-  newargs = [a for a in newargs if a]
-  return options, newargs
+  return [a for a in newargs if a]
 
 
 def expand_byte_size_suffixes(value):
@@ -853,7 +855,7 @@ def parse_arguments(args):
       newargs[i] += newargs[i + 1]
       newargs[i + 1] = ''
 
-  options, newargs = parse_args(newargs)
+  newargs = parse_args(newargs)
 
   if options.post_link or options.oformat == OFormat.BARE:
     diagnostics.warning('experimental', '--oformat=bare/--post-link are experimental and subject to change.')
@@ -873,4 +875,4 @@ def parse_arguments(args):
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   apply_user_settings()
 
-  return options, newargs
+  return newargs

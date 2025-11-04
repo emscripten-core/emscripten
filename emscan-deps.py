@@ -16,7 +16,7 @@ from tools import cmdline, compile, shared
 argv = sys.argv[1:]
 
 # Parse and discard any emcc-specific flags (e.g. -sXXX).
-newargs = cmdline.parse_arguments(argv)[1]
+newargs = cmdline.parse_arguments(argv)
 
 # Add any clang flags that emcc would add.
 newargs += compile.get_cflags(tuple(argv))
