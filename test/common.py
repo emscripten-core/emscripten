@@ -107,8 +107,8 @@ EMTEST_RESTART_BROWSER_EVERY_N_TESTS = int(os.getenv('EMTEST_RESTART_BROWSER_EVE
 # If we are drawing a parallel swimlane graph of test output, we need to use a temp
 # file to track which tests were flaky so they can be graphed in orange color to
 # visually stand out.
-flaky_tests_log_filename = os.path.join(path_from_root('out/flaky_tests.txt'))
-browser_spawn_lock_filename = os.path.join(path_from_root('out/browser_spawn_lock'))
+flaky_tests_log_filename = path_from_root('out/flaky_tests.txt')
+browser_spawn_lock_filename = path_from_root('out/browser_spawn_lock')
 
 
 @memoize
@@ -116,7 +116,7 @@ def get_safari_version():
   if not is_safari():
     return UNSUPPORTED
   plist_path = os.path.join(EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
-  version_str = plistlib.load(open(plist_path, 'rb')).get('CFBundleShortVersionString')
+  version_str = plistlib.load(read_binary(plist_path)).get('CFBundleShortVersionString')
   # Split into parts (major.minor.patch)
   parts = (version_str.split('.') + ['0', '0', '0'])[:3]
   # Convert each part into integers, discarding any trailing string, e.g. '13a' -> 13.
@@ -132,7 +132,7 @@ def get_firefox_version():
   exe_path = shlex.split(EMTEST_BROWSER)[0]
   ini_path = os.path.join(os.path.dirname(exe_path), "platform.ini")
   # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
-  m = re.search(r"^Milestone=(.*)$", open(ini_path).read(), re.MULTILINE)
+  m = re.search(r"^Milestone=(.*)$", read_file(ini_path), re.MULTILINE)
   milestone = m.group(1).strip()
   version = int(re.match(r"(\d+)", milestone).group(1))
   # On Nightly and Beta, e.g. 145.0a1, pretend it to still mean version 144,
