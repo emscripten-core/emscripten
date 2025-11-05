@@ -145,7 +145,7 @@ def version_string():
   # look up and find the revision in a parent directory that is a git repo
   revision_suffix = ''
   if os.path.exists(utils.path_from_root('.git')):
-    git_rev = shared.run_process(
+    git_rev = utils.run_process(
       ['git', 'rev-parse', 'HEAD'],
       stdout=PIPE, stderr=PIPE, cwd=utils.path_from_root()).stdout.strip()
     revision_suffix = ' (%s)' % git_rev

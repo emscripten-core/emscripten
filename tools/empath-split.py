@@ -68,7 +68,7 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import building, diagnostics, emsymbolizer, shared, utils, webassembly
+from tools import building, diagnostics, emsymbolizer, utils, webassembly
 from tools.utils import exit_with_error
 
 
@@ -349,7 +349,7 @@ def main():
     cmd += forwarded_args
     if args.verbose:
       print('\n' + ' '.join(cmd))
-    shared.run_process(cmd)
+    utils.run_process(cmd)
   finally:
     if not args.preserve_manifest:
       os.remove(manifest)

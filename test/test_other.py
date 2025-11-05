@@ -268,7 +268,7 @@ def requires_pkg_config(func):
 
 
 def llvm_nm(file):
-  output = shared.run_process([LLVM_NM, file], stdout=PIPE).stdout
+  output = utils.run_process([LLVM_NM, file], stdout=PIPE).stdout
 
   symbols = {
     'defs': set(),

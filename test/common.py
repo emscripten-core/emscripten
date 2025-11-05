@@ -959,7 +959,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       #  ES-Check: there were no ES version matching errors!
       # pipe stdout and stderr so that we can choose if/when to print this
       # output and avoid spamming stdout when tests are successful.
-      shared.run_process(es_check + ['es5', inputfile], stdout=PIPE, stderr=STDOUT, env=es_check_env)
+      utils.run_process(es_check + ['es5', inputfile], stdout=PIPE, stderr=STDOUT, env=es_check_env)
     except subprocess.CalledProcessError as e:
       print(e.stdout)
       self.fail('es-check failed to verify ES5 output compliance')
@@ -1296,7 +1296,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       utils.delete_contents(shared.EMSCRIPTEN_TEMP_DIR)
 
   def run_process(self, cmd, check=True, **kwargs):
-    # Wrapper around shared.run_process.  This is desirable so that the tests
+    # Wrapper around utils.run_process.  This is desirable so that the tests
     # can fail (in the unittest sense) rather than error'ing.
     # In the long run it would nice to completely remove the dependency on
     # core emscripten code (shared.py) here.
@@ -1312,7 +1312,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       kwargs['stderr'] = PIPE
 
     try:
-      rtn = shared.run_process(cmd, check=check, **kwargs)
+      rtn = utils.run_process(cmd, check=check, **kwargs)
     except subprocess.CalledProcessError as e:
       if check and e.returncode != 0:
         print(e.stdout)
@@ -2349,8 +2349,7 @@ def build_library(name,
         with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
           stdout = out if EMTEST_BUILD_VERBOSE < 2 else None
           stderr = err if EMTEST_BUILD_VERBOSE < 1 else None
-          shared.run_process(configure, env=env, stdout=stdout, stderr=stderr,
-                             cwd=project_dir)
+          utils.run_process(configure, env=env, stdout=stdout, stderr=stderr, cwd=project_dir)
     except subprocess.CalledProcessError:
       print('-- configure stdout --')
       print(read_file(Path(project_dir, 'configure_out')))
@@ -2378,8 +2377,7 @@ def build_library(name,
       with open_make_err('w') as make_err:
         stdout = make_out if EMTEST_BUILD_VERBOSE < 2 else None
         stderr = make_err if EMTEST_BUILD_VERBOSE < 1 else None
-        shared.run_process(make + make_args, stdout=stdout, stderr=stderr, env=env,
-                           cwd=project_dir)
+        utils.run_process(make + make_args, stdout=stdout, stderr=stderr, env=env, cwd=project_dir)
   except subprocess.CalledProcessError:
     with open_make_out() as f:
       print('-- make stdout --')
