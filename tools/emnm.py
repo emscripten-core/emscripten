@@ -16,4 +16,4 @@ sys.path.insert(0, __rootdir__)
 
 from tools import shared
 
-shared.exec_process([shared.LLVM_NM] + sys.argv[1:])
+shared.exec_process([shared.paths.LLVM_NM] + sys.argv[1:])

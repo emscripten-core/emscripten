@@ -70,8 +70,11 @@ from decorators import (
 
 from tools import ports, shared
 from tools.feature_matrix import Feature
-from tools.shared import EMCC, FILE_PACKAGER, PIPE
+from tools.shared import PIPE, paths
 from tools.utils import WINDOWS, delete_dir
+
+EMCC = paths.EMCC
+FILE_PACKAGER = paths.FILE_PACKAGER
 
 
 def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):

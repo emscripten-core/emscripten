@@ -630,8 +630,8 @@ def log_test_environment():
     print(f'LLVM git directory: "{llvm_git_root}"')
     print_repository_info(llvm_git_root, 'LLVM')
 
-  clang_version = utils.run_process([shared.CLANG_CC, '--version'], stdout=subprocess.PIPE).stdout.strip()
-  print(f'Clang: "{shared.CLANG_CC}"\n{clang_version}\n')
+  clang_version = utils.run_process([shared.paths.CLANG_CC, '--version'], stdout=subprocess.PIPE).stdout.strip()
+  print(f'Clang: "{shared.paths.CLANG_CC}"\n{clang_version}\n')
 
   print(f'EMTEST_BROWSER: {browser_common.EMTEST_BROWSER}')
   if browser_common.is_firefox():

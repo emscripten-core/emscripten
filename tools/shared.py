@@ -219,9 +219,9 @@ def get_npm_cmd(name, missing_ok=False):
 
 @memoize
 def get_clang_version():
-  if not os.path.exists(CLANG_CC):
-    exit_with_error('clang executable not found at `%s`' % CLANG_CC)
-  proc = check_call([CLANG_CC, '--version'], stdout=PIPE)
+  if not os.path.exists(paths.CLANG_CC):
+    exit_with_error('clang executable not found at `%s`' % paths.CLANG_CC)
+  proc = check_call([paths.CLANG_CC, '--version'], stdout=PIPE)
   m = re.search(r'[Vv]ersion\s+(\d+\.\d+)', proc.stdout)
   return m and m.group(1)
 
@@ -236,19 +236,20 @@ def check_llvm_version():
   if 'BUILDBOT_BUILDNUMBER' in os.environ:
     if actual.startswith('%d.' % (EXPECTED_LLVM_VERSION + 1)):
       return True
-  diagnostics.warning('version-check', 'LLVM version for clang executable "%s" appears incorrect (seeing "%s", expected "%s")', CLANG_CC, actual, EXPECTED_LLVM_VERSION)
+  diagnostics.warning('version-check', 'LLVM version for clang executable "%s" appears incorrect (seeing "%s", expected "%s")', paths.CLANG_CC, actual, EXPECTED_LLVM_VERSION)
   return False
 
 
 def get_clang_targets():
-  if not os.path.exists(CLANG_CC):
-    exit_with_error('clang executable not found at `%s`' % CLANG_CC)
+  clang = paths.CLANG_CC
+  if not os.path.exists(clang):
+    exit_with_error('clang executable not found at `%s`' % clang)
   try:
-    target_info = utils.run_process([CLANG_CC, '-print-targets'], stdout=PIPE).stdout
+    target_info = utils.run_process([clang, '-print-targets'], stdout=PIPE).stdout
   except subprocess.CalledProcessError:
-    exit_with_error('error running `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
+    exit_with_error('error running `clang -print-targets`.  Check your llvm installation (%s)' % clang)
   if 'Registered Targets:' not in target_info:
-    exit_with_error('error parsing output of `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
+    exit_with_error('error parsing output of `clang -print-targets`.  Check your llvm installation (%s)' % clang)
   return target_info.split('Registered Targets:')[1]
 
 
@@ -367,7 +368,7 @@ def perform_sanity_checks(quiet=False):
   check_node()
 
   with ToolchainProfiler.profile_block('sanity LLVM'):
-    for cmd in (CLANG_CC, LLVM_AR):
+    for cmd in (paths.CLANG_CC, paths.LLVM_AR):
       if not os.path.exists(cmd) and not os.path.exists(cmd + '.exe'):  # .exe extension required for Windows
         exit_with_error('cannot find %s, check the paths in %s', cmd, config.EM_CONFIG)
 
@@ -617,7 +618,34 @@ def get_llvm_target():
     return 'wasm32-unknown-emscripten'
 
 
+class Paths:
+  pass
+
+
+def setup_paths():
+  paths.CLANG_CC = clang_tool_path('clang')
+  paths.CLANG_CXX = clang_tool_path('clang++')
+  paths.CLANG_SCAN_DEPS = llvm_tool_path('clang-scan-deps')
+  paths.LLVM_AR = llvm_tool_path('llvm-ar')
+  paths.LLVM_DWP = llvm_tool_path('llvm-dwp')
+  paths.LLVM_RANLIB = llvm_tool_path('llvm-ranlib')
+  paths.LLVM_NM = llvm_tool_path('llvm-nm')
+  paths.LLVM_DWARFDUMP = llvm_tool_path('llvm-dwarfdump')
+  paths.LLVM_OBJCOPY = llvm_tool_path('llvm-objcopy')
+  paths.LLVM_STRIP = llvm_tool_path('llvm-strip')
+  paths.WASM_LD = llvm_tool_path('wasm-ld')
+  paths.LLVM_PROFDATA = llvm_tool_path('llvm-profdata')
+  paths.LLVM_COV = llvm_tool_path('llvm-cov')
+
+  paths.EMCC = bat_suffix(path_from_root('emcc'))
+  paths.EMXX = bat_suffix(path_from_root('em++'))
+  paths.EMAR = bat_suffix(path_from_root('emar'))
+  paths.EMRANLIB = bat_suffix(path_from_root('emranlib'))
+  paths.FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
+
+
 def init():
+  setup_paths()
   utils.set_version_globals()
   setup_temp_dirs()
 
@@ -630,29 +658,10 @@ def init():
 # file.  TODO(sbc): We should try to reduce that amount we do here and instead
 # have consumers explicitly call initialization functions.
 
-CLANG_CC = clang_tool_path('clang')
-CLANG_CXX = clang_tool_path('clang++')
-CLANG_SCAN_DEPS = llvm_tool_path('clang-scan-deps')
-LLVM_AR = llvm_tool_path('llvm-ar')
-LLVM_DWP = llvm_tool_path('llvm-dwp')
-LLVM_RANLIB = llvm_tool_path('llvm-ranlib')
-LLVM_NM = llvm_tool_path('llvm-nm')
-LLVM_DWARFDUMP = llvm_tool_path('llvm-dwarfdump')
-LLVM_OBJCOPY = llvm_tool_path('llvm-objcopy')
-LLVM_STRIP = llvm_tool_path('llvm-strip')
-WASM_LD = llvm_tool_path('wasm-ld')
-LLVM_PROFDATA = llvm_tool_path('llvm-profdata')
-LLVM_COV = llvm_tool_path('llvm-cov')
-
-EMCC = bat_suffix(path_from_root('emcc'))
-EMXX = bat_suffix(path_from_root('em++'))
-EMAR = bat_suffix(path_from_root('emar'))
-EMRANLIB = bat_suffix(path_from_root('emranlib'))
-FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
 # Windows .dll suffix is not included in this list, since those are never
 # linked to directly on the command line.
 DYLIB_EXTENSIONS = ['.dylib', '.so']
-
 run_via_emxx = False
+paths = Paths()
 
 init()

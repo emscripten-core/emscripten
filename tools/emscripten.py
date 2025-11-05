@@ -29,7 +29,7 @@ from tools import (
   webassembly,
 )
 from tools.settings import settings, user_settings
-from tools.shared import DEBUG, asmjs_mangle, in_temp
+from tools.shared import DEBUG, asmjs_mangle, in_temp, paths
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import exit_with_error, path_from_root, removeprefix
 
@@ -497,7 +497,7 @@ def finalize_wasm(infile, outfile, js_syms):
       with shared.get_temp_files().get_file('.bin') as url_file:
         utils.write_binary(url_file,
                            leb128.u.encode(len(base_url)) + base_url.encode('utf-8'))
-        cmd = [shared.LLVM_OBJCOPY,
+        cmd = [paths.LLVM_OBJCOPY,
                '--add-section',
                'sourceMappingURL=' + url_file,
                infile]

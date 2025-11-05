@@ -72,7 +72,7 @@ from decorators import (
 )
 
 from tools import building, config, shared, utils, webassembly
-from tools.shared import EMAR, EMCC, EMXX, FILE_PACKAGER, LLVM_COV, LLVM_PROFDATA, PIPE
+from tools.shared import PIPE, paths
 from tools.utils import LINUX, MACOS, WINDOWS, delete_file, write_file
 
 # decorators for limiting which modes a test can run in
@@ -81,6 +81,10 @@ logger = logging.getLogger("test_core")
 
 EM_SIGINT = 2
 EM_SIGABRT = 6
+
+EMAR = paths.EMAR
+EMCC = paths.EMCC
+EMXX = paths.EMXX
 
 
 def esm_integration(func):
@@ -6615,7 +6619,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse1(self, args):
     src = test_file('sse/test_sse1.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([paths.CLANG_CXX, src, '-msse', '-o', 'test_sse1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse1', stdout=PIPE).stdout
 
     self.maybe_closure()
@@ -6636,7 +6640,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse2(self, args):
     src = test_file('sse/test_sse2.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([paths.CLANG_CXX, src, '-msse2', '-Wno-argument-outside-range', '-o', 'test_sse2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse2', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), '-msse2', '-fno-inline-functions', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
@@ -6650,7 +6654,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_sse3(self):
     src = test_file('sse/test_sse3.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([paths.CLANG_CXX, src, '-msse3', '-Wno-argument-outside-range', '-o', 'test_sse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse3', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), '-msse3', '-Wno-argument-outside-range']
@@ -6664,7 +6668,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_ssse3(self):
     src = test_file('sse/test_ssse3.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([paths.CLANG_CXX, src, '-mssse3', '-Wno-argument-outside-range', '-o', 'test_ssse3', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_ssse3', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), '-mssse3', '-Wno-argument-outside-range']
@@ -6681,7 +6685,7 @@ void* operator new(size_t size) {
   def test_sse4_1(self):
     src = test_file('sse/test_sse4_1.cpp')
     # Run with inlining disabled to avoid slow LLVM behavior with lots of macro expanded loops inside a function body.
-    self.run_process([shared.CLANG_CXX, src, '-msse4.1', '-fno-inline-functions', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([paths.CLANG_CXX, src, '-msse4.1', '-fno-inline-functions', '-Wno-argument-outside-range', '-o', 'test_sse4_1', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse4_1', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), '-msse4.1', '-fno-inline-functions', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB']
@@ -6700,7 +6704,7 @@ void* operator new(size_t size) {
   def test_sse4(self, use_4_2):
     msse4 = '-msse4.2' if use_4_2 else '-msse4'
     src = test_file('sse/test_sse4_2.cpp')
-    self.run_process([shared.CLANG_CXX, src, msse4, '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([paths.CLANG_CXX, src, msse4, '-Wno-argument-outside-range', '-o', 'test_sse4_2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_sse4_2', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), msse4, '-Wno-argument-outside-range']
@@ -6721,7 +6725,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_avx(self, args):
     src = test_file('sse/test_avx.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([paths.CLANG_CXX, src, '-mavx', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_avx', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), '-mavx', '-fno-inline-functions', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
@@ -6742,7 +6746,7 @@ void* operator new(size_t size) {
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_avx2(self, args):
     src = test_file('sse/test_avx2.cpp')
-    self.run_process([shared.CLANG_CXX, src, '-mavx2', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    self.run_process([paths.CLANG_CXX, src, '-mavx2', '-Wno-argument-outside-range', '-Wpedantic', '-o', 'test_avx2', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
     native_result = self.run_process('./test_avx2', stdout=PIPE).stdout
 
     self.cflags += ['-I' + test_file('sse'), '-mavx2', '-Wno-argument-outside-range', '-sSTACK_SIZE=1MB'] + args
@@ -6754,9 +6758,7 @@ void* operator new(size_t size) {
     self.cflags.remove('-Werror')
     src = test_file('sse/test_sse_diagnostic.cpp')
 
-    p = self.run_process(
-      [shared.EMXX, src, '-msse', '-DWASM_SIMD_COMPAT_SLOW'] + self.get_cflags(),
-      stderr=PIPE)
+    p = self.run_process([paths.EMXX, src, '-msse', '-DWASM_SIMD_COMPAT_SLOW'] + self.get_cflags(), stderr=PIPE)
     self.assertContained('Instruction emulated via slow path.', p.stderr)
 
   @wasm_relaxed_simd
@@ -7976,7 +7978,7 @@ void* operator new(size_t size) {
 
     self.emcc('test_dwarf.c')
 
-    out = self.run_process([shared.LLVM_DWARFDUMP, 'a.out.wasm', '-all'], stdout=PIPE).stdout
+    out = self.run_process([paths.LLVM_DWARFDUMP, 'a.out.wasm', '-all'], stdout=PIPE).stdout
 
     # parse the sections
     sections = {}
@@ -9696,7 +9698,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     create_file('file2.txt', 'second')
     # `--from-emcc` needed here otherwise the output defines `var Module =` which will shadow the
     # global `Module`.
-    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
+    self.run_process([paths.FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
     self.do_runf('test_emscripten_async_load_script.c', cflags=['-sFORCE_FILESYSTEM'])
 
   @node_pthreads
@@ -9836,9 +9838,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_hello_world.c', cflags=['-fprofile-instr-generate', '-fcoverage-mapping', '-g'])
     self.assertExists('default.profraw')
-    self.run_process([LLVM_PROFDATA, 'merge', '-sparse', 'default.profraw', '-o', 'out.profdata'])
+    self.run_process([paths.LLVM_PROFDATA, 'merge', '-sparse', 'default.profraw', '-o', 'out.profdata'])
     self.assertExists('out.profdata')
-    self.assertEqual(expected, self.run_process([LLVM_COV, 'show', 'test_hello_world.wasm', '-instr-profile=out.profdata'], stdout=PIPE).stdout)
+    self.assertEqual(expected, self.run_process([paths.LLVM_COV, 'show', 'test_hello_world.wasm', '-instr-profile=out.profdata'], stdout=PIPE).stdout)
 
 # Generate tests for everything
 def make_run(name, cflags=None, settings=None, env=None, # noqa

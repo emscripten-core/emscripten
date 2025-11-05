@@ -9,8 +9,10 @@ from subprocess import PIPE
 from common import RunnerCore, create_file, read_file, test_file
 from decorators import parameterized
 
-from tools.shared import EMCC
+from tools.shared import paths
 from tools.utils import delete_file
+
+EMCC = paths.EMCC
 
 
 class jslib(RunnerCore):
