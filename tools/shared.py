@@ -43,13 +43,7 @@ import contextlib
 
 from . import cache, config, diagnostics, filelock, tempfiles, utils
 from .settings import settings
-from .utils import (
-  bat_suffix,
-  exit_with_error,
-  memoize,
-  path_from_root,
-  safe_ensure_dirs,
-)
+from .utils import bat_suffix, exit_with_error, memoize, path_from_root, safe_ensure_dirs
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
