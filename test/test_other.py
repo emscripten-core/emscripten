@@ -3742,7 +3742,7 @@ More info: https://emscripten.org
     shared.check_call(cmd)
 
   def test_emit_tsd_wasm_only(self):
-    expected = 'Wasm only output is not compatible --emit-tsd'
+    expected = 'Wasm only output is not compatible with --emit-tsd'
     self.assert_fail([EMCC, test_file('other/test_emit_tsd.c'), '--emit-tsd', 'test_emit_tsd_wasm_only.d.ts', '-o', 'out.wasm'], expected)
 
   def test_emconfig(self):
