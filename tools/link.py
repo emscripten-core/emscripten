@@ -357,45 +357,57 @@ def should_run_binaryen_optimizer():
   return settings.OPT_LEVEL >= 2
 
 
-def get_binaryen_passes(options):
+def get_binaryen_lowering_passes():
   passes = []
+
+  # The following features are all enabled in llvm by default and therefore
+  # enabled in the emscripten system libraries.  This means that we need to
+  # lower them away using binaryen passes, if they are not enabled in the
+  # feature matrix.
+  # This can happen if the feature is explicitly disabled on the command line,
+  # or when targeting an VM/engine that does not support the feature.
+
+  # List of [<feature_name>, <lowering_flag>] pairs.
+  features = [
+    [feature_matrix.Feature.SIGN_EXT, '--signext-lowering'],
+    [feature_matrix.Feature.NON_TRAPPING_FPTOINT, '--llvm-nontrapping-fptoint-lowering'],
+    [feature_matrix.Feature.BULK_MEMORY, '--llvm-memory-copy-fill-lowering'],
+  ]
+
+  for feature, lowering_flag in features:
+    if not feature_matrix.caniuse(feature):
+      logger.debug(f'lowering {feature.name} feature due to incompatible target browser engines')
+      passes.append(lowering_flag)
+
+  return passes
+
+
+def get_binaryen_passes(options):
+  passes = get_binaryen_lowering_passes()
   optimizing = should_run_binaryen_optimizer()
-  # wasm-emscripten-finalize will strip the features section for us
-  # automatically, but if we did not modify the wasm then we didn't run it,
-  # and in an optimized build we strip it manually here. (note that in an
-  # unoptimized build we might end up with the features section, if we neither
-  # optimize nor run wasm-emscripten-finalize, but a few extra bytes in the
-  # binary don't matter in an unoptimized build)
-  if optimizing:
-    passes += ['--strip-target-features']
+
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if settings.SAFE_HEAP:
     passes += ['--safe-heap']
-  # sign-ext is enabled by default by llvm.  If the target browser settings don't support
-  # this we lower it away here using a binaryen pass.
-  if not feature_matrix.caniuse(feature_matrix.Feature.SIGN_EXT):
-    logger.debug('lowering sign-ext feature due to incompatible target browser engines')
-    passes += ['--signext-lowering']
-  # nontrapping-fp is enabled by default in llvm. Lower it away if requested.
-  if not feature_matrix.caniuse(feature_matrix.Feature.NON_TRAPPING_FPTOINT):
-    logger.debug('lowering nontrapping-fp feature due to incompatible target browser engines')
-    passes += ['--llvm-nontrapping-fptoint-lowering']
-  if not feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY):
-    logger.debug('lowering bulk-memory feature due to incompatible target browser engines')
-    passes += ['--llvm-memory-copy-fill-lowering']
   if optimizing:
+    # wasm-emscripten-finalize will strip the features section for us
+    # automatically, but if we did not modify the wasm then we didn't run it,
+    # and in an optimized build we strip it manually here. (note that in an
+    # unoptimized build we might end up with the features section, if we neither
+    # optimize nor run wasm-emscripten-finalize, but a few extra bytes in the
+    # binary don't matter in an unoptimized build)
+    passes += ['--strip-target-features']
     passes += ['--post-emscripten']
     if settings.SIDE_MODULE:
       passes += ['--pass-arg=post-emscripten-side-module']
-  if optimizing:
     passes += [building.opt_level_to_str(settings.OPT_LEVEL, settings.SHRINK_LEVEL)]
+    # when optimizing, use the fact that low memory is never used (1024 is a
+    # hardcoded value in the binaryen pass). we also cannot do it when the stack
+    # is first, as then the stack is in the low memory that should be unused.
+    if settings.GLOBAL_BASE >= 1024 and not settings.STACK_FIRST:
+      passes += ['--low-memory-unused']
   if options.fast_math:
     passes += ['--fast-math']
-  # when optimizing, use the fact that low memory is never used (1024 is a
-  # hardcoded value in the binaryen pass). we also cannot do it when the stack
-  # is first, as then the stack is in the low memory that should be unused.
-  if optimizing and settings.GLOBAL_BASE >= 1024 and not settings.STACK_FIRST:
-    passes += ['--low-memory-unused']
   if settings.AUTODEBUG:
     # adding '--flatten' here may make these even more effective
     passes += ['--instrument-locals']
