@@ -10,6 +10,7 @@ import io
 import json
 import logging
 import os
+import plistlib
 import queue
 import re
 import shlex
@@ -38,11 +39,13 @@ import psutil
 from retryable_unittest import RetryableTestCase
 
 from tools import building, config, feature_matrix, shared, utils
+from tools.feature_matrix import UNSUPPORTED, Feature, min_browser_versions
 from tools.settings import COMPILE_TIME_SETTINGS
 from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir, path_from_root
 from tools.utils import (
   WINDOWS,
   exit_with_error,
+  memoize,
   read_binary,
   read_file,
   write_binary,
@@ -106,6 +109,67 @@ EMTEST_RESTART_BROWSER_EVERY_N_TESTS = int(os.getenv('EMTEST_RESTART_BROWSER_EVE
 # visually stand out.
 flaky_tests_log_filename = os.path.join(path_from_root('out/flaky_tests.txt'))
 browser_spawn_lock_filename = os.path.join(path_from_root('out/browser_spawn_lock'))
+
+
+@memoize
+def get_safari_version():
+  if not is_safari():
+    return UNSUPPORTED
+  plist_path = os.path.join(EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
+  version_str = plistlib.load(open(plist_path, 'rb')).get('CFBundleShortVersionString')
+  # Split into parts (major.minor.patch)
+  parts = (version_str.split('.') + ['0', '0', '0'])[:3]
+  # Convert each part into integers, discarding any trailing string, e.g. '13a' -> 13.
+  parts = [int(re.match(r"\d+", s).group()) if re.match(r"\d+", s) else 0 for s in parts]
+  # Return version as XXYYZZ
+  return parts[0] * 10000 + parts[1] * 100 + parts[2]
+
+
+@memoize
+def get_firefox_version():
+  if not is_firefox():
+    return UNSUPPORTED
+  exe_path = shlex.split(EMTEST_BROWSER)[0]
+  ini_path = os.path.join(os.path.dirname(exe_path), "platform.ini")
+  # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
+  m = re.search(r"^Milestone=(.*)$", open(ini_path).read(), re.MULTILINE)
+  milestone = m.group(1).strip()
+  version = int(re.match(r"(\d+)", milestone).group(1))
+  # On Nightly and Beta, e.g. 145.0a1, pretend it to still mean version 144,
+  # since it is a pre-release version
+  if any(c in milestone for c in ('a', 'b')):
+    version -= 1
+  return version
+
+
+def browser_should_skip_feature(skip_env_var, feature):
+  # If an env. var. EMTEST_LACKS_x to skip the given test is set (to either
+  # value 0 or 1), don't bother checking if current browser supports the feature
+  # - just unconditionally run the test, or skip the test.
+  if os.getenv(skip_env_var) is not None:
+    return int(os.getenv(skip_env_var)) != 0
+
+  # If there is no Feature object associated with this capability, then we
+  # should run the test.
+  if feature is None:
+    return False
+
+  # If EMTEST_AUTOSKIP=0, also never skip.
+  if os.getenv('EMTEST_AUTOSKIP') == '0':
+    return False
+
+  # Otherwise EMTEST_AUTOSKIP=1 or EMTEST_AUTOSKIP is not set: check whether
+  # the current browser supports the test or not.
+  min_required = min_browser_versions[feature]
+  not_supported = get_firefox_version() < min_required['firefox'] or get_safari_version() < min_required['safari']
+
+  # Current browser does not support the test, and EMTEST_AUTOSKIP is not set?
+  # Then error out to have end user decide what to do in this situation.
+  if not_supported and os.getenv('EMTEST_AUTOSKIP') is None:
+    return 'error'
+
+  # Report whether to skip the test based on browser support.
+  return not_supported
 
 
 # Default flags used to run browsers in CI testing:
@@ -613,8 +677,16 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def require_wasm_legacy_eh(self):
     if 'EMTEST_SKIP_WASM_LEGACY_EH' in os.environ:
       self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_WASM_LEGACY_EH is set)')
-
     self.set_setting('WASM_LEGACY_EXCEPTIONS')
+
+    if self.is_browser_test():
+      skip = browser_should_skip_feature('EMTEST_SKIP_WASM_LEGACY_EH', Feature.WASM_LEGACY_EXCEPTIONS)
+      if skip == 'error':
+        self.fail('test requires Wasm Legacy EH')
+      elif skip:
+        self.skipTest('test requires Wasm Legacy EH')
+      return
+
     if self.try_require_node_version(17):
       return
 
@@ -630,11 +702,17 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if 'EMTEST_SKIP_WASM_EH' in os.environ:
       self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_WASM_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    if self.try_require_node_version(22):
-      self.node_args.append('--experimental-wasm-exnref')
-      return
 
     if self.is_browser_test():
+      skip = browser_should_skip_feature('EMTEST_SKIP_WASM_EH', Feature.WASM_EXCEPTIONS)
+      if skip == 'error':
+        self.fail('test requires Wasm EH')
+      elif skip:
+        self.skipTest('test requires Wasm EH')
+      return
+
+    if self.try_require_node_version(22):
+      self.node_args.append('--experimental-wasm-exnref')
       return
 
     v8 = self.get_v8()
