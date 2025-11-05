@@ -84,8 +84,6 @@ bool WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, v
     // It is no longer possible to query their state.
     unsigned short ready_state;
     EMSCRIPTEN_RESULT result = emscripten_websocket_get_ready_state(e->socket, &ready_state);
-    // Note: the following assert() currently fails because
-    // emscripten_websocket_deinitialize() is broken.
     assert(result == EMSCRIPTEN_RESULT_INVALID_TARGET);
     (void)ready_state;
     sock1 = sock2 = 0;
