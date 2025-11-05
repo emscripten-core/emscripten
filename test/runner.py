@@ -44,8 +44,6 @@ from common import errlog
 
 from tools import config, shared, utils
 
-sys.path.append(utils.path_from_root('third_party/websockify'))
-
 logger = logging.getLogger("runner")
 
 
