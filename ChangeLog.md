@@ -42,6 +42,11 @@ See docs/process.md for more on how version tagging works.
   are used via `--use-port=emdawnwebgpu`. See 4.0.10 release notes for details.
 - A new `CROSS_ORIGIN` setting was added in order to work around issues hosting
   emscripten programs across different origins (#25581)
+- The binary data encoding for `SINGLE_FILE` mode was changed from base64 to
+  directly embed binary data into UTF-8 string. Users who use the `SINGLE_FILE`
+  mode along with a custom HTML file should declare the files to have UTF-8
+  encoding. See `src/settings.js` docs on `SINGLE_FILE`. Use the option
+  `-sSINGLE_FILE_BINARY_ENCODE=0` to fall back to base64 encoding. (#25599)
 
 4.0.17 - 10/17/25
 -----------------

@@ -17,6 +17,7 @@ import re
 import select
 import shlex
 import shutil
+import struct
 import subprocess
 import sys
 import tarfile
@@ -89,6 +90,7 @@ from decorators import (
 
 from tools import building, cache, response_file, shared, utils, webassembly
 from tools.building import get_building_env
+from tools.link import binary_encode
 from tools.settings import settings
 from tools.shared import (
   CLANG_CC,
@@ -106,7 +108,15 @@ from tools.shared import (
   config,
 )
 from tools.system_libs import DETERMINISTIC_PREFIX
-from tools.utils import MACOS, WINDOWS, delete_file, read_binary, read_file, write_file
+from tools.utils import (
+  MACOS,
+  WINDOWS,
+  delete_file,
+  read_binary,
+  read_file,
+  write_binary,
+  write_file,
+)
 
 emmake = utils.bat_suffix(path_from_root('emmake'))
 emconfig = utils.bat_suffix(path_from_root('em-config'))
@@ -15175,3 +15185,16 @@ addToLibrary({
     # These setting is due for removal:
     # https://github.com/emscripten-core/emscripten/issues/25262
     self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sLINKABLE', '-sRELOCATABLE'])
+
+  # Tests encoding of all byte pairs for binary encoding in SINGLE_FILE mode.
+  def test_binary_encode(self):
+    # Encode values 0 .. 65535 into test data
+    test_data = bytearray(struct.pack('<' + 'H' * 65536, *range(65536)))
+    write_binary('data.tmp', test_data)
+    binary_encoded = binary_encode('data.tmp')
+    test_js = '''var u16 = new Uint16Array(binaryDecode(src).buffer);
+for(var i = 0; i < 65536; ++i)
+  if (u16[i] != i) throw i;
+console.log('OK');'''
+    write_file('test.js', read_file(path_from_root('src/binaryDecode.js')) + '\nvar src = ' + binary_encoded + ';\n' + test_js)
+    self.assertContained('OK', self.run_js('test.js'))
