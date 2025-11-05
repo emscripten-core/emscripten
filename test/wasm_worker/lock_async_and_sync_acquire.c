@@ -4,16 +4,12 @@
 
 emscripten_lock_t lock = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;
 
-int result = 0;
-
 void on_acquire(volatile void* address, uint32_t value,
               ATOMICS_WAIT_RESULT_T waitResult, void* userData) {
   printf("on_acquire: releasing lock.\n");
   emscripten_lock_release(&lock);
   printf("on_acquire: released lock.\n");
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
+  exit(0);
 }
 
 int main() {
@@ -24,6 +20,6 @@ int main() {
   printf("main: lock acquired.\n");
   emscripten_lock_release(&lock);
   printf("main: lock released.\n");
-  result += 1;
   emscripten_exit_with_live_runtime();
+  return 1;
 }
