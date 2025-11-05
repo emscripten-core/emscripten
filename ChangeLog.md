@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.19 (in development)
+4.0.20 (in development)
 -----------------------
+
+4.0.19 - 11/04/25
+-----------------
 - The `RETAIN_COMPILER_SETTINGS` setting and the corresponding
   `emscripten_get_compiler_setting` API no longer store or report internal
   compiler settings (those listed in `setttings_internal.js`).  We made an
