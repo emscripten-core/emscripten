@@ -45,9 +45,10 @@ from .settings import (
   settings,
   user_settings,
 )
-from .shared import DEBUG, DYLIB_EXTENSIONS, WINDOWS, do_replace, in_temp
+from .shared import DEBUG, DYLIB_EXTENSIONS, do_replace, in_temp
 from .toolchain_profiler import ToolchainProfiler
 from .utils import (
+  WINDOWS,
   delete_file,
   exit_with_error,
   get_file_suffix,
@@ -2131,7 +2132,7 @@ def phase_source_transforms(options):
   global final_js
   safe_copy(final_js, final_js + '.tr.js')
   final_js += '.tr.js'
-  posix = not shared.WINDOWS
+  posix = not WINDOWS
   logger.debug('applying transform: %s', options.js_transform)
   shared.check_call(remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final_js)]))
   save_intermediate('transformed')

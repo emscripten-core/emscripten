@@ -41,11 +41,12 @@ from retryable_unittest import RetryableTestCase
 from tools import building, config, feature_matrix, shared, utils
 from tools.feature_matrix import UNSUPPORTED, Feature, min_browser_versions
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir, path_from_root
+from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir
 from tools.utils import (
   WINDOWS,
   exit_with_error,
   memoize,
+  path_from_root,
   read_binary,
   read_file,
   write_binary,
@@ -257,7 +258,7 @@ EMBUILDER = utils.bat_suffix(path_from_root('embuilder'))
 EMMAKE = utils.bat_suffix(path_from_root('emmake'))
 EMCMAKE = utils.bat_suffix(path_from_root('emcmake'))
 EMCONFIGURE = utils.bat_suffix(path_from_root('emconfigure'))
-EMRUN = utils.bat_suffix(shared.path_from_root('emrun'))
+EMRUN = utils.bat_suffix(utils.path_from_root('emrun'))
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
