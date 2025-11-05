@@ -10,6 +10,7 @@ import io
 import json
 import logging
 import os
+import plistlib
 import queue
 import re
 import shlex

@@ -5,9 +5,7 @@
 
 import argparse
 import os
-import plistlib
 import random
-import re
 import shlex
 import shutil
 import subprocess
@@ -37,7 +35,6 @@ from common import (
   create_file,
   ensure_dir,
   find_browser_test_file,
-  get_firefox_version,
   get_safari_version,
   has_browser,
   is_chrome,
@@ -67,7 +64,7 @@ from decorators import (
 )
 
 from tools import ports, shared
-from tools.feature_matrix import UNSUPPORTED, Feature
+from tools.feature_matrix import Feature
 from tools.shared import DEBUG, EMCC, FILE_PACKAGER, PIPE, WINDOWS
 from tools.utils import delete_dir
 
