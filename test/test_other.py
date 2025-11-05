@@ -108,7 +108,15 @@ from tools.shared import (
   config,
 )
 from tools.system_libs import DETERMINISTIC_PREFIX
-from tools.utils import MACOS, WINDOWS, delete_file, read_binary, read_file, write_binary, write_file
+from tools.utils import (
+  MACOS,
+  WINDOWS,
+  delete_file,
+  read_binary,
+  read_file,
+  write_binary,
+  write_file,
+)
 
 emmake = utils.bat_suffix(path_from_root('emmake'))
 emconfig = utils.bat_suffix(path_from_root('em-config'))
