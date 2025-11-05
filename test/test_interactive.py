@@ -10,7 +10,8 @@ import shutil
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner.py interactive')
 
-from common import BrowserCore, create_file, test_file
+from browser_common import BrowserCore
+from common import create_file, test_file
 from decorators import also_with_minimal_runtime, parameterized
 
 from tools.utils import WINDOWS
