@@ -116,14 +116,14 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
   # start with the MVP features, and add any detected features.
-  settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata.features
+  building.binaryen_features = ['--mvp-features'] + metadata.features
   if settings.ASYNCIFY == 2:
-    settings.BINARYEN_FEATURES += ['--enable-reference-types']
+    building.binaryen_features += ['--enable-reference-types']
 
   if settings.PTHREADS:
-    assert '--enable-threads' in settings.BINARYEN_FEATURES
+    assert '--enable-threads' in building.binaryen_features
   if settings.MEMORY64:
-    assert '--enable-memory64' in settings.BINARYEN_FEATURES
+    assert '--enable-memory64' in building.binaryen_features
 
   settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.PROXY_TO_PTHREAD or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
   if settings.HAS_MAIN and not settings.MINIMAL_RUNTIME:
