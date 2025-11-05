@@ -5317,6 +5317,11 @@ Module["preRun"] = () => {
   def test_wasm_worker_lock_async_acquire(self):
     self.btest_exit('wasm_worker/lock_async_acquire.c', cflags=['--closure=1', '-sWASM_WORKERS'])
 
+  # Tests emscripten_lock_async_acquire() function when lock is acquired both synchronously and asynchronously.
+  @also_with_minimal_runtime
+  def test_wasm_worker_lock_async_and_sync_acquire(self):
+    self.btest_exit('wasm_worker/lock_async_and_sync_acquire.c', cflags=['-sWASM_WORKERS'])
+
   # Tests emscripten_lock_busyspin_wait_acquire() in Worker and main thread.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_busyspin_wait(self):
