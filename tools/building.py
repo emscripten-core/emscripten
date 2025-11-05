@@ -266,8 +266,12 @@ def lld_flags_for_executable(external_symbols):
         # function like we do in STANDALONE_WASM mode.
         cmd += ['--no-entry']
 
+  # The default for `--stack-first` is transitioning from disabled to
+  # enabled.  So be explicit in all cases for now.
   if settings.STACK_FIRST:
     cmd.append('--stack-first')
+  else:
+    cmd.append('--no-stack-first')
 
   if not settings.RELOCATABLE:
     cmd.append('--table-base=%s' % settings.TABLE_BASE)
