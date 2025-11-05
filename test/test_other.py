@@ -15171,5 +15171,5 @@ addToLibrary({
 for(var i = 0; i < 65536; ++i)
   if (u16[i] != i) throw i;
 console.log('OK');'''
-    write_file('test.js', open(path_from_root('src', 'binaryDecode.js')).read() + '\nvar src = ' + binary_encoded + ';\n' + test_js)
+    write_file('test.js', read_file(path_from_root('src/binaryDecode.js')) + '\nvar src = ' + binary_encoded + ';\n' + test_js)
     self.assertContained('OK', self.run_js('test.js'))
