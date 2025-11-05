@@ -547,16 +547,6 @@ def cleanup_emscripten_temp():
 def main():
   options = parse_args()
 
-  # Some options make sense being set in the environment, others not-so-much.
-  # TODO(sbc): eventually just make these command-line only.
-  if os.getenv('EMTEST_SAVE_DIR'):
-    errlog('ERROR: use --save-dir instead of EMTEST_SAVE_DIR=1, and --no-clean instead of EMTEST_SAVE_DIR=2')
-    return 1
-  if os.getenv('EMTEST_REBASELINE'):
-    errlog('Prefer --rebaseline over setting $EMTEST_REBASELINE')
-  if os.getenv('EMTEST_VERBOSE'):
-    errlog('Prefer --verbose over setting $EMTEST_VERBOSE')
-
   # We set the environments variables here and then call configure,
   # to apply them.  This means the python's multiprocessing child
   # process will see the same configuration even though they don't
