@@ -57,11 +57,6 @@ var TARGET_JS_NAME = '';
 // never used, then we don't actually need to support operations on streams.
 var SYSCALLS_REQUIRE_FILESYSTEM = true;
 
-// A list of feature flags to pass to each binaryen invocation (like wasm-opt,
-// etc.). This is received from wasm-emscripten-finalize, which reads it from
-// the features section.
-var BINARYEN_FEATURES = [];
-
 // Whether EMCC_AUTODEBUG is on, which automatically instruments code for
 // runtime logging that can help in debugging.
 var AUTODEBUG = false;

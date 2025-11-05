@@ -13,7 +13,7 @@ import shutil
 import subprocess
 import sys
 from subprocess import PIPE
-from typing import Dict, Set
+from typing import Dict, List, Set
 
 from . import (
   cache,
@@ -59,6 +59,10 @@ EXPECTED_BINARYEN_VERSION = 124
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
 user_requested_exports: Set[str] = set()
+# A list of feature flags to pass to each binaryen invocation (like `wasm-opt`,
+# etc.). This is received by the first call to binaryen (e.g. `wasm-emscripten-finalize`)
+# which reads it using `--detect-features`.
+binaryen_features: List[str] = []
 
 
 def get_building_env():
@@ -1187,10 +1191,10 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
 
 
 def get_binaryen_feature_flags():
-  # settings.BINARYEN_FEATURES is empty unless features have been extracted by
-  # wasm-emscripten-finalize already.
-  if settings.BINARYEN_FEATURES:
-    return settings.BINARYEN_FEATURES
+  # `binaryen_features` is empty unless features have been extracted by
+  # a previous call to a binaryen tool.
+  if binaryen_features:
+    return binaryen_features
   else:
     return ['--detect-features']
 
