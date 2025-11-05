@@ -108,7 +108,7 @@ from tools.shared import (
   config,
 )
 from tools.system_libs import DETERMINISTIC_PREFIX
-from tools.utils import MACOS, WINDOWS, delete_file, read_binary, read_file, write_file
+from tools.utils import MACOS, WINDOWS, delete_file, read_binary, read_file, write_file, write_binary
 
 emmake = utils.bat_suffix(path_from_root('emmake'))
 emconfig = utils.bat_suffix(path_from_root('em-config'))
@@ -15165,11 +15165,11 @@ addToLibrary({
   def test_binary_encode(self):
     # Encode values 0 .. 65535 into test data
     test_data = bytearray(struct.pack('<' + 'H' * 65536, *range(65536)))
-    open('data.tmp', 'wb').write(test_data)
+    write_binary('data.tmp', test_data)
     binary_encoded = binary_encode('data.tmp')
     test_js = '''var u16 = new Uint16Array(binaryDecode(src).buffer);
 for(var i = 0; i < 65536; ++i)
   if (u16[i] != i) throw i;
 console.log('OK');'''
-    open('test.js', 'w').write(open(path_from_root('src', 'binaryDecode.js')).read() + '\nvar src = ' + binary_encoded + ';\n' + test_js)
+    write_file('test.js', open(path_from_root('src', 'binaryDecode.js')).read() + '\nvar src = ' + binary_encoded + ';\n' + test_js)
     self.assertContained('OK', self.run_js('test.js'))
