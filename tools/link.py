@@ -34,6 +34,7 @@ from . import (
   webassembly,
 )
 from .cmdline import OFormat
+from .feature_matrix import Feature
 from .minimal_runtime_shell import generate_minimal_runtime_html
 from .settings import (
   DEPRECATED_SETTINGS,
@@ -367,16 +368,21 @@ def get_binaryen_lowering_passes():
   # This can happen if the feature is explicitly disabled on the command line,
   # or when targeting an VM/engine that does not support the feature.
 
-  # List of [<feature_name>, <lowering_flag>] pairs.
+  # List of [<feature_name>, <lowering_flag>, <feature_flags>] triples.
   features = [
-    [feature_matrix.Feature.SIGN_EXT, '--signext-lowering'],
-    [feature_matrix.Feature.NON_TRAPPING_FPTOINT, '--llvm-nontrapping-fptoint-lowering'],
-    [feature_matrix.Feature.BULK_MEMORY, '--llvm-memory-copy-fill-lowering'],
+    [Feature.SIGN_EXT, '--signext-lowering', ['--enable-sign-ext']],
+    [Feature.NON_TRAPPING_FPTOINT, '--llvm-nontrapping-fptoint-lowering', ['--enable-nontrapping-float-to-int']],
+    [Feature.BULK_MEMORY, '--llvm-memory-copy-fill-lowering', ['--enable-bulk-memory', '--enable-bulk-memory-opt']],
   ]
 
-  for feature, lowering_flag in features:
+  for feature, lowering_flag, feature_flags in features:
     if not feature_matrix.caniuse(feature):
       logger.debug(f'lowering {feature.name} feature due to incompatible target browser engines')
+      for f in feature_flags:
+        # Remove features from binaryen_features, otherwise future runs of binaryen
+        # could re-introduce the feature.
+        if f in building.binaryen_features:
+          building.binaryen_features.remove(f)
       passes.append(lowering_flag)
 
   return passes
@@ -1044,7 +1050,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if user_settings.get('WASM_BIGINT') and settings.WASM_BIGINT:
       exit_with_error('WASM_BIGINT=1 is not compatible with wasm2js')
     settings.WASM_BIGINT = 0
-    feature_matrix.disable_feature(feature_matrix.Feature.JS_BIGINT_INTEGRATION)
+    feature_matrix.disable_feature(Feature.JS_BIGINT_INTEGRATION)
 
   if options.oformat == OFormat.WASM and not settings.SIDE_MODULE:
     # if the output is just a wasm file, it will normally be a standalone one,
@@ -1583,8 +1589,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # TODO(sbc): Find make a generic way to expose the feature matrix to JS
   # compiler rather then adding them all ad-hoc as internal settings
-  settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
-  default_setting('WASM_BIGINT', feature_matrix.caniuse(feature_matrix.Feature.JS_BIGINT_INTEGRATION))
+  settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(Feature.PROMISE_ANY)
+  default_setting('WASM_BIGINT', feature_matrix.caniuse(Feature.JS_BIGINT_INTEGRATION))
 
   if settings.AUDIO_WORKLET:
     add_system_js_lib('libwebaudio.js')
