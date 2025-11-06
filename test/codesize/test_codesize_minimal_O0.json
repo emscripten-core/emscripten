@@ -1,10 +1,10 @@
 {
-  "a.out.js": 19500,
-  "a.out.js.gz": 6975,
+  "a.out.js": 19364,
+  "a.out.js.gz": 6998,
   "a.out.nodebug.wasm": 1136,
   "a.out.nodebug.wasm.gz": 659,
-  "total": 20636,
-  "total_gz": 7634,
+  "total": 20500,
+  "total_gz": 7657,
   "sent": [],
   "imports": [],
   "exports": [
