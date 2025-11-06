@@ -8737,15 +8737,16 @@ int main() {
 
   def test_o_level_invalid(self):
     # Test that string values, and negative integers are not accepted
-    self.assert_fail([EMCC, '-Ofoo', test_file('hello_world.c')], 'emcc: error: invalid optimization level: -Ofoo')
-    self.assert_fail([EMCC, '-O-10', test_file('hello_world.c')], 'emcc: error: invalid optimization level: -O-10')
+    self.assert_fail([EMCC, '-Ofoo', test_file('hello_world.c')], "emcc: error: invalid integral value 'foo' in '-Ofoo'")
+    stderr = self.run_process([EMCC, '-O-10', test_file('hello_world.c')], stderr=PIPE).stderr
+    self.assertContained("emcc: warning: optimization level '-O-10' is not supported; using '-O3' instead", stderr)
 
   def test_g_level_invalid(self):
     # Bad integer values are handled by emcc
-    self.assert_fail([EMCC, '-g5', test_file('hello_world.c')], 'emcc: error: invalid debug level: -g5')
-    self.assert_fail([EMCC, '-g-10', test_file('hello_world.c')], 'emcc: error: invalid debug level: -g-10')
+    self.assert_fail([EMCC, '-g5', test_file('hello_world.c')], "emcc: error: unknown argument: '-g5'")
+    self.assert_fail([EMCC, '-g-10', test_file('hello_world.c')], "clang: error: unknown argument: '-g-10'")
     # Unknown string values are passed through to clang which will error out
-    self.assert_fail([EMCC, '-gfoo', test_file('hello_world.c')], "error: unknown argument: '-gfoo'")
+    self.assert_fail([EMCC, '-gfoo', test_file('hello_world.c')], "clang: error: unknown argument: '-gfoo'")
 
   # Tests that if user specifies multiple -o output directives, then the last one will take precedence
   def test_multiple_o_files(self):
