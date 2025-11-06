@@ -41,7 +41,7 @@ actions = [
    ], ['git', 'submodule', 'update', '--init']),
   ('pip install', [
      'requirements-dev.txt',
-   ], [sys.executable, '-m', 'pip', 'install', '--root', 'out/python_deps', '-r', 'requirements-dev.txt']),
+   ], [sys.executable, '-m', 'pip', 'install', '--target', 'out/python_deps', '-r', 'requirements-dev.txt']),
 ]
 
 
@@ -88,8 +88,8 @@ def main(args):
     return 0
 
   env = os.environ.copy()
-  env['PATH'] += os.pathsep + utils.path_from_root('out/python_deps')
-  env['PYTHONPATH'] = utils.path_from_root('out/python_deps')
+  env['PATH'] += os.pathsep + utils.path_from_root('out/python_deps/bin')
+  env['PYTHONPATH'] = 'out/python_deps'
 
   for name, deps, cmd in actions:
     if check_deps(name, deps):
