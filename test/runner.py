@@ -37,6 +37,7 @@ from functools import cmp_to_key
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, __rootpath__)
 
+import browser_common
 import common
 import jsrun
 import parallel_testsuite
@@ -509,9 +510,9 @@ def parse_args():
 
 
 def configure():
-  common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
-  common.EMTEST_BROWSER_AUTO_CONFIG = os.getenv('EMTEST_BROWSER_AUTO_CONFIG')
-  common.EMTEST_HEADLESS = int(os.getenv('EMTEST_HEADLESS', '0'))
+  browser_common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
+  browser_common.EMTEST_BROWSER_AUTO_CONFIG = os.getenv('EMTEST_BROWSER_AUTO_CONFIG')
+  browser_common.EMTEST_HEADLESS = int(os.getenv('EMTEST_HEADLESS', '0'))
   common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
   common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
   common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
@@ -526,7 +527,7 @@ def configure():
   assert 'PARALLEL_SUITE_EMCC_CORES' not in os.environ, 'use EMTEST_CORES rather than PARALLEL_SUITE_EMCC_CORES'
   parallel_testsuite.NUM_CORES = os.environ.get('EMTEST_CORES') or os.environ.get('EMCC_CORES')
 
-  common.configure_test_browser()
+  browser_common.configure_test_browser()
 
 
 def cleanup_emscripten_temp():
@@ -582,8 +583,8 @@ def main():
   # Remove any old test files before starting the run
   cleanup_emscripten_temp()
   utils.delete_file(common.flaky_tests_log_filename)
-  utils.delete_file(common.browser_spawn_lock_filename)
-  utils.delete_file(f'{common.browser_spawn_lock_filename}_counter')
+  utils.delete_file(browser_common.browser_spawn_lock_filename)
+  utils.delete_file(f'{browser_common.browser_spawn_lock_filename}_counter')
   if options.force_browser_process_termination or os.getenv('EMTEST_FORCE_BROWSER_PROCESS_TERMINATION'):
     config = common.get_browser_config()
 

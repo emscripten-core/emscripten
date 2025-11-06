@@ -17,7 +17,8 @@ if __name__ == '__main__':
 
 import clang_native
 import common
-from common import NON_ZERO, PYTHON, BrowserCore, create_file, read_file
+from browser_common import BrowserCore
+from common import NON_ZERO, PYTHON, create_file, read_file
 from decorators import (
   crossplatform,
   no_windows,

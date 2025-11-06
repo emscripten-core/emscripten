@@ -11,6 +11,7 @@ import tempfile
 import time
 import unittest
 
+import browser_common
 import common
 from common import errlog
 
@@ -124,7 +125,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       worker_id_lock = manager.Lock()
       with multiprocessing.Pool(
         processes=use_cores,
-        initializer=common.init_worker,
+        initializer=browser_common.init_worker,
         initargs=(worker_id_counter, worker_id_lock),
       ) as pool:
         if python_multiprocessing_structures_are_buggy():
