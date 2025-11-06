@@ -43,7 +43,7 @@ def cap_max_workers_in_pool(max_workers, is_browser):
   return max_workers
 
 
-def run_test(test, allowed_failures_counter, lock, progress_counter, num_tests):
+def run_test(test, allowed_failures_counter, lock, progress_counter, num_tests, buffer):
   # If we have exceeded the number of allowed failures during the test run,
   # abort executing further tests immediately.
   if allowed_failures_counter and allowed_failures_counter.value < 0:
@@ -54,8 +54,43 @@ def run_test(test, allowed_failures_counter, lock, progress_counter, num_tests):
       with lock:
         allowed_failures_counter.value -= 1
 
+  start_time = time.perf_counter()
+
+  def compute_progress():
+    if not lock:
+      return ''
+    with lock:
+      val = f'[{int(progress_counter.value * 100 / num_tests)}%] '
+      progress_counter.value += 1
+    return with_color(CYAN, val)
+
+  def printResult(res):
+    elapsed = time.perf_counter() - start_time
+    progress = compute_progress()
+    if res.test_result == 'success':
+      msg = f'ok ({elapsed:.2f}s)'
+      errlog(f'{progress}{res.test} ... {with_color(GREEN, msg)}')
+    elif res.test_result == 'errored':
+      msg = f'{res.test} ... ERROR'
+      errlog(f'{progress}{with_color(RED, msg)}')
+    elif res.test_result == 'failed':
+      msg = f'{res.test} ... FAIL'
+      errlog(f'{progress}{with_color(RED, msg)}')
+    elif res.test_result == 'skipped':
+      msg = f"skipped '{res.buffered_result.reason}'"
+      errlog(f"{progress}{res.test} ... {with_color(CYAN, msg)}")
+    elif res.test_result == 'unexpected success':
+      msg = f'unexpected success ({elapsed:.2f}s)'
+      errlog(f'{progress}{res.test} ... {with_color(RED, msg)}')
+    elif res.test_result == 'expected failure':
+      msg = f'expected failure ({elapsed:.2f}s)'
+      errlog(f'{progress}{res.test} ... {with_color(RED, msg)}')
+    else:
+      assert False
+
   olddir = os.getcwd()
-  result = BufferedParallelTestResult(lock, progress_counter, num_tests)
+  result = BufferedParallelTestResult()
+  result.buffer = buffer
   temp_dir = tempfile.mkdtemp(prefix='emtest_')
   test.set_temp_dir(temp_dir)
   try:
@@ -72,6 +107,9 @@ def run_test(test, allowed_failures_counter, lock, progress_counter, num_tests):
   except Exception as e:
     result.addError(test, e)
     test_failed()
+  finally:
+    printResult(result)
+
   # Before attempting to delete the tmp dir make sure the current
   # working directory is not within it.
   os.chdir(olddir)
@@ -139,7 +177,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
           allowed_failures_counter = manager.Value('i', self.max_failures)
           progress_counter = manager.Value('i', 0)
           lock = manager.Lock()
-        results = pool.starmap(run_test, ((t, allowed_failures_counter, lock, progress_counter, len(tests)) for t in tests), chunksize=1)
+        results = pool.starmap(run_test, ((t, allowed_failures_counter, lock, progress_counter, len(tests), result.buffer) for t in tests), chunksize=1)
         # Send a task to each worker to tear down the browser and server. This
         # relies on the implementation detail in the worker pool that all workers
         # are cycled through once.
@@ -233,21 +271,15 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return result
 
 
-class BufferedParallelTestResult:
+class BufferedParallelTestResult(unittest.TestResult):
   """A picklable struct used to communicate test results across processes
-
-  Fulfills the interface for unittest.TestResult
   """
-  def __init__(self, lock, progress_counter, num_tests):
+  def __init__(self):
+    super().__init__()
     self.buffered_result = None
     self.test_duration = 0
     self.test_result = 'errored'
     self.test_name = ''
-    self.lock = lock
-    self.progress_counter = progress_counter
-    self.num_tests = num_tests
-    self.failures = []
-    self.errors = []
 
   @property
   def test(self):
@@ -260,9 +292,6 @@ class BufferedParallelTestResult:
 
   def addDuration(self, test, elapsed):
     self.test_duration = elapsed
-
-  def calculateElapsed(self):
-    return time.perf_counter() - self.start_time
 
   def updateResult(self, result):
     result.startTest(self.test)
@@ -295,59 +324,49 @@ class BufferedParallelTestResult:
         prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time + self.test_duration},"returncode":0}}')
 
   def startTest(self, test):
+    super().startTest(test)
     self.test_name = str(test)
-    self.start_time = time.perf_counter()
 
   def stopTest(self, test):
+    super().stopTest(test)
     # TODO(sbc): figure out a way to display this duration information again when
     # these results get passed back to the TextTestRunner/TextTestResult.
     self.buffered_result.duration = self.test_duration
-
-  def compute_progress(self):
-    if not self.lock:
-      return ''
-    with self.lock:
-      val = f'[{int(self.progress_counter.value * 100 / self.num_tests)}%] '
-      self.progress_counter.value += 1
-    return with_color(CYAN, val)
+    # Once we are done running the test and any stdout/stderr buffering has
+    # being taking care or, we delete these fields which the parent class uses.
+    # This is because they are not picklable (serializable).
+    del self._original_stdout
+    del self._original_stderr
 
   def addSuccess(self, test):
-    msg = f'ok ({self.calculateElapsed():.2f}s)'
-    errlog(f'{self.compute_progress()}{test} ... {with_color(GREEN, msg)}')
+    super().addSuccess(test)
     self.buffered_result = BufferedTestSuccess(test)
     self.test_result = 'success'
 
   def addExpectedFailure(self, test, err):
-    msg = f'expected failure ({self.calculateElapsed():.2f}s)'
-    errlog(f'{self.compute_progress()}{test} ... {with_color(RED, msg)}')
+    super().addExpectedFailure(test, err)
     self.buffered_result = BufferedTestExpectedFailure(test, err)
     self.test_result = 'expected failure'
 
   def addUnexpectedSuccess(self, test):
-    msg = f'unexpected success ({self.calculateElapsed():.2f}s)'
-    errlog(f'{self.compute_progress()}{test} ... {with_color(RED, msg)}')
+    super().addUnexpectedSuccess(test)
     self.buffered_result = BufferedTestUnexpectedSuccess(test)
     self.test_result = 'unexpected success'
 
   def addSkip(self, test, reason):
-    msg = f"skipped '{reason}'"
-    errlog(f"{self.compute_progress()}{test} ... {with_color(CYAN, msg)}")
+    super().addSkip(test, reason)
     self.buffered_result = BufferedTestSkip(test, reason)
     self.test_result = 'skipped'
 
   def addFailure(self, test, err):
-    msg = f'{test} ... FAIL'
-    errlog(f'{self.compute_progress()}{with_color(RED, msg)}')
+    super().addFailure(test, err)
     self.buffered_result = BufferedTestFailure(test, err)
     self.test_result = 'failed'
-    self.failures += [test]
 
   def addError(self, test, err):
-    msg = f'{test} ... ERROR'
-    errlog(f'{self.compute_progress()}{with_color(RED, msg)}')
+    super().addError(test, err)
     self.buffered_result = BufferedTestError(test, err)
     self.test_result = 'errored'
-    self.errors += [test]
 
 
 class BufferedTestBase:

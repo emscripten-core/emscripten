@@ -428,7 +428,7 @@ def run_tests(options, suites):
                                          failfast=options.failfast)
     print('Writing XML test output to ' + os.path.abspath(output.name))
   else:
-    testRunner = unittest.TextTestRunner(verbosity=2, failfast=options.failfast)
+    testRunner = unittest.TextTestRunner(verbosity=2, buffer=options.buffer, failfast=options.failfast)
 
   total_core_time = 0
   run_start_time = time.perf_counter()
@@ -483,6 +483,7 @@ def parse_args():
                       help='Use the default CI browser configuration.')
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', action='store_true', help='If true, test run will abort on first failed test.')
+  parser.add_argument('-b', '--buffer', action='store_true', help='Buffer stdout and stderr during tests')
   parser.add_argument('--max-failures', type=int, default=2**31 - 1, help='If specified, test run will abort after N failed tests.')
   parser.add_argument('--failing-and-slow-first', action='store_true', help='Run failing tests first, then sorted by slowest first. Combine with --failfast for fast fail-early CI runs.')
   parser.add_argument('--start-at', metavar='NAME', help='Skip all tests up until <NAME>')
