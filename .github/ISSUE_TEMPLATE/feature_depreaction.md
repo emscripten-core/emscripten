@@ -1,8 +1,8 @@
 ---
 name: Feature deprecation
 about: Use this template for removal of features from emscripten.
-title: 'Deprection proposal for <FEATURE>'
-labels: 'depreaction'
+title: 'Deprecation proposal for <FEATURE>'
+labels: 'deprecation'
 assignees: ''
 
 ---
