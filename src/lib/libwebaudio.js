@@ -98,7 +98,7 @@ var LibraryWebAudio = {
     // AUDIO_CONTEXT_RENDER_SIZE_DEFAULT and AUDIO_CONTEXT_RENDER_SIZE_HARDWARE
     // into their AudioContextRenderSizeCategory enum, or take the positive int. 
     function readRenderSizeHint(val) {
-        return (val < 0) ? 'hardware' : (val || 'default');
+      return (val < 0) ? 'hardware' : (val || 'default');
     }
     var opts = options ? {
       latencyHint: UTF8ToString({{{ makeGetValue('options', C_STRUCTS.EmscriptenWebAudioCreateAttributes.latencyHint, '*') }}}) || undefined,
