@@ -336,8 +336,10 @@ class BufferedParallelTestResult(unittest.TestResult):
     # Once we are done running the test and any stdout/stderr buffering has
     # being taking care or, we delete these fields which the parent class uses.
     # This is because they are not picklable (serializable).
-    del self._original_stdout
-    del self._original_stderr
+    if hasattr(self, '_original_stdout'):
+      del self._original_stdout
+    if hasattr(self, '_original_stderr'):
+      del self._original_stderr
 
   def addSuccess(self, test):
     super().addSuccess(test)
