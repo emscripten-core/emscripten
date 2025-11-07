@@ -10,10 +10,11 @@ import shutil
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner.py interactive')
 
-from common import BrowserCore, create_file, test_file
+from browser_common import BrowserCore
+from common import create_file, test_file
 from decorators import also_with_minimal_runtime, parameterized
 
-from tools.shared import WINDOWS
+from tools.utils import WINDOWS
 
 
 class interactive(BrowserCore):
@@ -24,6 +25,9 @@ class interactive(BrowserCore):
     print()
     print('Running the interactive tests. Make sure the browser allows popups from localhost.')
     print()
+
+  def test_html5_core(self):
+    self.btest_exit('test_html5_core.c', cflags=['-DKEEP_ALIVE'])
 
   def test_html5_fullscreen(self):
     self.btest('test_html5_fullscreen.c', expected='0', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-sEXPORTED_FUNCTIONS=_requestFullscreen,_enterSoftFullscreen,_main', '--shell-file', test_file('test_html5_fullscreen.html')])

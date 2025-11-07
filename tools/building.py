@@ -13,7 +13,7 @@ import shutil
 import subprocess
 import sys
 from subprocess import PIPE
-from typing import Dict, Set
+from typing import Dict, List, Set
 
 from . import (
   cache,
@@ -46,10 +46,9 @@ from .shared import (
   get_emscripten_temp_dir,
   is_c_symbol,
   path_from_root,
-  run_process,
 )
 from .toolchain_profiler import ToolchainProfiler
-from .utils import WINDOWS
+from .utils import WINDOWS, run_process
 
 logger = logging.getLogger('building')
 
@@ -60,6 +59,10 @@ EXPECTED_BINARYEN_VERSION = 124
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
 user_requested_exports: Set[str] = set()
+# A list of feature flags to pass to each binaryen invocation (like `wasm-opt`,
+# etc.). This is received by the first call to binaryen (e.g. `wasm-emscripten-finalize`)
+# which reads it using `--detect-features`.
+binaryen_features: List[str] = []
 
 
 def get_building_env():
@@ -214,7 +217,7 @@ def lld_flags_for_executable(external_symbols):
 
   cmd.extend(f'--export-if-defined={e}' for e in settings.EXPORT_IF_DEFINED)
 
-  if settings.RELOCATABLE:
+  if settings.MAIN_MODULE or settings.RELOCATABLE:
     cmd.append('--experimental-pic')
     cmd.append('--unresolved-symbols=import-dynamic')
     if not settings.WASM_BIGINT:
@@ -223,6 +226,8 @@ def lld_flags_for_executable(external_symbols):
       # shared libraries.  Because of this we need to disabled signature
       # checking of shared library functions in this case.
       cmd.append('--no-shlib-sigcheck')
+
+  if settings.RELOCATABLE:
     if settings.SIDE_MODULE:
       cmd.append('-shared')
     else:
@@ -261,8 +266,12 @@ def lld_flags_for_executable(external_symbols):
         # function like we do in STANDALONE_WASM mode.
         cmd += ['--no-entry']
 
+  # The default for `--stack-first` is transitioning from disabled to
+  # enabled.  So be explicit in all cases for now.
   if settings.STACK_FIRST:
     cmd.append('--stack-first')
+  else:
+    cmd.append('--no-stack-first')
 
   if not settings.RELOCATABLE:
     cmd.append('--table-base=%s' % settings.TABLE_BASE)
@@ -286,6 +295,9 @@ def link_lld(args, target, external_symbols=None):
   if settings.LINKABLE:
     args.insert(0, '--whole-archive')
     args.append('--no-whole-archive')
+
+  if settings.MAIN_MODULE:
+    args.insert(0, '-Bdynamic')
 
   if settings.STRICT and '--no-fatal-warnings' not in args:
     args.append('--fatal-warnings')
@@ -1183,10 +1195,10 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
 
 
 def get_binaryen_feature_flags():
-  # settings.BINARYEN_FEATURES is empty unless features have been extracted by
-  # wasm-emscripten-finalize already.
-  if settings.BINARYEN_FEATURES:
-    return settings.BINARYEN_FEATURES
+  # `binaryen_features` is empty unless features have been extracted by
+  # a previous call to a binaryen tool.
+  if binaryen_features:
+    return binaryen_features
   else:
     return ['--detect-features']
 
@@ -1315,7 +1327,7 @@ def read_and_preprocess(filename, expand_macros=False):
 
 def js_legalization_pass_flags():
   flags = []
-  if settings.RELOCATABLE:
+  if settings.RELOCATABLE or settings.MAIN_MODULE:
     # When building in relocatable mode, we also want access the original
     # non-legalized wasm functions (since wasm modules can and do link to
     # the original, non-legalized, functions).

@@ -189,7 +189,7 @@ class Ports:
   @staticmethod
   def get_include_dir(*parts):
     dirname = cache.get_include_dir(*parts)
-    shared.safe_ensure_dirs(dirname)
+    utils.safe_ensure_dirs(dirname)
     return dirname
 
   @staticmethod
@@ -215,7 +215,7 @@ class Ports:
     assert os.path.exists(dest)
     if target:
       dest = os.path.join(dest, target)
-      shared.safe_ensure_dirs(dest)
+      utils.safe_ensure_dirs(dest)
     matches = glob.glob(os.path.join(src_dir, pattern))
     assert matches, f'no headers found to install in {src_dir}'
     for f in matches:
@@ -275,7 +275,7 @@ class Ports:
   @staticmethod
   def get_dir(*parts):
     dirname = os.path.join(config.PORTS, *parts)
-    shared.safe_ensure_dirs(dirname)
+    utils.safe_ensure_dirs(dirname)
     return dirname
 
   @staticmethod
@@ -373,7 +373,7 @@ class Ports:
 
     def unpack():
       logger.info(f'unpacking port: {name}')
-      shared.safe_ensure_dirs(fullname)
+      utils.safe_ensure_dirs(fullname)
       shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
       utils.write_file(marker, url + '\n')
 

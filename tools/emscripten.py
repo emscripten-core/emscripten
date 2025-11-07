@@ -116,14 +116,14 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
   # start with the MVP features, and add any detected features.
-  settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata.features
+  building.binaryen_features = ['--mvp-features'] + metadata.features
   if settings.ASYNCIFY == 2:
-    settings.BINARYEN_FEATURES += ['--enable-reference-types']
+    building.binaryen_features += ['--enable-reference-types']
 
   if settings.PTHREADS:
-    assert '--enable-threads' in settings.BINARYEN_FEATURES
+    assert '--enable-threads' in building.binaryen_features
   if settings.MEMORY64:
-    assert '--enable-memory64' in settings.BINARYEN_FEATURES
+    assert '--enable-memory64' in building.binaryen_features
 
   settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.PROXY_TO_PTHREAD or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
   if settings.HAS_MAIN and not settings.MINIMAL_RUNTIME:
@@ -374,8 +374,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
-    if settings.ASYNCIFY == 1:
-      metadata.imports += ['__asyncify_state', '__asyncify_data']
+  if settings.MAIN_MODULE and settings.ASYNCIFY == 1:
+    metadata.imports += ['__asyncify_state', '__asyncify_data']
 
   if metadata.invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
@@ -900,9 +900,10 @@ def install_debug_wrapper(sym):
   # runtimeInitialized.
   if sym.startswith(('__asan_', 'emscripten_stack_', '_emscripten_stack_')):
     return False
-  # Likewise `__trap` can occur before the runtime is initialized since it is used in
-  # abort.
-  return sym != '__trap'
+  # `__trap` can occur before the runtime is initialized since it is used in abort.
+  # `emscripten_get_sbrk_ptr` can be called prior to runtime initialzaion by
+  # the dynamic linking code.
+  return sym not in ['__trap', 'emscripten_get_sbrk_ptr']
 
 
 def should_export(sym):
@@ -1065,6 +1066,7 @@ def create_pointer_conversion_wrappers(metadata):
   mapping = {
     'sbrk': 'pP',
     '_emscripten_stack_alloc': 'pp',
+    'emscripten_get_sbrk_ptr': 'p',
     'emscripten_builtin_malloc': 'pp',
     'emscripten_builtin_calloc': 'ppp',
     'wasmfs_create_node_backend': 'pp',

@@ -25,7 +25,6 @@ import logging
 import math
 import operator
 import os
-import platform
 import random
 import sys
 import time
@@ -37,14 +36,13 @@ from functools import cmp_to_key
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, __rootpath__)
 
+import browser_common
 import common
 import jsrun
 import parallel_testsuite
 from common import errlog
 
 from tools import config, shared, utils
-
-sys.path.append(utils.path_from_root('third_party/websockify'))
 
 logger = logging.getLogger("runner")
 
@@ -59,6 +57,12 @@ passing_core_test_modes = [
   'core3',
   'cores',
   'corez',
+  'lto0',
+  'lto1',
+  'lto2',
+  'lto3',
+  'ltos',
+  'ltoz',
   'core_2gb',
   'strict',
   'strict_js',
@@ -415,9 +419,7 @@ def run_tests(options, suites):
     print('Test suites:', [s[0] for s in suites])
   # Run the discovered tests
 
-  # We currently don't support xmlrunner on macOS M1 runner since
-  # `pip` doesn't seeem to yet have pre-built binaries for M1.
-  if os.getenv('CI') and not (utils.MACOS and platform.machine() == 'arm64'):
+  if os.getenv('CI'):
     os.makedirs('out', exist_ok=True)
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
@@ -426,7 +428,7 @@ def run_tests(options, suites):
                                          failfast=options.failfast)
     print('Writing XML test output to ' + os.path.abspath(output.name))
   else:
-    testRunner = unittest.TextTestRunner(verbosity=2, failfast=options.failfast)
+    testRunner = unittest.TextTestRunner(verbosity=2, buffer=options.buffer, failfast=options.failfast)
 
   total_core_time = 0
   run_start_time = time.perf_counter()
@@ -481,6 +483,7 @@ def parse_args():
                       help='Use the default CI browser configuration.')
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', action='store_true', help='If true, test run will abort on first failed test.')
+  parser.add_argument('-b', '--buffer', action='store_true', help='Buffer stdout and stderr during tests')
   parser.add_argument('--max-failures', type=int, default=2**31 - 1, help='If specified, test run will abort after N failed tests.')
   parser.add_argument('--failing-and-slow-first', action='store_true', help='Run failing tests first, then sorted by slowest first. Combine with --failfast for fast fail-early CI runs.')
   parser.add_argument('--start-at', metavar='NAME', help='Skip all tests up until <NAME>')
@@ -505,9 +508,9 @@ def parse_args():
 
 
 def configure():
-  common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
-  common.EMTEST_BROWSER_AUTO_CONFIG = os.getenv('EMTEST_BROWSER_AUTO_CONFIG')
-  common.EMTEST_HEADLESS = int(os.getenv('EMTEST_HEADLESS', '0'))
+  browser_common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
+  browser_common.EMTEST_BROWSER_AUTO_CONFIG = os.getenv('EMTEST_BROWSER_AUTO_CONFIG')
+  browser_common.EMTEST_HEADLESS = int(os.getenv('EMTEST_HEADLESS', '0'))
   common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
   common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
   common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
@@ -522,7 +525,7 @@ def configure():
   assert 'PARALLEL_SUITE_EMCC_CORES' not in os.environ, 'use EMTEST_CORES rather than PARALLEL_SUITE_EMCC_CORES'
   parallel_testsuite.NUM_CORES = os.environ.get('EMTEST_CORES') or os.environ.get('EMCC_CORES')
 
-  common.configure_test_browser()
+  browser_common.configure_test_browser()
 
 
 def cleanup_emscripten_temp():
@@ -540,16 +543,6 @@ def cleanup_emscripten_temp():
 
 def main():
   options = parse_args()
-
-  # Some options make sense being set in the environment, others not-so-much.
-  # TODO(sbc): eventually just make these command-line only.
-  if os.getenv('EMTEST_SAVE_DIR'):
-    errlog('ERROR: use --save-dir instead of EMTEST_SAVE_DIR=1, and --no-clean instead of EMTEST_SAVE_DIR=2')
-    return 1
-  if os.getenv('EMTEST_REBASELINE'):
-    errlog('Prefer --rebaseline over setting $EMTEST_REBASELINE')
-  if os.getenv('EMTEST_VERBOSE'):
-    errlog('Prefer --verbose over setting $EMTEST_VERBOSE')
 
   # We set the environments variables here and then call configure,
   # to apply them.  This means the python's multiprocessing child
@@ -588,16 +581,16 @@ def main():
   # Remove any old test files before starting the run
   cleanup_emscripten_temp()
   utils.delete_file(common.flaky_tests_log_filename)
-  utils.delete_file(common.browser_spawn_lock_filename)
-  utils.delete_file(f'{common.browser_spawn_lock_filename}_counter')
+  utils.delete_file(browser_common.browser_spawn_lock_filename)
+  utils.delete_file(f'{browser_common.browser_spawn_lock_filename}_counter')
   if options.force_browser_process_termination or os.getenv('EMTEST_FORCE_BROWSER_PROCESS_TERMINATION'):
-    config = common.get_browser_config()
+    config = browser_common.get_browser_config()
 
     def terminate_all_browser_processes():
-      procs = common.list_processes_by_name(config.executable_name)
+      procs = browser_common.list_processes_by_name(config.executable_name)
       if len(procs) > 0:
         print(f'Terminating {len(procs)} stray browser processes.')
-        common.terminate_list_of_processes(procs)
+        browser_common.terminate_list_of_processes(procs)
 
     if config and hasattr(config, 'executable_name'):
       atexit.register(terminate_all_browser_processes)

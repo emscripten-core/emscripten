@@ -523,7 +523,7 @@ addToLibrary({
   _load_secondary_module: async function() {
     // Mark the module as loading for the wasm module (so it doesn't try to load it again).
     wasmExports['load_secondary_module_status'].value = 1;
-    var imports = {'primary': wasmExports};
+    var imports = {'primary': wasmRawExports};
     // Replace '.wasm' suffix with '.deferred.wasm'.
     var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
     await instantiateAsync(null, deferred, imports);

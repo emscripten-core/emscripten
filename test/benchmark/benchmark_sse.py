@@ -21,7 +21,8 @@ import clang_native
 from common import EMRUN, test_file
 
 from tools.config import V8_ENGINE
-from tools.shared import CLANG_CXX, EMCC, WINDOWS, run_process
+from tools.shared import CLANG_CXX, EMCC
+from tools.utils import WINDOWS, run_process
 
 # System info
 system_info = subprocess.check_output([EMRUN, '--system_info'], stderr=subprocess.STDOUT, text=True)
