@@ -77,7 +77,7 @@ var LibraryWebAudio = {
 
   // Performs the work of getting the AudioContext's render quantum size.
   $emscriptenGetContextQuantumSize: (contextHandle) => {
-    return EmAudio[contextHandle].renderQuantumSize || 128;
+    return EmAudio[contextHandle]['renderQuantumSize'] || 128;
   },
 
   // emscripten_create_audio_context() does not itself use the

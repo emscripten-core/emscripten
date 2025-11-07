@@ -134,7 +134,7 @@ var K = [], L = a => {
         a = {
             latencyHint: c,
             sampleRate: G[a + 4 >> 2] || void 0,
-            O: 0 == b ? "default" : 0 > b ? "hardware" : b
+            N: 0 == b ? "default" : 0 > b ? "hardware" : b
         };
     } else a = void 0;
     a = new AudioContext(a);
@@ -159,7 +159,7 @@ var K = [], L = a => {
             processorOptions: {
                 v: h,
                 A: d,
-                u: O[a].N || 128
+                u: O[a].renderQuantumSize || 128
             }
         };
     } else b = void 0;
@@ -204,7 +204,7 @@ var K = [], L = a => {
         });
         e.port.postMessage({
             _boot: 1,
-            P: ba++,
+            O: ba++,
             G: m.wasm,
             L: w,
             J: c,
