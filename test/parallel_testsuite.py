@@ -115,6 +115,13 @@ def run_test(test, allowed_failures_counter, lock, progress_counter, num_tests, 
   # working directory is not within it.
   os.chdir(olddir)
   common.force_delete_dir(temp_dir)
+
+  # Since we are returning this result to the main thread we need to make sure
+  # that it is serializable/picklable. To do this, we delete any non-picklable
+  # fields from the instance.
+  del result._original_stdout
+  del result._original_stderr
+
   return result
 
 
@@ -333,11 +340,6 @@ class BufferedParallelTestResult(unittest.TestResult):
     # TODO(sbc): figure out a way to display this duration information again when
     # these results get passed back to the TextTestRunner/TextTestResult.
     self.buffered_result.duration = self.test_duration
-    # Once we are done running the test and any stdout/stderr buffering has
-    # being taking care or, we delete these fields which the parent class uses.
-    # This is because they are not picklable (serializable).
-    del self._original_stdout
-    del self._original_stderr
 
   def addSuccess(self, test):
     super().addSuccess(test)
