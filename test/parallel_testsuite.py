@@ -3,13 +3,17 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import io
 import json
+import logging
 import multiprocessing
 import os
+import shutil
 import sys
 import tempfile
 import time
 import unittest
+from types import MethodType
 
 import browser_common
 import common
@@ -107,6 +111,12 @@ def tear_down():
   return True
 
 
+def clearline():
+  assert sys.stderr.isatty()
+  sys.stdout.write('\r\033[K')
+  sys.stdout.flush()
+
+
 class ParallelTestSuite(unittest.BaseTestSuite):
   """Runs a suite of tests in parallel.
 
@@ -119,14 +129,16 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     self.max_failures = options.max_failures
     self.failing_and_slow_first = options.failing_and_slow_first
     self.progress_counter = 0
+    self.use_single_line_output = options.buffer and sys.stderr.isatty()
+    if self.use_single_line_output:
+      self.terminal_width = shutil.get_terminal_size()[0]
 
   def addTest(self, test):
     super().addTest(test)
     test.is_parallel = True
 
   def printOneResult(self, res):
-    percent = int(self.progress_counter * 100 / self.num_tests)
-    progress = f'[{percent:2d}%] '
+    progress = f'[{self.progress_counter}/{self.num_tests}] '
     self.progress_counter += 1
 
     if res.test_result == 'success':
@@ -139,8 +151,11 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       msg = 'FAIL'
       color = RED
     elif res.test_result == 'skipped':
-      reason = res.skipped[0][1]
-      msg = f"skipped '{reason}'"
+      if self.use_single_line_output:
+        msg = 'skipped'
+      else:
+        reason = res.skipped[0][1]
+        msg = f"skipped '{reason}'"
       color = CYAN
     elif res.test_result == 'unexpected success':
       msg = 'unexpected success'
@@ -154,7 +169,23 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     if res.test_result != 'skipped':
       msg += f' ({res.elapsed:.2f}s)'
 
-    errlog(f'{with_color(CYAN, progress)}{res.test} ... {with_color(color, msg)}')
+    if self.use_single_line_output:
+      min_len = len(progress) + len(msg) + 5
+      max_name = self.terminal_width - min_len
+      test_name = str(res.test)[:max_name]
+    else:
+      test_name = str(res.test)
+
+    line = f'{with_color(CYAN, progress)}{test_name} ... {with_color(color, msg)}'
+
+    if self.use_single_line_output:
+      clearline()
+      if res.test_result in ('failed', 'errored'):
+        errlog(line)
+      sys.stderr.write(line)
+      sys.stderr.flush()
+    else:
+      errlog(line)
 
   def run(self, result):
     # The 'spawn' method is used on windows and it can be useful to set this on
@@ -197,7 +228,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
           if res:
             self.printOneResult(res)
             results.append(res)
-
+        if sys.stderr.isatty():
+          sys.stderr.write('\n')
         # Send a task to each worker to tear down the browser and server. This
         # relies on the implementation detail in the worker pool that all workers
         # are cycled through once.
@@ -229,7 +261,25 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
       json.dump(previous_test_run_results, open(common.PREVIOUS_TEST_RUN_RESULTS_FILE, 'w'), indent=2)
 
-    return self.combine_results(result, results)
+    old_stream = result.stream
+    if self.use_single_line_output:
+      def writeln(x, arg=None):
+        if arg:
+            x.write(arg)
+        x.write('\n')
+      result.stream = io.StringIO()
+      result.stream.writeln = MethodType(writeln, result.stream)
+    else:
+      errlog('')
+      errlog('DONE: combining results on main thread')
+      errlog('')
+
+    try:
+      self.combine_results(result, results)
+    finally:
+      result.stream = old_stream
+
+    return result
 
   def get_sorted_tests(self):
     """A list of this suite's tests, sorted with the @is_slow_test tests first.
@@ -249,13 +299,11 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return sorted(self, key=test_key, reverse=True)
 
   def combine_results(self, result, buffered_results):
-    errlog('')
-    errlog('DONE: combining results on main thread')
-    errlog('')
     # Sort the results back into alphabetical order. Running the tests in
     # parallel causes mis-orderings, this makes the results more readable.
     results = sorted(buffered_results, key=lambda res: str(res.test))
     result.core_time = 0
+    result.buffer = False
 
     # shared data structures are hard in the python multi-processing world, so
     # use a file to share the flaky test information across test processes.
@@ -284,8 +332,6 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       # Cleanup temp files that were used for the visualization
       emprofile.delete_profiler_logs()
       utils.delete_file(common.flaky_tests_log_filename)
-
-    return result
 
 
 class BufferedParallelTestResult(unittest.TestResult):
@@ -343,12 +389,20 @@ class BufferedParallelTestResult(unittest.TestResult):
   def startTest(self, test):
     super().startTest(test)
     self.test_name = str(test)
+    if self.buffer:
+      for handler in logging.root.handlers:
+        if handler.stream == self._original_stderr:
+          handler.stream = self._stderr_buffer
 
   def stopTest(self, test):
     super().stopTest(test)
     # TODO(sbc): figure out a way to display this duration information again when
     # these results get passed back to the TextTestRunner/TextTestResult.
     self.buffered_result.duration = self.test_duration
+    if self.buffer:
+      for handler in logging.root.handlers:
+        if handler.stream == self._stderr_buffer:
+          handler.stream = self._original_stderr
 
   def addSuccess(self, test):
     super().addSuccess(test)
