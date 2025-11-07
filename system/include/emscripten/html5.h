@@ -466,7 +466,7 @@ int emscripten_request_animation_frame(bool (*cb)(double time, void *userData), 
 void emscripten_cancel_animation_frame(int requestAnimationFrameId);
 void emscripten_request_animation_frame_loop(bool (*cb)(double time, void *userData), void *userData);
 
-int emscripten_queue_microtask(void (*cb)(void *userData), void *userData);
+void emscripten_queue_microtask(void (*cb)(void *userData), void *userData);
 
 double emscripten_date_now(void);
 double emscripten_performance_now(void);
