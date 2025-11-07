@@ -154,6 +154,10 @@ function createWasmAudioWorkletProcessor() {
       var stackMemoryAligned = (stackMemoryStruct + stackMemoryData + 15) & ~15;
       var structPtr = stackAlloc(stackMemoryAligned);
       var dataPtr = structPtr + (stackMemoryAligned - stackMemoryData);
+#if ASSERTIONS
+      // TODO: look at why stackAlloc isn't tripping the assertions
+      console.assert(stackMemoryAligned <= wwParams.stackSize, `Not enough stack allocated to the AudioWorklet (need ${stackMemoryAligned}, got ${wwParams.stackSize})`);
+#endif
 
       // Copy input audio descriptor structs and data to Wasm (recall, structs
       // first, audio data after). 'inputsPtr' is the start of the C callback's
