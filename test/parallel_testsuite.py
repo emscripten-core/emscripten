@@ -90,6 +90,7 @@ def run_test(test, allowed_failures_counter, lock, progress_counter, num_tests, 
 
   olddir = os.getcwd()
   result = BufferedParallelTestResult()
+  result.start_time = start_time
   result.buffer = buffer
   temp_dir = tempfile.mkdtemp(prefix='emtest_')
   test.set_temp_dir(temp_dir)
