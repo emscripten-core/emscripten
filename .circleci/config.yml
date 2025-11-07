@@ -1101,6 +1101,7 @@ jobs:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
+      EMTEST_VISUALIZE: "1"
     steps:
       - run-tests-chrome:
           title: "browser64"
@@ -1123,6 +1124,9 @@ jobs:
             browser64.test_pthread_asan*
             browser64.test_webgl_multi_draw*
             browser64.test_pthread_growth*"
+      - run:
+          name: Check profile
+          command: file -E out/graph.html
   test-browser-chrome-2gb:
     executor: focal
     environment:

@@ -19,6 +19,7 @@ from tools import emprofile, utils
 from tools.colored_logger import CYAN, GREEN, RED, with_color
 from tools.utils import WINDOWS
 
+EMTEST_VISUALIZE = os.getenv('EMTEST_VISUALIZE')
 NUM_CORES = None
 seen_class = set()
 torn_down = False
@@ -270,7 +271,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       r.updateResult(result)
 
     # Generate the parallel test run visualization
-    if os.getenv('EMTEST_VISUALIZE'):
+    if EMTEST_VISUALIZE:
       emprofile.create_profiling_graph(utils.path_from_root('out/graph'))
       # Cleanup temp files that were used for the visualization
       emprofile.delete_profiler_logs()
@@ -309,7 +310,7 @@ class BufferedParallelTestResult(unittest.TestResult):
     self.log_test_run_for_visualization()
 
   def log_test_run_for_visualization(self):
-    if os.getenv('EMTEST_VISUALIZE') and (self.test_result != 'skipped' or self.test_duration > 0.2):
+    if EMTEST_VISUALIZE and (self.test_result != 'skipped' or self.test_duration > 0.2):
       profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
       os.makedirs(profiler_logs_path, exist_ok=True)
       profiler_log_file = os.path.join(profiler_logs_path, 'toolchain_profiler.pid_0.json')
@@ -326,7 +327,7 @@ class BufferedParallelTestResult(unittest.TestResult):
       # block, so generate one on the fly.
       dummy_test_task_counter = os.path.getsize(profiler_log_file) if os.path.isfile(profiler_log_file) else 0
       # Remove the redundant 'test_' prefix from each test, since character space is at a premium in the visualized graph.
-      test_name = self.test_short_name().removeprefix('test_')
+      test_name = utils.removeprefix(self.test_short_name(), 'test_')
       with open(profiler_log_file, 'a') as prof:
         prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{colors[self.test_result]}"}}')
         prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time + self.test_duration},"returncode":0}}')
