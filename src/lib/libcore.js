@@ -2264,6 +2264,15 @@ addToLibrary({
       this.allocated[id] = undefined;
       this.freelist.push(id);
     }
+    list() {
+      var valid_ids = [];
+      for (var i = 1; i < this.allocated.length; i++) {
+        if (this.allocated[i] !== undefined) {
+          valid_ids.push(i);
+        }
+      }
+      return valid_ids;
+    }
   },
 
   $wasmTable__docs: '/** @type {WebAssembly.Table} */',
