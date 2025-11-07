@@ -118,26 +118,11 @@ class EmccOptions:
 options = EmccOptions()
 
 
-def is_int(s):
+def is_unsigned_int(s):
   try:
-    int(s)
-    return True
+    return int(s) >= 0
   except ValueError:
     return False
-
-
-def validate_arg_level(level_string, max_level, err_msg, clamp=False):
-  try:
-    level = int(level_string)
-  except ValueError:
-    exit_with_error(err_msg)
-  if clamp:
-    if level > max_level:
-      logger.warning("optimization level '-O" + level_string + "' is not supported; using '-O" + str(max_level) + "' instead")
-      level = max_level
-  if not 0 <= level <= max_level:
-    exit_with_error(err_msg)
-  return level
 
 
 def version_string():
@@ -290,25 +275,33 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
 
     if arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
-      requested_level = removeprefix(arg, '-O') or '2'
-      if requested_level == 's':
-        requested_level = 2
+      opt_level = removeprefix(arg, '-O') or '2'
+      if opt_level == 's':
+        opt_level = 2
         settings.SHRINK_LEVEL = 1
-      elif requested_level == 'z':
-        requested_level = 2
+      elif opt_level == 'z':
+        opt_level = 2
         settings.SHRINK_LEVEL = 2
-      elif requested_level == 'g':
-        requested_level = 1
+      elif opt_level == 'g':
+        opt_level = 1
         settings.SHRINK_LEVEL = 0
         settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
-      elif requested_level == 'fast':
+      elif opt_level == 'fast':
         # -Ofast typically includes -ffast-math semantics
         options.fast_math = True
-        requested_level = 3
+        opt_level = 3
         settings.SHRINK_LEVEL = 0
       else:
         settings.SHRINK_LEVEL = 0
-      settings.OPT_LEVEL = validate_arg_level(requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
+      try:
+        level = int(opt_level)
+      except ValueError:
+        exit_with_error(f"invalid integral value '{opt_level}' in '{arg}'")
+      if level > 3 or level < 0:
+        diagnostics.warn(f"optimization level '{arg}' is not supported; using '-O3' instead")
+        newargs[i] = '-O3'
+        level = 3
+      settings.OPT_LEVEL = level
     elif check_arg('--js-opts'):
       logger.warning('--js-opts ignored when using llvm backend')
       consume_arg()
@@ -360,53 +353,56 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.no_minify = True
     elif arg.startswith('-g'):
       options.requested_debug = arg
-      requested_level = removeprefix(arg, '-g') or '3'
-      if is_int(requested_level):
+      debug_level = removeprefix(arg, '-g') or '3'
+      if is_unsigned_int(debug_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
-        settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'invalid debug level: ' + arg)
-        if settings.DEBUG_LEVEL == 0:
+        debug_level = int(debug_level)
+        settings.DEBUG_LEVEL = debug_level
+        if debug_level == 0:
           # Set these explicitly so -g0 overrides previous -g on the cmdline
           settings.GENERATE_DWARF = 0
           settings.GENERATE_SOURCE_MAP = 0
           settings.EMIT_NAME_SECTION = 0
-        elif settings.DEBUG_LEVEL > 1:
+        elif debug_level > 1:
           settings.EMIT_NAME_SECTION = 1
         # if we don't need to preserve LLVM debug info, do not keep this flag
         # for clang
-        if (settings.DEBUG_LEVEL < 3 and not
-            (settings.GENERATE_SOURCE_MAP or settings.SEPARATE_DWARF)):
+        if debug_level < 3 and not (settings.GENERATE_SOURCE_MAP or settings.SEPARATE_DWARF):
           newargs[i] = '-g0'
         else:
-          # for 3+, report -g3 to clang as -g4 etc. are not accepted
-          newargs[i] = '-g3'
-          if settings.DEBUG_LEVEL == 3:
+          if debug_level == 3:
             settings.GENERATE_DWARF = 1
-          if settings.DEBUG_LEVEL == 4:
-            settings.GENERATE_SOURCE_MAP = 1
+          elif debug_level == 4:
+            # In the past we supported, -g4.  But clang never did.
+            # Lower this to -g3, and report a warning.
+            newargs[i] = '-g3'
             diagnostics.warning('deprecated', 'please replace -g4 with -gsource-map')
+            settings.GENERATE_SOURCE_MAP = 1
+          elif debug_level > 4:
+            exit_with_error("unknown argument: '%s'", arg)
       else:
-        if requested_level.startswith('force_dwarf'):
+        if debug_level.startswith('force_dwarf'):
           exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
-        elif requested_level.startswith('separate-dwarf'):
+        elif debug_level.startswith('separate-dwarf'):
           # emit full DWARF but also emit it in a file on the side
           newargs[i] = '-g'
           # if a file is provided, use that; otherwise use the default location
           # (note that we do not know the default location until all args have
           # been parsed, so just note True for now).
-          if requested_level != 'separate-dwarf':
-            if not requested_level.startswith('separate-dwarf=') or requested_level.count('=') != 1:
+          if debug_level != 'separate-dwarf':
+            if not debug_level.startswith('separate-dwarf=') or debug_level.count('=') != 1:
               exit_with_error('invalid -gseparate-dwarf=FILENAME notation')
-            settings.SEPARATE_DWARF = requested_level.split('=')[1]
+            settings.SEPARATE_DWARF = debug_level.split('=')[1]
           else:
             settings.SEPARATE_DWARF = True
           settings.GENERATE_DWARF = 1
           settings.DEBUG_LEVEL = 3
-        elif requested_level in ['source-map', 'source-map=inline']:
-          settings.GENERATE_SOURCE_MAP = 1 if requested_level == 'source-map' else 2
+        elif debug_level in ['source-map', 'source-map=inline']:
+          settings.GENERATE_SOURCE_MAP = 1 if debug_level == 'source-map' else 2
           newargs[i] = '-g'
-        elif requested_level == 'z':
+        elif debug_level == 'z':
           # Ignore `-gz`.  We don't support debug info compression.
-          continue
+          pass
         else:
           # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
           # usually clang flags that emit DWARF. So we pass them through to
