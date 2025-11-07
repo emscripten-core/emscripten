@@ -5016,6 +5016,13 @@ Module["preRun"] = () => {
   def test_request_animation_frame(self):
     self.btest_exit('test_request_animation_frame.c')
 
+  def test_emscripten_queue_microtask(self):
+    self.btest_exit('emscripten_queue_microtask.c')
+
+  @requires_shared_array_buffer
+  def test_emscripten_queue_microtask_pthread(self):
+    self.btest_exit('emscripten_queue_microtask.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
+
   @requires_shared_array_buffer
   def test_emscripten_set_timeout(self):
     self.btest_exit('emscripten_set_timeout.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
