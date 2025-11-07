@@ -134,7 +134,7 @@ var K = [], L = a => {
         a = {
             latencyHint: c,
             sampleRate: G[a + 4 >> 2] || void 0,
-            N: 0 == b ? "default" : 0 > b ? "hardware" : b
+            N: 0 > b ? "hardware" : b || "default"
         };
     } else a = void 0;
     a = new AudioContext(a);
