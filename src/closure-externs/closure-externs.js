@@ -19,12 +19,6 @@ var EMSCRIPTEN$AWAIT;
 // Don't minify createRequire
 var createRequire;
 
-// Don't minify startWorker which we use to start workers once the runtime is ready.
-/**
- * @param {Object} Module
- */
-var startWorker = function(Module) {};
-
 // Closure externs used by library_sockfs.js
 
 /**
@@ -70,6 +64,11 @@ var Atomics = {};
 Atomics.compareExchange = function() {};
 Atomics.exchange = function() {};
 Atomics.wait = function() {};
+/**
+ * @param {number=} maxWaitMilliseconds
+ * @suppress {duplicate, checkTypes}
+ */
+Atomics.waitAsync = function(i32a, index, value, maxWaitMilliseconds) {};
 Atomics.notify = function() {};
 Atomics.load = function() {};
 Atomics.store = function() {};
@@ -109,6 +108,10 @@ WebAssembly.Instance.prototype.exports;
  * @type {!ArrayBuffer}
  */
 WebAssembly.Memory.prototype.buffer;
+/**
+ * @returns {ArrayBuffer}
+ */
+WebAssembly.Memory.prototype.toResizableBuffer = function() {};
 /**
  * @type {number}
  */
@@ -218,14 +221,6 @@ var outerWidth;
 var outerHeight;
 var event;
 var devicePixelRatio;
-
-/*
- * AudioWorkletGlobalScope globals
- */
-var registerProcessor = function(name, obj) {};
-var currentFrame;
-var currentTime;
-var sampleRate;
 
 /*
  * Avoid closure minifying anything to "id". See #13965

@@ -36,6 +36,18 @@ var LibraryEmbind = {
       this.destructorType = 'none'; // Same as emval.
     }
   },
+  $UserTypeDefinition: class {
+    constructor(typeId, name, definition) {
+      this.typeId = typeId;
+      this.name = name;
+      this.definition = definition;
+      this.destructorType = 'none'; // Same as emval.
+    }
+
+    print(nameMap, out) {
+      out.push(`type ${this.name} = ${this.definition};\n\n`);
+    }
+  },
   $OptionalType: class {
     constructor(type) {
       this.type = type;
@@ -134,13 +146,13 @@ var LibraryEmbind = {
       for (const argType of this.argumentTypes) {
         argTypes.push(this.convertToEmbindType(argType.type));
       }
-      const signature = createJsInvokerSignature(argTypes, !!this.thisType, this.returnType.name !== 'void', this.isAsync)
+      const signature = createJsInvokerSignature(argTypes, !!this.thisType, !this.returnType.isVoid, this.isAsync)
       if (emittedFunctions.has(signature)) {
         return;
       }
       emittedFunctions.add(signature);
-      let [args, body] = createJsInvoker(argTypes, !!this.thisType, this.returnType.name !== 'void', this.isAsync);
-      out.push(`'${signature}': function(${args.join(',')}) {\n${body}},`);
+      let invokerFactory = createJsInvoker(argTypes, !!this.thisType, !this.returnType.isVoid, this.isAsync);
+      out.push(`'${signature}': ${invokerFactory},`);
     }
   },
   $PointerDefinition: class {
@@ -398,10 +410,10 @@ var LibraryEmbind = {
         return tsName;
       }
       if (type instanceof PointerDefinition) {
-        return `${this.typeToJsName(type.classType)} | null`;
+        return `${this.typeToJsName(type.classType, isFromWireType)} | null`;
       }
       if (type instanceof OptionalType) {
-        return `${this.typeToJsName(type.type)} | undefined`;
+        return `${this.typeToJsName(type.type, isFromWireType)} | undefined`;
       }
       return type.name;
     }
@@ -528,7 +540,9 @@ var LibraryEmbind = {
   },
   _embind_register_void__deps: ['$registerPrimitiveType'],
   _embind_register_void: (rawType, name) => {
-    registerPrimitiveType(rawType, name, 'none');
+    const voidType = new PrimitiveType(rawType, 'void', 'none');
+    voidType.isVoid = true; // Match the marker property from the non-AOT mode.
+    registerType(rawType, voidType);
   },
   _embind_register_bool__deps: ['$registerPrimitiveType'],
   _embind_register_bool: (rawType, name, trueValue, falseValue) => {
@@ -560,6 +574,14 @@ var LibraryEmbind = {
   _embind_register_user_type: (rawType, name) => {
     name = AsciiToString(name);
     registerType(rawType, new UserType(rawType, name));
+  },
+  _embind_register_user_type_definition__deps: ['$registerType', '$AsciiToString', '$UserTypeDefinition'],
+  _embind_register_user_type_definition: (rawType, name, definition) => {
+    name = AsciiToString(name);
+    definition = AsciiToString(definition);
+    const userTypeDef = new UserTypeDefinition(rawType, name, definition);
+    registerType(rawType, userTypeDef);
+    moduleDefinitions.push(userTypeDef);
   },
   _embind_register_optional__deps: ['$OptionalType'],
   _embind_register_optional: (rawOptionalType, rawType) => {
@@ -868,7 +890,6 @@ var LibraryEmbind = {
   // Stub functions used by eval, but not needed for TS generation:
   $makeLegalFunctionName: () => { throw new Error('stub function should not be called'); },
   $runDestructors: () => { throw new Error('stub function should not be called'); },
-  $createNamedFunction: () => { throw new Error('stub function should not be called'); },
   $flushPendingDeletes: () => { throw new Error('stub function should not be called'); },
   $setDelayFunction: () => { throw new Error('stub function should not be called'); },
   $PureVirtualError: () => { throw new Error('stub function should not be called'); },

@@ -4,13 +4,13 @@
 # found in the LICENSE file.
 
 import logging
-from typing import List, Dict
+from dataclasses import dataclass
+from typing import Dict, List
 
-from . import webassembly, utils
-from .webassembly import OpCode, AtomicOpCode, MemoryOpCode
-from .shared import exit_with_error
+from . import utils, webassembly
 from .settings import settings
-
+from .utils import exit_with_error
+from .webassembly import AtomicOpCode, MemoryOpCode, OpCode
 
 logger = logging.getLogger('extract_metadata')
 
@@ -239,13 +239,16 @@ def get_main_reads_params(module, export_map):
   return True
 
 
-def get_global_exports(module, exports):
-  global_exports = {}
+def get_data_exports(module, exports):
+  data_exports = {}
   for export in exports:
     if export.kind == webassembly.ExternType.GLOBAL:
       g = module.get_global(export.index)
-      global_exports[export.name] = str(get_global_value(g))
-  return global_exports
+      # Data symbols (addresses) are exported as immutable Wasm globals.
+      # mutable globals are handled via get_other_exports
+      if not g.mutable:
+        data_exports[export.name] = str(get_global_value(g))
+  return data_exports
 
 
 def get_function_exports(module):
@@ -256,33 +259,46 @@ def get_function_exports(module):
   return rtn
 
 
-def get_tag_exports(module):
+def get_other_exports(module):
   rtn = []
   for e in module.get_exports():
-    if e.kind == webassembly.ExternType.TAG:
-      rtn.append(e.name)
+    if e.kind == webassembly.ExternType.FUNC:
+      continue
+    if e.kind == webassembly.ExternType.GLOBAL:
+      g = module.get_global(e.index)
+      # Immutable globals are handled specially.  See get_data_exports
+      if not g.mutable:
+        continue
+    rtn.append(e.name)
   return rtn
 
 
-def update_metadata(filename, metadata):
-  imports = []
-  invoke_funcs = []
-  with webassembly.Module(filename) as module:
-    for i in module.get_imports():
-      if i.kind == webassembly.ExternType.FUNC:
-        if i.field.startswith('invoke_'):
-          invoke_funcs.append(i.field)
-        else:
-          imports.append(i.field)
-      elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
+def read_module_imports(module, metadata):
+  em_js_funcs = metadata.em_js_funcs
+  types = module.get_types()
+
+  imports = metadata.imports = []
+  invoke_funcs = metadata.invoke_funcs = []
+  em_js_func_types = metadata.em_js_func_types = {}
+
+  for i in module.get_imports():
+    if i.kind == webassembly.ExternType.FUNC:
+      if i.field.startswith('invoke_'):
+        invoke_funcs.append(i.field)
+      else:
+        if i.field in em_js_funcs:
+          em_js_func_types[i.field] = types[i.type]
         imports.append(i.field)
+    elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
+      imports.append(i.field)
 
+
+def update_metadata(filename, metadata):
+  with webassembly.Module(filename) as module:
     metadata.function_exports = get_function_exports(module)
-    metadata.tag_exports = get_tag_exports(module)
+    metadata.other_exports = get_other_exports(module)
     metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in module.get_exports()]
-
-  metadata.imports = imports
-  metadata.invoke_funcs = invoke_funcs
+    read_module_imports(module, metadata)
 
 
 def get_string_at(module, address):
@@ -292,31 +308,28 @@ def get_string_at(module, address):
   return data_to_string(data[offset:str_end])
 
 
+@dataclass(init=False)
 class Metadata:
   imports: List[str]
   export: List[str]
   em_asm_consts: Dict[int, str]
   js_deps: List[str]
   em_js_funcs: Dict[str, str]
-  em_js_func_types: Dict[str, str]
+  em_js_func_types: Dict[str, webassembly.FuncType]
   features: List[str]
   invoke_funcs: List[str]
   main_reads_params: bool
-  global_exports: List[str]
-
-  def __init__(self):
-    pass
+  data_exports: Dict[str, str]
+  function_exports: Dict[str, webassembly.FuncType]
+  other_exports: List[str]
+  all_exports: List[str]
 
 
 def extract_metadata(filename):
-  import_names = []
-  invoke_funcs = []
   em_js_funcs = {}
-  em_js_func_types = {}
 
   with webassembly.Module(filename) as module:
     exports = module.get_exports()
-    imports = module.get_imports()
 
     export_map = {e.name: e for e in exports}
     for e in exports:
@@ -326,20 +339,8 @@ def extract_metadata(filename):
         string_address = to_unsigned(get_global_value(globl))
         em_js_funcs[name] = get_string_at(module, string_address)
 
-    for i in imports:
-      if i.kind == webassembly.ExternType.FUNC:
-        if i.field.startswith('invoke_'):
-          invoke_funcs.append(i.field)
-        else:
-          if i.field in em_js_funcs:
-            types = module.get_types()
-            em_js_func_types[i.field] = types[i.type]
-          import_names.append(i.field)
-      elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
-        import_names.append(i.field)
-
-    features = module.parse_features_section()
-    features = ['--enable-' + f[1] for f in features if f[0] == '+']
+    features = module.get_target_features()
+    features = [f'--enable-{feature}' for feature, used in features.items() if used == webassembly.TargetFeaturePrefix.USED]
     features = [f.replace('--enable-atomics', '--enable-threads') for f in features]
     features = [f.replace('--enable-simd128', '--enable-simd') for f in features]
     features = [f.replace('--enable-nontrapping-fptoint', '--enable-nontrapping-float-to-int') for f in features]
@@ -347,18 +348,17 @@ def extract_metadata(filename):
     # If main does not read its parameters, it will just be a stub that
     # calls __original_main (which has no parameters).
     metadata = Metadata()
-    metadata.imports = import_names
     metadata.function_exports = get_function_exports(module)
-    metadata.tag_exports = get_tag_exports(module)
+    metadata.other_exports = get_other_exports(module)
     metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in exports]
     metadata.em_asm_consts = get_section_strings(module, export_map, 'em_asm')
     metadata.js_deps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]
     metadata.em_js_funcs = em_js_funcs
-    metadata.em_js_func_types = em_js_func_types
     metadata.features = features
-    metadata.invoke_funcs = invoke_funcs
     metadata.main_reads_params = get_main_reads_params(module, export_map)
-    metadata.global_exports = get_global_exports(module, exports)
+    metadata.data_exports = get_data_exports(module, exports)
+
+    read_module_imports(module, metadata)
 
     # print("Metadata parsed: " + pprint.pformat(metadata))
     return metadata

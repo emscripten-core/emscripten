@@ -28,7 +28,7 @@
 
       // Test code
       async function reportResult(result) {
-        await fetch('http://localhost:8888/report_gl_result?' + result);
+        await fetch('/report_gl_result?' + result);
         window.close();
       }
       function doTest() {

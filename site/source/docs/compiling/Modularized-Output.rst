@@ -35,7 +35,7 @@ separate and isolated instances of the same program.
 By default, the factory function is called ``Module``, but it can be given a
 unique name via the ``-sEXPORT_NAME`` setting.
 
-For example, a program is built using ``-sMODUARLIZE -sEXPORT_NAME=Foo`` can
+For example, a program is built using ``-sMODULARIZE -sEXPORT_NAME=Foo`` can
 be instantiated using:
 
 ::
@@ -123,9 +123,6 @@ fix in future releses.  Current limitations include:
 
 * `ccall`/`cwrap` are not supported (depends on the ``Module`` global).
 
-* :ref:`asyncify_lazy_load_code` is not supported (depends on ``wasmExports``
-  global)
-
 * :ref:`minimal_runtime` is not supported.
 
 * The output of file_packager is not compatible so :ref:`emcc-preload-file` and
@@ -163,7 +160,7 @@ This setting implicitly enables :ref:`export_es6` and sets :ref:`MODULARIZE` to
 
 Some additional limitations are:
 
-* ``-pthread`` / :ref:`wasm_workers` are not yet supported.
+* :ref:`wasm_workers` is not yet supported.
 
 * :ref:`abort_on_wasm_exceptions` is not supported (requires wrapping wasm
   exports).

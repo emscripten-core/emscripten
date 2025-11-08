@@ -54,7 +54,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-O1``
   [compile+link]
-  Simple optimizations. During the compile step these include LLVM ``-O1`` optimizations. During the link step this does not include various runtime assertions in JS that `-O0` would do.
+  Simple optimizations. During the compile step these include LLVM ``-O1`` optimizations. During the link step this omits various runtime assertions in JS that `-O0` would include.
 
 .. _emcc-O2:
 
@@ -68,7 +68,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-O3``
   [compile+link]
-  Like ``-O2``, but with additional optimizations that may take longer to run.
+  Like ``-O2``, but with additional optimizations that may take longer to run and may increase code size.
 
   .. note:: This is a good setting for a release build.
 
@@ -76,8 +76,8 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-Og``
   [compile+link]
-  Like ``-O1``. In future versions, this option might disable different
-  optimizations in order to improve debuggability.
+  Like ``-O1``, with an additional flag to extend the liveness of variables for improved debugging.
+  In future versions, additional optimizations might also be disabled.
 
 .. _emcc-Os:
 
@@ -173,9 +173,11 @@ Options that are modified or new in *emcc* are listed below:
 .. _emcc-gsource-map:
 
 ``-gsource-map[=inline]``
-  [link]
+  [compile+link]
+  [same as -g3 if passed at compile time, otherwise applies at link]
   Generate a source map using LLVM debug information (which must
-  be present in object files, i.e., they should have been compiled with ``-g``).
+  be present in object files, i.e., they should have been compiled with ``-g``
+  or ``-gsource-map``).
 
   When this option is provided, the **.wasm** file is updated to have a
   ``sourceMappingURL`` section. The resulting URL will have format:
@@ -193,7 +195,9 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-g<level>``
   [compile+link]
-  Controls the level of debuggability. Each level builds on the previous one:
+  If used at compile time, adds progressively more DWARF information to the object file,
+  according to the underlying behavior of clang.
+  If used at link time, controls the level of debuggability overall. Each level builds on the previous one:
 
     -
       .. _emcc-g0:
@@ -203,29 +207,31 @@ Options that are modified or new in *emcc* are listed below:
     -
       .. _emcc-g1:
 
-      ``-g1``: When linking, preserve whitespace in JavaScript.
+      ``-g1``: Preserve whitespace in JavaScript.
 
     -
       .. _emcc-g2:
 
-      ``-g2``: When linking, preserve function names in compiled code.
+      ``-g2``: Also preserve function names in compiled code (via the wasm name section).
 
     -
       .. _emcc-g3:
 
-      ``-g3``: When compiling to object files, keep debug info, including JS whitespace, function names, and LLVM debug info (DWARF) if any (this is the same as :ref:`-g <emcc-g>`).
+      ``-g3``: Also keep LLVM debug info (DWARF) if there is any in the object files (this is the same as :ref:`-g <emcc-g>`).
 
 .. _emcc-profiling:
 
 ``--profiling``
-  [same as -g2 if passed at compile time, otherwise applies at link]
-  Use reasonable defaults when emitting JavaScript to make the build readable but still useful for profiling. This sets ``-g2`` (preserve whitespace and function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
+  [link]
+  Make the output suitable for profiling. This means including function names in the wasm and JS output, and
+  preserving whitespace in the JS output. It does not affect optimizations (to ensure that performance profiles
+  reflect production builds). Currenly this is the same as ``-g2``.
 
 .. _emcc-profiling-funcs:
 
 ``--profiling-funcs``
   [link]
-  Preserve function names in profiling, but otherwise minify whitespace and names as we normally do in optimized builds. This is useful if you want to look at profiler results based on function names, but do *not* intend to read the emitted code.
+  Preserve wasm function names as in ``--profiling``, but otherwise minify whitespace and names as we normally do in optimized builds. This is useful if you want to look at profiler results based on function names, but do *not* intend to read the emitted code.
 
 ``--tracing``
   [link]
@@ -244,7 +250,8 @@ Options that are modified or new in *emcc* are listed below:
   Save a map file between function indexes in the Wasm and function names. By
   storing the names on a file on the side, you can avoid shipping the names, and
   can still reconstruct meaningful stack traces by translating the indexes back
-  to the names.
+  to the names. This is a simpler format than source maps, but less detailed
+  because it only describes function names and not source locations.
 
   .. note:: When used with ``-sWASM=2``, two symbol files are created. ``[name].js.symbols`` (with WASM symbols) and ``[name].wasm.js.symbols`` (with ASM.js symbols)
 

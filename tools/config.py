@@ -3,14 +3,14 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import logging
 import os
 import shutil
 import sys
-import logging
 from typing import List, Optional
 
-from . import utils, diagnostics
-from .utils import path_from_root, exit_with_error, __rootpath__
+from . import diagnostics, utils
+from .utils import __rootpath__, exit_with_error, path_from_root
 
 logger = logging.getLogger('config')
 
@@ -61,10 +61,6 @@ def fix_js_engine(old, new):
 def normalize_config_settings():
   global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
   global NODE_JS, NODE_JS_TEST, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
-
-  # EM_CONFIG stuff
-  if not JS_ENGINES:
-    JS_ENGINES = [NODE_JS]
 
   SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
   NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
@@ -227,7 +223,21 @@ def find_config_file():
   #    see below)
   # 5. User home directory config (~/.emscripten), if found.
 
+  if '--em-config' in sys.argv:
+    i = sys.argv.index('--em-config')
+    if len(sys.argv) <= i + 1:
+      exit_with_error('--em-config must be followed by a filename')
+    del sys.argv[i]
+    # Now the i'th argument is the emconfig filename
+    return sys.argv.pop(i)
+
+  if 'EM_CONFIG' in os.environ:
+    return os.environ['EM_CONFIG']
+
   embedded_config = path_from_root('.emscripten')
+  if os.path.isfile(embedded_config):
+    return embedded_config
+
   # For compatibility with `emsdk --embedded` mode also look two levels up.  The
   # layout of the emsdk puts emcc two levels below emsdk.  For example:
   #  - emsdk/upstream/emscripten/emcc
@@ -242,25 +252,11 @@ def find_config_file():
   # See: https://github.com/emscripten-core/emsdk/pull/367
   emsdk_root = os.path.dirname(os.path.dirname(path_from_root()))
   emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
-  user_home_config = os.path.expanduser('~/.emscripten')
-
-  if '--em-config' in sys.argv:
-    i = sys.argv.index('--em-config')
-    if len(sys.argv) <= i + 1:
-      exit_with_error('--em-config must be followed by a filename')
-    del sys.argv[i]
-    # Now the i'th argument is the emconfig filename
-    return sys.argv.pop(i)
-
-  if 'EM_CONFIG' in os.environ:
-    return os.environ['EM_CONFIG']
-
-  if os.path.isfile(embedded_config):
-    return embedded_config
 
   if os.path.isfile(emsdk_embedded_config):
     return emsdk_embedded_config
 
+  user_home_config = os.path.expanduser('~/.emscripten')
   if os.path.isfile(user_home_config):
     return user_home_config
 

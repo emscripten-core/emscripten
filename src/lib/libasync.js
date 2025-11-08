@@ -20,7 +20,10 @@ addToLibrary({
   },
 
 #if ASYNCIFY
-  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback', '$sigToWasmTypes',
+  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
+#if ASSERTIONS
+    '$createNamedFunction',
+#endif
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
@@ -84,7 +87,7 @@ addToLibrary({
                   !isAsyncifyImport &&
                   !changedToDisabled &&
                   !ignoredInvoke) {
-                throw new Error(`import ${x} was not in ASYNCIFY_IMPORTS, but changed the state`);
+                abort(`import ${x} was not in ASYNCIFY_IMPORTS, but changed the state`);
               }
             }
           };
@@ -141,8 +144,11 @@ addToLibrary({
 #if ASYNCIFY == 1
       Asyncify.funcWrappers.set(original, wrapper);
 #endif
-#if MAIN_MODULE || ASYNCIFY_LAZY_LOAD_CODE
+#if MAIN_MODULE
       wrapper.orig = original;
+#endif
+#if ASSERTIONS
+      wrapper = createNamedFunction(`__asyncify_wrapper_${original.name}`, wrapper);
 #endif
       return wrapper;
     },
@@ -171,18 +177,12 @@ addToLibrary({
           }
 #endif
           var wrapper = Asyncify.instrumentFunction(original);
-#if ASYNCIFY_LAZY_LOAD_CODE
-          original.exportName = x;
-#endif
           ret[x] = wrapper;
 
        } else {
           ret[x] = original;
         }
       }
-#if ASYNCIFY_LAZY_LOAD_CODE
-      Asyncify.updateFunctionMapping(ret);
-#endif
       return ret;
     },
 
@@ -216,34 +216,6 @@ addToLibrary({
     callStackId: 0,
     asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
-
-#if ASYNCIFY_LAZY_LOAD_CODE
-    updateFunctionMapping(newExports) {
-#if ASYNCIFY_DEBUG
-      dbg('updateFunctionMapping', Asyncify.callStackIdToFunc);
-#endif
-#if ASSERTIONS
-      assert(!Asyncify.exportCallStack.length);
-#endif
-      Asyncify.callStackIdToFunc.forEach((func, id) => {
-#if ASSERTIONS
-        assert(func.exportName);
-        assert(newExports[func.exportName]);
-        assert(newExports[func.exportName].orig);
-#endif
-        var newFunc = newExports[func.exportName].orig;
-        Asyncify.callStackIdToFunc.set(id, newFunc)
-        Asyncify.callstackFuncToId.set(newFunc, id);
-#if MEMORY64
-        var args = Asyncify.rewindArguments.get(func);
-        if (args) {
-          Asyncify.rewindArguments.set(newFunc, args);
-          Asyncify.rewindArguments.delete(func);
-        }
-#endif
-      });
-    },
-#endif
 
     getCallStackId(func) {
 #if ASSERTIONS
@@ -546,23 +518,12 @@ addToLibrary({
     });
   },
 
-#if ASYNCIFY_LAZY_LOAD_CODE
-  emscripten_lazy_load_code__async: true,
-  emscripten_lazy_load_code: () => Asyncify.handleSleep((wakeUp) => {
-    // Update the expected wasm binary file to be the lazy one.
-    wasmBinaryFile += '.lazy.wasm';
-    // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.
-    dependenciesFulfilled = wakeUp;
-    // Load the new wasm.
-    createWasm();
-  }),
-#endif
-
   _load_secondary_module__sig: 'v',
+  _load_secondary_module__async: true,
   _load_secondary_module: async function() {
     // Mark the module as loading for the wasm module (so it doesn't try to load it again).
     wasmExports['load_secondary_module_status'].value = 1;
-    var imports = {'primary': wasmExports};
+    var imports = {'primary': wasmRawExports};
     // Replace '.wasm' suffix with '.deferred.wasm'.
     var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
     await instantiateAsync(null, deferred, imports);
@@ -665,19 +626,19 @@ addToLibrary({
   },
 #else // ASYNCIFY
   emscripten_sleep: () => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_sleep');
   },
   emscripten_wget: (url, file) => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_wget');
   },
   emscripten_wget_data: (url, pbuffer, pnum, perror) => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data');
   },
   emscripten_scan_registers: (func) => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers');
   },
   emscripten_fiber_swap: (oldFiber, newFiber) => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap');
   },
 #endif // ASYNCIFY
 });

@@ -8,41 +8,56 @@
 import logging
 from enum import IntEnum, auto
 
-from .settings import settings, user_settings
 from . import diagnostics
+from .settings import settings, user_settings
 
 logger = logging.getLogger('feature_matrix')
 
 UNSUPPORTED = 0x7FFFFFFF
 
-# Oldest support browser versions.  These have been set somewhat
-# arbitrarily for now.
-# TODO(sbc): Design a of policy for managing these values.
-OLDEST_SUPPORTED_CHROME = 55  # December 1, 2016
-OLDEST_SUPPORTED_FIREFOX = 50  # November 15, 2016
-OLDEST_SUPPORTED_SAFARI = 101000  # September 20, 2016
-# 10.19.0 is the oldest version of node that we do any testing with.
+# Oldest support browser versions.
+# Emscripten unconditionally requires support for:
+# - DedicatedWorkerGlobalScope.name parameter for multithreading support, which
+#   landed first in Chrome 70, Firefox 55 and Safari 12.2.
+
+# N.b. when modifying these values, update comments in src/settings.js on
+# MIN_x_VERSION fields to match accordingly.
+OLDEST_SUPPORTED_CHROME = 74  # Released on 2019-04-23
+OLDEST_SUPPORTED_FIREFOX = 68  # Released on 2019-07-09
+OLDEST_SUPPORTED_SAFARI = 120200  # Released on 2019-03-25
+# 12.22.09 is the oldest version of node that we do any testing with.
 # Keep this in sync with the test-node-compat in .circleci/config.yml.
-OLDEST_SUPPORTED_NODE = 101900
+OLDEST_SUPPORTED_NODE = 122209
 
 
 class Feature(IntEnum):
+  MUTABLE_GLOBALS = auto()
   NON_TRAPPING_FPTOINT = auto()
   SIGN_EXT = auto()
   BULK_MEMORY = auto()
-  MUTABLE_GLOBALS = auto()
   JS_BIGINT_INTEGRATION = auto()
   THREADS = auto()
-  GLOBALTHIS = auto()
   PROMISE_ANY = auto()
   MEMORY64 = auto()
+  WORKER_ES6_MODULES = auto()
+  OFFSCREENCANVAS_SUPPORT = auto()
+  WASM_LEGACY_EXCEPTIONS = auto()
+  WASM_EXCEPTIONS = auto()
+  WEBGL2 = auto()
+  WEBGPU = auto()
+  GROWABLE_ARRAYBUFFERS = auto()
 
 
-default_features = {Feature.SIGN_EXT, Feature.MUTABLE_GLOBALS}
 disable_override_features = set()
 enable_override_features = set()
 
 min_browser_versions = {
+  Feature.MUTABLE_GLOBALS: {
+    'chrome': 74,
+    'firefox': 61,
+    'safari': 130100,
+    'node': 120000,
+  },
   Feature.NON_TRAPPING_FPTOINT: {
     'chrome': 75,
     'firefox': 65,
@@ -61,15 +76,9 @@ min_browser_versions = {
     'safari': 150000,
     'node': 130000,
   },
-  Feature.MUTABLE_GLOBALS: {
-    'chrome': 74,
-    'firefox': 61,
-    'safari': 120000,
-    'node': 120000,
-  },
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,
-    'firefox': 68,
+    'firefox': 78,
     'safari': 150000,
     'node': 130000,
   },
@@ -78,12 +87,6 @@ min_browser_versions = {
     'firefox': 79,
     'safari': 140100,
     'node': 160400,
-  },
-  Feature.GLOBALTHIS: {
-    'chrome': 71,
-    'firefox': 65,
-    'safari': 120100,
-    'node': 120000,
   },
   Feature.PROMISE_ANY: {
     'chrome': 85,
@@ -97,7 +100,81 @@ min_browser_versions = {
     'safari': UNSUPPORTED,
     'node': 230000,
   },
+  # Emscripten itself does not use this feature but we use it in our browser
+  # tests.
+  Feature.WEBGL2: {
+    'chrome': 56,
+    'firefox': 51,
+    'safari': 150000,
+    'node': UNSUPPORTED,
+  },
+  # Emscripten itself does not use this feature but we use it in our browser
+  # tests.
+  Feature.WEBGPU: {
+    'chrome': 113,
+    'firefox': 141,
+    'safari': 260000,
+    'node': UNSUPPORTED,
+  },
+  # Emscripten itself does not use this feature but we use it in our browser
+  # tests.
+  # https://caniuse.com/mdn-api_worker_worker_ecmascript_modules: The ability to
+  # call new Worker(url, { type: 'module' });
+  Feature.WORKER_ES6_MODULES: {
+    'chrome': 80,
+    'firefox': 114,
+    'safari': 150000,
+    'node': 0, # This is a browser only feature, no requirements on Node.js
+  },
+  # OffscreenCanvas feature allows creating canvases that are not connected to
+  # a visible DOM element, e.g. in a Worker.
+  # https://caniuse.com/offscreencanvas
+  Feature.OFFSCREENCANVAS_SUPPORT: {
+    'chrome': 69,
+    'firefox': 105,
+    'safari': 170000,
+    'node': 0, # This is a browser only feature, no requirements on Node.js
+  },
+  # Legacy Wasm exceptions was the first (now legacy) format for native
+  # exception handling in WebAssembly.
+  Feature.WASM_LEGACY_EXCEPTIONS: {
+    'chrome': 95,
+    'firefox': 100,
+    'safari': 150200,
+    'node': 170000,
+  },
+  # Wasm exceptions is a newer format for native exception handling in
+  # WebAssembly.
+  Feature.WASM_EXCEPTIONS: {
+    'chrome': 137,
+    'firefox': 131,
+    'safari': 180400,
+    # Supported with flag --experimental-wasm-exnref (TODO: Change this to
+    # unflagged version of Node.js 260000 that ships Wasm EH enabled, after
+    # Emscripten unit testing has migrated to Node.js 26, and Emsdk ships
+    # Node.js 26)
+    'node': 220000,
+  },
+  # Growable SharedArrayBuffers improves memory growth feature in multithreaded
+  # builds by avoiding need to poll resizes to ArrayBuffer views in Workers.
+  # This feature is not used anywhere else except the test harness to detect
+  # browser version.
+  Feature.GROWABLE_ARRAYBUFFERS: {
+    'chrome': 136,
+    'firefox': 145,
+    'safari': UNSUPPORTED,
+    'node': 240000,
+  },
 }
+
+# Static assertion to check that we actually need each of the above feature flags
+# Once the OLDEST_SUPPORTED_XX versions are high enough they can/should be removed.
+for feature, reqs in min_browser_versions.items():
+  always_present = (reqs['chrome'] <= OLDEST_SUPPORTED_CHROME and
+                    reqs['firefox'] <= OLDEST_SUPPORTED_FIREFOX and
+                    reqs['safari'] <= OLDEST_SUPPORTED_SAFARI and
+                    reqs['node'] <= OLDEST_SUPPORTED_NODE)
+  assert not always_present, f'{feature.name} is no longer needed'
 
 
 def caniuse(feature):
@@ -148,9 +225,10 @@ def enable_feature(feature, reason, override=False):
         diagnostics.warning(
             'compatibility',
             f'{name}={user_settings[name]} is not compatible with {reason} '
-            f'({min_version} or above required)')
+            f'({name}={min_version} or above required)')
       else:
         # If no conflict, bump the minimum version to accommodate the feature.
+        logger.debug(f'Enabling {name}={min_version} to accommodate {reason}')
         setattr(settings, name, min_version)
 
 
@@ -173,7 +251,18 @@ def apply_min_browser_versions():
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
   elif settings.WASM_WORKERS or settings.SHARED_MEMORY:
     enable_feature(Feature.BULK_MEMORY, 'shared-mem')
-  if settings.AUDIO_WORKLET:
-    enable_feature(Feature.GLOBALTHIS, 'AUDIO_WORKLET')
+  if settings.RELOCATABLE:
+    enable_feature(Feature.MUTABLE_GLOBALS, 'dynamic linking')
   if settings.MEMORY64 == 1:
     enable_feature(Feature.MEMORY64, 'MEMORY64')
+  if settings.EXPORT_ES6 and settings.PTHREADS:
+    enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -pthread')
+  if settings.EXPORT_ES6 and settings.WASM_WORKERS:
+    enable_feature(Feature.WORKER_ES6_MODULES, 'EXPORT_ES6 with -sWASM_WORKERS')
+  if settings.OFFSCREENCANVAS_SUPPORT:
+    enable_feature(Feature.OFFSCREENCANVAS_SUPPORT, 'OFFSCREENCANVAS_SUPPORT')
+  if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm': # Wasm longjmp support will lean on Wasm (Legacy) EH
+    if settings.WASM_LEGACY_EXCEPTIONS:
+      enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, 'Wasm Legacy exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=1)')
+    else:
+      enable_feature(Feature.WASM_EXCEPTIONS, 'Wasm exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')

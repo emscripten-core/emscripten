@@ -120,7 +120,7 @@ var LibraryHTML5 = {
         // whether it is possible to perform a request here without needing to defer. See
         // https://developer.mozilla.org/en-US/docs/Web/Security/User_activation#transient_activation
         // and https://caniuse.com/mdn-api_useractivation
-        // At the time of writing, Firefox does not support this API: https://bugzilla.mozilla.org/show_bug.cgi?id=1791079
+        // At the time of writing, Firefox does not support this API: https://bugzil.la/1791079
         return navigator.userActivation.isActive;
       }
 
@@ -236,10 +236,6 @@ var LibraryHTML5 = {
 
     fullscreenEnabled() {
       return document.fullscreenEnabled
-#if MIN_FIREFOX_VERSION <= 63
-      // Firefox 64 shipped unprefixed form of fullscreenEnabled (https://caniuse.com/#feat=mdn-api_document_fullscreenenabled)
-      || document.mozFullScreenEnabled
-#endif
 #if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
       // Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitFullscreenEnabled.
       // TODO: If Safari at some point ships with unprefixed version, update the version check above.
@@ -247,6 +243,13 @@ var LibraryHTML5 = {
 #endif
        ;
     },
+  },
+
+  $getFullscreenElement__internal: true,
+  $getFullscreenElement() {
+    return document.fullscreenElement || document.mozFullScreenElement ||
+           document.webkitFullscreenElement || document.webkitCurrentFullScreenElement ||
+           document.msFullscreenElement;
   },
 
   $registerKeyEventCallback__noleakcheck: true,
@@ -339,7 +342,7 @@ var LibraryHTML5 = {
   },
 
 #if OFFSCREENCANVAS_SUPPORT
-  $findCanvasEventTarget__deps: ['$GL', '$maybeCStringToJsString'],
+  $findCanvasEventTarget__deps: ['$GL', '$maybeCStringToJsString', '$specialHTMLTargets'],
   $findCanvasEventTarget: (target) => {
     target = maybeCStringToJsString(target);
 
@@ -357,7 +360,9 @@ var LibraryHTML5 = {
     return GL.offscreenCanvases[target.slice(1)] // Remove '#' prefix
     // If not found, if one is querying by using DOM tag name selector 'canvas', grab the first
     // OffscreenCanvas that we can find.
-     || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0])
+     || (target == 'canvas' && Object.values(GL.offscreenCanvases)[0])
+    // If not found, check specialHTMLTargets
+     || specialHTMLTargets[target]
     // If that is not found either, query via the regular DOM selector.
 #if PTHREADS
      || (typeof document != 'undefined' && document.querySelector(target));
@@ -809,6 +814,7 @@ var LibraryHTML5 = {
     a = a || {};
     ag = ag || {};
     rr = rr || {};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.supportedFields, 'supportedFields', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'a["x"]', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'a["y"]', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'a["z"]', 'double') }}};
@@ -990,14 +996,12 @@ var LibraryHTML5 = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
-  $fillFullscreenChangeEventData__deps: ['$JSEvents', '$stringToUTF8'],
+  $fillFullscreenChangeEventData__deps: ['$JSEvents', '$stringToUTF8', '$getFullscreenElement'],
   $fillFullscreenChangeEventData: (eventStruct) => {
-    var fullscreenElement = document.fullscreenElement || document.mozFullScreenElement || document.webkitFullscreenElement || document.msFullscreenElement;
+    var fullscreenElement = getFullscreenElement();
     var isFullscreen = !!fullscreenElement;
-#if !SAFE_HEAP
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
-#endif
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i8') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i8') }}};
     // If transitioning to fullscreen, report info about the element that is now fullscreen.
@@ -1065,12 +1069,7 @@ var LibraryHTML5 = {
 #endif
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
 
-#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_element_fullscreenchange_event
-    registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FULLSCREENCHANGE }}}, "mozfullscreenchange", targetThread);
-#endif
-
-#if MIN_CHROME_VERSION < 71 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-    // Unprefixed Fullscreen API shipped in Chromium 71 (https://bugs.chromium.org/p/chromium/issues/detail?id=383813)
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
     // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
     registerFullscreenChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_FULLSCREENCHANGE }}}, "webkitfullscreenchange", targetThread);
 #endif
@@ -1095,13 +1094,7 @@ var LibraryHTML5 = {
 
     if (target.requestFullscreen) {
       target.requestFullscreen();
-#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=fullscreen
-    } else if (target.mozRequestFullScreen) {
-      target.mozRequestFullScreen();
-    } else if (target.mozRequestFullscreen) {
-      target.mozRequestFullscreen();
-#endif
-#if MIN_CHROME_VERSION <= 70 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
     } else if (target.webkitRequestFullscreen) {
       target.webkitRequestFullscreen(Element.ALLOW_KEYBOARD_INPUT);
 #endif
@@ -1204,23 +1197,10 @@ var LibraryHTML5 = {
     var oldImageRendering = canvas.style.imageRendering;
 
     function restoreOldStyle() {
-      var fullscreenElement = document.fullscreenElement
-#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_documentorshadowroot_fullscreenelement
-        || document.mozFullScreenElement
-#endif
-#if MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_documentorshadowroot_fullscreenelement
-        || document.webkitFullscreenElement
-#endif
-        ;
-      if (!fullscreenElement) {
+      if (!getFullscreenElement()) {
         document.removeEventListener('fullscreenchange', restoreOldStyle);
 
-#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_element_fullscreenchange_event
-        document.removeEventListener('mozfullscreenchange', restoreOldStyle);
-#endif
-
-#if MIN_CHROME_VERSION < 71 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-        // Unprefixed Fullscreen API shipped in Chromium 71 (https://bugs.chromium.org/p/chromium/issues/detail?id=383813)
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
         // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
         document.removeEventListener('webkitfullscreenchange', restoreOldStyle);
 #endif
@@ -1259,11 +1239,7 @@ var LibraryHTML5 = {
       }
     }
     document.addEventListener('fullscreenchange', restoreOldStyle);
-#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=mdn-api_element_fullscreenchange_event
-    document.addEventListener('mozfullscreenchange', restoreOldStyle);
-#endif
-#if MIN_CHROME_VERSION < 71 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-    // Unprefixed Fullscreen API shipped in Chromium 71 (https://bugs.chromium.org/p/chromium/issues/detail?id=383813)
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
     // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
     document.addEventListener('webkitfullscreenchange', restoreOldStyle);
 #endif
@@ -1378,11 +1354,7 @@ var LibraryHTML5 = {
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
 
     if (!target.requestFullscreen
-#if MIN_FIREFOX_VERSION <= 63 // https://caniuse.com/#feat=fullscreen
-      && !target.mozRequestFullScreen
-      && !target.mozRequestFullscreen
-#endif
-#if MIN_CHROME_VERSION <= 70 || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
       && !target.webkitRequestFullscreen
 #endif
       ) {
@@ -1526,10 +1498,6 @@ var LibraryHTML5 = {
     var d = specialHTMLTargets[{{{ cDefs.EMSCRIPTEN_EVENT_TARGET_DOCUMENT }}}];
     if (d.exitFullscreen) {
       d.fullscreenElement && d.exitFullscreen();
-#if MIN_FIREFOX_VERSION < 64 // https://caniuse.com/#feat=mdn-api_document_exitfullscreen
-    } else if (d.mozCancelFullScreen) {
-      d.mozFullScreenElement && d.mozCancelFullScreen();
-#endif
 #if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED // https://caniuse.com/#feat=mdn-api_document_exitfullscreen
     } else if (d.webkitExitFullscreen) {
       d.webkitFullscreenElement && d.webkitExitFullscreen();
@@ -1543,12 +1511,10 @@ var LibraryHTML5 = {
 
   $fillPointerlockChangeEventData__deps: ['$JSEvents', '$stringToUTF8'],
   $fillPointerlockChangeEventData: (eventStruct) => {
-    var pointerLockElement = document.pointerLockElement || document.mozPointerLockElement || document.webkitPointerLockElement || document.msPointerLockElement;
+    var pointerLockElement = document.pointerLockElement;
     var isPointerlocked = !!pointerLockElement;
-#if !SAFE_HEAP
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
-#endif
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i8') }}};
     var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
     var id = pointerLockElement?.id || '';
@@ -1595,10 +1561,8 @@ var LibraryHTML5 = {
     '$specialHTMLTargets'
 #endif
   ],
-  emscripten_set_pointerlockchange_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockchange_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
-    // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
-    if (!document || !document.body || (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock)) {
+    if (!document.body?.requestPointerLock) {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
 
@@ -1608,9 +1572,6 @@ var LibraryHTML5 = {
     target = target ? findEventTarget(target) : specialHTMLTargets[{{{ cDefs.EMSCRIPTEN_EVENT_TARGET_DOCUMENT }}}]; // Pointer lock change events need to be captured from 'document' by default instead of 'window'
 #endif
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
-    registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKCHANGE }}}, "mozpointerlockchange", targetThread);
-    registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKCHANGE }}}, "webkitpointerlockchange", targetThread);
-    registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKCHANGE }}}, "mspointerlockchange", targetThread);
     return registerPointerlockChangeEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKCHANGE }}}, "pointerlockchange", targetThread);
   },
 
@@ -1644,10 +1605,8 @@ var LibraryHTML5 = {
     '$specialHTMLTargets'
 #endif
   ],
-  emscripten_set_pointerlockerror_callback_on_thread__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_set_pointerlockerror_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) => {
-    // TODO: Currently not supported in pthreads or in --proxy-to-worker mode. (In pthreads mode, document object is not defined)
-    if (!document || !document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock) {
+    if (!document.body?.requestPointerLock) {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
 
@@ -1658,18 +1617,14 @@ var LibraryHTML5 = {
 #endif
 
     if (!target) return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
-    registerPointerlockErrorEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKERROR }}}, "mozpointerlockerror", targetThread);
-    registerPointerlockErrorEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKERROR }}}, "webkitpointerlockerror", targetThread);
-    registerPointerlockErrorEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKERROR }}}, "mspointerlockerror", targetThread);
     return registerPointerlockErrorEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_POINTERLOCKERROR }}}, "pointerlockerror", targetThread);
   },
 
   emscripten_get_pointerlock_status__proxy: 'sync',
   emscripten_get_pointerlock_status__deps: ['$fillPointerlockChangeEventData'],
-  emscripten_get_pointerlock_status__docs: '/** @suppress {missingProperties} */', // Closure does not see document.body.mozRequestPointerLock etc.
   emscripten_get_pointerlock_status: (pointerlockStatus) => {
     if (pointerlockStatus) fillPointerlockChangeEventData(pointerlockStatus);
-    if (!document.body || (!document.body.requestPointerLock && !document.body.mozRequestPointerLock && !document.body.webkitRequestPointerLock && !document.body.msRequestPointerLock)) {
+    if (!document.body?.requestPointerLock) {
       return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
     }
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
@@ -1758,10 +1713,8 @@ var LibraryHTML5 = {
     var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
     var visibilityState = visibilityStates.indexOf(document.visibilityState);
 
-#if !SAFE_HEAP
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
-#endif
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i8') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
@@ -1955,10 +1908,8 @@ var LibraryHTML5 = {
       if (typeof e.buttons[i] == 'object') {
         {{{ makeSetValue('eventStruct+i', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i8') }}};
       } else {
-#if !SAFE_HEAP
         // Assigning a boolean to HEAP32, that's ok, but Closure would like to warn about it:
         /** @suppress {checkTypes} */
-#endif
         {{{ makeSetValue('eventStruct+i', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1', 'i8') }}};
       }
     }
@@ -2040,7 +1991,7 @@ var LibraryHTML5 = {
   emscripten_get_num_gamepads__deps: ['$JSEvents'],
   emscripten_get_num_gamepads: () => {
 #if ASSERTIONS
-    if (!JSEvents.lastGamepadState) throw 'emscripten_get_num_gamepads() can only be called after having first called emscripten_sample_gamepad_data() and that function has returned EMSCRIPTEN_RESULT_SUCCESS!';
+    assert(JSEvents.lastGamepadState, 'emscripten_get_num_gamepads() can only be called after having first called emscripten_sample_gamepad_data() and that function has returned EMSCRIPTEN_RESULT_SUCCESS!');
 #endif
     // N.B. Do not call emscripten_get_num_gamepads() unless having first called emscripten_sample_gamepad_data(), and that has returned EMSCRIPTEN_RESULT_SUCCESS.
     // Otherwise the following line will throw an exception.
@@ -2051,7 +2002,7 @@ var LibraryHTML5 = {
   emscripten_get_gamepad_status__deps: ['$JSEvents', '$fillGamepadEventData'],
   emscripten_get_gamepad_status: (index, gamepadState) => {
 #if ASSERTIONS
-    if (!JSEvents.lastGamepadState) throw 'emscripten_get_gamepad_status() can only be called after having first called emscripten_sample_gamepad_data() and that function has returned EMSCRIPTEN_RESULT_SUCCESS!';
+    assert(JSEvents.lastGamepadState, 'emscripten_get_gamepad_status() can only be called after having first called emscripten_sample_gamepad_data() and that function has returned EMSCRIPTEN_RESULT_SUCCESS!');
 #endif
     // INVALID_PARAM is returned on a Gamepad index that never was there.
     if (index < 0 || index >= JSEvents.lastGamepadState.length) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
@@ -2070,7 +2021,7 @@ var LibraryHTML5 = {
   $registerBeforeUnloadEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) => {
     var beforeUnloadEventHandlerFunc = (e = event) => {
       // Note: This is always called on the main browser thread, since it needs synchronously return a value!
-      var confirmationMessage = {{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, 0, userData);
+      var confirmationMessage = {{{ makeDynCall('pipp', 'callbackfunc') }}}(eventTypeId, 0, userData);
 
       if (confirmationMessage) {
         confirmationMessage = UTF8ToString(confirmationMessage);
@@ -2102,18 +2053,19 @@ var LibraryHTML5 = {
     return registerBeforeUnloadEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, true, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BEFOREUNLOAD }}}, "beforeunload");
   },
 
-  $fillBatteryEventData: (eventStruct, e) => {
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.chargingTime, 'e.chargingTime', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.dischargingTime, 'e.dischargingTime', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.level, 'e.level', 'double') }}};
-    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'e.charging', 'i8') }}};
+  $fillBatteryEventData: (eventStruct, battery) => {
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.chargingTime, 'battery.chargingTime', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.dischargingTime, 'battery.dischargingTime', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.level, 'battery.level', 'double') }}};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'battery.charging', 'i8') }}};
   },
 
-  $battery: () => navigator.battery || navigator.mozBattery || navigator.webkitBattery,
+  $hasBatteryAPI: () => typeof navigator != 'undefined' && navigator.getBattery,
+  $hasBatteryAPI__internal: true,
 
   $registerBatteryEventCallback__noleakcheck: true,
-  $registerBatteryEventCallback__deps: ['$JSEvents', '$fillBatteryEventData', '$battery', '$findEventTarget', 'malloc'],
-  $registerBatteryEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
+  $registerBatteryEventCallback__deps: ['$JSEvents', '$fillBatteryEventData', 'malloc'],
+  $registerBatteryEventCallback: (battery, userData, useCapture, callbackfunc, eventTypeId, eventTypeString, targetThread) => {
 #if PTHREADS
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
@@ -2125,7 +2077,7 @@ var LibraryHTML5 = {
 #else
       var batteryEvent = JSEvents.batteryEvent;
 #endif
-      fillBatteryEventData(batteryEvent, battery());
+      fillBatteryEventData(batteryEvent, battery);
 
 #if PTHREADS
       if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, batteryEvent, userData);
@@ -2135,7 +2087,7 @@ var LibraryHTML5 = {
     };
 
     var eventHandler = {
-      target: findEventTarget(target),
+      target: battery,
       eventTypeString,
       callbackfunc,
       handlerFunc: batteryEventHandlerFunc,
@@ -2145,24 +2097,37 @@ var LibraryHTML5 = {
   },
 
   emscripten_set_batterychargingchange_callback_on_thread__proxy: 'sync',
-  emscripten_set_batterychargingchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$battery'],
+  emscripten_set_batterychargingchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$hasBatteryAPI'],
   emscripten_set_batterychargingchange_callback_on_thread: (userData, callbackfunc, targetThread) => {
-    if (!battery()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-    return registerBatteryEventCallback(battery(), userData, true, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE }}}, "chargingchange", targetThread);
+    if (!hasBatteryAPI()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    navigator.getBattery().then((b) => {
+      registerBatteryEventCallback(b, userData, true, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE }}}, "chargingchange", targetThread);
+    });
   },
 
   emscripten_set_batterylevelchange_callback_on_thread__proxy: 'sync',
-  emscripten_set_batterylevelchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$battery'],
+  emscripten_set_batterylevelchange_callback_on_thread__deps: ['$registerBatteryEventCallback', '$hasBatteryAPI'],
   emscripten_set_batterylevelchange_callback_on_thread: (userData, callbackfunc, targetThread) => {
-    if (!battery()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-    return registerBatteryEventCallback(battery(), userData, true, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE }}}, "levelchange", targetThread);
+    if (!hasBatteryAPI()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    navigator.getBattery().then((b) => {
+      registerBatteryEventCallback(b, userData, true, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE }}}, "levelchange", targetThread);
+    });
   },
 
+  $batteryManager: undefined,
+  $batteryManager__internal: true,
+
   emscripten_get_battery_status__proxy: 'sync',
-  emscripten_get_battery_status__deps: ['$fillBatteryEventData', '$battery'],
+  emscripten_get_battery_status__deps: ['$fillBatteryEventData', '$hasBatteryAPI', '$batteryManager'],
   emscripten_get_battery_status: (batteryState) => {
-    if (!battery()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
-    fillBatteryEventData(batteryState, battery());
+    if (!hasBatteryAPI()) return {{{ cDefs.EMSCRIPTEN_RESULT_NOT_SUPPORTED }}};
+    if (!batteryManager) {
+      navigator.getBattery().then((b) => {
+        batteryManager = b;
+      });
+      return {{{ cDefs.EMSCRIPTEN_RESULT_NO_DATA }}};
+    }
+    fillBatteryEventData(batteryState, batteryManager);
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 

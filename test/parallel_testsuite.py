@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import json
 import multiprocessing
 import os
 import sys
@@ -10,18 +11,57 @@ import tempfile
 import time
 import unittest
 
+import browser_common
 import common
+from common import errlog
 
-from tools.shared import cap_max_workers_in_pool
+from tools import emprofile, utils
+from tools.colored_logger import CYAN, GREEN, RED, with_color
+from tools.utils import WINDOWS
 
-
+EMTEST_VISUALIZE = os.getenv('EMTEST_VISUALIZE')
 NUM_CORES = None
 seen_class = set()
+torn_down = False
 
 
-def run_test(test):
+# Older Python versions have a bug with multiprocessing shared data
+# structures. https://github.com/emscripten-core/emscripten/issues/25103
+# and https://github.com/python/cpython/issues/71936
+def python_multiprocessing_structures_are_buggy():
+  v = sys.version_info
+  return (v.major, v.minor, v.micro) <= (3, 12, 7) or (v.major, v.minor, v.micro) == (3, 13, 0)
+
+
+def cap_max_workers_in_pool(max_workers, is_browser):
+  if is_browser and 'EMTEST_CORES' not in os.environ and 'EMCC_CORES' not in os.environ:
+    # TODO experiment with this number. In browser tests we'll be creating
+    # a browser instance per worker which is expensive.
+    max_workers = max_workers // 2
+  # Python has an issue that it can only use max 61 cores on Windows: https://github.com/python/cpython/issues/89240
+  if WINDOWS:
+    return min(max_workers, 61)
+  return max_workers
+
+
+def run_test(args):
+  test, allowed_failures_counter, lock, buffer = args
+  # If we have exceeded the number of allowed failures during the test run,
+  # abort executing further tests immediately.
+  if allowed_failures_counter and allowed_failures_counter.value < 0:
+    return None
+
+  def test_failed():
+    if allowed_failures_counter is not None:
+      with lock:
+        allowed_failures_counter.value -= 1
+
+  start_time = time.perf_counter()
+
   olddir = os.getcwd()
   result = BufferedParallelTestResult()
+  result.start_time = start_time
+  result.buffer = buffer
   temp_dir = tempfile.mkdtemp(prefix='emtest_')
   test.set_temp_dir(temp_dir)
   try:
@@ -29,15 +69,42 @@ def run_test(test):
       seen_class.add(test.__class__)
       test.__class__.setUpClass()
     test(result)
+
+    # Alert all other multiprocess pool runners that they need to stop executing further tests.
+    if result.test_result not in ['success', 'skipped']:
+      test_failed()
   except unittest.SkipTest as e:
     result.addSkip(test, e)
   except Exception as e:
     result.addError(test, e)
+    test_failed()
+  finally:
+    result.elapsed = time.perf_counter() - start_time
+
   # Before attempting to delete the tmp dir make sure the current
   # working directory is not within it.
   os.chdir(olddir)
   common.force_delete_dir(temp_dir)
+
+  # Since we are returning this result to the main thread we need to make sure
+  # that it is serializable/picklable. To do this, we delete any non-picklable
+  # fields from the instance.
+  del result._original_stdout
+  del result._original_stderr
+
   return result
+
+
+# Executes the teardown process once. Returns True if the teardown was
+# performed, False if it was already torn down.
+def tear_down():
+  global torn_down
+  if torn_down:
+    return False
+  torn_down = True
+  for cls in seen_class:
+    cls.tearDownClass()
+  return True
 
 
 class ParallelTestSuite(unittest.BaseTestSuite):
@@ -46,13 +113,48 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   Creates worker threads, manages the task queue, and combines the results.
   """
 
-  def __init__(self, max_cores):
+  def __init__(self, max_cores, options):
     super().__init__()
     self.max_cores = max_cores
+    self.max_failures = options.max_failures
+    self.failing_and_slow_first = options.failing_and_slow_first
+    self.progress_counter = 0
 
   def addTest(self, test):
     super().addTest(test)
     test.is_parallel = True
+
+  def printOneResult(self, res):
+    percent = int(self.progress_counter * 100 / self.num_tests)
+    progress = f'[{percent:2d}%] '
+    self.progress_counter += 1
+
+    if res.test_result == 'success':
+      msg = 'ok'
+      color = GREEN
+    elif res.test_result == 'errored':
+      msg = 'ERROR'
+      color = RED
+    elif res.test_result == 'failed':
+      msg = 'FAIL'
+      color = RED
+    elif res.test_result == 'skipped':
+      reason = res.skipped[0][1]
+      msg = f"skipped '{reason}'"
+      color = CYAN
+    elif res.test_result == 'unexpected success':
+      msg = 'unexpected success'
+      color = RED
+    elif res.test_result == 'expected failure':
+      color = RED
+      msg = 'expected failure'
+    else:
+      assert False, f'unhandled test result {res.test_result}'
+
+    if res.test_result != 'skipped':
+      msg += f' ({res.elapsed:.2f}s)'
+
+    errlog(f'{with_color(CYAN, progress)}{res.test} ... {with_color(color, msg)}')
 
   def run(self, result):
     # The 'spawn' method is used on windows and it can be useful to set this on
@@ -61,101 +163,222 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # inherited by the child process, but can lead to hard-to-debug windows-only
     # issues.
     # multiprocessing.set_start_method('spawn')
-    tests = list(self.reversed_tests())
-    use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()))
-    print('Using %s parallel test processes' % use_cores)
-    pool = multiprocessing.Pool(use_cores)
-    results = [pool.apply_async(run_test, (t,)) for t in tests]
-    results = [r.get() for r in results]
-    pool.close()
-    pool.join()
+
+    tests = self.get_sorted_tests()
+    self.num_tests = len(tests)
+    contains_browser_test = any(test.is_browser_test() for test in tests)
+    use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()), contains_browser_test)
+    errlog(f'Using {use_cores} parallel test processes')
+    with multiprocessing.Manager() as manager:
+      # Give each worker a unique ID.
+      worker_id_counter = manager.Value('i', 0) # 'i' for integer, starting at 0
+      worker_id_lock = manager.Lock()
+      with multiprocessing.Pool(
+        processes=use_cores,
+        initializer=browser_common.init_worker,
+        initargs=(worker_id_counter, worker_id_lock),
+      ) as pool:
+        if python_multiprocessing_structures_are_buggy():
+          # When multiprocessing shared structures are buggy we don't support failfast
+          # or the progress bar.
+          allowed_failures_counter = lock = None
+          if self.max_failures < 2**31 - 1:
+            errlog('The version of python being used is not compatible with --failfast and --max-failures options. See https://github.com/python/cpython/issues/71936')
+            sys.exit(1)
+        else:
+          allowed_failures_counter = manager.Value('i', self.max_failures)
+          lock = manager.Lock()
+
+        results = []
+        args = ((t, allowed_failures_counter, lock, result.buffer) for t in tests)
+        for res in pool.imap_unordered(run_test, args, chunksize=1):
+          # results may be be None if # of allowed errors was exceeded
+          # and the harness aborted.
+          if res:
+            self.printOneResult(res)
+            results.append(res)
+
+        # Send a task to each worker to tear down the browser and server. This
+        # relies on the implementation detail in the worker pool that all workers
+        # are cycled through once.
+        num_tear_downs = sum([pool.apply(tear_down, ()) for i in range(use_cores)])
+        # Assert the assumed behavior above hasn't changed.
+        if num_tear_downs != use_cores:
+          errlog(f'Expected {use_cores} teardowns, got {num_tear_downs}')
+
+    if self.failing_and_slow_first:
+      previous_test_run_results = common.load_previous_test_run_results()
+      for r in results:
+        # Save a test result record with the specific suite name (e.g. "core0.test_foo")
+        test_failed = r.test_result not in ['success', 'skipped']
+
+        def update_test_results_to(test_name):
+          fail_frequency = previous_test_run_results[test_name]['fail_frequency'] if test_name in previous_test_run_results else int(test_failed)
+          # Apply exponential moving average with 50% weighting to merge previous fail frequency with new fail frequency
+          fail_frequency = (fail_frequency + int(test_failed)) / 2
+          previous_test_run_results[test_name] = {
+            'result': r.test_result,
+            'duration': r.test_duration,
+            'fail_frequency': fail_frequency,
+          }
+
+        update_test_results_to(r.test_name)
+        # Also save a test result record without suite name (e.g. just "test_foo"). This enables different suite runs to order tests
+        # for quick --failfast termination, in case a test fails in multiple suites
+        update_test_results_to(r.test_name.split(' ')[0])
+
+      json.dump(previous_test_run_results, open(common.PREVIOUS_TEST_RUN_RESULTS_FILE, 'w'), indent=2)
+
     return self.combine_results(result, results)
 
-  def reversed_tests(self):
-    """A list of this suite's tests, sorted reverse alphabetical order.
+  def get_sorted_tests(self):
+    """A list of this suite's tests, sorted with the @is_slow_test tests first.
 
-    Many of the tests in test_core are intentionally named so that long tests
-    fall toward the end of the alphabet (e.g. test_the_bullet). Tests are
-    loaded in alphabetical order, so here we reverse that in order to start
-    running longer tasks earlier, which should lead to better core utilization.
-
-    Future work: measure slowness of tests and sort accordingly.
+    Future work: measure and store the speed of tests each test sort more accurately.
     """
-    return sorted(self, key=str, reverse=True)
+    if self.failing_and_slow_first:
+      # If we are running with --failing-and-slow-first, then the test list has been
+      # pre-sorted based on previous test run results (see `runner.py`)
+      return list(self)
+
+    def test_key(test):
+      testMethod = getattr(test, test._testMethodName)
+      is_slow = getattr(testMethod, 'is_slow', False)
+      return (is_slow, str(test))
+
+    return sorted(self, key=test_key, reverse=True)
 
   def combine_results(self, result, buffered_results):
-    print()
-    print('DONE: combining results on main thread')
-    print()
+    errlog('')
+    errlog('DONE: combining results on main thread')
+    errlog('')
     # Sort the results back into alphabetical order. Running the tests in
     # parallel causes mis-orderings, this makes the results more readable.
     results = sorted(buffered_results, key=lambda res: str(res.test))
     result.core_time = 0
+
+    # shared data structures are hard in the python multi-processing world, so
+    # use a file to share the flaky test information across test processes.
+    flaky_tests = open(common.flaky_tests_log_filename).read().split() if os.path.isfile(common.flaky_tests_log_filename) else []
+    # Extract only the test short names
+    flaky_tests = [x.split('.')[-1] for x in flaky_tests]
+
+    # The next updateResult loop will print a *lot* of lines really fast. This
+    # will cause a Python exception being thrown when attempting to print to
+    # stderr, if stderr is in nonblocking mode, like it is on Buildbot CI:
+    # See https://github.com/buildbot/buildbot/issues/8659
+    # To work around that problem, set stderr to blocking mode before printing.
+    if not WINDOWS:
+      os.set_blocking(sys.stderr.fileno(), True)
+
     for r in results:
+      # Merge information of flaky tests into the test result
+      if r.test_result == 'success' and r.test_short_name() in flaky_tests:
+        r.test_result = 'warnings'
+      # And integrate the test result to the global test object
       r.updateResult(result)
+
+    # Generate the parallel test run visualization
+    if EMTEST_VISUALIZE:
+      emprofile.create_profiling_graph(utils.path_from_root('out/graph'))
+      # Cleanup temp files that were used for the visualization
+      emprofile.delete_profiler_logs()
+      utils.delete_file(common.flaky_tests_log_filename)
+
     return result
 
 
-class BufferedParallelTestResult:
+class BufferedParallelTestResult(unittest.TestResult):
   """A picklable struct used to communicate test results across processes
-
-  Fulfills the interface for unittest.TestResult
   """
   def __init__(self):
+    super().__init__()
     self.buffered_result = None
     self.test_duration = 0
+    self.test_result = 'errored'
+    self.test_name = ''
 
   @property
   def test(self):
     return self.buffered_result.test
 
+  def test_short_name(self):
+    # Given a test name e.g. "test_atomic_cxx (test_core.core0.test_atomic_cxx)"
+    # returns a short form "test_atomic_cxx" of the test.
+    return self.test_name.split(' ', 1)[0]
+
   def addDuration(self, test, elapsed):
     self.test_duration = elapsed
-
-  def calculateElapsed(self):
-    return time.perf_counter() - self.start_time
 
   def updateResult(self, result):
     result.startTest(self.test)
     self.buffered_result.updateResult(result)
     result.stopTest(self.test)
     result.core_time += self.test_duration
+    self.log_test_run_for_visualization()
+
+  def log_test_run_for_visualization(self):
+    if EMTEST_VISUALIZE and (self.test_result != 'skipped' or self.test_duration > 0.2):
+      profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
+      os.makedirs(profiler_logs_path, exist_ok=True)
+      profiler_log_file = os.path.join(profiler_logs_path, 'toolchain_profiler.pid_0.json')
+      colors = {
+        'success': '#80ff80',
+        'warnings': '#ffb040',
+        'skipped': '#a0a0a0',
+        'expected failure': '#ff8080',
+        'unexpected success': '#ff8080',
+        'failed': '#ff8080',
+        'errored': '#ff8080',
+      }
+      # Write profiling entries for emprofile.py tool to visualize. This needs a unique identifier for each
+      # block, so generate one on the fly.
+      dummy_test_task_counter = os.path.getsize(profiler_log_file) if os.path.isfile(profiler_log_file) else 0
+      # Remove the redundant 'test_' prefix from each test, since character space is at a premium in the visualized graph.
+      test_name = utils.removeprefix(self.test_short_name(), 'test_')
+      with open(profiler_log_file, 'a') as prof:
+        prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{colors[self.test_result]}"}}')
+        prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time + self.test_duration},"returncode":0}}')
 
   def startTest(self, test):
-    self.start_time = time.perf_counter()
+    super().startTest(test)
+    self.test_name = str(test)
 
   def stopTest(self, test):
+    super().stopTest(test)
     # TODO(sbc): figure out a way to display this duration information again when
     # these results get passed back to the TextTestRunner/TextTestResult.
-    if hasattr(time, 'perf_counter'):
-      self.buffered_result.duration = self.test_duration
+    self.buffered_result.duration = self.test_duration
 
   def addSuccess(self, test):
-    if hasattr(time, 'perf_counter'):
-      print(test, '... ok (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    super().addSuccess(test)
     self.buffered_result = BufferedTestSuccess(test)
+    self.test_result = 'success'
 
   def addExpectedFailure(self, test, err):
-    if hasattr(time, 'perf_counter'):
-      print(test, '... expected failure (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    super().addExpectedFailure(test, err)
     self.buffered_result = BufferedTestExpectedFailure(test, err)
+    self.test_result = 'expected failure'
 
   def addUnexpectedSuccess(self, test):
-    if hasattr(time, 'perf_counter'):
-      print(test, '... unexpected success (%.2fs)' % (self.calculateElapsed()), file=sys.stderr)
+    super().addUnexpectedSuccess(test)
     self.buffered_result = BufferedTestUnexpectedSuccess(test)
+    self.test_result = 'unexpected success'
 
   def addSkip(self, test, reason):
-    print(test, "... skipped '%s'" % reason, file=sys.stderr)
+    super().addSkip(test, reason)
     self.buffered_result = BufferedTestSkip(test, reason)
+    self.test_result = 'skipped'
 
   def addFailure(self, test, err):
-    print(test, '... FAIL', file=sys.stderr)
+    super().addFailure(test, err)
     self.buffered_result = BufferedTestFailure(test, err)
+    self.test_result = 'failed'
 
   def addError(self, test, err):
-    print(test, '... ERROR', file=sys.stderr)
+    super().addError(test, err)
     self.buffered_result = BufferedTestError(test, err)
+    self.test_result = 'errored'
 
 
 class BufferedTestBase:
@@ -263,4 +486,4 @@ class FakeCode:
 def num_cores():
   if NUM_CORES:
     return int(NUM_CORES)
-  return multiprocessing.cpu_count()
+  return utils.get_num_cores()

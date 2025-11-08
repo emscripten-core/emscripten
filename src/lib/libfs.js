@@ -6,12 +6,9 @@
 
 var LibraryFS = {
   $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
-    '$FS_createPreloadedFile',
     '$FS_modeStringToFlags',
     '$FS_getMode',
     '$intArrayFromString',
-    '$stringToUTF8Array',
-    '$lengthBytesUTF8',
 #if LibraryManager.has('libidbfs.js')
     '$IDBFS',
 #endif
@@ -30,6 +27,9 @@ var LibraryFS = {
 #if ASSERTIONS
     '$strError', '$ERRNO_CODES',
 #endif
+#if !MINIMAL_RUNTIME
+    '$FS_createPreloadedFile',
+#endif
   ],
   $FS__postset: () => {
     // TODO: do we need noFSInit?
@@ -37,7 +37,10 @@ var LibraryFS = {
     addAtPostCtor('FS.ignorePermissions = false;');
     addAtExit('FS.quit();');
     return `
+#if !MINIMAL_RUNTIME
 FS.createPreloadedFile = FS_createPreloadedFile;
+FS.preloadFile = FS_preloadFile;
+#endif
 FS.staticInit();`;
   },
   $FS: {
@@ -199,6 +202,9 @@ FS.staticInit();`;
             current_path = PATH.dirname(current_path);
             if (FS.isRoot(current)) {
               path = current_path + '/' + parts.slice(i + 1).join('/');
+              // We're making progress here, don't let many consecutive ..'s
+              // lead to ELOOP
+              nlinks--;
               continue linkloop;
             } else {
               current = current.parent;
@@ -577,12 +583,13 @@ FS.staticInit();`;
       };
 
       // sync all mounts
-      mounts.forEach((mount) => {
-        if (!mount.type.syncfs) {
-          return done(null);
+      for (var mount of mounts) {
+        if (mount.type.syncfs) {
+          mount.type.syncfs(mount, populate, done);
+        } else {
+          done(null);
         }
-        mount.type.syncfs(mount, populate, done);
-      });
+      }
     },
     mount(type, opts, mountpoint) {
 #if ASSERTIONS
@@ -651,9 +658,7 @@ FS.staticInit();`;
       var mount = node.mounted;
       var mounts = FS.getMounts(mount);
 
-      Object.keys(FS.nameTable).forEach((hash) => {
-        var current = FS.nameTable[hash];
-
+      for (var [hash, current] of Object.entries(FS.nameTable)) {
         while (current) {
           var next = current.name_next;
 
@@ -663,7 +668,7 @@ FS.staticInit();`;
 
           current = next;
         }
-      });
+      }
 
       // no longer a mountpoint
       node.mounted = null;
@@ -1345,33 +1350,29 @@ FS.staticInit();`;
       opts.flags = opts.flags || {{{ cDefs.O_RDONLY }}};
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
-        throw new Error(`Invalid encoding type "${opts.encoding}"`);
+        abort(`Invalid encoding type "${opts.encoding}"`);
       }
-      var ret;
       var stream = FS.open(path, opts.flags);
       var stat = FS.stat(path);
       var length = stat.size;
       var buf = new Uint8Array(length);
       FS.read(stream, buf, 0, length, 0);
       if (opts.encoding === 'utf8') {
-        ret = UTF8ArrayToString(buf);
-      } else if (opts.encoding === 'binary') {
-        ret = buf;
+        buf = UTF8ArrayToString(buf);
       }
       FS.close(stream);
-      return ret;
+      return buf;
     },
     writeFile(path, data, opts = {}) {
       opts.flags = opts.flags || {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}};
       var stream = FS.open(path, opts.flags, opts.mode);
       if (typeof data == 'string') {
-        var buf = new Uint8Array(lengthBytesUTF8(data)+1);
-        var actualNumBytes = stringToUTF8Array(data, buf, 0, buf.length);
-        FS.write(stream, buf, 0, actualNumBytes, undefined, opts.canOwn);
-      } else if (ArrayBuffer.isView(data)) {
+        data = new Uint8Array(intArrayFromString(data, true));
+      }
+      if (ArrayBuffer.isView(data)) {
         FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
       } else {
-        throw new Error('Unsupported data type');
+        abort('Unsupported data type');
       }
       FS.close(stream);
     },
@@ -1703,13 +1704,15 @@ FS.staticInit();`;
  #if FS_DEBUG
       dbg(`forceLoadFile: ${obj.url}`)
  #endif
-      if (typeof XMLHttpRequest != 'undefined') {
-        throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
+      if (globalThis.XMLHttpRequest) {
+        abort("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
       } else { // Command-line.
         try {
           obj.contents = readBinary(obj.url);
-          obj.usedBytes = obj.contents.length;
         } catch (e) {
+ #if FS_DEBUG
+          dbg(`forceLoadFile exception: ${e}`);
+ #endif
           throw new FS.ErrnoError({{{ cDefs.EIO }}});
         }
       }
@@ -1745,7 +1748,7 @@ FS.staticInit();`;
           var xhr = new XMLHttpRequest();
           xhr.open('HEAD', url, false);
           xhr.send(null);
-          if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+          if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort("Couldn't load " + url + ". Status: " + xhr.status);
           var datalength = Number(xhr.getResponseHeader("Content-length"));
           var header;
           var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
@@ -1761,8 +1764,8 @@ FS.staticInit();`;
 
           // Function to get a range from the remote URL.
           var doXHR = (from, to) => {
-            if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
-            if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
+            if (from > to) abort("invalid range (" + from + ", " + to + ") or no bytes requested!");
+            if (to > datalength-1) abort("only " + datalength + " bytes available! programmer error!");
 
             // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
             var xhr = new XMLHttpRequest();
@@ -1776,7 +1779,7 @@ FS.staticInit();`;
             }
 
             xhr.send(null);
-            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort("Couldn't load " + url + ". Status: " + xhr.status);
             if (xhr.response !== undefined) {
               return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
             }
@@ -1790,7 +1793,7 @@ FS.staticInit();`;
             if (typeof lazyArray.chunks[chunkNum] == 'undefined') {
               lazyArray.chunks[chunkNum] = doXHR(start, end);
             }
-            if (typeof lazyArray.chunks[chunkNum] == 'undefined') throw new Error('doXHR failed!');
+            if (typeof lazyArray.chunks[chunkNum] == 'undefined') abort('doXHR failed!');
             return lazyArray.chunks[chunkNum];
           });
 
@@ -1820,8 +1823,8 @@ FS.staticInit();`;
         }
       }
 
-      if (typeof XMLHttpRequest != 'undefined') {
-        if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
+      if (globalThis.XMLHttpRequest) {
+        if (!ENVIRONMENT_IS_WORKER) abort('Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc');
         var lazyArray = new LazyUint8Array();
         var properties = { isDevice: false, contents: lazyArray };
       } else {
@@ -1846,14 +1849,12 @@ FS.staticInit();`;
       });
       // override each stream op with one that tries to force load the lazy file first
       var stream_ops = {};
-      var keys = Object.keys(node.stream_ops);
-      keys.forEach((key) => {
-        var fn = node.stream_ops[key];
+      for (const [key, fn] of Object.entries(node.stream_ops)) {
         stream_ops[key] = (...args) => {
           FS.forceLoadFile(node);
           return fn(...args);
         };
-      });
+      }
       function writeChunks(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
         if (position >= contents.length)

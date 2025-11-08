@@ -4,13 +4,31 @@
  * SPDX-License-Identifier: MIT
  */
 
-addToLibrary({
-  // TextDecoder constructor defaults to UTF-8
-#if TEXTDECODER == 2
-  $UTF8Decoder: "new TextDecoder()",
-#elif TEXTDECODER == 1
-  $UTF8Decoder: "typeof TextDecoder != 'undefined' ? new TextDecoder() : undefined",
+#if TEXTDECODER != 1 && TEXTDECODER != 2
+#error "TEXTDECODER must be either 1 or 2"
 #endif
+
+addToLibrary({
+  // In -sAUDIO_WORKLET builds, TextDecoder will not exist in AudioWorkletGlobalScope,
+  // so we cannot try to unconditionally initialize it in that build mode.
+#if TEXTDECODER == 2 && !AUDIO_WORKLET
+  // TextDecoder constructor defaults to UTF-8
+  $UTF8Decoder: "new TextDecoder()",
+#else
+  $UTF8Decoder: "globalThis.TextDecoder && new TextDecoder()",
+#endif
+
+  $findStringEnd: (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
+    var maxIdx = idx + maxBytesToRead;
+    if (ignoreNul) return maxIdx;
+    // TextDecoder needs to know the byte length in advance, it doesn't stop on
+    // null terminator by itself.
+    // As a tiny code save trick, compare idx against maxIdx using a negation,
+    // so that maxBytesToRead=undefined/NaN means Infinity.
+    while (heapOrArray[idx] && !(idx >= maxIdx)) ++idx;
+    return idx;
+  },
+  $findStringEnd__internal: true,
 
   $UTF8ArrayToString__docs: `
   /**
@@ -20,55 +38,36 @@ addToLibrary({
    * heapOrArray is either a regular array, or a JavaScript typed array view.
    * @param {number=} idx
    * @param {number=} maxBytesToRead
+   * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
    */`,
-#if TEXTDECODER
-  $UTF8ArrayToString__deps: ['$UTF8Decoder'],
+  $UTF8ArrayToString__deps: [
+    '$UTF8Decoder', '$findStringEnd',
+#if ASSERTIONS
+    '$warnOnce',
 #endif
-  $UTF8ArrayToString: (heapOrArray, idx = 0, maxBytesToRead = NaN) => {
+  ],
+  $UTF8ArrayToString: (heapOrArray, idx = 0, maxBytesToRead, ignoreNul) => {
 #if CAN_ADDRESS_2GB
     idx >>>= 0;
 #endif
-    var endIdx = idx + maxBytesToRead;
-#if TEXTDECODER
-    var endPtr = idx;
-    // TextDecoder needs to know the byte length in advance, it doesn't stop on
-    // null terminator by itself.  Also, use the length info to avoid running tiny
-    // strings through TextDecoder, since .subarray() allocates garbage.
-    // (As a tiny code save trick, compare endPtr against endIdx using a negation,
-    // so that undefined/NaN means Infinity)
-    while (heapOrArray[endPtr] && !(endPtr >= endIdx)) ++endPtr;
-#endif // TEXTDECODER
+
+    var endPtr = findStringEnd(heapOrArray, idx, maxBytesToRead, ignoreNul);
 
 #if TEXTDECODER == 2
     return UTF8Decoder.decode(heapOrArray.buffer ? {{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}} : new Uint8Array(heapOrArray.slice(idx, endPtr)));
 #else // TEXTDECODER == 2
-#if TEXTDECODER
     // When using conditional TextDecoder, skip it for short strings as the overhead of the native call is not worth it.
     if (endPtr - idx > 16 && heapOrArray.buffer && UTF8Decoder) {
       return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('heapOrArray', 'idx', 'endPtr') }}});
     }
-#endif // TEXTDECODER
     var str = '';
-#if TEXTDECODER
-    // If building with TextDecoder, we have already computed the string length
-    // above, so test loop end condition against that
     while (idx < endPtr) {
-#else
-    while (!(idx >= endIdx)) {
-#endif
       // For UTF8 byte structure, see:
       // http://en.wikipedia.org/wiki/UTF-8#Description
       // https://www.ietf.org/rfc/rfc2279.txt
       // https://tools.ietf.org/html/rfc3629
       var u0 = heapOrArray[idx++];
-#if !TEXTDECODER
-      // If not building with TextDecoder enabled, we don't know the string
-      // length, so scan for \0 byte.
-      // If building with TextDecoder, we know exactly at what byte index the
-      // string ends, so checking for nulls here would be redundant.
-      if (!u0) return str;
-#endif
       if (!(u0 & 0x80)) { str += String.fromCharCode(u0); continue; }
       var u1 = heapOrArray[idx++] & 63;
       if ((u0 & 0xE0) == 0xC0) { str += String.fromCharCode(((u0 & 31) << 6) | u1); continue; }
@@ -103,18 +102,16 @@ addToLibrary({
    *   maximum number of bytes to read. You can omit this parameter to scan the
    *   string until the first 0 byte. If maxBytesToRead is passed, and the string
    *   at [ptr, ptr+maxBytesToReadr[ contains a null byte in the middle, then the
-   *   string will cut short at that byte index (i.e. maxBytesToRead will not
-   *   produce a string of exact length [ptr, ptr+maxBytesToRead[) N.B. mixing
-   *   frequent uses of UTF8ToString() with and without maxBytesToRead may throw
-   *   JS JIT optimizations off, so it is worth to consider consistently using one
+   *   string will cut short at that byte index.
+   * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
    */`,
 #if TEXTDECODER == 2
-  $UTF8ToString__deps: ['$UTF8Decoder'],
+  $UTF8ToString__deps: ['$UTF8Decoder', '$findStringEnd'],
 #else
   $UTF8ToString__deps: ['$UTF8ArrayToString'],
 #endif
-  $UTF8ToString: (ptr, maxBytesToRead) => {
+  $UTF8ToString: (ptr, maxBytesToRead, ignoreNul) => {
 #if ASSERTIONS
     assert(typeof ptr == 'number', `UTF8ToString expects a number (got ${typeof ptr})`);
 #endif
@@ -123,11 +120,10 @@ addToLibrary({
 #endif
 #if TEXTDECODER == 2
     if (!ptr) return '';
-    var maxPtr = ptr + maxBytesToRead;
-    for (var end = ptr; !(end >= maxPtr) && HEAPU8[end];) ++end;
+    var end = findStringEnd(HEAPU8, ptr, maxBytesToRead, ignoreNul);
     return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'end') }}});
 #else
-    return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead) : '';
+    return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : '';
 #endif
   },
 
@@ -153,6 +149,9 @@ addToLibrary({
    *                                   terminator.
    * @return {number} The number of bytes written, EXCLUDING the null terminator.
    */
+#if ASSERTIONS
+  $stringToUTF8Array__deps: ['$warnOnce'],
+#endif
   $stringToUTF8Array: (str, heap, outIdx, maxBytesToWrite) => {
 #if CAN_ADDRESS_2GB
     outIdx >>>= 0;
@@ -304,37 +303,26 @@ addToLibrary({
 
 #if TEXTDECODER == 2
   $UTF16Decoder: "new TextDecoder('utf-16le');",
-#elif TEXTDECODER == 1
-  $UTF16Decoder: "typeof TextDecoder != 'undefined' ? new TextDecoder('utf-16le') : undefined;",
+#else
+  $UTF16Decoder: "globalThis.TextDecoder ? new TextDecoder('utf-16le') : undefined;",
 #endif
 
   // Given a pointer 'ptr' to a null-terminated UTF16LE-encoded string in the
   // emscripten HEAP, returns a copy of that string as a Javascript String
   // object.
-#if TEXTDECODER
-  $UTF16ToString__deps: ['$UTF16Decoder'],
-#endif
-  $UTF16ToString: (ptr, maxBytesToRead) => {
+  $UTF16ToString__deps: ['$UTF16Decoder', '$findStringEnd'],
+  $UTF16ToString: (ptr, maxBytesToRead, ignoreNul) => {
 #if ASSERTIONS
     assert(ptr % 2 == 0, 'Pointer passed to UTF16ToString must be aligned to two bytes!');
 #endif
     var idx = {{{ getHeapOffset('ptr', 'u16') }}};
-    var maxIdx = idx + maxBytesToRead / 2;
-#if TEXTDECODER
-    // TextDecoder needs to know the byte length in advance, it doesn't stop on
-    // null terminator by itself.
-    // Also, use the length info to avoid running tiny strings through
-    // TextDecoder, since .subarray() allocates garbage.
-    var endIdx = idx;
-    // If maxBytesToRead is not passed explicitly, it will be undefined, and this
-    // will always evaluate to true. This saves on code size.
-    while (!(endIdx >= maxIdx) && HEAPU16[endIdx]) ++endIdx;
+    var endIdx = findStringEnd(HEAPU16, idx, maxBytesToRead / 2, ignoreNul);
 
 #if TEXTDECODER != 2
+    // When using conditional TextDecoder, skip it for short strings as the overhead of the native call is not worth it.
     if (endIdx - idx > 16 && UTF16Decoder)
 #endif // TEXTDECODER != 2
       return UTF16Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU16', 'idx', 'endIdx') }}});
-#endif // TEXTDECODER
 
 #if TEXTDECODER != 2
     // Fallback: decode without UTF16Decoder
@@ -343,9 +331,8 @@ addToLibrary({
     // If maxBytesToRead is not passed explicitly, it will be undefined, and the
     // for-loop's condition will always evaluate to true. The loop is then
     // terminated on the first null char.
-    for (var i = idx; !(i >= maxIdx); ++i) {
+    for (var i = idx; i < endIdx; ++i) {
       var codeUnit = HEAPU16[i];
-      if (codeUnit == 0) break;
       // fromCharCode constructs a character from a UTF-16 code unit, so we can
       // pass the UTF16 string right through.
       str += String.fromCharCode(codeUnit);
@@ -398,16 +385,17 @@ addToLibrary({
   // a UTF16 byte array, EXCLUDING the null terminator byte.
   $lengthBytesUTF16: (str) => str.length*2,
 
-  $UTF32ToString: (ptr, maxBytesToRead) => {
+  $UTF32ToString: (ptr, maxBytesToRead, ignoreNul) => {
 #if ASSERTIONS
     assert(ptr % 4 == 0, 'Pointer passed to UTF32ToString must be aligned to four bytes!');
 #endif
     var str = '';
+    var startIdx = {{{ getHeapOffset('ptr', 'u32') }}};
     // If maxBytesToRead is not passed explicitly, it will be undefined, and this
     // will always evaluate to true. This saves on code size.
     for (var i = 0; !(i >= maxBytesToRead / 4); i++) {
-      var utf32 = {{{ makeGetValue('ptr', 'i*4', 'i32') }}};
-      if (!utf32) break;
+      var utf32 = HEAPU32[startIdx + i];
+      if (!utf32 && !ignoreNul) break;
       str += String.fromCodePoint(utf32);
     }
     return str;

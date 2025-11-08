@@ -11,7 +11,7 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/em_js.h>
 
-EM_JS_DEPS(deps, "$stringToUTF8OnStack,$getValue");
+EM_JS_DEPS(deps, "$UTF8ToString,$stringToUTF8OnStack,$getValue");
 
 int main() {
   char *c = "μ†ℱ ╋ℯ╳╋ 😇";

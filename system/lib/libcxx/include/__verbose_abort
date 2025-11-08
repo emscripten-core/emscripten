@@ -43,8 +43,9 @@ _LIBCPP_BEGIN_NAMESPACE_STD
 // make sure that the program terminates but without taking any complex dependencies in this header.
 #if !defined(_LIBCPP_VERBOSE_ABORT)
 
-// XXX EMSCRIPTEN __libcpp_verbose_abort creases code size too much
-#  if !_LIBCPP_AVAILABILITY_HAS_VERBOSE_ABORT || defined (__EMSCRIPTEN__)
+// XXX EMSCRIPTEN avoid  __libcpp_verbose_abort in release builds due to code
+// size
+#  if !_LIBCPP_AVAILABILITY_HAS_VERBOSE_ABORT || (defined(__EMSCRIPTEN__) && defined(NDEBUG))
 // The decltype is there to suppress -Wunused warnings in this configuration.
 void __use(const char*, ...);
 #    define _LIBCPP_VERBOSE_ABORT(...) (decltype(::std::__use(__VA_ARGS__))(), __builtin_abort())

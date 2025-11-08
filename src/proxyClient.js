@@ -29,7 +29,7 @@ if (ENVIRONMENT_IS_NODE) {
 #else
       // For class modules we decode the data URL and use `eval: true`.
       url = Buffer.from(url.split(",")[1], 'base64').toString();
-      options ||= {}
+      if (!options) options = {};
       options.eval = true;
 #endif
     }
@@ -107,12 +107,6 @@ function renderFrame() {
   renderFrameData = null;
 }
 
-if (typeof window != 'undefined') {
-  window.requestAnimationFrame = window.requestAnimationFrame || window.mozRequestAnimationFrame ||
-                                 window.webkitRequestAnimationFrame || window.msRequestAnimationFrame ||
-                                 renderFrame;
-}
-
 /*
 (() => {
   var trueRAF = window.requestAnimationFrame;
@@ -138,8 +132,18 @@ var frameId = 0;
 
 // Worker
 
-var filename;
-filename ||= '<<< filename >>>';
+var filename = "<<< filename >>>";
+
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
+#include "binaryDecode.js"
+
+#if ENVIRONMENT_MAY_BE_NODE
+if (ENVIRONMENT_IS_NODE) filename = "data:text/javascript;base64," + Buffer.from(binaryDecode(filename)).toString('base64');
+else
+#endif
+  filename = URL.createObjectURL(new Blob([binaryDecode(filename)], {type: 'application/javascript'}));
+
+#endif
 
 var worker = new Worker(filename);
 
@@ -219,7 +223,7 @@ worker.onmessage = (event) => {
           Module['canvas'][data.object][data.property] = data.value;
           break;
         }
-        default: throw 'eh?';
+        default: abort('eh?');
       }
       break;
     }
@@ -280,7 +284,7 @@ worker.onmessage = (event) => {
       if (Module['onCustomMessage']) {
         Module['onCustomMessage'](event);
       } else {
-        throw 'Custom message received but client Module.onCustomMessage not implemented.';
+        abort('Custom message received but client Module.onCustomMessage not implemented.');
       }
       break;
     }
@@ -288,7 +292,7 @@ worker.onmessage = (event) => {
       worker.postMessage({target: 'setimmediate'});
       break;
     }
-    default: throw 'what? ' + data.target;
+    default: abort('what? ' + data.target);
   }
 };
 

@@ -149,7 +149,7 @@ void emscripten_asm_const_async_on_main_thread(
 // use std::tuple or std::integral_constant. Using C++11 features is only a
 // warning in modern Clang, which are ignored in system headers.
 template<typename, typename = void> struct __em_asm_sig {};
-template<> struct __em_asm_sig<float> { static const char value = 'd'; };
+template<> struct __em_asm_sig<float> { static const char value = 'f'; };
 template<> struct __em_asm_sig<double> { static const char value = 'd'; };
 template<> struct __em_asm_sig<char> { static const char value = 'i'; };
 template<> struct __em_asm_sig<signed char> { static const char value = 'i'; };
@@ -193,11 +193,8 @@ struct __em_asm_sig_builder {};
 
 template<typename... Args>
 struct __em_asm_sig_builder<__em_asm_type_tuple<Args...> > {
-  static const char buffer[sizeof...(Args) + 1];
+  inline static const char buffer[sizeof...(Args) + 1] = { __em_asm_sig<Args>::value..., 0 };
 };
-
-template<typename... Args>
-const char __em_asm_sig_builder<__em_asm_type_tuple<Args...> >::buffer[] = { __em_asm_sig<Args>::value..., 0 };
 
 // We move to type level with decltype(make_tuple(...)) to avoid double
 // evaluation of arguments. Use __typeof__ instead of decltype, though,

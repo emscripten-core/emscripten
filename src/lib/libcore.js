@@ -41,15 +41,23 @@ addToLibrary({
   setTempRet0: '$setTempRet0',
   getTempRet0: '$getTempRet0',
 
+  // Assign a name to a given function. This is mostly useful for debugging
+  // purposes in cases where new functions are created at runtime.
+  $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
+
   $ptrToString: (ptr) => {
 #if ASSERTIONS
-    assert(typeof ptr === 'number');
+    assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
 #endif
-#if !CAN_ADDRESS_2GB && !MEMORY64
-    // With CAN_ADDRESS_2GB or MEMORY64, pointers are already unsigned.
+#if MEMORY64
+    // Convert to 64-bit unsigned value.  We need to use BigInt here since
+    // Number cannot represent the full 64-bit range.
+    if (ptr < 0) ptr = 2n**64n + BigInt(ptr);
+#else
+    // Convert to 32-bit unsigned value
     ptr >>>= 0;
 #endif
-    return '0x' + ptr.toString(16).padStart(8, '0');
+    return '0x' + ptr.toString(16).padStart({{{ POINTER_SIZE * 2 }}}, '0');
   },
 
   $zeroMemory: (ptr, size) => HEAPU8.fill(0, ptr, ptr + size),
@@ -174,27 +182,26 @@ addToLibrary({
   // Grows the wasm memory to the given byte size, and updates the JS views to
   // it. Returns 1 on success, 0 on error.
   $growMemory: (size) => {
-    var b = wasmMemory.buffer;
-    var pages = ((size - b.byteLength + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}}) | 0;
+    var oldHeapSize = wasmMemory.buffer.byteLength;
+    var pages = ((size - oldHeapSize + {{{ WASM_PAGE_SIZE - 1 }}}) / {{{ WASM_PAGE_SIZE }}}) | 0;
 #if RUNTIME_DEBUG
-    dbg(`growMemory: ${size} (+${size - b.byteLength} bytes / ${pages} pages)`);
-#endif
-#if MEMORYPROFILER
-    var oldHeapSize = b.byteLength;
+    dbg(`growMemory: ${size} (+${size - oldHeapSize} bytes / ${pages} pages)`);
 #endif
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
       wasmMemory.grow({{{ toIndexType('pages') }}}); // .grow() takes a delta compared to the previous size
+#if !GROWABLE_ARRAYBUFFERS
       updateMemoryViews();
+#endif
 #if MEMORYPROFILER
       if (typeof emscriptenMemoryProfiler != 'undefined') {
-        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, b.byteLength);
+        emscriptenMemoryProfiler.onMemoryResize(oldHeapSize, wasmMemory.buffer.byteLength);
       }
 #endif
       return 1 /*success*/;
     } catch(e) {
 #if ASSERTIONS
-      err(`growMemory: Attempted to grow heap from ${b.byteLength} bytes to ${size} bytes, but got error: ${e}`);
+      err(`growMemory: Attempted to grow heap from ${oldHeapSize} bytes to ${size} bytes, but got error: ${e}`);
 #endif
     }
     // implicit 0 return to save code size (caller will cast "undefined" into 0
@@ -323,6 +330,7 @@ addToLibrary({
 #endif // ALLOW_MEMORY_GROWTH
   },
 
+#if !GROWABLE_ARRAYBUFFERS
   // Called after wasm grows memory. At that time we need to update the views.
   // Without this notification, we'd need to check the buffer in JS every time
   // we return from any wasm, which adds overhead. See
@@ -333,6 +341,7 @@ addToLibrary({
 #endif
     updateMemoryViews();
   },
+#endif
 
   _emscripten_system: (command) => {
 #if ENVIRONMENT_MAY_BE_NODE
@@ -886,7 +895,9 @@ addToLibrary({
         addr = DNS.address_map.addrs[name];
       } else {
         var id = DNS.address_map.id++;
+#if ASSERTIONS
         assert(id < 65535, 'exceeded max address mappings of 65535');
+#endif
 
         addr = '172.29.' + (id & 0xff) + '.' + (id & 0xff00);
 
@@ -941,7 +952,9 @@ addToLibrary({
         inetNtop4(addr);
       sa = _malloc(salen);
       errno = writeSockaddr(sa, family, addr, port);
+#if ASSERTIONS
       assert(!errno);
+#endif
 
       ai = _malloc({{{ C_STRUCTS.addrinfo.__size__ }}});
       {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_family, 'family', 'i32') }}};
@@ -1154,14 +1167,14 @@ addToLibrary({
         var alias = aliases[i];
         var aliasBuf = _malloc(alias.length + 1);
         stringToAscii(alias, aliasBuf);
-        {{{ makeSetValue('aliasListBuf', 'j', 'aliasBuf', POINTER_TYPE) }}};
+        {{{ makeSetValue('aliasListBuf', 'j', 'aliasBuf', '*') }}};
       }
-      {{{ makeSetValue('aliasListBuf', 'j', '0', POINTER_TYPE) }}}; // Terminating NULL pointer.
+      {{{ makeSetValue('aliasListBuf', 'j', '0', '*') }}}; // Terminating NULL pointer.
 
       // generate protoent
       var pe = _malloc({{{ C_STRUCTS.protoent.__size__ }}});
-      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_name, 'nameBuf', POINTER_TYPE) }}};
-      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_aliases, 'aliasListBuf', POINTER_TYPE) }}};
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_name, 'nameBuf', '*') }}};
+      {{{ makeSetValue('pe', C_STRUCTS.protoent.p_aliases, 'aliasListBuf', '*') }}};
       {{{ makeSetValue('pe', C_STRUCTS.protoent.p_proto, 'proto', 'i32') }}};
       return pe;
     };
@@ -1331,7 +1344,7 @@ addToLibrary({
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
     // Audio Worklets enabled, do a dynamic check for its presence.
-    if (typeof performance != 'undefined' && {{{ getPerformanceNow() }}}) {
+    if (globalThis.performance && {{{ getPerformanceNow() }}}) {
 #if PTHREADS
       _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
 #else
@@ -1356,7 +1369,7 @@ addToLibrary({
     }
 #endif
 #if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
-    if (typeof performance == 'object' && performance && typeof performance['now'] == 'function') {
+    if (globalThis.performance?.now == 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
     }
     return 1000*1000; // milliseconds
@@ -1370,7 +1383,7 @@ addToLibrary({
   // implementation is not :(
   $nowIsMonotonic__internal: true,
 #if AUDIO_WORKLET // // https://github.com/WebAudio/web-audio-api/issues/2413
-  $nowIsMonotonic: `((typeof performance == 'object' && performance && typeof performance['now'] == 'function'));`,
+  $nowIsMonotonic: `!!globalThis.performance?.now;`,
 #else
   // Modern environment where performance.now() is supported
   $nowIsMonotonic: 1,
@@ -1391,8 +1404,10 @@ addToLibrary({
     }
   },
 
-  $emscriptenLog__deps: ['$getCallstack'],
-  $emscriptenLog: (flags, str) => {
+  _emscripten_log_formatted__deps: ['$getCallstack'],
+  _emscripten_log_formatted: (flags, str) => {
+    str = UTF8ToString(str);
+
     if (flags & {{{ cDefs.EM_LOG_C_STACK | cDefs.EM_LOG_JS_STACK }}}) {
       str = str.replace(/\s+$/, ''); // Ensure the message and the callstack are joined cleanly with exactly one newline.
       str += (str.length > 0 ? '\n' : '') + getCallstack(flags);
@@ -1417,21 +1432,12 @@ addToLibrary({
     }
   },
 
-  emscripten_log__deps: ['$formatString', '$emscriptenLog'],
-  emscripten_log: (flags, format, varargs) => {
-    var result = formatString(format, varargs);
-    var str = UTF8ArrayToString(result);
-    emscriptenLog(flags, str);
-  },
-
   // We never free the return values of this function so we need to allocate
   // using builtin_malloc to avoid LSan reporting these as leaks.
+#if RETAIN_COMPILER_SETTINGS
   emscripten_get_compiler_setting__noleakcheck: true,
-#if RETAIN_COMPILER_SETTINGS
   emscripten_get_compiler_setting__deps: ['$stringToNewUTF8'],
-#endif
   emscripten_get_compiler_setting: (name) => {
-#if RETAIN_COMPILER_SETTINGS
     name = UTF8ToString(name);
 
     var ret = getCompilerSetting(name);
@@ -1441,10 +1447,10 @@ addToLibrary({
     var fullret = cache[name];
     if (fullret) return fullret;
     return cache[name] = stringToNewUTF8(ret);
-#else
-    throw 'You must build with -sRETAIN_COMPILER_SETTINGS for getCompilerSetting or emscripten_get_compiler_setting to work';
-#endif
   },
+#else
+  emscripten_get_compiler_setting: (name) => abort('You must build with -sRETAIN_COMPILER_SETTINGS for getCompilerSetting or emscripten_get_compiler_setting to work'),
+#endif
 
   emscripten_has_asyncify: () => {{{ ASYNCIFY }}},
 
@@ -1461,8 +1467,8 @@ addToLibrary({
   // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
   // to malloc, calloc, free, and memalign.
   $withBuiltinMalloc__deps: [
-    'malloc', 'calloc', 'free', 'memalign',
-    'emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'emscripten_builtin_calloc'
+    'malloc', 'calloc', 'free', 'memalign', 'realloc',
+    'emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'emscripten_builtin_calloc', 'emscripten_builtin_realloc'
   ],
   $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
   $withBuiltinMalloc: (func) => {
@@ -1470,10 +1476,12 @@ addToLibrary({
     var prev_calloc = typeof _calloc != 'undefined' ? _calloc : undefined;
     var prev_memalign = typeof _memalign != 'undefined' ? _memalign : undefined;
     var prev_free = typeof _free != 'undefined' ? _free : undefined;
+    var prev_realloc = typeof _realloc != 'undefined' ? _realloc : undefined;
     _malloc = _emscripten_builtin_malloc;
     _calloc = _emscripten_builtin_calloc;
     _memalign = _emscripten_builtin_memalign;
     _free = _emscripten_builtin_free;
+    _realloc = _emscripten_builtin_realloc;
     try {
       return func();
     } finally {
@@ -1481,6 +1489,7 @@ addToLibrary({
       _calloc = prev_calloc;
       _memalign = prev_memalign;
       _free = prev_free;
+      _realloc = prev_realloc;
     }
   },
 
@@ -1606,27 +1615,35 @@ addToLibrary({
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
-  // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
-  // at runtime rather than statically in JS code.
-  $exportWasmSymbols__deps: ['$asmjsMangle'],
-  $exportWasmSymbols: (wasmExports) => {
-#if ENVIRONMENT_MAY_BE_NODE && ENVIRONMENT_MAY_BE_WEB
-    var global_object = (typeof process != "undefined" ? global : this);
-#elif ENVIRONMENT_MAY_BE_NODE
-    var global_object = global;
-#else
-    var global_object = this;
+  // When DECLARE_ASM_MODULE_EXPORTS is set, this function is programatically
+  // ceated during linking.  See `create_receiving` in `emscripten.py`.
+  // When DECLARE_ASM_MODULE_EXPORTS=0 is set, `assignWasmExports` is instead
+  // defined here as a normal JS library function.
+  $assignWasmExports__deps: ['$asmjsMangle',
+#if DYNCALLS || !WASM_BIGINT
+    , '$dynCalls'
 #endif
-
-    for (var __exportedFunc in wasmExports) {
-      var jsname = asmjsMangle(__exportedFunc);
+  ],
+  $assignWasmExports: (wasmExports) => {
+    for (var [name, exportedSymbol] of Object.entries(wasmExports)) {
+      name = asmjsMangle(name);
+#if DYNCALLS || !WASM_BIGINT
+      if (name.startsWith('dynCall_')) {
+        dynCalls[name.substr(8)] = exportedSymbol;
+      }
+#endif
+      // Globals are currently statically enumerated into the output JS.
+      // TODO: If the number of Globals grows large, consider giving them a
+      // similar DECLARE_ASM_MODULE_EXPORTS = 0 treatment.
+      if (typeof exportedSymbol.value === 'undefined') {
 #if MINIMAL_RUNTIME
-      global_object[jsname] = wasmExports[__exportedFunc];
+        globalThis[name] = exportedSymbol;
 #else
-      global_object[jsname] = Module[jsname] = wasmExports[__exportedFunc];
+        globalThis[name] = Module[name] = exportedSymbol;
 #endif
+      }
     }
-
+    exportAliases(wasmExports);
   },
 #endif
 
@@ -1694,21 +1711,14 @@ addToLibrary({
   // input events on, and registers a context resume() for them. This lets
   // audio work properly in an automatic way, as browsers won't let audio run
   // without user interaction.
-  // If @elements is not provided, we default to the document and canvas
-  // elements, which handle common use cases.
-  // TODO(sbc): Remove seemingly unused elements argument
-  $autoResumeAudioContext__docs: '/** @param {Object=} elements */',
-  $autoResumeAudioContext: (ctx, elements) => {
-    if (!elements) {
-      elements = [document, document.getElementById('canvas')];
-    }
-    ['keydown', 'mousedown', 'touchstart'].forEach((event) => {
-      elements.forEach((element) => {
+  $autoResumeAudioContext: (ctx) => {
+    for (var event of ['keydown', 'mousedown', 'touchstart']) {
+      for (var element of [document, document.getElementById('canvas')]) {
         element?.addEventListener(event, () => {
           if (ctx.state === 'suspended') ctx.resume();
         }, { 'once': true });
-      });
-    });
+      }
+    }
   },
 
 #if DYNCALLS || !WASM_BIGINT
@@ -1736,11 +1746,14 @@ addToLibrary({
     var f = dynCalls[sig];
     return f(ptr, ...args);
   },
-#if DYNCALLS
-  $dynCall__deps: ['$dynCallLegacy'],
-#else
-  $dynCall__deps: ['$getWasmTableEntry'],
+  $dynCall__deps: [
+#if DYNCALLS || !WASM_BIGINT
+    '$dynCallLegacy',
 #endif
+#if !DYNCALLS
+    '$getWasmTableEntry',
+#endif
+  ],
 #endif
 
   // Used in library code to get JS function from wasm function pointer.
@@ -1755,6 +1768,9 @@ addToLibrary({
   },
 
   $dynCall: (sig, ptr, args = [], promising = false) => {
+#if ASSERTIONS
+    assert(ptr, `null function pointer in dynCall`);
+#endif
 #if ASSERTIONS && (DYNCALLS || !WASM_BIGINT || !JSPI)
     assert(!promising, 'async dynCall is not supported in this mode')
 #endif
@@ -2092,8 +2108,13 @@ addToLibrary({
 #endif
       try {
 #if PTHREADS
-        if (ENVIRONMENT_IS_PTHREAD) __emscripten_thread_exit(EXITSTATUS);
-        else
+        if (ENVIRONMENT_IS_PTHREAD) {
+          // exit the current thread, but only if there is one active.
+          // TODO(https://github.com/emscripten-core/emscripten/issues/25076):
+          // Unify this check with the runtimeExited check above
+          if (_pthread_self()) __emscripten_thread_exit(EXITSTATUS);
+          return;
+        }
 #endif
         _exit(EXITSTATUS);
       } catch (e) {
@@ -2102,24 +2123,39 @@ addToLibrary({
     }
   },
 
-#else // MINIMAL_RUNTIME
-  // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff
-  $callUserCallback: (func) => func(),
-#endif // MINIMAL_RUNTIME
-
-  $asmjsMangle: (x) => {
-    if (x == '__main_argc_argv') {
-      x = 'main';
-    }
-    return x.startsWith('dynCall_') ? x : '_' + x;
-  },
-
   $asyncLoad: async (url) => {
     var arrayBuffer = await readAsync(url);
   #if ASSERTIONS
     assert(arrayBuffer, `Loading data file "${url}" failed (no arrayBuffer).`);
   #endif
     return new Uint8Array(arrayBuffer);
+  },
+
+#else // MINIMAL_RUNTIME
+  $callUserCallback: (func) => {
+    // MINIMAL_RUNTIME doesn't support the runtimeKeepalive stuff, but under
+    // some circumstances it supportes `runtimeExited`
+#if EXIT_RUNTIME
+    if (runtimeExited) {
+#if ASSERTIONS
+      err('user callback triggered after runtime exited or application aborted.  Ignoring.');
+#endif
+      return;
+    }
+#endif
+    func();
+  },
+#endif // MINIMAL_RUNTIME
+
+  $asmjsMangle: (x) => {
+    if (x == '__main_argc_argv') {
+      x = 'main';
+    }
+#if DYNCALLS
+    return x.startsWith('dynCall_') ? x : '_' + x;
+#else
+    return '_' + x;
+#endif
   },
 
   $alignMemory: (size, alignment) => {
@@ -2170,18 +2206,12 @@ addToLibrary({
   __stack_high: '{{{ STACK_HIGH }}}',
   __stack_low: '{{{ STACK_LOW }}}',
   __global_base: '{{{ GLOBAL_BASE }}}',
-#if WASM_EXCEPTIONS
-  // In dynamic linking we define tags here and feed them to each module
-  __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
-#endif
-#if SUPPORT_LONGJMP == 'wasm'
-  __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
-#endif
-#if ASYNCIFY == 1
+#endif // RELOCATABLE
+
+#if (MAIN_MODULE || RELOCATABLE) && ASYNCIFY == 1
   __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
   __asyncify_data: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(0) }}})",
 #endif
-#endif // RELOCATABLE
 
   _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
   _emscripten_fs_load_embedded_files: (ptr) => {
@@ -2236,9 +2266,6 @@ addToLibrary({
     }
   },
 
-  $getNativeTypeSize__deps: ['$POINTER_SIZE'],
-  $getNativeTypeSize: {{{ getNativeTypeSize }}},
-
   $wasmTable__docs: '/** @type {WebAssembly.Table} */',
 #if RELOCATABLE
   // In RELOCATABLE mode we create the table in JS.
@@ -2254,7 +2281,16 @@ addToLibrary({
 });
 `,
 #else
-  $wasmTable: undefined,
+  // `wasmTable` is a JS alias for the Wasm `__indirect_function_table` export
+  $wasmTable: '__indirect_function_table',
+#endif
+
+#if IMPORTED_MEMORY
+  // This gets defined in src/runtime_init_memory.js
+  $wasmMemory: undefined,
+#else
+  // `wasmMemory` is a JS alias for the Wasm `memory` export
+  $wasmMemory: 'memory',
 #endif
 
   $getUniqueRunDependency: (id) => {
@@ -2271,6 +2307,112 @@ addToLibrary({
 
   $noExitRuntime__postset: () => addAtModule(makeModuleReceive('noExitRuntime')),
   $noExitRuntime: {{{ !EXIT_RUNTIME }}},
+
+#if !MINIMAL_RUNTIME
+  // A counter of dependencies for calling run(). If we need to
+  // do asynchronous work before running, increment this and
+  // decrement it. Incrementing must happen in a place like
+  // Module.preRun (used by emcc to add file preloading).
+  // Note that you can add dependencies in preRun, even though
+  // it happens right before run - run will be postponed until
+  // the dependencies are met.
+  $runDependencies__internal: true,
+  $runDependencies: 0,
+  // overridden to take different actions when all run dependencies are fulfilled
+  $dependenciesFulfilled__internal: true,
+  $dependenciesFulfilled: null,
+#if ASSERTIONS
+  $runDependencyTracking__internal: true,
+  $runDependencyTracking: {},
+  $runDependencyWatcher__internal: true,
+  $runDependencyWatcher: null,
+#endif
+
+  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency',
+#if ASSERTIONS
+    '$runDependencyTracking',
+    '$runDependencyWatcher',
+#endif
+  ],
+  $addRunDependency: (id) => {
+    runDependencies++;
+
+#if expectToReceiveOnModule('monitorRunDependencies')
+    Module['monitorRunDependencies']?.(runDependencies);
+#endif
+
+#if ASSERTIONS
+#if RUNTIME_DEBUG
+    dbg('addRunDependency', id);
+#endif
+    assert(id, 'addRunDependency requires an ID')
+    assert(!runDependencyTracking[id]);
+    runDependencyTracking[id] = 1;
+    if (runDependencyWatcher === null && globalThis.setInterval) {
+      // Check for missing dependencies every few seconds
+      runDependencyWatcher = setInterval(() => {
+        if (ABORT) {
+          clearInterval(runDependencyWatcher);
+          runDependencyWatcher = null;
+          return;
+        }
+        var shown = false;
+        for (var dep in runDependencyTracking) {
+          if (!shown) {
+            shown = true;
+            err('still waiting on run dependencies:');
+          }
+          err(`dependency: ${dep}`);
+        }
+        if (shown) {
+          err('(end of list)');
+        }
+      }, 10000);
+#if ENVIRONMENT_MAY_BE_NODE
+      // Prevent this timer from keeping the runtime alive if nothing
+      // else is.
+      runDependencyWatcher.unref?.()
+#endif
+    }
+#endif
+  },
+
+  $removeRunDependency__deps: ['$runDependencies', '$dependenciesFulfilled',
+#if ASSERTIONS
+    '$runDependencyTracking',
+    '$runDependencyWatcher',
+#endif
+  ],
+  $removeRunDependency: (id) => {
+    runDependencies--;
+
+#if expectToReceiveOnModule('monitorRunDependencies')
+    Module['monitorRunDependencies']?.(runDependencies);
+#endif
+
+#if ASSERTIONS
+#if RUNTIME_DEBUG
+    dbg('removeRunDependency', id);
+#endif
+    assert(id, 'removeRunDependency requires an ID');
+    assert(runDependencyTracking[id]);
+    delete runDependencyTracking[id];
+#endif
+    if (runDependencies == 0) {
+#if ASSERTIONS
+      if (runDependencyWatcher !== null) {
+        clearInterval(runDependencyWatcher);
+        runDependencyWatcher = null;
+      }
+#endif
+      if (dependenciesFulfilled) {
+        var callback = dependenciesFulfilled;
+        dependenciesFulfilled = null;
+        callback(); // can add another dependenciesFulfilled
+      }
+    }
+  },
+#endif
 
   // The following addOn<X> functions are for adding runtime callbacks at
   // various executions points. Each addOn<X> function has a corresponding
@@ -2343,13 +2485,11 @@ addToLibrary({
   $ASSERTIONS: {{{ ASSERTIONS }}},
 });
 
-function autoAddDeps(object, name) {
-  for (var item in object) {
-    if (!item.endsWith('__deps')) {
-      if (!object[item + '__deps']) {
-        object[item + '__deps'] = [];
-      }
-      object[item + '__deps'].push(name);
+function autoAddDeps(lib, name) {
+  for (const item of Object.keys(lib)) {
+    if (!isDecorator(item)) {
+      lib[item + '__deps'] ??= [];
+      lib[item + '__deps'].push(name);
     }
   }
 }
@@ -2412,15 +2552,15 @@ function wrapSyscallFunction(x, library, isWasi) {
   }
 
   var isVariadic = !isWasi && t.includes(', varargs');
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
-  var canThrow = false;
-#else
+#if SYSCALLS_REQUIRE_FILESYSTEM
   var canThrow = library[x + '__nothrow'] !== true;
+#else
+  var canThrow = false;
 #endif
 
   library[x + '__deps'] ??= [];
 
-#if PURE_WASI
+#if PURE_WASI && !GROWABLE_ARRAYBUFFERS
   // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
   // and politely notify us on memory growth.  Instead we have to check for
   // possible memory growth on each syscall.
@@ -2451,6 +2591,8 @@ function wrapSyscallFunction(x, library, isWasi) {
   post += "}\n";
   post += "dbg(`syscall return: ${ret}`);\n";
   post += "return ret;\n";
+  // Emit dependency to strError() since we added use of it above.
+  library[x + '__deps'].push('$strError');
 #endif
   delete library[x + '__nothrow'];
   var handler = '';

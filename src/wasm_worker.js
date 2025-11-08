@@ -18,7 +18,13 @@ function startWasmWorker(props) {
   Module['wasm'] = props.wasm;
   loadModule()
 #else
-  wasmModuleReceived(props.wasm);
+  wasmModule = props.wasm;
+#if MODULARIZE == 'instance'
+  init();
+#else
+  createWasm();
+  run();
+#endif
 #endif
   // Drop now unneeded references to from the Module object in this Worker,
   // these are not needed anymore.

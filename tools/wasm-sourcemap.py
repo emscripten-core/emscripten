@@ -13,12 +13,12 @@ sections from a wasm file.
 import argparse
 import json
 import logging
-from math import floor, log
 import os
 import re
-from subprocess import Popen, PIPE
-from pathlib import Path
 import sys
+from math import floor, log
+from pathlib import Path
+from subprocess import PIPE, Popen
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -26,14 +26,13 @@ sys.path.insert(0, __rootdir__)
 
 from tools import utils
 from tools.system_libs import DETERMINISTIC_PREFIX
-from tools.shared import path_from_root
 
-EMSCRIPTEN_PREFIX = utils.normalize_path(path_from_root())
+EMSCRIPTEN_PREFIX = utils.normalize_path(utils.path_from_root())
 
 logger = logging.getLogger('wasm-sourcemap')
 
 
-def parse_args():
+def parse_args(args):
   parser = argparse.ArgumentParser(prog='wasm-sourcemap.py', description=__doc__)
   parser.add_argument('wasm', help='wasm file')
   parser.add_argument('-o', '--output', help='output source map')
@@ -46,7 +45,7 @@ def parse_args():
   parser.add_argument('--dwarfdump', help="path to llvm-dwarfdump executable")
   parser.add_argument('--dwarfdump-output', nargs='?', help=argparse.SUPPRESS)
   parser.add_argument('--basepath', help='base path for source files, which will be relative to this')
-  return parser.parse_args()
+  return parser.parse_args(args)
 
 
 class Prefixes:
@@ -197,6 +196,28 @@ def remove_dead_entries(entries):
     block_start = cur_entry
 
 
+# Given a string that has non-ASCII UTF-8 bytes 128-255 stored as octal sequences (\200 - \377), decode
+# the sequences back to UTF-8. E.g. "C:\\\303\244 \303\266\\emsdk\\emscripten\\main" -> "C:\\ä ö\\emsdk\\emscripten\\main"
+def decode_octal_encoded_utf8(str):
+  out = bytearray(len(str))
+  i = 0
+  o = 0
+  final_length = len(str)
+  in_escape = False
+  while i < len(str):
+    if not in_escape and str[i] == '\\' and (str[i + 1] == '2' or str[i + 1] == '3'):
+      out[o] = int(str[i + 1:i + 4], 8)
+      i += 4
+      final_length -= 3
+      in_escape = False
+    else:
+      out[o] = ord(str[i])
+      in_escape = False if in_escape else (str[i] == '\\')
+      i += 1
+    o += 1
+  return out[:final_length].decode('utf-8')
+
+
 def extract_comp_dir_map(text):
   map_stmt_list_to_comp_dir = {}
   chunks = re.split(r"0x[0-9a-f]*: DW_TAG_compile_unit", text)
@@ -205,7 +226,7 @@ def extract_comp_dir_map(text):
     if stmt_list_match is not None:
       stmt_list = stmt_list_match.group(1)
       comp_dir_match = re.search(r"DW_AT_comp_dir\s+\(\"([^\"]+)\"\)", chunk)
-      comp_dir = comp_dir_match.group(1) if comp_dir_match is not None else ''
+      comp_dir = decode_octal_encoded_utf8(comp_dir_match.group(1)) if comp_dir_match is not None else ''
       map_stmt_list_to_comp_dir[stmt_list] = comp_dir
   return map_stmt_list_to_comp_dir
 
@@ -251,12 +272,12 @@ def read_dwarf_entries(wasm, options):
 
     include_directories = {'0': comp_dir}
     for dir in re.finditer(r"include_directories\[\s*(\d+)\] = \"([^\"]*)", line_chunk):
-      include_directories[dir.group(1)] = os.path.join(comp_dir, dir.group(2))
+      include_directories[dir.group(1)] = os.path.join(comp_dir, decode_octal_encoded_utf8(dir.group(2)))
 
     files = {}
     for file in re.finditer(r"file_names\[\s*(\d+)\]:\s+name: \"([^\"]*)\"\s+dir_index: (\d+)", line_chunk):
       dir = include_directories[file.group(3)]
-      file_path = os.path.join(dir, file.group(2))
+      file_path = os.path.join(dir, decode_octal_encoded_utf8(file.group(2)))
       files[file.group(1)] = file_path
 
     for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?", line_chunk):
@@ -339,8 +360,8 @@ def build_sourcemap(entries, code_section_offset, options):
           'mappings': ','.join(mappings)}
 
 
-def main():
-  options = parse_args()
+def main(args):
+  options = parse_args(args)
 
   wasm_input = options.wasm
   with open(wasm_input, 'rb') as infile:
@@ -352,8 +373,8 @@ def main():
 
   logger.debug('Saving to %s' % options.output)
   map = build_sourcemap(entries, code_section_offset, options)
-  with open(options.output, 'w') as outfile:
-    json.dump(map, outfile, separators=(',', ':'))
+  with open(options.output, 'w', encoding='utf-8') as outfile:
+    json.dump(map, outfile, separators=(',', ':'), ensure_ascii=False)
 
   if options.strip:
     wasm = strip_debug_sections(wasm)
@@ -372,4 +393,4 @@ def main():
 
 if __name__ == '__main__':
   logging.basicConfig(level=logging.DEBUG if os.environ.get('EMCC_DEBUG') else logging.INFO)
-  sys.exit(main())
+  sys.exit(main(sys.argv[1:]))

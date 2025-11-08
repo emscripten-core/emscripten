@@ -4,22 +4,25 @@
  * SPDX-License-Identifier: MIT
  */
 
+import * as os from 'node:os';
+import * as fs from 'node:fs';
 import * as path from 'node:path';
 import {fileURLToPath} from 'node:url';
 import assert from 'node:assert';
 
 import {
+  debugLog,
   isDecorator,
   isJsOnlySymbol,
   error,
   readFile,
   pushCurrentFile,
   popCurrentFile,
-  printErr,
   addToCompileTimeContext,
   runInMacroContext,
   mergeInto,
   localFile,
+  timer,
 } from './utility.mjs';
 import {preprocess, processMacros} from './parseTools.mjs';
 
@@ -27,6 +30,9 @@ import {preprocess, processMacros} from './parseTools.mjs';
 
 // List of symbols that were added from the library.
 export const librarySymbols = [];
+// Map of library symbols which are aliases for native symbols
+// e.g. `wasmTable` -> `__indirect_function_table`
+export const nativeAliases = {};
 
 const srcDir = fileURLToPath(new URL('.', import.meta.url));
 const systemLibdir = path.join(srcDir, 'lib');
@@ -44,7 +50,6 @@ function calculateLibraries() {
     'libsigs.js',
     'libccall.js',
     'libaddfunction.js',
-    'libformatString.js',
     'libgetvalue.js',
     'libmath.js',
     'libpath.js',
@@ -89,7 +94,7 @@ function calculateLibraries() {
     libraries.push('libsyscall.js');
   }
 
-  if (RELOCATABLE) {
+  if (MAIN_MODULE || RELOCATABLE) {
     libraries.push('libdylink.js');
   }
 
@@ -182,17 +187,12 @@ function calculateLibraries() {
     libraries.push('libglemu.js');
   }
 
-  if (USE_WEBGPU) {
-    libraries.push('libwebgpu.js');
-    libraries.push('libhtml5_webgpu.js');
-  }
-
   if (!STRICT) {
     libraries.push('liblegacy.js');
   }
 
   if (BOOTSTRAPPING_STRUCT_INFO) {
-    libraries = ['libbootstrap.js', 'libformatString.js', 'libstrings.js', 'libint53.js'];
+    libraries = ['libbootstrap.js', 'libstrings.js', 'libint53.js'];
   }
 
   if (SUPPORT_BIG_ENDIAN) {
@@ -212,6 +212,35 @@ function calculateLibraries() {
   libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
 
   return libraries;
+}
+
+let tempDir;
+
+function getTempDir() {
+  if (!tempDir) {
+    const tempRoot = os.tmpdir();
+    tempDir = fs.mkdtempSync(path.join(tempRoot, 'emcc-jscompiler-'));
+  }
+  return tempDir;
+}
+
+function preprocessFiles(filenames) {
+  timer.start('preprocessFiles')
+  const results = {};
+  for (const filename of filenames) {
+    debugLog(`pre-processing JS library: ${filename}`);
+    pushCurrentFile(filename);
+    try {
+      results[filename] = processMacros(preprocess(filename), filename);
+    } catch (e) {
+      error(`error preprocessing JS library "${filename}":`);
+      throw e;
+    } finally {
+      popCurrentFile();
+    }
+  }
+  timer.stop('preprocessFiles')
+  return results;
 }
 
 export const LibraryManager = {
@@ -236,11 +265,25 @@ export const LibraryManager = {
   },
 
   load() {
+    timer.start('load')
+
     assert(!this.loaded);
     this.loaded = true;
     // Save the list for has() queries later.
     this.libraries = calculateLibraries();
 
+    const preprocessed = preprocessFiles(this.libraries);
+
+    timer.start('executeJS')
+    for (const [filename, contents] of Object.entries(preprocessed)) {
+      this.executeJSLibraryFile(filename, contents);
+    }
+    timer.stop('executeJS')
+
+    timer.stop('load')
+  },
+
+  executeJSLibraryFile(filename, contents) {
     const userLibraryProxy = new Proxy(this.library, {
       set(target, prop, value) {
         target[prop] = value;
@@ -251,51 +294,47 @@ export const LibraryManager = {
       },
     });
 
-    for (let filename of this.libraries) {
-      const isUserLibrary = !isBeneath(filename, systemLibdir);
+    const isUserLibrary = !isBeneath(filename, systemLibdir);
+    if (isUserLibrary) {
+      debugLog(`executing user JS library: ${filename}`);
+    } else {
+      debugLog(`exectuing system JS library: ${filename}`);
+    }
 
+    let origLibrary;
+    // When we parse user libraries also set `__user` attribute
+    // on each element so that we can distinguish them later.
+    if (isUserLibrary) {
+      origLibrary = this.library;
+      this.library = userLibraryProxy;
+    }
+    pushCurrentFile(filename);
+    let preprocessedName = filename.replace(/\.\w+$/, '.preprocessed$&')
+    if (VERBOSE) {
+      preprocessedName = path.join(getTempDir(), path.basename(filename));
+    }
+
+    try {
+      runInMacroContext(contents, {filename: preprocessedName})
+    } catch (e) {
+      error(`failure to execute JS library "${filename}":`);
       if (VERBOSE) {
-        if (isUserLibrary) {
-          printErr('processing user library: ' + filename);
-        } else {
-          printErr('processing system library: ' + filename);
-        }
+        fs.writeFileSync(preprocessedName, contents);
+        error(`preprocessed JS saved to ${preprocessedName}`)
+      } else {
+        error('use -sVERBOSE to save preprocessed JS');
       }
-      let origLibrary = undefined;
-      let processed = undefined;
-      // When we parse user libraries also set `__user` attribute
-      // on each element so that we can distinguish them later.
-      if (isUserLibrary) {
-        origLibrary = this.library;
-        this.library = userLibraryProxy;
-      }
-      pushCurrentFile(filename);
-      try {
-        processed = processMacros(preprocess(filename), filename);
-        runInMacroContext(processed, {filename: filename.replace(/\.\w+$/, '.preprocessed$&')});
-      } catch (e) {
-        error(`failure to execute js library "${filename}":`);
-        if (VERBOSE) {
-          const orig = readFile(filename);
-          if (processed) {
-            error(
-              `preprocessed source (you can run a js engine on this to get a clearer error message sometimes):\n=============\n${processed}\n=============`,
-            );
-          } else {
-            error(`original source:\n=============\n${orig}\n=============`);
-          }
-        } else {
-          error('use -sVERBOSE to see more details');
-        }
-        throw e;
-      } finally {
-        popCurrentFile();
-        if (origLibrary) {
-          this.library = origLibrary;
-        }
+      throw e;
+    } finally {
+      popCurrentFile();
+      if (origLibrary) {
+        this.library = origLibrary;
       }
     }
-  },
+    if (VERBOSE) {
+      fs.rmSync(getTempDir(), { recursive: true, force: true });
+    }
+  }
 };
 
 // options is optional input object containing mergeInto params
@@ -417,6 +456,11 @@ function exportSymbol(name) {
 function exportRuntimeSymbols() {
   // optionally export something.
   function shouldExport(name) {
+    // Native exports are not available to be exported initially.  Instead,
+    // they get exported later in `assignWasmExports`.
+    if (nativeAliases[name]) {
+      return false;
+    }
     // If requested to be exported, export it.
     if (EXPORTED_RUNTIME_METHODS.has(name)) {
       // Unless we are in MODULARIZE=instance mode then HEAP objects are
@@ -431,13 +475,10 @@ function exportRuntimeSymbols() {
   // All possible runtime elements that can be exported
   let runtimeElements = [
     'run',
-    'addRunDependency',
-    'removeRunDependency',
     'out',
     'err',
     'callMain',
     'abort',
-    'wasmMemory',
     'wasmExports',
     'HEAPF32',
     'HEAPF64',
@@ -453,10 +494,6 @@ function exportRuntimeSymbols() {
 
   if (SUPPORT_BIG_ENDIAN) {
     runtimeElements.push('HEAP_DATA_VIEW');
-  }
-
-  if (USE_OFFSET_CONVERTER) {
-    runtimeElements.push('WasmOffsetConverter');
   }
 
   if (LOAD_SOURCE_MAP) {
@@ -555,7 +592,7 @@ function exportLibrarySymbols() {
   assert(MODULARIZE != 'instance');
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
-    if (EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) {
+    if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) && !nativeAliases[ident]) {
       results.push(exportSymbol(ident));
     }
   }

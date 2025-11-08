@@ -22,6 +22,9 @@
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
 #endif
+#if EXPORT_ES6 && (MIN_FIREFOX_VERSION < 114 || MIN_CHROME_VERSION < 80 || MIN_SAFARI_VERSION < 150000)
+#error "internal error, feature_matrix should not allow this"
+#endif
 
 {{{
 #if MEMORY64
@@ -29,6 +32,13 @@ const MAX_PTR = Number((2n ** 64n) - 1n);
 #else
 const MAX_PTR = (2 ** 32) - 1
 #endif
+
+#if WASM_ESM_INTEGRATION
+const pthreadWorkerScript = TARGET_BASENAME + '.pthread.mjs';
+#else
+const pthreadWorkerScript = TARGET_JS_NAME;
+#endif
+
 // Use a macro to avoid duplicating pthread worker options.
 // We cannot use a normal JS variable since the vite bundler requires that worker
 // options be inline.
@@ -41,6 +51,12 @@ const pthreadWorkerOptions = `{
         // This is the way that we signal to the node worker that it is hosting
         // a pthread.
         'workerData': 'em-pthread',
+#if WASMFS
+        // In WasmFS, close() is not proxied to the main thread. Suppress
+        // warnings when a thread closes a file descriptor it didn't open.
+        // See: https://github.com/emscripten-core/emscripten/issues/24731
+        'trackUnmanagedFds': false,
+#endif
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
         // This is the way that we signal to the Web Worker that it is hosting
@@ -62,6 +78,10 @@ var LibraryPThread = {
                    '$addOnPreRun',
 #if MAIN_MODULE
                    '$markAsFinished',
+#endif
+#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE && !PTHREAD_POOL_DELAY_LOAD
+                   '$addRunDependency',
+                   '$removeRunDependency',
 #endif
                    '$spawnThread',
                    '_emscripten_thread_free_data',
@@ -100,14 +120,18 @@ var LibraryPThread = {
         PThread.allocateUnusedWorker();
       }
 #endif
-#if !MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
       // MINIMAL_RUNTIME takes care of calling loadWasmModuleToAllWorkers
       // in postamble_minimal.js
-      addOnPreRun(() => {
-        addRunDependency('loading-workers')
-        PThread.loadWasmModuleToAllWorkers(() => removeRunDependency('loading-workers'));
+      addOnPreRun(async () => {
+        var pthreadPoolReady = PThread.loadWasmModuleToAllWorkers();
+#if !PTHREAD_POOL_DELAY_LOAD
+        addRunDependency('loading-workers');
+        await pthreadPoolReady;
+        removeRunDependency('loading-workers');
+#endif // PTHREAD_POOL_DELAY_LOAD
       });
-#endif
+#endif // !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
 #if MAIN_MODULE
       PThread.outstandingPromises = {};
       // Finished threads are threads that have finished running but we not yet
@@ -226,6 +250,9 @@ var LibraryPThread = {
       worker.onmessage = (e) => {
         var d = e['data'];
         var cmd = d.cmd;
+#if PTHREADS_DEBUG
+        dbg(`main thread: received message '${cmd}' from worker. ${d}`);
+#endif
 
         // If this message is intended to a recipient that is not the main
         // thread, forward it to the target thread.
@@ -244,7 +271,10 @@ var LibraryPThread = {
         } else if (cmd === 'spawnThread') {
           spawnThread(d);
         } else if (cmd === 'cleanupThread') {
-          cleanupThread(d.thread);
+          // cleanupThread needs to be run via callUserCallback since it calls
+          // back into user code to free thread data. Without this it's possible
+          // the unwind or ExitStatus exception could escape here.
+          callUserCallback(() => cleanupThread(d.thread));
 #if MAIN_MODULE
         } else if (cmd === 'markAsFinished') {
           markAsFinished(d.thread);
@@ -265,6 +295,13 @@ var LibraryPThread = {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
           worker.postMessage(d);
+#if ENVIRONMENT_MAY_BE_NODE
+        } else if (cmd === 'uncaughtException') {
+          // Message handler for Node.js specific out-of-order behavior:
+          // https://github.com/nodejs/node/issues/59617
+          // A pthread sent an uncaught exception event. Re-raise it on the main thread.
+          worker.onerror(d.error);
+#endif
         } else if (cmd === 'callHandler') {
           Module[d.handler](...d.args);
         } else if (cmd) {
@@ -290,12 +327,21 @@ var LibraryPThread = {
       if (ENVIRONMENT_IS_NODE) {
         worker.on('message', (data) => worker.onmessage({ data: data }));
         worker.on('error', (e) => worker.onerror(e));
+
+#if PTHREADS_DEBUG
+        worker.on('exit', (code) => {
+          if (worker.pthread_ptr) dbg(`Worker hosting pthread ${ptrToString(worker.pthread_ptr)} has terminated with code ${code}.`);
+          else dbg(`Worker has terminated with code ${code}.`);
+        });
+#endif
       }
 #endif
 
 #if ASSERTIONS
       assert(wasmMemory instanceof WebAssembly.Memory, 'WebAssembly memory should have been loaded by now!');
+#if !WASM_ESM_INTEGRATION
       assert(wasmModule instanceof WebAssembly.Module, 'WebAssembly Module should have been loaded by now!');
+#endif
 #endif
 
       // When running on a pthread, none of the incoming parameters on the module
@@ -333,12 +379,11 @@ var LibraryPThread = {
 #else // WASM2JS
         wasmMemory,
 #endif // WASM2JS
+#if !WASM_ESM_INTEGRATION
         wasmModule,
+#endif
 #if LOAD_SOURCE_MAP
         wasmSourceMap,
-#endif
-#if USE_OFFSET_CONVERTER
-        wasmOffsetConverter,
 #endif
 #if MAIN_MODULE
         dynamicLibraries,
@@ -352,10 +397,8 @@ var LibraryPThread = {
       });
     }),
 
-    loadWasmModuleToAllWorkers(onMaybeReady) {
-#if !PTHREAD_POOL_SIZE
-      onMaybeReady();
-#else
+#if PTHREAD_POOL_SIZE
+    async loadWasmModuleToAllWorkers() {
       // Instantiation is synchronous in pthreads.
       if (
         ENVIRONMENT_IS_PTHREAD
@@ -363,7 +406,7 @@ var LibraryPThread = {
         || ENVIRONMENT_IS_WASM_WORKER
 #endif
       ) {
-        return onMaybeReady();
+        return;
       }
 
       let pthreadPoolReady = Promise.all(PThread.unusedWorkers.map(PThread.loadWasmModuleToWorker));
@@ -373,12 +416,11 @@ var LibraryPThread = {
       // If the user wants to wait on it elsewhere, they can do so via the
       // Module['pthreadPoolReady'] promise.
       Module['pthreadPoolReady'] = pthreadPoolReady;
-      onMaybeReady();
-#else
-      pthreadPoolReady.then(onMaybeReady);
-#endif // PTHREAD_POOL_DELAY_LOAD
-#endif // PTHREAD_POOL_SIZE
+      return;
+#endif
+      return pthreadPoolReady;
     },
+#endif // PTHREAD_POOL_SIZE
 
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
     allocateUnusedWorker() {
@@ -390,8 +432,8 @@ var LibraryPThread = {
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
-      if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
-        var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (ignored) => import.meta.url });
+      if (globalThis.trustedTypes?.createPolicy) {
+        var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (ignored) => new URL('{{{ pthreadWorkerScript }}}', import.meta.url) });
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
 #endif
@@ -409,9 +451,19 @@ var LibraryPThread = {
       // the first case in their bundling step. The latter ends up producing an invalid
       // URL to import from the server (e.g., for webpack the file:// path).
       // See https://github.com/webpack/webpack/issues/12638
-      worker = new Worker(new URL('{{{ TARGET_JS_NAME }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
+      worker = new Worker(new URL('{{{ pthreadWorkerScript }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
 #else // EXPORT_ES6
       var pthreadMainJs = _scriptName;
+#if CROSS_ORIGIN && ENVIRONMENT_MAY_BE_WEB
+      // In order to support cross origin loading of worker threads load the
+      // worker via a tiny inline `importScripts` call.   For some reason its
+      // fine to `importScripts` across origins, in cases where new Worker
+      // itself does not allow this.
+      // https://github.com/emscripten-core/emscripten/issues/21937
+      if (ENVIRONMENT_IS_WEB) {
+        pthreadMainJs = URL.createObjectURL(new Blob([`importScripts('${_scriptName}')`], { type: 'application/javascript' }));
+      }
+#endif
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
       // We can't use makeModuleReceiveWithVar here since we want to also
       // call URL.createObjectURL on the mainScriptUrlOrBlob.
@@ -427,7 +479,7 @@ var LibraryPThread = {
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
-      if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+      if (globalThis.trustedTypes?.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
@@ -542,7 +594,7 @@ var LibraryPThread = {
 #if MAIN_MODULE
   $registerTLSInit: (tlsInitFunc, moduleExports, metadata) => {
 #if DYLINK_DEBUG
-    dbg("registerTLSInit: " + tlsInitFunc);
+    dbg('registerTLSInit:', tlsInitFunc, metadata?.tlsExports);
 #endif
     // In relocatable builds, we use the result of calling tlsInitFunc
     // (`_emscripten_tls_init`) to relocate the TLS exports of the module
@@ -561,7 +613,7 @@ var LibraryPThread = {
       }
       var tlsExports = {};
       metadata.tlsExports.forEach((s) => tlsExports[s] = moduleExports[s]);
-      relocateExports(tlsExports, __tls_base, /*replace=*/true);
+      updateGOT(relocateExports(tlsExports, __tls_base), /*replace=*/true);
     }
 
     // Register this function so that its gets called for each thread on
@@ -870,7 +922,7 @@ var LibraryPThread = {
   $proxyToMainThreadPtr: (...args) => BigInt(proxyToMainThread(...args)),
 #endif
 
-  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_on_main_thread_js'],
+  $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_js_on_main_thread'],
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
   $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
     // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
@@ -910,7 +962,7 @@ var LibraryPThread = {
       HEAPF64[b + i] = arg;
 #endif
     }
-    var rtn = __emscripten_run_on_main_thread_js(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
+    var rtn = __emscripten_run_js_on_main_thread(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
     stackRestore(sp);
     return rtn;
   },
@@ -1015,6 +1067,9 @@ var LibraryPThread = {
     '$runtimeKeepaliveCounter',
 #endif
   ],
+#if ASYNCIFY
+  $invokeEntryPoint__async: true,
+#endif
   $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}}(ptr, arg) => {
 #if PTHREADS_DEBUG
     dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);
@@ -1058,18 +1113,16 @@ var LibraryPThread = {
     checkStackCookie();
 #endif
     function finish(result) {
-#if MINIMAL_RUNTIME
+#if !MINIMAL_RUNTIME
       // In MINIMAL_RUNTIME the noExitRuntime concept does not apply to
       // pthreads. To exit a pthread with live runtime, use the function
       // emscripten_unwind_to_js_event_loop() in the pthread body.
-      __emscripten_thread_exit(result);
-#else
       if (keepRuntimeAlive()) {
         EXITSTATUS = result;
-      } else {
-        __emscripten_thread_exit(result);
+        return;
       }
 #endif
+      __emscripten_thread_exit(result);
     }
 #if ASYNCIFY == 2
     result = await result;
@@ -1110,10 +1163,10 @@ var LibraryPThread = {
 #endif
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! _emscripten_dlsync_threads_async() can only ever be called from main thread');
+    assert(Object.keys(PThread.outstandingPromises).length === 0);
 #endif
 
     const promises = [];
-    assert(Object.keys(PThread.outstandingPromises).length === 0);
 
     // This first promise resolves once the main thread has loaded all modules.
     var info = makePromise();
@@ -1179,9 +1232,14 @@ var LibraryPThread = {
                         'pthread_self',
                         '_emscripten_check_mailbox',
                         '_emscripten_thread_mailbox_await'],
-  $checkMailbox: () => {
+  $checkMailbox: () => callUserCallback(() => {
     // Only check the mailbox if we have a live pthread runtime. We implement
     // pthread_self to return 0 if there is no live runtime.
+    //
+    // TODO(https://github.com/emscripten-core/emscripten/issues/25076):
+    // Is this check still needed?  `callUserCallback` is supposed to
+    // ensure the runtime is alive, and if `_pthread_self` is NULL then the
+    // runtime certainly is *not* alive, so this should be a redundant check.
     var pthread_ptr = _pthread_self();
     if (pthread_ptr) {
       // If we are using Atomics.waitAsync as our notification mechanism, wait
@@ -1189,13 +1247,13 @@ var LibraryPThread = {
       // work that could otherwise arrive after we've finished processing the
       // mailbox and before we're ready for the next notification.
       __emscripten_thread_mailbox_await(pthread_ptr);
-      callUserCallback(__emscripten_check_mailbox);
+      __emscripten_check_mailbox();
     }
-  },
+  }),
 
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox'],
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
-    if (typeof Atomics.waitAsync === 'function') {
+    if (Atomics.waitAsync) {
       // Wait on the pthread's initial self-pointer field because it is easy and
       // safe to access from sending threads that need to notify the waiting
       // thread.

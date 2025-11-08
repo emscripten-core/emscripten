@@ -9,29 +9,29 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
-from tools.toolchain_profiler import ToolchainProfiler
-
-import os
 import json
-import subprocess
 import logging
+import os
 import pprint
-import re
 import shutil
+import subprocess
 import sys
 import textwrap
 
-from tools import building
-from tools import config
-from tools import diagnostics
-from tools import js_manipulation
-from tools import shared
-from tools import utils
-from tools import webassembly
-from tools import extract_metadata
-from tools.utils import exit_with_error, path_from_root, removeprefix
-from tools.shared import DEBUG, asmjs_mangle, in_temp
+from tools import (
+  building,
+  config,
+  diagnostics,
+  extract_metadata,
+  js_manipulation,
+  shared,
+  utils,
+  webassembly,
+)
 from tools.settings import settings, user_settings
+from tools.shared import DEBUG, asmjs_mangle, in_temp
+from tools.toolchain_profiler import ToolchainProfiler
+from tools.utils import exit_with_error, path_from_root, removeprefix
 
 sys.path.append(path_from_root('third_party'))
 import leb128
@@ -112,18 +112,18 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     settings.WASM_EXPORTS = base_metadata.all_exports
   else:
     settings.WASM_EXPORTS = metadata.all_exports
-  settings.WASM_GLOBAL_EXPORTS = list(metadata.global_exports.keys())
+  settings.DATA_EXPORTS = list(metadata.data_exports.keys())
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
   # start with the MVP features, and add any detected features.
-  settings.BINARYEN_FEATURES = ['--mvp-features'] + metadata.features
+  building.binaryen_features = ['--mvp-features'] + metadata.features
   if settings.ASYNCIFY == 2:
-    settings.BINARYEN_FEATURES += ['--enable-reference-types']
+    building.binaryen_features += ['--enable-reference-types']
 
   if settings.PTHREADS:
-    assert '--enable-threads' in settings.BINARYEN_FEATURES
+    assert '--enable-threads' in building.binaryen_features
   if settings.MEMORY64:
-    assert '--enable-memory64' in settings.BINARYEN_FEATURES
+    assert '--enable-memory64' in building.binaryen_features
 
   settings.HAS_MAIN = bool(settings.MAIN_MODULE) or settings.PROXY_TO_PTHREAD or settings.STANDALONE_WASM or 'main' in settings.WASM_EXPORTS or '__main_argc_argv' in settings.WASM_EXPORTS
   if settings.HAS_MAIN and not settings.MINIMAL_RUNTIME:
@@ -270,24 +270,26 @@ def trim_asm_const_body(body):
   return body
 
 
-def create_other_export_declarations(tag_exports):
-  return '\n'.join(f'var {asmjs_mangle(name)};' for name in tag_exports)
-
-
-def create_global_exports(global_exports):
+def create_data_exports(data_exports):
   lines = []
-  for k, v in global_exports.items():
+  for k, v in data_exports.items():
     if shared.is_internal_global(k):
       continue
 
     v = int(v)
+
+    if not settings.MEMORY64:
+      # We assume that global exports are addresses, which need to be interpreted as unsigned.
+      # This is not necessary (and does not work) under wasm64 when the globals are i64.
+      v = v & 0xFFFFFFFF
+
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
     mangled = asmjs_mangle(k)
-    if settings.MINIMAL_RUNTIME:
-      lines.append("var %s = %s;" % (mangled, v))
-    else:
+    if should_export(mangled) and not settings.MINIMAL_RUNTIME:
       lines.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
+    else:
+      lines.append("var %s = %s;" % (mangled, v))
 
   return '\n'.join(lines)
 
@@ -318,26 +320,15 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     update_settings_glue(out_wasm, metadata, base_metadata)
 
   if not settings.WASM_BIGINT and metadata.em_js_funcs:
-    import_map = {}
-
-    with webassembly.Module(in_wasm) as module:
-      types = module.get_types()
-      for imp in module.get_imports():
-        if imp.module not in ('GOT.mem', 'GOT.func'):
-          import_map[imp.field] = imp
-
     for em_js_func, raw in metadata.em_js_funcs.items():
       c_sig = raw.split('<::>')[0].strip('()')
       if not c_sig or c_sig == 'void':
         c_sig = []
       else:
         c_sig = c_sig.split(',')
-      if em_js_func in import_map:
-        imp = import_map[em_js_func]
-        assert imp.kind == webassembly.ExternType.FUNC
-        signature = types[imp.type]
-        if len(signature.params) != len(c_sig):
-          diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
+      signature = metadata.em_js_func_types.get(em_js_func)
+      if signature and len(signature.params) != len(c_sig):
+        diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
@@ -365,6 +356,10 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     logger.debug('emscript: skipping js glue generation')
     return
 
+  for e in settings.EXPORTED_FUNCTIONS:
+    if not js_manipulation.isidentifier(e):
+      exit_with_error(f'invalid export name: "{e}"')
+
   # memory and global initializers
 
   if settings.RELOCATABLE:
@@ -379,8 +374,8 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
-    if settings.ASYNCIFY == 1:
-      metadata.imports += ['__asyncify_state', '__asyncify_data']
+  if settings.MAIN_MODULE and settings.ASYNCIFY == 1:
+    metadata.imports += ['__asyncify_state', '__asyncify_data']
 
   if metadata.invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
@@ -411,14 +406,14 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   if base_metadata:
     function_exports = base_metadata.function_exports
-    tag_exports = base_metadata.tag_exports
+    other_exports = base_metadata.other_exports
     # We want the real values from the final metadata but we only want to
     # include names from the base_metadata.  See phase_link() in link.py.
-    global_exports = {k: v for k, v in metadata.global_exports.items() if k in base_metadata.global_exports}
+    data_exports = {k: v for k, v in metadata.data_exports.items() if k in base_metadata.data_exports}
   else:
     function_exports = metadata.function_exports
-    tag_exports = metadata.tag_exports
-    global_exports = metadata.global_exports
+    other_exports = metadata.other_exports
+    data_exports = metadata.data_exports
 
   if settings.ASYNCIFY == 1:
     function_exports['asyncify_start_unwind'] = webassembly.FuncType([webassembly.Type.I32], [])
@@ -427,8 +422,10 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
   parts = [pre]
-  parts += create_module(metadata, function_exports, global_exports, tag_exports, forwarded_json['librarySymbols'])
+  parts += create_module(metadata, function_exports, data_exports, other_exports,
+                         forwarded_json['librarySymbols'], forwarded_json['nativeAliases'])
   parts.append(post)
+  settings.ALIASES = list(forwarded_json['nativeAliases'].keys())
 
   full_js_module = ''.join(parts)
   full_js_module = apply_static_code_hooks(forwarded_json, full_js_module)
@@ -454,13 +451,6 @@ def get_metadata(infile, outfile, modify_wasm, args):
   if DEBUG:
     logger.debug("Metadata: " + pprint.pformat(metadata.__dict__))
   return metadata
-
-
-def is_valid_js_identifier(ident):
-  # See https://developer.mozilla.org/en-US/docs/Glossary/Identifier
-  if ident[0].isdigit():
-    return False
-  return re.fullmatch(r'[0-9a-zA-Z_\$]+', ident)
 
 
 def finalize_wasm(infile, outfile, js_syms):
@@ -570,9 +560,6 @@ def finalize_wasm(infile, outfile, js_syms):
   # These are any exports that were not requested on the command line and are
   # not known auto-generated system functions.
   unexpected_exports = [e for e in metadata.all_exports if shared.is_user_export(e)]
-  for n in unexpected_exports:
-    if not is_valid_js_identifier(n):
-      exit_with_error(f'invalid export name: {n}')
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
@@ -811,6 +798,8 @@ def add_standard_wasm_imports(send_items_map):
       'store_val_i64',
       'store_val_f32',
       'store_val_f64',
+      'memory_grow_pre',
+      'memory_grow_post',
     ]
 
   if settings.SPLIT_MODULE and settings.ASYNCIFY == 2:
@@ -867,7 +856,7 @@ def create_sending(metadata, library_symbols):
       elems.append(f'{v} as {k}')
     elems = ',\n  '.join(elems)
     exports = '// Export JS functions to the wasm module with demangled names.\n'
-    exports += f"export {{\n  {elems}\n}};\n\n"
+    exports += f"export {{\n  {elems}\n}};"
     return exports
 
   prefix = ''
@@ -899,7 +888,7 @@ def create_reexports(metadata):
         wasm_exports.append(exp)
       elif demangled == 'main' and '__main_argc_argv' in settings.WASM_EXPORTS:
         wasm_exports.append('_main')
-  exports += f"export {{ {', '.join(wasm_exports)} }};\n\n"
+  exports += f"export {{ {', '.join(wasm_exports)} }};"
   return exports
 
 
@@ -909,26 +898,24 @@ def install_debug_wrapper(sym):
   # The emscripten stack functions are called very early (by writeStackCookie) before
   # the runtime is initialized so we can't create these wrappers that check for
   # runtimeInitialized.
-  if sym.startswith(('_asan_', 'emscripten_stack_', '_emscripten_stack_')):
+  if sym.startswith(('__asan_', 'emscripten_stack_', '_emscripten_stack_')):
     return False
-  # Likewise `__trap` can occur before the runtime is initialized since it is used in
-  # abort.
-  # pthread_self and _emscripten_proxy_execute_task_queue are currently called in some
-  # cases after the runtime has exited.
-  # TODO: Look into removing these, and improving our robustness around thread termination.
-  return sym not in {'__trap', 'pthread_self', '_emscripten_proxy_execute_task_queue'}
+  # `__trap` can occur before the runtime is initialized since it is used in abort.
+  # `emscripten_get_sbrk_ptr` can be called prior to runtime initialzaion by
+  # the dynamic linking code.
+  return sym not in ['__trap', 'emscripten_get_sbrk_ptr']
 
 
 def should_export(sym):
   return settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and sym in settings.EXPORTED_FUNCTIONS)
 
 
-def create_receiving(function_exports, tag_exports):
-  generate_dyncall_assignment = settings.DYNCALLS and '$dynCall' in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE
+def create_receiving(function_exports, other_exports, library_symbols, aliases):
+  generate_dyncall_assignment = 'dynCalls' in library_symbols
   receiving = ['\n// Imports from the Wasm binary.']
 
   if settings.WASM_ESM_INTEGRATION:
-    exported_symbols = tag_exports + list(function_exports.keys())
+    exported_symbols = other_exports + list(function_exports.keys())
     exports = []
     for sym in exported_symbols:
       mangled = asmjs_mangle(sym)
@@ -936,10 +923,9 @@ def create_receiving(function_exports, tag_exports):
         exports.append(f'{sym} as {mangled}')
       else:
         exports.append(sym)
-    if not settings.IMPORTED_MEMORY:
-      exports.append('memory as wasmMemory')
-    if not settings.RELOCATABLE:
-      exports.append('__indirect_function_table as wasmTable')
+    for alias, target in aliases.items():
+      exports.append(f'{target} as {alias}')
+
     receiving.append('import {')
     receiving.append('  ' + ',\n  '.join(exports))
     receiving.append(f"}} from './{settings.WASM_BINARY_FILE}';")
@@ -953,10 +939,10 @@ def create_receiving(function_exports, tag_exports):
           receiving.append(f"  dynCalls['{sig_str}'] = {sym};")
       receiving.append('}')
 
-    return '\n'.join(receiving) + '\n\n'
+    return '\n'.join(receiving)
 
-  # When not declaring asm exports this section is empty and we instead programmatically export
-  # symbols on the global object by calling exportWasmSymbols after initialization
+  # When not declaring asm exports `assignWasmExports` is instead defined as a simple
+  # library function.
   if not settings.DECLARE_ASM_MODULE_EXPORTS:
     return ''
 
@@ -966,93 +952,85 @@ def create_receiving(function_exports, tag_exports):
   # function assignWasmExports(wasmExport) {
   #   _main = wasmExports["_main"];
   exports = {name: sig for name, sig in function_exports.items() if name != building.WASM_CALL_CTORS}
+  for name in other_exports:
+    exports[name] = None
 
+  mangled = [asmjs_mangle(s) for s in exports] + list(aliases.keys())
   if settings.ASSERTIONS:
     # In debug builds we generate trapping functions in case
     # folks try to call/use a reference that was taken before the
     # wasm module is available.
-    for sym in exports:
-      mangled = asmjs_mangle(sym)
-      export_assignment = ''
-      if (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(mangled) and settings.MODULARIZE != 'instance':
-        export_assignment = f" = Module['{mangled}']"
-      receiving.append(f"var {mangled}{export_assignment} = makeInvalidEarlyAccess('{mangled}');")
+    for sym in mangled:
+      assignment = sym
+      if (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(sym) and settings.MODULARIZE != 'instance':
+        assignment += f" = Module['{sym}']"
+      receiving.append(f"var {assignment} = makeInvalidEarlyAccess('{sym}');")
   else:
     # Declare all exports in a single var statement
     sep = ',\n  '
-    mangled = [asmjs_mangle(s) for s in exports]
     receiving.append(f'var {sep.join(mangled)};\n')
 
   if settings.MODULARIZE == 'instance':
-    mangled = [asmjs_mangle(e) for e in exports]
     esm_exports = [e for e in mangled if should_export(e)]
     if esm_exports:
       esm_exports = ', '.join(esm_exports)
       receiving.append(f'export {{ {esm_exports} }};')
 
+  alias_inverse_map = {}
+  logger.debug(json.dumps(aliases))
+  for sym, alias in aliases.items():
+    assert alias in exports, f'expected alias target ({alias}) to be exported'
+    alias_inverse_map.setdefault(alias, []).append(sym)
+
+  do_module_exports = (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and settings.MODULARIZE != 'instance'
   receiving.append('\nfunction assignWasmExports(wasmExports) {')
   for sym, sig in exports.items():
+    is_function = sig is not None
     mangled = asmjs_mangle(sym)
-    if generate_dyncall_assignment and sym.startswith('dynCall_'):
+    assignment = mangled
+    if generate_dyncall_assignment and is_function and sym.startswith('dynCall_'):
       sig_str = sym.replace('dynCall_', '')
-      dynCallAssignment = f"dynCalls['{sig_str}'] = "
-    else:
-      dynCallAssignment = ''
-    export_assignment = ''
-    if (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(mangled) and settings.MODULARIZE != 'instance':
-      export_assignment = f"Module['{mangled}'] = "
-    if install_debug_wrapper(sym):
+      assignment += f" = dynCalls['{sig_str}']"
+    if do_module_exports and should_export(mangled):
+      assignment += f" = Module['{mangled}']"
+    if settings.ASSERTIONS:
+      receiving.append(f"  assert(typeof wasmExports['{sym}'] != 'undefined', 'missing Wasm export: {sym}');")
+    if sym in alias_inverse_map:
+      for target in alias_inverse_map[sym]:
+        assignment += f" = {target}"
+        if do_module_exports and target in settings.EXPORTED_RUNTIME_METHODS:
+          assignment += f" = Module['{target}']"
+    if is_function and install_debug_wrapper(sym):
       nargs = len(sig.params)
-      receiving.append(f"  {export_assignment}{dynCallAssignment}{mangled} = createExportWrapper('{sym}', {nargs});")
+      receiving.append(f"  {assignment} = createExportWrapper('{sym}', {nargs});")
     else:
-      receiving.append(f"  {export_assignment}{dynCallAssignment}{mangled} = wasmExports['{sym}'];")
+      receiving.append(f"  {assignment} = wasmExports['{sym}'];")
   receiving.append('}')
 
-  return '\n'.join(receiving) + '\n'
+  return '\n'.join(receiving)
 
 
-def create_module(metadata, function_exports, global_exports, tag_exports,library_symbols):
+def create_module(metadata, function_exports, data_exports, other_exports, library_symbols, aliases):
   module = []
+  module.append(create_receiving(function_exports, other_exports, library_symbols, aliases))
+  module.append(create_data_exports(data_exports))
 
-  receiving = create_receiving(function_exports, tag_exports)
-  receiving += create_global_exports(global_exports)
   sending = create_sending(metadata, library_symbols)
-
-  module.append(receiving)
-
   if settings.WASM_ESM_INTEGRATION:
     module.append(sending)
   else:
-    module.append(create_other_export_declarations(tag_exports))
-
     if settings.PTHREADS or settings.WASM_WORKERS or (settings.IMPORTED_MEMORY and settings.MODULARIZE == 'instance'):
       sending = textwrap.indent(sending, '  ').strip()
       module.append('''\
   var wasmImports;
   function assignWasmImports() {
     wasmImports = %s;
-  }
-  ''' % sending)
+  }''' % sending)
     else:
-      module.append('var wasmImports = %s;\n' % sending)
-
-    if not settings.MINIMAL_RUNTIME:
-      if settings.MODULARIZE == 'instance':
-        module.append("var wasmExports;\n")
-      elif settings.WASM_ASYNC_COMPILATION:
-        if settings.MODULARIZE:
-          # In modularize mode the generated code is within a factory function.
-          # This magic string gets replaced by `await createWasm`.  It needed to allow
-          # closure and acorn to process the module without seeing this as a top-level
-          # await.
-          module.append("var wasmExports = EMSCRIPTEN$AWAIT(createWasm());\n")
-        else:
-          module.append("var wasmExports;\ncreateWasm();\n")
-      else:
-        module.append("var wasmExports = createWasm();\n")
+      module.append('var wasmImports = %s;' % sending)
 
   if settings.SUPPORT_LONGJMP == 'emscripten' or not settings.DISABLE_EXCEPTION_CATCHING:
-    module.append(create_invoke_wrappers(metadata))
+    module += create_invoke_wrappers(metadata)
   else:
     assert not metadata.invoke_funcs, "invoke_ functions exported but exceptions and longjmp are both disabled"
 
@@ -1062,15 +1040,16 @@ def create_module(metadata, function_exports, global_exports, tag_exports,librar
   if settings.WASM_ESM_INTEGRATION:
     module.append(create_reexports(metadata))
 
-  return module
+  module = [chunk for chunk in module if chunk]
+  return '\n\n'.join(module) + '\n'
 
 
 def create_invoke_wrappers(metadata):
   """Asm.js-style exception handling: invoke wrapper generation."""
-  invoke_wrappers = ''
+  invoke_wrappers = []
   for invoke in metadata.invoke_funcs:
     sig = removeprefix(invoke, 'invoke_')
-    invoke_wrappers += '\n' + js_manipulation.make_invoke(sig) + '\n'
+    invoke_wrappers.append(js_manipulation.make_invoke(sig))
   return invoke_wrappers
 
 
@@ -1087,6 +1066,7 @@ def create_pointer_conversion_wrappers(metadata):
   mapping = {
     'sbrk': 'pP',
     '_emscripten_stack_alloc': 'pp',
+    'emscripten_get_sbrk_ptr': 'p',
     'emscripten_builtin_malloc': 'pp',
     'emscripten_builtin_calloc': 'ppp',
     'wasmfs_create_node_backend': 'pp',
@@ -1129,8 +1109,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_read_file': '_ppp',
     '_wasmfs_node_record_dirent': '_pp_',
     '__dl_seterr': '_pp',
-    '_emscripten_run_on_main_thread_js': '__p_p_',
-    '_emscripten_proxy_execute_task_queue': '_p',
+    '_emscripten_run_js_on_main_thread': '__p_p_',
     '_emscripten_thread_exit': '_p',
     '_emscripten_thread_init': '_p_____',
     '_emscripten_thread_free_data': '_p',
@@ -1162,6 +1141,7 @@ def create_pointer_conversion_wrappers(metadata):
     'emscripten_proxy_finish': '_p',
     'emscripten_proxy_execute_queue': '_p',
     '_emval_coro_resume': '_pp',
+    '_emval_coro_reject': '_pp',
     'emscripten_main_runtime_thread_id': 'p',
     '_emscripten_set_offscreencanvas_size_on_thread': '_pp__',
     'fileno': '_p',

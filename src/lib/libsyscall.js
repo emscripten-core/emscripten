@@ -10,9 +10,6 @@ var SyscallsLibrary = {
                    '$PATH',
                    '$FS',
 #endif
-#if SYSCALL_DEBUG
-                   '$strError',
-#endif
   ],
   $SYSCALLS: {
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -42,12 +39,12 @@ var SyscallsLibrary = {
     },
 
     writeStat(buf, stat) {
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'u32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', SIZE_TYPE) }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'u32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
@@ -64,16 +61,16 @@ var SyscallsLibrary = {
       return 0;
     },
     writeStatFs(buf, stats) {
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, 'stats.bsize', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, 'stats.bsize', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, 'stats.blocks', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, 'stats.bfree', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, 'stats.bavail', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'stats.files', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, 'stats.ffree', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, 'stats.fsid', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, 'stats.flags', 'i32') }}};  // ST_NOSUID
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, 'stats.namelen', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, 'stats.bsize', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, 'stats.bsize', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, 'stats.blocks', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, 'stats.bfree', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, 'stats.bavail', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'stats.files', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, 'stats.ffree', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, 'stats.fsid', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, 'stats.flags', 'u32') }}};  // ST_NOSUID
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, 'stats.namelen', 'u32') }}};
     },
     doMsync(addr, stream, len, flags, offset) {
       if (!FS.isFile(stream.node.mode)) {
@@ -284,6 +281,7 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         return -{{{ cDefs.EINVAL }}}; // not supported
       }
+      case {{{ cDefs.FIONBIO }}}:
       case {{{ cDefs.FIONREAD }}}: {
         var argp = syscallGetVarargP();
         return FS.ioctl(stream, op, argp);
@@ -472,7 +470,7 @@ var SyscallsLibrary = {
     var view = new Uint8Array(total);
     var offset = 0;
     for (var i = 0; i < num; i++) {
-      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, POINTER_TYPE) }}};
+      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, '*') }}};
       var iovlen = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
       for (var j = 0; j < iovlen; j++) {
         view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
@@ -484,7 +482,7 @@ var SyscallsLibrary = {
   __syscall_recvmsg__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
   __syscall_recvmsg: (fd, message, flags, d1, d2, d3) => {
     var sock = getSocketFromFD(fd);
-    var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, POINTER_TYPE) }}};
+    var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
     var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
     // get the total amount of data we can read across all arrays
     var total = 0;
@@ -515,7 +513,7 @@ var SyscallsLibrary = {
     var bytesRead = 0;
     var bytesRemaining = msg.buffer.byteLength;
     for (var i = 0; bytesRemaining > 0 && i < num; i++) {
-      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, POINTER_TYPE) }}};
+      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, '*') }}};
       var iovlen = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
       if (!iovlen) {
         continue;

@@ -5,9 +5,9 @@
 
 import os
 
-VERSION = '2.32.0'
+VERSION = '2.32.8'
 TAG = f'release-{VERSION}'
-HASH = 'd3e4ce9784152aa1194c4f2d2399829f3b01a652915afc6ddaec334068bf95d850edcb43b1a951e0202fc2ecaafc1f58e538ca39b9b16d3fdfe412af0b6aebb0'
+HASH = 'e90a78e758d6da76ef1f79de4795e872887124d6a286181a9980163cde11e3b6e34f8f2e6f770dfa4a970a9324d18dab78499849226901f5974ef3342e5b748a'
 SUBDIR = f'SDL-{TAG}'
 
 variants = {'sdl2-mt': {'PTHREADS': 1}}
@@ -25,6 +25,10 @@ def process_dependencies(settings, cflags_only):
   if not cflags_only:
     # SDL2 includes an internal reference to Module['createContext']
     settings.EXPORTED_RUNTIME_METHODS.append('createContext')
+
+    # SDL2 requires eglGetProcAddress() to work.
+    # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
+    settings.GL_ENABLE_GET_PROC_ADDRESS = 1
 
 
 def get(ports, settings, shared):

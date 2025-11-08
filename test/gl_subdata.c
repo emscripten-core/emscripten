@@ -7,6 +7,10 @@
 #include <stdio.h>
 #include <string.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
+
 #define GL_GLEXT_PROTOTYPES
 #define EGL_EGLEXT_PROTOTYPES
 #include <GL/gl.h>
@@ -99,6 +103,9 @@ static void glut_draw_callback(void) {
     glVertexAttribPointer(0, 1, GL_FLOAT, GL_FALSE, 0, NULL);
     glDrawArrays(GL_POINTS, 0, NUM_NODES);
     glutSwapBuffers();
+#ifdef __EMSCRIPTEN__
+    EM_ASM({reftestUnblock()}); // All done, perform the JS side image comparison reftest.
+#endif
 }
 
 GLuint createShader(const char* source, int type) {
@@ -155,6 +162,11 @@ int main(int argc, char *argv[]) {
     /* Set up glut callback functions */
     glutDisplayFunc(glut_draw_callback);
     gl_init();
+#ifdef __EMSCRIPTEN__
+    // This test kicks off an asynchronous glutMainLoop(), so do not perform a synchronous
+    // reftest immediately after falling out from main.
+    EM_ASM({reftestBlock()});
+#endif
     glutMainLoop();
     return 0;
 }

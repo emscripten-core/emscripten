@@ -15,7 +15,7 @@
 #if LINKABLE
 #error "-sLINKABLE is not supported with -sWASM_WORKERS"
 #endif
-#if RELOCATABLE
+#if RELOCATABLE || MAIN_MODULE
 #error "dynamic linking is not supported with -sWASM_WORKERS"
 #endif
 #if PROXY_TO_WORKER
@@ -24,9 +24,12 @@
 #if WASM2JS && MODULARIZE
 #error "-sWASM=0 + -sMODULARIZE + -sWASM_WORKERS is not supported"
 #endif
+#if EXPORT_ES6 && (MIN_FIREFOX_VERSION < 114 || MIN_CHROME_VERSION < 80 || MIN_SAFARI_VERSION < 150000)
+#error "internal error, feature_matrix should not allow this"
+#endif
 
 {{{
-  const workerSupportsFutexWait = () => AUDIO_WORKLET ? "typeof AudioWorkletGlobalScope === 'undefined'" : '1';
+  const workerSupportsFutexWait = () => AUDIO_WORKLET ? "!ENVIRONMENT_IS_AUDIO_WORKLET" : '1';
   const wasmWorkerJs = `
 #if MINIMAL_RUNTIME
 #if ENVIRONMENT_MAY_BE_NODE
@@ -39,6 +42,9 @@
 #endif
 `;
   const wasmWorkerOptions = `{
+#if EXPORT_ES6
+  'type': 'module',
+#endif
 #if ENVIRONMENT_MAY_BE_NODE
   // This is the way that we signal to the node worker that it is hosting
   // a wasm worker.
@@ -143,7 +149,7 @@ addToLibrary({
 
 #if AUDIO_WORKLET
     // Audio Worklets do not have postMessage()ing capabilities.
-    if (typeof AudioWorkletGlobalScope === 'undefined') {
+    if (!ENVIRONMENT_IS_AUDIO_WORKLET) {
 #endif
       // The Wasm Worker runtime is now up, so we can start processing
       // any postMessage function calls that have been received. Drop the temp
@@ -187,7 +193,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     let worker;
 #if TRUSTED_TYPES
     // Use Trusted Types compatible wrappers.
-    if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+    if (globalThis.trustedTypes?.createPolicy) {
       var p = trustedTypes.createPolicy(
           'emscripten#workerPolicy1', { createScriptURL: (ignored) => {{{ wasmWorkerJs }}}}
       );
@@ -200,11 +206,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
       // Signal with a non-zero value that this Worker will be a Wasm Worker,
       // and not the main browser thread.
       wwID: _wasmWorkersID,
-#if MINIMAL_RUNTIME
-      wasm: Module['wasm'],
-#else
       wasm: wasmModule,
-#endif
       wasmMemory,
       stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
       stackSize,          // sz = stack size
@@ -298,24 +300,21 @@ if (ENVIRONMENT_IS_WASM_WORKER
 
   emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync'],
   emscripten_lock_async_acquire: (lock, asyncWaitFinished, userData, maxWaitMilliseconds) => {
-    let dispatch = (val, ret) => {
-      setTimeout(() => {
-        {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(lock, val, /*waitResult=*/ret, userData);
-      }, 0);
-    };
     let tryAcquireLock = () => {
       do {
         var val = Atomics.compareExchange(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, 0/*zero represents lock being free*/, 1/*one represents lock being acquired*/);
-        if (!val) return dispatch(0, 0/*'ok'*/);
+        if (!val) return {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(lock, 0, 0/*'ok'*/, userData);
         var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('lock', 'i32') }}}, val, maxWaitMilliseconds);
       } while (wait.value === 'not-equal');
 #if ASSERTIONS
       assert(wait.async || wait.value === 'timed-out');
 #endif
       if (wait.async) wait.value.then(tryAcquireLock);
-      else dispatch(val, 2/*'timed-out'*/);
+      else return {{{ makeDynCall('vpiip', 'asyncWaitFinished') }}}(lock, val, 2/*'timed-out'*/, userData);
     };
-    tryAcquireLock();
+    // Asynchronously dispatch acquiring the lock so that we have uniform control flow in both
+    // cases when the lock is acquired, and when it needs to wait.
+    setTimeout(tryAcquireLock);
   },
 
   emscripten_semaphore_async_acquire__deps: ['$polyfillWaitAsync'],

@@ -16,8 +16,10 @@
 int main() {
   printf("%p\n", wgpuAdapterInfoFreeMembers);
   printf("%p\n", wgpuCreateInstance);
-  printf("%p\n", wgpuGetInstanceCapabilities);
+  printf("%p\n", wgpuGetInstanceFeatures);
+  printf("%p\n", wgpuGetInstanceLimits);
   printf("%p\n", wgpuGetProcAddress);
+  printf("%p\n", wgpuHasInstanceFeature);
   printf("%p\n", wgpuSupportedWGSLLanguageFeaturesFreeMembers);
   printf("%p\n", wgpuSupportedFeaturesFreeMembers);
   printf("%p\n", wgpuSurfaceCapabilitiesFreeMembers);

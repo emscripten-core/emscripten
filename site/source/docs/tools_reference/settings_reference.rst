@@ -85,16 +85,25 @@ Default value: true
 EXIT_RUNTIME
 ============
 
-If 0, the runtime is not quit when main() completes (allowing code to
-run afterwards, for example from the browser main event loop). atexit()s
-are also not executed, and we can avoid including code for runtime shutdown,
-like flushing the stdio streams.
-Set this to 1 if you do want atexit()s or stdio streams to be flushed
-on exit.
+If 0, support for shutting down the runtime is not emitted into the build.
+This means that the program is not quit when main() completes, but execution
+will yield to the event loop of the JS environment, allowing event handlers
+to run afterwards. If 0, C++ global destructors will not be emitted into the
+build either, to save on code size. Calling exit() will throw an unwinding
+exception, but will not shut down the runtime.
+
+Set this to 1 if you do want to retain the ability to shut down the program.
+If 1, then completing main() will by default call exit(), unless a refcount
+keeps the runtime alive. Call emscripten_exit_with_live_runtime() to finish
+main() while keeping the runtime alive. Calling emscripten_force_exit() will
+shut down the runtime, invoking atexit()s, and flushing stdio streams.
 This setting is controlled automatically in STANDALONE_WASM mode:
 
 - For a command (has a main function) this is always 1
-- For a reactor (no a main function) this is always 0
+- For a reactor (no main function) this is always 0
+
+For more details, see documentation for emscripten_force_exit() and
+emscripten_exit_with_live_runtime().
 
 Default value: false
 
@@ -426,6 +435,8 @@ If set to 1, perform acorn pass that converts each HEAP access into a
 function call that uses DataView to enforce LE byte order for HEAP buffer;
 This makes generated JavaScript run on BE as well as LE machines. (If 0, only
 LE systems are supported). Does not affect generated wasm.
+
+.. note:: This is an experimental setting
 
 Default value: false
 
@@ -875,20 +886,6 @@ WebGL initialization afterwards will use this GL context to render.
 
 Default value: false
 
-.. _use_webgpu:
-
-USE_WEBGPU
-==========
-
-Enables the built-in implementation of ``<webgpu/webgpu.h>``.
-Deprecated: Please try migrating to ``--use-port=emdawnwebgpu``,
-which implements a newer, incompatible version of webgpu.h (see
-tools/ports/emdawnwebgpu.py for more info).
-
-.. note:: This setting is deprecated
-
-Default value: false
-
 .. _stb_image:
 
 STB_IMAGE
@@ -910,7 +907,7 @@ GL_DISABLE_HALF_FLOAT_EXTENSION_IF_BROKEN
 
 From Safari 8 (where WebGL was introduced to Safari) onwards, OES_texture_half_float and OES_texture_half_float_linear extensions
 are broken and do not function correctly, when used as source textures.
-See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
+See https://webkit.org/b/183321, https://webkit.org/b/169999,
 https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
 
 Default value: false
@@ -922,7 +919,7 @@ GL_WORKAROUND_SAFARI_GETCONTEXT_BUG
 
 Workaround Safari WebGL issue: After successfully acquiring WebGL context on a canvas,
 calling .getContext() will always return that context independent of which 'webgl' or 'webgl2'
-context version was passed. See https://bugs.webkit.org/show_bug.cgi?id=222758 and
+context version was passed. See https://webkit.org/b/222758 and
 https://github.com/emscripten-core/emscripten/issues/13295.
 Set this to 0 to force-disable the workaround if you know the issue will not affect you.
 
@@ -937,7 +934,7 @@ If 1, link with support to glGetProcAddress() functionality.
 In WebGL, glGetProcAddress() causes a substantial code size and performance impact, since WebGL
 does not natively provide such functionality, and it must be emulated. Using glGetProcAddress()
 is not recommended. If you still need to use this, e.g. when porting an existing renderer,
-you can link with -sGL_ENABLE_GET_PROC_ADDRESS=1 to get support for this functionality.
+you can link with -sGL_ENABLE_GET_PROC_ADDRESS to get support for this functionality.
 
 Default value: true
 
@@ -1011,9 +1008,9 @@ ones we identify at runtime using ``ENVIRONMENT_IS_*``. Specifically:
   at compile time, there is no runtime behavior change.
 
 Note that by default we do not include the 'shell' environment since direct
-usage of d8, js, jsc is extremely rare.
+usage of d8, spidermonkey and jsc is extremely rare.
 
-Default value: 'web,webview,worker,node'
+Default value: ['web', 'webview', 'worker', 'node']
 
 .. _lz4:
 
@@ -1059,7 +1056,7 @@ This option is mutually exclusive with EXCEPTION_CATCHING_ALLOWED.
 This option only applies to Emscripten (JavaScript-based) exception handling
 and does not control the native Wasm exception handling.
 
-[compile+link] - affects user code at compile and system libraries at link
+.. note:: Applicable during both linking and compilation
 
 Default value: 1
 
@@ -1076,7 +1073,7 @@ This option is mutually exclusive with DISABLE_EXCEPTION_CATCHING.
 This option only applies to Emscripten (JavaScript-based) exception handling
 and does not control the native Wasm exception handling.
 
-[compile+link] - affects user code at compile and system libraries at link
+.. note:: Applicable during both linking and compilation
 
 Default value: []
 
@@ -1095,11 +1092,11 @@ time, then you will get errors on undefined symbols, as the exception
 throwing code is not linked in. If so you should either unset the option (if
 you do want exceptions) or fix the compilation of the source files so that
 indeed no exceptions are used).
-TODO(sbc): Move to settings_internal (current blocked due to use in test
-code).
 
 This option only applies to Emscripten (JavaScript-based) exception handling
 and does not control the native Wasm exception handling.
+
+.. note:: Applicable during both linking and compilation
 
 Default value: false
 
@@ -1343,18 +1340,6 @@ ASYNCIFY_ADVISE
 ===============
 
 If enabled will output which functions have been instrumented and why.
-
-Default value: false
-
-.. _asyncify_lazy_load_code:
-
-ASYNCIFY_LAZY_LOAD_CODE
-=======================
-
-Allows lazy code loading: where emscripten_lazy_load_code() is written, we
-will pause execution, load the rest of the code, and then resume.
-
-.. note:: This setting is deprecated
 
 Default value: false
 
@@ -1643,6 +1628,8 @@ Automatically set for SIDE_MODULE or MAIN_MODULE.
 
 .. note:: Applicable during both linking and compilation
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _main_module:
@@ -1702,6 +1689,8 @@ PROXY_TO_WORKER
 If set to 1, we build the project into a js file that will run in a worker,
 and generate an html file that proxies input and output to/from it.
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _proxy_to_worker_filename:
@@ -1712,6 +1701,8 @@ PROXY_TO_WORKER_FILENAME
 If set, the script file name the main thread loads.  Useful if your project
 doesn't run the main emscripten- generated script immediately but does some
 setup before
+
+.. note:: This setting is deprecated
 
 Default value: ''
 
@@ -1753,6 +1744,10 @@ MAIN_MODULE and SIDE_MODULE both imply this, so it not normally necessary
 to set this explicitly. Note that MAIN_MODULE and SIDE_MODULE mode 2 do
 *not* set this, so that we still do normal DCE on them, and in that case
 you must keep relevant things alive yourself using exporting.
+
+.. note:: Applicable during both linking and compilation
+
+.. note:: This setting is deprecated
 
 Default value: false
 
@@ -1841,20 +1836,6 @@ testing.  See test_chunked_synchronous_xhr in runner.py and library.js.
 
 Default value: false
 
-.. _headless:
-
-HEADLESS
-========
-
-If 1, will include shim code that tries to 'fake' a browser environment, in
-order to let you run a browser program (say, using SDL) in the shell.
-Obviously nothing is rendered, but this can be useful for benchmarking and
-debugging if actual rendering is not the issue. Note that the shim code is
-very partial - it is hard to fake a whole browser! - so keep your
-expectations low for this to work.
-
-Default value: false
-
 .. _deterministic:
 
 DETERMINISTIC
@@ -1877,14 +1858,9 @@ MODULARIZE
 By default we emit all code in a straightforward way into the output
 .js file. That means that if you load that in a script tag in a web
 page, it will use the global scope. With ``MODULARIZE`` set, we instead emit
-the code wrapped in a function that returns a promise. The promise is
-resolved with the module instance when it is safe to run the compiled code,
-similar to the ``onRuntimeInitialized`` callback. You do not need to use the
-``onRuntimeInitialized`` callback when using ``MODULARIZE``.
-
-(If WASM_ASYNC_COMPILATION is off, that is, if compilation is
-*synchronous*, then it would not make sense to return a Promise, and instead
-the Module object itself is returned, which is ready to be used.)
+the code wrapped in an async function. This function returns a promise that
+resolves to a module instance once it is safe to run the compiled code
+(similar to the ``onRuntimeInitialized`` callback).
 
 The default name of the function is ``Module``, but can be changed using the
 ``EXPORT_NAME`` option. We recommend renaming it to a more typical name for a
@@ -2476,6 +2452,8 @@ SDL2_IMAGE_FORMATS
 Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm,
 tga, xcf, xpm, xv
 
+.. note:: Applicable during both linking and compilation
+
 Default value: []
 
 .. _sdl2_mixer_formats:
@@ -2484,6 +2462,8 @@ SDL2_MIXER_FORMATS
 ==================
 
 Formats to support in SDL2_mixer. Valid values: ogg, mp3, mod, mid
+
+.. note:: Applicable during both linking and compilation
 
 Default value: ["ogg"]
 
@@ -2505,7 +2485,8 @@ SHARED_MEMORY
 =============
 
 If 1, target compiling a shared Wasm Memory.
-[compile+link] - affects user code at compile and system libraries at link.
+
+.. note:: Applicable during both linking and compilation
 
 Default value: false
 
@@ -2517,7 +2498,8 @@ WASM_WORKERS
 Enables support for Wasm Workers.  Wasm Workers enable applications
 to create threads using a lightweight web-specific API that builds on top
 of Wasm SharedArrayBuffer + Atomics API.
-[compile+link] - affects user code at compile and system libraries at link.
+
+.. note:: Applicable during both linking and compilation
 
 Default value: 0
 
@@ -2530,6 +2512,18 @@ If true, enables targeting Wasm Web Audio AudioWorklets. Check out the
 full documentation in site/source/docs/api_reference/wasm_audio_worklets.rst
 
 Default value: 0
+
+.. _audio_worklet_support_audio_params:
+
+AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
+==================================
+
+If true, enables utilizing k- and a-rate AudioParams based properties in
+Wasm Audio Worklet code. If false, AudioParams are not used. Set to false
+for a tiny improvement to code size and AudioWorklet CPU performance when
+audio synthesis is synchronized using custom WebAssembly Memory-based means.
+
+Default value: true
 
 .. _webaudio_debug:
 
@@ -2706,11 +2700,14 @@ Default value: 0
 TEXTDECODER
 ===========
 
-If enabled, use the JavaScript TextDecoder API for string marshalling.
-Enabled by default, set this to 0 to disable.
+The default value or 1 means the generated code will use TextDecoder if
+available and fall back to custom decoder code when not available.
 If set to 2, we assume TextDecoder is present and usable, and do not emit
-any JS code to fall back if it is missing. In single threaded -Oz build modes,
-TEXTDECODER defaults to value == 2 to save code size.
+any JS code to fall back if it is missing. Setting this zero to avoid even
+conditional usage of TextDecoder is no longer supported.
+Note: In -Oz builds, the default value of TEXTDECODER is set to 2, to save on
+code size (except when AUDIO_WORKLET is specified, or when `shell` is part
+of ENVIRONMENT since TextDecoder is not available in those environments).
 
 Default value: 1
 
@@ -2840,7 +2837,38 @@ child-src directive to allow blob:. If you aren't using Content Security
 Policy, or your CSP header doesn't include either script-src or child-src,
 then you can safely ignore this warning.
 
+Note that SINGLE_FILE with binary encoding requires the HTML/JS files to be
+served with UTF-8 encoding. See the details on SINGLE_FILE_BINARY_ENCODE.
+
 Default value: false
+
+.. _single_file_binary_encode:
+
+SINGLE_FILE_BINARY_ENCODE
+=========================
+
+If true, binary Wasm content is encoded using a custom UTF-8 embedding
+instead of base64. This generates a smaller binary that compresses well.
+Set this to false to revert back to earlier base64 encoding if you run into
+issues with the binary encoding. (and please let us know of any such issues)
+If no issues arise, this option will permanently become the default in the
+future.
+
+NOTE: Binary encoding requires that the HTML/JS files are served with UTF-8
+encoding, and will not work with the default legacy Windows-1252 encoding
+that browsers might use on Windows. To enable UTF-8 encoding in a
+hand-crafted index.html file, apply any of:
+1. Add `<meta charset="utf-8">` inside the <head> section of HTML, or
+2. Add `<meta http-equiv="content-type" content="text/html; charset=UTF-8" />`` inside <head>, or
+3. Add `<meta http-equiv="content-type" content="application/json; charset=utf-8" />` inside <head>
+(if using -o foo.js with SINGLE_FILE mode to build HTML+JS), or
+4. pass the header `Content-Type: text/html; charset=utf-8` and/or header
+`Content-Type: application/javascript; charset=utf-8` when serving the
+relevant files that contain binary encoded content.
+If none of these are possible, disable binary encoding with
+-sSINGLE_FILE_BINARY_ENCODE=0 to fall back to base64 encoding.
+
+Default value: true
 
 .. _auto_js_libraries:
 
@@ -2876,7 +2904,7 @@ are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
 for Firefox versions older than < majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 50 which was released on 2016-11-15 (see
+Minimum supported value is 68 which was released on 2019-07-09 (see
 feature_matrix.py)
 
 Default value: 79
@@ -2895,8 +2923,10 @@ bundled with macOS 10.14.0 Mojave.
 NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 see https://github.com/emscripten-core/emscripten/pull/7191.
+Multithreaded Emscripten code will need Safari 12.2 (iPhone 5s+) at minimum,
+with support for DedicatedWorkerGlobalScope.name parameter.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 101000 which was released in 2016-09 (see
+Minimum supported value is 120200 which was released on 2019-03-25 (see
 feature_matrix.py).
 
 Default value: 150000
@@ -2906,13 +2936,13 @@ Default value: 150000
 MIN_CHROME_VERSION
 ==================
 
-Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=58 to
-drop support for Chrome 57 and older.
+Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=78 to
+drop support for Chrome 77 and older.
 This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 55, which was released on 2016-12-01 (see
+Minimum supported value is 74, which was released on 2019-04-23 (see
 feature_matrix.py).
 
 Default value: 85
@@ -2924,10 +2954,9 @@ MIN_NODE_VERSION
 
 Specifies minimum node version to target for the generated code.  This is
 distinct from the minimum version required run the emscripten compiler.
-This version aligns with the current Ubuuntu TLS 20.04 (Focal).
 Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
-Minimum supported value is 101900, which was released 2020-02-05 (see
-feature_matrix.py).
+Minimum supported value is 122209, which was released 2022-01-11 (see
+feature_matrix.py). This version aligns with the Ubuntu TLS 22.04 (Jammy).
 
 Default value: 160000
 
@@ -2970,6 +2999,7 @@ For large .wasm modules and production environments, this should be set to 1
 for faster startup speeds. However this setting is disabled by default
 since it requires server side configuration and for really small pages there
 is no observable difference (also has a ~100 byte impact to code size)
+This setting is only compatible with html output.
 
 Default value: false
 
@@ -3007,9 +3037,10 @@ little bit of code size and performance when catching exceptions.
 - 1: Default setjmp/longjmp/handling, depending on the mode of exceptions.
   'wasm' if '-fwasm-exceptions' is used, 'emscripten' otherwise.
 
-[compile+link] - at compile time this enables the transformations needed for
-longjmp support at codegen time, while at link it allows linking in the
-library support.
+At compile time this enables the transformations needed for longjmp support
+at codegen time, while at link it allows linking in the library support.
+
+.. note:: Applicable during both linking and compilation
 
 Default value: true
 
@@ -3065,28 +3096,6 @@ calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
 future release.
 
 Default value: -1
-
-.. _use_offset_converter:
-
-USE_OFFSET_CONVERTER
-====================
-
-Whether we should use the offset converter.  This is needed for older
-versions of v8 (<7.7) that does not give the hex module offset into wasm
-binary in stack traces, as well as for avoiding using source map entries
-across function boundaries.
-
-Default value: false
-
-.. _load_source_map:
-
-LOAD_SOURCE_MAP
-===============
-
-Whether we should load the WASM source map at runtime.
-This is enabled automatically when using -gsource-map with sanitizers.
-
-Default value: false
 
 .. _source_map_prefixes:
 
@@ -3225,6 +3234,8 @@ fed into wasm-split (the binaryen tool).
 As well as this the generated JS code will contains help functions
 to loading split modules.
 
+.. note:: This is an experimental setting
+
 Default value: false
 
 .. _autoload_dylibs:
@@ -3331,6 +3342,8 @@ This is only currently implemented in the pre-release/nightly version of node,
 and not yet supported by browsers.
 Requires EXPORT_ES6
 
+.. note:: This is an experimental setting
+
 Default value: false
 
 .. _wasm_esm_integration:
@@ -3340,6 +3353,8 @@ WASM_ESM_INTEGRATION
 
 Experimental support for wasm ESM integration.
 Requires EXPORT_ES6 and MODULARIZE=instance
+
+.. note:: This is an experimental setting
 
 Default value: false
 
@@ -3356,3 +3371,145 @@ or chrome.
 .. note:: This is an experimental setting
 
 Default value: false
+
+.. _growable_arraybuffers:
+
+GROWABLE_ARRAYBUFFERS
+=====================
+
+Enable support for GrowableSharedArrayBuffer.
+This features is only available behind a flag in recent versions of
+node/chrome.
+
+.. note:: This is an experimental setting
+
+Default value: false
+
+.. _wasm_js_types:
+
+WASM_JS_TYPES
+=============
+
+Experimental support for WebAssembly js-types proposal.
+It's currently only available under a flag in certain browsers,
+so we disable it by default to save on code size.
+
+.. note:: This is an experimental setting
+
+Default value: false
+
+.. _cross_origin:
+
+CROSS_ORIGIN
+============
+
+If the emscripten-generated program is hosted on separate origin then
+starting new pthread worker can violate CSP rules.  Enabling
+CROSS_ORIGIN uses an inline worker to instead load the worker script
+indirectly using `importScripts`
+
+Default value: false
+
+.. _deprecated-settings:
+
+===================
+Deprecated Settings
+===================
+
+The following settings have been proposed for removal from emscripten.  These settings
+still function but may be removed in a future version.  If your project is using of
+the these settings please open a bug (or reply to one of the existing bugs).
+
+ - ``RUNTIME_LINKED_LIBS``: you can simply list the libraries directly on the commandline now
+ - ``CLOSURE_WARNINGS``: use -Wclosure/-Wno-closure instead
+ - ``LEGALIZE_JS_FFI``: to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`
+ - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
+ - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
+ - ``RELOCATABLE``:  under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
+ - ``PROXY_TO_WORKER``: under consideration for removal (See https://github.com/emscripten-core/emscripten/issues/25440)
+ - ``PROXY_TO_WORKER_FILENAME``: under consideration for removal (See https://github.com/emscripten-core/emscripten/issues/25440)
+
+.. _legacy-settings:
+
+===============
+Legacy Settings
+===============
+
+The following settings no longer have any effect but are still accepted by emscripten
+for backwards compatbility with older versions:
+
+ - ``BINARYEN``: Valid values: WASM
+ - ``TOTAL_STACK``: Valid values: STACK_SIZE
+ - ``BINARYEN_ASYNC_COMPILATION``: Valid values: WASM_ASYNC_COMPILATION
+ - ``UNALIGNED_MEMORY``: forced unaligned memory not supported in fastcomp (Valid values: [0])
+ - ``FORCE_ALIGNED_MEMORY``: forced aligned memory is not supported in fastcomp (Valid values: [0])
+ - ``PGO``: pgo no longer supported (Valid values: [0])
+ - ``QUANTUM_SIZE``: altering the QUANTUM_SIZE is not supported (Valid values: [4])
+ - ``FUNCTION_POINTER_ALIGNMENT``: Starting from Emscripten 1.37.29, no longer available (https://github.com/emscripten-core/emscripten/pull/6091) (Valid values: [2])
+ - ``RESERVED_FUNCTION_POINTERS``: Valid values: ALLOW_TABLE_GROWTH
+ - ``BUILD_AS_SHARED_LIB``: Starting from Emscripten 1.38.16, no longer available (https://github.com/emscripten-core/emscripten/pull/7433) (Valid values: [0])
+ - ``SAFE_SPLIT_MEMORY``: Starting from Emscripten 1.38.19, SAFE_SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465) (Valid values: [0])
+ - ``SPLIT_MEMORY``: Starting from Emscripten 1.38.19, SPLIT_MEMORY codegen is no longer available (https://github.com/emscripten-core/emscripten/pull/7465) (Valid values: [0])
+ - ``BINARYEN_METHOD``: Starting from Emscripten 1.38.23, Emscripten now always builds either to Wasm (-sWASM - default), or to JavaScript (-sWASM=0), other methods are not supported (https://github.com/emscripten-core/emscripten/pull/7836) (Valid values: ['native-wasm'])
+ - ``BINARYEN_TRAP_MODE``: The wasm backend does not support a trap mode (it always clamps, in effect) (Valid values: [-1])
+ - ``PRECISE_I64_MATH``: Starting from Emscripten 1.38.26, PRECISE_I64_MATH is always enabled (https://github.com/emscripten-core/emscripten/pull/7935) (Valid values: [1, 2])
+ - ``MEMFS_APPEND_TO_TYPED_ARRAYS``: Starting from Emscripten 1.38.26, MEMFS_APPEND_TO_TYPED_ARRAYS=0 is no longer supported. MEMFS no longer supports using JS arrays for file data (https://github.com/emscripten-core/emscripten/pull/7918) (Valid values: [1])
+ - ``ERROR_ON_MISSING_LIBRARIES``: missing libraries are always an error now (Valid values: [1])
+ - ``EMITTING_JS``: The new STANDALONE_WASM flag replaces this (replace EMITTING_JS=0 with STANDALONE_WASM=1) (Valid values: [1])
+ - ``SKIP_STACK_IN_SMALL``: SKIP_STACK_IN_SMALL is no longer needed as the backend can optimize it directly (Valid values: [0, 1])
+ - ``SAFE_STACK``: Replace SAFE_STACK=1 with STACK_OVERFLOW_CHECK=2 (Valid values: [0])
+ - ``MEMORY_GROWTH_STEP``: Valid values: MEMORY_GROWTH_LINEAR_STEP
+ - ``ELIMINATE_DUPLICATE_FUNCTIONS``: Duplicate function elimination for wasm is handled automatically by binaryen (Valid values: [0, 1])
+ - ``ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS``: Duplicate function elimination for wasm is handled automatically by binaryen (Valid values: [0])
+ - ``ELIMINATE_DUPLICATE_FUNCTIONS_PASSES``: Duplicate function elimination for wasm is handled automatically by binaryen (Valid values: [5])
+ - ``WASM_OBJECT_FILES``: For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow (Valid values: [0, 1])
+ - ``TOTAL_MEMORY``: Valid values: INITIAL_MEMORY
+ - ``WASM_MEM_MAX``: Valid values: MAXIMUM_MEMORY
+ - ``BINARYEN_MEM_MAX``: Valid values: MAXIMUM_MEMORY
+ - ``BINARYEN_PASSES``: Use BINARYEN_EXTRA_PASSES to add additional passes (Valid values: [''])
+ - ``SWAPPABLE_ASM_MODULE``: Fully swappable asm modules are no longer supported (Valid values: [0])
+ - ``ASM_JS``: asm.js output is not supported anymore (Valid values: [1])
+ - ``FINALIZE_ASM_JS``: asm.js output is not supported anymore (Valid values: [0, 1])
+ - ``ASYNCIFY_WHITELIST``: Valid values: ASYNCIFY_ONLY
+ - ``ASYNCIFY_BLACKLIST``: Valid values: ASYNCIFY_REMOVE
+ - ``EXCEPTION_CATCHING_WHITELIST``: Valid values: EXCEPTION_CATCHING_ALLOWED
+ - ``SEPARATE_ASM``: Separate asm.js only made sense for fastcomp with asm.js output (Valid values: [0])
+ - ``SEPARATE_ASM_MODULE_NAME``: Separate asm.js only made sense for fastcomp with asm.js output (Valid values: [''])
+ - ``FAST_UNROLLED_MEMCPY_AND_MEMSET``: The wasm backend implements memcpy/memset in C (Valid values: [0, 1])
+ - ``DOUBLE_MODE``: The wasm backend always implements doubles normally (Valid values: [0, 1])
+ - ``PRECISE_F32``: The wasm backend always implements floats normally (Valid values: [0, 1, 2])
+ - ``ALIASING_FUNCTION_POINTERS``: The wasm backend always uses a single index space for function pointers, in a single Table (Valid values: [0, 1])
+ - ``AGGRESSIVE_VARIABLE_ELIMINATION``: Wasm ignores asm.js-specific optimization flags (Valid values: [0, 1])
+ - ``SIMPLIFY_IFS``: Wasm ignores asm.js-specific optimization flags (Valid values: [1])
+ - ``DEAD_FUNCTIONS``: The wasm backend does not support dead function removal (Valid values: [[]])
+ - ``WASM_BACKEND``: Only the wasm backend is now supported (note that setting it as -s has never been allowed anyhow) (Valid values: [-1])
+ - ``EXPORT_BINDINGS``: No longer needed (Valid values: [0, 1])
+ - ``RUNNING_JS_OPTS``: Fastcomp cared about running JS which could alter asm.js validation, but not upstream (Valid values: [0])
+ - ``EXPORT_FUNCTION_TABLES``: No longer needed (Valid values: [0])
+ - ``BINARYEN_SCRIPTS``: No longer needed (Valid values: [''])
+ - ``WARN_UNALIGNED``: No longer needed (Valid values: [0, 1])
+ - ``ASM_PRIMITIVE_VARS``: No longer needed (Valid values: [[]])
+ - ``WORKAROUND_IOS_9_RIGHT_SHIFT_BUG``: Wasm2JS does not support iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 (devices with end-of-life at iOS 9.3.5) and older (Valid values: [0])
+ - ``RUNTIME_FUNCS_TO_IMPORT``: No longer needed (Valid values: [[]])
+ - ``LIBRARY_DEPS_TO_AUTOEXPORT``: No longer needed (Valid values: [[]])
+ - ``EMIT_EMSCRIPTEN_METADATA``: No longer supported (Valid values: [0])
+ - ``SHELL_FILE``: No longer supported (Valid values: [''])
+ - ``LLD_REPORT_UNDEFINED``: Disabling is no longer supported (Valid values: [1])
+ - ``MEM_INIT_METHOD``: No longer supported (Valid values: [0])
+ - ``USE_PTHREADS``: No longer needed. Use -pthread instead (Valid values: [0, 1])
+ - ``USES_DYNAMIC_ALLOC``: No longer supported. Use -sMALLOC=none (Valid values: [1])
+ - ``REVERSE_DEPS``: No longer needed (Valid values: ['auto', 'all', 'none'])
+ - ``RUNTIME_LOGGING``: Valid values: RUNTIME_DEBUG
+ - ``MIN_EDGE_VERSION``: No longer supported (Valid values: [2147483647])
+ - ``MIN_IE_VERSION``: No longer supported (Valid values: [2147483647])
+ - ``WORKAROUND_OLD_WEBGL_UNIFORM_UPLOAD_IGNORED_OFFSET_BUG``: No longer supported (Valid values: [0])
+ - ``AUTO_ARCHIVE_INDEXES``: No longer needed (Valid values: [0, 1])
+ - ``USE_ES6_IMPORT_META``: Disabling is no longer supported (Valid values: [1])
+ - ``EXTRA_EXPORTED_RUNTIME_METHODS``: No longer supported, use EXPORTED_RUNTIME_METHODS (Valid values: [[]])
+ - ``SUPPORT_ERRNO``: No longer supported (Valid values: [0])
+ - ``DEMANGLE_SUPPORT``: No longer supported (Valid values: [0])
+ - ``MAYBE_WASM2JS``: No longer supported (use -sWASM=2) (Valid values: [0])
+ - ``HEADLESS``: No longer supported, use headless browsers or Node.js with JSDOM (Valid values: [0])
+ - ``USE_OFFSET_COVERTER``: No longer supported, not needed with modern v8 versions (Valid values: [0])
+ - ``ASYNCIFY_LAZY_LOAD_CODE``: No longer supported (Valid values: [0])
+ - ``USE_WEBGPU``: No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py (Valid values: [0])

@@ -13,8 +13,9 @@ import glob
 import os
 import unittest
 
-from common import RunnerCore, path_from_root, node_pthreads
 import test_posixtest_browser
+from common import RunnerCore, path_from_root
+from decorators import node_pthreads
 
 testsuite_root = path_from_root('test/third_party/posixtestsuite')
 
@@ -166,13 +167,16 @@ def make_test(name, testfile, browser):
             '-Wno-int-conversion',
             '-Wno-format',
             '-pthread',
+            # Make sure all tests have callstacks to improve debuggability
+            # of log messages on CI runs.
+            '--profiling-funcs',
             '-sEXIT_RUNTIME',
             '-sTOTAL_MEMORY=256mb',
             '-sPTHREAD_POOL_SIZE=40']
     if browser:
-      self.btest_exit(testfile, args=args)
+      self.btest_exit(testfile, cflags=args)
     else:
-      self.do_runf(testfile, emcc_args=args, output_basename=name)
+      self.do_runf(testfile, cflags=args, output_basename=name)
 
   if name in expect_fail:
     f = unittest.expectedFailure(f)

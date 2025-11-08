@@ -300,7 +300,9 @@ addToLibrary({
             var encoder = new TextEncoder(); // should be utf-8
             data = encoder.encode(data); // make a typed array from the string
           } else {
+#if ASSERTIONS
             assert(data.byteLength !== undefined); // must receive an ArrayBuffer
+#endif
             if (data.byteLength == 0) {
               // An empty ArrayBuffer will emit a pseudo disconnect event
               // as recv/recvmsg will return zero which indicates that a socket
@@ -420,6 +422,14 @@ addToLibrary({
               bytes = sock.recv_queue[0].data.length;
             }
             {{{ makeSetValue('arg', '0', 'bytes', 'i32') }}};
+            return 0;
+          case {{{ cDefs.FIONBIO }}}:
+            var on = {{{ makeGetValue('arg', '0', 'i32') }}};
+            if (on) {
+              sock.stream.flags |= {{{ cDefs.O_NONBLOCK }}};
+            } else {
+              sock.stream.flags &= ~{{{ cDefs.O_NONBLOCK }}};
+            }
             return 0;
           default:
             return {{{ cDefs.EINVAL }}};
@@ -738,10 +748,10 @@ addToLibrary({
         if (event === 'error') {
           withStackSave(() => {
             var msg = stringToUTF8OnStack(data[2]);
-            {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
+            {{{ makeDynCall('viipp', 'callback') }}}(data[0], data[1], msg, userData);
           });
         } else {
-          {{{ makeDynCall('vii', 'callback') }}}(data, userData);
+          {{{ makeDynCall('vip', 'callback') }}}(data, userData);
         }
       });
     };
