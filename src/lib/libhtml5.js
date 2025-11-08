@@ -2374,9 +2374,12 @@ var LibraryHTML5 = {
     return requestAnimationFrame(tick);
   },
 
+  emscripten_queue_microtask__deps: ['$callUserCallback'],
   emscripten_queue_microtask: (cb, userData) => {
-    queueMicrotask(() => {
-      {{{ makeDynCall('vp', 'cb') }}}(userData);
+    {{{ runtimeKeepalivePush(); }}}
+    return queueMicrotask(() => {
+      {{{ runtimeKeepalivePop(); }}}
+      callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(userData));
     });
   },
 
