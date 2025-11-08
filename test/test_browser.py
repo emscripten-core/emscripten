@@ -6,6 +6,7 @@
 import argparse
 import os
 import random
+import re
 import shlex
 import shutil
 import subprocess
@@ -236,8 +237,15 @@ def skipIfFeatureNotAvailable(skip_env_var, feature, message):
     def decorated(self, *args, **kwargs):
       if should_skip == 'error':
         raise Exception(f'This test requires a browser that supports {feature.name} but your browser {get_browser()} does not support this. Run with {skip_env_var}=1 or EMTEST_AUTOSKIP=1 to skip this test automatically.')
+      elif should_skip and bool(re.search(r"MIN_.*_VERSION", os.getenv('EMCC_CFLAGS', ''))):
+        # should_skip=True, so we should skip running this test. However, user has specified a MIN_x_VERSION
+        # directive in EMCC_CFLAGS, so we cannot even try to compile this test, or otherwise emcc can
+        # error out on the MIN_x_VERSION being too old. So skip both compiling+running this test.
+        self.skipTest(message)
       elif should_skip:
+        # should_skip=True, so skip running this test in a browser, but do test compiling it, to get partial coverage.
         self.skip_exec = message
+
       f(self, *args, **kwargs)
 
     return decorated
