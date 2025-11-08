@@ -125,9 +125,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     test.is_parallel = True
 
   def printOneResult(self, res):
-    percent = int(self.progress_counter * 100 / self.num_tests)
-    progress = f'[{percent:2d}%] '
     self.progress_counter += 1
+    progress = f'[{self.progress_counter}/{self.num_tests}] '
 
     if res.test_result == 'success':
       msg = 'ok'
@@ -165,7 +164,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # multiprocessing.set_start_method('spawn')
 
     tests = self.get_sorted_tests()
-    self.num_tests = len(tests)
+    self.num_tests = self.countTestCases()
     contains_browser_test = any(test.is_browser_test() for test in tests)
     use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()), contains_browser_test)
     errlog(f'Using {use_cores} parallel test processes')
