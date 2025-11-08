@@ -19,10 +19,16 @@ extern "C" {
 
 typedef int EMSCRIPTEN_WEBAUDIO_T;
 
+// Default render size of 128 frames
+#define AUDIO_CONTEXT_RENDER_SIZE_DEFAULT 0
+// Let the hardware determine the best render size
+#define AUDIO_CONTEXT_RENDER_SIZE_HARDWARE -1
+
 typedef struct EmscriptenWebAudioCreateAttributes
 {
 	const char *latencyHint; // Specify one of "balanced", "interactive" or "playback"
 	uint32_t sampleRate; // E.g. 44100 or 48000
+	int32_t renderSizeHint; // AUDIO_CONTEXT_RENDER_SIZE_* or number of samples
 } EmscriptenWebAudioCreateAttributes;
 
 // Creates a new Web Audio AudioContext, and returns a handle to it.

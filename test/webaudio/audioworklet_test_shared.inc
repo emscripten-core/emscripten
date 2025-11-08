@@ -95,8 +95,12 @@ int main(void) {
   assert(workletStack);
 
   // Set at least the latency hint to test the attribute setting
+  // (The render size we take from the calling code if set)
   EmscriptenWebAudioCreateAttributes attrs = {
-    .latencyHint = "balanced"
+    .latencyHint = "balanced",
+#ifdef RENDER_SIZE_HINT
+    .renderSizeHint = RENDER_SIZE_HINT
+#endif
   };
   EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(&attrs);
   emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, getStartCallback(), NULL);
