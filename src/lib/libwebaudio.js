@@ -95,8 +95,8 @@ var LibraryWebAudio = {
 #endif
 #endif
 
-    // AUDIO_CONTEXT_RENDER_SIZE_DEFAULT and AUDIO_CONTEXT_RENDER_SIZE_HARDWARE
-    // into their AudioContextRenderSizeCategory enum, or take the positive int. 
+    // Converts AUDIO_CONTEXT_RENDER_SIZE_* into AudioContextRenderSizeCategory
+    // enums, otherwise returns a positive int value.
     function readRenderSizeHint(val) {
       return (val < 0) ? 'hardware' : (val || 'default');
     }
