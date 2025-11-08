@@ -243,7 +243,7 @@ def skipIfFeatureNotAvailable(skip_env_var, feature, message):
         # error out on the MIN_x_VERSION being too old. So skip both compiling+running this test.
         self.skipTest(message)
       elif should_skip:
-        # should_skip=True, so skip running this test in a browser, but do test compiling it, to get partial coverage.
+        # Skip running this test in a browser, but do test compiling it, to get partial coverage.
         self.skip_exec = message
 
       f(self, *args, **kwargs)
