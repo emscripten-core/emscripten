@@ -581,20 +581,8 @@ def main():
   # Remove any old test files before starting the run
   cleanup_emscripten_temp()
   utils.delete_file(common.flaky_tests_log_filename)
-  utils.delete_file(browser_common.browser_spawn_lock_filename)
-  utils.delete_file(f'{browser_common.browser_spawn_lock_filename}_counter')
-  if options.force_browser_process_termination or os.getenv('EMTEST_FORCE_BROWSER_PROCESS_TERMINATION'):
-    config = browser_common.get_browser_config()
 
-    def terminate_all_browser_processes():
-      procs = browser_common.list_processes_by_name(config.executable_name)
-      if len(procs) > 0:
-        print(f'Terminating {len(procs)} stray browser processes.')
-        browser_common.terminate_list_of_processes(procs)
-
-    if config and hasattr(config, 'executable_name'):
-      atexit.register(terminate_all_browser_processes)
-      terminate_all_browser_processes()
+  browser_common.init(options.force_browser_process_termination)
 
   def prepend_default(arg):
     if arg.startswith('test_'):

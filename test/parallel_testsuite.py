@@ -19,6 +19,7 @@ from tools import emprofile, utils
 from tools.colored_logger import CYAN, GREEN, RED, with_color
 from tools.utils import WINDOWS
 
+EMTEST_VISUALIZE = os.getenv('EMTEST_VISUALIZE')
 NUM_CORES = None
 seen_class = set()
 torn_down = False
@@ -43,7 +44,8 @@ def cap_max_workers_in_pool(max_workers, is_browser):
   return max_workers
 
 
-def run_test(test, allowed_failures_counter, lock, progress_counter, num_tests, buffer):
+def run_test(args):
+  test, allowed_failures_counter, lock, buffer = args
   # If we have exceeded the number of allowed failures during the test run,
   # abort executing further tests immediately.
   if allowed_failures_counter and allowed_failures_counter.value < 0:
@@ -55,38 +57,6 @@ def run_test(test, allowed_failures_counter, lock, progress_counter, num_tests, 
         allowed_failures_counter.value -= 1
 
   start_time = time.perf_counter()
-
-  def compute_progress():
-    if not lock:
-      return ''
-    with lock:
-      val = f'[{int(progress_counter.value * 100 / num_tests)}%] '
-      progress_counter.value += 1
-    return with_color(CYAN, val)
-
-  def printResult(res):
-    elapsed = time.perf_counter() - start_time
-    progress = compute_progress()
-    if res.test_result == 'success':
-      msg = f'ok ({elapsed:.2f}s)'
-      errlog(f'{progress}{res.test} ... {with_color(GREEN, msg)}')
-    elif res.test_result == 'errored':
-      msg = f'{res.test} ... ERROR'
-      errlog(f'{progress}{with_color(RED, msg)}')
-    elif res.test_result == 'failed':
-      msg = f'{res.test} ... FAIL'
-      errlog(f'{progress}{with_color(RED, msg)}')
-    elif res.test_result == 'skipped':
-      msg = f"skipped '{res.buffered_result.reason}'"
-      errlog(f"{progress}{res.test} ... {with_color(CYAN, msg)}")
-    elif res.test_result == 'unexpected success':
-      msg = f'unexpected success ({elapsed:.2f}s)'
-      errlog(f'{progress}{res.test} ... {with_color(RED, msg)}')
-    elif res.test_result == 'expected failure':
-      msg = f'expected failure ({elapsed:.2f}s)'
-      errlog(f'{progress}{res.test} ... {with_color(RED, msg)}')
-    else:
-      assert False
 
   olddir = os.getcwd()
   result = BufferedParallelTestResult()
@@ -109,12 +79,19 @@ def run_test(test, allowed_failures_counter, lock, progress_counter, num_tests, 
     result.addError(test, e)
     test_failed()
   finally:
-    printResult(result)
+    result.elapsed = time.perf_counter() - start_time
 
   # Before attempting to delete the tmp dir make sure the current
   # working directory is not within it.
   os.chdir(olddir)
   common.force_delete_dir(temp_dir)
+
+  # Since we are returning this result to the main thread we need to make sure
+  # that it is serializable/picklable. To do this, we delete any non-picklable
+  # fields from the instance.
+  del result._original_stdout
+  del result._original_stderr
+
   return result
 
 
@@ -141,10 +118,43 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     self.max_cores = max_cores
     self.max_failures = options.max_failures
     self.failing_and_slow_first = options.failing_and_slow_first
+    self.progress_counter = 0
 
   def addTest(self, test):
     super().addTest(test)
     test.is_parallel = True
+
+  def printOneResult(self, res):
+    percent = int(self.progress_counter * 100 / self.num_tests)
+    progress = f'[{percent:2d}%] '
+    self.progress_counter += 1
+
+    if res.test_result == 'success':
+      msg = 'ok'
+      color = GREEN
+    elif res.test_result == 'errored':
+      msg = 'ERROR'
+      color = RED
+    elif res.test_result == 'failed':
+      msg = 'FAIL'
+      color = RED
+    elif res.test_result == 'skipped':
+      reason = res.skipped[0][1]
+      msg = f"skipped '{reason}'"
+      color = CYAN
+    elif res.test_result == 'unexpected success':
+      msg = 'unexpected success'
+      color = RED
+    elif res.test_result == 'expected failure':
+      color = RED
+      msg = 'expected failure'
+    else:
+      assert False, f'unhandled test result {res.test_result}'
+
+    if res.test_result != 'skipped':
+      msg += f' ({res.elapsed:.2f}s)'
+
+    errlog(f'{with_color(CYAN, progress)}{res.test} ... {with_color(color, msg)}')
 
   def run(self, result):
     # The 'spawn' method is used on windows and it can be useful to set this on
@@ -155,6 +165,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # multiprocessing.set_start_method('spawn')
 
     tests = self.get_sorted_tests()
+    self.num_tests = len(tests)
     contains_browser_test = any(test.is_browser_test() for test in tests)
     use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()), contains_browser_test)
     errlog(f'Using {use_cores} parallel test processes')
@@ -170,15 +181,23 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         if python_multiprocessing_structures_are_buggy():
           # When multiprocessing shared structures are buggy we don't support failfast
           # or the progress bar.
-          allowed_failures_counter = progress_counter = lock = None
+          allowed_failures_counter = lock = None
           if self.max_failures < 2**31 - 1:
             errlog('The version of python being used is not compatible with --failfast and --max-failures options. See https://github.com/python/cpython/issues/71936')
             sys.exit(1)
         else:
           allowed_failures_counter = manager.Value('i', self.max_failures)
-          progress_counter = manager.Value('i', 0)
           lock = manager.Lock()
-        results = pool.starmap(run_test, ((t, allowed_failures_counter, lock, progress_counter, len(tests), result.buffer) for t in tests), chunksize=1)
+
+        results = []
+        args = ((t, allowed_failures_counter, lock, result.buffer) for t in tests)
+        for res in pool.imap_unordered(run_test, args, chunksize=1):
+          # results may be be None if # of allowed errors was exceeded
+          # and the harness aborted.
+          if res:
+            self.printOneResult(res)
+            results.append(res)
+
         # Send a task to each worker to tear down the browser and server. This
         # relies on the implementation detail in the worker pool that all workers
         # are cycled through once.
@@ -186,9 +205,6 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         # Assert the assumed behavior above hasn't changed.
         if num_tear_downs != use_cores:
           errlog(f'Expected {use_cores} teardowns, got {num_tear_downs}')
-
-    # Filter out the None results which can occur if # of allowed errors was exceeded and the harness aborted.
-    results = [r for r in results if r is not None]
 
     if self.failing_and_slow_first:
       previous_test_run_results = common.load_previous_test_run_results()
@@ -263,7 +279,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       r.updateResult(result)
 
     # Generate the parallel test run visualization
-    if os.getenv('EMTEST_VISUALIZE'):
+    if EMTEST_VISUALIZE:
       emprofile.create_profiling_graph(utils.path_from_root('out/graph'))
       # Cleanup temp files that were used for the visualization
       emprofile.delete_profiler_logs()
@@ -302,7 +318,7 @@ class BufferedParallelTestResult(unittest.TestResult):
     self.log_test_run_for_visualization()
 
   def log_test_run_for_visualization(self):
-    if os.getenv('EMTEST_VISUALIZE') and (self.test_result != 'skipped' or self.test_duration > 0.2):
+    if EMTEST_VISUALIZE and (self.test_result != 'skipped' or self.test_duration > 0.2):
       profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
       os.makedirs(profiler_logs_path, exist_ok=True)
       profiler_log_file = os.path.join(profiler_logs_path, 'toolchain_profiler.pid_0.json')
@@ -319,7 +335,7 @@ class BufferedParallelTestResult(unittest.TestResult):
       # block, so generate one on the fly.
       dummy_test_task_counter = os.path.getsize(profiler_log_file) if os.path.isfile(profiler_log_file) else 0
       # Remove the redundant 'test_' prefix from each test, since character space is at a premium in the visualized graph.
-      test_name = self.test_short_name().removeprefix('test_')
+      test_name = utils.removeprefix(self.test_short_name(), 'test_')
       with open(profiler_log_file, 'a') as prof:
         prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{colors[self.test_result]}"}}')
         prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time + self.test_duration},"returncode":0}}')
@@ -333,11 +349,6 @@ class BufferedParallelTestResult(unittest.TestResult):
     # TODO(sbc): figure out a way to display this duration information again when
     # these results get passed back to the TextTestRunner/TextTestResult.
     self.buffered_result.duration = self.test_duration
-    # Once we are done running the test and any stdout/stderr buffering has
-    # being taking care or, we delete these fields which the parent class uses.
-    # This is because they are not picklable (serializable).
-    del self._original_stdout
-    del self._original_stderr
 
   def addSuccess(self, test):
     super().addSuccess(test)

@@ -3,6 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import atexit
 import logging
 import os
 import plistlib
@@ -116,6 +117,23 @@ def terminate_list_of_processes(proc_list):
         proc.wait()
     except (psutil.NoSuchProcess, ProcessLookupError):
       pass
+
+
+def init(force_browser_process_termination):
+  utils.delete_file(browser_spawn_lock_filename)
+  utils.delete_file(f'{browser_spawn_lock_filename}_counter')
+  if force_browser_process_termination or os.getenv('EMTEST_FORCE_BROWSER_PROCESS_TERMINATION'):
+    config = get_browser_config()
+
+    if config and hasattr(config, 'executable_name'):
+      def terminate_all_browser_processes():
+        procs = list_processes_by_name(config.executable_name)
+        if len(procs) > 0:
+          print(f'Terminating {len(procs)} stray browser processes.')
+          terminate_list_of_processes(procs)
+
+      atexit.register(terminate_all_browser_processes)
+      terminate_all_browser_processes()
 
 
 def find_browser_test_file(filename):
