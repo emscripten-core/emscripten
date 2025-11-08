@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import stat
+import sys
 import time
 from pathlib import Path
 from subprocess import PIPE, STDOUT
@@ -822,9 +823,20 @@ fi
     for e in ['LLVM_ROOT', 'EMSDK_NODE', 'EMSDK_PYTHON', 'EMSDK', 'EMSCRIPTEN', 'BINARYEN_ROOT', 'EMCC_SKIP_SANITY_CHECK', 'EM_CONFIG']:
       env.pop(e, None)
 
+    python_path = os.path.normpath(os.path.dirname(sys.executable))
+
     # Remove from PATH every directory that contains clang.exe so that bootstrap.py cannot
     # accidentally succeed by virtue of locating tools in PATH.
-    new_path = [d for d in env['PATH'].split(os.pathsep) if not os.path.isfile(os.path.join(d, utils.exe_suffix('clang')))]
+    def ignore_path(p):
+      clang_bin = utils.exe_suffix('clang')
+      # We cannot ignore a path element that contains the python executable itself, otherwise
+      # the bootstrap script will fail
+      if os.path.isfile(os.path.join(p, clang_bin)) and os.path.normpath(p) != python_path:
+        return True
+      return False
+
+    old_path = env['PATH'].split(os.pathsep)
+    new_path = [d for d in old_path if not ignore_path(d)]
     env['PATH'] = os.pathsep.join(new_path)
 
     # Running bootstrap.py should not fail
