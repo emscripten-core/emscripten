@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.20 (in development)
 -----------------------
+- Added `emscripten_remove_callback` function in `html5.h` in order to be
+  able to remove a single callback. (#25535)
 
 4.0.19 - 11/04/25
 -----------------
