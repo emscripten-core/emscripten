@@ -263,7 +263,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # Extract only the test short names
     flaky_tests = [x.split('.')[-1] for x in flaky_tests]
 
-    # The next updateResult loop will print a *lot* of lines really fast. This
+    # The next integrateResult loop will print a *lot* of lines really fast. This
     # will cause a Python exception being thrown when attempting to print to
     # stderr, if stderr is in nonblocking mode, like it is on Buildbot CI:
     # See https://github.com/buildbot/buildbot/issues/8659
@@ -272,11 +272,9 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       os.set_blocking(sys.stderr.fileno(), True)
 
     for r in results:
-      # Merge information of flaky tests into the test result
-      if r.test_result == 'success' and r.test_short_name() in flaky_tests:
-        r.test_result = 'warnings'
-      # And integrate the test result to the global test object
-      r.updateResult(result)
+      # Integrate the test result to the global test result object
+      r.integrateResult(result)
+      r.log_test_run_for_visualization(flaky_tests)
 
     # Generate the parallel test run visualization
     if EMTEST_VISUALIZE:
@@ -293,14 +291,10 @@ class BufferedParallelTestResult(unittest.TestResult):
   """
   def __init__(self):
     super().__init__()
-    self.buffered_result = None
     self.test_duration = 0
     self.test_result = 'errored'
     self.test_name = ''
-
-  @property
-  def test(self):
-    return self.buffered_result.test
+    self.test = None
 
   def test_short_name(self):
     # Given a test name e.g. "test_atomic_cxx (test_core.core0.test_atomic_cxx)"
@@ -310,19 +304,42 @@ class BufferedParallelTestResult(unittest.TestResult):
   def addDuration(self, test, elapsed):
     self.test_duration = elapsed
 
-  def updateResult(self, result):
-    result.startTest(self.test)
-    self.buffered_result.updateResult(result)
-    result.stopTest(self.test)
-    result.core_time += self.test_duration
-    self.log_test_run_for_visualization()
+  def integrateResult(self, overall_results):
+    """This method get called on the main thread once the buffered result
+    is received.  It add the buffered result to the overall result."""
+    # The exception info objects that we are adding here have already
+    # been turned into strings so make _exc_info_to_string into a no-op.
+    overall_results._exc_info_to_string = lambda x, _y: x
+    # No need to worry about stdout/stderr buffering since are a not
+    # actually running the test here, only setting the results.
+    overall_results.buffer = False
+    overall_results.startTest(self.test)
+    if self.test_result == 'success':
+      overall_results.addSuccess(self.test)
+    elif self.test_result == 'failed':
+      overall_results.addFailure(*self.failures[0])
+    elif self.test_result == 'errored':
+      overall_results.addError(*self.errors[0])
+    elif self.test_result == 'skipped':
+      overall_results.addSkip(*self.skipped[0])
+    elif self.test_result == 'unexpected success':
+      overall_results.addUnexpectedSuccess(*self.unexpectedSuccesses[0])
+    elif self.test_result == 'expected failure':
+      overall_results.addExpectedFailure(*self.expectedFailures[0])
+    else:
+      assert False, f'unhandled test result {self.test_result}'
+    overall_results.stopTest(self.test)
+    overall_results.core_time += self.test_duration
 
-  def log_test_run_for_visualization(self):
+  def log_test_run_for_visualization(self, flaky_tests):
     if EMTEST_VISUALIZE and (self.test_result != 'skipped' or self.test_duration > 0.2):
+      test_result = self.test_result
+      if test_result == 'success' and self.test_short_name() in flaky_tests:
+        test_result = 'warnings'
       profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
       os.makedirs(profiler_logs_path, exist_ok=True)
       profiler_log_file = os.path.join(profiler_logs_path, 'toolchain_profiler.pid_0.json')
-      colors = {
+      color = {
         'success': '#80ff80',
         'warnings': '#ffb040',
         'skipped': '#a0a0a0',
@@ -330,157 +347,44 @@ class BufferedParallelTestResult(unittest.TestResult):
         'unexpected success': '#ff8080',
         'failed': '#ff8080',
         'errored': '#ff8080',
-      }
+      }[test_result]
       # Write profiling entries for emprofile.py tool to visualize. This needs a unique identifier for each
       # block, so generate one on the fly.
       dummy_test_task_counter = os.path.getsize(profiler_log_file) if os.path.isfile(profiler_log_file) else 0
       # Remove the redundant 'test_' prefix from each test, since character space is at a premium in the visualized graph.
       test_name = utils.removeprefix(self.test_short_name(), 'test_')
       with open(profiler_log_file, 'a') as prof:
-        prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{colors[self.test_result]}"}}')
+        prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{color}"}}')
         prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time + self.test_duration},"returncode":0}}')
 
   def startTest(self, test):
     super().startTest(test)
+    self.test = test
     self.test_name = str(test)
-
-  def stopTest(self, test):
-    super().stopTest(test)
-    # TODO(sbc): figure out a way to display this duration information again when
-    # these results get passed back to the TextTestRunner/TextTestResult.
-    self.buffered_result.duration = self.test_duration
 
   def addSuccess(self, test):
     super().addSuccess(test)
-    self.buffered_result = BufferedTestSuccess(test)
     self.test_result = 'success'
 
   def addExpectedFailure(self, test, err):
     super().addExpectedFailure(test, err)
-    self.buffered_result = BufferedTestExpectedFailure(test, err)
     self.test_result = 'expected failure'
 
   def addUnexpectedSuccess(self, test):
     super().addUnexpectedSuccess(test)
-    self.buffered_result = BufferedTestUnexpectedSuccess(test)
     self.test_result = 'unexpected success'
 
   def addSkip(self, test, reason):
     super().addSkip(test, reason)
-    self.buffered_result = BufferedTestSkip(test, reason)
     self.test_result = 'skipped'
 
   def addFailure(self, test, err):
     super().addFailure(test, err)
-    self.buffered_result = BufferedTestFailure(test, err)
     self.test_result = 'failed'
 
   def addError(self, test, err):
     super().addError(test, err)
-    self.buffered_result = BufferedTestError(test, err)
     self.test_result = 'errored'
-
-
-class BufferedTestBase:
-  """Abstract class that holds test result data, split by type of result."""
-  def __init__(self, test, err=None):
-    self.test = test
-    if err:
-      exctype, value, tb = err
-      self.error = exctype, value, FakeTraceback(tb)
-
-  def updateResult(self, result):
-    assert False, 'Base class should not be used directly'
-
-
-class BufferedTestSuccess(BufferedTestBase):
-  def updateResult(self, result):
-    result.addSuccess(self.test)
-
-
-class BufferedTestSkip(BufferedTestBase):
-  def __init__(self, test, reason):
-    self.test = test
-    self.reason = reason
-
-  def updateResult(self, result):
-    result.addSkip(self.test, self.reason)
-
-
-def fixup_fake_exception(fake_exc):
-  ex = fake_exc[2]
-  if ex.tb_frame.f_code.positions is None:
-    return
-  while ex is not None:
-    # .co_positions is supposed to be a function that returns an enumerable
-    # to the list of code positions. Create a function object wrapper around
-    # the data
-    def make_wrapper(rtn):
-      return lambda: rtn
-    ex.tb_frame.f_code.co_positions = make_wrapper(ex.tb_frame.f_code.positions)
-    ex = ex.tb_next
-
-
-class BufferedTestFailure(BufferedTestBase):
-  def updateResult(self, result):
-    fixup_fake_exception(self.error)
-    result.addFailure(self.test, self.error)
-
-
-class BufferedTestExpectedFailure(BufferedTestBase):
-  def updateResult(self, result):
-    fixup_fake_exception(self.error)
-    result.addExpectedFailure(self.test, self.error)
-
-
-class BufferedTestError(BufferedTestBase):
-  def updateResult(self, result):
-    fixup_fake_exception(self.error)
-    result.addError(self.test, self.error)
-
-
-class BufferedTestUnexpectedSuccess(BufferedTestBase):
-  def updateResult(self, result):
-    fixup_fake_exception(self.error)
-    result.addUnexpectedSuccess(self.test)
-
-
-class FakeTraceback:
-  """A fake version of a traceback object that is picklable across processes.
-
-  Python's traceback objects contain hidden stack information that isn't able
-  to be pickled. Further, traceback objects aren't constructable from Python,
-  so we need a dummy object that fulfills its interface.
-
-  The fields we expose are exactly those which are used by
-  unittest.TextTestResult to show a text representation of a traceback. Any
-  other use is not intended.
-  """
-
-  def __init__(self, tb):
-    self.tb_frame = FakeFrame(tb.tb_frame)
-    self.tb_lineno = tb.tb_lineno
-    self.tb_next = FakeTraceback(tb.tb_next) if tb.tb_next is not None else None
-    self.tb_lasti = tb.tb_lasti
-
-
-class FakeFrame:
-  def __init__(self, f):
-    self.f_code = FakeCode(f.f_code)
-    # f.f_globals is not picklable, not used in stack traces, and needs to be iterable
-    self.f_globals = []
-
-
-class FakeCode:
-  def __init__(self, co):
-    self.co_filename = co.co_filename
-    self.co_name = co.co_name
-    # co.co_positions() returns an iterator. Flatten it to a list so that it can
-    # be pickled to the parent process
-    if hasattr(co, 'co_positions'):
-      self.positions = list(co.co_positions())
-    else:
-      self.positions = None
 
 
 def num_cores():

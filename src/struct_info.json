@@ -1269,7 +1269,8 @@
         "structs": {
             "EmscriptenWebAudioCreateAttributes": [
               "latencyHint",
-              "sampleRate"
+              "sampleRate",
+              "renderSizeHint"
             ],
             "WebAudioParamDescriptor": [
               "defaultValue",

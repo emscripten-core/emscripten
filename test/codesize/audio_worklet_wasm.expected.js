@@ -1,4 +1,4 @@
-var m = globalThis.Module || "undefined" != typeof Module ? Module : {}, r = !!globalThis.AudioWorkletGlobalScope, t = "em-ww" == globalThis.name || r, u, z, I, J, G, E, w, X, F, D, C, Y, A, Z;
+var m = globalThis.Module || "undefined" != typeof Module ? Module : {}, p = !!globalThis.AudioWorkletGlobalScope, t = "em-ww" == globalThis.name || p, u, z, I, J, G, E, w, X, F, D, C, Y, A, Z;
 
 function v(a) {
     u = a;
@@ -10,12 +10,12 @@ function v(a) {
     a.G = a.M = 0;
 }
 
-t && !r && (onmessage = a => {
+t && !p && (onmessage = a => {
     onmessage = null;
     v(a.data);
 });
 
-if (r) {
+if (p) {
     function a(b) {
         class h extends AudioWorkletProcessor {
             constructor(d) {
@@ -36,7 +36,7 @@ if (r) {
                 return b;
             }
             process(d, g, e) {
-                var l = d.length, p = g.length, f, q, k = 12 * (l + p), n = 0;
+                var l = d.length, q = g.length, f, r, k = 12 * (l + q), n = 0;
                 for (f of d) n += f.length;
                 n *= this.s;
                 var H = 0;
@@ -53,15 +53,15 @@ if (r) {
                     G[k + 4 >> 2] = this.u;
                     G[k + 8 >> 2] = n;
                     k += 12;
-                    for (q of f) E.set(q, n >> 2), n += this.s;
+                    for (r of f) E.set(r, n >> 2), n += this.s;
                 }
                 d = k;
-                for (f = 0; q = e[f++]; ) G[k >> 2] = q.length, G[k + 4 >> 2] = n, k += 8, E.set(q, n >> 2), 
-                n += 4 * q.length;
+                for (f = 0; r = e[f++]; ) G[k >> 2] = r.length, G[k + 4 >> 2] = n, k += 8, E.set(r, n >> 2), 
+                n += 4 * r.length;
                 e = k;
                 for (f of g) G[k >> 2] = f.length, G[k + 4 >> 2] = this.u, G[k + 8 >> 2] = n, k += 12, 
                 n += this.s * f.length;
-                if (l = this.v(l, B, p, e, N, d, this.A)) for (f of g) for (q of f) q.set(this.B[--H]);
+                if (l = this.v(l, B, q, e, N, d, this.A)) for (f of g) for (r of f) r.set(this.B[--H]);
                 F(U);
                 return !!l;
             }
@@ -129,9 +129,12 @@ var K = [], L = a => {
 }, T = a => {
     if (a) {
         var c = G[a >> 2];
+        c = (c ? S(c) : "") || void 0;
+        var b = J[a + 8 >> 2];
         a = {
-            latencyHint: (c ? S(c) : "") || void 0,
-            sampleRate: G[a + 4 >> 2] || void 0
+            latencyHint: c,
+            sampleRate: G[a + 4 >> 2] || void 0,
+            N: 0 > b ? "hardware" : b || "default"
         };
     } else a = void 0;
     a = new AudioContext(a);
@@ -140,10 +143,10 @@ var K = [], L = a => {
 }, V = (a, c, b, h, d) => {
     var g = b ? J[b + 4 >> 2] : 0;
     if (b) {
-        var e = J[b >> 2], l = G[b + 8 >> 2], p = g;
+        var e = J[b >> 2], l = G[b + 8 >> 2], q = g;
         if (l) {
             l >>= 2;
-            for (var f = []; p--; ) f.push(G[l++]);
+            for (var f = []; q--; ) f.push(G[l++]);
             l = f;
         } else l = void 0;
         b = {
@@ -156,7 +159,7 @@ var K = [], L = a => {
             processorOptions: {
                 v: h,
                 A: d,
-                u: 128
+                u: O[a].renderQuantumSize || 128
             }
         };
     } else b = void 0;
@@ -191,17 +194,17 @@ var K = [], L = a => {
     if (!e) return l();
     e.addModule(m.js).then((() => {
         e.port || (e.port = {
-            postMessage: p => {
-                p._boot ? (e.D = new AudioWorkletNode(g, "em-bootstrap", {
-                    processorOptions: p
+            postMessage: q => {
+                q._boot ? (e.D = new AudioWorkletNode(g, "em-bootstrap", {
+                    processorOptions: q
                 }), e.D.port.onmessage = f => {
                     e.port.onmessage(f);
-                }) : e.D.port.postMessage(p);
+                }) : e.D.port.postMessage(q);
             }
         });
         e.port.postMessage({
             _boot: 1,
-            N: ba++,
+            O: ba++,
             G: m.wasm,
             L: w,
             J: c,
@@ -243,7 +246,7 @@ function y() {
         C = a.n;
         Y = a.o;
         A = a.k;
-        t ? (Y(u.J, u.F), r || (removeEventListener("message", M), K = K.forEach(L), addEventListener("message", L))) : a.i();
+        t ? (Y(u.J, u.F), p || (removeEventListener("message", M), K = K.forEach(L), addEventListener("message", L))) : a.i();
         t || X();
     }));
 }
