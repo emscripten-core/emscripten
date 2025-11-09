@@ -1,7 +1,7 @@
 {
-  "a.out.js": 245483,
+  "a.out.js": 245865,
   "a.out.nodebug.wasm": 574039,
-  "total": 819522,
+  "total": 819904,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -741,6 +741,7 @@
     "emscripten_promise_resolve",
     "emscripten_promise_then",
     "emscripten_random",
+    "emscripten_remove_callback",
     "emscripten_request_animation_frame",
     "emscripten_request_animation_frame_loop",
     "emscripten_request_fullscreen",
