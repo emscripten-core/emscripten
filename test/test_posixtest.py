@@ -13,8 +13,9 @@ import glob
 import os
 import unittest
 
-from common import RunnerCore, path_from_root, node_pthreads
 import test_posixtest_browser
+from common import RunnerCore, path_from_root
+from decorators import node_pthreads
 
 testsuite_root = path_from_root('test/third_party/posixtestsuite')
 

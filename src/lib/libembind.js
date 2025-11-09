@@ -122,8 +122,6 @@ var LibraryEmbind = {
     }
   },
 
-  $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
-
   $embindRepr: (v) => {
     if (v === null) {
         return 'null';
@@ -568,6 +566,11 @@ var LibraryEmbind = {
     __embind_register_emval(rawType);
   },
 
+  _embind_register_user_type_definition__deps: ['_embind_register_emval'],
+  _embind_register_user_type_definition: (rawType, name, definition) => {
+    __embind_register_emval(rawType);
+  },
+
   _embind_register_optional__deps: ['$registerType', '$EmValOptionalType'],
   _embind_register_optional: (rawOptionalType, rawType) => {
     registerType(rawOptionalType, EmValOptionalType);
@@ -894,20 +897,20 @@ var LibraryEmbind = {
     var rawDestructor = reg.rawDestructor;
 
     whenDependentTypesAreResolved([rawTupleType], elementTypes, (elementTypes) => {
-      elements.forEach((elt, i) => {
-        var getterReturnType = elementTypes[i];
-        var getter = elt.getter;
-        var getterContext = elt.getterContext;
-        var setterArgumentType = elementTypes[i + elementsLength];
-        var setter = elt.setter;
-        var setterContext = elt.setterContext;
+      for (const [i, elt] of elements.entries()) {
+        const getterReturnType = elementTypes[i];
+        const getter = elt.getter;
+        const getterContext = elt.getterContext;
+        const setterArgumentType = elementTypes[i + elementsLength];
+        const setter = elt.setter;
+        const setterContext = elt.setterContext;
         elt.read = (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr));
         elt.write = (ptr, o) => {
           var destructors = [];
           setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
           runDestructors(destructors);
         };
-      });
+      }
 
       return [{
         name: reg.name,
@@ -995,25 +998,23 @@ var LibraryEmbind = {
               concat(fieldRecords.map((field) => field.setterArgumentType));
     whenDependentTypesAreResolved([structType], fieldTypes, (fieldTypes) => {
       var fields = {};
-      fieldRecords.forEach((field, i) => {
-        var fieldName = field.fieldName;
-        var getterReturnType = fieldTypes[i];
-        var optional = fieldTypes[i].optional;
-        var getter = field.getter;
-        var getterContext = field.getterContext;
-        var setterArgumentType = fieldTypes[i + fieldRecords.length];
-        var setter = field.setter;
-        var setterContext = field.setterContext;
-        fields[fieldName] = {
+      for (var [i, field] of fieldRecords.entries()) {
+        const getterReturnType = fieldTypes[i];
+        const getter = field.getter;
+        const getterContext = field.getterContext;
+        const setterArgumentType = fieldTypes[i + fieldRecords.length];
+        const setter = field.setter;
+        const setterContext = field.setterContext;
+        fields[field.fieldName] = {
           read: (ptr) => getterReturnType.fromWireType(getter(getterContext, ptr)),
           write: (ptr, o) => {
             var destructors = [];
             setter(setterContext, ptr, setterArgumentType.toWireType(destructors, o));
             runDestructors(destructors);
           },
-          optional,
+          optional: getterReturnType.optional,
         };
-      });
+      }
 
       return [{
         name: reg.name,
@@ -1371,7 +1372,7 @@ var LibraryEmbind = {
 #endif
   ],
   $attachFinalizer: (handle) => {
-    if ('undefined' === typeof FinalizationRegistry) {
+    if (!globalThis.FinalizationRegistry) {
       attachFinalizer = (handle) => handle;
       return handle;
     }
@@ -2098,11 +2099,11 @@ var LibraryEmbind = {
     var baseClassPrototype = baseClass.instancePrototype;
     var baseConstructor = registeredClass.baseClass.constructor;
     var ctor = createNamedFunction(constructorName, function(...args) {
-      registeredClass.baseClass.pureVirtualFunctions.forEach(function(name) {
+      for (var name of registeredClass.baseClass.pureVirtualFunctions) {
         if (this[name] === baseClassPrototype[name]) {
           throw new PureVirtualError(`Pure virtual function ${name} must be implemented in JavaScript`);
         }
-      }.bind(this));
+      }
 
       Object.defineProperty(this, '__parent', {
         value: wrapperPrototype

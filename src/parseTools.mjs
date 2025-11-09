@@ -24,6 +24,8 @@ import {
   srcDir,
 } from './utility.mjs';
 
+import { nativeAliases } from './modules.mjs';
+
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
 const WASM_PAGE_SIZE = 64 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
@@ -803,26 +805,9 @@ function addAtPostRun(code) {
 }
 
 function makeRetainedCompilerSettings() {
-  const ignore = new Set();
-  if (STRICT) {
-    for (const setting of LEGACY_SETTINGS) {
-      ignore.add(setting);
-    }
-  }
-
   const ret = {};
-  for (const x in global) {
-    if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
-      const value = global[x];
-      if (
-        typeof value == 'number' ||
-        typeof value == 'boolean' ||
-        typeof value == 'string' ||
-        Array.isArray(x)
-      ) {
-        ret[x] = value;
-      }
-    }
+  for (const name of PUBLIC_SETTINGS) {
+    ret[name] = globalThis[name];
   }
   return ret;
 }
@@ -964,16 +949,6 @@ function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
 }
 
-// Called when global runtime symbols such as wasmMemory, wasmExports and
-// wasmTable are set. In this case we maybe need to re-export them on the
-// Module object.
-function receivedSymbol(sym) {
-  if (EXPORTED_RUNTIME_METHODS.has(sym)) {
-    return `Module['${sym}'] = ${sym};`;
-  }
-  return '';
-}
-
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 export function defineI64Param(name) {
@@ -1068,9 +1043,10 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // No need to worry about this in non-shared memory builds
   if (!SHARED_MEMORY) return unshared;
 
-  // If asked to get an unshared view to what we know will be a shared view, or if in -Oz,
-  // then unconditionally do a .slice() for smallest code size.
-  if (SHRINK_LEVEL == 2 || heap == 'HEAPU8') return shared;
+  // If asked to get an unshared view to what we know will be a shared view, or
+  // if in -Oz, then unconditionally do a .slice() for smallest code size.
+  // This is guaranteed to work but could be slower since it performs a copy.
+  if (SHRINK_LEVEL == 2 || heap.startsWith('HEAP')) return shared;
 
   // Otherwise, generate a runtime type check: must do a .slice() if looking at
   // a SAB, or can use .subarray() otherwise.  Note: We compare with
@@ -1132,7 +1108,7 @@ function nodeDetectionCode() {
     // optimize code size.
     return 'true';
   }
-  return "typeof process == 'object' && process.versions?.node && process.type != 'renderer'";
+  return "globalThis.process?.versions?.node && globalThis.process?.type != 'renderer'";
 }
 
 function nodePthreadDetection() {
@@ -1153,6 +1129,17 @@ function nodeWWDetection() {
   } else {
     return "require('worker_threads').workerData === 'em-ww'";
   }
+}
+
+function makeExportAliases() {
+  var res = ''
+  for (var [alias, ex] of Object.entries(nativeAliases)) {
+    if (ASSERTIONS) {
+      res += `  assert(wasmExports['${ex}'], 'alias target "${ex}" not found in wasmExports');\n`;
+    }
+    res += `  globalThis['${alias}'] = wasmExports['${ex}'];\n`;
+  }
+  return res;
 }
 
 addToCompileTimeContext({
@@ -1204,6 +1191,7 @@ addToCompileTimeContext({
   isSymbolNeeded,
   makeDynCall,
   makeEval,
+  makeExportAliases,
   makeGetValue,
   makeHEAPView,
   makeModuleReceive,
@@ -1218,7 +1206,6 @@ addToCompileTimeContext({
   nodeDetectionCode,
   receiveI64ParamAsI53,
   receiveI64ParamAsI53Unchecked,
-  receivedSymbol,
   runIfMainThread,
   runIfWorkerThread,
   runtimeKeepalivePop,

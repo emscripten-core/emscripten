@@ -41,6 +41,10 @@ addToLibrary({
   setTempRet0: '$setTempRet0',
   getTempRet0: '$getTempRet0',
 
+  // Assign a name to a given function. This is mostly useful for debugging
+  // purposes in cases where new functions are created at runtime.
+  $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
+
   $ptrToString: (ptr) => {
 #if ASSERTIONS
     assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
@@ -1340,7 +1344,7 @@ addToLibrary({
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
     // Audio Worklets enabled, do a dynamic check for its presence.
-    if (typeof performance != 'undefined' && {{{ getPerformanceNow() }}}) {
+    if (globalThis.performance && {{{ getPerformanceNow() }}}) {
 #if PTHREADS
       _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
 #else
@@ -1365,7 +1369,7 @@ addToLibrary({
     }
 #endif
 #if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
-    if (typeof performance == 'object' && performance && typeof performance['now'] == 'function') {
+    if (globalThis.performance?.now == 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
     }
     return 1000*1000; // milliseconds
@@ -1379,7 +1383,7 @@ addToLibrary({
   // implementation is not :(
   $nowIsMonotonic__internal: true,
 #if AUDIO_WORKLET // // https://github.com/WebAudio/web-audio-api/issues/2413
-  $nowIsMonotonic: `((typeof performance == 'object' && performance && typeof performance['now'] == 'function'));`,
+  $nowIsMonotonic: `!!globalThis.performance?.now;`,
 #else
   // Modern environment where performance.now() is supported
   $nowIsMonotonic: 1,
@@ -1611,14 +1615,16 @@ addToLibrary({
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
-  // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
-  // at runtime rather than statically in JS code.
-  $exportWasmSymbols__deps: ['$asmjsMangle',
+  // When DECLARE_ASM_MODULE_EXPORTS is set, this function is programatically
+  // ceated during linking.  See `create_receiving` in `emscripten.py`.
+  // When DECLARE_ASM_MODULE_EXPORTS=0 is set, `assignWasmExports` is instead
+  // defined here as a normal JS library function.
+  $assignWasmExports__deps: ['$asmjsMangle',
 #if DYNCALLS || !WASM_BIGINT
     , '$dynCalls'
 #endif
   ],
-  $exportWasmSymbols: (wasmExports) => {
+  $assignWasmExports: (wasmExports) => {
     for (var [name, exportedSymbol] of Object.entries(wasmExports)) {
       name = asmjsMangle(name);
 #if DYNCALLS || !WASM_BIGINT
@@ -1637,7 +1643,7 @@ addToLibrary({
 #endif
       }
     }
-
+    exportAliases(wasmExports);
   },
 #endif
 
@@ -1705,21 +1711,14 @@ addToLibrary({
   // input events on, and registers a context resume() for them. This lets
   // audio work properly in an automatic way, as browsers won't let audio run
   // without user interaction.
-  // If @elements is not provided, we default to the document and canvas
-  // elements, which handle common use cases.
-  // TODO(sbc): Remove seemingly unused elements argument
-  $autoResumeAudioContext__docs: '/** @param {Object=} elements */',
-  $autoResumeAudioContext: (ctx, elements) => {
-    if (!elements) {
-      elements = [document, document.getElementById('canvas')];
-    }
-    ['keydown', 'mousedown', 'touchstart'].forEach((event) => {
-      elements.forEach((element) => {
+  $autoResumeAudioContext: (ctx) => {
+    for (var event of ['keydown', 'mousedown', 'touchstart']) {
+      for (var element of [document, document.getElementById('canvas')]) {
         element?.addEventListener(event, () => {
           if (ctx.state === 'suspended') ctx.resume();
         }, { 'once': true });
-      });
-    });
+      }
+    }
   },
 
 #if DYNCALLS || !WASM_BIGINT
@@ -1769,6 +1768,9 @@ addToLibrary({
   },
 
   $dynCall: (sig, ptr, args = [], promising = false) => {
+#if ASSERTIONS
+    assert(ptr, `null function pointer in dynCall`);
+#endif
 #if ASSERTIONS && (DYNCALLS || !WASM_BIGINT || !JSPI)
     assert(!promising, 'async dynCall is not supported in this mode')
 #endif
@@ -2146,8 +2148,6 @@ addToLibrary({
 #endif // MINIMAL_RUNTIME
 
   $asmjsMangle: (x) => {
-    if (x == 'memory') return 'wasmMemory';
-    if (x == '__indirect_function_table') return 'wasmTable';
     if (x == '__main_argc_argv') {
       x = 'main';
     }
@@ -2206,11 +2206,12 @@ addToLibrary({
   __stack_high: '{{{ STACK_HIGH }}}',
   __stack_low: '{{{ STACK_LOW }}}',
   __global_base: '{{{ GLOBAL_BASE }}}',
-#if ASYNCIFY == 1
+#endif // RELOCATABLE
+
+#if (MAIN_MODULE || RELOCATABLE) && ASYNCIFY == 1
   __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
   __asyncify_data: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(0) }}})",
 #endif
-#endif // RELOCATABLE
 
   _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
   _emscripten_fs_load_embedded_files: (ptr) => {
@@ -2265,9 +2266,6 @@ addToLibrary({
     }
   },
 
-  $getNativeTypeSize__deps: ['$POINTER_SIZE'],
-  $getNativeTypeSize: {{{ getNativeTypeSize }}},
-
   $wasmTable__docs: '/** @type {WebAssembly.Table} */',
 #if RELOCATABLE
   // In RELOCATABLE mode we create the table in JS.
@@ -2283,7 +2281,16 @@ addToLibrary({
 });
 `,
 #else
-  $wasmTable: undefined,
+  // `wasmTable` is a JS alias for the Wasm `__indirect_function_table` export
+  $wasmTable: '__indirect_function_table',
+#endif
+
+#if IMPORTED_MEMORY
+  // This gets defined in src/runtime_init_memory.js
+  $wasmMemory: undefined,
+#else
+  // `wasmMemory` is a JS alias for the Wasm `memory` export
+  $wasmMemory: 'memory',
 #endif
 
   $getUniqueRunDependency: (id) => {
@@ -2341,7 +2348,7 @@ addToLibrary({
     assert(id, 'addRunDependency requires an ID')
     assert(!runDependencyTracking[id]);
     runDependencyTracking[id] = 1;
-    if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
+    if (runDependencyWatcher === null && globalThis.setInterval) {
       // Check for missing dependencies every few seconds
       runDependencyWatcher = setInterval(() => {
         if (ABORT) {
@@ -2478,13 +2485,11 @@ addToLibrary({
   $ASSERTIONS: {{{ ASSERTIONS }}},
 });
 
-function autoAddDeps(object, name) {
-  for (var item in object) {
-    if (!item.endsWith('__deps')) {
-      if (!object[item + '__deps']) {
-        object[item + '__deps'] = [];
-      }
-      object[item + '__deps'].push(name);
+function autoAddDeps(lib, name) {
+  for (const item of Object.keys(lib)) {
+    if (!isDecorator(item)) {
+      lib[item + '__deps'] ??= [];
+      lib[item + '__deps'].push(name);
     }
   }
 }
@@ -2547,10 +2552,10 @@ function wrapSyscallFunction(x, library, isWasi) {
   }
 
   var isVariadic = !isWasi && t.includes(', varargs');
-#if SYSCALLS_REQUIRE_FILESYSTEM == 0
-  var canThrow = false;
-#else
+#if SYSCALLS_REQUIRE_FILESYSTEM
   var canThrow = library[x + '__nothrow'] !== true;
+#else
+  var canThrow = false;
 #endif
 
   library[x + '__deps'] ??= [];

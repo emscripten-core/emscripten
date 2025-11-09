@@ -21,6 +21,9 @@ addToLibrary({
 
 #if ASYNCIFY
   $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
+#if ASSERTIONS
+    '$createNamedFunction',
+#endif
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
@@ -143,6 +146,9 @@ addToLibrary({
 #endif
 #if MAIN_MODULE
       wrapper.orig = original;
+#endif
+#if ASSERTIONS
+      wrapper = createNamedFunction(`__asyncify_wrapper_${original.name}`, wrapper);
 #endif
       return wrapper;
     },
@@ -517,7 +523,7 @@ addToLibrary({
   _load_secondary_module: async function() {
     // Mark the module as loading for the wasm module (so it doesn't try to load it again).
     wasmExports['load_secondary_module_status'].value = 1;
-    var imports = {'primary': wasmExports};
+    var imports = {'primary': wasmRawExports};
     // Replace '.wasm' suffix with '.deferred.wasm'.
     var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
     await instantiateAsync(null, deferred, imports);

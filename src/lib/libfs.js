@@ -583,12 +583,13 @@ FS.staticInit();`;
       };
 
       // sync all mounts
-      mounts.forEach((mount) => {
-        if (!mount.type.syncfs) {
-          return done(null);
+      for (var mount of mounts) {
+        if (mount.type.syncfs) {
+          mount.type.syncfs(mount, populate, done);
+        } else {
+          done(null);
         }
-        mount.type.syncfs(mount, populate, done);
-      });
+      }
     },
     mount(type, opts, mountpoint) {
 #if ASSERTIONS
@@ -657,9 +658,7 @@ FS.staticInit();`;
       var mount = node.mounted;
       var mounts = FS.getMounts(mount);
 
-      Object.keys(FS.nameTable).forEach((hash) => {
-        var current = FS.nameTable[hash];
-
+      for (var [hash, current] of Object.entries(FS.nameTable)) {
         while (current) {
           var next = current.name_next;
 
@@ -669,7 +668,7 @@ FS.staticInit();`;
 
           current = next;
         }
-      });
+      }
 
       // no longer a mountpoint
       node.mounted = null;
@@ -1705,7 +1704,7 @@ FS.staticInit();`;
  #if FS_DEBUG
       dbg(`forceLoadFile: ${obj.url}`)
  #endif
-      if (typeof XMLHttpRequest != 'undefined') {
+      if (globalThis.XMLHttpRequest) {
         abort("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
       } else { // Command-line.
         try {
@@ -1824,7 +1823,7 @@ FS.staticInit();`;
         }
       }
 
-      if (typeof XMLHttpRequest != 'undefined') {
+      if (globalThis.XMLHttpRequest) {
         if (!ENVIRONMENT_IS_WORKER) abort('Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc');
         var lazyArray = new LazyUint8Array();
         var properties = { isDevice: false, contents: lazyArray };
@@ -1850,14 +1849,12 @@ FS.staticInit();`;
       });
       // override each stream op with one that tries to force load the lazy file first
       var stream_ops = {};
-      var keys = Object.keys(node.stream_ops);
-      keys.forEach((key) => {
-        var fn = node.stream_ops[key];
+      for (const [key, fn] of Object.entries(node.stream_ops)) {
         stream_ops[key] = (...args) => {
           FS.forceLoadFile(node);
           return fn(...args);
         };
-      });
+      }
       function writeChunks(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
         if (position >= contents.length)

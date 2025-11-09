@@ -7,6 +7,9 @@
 "use strict";
 
 #endif
+
+#include "minimum_runtime_check.js"
+
 // The Module object: Our interface to the outside world. We import
 // and export values on it. There are various ways Module can be used:
 // 1. Not defined. We create it here
@@ -63,7 +66,7 @@ if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT[0] === 'web' }}};
 #if PTHREADS && ENVIRONMENT_MAY_BE_NODE
 // node+pthreads always supports workers; detect which we are at runtime
-var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
+var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 #else
 var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT[0] === 'worker' }}};
 #endif
@@ -71,8 +74,8 @@ var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT[0] === 'node' }}};
 var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT[0] === 'shell' }}};
 #else // ENVIRONMENT
 // Attempt to auto-detect the environment
-var ENVIRONMENT_IS_WEB = typeof window == 'object';
-var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
+var ENVIRONMENT_IS_WEB = !!globalThis.window;
+var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
 var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
@@ -192,15 +195,6 @@ if (ENVIRONMENT_IS_NODE) {
   if (!isNode) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
-#if ASSERTIONS
-  var nodeVersion = process.versions.node;
-  var numericVersion = nodeVersion.split('.').slice(0, 3);
-  numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + (numericVersion[2].split('-')[0] * 1);
-  if (numericVersion < {{{ MIN_NODE_VERSION }}}) {
-    throw new Error('This emscripten-generated code requires node {{{ formattedMinNodeVersion() }}} (detected v' + nodeVersion + ')');
-  }
-#endif
-
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
   var fs = require('fs');
@@ -259,7 +253,7 @@ if (ENVIRONMENT_IS_NODE) {
 
 #if WASM == 2
   // If target shell does not support Wasm, load the JS version of the code.
-  if (typeof WebAssembly == 'undefined') {
+  if (!globalThis.WebAssembly) {
     eval(fs.readFileSync(locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
   }
 #endif
@@ -269,14 +263,9 @@ if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_SHELL || ASSERTIONS
 if (ENVIRONMENT_IS_SHELL) {
 
-#if ENVIRONMENT.length && ASSERTIONS
-  const isNode = {{{ nodeDetectionCode() }}};
-  if (isNode || typeof window == 'object' || typeof WorkerGlobalScope != 'undefined') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-#endif
-
 #if ENVIRONMENT_MAY_BE_SHELL
   readBinary = (f) => {
-    if (typeof readbuffer == 'function') {
+    if (globalThis.readbuffer) {
       return new Uint8Array(readbuffer(f));
     }
     let data = read(f, 'binary');
@@ -294,7 +283,7 @@ if (ENVIRONMENT_IS_SHELL) {
   // v8 uses `arguments_` whereas spidermonkey uses `scriptArgs`
   arguments_ = globalThis.arguments || globalThis.scriptArgs;
 
-  if (typeof quit == 'function') {
+  if (globalThis.quit) {
     quit_ = (status, toThrow) => {
       // Unlike node which has process.exitCode, d8 has no such mechanism. So we
       // have no way to set the exit code and then let the program exit with
@@ -328,7 +317,7 @@ if (ENVIRONMENT_IS_SHELL) {
 
 #if WASM == 2
   // If target shell does not support Wasm, load the JS version of the code.
-  if (typeof WebAssembly == 'undefined') {
+  if (!globalThis.WebAssembly) {
     eval(read(locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
   }
 #endif
@@ -350,7 +339,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
 #if ENVIRONMENT.length && ASSERTIONS
-  if (!(typeof window == 'object' || typeof WorkerGlobalScope != 'undefined')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  if (!(globalThis.window || globalThis.WorkerGlobalScope)) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
 #if PTHREADS && ENVIRONMENT_MAY_BE_NODE

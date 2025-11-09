@@ -14,21 +14,19 @@
 # Separate DWARF is not supported yet.
 
 import argparse
-from dataclasses import dataclass
 import json
 import os
 import re
 import subprocess
 import sys
+from dataclasses import dataclass
 from typing import Optional
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import shared
-from tools import webassembly
-
+from tools import shared, utils, webassembly
 
 LLVM_SYMBOLIZER = shared.llvm_tool_path('llvm-symbolizer')
 
@@ -79,7 +77,7 @@ def symbolize_address_symbolizer(module, address, is_dwarf):
          str(address)]
   if shared.DEBUG:
     print(f'Running {" ".join(cmd)}')
-  out = shared.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
+  out = utils.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
   out_lines = out.splitlines()
 
   # Source location regex, e.g., /abc/def.c:3:5

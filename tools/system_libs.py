@@ -3,25 +3,22 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import re
-from time import time
-from .toolchain_profiler import ToolchainProfiler
-
 import itertools
 import logging
 import os
-import shutil
-import textwrap
+import re
 import shlex
+import shutil
 import subprocess
+import textwrap
 from enum import IntEnum, auto
 from glob import iglob
+from time import time
 from typing import List, Optional
 
-from . import shared, building, utils
-from . import diagnostics
-from . import cache
+from . import building, cache, diagnostics, shared, utils
 from .settings import settings
+from .toolchain_profiler import ToolchainProfiler
 from .utils import read_file
 
 logger = logging.getLogger('system_libs')
@@ -65,8 +62,12 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   flags = ['-g', '-sSTRICT', '-Werror']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
-  if settings.RELOCATABLE:
-    flags += ['-sRELOCATABLE']
+  if settings.RELOCATABLE or settings.MAIN_MODULE:
+    # Explictly include `-sRELOCATABLE` when building system libraries.
+    # `-fPIC` alone is not enough to configure trigger the building and
+    # caching of `pic` libraries (see `get_lib_dir` in `cache.py`)
+    # FIXME(sbc): `-fPIC` should really be enough here.
+    flags += ['-fPIC', '-sRELOCATABLE']
     if preprocess:
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
@@ -140,7 +141,7 @@ def objectfile_sort_key(filename):
 
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
-  suffix = shared.suffix(libname)
+  suffix = utils.suffix(libname)
 
   inputs = sorted(inputs, key=objectfile_sort_key)
   if suffix in ('.bc', '.o'):
@@ -229,13 +230,13 @@ rule archive
   description = AR $out
 
 '''
-  suffix = shared.suffix(libname)
+  suffix = utils.suffix(libname)
   build_dir = os.path.dirname(filename)
 
   if suffix == '.o':
     assert len(input_files) == 1
     input_file = escape_ninja_path(input_files[0])
-    depfile = shared.unsuffixed_basename(input_file) + '.d'
+    depfile = utils.unsuffixed_basename(input_file) + '.d'
     out += f'build {escape_ninja_path(libname)}: direct_cc {input_file}\n'
     out += f'  with_depfile = {depfile}\n'
   else:
@@ -245,7 +246,7 @@ rule archive
       # insensitive filesystem to handle, for example, _exit.o and _Exit.o.
       # This is done even on case sensitive filesystem so that builds are
       # reproducible across platforms.
-      object_basename = shared.unsuffixed_basename(src).lower()
+      object_basename = utils.unsuffixed_basename(src).lower()
       o = os.path.join(build_dir, object_basename + '.o')
       object_uuid = 0
       # Find a unique basename
@@ -253,7 +254,7 @@ rule archive
         object_uuid += 1
         o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
       objects.append(o)
-      ext = shared.suffix(src)
+      ext = utils.suffix(src)
       if ext == '.s':
         cmd = 'asm'
         flags = asflags
@@ -447,7 +448,7 @@ class Library:
     if self.get_ext() != '.a':
       return fullpath
     # For libraries (.a) files, we pass the abbreviated `-l` form.
-    base = shared.unsuffixed_basename(fullpath)
+    base = utils.unsuffixed_basename(fullpath)
     return '-l' + utils.removeprefix(base, 'lib')
 
   def get_files(self):
@@ -493,7 +494,7 @@ class Library:
     objects = set()
     cflags = self.get_cflags()
     for src in self.get_files():
-      ext = shared.suffix(src)
+      ext = utils.suffix(src)
       if ext in {'.s', '.S', '.c'}:
         cmd = shared.EMCC
       else:
@@ -508,7 +509,7 @@ class Library:
         cmd += cflags
       cmd = self.customize_build_cmd(cmd, src)
 
-      object_basename = shared.unsuffixed_basename(src).lower()
+      object_basename = utils.unsuffixed_basename(src).lower()
       o = os.path.join(build_dir, object_basename + '.o')
       if o in objects:
         # If we have seen a file with the same name before, we need a separate
@@ -529,7 +530,7 @@ class Library:
         src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
         # No -o in command, use original file name.
-        o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
+        o = os.path.join(build_dir, utils.unsuffixed_basename(src) + '.o')
       else:
         commands.append(cmd + [src, '-o', o])
       objects.add(o)
@@ -1364,7 +1365,7 @@ class libc(MuslInternalLibrary,
           'system.c',
         ])
 
-    if settings.RELOCATABLE:
+    if settings.RELOCATABLE or settings.MAIN_MODULE:
       libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
 
     libc_files += files_in_path(
@@ -1947,21 +1948,6 @@ class libGL(MTLibrary):
     )
 
 
-class libwebgpu(MTLibrary):
-  name = 'libwebgpu'
-
-  src_dir = 'system/lib/webgpu'
-  src_files = ['webgpu.cpp']
-
-
-class libwebgpu_cpp(MTLibrary):
-  name = 'libwebgpu_cpp'
-
-  cflags = ['-std=c++11']
-  src_dir = 'system/lib/webgpu'
-  src_files = ['webgpu_cpp.cpp']
-
-
 class libembind(MTLibrary):
   name = 'libembind'
   never_force = True
@@ -2346,7 +2332,7 @@ def get_libs_to_link(options):
   def add_forced_libs():
     for forced in force_include:
       if forced not in system_libs_map:
-        shared.exit_with_error('invalid forced library: %s', forced)
+        utils.exit_with_error('invalid forced library: %s', forced)
       add_library(forced)
 
   if options.nodefaultlibs:
@@ -2409,7 +2395,7 @@ def get_libs_to_link(options):
       add_library('libmimalloc')
       if settings.USE_ASAN:
         # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
-        shared.exit_with_error('mimalloc is not compatible with -fsanitize=address')
+        utils.exit_with_error('mimalloc is not compatible with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')
@@ -2424,11 +2410,6 @@ def get_libs_to_link(options):
     add_library('libsockets_proxy')
   else:
     add_library('libsockets')
-
-  if settings.USE_WEBGPU:
-    add_library('libwebgpu')
-    if settings.LINK_AS_CXX:
-      add_library('libwebgpu_cpp')
 
   if settings.WASM_WORKERS and (not settings.SINGLE_FILE and
                                 not settings.RELOCATABLE and
@@ -2496,7 +2477,7 @@ def safe_copytree(src, dst, excludes=None):
     if entry.is_dir():
       safe_copytree(srcname, dstname, excludes)
     else:
-      shared.safe_copy(srcname, dstname)
+      utils.safe_copy(srcname, dstname)
 
 
 def install_system_headers(stamp):

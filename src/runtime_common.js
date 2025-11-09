@@ -27,6 +27,10 @@ function growMemViews() {
 #include "runtime_asan.js"
 #endif
 
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+#include "binaryDecode.js"
+#endif
+
 #if MODULARIZE
 var readyPromiseResolve, readyPromiseReject;
 #endif
@@ -174,3 +178,9 @@ if (ENVIRONMENT_IS_NODE) {
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #include "memoryprofiler.js"
+
+#if !DECLARE_ASM_MODULE_EXPORTS
+function exportAliases(wasmExports) {
+{{{ makeExportAliases() }}}
+}
+#endif

@@ -1,6 +1,8 @@
 // include: shell.js
 "use strict";
 
+// include: minimum_runtime_check.js
+// end include: minimum_runtime_check.js
 // The Module object: Our interface to the outside world. We import
 // and export values on it. There are various ways Module can be used:
 // 1. Not defined. We create it here
@@ -19,18 +21,18 @@ var Module = typeof Module != "undefined" ? Module : {};
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 // Attempt to auto-detect the environment
-var ENVIRONMENT_IS_WEB = typeof window == "object";
+var ENVIRONMENT_IS_WEB = !!globalThis.window;
 
-var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != "undefined";
+var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
-var ENVIRONMENT_IS_NODE = typeof process == "object" && process.versions?.node && process.type != "renderer";
+var ENVIRONMENT_IS_NODE = globalThis.process?.versions?.node && globalThis.process?.type != "renderer";
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 // include: <FILENAME REPLACED>
-Module["expectedDataFileDownloads"] ??= 0;
+if (!Module["expectedDataFileDownloads"]) Module["expectedDataFileDownloads"] = 0;
 
 Module["expectedDataFileDownloads"]++;
 
@@ -39,7 +41,7 @@ Module["expectedDataFileDownloads"]++;
   var isPthread = typeof ENVIRONMENT_IS_PTHREAD != "undefined" && ENVIRONMENT_IS_PTHREAD;
   var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != "undefined" && ENVIRONMENT_IS_WASM_WORKER;
   if (isPthread || isWasmWorker) return;
-  var isNode = typeof process === "object" && typeof process.versions === "object" && typeof process.versions.node === "string";
+  var isNode = globalThis.process && globalThis.process.versions && globalThis.process.versions.node && globalThis.process.type != "renderer";
   async function loadPackage(metadata) {
     var PACKAGE_PATH = "";
     if (typeof window === "object") {
@@ -50,15 +52,14 @@ Module["expectedDataFileDownloads"]++;
     }
     var PACKAGE_NAME = "a.out.data";
     var REMOTE_PACKAGE_BASE = "a.out.data";
-    var REMOTE_PACKAGE_NAME = Module["locateFile"]?.(REMOTE_PACKAGE_BASE, "") ?? REMOTE_PACKAGE_BASE;
+    var REMOTE_PACKAGE_NAME = Module["locateFile"] ? Module["locateFile"](REMOTE_PACKAGE_BASE, "") : REMOTE_PACKAGE_BASE;
     var REMOTE_PACKAGE_SIZE = metadata["remote_package_size"];
     async function fetchRemotePackage(packageName, packageSize) {
       if (isNode) {
-        var fsPromises = require("fs/promises");
-        var contents = await fsPromises.readFile(packageName);
-        return contents.buffer;
+        var contents = require("fs").readFileSync(packageName);
+        return new Uint8Array(contents).buffer;
       }
-      Module["dataFileDownloads"] ??= {};
+      if (!Module["dataFileDownloads"]) Module["dataFileDownloads"] = {};
       try {
         var response = await fetch(packageName);
       } catch (e) {
@@ -71,9 +72,9 @@ Module["expectedDataFileDownloads"]++;
       }
       const chunks = [];
       const headers = response.headers;
-      const total = Number(headers.get("Content-Length") ?? packageSize);
+      const total = Number(headers.get("Content-Length") || packageSize);
       let loaded = 0;
-      Module["setStatus"]?.("Downloading data...");
+      Module["setStatus"] && Module["setStatus"]("Downloading data...");
       const reader = response.body.getReader();
       while (1) {
         var {done, value} = await reader.read();
@@ -90,7 +91,7 @@ Module["expectedDataFileDownloads"]++;
           totalLoaded += download.loaded;
           totalSize += download.total;
         }
-        Module["setStatus"]?.(`Downloading data... (${totalLoaded}/${totalSize})`);
+        Module["setStatus"] && Module["setStatus"](`Downloading data... (${totalLoaded}/${totalSize})`);
       }
       const packageData = new Uint8Array(chunks.map(c => c.length).reduce((a, b) => a + b, 0));
       let offset = 0;
@@ -117,7 +118,7 @@ Module["expectedDataFileDownloads"]++;
       }
       async function processPackageData(arrayBuffer) {
         assert(arrayBuffer, "Loading data file failed.");
-        assert(arrayBuffer.constructor.name === ArrayBuffer.name, "bad input to processPackageData");
+        assert(arrayBuffer.constructor.name === ArrayBuffer.name, "bad input to processPackageData " + arrayBuffer.constructor.name);
         var byteArray = new Uint8Array(arrayBuffer);
         // Reuse the bytearray from the XHR as the source for file reads.
         for (var file of metadata["files"]) {
@@ -130,7 +131,7 @@ Module["expectedDataFileDownloads"]++;
         Module["removeRunDependency"]("datafile_a.out.data");
       }
       Module["addRunDependency"]("datafile_a.out.data");
-      Module["preloadResults"] ??= {};
+      if (!Module["preloadResults"]) Module["preloadResults"] = {};
       Module["preloadResults"][PACKAGE_NAME] = {
         fromCache: false
       };
@@ -142,7 +143,8 @@ Module["expectedDataFileDownloads"]++;
     if (Module["calledRun"]) {
       runWithFS(Module);
     } else {
-      (Module["preRun"] ??= []).push(runWithFS);
+      if (!Module["preRun"]) Module["preRun"] = [];
+      Module["preRun"].push(runWithFS);
     }
   }
   loadPackage({
@@ -445,9 +447,10 @@ async function instantiateAsync(binary, binaryFile, imports) {
 
 function getWasmImports() {
   // prepare imports
-  return {
+  var imports = {
     "a": wasmImports
   };
+  return imports;
 }
 
 // Create the wasm instance.
@@ -664,7 +667,7 @@ var PATH_FS = {
   }
 };
 
-var UTF8Decoder = globalThis.TextDecoder ? new TextDecoder : undefined;
+var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
 
 var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
   var maxIdx = idx + maxBytesToRead;
@@ -823,7 +826,7 @@ var FS_stdin_getChar = () => {
       if (bytesRead > 0) {
         result = buf.slice(0, bytesRead).toString("utf-8");
       }
-    } else if (typeof window != "undefined" && typeof window.prompt == "function") {
+    } else if (globalThis.window?.prompt) {
       // Browser.
       result = window.prompt("Input: ");
       // returns null on cancel
@@ -1805,12 +1808,13 @@ var FS = {
       }
     }
     // sync all mounts
-    mounts.forEach(mount => {
-      if (!mount.type.syncfs) {
-        return done(null);
+    for (var mount of mounts) {
+      if (mount.type.syncfs) {
+        mount.type.syncfs(mount, populate, done);
+      } else {
+        done(null);
       }
-      mount.type.syncfs(mount, populate, done);
-    });
+    }
   },
   mount(type, opts, mountpoint) {
     var root = mountpoint === "/";
@@ -1865,8 +1869,7 @@ var FS = {
     var node = lookup.node;
     var mount = node.mounted;
     var mounts = FS.getMounts(mount);
-    Object.keys(FS.nameTable).forEach(hash => {
-      var current = FS.nameTable[hash];
+    for (var [hash, current] of Object.entries(FS.nameTable)) {
       while (current) {
         var next = current.name_next;
         if (mounts.includes(current.mount)) {
@@ -1874,7 +1877,7 @@ var FS = {
         }
         current = next;
       }
-    });
+    }
     // no longer a mountpoint
     node.mounted = null;
     // remove this mount from the child mounts
@@ -2797,7 +2800,7 @@ var FS = {
   },
   forceLoadFile(obj) {
     if (obj.isDevice || obj.isFolder || obj.link || obj.contents) return true;
-    if (typeof XMLHttpRequest != "undefined") {
+    if (globalThis.XMLHttpRequest) {
       abort("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
     } else {
       // Command-line.
@@ -2897,7 +2900,7 @@ var FS = {
         return this._chunkSize;
       }
     }
-    if (typeof XMLHttpRequest != "undefined") {
+    if (globalThis.XMLHttpRequest) {
       if (!ENVIRONMENT_IS_WORKER) abort("Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc");
       var lazyArray = new LazyUint8Array;
       var properties = {
@@ -2930,14 +2933,12 @@ var FS = {
     });
     // override each stream op with one that tries to force load the lazy file first
     var stream_ops = {};
-    var keys = Object.keys(node.stream_ops);
-    keys.forEach(key => {
-      var fn = node.stream_ops[key];
+    for (const [key, fn] of Object.entries(node.stream_ops)) {
       stream_ops[key] = (...args) => {
         FS.forceLoadFile(node);
         return fn(...args);
       };
-    });
+    }
     function writeChunks(stream, buffer, offset, length, position) {
       var contents = stream.node.contents;
       if (position >= contents.length) return 0;
@@ -3152,12 +3153,12 @@ Module["FS_createLazyFile"] = FS_createLazyFile;
 // End JS library exports
 // end include: postlibrary.js
 // Imports from the Wasm binary.
-var _main, wasmMemory, wasmTable;
+var _main, memory, __indirect_function_table, wasmMemory;
 
 function assignWasmExports(wasmExports) {
   _main = Module["_main"] = wasmExports["d"];
-  wasmMemory = wasmExports["b"];
-  wasmTable = wasmExports["__indirect_function_table"];
+  memory = wasmMemory = wasmExports["b"];
+  __indirect_function_table = wasmExports["__indirect_function_table"];
 }
 
 var wasmImports = {

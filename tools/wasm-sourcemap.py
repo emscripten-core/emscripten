@@ -13,12 +13,12 @@ sections from a wasm file.
 import argparse
 import json
 import logging
-from math import floor, log
 import os
 import re
-from subprocess import Popen, PIPE
-from pathlib import Path
 import sys
+from math import floor, log
+from pathlib import Path
+from subprocess import PIPE, Popen
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -26,9 +26,8 @@ sys.path.insert(0, __rootdir__)
 
 from tools import utils
 from tools.system_libs import DETERMINISTIC_PREFIX
-from tools.shared import path_from_root
 
-EMSCRIPTEN_PREFIX = utils.normalize_path(path_from_root())
+EMSCRIPTEN_PREFIX = utils.normalize_path(utils.path_from_root())
 
 logger = logging.getLogger('wasm-sourcemap')
 

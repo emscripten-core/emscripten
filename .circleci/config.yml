@@ -1,5 +1,6 @@
 version: 2.1
 
+
 orbs:
   win: circleci/windows@5.0
 
@@ -105,11 +106,22 @@ commands:
             echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> ~/emsdk/.emscripten
             cat ~/emsdk/.emscripten
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
-  install-node-latest:
-    description: "install latest version of node"
+  install-node-oldest:
+    description: "install node (oldest)"
     steps:
       - install-node-version:
-         node_version: "19.0.0"
+          # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
+          node_version: "12.22.9"
+  install-node-lts:
+    description: "install node (current LTS)"
+    steps:
+      - install-node-version:
+         node_version: "22.21.0"
+  install-node-newest:
+    description: "install node (newest)"
+    steps:
+      - install-node-version:
+         node_version: "24.10.0"
   install-node-canary:
     description: "install canary version of node"
     steps:
@@ -142,6 +154,10 @@ commands:
             cd ~/emsdk
             ./emsdk install tot
             ./emsdk activate tot
+            # Write the version of clang into a file for use in the ccache key
+            ./upstream/bin/clang --version > clang_version.txt
+            echo "clang version:"
+            cat ~/emsdk/clang_version.txt
             # Remove the emsdk version of emscripten to save space in the
             # persistent workspace and to avoid any confusion with the version
             # we are trying to test.
@@ -171,7 +187,13 @@ commands:
           command: |
             ./emcc --clear-cache
       - pip-install
-      - run: apt-get install -q -y ninja-build
+      - run: apt-get install -q -y ninja-build ccache
+      - run:
+          name: Ccache stats and configuration
+          command: |
+            ccache -s
+            ccache --print-stats
+            ccache -p
       - run:
           name: embuilder build ALL
           command: |
@@ -196,6 +218,19 @@ commands:
           command: |
             ./embuilder build MINIMAL --pic --lto
             ./test/runner test_hello_world
+      - run:
+          name: "Ccache stats and configuration"
+          command: |
+            ls -l ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
+            ls -l ~/cache/sysroot/include/emscripten/heap.h
+            cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin.o.ccache-log
+            date
+            cat ~/cache/build/libcompiler_rt/absvdi2.o.ccache-log
+            ccache -s
+            ccache --print-stats
+            ccache -p
+            ccache --zero-stats
+
   persist:
     description: "Persist the emsdk, libraries, and engines"
     steps:
@@ -209,6 +244,19 @@ commands:
             - vms/
             - wasi-sdk/
             - .jsvu/
+      - when:
+          # Only the main branch will store its cache results, and only the non-main branches
+          # will use cached results. This prevents untrusted PRs from polluting caches used
+          # by other branches.
+          condition:
+            equal: [ "main", << pipeline.git.branch >> ]
+          steps:
+            - save_cache:
+                name: "Save Ccache cache"
+                paths:
+                  - ~/.ccache
+                key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
+
   prepare-for-tests:
     description: "Setup emscripten tests"
     steps:
@@ -216,9 +264,6 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - emsdk-env
       - bootstrap
       - pip-install
@@ -339,9 +384,6 @@ commands:
           at: ~/
       - checkout
       - remove-linux-binaries
-      - run:
-          name: submodule update
-          command: git submodule update --init
   run-tests-firefox:
     description: "Runs emscripten tests under firefox"
     parameters:
@@ -377,8 +419,6 @@ commands:
             # TODO(https://github.com/emscripten-core/emscripten/issues/24205)
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_LACKS_WEBGPU: "1"
-            # OffscreenCanvas support is not yet done in Firefox.
-            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
             EMTEST_CORES: "2"
@@ -447,8 +487,6 @@ commands:
             # TODO(https://github.com/emscripten-core/emscripten/issues/24205)
             EMTEST_LACKS_SOUND_HARDWARE: "1"
             EMTEST_LACKS_WEBGPU: "1"
-            # OffscreenCanvas support is not yet done in Firefox.
-            EMTEST_LACKS_OFFSCREEN_CANVAS: "1"
             EMTEST_DETECT_TEMPFILE_LEAKS: "0"
             EMTEST_HEADLESS: "1"
             EMTEST_CORES: "2"
@@ -543,6 +581,7 @@ jobs:
     environment:
       EMCC_CORES: 16
       EMCC_USE_NINJA: 1
+      EM_COMPILER_WRAPPER: "ccache"
     steps:
       - checkout
       - run:
@@ -570,6 +609,20 @@ jobs:
             tar xvf wasi-sysroot-11.0.tar.gz -C ~/wasi-sdk/
       - install-v8
       - install-emsdk
+      - when:
+          condition:
+            not:
+              equal: [ "main", << pipeline.git.branch >> ]
+          steps:
+            - restore_cache:
+                name: "Restore Ccache cache"
+                key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
+      - run:
+          name: Configure ccache
+          command: |
+            mkdir -p ~/.ccache
+            cat .circleci/ccache.conf
+            cp .circleci/ccache.conf ~/.ccache
       - build-libs
       - run:
           name: Clean build directory
@@ -624,6 +677,7 @@ jobs:
             lsan.test_dlfcn_basic
             lsan.test_pthread_create
             lsan.test_pthread_exit_main_stub
+            lsan.test_dylink_iostream
             ubsan.test_externref_emjs_dynlink"
       - freeze-cache
       - run-tests:
@@ -714,6 +768,9 @@ jobs:
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype
             minimal0.test_utf
+            minimal0.test_ubsan_full_stack_trace_gsource_map
+            minimal0.test_static_variable
+            minimal0.test_stack_overflow
             omitexports0.test_asyncify_longjmp
             omitexports0.test_emscripten_api
             strict.test_no_declare_asm_module_exports
@@ -775,7 +832,31 @@ jobs:
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
-          test_targets: "wasm64_4gb
+          test_targets: "wasm64_4gb"
+      - upload-test-results
+  test-wasm64-misc:
+    environment:
+      LANG: "C.UTF-8"
+    # We don't use `bionic` here since its too old to run recent node versions:
+    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
+    executor: linux-python
+    steps:
+      - prepare-for-tests
+      # The linux-python image uses /home/circleci rather than /root and jsvu
+      # hardcodes /root into its launcher scripts so we need to reinstall v8.
+      - run: rm -rf $HOME/.jsvu
+      - install-v8
+      - install-node-canary
+      # When running wasm64 tests we need to make sure we use the testing
+      # version of node (node canary) when running the compiler output (e.g.
+      # in configure tests.
+      - run:
+          name: configure node canary
+          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
+      - run-tests:
+          title: "wasm64"
+          test_targets: "
+            other.*_wasm64
             core_2gb.test_*em_asm*
             core_2gb.test_*embind*
             core_2gb.test_fs_js_api_wasmfs
@@ -784,16 +865,12 @@ jobs:
             wasm64l.test_bigswitch
             wasm64l.test_module_wasm_memory
             wasm64l.test_longjmp2_emscripten
-            wasm64l.test_embind_val_basics_legacy
-            other.test_failing_growth_wasm64"
+            wasm64l.test_embind_val_basics_legacy"
       - upload-test-results
   test-jsc:
     executor: linux-python
     steps:
       - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - pip-install
       - install-emsdk
       - run:
@@ -816,9 +893,6 @@ jobs:
     executor: linux-python
     steps:
       - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - pip-install
       - install-emsdk
       - run:
@@ -846,9 +920,6 @@ jobs:
       EMTEST_SKIP_V8: "1"
     steps:
       - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - pip-install
       - install-emsdk
       # `install-node-version` only changes the NODE_JS_TEST (the version of
@@ -882,9 +953,7 @@ jobs:
             "
       # Run some basic tests with the minimum version of node that we currently
       # support in the generated code.
-      # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
-      - install-node-version:
-          node_version: "12.22.9"
+      - install-node-oldest
       - run-tests:
           title: "node (oldest / 12.22.9)"
           extra-cflags: "-sMIN_NODE_VERSION=122209"
@@ -895,6 +964,7 @@ jobs:
             other.test_native_call_before_init
             other.test_js_optimizer_verbose
             other.test_node_unhandled_rejection
+            other.test_file_packager_separate_metadata
             other.test_full_js_library*
             core2.test_hello_world
             core2.test_fcntl_open_nodefs
@@ -947,10 +1017,28 @@ jobs:
             core2.test_unistd_unlink_rawfs
             core2.test_unistd_write_broken_link_rawfs
             "
+      # Run a few test with the most recent LTS version of node
+      - install-node-lts
+      - run-tests:
+          # Run tests that on older versions of node would require flags, but
+          # those flags should not be injected on newer versions.
+          title: "node (lts)"
+          test_targets: "-v
+            other.test_gen_struct_info
+            other.test_native_call_before_init
+            other.test_node_unhandled_rejection
+            other.test_js_optimizer_verbose
+            other.test_min_node_version
+            other.test_node_emscripten_num_logical_cores
+            core2.test_pthread_create
+            core2.test_i64_invoke_bigint
+            core2.test_sse2
+            core2.test_source_map
+            core2.test_exceptions_wasm_legacy
+            core2.test_pthread_unhandledrejection
+            "
       # Run a few test with the most recent version of node
-      # In particular we have some tests that require node flags on older
-      # versions of node but not with the most recent version.
-      - install-node-latest
+      - install-node-newest
       - run-tests:
           # Run tests that on older versions of node would require flags, but
           # those flags should not be injected on newer versions.
@@ -967,7 +1055,8 @@ jobs:
             core2.test_sse2
             core2.test_source_map
             core2.test_exceptions_wasm_legacy
-            core2.test_pthread_unhandledrejection"
+            core2.test_pthread_unhandledrejection
+            "
       - upload-test-results
   test-other:
     executor: focal
@@ -982,16 +1071,13 @@ jobs:
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
-          test_targets: "other skip:other.test_native_link_error_message"
+          test_targets: "other jslib skip:other.test_native_link_error_message"
   test-browser-chrome:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
       - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - pip-install
       - install-emsdk
       - run-tests-chrome:
@@ -1015,6 +1101,7 @@ jobs:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
+      EMTEST_VISUALIZE: "1"
     steps:
       - run-tests-chrome:
           title: "browser64"
@@ -1037,6 +1124,9 @@ jobs:
             browser64.test_pthread_asan*
             browser64.test_webgl_multi_draw*
             browser64.test_pthread_growth*"
+      - run:
+          name: Check profile
+          command: file -E out/graph.html
   test-browser-chrome-2gb:
     executor: focal
     environment:
@@ -1049,13 +1139,14 @@ jobs:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
-      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-chrome:
           title: "browser64_4gb"
           test_targets: "browser64_4gb"
   test-browser-firefox:
     executor: focal
+    environment:
+      EMTEST_LACKS_GROWABLE_ARRAYBUFFERS: "1"
     steps:
       - prepare-for-tests
       - run-tests-firefox:
@@ -1065,26 +1156,16 @@ jobs:
           # initial position of the mouse pointer relative to the canvas.
           # browser.test_html5_webgl_create_context is skipped because
           # anti-aliasing is not well supported.
-          # browser.test_webgl_offscreen_canvas_in_pthread and
-          # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
-          # are crashing Firefox (bugzil.la/1281796). The former case is
-          # further blocked by issue #6897.
           test_targets: "
             browser
             skip:browser.test_sdl2_mouse
             skip:browser.test_html5_webgl_create_context
-            skip:browser.test_webgl_offscreen_canvas_in_pthread
-            skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
             skip:browser.test_glut_glutget
-            skip:browser.test_*_growable_arraybuffers
             "
   test-browser-firefox-wasm64:
     executor: focal
     steps:
       - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - pip-install
       - install-emsdk
       - run-tests-firefox:
@@ -1160,7 +1241,8 @@ jobs:
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
+      EMTEST_SKIP_WASM_LEGACY_EH: "1"
+      EMTEST_SKIP_WASM_EH: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
@@ -1196,7 +1278,8 @@ jobs:
       # We don't install d8 or modern node on the mac runner so we skip any
       # tests that depend on those.
       EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
+      EMTEST_SKIP_WASM_LEGACY_EH: "1"
+      EMTEST_SKIP_WASM_EH: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
@@ -1206,9 +1289,9 @@ jobs:
     steps:
       - setup-macos
       - install-emsdk
+      - pip-install:
+          python: "$EMSDK_PYTHON"
       - freeze-cache
-      # TODO: We can't currently do pip install here since numpy and other packages
-      # are currently missing arm64 macos binaries.
       - run-tests:
           title: "crossplatform tests"
           test_targets: "--crossplatform-only"
@@ -1236,6 +1319,9 @@ workflows:
           requires:
             - build-linux
       - test-core3:
+          requires:
+            - build-linux
+      - test-wasm64-misc:
           requires:
             - build-linux
       - test-wasm64-4gb:

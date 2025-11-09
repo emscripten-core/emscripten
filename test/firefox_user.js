@@ -1,5 +1,6 @@
-// Lift the default max 20 workers limit to something higher to avoid hangs when page needs to spawn a lot of threads.
-user_pref("dom.workers.maxPerDomain", 100);
+// Old Firefox browsers have a maxPerDomain limit of 20. Newer Firefox browsers default to 512. Match the new
+// default here to help test spawning a lot of threads also on older Firefox versions.
+user_pref("dom.workers.maxPerDomain", 512);
 // Always allow opening popups
 user_pref("browser.popups.showPopupBlocker", false);
 user_pref("dom.disable_open_during_load", false);
@@ -12,6 +13,11 @@ user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", fal
 user_pref("browser.sessionstore.restore_on_demand", false);
 user_pref("browser.sessionstore.max_resumed_crashes", -1);
 user_pref("toolkit.startup.max_resumed_crashes", -1);
+// Ease shutting down browser instances in the parallel browser harness
+user_pref("browser.warnOnQuit", false);
+user_pref("browser.warnOnQuitShortcut", false);
+// Hide about:config confirmation prompt - devs are advanced users
+user_pref("browser.aboutConfig.showWarning", false);
 // Don't show the slow script dialog popup
 user_pref("dom.max_script_run_time", 0);
 user_pref("dom.max_chrome_script_run_time", 0);

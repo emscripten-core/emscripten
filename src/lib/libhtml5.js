@@ -120,7 +120,7 @@ var LibraryHTML5 = {
         // whether it is possible to perform a request here without needing to defer. See
         // https://developer.mozilla.org/en-US/docs/Web/Security/User_activation#transient_activation
         // and https://caniuse.com/mdn-api_useractivation
-        // At the time of writing, Firefox does not support this API: https://bugzilla.mozilla.org/show_bug.cgi?id=1791079
+        // At the time of writing, Firefox does not support this API: https://bugzil.la/1791079
         return navigator.userActivation.isActive;
       }
 
@@ -814,6 +814,7 @@ var LibraryHTML5 = {
     a = a || {};
     ag = ag || {};
     rr = rr || {};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.supportedFields, 'supportedFields', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'a["x"]', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'a["y"]', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'a["z"]', 'double') }}};

@@ -16,8 +16,8 @@
 // underscore.
 var WASM_EXPORTS = [];
 
-// Similar to above but only includes the global/data symbols.
-var WASM_GLOBAL_EXPORTS = [];
+// Similar to above but only includes the data symbols (address exports).
+var DATA_EXPORTS = [];
 
 // An array of all symbols exported from all the side modules specified on the
 // command line.
@@ -56,11 +56,6 @@ var TARGET_JS_NAME = '';
 // get away without including the full filesystem - in particular, if open() is
 // never used, then we don't actually need to support operations on streams.
 var SYSCALLS_REQUIRE_FILESYSTEM = true;
-
-// A list of feature flags to pass to each binaryen invocation (like wasm-opt,
-// etc.). This is received from wasm-emscripten-finalize, which reads it from
-// the features section.
-var BINARYEN_FEATURES = [];
 
 // Whether EMCC_AUTODEBUG is on, which automatically instruments code for
 // runtime logging that can help in debugging.
@@ -107,7 +102,8 @@ var WASI_MODULE_NAME = "wasi_snapshot_preview1";
 var JS_LIBRARIES = [];
 
 // This will contain the emscripten version. This can be useful in combination
-// with RETAIN_COMPILER_SETTINGS
+// with external JS library files that need to check the version of emscripten
+// they are being used with.
 var EMSCRIPTEN_VERSION = '';
 
 // Will be set to 0 if -fno-rtti is used on the command line.
@@ -180,7 +176,11 @@ var CAN_ADDRESS_2GB = false;
 // This has no effect if DWARF is not being emitted.
 var SEPARATE_DWARF = false;
 
-// New WebAssembly exception handling
+// Target WebAssembly exception handling instead of JavaScript-side exception
+// handling. Furthermore, if WASM_LEGACY_EXCEPTIONS=1, then old legacy Wasm
+// exception handling is used, and if WASM_LEGACY_EXCEPTIONS=0, then Wasm
+// exception handling is targeted.
+// Enabled by passing -fwasm-exceptions on the command line.
 var WASM_EXCEPTIONS = false;
 
 // Set to true if the program has a main function.  By default this is
@@ -250,8 +250,6 @@ var POST_JS_FILES = [];
 // Set when -pthread / -sPTHREADS is passed
 var PTHREADS = false;
 
-var BULK_MEMORY = false;
-
 var MINIFY_WHITESPACE = true;
 
 var ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = [];
@@ -273,3 +271,8 @@ var OUTPUT_FORMAT = '';
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -gsource-map with sanitizers.
 var LOAD_SOURCE_MAP = false;
+
+var ALIASES = [];
+
+// List of public setting names (Used by RETAIN_COMPILER_SETTINGS)
+var PUBLIC_SETTINGS = [];

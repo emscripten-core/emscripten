@@ -20,14 +20,9 @@ import sys
 import time
 from contextlib import contextmanager
 
-from tools import cache
-from tools import shared
-from tools import system_libs
-from tools import ports
-from tools import utils
+from tools import cache, ports, shared, system_libs, utils
 from tools.settings import settings
 from tools.system_libs import USE_NINJA
-
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
@@ -100,8 +95,6 @@ MINIMAL_TASKS = [
     'libunwind-legacyexcept',
     'libunwind-wasmexcept',
     'libnoexit',
-    'libwebgpu',
-    'libwebgpu_cpp',
     'bullet',
 ]
 
@@ -127,6 +120,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'crtbegin',
     'libsanitizer_common_rt',
     'libubsan_rt',
+    'libwasm_workers-debug',
     'libwasm_workers-debug-stub',
     'libfetch',
     'libfetch-mt',
@@ -134,6 +128,9 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libwasmfs-debug',
     'libwasmfs_no_fs',
     'giflib',
+    'sdl2',
+    'sdl2_gfx',
+    'sdl3',
 ]
 
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(ports.port_variants.keys()))
@@ -219,10 +216,10 @@ def main():
   args = parser.parse_args()
 
   if args.operation != 'rebuild' and len(args.targets) == 0:
-    shared.exit_with_error('no build targets specified')
+    utils.exit_with_error('no build targets specified')
 
   if args.operation == 'rebuild' and not USE_NINJA:
-    shared.exit_with_error('"rebuild" operation is only valid when using Ninja')
+    utils.exit_with_error('"rebuild" operation is only valid when using Ninja')
 
   # process flags
 

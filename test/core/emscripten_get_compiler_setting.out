@@ -1,2 +1,3 @@
 INVOKE_RUN: 1
-EMSCRIPTEN_VERSION: waka
+CLOSURE_WARNINGS: quiet
+EMBIND: invalid compiler setting: EMBIND

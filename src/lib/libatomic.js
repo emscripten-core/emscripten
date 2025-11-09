@@ -22,7 +22,7 @@ addToLibrary({
   //   https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the
   // target memory location.
-  $polyfillWaitAsync__postset: `if (!Atomics.waitAsync || (typeof navigator != 'undefined' && navigator.userAgent && Number((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91)) {
+  $polyfillWaitAsync__postset: `if (!Atomics.waitAsync || (globalThis.navigator?.userAgent && Number((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91)) {
   let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];
   function __Atomics_pollWaitAsyncAddresses() {
     let now = performance.now();
@@ -128,9 +128,9 @@ addToLibrary({
   emscripten_atomic_cancel_all_wait_asyncs__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_all_wait_asyncs: () => {
     let waitAsyncs = Object.values(liveAtomicWaitAsyncs);
-    waitAsyncs.forEach((address) => {
+    for (var address of waitAsyncs) {
       Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
-    });
+    }
     liveAtomicWaitAsyncs = {};
     return waitAsyncs.length;
   },
@@ -138,17 +138,17 @@ addToLibrary({
   emscripten_atomic_cancel_all_wait_asyncs_at_address__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_all_wait_asyncs_at_address: (address) => {
     let numCancelled = 0;
-    Object.keys(liveAtomicWaitAsyncs).forEach((waitToken) => {
-      if (liveAtomicWaitAsyncs[waitToken] == address) {
+    for (var [waitToken, waitAddress] of Object.entries(liveAtomicWaitAsyncs)) {
+      if (waitAddress == address) {
         Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
         delete liveAtomicWaitAsyncs[waitToken];
         numCancelled++;
       }
-    });
+    }
     return numCancelled;
   },
 
-  emscripten_has_threading_support: () => typeof SharedArrayBuffer != 'undefined',
+  emscripten_has_threading_support: () => !!globalThis.SharedArrayBuffer,
 
   emscripten_num_logical_cores: () =>
 #if ENVIRONMENT_MAY_BE_NODE

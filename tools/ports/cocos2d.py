@@ -5,6 +5,7 @@
 
 import os
 import re
+
 from tools import diagnostics
 
 TAG = 'version_3_3'

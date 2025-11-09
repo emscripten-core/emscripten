@@ -22,6 +22,9 @@
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
 #endif
+#if EXPORT_ES6 && (MIN_FIREFOX_VERSION < 114 || MIN_CHROME_VERSION < 80 || MIN_SAFARI_VERSION < 150000)
+#error "internal error, feature_matrix should not allow this"
+#endif
 
 {{{
 #if MEMORY64
@@ -48,6 +51,12 @@ const pthreadWorkerOptions = `{
         // This is the way that we signal to the node worker that it is hosting
         // a pthread.
         'workerData': 'em-pthread',
+#if WASMFS
+        // In WasmFS, close() is not proxied to the main thread. Suppress
+        // warnings when a thread closes a file descriptor it didn't open.
+        // See: https://github.com/emscripten-core/emscripten/issues/24731
+        'trackUnmanagedFds': false,
+#endif
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
         // This is the way that we signal to the Web Worker that it is hosting
@@ -423,7 +432,7 @@ var LibraryPThread = {
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
-      if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+      if (globalThis.trustedTypes?.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (ignored) => new URL('{{{ pthreadWorkerScript }}}', import.meta.url) });
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
@@ -445,6 +454,16 @@ var LibraryPThread = {
       worker = new Worker(new URL('{{{ pthreadWorkerScript }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
 #else // EXPORT_ES6
       var pthreadMainJs = _scriptName;
+#if CROSS_ORIGIN && ENVIRONMENT_MAY_BE_WEB
+      // In order to support cross origin loading of worker threads load the
+      // worker via a tiny inline `importScripts` call.   For some reason its
+      // fine to `importScripts` across origins, in cases where new Worker
+      // itself does not allow this.
+      // https://github.com/emscripten-core/emscripten/issues/21937
+      if (ENVIRONMENT_IS_WEB) {
+        pthreadMainJs = URL.createObjectURL(new Blob([`importScripts('${_scriptName}')`], { type: 'application/javascript' }));
+      }
+#endif
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
       // We can't use makeModuleReceiveWithVar here since we want to also
       // call URL.createObjectURL on the mainScriptUrlOrBlob.
@@ -460,7 +479,7 @@ var LibraryPThread = {
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
-      if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+      if (globalThis.trustedTypes?.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
@@ -575,7 +594,7 @@ var LibraryPThread = {
 #if MAIN_MODULE
   $registerTLSInit: (tlsInitFunc, moduleExports, metadata) => {
 #if DYLINK_DEBUG
-    dbg("registerTLSInit: " + tlsInitFunc);
+    dbg('registerTLSInit:', tlsInitFunc, metadata?.tlsExports);
 #endif
     // In relocatable builds, we use the result of calling tlsInitFunc
     // (`_emscripten_tls_init`) to relocate the TLS exports of the module
@@ -594,7 +613,7 @@ var LibraryPThread = {
       }
       var tlsExports = {};
       metadata.tlsExports.forEach((s) => tlsExports[s] = moduleExports[s]);
-      relocateExports(tlsExports, __tls_base, /*replace=*/true);
+      updateGOT(relocateExports(tlsExports, __tls_base), /*replace=*/true);
     }
 
     // Register this function so that its gets called for each thread on
@@ -1234,7 +1253,7 @@ var LibraryPThread = {
 
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox'],
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
-    if (typeof Atomics.waitAsync === 'function') {
+    if (Atomics.waitAsync) {
       // Wait on the pthread's initial self-pointer field because it is easy and
       // safe to access from sending threads that need to notify the waiting
       // thread.

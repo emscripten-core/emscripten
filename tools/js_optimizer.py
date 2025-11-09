@@ -4,20 +4,20 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os
-import sys
-import subprocess
-import re
 import json
+import os
+import re
 import shutil
+import subprocess
+import sys
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
+from tools import building, config, shared, utils
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import path_from_root
-from tools import building, config, shared, utils
 
 temp_files = shared.get_temp_files()
 
@@ -99,7 +99,7 @@ class Minifier:
       cmd = get_acorn_cmd() + [temp_file, 'minifyGlobals']
       if minify_whitespace:
         cmd.append('--minify-whitespace')
-      output = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
+      output = utils.run_process(cmd, stdout=subprocess.PIPE).stdout
 
     assert len(output) and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     code, metadata = output.split('// EXTRA_INFO:')
@@ -162,7 +162,7 @@ def run_on_file(filename, passes, extra_info=None):
     end_funcs = js.rfind(end_funcs_marker)
 
     if start_funcs < 0 or end_funcs < start_funcs:
-      shared.exit_with_error('invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s' % (start_funcs, end_funcs))
+      utils.exit_with_error('invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s' % (start_funcs, end_funcs))
 
     minify_globals = 'minifyNames' in passes
     if minify_globals:

@@ -961,7 +961,8 @@
               "accelerationIncludingGravityZ",
               "rotationRateAlpha",
               "rotationRateBeta",
-              "rotationRateGamma"
+              "rotationRateGamma",
+              "supportedFields"
             ],
             "EmscriptenOrientationChangeEvent": [
               "orientationIndex",
@@ -1268,7 +1269,8 @@
         "structs": {
             "EmscriptenWebAudioCreateAttributes": [
               "latencyHint",
-              "sampleRate"
+              "sampleRate",
+              "renderSizeHint"
             ],
             "WebAudioParamDescriptor": [
               "defaultValue",
@@ -1293,7 +1295,10 @@
             "EmscriptenAudioWorkletNodeCreateOptions": [
               "numberOfInputs",
               "numberOfOutputs",
-              "outputChannelCounts"
+              "outputChannelCounts",
+              "channelCount",
+              "channelCountMode",
+              "channelInterpretation"
             ]
         }
     },

@@ -3,9 +3,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import tempfile
 import atexit
 import sys
+import tempfile
 
 from . import utils
 

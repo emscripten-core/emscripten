@@ -14,7 +14,7 @@
 // An online HTML version (which may be of a different version of Emscripten)
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
-#if RELOCATABLE
+#if MAIN_MODULE
 {{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]') }}}
 #endif
 
@@ -34,7 +34,7 @@ if (WebAssembly.isWasm2js) {
 #endif
 
 #if ASSERTIONS && WASM == 1
-if (typeof WebAssembly != 'object') {
+if (!globalThis.WebAssembly) {
   err('no native wasm support detected');
 }
 #endif
@@ -104,11 +104,11 @@ var isFileURI = (filename) => filename.startsWith('file://');
 #include "runtime_common.js"
 
 #if ASSERTIONS
-assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
+assert(globalThis.Int32Array && globalThis.Float64Array && Int32Array.prototype.subarray && Int32Array.prototype.set,
        'JS engine does not provide full typed array support');
 #endif
 
-#if RELOCATABLE
+#if RELOCATABLE || MAIN_MODULE
 var __RELOC_FUNCS__ = [];
 #endif
 
@@ -155,7 +155,7 @@ function initRuntime() {
   checkStackCookie();
 #endif
 
-#if RELOCATABLE
+#if MAIN_MODULE || RELOCATABLE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
 
@@ -167,9 +167,15 @@ function initRuntime() {
 #else
   wasmExports['__wasm_call_ctors']();
 #endif
+#if RUNTIME_DEBUG
+  dbg('done __wasm_call_ctors');
+#endif
 #endif
 
   <<< ATPOSTCTORS >>>
+#if RUNTIME_DEBUG
+  dbg('done ATPOSTCTORS');
+#endif
 }
 
 #if HAS_MAIN
@@ -423,27 +429,34 @@ function getWasmBinary(file) {}
 #else
 
 function findWasmBinary() {
-#if SINGLE_FILE
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+  return binaryDecode("<<< WASM_BINARY_DATA >>>");
+#elif SINGLE_FILE
   return base64Decode('<<< WASM_BINARY_DATA >>>');
+#elif AUDIO_WORKLET || !EXPORT_ES6 // For an Audio Worklet, we cannot use `new URL()`.
+  return locateFile('{{{ WASM_BINARY_FILE }}}');
 #else
-#if EXPORT_ES6 && !AUDIO_WORKLET
-  if (Module['locateFile']) {
-#endif
-    return locateFile('{{{ WASM_BINARY_FILE }}}');
-#if EXPORT_ES6 && !AUDIO_WORKLET // For an Audio Worklet, we cannot use `new URL()`.
-  }
+
 #if ENVIRONMENT_MAY_BE_SHELL
   if (ENVIRONMENT_IS_SHELL) {
     return '{{{ WASM_BINARY_FILE }}}';
   }
 #endif
+
+  if (Module['locateFile']) {
+    return locateFile('{{{ WASM_BINARY_FILE }}}');
+  }
+
   // Use bundler-friendly `new URL(..., import.meta.url)` pattern; works in browsers too.
   return new URL('{{{ WASM_BINARY_FILE }}}', import.meta.url).href;
-#endif
+
 #endif
 }
 
 function getBinarySync(file) {
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE
+  return file;
+#else
 #if SINGLE_FILE
   if (ArrayBuffer.isView(file)) {
     return file;
@@ -463,6 +476,7 @@ function getBinarySync(file) {
   throw 'both async and sync fetching of the wasm failed';
 #else
   throw 'sync fetching of the wasm failed: you can preload it to Module["wasmBinary"] manually, or emcc.py will do that for you when generating HTML (but not JS)';
+#endif
 #endif
 }
 
@@ -488,27 +502,43 @@ async function getWasmBinary(binaryFile) {
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
 var splitModuleProxyHandler = {
-  get(target, prop, receiver) {
-    return (...args) => {
+  get(target, moduleName, receiver) {
+    if (moduleName.startsWith('placeholder')) {
+      let secondaryFile;
+      if (moduleName == 'placeholder') { // old format
+        secondaryFile = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
+      } else { // new format
+        let moduleID = moduleName.split('.')[1];
+        secondaryFile = wasmBinaryFile.slice(0, -5) + '.' + moduleID + '.wasm';
+      }
+      return new Proxy({}, {
+        get(target, base, receiver) {
+          return (...args) => {
 #if ASYNCIFY == 2
-      throw new Error('Placeholder function "' + prop + '" should not be called when using JSPI.');
+            throw new Error('Placeholder function "' + base + '" should not be called when using JSPI.');
 #else
-      err(`placeholder function called: ${prop}`);
-      var imports = {'primary': wasmExports};
-      // Replace '.wasm' suffix with '.deferred.wasm'.
-      var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
-      loadSplitModule(deferred, imports, prop);
-      err('instantiated deferred module, continuing');
+#if RUNTIME_DEBUG
+            dbg(`placeholder function called: ${base}`);
+#endif
+            var imports = {'primary': wasmRawExports};
+            // Replace '.wasm' suffix with '.deferred.wasm'.
+            loadSplitModule(secondaryFile, imports, base);
+#if RUNTIME_DEBUG
+            dbg('instantiated deferred module, continuing');
+#endif
 #if RELOCATABLE
-      // When the table is dynamically laid out, the placeholder functions names
-      // are offsets from the table base. In the main module, the table base is
-      // always 1.
-      return wasmTable.get(1 + parseInt(prop))(...args);
-#else
-      return wasmTable.get(prop)(...args);
+            // When the table is dynamically laid out, the placeholder functions names
+            // are offsets from the table base. In the main module, the table base is
+            // always 1.
+            base = 1 + parseInt(base);
 #endif
+            return wasmTable.get({{{ toIndexType('base') }}})(...args);
 #endif
+          }
+        }
+      });
     }
+    return target[moduleName];
   }
 };
 #endif
@@ -564,7 +594,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
     err(`failed to asynchronously prepare wasm: ${reason}`);
 #if WASM == 2
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-    if (typeof location != 'undefined') {
+    if (globalThis.location) {
 #endif
       // WebAssembly compilation failed, try running the JS fallback instead.
       var search = location.search;
@@ -654,21 +684,22 @@ function getWasmImports() {
 #endif
 #endif
   // prepare imports
-  return {
+  var imports = {
 #if MINIFY_WASM_IMPORTED_MODULES
     'a': wasmImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
     'env': wasmImports,
     '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
-#if SPLIT_MODULE
-    'placeholder': new Proxy({}, splitModuleProxyHandler),
-#endif
-#if RELOCATABLE
+#if MAIN_MODULE || RELOCATABLE
     'GOT.mem': new Proxy(wasmImports, GOTHandler),
     'GOT.func': new Proxy(wasmImports, GOTHandler),
 #endif
-  }
+  };
+#if SPLIT_MODULE
+  imports = new Proxy(imports, splitModuleProxyHandler);
+#endif
+  return imports;
 }
 
 // Create the wasm instance.
@@ -679,41 +710,46 @@ function getWasmImports() {
   // performing other necessary setup
   /** @param {WebAssembly.Module=} module*/
   function receiveInstance(instance, module) {
+#if RUNTIME_DEBUG
+    dbg('receiveInstance')
+#endif
     wasmExports = instance.exports;
 
+#if MAIN_MODULE
+    // No relocation needed here.. but calling this just so that updateGOT is
+    // called.
 #if RELOCATABLE
-    wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
+    var origExports = wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
+#else
+    var origExports = wasmExports = relocateExports(wasmExports);
+#endif
 #endif
 
 #if ASYNCIFY
     wasmExports = Asyncify.instrumentWasmExports(wasmExports);
 #endif
 
-#if ABORT_ON_WASM_EXCEPTIONS
-    wasmExports = instrumentWasmExportsWithAbort(wasmExports);
-#endif
-
 #if MAIN_MODULE
+    mergeLibSymbols(wasmExports, 'main')
     var metadata = getDylinkMetadata(module);
 #if AUTOLOAD_DYLIBS
     if (metadata.neededDynlibs) {
       dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
     }
 #endif
-    mergeLibSymbols(wasmExports, 'main')
-#if '$LDSO' in addedLibraryItems
-    LDSO.init();
-#endif
-    loadDylibs();
-#elif RELOCATABLE
-    reportUndefinedSymbols();
 #endif
 
+
+#if ABORT_ON_WASM_EXCEPTIONS
+    wasmExports = instrumentWasmExportsWithAbort(wasmExports);
+#endif
+
+#if SPLIT_MODULE
+  wasmRawExports = wasmExports;
+#endif
 #if MEMORY64 || CAN_ADDRESS_2GB
     wasmExports = applySignatureConversions(wasmExports);
 #endif
-
-    {{{ receivedSymbol('wasmExports') }}}
 
 #if PTHREADS
 #if MAIN_MODULE
@@ -727,12 +763,26 @@ function getWasmImports() {
     __RELOC_FUNCS__.push(wasmExports['__wasm_apply_data_relocs']);
 #endif
 
-#if DECLARE_ASM_MODULE_EXPORTS
+#if RUNTIME_DEBUG
+    dbg('assigning exports')
+#endif
     assignWasmExports(wasmExports);
-#else
-    // If we didn't declare the asm exports as top level enties this function
-    // is in charge of programmatically exporting them on the global object.
-    exportWasmSymbols(wasmExports);
+
+#if MAIN_MODULE
+    updateGOT(origExports);
+#endif
+
+#if EXPORTED_RUNTIME_METHODS.includes('wasmExports')
+    Module['wasmExports'] = wasmExports;
+#endif
+
+#if MAIN_MODULE
+#if '$LDSO' in addedLibraryItems
+    LDSO.init();
+#endif
+    loadDylibs();
+#elif RELOCATABLE
+    reportUndefinedSymbols();
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
@@ -771,7 +821,7 @@ function getWasmImports() {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if SHARED_MEMORY || RELOCATABLE
+#if SHARED_MEMORY || MAIN_MODULE
     return receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.

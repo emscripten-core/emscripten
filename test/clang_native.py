@@ -7,8 +7,9 @@ import logging
 import os
 import platform
 import sys
-from tools.shared import PIPE, run_process, CLANG_CC, CLANG_CXX
-from tools.utils import MACOS, WINDOWS, path_from_root
+
+from tools.shared import CLANG_CC, CLANG_CXX, PIPE
+from tools.utils import MACOS, WINDOWS, path_from_root, run_process
 
 logger = logging.getLogger('clang_native')
 
