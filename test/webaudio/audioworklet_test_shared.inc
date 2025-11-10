@@ -102,8 +102,8 @@ int main(void) {
   // With the 1.1 API this may be values other than 128
   emscripten_outf("Audio context created with quantum size of %d samples", emscripten_audio_context_quantum_size(context));
 
-  // Here we create a fixed sized worklet stack, but could decide based on the
-  // quantum size above (ins and outs * bytes per quantum)/
+  // Here we create a fixed sized worklet stack, but could calculate taking the
+  // quantum size above (ins and outs * bytes per quantum).
   char* const workletStack = memalign(16, AUDIO_STACK_SIZE);
   emscripten_outf("Audio worklet stack at 0x%p", workletStack);
   assert(workletStack);
