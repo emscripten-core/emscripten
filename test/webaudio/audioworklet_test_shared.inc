@@ -90,12 +90,8 @@ EmscriptenStartWebAudioWorkletCallback getStartCallback(void);
 
 // Common entry point for the mixer tests
 int main(void) {
-  char* const workletStack = memalign(16, AUDIO_STACK_SIZE);
-  emscripten_outf("Audio worklet stack at 0x%p", workletStack);
-  assert(workletStack);
-
-  // Set at least the latency hint to test the attribute setting
-  // (The render size we take from the calling code if set)
+  // Set at least the latency hint to test the attribute setting (the render
+  // size we take from the calling code if set).
   EmscriptenWebAudioCreateAttributes attrs = {
     .latencyHint = "balanced",
 #ifdef RENDER_SIZE_HINT
@@ -103,6 +99,15 @@ int main(void) {
 #endif
   };
   EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(&attrs);
+  // With the 1.1 API this may be values other than 128
+  emscripten_outf("Audio context created with quantum size of %d samples", emscripten_audio_context_quantum_size(context));
+
+  // Here we create a fixed sized worklet stack, but could decide based on the
+  // quantum size above (ins and outs * bytes per quantum)/
+  char* const workletStack = memalign(16, AUDIO_STACK_SIZE);
+  emscripten_outf("Audio worklet stack at 0x%p", workletStack);
+  assert(workletStack);
+
   emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, getStartCallback(), NULL);
 
 #ifdef TEST_AND_EXIT
