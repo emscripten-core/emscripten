@@ -23,7 +23,7 @@ from common import (
   path_from_root,
   test_file,
 )
-from decorators import crossplatform, parameterized, with_env_modify
+from decorators import crossplatform, no_windows, parameterized, with_env_modify
 
 from tools import cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
@@ -238,6 +238,7 @@ class sanity(RunnerCore):
         finally:
           delete_file(default_config)
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_llvm(self):
     LLVM_WARNING = 'LLVM version for clang executable'
 
@@ -423,6 +424,7 @@ fi
     self.assertIn(SANITY_MESSAGE, output)
     self.assertCacheEmpty()
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_cache_clearing_auto(self):
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     restore_and_set_up()
@@ -640,6 +642,7 @@ fi
       build()
       test()
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_vanilla(self):
     restore_and_set_up()
     self.clear_cache()
@@ -664,6 +667,7 @@ fi
     test_with_fake('got js backend! JavaScript (asm.js, emscripten) backend', 'LLVM has not been built with the WebAssembly backend')
     delete_dir(shared.CANONICAL_TEMP_DIR)
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_llvm_add_version(self):
     restore_and_set_up()
 
@@ -690,6 +694,7 @@ fi
     open(EM_CONFIG, 'a').write('\ndel BINARYEN_ROOT\n')
     self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT not set in config (%s), and `wasm-opt` not found in PATH' % EM_CONFIG)
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_empty_config(self):
     restore_and_set_up()
     make_fake_tool(self.in_dir('fake', 'wasm-opt'), 'foo')
@@ -700,6 +705,7 @@ fi
     with env_modify({'PATH': self.in_dir('fake') + os.pathsep + os.environ['PATH']}):
       self.check_working([EMCC])
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_missing_config(self):
     restore_and_set_up()
     make_fake_tool(self.in_dir('fake', 'wasm-opt'), 'foo')
@@ -787,6 +793,7 @@ fi
     self.run_process([EMBUILDER, '--pic', 'clear', 'sdl2*'])
     self.run_process([EMCC, '-sMAIN_MODULE=2', '-sUSE_SDL=2', '-sUSE_SDL_GFX=2', test_file('hello_world.c')])
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_binaryen_version(self):
     restore_and_set_up()
     with open(EM_CONFIG, 'a') as f:
