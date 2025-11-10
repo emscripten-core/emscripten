@@ -40,9 +40,11 @@ import browser_common
 import common
 import jsrun
 import parallel_testsuite
+from color_runner import ColorTextRunner
 from common import errlog
+from single_line_runner import SingleLineTestRunner
 
-from tools import config, shared, utils
+from tools import colored_logger, config, shared, utils
 
 logger = logging.getLogger("runner")
 
@@ -427,8 +429,12 @@ def run_tests(options, suites):
     testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2,
                                          failfast=options.failfast)
     print('Writing XML test output to ' + os.path.abspath(output.name))
+  elif options.buffer and options.ansi and not options.verbose:
+    # When buffering is enabled and ansi color output is available use our nice single-line
+    # result display.
+    testRunner = SingleLineTestRunner(verbosity=2, failfast=options.failfast)
   else:
-    testRunner = unittest.TextTestRunner(verbosity=2, buffer=options.buffer, failfast=options.failfast)
+    testRunner = ColorTextRunner(verbosity=2, failfast=options.failfast)
 
   total_core_time = 0
   run_start_time = time.perf_counter()
@@ -467,6 +473,9 @@ def parse_args():
   parser.add_argument('--no-clean', action='store_true',
                       help='Do not clean the temporary directory before each test run')
   parser.add_argument('--verbose', '-v', action='store_true')
+  # TODO: Replace with BooleanOptionalAction once we can depend on python3.9
+  parser.add_argument('--ansi', action='store_true', default=None)
+  parser.add_argument('--no-ansi', action='store_false', dest='ansi', default=None)
   parser.add_argument('--all-engines', action='store_true')
   parser.add_argument('--detect-leaks', action='store_true')
   parser.add_argument('--skip-slow', action='store_true', help='Skip tests marked as slow')
@@ -498,6 +507,14 @@ def parse_args():
   parser.add_argument('--bell', action='store_true', help='Play a sound after the test suite finishes.')
 
   options = parser.parse_args()
+
+  if options.ansi is None:
+    options.ansi = colored_logger.ansi_color_available()
+  else:
+    if options.ansi:
+      colored_logger.enable(force=True)
+    else:
+      colored_logger.disable()
 
   if options.failfast:
     if options.max_failures != 2**31 - 1:
