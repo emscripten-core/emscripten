@@ -45,7 +45,7 @@ def cap_max_workers_in_pool(max_workers, is_browser):
 
 
 def run_test(args):
-  test, allowed_failures_counter, lock, buffer = args
+  test, allowed_failures_counter, buffer = args
   # If we have exceeded the number of allowed failures during the test run,
   # abort executing further tests immediately.
   if allowed_failures_counter and allowed_failures_counter.value < 0:
@@ -66,12 +66,6 @@ def run_test(args):
   test.set_temp_dir(temp_dir)
   try:
     test(result)
-
-    # Alert all other multiprocess pool runners that they need to stop executing further tests.
-    if result.test_result not in ['success', 'skipped']:
-      if allowed_failures_counter is not None:
-        with lock:
-          allowed_failures_counter.value -= 1
   finally:
     result.elapsed = time.perf_counter() - start_time
 
@@ -174,20 +168,22 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         if python_multiprocessing_structures_are_buggy():
           # When multiprocessing shared structures are buggy we don't support failfast
           # or the progress bar.
-          allowed_failures_counter = lock = None
+          allowed_failures_counter = None
           if self.max_failures < 2**31 - 1:
             errlog('The version of python being used is not compatible with --failfast and --max-failures options. See https://github.com/python/cpython/issues/71936')
             sys.exit(1)
         else:
           allowed_failures_counter = manager.Value('i', self.max_failures)
-          lock = manager.Lock()
 
         results = []
-        args = ((t, allowed_failures_counter, lock, result.buffer) for t in tests)
+        args = ((t, allowed_failures_counter, result.buffer) for t in tests)
         for res in pool.imap_unordered(run_test, args, chunksize=1):
           # results may be be None if # of allowed errors was exceeded
           # and the harness aborted.
           if res:
+            if res.test_result not in ['success', 'skipped'] and allowed_failures_counter is not None:
+              # Signal existing multiprocess pool runners so that they can exit early if needed.
+              allowed_failures_counter.value -= 1
             self.printOneResult(res)
             results.append(res)
 
