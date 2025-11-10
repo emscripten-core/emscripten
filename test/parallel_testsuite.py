@@ -51,13 +51,13 @@ def run_test(args):
   if allowed_failures_counter and allowed_failures_counter.value < 0:
     return None
 
-  def test_failed():
-    if allowed_failures_counter is not None:
-      with lock:
-        allowed_failures_counter.value -= 1
+  # Handle setUpClass which needs to be called on each worker
+  # TODO: Better handling of exceptions that happen during setUpClass
+  if test.__class__ not in seen_class:
+    seen_class.add(test.__class__)
+    test.__class__.setUpClass()
 
   start_time = time.perf_counter()
-
   olddir = os.getcwd()
   result = BufferedParallelTestResult()
   result.start_time = start_time
@@ -65,19 +65,13 @@ def run_test(args):
   temp_dir = tempfile.mkdtemp(prefix='emtest_')
   test.set_temp_dir(temp_dir)
   try:
-    if test.__class__ not in seen_class:
-      seen_class.add(test.__class__)
-      test.__class__.setUpClass()
     test(result)
 
     # Alert all other multiprocess pool runners that they need to stop executing further tests.
     if result.test_result not in ['success', 'skipped']:
-      test_failed()
-  except unittest.SkipTest as e:
-    result.addSkip(test, e)
-  except Exception as e:
-    result.addError(test, e)
-    test_failed()
+      if allowed_failures_counter is not None:
+        with lock:
+          allowed_failures_counter.value -= 1
   finally:
     result.elapsed = time.perf_counter() - start_time
 
