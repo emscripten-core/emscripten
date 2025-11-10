@@ -7173,6 +7173,12 @@ void* operator new(size_t size) {
     self.set_setting('EXPORTED_FUNCTIONS', ['_print_bool'])
     self.do_runf('core/test_ccall.cpp', 'true')
 
+  @no_modularize_instance('ccall is not yet compatible with MODULARIZE=instance')
+  def test_ccall_return_pointer(self):
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('ccall is not available in MINIMAL_RUNTIME')
+    self.do_core_test('test_ccall_return_pointer.c', cflags=['-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ccall'])
+
   @no_modularize_instance('uses Module object directly')
   def test_EXPORTED_RUNTIME_METHODS(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall', '$ASSERTIONS'])
