@@ -13120,6 +13120,9 @@ Module.postRun = () => {{
   def test_hello_world_above_2gb(self):
     self.do_run_in_out_file_test('hello_world.c', cflags=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
 
+  def test_unistd_strerror(self):
+    self.do_run_in_out_file_test('unistd/strerror.c')
+
   def test_hello_function(self):
     # hello_function.cpp is referenced/used in the docs.  This test ensures that it
     # at least compiles.
