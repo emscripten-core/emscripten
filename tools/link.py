@@ -2096,6 +2096,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   outfile_js = in_temp('tsgen.js')
   # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
   outfile_wasm = in_temp('tsgen.wasm')
+  settings.ASSERTIONS = 0
   emscripten.emscript(wasm_target, outfile_wasm, outfile_js, js_syms, finalize=False)
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
