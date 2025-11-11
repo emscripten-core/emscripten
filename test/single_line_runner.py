@@ -38,10 +38,10 @@ class SingleLineTestResult(ColorTextResult):
       max_name = term_width() - min_len
       test_name = test_name[:max_name]
     line = f'{test_name} ... {with_color(color, msg)}'
-    self._original_stderr.write(line)
+    self.stream.write(line)
 
   def _write_status(self, test, status):
-    clearline(self._original_stderr)
+    clearline(self.stream)
     pos = self.writeProgressPrefix()
     # Add some color to the status message
     if status == 'ok':
@@ -54,7 +54,7 @@ class SingleLineTestResult(ColorTextResult):
     else:
       color = CYAN
     self.writeStatus(test, status, color, pos)
-    self._original_stderr.flush()
+    self.stream.flush()
 
   def startTest(self, test):
     self.progress_counter += 1
@@ -65,7 +65,7 @@ class SingleLineTestResult(ColorTextResult):
   def printErrors(self):
     # All tests have been run at this point so print a final newline
     # to end out status line
-    self._original_stderr.write('\n')
+    self.stream.write('\n')
     super().printErrors()
 
 
