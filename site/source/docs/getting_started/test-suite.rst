@@ -216,7 +216,7 @@ runs them.
 
 For even more debugging info, you can set :ref:`debugging-EMCC_DEBUG` which will
 cause the emscripten compiler itself to output a lot of debug info.  This will
-also tell the compiler to leave all its temporiary files behind after it runs 
+also tell the compiler to leave all its temporary files behind after it runs 
 (the files go in ``/tmp/emscripten_temp/``):
 
 .. code-block:: bash
