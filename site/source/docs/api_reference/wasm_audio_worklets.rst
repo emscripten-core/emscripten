@@ -44,10 +44,11 @@ and then, these processors are instantiated one or more times in the audio
 processing graph as AudioWorkletNodes.
 
 Once a class type is instantiated on the Web Audio graph and the graph is
-running, a C/C++ function pointer callback will be invoked for each 128
-samples of the processed audio stream that flows through the node. Newer Web
-Audio API specs allow this to be changed, so for future compatibility use the
-``AudioSampleFrame``'s ``samplesPerChannel`` to get the value.
+running, a C/C++ function pointer callback will be invoked for each N samples
+of the processed audio stream that flows through the node (where N is is the
+number of samples per channel, exposed as ``AudioSampleFrame``'s
+``samplesPerChannel``, always 128 in the 1.0 Web Audio API, though with the 1.1
+API ``emscripten_create_audio_context()`` accepts a ``renderSizeHint`` option).
 
 This callback will be executed on a dedicated separate audio processing
 thread with real-time processing priority. Each Web Audio context will

@@ -102,7 +102,7 @@ typedef void (*EmscriptenWorkletProcessorCreatedCallback)(EMSCRIPTEN_WEBAUDIO_T 
 void emscripten_create_wasm_audio_worklet_processor_async(EMSCRIPTEN_WEBAUDIO_T audioContext, const WebAudioWorkletProcessorCreateOptions *options, EmscriptenWorkletProcessorCreatedCallback callback, void *userData3);
 
 // Returns the number of samples processed per channel in an AudioSampleFrame, fixed at 128 in the Web Audio API 1.0 specification, and valid for the lifetime of the audio context.
-// For this to change from the default 128, the context would need to be created with a yet unexposed WebAudioWorkletProcessorCreateOptions renderSizeHint, part of the 1.1 Web Audio API.
+// For this to differ from the default 128, the context would need to be created with a WebAudioWorkletProcessorCreateOptions renderSizeHint, part of the 1.1 Web Audio API.
 int emscripten_audio_context_quantum_size(EMSCRIPTEN_WEBAUDIO_T audioContext);
 
 // Returns the sampling rate of the given Audio Context, e.g. 48000 or 44100 or similar.
