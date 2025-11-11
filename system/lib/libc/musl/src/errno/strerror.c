@@ -36,9 +36,7 @@ char *__strerror_l(int e, locale_t loc)
 #endif
 #ifdef __EMSCRIPTEN__
 	if (e < 0 || e >= sizeof errmsgidx / sizeof *errmsgidx || (e != 0 && !errmsgidx[e])) {
-		static char buf[32];
-		snprintf(buf, sizeof buf, "Unknown error %d", e);
-		return buf;
+		return "Unknown error";
 	}
 	s = (char *)&errmsgstr + errmsgidx[e];
 	// strerror is a (debug) dependency of many emscripten syscalls which mean it

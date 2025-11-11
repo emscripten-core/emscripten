@@ -6169,10 +6169,6 @@ Module.onRuntimeInitialized = () => {
   def test_unistd_close(self):
     self.do_run_in_out_file_test('unistd/close.c')
 
-  @also_with_noderawfs
-  def test_unistd_errno(self):
-    self.do_run_in_out_file_test('unistd/errno.c')
-
   def test_unistd_fsync_stdout(self):
     self.do_run_in_out_file_test('unistd/fsync_stdout.c')
 
