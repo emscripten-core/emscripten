@@ -35,13 +35,37 @@ class BufferingMixin:
 class ProgressMixin:
   test_count = 0
   progress_counter = 0
+  fail_count = 0
+
+  def addError(self, test, err):
+    self.fail_count += 1
+    super().addError(test, err)
+
+  def addFailure(self, test, err):
+    self.fail_count += 1
+    super().addFailure(test, err)
+
+  def addUnexpectedSuccess(self, test):
+    self.fail_count += 1
+    super().addUnexpectedSuccess(test)
+
+  def writeProgressPrefix(self):
+    if self.showAll:
+      base_progress = f'[{self.progress_counter}/{self.test_count}'
+      rtn = len(base_progress)
+      progress = with_color(CYAN, base_progress)
+      if self.fail_count:
+        fail_str = f'-{self.fail_count}'
+        progress += with_color(RED, fail_str)
+        rtn += len(fail_str)
+      progress += with_color(CYAN, '] ')
+      self.stream.write(progress)
+      return rtn + 2
+    return 0
 
   def startTest(self, test):
-    assert self.test_count > 0
     self.progress_counter += 1
-    if self.showAll:
-      progress = f'[{self.progress_counter}/{self.test_count}] '
-      self.stream.write(with_color(CYAN, progress))
+    self.writeProgressPrefix()
     super().startTest(test)
 
 
@@ -61,6 +85,9 @@ class ColorTextResult(BufferingMixin, ProgressMixin, unittest.TextTestResult):
 class ColorTextRunner(unittest.TextTestRunner):
   """Subclass of TextTestRunner that uses ColorTextResult"""
   resultclass = ColorTextResult # type: ignore
+
+  def __init__(self, *args, **kwargs):
+    super().__init__(*args, verbosity=2, **kwargs)
 
   def _makeResult(self):
     result = super()._makeResult()

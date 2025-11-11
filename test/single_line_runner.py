@@ -6,7 +6,7 @@
 import shutil
 import unittest
 
-from color_runner import BufferingMixin, ColorTextRunner
+from color_runner import ColorTextResult, ColorTextRunner
 
 from tools.colored_logger import CYAN, GREEN, RED, with_color
 
@@ -20,65 +20,47 @@ def term_width():
   return shutil.get_terminal_size()[0]
 
 
-class SingleLineTestResult(BufferingMixin, unittest.TextTestResult):
+class SingleLineTestResult(ColorTextResult):
   """Similar to the standard TextTestResult but uses ANSI escape codes
   for color output and reusing a single line on the terminal.
   """
 
-  def __init__(self, *args, **kwargs):
-    super().__init__(*args, **kwargs)
-    self.progress_counter = 0
-
-  def writeStatusLine(self, line):
-    clearline(self._original_stderr)
-    self._original_stderr.write(line)
-    self._original_stderr.flush()
-
-  def updateStatus(self, test, msg, color):
-    progress = f'[{self.progress_counter}/{self.test_count}] '
-    # Format the line so that it fix within the terminal width, unless it's less then min_len
+  def writeStatus(self, test, msg, color, line_pos):
+    # Because the message can include the skip reason (which can be very long sometimes), truncate
+    # it to a reasonable length to avoid exceeding line length.
+    if len(msg) > 30:
+      msg = msg[:30]
+    # Format the line so that it fix within the terminal width, unless its less then min_len
     # in which case there is not much we can do, and we just overflow the line.
-    min_len = len(progress) + len(msg) + 5
+    min_len = line_pos + len(msg) + 5
     test_name = str(test)
     if term_width() > min_len:
       max_name = term_width() - min_len
       test_name = test_name[:max_name]
-    line = f'{with_color(CYAN, progress)}{test_name} ... {with_color(color, msg)}'
-    self.writeStatusLine(line)
+    line = f'{test_name} ... {with_color(color, msg)}'
+    self._original_stderr.write(line)
+
+  def _write_status(self, test, status):
+    clearline(self._original_stderr)
+    pos = self.writeProgressPrefix()
+    # Add some color to the status message
+    if status == 'ok':
+      color = GREEN
+    elif status.isupper():
+      color = RED
+      # Use a newline when a test fails, so you can see a list of failures while
+      # the other tests are still running
+      status += '\n'
+    else:
+      color = CYAN
+    self.writeStatus(test, status, color, pos)
+    self._original_stderr.flush()
 
   def startTest(self, test):
     self.progress_counter += 1
-    assert self.test_count > 0
-    # Note: We explicitly do not use `super()` here but instead call `unittest.TestResult`. i.e.
-    # we skip the superclass (since we don't want its specific behaviour) and instead call its
-    # superclass.
+    # We explictly don't call TextTestResult.startTest here since we delay all printing
+    # of results until `_write_status`
     unittest.TestResult.startTest(self, test)
-    if self.progress_counter == 1:
-      self.updateStatus(test, '', GREEN)
-
-  def addSuccess(self, test):
-    unittest.TestResult.addSuccess(self, test)
-    self.updateStatus(test, 'ok', GREEN)
-
-  def addFailure(self, test, err):
-    unittest.TestResult.addFailure(self, test, err)
-    self.updateStatus(test, 'FAIL', RED)
-
-  def addError(self, test, err):
-    unittest.TestResult.addError(self, test, err)
-    self.updateStatus(test, 'ERROR', RED)
-
-  def addExpectedFailure(self, test, err):
-    unittest.TestResult.addExpectedFailure(self, test, err)
-    self.updateStatus(test, 'expected failure', RED)
-
-  def addUnexpectedSuccess(self, test, err):
-    unittest.TestResult.addUnexpectedSuccess(self, test, err)
-    self.updateStatus(test, 'UNEXPECTED SUCCESS', RED)
-
-  def addSkip(self, test, reason):
-    unittest.TestResult.addSkip(self, test, reason)
-    self.updateStatus(test, f"skipped '{reason}'", CYAN)
 
   def printErrors(self):
     # All tests have been run at this point so print a final newline

@@ -429,12 +429,16 @@ def run_tests(options, suites):
     testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2,
                                          failfast=options.failfast)
     print('Writing XML test output to ' + os.path.abspath(output.name))
-  elif options.buffer and options.ansi and not options.verbose:
-    # When buffering is enabled and ansi color output is available use our nice single-line
+  elif options.ansi and not options.verbose:
+    # When not in verbose mode and ansi color output is available use our nice single-line
     # result display.
-    testRunner = SingleLineTestRunner(verbosity=2, failfast=options.failfast)
+    testRunner = SingleLineTestRunner(failfast=options.failfast)
   else:
-    testRunner = ColorTextRunner(verbosity=2, failfast=options.failfast)
+    if not options.ansi:
+      print('using verbose test runner (ANSI not avilable)')
+    else:
+      print('using verbose test runner (verbose output requested)')
+    testRunner = ColorTextRunner(failfast=options.failfast)
 
   total_core_time = 0
   run_start_time = time.perf_counter()
@@ -472,7 +476,9 @@ def parse_args():
                            'test.  Implies --cores=1.  Defaults to true when running a single test')
   parser.add_argument('--no-clean', action='store_true',
                       help='Do not clean the temporary directory before each test run')
-  parser.add_argument('--verbose', '-v', action='store_true')
+  parser.add_argument('--verbose', '-v', action='count', default=0,
+                      help="Show test stdout and stderr, and don't use the single-line test reporting. "
+                           'Specifying `-v` twice will enable test framework logging (i.e. EMTEST_VERBOSE)')
   # TODO: Replace with BooleanOptionalAction once we can depend on python3.9
   parser.add_argument('--ansi', action='store_true', default=None)
   parser.add_argument('--no-ansi', action='store_false', dest='ansi', default=None)
@@ -492,7 +498,6 @@ def parse_args():
                       help='Use the default CI browser configuration.')
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', action='store_true', help='If true, test run will abort on first failed test.')
-  parser.add_argument('-b', '--buffer', action='store_true', help='Buffer stdout and stderr during tests')
   parser.add_argument('--max-failures', type=int, default=2**31 - 1, help='If specified, test run will abort after N failed tests.')
   parser.add_argument('--failing-and-slow-first', action='store_true', help='Run failing tests first, then sorted by slowest first. Combine with --failfast for fast fail-early CI runs.')
   parser.add_argument('--start-at', metavar='NAME', help='Skip all tests up until <NAME>')
@@ -587,7 +592,7 @@ def main():
   set_env('EMTEST_SKIP_SLOW', options.skip_slow)
   set_env('EMTEST_ALL_ENGINES', options.all_engines)
   set_env('EMTEST_REBASELINE', options.rebaseline)
-  set_env('EMTEST_VERBOSE', options.verbose)
+  set_env('EMTEST_VERBOSE', options.verbose > 1)
   set_env('EMTEST_CORES', options.cores)
   set_env('EMTEST_FORCE64', options.force64)
 
