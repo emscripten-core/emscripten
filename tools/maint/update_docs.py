@@ -16,24 +16,24 @@ root_dir = os.path.dirname(os.path.dirname(script_dir))
 site_dir = os.path.join(root_dir, 'site')
 
 
+def check_git_clean(dirname):
+  if subprocess.check_output(['git', 'status', '-uno', '--porcelain'], text=True, cwd=dirname).strip():
+    print(f'{dirname}: tree is not clean')
+    sys.exit(1)
+
+
 def main(args):
   if args:
     site_out = args[0]
   else:
     site_out = os.path.join(os.path.dirname(root_dir), 'emscripten-site')
-  assert os.path.exists(site_out)
 
-  output = subprocess.check_output(['git', 'status', '--short'], cwd=site_out)
-
+  assert os.path.isdir(site_out)
   print(f'Updating docs in: {site_out}')
+  check_git_clean(site_out)
+  check_git_clean(root_dir)
 
-  # Ensure the -site checkout is up-to-date and clean.
-  output = subprocess.check_output(['git', 'status', '--short'], cwd=site_out)
-  output = output.decode('utf-8').strip()
-  if output:
-    print('Site tree is not clean')
-    return 1
-
+  # Ensure the -site checkout is up-to-date
   subprocess.check_call(['git', 'fetch', 'origin'], cwd=site_out)
   subprocess.check_call(['git', 'checkout', 'origin/gh-pages'], cwd=site_out)
 
@@ -43,7 +43,11 @@ def main(args):
   # Create a new branch and commit the changes.
   subprocess.check_call(['git', 'checkout', '-b', 'update'], cwd=site_out)
   subprocess.check_call(['git', 'add', '.'], cwd=site_out)
-  subprocess.check_call(['git', 'commit', '-mupdate'], cwd=site_out)
+
+  hash = subprocess.check_output(['git', 'rev-parse', '--short', 'HEAD'], text=True, cwd=root_dir).strip()
+  message = 'Update emscripten website\n\n'
+  message += f'These docs were generated based on git revision {hash}'
+  subprocess.run(['git', 'commit', '-F', '-'], input=message, text=True, cwd=site_out)
 
 
 if __name__ == '__main__':
