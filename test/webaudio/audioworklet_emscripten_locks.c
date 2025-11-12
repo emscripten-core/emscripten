@@ -14,7 +14,7 @@
 // - emscripten_get_now()
 //
 // Define RUN_ON_WORKER to run on a worker, otherwise it runs on the main thread
-// Define QUIET_AUDIO_WORKLET to remove emscripten_out() calls in the audio worklet
+// Define QUIETEN_PRINTING to remove most of the emscripten_out() calls
 
 // Global audio context
 EMSCRIPTEN_WEBAUDIO_T context;
@@ -71,7 +71,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
   case TEST_HAS_WAIT:
     // Should not have wait support here
     result = _emscripten_thread_supports_atomics_wait();
-#ifndef QUIET_AUDIO_WORKLET
+#ifndef QUIETEN_PRINTING
     emscripten_outf("TEST_HAS_WAIT: %d (expect: 0)", result);
 #endif
     assert(!result);
@@ -80,7 +80,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
   case TEST_TRY_ACQUIRE:
     // Was locked after init, should fail to acquire
     result = emscripten_lock_try_acquire(&testLock);
-#ifndef QUIET_AUDIO_WORKLET
+#ifndef QUIETEN_PRINTING
     emscripten_outf("TEST_TRY_ACQUIRE: %d (expect: 0)", result);
 #endif
     assert(!result);
@@ -89,7 +89,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
   case TEST_WAIT_ACQUIRE_FAIL:
     // Still locked so we fail to acquire
     result = emscripten_lock_busyspin_wait_acquire(&testLock, 100);
-#ifndef QUIET_AUDIO_WORKLET
+#ifndef QUIETEN_PRINTING
     emscripten_outf("TEST_WAIT_ACQUIRE_FAIL: %d (expect: 0)", result);
 #endif
     assert(!result);
@@ -98,7 +98,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
   case TEST_WAIT_ACQUIRE:
     // Will get unlocked in worker/main, so should quickly acquire
     result = emscripten_lock_busyspin_wait_acquire(&testLock, 1000);
-#ifndef QUIET_AUDIO_WORKLET
+#ifndef QUIETEN_PRINTING
     emscripten_outf("TEST_WAIT_ACQUIRE: %d  (expect: 1)", result);
 #endif
     assert(result);
@@ -108,7 +108,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     // Unlock, check the result
     emscripten_lock_release(&testLock);
     result = emscripten_lock_try_acquire(&testLock);
-#ifndef QUIET_AUDIO_WORKLET
+#ifndef QUIETEN_PRINTING
     emscripten_outf("TEST_RELEASE: %d (expect: 1)", result);
 #endif
     assert(result);
@@ -123,7 +123,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     break;
   case TEST_GET_NOW:
     result = (int) (emscripten_get_now() - startTime);
-#ifndef QUIET_AUDIO_WORKLET
+#ifndef QUIETEN_PRINTING
     emscripten_outf("TEST_GET_NOW: %d  (expect: > 0)", result);
 #endif
     assert(result > 0);
@@ -167,7 +167,9 @@ bool MainLoop(double time, void* data) {
 		if (!didUnlock) {
 		  // Release here to acquire in process
 		  emscripten_lock_release(&testLock);
+#ifndef QUIETEN_PRINTING
 		  emscripten_out("TEST_WAIT_ACQUIRE: worker/main released lock");
+#endif
 		  didUnlock = true;
 		}
 		break;
@@ -175,7 +177,9 @@ bool MainLoop(double time, void* data) {
 		// Spin here until released in process (but don't change test until we know this case ran)
 		whichTest = TEST_WAIT_INFINTE_2;
 		emscripten_lock_busyspin_waitinf_acquire(&testLock);
+#ifndef QUIETEN_PRINTING
 		emscripten_out("TEST_WAIT_INFINTE (from worker/main)");
+#endif
 		break;
 	  case TEST_DONE:
 		// Finished, exit from the main thread (and return out of this loop)
