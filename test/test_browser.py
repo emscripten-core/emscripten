@@ -5615,11 +5615,15 @@ Module["preRun"] = () => {
     self.btest_exit('webaudio/audioworklet_params_mixing.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
   # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends
-  @requires_sound_hardware
   @also_with_minimal_runtime
+  @parameterized({
+    '': ([],),
+    'worker': (['-DTEST_ON_WORKER'],),
+  })
+  @requires_sound_hardware
   @flaky('https://github.com/emscripten-core/emscripten/issues/25245')
-  def test_audio_worklet_emscripten_locks(self):
-    self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
+  def test_audio_worklet_emscripten_locks(self, args):
+    self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'] + args)
 
   # Verifies setting audio context sample rate, and that emscripten_audio_context_sample_rate() works.
   @requires_sound_hardware
