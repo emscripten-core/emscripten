@@ -13,8 +13,8 @@
 // - emscripten_lock_release()
 // - emscripten_get_now()
 //
-// Define TEST_ON_WORKER to run on a worker, otherwise it runs on the main thread
-// Define QUIET_AUDIO_WORKLET to remove emscripten_out() calls in the audio worker
+// Define RUN_ON_WORKER to run on a worker, otherwise it runs on the main thread
+// Define QUIET_AUDIO_WORKLET to remove emscripten_out() calls in the audio worklet
 
 // Global audio context
 EMSCRIPTEN_WEBAUDIO_T context;
@@ -55,7 +55,7 @@ double startTime = 0;
 void do_exit() {
   emscripten_out("Test success");
   emscripten_destroy_audio_context(context);
-#ifdef TEST_ON_WORKER
+#ifdef RUN_ON_WORKER
   emscripten_terminate_all_wasm_workers();
 #endif
   emscripten_force_exit(0);
@@ -148,14 +148,14 @@ EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
   };
 });
 
-#ifdef TEST_ON_WORKER
+#ifdef RUN_ON_WORKER
 void WorkerLoop() {
 #else
 bool MainLoop(double time, void* data) {
 #endif
   assert(!emscripten_current_thread_is_audio_worklet());
   int didUnlock = false;
-#ifdef TEST_ON_WORKER
+#ifdef RUN_ON_WORKER
   while (true) {
 #endif
 	  switch (whichTest) {
@@ -179,7 +179,7 @@ bool MainLoop(double time, void* data) {
 		break;
 	  case TEST_DONE:
 		// Finished, exit from the main thread (and return out of this loop)
-#ifdef TEST_ON_WORKER
+#ifdef RUN_ON_WORKER
 		emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, &do_exit);
         // WorkerLoop contract (end the worker)
 		return;
@@ -191,7 +191,7 @@ bool MainLoop(double time, void* data) {
 	  default:
 		break;
 	  }
-#ifdef TEST_ON_WORKER
+#ifdef RUN_ON_WORKER
     // Repeat every 10ms (except when TEST_DONE)
     emscripten_wasm_worker_sleep(10 * 1000000ULL);
   }
@@ -230,7 +230,7 @@ int main() {
   emscripten_start_wasm_audio_worklet_thread_async(context, wasmAudioWorkletStack, sizeof(wasmAudioWorkletStack), WebAudioWorkletThreadInitialized, NULL);
 
   // Either call every 10ms or create a worker that sleeps every 10ms
-#ifdef TEST_ON_WORKER
+#ifdef RUN_ON_WORKER
   emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
   emscripten_wasm_worker_post_function_v(worker, WorkerLoop);
 #else
