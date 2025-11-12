@@ -452,6 +452,8 @@ commands:
           name: download firefox
           shell: powershell.exe -ExecutionPolicy Bypass
           command: |
+            $ErrorActionPreference = 'Stop'
+
             # To download Firefox, we must first figure out what the latest Firefox version name is.
             # This is because there does not exist a stable/static URL to download latest Firefox from.
             $html = Invoke-WebRequest "https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central/"
