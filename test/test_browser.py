@@ -5619,7 +5619,7 @@ Module["preRun"] = () => {
   @also_with_minimal_runtime
   @flaky('https://github.com/emscripten-core/emscripten/issues/25245')
   def test_audio_worklet_emscripten_locks(self):
-    self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread', '-DTEST_ON_WORKER'])
+    self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread', '-DRUN_ON_WORKER'])
 
   # Verifies setting audio context sample rate, and that emscripten_audio_context_sample_rate() works.
   @requires_sound_hardware
