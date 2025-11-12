@@ -3,6 +3,8 @@
 #include <emscripten/webaudio.h>
 #include <assert.h>
 
+#define QUIET_AUDIO_WORKLET
+
 // Tests that these audio worklet compatible functions work, details in comments below:
 //
 // - _emscripten_thread_supports_atomics_wait()
@@ -70,28 +72,36 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
   case TEST_HAS_WAIT:
     // Should not have wait support here
     result = _emscripten_thread_supports_atomics_wait();
+#ifndef QUIET_AUDIO_WORKLET
     emscripten_outf("TEST_HAS_WAIT: %d (expect: 0)", result);
+#endif
     assert(!result);
     whichTest = TEST_TRY_ACQUIRE;
     break;
   case TEST_TRY_ACQUIRE:
     // Was locked after init, should fail to acquire
     result = emscripten_lock_try_acquire(&testLock);
+#ifndef QUIET_AUDIO_WORKLET
     emscripten_outf("TEST_TRY_ACQUIRE: %d (expect: 0)", result);
+#endif
     assert(!result);
     whichTest = TEST_WAIT_ACQUIRE_FAIL;
     break;
   case TEST_WAIT_ACQUIRE_FAIL:
     // Still locked so we fail to acquire
     result = emscripten_lock_busyspin_wait_acquire(&testLock, 100);
+#ifndef QUIET_AUDIO_WORKLET
     emscripten_outf("TEST_WAIT_ACQUIRE_FAIL: %d (expect: 0)", result);
+#endif
     assert(!result);
     whichTest = TEST_WAIT_ACQUIRE;
     // Fall through here so the worker/main has a chance to unlock whilst spinning
   case TEST_WAIT_ACQUIRE:
     // Will get unlocked in worker/main, so should quickly acquire
-    result = emscripten_lock_busyspin_wait_acquire(&testLock, 10000);
+    result = emscripten_lock_busyspin_wait_acquire(&testLock, 1000);
+#ifndef QUIET_AUDIO_WORKLET
     emscripten_outf("TEST_WAIT_ACQUIRE: %d  (expect: 1)", result);
+#endif
     assert(result);
     whichTest = TEST_RELEASE;
     break;
@@ -99,7 +109,9 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     // Unlock, check the result
     emscripten_lock_release(&testLock);
     result = emscripten_lock_try_acquire(&testLock);
+#ifndef QUIET_AUDIO_WORKLET
     emscripten_outf("TEST_RELEASE: %d (expect: 1)", result);
+#endif
     assert(result);
     whichTest = TEST_WAIT_INFINTE_1;
     break;
@@ -112,7 +124,9 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     break;
   case TEST_GET_NOW:
     result = (int) (emscripten_get_now() - startTime);
+#ifndef QUIET_AUDIO_WORKLET
     emscripten_outf("TEST_GET_NOW: %d  (expect: > 0)", result);
+#endif
     assert(result > 0);
     whichTest = TEST_DONE;
     // Fall through here and stop playback (shutting down in the worker/main)
