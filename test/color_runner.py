@@ -49,23 +49,27 @@ class ProgressMixin:
     self.fail_count += 1
     super().addUnexpectedSuccess(test)
 
+  def getProgressPrefix(self):
+    base_progress = f'[{self.progress_counter}/{self.test_count}'
+    rtn = len(base_progress)
+    progress = with_color(CYAN, base_progress)
+    if self.fail_count:
+      fail_str = f'-{self.fail_count}'
+      progress += with_color(RED, fail_str)
+      rtn += len(fail_str)
+    progress += with_color(CYAN, '] ')
+    return progress, rtn + 2
+
   def writeProgressPrefix(self):
-    if self.showAll:
-      base_progress = f'[{self.progress_counter}/{self.test_count}'
-      rtn = len(base_progress)
-      progress = with_color(CYAN, base_progress)
-      if self.fail_count:
-        fail_str = f'-{self.fail_count}'
-        progress += with_color(RED, fail_str)
-        rtn += len(fail_str)
-      progress += with_color(CYAN, '] ')
-      self.stream.write(progress)
-      return rtn + 2
-    return 0
+    progress, len = self.getProgressPrefix()
+    self.stream.write(progress)
+    self.stream.flush()
+    return len
 
   def startTest(self, test):
     self.progress_counter += 1
-    self.writeProgressPrefix()
+    if self.showAll:
+      self.writeProgressPrefix()
     super().startTest(test)
 
 

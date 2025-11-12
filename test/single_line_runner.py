@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import shutil
-import unittest
 
 from color_runner import ColorTextResult, ColorTextRunner
 
@@ -24,25 +23,9 @@ class SingleLineTestResult(ColorTextResult):
   """Similar to the standard TextTestResult but uses ANSI escape codes
   for color output and reusing a single line on the terminal.
   """
+  max_status_msg = 20
 
-  def writeStatus(self, test, msg, color, line_pos):
-    # Because the message can include the skip reason (which can be very long sometimes), truncate
-    # it to a reasonable length to avoid exceeding line length.
-    if len(msg) > 30:
-      msg = msg[:30]
-    # Format the line so that it fix within the terminal width, unless its less then min_len
-    # in which case there is not much we can do, and we just overflow the line.
-    min_len = line_pos + len(msg) + 5
-    test_name = str(test)
-    if term_width() > min_len:
-      max_name = term_width() - min_len
-      test_name = test_name[:max_name]
-    line = f'{test_name} ... {with_color(color, msg)}'
-    self.stream.write(line)
-
-  def _write_status(self, test, status):
-    clearline(self.stream)
-    pos = self.writeProgressPrefix()
+  def _write_status(self, _test, status):
     # Add some color to the status message
     if status == 'ok':
       color = GREEN
@@ -53,14 +36,22 @@ class SingleLineTestResult(ColorTextResult):
       status += '\n'
     else:
       color = CYAN
-    self.writeStatus(test, status, color, pos)
+    status = status[:self.max_status_msg]
+    line = f'{with_color(color, status)}'
+    self.stream.write(line)
     self.stream.flush()
 
   def startTest(self, test):
-    self.progress_counter += 1
-    # We explictly don't call TextTestResult.startTest here since we delay all printing
-    # of results until `_write_status`
-    unittest.TestResult.startTest(self, test)
+    self.showAll = False
+    super().startTest(test)
+    self.showAll = True
+    clearline(self.stream)
+    prefix_len = self.writeProgressPrefix()
+    max_desc = term_width() - prefix_len - len(' ... ') - self.max_status_msg
+    desc = str(test)[:max_desc]
+    self.stream.write(desc)
+    self.stream.write(' ... ')
+    self.stream.flush()
 
   def printErrors(self):
     # All tests have been run at this point so print a final newline
