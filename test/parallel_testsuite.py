@@ -13,10 +13,10 @@ import unittest
 
 import browser_common
 import common
+from color_runner import BufferingMixin
 from common import errlog
 
 from tools import emprofile, utils
-from tools.colored_logger import CYAN, GREEN, RED, with_color
 from tools.utils import WINDOWS
 
 EMTEST_VISUALIZE = os.getenv('EMTEST_VISUALIZE')
@@ -45,19 +45,19 @@ def cap_max_workers_in_pool(max_workers, is_browser):
 
 
 def run_test(args):
-  test, allowed_failures_counter, lock, buffer = args
+  test, allowed_failures_counter, buffer = args
   # If we have exceeded the number of allowed failures during the test run,
   # abort executing further tests immediately.
   if allowed_failures_counter and allowed_failures_counter.value < 0:
     return None
 
-  def test_failed():
-    if allowed_failures_counter is not None:
-      with lock:
-        allowed_failures_counter.value -= 1
+  # Handle setUpClass which needs to be called on each worker
+  # TODO: Better handling of exceptions that happen during setUpClass
+  if test.__class__ not in seen_class:
+    seen_class.add(test.__class__)
+    test.__class__.setUpClass()
 
   start_time = time.perf_counter()
-
   olddir = os.getcwd()
   result = BufferedParallelTestResult()
   result.start_time = start_time
@@ -65,19 +65,11 @@ def run_test(args):
   temp_dir = tempfile.mkdtemp(prefix='emtest_')
   test.set_temp_dir(temp_dir)
   try:
-    if test.__class__ not in seen_class:
-      seen_class.add(test.__class__)
-      test.__class__.setUpClass()
     test(result)
-
-    # Alert all other multiprocess pool runners that they need to stop executing further tests.
-    if result.test_result not in ['success', 'skipped']:
-      test_failed()
-  except unittest.SkipTest as e:
-    result.addSkip(test, e)
-  except Exception as e:
-    result.addError(test, e)
-    test_failed()
+  except KeyboardInterrupt:
+    # In case of KeyboardInterrupt do not emit buffered stderr/stdout
+    # as we unwind.
+    result._mirrorOutput = False
   finally:
     result.elapsed = time.perf_counter() - start_time
 
@@ -118,43 +110,10 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     self.max_cores = max_cores
     self.max_failures = options.max_failures
     self.failing_and_slow_first = options.failing_and_slow_first
-    self.progress_counter = 0
 
   def addTest(self, test):
     super().addTest(test)
     test.is_parallel = True
-
-  def printOneResult(self, res):
-    percent = int(self.progress_counter * 100 / self.num_tests)
-    progress = f'[{percent:2d}%] '
-    self.progress_counter += 1
-
-    if res.test_result == 'success':
-      msg = 'ok'
-      color = GREEN
-    elif res.test_result == 'errored':
-      msg = 'ERROR'
-      color = RED
-    elif res.test_result == 'failed':
-      msg = 'FAIL'
-      color = RED
-    elif res.test_result == 'skipped':
-      reason = res.skipped[0][1]
-      msg = f"skipped '{reason}'"
-      color = CYAN
-    elif res.test_result == 'unexpected success':
-      msg = 'unexpected success'
-      color = RED
-    elif res.test_result == 'expected failure':
-      color = RED
-      msg = 'expected failure'
-    else:
-      assert False, f'unhandled test result {res.test_result}'
-
-    if res.test_result != 'skipped':
-      msg += f' ({res.elapsed:.2f}s)'
-
-    errlog(f'{with_color(CYAN, progress)}{res.test} ... {with_color(color, msg)}')
 
   def run(self, result):
     # The 'spawn' method is used on windows and it can be useful to set this on
@@ -164,8 +123,14 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # issues.
     # multiprocessing.set_start_method('spawn')
 
+    # No need to worry about stdout/stderr buffering since are a not
+    # actually running the test here, only setting the results.
+    buffer = result.buffer
+    result.buffer = False
+
+    result.core_time = 0
     tests = self.get_sorted_tests()
-    self.num_tests = len(tests)
+    self.num_tests = self.countTestCases()
     contains_browser_test = any(test.is_browser_test() for test in tests)
     use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()), contains_browser_test)
     errlog(f'Using {use_cores} parallel test processes')
@@ -181,21 +146,23 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         if python_multiprocessing_structures_are_buggy():
           # When multiprocessing shared structures are buggy we don't support failfast
           # or the progress bar.
-          allowed_failures_counter = lock = None
+          allowed_failures_counter = None
           if self.max_failures < 2**31 - 1:
             errlog('The version of python being used is not compatible with --failfast and --max-failures options. See https://github.com/python/cpython/issues/71936')
             sys.exit(1)
         else:
           allowed_failures_counter = manager.Value('i', self.max_failures)
-          lock = manager.Lock()
 
         results = []
-        args = ((t, allowed_failures_counter, lock, result.buffer) for t in tests)
+        args = ((t, allowed_failures_counter, buffer) for t in tests)
         for res in pool.imap_unordered(run_test, args, chunksize=1):
           # results may be be None if # of allowed errors was exceeded
           # and the harness aborted.
           if res:
-            self.printOneResult(res)
+            if res.test_result not in ['success', 'skipped'] and allowed_failures_counter is not None:
+              # Signal existing multiprocess pool runners so that they can exit early if needed.
+              allowed_failures_counter.value -= 1
+            res.integrate_result(result)
             results.append(res)
 
         # Send a task to each worker to tear down the browser and server. This
@@ -203,7 +170,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         # are cycled through once.
         num_tear_downs = sum([pool.apply(tear_down, ()) for i in range(use_cores)])
         # Assert the assumed behavior above hasn't changed.
-        if num_tear_downs != use_cores:
+        if num_tear_downs != use_cores and not buffer:
           errlog(f'Expected {use_cores} teardowns, got {num_tear_downs}')
 
     if self.failing_and_slow_first:
@@ -229,7 +196,9 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
       json.dump(previous_test_run_results, open(common.PREVIOUS_TEST_RUN_RESULTS_FILE, 'w'), indent=2)
 
-    return self.combine_results(result, results)
+    if EMTEST_VISUALIZE:
+      self.visualize_results(results)
+    return result
 
   def get_sorted_tests(self):
     """A list of this suite's tests, sorted with the @is_slow_test tests first.
@@ -248,14 +217,11 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
     return sorted(self, key=test_key, reverse=True)
 
-  def combine_results(self, result, buffered_results):
-    errlog('')
-    errlog('DONE: combining results on main thread')
-    errlog('')
+  def visualize_results(self, results):
+    assert EMTEST_VISUALIZE
     # Sort the results back into alphabetical order. Running the tests in
     # parallel causes mis-orderings, this makes the results more readable.
-    results = sorted(buffered_results, key=lambda res: str(res.test))
-    result.core_time = 0
+    results = sorted(results, key=lambda res: str(res.test))
 
     # shared data structures are hard in the python multi-processing world, so
     # use a file to share the flaky test information across test processes.
@@ -263,30 +229,17 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     # Extract only the test short names
     flaky_tests = [x.split('.')[-1] for x in flaky_tests]
 
-    # The next integrateResult loop will print a *lot* of lines really fast. This
-    # will cause a Python exception being thrown when attempting to print to
-    # stderr, if stderr is in nonblocking mode, like it is on Buildbot CI:
-    # See https://github.com/buildbot/buildbot/issues/8659
-    # To work around that problem, set stderr to blocking mode before printing.
-    if not WINDOWS:
-      os.set_blocking(sys.stderr.fileno(), True)
-
     for r in results:
-      # Integrate the test result to the global test result object
-      r.integrateResult(result)
       r.log_test_run_for_visualization(flaky_tests)
 
     # Generate the parallel test run visualization
-    if EMTEST_VISUALIZE:
-      emprofile.create_profiling_graph(utils.path_from_root('out/graph'))
-      # Cleanup temp files that were used for the visualization
-      emprofile.delete_profiler_logs()
-      utils.delete_file(common.flaky_tests_log_filename)
-
-    return result
+    emprofile.create_profiling_graph(utils.path_from_root('out/graph'))
+    # Cleanup temp files that were used for the visualization
+    emprofile.delete_profiler_logs()
+    utils.delete_file(common.flaky_tests_log_filename)
 
 
-class BufferedParallelTestResult(unittest.TestResult):
+class BufferedParallelTestResult(BufferingMixin, unittest.TestResult):
   """A picklable struct used to communicate test results across processes
   """
   def __init__(self):
@@ -304,15 +257,12 @@ class BufferedParallelTestResult(unittest.TestResult):
   def addDuration(self, test, elapsed):
     self.test_duration = elapsed
 
-  def integrateResult(self, overall_results):
+  def integrate_result(self, overall_results):
     """This method get called on the main thread once the buffered result
-    is received.  It add the buffered result to the overall result."""
+    is received.  It adds the buffered result to the overall result."""
     # The exception info objects that we are adding here have already
     # been turned into strings so make _exc_info_to_string into a no-op.
     overall_results._exc_info_to_string = lambda x, _y: x
-    # No need to worry about stdout/stderr buffering since are a not
-    # actually running the test here, only setting the results.
-    overall_results.buffer = False
     overall_results.startTest(self.test)
     if self.test_result == 'success':
       overall_results.addSuccess(self.test)
@@ -332,7 +282,8 @@ class BufferedParallelTestResult(unittest.TestResult):
     overall_results.core_time += self.test_duration
 
   def log_test_run_for_visualization(self, flaky_tests):
-    if EMTEST_VISUALIZE and (self.test_result != 'skipped' or self.test_duration > 0.2):
+    assert EMTEST_VISUALIZE
+    if self.test_result != 'skipped' or self.test_duration > 0.2:
       test_result = self.test_result
       if test_result == 'success' and self.test_short_name() in flaky_tests:
         test_result = 'warnings'
