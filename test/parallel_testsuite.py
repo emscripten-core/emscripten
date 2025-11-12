@@ -260,22 +260,34 @@ class BufferedParallelTestResult(BufferingMixin, unittest.TestResult):
   def integrate_result(self, overall_results):
     """This method get called on the main thread once the buffered result
     is received.  It adds the buffered result to the overall result."""
-    # The exception info objects that we are adding here have already
-    # been turned into strings so make _exc_info_to_string into a no-op.
-    overall_results._exc_info_to_string = lambda x, _y: x
+
+    # Turns a <test, string> pair back into something that looks enoough
+    # link a <test, exc_info> pair. The exc_info tripple has the exception
+    # type as its first element. This is needed in particilar in the
+    # XMLTestRunner.
+    def restore_exc_info(pair):
+      test, exn_string = pair
+      assert self.last_err_type, exn_string
+      return (test, (self.last_err_type, exn_string, None))
+
+    # Our fame exc_info tripple keep the pre-serialized string in the
+    # second element of the triple so we overide _exc_info_to_string
+    # _exc_info_to_string to simply return it.
+    overall_results._exc_info_to_string = lambda x, _y: x[1]
+
     overall_results.startTest(self.test)
     if self.test_result == 'success':
       overall_results.addSuccess(self.test)
     elif self.test_result == 'failed':
-      overall_results.addFailure(*self.failures[0])
+      overall_results.addFailure(*restore_exc_info(self.failures[0]))
     elif self.test_result == 'errored':
-      overall_results.addError(*self.errors[0])
+      overall_results.addError(*restore_exc_info(self.errors[0]))
     elif self.test_result == 'skipped':
       overall_results.addSkip(*self.skipped[0])
     elif self.test_result == 'unexpected success':
-      overall_results.addUnexpectedSuccess(*self.unexpectedSuccesses[0])
+      overall_results.addUnexpectedSuccess(self.unexpectedSuccesses[0])
     elif self.test_result == 'expected failure':
-      overall_results.addExpectedFailure(*self.expectedFailures[0])
+      overall_results.addExpectedFailure(*restore_exc_info(self.expectedFailures[0]))
     else:
       assert False, f'unhandled test result {self.test_result}'
     overall_results.stopTest(self.test)
@@ -319,6 +331,7 @@ class BufferedParallelTestResult(BufferingMixin, unittest.TestResult):
 
   def addExpectedFailure(self, test, err):
     super().addExpectedFailure(test, err)
+    self.last_err_type = err[0]
     self.test_result = 'expected failure'
 
   def addUnexpectedSuccess(self, test):
@@ -331,10 +344,12 @@ class BufferedParallelTestResult(BufferingMixin, unittest.TestResult):
 
   def addFailure(self, test, err):
     super().addFailure(test, err)
+    self.last_err_type = err[0]
     self.test_result = 'failed'
 
   def addError(self, test, err):
     super().addError(test, err)
+    self.last_err_type = err[0]
     self.test_result = 'errored'
 
 
