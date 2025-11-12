@@ -3,8 +3,6 @@
 #include <emscripten/webaudio.h>
 #include <assert.h>
 
-#define QUIET_AUDIO_WORKLET
-
 // Tests that these audio worklet compatible functions work, details in comments below:
 //
 // - _emscripten_thread_supports_atomics_wait()
@@ -16,6 +14,7 @@
 // - emscripten_get_now()
 //
 // Define TEST_ON_WORKER to run on a worker, otherwise it runs on the main thread
+// Define QUIET_AUDIO_WORKLET to remove emscripten_out() calls in the audio worker
 
 // Global audio context
 EMSCRIPTEN_WEBAUDIO_T context;
