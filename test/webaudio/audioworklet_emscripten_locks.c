@@ -165,9 +165,9 @@ bool MainLoop(double time, void* data) {
 		break;
 	  case TEST_WAIT_ACQUIRE:
 		if (!didUnlock) {
-		  emscripten_out("Worker/main releasing lock");
 		  // Release here to acquire in process
 		  emscripten_lock_release(&testLock);
+		  emscripten_out("TEST_WAIT_ACQUIRE: worker/main released lock");
 		  didUnlock = true;
 		}
 		break;
