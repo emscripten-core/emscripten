@@ -829,6 +829,22 @@ def setup_sanitizers(options):
     settings.LOAD_SOURCE_MAP = 1
 
 
+def get_dylibs(options, linker_args):
+  """Find all the Wasm dynanamic libraries specified on the command line,
+  either via `-lfoo` or via `libfoo.so` directly."""
+
+  dylibs = []
+  for arg in linker_args:
+    if arg.startswith('-l'):
+      for ext in DYLIB_EXTENSIONS:
+        path = find_library('lib' + arg[2:] + ext, options.lib_dirs)
+        if path and building.is_wasm_dylib(path):
+          dylibs.append(path)
+    elif building.is_wasm_dylib(arg):
+      dylibs.append(arg)
+  return dylibs
+
+
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   """Future modifications should consider refactoring to reduce complexity.
@@ -843,6 +859,21 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   setup_environment_settings()
 
   apply_library_settings(linker_args)
+
+  if settings.SIDE_MODULE or settings.MAIN_MODULE:
+    default_setting('FAKE_DYLIBS', 0)
+
+  if options.shared and not settings.FAKE_DYLIBS:
+    default_setting('SIDE_MODULE', 1)
+    default_setting('RELOCATABLE', 1)
+
+  if not settings.FAKE_DYLIBS:
+    options.dylibs = get_dylibs(options, linker_args)
+    # If there are any dynamically linked libraries on the command line then
+    # need to enable `MAIN_MODULE` in order to produce JS code that can load them.
+    if not settings.MAIN_MODULE and not settings.SIDE_MODULE and options.dylibs:
+      default_setting('MAIN_MODULE', 2)
+
   linker_args += calc_extra_ldflags(options)
 
   # We used to do this check during on startup during `check_sanity`, but
@@ -936,16 +967,14 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # If no output format was specified we try to deduce the format based on
   # the output filename extension
-  if not options.oformat and (options.relocatable or (options.shared and not settings.SIDE_MODULE)):
-    # Until we have a better story for actually producing runtime shared libraries
-    # we support a compatibility mode where shared libraries are actually just
-    # object files linked with `wasm-ld --relocatable` or `llvm-link` in the case
-    # of LTO.
+  if not options.oformat and (options.relocatable or (options.shared and settings.FAKE_DYLIBS and not settings.SIDE_MODULE)):
+    # With FAKE_DYLIBS we generate an normal object file rather than an shared object.
+    # This is linked with `wasm-ld --relocatable` or (`llvm-link` in the case of LTO).
     if final_suffix in EXECUTABLE_EXTENSIONS:
       diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
     else:
-      if options.shared:
-        diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file.  This is a form of emulation to support existing build systems.  If you want to build a runtime shared library use the SIDE_MODULE setting.')
+      if options.shared and 'FAKE_DYLIBS' not in user_settings:
+        diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file (FAKE_DYLIBS defaults to true).  If you want to build a runtime shared library use the SIDE_MODULE or FAKE_DYLIBS=0.')
       options.oformat = OFormat.OBJECT
 
   if not options.oformat:
@@ -2730,10 +2759,10 @@ def map_to_js_libs(library_name):
 
 
 def process_libraries(options, flags):
+  """Process `-l` and `--js-library` flags."""
   new_flags = []
   system_libs_map = system_libs.Library.get_usable_variations()
 
-  # Process `-l` and `--js-library` flags
   for flag in flags:
     if flag.startswith('--js-library='):
       js_lib = flag.split('=', 1)[1]
@@ -2854,7 +2883,7 @@ class ScriptSource:
 
 
 def filter_out_fake_dynamic_libs(options, inputs):
-  # Filters out "fake" dynamic libraries that are really just intermediate object files.
+  """Filter out "fake" dynamic libraries that are really just intermediate object files."""
   def is_fake_dylib(input_file):
     if get_file_suffix(input_file) in DYLIB_EXTENSIONS and os.path.exists(input_file) and not building.is_wasm_dylib(input_file):
       if not options.ignore_dynamic_linking:
@@ -2866,11 +2895,13 @@ def filter_out_fake_dynamic_libs(options, inputs):
   return [f for f in inputs if not is_fake_dylib(f)]
 
 
-def filter_out_duplicate_dynamic_libs(inputs):
+def filter_out_duplicate_fake_dynamic_libs(inputs):
+  """Filter out duplicate "fake" shared libraries (intermediate object files).
+
+  See test_core.py:test_redundant_link
+  """
   seen = set()
 
-  # Filter out duplicate "fake" shared libraries (intermediate object files).
-  # See test_core.py:test_redundant_link
   def check(input_file):
     if get_file_suffix(input_file) in DYLIB_EXTENSIONS and not building.is_wasm_dylib(input_file):
       abspath = os.path.abspath(input_file)
@@ -3086,11 +3117,10 @@ def phase_calculate_linker_inputs(options, linker_args):
   if options.oformat == OFormat.OBJECT or options.ignore_dynamic_linking:
     linker_args = filter_out_fake_dynamic_libs(options, linker_args)
   else:
-    linker_args = filter_out_duplicate_dynamic_libs(linker_args)
+    linker_args = filter_out_duplicate_fake_dynamic_libs(linker_args)
 
   if settings.MAIN_MODULE:
-    dylibs = [a for a in linker_args if building.is_wasm_dylib(a)]
-    process_dynamic_libs(dylibs, options.lib_dirs)
+    process_dynamic_libs(options.dylibs, options.lib_dirs)
 
   return linker_args
 
