@@ -9,10 +9,18 @@
 // create variable parameter data sizes, depending on the browser, it's also the
 // ideal to test audio worklets don't corrupt TLS variables.
 
+// Large render size (approx 42ms)
+#define RENDER_SIZE_HINT 2048
+
 // This needs to be big enough for the stereo output, 2x inputs, 2x params and
 // the worker stack. To note that different browsers have different stack size
 // requirement (see notes in process() plus the expansion of the params).
+#ifndef RENDER_SIZE_HINT
 #define AUDIO_STACK_SIZE 6144
+#else
+// float bytes * stereo * ins/outs + extra stack
+#define AUDIO_STACK_SIZE ((RENDER_SIZE_HINT * 4 * 2 * 5) + 1024)
+#endif
 
 // Shared file playback and bootstrap
 #include "audioworklet_test_shared.inc"

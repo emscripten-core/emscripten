@@ -3,7 +3,9 @@
  * with these messages, and then to define a lookup table translating
  * error codes to offsets of corresponding fields in the structure. */
 #if defined(__EMSCRIPTEN__)
-// This is intended to match the errno in llvm-libc.
+/* Error handling is introduced to match the behavior in llvm-libc.
+ * When invalid errno is specified, Unknown error: errno_code is emitted.
+ */
 E(0,            "Success")
 #else
 E(0,            "No error information")

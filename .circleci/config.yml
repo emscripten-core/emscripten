@@ -452,6 +452,8 @@ commands:
           name: download firefox
           shell: powershell.exe -ExecutionPolicy Bypass
           command: |
+            $ErrorActionPreference = 'Stop'
+
             # To download Firefox, we must first figure out what the latest Firefox version name is.
             # This is because there does not exist a stable/static URL to download latest Firefox from.
             $html = Invoke-WebRequest "https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central/"
@@ -1101,6 +1103,7 @@ jobs:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
+      EMTEST_VISUALIZE: "1"
     steps:
       - run-tests-chrome:
           title: "browser64"
@@ -1123,6 +1126,9 @@ jobs:
             browser64.test_pthread_asan*
             browser64.test_webgl_multi_draw*
             browser64.test_pthread_growth*"
+      - run:
+          name: Check profile
+          command: file -E out/graph.html
   test-browser-chrome-2gb:
     executor: focal
     environment:

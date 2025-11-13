@@ -39,7 +39,7 @@ class interactive(BrowserCore):
     self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1')
 
   def test_html5_mouse(self):
-    self.btest('test_html5_mouse.c', expected='0', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
+    self.btest_exit('test_html5_mouse.c', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
 
   def test_html5_pointerlockerror(self):
     self.btest('test_html5_pointerlockerror.c', expected='0', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])

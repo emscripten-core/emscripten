@@ -7,12 +7,8 @@
 
 #pragma once
 
-#if __cplusplus < 201103L
-#error "embind requires -std=c++11 or newer"
-#endif
-
 #if __cplusplus < 201703L
-#warning "embind is likely moving to c++17 (https://github.com/emscripten-core/emscripten/issues/24850)"
+#error "embind requires -std=c++17 or newer"
 #endif
 
 // A value moving between JavaScript and C++ has three representations:
@@ -579,27 +575,6 @@ struct reference : public allow_raw_pointers {};
 
 namespace internal {
 
-#if __cplusplus >= 201703L
-template <typename... Args> using conjunction = std::conjunction<Args...>;
-template <typename... Args> using disjunction = std::disjunction<Args...>;
-#else
-// Helper available in C++14.
-template <bool _Test, class _T1, class _T2>
-using conditional_t = typename std::conditional<_Test, _T1, _T2>::type;
-
-template<class...> struct conjunction : std::true_type {};
-template<class B1> struct conjunction<B1> : B1 {};
-template<class B1, class... Bn>
-struct conjunction<B1, Bn...>
-    : conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
-
-template<class...> struct disjunction : std::false_type {};
-template<class B1> struct disjunction<B1> : B1 {};
-template<class B1, class... Bn>
-struct disjunction<B1, Bn...>
-    : conditional_t<bool(B1::value), disjunction<Bn...>, B1> {};
-#endif
-
 template<typename... Policies>
 struct isPolicy;
 
@@ -674,10 +649,10 @@ struct GetReturnValuePolicy<ReturnType, T, Rest...> {
 };
 
 template<typename... Policies>
-using isAsync = disjunction<std::is_same<async, Policies>...>;
+using isAsync = std::disjunction<std::is_same<async, Policies>...>;
 
 template<typename... Policies>
-using isNonnullReturn = disjunction<std::is_same<nonnull<ret_val>, Policies>...>;
+using isNonnullReturn = std::disjunction<std::is_same<nonnull<ret_val>, Policies>...>;
 
 // Build a tuple type that contains all the types where the predicate is true.
 // e.g. FilterTypes<std::is_integral, int, char, float> would return std::tuple<int, char>.
@@ -692,7 +667,6 @@ using FilterTypes = decltype(std::tuple_cat(
         >()...
     ));
 
-#if __cplusplus >= 201402L
 // Build a tuple that contains all the args where the predicate is true.
 template<template <class> class Predicate, typename... Args>
 auto Filter(Args&&... args) {
@@ -705,7 +679,6 @@ auto Filter(Args&&... args) {
         )(std::forward<Args>(args))...
     );
 }
-#endif
 
 } // namespace internal
 
