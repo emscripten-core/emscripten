@@ -65,6 +65,7 @@ class EmccOptions:
   dash_M = False
   dash_S = False
   dash_c = False
+  dylibs: List[str] = []
   embed_files: List[str] = []
   emit_symbol_map = False
   emit_tsd = ''

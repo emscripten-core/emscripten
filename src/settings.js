@@ -2230,3 +2230,9 @@ var WASM_JS_TYPES = false;
 // CROSS_ORIGIN uses an inline worker to instead load the worker script
 // indirectly using `importScripts`
 var CROSS_ORIGIN = false;
+
+// This settings changes the behaviour of the ``-shared`` flag.  When set to true
+// you get the old emscripten behaivour where the ``-shared`` flag actually
+// produces a normal object file (i.e. ``ld -r``).  The default behaviour is that
+// `-shared` is the as :ref:`SIDE_MODULE`.
+var FAKE_DYLIBS = false;
