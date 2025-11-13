@@ -49,6 +49,11 @@ See docs/process.md for more on how version tagging works.
   e.g. Intel x64 Macs and Windows-on-ARM, downloading Java SE Development Kit
   21.0.11 from https://www.oracle.com/europe/java/technologies/downloads/#java21
   is required in order to use Emscripten's Closure Compiler integration.
+- The `FAKE_DYLIBS` setting is now disabled by default. This means that
+  `-shared` will produce real dynamic libraries by default (`-sSIDE_MODULE` is
+  implied).  Also, if you include real dynamic libraries in your link comment
+  emscripten will now automatically produce a dynamically linked program
+  (`-sMAIN_MODULE=2` is implied). (#25930)
 
 5.0.7 - 04/30/26
 ----------------

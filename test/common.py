@@ -1517,7 +1517,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     return poppler + freetype
 
-  def get_zlib_library(self, cmake, cflags=None):
+  def get_zlib_library(self, cmake, cflags=None, target='libz.a'):
     assert cmake or not WINDOWS, 'on windows, get_zlib_library only supports cmake'
 
     old_args = self.cflags.copy()
@@ -1531,12 +1531,12 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     # https://github.com/emscripten-core/emscripten/issues/16908 is fixed
     self.cflags.append('-Wno-pointer-sign')
     if cmake:
-      rtn = self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
+      rtn = self.get_library(os.path.join('third_party', 'zlib'), target,
                              configure=['cmake', '.'],
                              make=['cmake', '--build', '.', '--'],
                              make_args=[])
     else:
-      rtn = self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
+      rtn = self.get_library(os.path.join('third_party', 'zlib'), target, make_args=['libz.a', target])
     self.cflags = old_args
     return rtn
 

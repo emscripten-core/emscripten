@@ -72,7 +72,7 @@ def get_building_env():
   env['AR'] = EMAR
   env['LD'] = EMCC
   env['NM'] = LLVM_NM
-  env['LDSHARED'] = EMCC
+  env['LDSHARED'] = f'{EMCC} -shared'
   env['RANLIB'] = EMRANLIB
   env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
   env['HOST_CC'] = CLANG_CC
@@ -165,6 +165,12 @@ def lld_flags_for_executable(external_symbols):
     stub = create_stub_object(external_symbols)
     cmd.append(stub)
 
+  if settings.FAKE_DYLIBS or (not settings.MAIN_MODULE and not settings.SIDE_MODULE):
+    cmd.append('-Bstatic')
+  else:
+    # wasm-ld still defaults to static linking by default. If that ever changes, we can remove this line.
+    cmd.append('-Bdynamic')
+
   if not settings.ERROR_ON_UNDEFINED_SYMBOLS:
     cmd.append('--import-undefined')
 
@@ -184,9 +190,6 @@ def lld_flags_for_executable(external_symbols):
       not settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
-  if settings.LINKABLE:
-    cmd.append('--export-dynamic')
-
   if settings.LTO and not settings.EXIT_RUNTIME:
     # The WebAssembly backend can generate new references to `__cxa_atexit` at
     # LTO time.  This `-u` flag forces the `__cxa_atexit` symbol to be
@@ -203,7 +206,6 @@ def lld_flags_for_executable(external_symbols):
   c_exports = [e for e in c_exports if e not in external_symbols]
   c_exports += settings.REQUIRED_EXPORTS
   if settings.MAIN_MODULE:
-    cmd.append('-Bdynamic')
     c_exports += side_module_external_deps(external_symbols)
   for export in c_exports:
     if settings.ERROR_ON_UNDEFINED_SYMBOLS:
@@ -227,6 +229,8 @@ def lld_flags_for_executable(external_symbols):
     if not settings.LINKABLE:
       cmd.append('--no-export-dynamic')
   else:
+    if settings.LINKABLE:
+      cmd.append('--export-dynamic')
     cmd.append('--export-table')
     if settings.ALLOW_TABLE_GROWTH:
       cmd.append('--growable-table')
@@ -281,7 +285,7 @@ def lld_flags(args):
 
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
-  if settings.LINKABLE:
+  if settings.LINKABLE and (settings.FAKE_DYLIBS or not settings.SIDE_MODULE):
     args.insert(0, '--whole-archive')
     args.append('--no-whole-archive')
 

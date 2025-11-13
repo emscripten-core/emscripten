@@ -54,8 +54,7 @@ logger = logging.getLogger('args')
 
 @unique
 class OFormat(Enum):
-  # Output a relocatable object file.  We use this
-  # today for `-r` and `-shared`.
+  # Output a relocatable object file. i.e. `-r` linker flag
   OBJECT = auto()
   WASM = auto()
   JS = auto()
