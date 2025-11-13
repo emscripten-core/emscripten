@@ -15,7 +15,7 @@ jobs:
     name: Rebaseline Tests
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
