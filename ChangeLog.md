@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.20 (in development)
 -----------------------
+- Added new `emscripten_queue_microtask()` API to call the JS `queueMicrotask()`
+  function. (#25741)
 - Embind now requires C++17 or newer. See #24850.
 
 4.0.19 - 11/04/25

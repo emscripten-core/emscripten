@@ -2325,6 +2325,15 @@ var LibraryHTML5 = {
     return requestAnimationFrame(tick);
   },
 
+  emscripten_queue_microtask__deps: ['$callUserCallback'],
+  emscripten_queue_microtask: (cb, userData) => {
+    {{{ runtimeKeepalivePush(); }}}
+    return queueMicrotask(() => {
+      {{{ runtimeKeepalivePop(); }}}
+      callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(userData));
+    });
+  },
+
   emscripten_get_device_pixel_ratio__proxy: 'sync',
   emscripten_get_device_pixel_ratio: () => {
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
