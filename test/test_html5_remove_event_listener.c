@@ -63,7 +63,7 @@ int main() {
   void *userData3 = "3";
 
   // first we check for invalid parameters
-  assert(emscripten_remove_callback("this_dom_element_does_not_exist", NULL, 0, key_callback_1) == EMSCRIPTEN_RESULT_UNKNOWN_TARGET);
+  assert(emscripten_html5_remove_event_listener("this_dom_element_does_not_exist", NULL, 0, key_callback_1) == EMSCRIPTEN_RESULT_UNKNOWN_TARGET);
 
   checkCount(0);
 
@@ -77,8 +77,8 @@ int main() {
   checkCount(3);
 
   // removing keydown event
-  ret = emscripten_remove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_KEYDOWN, key_callback_1);
-  ASSERT_RESULT(emscripten_remove_callback);
+  ret = emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_KEYDOWN, key_callback_1);
+  ASSERT_RESULT(emscripten_html5_remove_event_listener);
 
   checkCount(2);
 
@@ -95,26 +95,26 @@ int main() {
   checkCount(4);
 
   // removing a combination that does not exist (no mouse_callback_1 registered)
-  ret = emscripten_remove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_KEYPRESS, mouse_callback_1);
-  ASSERT_RESULT(emscripten_remove_callback);
+  ret = emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_KEYPRESS, mouse_callback_1);
+  ASSERT_RESULT(emscripten_html5_remove_event_listener);
 
   checkCount(4);
 
   // removing keypress / userData=NULL / key_callback_2
-  ret = emscripten_remove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_KEYPRESS, key_callback_2);
-  ASSERT_RESULT(emscripten_remove_callback);
+  ret = emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_KEYPRESS, key_callback_2);
+  ASSERT_RESULT(emscripten_html5_remove_event_listener);
 
   checkCount(3);
 
   // removing keypress / userData=NULL / key_callback_1
-  ret = emscripten_remove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_KEYPRESS, key_callback_1);
-  ASSERT_RESULT(emscripten_remove_callback);
+  ret = emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_KEYPRESS, key_callback_1);
+  ASSERT_RESULT(emscripten_html5_remove_event_listener);
 
   checkCount(2);
 
   // removing keypress / userData=3 / key_callback_2
-  ret = emscripten_remove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, userData3, EMSCRIPTEN_EVENT_KEYPRESS, key_callback_2);
-  ASSERT_RESULT(emscripten_remove_callback);
+  ret = emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, userData3, EMSCRIPTEN_EVENT_KEYPRESS, key_callback_2);
+  ASSERT_RESULT(emscripten_html5_remove_event_listener);
 
   checkCount(1);
 
@@ -127,8 +127,8 @@ int main() {
   checkCount(3);
 
   // removing mousedown / userData=NULL / mouse_callback_1 on the window target
-  ret = emscripten_remove_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_MOUSEDOWN, mouse_callback_1);
-  ASSERT_RESULT(emscripten_remove_callback);
+  ret = emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_MOUSEDOWN, mouse_callback_1);
+  ASSERT_RESULT(emscripten_html5_remove_event_listener);
 
   checkCount(2);
 

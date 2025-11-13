@@ -90,14 +90,14 @@ The ``useCapture`` parameter  maps to ``useCapture`` in `EventTarget.addEventLis
 
 Most functions return the result using the type :c:data:`EMSCRIPTEN_RESULT`. Zero and positive values denote success. Negative values signal failure. None of the functions fail or abort by throwing a JavaScript or C++ exception. If a particular browser does not support the given feature, the value :c:data:`EMSCRIPTEN_RESULT_NOT_SUPPORTED` will be returned at the time the callback is registered.
 
-Remove callback function
-------------------------
+Unregister function
+-------------------
 
-In order to remove a callback, previously set via a ``emscripten_set_some_callback`` call, there is a dedicated and generic function for this purpose:
+In order to unregister a single event handler callback, call the following function:
 
   .. code-block:: cpp
 
-    EMSCRIPTEN_RESULT emscripten_remove_callback(
+    EMSCRIPTEN_RESULT emscripten_html5_remove_event_listener(
       const char *target,   // ID of the target HTML element.
       void *userData,       // User-defined data (passed to the callback).
       int eventTypeId,      // The event type ID (EMSCRIPTEN_EVENT_XXX).
@@ -106,6 +106,8 @@ In order to remove a callback, previously set via a ``emscripten_set_some_callba
 
 
 The ``target``, ``userData`` and ``callback`` parameters are the same parameters provided in ``emscripten_set_some_callback`` with the only difference being that, since this function applies to all types of callbacks, the type of ``callback`` is ``void *``.
+
+Note in particular that the value of ``userData`` will need to match with the call that was used to register the callback. If you are having trouble, double check the value of ``userData``.
 
 The ``eventTypeId`` represents the event type, the same Id received in the callback functions.
 
@@ -129,9 +131,9 @@ The ``eventTypeId`` represents the event type, the same Id received in the callb
       emscripten_set_mousemove_callback("#mydiv", 0, my_mouse_callback_1);
 
       // 2. remove these callbacks
-      emscripten_remove_callback("#mydiv", 0, EMSCRIPTEN_EVENT_MOUSEDOWN, my_mouse_callback_1);
-      emscripten_remove_callback("#mydiv", (void *) 34, EMSCRIPTEN_EVENT_MOUSEDOWN, my_mouse_callback_2);
-      emscripten_remove_callback("#mydiv", 0, EMSCRIPTEN_EVENT_MOUSEMOVE, my_mouse_callback_1);
+      emscripten_html5_remove_event_listener("#mydiv", 0, EMSCRIPTEN_EVENT_MOUSEDOWN, my_mouse_callback_1);
+      emscripten_html5_remove_event_listener("#mydiv", (void *) 34, EMSCRIPTEN_EVENT_MOUSEDOWN, my_mouse_callback_2);
+      emscripten_html5_remove_event_listener("#mydiv", 0, EMSCRIPTEN_EVENT_MOUSEMOVE, my_mouse_callback_1);
     }
 
 

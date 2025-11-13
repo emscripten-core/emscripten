@@ -433,9 +433,9 @@ var LibraryHTML5 = {
   },
 #endif
 
-  emscripten_remove_callback__proxy: 'sync',
-  emscripten_remove_callback__deps: ['$JSEvents', '$findEventTarget'],
-  emscripten_remove_callback: (target, userData, eventTypeId, callback) => {
+  emscripten_html5_remove_event_listener__proxy: 'sync',
+  emscripten_html5_remove_event_listener__deps: ['$JSEvents', '$findEventTarget'],
+  emscripten_html5_remove_event_listener: (target, userData, eventTypeId, callback) => {
     var eventHandler = {
       target: findEventTarget(target),
       userData,
