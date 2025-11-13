@@ -164,14 +164,15 @@ var LibraryDylink = {
   },
 
   $GOT: {},
-  $currentModuleWeakSymbols: '=new Set({{{ JSON.stringify(Array.from(WEAK_IMPORTS)) }}})',
 
-  // Create globals to each imported symbol.  These are all initialized to zero
-  // and get assigned later in `updateGOT`
+  // Proxy handler used for GOT.mem and GOT.func imports.  Each of these
+  // imports is fullfilled dynamically via the `get` method of this proxy
+  // handler.  We abuse the `target` of the Proxy in order to pass the set of
+  // weak imports to the handler.
   $GOTHandler__internal: true,
-  $GOTHandler__deps: ['$GOT', '$currentModuleWeakSymbols'],
+  $GOTHandler__deps: ['$GOT'],
   $GOTHandler: {
-    get(obj, symName) {
+    get(weakImports, symName) {
       var rtn = GOT[symName];
       if (!rtn) {
 #if DYLINK_DEBUG == 2
@@ -179,7 +180,7 @@ var LibraryDylink = {
 #endif
         rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ UNDEFINED_ADDR }}});
       }
-      if (!currentModuleWeakSymbols.has(symName)) {
+      if (!weakImports.has(symName)) {
         // Any non-weak reference to a symbol marks it as `required`, which
         // enabled `reportUndefinedSymbols` to report undefined symbol errors
         // correctly.
@@ -660,7 +661,6 @@ var LibraryDylink = {
     '$loadDynamicLibrary', '$getMemory', '$updateGOT',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
     '$getDylinkMetadata', '$alignMemory',
-    '$currentModuleWeakSymbols',
     '$updateTableMap',
     '$wasmTable',
     '$addOnPostCtor',
@@ -799,10 +799,10 @@ var LibraryDylink = {
         }
       };
       var proxy = new Proxy({}, proxyHandler);
-      currentModuleWeakSymbols = metadata.weakImports;
+      var GOTProxy = new Proxy(metadata.weakImports, GOTHandler);
       var info = {
-        'GOT.mem': new Proxy({}, GOTHandler),
-        'GOT.func': new Proxy({}, GOTHandler),
+        'GOT.mem': GOTProxy,
+        'GOT.func': GOTProxy,
         'env': proxy,
         '{{{ WASI_MODULE_NAME }}}': proxy,
       };
