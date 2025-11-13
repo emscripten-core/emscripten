@@ -37,7 +37,7 @@ from common import (
 from tools import feature_matrix, shared, utils
 from tools.feature_matrix import UNSUPPORTED
 from tools.shared import DEBUG, EMCC, exit_with_error
-from tools.utils import WINDOWS, memoize, path_from_root, read_binary
+from tools.utils import MACOS, WINDOWS, memoize, path_from_root, read_binary
 
 logger = logging.getLogger('common')
 
@@ -166,7 +166,7 @@ def get_firefox_version():
   if not is_firefox():
     return UNSUPPORTED
   exe_path = shlex.split(EMTEST_BROWSER)[0]
-  ini_path = os.path.join(os.path.dirname(exe_path), "platform.ini")
+  ini_path = os.path.join(os.path.dirname(exe_path), '../Resources/platform.ini' if MACOS else 'platform.ini')
   # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
   m = re.search(r"^Milestone=(.*)$", read_file(ini_path), re.MULTILINE)
   milestone = m.group(1).strip()
