@@ -3429,13 +3429,12 @@ Default value: false
 FAKE_DYLIBS
 ===========
 
-This setting changes the behaviour of the ``-shared`` flag.  The default
-setting of ``true`` means the ``-shared`` flag actually produces a normal
-object file (i.e. ``ld -r``).  Setting this to false will cause ``-shared``
-to behave like :ref:`SIDE_MODULE` and produce and dynamically linked
-library.
+This setting changes the behaviour of the ``-shared`` flag.  When set to true
+you get the old emscripten behaivour where the ``-shared`` flag actually
+produces a normal object file (i.e. ``ld -r``).  The default behaviour is that
+`-shared` is the as :ref:`SIDE_MODULE`.
 
-Default value: true
+Default value: false
 
 .. _deprecated-settings:
 
