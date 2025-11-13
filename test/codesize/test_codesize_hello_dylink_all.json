@@ -1,7 +1,7 @@
 {
-  "a.out.js": 245483,
-  "a.out.nodebug.wasm": 573783,
-  "total": 819266,
+  "a.out.js": 245877,
+  "a.out.nodebug.wasm": 573904,
+  "total": 819781,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -681,6 +681,7 @@
     "emscripten_has_asyncify",
     "emscripten_hide_mouse",
     "emscripten_html5_remove_all_event_listeners",
+    "emscripten_html5_remove_event_listener",
     "emscripten_idb_async_clear",
     "emscripten_idb_async_delete",
     "emscripten_idb_async_exists",
@@ -741,7 +742,6 @@
     "emscripten_promise_resolve",
     "emscripten_promise_then",
     "emscripten_random",
-    "emscripten_remove_callback",
     "emscripten_request_animation_frame",
     "emscripten_request_animation_frame_loop",
     "emscripten_request_fullscreen",
