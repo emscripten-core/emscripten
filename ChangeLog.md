@@ -22,6 +22,7 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - Added `emscripten_html5_remove_event_listener` function in `html5.h` in order to be
   able to remove a single callback. (#25535)
+- Embind now requires C++17 or newer. See #24850.
 
 4.0.19 - 11/04/25
 -----------------

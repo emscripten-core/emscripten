@@ -7,6 +7,10 @@
 
 #pragma once
 
+#if __cplusplus < 201703L
+#error "embind requires -std=c++17 or newer"
+#endif
+
 #include <cassert>
 #include <cstddef>
 #include <functional>
@@ -14,9 +18,7 @@
 #include <string>
 #include <type_traits>
 #include <vector>
-#if __cplusplus >= 201703L
 #include <optional>
-#endif
 
 #include <emscripten/em_asm.h>
 #include <emscripten/val.h>
@@ -1591,7 +1593,7 @@ public:
         // overload.
         typename = typename std::enable_if<
             !std::is_function<FieldType>::value &&
-            internal::conjunction<internal::isPolicy<Policies>...>::value>::type>
+            std::conjunction<internal::isPolicy<Policies>...>::value>::type>
     EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field, Policies...) const {
         using namespace internal;
         using ReturnPolicy = GetReturnValuePolicy<FieldType, Policies...>::tag;
@@ -1619,7 +1621,7 @@ public:
         // overload.
         typename = typename std::enable_if<
             !std::is_function<FieldType>::value &&
-            internal::conjunction<internal::isPolicy<Policies>...>::value>::type>
+            std::conjunction<internal::isPolicy<Policies>...>::value>::type>
     EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field, Policies...) const {
         using namespace internal;
         using ReturnPolicy = GetReturnValuePolicy<FieldType, Policies...>::tag;
@@ -1648,7 +1650,7 @@ public:
         // Prevent the template from wrongly matching the getter/setter overload
         // of this function.
         typename = typename std::enable_if<
-            internal::conjunction<internal::isPolicy<Policies>...>::value>::type>
+            std::conjunction<internal::isPolicy<Policies>...>::value>::type>
     EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter, Policies...) const {
         using namespace internal;
 
@@ -1775,7 +1777,6 @@ public:
     }
 };
 
-#if __cplusplus >= 201703L
 template<typename T>
 void register_optional() {
     // Optional types are automatically registered for some internal types so
@@ -1790,7 +1791,6 @@ void register_optional() {
         internal::TypeID<std::optional<T>>::get(),
         internal::TypeID<typename std::remove_pointer<T>::type>::get());
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // VECTORS
@@ -1800,9 +1800,6 @@ namespace internal {
 
 template<typename VectorType>
 struct VectorAccess {
-// This nearly duplicated code is used for generating more specific TypeScript
-// types when using more modern C++ versions.
-#if __cplusplus >= 201703L
     static std::optional<typename VectorType::value_type> get(
         const VectorType& v,
         unsigned int index
@@ -1813,18 +1810,6 @@ struct VectorAccess {
             return {};
         }
     }
-#else
-    static val get(
-        const VectorType& v,
-        unsigned int index
-    ) {
-        if (index < v.size()) {
-            return val(v[index], allow_raw_pointers());
-        } else {
-            return val::undefined();
-        }
-    }
-#endif
 
     static bool set(
         VectorType& v,
@@ -1860,9 +1845,7 @@ struct VectorAccess {
 template<typename T, class Allocator=std::allocator<T>>
 class_<std::vector<T, Allocator>> register_vector(const char* name) {
     typedef std::vector<T, Allocator> VecType;
-#if __cplusplus >= 201703L
     register_optional<T>();
-#endif
 
     return class_<VecType>(name)
         .template constructor<>()
@@ -1882,9 +1865,6 @@ namespace internal {
 
 template<typename MapType>
 struct MapAccess {
-// This nearly duplicated code is used for generating more specific TypeScript
-// types when using more modern C++ versions.
-#if __cplusplus >= 201703L
     static std::optional<typename MapType::mapped_type> get(
         const MapType& m,
         const typename MapType::key_type& k
@@ -1896,19 +1876,6 @@ struct MapAccess {
             return i->second;
         }
     }
-#else
-    static val get(
-        const MapType& m,
-        const typename MapType::key_type& k
-    ) {
-        auto i = m.find(k);
-        if (i == m.end()) {
-            return val::undefined();
-        } else {
-            return val(i->second);
-        }
-    }
-#endif
 
     static void set(
         MapType& m,
@@ -1940,9 +1907,7 @@ template<typename K, typename V, class Compare = std::less<K>,
     class Allocator = std::allocator<std::pair<const K, V>>>
 class_<std::map<K, V, Compare, Allocator>> register_map(const char* name) {
     typedef std::map<K,V, Compare, Allocator> MapType;
-#if __cplusplus >= 201703L
     register_optional<V>();
-#endif
 
     return class_<MapType>(name)
         .template constructor<>()
@@ -1957,7 +1922,6 @@ class_<std::map<K, V, Compare, Allocator>> register_map(const char* name) {
 // std::optional
 ////////////////////////////////////////////////////////////////////////////////
 
-#if __cplusplus >= 201703L
 namespace internal {
 template <typename T>
 struct BindingType<std::optional<T>> {
@@ -1982,7 +1946,6 @@ struct BindingType<std::optional<T>> {
     }
 };
 } // end namespace internal
-#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////

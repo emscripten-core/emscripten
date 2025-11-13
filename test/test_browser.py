@@ -2906,7 +2906,7 @@ Module["preRun"] = () => {
     'closure': (['-O2', '-g1', '--closure=1'],),
   })
   def test_html5_mouse(self, opts):
-    self.btest('test_html5_mouse.c', cflags=opts + ['-DAUTOMATE_SUCCESS=1'], expected='0')
+    self.btest_exit('test_html5_mouse.c', cflags=opts + ['-DAUTOMATE_SUCCESS=1'])
 
   @parameterized({
     '': ([],),

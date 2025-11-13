@@ -66,11 +66,11 @@ var ASSERTIONS = 1;
 // [link]
 var STACK_OVERFLOW_CHECK = 0;
 
-// When STACK_OVERFLOW_CHECK is enabled we also check writes to address zero.
-// This can help detect NULL pointer usage.  If you want to skip this extra
-// check (for example, if you want reads from the address zero to always return
-// zero) you can disable this here.  This setting has no effect when
-// STACK_OVERFLOW_CHECK is disabled.
+// When :ref`STACK_OVERFLOW_CHECK` is enabled we also check writes to address
+// zero. This can help detect NULL pointer usage.  If you want to skip this
+// extra check (for example, if you want reads from the address zero to always
+// return zero) you can disable this here.  This setting has no effect when
+// :ref:`STACK_OVERFLOW_CHECK` is disabled.
 var CHECK_NULL_WRITES = true;
 
 // When set to 1, will generate more verbose output during compilation.
@@ -95,7 +95,7 @@ var INVOKE_RUN = true;
 // keeps the runtime alive. Call emscripten_exit_with_live_runtime() to finish
 // main() while keeping the runtime alive. Calling emscripten_force_exit() will
 // shut down the runtime, invoking atexit()s, and flushing stdio streams.
-// This setting is controlled automatically in STANDALONE_WASM mode:
+// This setting is controlled automatically in :ref:`STANDALONE_WASM` mode:
 //
 // - For a command (has a main function) this is always 1
 // - For a reactor (no main function) this is always 0
@@ -371,7 +371,7 @@ var LIBRARY_DEBUG = false;
 
 // Print out all musl syscalls, including translating their numeric index
 // to the string name, which can be convenient for debugging. (Other system
-// calls are not numbered and already have clear names; use LIBRARY_DEBUG
+// calls are not numbered and already have clear names; use :ref:`LIBRARY_DEBUG`
 // to get logging for all of them.)
 // [link]
 var SYSCALL_DEBUG = false;
@@ -684,11 +684,10 @@ var ENVIRONMENT = ['web', 'webview', 'worker', 'node'];
 var LZ4 = false;
 
 // Emscripten (JavaScript-based) exception handling options.
-// The three options below (DISABLE_EXCEPTION_CATCHING,
-// EXCEPTION_CATCHING_ALLOWED, and DISABLE_EXCEPTION_THROWING) only pertain to
-// JavaScript-based exception handling and do not control the native Wasm
-// exception handling option (-fwasm-exceptions, internal setting:
-// WASM_EXCEPTIONS).
+// The three relatated settings (:ref:`DISABLE_EXCEPTION_CATCHING`,
+// :ref:`EXCEPTION_CATCHING_ALLOWED`, and :ref:`DISABLE_EXCEPTION_THROWING`)
+// only pertain to JavaScript-based exception handling and do not control the
+// native Wasm exception handling option (``-fwasm-exceptions``)
 
 // Disables generating code to actually catch exceptions. This disabling is on
 // by default as the overhead of exceptions is quite high in size and speed
@@ -704,7 +703,7 @@ var LZ4 = false;
 //   as it may contain thrown exceptions that are never caught (e.g.
 //   just using std::vector can have that). -fno-rtti may help as well.
 //
-// This option is mutually exclusive with EXCEPTION_CATCHING_ALLOWED.
+// This option is mutually exclusive with :ref:`EXCEPTION_CATCHING_ALLOWED`.
 //
 // This option only applies to Emscripten (JavaScript-based) exception handling
 // and does not control the native Wasm exception handling.
@@ -715,7 +714,7 @@ var DISABLE_EXCEPTION_CATCHING = 1;
 // Enables catching exception but only in the listed functions.  This
 // option acts like a more precise version of ``DISABLE_EXCEPTION_CATCHING=0``.
 //
-// This option is mutually exclusive with DISABLE_EXCEPTION_CATCHING.
+// This option is mutually exclusive with :ref:`DISABLE_EXCEPTION_CATCHING`.
 //
 // This option only applies to Emscripten (JavaScript-based) exception handling
 // and does not control the native Wasm exception handling.
@@ -741,7 +740,8 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 var DISABLE_EXCEPTION_THROWING = false;
 
 // Make the exception message printing function, 'getExceptionMessage' available
-// in the JS library for use, by adding necessary symbols to EXPORTED_FUNCTIONS.
+// in the JS library for use, by adding necessary symbols to
+// :ref:`EXPORTED_FUNCTIONS`.
 //
 // This works with both Emscripten EH and Wasm EH. When you catch an exception
 // from JS, that gives you a user-thrown value in case of Emscripten EH, and a
@@ -773,7 +773,7 @@ var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 // exceptions will display stack traces upon exiting. This defaults to true when
 // ASSERTIONS is enabled. This option is for users who want exceptions' stack
 // traces but do not want other overheads ASSERTIONS can incur.
-// This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
+// This option implies :ref:`EXPORT_EXCEPTION_HANDLING_HELPERS`.
 // [link]
 var EXCEPTION_STACK_TRACES = false;
 
@@ -820,8 +820,8 @@ var ASYNCIFY = 0;
 
 // Imports which can do an async operation, in addition to the default ones that
 // emscripten defines like emscripten_sleep. If you add more you will need to
-// mention them to here, or else they will not work (in ASSERTIONS builds an
-// error will be shown).
+// mention them to here, or else they will not work (in :ref:`ASSERTIONS` builds
+// an error will be shown).
 // Note that this list used to contain the default ones, which meant that you
 // had to list them when adding your own; the default ones are now added
 // automatically.
@@ -829,15 +829,15 @@ var ASYNCIFY = 0;
 var ASYNCIFY_IMPORTS = [];
 
 // Whether indirect calls can be on the stack during an unwind/rewind.
-// If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
-// must assume an indirect call can reach almost everywhere.
+// If you know they cannot, then setting this can be extremely helpful, as
+// otherwise asyncify must assume an indirect call can reach almost everywhere.
 // [link]
 var ASYNCIFY_IGNORE_INDIRECT = false;
 
 // The size of the asyncify stack - the region used to store unwind/rewind
-// info. This must be large enough to store the call stack and locals. If it is too
-// small, you will see a wasm trap due to executing an "unreachable" instruction.
-// In that case, you should increase this size.
+// info. This must be large enough to store the call stack and locals. If it is
+// too small, you will see a wasm trap due to executing an "unreachable"
+// instruction. In that case, you should increase this size.
 // [link]
 var ASYNCIFY_STACK_SIZE = 4096;
 
@@ -853,8 +853,8 @@ var ASYNCIFY_STACK_SIZE = 4096;
 //
 // The names in this list are names from the WebAssembly Names section. The
 // wasm backend will emit those names in *human-readable* form instead of
-// typical C++ mangling. For example, you should write Struct::func()
-// instead of _ZN6Struct4FuncEv. C is also different from C++, as C
+// typical C++ mangling. For example, you should write ``Struct::func()``
+// instead of ``_ZN6Struct4FuncEv``. C is also different from C++, as C
 // names don't end with parameters; as a result foo(int) in C++ would appear
 // as just foo in C (C++ has parameters because it needs to differentiate
 // overloaded functions). You will see warnings in the console if a name in the
@@ -889,7 +889,7 @@ var ASYNCIFY_REMOVE = [];
 // and use this list to fix up some indirect calls that *do* need to be
 // instrumented.
 //
-// See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
+// See :ref:`ASYNCIFY_REMOVE` about the names, including wildcard matching and
 // character substitutions.
 // [link]
 var ASYNCIFY_ADD = [];
@@ -904,7 +904,7 @@ var ASYNCIFY_PROPAGATE_ADD = true;
 // will be instrumented. Like the remove-list, getting this wrong will break
 // your application.
 //
-// See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
+// See :ref:`ASYNCIFY_REMOVE` about the names, including wildcard matching and
 // character substitutions.
 // [link]
 var ASYNCIFY_ONLY = [];
@@ -1060,8 +1060,9 @@ var NODE_CODE_CACHING = false;
 // symbols listed here require an ``_`` prefix.
 //
 // By default if this setting is not specified on the command line the
-// ``_main`` function will be implicitly exported.  In STANDALONE_WASM mode the
-// default export is ``__start`` (or ``__initialize`` if --no-entry is specified).
+// ``_main`` function will be implicitly exported.  In :ref:`STANDALONE_WASM`
+// mode the default export is ``__start`` (or ``__initialize`` if ``--no-entry``
+// is specified).
 //
 // JS Library symbols can also be added to this list (without the leading `$`).
 // [link]
@@ -1399,9 +1400,9 @@ var USE_GLFW = 0;
 // [link]
 var WASM = 1;
 
-// STANDALONE_WASM indicates that we want to emit a wasm file that can run
-// without JavaScript. The file will use standard APIs such as wasi as much as
-// possible to achieve that.
+// Indicates that we want to emit a wasm file that can run without JavaScript.
+// The file will use standard APIs such as wasi as much as possible to achieve
+// that.
 //
 // This option does not guarantee that the wasm can be used by itself - if you
 // use APIs with no non-JS alternative, we will still use those (e.g., OpenGL
@@ -2075,6 +2076,7 @@ var SEPARATE_DWARF_URL = '';
 // When this flag is turned on, we error at link time if the build requires any
 // changes to the wasm after link. This can be useful in testing, for example.
 // Some example of features that require post-link wasm changes are:
+//
 // - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
 // - Lowering sign-extension operation when targeting older browsers.
 var ERROR_ON_WASM_CHANGES_AFTER_LINK = false;
@@ -2101,7 +2103,7 @@ var ABORT_ON_WASM_EXCEPTIONS = false;
 // are more WASI compliant and also allows it to process and execute WASI
 // binaries built with other SDKs (e.g.  wasi-sdk).
 // This setting is experimental and subject to change or removal.
-// Implies STANDALONE_WASM.
+// Implies :ref:`STANDALONE_WASM`.
 // [link]
 // [experimental]
 var PURE_WASI = false;
@@ -2111,10 +2113,12 @@ var PURE_WASI = false;
 // it to JavaScript.
 // Use of the following settings will enable this settings since they
 // depend on being able to define the memory in JavaScript:
+//
 // - -pthread
 // - RELOCATABLE
 // - ASYNCIFY_LAZY_LOAD_CODE
 // - WASM2JS (WASM=0)
+//
 // [link]
 var IMPORTED_MEMORY = false;
 
@@ -2157,6 +2161,7 @@ var POLYFILL = true;
 // loop or each user callback, which can flood the console).
 // This setting is enabled by default if any of the following debugging settings
 // are enabled:
+//
 // - PTHREADS_DEBUG
 // - DYLINK_DEBUG
 // - LIBRARY_DEBUG
@@ -2167,20 +2172,21 @@ var POLYFILL = true;
 // - WEBSOCKET_DEBUG
 // - SOCKET_DEBUG
 // - FETCH_DEBUG
+//
 // [link]
 var RUNTIME_DEBUG = 0;
 
 // Include JS library symbols that were previously part of the default runtime.
 // Without this, such symbols can be made available by adding them to
-// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE, or via the dependencies of another JS
+// :ref:`DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`, or via the dependencies of another JS
 // library symbol.
 var LEGACY_RUNTIME = false;
 
 // User-defined functions to wrap with signature conversion, which take or return
-// pointer argument. Only affects MEMORY64=1 builds, see create_pointer_conversion_wrappers
-// in emscripten.py for details.
+// pointer argument. Only affects ``MEMORY64=1`` builds, see
+// ``create_pointer_conversion_wrappers`` in ``emscripten.py`` for details.
 // Use _ for non-pointer arguments, p for pointer/i53 arguments, and P for optional pointer/i53 values.
-// Example use -sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p
+// Example use ``-sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p``
 // [link]
 var SIGNATURE_CONVERSIONS = [];
 
@@ -2193,7 +2199,7 @@ var SIGNATURE_CONVERSIONS = [];
 var SOURCE_PHASE_IMPORTS = false;
 
 // Experimental support for wasm ESM integration.
-// Requires EXPORT_ES6 and MODULARIZE=instance
+// Requires :ref:`EXPORT_ES6` and ``MODULARIZE=instance``
 // [link]
 // [experimental]
 var WASM_ESM_INTEGRATION = false;
