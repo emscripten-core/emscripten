@@ -10,7 +10,7 @@
 #include <stdio.h>
 #include <assert.h>
 #include <emscripten.h>
-#include <emscripten/html5.h>
+#include <emscripten/eventloop.h>
 
 void cb(void *userData) {
   printf("cb\n");
