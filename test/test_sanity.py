@@ -100,6 +100,22 @@ def make_fake_clang(filename, version, targets='wasm32 - WebAssembly 32-bit'):
   make_fake_tool(filename + '++', version, output)
 
 
+# Return a new PATH that has no directories that would contain the given tool.
+def path_without_tool(env_path, tool_bin):
+  tool_bin = utils.exe_suffix(tool_bin)
+  python_path = os.path.normpath(os.path.dirname(sys.executable))
+
+  def ignore_path(p):
+    # We cannot ignore a path element that contains the python executable itself, otherwise
+    # the bootstrap script will fail
+    if os.path.isfile(os.path.join(p, tool_bin)) and os.path.normpath(p) != python_path:
+      return True
+    return False
+
+  old_path = env_path.split(os.pathsep)
+  return os.pathsep.join([d for d in old_path if not ignore_path(d)])
+
+
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
 
 # arguments to build a minimal hello world program, without even libc
@@ -153,7 +169,7 @@ class sanity(RunnerCore):
 
     return self.run_process(command, stdout=PIPE, stderr=STDOUT, check=False, env=env).stdout
 
-  def check_working(self, command, expected=None):
+  def check_working(self, command, expected=None, env=None):
     if type(command) is not list:
       command = [command]
     if command == [EMCC]:
@@ -164,7 +180,7 @@ class sanity(RunnerCore):
       else:
         expected = 'could not find the following tests: blahblah'
 
-    output = self.do(command)
+    output = self.do(command, env=env)
     self.assertContained(expected, output)
     return output
 
@@ -688,11 +704,15 @@ fi
     # with no binaryen root, an error is shown
     restore_and_set_up()
 
+    # Remove wasm-opt from PATH.
+    env = os.environ.copy()
+    env['PATH'] = path_without_tool(env['PATH'], 'wasm-opt')
+
     open(EM_CONFIG, 'a').write('\nBINARYEN_ROOT = ""\n')
-    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % EM_CONFIG)
+    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % EM_CONFIG, env=env)
 
     open(EM_CONFIG, 'a').write('\ndel BINARYEN_ROOT\n')
-    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT not set in config (%s), and `wasm-opt` not found in PATH' % EM_CONFIG)
+    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT not set in config (%s), and `wasm-opt` not found in PATH' % EM_CONFIG, env=env)
 
   @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_empty_config(self):
@@ -830,21 +850,9 @@ fi
     for e in ['LLVM_ROOT', 'EMSDK_NODE', 'EMSDK_PYTHON', 'EMSDK', 'EMSCRIPTEN', 'BINARYEN_ROOT', 'EMCC_SKIP_SANITY_CHECK', 'EM_CONFIG']:
       env.pop(e, None)
 
-    python_path = os.path.normpath(os.path.dirname(sys.executable))
-
     # Remove from PATH every directory that contains clang.exe so that bootstrap.py cannot
     # accidentally succeed by virtue of locating tools in PATH.
-    def ignore_path(p):
-      clang_bin = utils.exe_suffix('clang')
-      # We cannot ignore a path element that contains the python executable itself, otherwise
-      # the bootstrap script will fail
-      if os.path.isfile(os.path.join(p, clang_bin)) and os.path.normpath(p) != python_path:
-        return True
-      return False
-
-    old_path = env['PATH'].split(os.pathsep)
-    new_path = [d for d in old_path if not ignore_path(d)]
-    env['PATH'] = os.pathsep.join(new_path)
+    env['PATH'] = path_without_tool(env['PATH'], 'clang')
 
     # Running bootstrap.py should not fail
     self.run_process([shared.bat_suffix(path_from_root('bootstrap'))], env=env)
