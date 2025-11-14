@@ -1,6 +1,7 @@
 name: Update website
 
 on:
+  workflow_dispatch:
   push:
     branches: [ main ]
 
@@ -21,7 +22,7 @@ jobs:
         with:
           repository: kripken/emscripten-site
           ref: gh-pages
-          path: ../emscripten-site
+          path: site/emscripten-site
       - name: pip install
         run: |
           which python3
