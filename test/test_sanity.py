@@ -194,8 +194,8 @@ class sanity(RunnerCore):
 
   @with_env_modify({'EM_CONFIG': None})
   def test_firstrun(self):
-    # Remove from PATH every directory that contains clang.exe so that bootstrap.py cannot
-    # accidentally succeed by virtue of locating tools in PATH.
+    # Remove from PATH every directory that contains clang.exe so config setup
+    # cannot accidentally succeed by virtue of locating tools in PATH.
     env = os.environ.copy()
     env['PATH'] = path_without_tool(env['PATH'], 'clang')
 
@@ -709,7 +709,8 @@ fi
     # with no binaryen root, an error is shown
     restore_and_set_up()
 
-    # Remove wasm-opt from PATH.
+    # Remove wasm-opt from PATH so config setup cannot accidentally succeed by
+    # virtue of locating it in PATH.
     env = os.environ.copy()
     env['PATH'] = path_without_tool(env['PATH'], 'wasm-opt')
 
