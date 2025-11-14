@@ -51,6 +51,8 @@ emscripten_lock_t testLock = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;
 _Atomic Test whichTest = TEST_NOT_STARTED;
 // Time at which the test starts taken in main()
 double startTime = 0;
+// Has TEST_WAIT_ACQUIRE unlocked testLock?
+int waitAcquireUnlocked = false;
 
 void do_exit() {
   emscripten_out("Test success");
@@ -140,7 +142,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
 
 EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
   let startButton = document.createElement('button');
-  startButton.innerHTML = 'Start playback';
+  startButton.innerHTML = 'Start Test';
   document.body.appendChild(startButton);
 
   audioContext = emscriptenGetAudioObject(audioContext);
@@ -149,9 +151,6 @@ EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
     document.body.removeChild(startButton);
   };
 });
-
-// Has TEST_WAIT_ACQUIRE unlocked testLock?
-int waitAcquireUnlocked = false;
 
 #ifdef RUN_ON_WORKER
 void WorkerLoop() {
