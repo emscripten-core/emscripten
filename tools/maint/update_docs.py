@@ -24,7 +24,7 @@ def main(args):
   if args:
     site_out = args[0]
   else:
-    site_out = os.path.join(os.path.dirname(root_dir), 'emscripten-site')
+    site_out = os.path.join(root_dir, 'site', 'emscripten-site')
 
   assert os.path.isdir(site_out)
   print(f'Updating docs in: {site_out}')
