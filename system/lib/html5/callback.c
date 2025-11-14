@@ -42,3 +42,23 @@ void _emscripten_run_callback_on_thread(pthread_t t,
     assert(false && "emscripten_proxy_async failed");
   }
 }
+
+static EMSCRIPTEN_RESULT _get_last_event(void* out, void *latest, size_t len) {
+  if (!latest) {
+    return EMSCRIPTEN_RESULT_NO_DATA;
+  }
+  memcpy(out, latest, len);
+  return EMSCRIPTEN_RESULT_SUCCESS;
+}
+
+EMSCRIPTEN_RESULT emscripten_get_deviceorientation_status(EmscriptenDeviceOrientationEvent *out) {
+  return _get_last_event(out, _emscripten_get_last_deviceorientation_event(), sizeof(*out));
+}
+
+EMSCRIPTEN_RESULT emscripten_get_devicemotion_status(EmscriptenDeviceMotionEvent *out) {
+  return _get_last_event(out, _emscripten_get_last_devicemotion_event(), sizeof(*out));
+}
+
+EMSCRIPTEN_RESULT emscripten_get_mouse_status(EmscriptenMouseEvent *out) {
+  return _get_last_event(out, _emscripten_get_last_mouse_event(), sizeof(*out));
+}

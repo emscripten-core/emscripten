@@ -152,7 +152,7 @@ def get_safari_version():
   if not is_safari():
     return UNSUPPORTED
   plist_path = os.path.join(EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
-  version_str = plistlib.load(read_binary(plist_path)).get('CFBundleShortVersionString')
+  version_str = plistlib.load(open(plist_path, 'rb')).get('CFBundleShortVersionString')
   # Split into parts (major.minor.patch)
   parts = (version_str.split('.') + ['0', '0', '0'])[:3]
   # Convert each part into integers, discarding any trailing string, e.g. '13a' -> 13.

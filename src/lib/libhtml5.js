@@ -51,10 +51,6 @@ var LibraryHTML5 = {
     currentEventHandler: null,
 #endif
 */
-    memcpy(target, src, size) {
-      HEAP8.set(HEAP8.subarray(src, src + size), target);
-    },
-
     removeAllEventListeners() {
       while (JSEvents.eventHandlers.length) {
         JSEvents._removeHandler(JSEvents.eventHandlers.length - 1);
@@ -586,16 +582,14 @@ var LibraryHTML5 = {
   emscripten_set_mouseout_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
     registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_MOUSEOUT }}}, "mouseout", targetThread),
 
-  emscripten_get_mouse_status__proxy: 'sync',
-  emscripten_get_mouse_status__deps: ['$JSEvents'],
-  emscripten_get_mouse_status: (mouseState) => {
-    if (!JSEvents.mouseEvent) return {{{ cDefs.EMSCRIPTEN_RESULT_NO_DATA }}};
-    // HTML5 does not really have a polling API for mouse events, so implement one manually by
-    // returning the data from the most recently received event. This requires that user has registered
-    // at least some no-op function as an event handler to any of the mouse function.
-    JSEvents.memcpy(mouseState, JSEvents.mouseEvent, {{{ C_STRUCTS.EmscriptenMouseEvent.__size__ }}});
-    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
-  },
+  // HTML5 does not really have a polling API for mouse events, so implement one
+  // manually by returning the data from the most recently received event. This
+  // requires that user has registered at least some no-op function as an event
+  // handler to any of the mouse function.
+  _emscripten_get_last_mouse_event__proxy: 'sync',
+  _emscripten_get_last_mouse_event__internal: true,
+  _emscripten_get_last_mouse_event__deps: ['$JSEvents'],
+  _emscripten_get_last_mouse_event: () => JSEvents.mouseEvent,
 
   $registerWheelEventCallback__noleakcheck: true,
   $registerWheelEventCallback__deps: ['$JSEvents', '$fillMouseEventData', 'malloc'],
@@ -821,16 +815,14 @@ var LibraryHTML5 = {
     return registerDeviceOrientationEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_DEVICEORIENTATION }}}, "deviceorientation", targetThread);
   },
 
-  emscripten_get_deviceorientation_status__proxy: 'sync',
-  emscripten_get_deviceorientation_status__deps: ['$JSEvents'],
-  emscripten_get_deviceorientation_status: (orientationState) => {
-    if (!JSEvents.deviceOrientationEvent) return {{{ cDefs.EMSCRIPTEN_RESULT_NO_DATA }}};
-    // HTML5 does not really have a polling API for device orientation events, so implement one manually by
-    // returning the data from the most recently received event. This requires that user has registered
-    // at least some no-op function as an event handler.
-    JSEvents.memcpy(orientationState, JSEvents.deviceOrientationEvent, {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}});
-    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
-  },
+  // HTML5 does not really have a polling API for device orientation events, so
+  // implement one manually by returning the data from the most recently
+  // received event. This requires that user has registered at least some
+  // no-op function as an event handler.
+  _emscripten_get_last_deviceorientation_event__proxy: 'sync',
+  _emscripten_get_last_deviceorientation_event__internal: true,
+  _emscripten_get_last_deviceorientation_event__deps: ['$JSEvents'],
+  _emscripten_get_last_deviceorientation_event: () => JSEvents.deviceOrientationEvent,
 
   $fillDeviceMotionEventData: (eventStruct, e, target) => {
     var supportedFields = 0;
@@ -892,16 +884,14 @@ var LibraryHTML5 = {
   emscripten_set_devicemotion_callback_on_thread: (userData, useCapture, callbackfunc, targetThread) =>
     registerDeviceMotionEventCallback({{{ cDefs.EMSCRIPTEN_EVENT_TARGET_WINDOW }}}, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_DEVICEMOTION }}}, "devicemotion", targetThread),
 
-  emscripten_get_devicemotion_status__proxy: 'sync',
-  emscripten_get_devicemotion_status__deps: ['$JSEvents'],
-  emscripten_get_devicemotion_status: (motionState) => {
-    if (!JSEvents.deviceMotionEvent) return {{{ cDefs.EMSCRIPTEN_RESULT_NO_DATA }}};
-    // HTML5 does not really have a polling API for device motion events, so implement one manually by
-    // returning the data from the most recently received event. This requires that user has registered
-    // at least some no-op function as an event handler.
-    JSEvents.memcpy(motionState, JSEvents.deviceMotionEvent, {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}});
-    return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
-  },
+  // HTML5 does not really have a polling API for device motion events, so
+  // implement one manually by returning the data from the most recently
+  // received event. This requires that user has registered at least some
+  // no-op function as an event handler.
+  _emscripten_get_last_devicemotion_event__proxy: 'sync',
+  _emscripten_get_last_devicemotion_event__internal: true,
+  _emscripten_get_last_devicemotion_event__deps: ['$JSEvents'],
+  _emscripten_get_last_devicemotion_event: () => JSEvents.deviceMotionEvent,
 
   $screenOrientation: () => {
     if (!window.screen) return undefined;

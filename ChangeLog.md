@@ -22,6 +22,9 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - Added `emscripten_html5_remove_event_listener` function in `html5.h` in order to be
   able to remove a single callback. (#25535)
+- The standalone `file_packager.py` script no longer supports `--embed` with JS
+  output (use `--obj-output` is now required for embedding data).  This usage
+  has been producing a warning since #16050 which is now an error.  (#25049)
 - Embind now requires C++17 or newer. See #24850.
 
 4.0.19 - 11/04/25
