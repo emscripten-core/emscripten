@@ -95,6 +95,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     assert(!result);
     whichTest = TEST_WAIT_ACQUIRE;
     // Fall through here so the worker/main has a chance to unlock whilst spinning
+    // (otherwise the lock has a chance to be released before spinning).
   case TEST_WAIT_ACQUIRE:
     // Will get unlocked in worker/main, so should quickly acquire
     result = emscripten_lock_busyspin_wait_acquire(&testLock, 1000);
@@ -145,8 +146,12 @@ EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
   audioContext = emscriptenGetAudioObject(audioContext);
   startButton.onclick = () => {
     audioContext.resume();
+    document.removeChild(startButton);
   };
 });
+
+// Has TEST_WAIT_ACQUIRE unlocked testLock?
+int waitAcquireUnlocked = false;
 
 #ifdef RUN_ON_WORKER
 void WorkerLoop() {
@@ -154,7 +159,6 @@ void WorkerLoop() {
 bool MainLoop(double time, void* data) {
 #endif
   assert(!emscripten_current_thread_is_audio_worklet());
-  int didUnlock = false;
 #ifdef RUN_ON_WORKER
   while (true) {
 #endif
@@ -164,13 +168,13 @@ bool MainLoop(double time, void* data) {
 		whichTest = TEST_HAS_WAIT;
 		break;
 	  case TEST_WAIT_ACQUIRE:
-		if (!didUnlock) {
+		if (!waitAcquireUnlocked) {
 		  // Release here to acquire in process
 		  emscripten_lock_release(&testLock);
 #ifndef QUIETEN_PRINTING
 		  emscripten_out("TEST_WAIT_ACQUIRE: worker/main released lock");
 #endif
-		  didUnlock = true;
+		  waitAcquireUnlocked = true;
 		}
 		break;
 	  case TEST_WAIT_INFINTE_1:
@@ -210,7 +214,6 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
   EmscriptenAudioWorkletNodeCreateOptions options = { .numberOfInputs = 0, .numberOfOutputs = 1, .outputChannelCounts = outputChannelCounts };
   EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "locks-test", &options, &ProcessAudio, NULL);
   emscripten_audio_node_connect(wasmAudioWorklet, audioContext, 0, 0);
-  InitHtmlUi(audioContext);
 }
 
 void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
@@ -231,6 +234,7 @@ int main() {
   // Audio processor callback setup
   context = emscripten_create_audio_context(NULL);
   assert(context);
+  InitHtmlUi(context);
   emscripten_start_wasm_audio_worklet_thread_async(context, wasmAudioWorkletStack, sizeof(wasmAudioWorkletStack), WebAudioWorkletThreadInitialized, NULL);
 
   // Either call every 10ms or create a worker that sleeps every 10ms
