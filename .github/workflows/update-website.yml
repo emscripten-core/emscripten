@@ -45,7 +45,7 @@ jobs:
             fi
           fi
           # Create a PR against the emscripten-site repo
-          cd ../emscripten-site
+          cd site/emscripten-site
           git push origin update
           gh pr create --fill --base gh-pages --reviewer sbc100,kripken
           gh pr merge --squash --auto
