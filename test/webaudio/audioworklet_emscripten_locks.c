@@ -146,7 +146,7 @@ EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
   audioContext = emscriptenGetAudioObject(audioContext);
   startButton.onclick = () => {
     audioContext.resume();
-    document.removeChild(startButton);
+    document.body.removeChild(startButton);
   };
 });
 
