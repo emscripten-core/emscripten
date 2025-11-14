@@ -194,8 +194,13 @@ class sanity(RunnerCore):
 
   @with_env_modify({'EM_CONFIG': None})
   def test_firstrun(self):
+    # Remove from PATH every directory that contains clang.exe so that bootstrap.py cannot
+    # accidentally succeed by virtue of locating tools in PATH.
+    env = os.environ.copy()
+    env['PATH'] = path_without_tool(env['PATH'], 'clang')
+
     default_config = path_from_root('.emscripten')
-    output = self.do([EMCC, '-v'])
+    output = self.do([EMCC, '-v'], env=env)
     self.assertContained('emcc: warning: config file not found: %s.  You can create one by hand or run `emcc --generate-config`' % default_config, output)
 
     temp_bin = os.path.abspath('bin')
