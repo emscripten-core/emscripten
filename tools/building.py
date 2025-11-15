@@ -208,6 +208,7 @@ def lld_flags_for_executable(external_symbols):
   c_exports = [e for e in c_exports if e not in external_symbols]
   c_exports += settings.REQUIRED_EXPORTS
   if settings.MAIN_MODULE:
+    cmd.append('-Bdynamic')
     c_exports += side_module_external_deps(external_symbols)
   for export in c_exports:
     if settings.ERROR_ON_UNDEFINED_SYMBOLS:
@@ -284,6 +285,12 @@ def lld_flags_for_executable(external_symbols):
 def link_lld(args, target, external_symbols=None):
   if not os.path.exists(WASM_LD):
     exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
+
+  # For relocatable output (generating an object file) we don't pass any of the
+  # normal linker flags that are used when building and executable
+  if '--relocatable' not in args and '-r' not in args:
+    args = lld_flags_for_executable(external_symbols) + args
+
   # runs lld to link things.
   # lld doesn't currently support --start-group/--end-group since the
   # semantics are more like the windows linker where there is no need for
@@ -295,9 +302,6 @@ def link_lld(args, target, external_symbols=None):
   if settings.LINKABLE:
     args.insert(0, '--whole-archive')
     args.append('--no-whole-archive')
-
-  if settings.MAIN_MODULE:
-    args.insert(0, '-Bdynamic')
 
   if settings.STRICT and '--no-fatal-warnings' not in args:
     args.append('--fatal-warnings')
@@ -322,11 +326,6 @@ def link_lld(args, target, external_symbols=None):
 
   if settings.MEMORY64:
     cmd.append('-mwasm64')
-
-  # For relocatable output (generating an object file) we don't pass any of the
-  # normal linker flags that are used when building and executable
-  if '--relocatable' not in args and '-r' not in args:
-    cmd += lld_flags_for_executable(external_symbols)
 
   cmd = get_command_with_possible_response_file(cmd)
   check_call(cmd)
