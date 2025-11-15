@@ -1329,28 +1329,28 @@ var wasmMemory = makeInvalidEarlyAccess('wasmMemory');
 
 function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['add'] != 'undefined', 'missing Wasm export: add');
-  _add = Module['_add'] = createExportWrapper('add', 2);
   assert(typeof wasmExports['fflush'] != 'undefined', 'missing Wasm export: fflush');
-  _fflush = createExportWrapper('fflush', 1);
   assert(typeof wasmExports['emscripten_stack_init'] != 'undefined', 'missing Wasm export: emscripten_stack_init');
-  _emscripten_stack_init = wasmExports['emscripten_stack_init'];
   assert(typeof wasmExports['emscripten_stack_get_free'] != 'undefined', 'missing Wasm export: emscripten_stack_get_free');
-  _emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'];
   assert(typeof wasmExports['emscripten_stack_get_base'] != 'undefined', 'missing Wasm export: emscripten_stack_get_base');
-  _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
   assert(typeof wasmExports['emscripten_stack_get_end'] != 'undefined', 'missing Wasm export: emscripten_stack_get_end');
-  _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
   assert(typeof wasmExports['_emscripten_stack_restore'] != 'undefined', 'missing Wasm export: _emscripten_stack_restore');
-  __emscripten_stack_restore = wasmExports['_emscripten_stack_restore'];
   assert(typeof wasmExports['_emscripten_stack_alloc'] != 'undefined', 'missing Wasm export: _emscripten_stack_alloc');
-  __emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'];
   assert(typeof wasmExports['emscripten_stack_get_current'] != 'undefined', 'missing Wasm export: emscripten_stack_get_current');
-  _emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'];
   assert(typeof wasmExports['memory'] != 'undefined', 'missing Wasm export: memory');
-  memory = wasmMemory = wasmExports['memory'];
   assert(typeof wasmExports['global_val'] != 'undefined', 'missing Wasm export: global_val');
-  _global_val = Module['_global_val'] = wasmExports['global_val'].value;
   assert(typeof wasmExports['__indirect_function_table'] != 'undefined', 'missing Wasm export: __indirect_function_table');
+  _add = Module['_add'] = createExportWrapper('add', 2);
+  _fflush = createExportWrapper('fflush', 1);
+  _emscripten_stack_init = wasmExports['emscripten_stack_init'];
+  _emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'];
+  _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
+  _emscripten_stack_get_end = wasmExports['emscripten_stack_get_end'];
+  __emscripten_stack_restore = wasmExports['_emscripten_stack_restore'];
+  __emscripten_stack_alloc = wasmExports['_emscripten_stack_alloc'];
+  _emscripten_stack_get_current = wasmExports['emscripten_stack_get_current'];
+  memory = wasmMemory = wasmExports['memory'];
+  _global_val = Module['_global_val'] = wasmExports['global_val'].value;
   __indirect_function_table = wasmExports['__indirect_function_table'];
 }
 
