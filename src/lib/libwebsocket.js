@@ -415,10 +415,12 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
     dbg('emscripten_websocket_deinitialize()');
 #endif
-    for (let id of webSockets.list()) {
-      let socket = webSockets.get(id);
-      socket.close();
-      _emscripten_websocket_delete(id);
+    for (var i in webSockets.allocated) {
+      if (webSockets.has(i)) {
+        var socket = webSockets.get(i);
+        socket.close();
+        _emscripten_websocket_delete(i);
+      }
     }
   }
 }
