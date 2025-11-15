@@ -1424,9 +1424,7 @@ f.close()
     self.emcc('a2.c', ['-r', '-L.', '-lA', '-o', 'a2.o'])
     self.emcc('b2.c', ['-r', '-L.', '-lA', '-o', 'b2.o'])
 
-    self.emcc('main.c', ['-L.', '-lA', 'a2.o', 'b2.o'])
-
-    self.assertContained('result: 1', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'result: 1', cflags=['-L.', '-lA', 'a2.o', 'b2.o'])
 
   def test_multiply_defined_libsymbols_2(self):
     create_file('a.c', "int x() { return 55; }")
@@ -1449,9 +1447,7 @@ f.close()
     building.emar('cr', 'libLIB.a', ['a.o', 'b.o']) # libLIB.a with a and b
 
     # a is in the lib AND in an .o, so should be ignored in the lib. We do still need b from the lib though
-    self.emcc('main.c', ['a.o', 'c.o', '-L.', '-lLIB'])
-
-    self.assertContained('result: 62', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'result: 62', cflags=['a.o', 'c.o', '-L.', '-lLIB'])
 
   def test_link_group(self):
     create_file('lib.c', 'int x() { return 42; }')
@@ -1724,12 +1720,8 @@ int f() {
     ''')
 
     # libfunc2 should not be linked by default, even with EXPORT_ALL
-    self.emcc('lib.c', ['-sEXPORT_ALL', '--pre-js', 'pre.js', '-o', 'a.out.js'])
-    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('_libfunc2 is not defined', err)
-
-    self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js', '-o', 'a.out.js'])
-    self.assertContained('libfunc\n', self.run_js('a.out.js'))
+    self.do_runf('lib.c', '_libfunc2 is not defined', cflags=['-sEXPORT_ALL', '--pre-js', 'pre.js'], assert_returncode=NON_ZERO)
+    self.do_runf('lib.c', 'libfunc\n', cflags=['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js'])
 
   @all_engines
   @also_with_wasmfs
@@ -1910,8 +1902,7 @@ Module['postRun'] = () => {
       }
     ''')
 
-    self.run_process([EMCC, 'main.c', '-L.', '-la', '-lb'])
-    self.assertContained('a\nb\n', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'a\nb\n', cflags=['-L.', '-la', '-lb'])
 
   def test_archive_duplicate_basenames(self):
     ensure_dir('a')
@@ -1962,9 +1953,7 @@ Module['postRun'] = () => {
 
     # With fastcomp we don't support duplicate members so this should generate
     # a warning.  With the wasm backend (lld) this is fully supported.
-    cmd = [EMCC, 'main.c', '-L.', '-ldup']
-    self.run_process(cmd)
-    self.assertContained('a\nb...\n', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'a\nb...\n', cflags=['-L.', '-ldup'])
 
   def test_export_from_archive(self):
     export_name = 'this_is_an_entry_point'
@@ -2019,10 +2008,7 @@ Module['postRun'] = () => {
       }
     ''')
 
-    self.run_process([EMCC, 'main.c'] + args)
-    # run in node.js to ensure we verify that file preloading works there
-    result = self.run_js('a.out.js')
-    self.assertContained('|hello from a file wi|', result)
+    self.do_runf('main.c', '|hello from a file wi|', cflags=args)
 
   @parameterized({
     '': ([],),
@@ -9236,8 +9222,7 @@ end
         return access(argv[1], F_OK);
       }
     ''')
-    self.run_process([EMCC, 'access.c', '-sNODERAWFS'])
-    self.run_js('a.out.js', args=[os.path.abspath('foo')])
+    self.do_runf('access.c', cflags=['-sNODERAWFS'], args=[os.path.abspath('foo')])
 
   def test_noderawfs_readfile_prerun(self):
     create_file('foo', 'bar')
@@ -14371,8 +14356,7 @@ addToLibrary({
     # etc., and only provide the emmalloc_malloc etc. family of functions that
     # we can use.
     emmalloc = path_from_root('system', 'lib', 'emmalloc.c')
-    self.run_process([EMCC, test_file('other/test_emmalloc_in_addition.c'), emmalloc] + args)
-    self.assertContained('success', self.run_js('a.out.js'))
+    self.do_runf('other/test_emmalloc_in_addition.c', 'success', cflags=[emmalloc] + args)
 
   def test_unused_destructor(self):
     self.do_runf('other/test_unused_destructor.c', cflags=['-flto', '-O2'])
@@ -14739,8 +14723,7 @@ addToLibrary({
 
   def test_relative_em_cache(self):
     with env_modify({'EM_CACHE': 'foo'}):
-      err = self.expect_fail([EMCC, '-c', test_file('hello_world.c')])
-      self.assertContained('emcc: error: environment variable EM_CACHE must be an absolute path: foo', err)
+      self.assert_fail([EMCC, '-c', test_file('hello_world.c')], 'emcc: error: environment variable EM_CACHE must be an absolute path: foo')
 
   @crossplatform
   def test_create_cache_directory(self):
