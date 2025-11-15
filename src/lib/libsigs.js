@@ -666,6 +666,7 @@ sigs = {
   emscripten_has_threading_support__sig: 'i',
   emscripten_hide_mouse__sig: 'v',
   emscripten_html5_remove_all_event_listeners__sig: 'v',
+  emscripten_html5_remove_event_listener__sig: 'ippip',
   emscripten_idb_async_clear__sig: 'vpppp',
   emscripten_idb_async_delete__sig: 'vppppp',
   emscripten_idb_async_exists__sig: 'vppppp',

@@ -440,6 +440,8 @@ var LibraryHtml5WebGL = {
     var eventHandler = {
       target: findEventTarget(target),
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: webGlEventHandlerFunc,
       useCapture
