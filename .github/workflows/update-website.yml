@@ -10,7 +10,7 @@ jobs:
     name: Update website
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
+      GITHUB_TOKEN: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -23,6 +23,7 @@ jobs:
           repository: kripken/emscripten-site
           ref: gh-pages
           path: site/emscripten-site
+          token: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
       - name: pip install
         run: |
           which python3
@@ -30,9 +31,10 @@ jobs:
           python3 -m pip install -r requirements-dev.txt
       - name: Update docs
         run: |
-          git config user.name emscripten-bot
-          git config user.email emscripten-bot@users.noreply.github.com
-          ./bootstrap
+          set -o errexit
+          set -o xtrace
+          git config --global user.name emscripten-bot
+          git config --global user.email emscripten-bot@users.noreply.github.com
           if ./tools/maint/update_docs.py; then
              echo "rebaseline_tests returned zero, expectations up-to-date"
              # Exit early and don't create a PR
@@ -46,6 +48,8 @@ jobs:
           fi
           # Create a PR against the emscripten-site repo
           cd site/emscripten-site
-          git push origin update
-          gh pr create --fill --base gh-pages --reviewer sbc100,kripken
-          gh pr merge --squash --auto
+          git push -f origin update
+          gh pr create --fill --head update --base gh-pages --reviewer sbc100,kripken
+          # TODO: add --auto here once we have the review requirment in place
+          # for PR to the -site repo
+          gh pr merge --squash # --auto
