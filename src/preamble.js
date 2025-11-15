@@ -14,7 +14,7 @@
 // An online HTML version (which may be of a different version of Emscripten)
 //    is up at http://kripken.github.io/emscripten-site/docs/api_reference/preamble.js.html
 
-#if RELOCATABLE
+#if MAIN_MODULE
 {{{ makeModuleReceiveWithVar('dynamicLibraries', undefined, '[]') }}}
 #endif
 
@@ -108,7 +108,7 @@ assert(globalThis.Int32Array && globalThis.Float64Array && Int32Array.prototype.
        'JS engine does not provide full typed array support');
 #endif
 
-#if RELOCATABLE
+#if RELOCATABLE || MAIN_MODULE
 var __RELOC_FUNCS__ = [];
 #endif
 
@@ -155,7 +155,7 @@ function initRuntime() {
   checkStackCookie();
 #endif
 
-#if RELOCATABLE
+#if MAIN_MODULE || RELOCATABLE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
 
@@ -167,9 +167,15 @@ function initRuntime() {
 #else
   wasmExports['__wasm_call_ctors']();
 #endif
+#if RUNTIME_DEBUG
+  dbg('done __wasm_call_ctors');
+#endif
 #endif
 
   <<< ATPOSTCTORS >>>
+#if RUNTIME_DEBUG
+  dbg('done ATPOSTCTORS');
+#endif
 }
 
 #if HAS_MAIN
@@ -514,7 +520,7 @@ var splitModuleProxyHandler = {
 #if RUNTIME_DEBUG
             dbg(`placeholder function called: ${base}`);
 #endif
-            var imports = {'primary': wasmExports};
+            var imports = {'primary': wasmRawExports};
             // Replace '.wasm' suffix with '.deferred.wasm'.
             loadSplitModule(secondaryFile, imports, base);
 #if RUNTIME_DEBUG
@@ -678,6 +684,9 @@ function getWasmImports() {
 #endif
 #endif
   // prepare imports
+#if MAIN_MODULE || RELOCATABLE
+  var GOTProxyHandler = new Proxy(new Set({{{ JSON.stringify(Array.from(WEAK_IMPORTS)) }}}), GOTHandler);
+#endif
   var imports = {
 #if MINIFY_WASM_IMPORTED_MODULES
     'a': wasmImports,
@@ -685,9 +694,9 @@ function getWasmImports() {
     'env': wasmImports,
     '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
-#if RELOCATABLE
-    'GOT.mem': new Proxy(wasmImports, GOTHandler),
-    'GOT.func': new Proxy(wasmImports, GOTHandler),
+#if MAIN_MODULE || RELOCATABLE
+    'GOT.mem': GOTProxyHandler,
+    'GOT.func': GOTProxyHandler,
 #endif
   };
 #if SPLIT_MODULE
@@ -704,42 +713,42 @@ function getWasmImports() {
   // performing other necessary setup
   /** @param {WebAssembly.Module=} module*/
   function receiveInstance(instance, module) {
+#if RUNTIME_DEBUG
+    dbg('receiveInstance')
+#endif
     wasmExports = instance.exports;
 
+#if MAIN_MODULE
 #if RELOCATABLE
     wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
+#endif
+    var origExports = wasmExports;
 #endif
 
 #if ASYNCIFY
     wasmExports = Asyncify.instrumentWasmExports(wasmExports);
 #endif
 
-#if ABORT_ON_WASM_EXCEPTIONS
-    wasmExports = instrumentWasmExportsWithAbort(wasmExports);
-#endif
-
 #if MAIN_MODULE
+    mergeLibSymbols(wasmExports, 'main')
     var metadata = getDylinkMetadata(module);
 #if AUTOLOAD_DYLIBS
     if (metadata.neededDynlibs) {
       dynamicLibraries = metadata.neededDynlibs.concat(dynamicLibraries);
     }
 #endif
-    mergeLibSymbols(wasmExports, 'main')
-#if '$LDSO' in addedLibraryItems
-    LDSO.init();
-#endif
-    loadDylibs();
-#elif RELOCATABLE
-    reportUndefinedSymbols();
 #endif
 
+
+#if ABORT_ON_WASM_EXCEPTIONS
+    wasmExports = instrumentWasmExportsWithAbort(wasmExports);
+#endif
+
+#if SPLIT_MODULE
+  wasmRawExports = wasmExports;
+#endif
 #if MEMORY64 || CAN_ADDRESS_2GB
     wasmExports = applySignatureConversions(wasmExports);
-#endif
-
-#if EXPORTED_RUNTIME_METHODS.includes('wasmExports')
-    Module['wasmExports'] = wasmExports;
 #endif
 
 #if PTHREADS
@@ -754,7 +763,27 @@ function getWasmImports() {
     __RELOC_FUNCS__.push(wasmExports['__wasm_apply_data_relocs']);
 #endif
 
+#if RUNTIME_DEBUG
+    dbg('assigning exports')
+#endif
     assignWasmExports(wasmExports);
+
+#if MAIN_MODULE
+    updateGOT(origExports);
+#endif
+
+#if EXPORTED_RUNTIME_METHODS.includes('wasmExports')
+    Module['wasmExports'] = wasmExports;
+#endif
+
+#if MAIN_MODULE
+#if '$LDSO' in addedLibraryItems
+    LDSO.init();
+#endif
+    loadDylibs();
+#elif RELOCATABLE
+    reportUndefinedSymbols();
+#endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
     instrumentWasmTableWithAbort();
@@ -792,7 +821,7 @@ function getWasmImports() {
     assert(Module === trueModule, 'the Module object should not be replaced during async compilation - perhaps the order of HTML elements is wrong?');
     trueModule = null;
 #endif
-#if SHARED_MEMORY || RELOCATABLE
+#if SHARED_MEMORY || MAIN_MODULE
     return receiveInstance(result['instance'], result['module']);
 #else
     // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193, the above line no longer optimizes out down to the following line.

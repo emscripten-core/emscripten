@@ -22,6 +22,7 @@ import {
   runInMacroContext,
   mergeInto,
   localFile,
+  timer,
 } from './utility.mjs';
 import {preprocess, processMacros} from './parseTools.mjs';
 
@@ -93,7 +94,7 @@ function calculateLibraries() {
     libraries.push('libsyscall.js');
   }
 
-  if (RELOCATABLE) {
+  if (MAIN_MODULE || RELOCATABLE) {
     libraries.push('libdylink.js');
   }
 
@@ -223,6 +224,24 @@ function getTempDir() {
   return tempDir;
 }
 
+function preprocessFiles(filenames) {
+  timer.start('preprocessFiles')
+  const results = {};
+  for (const filename of filenames) {
+    debugLog(`pre-processing JS library: ${filename}`);
+    pushCurrentFile(filename);
+    try {
+      results[filename] = processMacros(preprocess(filename), filename);
+    } catch (e) {
+      error(`error preprocessing JS library "${filename}":`);
+      throw e;
+    } finally {
+      popCurrentFile();
+    }
+  }
+  timer.stop('preprocessFiles')
+  return results;
+}
 
 export const LibraryManager = {
   library: {},
@@ -246,11 +265,25 @@ export const LibraryManager = {
   },
 
   load() {
+    timer.start('load')
+
     assert(!this.loaded);
     this.loaded = true;
     // Save the list for has() queries later.
     this.libraries = calculateLibraries();
 
+    const preprocessed = preprocessFiles(this.libraries);
+
+    timer.start('executeJS')
+    for (const [filename, contents] of Object.entries(preprocessed)) {
+      this.executeJSLibraryFile(filename, contents);
+    }
+    timer.stop('executeJS')
+
+    timer.stop('load')
+  },
+
+  executeJSLibraryFile(filename, contents) {
     const userLibraryProxy = new Proxy(this.library, {
       set(target, prop, value) {
         target[prop] = value;
@@ -261,52 +294,47 @@ export const LibraryManager = {
       },
     });
 
-    for (let filename of this.libraries) {
-      const isUserLibrary = !isBeneath(filename, systemLibdir);
+    const isUserLibrary = !isBeneath(filename, systemLibdir);
+    if (isUserLibrary) {
+      debugLog(`executing user JS library: ${filename}`);
+    } else {
+      debugLog(`exectuing system JS library: ${filename}`);
+    }
 
-      if (isUserLibrary) {
-        debugLog('processing user library: ' + filename);
+    let origLibrary;
+    // When we parse user libraries also set `__user` attribute
+    // on each element so that we can distinguish them later.
+    if (isUserLibrary) {
+      origLibrary = this.library;
+      this.library = userLibraryProxy;
+    }
+    pushCurrentFile(filename);
+    let preprocessedName = filename.replace(/\.\w+$/, '.preprocessed$&')
+    if (VERBOSE) {
+      preprocessedName = path.join(getTempDir(), path.basename(filename));
+    }
+
+    try {
+      runInMacroContext(contents, {filename: preprocessedName})
+    } catch (e) {
+      error(`failure to execute JS library "${filename}":`);
+      if (VERBOSE) {
+        fs.writeFileSync(preprocessedName, contents);
+        error(`preprocessed JS saved to ${preprocessedName}`)
       } else {
-        debugLog('processing system library: ' + filename);
+        error('use -sVERBOSE to save preprocessed JS');
       }
-      let origLibrary = undefined;
-      let processed = undefined;
-      // When we parse user libraries also set `__user` attribute
-      // on each element so that we can distinguish them later.
-      if (isUserLibrary) {
-        origLibrary = this.library;
-        this.library = userLibraryProxy;
-      }
-      pushCurrentFile(filename);
-      let preprocessedName = filename.replace(/\.\w+$/, '.preprocessed$&')
-      if (VERBOSE) {
-        preprocessedName = path.join(getTempDir(), path.basename(filename));
-      }
-      try {
-        processed = processMacros(preprocess(filename), filename);
-        runInMacroContext(processed, {filename: preprocessedName})
-      } catch (e) {
-        error(`failure to execute JS library "${filename}":`);
-        if (processed) {
-          if (VERBOSE) {
-            fs.writeFileSync(preprocessedName, processed);
-            error(`preprocessed JS saved to ${preprocessedName}`)
-          } else {
-            error('use -sVERBOSE to save preprocessed JS');
-          }
-        }
-        throw e;
-      } finally {
-        popCurrentFile();
-        if (origLibrary) {
-          this.library = origLibrary;
-        }
-      }
-      if (VERBOSE) {
-        fs.rmSync(getTempDir(), { recursive: true, force: true });
+      throw e;
+    } finally {
+      popCurrentFile();
+      if (origLibrary) {
+        this.library = origLibrary;
       }
     }
-  },
+    if (VERBOSE) {
+      fs.rmSync(getTempDir(), { recursive: true, force: true });
+    }
+  }
 };
 
 // options is optional input object containing mergeInto params

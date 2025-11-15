@@ -67,7 +67,6 @@ Notes:
     subdir\file, in JS it will be subdir/file. For simplicity we treat the web platform as a *NIX.
 """
 
-import base64
 import ctypes
 import fnmatch
 import hashlib
@@ -136,11 +135,6 @@ options = Options()
 
 def err(*args):
   print(*args, file=sys.stderr)
-
-
-def base64_encode(b):
-  b64 = base64.b64encode(b)
-  return b64.decode('ascii')
 
 
 def has_hidden_attribute(filepath):
@@ -362,7 +356,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   try:
     args = substitute_response_files(sys.argv[1:])
   except OSError as e:
-    shared.exit_with_error(e)
+    utils.exit_with_error(e)
 
   if '--help' in args:
     print(__doc__.strip())
@@ -455,9 +449,10 @@ def main():  # noqa: C901, PLR0912, PLR0915
   options.has_embedded = any(f.mode == 'embed' for f in data_files)
 
   if options.has_preloaded and options.has_embedded:
-    diagnostics.warn('support for using --preload and --embed in the same command is scheduled '
-        'for deprecation.  If you need this feature please comment at '
-        'https://github.com/emscripten-core/emscripten/issues/24803')
+    diagnostics.error('--preload and --embed are mutually exclusive (See https://github.com/emscripten-core/emscripten/issues/24803)')
+
+  if options.has_embedded and not options.obj_output:
+    diagnostics.error('--obj-output is required when using --embed.  This outputs an object file for linking directly into your application and is more efficient than the old JS encoding')
 
   if options.separate_metadata and (not options.has_preloaded or not options.jsoutput):
     diagnostics.error('cannot separate-metadata without both --preloaded files and a specified --js-output')
@@ -543,8 +538,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
   data_files = sorted(data_files, key=lambda file_: file_.dstpath)
   data_files = [file_ for file_ in data_files if not was_seen(file_.dstpath)]
 
-  metadata = {'files': []}
-
   if options.depfile:
     targets = []
     if options.obj_output:
@@ -566,26 +559,26 @@ def main():  # noqa: C901, PLR0912, PLR0915
     if not options.has_embedded:
       diagnostics.error('--obj-output is only applicable when embedding files')
     generate_object_file(data_files)
-    if not options.has_preloaded:
-      return 0
+  else:
+    metadata = {'files': []}
 
-  ret = generate_js(data_target, data_files, metadata)
+    ret = generate_preload_js(data_target, data_files, metadata)
 
-  if options.force or data_files:
-    if options.jsoutput is None:
-      print(ret)
-    else:
-      # Overwrite the old jsoutput file (if exists) only when its content
-      # differs from the current generated one, otherwise leave the file
-      # untouched preserving its old timestamp
-      if os.path.isfile(options.jsoutput):
-        old = utils.read_file(options.jsoutput)
-        if old != ret:
-          utils.write_file(options.jsoutput, ret)
+    if options.force or data_files:
+      if options.jsoutput is None:
+        print(ret)
       else:
-        utils.write_file(options.jsoutput, ret)
-      if options.separate_metadata:
-        utils.write_file(options.jsoutput + '.metadata', json.dumps(metadata, separators=(',', ':')))
+        # Overwrite the old jsoutput file (if exists) only when its content
+        # differs from the current generated one, otherwise leave the file
+        # untouched preserving its old timestamp
+        if os.path.isfile(options.jsoutput):
+          old = utils.read_file(options.jsoutput)
+          if old != ret:
+            utils.write_file(options.jsoutput, ret)
+        else:
+          utils.write_file(options.jsoutput, ret)
+        if options.separate_metadata:
+          utils.write_file(options.jsoutput + '.metadata', json.dumps(metadata, separators=(',', ':')))
 
   return 0
 
@@ -598,7 +591,7 @@ def escape_for_makefile(fpath):
   return fpath.replace('$', '$$').replace('#', '\\#').replace(' ', '\\ ')
 
 
-def generate_js(data_target, data_files, metadata):
+def generate_preload_js(data_target, data_files, metadata):
   # emcc will add this to the output itself, so it is only needed for
   # standalone calls
   if options.from_emcc:
@@ -646,6 +639,7 @@ def generate_js(data_target, data_files, metadata):
   # Set up folders
   partial_dirs = []
   for file_ in data_files:
+    assert file_.mode == 'preload'
     dirname = os.path.dirname(file_.dstpath)
     dirname = dirname.lstrip('/') # absolute paths start with '/', remove that
     if dirname != '':
@@ -657,49 +651,45 @@ def generate_js(data_target, data_files, metadata):
                    % (json.dumps('/' + '/'.join(parts[:i])), json.dumps(parts[i])))
           partial_dirs.append(partial)
 
-  if options.has_preloaded:
-    # Bundle all datafiles into one archive. Avoids doing lots of simultaneous
-    # XHRs which has overhead.
-    start = 0
-    with open(data_target, 'wb') as data:
-      for file_ in data_files:
-        file_.data_start = start
-        curr = utils.read_binary(file_.srcpath)
-        file_.data_end = start + len(curr)
-        start += len(curr)
-        data.write(curr)
+  # Bundle all datafiles into one archive. Avoids doing lots of simultaneous
+  # XHRs which has overhead.
+  start = 0
+  with open(data_target, 'wb') as data:
+    for file_ in data_files:
+      file_.data_start = start
+      curr = utils.read_binary(file_.srcpath)
+      file_.data_end = start + len(curr)
+      start += len(curr)
+      data.write(curr)
 
-    if start > 256 * 1024 * 1024:
-      diagnostics.warn('file packager is creating an asset bundle of %d MB. '
-          'this is very large, and browsers might have trouble loading it. '
-          'see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/'
-          % (start / (1024 * 1024)))
+  if start > 256 * 1024 * 1024:
+    diagnostics.warn('file packager is creating an asset bundle of %d MB. '
+        'this is very large, and browsers might have trouble loading it. '
+        'see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/'
+        % (start / (1024 * 1024)))
 
-    create_preloaded = '''
-          try {
-            // canOwn this data in the filesystem, it is a slice into the heap that will never change
-            await Module['FS_preloadFile'](name, null, data, true, true, false, true);
-            Module['removeRunDependency'](`fp ${name}`);
-          } catch (e) {
-            err(`Preloading file ${name} failed`, e);
-          }\n'''
-    create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
-          Module['FS_createDataFile'](name, null, data, true, true, true);
-          Module['removeRunDependency'](`fp ${name}`);'''
+  create_preloaded = '''
+        try {
+          // canOwn this data in the filesystem, it is a slice into the heap that will never change
+          await Module['FS_preloadFile'](name, null, data, true, true, false, true);
+          Module['removeRunDependency'](`fp ${name}`);
+        } catch (e) {
+          err(`Preloading file ${name} failed`, e);
+        }\n'''
+  create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
+        Module['FS_createDataFile'](name, null, data, true, true, true);
+        Module['removeRunDependency'](`fp ${name}`);'''
 
-    finish_handler = create_preloaded if options.use_preload_plugins else create_data
+  finish_handler = create_preloaded if options.use_preload_plugins else create_data
 
-    if not options.lz4:
-      # Data requests - for getting a block of data out of the big archive - have
-      # a similar API to XHRs
-      code += '''
-      for (var file of metadata['files']) {
-        var name = file['filename']
-        Module['addRunDependency'](`fp ${name}`);
-      }\n'''
-
-  if options.has_embedded and not options.obj_output:
-    diagnostics.warn('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
+  if not options.lz4:
+    # Data requests - for getting a block of data out of the big archive - have
+    # a similar API to XHRs
+    code += '''
+    for (var file of metadata['files']) {
+      var name = file['filename']
+      Module['addRunDependency'](`fp ${name}`);
+    }\n'''
 
   catch_handler = ''
   if options.export_es6:
@@ -708,27 +698,14 @@ def generate_js(data_target, data_files, metadata):
           loadDataReject(error);
         })'''
 
-  for counter, file_ in enumerate(data_files):
+  for file_ in data_files:
     filename = file_.dstpath
     dirname = os.path.dirname(filename)
-    basename = os.path.basename(filename)
-    if file_.mode == 'embed':
-      if not options.obj_output:
-        # Embed (only needed when not generating object file output)
-        data = base64_encode(utils.read_binary(file_.srcpath))
-        code += "      var fileData%d = '%s';\n" % (counter, data)
-        # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
-        code += ("      Module['FS_createDataFile']('%s', '%s', atob(fileData%d), true, true, true);\n"
-                 % (dirname, basename, counter))
-    elif file_.mode == 'preload':
-      # Preload
-      metadata['files'].append({
-        'filename': file_.dstpath,
-        'start': file_.data_start,
-        'end': file_.data_end,
-      })
-    else:
-      assert 0
+    metadata['files'].append({
+      'filename': file_.dstpath,
+      'start': file_.data_start,
+      'end': file_.data_end,
+    })
 
   if options.has_preloaded:
     if not options.lz4:

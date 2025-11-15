@@ -11,6 +11,7 @@ import shlex
 import sys
 from enum import Enum, auto, unique
 from subprocess import PIPE
+from typing import List, Set
 
 from tools import (
   cache,
@@ -23,9 +24,8 @@ from tools import (
   utils,
 )
 from tools.settings import MEM_SIZE_SETTINGS, settings, user_settings
-from tools.shared import exit_with_error
 from tools.toolchain_profiler import ToolchainProfiler
-from tools.utils import read_file, removeprefix
+from tools.utils import exit_with_error, read_file, removeprefix
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
@@ -60,81 +60,69 @@ class OFormat(Enum):
 
 
 class EmccOptions:
-  def __init__(self):
-    self.target = ''
-    self.output_file = None
-    self.input_files = []
-    self.no_minify = False
-    self.post_link = False
-    self.save_temps = False
-    self.executable = False
-    self.oformat = None
-    self.requested_debug = None
-    self.emit_symbol_map = False
-    self.use_closure_compiler = None
-    self.js_transform = None
-    self.pre_js = [] # before all js
-    self.post_js = [] # after all js
-    self.extern_pre_js = [] # before all js, external to optimized code
-    self.extern_post_js = [] # after all js, external to optimized code
-    self.preload_files = []
-    self.embed_files = []
-    self.exclude_files = []
-    self.ignore_dynamic_linking = False
-    self.shell_path = None
-    self.source_map_base = ''
-    self.emit_tsd = ''
-    self.emrun = False
-    self.cpu_profiler = False
-    self.memory_profiler = False
-    self.use_preload_cache = False
-    self.use_preload_plugins = False
-    self.valid_abspaths = []
-    # Specifies the line ending format to use for all generated text files.
-    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
-    # Linux & MacOS)
-    self.output_eol = os.linesep
-    self.no_entry = False
-    self.shared = False
-    self.relocatable = False
-    self.reproduce = None
-    self.syntax_only = False
-    self.dash_c = False
-    self.dash_E = False
-    self.dash_S = False
-    self.dash_M = False
-    self.input_language = None
-    self.nostdlib = False
-    self.nostdlibxx = False
-    self.nodefaultlibs = False
-    self.nolibc = False
-    self.nostartfiles = False
-    self.sanitize_minimal_runtime = False
-    self.sanitize = set()
-    self.lib_dirs = []
-    self.fast_math = False
+  cpu_profiler = False
+  dash_E = False
+  dash_M = False
+  dash_S = False
+  dash_c = False
+  embed_files: List[str] = []
+  emit_symbol_map = False
+  emit_tsd = ''
+  emrun = False
+  exclude_files: List[str] = []
+  executable = False
+  extern_post_js: List[str] = [] # after all js, external to optimized code
+  extern_pre_js: List[str] = [] # before all js, external to optimized code
+  fast_math = False
+  ignore_dynamic_linking = False
+  input_files: List[str] = []
+  input_language = None
+  js_transform = None
+  lib_dirs: List[str] = []
+  memory_profiler = False
+  no_entry = False
+  no_minify = False
+  nodefaultlibs = False
+  nolibc = False
+  nostartfiles = False
+  nostdlib = False
+  nostdlibxx = False
+  oformat = None
+  # Specifies the line ending format to use for all generated text files.
+  # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
+  # Linux & MacOS)
+  output_eol = os.linesep
+  output_file = None
+  post_js: List[str] = [] # after all js
+  post_link = False
+  pre_js: List[str] = [] # before all js
+  preload_files: List[str] = []
+  relocatable = False
+  reproduce = None
+  requested_debug = None
+  sanitize: Set[str] = set()
+  sanitize_minimal_runtime = False
+  save_temps = False
+  shared = False
+  shell_path = None
+  source_map_base = ''
+  syntax_only = False
+  target = ''
+  use_closure_compiler = None
+  use_preload_cache = False
+  use_preload_plugins = False
+  valid_abspaths: List[str] = []
 
 
-def is_int(s):
+# Global/singleton EmccOptions
+options = EmccOptions()
+
+
+def is_unsigned_int(s):
   try:
-    int(s)
-    return True
+    return int(s) >= 0
   except ValueError:
     return False
-
-
-def validate_arg_level(level_string, max_level, err_msg, clamp=False):
-  try:
-    level = int(level_string)
-  except ValueError:
-    exit_with_error(err_msg)
-  if clamp:
-    if level > max_level:
-      logger.warning("optimization level '-O" + level_string + "' is not supported; using '-O" + str(max_level) + "' instead")
-      level = max_level
-  if not 0 <= level <= max_level:
-    exit_with_error(err_msg)
-  return level
 
 
 def version_string():
@@ -142,7 +130,7 @@ def version_string():
   # look up and find the revision in a parent directory that is a git repo
   revision_suffix = ''
   if os.path.exists(utils.path_from_root('.git')):
-    git_rev = shared.run_process(
+    git_rev = utils.run_process(
       ['git', 'rev-parse', 'HEAD'],
       stdout=PIPE, stderr=PIPE, cwd=utils.path_from_root()).stdout.strip()
     revision_suffix = ' (%s)' % git_rev
@@ -152,7 +140,7 @@ def version_string():
   return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {utils.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
-def is_valid_abspath(options, path_name):
+def is_valid_abspath(path_name):
   # Any path that is underneath the emscripten repository root must be ok.
   if utils.normalize_path(path_name).startswith(utils.normalize_path(utils.path_from_root())):
     return True
@@ -226,9 +214,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
-  options = EmccOptions()
-  settings_changes = []
-  user_js_defines = []
   should_exit = False
   skip = False
 
@@ -290,25 +275,33 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
 
     if arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
-      requested_level = removeprefix(arg, '-O') or '2'
-      if requested_level == 's':
-        requested_level = 2
+      opt_level = removeprefix(arg, '-O') or '2'
+      if opt_level == 's':
+        opt_level = 2
         settings.SHRINK_LEVEL = 1
-      elif requested_level == 'z':
-        requested_level = 2
+      elif opt_level == 'z':
+        opt_level = 2
         settings.SHRINK_LEVEL = 2
-      elif requested_level == 'g':
-        requested_level = 1
+      elif opt_level == 'g':
+        opt_level = 1
         settings.SHRINK_LEVEL = 0
         settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
-      elif requested_level == 'fast':
+      elif opt_level == 'fast':
         # -Ofast typically includes -ffast-math semantics
         options.fast_math = True
-        requested_level = 3
+        opt_level = 3
         settings.SHRINK_LEVEL = 0
       else:
         settings.SHRINK_LEVEL = 0
-      settings.OPT_LEVEL = validate_arg_level(requested_level, 3, 'invalid optimization level: ' + arg, clamp=True)
+      try:
+        level = int(opt_level)
+      except ValueError:
+        exit_with_error(f"invalid integral value '{opt_level}' in '{arg}'")
+      if level > 3 or level < 0:
+        diagnostics.warn(f"optimization level '{arg}' is not supported; using '-O3' instead")
+        newargs[i] = '-O3'
+        level = 3
+      settings.OPT_LEVEL = level
     elif check_arg('--js-opts'):
       logger.warning('--js-opts ignored when using llvm backend')
       consume_arg()
@@ -360,53 +353,56 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.no_minify = True
     elif arg.startswith('-g'):
       options.requested_debug = arg
-      requested_level = removeprefix(arg, '-g') or '3'
-      if is_int(requested_level):
+      debug_level = removeprefix(arg, '-g') or '3'
+      if is_unsigned_int(debug_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
-        settings.DEBUG_LEVEL = validate_arg_level(requested_level, 4, 'invalid debug level: ' + arg)
-        if settings.DEBUG_LEVEL == 0:
+        debug_level = int(debug_level)
+        settings.DEBUG_LEVEL = debug_level
+        if debug_level == 0:
           # Set these explicitly so -g0 overrides previous -g on the cmdline
           settings.GENERATE_DWARF = 0
           settings.GENERATE_SOURCE_MAP = 0
           settings.EMIT_NAME_SECTION = 0
-        elif settings.DEBUG_LEVEL > 1:
+        elif debug_level > 1:
           settings.EMIT_NAME_SECTION = 1
         # if we don't need to preserve LLVM debug info, do not keep this flag
         # for clang
-        if (settings.DEBUG_LEVEL < 3 and not
-            (settings.GENERATE_SOURCE_MAP or settings.SEPARATE_DWARF)):
+        if debug_level < 3 and not (settings.GENERATE_SOURCE_MAP or settings.SEPARATE_DWARF):
           newargs[i] = '-g0'
         else:
-          # for 3+, report -g3 to clang as -g4 etc. are not accepted
-          newargs[i] = '-g3'
-          if settings.DEBUG_LEVEL == 3:
+          if debug_level == 3:
             settings.GENERATE_DWARF = 1
-          if settings.DEBUG_LEVEL == 4:
-            settings.GENERATE_SOURCE_MAP = 1
+          elif debug_level == 4:
+            # In the past we supported, -g4.  But clang never did.
+            # Lower this to -g3, and report a warning.
+            newargs[i] = '-g3'
             diagnostics.warning('deprecated', 'please replace -g4 with -gsource-map')
+            settings.GENERATE_SOURCE_MAP = 1
+          elif debug_level > 4:
+            exit_with_error("unknown argument: '%s'", arg)
       else:
-        if requested_level.startswith('force_dwarf'):
+        if debug_level.startswith('force_dwarf'):
           exit_with_error('gforce_dwarf was a temporary option and is no longer necessary (use -g)')
-        elif requested_level.startswith('separate-dwarf'):
+        elif debug_level.startswith('separate-dwarf'):
           # emit full DWARF but also emit it in a file on the side
           newargs[i] = '-g'
           # if a file is provided, use that; otherwise use the default location
           # (note that we do not know the default location until all args have
           # been parsed, so just note True for now).
-          if requested_level != 'separate-dwarf':
-            if not requested_level.startswith('separate-dwarf=') or requested_level.count('=') != 1:
+          if debug_level != 'separate-dwarf':
+            if not debug_level.startswith('separate-dwarf=') or debug_level.count('=') != 1:
               exit_with_error('invalid -gseparate-dwarf=FILENAME notation')
-            settings.SEPARATE_DWARF = requested_level.split('=')[1]
+            settings.SEPARATE_DWARF = debug_level.split('=')[1]
           else:
             settings.SEPARATE_DWARF = True
           settings.GENERATE_DWARF = 1
           settings.DEBUG_LEVEL = 3
-        elif requested_level in ['source-map', 'source-map=inline']:
-          settings.GENERATE_SOURCE_MAP = 1 if requested_level == 'source-map' else 2
+        elif debug_level in ['source-map', 'source-map=inline']:
+          settings.GENERATE_SOURCE_MAP = 1 if debug_level == 'source-map' else 2
           newargs[i] = '-g'
-        elif requested_level == 'z':
+        elif debug_level == 'z':
           # Ignore `-gz`.  We don't support debug info compression.
-          continue
+          pass
         else:
           # Other non-integer levels (e.g. -gline-tables-only or -gdwarf-5) are
           # usually clang flags that emit DWARF. So we pass them through to
@@ -423,7 +419,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       if newargs[i] == '--memoryprofiler':
         options.memory_profiler = True
       newargs[i] = ''
-      settings_changes.append('EMSCRIPTEN_TRACING=1')
+      settings.EMSCRIPTEN_TRACING = 1
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       settings.EMIT_SYMBOL_MAP = 1
@@ -489,7 +485,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_arg('--memory-init-file'):
       exit_with_error('--memory-init-file is no longer supported')
     elif check_flag('--proxy-to-worker'):
-      settings_changes.append('PROXY_TO_WORKER=1')
+      settings.PROXY_TO_WORKER = 1
     elif check_arg('--valid-abspath'):
       options.valid_abspaths.append(consume_arg())
     elif check_flag('--separate-asm'):
@@ -498,7 +494,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       path_name = arg[2:]
       # Look for '/' explicitly so that we can also diagnose identically if -I/foo/bar is passed on Windows.
       # Python since 3.13 does not treat '/foo/bar' as an absolute path on Windows.
-      if (path_name.startswith('/') or os.path.isabs(path_name)) and not is_valid_abspath(options, path_name):
+      if (path_name.startswith('/') or os.path.isabs(path_name)) and not is_valid_abspath(path_name):
         # Of course an absolute path to a non-system-specific library or header
         # is fine, and you can ignore this warning. The danger are system headers
         # that are e.g. x86 specific and non-portable. The emscripten bundled
@@ -515,7 +511,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('--cpuprofiler'):
       options.cpu_profiler = True
     elif check_flag('--threadprofiler'):
-      settings_changes.append('PTHREADS_PROFILING=1')
+      settings.PTHREADS_PROFILING = 1
     elif arg in ('-fcolor-diagnostics', '-fdiagnostics-color', '-fdiagnostics-color=always'):
       colored_logger.enable(force=True)
     elif arg in ('-fno-color-diagnostics', '-fno-diagnostics-color', '-fdiagnostics-color=never'):
@@ -589,7 +585,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         value = '1'
       if key in settings.keys():
         exit_with_error(f'{arg}: cannot change built-in settings values with a -jsD directive. Pass -s{key}={value} instead!')
-      user_js_defines += [(key, value)]
+      # Apply user -jsD settings
+      settings[key] = value
       newargs[i] = ''
     elif check_flag('-shared'):
       options.shared = True
@@ -642,8 +639,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
   if should_exit:
     sys.exit(0)
 
-  newargs = [a for a in newargs if a]
-  return options, settings_changes, user_js_defines, newargs
+  return [a for a in newargs if a]
 
 
 def expand_byte_size_suffixes(value):
@@ -855,14 +851,12 @@ def parse_arguments(args):
       newargs[i] += newargs[i + 1]
       newargs[i + 1] = ''
 
-  options, settings_changes, user_js_defines, newargs = parse_args(newargs)
+  newargs = parse_args(newargs)
 
   if options.post_link or options.oformat == OFormat.BARE:
     diagnostics.warning('experimental', '--oformat=bare/--post-link are experimental and subject to change.')
 
-  explicit_settings_changes, newargs = parse_s_args(newargs)
-  settings_changes += explicit_settings_changes
-
+  settings_changes, newargs = parse_s_args(newargs)
   for s in settings_changes:
     key, value = s.split('=', 1)
     key, value = normalize_boolean_setting(key, value)
@@ -874,11 +868,7 @@ def parse_arguments(args):
   if strict_cmdline:
     settings.STRICT = int(strict_cmdline)
 
-  # Apply user -jsD settings
-  for s in user_js_defines:
-    settings[s[0]] = s[1]
-
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   apply_user_settings()
 
-  return options, newargs
+  return newargs

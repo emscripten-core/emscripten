@@ -8,6 +8,7 @@ import os
 import re
 import shutil
 import stat
+import sys
 import time
 from pathlib import Path
 from subprocess import PIPE, STDOUT
@@ -22,7 +23,7 @@ from common import (
   path_from_root,
   test_file,
 )
-from decorators import crossplatform, parameterized, with_env_modify
+from decorators import crossplatform, no_windows, parameterized, with_env_modify
 
 from tools import cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
@@ -99,6 +100,22 @@ def make_fake_clang(filename, version, targets='wasm32 - WebAssembly 32-bit'):
   make_fake_tool(filename + '++', version, output)
 
 
+# Return a new PATH that has no directories that would contain the given tool.
+def path_without_tool(env_path, tool_bin):
+  tool_bin = utils.exe_suffix(tool_bin)
+  python_path = os.path.normpath(os.path.dirname(sys.executable))
+
+  def ignore_path(p):
+    # We cannot ignore a path element that contains the python executable itself, otherwise
+    # the bootstrap script will fail
+    if os.path.isfile(os.path.join(p, tool_bin)) and os.path.normpath(p) != python_path:
+      return True
+    return False
+
+  old_path = env_path.split(os.pathsep)
+  return os.pathsep.join([d for d in old_path if not ignore_path(d)])
+
+
 SANITY_MESSAGE = 'Emscripten: Running sanity checks'
 
 # arguments to build a minimal hello world program, without even libc
@@ -152,7 +169,7 @@ class sanity(RunnerCore):
 
     return self.run_process(command, stdout=PIPE, stderr=STDOUT, check=False, env=env).stdout
 
-  def check_working(self, command, expected=None):
+  def check_working(self, command, expected=None, env=None):
     if type(command) is not list:
       command = [command]
     if command == [EMCC]:
@@ -163,7 +180,7 @@ class sanity(RunnerCore):
       else:
         expected = 'could not find the following tests: blahblah'
 
-    output = self.do(command)
+    output = self.do(command, env=env)
     self.assertContained(expected, output)
     return output
 
@@ -177,8 +194,13 @@ class sanity(RunnerCore):
 
   @with_env_modify({'EM_CONFIG': None})
   def test_firstrun(self):
+    # Remove from PATH every directory that contains clang.exe so config setup
+    # cannot accidentally succeed by virtue of locating tools in PATH.
+    env = os.environ.copy()
+    env['PATH'] = path_without_tool(env['PATH'], 'clang')
+
     default_config = path_from_root('.emscripten')
-    output = self.do([EMCC, '-v'])
+    output = self.do([EMCC, '-v'], env=env)
     self.assertContained('emcc: warning: config file not found: %s.  You can create one by hand or run `emcc --generate-config`' % default_config, output)
 
     temp_bin = os.path.abspath('bin')
@@ -237,6 +259,7 @@ class sanity(RunnerCore):
         finally:
           delete_file(default_config)
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_llvm(self):
     LLVM_WARNING = 'LLVM version for clang executable'
 
@@ -422,6 +445,7 @@ fi
     self.assertIn(SANITY_MESSAGE, output)
     self.assertCacheEmpty()
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_cache_clearing_auto(self):
     # Changing LLVM_ROOT, even without altering .emscripten, clears the cache
     restore_and_set_up()
@@ -639,6 +663,7 @@ fi
       build()
       test()
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_vanilla(self):
     restore_and_set_up()
     self.clear_cache()
@@ -663,6 +688,7 @@ fi
     test_with_fake('got js backend! JavaScript (asm.js, emscripten) backend', 'LLVM has not been built with the WebAssembly backend')
     delete_dir(shared.CANONICAL_TEMP_DIR)
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_llvm_add_version(self):
     restore_and_set_up()
 
@@ -683,12 +709,18 @@ fi
     # with no binaryen root, an error is shown
     restore_and_set_up()
 
+    # Remove wasm-opt from PATH so config setup cannot accidentally succeed by
+    # virtue of locating it in PATH.
+    env = os.environ.copy()
+    env['PATH'] = path_without_tool(env['PATH'], 'wasm-opt')
+
     open(EM_CONFIG, 'a').write('\nBINARYEN_ROOT = ""\n')
-    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % EM_CONFIG)
+    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % EM_CONFIG, env=env)
 
     open(EM_CONFIG, 'a').write('\ndel BINARYEN_ROOT\n')
-    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT not set in config (%s), and `wasm-opt` not found in PATH' % EM_CONFIG)
+    self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT not set in config (%s), and `wasm-opt` not found in PATH' % EM_CONFIG, env=env)
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_empty_config(self):
     restore_and_set_up()
     make_fake_tool(self.in_dir('fake', 'wasm-opt'), 'foo')
@@ -699,6 +731,7 @@ fi
     with env_modify({'PATH': self.in_dir('fake') + os.pathsep + os.environ['PATH']}):
       self.check_working([EMCC])
 
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_missing_config(self):
     restore_and_set_up()
     make_fake_tool(self.in_dir('fake', 'wasm-opt'), 'foo')
@@ -780,6 +813,13 @@ fi
     self.run_process([EMBUILDER, 'build', f'{external_port_path}:dependency=sdl2', '--force'])
     self.assertExists(os.path.join(config.CACHE, 'sysroot', 'lib', 'wasm32-emscripten', 'lib_external-sdl2.a'))
 
+  def test_embuilder_transitive_pic(self):
+    restore_and_set_up()
+    self.run_process([EMBUILDER, 'clear', 'sdl2*'])
+    self.run_process([EMBUILDER, '--pic', 'clear', 'sdl2*'])
+    self.run_process([EMCC, '-sMAIN_MODULE=2', '-sUSE_SDL=2', '-sUSE_SDL_GFX=2', test_file('hello_world.c')])
+
+  @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_binaryen_version(self):
     restore_and_set_up()
     with open(EM_CONFIG, 'a') as f:
@@ -801,7 +841,7 @@ fi
     self.assert_fail([EMCC, test_file('hello_world.c')], expected)
 
     # Running bootstrap.py should fix that
-    bootstrap = shared.bat_suffix(shared.path_from_root('bootstrap'))
+    bootstrap = shared.bat_suffix(path_from_root('bootstrap'))
     self.run_process([bootstrap])
 
     # Now the compiler should work again
@@ -818,8 +858,7 @@ fi
 
     # Remove from PATH every directory that contains clang.exe so that bootstrap.py cannot
     # accidentally succeed by virtue of locating tools in PATH.
-    new_path = [d for d in env['PATH'].split(os.pathsep) if not os.path.isfile(os.path.join(d, utils.exe_suffix('clang')))]
-    env['PATH'] = os.pathsep.join(new_path)
+    env['PATH'] = path_without_tool(env['PATH'], 'clang')
 
     # Running bootstrap.py should not fail
-    self.run_process([shared.bat_suffix(shared.path_from_root('bootstrap'))], env=env)
+    self.run_process([shared.bat_suffix(path_from_root('bootstrap'))], env=env)

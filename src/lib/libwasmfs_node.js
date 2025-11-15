@@ -74,7 +74,7 @@ addToLibrary({
     let path = UTF8ToString(path_p);
     return wasmfsTry(() => {
       let entries = fs.readdirSync(path, { withFileTypes: true });
-      entries.forEach((entry) => {
+      for (var entry of entries) {
         let sp = stackSave();
         let name = stringToUTF8OnStack(entry.name);
         let type;
@@ -90,7 +90,7 @@ addToLibrary({
         __wasmfs_node_record_dirent(vec, name, type);
         stackRestore(sp);
         // implicitly return 0
-      });
+      }
     });
   },
 

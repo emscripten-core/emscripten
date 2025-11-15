@@ -264,9 +264,6 @@ commands:
           # Must be absolute path or relative path from working_directory
           at: ~/
       - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - emsdk-env
       - bootstrap
       - pip-install
@@ -387,9 +384,6 @@ commands:
           at: ~/
       - checkout
       - remove-linux-binaries
-      - run:
-          name: submodule update
-          command: git submodule update --init
   run-tests-firefox:
     description: "Runs emscripten tests under firefox"
     parameters:
@@ -458,6 +452,8 @@ commands:
           name: download firefox
           shell: powershell.exe -ExecutionPolicy Bypass
           command: |
+            $ErrorActionPreference = 'Stop'
+
             # To download Firefox, we must first figure out what the latest Firefox version name is.
             # This is because there does not exist a stable/static URL to download latest Firefox from.
             $html = Invoke-WebRequest "https://archive.mozilla.org/pub/firefox/nightly/latest-mozilla-central/"
@@ -877,9 +873,6 @@ jobs:
     executor: linux-python
     steps:
       - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - pip-install
       - install-emsdk
       - run:
@@ -902,9 +895,6 @@ jobs:
     executor: linux-python
     steps:
       - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - pip-install
       - install-emsdk
       - run:
@@ -932,9 +922,6 @@ jobs:
       EMTEST_SKIP_V8: "1"
     steps:
       - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - pip-install
       - install-emsdk
       # `install-node-version` only changes the NODE_JS_TEST (the version of
@@ -1093,9 +1080,6 @@ jobs:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
       - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - pip-install
       - install-emsdk
       - run-tests-chrome:
@@ -1119,6 +1103,7 @@ jobs:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
+      EMTEST_VISUALIZE: "1"
     steps:
       - run-tests-chrome:
           title: "browser64"
@@ -1141,6 +1126,9 @@ jobs:
             browser64.test_pthread_asan*
             browser64.test_webgl_multi_draw*
             browser64.test_pthread_growth*"
+      - run:
+          name: Check profile
+          command: file -E out/graph.html
   test-browser-chrome-2gb:
     executor: focal
     environment:
@@ -1180,9 +1168,6 @@ jobs:
     executor: focal
     steps:
       - checkout
-      - run:
-          name: submodule update
-          command: git submodule update --init
       - pip-install
       - install-emsdk
       - run-tests-firefox:
@@ -1306,9 +1291,9 @@ jobs:
     steps:
       - setup-macos
       - install-emsdk
+      - pip-install:
+          python: "$EMSDK_PYTHON"
       - freeze-cache
-      # TODO: We can't currently do pip install here since numpy and other packages
-      # are currently missing arm64 macos binaries.
       - run-tests:
           title: "crossplatform tests"
           test_targets: "--crossplatform-only"

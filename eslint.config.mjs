@@ -28,6 +28,7 @@ export default [{
     'src/polyfill/',
     'src/lib/',
     'src/binaryDecode.js',
+    'src/build_as_worker.js',
     'src/minimum_runtime_check.js',
     'src/runtime_*.js',
     'src/shell*.js',

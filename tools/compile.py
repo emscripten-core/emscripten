@@ -20,7 +20,7 @@ flags. For example, include paths and macro defintions.
 
 import os
 
-from . import building, cache, ports, shared
+from . import building, cache, ports, shared, utils
 from .cmdline import SIMD_INTEL_FEATURE_TOWER, SIMD_NEON_FLAGS
 from .settings import settings
 from .utils import memoize
@@ -50,10 +50,10 @@ def get_clang_flags(user_args):
     if '-mbulk-memory' not in user_args:
       flags.append('-mbulk-memory')
 
-  if settings.RELOCATABLE and '-fPIC' not in user_args:
+  if (settings.MAIN_MODULE or settings.RELOCATABLE) and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
-  if settings.RELOCATABLE or settings.LINKABLE or '-fPIC' in user_args:
+  if settings.MAIN_MODULE or settings.RELOCATABLE or settings.LINKABLE or '-fPIC' in user_args:
     if not any(a.startswith('-fvisibility') for a in user_args):
       # For relocatable code we default to visibility=default in emscripten even
       # though the upstream backend defaults visibility=hidden.  This matches the
@@ -110,7 +110,7 @@ def get_cflags(user_args):
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
     if '-msimd128' not in user_args and '-mrelaxed-simd' not in user_args:
-      shared.exit_with_error('passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
+      utils.exit_with_error('passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
     cflags += ['-D__SSE__=1']
 
   if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):

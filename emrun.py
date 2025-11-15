@@ -578,8 +578,6 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
 
 # Processes HTTP request back to the browser.
 class HTTPHandler(SimpleHTTPRequestHandler):
-  protocol_version = 'HTTP/1.1'  # noqa: DC01
-
   def send_head(self):
     global page_last_served_time
     path = self.translate_path(self.path)

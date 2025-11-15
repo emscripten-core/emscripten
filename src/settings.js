@@ -66,11 +66,11 @@ var ASSERTIONS = 1;
 // [link]
 var STACK_OVERFLOW_CHECK = 0;
 
-// When STACK_OVERFLOW_CHECK is enabled we also check writes to address zero.
-// This can help detect NULL pointer usage.  If you want to skip this extra
-// check (for example, if you want reads from the address zero to always return
-// zero) you can disable this here.  This setting has no effect when
-// STACK_OVERFLOW_CHECK is disabled.
+// When :ref`STACK_OVERFLOW_CHECK` is enabled we also check writes to address
+// zero. This can help detect NULL pointer usage.  If you want to skip this
+// extra check (for example, if you want reads from the address zero to always
+// return zero) you can disable this here.  This setting has no effect when
+// :ref:`STACK_OVERFLOW_CHECK` is disabled.
 var CHECK_NULL_WRITES = true;
 
 // When set to 1, will generate more verbose output during compilation.
@@ -95,7 +95,7 @@ var INVOKE_RUN = true;
 // keeps the runtime alive. Call emscripten_exit_with_live_runtime() to finish
 // main() while keeping the runtime alive. Calling emscripten_force_exit() will
 // shut down the runtime, invoking atexit()s, and flushing stdio streams.
-// This setting is controlled automatically in STANDALONE_WASM mode:
+// This setting is controlled automatically in :ref:`STANDALONE_WASM` mode:
 //
 // - For a command (has a main function) this is always 1
 // - For a reactor (no main function) this is always 0
@@ -371,7 +371,7 @@ var LIBRARY_DEBUG = false;
 
 // Print out all musl syscalls, including translating their numeric index
 // to the string name, which can be convenient for debugging. (Other system
-// calls are not numbered and already have clear names; use LIBRARY_DEBUG
+// calls are not numbered and already have clear names; use :ref:`LIBRARY_DEBUG`
 // to get logging for all of them.)
 // [link]
 var SYSCALL_DEBUG = false;
@@ -609,7 +609,7 @@ var GL_WORKAROUND_SAFARI_GETCONTEXT_BUG = true;
 // In WebGL, glGetProcAddress() causes a substantial code size and performance impact, since WebGL
 // does not natively provide such functionality, and it must be emulated. Using glGetProcAddress()
 // is not recommended. If you still need to use this, e.g. when porting an existing renderer,
-// you can link with -sGL_ENABLE_GET_PROC_ADDRESS=1 to get support for this functionality.
+// you can link with -sGL_ENABLE_GET_PROC_ADDRESS to get support for this functionality.
 // [link]
 var GL_ENABLE_GET_PROC_ADDRESS = true;
 
@@ -684,11 +684,10 @@ var ENVIRONMENT = ['web', 'webview', 'worker', 'node'];
 var LZ4 = false;
 
 // Emscripten (JavaScript-based) exception handling options.
-// The three options below (DISABLE_EXCEPTION_CATCHING,
-// EXCEPTION_CATCHING_ALLOWED, and DISABLE_EXCEPTION_THROWING) only pertain to
-// JavaScript-based exception handling and do not control the native Wasm
-// exception handling option (-fwasm-exceptions, internal setting:
-// WASM_EXCEPTIONS).
+// The three relatated settings (:ref:`DISABLE_EXCEPTION_CATCHING`,
+// :ref:`EXCEPTION_CATCHING_ALLOWED`, and :ref:`DISABLE_EXCEPTION_THROWING`)
+// only pertain to JavaScript-based exception handling and do not control the
+// native Wasm exception handling option (``-fwasm-exceptions``)
 
 // Disables generating code to actually catch exceptions. This disabling is on
 // by default as the overhead of exceptions is quite high in size and speed
@@ -704,23 +703,23 @@ var LZ4 = false;
 //   as it may contain thrown exceptions that are never caught (e.g.
 //   just using std::vector can have that). -fno-rtti may help as well.
 //
-// This option is mutually exclusive with EXCEPTION_CATCHING_ALLOWED.
+// This option is mutually exclusive with :ref:`EXCEPTION_CATCHING_ALLOWED`.
 //
 // This option only applies to Emscripten (JavaScript-based) exception handling
 // and does not control the native Wasm exception handling.
 //
-// [compile+link] - affects user code at compile and system libraries at link
+// [compile+link]
 var DISABLE_EXCEPTION_CATCHING = 1;
 
 // Enables catching exception but only in the listed functions.  This
 // option acts like a more precise version of ``DISABLE_EXCEPTION_CATCHING=0``.
 //
-// This option is mutually exclusive with DISABLE_EXCEPTION_CATCHING.
+// This option is mutually exclusive with :ref:`DISABLE_EXCEPTION_CATCHING`.
 //
 // This option only applies to Emscripten (JavaScript-based) exception handling
 // and does not control the native Wasm exception handling.
 //
-// [compile+link] - affects user code at compile and system libraries at link
+// [compile+link]
 var EXCEPTION_CATCHING_ALLOWED = [];
 
 // Internal: Tracks whether Emscripten should link in exception throwing (C++
@@ -733,17 +732,16 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 // throwing code is not linked in. If so you should either unset the option (if
 // you do want exceptions) or fix the compilation of the source files so that
 // indeed no exceptions are used).
-// TODO(sbc): Move to settings_internal (current blocked due to use in test
-// code).
 //
 // This option only applies to Emscripten (JavaScript-based) exception handling
 // and does not control the native Wasm exception handling.
 //
-// [link]
+// [compile+link]
 var DISABLE_EXCEPTION_THROWING = false;
 
 // Make the exception message printing function, 'getExceptionMessage' available
-// in the JS library for use, by adding necessary symbols to EXPORTED_FUNCTIONS.
+// in the JS library for use, by adding necessary symbols to
+// :ref:`EXPORTED_FUNCTIONS`.
 //
 // This works with both Emscripten EH and Wasm EH. When you catch an exception
 // from JS, that gives you a user-thrown value in case of Emscripten EH, and a
@@ -775,7 +773,7 @@ var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 // exceptions will display stack traces upon exiting. This defaults to true when
 // ASSERTIONS is enabled. This option is for users who want exceptions' stack
 // traces but do not want other overheads ASSERTIONS can incur.
-// This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
+// This option implies :ref:`EXPORT_EXCEPTION_HANDLING_HELPERS`.
 // [link]
 var EXCEPTION_STACK_TRACES = false;
 
@@ -822,8 +820,8 @@ var ASYNCIFY = 0;
 
 // Imports which can do an async operation, in addition to the default ones that
 // emscripten defines like emscripten_sleep. If you add more you will need to
-// mention them to here, or else they will not work (in ASSERTIONS builds an
-// error will be shown).
+// mention them to here, or else they will not work (in :ref:`ASSERTIONS` builds
+// an error will be shown).
 // Note that this list used to contain the default ones, which meant that you
 // had to list them when adding your own; the default ones are now added
 // automatically.
@@ -831,15 +829,15 @@ var ASYNCIFY = 0;
 var ASYNCIFY_IMPORTS = [];
 
 // Whether indirect calls can be on the stack during an unwind/rewind.
-// If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
-// must assume an indirect call can reach almost everywhere.
+// If you know they cannot, then setting this can be extremely helpful, as
+// otherwise asyncify must assume an indirect call can reach almost everywhere.
 // [link]
 var ASYNCIFY_IGNORE_INDIRECT = false;
 
 // The size of the asyncify stack - the region used to store unwind/rewind
-// info. This must be large enough to store the call stack and locals. If it is too
-// small, you will see a wasm trap due to executing an "unreachable" instruction.
-// In that case, you should increase this size.
+// info. This must be large enough to store the call stack and locals. If it is
+// too small, you will see a wasm trap due to executing an "unreachable"
+// instruction. In that case, you should increase this size.
 // [link]
 var ASYNCIFY_STACK_SIZE = 4096;
 
@@ -855,8 +853,8 @@ var ASYNCIFY_STACK_SIZE = 4096;
 //
 // The names in this list are names from the WebAssembly Names section. The
 // wasm backend will emit those names in *human-readable* form instead of
-// typical C++ mangling. For example, you should write Struct::func()
-// instead of _ZN6Struct4FuncEv. C is also different from C++, as C
+// typical C++ mangling. For example, you should write ``Struct::func()``
+// instead of ``_ZN6Struct4FuncEv``. C is also different from C++, as C
 // names don't end with parameters; as a result foo(int) in C++ would appear
 // as just foo in C (C++ has parameters because it needs to differentiate
 // overloaded functions). You will see warnings in the console if a name in the
@@ -891,7 +889,7 @@ var ASYNCIFY_REMOVE = [];
 // and use this list to fix up some indirect calls that *do* need to be
 // instrumented.
 //
-// See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
+// See :ref:`ASYNCIFY_REMOVE` about the names, including wildcard matching and
 // character substitutions.
 // [link]
 var ASYNCIFY_ADD = [];
@@ -906,7 +904,7 @@ var ASYNCIFY_PROPAGATE_ADD = true;
 // will be instrumented. Like the remove-list, getting this wrong will break
 // your application.
 //
-// See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
+// See :ref:`ASYNCIFY_REMOVE` about the names, including wildcard matching and
 // character substitutions.
 // [link]
 var ASYNCIFY_ONLY = [];
@@ -1062,8 +1060,9 @@ var NODE_CODE_CACHING = false;
 // symbols listed here require an ``_`` prefix.
 //
 // By default if this setting is not specified on the command line the
-// ``_main`` function will be implicitly exported.  In STANDALONE_WASM mode the
-// default export is ``__start`` (or ``__initialize`` if --no-entry is specified).
+// ``_main`` function will be implicitly exported.  In :ref:`STANDALONE_WASM`
+// mode the default export is ``__start`` (or ``__initialize`` if ``--no-entry``
+// is specified).
 //
 // JS Library symbols can also be added to this list (without the leading `$`).
 // [link]
@@ -1118,6 +1117,7 @@ var INCLUDE_FULL_LIBRARY = false;
 // globals and function pointers are all offset (by gb and fp, respectively)
 // Automatically set for SIDE_MODULE or MAIN_MODULE.
 // [compile+link]
+// [deprecated]
 var RELOCATABLE = false;
 
 // A main module is a file compiled in a way that allows us to link it to
@@ -1148,12 +1148,14 @@ var BUILD_AS_WORKER = false;
 // If set to 1, we build the project into a js file that will run in a worker,
 // and generate an html file that proxies input and output to/from it.
 // [link]
+// [deprecated]
 var PROXY_TO_WORKER = false;
 
 // If set, the script file name the main thread loads.  Useful if your project
 // doesn't run the main emscripten- generated script immediately but does some
 // setup before
 // [link]
+// [deprecated]
 var PROXY_TO_WORKER_FILENAME = '';
 
 // If set to 1, compiles in a small stub main() in between the real main() which
@@ -1184,7 +1186,8 @@ var PROXY_TO_PTHREAD = false;
 // to set this explicitly. Note that MAIN_MODULE and SIDE_MODULE mode 2 do
 // *not* set this, so that we still do normal DCE on them, and in that case
 // you must keep relevant things alive yourself using exporting.
-// [link]
+// [compile+link]
+// [deprecated]
 var LINKABLE = false;
 
 // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
@@ -1397,9 +1400,9 @@ var USE_GLFW = 0;
 // [link]
 var WASM = 1;
 
-// STANDALONE_WASM indicates that we want to emit a wasm file that can run
-// without JavaScript. The file will use standard APIs such as wasi as much as
-// possible to achieve that.
+// Indicates that we want to emit a wasm file that can run without JavaScript.
+// The file will use standard APIs such as wasi as much as possible to achieve
+// that.
 //
 // This option does not guarantee that the wasm can be used by itself - if you
 // use APIs with no non-JS alternative, we will still use those (e.g., OpenGL
@@ -1607,11 +1610,11 @@ var USE_MODPLUG = false;
 
 // Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm,
 // tga, xcf, xpm, xv
-// [link]
+// [compile+link]
 var SDL2_IMAGE_FORMATS = [];
 
 // Formats to support in SDL2_mixer. Valid values: ogg, mp3, mod, mid
-// [link]
+// [compile+link]
 var SDL2_MIXER_FORMATS = ["ogg"];
 
 // 1 = use sqlite3 from emscripten-ports
@@ -1620,13 +1623,13 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 var USE_SQLITE3 = false;
 
 // If 1, target compiling a shared Wasm Memory.
-// [compile+link] - affects user code at compile and system libraries at link.
+// [compile+link]
 var SHARED_MEMORY = false;
 
 // Enables support for Wasm Workers.  Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
 // of Wasm SharedArrayBuffer + Atomics API.
-// [compile+link] - affects user code at compile and system libraries at link.
+// [compile+link]
 var WASM_WORKERS = 0;
 
 // If true, enables targeting Wasm Web Audio AudioWorklets. Check out the
@@ -1850,6 +1853,9 @@ var WASMFS = false;
 // child-src directive to allow blob:. If you aren't using Content Security
 // Policy, or your CSP header doesn't include either script-src or child-src,
 // then you can safely ignore this warning.
+//
+// Note that SINGLE_FILE with binary encoding requires the HTML/JS files to be
+// served with UTF-8 encoding. See the details on SINGLE_FILE_BINARY_ENCODE.
 // [link]
 var SINGLE_FILE = false;
 
@@ -1859,6 +1865,20 @@ var SINGLE_FILE = false;
 // issues with the binary encoding. (and please let us know of any such issues)
 // If no issues arise, this option will permanently become the default in the
 // future.
+//
+// NOTE: Binary encoding requires that the HTML/JS files are served with UTF-8
+// encoding, and will not work with the default legacy Windows-1252 encoding
+// that browsers might use on Windows. To enable UTF-8 encoding in a
+// hand-crafted index.html file, apply any of:
+// 1. Add `<meta charset="utf-8">` inside the <head> section of HTML, or
+// 2. Add `<meta http-equiv="content-type" content="text/html; charset=UTF-8" />`` inside <head>, or
+// 3. Add `<meta http-equiv="content-type" content="application/json; charset=utf-8" />` inside <head>
+// (if using -o foo.js with SINGLE_FILE mode to build HTML+JS), or
+// 4. pass the header `Content-Type: text/html; charset=utf-8` and/or header
+// `Content-Type: application/javascript; charset=utf-8` when serving the
+// relevant files that contain binary encoded content.
+// If none of these are possible, disable binary encoding with
+// -sSINGLE_FILE_BINARY_ENCODE=0 to fall back to base64 encoding.
 // [link]
 var SINGLE_FILE_BINARY_ENCODE = true;
 
@@ -1978,9 +1998,9 @@ var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = false;
 // - 1: Default setjmp/longjmp/handling, depending on the mode of exceptions.
 //   'wasm' if '-fwasm-exceptions' is used, 'emscripten' otherwise.
 //
-// [compile+link] - at compile time this enables the transformations needed for
-// longjmp support at codegen time, while at link it allows linking in the
-// library support.
+// At compile time this enables the transformations needed for longjmp support
+// at codegen time, while at link it allows linking in the library support.
+// [compile+link]
 var SUPPORT_LONGJMP = true;
 
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior.
@@ -2056,6 +2076,7 @@ var SEPARATE_DWARF_URL = '';
 // When this flag is turned on, we error at link time if the build requires any
 // changes to the wasm after link. This can be useful in testing, for example.
 // Some example of features that require post-link wasm changes are:
+//
 // - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
 // - Lowering sign-extension operation when targeting older browsers.
 var ERROR_ON_WASM_CHANGES_AFTER_LINK = false;
@@ -2082,7 +2103,7 @@ var ABORT_ON_WASM_EXCEPTIONS = false;
 // are more WASI compliant and also allows it to process and execute WASI
 // binaries built with other SDKs (e.g.  wasi-sdk).
 // This setting is experimental and subject to change or removal.
-// Implies STANDALONE_WASM.
+// Implies :ref:`STANDALONE_WASM`.
 // [link]
 // [experimental]
 var PURE_WASI = false;
@@ -2092,10 +2113,12 @@ var PURE_WASI = false;
 // it to JavaScript.
 // Use of the following settings will enable this settings since they
 // depend on being able to define the memory in JavaScript:
+//
 // - -pthread
 // - RELOCATABLE
 // - ASYNCIFY_LAZY_LOAD_CODE
 // - WASM2JS (WASM=0)
+//
 // [link]
 var IMPORTED_MEMORY = false;
 
@@ -2107,6 +2130,7 @@ var IMPORTED_MEMORY = false;
 // As well as this the generated JS code will contains help functions
 // to loading split modules.
 // [link]
+// [experimental]
 var SPLIT_MODULE = false;
 
 // For MAIN_MODULE builds, automatically load any dynamic library dependencies
@@ -2137,6 +2161,7 @@ var POLYFILL = true;
 // loop or each user callback, which can flood the console).
 // This setting is enabled by default if any of the following debugging settings
 // are enabled:
+//
 // - PTHREADS_DEBUG
 // - DYLINK_DEBUG
 // - LIBRARY_DEBUG
@@ -2147,20 +2172,21 @@ var POLYFILL = true;
 // - WEBSOCKET_DEBUG
 // - SOCKET_DEBUG
 // - FETCH_DEBUG
+//
 // [link]
 var RUNTIME_DEBUG = 0;
 
 // Include JS library symbols that were previously part of the default runtime.
 // Without this, such symbols can be made available by adding them to
-// DEFAULT_LIBRARY_FUNCS_TO_INCLUDE, or via the dependencies of another JS
+// :ref:`DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`, or via the dependencies of another JS
 // library symbol.
 var LEGACY_RUNTIME = false;
 
 // User-defined functions to wrap with signature conversion, which take or return
-// pointer argument. Only affects MEMORY64=1 builds, see create_pointer_conversion_wrappers
-// in emscripten.py for details.
+// pointer argument. Only affects ``MEMORY64=1`` builds, see
+// ``create_pointer_conversion_wrappers`` in ``emscripten.py`` for details.
 // Use _ for non-pointer arguments, p for pointer/i53 arguments, and P for optional pointer/i53 values.
-// Example use -sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p
+// Example use ``-sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p``
 // [link]
 var SIGNATURE_CONVERSIONS = [];
 
@@ -2169,11 +2195,13 @@ var SIGNATURE_CONVERSIONS = [];
 // and not yet supported by browsers.
 // Requires EXPORT_ES6
 // [link]
+// [experimental]
 var SOURCE_PHASE_IMPORTS = false;
 
 // Experimental support for wasm ESM integration.
-// Requires EXPORT_ES6 and MODULARIZE=instance
+// Requires :ref:`EXPORT_ES6` and ``MODULARIZE=instance``
 // [link]
+// [experimental]
 var WASM_ESM_INTEGRATION = false;
 
 // Enable use of the JS arraybuffer-base64 API:
@@ -2194,6 +2222,7 @@ var GROWABLE_ARRAYBUFFERS = false;
 // Experimental support for WebAssembly js-types proposal.
 // It's currently only available under a flag in certain browsers,
 // so we disable it by default to save on code size.
+// [experimental]
 var WASM_JS_TYPES = false;
 
 // If the emscripten-generated program is hosted on separate origin then

@@ -62,8 +62,12 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   flags = ['-g', '-sSTRICT', '-Werror']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
-  if settings.RELOCATABLE:
-    flags += ['-sRELOCATABLE']
+  if settings.RELOCATABLE or settings.MAIN_MODULE:
+    # Explictly include `-sRELOCATABLE` when building system libraries.
+    # `-fPIC` alone is not enough to configure trigger the building and
+    # caching of `pic` libraries (see `get_lib_dir` in `cache.py`)
+    # FIXME(sbc): `-fPIC` should really be enough here.
+    flags += ['-fPIC', '-sRELOCATABLE']
     if preprocess:
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
@@ -1361,7 +1365,7 @@ class libc(MuslInternalLibrary,
           'system.c',
         ])
 
-    if settings.RELOCATABLE:
+    if settings.RELOCATABLE or settings.MAIN_MODULE:
       libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
 
     libc_files += files_in_path(
@@ -2328,7 +2332,7 @@ def get_libs_to_link(options):
   def add_forced_libs():
     for forced in force_include:
       if forced not in system_libs_map:
-        shared.exit_with_error('invalid forced library: %s', forced)
+        utils.exit_with_error('invalid forced library: %s', forced)
       add_library(forced)
 
   if options.nodefaultlibs:
@@ -2391,7 +2395,7 @@ def get_libs_to_link(options):
       add_library('libmimalloc')
       if settings.USE_ASAN:
         # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
-        shared.exit_with_error('mimalloc is not compatible with -fsanitize=address')
+        utils.exit_with_error('mimalloc is not compatible with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')

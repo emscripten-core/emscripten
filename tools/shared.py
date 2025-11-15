@@ -43,15 +43,7 @@ import contextlib
 
 from . import cache, config, diagnostics, filelock, tempfiles, utils
 from .settings import settings
-from .utils import (
-  WINDOWS,
-  bat_suffix,
-  exit_with_error,
-  memoize,
-  path_from_root,
-  safe_ensure_dirs,
-  set_version_globals,
-)
+from .utils import bat_suffix, exit_with_error, memoize, path_from_root, safe_ensure_dirs
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
@@ -98,26 +90,6 @@ diagnostics.add_warning('unsupported')
 diagnostics.add_warning('unused-main')
 # Closure warning are not (yet) enabled by default
 diagnostics.add_warning('closure', enabled=False)
-
-
-def run_process(cmd, check=True, input=None, *args, **kw):
-  """Runs a subprocess returning the exit code.
-
-  By default this function will raise an exception on failure.  Therefore this should only be
-  used if you want to handle such failures.  For most subprocesses, failures are not recoverable
-  and should be fatal.  In those cases the `check_call` wrapper should be preferred.
-  """
-
-  # Flush standard streams otherwise the output of the subprocess may appear in the
-  # output before messages that we have already written.
-  sys.stdout.flush()
-  sys.stderr.flush()
-  kw.setdefault('text', True)
-  kw.setdefault('encoding', 'utf-8')
-  ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
-  debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex.join(cmd))
-  logger.debug(debug_text)
-  return ret
 
 
 def returncode_to_str(code):
@@ -210,7 +182,7 @@ def check_call(cmd, *args, **kw):
   if SKIP_SUBPROCS:
     return 0
   try:
-    return run_process(cmd, *args, **kw)
+    return utils.run_process(cmd, *args, **kw)
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%s)", shlex.join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
@@ -219,13 +191,7 @@ def check_call(cmd, *args, **kw):
 
 def exec_process(cmd):
   print_compiler_stage(cmd)
-  if utils.WINDOWS:
-    rtn = run_process(cmd, stdin=sys.stdin, check=False).returncode
-    sys.exit(rtn)
-  else:
-    sys.stdout.flush()
-    sys.stderr.flush()
-    os.execvp(cmd[0], cmd)
+  utils.exec(cmd)
 
 
 def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
@@ -239,7 +205,7 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
 
 
 def get_npm_cmd(name, missing_ok=False):
-  if WINDOWS:
+  if utils.WINDOWS:
     cmd = [path_from_root('node_modules/.bin', name + '.cmd')]
   else:
     cmd = config.NODE_JS + [path_from_root('node_modules/.bin', name)]
@@ -278,7 +244,7 @@ def get_clang_targets():
   if not os.path.exists(CLANG_CC):
     exit_with_error('clang executable not found at `%s`' % CLANG_CC)
   try:
-    target_info = run_process([CLANG_CC, '-print-targets'], stdout=PIPE).stdout
+    target_info = utils.run_process([CLANG_CC, '-print-targets'], stdout=PIPE).stdout
   except subprocess.CalledProcessError:
     exit_with_error('error running `clang -print-targets`.  Check your llvm installation (%s)' % CLANG_CC)
   if 'Registered Targets:' not in target_info:
@@ -312,7 +278,7 @@ def env_with_node_in_path():
 
 
 def _get_node_version_pair(nodejs):
-  actual = run_process(nodejs + ['--version'], stdout=PIPE).stdout.strip()
+  actual = utils.run_process(nodejs + ['--version'], stdout=PIPE).stdout.strip()
   version = actual.replace('v', '')
   version = version.split('-')[0].split('.')
   version = tuple(int(v) for v in version)
@@ -371,7 +337,7 @@ def node_pthread_flags(nodejs):
 @ToolchainProfiler.profile()
 def check_node():
   try:
-    run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
+    utils.run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
     exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
 
@@ -652,7 +618,7 @@ def get_llvm_target():
 
 
 def init():
-  set_version_globals()
+  utils.set_version_globals()
   setup_temp_dirs()
 
 

@@ -18,8 +18,26 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.19 (in development)
+4.0.20 (in development)
 -----------------------
+- The standalone `file_packager.py` script no longer supports `--embed` with JS
+  output (use `--obj-output` is now required for embedding data).  This usage
+  has been producing a warning since #16050 which is now an error.  (#25049)
+- Embind now requires C++17 or newer. See #24850.
+
+4.0.19 - 11/04/25
+-----------------
+- The `RETAIN_COMPILER_SETTINGS` setting and the corresponding
+  `emscripten_get_compiler_setting` API no longer store or report internal
+  compiler settings (those listed in `setttings_internal.js`).  We made an
+  exception here for `EMSCRIPTEN_VERSION` which is the only internal setting
+  where we could find usage of `emscripten_get_compiler_setting` (in a global
+  GitHub search). (#25667)
+- When using dynamic linking the main module is no longer built as a relocatable
+  binary.  This will significantly reduce the overhead of dynamic linking for
+  the main program, for example, eliminating all internal relocations. If you
+  encounter any issues with new default it is possible to revert to the old
+  behaviour by adding `-sRELOCATABLE` when linking the main module. (#25522)
 
 4.0.18 - 10/24/25
 -----------------
@@ -28,6 +46,11 @@ See docs/process.md for more on how version tagging works.
   are used via `--use-port=emdawnwebgpu`. See 4.0.10 release notes for details.
 - A new `CROSS_ORIGIN` setting was added in order to work around issues hosting
   emscripten programs across different origins (#25581)
+- The binary data encoding for `SINGLE_FILE` mode was changed from base64 to
+  directly embed binary data into UTF-8 string. Users who use the `SINGLE_FILE`
+  mode along with a custom HTML file should declare the files to have UTF-8
+  encoding. See `src/settings.js` docs on `SINGLE_FILE`. Use the option
+  `-sSINGLE_FILE_BINARY_ENCODE=0` to fall back to base64 encoding. (#25599)
 
 4.0.17 - 10/17/25
 -----------------

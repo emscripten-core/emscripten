@@ -25,10 +25,9 @@ __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
 from tools import utils
-from tools.shared import path_from_root
 from tools.system_libs import DETERMINISTIC_PREFIX
 
-EMSCRIPTEN_PREFIX = utils.normalize_path(path_from_root())
+EMSCRIPTEN_PREFIX = utils.normalize_path(utils.path_from_root())
 
 logger = logging.getLogger('wasm-sourcemap')
 

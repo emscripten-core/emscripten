@@ -141,7 +141,6 @@ def wasm_simd(func):
       self.skipTest('SIMD tests are too slow with -O3 in the new LLVM pass manager, https://github.com/emscripten-core/emscripten/issues/13427')
     self.cflags.append('-msimd128')
     self.cflags.append('-fno-lax-vector-conversions')
-    self.v8_args.append('--experimental-wasm-simd')
     return func(self, *args, **kwargs)
   return decorated
 
@@ -191,9 +190,18 @@ def needs_dylink(func):
   assert callable(func)
 
   @wraps(func)
-  def decorated(self, *args, **kwargs):
+  def decorated(self, relocatable, *args, **kwargs):
     self.check_dylink()
+    if relocatable:
+      # Since `-sMAIN_MODULE` no longer implies `-sRELOCATABLE` but we want
+      # to keep that cominbation working we run all the `@needs_dylink` tests
+      # both with and without the explicit `-sRELOCATABLE`
+      self.set_setting('RELOCATABLE')
+      self.cflags.append('-Wno-deprecated')
     return func(self, *args, **kwargs)
+
+  parameterize(decorated, {'': (False,),
+                           'relocatable': (True,)})
 
   return decorated
 
@@ -1920,9 +1928,7 @@ int main() {
   def test_emscripten_get_compiler_setting(self):
     if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
-    expected = read_file(test_file('core/emscripten_get_compiler_setting.out'))
-    expected = expected.replace('waka', utils.EMSCRIPTEN_VERSION)
-    self.do_runf('core/emscripten_get_compiler_setting.c', expected, cflags=['-sRETAIN_COMPILER_SETTINGS'])
+    self.do_core_test('emscripten_get_compiler_setting.c', cflags=['-sRETAIN_COMPILER_SETTINGS'])
 
   def test_emscripten_get_compiler_setting_error(self):
     # with assertions, a runtime error is shown if you try to use the API without RETAIN_COMPILER_SETTINGS
@@ -3434,6 +3440,10 @@ Var: 42
     if is_sanitizing(self.cflags):
       return
 
+    if self.get_setting('RELOCATABLE'):
+      # The relocatable version of this test produces slightly different exports.
+      return
+
     def get_data_exports(wasm):
       wat = self.get_wasm_text(wasm)
       lines = wat.splitlines()
@@ -4595,13 +4605,13 @@ res64 - external 64\n''', header='''\
   def test_dylink_global_var(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
-      extern int x;
+      extern int foo;
       int main() {
-        printf("extern is %d.\n", x);
+        printf("extern is %d.\n", foo);
         return 0;
       }
     ''', side=r'''
-      int x = 123;
+      int foo = 123;
     ''', expected=['extern is 123.\n'], force_c=True)
 
   @needs_dylink
@@ -4629,15 +4639,15 @@ res64 - external 64\n''', header='''\
   def test_dylink_global_var_modded(self):
     self.dylink_test(main=r'''
       #include <stdio.h>
-      extern int x;
+      extern int foo;
       int main() {
-        printf("extern is %d.\n", x);
+        printf("extern is %d.\n", foo);
         return 0;
       }
     ''', side=r'''
-      int x = 123;
+      int foo = 123;
       struct Initter {
-        Initter() { x = 456; }
+        Initter() { foo = 456; }
       };
       Initter initter;
     ''', expected=['extern is 456.\n'])
@@ -4980,8 +4990,10 @@ res64 - external 64\n''', header='''\
   def test_dylink_exceptions_try_catch_6(self):
     create_file('main.cpp', r'''
       #include <assert.h>
+      #include <stdio.h>
       #include <dlfcn.h>
       int main() {
+        printf("in main\n");
         void* handle = dlopen("liblib.so", RTLD_LAZY);
         assert(handle);
         void (*side)(void) = (void (*)(void))dlsym(handle, "side");
@@ -4998,6 +5010,7 @@ res64 - external 64\n''', header='''\
     create_file('liblib.cpp', r'''
       #include <stdio.h>
       extern "C" void side() {
+        printf("in side\n");
         try {
           throw 3;
         } catch (int x){
@@ -5023,7 +5036,7 @@ res64 - external 64\n''', header='''\
     self.set_setting('MAIN_MODULE', 1)
     self.clear_setting('SIDE_MODULE')
 
-    self.do_runf("main.cpp", "side: caught int 3\n")
+    self.do_runf('main.cpp', 'side: caught int 3\n')
 
   @with_dylink_reversed
   @disabled('https://github.com/emscripten-core/emscripten/issues/12815')
@@ -7160,6 +7173,12 @@ void* operator new(size_t size) {
     self.set_setting('EXPORTED_FUNCTIONS', ['_print_bool'])
     self.do_runf('core/test_ccall.cpp', 'true')
 
+  @no_modularize_instance('ccall is not yet compatible with MODULARIZE=instance')
+  def test_ccall_return_pointer(self):
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('ccall is not available in MINIMAL_RUNTIME')
+    self.do_core_test('test_ccall_return_pointer.c', cflags=['-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ccall'])
+
   @no_modularize_instance('uses Module object directly')
   def test_EXPORTED_RUNTIME_METHODS(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$dynCall', '$ASSERTIONS'])
@@ -7952,7 +7971,7 @@ void* operator new(size_t size) {
     no_maps_filename = 'no-maps.out.js'
 
     assert '-gsource-map' not in self.cflags
-    self.emcc('src.cpp', output_filename=out_filename)
+    self.emcc('src.cpp', ['-o', out_filename])
     # the file name may find its way into the generated code, so make sure we
     # can do an apples-to-apples comparison by compiling with the same file name
     shutil.move(out_filename, no_maps_filename)
@@ -7960,9 +7979,7 @@ void* operator new(size_t size) {
     no_maps_file = re.sub(' *//[@#].*$', '', no_maps_file, flags=re.MULTILINE)
     self.cflags.append('-gsource-map')
 
-    self.emcc(os.path.abspath('src.cpp'),
-              self.get_cflags(),
-              out_filename)
+    self.emcc(os.path.abspath('src.cpp'), ['-o', out_filename])
     map_referent = out_filename if self.is_wasm2js() else wasm_filename
     # after removing the @line and @sourceMappingURL comments, the build
     # result should be identical to the non-source-mapped debug version.
@@ -9374,11 +9391,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.dylink_testf(main, so_name=very_long_name,
                       main_cflags=['-sPTHREAD_POOL_SIZE=2'])
 
+  @needs_dylink
   @parameterized({
     '': (['-sNO_AUTOLOAD_DYLIBS'],),
     'autoload': ([],),
   })
-  @needs_dylink
   @node_pthreads
   def test_pthread_dylink_entry_point(self, args):
     self.cflags += ['-Wno-experimental', '-pthread']
@@ -9708,7 +9725,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'dylink': [True],
   })
   @no_esm_integration('https://github.com/emscripten-core/emscripten/issues/25543')
-  @no_omit_asm_module_exports('https://github.com/emscripten-core/emscripten/issues/25556')
   def test_wasm_global(self, dynlink):
     if '-flto' in self.cflags or '-flto=thin' in self.cflags:
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25555')

@@ -30,6 +30,9 @@ coverage.xml
 # Test output
 /out/
 
+# When updating the website we check it out here.
+/site/emscripten-site/
+
 # Windows ps1 launchers (created by ./tools/maint/create_entry_points.py)
 *.ps1
 # ...except the templates.

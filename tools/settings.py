@@ -102,12 +102,6 @@ COMPILE_TIME_SETTINGS = {
     'LTO',
     'OPT_LEVEL',
     'DEBUG_LEVEL',
-
-    # Affects ports
-    'GL_ENABLE_GET_PROC_ADDRESS', # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
-
-    # This is legacy setting that we happen to handle very early on
-    'RUNTIME_LINKED_LIBS',
 }.union(PORTS_SETTINGS)
 
 # Unlike `LEGACY_SETTINGS`, deprecated settings can still be used
@@ -162,6 +156,16 @@ INCOMPATIBLE_SETTINGS = [
     ('CROSS_ORIGIN', 'NO_DYNAMIC_EXECUTION', None),
     ('CROSS_ORIGIN', 'NO_PTHREADS', None),
 ]
+
+EXPERIMENTAL_SETTINGS = {
+    'SPLIT_MODULE': '-sSPLIT_MODULE is experimental and subject to change',
+    'WASM_JS_TYPES': '-sWASM_JS_TYPES is only supported under a flag in certain browsers',
+    'SOURCE_PHASE_IMPORTS': '-sSOURCE_PHASE_IMPORTS is experimental and not yet supported in browsers',
+    'JS_BASE64_API': '-sJS_BASE64_API is experimental and not yet supported in browsers',
+    'GROWABLE_ARRAYBUFFERS': '-sGROWABLE_ARRAYBUFFERS is experimental and not yet supported in browsers',
+    'SUPPORT_BIG_ENDIAN': '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.',
+    'WASM_ESM_INTEGRATION': '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers',
+}
 
 # For renamed settings the format is:
 # [OLD_NAME, NEW_NAME]

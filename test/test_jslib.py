@@ -671,3 +671,11 @@ console.error('JSLIB: none of the above');
     # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
     self.cflags += ['-sAUTO_JS_LIBRARIES=0', '-sMAX_WEBGL_VERSION=2', '-lwebgl.js', '--js-library', test_file('test_jslib_override_system_symbol.js')]
     self.do_run_in_out_file_test('test_jslib_override_system_symbol.c')
+
+  def test_jslib_version_check(self):
+    create_file('libfoo.js', '''
+      #if parseInt(EMSCRIPTEN_VERSION.split('.')[0]) > 3
+      #error "library does not support emscripten > 3.0.0"
+      #endif
+    ''')
+    self.assert_fail([EMCC, '--js-library=libfoo.js'], 'error: libfoo.js:3: #error "library does not support emscripten > 3.0.0"')
