@@ -202,22 +202,16 @@ var LibraryHTML5 = {
     },
 
     removeSingleHandler(eventHandler) {
-      if (!eventHandler.target) {
-#if ASSERTIONS
-        err('removeSingleHandler: the target element for event handler registration does not exist, when processing the following event handler registration:');
-        console.dir(eventHandler);
-#endif
-        return {{{ cDefs.EMSCRIPTEN_RESULT_UNKNOWN_TARGET }}};
-      }
-      for (var i = 0; i < JSEvents.eventHandlers.length; ++i) {
-        if (JSEvents.eventHandlers[i].target === eventHandler.target
-          && JSEvents.eventHandlers[i].eventTypeId === eventHandler.eventTypeId
-          && JSEvents.eventHandlers[i].callbackfunc === eventHandler.callbackfunc
-          && JSEvents.eventHandlers[i].userData === eventHandler.userData) {
-          JSEvents._removeHandler(i--);
+      for (var [i, handler] of JSEvents.eventHandlers.entries()) {
+        if (handler.target === eventHandler.target
+          && handler.eventTypeId === eventHandler.eventTypeId
+          && handler.callbackfunc === eventHandler.callbackfunc
+          && handler.userData === eventHandler.userData) {
+          JSEvents._removeHandler(i);
+          return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
         }
       }
-      return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
+      return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     },
 
 #if PTHREADS

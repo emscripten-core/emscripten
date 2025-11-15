@@ -30,40 +30,33 @@ const char *emscripten_result_to_string(EMSCRIPTEN_RESULT result) {
 // Like above above but also assert API success
 #define ASSERT_RESULT(x) TEST_RESULT(x); assert(ret == EMSCRIPTEN_RESULT_SUCCESS);
 
-char const *userDataToString(void *userData) {
-  return userData ? (char const *) userData : "nullptr";
-}
-
 bool key_callback_1(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
-  printf("key_callback_1: eventType=%d, userData=%s\n", eventType, userDataToString(userData));
+  printf("key_callback_1: eventType=%d, userData=%s\n", eventType, (char const *) userData);
   return 0;
 }
 
 bool key_callback_2(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
-  printf("key_callback_2: eventType=%d, userData=%s\n", eventType, userDataToString(userData));
+  printf("key_callback_2: eventType=%d, userData=%s\n", eventType, (char const *) userData);
   return 0;
 }
 
 bool mouse_callback_1(int eventType, const EmscriptenMouseEvent *e, void *userData) {
-  printf("mouse_callback_1: eventType=%d, userData=%s\n", eventType, userDataToString(userData));
+  printf("mouse_callback_1: eventType=%d, userData=%s\n", eventType, (char const *) userData);
   return 0;
 }
 
-void checkCount(int count)
-{
+void checkCount(int count) {
   int eventHandlersCount = EM_ASM_INT({ return JSEvents.eventHandlers.length; });
   printf("Detected [%d] handlers\n", eventHandlersCount);
   assert(count == eventHandlersCount);
 }
 
-void test_done() {}
-
 int main() {
   bool useCapture = true;
   void *userData3 = "3";
 
-  // first we check for invalid parameters
-  assert(emscripten_html5_remove_event_listener("this_dom_element_does_not_exist", NULL, 0, key_callback_1) == EMSCRIPTEN_RESULT_UNKNOWN_TARGET);
+  // no event listeners yet
+  assert(emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, useCapture, key_callback_1) == EMSCRIPTEN_RESULT_INVALID_PARAM);
 
   checkCount(0);
 
@@ -94,9 +87,14 @@ int main() {
 
   checkCount(4);
 
-  // removing a combination that does not exist (no mouse_callback_1 registered)
-  ret = emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_KEYPRESS, mouse_callback_1);
-  ASSERT_RESULT(emscripten_html5_remove_event_listener);
+  // checking invalid argument: wrong target
+  assert(emscripten_html5_remove_event_listener("this_dom_element_does_not_exist", userData3, EMSCRIPTEN_EVENT_KEYPRESS, key_callback_2) == EMSCRIPTEN_RESULT_INVALID_PARAM);
+  // checking invalid argument: wrong userData
+  assert(emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, "abc", EMSCRIPTEN_EVENT_KEYPRESS, key_callback_2) == EMSCRIPTEN_RESULT_INVALID_PARAM);
+  // checking invalid argument: wrong eventTypeId
+  assert(emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, userData3, EMSCRIPTEN_EVENT_BLUR, key_callback_2) == EMSCRIPTEN_RESULT_INVALID_PARAM);
+  // checking invalid argument: wrong callback
+  assert(emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, userData3, EMSCRIPTEN_EVENT_KEYPRESS, mouse_callback_1) == EMSCRIPTEN_RESULT_INVALID_PARAM);
 
   checkCount(4);
 

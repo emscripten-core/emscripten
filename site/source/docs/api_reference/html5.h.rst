@@ -111,6 +111,8 @@ Note in particular that the value of ``userData`` will need to match with the ca
 
 The ``eventTypeId`` represents the event type, the same Id received in the callback functions.
 
+The function returns ``EMSCRIPTEN_RESULT_SUCCESS`` when the event handler callback is removed and ``EMSCRIPTEN_RESULT_INVALID_PARAM`` otherwise.
+
   .. code-block:: cpp
 
     // Example
