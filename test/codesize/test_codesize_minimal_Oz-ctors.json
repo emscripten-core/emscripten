@@ -1,15 +1,16 @@
 {
-  "a.out.js": 2271,
+  "a.out.js": 2272,
   "a.out.js.gz": 1122,
-  "a.out.nodebug.wasm": 51,
-  "a.out.nodebug.wasm.gz": 68,
-  "total": 2322,
-  "total_gz": 1190,
+  "a.out.nodebug.wasm": 64,
+  "a.out.nodebug.wasm.gz": 80,
+  "total": 2336,
+  "total_gz": 1202,
   "sent": [],
   "imports": [],
   "exports": [
     "a (memory)",
-    "b (add)"
+    "b (add)",
+    "c (global_val)"
   ],
   "funcs": [
     "$add"

@@ -1632,16 +1632,20 @@ addToLibrary({
         dynCalls[name.substr(8)] = exportedSymbol;
       }
 #endif
-      // Globals are currently statically enumerated into the output JS.
-      // TODO: If the number of Globals grows large, consider giving them a
-      // similar DECLARE_ASM_MODULE_EXPORTS = 0 treatment.
-      if (typeof exportedSymbol.value === 'undefined') {
-#if MINIMAL_RUNTIME
-        globalThis[name] = exportedSymbol;
+      // Special handling for Wasm globals.  See `create_receiving` for the
+      // static version of this code.
+      if (typeof exportedSymbol.value != 'undefined') {
+#if MEMORY64
+        exportedSymbol = Number(exportedSymbol.value);
 #else
-        globalThis[name] = Module[name] = exportedSymbol;
+        exportedSymbol = exportedSymbol.value
 #endif
       }
+#if MINIMAL_RUNTIME
+      globalThis[name] = exportedSymbol;
+#else
+      globalThis[name] = Module[name] = exportedSymbol;
+#endif
     }
     exportAliases(wasmExports);
   },

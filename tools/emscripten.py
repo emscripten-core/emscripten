@@ -112,7 +112,6 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     settings.WASM_EXPORTS = base_metadata.all_exports
   else:
     settings.WASM_EXPORTS = metadata.all_exports
-  settings.DATA_EXPORTS = list(metadata.data_exports.keys())
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
   # start with the MVP features, and add any detected features.
@@ -270,30 +269,6 @@ def trim_asm_const_body(body):
   return body
 
 
-def create_data_exports(data_exports):
-  lines = []
-  for k, v in data_exports.items():
-    if shared.is_internal_global(k):
-      continue
-
-    v = int(v)
-
-    if not settings.MEMORY64:
-      # We assume that global exports are addresses, which need to be interpreted as unsigned.
-      # This is not necessary (and does not work) under wasm64 when the globals are i64.
-      v = v & 0xFFFFFFFF
-
-    if settings.RELOCATABLE:
-      v += settings.GLOBAL_BASE
-    mangled = asmjs_mangle(k)
-    if should_export(mangled) and not settings.MINIMAL_RUNTIME:
-      lines.append("var %s = Module['%s'] = %s;" % (mangled, mangled, v))
-    else:
-      lines.append("var %s = %s;" % (mangled, v))
-
-  return '\n'.join(lines)
-
-
 def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadata=None):
   # Overview:
   #   * Run wasm-emscripten-finalize to extract metadata and modify the binary
@@ -407,13 +382,11 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   if base_metadata:
     function_exports = base_metadata.function_exports
     other_exports = base_metadata.other_exports
-    # We want the real values from the final metadata but we only want to
-    # include names from the base_metadata.  See phase_link() in link.py.
-    data_exports = {k: v for k, v in metadata.data_exports.items() if k in base_metadata.data_exports}
   else:
     function_exports = metadata.function_exports
     other_exports = metadata.other_exports
-    data_exports = metadata.data_exports
+
+  other_exports = [e for e in other_exports if not shared.is_internal_global(e[0].name)]
 
   if settings.ASYNCIFY == 1:
     function_exports['asyncify_start_unwind'] = webassembly.FuncType([webassembly.Type.I32], [])
@@ -422,7 +395,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     function_exports['asyncify_stop_rewind'] = webassembly.FuncType([], [])
 
   parts = [pre]
-  parts += create_module(metadata, function_exports, data_exports, other_exports,
+  parts += create_module(metadata, function_exports, other_exports,
                          forwarded_json['librarySymbols'], forwarded_json['nativeAliases'])
   parts.append(post)
   settings.ALIASES = list(forwarded_json['nativeAliases'].keys())
@@ -915,7 +888,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
   receiving = ['\n// Imports from the Wasm binary.']
 
   if settings.WASM_ESM_INTEGRATION:
-    exported_symbols = other_exports + list(function_exports.keys())
+    exported_symbols = [e[0].name for e in other_exports] + list(function_exports.keys())
     exports = []
     for sym in exported_symbols:
       mangled = asmjs_mangle(sym)
@@ -952,8 +925,8 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
   # function assignWasmExports(wasmExport) {
   #   _main = wasmExports["_main"];
   exports = {name: sig for name, sig in function_exports.items() if name != building.WASM_CALL_CTORS}
-  for name in other_exports:
-    exports[name] = None
+  for export, info in other_exports:
+    exports[export.name] = (export, info)
 
   mangled = [asmjs_mangle(s) for s in exports] + list(aliases.keys())
   if settings.ASSERTIONS:
@@ -984,8 +957,8 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
 
   do_module_exports = (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and settings.MODULARIZE != 'instance'
   receiving.append('\nfunction assignWasmExports(wasmExports) {')
-  for sym, sig in exports.items():
-    is_function = sig is not None
+  for sym, info in exports.items():
+    is_function = type(info) == webassembly.FuncType
     mangled = asmjs_mangle(sym)
     assignment = mangled
     if generate_dyncall_assignment and is_function and sym.startswith('dynCall_'):
@@ -1001,8 +974,16 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
         if do_module_exports and target in settings.EXPORTED_RUNTIME_METHODS:
           assignment += f" = Module['{target}']"
     if is_function and install_debug_wrapper(sym):
-      nargs = len(sig.params)
+      nargs = len(info.params)
       receiving.append(f"  {assignment} = createExportWrapper('{sym}', {nargs});")
+    elif not is_function and info[0].kind == webassembly.ExternType.GLOBAL and not info[1].mutable:
+      if settings.LEGACY_VM_SUPPORT:
+        value = f"typeof wasmExports['{sym}'] == 'object' ? wasmExports['{sym}'].value : wasmExports['{sym}']"
+      else:
+        value = f"wasmExports['{sym}'].value"
+      if settings.MEMORY64:
+        value = f'Number({value})'
+      receiving.append(f"  {assignment} = {value};")
     else:
       receiving.append(f"  {assignment} = wasmExports['{sym}'];")
   receiving.append('}')
@@ -1010,10 +991,9 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
   return '\n'.join(receiving)
 
 
-def create_module(metadata, function_exports, data_exports, other_exports, library_symbols, aliases):
+def create_module(metadata, function_exports, other_exports, library_symbols, aliases):
   module = []
   module.append(create_receiving(function_exports, other_exports, library_symbols, aliases))
-  module.append(create_data_exports(data_exports))
 
   sending = create_sending(metadata, library_symbols)
   if settings.WASM_ESM_INTEGRATION:
