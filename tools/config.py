@@ -98,7 +98,7 @@ def parse_config_file():
   try:
     exec(config_text, config)
   except Exception as e:
-    exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, str(e), config_text)
+    exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, e, config_text)
 
   CONFIG_KEYS = (
     'NODE_JS',

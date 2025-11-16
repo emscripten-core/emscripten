@@ -364,10 +364,10 @@ def kill_browser_process():
   global browser_process, processname_killed_atexit, current_browser_processes
   if browser_process and browser_process.poll() is None:
     try:
-      logv('Terminating browser process pid=' + str(browser_process.pid) + '..')
+      logv(f'Terminating browser process pid={browser_process.pid}..')
       browser_process.kill()
     except Exception as e:
-      logv('Failed with error ' + str(e) + '!')
+      logv(f'Failed with error {e}!')
 
     browser_process = None
     # We have a hold of the target browser process explicitly, no need to resort to killall,
@@ -377,10 +377,10 @@ def kill_browser_process():
   if current_browser_processes:
     for pid in current_browser_processes:
       try:
-        logv('Terminating browser process pid=' + str(pid['pid']) + '..')
+        logv(f'Terminating browser process pid={pid["pid"]}..')
         os.kill(pid['pid'], 9)
       except Exception as e:
-        logv('Failed with error ' + str(e) + '!')
+        logv(f'Failed with error {e}!')
 
     current_browser_processes = None
     # We have a hold of the target browser process explicitly, no need to resort to killall,
@@ -434,7 +434,7 @@ def detect_browser_processes():
     return False
 
   for p in running_browser_processes:
-    logv('Detected running browser process id: ' + str(p['pid']) + ', existed already at emrun startup? ' + str(pid_existed(p['pid'])))
+    logv(f'Detected running browser process id: {p["pid"]}, existed already at emrun startup? {pid_existed(p["pid"])}')
 
   current_browser_processes = [p for p in running_browser_processes if not pid_existed(p['pid'])]
 
@@ -539,7 +539,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
       time_since_message = now - last_message_time
       if emrun_options.silence_timeout != 0 and time_since_message > emrun_options.silence_timeout:
         self.shutdown()
-        logi('No activity in ' + str(emrun_options.silence_timeout) + ' seconds. Quitting web server with return code ' + str(emrun_options.timeout_returncode) + '. (--silence-timeout option)')
+        logi(f'No activity in {emrun_options.silence_timeout} seconds. Quitting web server with return code {emrun_options.timeout_returncode}. (--silence-timeout option)')
         page_exit_code = emrun_options.timeout_returncode
         emrun_options.kill_exit = True
 
@@ -547,7 +547,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
       time_since_start = now - page_start_time
       if emrun_options.timeout != 0 and time_since_start > emrun_options.timeout:
         self.shutdown()
-        logi('Page has not finished in ' + str(emrun_options.timeout) + ' seconds. Quitting web server with return code ' + str(emrun_options.timeout_returncode) + '. (--timeout option)')
+        logi(f'Page has not finished in {emrun_options.timeout} seconds. Quitting web server with return code {emrun_options.timeout_returncode}. (--timeout option)')
         emrun_options.kill_exit = True
         page_exit_code = emrun_options.timeout_returncode
 
@@ -685,7 +685,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
         pass
       with open(filename, 'wb') as fh:
         fh.write(data)
-      logi('Wrote ' + str(len(data)) + ' bytes to file "' + filename + '".')
+      logi(f'Wrote {len(data)} bytes to file "{filename}".')
       have_received_messages = True
     elif path == '/system_info':
       system_info = json.loads(get_system_info(format_json=True))
@@ -714,7 +714,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       elif data.startswith('^exit^'):
         if not emrun_options.serve_after_exit:
           page_exit_code = int(data[6:])
-          logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve-after-exit to keep serving even after the page terminates with exit().')
+          logv(f'Web page has quit with a call to exit() with return code ${page_exit_code}. Shutting down web server. Pass --serve-after-exit to keep serving even after the page terminates with exit().')
           # Set server socket to nonblocking on shutdown to avoid sporadic deadlocks
           self.server.socket.setblocking(False)
           self.server.shutdown()
@@ -787,7 +787,7 @@ def get_cpu_info():
   except Exception as e:
     import traceback
     loge(traceback.format_exc())
-    return {'model': 'Unknown ("' + str(e) + '")',
+    return {'model': f'Unknown ("{e}")',
             'physicalCores': 1,
             'logicalCores': 1,
             'frequency': 0,
@@ -811,7 +811,7 @@ def get_android_cpu_infoline():
       hardware = line[line.find(':') + 1:].strip()
 
   freq = int(check_output([ADB, 'shell', 'cat', '/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq']).strip()) // 1000
-  return 'CPU: ' + processor + ', ' + hardware + ' @ ' + str(freq) + ' MHz'
+  return f'CPU: {processor}, {hardware} @ {freq} MHz'
 
 
 def win_get_gpu_info():
@@ -1435,7 +1435,7 @@ def list_processes_by_name(exe_full_path):
     # Fail gracefully if psutil not available
     logv('import psutil failed, unable to detect browser processes')
 
-  logv('Searching for processes by full path name "' + exe_full_path + '".. found ' + str(len(pids)) + ' entries')
+  logv(f'Searching for processes by full path name "{exe_full_path}".. found {len(pids)} entries')
 
   return pids
 
@@ -1681,7 +1681,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
     else:
       hostname = options.hostname
     # create url for browser after opening the server so we have the final port number in case we are binding to port 0
-    url = 'http://' + hostname + ':' + str(options.port) + '/' + url
+    url = f'http://{hostname}:{options.port}/{url}'
 
   if options.android:
     if options.run_browser or options.browser_info:
@@ -1715,7 +1715,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
       # 5. Locate the name of the main activity for the browser in manifest.txt and add an entry to above list in form 'appname/mainactivityname'
 
       if options.android_tunnel:
-        subprocess.check_call([ADB, 'reverse', 'tcp:' + str(options.port), 'tcp:' + str(options.port)])
+        subprocess.check_call([ADB, 'reverse', f'tcp:{options.port}', f'tcp:{options.port}'])
 
       url = url.replace('&', '\\&')
       browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
@@ -1727,7 +1727,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
     if options.run_browser or options.browser_info:
       browser = find_browser(str(options.browser))
       if not browser:
-        loge('Unable to find browser "' + str(options.browser) + '"! Check the correctness of the passed --browser=xxx parameter!')
+        loge(f'Unable to find browser "{options.browser}"! Check the correctness of the passed --browser=xxx parameter!')
         return 1
       browser_exe = browser[0]
       browser_args = shlex.split(unwrap(options.browser_args))
@@ -1783,7 +1783,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
       run(['adb', 'shell', 'mkdir', '/mnt/sdcard/safe_firefox_profile'])
       run(['adb', 'push', os.path.join(profile_dir, 'prefs.js'), '/mnt/sdcard/safe_firefox_profile/prefs.js'])
     except Exception as e:
-      loge('Creating Firefox profile prefs.js file to internal storage in /mnt/sdcard failed with error ' + str(e) + '!')
+      loge(f'Creating Firefox profile prefs.js file to internal storage in /mnt/sdcard failed with error {e}!')
       loge('Try running without --safe-firefox-profile flag if unattended execution mode is not important, or')
       loge('enable rooted debugging on the Android device to allow adb to write files to /mnt/sdcard.')
     browser += ['--es', 'args', '"--profile /mnt/sdcard/safe_firefox_profile"']
@@ -1833,9 +1833,9 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
       logv(browser_exe)
       previous_browser_processes = list_processes_by_name(browser_exe)
       for p in previous_browser_processes:
-        logv('Before spawning web browser, found a running ' + os.path.basename(browser_exe) + ' browser process id: ' + str(p['pid']))
+        logv(f'Before spawning web browser, found a running {os.path.basename(browser_exe)} browser process id: {p["pid"]}')
     browser_process = subprocess.Popen(browser, env=subprocess_env())
-    logv('Launched browser process with pid=' + str(browser_process.pid))
+    logv(f'Launched browser process with pid={browser_process.pid}')
     if options.kill_exit:
       atexit.register(kill_browser_process)
     # For Android automation, we execute adb, so this process does not
@@ -1847,7 +1847,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
     premature_quit_code = browser_process.poll()
     if premature_quit_code is not None:
       options.serve_after_close = True
-      logv('Warning: emrun got immediately detached from the target browser process (the process quit with exit code ' + str(premature_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve-after-close was passed in.')
+      logv(f'Warning: emrun got immediately detached from the target browser process (the process quit with exit code {premature_quit_code}). Cannot detect when user closes the browser. Behaving as if --serve-after-close was passed in.')
       if not options.browser:
         logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/emscripten-core/emscripten/issues/3234 for more discussion.')
 
