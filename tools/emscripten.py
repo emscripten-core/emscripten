@@ -957,6 +957,9 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
 
   do_module_exports = (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and settings.MODULARIZE != 'instance'
   receiving.append('\nfunction assignWasmExports(wasmExports) {')
+  if settings.ASSERTIONS:
+    for sym in exports:
+      receiving.append(f"  assert(typeof wasmExports['{sym}'] != 'undefined', 'missing Wasm export: {sym}');")
   for sym, info in exports.items():
     is_function = type(info) == webassembly.FuncType
     mangled = asmjs_mangle(sym)
@@ -966,8 +969,6 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
       assignment += f" = dynCalls['{sig_str}']"
     if do_module_exports and should_export(mangled):
       assignment += f" = Module['{mangled}']"
-    if settings.ASSERTIONS:
-      receiving.append(f"  assert(typeof wasmExports['{sym}'] != 'undefined', 'missing Wasm export: {sym}');")
     if sym in alias_inverse_map:
       for target in alias_inverse_map[sym]:
         assignment += f" = {target}"
@@ -983,6 +984,8 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
         value = f"wasmExports['{sym}'].value"
       if settings.MEMORY64:
         value = f'Number({value})'
+      elif settings.CAN_ADDRESS_2GB:
+        value = f'({value}) >>> 0'
       receiving.append(f"  {assignment} = {value};")
     else:
       receiving.append(f"  {assignment} = wasmExports['{sym}'];")
