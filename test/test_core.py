@@ -4113,7 +4113,6 @@ caught outer int: 123
       side_ = side
       side = main
       main = side_
-      main_cflags += ['--no-entry']
     self.maybe_closure()
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.cflags.copy()
