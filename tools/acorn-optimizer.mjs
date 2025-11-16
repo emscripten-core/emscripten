@@ -1219,9 +1219,10 @@ function isGrowHEAPAccess(node) {
   if (
     node.type !== 'MemberExpression' ||
     !node.computed || // notice a[X] but not a.X
-    node.object.type !== 'ParenthesizedExpression')
+    (node.object.type !== 'ParenthesizedExpression' && node.object.type !== 'SequenceExpression')
+  )
     return false;
-  const obj = node.object.expression;
+  const obj = node.object.type === 'ParenthesizedExpression' ? node.object.expression : node.object;
   return (
     obj.type === 'SequenceExpression' &&
     obj.expressions.length === 2 &&
