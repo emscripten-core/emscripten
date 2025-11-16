@@ -24,7 +24,7 @@ It can probably port your codebase, too!
 While Emscripten mostly focuses on compiling C and C++ using
 [Clang](https://clang.llvm.org/), it can be integrated with other LLVM-using
 compilers (for example, Rust has Emscripten integration, with the
-`wasm32-unknown-emscripten` and `asmjs-unknown-emscripten` targets).
+`wasm32-unknown-emscripten` target).
 
 License
 -------
