@@ -1058,7 +1058,7 @@ var LibraryDylink = {
 #endif
     }
     var rpathResolved = (rpath?.paths || []).map((p) => replaceORIGIN(rpath?.parentLibPath, p));
-    return withStackSave(() => {
+    var result = withStackSave(() => {
       // In dylink.c we use: `char buf[2*NAME_MAX+2];` and NAME_MAX is 255.
       // So we use the same size here.
       var bufSize = 2*255 + 2;
@@ -1068,6 +1068,7 @@ var LibraryDylink = {
       var resLibNameC = __emscripten_find_dylib(buf, rpathC, libNameC, bufSize);
       return resLibNameC ? UTF8ToString(resLibNameC) : undefined;
     });
+    return FS.lookupPath(result).path;
   },
 #endif // FILESYSTEM
 
@@ -1175,6 +1176,7 @@ var LibraryDylink = {
       dbg(`checking filesystem: ${libName}: ${f ? 'found' : 'not found'}`);
 #endif
       if (f) {
+        libName = f;
         var libData = FS.readFile(f, {encoding: 'binary'});
         return flags.loadAsync ? Promise.resolve(libData) : libData;
       }
