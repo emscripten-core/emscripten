@@ -1432,14 +1432,14 @@ simulateKeyUp(100, undefined, 'Numpad4');
         }, '/work');
       };
     ''')
-    self.btest_exit('fs/test_workerfs.c', cflags=['-lworkerfs.js', '--pre-js', 'pre.js', '--proxy-to-worker', '-Wno-deprecated', '-lworkerfs.js'])
+    self.btest_exit('fs/test_workerfs.c', cflags=['-lworkerfs.js', '--pre-js', 'pre.js'], run_in_worker=True)
 
   def test_fs_workerfs_package(self):
     create_file('file1.txt', 'first')
     ensure_dir('sub')
     create_file('sub/file2.txt', 'second')
     self.run_process([FILE_PACKAGER, 'files.data', '--preload', 'file1.txt', 'sub/file2.txt', '--separate-metadata', '--js-output=files.js'])
-    self.btest('fs/test_workerfs_package.c', '1', cflags=['-lworkerfs.js', '--proxy-to-worker', '-Wno-deprecated', '-lworkerfs.js'])
+    self.btest('fs/test_workerfs_package.c', '0', cflags=['-lworkerfs.js'], run_in_worker=True)
 
   def test_fs_lz4fs_package(self):
     # generate data
@@ -1691,8 +1691,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
         FS.createLazyFile('/', "lazy.txt", "lazydata.dat", true, false);
       }
     ''')
-    self.cflags += ['--pre-js=pre.js', '--proxy-to-worker', '-Wno-deprecated']
-    self.btest_exit('test_mmap_lazyfile.c')
+    self.btest_exit('test_mmap_lazyfile.c', cflags=['--pre-js=pre.js'], run_in_worker=True)
 
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/19608')
   @no_firefox('keeps sending OPTIONS requests, and eventually errors')
@@ -3634,8 +3633,8 @@ Module["preRun"] = () => {
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
   @parameterized({
-    '': (0,),
-    'inworker': (1,),
+    '': (False,),
+    'inworker': (True,),
   })
   def test_dylink_dso_needed(self, inworker):
     if not inworker:
@@ -3669,10 +3668,7 @@ Module["preRun"] = () => {
           return rtn;
         }
       ''' % expected_output)
-      # --proxy-to-worker only when linking the main module
-      if inworker:
-        cflags += ['--proxy-to-worker', '-Wno-deprecated']
-      self.btest_exit('test_dylink_dso_needed.c', cflags=['--post-js', 'post.js'] + cflags)
+      self.btest_exit('test_dylink_dso_needed.c', cflags=['--post-js', 'post.js'] + cflags, run_in_worker=inworker)
 
     self._test_dylink_dso_needed(do_run)
 
@@ -4651,12 +4647,12 @@ Module["preRun"] = () => {
     shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_sync.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
-  # Tests that the Fetch API works for synchronous XHRs when used with --proxy-to-worker.
+  # Tests that the Fetch API works for synchronous XHRs when program is run in a worker
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
   def test_fetch_sync_xhr_in_proxy_to_worker(self):
     shutil.copy(test_file('gears.png'), '.')
-    self.btest_exit('fetch/test_fetch_sync_xhr.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH', '--proxy-to-worker', '-Wno-deprecated'])
+    self.btest_exit('fetch/test_fetch_sync_xhr.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH'], run_in_worker=True)
 
   @disabled('https://github.com/emscripten-core/emscripten/issues/16746')
   def test_fetch_idb_store(self):
@@ -4914,11 +4910,7 @@ Module["preRun"] = () => {
 
   # Tests that SINGLE_FILE works as intended in a Worker in JS output
   def test_single_file_worker_js(self):
-    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '--proxy-to-worker', '-Wno-deprecated', '-sSINGLE_FILE'])
-    create_file('test.html', '<!DOCTYPE html><html lang="en"><head><meta charset="utf-8"></head><body><script src="test.js"></script></body></html>')
-    self.run_browser('test.html', '/report_result?0')
-    self.assertExists('test.js')
-    self.assertNotExists('test.worker.js')
+    self.btest_exit('browser_test_hello_world.c', cflags=['-sSINGLE_FILE'], run_in_worker=True)
 
   # Tests that pthreads code works as intended in a Worker. That is, a pthreads-using
   # program can run either on the main thread (normal tests) or when we start it in
@@ -4929,14 +4921,7 @@ Module["preRun"] = () => {
     'limited_env': (['-sENVIRONMENT=worker'],),
   })
   def test_pthreads_started_in_worker(self, args):
-    self.set_setting('EXIT_RUNTIME')
-    self.compile_btest('pthread/test_pthread_atomics.c', ['-o', 'test.js', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args, reporting=Reporting.JS_ONLY)
-    create_file('test.html', '''
-      <script>
-        new Worker('test.js');
-      </script>
-    ''')
-    self.run_browser('test.html', '/report_result?exit:0')
+    self.btest_exit('pthread/test_pthread_atomics.c', cflags=['-o', 'test.js', '-pthread', '-sPTHREAD_POOL_SIZE=8'] + args, run_in_worker=True)
 
   def test_access_file_after_heap_resize(self):
     create_file('test.txt', 'hello from file')

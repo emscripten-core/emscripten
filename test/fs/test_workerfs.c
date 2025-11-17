@@ -98,11 +98,13 @@ void test_readlink() {
 }
 
 int main() {
+  printf("in main\n");
   test_no_exist();
   test_blob_txt();
   test_file_txt();
   test_chmod();
   test_readdir();
   test_readlink();
+  printf("done\n");
   return 0;
 }
