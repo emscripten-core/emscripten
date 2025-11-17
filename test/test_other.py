@@ -2131,63 +2131,59 @@ Module['postRun'] = () => {
         'side.wasm',
       ])
 
-  def test_multidynamic_link(self):
+  @parameterized({
+    '': (['-lfile'], ''), # -l, auto detection from library path
+    'suffixed': (['libdir/libfile.so.3.1.4.1.5.9'], '.3.1.4.1.5.9'), # handle libX.so.1.2.3 as well
+  })
+  def test_multidynamic_link(self, link_flags, lib_suffix):
     # Linking the same dynamic library in statically will error, normally, since we statically link
     # it, causing dupe symbols
+    ensure_dir('libdir')
 
-    def test(link_flags, lib_suffix):
-      print(link_flags, lib_suffix)
+    create_file('main.c', r'''
+      #include <stdio.h>
+      extern void printey();
+      extern void printother();
+      int main() {
+        printf("*");
+        printey();
+        printf("\n");
+        printother();
+        printf("\n");
+        printf("*\n");
+        return 0;
+      }
+    ''')
 
-      self.clear()
-      ensure_dir('libdir')
+    create_file('libdir/libfile.c', '''
+      #include <stdio.h>
+      void printey() {
+        printf("hello from lib");
+      }
+    ''')
 
-      create_file('main.c', r'''
-        #include <stdio.h>
-        extern void printey();
-        extern void printother();
-        int main() {
-          printf("*");
-          printey();
-          printf("\n");
-          printother();
-          printf("\n");
-          printf("*\n");
-          return 0;
-        }
-      ''')
+    create_file('libdir/libother.c', '''
+      #include <stdio.h>
+      extern void printey();
+      void printother() {
+        printf("|");
+        printey();
+        printf("|");
+      }
+    ''')
 
-      create_file('libdir/libfile.c', '''
-        #include <stdio.h>
-        void printey() {
-          printf("hello from lib");
-        }
-      ''')
+    # Build libfile normally into an .so
+    self.run_process([EMCC, 'libdir/libfile.c', '-shared', '-o', 'libdir/libfile.so' + lib_suffix])
+    # Build libother and dynamically link it to libfile
+    self.run_process([EMCC, '-Llibdir', 'libdir/libother.c'] + link_flags + ['-shared', '-o', 'libdir/libother.so'])
+    # Build the main file, linking in both the libs
+    self.run_process([EMCC, '-Llibdir', os.path.join('main.c')] + link_flags + ['-lother', '-c'])
+    print('...')
+    # The normal build system is over. We need to do an additional step to link in the dynamic
+    # libraries, since we ignored them before
+    self.run_process([EMCC, '-Llibdir', 'main.o'] + link_flags + ['-lother'])
 
-      create_file('libdir/libother.c', '''
-        #include <stdio.h>
-        extern void printey();
-        void printother() {
-          printf("|");
-          printey();
-          printf("|");
-        }
-      ''')
-
-      # Build libfile normally into an .so
-      self.run_process([EMCC, 'libdir/libfile.c', '-shared', '-o', 'libdir/libfile.so' + lib_suffix])
-      # Build libother and dynamically link it to libfile
-      self.run_process([EMCC, '-Llibdir', 'libdir/libother.c'] + link_flags + ['-shared', '-o', 'libdir/libother.so'])
-      # Build the main file, linking in both the libs
-      self.run_process([EMCC, '-Llibdir', os.path.join('main.c')] + link_flags + ['-lother', '-c'])
-      print('...')
-      # The normal build system is over. We need to do an additional step to link in the dynamic
-      # libraries, since we ignored them before
-      self.run_process([EMCC, '-Llibdir', 'main.o'] + link_flags + ['-lother'])
-
-      self.assertContained('*hello from lib\n|hello from lib|\n*\n', self.run_js('a.out.js'))
-
-    test(['-lfile'], '') # -l, auto detection from library path
-    test(['libdir/libfile.so.3.1.4.1.5.9'], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
+    self.assertContained('*hello from lib\n|hello from lib|\n*\n', self.run_js('a.out.js'))
 
   @node_pthreads
   @also_with_modularize
