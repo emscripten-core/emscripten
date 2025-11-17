@@ -4625,10 +4625,12 @@ res64 - external 64\n''', header='''\
 
       int main(void) {
         void* js_address = EM_ASM_PTR({
-          console.log("JS:_my_number:", _my_number, HEAP32[_my_number/4]);
+          var value = HEAP32[_my_number/4];
+          console.log("JS:_my_number:", _my_number, value);
+          assert(value == 123456, value);
           return _my_number;
         });
-        printf("C: my_number: %ld %d\n", (long)&my_number, my_number);
+        printf("C: my_number: %lu %d\n", (uintptr_t)&my_number, my_number);
         assert(js_address == &my_number);
         return 0;
       }
