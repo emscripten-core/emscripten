@@ -484,11 +484,11 @@ var SyscallsLibrary = {
     var sock = getSocketFromFD(fd);
     if (!addr) {
       // send, no address provided
-      return FS.write(sock.stream, HEAP8, message, length);
+      return FS.write(sock.stream, HEAPU8, message, length);
     }
     var dest = getSocketAddress(addr, addr_len);
     // sendto an address
-    return sock.sock_ops.sendmsg(sock, HEAP8, message, length, dest.addr, dest.port);
+    return sock.sock_ops.sendmsg(sock, HEAPU8, message, length, dest.addr, dest.port);
   },
   __syscall_getsockopt__deps: ['$getSocketFromFD'],
   __syscall_getsockopt: (fd, level, optname, optval, optlen, d1) => {

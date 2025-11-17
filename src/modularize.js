@@ -11,6 +11,12 @@
 import source wasmModule from './{{{ WASM_BINARY_FILE }}}';
 #endif
 
+#if SOCKET_WEBTRANSPORT && ENVIRONMENT_MAY_BE_NODE
+#if EXPORT_ES6
+import { Http3Server, WebTransport } from '@fails-components/webtransport';
+#endif
+#endif
+
 #if ENVIRONMENT_MAY_BE_WEB && !EXPORT_ES6 && !(MINIMAL_RUNTIME && !PTHREADS)
 // Single threaded MINIMAL_RUNTIME programs do not need access to
 // document.currentScript, so a simple export declaration is enough.

@@ -402,6 +402,8 @@ var FS_DEBUG = false;
 // [link]
 var SOCKET_WEBRTC = false;
 
+var SOCKET_WEBTRANSPORT = false;
+
 // A string containing either a WebSocket URL prefix (ws:// or wss://) or a complete
 // RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
 // In the (default) case of only a prefix being specified the URL will be constructed from

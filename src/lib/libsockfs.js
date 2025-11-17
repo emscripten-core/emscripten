@@ -8,7 +8,7 @@ addToLibrary({
   $SOCKFS__postset: () => {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
-  $SOCKFS__deps: ['$FS'],
+  $SOCKFS__deps: ['$FS', '$DNS'],
   $SOCKFS: {
 #if expectToReceiveOnModule('websocket')
     websocketArgs: {},
@@ -69,6 +69,8 @@ addToLibrary({
         pending: [],
         recv_queue: [],
 #if SOCKET_WEBRTC
+#elif SOCKET_WEBTRANSPORT
+        sock_ops: SOCKFS.webtransport_sock_ops
 #else
         sock_ops: SOCKFS.websocket_sock_ops
 #endif
@@ -138,6 +140,273 @@ addToLibrary({
       return `socket[${SOCKFS.nextname.current++}]`;
     },
     // backend-specific stream ops
+#if SOCKET_WEBRTC
+#elif SOCKET_WEBTRANSPORT
+    webtransport_sock_ops: {
+      getSession(sock, addr, port) {
+        return sock.peers[`${addr}:${port}`];
+      },
+      initSession(sock, session, addr, port) {
+        sock.peers[`${addr}:${port}`] = session;
+
+        /* buffer writes before session is ready */
+        const outgoing = [];
+
+        session.write = (buffer) => {
+          outgoing.push(buffer);
+        };
+
+        /* prevent unhandled rejections before main loop */
+        session.ready.catch(() => {});
+        session.closed.catch(() => {});
+
+        (async () => {
+          try {
+            await session.ready;
+
+            const writer = session.datagrams.writable.getWriter();
+            let first = true;
+
+            while (outgoing.length) {
+              writer.write(outgoing.shift()).catch(e => {});
+            }
+
+            session.write = (buffer) => {
+              writer.write(buffer).catch(e => {});
+            };
+
+            for await (const packet of session.datagrams.readable) {
+              // handle the internal port identification message
+              if (first && packet[0] === 0xff && packet[1] === 0xff && packet[2] === 0xff && packet[3] === 0xff &&
+                           packet[4] === 'p'  && packet[5] === 'o'  && packet[6] === 'r'  && packet[7] === 't') {
+                // update cache key
+                delete sock.peers[`${addr}:${port}`];
+                port = parseInt(String.fromCharCode.apply(null, packet.subarray(9)), 10);
+                sock.peers[`${addr}:${port}`] = session;
+              } else {
+                sock.recv_queue.push({ addr: addr, port: port, buffer: packet });
+              }
+
+              if (sock.pendingPollResolve) {
+                sock.pendingPollResolve();
+              }
+
+              first = false;
+            }
+          } catch (e) {
+            console.error(`Session ${addr}:${port} terminated`, e);
+          } finally {
+            console.log(`Removing peer ${addr}:${port}`);
+            delete sock.peers[`${addr}:${port}`];
+          }
+        })();
+      },
+      newSession(sock, addr, port) {
+        let hostname = DNS.lookup_addr(addr);
+
+        if (!hostname) {
+          hostname = addr;
+        }
+
+        const session = new WebTransport(`https://${hostname}:${port}`);
+
+        console.log(`New session https://${hostname}:${port}`);
+
+        SOCKFS.webtransport_sock_ops.initSession(sock, session, addr, port);
+
+        // send the original bound port number to the peer
+        if (sock.type === {{{ cDefs.SOCK_DGRAM }}} && typeof sock.sport != 'undefined') {
+          const msg = Uint8Array.from(`\xff\xff\xff\xffport ${sock.sport}\x00`, x => x.charCodeAt(0));
+          session.write(msg);
+        }
+
+        return session;
+      },
+      acceptSession(sock, session) {
+#if ENVIRONMENT_MAY_BE_NODE
+        const split = session.peerAddress.split(':');
+
+        const addr = split[0];
+        const port = parseInt(split[1], 10);
+
+        console.log(`Accept session ${addr}:${port}`);
+
+        SOCKFS.webtransport_sock_ops.initSession(sock, session, addr, port);
+#endif
+      },
+      stopListenServer(sock) {
+#if ENVIRONMENT_MAY_BE_NODE
+        if (!ENVIRONMENT_IS_NODE) {
+          return;
+        }
+
+        if (!sock.h3) {
+          return;
+        }
+
+        sock.h3.stopServer();
+        sock.h3 = null;
+#endif
+      },
+      startListenServer(sock) {
+#if ENVIRONMENT_MAY_BE_NODE
+        if (!ENVIRONMENT_IS_NODE) {
+          return;
+        }
+
+        SOCKFS.webtransport_sock_ops.stopListenServer(sock);
+
+        sock.h3 = new Http3Server({
+          host: sock.saddr,
+          port: sock.sport,
+          secret: require('crypto').randomBytes(16).toString('hex'),
+          cert: Module['cert'],
+          privKey: Module['key']
+        });
+
+        sock.h3.startServer();
+
+        (async () => {
+          try {
+            await sock.h3.ready;
+
+            const stream = await sock.h3.sessionStream('/');
+
+            console.log(`Listening on ${sock.h3.host}:${sock.h3.port}`);
+
+            for await (const session of stream) {
+              SOCKFS.webtransport_sock_ops.acceptSession(sock, session);
+            }
+          } catch (e) {
+            sock.error = {{{ cDefs.EHOSTUNREACH }}};
+          } finally {
+            sock.h3 = null;
+          }
+        })();
+#endif
+      },
+
+      // actual sock ops
+#if ASYNCIFY
+      async poll(sock, timeout)
+#else
+      poll(sock, timeout)
+#endif
+      {
+        let mask = 0;
+
+        if (sock.type === {{{ cDefs.SOCK_STREAM }}}) {
+          throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        } else {
+#if ASYNCIFY
+          if (!sock.recv_queue.length) {
+            await new Promise((resolve, reject) => {
+              sock.pendingPromiseResolve = resolve;
+              setTimeout(resolve, timeout);
+            }).finally(() => {
+              sock.pendingPromiseResolve = null;
+            });
+          }
+#endif
+
+          if (sock.recv_queue.length) {
+            mask |= {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}};
+          }
+
+          /* always ready to write */
+          mask |= {{{ cDefs.POLLOUT }}};
+        }
+
+        return mask;
+      },
+      ioctl(sock, request, arg) {
+        switch (request) {
+          default:
+            return {{{ cDefs.EINVAL }}};
+        }
+      },
+      close(sock) {
+        for (const session of Object.values(sock.peers)) {
+          session.close();
+        }
+
+        SOCKFS.webtransport_sock_ops.stopListenServer(sock);
+
+        return 0;
+      },
+      bind(sock, addr, port) {
+        if (typeof sock.saddr !== 'undefined' || typeof sock.sport !== 'undefined') {
+          throw new FS.ErrnoError({{{ cDefs.EINVAL }}});  // already bound
+        }
+
+        sock.saddr = addr;
+        sock.sport = port;
+
+        if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
+          SOCKFS.webtransport_sock_ops.startListenServer(sock);
+        } else {
+          throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        }
+      },
+      connect(sock, addr, port) {
+        if (sock.h3) {
+          throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        }
+
+        if (sock.type === {{{ cDefs.SOCK_STREAM }}}) {
+          throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        } else {
+          sock.daddr = addr;
+          sock.dport = port;
+        }
+      },
+      listen(sock, backlog) {
+        throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+      },
+      sendmsg(sock, buffer, offset, length, addr, port) {
+        let session = null;
+
+        if (sock.type === {{{ cDefs.SOCK_STREAM }}}) {
+          throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        } else {
+          if (addr === undefined || port === undefined) {
+            addr = sock.daddr;
+            port = sock.dport;
+          }
+
+          session = SOCKFS.webtransport_sock_ops.getSession(sock, addr, port);
+
+          if (!session) {
+            session = SOCKFS.webtransport_sock_ops.newSession(sock, addr, port);
+          }
+        }
+
+        if (!session) {
+          throw new FS.ErrnoError({{{ cDefs.EDESTADDRREQ }}});
+        }
+
+        // copy off the buffer because write is async
+        buffer = buffer.slice(offset, offset + length);
+
+        session.write(buffer);
+
+        return length;
+      },
+      recvmsg(sock, length) {
+        if (sock.type === {{{ cDefs.SOCK_STREAM }}}) {
+          throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+        }
+
+        const msg = sock.recv_queue.shift();
+
+        if (!msg) {
+          throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+        }
+
+        return msg;
+      },
+    },
+#else
     websocket_sock_ops: {
       //
       // peers are a small wrapper around a WebSocket to help in
@@ -728,6 +997,7 @@ addToLibrary({
         return res;
       }
     }
+#endif
   },
 
   /*
