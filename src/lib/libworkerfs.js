@@ -4,6 +4,11 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if !ENVIRONMENT_MAY_BE_WORKER
+#error "libworkerfs.js requires worker to be in ENVIRONMENT"
+#endif
+
+
 addToLibrary({
   $WORKERFS__deps: ['$FS'],
   $WORKERFS: {

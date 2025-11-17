@@ -1420,21 +1420,19 @@ simulateKeyUp(100, undefined, 'Numpad4');
     secret = str(time.time())
     self.btest_exit('fs/test_memfs_fsync.c', cflags=args + [f'-DSECRET="{secret}"'])
 
-  def test_fs_workerfs_read(self):
-    secret = 'a' * 10
-    secret2 = 'b' * 10
+  def test_fs_workerfs(self):
     create_file('pre.js', '''
       Module.preRun = () => {
-        var blob = new Blob(['%s']);
-        var file = new File(['%s'], 'file.txt');
+        var blob = new Blob(['hello blob']);
+        var file = new File(['hello file'], 'file.txt');
         FS.mkdir('/work');
         FS.mount(WORKERFS, {
           blobs: [{ name: 'blob.txt', data: blob }],
           files: [file],
         }, '/work');
       };
-    ''' % (secret, secret2))
-    self.btest_exit('fs/test_workerfs_read.c', cflags=['-lworkerfs.js', '--pre-js', 'pre.js', f'-DSECRET="{secret}"', f'-DSECRET2="{secret2}"', '--proxy-to-worker', '-Wno-deprecated', '-lworkerfs.js'])
+    ''')
+    self.btest_exit('fs/test_workerfs.c', cflags=['-lworkerfs.js', '--pre-js', 'pre.js', '--proxy-to-worker', '-Wno-deprecated', '-lworkerfs.js'])
 
   def test_fs_workerfs_package(self):
     create_file('file1.txt', 'first')
