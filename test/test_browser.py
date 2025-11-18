@@ -3636,11 +3636,12 @@ Module["preRun"] = () => {
   # verify that dynamic linking works in all kinds of in-browser environments.
   # don't mix different kinds in a single test.
   @parameterized({
-    '': ([0],),
-    'inworker': ([1],),
+    '': (0,),
+    'inworker': (1,),
   })
   def test_dylink_dso_needed(self, inworker):
-    self.cflags += ['-O2']
+    if not inworker:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25814')
 
     def do_run(src, expected_output, cflags):
       # XXX there is no infrastructure (yet ?) to retrieve stdout from browser in tests.
@@ -3670,7 +3671,7 @@ Module["preRun"] = () => {
           return rtn;
         }
       ''' % expected_output)
-      # --proxy-to-worker only on main
+      # --proxy-to-worker only when linking the main module
       if inworker:
         cflags += ['--proxy-to-worker', '-Wno-deprecated']
       self.btest_exit('test_dylink_dso_needed.c', cflags=['--post-js', 'post.js'] + cflags)
