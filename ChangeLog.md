@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.20 (in development)
+4.0.21 (in development)
 -----------------------
+
+4.0.20 - 11/18/25
+-----------------
 - Linker flags specified on the command line are now passed to `wasm-ld` after
   the internal emscripten linker flags.  This means that users can now override
   emscripten defaults with things `-Wl,--stack-first`. (#25803)
