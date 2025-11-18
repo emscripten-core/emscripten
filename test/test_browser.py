@@ -5664,14 +5664,18 @@ Module["preRun"] = () => {
     shutil.copy('hello.wasm', 'dist/')
     self.run_browser('index.html', '/report_result?exit:0')
 
-  def test_cross_origin(self):
+  @parameterized({
+    '': ([],),
+    'es6': (['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')],),
+  })
+  def test_cross_origin(self, args):
     # Verfies that the emscripten-generted JS and Wasm can be hosted on a different origin.
     # This test create a second HTTP server running on port 9999 that servers files from `subdir`.
     # The main html is the servers from the normal 8888 server while the JS and Wasm are hosted
     # on at 9999.
     os.mkdir('subdir')
     create_file('subdir/foo.txt', 'hello')
-    self.compile_btest('hello_world.c', ['-o', 'subdir/hello.js', '-sCROSS_ORIGIN', '-sPROXY_TO_PTHREAD', '-pthread', '-sEXIT_RUNTIME'])
+    self.compile_btest('hello_world.c', ['-o', 'subdir/hello.js', '-sRUNTIME_DEBUG', '-sCROSS_ORIGIN', '-sPROXY_TO_PTHREAD', '-pthread', '-sEXIT_RUNTIME'] + args)
 
     class MyReqestHandler(SimpleHTTPRequestHandler):
       def __init__(self, *args, **kwargs):
@@ -5692,9 +5696,10 @@ Module["preRun"] = () => {
 
         return SimpleHTTPRequestHandler.end_headers(self)
 
-    create_file('test.html', '''
-      <script src="http://localhost:9999/hello.js"></script>
-    ''')
+    if '-sEXPORT_ES6' in args:
+      create_file('test.html', '<script src="http://localhost:9999/hello.js" type="module"></script>')
+    else:
+      create_file('test.html', '<script src="http://localhost:9999/hello.js"></script>')
 
     server = HttpServerThread(ThreadingHTTPServer(('localhost', 9999), MyReqestHandler))
     server.start()
