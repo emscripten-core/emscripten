@@ -10080,6 +10080,11 @@ llvmlibc = make_run('llvmlibc', cflags=['-lllvmlibc'])
 # This setup will still use the native x64 Node.js in Emscripten internal use to compile code, but
 # runs all unit tests via qemu on the s390x big endian version of Node.js.
 bigendian0 = make_run('bigendian0', cflags=['-O0', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendian1 = make_run('bigendian1', cflags=['-O1', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendian2 = make_run('bigendian2', cflags=['-O2', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendian3 = make_run('bigendian3', cflags=['-O3', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendians = make_run('bigendians', cflags=['-Os', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendianz = make_run('bigendianz', cflags=['-Oz', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
 
 omitexports0 = make_run('omitexports0', cflags=['-O0'], settings={'DECLARE_ASM_MODULE_EXPORTS': 0})
 
