@@ -446,6 +446,16 @@ var LibraryPThread = {
           worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
         } else
 #endif
+#if CROSS_ORIGIN && ENVIRONMENT_MAY_BE_WEB
+      // Support cross-origin loading by creating a new Blob URL to actually
+      // perform the `import`.  Without this the `new Worker` would fail
+      // due to CORS restrictions.
+      // https://github.com/emscripten-core/emscripten/issues/21937
+      if (ENVIRONMENT_IS_WEB) {
+        var url = URL.createObjectURL(new Blob([`import '${import.meta.url}'`], { type: 'application/javascript' }));
+        worker = new Worker(url, {{{ pthreadWorkerOptions }}});
+      } else
+#endif
       // We need to generate the URL with import.meta.url as the base URL of the JS file
       // instead of just using new URL(import.meta.url) because bundler's only recognize
       // the first case in their bundling step. The latter ends up producing an invalid
