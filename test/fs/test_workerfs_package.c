@@ -36,7 +36,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
 
   // all done
   printf("success\n");
-  REPORT_RESULT(1);
+  REPORT_RESULT(0);
 }
 
 int main() {
@@ -80,6 +80,6 @@ int main() {
 
   emscripten_exit_with_live_runtime();
 
-  return 1;
+  return 99;
 }
 
