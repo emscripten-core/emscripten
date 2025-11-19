@@ -504,7 +504,7 @@ var LibraryHTML5 = {
     JSEvents.mouseEvent ||= _malloc(eventSize);
     target = findEventTarget(target);
 
-    var mouseEventHandlerFunc = (e = event) => {
+    var mouseEventHandlerFunc = (e) => {
       // TODO: Make this access thread safe, or this could update live while app is reading it.
       fillMouseEventData(JSEvents.mouseEvent, e, target);
 
@@ -595,7 +595,7 @@ var LibraryHTML5 = {
     JSEvents.wheelEvent ||= _malloc(eventSize)
 
     // The DOM Level 3 events spec event 'wheel'
-    var wheelHandlerFunc = (e = event) => {
+    var wheelHandlerFunc = (e) => {
       var wheelEvent = JSEvents.wheelEvent;
       fillMouseEventData(wheelEvent, e, target);
       {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["deltaX"]', 'double') }}};
@@ -656,7 +656,7 @@ var LibraryHTML5 = {
 #else
 #endif
 
-    var uiEventHandlerFunc = (e = event) => {
+    var uiEventHandlerFunc = (e) => {
       if (e.target != target) {
         // Never take ui events such as scroll via a 'bubbled' route, but always from the direct element that
         // was targeted. Otherwise e.g. if app logs a message in response to a page scroll, the Emscripten log
@@ -717,7 +717,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}};
     JSEvents.focusEvent ||= _malloc(eventSize);
 
-    var focusEventHandlerFunc = (e = event) => {
+    var focusEventHandlerFunc = (e) => {
       var nodeName = JSEvents.getNodeNameForTarget(e.target);
       var id = e.target.id ? e.target.id : '';
 
@@ -780,7 +780,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}};
     JSEvents.deviceOrientationEvent ||= _malloc(eventSize);
 
-    var deviceOrientationEventHandlerFunc = (e = event) => {
+    var deviceOrientationEventHandlerFunc = (e) => {
       fillDeviceOrientationEventData(JSEvents.deviceOrientationEvent, e, target); // TODO: Thread-safety with respect to emscripten_get_deviceorientation_status()
 
 #if PTHREADS
@@ -850,7 +850,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}};
     JSEvents.deviceMotionEvent ||= _malloc(eventSize);
 
-    var deviceMotionEventHandlerFunc = (e = event) => {
+    var deviceMotionEventHandlerFunc = (e) => {
       fillDeviceMotionEventData(JSEvents.deviceMotionEvent, e, target); // TODO: Thread-safety with respect to emscripten_get_devicemotion_status()
 
 #if PTHREADS
@@ -932,7 +932,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}};
     JSEvents.orientationChangeEvent ||= _malloc(eventSize);
 
-    var orientationChangeEventHandlerFunc = (e = event) => {
+    var orientationChangeEventHandlerFunc = (e) => {
       var orientationChangeEvent = JSEvents.orientationChangeEvent;
       fillOrientationChangeEventData(orientationChangeEvent);
 
@@ -1041,7 +1041,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}};
     JSEvents.fullscreenChangeEvent ||= _malloc(eventSize);
 
-    var fullscreenChangeEventhandlerFunc = (e = event) => {
+    var fullscreenChangeEventhandlerFunc = (e) => {
       var fullscreenChangeEvent = JSEvents.fullscreenChangeEvent;
       fillFullscreenChangeEventData(fullscreenChangeEvent);
 
@@ -1541,7 +1541,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}};
     JSEvents.pointerlockChangeEvent ||= _malloc(eventSize);
 
-    var pointerlockChangeEventHandlerFunc = (e = event) => {
+    var pointerlockChangeEventHandlerFunc = (e) => {
       var pointerlockChangeEvent = JSEvents.pointerlockChangeEvent;
       fillPointerlockChangeEventData(pointerlockChangeEvent);
 
@@ -1590,7 +1590,7 @@ var LibraryHTML5 = {
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
 
-    var pointerlockErrorEventHandlerFunc = (e = event) => {
+    var pointerlockErrorEventHandlerFunc = (e) => {
 #if PTHREADS
       if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
       else
@@ -1739,7 +1739,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}};
     JSEvents.visibilityChangeEvent ||= _malloc(eventSize);
 
-    var visibilityChangeEventHandlerFunc = (e = event) => {
+    var visibilityChangeEventHandlerFunc = (e) => {
       var visibilityChangeEvent = JSEvents.visibilityChangeEvent;
       fillVisibilityChangeEventData(visibilityChangeEvent);
 
@@ -1938,7 +1938,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}};
     JSEvents.gamepadEvent ||= _malloc(eventSize);
 
-    var gamepadEventHandlerFunc = (e = event) => {
+    var gamepadEventHandlerFunc = (e) => {
       var gamepadEvent = JSEvents.gamepadEvent;
       fillGamepadEventData(gamepadEvent, e["gamepad"]);
 
@@ -2026,7 +2026,7 @@ var LibraryHTML5 = {
 
   $registerBeforeUnloadEventCallback__deps: ['$JSEvents', '$findEventTarget'],
   $registerBeforeUnloadEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) => {
-    var beforeUnloadEventHandlerFunc = (e = event) => {
+    var beforeUnloadEventHandlerFunc = (e) => {
       // Note: This is always called on the main browser thread, since it needs synchronously return a value!
       var confirmationMessage = {{{ makeDynCall('pipp', 'callbackfunc') }}}(eventTypeId, 0, userData);
 
@@ -2081,7 +2081,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}};
     JSEvents.batteryEvent ||= _malloc(eventSize)
 
-    var batteryEventHandlerFunc = (e = event) => {
+    var batteryEventHandlerFunc = (e) => {
       var batteryEvent = JSEvents.batteryEvent;
       fillBatteryEventData(batteryEvent, battery);
 
