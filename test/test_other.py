@@ -1235,7 +1235,7 @@ f.close()
       shutil.copy(test_file('hello_world.c'), 'test.' + suffix)
       self.do_runf('test.' + suffix, 'hello, world!')
 
-    for suffix in ('lo'):
+    for suffix in ('lo',):
       self.clear()
       print(suffix)
       self.run_process([EMCC, test_file('hello_world.c'), '-shared', '-o', 'binary.' + suffix])
