@@ -2979,7 +2979,7 @@ The current type of b is: 9
 
   def prep_dlfcn_main(self, libs=None):
     if libs is None:
-      libs = ['liblib.so']
+      libs = ['libside.so']
     self.clear_setting('SIDE_MODULE')
     # Link against the side modules but don't load them on startup.
     self.set_setting('NO_AUTOLOAD_DYLIBS')
@@ -2988,7 +2988,7 @@ The current type of b is: 9
     # specify EXPORTED_FUNCTIONS.
     self.set_setting('MAIN_MODULE', 2)
 
-  def build_dlfcn_lib(self, filename, outfile='liblib.so', cflags=None):
+  def build_dlfcn_lib(self, filename, outfile='libside.so', cflags=None):
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
     cmd = [compiler_for(filename), filename, '-o', outfile] + self.get_cflags()
@@ -3029,7 +3029,7 @@ The current type of b is: 9
     if args:
       self.setup_node_pthreads()
     self.cflags += args
-    create_file('liblib.cpp', '''
+    create_file('libside.cpp', '''
       #include <cstdio>
 
       class Foo {
@@ -3041,7 +3041,7 @@ The current type of b is: 9
 
       Foo side_global;
       ''')
-    self.build_dlfcn_lib('liblib.cpp')
+    self.build_dlfcn_lib('libside.cpp')
 
     self.prep_dlfcn_main()
     src = '''
@@ -3058,7 +3058,7 @@ The current type of b is: 9
       Bar global;
 
       int main() {
-        dlopen("liblib.so", RTLD_NOW);
+        dlopen("libside.so", RTLD_NOW);
         return 0;
       }
       '''
@@ -3066,14 +3066,14 @@ The current type of b is: 9
 
   @needs_dylink
   def test_dlfcn_i64(self):
-    create_file('liblib.c', '''
+    create_file('libside.c', '''
       #include <inttypes.h>
 
       int64_t foo(int x) {
         return (long long)x / (long long)1234;
       }
       ''')
-    self.build_dlfcn_lib('liblib.c')
+    self.build_dlfcn_lib('libside.c')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -3085,7 +3085,7 @@ The current type of b is: 9
       typedef int64_t (*int64func)(int);
 
       int main() {
-        void *lib_handle = dlopen("liblib.so", RTLD_NOW);
+        void *lib_handle = dlopen("libside.so", RTLD_NOW);
         if (!lib_handle) {
           puts(dlerror());
           abort();
@@ -3105,7 +3105,7 @@ The current type of b is: 9
 
   @needs_dylink
   def test_dlfcn_em_asm(self):
-    create_file('liblib.cpp', '''
+    create_file('libside.cpp', '''
       #include <emscripten.h>
       class Foo {
       public:
@@ -3115,7 +3115,7 @@ The current type of b is: 9
       };
       Foo side_global;
       ''')
-    self.build_dlfcn_lib('liblib.cpp')
+    self.build_dlfcn_lib('libside.cpp')
 
     self.prep_dlfcn_main()
     src = '''
@@ -3129,7 +3129,7 @@ The current type of b is: 9
       };
       Bar global;
       int main() {
-        dlopen("liblib.so", RTLD_NOW);
+        dlopen("libside.so", RTLD_NOW);
         EM_ASM( out("All done.") );
         return 0;
       }
@@ -3138,7 +3138,7 @@ The current type of b is: 9
 
   @needs_dylink
   def test_dlfcn_qsort(self):
-    create_file('liblib.c', '''
+    create_file('libside.c', '''
       int lib_cmp(const void* left, const void* right) {
         const int* a = (const int*) left;
         const int* b = (const int*) right;
@@ -3153,7 +3153,7 @@ The current type of b is: 9
         return lib_cmp;
       }
       ''')
-    self.build_dlfcn_lib('liblib.c')
+    self.build_dlfcn_lib('libside.c')
 
     self.prep_dlfcn_main()
     src = '''
@@ -3184,7 +3184,7 @@ The current type of b is: 9
         }
         printf("\\n");
 
-        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        lib_handle = dlopen("libside.so", RTLD_NOW);
         if (lib_handle == NULL) {
           printf("Could not load lib.\\n");
           return 1;
@@ -3209,7 +3209,7 @@ The current type of b is: 9
 
   @needs_dylink
   def test_dlfcn_data_and_fptr(self):
-    create_file('liblib.c', r'''
+    create_file('libside.c', r'''
       #include <stdio.h>
 
       int theglobal = 42;
@@ -3235,7 +3235,7 @@ The current type of b is: 9
         return lib_fptr;
       }
       ''')
-    self.build_dlfcn_lib('liblib.c')
+    self.build_dlfcn_lib('libside.c')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -3260,7 +3260,7 @@ The current type of b is: 9
         FUNCTYPE* func_fptr;
 
         // Test basic lib loading.
-        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        lib_handle = dlopen("libside.so", RTLD_NOW);
         if (lib_handle == NULL) {
           printf("Could not load lib.\n");
           return 1;
@@ -3305,13 +3305,13 @@ Var: 42
     # this test is not actually valid - it fails natively. the child should fail
     # to be loaded, not load and successfully see the parent print_ints func
 
-    create_file('liblib.c', r'''
+    create_file('libside.c', r'''
       void print_ints(int n, ...);
       void func() {
         print_ints(2, 13, 42);
       }
       ''')
-    self.build_dlfcn_lib('liblib.c')
+    self.build_dlfcn_lib('libside.c')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -3335,7 +3335,7 @@ Var: 42
 
         print_ints(2, 100, 200);
 
-        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        lib_handle = dlopen("libside.so", RTLD_NOW);
         assert(lib_handle);
         fptr = (void (*)())dlsym(lib_handle, "func");
         fptr();
@@ -3351,15 +3351,15 @@ Var: 42
   @no_4gb('output is sensitive to absolute data layout')
   def test_dlfcn_alignment_and_zeroing(self):
     self.set_setting('INITIAL_MEMORY', '16mb')
-    create_file('liblib.c', r'''
+    create_file('libside.c', r'''
       int prezero = 0;
       __attribute__((aligned(1024))) int superAligned = 12345;
       int postzero = 0;
       ''')
-    self.build_dlfcn_lib('liblib.c')
+    self.build_dlfcn_lib('libside.c')
     for i in range(10):
       curr = '%d.so' % i
-      shutil.copy('liblib.so', curr)
+      shutil.copy('libside.so', curr)
 
     self.prep_dlfcn_main()
     self.set_setting('INITIAL_MEMORY', '128mb')
@@ -3461,14 +3461,14 @@ Var: 42
 
   @needs_dylink
   def test_dlfcn_unique_sig(self):
-    create_file('liblib.c', r'''
+    create_file('libside.c', r'''
       #include <stdio.h>
 
       int myfunc(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j, int k, int l, int m) {
         return 13;
       }
       ''')
-    self.build_dlfcn_lib('liblib.c')
+    self.build_dlfcn_lib('libside.c')
 
     self.prep_dlfcn_main()
     create_file('main.c', r'''
@@ -3482,7 +3482,7 @@ Var: 42
         void *lib_handle;
         FUNCTYPE func_ptr;
 
-        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        lib_handle = dlopen("libside.so", RTLD_NOW);
         assert(lib_handle != NULL);
 
         func_ptr = (FUNCTYPE)dlsym(lib_handle, "myfunc");
@@ -3498,14 +3498,14 @@ Var: 42
 
   @needs_dylink
   def test_dlfcn_info(self):
-    create_file('liblib.c', r'''
+    create_file('libside.c', r'''
       #include <stdio.h>
 
       int myfunc(int a, int b, int c, int d, int e, int f, int g, int h, int i, int j, int k, int l, int m) {
         return 13;
       }
       ''')
-    self.build_dlfcn_lib('liblib.c')
+    self.build_dlfcn_lib('libside.c')
 
     self.prep_dlfcn_main()
     create_file('main.c', '''
@@ -3520,7 +3520,7 @@ Var: 42
         void *lib_handle;
         FUNCTYPE func_ptr;
 
-        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        lib_handle = dlopen("libside.so", RTLD_NOW);
         assert(lib_handle != NULL);
 
         func_ptr = (FUNCTYPE)dlsym(lib_handle, "myfunc");
@@ -3545,7 +3545,7 @@ Var: 42
 
   @needs_dylink
   def test_dlfcn_stacks(self):
-    create_file('liblib.c', r'''
+    create_file('libside.c', r'''
       #include <assert.h>
       #include <stdio.h>
       #include <string.h>
@@ -3560,7 +3560,7 @@ Var: 42
         return strlen(bigstack);
       }
       ''')
-    self.build_dlfcn_lib('liblib.c')
+    self.build_dlfcn_lib('libside.c')
 
     self.prep_dlfcn_main()
     create_file('main.c', '''
@@ -3582,7 +3582,7 @@ Var: 42
         //       is able to use it.
         assert(!strcmp(str, "foobar"));
 
-        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        lib_handle = dlopen("libside.so", RTLD_NOW);
         assert(lib_handle != NULL);
 
         func_ptr = (FUNCTYPE)dlsym(lib_handle, "myfunc");
@@ -3598,7 +3598,7 @@ Var: 42
 
   @needs_dylink
   def test_dlfcn_funcs(self):
-    create_file('liblib.c', r'''
+    create_file('libside.c', r'''
       #include <assert.h>
       #include <stdio.h>
       #include <string.h>
@@ -3629,7 +3629,7 @@ Var: 42
         }
       }
       ''')
-    self.build_dlfcn_lib('liblib.c')
+    self.build_dlfcn_lib('libside.c')
 
     self.prep_dlfcn_main()
     create_file('main.c', r'''
@@ -3652,7 +3652,7 @@ Var: 42
       int main() {
         printf("go\n");
         void *lib_handle;
-        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        lib_handle = dlopen("libside.so", RTLD_NOW);
         assert(lib_handle != NULL);
 
         voidcaller callvoid = (voidcaller)dlsym(lib_handle, "callvoid");
@@ -3691,7 +3691,7 @@ ok
 
   @needs_dylink
   def test_dlfcn_longjmp(self):
-    create_file('liblib.c', r'''
+    create_file('libside.c', r'''
       #include <setjmp.h>
       #include <stdio.h>
 
@@ -3702,7 +3702,7 @@ ok
         printf("pre %d\n", i);
       }
       ''')
-    self.build_dlfcn_lib('liblib.c')
+    self.build_dlfcn_lib('libside.c')
 
     self.prep_dlfcn_main()
     create_file('main.c', r'''
@@ -3717,7 +3717,7 @@ ok
         printf("go!\n");
 
         void *lib_handle;
-        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        lib_handle = dlopen("libside.so", RTLD_NOW);
         assert(lib_handle != NULL);
 
         jumpfunc jumpy = (jumpfunc)dlsym(lib_handle, "jumpy");
@@ -3750,7 +3750,7 @@ out!
   @needs_dylink
   @with_all_eh_sjlj
   def test_dlfcn_exceptions(self):
-    create_file('liblib.cpp', r'''
+    create_file('libside.cpp', r'''
       extern "C" {
       int ok() {
         return 65;
@@ -3760,7 +3760,7 @@ out!
       }
       }
       ''')
-    self.build_dlfcn_lib('liblib.cpp')
+    self.build_dlfcn_lib('libside.cpp')
 
     self.prep_dlfcn_main()
     create_file('main.cpp', r'''
@@ -3774,7 +3774,7 @@ out!
         printf("go!\n");
 
         void *lib_handle;
-        lib_handle = dlopen("liblib.so", RTLD_NOW);
+        lib_handle = dlopen("libside.so", RTLD_NOW);
         assert(lib_handle != NULL);
 
         intfunc okk = (intfunc)dlsym(lib_handle, "ok");
@@ -3881,12 +3881,12 @@ caught outer int: 123
   def test_dlfcn_feature_in_lib(self):
     self.cflags.append('-mnontrapping-fptoint')
 
-    create_file('liblib.c', r'''
+    create_file('libside.c', r'''
         int magic(float x) {
           return __builtin_wasm_trunc_saturate_s_i32_f32(x);
         }
       ''')
-    self.build_dlfcn_lib('liblib.c')
+    self.build_dlfcn_lib('libside.c')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -3897,7 +3897,7 @@ caught outer int: 123
       typedef int (*fi)(float);
 
       int main() {
-        void *lib_handle = dlopen("liblib.so", RTLD_NOW);
+        void *lib_handle = dlopen("libside.so", RTLD_NOW);
         if (!lib_handle) {
           puts(dlerror());
           abort();
@@ -3916,7 +3916,7 @@ caught outer int: 123
   @needs_dylink
   @with_asyncify_and_jspi
   def test_dlfcn_asyncify(self):
-    create_file('liblib.c', r'''
+    create_file('libside.c', r'''
       #include <stdio.h>
       #include <emscripten/emscripten.h>
 
@@ -3927,7 +3927,7 @@ caught outer int: 123
         return 42;
       }
       ''')
-    self.build_dlfcn_lib('liblib.c')
+    self.build_dlfcn_lib('libside.c')
 
     self.prep_dlfcn_main()
     src = r'''
@@ -3937,7 +3937,7 @@ caught outer int: 123
       typedef int (*func_t)();
 
       int main(int argc, char **argv) {
-        void *_dlHandle = dlopen("liblib.so", RTLD_NOW | RTLD_LOCAL);
+        void *_dlHandle = dlopen("libside.so", RTLD_NOW | RTLD_LOCAL);
         func_t my_func = (func_t)dlsym(_dlHandle, "side_module_run");
         printf("%d\n", my_func());
         return 0;
@@ -4089,7 +4089,7 @@ caught outer int: 123
                   main_module=2, **kwargs):
     # Same as dylink_testf but take source code in string form
     if not isinstance(side, list):
-      side_file = 'liblib.cpp' if not force_c else 'liblib.c'
+      side_file = 'libside.cpp' if not force_c else 'libside.c'
       create_file(side_file, side)
       side = side_file
     if not isinstance(main, list):
@@ -4104,7 +4104,7 @@ caught outer int: 123
   def dylink_testf(self, main, side=None, expected=None, force_c=False, main_cflags=None,
                    main_module=2,
                    so_dir='',
-                   so_name='liblib.so',
+                   so_name='libside.so',
                    **kwargs):
     main_cflags = main_cflags or []
     if getattr(self, 'dylink_reversed', False):
@@ -4113,7 +4113,6 @@ caught outer int: 123
       side_ = side
       side = main
       main = side_
-      main_cflags += ['--no-entry']
     self.maybe_closure()
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.cflags.copy()
@@ -4212,7 +4211,7 @@ caught outer int: 123
   @with_dylink_reversed
   def test_dylink_locate_file(self):
     so_dir = 'so_dir'
-    so_name = 'liblib.so'
+    so_name = 'libside.so'
     os.mkdir(so_dir)
     create_file('pre.js', '''
     Module['locateFile'] = (f) => {
@@ -4552,7 +4551,7 @@ res64 - external 64\n''', header='''\
     int main(int argc, char *argv[]) {
         int64_t temp = 42;
     #if USE_DLOPEN
-        void* lib = dlopen("liblib.so", RTLD_LAZY);
+        void* lib = dlopen("libside.so", RTLD_LAZY);
         assert(lib);
         sidey_t sidey = (sidey_t)dlsym(lib, "sidey");
         assert(sidey);
@@ -4626,10 +4625,12 @@ res64 - external 64\n''', header='''\
 
       int main(void) {
         void* js_address = EM_ASM_PTR({
-          console.log("JS:_my_number:", _my_number, HEAP32[_my_number/4]);
+          var value = HEAP32[_my_number/4];
+          console.log("JS:_my_number:", _my_number, value);
+          assert(value == 123456, value);
           return _my_number;
         });
-        printf("C: my_number: %ld %d\n", (long)&my_number, my_number);
+        printf("C: my_number: %lu %d\n", (uintptr_t)&my_number, my_number);
         assert(js_address == &my_number);
         return 0;
       }
@@ -4994,7 +4995,7 @@ res64 - external 64\n''', header='''\
       #include <dlfcn.h>
       int main() {
         printf("in main\n");
-        void* handle = dlopen("liblib.so", RTLD_LAZY);
+        void* handle = dlopen("libside.so", RTLD_LAZY);
         assert(handle);
         void (*side)(void) = (void (*)(void))dlsym(handle, "side");
         (side)();
@@ -5007,7 +5008,7 @@ res64 - external 64\n''', header='''\
     # functions created in library_exceptions.js.
     # This means we end up depending on dynamic linking code to redirect
     # __cxa_find_matching_catch_6 to __cxa_find_matching_catch.
-    create_file('liblib.cpp', r'''
+    create_file('libside.cpp', r'''
       #include <stdio.h>
       extern "C" void side() {
         printf("in side\n");
@@ -5030,7 +5031,7 @@ res64 - external 64\n''', header='''\
     # side settings
     self.clear_setting('MAIN_MODULE')
     self.set_setting('SIDE_MODULE')
-    self.build('liblib.cpp', output_suffix='.so')
+    self.build('libside.cpp', output_suffix='.so')
 
     # main settings
     self.set_setting('MAIN_MODULE', 1)
@@ -5126,13 +5127,13 @@ res64 - external 64\n''', header='''\
       extern int sidef();
       int main() {
         EM_ASM({
-          var libData = FS.readFile('liblib.so', {encoding: 'binary'});
+          var libData = FS.readFile('libside.so', {encoding: 'binary'});
           if (!(libData instanceof Uint8Array)) {
             libData = new Uint8Array(libData);
           }
           var compiledModule = new WebAssembly.Module(libData);
           var sideExports = loadWebAssemblyModule(compiledModule, {loadAsync: false, nodelete: true});
-          mergeLibSymbols(sideExports, 'liblib.so');
+          mergeLibSymbols(sideExports, 'libside.so');
         });
         printf("sidef: %d.\n", sidef());
       }
@@ -8018,7 +8019,7 @@ void* operator new(size_t size) {
   def test_embind_dylink_visibility_hidden(self):
     # Check that embind is usable from a library built with "-fvisibility=hidden"
 
-    create_file('liblib.cpp', r'''
+    create_file('libside.cpp', r'''
       #include <emscripten/val.h>
       #define EXPORT __attribute__((visibility("default")))
       using namespace emscripten;
@@ -8027,7 +8028,7 @@ void* operator new(size_t size) {
         val view(typed_memory_view(1, buffer));
       }
     ''')
-    self.build_dlfcn_lib('liblib.cpp', cflags=['-fvisibility=hidden'])
+    self.build_dlfcn_lib('libside.cpp', cflags=['-fvisibility=hidden'])
 
     self.prep_dlfcn_main()
     self.clear_setting('NO_AUTOLOAD_DYLIBS')
@@ -9415,7 +9416,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.cflags += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
 
-    self.cflags += ['--embed-file', 'liblib.so@libside.so']
+    self.cflags += ['--embed-file', 'libside.so@libside.so']
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -9436,7 +9437,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.cflags += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
     for i in range(nthreads):
-      shutil.copy('liblib.so', f'liblib{i}.so')
+      shutil.copy('libside.so', f'libside{i}.so')
 
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
@@ -9505,15 +9506,15 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=dynamicLibraries']
     self.cflags += ['--js-library', 'lib.js']
     # This test is for setting dynamicLibraries at runtime, so we don't
-    # want emscripten loading `liblib.so` automatically (which it would
+    # want emscripten loading `libside.so` automatically (which it would
     # do without this setting)
     self.set_setting('NO_AUTOLOAD_DYLIBS')
 
     create_file('pre.js', '''
       if (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIRONMENT_IS_PTHREAD) {
-        // Load liblib.so on the main thread, this would be equivalent to
+        // Load libside.so on the main thread, this would be equivalent to
         // defining it outside the module (e.g. in MODULARIZE mode).
-        Module['dynamicLibraries'] = ['liblib.so'];
+        Module['dynamicLibraries'] = ['libside.so'];
       }
     ''')
 
@@ -9522,8 +9523,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
         mainCallback: () => {
 #if PTHREADS
           err('sharedModules: ' + Object.keys(sharedModules));
-          assert('liblib.so' in sharedModules);
-          assert(sharedModules['liblib.so'] instanceof WebAssembly.Module);
+          assert('libside.so' in sharedModules);
+          assert(sharedModules['libside.so'] instanceof WebAssembly.Module);
 #endif
         },
       })

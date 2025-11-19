@@ -908,13 +908,17 @@ class BrowserCore(RunnerCore):
             cflags=None,
             timeout=None,
             reporting=Reporting.FULL,
+            run_in_worker=False,
             output_basename='test'):
     assert expected, 'a btest must have an expected output'
     if cflags is None:
       cflags = []
     cflags = cflags.copy()
     filename = find_browser_test_file(filename)
-    outfile = output_basename + '.html'
+    if run_in_worker:
+      outfile = output_basename + '.js'
+    else:
+      outfile = output_basename + '.html'
     cflags += ['-o', outfile]
     # print('cflags:', cflags)
     utils.delete_file(outfile)
@@ -927,7 +931,15 @@ class BrowserCore(RunnerCore):
     if EMTEST_BROWSER == 'node':
       nodejs = self.require_node()
       self.node_args += shared.node_pthread_flags(nodejs)
-      output = self.run_js('test.js')
+      output = self.run_js(f'{output_basename}.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:
-      self.run_browser(outfile, expected=['/report_result?' + e for e in expected], timeout=timeout)
+      html_file = outfile
+      if run_in_worker:
+        create_file('run_worker.html', f'''\
+          <script>
+            new Worker('{output_basename}.js');
+          </script>
+          ''')
+        html_file = 'run_worker.html'
+      self.run_browser(html_file, expected=['/report_result?' + e for e in expected], timeout=timeout)

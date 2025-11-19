@@ -299,6 +299,7 @@ class sanity(RunnerCore):
           output = self.check_working(EMCC)
           self.assertNotContained(LLVM_WARNING, output)
 
+  @no_windows('Test relies on Unix-specific shell script')
   def test_node(self):
     NODE_WARNING = 'node version appears too old'
     NODE_WARNING_2 = 'cannot check node version'
@@ -608,6 +609,7 @@ fi
       first_use()
       second_use()
 
+  @no_windows('Test relies on Unix-specific shell script')
   def test_js_engine_path(self):
     # Test that running JS commands works for node, d8, and jsc and is not path dependent
     restore_and_set_up()

@@ -388,6 +388,7 @@ class sockets(BrowserCore):
   @parameterized({
     '': [[]],
     'shared': [['-sSHARED_MEMORY']],
+    'deinitialize': [['-DTEST_EMSCRIPTEN_WEBSOCKET_DEINITIALIZE']],
   })
   @requires_dev_dependency('ws')
   def test_websocket_send(self, args):

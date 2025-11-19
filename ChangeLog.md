@@ -18,8 +18,16 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.20 (in development)
+4.0.21 (in development)
 -----------------------
+
+4.0.20 - 11/18/25
+-----------------
+- Linker flags specified on the command line are now passed to `wasm-ld` after
+  the internal emscripten linker flags.  This means that users can now override
+  emscripten defaults with things `-Wl,--stack-first`. (#25803)
+- Added `emscripten_html5_remove_event_listener` function in `html5.h` in order
+  to be able to remove a single callback. (#25535)
 - The standalone `file_packager.py` script no longer supports `--embed` with JS
   output (use `--obj-output` is now required for embedding data).  This usage
   has been producing a warning since #16050 which is now an error.  (#25049)

@@ -1,7 +1,7 @@
 {
-  "a.out.js": 245421,
-  "a.out.nodebug.wasm": 574167,
-  "total": 819588,
+  "a.out.js": 245799,
+  "a.out.nodebug.wasm": 574007,
+  "total": 819806,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -681,6 +681,7 @@
     "emscripten_has_asyncify",
     "emscripten_hide_mouse",
     "emscripten_html5_remove_all_event_listeners",
+    "emscripten_html5_remove_event_listener",
     "emscripten_idb_async_clear",
     "emscripten_idb_async_delete",
     "emscripten_idb_async_exists",

@@ -62,7 +62,7 @@ def get_const_expr_value(expr):
   elif opcode in (OpCode.GLOBAL_GET,):
     return 0
   else:
-    exit_with_error('unexpected opcode in const expr: ' + str(opcode))
+    exit_with_error('unexpected opcode in const expr: %s', opcode)
 
 
 def get_global_value(globl):
