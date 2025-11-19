@@ -410,7 +410,7 @@ def also_with_fetch_backend(f):
   @wraps(f)
   def metafunc(self, with_fetch, *args, **kwargs):
     if with_fetch:
-      self.set_setting('FETCH_BACKEND', 'fetch')
+      self.set_setting('FETCH_STREAMING', '2')
     f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),

@@ -2785,6 +2785,26 @@ If nonzero, enables emscripten_fetch API.
 
 Default value: false
 
+.. _fetch_streaming:
+
+FETCH_STREAMING
+===============
+
+Enables streaming fetched data when the fetch attribute
+EMSCRIPTEN_FETCH_STREAM_DATA is used. For streaming requests, the DOM fetch
+API is used otherwise XMLHttpRequest is used.
+Both modes generally support the same API, but there are some key
+differences:
+
+ - XHR supports synchronous requests
+ - XHR supports overriding mime types
+ - Fetch supports streaming data using the 'onprogress' callback
+
+If set to a value of 2, only the DOM fetch backend will be used. This should
+only be used in testing.
+
+Default value: 0
+
 .. _wasmfs:
 
 WASMFS

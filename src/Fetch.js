@@ -267,10 +267,17 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   var userNameStr = userName ? UTF8ToString(userName) : undefined;
   var passwordStr = password ? UTF8ToString(password) : undefined;
 
-#if FETCH_BACKEND == 'xhr'
-  var xhr = new XMLHttpRequest();
-#else
+#if FETCH_STREAMING == 1
+  if (fetchAttrStreamData) {
+    var xhr = new FetchXHR();
+  } else {
+    var xhr = new XMLHttpRequest();
+  }
+#elif FETCH_STREAMING == 2
+  // This setting forces using FetchXHR for all requests. Used only in testing.
   var xhr = new FetchXHR();
+#else
+  var xhr = new XMLHttpRequest();
 #endif
   xhr.withCredentials = !!{{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.withCredentials, 'u8') }}};;
 #if FETCH_DEBUG
@@ -280,7 +287,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   xhr.open(requestMethod, url_, !fetchAttrSynchronous, userNameStr, passwordStr);
   if (!fetchAttrSynchronous) xhr.timeout = timeoutMsecs; // XHR timeout field is only accessible in async XHRs, and must be set after .open() but before .send().
   xhr.url_ = url_; // Save the url for debugging purposes (and for comparing to the responseURL that server side advertised)
-#if ASSERTIONS && FETCH_BACKEND != 'fetch'
+#if ASSERTIONS && !FETCH_STREAMING
   assert(!fetchAttrStreamData, 'streaming is only supported when using the fetch backend');
 #endif
   xhr.responseType = 'arraybuffer';

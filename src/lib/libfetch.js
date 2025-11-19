@@ -38,7 +38,7 @@ var LibraryFetch = {
     '$fetchLoadCachedData',
     '$fetchDeleteCachedData',
 #endif
-#if FETCH_BACKEND == 'fetch'
+#if FETCH_STREAMING
     '$FetchXHR',
 #endif
   ],

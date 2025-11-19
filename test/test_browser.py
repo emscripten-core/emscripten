@@ -4455,7 +4455,7 @@ Module["preRun"] = () => {
     'sync': (['-DSYNC'],),
   })
   def test_fetch_response_headers(self, args):
-    if self.get_setting('FETCH_BACKEND') and '-DSYNC' in args:
+    if self.get_setting('FETCH_STREAMING') and '-DSYNC' in args:
       self.skipTest('Fetch backend does not support sync fetch.')
     shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_response_headers.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'] + args)
@@ -4472,7 +4472,7 @@ Module["preRun"] = () => {
     with open('largefile.txt', 'w') as f:
       for _ in range(1024):
         f.write(s)
-    self.btest_exit('fetch/test_fetch_stream_file.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH', '-sFETCH_BACKEND=fetch'])
+    self.btest_exit('fetch/test_fetch_stream_file.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH', '-sFETCH_STREAMING'])
 
   @also_with_fetch_backend
   def test_fetch_headers_received(self):
@@ -4536,7 +4536,7 @@ Module["preRun"] = () => {
   # Streaming only works the fetch backend.
   def test_fetch_stream_async(self):
     create_file('myfile.dat', 'hello world\n' * 1000)
-    self.btest_exit('fetch/test_fetch_stream_async.c', cflags=['-sFETCH', '-sFETCH_BACKEND=fetch'])
+    self.btest_exit('fetch/test_fetch_stream_async.c', cflags=['-sFETCH', '-sFETCH_STREAMING'])
 
   @also_with_fetch_backend
   def test_fetch_persist(self):
@@ -4546,7 +4546,7 @@ Module["preRun"] = () => {
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_fetch_backend
   def test_fetch_redirect(self):
-    args = ['-DSKIP_SYNC_TESTS'] if self.get_setting('FETCH_BACKEND') ==  'fetch' else []
+    args = ['-DSKIP_SYNC_TESTS'] if self.get_setting('FETCH_STREAMING') else []
     self.btest_exit('fetch/test_fetch_redirect.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD', f'-DSERVER="{self.SERVER_URL}"'] + args)
 
   @parameterized({
