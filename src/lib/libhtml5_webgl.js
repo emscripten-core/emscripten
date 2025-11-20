@@ -429,7 +429,7 @@ var LibraryHtml5WebGL = {
     target ||= Module['canvas'];
 #endif
 
-    var webGlEventHandlerFunc = (e = event) => {
+    var webGlEventHandlerFunc = (e) => {
 #if PTHREADS
       if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
       else
