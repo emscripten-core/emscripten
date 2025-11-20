@@ -684,6 +684,9 @@ function getWasmImports() {
 #endif
 #endif
   // prepare imports
+#if MAIN_MODULE || RELOCATABLE
+  var GOTProxyHandler = new Proxy(new Set({{{ JSON.stringify(Array.from(WEAK_IMPORTS)) }}}), GOTHandler);
+#endif
   var imports = {
 #if MINIFY_WASM_IMPORTED_MODULES
     'a': wasmImports,
@@ -692,8 +695,8 @@ function getWasmImports() {
     '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
 #if MAIN_MODULE || RELOCATABLE
-    'GOT.mem': new Proxy(wasmImports, GOTHandler),
-    'GOT.func': new Proxy(wasmImports, GOTHandler),
+    'GOT.mem': GOTProxyHandler,
+    'GOT.func': GOTProxyHandler,
 #endif
   };
 #if SPLIT_MODULE
@@ -716,13 +719,10 @@ function getWasmImports() {
     wasmExports = instance.exports;
 
 #if MAIN_MODULE
-    // No relocation needed here.. but calling this just so that updateGOT is
-    // called.
 #if RELOCATABLE
-    var origExports = wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
-#else
-    var origExports = wasmExports = relocateExports(wasmExports);
+    wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
 #endif
+    var origExports = wasmExports;
 #endif
 
 #if ASYNCIFY

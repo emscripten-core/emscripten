@@ -77,12 +77,7 @@ var LibraryWebAudio = {
 
   // Performs the work of getting the AudioContext's render quantum size.
   $emscriptenGetContextQuantumSize: (contextHandle) => {
-    // TODO: in a future release this will be something like:
-    //   return EmAudio[contextHandle].renderQuantumSize || 128;
-    // It comes two caveats: it needs the hint when generating the context adding to
-    // emscripten_create_audio_context(), and altering the quantum requires a secure
-    // context and fallback implementing. Until then we simply use the 1.0 API value:
-    return 128;
+    return EmAudio[contextHandle]['renderQuantumSize'] || 128;
   },
 
   // emscripten_create_audio_context() does not itself use the
@@ -100,9 +95,15 @@ var LibraryWebAudio = {
 #endif
 #endif
 
+    // Converts AUDIO_CONTEXT_RENDER_SIZE_* into AudioContextRenderSizeCategory
+    // enums, otherwise returns a positive int value.
+    function readRenderSizeHint(val) {
+      return (val < 0) ? 'hardware' : (val || 'default');
+    }
     var opts = options ? {
       latencyHint: UTF8ToString({{{ makeGetValue('options', C_STRUCTS.EmscriptenWebAudioCreateAttributes.latencyHint, '*') }}}) || undefined,
-      sampleRate: {{{ makeGetValue('options', C_STRUCTS.EmscriptenWebAudioCreateAttributes.sampleRate, 'u32') }}} || undefined
+      sampleRate: {{{ makeGetValue('options', C_STRUCTS.EmscriptenWebAudioCreateAttributes.sampleRate, 'u32') }}} || undefined,
+      renderSizeHint: readRenderSizeHint({{{ makeGetValue('options', C_STRUCTS.EmscriptenWebAudioCreateAttributes.renderSizeHint, 'i32') }}})
     } : undefined;
 
 #if WEBAUDIO_DEBUG

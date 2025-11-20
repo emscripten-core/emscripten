@@ -991,8 +991,8 @@ f.close()
     self.run_process(cmd)
     self.assertExists(self.get_dir() + '/build.ninja')
 
-  # Tests that it's possible to pass C++11 or GNU++11 build modes to CMake by building code that
-  # needs C++11 (embind)
+  # Tests that it's possible to pass C++17 or GNU++17 build modes to CMake by building code that
+  # needs C++17 (embind)
   @requires_ninja
   @parameterized({
     '': [[]],
@@ -1007,9 +1007,9 @@ f.close()
 
     out = self.run_js('cmake_with_emval.js')
     if '-DNO_GNU_EXTENSIONS=1' in args:
-      self.assertContained('Hello! __STRICT_ANSI__: 1, __cplusplus: 201103', out)
+      self.assertContained('Hello! __STRICT_ANSI__: 1, __cplusplus: 201703', out)
     else:
-      self.assertContained('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', out)
+      self.assertContained('Hello! __STRICT_ANSI__: 0, __cplusplus: 201703', out)
 
   # Tests that the Emscripten CMake toolchain option
   def test_cmake_bitcode_static_libraries(self):
@@ -1235,7 +1235,7 @@ f.close()
       shutil.copy(test_file('hello_world.c'), 'test.' + suffix)
       self.do_runf('test.' + suffix, 'hello, world!')
 
-    for suffix in ('lo'):
+    for suffix in ('lo',):
       self.clear()
       print(suffix)
       self.run_process([EMCC, test_file('hello_world.c'), '-shared', '-o', 'binary.' + suffix])
@@ -1424,9 +1424,7 @@ f.close()
     self.emcc('a2.c', ['-r', '-L.', '-lA', '-o', 'a2.o'])
     self.emcc('b2.c', ['-r', '-L.', '-lA', '-o', 'b2.o'])
 
-    self.emcc('main.c', ['-L.', '-lA', 'a2.o', 'b2.o'])
-
-    self.assertContained('result: 1', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'result: 1', cflags=['-L.', '-lA', 'a2.o', 'b2.o'])
 
   def test_multiply_defined_libsymbols_2(self):
     create_file('a.c', "int x() { return 55; }")
@@ -1449,9 +1447,7 @@ f.close()
     building.emar('cr', 'libLIB.a', ['a.o', 'b.o']) # libLIB.a with a and b
 
     # a is in the lib AND in an .o, so should be ignored in the lib. We do still need b from the lib though
-    self.emcc('main.c', ['a.o', 'c.o', '-L.', '-lLIB'])
-
-    self.assertContained('result: 62', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'result: 62', cflags=['a.o', 'c.o', '-L.', '-lLIB'])
 
   def test_link_group(self):
     create_file('lib.c', 'int x() { return 42; }')
@@ -1724,12 +1720,8 @@ int f() {
     ''')
 
     # libfunc2 should not be linked by default, even with EXPORT_ALL
-    self.emcc('lib.c', ['-sEXPORT_ALL', '--pre-js', 'pre.js', '-o', 'a.out.js'])
-    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('_libfunc2 is not defined', err)
-
-    self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js', '-o', 'a.out.js'])
-    self.assertContained('libfunc\n', self.run_js('a.out.js'))
+    self.do_runf('lib.c', '_libfunc2 is not defined', cflags=['-sEXPORT_ALL', '--pre-js', 'pre.js'], assert_returncode=NON_ZERO)
+    self.do_runf('lib.c', 'libfunc\n', cflags=['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js'])
 
   @all_engines
   @also_with_wasmfs
@@ -1910,8 +1902,7 @@ Module['postRun'] = () => {
       }
     ''')
 
-    self.run_process([EMCC, 'main.c', '-L.', '-la', '-lb'])
-    self.assertContained('a\nb\n', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'a\nb\n', cflags=['-L.', '-la', '-lb'])
 
   def test_archive_duplicate_basenames(self):
     ensure_dir('a')
@@ -1962,9 +1953,7 @@ Module['postRun'] = () => {
 
     # With fastcomp we don't support duplicate members so this should generate
     # a warning.  With the wasm backend (lld) this is fully supported.
-    cmd = [EMCC, 'main.c', '-L.', '-ldup']
-    self.run_process(cmd)
-    self.assertContained('a\nb...\n', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'a\nb...\n', cflags=['-L.', '-ldup'])
 
   def test_export_from_archive(self):
     export_name = 'this_is_an_entry_point'
@@ -1998,7 +1987,6 @@ Module['postRun'] = () => {
     'embed_twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
     'preload': (['--preload-file', 'somefile.txt', '-sSTRICT'],),
     'preload_closure': (['--preload-file', 'somefile.txt', '-O2', '--closure=1'],),
-    'preload_and_embed': (['--preload-file', 'somefile.txt', '--embed-file', 'hello.txt'],),
   })
   @requires_node
   def test_include_file(self, args):
@@ -2020,10 +2008,7 @@ Module['postRun'] = () => {
       }
     ''')
 
-    self.run_process([EMCC, 'main.c'] + args)
-    # run in node.js to ensure we verify that file preloading works there
-    result = self.run_js('a.out.js')
-    self.assertContained('|hello from a file wi|', result)
+    self.do_runf('main.c', '|hello from a file wi|', cflags=args)
 
   @parameterized({
     '': ([],),
@@ -2132,63 +2117,59 @@ Module['postRun'] = () => {
         'side.wasm',
       ])
 
-  def test_multidynamic_link(self):
+  @parameterized({
+    '': (['-lfile'], ''), # -l, auto detection from library path
+    'suffixed': (['libdir/libfile.so.3.1.4.1.5.9'], '.3.1.4.1.5.9'), # handle libX.so.1.2.3 as well
+  })
+  def test_multidynamic_link(self, link_flags, lib_suffix):
     # Linking the same dynamic library in statically will error, normally, since we statically link
     # it, causing dupe symbols
+    ensure_dir('libdir')
 
-    def test(link_flags, lib_suffix):
-      print(link_flags, lib_suffix)
+    create_file('main.c', r'''
+      #include <stdio.h>
+      extern void printey();
+      extern void printother();
+      int main() {
+        printf("*");
+        printey();
+        printf("\n");
+        printother();
+        printf("\n");
+        printf("*\n");
+        return 0;
+      }
+    ''')
 
-      self.clear()
-      ensure_dir('libdir')
+    create_file('libdir/libfile.c', '''
+      #include <stdio.h>
+      void printey() {
+        printf("hello from lib");
+      }
+    ''')
 
-      create_file('main.c', r'''
-        #include <stdio.h>
-        extern void printey();
-        extern void printother();
-        int main() {
-          printf("*");
-          printey();
-          printf("\n");
-          printother();
-          printf("\n");
-          printf("*\n");
-          return 0;
-        }
-      ''')
+    create_file('libdir/libother.c', '''
+      #include <stdio.h>
+      extern void printey();
+      void printother() {
+        printf("|");
+        printey();
+        printf("|");
+      }
+    ''')
 
-      create_file('libdir/libfile.c', '''
-        #include <stdio.h>
-        void printey() {
-          printf("hello from lib");
-        }
-      ''')
+    # Build libfile normally into an .so
+    self.run_process([EMCC, 'libdir/libfile.c', '-shared', '-o', 'libdir/libfile.so' + lib_suffix])
+    # Build libother and dynamically link it to libfile
+    self.run_process([EMCC, '-Llibdir', 'libdir/libother.c'] + link_flags + ['-shared', '-o', 'libdir/libother.so'])
+    # Build the main file, linking in both the libs
+    self.run_process([EMCC, '-Llibdir', os.path.join('main.c')] + link_flags + ['-lother', '-c'])
+    print('...')
+    # The normal build system is over. We need to do an additional step to link in the dynamic
+    # libraries, since we ignored them before
+    self.run_process([EMCC, '-Llibdir', 'main.o'] + link_flags + ['-lother'])
 
-      create_file('libdir/libother.c', '''
-        #include <stdio.h>
-        extern void printey();
-        void printother() {
-          printf("|");
-          printey();
-          printf("|");
-        }
-      ''')
-
-      # Build libfile normally into an .so
-      self.run_process([EMCC, 'libdir/libfile.c', '-shared', '-o', 'libdir/libfile.so' + lib_suffix])
-      # Build libother and dynamically link it to libfile
-      self.run_process([EMCC, '-Llibdir', 'libdir/libother.c'] + link_flags + ['-shared', '-o', 'libdir/libother.so'])
-      # Build the main file, linking in both the libs
-      self.run_process([EMCC, '-Llibdir', os.path.join('main.c')] + link_flags + ['-lother', '-c'])
-      print('...')
-      # The normal build system is over. We need to do an additional step to link in the dynamic
-      # libraries, since we ignored them before
-      self.run_process([EMCC, '-Llibdir', 'main.o'] + link_flags + ['-lother'])
-
-      self.assertContained('*hello from lib\n|hello from lib|\n*\n', self.run_js('a.out.js'))
-
-    test(['-lfile'], '') # -l, auto detection from library path
-    test(['libdir/libfile.so.3.1.4.1.5.9'], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
+    self.assertContained('*hello from lib\n|hello from lib|\n*\n', self.run_js('a.out.js'))
 
   @node_pthreads
   @also_with_modularize
@@ -3395,10 +3376,10 @@ More info: https://emscripten.org
     '2gb': ['-sINITIAL_MEMORY=2200mb', '-sGLOBAL_BASE=2gb'],
   })
   @parameterized({
-    # With no arguments we are effectively testing c++17 since it is the default.
+    # With no arguments we are testing the default C++ version provided by clang.
     '': [],
-    # Ensure embind compiles under C++11 which is the miniumum supported version.
-    'cxx11': ['-std=c++11', '-Wno-#warnings'],
+    # Ensure embind compiles under C++17 which is the miniumum supported version.
+    'cxx17': ['-std=c++17', '-Wno-#warnings'],
     'o1': ['-O1'],
     'o2': ['-O2'],
     'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
@@ -3447,12 +3428,8 @@ More info: https://emscripten.org
     output = self.run_js(js_file)
     self.assertNotContained('FAIL', output)
 
-  def test_embind_cxx11_warning(self):
-    err = self.run_process([EMXX, '-c', '-std=c++11', test_file('embind/test_unsigned.cpp')], stderr=PIPE).stderr
-    self.assertContained('#warning "embind is likely moving to c++17', err)
-
-  def test_embind_cxx03(self):
-    self.assert_fail([EMXX, '-c', '-std=c++03', test_file('embind/test_unsigned.cpp')], '#error "embind requires -std=c++11 or newer"')
+  def test_embind_cxx11(self):
+    self.assert_fail([EMXX, '-c', '-std=c++11', test_file('embind/test_unsigned.cpp')], '#error "embind requires -std=c++17 or newer"')
 
   @requires_node
   def test_embind_finalization(self):
@@ -3957,8 +3934,8 @@ More info: https://emscripten.org
     create_file('data.txt', 'hello data')
 
     # Without --obj-output we issue a warning
-    err = self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'], stderr=PIPE).stderr
-    self.assertContained('--obj-output is recommended when using --embed', err)
+    err = self.expect_fail([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'])
+    self.assertContained('error: --obj-output is required when using --embed', err)
 
     self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--obj-output=data.o'])
 
@@ -3978,6 +3955,10 @@ More info: https://emscripten.org
     self.run_process([EMCC, 'test.c', 'data.o', '-sFORCE_FILESYSTEM'])
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
+
+  def test_file_packager_preload_and_embed(self):
+    create_file('data.txt', 'hello data')
+    self.assert_fail([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--preload', 'data.txt'], 'file_packager: error: --preload and --embed are mutually exclusive (See https://github.com/emscripten-core/emscripten/issues/24803)')
 
   def test_file_packager_export_es6(self):
     create_file('smth.txt', 'hello data')
@@ -9250,8 +9231,7 @@ end
         return access(argv[1], F_OK);
       }
     ''')
-    self.run_process([EMCC, 'access.c', '-sNODERAWFS'])
-    self.run_js('a.out.js', args=[os.path.abspath('foo')])
+    self.do_runf('access.c', cflags=['-sNODERAWFS'], args=[os.path.abspath('foo')])
 
   def test_noderawfs_readfile_prerun(self):
     create_file('foo', 'bar')
@@ -13137,6 +13117,9 @@ Module.postRun = () => {{
   def test_hello_world_above_2gb(self):
     self.do_run_in_out_file_test('hello_world.c', cflags=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
 
+  def test_unistd_strerror(self):
+    self.do_run_in_out_file_test('unistd/strerror.c')
+
   def test_hello_function(self):
     # hello_function.cpp is referenced/used in the docs.  This test ensures that it
     # at least compiles.
@@ -14382,8 +14365,7 @@ addToLibrary({
     # etc., and only provide the emmalloc_malloc etc. family of functions that
     # we can use.
     emmalloc = path_from_root('system', 'lib', 'emmalloc.c')
-    self.run_process([EMCC, test_file('other/test_emmalloc_in_addition.c'), emmalloc] + args)
-    self.assertContained('success', self.run_js('a.out.js'))
+    self.do_runf('other/test_emmalloc_in_addition.c', 'success', cflags=[emmalloc] + args)
 
   def test_unused_destructor(self):
     self.do_runf('other/test_unused_destructor.c', cflags=['-flto', '-O2'])
@@ -14750,8 +14732,7 @@ addToLibrary({
 
   def test_relative_em_cache(self):
     with env_modify({'EM_CACHE': 'foo'}):
-      err = self.expect_fail([EMCC, '-c', test_file('hello_world.c')])
-      self.assertContained('emcc: error: environment variable EM_CACHE must be an absolute path: foo', err)
+      self.assert_fail([EMCC, '-c', test_file('hello_world.c')], 'emcc: error: environment variable EM_CACHE must be an absolute path: foo')
 
   @crossplatform
   def test_create_cache_directory(self):

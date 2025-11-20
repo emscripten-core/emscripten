@@ -164,14 +164,15 @@ var LibraryDylink = {
   },
 
   $GOT: {},
-  $currentModuleWeakSymbols: '=new Set({{{ JSON.stringify(Array.from(WEAK_IMPORTS)) }}})',
 
-  // Create globals to each imported symbol.  These are all initialized to zero
-  // and get assigned later in `updateGOT`
+  // Proxy handler used for GOT.mem and GOT.func imports.  Each of these
+  // imports is fullfilled dynamically via the `get` method of this proxy
+  // handler.  We abuse the `target` of the Proxy in order to pass the set of
+  // weak imports to the handler.
   $GOTHandler__internal: true,
-  $GOTHandler__deps: ['$GOT', '$currentModuleWeakSymbols'],
+  $GOTHandler__deps: ['$GOT'],
   $GOTHandler: {
-    get(obj, symName) {
+    get(weakImports, symName) {
       var rtn = GOT[symName];
       if (!rtn) {
 #if DYLINK_DEBUG == 2
@@ -179,7 +180,7 @@ var LibraryDylink = {
 #endif
         rtn = GOT[symName] = new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ UNDEFINED_ADDR }}});
       }
-      if (!currentModuleWeakSymbols.has(symName)) {
+      if (!weakImports.has(symName)) {
         // Any non-weak reference to a symbol marks it as `required`, which
         // enabled `reportUndefinedSymbols` to report undefined symbol errors
         // correctly.
@@ -248,7 +249,7 @@ var LibraryDylink = {
         var newValue;
         if (typeof value == 'function') {
           newValue = {{{ to64('addFunction(value)') }}};
-        } else if (typeof value == {{{ POINTER_JS_TYPE }}}) {
+        } else if (typeof value.value == {{{ POINTER_JS_TYPE }}}) {
           newValue = value;
         } else {
           // The GOT can only contain addresses (i.e data addresses or function
@@ -305,7 +306,7 @@ var LibraryDylink = {
       // Detect immuable wasm global exports. These represent data addresses
       // which are relative to `memoryBase`
       if (isImmutableGlobal(value)) {
-        return value.value + {{{ to64('memoryBase') }}};
+        return new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}'}, value.value + {{{ to64('memoryBase') }}});
       }
 
       // Return unmodified value (no relocation required).
@@ -353,10 +354,8 @@ var LibraryDylink = {
 #endif
         } else if (typeof value == 'number') {
           entry.value = {{{ to64('value') }}};
-#if MEMORY64
-        } else if (typeof value == 'bigint') {
+        } else if (typeof value.value == {{{ POINTER_JS_TYPE }}}) {
           entry.value = value;
-#endif
         } else {
           throw new Error(`bad export type for '${symName}': ${typeof value} (${value})`);
         }
@@ -421,6 +420,8 @@ var LibraryDylink = {
     // Keep __heap_base stack aligned.
     var end = ret + alignMemory(size, {{{ STACK_ALIGN }}});
 #if ASSERTIONS
+    //dbg(ret);
+    //dbg(HEAP8.length);
     assert(end <= HEAP8.length, 'failure to getMemory - memory growth etc. is not supported there, call malloc/sbrk directly or increase INITIAL_MEMORY');
 #endif
     ___heap_base = end;
@@ -660,7 +661,6 @@ var LibraryDylink = {
     '$loadDynamicLibrary', '$getMemory', '$updateGOT',
     '$relocateExports', '$resolveGlobalSymbol', '$GOTHandler',
     '$getDylinkMetadata', '$alignMemory',
-    '$currentModuleWeakSymbols',
     '$updateTableMap',
     '$wasmTable',
     '$addOnPostCtor',
@@ -799,10 +799,10 @@ var LibraryDylink = {
         }
       };
       var proxy = new Proxy({}, proxyHandler);
-      currentModuleWeakSymbols = metadata.weakImports;
+      var GOTProxy = new Proxy(metadata.weakImports, GOTHandler);
       var info = {
-        'GOT.mem': new Proxy({}, GOTHandler),
-        'GOT.func': new Proxy({}, GOTHandler),
+        'GOT.mem': GOTProxy,
+        'GOT.func': GOTProxy,
         'env': proxy,
         '{{{ WASI_MODULE_NAME }}}': proxy,
       };
@@ -859,10 +859,15 @@ var LibraryDylink = {
 
         // Add any EM_ASM function that exist in the side module
         if ('__start_em_asm' in moduleExports) {
-          var start = moduleExports['__start_em_asm'];
-          var stop = moduleExports['__stop_em_asm'];
+          var start = moduleExports['__start_em_asm'].value;
+          var stop = moduleExports['__stop_em_asm'].value;
+#if CAN_ADDRESS_2GB
+          start >>>= 0;
+          stop >>>= 0;
+#else
           {{{ from64('start') }}}
           {{{ from64('stop') }}}
+#endif
           while (start < stop) {
             var jsString = UTF8ToString(start);
             addEmAsm(start, jsString);
@@ -880,7 +885,7 @@ var LibraryDylink = {
             cSig = cSig.split(',');
             for (var arg of cSig) {
               var jsArg = arg.split(' ').pop();
-              jsArgs.push(jsArg.replace('*', ''));
+              jsArgs.push(jsArg.replaceAll('*', ''));
             }
           }
           var func = `(${jsArgs}) => ${body};`;
@@ -892,7 +897,7 @@ var LibraryDylink = {
 
         for (var name in moduleExports) {
           if (name.startsWith('__em_js__')) {
-            var start = moduleExports[name]
+            var start = moduleExports[name].value
             var jsString = UTF8ToString({{{ from64Expr('start') }}});
             // EM_JS strings are stored in the data section in the form
             // SIG<::>BODY.

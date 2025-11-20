@@ -53,6 +53,8 @@ addToLibrary({
       }
 #if MEMORY64
       if (returnType === 'pointer') return Number(ret);
+#elif CAN_ADDRESS_2GB
+      if (returnType === 'pointer') return ret >>> 0;
 #endif
       if (returnType === 'boolean') return Boolean(ret);
       return ret;
