@@ -3273,9 +3273,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     // Remove all the layout(binding = x) directives so that they do not make
     // their way to the actual WebGL shader compiler. These regexes get quite
     // hairy, check against https://regex101.com/ when working on these.
-    source = source.replace(/layout\s*\(.*?binding\s*=\s*([-\d]+).*?\)/g, ''); // "layout(binding = 3)" -> ""
+    source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*\)/g, ''); // "layout(binding = 3)" -> ""
     source = source.replace(/(layout\s*\((.*?)),\s*binding\s*=\s*([-\d]+)\)/g, '$1)'); // "layout(std140, binding = 1)" -> "layout(std140)"
-    source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*,(.*?)\)/g, 'layout($2)'); // "layout(binding = 1, std140)" -> "layout(std140)"
+    source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*,\s*(.*?)\)/g, 'layout($2)'); // "layout(binding = 1, std140)" -> "layout(std140)"
 
 #if GL_DEBUG
     dbg(`Shader source after removing layout binding directives: ${source}`;
