@@ -5671,9 +5671,11 @@ Module["preRun"] = () => {
     'es6': (['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')], 9999),
   })
   def test_cross_origin(self, args, port):
-    # Verfies that the emscripten-generted JS and Wasm can be hosted on a different origin.
-    # This test create a second HTTP server running a different port that servers files from `subdir`.
-    # The main html is the servers from the normal 8888 server while the JS and Wasm are hosted
+    if '-sEXPORT_ES6' in args and browser_should_skip_feature('EMTEST_LACKS_ES6_WORKERS', Feature.WORKER_ES6_MODULES):
+      self.skipTest('This test requires a browser with ES6 Module Workers support')
+    # Verifies that the emscripten-generated JS and Wasm can be hosted on a different origin.
+    # This test creates a second HTTP server running on a different port that serves files from `subdir`.
+    # The main html is served from the normal port 8888 server while the JS and Wasm are hosted
     # on the port specified above.
     os.mkdir('subdir')
     create_file('subdir/foo.txt', 'hello')
