@@ -19,6 +19,7 @@ http://kripken.github.io/emscripten-site/docs/getting_started/test-suite.html
 
 import argparse
 import atexit
+import datetime
 import fnmatch
 import glob
 import logging
@@ -26,6 +27,8 @@ import math
 import operator
 import os
 import random
+import re
+import subprocess
 import sys
 import time
 import unittest
@@ -575,7 +578,6 @@ def print_repository_info(directory, repository_name):
 def log_test_environment():
   """Print detailed information about the current test environment. Useful for
   logging test run configuration in a CI."""
-  import datetime, re, subprocess
   print('======================== Test Setup ========================')
   print(f'Test time: {datetime.datetime.now(datetime.timezone.utc).strftime("%A, %B %d, %Y %H:%M:%S %Z")}')
   print(f'Python: "{sys.executable}". Version: {sys.version}')
@@ -636,12 +638,12 @@ def log_test_environment():
   if firefox_version != 2**31 - 1:
     print(f'Firefox version: {firefox_version}')
   else:
-    print(f'Not detected as a Firefox browser')
+    print('Not detected as a Firefox browser')
   safari_version = browser_common.get_safari_version()
   if safari_version != 2**31 - 1:
     print(f'Safari version: {safari_version}')
   else:
-    print(f'Not detected as a Safari browser')
+    print('Not detected as a Safari browser')
 
   emsdk_dir = os.getenv('EMSDK')
   print(f'\nEMSDK: "{emsdk_dir}"')
