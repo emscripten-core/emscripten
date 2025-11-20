@@ -575,6 +575,7 @@ def print_repository_info(directory, repository_name):
   if local_changes:
     print(f'\n{local_changes}\n')
 
+
 def log_test_environment():
   """Print detailed information about the current test environment. Useful for
   logging test run configuration in a CI."""
