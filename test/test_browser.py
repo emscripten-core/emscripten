@@ -5664,15 +5664,17 @@ Module["preRun"] = () => {
     shutil.copy('hello.wasm', 'dist/')
     self.run_browser('index.html', '/report_result?exit:0')
 
+  # Use different ports for each parameterized version so they can be run in
+  # parallel and not conflict.
   @parameterized({
-    '': ([],),
-    'es6': (['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')],),
+    '': ([], 9998),
+    'es6': (['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')], 9999),
   })
-  def test_cross_origin(self, args):
+  def test_cross_origin(self, args, port):
     # Verfies that the emscripten-generted JS and Wasm can be hosted on a different origin.
-    # This test create a second HTTP server running on port 9999 that servers files from `subdir`.
+    # This test create a second HTTP server running a different port that servers files from `subdir`.
     # The main html is the servers from the normal 8888 server while the JS and Wasm are hosted
-    # on at 9999.
+    # on the port specified above.
     os.mkdir('subdir')
     create_file('subdir/foo.txt', 'hello')
     self.compile_btest('hello_world.c', ['-o', 'subdir/hello.js', '-sRUNTIME_DEBUG', '-sCROSS_ORIGIN', '-sPROXY_TO_PTHREAD', '-pthread', '-sEXIT_RUNTIME'] + args)
@@ -5697,11 +5699,11 @@ Module["preRun"] = () => {
         return SimpleHTTPRequestHandler.end_headers(self)
 
     if '-sEXPORT_ES6' in args:
-      create_file('test.html', '<script src="http://localhost:9999/hello.js" type="module"></script>')
+      create_file('test.html', f'<script src="http://localhost:{port}/hello.js" type="module"></script>')
     else:
-      create_file('test.html', '<script src="http://localhost:9999/hello.js"></script>')
+      create_file('test.html', f'<script src="http://localhost:{port}/hello.js"></script>')
 
-    server = HttpServerThread(ThreadingHTTPServer(('localhost', 9999), MyReqestHandler))
+    server = HttpServerThread(ThreadingHTTPServer(('localhost', port), MyReqestHandler))
     server.start()
     try:
       self.run_browser('test.html', '/report_result?exit:0')
