@@ -506,6 +506,7 @@ def parse_args():
                            'Useful when combined with --failfast')
   parser.add_argument('--force64', action='store_true')
   parser.add_argument('--crossplatform-only', action='store_true')
+  parser.add_argument('--log-test-environment', action='store_true', help='Prints out detailed information about the current environment. Useful for adding more info to CI test runs.')
   parser.add_argument('--force-browser-process-termination', action='store_true', help='If true, a fail-safe method is used to ensure that all browser processes are terminated before and after the test suite run. Note that this option will terminate all browser processes, not just those launched by the harness, so will result in loss of all open browsing sessions.')
   parser.add_argument('--repeat', type=int, default=1,
                       help='Repeat each test N times (default: 1).')
@@ -563,6 +564,94 @@ def cleanup_emscripten_temp():
         pass
 
 
+def print_repository_info(directory, repository_name):
+  import subprocess
+  current_commit = subprocess.run(['git', 'log', '-n1'], cwd=directory, stdout=subprocess.PIPE, text=True).stdout.strip()
+  print(f'\n{repository_name} {current_commit}\n')
+  local_changes = subprocess.run(['git', 'diff'], cwd=directory, stdout=subprocess.PIPE, text=True).stdout.strip()
+  if local_changes:
+    print(f'\n{local_changes}\n')
+
+def log_test_environment():
+  """Print detailed information about the current test environment. Useful for
+  logging test run configuration in a CI."""
+  import datetime, re, subprocess
+  print('======================== Test Setup ========================')
+  print(f'Test time: {datetime.datetime.now(datetime.timezone.utc).strftime("%A, %B %d, %Y %H:%M:%S %Z")}')
+  print(f'Python: "{sys.executable}". Version: {sys.version}')
+  print(f'Emscripten test runner path: "{os.path.realpath(__file__)}"')
+
+  if os.path.isdir(os.path.join(config.EMSCRIPTEN_ROOT, '.git')):
+    print(f'\nEmscripten repository: "{config.EMSCRIPTEN_ROOT}"')
+
+  emscripten_version = os.path.realpath(os.path.join(config.EMSCRIPTEN_ROOT, 'emscripten-version.txt'))
+  if os.path.isfile(emscripten_version):
+    print(f'emscripten-version.txt: {utils.read_file(emscripten_version).strip()}')
+
+  if os.path.isdir(os.path.join(config.EMSCRIPTEN_ROOT, '.git')):
+    print_repository_info(config.EMSCRIPTEN_ROOT, 'Emscripten')
+
+  print(f'EM_CONFIG: "{config.EM_CONFIG}"')
+  if os.path.isfile(config.EM_CONFIG):
+    print(f'\n{utils.read_file(config.EM_CONFIG).strip()}\n')
+
+  node_js_version = subprocess.run(config.NODE_JS + ['--version'], stdout=subprocess.PIPE, text=True).stdout.strip()
+  print(f'NODE_JS: {config.NODE_JS}. Version: {node_js_version}')
+
+  print(f'BINARYEN_ROOT: {config.BINARYEN_ROOT}')
+  wasm_opt_version = subprocess.run([os.path.join(config.BINARYEN_ROOT, 'bin', 'wasm-opt.exe'), '--version'], stdout=subprocess.PIPE, text=True).stdout.strip()
+  print(f'wasm-opt version: {wasm_opt_version}')
+
+  binaryen_git_dir = config.BINARYEN_ROOT
+  # Detect emsdk directory structure (build root vs source root)
+  if re.match(r'main_.*_64bit_binaryen', os.path.basename(binaryen_git_dir)):
+    binaryen_git_dir = os.path.realpath(os.path.join(binaryen_git_dir, '..', 'main'))
+  if os.path.isdir(os.path.join(binaryen_git_dir, '.git')):
+    print(f'Binaryen git directory: "{binaryen_git_dir}"')
+    print_repository_info(binaryen_git_dir, 'Binaryen')
+
+  print(f'LLVM_ROOT: {config.LLVM_ROOT}')
+
+  # Find LLVM git directory in emsdk aware fashion
+  def find_llvm_git_root(dir):
+    while True:
+      if os.path.isdir(os.path.join(dir, ".git")):
+        return dir
+      if os.path.isdir(os.path.join(dir, "src", ".git")):
+        return os.path.join(dir, "src")
+      if os.path.dirname(dir) == dir:
+        return None
+      dir = os.path.dirname(dir)
+
+  llvm_git_root = find_llvm_git_root(config.LLVM_ROOT)
+  if llvm_git_root:
+    print(f'LLVM git directory: "{llvm_git_root}"')
+    print_repository_info(llvm_git_root, 'LLVM')
+
+  clang_version = subprocess.run([shared.CLANG_CC, '--version'], stdout=subprocess.PIPE, text=True).stdout.strip()
+  print(f'Clang: "{shared.CLANG_CC}"\n{clang_version}\n')
+
+  print(f'EMTEST_BROWSER: {browser_common.EMTEST_BROWSER}')
+  firefox_version = browser_common.get_firefox_version()
+  if firefox_version != 2**31 - 1:
+    print(f'Firefox version: {firefox_version}')
+  else:
+    print(f'Not detected as a Firefox browser')
+  safari_version = browser_common.get_safari_version()
+  if safari_version != 2**31 - 1:
+    print(f'Safari version: {safari_version}')
+  else:
+    print(f'Not detected as a Safari browser')
+
+  emsdk_dir = os.getenv('EMSDK')
+  print(f'\nEMSDK: "{emsdk_dir}"')
+  if emsdk_dir:
+    if os.path.isdir(os.path.join(emsdk_dir, '.git')):
+      print_repository_info(emsdk_dir, 'Emsdk')
+
+  print('==================== End of Test Setup =====================')
+
+
 def main():
   options = parse_args()
 
@@ -605,6 +694,9 @@ def main():
   utils.delete_file(common.flaky_tests_log_filename)
 
   browser_common.init(options.force_browser_process_termination)
+
+  if options.log_test_environment:
+    log_test_environment()
 
   def prepend_default(arg):
     if arg.startswith('test_'):
