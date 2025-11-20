@@ -57,8 +57,8 @@ class SingleLineTestResult(ColorTextResult):
     self.stream.write(' ... ')
     self.stream.flush()
 
-    # Calcualte the remaining terminal width available for the _write_status
-    # message. This will never be lower that `self.max_status_msg`
+    # Calculate the remaining terminal width available for the _write_status
+    # message. This will never be lower than `self.max_status_msg`
     self.status_limit = total_width - prefix_len - len(desc) - len(' ... ')
 
   def printErrors(self):
