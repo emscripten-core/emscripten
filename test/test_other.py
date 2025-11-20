@@ -7840,6 +7840,24 @@ addToLibrary({
         seen = self.run_js('test.js', engine=engine, assert_returncode=NON_ZERO)
         self.assertContained('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node', seen)
 
+  @requires_node
+  @with_env_modify({'FOO': 'bar'})
+  @parameterized({
+    '': ([], '|(null)|\n'),
+    'rawfs': (['-sNODERAWFS'], '|bar|\n'),
+    'rawfs_no_env': (['-sNODERAWFS', '-sNODE_HOST_ENV=0'], '|(null)|\n'),
+    'enabled': (['-sNODE_HOST_ENV'], '|bar|\n'),
+  })
+  def test_node_host_env(self, args, expected):
+     create_file('src.c', r'''
+      #include <stdlib.h>
+      #include <stdio.h>
+      int main() {
+        printf("|%s|\n", getenv("FOO"));
+      }
+    ''')
+     self.do_runf('src.c', expected, cflags=args)
+
   def test_override_c_environ(self):
     create_file('pre.js', r'''
       Module.preRun = () => { ENV.hello = '💩 world'; ENV.LANG = undefined; }
@@ -13644,11 +13662,19 @@ int main() {
     # c++20 for ends_with().
     self.do_other_test('test_fs_icase.cpp', cflags=['-sCASE_INSENSITIVE_FS', '-std=c++20'])
 
+  @crossplatform
   @with_all_fs
   def test_std_filesystem(self):
     if (WINDOWS or MACOS) and self.get_setting('NODERAWFS'):
       self.skipTest('Rawfs directory removal works only on Linux')
     self.do_other_test('test_std_filesystem.cpp')
+
+  @crossplatform
+  @with_all_fs
+  def test_std_filesystem_tempdir(self):
+    if (WINDOWS or MACOS) and self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
+      self.skipTest('NODERAWFS + WASMFS is does not allow access to arbitrary paths')
+    self.do_other_test('test_std_filesystem_tempdir.cpp', cflags=['-g'])
 
   def test_strict_js_closure(self):
     self.do_runf('hello_world.c', cflags=['-sSTRICT_JS', '-Werror=closure', '--closure=1', '-O3'])

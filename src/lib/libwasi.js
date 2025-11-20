@@ -67,6 +67,12 @@ var WasiLibrary = {
         '_': getExecutableName()
 #endif
       };
+#if ENVIRONMENT_MAY_BE_NODE && NODE_HOST_ENV
+      if (ENVIRONMENT_IS_NODE) {
+        // When NODE_HOST_ENV is enabled we mirror then entire host environment.
+        env = process.env;
+      }
+#endif
       // Apply the user-provided values, if any.
       for (var x in ENV) {
         // x is a key in ENV; if ENV[x] is undefined, that means it was
