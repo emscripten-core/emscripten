@@ -22,7 +22,7 @@ int main() {
   emscripten_fetch_attr_init(&attr);
   strcpy(attr.requestMethod, "GET");
   attr.attributes = EMSCRIPTEN_FETCH_REPLACE | EMSCRIPTEN_FETCH_LOAD_TO_MEMORY;
-#ifdef SYNC
+#ifndef SKIP_SYNC_FETCH_TESTS
   attr.attributes |= EMSCRIPTEN_FETCH_SYNCHRONOUS;
 #endif
   attr.requestHeaders = headers;
@@ -47,7 +47,7 @@ int main() {
     printf("Data checksum: %02X\n", checksum);
     assert(checksum == 0x08);
     emscripten_fetch_close(fetch);
-#ifndef SYNC
+#ifdef SKIP_SYNC_FETCH_TESTS
     exit(0);
 #endif
 
@@ -69,7 +69,7 @@ int main() {
   };
 
   emscripten_fetch_t *fetch = emscripten_fetch(&attr, "gears.png");
-#ifdef SYNC
+#ifndef SKIP_SYNC_FETCH_TESTS
   if (result != 0) {
     result = 2;
     printf("emscripten_fetch() failed to run synchronously!\n");

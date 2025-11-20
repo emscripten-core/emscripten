@@ -50,7 +50,7 @@ from common import (
 )
 from decorators import (
   also_with_asan,
-  also_with_fetch_backend,
+  also_with_fetch_streaming,
   also_with_minimal_runtime,
   also_with_wasm2js,
   also_with_wasmfs,
@@ -4409,7 +4409,7 @@ Module["preRun"] = () => {
 
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   @also_with_wasm2js
-  @also_with_fetch_backend
+  @also_with_fetch_streaming
   def test_fetch_to_memory(self):
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
     self.btest_exit('fetch/test_fetch_to_memory.cpp',
@@ -4422,7 +4422,7 @@ Module["preRun"] = () => {
                       cflags=['-sFETCH_DEBUG', '-sFETCH'] + arg)
 
   @also_with_wasm2js
-  @also_with_fetch_backend
+  @also_with_fetch_streaming
   @parameterized({
     '': ([],),
     'pthread_exit': (['-DDO_PTHREAD_EXIT'],),
@@ -4434,14 +4434,14 @@ Module["preRun"] = () => {
                     cflags=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'])
 
   @also_with_wasm2js
-  @also_with_fetch_backend
+  @also_with_fetch_streaming
   def test_fetch_to_indexdb(self):
     shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_to_indexeddb.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
   @also_with_wasm2js
-  @also_with_fetch_backend
+  @also_with_fetch_streaming
   def test_fetch_cached_xhr(self):
     shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_cached_xhr.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH'])
@@ -4449,7 +4449,7 @@ Module["preRun"] = () => {
   # Tests that response headers get set on emscripten_fetch_t values.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
-  @also_with_fetch_backend
+  @also_with_fetch_streaming
   @parameterized({
     '': ([],),
     'sync': (['-DSYNC'],),
@@ -4474,12 +4474,12 @@ Module["preRun"] = () => {
         f.write(s)
     self.btest_exit('fetch/test_fetch_stream_file.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH', '-sFETCH_STREAMING'])
 
-  @also_with_fetch_backend
+  @also_with_fetch_streaming
   def test_fetch_headers_received(self):
     create_file('myfile.dat', 'hello world\n')
     self.btest_exit('fetch/test_fetch_headers_received.c', cflags=['-sFETCH_DEBUG', '-sFETCH'])
 
-  @also_with_fetch_backend
+  @also_with_fetch_streaming
   def test_fetch_xhr_abort(self):
     shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_xhr_abort.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH'])
@@ -4514,16 +4514,16 @@ Module["preRun"] = () => {
     shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_idb_delete.cpp', cflags=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
-  @also_with_fetch_backend
+  @also_with_fetch_streaming
   def test_fetch_post(self):
     self.btest_exit('fetch/test_fetch_post.c', cflags=['-sFETCH'])
 
-  @also_with_fetch_backend
+  @also_with_fetch_streaming
   def test_fetch_progress(self):
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_progress.c', cflags=['-sFETCH'])
 
-  @also_with_fetch_backend
+  @also_with_fetch_streaming
   def test_fetch_to_memory_async(self):
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_to_memory_async.c', cflags=['-sFETCH'])
@@ -4538,16 +4538,15 @@ Module["preRun"] = () => {
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_stream_async.c', cflags=['-sFETCH', '-sFETCH_STREAMING'])
 
-  @also_with_fetch_backend
+  @also_with_fetch_streaming
   def test_fetch_persist(self):
     create_file('myfile.dat', 'hello world\n')
     self.btest_exit('fetch/test_fetch_persist.c', cflags=['-sFETCH'])
 
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
-  @also_with_fetch_backend
+  @also_with_fetch_streaming
   def test_fetch_redirect(self):
-    args = ['-DSKIP_SYNC_TESTS'] if self.get_setting('FETCH_STREAMING') else []
-    self.btest_exit('fetch/test_fetch_redirect.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD', f'-DSERVER="{self.SERVER_URL}"'] + args)
+    self.btest_exit('fetch/test_fetch_redirect.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD', f'-DSERVER="{self.SERVER_URL}"'])
 
   @parameterized({
     '': ([],),

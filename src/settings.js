@@ -1824,7 +1824,7 @@ var FETCH_DEBUG = false;
 var FETCH = false;
 
 // Enables streaming fetched data when the fetch attribute
-// EMSCRIPTEN_FETCH_STREAM_DATA is used. For streaming requests, the DOM fetch
+// EMSCRIPTEN_FETCH_STREAM_DATA is used. For streaming requests, the DOM Fetch
 // API is used otherwise XMLHttpRequest is used.
 // Both modes generally support the same API, but there are some key
 // differences:
@@ -1833,7 +1833,7 @@ var FETCH = false;
 //  - XHR supports overriding mime types
 //  - Fetch supports streaming data using the 'onprogress' callback
 //
-// If set to a value of 2, only the DOM fetch backend will be used. This should
+// If set to a value of 2, only the DOM Fetch backend will be used. This should
 // only be used in testing.
 // [link]
 var FETCH_STREAMING = 0;
