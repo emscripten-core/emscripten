@@ -10,37 +10,36 @@
  * This implementation is specifically tailored to only handle 'arraybuffer'
  * responses.
  */
+// TODO Use a regular class name when #5840 is fixed.
 var FetchXHR = class {
-  constructor() {
-    // --- Public XHR Properties ---
+  // --- Public XHR Properties ---
 
-    // Event Handlers
-    this.onload = null;
-    this.onerror = null;
-    this.onprogress = null;
-    this.onreadystatechange = null;
-    this.ontimeout = null;
+  // Event Handlers
+  onload = null;
+  onerror = null;
+  onprogress = null;
+  onreadystatechange = null;
+  ontimeout = null;
 
-    // Request Configuration
-    this.responseType = 'arraybuffer';
-    this.withCredentials = false;
-    this.timeout = 0; // Standard XHR timeout property
+  // Request Configuration
+  responseType = 'arraybuffer';
+  withCredentials = false;
+  timeout = 0; // Standard XHR timeout property
 
-    // Response / State Properties
-    this.readyState = 0; // 0: UNSENT
-    this.response = null;
-    this.responseURL = '';
-    this.status = 0;
-    this.statusText = '';
+  // Response / State Properties
+  readyState = 0; // 0: UNSENT
+  response = null;
+  responseURL = '';
+  status = 0;
+  statusText = '';
 
-    // --- Internal Properties ---
-    this._method = '';
-    this._url = '';
-    this._headers = {};
-    this._abortController = null;
-    this._aborted = false;
-    this._responseHeaders = null;
-  }
+  // --- Internal Properties ---
+  _method = '';
+  _url = '';
+  _headers = {};
+  _abortController = null;
+  _aborted = false;
+  _responseHeaders = null;
 
   // --- Private state management ---
   _changeReadyState(state) {
