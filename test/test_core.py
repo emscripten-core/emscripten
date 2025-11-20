@@ -11,7 +11,6 @@ import random
 import re
 import shutil
 import time
-import unittest
 from functools import wraps
 from pathlib import Path
 
@@ -2391,7 +2390,6 @@ Success!''')
   def test_varargs_multi(self):
     self.do_core_test('test_varargs_multi.c')
 
-  @unittest.skip('clang cannot compile this code with that target yet')
   def test_varargs_byval(self):
     src = r'''
       #include <stdio.h>
