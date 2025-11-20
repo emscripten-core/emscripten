@@ -1494,6 +1494,7 @@ void Getaddrinfo(int client_fd, uint8_t *data, uint64_t numBytes) {
   r->ret = ret;
   r->errno_ = errorCode;
   strncpy(r->ai_canonname, ai_canonname, MAX_NODE_LEN-1);
+  r->ai_canonname[MAX_NODE_LEN-1] = 0; // Null terminate output string if it truncated.
   r->addrCount = addrCount;
 
   struct addrinfo *ai = res;
