@@ -396,7 +396,6 @@ The following build options are not supported at the moment with Wasm Workers:
 
 - -sSINGLE_FILE
 - Dynamic linking (-sLINKABLE, -sMAIN_MODULE, -sSIDE_MODULE)
-- -sPROXY_TO_WORKER
 - -sPROXY_TO_PTHREAD
 
 Example Code

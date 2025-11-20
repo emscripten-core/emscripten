@@ -1683,31 +1683,6 @@ in a worker. See emscripten.h
 
 Default value: false
 
-.. _proxy_to_worker:
-
-PROXY_TO_WORKER
-===============
-
-If set to 1, we build the project into a js file that will run in a worker,
-and generate an html file that proxies input and output to/from it.
-
-.. note:: This setting is deprecated
-
-Default value: false
-
-.. _proxy_to_worker_filename:
-
-PROXY_TO_WORKER_FILENAME
-========================
-
-If set, the script file name the main thread loads.  Useful if your project
-doesn't run the main emscripten- generated script immediately but does some
-setup before
-
-.. note:: This setting is deprecated
-
-Default value: ''
-
 .. _proxy_to_pthread:
 
 PROXY_TO_PTHREAD
@@ -3431,8 +3406,6 @@ the these settings please open a bug (or reply to one of the existing bugs).
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
  - ``RELOCATABLE``:  under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
- - ``PROXY_TO_WORKER``: under consideration for removal (See https://github.com/emscripten-core/emscripten/issues/25440)
- - ``PROXY_TO_WORKER_FILENAME``: under consideration for removal (See https://github.com/emscripten-core/emscripten/issues/25440)
 
 .. _legacy-settings:
 
@@ -3518,3 +3491,4 @@ for backwards compatbility with older versions:
  - ``USE_OFFSET_COVERTER``: No longer supported, not needed with modern v8 versions (Valid values: [0])
  - ``ASYNCIFY_LAZY_LOAD_CODE``: No longer supported (Valid values: [0])
  - ``USE_WEBGPU``: No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py (Valid values: [0])
+ - ``PROXY_TO_WORKER``: No longer supported (Valid values: [0])
