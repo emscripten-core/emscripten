@@ -24,6 +24,8 @@ See docs/process.md for more on how version tagging works.
   `--proxy-to-worker` flag) was removed due to lack of usage.  If you were
   depending on this feature but missed the PSA, please let us know about your
   use case. (#25645, #25440)
+- The fetch library now supports streaming data requests when
+  `-sFETCH_STREAMING` is enabled.
 
 4.0.20 - 11/18/25
 -----------------
