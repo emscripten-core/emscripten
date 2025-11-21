@@ -18,9 +18,6 @@
 #if RELOCATABLE || MAIN_MODULE
 #error "dynamic linking is not supported with -sWASM_WORKERS"
 #endif
-#if PROXY_TO_WORKER
-#error "-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS"
-#endif
 #if WASM2JS && MODULARIZE
 #error "-sWASM=0 + -sMODULARIZE + -sWASM_WORKERS is not supported"
 #endif

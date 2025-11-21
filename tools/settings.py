@@ -60,8 +60,6 @@ PORTS_SETTINGS = {
 JS_ONLY_SETTINGS = {
     'DEFAULT_LIBRARY_FUNCS_TO_INCLUDE',
     'INCLUDE_FULL_LIBRARY',
-    'PROXY_TO_WORKER',
-    'PROXY_TO_WORKER_FILENAME',
     'BUILD_AS_WORKER',
     'STRICT_JS',
     'SMALL_XHR_CHUNKS',
@@ -118,8 +116,6 @@ DEPRECATED_SETTINGS = {
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
     'LINKABLE': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)',
     'RELOCATABLE': ' under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)',
-    'PROXY_TO_WORKER': 'under consideration for removal (See https://github.com/emscripten-core/emscripten/issues/25440)',
-    'PROXY_TO_WORKER_FILENAME': 'under consideration for removal (See https://github.com/emscripten-core/emscripten/issues/25440)',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
@@ -133,7 +129,6 @@ INCOMPATIBLE_SETTINGS = [
     ('MINIMAL_RUNTIME', 'RELOCATABLE', None),
     ('WASM2JS', 'MAIN_MODULE', 'wasm2js does not support dynamic linking'),
     ('WASM2JS', 'SIDE_MODULE', 'wasm2js does not support dynamic linking'),
-    ('MODULARIZE', 'PROXY_TO_WORKER', 'if you want to run in a worker with -sMODULARIZE, you likely want to do the worker side setup manually'),
     ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),
     ('EVAL_CTORS', 'WASM2JS', None),
     ('EVAL_CTORS', 'RELOCATABLE', 'movable segments'),
@@ -257,6 +252,7 @@ LEGACY_SETTINGS = [
     ['USE_OFFSET_COVERTER', [0], 'No longer supported, not needed with modern v8 versions'],
     ['ASYNCIFY_LAZY_LOAD_CODE', [0], 'No longer supported'],
     ['USE_WEBGPU', [0], 'No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py'],
+    ['PROXY_TO_WORKER', [0], 'No longer supported'],
 ]
 
 user_settings: Dict[str, str] = {}

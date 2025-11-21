@@ -3600,11 +3600,10 @@ More info: https://emscripten.org
 
   def test_embind_tsgen_worker_env(self):
     self.cflags += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
-    # Passing -sWASM_WORKERS or -sPROXY_TO_WORKER requires the 'worker' environment
+    # Passing -sWASM_WORKERS requires the 'worker' environment
     # at link time. Verify that TS binding generation still works in this case.
-    for flags in (['-sWASM_WORKERS'], ['-sPROXY_TO_WORKER', '-Wno-deprecated']):
-      self.emcc('other/embind_tsgen.cpp', flags)
-      self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+    self.emcc('other/embind_tsgen.cpp', ['-sWASM_WORKERS'])
+    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_dylink(self):
     create_file('side.h', r'''
@@ -7854,6 +7853,24 @@ addToLibrary({
         seen = self.run_js('test.js', engine=engine, assert_returncode=NON_ZERO)
         self.assertContained('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node', seen)
 
+  @requires_node
+  @with_env_modify({'FOO': 'bar'})
+  @parameterized({
+    '': ([], '|(null)|\n'),
+    'rawfs': (['-sNODERAWFS'], '|bar|\n'),
+    'rawfs_no_env': (['-sNODERAWFS', '-sNODE_HOST_ENV=0'], '|(null)|\n'),
+    'enabled': (['-sNODE_HOST_ENV'], '|bar|\n'),
+  })
+  def test_node_host_env(self, args, expected):
+     create_file('src.c', r'''
+      #include <stdlib.h>
+      #include <stdio.h>
+      int main() {
+        printf("|%s|\n", getenv("FOO"));
+      }
+    ''')
+     self.do_runf('src.c', expected, cflags=args)
+
   def test_override_c_environ(self):
     create_file('pre.js', r'''
       Module.preRun = () => { ENV.hello = '💩 world'; ENV.LANG = undefined; }
@@ -8007,9 +8024,7 @@ int main() {
   @crossplatform
   @parameterized({
     '': ([],),
-    'proxy_to_worker': (['--proxy-to-worker', '-Wno-deprecated'],),
     'single_file': (['-sSINGLE_FILE'],),
-    'proxy_to_worker_wasm2js': (['--proxy-to-worker', '-Wno-deprecated', '-sWASM=0'],),
   })
   def test_output_eol(self, params):
     for eol in ('windows', 'linux'):
@@ -12843,10 +12858,6 @@ void foo() {}
     self.cflags += ['-DEXPECTED_STACK_SIZE=1024', '-sDEFAULT_PTHREAD_STACK_SIZE=1024']
     self.do_other_test('test_default_pthread_stack_size.c')
 
-    # Same again but with a --proxy-to-worker
-    self.cflags += ['--proxy-to-worker', '-Wno-deprecated']
-    self.do_other_test('test_default_pthread_stack_size.c')
-
   def test_emscripten_set_immediate(self):
     self.do_runf('emscripten_set_immediate.c')
 
@@ -13423,8 +13434,6 @@ int main() {
   def test_wasm_worker_errors(self):
     expected = '-sSINGLE_FILE is not supported with -sWASM_WORKERS'
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sSINGLE_FILE'], expected)
-    expected = '-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS'
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sPROXY_TO_WORKER'], expected)
     expected = 'dynamic linking is not supported with -sWASM_WORKERS'
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sMAIN_MODULE'], expected)
 
@@ -13666,11 +13675,19 @@ int main() {
     # c++20 for ends_with().
     self.do_other_test('test_fs_icase.cpp', cflags=['-sCASE_INSENSITIVE_FS', '-std=c++20'])
 
+  @crossplatform
   @with_all_fs
   def test_std_filesystem(self):
     if (WINDOWS or MACOS) and self.get_setting('NODERAWFS'):
       self.skipTest('Rawfs directory removal works only on Linux')
     self.do_other_test('test_std_filesystem.cpp')
+
+  @crossplatform
+  @with_all_fs
+  def test_std_filesystem_tempdir(self):
+    if (WINDOWS or MACOS) and self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
+      self.skipTest('NODERAWFS + WASMFS is does not allow access to arbitrary paths')
+    self.do_other_test('test_std_filesystem_tempdir.cpp', cflags=['-g'])
 
   def test_strict_js_closure(self):
     self.do_runf('hello_world.c', cflags=['-sSTRICT_JS', '-Werror=closure', '--closure=1', '-O3'])
@@ -14233,13 +14250,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_standalone_whole_archive(self):
     self.cflags += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lstandalonewasm', '-Wl,--no-whole-archive']
     self.do_runf('hello_world.c')
-
-  @parameterized({
-    '':   ([],),
-    'single_file': (['-sSINGLE_FILE'],),
-  })
-  def test_proxy_to_worker(self, args):
-    self.do_runf('hello_world.c', cflags=['--proxy-to-worker', '-Wno-deprecated'] + args)
 
   @also_with_standalone_wasm(impure=True)
   def test_console_out(self):

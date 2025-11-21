@@ -1264,7 +1264,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
 
     # Certain configurations require the removeRunDependency/addRunDependency system.
-    if settings.LOAD_SOURCE_MAP or settings.PROXY_TO_WORKER or (settings.WASM_ASYNC_COMPILATION and not settings.MODULARIZE):
+    if settings.LOAD_SOURCE_MAP or (settings.WASM_ASYNC_COMPILATION and not settings.MODULARIZE):
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
 
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
@@ -1405,7 +1405,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # see https://github.com/emscripten-core/emscripten/issues/18723#issuecomment-1429236996
   if settings.MODULARIZE:
     default_setting('NODEJS_CATCH_REJECTION', 0)
-    default_setting('NODEJS_CATCH_EXIT', 0)
 
   if settings.POLYFILL:
     # Emscripten requires certain ES6+ constructs by default in library code
@@ -1519,7 +1518,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     diagnostics.warning('unused-command-line-argument', 'GLOBAL_BASE is not compatible with SIDE_MODULE')
 
-  if settings.PROXY_TO_WORKER or options.use_preload_plugins:
+  if options.use_preload_plugins:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
   if not settings.BOOTSTRAPPING_STRUCT_INFO:
@@ -1883,6 +1882,20 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
   if settings.PTHREADS:
     settings.REQUIRED_EXPORTS.append('_emscripten_tls_init')
+
+  if settings.NODERAWFS:
+    default_setting('NODE_HOST_ENV', 1)
+
+  if not settings.ENVIRONMENT_MAY_BE_NODE:
+    # Node-specific settings only make sense if ENVIRONMENT_MAY_BE_NODE
+    if settings.NODERAWFS:
+      diagnostics.warning('unused-command-line-argument', 'NODERAWFS ignored since `node` not in `ENVIRONMENT`')
+    if settings.NODE_CODE_CACHING:
+      diagnostics.warning('unused-command-line-argument', 'NODE_CODE_CACHING ignored since `node` not in `ENVIRONMENT`')
+    if settings.NODEJS_CATCH_EXIT:
+      diagnostics.warning('unused-command-line-argument', 'NODEJS_CATCH_EXIT ignored since `node` not in `ENVIRONMENT`')
+    if settings.NODEJS_CATCH_REJECTION and 'NODEJS_CATCH_REJECTION' in user_settings:
+      diagnostics.warning('unused-command-line-argument', 'NODEJS_CATCH_REJECTION ignored since `node` not in `ENVIRONMENT`')
 
   settings.PRE_JS_FILES = options.pre_js
   settings.POST_JS_FILES = options.post_js
@@ -2268,8 +2281,6 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   if options.oformat == OFormat.HTML:
     generate_html(target, options, js_target, target_basename,
                   wasm_target)
-  elif settings.PROXY_TO_WORKER:
-    generate_worker_js(target, options, js_target, target_basename)
 
   if settings.SPLIT_MODULE:
     do_split_module(wasm_target, options)
@@ -2505,8 +2516,7 @@ def module_export_name_substitution():
   save_intermediate('module_export_name_substitution')
 
 
-def generate_traditional_runtime_html(target, options, js_target, target_basename,
-                                      wasm_target):
+def generate_traditional_runtime_html(target, options, js_target, wasm_target):
   script = ScriptSource()
 
   if settings.EXPORT_NAME != 'Module' and options.shell_path == DEFAULT_SHELL_HTML:
@@ -2517,23 +2527,14 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   shell = building.read_and_preprocess(options.shell_path)
   if '{{{ SCRIPT }}}' not in shell:
     exit_with_error('HTML shell must contain {{{ SCRIPT }}}, see src/shell.html for an example')
-  base_js_target = os.path.basename(js_target)
-
-  if settings.PROXY_TO_WORKER:
-    proxy_worker_filename = f'"{settings.PROXY_TO_WORKER_FILENAME or target_basename}.js"'
-    script.inline = worker_js_script(proxy_worker_filename)
-  else:
-    # Normal code generation path
-    script.src = base_js_target
 
   if settings.SINGLE_FILE:
     js_contents = script.inline or ''
-    if script.src:
-      js_contents += read_file(js_target)
-    script.src = None
+    js_contents += read_file(js_target)
     script.inline = read_file(js_target)
     delete_file(js_target)
   else:
+    script.src = os.path.basename(js_target)
     if not settings.WASM_ASYNC_COMPILATION:
       # We need to load the wasm file before anything else, since it
       # has be synchronously ready.
@@ -2663,35 +2664,12 @@ def generate_html(target, options, js_target, target_basename, wasm_target):
   if settings.MINIMAL_RUNTIME:
     generate_minimal_runtime_html(target, options, js_target, target_basename)
   else:
-    generate_traditional_runtime_html(target, options, js_target, target_basename, wasm_target)
+    generate_traditional_runtime_html(target, options, js_target, wasm_target)
 
   if settings.MINIFY_HTML and (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1):
     minify_html(target)
 
   utils.convert_line_endings_in_file(target, options.output_eol)
-
-
-def generate_worker_js(target, options, js_target, target_basename):
-  if settings.SINGLE_FILE:
-    # compiler output is embedded as base64 data URL
-    proxy_worker_filename = get_subresource_location_js(js_target)
-  else:
-    # compiler output goes in .worker.js file
-    move_file(js_target, utils.replace_suffix(js_target, get_worker_js_suffix()))
-    worker_target_basename = target_basename + '.worker'
-    proxy_worker_filename = f'"{settings.PROXY_TO_WORKER_FILENAME or worker_target_basename}.js"'
-
-  target_contents = worker_js_script(proxy_worker_filename)
-  utils.write_file(target, target_contents, options.output_eol)
-
-
-def worker_js_script(proxy_worker_filename_enclosed_in_quotes):
-  web_gl_client_src = read_file(utils.path_from_root('src/webGLClient.js'))
-  proxy_client_src = building.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
-  if not settings.SINGLE_FILE and not os.path.dirname(proxy_worker_filename_enclosed_in_quotes[1:-1]):
-    proxy_worker_filename_enclosed_in_quotes = f'"./{proxy_worker_filename_enclosed_in_quotes[1:-1]}"'
-  proxy_client_src = do_replace(proxy_client_src, '"<<< filename >>>"', proxy_worker_filename_enclosed_in_quotes)
-  return web_gl_client_src + '\n' + proxy_client_src
 
 
 def find_library(lib, lib_dirs):

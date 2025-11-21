@@ -50,6 +50,7 @@ from common import (
 )
 from decorators import (
   also_with_asan,
+  also_with_fetch_streaming,
   also_with_minimal_runtime,
   also_with_wasm2js,
   also_with_wasmfs,
@@ -69,7 +70,7 @@ from decorators import (
 
 from tools import ports, shared
 from tools.feature_matrix import Feature
-from tools.shared import DEBUG, EMCC, FILE_PACKAGER, PIPE
+from tools.shared import EMCC, FILE_PACKAGER, PIPE
 from tools.utils import WINDOWS, delete_dir
 
 
@@ -125,33 +126,6 @@ def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
         s.wfile.write(data[start:end + 1])
 
   return HTTPServer(('localhost', 11111), ChunkedServerHandler)
-
-
-def also_with_proxying(f):
-  assert callable(f)
-
-  @wraps(f)
-  def metafunc(self, proxied, *args, **kwargs):
-    if DEBUG:
-      print('parameterize:proxied=%d' % proxied)
-    if proxied:
-      self.proxy_to_worker()
-    f(self, *args, **kwargs)
-
-  parameterize(metafunc, {'': (False,),
-                          'proxied': (True,)})
-  return metafunc
-
-
-def proxied(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, *args, **kwargs):
-    self.proxy_to_worker()
-    return f(self, *args, **kwargs)
-
-  return decorated
 
 
 # This is similar to @core.no_wasmfs, but it disable WasmFS and runs the test
@@ -281,9 +255,6 @@ class browser(BrowserCore):
       print('Running the browser tests. Make sure the browser allows popups from localhost.')
       print()
 
-  def proxy_to_worker(self):
-    self.cflags += ['--proxy-to-worker', '-Wno-deprecated', '-sGL_TESTING']
-
   def require_jspi(self):
     if not is_chrome():
       self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
@@ -324,14 +295,8 @@ window.close = () => {
     assert 'expected' not in kwargs
     expected = [str(i) for i in range(reference_slack + 1)]
     self.make_reftest(reference)
-    if '--proxy-to-worker' in self.cflags:
-      assert 'post_build' not in kwargs
-      kwargs['post_build'] = self.post_manual_reftest
-      create_file('fakereftest.js', 'var reftestUnblock = () => {}; var reftestBlock = () => {};')
-      kwargs['cflags'] += ['--pre-js', 'fakereftest.js']
-    else:
-      kwargs.setdefault('cflags', [])
-      kwargs['cflags'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
+    kwargs.setdefault('cflags', [])
+    kwargs['cflags'] += ['--pre-js', 'reftest.js', '-sGL_TESTING']
 
     try:
       return self.btest(filename, expected=expected, *args, **kwargs)
@@ -901,7 +866,6 @@ window.close = () => {
     ])
 
   @also_with_wasmfs
-  @also_with_proxying
   def test_sdl_image_prepare(self):
     # load an image file, get pixel data.
     shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
@@ -966,21 +930,6 @@ window.close = () => {
   def test_sdl_canvas(self, args):
     self.btest_exit('test_sdl_canvas.c', cflags=['-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'] + args)
 
-  @proxied
-  def test_sdl_canvas_proxy(self):
-    create_file('data.txt', 'datum')
-    self.reftest('test_sdl_canvas_proxy.c', 'test_sdl_canvas_proxy.png', cflags=['--proxy-to-worker', '-Wno-deprecated', '--preload-file', 'data.txt', '-lSDL', '-lGL'])
-
-  @requires_graphics_hardware
-  @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
-  def test_glgears_proxy_jstarget(self):
-    # test .js target with --proxy-worker; emits 2 js files, client and worker
-    self.compile_btest('hello_world_gles_proxy.c', ['-o', 'test.js', '--proxy-to-worker', '-Wno-deprecated', '-sGL_TESTING', '-lGL', '-lglut'])
-    shell_with_script('shell_minimal.html', 'test.html', '<script src="test.js"></script>')
-    self.make_reftest(test_file('gears.png'))
-    self.post_manual_reftest()
-    self.run_browser('test.html', '/report_result?0')
-
   def test_sdl_canvas_alpha(self):
     # N.B. On Linux with Intel integrated graphics cards, this test needs Firefox 49 or newer.
     # See https://github.com/emscripten-core/emscripten/issues/4069.
@@ -1023,62 +972,8 @@ window.close = () => {
     ''' % (settimeout_start, settimeout_end, settimeout_start, settimeout_end))
     self.btest_exit('test_sdl_key.c', 223092870, cflags=defines + async_ + ['--pre-js', test_file('browser/fake_events.js'), '--pre-js=pre.js', '-lSDL', '-lGL'])
 
-  def test_sdl_key_proxy(self):
-    shutil.copy(test_file('browser/fake_events.js'), '.')
-    create_file('pre.js', '''
-      Module.postRun = () => {
-        function doOne() {
-          Module._one();
-          setTimeout(doOne, 1000/60);
-        }
-        setTimeout(doOne, 1000/60);
-      }
-    ''')
-
-    def post():
-      html = read_file('test.html')
-      html = html.replace('</body>', '''
-<script src='fake_events.js'></script>
-<script>
-simulateKeyDown(18);simulateKeyDown(38);simulateKeyUp(38);simulateKeyUp(18); // alt, up
-simulateKeyDown(17);simulateKeyDown(16);simulateKeyDown(40);simulateKeyUp(40);simulateKeyUp(16);simulateKeyUp(17); // ctrl, shift, down
-simulateKeyDown(37);simulateKeyUp(37); // left
-simulateKeyDown(39);simulateKeyUp(39); // right
-simulateKeyDown(65);simulateKeyUp(65); // a
-simulateKeyDown(66);simulateKeyUp(66); // b
-simulateKeyDown(100);simulateKeyUp(100); // trigger the end
-</script>
-</body>''')
-      create_file('test.html', html)
-
-    self.btest_exit('test_sdl_key_proxy.c', 223092870, cflags=['--proxy-to-worker', '-Wno-deprecated', '--pre-js', 'pre.js', '-lSDL', '-lGL', '-sRUNTIME_DEBUG'], post_build=post)
-
   def test_canvas_focus(self):
     self.btest_exit('test_canvas_focus.c', cflags=['--pre-js', test_file('browser/fake_events.js')])
-
-  def test_keydown_preventdefault_proxy(self):
-    def post():
-      html = read_file('test.html')
-      html = html.replace('</body>', '''
-<script src='fake_events.js'></script>
-<script>
-// Send 'A'.  The corresonding keypress event will not be prevented.
-simulateKeyDown(65, 'a', 'KeyA');
-simulateKeyUp(65, 'a', 'KeyA');
-
-// Send backspace.  The corresonding keypress event *will* be prevented due to proxyClient.js.
-simulateKeyDown(8, 'Backspace', 'Backspace');
-simulateKeyUp(8, 'Backspace', 'Backspace');
-
-simulateKeyDown(100, undefined, 'Numpad4');
-simulateKeyUp(100, undefined, 'Numpad4');
-</script>
-</body>''')
-
-      create_file('test.html', html)
-
-    shutil.copy(test_file('browser/fake_events.js'), '.')
-    self.btest_exit('browser/test_keydown_preventdefault_proxy.c', 300, cflags=['--proxy-to-worker', '-Wno-deprecated'], post_build=post)
 
   def test_sdl_text(self):
     create_file('pre.js', '''
@@ -1526,10 +1421,6 @@ simulateKeyUp(100, undefined, 'Numpad4');
     secret = str(time.time())
     self.btest('test_idbstore_sync.c', '8', cflags=['-sSTRICT', '-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '--closure=1', f'-sASYNCIFY={asyncify}'])
 
-  def test_idbstore_sync_worker(self):
-    secret = str(time.time())
-    self.btest('test_idbstore_sync_worker.c', expected='0', cflags=['-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '-g2', '--proxy-to-worker', '-Wno-deprecated', '-sASYNCIFY'])
-
   def test_force_exit(self):
     self.btest_exit('test_force_exit.c')
 
@@ -1783,13 +1674,8 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.test_glgears(['-pthread'])
 
   @requires_graphics_hardware
-  @parameterized({
-    '': ([],),
-    # Enabling FULL_ES3 also enables ES2 automatically
-    'proxy': (['--proxy-to-worker', '-Wno-deprecated'],),
-  })
-  def test_glgears_long(self, args):
-    args += ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
+  def test_glgears_long(self):
+    args = ['-DHAVE_BUILTIN_SINCOS', '-DLONGTEST', '-lGL', '-lglut', '-DANIMATE']
     self.btest('hello_world_gles.c', expected='0', cflags=args)
 
   @requires_graphics_hardware
@@ -1962,7 +1848,6 @@ simulateKeyUp(100, undefined, 'Numpad4');
 
   @parameterized({
     '': ([],),
-    'worker': (['--proxy-to-worker', '-Wno-deprecated'],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'strict': (['-sSTRICT'],),
   })
@@ -2001,7 +1886,6 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.reftest('test_sdl_glshader.c', 'test_sdl_glshader.png', cflags=['-O2', '--closure=1', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
   @requires_graphics_hardware
-  @also_with_proxying
   def test_sdl_glshader2(self):
     self.btest_exit('test_sdl_glshader2.c', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sGL_ENABLE_GET_PROC_ADDRESS'])
 
@@ -2036,7 +1920,6 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.reftest('gl_ps_strides.c', 'gl_ps_strides.png', cflags=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'])
 
   @requires_graphics_hardware
-  @also_with_proxying
   def test_gl_ps_worker(self):
     shutil.copy(test_file('screenshot.png'), '.')
     self.reftest('gl_ps_worker.c', 'gl_ps.png', cflags=['--preload-file', 'screenshot.png', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '--use-preload-plugins'], reference_slack=1)
@@ -2060,7 +1943,6 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.reftest('gl_vertex_buffer.c', 'gl_vertex_buffer.png', cflags=['-sGL_UNSAFE_OPTS=0', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'], reference_slack=1)
 
   @requires_graphics_hardware
-  @also_with_proxying
   def test_gles2_uniform_arrays(self):
     self.btest_exit('test_gles2_uniform_arrays.c', cflags=['-sGL_ASSERTIONS', '-lGL', '-lSDL'])
 
@@ -2092,25 +1974,19 @@ simulateKeyUp(100, undefined, 'Numpad4');
   def test_cubegeom_pre3(self):
     self.reftest('third_party/cubegeom/cubegeom_pre3.c', 'third_party/cubegeom/cubegeom_pre2.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
-  @also_with_proxying
   @parameterized({
     '': ([],),
     'tracing': (['-sTRACE_WEBGL_CALLS'],),
   })
   @requires_graphics_hardware
   def test_cubegeom(self, args):
-    if '--proxy-to-worker' in self.cflags and args:
-      # proxy only in the simple, normal case (we can't trace GL calls when proxied)
-      self.skipTest('tracing + proxying not supported')
     self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', cflags=['-O2', '-g', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'] + args)
 
   @requires_graphics_hardware
-  @also_with_proxying
   def test_cubegeom_regal(self):
     self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', cflags=['-O2', '-g', '-DUSE_REGAL', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'])
 
   @requires_graphics_hardware
-  @also_with_proxying
   def test_cubegeom_regal_pthread(self):
     self.reftest('third_party/cubegeom/cubegeom.c', 'third_party/cubegeom/cubegeom.png', cflags=['-O2', '-g', '-pthread', '-DUSE_REGAL', '-pthread', '-sUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'])
 
@@ -2146,12 +2022,10 @@ void *getBindBuffer() {
     self.reftest('third_party/cubegeom/cubegeom_color.c', 'third_party/cubegeom/cubegeom_color.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  @also_with_proxying
   def test_cubegeom_normal(self):
     self.reftest('third_party/cubegeom/cubegeom_normal.c', 'third_party/cubegeom/cubegeom_normal.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  @also_with_proxying
   def test_cubegeom_normal_dap(self): # draw is given a direct pointer to clientside memory, no element array buffer
     self.reftest('third_party/cubegeom/cubegeom_normal_dap.c', 'third_party/cubegeom/cubegeom_normal.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
@@ -2177,7 +2051,6 @@ void *getBindBuffer() {
     self.reftest('third_party/cubegeom/cubegeom_mt.c', 'third_party/cubegeom/cubegeom_mt.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL']) # multitexture
 
   @requires_graphics_hardware
-  @also_with_proxying
   def test_cubegeom_color2(self):
     self.reftest('third_party/cubegeom/cubegeom_color2.c', 'third_party/cubegeom/cubegeom_color2.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
@@ -2223,7 +2096,6 @@ void *getBindBuffer() {
     self.reftest('third_party/cubegeom/cubegeom_u4fv_2.c', 'third_party/cubegeom/cubegeom_u4fv_2.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  @also_with_proxying
   def test_cube_explosion(self):
     self.reftest('cube_explosion.c', 'cube_explosion.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
@@ -3121,11 +2993,8 @@ Module["preRun"] = () => {
     self.btest_exit('test_sdl2_threads.c', cflags=['-pthread', '-sUSE_SDL=2', '-sPROXY_TO_PTHREAD'])
 
   @requires_graphics_hardware
-  @also_with_proxying
   def test_sdl2_glshader(self):
-    if '--proxy-to-worker' not in self.cflags:
-      # closure build current fails on proxying
-      self.cflags += ['--closure=1', '-g1']
+    self.cflags += ['--closure=1', '-g1']
     self.reftest('test_sdl2_glshader.c', 'test_sdl_glshader.png', cflags=['-sUSE_SDL=2', '-sLEGACY_GL_EMULATION'])
 
   @requires_graphics_hardware
@@ -3176,12 +3045,6 @@ Module["preRun"] = () => {
     # load an image file, get pixel data.
     shutil.copy(test_file('screenshot.jpg'), 'screenshot.not')
     self.reftest('test_sdl2_image_prepare_data.c', 'screenshot.jpg', cflags=['--preload-file', 'screenshot.not', '-sUSE_SDL=2', '-sUSE_SDL_IMAGE=2'])
-
-  @requires_graphics_hardware
-  @proxied
-  def test_sdl2_canvas_proxy(self):
-    create_file('data.txt', 'datum')
-    self.reftest('test_sdl2_canvas_proxy.c', 'test_sdl2_canvas.png', cflags=['-sUSE_SDL=2', '--proxy-to-worker', '-Wno-deprecated', '--preload-file', 'data.txt'])
 
   def test_sdl2_pumpevents(self):
     # key events should be detected using SDL_PumpEvents
@@ -3253,11 +3116,6 @@ Module["preRun"] = () => {
 
   def test_sdl2_canvas_write(self):
     self.btest_exit('test_sdl2_canvas_write.c', cflags=['-sUSE_SDL=2'])
-
-  @requires_graphics_hardware
-  @proxied
-  def test_sdl2_gl_frames_swap(self):
-    self.reftest('test_sdl2_gl_frames_swap.c', 'test_sdl2_gl_frames_swap.png', cflags=['--proxy-to-worker', '-Wno-deprecated', '-sUSE_SDL=2'])
 
   @requires_graphics_hardware
   def test_sdl2_ttf(self):
@@ -3592,7 +3450,6 @@ Module["preRun"] = () => {
     self.btest('webidl/test.cpp', '1', cflags=['--post-js', 'glue.js', '-I.', '-DBROWSER'] + args)
 
   @no_wasm64('https://github.com/llvm/llvm-project/issues/98778')
-  @also_with_proxying
   def test_dylink(self):
     create_file('main.c', r'''
       #include <assert.h>
@@ -4240,25 +4097,6 @@ Module["preRun"] = () => {
   def test_sigalrm(self):
     self.btest_exit('test_sigalrm.c', cflags=['-O3'])
 
-  def test_canvas_style_proxy(self):
-    self.btest('canvas_style_proxy.c', expected='1', cflags=['--proxy-to-worker', '-Wno-deprecated', '--shell-file', test_file('canvas_style_proxy_shell.html'), '--pre-js', test_file('canvas_style_proxy_pre.js')])
-
-  def test_canvas_size_proxy(self):
-    self.btest('canvas_size_proxy.c', expected='0', cflags=['--proxy-to-worker', '-Wno-deprecated'])
-
-  def test_custom_messages_proxy(self):
-    self.btest('custom_messages_proxy.c', expected='1', cflags=['--proxy-to-worker', '-Wno-deprecated', '--shell-file', test_file('custom_messages_proxy_shell.html'), '--post-js', test_file('custom_messages_proxy_postjs.js')])
-
-  @parameterized({
-    '': ([],),
-    'O1': (['-O1'],),
-    'O2': (['-O2'],),
-  })
-  def test_vanilla_html_when_proxying(self, args):
-    self.compile_btest('browser_test_hello_world.c', ['-o', 'test.js', '--proxy-to-worker', '-Wno-deprecated'] + args)
-    create_file('test.html', '<script src="test.js"></script>')
-    self.run_browser('test.html', '/report_result?0')
-
   @parameterized({
     '': ([], 1),
     'O1': (['-O1'], 1),
@@ -4571,6 +4409,7 @@ Module["preRun"] = () => {
 
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   @also_with_wasm2js
+  @also_with_fetch_streaming
   def test_fetch_to_memory(self):
     # Test error reporting in the negative case when the file URL doesn't exist. (http 404)
     self.btest_exit('fetch/test_fetch_to_memory.cpp',
@@ -4583,6 +4422,7 @@ Module["preRun"] = () => {
                       cflags=['-sFETCH_DEBUG', '-sFETCH'] + arg)
 
   @also_with_wasm2js
+  @also_with_fetch_streaming
   @parameterized({
     '': ([],),
     'pthread_exit': (['-DDO_PTHREAD_EXIT'],),
@@ -4594,12 +4434,14 @@ Module["preRun"] = () => {
                     cflags=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sFETCH_DEBUG', '-sFETCH', '-DFILE_DOES_NOT_EXIST'])
 
   @also_with_wasm2js
+  @also_with_fetch_streaming
   def test_fetch_to_indexdb(self):
     shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_to_indexeddb.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH'])
 
   # Tests emscripten_fetch() usage to persist an XHR into IndexedDB and subsequently load up from there.
   @also_with_wasm2js
+  @also_with_fetch_streaming
   def test_fetch_cached_xhr(self):
     shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_cached_xhr.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH'])
@@ -4607,13 +4449,20 @@ Module["preRun"] = () => {
   # Tests that response headers get set on emscripten_fetch_t values.
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
   @also_with_wasm2js
-  def test_fetch_response_headers(self):
+  @also_with_fetch_streaming
+  @parameterized({
+    '': ([],),
+    'sync': (['-DSYNC'],),
+  })
+  def test_fetch_response_headers(self, args):
+    if self.get_setting('FETCH_STREAMING') and '-DSYNC' in args:
+      self.skipTest('Fetch backend does not support sync fetch.')
     shutil.copy(test_file('gears.png'), '.')
-    self.btest_exit('fetch/test_fetch_response_headers.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.btest_exit('fetch/test_fetch_response_headers.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'] + args)
 
-  # Test emscripten_fetch() usage to stream a XHR in to memory without storing the full file in memory
+  # Test emscripten_fetch() usage to stream a fetch in to memory without storing the full file in memory
+  # Streaming only works the fetch backend.
   @also_with_wasm2js
-  @disabled('moz-chunked-arraybuffer was firefox-only and has been removed')
   def test_fetch_stream_file(self):
     # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
     # won't fully fit in the heap. This verifies that streaming works properly.
@@ -4623,12 +4472,14 @@ Module["preRun"] = () => {
     with open('largefile.txt', 'w') as f:
       for _ in range(1024):
         f.write(s)
-    self.btest_exit('fetch/test_fetch_stream_file.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH'])
+    self.btest_exit('fetch/test_fetch_stream_file.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH', '-sFETCH_STREAMING'])
 
+  @also_with_fetch_streaming
   def test_fetch_headers_received(self):
     create_file('myfile.dat', 'hello world\n')
     self.btest_exit('fetch/test_fetch_headers_received.c', cflags=['-sFETCH_DEBUG', '-sFETCH'])
 
+  @also_with_fetch_streaming
   def test_fetch_xhr_abort(self):
     shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_xhr_abort.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH'])
@@ -4663,13 +4514,16 @@ Module["preRun"] = () => {
     shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_idb_delete.cpp', cflags=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
+  @also_with_fetch_streaming
   def test_fetch_post(self):
     self.btest_exit('fetch/test_fetch_post.c', cflags=['-sFETCH'])
 
+  @also_with_fetch_streaming
   def test_fetch_progress(self):
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_progress.c', cflags=['-sFETCH'])
 
+  @also_with_fetch_streaming
   def test_fetch_to_memory_async(self):
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_to_memory_async.c', cflags=['-sFETCH'])
@@ -4679,16 +4533,18 @@ Module["preRun"] = () => {
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_to_memory_sync.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
 
-  @disabled('moz-chunked-arraybuffer was firefox-only and has been removed')
+  # Streaming only works the fetch backend.
   def test_fetch_stream_async(self):
     create_file('myfile.dat', 'hello world\n' * 1000)
-    self.btest_exit('fetch/test_fetch_stream_async.c', cflags=['-sFETCH'])
+    self.btest_exit('fetch/test_fetch_stream_async.c', cflags=['-sFETCH', '-sFETCH_STREAMING'])
 
+  @also_with_fetch_streaming
   def test_fetch_persist(self):
     create_file('myfile.dat', 'hello world\n')
     self.btest_exit('fetch/test_fetch_persist.c', cflags=['-sFETCH'])
 
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/16868')
+  @also_with_fetch_streaming
   def test_fetch_redirect(self):
     self.btest_exit('fetch/test_fetch_redirect.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD', f'-DSERVER="{self.SERVER_URL}"'])
 
@@ -4859,7 +4715,6 @@ Module["preRun"] = () => {
     self.run_browser('hello_thread_with_loader.html', '/report_result?exit:0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
-  @also_with_proxying
   def test_single_file_html(self):
     self.btest('single_file_static_initializer.cpp', '19', cflags=['-sSINGLE_FILE'])
     self.assertExists('test.html')
@@ -5007,7 +4862,6 @@ Module["preRun"] = () => {
   def test_emscripten_request_animation_frame_loop(self):
     self.btest_exit('emscripten_request_animation_frame_loop.c')
 
-  @also_with_proxying
   def test_request_animation_frame(self):
     self.btest_exit('test_request_animation_frame.c')
 
@@ -5671,9 +5525,11 @@ Module["preRun"] = () => {
     'es6': (['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')], 9999),
   })
   def test_cross_origin(self, args, port):
-    # Verfies that the emscripten-generted JS and Wasm can be hosted on a different origin.
-    # This test create a second HTTP server running a different port that servers files from `subdir`.
-    # The main html is the servers from the normal 8888 server while the JS and Wasm are hosted
+    if '-sEXPORT_ES6' in args and browser_should_skip_feature('EMTEST_LACKS_ES6_WORKERS', Feature.WORKER_ES6_MODULES):
+      self.skipTest('This test requires a browser with ES6 Module Workers support')
+    # Verifies that the emscripten-generated JS and Wasm can be hosted on a different origin.
+    # This test creates a second HTTP server running on a different port that serves files from `subdir`.
+    # The main html is served from the normal port 8888 server while the JS and Wasm are hosted
     # on the port specified above.
     os.mkdir('subdir')
     create_file('subdir/foo.txt', 'hello')

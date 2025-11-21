@@ -144,67 +144,6 @@ var LibraryIDBStore = {
       wakeUp();
     });
   }),
-  // extra worker methods - proxied
-  emscripten_idb_load_blob__async: true,
-  emscripten_idb_load_blob: (db, id, pblob, perror) => Asyncify.handleSleep((wakeUp) => {
-#if ASSERTIONS
-    assert(!IDBStore.pending);
-#endif
-    IDBStore.pending = (msg) => {
-      IDBStore.pending = null;
-      var blob = msg.blob;
-      if (!blob) {
-        {{{ makeSetValue('perror', 0, '1', 'i32') }}};
-        wakeUp();
-        return;
-      }
-#if ASSERTIONS
-      assert(blob instanceof Blob);
-#endif
-      var blobId = IDBStore.blobs.length;
-      IDBStore.blobs.push(blob);
-      {{{ makeSetValue('pblob', 0, 'blobId', 'i32') }}};
-      wakeUp();
-    };
-    postMessage({
-      target: 'IDBStore',
-      method: 'loadBlob',
-      db: UTF8ToString(db),
-      id: UTF8ToString(id)
-    });
-  }),
-  emscripten_idb_store_blob__async: true,
-  emscripten_idb_store_blob: (db, id, ptr, num, perror) => Asyncify.handleSleep((wakeUp) => {
-#if ASSERTIONS
-    assert(!IDBStore.pending);
-#endif
-    IDBStore.pending = (msg) => {
-      IDBStore.pending = null;
-      {{{ makeSetValue('perror', 0, '!!msg.error', 'i32') }}};
-      wakeUp();
-    };
-    postMessage({
-      target: 'IDBStore',
-      method: 'storeBlob',
-      db: UTF8ToString(db),
-      id: UTF8ToString(id),
-      blob: new Blob([new Uint8Array(HEAPU8.subarray(ptr, ptr+num))])
-    });
-  }),
-  emscripten_idb_read_from_blob: (blobId, start, num, buffer) => {
-    var blob = IDBStore.blobs[blobId];
-    if (!blob) return 1;
-    if (start+num > blob.size) return 2;
-    var byteArray = (new FileReaderSync()).readAsArrayBuffer(blob.slice(start, start+num));
-    HEAPU8.set(new Uint8Array(byteArray), buffer);
-    return 0;
-  },
-  emscripten_idb_free_blob: (blobId) => {
-#if ASSERTIONS
-    assert(IDBStore.blobs[blobId]);
-#endif
-    IDBStore.blobs[blobId] = null;
-  },
 #else
   emscripten_idb_load: (db, id, pbuffer, pnum, perror) => {
     abort('Please compile your program with async support in order to use synchronous operations like emscripten_idb_load, etc.');

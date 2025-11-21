@@ -485,7 +485,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_arg('--memory-init-file'):
       exit_with_error('--memory-init-file is no longer supported')
     elif check_flag('--proxy-to-worker'):
-      settings.PROXY_TO_WORKER = 1
+      exit_with_error('--proxy-to-worker is no longer supported')
     elif check_arg('--valid-abspath'):
       options.valid_abspaths.append(consume_arg())
     elif check_flag('--separate-asm'):
