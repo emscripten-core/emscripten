@@ -74,6 +74,12 @@ Atomics.load = function() {};
 Atomics.store = function() {};
 
 /**
+ * @param {number=} maxWaitMilliseconds
+ * @suppress {duplicate, checkTypes}
+ */
+function LE_ATOMICS_WAITASYNC(i32a, index, value, maxWaitMilliseconds) {};
+
+/**
  * @const
  * @suppress {duplicate, checkTypes}
  */
