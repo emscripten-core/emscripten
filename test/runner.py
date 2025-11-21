@@ -47,7 +47,7 @@ from color_runner import ColorTextRunner
 from common import errlog
 from single_line_runner import SingleLineTestRunner
 
-from tools import colored_logger, config, shared, utils
+from tools import building, colored_logger, config, shared, utils
 
 logger = logging.getLogger("runner")
 
@@ -568,10 +568,9 @@ def cleanup_emscripten_temp():
 
 
 def print_repository_info(directory, repository_name):
-  import subprocess
-  current_commit = subprocess.run(['git', 'log', '-n1'], cwd=directory, stdout=subprocess.PIPE, text=True).stdout.strip()
+  current_commit = utils.run_process(['git', 'show', '--no-patch'], cwd=directory, stdout=subprocess.PIPE, text=True).stdout.strip()
   print(f'\n{repository_name} {current_commit}\n')
-  local_changes = subprocess.run(['git', 'diff'], cwd=directory, stdout=subprocess.PIPE, text=True).stdout.strip()
+  local_changes = utils.run_process(['git', 'diff'], cwd=directory, stdout=subprocess.PIPE, text=True).stdout.strip()
   if local_changes:
     print(f'\n{local_changes}\n')
 
@@ -584,25 +583,25 @@ def log_test_environment():
   print(f'Python: "{sys.executable}". Version: {sys.version}')
   print(f'Emscripten test runner path: "{os.path.realpath(__file__)}"')
 
-  if os.path.isdir(os.path.join(config.EMSCRIPTEN_ROOT, '.git')):
-    print(f'\nEmscripten repository: "{config.EMSCRIPTEN_ROOT}"')
+  if os.path.isdir(os.path.join(__rootpath__, '.git')):
+    print(f'\nEmscripten repository: "{__rootpath__}"')
 
-  emscripten_version = os.path.realpath(os.path.join(config.EMSCRIPTEN_ROOT, 'emscripten-version.txt'))
+  emscripten_version = utils.path_from_root('emscripten-version.txt')
   if os.path.isfile(emscripten_version):
-    print(f'emscripten-version.txt: {utils.read_file(emscripten_version).strip()}')
+    print(f'emscripten-version.txt: {utils.EMSCRIPTEN_VERSION}')
 
-  if os.path.isdir(os.path.join(config.EMSCRIPTEN_ROOT, '.git')):
-    print_repository_info(config.EMSCRIPTEN_ROOT, 'Emscripten')
+  if os.path.isdir(os.path.join(__rootpath__, '.git')):
+    print_repository_info(__rootpath__, 'Emscripten')
 
   print(f'EM_CONFIG: "{config.EM_CONFIG}"')
   if os.path.isfile(config.EM_CONFIG):
     print(f'\n{utils.read_file(config.EM_CONFIG).strip()}\n')
 
-  node_js_version = subprocess.run(config.NODE_JS + ['--version'], stdout=subprocess.PIPE, text=True).stdout.strip()
+  node_js_version = utils.run_process(config.NODE_JS + ['--version'], stdout=subprocess.PIPE, text=True).stdout.strip()
   print(f'NODE_JS: {config.NODE_JS}. Version: {node_js_version}')
 
   print(f'BINARYEN_ROOT: {config.BINARYEN_ROOT}')
-  wasm_opt_version = subprocess.run([os.path.join(config.BINARYEN_ROOT, 'bin', 'wasm-opt.exe'), '--version'], stdout=subprocess.PIPE, text=True).stdout.strip()
+  wasm_opt_version = building.get_binaryen_version(building.get_binaryen_bin()).strip()
   print(f'wasm-opt version: {wasm_opt_version}')
 
   binaryen_git_dir = config.BINARYEN_ROOT
@@ -631,20 +630,22 @@ def log_test_environment():
     print(f'LLVM git directory: "{llvm_git_root}"')
     print_repository_info(llvm_git_root, 'LLVM')
 
-  clang_version = subprocess.run([shared.CLANG_CC, '--version'], stdout=subprocess.PIPE, text=True).stdout.strip()
+  clang_version = utils.run_process([shared.CLANG_CC, '--version'], stdout=subprocess.PIPE, text=True).stdout.strip()
   print(f'Clang: "{shared.CLANG_CC}"\n{clang_version}\n')
 
   print(f'EMTEST_BROWSER: {browser_common.EMTEST_BROWSER}')
-  firefox_version = browser_common.get_firefox_version()
-  if firefox_version != 2**31 - 1:
-    print(f'Firefox version: {firefox_version}')
+  if browser_common.is_firefox():
+    print(f'Firefox version: {browser_common.get_firefox_version()}')
   else:
     print('Not detected as a Firefox browser')
-  safari_version = browser_common.get_safari_version()
-  if safari_version != 2**31 - 1:
-    print(f'Safari version: {safari_version}')
+  if browser_common.is_safari():
+    print(f'Safari version: {browser_common.get_safari_version()}')
   else:
     print('Not detected as a Safari browser')
+  if browser_common.is_chrome():
+    print(f'Browser is Chrome.')
+  else:
+    print('Not detected as a Chrome browser')
 
   emsdk_dir = os.getenv('EMSDK')
   print(f'\nEMSDK: "{emsdk_dir}"')
