@@ -4033,19 +4033,35 @@ caught outer int: 123
     old_settings = dict(self.settings_mods)
     self.clear_setting('MODULARIZE')
     self.clear_setting('MAIN_MODULE')
-    self.set_setting('SIDE_MODULE')
+    self.clear_setting('SIDE_MODULE')
     so_file = os.path.join(so_dir, so_name)
+
+    # Using -shared + -sFAKE_DYLIBS should be the same as `-sSIDE_MODULE`
+    flags = ['-sSIDE_MODULE']
     if isinstance(side, list):
       # side is just a library
-      self.run_process([EMCC] + side + self.get_cflags() + ['-o', so_file])
+      self.run_process([EMCC] + side + self.get_cflags() + flags + ['-o', so_file])
     else:
-      out_file = self.build(side, output_suffix='.so')
+      out_file = self.build(side, output_suffix='.so', cflags=flags)
       shutil.move(out_file, so_file)
+
+    shutil.move(so_file, so_file + '.orig')
+
+    # Verify that building with -sSIDE_MODULE is essentailly the same as building with `-shared -fPIC -sFAKE_DYLIBS=0`.
+    flags = ['-shared', '-fPIC', '-sFAKE_DYLIBS=0']
+    if isinstance(side, list):
+      # side is just a library
+      self.run_process([EMCC] + side + self.get_cflags() + flags + ['-o', so_file])
+    else:
+      out_file = self.build(side, output_suffix='.so', cflags=flags)
+      shutil.move(out_file, so_file)
+
+    self.assertEqual(read_binary(so_file), read_binary(so_file + '.orig'))
+    os.remove(so_file + '.orig')
 
     # main settings
     self.settings_mods = old_settings
     self.set_setting('MAIN_MODULE', main_module)
-    self.clear_setting('SIDE_MODULE')
     self.cflags += main_cflags
     self.cflags.append(so_file)
 

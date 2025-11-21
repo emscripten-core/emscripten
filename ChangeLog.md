@@ -30,6 +30,12 @@ See docs/process.md for more on how version tagging works.
   variables to the generated program, when running under Node. This setting is
   enabled by default when `-sNODERAWFS` is used but can also be controlled
   separately. (#18820)
+- A new `-sFAKE_DYLIBS` setting was added.  When enabled you get the current
+  emscripten behavior of the `-shared` flag, which is to produce regular object
+  files instead of actual shared shared libraries (side modules).  Because this
+  setting is enabled by default this doesn't change the default behavior of the
+  compiler. If you want to experiment with real shared libraries you can
+  explicitly disable this setting. (#25826)
 
 4.0.20 - 11/18/25
 -----------------

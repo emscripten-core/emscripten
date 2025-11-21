@@ -3424,6 +3424,19 @@ indirectly using `importScripts`
 
 Default value: false
 
+.. _fake_dylibs:
+
+FAKE_DYLIBS
+===========
+
+This setting changes the behaviour of the ``-shared`` flag.  The default
+setting of ``true`` means the ``-shared`` flag actually produces a normal
+object file (i.e. ``ld -r``).  Setting this to false will cause ``-shared``
+to behave like :ref:`SIDE_MODULE` and produce and dynamically linked
+library.
+
+Default value: true
+
 .. _deprecated-settings:
 
 ===================

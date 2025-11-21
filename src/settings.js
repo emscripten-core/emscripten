@@ -2240,3 +2240,10 @@ var WASM_JS_TYPES = false;
 // CROSS_ORIGIN uses an inline worker to instead load the worker script
 // indirectly using `importScripts`
 var CROSS_ORIGIN = false;
+
+// This setting changes the behaviour of the ``-shared`` flag.  The default
+// setting of ``true`` means the ``-shared`` flag actually produces a normal
+// object file (i.e. ``ld -r``).  Setting this to false will cause ``-shared``
+// to behave like :ref:`SIDE_MODULE` and produce and dynamically linked
+// library.
+var FAKE_DYLIBS = true;
