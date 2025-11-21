@@ -643,7 +643,7 @@ def log_test_environment():
   else:
     print('Not detected as a Safari browser')
   if browser_common.is_chrome():
-    print(f'Browser is Chrome.')
+    print('Browser is Chrome.')
   else:
     print('Not detected as a Chrome browser')
 

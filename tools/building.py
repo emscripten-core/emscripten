@@ -1207,7 +1207,7 @@ def check_binaryen(bindir):
     version = output.split()[2]
     version = int(version)
   except (IndexError, ValueError):
-    exit_with_error('error parsing binaryen version (%s). Please check your binaryen installation (%s)' % (output, opt))
+    exit_with_error(f'error parsing binaryen version ({output}). Please check your binaryen installation')
 
   # Allow the expected version or the following one in order avoid needing to update both
   # emscripten and binaryen in lock step in emscripten-releases.
