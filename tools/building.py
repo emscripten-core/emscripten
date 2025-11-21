@@ -1189,21 +1189,25 @@ def get_binaryen_feature_flags():
     return ['--detect-features']
 
 
-def check_binaryen(bindir):
+def get_binaryen_version(bindir):
   opt = os.path.join(bindir, utils.exe_suffix('wasm-opt'))
   if not os.path.exists(opt):
     exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % opt)
   try:
-    output = run_process([opt, '--version'], stdout=PIPE).stdout
+    return run_process([opt, '--version'], stdout=PIPE).stdout
   except subprocess.CalledProcessError:
     exit_with_error('error running binaryen executable (%s). Please check your binaryen installation' % opt)
+
+
+def check_binaryen(bindir):
+  output = get_binaryen_version(bindir)
   if output:
     output = output.splitlines()[0]
   try:
     version = output.split()[2]
     version = int(version)
   except (IndexError, ValueError):
-    exit_with_error('error parsing binaryen version (%s). Please check your binaryen installation (%s)' % (output, opt))
+    exit_with_error(f'error parsing binaryen version ({output}). Please check your binaryen installation')
 
   # Allow the expected version or the following one in order avoid needing to update both
   # emscripten and binaryen in lock step in emscripten-releases.
