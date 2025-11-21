@@ -568,9 +568,9 @@ def cleanup_emscripten_temp():
 
 
 def print_repository_info(directory, repository_name):
-  current_commit = utils.run_process(['git', 'show', '--no-patch'], cwd=directory, stdout=subprocess.PIPE, text=True).stdout.strip()
+  current_commit = utils.run_process(['git', 'show', '--no-patch'], cwd=directory, stdout=subprocess.PIPE).stdout.strip()
   print(f'\n{repository_name} {current_commit}\n')
-  local_changes = utils.run_process(['git', 'diff'], cwd=directory, stdout=subprocess.PIPE, text=True).stdout.strip()
+  local_changes = utils.run_process(['git', 'diff'], cwd=directory, stdout=subprocess.PIPE).stdout.strip()
   if local_changes:
     print(f'\n{local_changes}\n')
 
@@ -583,7 +583,7 @@ def log_test_environment():
   print(f'Python: "{sys.executable}". Version: {sys.version}')
   print(f'Emscripten test runner path: "{os.path.realpath(__file__)}"')
 
-  if os.path.isdir(os.path.join(__rootpath__, '.git')):
+  if os.path.isdir(utils.path_from_root('.git')):
     print(f'\nEmscripten repository: "{__rootpath__}"')
 
   emscripten_version = utils.path_from_root('emscripten-version.txt')
@@ -597,7 +597,7 @@ def log_test_environment():
   if os.path.isfile(config.EM_CONFIG):
     print(f'\n{utils.read_file(config.EM_CONFIG).strip()}\n')
 
-  node_js_version = utils.run_process(config.NODE_JS + ['--version'], stdout=subprocess.PIPE, text=True).stdout.strip()
+  node_js_version = utils.run_process(config.NODE_JS + ['--version'], stdout=subprocess.PIPE).stdout.strip()
   print(f'NODE_JS: {config.NODE_JS}. Version: {node_js_version}')
 
   print(f'BINARYEN_ROOT: {config.BINARYEN_ROOT}')
@@ -630,7 +630,7 @@ def log_test_environment():
     print(f'LLVM git directory: "{llvm_git_root}"')
     print_repository_info(llvm_git_root, 'LLVM')
 
-  clang_version = utils.run_process([shared.CLANG_CC, '--version'], stdout=subprocess.PIPE, text=True).stdout.strip()
+  clang_version = utils.run_process([shared.CLANG_CC, '--version'], stdout=subprocess.PIPE).stdout.strip()
   print(f'Clang: "{shared.CLANG_CC}"\n{clang_version}\n')
 
   print(f'EMTEST_BROWSER: {browser_common.EMTEST_BROWSER}')
@@ -699,7 +699,7 @@ def main():
 
   browser_common.init(options.force_browser_process_termination)
 
-  if options.log_test_environment:
+  if options.log_test_environment or os.getenv('CI'):
     log_test_environment()
 
   def prepend_default(arg):
