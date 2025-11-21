@@ -326,7 +326,7 @@ var LibraryHTML5 = {
   // (that will let !canvas map to the canvas held in Module.canvas).
   $specialHTMLTargets__docs: '/** @type {Object} */',
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL || PTHREADS
-  $specialHTMLTargets: "[0, typeof document != 'undefined' ? document : 0, typeof window != 'undefined' ? window : 0]",
+  $specialHTMLTargets: "[0, globalThis.document ?? 0, globalThis.window ?? 0]",
 #else
   $specialHTMLTargets: "[0, document, window]",
 #endif
@@ -345,7 +345,7 @@ var LibraryHTML5 = {
   $findEventTarget: (target) => {
     target = maybeCStringToJsString(target);
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE
-    var domElement = specialHTMLTargets[target] || (typeof document != 'undefined' ? document.querySelector(target) : null);
+    var domElement = specialHTMLTargets[target] || globalThis.document?.querySelector(target);
 #else
     var domElement = specialHTMLTargets[target] || document.querySelector(target);
 #endif
@@ -376,7 +376,7 @@ var LibraryHTML5 = {
      || specialHTMLTargets[target]
     // If that is not found either, query via the regular DOM selector.
 #if PTHREADS
-     || (typeof document != 'undefined' && document.querySelector(target));
+     || globalThis.document?.querySelector(target);
 #else
      || document.querySelector(target);
 #endif
@@ -403,7 +403,7 @@ var LibraryHTML5 = {
     else if (target === '#canvas') return Module['canvas'];
     else if (typeof target == 'string')
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE
-      return (typeof document != 'undefined') ? document.getElementById(target) : null;
+      return globalThis.document?.getElementById(target);
 #else
       return document.getElementById(target);
 #endif
@@ -415,10 +415,10 @@ var LibraryHTML5 = {
   $findCanvasEventTarget: (target) => {
     if (typeof target == 'number') target = UTF8ToString(target);
     if (!target || target === '#canvas') {
-      if (typeof GL != 'undefined' && GL.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']; // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'], not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
+      if (globalThis.GL?.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']; // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'], not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
       return Module['canvas'];
     }
-    if (typeof GL != 'undefined' && GL.offscreenCanvases[target]) return GL.offscreenCanvases[target];
+    if (globalThis.GL?.offscreenCanvases[target]) return GL.offscreenCanvases[target];
     return findEventTarget(target);
   },
 #endif
@@ -2072,8 +2072,8 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'battery.charging', 'i8') }}};
   },
 
-  $hasBatteryAPI: () => typeof navigator != 'undefined' && navigator.getBattery,
   $hasBatteryAPI__internal: true,
+  $hasBatteryAPI: () => globalThis.navigator?.getBattery,
 
   $registerBatteryEventCallback__noleakcheck: true,
   $registerBatteryEventCallback__deps: ['$JSEvents', '$fillBatteryEventData', 'malloc'],
@@ -2388,7 +2388,7 @@ var LibraryHTML5 = {
   emscripten_get_device_pixel_ratio__proxy: 'sync',
   emscripten_get_device_pixel_ratio: () => {
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-    return (typeof devicePixelRatio == 'number' && devicePixelRatio) || 1.0;
+    return globalThis.devicePixelRatio ?? 1.0;
 #else // otherwise, on the web and in workers, things are simpler
     return devicePixelRatio;
 #endif
