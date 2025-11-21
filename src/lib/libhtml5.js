@@ -202,16 +202,19 @@ var LibraryHTML5 = {
     },
 
     removeSingleHandler(eventHandler) {
-      for (var [i, handler] of JSEvents.eventHandlers.entries()) {
+      let success = false;
+      for (let i = 0; i < JSEvents.eventHandlers.length; ++i) {
+        const handler = JSEvents.eventHandlers[i];
         if (handler.target === eventHandler.target
           && handler.eventTypeId === eventHandler.eventTypeId
           && handler.callbackfunc === eventHandler.callbackfunc
           && handler.userData === eventHandler.userData) {
-          JSEvents._removeHandler(i);
-          return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
+          // in some very rare cases (ex: Safari / fullscreen events), there is more than 1 handler (eventTypeString is different)
+          JSEvents._removeHandler(i--);
+          success = true;
         }
       }
-      return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
+      return success ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     },
 
 #if PTHREADS
