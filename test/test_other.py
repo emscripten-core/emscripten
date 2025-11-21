@@ -6773,11 +6773,22 @@ int main() {
 
   @also_with_wasmfs
   def test_dlopen_rpath(self):
+    create_file('hello_nested_dep.c', r'''
+    #include <stdio.h>
+
+    void hello_nested_dep() {
+      printf("Hello_nested_dep\n");
+      return;
+    }
+    ''')
     create_file('hello_dep.c', r'''
     #include <stdio.h>
 
+    void hello_nested_dep();
+
     void hello_dep() {
       printf("Hello_dep\n");
+      hello_nested_dep();
       return;
     }
     ''')
@@ -6804,7 +6815,7 @@ int main() {
       void (*f)();
       double (*f2)(double);
 
-      h = dlopen("/usr/lib/libhello.wasm", RTLD_NOW);
+      h = dlopen("/usr/lib/libhello.so", RTLD_NOW);
       assert(h);
       f = dlsym(h, "hello");
       assert(f);
@@ -6819,20 +6830,22 @@ int main() {
     os.mkdir('subdir')
 
     def _build(rpath_flag, expected, **kwds):
-      self.run_process([EMCC, '-o', 'subdir/libhello_dep.so', 'hello_dep.c', '-sSIDE_MODULE'])
-      self.run_process([EMCC, '-o', 'hello.wasm', 'hello.c', '-sSIDE_MODULE', 'subdir/libhello_dep.so'] + rpath_flag)
+      self.run_process([EMCC, '-o', 'subdir/libhello_nested_dep.so', 'hello_nested_dep.c', '-sSIDE_MODULE'])
+      self.run_process([EMCC, '-o', 'subdir/libhello_dep.so', 'hello_dep.c', '-sSIDE_MODULE', 'subdir/libhello_nested_dep.so'] + rpath_flag)
+      self.run_process([EMCC, '-o', 'hello.so', 'hello.c', '-sSIDE_MODULE', 'subdir/libhello_dep.so'] + rpath_flag)
       args = ['--profiling-funcs', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
-                        '--embed-file', 'hello.wasm@/usr/lib/libhello.wasm',
+                        '--embed-file', 'hello.so@/usr/lib/libhello.so',
                         '--embed-file', 'subdir/libhello_dep.so@/usr/lib/subdir/libhello_dep.so',
-                        'hello.wasm', '-sNO_AUTOLOAD_DYLIBS',
-                        '-L./subdir', '-lhello_dep']
+                        '--embed-file', 'subdir/libhello_nested_dep.so@/usr/lib/subdir/libhello_nested_dep.so',
+                        'hello.so', '-sNO_AUTOLOAD_DYLIBS',
+                        '-L./subdir', '-lhello_dep', '-lhello_nested_dep']
       self.do_runf('main.c', expected, cflags=args, **kwds)
 
     # case 1) without rpath: fail to locate the library
     _build([], r"no such file or directory, open '.*libhello_dep\.so'", regex=True, assert_returncode=NON_ZERO)
 
     # case 2) with rpath: success
-    _build(['-Wl,-rpath,$ORIGIN/subdir'], "Hello\nHello_dep\nOk\n")
+    _build(['-Wl,-rpath,$ORIGIN/subdir,-rpath,$ORIGIN'], "Hello\nHello_dep\nHello_nested_dep\nOk\n")
 
   def test_dlopen_bad_flags(self):
     create_file('main.c', r'''

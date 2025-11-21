@@ -977,13 +977,19 @@ var LibraryDylink = {
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
       return metadata.neededDynlibs
-        .reduce((chain, dynNeeded) => chain.then(() =>
-          loadDynamicLibrary(dynNeeded, flags, localScope)
-        ), Promise.resolve())
+        .reduce((chain, needed) => chain.then(() => {
+#if FILESYSTEM
+          needed = findLibraryFS(needed, flags.rpath) ?? needed;
+#endif
+          return loadDynamicLibrary(needed, flags, localScope);
+        }), Promise.resolve())
         .then(loadModule);
     }
 
     for (var needed of metadata.neededDynlibs) {
+#if FILESYSTEM
+      needed = findLibraryFS(needed, flags.rpath) ?? needed;
+#endif
       loadDynamicLibrary(needed, flags, localScope)
     }
     return loadModule();
