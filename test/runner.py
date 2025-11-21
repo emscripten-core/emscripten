@@ -568,7 +568,7 @@ def cleanup_emscripten_temp():
 
 
 def print_repository_info(directory, repository_name):
-  current_commit = utils.run_process(['git', 'show', '--no-patch'], cwd=directory, stdout=subprocess.PIPE).stdout.strip()
+  current_commit = utils.run_process(['git', 'log', '--abbrev-commit', '-n1', '--pretty=oneline'], cwd=directory, stdout=subprocess.PIPE).stdout.strip()
   print(f'\n{repository_name} {current_commit}\n')
   local_changes = utils.run_process(['git', 'diff'], cwd=directory, stdout=subprocess.PIPE).stdout.strip()
   if local_changes:
