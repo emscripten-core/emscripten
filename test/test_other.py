@@ -5821,12 +5821,12 @@ int main(int argc, char **argv) {
     self.assertContained(f'LANG=({expected_lang}|en_US.UTF-8|C.UTF-8)', output, regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
-    create_file('pre.js', 'var navigator = { language: "fr" };')
+    create_file('pre.js', 'delete global.navigator; globalThis.navigator = { language: "fr" };')
     output = self.do_runf('test_browser_language_detection.c', cflags=['--pre-js', 'pre.js'])
     self.assertContained('LANG=fr.UTF-8', output)
 
     # Accept-Language: fr-FR,fr;q=0.8,en-US;q=0.5,en;q=0.3
-    create_file('pre.js', r'var navigator = { language: "fr-FR" };')
+    create_file('pre.js', r'delete global.navigator; globalThis.navigator = { language: "fr-FR" };')
     self.cflags += ['--pre-js', 'pre.js']
     self.do_runf('test_browser_language_detection.c', 'LANG=fr_FR.UTF-8')
 
