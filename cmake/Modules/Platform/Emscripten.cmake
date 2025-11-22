@@ -34,22 +34,10 @@ set(CMAKE_SYSTEM_PROCESSOR ${EMSCRIPTEN_SYSTEM_PROCESSOR})
 # This feature is activated if a shared library project has the property
 # SOVERSION defined.
 set(CMAKE_SHARED_LIBRARY_SONAME_C_FLAG "-Wl,-soname,")
+set(CMAKE_DL_LIBS "")
 
-# In CMake, CMAKE_HOST_WIN32 is set when we are cross-compiling from Win32 to
-# Emscripten:
-# http://www.cmake.org/cmake/help/v2.8.12/cmake.html#variable:CMAKE_HOST_WIN32
-# The variable WIN32 is set only when the target arch that will run the code
-# will be WIN32, so unset WIN32 when cross-compiling.
-set(WIN32)
-
-# The same logic as above applies for APPLE and CMAKE_HOST_APPLE, so unset
-# APPLE.
-set(APPLE)
-
-# And for UNIX and CMAKE_HOST_UNIX. However, Emscripten is often able to mimic
-# being a Linux/Unix system, in which case a lot of existing CMakeLists.txt
-# files can be configured for Emscripten while assuming UNIX build, so this is
-# left enabled.
+# Emscripten has good enough Linux/Unix emualtion that it makes sense to set
+# UNIX by defaut.
 set(UNIX 1)
 
 # Do a no-op access on the CMAKE_TOOLCHAIN_FILE variable so that CMake will not
@@ -298,7 +286,7 @@ set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE_SUPPORTED True)
 # detect when building using Emscripten.
 set(EMSCRIPTEN 1 CACHE INTERNAL "If true, we are targeting Emscripten output.")
 
-# Hardwire support for cmake-2.8/Modules/CMakeBackwardsCompatibilityC.cmake
+# Hardwire support for CMake/Modules/CMakeBackwardCompatibilityC.cmake
 # without having CMake to try complex things to autodetect these:
 set(CMAKE_SKIP_COMPATIBILITY_TESTS 1)
 set(CMAKE_SIZEOF_CHAR 1)
@@ -317,7 +305,6 @@ set(CMAKE_HAVE_SYS_PRCTL_H 1)
 set(CMAKE_WORDS_BIGENDIAN 0)
 set(CMAKE_C_BYTE_ORDER "LITTLE_ENDIAN")
 set(CMAKE_CXX_BYTE_ORDER "LITTLE_ENDIAN")
-set(CMAKE_DL_LIBS)
 
 function(em_validate_asmjs_after_build target)
   message(WARNING "em_validate_asmjs_after_build no longer exists")
