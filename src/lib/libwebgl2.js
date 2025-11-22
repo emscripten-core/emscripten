@@ -386,7 +386,7 @@ var LibraryWebGL2 = {
     program = GL.programs[program];
     var vars = [];
     for (var i = 0; i < count; i++)
-      vars.push(UTF8ToString({{{ makeGetValue('varyings', 'i*4', 'i32') }}}));
+      vars.push(UTF8ToString({{{ makeGetValue('varyings', 'i*' + POINTER_SIZE, '*') }}}));
 
     GLctx.transformFeedbackVaryings(program, vars, bufferMode);
   },
@@ -519,7 +519,7 @@ var LibraryWebGL2 = {
     program = GL.programs[program];
     var names = [];
     for (var i = 0; i < uniformCount; i++)
-      names.push(UTF8ToString({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
+      names.push(UTF8ToString({{{ makeGetValue('uniformNames', 'i*' + POINTER_SIZE, '*') }}}));
 
     var result = GLctx.getUniformIndices(program, names);
     if (!result) return; // GL spec: If an error is generated, nothing is written out to uniformIndices.
