@@ -1261,7 +1261,7 @@ var LibraryPThread = {
     }
   }),
 
-  _emscripten_thread_mailbox_await__deps: ['$checkMailbox'],
+  _emscripten_thread_mailbox_await__deps: ['$checkMailbox', '$waitAsyncPolyfilled'],
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
     if (!Atomics.waitAsyncPolyfilled) {
       // Wait on the pthread's initial self-pointer field because it is easy and
