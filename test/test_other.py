@@ -92,21 +92,7 @@ from tools import building, cache, response_file, shared, utils, webassembly
 from tools.building import get_building_env
 from tools.link import binary_encode
 from tools.settings import settings
-from tools.shared import (
-  CLANG_CC,
-  CLANG_CXX,
-  EMAR,
-  EMCC,
-  EMRANLIB,
-  EMXX,
-  FILE_PACKAGER,
-  LLVM_AR,
-  LLVM_DWARFDUMP,
-  LLVM_DWP,
-  LLVM_NM,
-  WASM_LD,
-  config,
-)
+from tools.shared import config, paths
 from tools.system_libs import DETERMINISTIC_PREFIX
 from tools.utils import (
   MACOS,
@@ -125,6 +111,19 @@ empath_split = utils.bat_suffix(path_from_root('empath-split'))
 emprofile = utils.bat_suffix(path_from_root('emprofile'))
 emstrip = utils.bat_suffix(path_from_root('emstrip'))
 emsymbolizer = utils.bat_suffix(path_from_root('emsymbolizer'))
+
+CLANG_CC = paths.CLANG_CC
+CLANG_CXX = paths.CLANG_CXX
+EMAR = paths.EMAR
+EMCC = paths.EMCC
+EMRANLIB = paths.EMRANLIB
+EMXX = paths.EMXX
+FILE_PACKAGER = paths.FILE_PACKAGER
+LLVM_AR = paths.LLVM_AR
+LLVM_DWARFDUMP = paths.LLVM_DWARFDUMP
+LLVM_DWP = paths.LLVM_DWP
+LLVM_NM = paths.LLVM_NM
+WASM_LD = paths.WASM_LD
 
 
 def is_bitcode(filename):
@@ -6291,7 +6290,7 @@ print(os.environ.get('CROSS_COMPILE'))
 import os
 print(os.environ.get('NM'))
 ''')
-    check(EMCONFIGURE, [PYTHON, 'test.py'], expect=shared.LLVM_NM, fail=False)
+    check(EMCONFIGURE, [PYTHON, 'test.py'], expect=LLVM_NM, fail=False)
 
     create_file('test.c', 'int main() { return 0; }')
     os.mkdir('test_cache')
@@ -11532,12 +11531,12 @@ int main(void) {
 
     # Create a library with no archive map
     self.run_process([EMAR, 'crS', 'liba.a', 'foo.o', 'bar.o'])
-    output = self.run_process([shared.LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
+    output = self.run_process([LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
     self.assertNotContained('Archive map', output)
 
     # Add an archive map
     self.run_process([EMRANLIB, 'liba.a'])
-    output = self.run_process([shared.LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
+    output = self.run_process([LLVM_NM, '--print-armap', 'liba.a'], stdout=PIPE).stdout
     self.assertContained('Archive map', output)
 
   def test_pthread_stub(self):
@@ -12023,7 +12022,7 @@ int main () {
   def test_getrusage(self):
     self.do_other_test('test_getrusage.c')
 
-  @with_env_modify({'EMMAKEN_COMPILER': shared.CLANG_CC})
+  @with_env_modify({'EMMAKEN_COMPILER': CLANG_CC})
   def test_emmaken_compiler(self):
     self.assert_fail([EMCC, '-c', test_file('core/test_hello_world.c')], 'emcc: error: `EMMAKEN_COMPILER` is no longer supported')
 

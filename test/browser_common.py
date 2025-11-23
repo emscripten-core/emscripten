@@ -36,7 +36,7 @@ from common import (
 
 from tools import feature_matrix, shared, utils
 from tools.feature_matrix import UNSUPPORTED
-from tools.shared import DEBUG, EMCC, exit_with_error
+from tools.shared import DEBUG, exit_with_error, paths
 from tools.utils import MACOS, WINDOWS, memoize, path_from_root, read_binary
 
 logger = logging.getLogger('common')
@@ -878,7 +878,7 @@ class BrowserCore(RunnerCore):
       if reporting == Reporting.FULL:
         # If C reporting (i.e. the REPORT_RESULT macro) is required we
         # also include report_result.c and force-include report_result.h
-        self.run_process([EMCC, '-c', '-I' + TEST_ROOT,
+        self.run_process([paths.EMCC, '-c', '-I' + TEST_ROOT,
                           test_file('report_result.c')] + self.get_cflags(compile_only=True) + (['-fPIC'] if '-fPIC' in cflags else []))
         cflags += ['report_result.o', '-include', test_file('report_result.h')]
     if EMTEST_BROWSER == 'node':

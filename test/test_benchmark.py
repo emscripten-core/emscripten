@@ -25,7 +25,7 @@ from common import read_binary, read_file, test_file
 from decorators import needs_make
 
 from tools import building, utils
-from tools.shared import CLANG_CC, CLANG_CXX, EMCC, PIPE, config
+from tools.shared import PIPE, config, paths
 from tools.utils import run_process
 
 # standard arguments for timing:
@@ -232,7 +232,7 @@ class EmscriptenBenchmarker(Benchmarker):
     final = final.replace('.cpp', '')
     utils.delete_file(final)
     cmd = [
-      EMCC, filename,
+      paths.EMCC, filename,
       OPTIMIZATIONS,
       '-sINITIAL_MEMORY=256MB',
       '-sENVIRONMENT=node,shell',
@@ -361,7 +361,7 @@ benchmarkers: List[Benchmarker] = []
 aot_v8 = (config.V8_ENGINE if config.V8_ENGINE else []) + ['--no-liftoff']
 
 named_benchmarkers = {
-  'clang': NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
+  'clang': NativeBenchmarker('clang', [paths.CLANG_CC], [paths.CLANG_CXX]),
   'gcc': NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie']),
   'size': SizeBenchmarker('size'),
   'v8': EmscriptenBenchmarker('v8', aot_v8),
