@@ -247,7 +247,9 @@ void emscripten_fetch_free_unpacked_response_headers(char **unpackedHeaders) {
 static void fetch_free(emscripten_fetch_t* fetch) {
   emscripten_fetch_free(fetch->id);
   fetch->id = 0;
-  free((void*)fetch->data);
+  if (!(fetch->__attributes.attributes & EMSCRIPTEN_FETCH_STREAM_DATA)) {
+    free((void*)fetch->data);
+  }
   free((void*)fetch->url);
   free((void*)fetch->__attributes.destinationPath);
   free((void*)fetch->__attributes.userName);
