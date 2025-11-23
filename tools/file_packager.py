@@ -445,7 +445,7 @@ def main():  # ruff: ignore[complex-structure, too-many-branches, too-many-state
         data_files.append(DataFile(srcpath=srcpath, dstpath=dstpath, mode=mode,
                                    explicit_dst_path=uses_at_notation))
       else:
-        diagnostics.error(f'${arg} does not exist')
+        diagnostics.error(f'{arg} does not exist')
     elif leading == 'exclude':
       excluded_patterns.append(arg)
     else:
