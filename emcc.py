@@ -24,7 +24,6 @@ emcc can be influenced by a few environment variables:
 import logging
 import os
 import shlex
-import shutil
 import sys
 import tarfile
 from dataclasses import dataclass
@@ -49,8 +48,14 @@ from tools import (
 )
 from tools.cmdline import CLANG_FLAGS_WITH_ARGS, options
 from tools.response_file import substitute_response_files
-from tools.settings import COMPILE_TIME_SETTINGS, default_setting, settings, user_settings
-from tools.shared import DEBUG, DYLIB_EXTENSIONS, in_temp
+from tools.settings import (
+  COMPILE_TIME_SETTINGS,
+  DEPRECATED_SETTINGS,
+  default_setting,
+  settings,
+  user_settings,
+)
+from tools.shared import DEBUG
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import exit_with_error, get_file_suffix, read_file, unsuffixed_basename
 
@@ -285,6 +290,96 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
 
 @ToolchainProfiler.profile()
+def calculate_system_libraries():
+  if shared.run_via_emxx:
+    settings.DEFAULT_TO_CXX = True
+  settings.LINK_AS_CXX = (shared.run_via_emxx or settings.DEFAULT_TO_CXX) and not options.nostdlibxx
+
+  extra_files_to_link = []
+  # Link in ports and system libraries, if necessary
+  if not settings.SIDE_MODULE:
+    # Ports are always linked into the main module, never the side module.
+    extra_files_to_link += ports.get_libs(settings)
+  extra_files_to_link += system_libs.calculate()
+  return extra_files_to_link
+
+
+def get_linker_flags(orig_args, filtered_args):
+  args = ['-nostdlib', f'-fuse-ld={shared.EMLD}', f'-L{cache.get_lib_dir(absolute=True)}']
+
+  def add_emld_flag(arg):
+    # The linker arguments through to emld using either `-Wl,` or `-Xlinker`.
+    # The former does not support argument containing comma (since that is the separator).
+    if arg.startswith('-l'):
+      args.append(arg)
+    elif ',' in arg:
+      args.extend(['-Xlinker', arg])
+    else:
+      args.append('-Wl,' + arg)
+
+  for a in filtered_args:
+    # Most filtered_args are just normal clang flags, but a few of them are
+    # emscripten specfic flags for emld;
+    if a.startswith('--js-library'):
+      add_emld_flag(a)
+    else:
+      args.append(a)
+
+  if not options.output_file:
+    # Emscripten uses slightly diffent defaults for output filename.
+    # Clang always uses `a.out`.
+    autoconf = os.environ.get('EMMAKEN_JUST_CONFIGURE') or 'conftest.c' in options.input_files or 'conftest.cpp' in options.input_files
+    if not autoconf:
+      # Autoconf expects the executable output file to be called `a.out`, so just
+      # allow the clang default in that case.
+      if settings.SIDE_MODULE:
+        target = 'a.out.wasm'
+      else:
+        target = 'a.out.js'
+      args += ['-o', target]
+
+  linker_args = []
+
+  # Only add system libraries that have not already been specified.
+  # This avoids issues where the user explictly includes, for example, `-lGL`.
+  # This is not normally a problem except in the case of -sMAIN_MODULE=1 where
+  # the duplicate library would result in duplicate symbols.
+  for s in calculate_system_libraries():
+    if s.startswith('-l') and s in args:
+      continue
+    linker_args.append(s)
+
+  # For emscripten-specific linker flags such as `-s` flags we pass them to emld
+  # via `-Wl`.
+  linker_args += cmdline.options.consumed_args
+  for key, value in settings.external_dict(legacy=False, external_only=True).items():
+    if key == 'ALL_INCOMING_MODULE_JS_API' or key in DEPRECATED_SETTINGS or key in user_settings:
+      continue
+    if isinstance(value, list):
+      value = ','.join(value)
+    elif isinstance(value, bool):
+      if value:
+        value = '1'
+      else:
+        value = '0'
+    linker_args.append(f'-s{key}={value}')
+
+  # In addtion to public settings flag there are some compiler flags that also effect
+  # linking emld.  We need to pass these flags through the linker, because clang won't
+  # be default.
+  passthrough_prefixes = ['-O', '-g', '-flto', '-jsD', '-W']
+  passthrough_args = ['-fexceptions', '-fwasm-exceptions', '-pthread']
+  for arg in orig_args:
+    if arg in passthrough_args or any(arg.startswith(p) for p in passthrough_prefixes):
+      linker_args.append(arg)
+
+  for arg in linker_args:
+    add_emld_flag(arg)
+
+  return args
+
+
+@ToolchainProfiler.profile()
 def main(args):
   shared.run_via_emxx = os.path.basename(args[0]).startswith('em++')
 
@@ -366,17 +461,27 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
     link.run_post_link(options.input_files[0], linker_args)
     return 0
 
-  # Compile source code to object files
-  # When only compiling this function never returns.
-  linker_args = phase_compile_inputs(state, newargs)
+  system_libs.ensure_sysroot()
 
-  if state.mode == Mode.COMPILE_AND_LINK:
-    # Delay import of link.py to avoid processing this file when only compiling
-    from tools import link
-    return link.run(linker_args)
+  clang = get_clang()
+  if state.mode == Mode.COMPILE_ONLY:
+    asm_only = all(get_file_suffix(f) in ASSEMBLY_EXTENSIONS for f in options.input_files)
+    if asm_only:
+      cmd = [clang, *compile.get_target_flags(), *newargs]
+    else:
+      cmd = [clang, *compile.get_cflags(state.orig_args), *newargs]
   else:
-    logger.debug('stopping after compile phase')
-    return 0
+    settings.limit_settings(None)
+    from tools import link
+    link.linker_setup_minimal(options)
+    cmd = [clang, *compile.get_cflags(state.orig_args), *get_linker_flags(state.orig_args, newargs)]
+
+  if config.COMPILER_WRAPPER:
+    logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
+    cmd.insert(0, config.COMPILER_WRAPPER)
+
+  shared.exec_process(cmd)
+  assert False, 'exec_process should not return'
 
 
 def separate_linker_flags(newargs):
@@ -518,110 +623,6 @@ def phase_setup(state):
       settings.SUPPORT_LONGJMP = 'wasm'
     else:
       settings.SUPPORT_LONGJMP = 'emscripten'
-
-
-@ToolchainProfiler.profile_block('compile inputs')
-def phase_compile_inputs(state, newargs):
-  compiler = [get_clang()]
-
-  if config.COMPILER_WRAPPER:
-    logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)
-    compiler.insert(0, config.COMPILER_WRAPPER)
-
-  system_libs.ensure_sysroot()
-
-  def get_clang_command():
-    return compiler + compile.get_cflags(state.orig_args)
-
-  def get_clang_command_preprocessed():
-    return compiler + compile.get_clang_flags(state.orig_args)
-
-  def get_clang_command_asm():
-    return compiler + compile.get_target_flags()
-
-  if state.mode == Mode.COMPILE_ONLY:
-    if all(get_file_suffix(i) in ASSEMBLY_EXTENSIONS for i in options.input_files):
-      cmd = get_clang_command_asm() + newargs
-    else:
-      cmd = get_clang_command() + newargs
-    shared.exec_process(cmd)
-    assert False, 'exec_process should not return'
-
-  # In COMPILE_AND_LINK we need to compile source files too, but we also need to
-  # filter out the link flags
-  assert state.mode == Mode.COMPILE_AND_LINK
-  assert not options.dash_c
-  compile_args, linker_args = separate_linker_flags(newargs)
-
-  # Map of file basenames to how many times we've seen them.  We use this to generate
-  # unique `_NN` suffix for object files in cases when we are compiling multiple sources that
-  # have the same basename.  e.g. `foo/utils.c` and `bar/utils.c` on the same command line.
-  seen_names = {}
-
-  def uniquename(name):
-    if name not in seen_names:
-      # No suffix needed the first time we see given name.
-      seen_names[name] = 1
-      return name
-
-    unique_suffix = f'_{seen_names[name]}'
-    seen_names[name] += 1
-    base, ext = os.path.splitext(name)
-    return base + unique_suffix + ext
-
-  def get_object_filename(input_file):
-    objfile = unsuffixed_basename(input_file) + '.o'
-    return in_temp(uniquename(objfile))
-
-  def compile_source_file(input_file):
-    logger.debug(f'compiling source file: {input_file}')
-    output_file = get_object_filename(input_file)
-    ext = get_file_suffix(input_file)
-    if ext in ASSEMBLY_EXTENSIONS:
-      cmd = get_clang_command_asm()
-    elif ext in PREPROCESSED_EXTENSIONS:
-      cmd = get_clang_command_preprocessed()
-    else:
-      cmd = get_clang_command()
-      if ext == '.pcm':
-        cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
-    cmd += [*compile_args, '-c', input_file, '-o', output_file]
-    if options.requested_debug == '-gsplit-dwarf':
-      # When running in COMPILE_AND_LINK mode we compile objects to a temporary location
-      # but we want the `.dwo` file to be generated in the current working directory,
-      # like it is under clang.  We could avoid this hack if we use the clang driver
-      # to generate the temporary files, but that would also involve using the clang
-      # driver to perform linking which would be a big change.
-      cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
-      cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
-    shared.check_call(cmd)
-    if not shared.SKIP_SUBPROCS:
-      assert os.path.exists(output_file)
-      if options.save_temps:
-        shutil.copyfile(output_file, utils.unsuffixed_basename(input_file) + '.o')
-    return output_file
-
-  # Compile input files individually to temporary locations.
-  for arg in linker_args:
-    if not arg.is_file:
-      continue
-    input_file = arg.value
-    file_suffix = get_file_suffix(input_file)
-    if file_suffix in SOURCE_EXTENSIONS | ASSEMBLY_EXTENSIONS or (options.dash_c and file_suffix == '.bc'):
-      arg.value = compile_source_file(input_file)
-    elif file_suffix in DYLIB_EXTENSIONS:
-      logger.debug(f'using shared library: {input_file}')
-    elif utils.is_ar(input_file):
-      logger.debug(f'using static library: {input_file}')
-    elif options.input_language:
-      arg.value = compile_source_file(input_file)
-    elif input_file == '-':
-      exit_with_error('-E or -x required when input is from standard input')
-    else:
-      # Default to assuming the inputs are object files and pass them to the linker
-      pass
-
-  return linker_args
 
 
 if __name__ == '__main__':

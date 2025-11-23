@@ -47,6 +47,7 @@ em++
 emcc
 em-config
 emar
+emld
 embuilder
 emcmake
 emconfigure
@@ -72,6 +73,7 @@ em++.bat
 emcc.bat
 em-config.bat
 emar.bat
+emld.bat
 embuilder.bat
 emcmake.bat
 emconfigure.bat

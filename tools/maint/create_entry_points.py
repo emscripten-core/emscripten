@@ -28,6 +28,7 @@ em++
 
 entry_points = '''
 emar
+emld
 embuilder
 emcmake
 em-config

@@ -555,7 +555,7 @@ extraLibraryFuncs.push('jsfunc');
     self.do_runf('main.c', '42\n', cflags=['-L.', '-lfoo.js'])
 
     # If the library path is not included with `-L` we expect the command to fail
-    self.assert_fail([EMCC, 'main.c', '-lfoo.js'], 'emcc: error: unable to find library -lfoo.js')
+    self.assert_fail([EMCC, 'main.c', '-lfoo.js'], 'emld: error: unable to find library -lfoo.js')
 
   # Tests using the #warning directive in JS library files
   def test_jslib_warnings(self):
@@ -564,13 +564,13 @@ extraLibraryFuncs.push('jsfunc');
     self.assertNotContained('This warning should not be present!', proc.stderr)
     self.assertContained('warning: warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
     self.assertContained('warning: warning_in_js_libraries.js:7: #warning This is a second warning string!', proc.stderr)
-    self.assertContained('emcc: warning: warnings in JS library compilation [-Wjs-compiler]', proc.stderr)
+    self.assertContained('emld: warning: warnings in JS library compilation [-Wjs-compiler]', proc.stderr)
 
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'warning_in_js_libraries.js', '-Werror'])
     self.assertNotContained('This warning should not be present!', err)
     self.assertContained('warning: warning_in_js_libraries.js:5: #warning This is a warning string!', err)
     self.assertContained('warning: warning_in_js_libraries.js:7: #warning This is a second warning string!', err)
-    self.assertContained('emcc: error: warnings in JS library compilation [-Wjs-compiler] [-Werror]', err)
+    self.assertContained('emld: error: warnings in JS library compilation [-Wjs-compiler] [-Werror]', err)
 
   # Tests using the #error directive in JS library files
   def test_jslib_errors(self):
