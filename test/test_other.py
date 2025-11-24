@@ -13685,14 +13685,14 @@ int main() {
   @crossplatform
   @with_all_fs
   def test_std_filesystem(self):
-    if (WINDOWS or MACOS) and self.get_setting('NODERAWFS'):
-      self.skipTest('Rawfs directory removal works only on Linux')
+    if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
+      self.skipTest('NODERAWFS + WASMFS is does not allow access to arbitrary paths')
     self.do_other_test('test_std_filesystem.cpp')
 
   @crossplatform
   @with_all_fs
   def test_std_filesystem_tempdir(self):
-    if (WINDOWS or MACOS) and self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
+    if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
       self.skipTest('NODERAWFS + WASMFS is does not allow access to arbitrary paths')
     self.do_other_test('test_std_filesystem_tempdir.cpp', cflags=['-g'])
 
