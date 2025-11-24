@@ -4460,18 +4460,21 @@ Module["preRun"] = () => {
     shutil.copy(test_file('gears.png'), '.')
     self.btest_exit('fetch/test_fetch_response_headers.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'] + args)
 
-  # Test emscripten_fetch() usage to stream a fetch in to memory without storing the full file in memory
-  # Streaming only works the fetch backend.
-  @also_with_wasm2js
-  def test_fetch_stream_file(self):
-    # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
-    # won't fully fit in the heap. This verifies that streaming works properly.
+  def make_largefile(self):
     s = '12345678'
     for _ in range(14):
       s = s[::-1] + s # length of str will be 2^17=128KB
     with open('largefile.txt', 'w') as f:
       for _ in range(1024):
         f.write(s)
+
+  # Test emscripten_fetch() usage to stream a fetch in to memory without storing the full file in memory
+  # Streaming only works the fetch backend.
+  @also_with_wasm2js
+  def test_fetch_stream_file(self):
+    # Strategy: create a large 128MB file, and compile with a small 16MB Emscripten heap, so that the tested file
+    # won't fully fit in the heap. This verifies that streaming works properly.
+    self.make_largefile()
     self.btest_exit('fetch/test_fetch_stream_file.cpp', cflags=['-sFETCH_DEBUG', '-sFETCH', '-sFETCH_STREAMING'])
 
   @also_with_fetch_streaming
@@ -4537,6 +4540,10 @@ Module["preRun"] = () => {
   def test_fetch_stream_async(self):
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_stream_async.c', cflags=['-sFETCH', '-sFETCH_STREAMING'])
+
+  def test_fetch_stream_abort(self):
+    self.make_largefile()
+    self.btest_exit('fetch/test_fetch_stream_abort.cpp', cflags=['-sFETCH', '-sFETCH_STREAMING', '-fsanitize=address', '-sALLOW_MEMORY_GROWTH'])
 
   @also_with_fetch_streaming
   def test_fetch_persist(self):
