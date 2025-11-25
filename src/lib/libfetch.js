@@ -29,7 +29,7 @@ var LibraryFetch = {
   emscripten_start_fetch: startFetch,
   emscripten_start_fetch__deps: [
     'malloc',
-    'free',
+    'realloc',
     '$Fetch',
     '$fetchXHR',
     '$callUserCallback',
