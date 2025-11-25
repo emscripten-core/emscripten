@@ -135,11 +135,16 @@ int main() {
 
   checkCount(2);
 
-  // internally, emscripten_set_fullscreenchange_callback sets 2 event handlers ("webkitfullscreenchange" and "fullscreenchange")
+  // internally, emscripten_set_fullscreenchange_callback can set 2 event handlers ("webkitfullscreenchange" and "fullscreenchange")
   ret = emscripten_set_fullscreenchange_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, useCapture, screen_callback);
   ASSERT_RESULT(emscripten_set_fullscreenchange_callback);
 
+#if SAFARI_SUPPORT == 1
+  // 2 events handlers are set when there is safari support
   checkCount(4);
+#else
+  checkCount(3);
+#endif
 
   // we make sure that the 2 event handlers get removed (#25846)
   ret = emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_FULLSCREENCHANGE, screen_callback);
