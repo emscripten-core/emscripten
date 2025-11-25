@@ -210,6 +210,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
   """
   should_exit = False
   skip = False
+  LEGACY_ARGS = {'--js-opts', '--llvm-opts', '--llvm-lto', '--memory-init-file'}
+  LEGACY_FLAGS = {'--separate-asm', '--jcache', '--proxy-to-worker', '--default-obj-ext',
+                  '--embind-emit-tsd', '--remove-duplicates', '--no-heap-copy'}
 
   for i in range(len(newargs)):
     if skip:
@@ -238,9 +241,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       return False
 
     def check_arg(name):
-      nonlocal arg_value
+      nonlocal arg, arg_value
       if arg.startswith(name) and '=' in arg:
-        arg_value = arg.split('=', 1)[1]
+        arg, arg_value = arg.split('=', 1)
         newargs[i] = ''
         return True
       if arg == name:
@@ -264,6 +267,16 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       if not os.path.isfile(name):
         exit_with_error("'%s': file not found: '%s'" % (arg, name))
       return name
+
+    if arg in LEGACY_FLAGS:
+      diagnostics.warning('deprecated', f'{arg} is no longer supported')
+      continue
+
+    for l in LEGACY_ARGS:
+      if check_arg(l):
+        consume_arg()
+        diagnostics.warning('deprecated', f'{arg} is no longer supported')
+        continue
 
     if arg.startswith('-s') and is_dash_s_for_emcc(newargs, i):
       s_arg = arg
@@ -301,11 +314,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         newargs[i] = '-O3'
         level = 3
       settings.OPT_LEVEL = level
-    elif check_arg('--js-opts'):
-      logger.warning('--js-opts ignored when using llvm backend')
-      consume_arg()
-    elif check_arg('--llvm-opts'):
-      diagnostics.warning('deprecated', '--llvm-opts is deprecated.  All non-emcc args are passed through to clang.')
     elif arg.startswith('-flto'):
       if '=' in arg:
         settings.LTO = arg.split('=')[1]
@@ -315,9 +323,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       settings.LTO = 0
     elif arg == "--save-temps":
       options.save_temps = True
-    elif check_arg('--llvm-lto'):
-      logger.warning('--llvm-lto ignored when using llvm backend')
-      consume_arg()
     elif check_arg('--closure-args'):
       args = consume_arg()
       settings.CLOSURE_ARGS += shlex.split(args)
@@ -432,8 +437,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.exclude_files.append(consume_arg())
     elif check_flag('--use-preload-cache'):
       options.use_preload_cache = True
-    elif check_flag('--no-heap-copy'):
-      diagnostics.warning('legacy-settings', 'ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
     elif check_flag('--use-preload-plugins'):
       options.use_preload_plugins = True
     elif check_flag('--ignore-dynamic-linking'):
@@ -446,17 +449,10 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
-    elif check_arg('--embind-emit-tsd'):
-      diagnostics.warning('deprecated', '--embind-emit-tsd is deprecated.  Use --emit-tsd instead.')
-      options.emit_tsd = consume_arg()
     elif check_arg('--emit-tsd'):
       options.emit_tsd = consume_arg()
     elif check_flag('--no-entry'):
       options.no_entry = True
-    elif check_flag('--remove-duplicates'):
-      diagnostics.warning('legacy-settings', '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
-    elif check_flag('--jcache'):
-      logger.error('jcache is no longer supported')
     elif check_arg('--cache'):
       config.CACHE = os.path.abspath(consume_arg())
       cache.setup()
@@ -481,14 +477,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('--show-ports'):
       ports.show_ports()
       should_exit = True
-    elif check_arg('--memory-init-file'):
-      exit_with_error('--memory-init-file is no longer supported')
-    elif check_flag('--proxy-to-worker'):
-      exit_with_error('--proxy-to-worker is no longer supported')
     elif check_arg('--valid-abspath'):
       options.valid_abspaths.append(consume_arg())
-    elif check_flag('--separate-asm'):
-      exit_with_error('cannot --separate-asm with the wasm backend, since not emitting asm.js')
     elif arg.startswith(('-I', '-L')):
       path_name = arg[2:]
       # Look for '/' explicitly so that we can also diagnose identically if -I/foo/bar is passed on Windows.
@@ -549,8 +539,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       settings.DISABLE_EXCEPTION_CATCHING = 1
     elif arg == '-ffast-math':
       options.fast_math = True
-    elif check_arg('--default-obj-ext'):
-      exit_with_error('--default-obj-ext is no longer supported by emcc')
     elif arg.startswith('-fsanitize=cfi'):
       exit_with_error('emscripten does not currently support -fsanitize=cfi')
     elif check_arg('--output_eol') or check_arg('--output-eol'):
