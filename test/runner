@@ -15,9 +15,7 @@
 # used in cross compilation via setup.py, so we unset it explicitly here.
 unset _PYTHON_SYSCONFIGDATA_NAME
 
-if [ -z "$_EM_PY" ]; then
-  _EM_PY=$EMSDK_PYTHON
-fi
+_EM_PY=$EMSDK_PYTHON
 
 if [ -z "$_EM_PY" ]; then
   _EM_PY=$(command -v python3 2> /dev/null)
