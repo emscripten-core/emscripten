@@ -44,7 +44,15 @@ addToLibrary({
       return FS.createNode(null, '/', {{{ cDefs.S_IFDIR | 0o777 }}}, 0);
     },
     createSocket(family, type, protocol) {
+      // Emscripten only supports AF_INET
+      if (family != {{{ cDefs.AF_INET }}}) {
+        throw new FS.ErrnoError({{{ cDefs.EAFNOSUPPORT }}});
+      }
       type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // Some applications may pass it; it makes no sense for a single process.
+      // Emscripten only supports SOCK_STREAM and SOCK_DGRAM
+      if (type != {{{ cDefs.SOCK_STREAM }}} && type != {{{ cDefs.SOCK_DGRAM }}}) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
       var streaming = type == {{{ cDefs.SOCK_STREAM }}};
       if (streaming && protocol && protocol != {{{ cDefs.IPPROTO_TCP }}}) {
         throw new FS.ErrnoError({{{ cDefs.EPROTONOSUPPORT }}}); // if SOCK_STREAM, must be tcp or 0.
@@ -292,7 +300,9 @@ addToLibrary({
             var encoder = new TextEncoder(); // should be utf-8
             data = encoder.encode(data); // make a typed array from the string
           } else {
+#if ASSERTIONS
             assert(data.byteLength !== undefined); // must receive an ArrayBuffer
+#endif
             if (data.byteLength == 0) {
               // An empty ArrayBuffer will emit a pseudo disconnect event
               // as recv/recvmsg will return zero which indicates that a socket
@@ -412,6 +422,14 @@ addToLibrary({
               bytes = sock.recv_queue[0].data.length;
             }
             {{{ makeSetValue('arg', '0', 'bytes', 'i32') }}};
+            return 0;
+          case {{{ cDefs.FIONBIO }}}:
+            var on = {{{ makeGetValue('arg', '0', 'i32') }}};
+            if (on) {
+              sock.stream.flags |= {{{ cDefs.O_NONBLOCK }}};
+            } else {
+              sock.stream.flags &= ~{{{ cDefs.O_NONBLOCK }}};
+            }
             return 0;
           default:
             return {{{ cDefs.EINVAL }}};
@@ -730,10 +748,10 @@ addToLibrary({
         if (event === 'error') {
           withStackSave(() => {
             var msg = stringToUTF8OnStack(data[2]);
-            {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
+            {{{ makeDynCall('viipp', 'callback') }}}(data[0], data[1], msg, userData);
           });
         } else {
-          {{{ makeDynCall('vii', 'callback') }}}(data, userData);
+          {{{ makeDynCall('vip', 'callback') }}}(data, userData);
         }
       });
     };

@@ -11,6 +11,12 @@ var LibraryLittleEndianHeap = {
   $LE_HEAP_STORE_I32: (byteOffset, value) =>
     HEAP_DATA_VIEW.setInt32(byteOffset, value, true),
 
+  $LE_HEAP_STORE_U64: (byteOffset, value) =>
+    HEAP_DATA_VIEW.setBigUint64(byteOffset, value, true),
+
+  $LE_HEAP_STORE_I64: (byteOffset, value) =>
+    HEAP_DATA_VIEW.setBigInt64(byteOffset, value, true),
+
   $LE_HEAP_STORE_F32: (byteOffset, value) =>
     HEAP_DATA_VIEW.setFloat32(byteOffset, value, true),
 
@@ -28,6 +34,12 @@ var LibraryLittleEndianHeap = {
 
   $LE_HEAP_LOAD_I32: (byteOffset) =>
     HEAP_DATA_VIEW.getInt32(byteOffset, true),
+
+  $LE_HEAP_LOAD_U64: (byteOffset) =>
+    HEAP_DATA_VIEW.getBigUint64(byteOffset, true),
+
+  $LE_HEAP_LOAD_I64: (byteOffset) =>
+    HEAP_DATA_VIEW.getBigInt64(byteOffset, true),
 
   $LE_HEAP_LOAD_F32: (byteOffset) =>
     HEAP_DATA_VIEW.getFloat32(byteOffset, true),

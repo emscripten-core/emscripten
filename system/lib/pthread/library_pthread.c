@@ -138,13 +138,9 @@ weak_alias(dummy_tsd, __pthread_tsd_main);
 // See system/lib/README.md for static constructor ordering.
 __attribute__((constructor(48)))
 void _emscripten_init_main_thread(void) {
-  _emscripten_init_main_thread_js(&__main_pthread);
-
   // The pthread struct has a field that points to itself - this is used as
   // a magic ID to detect whether the pthread_t structure is 'alive'.
   __main_pthread.self = &__main_pthread;
-  __main_pthread.stack = (void*)emscripten_stack_get_base();
-  __main_pthread.stack_size = emscripten_stack_get_base() - emscripten_stack_get_end();
   __main_pthread.detach_state = DT_JOINABLE;
   // pthread struct robust_list head should point to itself.
   __main_pthread.robust_list.head = &__main_pthread.robust_list.head;
@@ -156,6 +152,11 @@ void _emscripten_init_main_thread(void) {
   // this is used by pthread_key_delete for deleting thread-specific data.
   __main_pthread.next = __main_pthread.prev = &__main_pthread;
   __main_pthread.tsd = (void **)__pthread_tsd_main;
+
+  _emscripten_init_main_thread_js(&__main_pthread);
+
+  __main_pthread.stack = (void*)emscripten_stack_get_base();
+  __main_pthread.stack_size = emscripten_stack_get_base() - emscripten_stack_get_end();
 
   _emscripten_thread_mailbox_init(&__main_pthread);
   _emscripten_thread_mailbox_await(&__main_pthread);

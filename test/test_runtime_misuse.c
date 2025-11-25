@@ -16,8 +16,10 @@ EMSCRIPTEN_KEEPALIVE char* note(int n) {
   return (char*)"silly-string";
 }
 
+#ifndef NO_MAIN
 int main() {
   EM_ASM( myJSCallback() ); // calls a global JS func
   return 0;
 }
+#endif
 

@@ -56,20 +56,25 @@ uintptr_t* emscripten_get_sbrk_ptr() {
 #define READ_SBRK_PTR(sbrk_ptr) (*(sbrk_ptr))
 #endif
 
-void *sbrk(intptr_t increment_) {
-  uintptr_t increment = (uintptr_t)increment_;
-  increment = (increment + (SBRK_ALIGNMENT-1)) & ~(SBRK_ALIGNMENT-1);
+void *_sbrk64(int64_t increment) {
+  if (increment >= 0) {
+    increment = (increment + (SBRK_ALIGNMENT-1)) & ~((int64_t)SBRK_ALIGNMENT-1);
+  } else {
+    increment = -(-increment & ~((int64_t)SBRK_ALIGNMENT-1));
+  }
+
   uintptr_t *sbrk_ptr = (uintptr_t*)emscripten_get_sbrk_ptr();
 
   // To make sbrk thread-safe, implement a CAS loop to update the
   // value of sbrk_ptr.
   while (1) {
     uintptr_t old_brk = READ_SBRK_PTR(sbrk_ptr);
-    uintptr_t new_brk = old_brk + increment;
-    // Check for a) an overflow, which would indicate that we are trying to
-    // allocate over maximum addressable memory. and b) if necessary,
+    int64_t new_brk64 = (int64_t)old_brk + increment;
+    uintptr_t new_brk = (uintptr_t)new_brk64;
+    // Check for a) an over/underflow, which would indicate that we are
+    // allocating over maximum addressable memory. and b) if necessary,
     // increase the WebAssembly Memory size, and abort if that fails.
-    if ((increment > 0 && new_brk <= old_brk)
+    if (new_brk < 0 || new_brk64 != (int64_t)new_brk
      || (new_brk > emscripten_get_heap_size() && !emscripten_resize_heap(new_brk))) {
       errno = ENOMEM;
       return (void*)-1;
@@ -91,6 +96,26 @@ void *sbrk(intptr_t increment_) {
     emscripten_memprof_sbrk_grow(old_brk, new_brk);
     return (void*)old_brk;
   }
+}
+
+void *sbrk(intptr_t increment_) {
+#if defined(__wasm64__) // TODO || !defined(wasm2gb)
+  // In the correct https://linux.die.net/man/2/sbrk spec, sbrk() parameter is
+  // intended to be treated as signed, meaning that it is not possible in a
+  // 32-bit program to sbrk alloc (or dealloc) more than 2GB of memory at once.
+
+  // Treat sbrk() parameter as signed.
+  return _sbrk64((int64_t)increment_);
+#else
+  // BUG: Currently the Emscripten test suite codifies expectations that sbrk()
+  // values passed to this function are to be treated as unsigned, which means
+  // that in 2GB and 4GB build modes, it is not possible to shrink memory.
+  // To satisfy that mode, treat sbrk() parameters in 32-bit builds as unsigned.
+  // https://github.com/emscripten-core/emscripten/issues/25138
+
+  // Treat sbrk() parameter as unsigned.
+  return _sbrk64((int64_t)(uintptr_t)increment_);
+#endif
 }
 
 int brk(void* ptr) {

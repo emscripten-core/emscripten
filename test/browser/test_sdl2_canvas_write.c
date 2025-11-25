@@ -63,7 +63,7 @@ int main(void) {
   if (SDL_Init(SDL_INIT_VIDEO) != 0)
     sdlError("SDL_Init");
 
-  window = SDL_CreateWindow("SDL 2 test", 0, 0, 256, 256, SDL_WINDOW_SHOWN);
+  window = SDL_CreateWindow("SDL2 test", 0, 0, 256, 256, SDL_WINDOW_SHOWN);
   if (window == NULL) {
     sdlError("SDL_CreateWindow");
   }

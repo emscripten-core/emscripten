@@ -18,56 +18,55 @@ var Fetch = {
   // dbInstance: undefined,
 
 #if FETCH_SUPPORT_INDEXEDDB
-  // Be cautious that `onerror` may be run synchronously
-  openDatabase(dbname, dbversion, onsuccess, onerror) {
-    try {
+  async openDatabase(dbname, dbversion) {
+    return new Promise((resolve, reject) => {
+      try {
 #if FETCH_DEBUG
-      dbg(`fetch: indexedDB.open(dbname="${dbname}", dbversion="${dbversion}");`);
+        dbg(`fetch: indexedDB.open(dbname="${dbname}", dbversion="${dbversion}");`);
 #endif
-      var openRequest = indexedDB.open(dbname, dbversion);
-    } catch (e) {
-      return onerror(e);
-    }
-
-    openRequest.onupgradeneeded = (event) => {
-#if FETCH_DEBUG
-      dbg('fetch: IndexedDB upgrade needed. Clearing database.');
-#endif
-      var db = /** @type {IDBDatabase} */ (event.target.result);
-      if (db.objectStoreNames.contains('FILES')) {
-        db.deleteObjectStore('FILES');
+        var openRequest = indexedDB.open(dbname, dbversion);
+      } catch (e) {
+        return reject(e);
       }
-      db.createObjectStore('FILES');
-    };
-    openRequest.onsuccess = (event) => onsuccess(event.target.result);
-    openRequest.onerror = onerror;
+
+      openRequest.onupgradeneeded = (event) => {
+#if FETCH_DEBUG
+        dbg('fetch: IndexedDB upgrade needed. Clearing database.');
+#endif
+        var db = /** @type {IDBDatabase} */ (event.target.result);
+        if (db.objectStoreNames.contains('FILES')) {
+          db.deleteObjectStore('FILES');
+        }
+        db.createObjectStore('FILES');
+      };
+      openRequest.onsuccess = (event) => resolve(event.target.result);
+      openRequest.onerror = reject;
+    });
   },
 #endif
 
-  init() {
+  async init() {
     Fetch.xhrs = new HandleAllocator();
 #if FETCH_SUPPORT_INDEXEDDB
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
-    var onsuccess = (db) => {
+
+    addRunDependency('library_fetch_init');
+    try {
+      var db = await Fetch.openDatabase('emscripten_filesystem', 1);
 #if FETCH_DEBUG
       dbg('fetch: IndexedDB successfully opened.');
 #endif
       Fetch.dbInstance = db;
-      removeRunDependency('library_fetch_init');
-    };
-
-    var onerror = () => {
+    } catch (e) {
 #if FETCH_DEBUG
       dbg('fetch: IndexedDB open failed.');
 #endif
       Fetch.dbInstance = false;
+    } finally {
       removeRunDependency('library_fetch_init');
-    };
-
-    addRunDependency('library_fetch_init');
-    Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
+    }
 #endif // ~FETCH_SUPPORT_INDEXEDDB
   }
 }
@@ -244,7 +243,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #if FETCH_DEBUG
     dbg('fetch: XHR failed, no URL specified!');
 #endif
-    onerror(fetch, 0, 'no url specified!');
+    onerror(fetch, 'no url specified!');
     return;
   }
   var url_ = UTF8ToString(url);
@@ -345,6 +344,12 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
+    if (fetchAttrSynchronous) {
+      // The response url pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+      // freed when emscripten_fetch_close() is called.
+      var ruPtr = stringToNewUTF8(xhr.responseURL);
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.responseUrl, 'ruPtr', '*') }}}
+    }
   }
 
   xhr.onload = (e) => {
@@ -357,12 +362,12 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #if FETCH_DEBUG
       dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" succeeded with status ${xhr.status}`);
 #endif
-      onsuccess?.(fetch, xhr, e);
+      onsuccess(fetch, xhr, e);
     } else {
 #if FETCH_DEBUG
       dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" failed with status ${xhr.status}`);
 #endif
-      onerror?.(fetch, xhr, e);
+      onerror(fetch, e);
     }
   };
   xhr.onerror = (e) => {
@@ -374,7 +379,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" finished with error, readyState ${xhr.readyState} and status ${xhr.status}`);
 #endif
     saveResponseAndStatus();
-    onerror?.(fetch, xhr, e);
+    onerror(fetch, e);
   };
   xhr.ontimeout = (e) => {
     // check if xhr was aborted by user and don't try to call back
@@ -384,7 +389,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #if FETCH_DEBUG
     dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" timed out, readyState ${xhr.readyState} and status ${xhr.status}`);
 #endif
-    onerror?.(fetch, xhr, e);
+    onerror(fetch, e);
   };
   xhr.onprogress = (e) => {
     // check if xhr was aborted by user and don't try to call back
@@ -409,14 +414,13 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, e.loaded - ptrLen);
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, e.total);
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
+    var status = xhr.status;
     // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
-    if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) xhr.status = 200;
-    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
+    if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) status = 200;
+    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'status', 'i16') }}}
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
-    onprogress?.(fetch, xhr, e);
-    if (ptr) {
-      _free(ptr);
-    }
+    onprogress(fetch, e);
+    _free(ptr);
   };
   xhr.onreadystatechange = (e) => {
     // check if xhr was aborted by user and don't try to call back
@@ -428,7 +432,13 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (xhr.readyState >= 2) {
       {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
     }
-    onreadystatechange?.(fetch, xhr, e);
+    if (!fetchAttrSynchronous && (xhr.readyState === 2 && xhr.responseURL.length > 0)) {
+      // The response url pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+      // freed when emscripten_fetch_close() is called.
+      var ruPtr = stringToNewUTF8(xhr.responseURL);
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.responseUrl, 'ruPtr', '*') }}}
+    }
+    onreadystatechange(fetch, e);
   };
 #if FETCH_DEBUG
   dbg(`fetch: xhr.send(data=${data})`);
@@ -439,7 +449,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #if FETCH_DEBUG
     dbg(`fetch: xhr failed with exception: ${e}`);
 #endif
-    onerror?.(fetch, xhr, e);
+    onerror(fetch, e);
   }
 }
 
@@ -475,14 +485,14 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     });
   };
 
-  var reportProgress = (fetch, xhr, e) => {
+  var reportProgress = (fetch, e) => {
     doCallback(() => {
       if (onprogress) {{{ makeDynCall('vp', 'onprogress') }}}(fetch);
       else progresscb?.(fetch);
     });
   };
 
-  var reportError = (fetch, xhr, e) => {
+  var reportError = (fetch, e) => {
 #if FETCH_DEBUG
     dbg(`fetch: operation failed: ${e}`);
 #endif
@@ -493,7 +503,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     });
   };
 
-  var reportReadyStateChange = (fetch, xhr, e) => {
+  var reportReadyStateChange = (fetch, e) => {
 #if FETCH_DEBUG
     dbg(`fetch: ready state change. e: ${e}`);
 #endif
@@ -574,14 +584,12 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
 }
 
 function fetchGetResponseHeadersLength(id) {
-  return lengthBytesUTF8(Fetch.xhrs.get(id).getAllResponseHeaders()) + 1;
+  return lengthBytesUTF8(Fetch.xhrs.get(id).getAllResponseHeaders());
 }
 
 function fetchGetResponseHeaders(id, dst, dstSizeBytes) {
   var responseHeaders = Fetch.xhrs.get(id).getAllResponseHeaders();
-  var lengthBytes = lengthBytesUTF8(responseHeaders) + 1;
-  stringToUTF8(responseHeaders, dst, dstSizeBytes);
-  return Math.min(lengthBytes, dstSizeBytes);
+  return stringToUTF8(responseHeaders, dst, dstSizeBytes) + 1;
 }
 
 //Delete the xhr JS object, allowing it to be garbage collected.

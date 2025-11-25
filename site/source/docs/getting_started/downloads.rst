@@ -112,7 +112,7 @@ Platform-specific notes
 Windows
 +++++++
 
-#. Install Python 3.6 or newer (older versions may not work due to `a GitHub change with SSL <https://github.com/emscripten-core/emscripten/issues/6275>`_).
+#. Install Python 3.8 or newer.
 
   .. note:: Instead of running emscripten on Windows directly, you can use the
      Windows Subsystem for Linux to run it in a Linux environment.
@@ -123,7 +123,7 @@ macOS
 .. note:: Emscripten requires macOS 10.14 Mojave or above.
 
 If you use the Emscripten SDK, it includes a bundled version of Python 3.
-Otherwise, you will need to manually install and use Python 3.6 or newer.
+Otherwise, you will need to manually install and use Python 3.8 or newer.
 
 These instructions explain how to install **all** the :ref:`required tools
 <toolchain-what-you-need>`. You can :ref:`test whether some of these are already

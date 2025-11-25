@@ -5,7 +5,9 @@
 function processModuleArgs() 
 #endif
 {
-#if IMPORTED_MEMORY
+#if IMPORTED_MEMORY && !WASM_ESM_INTEGRATION
+  // With WASM_ESM_INTEGRATION this has to happen at the top level and not
+  // delayed until processModuleArgs.
   initMemory();
 #endif
 
@@ -38,6 +40,17 @@ function processModuleArgs()
 #endif
 #endif // ASSERTIONS
 
+#if expectToReceiveOnModule('preInit')
+  if (Module['preInit']) {
+    if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
+    while (Module['preInit'].length > 0) {
+      Module['preInit'].shift()();
+    }
+  }
+#if ASSERTIONS
+  consumedModuleProp('preInit');
+#endif
+#endif
 }
 
 {{{ exportJSSymbols() }}}

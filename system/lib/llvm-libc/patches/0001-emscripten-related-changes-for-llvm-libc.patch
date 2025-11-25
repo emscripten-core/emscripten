@@ -1,0 +1,77 @@
+From 71c098f061e74c5214087728b028da4ff9db9679 Mon Sep 17 00:00:00 2001
+From: google-yfyang <yfyang@google.com>
+Date: Wed, 18 Jun 2025 13:57:16 -0400
+Subject: [PATCH] emscripten related changes for llvm-libc
+
+---
+ libc/src/__support/StringUtil/platform_errors.h      | 2 +-
+ libc/src/__support/StringUtil/tables/posix_errors.h  | 5 +++++
+ libc/src/__support/StringUtil/tables/stdc_errors.h   | 5 +++++
+ libc/src/__support/macros/properties/architectures.h | 4 ++++
+ 4 files changed, 15 insertions(+), 1 deletion(-)
+
+diff --git a/libc/src/__support/StringUtil/platform_errors.h b/libc/src/__support/StringUtil/platform_errors.h
+index 32e8414b3e3d..5f83865482e7 100644
+--- a/libc/src/__support/StringUtil/platform_errors.h
++++ b/libc/src/__support/StringUtil/platform_errors.h
+@@ -9,7 +9,7 @@
+ #ifndef LLVM_LIBC_SRC___SUPPORT_STRINGUTIL_PLATFORM_ERRORS_H
+ #define LLVM_LIBC_SRC___SUPPORT_STRINGUTIL_PLATFORM_ERRORS_H
+ 
+-#if defined(__linux__) || defined(__Fuchsia__)
++#if defined(__linux__) || defined(__Fuchsia__) || defined(__EMSCRIPTEN__)
+ #include "tables/linux_platform_errors.h"
+ #else
+ #include "tables/minimal_platform_errors.h"
+diff --git a/libc/src/__support/StringUtil/tables/posix_errors.h b/libc/src/__support/StringUtil/tables/posix_errors.h
+index b21f28f0b132..031886dcc5cc 100644
+--- a/libc/src/__support/StringUtil/tables/posix_errors.h
++++ b/libc/src/__support/StringUtil/tables/posix_errors.h
+@@ -63,7 +63,12 @@ LIBC_INLINE_VAR constexpr MsgTable<76> POSIX_ERRORS = {
+     MsgMapping(EPROTO, "Protocol error"),
+     MsgMapping(EMULTIHOP, "Multihop attempted"),
+     MsgMapping(EBADMSG, "Bad message"),
++#ifdef __EMSCRIPTEN__
++    // For now, match the musl string
++    MsgMapping(EOVERFLOW, "Value too large for data type"),
++#else
+     MsgMapping(EOVERFLOW, "Value too large for defined data type"),
++#endif
+     MsgMapping(ENOTSOCK, "Socket operation on non-socket"),
+     MsgMapping(EDESTADDRREQ, "Destination address required"),
+     MsgMapping(EMSGSIZE, "Message too long"),
+diff --git a/libc/src/__support/StringUtil/tables/stdc_errors.h b/libc/src/__support/StringUtil/tables/stdc_errors.h
+index a326616f20ef..9a23d0718ea1 100644
+--- a/libc/src/__support/StringUtil/tables/stdc_errors.h
++++ b/libc/src/__support/StringUtil/tables/stdc_errors.h
+@@ -16,7 +16,12 @@
+ namespace LIBC_NAMESPACE_DECL {
+ 
+ LIBC_INLINE_VAR constexpr const MsgTable<4> STDC_ERRORS = {
++#ifdef __EMSCRIPTEN__
++    // For now, match the musl name for errno 0.
++    MsgMapping(0, "No error information"),
++#else
+     MsgMapping(0, "Success"),
++#endif
+     MsgMapping(EDOM, "Numerical argument out of domain"),
+     MsgMapping(ERANGE, "Numerical result out of range"),
+     MsgMapping(EILSEQ, "Invalid or incomplete multibyte or wide character"),
+diff --git a/libc/src/__support/macros/properties/architectures.h b/libc/src/__support/macros/properties/architectures.h
+index c88956ff4114..817ced4e95c2 100644
+--- a/libc/src/__support/macros/properties/architectures.h
++++ b/libc/src/__support/macros/properties/architectures.h
+@@ -41,6 +41,10 @@
+ #define LIBC_TARGET_ARCH_IS_ARM
+ #endif
+ 
++#if defined(__wasm__)
++#define LIBC_TARGET_ARCH_IS_WASM
++#endif
++
+ #if defined(__aarch64__) || defined(__arm64__) || defined(_M_ARM64)
+ #define LIBC_TARGET_ARCH_IS_AARCH64
+ #endif
+-- 
+2.50.0.rc2.701.gf1e915cc24-goog
+

@@ -48,7 +48,7 @@ def check_line_endings(filename, expect_only=None, print_errors=True, print_info
     data = data.replace(b'\r\n', b'A')
     has_dos_line_endings = True
 
-  index = data.find(b'\r\n')
+  index = data.find(b'\n')
   if index != -1:
     unix_line_ending_example = data[index - 50:index + 50].replace(b'\r', b'\\r').replace(b'\n', b'\\n')
     unix_line_ending_count = data.count(b'\n')

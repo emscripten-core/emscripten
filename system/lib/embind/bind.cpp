@@ -67,6 +67,10 @@ void _emval_coro_resume(val::awaiter* awaiter, EM_VAL result) {
   awaiter->resume_with(val::take_ownership(result));
 }
 
+void _emval_coro_reject(val::awaiter* awaiter, EM_VAL error) {
+  awaiter->reject_with(val::take_ownership(error));
+}
+
 }
 
 namespace {
@@ -142,8 +146,8 @@ EMSCRIPTEN_BINDINGS(builtin) {
   register_integer<unsigned long>("unsigned long");
 #endif
 
-  register_bigint<int64_t>("int64_t");
-  register_bigint<uint64_t>("uint64_t");
+  register_bigint<signed long long>("long long");
+  register_bigint<unsigned long long>("unsigned long long");
 
   register_float<float>("float");
   register_float<double>("double");

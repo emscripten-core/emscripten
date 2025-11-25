@@ -485,6 +485,9 @@ static void dlopen_onerror(struct dso* dso, void* user_data) {
 
 // Modified version of path_open from musl/ldso/dynlink.c
 static int path_find(const char *name, const char *s, char *buf, size_t buf_size) {
+  if (s == NULL) {
+    return -1;
+  }
   size_t l;
   int fd;
   for (;;) {
@@ -515,13 +518,27 @@ static int path_find(const char *name, const char *s, char *buf, size_t buf_size
 }
 
 // Resolve filename using LD_LIBRARY_PATH
-static const char* resolve_path(char* buf, const char* file, size_t buflen) {
-  if (!strchr(file, '/')) {
-    const char* env_path = getenv("LD_LIBRARY_PATH");
-    if (env_path && path_find(file, env_path, buf, buflen) == 0) {
-      dbg("dlopen: found in LD_LIBRARY_PATH: %s", buf);
-      return buf;
-    }
+const char* _emscripten_find_dylib(char* buf, const char* rpath, const char* file, size_t buflen) {
+  if (strchr(file, '/')) {
+    // Absolute path, leave it alone
+    return NULL;
+  }
+  const char* env_path = getenv("LD_LIBRARY_PATH");
+  if (path_find(file, env_path, buf, buflen) == 0) {
+    dbg("dlopen: found in LD_LIBRARY_PATH: %s", buf);
+    return buf;
+  }
+  if (path_find(file, rpath, buf, buflen) == 0) {
+    dbg("dlopen: found in RPATH: %s", buf);
+    return buf;
+  }
+  return NULL;
+}
+
+static const char* find_dylib(char* buf, const char* file, size_t buflen) {
+  const char* res = _emscripten_find_dylib(buf, NULL, file, buflen);
+  if (res) {
+    return res;
   }
   return file;
 }
@@ -553,7 +570,7 @@ static struct dso* _dlopen(const char* file, int flags) {
   do_write_lock();
 
   char buf[2*NAME_MAX+2];
-  file = resolve_path(buf, file, sizeof buf);
+  file = find_dylib(buf, file, sizeof buf);
 
   struct dso* p = find_existing(file);
   if (p) {
@@ -593,7 +610,7 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
   }
   do_write_lock();
   char buf[2*NAME_MAX+2];
-  filename = resolve_path(buf, filename, sizeof buf);
+  filename = find_dylib(buf, filename, sizeof buf);
   struct dso* p = find_existing(filename);
   if (p) {
     onsuccess(user_data, p);

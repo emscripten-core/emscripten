@@ -11,6 +11,7 @@ my_env = Environment(tools=['emscripten'], toolpath=[os.environ['EMSCRIPTEN_TOOL
 import os
 import subprocess
 import sys
+
 from tools import building, utils
 
 tool_path = utils.path_from_root('tools/scons/site_scons/site_tools/emscripten')

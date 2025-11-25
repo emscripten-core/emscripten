@@ -13,35 +13,24 @@
 using namespace emscripten;
 using namespace std;
 
-#define assert_js(X) assert(run_js(X))
-
 void test(string message)
 {
-  cout << "test:\n" << message << "\n";
+  printf("test: %s\n", message.c_str());
 }
 
-
-void execute_js(string js_code)
-{
-  js_code.append(";");
-  const char* js_code_pointer = js_code.c_str();
-  EM_ASM_INT({
-    var js_code = UTF8ToString($0);
-    return eval(js_code);
-  }, js_code_pointer);
-}
-
-int run_js(string js_code)
-{
-  js_code.append(";");
-  const char* js_code_pointer = js_code.c_str();
-  return EM_ASM_INT({
-    var js_code = UTF8ToString($0);
-    return eval(js_code);
-  }, js_code_pointer);
+void assert_js_eq(string X, string Y) {
+  string js_code;
+  js_code += "const x = " + X + ";";
+  js_code += "const y = " + Y + ";";
+  js_code += "assert(x === y, `" + X + ": actual = ${typeof x} ${x}, expected = ${typeof y} ${y}`);";
+  emscripten_run_script(js_code.c_str());
 }
 
 EMSCRIPTEN_BINDINGS(tests) {
+  emscripten::function("int64_min", &numeric_limits<int64_t>::min);
+  emscripten::function("int64_max", &numeric_limits<int64_t>::max);
+  emscripten::function("uint64_max", &numeric_limits<uint64_t>::max);
+
   register_vector<int64_t>("Int64Vector");
   register_vector<uint64_t>("UInt64Vector");
 }
@@ -50,23 +39,25 @@ extern "C" void ensure_js_throws_with_assertions_enabled(const char* js_code, co
 
 int main()
 {
-  const int64_t max_int64_t = numeric_limits<int64_t>::max();
-  const int64_t min_int64_t = numeric_limits<int64_t>::min();
-  const uint64_t max_uint64_t = numeric_limits<uint64_t>::max();
+  test("limits");
+
+  assert_js_eq("Module.int64_min()", to_string(numeric_limits<int64_t>::min()) + "n");
+  assert_js_eq("Module.int64_max()", to_string(numeric_limits<int64_t>::max()) + "n");
+  assert_js_eq("Module.uint64_max()", to_string(numeric_limits<uint64_t>::max()) + "n");
 
   printf("start\n");
 
   test("vector<int64_t>");
   val myval(std::vector<int64_t>{1, 2, 3, -4});
   val::global().set("v64", myval);
-  assert_js("v64.get(0) === 1n");
-  assert_js("v64.get(1) === 2n");
-  assert_js("v64.get(2) === 3n");
-  assert_js("v64.get(3) === -4n");
+  assert_js_eq("v64.get(0)", "1n");
+  assert_js_eq("v64.get(1)", "2n");
+  assert_js_eq("v64.get(2)", "3n");
+  assert_js_eq("v64.get(3)", "-4n");
 
-  execute_js("v64.push_back(1234n)");
-  assert_js("v64.size() === 5");
-  assert_js("v64.get(4) === 1234n");
+  emscripten_run_script("v64.push_back(1234n)");
+  assert_js_eq("v64.size()", "5");
+  assert_js_eq("v64.get(4)", "1234n");
 
   test("vector<int64_t> Cannot convert bigint that is too big");
   ensure_js_throws_with_assertions_enabled("v64.push_back(12345678901234567890123456n)", "TypeError");
@@ -74,18 +65,18 @@ int main()
   test("vector<uint64_t>");
   val myval2(vector<uint64_t>{1, 2, 3, 4});
   val::global().set("vU64", myval2);
-  assert_js("vU64.get(0) === 1n");
-  assert_js("vU64.get(1) === 2n");
-  assert_js("vU64.get(2) === 3n");
-  assert_js("vU64.get(3) === 4n");
+  assert_js_eq("vU64.get(0)", "1n");
+  assert_js_eq("vU64.get(1)", "2n");
+  assert_js_eq("vU64.get(2)", "3n");
+  assert_js_eq("vU64.get(3)", "4n");
 
-  execute_js("vU64.push_back(1234n)");
-  assert_js("vU64.size() === 5");
-  assert_js("vU64.get(4) === 1234n");
+  emscripten_run_script("vU64.push_back(1234n)");
+  assert_js_eq("vU64.size()", "5");
+  assert_js_eq("vU64.get(4)", "1234n");
 
-  execute_js("vU64.push_back(1234)");
-  assert_js("vU64.size() === 6");
-  assert_js("vU64.get(5) === 1234n");
+  emscripten_run_script("vU64.push_back(1234)");
+  assert_js_eq("vU64.size()", "6");
+  assert_js_eq("vU64.get(5)", "1234n");
 
   test("vector<uint64_t> Cannot convert bigint that is too big");
   ensure_js_throws_with_assertions_enabled("vU64.push_back(12345678901234567890123456n)", "TypeError");

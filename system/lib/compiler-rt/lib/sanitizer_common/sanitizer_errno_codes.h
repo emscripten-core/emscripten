@@ -27,6 +27,7 @@ namespace __sanitizer {
 #define errno_ENOMEM       __WASI_ERRNO_NOMEM
 #define errno_EBUSY        __WASI_ERRNO_BUSY
 #define errno_EINVAL       __WASI_ERRNO_INVAL
+#define errno_ERANGE       __WASI_ERRNO_RANGE
 #define errno_ENAMETOOLONG __WASI_ERRNO_NAMETOOLONG
 #define errno_ENOSYS       __WASI_ERRNO_NOSYS
 

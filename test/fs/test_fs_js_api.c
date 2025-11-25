@@ -240,19 +240,19 @@ EM_JS(void, test_fs_close, (), {
 
 void test_fs_mknod() {
   EM_ASM(
-    FS.mknod("mknodtest", 0100000 | 0777 /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */);
+    FS.mknod("mknodtest", 0o100000 | 0o777 /* S_IFREG | S_RWXU | S_RWXG | S_RWXO */);
 
-    FS.create("createtest", 0400 /* S_IRUSR */);
+    FS.create("createtest", 0o400 /* S_IRUSR */);
   );
   struct stat s;
   stat("mknodtest", &s);
 
   assert(S_ISREG(s.st_mode));
-  assert(s.st_mode & 0777);
+  assert(s.st_mode & 0o777);
 
   stat("createtest", &s);
   assert(S_ISREG(s.st_mode));
-  assert(s.st_mode & 0400);
+  assert(s.st_mode & 0o400);
 
   remove("mknodtest");
   remove("createtest");
@@ -382,7 +382,7 @@ void test_fs_mmap() {
 void test_fs_mkdirTree() {
   EM_ASM(
     FS.mkdirTree("/test1/test2/test3"); // Abs path
-    FS.mkdirTree("/readable", 0400 /* S_IRUSR */);
+    FS.mkdirTree("/readable", 0o400 /* S_IRUSR */);
   );
 
   struct stat s;
@@ -394,7 +394,7 @@ void test_fs_mkdirTree() {
   assert(S_ISDIR(s.st_mode));
 
   assert(stat("/readable", &s) == 0);
-  assert(s.st_mode & 0400 /* S_IRUSR */);
+  assert(s.st_mode & 0o400 /* S_IRUSR */);
 
   EM_ASM(
     var ex;

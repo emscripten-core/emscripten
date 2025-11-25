@@ -20,7 +20,7 @@ Date.now = deterministicNow;
 // Setting performance.now to deterministicNow doesn't work so we instead
 // use a helper function in parseTools (getPerformanceNow()) to call it
 // directly.
-// if (typeof performance == 'object') performance.now = Date.now;
+// if (globalThis.performance) performance.now = Date.now;
 
 Module['thisProgram'] = 'thisProgram'; // for consistency between different builds than between runs of the same build
 

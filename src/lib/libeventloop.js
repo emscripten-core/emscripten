@@ -54,10 +54,10 @@ LibraryJSEventLoop = {
 
   $emSetImmediate__deps: ['$setImmediateWrapped', '$clearImmediateWrapped', '$emClearImmediate'],
   $emSetImmediate__postset: `
-    if (typeof setImmediate != "undefined") {
+    if (globalThis.setImmediate) {
       emSetImmediate = setImmediateWrapped;
       emClearImmediate = clearImmediateWrapped;
-    } else if (typeof addEventListener == "function") {
+    } else if (globalThis.addEventListener) {
       var __setImmediate_id_counter = 0;
       var __setImmediate_queue = [];
       var __setImmediate_message_id = "_si";
@@ -298,22 +298,11 @@ LibraryJSEventLoop = {
     },
 
     requestAnimationFrame(func) {
-      if (typeof requestAnimationFrame == 'function') {
+      if (globalThis.requestAnimationFrame) {
         requestAnimationFrame(func);
-        return;
+      } else {
+        MainLoop.fakeRequestAnimationFrame(func);
       }
-      var RAF = MainLoop.fakeRequestAnimationFrame;
-#if LEGACY_VM_SUPPORT
-      if (typeof window != 'undefined') {
-        RAF = window['requestAnimationFrame'] ||
-              window['mozRequestAnimationFrame'] ||
-              window['webkitRequestAnimationFrame'] ||
-              window['msRequestAnimationFrame'] ||
-              window['oRequestAnimationFrame'] ||
-              RAF;
-      }
-#endif
-      RAF(func);
     },
   },
 
@@ -351,8 +340,10 @@ LibraryJSEventLoop = {
       };
       MainLoop.method = 'rAF';
     } else if (mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}}) {
-      if (typeof MainLoop.setImmediate == 'undefined') {
-        if (typeof setImmediate == 'undefined') {
+      if (!MainLoop.setImmediate) {
+        if (globalThis.setImmediate) {
+          MainLoop.setImmediate = setImmediate;
+        } else {
           // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
           var setImmediates = [];
           var emscriptenMainLoopMessageId = 'setimmediate';
@@ -374,8 +365,6 @@ LibraryJSEventLoop = {
               postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
             } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
           });
-        } else {
-          MainLoop.setImmediate = setImmediate;
         }
       }
       MainLoop.scheduler = function MainLoop_scheduler_setImmediate() {

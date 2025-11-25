@@ -5,7 +5,9 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
+
 int test(int i) {
   int x = 10;
   int ret = (long)&x;  // both for the number, and forces x to not be nativized
@@ -17,11 +19,15 @@ int test(int i) {
   }
   return ret;
 }
+
 int main(int argc, char **argv) {
   // We should get the same value for the first and last - stack has unwound
+  printf("in main\n");
   int x1 = test(argc - 2);
   int x2 = test(100);
   int x3 = test((argc - 2) / 4);
+  assert(x2 != x1);
+  assert(x3 == x1);
   printf("*%d,%d*\n", x3 - x1, x2 != x1);
   return 0;
 }

@@ -1,11 +1,11 @@
 st_size: 6
 
 ftruncate(10): 0
-errno: No error information
+errno: Success
 st_size: 10
 
 ftruncate(4): 0
-errno: No error information
+errno: Success
 st_size: 4
 
 ftruncate(-1): -1
@@ -13,11 +13,11 @@ errno: Invalid argument
 st_size: 4
 
 truncate(2): 0
-errno: No error information
+errno: Success
 st_size: 2
 
 open(O_TRUNC)
-errno: No error information
+errno: Success
 st_size: 0
 
 truncate(readonly, 2): -1

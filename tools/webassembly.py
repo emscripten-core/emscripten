@@ -6,15 +6,15 @@
 """Utilities for manipulating WebAssembly binaries from python.
 """
 
-from collections import namedtuple
-from enum import IntEnum
-from functools import wraps
 import logging
 import os
 import sys
+from collections import namedtuple
+from enum import IntEnum
+from functools import wraps
 
-from .utils import memoize
 from . import utils
+from .utils import memoize
 
 sys.path.append(utils.path_from_root('third_party'))
 
@@ -157,6 +157,21 @@ class TargetFeaturePrefix(IntEnum):
   DISALLOWED = 0x2d
 
 
+class NameType(IntEnum):
+  MODULE = 0
+  FUNCTION = 1
+  LOCAL = 2
+  LABEL = 3
+  TYPE = 4
+  TABLE = 5
+  MEMORY = 6
+  GLOBAL = 7
+  ELEMSEGMENT = 8
+  DATASEGMENT = 9
+  FIELD = 10
+  TAG = 11
+
+
 class InvalidWasmError(BaseException):
   pass
 
@@ -291,19 +306,6 @@ class Module:
       types.append(FuncType(params, returns))
 
     return types
-
-  def parse_features_section(self):
-    features = []
-    sec = self.get_custom_section('target_features')
-    if sec:
-      self.seek(sec.offset)
-      self.read_string()  # name
-      feature_count = self.read_uleb()
-      while feature_count:
-        prefix = self.read_byte()
-        features.append((chr(prefix), self.read_string()))
-        feature_count -= 1
-    return features
 
   @memoize
   def parse_dylink_section(self):
@@ -519,6 +521,34 @@ class Module:
     num_types = self.read_uleb()
     return [self.read_uleb() for _ in range(num_types)]
 
+  @memoize
+  def get_function_names(self, remove_imports=True):
+    num_funcs = self.num_imported_funcs() + len(self.get_functions())
+    names = [None] * num_funcs
+
+    name_section = self.get_custom_section('name')
+    if not name_section:
+      return names
+
+    self.seek(name_section.offset)
+    self.read_string()  # section name
+    section_end = name_section.offset + name_section.size
+
+    while self.tell() < section_end:
+      subsection_id = self.read_byte()
+      subsection_size = self.read_uleb()
+      if subsection_id == 1:  # function names
+        count = self.read_uleb()
+        for _ in range(count):
+          func_idx = self.read_uleb()
+          func_name = self.read_string()
+          assert func_idx < len(names)
+          names[func_idx] = func_name
+      else:
+        self.skip(subsection_size)
+
+    return names[self.num_imported_funcs():] if remove_imports else names
+
   def has_name_section(self):
     return self.get_custom_section('name') is not None
 
@@ -542,6 +572,12 @@ class Module:
     assert idx >= self.num_imported_funcs()
     return self.get_functions()[idx - self.num_imported_funcs()]
 
+  def iter_functions_by_index(self):
+    self._calc_indexes()
+    for idx in range(self.num_imported_funcs(),
+                     self.num_imported_funcs() + len(self.get_functions())):
+      yield idx, self.get_function(idx)
+
   def get_global(self, idx):
     self._calc_indexes()
     assert idx >= self.num_imported_globals()
@@ -556,8 +592,11 @@ class Module:
       func_type = self.get_function_types()[idx - self.num_imported_funcs()]
     return self.get_types()[func_type]
 
+  @memoize
   def get_target_features(self):
     section = self.get_custom_section('target_features')
+    if not section:
+      return {}
     self.seek(section.offset)
     assert self.read_string() == 'target_features'
     features = {}
@@ -567,6 +606,15 @@ class Module:
       feature = self.read_string()
       features[feature] = prefix
     return features
+
+  @memoize
+  def get_sourceMappingURL(self):
+    section = self.get_custom_section('sourceMappingURL')
+    if not section:
+      return ''
+    self.seek(section.offset)
+    self.read_string() # 'sourceMappingURL'
+    return self.read_string()
 
 
 def parse_dylink_section(wasm_file):

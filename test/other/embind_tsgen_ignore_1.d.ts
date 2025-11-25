@@ -1,13 +1,13 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
 declare namespace RuntimeExports {
-    let FS_createPath: any;
-    function FS_createDataFile(parent: any, name: any, fileData: any, canRead: any, canWrite: any, canOwn: any): void;
-    function FS_createPreloadedFile(parent: any, name: any, url: any, canRead: any, canWrite: any, onload: any, onerror: any, dontCreateFile: any, canOwn: any, preFinish: any): void;
-    function FS_unlink(path: any): any;
-    let FS_createLazyFile: any;
-    let FS_createDevice: any;
-    let addRunDependency: any;
-    let removeRunDependency: any;
+    function FS_createPath(...args: any[]): any;
+    function FS_createDataFile(...args: any[]): any;
+    function FS_preloadFile(parent: any, name: any, url: any, canRead: any, canWrite: any, dontCreateFile: any, canOwn: any, preFinish: any): Promise<void>;
+    function FS_unlink(...args: any[]): any;
+    function FS_createLazyFile(...args: any[]): any;
+    function FS_createDevice(...args: any[]): any;
+    function addRunDependency(id: any): void;
+    function removeRunDependency(id: any): void;
 }
 interface WasmModule {
   _main(_0: number, _1: number): number;
@@ -20,6 +20,8 @@ export interface ClassHandle {
   delete(): void;
   deleteLater(): this;
   isDeleted(): boolean;
+  // @ts-ignore - If targeting lower than ESNext, this symbol might not exist.
+  [Symbol.dispose](): void;
   clone(): this;
 }
 export interface Test extends ClassHandle {
@@ -81,6 +83,8 @@ export interface ClassWithTwoConstructors extends ClassHandle {
 export interface ClassWithSmartPtrConstructor extends ClassHandle {
   fn(_0: number): number;
 }
+
+type AliasedVal = number;
 
 export interface BaseClass extends ClassHandle {
   fn(_0: number): number;
@@ -148,6 +152,7 @@ interface EmbindModule {
     extend(_0: EmbindString, _1: any): any;
   };
   InterfaceWrapper: {};
+  function_consuming_aliased_val(_0: AliasedVal): void;
   a_bool: boolean;
   an_int: number;
   optional_test(_0?: Foo): number | undefined;
@@ -159,6 +164,7 @@ interface EmbindModule {
   getValObj(): ValObj;
   setValObj(_0: ValObj): void;
   string_test(_0: EmbindString): string;
+  optional_string_test(_0: EmbindString): string | undefined;
   wstring_test(_0: string): string;
 }
 

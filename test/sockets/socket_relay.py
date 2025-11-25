@@ -14,10 +14,10 @@ and then make a connection to another port, and do bidirectional
 communication. We need to actually listen on both ports.
 """
 
-import sys
 import socket
-import time
+import sys
 import threading
+import time
 from typing import Optional
 
 ports = [int(sys.argv[1]), int(sys.argv[2])]

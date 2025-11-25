@@ -20,8 +20,7 @@ void error_callback(int error, const char* description);
 
 int joy_connected = -1;
 
-void joystick_callback(int joy, int event)
-{
+void joystick_callback(int joy, int event) {
   if (event == GLFW_CONNECTED) {
     printf("Joystick %d was connected: %s\n", joy, glfwGetJoystickName(joy));
     joy_connected = joy; // use the most recently connected joystick
@@ -104,15 +103,13 @@ void main_2(void *arg) {
 }
 
 int main() {
-  if (!glfwInit())
-  {
+  if (!glfwInit()) {
     printf("Could not create window. Test failed.\n");
     return 1;
   }
   glfwWindowHint(GLFW_RESIZABLE , 1);
   g_window = glfwCreateWindow(600, 450, "GLFW joystick test", NULL, NULL);
-  if (!g_window)
-  {
+  if (!g_window) {
     printf("Could not create window. Test failed.\n");
     glfwTerminate();
     return 1;

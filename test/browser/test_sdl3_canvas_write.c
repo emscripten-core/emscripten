@@ -69,7 +69,7 @@ int main(void) {
     sdlError("SDL_Init");
   }
 
-  window = SDL_CreateWindow("SDL 2 test", 256, 256, 0);
+  window = SDL_CreateWindow("SDL3 test", 256, 256, 0);
   if (window == NULL) {
     sdlError("SDL_CreateWindow");
   }

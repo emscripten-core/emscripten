@@ -6,13 +6,16 @@
  */
 
 #include <stdio.h>
-int main(void) {
+
+int main() {
   const void *addrs[2] = {&&FOO, &&BAR};
 
   // confuse the optimizer so it doesn't hardcode the jump and avoid generating
   // an |indirectbr| instruction
   int which = 0;
-  for (int x = 0; x < 1000; x++) which = (which + x * x) % 7;
+  for (int x = 0; x < 1000; x++) {
+    which = (which + x * x) % 7;
+  }
   which = (which % 2) + 1;
 
   goto *addrs[which];

@@ -12,7 +12,7 @@ void do_exit() {
 }
 
 void run_in_worker() {
-  emscripten_out("Hello from wasm worker!\n");
+  emscripten_out("Hello from wasm worker!");
   EM_ASM(typeof checkStackCookie == 'function' && checkStackCookie());
   emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
 }

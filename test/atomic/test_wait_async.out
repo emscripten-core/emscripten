@@ -5,7 +5,6 @@ Waiting for 0 milliseconds should return 'timed-out'
 Waiting for >0 milliseconds should return 'ok' (but successfully time out in first call to asyncWaitFinished)
 Waiting for infinitely long should return 'ok' (and return 'ok' in second call to asyncWaitFinished)
 main: asyncWaitShouldTimeout
-worker_main
 worker: addr = 1234
 worker: notify async waiting main thread
 main: asyncWaitFinished

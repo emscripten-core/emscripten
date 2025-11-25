@@ -12,7 +12,6 @@ import tempfile
 import time
 from pathlib import Path
 
-
 profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
 
 

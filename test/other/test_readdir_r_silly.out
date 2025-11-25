@@ -1,0 +1,16 @@
+Before:
+dir
+  a
+  b
+  c
+  d
+  e
+
+Unlinking a
+Unlinking b
+Unlinking c
+Unlinking d
+Unlinking e
+After:
+dir
+done

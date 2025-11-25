@@ -1,7 +1,7 @@
 var address = 0;
 
 Module.onRuntimeInitialized = function() {
-  address = Module['_join_returned_address']();
+  address = _join_returned_address();
   assert(address);
   assert(HEAP8[address] == 0);
 }

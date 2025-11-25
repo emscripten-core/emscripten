@@ -64,6 +64,9 @@ struct ValObj {
   ValObj() : callback(val::undefined()) {}
 };
 
+EMSCRIPTEN_DECLARE_VAL_TYPE(AliasedVal);
+
+
 ValObj getValObj() {
   ValObj o;
   return o;
@@ -104,6 +107,9 @@ int function_with_callback_param(CallbackType ct) {
   return 0;
 }
 
+void function_consuming_aliased_val(AliasedVal) {
+}
+
 int global_fn(int, int) { return 0; }
 
 std::string string_test(std::string arg) {
@@ -112,6 +118,10 @@ std::string string_test(std::string arg) {
 
 std::wstring wstring_test(std::wstring arg) {
   return L"hi";
+}
+
+std::optional<std::string> optional_string_test(std::string arg) {
+  return "hi";
 }
 
 std::optional<int> optional_test(std::optional<Foo> arg) {
@@ -212,12 +222,14 @@ EMSCRIPTEN_BINDINGS(Test) {
   function("global_fn", &global_fn);
 
   register_optional<int>();
+  register_optional<std::string>();
   register_optional<Foo>();
   function("optional_test", &optional_test);
   function("optional_and_nonoptional_test", &optional_and_nonoptional_test);
 
   function("string_test", &string_test);
   function("wstring_test", &wstring_test);
+  function("optional_string_test", &optional_string_test);
 
   class_<ClassWithConstructor>("ClassWithConstructor")
       .constructor<int, const ValArr&>()
@@ -240,7 +252,11 @@ EMSCRIPTEN_BINDINGS(Test) {
   function("function_with_callback_param",
            &function_with_callback_param);
 
+  function("function_consuming_aliased_val",
+           &function_consuming_aliased_val);
+
   register_type<CallbackType>("(message: string) => void");
+  register_type<AliasedVal>("AliasedVal", "number");
 
   class_<BaseClass>("BaseClass").function("fn", &BaseClass::fn);
 

@@ -10,9 +10,6 @@ var SyscallsLibrary = {
                    '$PATH',
                    '$FS',
 #endif
-#if SYSCALL_DEBUG
-                   '$strError',
-#endif
   ],
   $SYSCALLS: {
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -42,12 +39,12 @@ var SyscallsLibrary = {
     },
 
     writeStat(buf, stat) {
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'u32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', SIZE_TYPE) }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'u32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
@@ -64,16 +61,16 @@ var SyscallsLibrary = {
       return 0;
     },
     writeStatFs(buf, stats) {
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, 'stats.bsize', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, 'stats.bsize', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, 'stats.blocks', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, 'stats.bfree', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, 'stats.bavail', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'stats.files', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, 'stats.ffree', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, 'stats.fsid', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, 'stats.flags', 'i32') }}};  // ST_NOSUID
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, 'stats.namelen', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, 'stats.bsize', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, 'stats.bsize', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, 'stats.blocks', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, 'stats.bfree', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, 'stats.bavail', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'stats.files', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, 'stats.ffree', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, 'stats.fsid', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, 'stats.flags', 'u32') }}};  // ST_NOSUID
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, 'stats.namelen', 'u32') }}};
     },
     doMsync(addr, stream, len, flags, offset) {
       if (!FS.isFile(stream.node.mode)) {
@@ -153,7 +150,11 @@ var SyscallsLibrary = {
   ],
   _mmap_js: (len, prot, flags, fd, offset, allocated, addr) => {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
+#if ASSERTIONS
+    // musl's mmap doesn't allow values over a certain limit
+    // see OFF_MASK in mmap.c.
+    assert(!isNaN(offset));
+#endif
     var stream = SYSCALLS.getStreamFromFD(fd);
     var res = FS.mmap(stream, len, offset, prot, flags);
     var ptr = res.ptr;
@@ -280,6 +281,7 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         return -{{{ cDefs.EINVAL }}}; // not supported
       }
+      case {{{ cDefs.FIONBIO }}}:
       case {{{ cDefs.FIONREAD }}}: {
         var argp = syscallGetVarargP();
         return FS.ioctl(stream, op, argp);
@@ -468,7 +470,7 @@ var SyscallsLibrary = {
     var view = new Uint8Array(total);
     var offset = 0;
     for (var i = 0; i < num; i++) {
-      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, POINTER_TYPE) }}};
+      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, '*') }}};
       var iovlen = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
       for (var j = 0; j < iovlen; j++) {
         view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
@@ -480,7 +482,7 @@ var SyscallsLibrary = {
   __syscall_recvmsg__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
   __syscall_recvmsg: (fd, message, flags, d1, d2, d3) => {
     var sock = getSocketFromFD(fd);
-    var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, POINTER_TYPE) }}};
+    var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
     var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
     // get the total amount of data we can read across all arrays
     var total = 0;
@@ -511,7 +513,7 @@ var SyscallsLibrary = {
     var bytesRead = 0;
     var bytesRemaining = msg.buffer.byteLength;
     for (var i = 0; bytesRemaining > 0 && i < num; i++) {
-      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, POINTER_TYPE) }}};
+      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, '*') }}};
       var iovlen = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
       if (!iovlen) {
         continue;
@@ -631,7 +633,7 @@ var SyscallsLibrary = {
   },
   _msync_js__i53abi: true,
   _msync_js: (addr, len, prot, flags, fd, offset) => {
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(offset)) return -{{{ cDefs.EOVERFLOW }}};
     SYSCALLS.doMsync(addr, SYSCALLS.getStreamFromFD(fd), len, flags, offset);
     return 0;
   },
@@ -670,14 +672,14 @@ var SyscallsLibrary = {
   },
   __syscall_truncate64__i53abi: true,
   __syscall_truncate64: (path, length) => {
-    if (isNaN(length)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(length)) return -{{{ cDefs.EOVERFLOW }}};
     path = SYSCALLS.getStr(path);
     FS.truncate(path, length);
     return 0;
   },
   __syscall_ftruncate64__i53abi: true,
   __syscall_ftruncate64: (fd, length) => {
-    if (isNaN(length)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(length)) return -{{{ cDefs.EOVERFLOW }}};
     FS.ftruncate(fd, length);
     return 0;
   },
@@ -864,7 +866,7 @@ var SyscallsLibrary = {
     var nofollow = flags & {{{ cDefs.AT_SYMLINK_NOFOLLOW }}};
     flags = flags & (~{{{ cDefs.AT_SYMLINK_NOFOLLOW }}});
 #if ASSERTIONS
-    assert(flags === 0);
+    assert(!flags);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
     (nofollow ? FS.lchown : FS.chown)(path, owner, group);
@@ -884,12 +886,12 @@ var SyscallsLibrary = {
   __syscall_unlinkat: (dirfd, path, flags) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    if (flags === 0) {
+    if (!flags) {
       FS.unlink(path);
     } else if (flags === {{{ cDefs.AT_REMOVEDIR }}}) {
       FS.rmdir(path);
     } else {
-      abort('Invalid flags passed to unlinkat');
+      return -{{{ cDefs.EINVAL }}};
     }
     return 0;
   },
@@ -933,7 +935,7 @@ var SyscallsLibrary = {
   __syscall_faccessat: (dirfd, path, amode, flags) => {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
-    assert(flags === 0 || flags == {{{ cDefs.AT_EACCESS }}});
+    assert(!flags || flags == {{{ cDefs.AT_EACCESS }}});
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
     if (amode & ~{{{ cDefs.S_IRWXO }}}) {
@@ -958,7 +960,7 @@ var SyscallsLibrary = {
   __syscall_utimensat: (dirfd, path, times, flags) => {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
-    assert(flags === 0);
+    assert(!flags);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, true);
     var now = Date.now(), atime, mtime;
@@ -995,7 +997,7 @@ var SyscallsLibrary = {
   },
   __syscall_fallocate__i53abi: true,
   __syscall_fallocate: (fd, mode, offset, len) => {
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(offset) || isNaN(len)) return -{{{ cDefs.EOVERFLOW }}};
     if (mode != 0) {
       return -{{{ cDefs.ENOTSUP }}}
     }

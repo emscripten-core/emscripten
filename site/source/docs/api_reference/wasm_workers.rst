@@ -153,7 +153,7 @@ a Wasm Worker, consider which type of hierarchy you would like, and if necessary
 hierarchy manually by posting the Worker creation over to the main thread yourself.
 
 Note that support for nested Workers varies across browsers. As of 02/2022, nested Workers are `not
-supported in Safari <https://bugs.webkit.org/show_bug.cgi?id=22723>`_. See `here 
+supported in Safari <https://webkit.org/b/22723>`_. See `here 
 <https://github.com/johanholmerin/nested-worker>`_ for a polyfill.
 
 Pthreads can use the Wasm Worker synchronization API, but not vice versa

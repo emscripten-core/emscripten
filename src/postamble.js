@@ -6,18 +6,15 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-#if HEADLESS
-if (!ENVIRONMENT_IS_WEB) {
-#include "headlessCanvas.js"
-#include "headless.js"
+#if PROXY_TO_WORKER
+if (ENVIRONMENT_IS_WORKER) {
+#include "webGLWorker.js"
+#include "proxyWorker.js"
 }
 #endif
 
-#if PROXY_TO_WORKER
-if (ENVIRONMENT_IS_WORKER) {
-#include "webGLWorker.js'
-#include "proxyWorker.js"
-}
+#if LOAD_SOURCE_MAP
+#include "source_map_support.js"
 #endif
 
 #if DETERMINISTIC
@@ -39,7 +36,9 @@ var mainArgs = undefined;
 {{{ asyncIf(ASYNCIFY == 2) }}}function callMain() {
 #endif
 #if ASSERTIONS
+#if '$runDependencies' in addedLibraryItems
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
+#endif
   assert(typeof onPreRuns === 'undefined' || onPreRuns.length == 0, 'cannot call main when preRun functions remain to be called');
 #endif
 
@@ -65,10 +64,10 @@ var mainArgs = undefined;
   var argc = args.length;
   var argv = stackAlloc((argc + 1) * {{{ POINTER_SIZE }}});
   var argv_ptr = argv;
-  args.forEach((arg) => {
+  for (var arg of args) {
     {{{ makeSetValue('argv_ptr', 0, 'stringToUTF8OnStack(arg)', '*') }}};
     argv_ptr += {{{ POINTER_SIZE }}};
-  });
+  }
   {{{ makeSetValue('argv_ptr', 0, 0, '*') }}};
 #else
   var argc = 0;
@@ -136,6 +135,7 @@ function run(args = arguments_) {
 function run() {
 #endif
 
+#if '$runDependencies' in addedLibraryItems
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
@@ -143,11 +143,12 @@ function run() {
     dependenciesFulfilled = run;
     return;
   }
+#endif
 
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #if MODULARIZE
-    readyPromiseResolve(Module);
+    readyPromiseResolve?.(Module);
 #endif
     initRuntime();
     return;
@@ -160,6 +161,7 @@ function run() {
 
   preRun();
 
+#if '$runDependencies' in addedLibraryItems
   // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
@@ -168,8 +170,9 @@ function run() {
     dependenciesFulfilled = run;
     return;
   }
+#endif
 
-  function doRun() {
+  {{{ asyncIf(ASYNCIFY == 2) }}}function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
 #if ASSERTIONS
@@ -187,7 +190,7 @@ function run() {
 #endif
 
 #if MODULARIZE
-    readyPromiseResolve(Module);
+    readyPromiseResolve?.(Module);
 #endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
     Module['onRuntimeInitialized']?.();
@@ -199,9 +202,9 @@ function run() {
 #if HAS_MAIN
     var noInitialRun = {{{ makeModuleReceiveExpr('noInitialRun', !INVOKE_RUN) }}};
 #if MAIN_READS_PARAMS
-    if (!noInitialRun) callMain(args);
+    if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain(args);
 #else
-    if (!noInitialRun) callMain();
+    if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain();
 #endif
 #else
 #if ASSERTIONS
@@ -261,7 +264,7 @@ function checkUnflushedContent() {
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
-    ['stdout', 'stderr'].forEach((name) => {
+    for (var name of ['stdout', 'stderr']) {
       var info = FS.analyzePath('/dev/' + name);
       if (!info) return;
       var stream = info.object;
@@ -270,7 +273,7 @@ function checkUnflushedContent() {
       if (tty?.output?.length) {
         has = true;
       }
-    });
+    }
 #endif
   } catch(e) {}
   out = oldOut;
@@ -285,101 +288,88 @@ function checkUnflushedContent() {
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
-function preInit() {
-#if expectToReceiveOnModule('preInit')
-  if (Module['preInit']) {
-    if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
-    while (Module['preInit'].length > 0) {
-      Module['preInit'].shift()();
-    }
-  }
-#if ASSERTIONS
-  consumedModuleProp('preInit');
+var wasmExports;
+#if SPLIT_MODULE
+var wasmRawExports;
 #endif
-#endif
-}
 
 #if MODULARIZE == 'instance'
+// In MODULARIZE=instance mode we delay most of the initialization work until
+// the `init` function is called.
+#if ASSERTIONS
+var initCalled = false;
+#endif
 export default async function init(moduleArg = {}) {
-  Module = moduleArg;
+#if ASSERTIONS
+  assert(!initCalled);
+  initCalled = true;
+#endif
+  Object.assign(Module, moduleArg);
   processModuleArgs();
 #if WASM_ESM_INTEGRATION
+#if PTHREADS
+  registerTLSInit(__emscripten_tls_init);
+#endif
   updateMemoryViews();
+#if DYNCALLS && '$dynCalls' in addedLibraryItems
+
+  assignDynCalls();
+#endif
 #else
   wasmExports = await createWasm();
-  assignWasmExports();
 #endif
-  preInit();
   run();
 }
-#if PTHREADS
-if (ENVIRONMENT_IS_PTHREAD) await init()
+
+#if ENVIRONMENT_MAY_BE_NODE
+// When run as the main script under node we run `init` immediately.
+if (ENVIRONMENT_IS_NODE
+#if PTHREADS || WASM_WORKERS
+&& !{{{ ENVIRONMENT_IS_WORKER_THREAD() }}}
 #endif
+)
+{
+  const url = await import('url');
+  const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
+  if (isMainModule) await init();
+}
+#endif
+
+#if ENVIRONMENT_MAY_BE_SHELL
+if (ENVIRONMENT_IS_SHELL) {
+  // When run in a shell we run `init` immediately.
+  await init();
+}
+#endif
+
+#else // MODULARIZE == instance
+
+#if WASM_WORKERS || PTHREADS
+if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
+// Call createWasm on startup if we are the main thread.
+// Worker threads call this once they receive the module via postMessage
+#endif
+
+#if WASM_ASYNC_COMPILATION
+
+#if MODULARIZE
+// In modularize mode the generated code is within a factory function so we
+// can use await here (since it's not top-level-await).
+wasmExports = await createWasm();
 #else
-preInit();
+// With async instantation wasmExports is assigned asynchronously when the
+// instance is received.
+createWasm();
+#endif
+
+#else
+wasmExports = createWasm();
+#endif
+
 run();
+
+#if WASM_WORKERS || PTHREADS
+}
 #endif
 
-#if BUILD_AS_WORKER
-
-var workerResponded = false, workerCallbackId = -1;
-
-(() => {
-  var messageBuffer = null, buffer = 0, bufferSize = 0;
-
-  function flushMessages() {
-    if (!messageBuffer) return;
-    if (runtimeInitialized) {
-      var temp = messageBuffer;
-      messageBuffer = null;
-      temp.forEach((message) => onmessage(message));
-    }
-  }
-
-  function messageResender() {
-    flushMessages();
-    if (messageBuffer) {
-      setTimeout(messageResender, 100); // still more to do
-    }
-  }
-
-  onmessage = (msg) => {
-    // if main has not yet been called (mem init file, other async things), buffer messages
-    if (!runtimeInitialized) {
-      if (!messageBuffer) {
-        messageBuffer = [];
-        setTimeout(messageResender, 100);
-      }
-      messageBuffer.push(msg);
-      return;
-    }
-    flushMessages();
-
-    var func = Module['_' + msg.data['funcName']];
-    if (!func) throw 'invalid worker function to call: ' + msg.data['funcName'];
-    var data = msg.data['data'];
-    if (data) {
-      if (!data.byteLength) data = new Uint8Array(data);
-      if (!buffer || bufferSize < data.length) {
-        if (buffer) _free(buffer);
-        bufferSize = data.length;
-        buffer = _malloc(data.length);
-      }
-      HEAPU8.set(data, buffer);
-    }
-
-    workerResponded = false;
-    workerCallbackId = msg.data['callbackId'];
-    if (data) {
-      func(buffer, data.length);
-    } else {
-      func(0, 0);
-    }
-  }
-})();
-
-#endif
-
-#if STANDALONE_WASM && ASSERTIONS && !WASM_BIGINT
-err('warning: running JS from STANDALONE_WASM without WASM_BIGINT will fail if a syscall with i64 is used (in standalone mode we cannot legalize syscalls)');
-#endif
+#endif // MODULARIZE != instance

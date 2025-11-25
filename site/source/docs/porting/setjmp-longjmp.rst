@@ -10,7 +10,7 @@ by the ``SUPPORT_LONGJMP`` setting, which can take these values:
 * ``emscripten``: JavaScript-based support
 * ``wasm``: WebAssembly exception handling-based support
 * 0: No support
-* 1: Default support, depending on the exception mode. ``wasm`` if ``-fwasm-exception`` is used, ``emscripten`` otherwise.
+* 1: Default support, depending on the exception mode. ``wasm`` if ``-fwasm-exceptions`` is used, ``emscripten`` otherwise.
 
 If :ref:`native Wasm exceptions <webassembly-exception-handling-based-support>`
 are used, ``SUPPORT_LONGJMP`` defaults to ``wasm``, and if :ref:`JavaScript-based

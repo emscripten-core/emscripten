@@ -266,15 +266,10 @@ addToLibrary({
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_await: ${id}`);
 #endif
-    return Asyncify.handleSleep((wakeUp) => {
-      getPromise(id).then((value) => {
-        setPromiseResult(returnValuePtr, true, value);
-        wakeUp();
-      }, (value) => {
-        setPromiseResult(returnValuePtr, false, value);
-        wakeUp();
-      });
-    });
+    return Asyncify.handleAsync(() => getPromise(id).then(
+      value => setPromiseResult(returnValuePtr, true, value),
+      error => setPromiseResult(returnValuePtr, false, error)
+    ));
 #else
     abort('emscripten_promise_await is only available with ASYNCIFY');
 #endif

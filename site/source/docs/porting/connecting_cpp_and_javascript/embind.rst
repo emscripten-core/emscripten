@@ -1214,6 +1214,13 @@ produce `val` types. To give better type information, custom `val` types can be
 registered using :cpp:func:`EMSCRIPTEN_DECLARE_VAL_TYPE` in combination with
 :cpp:class:`emscripten::register_type`. An example below:
 
+Two registration forms are supported:
+
+* Single parameter: ``register_type<T>(definition)`` — the provided string is inlined
+    everywhere the type appears.
+* Two parameters: ``register_type<T>(name, definition)`` — creates a named TypeScript
+    type alias (``type name = definition;``) and uses ``name`` at call sites.
+
 .. code:: cpp
 
     EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
@@ -1226,6 +1233,9 @@ registered using :cpp:func:`EMSCRIPTEN_DECLARE_VAL_TYPE` in combination with
     EMSCRIPTEN_BINDINGS(custom_val) {
         function("function_with_callback_param", &function_with_callback_param);
         register_type<CallbackType>("(message: string) => void");
+
+        // Named alias form (emits: type Callback = (message: string) => void;)
+        register_type<CallbackType>("Callback", "(message: string) => void");
     }
 
 

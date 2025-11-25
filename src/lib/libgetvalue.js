@@ -59,19 +59,6 @@ var LibraryMemOps = {
    * @param {string} type
    */`,
   $getValue: getValueImpl,
-
-#if SAFE_HEAP
-  // The same as the above two functions, but known to the safeHeap pass
-  // in tools/acorn-optimizer.mjs.  The heap accesses within these two
-  // functions will *not* get re-written.
-  // Note that we do not use the alias mechanism here since we need separate
-  // instances of above setValueImpl/getValueImpl functions.
-  $setValue_safe__internal: true,
-  $setValue_safe: setValueImpl,
-
-  $getValue_safe__internal: true,
-  $getValue_safe: getValueImpl,
-#endif
 };
 
 addToLibrary(LibraryMemOps);

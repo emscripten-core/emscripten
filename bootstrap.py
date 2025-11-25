@@ -10,6 +10,7 @@ of a Makefile).
 import argparse
 import os
 import shutil
+import subprocess
 import sys
 
 __rootdir__ = os.path.dirname(os.path.abspath(__file__))
@@ -17,12 +18,15 @@ sys.path.insert(0, __rootdir__)
 
 STAMP_DIR = os.path.join(__rootdir__, 'out')
 
-from tools import shared, utils
+# N.b. This script bootstrap.py cannot use 'from tools import shared',
+# because shared.py requires that a valid .emscripten config is already
+# created. Bootstrap.py needs to be run before an .emscripten config exists.
+from tools import utils
 
 actions = [
   ('npm packages', [
      'package.json',
-     'package-lock.json'
+     'package-lock.json',
    ], ['npm', 'ci']),
   ('create entry points', [
      'tools/maint/create_entry_points.py',
@@ -63,19 +67,21 @@ def main(args):
   parser = argparse.ArgumentParser(description=__doc__)
   parser.add_argument('-v', '--verbose', action='store_true', help='verbose', default=False)
   parser.add_argument('-n', '--dry-run', action='store_true', help='dry run', default=False)
-  parser.add_argument('-i', '--install-post-checkout', action='store_true', help='install post checkout script', default=False)
+  parser.add_argument('-i', '--install-git-hooks', action='store_true', help='install emscripten git hooks', default=False)
   args = parser.parse_args()
 
-  if args.install_post_checkout:
+  if args.install_git_hooks:
     if not os.path.exists(utils.path_from_root('.git')):
-      print('--install-post-checkout requires git checkout')
+      print('--install-git-hooks requires git checkout')
       return 1
 
-    src = utils.path_from_root('tools/maint/post-checkout')
     dst = utils.path_from_root('.git/hooks')
     if not os.path.exists(dst):
       os.mkdir(dst)
-    shutil.copy(src, dst)
+
+    src = utils.path_from_root('tools/maint/post-checkout')
+    for src in ('tools/maint/post-checkout', 'tools/maint/pre-push'):
+      shutil.copy(utils.path_from_root(src), dst)
     return 0
 
   for name, deps, cmd in actions:
@@ -93,7 +99,7 @@ def main(args):
       if not cmd[0]:
         utils.exit_with_error(f'command not found: {orig_exe}')
     print(' -> %s' % ' '.join(cmd))
-    shared.run_process(cmd, cwd=utils.path_from_root())
+    subprocess.run(cmd, check=True, text=True, encoding='utf-8', cwd=utils.path_from_root())
     utils.safe_ensure_dirs(STAMP_DIR)
     utils.write_file(stamp_file, 'Timestamp file created by bootstrap.py')
   return 0

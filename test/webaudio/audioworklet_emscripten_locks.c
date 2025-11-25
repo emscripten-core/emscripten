@@ -45,6 +45,19 @@ _Atomic Test whichTest = TEST_HAS_WAIT;
 double startTime = 0;
 
 bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData) {
+  assert(emscripten_current_thread_is_audio_worklet());
+
+  // Produce at few empty frames of audio before we start trying to interact
+  // with the with main thread.
+  // On chrome at least it appears the main thread completely blocks until
+  // a few frames have been produced.  This means it may not be safe to interact
+  // with the main thread during initial frames?
+  // In my experiments it seems like 5 was the magic number that I needed to
+  // produce before the main thread could continue to run.
+  // See https://github.com/emscripten-core/emscripten/issues/24213
+  static int count = 0;
+  if (count++ < 5) return true;
+
   int result = 0;
   switch (whichTest) {
   case TEST_HAS_WAIT:
@@ -69,7 +82,7 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     whichTest = TEST_WAIT_ACQUIRE;
   case TEST_WAIT_ACQUIRE:
     // Will get unlocked in main thread, so should quickly acquire
-    result = emscripten_lock_busyspin_wait_acquire(&testLock, 100);
+    result = emscripten_lock_busyspin_wait_acquire(&testLock, 10000);
     emscripten_outf("TEST_WAIT_ACQUIRE: %d  (expect: 1)", result);
     assert(result);
     whichTest = TEST_RELEASE;
@@ -114,10 +127,16 @@ EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
 });
 
 bool MainLoop(double time, void* data) {
+  assert(!emscripten_current_thread_is_audio_worklet());
+  static int didUnlock = false;
   switch (whichTest) {
   case TEST_WAIT_ACQUIRE:
-    // Release here to acquire in process
-    emscripten_lock_release(&testLock);
+    if (!didUnlock) {
+      emscripten_out("main thread releasing lock");
+      // Release here to acquire in process
+      emscripten_lock_release(&testLock);
+      didUnlock = true;
+    }
     break;
   case TEST_WAIT_INFINTE_1:
     // Spin here until released in process (but don't change test until we know this case ran)

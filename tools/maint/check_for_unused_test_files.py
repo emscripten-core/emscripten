@@ -4,10 +4,10 @@
 be deleted.  This is a work in progress and still contains
 false positives in the output."""
 
-import os
-import sys
 import fnmatch
+import os
 import subprocess
+import sys
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))

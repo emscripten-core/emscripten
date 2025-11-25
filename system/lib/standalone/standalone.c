@@ -34,6 +34,7 @@
 
 #include "lock.h"
 #include "emscripten_internal.h"
+#include "unwind.h"
 
 /*
  * WASI support code. These are compiled with the program, and call out
@@ -1551,3 +1552,6 @@ weak time_t _mktime_js(struct tm* tm) {
   return -1;
 }
 
+void __throw_exception_with_stack_trace(_Unwind_Exception* exception_object) {
+  _Unwind_RaiseException(exception_object);
+}

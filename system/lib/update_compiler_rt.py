@@ -23,6 +23,7 @@ copy_dirs = [
     ('lib', 'lsan'),
     ('lib', 'ubsan'),
     ('lib', 'ubsan_minimal'),
+    ('lib', 'profile'),
 ]
 
 preserve_files = ('readme.txt',)

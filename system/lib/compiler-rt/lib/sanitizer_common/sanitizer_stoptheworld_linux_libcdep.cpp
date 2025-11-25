@@ -31,7 +31,8 @@
 #include <sys/types.h> // for pid_t
 #include <sys/uio.h> // for iovec
 #include <elf.h> // for NT_PRSTATUS
-#if (defined(__aarch64__) || SANITIZER_RISCV64 || SANITIZER_LOONGARCH64) && \
+#if (defined(__aarch64__) || defined(__powerpc64__) || \
+     SANITIZER_RISCV64 || SANITIZER_LOONGARCH64) &&    \
      !SANITIZER_ANDROID
 // GLIBC 2.20+ sys/user does not include asm/ptrace.h
 # include <asm/ptrace.h>
@@ -137,10 +138,6 @@ class ThreadSuspender {
 };
 
 bool ThreadSuspender::SuspendThread(tid_t tid) {
-  // Are we already attached to this thread?
-  // Currently this check takes linear time, however the number of threads is
-  // usually small.
-  if (suspended_threads_list_.ContainsTid(tid)) return false;
   int pterrno;
   if (internal_iserror(internal_ptrace(PTRACE_ATTACH, tid, nullptr, nullptr),
                        &pterrno)) {
@@ -217,17 +214,28 @@ bool ThreadSuspender::SuspendAllThreads() {
     switch (thread_lister.ListThreads(&threads)) {
       case ThreadLister::Error:
         ResumeAllThreads();
+        VReport(1, "Failed to list threads\n");
         return false;
       case ThreadLister::Incomplete:
+        VReport(1, "Incomplete list\n");
         retry = true;
         break;
       case ThreadLister::Ok:
         break;
     }
     for (tid_t tid : threads) {
+      // Are we already attached to this thread?
+      // Currently this check takes linear time, however the number of threads
+      // is usually small.
+      if (suspended_threads_list_.ContainsTid(tid))
+        continue;
       if (SuspendThread(tid))
         retry = true;
+      else
+        VReport(2, "%llu/status: %s\n", tid, thread_lister.LoadStatus(tid));
     }
+    if (retry)
+      VReport(1, "SuspendAllThreads retry: %d\n", i);
   }
   return suspended_threads_list_.ThreadCount();
 }

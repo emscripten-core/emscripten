@@ -292,6 +292,7 @@
         "EWOULDBLOCK": 6,
         "EXDEV": 75,
         "EXFULL": 115,
+        "FIONBIO": 21537,
         "FIONREAD": 21531,
         "F_DUPFD": 0,
         "F_GETFD": 1,
@@ -515,7 +516,11 @@
         "__WASI_RIGHTS_PATH_SYMLINK": 16777216,
         "__WASI_RIGHTS_PATH_UNLINK_FILE": 67108864,
         "__WASI_RIGHTS_POLL_FD_READWRITE": 134217728,
-        "__WASI_RIGHTS_SOCK_SHUTDOWN": 268435456
+        "__WASI_RIGHTS_SOCK_SHUTDOWN": 268435456,
+        "internal::EM_INVOKER_KIND::CAST": 3,
+        "internal::EM_INVOKER_KIND::CONSTRUCTOR": 2,
+        "internal::EM_INVOKER_KIND::FUNCTION": 0,
+        "internal::EM_INVOKER_KIND::METHOD": 1
     },
     "structs": {
         "AudioParamFrame": {
@@ -528,6 +533,15 @@
             "data": 8,
             "numberOfChannels": 0,
             "samplesPerChannel": 4
+        },
+        "EmscriptenAudioWorkletNodeCreateOptions": {
+            "__size__": 24,
+            "channelCount": 12,
+            "channelCountMode": 16,
+            "channelInterpretation": 20,
+            "numberOfInputs": 0,
+            "numberOfOutputs": 4,
+            "outputChannelCounts": 8
         },
         "EmscriptenBatteryEvent": {
             "__size__": 32,
@@ -546,7 +560,8 @@
             "accelerationZ": 16,
             "rotationRateAlpha": 48,
             "rotationRateBeta": 56,
-            "rotationRateGamma": 64
+            "rotationRateGamma": 64,
+            "supportedFields": 72
         },
         "EmscriptenDeviceOrientationEvent": {
             "__size__": 32,
@@ -683,6 +698,12 @@
             "__size__": 8,
             "hidden": 0,
             "visibilityState": 4
+        },
+        "EmscriptenWebAudioCreateAttributes": {
+            "__size__": 12,
+            "latencyHint": 0,
+            "renderSizeHint": 8,
+            "sampleRate": 4
         },
         "EmscriptenWebGLContextAttributes": {
             "__size__": 36,
@@ -876,603 +897,18 @@
             "minor": 1,
             "patch": 2
         },
-        "WGPUAdapterInfo": {
-            "__size__": 36,
-            "adapterType": 24,
-            "architecture": 8,
-            "backendType": 20,
-            "description": 16,
-            "device": 12,
-            "deviceID": 32,
-            "nextInChain": 0,
-            "vendor": 4,
-            "vendorID": 28
-        },
-        "WGPUAdapterProperties": {
-            "__size__": 40,
-            "adapterType": 28,
-            "architecture": 12,
-            "backendType": 32,
-            "compatibilityMode": 36,
-            "deviceID": 16,
-            "driverDescription": 24,
-            "name": 20,
-            "nextInChain": 0,
-            "vendorID": 4,
-            "vendorName": 8
-        },
-        "WGPUBindGroupDescriptor": {
-            "__size__": 20,
-            "entries": 16,
-            "entryCount": 12,
-            "label": 4,
-            "layout": 8,
-            "nextInChain": 0
-        },
-        "WGPUBindGroupEntry": {
-            "__size__": 40,
-            "binding": 4,
-            "buffer": 8,
-            "nextInChain": 0,
-            "offset": 16,
-            "sampler": 32,
-            "size": 24,
-            "textureView": 36
-        },
-        "WGPUBindGroupLayoutDescriptor": {
+        "WebAudioParamDescriptor": {
             "__size__": 16,
-            "entries": 12,
-            "entryCount": 8,
-            "label": 4,
-            "nextInChain": 0
+            "automationRate": 12,
+            "defaultValue": 0,
+            "maxValue": 8,
+            "minValue": 4
         },
-        "WGPUBindGroupLayoutEntry": {
-            "__size__": 80,
-            "binding": 4,
-            "buffer": 16,
-            "nextInChain": 0,
-            "sampler": 40,
-            "storageTexture": 64,
-            "texture": 48,
-            "visibility": 8
-        },
-        "WGPUBlendComponent": {
+        "WebAudioWorkletProcessorCreateOptions": {
             "__size__": 12,
-            "dstFactor": 8,
-            "operation": 0,
-            "srcFactor": 4
-        },
-        "WGPUBlendState": {
-            "__size__": 24,
-            "alpha": 12,
-            "color": 0
-        },
-        "WGPUBufferBindingLayout": {
-            "__size__": 24,
-            "hasDynamicOffset": 8,
-            "minBindingSize": 16,
-            "nextInChain": 0,
-            "type": 4
-        },
-        "WGPUBufferDescriptor": {
-            "__size__": 32,
-            "label": 4,
-            "mappedAtCreation": 24,
-            "nextInChain": 0,
-            "size": 16,
-            "usage": 8
-        },
-        "WGPUBufferMapCallbackInfo": {
-            "__size__": 16,
-            "callback": 8,
-            "mode": 4,
-            "nextInChain": 0,
-            "userdata": 12
-        },
-        "WGPUChainedStruct": {
-            "__size__": 8,
-            "next": 0,
-            "sType": 4
-        },
-        "WGPUColor": {
-            "__size__": 32,
-            "a": 24,
-            "b": 16,
-            "g": 8,
-            "r": 0
-        },
-        "WGPUColorTargetState": {
-            "__size__": 16,
-            "blend": 8,
-            "format": 4,
-            "nextInChain": 0,
-            "writeMask": 12
-        },
-        "WGPUCommandBufferDescriptor": {
-            "__size__": 8,
-            "label": 4,
-            "nextInChain": 0
-        },
-        "WGPUCommandEncoderDescriptor": {
-            "__size__": 8,
-            "label": 4,
-            "nextInChain": 0
-        },
-        "WGPUCompilationInfo": {
-            "__size__": 12,
-            "messageCount": 4,
-            "messages": 8,
-            "nextInChain": 0
-        },
-        "WGPUCompilationMessage": {
-            "__size__": 72,
-            "length": 40,
-            "lineNum": 16,
-            "linePos": 24,
-            "message": 4,
-            "nextInChain": 0,
-            "offset": 32,
-            "type": 8,
-            "utf16Length": 64,
-            "utf16LinePos": 48,
-            "utf16Offset": 56
-        },
-        "WGPUComputePassDescriptor": {
-            "__size__": 12,
-            "label": 4,
-            "nextInChain": 0,
-            "timestampWrites": 8
-        },
-        "WGPUComputePassTimestampWrites": {
-            "__size__": 12,
-            "beginningOfPassWriteIndex": 4,
-            "endOfPassWriteIndex": 8,
-            "querySet": 0
-        },
-        "WGPUComputePipelineDescriptor": {
-            "__size__": 32,
-            "compute": 12,
-            "label": 4,
-            "layout": 8,
-            "nextInChain": 0
-        },
-        "WGPUConstantEntry": {
-            "__size__": 16,
-            "key": 4,
-            "nextInChain": 0,
-            "value": 8
-        },
-        "WGPUDepthStencilState": {
-            "__size__": 68,
-            "depthBias": 56,
-            "depthBiasClamp": 64,
-            "depthBiasSlopeScale": 60,
-            "depthCompare": 12,
-            "depthWriteEnabled": 8,
-            "format": 4,
-            "nextInChain": 0,
-            "stencilBack": 32,
-            "stencilFront": 16,
-            "stencilReadMask": 48,
-            "stencilWriteMask": 52
-        },
-        "WGPUDeviceDescriptor": {
-            "__size__": 36,
-            "defaultQueue": 20,
-            "deviceLostCallback": 28,
-            "deviceLostUserdata": 32,
-            "label": 4,
-            "nextInChain": 0,
-            "requiredFeatureCount": 8,
-            "requiredFeatures": 12,
-            "requiredLimits": 16
-        },
-        "WGPUExtent3D": {
-            "__size__": 12,
-            "depthOrArrayLayers": 8,
-            "height": 4,
-            "width": 0
-        },
-        "WGPUFragmentState": {
-            "__size__": 28,
-            "constantCount": 12,
-            "constants": 16,
-            "entryPoint": 8,
-            "module": 4,
-            "nextInChain": 0,
-            "targetCount": 20,
-            "targets": 24
-        },
-        "WGPUFuture": {
-            "__size__": 8,
-            "id": 0
-        },
-        "WGPUFutureWaitInfo": {
-            "__size__": 16,
-            "completed": 8,
-            "future": 0
-        },
-        "WGPUImageCopyBuffer": {
-            "__size__": 40,
-            "buffer": 32,
-            "layout": 8,
-            "nextInChain": 0
-        },
-        "WGPUImageCopyTexture": {
-            "__size__": 28,
-            "aspect": 24,
-            "mipLevel": 8,
-            "nextInChain": 0,
-            "origin": 12,
-            "texture": 4
-        },
-        "WGPUInstanceDescriptor": {
-            "__size__": 16,
-            "features": 4,
-            "nextInChain": 0
-        },
-        "WGPUInstanceFeatures": {
-            "__size__": 12,
-            "nextInChain": 0,
-            "timedWaitAnyEnable": 4,
-            "timedWaitAnyMaxCount": 8
-        },
-        "WGPULimits": {
-            "__size__": 144,
-            "maxBindGroups": 16,
-            "maxBindGroupsPlusVertexBuffers": 20,
-            "maxBindingsPerBindGroup": 24,
-            "maxBufferSize": 88,
-            "maxColorAttachmentBytesPerSample": 116,
-            "maxColorAttachments": 112,
-            "maxComputeInvocationsPerWorkgroup": 124,
-            "maxComputeWorkgroupSizeX": 128,
-            "maxComputeWorkgroupSizeY": 132,
-            "maxComputeWorkgroupSizeZ": 136,
-            "maxComputeWorkgroupStorageSize": 120,
-            "maxComputeWorkgroupsPerDimension": 140,
-            "maxDynamicStorageBuffersPerPipelineLayout": 32,
-            "maxDynamicUniformBuffersPerPipelineLayout": 28,
-            "maxInterStageShaderComponents": 104,
-            "maxInterStageShaderVariables": 108,
-            "maxSampledTexturesPerShaderStage": 36,
-            "maxSamplersPerShaderStage": 40,
-            "maxStorageBufferBindingSize": 64,
-            "maxStorageBuffersPerShaderStage": 44,
-            "maxStorageTexturesPerShaderStage": 48,
-            "maxTextureArrayLayers": 12,
-            "maxTextureDimension1D": 0,
-            "maxTextureDimension2D": 4,
-            "maxTextureDimension3D": 8,
-            "maxUniformBufferBindingSize": 56,
-            "maxUniformBuffersPerShaderStage": 52,
-            "maxVertexAttributes": 96,
-            "maxVertexBufferArrayStride": 100,
-            "maxVertexBuffers": 80,
-            "minStorageBufferOffsetAlignment": 76,
-            "minUniformBufferOffsetAlignment": 72
-        },
-        "WGPUMultisampleState": {
-            "__size__": 16,
-            "alphaToCoverageEnabled": 12,
-            "count": 4,
-            "mask": 8,
-            "nextInChain": 0
-        },
-        "WGPUOrigin3D": {
-            "__size__": 12,
-            "x": 0,
-            "y": 4,
-            "z": 8
-        },
-        "WGPUPipelineLayoutDescriptor": {
-            "__size__": 16,
-            "bindGroupLayoutCount": 8,
-            "bindGroupLayouts": 12,
-            "label": 4,
-            "nextInChain": 0
-        },
-        "WGPUPrimitiveDepthClipControl": {
-            "__size__": 12,
-            "chain": 0,
-            "unclippedDepth": 8
-        },
-        "WGPUPrimitiveState": {
-            "__size__": 20,
-            "cullMode": 16,
-            "frontFace": 12,
-            "nextInChain": 0,
-            "stripIndexFormat": 8,
-            "topology": 4
-        },
-        "WGPUProgrammableStageDescriptor": {
-            "__size__": 20,
-            "constantCount": 12,
-            "constants": 16,
-            "entryPoint": 8,
-            "module": 4,
-            "nextInChain": 0
-        },
-        "WGPUQuerySetDescriptor": {
-            "__size__": 16,
-            "count": 12,
-            "label": 4,
-            "nextInChain": 0,
-            "type": 8
-        },
-        "WGPUQueueDescriptor": {
-            "__size__": 8,
-            "label": 4,
-            "nextInChain": 0
-        },
-        "WGPUQueueWorkDoneCallbackInfo": {
-            "__size__": 16,
-            "callback": 8,
-            "mode": 4,
-            "nextInChain": 0,
-            "userdata": 12
-        },
-        "WGPURenderBundleDescriptor": {
-            "__size__": 8,
-            "label": 4,
-            "nextInChain": 0
-        },
-        "WGPURenderBundleEncoderDescriptor": {
-            "__size__": 32,
-            "colorFormatCount": 8,
-            "colorFormats": 12,
-            "depthReadOnly": 24,
-            "depthStencilFormat": 16,
-            "label": 4,
-            "nextInChain": 0,
-            "sampleCount": 20,
-            "stencilReadOnly": 28
-        },
-        "WGPURenderPassColorAttachment": {
-            "__size__": 56,
-            "clearValue": 24,
-            "depthSlice": 8,
-            "loadOp": 16,
-            "nextInChain": 0,
-            "resolveTarget": 12,
-            "storeOp": 20,
-            "view": 4
-        },
-        "WGPURenderPassDepthStencilAttachment": {
-            "__size__": 36,
-            "depthClearValue": 12,
-            "depthLoadOp": 4,
-            "depthReadOnly": 16,
-            "depthStoreOp": 8,
-            "stencilClearValue": 28,
-            "stencilLoadOp": 20,
-            "stencilReadOnly": 32,
-            "stencilStoreOp": 24,
-            "view": 0
-        },
-        "WGPURenderPassDescriptor": {
-            "__size__": 28,
-            "colorAttachmentCount": 8,
-            "colorAttachments": 12,
-            "depthStencilAttachment": 16,
-            "label": 4,
-            "nextInChain": 0,
-            "occlusionQuerySet": 20,
-            "timestampWrites": 24
-        },
-        "WGPURenderPassDescriptorMaxDrawCount": {
-            "__size__": 16,
-            "chain": 0,
-            "maxDrawCount": 8
-        },
-        "WGPURenderPassTimestampWrites": {
-            "__size__": 12,
-            "beginningOfPassWriteIndex": 4,
-            "endOfPassWriteIndex": 8,
-            "querySet": 0
-        },
-        "WGPURenderPipelineDescriptor": {
-            "__size__": 84,
-            "depthStencil": 60,
-            "fragment": 80,
-            "label": 4,
-            "layout": 8,
-            "multisample": 64,
-            "nextInChain": 0,
-            "primitive": 40,
-            "vertex": 12
-        },
-        "WGPURequestAdapterCallbackInfo": {
-            "__size__": 16,
-            "callback": 8,
-            "mode": 4,
-            "nextInChain": 0,
-            "userdata": 12
-        },
-        "WGPURequestAdapterOptions": {
-            "__size__": 24,
-            "backendType": 12,
-            "compatibilityMode": 20,
-            "compatibleSurface": 4,
-            "forceFallbackAdapter": 16,
-            "nextInChain": 0,
-            "powerPreference": 8
-        },
-        "WGPURequiredLimits": {
-            "__size__": 152,
-            "limits": 8,
-            "nextInChain": 0
-        },
-        "WGPUSamplerBindingLayout": {
-            "__size__": 8,
-            "nextInChain": 0,
-            "type": 4
-        },
-        "WGPUSamplerDescriptor": {
-            "__size__": 48,
-            "addressModeU": 8,
-            "addressModeV": 12,
-            "addressModeW": 16,
-            "compare": 40,
-            "label": 4,
-            "lodMaxClamp": 36,
-            "lodMinClamp": 32,
-            "magFilter": 20,
-            "maxAnisotropy": 44,
-            "minFilter": 24,
-            "mipmapFilter": 28,
-            "nextInChain": 0
-        },
-        "WGPUShaderModuleDescriptor": {
-            "__size__": 8,
-            "label": 4,
-            "nextInChain": 0
-        },
-        "WGPUShaderModuleSPIRVDescriptor": {
-            "__size__": 16,
-            "chain": 0,
-            "code": 12,
-            "codeSize": 8
-        },
-        "WGPUShaderModuleWGSLDescriptor": {
-            "__size__": 12,
-            "chain": 0,
-            "code": 8
-        },
-        "WGPUStencilFaceState": {
-            "__size__": 16,
-            "compare": 0,
-            "depthFailOp": 8,
-            "failOp": 4,
-            "passOp": 12
-        },
-        "WGPUStorageTextureBindingLayout": {
-            "__size__": 16,
-            "access": 4,
-            "format": 8,
-            "nextInChain": 0,
-            "viewDimension": 12
-        },
-        "WGPUSupportedLimits": {
-            "__size__": 152,
-            "limits": 8,
-            "nextInChain": 0
-        },
-        "WGPUSurfaceCapabilities": {
-            "__size__": 28,
-            "alphaModeCount": 20,
-            "alphaModes": 24,
-            "formatCount": 4,
-            "formats": 8,
-            "nextInChain": 0,
-            "presentModeCount": 12,
-            "presentModes": 16
-        },
-        "WGPUSurfaceConfiguration": {
-            "__size__": 40,
-            "alphaMode": 24,
-            "device": 4,
-            "format": 8,
-            "height": 32,
-            "nextInChain": 0,
-            "presentMode": 36,
-            "usage": 12,
-            "viewFormatCount": 16,
-            "viewFormats": 20,
-            "width": 28
-        },
-        "WGPUSurfaceDescriptor": {
-            "__size__": 8,
-            "label": 4,
-            "nextInChain": 0
-        },
-        "WGPUSurfaceDescriptorFromCanvasHTMLSelector": {
-            "__size__": 12,
-            "chain": 0,
-            "selector": 8
-        },
-        "WGPUSurfaceTexture": {
-            "__size__": 12,
-            "status": 8,
-            "suboptimal": 4,
-            "texture": 0
-        },
-        "WGPUSwapChainDescriptor": {
-            "__size__": 28,
-            "format": 12,
-            "height": 20,
-            "label": 4,
-            "nextInChain": 0,
-            "presentMode": 24,
-            "usage": 8,
-            "width": 16
-        },
-        "WGPUTextureBindingLayout": {
-            "__size__": 16,
-            "multisampled": 12,
-            "nextInChain": 0,
-            "sampleType": 4,
-            "viewDimension": 8
-        },
-        "WGPUTextureBindingViewDimensionDescriptor": {
-            "__size__": 12,
-            "chain": 0,
-            "textureBindingViewDimension": 8
-        },
-        "WGPUTextureDataLayout": {
-            "__size__": 24,
-            "bytesPerRow": 16,
-            "nextInChain": 0,
-            "offset": 8,
-            "rowsPerImage": 20
-        },
-        "WGPUTextureDescriptor": {
-            "__size__": 48,
-            "dimension": 12,
-            "format": 28,
-            "label": 4,
-            "mipLevelCount": 32,
-            "nextInChain": 0,
-            "sampleCount": 36,
-            "size": 16,
-            "usage": 8,
-            "viewFormatCount": 40,
-            "viewFormats": 44
-        },
-        "WGPUTextureViewDescriptor": {
-            "__size__": 36,
-            "arrayLayerCount": 28,
-            "aspect": 32,
-            "baseArrayLayer": 24,
-            "baseMipLevel": 16,
-            "dimension": 12,
-            "format": 8,
-            "label": 4,
-            "mipLevelCount": 20,
-            "nextInChain": 0
-        },
-        "WGPUVertexAttribute": {
-            "__size__": 24,
-            "format": 0,
-            "offset": 8,
-            "shaderLocation": 16
-        },
-        "WGPUVertexBufferLayout": {
-            "__size__": 24,
-            "arrayStride": 0,
-            "attributeCount": 12,
-            "attributes": 16,
-            "stepMode": 8
-        },
-        "WGPUVertexState": {
-            "__size__": 28,
-            "bufferCount": 20,
-            "buffers": 24,
-            "constantCount": 12,
-            "constants": 16,
-            "entryPoint": 8,
-            "module": 4,
-            "nextInChain": 0
+            "audioParamDescriptors": 8,
+            "name": 0,
+            "numAudioParams": 4
         },
         "__cxa_exception": {
             "__size__": 24,
@@ -1573,12 +1009,13 @@
         },
         "emscripten_fetch_t": {
             "__attributes": 108,
-            "__size__": 200,
+            "__size__": 208,
             "data": 12,
             "dataOffset": 24,
             "id": 0,
             "numBytes": 16,
             "readyState": 40,
+            "responseUrl": 200,
             "status": 42,
             "statusText": 44,
             "totalBytes": 32,
@@ -1693,17 +1130,17 @@
             "st_uid": 12
         },
         "statfs": {
-            "__size__": 64,
-            "f_bavail": 16,
-            "f_bfree": 12,
+            "__size__": 88,
+            "f_bavail": 24,
+            "f_bfree": 16,
             "f_blocks": 8,
             "f_bsize": 4,
-            "f_ffree": 24,
-            "f_files": 20,
-            "f_flags": 44,
-            "f_frsize": 40,
-            "f_fsid": 28,
-            "f_namelen": 36
+            "f_ffree": 40,
+            "f_files": 32,
+            "f_flags": 64,
+            "f_frsize": 60,
+            "f_fsid": 48,
+            "f_namelen": 56
         },
         "termios": {
             "__c_ispeed": 52,

@@ -8,7 +8,7 @@
  */
 
 // Route URL GET parameters to argc+argv
-if (typeof window == 'object') {
+if (globalThis.window) {
   Module['arguments'] = window.location.search.slice(1).trim().split('&');
   for (let i = 0; i < Module['arguments'].length; ++i) {
     Module['arguments'][i] = decodeURI(Module['arguments'][i]);

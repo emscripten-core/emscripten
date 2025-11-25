@@ -145,6 +145,12 @@ uint32_t _emscripten_lookup_name(const char *name);
 
 int _emscripten_system(const char *command);
 
+void _emscripten_log_formatted(int flags, const char* str);
+
+EmscriptenDeviceOrientationEvent* _emscripten_get_last_deviceorientation_event();
+EmscriptenDeviceMotionEvent* _emscripten_get_last_devicemotion_event();
+EmscriptenMouseEvent* _emscripten_get_last_mouse_event();
+
 #ifdef __cplusplus
 }
 #endif

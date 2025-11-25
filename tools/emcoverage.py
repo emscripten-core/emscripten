@@ -29,6 +29,7 @@ To display the gathered coverage information, use one of the three subcommands:
 report, html, xml.
 """
 
+import contextlib
 import errno
 import os
 import shutil
@@ -36,8 +37,7 @@ import sys
 import uuid
 from glob import glob
 
-import coverage.cmdline # type: ignore
-import contextlib
+import coverage.cmdline  # type: ignore
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 

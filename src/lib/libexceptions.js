@@ -283,16 +283,11 @@ var LibraryExceptions = {
   },
 #endif
 #if WASM_EXCEPTIONS
-  $getCppExceptionTag: () =>
-    // In static linking, tags are defined within the wasm module and are
-    // exported, whereas in dynamic linking, tags are defined in library.js in
-    // JS code and wasm modules import them.
-#if RELOCATABLE
-    ___cpp_exception // defined in library.js
-#else
-    wasmExports['__cpp_exception']
-#endif
-  ,
+  $getCppExceptionTag__deps: ['__cpp_exception'],
+  // In static linking, tags are defined within the wasm module and are
+  // exported, whereas in dynamic linking, tags are defined in libcore.js in
+  // JS code and wasm modules import them.
+  $getCppExceptionTag: () => ___cpp_exception,
 
 #if EXCEPTION_STACK_TRACES
   // Throw a WebAssembly.Exception object with the C++ tag with a stack trace

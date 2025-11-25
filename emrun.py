@@ -4,6 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+# This file needs to run on older version of python too (even python 2!) so
+# suppress these upgrade warnings:
+# ruff: noqa: UP015, UP024, UP021, UP025
+
 """emrun: Implements machinery that allows running a .html page as if it was a
 standard executable file.
 
@@ -24,6 +28,7 @@ import re
 import shlex
 import shutil
 import socket
+import socketserver
 import stat
 import struct
 import subprocess
@@ -31,18 +36,14 @@ import sys
 import tempfile
 import threading
 import time
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 from operator import itemgetter
+from urllib.parse import unquote, urlsplit
 
-if sys.version_info.major == 2:
-  import SocketServer as socketserver
-  from BaseHTTPServer import HTTPServer
-  from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from urllib import unquote
-  from urlparse import urlsplit
-else:
-  import socketserver
-  from http.server import HTTPServer, SimpleHTTPRequestHandler
-  from urllib.parse import unquote, urlsplit
+# We depend on python 3.8 features
+if sys.version_info < (3, 8): # noqa: UP036
+  print(f'error: emrun requires python 3.8 or above ({sys.executable} {sys.version})', file=sys.stderr)
+  sys.exit(1)
 
 # Populated from cmdline params
 emrun_options = None
@@ -82,7 +83,7 @@ page_exit_code = None
 # launcher.exe that runs the actual opera browser.  So killing browser_process
 # would just kill launcher.exe and not the opera
 # browser itself.
-processname_killed_atexit = ""
+processname_killed_atexit = ''
 
 # Using "0.0.0.0" means "all interfaces", which should allow connecting to this
 # server via LAN addresses. Using "localhost" should allow only connecting from
@@ -116,8 +117,6 @@ if not WINDOWS and not LINUX and not MACOS:
 
 # Returns wallclock time in seconds.
 def tick():
-  # Would like to return time.clock() since it's apparently better for
-  # precision, but it is broken on macOS 10.10 and Python 2.7.8.
   return time.time()
 
 
@@ -225,8 +224,9 @@ def create_emrun_safe_firefox_profile():
   temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
   with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w') as f:
     f.write('''
-// Lift the default max 20 workers limit to something higher to avoid hangs when page needs to spawn a lot of threads.
-user_pref("dom.workers.maxPerDomain", 100);
+// Old Firefox browsers have a maxPerDomain limit of 20. Newer Firefox browsers default to 512. Match the new
+// default here to help test spawning a lot of threads also on older Firefox versions.
+user_pref("dom.workers.maxPerDomain", 512);
 // Always allow opening popups
 user_pref("browser.popups.showPopupBlocker", false);
 user_pref("dom.disable_open_during_load", false);
@@ -239,6 +239,11 @@ user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", fal
 user_pref("browser.sessionstore.restore_on_demand", false);
 user_pref("browser.sessionstore.max_resumed_crashes", -1);
 user_pref("toolkit.startup.max_resumed_crashes", -1);
+// Ease shutting down browser instances in the parallel browser harness
+user_pref("browser.warnOnQuit", false);
+user_pref("browser.warnOnQuitShortcut", false);
+// Hide about:config confirmation prompt - devs are advanced users
+user_pref("browser.aboutConfig.showWarning", false);
 // Don't show the slow script dialog popup
 user_pref("dom.max_script_run_time", 0);
 user_pref("dom.max_chrome_script_run_time", 0);
@@ -303,8 +308,15 @@ user_pref("extensions.update.enabled", false);
 user_pref("extensions.getAddons.cache.enabled", false);
 // Enable wasm
 user_pref("javascript.options.wasm", true);
-// Enable SharedArrayBuffer (this profile is for a testing environment, so Spectre/Meltdown don't apply)
+// Enable SharedArrayBuffer, and ignore COOP/COEP (this profile is for a testing environment, so Spectre/Meltdown don't apply)
 user_pref("javascript.options.shared_memory", true);
+user_pref("dom.postMessage.sharedArrayBuffer.bypassCOOP_COEP.insecure.enabled", true);
+// Enable OffscreenCanvas support
+user_pref("gfx.offscreencanvas.enabled", true);
+// Enable Wasm64
+user_pref("javascript.options.wasm_memory64", true);
+// Do not ask user consent to enable audio playback (0: Allow autoplay for all media)
+user_pref("media.autoplay.default", 0);
 ''')
     if emrun_options.private_browsing:
       f.write('''
@@ -375,7 +387,7 @@ def kill_browser_process():
     # so clear that record out.
     processname_killed_atexit = ''
 
-  if len(processname_killed_atexit):
+  if processname_killed_atexit:
     if emrun_options.android:
       logv("Terminating Android app '" + processname_killed_atexit + "'.")
       subprocess.call([ADB, 'shell', 'am', 'force-stop', processname_killed_atexit])
@@ -567,7 +579,6 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
 # Processes HTTP request back to the browser.
 class HTTPHandler(SimpleHTTPRequestHandler):
   def send_head(self):
-    self.protocol_version = 'HTTP/1.1'
     global page_last_served_time
     path = self.translate_path(self.path)
     f = None
@@ -651,18 +662,17 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     if code != 200:
       SimpleHTTPRequestHandler.log_request(self, code)
 
-  def log_message(self, format, *args):
+  def log_message(self, format, *args):  # noqa: DC04
     msg = '%s - - [%s] %s\n' % (self.address_string(), self.log_date_time_string(), format % args)
     # Filter out 404 messages on favicon.ico not being found to remove noise.
     if 'favicon.ico' not in msg:
       sys.stderr.write(msg)
 
-  def do_POST(self):
-    self.protocol_version = 'HTTP/1.1'
+  def do_POST(self):  # # noqa: DC04
     global page_exit_code, have_received_messages
 
     (_, _, path, query, _) = urlsplit(self.path)
-    logv('POST: "' + self.path + '" (path: "' + path + '", query: "' + query + '")')
+    logv(f'POST: "{self.path}" (path: "{path}", query: "{query}")')
     if query.startswith('file='):
       # Binary file dump/upload handling. Requests to
       # "stdio.html?file=filename" will write binary data to the given file.
@@ -740,12 +750,8 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
 
 # Returns stdout by running command with universal_newlines=True
-def check_output(cmd, universal_newlines=True, *args, **kwargs):
-  if hasattr(subprocess, "run"):
-    return subprocess.run(cmd, universal_newlines=universal_newlines, stdout=subprocess.PIPE, check=True, *args, **kwargs).stdout
-  else:
-    # check_output is considered as an old API so prefer subprocess.run if possible
-    return subprocess.check_output(cmd, universal_newlines=universal_newlines, *args, **kwargs)
+def check_output(cmd, *args, **kwargs):
+  return subprocess.run(cmd, text=True, stdout=subprocess.PIPE, check=True, *args, **kwargs).stdout
 
 
 # From http://stackoverflow.com/questions/4842448/getting-processor-information-in-python
@@ -784,13 +790,13 @@ def get_cpu_info():
     return {'model': 'Unknown ("' + str(e) + '")',
             'physicalCores': 1,
             'logicalCores': 1,
-            'frequency': 0
+            'frequency': 0,
             }
 
   return {'model': platform.machine() + ', ' + cpu_name,
           'physicalCores': physical_cores,
           'logicalCores': logical_cores,
-          'frequency': frequency
+          'frequency': frequency,
           }
 
 
@@ -844,7 +850,7 @@ def win_get_gpu_info():
 
       try:
         driverDate = winreg.QueryValueEx(hVideoCardReg, 'DriverDate')[0]
-        VideoCardDescription += ' (' + driverDate + ')'
+        VideoCardDescription += f' ({driverDate})'
       except WindowsError:
         pass
 
@@ -963,7 +969,7 @@ def get_browser_build_date(filename):
       info = plistlib.readPlist(plistfile)
       # Data in Info.plists is a bit odd, this check combo gives best information on each browser.
       if 'firefox' in filename.lower():
-        return '20' + '-'.join(map((lambda x: x.zfill(2)), info['CFBundleVersion'][2:].split('.')))
+        return '20' + '-'.join(x.zfill(2) for x in info['CFBundleVersion'][2:].split('.'))
   except Exception as e:
     logv(e)
 
@@ -982,7 +988,7 @@ def get_browser_info(filename, format_json):
     return json.dumps({
       'name': browser_display_name(filename),
       'version': get_executable_version(filename),
-      'buildDate': get_browser_build_date(filename)
+      'buildDate': get_browser_build_date(filename),
     }, indent=2)
   else:
     return 'Browser: ' + browser_display_name(filename) + ' ' + get_executable_version(filename) + ', build ' + get_browser_build_date(filename)
@@ -1333,10 +1339,10 @@ def browser_display_name(browser):
 
 def subprocess_env():
   e = os.environ.copy()
-  # https://bugzilla.mozilla.org/show_bug.cgi?id=745154
+  # https://bugzil.la/745154
   e['MOZ_DISABLE_AUTO_SAFE_MODE'] = '1'
-  e['MOZ_DISABLE_SAFE_MODE_KEY'] = '1' # https://bugzilla.mozilla.org/show_bug.cgi?id=653410#c9
-  e['JIT_OPTION_asmJSAtomicsEnable'] = 'true' # https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0
+  e['MOZ_DISABLE_SAFE_MODE_KEY'] = '1' # https://bugzil.la/653410#c9
+  e['JIT_OPTION_asmJSAtomicsEnable'] = 'true' # https://bugzil.la/1299359#c0
   return e
 
 
@@ -1361,7 +1367,7 @@ def get_system_info(format_json):
       return json.dumps({'model': get_android_model(),
                          'os': get_android_os_version(),
                          'ram': get_system_memory(),
-                         'cpu': get_android_cpu_infoline()
+                         'cpu': get_android_cpu_infoline(),
                          }, indent=2)
     else:
       info = 'Model: ' + get_android_model() + '\n'
@@ -1878,9 +1884,9 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
 
 def main(args):
   returncode = run(args)
-  logv('emrun quitting with process exit code ' + str(returncode))
+  logv(f'emrun quitting with process exit code {returncode}')
   if temp_firefox_profile_dir is not None:
-    logi('Warning: Had to leave behind a temporary Firefox profile directory ' + temp_firefox_profile_dir + ' because --safe-firefox-profile was set and the browser did not quit before emrun did.')
+    logi(f'Warning: Had to leave behind a temporary Firefox profile directory {temp_firefox_profile_dir} because --safe-firefox-profile was set and the browser did not quit before emrun did.')
   return returncode
 
 

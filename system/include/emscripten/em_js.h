@@ -72,3 +72,19 @@
 
 #define EM_ASYNC_JS(ret, name, params, ...) _EM_JS(ret, name, __asyncjs__##name, params,          \
   "{ return Asyncify.handleAsync(async () => " #__VA_ARGS__ "); }")
+
+
+// Normally macros like `true` and `false` are not expanded inside
+// of `EM_JS` or `EM_ASM` blocks.  However, in the case then an
+// additional macro later is added these will be expanded and we want
+// to make sure the resulting expansion doesn't break the expectations
+// of JS code
+#if defined(true) && defined(false)
+#undef true
+#undef false
+// These work for both C and javascript.
+// In C !!0 ==> 0 and in javascript !!0 ==> false
+// In C !!1 ==> 1 and in javascript !!1 ==> true
+#define true (!!1)
+#define false (!!0)
+#endif

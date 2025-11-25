@@ -91,9 +91,12 @@ addToLibrary({
     {{{ makeSetValue('ptr', '0', 0x12345678AB, 'i64') }}};
     _printI64(ptr);
 
-    // This value doesn't fit into i64.  The current behaviour truncate (i.e.
-    // ignore the upper bits), in the same way that `BigInt64Array[X] = Y` does.
-    // (see splitI16 in parseTools.js)
+    // This value doesn't fit into i64.  The current behaviour is
+    // in unspecified, subject to a double rounding problem. See
+    // note in castToBigInt() in parseTools.mjs.
+    // FIXME: Find a way to improve BigInt-enabled case to avoid
+    // double rounding, and BigInt-disabled case to be at least
+    // less wrong.
     _clearI64(ptr);
     {{{ makeSetValue('ptr', '0', 0x1122334455667788AA, 'i64') }}};
     _printI64(ptr);

@@ -84,11 +84,18 @@ addToLibrary({
       var stream = FS.getStreamChecked(fd);
       return fs.fstatSync(stream.nfd);
     },
-    statfsStream(stream) {
-      return fs.statfsSync(stream.path);
+    statfs(path) {
+      // Node's fs.statfsSync API doesn't provide these attributes so include
+      // some defaults.
+      var defaults = {
+        fsid: 42,
+        flags: 2,
+        namelen: 255,
+      }
+      return Object.assign(defaults, fs.statfsSync(path));
     },
-    statfsNode(node) {
-      return fs.statfsSync(node.path);
+    statfsStream(stream) {
+      return FS.statfs(stream.path);
     },
     chmod(path, mode, dontFollow) {
       mode &= {{{ cDefs.S_IALLUGO }}};
@@ -166,7 +173,8 @@ addToLibrary({
     },
     close(stream) {
       VFS.closeStream(stream.fd);
-      if (!stream.stream_ops && --stream.shared.refcnt <= 0) {
+      // Don't close stdin/stdout/stderr since they are used by node itself.
+      if (!stream.stream_ops && --stream.shared.refcnt <= 0 && stream.nfd > 2) {
         // This stream is created by our Node.js filesystem, close the
         // native file descriptor when its reference count drops to 0.
         fs.closeSync(stream.nfd);

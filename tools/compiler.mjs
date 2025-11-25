@@ -10,12 +10,14 @@
 import assert from 'node:assert';
 import {parseArgs} from 'node:util';
 import {
-  Benchmarker,
   applySettings,
   loadDefaultSettings,
   printErr,
   readFile,
+  timer,
 } from '../src/utility.mjs';
+
+timer.start('startup')
 
 loadDefaultSettings();
 
@@ -36,6 +38,8 @@ Usage: compiler.mjs <settings.json> [-o out.js] [--symbols-only]`);
   process.exit(0);
 }
 
+timer.start('read settings')
+
 // Load settings from JSON passed on the command line
 let settingsFile = positionals[0];
 assert(settingsFile, 'settings file not specified');
@@ -45,6 +49,8 @@ if (settingsFile == '-') {
 }
 const userSettings = JSON.parse(readFile(settingsFile));
 applySettings(userSettings);
+
+timer.stop('read settings')
 
 export const symbolsOnly = values['symbols-only'];
 
@@ -77,6 +83,8 @@ assert(
 
 // Load compiler code
 
+timer.start('dynamic imports')
+
 // We can't use static import statements here because several of these
 // file depend on having the settings defined in the global scope (which
 // we do dynamically above.
@@ -87,16 +95,18 @@ if (!STRICT) {
 }
 const jsifier = await import('../src/jsifier.mjs');
 
+timer.stop('dynamic imports')
+
+timer.stop('startup')
+
 // ===============================
 // Main
 // ===============================
 
-const B = new Benchmarker();
-
 try {
+  timer.start('runJSify')
   await jsifier.runJSify(values.output, symbolsOnly);
-
-  B.print('glue');
+  timer.stop('runJSify')
 } catch (err) {
   if (err.toString().includes('Aborting compilation due to previous errors')) {
     // Compiler failed on user error, don't print the stacktrace in this case.

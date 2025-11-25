@@ -12,7 +12,6 @@ import os
 import re
 import subprocess
 import sys
-
 from os import path
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))

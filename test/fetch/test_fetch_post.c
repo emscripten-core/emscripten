@@ -57,7 +57,7 @@ int main() {
   attr.onerror = onError;
   attr.requestData = "Hello, world!";
   attr.requestDataSize = strlen(attr.requestData);
-  emscripten_fetch(&attr, "?file=newfile.txt");
+  emscripten_fetch(&attr, "upload?file=newfile.txt");
 
   // This return code should be ignored
   return 99;

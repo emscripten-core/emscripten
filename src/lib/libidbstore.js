@@ -207,19 +207,19 @@ var LibraryIDBStore = {
   },
 #else
   emscripten_idb_load: (db, id, pbuffer, pnum, perror) => {
-    throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_load, etc.';
+    abort('Please compile your program with async support in order to use synchronous operations like emscripten_idb_load, etc.');
   },
   emscripten_idb_store: (db, id, ptr, num, perror) => {
-    throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_store, etc.';
+    abort('Please compile your program with async support in order to use synchronous operations like emscripten_idb_store, etc.');
   },
   emscripten_idb_delete: (db, id, perror) => {
-    throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_delete, etc.';
+    abort('Please compile your program with async support in order to use synchronous operations like emscripten_idb_delete, etc.');
   },
   emscripten_idb_exists: (db, id, pexists, perror) => {
-    throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_exists, etc.';
+    abort('Please compile your program with async support in order to use synchronous operations like emscripten_idb_exists, etc.');
   },
   emscripten_idb_clear: (db, perror) => {
-    throw 'Please compile your program with async support in order to use synchronous operations like emscripten_idb_clear, etc.';
+    abort('Please compile your program with async support in order to use synchronous operations like emscripten_idb_clear, etc.');
   },
 #endif // ASYNCIFY
 };

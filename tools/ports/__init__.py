@@ -3,29 +3,26 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
-import hashlib
-import os
-from pathlib import Path
-import shutil
 import glob
+import hashlib
 import importlib.util
-import sys
+import logging
+import os
+import shutil
 import subprocess
-from typing import Set
+import sys
+from inspect import signature
+from pathlib import Path
+from typing import Dict, Set
 from urllib.request import urlopen
 
-from tools import cache
-from tools import config
-from tools import shared
-from tools import system_libs
-from tools import utils
+from tools import cache, config, shared, system_libs, utils
 from tools.settings import settings
 from tools.toolchain_profiler import ToolchainProfiler
 
 ports = []
 
-ports_by_name = {}
+ports_by_name: Dict[str, object] = {}
 
 ports_needed = set()
 
@@ -38,11 +35,28 @@ ports_dir = os.path.dirname(os.path.abspath(__file__))
 logger = logging.getLogger('ports')
 
 
+def get_port_by_name(name):
+  port = ports_by_name[name]
+  if port.is_external:
+    load_external_port(port)
+    return ports_by_name[name]
+  else:
+    return port
+
+
 def init_port(name, port):
   ports.append(port)
   port.is_contrib = name.startswith('contrib.')
+  port.is_external = hasattr(port, 'EXTERNAL_PORT')
   port.name = name
   ports_by_name[port.name] = port
+  if port.is_external:
+    init_external_port(name, port)
+  else:
+    init_local_port(name, port)
+
+
+def init_local_port(name, port):
   if not hasattr(port, 'needed'):
     port.needed = lambda s: name in ports_needed
   else:
@@ -70,15 +84,41 @@ def init_port(name, port):
   validate_port(port)
 
 
-def load_port(path, name=None):
-  if not name:
-    name = shared.unsuffixed_basename(path)
-  if name in ports_by_name:
-    utils.exit_with_error(f'port path [`{path}`] is invalid: duplicate port name `{name}`')
-  module_name = f'tools.ports.{name}'
-  spec = importlib.util.spec_from_file_location(module_name, path)
+def load_port_module(module_name, port_file):
+  spec = importlib.util.spec_from_file_location(module_name, port_file)
   port = importlib.util.module_from_spec(spec)
   spec.loader.exec_module(port)
+  return port
+
+
+def load_external_port(external_port):
+  name = external_port.name
+  up_to_date = Ports.fetch_port_artifact(name, external_port.EXTERNAL_PORT, external_port.SHA512)
+  port_file = os.path.join(Ports.get_dir(), name, external_port.PORT_FILE)
+  local_port = load_port_module(f'tools.ports.external.{name}', port_file)
+  ports.remove(external_port)
+  for a in ['URL', 'DESCRIPTION', 'LICENSE']:
+    if not hasattr(local_port, a):
+      setattr(local_port, a, getattr(external_port, a))
+  init_port(name, local_port)
+  if not up_to_date:
+    Ports.clear_project_build(name)
+
+
+def init_external_port(name, port):
+  expected_attrs = ['SHA512', 'PORT_FILE', 'URL', 'DESCRIPTION', 'LICENSE']
+  for a in expected_attrs:
+    assert hasattr(port, a), 'port %s is missing %s' % (port, a)
+  port.needed = lambda s: name in ports_needed
+  port.show = lambda: f'{port.name} (--use-port={port.name}; {port.LICENSE})'
+
+
+def load_port(path, name=None):
+  if not name:
+    name = utils.unsuffixed_basename(path)
+  if name in ports_by_name:
+    utils.exit_with_error(f'port path [`{path}`] is invalid: duplicate port name `{name}`')
+  port = load_port_module(f'tools.ports.{name}', path)
   init_port(name, port)
   return name
 
@@ -104,7 +144,7 @@ def read_ports():
   for filename in os.listdir(contrib_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
-    name = 'contrib.' + shared.unsuffixed(filename)
+    name = 'contrib.' + utils.unsuffixed(filename)
     load_port(os.path.join(contrib_dir, filename), name)
 
 
@@ -149,7 +189,7 @@ class Ports:
   @staticmethod
   def get_include_dir(*parts):
     dirname = cache.get_include_dir(*parts)
-    shared.safe_ensure_dirs(dirname)
+    utils.safe_ensure_dirs(dirname)
     return dirname
 
   @staticmethod
@@ -162,13 +202,20 @@ class Ports:
     shutil.copytree(src_dir, dest, dirs_exist_ok=True, copy_function=maybe_copy)
 
   @staticmethod
+  def install_file(filename, target):
+    sysroot = cache.get_sysroot_dir()
+    target_dir = os.path.join(sysroot, os.path.dirname(target))
+    os.makedirs(target_dir, exist_ok=True)
+    maybe_copy(filename, os.path.join(sysroot, target))
+
+  @staticmethod
   def install_headers(src_dir, pattern='*.h', target=None):
     logger.debug('install_headers')
     dest = Ports.get_include_dir()
     assert os.path.exists(dest)
     if target:
       dest = os.path.join(dest, target)
-      shared.safe_ensure_dirs(dest)
+      utils.safe_ensure_dirs(dest)
     matches = glob.glob(os.path.join(src_dir, pattern))
     assert matches, f'no headers found to install in {src_dir}'
     for f in matches:
@@ -190,7 +237,7 @@ class Ports:
           if ex in dirs:
             dirs.remove(ex)
         for f in files:
-          ext = shared.suffix(f)
+          ext = utils.suffix(f)
           if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
             srcs.append(os.path.join(root, f))
 
@@ -203,7 +250,8 @@ class Ports:
       ninja_file = os.path.join(build_dir, 'build.ninja')
       system_libs.ensure_sysroot()
       system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
-      system_libs.run_ninja(build_dir)
+      if not os.getenv('EMBUILDER_PORT_BUILD_DEFERRED'):
+        system_libs.run_ninja(build_dir)
     else:
       commands = []
       objects = []
@@ -213,7 +261,7 @@ class Ports:
         dirname = os.path.dirname(obj)
         os.makedirs(dirname, exist_ok=True)
         cmd = [shared.EMCC, '-c', src, '-o', obj] + cflags
-        if shared.suffix(src) in ('.cc', '.cxx', '.cpp'):
+        if utils.suffix(src) in ('.cc', '.cxx', '.cpp'):
           cmd[0] = shared.EMXX
           cmd += cxxflags
         commands.append(cmd)
@@ -227,7 +275,7 @@ class Ports:
   @staticmethod
   def get_dir(*parts):
     dirname = os.path.join(config.PORTS, *parts)
-    shared.safe_ensure_dirs(dirname)
+    utils.safe_ensure_dirs(dirname)
     return dirname
 
   @staticmethod
@@ -242,7 +290,8 @@ class Ports:
   name_cache: Set[str] = set()
 
   @staticmethod
-  def fetch_project(name, url, sha512hash=None):
+  def fetch_port_artifact(name, url, sha512hash=None):
+    """This function only fetches the port and returns True when the port is up to date, False otherwise"""
     # To compute the sha512 hash, run `curl URL | sha512sum`.
     fullname = Ports.get_dir(name)
 
@@ -282,18 +331,17 @@ class Ports:
           # before acquiring the lock we have an early out if the port already exists
           if os.path.exists(target) and dir_is_newer(path, target):
             logger.warning(uptodate_message)
-            return
+            return True
           with cache.lock('unpack local port'):
             # Another early out in case another process unpackage the library while we were
             # waiting for the lock
             if os.path.exists(target) and not dir_is_newer(path, target):
               logger.warning(uptodate_message)
-              return
+              return True
             logger.warning(f'grabbing local port: {name} from {path} to {fullname} (subdir: {subdir})')
             utils.delete_dir(fullname)
             shutil.copytree(path, target)
-            Ports.clear_project_build(name)
-          return
+            return False
 
     url_filename = url.rsplit('/')[-1]
     ext = url_filename.split('.', 1)[1]
@@ -325,7 +373,7 @@ class Ports:
 
     def unpack():
       logger.info(f'unpacking port: {name}')
-      shared.safe_ensure_dirs(fullname)
+      utils.safe_ensure_dirs(fullname)
       shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
       utils.write_file(marker, url + '\n')
 
@@ -334,16 +382,17 @@ class Ports:
 
     # before acquiring the lock we have an early out if the port already exists
     if up_to_date():
-      return
+      return True
 
     # main logic. do this under a cache lock, since we don't want multiple jobs to
     # retrieve the same port at once
+    cache.ensure() # TODO: find a better place for this (necessary at the moment)
     with cache.lock('unpack port'):
       if os.path.exists(fullpath):
         # Another early out in case another process unpackage the library while we were
         # waiting for the lock
         if up_to_date():
-          return
+          return True
         # file exists but tag is bad
         logger.warning('local copy of port is not correct, retrieving from remote server')
         utils.delete_dir(fullname)
@@ -352,12 +401,17 @@ class Ports:
       retrieve()
       unpack()
 
+      return False
+
+  @staticmethod
+  def fetch_project(name, url, sha512hash=None):
+    if not Ports.fetch_port_artifact(name, url, sha512hash):
       # we unpacked a new version, clear the build in the cache
       Ports.clear_project_build(name)
 
   @staticmethod
   def clear_project_build(name):
-    port = ports_by_name[name]
+    port = get_port_by_name(name)
     port.clear(Ports, settings, shared)
     build_dir = os.path.join(Ports.get_build_dir(), name)
     logger.debug(f'clearing port build: {name} {build_dir}')
@@ -369,6 +423,18 @@ class Ports:
     if os.path.exists(filename) and utils.read_file(filename) == contents:
       return
     utils.write_file(filename, contents)
+
+  @staticmethod
+  def make_pkg_config(name, version, flags):
+    pkgconfig_dir = cache.get_sysroot_dir('lib/pkgconfig')
+    filename = os.path.join(pkgconfig_dir, name + '.pc')
+    Ports.write_file(filename, f'''
+Name: {name}
+Description: {name} port from emscripten
+Version: {version}
+Libs: {flags}
+Cflags: {flags}
+''')
 
 
 class OrderedSet:
@@ -426,14 +492,21 @@ def dependency_order(port_list):
   return stack
 
 
-def resolve_dependencies(port_set, settings):
+def resolve_dependencies(port_set, settings, cflags_only=False):
   def add_deps(node):
-    node.process_dependencies(settings)
+    sig = signature(node.process_dependencies)
+    if len(sig.parameters) == 2:
+      # The optional second parameter here is useful for ports that want
+      # to mutate linker-only settings.  Modifying these settings during the
+      # compile phase (or in a compile-only) command generates errors.
+      node.process_dependencies(settings, cflags_only)
+    else:
+      node.process_dependencies(settings)
     for d in node.deps:
       d, _ = split_port_options(d)
       if d not in ports_by_name:
         utils.exit_with_error(f'unknown dependency `{d}` for port `{node.name}`')
-      dep = ports_by_name[d]
+      dep = get_port_by_name(d)
       if dep not in port_set:
         port_set.add(dep)
         add_deps(dep)
@@ -463,7 +536,7 @@ def show_port_help_and_exit(port):
 
 # extract dict and delegate to port.handle_options for handling (format is 'option1=value1:option2=value2')
 def handle_port_options(name, options, error_handler):
-  port = ports_by_name[name]
+  port = get_port_by_name(name)
   if options == 'help':
     show_port_help_and_exit(port)
   if not hasattr(port, 'handle_options'):
@@ -485,7 +558,7 @@ def handle_port_options(name, options, error_handler):
 
 # handle port dependencies (ex: deps=['sdl2_image:formats=jpg'])
 def handle_port_deps(name, error_handler):
-  port = ports_by_name[name]
+  port = get_port_by_name(name)
   for dep in port.deps:
     dep_name, dep_options = split_port_options(dep)
     if dep_name not in ports_by_name:
@@ -523,15 +596,15 @@ def handle_use_port_arg(settings, arg, error_handler=None):
   return name
 
 
-def get_needed_ports(settings):
+def get_needed_ports(settings, cflags_only=False):
   # Start with directly needed ports, and transitively add dependencies
-  needed = OrderedSet(p for p in ports if p.needed(settings))
-  resolve_dependencies(needed, settings)
+  needed = OrderedSet(get_port_by_name(p.name) for p in ports if p.needed(settings))
+  resolve_dependencies(needed, settings, cflags_only)
   return needed
 
 
 def build_port(port_name, settings):
-  port = ports_by_name[port_name]
+  port = get_port_by_name(port_name)
   port_set = OrderedSet([port])
   resolve_dependencies(port_set, settings)
   for port in dependency_order(port_set):
@@ -539,7 +612,7 @@ def build_port(port_name, settings):
 
 
 def clear_port(port_name, settings):
-  port = ports_by_name[port_name]
+  port = get_port_by_name(port_name)
   port.clear(Ports, settings, shared)
 
 
@@ -563,7 +636,7 @@ def get_libs(settings):
   return ret
 
 
-def add_cflags(args, settings): # noqa: U100
+def add_cflags(args, settings):
   """Called during compile phase add any compiler flags (e.g -Ifoo) needed
   by the selected ports.  Can also add/change settings.
 
@@ -574,12 +647,14 @@ def add_cflags(args, settings): # noqa: U100
   if settings.USE_SDL == 1:
     args += ['-I' + Ports.get_include_dir('SDL')]
 
-  needed = get_needed_ports(settings)
+  needed = get_needed_ports(settings, cflags_only=True)
 
   # Now get (i.e. build) the ports in dependency order.  This is important because the
-  # headers from one ports might be needed before we can build the next.
+  # headers from one port might be needed before we can build the next.
   for port in dependency_order(needed):
-    port.get(Ports, settings, shared)
+    # When using embuilder, don't build the dependencies
+    if not os.getenv('EMBUILDER_PORT_BUILD_DEFERRED'):
+      port.get(Ports, settings, shared)
     args += port.process_args(Ports)
 
 

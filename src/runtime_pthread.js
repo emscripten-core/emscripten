@@ -20,30 +20,13 @@ var workerID = 0;
 var sharedModules = {};
 #endif
 
+var startWorker;
+
 if (ENVIRONMENT_IS_PTHREAD) {
-#if !MINIMAL_RUNTIME
-  var wasmModuleReceived;
-#endif
-
-#if ENVIRONMENT_MAY_BE_NODE
-  // Node.js support
-  if (ENVIRONMENT_IS_NODE) {
-    // Create as web-worker-like an environment as we can.
-
-    var parentPort = worker_threads['parentPort'];
-    parentPort.on('message', (msg) => onmessage({ data: msg }));
-
-    Object.assign(globalThis, {
-      self: global,
-      postMessage: (msg) => parentPort.postMessage(msg),
-    });
-  }
-#endif // ENVIRONMENT_MAY_BE_NODE
-
   // Thread-local guard variable for one-time init of the JS state
   var initializedJS = false;
 
-#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
+#if LOAD_SOURCE_MAP
   // When using postMessage to send an object, it is processed by the structured
   // clone algorithm.  The prototype, and hence methods, on that object is then
   // lost. This function adds back the lost prototype.  This does not work with
@@ -77,7 +60,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         self.onmessage = (e) => messageQueue.push(e);
 
         // And add a callback for when the runtime is initialized.
-        self.startWorker = (instance) => {
+        startWorker = () => {
           // Notify the main thread that this thread has loaded.
           postMessage({ cmd: 'loaded' });
           // Process any messages that were queued before the thread was ready.
@@ -121,23 +104,30 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
         }
 
+#if !WASM_ESM_INTEGRATION
         wasmMemory = msgData.wasmMemory;
         updateMemoryViews();
+#endif
 
 #if LOAD_SOURCE_MAP
         wasmSourceMap = resetPrototype(WasmSourceMap, msgData.wasmSourceMap);
 #endif
-#if USE_OFFSET_CONVERTER
-        wasmOffsetConverter = resetPrototype(WasmOffsetConverter, msgData.wasmOffsetConverter);
-#endif
 
+#if !WASM_ESM_INTEGRATION
 #if MINIMAL_RUNTIME
         // Pass the shared Wasm module in the Module object for MINIMAL_RUNTIME.
         Module['wasm'] = msgData.wasmModule;
         loadModule();
 #else
-        wasmModuleReceived(msgData.wasmModule);
+        wasmModule = msgData.wasmModule;
+#if MODULARIZE == 'instance'
+        init();
+#else
+        createWasm();
+        run();
+#endif
 #endif // MINIMAL_RUNTIME
+#endif
       } else if (cmd === 'run') {
 #if ASSERTIONS
         assert(msgData.pthread_ptr);

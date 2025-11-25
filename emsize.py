@@ -28,7 +28,7 @@ import sys
 
 from tools import shared
 
-LLVM_SIZE = os.path.expanduser(shared.build_llvm_tool_path(shared.exe_suffix('llvm-size')))
+LLVM_SIZE = shared.llvm_tool_path('llvm-size')
 
 
 def error(text):

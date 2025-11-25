@@ -6,10 +6,9 @@ Depends on the `gh` command line tool being installed."""
 
 import json
 import os
-import subprocess
 import re
+import subprocess
 import sys
-
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))
