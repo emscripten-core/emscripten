@@ -4541,9 +4541,10 @@ Module["preRun"] = () => {
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_stream_async.c', cflags=['-sFETCH', '-sFETCH_STREAMING'])
 
+  @also_with_asan
   def test_fetch_stream_abort(self):
     self.make_largefile()
-    self.btest_exit('fetch/test_fetch_stream_abort.cpp', cflags=['-sFETCH', '-sFETCH_STREAMING', '-fsanitize=address', '-sALLOW_MEMORY_GROWTH'])
+    self.btest_exit('fetch/test_fetch_stream_abort.cpp', cflags=['-sFETCH', '-sFETCH_STREAMING', '-sALLOW_MEMORY_GROWTH'])
 
   @also_with_fetch_streaming
   def test_fetch_persist(self):
