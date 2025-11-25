@@ -13686,14 +13686,14 @@ int main() {
   @with_all_fs
   def test_std_filesystem(self):
     if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
-      self.skipTest('NODERAWFS + WASMFS is does not allow access to arbitrary paths')
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24830')
     self.do_other_test('test_std_filesystem.cpp')
 
   @crossplatform
   @with_all_fs
   def test_std_filesystem_tempdir(self):
     if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
-      self.skipTest('NODERAWFS + WASMFS is does not allow access to arbitrary paths')
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24830')
     self.do_other_test('test_std_filesystem_tempdir.cpp', cflags=['-g'])
 
   def test_strict_js_closure(self):
