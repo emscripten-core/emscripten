@@ -31,7 +31,6 @@ from tools.shared import EMCC, config
 from tools.utils import delete_dir, delete_file
 
 SANITY_FILE = cache.get_path('sanity.txt')
-commands = [[EMCC], [shared.bat_suffix(path_from_root('test/runner')), 'blahblah']]
 expected_llvm_version = str(shared.EXPECTED_LLVM_VERSION) + '.0.0'
 
 
@@ -175,10 +174,7 @@ class sanity(RunnerCore):
     if command == [EMCC]:
       command = [EMCC, '--version']
     if expected is None:
-      if command[0] == EMCC or (len(command) >= 2 and command[1] == EMCC):
-        expected = 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld)'
-      else:
-        expected = 'could not find the following tests: blahblah'
+      expected = 'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld)'
 
     output = self.do(command, env=env)
     self.assertContained(expected, output)
@@ -187,10 +183,9 @@ class sanity(RunnerCore):
   # this should be the very first thing that runs. if this fails, everything else is irrelevant!
   @crossplatform
   def test_aaa_normal(self):
-    for command in commands:
-      # Your existing EM_CONFIG should work!
-      restore_and_set_up()
-      self.check_working(command)
+    # Your existing EM_CONFIG should work!
+    restore_and_set_up()
+    self.check_working(EMCC)
 
   @with_env_modify({'EM_CONFIG': None})
   def test_firstrun(self):
@@ -245,19 +240,18 @@ class sanity(RunnerCore):
     # output = self.run_process([EMCC, test_file('hello_world.c')], stdout=PIPE, stderr=PIPE).output
     # self.assertContained('hello, world!', self.run_js('a.out.js'), output)
 
-    for command in commands:
-      # Second run, with bad EM_CONFIG
-      for settings in ('blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]'):
-        try:
-          utils.write_file(default_config, settings)
-          output = self.do(command)
+    # Second run, with bad EM_CONFIG
+    for settings in ('blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]'):
+      try:
+        utils.write_file(default_config, settings)
+        output = self.do(EMCC)
 
-          if 'blah' in settings:
-            self.assertContained('error: error in evaluating config file (%s)' % default_config, output)
-          elif 'runner' not in ' '.join(command):
-            self.assertContained('error: NODE_JS is set to empty value', output) # sanity check should fail
-        finally:
-          delete_file(default_config)
+        if 'blah' in settings:
+          self.assertContained('error: error in evaluating config file (%s)' % default_config, output)
+        else:
+          self.assertContained('error: NODE_JS is set to empty value', output) # sanity check should fail
+      finally:
+        delete_file(default_config)
 
   @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_llvm(self):
