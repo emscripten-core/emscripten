@@ -278,9 +278,9 @@ def parse_paths_file(paths_file_content):
 
     if not cur_module:
       if line[-1] != ':':
-        exit_with_error(f"Module name should end with a colon: {line}")
+        exit_with_error(f'Module name should end with a colon: {line}')
       if len(line) == 1:
-        exit_with_error("Module name is empty")
+        exit_with_error('Module name is empty')
       cur_module = line[:-1]
     else:
       path = normalize_path(line)
