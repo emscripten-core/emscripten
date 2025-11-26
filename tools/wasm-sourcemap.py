@@ -488,7 +488,7 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
   # multiple disjoint PC ranges or is inlined to multiple callsites. Make the
   # 'names' list a unique list of names, and map the function ranges to the
   # indices in that list.
-  names = sorted(set([item.name for item in func_ranges]))
+  names = sorted(set(item.name for item in func_ranges))
   name_to_id = {name: i for i, name in enumerate(names)}
   mappings = []
   sources_map = {}
