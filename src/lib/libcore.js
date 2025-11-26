@@ -2212,11 +2212,6 @@ addToLibrary({
   __global_base: '{{{ GLOBAL_BASE }}}',
 #endif // RELOCATABLE
 
-#if (MAIN_MODULE || RELOCATABLE) && ASYNCIFY == 1
-  __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
-  __asyncify_data: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(0) }}})",
-#endif
-
   _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
   _emscripten_fs_load_embedded_files: (ptr) => {
 #if RUNTIME_DEBUG
