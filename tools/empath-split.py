@@ -25,12 +25,13 @@ This takes a wasm file and a paths file as inputs. The paths file defines how
 to split modules. The format is similar to the manifest file for wasm-split, but
 with paths instead of function names. A module is defined by a name on a line,
 followed by paths on subsequent lines. Modules are separated by empty lines.
+Module names be written with a colon (:).
 For example:
-module1
+module1:
 path/to/a
 path/to/b
 
-module2
+module2:
 path/to/c
 
 This will create two modules, 'module1' and 'module2'. 'module1' will contain
@@ -276,7 +277,11 @@ def parse_paths_file(paths_file_content):
       continue
 
     if not cur_module:
-      cur_module = line
+      if line[-1] != ':':
+        exit_with_error(f'Module name should end with a colon: {line}')
+      if len(line) == 1:
+        exit_with_error('Module name is empty')
+      cur_module = line[:-1]
     else:
       path = normalize_path(line)
       if path in path_to_module:
@@ -337,7 +342,7 @@ def main():
             print('    ' + func)
         print()
 
-      f.write(f'{module}\n')
+      f.write(f'{module}:\n')
       for func in funcs:
         f.write(func + '\n')
     f.close()
