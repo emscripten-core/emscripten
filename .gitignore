@@ -59,6 +59,7 @@ emsize
 emstrip
 emsymbolizer
 tools/file_packager
+tools/wasm-sourcemap
 tools/webidl_binder
 
 # Windows .bat files (created by ./tools/maint/create_entry_points.py)
@@ -81,4 +82,5 @@ emsize.bat
 emstrip.bat
 emsymbolizer.bat
 tools/file_packager.bat
+tools/was-sourcemap.bat
 tools/webidl_binder.bat
