@@ -9681,7 +9681,6 @@ int main() {
                            out_to_js_call_loc)
       check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
 
-
     # -- C program test --
     # We test two locations within test_dwarf.c:
     # out_to_js(0);     // line 6
