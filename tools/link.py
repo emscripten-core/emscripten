@@ -829,6 +829,22 @@ def setup_sanitizers(options):
     settings.LOAD_SOURCE_MAP = 1
 
 
+def get_dylibs(options, linker_args):
+  """Find all the Wasm dynanamic libraries specified on the command line,
+  either via `-lfoo` or via `libfoo.so` directly."""
+
+  dylibs = []
+  for arg in linker_args:
+    if arg.startswith('-l'):
+      for ext in DYLIB_EXTENSIONS:
+        path = find_library('lib' + arg[2:] + ext, options.lib_dirs)
+        if path and building.is_wasm_dylib(path):
+          dylibs.append(path)
+    elif building.is_wasm_dylib(arg):
+      dylibs.append(arg)
+  return dylibs
+
+
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   """Future modifications should consider refactoring to reduce complexity.
@@ -843,6 +859,21 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   setup_environment_settings()
 
   apply_library_settings(linker_args)
+
+  if settings.SIDE_MODULE or settings.MAIN_MODULE:
+    default_setting('FAKE_DYLIBS', 0)
+
+  if options.shared and not settings.FAKE_DYLIBS:
+    default_setting('SIDE_MODULE', 1)
+    default_setting('RELOCATABLE', 1)
+
+  if not settings.FAKE_DYLIBS:
+    options.dylibs = get_dylibs(options, linker_args)
+    # If there are any dynamically linked libraries on the command line then
+    # need to enable `MAIN_MODULE` in order to produce JS code that can load them.
+    if not settings.MAIN_MODULE and not settings.SIDE_MODULE and options.dylibs:
+      default_setting('MAIN_MODULE', 2)
+
   linker_args += calc_extra_ldflags(options)
 
   # We used to do this check during on startup during `check_sanity`, but
@@ -936,16 +967,14 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # If no output format was specified we try to deduce the format based on
   # the output filename extension
-  if not options.oformat and (options.relocatable or (options.shared and not settings.SIDE_MODULE)):
-    # Until we have a better story for actually producing runtime shared libraries
-    # we support a compatibility mode where shared libraries are actually just
-    # object files linked with `wasm-ld --relocatable` or `llvm-link` in the case
-    # of LTO.
+  if not options.oformat and (options.relocatable or (options.shared and settings.FAKE_DYLIBS and not settings.SIDE_MODULE)):
+    # With FAKE_DYLIBS we generate an normal object file rather than an shared object.
+    # This is linked with `wasm-ld --relocatable` or (`llvm-link` in the case of LTO).
     if final_suffix in EXECUTABLE_EXTENSIONS:
       diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
     else:
-      if options.shared:
-        diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file.  This is a form of emulation to support existing build systems.  If you want to build a runtime shared library use the SIDE_MODULE setting.')
+      if options.shared and 'FAKE_DYLIBS' not in user_settings:
+        diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file (FAKE_DYLIBS defaults to true).  If you want to build a runtime shared library use the SIDE_MODULE or FAKE_DYLIBS=0.')
       options.oformat = OFormat.OBJECT
 
   if not options.oformat:
@@ -1264,7 +1293,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
 
     # Certain configurations require the removeRunDependency/addRunDependency system.
-    if settings.LOAD_SOURCE_MAP or settings.PROXY_TO_WORKER or (settings.WASM_ASYNC_COMPILATION and not settings.MODULARIZE):
+    if settings.LOAD_SOURCE_MAP or (settings.WASM_ASYNC_COMPILATION and not settings.MODULARIZE):
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
 
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
@@ -1405,7 +1434,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # see https://github.com/emscripten-core/emscripten/issues/18723#issuecomment-1429236996
   if settings.MODULARIZE:
     default_setting('NODEJS_CATCH_REJECTION', 0)
-    default_setting('NODEJS_CATCH_EXIT', 0)
 
   if settings.POLYFILL:
     # Emscripten requires certain ES6+ constructs by default in library code
@@ -1519,7 +1547,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     diagnostics.warning('unused-command-line-argument', 'GLOBAL_BASE is not compatible with SIDE_MODULE')
 
-  if settings.PROXY_TO_WORKER or options.use_preload_plugins:
+  if options.use_preload_plugins:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$Browser']
 
   if not settings.BOOTSTRAPPING_STRUCT_INFO:
@@ -1883,6 +1911,20 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.REQUIRED_EXPORTS.append('__wasm_call_ctors')
   if settings.PTHREADS:
     settings.REQUIRED_EXPORTS.append('_emscripten_tls_init')
+
+  if settings.NODERAWFS:
+    default_setting('NODE_HOST_ENV', 1)
+
+  if not settings.ENVIRONMENT_MAY_BE_NODE:
+    # Node-specific settings only make sense if ENVIRONMENT_MAY_BE_NODE
+    if settings.NODERAWFS:
+      diagnostics.warning('unused-command-line-argument', 'NODERAWFS ignored since `node` not in `ENVIRONMENT`')
+    if settings.NODE_CODE_CACHING:
+      diagnostics.warning('unused-command-line-argument', 'NODE_CODE_CACHING ignored since `node` not in `ENVIRONMENT`')
+    if settings.NODEJS_CATCH_EXIT:
+      diagnostics.warning('unused-command-line-argument', 'NODEJS_CATCH_EXIT ignored since `node` not in `ENVIRONMENT`')
+    if settings.NODEJS_CATCH_REJECTION and 'NODEJS_CATCH_REJECTION' in user_settings:
+      diagnostics.warning('unused-command-line-argument', 'NODEJS_CATCH_REJECTION ignored since `node` not in `ENVIRONMENT`')
 
   settings.PRE_JS_FILES = options.pre_js
   settings.POST_JS_FILES = options.post_js
@@ -2268,8 +2310,6 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   if options.oformat == OFormat.HTML:
     generate_html(target, options, js_target, target_basename,
                   wasm_target)
-  elif settings.PROXY_TO_WORKER:
-    generate_worker_js(target, options, js_target, target_basename)
 
   if settings.SPLIT_MODULE:
     do_split_module(wasm_target, options)
@@ -2505,8 +2545,7 @@ def module_export_name_substitution():
   save_intermediate('module_export_name_substitution')
 
 
-def generate_traditional_runtime_html(target, options, js_target, target_basename,
-                                      wasm_target):
+def generate_traditional_runtime_html(target, options, js_target, wasm_target):
   script = ScriptSource()
 
   if settings.EXPORT_NAME != 'Module' and options.shell_path == DEFAULT_SHELL_HTML:
@@ -2517,23 +2556,14 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   shell = building.read_and_preprocess(options.shell_path)
   if '{{{ SCRIPT }}}' not in shell:
     exit_with_error('HTML shell must contain {{{ SCRIPT }}}, see src/shell.html for an example')
-  base_js_target = os.path.basename(js_target)
-
-  if settings.PROXY_TO_WORKER:
-    proxy_worker_filename = f'"{settings.PROXY_TO_WORKER_FILENAME or target_basename}.js"'
-    script.inline = worker_js_script(proxy_worker_filename)
-  else:
-    # Normal code generation path
-    script.src = base_js_target
 
   if settings.SINGLE_FILE:
     js_contents = script.inline or ''
-    if script.src:
-      js_contents += read_file(js_target)
-    script.src = None
+    js_contents += read_file(js_target)
     script.inline = read_file(js_target)
     delete_file(js_target)
   else:
+    script.src = os.path.basename(js_target)
     if not settings.WASM_ASYNC_COMPILATION:
       # We need to load the wasm file before anything else, since it
       # has be synchronously ready.
@@ -2663,35 +2693,12 @@ def generate_html(target, options, js_target, target_basename, wasm_target):
   if settings.MINIMAL_RUNTIME:
     generate_minimal_runtime_html(target, options, js_target, target_basename)
   else:
-    generate_traditional_runtime_html(target, options, js_target, target_basename, wasm_target)
+    generate_traditional_runtime_html(target, options, js_target, wasm_target)
 
   if settings.MINIFY_HTML and (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1):
     minify_html(target)
 
   utils.convert_line_endings_in_file(target, options.output_eol)
-
-
-def generate_worker_js(target, options, js_target, target_basename):
-  if settings.SINGLE_FILE:
-    # compiler output is embedded as base64 data URL
-    proxy_worker_filename = get_subresource_location_js(js_target)
-  else:
-    # compiler output goes in .worker.js file
-    move_file(js_target, utils.replace_suffix(js_target, get_worker_js_suffix()))
-    worker_target_basename = target_basename + '.worker'
-    proxy_worker_filename = f'"{settings.PROXY_TO_WORKER_FILENAME or worker_target_basename}.js"'
-
-  target_contents = worker_js_script(proxy_worker_filename)
-  utils.write_file(target, target_contents, options.output_eol)
-
-
-def worker_js_script(proxy_worker_filename_enclosed_in_quotes):
-  web_gl_client_src = read_file(utils.path_from_root('src/webGLClient.js'))
-  proxy_client_src = building.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
-  if not settings.SINGLE_FILE and not os.path.dirname(proxy_worker_filename_enclosed_in_quotes[1:-1]):
-    proxy_worker_filename_enclosed_in_quotes = f'"./{proxy_worker_filename_enclosed_in_quotes[1:-1]}"'
-  proxy_client_src = do_replace(proxy_client_src, '"<<< filename >>>"', proxy_worker_filename_enclosed_in_quotes)
-  return web_gl_client_src + '\n' + proxy_client_src
 
 
 def find_library(lib, lib_dirs):
@@ -2752,10 +2759,10 @@ def map_to_js_libs(library_name):
 
 
 def process_libraries(options, flags):
+  """Process `-l` and `--js-library` flags."""
   new_flags = []
   system_libs_map = system_libs.Library.get_usable_variations()
 
-  # Process `-l` and `--js-library` flags
   for flag in flags:
     if flag.startswith('--js-library='):
       js_lib = flag.split('=', 1)[1]
@@ -2876,7 +2883,7 @@ class ScriptSource:
 
 
 def filter_out_fake_dynamic_libs(options, inputs):
-  # Filters out "fake" dynamic libraries that are really just intermediate object files.
+  """Filter out "fake" dynamic libraries that are really just intermediate object files."""
   def is_fake_dylib(input_file):
     if get_file_suffix(input_file) in DYLIB_EXTENSIONS and os.path.exists(input_file) and not building.is_wasm_dylib(input_file):
       if not options.ignore_dynamic_linking:
@@ -2888,11 +2895,13 @@ def filter_out_fake_dynamic_libs(options, inputs):
   return [f for f in inputs if not is_fake_dylib(f)]
 
 
-def filter_out_duplicate_dynamic_libs(inputs):
+def filter_out_duplicate_fake_dynamic_libs(inputs):
+  """Filter out duplicate "fake" shared libraries (intermediate object files).
+
+  See test_core.py:test_redundant_link
+  """
   seen = set()
 
-  # Filter out duplicate "fake" shared libraries (intermediate object files).
-  # See test_core.py:test_redundant_link
   def check(input_file):
     if get_file_suffix(input_file) in DYLIB_EXTENSIONS and not building.is_wasm_dylib(input_file):
       abspath = os.path.abspath(input_file)
@@ -3108,11 +3117,10 @@ def phase_calculate_linker_inputs(options, linker_args):
   if options.oformat == OFormat.OBJECT or options.ignore_dynamic_linking:
     linker_args = filter_out_fake_dynamic_libs(options, linker_args)
   else:
-    linker_args = filter_out_duplicate_dynamic_libs(linker_args)
+    linker_args = filter_out_duplicate_fake_dynamic_libs(linker_args)
 
   if settings.MAIN_MODULE:
-    dylibs = [a for a in linker_args if building.is_wasm_dylib(a)]
-    process_dynamic_libs(dylibs, options.lib_dirs)
+    process_dynamic_libs(options.dylibs, options.lib_dirs)
 
   return linker_args
 

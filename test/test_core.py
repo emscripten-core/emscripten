@@ -11,7 +11,6 @@ import random
 import re
 import shutil
 import time
-import unittest
 from functools import wraps
 from pathlib import Path
 
@@ -2391,7 +2390,6 @@ Success!''')
   def test_varargs_multi(self):
     self.do_core_test('test_varargs_multi.c')
 
-  @unittest.skip('clang cannot compile this code with that target yet')
   def test_varargs_byval(self):
     src = r'''
       #include <stdio.h>
@@ -2877,105 +2875,13 @@ The current type of b is: 9
     }''')
     self.do_runf('main.c', cflags=['--js-library=lib.js'])
 
-  def test_nestedstructs(self):
-    src = r'''
-      #include <stdio.h>
-      #include "emscripten.h"
-
-      struct base {
-        int x;
-        float y;
-        union {
-          int a;
-          float b;
-        };
-        char c;
-      };
-
-      struct hashtableentry {
-        int key;
-        base data;
-      };
-
-      struct hashset {
-        typedef hashtableentry entry;
-        struct chain { entry elem; chain *next; };
-      //  struct chainchunk { chain chains[100]; chainchunk *next; };
-      };
-
-      struct hashtable : hashset {
-        hashtable() {
-          base b;
-          entry e;
-          chain c;
-          printf("*%zu,%ld,%ld,%ld,%ld,%ld|%zu,%ld,%ld,%ld,%ld,%ld,%ld,%ld|%zu,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld,%ld*\n",
-            sizeof(base),
-            long(&b.x) - long(&b),
-            long(&b.y) - long(&b),
-            long(&b.a) - long(&b),
-            long(&b.b) - long(&b),
-            long(&b.c) - long(&b),
-            sizeof(hashtableentry),
-            long(&e.key) - long(&e),
-            long(&e.data) - long(&e),
-            long(&e.data.x) - long(&e),
-            long(&e.data.y) - long(&e),
-            long(&e.data.a) - long(&e),
-            long(&e.data.b) - long(&e),
-            long(&e.data.c) - long(&e),
-            sizeof(hashset::chain),
-            long(&c.elem) - long(&c),
-            long(&c.next) - long(&c),
-            long(&c.elem.key) - long(&c),
-            long(&c.elem.data) - long(&c),
-            long(&c.elem.data.x) - long(&c),
-            long(&c.elem.data.y) - long(&c),
-            long(&c.elem.data.a) - long(&c),
-            long(&c.elem.data.b) - long(&c),
-            long(&c.elem.data.c) - long(&c)
-          );
-        }
-      };
-
-      struct B { char buffer[62]; int last; char laster; char laster2; };
-
-      struct Bits {
-        unsigned short A : 1;
-        unsigned short B : 1;
-        unsigned short C : 1;
-        unsigned short D : 1;
-        unsigned short x1 : 1;
-        unsigned short x2 : 1;
-        unsigned short x3 : 1;
-        unsigned short x4 : 1;
-      };
-
-      int main() {
-        hashtable t;
-
-        // Part 2 - the char[] should be compressed, BUT have a padding space at the end so the next
-        // one is aligned properly. Also handle char; char; etc. properly.
-        B b;
-        printf("*%ld,%ld,%ld,%ld,%ld,%ld,%ld,%zu*\n", long(&b.buffer) - long(&b),
-                                                      long(&b.buffer[0]) - long(&b),
-                                                      long(&b.buffer[1]) - long(&b),
-                                                      long(&b.buffer[2]) - long(&b),
-                                                      long(&b.last) - long(&b),
-                                                      long(&b.laster) - long(&b),
-                                                      long(&b.laster2) - long(&b),
-                                                      sizeof(B));
-
-        // Part 3 - bitfields, and small structures
-        printf("*%zu*\n", sizeof(Bits));
-        return 0;
-      }
-      '''
+  def test_nested_structs(self):
     # Bloated memory; same layout as C/C++
     if self.is_wasm64():
       expected = '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|32,0,24,0,4,4,8,12,12,16*\n*0,0,1,2,64,68,69,72*\n*2*'
     else:
       expected = '*16,0,4,8,8,12|20,0,4,4,8,12,12,16|24,0,20,0,4,4,8,12,12,16*\n*0,0,1,2,64,68,69,72*\n*2*'
-    self.do_run(src, expected)
+    self.do_runf('core/test_nested_structs.cpp', expected)
 
   def prep_dlfcn_main(self, libs=None):
     if libs is None:
@@ -4127,19 +4033,35 @@ caught outer int: 123
     old_settings = dict(self.settings_mods)
     self.clear_setting('MODULARIZE')
     self.clear_setting('MAIN_MODULE')
-    self.set_setting('SIDE_MODULE')
+    self.clear_setting('SIDE_MODULE')
     so_file = os.path.join(so_dir, so_name)
+
+    # Using -shared + -sFAKE_DYLIBS should be the same as `-sSIDE_MODULE`
+    flags = ['-sSIDE_MODULE']
     if isinstance(side, list):
       # side is just a library
-      self.run_process([EMCC] + side + self.get_cflags() + ['-o', so_file])
+      self.run_process([EMCC] + side + self.get_cflags() + flags + ['-o', so_file])
     else:
-      out_file = self.build(side, output_suffix='.so')
+      out_file = self.build(side, output_suffix='.so', cflags=flags)
       shutil.move(out_file, so_file)
+
+    shutil.move(so_file, so_file + '.orig')
+
+    # Verify that building with -sSIDE_MODULE is essentailly the same as building with `-shared -fPIC -sFAKE_DYLIBS=0`.
+    flags = ['-shared', '-fPIC', '-sFAKE_DYLIBS=0']
+    if isinstance(side, list):
+      # side is just a library
+      self.run_process([EMCC] + side + self.get_cflags() + flags + ['-o', so_file])
+    else:
+      out_file = self.build(side, output_suffix='.so', cflags=flags)
+      shutil.move(out_file, so_file)
+
+    self.assertEqual(read_binary(so_file), read_binary(so_file + '.orig'))
+    os.remove(so_file + '.orig')
 
     # main settings
     self.settings_mods = old_settings
     self.set_setting('MAIN_MODULE', main_module)
-    self.clear_setting('SIDE_MODULE')
     self.cflags += main_cflags
     self.cflags.append(so_file)
 
@@ -10080,6 +10002,11 @@ llvmlibc = make_run('llvmlibc', cflags=['-lllvmlibc'])
 # This setup will still use the native x64 Node.js in Emscripten internal use to compile code, but
 # runs all unit tests via qemu on the s390x big endian version of Node.js.
 bigendian0 = make_run('bigendian0', cflags=['-O0', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendian1 = make_run('bigendian1', cflags=['-O1', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendian2 = make_run('bigendian2', cflags=['-O2', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendian3 = make_run('bigendian3', cflags=['-O3', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendians = make_run('bigendians', cflags=['-Os', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
+bigendianz = make_run('bigendianz', cflags=['-Oz', '-Wno-experimental'], settings={'SUPPORT_BIG_ENDIAN': 1})
 
 omitexports0 = make_run('omitexports0', cflags=['-O0'], settings={'DECLARE_ASM_MODULE_EXPORTS': 0})
 

@@ -56,11 +56,6 @@ def main(args):
   subprocess.check_call(['make', 'install', f'EMSCRIPTEN_SITE={site_out}'], cwd=site_dir)
 
   files_changed = get_changed_files(site_out)
-  # This AUTHORS.html file happens to always contains the current date, so we don't want
-  # to consider updates that contain only this one file
-  if 'docs/contributing/AUTHORS.html' in files_changed:
-    files_changed.remove('docs/contributing/AUTHORS.html')
-
   if not files_changed:
     print('docs are up-to-date; no changes found')
     return 0

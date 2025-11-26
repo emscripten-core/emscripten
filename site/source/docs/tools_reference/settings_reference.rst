@@ -1494,7 +1494,7 @@ Default value: false
 NODERAWFS
 =========
 
-Enables support for the NODERAWFS filesystem backend. This is a special
+Enables support for the ``NODERAWFS`` filesystem backend. This is a special
 backend as it replaces all normal filesystem access with direct Node.js
 operations, without the need to do ``FS.mount()``, and this backend only
 works with Node.js. The initial working directory will be same as
@@ -1503,6 +1503,20 @@ Node.js to access the real local filesystem on your OS, the code will not
 necessarily be portable between OSes - it will be as portable as a Node.js
 program would be, which means that differences in how the underlying OS
 handles permissions and errors and so forth may be noticeable.
+
+Enabling this setting will also enable :ref:`NODE_HOST_ENV` by default.
+
+Default value: false
+
+.. _node_host_env:
+
+NODE_HOST_ENV
+=============
+
+When running under Node, expose the underlying OS environment variables.
+This is similar to how ``NODERAWFS`` exposes the underlying FS.
+This setting gets enabled by default when ``NODERAWFS`` is enabled, but can
+also be controlled separately.
 
 Default value: false
 
@@ -1682,31 +1696,6 @@ If set to 1, this is a worker library, a special kind of library that is run
 in a worker. See emscripten.h
 
 Default value: false
-
-.. _proxy_to_worker:
-
-PROXY_TO_WORKER
-===============
-
-If set to 1, we build the project into a js file that will run in a worker,
-and generate an html file that proxies input and output to/from it.
-
-.. note:: This setting is deprecated
-
-Default value: false
-
-.. _proxy_to_worker_filename:
-
-PROXY_TO_WORKER_FILENAME
-========================
-
-If set, the script file name the main thread loads.  Useful if your project
-doesn't run the main emscripten- generated script immediately but does some
-setup before
-
-.. note:: This setting is deprecated
-
-Default value: ''
 
 .. _proxy_to_pthread:
 
@@ -2810,6 +2799,26 @@ If nonzero, enables emscripten_fetch API.
 
 Default value: false
 
+.. _fetch_streaming:
+
+FETCH_STREAMING
+===============
+
+Enables streaming fetched data when the fetch attribute
+EMSCRIPTEN_FETCH_STREAM_DATA is used. For streaming requests, the DOM Fetch
+API is used otherwise XMLHttpRequest is used.
+Both modes generally support the same API, but there are some key
+differences:
+
+ - XHR supports synchronous requests
+ - XHR supports overriding mime types
+ - Fetch supports streaming data using the 'onprogress' callback
+
+If set to a value of 2, only the DOM Fetch backend will be used. This should
+only be used in testing.
+
+Default value: 0
+
 .. _wasmfs:
 
 WASMFS
@@ -3415,6 +3424,19 @@ indirectly using `importScripts`
 
 Default value: false
 
+.. _fake_dylibs:
+
+FAKE_DYLIBS
+===========
+
+This setting changes the behaviour of the ``-shared`` flag.  The default
+setting of ``true`` means the ``-shared`` flag actually produces a normal
+object file (i.e. ``ld -r``).  Setting this to false will cause ``-shared``
+to behave like :ref:`SIDE_MODULE` and produce and dynamically linked
+library.
+
+Default value: true
+
 .. _deprecated-settings:
 
 ===================
@@ -3431,8 +3453,6 @@ the these settings please open a bug (or reply to one of the existing bugs).
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
  - ``RELOCATABLE``:  under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
- - ``PROXY_TO_WORKER``: under consideration for removal (See https://github.com/emscripten-core/emscripten/issues/25440)
- - ``PROXY_TO_WORKER_FILENAME``: under consideration for removal (See https://github.com/emscripten-core/emscripten/issues/25440)
 
 .. _legacy-settings:
 
@@ -3518,3 +3538,4 @@ for backwards compatbility with older versions:
  - ``USE_OFFSET_COVERTER``: No longer supported, not needed with modern v8 versions (Valid values: [0])
  - ``ASYNCIFY_LAZY_LOAD_CODE``: No longer supported (Valid values: [0])
  - ``USE_WEBGPU``: No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py (Valid values: [0])
+ - ``PROXY_TO_WORKER``: No longer supported (Valid values: [0])

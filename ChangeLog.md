@@ -20,6 +20,22 @@ See docs/process.md for more on how version tagging works.
 
 4.0.21 (in development)
 -----------------------
+- The `-sPROXY_TO_WORKER` setting (along with the corresponding
+  `--proxy-to-worker` flag) was removed due to lack of usage.  If you were
+  depending on this feature but missed the PSA, please let us know about your
+  use case. (#25645, #25440)
+- The fetch library now supports streaming data requests when
+  `-sFETCH_STREAMING` is enabled.
+- A new `NODE_HOST_ENV` setting was added which exposes the host environment
+  variables to the generated program, when running under Node. This setting is
+  enabled by default when `-sNODERAWFS` is used but can also be controlled
+  separately. (#18820)
+- A new `-sFAKE_DYLIBS` setting was added.  When enabled you get the current
+  emscripten behavior of the `-shared` flag, which is to produce regular object
+  files instead of actual shared shared libraries (side modules).  Because this
+  setting is enabled by default this doesn't change the default behavior of the
+  compiler. If you want to experiment with real shared libraries you can
+  explicitly disable this setting. (#25826)
 
 4.0.20 - 11/18/25
 -----------------

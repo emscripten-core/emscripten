@@ -22,11 +22,14 @@ var LibraryFetch = {
   $fetchCacheData: fetchCacheData,
 #endif
   $fetchXHR: fetchXHR,
+#if FETCH_STREAMING
+  $FetchXHR: FetchXHR,
+#endif
 
   emscripten_start_fetch: startFetch,
   emscripten_start_fetch__deps: [
     'malloc',
-    'free',
+    'realloc',
     '$Fetch',
     '$fetchXHR',
     '$callUserCallback',
@@ -38,7 +41,10 @@ var LibraryFetch = {
     '$fetchLoadCachedData',
     '$fetchDeleteCachedData',
 #endif
-  ]
+#if FETCH_STREAMING
+    '$FetchXHR',
+#endif
+  ],
 };
 
 addToLibrary(LibraryFetch);

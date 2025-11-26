@@ -202,16 +202,19 @@ var LibraryHTML5 = {
     },
 
     removeSingleHandler(eventHandler) {
-      for (var [i, handler] of JSEvents.eventHandlers.entries()) {
+      let success = false;
+      for (let i = 0; i < JSEvents.eventHandlers.length; ++i) {
+        const handler = JSEvents.eventHandlers[i];
         if (handler.target === eventHandler.target
           && handler.eventTypeId === eventHandler.eventTypeId
           && handler.callbackfunc === eventHandler.callbackfunc
           && handler.userData === eventHandler.userData) {
-          JSEvents._removeHandler(i);
-          return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
+          // in some very rare cases (ex: Safari / fullscreen events), there is more than 1 handler (eventTypeString is different)
+          JSEvents._removeHandler(i--);
+          success = true;
         }
       }
-      return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
+      return success ? {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}} : {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     },
 
 #if PTHREADS
@@ -323,7 +326,7 @@ var LibraryHTML5 = {
   // (that will let !canvas map to the canvas held in Module.canvas).
   $specialHTMLTargets__docs: '/** @type {Object} */',
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL || PTHREADS
-  $specialHTMLTargets: "[0, typeof document != 'undefined' ? document : 0, typeof window != 'undefined' ? window : 0]",
+  $specialHTMLTargets: "[0, globalThis.document ?? 0, globalThis.window ?? 0]",
 #else
   $specialHTMLTargets: "[0, document, window]",
 #endif
@@ -342,7 +345,7 @@ var LibraryHTML5 = {
   $findEventTarget: (target) => {
     target = maybeCStringToJsString(target);
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE
-    var domElement = specialHTMLTargets[target] || (typeof document != 'undefined' ? document.querySelector(target) : null);
+    var domElement = specialHTMLTargets[target] || globalThis.document?.querySelector(target);
 #else
     var domElement = specialHTMLTargets[target] || document.querySelector(target);
 #endif
@@ -373,7 +376,7 @@ var LibraryHTML5 = {
      || specialHTMLTargets[target]
     // If that is not found either, query via the regular DOM selector.
 #if PTHREADS
-     || (typeof document != 'undefined' && document.querySelector(target));
+     || globalThis.document?.querySelector(target);
 #else
      || document.querySelector(target);
 #endif
@@ -400,7 +403,7 @@ var LibraryHTML5 = {
     else if (target === '#canvas') return Module['canvas'];
     else if (typeof target == 'string')
 #if ENVIRONMENT_MAY_BE_WORKER || ENVIRONMENT_MAY_BE_NODE
-      return (typeof document != 'undefined') ? document.getElementById(target) : null;
+      return globalThis.document?.getElementById(target);
 #else
       return document.getElementById(target);
 #endif
@@ -412,10 +415,10 @@ var LibraryHTML5 = {
   $findCanvasEventTarget: (target) => {
     if (typeof target == 'number') target = UTF8ToString(target);
     if (!target || target === '#canvas') {
-      if (typeof GL != 'undefined' && GL.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']; // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'], not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
+      if (globalThis.GL?.offscreenCanvases['canvas']) return GL.offscreenCanvases['canvas']; // TODO: Remove this line, target '#canvas' should refer only to Module['canvas'], not to GL.offscreenCanvases['canvas'] - but need stricter tests to be able to remove this line.
       return Module['canvas'];
     }
-    if (typeof GL != 'undefined' && GL.offscreenCanvases[target]) return GL.offscreenCanvases[target];
+    if (globalThis.GL?.offscreenCanvases[target]) return GL.offscreenCanvases[target];
     return findEventTarget(target);
   },
 #endif
@@ -504,7 +507,7 @@ var LibraryHTML5 = {
     JSEvents.mouseEvent ||= _malloc(eventSize);
     target = findEventTarget(target);
 
-    var mouseEventHandlerFunc = (e = event) => {
+    var mouseEventHandlerFunc = (e) => {
       // TODO: Make this access thread safe, or this could update live while app is reading it.
       fillMouseEventData(JSEvents.mouseEvent, e, target);
 
@@ -595,7 +598,7 @@ var LibraryHTML5 = {
     JSEvents.wheelEvent ||= _malloc(eventSize)
 
     // The DOM Level 3 events spec event 'wheel'
-    var wheelHandlerFunc = (e = event) => {
+    var wheelHandlerFunc = (e) => {
       var wheelEvent = JSEvents.wheelEvent;
       fillMouseEventData(wheelEvent, e, target);
       {{{ makeSetValue('wheelEvent', C_STRUCTS.EmscriptenWheelEvent.deltaX, 'e["deltaX"]', 'double') }}};
@@ -656,7 +659,7 @@ var LibraryHTML5 = {
 #else
 #endif
 
-    var uiEventHandlerFunc = (e = event) => {
+    var uiEventHandlerFunc = (e) => {
       if (e.target != target) {
         // Never take ui events such as scroll via a 'bubbled' route, but always from the direct element that
         // was targeted. Otherwise e.g. if app logs a message in response to a page scroll, the Emscripten log
@@ -717,7 +720,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenFocusEvent.__size__ }}};
     JSEvents.focusEvent ||= _malloc(eventSize);
 
-    var focusEventHandlerFunc = (e = event) => {
+    var focusEventHandlerFunc = (e) => {
       var nodeName = JSEvents.getNodeNameForTarget(e.target);
       var id = e.target.id ? e.target.id : '';
 
@@ -780,7 +783,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenDeviceOrientationEvent.__size__ }}};
     JSEvents.deviceOrientationEvent ||= _malloc(eventSize);
 
-    var deviceOrientationEventHandlerFunc = (e = event) => {
+    var deviceOrientationEventHandlerFunc = (e) => {
       fillDeviceOrientationEventData(JSEvents.deviceOrientationEvent, e, target); // TODO: Thread-safety with respect to emscripten_get_deviceorientation_status()
 
 #if PTHREADS
@@ -850,7 +853,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenDeviceMotionEvent.__size__ }}};
     JSEvents.deviceMotionEvent ||= _malloc(eventSize);
 
-    var deviceMotionEventHandlerFunc = (e = event) => {
+    var deviceMotionEventHandlerFunc = (e) => {
       fillDeviceMotionEventData(JSEvents.deviceMotionEvent, e, target); // TODO: Thread-safety with respect to emscripten_get_devicemotion_status()
 
 #if PTHREADS
@@ -932,7 +935,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenOrientationChangeEvent.__size__ }}};
     JSEvents.orientationChangeEvent ||= _malloc(eventSize);
 
-    var orientationChangeEventHandlerFunc = (e = event) => {
+    var orientationChangeEventHandlerFunc = (e) => {
       var orientationChangeEvent = JSEvents.orientationChangeEvent;
       fillOrientationChangeEventData(orientationChangeEvent);
 
@@ -1041,7 +1044,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}};
     JSEvents.fullscreenChangeEvent ||= _malloc(eventSize);
 
-    var fullscreenChangeEventhandlerFunc = (e = event) => {
+    var fullscreenChangeEventhandlerFunc = (e) => {
       var fullscreenChangeEvent = JSEvents.fullscreenChangeEvent;
       fillFullscreenChangeEventData(fullscreenChangeEvent);
 
@@ -1541,7 +1544,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenPointerlockChangeEvent.__size__ }}};
     JSEvents.pointerlockChangeEvent ||= _malloc(eventSize);
 
-    var pointerlockChangeEventHandlerFunc = (e = event) => {
+    var pointerlockChangeEventHandlerFunc = (e) => {
       var pointerlockChangeEvent = JSEvents.pointerlockChangeEvent;
       fillPointerlockChangeEventData(pointerlockChangeEvent);
 
@@ -1590,7 +1593,7 @@ var LibraryHTML5 = {
     targetThread = JSEvents.getTargetThreadForEventCallback(targetThread);
 #endif
 
-    var pointerlockErrorEventHandlerFunc = (e = event) => {
+    var pointerlockErrorEventHandlerFunc = (e) => {
 #if PTHREADS
       if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
       else
@@ -1739,7 +1742,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenVisibilityChangeEvent.__size__ }}};
     JSEvents.visibilityChangeEvent ||= _malloc(eventSize);
 
-    var visibilityChangeEventHandlerFunc = (e = event) => {
+    var visibilityChangeEventHandlerFunc = (e) => {
       var visibilityChangeEvent = JSEvents.visibilityChangeEvent;
       fillVisibilityChangeEventData(visibilityChangeEvent);
 
@@ -1938,7 +1941,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenGamepadEvent.__size__ }}};
     JSEvents.gamepadEvent ||= _malloc(eventSize);
 
-    var gamepadEventHandlerFunc = (e = event) => {
+    var gamepadEventHandlerFunc = (e) => {
       var gamepadEvent = JSEvents.gamepadEvent;
       fillGamepadEventData(gamepadEvent, e["gamepad"]);
 
@@ -2026,7 +2029,7 @@ var LibraryHTML5 = {
 
   $registerBeforeUnloadEventCallback__deps: ['$JSEvents', '$findEventTarget'],
   $registerBeforeUnloadEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) => {
-    var beforeUnloadEventHandlerFunc = (e = event) => {
+    var beforeUnloadEventHandlerFunc = (e) => {
       // Note: This is always called on the main browser thread, since it needs synchronously return a value!
       var confirmationMessage = {{{ makeDynCall('pipp', 'callbackfunc') }}}(eventTypeId, 0, userData);
 
@@ -2069,8 +2072,8 @@ var LibraryHTML5 = {
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenBatteryEvent.charging, 'battery.charging', 'i8') }}};
   },
 
-  $hasBatteryAPI: () => typeof navigator != 'undefined' && navigator.getBattery,
   $hasBatteryAPI__internal: true,
+  $hasBatteryAPI: () => globalThis.navigator?.getBattery,
 
   $registerBatteryEventCallback__noleakcheck: true,
   $registerBatteryEventCallback__deps: ['$JSEvents', '$fillBatteryEventData', 'malloc'],
@@ -2081,7 +2084,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenBatteryEvent.__size__ }}};
     JSEvents.batteryEvent ||= _malloc(eventSize)
 
-    var batteryEventHandlerFunc = (e = event) => {
+    var batteryEventHandlerFunc = (e) => {
       var batteryEvent = JSEvents.batteryEvent;
       fillBatteryEventData(batteryEvent, battery);
 
@@ -2385,7 +2388,7 @@ var LibraryHTML5 = {
   emscripten_get_device_pixel_ratio__proxy: 'sync',
   emscripten_get_device_pixel_ratio: () => {
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-    return (typeof devicePixelRatio == 'number' && devicePixelRatio) || 1.0;
+    return globalThis.devicePixelRatio ?? 1.0;
 #else // otherwise, on the web and in workers, things are simpler
     return devicePixelRatio;
 #endif

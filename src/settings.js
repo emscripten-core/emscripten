@@ -993,7 +993,7 @@ var INCOMING_MODULE_JS_API = [
   'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
   'loadSplitModule', 'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
-  'onCustomMessage', 'onExit', 'onFree', 'onFullScreen', 'onMalloc',
+  'onExit', 'onFree', 'onFullScreen', 'onMalloc',
   'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
   'preinitializedWebGLContext', 'preloadPlugins',
@@ -1023,7 +1023,7 @@ var FILESYSTEM = true;
 // [link]
 var FORCE_FILESYSTEM = false;
 
-// Enables support for the NODERAWFS filesystem backend. This is a special
+// Enables support for the ``NODERAWFS`` filesystem backend. This is a special
 // backend as it replaces all normal filesystem access with direct Node.js
 // operations, without the need to do ``FS.mount()``, and this backend only
 // works with Node.js. The initial working directory will be same as
@@ -1032,8 +1032,16 @@ var FORCE_FILESYSTEM = false;
 // necessarily be portable between OSes - it will be as portable as a Node.js
 // program would be, which means that differences in how the underlying OS
 // handles permissions and errors and so forth may be noticeable.
+//
+// Enabling this setting will also enable :ref:`NODE_HOST_ENV` by default.
 // [link]
 var NODERAWFS = false;
+
+// When running under Node, expose the underlying OS environment variables.
+// This is similar to how ``NODERAWFS`` exposes the underlying FS.
+// This setting gets enabled by default when ``NODERAWFS`` is enabled, but can
+// also be controlled separately.
+var NODE_HOST_ENV = false;
 
 // This saves the compiled wasm module in a file with name
 // ``$WASM_BINARY_NAME.$V8_VERSION.cached``
@@ -1144,19 +1152,6 @@ var RUNTIME_LINKED_LIBS = [];
 // in a worker. See emscripten.h
 // [link]
 var BUILD_AS_WORKER = false;
-
-// If set to 1, we build the project into a js file that will run in a worker,
-// and generate an html file that proxies input and output to/from it.
-// [link]
-// [deprecated]
-var PROXY_TO_WORKER = false;
-
-// If set, the script file name the main thread loads.  Useful if your project
-// doesn't run the main emscripten- generated script immediately but does some
-// setup before
-// [link]
-// [deprecated]
-var PROXY_TO_WORKER_FILENAME = '';
 
 // If set to 1, compiles in a small stub main() in between the real main() which
 // calls pthread_create() to run the application main() in a pthread.  This is
@@ -1836,6 +1831,21 @@ var FETCH_DEBUG = false;
 // [link]
 var FETCH = false;
 
+// Enables streaming fetched data when the fetch attribute
+// EMSCRIPTEN_FETCH_STREAM_DATA is used. For streaming requests, the DOM Fetch
+// API is used otherwise XMLHttpRequest is used.
+// Both modes generally support the same API, but there are some key
+// differences:
+//
+//  - XHR supports synchronous requests
+//  - XHR supports overriding mime types
+//  - Fetch supports streaming data using the 'onprogress' callback
+//
+// If set to a value of 2, only the DOM Fetch backend will be used. This should
+// only be used in testing.
+// [link]
+var FETCH_STREAMING = 0;
+
 // ATTENTION [WIP]: Experimental feature. Please use at your own risk.
 // This will eventually replace the current JS file system implementation.
 // If set to 1, uses new filesystem implementation.
@@ -2230,3 +2240,10 @@ var WASM_JS_TYPES = false;
 // CROSS_ORIGIN uses an inline worker to instead load the worker script
 // indirectly using `importScripts`
 var CROSS_ORIGIN = false;
+
+// This setting changes the behaviour of the ``-shared`` flag.  The default
+// setting of ``true`` means the ``-shared`` flag actually produces a normal
+// object file (i.e. ``ld -r``).  Setting this to false will cause ``-shared``
+// to behave like :ref:`SIDE_MODULE` and produce and dynamically linked
+// library.
+var FAKE_DYLIBS = true;
