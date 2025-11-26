@@ -24,7 +24,7 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import utils, shared
+from tools import shared, utils
 from tools.system_libs import DETERMINISTIC_PREFIX
 
 LLVM_CXXFILT = shared.llvm_tool_path('llvm-cxxfilt')
@@ -235,7 +235,7 @@ def extract_comp_dir_map(text):
 
 def demangle_names(names):
   # Only demangle names that look mangled
-  mangled_names = sorted(list({n for n in names if n.startswith('_Z')}))
+  mangled_names = sorted({n for n in names if n.startswith('_Z')})
   if not mangled_names:
     return {}
   if not os.path.exists(LLVM_CXXFILT):
@@ -488,7 +488,7 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
   # multiple disjoint PC ranges or is inlined to multiple callsites. Make the
   # 'names' list a unique list of names, and map the function ranges to the
   # indices in that list.
-  names = sorted(list(set([item.name for item in func_ranges])))
+  names = sorted(set([item.name for item in func_ranges]))
   name_to_id = {name: i for i, name in enumerate(names)}
   mappings = []
   sources_map = {}
