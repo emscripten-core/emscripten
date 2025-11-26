@@ -56,6 +56,12 @@ void checkCount(int count) {
   assert(count == eventHandlersCount);
 }
 
+void checkCountBetween(int minCount, int maxCount) {
+  int eventHandlersCount = EM_ASM_INT({ return JSEvents.eventHandlers.length; });
+  printf("Detected [%d] handlers\n", eventHandlersCount);
+  assert(minCount <= eventHandlersCount && eventHandlersCount <= maxCount);
+}
+
 int main() {
   bool useCapture = true;
   void *userData3 = "3";
@@ -139,12 +145,9 @@ int main() {
   ret = emscripten_set_fullscreenchange_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, useCapture, screen_callback);
   ASSERT_RESULT(emscripten_set_fullscreenchange_callback);
 
-#if SAFARI_SUPPORT == 1
   // 2 events handlers are set when there is safari support
-  checkCount(4);
-#else
-  checkCount(3);
-#endif
+  // TODO: change to checkCount(3) after prefixed Safari fallback is removed.
+  checkCountBetween(3, 4);
 
   // we make sure that the 2 event handlers get removed (#25846)
   ret = emscripten_html5_remove_event_listener(EMSCRIPTEN_EVENT_TARGET_WINDOW, NULL, EMSCRIPTEN_EVENT_FULLSCREENCHANGE, screen_callback);

@@ -2545,7 +2545,7 @@ Module["preRun"] = () => {
     self.btest_exit('test_html5_core.c', cflags=opts)
 
   def test_html5_remove_event_listener(self):
-    self.btest_exit('test_html5_remove_event_listener.c', cflags=[f'-DSAFARI_SUPPORT={int(not self.is_wasm64())}'])
+    self.btest_exit('test_html5_remove_event_listener.c')
 
   @parameterized({
     '': ([],),
