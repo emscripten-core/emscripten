@@ -1,0 +1,10 @@
+{
+  "name": "rollup-plugin-emscripten",
+  "version": "0.0.1",
+  "description": "Rollup plugin for Emscripten output with tree shaking.",
+  "main": "src/index.mjs",
+  "dependencies": {
+    "tmp": "^0.2.3",
+    "which": "^5.0.0"
+  }
+}
