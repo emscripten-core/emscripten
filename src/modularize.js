@@ -18,7 +18,12 @@ var {{{ EXPORT_NAME }}} = (() => {
   // When MODULARIZE this JS may be executed later,
   // after document.currentScript is gone, so we save it.
   // In EXPORT_ES6 mode we can just use 'import.meta.url'.
+#if MIN_FIREFOX_VERSION < 74
+  // This modularize.js script is not Babeled, so manually adapt for old browsers.
+  var _scriptName = typeof globalThis !== 'undefined' && globalThis.document && globalThis.document.currentScript ? globalThis.document.currentScript.src : undefined;
+#else
   var _scriptName = globalThis.document?.currentScript?.src;
+#endif
   return async function(moduleArg = {}) {
     var moduleRtn;
 
