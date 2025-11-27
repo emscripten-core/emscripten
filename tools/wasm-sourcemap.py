@@ -17,8 +17,6 @@ import os
 import re
 import sys
 from math import floor, log
-from pathlib import Path
-from subprocess import PIPE, Popen
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -371,31 +369,24 @@ def extract_func_ranges(text):
 
 def read_dwarf_info(wasm, options):
   if options.dwarfdump_output:
-    output = Path(options.dwarfdump_output).read_bytes()
+    output = utils.read_file(options.dwarfdump_output)
   elif options.dwarfdump:
     logger.debug('Reading DWARF information from %s' % wasm)
     if not os.path.exists(options.dwarfdump):
-      logger.error('llvm-dwarfdump not found: ' + options.dwarfdump)
-      sys.exit(1)
-
+      utils.exit_with_error('llvm-dwarfdump not found: ' + options.dwarfdump)
     # We need only three tags in the debug info: DW_TAG_compile_unit for
     # source location, and DW_TAG_subprogram and DW_TAG_inlined_subroutine
     # for the function ranges.
     dwarfdump_cmd = [options.dwarfdump, '-debug-info', '-debug-line', wasm,
                      '-t', 'DW_TAG_compile_unit', '-t', 'DW_TAG_subprogram',
                      '-t', 'DW_TAG_inlined_subroutine']
-    process = Popen(dwarfdump_cmd, stdout=PIPE, stderr=PIPE)
-    output, err = process.communicate()
-    exit_code = process.wait()
-    if exit_code != 0:
-      logger.error('Error during llvm-dwarfdump execution (%s)' % exit_code)
-      sys.exit(1)
+    proc = shared.check_call(dwarfdump_cmd, stdout=shared.PIPE)
+    output = proc.stdout
   else:
-    logger.error('Please specify either --dwarfdump or --dwarfdump-output')
-    sys.exit(1)
+    utils.exit_with_error('Please specify either --dwarfdump or --dwarfdump-output')
 
   entries = []
-  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output.decode('utf-8'))
+  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output)
   map_stmt_list_to_comp_dir = extract_comp_dir_map(debug_line_chunks[0])
   for stmt_list, line_chunk in zip(debug_line_chunks[1::2], debug_line_chunks[2::2]):
     comp_dir = map_stmt_list_to_comp_dir.get(stmt_list, '')

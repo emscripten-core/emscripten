@@ -15157,14 +15157,14 @@ addToLibrary({
       void foo() { std::cout << "foo" << std::endl; }
     ''')
     create_file('path_list.txt', r'''
-      myapp
+      myapp:
       main.cpp
       foo.cpp
 
-      lib1
+      lib1:
       /emsdk/emscripten/system
 
-      lib2
+      lib2:
       /emsdk/emscripten/system/lib/libc/musl
       /emsdk/emscripten/system/lib/libcxx
     ''')
