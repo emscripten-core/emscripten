@@ -369,21 +369,6 @@ def extract_func_ranges(text):
   return func_ranges
 
 
-# Returns true if the given llvm-dwarfdump has --filter-child-tags / -t option
-def has_filter_child_tag_option(dwarfdump):
-  # To check if --filter-child-tags / -t option is available, run
-  # `llvm-dwarfdump -t`. If it is available, it will print to stderr:
-  #   ... for the -t option: requires a value!
-  # If not, it will print:
-  #   ... Unknown command line argument '-t'.
-  try:
-    process = Popen([dwarfdump, '-t'], stdout=PIPE, stderr=PIPE, text=True)
-    _, err = process.communicate()
-    return 'requires a value' in err
-  except OSError:
-    return False
-
-
 def read_dwarf_info(wasm, options):
   if options.dwarfdump_output:
     output = Path(options.dwarfdump_output).read_bytes()
@@ -392,23 +377,13 @@ def read_dwarf_info(wasm, options):
     if not os.path.exists(options.dwarfdump):
       logger.error('llvm-dwarfdump not found: ' + options.dwarfdump)
       sys.exit(1)
-    dwarfdump_cmd = [options.dwarfdump, '-debug-info', '-debug-line', wasm]
 
-    # Recently --filter-child-tag / -t option was added to llvm-dwarfdump prune
-    # tags. Because it is a recent addition, check if it exists in the user's
-    # llvm-dwarfdump. If not, print only the top-level DW_TAG_compile_units for
-    # source location info and don't generate 'names' field.
-    if has_filter_child_tag_option(options.dwarfdump):
-      # We need only three tags in the debug info: DW_TAG_compile_unit for
-      # source location, and DW_TAG_subprogram and DW_TAG_inlined_subroutine
-      # for the function ranges.
-      dwarfdump_cmd += ['-t', 'DW_TAG_compile_unit', '-t', 'DW_TAG_subprogram',
-                        '-t', 'DW_TAG_inlined_subroutine']
-    else:
-      logger.warning('llvm-dwarfdump does not support -t. "names" field will not be generated in the source map.')
-      # Only print DW_TAG_compile_units
-      dwarfdump_cmd += ['--recurse-depth=0']
-
+    # We need only three tags in the debug info: DW_TAG_compile_unit for
+    # source location, and DW_TAG_subprogram and DW_TAG_inlined_subroutine
+    # for the function ranges.
+    dwarfdump_cmd = [options.dwarfdump, '-debug-info', '-debug-line', wasm,
+                     '-t', 'DW_TAG_compile_unit', '-t', 'DW_TAG_subprogram',
+                     '-t', 'DW_TAG_inlined_subroutine']
     process = Popen(dwarfdump_cmd, stdout=PIPE, stderr=PIPE)
     output, err = process.communicate()
     exit_code = process.wait()
