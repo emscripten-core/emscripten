@@ -17,6 +17,7 @@ import test_posixtest_browser
 from browser_common import browser_should_skip_feature
 from common import RunnerCore, path_from_root
 from decorators import node_pthreads
+
 from tools.feature_matrix import Feature
 
 testsuite_root = path_from_root('test/third_party/posixtestsuite')
