@@ -160,6 +160,7 @@ var LibraryWebAudio = {
 #endif
     // Explicitly disconnect the node from Web Audio graph before letting it GC,
     // to work around browser bugs such as https://webkit.org/b/222098#c23
+    EmAudio[objectHandle].port.postMessage({'stop': true});
     EmAudio[objectHandle].disconnect();
     delete EmAudio[objectHandle];
   },
