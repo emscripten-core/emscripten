@@ -90,6 +90,11 @@ function createWasmAudioWorkletProcessor() {
     onmessage(msg) {
       if (msg['stop']) {
         this.stopped = true;
+        if (msg['cb']) {
+           // Send the same message back so that the main thread can verify that
+           // the Worklet has stopped
+          this.postMessage(msg);
+        }
       }
     }
 
