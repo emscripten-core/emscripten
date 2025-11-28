@@ -355,7 +355,12 @@ public:
   // it just moves a value and doesn't need to go via incref/decref.
   // This means it's safe to move values across threads - an error will
   // only arise if you access or free it from the wrong thread later.
-  val(val&& v) : handle(v.handle), thread(v.thread) {
+  val(val&& v)
+    :
+#ifdef _REENTRANT
+      thread(v.thread),
+#endif
+      handle(v.handle) {
     v.handle = 0;
   }
 
@@ -558,8 +563,12 @@ public:
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle)
-      : handle(handle), thread(pthread_self())
-  {}
+    :
+#ifdef _REENTRANT
+      thread(pthread_self()),
+#endif
+      handle(handle) {
+  }
 
   // Whether this value is a uses incref/decref (true) or is a special reserved
   // value (false).
@@ -625,7 +634,10 @@ private:
     return v;
   }
 
+#ifdef _REENTRANT
+  // It's used for thread checks and only under pthread environment.
   pthread_t thread;
+#endif
   EM_VAL handle;
 
   template <typename T, typename>
