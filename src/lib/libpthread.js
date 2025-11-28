@@ -89,6 +89,11 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG || ASSERTIONS
                    '$ptrToString',
 #endif
+#if PROXY_TO_PTHREAD
+                   '$addThreadToActiveSelectCallbacks',
+                   '$removeThreadFromActiveSelectCallbacks',
+                   '$activeSelectCallbacks',
+#endif
                    ],
   $PThread: {
     // Contains all Workers that are idle/unused and not currently hosting an
@@ -598,6 +603,9 @@ var LibraryPThread = {
 #if ASSERTIONS
     assert(worker);
 #endif
+#if PROXY_TO_PTHREAD
+    removeThreadFromActiveSelectCallbacks(pthread_ptr);
+#endif
     PThread.returnWorkerToPool(worker);
   },
 
@@ -641,6 +649,49 @@ var LibraryPThread = {
   $registerTLSInit: (tlsInitFunc) => PThread.tlsInitFunctions.push(tlsInitFunc),
 #endif
 
+#if PROXY_TO_PTHREAD
+  // On the main worker, activeSelectCallbacks records the set of callbacks
+  // that are allowed to update the shared region. Any callback not in this
+  // set (i.e. when !isActiveSelectCallback) must not update the region.
+  //
+  // Each select syscall invocation must call deactivateSelectCallbacks to
+  // reset this set, ensuring that callbacks from previous invocations don't
+  // affect the current one.
+  //
+  // If a callback executes after the thread worker has already returned (due
+  // to a timeout, a readiness notification or other exceptional conditions)
+  // but before the next deactivation, it may still update the shared region.
+  // However the thread worker will not read that value and just ignore it.
+  //
+  // activeSelectCallbacks records multiple callback lists one per thread
+  // worker so that each worker can manage its own set of active callbacks
+  // independently.
+  $activeSelectCallbacks: {},
+  $addThreadToActiveSelectCallbacks__deps: ['malloc'],
+  $addThreadToActiveSelectCallbacks: (pthread_ptr) => {
+    activeSelectCallbacks[pthread_ptr] = {
+      buf: _malloc(8),
+      callbacks: [],
+    };
+  },
+  $removeThreadFromActiveSelectCallbacks: (pthread_ptr) => {
+    delete activeSelectCallbacks[pthread_ptr];
+  },
+  $getActiveSelectCallbacks: (pthread_ptr) => {
+    return activeSelectCallbacks[pthread_ptr];
+  },
+  $deactivateSelectCallbacks: (pthread_ptr) => {
+    activeSelectCallbacks[pthread_ptr].callbacks = [];
+  },
+  $activateSelectCallback: (pthread_ptr, cb) => {
+    activeSelectCallbacks[pthread_ptr].callbacks.push(cb);
+  },
+  $isActiveSelectCallback: (pthread_ptr, cb) => {
+    return (activeSelectCallbacks[pthread_ptr] != null) &&
+      (activeSelectCallbacks[pthread_ptr].callbacks.indexOf(cb) != -1);
+  },
+#endif
+
   $spawnThread: (threadParams) => {
 #if ASSERTIONS
     assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! spawnThread() can only ever be called from main application thread!');
@@ -668,6 +719,9 @@ var LibraryPThread = {
         arg: threadParams.arg,
         pthread_ptr: threadParams.pthread_ptr,
     };
+#if PROXY_TO_PTHREAD
+    addThreadToActiveSelectCallbacks(threadParams.pthread_ptr);
+#endif
 #if OFFSCREENCANVAS_SUPPORT
     // Note that we do not need to quote these names because they are only used
     // in this file, and not from the external worker.js.
@@ -712,7 +766,7 @@ var LibraryPThread = {
   $pthreadCreateProxied__deps: ['__pthread_create_js'],
   $pthreadCreateProxied: (pthread_ptr, attr, startRoutine, arg) => ___pthread_create_js(pthread_ptr, attr, startRoutine, arg),
 
-#if OFFSCREENCANVAS_SUPPORT
+#if OFFSCREENCANVAS_SUPPORT || PROXY_TO_PTHREAD
   // ASan wraps the emscripten_builtin_pthread_create call in
   // __lsan::ScopedInterceptorDisabler.  Unfortunately, that only disables it on
   // the thread that made the call.  __pthread_create_js gets proxied to the
