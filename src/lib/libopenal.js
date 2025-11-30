@@ -25,6 +25,7 @@ var LibraryOpenAL = {
 
     ALC_EXTENSIONS: {
       // TODO: 'ALC_EXT_EFX': true,
+      'ALC_EXT_capture': true,
       'ALC_SOFT_pause_device': true,
       'ALC_SOFT_HRTF': true
     },
