@@ -34,10 +34,23 @@ import time
 import unittest
 from functools import cmp_to_key
 
-# Setup
-
 __rootpath__ = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
 sys.path.insert(0, __rootpath__)
+
+# Before we do anthing else, check that the bootstrap script has been run.
+import bootstrap  # noqa: I001
+bootstrap.check()
+
+# Add `out/python_deps` to the python path.  This is where the bootstrap
+# script install our python dev dependencis.
+sys.path.insert(0, os.path.join(__rootpath__, 'out', 'python_deps'))
+# Verify that we can import these dev dependencies and early exit if they
+# are missing
+try:
+  import psutil  # noqa: F401
+  import websockify  # type: ignore # noqa: F401
+except ModuleNotFoundError as e:
+  raise Exception('Unable to import python dev dependencies (psutil/websockify). Run "./bootstrap" (or "python3 -m pip -r requirements-dev.txt --target out/python_deps") to install') from e
 
 import browser_common
 import common
