@@ -27,10 +27,11 @@ from decorators import crossplatform, no_windows, parameterized, with_env_modify
 
 from tools import cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
-from tools.shared import EMCC, config
+from tools.shared import config, paths
 from tools.utils import delete_dir, delete_file
 
 SANITY_FILE = cache.get_path('sanity.txt')
+EMCC = paths.EMCC
 expected_llvm_version = str(shared.EXPECTED_LLVM_VERSION) + '.0.0'
 
 

@@ -43,7 +43,7 @@ from tools import (
 from tools.cmdline import CLANG_FLAGS_WITH_ARGS, options
 from tools.response_file import substitute_response_files
 from tools.settings import COMPILE_TIME_SETTINGS, default_setting, settings, user_settings
-from tools.shared import DEBUG, DYLIB_EXTENSIONS, in_temp
+from tools.shared import DEBUG, DYLIB_EXTENSIONS, in_temp, paths
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import exit_with_error, get_file_suffix, read_file, unsuffixed_basename
 
@@ -168,9 +168,9 @@ def create_reproduce_file(name, args):
 @ToolchainProfiler.profile()
 def main(args):
   if shared.run_via_emxx:
-    clang = shared.CLANG_CXX
+    clang = paths.CLANG_CXX
   else:
-    clang = shared.CLANG_CC
+    clang = paths.CLANG_CC
 
   # Special case the handling of `-v` because it has a special/different meaning
   # when used with no other arguments.  In particular, we must handle this early
@@ -477,9 +477,9 @@ def phase_setup(state):
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(options, state, newargs):
   if shared.run_via_emxx:
-    compiler = [shared.CLANG_CXX]
+    compiler = [paths.CLANG_CXX]
   else:
-    compiler = [shared.CLANG_CC]
+    compiler = [paths.CLANG_CC]
 
   if config.COMPILER_WRAPPER:
     logger.debug('using compiler wrapper: %s', config.COMPILER_WRAPPER)

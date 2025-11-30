@@ -32,7 +32,7 @@ from retryable_unittest import RetryableTestCase
 from tools import building, config, feature_matrix, shared, utils
 from tools.feature_matrix import Feature
 from tools.settings import COMPILE_TIME_SETTINGS
-from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir
+from tools.shared import DEBUG, get_canonical_temp_dir, paths
 from tools.utils import (
   WINDOWS,
   exit_with_error,
@@ -130,9 +130,9 @@ def copytree(src, dest):
 
 def compiler_for(filename, force_c=False):
   if utils.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
-    return EMXX
+    return paths.EMXX
   else:
-    return EMCC
+    return paths.EMCC
 
 
 def record_flaky_test(test_name, attempt_count, max_attempts, exception_msg):
@@ -1272,7 +1272,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       ''')
 
     def ccshared(src, linkto=None):
-      cmdv = [EMCC, src, '-o', utils.unsuffixed(src) + '.wasm', '-sSIDE_MODULE'] + self.get_cflags()
+      cmdv = [paths.EMCC, src, '-o', utils.unsuffixed(src) + '.wasm', '-sSIDE_MODULE'] + self.get_cflags()
       if linkto:
         cmdv += linkto
       self.run_process(cmdv)
