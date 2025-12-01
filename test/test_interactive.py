@@ -299,7 +299,7 @@ class interactive(BrowserCore):
     self.btest('webaudio/audioworklet.c', expected='0', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
   def test_audio_worklet_destroy_async(self):
-    self.btest('webaudio/audioworket_destroy_async.c', expected='0', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread', '-lwebaudio.js'])
+    self.btest('webaudio/audioworklet_destroy_async.c', expected='0', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread', '-lwebaudio.js'])
 
   # Tests a second AudioWorklet example: sine wave tone generator.
   def test_audio_worklet_tone_generator(self):
