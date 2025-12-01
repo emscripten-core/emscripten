@@ -98,7 +98,7 @@ class WarningManager:
           cmd_args[i] = ''
           continue
 
-      warning_name = cmd_args[i].replace('-Wno-', '').replace('-W', '')
+      warning_name = cmd_args[i].removeprefix('-Wno-').removeprefix('-W')
       enabled = not cmd_args[i].startswith('-Wno-')
 
       # special case pre-existing warn-absolute-paths

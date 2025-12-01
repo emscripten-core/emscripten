@@ -911,7 +911,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
       receiving.append('  // Construct dynCalls mapping')
       for sym in function_exports:
         if sym.startswith('dynCall_'):
-          sig_str = sym.replace('dynCall_', '')
+          sig_str = sym.removeprefix('dynCall_')
           receiving.append(f"  dynCalls['{sig_str}'] = {sym};")
       receiving.append('}')
 
@@ -968,7 +968,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
     mangled = asmjs_mangle(sym)
     assignment = mangled
     if generate_dyncall_assignment and is_function and sym.startswith('dynCall_'):
-      sig_str = sym.replace('dynCall_', '')
+      sig_str = sym.removeprefix('dynCall_')
       assignment += f" = dynCalls['{sig_str}']"
     if do_module_exports and should_export(mangled):
       assignment += f" = Module['{mangled}']"
