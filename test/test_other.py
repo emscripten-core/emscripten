@@ -13412,8 +13412,9 @@ int main() {
   @parameterized({
     # we will warn here since -O2 runs the optimizer and -g enables DWARF
     'O2_g': (True, ['-O2', '-g']),
-    # asyncify will force wasm-opt to run as well, so we warn here too
-    'asyncify_g': (True, ['-sASYNCIFY', '-g']),
+    # asyncify will force wasm-opt to run as well, but without optimizations, so
+    # we do not warn about the lack of optimization
+    'asyncify_g': (False, ['-sASYNCIFY', '-g']),
     # with --profiling-funcs however we do not use DWARF (we just emit the
     # names section) and will not warn.
     'O2_pfuncs': (False, ['-O2', '--profiling-funcs']),
