@@ -69,6 +69,8 @@ void emscripten_destroy_audio_context(EMSCRIPTEN_WEBAUDIO_T audioContext);
 // emscripten_destroy_web_audio_node_async() instead.
 void emscripten_destroy_web_audio_node(EMSCRIPTEN_WEBAUDIO_T objectHandle);
 
+typedef void (*EmscriptenDestroyWebAudioNodeCallback)(void *userData3);
+
 // Disconnects the given audio node from its audio graph, make sure the
 // process callback is not called anymore and then releases
 // the JS object table reference to the given audio node. The specified handle
