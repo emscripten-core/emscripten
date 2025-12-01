@@ -20,7 +20,6 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Optional
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -38,10 +37,10 @@ class Error(BaseException):
 # Class to treat location info in a uniform way across information sources.
 @dataclass
 class LocationInfo:
-  source: Optional[str] = None
+  source: str | None = None
   line: int = 0
   column: int = 0
-  func: Optional[str] = None
+  func: str | None = None
 
   def print(self):
     source = self.source if self.source else '??'
@@ -110,10 +109,10 @@ def get_sourceMappingURL_section(module):
 class WasmSourceMap:
   @dataclass
   class Location:
-    source: Optional[str] = None
+    source: str | None = None
     line: int = 0
     column: int = 0
-    func: Optional[str] = None
+    func: str | None = None
 
   def __init__(self):
     self.version = None

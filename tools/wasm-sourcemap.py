@@ -66,12 +66,12 @@ class Prefixes:
 
     source = name
     if not self.preserve_deterministic_prefix and name.startswith(DETERMINISTIC_PREFIX):
-      source = EMSCRIPTEN_PREFIX + utils.removeprefix(name, DETERMINISTIC_PREFIX)
+      source = EMSCRIPTEN_PREFIX + name.removeprefix(DETERMINISTIC_PREFIX)
 
     provided = False
     for p in self.prefixes:
       if source.startswith(p['prefix']):
-        source = p['replacement'] + utils.removeprefix(source, p['prefix'])
+        source = p['replacement'] + source.removeprefix(p['prefix'])
         provided = True
         break
 
@@ -244,7 +244,7 @@ def read_dwarf_entries(wasm, options):
   entries = []
   debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output)
   map_stmt_list_to_comp_dir = extract_comp_dir_map(debug_line_chunks[0])
-  for stmt_list, line_chunk in zip(debug_line_chunks[1::2], debug_line_chunks[2::2]):
+  for stmt_list, line_chunk in zip(debug_line_chunks[1::2], debug_line_chunks[2::2], strict=True):
     comp_dir = map_stmt_list_to_comp_dir.get(stmt_list, '')
 
     # include_directories[  1] = "/Users/yury/Work/junk/sqlite-playground/src"

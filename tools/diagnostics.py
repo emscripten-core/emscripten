@@ -9,7 +9,6 @@
 import logging
 import os
 import sys
-from typing import Dict
 
 from . import colored_logger
 
@@ -57,7 +56,7 @@ def warn(msg, *args):
 
 
 class WarningManager:
-  warnings: Dict[str, Dict] = {}
+  warnings: dict[str, dict] = {}
 
   def add_warning(self, name, enabled=True, part_of_all=True, shared=False, error=False):
     self.warnings[name] = {

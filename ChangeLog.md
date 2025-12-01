@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.22 (in development)
 -----------------------
+- The minimum version of python required to run emscripten was updated from 3.8
+  to 3.10. (#25891)
 
 4.0.21 - 12/02/25
 -----------------

@@ -31,7 +31,7 @@ from tools import (
 from tools.settings import settings, user_settings
 from tools.shared import DEBUG, asmjs_mangle, in_temp
 from tools.toolchain_profiler import ToolchainProfiler
-from tools.utils import exit_with_error, path_from_root, removeprefix
+from tools.utils import exit_with_error, path_from_root
 
 sys.path.append(path_from_root('third_party'))
 import leb128
@@ -1034,7 +1034,7 @@ def create_invoke_wrappers(metadata):
   """Asm.js-style exception handling: invoke wrapper generation."""
   invoke_wrappers = []
   for invoke in metadata.invoke_funcs:
-    sig = removeprefix(invoke, 'invoke_')
+    sig = invoke.removeprefix('invoke_')
     invoke_wrappers.append(js_manipulation.make_invoke(sig))
   return invoke_wrappers
 
