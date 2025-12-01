@@ -33,6 +33,7 @@ function createWasmAudioWorkletProcessor() {
       assert(opts.callback)
       assert(opts.samplesPerChannel)
 #endif
+      this.stopped = false;
       this.port.onmessage = this.onmessage.bind(this);
       this.callback = {{{ makeDynCall('iipipipp', 'opts.callback') }}};
       this.userData = opts.userData;
