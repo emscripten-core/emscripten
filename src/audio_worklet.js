@@ -33,7 +33,7 @@ function createWasmAudioWorkletProcessor() {
       assert(opts.callback)
       assert(opts.samplesPerChannel)
 #endif
-      this.port.onmessage = this.onmessage;
+      this.port.onmessage = this.onmessage.bind(this);
       this.callback = {{{ makeDynCall('iipipipp', 'opts.callback') }}};
       this.userData = opts.userData;
       // Then the samples per channel to process, fixed for the lifetime of the
@@ -88,12 +88,13 @@ function createWasmAudioWorkletProcessor() {
 #endif
 
     onmessage(msg) {
-      if (msg['stop']) {
+      var data = msg.data;
+      if (data['stop']) {
         this.stopped = true;
-        if (msg['cb']) {
+        if (data['cb']) {
            // Send the same message back so that the main thread can verify that
            // the Worklet has stopped
-          this.postMessage(msg);
+          this.port.postMessage(data);
         }
       }
     }

@@ -371,9 +371,10 @@ var LibraryWebAudio = {
 
     const node = new AudioWorkletNode(EmAudio[contextHandle], UTF8ToString(name), opts);
     node.port.onmessage = (msg) => {
-      if (msg['stop']) {
-        var cb = msg['cb'];
-        callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(msg['ud']));
+      var data = msg.data;
+      if (data['stop']) {
+        var cb = data['cb'];
+        callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(data['ud']));
       }
     };
 
