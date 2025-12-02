@@ -431,8 +431,10 @@ def get_binaryen_passes(options):
     passes += ['--fpcast-emu']
   if settings.ASYNCIFY == 1:
     passes += ['--asyncify']
-    if settings.RELOCATABLE or settings.MAIN_MODULE:
-      passes += ['--pass-arg=asyncify-relocatable']
+    if settings.MAIN_MODULE:
+      passes += ['--pass-arg=asyncify-export-globals']
+    elif settings.RELOCATABLE:
+      passes += ['--pass-arg=asyncify-import-globals']
     if settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
     if settings.ASYNCIFY_ADVISE:
@@ -1331,13 +1333,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       '$relocateExports',
       '$GOTHandler',
     ]
-
-    if settings.ASYNCIFY == 1:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '__asyncify_state',
-        '__asyncify_data',
-      ]
-
     # shared modules need memory utilities to allocate their memory
     settings.ALLOW_TABLE_GROWTH = 1
 

@@ -114,6 +114,10 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     settings.WASM_EXPORTS = metadata.all_exports
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
+  if settings.MAIN_MODULE and settings.ASYNCIFY == 1:
+    # These will be exported from Wasm, but only once we run the asyncify pass.
+    settings.WASM_EXPORTS += ['__asyncify_state', '__asyncify_data']
+
   # start with the MVP features, and add any detected features.
   building.binaryen_features = ['--mvp-features'] + metadata.features
   if settings.ASYNCIFY == 2:
@@ -350,9 +354,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     # So we need to offset the elements by 1.
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
-
-  if settings.MAIN_MODULE and settings.ASYNCIFY == 1:
-    metadata.imports += ['__asyncify_state', '__asyncify_data']
 
   if metadata.invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
