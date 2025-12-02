@@ -417,8 +417,9 @@ var LibraryPThread = {
       // Module['pthreadPoolReady'] promise.
       Module['pthreadPoolReady'] = pthreadPoolReady;
       return;
-#endif
+#else
       return pthreadPoolReady;
+#endif
     },
 #endif // PTHREAD_POOL_SIZE
 
