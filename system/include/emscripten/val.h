@@ -210,6 +210,12 @@ inline void writeGenericWireType(GenericWireType*& cursor, uint64_t wt) {
   ++cursor;
 }
 
+// Explicit overload for size_t to prevent fallback to the 32-bit generic template
+inline void writeGenericWireType(GenericWireType*& cursor, std::size_t wt) {
+  cursor->w[0].s = wt; // Uses the size_t member (64-bit in Memory64)
+  ++cursor;
+}
+
 template<typename T>
 void writeGenericWireType(GenericWireType*& cursor, T* wt) {
   cursor->w[0].p = wt;
@@ -225,6 +231,7 @@ inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<Ele
 
 template<typename T>
 void writeGenericWireType(GenericWireType*& cursor, T wt) {
+  static_assert(sizeof(T) <= sizeof(cursor->w[0].u), "Generic wire type must be smaller than unsigned.");
   cursor->w[0].u = static_cast<unsigned>(wt);
   ++cursor;
 }
