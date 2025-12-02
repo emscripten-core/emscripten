@@ -78,7 +78,6 @@ import sys
 from dataclasses import dataclass
 from subprocess import PIPE
 from textwrap import dedent
-from typing import List
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -89,7 +88,7 @@ from tools.response_file import substitute_response_files
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
-excluded_patterns: List[str] = []
+excluded_patterns: list[str] = []
 new_data_files = []
 walked = []
 

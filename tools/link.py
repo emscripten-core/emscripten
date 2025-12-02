@@ -53,7 +53,6 @@ from .utils import (
   exit_with_error,
   get_file_suffix,
   read_file,
-  removeprefix,
   safe_copy,
   unsuffixed,
   unsuffixed_basename,
@@ -2766,7 +2765,7 @@ def process_libraries(options, flags):
     if not flag.startswith('-l'):
       new_flags.append(flag)
       continue
-    lib = removeprefix(flag, '-l')
+    lib = flag.removeprefix('-l')
 
     logger.debug('looking for library "%s"', lib)
 
@@ -2933,7 +2932,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     # EM_JS function are exports with a special prefix.  We need to strip
     # this prefix to get the actual symbol name.  For the main module, this
     # is handled by extract_metadata.py.
-    exports = [removeprefix(e, '__em_js__') for e in exports]
+    exports = [e.removeprefix('__em_js__') for e in exports]
     settings.SIDE_MODULE_EXPORTS.extend(sorted(exports))
 
     imports = webassembly.get_imports(dylib)

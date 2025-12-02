@@ -7,7 +7,6 @@ import logging
 import os
 import shutil
 import sys
-from typing import List, Optional
 
 from . import diagnostics, utils
 from .utils import __rootpath__, exit_with_error, path_from_root
@@ -36,12 +35,12 @@ EM_CONFIG = None
 # any of these.
 NODE_JS_TEST = None
 SPIDERMONKEY_ENGINE = None
-V8_ENGINE: Optional[List[str]] = None
+V8_ENGINE: list[str] | None = None
 LLVM_ROOT = None
-JS_ENGINES: List[List[str]] = []
+JS_ENGINES: list[list[str]] = []
 WASMER = None
 WASMTIME = None
-WASM_ENGINES: List[List[str]] = []
+WASM_ENGINES: list[list[str]] = []
 
 
 def listify(x):

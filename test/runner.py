@@ -482,9 +482,7 @@ def parse_args():
   parser.add_argument('--verbose', '-v', action='count', default=0,
                       help="Show test stdout and stderr, and don't use the single-line test reporting. "
                            'Specifying `-v` twice will enable test framework logging (i.e. EMTEST_VERBOSE)')
-  # TODO: Replace with BooleanOptionalAction once we can depend on python3.9
-  parser.add_argument('--ansi', action='store_true', default=None)
-  parser.add_argument('--no-ansi', action='store_false', dest='ansi', default=None)
+  parser.add_argument('--ansi', action=argparse.BooleanOptionalAction, default=None)
   parser.add_argument('--all-engines', action='store_true')
   parser.add_argument('--detect-leaks', action='store_true')
   parser.add_argument('--skip-slow', action='store_true', help='Skip tests marked as slow')

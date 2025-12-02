@@ -10,7 +10,6 @@ import socket
 import sys
 import time
 from subprocess import Popen
-from typing import List
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner sockets')
@@ -186,7 +185,7 @@ def PythonTcpEchoServerProcess(port):
 
 
 class sockets(BrowserCore):
-  cflags: List[str] = []
+  cflags: list[str] = []
 
   @classmethod
   def setUpClass(cls):

@@ -2982,7 +2982,7 @@ More info: https://emscripten.org
   def test_js_optimizer(self, passes, filename=None):
     if not filename:
       testname = self.id().split('.')[-1]
-      filename = utils.removeprefix(testname, 'test_js_optimizer_') + '.js'
+      filename = testname.removeprefix('test_js_optimizer_') + '.js'
     filename = test_file('js_optimizer', filename)
     expected_file = utils.unsuffixed(filename) + '-output.js'
     # test calling optimizer

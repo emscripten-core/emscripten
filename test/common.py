@@ -22,7 +22,6 @@ import textwrap
 from functools import wraps
 from pathlib import Path
 from subprocess import PIPE, STDOUT
-from typing import Dict, Tuple
 
 import clang_native
 import jsrun
@@ -1091,7 +1090,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.assertEqual(read_binary(file1),
                      read_binary(file2))
 
-  library_cache: Dict[str, Tuple[str, object]] = {}
+  library_cache: dict[str, tuple[str, object]] = {}
 
   def get_build_dir(self):
     ret = self.in_dir('building')

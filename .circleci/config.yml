@@ -13,9 +13,9 @@ executors:
       - image: cimg/python:3.10.7
     environment:
       EMCC_CORES: "4"
-  focal:
+  ubuntu-lts:
     docker:
-      - image: emscripten/emscripten-ci:focal
+      - image: emscripten/emscripten-ci:jammy
     environment:
       LANG: "C.UTF-8"
       EMCC_CORES: "4"
@@ -530,7 +530,7 @@ commands:
 
 jobs:
   build-docs:
-    executor: focal
+    executor: ubuntu-lts
     steps:
       - checkout
       - pip-install
@@ -540,7 +540,7 @@ jobs:
       - run: make -C site html
   ruff:
     # Keep in sync with ruff commands in tools/maint/pre-push
-    executor: focal
+    executor: ubuntu-lts
     steps:
       - checkout
       - pip-install
@@ -548,13 +548,13 @@ jobs:
       # TODO (cclauss): When ruff supports rules these errors without --preview, remove following line
       - run: ruff check --preview --select=E20,E30,E221,E225,E226
   vulture:
-    executor: focal
+    executor: ubuntu-lts
     steps:
       - checkout
       - pip-install
       - run: vulture . --min-confidence 100
   mypy:
-    executor: focal
+    executor: ubuntu-lts
     steps:
       - checkout
       - pip-install
@@ -568,13 +568,13 @@ jobs:
           npm run lint
           npm run check
   test-sanity:
-    executor: focal
+    executor: ubuntu-lts
     steps:
       - run-tests-linux:
           frozen_cache: false
           test_targets: "sanity"
   build-linux:
-    executor: focal
+    executor: ubuntu-lts
     # xlarge has 4x the cores of the default medium, costs 4x as much, and runs
     # in about 1/2 the time, so it is not cost-effective (overall it is 2x the
     # cost for the same work), but given this blocks almost all the other jobs
@@ -632,19 +632,19 @@ jobs:
       - persist
   # Perhaps we don't need to run this suite with every commit. Consider moving this to FYI bot.
   test-posixtest:
-    executor: focal
+    executor: ubuntu-lts
     steps:
       - run-tests-linux:
           test_targets: "posixtest"
   test-core0:
-    executor: focal
+    executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-linux:
           test_targets: "core0"
   test-core2:
-    executor: focal
+    executor: ubuntu-lts
     environment:
       EMTEST_BROWSER: "node"
       EMTEST_SKIP_NODE_CANARY: "1"
@@ -692,7 +692,7 @@ jobs:
             corez.test_dylink_syslibs_all"
       - upload-test-results
   test-core3:
-    executor: focal
+    executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
@@ -779,14 +779,14 @@ jobs:
             strict.test_dylink_global_inits_reversed
             "
   test-modularize-instance:
-    executor: focal
+    executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-linux:
           test_targets: "instance"
   test-stress:
-    executor: focal
+    executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
     steps:
@@ -810,7 +810,7 @@ jobs:
   test-wasm2js1:
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
-    executor: focal
+    executor: ubuntu-lts
     steps:
       - run-tests-linux:
           test_targets: "wasm2js1"
@@ -1062,7 +1062,7 @@ jobs:
             "
       - upload-test-results
   test-other:
-    executor: focal
+    executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NODE_CANARY: "1"
       EMTEST_SKIP_RUST: "1"
@@ -1076,7 +1076,7 @@ jobs:
           # headers on emsdk-bundled clang
           test_targets: "other jslib skip:other.test_native_link_error_message"
   test-browser-chrome:
-    executor: focal
+    executor: ubuntu-lts
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
@@ -1101,7 +1101,7 @@ jobs:
             browser.test_audio_worklet*
             "
   test-browser-chrome-wasm64:
-    executor: focal
+    executor: ubuntu-lts
     environment:
       EMTEST_LACKS_WEBGPU: "1"
       EMTEST_VISUALIZE: "1"
@@ -1131,7 +1131,7 @@ jobs:
           name: Check profile
           command: file -E out/graph.html
   test-browser-chrome-2gb:
-    executor: focal
+    executor: ubuntu-lts
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
@@ -1139,7 +1139,7 @@ jobs:
           title: "browser_2gb"
           test_targets: "browser_2gb"
   test-browser-chrome-wasm64-4gb:
-    executor: focal
+    executor: ubuntu-lts
     environment:
       EMTEST_LACKS_WEBGPU: "1"
     steps:
@@ -1147,7 +1147,7 @@ jobs:
           title: "browser64_4gb"
           test_targets: "browser64_4gb"
   test-browser-firefox:
-    executor: focal
+    executor: ubuntu-lts
     environment:
       EMTEST_LACKS_GROWABLE_ARRAYBUFFERS: "1"
     steps:
@@ -1166,7 +1166,7 @@ jobs:
             skip:browser.test_glut_glutget
             "
   test-browser-firefox-wasm64:
-    executor: focal
+    executor: ubuntu-lts
     steps:
       - checkout
       - pip-install
@@ -1218,12 +1218,12 @@ jobs:
   # TODO(sbc): Re-enable once we figure out why the emrun tests are
   # locking up.
   #test-browser-chrome-emrun:
-  #  executor: focal
+  #  executor: ubuntu-lts
   #  steps:
   #    - run-tests-chrome:
   #        test_targets: "emrun"
   test-sockets-chrome:
-    executor: focal
+    executor: ubuntu-lts
     steps:
       - test-sockets-chrome
 

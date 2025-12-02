@@ -18,13 +18,12 @@ import socket
 import sys
 import threading
 import time
-from typing import Optional
 
 ports = [int(sys.argv[1]), int(sys.argv[2])]
 
 
 class Listener(threading.Thread):
-  other: Optional[Listener] = None  # noqa: F821
+  other: Listener | None = None  # noqa: F821
 
   def run(self):
     self.conn = None

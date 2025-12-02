@@ -218,7 +218,7 @@ def functype_to_str(t, t64):
     rtn = valuetype_to_chr(t.returns[0], t64.returns[0])
   else:
     rtn = 'v'
-  for p, p64 in zip(t.params, t64.params):
+  for p, p64 in zip(t.params, t64.params, strict=True):
     rtn += valuetype_to_chr(p, p64)
   return rtn
 

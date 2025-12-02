@@ -200,7 +200,7 @@ def get_path_to_functions_map(wasm, sourcemap, paths):
     sm = emsymbolizer.WasmSourceMap()
     sm.parse(sourcemap)
 
-    for func_name, func in zip(func_names, funcs):
+    for func_name, func in zip(func_names, funcs, strict=True):
       # From the last address, decrement the address by 1 until we find location
       # info with source file information. The reason we do this is to reduce
       # the probability of picking an address where another function is inlined

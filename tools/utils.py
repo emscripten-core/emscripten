@@ -143,13 +143,6 @@ def safe_copy(src, dst):
   make_writable(dst)
 
 
-# TODO(sbc): Replace with str.removeprefix once we update to python3.9
-def removeprefix(string, prefix):
-  if string.startswith(prefix):
-    return string[len(prefix):]
-  return string
-
-
 def convert_line_endings_in_file(filename, to_eol):
   if to_eol == os.linesep:
     assert os.path.exists(filename)
@@ -229,8 +222,7 @@ def get_num_cores():
   return int(os.environ.get('EMCC_CORES', cpu_count))
 
 
-# TODO(sbc): Replace with functools.cache, once we update to python 3.9
-memoize = functools.lru_cache(maxsize=None)
+memoize = functools.cache
 
 
 # TODO: Move this back to shared.py once importing that file becoming side effect free (i.e. it no longer requires a config).
