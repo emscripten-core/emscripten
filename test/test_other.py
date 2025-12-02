@@ -3598,6 +3598,10 @@ More info: https://emscripten.org
     self.emcc('other/embind_tsgen.cpp', extra_args)
     self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
 
+    extra_args = ['-sASYNCIFY']
+    self.emcc('other/embind_tsgen.cpp', extra_args)
+    self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
+
   def test_embind_tsgen_worker_env(self):
     self.cflags += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
     # Passing -sWASM_WORKERS requires the 'worker' environment

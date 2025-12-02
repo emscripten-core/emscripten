@@ -2093,6 +2093,8 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
     settings.MEMORY64 = 2
   # Source maps haven't been generated yet and aren't needed to run embind_gen.
   settings.LOAD_SOURCE_MAP = 0
+  # TS generation is run before wasm-opt so some of the assertions may be incorrect
+  # e.g. when -sASYNCIFY=1 `asyncify_start_unwind` is missing.
   settings.ASSERTIONS = 0
   outfile_js = in_temp('tsgen.js')
   # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
