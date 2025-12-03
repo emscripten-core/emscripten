@@ -60,10 +60,23 @@ typedef void (*EmscriptenStartWebAudioWorkletCallback)(EMSCRIPTEN_WEBAUDIO_T aud
 // after calling this function.
 void emscripten_destroy_audio_context(EMSCRIPTEN_WEBAUDIO_T audioContext);
 
-// Disconnects the given audio node from its audio graph, and then releases
+// Disconnects the given audio node from its audio graph, make sure the
+// process callback is not called anymore and then releases
 // the JS object table reference to the given audio node. The specified handle
 // is invalid after calling this function.
+// The process callback can be called after this function is called.
+// If you need to ensure that the process callback is not called anymore, use
+// emscripten_destroy_web_audio_node_async() instead.
 void emscripten_destroy_web_audio_node(EMSCRIPTEN_WEBAUDIO_T objectHandle);
+
+typedef void (*EmscriptenDestroyWebAudioNodeCallback)(void *userData3);
+
+// Disconnects the given audio node from its audio graph, make sure the
+// process callback is not called anymore and then releases
+// the JS object table reference to the given audio node. The specified handle
+// is invalid after calling this function.
+// Once the node has been verified to be stopped, the callback will be called.
+void emscripten_destroy_web_audio_node_async(EMSCRIPTEN_WEBAUDIO_T objectHandle, EmscriptenDestroyWebAudioNodeCallback callback, void *userData3);
 
 // Create Wasm AudioWorklet thread. Call this function once at application startup to establish an AudioWorkletGlobalScope for your app.
 // After the scope has been initialized, the given callback will fire.

@@ -628,6 +628,7 @@ sigs = {
   emscripten_debugger__sig: 'v',
   emscripten_destroy_audio_context__sig: 'vi',
   emscripten_destroy_web_audio_node__sig: 'vi',
+  emscripten_destroy_web_audio_node_async__sig: 'vipp',
   emscripten_destroy_worker__sig: 'vi',
   emscripten_enter_soft_fullscreen__sig: 'ipp',
   emscripten_err__sig: 'vp',

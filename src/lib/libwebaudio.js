@@ -160,6 +160,22 @@ var LibraryWebAudio = {
 #endif
     // Explicitly disconnect the node from Web Audio graph before letting it GC,
     // to work around browser bugs such as https://webkit.org/b/222098#c23
+    EmAudio[objectHandle].port.postMessage({'stop': 1});
+    EmAudio[objectHandle].disconnect();
+    delete EmAudio[objectHandle];
+  },
+
+    emscripten_destroy_web_audio_node_async: (objectHandle, callback, userData) => {
+#if ASSERTIONS || WEBAUDIO_DEBUG
+    emAudioExpectNode(objectHandle, 'emscripten_destroy_web_audio_node_async');
+#endif
+    // Explicitly disconnect the node from Web Audio graph before letting it GC,
+    // to work around browser bugs such as https://webkit.org/b/222098#c23
+    EmAudio[objectHandle].port.postMessage({
+      'stop': 1,
+      'cb': callback,
+      'ud': userData,
+    });
     EmAudio[objectHandle].disconnect();
     delete EmAudio[objectHandle];
   },
@@ -352,7 +368,17 @@ var LibraryWebAudio = {
     dbg(`Creating AudioWorkletNode "${UTF8ToString(name)}" on context=${contextHandle} with options:`);
     console.dir(opts);
 #endif
-    return emscriptenRegisterAudioObject(new AudioWorkletNode(EmAudio[contextHandle], UTF8ToString(name), opts));
+
+    const node = new AudioWorkletNode(EmAudio[contextHandle], UTF8ToString(name), opts);
+    node.port.onmessage = (msg) => {
+      var data = msg.data;
+      if (data['stop']) {
+        var cb = data['cb'];
+        callUserCallback(() => {{{ makeDynCall('vp', 'cb') }}}(data['ud']));
+      }
+    };
+
+    return emscriptenRegisterAudioObject(node);
   },
 #endif // ~AUDIO_WORKLET
 
