@@ -3554,49 +3554,42 @@ More info: https://emscripten.org
 
   @is_slow_test
   @requires_dev_dependency('typescript')
-  def test_embind_tsgen_ignore(self):
+  # These extra arguments are not related to TS binding generation but we want to
+  # verify that they do not interfere with it.
+  @parameterized({
+    '1': [['-sALLOW_MEMORY_GROWTH=1',
+           '-Wno-pthreads-mem-growth',
+           '-sMAXIMUM_MEMORY=4GB',
+           '--pre-js', 'fail.js',
+           '--post-js', 'fail.js',
+           '--extern-pre-js', 'fail.js',
+           '--extern-post-js', 'fail.js',
+           '-sENVIRONMENT=worker',
+           '--use-preload-cache',
+           '--preload-file', 'fail.js',
+           '-O3',
+           '-msimd128',
+           '-pthread',
+           '-sPROXY_TO_PTHREAD',
+           '-sPTHREAD_POOL_SIZE=1',
+           '-sSINGLE_FILE',
+           '-lembind', # Test duplicated link option.
+          ], 'embind_tsgen_ignore_1.d.ts'],
+    '2': [['--embed-file', 'fail.js',
+           '-sMINIMAL_RUNTIME=2',
+           '-sEXPORT_ES6=1',
+           '-sASSERTIONS=0',
+           '-sSTRICT=1',
+          ], 'embind_tsgen_ignore_2.d.ts'],
+    '3': [['-sWASM=0'], 'embind_tsgen_ignore_3.d.ts'],
+    '4': [['-fsanitize=undefined', '-gsource-map'], 'embind_tsgen_ignore_3.d.ts'],
+    '5': [['-sASYNCIFY'], 'embind_tsgen_ignore_3.d.ts'],
+  })
+  def test_embind_tsgen_ignore(self, extra_args, expected_ts_file):
     create_file('fail.js', 'assert(false);')
     self.cflags += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
-    # These extra arguments are not related to TS binding generation but we want to
-    # verify that they do not interfere with it.
-    extra_args = ['-sALLOW_MEMORY_GROWTH=1',
-                  '-Wno-pthreads-mem-growth',
-                  '-sMAXIMUM_MEMORY=4GB',
-                  '--pre-js', 'fail.js',
-                  '--post-js', 'fail.js',
-                  '--extern-pre-js', 'fail.js',
-                  '--extern-post-js', 'fail.js',
-                  '-sENVIRONMENT=worker',
-                  '--use-preload-cache',
-                  '--preload-file', 'fail.js',
-                  '-O3',
-                  '-msimd128',
-                  '-pthread',
-                  '-sPROXY_TO_PTHREAD',
-                  '-sPTHREAD_POOL_SIZE=1',
-                  '-sSINGLE_FILE',
-                  '-lembind', # Test duplicated link option.
-                  ]
     self.emcc('other/embind_tsgen.cpp', extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen_ignore_1.d.ts'), read_file('embind_tsgen.d.ts'))
-    # Test these args separately since they conflict with arguments in the first test.
-    extra_args = ['-sMODULARIZE',
-                  '--embed-file', 'fail.js',
-                  '-sMINIMAL_RUNTIME=2',
-                  '-sEXPORT_ES6=1',
-                  '-sASSERTIONS=0',
-                  '-sSTRICT=1']
-    self.emcc('other/embind_tsgen.cpp', extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen_ignore_2.d.ts'), read_file('embind_tsgen.d.ts'))
-    # Also test this separately since it conflicts with other settings.
-    extra_args = ['-sWASM=0']
-    self.emcc('other/embind_tsgen.cpp', extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
-
-    extra_args = ['-fsanitize=undefined',
-                  '-gsource-map']
-    self.emcc('other/embind_tsgen.cpp', extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
+    self.assertFileContents(test_file(f'other/{expected_ts_file}'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_worker_env(self):
     self.cflags += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
