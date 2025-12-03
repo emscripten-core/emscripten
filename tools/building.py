@@ -886,10 +886,9 @@ def metadce(js_file, wasm_file, debug_info, last):
   # find the unused things in js
   unused_imports = []
   unused_exports = []
-  PREFIX = 'unused: '
   for line in out.splitlines():
-    if line.startswith(PREFIX):
-      name = line.replace(PREFIX, '').strip()
+    if line.startswith('unused:'):
+      name = line.removeprefix('unused:').strip()
       # With dynamic linking we never want to strip the memory or the table
       # This can be removed once SIDE_MODULE_IMPORTS includes tables and memories.
       if settings.MAIN_MODULE and name.split('$')[-1] in ('wasmMemory', 'wasmTable'):

@@ -279,7 +279,7 @@ def env_with_node_in_path():
 
 def _get_node_version_pair(nodejs):
   actual = utils.run_process(nodejs + ['--version'], stdout=PIPE).stdout.strip()
-  version = actual.replace('v', '')
+  version = actual.removeprefix('v')
   version = version.split('-')[0].split('.')
   version = tuple(int(v) for v in version)
   return actual, version
