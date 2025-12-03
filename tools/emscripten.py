@@ -962,6 +962,10 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
   receiving.append('\nfunction assignWasmExports(wasmExports) {')
   if settings.ASSERTIONS:
     for sym in exports:
+      if settings.EMBIND_GEN_MODE and sym.startswith('asyncify_'):
+        # EMBIND_GEN_MODE is run before binaryen so the asyncify exports that
+        # are created by binaryen will be missing.
+        continue
       receiving.append(f"  assert(typeof wasmExports['{sym}'] != 'undefined', 'missing Wasm export: {sym}');")
   for sym, info in exports.items():
     is_function = type(info) == webassembly.FuncType
