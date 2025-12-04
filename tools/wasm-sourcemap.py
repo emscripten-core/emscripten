@@ -243,13 +243,12 @@ def demangle_names(names):
   # Gather all mangled names and call llvm-cxxfilt only once for all of them
   try:
     input_str = '\n'.join(mangled_names)
-    process = Popen([LLVM_CXXFILT], stdin=PIPE, stdout=PIPE, stderr=PIPE, text=True)
-    stdout, stderr = process.communicate(input=input_str)
-    if process.returncode != 0:
-      logger.warning('llvm-cxxfilt failed: %s' % stderr)
+    proc = shared.check_call([LLVM_CXXFILT], input=input_str, stdout=shared.PIPE, stderr=shared.PIPE, text=True)
+    if proc.returncode != 0:
+      logger.warning('llvm-cxxfilt failed: %s' % proc.stderr)
       return {}
 
-    demangled_list = stdout.splitlines()
+    demangled_list = proc.stdout.splitlines()
     if len(demangled_list) != len(mangled_names):
       logger.warning('llvm-cxxfilt output length mismatch')
       return {}
