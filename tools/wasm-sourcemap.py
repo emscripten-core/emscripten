@@ -241,22 +241,18 @@ def demangle_names(names):
     return {}
 
   # Gather all mangled names and call llvm-cxxfilt only once for all of them
-  try:
-    input_str = '\n'.join(mangled_names)
-    proc = shared.check_call([LLVM_CXXFILT], input=input_str, stdout=shared.PIPE, stderr=shared.PIPE, text=True)
-    if proc.returncode != 0:
-      logger.warning('llvm-cxxfilt failed: %s' % proc.stderr)
-      return {}
-
-    demangled_list = proc.stdout.splitlines()
-    if len(demangled_list) != len(mangled_names):
-      logger.warning('llvm-cxxfilt output length mismatch')
-      return {}
-
-    return dict(zip(mangled_names, demangled_list))
-  except OSError:
-    logger.warning('Failed to run llvm-cxxfilt')
+  input_str = '\n'.join(mangled_names)
+  proc = shared.check_call([LLVM_CXXFILT], input=input_str, stdout=shared.PIPE, stderr=shared.PIPE, text=True)
+  if proc.returncode != 0:
+    logger.warning('llvm-cxxfilt failed: %s' % proc.stderr)
     return {}
+
+  demangled_list = proc.stdout.splitlines()
+  if len(demangled_list) != len(mangled_names):
+    logger.warning('llvm-cxxfilt output length mismatch')
+    return {}
+
+  return dict(zip(mangled_names, demangled_list))
 
 
 class FuncRange:
