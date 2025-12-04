@@ -219,13 +219,17 @@ def decode_octal_encoded_utf8(str):
 
 
 def extract_comp_dir_map(text):
+  compile_unit_pattern = re.compile(r"0x[0-9a-f]*: DW_TAG_compile_unit")
+  stmt_list_pattern = re.compile(r"DW_AT_stmt_list\s+\((0x[0-9a-f]*)\)")
+  comp_dir_pattern = re.compile(r"DW_AT_comp_dir\s+\(\"([^\"]+)\"\)")
+
   map_stmt_list_to_comp_dir = {}
-  chunks = re.split(r"0x[0-9a-f]*: DW_TAG_compile_unit", text)
+  chunks = compile_unit_pattern.split(text) # DW_TAG_compile_unit
   for chunk in chunks[1:]:
-    stmt_list_match = re.search(r"DW_AT_stmt_list\s+\((0x[0-9a-f]*)\)", chunk)
+    stmt_list_match = stmt_list_pattern.search(chunk) # DW_AT_stmt_list
     if stmt_list_match is not None:
       stmt_list = stmt_list_match.group(1)
-      comp_dir_match = re.search(r"DW_AT_comp_dir\s+\(\"([^\"]+)\"\)", chunk)
+      comp_dir_match = comp_dir_pattern.search(chunk) # DW_AT_comp_dir
       comp_dir = decode_octal_encoded_utf8(comp_dir_match.group(1)) if comp_dir_match is not None else ''
       map_stmt_list_to_comp_dir[stmt_list] = comp_dir
   return map_stmt_list_to_comp_dir
@@ -309,39 +313,50 @@ def extract_func_ranges(text):
   #                 DW_AT_high_pc  (0x00000083)
   #                 ...
 
+  tag_pattern = re.compile(r'\r?\n(?=0x[0-9a-f]+:)')
+  subprogram_pattern = re.compile(r"0x[0-9a-f]+:\s+DW_TAG_subprogram")
+  inlined_pattern = re.compile(r"0x[0-9a-f]+:\s+DW_TAG_inlined_subroutine")
+  low_pc_pattern = re.compile(r'DW_AT_low_pc\s+\(0x([0-9a-f]+)\)')
+  high_pc_pattern = re.compile(r'DW_AT_high_pc\s+\(0x([0-9a-f]+)\)')
+  abstract_origin_pattern = re.compile(r'DW_AT_abstract_origin\s+\(0x[0-9a-f]+\s+"([^"]+)"\)')
+  linkage_name_pattern = re.compile(r'DW_AT_linkage_name\s+\("([^"]+)"\)')
+  name_pattern = re.compile(r'DW_AT_name\s+\("([^"]+)"\)')
+  specification_pattern = re.compile(r'DW_AT_specification\s+\(0x[0-9a-f]+\s+"([^"]+)"\)')
+
   func_ranges = []
-  dw_tags = re.split(r'\r?\n(?=0x[0-9a-f]+:)', text)
+  dw_tags = tag_pattern.split(text)
 
   def get_name_from_tag(tag):
-    m = re.search(r'DW_AT_linkage_name\s+\("([^"]+)"\)', tag)
+    m = linkage_name_pattern.search(tag) # DW_AT_linkage_name
     if m:
       return m.group(1)
-    m = re.search(r'DW_AT_name\s+\("([^"]+)"\)', tag)
+    m = name_pattern.search(tag) # DW_AT_name
     if m:
       return m.group(1)
     # If name is missing, check for DW_AT_specification annotation
-    m = re.search(r'DW_AT_specification\s+\(0x[0-9a-f]+\s+"([^"]+)"\)', tag)
+    m = specification_pattern.search(tag)
     if m:
       return m.group(1)
     return None
 
   for tag in dw_tags:
-    is_subprogram = re.search(r"0x[0-9a-f]+:\s+DW_TAG_subprogram", tag)
-    is_inlined = re.search(r"0x[0-9a-f]+:\s+DW_TAG_inlined_subroutine", tag)
+    is_subprogram = subprogram_pattern.search(tag) # DW_TAG_subprogram
+    is_inlined = inlined_pattern.search(tag) # DW_TAG_inlined_subroutine
+
     if is_subprogram or is_inlined:
       name = None
       low_pc = None
       high_pc = None
-      m = re.search(r'DW_AT_low_pc\s+\(0x([0-9a-f]+)\)', tag)
+      m = low_pc_pattern.search(tag) # DW_AT_low_pc
       if m:
         low_pc = int(m.group(1), 16)
-      m = re.search(r'DW_AT_high_pc\s+\(0x([0-9a-f]+)\)', tag)
+      m = high_pc_pattern.search(tag) # DW_AT_high_pc
       if m:
         high_pc = int(m.group(1), 16)
       if is_subprogram:
         name = get_name_from_tag(tag)
       else: # is_inlined
-        m = re.search(r'DW_AT_abstract_origin\s+\(0x[0-9a-f]+\s+"([^"]+)"\)', tag)
+        m = abstract_origin_pattern.search(tag) # DW_AT_abstract_origin
         if m:
           name = m.group(1)
       if name and low_pc is not None and high_pc is not None:
@@ -380,8 +395,13 @@ def read_dwarf_info(wasm, options):
   else:
     utils.exit_with_error('Please specify either --dwarfdump or --dwarfdump-output')
 
+  debug_line_pattern = re.compile(r"debug_line\[(0x[0-9a-f]*)\]")
+  include_dir_pattern = re.compile(r"include_directories\[\s*(\d+)\] = \"([^\"]*)")
+  file_pattern = re.compile(r"file_names\[\s*(\d+)\]:\s+name: \"([^\"]*)\"\s+dir_index: (\d+)")
+  line_pattern = re.compile(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?")
+
   entries = []
-  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output)
+  debug_line_chunks = debug_line_pattern.split(output)
   map_stmt_list_to_comp_dir = extract_comp_dir_map(debug_line_chunks[0])
   for stmt_list, line_chunk in zip(debug_line_chunks[1::2], debug_line_chunks[2::2], strict=True):
     comp_dir = map_stmt_list_to_comp_dir.get(stmt_list, '')
@@ -402,16 +422,16 @@ def read_dwarf_info(wasm, options):
     # 0x0000000000000011     28      0      1   0             0  is_stmt
 
     include_directories = {'0': comp_dir}
-    for dir in re.finditer(r"include_directories\[\s*(\d+)\] = \"([^\"]*)", line_chunk):
+    for dir in include_dir_pattern.finditer(line_chunk):
       include_directories[dir.group(1)] = os.path.join(comp_dir, decode_octal_encoded_utf8(dir.group(2)))
 
     files = {}
-    for file in re.finditer(r"file_names\[\s*(\d+)\]:\s+name: \"([^\"]*)\"\s+dir_index: (\d+)", line_chunk):
+    for file in file_pattern.finditer(line_chunk):
       dir = include_directories[file.group(3)]
       file_path = os.path.join(dir, decode_octal_encoded_utf8(file.group(2)))
       files[file.group(1)] = file_path
 
-    for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?", line_chunk):
+    for line in line_pattern.finditer(line_chunk):
       entry = {'address': int(line.group(1), 16), 'line': int(line.group(2)), 'column': int(line.group(3)), 'file': files[line.group(4)], 'eos': line.group(5) is not None}
       if not entry['eos']:
         entries.append(entry)
