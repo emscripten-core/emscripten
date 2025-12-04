@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 4.0.22 (in development)
 -----------------------
+- Source maps now support 'names' field with function name information.
+  emsymbolizer will show function names when used with a source map. The size
+  of source maps and source map creation time may increase 2-3x, depending on
+  applications. (#25870)
 - The minimum version of python required to run emscripten was updated from 3.8
   to 3.10. (#25891)
 
