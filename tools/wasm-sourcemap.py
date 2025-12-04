@@ -252,7 +252,7 @@ def demangle_names(names):
     logger.warning('llvm-cxxfilt output length mismatch')
     return {}
 
-  return dict(zip(mangled_names, demangled_list))
+  return dict(zip(mangled_names, demangled_list, strict=True))
 
 
 class FuncRange:
