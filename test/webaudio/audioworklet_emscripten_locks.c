@@ -47,7 +47,7 @@ int howManyMain = 0;
 int howManyProc = 0;
 
 // Our dummy container
-typedef struct Dummy {
+typedef struct {
   uint32_t val0;
   uint32_t val1;
   uint32_t val2;
