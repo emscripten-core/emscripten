@@ -26,8 +26,8 @@ from decorators import (
   requires_native_clang,
   test_file,
 )
-
 from test_browser import requires_shared_array_buffer
+
 from tools import config
 from tools.shared import CLANG_CC, EMCC
 from tools.utils import path_from_root, run_process
