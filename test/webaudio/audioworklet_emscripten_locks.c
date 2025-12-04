@@ -10,11 +10,6 @@
 // - emscripten_lock_release()
 // - emscripten_get_now() in AW
 
-// Build with emcc -sAUDIO_WORKLET -sWASM_WORKERS -pthread -O1 -g -o index.html audioworklet_emscripten_locks.c
-
-// Values -1.5373, 77.2259, -251.4728
-// Values -0.9080, -42.4902, -250.6685
-
 // Marks a function to be kept in the Module and exposed to script (instead of adding to EXPORTED_FUNCTIONS)
 #ifndef KEEP_IN_MODULE
 #define KEEP_IN_MODULE __attribute__((used, visibility("default")))
