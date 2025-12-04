@@ -11,7 +11,6 @@ import shlex
 import sys
 from enum import Enum, auto, unique
 from subprocess import PIPE
-from typing import List, Set
 
 from tools import (
   cache,
@@ -25,7 +24,7 @@ from tools import (
 )
 from tools.settings import MEM_SIZE_SETTINGS, settings, user_settings
 from tools.toolchain_profiler import ToolchainProfiler
-from tools.utils import exit_with_error, read_file, removeprefix
+from tools.utils import exit_with_error, read_file
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
@@ -65,21 +64,21 @@ class EmccOptions:
   dash_M = False
   dash_S = False
   dash_c = False
-  dylibs: List[str] = []
-  embed_files: List[str] = []
+  dylibs: list[str] = []
+  embed_files: list[str] = []
   emit_symbol_map = False
   emit_tsd = ''
   emrun = False
-  exclude_files: List[str] = []
+  exclude_files: list[str] = []
   executable = False
-  extern_post_js: List[str] = [] # after all js, external to optimized code
-  extern_pre_js: List[str] = [] # before all js, external to optimized code
+  extern_post_js: list[str] = [] # after all js, external to optimized code
+  extern_pre_js: list[str] = [] # before all js, external to optimized code
   fast_math = False
   ignore_dynamic_linking = False
-  input_files: List[str] = []
+  input_files: list[str] = []
   input_language = None
   js_transform = None
-  lib_dirs: List[str] = []
+  lib_dirs: list[str] = []
   memory_profiler = False
   no_entry = False
   no_minify = False
@@ -94,16 +93,16 @@ class EmccOptions:
   # Linux & MacOS)
   output_eol = os.linesep
   output_file = None
-  post_js: List[str] = [] # after all js
+  post_js: list[str] = [] # after all js
   post_link = False
-  pre_js: List[str] = [] # before all js
-  preload_files: List[str] = []
+  pre_js: list[str] = [] # before all js
+  preload_files: list[str] = []
   relocatable = False
   reproduce = None
   requested_debug = None
-  sanitize: Set[str] = set()
+  sanitize: set[str] = set()
   sanitize_minimal_runtime = False
-  s_args: List[str] = []
+  s_args: list[str] = []
   save_temps = False
   shared = False
   shell_path = None
@@ -113,7 +112,7 @@ class EmccOptions:
   use_closure_compiler = None
   use_preload_cache = False
   use_preload_plugins = False
-  valid_abspaths: List[str] = []
+  valid_abspaths: list[str] = []
 
 
 # Global/singleton EmccOptions
@@ -170,7 +169,7 @@ def is_dash_s_for_emcc(args, i):
       return False
     arg = args[i + 1]
   else:
-    arg = removeprefix(args[i], '-s')
+    arg = args[i].removeprefix('-s')
   arg = arg.split('=')[0]
   return arg.isidentifier() and arg.isupper()
 
@@ -178,7 +177,7 @@ def is_dash_s_for_emcc(args, i):
 def parse_s_args():
   for arg in options.s_args:
     assert arg.startswith('-s')
-    arg = removeprefix(arg, '-s')
+    arg = arg.removeprefix('-s')
     # If not = is specified default to 1
     if '=' in arg:
       key, value = arg.split('=', 1)
@@ -275,7 +274,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.s_args.append(s_arg)
     elif arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
-      opt_level = removeprefix(arg, '-O') or '2'
+      opt_level = arg.removeprefix('-O') or '2'
       if opt_level == 's':
         opt_level = 2
         settings.SHRINK_LEVEL = 1
@@ -353,7 +352,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.no_minify = True
     elif arg.startswith('-g'):
       options.requested_debug = arg
-      debug_level = removeprefix(arg, '-g') or '3'
+      debug_level = arg.removeprefix('-g') or '3'
       if is_unsigned_int(debug_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
         debug_level = int(debug_level)
@@ -578,7 +577,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif arg == '-frtti':
       settings.USE_RTTI = 1
     elif arg.startswith('-jsD'):
-      key = removeprefix(arg, '-jsD')
+      key = arg.removeprefix('-jsD')
       if '=' in key:
         key, value = key.split('=')
       else:
@@ -593,7 +592,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('-r'):
       options.relocatable = True
     elif arg.startswith('-o'):
-      options.output_file = removeprefix(arg, '-o')
+      options.output_file = arg.removeprefix('-o')
     elif check_arg('-target') or check_arg('--target'):
       options.target = consume_arg()
       if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
@@ -781,7 +780,7 @@ def apply_user_settings():
 
     filename = None
     if value and value[0] == '@':
-      filename = removeprefix(value, '@')
+      filename = value.removeprefix('@')
       if not os.path.isfile(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
       value = read_file(filename).strip()
@@ -823,7 +822,7 @@ def normalize_boolean_setting(name, value):
   # and we can't just flip them, so leave them as-is to be
   # handled in a special way later)
   if name.startswith('NO_') and value in ('0', '1'):
-    name = removeprefix(name, 'NO_')
+    name = name.removeprefix('NO_')
     value = str(1 - int(value))
   return name, value
 

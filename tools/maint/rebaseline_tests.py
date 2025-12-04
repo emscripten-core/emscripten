@@ -56,7 +56,7 @@ def process_changed_file(filename):
     # Unhandled file type
     return f'{filename} updated\n'
 
-  filename = utils.removeprefix(filename, 'test/')
+  filename = filename.removeprefix('test/')
   delta = size - old_size
   percent_delta = delta * 100 / old_size
   all_deltas.append(percent_delta)

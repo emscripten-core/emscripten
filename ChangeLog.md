@@ -18,8 +18,13 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.21 (in development)
+4.0.22 (in development)
 -----------------------
+- The minimum version of python required to run emscripten was updated from 3.8
+  to 3.10. (#25891)
+
+4.0.21 - 12/02/25
+-----------------
 - The `-sPROXY_TO_WORKER` setting (along with the corresponding
   `--proxy-to-worker` flag) was removed due to lack of usage.  If you were
   depending on this feature but missed the PSA, please let us know about your

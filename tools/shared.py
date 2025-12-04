@@ -19,9 +19,9 @@ from subprocess import PIPE
 
 from .toolchain_profiler import ToolchainProfiler
 
-# We depend on python 3.8 features
-if sys.version_info < (3, 8): # noqa: UP036
-  print(f'error: emscripten requires python 3.8 or above ({sys.executable} {sys.version})', file=sys.stderr)
+# We depend on python 3.10 features
+if sys.version_info < (3, 10): # noqa: UP036
+  print(f'error: emscripten requires python 3.10 or above ({sys.executable} {sys.version})', file=sys.stderr)
   sys.exit(1)
 
 from . import colored_logger
@@ -279,7 +279,7 @@ def env_with_node_in_path():
 
 def _get_node_version_pair(nodejs):
   actual = utils.run_process(nodejs + ['--version'], stdout=PIPE).stdout.strip()
-  version = actual.replace('v', '')
+  version = actual.removeprefix('v')
   version = version.split('-')[0].split('.')
   version = tuple(int(v) for v in version)
   return actual, version
@@ -586,7 +586,7 @@ def is_internal_global(name):
 def is_user_export(name):
   if is_internal_global(name):
     return False
-  return name not in ['__indirect_function_table', 'memory'] and not name.startswith(('dynCall_', 'orig$'))
+  return name not in ['__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'] and not name.startswith(('dynCall_', 'orig$'))
 
 
 def asmjs_mangle(name):

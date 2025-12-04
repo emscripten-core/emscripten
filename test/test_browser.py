@@ -5424,11 +5424,13 @@ Module["preRun"] = () => {
   })
   @requires_sound_hardware
   @requires_es6_workers
+  @requires_shared_array_buffer
   def test_audio_worklet(self, args):
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
   # Tests that audioworklets and workers can be used at the same time
   # Note: doesn't need audio hardware (and has no AW code that tests 2GB or wasm64)
+  @requires_shared_array_buffer
   def test_audio_worklet_worker(self):
     self.btest_exit('webaudio/audioworklet_worker.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
@@ -5438,6 +5440,7 @@ Module["preRun"] = () => {
     'closure': (['--closure', '1', '-Oz'],),
   })
   # Note: doesn't need audio hardware (and has no AW code that tests 2GB or wasm64)
+  @requires_shared_array_buffer
   def test_audio_worklet_post_function(self, args):
     self.btest_exit('webaudio/audioworklet_post_function.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
 
@@ -5446,6 +5449,7 @@ Module["preRun"] = () => {
     'closure': (['--closure', '1', '-Oz'],),
   })
   @requires_sound_hardware
+  @requires_shared_array_buffer
   def test_audio_worklet_modularize(self, args):
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html'), '-DTEST_AND_EXIT'] + args)
 
@@ -5457,6 +5461,7 @@ Module["preRun"] = () => {
     'minimal_with_closure': (['-sMINIMAL_RUNTIME', '--closure=1', '-Oz'],),
   })
   @requires_sound_hardware
+  @requires_shared_array_buffer
   def test_audio_worklet_params_mixing(self, args):
     os.mkdir('audio_files')
     shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
@@ -5465,6 +5470,7 @@ Module["preRun"] = () => {
 
   # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends
   @requires_sound_hardware
+  @requires_shared_array_buffer
   @also_with_minimal_runtime
   @flaky('https://github.com/emscripten-core/emscripten/issues/25245')
   def test_audio_worklet_emscripten_locks(self):
@@ -5532,6 +5538,7 @@ Module["preRun"] = () => {
     '': ([], 9998),
     'es6': (['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')], 9999),
   })
+  @requires_shared_array_buffer
   def test_cross_origin(self, args, port):
     if '-sEXPORT_ES6' in args and browser_should_skip_feature('EMTEST_LACKS_ES6_WORKERS', Feature.WORKER_ES6_MODULES):
       self.skipTest('This test requires a browser with ES6 Module Workers support')

@@ -78,7 +78,6 @@ import sys
 from dataclasses import dataclass
 from subprocess import PIPE
 from textwrap import dedent
-from typing import List
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -89,7 +88,7 @@ from tools.response_file import substitute_response_files
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
-excluded_patterns: List[str] = []
+excluded_patterns: list[str] = []
 new_data_files = []
 walked = []
 
@@ -1017,7 +1016,7 @@ def generate_preload_js(data_target, data_files, metadata):
       # is async, so we handle both orderings.
       ret += '''
       var fetchPromise;
-      var fetched = Module['getPreloadedPackage']?.(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
+      var fetched = Module['getPreloadedPackage'] && Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
 
       if (!fetched) {
         // Note that we don't use await here because we want to execute the

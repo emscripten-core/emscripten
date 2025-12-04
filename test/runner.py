@@ -482,9 +482,7 @@ def parse_args():
   parser.add_argument('--verbose', '-v', action='count', default=0,
                       help="Show test stdout and stderr, and don't use the single-line test reporting. "
                            'Specifying `-v` twice will enable test framework logging (i.e. EMTEST_VERBOSE)')
-  # TODO: Replace with BooleanOptionalAction once we can depend on python3.9
-  parser.add_argument('--ansi', action='store_true', default=None)
-  parser.add_argument('--no-ansi', action='store_false', dest='ansi', default=None)
+  parser.add_argument('--ansi', action=argparse.BooleanOptionalAction, default=None)
   parser.add_argument('--all-engines', action='store_true')
   parser.add_argument('--detect-leaks', action='store_true')
   parser.add_argument('--skip-slow', action='store_true', help='Skip tests marked as slow')
@@ -497,7 +495,7 @@ def parse_args():
                       help='Command to launch web browser in which to run browser tests.')
   parser.add_argument('--headless', action='store_true',
                       help='Run browser tests in headless mode.', default=None)
-  parser.add_argument('--browser-auto-config', type=bool, default=True,
+  parser.add_argument('--browser-auto-config', action=argparse.BooleanOptionalAction, default=None,
                       help='Use the default CI browser configuration.')
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', action='store_true', help='If true, test run will abort on first failed test.')
@@ -535,7 +533,7 @@ def parse_args():
 
 def configure():
   browser_common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
-  browser_common.EMTEST_BROWSER_AUTO_CONFIG = os.getenv('EMTEST_BROWSER_AUTO_CONFIG')
+  browser_common.EMTEST_BROWSER_AUTO_CONFIG = int(os.getenv('EMTEST_BROWSER_AUTO_CONFIG', '1'))
   browser_common.EMTEST_HEADLESS = int(os.getenv('EMTEST_HEADLESS', '0'))
   common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
   common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))

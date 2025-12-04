@@ -53,7 +53,6 @@ from .utils import (
   exit_with_error,
   get_file_suffix,
   read_file,
-  removeprefix,
   safe_copy,
   unsuffixed,
   unsuffixed_basename,
@@ -431,8 +430,10 @@ def get_binaryen_passes(options):
     passes += ['--fpcast-emu']
   if settings.ASYNCIFY == 1:
     passes += ['--asyncify']
-    if settings.RELOCATABLE or settings.MAIN_MODULE:
-      passes += ['--pass-arg=asyncify-relocatable']
+    if settings.MAIN_MODULE:
+      passes += ['--pass-arg=asyncify-export-globals']
+    elif settings.RELOCATABLE:
+      passes += ['--pass-arg=asyncify-import-globals']
     if settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
     if settings.ASYNCIFY_ADVISE:
@@ -1331,13 +1332,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       '$relocateExports',
       '$GOTHandler',
     ]
-
-    if settings.ASYNCIFY == 1:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '__asyncify_state',
-        '__asyncify_data',
-      ]
-
     # shared modules need memory utilities to allocate their memory
     settings.ALLOW_TABLE_GROWTH = 1
 
@@ -2350,7 +2344,7 @@ def phase_binaryen(target, options, wasm_target):
       intermediate_debug_info -= 1
     # currently binaryen's DWARF support will limit some optimizations; warn on
     # that. see https://github.com/emscripten-core/emscripten/issues/15269
-    if settings.GENERATE_DWARF:
+    if settings.GENERATE_DWARF and should_run_binaryen_optimizer():
       diagnostics.warning('limited-postlink-optimizations', 'running limited binaryen optimizations because DWARF info requested (or indirectly required)')
     with ToolchainProfiler.profile_block('wasm_opt'):
       building.run_wasm_opt(wasm_target,
@@ -2771,7 +2765,7 @@ def process_libraries(options, flags):
     if not flag.startswith('-l'):
       new_flags.append(flag)
       continue
-    lib = removeprefix(flag, '-l')
+    lib = flag.removeprefix('-l')
 
     logger.debug('looking for library "%s"', lib)
 
@@ -2800,17 +2794,17 @@ def process_libraries(options, flags):
       continue
 
     static_lib = f'lib{lib}.a'
-    if not settings.RELOCATABLE and not find_library(static_lib, options.lib_dirs):
+    if not settings.RELOCATABLE and not settings.MAIN_MODULE and not find_library(static_lib, options.lib_dirs):
       # Normally we can rely on the native linker to expand `-l` args.
-      # However, emscripten also supports `.so` files that are actually just
-      # regular object file.  This means we need to support `.so` files even
+      # However, emscripten also supports fake `.so` files that are actually
+      # just regular object files.  This means we need to support `.so` files even
       # when statically linking.  The native linker (wasm-ld) will otherwise
       # ignore .so files in this mode.
       found_dylib = False
       for ext in DYLIB_EXTENSIONS:
         name = 'lib' + lib + ext
         path = find_library(name, options.lib_dirs)
-        if path:
+        if path and not building.is_wasm_dylib(path):
           found_dylib = True
           new_flags.append(path)
           break
@@ -2938,7 +2932,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     # EM_JS function are exports with a special prefix.  We need to strip
     # this prefix to get the actual symbol name.  For the main module, this
     # is handled by extract_metadata.py.
-    exports = [removeprefix(e, '__em_js__') for e in exports]
+    exports = [e.removeprefix('__em_js__') for e in exports]
     settings.SIDE_MODULE_EXPORTS.extend(sorted(exports))
 
     imports = webassembly.get_imports(dylib)

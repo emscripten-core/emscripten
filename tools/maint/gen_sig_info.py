@@ -179,7 +179,6 @@ def ignore_symbol(s, cxx):
     return True
   if s in {'__stack_base', '__memory_base', '__table_base', '__global_base', '__heap_base',
            '__stack_pointer', '__stack_high', '__stack_low', '_load_secondary_module',
-           '__asyncify_state', '__asyncify_data',
            # legacy aliases, not callable from native code.
            'stackSave', 'stackRestore', 'stackAlloc', 'getTempRet0', 'setTempRet0',
            }:
@@ -219,7 +218,7 @@ def functype_to_str(t, t64):
     rtn = valuetype_to_chr(t.returns[0], t64.returns[0])
   else:
     rtn = 'v'
-  for p, p64 in zip(t.params, t64.params):
+  for p, p64 in zip(t.params, t64.params, strict=True):
     rtn += valuetype_to_chr(p, p64)
   return rtn
 

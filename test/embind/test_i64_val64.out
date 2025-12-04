@@ -45,7 +45,7 @@ val(size_t v)
     getting properties returns the original value intact
     function calls roundtrip the value correctly
     method calls roundtrip the value correctly
-  testing value 4294967295
+  testing value 18446744073709551615
     setting properties preserves the expected value
     getting properties returns the original value intact
     function calls roundtrip the value correctly

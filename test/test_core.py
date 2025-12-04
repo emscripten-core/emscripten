@@ -7721,7 +7721,8 @@ void* operator new(size_t size) {
       self.skipTest('asan does not work with SAFE_HEAP')
     self.set_setting('SAFE_HEAP', safe_heap)
     self.cflags += ['-lembind']
-    self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
+    out_suffix = '64' if self.get_setting('MEMORY64') else ''
+    self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True, out_suffix=out_suffix)
 
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_binding(self):
