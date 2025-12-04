@@ -67,7 +67,7 @@ void printDummy(Dummy* dummy) {
 // Run a simple calculation that will only be stable *if* all values are atomically updated
 void runCalcs(Dummy* dummy, int num) {
   for (int n = 0; n < num; n++) {
-    int have = emscripten_lock_busyspin_wait_acquire(&testLock, 100);
+    int have = emscripten_lock_busyspin_wait_acquire(&testLock, 10);
     assert(have);
     dummy->val0 += dummy->val1 * dummy->val2;
     dummy->val1 += dummy->val2 * dummy->val0;
