@@ -68,7 +68,7 @@ void printDummy(Dummy* dummy) {
 }
 
 // Run a simple calculation that will only be stable *if* all values are atomically updated
-// (Currently called approx. 200'000x from each thread)
+// (Currently approx. 200'000x from each thread)
 void runCalcs(Dummy* dummy, int num) {
   for (int n = 0; n < num; n++) {
 #ifndef DISABLE_LOCKS
