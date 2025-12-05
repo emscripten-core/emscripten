@@ -165,7 +165,7 @@ EM_JS(void, addButton, (), {
 void processorCreated(EMSCRIPTEN_WEBAUDIO_T ctx, bool success, void* data) {
   assert(success && "Audio worklet failed in processorCreated()");
   emscripten_out("Audio worklet processor created");
-  // Single stereo output
+  // Single mono output
   int outputChannelCounts[1] = { 1 };
   EmscriptenAudioWorkletNodeCreateOptions opts = {
     .numberOfOutputs = 1,
