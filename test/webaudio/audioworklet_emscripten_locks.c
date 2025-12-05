@@ -18,6 +18,9 @@
 // This needs to be big enough for a stereo output (1024 with a 128 frame) + working stack
 #define AUDIO_STACK_SIZE 2048
 
+// Define DISABLE_LOCKS to run the test without locking, which should statistically always fail
+//#define DISABLE_LOCKS
+
 // Internal, found in 'system/lib/pthread/threading_internal.h' (and requires building with -pthread)
 int _emscripten_thread_supports_atomics_wait(void);
 
@@ -65,10 +68,13 @@ void printDummy(Dummy* dummy) {
 }
 
 // Run a simple calculation that will only be stable *if* all values are atomically updated
+// (Currently called approx. 200'000x from each thread)
 void runCalcs(Dummy* dummy, int num) {
   for (int n = 0; n < num; n++) {
+#ifndef DISABLE_LOCKS
     int have = emscripten_lock_busyspin_wait_acquire(&testLock, 10);
     assert(have);
+#endif
     dummy->val0 += dummy->val1 * dummy->val2;
     dummy->val1 += dummy->val2 * dummy->val0;
     dummy->val2 += dummy->val0 * dummy->val1;
@@ -80,7 +86,7 @@ void runCalcs(Dummy* dummy, int num) {
 }
 
 void stopping() {
-  emscripten_out("Expect: 949807601, 1303780836, 243502614");
+  emscripten_out("Expect: 811100370, 759556424, 723197652");
   emscripten_out("Ending test");
   emscripten_destroy_audio_context(context);
   emscripten_force_exit(0);
@@ -96,16 +102,16 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
   case TEST_RUNNING:
   case TEST_DONE_MAIN:
     if (howManyProc-- > 0) {
-      runCalcs((Dummy*) data, 250);
+      runCalcs((Dummy*) data, 267); // <-- process gets called 3.75x more than main
     } else {
       if (whichTest == TEST_DONE_MAIN) {
+        emscripten_outf("Worklet done after %dms (expect: > 2s)", (int) (emscripten_get_now() - startTime));
         // Both loops are finished
         whichTest = TEST_DONE;
       }
     }
     break;
   case TEST_DONE:
-    emscripten_outf("Took %dms (expect: > 0)", (int) (emscripten_get_now() - startTime));
     return false;
   }
   return true;
@@ -121,6 +127,7 @@ bool mainLoop(double time, void* data) {
     if (howManyMain-- > 0) {
       runCalcs((Dummy*) data, 1000);
     } else {
+      emscripten_outf("Main thread done after %dms (expect: > 2s)", (int) (emscripten_get_now() - startTime));
       // Done here, so signal to process()
       whichTest = TEST_DONE_MAIN;
     }
@@ -131,9 +138,9 @@ bool mainLoop(double time, void* data) {
   case TEST_DONE:
     printDummy((Dummy*) data);
     // 32-bit maths with locks *should* result in these:
-    assert(((Dummy*) data)->val0 ==  949807601
-        && ((Dummy*) data)->val1 == 1303780836
-        && ((Dummy*) data)->val2 ==  243502614);
+    assert(((Dummy*) data)->val0 == 811100370
+        && ((Dummy*) data)->val1 == 759556424
+        && ((Dummy*) data)->val2 == 723197652);
     stopping();
     return false;
   }
@@ -146,7 +153,7 @@ KEEP_IN_MODULE void startTest() {
     emscripten_resume_audio_context_sync(context);
   }
   howManyMain = 200;
-  howManyProc = 200;
+  howManyProc = 750; // <-- process gets called 3.75x more than main
 }
 
 // HTML button to manually run the test
