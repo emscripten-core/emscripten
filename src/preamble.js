@@ -876,6 +876,10 @@ function getWasmImports() {
   return exports;
 #else
   wasmBinaryFile ??= findWasmBinary();
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS && ASSERTIONS
+  assert(wasmBinaryFile.reduce((x,y) => ((x^y)*65599) >>> 0, 2166136261) == "<<< WASM_BINARY_DATA_CHECKSUM >>>", "The checksum of the binary decoded WebAssembly Module code does not match the original data. Double check that this .html/.js file is interpreted with UTF-8 encoding, e.g. by setting <meta charset='utf-8'> inside <head> of the HTML file, or by passing 'Content-Type: application/javascript; charset=utf-8' HTTP header.");
+#endif
+
 #if WASM_ASYNC_COMPILATION
 #if RUNTIME_DEBUG
   dbg('asynchronously preparing wasm');

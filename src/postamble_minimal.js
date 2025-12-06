@@ -151,6 +151,9 @@ function initRuntime(wasmExports) {
 
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
 Module['wasm'] = binaryDecode("<<< WASM_BINARY_DATA >>>");
+#if ASSERTIONS
+assert(Module['wasm'].reduce((x,y) => ((x^y)*65599) >>> 0, 2166136261) == "<<< WASM_BINARY_DATA_CHECKSUM >>>", "The checksum of the binary decoded WebAssembly Module code does not match the original data. Double check that this .html/.js file is interpreted with UTF-8 encoding, e.g. by setting <meta charset='utf-8'> inside <head> of the HTML file, or by passing 'Content-Type: application/javascript; charset=utf-8' HTTP header.");
+#endif
 #elif SINGLE_FILE && WASM == 1 && !WASM2JS
 Module['wasm'] = base64Decode('<<< WASM_BINARY_DATA >>>');
 #endif
