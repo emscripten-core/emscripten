@@ -3684,9 +3684,7 @@ More info: https://emscripten.org
     # Check that when Wasm exceptions and assertions are enabled bindings still generate.
     self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '-fwasm-exceptions', '-sASSERTIONS',
-                      # Use the deprecated `--embind-emit-tsd` to ensure it
-                      # still works until removed.
-                      '--embind-emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated'] +
+                      '--emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated'] +
                      self.get_cflags())
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
@@ -11487,11 +11485,12 @@ int main(void) {
 
   def test_warning_flags(self):
     self.run_process([EMCC, '-c', '-o', 'hello.o', test_file('hello_world.c')])
-    cmd = [EMCC, 'hello.o', '-o', 'a.js', '-g', '--llvm-opts=""']
+    # -g4 will generte a deprecated warning
+    cmd = [EMCC, 'hello.o', '-o', 'a.js', '-g4']
 
     # warning that is enabled by default
     stderr = self.run_process(cmd, stderr=PIPE).stderr
-    self.assertContained('emcc: warning: --llvm-opts is deprecated.  All non-emcc args are passed through to clang. [-Wdeprecated]', stderr)
+    self.assertContained('emcc: warning: please replace -g4 with -gsource-map [-Wdeprecated]', stderr)
 
     # -w to suppress warnings
     stderr = self.run_process(cmd + ['-w'], stderr=PIPE).stderr
@@ -11502,12 +11501,12 @@ int main(void) {
     self.assertNotContained('warning', stderr)
 
     # with -Werror should fail
-    expected = 'error: --llvm-opts is deprecated.  All non-emcc args are passed through to clang. [-Wdeprecated] [-Werror]'
+    expected = 'error: please replace -g4 with -gsource-map [-Wdeprecated] [-Werror]'
     self.assert_fail(cmd + ['-Werror'], expected)
 
     # with -Werror + -Wno-error=<type> should only warn
     stderr = self.run_process(cmd + ['-Werror', '-Wno-error=deprecated'], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: --llvm-opts is deprecated.  All non-emcc args are passed through to clang. [-Wdeprecated]', stderr)
+    self.assertContained('emcc: warning: please replace -g4 with -gsource-map [-Wdeprecated]', stderr)
 
     # check that `-Werror=foo` also enales foo
     expected = 'error: use of legacy setting: TOTAL_MEMORY (setting renamed to INITIAL_MEMORY) [-Wlegacy-settings] [-Werror]'
@@ -14065,7 +14064,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.do_runf('core/test_longjmp.c', cflags=self.get_cflags())
 
   def test_memory_init_file_unsupported(self):
-    self.assert_fail([EMCC, test_file('hello_world.c'), '--memory-init-file=1'], 'error: --memory-init-file is no longer supported')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-Werror', '--memory-init-file=1'], 'error: --memory-init-file is no longer supported')
 
   @node_pthreads
   def test_node_pthreads_err_out(self):
