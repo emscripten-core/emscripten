@@ -27,17 +27,7 @@ from . import (
 from .feature_matrix import UNSUPPORTED
 from .settings import settings
 from .shared import (
-  CLANG_CC,
-  CLANG_CXX,
   DEBUG,
-  EMAR,
-  EMCC,
-  EMRANLIB,
-  EMXX,
-  LLVM_DWARFDUMP,
-  LLVM_NM,
-  LLVM_OBJCOPY,
-  WASM_LD,
   asmjs_mangle,
   check_call,
   demangle_c_symbol_name,
@@ -45,6 +35,7 @@ from .shared import (
   get_emscripten_temp_dir,
   is_c_symbol,
   path_from_root,
+  paths,
 )
 from .toolchain_profiler import ToolchainProfiler
 from .utils import WINDOWS, run_process
@@ -68,16 +59,16 @@ def get_building_env():
   cache.ensure()
   env = os.environ.copy()
   # point CC etc. to the em* tools.
-  env['CC'] = EMCC
-  env['CXX'] = EMXX
-  env['AR'] = EMAR
-  env['LD'] = EMCC
-  env['NM'] = LLVM_NM
-  env['LDSHARED'] = EMCC
-  env['RANLIB'] = EMRANLIB
+  env['CC'] = paths.EMCC
+  env['CXX'] = paths.EMXX
+  env['AR'] = paths.EMAR
+  env['LD'] = paths.EMCC
+  env['NM'] = paths.LLVM_NM
+  env['LDSHARED'] = paths.EMCC
+  env['RANLIB'] = paths.EMRANLIB
   env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
-  env['HOST_CC'] = CLANG_CC
-  env['HOST_CXX'] = CLANG_CXX
+  env['HOST_CC'] = paths.CLANG_CC
+  env['HOST_CXX'] = paths.CLANG_CXX
   env['HOST_CFLAGS'] = '-W' # if set to nothing, CFLAGS is used, which we don't want
   env['HOST_CXXFLAGS'] = '-W' # if set to nothing, CXXFLAGS is used, which we don't want
   env['PKG_CONFIG_LIBDIR'] = cache.get_sysroot_dir('local/lib/pkgconfig') + os.path.pathsep + cache.get_sysroot_dir('lib/pkgconfig')
@@ -283,8 +274,8 @@ def lld_flags_for_executable(external_symbols):
 
 
 def link_lld(args, target, external_symbols=None):
-  if not os.path.exists(WASM_LD):
-    exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
+  if not os.path.exists(paths.WASM_LD):
+    exit_with_error('linker binary not found in LLVM directory: %s', paths.WASM_LD)
   # runs lld to link things.
   # lld doesn't currently support --start-group/--end-group since the
   # semantics are more like the windows linker where there is no need for
@@ -305,7 +296,7 @@ def link_lld(args, target, external_symbols=None):
     # is passed.
     args.append('--keep-section=target_features')
 
-  cmd = [WASM_LD, '-o', target]
+  cmd = [paths.WASM_LD, '-o', target]
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
 
@@ -355,7 +346,7 @@ def get_command_with_possible_response_file(cmd):
 
 def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
   utils.delete_file(output_filename)
-  cmd = [EMAR, action, output_filename] + filenames
+  cmd = [paths.EMAR, action, output_filename] + filenames
   cmd = get_command_with_possible_response_file(cmd)
   run_process(cmd, stdout=stdout, stderr=stderr, env=env)
 
@@ -1015,7 +1006,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
 
 def strip(infile, outfile, debug=False, sections=None):
   """Strip DWARF and/or other specified sections from a wasm file"""
-  cmd = [LLVM_OBJCOPY, infile, outfile]
+  cmd = [paths.LLVM_OBJCOPY, infile, outfile]
   if debug:
     cmd += ['--remove-section=.debug*']
   if sections:
@@ -1163,7 +1154,7 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   # importlib.
   wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
   sourcemap_cmd = [wasm_file,
-                   '--dwarfdump=' + LLVM_DWARFDUMP,
+                   '--dwarfdump=' + paths.LLVM_DWARFDUMP,
                    '-o',  map_file,
                    '--basepath=' + base_path]
 

@@ -45,7 +45,7 @@ from .settings import (
   settings,
   user_settings,
 )
-from .shared import DEBUG, DYLIB_EXTENSIONS, do_replace, in_temp
+from .shared import DEBUG, DYLIB_EXTENSIONS, do_replace, in_temp, paths
 from .toolchain_profiler import ToolchainProfiler
 from .utils import (
   WINDOWS,
@@ -3086,7 +3086,7 @@ def package_files(options, target):
     rtn.append(object_file)
 
   cmd = building.get_command_with_possible_response_file(
-    [shared.FILE_PACKAGER, utils.replace_suffix(target, '.data')] + file_args)
+    [paths.FILE_PACKAGER, utils.replace_suffix(target, '.data')] + file_args)
   if options.preload_files:
     # Preloading files uses --pre-js code that runs before the module is loaded.
     file_code = shared.check_call(cmd, stdout=PIPE).stdout

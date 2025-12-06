@@ -17,6 +17,7 @@ from time import time
 
 from . import building, cache, diagnostics, shared, utils
 from .settings import settings
+from .shared import paths
 from .toolchain_profiler import ToolchainProfiler
 from .utils import read_file
 
@@ -193,9 +194,9 @@ ninja_required_version = 1.5
 
 ASFLAGS = {join_cmd(asflags)}
 CFLAGS = {join_cmd(cflags)}
-EMCC = {shared.EMCC}
-EMXX = {shared.EMXX}
-EMAR = {shared.EMAR}
+EMCC = {paths.EMCC}
+EMXX = {paths.EMXX}
+EMAR = {paths.EMAR}
 
 rule cc
   depfile = $out.d
@@ -496,9 +497,9 @@ class Library:
     for src in self.get_files():
       ext = utils.suffix(src)
       if ext in {'.s', '.S', '.c'}:
-        cmd = shared.EMCC
+        cmd = paths.EMCC
       else:
-        cmd = shared.EMXX
+        cmd = paths.EMXX
       cmd = [cmd, '-c']
       if ext == '.s':
         # .s files are processed directly by the assembler.  In this case we can't pass

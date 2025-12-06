@@ -327,7 +327,7 @@ def generate_object_file(data_files):
       .dc.a 0
       .size __emscripten_embedded_file_data, {total_size}
       '''))
-  cmd = [shared.EMCC, '-c', asm_file, '-o', options.obj_output]
+  cmd = [shared.paths.EMCC, '-c', asm_file, '-o', options.obj_output]
   if options.wasm64:
     target = 'wasm64-unknown-emscripten'
     cmd.append('-Wno-experimental')

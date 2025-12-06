@@ -29,8 +29,8 @@ from decorators import (
 from test_browser import requires_shared_array_buffer
 
 from tools import config
-from tools.shared import CLANG_CC, EMCC
-from tools.utils import path_from_root, run_process
+from tools.shared import path_from_root, paths
+from tools.utils import run_process
 
 npm_checked = False
 
@@ -80,7 +80,7 @@ class WebsockifyServerHarness:
     # NOTE empty filename support is a hack to support
     # the current test_enet
     if self.filename:
-      cmd = [CLANG_CC, test_file(self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + clang_native.get_clang_native_args() + self.args
+      cmd = [paths.CLANG_CC, test_file(self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + clang_native.get_clang_native_args() + self.args
       print(cmd)
       run_process(cmd, env=clang_native.get_clang_native_env())
       process = Popen([os.path.abspath('server')])
@@ -146,7 +146,7 @@ class CompiledServerHarness:
 
     # compile the server
     suffix = '.mjs' if '-sEXPORT_ES6' in self.args else '.js'
-    proc = run_process([EMCC, '-Werror', test_file(self.filename), '-o', 'server' + suffix, '-DSOCKK=%d' % self.listen_port] + self.args)
+    proc = run_process([paths.EMCC, '-Werror', test_file(self.filename), '-o', 'server' + suffix, '-DSOCKK=%d' % self.listen_port] + self.args)
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
     process = Popen(config.NODE_JS + ['server' + suffix])
@@ -355,7 +355,7 @@ class sockets(BrowserCore):
     # server because as long as the subprotocol list contains binary it will configure itself to accept binary
     # This test also checks that the connect url contains the correct subprotocols.
     with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59168):
-      self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59168'])
+      self.run_process([paths.EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '-sSOCKET_DEBUG', '-sWEBSOCKET_SUBPROTOCOL="base64, binary"', '-DSOCKK=59168'])
 
       out = self.run_js('client.js')
       self.assertContained('do_msg_read: read 14 bytes', out)
@@ -376,7 +376,7 @@ class sockets(BrowserCore):
       };
     ''')
     with WebsockifyServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 59168):
-      self.run_process([EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js=websocket_pre.js', '-sSOCKET_DEBUG', '-DSOCKK=12345'])
+      self.run_process([paths.EMCC, '-Werror', test_file('sockets/test_sockets_echo_client.c'), '-o', 'client.js', '--pre-js=websocket_pre.js', '-sSOCKET_DEBUG', '-DSOCKK=12345'])
 
       out = self.run_js('client.js')
       self.assertContained('do_msg_read: read 14 bytes', out)
