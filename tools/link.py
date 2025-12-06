@@ -2436,6 +2436,12 @@ def phase_binaryen(target, options, wasm_target):
 
     if settings.SINGLE_FILE_BINARY_ENCODE:
       js = do_replace(js, '"<<< WASM_BINARY_DATA >>>"', binary_encode(wasm_target))
+      if settings.ASSERTIONS:
+        def checksum(a):
+          h = 2166136261
+          for b in a: h = (h ^ b) * 65599 & 0xffffffff
+          return h
+        js = do_replace(js, '"<<< WASM_BINARY_DATA_CHECKSUM >>>"', str(checksum(utils.read_binary(wasm_target))))
     else:
       js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
     delete_file(wasm_target)
