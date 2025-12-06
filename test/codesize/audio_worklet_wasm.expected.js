@@ -1,8 +1,8 @@
-var m = globalThis.Module || "undefined" != typeof Module ? Module : {}, p = !!globalThis.AudioWorkletGlobalScope, t = "em-ww" == globalThis.name || p, u, z, I, J, G, E, w, X, F, D, C, Y, A, Z;
+var m = globalThis.Module || "undefined" != typeof Module ? Module : {}, p = !!globalThis.AudioWorkletGlobalScope, q = "em-ww" == globalThis.name || p, t, z, I, J, G, E, v, X, F, D, C, Y, A, Z;
 
-function v(a) {
-    u = a;
-    w = a.L;
+function u(a) {
+    t = a;
+    v = a.L;
     x();
     m ||= {};
     m.wasm = a.G;
@@ -10,14 +10,14 @@ function v(a) {
     a.G = a.M = 0;
 }
 
-t && !p && (onmessage = a => {
+q && !p && (onmessage = a => {
     onmessage = null;
-    v(a.data);
+    u(a.data);
 });
 
 if (p) {
     function a(b) {
-        class h extends AudioWorkletProcessor {
+        class f extends AudioWorkletProcessor {
             constructor(d) {
                 super();
                 d = d.processorOptions;
@@ -25,7 +25,7 @@ if (p) {
                 this.A = d.A;
                 this.u = d.u;
                 this.s = 4 * this.u;
-                this.B = Array(Math.min((u.F - 16) / this.s | 0, 64));
+                this.B = Array(Math.min((t.F - 16) / this.s | 0, 64));
                 this.K();
             }
             K() {
@@ -36,43 +36,43 @@ if (p) {
                 return b;
             }
             process(d, g, e) {
-                var l = d.length, q = g.length, f, r, k = 12 * (l + q), n = 0;
-                for (f of d) n += f.length;
+                var l = d.length, w = g.length, h, r, k = 12 * (l + w), n = 0;
+                for (h of d) n += h.length;
                 n *= this.s;
                 var H = 0;
-                for (f of g) H += f.length;
+                for (h of g) H += h.length;
                 n += H * this.s;
                 var N = 0;
-                for (f in e) ++N, k += 8, n += e[f].byteLength;
+                for (h in e) ++N, k += 8, n += e[h].byteLength;
                 var U = C(), B = k + n + 15 & -16;
                 k = D(B);
                 n = k + (B - n);
                 B = k;
-                for (f of d) {
-                    G[k >> 2] = f.length;
+                for (h of d) {
+                    G[k >> 2] = h.length;
                     G[k + 4 >> 2] = this.u;
                     G[k + 8 >> 2] = n;
                     k += 12;
-                    for (r of f) E.set(r, n >> 2), n += this.s;
+                    for (r of h) E.set(r, n >> 2), n += this.s;
                 }
                 d = k;
-                for (f = 0; r = e[f++]; ) G[k >> 2] = r.length, G[k + 4 >> 2] = n, k += 8, E.set(r, n >> 2), 
+                for (h = 0; r = e[h++]; ) G[k >> 2] = r.length, G[k + 4 >> 2] = n, k += 8, E.set(r, n >> 2), 
                 n += 4 * r.length;
                 e = k;
-                for (f of g) G[k >> 2] = f.length, G[k + 4 >> 2] = this.u, G[k + 8 >> 2] = n, k += 12, 
-                n += this.s * f.length;
-                if (l = this.v(l, B, q, e, N, d, this.A)) for (f of g) for (r of f) r.set(this.B[--H]);
+                for (h of g) G[k >> 2] = h.length, G[k + 4 >> 2] = this.u, G[k + 8 >> 2] = n, k += 12, 
+                n += this.s * h.length;
+                if (l = this.v(l, B, w, e, N, d, this.A)) for (h of g) for (r of h) r.set(this.B[--H]);
                 F(U);
                 return !!l;
             }
         }
-        return h;
+        return f;
     }
     var port = globalThis.port || {};
     class c extends AudioWorkletProcessor {
         constructor(b) {
             super();
-            v(b.processorOptions);
+            u(b.processorOptions);
             port instanceof MessagePort || (this.port.onmessage = port.onmessage, port = this.port);
         }
         process() {}
@@ -81,7 +81,7 @@ if (p) {
     port.onmessage = async b => {
         await z;
         b = b.data;
-        b._boot ? v(b) : b._wpn ? (registerProcessor(b._wpn, a(b.H)), port.postMessage({
+        b._boot ? u(b) : b._wpn ? (registerProcessor(b._wpn, a(b.H)), port.postMessage({
             _wsc: b.v,
             C: [ b.I, 1, b.A ]
         })) : b._wsc && A.get(b._wsc)(...b.C);
@@ -89,14 +89,14 @@ if (p) {
 }
 
 function x() {
-    var a = w.buffer;
+    var a = v.buffer;
     I = new Uint8Array(a);
     J = new Int32Array(a);
     G = new Uint32Array(a);
     E = new Float32Array(a);
 }
 
-t || (w = m.mem || new WebAssembly.Memory({
+q || (v = m.mem || new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0
@@ -108,24 +108,24 @@ var K = [], L = a => {
     c && A.get(c)(...a.x);
 }, M = a => {
     K.push(a);
-}, P = (a, c, b, h) => {
+}, P = (a, c, b, f) => {
     c = O[c];
-    O[a].connect(c.destination || c, b, h);
+    O[a].connect(c.destination || c, b, f);
 }, O = {}, Q = 0, R = globalThis.TextDecoder && new TextDecoder, S = (a = 0) => {
-    for (var c = I, b = a, h = b + void 0; c[b] && !(b >= h); ) ++b;
+    for (var c = I, b = a, f = b + void 0; c[b] && !(b >= f); ) ++b;
     if (16 < b - a && c.buffer && R) return R.decode(c.slice(a, b));
-    for (h = ""; a < b; ) {
+    for (f = ""; a < b; ) {
         var d = c[a++];
         if (d & 128) {
             var g = c[a++] & 63;
-            if (192 == (d & 224)) h += String.fromCharCode((d & 31) << 6 | g); else {
+            if (192 == (d & 224)) f += String.fromCharCode((d & 31) << 6 | g); else {
                 var e = c[a++] & 63;
                 d = 224 == (d & 240) ? (d & 15) << 12 | g << 6 | e : (d & 7) << 18 | g << 12 | e << 6 | c[a++] & 63;
-                65536 > d ? h += String.fromCharCode(d) : (d -= 65536, h += String.fromCharCode(55296 | d >> 10, 56320 | d & 1023));
+                65536 > d ? f += String.fromCharCode(d) : (d -= 65536, f += String.fromCharCode(55296 | d >> 10, 56320 | d & 1023));
             }
-        } else h += String.fromCharCode(d);
+        } else f += String.fromCharCode(d);
     }
-    return h;
+    return f;
 }, T = a => {
     if (a) {
         var c = G[a >> 2];
@@ -140,14 +140,14 @@ var K = [], L = a => {
     a = new AudioContext(a);
     O[++Q] = a;
     return Q;
-}, V = (a, c, b, h, d) => {
+}, V = (a, c, b, f, d) => {
     var g = b ? J[b + 4 >> 2] : 0;
     if (b) {
-        var e = J[b >> 2], l = G[b + 8 >> 2], q = g;
+        var e = J[b >> 2], l = G[b + 8 >> 2], w = g;
         if (l) {
             l >>= 2;
-            for (var f = []; q--; ) f.push(G[l++]);
-            l = f;
+            for (var h = []; w--; ) h.push(G[l++]);
+            l = h;
         } else l = void 0;
         b = {
             numberOfInputs: e,
@@ -157,7 +157,7 @@ var K = [], L = a => {
             channelCountMode: [ , "clamped-max", "explicit" ][J[b + 16 >> 2]],
             channelInterpretation: [ , "discrete" ][J[b + 20 >> 2]],
             processorOptions: {
-                v: h,
+                v: f,
                 A: d,
                 u: O[a].renderQuantumSize || 128
             }
@@ -166,7 +166,7 @@ var K = [], L = a => {
     a = new AudioWorkletNode(O[a], c ? S(c) : "", b);
     O[++Q] = a;
     return Q;
-}, W = (a, c, b, h) => {
+}, W = (a, c, b, f) => {
     var d = (d = G[c >> 2]) ? S(d) : "", g = J[c + 4 >> 2];
     c = G[c + 8 >> 2];
     for (var e = [], l = 0; g--; ) e.push({
@@ -181,38 +181,41 @@ var K = [], L = a => {
         H: e,
         I: a,
         v: b,
-        A: h
+        A: f
     });
 }, aa = () => !1, ba = 1, ca = a => {
     a = a.data;
     var c = a._wsc;
     c && A.get(c)(...a.C);
-}, da = (a, c, b, h, d) => {
-    var g = O[a], e = g.audioWorklet, l = () => {
-        A.get(h)(a, 0, d);
-    };
-    if (!e) return l();
-    e.addModule(m.js).then((() => {
+}, da = async (a, c, b, f, d) => {
+    var g = O[a], e = g.audioWorklet;
+    if (e) {
+        try {
+            await e.addModule(m.js);
+        } catch {
+            A.get(f)(a, 0, d);
+            return;
+        }
         e.port || (e.port = {
-            postMessage: q => {
-                q._boot ? (e.D = new AudioWorkletNode(g, "em-bootstrap", {
-                    processorOptions: q
-                }), e.D.port.onmessage = f => {
-                    e.port.onmessage(f);
-                }) : e.D.port.postMessage(q);
+            postMessage: l => {
+                l._boot ? (e.D = new AudioWorkletNode(g, "em-bootstrap", {
+                    processorOptions: l
+                }), e.D.port.onmessage = w => {
+                    e.port.onmessage(w);
+                }) : e.D.port.postMessage(l);
             }
         });
         e.port.postMessage({
             _boot: 1,
             O: ba++,
             G: m.wasm,
-            L: w,
+            L: v,
             J: c,
             F: b
         });
         e.port.onmessage = ca;
-        A.get(h)(a, 1, d);
-    })).catch(l);
+        A.get(f)(a, 1, d);
+    } else A.get(f)(a, 0, d);
 };
 
 function ea(a) {
@@ -234,7 +237,7 @@ function y() {
         e: W,
         b: aa,
         c: da,
-        a: w
+        a: v
     };
     z = WebAssembly.instantiate(m.wasm, {
         a: Z
@@ -246,9 +249,9 @@ function y() {
         C = a.n;
         Y = a.o;
         A = a.k;
-        t ? (Y(u.J, u.F), p || (removeEventListener("message", M), K = K.forEach(L), addEventListener("message", L))) : a.i();
-        t || X();
+        q ? (Y(t.J, t.F), p || (removeEventListener("message", M), K = K.forEach(L), addEventListener("message", L))) : a.i();
+        q || X();
     }));
 }
 
-t || y();
+q || y();

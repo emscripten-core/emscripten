@@ -119,17 +119,22 @@ var LibraryWebAudio = {
 #endif
   },
 
-  emscripten_resume_audio_context_async: (contextHandle, callback, userData) => {
+  emscripten_resume_audio_context_async: async (contextHandle, callback, userData) => {
     function cb(state) {
 #if WEBAUDIO_DEBUG
-      console.log(`emscripten_resume_audio_context_async() callback: New audio state="${emAudio[contextHandle].state}", ID=${state}`);
+      dbg(`emscripten_resume_audio_context_async() callback: New audio state="${emAudio[contextHandle].state}", ID=${state}`);
 #endif
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, state, userData);
     }
 #if WEBAUDIO_DEBUG
     dbg('emscripten_resume_audio_context_async() resuming...');
 #endif
-    emAudio[contextHandle].resume().then(() => { cb(1/*running*/) }).catch(() => { cb(0/*suspended*/) });
+    try {
+      await emAudio[contextHandle].resume();
+      cb(/*running*/);
+    } catch {
+      cb(0/*suspended*/);
+    }
   },
 
   emscripten_resume_audio_context_sync: (contextHandle) => {
@@ -171,8 +176,7 @@ var LibraryWebAudio = {
     '$_wasmWorkersID',
     '$_emAudioDispatchProcessorCallback',
     '$stackAlloc', '$stackRestore', '$stackSave'],
-  emscripten_start_wasm_audio_worklet_thread_async: (contextHandle, stackLowestAddress, stackSize, callback, userData) => {
-
+  emscripten_start_wasm_audio_worklet_thread_async: async (contextHandle, stackLowestAddress, stackSize, callback, userData) => {
 #if ASSERTIONS || WEBAUDIO_DEBUG
     emAudioExpectContext(contextHandle, 'emscripten_start_wasm_audio_worklet_thread_async');
 #endif
@@ -212,55 +216,59 @@ var LibraryWebAudio = {
       return audioWorkletCreationFailed();
     }
 
-    audioWorklet.addModule({{{ wasmWorkerJs }}}).then(() => {
+    try {
+      await audioWorklet.addModule({{{ wasmWorkerJs }}});
+    } catch {
+      return audioWorkletCreationFailed();
+    }
+
 #if WEBAUDIO_DEBUG
-      dbg(`emscripten_start_wasm_audio_worklet_thread_async() addModule() completed`);
+    dbg(`emscripten_start_wasm_audio_worklet_thread_async() addModule() completed`);
 #endif
 
 #if MIN_FIREFOX_VERSION < 138 || MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
-      // If this browser does not support the up-to-date AudioWorklet standard
-      // that has a MessagePort over to the AudioWorklet, then polyfill that by
-      // instantiating a dummy AudioWorkletNode to get a MessagePort over.
-      // Firefox added support in https://hg-edge.mozilla.org/integration/autoland/rev/ab38a1796126f2b3fc06475ffc5a625059af59c1
-      // Chrome ticket: https://crbug.com/446920095
-      // Safari ticket: https://webkit.org/b/299386
-      if (!audioWorklet['port']) {
-        audioWorklet['port'] = {
-          postMessage: (msg) => {
-            if (msg['_boot']) {
-              audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'em-bootstrap', {
-                processorOptions: msg
-              });
-              audioWorklet.bootstrapMessage['port'].onmessage = (msg) => {
-                audioWorklet['port'].onmessage(msg);
-              }
-            } else {
-              audioWorklet.bootstrapMessage['port'].postMessage(msg);
+    // If this browser does not support the up-to-date AudioWorklet standard
+    // that has a MessagePort over to the AudioWorklet, then polyfill that by
+    // instantiating a dummy AudioWorkletNode to get a MessagePort over.
+    // Firefox added support in https://hg-edge.mozilla.org/integration/autoland/rev/ab38a1796126f2b3fc06475ffc5a625059af59c1
+    // Chrome ticket: https://crbug.com/446920095
+    // Safari ticket: https://webkit.org/b/299386
+    if (!audioWorklet['port']) {
+      audioWorklet['port'] = {
+        postMessage: (msg) => {
+          if (msg['_boot']) {
+            audioWorklet.bootstrapMessage = new AudioWorkletNode(audioContext, 'em-bootstrap', {
+              processorOptions: msg
+            });
+            audioWorklet.bootstrapMessage['port'].onmessage = (msg) => {
+              audioWorklet['port'].onmessage(msg);
             }
+          } else {
+            audioWorklet.bootstrapMessage['port'].postMessage(msg);
           }
         }
       }
+    }
 #endif
 
-      audioWorklet['port'].postMessage({
-        // This is the bootstrap message to the Audio Worklet.
-        '_boot': 1,
-        // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that
-        // it can utilized its own TLS slots, and it is recognized to not be
-        // the main browser thread.
-        wwID: _wasmWorkersID++,
+    audioWorklet['port'].postMessage({
+      // This is the bootstrap message to the Audio Worklet.
+      '_boot': 1,
+      // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that
+      // it can utilized its own TLS slots, and it is recognized to not be
+      // the main browser thread.
+      wwID: _wasmWorkersID++,
 #if MINIMAL_RUNTIME
-        wasm: Module['wasm'],
+      wasm: Module['wasm'],
 #else
-        wasm: wasmModule,
+      wasm: wasmModule,
 #endif
-        wasmMemory,
-        stackLowestAddress, // sb = stack base
-        stackSize,          // sz = stack size
-      });
-      audioWorklet['port'].onmessage = _emAudioDispatchProcessorCallback;
-      {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
-    }).catch(audioWorkletCreationFailed);
+      wasmMemory,
+      stackLowestAddress, // sb = stack base
+      stackSize,          // sz = stack size
+    });
+    audioWorklet['port'].onmessage = _emAudioDispatchProcessorCallback;
+    {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);
   },
 
   $_emAudioDispatchProcessorCallback__deps: ['$getWasmTableEntry'],
