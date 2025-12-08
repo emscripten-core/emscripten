@@ -870,6 +870,20 @@ jobs:
             wasm64l.test_longjmp2_emscripten
             wasm64l.test_embind_val_basics_legacy"
       - upload-test-results
+  test-bun:
+    executor: linux-python
+    steps:
+      - checkout
+      - pip-install
+      - install-emsdk
+      - run:
+          name: install bun
+          command: |
+            curl -fsSL https://bun.com/install | bash
+            echo "BUN_ENGINE = os.path.expanduser('~/.bun/bin/bun')" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [BUN_ENGINE]" >> ~/emsdk/.emscripten
+      - run-tests:
+          test_targets: "core0.test_hello_world"
   test-jsc:
     executor: linux-python
     steps:
@@ -1362,6 +1376,7 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
+      - test-bun
       - test-jsc
       - test-spidermonkey
       - test-node-compat
