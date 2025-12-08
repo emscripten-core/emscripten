@@ -3362,9 +3362,14 @@ More info: https://emscripten.org
     'val_invoke': ['embind/test_embind_no_raw_pointers_val_invoke.cpp'],
     'val_call': ['embind/test_embind_no_raw_pointers_val_call.cpp'],
     'val_new': ['embind/test_embind_no_raw_pointers_val_new.cpp'],
+    'wrong_ret_allow': ['embind/test_embind_wrong_ret_allow.cpp'],
+    'wrong_arg_allow': ['embind/test_embind_wrong_arg_allow.cpp'],
   })
   def test_embind_no_raw_pointers(self, filename):
     self.assert_fail([EMCC, '-lembind', test_file(filename)], 'Implicitly binding raw pointers is illegal')
+
+  def test_embind_allow_raw_pointer(self):
+    self.emcc(test_file('embind/test_embind_allow_raw_pointer.cpp'), ['-lembind'])
 
   @is_slow_test
   @parameterized({

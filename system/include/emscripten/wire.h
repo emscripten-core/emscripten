@@ -510,37 +510,38 @@ struct ret_val {
     static constexpr int index = 0;
 };
 
-/*
+namespace internal {
+
+template <typename InputType, bool EnableWrapper>
+struct RawPointerTransformer {
+    // Use decay to handle references to pointers e.g.(T*&)->(T*).
+    using DecayedType = std::decay_t<InputType>;
+    static constexpr bool ShouldWrap = EnableWrapper && std::is_pointer_v<DecayedType>;
+    using type = std::conditional_t<
+        ShouldWrap,
+        internal::AllowedRawPointer<std::remove_pointer_t<DecayedType>>,
+        InputType
+    >;
+};
+
+} // namespace internal
+
 template<typename Slot>
 struct allow_raw_pointer {
     template<typename InputType, int Index>
-    struct Transform {
-        typedef typename std::conditional<
-            Index == Slot::index,
-            internal::AllowedRawPointer<typename std::remove_pointer<InputType>::type>,
-            InputType
-        >::type type;
-    };
+    struct Transform : internal::RawPointerTransformer<
+        InputType,
+        Index == Slot::index
+    > {};
 };
-*/
 
 // allow all raw pointers
 struct allow_raw_pointers {
     template<typename InputType, int Index>
-    struct Transform {
-        // Use decay to handle references to pointers e.g.(T*&)->(T*).
-        typedef typename std::decay<InputType>::type DecayedType;
-        typedef typename std::conditional<
-            std::is_pointer<DecayedType>::value,
-            internal::AllowedRawPointer<typename std::remove_pointer<DecayedType>::type>,
-            InputType
-        >::type type;
-    };
-};
-
-// this is temporary until arg policies are reworked
-template<typename Slot>
-struct allow_raw_pointer : public allow_raw_pointers {
+    struct Transform : internal::RawPointerTransformer<
+        InputType,
+        true
+    > {};
 };
 
 struct async {
