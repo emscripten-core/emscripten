@@ -97,6 +97,7 @@ default_core_test_mode = 'core0'
 # randombrowser10 (which runs 10 random tests from 'browser').
 misc_test_modes = [
   'other',
+  'jslib',
   'browser',
   'sanity',
   'sockets',
