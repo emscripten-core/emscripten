@@ -5602,11 +5602,11 @@ var u16 = new Uint16Array(binaryDecode(src).buffer);
 for(var i = 0; i < 65536; ++i)
   if (u16[i] != i) throw i;
 console.log('OK');
-fetch('report_result?exit:0');
+fetch('report_result?0');
 </script></body></html>
 ''')
 
-    self.run_browser('test.html', '/report_result?exit:0')
+    self.run_browser('test.html', '/report_result?0')
 
 
 class emrun(RunnerCore):
