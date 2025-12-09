@@ -14,7 +14,7 @@
 #define AUDIO_STACK_SIZE 2048
 
 // Define DISABLE_LOCKS to run the test without locking, which should statistically always fail
-#define DISABLE_LOCKS
+//#define DISABLE_LOCKS
 
 // Internal, found in 'system/lib/pthread/threading_internal.h' (and requires building with -pthread)
 int _emscripten_thread_supports_atomics_wait(void);
