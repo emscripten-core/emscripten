@@ -31,7 +31,7 @@ from tools import (
 from tools.settings import settings, user_settings
 from tools.shared import DEBUG, asmjs_mangle, in_temp
 from tools.toolchain_profiler import ToolchainProfiler
-from tools.utils import exit_with_error, path_from_root, removeprefix
+from tools.utils import exit_with_error, path_from_root
 
 sys.path.append(path_from_root('third_party'))
 import leb128
@@ -113,6 +113,10 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
   else:
     settings.WASM_EXPORTS = metadata.all_exports
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
+
+  if settings.MAIN_MODULE and settings.ASYNCIFY == 1:
+    # These will be exported from Wasm, but only once we run the asyncify pass.
+    settings.WASM_EXPORTS += ['__asyncify_state', '__asyncify_data']
 
   # start with the MVP features, and add any detected features.
   building.binaryen_features = ['--mvp-features'] + metadata.features
@@ -350,9 +354,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     # So we need to offset the elements by 1.
     if settings.INITIAL_TABLE == -1:
       settings.INITIAL_TABLE = dylink_sec.table_size + 1
-
-  if settings.MAIN_MODULE and settings.ASYNCIFY == 1:
-    metadata.imports += ['__asyncify_state', '__asyncify_data']
 
   if metadata.invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
@@ -910,7 +911,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
       receiving.append('  // Construct dynCalls mapping')
       for sym in function_exports:
         if sym.startswith('dynCall_'):
-          sig_str = sym.replace('dynCall_', '')
+          sig_str = sym.removeprefix('dynCall_')
           receiving.append(f"  dynCalls['{sig_str}'] = {sym};")
       receiving.append('}')
 
@@ -961,13 +962,17 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
   receiving.append('\nfunction assignWasmExports(wasmExports) {')
   if settings.ASSERTIONS:
     for sym in exports:
+      if settings.EMBIND_GEN_MODE and sym.startswith('asyncify_'):
+        # EMBIND_GEN_MODE is run before binaryen so the asyncify exports that
+        # are created by binaryen will be missing.
+        continue
       receiving.append(f"  assert(typeof wasmExports['{sym}'] != 'undefined', 'missing Wasm export: {sym}');")
   for sym, info in exports.items():
     is_function = type(info) == webassembly.FuncType
     mangled = asmjs_mangle(sym)
     assignment = mangled
     if generate_dyncall_assignment and is_function and sym.startswith('dynCall_'):
-      sig_str = sym.replace('dynCall_', '')
+      sig_str = sym.removeprefix('dynCall_')
       assignment += f" = dynCalls['{sig_str}']"
     if do_module_exports and should_export(mangled):
       assignment += f" = Module['{mangled}']"
@@ -1033,7 +1038,7 @@ def create_invoke_wrappers(metadata):
   """Asm.js-style exception handling: invoke wrapper generation."""
   invoke_wrappers = []
   for invoke in metadata.invoke_funcs:
-    sig = removeprefix(invoke, 'invoke_')
+    sig = invoke.removeprefix('invoke_')
     invoke_wrappers.append(js_manipulation.make_invoke(sig))
   return invoke_wrappers
 

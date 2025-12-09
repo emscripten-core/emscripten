@@ -62,7 +62,6 @@ import shlex
 import subprocess
 import sys
 import tempfile
-import typing
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -111,7 +110,7 @@ def show(msg):
 #     scope.set('item2', '%f', '4.2') # generates code that outputs ',\n"item2": 4.2'
 #   # once the scope is exited, it generates code that outputs the end of the JSON object '\n}'
 class Scope:
-  def __init__(self, code: typing.List[str]):
+  def __init__(self, code: list[str]):
     self.code = code
     self.has_data = False
 
@@ -147,7 +146,7 @@ class Scope:
 
     self.code.append(f'printf("{type_}", {value});')
 
-  def gen_inspect_code(self, path: typing.List[str], struct: typing.List[typing.Union[str, dict]]):
+  def gen_inspect_code(self, path: list[str], struct: list[str | dict]):
     if path[0][-1] == '#':
       path[0] = path[0].rstrip('#')
       prefix = ''

@@ -7,7 +7,7 @@ import copy
 import difflib
 import os
 import re
-from typing import Any, Dict, Set
+from typing import Any
 
 from . import diagnostics
 from .utils import exit_with_error, path_from_root
@@ -255,7 +255,7 @@ LEGACY_SETTINGS = [
     ['PROXY_TO_WORKER', [0], 'No longer supported'],
 ]
 
-user_settings: Dict[str, str] = {}
+user_settings: dict[str, str] = {}
 
 
 def default_setting(name, new_default):
@@ -264,13 +264,13 @@ def default_setting(name, new_default):
 
 
 class SettingsManager:
-  attrs: Dict[str, Any] = {}
-  defaults: Dict[str, tuple] = {}
-  types: Dict[str, Any] = {}
-  allowed_settings: Set[str] = set()
-  legacy_settings: Dict[str, tuple] = {}
-  alt_names: Dict[str, str] = {}
-  internal_settings: Set[str] = set()
+  attrs: dict[str, Any] = {}
+  defaults: dict[str, tuple] = {}
+  types: dict[str, Any] = {}
+  allowed_settings: set[str] = set()
+  legacy_settings: dict[str, tuple] = {}
+  alt_names: dict[str, str] = {}
+  internal_settings: set[str] = set()
 
   def __init__(self):
     self.attrs.clear()

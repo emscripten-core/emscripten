@@ -393,9 +393,6 @@ def load_test_suites(args, modules, options):
       suites.append((m.__name__, suite))
   if not found_start:
     utils.exit_with_error(f'unable to find --start-at test: {options.start_at}')
-  if total_tests == 1 or parallel_testsuite.num_cores() == 1:
-    # TODO: perhaps leave it at 2 if it was 2 before?
-    common.EMTEST_SAVE_DIR = 1
   return suites, unmatched_test_names
 
 
@@ -412,7 +409,7 @@ def suite_for_module(module, tests, options):
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_tests and has_multiple_cores:
-      return parallel_testsuite.ParallelTestSuite(len(tests), options)
+      return parallel_testsuite.ParallelTestSuite(options)
   return unittest.TestSuite()
 
 
@@ -482,9 +479,7 @@ def parse_args():
   parser.add_argument('--verbose', '-v', action='count', default=0,
                       help="Show test stdout and stderr, and don't use the single-line test reporting. "
                            'Specifying `-v` twice will enable test framework logging (i.e. EMTEST_VERBOSE)')
-  # TODO: Replace with BooleanOptionalAction once we can depend on python3.9
-  parser.add_argument('--ansi', action='store_true', default=None)
-  parser.add_argument('--no-ansi', action='store_false', dest='ansi', default=None)
+  parser.add_argument('--ansi', action=argparse.BooleanOptionalAction, default=None)
   parser.add_argument('--all-engines', action='store_true')
   parser.add_argument('--detect-leaks', action='store_true')
   parser.add_argument('--skip-slow', action='store_true', help='Skip tests marked as slow')
@@ -497,7 +492,7 @@ def parse_args():
                       help='Command to launch web browser in which to run browser tests.')
   parser.add_argument('--headless', action='store_true',
                       help='Run browser tests in headless mode.', default=None)
-  parser.add_argument('--browser-auto-config', type=bool, default=True,
+  parser.add_argument('--browser-auto-config', action=argparse.BooleanOptionalAction, default=None,
                       help='Use the default CI browser configuration.')
   parser.add_argument('tests', nargs='*')
   parser.add_argument('--failfast', action='store_true', help='If true, test run will abort on first failed test.')
@@ -535,7 +530,7 @@ def parse_args():
 
 def configure():
   browser_common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
-  browser_common.EMTEST_BROWSER_AUTO_CONFIG = os.getenv('EMTEST_BROWSER_AUTO_CONFIG')
+  browser_common.EMTEST_BROWSER_AUTO_CONFIG = int(os.getenv('EMTEST_BROWSER_AUTO_CONFIG', '1'))
   browser_common.EMTEST_HEADLESS = int(os.getenv('EMTEST_HEADLESS', '0'))
   common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
   common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
@@ -688,6 +683,14 @@ def main():
   set_env('EMTEST_VERBOSE', options.verbose > 1)
   set_env('EMTEST_CORES', options.cores)
   set_env('EMTEST_FORCE64', options.force64)
+
+  if common.EMTEST_DETECT_TEMPFILE_LEAKS:
+    if shared.DEBUG:
+      # In EMCC_DEBUG mode emscripten explicitly leaves stuff in the tmp directory
+      utils.exit_with_error('EMTEST_DETECT_TEMPFILE_LEAKS is not compatible with EMCC_DEBUG')
+    if common.EMTEST_SAVE_DIR:
+      # In --save-dir/--no-clean mode the parallel test runner leaves files in the temp directory
+      utils.exit_with_error('EMTEST_DETECT_TEMPFILE_LEAKS is not compatible with --save-dir/--no-clean')
 
   configure()
 
