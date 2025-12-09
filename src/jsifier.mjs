@@ -128,10 +128,14 @@ function isDefined(symName) {
   return false;
 }
 
+function isAlias(snippet) {
+  return (typeof snippet == 'string' && snippet[0] != '=' && (LibraryManager.library.hasOwnProperty(snippet) || WASM_EXPORTS.has(snippet)));
+}
+
 function resolveAlias(symbol) {
   while (true) {
     var value = LibraryManager.library[symbol];
-    if (typeof value == 'string' && value[0] != '=' && (LibraryManager.library.hasOwnProperty(value) || WASM_EXPORTS.has(value))) {
+    if (isAlias(value)) {
       symbol = value;
     } else {
       break;
@@ -652,25 +656,21 @@ function(${args}) {
         }
       }
 
-      if (typeof snippet == 'string') {
-        if (snippet[0] != '=') {
-          if (LibraryManager.library[snippet] || WASM_EXPORTS.has(snippet)) {
-            // Redirection for aliases. We include the parent, and at runtime
-            // make ourselves equal to it.  This avoid having duplicate
-            // functions with identical content.
-            const aliasTarget = resolveAlias(snippet);
-            if (WASM_EXPORTS.has(aliasTarget)) {
-              //printErr(`native alias: ${mangled} -> ${snippet}`);
-              //console.error(WASM_EXPORTS);
-              nativeAliases[mangled] = aliasTarget;
-              snippet = undefined;
-              isNativeAlias = true;
-            } else {
-              //printErr(`js alias: ${mangled} -> ${snippet}`);
-              deps.push(aliasTarget);
-              snippet = mangleCSymbolName(aliasTarget);
-            }
-          }
+      if (isAlias(snippet)) {
+        // Redirection for aliases. We include the parent, and at runtime
+        // make ourselves equal to it.  This avoid having duplicate
+        // functions with identical content.
+        const aliasTarget = resolveAlias(snippet);
+        if (WASM_EXPORTS.has(aliasTarget)) {
+          //printErr(`native alias: ${mangled} -> ${snippet}`);
+          //console.error(WASM_EXPORTS);
+          nativeAliases[mangled] = aliasTarget;
+          snippet = undefined;
+          isNativeAlias = true;
+        } else {
+          //printErr(`js alias: ${mangled} -> ${snippet}`);
+          deps.push(aliasTarget);
+          snippet = mangleCSymbolName(aliasTarget);
         }
       } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
