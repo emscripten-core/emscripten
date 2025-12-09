@@ -15235,12 +15235,17 @@ addToLibrary({
     self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sLINKABLE', '-sRELOCATABLE'])
 
   # Tests encoding of all byte pairs for binary encoding in SINGLE_FILE mode.
-  def test_binary_encode(self):
+  @parameterized({
+    '': ('',),
+    'strict': ('"use strict";',),
+  })
+  def test_binary_encode(self, extra):
     # Encode values 0 .. 65535 into test data
     test_data = bytearray(struct.pack('<' + 'H' * 65536, *range(65536)))
     write_binary('data.tmp', test_data)
     binary_encoded = binary_encode('data.tmp')
-    test_js = '''var u16 = new Uint16Array(binaryDecode(src).buffer);
+    test_js = extra + '''
+var u16 = new Uint16Array(binaryDecode(src).buffer);
 for(var i = 0; i < 65536; ++i)
   if (u16[i] != i) throw i;
 console.log('OK');'''
