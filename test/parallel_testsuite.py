@@ -105,9 +105,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
   Creates worker threads, manages the task queue, and combines the results.
   """
 
-  def __init__(self, max_cores, options):
+  def __init__(self, options):
     super().__init__()
-    self.max_cores = max_cores
     self.max_failures = options.max_failures
     self.failing_and_slow_first = options.failing_and_slow_first
 
@@ -132,7 +131,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     tests = self.get_sorted_tests()
     self.num_tests = self.countTestCases()
     contains_browser_test = any(test.is_browser_test() for test in tests)
-    use_cores = cap_max_workers_in_pool(min(self.max_cores, len(tests), num_cores()), contains_browser_test)
+    use_cores = cap_max_workers_in_pool(min(self.num_tests, num_cores()), contains_browser_test)
     errlog(f'Using {use_cores} parallel test processes')
     with multiprocessing.Manager() as manager:
       # Give each worker a unique ID.
