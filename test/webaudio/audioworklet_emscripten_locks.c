@@ -10,11 +10,6 @@
 // - emscripten_lock_release()
 // - emscripten_get_now() in AW
 
-// Marks a function to be kept in the Module and exposed to script (instead of adding to EXPORTED_FUNCTIONS)
-#ifndef KEEP_IN_MODULE
-#define KEEP_IN_MODULE __attribute__((used, visibility("default")))
-#endif
-
 // This needs to be big enough for a stereo output (1024 with a 128 frame) + working stack
 #define AUDIO_STACK_SIZE 2048
 
@@ -147,7 +142,7 @@ bool mainLoop(double time, void* data) {
   return true;
 }
 
-KEEP_IN_MODULE void startTest() {
+EMSCRIPTEN_KEEPALIVE void startTest() {
   startTime = emscripten_get_now();
   if (emscripten_audio_context_state(context) != AUDIO_CONTEXT_STATE_RUNNING) {
     emscripten_resume_audio_context_sync(context);
