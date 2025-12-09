@@ -14,7 +14,16 @@
 #define AUDIO_STACK_SIZE 2048
 
 // Define DISABLE_LOCKS to run the test without locking, which should statistically always fail
-//#define DISABLE_LOCKS
+#define DISABLE_LOCKS
+
+// Number of times mainLoop() calculations get called
+#define MAINLOOP_CALCS 10000
+// Number of times MAINLOOP_CALCS are performed
+#define MAINLOOP_RUNS 200
+// Number of times process() calculations get called (called 3.75x more than mainLoop)
+#define PROCESS_CALCS 2667
+// Number of times PROCESS_CALCS are performed (3.75x more than mainLoop)
+#define PROCESS_RUNS 750
 
 // Internal, found in 'system/lib/pthread/threading_internal.h' (and requires building with -pthread)
 int _emscripten_thread_supports_atomics_wait(void);
@@ -51,6 +60,11 @@ typedef struct {
   uint32_t val2;
 } Dummy;
 
+// Container used to run the test
+Dummy testData;
+// Container to hold the expected value
+Dummy trueData;
+
 // Start values
 void initDummy(Dummy* dummy) {
   dummy->val0 = 4;
@@ -83,8 +97,7 @@ void runCalcs(Dummy* dummy, int num) {
 }
 
 void stopping() {
-  emscripten_out("Expect: 0x305868D2, 0x2D45E948, 0x2B1B1ED4");
-  emscripten_out("Ending test");
+  emscripten_out("Test done");
   emscripten_destroy_audio_context(context);
   emscripten_force_exit(0);
 }
@@ -99,7 +112,7 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
   case TEST_RUNNING:
   case TEST_DONE_MAIN:
     if (howManyProc-- > 0) {
-      runCalcs((Dummy*) data, 267); // <-- process gets called 3.75x more than main
+      runCalcs((Dummy*) data, PROCESS_CALCS);
     } else {
       if (whichTest == TEST_DONE_MAIN) {
         emscripten_outf("Worklet done after %dms (expect: > 2s)", (int) (emscripten_get_now() - startTime));
@@ -122,7 +135,7 @@ bool mainLoop(double time, void* data) {
     break;
   case TEST_RUNNING:
     if (howManyMain-- > 0) {
-      runCalcs((Dummy*) data, 1000);
+      runCalcs((Dummy*) data, MAINLOOP_CALCS);
     } else {
       emscripten_outf("Main thread done after %dms (expect: > 2s)", (int) (emscripten_get_now() - startTime));
       // Done here, so signal to process()
@@ -133,11 +146,11 @@ bool mainLoop(double time, void* data) {
     // Wait for process() to finish
     break;
   case TEST_DONE:
+    emscripten_out("Multi-thread results:");
     printDummy((Dummy*) data);
-    // 32-bit maths with locks *should* result in these:
-    assert(((Dummy*) data)->val0 == 0x305868D2
-        && ((Dummy*) data)->val1 == 0x2D45E948
-        && ((Dummy*) data)->val2 == 0x2B1B1ED4);
+    assert(((Dummy*) data)->val0 == trueData.val0
+        && ((Dummy*) data)->val1 == trueData.val1
+        && ((Dummy*) data)->val2 == trueData.val2);
     stopping();
     return false;
   }
@@ -149,8 +162,8 @@ EMSCRIPTEN_KEEPALIVE void startTest() {
   if (emscripten_audio_context_state(context) != AUDIO_CONTEXT_STATE_RUNNING) {
     emscripten_resume_audio_context_sync(context);
   }
-  howManyMain = 200;
-  howManyProc = 750; // <-- process gets called 3.75x more than main
+  howManyMain = MAINLOOP_RUNS;
+  howManyProc = PROCESS_RUNS;
 }
 
 // HTML button to manually run the test
@@ -191,17 +204,26 @@ void initialised(EMSCRIPTEN_WEBAUDIO_T ctx, bool success, void* data) {
 
 int main() {
   emscripten_lock_init(&testLock);
-  Dummy* dummy = (Dummy*) malloc(sizeof(Dummy));
-  initDummy(dummy);
+  initDummy(&testData);
+  initDummy(&trueData);
+  // Canonical results, run in a single thread
+  for (int n = MAINLOOP_RUNS; n > 0; n--) {
+    runCalcs(&trueData, MAINLOOP_CALCS);
+  }
+  for (int n = PROCESS_RUNS; n > 0; n--) {
+    runCalcs(&trueData, PROCESS_CALCS);
+  }
+  emscripten_out("Single-thread results:");
+  printDummy(&trueData);
 
   char* const workletStack = memalign(16, AUDIO_STACK_SIZE);
   assert(workletStack);
   // Audio processor callback setup
   context = emscripten_create_audio_context(NULL);
   assert(context);
-  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, initialised, dummy);
+  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, initialised, &testData);
 
-  emscripten_set_timeout_loop(mainLoop, 10, dummy);
+  emscripten_set_timeout_loop(mainLoop, 10, &testData);
   addButton();
   startTest(); // <-- May need a manual click to start
 
