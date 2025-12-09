@@ -412,7 +412,7 @@ def suite_for_module(module, tests, options):
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_tests and has_multiple_cores:
-      return parallel_testsuite.ParallelTestSuite(len(tests), options)
+      return parallel_testsuite.ParallelTestSuite(options)
   return unittest.TestSuite()
 
 
