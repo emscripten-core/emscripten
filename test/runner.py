@@ -393,9 +393,6 @@ def load_test_suites(args, modules, options):
       suites.append((m.__name__, suite))
   if not found_start:
     utils.exit_with_error(f'unable to find --start-at test: {options.start_at}')
-  if total_tests == 1 or parallel_testsuite.num_cores() == 1:
-    # TODO: perhaps leave it at 2 if it was 2 before?
-    common.EMTEST_SAVE_DIR = 1
   return suites, unmatched_test_names
 
 
@@ -686,6 +683,14 @@ def main():
   set_env('EMTEST_VERBOSE', options.verbose > 1)
   set_env('EMTEST_CORES', options.cores)
   set_env('EMTEST_FORCE64', options.force64)
+
+  if common.EMTEST_DETECT_TEMPFILE_LEAKS:
+    if shared.DEBUG:
+      # In EMCC_DEBUG mode emscripten explicitly leaves stuff in the tmp directory
+      utils.exit_with_error('EMTEST_DETECT_TEMPFILE_LEAKS is not compatible with EMCC_DEBUG')
+    if common.EMTEST_SAVE_DIR:
+      # In --save-dir/--no-clean mode the parallel test runner leaves files in the temp directory
+      utils.exit_with_error('EMTEST_DETECT_TEMPFILE_LEAKS is not compatible with --save-dir/--no-clean')
 
   configure()
 

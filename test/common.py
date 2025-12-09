@@ -696,31 +696,31 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       os.chdir(os.path.dirname(self.get_dir()))
       force_delete_dir(self.get_dir())
 
-      if EMTEST_DETECT_TEMPFILE_LEAKS and not DEBUG:
-        temp_files_after_run = []
-        for root, dirnames, filenames in os.walk(self.temp_dir):
-          for dirname in dirnames:
-            temp_files_after_run.append(os.path.normpath(os.path.join(root, dirname)))
-          for filename in filenames:
-            temp_files_after_run.append(os.path.normpath(os.path.join(root, filename)))
+    if EMTEST_DETECT_TEMPFILE_LEAKS:
+      temp_files_after_run = []
+      for root, dirnames, filenames in os.walk(self.temp_dir):
+        for dirname in dirnames:
+          temp_files_after_run.append(os.path.normpath(os.path.join(root, dirname)))
+        for filename in filenames:
+          temp_files_after_run.append(os.path.normpath(os.path.join(root, filename)))
 
-        # Our leak detection will pick up *any* new temp files in the temp dir.
-        # They may not be due to us, but e.g. the browser when running browser
-        # tests. Until we figure out a proper solution, ignore some temp file
-        # names that we see on our CI infrastructure.
-        ignorable_file_prefixes = [
-          '/tmp/tmpaddon',
-          '/tmp/circleci-no-output-timeout',
-          '/tmp/wasmer',
-        ]
+      # Our leak detection will pick up *any* new temp files in the temp dir.
+      # They may not be due to us, but e.g. the browser when running browser
+      # tests. Until we figure out a proper solution, ignore some temp file
+      # names that we see on our CI infrastructure.
+      ignorable_file_prefixes = [
+        '/tmp/tmpaddon',
+        '/tmp/circleci-no-output-timeout',
+        '/tmp/wasmer',
+      ]
 
-        left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
-        left_over_files = [f for f in left_over_files if not any(f.startswith(p) for p in ignorable_file_prefixes)]
-        if left_over_files:
-          errlog(f'ERROR: After running test, there are {len(left_over_files)} new temporary files/directories left behind:')
-          for f in left_over_files:
-            errlog('leaked file: ', f)
-          self.fail(f'Test leaked {len(left_over_files)} temporary files!')
+      left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
+      left_over_files = [f for f in left_over_files if not any(f.startswith(p) for p in ignorable_file_prefixes)]
+      if left_over_files:
+        errlog(f'ERROR: After running test, there are {len(left_over_files)} new temporary files/directories left behind:')
+        for f in left_over_files:
+          errlog('leaked file: ', f)
+        self.fail(f'Test leaked {len(left_over_files)} temporary files!')
 
   def get_setting(self, key, default=None):
     return self.settings_mods.get(key, default)
