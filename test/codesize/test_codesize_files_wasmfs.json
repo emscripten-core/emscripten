@@ -1,10 +1,10 @@
 {
   "a.out.js": 5465,
   "a.out.js.gz": 2576,
-  "a.out.nodebug.wasm": 50212,
-  "a.out.nodebug.wasm.gz": 18067,
-  "total": 55677,
-  "total_gz": 20643,
+  "a.out.nodebug.wasm": 50590,
+  "a.out.nodebug.wasm.gz": 18089,
+  "total": 56055,
+  "total_gz": 20665,
   "sent": [
     "a (emscripten_date_now)",
     "b (emscripten_err)",
@@ -172,7 +172,6 @@
     "$wasmfs::SpecialFiles::\\28anonymous\\20namespace\\29::StdoutFile::write\\28unsigned\\20char\\20const*\\2c\\20unsigned\\20long\\2c\\20long\\20long\\29",
     "$wasmfs::SpecialFiles::\\28anonymous\\20namespace\\29::StdoutFile::~StdoutFile\\28\\29",
     "$wasmfs::SpecialFiles::\\28anonymous\\20namespace\\29::WritingStdFile::flush\\28\\29",
-    "$wasmfs::SpecialFiles::\\28anonymous\\20namespace\\29::WritingStdFile::writeToJS\\28unsigned\\20char\\20const*\\2c\\20unsigned\\20long\\2c\\20void\\20\\28*\\29\\28char\\20const*\\29\\2c\\20std::__2::vector<char\\2c\\20std::__2::allocator<char>>&\\29",
     "$wasmfs::SpecialFiles::\\28anonymous\\20namespace\\29::WritingStdFile::~WritingStdFile\\28\\29",
     "$wasmfs::SpecialFiles::\\28anonymous\\20namespace\\29::WritingStdFile::~WritingStdFile\\28\\29",
     "$wasmfs::SpecialFiles::getStderr\\28\\29",
