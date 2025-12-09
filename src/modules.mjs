@@ -280,7 +280,28 @@ export const LibraryManager = {
     }
     timer.stop('executeJS')
 
+    this.addAliasDependencies();
+
     timer.stop('load')
+  },
+
+  isAlias(entry) {
+    return (typeof entry == 'string' && entry[0] != '=' && (this.library.hasOwnProperty(entry) || WASM_EXPORTS.has(entry)));
+  },
+
+  /**
+   * Automatically add the target of an alias to it's dependency list.
+   */
+  addAliasDependencies() {
+    const aliases = {};
+    for (const [key, value] of Object.entries(this.library)) {
+      if (this.isAlias(value)) {
+        aliases[key] = value;
+      }
+    }
+    for (const [key, value] of Object.entries(aliases)) {
+      (this.library[key + '__deps'] ??= []).push(value);
+    }
   },
 
   executeJSLibraryFile(filename, contents) {

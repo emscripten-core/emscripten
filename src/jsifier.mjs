@@ -128,22 +128,6 @@ function isDefined(symName) {
   return false;
 }
 
-function isAlias(snippet) {
-  return (typeof snippet == 'string' && snippet[0] != '=' && (LibraryManager.library.hasOwnProperty(snippet) || WASM_EXPORTS.has(snippet)));
-}
-
-function resolveAlias(symbol) {
-  while (true) {
-    var value = LibraryManager.library[symbol];
-    if (isAlias(value)) {
-      symbol = value;
-    } else {
-      break;
-    }
-  }
-  return symbol;
-}
-
 function getTransitiveDeps(symbol) {
   // TODO(sbc): Use some kind of cache to avoid quadratic behaviour here.
   const transitiveDeps = new Set();
@@ -155,12 +139,11 @@ function getTransitiveDeps(symbol) {
       let directDeps = LibraryManager.library[sym + '__deps'] || [];
       directDeps = directDeps.filter((d) => typeof d === 'string');
       for (const dep of directDeps) {
-        const resolved = resolveAlias(dep);
         if (!transitiveDeps.has(dep)) {
           debugLog(`adding dependency ${symbol} -> ${dep}`);
         }
-        transitiveDeps.add(resolved);
-        toVisit.push(resolved);
+        transitiveDeps.add(dep);
+        toVisit.push(dep);
       }
       seen.add(sym);
     }
@@ -558,9 +541,8 @@ function(${args}) {
       if (symbolsOnly) {
         if (LibraryManager.library.hasOwnProperty(symbol)) {
           // Resolve aliases before looking up deps
-          var resolvedSymbol = resolveAlias(symbol);
-          var transtiveDeps = getTransitiveDeps(resolvedSymbol);
-          symbolDeps[symbol] = transtiveDeps.filter(
+          var transitiveDeps = getTransitiveDeps(symbol);
+          symbolDeps[symbol] = transitiveDeps.filter(
             (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),
           );
         }
@@ -656,21 +638,19 @@ function(${args}) {
         }
       }
 
-      if (isAlias(snippet)) {
+      if (LibraryManager.isAlias(snippet)) {
         // Redirection for aliases. We include the parent, and at runtime
         // make ourselves equal to it.  This avoid having duplicate
         // functions with identical content.
-        const aliasTarget = resolveAlias(snippet);
-        if (WASM_EXPORTS.has(aliasTarget)) {
+        if (WASM_EXPORTS.has(snippet)) {
           //printErr(`native alias: ${mangled} -> ${snippet}`);
           //console.error(WASM_EXPORTS);
-          nativeAliases[mangled] = aliasTarget;
+          nativeAliases[mangled] = snippet;
           snippet = undefined;
           isNativeAlias = true;
         } else {
           //printErr(`js alias: ${mangled} -> ${snippet}`);
-          deps.push(aliasTarget);
-          snippet = mangleCSymbolName(aliasTarget);
+          snippet = mangleCSymbolName(snippet);
         }
       } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
