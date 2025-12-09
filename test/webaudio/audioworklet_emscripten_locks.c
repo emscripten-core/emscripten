@@ -81,7 +81,7 @@ void printDummy(Dummy* dummy) {
 void runCalcs(Dummy* dummy, int num) {
   for (int n = 0; n < num; n++) {
 #ifndef DISABLE_LOCKS
-    int have = emscripten_lock_busyspin_wait_acquire(&testLock, 10);
+    int have = emscripten_lock_busyspin_wait_acquire(&testLock, 1000);
     assert(have);
 #endif
     dummy->val0 += dummy->val1 * dummy->val2;
