@@ -59,7 +59,7 @@ void initDummy(Dummy* dummy) {
 }
 
 void printDummy(Dummy* dummy) {
-  emscripten_outf("Values: %u, %u, %u", dummy->val0, dummy->val1, dummy->val2);
+  emscripten_outf("Values: 0x%08X, 0x%08X, 0x%08X", dummy->val0, dummy->val1, dummy->val2);
 }
 
 // Run a simple calculation that will only be stable *if* all values are atomically updated
@@ -76,12 +76,14 @@ void runCalcs(Dummy* dummy, int num) {
     dummy->val0 /= 4;
     dummy->val1 /= 3;
     dummy->val2 /= 2;
+#ifndef DISABLE_LOCKS
     emscripten_lock_release(&testLock);
+#endif
   }
 }
 
 void stopping() {
-  emscripten_out("Expect: 811100370, 759556424, 723197652");
+  emscripten_out("Expect: 0x305868D2, 0x2D45E948, 0x2B1B1ED4");
   emscripten_out("Ending test");
   emscripten_destroy_audio_context(context);
   emscripten_force_exit(0);
@@ -133,9 +135,9 @@ bool mainLoop(double time, void* data) {
   case TEST_DONE:
     printDummy((Dummy*) data);
     // 32-bit maths with locks *should* result in these:
-    assert(((Dummy*) data)->val0 == 811100370
-        && ((Dummy*) data)->val1 == 759556424
-        && ((Dummy*) data)->val2 == 723197652);
+    assert(((Dummy*) data)->val0 == 0x305868D2
+        && ((Dummy*) data)->val1 == 0x2D45E948
+        && ((Dummy*) data)->val2 == 0x2B1B1ED4);
     stopping();
     return false;
   }
