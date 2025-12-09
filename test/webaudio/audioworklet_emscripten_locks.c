@@ -14,7 +14,7 @@
 #define AUDIO_STACK_SIZE 2048
 
 // Define DISABLE_LOCKS to run the test without locking, which should statistically always fail
-#define DISABLE_LOCKS
+//#define DISABLE_LOCKS
 
 // Number of times mainLoop() calculations get called
 #define MAINLOOP_CALCS 10000
