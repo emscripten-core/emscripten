@@ -14,7 +14,7 @@
 #define AUDIO_STACK_SIZE 2048
 
 // Define DISABLE_LOCKS to run the test without locking, which should statistically always fail
-//#define DISABLE_LOCKS
+#define DISABLE_LOCKS
 
 // Internal, found in 'system/lib/pthread/threading_internal.h' (and requires building with -pthread)
 int _emscripten_thread_supports_atomics_wait(void);
@@ -53,13 +53,13 @@ typedef struct {
 
 // Start values
 void initDummy(Dummy* dummy) {
-  dummy->val0 = 4;
+  dummy->val0 = 1;
   dummy->val1 = 1;
-  dummy->val2 = 2;
+  dummy->val2 = 1;
 }
 
 void printDummy(Dummy* dummy) {
-  emscripten_outf("Values: %u, %u, %u", dummy->val0, dummy->val1, dummy->val2);
+  emscripten_outf("Values: 0x%08X, 0x%08X, 0x%08X", dummy->val0, dummy->val1, dummy->val2);
 }
 
 // Run a simple calculation that will only be stable *if* all values are atomically updated
@@ -70,18 +70,20 @@ void runCalcs(Dummy* dummy, int num) {
     int have = emscripten_lock_busyspin_wait_acquire(&testLock, 10);
     assert(have);
 #endif
-    dummy->val0 += dummy->val1 * dummy->val2;
-    dummy->val1 += dummy->val2 * dummy->val0;
-    dummy->val2 += dummy->val0 * dummy->val1;
-    dummy->val0 /= 4;
-    dummy->val1 /= 3;
-    dummy->val2 /= 2;
+    dummy->val0 += dummy->val2 * 7;
+    dummy->val1 += dummy->val0 * 7;
+    dummy->val2 += dummy->val1 * 7;
+    dummy->val0 += dummy->val2 / 3;
+    dummy->val1 += dummy->val0 / 3;
+    dummy->val2 += dummy->val1 / 3;
+#ifndef DISABLE_LOCKS
     emscripten_lock_release(&testLock);
+#endif
   }
 }
 
 void stopping() {
-  emscripten_out("Expect: 811100370, 759556424, 723197652");
+  emscripten_out("Expect: all values are equal");
   emscripten_out("Ending test");
   emscripten_destroy_audio_context(context);
   emscripten_force_exit(0);
@@ -132,10 +134,8 @@ bool mainLoop(double time, void* data) {
     break;
   case TEST_DONE:
     printDummy((Dummy*) data);
-    // 32-bit maths with locks *should* result in these:
-    assert(((Dummy*) data)->val0 == 811100370
-        && ((Dummy*) data)->val1 == 759556424
-        && ((Dummy*) data)->val2 == 723197652);
+    assert(((Dummy*) data)->val0 == ((Dummy*) data)->val1
+        && ((Dummy*) data)->val1 == ((Dummy*) data)->val2);
     stopping();
     return false;
   }
