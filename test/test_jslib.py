@@ -7,7 +7,7 @@ import shutil
 from subprocess import PIPE
 
 from common import RunnerCore, create_file, read_file, test_file
-from decorators import parameterized
+from decorators import also_with_wasm64, also_without_bigint, parameterized
 
 from tools.shared import EMCC
 from tools.utils import delete_file
@@ -286,7 +286,26 @@ addToLibrary({
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'])
     self.assertContained("lib.js: Decorator (jslibfunc__async} has wrong type. Expected 'boolean' not 'string'", err)
 
+  @also_with_wasm64
+  @also_without_bigint
   def test_jslib_i53abi(self):
+    create_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc__i53abi: true,
+  jslibfunc__sig: 'j',
+  jslibfunc: (x) => { return 42 },
+});
+''')
+    create_file('test.c', r'''
+#include <stdio.h>
+int64_t jslibfunc();
+int main() {
+  printf("main: %lld\n", jslibfunc());
+}
+''')
+    self.do_runf('test.c', 'main: 42\n', cflags=['--js-library', 'lib.js'])
+
+  def test_jslib_i53abi_errors(self):
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
   jslibfunc__i53abi: true,
