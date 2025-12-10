@@ -607,12 +607,29 @@ var SyscallsLibrary = {
     FS.chdir(stream.path);
     return 0;
   },
+#if PROXY_TO_PTHREAD
+  __syscall__newselect__proxy: 'none',
+  __syscall__newselect__deps: ['_emscripten_proxy_newselect'],
   __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeout) => {
+      return __emscripten_proxy_newselect(nfds, readfds, writefds, exceptfds, timeout);
+  },
+#else
+  __syscall__newselect__deps: ['_newselect_js'],
+  __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeout) => {
+      return __newselect_js(null, null, nfds, readfds, writefds, exceptfds, timeout);
+  },
+#endif
+#if PROXY_TO_PTHREAD
+  _newselect_js__deps: ['_emscripten_proxy_newselect_finish'],
+#endif
+  _newselect_js__proxy: 'none',
+  _newselect_js: (ctx, arg, nfds, readfds, writefds, exceptfds, timeout) => {
     // readfds are supported,
     // writefds checks socket open status
     // exceptfds are supported, although on web, such exceptional conditions never arise in web sockets
     //                          and so the exceptfds list will always return empty.
-    // timeout is supported, although on SOCKFS and PIPEFS these are ignored and always treated as 0 - fully async
+    // timeout is supported, although on SOCKFS these are ignored and always treated as 0 - fully async
+    // and PIPEFS supports timeout only when PROXY_TO_PTHREAD is enabled.
 #if ASSERTIONS
     assert(nfds <= 64, 'nfds must be less than or equal to 64');  // fd sets have 64 bits // TODO: this could be 1024 based on current musl headers
 #endif
@@ -633,6 +650,32 @@ var SyscallsLibrary = {
       timeoutInMillis = SYSCALLS.getTimeoutInMillis(timeout);
     }
 
+#if PROXY_TO_PTHREAD
+    var cleanupFuncs = [];
+    var notifyDone = false;
+    var makeNotifyCallback = (fd) => {
+      var cb = (flags) => {
+        if (notifyDone) {
+          return;
+        }
+        if (fd >= 0) {
+          fdSet.setFlags(fd, flags);
+        }
+        notifyDone = true;
+        cleanupFuncs.forEach(cb => cb());
+        fdSet.commit();
+        __emscripten_proxy_newselect_finish({{{ to64('ctx') }}}, {{{ to64('arg') }}}, fdSet.getTotal());
+      }
+      cb.registerCleanupFunc = (f) => {
+        if (f != null) cleanupFuncs.push(f);
+      }
+      return cb;
+    }
+    if (timeoutInMillis > 0) {
+      setTimeout(() => makeNotifyCallback(-1)(0), timeoutInMillis);
+    }
+#endif
+
     for (var fd = 0; fd < nfds; fd++) {
       var mask = 1 << (fd % 32);
       if (!(check(fd, allLow, allHigh, mask))) {
@@ -644,14 +687,23 @@ var SyscallsLibrary = {
       var flags = SYSCALLS.DEFAULT_POLLMASK;
 
       if (stream.stream_ops.poll) {
+#if PROXY_TO_PTHREAD
+        flags = stream.stream_ops.poll(stream, timeoutInMillis, timeoutInMillis != 0 ? makeNotifyCallback(fd) : null);
+#else
         flags = stream.stream_ops.poll(stream, ((timeoutInMillis < 0) || readfds) ? timeoutInMillis : 0);
+#endif
       }
 
       fdSet.setFlags(fd, flags);
     }
 
-
-    fdSet.commit(fd, flags);
+#if PROXY_TO_PTHREAD
+    if ((fdSet.getTotal() > 0) || (timeoutInMillis == 0) ) {
+      makeNotifyCallback(-1)(0);
+    }
+#else
+    fdSet.commit();
+#endif
 
     return fdSet.getTotal();
   },
