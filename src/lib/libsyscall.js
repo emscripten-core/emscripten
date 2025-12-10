@@ -600,15 +600,49 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall__newselect__i53abi: true,
-  __syscall__newselect__deps: ['$parseSelectFDSet'],
+  __syscall__newselect__proxy: 'none',
+  __syscall__newselect__deps: ['_newselect_js',
+#if PTHREADS
+    '_emscripten_proxy_newselect',
+#endif
+  ],
   __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeoutInMillis) => {
+#if PTHREADS
+    if (ENVIRONMENT_IS_PTHREAD) {
+      return __emscripten_proxy_newselect(nfds,
+                                          {{{ to64('readfds') }}},
+                                          {{{ to64('writefds') }}},
+                                          {{{ to64('exceptfds') }}},
+                                          {{{ splitI64('timeoutInMillis') }}});
+    }
+#endif
+      return __newselect_js({{{ to64('0') }}},
+                            {{{ to64('0') }}},
+                            nfds,
+                            {{{ to64('readfds') }}},
+                            {{{ to64('writefds') }}},
+                            {{{ to64('exceptfds') }}},
+                            {{{ splitI64('timeoutInMillis') }}});
+  },
+  _newselect_js__i53abi: true,
+  _newselect_js__proxy: 'none',
+  _newselect_js__deps: ['$parseSelectFDSet',
+#if PTHREADS
+    '_emscripten_proxy_newselect_finish',
+#endif
+  ],
+  _newselect_js: (ctx, arg, nfds, readfds, writefds, exceptfds, timeoutInMillis) => {
     // readfds are supported,
     // writefds checks socket open status
     // exceptfds are supported, although on web, such exceptional conditions never arise in web sockets
     //                          and so the exceptfds list will always return empty.
-    // timeout is supported, although on SOCKFS and PIPEFS these are ignored and always treated as 0 - fully async
+    // timeout is supported, although on SOCKFS these are ignored and always treated as 0 - fully async
+    // and PIPEFS supports timeout only when the select is called from a worker.
 #if ASSERTIONS
     assert(nfds <= 64, 'nfds must be less than or equal to 64');  // fd sets have 64 bits // TODO: this could be 1024 based on current musl headers
+#if PTHREADS
+    assert(!ENVIRONMENT_IS_PTHREAD, '_newselect_js must be called in the main thread');
+#endif
 #endif
 
     var fdSet = parseSelectFDSet(readfds, writefds, exceptfds);
@@ -617,6 +651,36 @@ var SyscallsLibrary = {
     var allHigh = fdSet.allHigh;
 
     var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
+
+#if PTHREADS
+    var makeNotifyCallback = null;
+    if (ctx) {
+      // Enable event handlers only when the select call is proxied from a worker.
+      var cleanupFuncs = [];
+      var notifyDone = false;
+      makeNotifyCallback = (fd) => {
+          var cb = (flags) => {
+              if (notifyDone) {
+                  return;
+              }
+              if (fd >= 0) {
+                  fdSet.setFlags(fd, flags);
+              }
+              notifyDone = true;
+              cleanupFuncs.forEach(cb => cb());
+              fdSet.commit();
+              __emscripten_proxy_newselect_finish({{{ to64('ctx') }}}, {{{ to64('arg') }}}, fdSet.getTotal());
+          }
+          cb.registerCleanupFunc = (f) => {
+              if (f != null) cleanupFuncs.push(f);
+          }
+          return cb;
+      }
+      if (timeoutInMillis > 0) {
+          setTimeout(() => makeNotifyCallback(-1)(0), timeoutInMillis);
+      }
+    }
+#endif
 
     for (var fd = 0; fd < nfds; fd++) {
       var mask = 1 << (fd % 32);
@@ -629,7 +693,14 @@ var SyscallsLibrary = {
       var flags = SYSCALLS.DEFAULT_POLLMASK;
 
       if (stream.stream_ops.poll) {
-        flags = stream.stream_ops.poll(stream, timeoutInMillis);
+        flags = (() => {
+#if PTHREADS
+          if (makeNotifyCallback != null) {
+            return stream.stream_ops.poll(stream, timeoutInMillis, timeoutInMillis != 0 ? makeNotifyCallback(fd) : null);
+          }
+#endif
+          return stream.stream_ops.poll(stream, timeoutInMillis);
+        })();
       } else {
 #if ASSERTIONS
         if (timeoutInMillis != 0) warnOnce('non-zero select() timeout not supported: ' + timeoutInMillis)
@@ -639,6 +710,14 @@ var SyscallsLibrary = {
       fdSet.setFlags(fd, flags);
     }
 
+#if PTHREADS
+    if (makeNotifyCallback != null) {
+      if ((fdSet.getTotal() > 0) || (timeoutInMillis == 0) ) {
+        makeNotifyCallback(-1)(0);
+      }
+      return 0;
+    }
+#endif
 
     fdSet.commit();
 

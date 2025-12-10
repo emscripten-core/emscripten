@@ -381,6 +381,7 @@ sigs = {
   _mmap_js__sig: 'ipiiijpp',
   _msync_js__sig: 'ippiiij',
   _munmap_js__sig: 'ippiiij',
+  _newselect_js__sig: 'ippipppj',
   _setitimer_js__sig: 'iid',
   _timegm_js__sig: 'jp',
   _tzset_js__sig: 'vpppp',

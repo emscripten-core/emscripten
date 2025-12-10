@@ -151,6 +151,8 @@ EmscriptenDeviceOrientationEvent* _emscripten_get_last_deviceorientation_event()
 EmscriptenDeviceMotionEvent* _emscripten_get_last_devicemotion_event();
 EmscriptenMouseEvent* _emscripten_get_last_mouse_event();
 
+int _newselect_js(void* ctx, void* arg, int n, void *rfds, void *wfds, void *efds, int64_t timeout);
+
 #ifdef __cplusplus
 }
 #endif

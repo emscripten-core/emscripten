@@ -1367,6 +1367,7 @@ class libc(MuslInternalLibrary,
           'sigtimedwait.c',
           'wasi-helpers.c',
           'system.c',
+          'proxying_select.c',
         ])
 
     if settings.RELOCATABLE or settings.MAIN_MODULE:
