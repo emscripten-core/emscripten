@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 4.0.22 (in development)
 -----------------------
+- Emscripten will now cache the JS code that it generates and re-use when
+  linking with the same settings at a later date.  This should improve link
+  times generally but should especially noticeable when linking lots of small
+  programs such as during autoconf or CMake feature detection. (#25929)
 - The minimum version of python required to run emscripten was updated from 3.8
   to 3.10. (#25891)
 

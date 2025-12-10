@@ -4,8 +4,6 @@
 # found in the LICENSE file.
 
 import base64
-import glob
-import hashlib
 import json
 import logging
 import os
@@ -25,7 +23,6 @@ from . import (
   emscripten,
   extract_metadata,
   feature_matrix,
-  filelock,
   js_manipulation,
   ports,
   shared,
@@ -218,47 +215,9 @@ def generate_js_sym_info():
   mode of the js compiler that would generate a list of all possible symbols
   that could be checked in.
   """
-  _, forwarded_data = emscripten.compile_javascript(symbols_only=True)
-  # When running in symbols_only mode compiler.mjs outputs a flat list of C symbols.
-  return json.loads(forwarded_data)
-
-
-def get_cached_file(filetype, filename, generator, cache_limit):
-  """This function implements a file cache which lives inside the main
-  emscripten cache directory but uses a per-file lock rather than a
-  cache-wide lock.
-
-  The cache is pruned (by removing the oldest files) if it grows above
-  a certain number of files.
-  """
-  root = cache.get_path(filetype)
-  utils.safe_ensure_dirs(root)
-
-  cache_file = os.path.join(root, filename)
-
-  with filelock.FileLock(cache_file + '.lock'):
-    if os.path.exists(cache_file):
-      # Cache hit, read the file
-      file_content = read_file(cache_file)
-    else:
-      # Cache miss, generate the symbol list and write the file
-      file_content = generator()
-      write_file(cache_file, file_content)
-
-  if len([f for f in os.listdir(root) if not f.endswith('.lock')]) > cache_limit:
-    with filelock.FileLock(cache.get_path(f'{filetype}.lock')):
-      files = []
-      for f in os.listdir(root):
-        if not f.endswith('.lock'):
-          f = os.path.join(root, f)
-          files.append((f, os.path.getmtime(f)))
-      files.sort(key=lambda x: x[1])
-      # Delete all but the newest N files
-      for f, _ in files[:-cache_limit]:
-        with filelock.FileLock(f + '.lock'):
-          delete_file(f)
-
-  return file_content
+  output = emscripten.compile_javascript(symbols_only=True)
+  # When running in symbols_only mode compiler.mjs outputs symbol metadata as JSON.
+  return json.loads(output)
 
 
 @ToolchainProfiler.profile_block('JS symbol generation')
@@ -268,21 +227,7 @@ def get_js_sym_info():
   if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE:
     return generate_js_sym_info()
 
-  # We define a cache hit as when the settings and `--js-library` contents are
-  # identical.
-  # Ignore certain settings that can are no relevant to library deps.  Here we
-  # skip PRE_JS_FILES/POST_JS_FILES which don't effect the library symbol list
-  # and can contain full paths to temporary files.
-  skip_settings = {'PRE_JS_FILES', 'POST_JS_FILES'}
-  input_files = [json.dumps(settings.external_dict(skip_keys=skip_settings), sort_keys=True, indent=2)]
-  jslibs = glob.glob(utils.path_from_root('src/lib') + '/lib*.js')
-  # Also, include the js compiler code itself, in case it gets locally modified.
-  jslibs += glob.glob(utils.path_from_root('src/*.mjs'))
-  jslibs = sorted(jslibs) + settings.JS_LIBRARIES
-  for jslib in jslibs:
-    input_files.append(read_file(jslib))
-  content = '\n'.join(input_files)
-  content_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
+  content_hash = emscripten.generate_js_compiler_input_hash(symbols_only=True)
 
   def generate_json():
     library_syms = generate_js_sym_info()
@@ -291,7 +236,7 @@ def get_js_sym_info():
   # Limit of the overall size of the cache.
   # This code will get test coverage since a full test run of `other` or `core`
   # generates ~1000 unique symbol lists.
-  file_content = get_cached_file('symbol_lists', f'{content_hash}.json', generate_json, cache_limit=500)
+  file_content = emscripten.get_cached_file('symbol_lists', f'{content_hash}.json', generate_json, cache_limit=500)
   return json.loads(file_content)
 
 
