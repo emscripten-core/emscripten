@@ -10194,13 +10194,13 @@ _d
       # Simple one-per-line response file format
       ("EXPORTED_FUNCTIONS=@response.txt", ''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''invalid export name: "\\\\'_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", r'''emcc: error: undefined exported symbol: "\\'_c'"'''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b',\\ '_c', '_d']", '''invalid export name: "\\\\ '_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b',\\ '_c', '_d']", r'''emcc: error: undefined exported symbol: "\\ '_c'"'''),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'invalid export name: "\\\\"_c""'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', r'emcc: error: undefined exported symbol: "\\"_c""'),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', 'invalid export name: "\\\\ "_c"'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', r'emcc: error: undefined exported symbol: "\\ "_c""'),
       # missing comma
       ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'wasm-ld: error: symbol exported via --export not found: b" "_c'),
     ]:
@@ -14809,21 +14809,45 @@ addToLibrary({
     self.do_runf('main.cpp', 'Hello Module!', cflags=['-std=c++20', '-fmodules'])
 
   def test_invalid_export_name(self):
-    create_file('test.c', '__attribute__((export_name("my.func"))) void myfunc() {}')
-    expected = 'emcc: error: invalid export name: "_my.func"'
-    self.assert_fail([EMCC, 'test.c'], expected)
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      #include <stdio.h>
+
+      __attribute__((export_name("my.func"))) int myfunc() { return 42; }
+
+      int main() {
+        int rtn = EM_ASM_INT(return Module['_my.func']());
+        printf("got: %d\n", rtn);
+
+        int rtn2 = EM_ASM_INT(return wasmExports['my.func']());
+        printf("got2: %d\n", rtn2);
+        return 0;
+      }
+    ''')
+    expected = 'emcc: error: export name is not a valid JS symbol: "_my.func".  Use `Module` or `wasmExports` to access this symbol'
+    self.assert_fail([EMCC, '-Werror', 'main.c'], expected)
+
+    # With warning suppressed the above program should work.
+    self.do_runf('main.c', 'got: 42\ngot2: 42\n', cflags=['-Wno-js-compiler'])
 
     # When we are generating only wasm and not JS we don't need exports to
     # be valid JS symbols.
-    self.run_process([EMCC, 'test.c', '--no-entry', '-o', 'out.wasm'])
+    self.run_process([EMCC, '-Werror', 'main.c', '--no-entry', '-o', 'out.wasm'])
 
-    # GCC (and clang) and JavaScript also allow $ in symbol names
-    create_file('valid.c', '''
-                #include <emscripten.h>
-                EMSCRIPTEN_KEEPALIVE
-                void my$func() {}
-                ''')
-    self.run_process([EMCC, 'valid.c'])
+  def test_export_with_dollarsign(self):
+    # GCC (and clang) and JavaScript both allow $ in symbol names
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      #include <stdio.h>
+
+      EMSCRIPTEN_KEEPALIVE int my$func() { return 42; }
+
+      int main() {
+        int rtn = EM_ASM_INT(return _my$func());
+        printf("got: %d\n", rtn);
+        return 0;
+      }''')
+    self.do_runf('main.c', 'got: 42\n')
 
   @also_with_modularize
   def test_instantiate_wasm(self):
