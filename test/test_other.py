@@ -9629,49 +9629,12 @@ int main() {
       for loc in locs:
         self.assertIn(loc, out)
 
-    def check_source_map_loc_info(address, func, loc):
+    def check_source_map_loc_info(address, loc):
       out = self.run_process(
           [emsymbolizer, '-s', 'sourcemap', 'test_dwarf.wasm', address],
           stdout=PIPE).stdout
-      self.assertIn(func, out)
       self.assertIn(loc, out)
 
-    def do_tests(src):
-      # 1. Test DWARF + source map together
-      # For DWARF, we check for the full inlined info for both function names and
-      # source locations. Source maps does not provide inlined info. So we only
-      # check for the info of the outermost function.
-      self.run_process([EMCC, test_file(src), '-g', '-gsource-map', '-O1', '-o',
-                        'test_dwarf.js'])
-      check_dwarf_loc_info(out_to_js_call_addr, out_to_js_call_func,
-                           out_to_js_call_loc)
-      check_source_map_loc_info(out_to_js_call_addr, out_to_js_call_func[0],
-                                out_to_js_call_loc[0])
-      check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
-      # Source map shows the original (inlined) source location with the original
-      # function name
-      check_source_map_loc_info(unreachable_addr, unreachable_func[0],
-                                unreachable_loc[0])
-
-      # 2. Test source map only
-      # The addresses, function names, and source locations are the same across
-      # the builds because they are relative offsets from the code section, so we
-      # don't need to recompute them
-      self.run_process([EMCC, test_file(src), '-gsource-map', '-O1', '-o',
-                        'test_dwarf.js'])
-      check_source_map_loc_info(out_to_js_call_addr, out_to_js_call_func[0],
-                                out_to_js_call_loc[0])
-      check_source_map_loc_info(unreachable_addr, unreachable_func[0],
-                                unreachable_loc[0])
-
-      # 3. Test DWARF only
-      self.run_process([EMCC, test_file(src), '-g', '-O1', '-o',
-                        'test_dwarf.js'])
-      check_dwarf_loc_info(out_to_js_call_addr, out_to_js_call_func,
-                           out_to_js_call_loc)
-      check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
-
-    # -- C program test --
     # We test two locations within test_dwarf.c:
     # out_to_js(0);     // line 6
     # __builtin_trap(); // line 13
@@ -9694,32 +9657,31 @@ int main() {
     # The first one corresponds to the innermost inlined location.
     unreachable_loc = ['test_dwarf.c:13:3', 'test_dwarf.c:18:3']
 
-    do_tests('core/test_dwarf.c')
+    # 1. Test DWARF + source map together
+    # For DWARF, we check for the full inlined info for both function names and
+    # source locations. Source maps provide neither function names nor inlined
+    # info. So we only check for the source location of the outermost function.
+    check_dwarf_loc_info(out_to_js_call_addr, out_to_js_call_func,
+                         out_to_js_call_loc)
+    check_source_map_loc_info(out_to_js_call_addr, out_to_js_call_loc[0])
+    check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
+    check_source_map_loc_info(unreachable_addr, unreachable_loc[0])
 
-    # -- C++ program test --
-    # We test two locations within test_dwarf.cpp:
-    # out_to_js(0);     // line 12
-    # __builtin_trap(); // line 19
-    self.run_process([EMCC, test_file('core/test_dwarf.cpp'),
-                      '-g', '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
-    # Address of out_to_js(0) within MyClass::foo(), uninlined
-    out_to_js_call_addr = self.get_instr_addr('call\t0', 'test_dwarf.wasm')
-    # Address of __builtin_trap() within MyClass::bar(), inlined into main()
-    unreachable_addr = self.get_instr_addr('unreachable', 'test_dwarf.wasm')
+    # 2. Test source map only
+    # The addresses, function names, and source locations are the same across
+    # the builds because they are relative offsets from the code section, so we
+    # don't need to recompute them
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
+                      '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
+    check_source_map_loc_info(out_to_js_call_addr, out_to_js_call_loc[0])
+    check_source_map_loc_info(unreachable_addr, unreachable_loc[0])
 
-    # Function name of out_to_js(0) within MyClass::foo(), uninlined
-    out_to_js_call_func = ['MyClass::foo()']
-    # Function names of __builtin_trap() within MyClass::bar(), inlined into
-    # main(). The first one corresponds to the innermost inlined function.
-    unreachable_func = ['MyClass::bar()', 'main']
-
-    # Source location of out_to_js(0) within MyClass::foo(), uninlined
-    out_to_js_call_loc = ['test_dwarf.cpp:12:3']
-    # Source locations of __builtin_trap() within MyClass::bar(), inlined into
-    # main(). The first one corresponds to the innermost inlined location.
-    unreachable_loc = ['test_dwarf.cpp:19:3', 'test_dwarf.cpp:25:6']
-
-    do_tests('core/test_dwarf.cpp')
+    # 3. Test DWARF only
+    self.run_process([EMCC, test_file('core/test_dwarf.c'),
+                      '-g', '-O1', '-o', 'test_dwarf.js'])
+    check_dwarf_loc_info(out_to_js_call_addr, out_to_js_call_func,
+                         out_to_js_call_loc)
+    check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
 
   def test_emsymbolizer_functions(self):
     'Test emsymbolizer use cases that only provide function-granularity info'
