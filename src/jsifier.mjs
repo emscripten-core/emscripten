@@ -260,7 +260,7 @@ function sigToArgs(sig) {
   for (var i = 1; i < sig.length; i++) {
     args.push(`a${i}`);
   }
-  return args.join(',')
+  return args.join(',');
 }
 
 function handleI64Signatures(symbol, snippet, sig, i53abi) {
