@@ -107,7 +107,7 @@ var SyscallsLibrary = {
       // select(2) is declared to accept "struct timeval { time_t tv_sec; suseconds_t tv_usec; }".
       // However, musl passes the two values to the syscall as an array of long values.
       // Note that sizeof(time_t) != sizeof(long) in wasm32. The former is 8, while the latter is 4.
-      // This means using "C_STRUCTS.timeval.tv_usec" leads to a wrong offset.
+      // This means using "C_STRUCTS.timeval\.tv_usec" leads to a wrong offset.
       // So, instead, we use POINTER_SIZE.
       var tv_sec = ({{{ makeGetValue('timeout', 0, 'i32') }}}),
           tv_usec = ({{{ makeGetValue('timeout', POINTER_SIZE, 'i32') }}});
