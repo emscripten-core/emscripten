@@ -1276,7 +1276,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vabaq
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vabal
-     - ⚫ Not implemented, will trigger compiler error
+     - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vabd
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vabdq
@@ -1335,9 +1335,13 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vclt
      - ✅ native
-   * - vcltz 
+   * - vcltz
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
-   * - vcmla, vcmla_rot90, cmla_rot180, cmla_rot270
+   * - vcmla, vcmla_rot90, vcmla_rot180, vcmla_rot270
+     - ❌ Will be emulated with slow instructions, or scalarized
+   * - vcmlaq
+     - ✅ native
+   * - vcmlaq_rot90, vcmlaq_rot180, vcmlaq_rot270
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vcmlq
      - ✅ native
@@ -1361,6 +1365,8 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ✅ native
    * - vext
      - ❌ Will be emulated with slow instructions, or scalarized
+   * - vextq
+     - ✅ native
    * - vfma, vfma_lane, vfma_n
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vget_lane
@@ -1411,6 +1417,8 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ✅ native
    * - vmul
      - ✅ native
+   * - vmulq
+     - ✅ native for 32 & 64 bit floats & ints, otherwise ❌ Will be emulated with slow instructions, or scalarized
    * - vmul_n 
      - ⚠️ Does not have direct implementation, but is emulated using fast NEON instructions
    * - vmull 
@@ -1424,6 +1432,8 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vmvn
      - ✅ native
    * - vneg
+     - ✅ native
+   * - vnegq
      - ✅ native
    * - vorn
      - ❌ Will be emulated with slow instructions, or scalarized
@@ -1440,7 +1450,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vpmin
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vpminnm
-     - ⚫ Not implemented, will trigger compiler error
+     - ❌ Will be emulated with slow instructions, or scalarized
    * - vqabs
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vqabsb
@@ -1471,6 +1481,8 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vqsub
      - ❌ Will be emulated with slow instructions, or scalarized
+   * - vqsubq
+     - ✅ native
    * - vqsubb
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vqtbl1
