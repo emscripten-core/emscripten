@@ -351,8 +351,7 @@ ${functionBody}
 
   // Same as `_emval_invoke`, just imported into Wasm under a different return type.
   // TODO: remove this if/when https://github.com/emscripten-core/emscripten/issues/20478 is fixed.
-  _emval_invoke_i64__deps: ['_emval_invoke'],
-  _emval_invoke_i64: '=__emval_invoke',
+  _emval_invoke_i64: '_emval_invoke',
 
   _emval_typeof__deps: ['$Emval'],
   _emval_typeof: (handle) => {
