@@ -9,6 +9,8 @@ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
+import glob
+import hashlib
 import json
 import logging
 import os
@@ -20,9 +22,11 @@ import textwrap
 
 from tools import (
   building,
+  cache,
   config,
   diagnostics,
   extract_metadata,
+  filelock,
   js_manipulation,
   shared,
   utils,
@@ -174,6 +178,32 @@ def apply_static_code_hooks(forwarded_json, code):
 
 
 @ToolchainProfiler.profile()
+def generate_js_compiler_input_hash(symbols_only=False):
+  # We define a cache hit as when all the settings and all the `--js-library`
+  # contents are identical.
+  # Ignore certain settings that can are no relevant to library deps.  Here we
+  # skip PRE_JS_FILES/POST_JS_FILES which don't affect the library symbol list
+  # and can contain full paths to temporary files.
+  skip_settings = {'PRE_JS_FILES', 'POST_JS_FILES'}
+  file_contents = [json.dumps(settings.external_dict(skip_keys=skip_settings), sort_keys=True, indent=2)]
+
+  files = glob.glob(utils.path_from_root('src/lib') + '/lib*.js')
+  # Also, include the js compiler code itself, in case it gets locally modified.
+  files += glob.glob(utils.path_from_root('src/*.mjs'))
+  files += settings.JS_LIBRARIES
+  if not symbols_only:
+    files += settings.PRE_JS_FILES
+    files += settings.POST_JS_FILES
+
+  for file in sorted(files):
+    file_contents.append(utils.read_file(file))
+
+  content = '\n'.join(file_contents)
+  content_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
+  return content_hash
+
+
+@ToolchainProfiler.profile()
 def compile_javascript(symbols_only=False):
   stderr_file = os.environ.get('EMCC_STDERR_FILE')
   if stderr_file:
@@ -189,15 +219,8 @@ def compile_javascript(symbols_only=False):
   args = ['-']
   if symbols_only:
     args += ['--symbols-only']
-  out = shared.run_js_tool(path_from_root('tools/compiler.mjs'),
-                           args, input=settings_json, stdout=subprocess.PIPE, stderr=stderr_file)
-  if symbols_only:
-    glue = None
-    forwarded_data = out
-  else:
-    assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
-    glue, forwarded_data = out.split('//FORWARDED_DATA:')
-  return glue, forwarded_data
+  return shared.run_js_tool(path_from_root('tools/compiler.mjs'),
+                            args, input=settings_json, stdout=subprocess.PIPE, stderr=stderr_file)
 
 
 def set_memory(static_bump):
@@ -273,6 +296,59 @@ def trim_asm_const_body(body):
     if len(body) > 1 and body[0] == '(' and body[-1] == ')' and parentheses_match(body, 0, -1):
       body = body[1:-1].strip()
   return body
+
+
+def get_cached_file(filetype, filename, generator, cache_limit):
+  """This function implements a file cache which lives inside the main
+  emscripten cache directory but uses a per-file lock rather than a
+  cache-wide lock.
+
+  The cache is pruned (by removing the oldest files) if it grows above
+  a certain number of files.
+  """
+  root = cache.get_path(filetype)
+  utils.safe_ensure_dirs(root)
+
+  cache_file = os.path.join(root, filename)
+
+  with filelock.FileLock(cache_file + '.lock'):
+    if os.path.exists(cache_file):
+      # Cache hit, read the file
+      file_content = utils.read_file(cache_file)
+    else:
+      # Cache miss, generate the symbol list and write the file
+      file_content = generator()
+      utils.write_file(cache_file, file_content)
+
+  if len([f for f in os.listdir(root) if not f.endswith('.lock')]) > cache_limit:
+    with filelock.FileLock(cache.get_path(f'{filetype}.lock')):
+      files = []
+      for f in os.listdir(root):
+        if not f.endswith('.lock'):
+          f = os.path.join(root, f)
+          files.append((f, os.path.getmtime(f)))
+      files.sort(key=lambda x: x[1])
+      # Delete all but the newest N files
+      for f, _ in files[:-cache_limit]:
+        with filelock.FileLock(f + '.lock'):
+          utils.delete_file(f)
+
+  return file_content
+
+
+@ToolchainProfiler.profile()
+def compile_javascript_cached():
+  # Avoiding using the cache when generating struct info since
+  # this step is performed while the cache is locked.
+  if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE:
+    return compile_javascript()
+
+  content_hash = generate_js_compiler_input_hash()
+
+  # Limit of the overall size of the cache.
+  # This code will get test coverage since a full test run of `other` or `core`
+  # generates ~1000 unique outputs.
+  return get_cached_file('js_output', f'{content_hash}.js', compile_javascript, cache_limit=500)
 
 
 def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadata=None):
@@ -358,7 +434,9 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   if metadata.invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
 
-  glue, forwarded_data = compile_javascript()
+  out = compile_javascript_cached()
+  assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
+  glue, forwarded_data = out.split('//FORWARDED_DATA:', 1)
 
   forwarded_json = json.loads(forwarded_data)
 
