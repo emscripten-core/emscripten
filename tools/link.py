@@ -276,9 +276,10 @@ def get_js_sym_info():
   skip_settings = {'PRE_JS_FILES', 'POST_JS_FILES'}
   input_files = [json.dumps(settings.external_dict(skip_keys=skip_settings), sort_keys=True, indent=2)]
   jslibs = glob.glob(utils.path_from_root('src/lib') + '/lib*.js')
-  assert jslibs
-  input_files.extend(read_file(jslib) for jslib in sorted(jslibs))
-  for jslib in settings.JS_LIBRARIES:
+  # Also, include the js compiler code itself, in case it gets locally modified.
+  jslibs += glob.glob(utils.path_from_root('src/*.mjs'))
+  jslibs = sorted(jslibs) + settings.JS_LIBRARIES
+  for jslib in jslibs:
     input_files.append(read_file(jslib))
   content = '\n'.join(input_files)
   content_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
