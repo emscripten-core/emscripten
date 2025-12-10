@@ -115,7 +115,7 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
       runCalcs((Dummy*) data, PROCESS_CALCS);
     } else {
       if (whichTest == TEST_DONE_MAIN) {
-        emscripten_outf("Worklet done after %dms (expect: > 2s)", (int) (emscripten_get_now() - startTime));
+        emscripten_outf("Worklet done after %dms (expect: approx. 2s)", (int) (emscripten_get_now() - startTime));
         // Both loops are finished
         whichTest = TEST_DONE;
       }
@@ -137,7 +137,7 @@ bool mainLoop(double time, void* data) {
     if (howManyMain-- > 0) {
       runCalcs((Dummy*) data, MAINLOOP_CALCS);
     } else {
-      emscripten_outf("Main thread done after %dms (expect: > 2s)", (int) (emscripten_get_now() - startTime));
+      emscripten_outf("Main thread done after %dms (expect: approx. 2s)", (int) (emscripten_get_now() - startTime));
       // Done here, so signal to process()
       whichTest = TEST_DONE_MAIN;
     }
