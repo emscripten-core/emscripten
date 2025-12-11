@@ -34,7 +34,9 @@ def copy_tree(upstream_dir, local_dir):
         full = os.path.join(upstream_dir, f)
         if f not in excludes:
             if os.path.isdir(full):
-                shutil.copytree(full, os.path.join(local_dir, f))
+                if not os.path.exists(os.path.join(local_dir, f)):
+                    os.makedirs(os.path.join(local_dir, f))
+                copy_tree(full, os.path.join(local_dir, f))
             else:
                 shutil.copy2(full, os.path.join(local_dir, f))
 
@@ -90,7 +92,7 @@ def main():
 
     copy_tree(upstream_root, local_root)
     copy_tree(upstream_inc, local_inc)
-    print(upstream_root)
+
     shutil.copy2(os.path.join(upstream_root, "LICENSE.TXT"), local_root)
     shutil.copy2(
         os.path.join(llvm_dir, "cmake/Modules/LLVMCheckCompilerLinkerFlag.cmake"),
