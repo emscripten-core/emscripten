@@ -4047,8 +4047,8 @@ caught outer int: 123
 
     shutil.move(so_file, so_file + '.orig')
 
-    # Verify that building with -sSIDE_MODULE is essentailly the same as building with `-shared -fPIC -sFAKE_DYLIBS=0`.
-    flags = ['-shared', '-fPIC', '-sFAKE_DYLIBS=0']
+    # Verify that building with -sSIDE_MODULE is essentailly the same as building with `-shared -fPIC`
+    flags = ['-shared', '-fPIC']
     if isinstance(side, list):
       # side is just a library
       self.run_process([EMCC] + side + self.get_cflags() + flags + ['-o', so_file])
