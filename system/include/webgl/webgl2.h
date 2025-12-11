@@ -77,8 +77,8 @@ WEBGL_APICALL void GL_APIENTRY emscripten_glDrawElementsInstanced (GLenum mode, 
 WEBGL_APICALL GLsync GL_APIENTRY emscripten_glFenceSync (GLenum condition, GLbitfield flags);
 WEBGL_APICALL GLboolean GL_APIENTRY emscripten_glIsSync (GLsync sync);
 WEBGL_APICALL void GL_APIENTRY emscripten_glDeleteSync (GLsync sync);
-WEBGL_APICALL GLenum GL_APIENTRY emscripten_glClientWaitSync (GLsync sync, GLbitfield flags, GLuint timeoutLo, GLuint timeoutHi);
-WEBGL_APICALL void GL_APIENTRY emscripten_glWaitSync (GLsync sync, GLbitfield flags, GLuint timeoutLo, GLuint timeoutHi);
+WEBGL_APICALL GLenum GL_APIENTRY emscripten_glClientWaitSync (GLsync sync, GLbitfield flags, GLuint64 timeout);
+WEBGL_APICALL void GL_APIENTRY emscripten_glWaitSync (GLsync sync, GLbitfield flags, GLuint64 timeout);
 WEBGL_APICALL void GL_APIENTRY emscripten_glGetInteger64v (GLenum pname, GLint64 *data);
 WEBGL_APICALL void GL_APIENTRY emscripten_glGetSynciv (GLsync sync, GLenum pname, GLsizei bufSize, GLsizei *length, GLint *values);
 WEBGL_APICALL void GL_APIENTRY emscripten_glGetInteger64i_v (GLenum target, GLuint index, GLint64 *data);
