@@ -337,7 +337,6 @@ def extract_func_ranges(text):
   name_pattern = re.compile(r'DW_AT_name\s+\("([^"]+)"\)')
   specification_pattern = re.compile(r'DW_AT_specification\s+\(0x[0-9a-f]+\s+"([^"]+)"\)')
 
-  func_ranges = []
   def get_name_from_tag(start, end):
     m = linkage_name_pattern.search(text, start, end)
     if m:
@@ -351,6 +350,7 @@ def extract_func_ranges(text):
       return m.group(1)
     return None
 
+  func_ranges = []
   for match in func_pattern.finditer(text):
     # Search from the end of the tag name (e.g. after "DW_TAG_subprogram").
     # Attributes are expected to follow.
