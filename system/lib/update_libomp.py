@@ -17,7 +17,7 @@ local_root = os.path.join(script_dir, "libomp")
 local_src = os.path.join(local_root, "src")
 local_inc = os.path.join(local_root, "include")
 
-excludes = ["docs", "build", "test", "tests"]
+excludes = ["doc", "build", "tests"]
 
 
 def clean_dir(dirname):
