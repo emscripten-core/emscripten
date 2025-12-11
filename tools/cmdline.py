@@ -563,6 +563,12 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       else:
         exit_with_error(f'invalid value for --output-eol: `{style}`')
     # Record PTHREADS setting because it controls whether --shared-memory is passed to lld
+    elif arg == '-fopenmp' or arg == '-fopenmp=libomp':
+      settings.OPENMP = 1
+      # Openmp needs pthreads, they are implied by -ofopenmp
+      settings.PTHREADS = 1
+      # Also set the legacy setting name, in case use JS code depends on it.
+      settings.USE_PTHREADS = 1
     elif arg == '-pthread':
       settings.PTHREADS = 1
       # Also set the legacy setting name, in case use JS code depends on it.
