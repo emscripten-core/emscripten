@@ -255,6 +255,14 @@ function addImplicitDeps(snippet, deps) {
   }
 }
 
+function sigToArgs(sig) {
+  const args = []
+  for (var i = 1; i < sig.length; i++) {
+    args.push(`a${i}`);
+  }
+  return args.join(',');
+}
+
 function handleI64Signatures(symbol, snippet, sig, i53abi) {
   // Handle i64 parameters and return values.
   //
@@ -623,7 +631,7 @@ function(${args}) {
         }
       }
 
-      const isFunction = typeof snippet == 'function';
+      let isFunction = typeof snippet == 'function';
       let isNativeAlias = false;
 
       const postsetId = symbol + '__postset';
@@ -642,20 +650,34 @@ function(${args}) {
         // Redirection for aliases. We include the parent, and at runtime
         // make ourselves equal to it.  This avoid having duplicate
         // functions with identical content.
-        if (WASM_EXPORTS.has(snippet)) {
-          //printErr(`native alias: ${mangled} -> ${snippet}`);
-          //console.error(WASM_EXPORTS);
-          nativeAliases[mangled] = snippet;
+        const aliasTarget = snippet;
+        if (WASM_EXPORTS.has(aliasTarget)) {
+          debugLog(`native alias: ${mangled} -> ${aliasTarget}`);
+          nativeAliases[mangled] = aliasTarget;
           snippet = undefined;
           isNativeAlias = true;
         } else {
-          //printErr(`js alias: ${mangled} -> ${snippet}`);
-          snippet = mangleCSymbolName(snippet);
+          debugLog(`js alias: ${mangled} -> ${aliasTarget}`);
+          snippet = mangleCSymbolName(aliasTarget);
+          // When we have an alias for another JS function we can normally
+          // point them at the same function.  However, in some cases (where
+          // signatures are relevant and they differ between and alais and
+          // it's target) we need to construct a forwarding function from
+          // one to the other.
+          const isSigRelevant = MAIN_MODULE || RELOCATABLE || MEMORY64 || CAN_ADDRESS_2GB || (sig && sig.includes('j'));
+          const targetSig = LibraryManager.library[aliasTarget + '__sig'];
+          if (isSigRelevant && sig && targetSig && sig != targetSig) {
+            debugLog(`${symbol}: Alias target (${aliasTarget}) has different signature (${sig} vs ${targetSig})`)
+            isFunction = true;
+            snippet = `(${sigToArgs(sig)}) => ${snippet}(${sigToArgs(targetSig)})`;
+          }
         }
       } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
         addImplicitDeps(snippet, deps);
-      } else if (isFunction) {
+      }
+
+      if (isFunction) {
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         addImplicitDeps(snippet, deps);
         if (CHECK_DEPS && !isUserSymbol) {
