@@ -58,6 +58,7 @@ typedef void (*em_func_vii)(int, int);
 typedef void (*em_func_vif)(int, float);
 typedef void (*em_func_vff)(float, float);
 typedef void (*em_func_viii)(int, int, int);
+typedef void (*em_func_viij)(int, int, uint64_t);
 typedef void (*em_func_viif)(int, int, float);
 typedef void (*em_func_viff)(int, float, float);
 typedef void (*em_func_vfff)(float, float, float);
@@ -76,6 +77,7 @@ typedef void (*em_func_viiiiiiiiiii)(int, int, int, int, int, int, int, int, int
 typedef int (*em_func_i)(void);
 typedef int (*em_func_ii)(int);
 typedef int (*em_func_iii)(int, int);
+typedef int (*em_func_iiij)(int, int, uint64_t);
 typedef int (*em_func_iiii)(int, int, int);
 typedef int (*em_func_iiiii)(int, int, int, int);
 typedef int (*em_func_iiiiii)(int, int, int, int, int);
@@ -92,7 +94,6 @@ typedef int (*em_func_iij)(int, uint64_t);
 typedef int (*em_func_iijj)(int, uint64_t, uint64_t);
 typedef uint64_t (*em_func_jjj)(uint64_t, uint64_t);
 typedef void (*em_func_vij)(int, uint64_t);
-typedef void (*em_func_viij)(int, int, uint64_t);
 typedef void (*em_func_viji)(int, uint64_t, int);
 typedef void (*em_func_vijji)(int, uint64_t, uint64_t, int);
 typedef void (*em_func_viijj)(int, int, uint64_t, uint64_t);
@@ -191,6 +192,9 @@ static void _do_call(void* arg) {
     case EM_FUNC_SIG_VIII:
       ((em_func_viii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i);
       break;
+    case EM_FUNC_SIG_VIIJ:
+      ((em_func_viij)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].j);
+      break;
     case EM_FUNC_SIG_VIIF:
       ((em_func_viif)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].f);
       break;
@@ -265,9 +269,6 @@ static void _do_call(void* arg) {
     case EM_FUNC_SIG_VIP:
       ((em_func_vij)q->functionPtr)(q->args[0].i, q->args[1].j);
       break;
-    case EM_FUNC_SIG_VIIP:
-      ((em_func_viij)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].j);
-      break;
     case EM_FUNC_SIG_VIIPP:
       ((em_func_viijj)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].j, q->args[3].j);
       break;
@@ -304,6 +305,9 @@ static void _do_call(void* arg) {
       break;
     case EM_FUNC_SIG_IIII:
       q->returnValue.i = ((em_func_iiii)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].i);
+      break;
+    case EM_FUNC_SIG_IIIJ:
+      q->returnValue.i = ((em_func_iiij)q->functionPtr)(q->args[0].i, q->args[1].i, q->args[2].j);
       break;
     case EM_FUNC_SIG_IIIII:
       q->returnValue.i =
