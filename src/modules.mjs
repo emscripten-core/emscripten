@@ -121,9 +121,7 @@ function calculateLibraries() {
 
       if (NODERAWFS) {
         // NODERAWFS requires NODEFS
-        if (!JS_LIBRARIES.includes('libnodefs.js')) {
-          libraries.push('libnodefs.js');
-        }
+        libraries.push('libnodefs.js');
         libraries.push('libnoderawfs.js');
         // NODERAWFS overwrites libpath.js
         libraries.push('libnodepath.js');
@@ -209,7 +207,7 @@ function calculateLibraries() {
   libraries.push(...JS_LIBRARIES);
 
   // Deduplicate libraries to avoid processing any library file multiple times
-  libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
+  libraries = [...new Set(libraries)]
 
   return libraries;
 }
