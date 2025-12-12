@@ -102,6 +102,71 @@ var SyscallsLibrary = {
 #endif
       return ret;
     },
+
+    getTimeoutInMillis(timeout) {
+      // select(2) is declared to accept "struct timeval { time_t tv_sec; suseconds_t tv_usec; }".
+      // However, musl passes the two values to the syscall as an array of long values.
+      // Note that sizeof(time_t) != sizeof(long) in wasm32. The former is 8, while the latter is 4.
+      // This means using "C_STRUCTS.timeval\.tv_usec" leads to a wrong offset.
+      // So, instead, we use POINTER_SIZE.
+      var tv_sec = ({{{ makeGetValue('timeout', 0, 'i32') }}}),
+          tv_usec = ({{{ makeGetValue('timeout', POINTER_SIZE, 'i32') }}});
+      return (tv_sec + tv_usec / 1000000) * 1000;
+    },
+
+    parseSelectFDSet(readfds, writefds, exceptfds) {
+      var total = 0;
+
+      var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
+          srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
+      var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
+          srcWriteHigh = (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0);
+      var srcExceptLow = (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0),
+          srcExceptHigh = (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
+
+      var dstReadLow = 0,
+          dstReadHigh = 0;
+      var dstWriteLow = 0,
+          dstWriteHigh = 0;
+      var dstExceptLow = 0,
+          dstExceptHigh = 0;
+
+      var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
+
+      return {
+        getTotal: () => total,
+        setFlags: (fd, flags) => {
+          var mask = 1 << (fd % 32);
+
+          if ((flags & {{{ cDefs.POLLIN }}}) && check(fd, srcReadLow, srcReadHigh, mask)) {
+            fd < 32 ? (dstReadLow = dstReadLow | mask) : (dstReadHigh = dstReadHigh | mask);
+            total++;
+          }
+          if ((flags & {{{ cDefs.POLLOUT }}}) && check(fd, srcWriteLow, srcWriteHigh, mask)) {
+            fd < 32 ? (dstWriteLow = dstWriteLow | mask) : (dstWriteHigh = dstWriteHigh | mask);
+            total++;
+          }
+          if ((flags & {{{ cDefs.POLLPRI }}}) && check(fd, srcExceptLow, srcExceptHigh, mask)) {
+            fd < 32 ? (dstExceptLow = dstExceptLow | mask) : (dstExceptHigh = dstExceptHigh | mask);
+            total++;
+          }
+        },
+        commit: () => {
+          if (readfds) {
+            {{{ makeSetValue('readfds', '0', 'dstReadLow', 'i32') }}};
+            {{{ makeSetValue('readfds', '4', 'dstReadHigh', 'i32') }}};
+          }
+          if (writefds) {
+            {{{ makeSetValue('writefds', '0', 'dstWriteLow', 'i32') }}};
+            {{{ makeSetValue('writefds', '4', 'dstWriteHigh', 'i32') }}};
+          }
+          if (exceptfds) {
+            {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
+            {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
+          }
+        }
+      };
+    },
   },
 
   $syscallGetVarargI__internal: true,
@@ -542,36 +607,70 @@ var SyscallsLibrary = {
     FS.chdir(stream.path);
     return 0;
   },
+#if PROXY_TO_PTHREAD
+  __syscall__newselect__proxy: 'none',
+  __syscall__newselect__deps: ['_emscripten_proxy_newselect'],
   __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeout) => {
+      return __emscripten_proxy_newselect(nfds, readfds, writefds, exceptfds, timeout);
+  },
+#else
+  __syscall__newselect__deps: ['_newselect_js'],
+  __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeout) => {
+      return __newselect_js(null, null, nfds, readfds, writefds, exceptfds, timeout);
+  },
+#endif
+#if PROXY_TO_PTHREAD
+  _newselect_js__deps: ['_emscripten_proxy_newselect_finish'],
+#endif
+  _newselect_js__proxy: 'none',
+  _newselect_js: (ctx, arg, nfds, readfds, writefds, exceptfds, timeout) => {
     // readfds are supported,
     // writefds checks socket open status
     // exceptfds are supported, although on web, such exceptional conditions never arise in web sockets
     //                          and so the exceptfds list will always return empty.
-    // timeout is supported, although on SOCKFS and PIPEFS these are ignored and always treated as 0 - fully async
+    // timeout is supported, although on SOCKFS these are ignored and always treated as 0 - fully async
+    // and PIPEFS supports timeout only when PROXY_TO_PTHREAD is enabled.
 #if ASSERTIONS
     assert(nfds <= 64, 'nfds must be less than or equal to 64');  // fd sets have 64 bits // TODO: this could be 1024 based on current musl headers
 #endif
 
-    var total = 0;
-
-    var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
-        srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
-    var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
-        srcWriteHigh = (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0);
-    var srcExceptLow = (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0),
-        srcExceptHigh = (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
-
-    var dstReadLow = 0,
-        dstReadHigh = 0;
-    var dstWriteLow = 0,
-        dstWriteHigh = 0;
-    var dstExceptLow = 0,
-        dstExceptHigh = 0;
+    var fdSet = SYSCALLS.parseSelectFDSet(readfds, writefds, exceptfds);
 
     var allLow = srcReadLow | srcWriteLow | srcExceptLow;
     var allHigh = srcReadHigh | srcWriteHigh | srcExceptHigh;
 
     var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
+
+    var timeoutInMillis = -1;
+    if (timeout) {
+      timeoutInMillis = SYSCALLS.getTimeoutInMillis(timeout);
+    }
+
+#if PROXY_TO_PTHREAD
+    var cleanupFuncs = [];
+    var notifyDone = false;
+    var makeNotifyCallback = (fd) => {
+      var cb = (flags) => {
+        if (notifyDone) {
+          return;
+        }
+        if (fd >= 0) {
+          fdSet.setFlags(fd, flags);
+        }
+        notifyDone = true;
+        cleanupFuncs.forEach(cb => cb());
+        fdSet.commit();
+        __emscripten_proxy_newselect_finish({{{ to64('ctx') }}}, {{{ to64('arg') }}}, fdSet.getTotal());
+      }
+      cb.registerCleanupFunc = (f) => {
+        if (f != null) cleanupFuncs.push(f);
+      }
+      return cb;
+    }
+    if (timeoutInMillis > 0) {
+      setTimeout(() => makeNotifyCallback(-1)(0), timeoutInMillis);
+    }
+#endif
 
     for (var fd = 0; fd < nfds; fd++) {
       var mask = 1 << (fd % 32);
@@ -584,48 +683,25 @@ var SyscallsLibrary = {
       var flags = SYSCALLS.DEFAULT_POLLMASK;
 
       if (stream.stream_ops.poll) {
-        var timeoutInMillis = -1;
-        if (timeout) {
-          // select(2) is declared to accept "struct timeval { time_t tv_sec; suseconds_t tv_usec; }".
-          // However, musl passes the two values to the syscall as an array of long values.
-          // Note that sizeof(time_t) != sizeof(long) in wasm32. The former is 8, while the latter is 4.
-          // This means using "C_STRUCTS.timeval.tv_usec" leads to a wrong offset.
-          // So, instead, we use POINTER_SIZE.
-          var tv_sec = (readfds ? {{{ makeGetValue('timeout', 0, 'i32') }}} : 0),
-              tv_usec = (readfds ? {{{ makeGetValue('timeout', POINTER_SIZE, 'i32') }}} : 0);
-          timeoutInMillis = (tv_sec + tv_usec / 1000000) * 1000;
-        }
-        flags = stream.stream_ops.poll(stream, timeoutInMillis);
+#if PROXY_TO_PTHREAD
+        flags = stream.stream_ops.poll(stream, timeoutInMillis, timeoutInMillis != 0 ? makeNotifyCallback(fd) : null);
+#else
+        flags = stream.stream_ops.poll(stream, ((timeoutInMillis < 0) || readfds) ? timeoutInMillis : 0);
+#endif
       }
 
-      if ((flags & {{{ cDefs.POLLIN }}}) && check(fd, srcReadLow, srcReadHigh, mask)) {
-        fd < 32 ? (dstReadLow = dstReadLow | mask) : (dstReadHigh = dstReadHigh | mask);
-        total++;
-      }
-      if ((flags & {{{ cDefs.POLLOUT }}}) && check(fd, srcWriteLow, srcWriteHigh, mask)) {
-        fd < 32 ? (dstWriteLow = dstWriteLow | mask) : (dstWriteHigh = dstWriteHigh | mask);
-        total++;
-      }
-      if ((flags & {{{ cDefs.POLLPRI }}}) && check(fd, srcExceptLow, srcExceptHigh, mask)) {
-        fd < 32 ? (dstExceptLow = dstExceptLow | mask) : (dstExceptHigh = dstExceptHigh | mask);
-        total++;
-      }
+      fdSet.setFlags(fd, flags);
     }
 
-    if (readfds) {
-      {{{ makeSetValue('readfds', '0', 'dstReadLow', 'i32') }}};
-      {{{ makeSetValue('readfds', '4', 'dstReadHigh', 'i32') }}};
+#if PROXY_TO_PTHREAD
+    if ((fdSet.getTotal() > 0) || (timeoutInMillis == 0) ) {
+      makeNotifyCallback(-1)(0);
     }
-    if (writefds) {
-      {{{ makeSetValue('writefds', '0', 'dstWriteLow', 'i32') }}};
-      {{{ makeSetValue('writefds', '4', 'dstWriteHigh', 'i32') }}};
-    }
-    if (exceptfds) {
-      {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
-      {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
-    }
+#else
+    fdSet.commit();
+#endif
 
-    return total;
+    return fdSet.getTotal();
   },
   _msync_js__i53abi: true,
   _msync_js: (addr, len, prot, flags, fd, offset) => {

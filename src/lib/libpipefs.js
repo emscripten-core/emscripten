@@ -21,6 +21,21 @@ addToLibrary({
         // able to read from the read end after write end is closed.
         refcnt : 2,
         timestamp: new Date(),
+        readableHandlers: [],
+        registerReadableHanlder: (callback) => {
+          callback.registerCleanupFunc(() => {
+            const i = pipe.readableHandlers.indexOf(callback);
+            if (i !== -1) pipe.readableHandlers.splice(i, 1);
+          });
+          pipe.readableHandlers.push(callback);
+        },
+        notifyReadableHanders: () => {
+          while (pipe.readableHandlers.length > 0) {
+            const cb = pipe.readableHandlers.shift();
+            if (cb) cb({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+          }
+          pipe.readableHandlers = [];
+        }
       };
 
       pipe.buckets.push({
@@ -80,7 +95,7 @@ addToLibrary({
           blocks: 0,
         };
       },
-      poll(stream) {
+      poll(stream, timeout, notifyCallback) {
         var pipe = stream.node.pipe;
 
         if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
@@ -92,6 +107,7 @@ addToLibrary({
           }
         }
 
+        if (notifyCallback) pipe.registerReadableHanlder(notifyCallback);
         return 0;
       },
       dup(stream) {
@@ -204,6 +220,7 @@ addToLibrary({
         if (freeBytesInCurrBuffer >= dataLen) {
           currBucket.buffer.set(data, currBucket.offset);
           currBucket.offset += dataLen;
+          pipe.notifyReadableHanders();
           return dataLen;
         } else if (freeBytesInCurrBuffer > 0) {
           currBucket.buffer.set(data.subarray(0, freeBytesInCurrBuffer), currBucket.offset);
@@ -235,6 +252,7 @@ addToLibrary({
           newBucket.buffer.set(data);
         }
 
+        pipe.notifyReadableHanders();
         return dataLen;
       },
       close(stream) {
