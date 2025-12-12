@@ -135,11 +135,12 @@ var SOURCE_MAP_BASE = '';
 var SUPPORT_BASE64_EMBEDDING = false;
 
 // the possible environments the code may run in.
-var ENVIRONMENT_MAY_BE_WEB = true;
-var ENVIRONMENT_MAY_BE_WORKER = true;
-var ENVIRONMENT_MAY_BE_NODE = true;
-var ENVIRONMENT_MAY_BE_SHELL = true;
-var ENVIRONMENT_MAY_BE_WEBVIEW = true;
+var ENVIRONMENT_MAY_BE_WEB = false;
+var ENVIRONMENT_MAY_BE_WORKER = false;
+var ENVIRONMENT_MAY_BE_NODE = false;
+var ENVIRONMENT_MAY_BE_SHELL = false;
+var ENVIRONMENT_MAY_BE_WEBVIEW = false;
+var ENVIRONMENT_MAY_BE_AUDIO_WORKLET = false;
 
 // Whether to minify import and export names in the minify_wasm_js stage.
 // Currently always off for MEMORY64.

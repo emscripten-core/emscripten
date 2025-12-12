@@ -991,12 +991,17 @@ are:
 - 'webview' - just like web, but in a webview like Cordova; considered to be
   same as "web" in almost every place
 - 'worker'  - a web worker environment.
+- 'worklet' - Audio Worklet environment.
 - 'node'    - Node.js.
 - 'shell'   - a JS shell like d8, js, or jsc.
 
 This setting can be a comma-separated list of these environments, e.g.,
 "web,worker". If this is the empty string, then all environments are
 supported.
+
+Certain settings with automatically add this to this.  For exmaple, building
+with pthreads will automatically add `worker` and building with
+``AUDIO_WORKLET`` will automatically add `worklet`.
 
 Note that the set of environments recognized here is not identical to the
 ones we identify at runtime using ``ENVIRONMENT_IS_*``. Specifically:

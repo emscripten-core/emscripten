@@ -194,6 +194,8 @@ def generate_js_compiler_input_hash(symbols_only=False):
   if not symbols_only:
     files += settings.PRE_JS_FILES
     files += settings.POST_JS_FILES
+    # Also include other .js files that could be included in the output.
+    files += glob.glob(utils.path_from_root('src/*.js'))
 
   for file in sorted(files):
     file_contents.append(utils.read_file(file))

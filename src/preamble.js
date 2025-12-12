@@ -443,6 +443,12 @@ function findWasmBinary() {
   }
 #endif
 
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET && !AUDIO_WORKLET // AUDIO_WORKLET handled above
+  if (ENVIRONMENT_IS_AUDIO_WORKLET) {
+    return '{{{ WASM_BINARY_FILE }}}';
+  }
+#endif
+
   if (Module['locateFile']) {
     return locateFile('{{{ WASM_BINARY_FILE }}}');
   }
