@@ -226,8 +226,6 @@ def extract_comp_dir_map(text):
   map_stmt_list_to_comp_dir = {}
   iterator = compile_unit_pattern.finditer(text)
   current_match = next(iterator, None)
-  if not current_match:
-    return map_stmt_list_to_comp_dir
 
   while current_match:
     next_match = next(iterator, None)
