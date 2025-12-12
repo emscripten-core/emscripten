@@ -5478,6 +5478,28 @@ Module["preRun"] = () => {
   def test_audio_worklet_emscripten_locks(self):
     self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
+  def test_audio_worklet_direct(self):
+    self.add_browser_reporting()
+    self.emcc('hello_world.c', ['-o', 'hello_world.mjs', '-sEXPORT_ES6', '-sSINGLE_FILE', '-sENVIRONMENT=worklet'])
+    create_file('worklet.mjs', '''
+      import Module from "./hello_world.mjs"
+      console.log("in worklet");
+      const m = await Module();
+      console.log("done");
+    ''')
+    create_file('test.html', '''
+      <script src="browser_reporting.js"></script>
+      <script>
+        async function createContext() {
+          const audioContext = new window.AudioContext();
+          await audioContext.audioWorklet.addModule('worklet.mjs');
+          reportResultToServer("done");
+        }
+        createContext();
+      </script>
+    ''')
+    self.run_browser('test.html', '/report_result?done')
+
   # Verifies setting audio context sample rate, and that emscripten_audio_context_sample_rate() works.
   @requires_sound_hardware
   @also_with_minimal_runtime

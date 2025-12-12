@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 4.0.22 (in development)
 -----------------------
+- It is now possible to load emscripten-generted code directly into an Audio
+  Worklet without using the `-sAUDIO_WORKLET` settings (which depends on shared
+  memory and `-sWASM_WORKERS`). To do this simply build with
+  `-sENVIRONMENT=worklet`. (#25942)
 - Source maps now support 'names' field with function name information.
   emsymbolizer will show function names when used with a source map. The size
   of source maps may increase 2-3x and the link time can increase slightly due
