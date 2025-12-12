@@ -568,12 +568,8 @@ var SyscallsLibrary = {
     var dstExceptLow = 0,
         dstExceptHigh = 0;
 
-    var allLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0) |
-                 (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0) |
-                 (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0);
-    var allHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0) |
-                  (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0) |
-                  (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
+    var allLow = srcReadLow | srcWriteLow | srcExceptLow;
+    var allHigh = srcReadHigh | srcWriteHigh | srcExceptHigh;
 
     var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
 
