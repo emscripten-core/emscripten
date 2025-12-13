@@ -393,6 +393,31 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.require_engine(nodejs)
     return nodejs
 
+  def get_deno(self):
+    """Return deno engine, if one is configured, otherwise None"""
+    if config.DENO_ENGINE and config.DENO_ENGINE in config.JS_ENGINES:
+      return config.DENO_ENGINE
+    return None
+
+  def get_node_bun_or_deno(self):
+    """Return nodejs, bun, or deno engine, if one is configured, otherwise None"""
+    if config.NODE_JS_TEST in config.JS_ENGINES:
+      return config.NODE_JS_TEST
+    if config.BUN_ENGINE and config.BUN_ENGINE in config.JS_ENGINES:
+      return config.BUN_ENGINE
+    if config.DENO_ENGINE and config.DENO_ENGINE in config.JS_ENGINES:
+      return config.DENO_ENGINE
+    return None
+
+  def require_node_bun_or_deno(self):
+    if 'EMTEST_SKIP_NODE' in os.environ:
+      self.skipTest('test requires node, bun, or deno and EMTEST_SKIP_NODE is set')
+    engine = self.get_node_bun_or_deno()
+    if not engine:
+      self.fail('node, bun, or deno required to run this test.  Use EMTEST_SKIP_NODE to skip')
+    self.require_engine(engine)
+    return engine
+
   def node_is_canary(self, nodejs):
     return nodejs and nodejs[0] and ('canary' in nodejs[0] or 'nightly' in nodejs[0])
 
@@ -405,6 +430,20 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       return
 
     self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
+
+  def require_node_canary_or_deno(self):
+    if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
+      self.skipTest('test requires node canary or deno and EMTEST_SKIP_NODE_CANARY is set')
+    nodejs = self.get_nodejs()
+    if self.node_is_canary(nodejs):
+      self.require_engine(nodejs)
+      return
+    deno = self.get_deno()
+    if deno:
+      self.require_engine(deno)
+      return
+
+    self.fail('node canary or deno required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
 
   def require_engine(self, engine):
     logger.debug(f'require_engine: {engine}')
@@ -517,9 +556,16 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       return
 
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
-    # Support for JSPI came earlier than 22, but the new API changes require v24
-    if self.try_require_node_version(24):
-      self.node_args += exp_args
+    nodejs = self.get_nodejs()
+    if nodejs:
+      # Support for JSPI came earlier than 22, but the new API changes require v24
+      if self.try_require_node_version(24):
+        self.node_args += exp_args
+        return
+
+    deno = self.get_deno()
+    if deno:
+      self.js_engines = [deno]
       return
 
     v8 = self.get_v8()
@@ -529,7 +575,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.v8_args += exp_args
       return
 
-    self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
+    self.fail('either d8, node v24, or deno required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
   def require_wasm2js(self):
     if self.is_wasm64():
@@ -556,13 +602,15 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.cflags += ['-DWASMFS']
 
   def setup_node_pthreads(self):
-    self.require_node()
+    self.require_node_bun_or_deno()
     self.cflags += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
+    engine = self.get_node_bun_or_deno()
+    self.js_engines = [engine]
     nodejs = self.get_nodejs()
-    self.js_engines = [nodejs]
-    self.node_args += shared.node_pthread_flags(nodejs)
+    if nodejs:
+      self.node_args += shared.node_pthread_flags(engine)
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir

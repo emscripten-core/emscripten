@@ -140,6 +140,17 @@ def requires_node_canary(func):
   return decorated
 
 
+def requires_node_canary_or_deno(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_node_canary_or_deno()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 # Used to mark dependencies in various tests to npm developer dependency
 # packages, which might not be installed on Emscripten end users' systems.
 def requires_dev_dependency(package):
