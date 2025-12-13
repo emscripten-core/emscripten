@@ -1,10 +1,10 @@
 {
   "a.out.js": 23216,
   "a.out.js.gz": 9081,
-  "a.out.nodebug.wasm": 172758,
-  "a.out.nodebug.wasm.gz": 57395,
-  "total": 195974,
-  "total_gz": 66476,
+  "a.out.nodebug.wasm": 172803,
+  "a.out.nodebug.wasm.gz": 57433,
+  "total": 196019,
+  "total_gz": 66514,
   "sent": [
     "__cxa_begin_catch",
     "__cxa_end_catch",
@@ -91,6 +91,8 @@
     "__cxa_get_exception_ptr",
     "__cxa_increment_exception_refcount",
     "__indirect_function_table",
+    "__rodata_end",
+    "__rodata_start",
     "__wasm_call_ctors",
     "_emscripten_stack_alloc",
     "_emscripten_stack_restore",

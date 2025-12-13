@@ -7,6 +7,8 @@ __optpos
 __optreset
 __progname
 __progname_full
+__rodata_end
+__rodata_start
 __sig_actions
 __sig_pending
 __signgam

@@ -1,10 +1,10 @@
 {
   "a.out.js": 6350,
   "a.out.js.gz": 2462,
-  "a.out.nodebug.wasm": 2675,
-  "a.out.nodebug.wasm.gz": 1491,
-  "total": 9025,
-  "total_gz": 3953,
+  "a.out.nodebug.wasm": 2719,
+  "a.out.nodebug.wasm.gz": 1516,
+  "total": 9069,
+  "total_gz": 3978,
   "sent": [
     "fd_write"
   ],
@@ -13,6 +13,8 @@
   ],
   "exports": [
     "__indirect_function_table",
+    "__rodata_end",
+    "__rodata_start",
     "__wasm_call_ctors",
     "_emscripten_stack_alloc",
     "_emscripten_stack_restore",

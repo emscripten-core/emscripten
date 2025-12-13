@@ -1,10 +1,10 @@
 {
-  "a.out.js": 26596,
-  "a.out.js.gz": 11356,
-  "a.out.nodebug.wasm": 17730,
-  "a.out.nodebug.wasm.gz": 8957,
-  "total": 44326,
-  "total_gz": 20313,
+  "a.out.js": 26756,
+  "a.out.js.gz": 11420,
+  "a.out.nodebug.wasm": 17774,
+  "a.out.nodebug.wasm.gz": 8987,
+  "total": 44530,
+  "total_gz": 20407,
   "sent": [
     "__syscall_stat64",
     "emscripten_resize_heap",
@@ -22,6 +22,8 @@
   "exports": [
     "__heap_base",
     "__indirect_function_table",
+    "__rodata_end",
+    "__rodata_start",
     "__wasm_call_ctors",
     "_emscripten_find_dylib",
     "_emscripten_stack_alloc",

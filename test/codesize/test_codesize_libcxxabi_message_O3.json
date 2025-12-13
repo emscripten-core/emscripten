@@ -1,16 +1,18 @@
 {
   "a.out.js": 3528,
   "a.out.js.gz": 1668,
-  "a.out.nodebug.wasm": 89,
-  "a.out.nodebug.wasm.gz": 98,
-  "total": 3617,
-  "total_gz": 1766,
+  "a.out.nodebug.wasm": 110,
+  "a.out.nodebug.wasm.gz": 111,
+  "total": 3638,
+  "total_gz": 1779,
   "sent": [],
   "imports": [],
   "exports": [
     "a (memory)",
     "b (__wasm_call_ctors)",
-    "c (main)"
+    "c (main)",
+    "d (__rodata_start)",
+    "e (__rodata_end)"
   ],
   "funcs": [
     "$__wasm_call_ctors",

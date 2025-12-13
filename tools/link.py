@@ -1257,6 +1257,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if not settings.RELOCATABLE:
       settings.REQUIRED_EXPORTS += ['__stack_pointer']
 
+  if settings.SHRINK_LEVEL == 0 and not settings.STANDALONE_WASM:
+    # Remove once we fix https://github.com/llvm/llvm-project/issues/180632
+    settings.REQUIRED_EXPORTS += ['__rodata_start', '__rodata_end']
+
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
 

@@ -2982,6 +2982,8 @@ var FS = {
   }
 };
 
+var UTF8ToString_cache = {};
+
 /**
    * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
    * emscripten HEAP, returns a copy of that string as a Javascript String object.
@@ -2994,7 +2996,20 @@ var FS = {
    *   string will cut short at that byte index.
    * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
-   */ var UTF8ToString = (ptr, maxBytesToRead, ignoreNul) => ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : "";
+   */ var UTF8ToString = (ptr, maxBytesToRead, ignoreNul) => {
+  var useCache = !maxBytesToRead && ptr >= ___rodata_start && ptr < ___rodata_end;
+  if (useCache) {
+    var rtn = UTF8ToString_cache[ptr];
+    if (rtn) {
+      return rtn;
+    }
+  }
+  var rtn = ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : "";
+  if (useCache) {
+    UTF8ToString_cache[ptr] = rtn;
+  }
+  return rtn;
+};
 
 var SYSCALLS = {
   calculateAt(dirfd, path, allowEmpty) {
@@ -3155,12 +3170,14 @@ Module["FS_createLazyFile"] = FS_createLazyFile;
 // End JS library exports
 // end include: postlibrary.js
 // Imports from the Wasm binary.
-var _main, memory, __indirect_function_table, wasmMemory;
+var _main, memory, __indirect_function_table, ___rodata_start, ___rodata_end, wasmMemory;
 
 function assignWasmExports(wasmExports) {
   _main = Module["_main"] = wasmExports["d"];
   memory = wasmMemory = wasmExports["b"];
   __indirect_function_table = wasmExports["__indirect_function_table"];
+  ___rodata_start = wasmExports["e"].value;
+  ___rodata_end = wasmExports["f"].value;
 }
 
 var wasmImports = {
