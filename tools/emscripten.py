@@ -119,6 +119,8 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     settings.WASM_EXPORTS = base_metadata.all_exports
   else:
     settings.WASM_EXPORTS = metadata.all_exports
+  settings.RODATA_START = metadata.rodata_start
+  settings.RODATA_END = metadata.rodata_end
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
   if settings.MAIN_MODULE and settings.ASYNCIFY == 1:

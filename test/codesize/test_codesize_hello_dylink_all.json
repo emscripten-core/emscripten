@@ -1,7 +1,7 @@
 {
-  "a.out.js": 268783,
-  "a.out.nodebug.wasm": 535579,
-  "total": 804362,
+  "a.out.js": 268190,
+  "a.out.nodebug.wasm": 535626,
+  "total": 803816,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -1992,6 +1992,8 @@
     "__pthread_detach",
     "__res_msend",
     "__res_state",
+    "__rodata_end",
+    "__rodata_start",
     "__set_temp_ret",
     "__sig_actions",
     "__sig_is_blocked",

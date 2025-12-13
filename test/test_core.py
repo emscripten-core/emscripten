@@ -5853,8 +5853,14 @@ got: 10
     self.do_runf('core/test_utf16.cpp', 'done\n')
 
   @with_both_text_decoder
+  @also_with_standalone_wasm(impure=True)
   def test_utf8(self):
-    self.do_runf('core/test_utf8.c', 'done\n')
+    cflags = []
+    if (not self.get_setting('SHRINK_LEVEL') and
+        not any(f in self.cflags for f in ('-Os', '-Oz')) and
+        not self.get_setting('STANDALONE_WASM')):
+      cflags = ['-DCHECK_RODATA_CACHE']
+    self.do_runf('core/test_utf8.c', 'done\n', cflags=cflags)
 
   @with_both_text_decoder
   def test_utf8_bench(self):

@@ -92,5 +92,75 @@ int main() {
     }
   }, utf8String2, 128);
 
+  // Empty and partial-length reads on .rodata strings (including maxBytesToRead == 0).
+  const char* emptyRoStr = "";
+  const char* roStr = "rodata string";
+  EM_ASM({
+    if (UTF8ToString($0) !== "") throw 'expected empty rodata string';
+    if (UTF8ToString($0, 0) !== "") throw 'expected empty string for len 0';
+    if (UTF8ToString($1) !== "rodata string") throw 'expected full rodata string';
+    if (UTF8ToString($1, 0) !== "") throw 'expected empty string when maxBytesToRead is 0';
+    if (UTF8ToString($1, 6) !== "rodata") throw 'expected prefix for maxBytesToRead 6';
+    if (UTF8ToString($1) !== "rodata string") throw 'expected full rodata string again';
+  }, emptyRoStr, roStr);
+
+  // Mutable .data and stack strings must not be cached.
+  static char dataStr[] = "mutable data 1";
+  char stackStr[] = "mutable stack 1";
+  EM_ASM({
+    if (UTF8ToString($0) !== "mutable data 1") throw 'expected mutable data 1';
+    if (UTF8ToString($1) !== "mutable stack 1") throw 'expected mutable stack 1';
+    if (AsciiToString($0) !== "mutable data 1") throw 'expected ascii mutable data 1';
+    if (AsciiToString($1) !== "mutable stack 1") throw 'expected ascii mutable stack 1';
+  }, dataStr, stackStr);
+  dataStr[13] = '2';
+  stackStr[14] = '2';
+  EM_ASM({
+    if (UTF8ToString($0) !== "mutable data 2") throw 'expected mutable data 2';
+    if (UTF8ToString($1) !== "mutable stack 2") throw 'expected mutable stack 2';
+    if (AsciiToString($0) !== "mutable data 2") throw 'expected ascii mutable data 2';
+    if (AsciiToString($1) !== "mutable stack 2") throw 'expected ascii mutable stack 2';
+  }, dataStr, stackStr);
+
+  // UTF8ToString and AsciiToString must not collide in the rodata cache.
+  const char* nonAsciiRoStr = u8"caf\u00e9";
+  EM_ASM({
+    if (UTF8ToString($0) !== "caf\u00e9") throw 'expected utf8 cafe';
+    if (AsciiToString($0) !== "caf\u00c3\u00a9") throw 'expected latin1 cafe';
+    if (UTF8ToString($0) !== "caf\u00e9") throw 'expected utf8 cafe again';
+  }, nonAsciiRoStr);
+
+#ifdef CHECK_RODATA_CACHE
+  // Verify .rodata strings (including empty strings) are served from the cache
+  // without re-reading memory, while explicit maxBytesToRead bypasses the cache.
+  const char* cachedStr = "cached rodata";
+  const char* cachedAsciiStr = "cached ascii";
+  EM_ASM({
+    var emptyPtr = $0;
+    if (UTF8ToString(emptyPtr) !== "") throw 'expected empty rodata string';
+    if (AsciiToString(emptyPtr) !== "") throw 'expected empty ascii rodata string';
+    HEAPU8[emptyPtr] = 88; // 'X'
+    if (UTF8ToString(emptyPtr) !== "") throw 'expected cache hit on empty rodata';
+    if (AsciiToString(emptyPtr) !== "") throw 'expected ascii cache hit on empty rodata';
+    HEAPU8[emptyPtr] = 0;
+
+    var ptr = $1;
+    if (UTF8ToString(ptr) !== "cached rodata") throw 'expected cached rodata';
+    var orig = HEAPU8[ptr];
+    HEAPU8[ptr] = 88; // 'X'
+    if (UTF8ToString(ptr) !== "cached rodata") throw 'expected cache hit on rodata';
+    if (UTF8ToString(ptr, 0) !== "") throw 'expected cache bypass for maxBytesToRead 0';
+    if (UTF8ToString(ptr, 6) !== "Xached") throw 'expected cache bypass for maxBytesToRead 6';
+    HEAPU8[ptr] = orig;
+
+    var asciiPtr = $2;
+    if (AsciiToString(asciiPtr) !== "cached ascii") throw 'expected cached ascii';
+    var origAscii = HEAPU8[asciiPtr];
+    HEAPU8[asciiPtr] = 88; // 'X'
+    if (AsciiToString(asciiPtr) !== "cached ascii") throw 'expected ascii cache hit on rodata';
+    HEAPU8[asciiPtr] = origAscii;
+  }, emptyRoStr, cachedStr, cachedAsciiStr);
+#endif
+
   printf("done\n");
 }

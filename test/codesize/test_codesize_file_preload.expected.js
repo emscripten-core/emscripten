@@ -3098,6 +3098,8 @@ var FS = {
 
 /** @type {!Uint8Array} */ var HEAPU8;
 
+var UTF8ToString_cache = {};
+
 /**
    * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
    * emscripten HEAP, returns a copy of that string as a Javascript String object.
@@ -3110,7 +3112,22 @@ var FS = {
    *   string will cut short at that byte index.
    * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
-   */ var UTF8ToString = (ptr, maxBytesToRead, ignoreNul) => ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : "";
+   */ var UTF8ToString = (ptr, maxBytesToRead, ignoreNul) => {
+  // Only cache full string reads (when maxBytesToRead is omitted).
+  // We use `== null` here since its shorter than `=== undefined`
+  var useCache = maxBytesToRead == null && ptr >= 1024 && ptr < 1038;
+  if (useCache) {
+    var rtn = UTF8ToString_cache[ptr];
+    if (rtn != null) {
+      return rtn;
+    }
+  }
+  var rtn = ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : "";
+  if (useCache) {
+    UTF8ToString_cache[ptr] = rtn;
+  }
+  return rtn;
+};
 
 var SYSCALLS = {
   currentUmask: 18,
