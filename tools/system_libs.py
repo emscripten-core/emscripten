@@ -2272,6 +2272,53 @@ class libstubs(DebugLibrary):
   includes = ['system/lib/libc/musl/src/include']
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
+class libomp(Library):
+    name = "libomp"
+    src_dir = "system/lib/libomp"
+
+    def do_build(self, out_filename, generate_only=False):
+        """Builds the library and returns the path to the file."""
+        assert out_filename == self.get_path(absolute=True)
+        path = utils.path_from_root(self.src_dir)
+
+        build_dir = os.path.join(get_build_dir(), self.get_base_name())
+        # Use a separate build directory to the ninja flavor so that building without
+        # EMCC_USE_NINJA doesn't clobber the ninja build tree
+        build_dir += "-tmp"
+        utils.safe_ensure_dirs(build_dir)
+
+        cwd = os.getcwd()
+        os.chdir(build_dir)
+        cxxflags = os.environ.get("CXXFLAGS", "")
+        os.environ["CXXFLAGS"] = cxxflags + " -pthread"
+        subprocess.call(
+            [
+                "emcmake",
+                "cmake",
+                path,
+                "-G",
+                "Ninja",
+                "-DOPENMP_STANDALONE_BUILD=ON",
+                "-DOPENMP_ENABLE_LIBOMPTARGET=OFF",
+                "-DLIBOMP_HAVE_OMPT_SUPPORT=OFF",
+                "-DLIBOMP_OMPT_SUPPORT=OFF",
+                "-DLIBOMP_OMPD_SUPPORT=OFF",
+                "-DLIBOMP_USE_DEBUGGER=OFF",
+                "-DLIBOMP_FORTRAN_MODULES=OFF",
+                "-DLIBOMP_ENABLE_SHARED=OFF",
+                "-DLIBOMP_ARCH=wasm32",
+                "-DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF",
+                "-DCMAKE_INSTALL_PREFIX=/",
+            ]
+        )
+        os.environ["CXXFLAGS"] = cxxflags
+        subprocess.call("ninja")
+        subprocess.call(["env", "DESTDIR=.", "ninja", "install"])
+        os.chdir(cwd)
+        shutil.copyfile(os.path.join(build_dir, "lib/libomp.a"), out_filename)
+
+        if not shared.DEBUG:
+            utils.delete_dir(build_dir)
 
 def get_libs_to_link(options):
   libs_to_link = []
@@ -2381,6 +2428,9 @@ def get_libs_to_link(options):
   # libc math.
   if settings.JS_MATH:
     add_library('libjsmath')
+
+  if settings.OPENMP:
+    add_library("libomp")
 
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
