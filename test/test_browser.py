@@ -5401,7 +5401,7 @@ Module["preRun"] = () => {
                cflags=['-pthread', '-sPROXY_TO_PTHREAD', '--post-js',
                           test_file('pthread/test_pthread_unhandledrejection.post.js')],
                # Firefox and Chrome report this slightly differently
-               expected=['exception:Uncaught rejected!', 'exception:uncaught exception: rejected!'])
+               expected=['exception:Error: rejected!', 'exception:Uncaught Error: rejected!'])
 
   def test_pthread_key_recreation(self):
     self.btest_exit('pthread/test_pthread_key_recreation.c', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=1'])

@@ -19,6 +19,8 @@ logger = logging.getLogger('config')
 # See parse_config_file below.
 EMSCRIPTEN_ROOT = __rootpath__
 NODE_JS = None
+BUN_ENGINE = None
+DENO_ENGINE = None
 BINARYEN_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
@@ -59,11 +61,13 @@ def fix_js_engine(old, new):
 
 def normalize_config_settings():
   global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
-  global NODE_JS, NODE_JS_TEST, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
+  global NODE_JS, NODE_JS_TEST, BUN_ENGINE, DENO_ENGINE, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
   SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
   NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
   NODE_JS_TEST = fix_js_engine(NODE_JS_TEST, listify(NODE_JS_TEST))
+  BUN_ENGINE = fix_js_engine(BUN_ENGINE, listify(BUN_ENGINE))
+  DENO_ENGINE = fix_js_engine(DENO_ENGINE, listify(DENO_ENGINE))
   V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
   JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
@@ -102,6 +106,8 @@ def parse_config_file():
   CONFIG_KEYS = (
     'NODE_JS',
     'NODE_JS_TEST',
+    'BUN_ENGINE',
+    'DENO_ENGINE',
     'BINARYEN_ROOT',
     'SPIDERMONKEY_ENGINE',
     'V8_ENGINE',

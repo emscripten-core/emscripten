@@ -60,7 +60,7 @@ from decorators import (
   requires_jspi,
   requires_native_clang,
   requires_node,
-  requires_node_canary,
+  requires_node_canary_or_deno,
   requires_v8,
   requires_wasm2js,
   requires_wasm_eh,
@@ -8502,7 +8502,7 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_hello_world.c')
 
   # Test that pthread_join works correctly with asyncify.
-  @requires_node_canary
+  @requires_node_canary_or_deno
   @node_pthreads
   def test_pthread_join_and_asyncify(self):
     # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552

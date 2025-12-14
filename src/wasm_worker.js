@@ -57,6 +57,7 @@ if (ENVIRONMENT_IS_NODE) {
     return f;
   }
 
+  const parentPort = worker_threads['parentPort'];
   Object.assign(globalThis, {
     addEventListener: (name, handler) => parentPort['on'](name, wrapMsgHandler(handler)),
     removeEventListener: (name, handler) => parentPort['off'](name, wrapMsgHandler(handler)),

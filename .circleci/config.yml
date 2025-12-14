@@ -883,7 +883,34 @@ jobs:
             echo "BUN_ENGINE = os.path.expanduser('~/.bun/bin/bun')" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [BUN_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "core0.test_hello_world"
+          test_targets: "
+            core0.test_hello_world
+            core0.test_hello_argc_pthreads
+            core2.test_pthread_create
+            core2.test_pthread_unhandledrejection
+            "
+  test-deno:
+    executor: linux-python
+    steps:
+      - checkout
+      - pip-install
+      - install-emsdk
+      - run:
+          name: install deno
+          command: |
+            curl -fsSL https://deno.land/install.sh | sh
+            echo "DENO_ENGINE = [os.path.expanduser('~/.deno/bin/deno'), 'run', '--allow-read', '--unstable-detect-cjs']" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [DENO_ENGINE]" >> ~/emsdk/.emscripten
+      - run-tests:
+          test_targets: "
+            core0.test_hello_world
+            core0.test_asyncify_main_module
+            core2.test_pthread_create
+            core2.test_pthread_unhandledrejection
+            "
+            # The following tests using PROXY_TO_PTHREAD are disabled because of https://github.com/denoland/deno/issues/14786:
+            # core0.test_hello_argc_pthreads
+            # core0.test_pthread_join_and_asyncify
   test-jsc:
     executor: linux-python
     steps:
@@ -1377,6 +1404,7 @@ workflows:
           requires:
             - build-linux
       - test-bun
+      - test-deno
       - test-jsc
       - test-spidermonkey
       - test-node-compat
