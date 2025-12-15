@@ -342,7 +342,7 @@ def get_cached_file(filetype, filename, generator, cache_limit):
 def compile_javascript_cached():
   # Avoiding using the cache when generating struct info since
   # this step is performed while the cache is locked.
-  # Sadly we have to skip the caching whenwhere we have user JS libraries.  This is because
+  # Sadly we have to skip the caching whenever we have user JS libraries.  This is because
   # these libraries can import arbirary other JS files (either vis node's `import` or via #include)
   if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE or settings.JS_LIBRARIES:
     return compile_javascript()
