@@ -1189,7 +1189,7 @@ def get_binaryen_feature_flags():
 
 
 def get_binaryen_version(bindir):
-  opt = os.path.join(bindir, utils.exe_suffix('wasm-opt'))
+  opt = utils.find_exe(bindir, 'wasm-opt')
   if not os.path.exists(opt):
     exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % opt)
   try:

@@ -48,6 +48,7 @@ from common import (
   create_file,
   ensure_dir,
   env_modify,
+  exe_path_from_root,
   make_executable,
   path_from_root,
   test_file,
@@ -118,13 +119,13 @@ from tools.utils import (
   write_file,
 )
 
-emmake = utils.bat_suffix(path_from_root('emmake'))
-emconfig = utils.bat_suffix(path_from_root('em-config'))
-emsize = utils.bat_suffix(path_from_root('emsize'))
-empath_split = utils.bat_suffix(path_from_root('empath-split'))
-emprofile = utils.bat_suffix(path_from_root('emprofile'))
-emstrip = utils.bat_suffix(path_from_root('emstrip'))
-emsymbolizer = utils.bat_suffix(path_from_root('emsymbolizer'))
+emmake = exe_path_from_root('emmake')
+emconfig = exe_path_from_root('em-config')
+emsize = exe_path_from_root('emsize')
+empath_split = exe_path_from_root('empath-split')
+emprofile = exe_path_from_root('emprofile')
+emstrip = exe_path_from_root('emstrip')
+emsymbolizer = exe_path_from_root('emsymbolizer')
 
 
 def is_bitcode(filename):
