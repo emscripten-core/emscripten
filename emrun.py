@@ -1351,12 +1351,12 @@ def subprocess_env():
 def remove_tree(d):
   os.chmod(d, stat.S_IWRITE)
   try:
-    def remove_readonly_and_try_again(func, path, _exc_info):
+    def remove_readonly_and_try_again(func, path, exc_info):
       if not (os.stat(path).st_mode & stat.S_IWRITE):
         os.chmod(path, stat.S_IWRITE)
         func(path)
       else:
-        raise
+        raise exc_info[1]
     shutil.rmtree(d, onerror=remove_readonly_and_try_again)
   except Exception:
     pass
