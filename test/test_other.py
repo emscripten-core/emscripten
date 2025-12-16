@@ -15088,7 +15088,7 @@ addToLibrary({
   @requires_git_checkout
   def test_install(self):
     self.run_process([PYTHON, path_from_root('tools/install.py'), 'newdir'], env=shared.env_with_node_in_path())
-    self.assertExists('newdir/emcc')
+    self.assertExists(utils.bat_suffix('newdir/emcc'))
     # Some files, such as as maintenance tools should not be part of the
     # install.
     self.assertNotExists('newdir/tools/maint/')
