@@ -17,7 +17,7 @@ local_root = os.path.join(script_dir, "libomp")
 local_src = os.path.join(local_root, "src")
 local_inc = os.path.join(local_root, "include")
 
-excludes = ["doc", "build", "tests"]
+excludes = ["doc", "build", "tests", "CMakeFiles"]
 
 
 def clean_dir(dirname):
