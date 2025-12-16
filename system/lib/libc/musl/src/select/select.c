@@ -15,6 +15,10 @@ int select(int n, fd_set *restrict rfds, fd_set *restrict wfds, fd_set *restrict
 	const time_t max_time = (1ULL<<8*sizeof(time_t)-1)-1;
 
 	if (s<0 || us<0) return __syscall_ret(-EINVAL);
+#ifdef __EMSCRIPTEN__
+	uint64_t millis =  tv ? s * 1000 + (us / 1000) : -1;
+	return syscall_cp(SYS_select, n, rfds, wfds, efds, millis);
+#else
 	if (us/1000000 > max_time - s) {
 		s = max_time;
 		us = 999999;
@@ -24,7 +28,6 @@ int select(int n, fd_set *restrict rfds, fd_set *restrict wfds, fd_set *restrict
 		us %= 1000000;
 		ns = us*1000;
 	}
-
 #ifdef SYS_pselect6_time64
 	int r = -ENOSYS;
 	if (SYS_pselect6 == SYS_pselect6_time64 || !IS32BIT(s))
@@ -41,5 +44,6 @@ int select(int n, fd_set *restrict rfds, fd_set *restrict wfds, fd_set *restrict
 #else
 	return syscall_cp(SYS_pselect6, n, rfds, wfds, efds,
 		tv ? ((long[]){s, ns}) : 0, ((syscall_arg_t[]){ 0, _NSIG/8 }));
+#endif
 #endif
 }
