@@ -54,8 +54,8 @@ variables so that emcc etc. are used. Typical usage:
         args[0] = mingw32_make
 
   # On Windows, run the execution through shell to get PATH expansion and
-  # executable extension lookup, e.g. 'sdl2-config' will match with
-  # 'sdl2-config.bat' in PATH.
+  # executable extension lookup, e.g. 'make' will match with
+  # 'make.bat' in PATH.
   print(f'emmake: "{shlex.join(args)}" in "{os.getcwd()}"', file=sys.stderr)
   if utils.WINDOWS:
     return utils.run_process(args, check=False, shell=True, env=env).returncode
