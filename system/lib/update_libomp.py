@@ -17,7 +17,15 @@ local_root = os.path.join(script_dir, "libomp")
 local_src = os.path.join(local_root, "src")
 local_inc = os.path.join(local_root, "include")
 
-excludes = ["doc", "build", "tests", "CMakeFiles"]
+excludes = [
+    "doc",
+    "build",
+    "tests",
+    "CMakeFiles",
+    "libgomp.a",
+    "libiomp5.a",
+    "libomp.a",
+]
 
 
 def clean_dir(dirname):
@@ -47,6 +55,23 @@ def main():
     else:
         llvm_dir = default_llvm_dir
     upstream_root = os.path.join(llvm_dir, "openmp/")
+    upstream_runtime_root = os.path.join(upstream_root, "runtime/src")
+    upstream_inc = os.path.join(upstream_root, "build/usr/include")
+    upstream_build_src = os.path.join(upstream_root, "build/runtime/src")
+    print(upstream_inc)
+    assert os.path.exists(upstream_runtime_root)
+    assert os.path.exists(upstream_inc)
+    assert os.path.exists(upstream_build_src)
+
+    # Remove old version
+    # clean_dir(local_src)
+    clean_dir(local_root)
+
+    os.mkdir(local_src)
+    os.mkdir(local_inc)
+
+    copy_tree(upstream_runtime_root, local_src)
+    copy_tree(upstream_inc, local_inc)
 
     cwd = os.getcwd()
     os.chdir(upstream_root)
@@ -77,24 +102,6 @@ def main():
     subprocess.call("ninja")
     subprocess.call(["env", "DESTDIR=.", "ninja", "install"])
     os.chdir(cwd)
-
-    upstream_runtime_root = os.path.join(upstream_root, "runtime/src")
-    upstream_inc = os.path.join(upstream_root, "build/usr/include")
-    upstream_build_src = os.path.join(upstream_root, "build/runtime/src")
-    print(upstream_inc)
-    assert os.path.exists(upstream_runtime_root)
-    assert os.path.exists(upstream_inc)
-    assert os.path.exists(upstream_build_src)
-
-    # Remove old version
-    # clean_dir(local_src)
-    clean_dir(local_root)
-
-    os.mkdir(local_src)
-    os.mkdir(local_inc)
-
-    copy_tree(upstream_runtime_root, local_src)
-    copy_tree(upstream_inc, local_inc)
 
     shutil.copy2(os.path.join(upstream_root, "LICENSE.TXT"), local_root)
     shutil.copy2(
