@@ -16,14 +16,17 @@ console.log("Running pthread_esm_startup");
 #if ENVIRONMENT_MAY_BE_NODE
 if ({{{ nodeDetectionCode() }}}) {
   // Create as web-worker-like an environment as we can.
+  globalThis.self = globalThis;
   var worker_threads = await import('worker_threads');
-  global.Worker = worker_threads.Worker;
+  globalThis.Worker = worker_threads.Worker;
   var parentPort = worker_threads['parentPort'];
-  parentPort.on('message', (msg) => global.onmessage?.({ data: msg }));
-  Object.assign(globalThis, {
-    self: global,
-    postMessage: (msg) => parentPort['postMessage'](msg),
-  });
+  // Deno and Bun already have `postMessage` defined on the global scope and
+  // deliver messages to `globalThis.onmessage`, so we must not duplicate that
+  // behavior here if `postMessage` is already present.
+  if (!globalThis.postMessage) {
+    parentPort.on('message', (msg) => globalThis.onmessage?.({ data: msg }));
+    globalThis.postMessage = (msg) => parentPort['postMessage'](msg);
+  }
 }
 #endif
 
