@@ -356,7 +356,7 @@ class Library:
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
 
-  # Enable the `-Werror` compiler flag. Not all system libraries can compile with 
+  # Enable the `-Werror` compiler flag. Not all system libraries can compile with
   # `-Werror`. If that is the case, override this to false.
   enable_werror = True
 
