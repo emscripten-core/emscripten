@@ -224,14 +224,23 @@ def extract_comp_dir_map(text):
   comp_dir_pattern = re.compile(r"DW_AT_comp_dir\s+\(\"([^\"]+)\"\)")
 
   map_stmt_list_to_comp_dir = {}
-  chunks = compile_unit_pattern.split(text) # DW_TAG_compile_unit
-  for chunk in chunks[1:]:
-    stmt_list_match = stmt_list_pattern.search(chunk) # DW_AT_stmt_list
+  iterator = compile_unit_pattern.finditer(text)
+  current_match = next(iterator, None)
+
+  while current_match:
+    next_match = next(iterator, None)
+    start = current_match.end()
+    end = next_match.start() if next_match else len(text)
+
+    stmt_list_match = stmt_list_pattern.search(text, start, end)
     if stmt_list_match is not None:
       stmt_list = stmt_list_match.group(1)
-      comp_dir_match = comp_dir_pattern.search(chunk) # DW_AT_comp_dir
+      comp_dir_match = comp_dir_pattern.search(text, start, end)
       comp_dir = decode_octal_encoded_utf8(comp_dir_match.group(1)) if comp_dir_match is not None else ''
       map_stmt_list_to_comp_dir[stmt_list] = comp_dir
+
+    current_match = next_match
+
   return map_stmt_list_to_comp_dir
 
 
@@ -313,9 +322,11 @@ def extract_func_ranges(text):
   #                 DW_AT_high_pc  (0x00000083)
   #                 ...
 
-  tag_pattern = re.compile(r'\r?\n(?=0x[0-9a-f]+:)')
-  subprogram_pattern = re.compile(r"0x[0-9a-f]+:\s+DW_TAG_subprogram")
-  inlined_pattern = re.compile(r"0x[0-9a-f]+:\s+DW_TAG_inlined_subroutine")
+  # Pattern to find the start of the NEXT DWARF tag (boundary marker)
+  next_tag_pattern = re.compile(r'\n0x[0-9a-f]+:')
+  # Pattern to find DWARF tags for functions (Subprogram or Inlined) directly
+  func_pattern = re.compile(r'DW_TAG_(?:subprogram|inlined_subroutine)')
+
   low_pc_pattern = re.compile(r'DW_AT_low_pc\s+\(0x([0-9a-f]+)\)')
   high_pc_pattern = re.compile(r'DW_AT_high_pc\s+\(0x([0-9a-f]+)\)')
   abstract_origin_pattern = re.compile(r'DW_AT_abstract_origin\s+\(0x[0-9a-f]+\s+"([^"]+)"\)')
@@ -323,44 +334,48 @@ def extract_func_ranges(text):
   name_pattern = re.compile(r'DW_AT_name\s+\("([^"]+)"\)')
   specification_pattern = re.compile(r'DW_AT_specification\s+\(0x[0-9a-f]+\s+"([^"]+)"\)')
 
-  func_ranges = []
-  dw_tags = tag_pattern.split(text)
-
-  def get_name_from_tag(tag):
-    m = linkage_name_pattern.search(tag) # DW_AT_linkage_name
+  def get_name_from_tag(start, end):
+    m = linkage_name_pattern.search(text, start, end)
     if m:
       return m.group(1)
-    m = name_pattern.search(tag) # DW_AT_name
+    m = name_pattern.search(text, start, end)
     if m:
       return m.group(1)
     # If name is missing, check for DW_AT_specification annotation
-    m = specification_pattern.search(tag)
+    m = specification_pattern.search(text, start, end)
     if m:
       return m.group(1)
     return None
 
-  for tag in dw_tags:
-    is_subprogram = subprogram_pattern.search(tag) # DW_TAG_subprogram
-    is_inlined = inlined_pattern.search(tag) # DW_TAG_inlined_subroutine
+  func_ranges = []
+  for match in func_pattern.finditer(text):
+    # Search from the end of the tag name (e.g. after "DW_TAG_subprogram").
+    # Attributes are expected to follow.
+    search_start = match.end()
 
-    if is_subprogram or is_inlined:
-      name = None
-      low_pc = None
-      high_pc = None
-      m = low_pc_pattern.search(tag) # DW_AT_low_pc
+    # Search until the beginning of the next tag
+    m_next = next_tag_pattern.search(text, search_start)
+    search_end = m_next.start() if m_next else len(text)
+
+    name = None
+    low_pc = None
+    high_pc = None
+    m = low_pc_pattern.search(text, search_start, search_end)
+    if m:
+      low_pc = int(m.group(1), 16)
+    m = high_pc_pattern.search(text, search_start, search_end)
+    if m:
+      high_pc = int(m.group(1), 16)
+
+    if 'DW_TAG_subprogram' in match.group(0):
+      name = get_name_from_tag(search_start, search_end)
+    else: # is_inlined
+      m = abstract_origin_pattern.search(text, search_start, search_end)
       if m:
-        low_pc = int(m.group(1), 16)
-      m = high_pc_pattern.search(tag) # DW_AT_high_pc
-      if m:
-        high_pc = int(m.group(1), 16)
-      if is_subprogram:
-        name = get_name_from_tag(tag)
-      else: # is_inlined
-        m = abstract_origin_pattern.search(tag) # DW_AT_abstract_origin
-        if m:
-          name = m.group(1)
-      if name and low_pc is not None and high_pc is not None:
-        func_ranges.append(FuncRange(name, low_pc, high_pc))
+        name = m.group(1)
+
+    if name and low_pc is not None and high_pc is not None:
+      func_ranges.append(FuncRange(name, low_pc, high_pc))
 
   # Demangle names
   all_names = [item.name for item in func_ranges]
@@ -401,9 +416,23 @@ def read_dwarf_info(wasm, options):
   line_pattern = re.compile(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?")
 
   entries = []
-  debug_line_chunks = debug_line_pattern.split(output)
-  map_stmt_list_to_comp_dir = extract_comp_dir_map(debug_line_chunks[0])
-  for stmt_list, line_chunk in zip(debug_line_chunks[1::2], debug_line_chunks[2::2], strict=True):
+  iterator = debug_line_pattern.finditer(output)
+  try:
+    current_match = next(iterator)
+    debug_info_end = current_match.start() # end of .debug_info contents
+  except StopIteration:
+    debug_info_end = len(output)
+
+  debug_info = output[:debug_info_end] # .debug_info contents
+  map_stmt_list_to_comp_dir = extract_comp_dir_map(debug_info)
+
+  while current_match:
+    next_match = next(iterator, None)
+
+    stmt_list = current_match.group(1)
+    start = current_match.end()
+    end = next_match.start() if next_match else len(output)
+
     comp_dir = map_stmt_list_to_comp_dir.get(stmt_list, '')
 
     # include_directories[  1] = "/Users/yury/Work/junk/sqlite-playground/src"
@@ -422,16 +451,16 @@ def read_dwarf_info(wasm, options):
     # 0x0000000000000011     28      0      1   0             0  is_stmt
 
     include_directories = {'0': comp_dir}
-    for dir in include_dir_pattern.finditer(line_chunk):
+    for dir in include_dir_pattern.finditer(output, start, end):
       include_directories[dir.group(1)] = os.path.join(comp_dir, decode_octal_encoded_utf8(dir.group(2)))
 
     files = {}
-    for file in file_pattern.finditer(line_chunk):
+    for file in file_pattern.finditer(output, start, end):
       dir = include_directories[file.group(3)]
       file_path = os.path.join(dir, decode_octal_encoded_utf8(file.group(2)))
       files[file.group(1)] = file_path
 
-    for line in line_pattern.finditer(line_chunk):
+    for line in line_pattern.finditer(output, start, end):
       entry = {'address': int(line.group(1), 16), 'line': int(line.group(2)), 'column': int(line.group(3)), 'file': files[line.group(4)], 'eos': line.group(5) is not None}
       if not entry['eos']:
         entries.append(entry)
@@ -444,12 +473,14 @@ def read_dwarf_info(wasm, options):
         else:
           entries.append(entry)
 
+    current_match = next_match
+
   remove_dead_entries(entries)
 
   # return entries sorted by the address field
   entries = sorted(entries, key=lambda entry: entry['address'])
 
-  func_ranges = extract_func_ranges(debug_line_chunks[0])
+  func_ranges = extract_func_ranges(debug_info)
   return entries, func_ranges
 
 
