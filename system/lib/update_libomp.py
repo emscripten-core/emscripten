@@ -78,29 +78,40 @@ def main():
     subprocess.call(["env", "DESTDIR=.", "ninja", "install"])
     os.chdir(cwd)
 
-    upstream_src = os.path.join(upstream_root, "runtime/src")
+    upstream_runtime_root = os.path.join(upstream_root, "runtime/src")
     upstream_inc = os.path.join(upstream_root, "build/usr/include")
+    upstream_build_src = os.path.join(upstream_root, "build/runtime/src")
     print(upstream_inc)
+    assert os.path.exists(upstream_runtime_root)
     assert os.path.exists(upstream_inc)
-    assert os.path.exists(upstream_src)
+    assert os.path.exists(upstream_build_src)
 
     # Remove old version
     # clean_dir(local_src)
     clean_dir(local_root)
 
+    os.mkdir(local_src)
     os.mkdir(local_inc)
 
-    copy_tree(upstream_root, local_root)
+    copy_tree(upstream_runtime_root, local_src)
     copy_tree(upstream_inc, local_inc)
 
     shutil.copy2(os.path.join(upstream_root, "LICENSE.TXT"), local_root)
     shutil.copy2(
-        os.path.join(llvm_dir, "cmake/Modules/LLVMCheckCompilerLinkerFlag.cmake"),
-        os.path.join(local_root, "runtime/cmake"),
+        os.path.join(upstream_build_src, "omp.h"),
+        local_src,
     )
     shutil.copy2(
-        os.path.join(llvm_dir, "cmake/Modules/ExtendPath.cmake"),
-        os.path.join(local_root, "runtime/cmake"),
+        os.path.join(upstream_build_src, "kmp_config.h"),
+        local_src,
+    )
+    shutil.copy2(
+        os.path.join(upstream_build_src, "kmp_i18n_id.inc"),
+        local_src,
+    )
+    shutil.copy2(
+        os.path.join(upstream_build_src, "kmp_i18n_default.inc"),
+        local_src,
     )
 
 
