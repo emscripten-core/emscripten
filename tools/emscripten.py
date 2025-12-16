@@ -419,7 +419,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   for e in settings.EXPORTED_FUNCTIONS:
     if not js_manipulation.isidentifier(e):
-      exit_with_error(f'invalid export name: "{e}"')
+      diagnostics.warning('js-compiler', f'export name is not a valid JS symbol: "{e}".  Use `Module` or `wasmExports` to access this symbol')
 
   # memory and global initializers
 
@@ -1019,10 +1019,16 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
     # folks try to call/use a reference that was taken before the
     # wasm module is available.
     for sym in mangled:
-      assignment = sym
-      if (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(sym) and settings.MODULARIZE != 'instance':
-        assignment += f" = Module['{sym}']"
-      receiving.append(f"var {assignment} = makeInvalidEarlyAccess('{sym}');")
+      module_export = (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(sym) and settings.MODULARIZE != 'instance'
+      if not js_manipulation.isidentifier(sym) and not module_export:
+        continue
+      assignment = f'var {sym}'
+      if module_export:
+        if js_manipulation.isidentifier(sym):
+          assignment += f" = Module['{sym}']"
+        else:
+          assignment = f"Module['{sym}']"
+      receiving.append(f"{assignment} = makeInvalidEarlyAccess('{sym}');")
   else:
     # Declare all exports in a single var statement
     sep = ',\n  '
@@ -1057,7 +1063,15 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
       sig_str = sym.removeprefix('dynCall_')
       assignment += f" = dynCalls['{sig_str}']"
     if do_module_exports and should_export(mangled):
-      assignment += f" = Module['{mangled}']"
+      if js_manipulation.isidentifier(mangled):
+        assignment += f" = Module['{mangled}']"
+      else:
+        assignment = f"Module['{mangled}']"
+    elif not js_manipulation.isidentifier(mangled):
+      # Symbol is not a valid JS identify and also not exported. In this case we
+      # have nothing to do here.
+      continue
+
     if sym in alias_inverse_map:
       for target in alias_inverse_map[sym]:
         assignment += f" = {target}"
