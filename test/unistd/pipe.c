@@ -6,6 +6,7 @@
  */
 
 #include <unistd.h>
+#include <stdbool.h>
 #include <sys/types.h>
 #include <sys/stat.h>
 #include <fcntl.h>
@@ -17,8 +18,8 @@
 
 unsigned char buf[1 << 16];
 
-#define FALSE 0
-#define TRUE 1
+#define MAX(a, b) (((a) >= (b)) ? (a) : (b))
+
 
 // This test program relies on the simplest read/write behavior when
 // all the data can be read/written in one call.
@@ -40,6 +41,37 @@ void test_read(int fd0, unsigned char *ch, int size) {
   }
 }
 
+// test_select and test_poll perform the exact same actions/assertions but
+// with two different system calls.  They should always give the same
+// retult.
+
+void test_select(int *fd, bool data_available) {
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  FD_SET(fd[0], &rfds);
+  FD_SET(fd[1], &rfds);
+
+  fd_set wfds;
+  FD_ZERO(&wfds);
+  FD_SET(fd[0], &wfds);
+  FD_SET(fd[1], &wfds);
+
+  // Don't block at all
+  struct timeval tv = { 0, 0};
+  int maxfd = MAX(fd[0], fd[1]) + 1;
+  int ret = select(maxfd, &rfds, &wfds, NULL, &tv);
+
+  if (data_available) {
+    assert(ret == 2);
+    assert(FD_ISSET(fd[0], &rfds));
+  } else {
+    assert(ret == 1);
+    assert(!FD_ISSET(fd[0], &rfds));
+  }
+
+  assert(FD_ISSET(fd[1], &wfds));
+}
+
 void test_poll(int *fd, int data_available) {
   struct pollfd pfds[2];
   memset(pfds, 0, sizeof pfds);
@@ -57,6 +89,9 @@ void test_poll(int *fd, int data_available) {
     assert(pfds[0].revents == 0);
   }
   assert(pfds[1].revents == POLLOUT);
+
+  // select should report the exact same status.
+  test_select(fd, data_available);
 }
 
 int test_most() {
@@ -86,13 +121,13 @@ int test_most() {
   // write about 40 Kb of data
   for (int i = 1; i < 200; ++i) {
     test_write(fd[1], &wchar, i + 2);
-    test_poll(fd, TRUE);
+    test_poll(fd, true);
     test_read (fd[0], &rchar, i);
-    test_poll(fd, TRUE);
+    test_poll(fd, true);
     test_write(fd[1], &wchar, i + 1);
-    test_poll(fd, TRUE);
+    test_poll(fd, true);
     test_read (fd[0], &rchar, i + 3);
-    test_poll(fd, FALSE);
+    test_poll(fd, false);
   }
 
   // Test reading when there is less data available than the read buffer size
@@ -126,11 +161,11 @@ int test_most() {
 #endif
 
   // Normal operations still work in non-blocking mode
-  test_poll(fd, FALSE);
+  test_poll(fd, false);
   test_write(fd[1], &wchar, 10);
-  test_poll(fd, TRUE);
+  test_poll(fd, true);
   test_read (fd[0], &rchar, 10);
-  test_poll(fd, FALSE);
+  test_poll(fd, false);
 
   // Clear buffer
   memset(buf, 0, sizeof(buf));

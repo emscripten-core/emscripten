@@ -1769,15 +1769,86 @@ int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
 }
 
 int __syscall__newselect(int nfds,
-                         intptr_t readfds_,
-                         intptr_t writefds_,
-                         intptr_t exceptfds_,
-                         intptr_t timeout_) {
-  // TODO: Implement this syscall. For now, we return an error code,
-  //       specifically ENOMEM which is valid per the docs:
-  //          ENOMEM Unable to allocate memory for internal tables
-  //          https://man7.org/linux/man-pages/man2/select.2.html
-  return -ENOMEM;
+                         intptr_t _readfds,
+                         intptr_t _writefds,
+                         intptr_t _exceptfds,
+                         intptr_t _timeout) {
+  // Implement select in terms of `poll()`
+
+  // Part 1: convert select arguments into poll arguments
+  fd_set* readfds = (fd_set*)_readfds;
+  fd_set* writefds = (fd_set*)_writefds;
+  fd_set* exceptfds = (fd_set*)_exceptfds;
+  timeval* timeout = (timeval*)_timeout;
+
+  int n = 0;
+  struct pollfd* fds = (struct pollfd*)calloc(nfds, sizeof(struct pollfd));
+
+  for (int i = 0; i < nfds; i++) {
+    if (readfds && FD_ISSET(i, readfds)) {
+      fds[n].events |= POLLIN;
+    }
+    if (writefds && FD_ISSET(i, writefds)) {
+      fds[n].events |= POLLOUT;
+    }
+    if (exceptfds && FD_ISSET(i, exceptfds)) {
+      fds[n].events |= POLLPRI;
+    }
+    if (fds[n].events) {
+      fds[n].fd = i;
+      n++;
+    }
+  }
+
+  // __syscall_poll currently ignores timeout but we calculate it here for
+  // completeness.
+  int timeout_ms = -1; // Infinite
+  if (timeout) {
+    timeout_ms = (timeout->tv_sec * 1000) + ((timeout->tv_usec + 999) / 1000);
+  }
+
+  int rtn = __syscall_poll((intptr_t)fds, n, timeout_ms);
+  if (rtn < 0) {
+    free(fds);
+    return -1;
+  }
+
+  // Part 2: Translate the result of poll into the results of select();
+
+  if (readfds)   FD_ZERO(readfds);
+  if (writefds)  FD_ZERO(writefds);
+  if (exceptfds) FD_ZERO(exceptfds);
+
+  int count = 0;
+
+  if (rtn > 0) {
+    for (int i = 0; i < n; i++) {
+      int fd = fds[i].fd;
+      short revents = fds[i].revents;
+      if (revents) {
+        // Map POLLIN to readfds
+        // POLLHUP/POLLERR usually count as readable (EOF or Error)
+        if (readfds && (revents & POLLIN || revents & POLLHUP || revents & POLLERR)) {
+          FD_SET(fd, readfds);
+          count++;
+        }
+        // Map POLLOUT to writefds
+        // POLLERR usually counts as writable (so write fails immediately)
+        if (writefds && (revents & POLLOUT || revents & POLLERR)) {
+          FD_SET(fd, writefds);
+          count++;
+        }
+        // Map POLLPRI to exceptfds
+        if (exceptfds && (revents & POLLPRI)) {
+          FD_SET(fd, exceptfds);
+          count++;
+        }
+      }
+    }
+  }
+
+  free(fds);
+  return count;
 }
 
 } // extern "C"
