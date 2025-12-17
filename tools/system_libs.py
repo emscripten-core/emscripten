@@ -2279,6 +2279,8 @@ class libomp(Library):
     '/system/lib/libomp/src/include',
     '/system/lib/libomp/src/thirdparty/ittnotify',
   ]
+  # This needs to come from the flags. If it does not, llvm won't add propper magic symbols
+  never_force = True
   enable_werror = False
   cflags = [
     '-D_GLIBCXX_NO_ASSERTIONS', '-Wall', '-Wcast-qual', '-Wformat-pedantic',
