@@ -34,6 +34,7 @@ from tools.settings import COMPILE_TIME_SETTINGS
 from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir
 from tools.utils import (
   WINDOWS,
+  exe_path_from_root,
   exit_with_error,
   path_from_root,
   read_binary,
@@ -77,13 +78,13 @@ TEST_ROOT = path_from_root('test')
 LAST_TEST = path_from_root('out/last_test.txt')
 PREVIOUS_TEST_RUN_RESULTS_FILE = path_from_root('out/previous_test_run_results.json')
 
-WEBIDL_BINDER = utils.bat_suffix(path_from_root('tools/webidl_binder'))
+WEBIDL_BINDER = exe_path_from_root('tools/webidl_binder')
 
-EMBUILDER = utils.bat_suffix(path_from_root('embuilder'))
-EMMAKE = utils.bat_suffix(path_from_root('emmake'))
-EMCMAKE = utils.bat_suffix(path_from_root('emcmake'))
-EMCONFIGURE = utils.bat_suffix(path_from_root('emconfigure'))
-EMRUN = utils.bat_suffix(utils.path_from_root('emrun'))
+EMBUILDER = exe_path_from_root('embuilder')
+EMMAKE = exe_path_from_root('emmake')
+EMCMAKE = exe_path_from_root('emcmake')
+EMCONFIGURE = exe_path_from_root('emconfigure')
+EMRUN = exe_path_from_root('emrun')
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
@@ -125,6 +126,10 @@ def maybe_test_file(filename):
 
 def copytree(src, dest):
   shutil.copytree(src, dest, dirs_exist_ok=True)
+
+
+def exe_suffix(cmd):
+  return cmd + '.exe' if WINDOWS else cmd
 
 
 def compiler_for(filename, force_c=False):

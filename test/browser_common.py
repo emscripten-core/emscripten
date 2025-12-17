@@ -243,7 +243,7 @@ class FirefoxConfig:
   data_dir_flag = '-profile '
   default_flags = ('-new-instance', '-wait-for-browser')
   headless_flags = '-headless'
-  executable_name = utils.exe_suffix('firefox')
+  executable_name = common.exe_suffix('firefox')
 
   @staticmethod
   def configure(data_dir):

@@ -65,17 +65,26 @@ def path_from_root(*pathelems):
   return str(Path(__rootpath__, *pathelems))
 
 
+def exe_path_from_root(*pathelems):
+  return find_exe(path_from_root(*pathelems))
+
+
 def suffix(name):
   """Return the file extension"""
   return os.path.splitext(name)[1]
 
 
-def exe_suffix(cmd):
-  return cmd + '.exe' if WINDOWS else cmd
+def find_exe(*pathelems):
+  path = os.path.join(*pathelems)
 
+  if WINDOWS:
+    # Should we use PATHEXT environment variable here?
+    # For now, specify only enough extensions to find llvm / binaryen / emscripten executables.
+    for ext in ['.exe', '.bat']:
+      if os.path.isfile(path + ext):
+        return path + ext
 
-def bat_suffix(cmd):
-  return cmd + '.bat' if WINDOWS else cmd
+  return path
 
 
 def replace_suffix(filename, new_suffix):

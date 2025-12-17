@@ -43,7 +43,7 @@ import contextlib
 
 from . import cache, config, diagnostics, filelock, tempfiles, utils
 from .settings import settings
-from .utils import bat_suffix, exit_with_error, memoize, path_from_root, safe_ensure_dirs
+from .utils import exe_path_from_root, exit_with_error, memoize, path_from_root, safe_ensure_dirs
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
@@ -451,7 +451,7 @@ def llvm_tool_path_with_suffix(tool, suffix):
   if suffix:
     tool += '-' + suffix
   llvm_root = os.path.expanduser(config.LLVM_ROOT)
-  return os.path.join(llvm_root, utils.exe_suffix(tool))
+  return utils.find_exe(llvm_root, tool)
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -644,11 +644,11 @@ WASM_LD = llvm_tool_path('wasm-ld')
 LLVM_PROFDATA = llvm_tool_path('llvm-profdata')
 LLVM_COV = llvm_tool_path('llvm-cov')
 
-EMCC = bat_suffix(path_from_root('emcc'))
-EMXX = bat_suffix(path_from_root('em++'))
-EMAR = bat_suffix(path_from_root('emar'))
-EMRANLIB = bat_suffix(path_from_root('emranlib'))
-FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
+EMCC = exe_path_from_root('emcc')
+EMXX = exe_path_from_root('em++')
+EMAR = exe_path_from_root('emar')
+EMRANLIB = exe_path_from_root('emranlib')
+FILE_PACKAGER = exe_path_from_root('tools/file_packager')
 # Windows .dll suffix is not included in this list, since those are never
 # linked to directly on the command line.
 DYLIB_EXTENSIONS = ['.dylib', '.so']
