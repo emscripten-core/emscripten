@@ -1744,12 +1744,15 @@ var LibrarySDL = {
   },
 
 #if ASYNCIFY
-  SDL_Delay__deps: ['emscripten_sleep'],
-  SDL_Delay__async: true,
-  SDL_Delay: (delay) => _emscripten_sleep(delay),
+  SDL_Delay: 'emscripten_sleep',
 #else
+#if ASSERTIONS
+  SDL_Delay__deps: ['$warnOnce'],
+#endif
   SDL_Delay: (delay) => {
-    if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
+#if ASSERTIONS
+    if (!ENVIRONMENT_IS_WORKER) warnOnce('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
+#endif
     // horrible busy-wait, but in a worker it at least does not block rendering
     var now = Date.now();
     while (Date.now() - now < delay) {}

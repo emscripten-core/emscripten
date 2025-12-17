@@ -3055,8 +3055,13 @@ Module["preRun"] = () => {
     # key events should be detected using SDL_PumpEvents
     self.btest_exit('test_sdl2_pumpevents.c', cflags=['--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2'])
 
+  @also_with_proxy_to_pthread
+  def test_sdl_timer(self):
+    self.btest_exit('test_sdl_timer.c', cflags=['-sUSE_SDL'])
+
+  @also_with_proxy_to_pthread
   def test_sdl2_timer(self):
-    self.btest_exit('test_sdl2_timer.c', cflags=['-sUSE_SDL=2'])
+    self.btest_exit('test_sdl_timer.c', cflags=['-sUSE_SDL=2', '-DUSE_SDL2'])
 
   def test_sdl2_canvas_size(self):
     self.btest_exit('test_sdl2_canvas_size.c', cflags=['-sUSE_SDL=2'])
