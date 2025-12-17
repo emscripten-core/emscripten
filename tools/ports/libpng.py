@@ -39,6 +39,7 @@ def get(ports, settings, shared):
     pnglibconf_h = os.path.join(os.path.dirname(__file__), 'libpng/pnglibconf.h')
     shutil.copyfile(pnglibconf_h, os.path.join(source_path, 'pnglibconf.h'))
     ports.install_headers(source_path)
+    ports.make_pkg_config('libpng', TAG, '-sUSE_LIBPNG')
 
     flags = ['-sUSE_ZLIB']
     if settings.PTHREADS:
