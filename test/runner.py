@@ -376,6 +376,11 @@ def load_test_suites(args, modules, options):
       except AttributeError:
         pass
     if names_in_module:
+      # Ensure verbose output for the benchmark suite, as otherwise no benchmark
+      # results are emitted.
+      if m.__name__ == 'test_benchmark':
+        options.verbose = max(options.verbose, 1)
+
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
       suite = suite_for_module(m, tests, options)
