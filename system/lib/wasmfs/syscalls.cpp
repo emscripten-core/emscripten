@@ -1772,14 +1772,13 @@ int __syscall__newselect(int nfds,
                          intptr_t _readfds,
                          intptr_t _writefds,
                          intptr_t _exceptfds,
-                         intptr_t _timeout) {
+                         int64_t timeout) {
   // Implement select in terms of `poll()`
 
   // Part 1: convert select arguments into poll arguments
   fd_set* readfds = (fd_set*)_readfds;
   fd_set* writefds = (fd_set*)_writefds;
   fd_set* exceptfds = (fd_set*)_exceptfds;
-  timeval* timeout = (timeval*)_timeout;
 
   int n = 0;
   struct pollfd* fds = (struct pollfd*)calloc(nfds, sizeof(struct pollfd));
@@ -1800,14 +1799,12 @@ int __syscall__newselect(int nfds,
     }
   }
 
-  // __syscall_poll currently ignores timeout but we calculate it here for
-  // completeness.
-  int timeout_ms = -1; // Infinite
-  if (timeout) {
-    timeout_ms = (timeout->tv_sec * 1000) + ((timeout->tv_usec + 999) / 1000);
-  }
-
-  int rtn = __syscall_poll((intptr_t)fds, n, timeout_ms);
+  // emscripten's __syscall__newselect already takes a timeout that is
+  // compatible with __syscall_poll:
+  // -1: Block forever
+  // 0: Never block
+  // >0: Block for up to N milliseconds.
+  int rtn = __syscall_poll((intptr_t)fds, n, timeout);
   if (rtn < 0) {
     free(fds);
     return -1;
