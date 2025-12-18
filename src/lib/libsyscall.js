@@ -543,7 +543,13 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall__newselect__i53abi: true,
-  __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeoutInMillis) => {
+#if ASYNCIFY
+  __syscall__newselect__async: true,
+  __syscall__newselect: async (nfds, readfds, writefds, exceptfds, timeoutInMillis) =>
+#else
+  __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeoutInMillis) =>
+#endif
+  {
     // readfds are supported,
     // writefds checks socket open status
     // exceptfds are supported, although on web, such exceptional conditions never arise in web sockets
@@ -586,6 +592,11 @@ var SyscallsLibrary = {
 
       if (stream.stream_ops.poll) {
         flags = stream.stream_ops.poll(stream, timeoutInMillis);
+
+#if ASYNCIFY
+        /* poll is possibly a promise */
+        flags = await flags;
+#endif
       } else {
 #if ASSERTIONS
         if (timeoutInMillis != 0) warnOnce('non-zero select() timeout not supported: ' + timeoutInMillis)
