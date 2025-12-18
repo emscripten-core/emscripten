@@ -9665,6 +9665,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
 
+  def test_select_blocking(self):
+    self.do_runf('core/test_select_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @parameterized({
+    '': ([],),
+    'pthread': (['-pthread'],),
+  })
+  def test_pipe_select(self, args):
+    self.do_runf('core/test_pipe_select.c', cflags=args)
+
   @also_without_bigint
   def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are

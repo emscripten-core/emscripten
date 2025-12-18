@@ -66,6 +66,10 @@ weak int _munmap_js(
   return -ENOSYS;
 }
 
+weak int _newselect_js(void* ctx, void* arg, int n, void *rfds, void *wfds, void *efds, int64_t timeout) {
+  return -ENOSYS;
+}
+
 // open(), etc. - we just support the standard streams, with no
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
