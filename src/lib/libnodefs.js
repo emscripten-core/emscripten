@@ -272,12 +272,12 @@ addToLibrary({
       },
       read(stream, buffer, offset, length, position) {
         return NODEFS.tryFSOperation(() =>
-          fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position)
+          fs.readSync(stream.nfd, buffer, offset, length, position)
         );
       },
       write(stream, buffer, offset, length, position) {
         return NODEFS.tryFSOperation(() =>
-          fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position)
+          fs.writeSync(stream.nfd, buffer, offset, length, position)
         );
       },
       llseek(stream, offset, whence) {
