@@ -1571,7 +1571,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       # cross compiling.
       if configure:
         if configure[0] == 'cmake':
-          configure = [EMCMAKE] + configure
+          configure = [EMCMAKE] + configure + ['-DCMAKE_POLICY_VERSION_MINIMUM=3.5']
         else:
           configure = [EMCONFIGURE] + configure
       else:
