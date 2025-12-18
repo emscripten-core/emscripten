@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.22 (in development)
+4.0.23 (in development)
 -----------------------
+
+4.0.22 - 12/18/25
+-----------------
 - Source maps now support 'names' field with function name information.
   emsymbolizer will show function names when used with a source map. The size
   of source maps may increase 2-3x and the link time can increase slightly due
