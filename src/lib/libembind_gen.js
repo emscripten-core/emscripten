@@ -357,7 +357,7 @@ var LibraryEmbind = {
       out.push(`export type ${this.name} = {\n`);
       const outFields = [];
       for (const {name, type} of this.fields) {
-        outFields.push(`  ${name}: ${nameMap(type)}`);
+        outFields.push(`  ${name}${type instanceof OptionalType ? '?' : ''}: ${nameMap(type)}`);
       }
       out.push(outFields.join(',\n'))
       out.push('\n};\n\n');

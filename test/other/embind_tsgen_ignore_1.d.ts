@@ -107,6 +107,7 @@ export type ValArr = [ number, number, number ];
 export type ValObj = {
   string: EmbindString,
   bar: Bar,
+  optionalInt?: number | undefined,
   callback: (message: string) => void
 };
 
