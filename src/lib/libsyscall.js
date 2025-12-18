@@ -606,7 +606,12 @@ var SyscallsLibrary = {
     '_emscripten_proxy_newselect',
 #endif
   ],
+#if ASYNCIFY
+  __syscall__newselect__async: true,
+  __syscall__newselect: async (nfds, readfds, writefds, exceptfds, timeoutInMillis) => {
+#else
   __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeoutInMillis) => {
+#endif
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) {
       return __emscripten_proxy_newselect(nfds,
@@ -631,7 +636,12 @@ var SyscallsLibrary = {
     '_emscripten_proxy_newselect_finish',
 #endif
   ],
+#if ASYNCIFY
+  _newselect_js__async: true,
+  _newselect_js: async (ctx, arg, nfds, readfds, writefds, exceptfds, timeoutInMillis) => {
+#else
   _newselect_js: (ctx, arg, nfds, readfds, writefds, exceptfds, timeoutInMillis) => {
+#endif
     // readfds are supported,
     // writefds checks socket open status
     // exceptfds are supported, although on web, such exceptional conditions never arise in web sockets
@@ -701,6 +711,11 @@ var SyscallsLibrary = {
 #endif
           return stream.stream_ops.poll(stream, timeoutInMillis);
         })();
+
+#if ASYNCIFY
+        /* poll is possibly a promise */
+        flags = await flags;
+#endif
       } else {
 #if ASSERTIONS
         if (timeoutInMillis != 0) warnOnce('non-zero select() timeout not supported: ' + timeoutInMillis)

@@ -378,6 +378,9 @@ LibraryJSEventLoop = {
   emscripten_set_main_loop__deps: ['$setMainLoop'],
   emscripten_set_main_loop: (func, fps, simulateInfiniteLoop) => {
     var iterFunc = {{{ makeDynCall('v', 'func') }}};
+#if JSPI
+    iterFunc = WebAssembly.promising(iterFunc);
+#endif
     setMainLoop(iterFunc, fps, simulateInfiniteLoop);
   },
 

@@ -104,9 +104,9 @@ addToLibrary({
     },
     // node and stream ops are backend agnostic
     stream_ops: {
-      poll(stream) {
+      poll(stream, timeout) {
         var sock = stream.node.sock;
-        return sock.sock_ops.poll(sock);
+        return sock.sock_ops.poll(sock, timeout);
       },
       ioctl(stream, request, varargs) {
         var sock = stream.node.sock;
@@ -375,7 +375,7 @@ addToLibrary({
       //
       // actual sock ops
       //
-      poll(sock) {
+      poll(sock, timeout) {
         if (sock.type === {{{ cDefs.SOCK_STREAM }}} && sock.server) {
           // listen sockets should only say they're available for reading
           // if there are pending clients.
