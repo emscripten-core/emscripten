@@ -1551,18 +1551,8 @@ int main(int argc, char **argv) {
               } catch(p) {
                   // Because we are catching and handling the exception in JS, the normal
                   // exception catching C++ code doesn't kick in, so we need to make sure we free
-                  // the exception, if necessary. By incrementing and decrementing the refcount
-                  // we trigger the free'ing of the exception if its refcount was zero.
-#ifdef __USING_EMSCRIPTEN_EXCEPTION__
-                  // FIXME Currently Wasm EH and Emscripten EH increases
-                  // refcounts in different places. Wasm EH sets the refcount to
-                  // 1 when throwing, and decrease it in __cxa_end_catch.
-                  // Emscripten EH sets the refcount to 0 when throwing, and
-                  // increase it in __cxa_begin_catch, and decrease it in
-                  // __cxa_end_catch. Fix this inconsistency later.
-                  // https://github.com/emscripten-core/emscripten/issues/17115
-                  incrementExceptionRefcount(p);
-#endif
+                  // the exception, if necessary. By decrementing the refcount we trigger the
+                  // free'ing of the exception.
                   out(getExceptionMessage(p).toString());
                   decrementExceptionRefcount(p);
               }
