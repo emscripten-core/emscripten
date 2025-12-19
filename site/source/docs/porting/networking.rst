@@ -51,6 +51,9 @@ This is the default build mode for Emscripten. Use the linker flag
 to connect to, and the linker flag ``-sWEBSOCKET_SUBPROTOCOL`` or
 ``Module['websocket']['subprotocol']`` to control the connection type
 (``'binary'`` or ``'text'``).
+Or define custom WebSocket factory using ``Module['websocket']['factory']``. Factory
+is called with options param ``{addr, port, type, family, protocol}`` and
+must return WebSocket instance.
 
 Full POSIX Sockets over WebSocket Proxy Server
 ==============================================

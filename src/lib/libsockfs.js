@@ -172,7 +172,24 @@ addToLibrary({
             addr = result[1];
             port = parseInt(result[2], 10);
           }
-        } else {
+        }
+#if expectToReceiveOnModule('websocket')
+        else if (typeof SOCKFS.websocketArgs["factory"] === "function") {
+          try {
+            ws = SOCKFS.websocketArgs["factory"]({
+              addr,
+              port,
+              type: sock.type,
+              family: sock.family,
+              protocol: sock.protocol
+            });
+            ws.binaryType = 'arraybuffer';
+          } catch (e) {
+            throw new FS.ErrnoError({{{ cDefs.EHOSTUNREACH }}});
+          }
+        }
+#endif
+        else {
           // create the actual websocket object and connect
           try {
             // The default value is 'ws://' the replace is needed because the compiler replaces '//' comments with '#'
