@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+{{{
+DEFAULT_POLLMASK =  cDefs.POLLIN | cDefs.POLLOUT;
+}}}
+
 var SyscallsLibrary = {
   $SYSCALLS__deps: [
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
@@ -14,7 +18,6 @@ var SyscallsLibrary = {
   $SYSCALLS: {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     // global constants
-    DEFAULT_POLLMASK: {{{ cDefs.POLLIN }}} | {{{ cDefs.POLLOUT }}},
 
     // shared utilities
     calculateAt(dirfd, path, allowEmpty) {
@@ -665,7 +668,7 @@ var SyscallsLibrary = {
 
       var stream = SYSCALLS.getStreamFromFD(fd);
 
-      var flags = SYSCALLS.DEFAULT_POLLMASK;
+      var flags = {{{ DEFAULT_POLLMASK }}};
 
       if (stream.stream_ops.poll) {
         flags = (() => {
@@ -709,10 +712,7 @@ var SyscallsLibrary = {
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
   __syscall_poll: (fds, nfds, timeout) => {
-#if ASSERTIONS
-    if (timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
-#endif
-    var nonzero = 0;
+    var count = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
       var fd = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}};
@@ -720,16 +720,19 @@ var SyscallsLibrary = {
       var mask = {{{ cDefs.POLLNVAL }}};
       var stream = FS.getStream(fd);
       if (stream) {
-        mask = SYSCALLS.DEFAULT_POLLMASK;
+        mask = {{{ DEFAULT_POLLMASK }}};
         if (stream.stream_ops.poll) {
           mask = stream.stream_ops.poll(stream, -1);
         }
       }
       mask &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
-      if (mask) nonzero++;
+      if (mask) count++;
       {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'mask', 'i16') }}};
     }
-    return nonzero;
+#if ASSERTIONS
+    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
+#endif
+    return count;
   },
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
