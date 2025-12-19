@@ -647,7 +647,7 @@ var SyscallsLibrary = {
               notifyDone = true;
               cleanupFuncs.forEach(cb => cb());
               fdSet.commit();
-              __emscripten_proxy_newselect_finish({{{ to64('ctx') }}}, {{{ to64('arg') }}}, fdSet.getTotal());
+              __emscripten_proxy_newselect_finish(ctx, arg, fdSet.getTotal());
           }
           cb.registerCleanupFunc = (f) => {
               if (f != null) cleanupFuncs.push(f);
