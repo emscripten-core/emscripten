@@ -1202,7 +1202,6 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_dlsync_self_async': '_p',
     '_emscripten_proxy_dlsync_async': '_pp',
     '_emscripten_wasm_worker_initialize': '_p_',
-    '_emscripten_proxy_newselect': '__ppp_',
     '_emscripten_proxy_newselect_finish': '_pp_',
     '_wasmfs_rename': '_pp',
     '_wasmfs_readlink': '_pp',

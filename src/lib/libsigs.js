@@ -229,7 +229,6 @@ sigs = {
   __handle_stack_overflow__sig: 'vp',
   __pthread_create_js__sig: 'ipppp',
   __resumeException__sig: 'vp',
-  __syscall__newselect__sig: 'iipppj',
   __syscall_accept4__sig: 'iippiii',
   __syscall_bind__sig: 'iippiii',
   __syscall_chdir__sig: 'ip',

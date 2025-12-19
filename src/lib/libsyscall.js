@@ -599,31 +599,6 @@ var SyscallsLibrary = {
     FS.chdir(stream.path);
     return 0;
   },
-  __syscall__newselect__i53abi: true,
-  __syscall__newselect__proxy: 'none',
-  __syscall__newselect__deps: ['_newselect_js',
-#if PTHREADS
-    '_emscripten_proxy_newselect',
-#endif
-  ],
-  __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeoutInMillis) => {
-#if PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) {
-      return __emscripten_proxy_newselect(nfds,
-                                          {{{ to64('readfds') }}},
-                                          {{{ to64('writefds') }}},
-                                          {{{ to64('exceptfds') }}},
-                                          {{{ splitI64('timeoutInMillis') }}});
-    }
-#endif
-      return __newselect_js({{{ to64('0') }}},
-                            {{{ to64('0') }}},
-                            nfds,
-                            {{{ to64('readfds') }}},
-                            {{{ to64('writefds') }}},
-                            {{{ to64('exceptfds') }}},
-                            {{{ splitI64('timeoutInMillis') }}});
-  },
   _newselect_js__i53abi: true,
   _newselect_js__proxy: 'none',
   _newselect_js__deps: ['$parseSelectFDSet',
