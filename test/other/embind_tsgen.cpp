@@ -61,6 +61,7 @@ struct ValObj {
   Bar bar;
   std::string string;
   CallbackType callback;
+  std::optional<int> optionalInt;
   ValObj() : callback(val::undefined()) {}
 };
 
@@ -209,6 +210,7 @@ EMSCRIPTEN_BINDINGS(Test) {
   value_object<ValObj>("ValObj")
       .field("string", &ValObj::string)
       .field("bar", &ValObj::bar)
+      .field("optionalInt", &ValObj::optionalInt)
       .field("callback", &ValObj::callback);
   function("getValObj", &getValObj);
   function("setValObj", &setValObj);
