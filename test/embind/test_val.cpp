@@ -33,10 +33,22 @@ Dummy * makeDummy() {
   return new Dummy();
 }
 
+struct MoveTester {
+    static int moves;
+    static int copies;
+    static void reset() { moves = 0; copies = 0; }
+    MoveTester() {}
+    MoveTester(const MoveTester&) { copies++; }
+    MoveTester(MoveTester&&) { moves++; }
+};
+int MoveTester::moves = 0;
+int MoveTester::copies = 0;
+
 EMSCRIPTEN_BINDINGS(test_bindings) {
   emscripten::class_<Dummy>("Dummy");
   emscripten::function("throw_js_error", &throw_js_error);
   emscripten::function("makeDummy", &makeDummy, emscripten::allow_raw_pointers());
+  emscripten::class_<MoveTester>("MoveTester");
 }
 
 int main() {
@@ -720,6 +732,111 @@ int main() {
   EM_ASM(
     globalThis.staticDummy.delete();
   );
+
+  test("val::operator() with policies");
+  EM_ASM(
+    globalThis.assertAndDelete = function(arg0) {
+      assert(arg0);
+      arg0.delete();
+    };
+    globalThis.assertArg0 = function(arg0) {
+      assert(arg0);
+    };
+    globalThis.assertArg1 = function(arg0, arg1) {
+      assert(arg1);
+    };
+  );
+  MoveTester t;
+  MoveTester::reset();
+  val::global("assertAndDelete")(t); // default is copy
+  ensure(MoveTester::copies == 1);
+  ensure(MoveTester::moves == 0);
+
+  MoveTester::reset();
+  val::global("assertAndDelete")(t, policy::take_ownership<arg<0>>());
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 1);
+
+  MoveTester::reset();
+  val::global("assertAndDelete")(new MoveTester(), policy::take_ownership<arg<0>>());
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 0);
+
+  MoveTester::reset();
+  MoveTester *ptr = new MoveTester();
+  val::global("assertArg0")(ptr, policy::reference<arg<0>>());
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 0);
+  delete ptr;
+
+  MoveTester::reset();
+  val::global("assertArg0")(t, policy::reference<arg<0>>());
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 0);
+
+  MoveTester::reset();
+  val::global("assertArg1")(val::null(), t, policy::reference<arg<1>>());
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 0);
+
+  test("val::call with policies");
+  MoveTester::reset();
+  val::global().call<void>("assertAndDelete", t, val::null(), policy::take_ownership<arg<0>>());
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 1);
+
+  MoveTester::reset();
+  val::global().call<void>("assertArg0", t, val::null(), policy::reference<arg<0>>());
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 0);
+
+  test("val constructor with policies");
+  MoveTester::reset();
+  val v_owned(t, policy::take_ownership());
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 1);
+  v_owned.call<void>("delete");
+
+  MoveTester::reset();
+  val v_ref(t, policy::reference());
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 0);
+
+  test("val::set with policies");
+  MoveTester::reset();
+  val::global().set("temp", t, policy::take_ownership());
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 1);
+  val::global("temp").call<void>("delete");
+  val::global().delete_("temp");
+
+  MoveTester::reset();
+  val::global().set("temp", t, policy::reference());
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 0);
+  val::global().delete_("temp");
+
+  test("val::new_ with policies");
+  EM_ASM(
+    globalThis.TestClass = class {
+      constructor(arg0) {
+        this.arg0 = arg0;
+      }
+      delete() {
+        this.arg0.delete();
+      }
+    };
+  );
+  MoveTester::reset();
+  val testClass_owned = val::global("TestClass").new_(t, policy::take_ownership<arg<0>>());
+  testClass_owned.call<void>("delete");
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 1);
+
+  MoveTester::reset();
+  val testClass_ref = val::global("TestClass").new_(t, policy::reference<arg<0>>());
+  ensure(MoveTester::copies == 0);
+  ensure(MoveTester::moves == 0);
 
   printf("end\n");
   return 0;

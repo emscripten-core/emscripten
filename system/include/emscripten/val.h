@@ -236,20 +236,36 @@ void writeGenericWireType(GenericWireType*& cursor, T wt) {
   ++cursor;
 }
 
+template<typename TransformedType, typename OriginalType>
+struct WireTypeSelector {
+    using Type = OriginalType;
+    static const OriginalType& convert(const OriginalType& v) { return v; }
+};
+
+template<typename T, typename Policy, typename OriginalType>
+struct WireTypeSelector<ArgWithPolicy<T, Policy>, OriginalType> {
+    using Type = ArgWithPolicy<T, Policy>;
+    static Type convert(const OriginalType& v) { return Type(v); }
+};
+
+template<typename Policy, size_t Index>
 inline void writeGenericWireTypes(GenericWireType*&) {
 }
 
-template<typename First, typename... Rest>
+template<typename Policy, size_t Index, typename First, typename... Rest>
 EMSCRIPTEN_ALWAYS_INLINE void writeGenericWireTypes(GenericWireType*& cursor, First&& first, Rest&&... rest) {
-  writeGenericWireType(cursor, BindingType<First>::toWireType(std::forward<First>(first), rvp::default_tag{}));
-  writeGenericWireTypes(cursor, std::forward<Rest>(rest)...);
+  using TransformedType = typename Policy::template MapWithPolicies<Index, First>::type;
+  using Selector = WireTypeSelector<TransformedType, First>;
+
+  writeGenericWireType(cursor, BindingType<typename Selector::Type>::toWireType(Selector::convert(std::forward<First>(first)), rvp::default_tag{}));
+  writeGenericWireTypes<Policy, Index + 1>(cursor, std::forward<Rest>(rest)...);
 }
 
-template<typename... Args>
+template<typename Policy, typename... Args>
 struct WireTypePack {
   WireTypePack(Args&&... args) {
     GenericWireType* cursor = elements.data();
-    writeGenericWireTypes(cursor, std::forward<Args>(args)...);
+    writeGenericWireTypes<Policy, 1>(cursor, std::forward<Args>(args)...);
   }
 
   operator EM_VAR_ARGS() const {
@@ -483,8 +499,8 @@ public:
   }
 
   template<typename K, typename V, typename... Policies>
-  void set(const K& key, const V& value, Policies... policies) {
-    internal::_emval_set_property(as_handle(), val_ref(key).as_handle(), val_ref(value, policies...).as_handle());
+  void set(K&& key, V&& value, Policies... policies) {
+    internal::_emval_set_property(as_handle(), val_ref(std::forward<K>(key)).as_handle(), val_ref(std::forward<V>(value), policies...).as_handle());
   }
 
   template<typename T>
@@ -599,7 +615,7 @@ private:
     static constexpr typename Policy::template ArgTypeList<Ret, Args...> argTypes;
     thread_local EM_INVOKER mc = _emval_create_invoker(argTypes.getCount(), argTypes.getTypes(), Kind);
 
-    WireTypePack<Args...> argv(std::forward<Args>(args)...);
+    WireTypePack<Policy, Args...> argv(std::forward<Args>(args)...);
     EM_DESTRUCTORS destructors = nullptr;
 
     RetWire result;
@@ -624,11 +640,15 @@ private:
   }
 
   template<typename T, typename... Policies>
-  val val_ref(const T& v, Policies... policies) const {
-    return val(v, policies...);
+  val val_ref(T&& v, Policies... policies) const {
+    return val(std::forward<T>(v), policies...);
   }
 
   const val& val_ref(const val& v) const {
+    return v;
+  }
+
+  val& val_ref(val& v) const {
     return v;
   }
 
