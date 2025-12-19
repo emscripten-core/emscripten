@@ -9669,6 +9669,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_select_blocking(self):
     self.do_runf('core/test_select_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
+  @node_pthreads
+  def test_poll_blocking(self):
+    self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
   @parameterized({
     '': ([],),
     'pthread': (['-pthread'],),

@@ -41,7 +41,6 @@ int __syscall_uname(intptr_t buf);
 int __syscall_mprotect(size_t addr, size_t len, int prot);
 int __syscall_getpgid(int pid);
 int __syscall_fchdir(int fd);
-int __syscall__newselect(int nfds, intptr_t readfds, intptr_t writefds, intptr_t exceptfds, int64_t timeout);
 int __syscall_msync(intptr_t addr, size_t len, int flags);
 int __syscall_getsid(int pid);
 int __syscall_fdatasync(int fd);
