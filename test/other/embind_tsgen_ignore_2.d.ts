@@ -101,6 +101,7 @@ export type ValObj = {
   firstEnum: FirstEnum,
   secondEnum: SecondEnum,
   thirdEnum: ThirdEnum,
+  optionalInt?: number | undefined,
   callback: (message: string) => void
 };
 

@@ -12,7 +12,6 @@ import moduleFactory from './embind_tsgen.js';
 
   const module = await moduleFactory();
 
-  // Test a few variations of passing value_objects with strings.
   module.setValObj({
     firstEnum: module.FirstEnum.kValueOne,
     secondEnum: module.SecondEnum.kValueA,
@@ -21,12 +20,23 @@ import moduleFactory from './embind_tsgen.js';
     callback: () => {}
   });
 
+  // Test a few variations of passing enum value
   module.setValObj({
     firstEnum: module.FirstEnum.kValueOne,
     secondEnum: 0,
     thirdEnum: "kValueAlpha",
     string: new Int8Array([65, 66, 67, 68]),
     callback: () => {}
+  });
+
+  // Test optional field
+  module.setValObj({
+    firstEnum: module.FirstEnum.kValueOne,
+    secondEnum: module.SecondEnum.kValueA,
+    thirdEnum: module.ThirdEnum.kValueAlpha,
+    string: "ABCD",
+    callback: () => {},
+    optionalInt: 99
   });
 
   const valObj = module.getValObj();

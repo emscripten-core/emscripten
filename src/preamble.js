@@ -724,6 +724,9 @@ function getWasmImports() {
 #endif
     var origExports = wasmExports;
 #endif
+#if SPLIT_MODULE
+    wasmRawExports = wasmExports;
+#endif
 
 #if ASYNCIFY
     wasmExports = Asyncify.instrumentWasmExports(wasmExports);
@@ -739,14 +742,10 @@ function getWasmImports() {
 #endif
 #endif
 
-
 #if ABORT_ON_WASM_EXCEPTIONS
     wasmExports = instrumentWasmExportsWithAbort(wasmExports);
 #endif
 
-#if SPLIT_MODULE
-  wasmRawExports = wasmExports;
-#endif
 #if MEMORY64 || CAN_ADDRESS_2GB
     wasmExports = applySignatureConversions(wasmExports);
 #endif

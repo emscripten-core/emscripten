@@ -4,6 +4,10 @@
  * SPDX-License-Identifier: MIT
  */
 
+{{{
+DEFAULT_POLLMASK =  cDefs.POLLIN | cDefs.POLLOUT;
+}}}
+
 var SyscallsLibrary = {
   $SYSCALLS__deps: [
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
@@ -14,7 +18,6 @@ var SyscallsLibrary = {
   $SYSCALLS: {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     // global constants
-    DEFAULT_POLLMASK: {{{ cDefs.POLLIN }}} | {{{ cDefs.POLLOUT }}},
 
     // shared utilities
     calculateAt(dirfd, path, allowEmpty) {
@@ -599,31 +602,6 @@ var SyscallsLibrary = {
     FS.chdir(stream.path);
     return 0;
   },
-  __syscall__newselect__i53abi: true,
-  __syscall__newselect__proxy: 'none',
-  __syscall__newselect__deps: ['_newselect_js',
-#if PTHREADS
-    '_emscripten_proxy_newselect',
-#endif
-  ],
-  __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeoutInMillis) => {
-#if PTHREADS
-    if (ENVIRONMENT_IS_PTHREAD) {
-      return __emscripten_proxy_newselect(nfds,
-                                          {{{ to64('readfds') }}},
-                                          {{{ to64('writefds') }}},
-                                          {{{ to64('exceptfds') }}},
-                                          {{{ splitI64('timeoutInMillis') }}});
-    }
-#endif
-      return __newselect_js({{{ to64('0') }}},
-                            {{{ to64('0') }}},
-                            nfds,
-                            {{{ to64('readfds') }}},
-                            {{{ to64('writefds') }}},
-                            {{{ to64('exceptfds') }}},
-                            {{{ splitI64('timeoutInMillis') }}});
-  },
   _newselect_js__i53abi: true,
   _newselect_js__proxy: 'none',
   _newselect_js__deps: ['$parseSelectFDSet',
@@ -669,7 +647,7 @@ var SyscallsLibrary = {
               notifyDone = true;
               cleanupFuncs.forEach(cb => cb());
               fdSet.commit();
-              __emscripten_proxy_newselect_finish({{{ to64('ctx') }}}, {{{ to64('arg') }}}, fdSet.getTotal());
+              __emscripten_proxy_newselect_finish(ctx, arg, fdSet.getTotal());
           }
           cb.registerCleanupFunc = (f) => {
               if (f != null) cleanupFuncs.push(f);
@@ -690,7 +668,7 @@ var SyscallsLibrary = {
 
       var stream = SYSCALLS.getStreamFromFD(fd);
 
-      var flags = SYSCALLS.DEFAULT_POLLMASK;
+      var flags = {{{ DEFAULT_POLLMASK }}};
 
       if (stream.stream_ops.poll) {
         flags = (() => {
@@ -734,10 +712,7 @@ var SyscallsLibrary = {
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
   __syscall_poll: (fds, nfds, timeout) => {
-#if ASSERTIONS
-    if (timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
-#endif
-    var nonzero = 0;
+    var count = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
       var fd = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}};
@@ -745,16 +720,19 @@ var SyscallsLibrary = {
       var mask = {{{ cDefs.POLLNVAL }}};
       var stream = FS.getStream(fd);
       if (stream) {
-        mask = SYSCALLS.DEFAULT_POLLMASK;
+        mask = {{{ DEFAULT_POLLMASK }}};
         if (stream.stream_ops.poll) {
           mask = stream.stream_ops.poll(stream, -1);
         }
       }
       mask &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
-      if (mask) nonzero++;
+      if (mask) count++;
       {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'mask', 'i16') }}};
     }
-    return nonzero;
+#if ASSERTIONS
+    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
+#endif
+    return count;
   },
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {

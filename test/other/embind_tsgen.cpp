@@ -66,6 +66,7 @@ struct ValObj {
   ThirdEnum thirdEnum;
   std::string string;
   CallbackType callback;
+  std::optional<int> optionalInt;
   ValObj() : callback(val::undefined()) {}
 };
 
@@ -226,6 +227,7 @@ EMSCRIPTEN_BINDINGS(Test) {
       .field("firstEnum", &ValObj::firstEnum)
       .field("secondEnum", &ValObj::secondEnum)
       .field("thirdEnum", &ValObj::thirdEnum)
+      .field("optionalInt", &ValObj::optionalInt)
       .field("callback", &ValObj::callback);
   function("getValObj", &getValObj);
   function("setValObj", &setValObj);
