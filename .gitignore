@@ -25,6 +25,8 @@ tools/coverage/
 htmlcov/
 coverage.xml
 
+/tools/rollup-plugin-emscripten/node_modules
+
 .DS_Store
 
 # Test output
