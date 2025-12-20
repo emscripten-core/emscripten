@@ -540,34 +540,27 @@ var WasiLibrary = {
     return 0;
   },
 
+  fd_sync__async: true,
   fd_sync: (fd) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
+    var rtn = stream.stream_ops?.fsync?.(stream);
 #if ASYNCIFY
-    return Asyncify.handleSleep((wakeUp) => {
-      var mount = stream.node.mount;
-      if (!mount.type.syncfs) {
-        // We write directly to the file system, so there's nothing to do here.
-        wakeUp(0);
-        return;
-      }
-      mount.type.syncfs(mount, false, (err) => {
-        wakeUp(err ? {{{ cDefs.EIO }}} : 0);
+    var mount = stream.node.mount;
+    if (mount.type.syncfs) {
+      return Asyncify.handleSleep((wakeUp) => {
+        mount.type.syncfs(mount, false, (err) => wakeUp(err ? {{{ cDefs.EIO }}} : 0));
       });
-    });
-#else
-    if (stream.stream_ops?.fsync) {
-      return stream.stream_ops.fsync(stream);
     }
-    return 0; // we can't do anything synchronously; the in-memory FS is already synced to
 #endif // ASYNCIFY
-#elif ASSERTIONS
+    return rtn;
+#else // SYSCALLS_REQUIRE_FILESYSTEM
+#if ASSERTIONS
     abort('fd_sync called without SYSCALLS_REQUIRE_FILESYSTEM');
-#else
+#endif
     return {{{ cDefs.ENOSYS }}};
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
-  fd_sync__async: true,
 
   // random.h
 
