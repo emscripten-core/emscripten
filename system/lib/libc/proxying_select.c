@@ -6,16 +6,18 @@
  */
 
 #include <assert.h>
+#include <sys/select.h>
 #include <emscripten/proxying.h>
 #include <emscripten/threading.h>
 
 #include "emscripten_internal.h"
 
+#if _REENTRANT
 typedef struct proxied_select_t {
   int n;
-  void *rfds;
-  void *wfds;
-  void *efds;
+  fd_set *rfds;
+  fd_set *wfds;
+  fd_set *efds;
   int64_t timeout;
   int result;
 } proxied_select_t;
@@ -31,7 +33,7 @@ void _emscripten_proxy_newselect_finish(em_proxying_ctx* ctx, void* arg, int ret
   emscripten_proxy_finish(ctx);
 }
 
-int _emscripten_proxy_newselect(int n, void *rfds, void *wfds, void *efds, int64_t timeout) {
+static int proxy_newselect(int n, fd_set *rfds, fd_set *wfds, fd_set *efds, int64_t timeout) {
   em_proxying_queue* q = emscripten_proxy_get_system_queue();
   pthread_t target = emscripten_main_runtime_thread_id();
   proxied_select_t t = {.n = n, .rfds = rfds, .wfds = wfds, .efds = efds, .timeout = timeout};
@@ -40,4 +42,18 @@ int _emscripten_proxy_newselect(int n, void *rfds, void *wfds, void *efds, int64
     return -1;
   }
   return t.result;
+}
+#endif
+
+// Marked as weak since libwasmfs needs to be able to override this.
+weak int __syscall__newselect(int nfds, intptr_t _readfds, intptr_t _writefds, intptr_t _exceptfds, int64_t timeout) {
+  fd_set* readfds = (fd_set*)_readfds;
+  fd_set* writefds = (fd_set*)_writefds;
+  fd_set* exceptfds = (fd_set*)_exceptfds;
+#if _REENTRANT
+  if (!emscripten_is_main_runtime_thread()) {
+    return proxy_newselect(nfds, readfds, writefds, exceptfds, timeout);
+  }
+#endif
+  return _newselect_js(0, 0, nfds, readfds, writefds, exceptfds, timeout);
 }

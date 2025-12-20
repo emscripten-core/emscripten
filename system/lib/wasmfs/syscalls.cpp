@@ -1848,8 +1848,4 @@ int __syscall__newselect(int nfds,
   return count;
 }
 
-int _newselect_js(void* ctx, void* arg, int n, void *rfds, void *wfds, void *efds, int64_t timeout) {
-  return -ENOSYS;
-}
-
 } // extern "C"

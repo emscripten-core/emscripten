@@ -25,6 +25,13 @@ import moduleFactory from './embind_tsgen.js';
     callback: () => {}
   });
 
+  module.setValObj({
+    bar: module.Bar.valueOne,
+    string: "ABCD",
+    callback: () => {},
+    optionalInt: 99
+  });
+
   const valObj = module.getValObj();
   // TODO: remove the cast below when better definitions are generated for value
   // objects.
