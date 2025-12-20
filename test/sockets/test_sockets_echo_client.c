@@ -75,7 +75,7 @@ void main_loop() {
   FD_ZERO(&fdw);
   FD_SET(server.fd, &fdr);
   FD_SET(server.fd, &fdw);
-  res = select(64, &fdr, &fdw, NULL, &tv);
+  res = select(FD_SETSIZE, &fdr, &fdw, NULL, &tv);
   if (res == -1) {
     perror("select failed");
     finish(EXIT_FAILURE);

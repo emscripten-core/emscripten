@@ -53,7 +53,7 @@ void main_loop() {
       // select should tell us 0 handles are ready
       FD_ZERO(&sett);
       FD_SET(sockfd, &sett);
-      selectRes = select(64, &sett, NULL, NULL, NULL);
+      selectRes = select(FD_SETSIZE, &sett, NULL, NULL, NULL);
       if (selectRes != 0) {
         printf("case 0: read select != 0 (%d)\n", selectRes);
         finish(EXIT_FAILURE);
@@ -63,7 +63,7 @@ void main_loop() {
       // the connection either is setting up or is established and writing is possible
       FD_ZERO(&sett);
       FD_SET(sockfd, &sett);
-      selectRes = select(64, NULL, &sett, NULL, NULL);
+      selectRes = select(FD_SETSIZE, NULL, &sett, NULL, NULL);
       if (selectRes == -1) {
         printf("case 0: write select == -1\n");
         finish(EXIT_FAILURE);
@@ -86,7 +86,7 @@ void main_loop() {
       // has sent the data and then closed the connection
       FD_ZERO(&sett);
       FD_SET(sockfd, &sett);
-      selectRes = select(64, &sett, NULL, NULL, NULL);
+      selectRes = select(FD_SETSIZE, &sett, NULL, NULL, NULL);
       if (selectRes == -1) {
         printf("case 1: read selectRes == -1\n");
         finish(EXIT_FAILURE);
@@ -114,7 +114,7 @@ void main_loop() {
       // succeed, but the socket should not set in the set.
       FD_ZERO(&sett);
       FD_SET(sockfd, &sett);
-      selectRes = select(64, NULL, &sett, NULL, NULL);
+      selectRes = select(FD_SETSIZE, NULL, &sett, NULL, NULL);
       if (selectRes != 0 || FD_ISSET(sockfd, &sett)) {
         printf("case 2: write selectRes != 0 || FD_ISSET(sockfd, &sett)\n");
         finish(EXIT_FAILURE);
@@ -124,7 +124,7 @@ void main_loop() {
       // has to succeed because there is still data in the inQueue
       FD_ZERO(&sett);
       FD_SET(sockfd, &sett);
-      selectRes = select(64, &sett, NULL, NULL, NULL);
+      selectRes = select(FD_SETSIZE, &sett, NULL, NULL, NULL);
       if (selectRes != 1) {
         printf("case 2: read selectRes != 1\n");
         finish(EXIT_FAILURE);
@@ -152,7 +152,7 @@ void main_loop() {
       // should succeed
       FD_ZERO(&sett);
       FD_SET(sockfd, &sett);
-      selectRes = select(64, &sett, NULL, NULL, NULL);
+      selectRes = select(FD_SETSIZE, &sett, NULL, NULL, NULL);
       if (selectRes != 1) {
         printf("case 3: read selectRes != 1\n");
         finish(EXIT_FAILURE);

@@ -89,7 +89,7 @@ void main_loop() {
   if (client.fd) FD_SET(client.fd, &fdr);
   if (client.fd) FD_SET(client.fd, &fdw);
 #endif
-  res = select(64, &fdr, &fdw, NULL, &tv);
+  res = select(FD_SETSIZE, &fdr, &fdw, NULL, &tv);
   if (res == -1) {
     perror("select failed");
     exit(EXIT_SUCCESS);

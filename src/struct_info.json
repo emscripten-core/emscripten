@@ -296,6 +296,12 @@
         ]
     },
     {
+        "file": "sys/select.h",
+        "defines": [
+            "FD_SETSIZE"
+        ]
+    },
+    {
         "file": "sys/socket.h",
         "defines": [
             "SOCK_DGRAM",

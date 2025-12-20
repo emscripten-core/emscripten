@@ -43,7 +43,7 @@ void iter() {
   // make sure that sockfd is ready to read
   FD_ZERO(&fdr);
   FD_SET(sockfd, &fdr);
-  res = select(64, &fdr, NULL, NULL, NULL);
+  res = select(FD_SETSIZE, &fdr, NULL, NULL, NULL);
   if (res == -1) {
     perror("select failed");
     finish(EXIT_FAILURE);

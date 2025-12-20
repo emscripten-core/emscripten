@@ -80,7 +80,7 @@ void iter() {
   FD_ZERO(&fdw);
   FD_SET(serverfd, &fdr);
   if (clientfd) FD_SET(clientfd, &fdw);
-  res = select(64, &fdr, &fdw, NULL, NULL);
+  res = select(FD_SETSIZE, &fdr, &fdw, NULL, NULL);
   if (res == -1) {
     perror("select failed");
     exit(EXIT_SUCCESS);

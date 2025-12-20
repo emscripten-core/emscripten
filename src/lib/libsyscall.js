@@ -108,57 +108,70 @@ var SyscallsLibrary = {
   },
 
   $parseSelectFDSet__internal: true,
-  $parseSelectFDSet: (readfds, writefds, exceptfds) => {
-    var total = 0;
+  $parseSelectFDSet: (readfds, writefds, exceptfds, nfds) => {
+    const FD_ISSET = (set, fd) => set[(fd / 32) >>> 0] & (1 << (fd & 31));
+    const FD_CLR = (set, fd) => set[(fd / 32) >>> 0] &= ~(1 << (fd & 31));
+    const FD_SET = (set, fd) => set[(fd / 32) >>> 0] |= (1 << (fd & 31));
+    const numWords = ((nfds + 31) / 32) >>> 0;
 
-    var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
-        srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
-    var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
-        srcWriteHigh = (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0);
-    var srcExceptLow = (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0),
-        srcExceptHigh = (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
+#if ASSERTIONS
+    const FD_SETWORDS = {{{ cDefs.FD_SETSIZE }}} / 32;
+    assert(numWords <= FD_SETWORDS);
+#endif
 
-    var dstReadLow = 0,
-        dstReadHigh = 0;
-    var dstWriteLow = 0,
-        dstWriteHigh = 0;
-    var dstExceptLow = 0,
-        dstExceptHigh = 0;
+    const srcMerged = new Array(numWords);
+    const srcRead = new Array(numWords).fill(0);
+    const srcWrite = new Array(numWords).fill(0);
+    const srcExcept = new Array(numWords).fill(0);
+    const dstRead = new Array(numWords).fill(0);
+    const dstWrite = new Array(numWords).fill(0);
+    const dstExcept = new Array(numWords).fill(0);
 
-    var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
+    let total = 0;
+
+    for (let i = 0; i < numWords; i++) {
+      if (readfds) {
+        srcRead[i] = {{{ makeGetValue('readfds', 'i * 4', 'i32') }}};
+      }
+      if (writefds) {
+        srcWrite[i] = {{{ makeGetValue('writefds', 'i * 4', 'i32') }}};
+      }
+      if (exceptfds) {
+        srcExcept[i] = {{{ makeGetValue('exceptfds', 'i * 4', 'i32') }}};
+      }
+      srcMerged[i] = srcRead[i] | srcWrite[i] | srcExcept[i];
+    }
 
     return {
-      allLow: srcReadLow | srcWriteLow | srcExceptLow,
-      allHigh: srcReadHigh | srcWriteHigh | srcExceptHigh,
       getTotal: () => total,
+      check: (fd) => {
+        return FD_ISSET(srcMerged, fd);
+      },
       setFlags: (fd, flags) => {
-        var mask = 1 << (fd % 32);
-
-        if ((flags & {{{ cDefs.POLLIN }}}) && check(fd, srcReadLow, srcReadHigh, mask)) {
-          fd < 32 ? (dstReadLow = dstReadLow | mask) : (dstReadHigh = dstReadHigh | mask);
+        if ((flags & {{{ cDefs.POLLIN }}}) && FD_ISSET(srcRead, fd)) {
+          FD_SET(dstRead, fd);
           total++;
         }
-        if ((flags & {{{ cDefs.POLLOUT }}}) && check(fd, srcWriteLow, srcWriteHigh, mask)) {
-          fd < 32 ? (dstWriteLow = dstWriteLow | mask) : (dstWriteHigh = dstWriteHigh | mask);
+        if ((flags & {{{ cDefs.POLLOUT }}}) && FD_ISSET(srcWrite, fd)) {
+          FD_SET(dstWrite, fd);
           total++;
         }
-        if ((flags & {{{ cDefs.POLLPRI }}}) && check(fd, srcExceptLow, srcExceptHigh, mask)) {
-          fd < 32 ? (dstExceptLow = dstExceptLow | mask) : (dstExceptHigh = dstExceptHigh | mask);
+        if ((flags & {{{ cDefs.POLLPRI }}}) && FD_ISSET(srcExcept, fd)) {
+          FD_SET(dstExcept, fd);
           total++;
         }
       },
       commit: () => {
-        if (readfds) {
-          {{{ makeSetValue('readfds', '0', 'dstReadLow', 'i32') }}};
-          {{{ makeSetValue('readfds', '4', 'dstReadHigh', 'i32') }}};
-        }
-        if (writefds) {
-          {{{ makeSetValue('writefds', '0', 'dstWriteLow', 'i32') }}};
-          {{{ makeSetValue('writefds', '4', 'dstWriteHigh', 'i32') }}};
-        }
-        if (exceptfds) {
-          {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
-          {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
+        for (let i = 0; i < numWords; i++) {
+          if (readfds) {
+            {{{ makeSetValue('readfds', 'i * 4', 'dstRead[i]', 'i32') }}};
+          }
+          if (writefds) {
+            {{{ makeSetValue('writefds', 'i * 4', 'dstWrite[i]', 'i32') }}};
+          }
+          if (exceptfds) {
+            {{{ makeSetValue('exceptfds', 'i * 4', 'dstExcept[i]', 'i32') }}};
+          }
         }
       }
     };
@@ -405,7 +418,7 @@ var SyscallsLibrary = {
   __syscall_socket: (domain, type, protocol) => {
     var sock = SOCKFS.createSocket(domain, type, protocol);
 #if ASSERTIONS
-    assert(sock.stream.fd < 64); // XXX ? select() assumes socket fd values are in 0..63
+    assert(sock.stream.fd < {{{ cDefs.FD_SETSIZE }}}); // XXX ? select() assumes socket fd values are in 0..63
 #endif
     return sock.stream.fd;
   },
@@ -617,18 +630,13 @@ var SyscallsLibrary = {
     // timeout is supported, although on SOCKFS these are ignored and always treated as 0 - fully async
     // and PIPEFS supports timeout only when the select is called from a worker.
 #if ASSERTIONS
-    assert(nfds <= 64, 'nfds must be less than or equal to 64');  // fd sets have 64 bits // TODO: this could be 1024 based on current musl headers
+    assert(nfds <= {{{ cDefs.FD_SETSIZE }}}, 'nfds must be less than or equal to FD_SETSIZE');
 #if PTHREADS
     assert(!ENVIRONMENT_IS_PTHREAD, '_newselect_js must be called in the main thread');
 #endif
 #endif
 
-    var fdSet = parseSelectFDSet(readfds, writefds, exceptfds);
-
-    var allLow = fdSet.allLow;
-    var allHigh = fdSet.allHigh;
-
-    var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
+    var fdSet = parseSelectFDSet(readfds, writefds, exceptfds, nfds);
 
 #if PTHREADS
     var makeNotifyCallback = null;
@@ -661,8 +669,7 @@ var SyscallsLibrary = {
 #endif
 
     for (var fd = 0; fd < nfds; fd++) {
-      var mask = 1 << (fd % 32);
-      if (!(check(fd, allLow, allHigh, mask))) {
+      if (!fdSet.check(fd)) {
         continue;  // index isn't in the set
       }
 
