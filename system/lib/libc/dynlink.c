@@ -40,6 +40,7 @@
 #endif
 
 struct async_data {
+  struct dso* dso;
   em_dlopen_callback onsuccess;
   em_arg_callback_func onerror;
   void* user_data;
@@ -468,6 +469,7 @@ static void dlopen_onsuccess(struct dso* dso, void* user_data) {
       dso,
       dso->mem_addr,
       dso->mem_size);
+  assert(dso == data->dso);
   load_library_done(dso);
   do_write_unlock();
   data->onsuccess(data->user_data, dso);
@@ -601,6 +603,16 @@ void* dlopen(const char* file, int flags) {
   return _dlopen(file, flags);
 }
 
+static void run_success_callback(void* user_data) {
+  struct async_data* data = (struct async_data*)user_data;
+  dlopen_onsuccess(data->dso, data);
+}
+
+static void run_error_callback(void* user_data) {
+  struct async_data* data = (struct async_data*)user_data;
+  dlopen_onerror(data->dso, data);
+}
+
 void emscripten_dlopen(const char* filename, int flags, void* user_data,
                        em_dlopen_callback onsuccess, em_arg_callback_func onerror) {
   dbg("emscripten_dlopen: %s", filename);
@@ -608,30 +620,30 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
     onsuccess(user_data, head->dso);
     return;
   }
-  do_write_lock();
-  char buf[2*NAME_MAX+2];
-  filename = find_dylib(buf, filename, sizeof buf);
-  struct dso* p = find_existing(filename);
-  if (p) {
-    onsuccess(user_data, p);
-    return;
-  }
-  p = load_library_start(filename, flags);
-  if (!p) {
-    do_write_unlock();
-    onerror(user_data);
-    return;
-  }
 
-  // For async mode
+  // Struct used to hold info on for the async callback
   struct async_data* d = malloc(sizeof(struct async_data));
   d->user_data = user_data;
   d->onsuccess = onsuccess;
   d->onerror = onerror;
 
+  do_write_lock();
+  char buf[2*NAME_MAX+2];
+  filename = find_dylib(buf, filename, sizeof buf);
+  d->dso = find_existing(filename);
+  if (d->dso) {
+    emscripten_queue_microtask(run_success_callback, d);
+    return;
+  }
+  d->dso = load_library_start(filename, flags);
+  if (!d->dso) {
+    emscripten_queue_microtask(run_error_callback, d);
+    return;
+  }
+
   dbg("calling emscripten_dlopen_js %p", p);
   // Unlock happens in dlopen_onsuccess/dlopen_onerror
-  _emscripten_dlopen_js(p, dlopen_onsuccess, dlopen_onerror, d);
+  _emscripten_dlopen_js(d->dso, dlopen_onsuccess, dlopen_onerror, d);
 }
 
 static void promise_onsuccess(void* user_data, void* handle) {
