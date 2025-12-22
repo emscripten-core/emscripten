@@ -421,6 +421,39 @@ var LibraryEmbind = {
     return this.fromWireType({{{ makeGetValue('pointer', '0', '*') }}});
   },
 
+  $installIndexedIterator: (proto, sizeName, getName) => {
+    if (typeof Symbol === 'undefined' || !Symbol.iterator) {
+      return;
+    }
+
+    const makeIterator = (size, getValue) => {
+      const useBigInt = typeof size === 'bigint';
+      const one = useBigInt ? 1n : 1;
+      let index = useBigInt ? 0n : 0;
+      return {
+        next() {
+          if (index >= size) {
+            return { done: true };
+          }
+          const current = index;
+          index += one;
+          const value = getValue(current);
+          return { value, done: false };
+        },
+        [Symbol.iterator]() {
+          return this;
+        },
+      };
+    };
+
+    if (!proto[Symbol.iterator]) {
+      proto[Symbol.iterator] = function() {
+        const size = this[sizeName]();
+        return makeIterator(size, (i) => this[getName](i));
+      };
+    }
+  },
+
   _embind_register_std_string__deps: [
     '$AsciiToString', '$registerType',
     '$readPointer', '$throwBindingError',
@@ -1721,6 +1754,19 @@ var LibraryEmbind = {
         return [referenceConverter, pointerConverter, constPointerConverter];
       }
     );
+  },
+
+  _embind_register_iterable__deps: [
+    '$whenDependentTypesAreResolved', '$installIndexedIterator', '$AsciiToString',
+  ],
+  _embind_register_iterable: (rawClassType, rawElementType, sizeName, getName) => {
+    sizeName = AsciiToString(sizeName);
+    getName = AsciiToString(getName);
+    whenDependentTypesAreResolved([], [rawClassType, rawElementType], (types) => {
+      const classType = types[0];
+      installIndexedIterator(classType.registeredClass.instancePrototype, sizeName, getName);
+      return [];
+    });
   },
 
   _embind_register_class_constructor__deps: [
