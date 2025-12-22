@@ -761,9 +761,7 @@ var DISABLE_EXCEPTION_THROWING = false;
 // Setting this option also adds refcount increasing and decreasing functions
 // ('incrementExceptionRefcount' and 'decrementExceptionRefcount') in the JS
 // library because if you catch an exception from JS, you may need to manipulate
-// the refcount manually not to leak memory. What you need to do is different
-// depending on the kind of EH you use
-// (https://github.com/emscripten-core/emscripten/issues/17115).
+// the refcount manually not to leak memory.
 //
 // See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 // example usage.

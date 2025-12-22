@@ -155,12 +155,10 @@ leaked.
 
 .. note:: If you catch a Wasm exception and do not rethrow it, you need to free
    the storage associated with the exception in JS using
-   ``decrementExceptionRefcount`` method because the exception
-   catching code in Wasm does not have a chance to free it. But currently due to
-   an implementation issue that Wasm EH and Emscripten (JS-based) EH, you need
-   to call incrementExceptionRefcount additionally in case of Emscripten EH. See
-   https://github.com/emscripten-core/emscripten/issues/17115 for details and a
-   code example.
+   ``decrementExceptionRefcount`` method because the exception catching code in
+   Wasm does not have a chance to free it. See
+   ``test_EXPORT_EXCEPTION_HANDLING_HELPERS`` in test/test_core.py for an
+   example usage.
 
 .. todo:: Fix the above-mentinoed `inconsistency
    <https://github.com/emscripten-core/emscripten/issues/17115>`_ between Wasm
