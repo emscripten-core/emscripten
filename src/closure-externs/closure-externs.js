@@ -268,3 +268,5 @@ Symbol.dispose;
 var os = {};
 
 AudioWorkletProcessor.parameterDescriptors;
+
+Promise.withResolvers = function() {};

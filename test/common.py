@@ -412,7 +412,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
 
   def require_engine(self, engine):
-    logger.debug(f'require_engine: {engine}')
+    print(f'require_engine: {engine}')
     if self.required_engine and self.required_engine != engine:
       self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
     self.required_engine = engine
@@ -500,7 +500,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [v8]
+      self.require_engine(v8)
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
@@ -528,8 +528,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     v8 = self.get_v8()
     if v8:
+      self.require_engine(v8)
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [v8]
       return
 
     self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')

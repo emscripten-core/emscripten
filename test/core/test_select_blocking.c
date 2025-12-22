@@ -23,7 +23,10 @@ void test_timeout_without_fds() {
   gettimeofday(&begin, NULL);
   assert(select(0, NULL, NULL, NULL, &tv) == 0);
   gettimeofday(&end, NULL);
-  assert((end.tv_sec - begin.tv_sec) * 1000000 + end.tv_usec - begin.tv_usec >= 1000000);
+
+  long ms = (end.tv_sec - begin.tv_sec) * 1000 + (end.tv_usec - begin.tv_usec) / 1000;
+  printf("select took: %ldms\n", ms);
+  assert(ms >= 1000);
 }
 
 // Check if timeout works with fds without events

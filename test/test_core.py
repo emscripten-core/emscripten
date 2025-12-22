@@ -8509,8 +8509,8 @@ Module.onRuntimeInitialized = () => {
     self.require_jspi()
     self.do_runf('core/test_pthread_join_and_asyncify.c', 'joining thread!\njoined thread!',
                  cflags=['-sJSPI',
-                            '-sEXIT_RUNTIME=1',
-                            '-pthread', '-sPROXY_TO_PTHREAD'])
+                         '-sEXIT_RUNTIME=1',
+                         '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_sanitize('no wasm2js support yet in sanitizers')
@@ -9672,6 +9672,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @node_pthreads
   def test_poll_blocking(self):
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @requires_node
+  def test_poll_blocking_jspi(self):
+    self.require_jspi()
+    self.do_runf('core/test_poll_blocking_jspi.c', cflags=['-sJSPI'])
 
   @parameterized({
     '': ([],),
