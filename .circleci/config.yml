@@ -373,6 +373,7 @@ commands:
       - upload-test-results
   setup-macos:
     steps:
+      - macos/install-rosetta
       - run:
           name: Install brew package dependencies
           environment:
