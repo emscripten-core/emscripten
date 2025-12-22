@@ -832,10 +832,10 @@ type.
 
 
 You can control how C++ enums are exposed to JavaScript by specifying
-`enum_value_type` when registering the enum.
+``enum_value_type`` when registering the enum.
 
-By default, enums use `enum_value_type::object`. Enum values are bound
-as JavaScript objects with a `value` property containing the underlying
+By default, enums use ``enum_value_type::object``. Enum values are bound
+as JavaScript objects with a ``value`` property containing the underlying
 C++ integer.
 
 .. code:: cpp
@@ -853,8 +853,7 @@ C++ integer.
 
 Alternatively, you can use:
 
-- `enum_value_type::number`
-  Enum values are bound directly as JavaScript numbers matching their C++
+- ``enum_value_type::number``: Enum values are bound directly as JavaScript numbers matching their C++
   integer values.
 
 .. code:: cpp
@@ -870,8 +869,7 @@ Alternatively, you can use:
     Module.NumberEnum.ONE === 0;
     Module.NumberEnum.TWO === 1;
 
-- `enum_value_type::string`
-  Enum values are bound as JavaScript strings containing their name.
+- ``enum_value_type::string``: Enum values are bound as JavaScript strings containing their name.
 
 .. code:: cpp
 
@@ -886,7 +884,7 @@ Alternatively, you can use:
     Module.StringEnum.ONE === "ONE";
     Module.StringEnum.TWO === "TWO";
 
-Whatever the `enum_value_type` used, enum values can always be used as arguments
+Whatever the ``enum_value_type`` used, enum values can always be used as arguments
 to functions expecting the enum type.
 
 .. code:: cpp
