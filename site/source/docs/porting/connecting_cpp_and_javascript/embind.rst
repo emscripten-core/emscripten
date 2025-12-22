@@ -830,6 +830,86 @@ type.
     Module.OldStyle.ONE;
     Module.NewStyle.TWO;
 
+
+You can control how C++ enums are exposed to JavaScript by specifying
+``enum_value_type`` when registering the enum.
+
+By default, enums use ``enum_value_type::object``. Enum values are bound
+as JavaScript objects with a ``value`` property containing the underlying
+C++ integer.
+
+.. code:: cpp
+
+    EMSCRIPTEN_BINDINGS(my_enum_example) {
+        enum_<Enum>("ObjectEnum", enum_value_type::object)
+            .value("ONE", Enum::ONE)
+            .value("TWO", Enum::TWO);
+    }
+
+.. code:: javascript
+
+    Module.ObjectEnum.ONE.value === 1;
+    Module.ObjectEnum.TWO.value === 2;
+
+Alternatively, you can use:
+
+- ``enum_value_type::number``: Enum values are bound directly as JavaScript numbers matching their C++
+  integer values.
+
+.. code:: cpp
+
+    EMSCRIPTEN_BINDINGS(my_enum_example) {
+        enum_<Enum>("NumberEnum", enum_value_type::number)
+            .value("ONE", Enum::ONE)
+            .value("TWO", Enum::TWO);
+    }
+
+.. code:: javascript
+
+    Module.NumberEnum.ONE === 0;
+    Module.NumberEnum.TWO === 1;
+
+- ``enum_value_type::string``: Enum values are bound as JavaScript strings containing their name.
+
+.. code:: cpp
+
+    EMSCRIPTEN_BINDINGS(my_enum_example) {
+        enum_<Enum>("StringEnum", enum_value_type::string)
+            .value("ONE", Enum::ONE)
+            .value("TWO", Enum::TWO);
+    }
+
+.. code:: javascript
+
+    Module.StringEnum.ONE === "ONE";
+    Module.StringEnum.TWO === "TWO";
+
+Whatever the ``enum_value_type`` used, enum values can always be used as arguments
+to functions expecting the enum type.
+
+.. code:: cpp
+
+    void takesEnum(Enum e);
+
+    EMSCRIPTEN_BINDINGS(my_enum_example) {
+        function("takesEnum", &takesEnum);
+    }
+
+.. code:: javascript
+
+    // enum_value_type::object
+    Module.takesEnum(Module.ObjectEnum.ONE);
+
+    // enum_value_type::number
+    Module.takesEnum(Module.NumberEnum.ONE);
+    // OR
+    Module.takesEnum(0);
+
+    // enum_value_type::string
+    Module.takesEnum(Module.StringEnum.ONE);
+    // OR
+    Module.takesEnum("ONE");
+
 .. _embind-constants:
 
 Constants

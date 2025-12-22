@@ -31,17 +31,21 @@ export interface Test extends ClassHandle {
 export interface Obj extends ClassHandle {
 }
 
-export interface BarValue<T extends number> {
+export interface FirstEnumValue<T extends number> {
   value: T;
 }
-export type Bar = BarValue<0>|BarValue<1>|BarValue<2>;
+export type FirstEnum = FirstEnumValue<0>|FirstEnumValue<1>|FirstEnumValue<2>;
+
+export type SecondEnum = 0|1|2;
+
+export type ThirdEnum = 'kValueAlpha'|'kValueBeta'|'kValueGamma';
 
 export interface EmptyEnumValue<T extends number> {
   value: T;
 }
 export type EmptyEnum = never/* Empty Enumerator */;
 
-export type ValArrIx = [ Bar, Bar, Bar, Bar ];
+export type ValArrIx = [ FirstEnum, FirstEnum, FirstEnum, FirstEnum ];
 
 export interface IntVec extends ClassHandle {
   push_back(_0: number): void;
@@ -95,7 +99,9 @@ export type ValArr = [ number, number, number ];
 
 export type ValObj = {
   string: EmbindString,
-  bar: Bar,
+  firstEnum: FirstEnum,
+  secondEnum: SecondEnum,
+  thirdEnum: ThirdEnum,
   optionalInt?: number | undefined,
   callback: (message: string) => void
 };
@@ -114,10 +120,14 @@ interface EmbindModule {
   getPointer(_0: Obj | null): Obj | null;
   getNonnullPointer(): Obj;
   a_class_instance: Test;
-  an_enum: Bar;
-  Bar: {valueOne: BarValue<0>, valueTwo: BarValue<1>, valueThree: BarValue<2>};
+  an_enum: FirstEnum;
+  FirstEnum: {kValueOne: FirstEnumValue<0>, kValueTwo: FirstEnumValue<1>, kValueThree: FirstEnumValue<2>};
+  SecondEnum: {kValueA: 0, kValueB: 1, kValueC: 2};
+  ThirdEnum: {kValueAlpha: 'kValueAlpha', kValueBeta: 'kValueBeta', kValueGamma: 'kValueGamma'};
   EmptyEnum: {};
-  enum_returning_fn(): Bar;
+  enum_returning_fn(): FirstEnum;
+  num_enum_returning_fn(): SecondEnum;
+  str_enum_returning_fn(): ThirdEnum;
   IntVec: {
     new(): IntVec;
   };
