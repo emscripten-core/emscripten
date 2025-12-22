@@ -94,18 +94,10 @@ void* _dlsym_catchup_js(struct dso* handle, int sym_index);
 
 int _setitimer_js(int which, double timeout);
 
-// Synchronous version of "dlsync_threads".  Called only on the main thread.
+// Synchronize loaded modules across threads.
 // Runs _emscripten_dlsync_self on each of the threads that are running at
 // the time of the call.
 void _emscripten_dlsync_threads();
-
-// Asynchronous version of "dlsync_threads".  Called only on the main thread.
-// Runs _emscripten_dlsync_self on each of the threads that are running at
-// the time of the call.  Once this is done the callback is called with the
-// given em_proxying_ctx.
-void _emscripten_dlsync_threads_async(pthread_t calling_thread,
-                                      void (*callback)(em_proxying_ctx*),
-                                      em_proxying_ctx* ctx);
 
 #ifdef _GNU_SOURCE
 void __call_sighandler(sighandler_t handler, int sig);
