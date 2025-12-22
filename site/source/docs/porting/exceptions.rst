@@ -160,10 +160,6 @@ leaked.
    ``test_EXPORT_EXCEPTION_HANDLING_HELPERS`` in test/test_core.py for an
    example usage.
 
-.. todo:: Fix the above-mentinoed `inconsistency
-   <https://github.com/emscripten-core/emscripten/issues/17115>`_ between Wasm
-   EH and Emscripten EH, on the reference counting.
-
 
 Using Exceptions and setjmp-longjmp Together
 ============================================
