@@ -68,7 +68,8 @@ def make_executable(filename):
 
 def main(all_platforms):
   is_windows = sys.platform.startswith('win')
-  do_unix = all_platforms or not is_windows
+  is_msys2 = 'MSYSTEM' in os.environ
+  do_unix = all_platforms or not is_windows or is_msys2
   do_windows = all_platforms or is_windows
 
   def generate_entry_points(cmd, path):
