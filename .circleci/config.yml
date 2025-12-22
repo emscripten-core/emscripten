@@ -1,8 +1,8 @@
 version: 2.1
 
-
 orbs:
   win: circleci/windows@5.0
+  macos: circleci/macos@2.4.1
 
 executors:
   linux-node:
@@ -27,7 +27,7 @@ executors:
     environment:
       EMSDK_NOTTY: "1"
     macos:
-      xcode: "16.2.0"
+      xcode: "16.4.0"
     resource_class: m4pro.medium
 
 commands:
@@ -373,6 +373,7 @@ commands:
       - upload-test-results
   setup-macos:
     steps:
+      - macos/install-rosetta
       - run:
           name: Install brew package dependencies
           environment:
