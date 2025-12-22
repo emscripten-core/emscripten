@@ -804,19 +804,31 @@ Enums
       A typedef of ``EnumType`` (a typename for the class).
 
 
-   .. cpp:function::  enum_(const char* name)
+   .. cpp:function::  enum_(const char* name, enum_value_type valueType = enum_value_type::object)
 
       Constructor.
 
-      :param const char* name:
+      :param const char* name: Name of the enum in JavaScript.
+      :param enum_value_type valueType:
+          Determines how the enumerated values are represented in JavaScript.
 
+          Possible values:
+
+          - ``enum_value_type::object`` (default):
+            Values are JavaScript objects with a ``.value`` field.
+
+          - ``enum_value_type::number``:
+            Values are plain numbers matching their corresponding C++ values.
+
+          - ``enum_value_type::string``:
+            Values are strings containing their name.
 
    .. cpp:function::  enum_& value(const char* name, EnumType value)
 
       Registers an enum value.
 
       :param const char* name: The name of the enumerated value.
-      :param EnumType value: The type of the enumerated value.
+      :param EnumType value: The enumerated value.
       :returns: A reference to the current object. This allows chaining of multiple enum values in the :cpp:func:`EMSCRIPTEN_BINDINGS` block.
 
 

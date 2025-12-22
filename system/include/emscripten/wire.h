@@ -574,6 +574,12 @@ struct reference : public allow_raw_pointers {};
 
 } // end namespace return_value_policy
 
+enum class enum_value_type {
+    object = 0,
+    number = 1,
+    string = 2
+};
+
 namespace internal {
 
 template<typename... Policies>

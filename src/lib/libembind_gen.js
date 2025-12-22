@@ -291,23 +291,36 @@ var LibraryEmbind = {
   },
   $EnumDefinition: class {
     hasPublicSymbol = true;
-    constructor(typeId, name) {
+    constructor(typeId, name, valueType) {
       this.typeId = typeId;
       this.name = name;
       this.items = [];
       this.destructorType = 'none';
+      this.valueType = valueType;
     }
 
     print(nameMap, out) {
-      out.push(`export interface ${this.name}Value<T extends number> {\n`);
-      out.push('  value: T;\n}\n');
+      if (this.valueType === 'object') {
+        out.push(`export interface ${this.name}Value<T extends number> {\n`);
+        out.push('  value: T;\n}\n');
+      }
       out.push(`export type ${this.name} = `);
       if (this.items.length === 0) {
         out.push('never/* Empty Enumerator */');
       } else {
         const outItems = [];
         for (const [name, value] of this.items) {
-          outItems.push(`${this.name}Value<${value}>`);
+          switch (this.valueType) {
+            case 'object':
+              outItems.push(`${this.name}Value<${value}>`);
+              break;
+            case 'number':
+              outItems.push(`${value}`);
+              break;
+            case 'string':
+              outItems.push(`'${name}'`);
+              break;
+          }
         }
         out.push(outItems.join('|'));
       }
@@ -318,7 +331,17 @@ var LibraryEmbind = {
       out.push(`  ${this.name}: {`);
       const outItems = [];
       for (const [name, value] of this.items) {
-        outItems.push(`${name}: ${this.name}Value<${value}>`);
+        switch (this.valueType) {
+          case 'object':
+            outItems.push(`${name}: ${this.name}Value<${value}>`);
+            break;
+          case 'number':
+            outItems.push(`${name}: ${value}`);
+            break;
+          case 'string':
+            outItems.push(`${name}: '${name}'`);
+            break;
+        }
       }
       out.push(outItems.join(', '));
       out.push('};\n');
@@ -731,10 +754,11 @@ var LibraryEmbind = {
   },
   // Stub function. This is called a when extending an object and not needed for TS generation.
   _embind_create_inheriting_constructor: (constructorName, wrapperType, properties) => {},
-  _embind_register_enum__deps: ['$AsciiToString', '$EnumDefinition', '$moduleDefinitions'],
-  _embind_register_enum: function(rawType, name, size, isSigned) {
+  _embind_register_enum__deps: ['$AsciiToString', '$EnumDefinition', '$moduleDefinitions', '$getEnumValueType'],
+  _embind_register_enum: function(rawType, name, size, isSigned, rawValueType) {
     name = AsciiToString(name);
-    const enumDef = new EnumDefinition(rawType, name);
+    const valueType = getEnumValueType(rawValueType);
+    const enumDef = new EnumDefinition(rawType, name, valueType);
     registerType(rawType, enumDef);
     moduleDefinitions.push(enumDef);
   },
