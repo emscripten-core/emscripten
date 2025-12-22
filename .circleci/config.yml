@@ -1,8 +1,8 @@
 version: 2.1
 
-
 orbs:
   win: circleci/windows@5.0
+  macos: circleci/macos@2.4.1
 
 executors:
   linux-node:
