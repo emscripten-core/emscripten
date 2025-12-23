@@ -23,6 +23,13 @@ See docs/process.md for more on how version tagging works.
 - The `select()` and `poll()` system calls can now block under certain
   circumstances.  Specifically, if they are called from a background thread and
   file descriptors include pipes.  (#25523, #25990)
+- It is now possible to load emscripten-generated code directly into an Audio
+  Worklet context without using the `-sAUDIO_WORKLET` setting (which depends on
+  shared memory and `-sWASM_WORKERS`). To do this, build with
+  `-sENVIRONMENT=worklet`. In this environment, because audio worklets don't
+  have a fetch API, you will need to either use `-sSINGLE_FILE` (to embed the
+  Wasm file), or use a custom `instantiateWasm` callback to supply the
+  Wasm module yourself. (#25942)
 
 4.0.22 - 12/18/25
 -----------------
