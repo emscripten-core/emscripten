@@ -158,12 +158,16 @@ bool mainLoop(double time, void* data) {
 }
 
 EMSCRIPTEN_KEEPALIVE void startTest() {
-  startTime = emscripten_get_now();
-  if (emscripten_audio_context_state(context) != AUDIO_CONTEXT_STATE_RUNNING) {
-    emscripten_resume_audio_context_sync(context);
+  if (whichTest == TEST_NOT_STARTED) {
+    startTime = emscripten_get_now();
+    if (emscripten_audio_context_state(context) != AUDIO_CONTEXT_STATE_RUNNING) {
+      emscripten_resume_audio_context_sync(context);
+    }
+    howManyMain = MAINLOOP_RUNS;
+    howManyProc = PROCESS_RUNS;
+  } else {
+    emscripten_out("Reload page to re-run");
   }
-  howManyMain = MAINLOOP_RUNS;
-  howManyProc = PROCESS_RUNS;
 }
 
 // HTML button to manually run the test
@@ -172,9 +176,7 @@ EM_JS(void, addButton, (), {
   button.appendChild(document.createTextNode("Start Test"));
   document.body.appendChild(button);
   document.onclick = () => {
-    if (globalThis._startTest) {
-      _startTest();
-    }
+    _startTest();
   };
 });
 
