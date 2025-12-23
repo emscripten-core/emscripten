@@ -290,7 +290,7 @@ addToLibrary({
   @also_without_bigint
   def test_jslib_i53abi(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__i53abi: true,
   jslibfunc__sig: 'j',
   jslibfunc: (x) => { return 42 },
@@ -307,7 +307,7 @@ int main() {
 
   def test_jslib_i53abi_errors(self):
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__i53abi: true,
   jslibfunc: (x) => { return 42 },
 });
@@ -316,7 +316,7 @@ mergeInto(LibraryManager.library, {
     self.assertContained("error: JS library error: '__i53abi' decorator requires '__sig' decorator: 'jslibfunc'", err)
 
     create_file('lib.js', r'''
-mergeInto(LibraryManager.library, {
+addToLibrary({
   jslibfunc__i53abi: true,
   jslibfunc__sig: 'ii',
   jslibfunc: (x) => { return 42 },
@@ -336,6 +336,7 @@ addToLibrary({
     self.assertContained("error: JS library error: invalid proxying mode 'jslibfunc__proxy: foo' specified", err)
 
   def test_jslib_legacy(self):
+    # Test that the legacy `mergeInfo` function work instead of `addToLibrary`
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
   jslibfunc: (x) => { return 42 },
