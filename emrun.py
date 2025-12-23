@@ -193,6 +193,26 @@ def browser_loge(msg):
   last_message_time = tick()
 
 
+def browser_raw_logi(msg):
+  """Prints a message to the browser stdout output stream, wihtout adding a newline.
+  """
+  global last_message_time
+  msg = format_eol(msg)
+  browser_stdout_handle.write(msg)
+  browser_stdout_handle.flush()
+  last_message_time = tick()
+
+
+def browser_raw_loge(msg):
+  """Prints a message to the browser stderr output stream, wihtout adding a newline.
+  """
+  global last_message_time
+  msg = format_eol(msg)
+  browser_stderr_handle.write(msg)
+  browser_stderr_handle.flush()
+  last_message_time = tick()
+
+
 def unquote_u(source):
   """Unquotes a unicode string.
   (translates ascii-encoded utf string back to utf)
@@ -742,23 +762,30 @@ class HTTPHandler(SimpleHTTPRequestHandler):
           return
       else:
         # The user page sent a message with POST. Parse the message and log it to stdout/stderr.
-        is_stdout = False
-        is_stderr = False
         seq_num = -1
         # The html shell is expected to send messages of form ^out^(number)^(message) or ^err^(number)^(message).
+
+        trim_index = 0
+        log = browser_logi
         if data.startswith('^err^'):
-          is_stderr = True
+          trim_index = 5
+          log = browser_loge
         elif data.startswith('^out^'):
-          is_stdout = True
-        if is_stderr or is_stdout:
+          trim_index = 5
+        elif data.startswith('^rawerr^'):
+          trim_index = 8
+          log = browser_raw_loge
+        elif data.startswith('^rawout^'):
+          trim_index = 8
+          log = browser_raw_logi
+        if trim_index > 0:
           try:
-            i = data.index('^', 5)
-            seq_num = int(data[5:i])
+            i = data.index('^', trim_index)
+            seq_num = int(data[trim_index:i])
             data = data[i + 1:]
           except ValueError:
             pass
 
-        log = browser_loge if is_stderr else browser_logi
         self.server.handle_incoming_message(seq_num, log, data)
 
     self.send_response(200)

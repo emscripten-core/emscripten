@@ -104,6 +104,16 @@ if (globalThis.window && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIR
           // interprets "undefined" as EAGAIN when there is no other read data.
           return res ? res : null;
         };
+
+        // Forward the output without buffering and cooking
+        TTY.default_tty_ops.fsync(TTY); // flush buffered contents
+        TTY.default_tty_ops.put_char = (tty, val) => {
+          post('^rawout^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(UTF8ArrayToString([val])));
+        }
+        TTY.default_tty1_ops.fsync(TTY); // flush buffered contents
+        TTY.default_tty1_ops.put_char = (tty, val) => {
+          post('^rawerr^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(UTF8ArrayToString([val])));
+        }
       }
 
       // Notify emrun web server that this browser has successfully launched the
