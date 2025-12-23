@@ -1540,7 +1540,7 @@ def build_library(name,
     # cross compiling.
     if configure:
       if configure[0] == 'cmake':
-        configure = [EMCMAKE] + configure
+        configure = [EMCMAKE '-DCMAKE_POLICY_VERSION_MINIMUM=3.5'] + configure
       else:
         configure = [EMCONFIGURE] + configure
     else:
