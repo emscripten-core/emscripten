@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.23 (in development)
 -----------------------
+- The `select()` and `poll()` system calls can now block under certain
+  circumstances.  Specifically, if they are called from a background thread and
+  file descriptors include pipes.  (#25523, #25990)
 
 4.0.22 - 12/18/25
 -----------------
