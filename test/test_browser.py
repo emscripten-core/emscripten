@@ -5659,6 +5659,7 @@ class emrun(RunnerCore):
 
   def test_emrun(self):
     self.emcc('test_emrun.c', ['--emrun', '-o', 'test_emrun.html'])
+    self.emcc('test_interactive_emrun.c', ['--emrun', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-o', 'test_interactive_emrun.html'])
     if not has_browser():
       self.skipTest('need a browser')
 
@@ -5697,6 +5698,7 @@ class emrun(RunnerCore):
         ['--private_browsing', '--port', '6941'],
         ['--dump_out_directory', 'other dir/multiple', '--port', '6942'],
         ['--dump_out_directory=foo_bar', '--port', '6942'],
+        ['--interactive'],
     ]:
       args = args_base + args + [self.in_dir('test_emrun.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
       print(shlex.join(args))
@@ -5720,6 +5722,12 @@ class emrun(RunnerCore):
       self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
       self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
       self.assertContained('hello, error stream!', stderr)
+
+    args = args_base + ['--interactive', self.in_dir('test_interactive_emrun.html')]
+    print(shlex.join(args))
+    proc = self.run_process(args, check=False, input="hello")
+    self.assertEqual(proc.returncode, 100)
+    self.assertContained('hello', stdout)
 
 
 class browser64(browser):
