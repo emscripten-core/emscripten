@@ -174,7 +174,8 @@ But if you do specify it, it will have an effect now, which it did not
 previously. If you don't want that, just stop passing it in at link time.
 
 Note that this setting does not affect the behavior of operator new in C++.
-This function will always abort on allocation failure if exceptions are disabled.
+This function will always abort on allocation failure if exceptions are
+disabled.
 If you want new to return 0 on failure, use it with std::nothrow.
 
 Default value: true
@@ -348,8 +349,8 @@ GLOBAL_BASE
 ===========
 
 Where global data begins; the start of static memory.
-A GLOBAL_BASE of 1024 or above is useful for optimizing load/store offsets, as it
-enables the --low-memory-unused pass
+A GLOBAL_BASE of 1024 or above is useful for optimizing load/store offsets,
+as it enables the --low-memory-unused pass
 
 Default value: 1024
 
@@ -565,10 +566,10 @@ Default value: false
 WEBSOCKET_URL
 =============
 
-A string containing either a WebSocket URL prefix (ws:// or wss://) or a complete
-RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
-In the (default) case of only a prefix being specified the URL will be constructed from
-prefix + addr + ':' + port
+A string containing either a WebSocket URL prefix (ws:// or wss://) or a'
+complete RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
+In the (default) case of only a prefix being specified the URL will be
+constructed from prefix + addr + ':' + port
 where addr and port are derived from the socket connect/bind/accept calls.
 
 Default value: 'ws://'
@@ -578,8 +579,8 @@ Default value: 'ws://'
 PROXY_POSIX_SOCKETS
 ===================
 
-If 1, the POSIX sockets API uses a native bridge process server to proxy sockets calls
-from browser to native world.
+If 1, the POSIX sockets API uses a native bridge process server to proxy
+sockets calls from browser to native world.
 
 Default value: false
 
@@ -722,12 +723,13 @@ Default value: true
 GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
 ===================================
 
-If true, the function ``emscripten_webgl_enable_extension()`` can be called to
-enable any WebGL extension. If false, to save code size,
-``emscripten_webgl_enable_extension()`` cannot be called to enable any of extensions
-'ANGLE_instanced_arrays', 'OES_vertex_array_object', 'WEBGL_draw_buffers',
-'WEBGL_multi_draw', 'WEBGL_draw_instanced_base_vertex_base_instance',
-or 'WEBGL_multi_draw_instanced_base_vertex_base_instance',
+If true, the function ``emscripten_webgl_enable_extension()`` can be called
+to enable any WebGL extension. If false, to save code size,
+``emscripten_webgl_enable_extension()`` cannot be called to enable any of
+extensions 'ANGLE_instanced_arrays', 'OES_vertex_array_object',
+'WEBGL_draw_buffers', 'WEBGL_multi_draw',
+'WEBGL_draw_instanced_base_vertex_base_instance', or
+'WEBGL_multi_draw_instanced_base_vertex_base_instance',
 but the dedicated functions ``emscripten_webgl_enable_*()``
 found in html5.h are used to enable each of those extensions.
 This way code size is increased only for the extensions that are actually used.
@@ -741,9 +743,9 @@ Default value: true
 GL_TRACK_ERRORS
 ===============
 
-If set to 0, Emscripten GLES2->WebGL translation layer does not track the kind
-of GL errors that exist in GLES2 but do not exist in WebGL. Settings this to 0
-saves code size. (Good to keep at 1 for development)
+If set to 0, Emscripten GLES2->WebGL translation layer does not track the
+kind of GL errors that exist in GLES2 but do not exist in WebGL. Setting
+this to 0 saves code size. (Good to keep at 1 for development)
 
 Default value: true
 
@@ -2164,8 +2166,8 @@ LEGALIZE_JS_FFI
 
 Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
 to automatically demote i64 to i32 and promote f32 to f64. This is necessary
-in order to interface with JavaScript.  For non-web/non-JS embeddings, setting
-this to 0 may be desirable.
+in order to interface with JavaScript.  For non-web/non-JS embeddings,
+setting this to 0 may be desirable.
 
 .. note:: This setting is deprecated
 
@@ -3206,9 +3208,9 @@ PURE_WASI
 =========
 
 Build binaries that use as many WASI APIs as possible, and include additional
-JS support libraries for those APIs.  This allows emscripten to produce binaries
-are more WASI compliant and also allows it to process and execute WASI
-binaries built with other SDKs (e.g.  wasi-sdk).
+JS support libraries for those APIs.  This allows emscripten to produce
+binaries that are more WASI compliant and also allows it to process and
+execute WASI binaries built with other SDKs (e.g.  wasi-sdk).
 This setting is experimental and subject to change or removal.
 Implies :ref:`STANDALONE_WASM`.
 
@@ -3244,7 +3246,7 @@ This option will automatically generate two wasm files as output, one
 with the ``.orig`` suffix and one without.  The default file (without
 the suffix) when run will generate instrumentation data can later be
 fed into wasm-split (the binaryen tool).
-As well as this the generated JS code will contains help functions
+As well as this the generated JS code will contains helper functions
 to loading split modules.
 
 .. note:: This is an experimental setting
@@ -3277,9 +3279,10 @@ Default value: true
 TRUSTED_TYPES
 =============
 
-Allow calls to Worker(...) and importScripts(...) to be Trusted Types compatible.
-Trusted Types is a Web Platform feature designed to mitigate DOM XSS by restricting
-the usage of DOM sink APIs. See https://w3c.github.io/webappsec-trusted-types/.
+Allow calls to Worker(...) and importScripts(...) to be Trusted Types
+compatible. Trusted Types is a Web Platform feature designed to mitigate DOM
+XSS by restricting the usage of DOM sink APIs.
+See https://w3c.github.io/webappsec-trusted-types/.
 
 Default value: false
 
@@ -3328,8 +3331,8 @@ LEGACY_RUNTIME
 
 Include JS library symbols that were previously part of the default runtime.
 Without this, such symbols can be made available by adding them to
-:ref:`DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`, or via the dependencies of another JS
-library symbol.
+:ref:`DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`, or via the dependencies of another
+JS library symbol.
 
 Default value: false
 
@@ -3338,10 +3341,11 @@ Default value: false
 SIGNATURE_CONVERSIONS
 =====================
 
-User-defined functions to wrap with signature conversion, which take or return
-pointer argument. Only affects ``MEMORY64=1`` builds, see
+User-defined functions to wrap with signature conversion, which take or
+return pointer arguments. Only affects ``MEMORY64=1`` builds, see
 ``create_pointer_conversion_wrappers`` in ``emscripten.py`` for details.
-Use _ for non-pointer arguments, p for pointer/i53 arguments, and P for optional pointer/i53 values.
+Use ``_`` for non-pointer arguments, ``p`` for pointer/i53 arguments, and
+``P`` for optional pointer/i53 values.
 Example use ``-sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p``
 
 Default value: []
@@ -3352,8 +3356,8 @@ SOURCE_PHASE_IMPORTS
 ====================
 
 Experimental support for wasm source phase imports.
-This is only currently implemented in the pre-release/nightly version of node,
-and not yet supported by browsers.
+This is only currently implemented in the pre-release/nightly version of
+node, and not yet supported by browsers.
 Requires EXPORT_ES6
 
 .. note:: This is an experimental setting
