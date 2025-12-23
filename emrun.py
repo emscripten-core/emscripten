@@ -669,6 +669,26 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     if 'favicon.ico' not in msg:
       sys.stderr.write(msg)
 
+  def do_GET(self):
+    if self.path == "/in" and emrun_options.interactive:
+      self.send_response(200)
+      self.send_header("Content-Type", "text/event-stream")
+      self.send_header("Cache-Control", "no-cache")
+      self.end_headers()
+      self.wfile.flush()
+
+      while True:
+        ch = sys.stdin.read(1)
+        if not ch:
+          self.wfile.write(b"event: close\ndata: bye\n\n")
+          self.wfile.flush()
+          return
+        self.wfile.write(f"data: {ord(ch)}\n\n".encode())
+        self.wfile.flush()
+      return
+
+    super().do_GET()
+
   def do_POST(self):  # # noqa: DC04
     global page_exit_code, have_received_messages
 
@@ -1575,6 +1595,10 @@ def parse_args(args):
   parser.add_argument('serve', nargs='?', default='')
 
   parser.add_argument('cmdlineparams', nargs='*')
+
+  parser.add_argument('--interactive', dest='interactive', action='store_true',
+                      help='If specified, emrun streams the terminal input to the client.'
+                           'Note that blocking reading is not supported on the client.')
 
   # Support legacy argument names with `_` in them (but don't
   # advertize these in the --help message).
