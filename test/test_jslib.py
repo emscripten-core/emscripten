@@ -325,6 +325,16 @@ mergeInto(LibraryManager.library, {
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'])
     self.assertContained("error: JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): 'jslibfunc'", err)
 
+  def test_jslib_invalid_proxy_mode(self):
+    create_file('lib.js', r'''
+addToLibrary({
+  jslibfunc__proxy: 'foo',
+  jslibfunc: (x) => 42,
+});
+''')
+    err = self.expect_fail([EMCC, test_file('hello_world.c'), '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=jslibfunc', '--js-library', 'lib.js'])
+    self.assertContained("error: JS library error: invalid proxying mode 'jslibfunc__proxy: foo' specified", err)
+
   def test_jslib_legacy(self):
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
