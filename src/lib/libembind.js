@@ -421,7 +421,7 @@ var LibraryEmbind = {
     return this.fromWireType({{{ makeGetValue('pointer', '0', '*') }}});
   },
 
-  $installIndexedIterator: (proto, sizeName, getName) => {
+  $installIndexedIterator: (proto, sizeMethodName, getMethodName) => {
     if (typeof Symbol === 'undefined' || !Symbol.iterator) {
       return;
     }
@@ -448,8 +448,8 @@ var LibraryEmbind = {
 
     if (!proto[Symbol.iterator]) {
       proto[Symbol.iterator] = function() {
-        const size = this[sizeName]();
-        return makeIterator(size, (i) => this[getName](i));
+        const size = this[sizeMethodName]();
+        return makeIterator(size, (i) => this[getMethodName](i));
       };
     }
   },
@@ -1759,12 +1759,12 @@ var LibraryEmbind = {
   _embind_register_iterable__deps: [
     '$whenDependentTypesAreResolved', '$installIndexedIterator', '$AsciiToString',
   ],
-  _embind_register_iterable: (rawClassType, rawElementType, sizeName, getName) => {
-    sizeName = AsciiToString(sizeName);
-    getName = AsciiToString(getName);
+  _embind_register_iterable: (rawClassType, rawElementType, sizeMethodName, getMethodName) => {
+    sizeMethodName = AsciiToString(sizeMethodName);
+    getMethodName = AsciiToString(getMethodName);
     whenDependentTypesAreResolved([], [rawClassType, rawElementType], (types) => {
       const classType = types[0];
-      installIndexedIterator(classType.registeredClass.instancePrototype, sizeName, getName);
+      installIndexedIterator(classType.registeredClass.instancePrototype, sizeMethodName, getMethodName);
       return [];
     });
   },

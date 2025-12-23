@@ -659,7 +659,7 @@ var LibraryEmbind = {
 
   },
   _embind_register_iterable__deps: ['$whenDependentTypesAreResolved'],
-  _embind_register_iterable: (rawClassType, rawElementType, sizeName, getName) => {
+  _embind_register_iterable: (rawClassType, rawElementType, sizeMethodName, getMethodName) => {
     whenDependentTypesAreResolved([], [rawClassType, rawElementType], (types) => {
       const classType = types[0];
       const elementType = types[1];

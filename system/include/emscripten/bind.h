@@ -220,8 +220,8 @@ void _embind_register_class_class_property(
 void _embind_register_iterable(
     TYPEID classType,
     TYPEID elementType,
-    const char* sizeName,
-    const char* getName);
+    const char* sizeMethodName,
+    const char* getMethodName);
 
 EM_VAL _embind_create_inheriting_constructor(
     const char* constructorName,
@@ -1595,14 +1595,14 @@ public:
 
     template<typename ElementType>
     EMSCRIPTEN_ALWAYS_INLINE const class_& iterable(
-        const char* sizeName,
-        const char* getName) const {
+        const char* sizeMethodName,
+        const char* getMethodName) const {
         using namespace internal;
         _embind_register_iterable(
             TypeID<ClassType>::get(),
             TypeID<ElementType>::get(),
-            sizeName,
-            getName);
+            sizeMethodName,
+            getMethodName);
         return *this;
     }
 
