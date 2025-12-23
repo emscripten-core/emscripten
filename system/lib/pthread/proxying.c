@@ -603,7 +603,7 @@ typedef struct proxied_js_func_t {
   int funcIndex;
   void* emAsmAddr;
   pthread_t callingThread;
-  int numArgs;
+  int bufSize;
   double* argBuffer;
   double result;
   bool owned;
@@ -612,7 +612,7 @@ typedef struct proxied_js_func_t {
 static void run_js_func(void* arg) {
   proxied_js_func_t* f = (proxied_js_func_t*)arg;
   f->result = _emscripten_receive_on_main_thread_js(
-    f->funcIndex, f->emAsmAddr, f->callingThread, f->numArgs, f->argBuffer);
+    f->funcIndex, f->emAsmAddr, f->callingThread, f->bufSize, f->argBuffer);
   if (f->owned) {
     free(f->argBuffer);
     free(f);
@@ -621,14 +621,14 @@ static void run_js_func(void* arg) {
 
 double _emscripten_run_js_on_main_thread(int func_index,
                                          void* em_asm_addr,
-                                         int num_args,
+                                         int buf_size,
                                          double* buffer,
                                          bool sync) {
   proxied_js_func_t f = {
     .funcIndex = func_index,
     .emAsmAddr = em_asm_addr,
     .callingThread = pthread_self(),
-    .numArgs = num_args,
+    .bufSize = buf_size,
     .argBuffer = buffer,
     .owned = false,
   };
@@ -649,9 +649,9 @@ double _emscripten_run_js_on_main_thread(int func_index,
   *arg = f;
   arg->owned = true;
 
-  // Also make a copyh of the argBuffer.
-  arg->argBuffer = malloc(num_args*sizeof(double));
-  memcpy(arg->argBuffer, buffer, num_args*sizeof(double));
+  // Also make a copy of the argBuffer.
+  arg->argBuffer = malloc(buf_size);
+  memcpy(arg->argBuffer, buffer, buf_size);
 
   if (!emscripten_proxy_async(q, target, run_js_func, arg)) {
     assert(false && "emscripten_proxy_async failed");

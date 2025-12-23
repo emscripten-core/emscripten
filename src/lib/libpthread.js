@@ -953,27 +953,26 @@ var LibraryPThread = {
     // type info here). To do that, add a "prefix" before each value that
     // indicates if it is a BigInt, which effectively doubles the number of
     // values we serialize for proxying. TODO: pack this?
-    var serializedNumCallArgs = callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
+    var bufSize = 8 * callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
     var sp = stackSave();
-    var args = stackAlloc(serializedNumCallArgs * 8);
+    var args = stackAlloc(bufSize);
     var b = {{{ getHeapOffset('args', 'i64') }}};
-    for (var i = 0; i < callArgs.length; i++) {
-      var arg = callArgs[i];
+    for (var arg of callArgs) {
 #if WASM_BIGINT
       if (typeof arg == 'bigint') {
         // The prefix is non-zero to indicate a bigint.
-        HEAP64[b + 2*i] = 1n;
-        HEAP64[b + 2*i + 1] = arg;
+        HEAP64[b++] = 1n;
+        HEAP64[b++] = arg;
       } else {
         // The prefix is zero to indicate a JS Number.
-        HEAP64[b + 2*i] = 0n;
-        HEAPF64[b + 2*i + 1] = arg;
+        HEAP64[b++] = 0n;
+        HEAPF64[b++] = arg;
       }
 #else
-      HEAPF64[b + i] = arg;
+      HEAPF64[b++] = arg;
 #endif
     }
-    var rtn = __emscripten_run_js_on_main_thread(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
+    var rtn = __emscripten_run_js_on_main_thread(funcIndex, emAsmAddr, bufSize, args, sync);
     stackRestore(sp);
     return rtn;
   },
@@ -984,28 +983,28 @@ var LibraryPThread = {
   _emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
     '$proxiedJSCallArgs'],
-  _emscripten_receive_on_main_thread_js: (funcIndex, emAsmAddr, callingThread, numCallArgs, args) => {
+  _emscripten_receive_on_main_thread_js: (funcIndex, emAsmAddr, callingThread, bufSize, args) => {
     // Sometimes we need to backproxy events to the calling thread (e.g.
     // HTML5 DOM events handlers such as
     // emscripten_set_mousemove_callback()), so keep track in a globally
     // accessible variable about the thread that initiated the proxying.
-#if WASM_BIGINT
-    numCallArgs /= 2;
-#endif
-    proxiedJSCallArgs.length = numCallArgs;
+    proxiedJSCallArgs.length = 0;
     var b = {{{ getHeapOffset('args', 'i64') }}};
-    for (var i = 0; i < numCallArgs; i++) {
+    var end = {{{ getHeapOffset('args + bufSize', 'i64') }}};
+    while (b < end) {
 #if WASM_BIGINT
-      if (HEAP64[b + 2*i]) {
+      var arg;
+      if (HEAP64[b++]) {
         // It's a BigInt.
-        proxiedJSCallArgs[i] = HEAP64[b + 2*i + 1];
+        arg = HEAP64[b++];
       } else {
         // It's a Number.
-        proxiedJSCallArgs[i] = HEAPF64[b + 2*i + 1];
+        arg = HEAPF64[b++];
       }
 #else
-      proxiedJSCallArgs[i] = HEAPF64[b + i];
+      var arg = HEAPF64[b++];
 #endif
+      proxiedJSCallArgs.push(arg);
     }
     // Proxied JS library funcs use funcIndex and EM_ASM functions use emAsmAddr
 #if HAVE_EM_ASM
@@ -1018,7 +1017,7 @@ var LibraryPThread = {
 #endif
 #if ASSERTIONS
     assert(!(funcIndex && emAsmAddr));
-    assert(func.length == numCallArgs, 'Call args mismatch in _emscripten_receive_on_main_thread_js');
+    assert(func.length == proxiedJSCallArgs.length, 'Call args mismatch in _emscripten_receive_on_main_thread_js');
 #endif
     PThread.currentProxiedOperationCallerThread = callingThread;
     var rtn = func(...proxiedJSCallArgs);
