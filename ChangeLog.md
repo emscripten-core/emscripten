@@ -24,6 +24,9 @@ See docs/process.md for more on how version tagging works.
   Emscripten EH has been fixed. See `test_EXPORT_EXCEPTION_HANDLING_HELPERS` in
   `test_core.py` to see the usage. (#25988)
 
+- The `select()` and `poll()` system calls can now block under certain
+  circumstances.  Specifically, if they are called from a background thread and
+  file descriptors include pipes.  (#25523, #25990)
 
 4.0.22 - 12/18/25
 -----------------

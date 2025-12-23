@@ -23,7 +23,6 @@
 #define SYS_mprotect		__syscall_mprotect
 #define SYS_getpgid		__syscall_getpgid
 #define SYS_fchdir		__syscall_fchdir
-#define SYS__newselect		__syscall__newselect
 #define SYS_msync		__syscall_msync
 #define SYS_getsid		__syscall_getsid
 #define SYS_fdatasync		__syscall_fdatasync

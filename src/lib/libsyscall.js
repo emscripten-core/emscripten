@@ -4,10 +4,6 @@
  * SPDX-License-Identifier: MIT
  */
 
-{{{
-DEFAULT_POLLMASK =  cDefs.POLLIN | cDefs.POLLOUT;
-}}}
-
 var SyscallsLibrary = {
   $SYSCALLS__deps: [
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
@@ -105,63 +101,6 @@ var SyscallsLibrary = {
 #endif
       return ret;
     },
-  },
-
-  $parseSelectFDSet__internal: true,
-  $parseSelectFDSet: (readfds, writefds, exceptfds) => {
-    var total = 0;
-
-    var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
-        srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
-    var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
-        srcWriteHigh = (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0);
-    var srcExceptLow = (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0),
-        srcExceptHigh = (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
-
-    var dstReadLow = 0,
-        dstReadHigh = 0;
-    var dstWriteLow = 0,
-        dstWriteHigh = 0;
-    var dstExceptLow = 0,
-        dstExceptHigh = 0;
-
-    var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
-
-    return {
-      allLow: srcReadLow | srcWriteLow | srcExceptLow,
-      allHigh: srcReadHigh | srcWriteHigh | srcExceptHigh,
-      getTotal: () => total,
-      setFlags: (fd, flags) => {
-        var mask = 1 << (fd % 32);
-
-        if ((flags & {{{ cDefs.POLLIN }}}) && check(fd, srcReadLow, srcReadHigh, mask)) {
-          fd < 32 ? (dstReadLow = dstReadLow | mask) : (dstReadHigh = dstReadHigh | mask);
-          total++;
-        }
-        if ((flags & {{{ cDefs.POLLOUT }}}) && check(fd, srcWriteLow, srcWriteHigh, mask)) {
-          fd < 32 ? (dstWriteLow = dstWriteLow | mask) : (dstWriteHigh = dstWriteHigh | mask);
-          total++;
-        }
-        if ((flags & {{{ cDefs.POLLPRI }}}) && check(fd, srcExceptLow, srcExceptHigh, mask)) {
-          fd < 32 ? (dstExceptLow = dstExceptLow | mask) : (dstExceptHigh = dstExceptHigh | mask);
-          total++;
-        }
-      },
-      commit: () => {
-        if (readfds) {
-          {{{ makeSetValue('readfds', '0', 'dstReadLow', 'i32') }}};
-          {{{ makeSetValue('readfds', '4', 'dstReadHigh', 'i32') }}};
-        }
-        if (writefds) {
-          {{{ makeSetValue('writefds', '0', 'dstWriteLow', 'i32') }}};
-          {{{ makeSetValue('writefds', '4', 'dstWriteHigh', 'i32') }}};
-        }
-        if (exceptfds) {
-          {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
-          {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
-        }
-      }
-    };
   },
 
   $syscallGetVarargI__internal: true,
@@ -602,105 +541,6 @@ var SyscallsLibrary = {
     FS.chdir(stream.path);
     return 0;
   },
-  _newselect_js__i53abi: true,
-  _newselect_js__proxy: 'none',
-  _newselect_js__deps: ['$parseSelectFDSet',
-#if PTHREADS
-    '_emscripten_proxy_newselect_finish',
-#endif
-  ],
-  _newselect_js: (ctx, arg, nfds, readfds, writefds, exceptfds, timeoutInMillis) => {
-    // readfds are supported,
-    // writefds checks socket open status
-    // exceptfds are supported, although on web, such exceptional conditions never arise in web sockets
-    //                          and so the exceptfds list will always return empty.
-    // timeout is supported, although on SOCKFS these are ignored and always treated as 0 - fully async
-    // and PIPEFS supports timeout only when the select is called from a worker.
-#if ASSERTIONS
-    assert(nfds <= 64, 'nfds must be less than or equal to 64');  // fd sets have 64 bits // TODO: this could be 1024 based on current musl headers
-#if PTHREADS
-    assert(!ENVIRONMENT_IS_PTHREAD, '_newselect_js must be called in the main thread');
-#endif
-#endif
-
-    var fdSet = parseSelectFDSet(readfds, writefds, exceptfds);
-
-    var allLow = fdSet.allLow;
-    var allHigh = fdSet.allHigh;
-
-    var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
-
-#if PTHREADS
-    var makeNotifyCallback = null;
-    if (ctx) {
-      // Enable event handlers only when the select call is proxied from a worker.
-      var cleanupFuncs = [];
-      var notifyDone = false;
-      makeNotifyCallback = (fd) => {
-          var cb = (flags) => {
-              if (notifyDone) {
-                  return;
-              }
-              if (fd >= 0) {
-                  fdSet.setFlags(fd, flags);
-              }
-              notifyDone = true;
-              cleanupFuncs.forEach(cb => cb());
-              fdSet.commit();
-              __emscripten_proxy_newselect_finish(ctx, arg, fdSet.getTotal());
-          }
-          cb.registerCleanupFunc = (f) => {
-              if (f != null) cleanupFuncs.push(f);
-          }
-          return cb;
-      }
-      if (timeoutInMillis > 0) {
-          setTimeout(() => makeNotifyCallback(-1)(0), timeoutInMillis);
-      }
-    }
-#endif
-
-    for (var fd = 0; fd < nfds; fd++) {
-      var mask = 1 << (fd % 32);
-      if (!(check(fd, allLow, allHigh, mask))) {
-        continue;  // index isn't in the set
-      }
-
-      var stream = SYSCALLS.getStreamFromFD(fd);
-
-      var flags = {{{ DEFAULT_POLLMASK }}};
-
-      if (stream.stream_ops.poll) {
-        flags = (() => {
-#if PTHREADS
-          if (makeNotifyCallback != null) {
-            return stream.stream_ops.poll(stream, timeoutInMillis, timeoutInMillis != 0 ? makeNotifyCallback(fd) : null);
-          }
-#endif
-          return stream.stream_ops.poll(stream, timeoutInMillis);
-        })();
-      } else {
-#if ASSERTIONS
-        if (timeoutInMillis != 0) warnOnce('non-zero select() timeout not supported: ' + timeoutInMillis)
-#endif
-      }
-
-      fdSet.setFlags(fd, flags);
-    }
-
-#if PTHREADS
-    if (makeNotifyCallback != null) {
-      if ((fdSet.getTotal() > 0) || (timeoutInMillis == 0) ) {
-        makeNotifyCallback(-1)(0);
-      }
-      return 0;
-    }
-#endif
-
-    fdSet.commit();
-
-    return fdSet.getTotal();
-  },
   _msync_js__i53abi: true,
   _msync_js: (addr, len, prot, flags, fd, offset) => {
     if (isNaN(offset)) return -{{{ cDefs.EOVERFLOW }}};
@@ -711,24 +551,98 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
-  __syscall_poll: (fds, nfds, timeout) => {
+  _poll_js__proxy: 'none',
+  _poll_js__deps: [
+#if PTHREADS
+    '_emscripten_proxy_poll_finish',
+#endif
+  ],
+  _poll_js: (fds, nfds, timeout, ctx, arg) => {
+#if PTHREADS
+    // Enable event handlers only when the poll call is proxied from a worker.
+    var cleanupFuncs = [];
+    var notifyDone = false;
+    function asyncPollComplete(count) {
+      if (notifyDone) {
+        return;
+      }
+      notifyDone = true;
+#if RUNTIME_DEBUG
+      dbg('asyncPollComplete', count);
+#endif
+      cleanupFuncs.forEach(cb => cb());
+      __emscripten_proxy_poll_finish(ctx, arg, count);
+    }
+    function makeNotifyCallback(stream, pollfd) {
+      var cb = (flags) => {
+        if (notifyDone) {
+          return;
+        }
+#if RUNTIME_DEBUG
+        dbg(`async poll notify: stream=${stream}`);
+#endif
+        var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
+        flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
+#if ASSERTIONS
+        assert(flags)
+#endif
+        {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
+        asyncPollComplete(1);
+      }
+      cb.registerCleanupFunc = (f) => {
+        if (f) cleanupFuncs.push(f);
+      }
+      return cb;
+    }
+
+    if (ctx) {
+#if RUNTIME_DEBUG
+      dbg('async poll start');
+#endif
+      if (timeout > 0) {
+        setTimeout(() => {
+#if RUNTIME_DEBUG
+          dbg('poll: timeout');
+#endif
+          asyncPollComplete(0);
+        }, timeout);
+      }
+    }
+#endif
+
     var count = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
       var fd = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}};
       var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
-      var mask = {{{ cDefs.POLLNVAL }}};
+      var flags = {{{ cDefs.POLLNVAL }}};
       var stream = FS.getStream(fd);
       if (stream) {
-        mask = {{{ DEFAULT_POLLMASK }}};
         if (stream.stream_ops.poll) {
-          mask = stream.stream_ops.poll(stream, -1);
+#if PTHREADS
+          if (ctx && timeout) {
+            flags = stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd));
+          } else
+#endif
+          flags = stream.stream_ops.poll(stream, -1);
+        } else {
+          flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
         }
       }
-      mask &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
-      if (mask) count++;
-      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'mask', 'i16') }}};
+      flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
+      if (flags) count++;
+      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
     }
+
+#if PTHREADS
+    if (ctx) {
+      if (count || !timeout) {
+        asyncPollComplete(count);
+      }
+      return 0;
+    }
+#endif
+
 #if ASSERTIONS
     if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
 #endif
