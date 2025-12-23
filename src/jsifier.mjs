@@ -535,15 +535,9 @@ function(${args}) {
         deps.push('setTempRet0');
       }
 
-      let isAsyncFunction = false;
-      if (ASYNCIFY) {
-        const original = LibraryManager.library[symbol];
-        if (typeof original == 'function') {
-          isAsyncFunction = LibraryManager.library[symbol + '__async'];
-        }
-        if (isAsyncFunction) {
-          asyncFuncs.push(symbol);
-        }
+      const isAsyncFunction = LibraryManager.library[symbol + '__async'];
+      if (ASYNCIFY && isAsyncFunction) {
+        asyncFuncs.push(symbol);
       }
 
       if (symbolsOnly) {
@@ -622,9 +616,8 @@ function(${args}) {
 
       const original = LibraryManager.library[symbol];
       let snippet = original;
-
-      // Check for dependencies on `__internal` symbols from user libraries.
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
+      // Check for dependencies on `__internal` symbols from user libraries.
       for (const dep of deps) {
         if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
           warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
@@ -773,6 +766,7 @@ function(${args}) {
         contentText += `\n${mangled}.sig = '${sig}';`;
       }
       if (ASYNCIFY && isAsyncFunction) {
+        assert(isFunction);
         contentText += `\n${mangled}.isAsync = true;`;
       }
       if (isStub) {
