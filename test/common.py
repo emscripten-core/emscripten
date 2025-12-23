@@ -521,17 +521,15 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.is_browser_test():
       return
 
-    exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
     # Support for JSPI came earlier than 22, but the new API changes require v24
     if self.try_require_node_version(24):
-      self.node_args += exp_args
+      self.node_args += ['--experimental-wasm-stack-switching']
       return
 
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.js_engines = [v8]
-      self.v8_args += exp_args
       return
 
     self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
