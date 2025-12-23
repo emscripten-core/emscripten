@@ -112,7 +112,7 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
   case TEST_RUNNING:
   case TEST_DONE_MAIN:
     if (howManyProc-- > 0) {
-      runCalcs((Dummy*) data, PROCESS_CALCS);
+      runCalcs(&testData, PROCESS_CALCS);
     } else {
       if (whichTest == TEST_DONE_MAIN) {
         emscripten_outf("Worklet done after %dms (expect: approx. 2s)", (int) (emscripten_get_now() - startTime));
@@ -135,7 +135,7 @@ bool mainLoop(double time, void* data) {
     break;
   case TEST_RUNNING:
     if (howManyMain-- > 0) {
-      runCalcs((Dummy*) data, MAINLOOP_CALCS);
+      runCalcs(&testData, MAINLOOP_CALCS);
     } else {
       emscripten_outf("Main thread done after %dms (expect: approx. 2s)", (int) (emscripten_get_now() - startTime));
       // Done here, so signal to process()
@@ -147,10 +147,10 @@ bool mainLoop(double time, void* data) {
     break;
   case TEST_DONE:
     emscripten_out("Multi-thread results:");
-    printDummy((Dummy*) data);
-    assert(((Dummy*) data)->val0 == trueData.val0
-        && ((Dummy*) data)->val1 == trueData.val1
-        && ((Dummy*) data)->val2 == trueData.val2);
+    printDummy(&testData);
+    assert(testData.val0 == trueData.val0
+        && testData.val1 == trueData.val1
+        && testData.val2 == trueData.val2);
     stopping();
     return false;
   }
@@ -223,9 +223,9 @@ int main() {
   // Audio processor callback setup
   context = emscripten_create_audio_context(NULL);
   assert(context);
-  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, initialised, &testData);
+  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, initialised, NULL);
 
-  emscripten_set_timeout_loop(mainLoop, 10, &testData);
+  emscripten_set_timeout_loop(mainLoop, 10, NULL);
   addButton();
   startTest(); // <-- May need a manual click to start
 
