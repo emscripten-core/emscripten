@@ -67,7 +67,7 @@ DEFAULT_ASYNCIFY_EXPORTS = [
   '__main_argc_argv',
 ]
 
-VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
+VALID_ENVIRONMENTS = {'web', 'webview', 'worker', 'node', 'shell', 'worklet'}
 
 EXECUTABLE_EXTENSIONS = ['.wasm', '.html', '.js', '.mjs', '.out', '']
 
@@ -184,6 +184,9 @@ def setup_environment_settings():
   if settings.SHARED_MEMORY and settings.ENVIRONMENT:
     settings.ENVIRONMENT.append('worker')
 
+  if settings.AUDIO_WORKLET:
+    settings.ENVIRONMENT.append('worklet')
+
   # Environment setting based on user input
   if any(x for x in settings.ENVIRONMENT if x not in VALID_ENVIRONMENTS):
     exit_with_error(f'Invalid environment specified in "ENVIRONMENT": {settings.ENVIRONMENT}. Should be one of: {",".join(VALID_ENVIRONMENTS)}')
@@ -193,6 +196,7 @@ def setup_environment_settings():
   settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_WORKER = not settings.ENVIRONMENT or 'worker' in settings.ENVIRONMENT
+  settings.ENVIRONMENT_MAY_BE_AUDIO_WORKLET = not settings.ENVIRONMENT or 'worklet' in settings.ENVIRONMENT
 
   if not settings.ENVIRONMENT_MAY_BE_NODE:
     if 'MIN_NODE_VERSION' in user_settings and settings.MIN_NODE_VERSION != feature_matrix.UNSUPPORTED:
@@ -1175,7 +1179,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # In Audio Worklets TextDecoder API is intentionally not exposed
   # (https://github.com/WebAudio/web-audio-api/issues/2499) so we also need to
   # keep the JavaScript-based fallback.
-  if settings.SHRINK_LEVEL >= 2 and not settings.AUDIO_WORKLET and \
+  if settings.SHRINK_LEVEL >= 2 and not settings.ENVIRONMENT_MAY_BE_AUDIO_WORKLET and \
      not settings.ENVIRONMENT_MAY_BE_SHELL:
     default_setting('TEXTDECODER', 2)
 
@@ -2472,7 +2476,7 @@ def module_export_name_substitution():
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   src = read_file(final_js)
   final_js += '.module_export_name_substitution.js'
-  if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL and not settings.AUDIO_WORKLET:
+  if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL and not settings.ENVIRONMENT_MAY_BE_AUDIO_WORKLET:
     # On the web, with MINIMAL_RUNTIME, the Module object is always provided
     # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME

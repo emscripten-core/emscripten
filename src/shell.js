@@ -34,7 +34,7 @@ var Module = moduleArg;
 var Module;
 // if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
-#elif AUDIO_WORKLET
+#elif ENVIRONMENT_MAY_BE_AUDIO_WORKLET
 var Module = globalThis.Module || (typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {});
 #else
 var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
@@ -53,8 +53,11 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
 #endif
 
-#if AUDIO_WORKLET
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
 var ENVIRONMENT_IS_AUDIO_WORKLET = !!globalThis.AudioWorkletGlobalScope;
+#endif
+
+#if AUDIO_WORKLET
 // Audio worklets behave as wasm workers.
 if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 #endif
@@ -79,7 +82,7 @@ var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
 var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
-#if AUDIO_WORKLET
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_AUDIO_WORKLET;
 #else
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
@@ -352,7 +355,9 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 } else
 #endif // ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-#if AUDIO_WORKLET && ASSERTIONS
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
+#endif
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET && ASSERTIONS
 if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 #endif
 {
@@ -401,7 +406,7 @@ if (ENVIRONMENT_IS_NODE) {
 // if an assertion fails it cannot print the message
 #if PTHREADS
 assert(
-#if AUDIO_WORKLET
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
   ENVIRONMENT_IS_AUDIO_WORKLET ||
 #endif
   ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');

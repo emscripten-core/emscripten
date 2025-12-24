@@ -140,6 +140,7 @@ var ENVIRONMENT_MAY_BE_WORKER = true;
 var ENVIRONMENT_MAY_BE_NODE = true;
 var ENVIRONMENT_MAY_BE_SHELL = true;
 var ENVIRONMENT_MAY_BE_WEBVIEW = true;
+var ENVIRONMENT_MAY_BE_AUDIO_WORKLET = true;
 
 // Whether to minify import and export names in the minify_wasm_js stage.
 // Currently always off for MEMORY64.
