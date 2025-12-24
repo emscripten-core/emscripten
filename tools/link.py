@@ -251,8 +251,8 @@ def filter_link_flags(flags, using_lld):
         # lld allows various flags to have either a single -foo or double --foo
         if f.startswith((flag, '-' + flag)):
           diagnostics.warning('linkflags', 'ignoring unsupported linker flag: `%s`', f)
-          # Skip the next argument if this linker flag takes and argument and that
-          # argument was not specified as a separately (i.e. it was specified as
+          # Skip the next argument if this linker flag takes an argument and that
+          # argument was not specified separately (i.e. it was specified as
           # single arg containing an `=` char.)
           skip_next = takes_arg and '=' not in f
           return False, skip_next
@@ -781,7 +781,7 @@ def setup_sanitizers(options):
 
 
 def get_dylibs(options, linker_args):
-  """Find all the Wasm dynanamic libraries specified on the command line,
+  """Find all the Wasm dynamic libraries specified on the command line,
   either via `-lfoo` or via `libfoo.so` directly."""
 
   dylibs = []
@@ -949,7 +949,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   settings.OUTPUT_FORMAT = options.oformat.name
 
   if settings.SUPPORT_BIG_ENDIAN and settings.WASM2JS:
-    exit_with_error('WASMJ2S is currently not compatible with SUPPORT_BIG_ENDIAN')
+    exit_with_error('WASM2JS is currently not compatible with SUPPORT_BIG_ENDIAN')
 
   if settings.WASM_ESM_INTEGRATION:
     default_setting('MODULARIZE', 'instance')
@@ -975,7 +975,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   def limit_incoming_module_api():
     if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
-      # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
+      # Our default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
       default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
     else:
       default_setting('INCOMING_MODULE_JS_API', [])
@@ -1876,7 +1876,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
 
   # Closure might be run if we run it ourselves, or if whitespace is not being
-  # minifed. In the latter case we keep both whitespace and comments, and the
+  # minified. In the latter case we keep both whitespace and comments, and the
   # purpose of the comments might be closure compiler, so also perform all
   # adjustments necessary to ensure that works (which amounts to a few more
   # comments; adding some more of them is not an issue in such a build which
@@ -2003,7 +2003,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # generation output.
   # Don't invoke the program's `main` function.
   settings.INVOKE_RUN = False
-  # Ignore -sMODULARIZE which could otherwise effect how we run the module
+  # Ignore -sMODULARIZE which could otherwise affect how we run the module
   # to generate the bindings.
   settings.MODULARIZE = False
   # Disable ESM integration to avoid enabling the experimental feature in node.
@@ -2271,7 +2271,7 @@ def phase_binaryen(target, options, wasm_target):
   # whether we need to emit -g in the intermediate binaryen invocations (but not
   # necessarily at the very end). this is necessary if we depend on debug info
   # during compilation, even if we do not emit it at the end.
-  # we track the number of causes for needing intermdiate debug info so
+  # we track the number of causes for needing intermediate debug info so
   # that we can stop emitting it when possible - in particular, that is
   # important so that we stop emitting it before the end, and it is not in the
   # final binary (if it shouldn't be)
@@ -2464,7 +2464,7 @@ def modularize():
   save_intermediate('modularized')
 
   # FIXME(https://github.com/emscripten-core/emscripten/issues/24558): Running acorn at this
-  # late phase seems to cause OOM (some kind of inifite loop perhaps) in node.
+  # late phase seems to cause OOM (some kind of infinite loop perhaps) in node.
   # Instead we minify src/modularize.js in isolation above.
   #if settings.MINIFY_WHITESPACE:
   #  final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
@@ -2922,7 +2922,7 @@ def get_secondary_target(target, ext):
   # Depending on the output format emscripten creates zero or more secondary
   # output files (e.g. the .wasm file when creating JS output, or the
   # .js and the .wasm file when creating html output.
-  # Thus function names the secondary output files, while ensuring they
+  # This function names the secondary output files, while ensuring they
   # never collide with the primary one.
   base = unsuffixed(target)
   if get_file_suffix(target) == ext:
@@ -3134,7 +3134,7 @@ def run(options, linker_args):
 
   system_libs = phase_calculate_system_libraries(options)
   # Only add system libraries that have not already been specified.
-  # This avoids issues where the user explictly includes, for example, `-lGL`.
+  # This avoids issues where the user explicitly includes, for example, `-lGL`.
   # This is not normally a problem except in the case of -sMAIN_MODULE=1 where
   # the duplicate library would result in duplicate symbols.
   for s in system_libs:

@@ -1,9 +1,9 @@
-llvm's compiler-rt
+LLVM's compiler-rt
 ------------------
 
 These files are from the llvm-project based on release 20.1.8.
 
-We maintain a local fork of llvm-project that contains any emscripten
+We maintain a local fork of llvm-project that contains any Emscripten
 specific patches:
 
   https://github.com/emscripten-core/llvm-project

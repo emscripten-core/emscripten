@@ -146,7 +146,7 @@ EM_JS(void, test_c_preprocessor, (void), {
   test('#define FOO 42\n#define BAR FOO\nBAR\n', '42\n'); // Test chained expanding a preprocessor symbol
   test('#define MACRO(x) x\nMACRO(42)\n', '42\n'); // Test one-parameter preprocessor macro
   test('#define MACRO(x,y) x\nMACRO(42, 53)\n', '42\n'); // Test a two-parameter preprocessor macro
-  test('#define MACRO(  \t  x   ,   y   )    \t x    \t\nMACRO(42, 53)\n', '42\n'); // Test a macro with odd whitescape in it
+  test('#define MACRO(  \t  x   ,   y   )    \t x    \t\nMACRO(42, 53)\n', '42\n'); // Test a macro with odd whitespace in it
 
   test('#define MACRO(x,y,z) x+y<=z\nMACRO(42,15,30)\n', '42+15<=30\n'); // Test three-arg macro
 

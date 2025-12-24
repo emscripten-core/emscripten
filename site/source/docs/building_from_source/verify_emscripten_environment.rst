@@ -31,7 +31,7 @@ could not be found:
   shared:INFO: (Emscripten: Running sanity checks)
   emcc: warning: LLVM version for clang executable "/usr/bin/clang" appears incorrect (seeing "16.0", expected "18") [-Wversion-check]
 
-At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``emcc ---check`` should give no warnings, and if you just enter ``emcc`` (without any input files), it will give an error ::
+At this point you need to :ref:`Install and activate <fixing-missing-components-emcc>` any missing components. When everything is set up properly, ``emcc --check`` should give no warnings, and if you just enter ``emcc`` (without any input files), it will give an error ::
 
   emcc: error: no input files
 

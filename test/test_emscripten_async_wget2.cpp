@@ -19,8 +19,8 @@ public:
     REQUEST_POST ,
   };
 
-  enum AssyncMode {
-    ASSYNC_THREAD
+  enum AsyncMode {
+    ASYNC_THREAD
   };
 
   // Callback
@@ -39,15 +39,15 @@ public:
     req->onProgress(progress);
   }
 
-  // Constructeur
+  // Constructor
   http(const char* hostname, int requestType, const char* targetFilename = "")
     : _hostname(hostname), _targetFileName(targetFilename), _request((RequestType)requestType),
-      _status(ST_PENDING), _assync(ASSYNC_THREAD), _uid(uid++) {}
+      _status(ST_PENDING), _async(ASYNC_THREAD), _uid(uid++) {}
 
   /**
    * Effectue la requete
    */
-  void runRequest(const char* page, int assync);
+  void runRequest(const char* page, int async);
 
   /**
    * Abort the request
@@ -143,8 +143,8 @@ private:
   // progress value
   int         _progressValue = -1;
 
-  // mode assyncrone courant
-  AssyncMode  _assync;
+  // current async mode
+  AsyncMode  _async;
 
   // request handle
   unsigned _handle;
@@ -223,10 +223,10 @@ std::string http::cross_domain = "";
 /**
  * Effectue la requete
  */
-void http::runRequest(const char* page, int assync) {
+void http::runRequest(const char* page, int async) {
   _page = page;
   _status = ST_PENDING;
-  _assync = (AssyncMode)assync;
+  _async = (AsyncMode)async;
   _progressValue = 0;
 
   std::string url = cross_domain;
@@ -362,7 +362,7 @@ int main() {
   /*
   Http* http4 = new Http("http://www.---.com",Http::REQUEST_POST);
   http4->addValue("app","123");
-  http4->runRequest("/test.php",Http::ASSYNC_THREAD);
+  http4->runRequest("/test.php",Http::ASYNC_THREAD);
   num_request ++;
   emscripten_async_call(wait_http,http4,500);
   */

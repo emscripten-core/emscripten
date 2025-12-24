@@ -40,7 +40,7 @@ variables so that emcc etc. are used. Typical usage:
   args = sys.argv[1:]
 
   if 'cmake' in args:
-    print('error: use `emcmake` rather then `emconfigure` for cmake projects', file=sys.stderr)
+    print('error: use `emcmake` rather than `emconfigure` for cmake projects', file=sys.stderr)
     return 1
 
   env = building.get_building_env()

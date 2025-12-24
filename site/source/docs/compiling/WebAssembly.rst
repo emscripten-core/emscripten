@@ -97,7 +97,7 @@ WebAssembly feature extensions
 ==============================
 
 Since its original launch, WebAssembly has been expanded with various feature
-extensions, which have been implmented in browsers. A list of features
+extensions, which have been implemented in browsers. A list of features
 (including already-shipped and in-progress) and details about browser versions
 that support them can be found on
 `webassembly.org <https://webassembly.org/features/>`_.

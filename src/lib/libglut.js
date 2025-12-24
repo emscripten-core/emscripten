@@ -42,7 +42,7 @@ var LibraryGLUT = {
 
     onMousemove: (event) => {
       /* Send motion event only if the motion changed, prevents
-       * spamming our app with uncessary callback call. It does happen in
+       * spamming our app with unnecessary callback call. It does happen in
        * Chrome on Windows.
        */
       var lastX = Browser.mouseX;
@@ -185,14 +185,14 @@ var LibraryGLUT = {
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
           if (GLUT.specialUpFunc) {
-            event.preventDefault ();
+            event.preventDefault();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.specialUpFunc') }}}(key, Browser.mouseX, Browser.mouseY);
           }
         } else {
           key = GLUT.getASCIIKey(event);
           if (key !== null && GLUT.keyboardUpFunc) {
-            event.preventDefault ();
+            event.preventDefault();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.keyboardUpFunc') }}}(key, Browser.mouseX, Browser.mouseY);
           }

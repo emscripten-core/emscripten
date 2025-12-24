@@ -15,7 +15,7 @@
 static SDL_Surface *screen;
 static SDL_Color   pal[COLOR_COUNT +1];
 
-void pallete(int red, int green, int blue) {
+void palette(int red, int green, int blue) {
   //initialize sdl palette
   //with gradient colors
   pal[0].r = 0;
@@ -37,7 +37,7 @@ int main(int argc, char** argv) {
   SDL_Init(SDL_INIT_VIDEO);
   screen = SDL_SetVideoMode(600, 450, 8, SDL_HWSURFACE | SDL_HWPALETTE);
 
-  //test empty pallete
+  //test empty palette
   SDL_LockSurface(screen);
   SDL_UnlockSurface(screen);
 
@@ -54,20 +54,20 @@ int main(int argc, char** argv) {
   }
   SDL_UnlockSurface(screen);
 
-  //Set pallete
+  //Set palette
   if (argc > 1) {
     printf("%s\n", argv[1]);
     if (strcmp(argv[1], "-r") == 0) {
       printf("set [red]\n");
-      pallete(255, 0, 0);
+      palette(255, 0, 0);
     }
     if (strcmp(argv[1], "-g") == 0) {
       printf("set [green]\n");
-      pallete(0, 255, 0);
+      palette(0, 255, 0);
     }
     if (strcmp(argv[1], "-b") == 0) {
       printf("set [blue]\n");
-      pallete(0, 0, 255);
+      palette(0, 0, 255);
     }
   }
 

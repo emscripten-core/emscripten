@@ -18,7 +18,7 @@ static const char zHelp[] =
   "  --exclusive         Enable locking_mode=EXCLUSIVE\n"
   "  --explain           Like --sqlonly but with added EXPLAIN keywords\n"
   "  --heap SZ MIN       Memory allocator uses SZ bytes & min allocation MIN\n"
-  "  --incrvacuum        Enable incremenatal vacuum mode\n"
+  "  --incrvacuum        Enable incremental vacuum mode\n"
   "  --journalmode M     Set the journal_mode to MODE\n"
   "  --key KEY           Set the encryption key to KEY\n"
   "  --lookaside N SZ    Configure lookaside for N slots of SZ bytes each\n"
@@ -169,7 +169,7 @@ unsigned int speedtest1_random(void){
 }
 
 /* Map the value in within the range of 1...limit into another
-** number in a way that is chatic and invertable.
+** number in a way that is chaotic and invertible.
 */
 unsigned swizzle(unsigned in, unsigned limit){
   unsigned out = 0;
@@ -189,7 +189,7 @@ unsigned roundup_allones(unsigned limit){
   return m;
 }
 
-/* The speedtest1_numbername procedure below converts its argment (an integer)
+/* The speedtest1_numbername procedure below converts its argument (an integer)
 ** into a string which is the English-language name for that number.
 ** The returned string should be freed with sqlite3_free().
 **
@@ -1150,7 +1150,7 @@ int main(int argc, char **argv){
   int nPCache = 0, szPCache = 0;/* --pcache configuration */
   int nScratch = 0, szScratch=0;/* --scratch configuration */
   int showStats = 0;            /* True for --stats */
-  const char *zTSet = "main";   /* Which --testset torun */
+  const char *zTSet = "main";   /* Which --testset to run */
   int doTrace = 0;              /* True for --trace */
   const char *zEncoding = 0;    /* --utf16be or --utf16le */
   const char *zDbName = 0;      /* Name of the test database */
