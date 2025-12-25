@@ -1838,8 +1838,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # We also export refcount increasing and decreasing functions because if you
     # catch an exception, be it an Emscripten exception or a Wasm exception, in
     # JS, you may need to manipulate the refcount manually not to leak memory.
-    # What you need to do is different depending on the kind of EH you use
-    # (https://github.com/emscripten-core/emscripten/issues/17115).
+    # See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
+    # example usage.
     settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', 'incrementExceptionRefcount', 'decrementExceptionRefcount']
     if settings.WASM_EXCEPTIONS:
       settings.REQUIRED_EXPORTS += ['__cpp_exception']
