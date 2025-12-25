@@ -151,6 +151,13 @@ export function mergeInto(obj, other, options = null) {
       const decoratorName = key.slice(index);
       const type = typeof other[key];
 
+      if (decoratorName == '__async') {
+        const decorated = key.slice(0, index);
+        if (isJsOnlySymbol(decorated)) {
+          error(`__async decorator applied to JS symbol: ${decorated}`);
+        }
+      }
+
       // Specific type checking for `__deps` which is expected to be an array
       // (not just any old `object`)
       if (decoratorName === '__deps') {
