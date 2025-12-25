@@ -65,6 +65,57 @@ if (globalThis.window && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIR
         prevErr(text);
       };
 
+      // Receive inputs from emrun and forward them to the TTY input.
+      var inputBuf = [];
+      var readableHandlers = [];
+      var inputClosed = false;
+      const POLLIN = 0x1;
+      const POLLRDNORM = 0x040;
+      function notifyReadableHandlers() {
+        while (readableHandlers.length > 0) {
+          const cb = readableHandlers.shift();
+          if (cb) cb(POLLIN | POLLRDNORM);
+        }
+        readableHandlers = [];
+      }
+      TTY.stream_ops.poll = (stream, timeout, notifyCallback) => {
+        if (inputClosed || (inputBuf.length > 0)) return (POLLIN | POLLRDNORM);
+        if (notifyCallback) {
+          notifyCallback.registerCleanupFunc(() => {
+            const i = readableHandlers.indexOf(notifyCallback);
+            if (i !== -1) readableHandlers.splice(i, 1);
+          });
+          readableHandlers.push(notifyCallback);
+        }
+      };
+      const es = new EventSource("/in");
+      es.addEventListener("close", e => {
+        inputClosed = true;
+        notifyReadableHandlers();
+      });
+      es.onopen = () => {
+        es.onmessage = (e) => {
+          inputBuf.push(Number(e.data));
+          notifyReadableHandlers();
+        }
+        TTY.default_tty_ops.get_char = (tty) => {
+          const res = inputBuf.shift();
+          // convert "undefined" to "null" because the TTY implementation
+          // interprets "undefined" as EAGAIN when there is no other read data.
+          return res ? res : null;
+        };
+
+        // Forward the output without buffering and cooking
+        TTY.default_tty_ops.fsync(TTY); // flush buffered contents
+        TTY.default_tty_ops.put_char = (tty, val) => {
+          post('^rawout^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(UTF8ArrayToString([val])));
+        }
+        TTY.default_tty1_ops.fsync(TTY); // flush buffered contents
+        TTY.default_tty1_ops.put_char = (tty, val) => {
+          post('^rawerr^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(UTF8ArrayToString([val])));
+        }
+      }
+
       // Notify emrun web server that this browser has successfully launched the
       // page. Note that we may need to wait for the server to be ready.
       var tryToSendPageload = () => {
