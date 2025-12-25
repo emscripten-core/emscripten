@@ -1835,11 +1835,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # enabling EH, errors out.
     if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
       exit_with_error('EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions')
-    # We also export refcount increasing and decreasing functions because if you
-    # catch an exception, be it an Emscripten exception or a Wasm exception, in
-    # JS, you may need to manipulate the refcount manually not to leak memory.
-    # See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
-    # example usage.
+    # We also export refcount incrementing and decrementing functions because if
+    # you catch an exception from JS, you may need to manipulate the refcount
+    # manually to avoid memory leaks.  See test_EXPORT_EXCEPTION_HANDLING_HELPERS
+    # in test/test_core.py for an example usage.
     settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', 'incrementExceptionRefcount', 'decrementExceptionRefcount']
     if settings.WASM_EXCEPTIONS:
       settings.REQUIRED_EXPORTS += ['__cpp_exception']
