@@ -1304,6 +1304,22 @@ std::vector<SmallClass*> emval_test_return_vector_pointers() {
   return vec;
 }
 
+class CustomIterable {
+ public:
+  CustomIterable() : values_({1, 2, 3}) {}
+
+  unsigned int count() const {
+    return values_.size();
+  }
+
+  int at(unsigned int index) const {
+    return values_[index];
+  }
+
+ private:
+  std::vector<int> values_;
+};
+
 void test_string_with_vec(const std::string& p1, std::vector<std::string>& v1) {
   // THIS DOES NOT WORK -- need to get as val and then call vecFromJSArray
   printf("%s\n", p1.c_str());
@@ -1907,6 +1923,12 @@ EMSCRIPTEN_BINDINGS(tests) {
   register_vector<float>("FloatVector");
   register_vector<std::vector<int>>("IntegerVectorVector");
   register_vector<SmallClass*>("SmallClassPointerVector");
+
+  class_<CustomIterable>("CustomIterable")
+      .constructor<>()
+      .function("count", &CustomIterable::count)
+      .function("at", &CustomIterable::at)
+      .iterable<int>("count", "at");
 
   class_<DummyForPointer>("DummyForPointer");
 
