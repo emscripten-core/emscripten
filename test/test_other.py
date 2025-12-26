@@ -3683,7 +3683,7 @@ More info: https://emscripten.org
     'legacy': [1],
   })
   def test_embind_tsgen_exceptions(self, legacy):
-    if not legacy and shared.get_node_version(config.NODE_JS)[0] < 22:
+    if not legacy and self.get_node_test_version(config.NODE_JS)[0] < 22:
       self.skipTest('Node version needs to be 22 or greater to run tsgen with Wasm EH')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', legacy)
 
@@ -12369,7 +12369,7 @@ exec "$@"
     self.assertFileContents(path_from_root('src/struct_info_generated.json'), read_file('out.json'))
 
     # Same again for wasm64
-    node_version = shared.get_node_version(self.get_nodejs())
+    node_version = self.get_node_test_version(self.get_nodejs())
     if node_version and node_version >= (14, 0, 0):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
       self.assertFileContents(path_from_root('src/struct_info_generated_wasm64.json'), read_file('out.json'))
@@ -12882,7 +12882,7 @@ void foo() {}
     self.build('main.c', cflags=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=0'])
     self.assertNotContained('unhandledRejection', read_file('main.js'))
 
-    if shared.get_node_version(self.get_nodejs())[0] >= 15:
+    if self.get_node_test_version(self.get_nodejs())[0] >= 15:
       self.skipTest('old behaviour of node JS cannot be tested on node v15 or above')
 
     output = self.run_js('main.js')
@@ -13961,7 +13961,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @requires_node
   def test_min_node_version(self):
-    node_version = shared.get_node_version(self.get_nodejs())
+    node_version = self.get_node_test_version(self.get_nodejs())
     node_version = '.'.join(str(x) for x in node_version)
     self.set_setting('MIN_NODE_VERSION', 300000)
     expected = 'This emscripten-generated code requires node v30.0.0 (detected v%s' % node_version

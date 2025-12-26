@@ -38,12 +38,15 @@ var readyPromiseResolve, readyPromiseReject;
 #if (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
   // Create as web-worker-like an environment as we can.
+  globalThis.self = globalThis;
   var parentPort = worker_threads['parentPort'];
-  parentPort.on('message', (msg) => global.onmessage?.({ data: msg }));
-  Object.assign(globalThis, {
-    self: global,
-    postMessage: (msg) => parentPort['postMessage'](msg),
-  });
+  // Deno and Bun already have `postMessage` defined on the global scope and
+  // deliver messages to `globalThis.onmessage`, so we must not duplicate that
+  // behavior here if `postMessage` is already present.
+  if (!globalThis.postMessage) {
+    parentPort.on('message', (msg) => globalThis.onmessage?.({ data: msg }));
+    globalThis.postMessage = (msg) => parentPort['postMessage'](msg);
+  }
   // Node.js Workers do not pass postMessage()s and uncaught exception events to the parent
   // thread necessarily in the same order where they were generated in sequential program order.
   // See https://github.com/nodejs/node/issues/59617
