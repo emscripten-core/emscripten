@@ -551,15 +551,17 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
-  _poll_js__proxy: 'none',
-  _poll_js__deps: [
+  __syscall_poll__proxy: 'sync',
+  __syscall_poll__async: true,
+  __syscall_poll: (fds, nfds, timeout) => {
+#if PTHREADS || JSPI
 #if PTHREADS
-    '_emscripten_proxy_poll_finish',
+    const isAsyncContext = PThread.currentProxiedOperationCallerThread;
+#else
+    const isAsyncContext = true;
 #endif
-  ],
-  _poll_js: (fds, nfds, timeout, ctx, arg) => {
-#if PTHREADS
     // Enable event handlers only when the poll call is proxied from a worker.
+    var { promise, resolve, reject } = Promise.withResolvers();
     var cleanupFuncs = [];
     var notifyDone = false;
     function asyncPollComplete(count) {
@@ -571,7 +573,7 @@ var SyscallsLibrary = {
       dbg('asyncPollComplete', count);
 #endif
       cleanupFuncs.forEach(cb => cb());
-      __emscripten_proxy_poll_finish(ctx, arg, count);
+      resolve(count);
     }
     function makeNotifyCallback(stream, pollfd) {
       var cb = (flags) => {
@@ -595,17 +597,18 @@ var SyscallsLibrary = {
       return cb;
     }
 
-    if (ctx) {
+    if (isAsyncContext) {
 #if RUNTIME_DEBUG
       dbg('async poll start');
 #endif
       if (timeout > 0) {
-        setTimeout(() => {
+        var t = setTimeout(() => {
 #if RUNTIME_DEBUG
-          dbg('poll: timeout');
+          dbg('poll: timeout', timeout);
 #endif
           asyncPollComplete(0);
         }, timeout);
+        cleanupFuncs.push(() => clearTimeout(t));
       }
     }
 #endif
@@ -619,8 +622,8 @@ var SyscallsLibrary = {
       var stream = FS.getStream(fd);
       if (stream) {
         if (stream.stream_ops.poll) {
-#if PTHREADS
-          if (ctx && timeout) {
+#if PTHREADS || JSPI
+          if (isAsyncContext && timeout) {
             flags = stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd));
           } else
 #endif
@@ -634,12 +637,12 @@ var SyscallsLibrary = {
       {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
     }
 
-#if PTHREADS
-    if (ctx) {
+#if PTHREADS || JSPI
+    if (isAsyncContext) {
       if (count || !timeout) {
         asyncPollComplete(count);
       }
-      return 0;
+      return promise;
     }
 #endif
 
