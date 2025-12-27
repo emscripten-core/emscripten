@@ -409,7 +409,7 @@ var LibraryGLEmulation = {
             return;
           }
           case 0x0D32: { // GL_MAX_CLIP_PLANES
-            {{{ makeSetValue('params', '0', 'GLEmulation.MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support atleast 6
+            {{{ makeSetValue('params', '0', 'GLEmulation.MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support at least 6
             return;
           }
           case 0x0BA0: { // GL_MATRIX_MODE
@@ -3892,7 +3892,7 @@ var LibraryGLEmulation = {
   },
 
   gluProject: (objX, objY, objZ, model, proj, view, winX, winY, winZ) => {
-    // The algorithm for this functions comes from Mesa
+    // The algorithm for this function comes from Mesa
 
     var inVec = new Float32Array(4);
     var outVec = new Float32Array(4);

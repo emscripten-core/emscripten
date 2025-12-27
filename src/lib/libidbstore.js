@@ -9,7 +9,7 @@
 var LibraryIDBStore = {
   // A simple IDB-backed storage mechanism. Suitable for saving and loading
   // large files asynchronously. This does *NOT* use the emscripten filesystem,
-  // intentionally, to avoid overhead. It lets you application define whatever
+  // intentionally, to avoid overhead. It lets your application define whatever
   // filesystem-like layer you want, with the overhead 100% controlled by you.
   // At the extremes, you could either just store large files, with almost no
   // extra code; or you could implement a file b-tree using posix-compliant
@@ -34,7 +34,7 @@ var LibraryIDBStore = {
   },
   emscripten_idb_async_store__deps: ['$UTF8ToString', '$callUserCallback'],
   emscripten_idb_async_store: (db, id, ptr, num, arg, onstore, onerror) => {
-    // note that we copy the data here, as these are async operatins - changes
+    // note that we copy the data here, as these are async operations - changes
     // to HEAPU8 meanwhile should not affect us!
     {{{ runtimeKeepalivePush() }}};
     IDBStore.setFile(UTF8ToString(db), UTF8ToString(id), new Uint8Array(HEAPU8.subarray(ptr, ptr+num)), (error) => {

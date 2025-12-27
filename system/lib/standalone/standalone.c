@@ -257,7 +257,7 @@ int _wasmfs_stdin_get_char(void) {
 }
 
 // In the non-standalone build we define this helper function in JS to avoid
-// signture mismatch issues.
+// signature mismatch issues.
 // See: https://github.com/emscripten-core/posixtestsuite/issues/6
 void __call_sighandler(sighandler_t handler, int sig) {
   handler(sig);

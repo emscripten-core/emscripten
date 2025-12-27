@@ -33,7 +33,7 @@ var {{{ EXPORT_NAME }}} = (() => {
   };
 })();
 #else
-// When targetting node and ES6 we use `await import ..` in the generated code
+// When targeting node and ES6 we use `await import ..` in the generated code
 // so the outer function needs to be marked as async.
 async function {{{ EXPORT_NAME }}}(moduleArg = {}) {
   var moduleRtn;

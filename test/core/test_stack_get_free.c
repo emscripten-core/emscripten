@@ -38,8 +38,8 @@ int main() {
     uintptr_t free = emscripten_stack_get_free();
     assert(prevFree - free == increment);
     prevFree = free;
-    // Print something from the allocationed region to prevent whole program
-    // optimizations from elminiating the alloca completely.
+    // Print something from the allocated region to prevent whole program
+    // optimizations from eliminating the alloca completely.
     printf("Val: %d\n", p[10]);
     printf("Stack used: %zu\n", origFree - emscripten_stack_get_free());
     TestStackValidity();

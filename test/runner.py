@@ -119,7 +119,7 @@ misc_test_modes = [
 
 def check_js_engines():
   if not all(jsrun.check_engine(e) for e in config.JS_ENGINES):
-    errlog('Not all the JS engines in JS_ENGINES appears to work.')
+    errlog('Not all the JS engines in JS_ENGINES appear to work.')
     sys.exit(1)
 
   if common.EMTEST_ALL_ENGINES:
@@ -441,7 +441,7 @@ def run_tests(options, suites):
     testRunner = SingleLineTestRunner(failfast=options.failfast)
   else:
     if not options.ansi:
-      print('using verbose test runner (ANSI not avilable)')
+      print('using verbose test runner (ANSI not available)')
     else:
       print('using verbose test runner (verbose output requested)')
     testRunner = ColorTextRunner(failfast=options.failfast)

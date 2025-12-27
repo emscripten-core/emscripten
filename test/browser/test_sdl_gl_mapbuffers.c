@@ -5,7 +5,7 @@
  * found in the LICENSE file.
  */
 
-// Built from glbook/hello triange and sdl_ogl, see details there
+// Built from glbook/hello triangle and sdl_ogl, see details there
 
 #include "SDL/SDL.h"
 #include "SDL/SDL_image.h"

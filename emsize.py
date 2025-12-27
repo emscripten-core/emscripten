@@ -46,7 +46,7 @@ def parse_args(argv):
 
 def print_sizes(js_file):
   if not os.path.isfile(js_file):
-    return error('Input JS file %s not foune' % js_file)
+    return error('Input JS file %s not found' % js_file)
   if not js_file.endswith('.js'):
     return error('Input file %s does not have a JS extension' % js_file)
 

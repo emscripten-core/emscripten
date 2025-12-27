@@ -41,7 +41,7 @@ def parse_args(args):
   parser.add_argument('-l', '--load-prefix', nargs='*', help='replace source debug filename prefix for reading sources from file system (see also --sources)', default=[])
   parser.add_argument('-w', nargs='?', help='set output wasm file')
   parser.add_argument('-x', '--strip', action='store_true', help='removes debug and linking sections')
-  parser.add_argument('-u', '--source-map-url', nargs='?', help='specifies sourceMappingURL section contest')
+  parser.add_argument('-u', '--source-map-url', nargs='?', help='specifies sourceMappingURL section content')
   parser.add_argument('--dwarfdump', help="path to llvm-dwarfdump executable")
   parser.add_argument('--dwarfdump-output', nargs='?', help=argparse.SUPPRESS)
   parser.add_argument('--basepath', help='base path for source files, which will be relative to this')

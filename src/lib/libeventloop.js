@@ -141,7 +141,7 @@ LibraryJSEventLoop = {
           // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
           var remaining = n - _emscripten_get_now();
 #if ENVIRONMENT_MAY_BE_NODE
-          // Recent revsions of node, however, give TimeoutNegativeWarning
+          // Recent revisions of node, however, give TimeoutNegativeWarning
           remaining = Math.max(0, remaining);
 #endif
           setTimeout(tick, remaining);
@@ -417,10 +417,10 @@ LibraryJSEventLoop = {
     }
 
     // We create the loop runner here but it is not actually running until
-    // _emscripten_set_main_loop_timing is called (which might happen a
+    // _emscripten_set_main_loop_timing is called (which might happen at a
     // later time).  This member signifies that the current runner has not
     // yet been started so that we can call runtimeKeepalivePush when it
-    // gets it timing set for the first time.
+    // gets its timing set for the first time.
     MainLoop.running = false;
     MainLoop.runner = function MainLoop_runner() {
       if (ABORT) return;

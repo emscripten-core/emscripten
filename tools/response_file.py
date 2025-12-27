@@ -80,7 +80,7 @@ def expand_response_file(arg):
     response_filename = None
 
   # Is the argument is not a response file, or if the file does not exist
-  # just return orginal argument.
+  # just return original argument.
   if not response_filename or not os.path.exists(response_filename):
     return [arg]
 

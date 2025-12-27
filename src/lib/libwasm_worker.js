@@ -63,7 +63,7 @@ addToLibrary({
   $_wasmWorkersID: 1,
 
   // Starting up a Wasm Worker is an asynchronous operation, hence if the parent
-  // thread performs any postMessage()-based wasm function calls s to the
+  // thread performs any postMessage()-based wasm function calls to the
   // Worker, they must be delayed until the async startup has finished, after
   // which these postponed function calls can be dispatched.
   $_wasmWorkerDelayedMessageQueue: [],

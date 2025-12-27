@@ -173,7 +173,7 @@ typedef void (*em_dlopen_callback)(void* user_data, void* handle);
 void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlopen_callback onsuccess, em_arg_callback_func onerror);
 
 // Promisified version of emscripten_dlopen
-// The returned promise will resolve once the dso has been loaded.  Its up to
+// The returned promise will resolve once the dso has been loaded.  It's up to
 // the caller to call emscripten_promise_destroy on this promise.
 em_promise_t emscripten_dlopen_promise(const char *filename, int flags);
 

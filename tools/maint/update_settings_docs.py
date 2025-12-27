@@ -67,8 +67,8 @@ Deprecated Settings
 ===================
 
 The following settings have been proposed for removal from emscripten.  These settings
-still function but may be removed in a future version.  If your project is using of
-the these settings please open a bug (or reply to one of the existing bugs).
+still function but may be removed in a future version.  If your project is using one of
+these settings please open a bug (or reply to one of the existing bugs).
 
 '''
 
@@ -80,7 +80,7 @@ Legacy Settings
 ===============
 
 The following settings no longer have any effect but are still accepted by emscripten
-for backwards compatbility with older versions:
+for backwards compatibility with older versions:
 
 '''
 

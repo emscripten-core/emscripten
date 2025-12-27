@@ -521,7 +521,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
                                     override=True)
     elif arg == '-mno-sign-ext':
       feature_matrix.disable_feature(feature_matrix.Feature.SIGN_EXT)
-    elif arg == '-mnontrappting-fptoint':
+    elif arg == '-mnontrapping-fptoint':
       feature_matrix.enable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT,
                                     '-mnontrapping-fptoint',
                                     override=True)

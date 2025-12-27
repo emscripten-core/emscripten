@@ -225,7 +225,7 @@ Options that are modified or new in *emcc* are listed below:
   [link]
   Make the output suitable for profiling. This means including function names in the wasm and JS output, and
   preserving whitespace in the JS output. It does not affect optimizations (to ensure that performance profiles
-  reflect production builds). Currenly this is the same as ``-g2``.
+  reflect production builds). Currently this is the same as ``-g2``.
 
 .. _emcc-profiling-funcs:
 
@@ -259,7 +259,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--emit-minification-map <file>``
   [link]
-  In cases where emscripten performs import/export minificiton this option can
+  In cases where emscripten performs import/export minification this option can
   be used to output a file that maps minified names back to their original
   names.  The format of this file is single line per import/export of the form
   ``<minname>:<origname>``.

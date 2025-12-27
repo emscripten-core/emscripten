@@ -49,7 +49,7 @@ void onerror(unsigned handle, void* arg, int status, const char* status_text) {
     error_count++;
     request->status = FAIL;
   } else if (status_text != nullptr && request->expected_http_status_text == nullptr) {
-    printf("Error: Request [%s] gave status text [%s] but no response was expted\n",
+    printf("Error: Request [%s] gave status text [%s] but no response was expected\n",
       request->target, status_text);
     error_count++;
     request->status = FAIL;

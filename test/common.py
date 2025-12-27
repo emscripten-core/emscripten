@@ -253,7 +253,7 @@ def force_delete_dir(dirname):
   except PermissionError as e:
     # This issue currently occurs on Windows when running browser tests e.g.
     # on Firefox browser. Killing Firefox browser is not 100% watertight, and
-    # occassionally a Firefox browser process can be left behind, holding on
+    # occasionally a Firefox browser process can be left behind, holding on
     # to a file handle, preventing the deletion from succeeding.
     # We expect this issue to only occur on Windows.
     if not WINDOWS:
@@ -619,7 +619,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.set_setting('NO_DEFAULT_TO_CXX')
     self.ldflags = []
     # Increase the stack trace limit to maximise usefulness of test failure reports.
-    # Also, include backtrace for all uncuaght exceptions (not just Error).
+    # Also, include backtrace for all uncaught exceptions (not just Error).
     self.node_args = ['--stack-trace-limit=50', '--trace-uncaught']
     self.spidermonkey_args = ['-w']
 
@@ -883,7 +883,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     return len(non_data_lines)
 
   def clean_js_output(self, output):
-    """Cleaup the JS output prior to running verification steps on it.
+    """Cleanup the JS output prior to running verification steps on it.
 
     Due to minification, when we get a crash report from JS it can sometimes
     contains the entire program in the output (since the entire program is
@@ -1160,7 +1160,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     # core emscripten code (shared.py) here.
 
     # Handle buffering for subprocesses.  The python unittest buffering mechanism
-    # will only buffer output from the current process (by overwriding sys.stdout
+    # will only buffer output from the current process (by overriding sys.stdout
     # and sys.stderr), not from sub-processes.
     stdout_buffering = 'stdout' not in kwargs and isinstance(sys.stdout, io.StringIO)
     stderr_buffering = 'stderr' not in kwargs and isinstance(sys.stderr, io.StringIO)
@@ -1216,7 +1216,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.assertContained(expected, err)
     return err
 
-  # excercise dynamic linker.
+  # exercise dynamic linker.
   #
   # test that linking to shared library B, which is linked to A, loads A as well.
   # main is also linked to C, which is also linked to A. A is loaded/initialized only once.
@@ -1226,7 +1226,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   #          C
   #
   # this test is used by both test_core and test_browser.
-  # when run under browser it excercises how dynamic linker handles concurrency
+  # when run under browser it exercises how dynamic linker handles concurrency
   # - because B and C are loaded in parallel.
   def _test_dylink_dso_needed(self, do_run):
     create_file('liba.cpp', r'''
@@ -1479,7 +1479,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.cflags += cflags
     # inflate.c does -1L << 16
     self.cflags.append('-Wno-shift-negative-value')
-    # adler32.c uses K&R sytyle function declarations
+    # adler32.c uses K&R style function declarations
     self.cflags.append('-Wno-deprecated-non-prototype')
     # Work around configure-script error. TODO: remove when
     # https://github.com/emscripten-core/emscripten/issues/16908 is fixed

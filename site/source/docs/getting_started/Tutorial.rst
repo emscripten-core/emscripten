@@ -13,7 +13,7 @@ First things first
 ======================
 
 Make sure you have :ref:`downloaded and installed <sdk-download-and-install>`
-Emscripten (the exact approach for doing this will depend your operating system:
+Emscripten (the exact approach for doing this will depend on your operating system:
 Linux, Windows, or Mac).
 
 Emscripten is accessed using the :ref:`emccdoc`. This script invokes all the

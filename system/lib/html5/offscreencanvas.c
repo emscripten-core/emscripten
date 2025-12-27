@@ -2,14 +2,14 @@
 
 #include "emscripten_internal.h"
 
-typedef struct set_cavas_size_t {
+typedef struct set_canvas_size_t {
   const char* target;
   int width;
   int height;
-} set_cavas_size_t;
+} set_canvas_size_t;
 
 static void do_set_size(void* arg) {
-  set_cavas_size_t* args = (set_cavas_size_t*)arg;
+  set_canvas_size_t* args = (set_canvas_size_t*)arg;
   emscripten_set_canvas_element_size(args->target, args->width, args->height);
   free((char *) args->target);
   free(arg);
@@ -20,7 +20,7 @@ void _emscripten_set_offscreencanvas_size_on_thread(pthread_t t,
                                                     const char* target,
                                                     int width,
                                                     int height) {
-  set_cavas_size_t* arg = malloc(sizeof(set_cavas_size_t));
+  set_canvas_size_t* arg = malloc(sizeof(set_canvas_size_t));
   arg->target = target; // taking ownership: will be freed in do_set_size
   arg->width = width;
   arg->height = height;

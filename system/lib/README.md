@@ -1,4 +1,4 @@
-Source code for C/C++ system libaries
+Source code for C/C++ system libraries
 =====================================
 
 This directory contains the source code for libc, libc++ and other C/C++ system

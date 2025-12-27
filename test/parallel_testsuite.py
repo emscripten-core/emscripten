@@ -260,17 +260,17 @@ class BufferedParallelTestResult(BufferingMixin, unittest.TestResult):
     """This method get called on the main thread once the buffered result
     is received.  It adds the buffered result to the overall result."""
 
-    # Turns a <test, string> pair back into something that looks enoough
-    # link a <test, exc_info> pair. The exc_info tripple has the exception
-    # type as its first element. This is needed in particilar in the
+    # Turns a <test, string> pair back into something that looks enough
+    # link a <test, exc_info> pair. The exc_info triple has the exception
+    # type as its first element. This is needed in particular in the
     # XMLTestRunner.
     def restore_exc_info(pair):
       test, exn_string = pair
       assert self.last_err_type, exn_string
       return (test, (self.last_err_type, exn_string, None))
 
-    # Our fame exc_info tripple keep the pre-serialized string in the
-    # second element of the triple so we overide _exc_info_to_string
+    # Our fake exc_info triple keep the pre-serialized string in the
+    # second element of the triple so we override _exc_info_to_string
     # _exc_info_to_string to simply return it.
     overall_results._exc_info_to_string = lambda x, _y: x[1]
 

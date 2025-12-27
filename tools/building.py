@@ -224,7 +224,7 @@ def lld_flags_for_executable(external_symbols):
     if not settings.WASM_BIGINT:
       # When we don't have WASM_BIGINT available, JS signature legalization
       # in binaryen will mutate the signatures of the imports/exports of our
-      # shared libraries.  Because of this we need to disabled signature
+      # shared libraries.  Because of this we need to disable signature
       # checking of shared library functions in this case.
       cmd.append('--no-shlib-sigcheck')
 
@@ -1026,7 +1026,7 @@ def strip(infile, outfile, debug=False, sections=None):
 
 
 # extract the DWARF info from the main file, and leave the wasm with
-# debug into as a file on the side
+# debug info as a file on the side
 def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   embedded_path = settings.SEPARATE_DWARF_URL
   if not embedded_path:
@@ -1095,7 +1095,7 @@ def read_name_section(wasm_file):
         module.seek(section.offset)
         if module.read_string() == 'name':
           name_map = {}
-          # The name section is made up sub-section.
+          # The name section is made up of sub-sections.
           # We are looking for the function names sub-section
           while module.tell() < section.offset + section.size:
             name_type = module.read_uleb()
@@ -1125,7 +1125,7 @@ def write_symbol_map(wasm_file, symbols_file):
 
 
 def is_ar(filename):
-  """Return True if a the given filename is an ar archive, False otherwise.
+  """Return True if the given filename is an ar archive, False otherwise.
   """
   try:
     header = open(filename, 'rb').read(8)

@@ -137,7 +137,7 @@ int main() {
   float color2[4] = { 0.0f, 1.f, 0.0f, 1.0f };
   glUniform4fv(glGetUniformLocation(program, "color2"), 1, color2);
 
-  // Test that passing zero for the size paramater does not cause error
+  // Test that passing zero for the size parameter does not cause error
   // https://github.com/emscripten-core/emscripten/issues/21567
   // (These are zero-sized, so shouldn't overwrite anything.)
   {

@@ -89,7 +89,7 @@ void test_readdir() {
 }
 
 void test_readlink() {
-  // attemping to read a worker node as a link should result in EINVAL
+  // attempting to read a worker node as a link should result in EINVAL
   char buf[100];
   buf[0] = '\0';
   assert(readlink("/work/blob.txt", buf, sizeof(buf)) == -1);

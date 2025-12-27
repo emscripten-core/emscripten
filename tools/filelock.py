@@ -223,7 +223,7 @@ class BaseFileLock:
         """
         return self._lock_file_fd is not None
 
-    def acquire(self, timeout=None, poll_intervall=0.05):
+    def acquire(self, timeout=None, poll_interval=0.05):
         """
         Acquires the file lock or fails with a :exc:`Timeout` error.
 
@@ -246,8 +246,8 @@ class BaseFileLock:
             block until the lock could be acquired.
             If ``timeout`` is None, the default :attr:`~timeout` is used.
 
-        :arg float poll_intervall:
-            We check once in *poll_intervall* seconds if we can acquire the
+        :arg float poll_interval:
+            We check once in *poll_interval* seconds if we can acquire the
             file lock.
 
         :raises Timeout:
@@ -286,9 +286,9 @@ class BaseFileLock:
                 else:
                     logger().debug(
                         'Lock %s not acquired on %s, waiting %s seconds ...',
-                        lock_id, lock_filename, poll_intervall
+                        lock_id, lock_filename, poll_interval
                     )
-                    time.sleep(poll_intervall)
+                    time.sleep(poll_interval)
         except:
             # Something did go wrong, so decrement the counter.
             with self._thread_lock:

@@ -10,7 +10,7 @@ void (*f)(void) = &foo;
 
 int main() {
   printf("main\n");
-  // Calling en EM_JS function by its address, without also importing
+  // Calling an EM_JS function by its address, without also importing
   // as a normal function, doesn't yet work with dynamic linking and this
   // call will fail with `Missing signature argument to addFunction`.
   f();

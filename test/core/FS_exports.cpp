@@ -8,7 +8,7 @@
 
 int main() {
 #ifdef USE_FILES
-  if (fopen("nonexistend", "r")) {
+  if (fopen("nonexistent", "r")) {
     puts("that was bad");
     return 1;
   }

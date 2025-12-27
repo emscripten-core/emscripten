@@ -23,7 +23,7 @@ terms of the MIT license. A copy of the license can be found in the file
 // so we end up either never freeing memory to the system, or we can get stuck
 // with holes.
 //
-// Atm wasm generally does *not* free memory back the system: once grown, we do
+// Atm wasm generally does *not* free memory back to the system: once grown, we do
 // not shrink back down (https://github.com/WebAssembly/design/issues/1397).
 // However, that is expected to improve
 // (https://github.com/WebAssembly/memory-control/blob/main/proposals/memory-control/Overview.md)

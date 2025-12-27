@@ -4,7 +4,7 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * Define the `__c_longjmp` Wasm EH tag which is used to implment setjmp/longjmp
+ * Define the `__c_longjmp` Wasm EH tag which is used to implement setjmp/longjmp
  * in LLVM.
  */
 

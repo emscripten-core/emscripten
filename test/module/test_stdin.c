@@ -50,7 +50,7 @@ void main_loop() {
 int main(int argc, char const *argv[]) {
   fcntl(STDIN_FILENO, F_SETFL, O_NONBLOCK);
 
-  // SM shell doesn't implement an event loop and therefor doesn't support
+  // SM shell doesn't implement an event loop and therefore doesn't support
   // emscripten_set_main_loop. However, its stdin reads are sync so it
   // should exit out after calling main_loop once.
   main_loop();

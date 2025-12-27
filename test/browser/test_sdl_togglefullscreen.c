@@ -121,7 +121,7 @@ int main() {
    * Click and mouseup don't work.
    */
   if (emscripten_set_mouseup_callback("#canvas", NULL, 1, mouseup) != EMSCRIPTEN_RESULT_SUCCESS) {
-    printf("Couldn't to set mouse callback. Test failed.\n");
+    printf("Couldn't set mouse callback. Test failed.\n");
     return 1;
   }
 

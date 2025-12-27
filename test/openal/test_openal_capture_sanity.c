@@ -10,7 +10,7 @@
 // checks some basic conformance to expectations w.r.t the spec.
 //
 // Wishlist:
-// - Any operation a closed device should fail; 
+// - Any operation on a closed device should fail; 
 // - Trying to open multiple devices with the same name at the same time
 //   and different settings should be fine;
 

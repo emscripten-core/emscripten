@@ -67,7 +67,7 @@ WEBGL_APICALL void GL_APIENTRY glMultiDrawElementsInstancedBaseVertexBaseInstanc
   const GLvoid* const* offsets __attribute__((nonnull)),
   const GLsizei* instanceCounts __attribute__((nonnull)),
   const GLint* baseVertices __attribute__((nonnull)),
-  const GLuint* baseinstances __attribute__((nonnull)),
+  const GLuint* baseInstances __attribute__((nonnull)),
   GLsizei drawCount);
 
 #endif /* EMSCRIPTEN_GL_WEBGL_multi_draw_instanced_base_vertex_base_instance */

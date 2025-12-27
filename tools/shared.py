@@ -197,7 +197,7 @@ def exec_process(cmd):
 def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
   """Execute a javascript tool.
 
-  This is used by emcc to run parts of the build process that are written
+  This is used by emcc to run parts of the build process that are
   implemented in javascript.
   """
   command = config.NODE_JS + node_args + [filename] + jsargs

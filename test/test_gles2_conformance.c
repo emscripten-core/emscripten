@@ -26,7 +26,7 @@ int main(int argc, char *argv[]) {
     return 1;
   }
 
-  // Test that code containing functions related to GLES2 binary shader API will successfully compile ad run
+  // Test that code containing functions related to GLES2 binary shader API will successfully compile and run
   // (will be nonfunctional no-ops since WebGL doesn't have binary shaders)
   GLuint vs = glCreateShader(GL_VERTEX_SHADER);
   glShaderBinary(1, &vs, 0, 0, 0);

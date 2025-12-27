@@ -1,5 +1,5 @@
-// Example TS program that consumes the emscripten-generated module to to
-// illustrate how the type definitions are used and test they are workings as
+// Example TS program that consumes the emscripten-generated module to
+// illustrate how the type definitions are used and test they are working as
 // expected.
 
 // The imported file will either be an ES module or a CommonJS module depending

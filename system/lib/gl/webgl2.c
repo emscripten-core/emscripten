@@ -130,7 +130,7 @@ VOID_SYNC_GL_FUNCTION_5(EM_FUNC_SIG_VIIIII, void, glGetInternalformativ, GLenum,
 // Extensions that are aliases for the proxying functions defined above.
 // Normally these aliases get defined in library_webgl.js but when building with
 // __EMSCRIPTEN_OFFSCREEN_FRAMEBUFFER__ we want to intercept them in native
-// code and redirect them to thier proxying couterparts.
+// code and redirect them to their proxying counterparts.
 GL_APICALL void GL_APIENTRY glVertexAttribDivisorNV(GLuint index, GLuint divisor) { glVertexAttribDivisor(index, divisor); }
 GL_APICALL void GL_APIENTRY glVertexAttribDivisorEXT(GLuint index, GLuint divisor) { glVertexAttribDivisor(index, divisor); }
 GL_APICALL void GL_APIENTRY glVertexAttribDivisorARB(GLuint index, GLuint divisor) { glVertexAttribDivisor(index, divisor); }

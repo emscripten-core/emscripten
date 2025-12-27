@@ -6,7 +6,7 @@
 
 # Copy local llvm library changes into the upstream llvm tree.
 # This is the logical inverse of update_compiler_rt.py, update_libcxx.py
-# and update_libcxxabi.py which copy changes form the upstream llvm 
+# and update_libcxxabi.py which copy changes from the upstream llvm
 # into emscripten.
 
 import glob

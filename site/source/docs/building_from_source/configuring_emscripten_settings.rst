@@ -45,7 +45,7 @@ Locating the compiler configuration file (.emscripten)
 ======================================================
 
 The settings file (``.emscripten``) is created by default within the emscripten
-directory (alongsize ``emcc`` itself).  In cases where the emscripten directory
+directory (alongside ``emcc`` itself).  In cases where the emscripten directory
 is read-only the user's home directory will be used:
 
   - On Linux and macOS this file is named **~/.emscripten**, where ~ is the

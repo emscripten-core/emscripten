@@ -76,7 +76,7 @@ def flaky(note=''):
   def decorated(func):
     @wraps(func)
     def modified(self, *args, **kwargs):
-      # Browser tests have there own method of retrying tests.
+      # Browser tests have their own method of retrying tests.
       if self.is_browser_test():
         self.flaky = True
         return func(self, *args, **kwargs)

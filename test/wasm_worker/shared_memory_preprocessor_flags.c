@@ -5,7 +5,7 @@
 #endif
 
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
-#error __EMSCRIPTEN_WASM_WORKERS__ should not defined when building with -sSHARED_MEMORY=1!
+#error __EMSCRIPTEN_WASM_WORKERS__ should not be defined when building with -sSHARED_MEMORY=1!
 #endif
 
 #ifdef __EMSCRIPTEN_PTHREADS__

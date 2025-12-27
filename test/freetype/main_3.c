@@ -44,7 +44,7 @@ draw_bitmap( FT_Bitmap*  bitmap,
   unsigned char* src = bitmap->buffer;
   unsigned char* dest = pixelData;
 
-  // Note: FT_RENDER_MONO_MODE render characater's one pixel by a single bit,
+  // Note: FT_RENDER_MONO_MODE render character's one pixel by a single bit,
   // translate the single bit to a single char for displaying image.
   for(int _y = 0; _y < bitmap->rows; ++_y)
   {

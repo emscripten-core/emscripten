@@ -78,7 +78,7 @@ def get(ports, settings, shared):
       'video/*.c',
       'video/yuv2rgb/*.c',
       'tray/*.c',
-      # Platform speecifc sources
+      # Platform specific sources
       'storage/generic/*.c',
       'tray/unix/*.c',
       'time/unix/*.c',

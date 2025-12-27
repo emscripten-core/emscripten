@@ -79,7 +79,7 @@ int emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
 // Enqueue `func` on the given queue and thread. Once (and if) it finishes
 // executing, it will asynchronously proxy `callback` back to the current thread
 // on the same queue, or if the target thread dies before the work can be
-// completed, `cancel` will be proxied back instead. All three function will
+// completed, `cancel` will be proxied back instead. All three functions will
 // receive the same argument, `arg`. Returns 1 if `func` was successfully
 // enqueued and the target thread notified or 0 otherwise.
 int emscripten_proxy_callback(em_proxying_queue* q,
@@ -93,7 +93,7 @@ int emscripten_proxy_callback(em_proxying_queue* q,
 // task by calling `emscripten_proxy_finish` on the given `em_proxying_ctx`, it
 // will asynchronously proxy `callback` back to the current thread on the same
 // queue, or if the target thread dies before the work can be completed,
-// `cancel` will be proxied back instead. All three function will receive the
+// `cancel` will be proxied back instead. All three functions will receive the
 // same argument, `arg`. Returns 1 if `func` was successfully enqueued and the
 // target thread notified or 0 otherwise.
 int emscripten_proxy_callback_with_ctx(em_proxying_queue* q,

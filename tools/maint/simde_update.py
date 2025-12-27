@@ -57,7 +57,7 @@ def main():
       return 1
 
   SIMDE_FILE_HEADER_RE = r'^(/\* :: )(Begin |End )[^ ]+/(simde/simde/[^ ]+ :: \*/$)'
-  # Replace file headers, which contains tmp directory names and changes every time we
+  # Replace file headers, which contain tmp directory names and changes every time we
   # update simde, causing a larger diff than necessary.
   neon_h_buf = re.sub(SIMDE_FILE_HEADER_RE, r'\1\2\3', neon_h_buf, count=0, flags=re.MULTILINE)
 

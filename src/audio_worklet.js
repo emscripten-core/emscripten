@@ -46,7 +46,7 @@ function createWasmAudioWorkletProcessor() {
       // Prepare the output views; see createOutputViews(). The 'STACK_ALIGN'
       // deduction stops the STACK_OVERFLOW_CHECK failing (since the stack will
       // be full if we allocate all the available space) leaving room for a
-      // single AudioSampleFrame as a minumum. There's an arbitrary maximum of
+      // single AudioSampleFrame as a minimum. There's an arbitrary maximum of
       // 64 frames, for the case where a multi-MB stack is passed.
       this.outputViews = new Array(Math.min(((wwParams.stackSize - {{{ STACK_ALIGN }}}) / this.bytesPerChannel) | 0, /*sensible limit*/ 64));
 #if ASSERTIONS
@@ -210,7 +210,7 @@ function createWasmAudioWorkletProcessor() {
 
 #if ASSERTIONS
       // If all the maths worked out, we arrived at the original stack address
-      console.assert(dataPtr == oldStackPtr, `AudioWorklet stack missmatch (audio data finishes at ${dataPtr} instead of ${oldStackPtr})`);
+      console.assert(dataPtr == oldStackPtr, `AudioWorklet stack mismatch (audio data finishes at ${dataPtr} instead of ${oldStackPtr})`);
 
       // Sanity checks. If these trip the most likely cause, beyond unforeseen
       // stack shenanigans, is that the 'render quantum size' changed after

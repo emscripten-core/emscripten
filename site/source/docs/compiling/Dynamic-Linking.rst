@@ -12,7 +12,7 @@ with little or no changes (see :ref:`Building-Projects`).
 
 In addition, Emscripten also has support for a form of **dynamic** linking of
 WebAssembly modules.  This can add overhead, so for best performance static
-linking should still be preferred.  However, this overhead can can be reduced
+linking should still be preferred.  However, this overhead can be reduced
 with the use of certain command line flags. See below for details.
 
 Background
@@ -127,7 +127,7 @@ the command line when you link the main module. e.g.
 
      emcc -sMAIN_MODULE main.c libsomething.wasm
 
-At runtime, the JavaScript loading code will load ``libsomthing.wasm`` (along
+At runtime, the JavaScript loading code will load ``libsomething.wasm`` (along
 with any other side modules) along with the main module before the application
 starts to run.  The running application then can access code from any of the
 modules linked together.
@@ -218,7 +218,7 @@ Limitations
 Pthreads support
 ----------------
 
-Dynamic linking + pthreads is is still experimental.  As such, linking with both
+Dynamic linking + pthreads is still experimental.  As such, linking with both
 :ref:`MAIN_MODULE` and ``-pthread`` will produce a warning.
 
 While load-time dynamic linking works without any complications, runtime dynamic
@@ -238,6 +238,6 @@ However, there there is one class of application that currently may require
 modification.  If your applications busy waits, or directly uses the
 ``atomic.waitXX`` instructions (or the clang
 ``__builtin_wasm_memory_atomic_waitXX`` builtins) you maybe need to switch it
-to use ``emscripten_futex_wait`` or order avoid deadlocks.  If you don't use
+to use ``emscripten_futex_wait`` in order to avoid deadlocks.  If you don't use
 ``emscripten_futex_wait`` while you block, you could potentially block other
 threads that are calling ``dlopen`` and/or ``dlsym``.

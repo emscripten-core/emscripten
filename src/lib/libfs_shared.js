@@ -27,7 +27,7 @@ addToLibrary({
         return plugin['handle'](byteArray, fullname);
       }
     }
-    // In no plugin handled this file then return the original/unmodified
+    // If no plugin handled this file then return the original/unmodified
     // byteArray.
     return byteArray;
   },
@@ -83,7 +83,7 @@ addToLibrary({
   },
 #endif
 
-  // convert the 'r', 'r+', etc. to it's corresponding set of O_* flags
+  // convert the 'r', 'r+', etc. to its corresponding set of O_* flags
   $FS_modeStringToFlags: (str) => {
     var flagModes = {
       'r': {{{ cDefs.O_RDONLY }}},

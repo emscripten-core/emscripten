@@ -43,7 +43,7 @@ void test_read(int fd0, unsigned char *ch, int size) {
 
 // test_select and test_poll perform the exact same actions/assertions but
 // with two different system calls.  They should always give the same
-// retult.
+// result.
 
 void test_select(int *fd, bool data_available) {
   fd_set rfds;

@@ -789,7 +789,7 @@ Functions
   :param int flags: See dlopen flags.
   :param void* user_data: User data passed to onsuccess, and onerror callbacks.
   :param em_dlopen_callback onsuccess: Called if the library was loaded successfully.
-  :param em_arg_callback_func onerror: Called if there as an error loading the library.
+  :param em_arg_callback_func onerror: Called if there is an error loading the library.
 
 
 Asynchronous IndexedDB API

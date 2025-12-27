@@ -358,7 +358,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     },
 
     // The code path for creating textures, buffers, framebuffers and other
-    // objects the same (and not in fast path), so we merge the functions
+    // objects is the same (and not in fast path), so we merge the functions
     // together.
     // 'createFunction' refers to the WebGL context function name to do the actual
     // creation, 'objectTable' points to the GL object table where to populate the
@@ -490,7 +490,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     },
 
     // Called at start of each new WebGL rendering frame. This swaps the
-    // doublebuffered temp VB memory pointers, so that every second frame
+    // double-buffered temp VB memory pointers, so that every second frame
     // utilizes different set of temp buffers. The aim is to keep the set of
     // buffers being rendered, and the set of buffers being updated disjoint.
     newRenderingFrameStarted: () => {
@@ -1196,7 +1196,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
       var GLctx = context.GLctx;
 
-      // Detect the presence of a few extensions manually, ction GL interop
+      // Detect the presence of a few extensions manually, since the GL interop
       // layer itself will need to know if they exist.
 #if LEGACY_GL_EMULATION
       context.compressionExt = GLctx.getExtension('WEBGL_compressed_texture_s3tc');
@@ -1380,7 +1380,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         // WebGL doesn't have GL_NUM_COMPRESSED_TEXTURE_FORMATS (it's obsolete
         // since GL_COMPRESSED_TEXTURE_FORMATS returns a JS array that can be
         // queried for length), so implement it ourselves to allow C++ GLES2
-        // code get the length.
+        // code to get the length.
         var formats = GLctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
         ret = formats ? formats.length : 0;
         break;
@@ -1542,7 +1542,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
   glCompressedTexImage2D: (target, level, internalFormat, width, height, border, imageSize, data) => {
-    // `data` may be null here, which means "allocate uniniitalized space but
+    // `data` may be null here, which means "allocate uninitialized space but
     // don't upload" in GLES parlance, but `compressedTexImage2D` requires the
     // final data parameter, so we simply pass a heap view starting at zero
     // effectively uploading whatever happens to be near address zero.  See
@@ -2242,7 +2242,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     }
   },
 
-  // Returns the index of '[' character in an uniform that represents an array
+  // Returns the index of '[' character in a uniform that represents an array
   // of uniforms (e.g. colors[10])
   // Closure does counterproductive inlining:
   // https://github.com/google/closure-compiler/issues/3203, so prevent inlining
@@ -2291,7 +2291,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // A pair [array length, GLint of the uniform location]
       var sizeAndId = program.uniformSizeAndIdsByName[uniformBaseName];
 
-      // If an uniform with this name exists, and if its index is within the
+      // If a uniform with this name exists, and if its index is within the
       // array limits (if it's even an array), query the WebGLlocation, or
       // return an existing cached location.
       if (sizeAndId && arrayIndex < sizeAndId[0]) {

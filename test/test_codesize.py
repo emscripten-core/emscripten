@@ -252,7 +252,7 @@ class codesize(RunnerCore):
     relevant = relevant.split(',')
     sent = [x.split(':')[0].strip() for x in relevant]
     sent = [x for x in sent if x]
-    # Deminify the sent list, if minification occured
+    # Deminify the sent list, if minification occurred
     if os.path.exists('minify.map'):
       sent = deminify_syms(sent, 'minify.map')
       os.remove('minify.map')
@@ -269,7 +269,7 @@ class codesize(RunnerCore):
       outputs.append('a.out.nodebug.wasm')
 
       imports, exports, funcs = self.parse_wasm('a.out.wasm')
-      # Deminify the imports/export lists, if minification occured
+      # Deminify the imports/export lists, if minification occurred
       if os.path.exists('minify.map'):
         exports = deminify_syms(exports, 'minify.map')
         imports = [i.split('.', 1)[1] for i in imports]
@@ -359,7 +359,7 @@ class codesize(RunnerCore):
     # finally, check what happens when we export nothing. wasm should be almost empty
     'export_nothing': (['-Os', '-sEXPORTED_FUNCTIONS=[]'],),
     # we don't metadce with linkable code! other modules may want stuff
-    # TODO(sbc): Investivate why the number of exports is order of magnitude
+    # TODO(sbc): Investigate why the number of exports is order of magnitude
     # larger for wasm backend.
     # This test seems to produce different results under gzip on macOS and Windows machines
     # so skip the gzip size reporting here.

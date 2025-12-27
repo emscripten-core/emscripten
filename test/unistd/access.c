@@ -32,7 +32,7 @@ void test_rename() {
   printf("F_OK('%s'): %d\n", "filetorename", access("filetorename", F_OK));
   printf("F_OK('%s'): %d\n", "renamedfile", access("renamedfile", F_OK));
 
-  // Same againt with faccessat
+  // Same again with faccessat
   printf("F_OK('%s'): %d\n", "filetorename", faccessat(AT_FDCWD, "filetorename", F_OK, 0));
   printf("F_OK('%s'): %d\n", "renamedfile", faccessat(AT_FDCWD, "renamedfile", F_OK, 0));
 }
@@ -43,7 +43,7 @@ void test_fchmod() {
   struct stat fileStats;
   stat("fchmodtest", &fileStats);
   int mode = fileStats.st_mode & 0o777;
-  // Allow S_IXUGO in addtion to S_IWUGO because on windows
+  // Allow S_IXUGO in addition to S_IWUGO because on windows
   // we always report the execute bit.
   assert(mode == (S_IRUGO | S_IWUGO) || mode == (S_IRUGO | S_IWUGO | S_IXUGO));
 

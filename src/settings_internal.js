@@ -115,7 +115,7 @@ var DEBUG_LEVEL = 0;
 // This will contain the shrink level (1 or 2 for -Os or -Oz, or just 0).
 var SHRINK_LEVEL = 0;
 
-// Whether or not to emit the name section in the final wasm binaryen.
+// Whether or not to emit the name section in the final wasm binary.
 var EMIT_NAME_SECTION = false;
 
 // Whether we are emitting a symbol map.
@@ -191,7 +191,7 @@ var MEMORYPROFILER = false;
 
 // Set automatically to :
 // - 1 when using `-gsource-map`
-// - 2 when using `gsource-map=inline` (embed sources content in souce map)
+// - 2 when using `gsource-map=inline` (embed sources content in source map)
 var GENERATE_SOURCE_MAP = 0;
 
 var GENERATE_DWARF = false;
@@ -227,7 +227,7 @@ var CLOSURE_ARGS = [];
 // set of JavaScript features.  This triggers transpilation using babel.
 var TRANSPILE = false;
 
-// A copy of the default the default INCOMING_MODULE_JS_API. (Soon to
+// A copy of the default INCOMING_MODULE_JS_API. (Soon to
 // include additional items).
 var ALL_INCOMING_MODULE_JS_API = [];
 
@@ -256,7 +256,7 @@ var WARN_DEPRECATED = true;
 
 // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
 // those always when possible.
-// We currently set this to false for certain browser when large memory sizes
+// We currently set this to false for certain browsers when large memory sizes
 // (2gb+ or 4gb+) are used
 var WEBGL_USE_GARBAGE_FREE_APIS = false;
 

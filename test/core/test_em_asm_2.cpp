@@ -29,7 +29,7 @@ int main() {
   EM_ASM("out('3. this is \"double\" \"quotes\"')");
   EM_ASM({"out('4. this is \"double\" \"quotes\"')"});
   EM_ASM({out('5. this is \"double\" \"quotes\"')});
-  EM_ASM({out('6. this is "double" "quotes" without esacping')});
+  EM_ASM({out('6. this is "double" "quotes" without escaping')});
   EM_ASM("{out('7. this is \"double\" \"quotes\"')}");
 
   printf("\nEM_ASM: Pass a string\n");

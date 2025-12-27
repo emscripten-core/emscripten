@@ -69,7 +69,7 @@ var WasiLibrary = {
       };
 #if ENVIRONMENT_MAY_BE_NODE && NODE_HOST_ENV
       if (ENVIRONMENT_IS_NODE) {
-        // When NODE_HOST_ENV is enabled we mirror then entire host environment.
+        // When NODE_HOST_ENV is enabled we mirror the entire host environment.
         env = process.env;
       }
 #endif
@@ -423,7 +423,7 @@ var WasiLibrary = {
   path_open__sig: 'iiiiiiiiii',
   path_open__deps: ['$wasiRightsToMuslOFlags', '$wasiOFlagsToMuslOFlags', '$preopens'],
   path_open: (fd, dirflags, path, path_len, oflags,
-              fs_rights_base, fs_rights_inherting,
+              fs_rights_base, fs_rights_inheriting,
               fdflags, opened_fd) => {
     if (!(fd in preopens)) {
       return {{{ cDefs.EBADF }}};

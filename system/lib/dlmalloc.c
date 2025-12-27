@@ -802,7 +802,7 @@ defined(__i386__) || defined(__x86_64__))) ||                    \
  statistics. It should work on any system that has a
  /usr/include/malloc.h defining struct mallinfo.  The main
  declaration needed is the mallinfo struct that is returned (by-copy)
- by mallinfo().  The malloinfo struct contains a bunch of fields that
+ by mallinfo().  The mallinfo struct contains a bunch of fields that
  are not even meaningful in this version of malloc.  These fields are
  are instead filled by mallinfo() with other numbers that might be of
  interest.
@@ -1228,7 +1228,7 @@ size_t bulk_free(void**, size_t n_elements) __attribute__((weak, alias("dlbulk_f
      Each element must be freed when it is no longer needed. This can be
      done all at once using bulk_free.
      
-     independent_comallac differs from independent_calloc in that each
+     independent_comalloc differs from independent_calloc in that each
      element may have a different size, and also that it does not
      automatically clear elements.
      
@@ -1759,7 +1759,7 @@ static FORCEINLINE void* win32direct_mmap(size_t size) {
     return (ptr != 0)? ptr: MFAIL;
 }
 
-/* This function supports releasing coalesed segments */
+/* This function supports releasing coalesced segments */
 static FORCEINLINE int win32munmap(void* ptr, size_t size) {
     MEMORY_BASIC_INFORMATION minfo;
     char* cptr = (char*)ptr;
@@ -1847,7 +1847,7 @@ static FORCEINLINE int win32munmap(void* ptr, size_t size) {
 #define CALL_MREMAP(addr, osz, nsz, mv)     MFAIL
 #endif /* HAVE_MMAP && HAVE_MREMAP */
 
-/* mstate bit set if continguous morecore disabled or failed */
+/* mstate bit set if contiguous morecore disabled or failed */
 #define USE_NONCONTIGUOUS_BIT (4U)
 
 /* segment bit set in create_mspace_with_base */
@@ -1860,7 +1860,7 @@ static FORCEINLINE int win32munmap(void* ptr, size_t size) {
  When locks are defined, there is one global lock, plus
  one per-mspace lock.
  
- The global lock_ensures that mparams.magic and other unique
+ The global lock ensures that mparams.magic and other unique
  mparams values are initialized only once. It also protects
  sequences of calls to MORECORE.  In many cases sys_alloc requires
  two calls, that should not be interleaved with calls by other

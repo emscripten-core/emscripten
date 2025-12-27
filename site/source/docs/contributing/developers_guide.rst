@@ -26,7 +26,7 @@ get using the emsdk:
     emsdk install tot
     emsdk activate tot
 
-This with install the latest "tip-of-tree" binaries needed to run Emscripten.
+This will install the latest "tip-of-tree" binaries needed to run Emscripten.
 You can use these emsdk-provided binaries with a git checkout of the Emscripten
 repository.  To do this, you can either edit your local ``.emscripten`` config
 file, or set ``EM_CONFIG=/path/to/emsdk/.emscripten`` in your environment.

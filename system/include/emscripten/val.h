@@ -291,7 +291,7 @@ public:
       val view{ typed_memory_view(std::distance(begin, end), std::to_address(begin)) };
       return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
     }
-    // For numeric arrays, following codes are unreachable and the compiler
+    // For numeric arrays, the following code is unreachable and the compiler
     // will do 'dead code elimination'.
     // Others fallback old way.
 #endif
@@ -795,13 +795,13 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
                                               !std::is_const<T>::value>::type> {
   typedef EM_VAL WireType;
 
-  // Marshall to JS with move semantics when we can invalidate the temporary val
+  // Marshal to JS with move semantics when we can invalidate the temporary val
   // object.
   static WireType toWireType(val&& v, rvp::default_tag) {
     return v.release_ownership();
   }
 
-  // Marshal to JS with copy semantics when we cannot transfer the val objects
+  // Marshal to JS with copy semantics when we cannot transfer the val object's
   // reference count.
   static WireType toWireType(const val& v, rvp::default_tag) {
     EM_VAL handle = v.as_handle();

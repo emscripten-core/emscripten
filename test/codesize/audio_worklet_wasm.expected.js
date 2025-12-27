@@ -2,12 +2,12 @@ var m = globalThis.Module || "undefined" != typeof Module ? Module : {}, p = !!g
 
 function v(a) {
     u = a;
-    w = a.L;
+    w = a.H;
     x();
     m ||= {};
     m.wasm = a.G;
     y();
-    a.G = a.M = 0;
+    a.G = a.H = 0;
 }
 
 t && !p && (onmessage = a => {
@@ -26,9 +26,9 @@ if (p) {
                 this.u = d.u;
                 this.s = 4 * this.u;
                 this.B = Array(Math.min((u.F - 16) / this.s | 0, 64));
-                this.K();
+                this.L();
             }
-            K() {
+            L() {
                 for (var d = C(), g = D(this.B.length * this.s) >> 2, e = this.B.length - 1; 0 <= e; e--) this.B[e] = E.subarray(g, g += this.u);
                 F(d);
             }
@@ -81,9 +81,9 @@ if (p) {
     port.onmessage = async b => {
         await z;
         b = b.data;
-        b._boot ? v(b) : b._wpn ? (registerProcessor(b._wpn, a(b.H)), port.postMessage({
+        b._boot ? v(b) : b._wpn ? (registerProcessor(b._wpn, a(b.I)), port.postMessage({
             _wsc: b.v,
-            C: [ b.I, 1, b.A ]
+            C: [ b.J, 1, b.A ]
         })) : b._wsc && A.get(b._wsc)(...b.C);
     };
 }
@@ -134,7 +134,7 @@ var K = [], L = a => {
         a = {
             latencyHint: c,
             sampleRate: G[a + 4 >> 2] || void 0,
-            N: 0 > b ? "hardware" : b || "default"
+            M: 0 > b ? "hardware" : b || "default"
         };
     } else a = void 0;
     a = new AudioContext(a);
@@ -178,8 +178,8 @@ var K = [], L = a => {
     }), c += 16;
     O[a].audioWorklet.port.postMessage({
         _wpn: d,
-        H: e,
-        I: a,
+        I: e,
+        J: a,
         v: b,
         A: h
     });
@@ -204,10 +204,10 @@ var K = [], L = a => {
         });
         e.port.postMessage({
             _boot: 1,
-            O: ba++,
+            N: ba++,
             G: m.wasm,
-            L: w,
-            J: c,
+            H: w,
+            K: c,
             F: b
         });
         e.port.onmessage = ca;
@@ -246,7 +246,7 @@ function y() {
         C = a.n;
         Y = a.o;
         A = a.k;
-        t ? (Y(u.J, u.F), p || (removeEventListener("message", M), K = K.forEach(L), addEventListener("message", L))) : a.i();
+        t ? (Y(u.K, u.F), p || (removeEventListener("message", M), K = K.forEach(L), addEventListener("message", L))) : a.i();
         t || X();
     }));
 }

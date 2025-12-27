@@ -90,8 +90,8 @@ int main() {
   SDL_UpdateRect(dst, 0, 0, width, height);
 
   printf("There should be yellow background\n");
-  printf("One the left side there should be red rect with green rect inside\n");
-  printf("One the right side there should be blue rect with pink rect inside\n");
+  printf("On the left side there should be red rect with green rect inside\n");
+  printf("On the right side there should be blue rect with pink rect inside\n");
 
   SDL_Quit();
 

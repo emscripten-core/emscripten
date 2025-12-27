@@ -5,7 +5,7 @@
  */
 
 #if !USE_ASAN
-#error "should only be inclded in USE_ASAN mode"
+#error "should only be included in USE_ASAN mode"
 #endif
 
 // C versions of asan_js_{load|store} will be used from compiled code, which have

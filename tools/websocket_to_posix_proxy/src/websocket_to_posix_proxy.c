@@ -338,7 +338,7 @@ static int Translate_Socket_Domain(int domain) {
 //  case MUSL_AF_KCM: return AF_KCM;
   case MUSL_AF_MAX: return AF_MAX;
   default:
-    fprintf(stderr, "Uncrecognized Socket Domain %d!\n", domain);
+    fprintf(stderr, "Unrecognized Socket Domain %d!\n", domain);
     return domain;
   }
 }
@@ -372,7 +372,7 @@ static int Translate_Socket_Type(int type) {
 //  case MUSL_SOCK_DCCP: return SOCK_DCCP;
 //  case MUSL_SOCK_PACKET: return SOCK_PACKET;
   default:
-    fprintf(stderr, "Uncrecognized socket type %d!\n", type);
+    fprintf(stderr, "Unrecognized socket type %d!\n", type);
     return type;
   }
 }
@@ -519,7 +519,7 @@ static int Translate_Socket_Level(int level) {
 //  case MUSL_SOL_NFC: return SOL_NFC;
 //  case MUSL_SOL_KCM: return SOL_KCM;
   default:
-    fprintf(stderr, "Uncrecognized socket level %d!\n", level);
+    fprintf(stderr, "Unrecognized socket level %d!\n", level);
     return level;
   }
 }

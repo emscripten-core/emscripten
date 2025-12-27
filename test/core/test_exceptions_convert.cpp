@@ -30,7 +30,7 @@ namespace
       if (raw == "Zero")  { value = TestEnum::Zero; return in; }
       if (raw == "One")   { value = TestEnum::One; return in; }
 
-      // The boost input operator uses it's own facet for input which can
+      // The boost input operator uses its own facet for input which can
       // throw, so we simulate something failing by just throwing an exception
       // directly.
       throw std::exception();

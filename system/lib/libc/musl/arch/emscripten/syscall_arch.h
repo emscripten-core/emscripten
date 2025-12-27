@@ -90,7 +90,7 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath);
 int __syscall_readlinkat(int dirfd, intptr_t path, intptr_t buf, size_t bufsize);
 int __syscall_fchmodat2(int dirfd, intptr_t path, int mode, int flags);
 int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags);
-int __syscall_pselect6(int nfds, intptr_t readfds, intptr_t writefds, intptr_t exceptfds, intptr_t timeout, intptr_t sigmaks);
+int __syscall_pselect6(int nfds, intptr_t readfds, intptr_t writefds, intptr_t exceptfds, intptr_t timeout, intptr_t sigmask);
 int __syscall_utimensat(int dirfd, intptr_t path, intptr_t times, int flags);
 int __syscall_fallocate(int fd, int mode, off_t offset, off_t len);
 int __syscall_dup3(int fd, int suggestfd, int flags);
@@ -102,7 +102,7 @@ int __syscall_socket(int domain, int type, int protocol, int dummy1, int dummy2,
 int __syscall_socketpair(int domain, int type, int protocol, intptr_t fds, int dummy, int dummy2);
 int __syscall_bind(int sockfd, intptr_t addr, size_t alen, int dummy, int dummy2, int dummy3);
 int __syscall_connect(int sockfd, intptr_t addr, size_t len, int dummy, int dummy2, int dummy3);
-int __syscall_listen(int sockfd, int backlock, int dummy1, int dummy2, int dummy3, int dummy4);
+int __syscall_listen(int sockfd, int backlog, int dummy1, int dummy2, int dummy3, int dummy4);
 int __syscall_accept4(int sockfd, intptr_t addr, intptr_t addrlen, int flags, int dummy1, int dummy2);
 int __syscall_getsockopt(int sockfd, int level, int optname, intptr_t optval, intptr_t optlen, int dummy);
 int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optval, size_t optlen, int dummy);

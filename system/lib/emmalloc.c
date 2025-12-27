@@ -21,7 +21,7 @@
  *    amount is 8 bytes, and a multiple of 4 bytes.
  *  - Acquired memory blocks are subdivided into disjoint regions that lie
  *    next to each other.
- *  - A region is either in used or free.
+ *  - A region is either in use or free.
  *    Used regions may be adjacent, and a used and unused region
  *    may be adjacent, but not two unused ones - they would be
  *    merged.
@@ -94,7 +94,7 @@ static_assert(alignof(max_align_t) == 8, "max_align_t must be correct");
 
 // That is, at the bottom and top end of each memory region, the size of that region is stored. That allows traversing the
 // memory regions backwards and forwards. Because each allocation must be at least a multiple of 4 bytes, the lowest two bits of
-// each size field is unused. Free regions are distinguished by used regions by having the FREE_REGION_FLAG bit present
+// each size field is unused. Free regions are distinguished from used regions by having the FREE_REGION_FLAG bit present
 // in the size field. I.e. for free regions, the size field is odd, and for used regions, the size field reads even.
 #define FREE_REGION_FLAG 0x1u
 
@@ -579,7 +579,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
   assert(freeRegion);
   // Look at the next potential free region to allocate into.
   // First, we should check if the free region has enough of payload bytes contained
-  // in it to accommodate the new allocation. This check needs to take account the
+  // in it to accommodate the new allocation. This check needs to take into account the
   // requested allocation alignment, so the payload memory area needs to be rounded
   // upwards to the desired alignment.
   uint8_t *payloadStartPtr = region_payload_start_ptr(freeRegion);
@@ -643,7 +643,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
 }
 
 static size_t validate_alloc_alignment(size_t alignment) {
-  // Cannot perform allocations that are less our minimal alignment, because
+  // Cannot perform allocations that are less than our minimal alignment, because
   // the Region control structures need to be aligned themselves.
   return MAX(alignment, MALLOC_ALIGNMENT);
 }
@@ -962,7 +962,7 @@ static int attempt_region_resize(Region *region, size_t size) {
       return 1;
     }
   } else {
-    // Next region is an used region - we cannot change its starting address. However if we are shrinking the
+    // Next region is a used region - we cannot change its starting address. However if we are shrinking the
     // size of this region, we can create a new free region between this and the next used region.
     if (size + sizeof(Region) <= region->size) {
       size_t freeRegionSize = region->size - size;
@@ -1303,7 +1303,7 @@ static int trim_dynamic_heap_reservation(size_t pad) {
     MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Shrinking ' + Number($0) + ' bytes off the free heap end region. New free heap end region size: ' + Number($1) + ' bytes.'), shrinkAmount, newRegionSize);
 #endif
   // If we can't fit a free Region in the shrunk space, we should delete the 
-  // the last free region altogether.
+  // last free region altogether.
   if (newRegionSize >= sizeof(Region)) {
     create_free_region(lastActualRegion, newRegionSize);
     link_to_free_list(lastActualRegion);

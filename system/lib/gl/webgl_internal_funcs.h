@@ -1,6 +1,6 @@
 // Functions declared here are just the ones that we don't declare in our webgl
 // headers.  These are used by emscripten_legacy_gl_emulation_GetProcAddress
-// but not delcared in the public webgl headers.
+// but not declared in the public webgl headers.
 
 #include <GL/gl.h>
 

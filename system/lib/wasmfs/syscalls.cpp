@@ -1716,7 +1716,7 @@ int __syscall_socket(
 }
 
 int __syscall_listen(
-  int sockfd, int backlock, int dummy1, int dummy2, int dummy3, int dummy4) {
+  int sockfd, int backlog, int dummy1, int dummy2, int dummy3, int dummy4) {
   return -ENOSYS;
 }
 

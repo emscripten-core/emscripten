@@ -11,7 +11,7 @@ var LibraryExceptions = {
   $exceptionCaught: ' []',
 
   // This class is the exception metadata which is prepended to each thrown object (in WASM memory).
-  // It is allocated in one block among with a thrown object in __cxa_allocate_exception and freed
+  // It is allocated in one block along with a thrown object in __cxa_allocate_exception and freed
   // in ___cxa_free_exception. It roughly corresponds to __cxa_exception structure in libcxxabi. The
   // class itself is just a native pointer wrapper, and contains all the necessary accessors for the
   // fields in the native structure.
@@ -365,7 +365,7 @@ var LibraryExceptions = {
 // of these functions using JS 'arguments' object.
 addCxaCatch = (n) => {
   const args = [];
-  // Confusingly, the actual number of asrgument is n - 2. According to the llvm
+  // Confusingly, the actual number of argument is n - 2. According to the llvm
   // code in WebAssemblyLowerEmscriptenEHSjLj.cpp:
   // This is because a landingpad instruction contains two more arguments, a
   // personality function and a cleanup bit, and __cxa_find_matching_catch_N

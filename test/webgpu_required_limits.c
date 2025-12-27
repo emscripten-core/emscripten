@@ -52,7 +52,7 @@ static void on_device_request_ended(WGPURequestDeviceStatus status,
   WGPULimits device_supported_limits = {0};
   wgpuDeviceGetLimits(device, &device_supported_limits);
 
-  // verify that the obtained device fullfils required limits 
+  // verify that the obtained device fulfills required limits 
   assertLimitsCompatible(adapter_supported_limits,
                          device_supported_limits);
 

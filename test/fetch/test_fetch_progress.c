@@ -40,7 +40,7 @@ int main() {
   attr.onerror = downloadFailed;
   emscripten_fetch(&attr, "myfile.dat");
 
-  // Program won't actaully exit until fetch is complete (i.e. when
+  // Program won't actually exit until fetch is complete (i.e. when
   // emscripten_fetch_close is called above).
   return 0;
 }
