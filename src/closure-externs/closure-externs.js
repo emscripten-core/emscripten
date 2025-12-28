@@ -64,11 +64,6 @@ var Atomics = {};
 Atomics.compareExchange = function() {};
 Atomics.exchange = function() {};
 Atomics.wait = function() {};
-/**
- * @param {number=} maxWaitMilliseconds
- * @suppress {duplicate, checkTypes}
- */
-Atomics.waitAsync = function(i32a, index, value, maxWaitMilliseconds) {};
 Atomics.notify = function() {};
 Atomics.load = function() {};
 Atomics.store = function() {};
@@ -78,12 +73,6 @@ Atomics.store = function() {};
  * @suppress {duplicate, checkTypes}
  */
 var WebAssembly = {};
-/**
- * @constructor
- * @param {Object} globalDescriptor
- * @param {*=} value
- */
-WebAssembly.Global = function(globalDescriptor, value) {};
 /**
  * @param {!WebAssembly.Tag} tag
  * @param {number} index
