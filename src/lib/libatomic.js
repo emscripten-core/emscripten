@@ -50,6 +50,7 @@ addToLibrary({
   /**
    * @param {number=} maxWaitMilliseconds
    */
+  /** @suppress {duplicate, checkTypes} */
   Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
     let val = Atomics.load(i32a, index);
     if (val != value) return { async: false, value: 'not-equal' };

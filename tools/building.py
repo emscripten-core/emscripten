@@ -579,6 +579,14 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   if extra_closure_args:
     user_args += extra_closure_args
 
+  def uses_webgpu_externs(args):
+    for i, arg in enumerate(args):
+      if arg.startswith('--externs=') and 'webgpu-externs.js' in arg:
+        return True
+      if arg == '--externs' and i + 1 < len(args) and 'webgpu-externs.js' in args[i + 1]:
+        return True
+    return False
+
   closure_cmd, env = get_closure_compiler_and_env(user_args)
 
   # Closure externs file contains known symbols to be extern to the minification, Closure
@@ -626,6 +634,9 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
       BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
                          if name.endswith('.js')]
       CLOSURE_EXTERNS += BROWSER_EXTERNS
+
+  if uses_webgpu_externs(user_args):
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs-fixes.js')]
 
   if settings.DYNCALLS:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
