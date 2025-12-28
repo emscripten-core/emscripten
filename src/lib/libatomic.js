@@ -78,6 +78,7 @@ addToLibrary({
   $liveAtomicWaitAsyncCounter: 0,
   $liveAtomicWaitAsyncCounter__internal: true,
 
+  emscripten_atomic_wait_async__docs: '/** @suppress {checkTypes} */',
   emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$liveAtomicWaitAsyncs', '$liveAtomicWaitAsyncCounter', '$polyfillWaitAsync', '$callUserCallback'],
   emscripten_atomic_wait_async: (addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);

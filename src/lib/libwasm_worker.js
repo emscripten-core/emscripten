@@ -295,6 +295,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     return Atomics.isLockFree(width);
   },
 
+  emscripten_lock_async_acquire__docs: '/** @suppress {checkTypes} */',
   emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync'],
   emscripten_lock_async_acquire: (lock, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let tryAcquireLock = () => {
@@ -314,6 +315,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     setTimeout(tryAcquireLock);
   },
 
+  emscripten_semaphore_async_acquire__docs: '/** @suppress {checkTypes} */',
   emscripten_semaphore_async_acquire__deps: ['$polyfillWaitAsync'],
   emscripten_semaphore_async_acquire: (sem, num, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let dispatch = (idx, ret) => {

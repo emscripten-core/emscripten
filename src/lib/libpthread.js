@@ -1261,6 +1261,7 @@ var LibraryPThread = {
     }
   }),
 
+  _emscripten_thread_mailbox_await__docs: '/** @suppress {checkTypes} */',
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox', '$waitAsyncPolyfilled'],
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
     if (!waitAsyncPolyfilled) {

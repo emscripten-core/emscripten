@@ -64,6 +64,11 @@ var Atomics = {};
 Atomics.compareExchange = function() {};
 Atomics.exchange = function() {};
 Atomics.wait = function() {};
+/**
+ * @return {*}
+ * @suppress {duplicate, checkTypes}
+ */
+Atomics.waitAsync = function(i32a, index, value, maxWaitMilliseconds) {};
 Atomics.notify = function() {};
 Atomics.load = function() {};
 Atomics.store = function() {};
@@ -246,12 +251,6 @@ var moduleRtn;
  */
 Navigator.prototype.webkitGetUserMedia = function(
     constraints, successCallback, errorCallback) {};
-
-/**
- * A symbol from the explicit resource management proposal that isn't yet part of Closure.
- * @type {symbol}
- */
-Symbol.dispose;
 
 // Common between node-externs and v8-externs
 var os = {};
