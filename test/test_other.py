@@ -931,7 +931,7 @@ f.close()
       os.mkdir(builddir)
       with common.chdir(builddir):
         # Run Cmake
-        cmd = [EMCMAKE, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
+        cmd = [EMCMAKE, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir, '-DCMAKE_POLICY_VERSION_MINIMUM=3.5']
 
         env = os.environ.copy()
         # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
