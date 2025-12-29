@@ -580,12 +580,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
     user_args += extra_closure_args
 
   def uses_webgpu_externs(args):
-    for i, arg in enumerate(args):
-      if arg.startswith('--externs=') and 'webgpu-externs.js' in arg:
-        return True
-      if arg == '--externs' and i + 1 < len(args) and 'webgpu-externs.js' in args[i + 1]:
-        return True
-    return False
+    return any('webgpu-externs.js' in arg for arg in args)
 
   closure_cmd, env = get_closure_compiler_and_env(user_args)
 
@@ -636,6 +631,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
       CLOSURE_EXTERNS += BROWSER_EXTERNS
 
   if uses_webgpu_externs(user_args):
+    # TODO: remove once Dawn fixes webgpu-externs.js (https://issues.chromium.org/issues/472022911).
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs-fixes.js')]
 
   if settings.DYNCALLS:
