@@ -243,7 +243,7 @@ See docs/process.md for more on how version tagging works.
 - When JSPI is enabled `async` library functions are no longer automatically
   wrapped with `WebAssembly.Suspending` functions. To automatically wrap library
   functions for use with JSPI they must now explicitly set
-  `myLibraryFunction__async: true`.
+  `myLibraryFunction__async: true`. (#24550)
 - Removed special casing for `size_t` in Embind, since it was also inadvertently
   affecting `unsigned long` on wasm64. Both will now match the behaviour of
   other 64-bit integers on wasm64 and will be passed as `bigint` instead of
