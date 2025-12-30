@@ -353,10 +353,7 @@ def separate_linker_flags(newargs):
       return newargs[i + 1]
 
     if not arg.startswith('-') or arg == '-':
-      # os.devnul should always be reported as existing but there is bug in windows
-      # python before 3.8:
-      # https://bugs.python.org/issue1311
-      if not os.path.exists(arg) and arg not in (os.devnull, '-'):
+      if not os.path.exists(arg) and arg != '-':
         exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
       add_link_arg(arg, True)
     elif arg == '-z':
