@@ -277,12 +277,12 @@ addToLibrary({
   def test_jslib_invalid_decorator(self):
     create_file('lib.js', r'''
 addToLibrary({
-  jslibfunc__async: 'hello',
+  jslibfunc__internal: 'hello',
   jslibfunc: (x) => {},
 });
 ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'],
-                     "lib.js: Decorator (jslibfunc__async} has wrong type. Expected 'boolean' not 'string'")
+                     "lib.js: Decorator (jslibfunc__internal) has wrong type. Expected 'boolean' not 'string'")
 
   @also_with_wasm64
   @also_without_bigint

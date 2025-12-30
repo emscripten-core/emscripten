@@ -485,8 +485,8 @@ addToLibrary({
   emscripten_sleep: (ms) => Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms)),
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
-  emscripten_wget_data__async: true,
-  emscripten_wget_data: (url, pbuffer, pnum, perror) => Asyncify.handleAsync(async () => {
+  emscripten_wget_data__async: 'auto',
+  emscripten_wget_data: async (url, pbuffer, pnum, perror) => {
     /* no need for run dependency, this is async but will not do any prepare etc. step */
     try {
       const byteArray = await asyncLoad(UTF8ToString(url));
@@ -499,7 +499,7 @@ addToLibrary({
     } catch (err) {
       {{{ makeSetValue('perror', 0, '1', 'i32') }}};
     }
-  }),
+  },
 
   emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers__async: true,
