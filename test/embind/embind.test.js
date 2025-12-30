@@ -1143,9 +1143,6 @@ module({
         });
 
         test("std::vector is iterable", function() {
-            if (typeof Symbol === "undefined" || !Symbol.iterator) {
-                return;
-            }
             var vec = cm.emval_test_return_vector();
             var values = [];
             for (var value of vec) {
@@ -1157,9 +1154,6 @@ module({
         });
 
         test("custom class is iterable", function() {
-            if (typeof Symbol === "undefined" || !Symbol.iterator) {
-                return;
-            }
             var iterable = new cm.CustomIterable();
             var values = [];
             for (var value of iterable) {
