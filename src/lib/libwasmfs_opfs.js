@@ -89,7 +89,6 @@ addToLibrary({
   // corresponding to the error.
   $wasmfsOPFSGetOrCreateFile__deps: ['$wasmfsOPFSDirectoryHandles',
                                      '$wasmfsOPFSFileHandles'],
-  $wasmfsOPFSGetOrCreateFile__async: {{{ !PTHREADS }}},
   $wasmfsOPFSGetOrCreateFile: async function(parent, name, create) {
     let parentHandle = wasmfsOPFSDirectoryHandles.get(parent);
     let fileHandle;
@@ -114,7 +113,6 @@ addToLibrary({
   // it if it doesn't exist and `create` or otherwise return a negative error
   // code corresponding to the error.
   $wasmfsOPFSGetOrCreateDir__deps: ['$wasmfsOPFSDirectoryHandles'],
-  $wasmfsOPFSGetOrCreateDir__async: {{{ !PTHREADS }}},
   $wasmfsOPFSGetOrCreateDir: async function(parent, name, create) {
     let parentHandle = wasmfsOPFSDirectoryHandles.get(parent);
     let childHandle;
