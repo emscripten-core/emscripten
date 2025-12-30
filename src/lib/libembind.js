@@ -422,10 +422,6 @@ var LibraryEmbind = {
   },
 
   $installIndexedIterator: (proto, sizeMethodName, getMethodName) => {
-    if (typeof Symbol === 'undefined' || !Symbol.iterator) {
-      return;
-    }
-
     const makeIterator = (size, getValue) => {
       const useBigInt = typeof size === 'bigint';
       const one = useBigInt ? 1n : 1;
