@@ -446,11 +446,19 @@ function(${args}) {
         error(`JS library error: invalid proxying mode '${symbol}__proxy: ${proxyingMode}' specified`);
       }
       if (SHARED_MEMORY && proxyingMode != 'none') {
-        const sync = proxyingMode === 'sync';
         if (PTHREADS) {
           snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
             if (oneliner) {
               body = `return ${body}`;
+            }
+            let sync = '0'
+            if (proxyingMode === 'sync') {
+              const isAsyncFunction = LibraryManager.library[symbol + '__async'];
+              if (isAsyncFunction) {
+                sync = '2';
+              } else {
+                sync = '1';
+              }
             }
             const rtnType = sig && sig.length ? sig[0] : null;
             const proxyFunc =
@@ -459,7 +467,7 @@ function(${args}) {
             return `
 ${async_}function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+sync}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${sync}${args ? ', ' : ''}${args});
 ${body}
 }\n`;
           });

@@ -982,8 +982,9 @@ var LibraryPThread = {
 
   _emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
+    '_emscripten_run_js_on_main_thread_done',
     '$proxiedJSCallArgs'],
-  _emscripten_receive_on_main_thread_js: (funcIndex, emAsmAddr, callingThread, bufSize, args) => {
+  _emscripten_receive_on_main_thread_js: (funcIndex, emAsmAddr, callingThread, bufSize, args, ctx, ctxArgs) => {
     // Sometimes we need to backproxy events to the calling thread (e.g.
     // HTML5 DOM events handlers such as
     // emscripten_set_mousemove_callback()), so keep track in a globally
@@ -1022,6 +1023,11 @@ var LibraryPThread = {
     PThread.currentProxiedOperationCallerThread = callingThread;
     var rtn = func(...proxiedJSCallArgs);
     PThread.currentProxiedOperationCallerThread = 0;
+    if (ctx) {
+      rtn.then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, rtn));
+      return;
+    }
+
 #if MEMORY64
     // In memory64 mode some proxied functions return bigint/pointer but
     // our return type is i53/double.
@@ -1157,14 +1163,11 @@ var LibraryPThread = {
     }
   },
 
-  // Asynchronous version dlsync_threads. Always run on the main thread.
-  // This work happens asynchronously. The `callback` is called once this work
-  // is completed, passing the ctx.
-  // TODO(sbc): Should we make a new form of __proxy attribute for JS library
-  // function that run asynchronously like but blocks the caller until they are
-  // done.  Perhaps "sync_with_ctx"?
-  _emscripten_dlsync_threads_async__deps: ['_emscripten_proxy_dlsync_async', '$makePromise'],
-  _emscripten_dlsync_threads_async: (caller, callback, ctx) => {
+  // Asynchronous version dlsync. Always run on the main thread.
+  // This work happens asynchronously.
+  $dlsyncAsync__deps: ['_emscripten_proxy_dlsync_async', '$makePromise'],
+  $dlsyncAsync: async () => {
+    const caller = PThread.currentProxiedOperationCallerThread;
 #if PTHREADS_DEBUG
     dbg("_emscripten_dlsync_threads_async caller=" + ptrToString(caller));
 #endif
@@ -1199,27 +1202,27 @@ var LibraryPThread = {
 #if PTHREADS_DEBUG
     dbg(`_emscripten_dlsync_threads_async: waiting on ${promises.length} promises`);
 #endif
-    // Once all promises are resolved then we know all threads are in sync and
-    // we can call the callback.
-    Promise.all(promises).then(() => {
-      PThread.outstandingPromises = {};
+    await Promise.all(promises);
+
+    PThread.outstandingPromises = {};
 #if PTHREADS_DEBUG
-      dbg('_emscripten_dlsync_threads_async done: calling callback');
+    dbg('_emscripten_dlsync_threads_async done');
 #endif
-      {{{ makeDynCall('vp', 'callback') }}}(ctx);
-    });
   },
 
-  // Synchronous version dlsync_threads. This is only needed for the case then
+  // Synchronous version of dlsync_threads. This is only needed for the case then
   // the main thread call dlopen and in that case we have not choice but to
   // synchronously block the main thread until all other threads are in sync.
   // When `dlopen` is called from a worker, the worker itself is blocked but
   // the operation its waiting on (on the main thread) can be async.
-  _emscripten_dlsync_threads__deps: ['_emscripten_proxy_dlsync'],
-  _emscripten_dlsync_threads: () => {
-#if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! _emscripten_dlsync_threads() can only ever be called from main thread');
-#endif
+  _dlsync__deps: ['_emscripten_proxy_dlsync', '$dlsyncAsync'],
+  _dlsync__async: true,
+  _dlsync__proxy: 'sync',
+  _dlsync: () => {
+    const callingThread = PThread.currentProxiedOperationCallerThread;
+    if (callingThread) {
+      return dlsyncAsync()
+    }
     for (const ptr of Object.keys(PThread.pthreads)) {
       const pthread_ptr = Number(ptr);
       if (!PThread.finishedThreads.has(pthread_ptr)) {
