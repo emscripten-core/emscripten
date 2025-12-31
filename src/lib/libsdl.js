@@ -1461,7 +1461,7 @@ var LibrarySDL = {
     var size  = driverName.length;
 
     if (max_size <= size) {
-      size = max_size - 1; //-1 because of null-terminator
+      size = max_size - 1; // -1 because of null-terminator
     }
 
     while (index < size) {
