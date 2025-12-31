@@ -975,7 +975,7 @@ var LibraryGLFW = {
           err('glfwSetInputMode called with GLFW_LOCK_KEY_MODS mode not implemented');
           break;
         }
-        case 0x000330005: { // GLFW_RAW_MOUSE_MOTION
+        case 0x00033005: { // GLFW_RAW_MOUSE_MOTION
           err('glfwSetInputMode called with GLFW_RAW_MOUSE_MOTION mode not implemented');
           break;
         }
