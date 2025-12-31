@@ -204,7 +204,7 @@ def main():
   parser.add_argument('--lto', action='store_const', const='full', help='build bitcode object for LTO')
   parser.add_argument('--lto=thin', dest='lto', action='store_const', const='thin', help='build bitcode object for ThinLTO')
   parser.add_argument('--pic', action='store_true',
-                      help='build relocatable objects for suitable for dynamic linking')
+                      help='build relocatable objects suitable for dynamic linking')
   parser.add_argument('-f', '--force', action='store_true',
                       help='force rebuild of target (by removing it first)')
   parser.add_argument('-v', '--verbose', action='store_true',

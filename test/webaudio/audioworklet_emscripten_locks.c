@@ -142,7 +142,7 @@ bool MainLoop(double time, void* data) {
     // Spin here until released in process (but don't change test until we know this case ran)
     whichTest = TEST_WAIT_INFINTE_2;
     emscripten_lock_busyspin_waitinf_acquire(&testLock);
-    emscripten_out("TEST_WAIT_INFINTE (from main)");
+    emscripten_out("TEST_WAIT_INFINITE (from main)");
     break;
   case TEST_DONE:
     // Finished, exit from the main thread

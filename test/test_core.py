@@ -151,7 +151,7 @@ def asan(func):
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb('asan doesnt support GLOBAL_BASE')
+  @no_2gb("asan doesn't support GLOBAL_BASE")
   @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def decorated(self, *args, **kwargs):
     return func(self, *args, **kwargs)
@@ -2210,9 +2210,9 @@ int main(int argc, char **argv) {
     self.cflags += ['-sALLOW_MEMORY_GROWTH', '-sSTACK_SIZE=1Mb', '-sINITIAL_MEMORY=32Mb', '-sMAXIMUM_MEMORY=64Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
     self.do_core_test('test_memorygrowth_linear_step.c')
 
-  @no_ubsan('UBSan seems to effect the precise memory usage')
-  @no_4gb('depends on specifc memory layout')
-  @no_2gb('depends on specifc memory layout')
+  @no_ubsan('UBSan seems to affect the precise memory usage')
+  @no_4gb('depends on specific memory layout')
+  @no_2gb('depends on specific memory layout')
   def test_memorygrowth_geometric_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2738,7 +2738,7 @@ The current type of b is: 9
       self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
     self.do_runf('pthread/test_pthread_tls.c')
 
-  @no_modularize_instance('uses global Module objecgt')
+  @no_modularize_instance('uses global Module object')
   def test_pthread_run_script(self):
     if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
@@ -4145,7 +4145,7 @@ caught outer int: 123
       int main() {
         void* puts_side = get_address();
         printf("main module address %p.\n", &puts);
-        printf("side module address address %p.\n", puts_side);
+        printf("side module address %p.\n", puts_side);
         if (&puts == puts_side)
           printf("success\n");
         else
@@ -4626,8 +4626,8 @@ res64 - external 64\n''', header='''\
       extern int main2();
       double sidey() {
         int temp = main2();
-        printf("main2 sed: %d\n", temp);
-        printf("main2 sed: %u, %c\n", temp, temp/2);
+        printf("main2 said: %d\n", temp);
+        printf("main2 said: %u, %c\n", temp, temp/2);
         return test_lib_func(temp);
       }
     ''', expected='other says 45.2', main_cflags=['--js-library', 'lib.js'], force_c=True)
@@ -5750,7 +5750,7 @@ got: 10
   @no_sanitize('requires libc to be built with -fshort-char')
   def test_utf32_short_wchar(self):
     if '-flto' in self.cflags or '-flto=thin' in self.cflags:
-      self.skipTest('-fshort-wchar is not compatible with LTO (libraries would need rebuilting)')
+      self.skipTest('-fshort-wchar is not compatible with LTO (libraries would need rebuilding)')
     self.do_runf('utf32.cpp', 'OK (short).\n', cflags=['-fshort-wchar'])
 
   @with_both_text_decoder
@@ -6021,7 +6021,7 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('fs/test_fs_rename_on_existing.c', 'success')
 
   @also_with_nodefs_both
-  @no_windows('stat ino values dont match on windows')
+  @no_windows("stat ino values don't match on windows")
   @crossplatform
   @no_wasmfs('Assertion failed: "a_ino == sta.st" in test_fs_readdir_ino_matches_stat_ino.c, line 58. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_readdir_ino_matches_stat_ino(self):

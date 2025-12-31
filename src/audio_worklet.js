@@ -210,7 +210,7 @@ function createWasmAudioWorkletProcessor() {
 
 #if ASSERTIONS
       // If all the maths worked out, we arrived at the original stack address
-      console.assert(dataPtr == oldStackPtr, `AudioWorklet stack missmatch (audio data finishes at ${dataPtr} instead of ${oldStackPtr})`);
+      console.assert(dataPtr == oldStackPtr, `AudioWorklet stack mismatch (audio data finishes at ${dataPtr} instead of ${oldStackPtr})`);
 
       // Sanity checks. If these trip the most likely cause, beyond unforeseen
       // stack shenanigans, is that the 'render quantum size' changed after

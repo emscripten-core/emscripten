@@ -14,7 +14,7 @@ void run_test() {
   printf("&tls_foo_addr: %p\n", &tls_foo_addr);
   // The values stored foo_addr and tls_foo_addr should both be
   // the address of foo
-  printf("foo_add=%p tls_foo_addr=%p [delta=%ld]\n", foo_addr, tls_foo_addr, foo_addr - tls_foo_addr);
+  printf("foo_addr=%p tls_foo_addr=%p [delta=%ld]\n", foo_addr, tls_foo_addr, foo_addr - tls_foo_addr);
   assert(foo_addr == &foo);
   assert(tls_foo_addr == &foo);
 }
