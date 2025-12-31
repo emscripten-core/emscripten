@@ -62,6 +62,8 @@ addToLibrary({
     return { async: true, value: promise };
   };
 }`,
+#else
+  $waitAsyncPolyfilled: false,
 #endif
 
   $polyfillWaitAsync__internal: true,
