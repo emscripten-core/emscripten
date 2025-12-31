@@ -201,7 +201,7 @@ int main() {
     glfwSetCursorEnterCallback(window, wcurecb);
     glfwSetScrollCallback(window, wscrocb);
 
-    // XXX: stub, events come immediatly
+    // XXX: stub, events come immediately
     // glfwPollEvents();
     // glfwWaitEvents();
 

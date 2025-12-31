@@ -29,7 +29,7 @@ if (NOT HAS_STRING)
 endif()
 message(STATUS "find_file string: ${HAS_STRING}")
 
-# Test that we can libraries that exist in the sysroot
+# Test that we can find libraries that exist in the sysroot
 find_library(HAS_ZLIB NAMES libz.a)
 if (NOT HAS_ZLIB)
   message(FATAL_ERROR "libz.a not found via find_library")

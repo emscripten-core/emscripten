@@ -82,7 +82,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         // Use `const` here to ensure that the variable is scoped only to
         // that iteration, allowing safe reference from a closure.
         for (const handler of msgData.handlers) {
-          // The the main module has a handler for a certain even, but no
+          // If the main module has a handler for a certain event, but no
           // handler exists on the pthread worker, then proxy that handler
           // back to the main thread.
           if (!Module[handler] || Module[handler].proxy) {

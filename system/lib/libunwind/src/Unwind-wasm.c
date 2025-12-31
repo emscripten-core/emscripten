@@ -37,9 +37,9 @@ struct _Unwind_LandingPadContext {
 // function
 thread_local struct _Unwind_LandingPadContext __wasm_lpad_context;
 
-/// Calls to this function is in landing pads in compiler-generated user code.
+/// Calls to this function are in landing pads in compiler-generated user code.
 /// In other EH schemes, stack unwinding is done by libunwind library, which
-/// calls the personality function for each each frame it lands. On the other
+/// calls the personality function for each frame it lands. On the other
 /// hand, WebAssembly stack unwinding process is performed by a VM, and the
 /// personality function cannot be called from there. So the compiler inserts
 /// a call to this function in landing pads in the user code, which in turn
@@ -92,7 +92,7 @@ _LIBUNWIND_EXPORT void _Unwind_SetGR(struct _Unwind_Context *context, int index,
 
 /// Called by personality handler to get instruction pointer.
 _LIBUNWIND_EXPORT uintptr_t _Unwind_GetIP(struct _Unwind_Context *context) {
-  // The result will be used as an 1-based index after decrementing 1, so we
+  // The result will be used as a 1-based index after decrementing 1, so we
   // increment 2 here
   uintptr_t result =
       ((struct _Unwind_LandingPadContext *)context)->lpad_index + 2;

@@ -85,7 +85,7 @@ void test_sigpenging() {
     printf("is not pending\n");
   }
 
-  // Unlock the signal and then check that is recieved.
+  // Unlock the signal and then check that is received.
   assert(!recieved1);
   unblock_all();
 

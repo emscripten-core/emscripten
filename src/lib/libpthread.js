@@ -134,7 +134,7 @@ var LibraryPThread = {
 #endif // !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
 #if MAIN_MODULE
       PThread.outstandingPromises = {};
-      // Finished threads are threads that have finished running but we not yet
+      // Finished threads are threads that have finished running but we are not yet
       // joined.
       PThread.finishedThreads = new Set();
 #endif
@@ -176,7 +176,7 @@ var LibraryPThread = {
 #endif
       // Attempt to kill all workers.  Sadly (at least on the web) there is no
       // way to terminate a worker synchronously, or to be notified when a
-      // worker in actually terminated.  This means there is some risk that
+      // worker is actually terminated.  This means there is some risk that
       // pthreads will continue to be executing after `worker.terminate` has
       // returned.  For this reason, we don't call `returnWorkerToPool` here or
       // free the underlying pthread data structures.
@@ -195,7 +195,7 @@ var LibraryPThread = {
       // some operations that leave the worker queue in an invalid state until
       // we are completely done (it would be bad if free() ends up calling a
       // queued pthread_create which looks at the global data structures we are
-      // modifying). To achieve that, defer the free() til the very end, when
+      // modifying). To achieve that, defer the free() until the very end, when
       // we are all done.
       var pthread_ptr = worker.pthread_ptr;
       delete PThread.pthreads[pthread_ptr];
@@ -458,7 +458,7 @@ var LibraryPThread = {
       } else
 #endif
       // We need to generate the URL with import.meta.url as the base URL of the JS file
-      // instead of just using new URL(import.meta.url) because bundler's only recognize
+      // instead of just using new URL(import.meta.url) because bundlers only recognize
       // the first case in their bundling step. The latter ends up producing an invalid
       // URL to import from the server (e.g., for webpack the file:// path).
       // See https://github.com/webpack/webpack/issues/12638
@@ -467,7 +467,7 @@ var LibraryPThread = {
       var pthreadMainJs = _scriptName;
 #if CROSS_ORIGIN && ENVIRONMENT_MAY_BE_WEB
       // In order to support cross origin loading of worker threads load the
-      // worker via a tiny inline `importScripts` call.   For some reason its
+      // worker via a tiny inline `importScripts` call.   For some reason it's
       // fine to `importScripts` across origins, in cases where new Worker
       // itself does not allow this.
       // https://github.com/emscripten-core/emscripten/issues/21937
@@ -544,9 +544,9 @@ var LibraryPThread = {
     worker.terminate();
     // terminate() can be asynchronous, so in theory the worker can continue
     // to run for some amount of time after termination.  However from our POV
-    // the worker now dead and we don't want to hear from it again, so we stub
+    // the worker is now dead and we don't want to hear from it again, so we stub
     // out its message handler here.  This avoids having to check in each of
-    // the onmessage handlers if the message was coming from valid worker.
+    // the onmessage handlers if the message was coming from a valid worker.
     worker.onmessage = (e) => {
 #if ASSERTIONS
       var cmd = e['data'].cmd;
@@ -572,7 +572,7 @@ var LibraryPThread = {
     // Called when a thread needs to be strongly referenced.
     // Currently only used for:
     // - keeping the "main" thread alive in PROXY_TO_PTHREAD mode;
-    // - crashed threads that needs to propagate the uncaught exception
+    // - crashed threads that need to propagate the uncaught exception
     //   back to the main thread.
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
@@ -690,7 +690,7 @@ var LibraryPThread = {
   },
 
   _emscripten_init_main_thread_js: (tb) => {
-    // Pass the thread address to the native code where they stored in wasm
+    // Pass the thread address to the native code where they are stored in wasm
     // globals which act as a form of TLS. Global constructors trying
     // to access this value will read the wrong value, but that is UB anyway.
     __emscripten_thread_init(
@@ -911,10 +911,10 @@ var LibraryPThread = {
 #endif
   },
 
-  // This function is call by a pthread to signal that exit() was called and
+  // This function is called by a pthread to signal that exit() was called and
   // that the entire process should exit.
   // This function is always called from a pthread, but is executed on the
-  // main thread due the __proxy attribute.
+  // main thread due to the __proxy attribute.
   $exitOnMainThread__deps: ['exit'],
   $exitOnMainThread__proxy: 'async',
   $exitOnMainThread: (returnCode) => {
@@ -1031,7 +1031,7 @@ var LibraryPThread = {
 #endif
 #if ASSERTIONS
     // Proxied functions can return any type except bigint.  All other types
-    // cooerce to f64/double (the return type of this function in C) but not
+    // coerce to f64/double (the return type of this function in C) but not
     // bigint.
     assert(typeof rtn != "bigint");
 #endif
@@ -1100,7 +1100,7 @@ var LibraryPThread = {
 
 #if MAIN_MODULE
     // Before we call the thread entry point, make sure any shared libraries
-    // have been loaded on this there.  Otherwise our table might be not be
+    // have been loaded on this thread.  Otherwise our table might be not be
     // in sync and might not contain the function pointer `ptr` at all.
     __emscripten_dlsync_self();
 #endif
@@ -1140,7 +1140,7 @@ var LibraryPThread = {
 #if MAIN_MODULE
   _emscripten_thread_exit_joinable: (thread) => {
     // Called when a thread exits and is joinable.  We mark these threads
-    // as finished, which means that are in state where are no longer actually
+    // as finished, which means they are in state where are no longer actually
     // running, but remain around waiting to be joined.  In this state they
     // cannot run any more proxied work.
     if (!ENVIRONMENT_IS_PTHREAD) markAsFinished(thread);
@@ -1161,7 +1161,7 @@ var LibraryPThread = {
   // This work happens asynchronously. The `callback` is called once this work
   // is completed, passing the ctx.
   // TODO(sbc): Should we make a new form of __proxy attribute for JS library
-  // function that run asynchronously like but blocks the caller until they are
+  // function that run asynchronously but blocks the caller until they are
   // done.  Perhaps "sync_with_ctx"?
   _emscripten_dlsync_threads_async__deps: ['_emscripten_proxy_dlsync_async', '$makePromise'],
   _emscripten_dlsync_threads_async: (caller, callback, ctx) => {
@@ -1210,11 +1210,11 @@ var LibraryPThread = {
     });
   },
 
-  // Synchronous version dlsync_threads. This is only needed for the case then
-  // the main thread call dlopen and in that case we have not choice but to
+  // Synchronous version dlsync_threads. This is only needed for the case when
+  // the main thread call dlopen and in that case we have no choice but to
   // synchronously block the main thread until all other threads are in sync.
   // When `dlopen` is called from a worker, the worker itself is blocked but
-  // the operation its waiting on (on the main thread) can be async.
+  // the operation it's waiting on (on the main thread) can be async.
   _emscripten_dlsync_threads__deps: ['_emscripten_proxy_dlsync'],
   _emscripten_dlsync_threads: () => {
 #if ASSERTIONS

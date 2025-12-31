@@ -1,7 +1,7 @@
 var wwParams;
 
 /**
- * Called once the intiial message has been recieved from the creating thread.
+ * Called once the initial message has been received from the creating thread.
  * The `props` object is property bag sent via postMessage to create the worker.
  *
  * This function is called both in normal wasm workers and in audio worklets.

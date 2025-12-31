@@ -1461,7 +1461,7 @@ var LibrarySDL = {
     var size  = driverName.length;
 
     if (max_size <= size) {
-      size = max_size - 1; //-1 cause null-terminator
+      size = max_size - 1; // -1 because of null-terminator
     }
 
     while (index < size) {
@@ -1594,8 +1594,8 @@ var LibrarySDL = {
       if (surfData.isFlagSet({{{ cDefs.SDL_HWPALETTE }}})) {
         // If this is needed then
         // we should compact the data from 32bpp to 8bpp index.
-        // I think best way to implement this is use
-        // additional colorMap hash (color->index).
+        // I think the best way to implement this is to use
+        // an additional colorMap hash (color->index).
         // Something like this:
         //
         // var size = surfData.width * surfData.height;
@@ -1951,9 +1951,9 @@ var LibrarySDL = {
 #endif
 
     if (surfData.isFlagSet({{{ cDefs.SDL_HWPALETTE }}})) {
-      //in SDL_HWPALETTE color is index (0..255)
-      //so we should translate 1 byte value to
-      //32 bit canvas
+      // in SDL_HWPALETTE color is index (0..255)
+      // so we should translate 1 byte value to
+      // 32 bit canvas
       color = surfData.colors32[color];
     }
 

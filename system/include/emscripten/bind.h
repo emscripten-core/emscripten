@@ -274,7 +274,7 @@ void _embind_register_bindings(struct InitFunc* f);
 // to avoid static constructor ordering issues.
 struct InitFunc {
   InitFunc(void (*init_func)()) : init_func(init_func) {
-    // This the function immediately upon constructions, and also register
+    // This calls the function immediately upon construction, and also registers
     // it so that it can be called again on each worker that starts.
     init_func();
     _embind_register_bindings(this);
@@ -1703,8 +1703,8 @@ public:
         auto ster = &SP::template set<ClassType>;
 
         typename WithPolicies<Policies...>::template ArgTypeList<typename GP::ReturnType> returnType;
-        // XXX: This currently applies all the polices (including return value polices) to the
-        // setter function argument to allow pointers. Using return value polices doesn't really
+        // XXX: This currently applies all the policies (including return value policies) to the
+        // setter function argument to allow pointers. Using return value policies doesn't really
         // make sense on an argument, but we don't have separate argument policies yet.
         typename WithPolicies<Policies...>::template ArgTypeList<typename SP::ArgumentType> argType;
 

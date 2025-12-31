@@ -13,8 +13,8 @@ The upstream sources, along with our local changes, live at:
 To update musl first make sure all changes from the emscripten repo
 are present in the `emscripten` branch of the above repo.  Then run
 `git merge v<musl_version>` to pull in the latest musl changes from
-a given musl version.  Once any merge conflict are resolved those
-change can then be copied back into emscripten using this script.
+a given musl version.  Once any merge conflicts are resolved those
+changes can then be copied back into emscripten using this script.
 """
 
 import os

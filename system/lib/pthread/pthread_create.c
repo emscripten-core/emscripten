@@ -115,7 +115,7 @@ int __pthread_create(pthread_t* restrict res,
                      void* (*entry)(void*),
                      void* restrict arg) {
   // Note on LSAN: lsan intercepts/wraps calls to pthread_create so any
-  // allocation we we do here should be considered leaks.
+  // allocation we do here should be considered leaks.
   // See: lsan_interceptors.cpp.
   if (!res) {
     return EINVAL;
@@ -283,7 +283,7 @@ int __pthread_create(pthread_t* restrict res,
 }
 
 /*
- * Called from JS main thread to free data accociated a thread
+ * Called from JS main thread to free data associated with a thread
  * that is no longer running.
  */
 void _emscripten_thread_free_data(pthread_t t) {
@@ -295,7 +295,7 @@ void _emscripten_thread_free_data(pthread_t t) {
   }
 #endif
 
-  // Free all the enture thread block (called map_base because
+  // Free all the entire thread block (called map_base because
   // musl normally allocates this using mmap).  This region
   // includes the pthread structure itself.
   unsigned char* block = t->map_base;

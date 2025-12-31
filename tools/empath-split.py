@@ -14,7 +14,7 @@ the sourceMappingURL section exists in the input or a source map file is
 separately supplied with --sourcemap. If we have two files a.c and b.c, to
 generate a source map and the name section, if you compile and link within a
 single command, you can do something like
-$ emcc -g2 -gsrouce-map a.c b.c -o result.js
+$ emcc -g2 -gsource-map a.c b.c -o result.js
 If you want to compile and link in separate commands, you can do
 $ emcc -gsource-map a.c -o a.o
 $ emcc -gsource-map b.c -o b.o
@@ -48,8 +48,8 @@ match those of 'sources' field in the source map file. Sometimes a source map's
 'sources' field contains paths relative to a build directory, so source files
 may be recorded as '../src/subdir/test.c', for example. In this case, if you
 want to split the directory src/subdir, you should list it as ../src/subdir. You
-can manually open the source map file and check 'sources' field, but we also an
-option to help that. You can do like
+can manually open the source map file and check 'sources' field, but we also
+have an option to help that. You can do like
 $ empath-split --print-sources test.wasm
 or
 $ empath-split --print-sources --source-map test.wasm.map

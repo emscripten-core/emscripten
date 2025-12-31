@@ -86,7 +86,7 @@ function names, and variable names, which makes the JavaScript debuggable).
 The ``-g`` flag can also be specified with integer levels: :ref:`-g0 <emcc-g0>`,
 :ref:`-g1 <emcc-g1>`, :ref:`-g2 <emcc-g2>`, and :ref:`-g3 <emcc-g3>` (equivalent
 to ``-g``).  At compile time these flags control the amount of DWARF in the
-object files. At link time, each adds sucessively more kinds of information in
+object files. At link time, each adds successively more kinds of information in
 the wasm and JS files (DWARF is only retained after linking when using ``-g`` or
 ``-g3``).
 
@@ -140,7 +140,7 @@ is also passed at link time.
 DWARF can also be used for this purpose. Typically a binary containing DWARF
 would be generated at build time, and then stripped. The stripped copy would be
 served to users, and the original would be saved for symbolication purposes. For
-this use case, full information about about types and variables from the sources
+this use case, full information about types and variables from the sources
 isn't needed; the `-gline-tables-only
 <https://clang.llvm.org/docs/ClangCommandLineReference.html#cmdoption-clang-gline-tables-only>`_
 compile-time flag causes clang to generate only the line table information,
