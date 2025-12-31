@@ -1534,7 +1534,7 @@ status <https://github.com/simd-everywhere/implementation-status/blob/main/neon.
    * - vset_lane
      - ✅ native
    * - vshl
-     - scalaried
+     - scalarized
    * - vshl_n
      - ❌ Will be emulated with slow instructions, or scalarized
    * - vshll_n
