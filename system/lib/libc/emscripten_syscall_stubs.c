@@ -4,7 +4,7 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * Unimplemented/dummy syscall implementations. These fall into 3 catagories.
+ * Unimplemented/dummy syscall implementations. These fall into 3 categories.
  *
  * 1. Fake it, use dummy/placeholder values and return success.
  * 2. Fake it, as above but warn at runtime if called.

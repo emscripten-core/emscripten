@@ -62,7 +62,7 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE or settings.MAIN_MODULE:
-    # Explictly include `-sRELOCATABLE` when building system libraries.
+    # Explicitly include `-sRELOCATABLE` when building system libraries.
     # `-fPIC` alone is not enough to configure trigger the building and
     # caching of `pic` libraries (see `get_lib_dir` in `cache.py`)
     # FIXME(sbc): `-fPIC` should really be enough here.
@@ -88,7 +88,7 @@ def clean_env():
   # building system libraries and ports should be hermetic in that it is not
   # affected by things like EMCC_CFLAGS which the user may have set.
   # At least one port also uses autoconf (harfbuzz) so we also need to clear
-  # CFLAGS/LDFLAGS which we don't want to effect the inner call to configure.
+  # CFLAGS/LDFLAGS which we don't want to affect the inner call to configure.
   safe_env = os.environ.copy()
   for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS',
               'EMCC_CFLAGS',

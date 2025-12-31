@@ -397,17 +397,17 @@ module({
 
             var expected = '';
             if(stdStringIsUTF8) {
-                //ASCII
+                // ASCII
                 expected = 'aei';
-                //Latin-1 Supplement
+                // Latin-1 Supplement
                 expected += '\u00E1\u00E9\u00ED';
-                //Greek
+                // Greek
                 expected += '\u03B1\u03B5\u03B9';
-                //Cyrillic
+                // Cyrillic
                 expected += '\u0416\u041B\u0424';
-                //CJK
+                // CJK
                 expected += '\u5F9E\u7345\u5B50';
-                //Euro sign
+                // Euro sign
                 expected += '\u20AC';
             } else {
                 for (var i = 0; i < 128; ++i) {

@@ -947,7 +947,7 @@ var LibraryWebGL2 = {
   // Defined in library_glemu.js when LEGACY_GL_EMULATION is set
   glDrawRangeElements__deps: ['glDrawElements'],
   glDrawRangeElements: (mode, start, end, count, type, indices) => {
-    // TODO: This should be a trivial pass-though function registered at the bottom of this page as
+    // TODO: This should be a trivial pass-through function registered at the bottom of this page as
     // glFuncs[6][1] += ' drawRangeElements';
     // but due to https://bugzil.la/1202427,
     // we work around by ignoring the range.

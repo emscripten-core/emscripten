@@ -70,7 +70,7 @@ public:
     // Make sure the thread has actually started before returning. This allows
     // subsequent code to assume the thread has already been spawned and not
     // worry about potential deadlocks where it holds a lock while proxying an
-    // operation and meanwhile the main thread is blocked trying to acqure the
+    // operation and meanwhile the main thread is blocked trying to acquire the
     // same lock so is never able to spawn the worker thread.
     //
     // Unfortunately, this solution would cause the main thread to deadlock on

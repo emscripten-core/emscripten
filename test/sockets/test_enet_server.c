@@ -22,7 +22,7 @@ void send_msg(ENetPeer *peer) {
   ENetPacket * packet = enet_packet_create ("packet",
                                             strlen ("packet") + 1,
                                             ENET_PACKET_FLAG_RELIABLE);
-  /* Extend the packet so and append the string "foo", so it now */
+  /* Extend the packet and append the string "foo", so it now */
   /* contains "packetfoo\0" */
   enet_packet_resize (packet, strlen ("packetfoo") + 1);
   strcpy ((char*)& packet -> data [strlen ("packet")], "foo");

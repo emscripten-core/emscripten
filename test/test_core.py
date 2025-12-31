@@ -193,7 +193,7 @@ def needs_dylink(func):
     self.check_dylink()
     if relocatable:
       # Since `-sMAIN_MODULE` no longer implies `-sRELOCATABLE` but we want
-      # to keep that cominbation working we run all the `@needs_dylink` tests
+      # to keep that combination working we run all the `@needs_dylink` tests
       # both with and without the explicit `-sRELOCATABLE`
       self.set_setting('RELOCATABLE')
       self.cflags.append('-Wno-deprecated')
@@ -757,7 +757,7 @@ class TestCoreBase(RunnerCore):
   def test_unsigned(self):
     src = '''
       #include <stdio.h>
-      const signed char cvals[2] = { -1, -2 }; // compiler can store this is a string, so -1 becomes \\FF, and needs re-signing
+      const signed char cvals[2] = { -1, -2 }; // compiler can store this as a string, so -1 becomes \\FF, and needs re-signing
       int main()
       {
         {
@@ -1725,7 +1725,7 @@ int main() {
     clear_all_relevant_settings(self)
 
   # Marked as impure since the WASI reactor modules (modules without main)
-  # are not yet suppored by the wasm engines we test against.
+  # are not yet supported by the wasm engines we test against.
   @also_with_standalone_wasm(impure=True)
   @no_2gb('https://github.com/WebAssembly/binaryen/issues/5893')
   def test_ctors_no_main(self):
@@ -3119,7 +3119,7 @@ The current type of b is: 9
       void lib_fptr() {
         printf("Second calling lib_fptr from main.\n");
         parent_func();
-        // call it also through a pointer, to check indexizing
+        // call it also through a pointer, to check indexing
         void (*p_f)();
         p_f = parent_func;
         p_f();
@@ -3937,7 +3937,7 @@ caught outer int: 123
   @needs_dylink
   @no_modularize_instance('uses file packager')
   def test_dlfcn_preload(self):
-    # Create chain of dependencies and load the first libary with preload plugin.
+    # Create chain of dependencies and load the first library with preload plugin.
     # main -> libb.so -> liba.so
     create_file('liba.c', r'''
       #include <stdio.h>
@@ -4037,7 +4037,7 @@ caught outer int: 123
 
     shutil.move(so_file, so_file + '.orig')
 
-    # Verify that building with -sSIDE_MODULE is essentailly the same as building with `-shared -fPIC -sFAKE_DYLIBS=0`.
+    # Verify that building with -sSIDE_MODULE is essentially the same as building with `-shared -fPIC -sFAKE_DYLIBS=0`.
     flags = ['-shared', '-fPIC', '-sFAKE_DYLIBS=0']
     if isinstance(side, list):
       # side is just a library
@@ -5936,7 +5936,7 @@ got: 10
   @no_wasmfs('wasmfs will (?) need a non-JS mechanism to ignore permissions during startup')
   @also_with_minimal_runtime
   def test_fs_no_main(self):
-    # library_fs.js uses hooks to enable ignoring of permisions up until ATMAINs are run.  This
+    # library_fs.js uses hooks to enable ignoring of permissions up until ATMAINs are run.  This
     # test verified that they work correctly, even in programs without a main function.
     create_file('pre.js', '''
 Module.preRun = () => {
@@ -5976,7 +5976,7 @@ Module.onRuntimeInitialized = () => {
         );
         return 0;
       }
-    ''', 'at Object.readFile', assert_returncode=NON_ZERO) # engines has different error stack format
+    ''', 'at Object.readFile', assert_returncode=NON_ZERO) # engines have different error stack format
 
   @also_with_noderawfs
   def test_fs_llseek(self):
@@ -6061,9 +6061,9 @@ Module.onRuntimeInitialized = () => {
   def test_unistd_access(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    # On windows we have slighly different output because we the same
+    # On windows we have slightly different output because we use the same
     # level of permissions are not available. For example, on windows
-    # its not possible have a file that is not readable, but writable.
+    # it's not possible to have a file that is not readable, but writable.
     # We also report all files as executable since there is no x bit
     # recorded there.
     # See https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod?view=msvc-170#remarks
@@ -6353,7 +6353,7 @@ PORT: 3979
     # The follow program should fail, assuming the above LC_CTYPE + PYTHONUTF8
     # are having the desired effect.
     # This means that files open()'d by emscripten without an explicit encoding will
-    # cause this test to file, hopefully catching any places where we forget to do this.
+    # cause this test to fail, hopefully catching any places where we forget to do this.
 
     # On Windows when Unicode support is enabled, this test code does not fail.
     if not (WINDOWS and self.run_process(['chcp'], stdout=PIPE, shell=True).stdout.strip() == 'Active code page: 65001'):
@@ -6581,7 +6581,7 @@ void* operator new(size_t size) {
     'unsigned_char': (['-funsigned-char'],),
   })
   def test_wasm_intrinsics_simd(self, args):
-    # These flags need to go first so that they comebore any existing `-Wno-..` flags
+    # These flags need to go first so that they come before any existing `-Wno-..` flags
     self.cflags.insert(0, '-Wpedantic')
     self.cflags.insert(0, '-Wall')
     self.do_runf('test_wasm_intrinsics_simd.c', 'Success!', cflags=args)
@@ -7912,7 +7912,7 @@ void* operator new(size_t size) {
     src_index = data['sources'].index('src.cpp')
     if hasattr(data, 'sourcesContent'):
       # the sourcesContent attribute is optional, but if it is present it
-      # needs to containt valid source text.
+      # needs to contain valid source text.
       self.assertTextDataIdentical(src, data['sourcesContent'][src_index])
     mappings = json.loads(self.run_js(
       path_from_root('test/sourcemap2json.js'),
@@ -9675,7 +9675,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @also_without_bigint
   def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
-    # used to recieve i64 argument in syscalls.
+    # used to receive i64 argument in syscalls.
     self.cflags += ['--js-library=' + test_file('core/test_jslib_i64_params.js')]
     self.do_core_test('test_jslib_i64_params.c')
 
