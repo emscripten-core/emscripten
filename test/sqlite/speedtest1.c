@@ -18,7 +18,7 @@ static const char zHelp[] =
   "  --exclusive         Enable locking_mode=EXCLUSIVE\n"
   "  --explain           Like --sqlonly but with added EXPLAIN keywords\n"
   "  --heap SZ MIN       Memory allocator uses SZ bytes & min allocation MIN\n"
-  "  --incrvacuum        Enable incremental vacuum mode\n"
+  "  --incrvacuum        Enable incremenatal vacuum mode\n"
   "  --journalmode M     Set the journal_mode to MODE\n"
   "  --key KEY           Set the encryption key to KEY\n"
   "  --lookaside N SZ    Configure lookaside for N slots of SZ bytes each\n"

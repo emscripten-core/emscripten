@@ -223,7 +223,7 @@ class BaseFileLock:
         """
         return self._lock_file_fd is not None
 
-    def acquire(self, timeout=None, poll_interval=0.05):
+    def acquire(self, timeout=None, poll_intervall=0.05):
         """
         Acquires the file lock or fails with a :exc:`Timeout` error.
 

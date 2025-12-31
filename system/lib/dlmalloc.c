@@ -802,7 +802,7 @@ defined(__i386__) || defined(__x86_64__))) ||                    \
  statistics. It should work on any system that has a
  /usr/include/malloc.h defining struct mallinfo.  The main
  declaration needed is the mallinfo struct that is returned (by-copy)
- by mallinfo().  The mallinfo struct contains a bunch of fields that
+ by mallinfo().  The malloinfo struct contains a bunch of fields that
  are not even meaningful in this version of malloc.  These fields are
  are instead filled by mallinfo() with other numbers that might be of
  interest.
