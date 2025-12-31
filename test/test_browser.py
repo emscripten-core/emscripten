@@ -5269,7 +5269,7 @@ Module["preRun"] = () => {
 
   # Test that it is possible to malloc() a huge 3GB memory block in 4GB mode using dlmalloc.
   @no_firefox('no 4GB support yet')
-  @no_2gb('not enough space tp run in this mode')
+  @no_2gb('not enough space to run in this mode')
   def test_dlmalloc_3gb(self):
     if self.is_4gb():
       self.set_setting('MAXIMUM_MEMORY', '8GB')
@@ -5592,7 +5592,7 @@ Module["preRun"] = () => {
     create_file('subdir/foo.txt', 'hello')
     self.compile_btest('hello_world.c', ['-o', 'subdir/hello.js', '-sRUNTIME_DEBUG', '-sCROSS_ORIGIN', '-sPROXY_TO_PTHREAD', '-pthread', '-sEXIT_RUNTIME'] + args)
 
-    class MyReqestHandler(SimpleHTTPRequestHandler):
+    class MyRequestHandler(SimpleHTTPRequestHandler):
       def __init__(self, *args, **kwargs):
         super().__init__(*args, directory='subdir', **kwargs)
 
@@ -5616,7 +5616,7 @@ Module["preRun"] = () => {
     else:
       create_file('test.html', f'<script src="http://localhost:{port}/hello.js"></script>')
 
-    server = HttpServerThread(ThreadingHTTPServer(('localhost', port), MyReqestHandler))
+    server = HttpServerThread(ThreadingHTTPServer(('localhost', port), MyRequestHandler))
     server.start()
     try:
       self.run_browser('test.html', '/report_result?exit:0')

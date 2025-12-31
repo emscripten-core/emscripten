@@ -1119,7 +1119,7 @@ var LibraryEmbind = {
           break;
 
         default:
-          throwBindingError('Unsupporting sharing policy');
+          throwBindingError('Unsupported sharing policy');
       }
     }
     return ptr;

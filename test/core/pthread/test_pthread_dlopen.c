@@ -24,7 +24,7 @@ static void* thread_main(void* arg) {
   started = true;
 
   while (!ready) {
-    printf("yeilding ..\n");
+    printf("yielding ..\n");
     sched_yield();
     usleep(1000*100);
   }

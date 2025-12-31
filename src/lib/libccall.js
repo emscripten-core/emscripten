@@ -105,7 +105,7 @@ addToLibrary({
       // either. The only valid combination is to have no change in the async
       // data (so we either had one in flight and left it alone, or we didn't have
       // one), or to have nothing in flight and to start one.
-      assert(!(previousAsync && Asyncify.currData), 'We cannot start an async operation when one is already flight');
+      assert(!(previousAsync && Asyncify.currData), 'We cannot start an async operation when one is already in flight');
       assert(!(previousAsync && !Asyncify.currData), 'We cannot stop an async operation in flight');
 #endif
       // This is a new async operation. The wasm is paused and has unwound its stack.

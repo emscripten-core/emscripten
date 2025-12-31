@@ -949,7 +949,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   settings.OUTPUT_FORMAT = options.oformat.name
 
   if settings.SUPPORT_BIG_ENDIAN and settings.WASM2JS:
-    exit_with_error('WASMJ2S is currently not compatible with SUPPORT_BIG_ENDIAN')
+    exit_with_error('WASM2JS is currently not compatible with SUPPORT_BIG_ENDIAN')
 
   if settings.WASM_ESM_INTEGRATION:
     default_setting('MODULARIZE', 'instance')

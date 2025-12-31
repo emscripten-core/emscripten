@@ -124,11 +124,11 @@ def get_clang_native_env():
     vc_root = os.path.join(visual_studio_path, 'VC')
     vc_code_root = highest_version_subdir(os.path.join(vc_root, 'Tools', 'MSVC'))
     if not vc_code_root:
-      raise Exception ('Unable to find Visual Studio INCLUDE root directory. Run in Visual Studio command prompt to avoid the need to autoguess this location.')
+      raise Exception('Unable to find Visual Studio INCLUDE root directory. Run in Visual Studio command prompt to avoid the need to autoguess this location.')
 
     windows_sdk_dir = highest_version_subdir(os.path.join(prog_files_x86, 'Windows Kits'))
     if not windows_sdk_dir:
-      raise Exception ('Unable to find Windows SDK root directory. Run in Visual Studio command prompt to avoid the need to autoguess this location.')
+      raise Exception('Unable to find Windows SDK root directory. Run in Visual Studio command prompt to avoid the need to autoguess this location.')
 
     env.setdefault('VSINSTALLDIR', visual_studio_path)
     env.setdefault('VCINSTALLDIR', os.path.join(visual_studio_path, 'VC'))

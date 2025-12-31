@@ -423,7 +423,7 @@ var WasiLibrary = {
   path_open__sig: 'iiiiiiiiii',
   path_open__deps: ['$wasiRightsToMuslOFlags', '$wasiOFlagsToMuslOFlags', '$preopens'],
   path_open: (fd, dirflags, path, path_len, oflags,
-              fs_rights_base, fs_rights_inherting,
+              fs_rights_base, fs_rights_inheriting,
               fdflags, opened_fd) => {
     if (!(fd in preopens)) {
       return {{{ cDefs.EBADF }}};
