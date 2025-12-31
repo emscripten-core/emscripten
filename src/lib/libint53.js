@@ -132,7 +132,7 @@ addToLibrary({
 #if WASM_BIGINT
   $INT53_MAX: '{{{ Math.pow(2, 53) }}}',
   $INT53_MIN: '-{{{ Math.pow(2, 53) }}}',
-  // Counvert a bigint value (usually coming from Wasm->JS call) into an int53
+  // Convert a bigint value (usually coming from Wasm->JS call) into an int53
   // JS Number.  This is used when we have an incoming i64 that we know is a
   // pointer or size_t and is expected to be within the int53 range.
   // Returns NaN if the incoming bigint is outside the range.

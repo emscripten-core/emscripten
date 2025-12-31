@@ -320,7 +320,7 @@ addToLibrary({
       {{{ runtimeKeepalivePop(); }}}
 #if MEMORY64
       // When re-winding, the arguments to a function are ignored.  For i32 arguments we
-      // can just call the function with no args at all since and the engine will produce zeros
+      // can just call the function with no args at all since the engine will produce zeros
       // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
       // BigInt`.
       return func(...Asyncify.restoreRewindArguments(original));
@@ -392,7 +392,7 @@ addToLibrary({
             // `Asyncify.handleSleepReturnValue`.
             // `Asyncify.handleSleepReturnValue` contains the return
             // value of the last C function to have executed
-            // `Asyncify.handleSleep()`, where as `asyncWasmReturnValue`
+            // `Asyncify.handleSleep()`, whereas `asyncWasmReturnValue`
             // contains the return value of the exported WASM function
             // that may have called C functions that
             // call `Asyncify.handleSleep()`.

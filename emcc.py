@@ -94,10 +94,10 @@ class Mode(Enum):
 class LinkFlag:
   """Used to represent a linker flag.
 
-  The flag value is stored along with a bool that distingingishes input
+  The flag value is stored along with a bool that distinguishes input
   files from non-files.
 
-  A list of these is return by separate_linker_flags.
+  A list of these is returned by separate_linker_flags.
   """
   value: str
   is_file: int
@@ -281,7 +281,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if 'EMCC_REPRODUCE' in os.environ:
     options.reproduce = os.environ['EMCC_REPRODUCE']
 
-  # For internal consistency, ensure we don't attempt or read or write any link time
+  # For internal consistency, ensure we don't attempt to read or write any link time
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
@@ -353,10 +353,7 @@ def separate_linker_flags(newargs):
       return newargs[i + 1]
 
     if not arg.startswith('-') or arg == '-':
-      # os.devnul should always be reported as existing but there is bug in windows
-      # python before 3.8:
-      # https://bugs.python.org/issue1311
-      if not os.path.exists(arg) and arg not in (os.devnull, '-'):
+      if not os.path.exists(arg) and arg != '-':
         exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
       add_link_arg(arg, True)
     elif arg == '-z':
@@ -513,13 +510,13 @@ def phase_compile_inputs(options, state, newargs):
   compile_args, linker_args = separate_linker_flags(newargs)
 
   # Map of file basenames to how many times we've seen them.  We use this to generate
-  # unique `_NN` suffix for object files in cases when we are compiling multiple soures that
+  # unique `_NN` suffix for object files in cases when we are compiling multiple sources that
   # have the same basename.  e.g. `foo/utils.c` and `bar/utils.c` on the same command line.
   seen_names = {}
 
   def uniquename(name):
     if name not in seen_names:
-      # No suffix needed the firt time we see given name.
+      # No suffix needed the first time we see given name.
       seen_names[name] = 1
       return name
 
@@ -550,7 +547,7 @@ def phase_compile_inputs(options, state, newargs):
       # but we want the `.dwo` file to be generated in the current working directory,
       # like it is under clang.  We could avoid this hack if we use the clang driver
       # to generate the temporary files, but that would also involve using the clang
-      # driver to perform linking which would be big change.
+      # driver to perform linking which would be a big change.
       cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
       cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
     shared.check_call(cmd)

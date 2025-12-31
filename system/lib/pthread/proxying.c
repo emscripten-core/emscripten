@@ -644,7 +644,7 @@ double _emscripten_run_js_on_main_thread(int func_index,
     return f.result;
   }
 
-  // Make a heap-heap allocated copy of the proxied_js_func_t
+  // Make a heap allocated copy of the proxied_js_func_t
   proxied_js_func_t* arg = malloc(sizeof(proxied_js_func_t));
   *arg = f;
   arg->owned = true;

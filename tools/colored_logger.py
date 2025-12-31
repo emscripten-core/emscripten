@@ -5,7 +5,7 @@
 
 """Enables colored logger just by importing this module
 
-Also, provides utiliy functions to use ANSI colors in the terminal.
+Also, provides utility functions to use ANSI colors in the terminal.
 """
 
 import ctypes

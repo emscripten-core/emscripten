@@ -238,7 +238,7 @@ var moduleRtn;
 /**
  * This was removed from upstream closure compiler in
  * https://github.com/google/closure-compiler/commit/f83322c1b.
- * Perhaps we should remove it do?
+ * Perhaps we should remove it too?
  *
  * @param {MediaStreamConstraints} constraints A MediaStreamConstraints object.
  * @param {function(!MediaStream)} successCallback

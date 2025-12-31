@@ -39,7 +39,7 @@ public:
     req->onProgress(progress);
   }
 
-  // Constructeur
+  // Constructor
   http(const char* hostname, int requestType, const char* targetFilename = "")
     : _hostname(hostname), _targetFileName(targetFilename), _request((RequestType)requestType),
       _status(ST_PENDING), _assync(ASSYNC_THREAD), _uid(uid++) {}
@@ -143,7 +143,7 @@ private:
   // progress value
   int         _progressValue = -1;
 
-  // mode assyncrone courant
+  // current async mode
   AssyncMode  _assync;
 
   // request handle
@@ -151,7 +151,7 @@ private:
 
 };
 
-//this is safe and convenient but not exactly efficient
+// this is safe and convenient but not exactly efficient
 inline std::string format(const char* fmt, ...){
   int size = 512;
   char* buffer = 0;
@@ -159,7 +159,7 @@ inline std::string format(const char* fmt, ...){
   va_list vl;
   va_start(vl,fmt);
   int nsize = vsnprintf(buffer, size, fmt, vl);
-  if (size <= nsize) {//fail delete buffer and try again
+  if (size <= nsize) {// fail delete buffer and try again
     delete buffer; buffer = 0;
     buffer = new char[nsize+1];//+1 for /0
     nsize = vsnprintf(buffer, size, fmt, vl);

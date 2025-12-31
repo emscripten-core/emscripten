@@ -308,7 +308,7 @@ function JSDCE(ast, aggressive) {
           continue;
         }
         if (data.def && !data.use && !data.param) {
-          // this is eliminateable!
+          // this is eliminatable!
           names.add(name);
         }
       }
@@ -387,7 +387,7 @@ function JSDCE(ast, aggressive) {
     for (const [name, data] of Object.entries(scope)) {
       if (data.def && !data.use) {
         assert(!data.param); // can't be
-        // this is eliminateable!
+        // this is eliminatable!
         names.add(name);
       }
     }

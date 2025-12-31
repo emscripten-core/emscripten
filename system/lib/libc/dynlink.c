@@ -55,7 +55,7 @@ struct dlevent {
   struct dlevent *next, *prev;
   // Symbol index resulting from dlsym call. -1 means this is a dso event.
   int sym_index;
-  // dso handler resulting fomr dleopn call.  Only valid when sym_index is -1.
+  // dso handler resulting from dlopen call.  Only valid when sym_index is -1.
   struct dso* dso;
 #ifdef DYLINK_DEBUG
   int id;
@@ -164,7 +164,7 @@ static void load_library_done(struct dso* p) {
   dlsync();
 #endif
   // TODO: figure out some way to tell when its safe to free p->file_data.  Its
-  // not safe to do here because some threads could have been alseep then when
+  // not safe to do here because some threads could have been asleep then when
   // the "dlsync" occurred and those threads will synchronize when they wake,
   // which could be an arbitrarily long time in the future.
 }
@@ -305,7 +305,7 @@ bool _emscripten_dlsync_self() {
         // If any on the libraries fails to load here then we give up.
         // TODO(sbc): Ideally this would never happen and we could/should
         // abort, but on the main thread (where we don't have sync xhr) its
-        // often not possible to syncronously load side module.
+        // often not possible to synchronously load side module.
         emscripten_errf("_dlopen_js failed: %s", dlerror());
         return false;
       }
@@ -361,7 +361,7 @@ static void thread_sync_done(void* arg) {
   free(info);
 }
 
-// Proxying queue specically for handling code loading (dlopen) events.
+// Proxying queue specially for handling code loading (dlopen) events.
 // Initialized by the main thread on the first call to
 // `_emscripten_proxy_dlsync` below, and processed by background threads
 // that call `_emscripten_process_dlopen_queue` during futex_wait (i.e. whenever
@@ -380,7 +380,7 @@ void _emscripten_process_dlopen_queue() {
 
 // Asynchronously runs _emscripten_dlsync_self on the target then and
 // resolves (or rejects) the given promise once it is complete.
-// This function should only ever be called my the main runtime thread which
+// This function should only ever be called by the main runtime thread which
 // manages the worker pool.
 int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise) {
   assert(emscripten_is_main_runtime_thread());
@@ -509,7 +509,7 @@ static int path_find(const char *name, const char *s, char *buf, size_t buf_size
       default:
         dbg("dlopen: path_find failed: %s", strerror(errno));
         /* Any negative value but -1 will inhibit
-         * futher path search. */
+         * further path search. */
         return -2;
       }
     }
@@ -670,7 +670,7 @@ void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
   if (p != RTLD_DEFAULT && p != RTLD_NEXT && __dl_invalid_handle(p)) {
     return 0;
   }
-  // The first "dso" is always the default one which is equivelent to
+  // The first "dso" is always the default one which is equivalent to
   // RTLD_DEFAULT.  This is what is returned from `dlopen(NULL, ...)`.
   if (p == head->dso) {
     p = RTLD_DEFAULT;
