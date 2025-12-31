@@ -832,12 +832,12 @@ def win_get_gpu_info():
       VideoCardString = winreg.QueryValueEx(hVideoReg, '\\Device\\Video' + str(i))[0]
       # Get Rid of Registry/Machine from the string
       VideoCardStringSplit = VideoCardString.split('\\')
-      ClearnVideoCardString = "\\".join(VideoCardStringSplit[3:])
+      CleanVideoCardString = "\\".join(VideoCardStringSplit[3:])
       # Go up one level for detailed
       # VideoCardStringRoot = "\\".join(VideoCardStringSplit[3:len(VideoCardStringSplit)-1])
 
       # Get the graphics card information
-      hVideoCardReg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, ClearnVideoCardString)
+      hVideoCardReg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, CleanVideoCardString)
       try:
         VideoCardDescription = winreg.QueryValueEx(hVideoCardReg, 'Device Description')[0]
       except WindowsError:

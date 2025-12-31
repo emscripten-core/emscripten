@@ -252,8 +252,8 @@ int main() {
   }
 
   {
-    assert(glfwExtensionSupported("nonexistant") == 0);
-    assert(glfwGetProcAddress("nonexistant") == NULL);
+    assert(glfwExtensionSupported("nonexistent") == 0);
+    assert(glfwGetProcAddress("nonexistent") == NULL);
   }
 #endif
 

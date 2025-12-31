@@ -185,14 +185,14 @@ var LibraryGLUT = {
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
           if (GLUT.specialUpFunc) {
-            event.preventDefault ();
+            event.preventDefault();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.specialUpFunc') }}}(key, Browser.mouseX, Browser.mouseY);
           }
         } else {
           key = GLUT.getASCIIKey(event);
           if (key !== null && GLUT.keyboardUpFunc) {
-            event.preventDefault ();
+            event.preventDefault();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.keyboardUpFunc') }}}(key, Browser.mouseX, Browser.mouseY);
           }

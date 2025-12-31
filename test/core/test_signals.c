@@ -59,7 +59,7 @@ void test_raise_sigusr1() {
   }
 }
 
-void test_sigpenging() {
+void test_sigpending() {
   printf("test_sigpending\n");
   recieved1 = false;
 
@@ -157,7 +157,7 @@ int main() {
   test_sigaction();
   test_bad_signal();
   test_raise_sigusr1();
-  test_sigpenging();
+  test_sigpending();
   test_sigwaitinfo();
   test_sigemptyset();
   return 0;

@@ -8731,16 +8731,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_runf('declare_asm_module_exports.c', 'jsFunction: 1')
     js = read_file('declare_asm_module_exports.js')
-    occurances = js.count('cFunction')
+    occurrences = js.count('cFunction')
     if self.is_optimizing() and '-g' not in self.cflags:
       # In optimized builds only the single reference cFunction that exists in the EM_ASM should exist
       if self.is_wasm():
-        self.assertEqual(occurances, 1)
+        self.assertEqual(occurrences, 1)
       else:
         # With js the asm module itself also contains a reference for the cFunction name
-        self.assertEqual(occurances, 2)
+        self.assertEqual(occurrences, 2)
     else:
-      print(occurances)
+      print(occurrences)
 
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
