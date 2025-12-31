@@ -47,7 +47,7 @@ addToLibrary({
       return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
     },
     createStandardStreams() {
-      // FIXME: tty is set to true to appease isatty(), the underlying ioctl syscalls still needs to be implemented, see issue #22264.
+      // FIXME: tty is set to true to appease isatty(), the underlying ioctl syscalls still need to be implemented, see issue #22264.
       FS.createStream({ nfd: 0, position: 0, path: '/dev/stdin', flags: 0, tty: true, seekable: false }, 0);
       var paths = [,'/dev/stdout', '/dev/stderr'];
       for (var i = 1; i < 3; i++) {

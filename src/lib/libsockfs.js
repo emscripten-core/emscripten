@@ -22,8 +22,8 @@ addToLibrary({
     },
     mount(mount) {
 #if expectToReceiveOnModule('websocket')
-      // The incomming Module['websocket'] can be used for configuring 
-      // configuring subprotocol/url, etc
+      // The incoming Module['websocket'] can be used for configuring 
+      // subprotocol/url, etc
       SOCKFS.websocketArgs = {{{ makeModuleReceiveExpr('websocket', '{}') }}};
       // Add the Event registration mechanism to the exported websocket configuration
       // object so we can register network callbacks from native JavaScript too.
@@ -202,7 +202,7 @@ addToLibrary({
             }
 
             if (subProtocols !== 'null') {
-              // The regex trims the string (removes spaces at the beginning and end, then splits the string by
+              // The regex trims the string (removes spaces at the beginning and end), then splits the string by
               // <any space>,<any space> into an Array. Whitespace removal is important for Websockify and ws.
               subProtocols = subProtocols.replace(/^ +| +$/g,"").split(/ *, */);
 
@@ -323,7 +323,7 @@ addToLibrary({
               data.length === 10 &&
               data[0] === 255 && data[1] === 255 && data[2] === 255 && data[3] === 255 &&
               data[4] === 'p'.charCodeAt(0) && data[5] === 'o'.charCodeAt(0) && data[6] === 'r'.charCodeAt(0) && data[7] === 't'.charCodeAt(0)) {
-            // update the peer's port and it's key in the peer map
+            // update the peer's port and its key in the peer map
             var newport = ((data[8] << 8) | data[9]);
             SOCKFS.websocket_sock_ops.removePeer(sock, peer);
             peer.port = newport;
@@ -638,7 +638,7 @@ addToLibrary({
         var data = buffer.slice(offset, offset + length);
 #if PTHREADS
         // WebSockets .send() does not allow passing a SharedArrayBuffer, so
-        // clone the the SharedArrayBuffer as regular ArrayBuffer before
+        // clone the SharedArrayBuffer as regular ArrayBuffer before
         // sending.
         if (data instanceof SharedArrayBuffer) {
           data = new Uint8Array(new Uint8Array(data)).buffer;

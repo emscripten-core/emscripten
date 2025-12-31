@@ -1272,7 +1272,7 @@ _Static_assert(offsetof(__wasi_subscription_clock_t, precision) == 16, "witx cal
 _Static_assert(offsetof(__wasi_subscription_clock_t, flags) == 24, "witx calculated offset");
 
 /**
- * The contents of a $subscription when type is type is
+ * The contents of a $subscription when type is
  * `eventtype::fd_read` or `eventtype::fd_write`.
  */
 typedef struct __wasi_subscription_fd_readwrite_t {

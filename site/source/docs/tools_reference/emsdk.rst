@@ -229,7 +229,7 @@ particular tool: ::
 
   On Windows, calling ``activate`` automatically sets up the required paths and environment variables.
 
-.. note:: If you add ``./emsdk_env.sh`` to you default shell config emsdk tools (including the emsdk version of node) will be added to your PATH and this could effect the default version of node used on your system.
+.. note:: If you add ``./emsdk_env.sh`` to you default shell config emsdk tools (including the emsdk version of node) will be added to your PATH and this could affect the default version of node used on your system.
 
 .. _emsdk-install-old-tools:
 
@@ -287,7 +287,7 @@ It is also possible to use your own fork of the Emscripten repository via the
 SDK. This is useful in the case when you want to make your own modifications to
 the Emscripten toolchain, but still keep using the SDK environment and tools.
 
-To to this all you need to do is set the ``EM_CONFIG`` environment variable to
+To do this all you need to do is set the ``EM_CONFIG`` environment variable to
 point to the emsdk emscripten config and then put your own checkout of
 emscripten first in the ``PATH``:
 

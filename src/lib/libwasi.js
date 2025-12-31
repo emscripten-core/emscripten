@@ -69,7 +69,7 @@ var WasiLibrary = {
       };
 #if ENVIRONMENT_MAY_BE_NODE && NODE_HOST_ENV
       if (ENVIRONMENT_IS_NODE) {
-        // When NODE_HOST_ENV is enabled we mirror then entire host environment.
+        // When NODE_HOST_ENV is enabled we mirror the entire host environment.
         env = process.env;
       }
 #endif

@@ -872,7 +872,7 @@ class BrowserCore(RunnerCore):
     # contains the implementation of REPORT_RESULT (we can't just include that implementation in
     # the header as there may be multiple files being compiled here).
     if reporting != Reporting.NONE:
-      # For basic reporting we inject JS helper funtions to report result back to server.
+      # For basic reporting we inject JS helper functions to report result back to server.
       self.add_browser_reporting()
       cflags += ['--pre-js', 'browser_reporting.js']
       if reporting == Reporting.FULL:

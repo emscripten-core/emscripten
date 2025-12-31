@@ -219,7 +219,7 @@ def to_asm_string(string):
     }
     if c in escape_chars:
       return escape_chars[c]
-    # Enscode all other chars are three octal digits(!)
+    # Encode all other chars as three octal digits(!)
     return '\\%s%s%s' % (oct(c >> 6), oct(c >> 3), oct(c >> 0))
 
   return ''.join(escape(c) for c in string.encode('utf-8'))

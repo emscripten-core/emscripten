@@ -13,7 +13,7 @@ addToLibrary({
     },
     createNode(parent, name, mode, dev) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
-        // no supported
+        // not supported
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
       MEMFS.ops_table ||= {
@@ -265,7 +265,7 @@ addToLibrary({
         // If the buffer is located in main memory (HEAP), and if
         // memory can grow, we can't hold on to references of the
         // memory buffer, as they may get invalidated. That means we
-        // need to do copy its contents.
+        // need to copy its contents.
         if (buffer.buffer === HEAP8.buffer) {
           canOwn = false;
         }
