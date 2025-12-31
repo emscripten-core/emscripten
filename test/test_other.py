@@ -5542,7 +5542,7 @@ __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALI
     # forced libs is ok, they were there anyhow
     'normal': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++'}, False],
     # partial list, but ok since we grab them as needed
-    'parial': [{'EMCC_FORCE_STDLIBS': 'libc++'}, False],
+    'partial': [{'EMCC_FORCE_STDLIBS': 'libc++'}, False],
     # fail! not enough stdlibs
     'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++,libc,libc++abi', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
     # force all the needed stdlibs, so this works even though we ignore the input file
@@ -7516,7 +7516,7 @@ high = 1234
     create_file('response_file.txt', '_main\n#_nope_ish_nope\n_malloc\n')
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=@response_file.txt'])
 
-  def test_dash_s_response_file_misssing(self):
+  def test_dash_s_response_file_missing(self):
     expected = 'error: foo: file not found parsing argument: EXPORTED_FUNCTIONS=@foo'
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=@foo'], expected)
 

@@ -19,8 +19,8 @@ public:
     REQUEST_POST ,
   };
 
-  enum AssyncMode {
-    ASSYNC_THREAD
+  enum AsyncMode {
+    ASYNC_THREAD
   };
 
   // Callback
@@ -42,12 +42,12 @@ public:
   // Constructor
   http(const char* hostname, int requestType, const char* targetFilename = "")
     : _hostname(hostname), _targetFileName(targetFilename), _request((RequestType)requestType),
-      _status(ST_PENDING), _assync(ASSYNC_THREAD), _uid(uid++) {}
+      _status(ST_PENDING), _async(ASYNC_THREAD), _uid(uid++) {}
 
   /**
    * Effectue la requete
    */
-  void runRequest(const char* page, int assync);
+  void runRequest(const char* page, int async);
 
   /**
    * Abort the request
@@ -144,7 +144,7 @@ private:
   int         _progressValue = -1;
 
   // current async mode
-  AssyncMode  _assync;
+  AsyncMode  _async;
 
   // request handle
   unsigned _handle;
@@ -223,10 +223,10 @@ std::string http::cross_domain = "";
 /**
  * Effectue la requete
  */
-void http::runRequest(const char* page, int assync) {
+void http::runRequest(const char* page, int async) {
   _page = page;
   _status = ST_PENDING;
-  _assync = (AssyncMode)assync;
+  _async = (AsyncMode)async;
   _progressValue = 0;
 
   std::string url = cross_domain;
@@ -343,14 +343,14 @@ int main() {
   time_elapsed = emscripten_get_now();
 
   http* http1 = new http("https://github.com", http::REQUEST_GET, "emscripten_main.zip");
-  http1->runRequest("/emscripten-core/emscripten/archive/main.zip", http::ASSYNC_THREAD);
+  http1->runRequest("/emscripten-core/emscripten/archive/main.zip", http::ASYNC_THREAD);
 
   http* http2 = new http("https://github.com",http::REQUEST_GET, "wolfviking_master.zip");
-  http2->runRequest("/wolfviking0/image.js/archive/master.zip", http::ASSYNC_THREAD);
+  http2->runRequest("/wolfviking0/image.js/archive/master.zip", http::ASYNC_THREAD);
   http2->abortRequest();
 
   http* http3 = new http("https://raw.github.com", http::REQUEST_GET);
-  http3->runRequest("/emscripten-core/emscripten/main/LICENSE", http::ASSYNC_THREAD);
+  http3->runRequest("/emscripten-core/emscripten/main/LICENSE", http::ASYNC_THREAD);
 
   num_request++;
   emscripten_async_call(wait_http, http1, 500);
@@ -362,7 +362,7 @@ int main() {
   /*
   Http* http4 = new Http("http://www.---.com",Http::REQUEST_POST);
   http4->addValue("app","123");
-  http4->runRequest("/test.php",Http::ASSYNC_THREAD);
+  http4->runRequest("/test.php",Http::ASYNC_THREAD);
   num_request ++;
   emscripten_async_call(wait_http,http4,500);
   */

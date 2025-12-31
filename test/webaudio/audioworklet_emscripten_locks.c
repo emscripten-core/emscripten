@@ -28,9 +28,9 @@ typedef enum {
   // Release in process after above
   TEST_RELEASE,
   // Released in process above, spin in main
-  TEST_WAIT_INFINTE_1,
+  TEST_WAIT_INFINITE_1,
   // Release in process to stop spinning in main
-  TEST_WAIT_INFINTE_2,
+  TEST_WAIT_INFINITE_2,
   // Call emscripten_get_now() in process
   TEST_GET_NOW,
   // Test finished
@@ -93,12 +93,12 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
     result = emscripten_lock_try_acquire(&testLock);
     emscripten_outf("TEST_RELEASE: %d (expect: 1)", result);
     assert(result);
-    whichTest = TEST_WAIT_INFINTE_1;
+    whichTest = TEST_WAIT_INFINITE_1;
     break;
-  case TEST_WAIT_INFINTE_1:
+  case TEST_WAIT_INFINITE_1:
     // Still locked when we enter here but move on in the main thread
     break;
-  case TEST_WAIT_INFINTE_2:
+  case TEST_WAIT_INFINITE_2:
     emscripten_lock_release(&testLock);
     whichTest = TEST_GET_NOW;
     break;
@@ -138,9 +138,9 @@ bool MainLoop(double time, void* data) {
       didUnlock = true;
     }
     break;
-  case TEST_WAIT_INFINTE_1:
+  case TEST_WAIT_INFINITE_1:
     // Spin here until released in process (but don't change test until we know this case ran)
-    whichTest = TEST_WAIT_INFINTE_2;
+    whichTest = TEST_WAIT_INFINITE_2;
     emscripten_lock_busyspin_waitinf_acquire(&testLock);
     emscripten_out("TEST_WAIT_INFINITE (from main)");
     break;

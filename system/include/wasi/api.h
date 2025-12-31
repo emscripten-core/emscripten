@@ -2408,7 +2408,7 @@ __wasi_errno_t __wasi_path_open(
      */
     __wasi_rights_t fs_rights_base,
 
-    __wasi_rights_t fs_rights_inherting,
+    __wasi_rights_t fs_rights_inheriting,
 
     __wasi_fdflags_t fdflags,
 
