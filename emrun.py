@@ -1558,7 +1558,7 @@ def parse_args(args):
 
   parser.add_argument('--json', action='store_true',
                       help='If specified, --system-info and --browser-info are '
-                           'outputted in JSON format.')
+                           'output in JSON format.')
 
   parser.add_argument('--safe-firefox-profile', action='store_true',
                       help='If true, the browser is launched into a new clean '

@@ -57,7 +57,7 @@ void iter() {
       return; // try again
     }
 
-    perror("unexcepted end of data");
+    perror("unexpected end of data");
     finish(EXIT_FAILURE);
   }
 
@@ -72,7 +72,7 @@ void iter() {
   printf("got %d,%d\n", res, packetLength);
 
   if (res != packetLength) {
-    fprintf(stderr, "lost packet data, expected: %d readed: %d", packetLength, res);
+    fprintf(stderr, "lost packet data, expected: %d read: %d", packetLength, res);
     finish(EXIT_FAILURE);
   }
 

@@ -48,7 +48,7 @@ void main_loop() {
       enet_packet_destroy (event.packet);
       break;
     case ENET_EVENT_TYPE_DISCONNECT:
-      printf ("%s disconected.\n", (char*)event.peer -> data);
+      printf ("%s disconnected.\n", (char*)event.peer -> data);
       /* Reset the peer's client information. */
       event.peer -> data = NULL;
       enet_host_destroy(host);

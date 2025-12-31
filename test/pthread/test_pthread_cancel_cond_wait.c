@@ -72,7 +72,7 @@ int main() {
   th_cancelled = true;
   pthread_mutex_unlock(&mutex);
 
-  emscripten_outf("Main thread waitnig for side-thread");
+  emscripten_outf("Main thread waiting for side-thread");
   pthread_barrier_wait(&barrier);
   pthread_barrier_destroy(&barrier);
 

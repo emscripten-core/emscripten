@@ -5269,7 +5269,7 @@ Module["preRun"] = () => {
 
   # Test that it is possible to malloc() a huge 3GB memory block in 4GB mode using dlmalloc.
   @no_firefox('no 4GB support yet')
-  @no_2gb('not enough space tp run in this mode')
+  @no_2gb('not enough space to run in this mode')
   def test_dlmalloc_3gb(self):
     if self.is_4gb():
       self.set_setting('MAXIMUM_MEMORY', '8GB')

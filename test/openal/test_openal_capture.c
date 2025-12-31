@@ -164,7 +164,7 @@ void iter() {
   if (app.captured < target)
     return;
   else if (app.captured > target) {
-    fprintf(stderr, "Captured frames exeedes expectations!\n");
+    fprintf(stderr, "Captured frames exceeds expectations!\n");
     end_test(EXIT_FAILURE);
   }
 
