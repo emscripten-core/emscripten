@@ -145,10 +145,10 @@ addToLibrary({
       };
     },
     // Common code for both node and stream setattr
-    // For node getatrr:
+    // For node getattr:
     //  - arg is a native path
     //  - chmod, utimes, truncate are fs.chmodSync,  fs.utimesSync,  fs.truncateSync
-    // For stream getatrr:
+    // For stream getattr:
     //  - arg is a native file descriptor
     //  - chmod, utimes, truncate are fs.fchmodSync, fs.futimesSync, fs.ftruncateSync
     setattr(arg, node, attr, chmod, utimes, truncate, stat) {

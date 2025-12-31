@@ -87,7 +87,7 @@ addToLibrary({
     // Increment waitAsync generation counter, account for wraparound in case
     // application does huge amounts of waitAsyncs per second (not sure if
     // possible?)
-    // Valid counterrange: 0...2^31-1
+    // Valid counter range: 0...2^31-1
     let counter = liveAtomicWaitAsyncCounter;
     liveAtomicWaitAsyncCounter = Math.max(0, (liveAtomicWaitAsyncCounter+1)|0);
     liveAtomicWaitAsyncs[counter] = addr;

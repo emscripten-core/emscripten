@@ -93,7 +93,7 @@ export function preprocess(filename) {
   const IGNORE = 0;
   const SHOW = 1;
   // This state is entered after we have shown one of the block of an if/elif/else sequence.
-  // Once we enter this state we dont show any blocks or evaluate any
+  // Once we enter this state we don't show any blocks or evaluate any
   // conditions until the sequence ends.
   const IGNORE_ALL = 2;
   const showStack = [];

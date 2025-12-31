@@ -90,7 +90,7 @@ int main(int argc, char *argv[])
 
     #define DDS_SIZE 262272
     FILE *dds = fopen("screenshot.dds", "rb");
-    char *ddsdata = (char*)malloc(512*512*4);//DDS_SIZE);
+    char *ddsdata = (char*)malloc(512*512*4); // DDS_SIZE
     assert(fread(ddsdata, 1, DDS_SIZE, dds) == DDS_SIZE);
     fclose(dds);
 

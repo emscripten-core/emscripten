@@ -12,7 +12,7 @@ var LibraryEmbind = {
   $InvokerFunctions: '<<< EMBIND_AOT_INVOKERS >>>',
 #endif
   // If register_type is used, emval will be registered multiple times for
-  // different type id's, but only a single type object is needed on the JS side
+  // different type ids, but only a single type object is needed on the JS side
   // for all of them. Store the type for reuse.
   $EmValType__deps: ['_emval_decref', '$Emval', '$readPointer'],
   $EmValType: `{
@@ -737,7 +737,7 @@ var LibraryEmbind = {
       return onDone(rv);
     };
 #else
-    // Builld the arguments that will be passed into the closure around the invoker
+    // Build the arguments that will be passed into the closure around the invoker
     // function.
     var retType = argTypes[0];
     var instType = argTypes[1];

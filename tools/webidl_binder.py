@@ -225,7 +225,7 @@ var ensureCache = {
     len = alignMemory(len, 8); // keep things aligned to 8 byte boundaries
     var ret;
     if (ensureCache.pos + len >= ensureCache.size) {
-      // we failed to allocate in the buffer, ensureCache time around :(
+      // we failed to allocate in the buffer, next time around :(
       assert(len > 0); // null terminator, at least
       ensureCache.needed += len;
       ret = Module['_webidl_malloc'](len);

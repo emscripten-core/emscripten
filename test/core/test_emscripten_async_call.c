@@ -20,7 +20,7 @@ void callback(void *arg) {
 
 int main() {
   atexit(myatexit);
-  // The runtime should stay alive long enough for the callbackl
+  // The runtime should stay alive long enough for the callback
   // to run.
   emscripten_async_call(callback, (void*)42, 500);
   printf("returning from main\n");

@@ -8,7 +8,7 @@ These don't run in test_core.py itself because that is already run in parallel a
 stress tests each saturate the CPU cores.
 
 TODO: Find a way to replace these tests with an `@also_with_stress_test` decorator.
-Hopfully we can replace the current parallelism with `taskset -u 0` to force the test
+Hopefully we can replace the current parallelism with `taskset -u 0` to force the test
 only run on a single core (would limit the tests to linux-only).
 """
 

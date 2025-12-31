@@ -22,7 +22,7 @@ int main() {
 
   /*
    * Attempts to join the current thread will either generate
-   * EDEADLK or EINVAL depending on whether has already been
+   * EDEADLK or EINVAL depending on whether it has already been
    * detached
    */
   int ret = pthread_join(self, NULL);
@@ -35,7 +35,7 @@ int main() {
 
   /*
    * Attempts to detach the main thread will either succeed
-   * or cause EINVAL if its already been detached.
+   * or cause EINVAL if it's already been detached.
    */
   ret = pthread_detach(self);
   printf("pthread_detach(self) -> %s\n", strerror(ret));

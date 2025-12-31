@@ -54,7 +54,7 @@ void iter() {
   res = recv(sockfd, buffer, 1, 0);
   if (res == -1) {
     if (errno == EAGAIN || errno == EWOULDBLOCK) {
-      return; //try again
+      return; // try again
     }
 
     perror("unexcepted end of data");
