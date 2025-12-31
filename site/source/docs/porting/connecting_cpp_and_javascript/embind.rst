@@ -379,7 +379,7 @@ JavaScript and C++ have very different memory models which can lead to it being
 unclear which language owns and is responsible for deleting an object when it
 moves between languages. To make object ownership more explicit, *embind*
 supports smart pointers and return value policies. Return value
-polices dictate what happens to a C++ object when it is returned to JavaScript.
+policies dictate what happens to a C++ object when it is returned to JavaScript.
 
 To use a return value policy, pass the desired policy into function, method, or
 property bindings. For example:
