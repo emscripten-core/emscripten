@@ -540,7 +540,7 @@ window.close = () => {
     self.run_browser(page_file, '/report_result?exit:0')
 
   # Clear all IndexedDB databases. This gives us a fresh state for tests that
-  # chech caching.
+  # check caching.
   def clear_indexed_db(self):
     self.add_browser_reporting()
     create_file('clear_indexed_db.html', '''
@@ -1235,7 +1235,7 @@ window.close = () => {
       self.btest_exit('test_webgl_context_attributes_sdl2.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-sUSE_SDL=2', '-lGLEW'])
     self.btest_exit('test_webgl_context_attributes_glfw.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglfw', '-lGLEW'])
 
-    # perform tests with attributes desactivated
+    # perform tests with attributes deactivated
     self.btest_exit('test_webgl_context_attributes_glut.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglut', '-lGLEW'])
     self.btest_exit('test_webgl_context_attributes_sdl.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lSDL', '-lGLEW'])
     self.btest_exit('test_webgl_context_attributes_glfw.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglfw', '-lGLEW'])
@@ -2035,7 +2035,7 @@ void *getBindBuffer() {
     self.reftest('third_party/cubegeom/cubegeom_normal_dap.c', 'third_party/cubegeom/cubegeom_normal.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
+  def test_cubegeom_normal_dap_far(self): # indices do not start from 0
     self.reftest('third_party/cubegeom/cubegeom_normal_dap_far.c', 'third_party/cubegeom/cubegeom_normal.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
@@ -3322,7 +3322,7 @@ Module["preRun"] = () => {
     # use EXPORT_NAME
     'export_name': (['-sEXPORT_NAME="HelloWorld"'], '''
        if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
-       HelloWorld.noInitialRun = true; // errorneous module capture will load this and cause timeout
+       HelloWorld.noInitialRun = true; // erroneous module capture will load this and cause timeout
        let promise = HelloWorld();
        if (!promise instanceof Promise) throw new Error('Return value should be a promise');
     '''),
@@ -3492,7 +3492,7 @@ Module["preRun"] = () => {
   def test_dlopen_blocking(self):
     self.emcc('other/test_dlopen_blocking_side.c', ['-o', 'libside.so', '-sSIDE_MODULE', '-pthread', '-Wno-experimental'])
     # Attempt to use dlopen the side module (without preloading) should fail on the main thread
-    # since the syncronous `readBinary` function does not exist.
+    # since the synchronous `readBinary` function does not exist.
     self.btest_exit('other/test_dlopen_blocking.c', assert_returncode=1, cflags=['-sMAIN_MODULE=2', '-sAUTOLOAD_DYLIBS=0', 'libside.so'])
     # But with PROXY_TO_PTHEAD it does work, since we can do blocking and sync XHR in a worker.
     self.btest_exit('other/test_dlopen_blocking.c', cflags=['-sMAIN_MODULE=2', '-sPROXY_TO_PTHREAD', '-pthread', '-Wno-experimental', '-sAUTOLOAD_DYLIBS=0', 'libside.so'])
@@ -3593,7 +3593,7 @@ Module["preRun"] = () => {
     # Test asynchronously loading two side modules during startup
     # They should always load in the same order
     # Verify that function pointers in the browser's main thread
-    # reffer to the same function as in a pthread worker.
+    # refer to the same function as in a pthread worker.
 
     # The main thread function table is populated asynchronously
     # in the browser's main thread. However, it should still be
@@ -4053,8 +4053,8 @@ Module["preRun"] = () => {
   @no_safari('TODO: Hangs') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   @also_with_wasmfs
   def test_pthread_asan_use_after_free_2(self):
-    # similiar to test_pthread_asan_use_after_free, but using a pool instead
-    # of proxy-to-pthread, and al, '-Wno-experimental'so the allocation happens on the pthread
+    # similar to test_pthread_asan_use_after_free, but using a pool instead
+    # of proxy-to-pthread, and also the allocation happens on the pthread
     # (which tests that it can use the offset converter to get the stack
     # trace there)
     self.btest('pthread/test_pthread_asan_use_after_free_2.cpp', expected='1', cflags=['-fsanitize=address', '-pthread', '-sPTHREAD_POOL_SIZE=1', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free_2.js')])
@@ -5385,7 +5385,7 @@ Module["preRun"] = () => {
   })
   def test_manual_pthread_proxy_hammer(self, args):
     # the specific symptom of the hang that was fixed is that the test hangs
-    # at some point, using 0% CPU. often that occured in 0-200 iterations, but
+    # at some point, using 0% CPU. often that occurred in 0-200 iterations, but
     # you may want to adjust "ITERATIONS".
     self.btest_exit('pthread/test_pthread_proxy_hammer.cpp',
                     cflags=['-pthread', '-O2', '-sPROXY_TO_PTHREAD',

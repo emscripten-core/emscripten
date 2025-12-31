@@ -5,7 +5,7 @@
 int foo = 3;
 // This should generate a relocation in data section
 static int* _Atomic foo_addr = &foo;
-// This should generate a reloction in the TLS data section
+// This should generate a relocation in the TLS data section
 static _Thread_local int *tls_foo_addr = &foo;
 
 void run_test() {

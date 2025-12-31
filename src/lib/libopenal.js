@@ -99,7 +99,7 @@ var LibraryOpenAL = {
     },
 
     // This function is the core scheduler that queues web-audio buffers for output.
-    // src.bufQueue represents the abstract OpenAL buffer queue, which is taversed to schedule
+    // src.bufQueue represents the abstract OpenAL buffer queue, which is traversed to schedule
     // corresponding web-audio buffers. These buffers are stored in src.audioQueue, which
     // represents the queue of buffers scheduled for physical playback. These two queues are
     // distinct because of the differing semantics of OpenAL and web audio. Some changes
@@ -525,7 +525,7 @@ var LibraryOpenAL = {
       // WebAudio does spatialization in world-space coordinates, meaning both the buffer sources and
       // the listener position are in the same absolute coordinate system relative to a fixed origin.
       // By default, OpenAL works this way as well, but it also provides a "listener relative" mode, where
-      // a buffer source's coordinate are interpreted not in absolute world space, but as being relative
+      // a buffer source's coordinates are interpreted not in absolute world space, but as being relative
       // to the listener object itself, so as the listener moves the source appears to move with it
       // with no update required. Since web audio does not support this mode, we must transform the source
       // coordinates from listener-relative space to absolute world space.

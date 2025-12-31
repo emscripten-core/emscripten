@@ -61,7 +61,7 @@ bool _emscripten_get_now_is_monotonic(void);
 
 void _emscripten_get_progname(char*, int);
 
-// Not defined in musl, but defined in library.js.  Included here to for
+// Not defined in musl, but defined in library.js.  Included here for
 // the benefit of gen_sig_info.py
 char* strptime_l(const char* __restrict __s,
                  const char* __restrict __fmt,

@@ -117,7 +117,7 @@ var LibraryDylink = {
   // Resolve a global symbol by name.  This is used during module loading to
   // resolve imports, and by `dlsym` when used with `RTLD_DEFAULT`.
   // Returns both the resolved symbol (i.e. a function or a global) along with
-  // the canonical name of the symbol (in some cases is modify the symbol as
+  // the canonical name of the symbol (in some cases modifying the symbol as
   // part of the loop process, so that actual symbol looked up has a different
   // name).
   $resolveGlobalSymbol__deps: ['$isSymbolDefined', '$createNamedFunction',
@@ -166,7 +166,7 @@ var LibraryDylink = {
   $GOT: {},
 
   // Proxy handler used for GOT.mem and GOT.func imports.  Each of these
-  // imports is fullfilled dynamically via the `get` method of this proxy
+  // imports is fulfilled dynamically via the `get` method of this proxy
   // handler.  We abuse the `target` of the Proxy in order to pass the set of
   // weak imports to the handler.
   $GOTHandler__internal: true,
@@ -303,7 +303,7 @@ var LibraryDylink = {
         return value;
       }
 #endif
-      // Detect immuable wasm global exports. These represent data addresses
+      // Detect immutable wasm global exports. These represent data addresses
       // which are relative to `memoryBase`
       if (isImmutableGlobal(value)) {
         return new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}'}, value.value + {{{ to64('memoryBase') }}});
@@ -507,7 +507,7 @@ var LibraryDylink = {
       // we should see the dylink custom section right after the magic number and wasm version
       failIf(binary[8] !== 0, 'need the dylink section to be first')
       offset = 9;
-      var section_size = getLEB(); //section size
+      var section_size = getLEB(); // section size
       end = offset + section_size;
       var name = getString();
       failIf(name !== 'dylink.0');
@@ -682,7 +682,7 @@ var LibraryDylink = {
       // table and memory regions.  Later threads re-use the same table region
       // and can ignore the memory region (since memory is shared between
       // threads already).
-      // If `handle` is specified than it is assumed that the calling thread has
+      // If `handle` is specified then it is assumed that the calling thread has
       // exclusive access to it for the duration of this function.  See the
       // locking in `dynlink.c`.
       var firstLoad = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
@@ -728,7 +728,7 @@ var LibraryDylink = {
 
       // This is the export map that we ultimately return.  We declare it here
       // so it can be used within resolveSymbol.  We resolve symbols against
-      // this local symbol map in the case there they are not present on the
+      // this local symbol map in the case where they are not present on the
       // global Module object.  We need this fallback because Modules sometime
       // need to import their own symbols
       var moduleExports;
@@ -857,7 +857,7 @@ var LibraryDylink = {
           {{{ makeEval('ASM_CONSTS[start] = eval(func)') }}};
         }
 
-        // Add any EM_ASM function that exist in the side module
+        // Add any EM_ASM functions that exist in the side module
         if ('__start_em_asm' in moduleExports) {
           var start = moduleExports['__start_em_asm'].value;
           var stop = moduleExports['__stop_em_asm'].value;
@@ -1132,7 +1132,7 @@ var LibraryDylink = {
         registerDynCallSymbols(dso.exports);
 #endif
       } else if (!dso.global) {
-        // The library was previously loaded only locally but not
+        // The library was previously loaded only locally but now
         // we have a request with global=true.
         dso.global = true;
         mergeLibSymbols(dso.exports, libName)
@@ -1422,8 +1422,8 @@ var LibraryDylink = {
 #endif
         result = addr;
       } else {
-        // Insert the function into the wasm table.  If its a direct wasm
-        // function the second argument will not be needed.  If its a JS
+        // Insert the function into the wasm table.  If it's a direct wasm
+        // function the second argument will not be needed.  If it's a JS
         // function we rely on the `sig` attribute being set based on the
         // `<func>__sig` specified in library JS file.
         result = addFunction(result, result.sig);

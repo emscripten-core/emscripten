@@ -18,7 +18,7 @@
  *
  * What it does not but should probably do:
  * - Transmit events when glfwPollEvents, glfwWaitEvents or glfwSwapBuffers is
- *    called. Events callbacks are called as soon as event are received.
+ *    called. Events callbacks are called as soon as events are received.
  * - Input modes.
  * - Gamma ramps.
  * - Video modes.
@@ -41,7 +41,7 @@ var LibraryGLFW = {
       this.id = id;
       this.x = 0;
       this.y = 0;
-      this.fullscreen = false; // Used to determine if app in fullscreen mode
+      this.fullscreen = false; // Used to determine if app is in fullscreen mode
       this.storedX = 0; // Used to store X before fullscreen
       this.storedY = 0; // Used to store Y before fullscreen
       this.width = width;
@@ -900,7 +900,7 @@ var LibraryGLFW = {
       // As documented in GLFW2 API (http://www.glfw.org/GLFWReference27.pdf#page=22), when size
       // callback function is set, it will be called with the current window size before this
       // function returns.
-      // GLFW3 on the over hand doesn't have this behavior (https://github.com/glfw/glfw/issues/62).
+      // GLFW3 on the other hand doesn't have this behavior (https://github.com/glfw/glfw/issues/62).
       if (!win.windowSizeFunc) return null;
       {{{ makeDynCall('vii', 'win.windowSizeFunc') }}}(win.width, win.height);
 #endif
@@ -1547,7 +1547,7 @@ var LibraryGLFW = {
     // AFAIK there is no way to do this in javascript
     // Maybe with platform specific ccalls?
     //
-    // Lets report 0 now which is wrong as it can get for end user.
+    // Let's report 0 now which is as wrong as it can get for end user.
     {{{ makeSetValue('width', '0', '0', 'i32') }}};
     {{{ makeSetValue('height', '0', '0', 'i32') }}};
   },
@@ -1805,7 +1805,7 @@ var LibraryGLFW = {
 
   glfwGetCursorPos: (winid, x, y) => GLFW.getCursorPos(winid, x, y),
 
-  // I believe it is not possible to move the mouse with javascript
+  // I believe it is not possible to move the mouse with JavaScript
   glfwSetCursorPos: (winid, x, y) => GLFW.setCursorPos(winid, x, y),
 
   glfwSetKeyCallback: (winid, cbfun) => GLFW.setKeyCallback(winid, cbfun),

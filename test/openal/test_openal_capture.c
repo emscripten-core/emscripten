@@ -288,7 +288,7 @@ void ignite() {
 #endif
   }
 
-  //allocate memory to store captured audio
+  // allocate memory to store captured audio
   app.recorded_size = bytesForDuration(app.duration);
   app.recorded = malloc(app.recorded_size);
   if (!app.recorded) {

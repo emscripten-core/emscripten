@@ -60,7 +60,7 @@ GitHub and set them as :term:`active <Active Tool/SDK>`:
 
   .. note:: ``git pull`` will fetch the current list of tags, but very recent ones may not yet be present there. You can run ``./emsdk update-tags`` to update the list of tags directly.
 
-If you change the location of the SDK (e.g. take it to another computer on an
+If you change the location of the SDK (e.g. take it to another computer on a
 USB), re-run the ``./emsdk activate latest`` and ``source ./emsdk_env.sh``
 commands.
 
@@ -92,7 +92,7 @@ using a more careful procedure). Tip-of-tree builds may be useful for continuous
 integration that uses the emsdk (as Emscripten's GitHub CI does), and you may
 want to use it in your own CI as well, so that if you find a regression on your
 project you can report it and prevent it from reaching a tagged release.
-Tip-of-builds may also be useful if you want to test a feature that just landed
+Tip-of-tree builds may also be useful if you want to test a feature that just landed
 but didn't reach a release yet. To use a tip-of-tree build, use the ``tot``
 target, and note that you must specify the backend explicitly,
 

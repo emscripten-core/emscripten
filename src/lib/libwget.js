@@ -144,7 +144,7 @@ var LibraryWget = {
     };
 
     if (_request == "POST") {
-      //Send the proper header information along with the request
+      // Send the proper header information along with the request
       http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
       http.send(_param);
     } else {
@@ -212,7 +212,7 @@ var LibraryWget = {
     };
 
     if (_request == "POST") {
-      //Send the proper header information along with the request
+      // Send the proper header information along with the request
       http.setRequestHeader("Content-type", "application/x-www-form-urlencoded");
       http.send(_param);
     } else {

@@ -415,7 +415,7 @@ def kill_browser_process():
 
 # Heuristic that attempts to search for the browser process IDs that emrun spawned.
 # This depends on the assumption that no other browser process IDs have been spawned
-# during the short time perioed between the time that emrun started, and the browser
+# during the short time period between the time that emrun started, and the browser
 # process navigated to the page.
 # This heuristic is needed because all modern browsers are multiprocess systems -
 # starting a browser process from command line generally launches just a "stub" spawner
@@ -443,7 +443,7 @@ def detect_browser_processes():
     logv('Was unable to detect the browser process that was spawned by emrun. This may occur if the target page was opened in a tab on a browser process that already existed before emrun started up.')
 
 
-# Our custom HTTP web server that will server the target page to run via .html.
+# Our custom HTTP web server that will serve the target page to run via .html.
 # This is used so that we can load the page via a http:// URL instead of a
 # file:// URL, since those wouldn't work too well unless user allowed XHR
 # without CORS rules.  Also, the target page will route its stdout and stderr
@@ -477,7 +477,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
         if len(self.http_message_queue) > 16:
           self.print_next_message()
 
-  # If it's been too long since we we got a message, prints out the oldest
+  # If it's been too long since we got a message, prints out the oldest
   # queued message, ignoring the proper order.  This ensures that if any
   # messages are actually lost, that the message queue will be orderly flushed.
   def print_timed_out_messages(self):
@@ -1005,7 +1005,7 @@ def win_get_file_properties(fname):
   props = {'FixedFileInfo': None, 'StringFileInfo': None, 'FileVersion': None}
 
   import win32api
-  # backslash as parm returns dictionary of numeric info corresponding to VS_FIXEDFILEINFO struct
+  # backslash as param returns dictionary of numeric info corresponding to VS_FIXEDFILEINFO struct
   fixedInfo = win32api.GetFileVersionInfo(fname, '\\')
   props['FixedFileInfo'] = fixedInfo
   props['FileVersion'] = "%d.%d.%d.%d" % (fixedInfo['FileVersionMS'] / 65536,
@@ -1017,7 +1017,7 @@ def win_get_file_properties(fname):
   # pairs that can be used to retrieve string info. We are using only the first pair.
   lang, codepage = win32api.GetFileVersionInfo(fname, '\\VarFileInfo\\Translation')[0]
 
-  # any other must be of the form \StringfileInfo\%04X%04X\parm_name, middle
+  # any other must be of the form \StringfileInfo\%04X%04X\param_name, middle
   # two are language/codepage pair returned from above
 
   strInfo = {}
@@ -1577,7 +1577,7 @@ def parse_args(args):
   parser.add_argument('cmdlineparams', nargs='*')
 
   # Support legacy argument names with `_` in them (but don't
-  # advertize these in the --help message).
+  # advertise these in the --help message).
   for i, a in enumerate(args):
     if a == '--':
       break

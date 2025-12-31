@@ -277,7 +277,7 @@ def main():
         tasks.append(name)
     else:
       # There are some ports that we don't want to build as part
-      # of ALL since the are not well tested or widely used:
+      # of ALL since they are not well tested or widely used:
       if 'cocos2d' in targets:
         targets.remove('cocos2d')
 
