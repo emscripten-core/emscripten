@@ -1,7 +1,5 @@
 #include <unistd.h>
 #include <fcntl.h>
-#include <fcntl.h>
-#include <unistd.h>
 #include <sys/stat.h>
 #include <assert.h>
 #include <stdio.h>
