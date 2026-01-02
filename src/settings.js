@@ -765,10 +765,10 @@ var DISABLE_EXCEPTION_THROWING = false;
 //   Given an WebAssembly.Exception object, returns the actual user-thrown C++
 //   object address in Wasm memory.
 //
-// Setting this option also adds refcount increasing and decreasing functions
-// ('incrementExceptionRefcount' and 'decrementExceptionRefcount') in the JS
-// library because if you catch an exception from JS, you may need to manipulate
-// the refcount manually not to leak memory.
+// Setting this option also adds refcount incrementing and decrementing
+// functions ('incrementExceptionRefcount' and 'decrementExceptionRefcount') in
+// the JS library because if you catch an exception from JS, you may need to
+// manipulate the refcount manually to avoid memory leaks.
 //
 // See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 // example usage.
