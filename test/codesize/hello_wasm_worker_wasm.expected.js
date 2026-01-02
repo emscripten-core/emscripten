@@ -3,12 +3,12 @@ var c = Module, d = "em-ww" == globalThis.name, e, f, y, z, l, A, t;
 d && (onmessage = a => {
     onmessage = null;
     e = a = a.data;
-    f = a.o;
+    f = a.l;
     g();
     c ||= {};
     c.wasm = a.j;
     h();
-    a.j = a.s = 0;
+    a.j = a.l = 0;
 });
 
 function g() {}
@@ -30,11 +30,11 @@ var k = [], n = a => {
         name: "em-ww"
     });
     m.postMessage({
-        u: r,
+        s: r,
         j: t,
-        o: f,
-        l: a,
-        m: b
+        l: f,
+        m: a,
+        o: b
     });
     m.onmessage = n;
     return r++;
@@ -67,7 +67,7 @@ function h() {
         y = b.g;
         z = b.i;
         l = b.h;
-        d ? (z(e.l, e.m), removeEventListener("message", p), k = k.forEach(n), addEventListener("message", n)) : b.f();
+        d ? (z(e.m, e.o), removeEventListener("message", p), k = k.forEach(n), addEventListener("message", n)) : b.f();
         d || y();
     }));
 }
