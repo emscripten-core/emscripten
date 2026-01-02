@@ -350,6 +350,19 @@ ${body};
   });
 }
 
+function handleAsyncFunction(snippet) {
+  return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+    if (!oneliner) {
+      body = `{\n${body}\n}`;
+    }
+    return `\
+${async_}function(${args}) {
+  let innerFunc = ${async_} () => ${body};
+  return Asyncify.handleAsync(innerFunc);
+}\n`;
+  });
+}
+
 export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
   const symbolDeps = {};
@@ -438,6 +451,11 @@ function(${args}) {
     ) {
       snippet = handleI64Signatures(symbol, snippet, sig, i53abi);
       compileTimeContext.i53ConversionDeps.forEach((d) => deps.push(d));
+    }
+
+    const isAsyncFunction = LibraryManager.library[symbol + '__async'];
+    if (ASYNCIFY && isAsyncFunction == 'auto') {
+      snippet = handleAsyncFunction(snippet);
     }
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];

@@ -540,16 +540,16 @@ var WasiLibrary = {
     return 0;
   },
 
-  fd_sync__async: true,
-  fd_sync: (fd) => {
+  fd_sync__async: 'auto',
+  fd_sync: {{{ asyncIf(ASYNCIFY) }}} (fd) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var rtn = stream.stream_ops?.fsync?.(stream);
 #if ASYNCIFY
     var mount = stream.node.mount;
     if (mount.type.syncfs) {
-      return Asyncify.handleSleep((wakeUp) => {
-        mount.type.syncfs(mount, false, (err) => wakeUp(err ? {{{ cDefs.EIO }}} : 0));
+      return new Promise((resolve) => {
+        mount.type.syncfs(mount, false, (err) => resolve(err ? {{{ cDefs.EIO }}} : 0));
       });
     }
 #endif // ASYNCIFY

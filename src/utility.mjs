@@ -186,12 +186,12 @@ export function mergeInto(obj, other, options = null) {
           __noleakcheck: 'boolean',
           __internal: 'boolean',
           __user: 'boolean',
-          __async: 'boolean',
+          __async: ['string', 'boolean'],
           __i53abi: 'boolean',
         };
         const expected = decoratorTypes[decoratorName];
         if (type !== expected && !expected.includes(type)) {
-          error(`Decorator (${key}} has wrong type. Expected '${expected}' not '${type}'`);
+          error(`Decorator (${key}) has wrong type. Expected '${expected}' not '${type}'`);
         }
       }
     }
