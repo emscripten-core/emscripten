@@ -1734,7 +1734,8 @@ class libunwind(ExceptionLibrary, MTLibrary):
   # See https://bugs.llvm.org/show_bug.cgi?id=44353
   force_object_files = True
 
-  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_HIDE_SYMBOLS']
+  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_HIDE_SYMBOLS',
+            '-Wno-c23-extensions']
   src_dir = 'system/lib/libunwind/src'
   # Without this we can't build libunwind since it will pickup the unwind.h
   # that is part of llvm (which is not compatible for some reason).
