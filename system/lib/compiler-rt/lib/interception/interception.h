@@ -19,7 +19,8 @@
 
 #if !SANITIZER_LINUX && !SANITIZER_FREEBSD && !SANITIZER_APPLE &&    \
     !SANITIZER_NETBSD && !SANITIZER_WINDOWS && !SANITIZER_FUCHSIA && \
-    !SANITIZER_SOLARIS && !SANITIZER_EMSCRIPTEN
+    !SANITIZER_SOLARIS && !SANITIZER_HAIKU && !SANITIZER_AIX && \
+    !SANITIZER_EMSCRIPTEN
 #  error "Interception doesn't work on this operating system."
 #endif
 
@@ -168,6 +169,16 @@ const interpose_substitution substitution_##func_name[]             \
     extern "C" ret_type func(__VA_ARGS__);
 # define DECLARE_WRAPPER_WINAPI(ret_type, func, ...)  \
     extern "C" __declspec(dllimport) ret_type __stdcall func(__VA_ARGS__);
+#elif SANITIZER_AIX
+#  define WRAP(x) __interceptor_##x
+#  define TRAMPOLINE(x) WRAP(x)
+// # define WRAPPER_NAME(x) "__interceptor_" #x
+#  define INTERCEPTOR_ATTRIBUTE __attribute__((visibility("default")))
+// AIX's linker will not select the weak symbol, so don't use weak for the
+// interceptors.
+#  define DECLARE_WRAPPER(ret_type, func, ...) \
+    extern "C" ret_type func(__VA_ARGS__)      \
+        __attribute__((alias("__interceptor_" #func), visibility("default")));
 #elif SANITIZER_EMSCRIPTEN
 # define WRAP(x) x
 # define INTERCEPTOR_ATTRIBUTE
@@ -378,12 +389,17 @@ inline void DoesNotSupportStaticLinking() {}
 
 #define INCLUDED_FROM_INTERCEPTION_LIB
 
-#if SANITIZER_LINUX || SANITIZER_FREEBSD || SANITIZER_NETBSD || \
-    SANITIZER_SOLARIS || SANITIZER_EMSCRIPTEN
+#if SANITIZER_AIX
+#  include "interception_aix.h"
+#  define INTERCEPT_FUNCTION(func) INTERCEPT_FUNCTION_AIX(func)
+#  define INTERCEPT_FUNCTION_VER(func, symver) INTERCEPT_FUNCTION_AIX(func)
 
-# include "interception_linux.h"
-# define INTERCEPT_FUNCTION(func) INTERCEPT_FUNCTION_LINUX_OR_FREEBSD(func)
-# define INTERCEPT_FUNCTION_VER(func, symver) \
+#elif SANITIZER_LINUX || SANITIZER_FREEBSD || SANITIZER_NETBSD || \
+    SANITIZER_SOLARIS || SANITIZER_HAIKU || SANITIZER_EMSCRIPTEN
+
+#  include "interception_linux.h"
+#  define INTERCEPT_FUNCTION(func) INTERCEPT_FUNCTION_LINUX_OR_FREEBSD(func)
+#  define INTERCEPT_FUNCTION_VER(func, symver) \
     INTERCEPT_FUNCTION_VER_LINUX_OR_FREEBSD(func, symver)
 #elif SANITIZER_APPLE
 # include "interception_mac.h"
