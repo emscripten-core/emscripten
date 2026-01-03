@@ -58,12 +58,17 @@ export type EmptyEnum = never/* Empty Enumerator */;
 
 export type ValArrIx = [ FirstEnum, FirstEnum, FirstEnum, FirstEnum ];
 
-export interface IntVec extends ClassHandle {
+export interface IntVec extends ClassHandle, Iterable<number> {
   push_back(_0: number): void;
   resize(_0: number, _1: number): void;
   size(): number;
   get(_0: number): number | undefined;
   set(_0: number, _1: number): boolean;
+}
+
+export interface IterableClass extends ClassHandle, Iterable<number> {
+  count(): number;
+  at(_0: number): number;
 }
 
 export interface MapIntInt extends ClassHandle {
@@ -141,6 +146,9 @@ interface EmbindModule {
   str_enum_returning_fn(): ThirdEnum;
   IntVec: {
     new(): IntVec;
+  };
+  IterableClass: {
+    new(): IterableClass;
   };
   MapIntInt: {
     new(): MapIntInt;

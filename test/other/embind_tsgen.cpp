@@ -39,6 +39,16 @@ class Foo {
   void process(const Test& input) {}
 };
 
+class IterableClass {
+ public:
+  IterableClass() : data{1, 2, 3} {}
+  unsigned int count() const { return 3; }
+  int at(unsigned int index) const { return data[index]; }
+
+ private:
+  int data[3];
+};
+
 Test class_returning_fn() { return Test(); }
 
 std::unique_ptr<Test> class_unique_ptr_returning_fn() {
@@ -233,6 +243,12 @@ EMSCRIPTEN_BINDINGS(Test) {
   function("setValObj", &setValObj);
 
   register_vector<int>("IntVec");
+
+  class_<IterableClass>("IterableClass")
+      .constructor<>()
+      .function("count", &IterableClass::count)
+      .function("at", &IterableClass::at)
+      .iterable<int>("count", "at");
 
   register_map<int, int>("MapIntInt");
 
