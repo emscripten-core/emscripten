@@ -474,7 +474,7 @@ class Library:
     utils.safe_ensure_dirs(build_dir)
     self.build_dir = build_dir
 
-    cflags = self.get_cflags()
+    cflags = self.get_cflags(None)
     asflags = get_base_cflags(self.build_dir, preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
@@ -492,7 +492,6 @@ class Library:
     batches = {}
     commands = []
     objects = set()
-    cflags = self.get_cflags()
     for src in self.get_files():
       ext = utils.suffix(src)
       if ext in {'.s', '.S', '.c'}:
@@ -506,7 +505,7 @@ class Library:
         # `-sMEMORY64`.
         cmd += get_base_cflags(self.build_dir, preprocess=False)
       else:
-        cmd += cflags
+        cmd += self.get_cflags(src)
       cmd = self.customize_build_cmd(cmd, src)
 
       object_basename = utils.unsuffixed_basename(src).lower()
@@ -586,7 +585,7 @@ class Library:
       result += item.__dict__.get(attr, [])
     return result
 
-  def get_cflags(self):
+  def get_cflags(self, filename=None):
     """
     Returns the list of flags to pass to emcc when building this variation
     of the library.
@@ -710,8 +709,8 @@ class MTLibrary(Library):
     self.is_ww = kwargs.pop('is_ww') and not self.is_mt
     super().__init__(**kwargs)
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     if self.is_mt:
       cflags += ['-pthread', '-sWASM_WORKERS']
     if self.is_ww:
@@ -751,8 +750,8 @@ class DebugLibrary(Library):
     self.is_debug = kwargs.pop('is_debug')
     super().__init__(**kwargs)
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     if not self.is_debug:
       cflags += ['-DNDEBUG']
     return cflags
@@ -795,8 +794,8 @@ class ExceptionLibrary(Library):
     self.eh_mode = kwargs.pop('eh_mode')
     super().__init__(**kwargs)
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     match self.eh_mode:
       case Exceptions.NONE:
         cflags += ['-fno-exceptions']
@@ -850,8 +849,8 @@ class SjLjLibrary(Library):
     self.eh_mode = kwargs.pop('eh_mode')
     super().__init__(**kwargs)
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     match self.eh_mode:
       case Exceptions.EMSCRIPTEN:
         cflags += ['-sSUPPORT_LONGJMP=emscripten',
@@ -919,8 +918,8 @@ class AsanInstrumentedLibrary(Library):
     self.is_asan = kwargs.pop('is_asan', False)
     super().__init__(**kwargs)
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     if self.is_asan:
       cflags += ['-fsanitize=address']
     return cflags
@@ -1478,8 +1477,8 @@ class libwasm_workers(DebugLibrary):
     self.is_stub = kwargs.pop('stub')
     super().__init__(**kwargs)
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     if self.is_debug:
       cflags += ['-D_DEBUG']
       # library_wasm_worker.c contains an assert that a nonnull parameter
@@ -1635,8 +1634,8 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
     # the non-debug version of libc++abi.
     self.is_debug |= settings.EXCEPTION_STACK_TRACES
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
     match self.eh_mode:
@@ -1747,8 +1746,8 @@ class libunwind(ExceptionLibrary, MTLibrary):
   def can_use(self):
     return super().can_use() and self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM)
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     cflags.append('-DNDEBUG')
     if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
@@ -1757,6 +1756,7 @@ class libunwind(ExceptionLibrary, MTLibrary):
         cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
       case Exceptions.EMSCRIPTEN:
         cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
+
     return cflags
 
 
@@ -1789,8 +1789,8 @@ class libmalloc(MTLibrary):
     sbrk = utils.path_from_root('system/lib/libc/sbrk.c')
     return [malloc, sbrk]
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     if self.memvalidate:
       cflags += ['-DEMMALLOC_MEMVALIDATE']
     if self.verbose:
@@ -1926,8 +1926,8 @@ class libGL(MTLibrary):
       name += '-getprocaddr'
     return name
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     if self.is_legacy:
       cflags += ['-DLEGACY_GL_EMULATION=1']
     cflags += [f'-DMAX_WEBGL_VERSION={2 if self.is_webgl2 else 1}']
@@ -1963,8 +1963,8 @@ class libembind(MTLibrary):
     self.with_rtti = kwargs.pop('with_rtti', False)
     super().__init__(**kwargs)
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     cflags.append('-std=c++20')
     if not self.with_rtti:
       cflags += ['-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
@@ -2017,8 +2017,8 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     self.ignore_case = kwargs.pop('ignore_case')
     super().__init__(**kwargs)
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     if self.ignore_case:
       cflags += ['-DWASMFS_CASE_INSENSITIVE']
     return cflags
@@ -2204,8 +2204,8 @@ class libstandalonewasm(MuslInternalLibrary):
       name += '-pure'
     return name
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
+  def get_cflags(self, filename=None):
+    cflags = super().get_cflags(filename)
     cflags += ['-DNDEBUG', '-DEMSCRIPTEN_STANDALONE_WASM']
     if self.is_mem_grow:
       cflags += ['-DEMSCRIPTEN_MEMORY_GROWTH']
