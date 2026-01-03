@@ -482,7 +482,6 @@ static bool AsanInitInternal() {
 
 #if !SANITIZER_EMSCRIPTEN
   DisableCoreDumperIfNecessary();
-#endif
 
 #if SANITIZER_POSIX
   if (StackSizeIsUnlimited()) {
@@ -495,6 +494,7 @@ static bool AsanInitInternal() {
     // issues.
   }
 #endif  // SANITIZER_POSIX
+#endif  // !SANITIZER_EMSCRIPTEN
 
   InitializeShadowMemory();
 
