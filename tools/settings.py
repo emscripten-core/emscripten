@@ -87,6 +87,7 @@ COMPILE_TIME_SETTINGS = {
     'LINKABLE',
     'STRICT',
     'EMSCRIPTEN_TRACING',
+    'OPENMP',
     'PTHREADS',
     'USE_PTHREADS', # legacy name of PTHREADS setting
     'SHARED_MEMORY',
