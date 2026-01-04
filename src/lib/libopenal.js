@@ -3778,7 +3778,7 @@ var LibraryOpenAL = {
         break;
       default:
 #if OPENAL_DEBUG
-        dbg(`alBufferData() called with invalid format ${format}`;
+        dbg(`alBufferData() called with invalid format ${format}`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
         return;
@@ -3787,7 +3787,7 @@ var LibraryOpenAL = {
       buf.audioBuf = audioBuf;
     } catch (e) {
 #if OPENAL_DEBUG
-      dbg(`alBufferData() upload failed with an exception ${e}`;
+      dbg(`alBufferData() upload failed with an exception ${e}`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return;
