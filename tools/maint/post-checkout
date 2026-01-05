@@ -1,6 +1,6 @@
 #!/bin/sh
 #
-# Git post-checkout script that takes care of running emscirpten's
+# Git post-checkout script that takes care of running emscripten's
 # bootstrap script when changing branches.
 #
 # The bootstrap script itself is smart enough to basically do nothing unless

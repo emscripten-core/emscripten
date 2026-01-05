@@ -227,7 +227,7 @@ addToLibrary({
 #else
     // Set the new value.
     try {
-      // Attempting to call this with JS function will cause of table.set() to fail
+      // Attempting to call this with JS function will cause table.set() to fail
       setWasmTableEntry(ret, func);
     } catch (err) {
       if (!(err instanceof TypeError)) {

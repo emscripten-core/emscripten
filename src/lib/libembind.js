@@ -12,7 +12,7 @@ var LibraryEmbind = {
   $InvokerFunctions: '<<< EMBIND_AOT_INVOKERS >>>',
 #endif
   // If register_type is used, emval will be registered multiple times for
-  // different type id's, but only a single type object is needed on the JS side
+  // different type ids, but only a single type object is needed on the JS side
   // for all of them. Store the type for reuse.
   $EmValType__deps: ['_emval_decref', '$Emval', '$readPointer'],
   $EmValType: `{
@@ -737,7 +737,7 @@ var LibraryEmbind = {
       return onDone(rv);
     };
 #else
-    // Builld the arguments that will be passed into the closure around the invoker
+    // Build the arguments that will be passed into the closure around the invoker
     // function.
     var retType = argTypes[0];
     var instType = argTypes[1];
@@ -1119,7 +1119,7 @@ var LibraryEmbind = {
           break;
 
         default:
-          throwBindingError('Unsupporting sharing policy');
+          throwBindingError('Unsupported sharing policy');
       }
     }
     return ptr;
@@ -2199,24 +2199,76 @@ var LibraryEmbind = {
 
   _embind_register_enum__docs: '/** @suppress {globalThis} */',
   _embind_register_enum__deps: ['$exposePublicSymbol', '$enumReadValueFromPointer',
-    '$AsciiToString', '$registerType'],
-  _embind_register_enum: (rawType, name, size, isSigned) => {
+    '$AsciiToString', '$registerType', '$getEnumValueType'],
+  _embind_register_enum: (rawType, name, size, isSigned, rawValueType) => {
     name = AsciiToString(name);
+    const valueType = getEnumValueType(rawValueType);
 
-    function ctor() {}
-    ctor.values = {};
+    switch (valueType) {
+      case 'object': {
+        function ctor() {}
+        ctor.values = {};
 
-    registerType(rawType, {
-      name,
-      constructor: ctor,
-      fromWireType: function(c) {
-        return this.constructor.values[c];
-      },
-      toWireType: (destructors, c) => c.value,
-      readValueFromPointer: enumReadValueFromPointer(name, size, isSigned),
-      destructorFunction: null,
-    });
-    exposePublicSymbol(name, ctor);
+        registerType(rawType, {
+          name,
+          constructor: ctor,
+          valueType,
+          fromWireType: function(c) {
+            return this.constructor.values[c];
+          },
+          toWireType: (destructors, c) => c.value,
+          readValueFromPointer: enumReadValueFromPointer(name, size, isSigned),
+          destructorFunction: null,
+        });
+
+        exposePublicSymbol(name, ctor);
+        break;
+      }
+      case 'number': {
+        var keysMap = {};
+
+        registerType(rawType, {
+          name: name,
+          keysMap,
+          valueType,
+          fromWireType: (c) => c,
+          toWireType: (destructors, c) => c,
+          readValueFromPointer: enumReadValueFromPointer(name, size, isSigned),
+          destructorFunction: null,
+        });
+
+        exposePublicSymbol(name, keysMap);
+        // Just exposes a simple dict. argCount is meaningless here,
+        delete Module[name].argCount;
+        break;
+      }
+      case 'string': {
+        var valuesMap = {};
+        var reverseMap = {};
+        var keysMap = {};
+
+        registerType(rawType, {
+          name: name,
+          valuesMap,
+          reverseMap,
+          keysMap,
+          valueType,
+          fromWireType: function(c) {
+            return this.reverseMap[c];
+          },
+          toWireType: function(destructors, c) {
+            return this.valuesMap[c];
+          },
+          readValueFromPointer: enumReadValueFromPointer(name, size, isSigned),
+          destructorFunction: null,
+        });
+
+        exposePublicSymbol(name, keysMap);
+        // Just exposes a simple dict. argCount is meaningless here,
+        delete Module[name].argCount;
+        break;
+      }
+    }
   },
 
   _embind_register_enum_value__deps: ['$createNamedFunction', '$AsciiToString', '$requireRegisteredType'],
@@ -2224,14 +2276,28 @@ var LibraryEmbind = {
     var enumType = requireRegisteredType(rawEnumType, 'enum');
     name = AsciiToString(name);
 
-    var Enum = enumType.constructor;
-
-    var Value = Object.create(enumType.constructor.prototype, {
-      value: {value: enumValue},
-      constructor: {value: createNamedFunction(`${enumType.name}_${name}`, function() {})},
-    });
-    Enum.values[enumValue] = Value;
-    Enum[name] = Value;
+    switch (enumType.valueType) {
+      case 'object': {
+        var Enum = enumType.constructor;
+        var Value = Object.create(enumType.constructor.prototype, {
+          value: {value: enumValue},
+          constructor: {value: createNamedFunction(`${enumType.name}_${name}`, function() {})},
+        });
+        Enum.values[enumValue] = Value;
+        Enum[name] = Value;
+        break;
+      }
+      case 'number': {
+        enumType.keysMap[name] = enumValue;
+        break;
+      }
+      case 'string': {
+        enumType.valuesMap[name] = enumValue;
+        enumType.reverseMap[enumValue] = name;
+        enumType.keysMap[name] = name;
+        break;
+      }
+    }
   },
 
   _embind_register_constant__deps: ['$AsciiToString', '$whenDependentTypesAreResolved'],

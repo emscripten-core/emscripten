@@ -121,7 +121,7 @@ void *sbrk(intptr_t increment_) {
 int brk(void* ptr) {
 #ifdef __EMSCRIPTEN_SHARED_MEMORY__
   // FIXME
-  printf("brk() is not theadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
+  printf("brk() is not threadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
   abort();
 #else
   uintptr_t last = (uintptr_t)sbrk(0);

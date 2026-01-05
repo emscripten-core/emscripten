@@ -67,7 +67,7 @@ DEFAULT_ASYNCIFY_EXPORTS = [
   '__main_argc_argv',
 ]
 
-VALID_ENVIRONMENTS = ('web', 'webview', 'worker', 'node', 'shell')
+VALID_ENVIRONMENTS = {'web', 'webview', 'worker', 'node', 'shell', 'worklet'}
 
 EXECUTABLE_EXTENSIONS = ['.wasm', '.html', '.js', '.mjs', '.out', '']
 
@@ -184,6 +184,9 @@ def setup_environment_settings():
   if settings.SHARED_MEMORY and settings.ENVIRONMENT:
     settings.ENVIRONMENT.append('worker')
 
+  if settings.AUDIO_WORKLET:
+    settings.ENVIRONMENT.append('worklet')
+
   # Environment setting based on user input
   if any(x for x in settings.ENVIRONMENT if x not in VALID_ENVIRONMENTS):
     exit_with_error(f'Invalid environment specified in "ENVIRONMENT": {settings.ENVIRONMENT}. Should be one of: {",".join(VALID_ENVIRONMENTS)}')
@@ -193,6 +196,7 @@ def setup_environment_settings():
   settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_WORKER = not settings.ENVIRONMENT or 'worker' in settings.ENVIRONMENT
+  settings.ENVIRONMENT_MAY_BE_AUDIO_WORKLET = not settings.ENVIRONMENT or 'worklet' in settings.ENVIRONMENT
 
   if not settings.ENVIRONMENT_MAY_BE_NODE:
     if 'MIN_NODE_VERSION' in user_settings and settings.MIN_NODE_VERSION != feature_matrix.UNSUPPORTED:
@@ -247,8 +251,8 @@ def filter_link_flags(flags, using_lld):
         # lld allows various flags to have either a single -foo or double --foo
         if f.startswith((flag, '-' + flag)):
           diagnostics.warning('linkflags', 'ignoring unsupported linker flag: `%s`', f)
-          # Skip the next argument if this linker flag takes and argument and that
-          # argument was not specified as a separately (i.e. it was specified as
+          # Skip the next argument if this linker flag takes an argument and that
+          # argument was not specified separately (i.e. it was specified as
           # single arg containing an `=` char.)
           skip_next = takes_arg and '=' not in f
           return False, skip_next
@@ -777,7 +781,7 @@ def setup_sanitizers(options):
 
 
 def get_dylibs(options, linker_args):
-  """Find all the Wasm dynanamic libraries specified on the command line,
+  """Find all the Wasm dynamic libraries specified on the command line,
   either via `-lfoo` or via `libfoo.so` directly."""
 
   dylibs = []
@@ -945,7 +949,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   settings.OUTPUT_FORMAT = options.oformat.name
 
   if settings.SUPPORT_BIG_ENDIAN and settings.WASM2JS:
-    exit_with_error('WASMJ2S is currently not compatible with SUPPORT_BIG_ENDIAN')
+    exit_with_error('WASM2JS is currently not compatible with SUPPORT_BIG_ENDIAN')
 
   if settings.WASM_ESM_INTEGRATION:
     default_setting('MODULARIZE', 'instance')
@@ -971,7 +975,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   def limit_incoming_module_api():
     if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
-      # Out default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
+      # Our default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
       default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
     else:
       default_setting('INCOMING_MODULE_JS_API', [])
@@ -1175,7 +1179,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # In Audio Worklets TextDecoder API is intentionally not exposed
   # (https://github.com/WebAudio/web-audio-api/issues/2499) so we also need to
   # keep the JavaScript-based fallback.
-  if settings.SHRINK_LEVEL >= 2 and not settings.AUDIO_WORKLET and \
+  if settings.SHRINK_LEVEL >= 2 and not settings.ENVIRONMENT_MAY_BE_AUDIO_WORKLET and \
      not settings.ENVIRONMENT_MAY_BE_SHELL:
     default_setting('TEXTDECODER', 2)
 
@@ -1831,11 +1835,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # enabling EH, errors out.
     if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
       exit_with_error('EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions')
-    # We also export refcount increasing and decreasing functions because if you
-    # catch an exception, be it an Emscripten exception or a Wasm exception, in
-    # JS, you may need to manipulate the refcount manually not to leak memory.
-    # What you need to do is different depending on the kind of EH you use
-    # (https://github.com/emscripten-core/emscripten/issues/17115).
+    # We also export refcount incrementing and decrementing functions because if
+    # you catch an exception from JS, you may need to manipulate the refcount
+    # manually to avoid memory leaks.  See test_EXPORT_EXCEPTION_HANDLING_HELPERS
+    # in test/test_core.py for an example usage.
     settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', 'incrementExceptionRefcount', 'decrementExceptionRefcount']
     if settings.WASM_EXCEPTIONS:
       settings.REQUIRED_EXPORTS += ['__cpp_exception']
@@ -1872,7 +1875,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   settings.MINIFY_WHITESPACE = settings.OPT_LEVEL >= 2 and settings.DEBUG_LEVEL == 0 and not options.no_minify
 
   # Closure might be run if we run it ourselves, or if whitespace is not being
-  # minifed. In the latter case we keep both whitespace and comments, and the
+  # minified. In the latter case we keep both whitespace and comments, and the
   # purpose of the comments might be closure compiler, so also perform all
   # adjustments necessary to ensure that works (which amounts to a few more
   # comments; adding some more of them is not an issue in such a build which
@@ -1999,7 +2002,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # generation output.
   # Don't invoke the program's `main` function.
   settings.INVOKE_RUN = False
-  # Ignore -sMODULARIZE which could otherwise effect how we run the module
+  # Ignore -sMODULARIZE which could otherwise affect how we run the module
   # to generate the bindings.
   settings.MODULARIZE = False
   # Disable ESM integration to avoid enabling the experimental feature in node.
@@ -2267,7 +2270,7 @@ def phase_binaryen(target, options, wasm_target):
   # whether we need to emit -g in the intermediate binaryen invocations (but not
   # necessarily at the very end). this is necessary if we depend on debug info
   # during compilation, even if we do not emit it at the end.
-  # we track the number of causes for needing intermdiate debug info so
+  # we track the number of causes for needing intermediate debug info so
   # that we can stop emitting it when possible - in particular, that is
   # important so that we stop emitting it before the end, and it is not in the
   # final binary (if it shouldn't be)
@@ -2460,7 +2463,7 @@ def modularize():
   save_intermediate('modularized')
 
   # FIXME(https://github.com/emscripten-core/emscripten/issues/24558): Running acorn at this
-  # late phase seems to cause OOM (some kind of inifite loop perhaps) in node.
+  # late phase seems to cause OOM (some kind of infinite loop perhaps) in node.
   # Instead we minify src/modularize.js in isolation above.
   #if settings.MINIFY_WHITESPACE:
   #  final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
@@ -2472,7 +2475,7 @@ def module_export_name_substitution():
   logger.debug(f'Private module export name substitution with {settings.EXPORT_NAME}')
   src = read_file(final_js)
   final_js += '.module_export_name_substitution.js'
-  if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL and not settings.AUDIO_WORKLET:
+  if settings.MINIMAL_RUNTIME and not settings.ENVIRONMENT_MAY_BE_NODE and not settings.ENVIRONMENT_MAY_BE_SHELL and not settings.ENVIRONMENT_MAY_BE_AUDIO_WORKLET:
     # On the web, with MINIMAL_RUNTIME, the Module object is always provided
     # via the shell html in order to provide the .asm.js/.wasm content.
     replacement = settings.EXPORT_NAME
@@ -2918,7 +2921,7 @@ def get_secondary_target(target, ext):
   # Depending on the output format emscripten creates zero or more secondary
   # output files (e.g. the .wasm file when creating JS output, or the
   # .js and the .wasm file when creating html output.
-  # Thus function names the secondary output files, while ensuring they
+  # This function names the secondary output files, while ensuring they
   # never collide with the primary one.
   base = unsuffixed(target)
   if get_file_suffix(target) == ext:
@@ -3130,7 +3133,7 @@ def run(options, linker_args):
 
   system_libs = phase_calculate_system_libraries(options)
   # Only add system libraries that have not already been specified.
-  # This avoids issues where the user explictly includes, for example, `-lGL`.
+  # This avoids issues where the user explicitly includes, for example, `-lGL`.
   # This is not normally a problem except in the case of -sMAIN_MODULE=1 where
   # the duplicate library would result in duplicate symbols.
   for s in system_libs:

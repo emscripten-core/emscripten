@@ -6,7 +6,7 @@
 
 // This file is used as the initial script loaded into pthread workers when
 // running in WASM_ESM_INTEGRATION mode.
-// Tyhe point of this file is to delay the loading of the main program module
+// The point of this file is to delay the loading of the main program module
 // until the wasm memory has been received via postMessage.
 
 #if RUNTIME_DEBUG

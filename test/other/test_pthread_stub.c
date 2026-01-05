@@ -57,7 +57,7 @@ void test_pthreads() {
   pthread_t thread;
   CHECK_FAIL(pthread_create(&thread, NULL, start_pthread, NULL));
 
-  // Thread cleanup push/pop should still work for the main thrad
+  // Thread cleanup push/pop should still work for the main thread
   pthread_cleanup_push(cleanup, (void*)42);
   pthread_cleanup_pop(1);
 }

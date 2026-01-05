@@ -48,6 +48,7 @@ from common import (
   create_file,
   ensure_dir,
   env_modify,
+  exe_path_from_root,
   make_executable,
   path_from_root,
   test_file,
@@ -118,13 +119,13 @@ from tools.utils import (
   write_file,
 )
 
-emmake = utils.bat_suffix(path_from_root('emmake'))
-emconfig = utils.bat_suffix(path_from_root('em-config'))
-emsize = utils.bat_suffix(path_from_root('emsize'))
-empath_split = utils.bat_suffix(path_from_root('empath-split'))
-emprofile = utils.bat_suffix(path_from_root('emprofile'))
-emstrip = utils.bat_suffix(path_from_root('emstrip'))
-emsymbolizer = utils.bat_suffix(path_from_root('emsymbolizer'))
+emmake = exe_path_from_root('emmake')
+emconfig = exe_path_from_root('em-config')
+emsize = exe_path_from_root('emsize')
+empath_split = exe_path_from_root('empath-split')
+emprofile = exe_path_from_root('emprofile')
+emstrip = exe_path_from_root('emstrip')
+emsymbolizer = exe_path_from_root('emsymbolizer')
 
 
 def is_bitcode(filename):
@@ -367,7 +368,7 @@ class other(RunnerCore):
     self.assertExists('a.out.js')
 
   def test_skip_subcommands(self):
-    # The -### flag is like `-v` but it doesn't actaully execute the sub-commands
+    # The -### flag is like `-v` but it doesn't actually execute the sub-commands
     proc = self.run_process([EMCC, '-###', '-O3', test_file('hello_world.c')], stdout=PIPE, stderr=PIPE)
     self.assertContained(CLANG_CC, proc.stderr)
     self.assertContained(WASM_LD, proc.stderr)
@@ -705,7 +706,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     # Combining object files into another object should also work, using the `-r` flag
     err = self.run_process([EMCC, '-r', 'twopart_main.o', 'twopart_side.o', '-o', 'combined.o'], stderr=PIPE).stderr
     self.assertNotContained('warning:', err)
-    # Warn about legecy support for outputing object file without `-r`, `-c` or `-shared`
+    # Warn about legacy support for outputting object file without `-r`, `-c` or `-shared`
     err = self.run_process([EMCC, 'twopart_main.o', 'twopart_side.o', '-o', 'combined2.o'], stderr=PIPE).stderr
     self.assertContained('warning: object file output extension (.o) used for non-object output', err)
 
@@ -982,7 +983,7 @@ f.close()
     self.assertTextDataIdentical(native_features, emscripten_features)
 
   # Test that the user's explicitly specified generator is always honored
-  # Internally we override the generator on windows, unles the user specifies one
+  # Internally we override the generator on windows, unless the user specifies one
   # Test require Ninja to be installed
   @requires_ninja
   def test_cmake_explicit_generator(self):
@@ -3383,7 +3384,7 @@ More info: https://emscripten.org
   @parameterized({
     # With no arguments we are testing the default C++ version provided by clang.
     '': [],
-    # Ensure embind compiles under C++17 which is the miniumum supported version.
+    # Ensure embind compiles under C++17 which is the minimum supported version.
     'cxx17': ['-std=c++17', '-Wno-#warnings'],
     'o1': ['-O1'],
     'o2': ['-O2'],
@@ -3544,7 +3545,7 @@ More info: https://emscripten.org
     self.emcc(test_file('other/embind_tsgen.cpp'),
               ['-o', 'embind_tsgen.js', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
 
-    # Test that the output compiles with a TS file that uses the defintions.
+    # Test that the output compiles with a TS file that uses the definitions.
     shutil.copyfile(test_file('other/embind_tsgen_main.ts'), 'main.ts')
     if '-sEXPORT_ES6' in opts:
       # A package file with type=module is needed to enabled ES modules in TSC and
@@ -3662,13 +3663,13 @@ More info: https://emscripten.org
     'pthread': [['-pthread']],
   })
   @requires_wasm64
-  def test_embind_tsgen_memory64(self, args):
-    # Check that when memory64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
-    self.run_process([EMXX, test_file('other/embind_tsgen_memory64.cpp'),
-                      '-lembind', '--emit-tsd', 'embind_tsgen_memory64.d.ts', '-sMEMORY64'] +
+  def test_embind_tsgen_wasm64(self, args):
+    # Check that when wasm64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
+    self.run_process([EMXX, test_file('other/embind_tsgen_wasm64.cpp'),
+                      '-lembind', '--emit-tsd', 'embind_tsgen_wasm64.d.ts', '-sMEMORY64'] +
                      args +
                      self.get_cflags())
-    self.assertFileContents(test_file('other/embind_tsgen_memory64.d.ts'), read_file('embind_tsgen_memory64.d.ts'))
+    self.assertFileContents(test_file('other/embind_tsgen_wasm64.d.ts'), read_file('embind_tsgen_wasm64.d.ts'))
 
   @requires_jspi
   def test_embind_tsgen_jspi(self):
@@ -3707,7 +3708,7 @@ More info: https://emscripten.org
                       '-Wno-experimental', '-o', 'test_emit_tsd.js'] +
                      self.get_cflags())
     self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))
-    # Test that the output compiles with a TS file that uses the defintions.
+    # Test that the output compiles with a TS file that uses the definitions.
     cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd.ts'), '--noEmit']
     shared.check_call(cmd)
 
@@ -3719,7 +3720,7 @@ More info: https://emscripten.org
                       '-o', 'test_emit_tsd_sync.js'] +
                      self.get_cflags())
     self.assertFileContents(test_file('other/test_emit_tsd_sync.d.ts'), read_file('test_emit_tsd_sync.d.ts'))
-    # Test that the output compiles with a TS file that uses the defintions.
+    # Test that the output compiles with a TS file that uses the definitions.
     cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd_sync.ts'), '--noEmit']
     shared.check_call(cmd)
 
@@ -3730,7 +3731,7 @@ More info: https://emscripten.org
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)
-    # EMSCRIPTEN_ROOT is kind of special since it should always report the locaton of em-config
+    # EMSCRIPTEN_ROOT is kind of special since it should always report the location of em-config
     # itself (its not configurable via the config file but driven by the location for arg0)
     output = self.run_process([emconfig, 'EMSCRIPTEN_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, os.path.dirname(emconfig))
@@ -5541,7 +5542,7 @@ __EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALI
     # forced libs is ok, they were there anyhow
     'normal': [{'EMCC_FORCE_STDLIBS': 'libc,libc++abi,libc++'}, False],
     # partial list, but ok since we grab them as needed
-    'parial': [{'EMCC_FORCE_STDLIBS': 'libc++'}, False],
+    'partial': [{'EMCC_FORCE_STDLIBS': 'libc++'}, False],
     # fail! not enough stdlibs
     'partial_only': [{'EMCC_FORCE_STDLIBS': 'libc++,libc,libc++abi', 'EMCC_ONLY_FORCED_STDLIBS': '1'}, True],
     # force all the needed stdlibs, so this works even though we ignore the input file
@@ -5952,7 +5953,7 @@ This locale is not the C locale.
 
     def do(name, source, moar_opts):
       self.clear()
-      # pad the name to a common length so that doesn't effect the size of the
+      # pad the name to a common length so that doesn't affect the size of the
       # output
       padded_name = name + '_' * (20 - len(name))
       self.run_process([EMCC, test_file(source), '-o', padded_name + '.js'] + self.get_cflags() + opts + moar_opts)
@@ -7244,7 +7245,7 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sEXPORTED_FUNCTIONS=_main,_alGetError'])
 
-    # Same again but with `_alGet` wich does not exist.  This is a regression
+    # Same again but with `_alGet` which does not exist.  This is a regression
     # test for a bug we had where any prefix of a valid function was accepted.
     self.assert_fail([EMCC, test_file('hello_world.c'),
                      '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=alGetError',
@@ -7484,7 +7485,7 @@ high = 1234
     self.run_process([EMCC] + '-l m -l c -I'.split() + [test_file('include_test'), test_file('lib_include_flags.c')])
 
   def test_dash_s_link_flag(self):
-    # -s is also a valid link flag.  We try to distingish between this case and when
+    # -s is also a valid link flag.  We try to distinguish between this case and when
     # its used to set a settings based on looking at the argument that follows.
 
     # Test the case when -s is the last flag
@@ -7515,7 +7516,7 @@ high = 1234
     create_file('response_file.txt', '_main\n#_nope_ish_nope\n_malloc\n')
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=@response_file.txt'])
 
-  def test_dash_s_response_file_misssing(self):
+  def test_dash_s_response_file_missing(self):
     expected = 'error: foo: file not found parsing argument: EXPORTED_FUNCTIONS=@foo'
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=@foo'], expected)
 
@@ -7670,7 +7671,7 @@ int main() {
     assert first == second and second == third
     print('with bad ctor')
     first  = test(1000, 2000, 3000, 0xf, 0x58f) # noqa: E221,  2 will succeed
-    second = test(3000, 1000, 2000, 0xf, 0x8f5) # 1 will succedd
+    second = test(3000, 1000, 2000, 0xf, 0x8f5) # 1 will succeed
     third  = test(2000, 3000, 1000, 0xf, 0xf58) # noqa: E221,  0 will succeed
     print(first, second, third)
     self.assertLess(first, second)
@@ -8347,7 +8348,7 @@ int main() {
             self.assertContained('hello, world!', self.run_js('out.wasm', engine=engine))
 
   def test_side_module_naming(self):
-    # SIDE_MODULE should work with any arbirary filename
+    # SIDE_MODULE should work with any arbitrary filename
     for opts, target in [([], 'a.out.wasm'),
                          (['-o', 'lib.wasm'], 'lib.wasm'),
                          (['-o', 'lib.so'], 'lib.so'),
@@ -8926,7 +8927,7 @@ end
     self.assertContained('file2', result)
 
   def test_emar_duplicate_inputs(self):
-    # Verify the we can supply the same intput muliple times without
+    # Verify that we can supply the same input multiple times without
     # confusing emar.py:
     # See https://github.com/emscripten-core/emscripten/issues/9733
     create_file('file1', ' ')
@@ -8944,8 +8945,8 @@ end
     building.emar('cr', 'libfoo.a', ['@tmp.rsp'])
 
   def test_response_file_bom(self):
-    # Modern CMake version create response fils in UTF-8 but with BOM
-    # at the begining.  Test that we can handle this.
+    # Modern CMake version create response files in UTF-8 but with BOM
+    # at the beginning.  Test that we can handle this.
     # https://docs.python.org/3/library/codecs.html#encodings-and-unicode
     create_file('test.rsp', b'\xef\xbb\xbf--version', binary=True)
     self.run_process([EMCC, '@test.rsp'])
@@ -9053,7 +9054,7 @@ end
       '-sINCLUDE_FULL_LIBRARY',
       '-sOFFSCREEN_FRAMEBUFFER',
       # Enable as many features as possible in order to maximise
-      # tha amount of library code we inculde here.
+      # the amount of library code we include here.
       '-sMAIN_MODULE',
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
@@ -9149,7 +9150,7 @@ end
     # ambiguity and maximize optimization opportunities in user code.
     #
     # Currently we check for a fixed set of known attribute names which
-    # have been reported as unannoted in the past:
+    # have been reported as unannotated in the past:
     attributes = ['put', 'getContext', 'contains', 'stopPropagation', 'pause']
     methods = ''
     for attribute in attributes:
@@ -10237,13 +10238,13 @@ _d
       # Simple one-per-line response file format
       ("EXPORTED_FUNCTIONS=@response.txt", ''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''invalid export name: "\\\\'_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", r'''emcc: error: undefined exported symbol: "\\'_c'"'''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b',\\ '_c', '_d']", '''invalid export name: "\\\\ '_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b',\\ '_c', '_d']", r'''emcc: error: undefined exported symbol: "\\ '_c'"'''),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'invalid export name: "\\\\"_c""'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', r'emcc: error: undefined exported symbol: "\\"_c""'),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', 'invalid export name: "\\\\ "_c"'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', r'emcc: error: undefined exported symbol: "\\ "_c""'),
       # missing comma
       ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'wasm-ld: error: symbol exported via --export not found: b" "_c'),
     ]:
@@ -11313,7 +11314,7 @@ int main(void) {
     self.assertContained('UnhandledPromiseRejection', err)
 
   def test_em_asm_duplicate_strings(self):
-    # We had a regression where tow different EM_ASM strings from two diffferent
+    # We had a regression where two different EM_ASM strings from two different
     # object files were de-duplicated in wasm-emscripten-finalize.  This used to
     # work when we used zero-based index for store the JS strings, but once we
     # switched to absolute addresses the string needs to exist twice in the JS
@@ -11481,7 +11482,7 @@ int main(void) {
 
     # Verify that the library is normally ignored and that the link succeeds
     self.run_process(cmd + ['libtest.a'])
-    # Adding `-u baz` makes no diffeence
+    # Adding `-u baz` makes no difference
     self.run_process(cmd + ['-ubaz', 'libtest.a'])
 
     # But adding `-ufoo` should fail because it loads foo, which depends on bar
@@ -11528,7 +11529,7 @@ int main(void) {
 
   def test_warning_flags(self):
     self.run_process([EMCC, '-c', '-o', 'hello.o', test_file('hello_world.c')])
-    # -g4 will generte a deprecated warning
+    # -g4 will generate a deprecated warning
     cmd = [EMCC, 'hello.o', '-o', 'a.js', '-g4']
 
     # warning that is enabled by default
@@ -11551,7 +11552,7 @@ int main(void) {
     stderr = self.run_process(cmd + ['-Werror', '-Wno-error=deprecated'], stderr=PIPE).stderr
     self.assertContained('emcc: warning: please replace -g4 with -gsource-map [-Wdeprecated]', stderr)
 
-    # check that `-Werror=foo` also enales foo
+    # check that `-Werror=foo` also enables foo
     expected = 'error: use of legacy setting: TOTAL_MEMORY (setting renamed to INITIAL_MEMORY) [-Wlegacy-settings] [-Werror]'
     self.assert_fail(cmd + ['-Werror=legacy-settings', '-sTOTAL_MEMORY'], expected)
 
@@ -11576,7 +11577,7 @@ int main(void) {
 
   def test_pthread_stub(self):
     # Verify that programs containing pthread code can still work even
-    # without enabling threads.  This is possible becase we link in
+    # without enabling threads.  This is possible because we link in
     # libpthread_stub.a
     self.do_other_test('test_pthread_stub.c')
 
@@ -11770,7 +11771,7 @@ int main(void) {
     self.expect_fail([EMCC, '-Wl,--fatal-warnings', 'a.c', 'b.c'])
     # STRICT mode implies fatal warnings
     self.expect_fail([EMCC, '-sSTRICT', 'a.c', 'b.c'])
-    # Unless `--no-fatal-warnings` is explictly passed
+    # Unless `--no-fatal-warnings` is explicitly passed
     stderr = self.run_process([EMCC, '-sSTRICT', '-Wl,--no-fatal-warnings', 'a.c', 'b.c'], stderr=PIPE).stderr
     self.assertContained('function signature mismatch: foo', stderr)
 
@@ -11810,7 +11811,7 @@ int main(void) {
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nostdlib']))
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
 
-    # Build again but with explit system libraries
+    # Build again but with explicit system libraries
     libs = ['-lc', '-lcompiler_rt']
     self.run_process([EMCC, test_file('unistd/close.c'), '-nostdlib'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nodefaultlibs'] + libs)
@@ -12390,7 +12391,7 @@ exec "$@"
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
 
   def test_dylink_limited_exports(self):
-    # Building with MAIN_MODULE=2 should *not* automatically export all sybmols.
+    # Building with MAIN_MODULE=2 should *not* automatically export all symbols.
     self.run_process([EMCC, test_file('hello_world.c'), '-sMAIN_MODULE=2', '-o', 'out.wasm'])
 
     # Building with MAIN_MODULE=1 should include and export all of the standard library
@@ -14545,6 +14546,7 @@ addToLibrary({
   def test_embind_negative_enum_values(self):
     # Test if negative enum values are printed correctly and not overflown to
     # large values when CAN_ADDRESS_2GB is true.
+    # Test both default enums and enums as string
     src = r'''
       #include <stdio.h>
       #include <emscripten.h>
@@ -14852,21 +14854,45 @@ addToLibrary({
     self.do_runf('main.cpp', 'Hello Module!', cflags=['-std=c++20', '-fmodules'])
 
   def test_invalid_export_name(self):
-    create_file('test.c', '__attribute__((export_name("my.func"))) void myfunc() {}')
-    expected = 'emcc: error: invalid export name: "_my.func"'
-    self.assert_fail([EMCC, 'test.c'], expected)
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      #include <stdio.h>
+
+      __attribute__((export_name("my.func"))) int myfunc() { return 42; }
+
+      int main() {
+        int rtn = EM_ASM_INT(return Module['_my.func']());
+        printf("got: %d\n", rtn);
+
+        int rtn2 = EM_ASM_INT(return wasmExports['my.func']());
+        printf("got2: %d\n", rtn2);
+        return 0;
+      }
+    ''')
+    expected = 'emcc: error: export name is not a valid JS symbol: "_my.func".  Use `Module` or `wasmExports` to access this symbol'
+    self.assert_fail([EMCC, '-Werror', 'main.c'], expected)
+
+    # With warning suppressed the above program should work.
+    self.do_runf('main.c', 'got: 42\ngot2: 42\n', cflags=['-Wno-js-compiler'])
 
     # When we are generating only wasm and not JS we don't need exports to
     # be valid JS symbols.
-    self.run_process([EMCC, 'test.c', '--no-entry', '-o', 'out.wasm'])
+    self.run_process([EMCC, '-Werror', 'main.c', '--no-entry', '-o', 'out.wasm'])
 
-    # GCC (and clang) and JavaScript also allow $ in symbol names
-    create_file('valid.c', '''
-                #include <emscripten.h>
-                EMSCRIPTEN_KEEPALIVE
-                void my$func() {}
-                ''')
-    self.run_process([EMCC, 'valid.c'])
+  def test_export_with_dollarsign(self):
+    # GCC (and clang) and JavaScript both allow $ in symbol names
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      #include <stdio.h>
+
+      EMSCRIPTEN_KEEPALIVE int my$func() { return 42; }
+
+      int main() {
+        int rtn = EM_ASM_INT(return _my$func());
+        printf("got: %d\n", rtn);
+        return 0;
+      }''')
+    self.do_runf('main.c', 'got: 42\n')
 
   @also_with_modularize
   def test_instantiate_wasm(self):
@@ -15088,7 +15114,7 @@ addToLibrary({
   @requires_git_checkout
   def test_install(self):
     self.run_process([PYTHON, path_from_root('tools/install.py'), 'newdir'], env=shared.env_with_node_in_path())
-    self.assertExists('newdir/emcc')
+    self.assertExists('newdir/emcc.py')
     # Some files, such as as maintenance tools should not be part of the
     # install.
     self.assertNotExists('newdir/tools/maint/')

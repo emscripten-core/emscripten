@@ -48,20 +48,20 @@ static const char fragment_shader[] =
         "if ( dst > 0.5) discard;\n"
         "}";
 
-typedef struct NodeInfo { //structure that we want to transmit to our shaders
+typedef struct NodeInfo { // structure that we want to transmit to our shaders
     float x;
     float y;
     float s;
     float c;
 } NodeInfo;
 
-GLuint nodeTexture; //texture id used to bind
-GLuint nodeSamplerLocation; //shader sampler address
-GLuint indicesAttributeLocation; //shader attribute address
-GLuint indicesVBO; //Vertex Buffer Object Id;
+GLuint nodeTexture; // texture id used to bind
+GLuint nodeSamplerLocation; // shader sampler address
+GLuint indicesAttributeLocation; // shader attribute address
+GLuint indicesVBO; // Vertex Buffer Object Id;
 #define NUM_NODES 512
-NodeInfo data[NUM_NODES]; //our data that will be transmitted using float texture.
-double alpha = 0; //use to make a simple funny effect;
+NodeInfo data[NUM_NODES]; // our data that will be transmitted using float texture.
+double alpha = 0; // use to make a simple funny effect;
                   //
 static void updateFloatTexture() {
     int count = 0;
@@ -94,7 +94,7 @@ static void glut_draw_callback(void) {
     glClearColor(1., 1., 1., 0.);
     glClear(GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
     glActiveTexture(GL_TEXTURE0);
-    updateFloatTexture(); //we change the texture each time to create the effect (it is just for the test)
+    updateFloatTexture(); // we change the texture each time to create the effect (it is just for the test)
     glBindTexture(GL_TEXTURE_2D, nodeTexture);
     glUniform1i(nodeSamplerLocation, 0);
     glEnableVertexAttribArray(0);
@@ -142,7 +142,7 @@ static void gl_init(void) {
         elements[count] = count;
         ++count;
     }
-    /*Create one texture to store all the needed information */
+    /* Create one texture to store all the needed information */
     glGenTextures(1, &nodeTexture);
     /* Store the vertices in a vertex buffer object (VBO) */
     glGenBuffers(1, &indicesVBO);
@@ -152,7 +152,7 @@ static void gl_init(void) {
     nodeSamplerLocation = glGetUniformLocation(program, "nodeInfo");
     glBindAttribLocation(program, 0, "indices");
 #ifndef __EMSCRIPTEN__ // GLES2 & WebGL do not have these, only pre 3.0 desktop GL and compatibility mode GL3.0+ GL do.
-    //Enable glPoint size in shader, always enable in Open Gl ES 2.
+    // Enable glPoint size in shader, always enable in Open Gl ES 2.
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);
     glEnable(GL_POINT_SPRITE);
 #endif

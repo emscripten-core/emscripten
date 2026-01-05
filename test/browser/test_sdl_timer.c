@@ -8,7 +8,12 @@
 #include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
+#include <emscripten/eventloop.h>
+#ifdef USE_SDL2
+#include <SDL2/SDL.h>
+#else
 #include <SDL/SDL.h>
+#endif
 
 Uint32 start_time;
 
@@ -25,7 +30,8 @@ Uint32 SDLCALL timer_callback(Uint32 interval, void *param) {
   emscripten_force_exit(0);
 }
 
-void nop(void) {}
+int badret = 4;
+int goodret = 5;
 
 int main(int argc, char** argv) {
   SDL_Init(SDL_INIT_TIMER);
@@ -36,13 +42,16 @@ int main(int argc, char** argv) {
   // not enough ticks from busy-wait
   assert(ticks2 >= ticks1 + 4);
 
-  int badret = 4;
-  int goodret = 5;
-
   start_time = SDL_GetTicks();
   SDL_TimerID badtimer = SDL_AddTimer(500, timer_callback, &badret);
   SDL_TimerID goodtimer = SDL_AddTimer(1000, timer_callback, &goodret);
   SDL_RemoveTimer(badtimer);
 
+#if defined(USE_SDL2) && defined(_REENTRANT)
+  // When threading is enabled SDL2 uses its generic thread-based timer
+  // system.  This does not keep the runtime alive like the non-threaded (or
+  // SDL1) implementation based on emscripten_set_timeout.
+  emscripten_runtime_keepalive_push();
+#endif
   return 99;
 }

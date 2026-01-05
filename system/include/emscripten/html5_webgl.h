@@ -164,7 +164,7 @@ int emscripten_webgl_get_vertex_attrib_v(int index, GLenum param, void *dst __at
 double emscripten_webgl_get_uniform_d(GLint program, int location);
 
 // Calls GLctx.getUniform():
-// Gets an array set to an uniform in a program in the given location.
+// Gets an array set to a uniform in a program in the given location.
 // Call this function only for array uniform types. (vec2, ivec2 and so on)
 // Use dstType to specify whether to read in ints or floats.
 // The function writes at most dstLength array elements to array dst.

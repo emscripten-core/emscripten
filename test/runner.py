@@ -119,7 +119,7 @@ misc_test_modes = [
 
 def check_js_engines():
   if not all(jsrun.check_engine(e) for e in config.JS_ENGINES):
-    errlog('Not all the JS engines in JS_ENGINES appears to work.')
+    errlog('Not all the JS engines in JS_ENGINES appear to work.')
     sys.exit(1)
 
   if common.EMTEST_ALL_ENGINES:
@@ -376,6 +376,11 @@ def load_test_suites(args, modules, options):
       except AttributeError:
         pass
     if names_in_module:
+      # Ensure verbose output for the benchmark suite, as otherwise no benchmark
+      # results are emitted.
+      if m.__name__ == 'test_benchmark':
+        options.verbose = max(options.verbose, 1)
+
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
       suite = suite_for_module(m, tests, options)
@@ -436,7 +441,7 @@ def run_tests(options, suites):
     testRunner = SingleLineTestRunner(failfast=options.failfast)
   else:
     if not options.ansi:
-      print('using verbose test runner (ANSI not avilable)')
+      print('using verbose test runner (ANSI not available)')
     else:
       print('using verbose test runner (verbose output requested)')
     testRunner = ColorTextRunner(failfast=options.failfast)

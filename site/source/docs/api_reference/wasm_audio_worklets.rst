@@ -27,6 +27,14 @@ Audio Worklets API is based on the Wasm Workers feature. It is possible to
 also enable the `-pthread` option while targeting Audio Worklets, but the
 audio worklets will always run in a Wasm Worker, and not in a Pthread.
 
+.. note::
+   If you want to load an emscripten-generated program into an AudioContext that
+   you have created yourself, without depending on shared memory or
+   :ref:`WASM_WORKERS` you can add ``worklet`` to :ref:`ENVIRONMENT`.  In this
+   mode, because Audio Worklets do not have any kind of fetch API, you will need
+   either use `-sSINGLE_FILE` (to embed the Wasm file), or use a custom
+   `instantiateWasm` to supply the Wasm module yourself (e.g. via `postMessage`).
+
 Development Overview
 ====================
 

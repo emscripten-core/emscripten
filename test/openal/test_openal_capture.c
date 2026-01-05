@@ -164,7 +164,7 @@ void iter() {
   if (app.captured < target)
     return;
   else if (app.captured > target) {
-    fprintf(stderr, "Captured frames exeedes expectations!\n");
+    fprintf(stderr, "Captured frames exceeds expectations!\n");
     end_test(EXIT_FAILURE);
   }
 
@@ -288,7 +288,7 @@ void ignite() {
 #endif
   }
 
-  //allocate memory to store captured audio
+  // allocate memory to store captured audio
   app.recorded_size = bytesForDuration(app.duration);
   app.recorded = malloc(app.recorded_size);
   if (!app.recorded) {

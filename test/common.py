@@ -34,6 +34,7 @@ from tools.settings import COMPILE_TIME_SETTINGS
 from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir
 from tools.utils import (
   WINDOWS,
+  exe_path_from_root,
   exit_with_error,
   path_from_root,
   read_binary,
@@ -77,13 +78,13 @@ TEST_ROOT = path_from_root('test')
 LAST_TEST = path_from_root('out/last_test.txt')
 PREVIOUS_TEST_RUN_RESULTS_FILE = path_from_root('out/previous_test_run_results.json')
 
-WEBIDL_BINDER = utils.bat_suffix(path_from_root('tools/webidl_binder'))
+WEBIDL_BINDER = exe_path_from_root('tools/webidl_binder')
 
-EMBUILDER = utils.bat_suffix(path_from_root('embuilder'))
-EMMAKE = utils.bat_suffix(path_from_root('emmake'))
-EMCMAKE = utils.bat_suffix(path_from_root('emcmake'))
-EMCONFIGURE = utils.bat_suffix(path_from_root('emconfigure'))
-EMRUN = utils.bat_suffix(utils.path_from_root('emrun'))
+EMBUILDER = exe_path_from_root('embuilder')
+EMMAKE = exe_path_from_root('emmake')
+EMCMAKE = exe_path_from_root('emcmake')
+EMCONFIGURE = exe_path_from_root('emconfigure')
+EMRUN = exe_path_from_root('emrun')
 WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
@@ -125,6 +126,10 @@ def maybe_test_file(filename):
 
 def copytree(src, dest):
   shutil.copytree(src, dest, dirs_exist_ok=True)
+
+
+def exe_suffix(cmd):
+  return cmd + '.exe' if WINDOWS else cmd
 
 
 def compiler_for(filename, force_c=False):
@@ -248,7 +253,7 @@ def force_delete_dir(dirname):
   except PermissionError as e:
     # This issue currently occurs on Windows when running browser tests e.g.
     # on Firefox browser. Killing Firefox browser is not 100% watertight, and
-    # occassionally a Firefox browser process can be left behind, holding on
+    # occasionally a Firefox browser process can be left behind, holding on
     # to a file handle, preventing the deletion from succeeding.
     # We expect this issue to only occur on Windows.
     if not WINDOWS:
@@ -525,17 +530,15 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.is_browser_test():
       return
 
-    exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
     # Support for JSPI came earlier than 22, but the new API changes require v24
     if self.try_require_node_version(24):
-      self.node_args += exp_args
+      self.node_args += ['--experimental-wasm-stack-switching']
       return
 
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.js_engines = [v8]
-      self.v8_args += exp_args
       return
 
     self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
@@ -625,7 +628,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.set_setting('NO_DEFAULT_TO_CXX')
     self.ldflags = []
     # Increase the stack trace limit to maximise usefulness of test failure reports.
-    # Also, include backtrace for all uncuaght exceptions (not just Error).
+    # Also, include backtrace for all uncaught exceptions (not just Error).
     self.node_args = ['--stack-trace-limit=50', '--trace-uncaught']
     self.spidermonkey_args = ['-w']
 
@@ -889,7 +892,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     return len(non_data_lines)
 
   def clean_js_output(self, output):
-    """Cleaup the JS output prior to running verification steps on it.
+    """Cleanup the JS output prior to running verification steps on it.
 
     Due to minification, when we get a crash report from JS it can sometimes
     contains the entire program in the output (since the entire program is
@@ -1166,7 +1169,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     # core emscripten code (shared.py) here.
 
     # Handle buffering for subprocesses.  The python unittest buffering mechanism
-    # will only buffer output from the current process (by overwriding sys.stdout
+    # will only buffer output from the current process (by overriding sys.stdout
     # and sys.stderr), not from sub-processes.
     stdout_buffering = 'stdout' not in kwargs and isinstance(sys.stdout, io.StringIO)
     stderr_buffering = 'stderr' not in kwargs and isinstance(sys.stderr, io.StringIO)
@@ -1222,7 +1225,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.assertContained(expected, err)
     return err
 
-  # excercise dynamic linker.
+  # exercise dynamic linker.
   #
   # test that linking to shared library B, which is linked to A, loads A as well.
   # main is also linked to C, which is also linked to A. A is loaded/initialized only once.
@@ -1232,7 +1235,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   #          C
   #
   # this test is used by both test_core and test_browser.
-  # when run under browser it excercises how dynamic linker handles concurrency
+  # when run under browser it exercises how dynamic linker handles concurrency
   # - because B and C are loaded in parallel.
   def _test_dylink_dso_needed(self, do_run):
     create_file('liba.cpp', r'''
@@ -1485,7 +1488,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.cflags += cflags
     # inflate.c does -1L << 16
     self.cflags.append('-Wno-shift-negative-value')
-    # adler32.c uses K&R sytyle function declarations
+    # adler32.c uses K&R style function declarations
     self.cflags.append('-Wno-deprecated-non-prototype')
     # Work around configure-script error. TODO: remove when
     # https://github.com/emscripten-core/emscripten/issues/16908 is fixed

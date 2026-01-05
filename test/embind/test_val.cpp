@@ -578,7 +578,7 @@ int main() {
 
   test("bool in(const val& v)");
   EM_ASM(
-    // can't declare like this because i get:
+    // can't declare like this because I get:
     //   error: use of undeclared identifier 'c'
     // possibly a bug with EM_ASM
     //a = {b: 'bb',c: 'cc'};
@@ -636,7 +636,7 @@ int main() {
   // these tests should probably go elsewhere as it is not a member of val
   test("template<typename T> std::vector<T> vecFromJSArray(const val& v)");
   EM_ASM(
-    // can't declare like this because i get:
+    // can't declare like this because I get:
     //   error: expected ')'
     // possibly a bug with EM_ASM
     //a = [1, '2'];

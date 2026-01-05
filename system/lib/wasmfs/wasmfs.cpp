@@ -16,7 +16,7 @@
 namespace wasmfs {
 
 #ifdef WASMFS_CASE_INSENSITIVE
-backend_t createIgnoreCaseBackend(std::function<backend_t()> createBacken);
+backend_t createIgnoreCaseBackend(std::function<backend_t()> createBackend);
 #endif
 
 // The below lines are included to make the compiler believe that the global

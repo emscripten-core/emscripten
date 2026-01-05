@@ -151,7 +151,7 @@ def asan(func):
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb('asan doesnt support GLOBAL_BASE')
+  @no_2gb("asan doesn't support GLOBAL_BASE")
   @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def decorated(self, *args, **kwargs):
     return func(self, *args, **kwargs)
@@ -193,7 +193,7 @@ def needs_dylink(func):
     self.check_dylink()
     if relocatable:
       # Since `-sMAIN_MODULE` no longer implies `-sRELOCATABLE` but we want
-      # to keep that cominbation working we run all the `@needs_dylink` tests
+      # to keep that combination working we run all the `@needs_dylink` tests
       # both with and without the explicit `-sRELOCATABLE`
       self.set_setting('RELOCATABLE')
       self.cflags.append('-Wno-deprecated')
@@ -757,7 +757,7 @@ class TestCoreBase(RunnerCore):
   def test_unsigned(self):
     src = '''
       #include <stdio.h>
-      const signed char cvals[2] = { -1, -2 }; // compiler can store this is a string, so -1 becomes \\FF, and needs re-signing
+      const signed char cvals[2] = { -1, -2 }; // compiler can store this as a string, so -1 becomes \\FF, and needs re-signing
       int main()
       {
         {
@@ -1551,18 +1551,8 @@ int main(int argc, char **argv) {
               } catch(p) {
                   // Because we are catching and handling the exception in JS, the normal
                   // exception catching C++ code doesn't kick in, so we need to make sure we free
-                  // the exception, if necessary. By incrementing and decrementing the refcount
-                  // we trigger the free'ing of the exception if its refcount was zero.
-#ifdef __USING_EMSCRIPTEN_EXCEPTION__
-                  // FIXME Currently Wasm EH and Emscripten EH increases
-                  // refcounts in different places. Wasm EH sets the refcount to
-                  // 1 when throwing, and decrease it in __cxa_end_catch.
-                  // Emscripten EH sets the refcount to 0 when throwing, and
-                  // increase it in __cxa_begin_catch, and decrease it in
-                  // __cxa_end_catch. Fix this inconsistency later.
-                  // https://github.com/emscripten-core/emscripten/issues/17115
-                  incrementExceptionRefcount(p);
-#endif
+                  // the exception, if necessary. By decrementing the refcount we trigger the
+                  // free'ing of the exception.
                   out(getExceptionMessage(p).toString());
                   decrementExceptionRefcount(p);
               }
@@ -1735,7 +1725,7 @@ int main() {
     clear_all_relevant_settings(self)
 
   # Marked as impure since the WASI reactor modules (modules without main)
-  # are not yet suppored by the wasm engines we test against.
+  # are not yet supported by the wasm engines we test against.
   @also_with_standalone_wasm(impure=True)
   @no_2gb('https://github.com/WebAssembly/binaryen/issues/5893')
   def test_ctors_no_main(self):
@@ -2220,9 +2210,9 @@ int main(int argc, char **argv) {
     self.cflags += ['-sALLOW_MEMORY_GROWTH', '-sSTACK_SIZE=1Mb', '-sINITIAL_MEMORY=32Mb', '-sMAXIMUM_MEMORY=64Mb', '-sMEMORY_GROWTH_LINEAR_STEP=1Mb']
     self.do_core_test('test_memorygrowth_linear_step.c')
 
-  @no_ubsan('UBSan seems to effect the precise memory usage')
-  @no_4gb('depends on specifc memory layout')
-  @no_2gb('depends on specifc memory layout')
+  @no_ubsan('UBSan seems to affect the precise memory usage')
+  @no_4gb('depends on specific memory layout')
+  @no_2gb('depends on specific memory layout')
   def test_memorygrowth_geometric_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2748,7 +2738,7 @@ The current type of b is: 9
       self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
     self.do_runf('pthread/test_pthread_tls.c')
 
-  @no_modularize_instance('uses global Module objecgt')
+  @no_modularize_instance('uses global Module object')
   def test_pthread_run_script(self):
     if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
@@ -3129,7 +3119,7 @@ The current type of b is: 9
       void lib_fptr() {
         printf("Second calling lib_fptr from main.\n");
         parent_func();
-        // call it also through a pointer, to check indexizing
+        // call it also through a pointer, to check indexing
         void (*p_f)();
         p_f = parent_func;
         p_f();
@@ -3947,7 +3937,7 @@ caught outer int: 123
   @needs_dylink
   @no_modularize_instance('uses file packager')
   def test_dlfcn_preload(self):
-    # Create chain of dependencies and load the first libary with preload plugin.
+    # Create chain of dependencies and load the first library with preload plugin.
     # main -> libb.so -> liba.so
     create_file('liba.c', r'''
       #include <stdio.h>
@@ -4047,7 +4037,7 @@ caught outer int: 123
 
     shutil.move(so_file, so_file + '.orig')
 
-    # Verify that building with -sSIDE_MODULE is essentailly the same as building with `-shared -fPIC -sFAKE_DYLIBS=0`.
+    # Verify that building with -sSIDE_MODULE is essentially the same as building with `-shared -fPIC -sFAKE_DYLIBS=0`.
     flags = ['-shared', '-fPIC', '-sFAKE_DYLIBS=0']
     if isinstance(side, list):
       # side is just a library
@@ -4155,7 +4145,7 @@ caught outer int: 123
       int main() {
         void* puts_side = get_address();
         printf("main module address %p.\n", &puts);
-        printf("side module address address %p.\n", puts_side);
+        printf("side module address %p.\n", puts_side);
         if (&puts == puts_side)
           printf("success\n");
         else
@@ -4636,8 +4626,8 @@ res64 - external 64\n''', header='''\
       extern int main2();
       double sidey() {
         int temp = main2();
-        printf("main2 sed: %d\n", temp);
-        printf("main2 sed: %u, %c\n", temp, temp/2);
+        printf("main2 said: %d\n", temp);
+        printf("main2 said: %u, %c\n", temp, temp/2);
         return test_lib_func(temp);
       }
     ''', expected='other says 45.2', main_cflags=['--js-library', 'lib.js'], force_c=True)
@@ -5760,7 +5750,7 @@ got: 10
   @no_sanitize('requires libc to be built with -fshort-char')
   def test_utf32_short_wchar(self):
     if '-flto' in self.cflags or '-flto=thin' in self.cflags:
-      self.skipTest('-fshort-wchar is not compatible with LTO (libraries would need rebuilting)')
+      self.skipTest('-fshort-wchar is not compatible with LTO (libraries would need rebuilding)')
     self.do_runf('utf32.cpp', 'OK (short).\n', cflags=['-fshort-wchar'])
 
   @with_both_text_decoder
@@ -5946,7 +5936,7 @@ got: 10
   @no_wasmfs('wasmfs will (?) need a non-JS mechanism to ignore permissions during startup')
   @also_with_minimal_runtime
   def test_fs_no_main(self):
-    # library_fs.js uses hooks to enable ignoring of permisions up until ATMAINs are run.  This
+    # library_fs.js uses hooks to enable ignoring of permissions up until ATMAINs are run.  This
     # test verified that they work correctly, even in programs without a main function.
     create_file('pre.js', '''
 Module.preRun = () => {
@@ -5986,7 +5976,7 @@ Module.onRuntimeInitialized = () => {
         );
         return 0;
       }
-    ''', 'at Object.readFile', assert_returncode=NON_ZERO) # engines has different error stack format
+    ''', 'at Object.readFile', assert_returncode=NON_ZERO) # engines have different error stack format
 
   @also_with_noderawfs
   def test_fs_llseek(self):
@@ -6031,7 +6021,7 @@ Module.onRuntimeInitialized = () => {
     self.do_runf('fs/test_fs_rename_on_existing.c', 'success')
 
   @also_with_nodefs_both
-  @no_windows('stat ino values dont match on windows')
+  @no_windows("stat ino values don't match on windows")
   @crossplatform
   @no_wasmfs('Assertion failed: "a_ino == sta.st" in test_fs_readdir_ino_matches_stat_ino.c, line 58. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_readdir_ino_matches_stat_ino(self):
@@ -6071,9 +6061,9 @@ Module.onRuntimeInitialized = () => {
   def test_unistd_access(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    # On windows we have slighly different output because we the same
+    # On windows we have slightly different output because we use the same
     # level of permissions are not available. For example, on windows
-    # its not possible have a file that is not readable, but writable.
+    # it's not possible to have a file that is not readable, but writable.
     # We also report all files as executable since there is no x bit
     # recorded there.
     # See https://learn.microsoft.com/en-us/cpp/c-runtime-library/reference/chmod-wchmod?view=msvc-170#remarks
@@ -6363,7 +6353,7 @@ PORT: 3979
     # The follow program should fail, assuming the above LC_CTYPE + PYTHONUTF8
     # are having the desired effect.
     # This means that files open()'d by emscripten without an explicit encoding will
-    # cause this test to file, hopefully catching any places where we forget to do this.
+    # cause this test to fail, hopefully catching any places where we forget to do this.
 
     # On Windows when Unicode support is enabled, this test code does not fail.
     if not (WINDOWS and self.run_process(['chcp'], stdout=PIPE, shell=True).stdout.strip() == 'Active code page: 65001'):
@@ -6591,7 +6581,7 @@ void* operator new(size_t size) {
     'unsigned_char': (['-funsigned-char'],),
   })
   def test_wasm_intrinsics_simd(self, args):
-    # These flags need to go first so that they comebore any existing `-Wno-..` flags
+    # These flags need to go first so that they come before any existing `-Wno-..` flags
     self.cflags.insert(0, '-Wpedantic')
     self.cflags.insert(0, '-Wall')
     self.do_runf('test_wasm_intrinsics_simd.c', 'Success!', cflags=args)
@@ -7922,7 +7912,7 @@ void* operator new(size_t size) {
     src_index = data['sources'].index('src.cpp')
     if hasattr(data, 'sourcesContent'):
       # the sourcesContent attribute is optional, but if it is present it
-      # needs to containt valid source text.
+      # needs to contain valid source text.
       self.assertTextDataIdentical(src, data['sourcesContent'][src_index])
     mappings = json.loads(self.run_js(
       path_from_root('test/sourcemap2json.js'),
@@ -8741,16 +8731,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_runf('declare_asm_module_exports.c', 'jsFunction: 1')
     js = read_file('declare_asm_module_exports.js')
-    occurances = js.count('cFunction')
+    occurrences = js.count('cFunction')
     if self.is_optimizing() and '-g' not in self.cflags:
       # In optimized builds only the single reference cFunction that exists in the EM_ASM should exist
       if self.is_wasm():
-        self.assertEqual(occurances, 1)
+        self.assertEqual(occurrences, 1)
       else:
         # With js the asm module itself also contains a reference for the cFunction name
-        self.assertEqual(occurances, 2)
+        self.assertEqual(occurrences, 2)
     else:
-      print(occurances)
+      print(occurrences)
 
   # Tests that -sMINIMAL_RUNTIME works well in different build modes
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -9665,10 +9655,27 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
 
+  @node_pthreads
+  def test_select_blocking(self):
+    self.do_runf('core/test_select_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @node_pthreads
+  def test_poll_blocking(self):
+    self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @parameterized({
+    '': ([],),
+    'pthread': (['-pthread'],),
+  })
+  def test_pipe_select(self, args):
+    if args:
+      self.setup_node_pthreads()
+    self.do_runf('core/test_pipe_select.c', cflags=args)
+
   @also_without_bigint
   def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are
-    # used to recieve i64 argument in syscalls.
+    # used to receive i64 argument in syscalls.
     self.cflags += ['--js-library=' + test_file('core/test_jslib_i64_params.js')]
     self.do_core_test('test_jslib_i64_params.c')
 

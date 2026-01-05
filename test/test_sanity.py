@@ -19,6 +19,7 @@ from common import (
   create_file,
   ensure_dir,
   env_modify,
+  exe_suffix,
   make_executable,
   path_from_root,
   test_file,
@@ -101,7 +102,7 @@ def make_fake_clang(filename, version, targets='wasm32 - WebAssembly 32-bit'):
 
 # Return a new PATH that has no directories that would contain the given tool.
 def path_without_tool(env_path, tool_bin):
-  tool_bin = utils.exe_suffix(tool_bin)
+  tool_bin = exe_suffix(tool_bin)
   python_path = os.path.normpath(os.path.dirname(sys.executable))
 
   def ignore_path(p):
@@ -837,8 +838,7 @@ fi
     self.assert_fail([EMCC, test_file('hello_world.c')], expected)
 
     # Running bootstrap.py should fix that
-    bootstrap = shared.bat_suffix(path_from_root('bootstrap'))
-    self.run_process([bootstrap])
+    self.run_process([utils.exe_path_from_root('bootstrap')])
 
     # Now the compiler should work again
     self.run_process([EMCC, test_file('hello_world.c')])
@@ -857,4 +857,4 @@ fi
     env['PATH'] = path_without_tool(env['PATH'], 'clang')
 
     # Running bootstrap.py should not fail
-    self.run_process([shared.bat_suffix(path_from_root('bootstrap'))], env=env)
+    self.run_process([utils.exe_path_from_root('bootstrap')], env=env)

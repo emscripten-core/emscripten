@@ -1461,7 +1461,7 @@ var LibrarySDL = {
     var size  = driverName.length;
 
     if (max_size <= size) {
-      size = max_size - 1; //-1 cause null-terminator
+      size = max_size - 1; // -1 because of null-terminator
     }
 
     while (index < size) {
@@ -1594,8 +1594,8 @@ var LibrarySDL = {
       if (surfData.isFlagSet({{{ cDefs.SDL_HWPALETTE }}})) {
         // If this is needed then
         // we should compact the data from 32bpp to 8bpp index.
-        // I think best way to implement this is use
-        // additional colorMap hash (color->index).
+        // I think the best way to implement this is to use
+        // an additional colorMap hash (color->index).
         // Something like this:
         //
         // var size = surfData.width * surfData.height;
@@ -1744,12 +1744,15 @@ var LibrarySDL = {
   },
 
 #if ASYNCIFY
-  SDL_Delay__deps: ['emscripten_sleep'],
-  SDL_Delay__async: true,
-  SDL_Delay: (delay) => _emscripten_sleep(delay),
+  SDL_Delay: 'emscripten_sleep',
 #else
+#if ASSERTIONS
+  SDL_Delay__deps: ['$warnOnce'],
+#endif
   SDL_Delay: (delay) => {
-    if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
+#if ASSERTIONS
+    if (!ENVIRONMENT_IS_WORKER) warnOnce('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
+#endif
     // horrible busy-wait, but in a worker it at least does not block rendering
     var now = Date.now();
     while (Date.now() - now < delay) {}
@@ -1948,9 +1951,9 @@ var LibrarySDL = {
 #endif
 
     if (surfData.isFlagSet({{{ cDefs.SDL_HWPALETTE }}})) {
-      //in SDL_HWPALETTE color is index (0..255)
-      //so we should translate 1 byte value to
-      //32 bit canvas
+      // in SDL_HWPALETTE color is index (0..255)
+      // so we should translate 1 byte value to
+      // 32 bit canvas
       color = surfData.colors32[color];
     }
 
