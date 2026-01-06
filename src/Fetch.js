@@ -41,6 +41,10 @@ var FetchXHR = class {
   _aborted = false;
   _responseHeaders = null;
 
+  // When enabled the the data will be streamed using progress events. If the full result is needed
+  // the data must be collected during the progress events.
+  _streamData = false;
+
   // --- Private state management ---
   _changeReadyState(state) {
     this.readyState = state;
@@ -174,7 +178,9 @@ var FetchXHR = class {
       const contentLength = +response.headers.get('Content-Length');
 
       let receivedLength = 0;
-      const chunks = [];
+      // When streaming data don't collect all of the chunks into one large chunk. It's up to the
+      // user to collect the data as it comes in.
+      const chunks = this._streamData ? null : [];
 
       while (true) {
         const { done, value } = await reader.read();
@@ -182,7 +188,9 @@ var FetchXHR = class {
           break;
         }
 
-        chunks.push(value);
+        if (!this._streamData) {
+          chunks.push(value);
+        }
         receivedLength += value.length;
 
         if (this.onprogress) {
@@ -197,16 +205,19 @@ var FetchXHR = class {
         }
       }
 
-      // Combine chunks into a single Uint8Array.
-      const allChunks = new Uint8Array(receivedLength);
-      let position = 0;
-      for (const chunk of chunks) {
-        allChunks.set(chunk, position);
-        position += chunk.length;
+      if (this._streamData) {
+        this.response = null;
+      } else {
+        // Combine chunks into a single Uint8Array.
+        const allChunks = new Uint8Array(receivedLength);
+        let position = 0;
+        for (const chunk of chunks) {
+          allChunks.set(chunk, position);
+          position += chunk.length;
+        }
+        // Convert to ArrayBuffer as requested by responseType
+        this.response = allChunks.buffer;
       }
-
-      // Convert to ArrayBuffer as requested by responseType
-      this.response = allChunks.buffer;
     } catch (error) {
       this.statusText = error.message;
 
@@ -517,6 +528,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   var xhr = new XMLHttpRequest();
 #endif
   xhr.withCredentials = !!{{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.withCredentials, 'u8') }}};;
+  xhr._streamData = fetchAttrStreamData;
 #if FETCH_DEBUG
   dbg(`fetch: xhr.timeout: ${xhr.timeout}, xhr.withCredentials: ${xhr.withCredentials}`);
   dbg(`fetch: xhr.open(requestMethod="${requestMethod}", url: "${url}", userName: ${userNameStr}, password: ${passwordStr}`);
@@ -609,6 +621,11 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (xhr.status >= 200 && xhr.status < 300) {
 #if FETCH_DEBUG
       dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" succeeded with status ${xhr.status}`);
+#endif
+#if ASSERTIONS
+      if (fetchAttrStreamData) {
+        assert(xhr.response === null);
+      }
 #endif
       onsuccess(fetch, xhr, e);
     } else {
