@@ -719,3 +719,31 @@ console.error('JSLIB: none of the above');
       #endif
     ''')
     self.assert_fail([EMCC, '--js-library=libfoo.js'], 'error: libfoo.js:3: #error "library does not support emscripten > 3.0.0"')
+
+  def test_jslib_named_class(self):
+    create_file('lib.js', r'''
+      class MyClass {
+        constructor() { this.x = 42; }
+      }
+
+      addToLibrary({
+        $MyClass: MyClass,
+        log_class__deps: ['$MyClass'],
+        log_class: () => {
+          var i = new MyClass();
+          out('MyClass: ' + i.x);
+        }
+      });
+    ''')
+    create_file('src.c', r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      extern void log_class();
+
+      int main() {
+        log_class();
+        return 0;
+      }
+    ''')
+    self.do_runf('src.c', 'MyClass: 42', cflags=['--js-library', 'lib.js'])
