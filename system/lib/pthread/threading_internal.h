@@ -37,10 +37,10 @@ typedef struct thread_profiler_block {
 // This function takes care of running the event queue and other housekeeping
 // tasks.
 //
-// If that caller already know the current time it can pass it vai the now
+// If the caller already knows the current time it can pass it via the now
 // argument.  This can save _emscripten_check_timers from needing to call out to
 // JS to get the current time.  Passing 0 means that caller doesn't know the
-// the current time.
+// current time.
 void _emscripten_yield(double now);
 
 void _emscripten_init_main_thread_js(void* tb);
@@ -62,7 +62,7 @@ void _emscripten_thread_set_strongref(pthread_t thread);
 // Checks certain structural invariants.  This allows us to detect when
 // already-freed threads are used in some APIs.  Technically this is undefined
 // behaviour, but we have a couple of places where we add these checks so that
-// we can pass more of the posixtest suite that vanilla musl.
+// we can pass more of the posixtest suite than vanilla musl.
 int _emscripten_thread_is_valid(pthread_t thread);
 
 void _emscripten_thread_exit_joinable(pthread_t thread);

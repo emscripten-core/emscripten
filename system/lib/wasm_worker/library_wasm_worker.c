@@ -53,7 +53,7 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress
   // The TLS region lives at the start of the stack region (the lowest address
   // of the stack).  Since the TLS data alignment may be larger than stack
   // alignment, we may need to round up the lowest stack address to meet this
-  // requirment.
+  // requirement.
   if (__builtin_wasm_tls_align() > STACK_ALIGN) {
     uintptr_t tlsBase = (uintptr_t)stackPlusTLSAddress;
     tlsBase = ROUND_UP(tlsBase, __builtin_wasm_tls_align());

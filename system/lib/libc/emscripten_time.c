@@ -30,7 +30,7 @@ weak int __gettimeofday(struct timeval *restrict tv, void *restrict tz) {
   double now_ms = emscripten_date_now();
   long long now_s = now_ms / 1000;
   tv->tv_sec = now_s; // seconds
-  tv->tv_usec = (now_ms - (now_s * 1000)) * 1000; // nicroseconds
+  tv->tv_usec = (now_ms - (now_s * 1000)) * 1000; // microseconds
   return 0;
 }
 

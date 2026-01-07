@@ -840,7 +840,7 @@ function fetchGetResponseHeaders(id, dst, dstSizeBytes) {
   return stringToUTF8(responseHeaders, dst, dstSizeBytes) + 1;
 }
 
-//Delete the xhr JS object, allowing it to be garbage collected.
+// Delete the xhr JS object, allowing it to be garbage collected.
 function fetchFree(id) {
 #if FETCH_DEBUG
   dbg(`fetch: fetchFree id:${id}`);

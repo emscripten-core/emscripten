@@ -81,7 +81,7 @@ Calling compiled C functions from JavaScript
 
   Returns a native JavaScript wrapper for a C function.
 
-  This is similar to :js:func:`ccall`, but returns a JavaScript function that can be reused as many time as needed. The C function can be defined in a C file, or be a C-compatible C++ function defined using ``extern "C"`` (to prevent name mangling).
+  This is similar to :js:func:`ccall`, but returns a JavaScript function that can be reused as many times as needed. The C function can be defined in a C file, or be a C-compatible C++ function defined using ``extern "C"`` (to prevent name mangling).
 
 
   .. code-block:: javascript
@@ -239,7 +239,7 @@ Conversion functions — strings, pointers and arrays
 
 .. js:function:: intArrayFromString(stringy, dontAddNull[, length])
 
-  This converts a JavaScript string into a C-line array of numbers, 0-terminated.
+  This converts a JavaScript string into a C-like array of numbers, 0-terminated.
 
   :param stringy: The string to be converted.
   :type stringy: String
@@ -251,7 +251,7 @@ Conversion functions — strings, pointers and arrays
 
 .. js:function:: intArrayToString(array)
 
-  This creates a JavaScript string from a zero-terminated C-line array of numbers.
+  This creates a JavaScript string from a zero-terminated C-like array of numbers.
 
   :param array: The array to convert.
   :returns: A ``String``, containing the content of ``array``.

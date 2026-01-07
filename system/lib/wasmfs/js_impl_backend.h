@@ -40,7 +40,7 @@
 // For a simple example, see js_file_backend.cpp and library_wasmfs_js_file.js
 //
 
-// Index type that is used on the JS side to refer to backands and file
+// Index type that is used on the JS side to refer to backends and file
 // handles.  Currently these are both passed as raw pointers rather than
 // integer handles which is why we use uintptr_t here.
 // TODO: Use a narrower type here and avoid passing raw pointers.

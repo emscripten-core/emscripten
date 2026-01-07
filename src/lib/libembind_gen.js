@@ -752,7 +752,7 @@ var LibraryEmbind = {
       return [];
     });
   },
-  // Stub function. This is called a when extending an object and not needed for TS generation.
+  // Stub function. This is called when extending an object and not needed for TS generation.
   _embind_create_inheriting_constructor: (constructorName, wrapperType, properties) => {},
   _embind_register_enum__deps: ['$AsciiToString', '$EnumDefinition', '$moduleDefinitions', '$getEnumValueType'],
   _embind_register_enum: function(rawType, name, size, isSigned, rawValueType) {

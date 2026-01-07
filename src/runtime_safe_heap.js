@@ -5,7 +5,7 @@
  */
 
 #if !SAFE_HEAP
-#error "should only be inclded in SAFE_HEAP mode"
+#error "should only be included in SAFE_HEAP mode"
 #endif
 
 #if SAFE_HEAP_LOG

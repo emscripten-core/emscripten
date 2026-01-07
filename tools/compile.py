@@ -15,7 +15,7 @@ get_clang_flags(): In addition to the target flags this function returns all the
 required compiler flags.
 
 get_cflags(): In addition to compiler flags this function also returns pre-processor
-flags. For example, include paths and macro defintions.
+flags. For example, include paths and macro definitions.
 """
 
 import os

@@ -463,7 +463,7 @@ addToLibrary({
   },
 #elif !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
-  // These are in order to print helpful error messages when either longjmp of
+  // These are in order to print helpful error messages when either longjmp or
   // setjmp is used.
   longjmp__deps: [() => {
     error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
@@ -666,7 +666,7 @@ addToLibrary({
     }
 
     if (str.indexOf(".") > 0) {
-      // parse IPv4 embedded stress
+      // parse IPv4 embedded address
       str = str.replace(new RegExp('[.]', 'g'), ":");
       words = str.split(":");
       words[words.length-4] = Number(words[words.length-4]) + Number(words[words.length-3])*256;
@@ -686,7 +686,7 @@ addToLibrary({
           }
           offset = z-1;
         } else {
-          // parse hex to field to 16-bit value and write it in network byte-order
+          // parse hex field to 16-bit value and write it in network byte-order
           parts[w+offset] = _htons(parseInt(words[w],16));
         }
       } else {
@@ -756,7 +756,7 @@ addToLibrary({
       // IPv4-compatible IPv6 address if 16-bit value (bytes 11 and 12) == 0x0000 (6th word)
       if (parts[5] === 0) {
         str = "::";
-        //special case IPv6 addresses
+        // special case IPv6 addresses
         if (v4part === "0.0.0.0") v4part = ""; // any/unspecified address
         if (v4part === "0.0.0.1") v4part = "1";// loopback address
         str += v4part;
@@ -1592,7 +1592,7 @@ addToLibrary({
       // is a stack allocation that LLVM made, which may go away before the main
       // thread gets the message. For that reason we handle proxying *after* the
       // call to readEmAsmArgs, and therefore we do that manually here instead
-      // of using __proxy. (And dor simplicity, do the same in the sync
+      // of using __proxy. (And for simplicity, do the same in the sync
       // case as well, even though it's not strictly necessary, to keep the two
       // code paths as similar as possible on both sides.)
       return proxyToMainThread(0, emAsmAddr, sync, ...args);
@@ -1615,8 +1615,8 @@ addToLibrary({
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
-  // When DECLARE_ASM_MODULE_EXPORTS is set, this function is programatically
-  // ceated during linking.  See `create_receiving` in `emscripten.py`.
+  // When DECLARE_ASM_MODULE_EXPORTS is set, this function is programmatically
+  // created during linking.  See `create_receiving` in `emscripten.py`.
   // When DECLARE_ASM_MODULE_EXPORTS=0 is set, `assignWasmExports` is instead
   // defined here as a normal JS library function.
   $assignWasmExports__deps: ['$asmjsMangle',

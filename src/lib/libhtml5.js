@@ -1044,7 +1044,7 @@ var LibraryHTML5 = {
     var eventSize = {{{ C_STRUCTS.EmscriptenFullscreenChangeEvent.__size__ }}};
     JSEvents.fullscreenChangeEvent ||= _malloc(eventSize);
 
-    var fullscreenChangeEventhandlerFunc = (e) => {
+    var fullscreenChangeEventHandlerFunc = (e) => {
       var fullscreenChangeEvent = JSEvents.fullscreenChangeEvent;
       fillFullscreenChangeEventData(fullscreenChangeEvent);
 
@@ -1061,7 +1061,7 @@ var LibraryHTML5 = {
       eventTypeId,
       userData,
       callbackfunc,
-      handlerFunc: fullscreenChangeEventhandlerFunc,
+      handlerFunc: fullscreenChangeEventHandlerFunc,
       useCapture
     };
     return JSEvents.registerOrRemoveHandler(eventHandler);
