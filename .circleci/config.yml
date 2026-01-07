@@ -677,7 +677,7 @@ jobs:
             asan.test_minimal_runtime_hello_world
             asan.test_select_blocking
             lsan.test_dylink_dso_needed
-            lsan.test_stdio_locking
+            lsan.test_stdio_locking_pthread
             lsan.test_dlfcn_basic
             lsan.test_pthread_create
             lsan.test_pthread_exit_main_stub
