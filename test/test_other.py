@@ -10686,8 +10686,12 @@ int main () {
 
   # Tests the library_c_preprocessor.js functionality.
   @crossplatform
-  def test_c_preprocessor(self):
-    self.do_runf('test_c_preprocessor.c', cflags=['--js-library', path_from_root('src/lib/libc_preprocessor.js')])
+  @parameterized({
+    '': ([],),
+    'closure': (['--closure=1'],),
+  })
+  def test_c_preprocessor(self, closure):
+    self.do_runf('test_c_preprocessor.c', cflags=['--js-library', path_from_root('src/lib/libc_preprocessor.js')] + closure)
 
   # Test that legacy settings that have been fixed to a specific value and their value can no longer be changed,
   def test_legacy_settings_forbidden_to_change(self):
