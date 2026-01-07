@@ -1507,7 +1507,6 @@ int main(int argc, char **argv) {
 
   @with_all_eh_sjlj
   def test_EXPORT_EXCEPTION_HANDLING_HELPERS(self):
-    self.set_setting('ASSERTIONS', 0)
     self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
     # FIXME Temporary workaround. See 'FIXME' in the test source code below for
     # details.
@@ -1568,7 +1567,9 @@ myexception,My exception happened
 char const*,
 '''
 
-    self.do_runf('main.cpp', expected)
+    for assertions in (0, 1):
+      self.set_setting('ASSERTIONS', assertions)
+      self.do_runf('main.cpp', expected)
 
   @with_all_eh_sjlj
   def test_bad_typeid(self):

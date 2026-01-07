@@ -346,13 +346,34 @@ var LibraryExceptions = {
 
 #elif !DISABLE_EXCEPTION_CATCHING
   $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
-  $incrementExceptionRefcount: (ptr) => ___cxa_increment_exception_refcount(ptr),
+  $incrementExceptionRefcount: (ptr) => {
+#if EXCEPTION_STACK_TRACES
+    if (ptr instanceof CppException) {
+      ptr = ptr.excPtr;
+    }
+#endif
+    ___cxa_increment_exception_refcount(ptr);
+  },
 
   $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount'],
-  $decrementExceptionRefcount: (ptr) => ___cxa_decrement_exception_refcount(ptr),
+  $decrementExceptionRefcount: (ptr) => {
+#if EXCEPTION_STACK_TRACES
+    if (ptr instanceof CppException) {
+      ptr = ptr.excPtr;
+    }
+#endif
+    ___cxa_decrement_exception_refcount(ptr);
+  },
 
   $getExceptionMessage__deps: ['$getExceptionMessageCommon'],
-  $getExceptionMessage: (ptr) => getExceptionMessageCommon(ptr),
+  $getExceptionMessage: (ptr) => {
+#if EXCEPTION_STACK_TRACES
+    if (ptr instanceof CppException) {
+      ptr = ptr.excPtr;
+    }
+#endif
+    return getExceptionMessageCommon(ptr);
+  },
 
 #endif
 };
