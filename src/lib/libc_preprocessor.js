@@ -247,6 +247,14 @@ addToLibrary({
         var evaluated = exprTree();
         stack.push(!!evaluated * stack[stack.length-1]);
         break;
+      case 'elif':
+        var tokens = tokenize(expandMacros(expression, 0));
+        var exprTree = buildExprTree(tokens);
+        var evaluated = exprTree();
+        // If the previous #if / #elif block was executed, output NaN so that all further #elif and #else blocks will
+        // short to false.
+        stack[stack.length-1] = !!evaluated * (stack[stack.length-1] ? NaN : 1-stack[stack.length-1]);
+        break;
       case 'ifdef': stack.push(!!defs[expression] * stack[stack.length-1]); break;
       case 'ifndef': stack.push(!defs[expression] * stack[stack.length-1]); break;
       case 'else': stack[stack.length-1] = (1-stack[stack.length-1]) * stack[stack.length-2]; break;

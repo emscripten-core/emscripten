@@ -191,6 +191,11 @@ EM_JS(void, test_c_preprocessor, (void), {
 
   test('#line 162 "foo.glsl"\n', '#line 162 "foo.glsl"\n'); // Test that #line directives are retained in the output
 
+  test('#define FOO 1\n#ifdef FOO\nA\n#elif defined(BAR)\nB\n#elif defined(BAZ)\nC\n#else\nD\n#endif', "A\n"); // Test #elif support, taking #ifdef path
+  test('#define BAR 1\n#ifdef FOO\nA\n#elif defined(BAR)\nB\n#elif defined(BAZ)\nC\n#else\nD\n#endif', "B\n"); // Test #elif support, taking first #elif path
+  test('#define BAZ 1\n#ifdef FOO\nA\n#elif defined(BAR)\nB\n#elif defined(BAZ)\nC\n#else\nD\n#endif', "C\n"); // Test #elif support, taking a second #elif path
+  test(               '#ifdef FOO\nA\n#elif defined(BAR)\nB\n#elif defined(BAZ)\nC\n#else\nD\n#endif', "D\n"); // Test #elif support, taking the final #else path
+
   if (numFailed) throw numFailed + ' tests failed!';
 });
 
