@@ -1919,34 +1919,7 @@ class_<std::map<K, V, Compare, Allocator>> register_map(const char* name) {
         ;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// std::optional
-////////////////////////////////////////////////////////////////////////////////
 
-namespace internal {
-template <typename T>
-struct BindingType<std::optional<T>> {
-    using ValBinding = BindingType<val>;
-    using WireType = ValBinding::WireType;
-
-    template<typename ReturnPolicy = void>
-    static WireType toWireType(std::optional<T> value, rvp::default_tag) {
-        if (value) {
-            return ValBinding::toWireType(val(*value, allow_raw_pointers()), rvp::default_tag{});
-        }
-        return ValBinding::toWireType(val::undefined(), rvp::default_tag{});
-    }
-
-
-    static std::optional<T> fromWireType(WireType value) {
-        val optional = val::take_ownership(value);
-        if (optional.isUndefined()) {
-            return {};
-        }
-        return optional.as<T>();
-    }
-};
-} // end namespace internal
 
 
 ////////////////////////////////////////////////////////////////////////////////

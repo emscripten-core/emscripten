@@ -14471,6 +14471,15 @@ addToLibrary({
     create_file('a.cpp', '#define try\n#define catch if (0)\n#include <emscripten/bind.h>')
     self.run_process([EMXX, '-fno-exceptions', '-std=c++23', '-lembind', 'a.cpp'])
 
+  def test_embind_optional_val_no_bind(self):
+    # Ensure passing std::optional to emscripten::val works if <emscripten/bind.h>
+    # was not included in the compilation unit using val.
+    self.run_process([EMXX,'-lembind',
+                      test_file('embind/test_optional_val_main.cpp'),
+                      test_file('embind/test_optional_val_lib.cpp')])
+    output = self.run_js('a.out.js')
+    self.assertContained('done', output)
+
   def test_no_pthread(self):
     self.do_runf('hello_world.c', cflags=['-pthread', '-no-pthread'])
     self.assertExists('hello_world.js')
