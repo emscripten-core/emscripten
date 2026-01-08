@@ -15,6 +15,7 @@
 #include <vector>
 #include <type_traits>
 #include <pthread.h>
+#include <optional>
 #if __cplusplus >= 202002L
 #include <coroutine>
 #include <exception>
@@ -813,6 +814,29 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
   static T fromWireType(WireType v) {
     return T(val::take_ownership(v));
   }
+};
+
+template <typename T>
+struct BindingType<std::optional<T>> {
+    using ValBinding = BindingType<val>;
+    using WireType = ValBinding::WireType;
+
+    template<typename ReturnPolicy = void>
+    static WireType toWireType(std::optional<T> value, rvp::default_tag) {
+        if (value) {
+            return ValBinding::toWireType(val(*value, allow_raw_pointers()), rvp::default_tag{});
+        }
+        return ValBinding::toWireType(val::undefined(), rvp::default_tag{});
+    }
+
+
+    static std::optional<T> fromWireType(WireType value) {
+        val optional = val::take_ownership(value);
+        if (optional.isUndefined()) {
+            return {};
+        }
+        return optional.as<T>();
+    }
 };
 
 }
