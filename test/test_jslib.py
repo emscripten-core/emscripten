@@ -722,12 +722,13 @@ console.error('JSLIB: none of the above');
 
   def test_jslib_named_class(self):
     create_file('lib.js', r'''
-      class MyClass {
-        constructor() { this.x = 42; }
-      }
-
+      class ParentClass {}
       addToLibrary({
-        $MyClass: MyClass,
+        $ParentClass: ParentClass,
+        $MyClass__deps: ['$ParentClass'],
+        $MyClass: class extends ParentClass {
+          constructor() { super(); this.x = 42; }
+        },
         log_class__deps: ['$MyClass'],
         log_class: () => {
           var i = new MyClass();
