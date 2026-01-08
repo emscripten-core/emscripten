@@ -409,6 +409,7 @@ See docs/process.md for more on how version tagging works.
   detection stages.  This means the initial cmake run will be slower, but will
   result in more accurate information.  If cmake is running too slow for you,
   you can revert to the previous behaviour with `-DEMSCRIPTEN_FORCE_COMPILERS=ON`.
+- Upgraded `contrib.lua` to Lua version 5.5.0 (#26033)
 
 4.0.1 - 01/17/25
 ----------------
