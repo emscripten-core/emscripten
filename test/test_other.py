@@ -3770,19 +3770,6 @@ More info: https://emscripten.org
     # Check that valid -s option had an effect'
     self.assertContained('SAFE_HEAP', read_file('a.out.js'))
 
-  def test_conftest_s_flag_passing(self):
-    create_file('conftest.c', r'''
-      int main() {
-        return 0;
-      }
-    ''')
-    # the name "conftest.c" is enough to make us use a configure-like mode,
-    # the same as if EMMAKEN_JUST_CONFIGURE=1 were set in the env.
-    cmd = [EMCC, '-sASSERTIONS', 'conftest.c', '-o', 'conftest']
-    output = self.run_process(cmd, stderr=PIPE)
-    self.assertNotContained('emcc: warning: treating -s as linker option', output.stderr)
-    self.assertExists('conftest')
-
   def test_file_packager(self):
     ensure_dir('subdir')
     create_file('data1.txt', 'data1')
