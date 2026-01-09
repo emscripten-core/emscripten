@@ -668,21 +668,12 @@ def setup_sanitizers(options):
 
   if settings.WASM_WORKERS:
     exit_with_error('WASM_WORKERS is not currently compatible with `-fsanitize` tools')
-  # These symbols are needed by `withBuiltinMalloc` which used to implement
-  # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS
-  # symbol graph generated when we run the compiler with `--symbols-only`.
-  settings.REQUIRED_EXPORTS += [
-    'malloc',
-    'calloc',
-    'realloc',
-    'memalign',
-    'free',
-    'emscripten_builtin_malloc',
-    'emscripten_builtin_calloc',
-    'emscripten_builtin_realloc',
-    'emscripten_builtin_memalign',
-    'emscripten_builtin_free',
-  ]
+
+  if 'leak' in options.sanitize or 'address' in options.sanitize:
+    # These symbols are needed by `noLeakCheck` which used to implement
+    # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS
+    # symbol graph generated when we run the compiler with `--symbols-only`.
+    settings.REQUIRED_EXPORTS += ['__lsan_disable', '__lsan_enable']
 
   if ('leak' in options.sanitize or 'address' in options.sanitize) and not settings.ALLOW_MEMORY_GROWTH:
     # Increase the minimum memory requirements to account for extra memory
