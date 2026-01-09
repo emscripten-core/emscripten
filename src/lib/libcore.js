@@ -1501,11 +1501,9 @@ addToLibrary({
     return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
   },
 
-  _emscripten_sanitizer_get_option__deps: ['$withBuiltinMalloc', '$stringToNewUTF8', '$UTF8ToString'],
+  _emscripten_sanitizer_get_option__deps: ['$stringToNewUTF8', '$UTF8ToString'],
   _emscripten_sanitizer_get_option__sig: 'pp',
-  _emscripten_sanitizer_get_option: (name) => {
-    return withBuiltinMalloc(() => stringToNewUTF8(Module[UTF8ToString(name)] || ""));
-  },
+  _emscripten_sanitizer_get_option: (name) => stringToNewUTF8(Module[UTF8ToString(name)] || ''),
 #endif
 
   $readEmAsmArgsArray: [],

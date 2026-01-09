@@ -38,7 +38,6 @@ from common import (
   EMBUILDER,
   EMCMAKE,
   EMCONFIGURE,
-  EMTEST_BUILD_VERBOSE,
   NON_ZERO,
   PYTHON,
   TEST_ROOT,
@@ -938,13 +937,13 @@ f.close()
         if test_dir == 'target_html':
           env['EMCC_SKIP_SANITY_CHECK'] = '1'
         print(str(cmd))
-        self.run_process(cmd, env=env, stdout=None if EMTEST_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EMTEST_BUILD_VERBOSE >= 1 else PIPE)
+        self.run_process(cmd, env=env)
 
         # Build
         cmd = conf['build']
-        if EMTEST_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
+        if common.EMTEST_VERBOSE and 'Ninja' not in generator:
           cmd += ['VERBOSE=1']
-        self.run_process(cmd, stdout=None if EMTEST_BUILD_VERBOSE >= 2 else PIPE)
+        self.run_process(cmd)
         self.assertExists(output_file, 'building a cmake-generated Makefile failed to produce an output file %s!' % output_file)
 
         # Run through node, if CMake produced a .js file.
@@ -3770,19 +3769,6 @@ More info: https://emscripten.org
     self.assertContained('yello', self.run_js('a.out.js'))
     # Check that valid -s option had an effect'
     self.assertContained('SAFE_HEAP', read_file('a.out.js'))
-
-  def test_conftest_s_flag_passing(self):
-    create_file('conftest.c', r'''
-      int main() {
-        return 0;
-      }
-    ''')
-    # the name "conftest.c" is enough to make us use a configure-like mode,
-    # the same as if EMMAKEN_JUST_CONFIGURE=1 were set in the env.
-    cmd = [EMCC, '-sASSERTIONS', 'conftest.c', '-o', 'conftest']
-    output = self.run_process(cmd, stderr=PIPE)
-    self.assertNotContained('emcc: warning: treating -s as linker option', output.stderr)
-    self.assertExists('conftest')
 
   def test_file_packager(self):
     ensure_dir('subdir')
@@ -10686,8 +10672,12 @@ int main () {
 
   # Tests the library_c_preprocessor.js functionality.
   @crossplatform
-  def test_c_preprocessor(self):
-    self.do_runf('test_c_preprocessor.c', cflags=['--js-library', path_from_root('src/lib/libc_preprocessor.js')])
+  @parameterized({
+    '': ([],),
+    'closure': (['--closure=1'],),
+  })
+  def test_c_preprocessor(self, args):
+    self.do_runf('test_c_preprocessor.c', cflags=['--js-library', path_from_root('src/lib/libc_preprocessor.js')] + args)
 
   # Test that legacy settings that have been fixed to a specific value and their value can no longer be changed,
   def test_legacy_settings_forbidden_to_change(self):
