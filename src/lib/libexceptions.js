@@ -363,7 +363,7 @@ var LibraryExceptions = {
 
   $decrementExceptionRefcount__deps: ['$exnToPtr', '__cxa_decrement_exception_refcount'],
   $decrementExceptionRefcount: (exn) => {
-    ___cxa_increment_exception_refcount(exnToPtr(exn));
+    ___cxa_decrement_exception_refcount(exnToPtr(exn));
   },
 
   $getExceptionMessage__deps: ['$exnToPtr', '$getExceptionMessageCommon'],
