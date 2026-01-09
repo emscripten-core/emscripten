@@ -10690,8 +10690,8 @@ int main () {
     '': ([],),
     'closure': (['--closure=1'],),
   })
-  def test_c_preprocessor(self, closure):
-    self.do_runf('test_c_preprocessor.c', cflags=['--js-library', path_from_root('src/lib/libc_preprocessor.js')] + closure)
+  def test_c_preprocessor(self, args):
+    self.do_runf('test_c_preprocessor.c', cflags=['--js-library', path_from_root('src/lib/libc_preprocessor.js')] + args)
 
   # Test that legacy settings that have been fixed to a specific value and their value can no longer be changed,
   def test_legacy_settings_forbidden_to_change(self):
