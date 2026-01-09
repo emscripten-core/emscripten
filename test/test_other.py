@@ -3590,6 +3590,7 @@ More info: https://emscripten.org
     '3': [['-sWASM=0'], 'embind_tsgen_ignore_3.d.ts'],
     '4': [['-fsanitize=undefined', '-gsource-map'], 'embind_tsgen_ignore_3.d.ts'],
     '5': [['-sASYNCIFY'], 'embind_tsgen_ignore_3.d.ts'],
+    '6': [['-sENVIRONMENT=worker', '-lworkerfs.js'], 'embind_tsgen.d.ts'],
   })
   def test_embind_tsgen_ignore(self, extra_args, expected_ts_file):
     create_file('fail.js', 'assert(false);')
@@ -14469,6 +14470,15 @@ addToLibrary({
     # macros.
     create_file('a.cpp', '#define try\n#define catch if (0)\n#include <emscripten/bind.h>')
     self.run_process([EMXX, '-fno-exceptions', '-std=c++23', '-lembind', 'a.cpp'])
+
+  def test_embind_optional_val_no_bind(self):
+    # Ensure passing std::optional to emscripten::val works if <emscripten/bind.h>
+    # was not included in the compilation unit using val.
+    self.run_process([EMXX,'-lembind',
+                      test_file('embind/test_optional_val_main.cpp'),
+                      test_file('embind/test_optional_val_lib.cpp')])
+    output = self.run_js('a.out.js')
+    self.assertContained('done', output)
 
   def test_no_pthread(self):
     self.do_runf('hello_world.c', cflags=['-pthread', '-no-pthread'])

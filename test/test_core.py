@@ -1508,10 +1508,6 @@ int main(int argc, char **argv) {
   @with_all_eh_sjlj
   def test_EXPORT_EXCEPTION_HANDLING_HELPERS(self):
     self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
-    # FIXME Temporary workaround. See 'FIXME' in the test source code below for
-    # details.
-    if self.get_setting('DISABLE_EXCEPTION_CATCHING') == 0:
-      self.cflags.append('-D__USING_EMSCRIPTEN_EXCEPTION__')
 
     self.maybe_closure()
     create_file('main.cpp', '''

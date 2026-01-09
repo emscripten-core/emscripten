@@ -33,6 +33,7 @@ See docs/process.md for more on how version tagging works.
   have a fetch API, you will need to either use `-sSINGLE_FILE` (to embed the
   Wasm file), or use a custom `instantiateWasm` callback to supply the
   Wasm module yourself. (#25942)
+- Upgraded `contrib.lua` to Lua version 5.5.0 (#26033)
 
 4.0.22 - 12/18/25
 -----------------
