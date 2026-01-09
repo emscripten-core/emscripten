@@ -21,7 +21,6 @@ executors:
       EMCC_CORES: "4"
       EMSDK_NOTTY: "1"
       EMTEST_WASI_SYSROOT: "~/wasi-sdk/wasi-sysroot"
-      EMTEST_BUILD_VERBOSE: "2"
       EMTEST_DETECT_TEMPFILE_LEAKS: "1"
   mac-arm64:
     environment:
