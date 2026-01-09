@@ -1096,7 +1096,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if '_main' in settings.EXPORTED_FUNCTIONS or 'main' in settings.EXPORT_IF_DEFINED:
     settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
-  elif settings.ASSERTIONS and not settings.STANDALONE_WASM and settings.EXPECT_MAIN:
+  elif settings.ASSERTIONS and not settings.STANDALONE_WASM and not options.no_entry:
     # In debug builds when `main` is not explicitly requested as an
     # export we still add it to EXPORT_IF_DEFINED so that we can warn
     # users who forget to explicitly export `main`.
