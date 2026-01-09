@@ -1758,6 +1758,10 @@ class libunwind(ExceptionLibrary, MTLibrary):
     cflags.append('-DNDEBUG')
     if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
+    if filename.endswith('.c'):
+      cflags.append('-std=c23')
+    else:
+      cflags.append('-std=c++23')
 
     match self.eh_mode:
       case Exceptions.NONE:
