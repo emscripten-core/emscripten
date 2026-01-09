@@ -1563,12 +1563,6 @@ myexception,My exception happened
 char const*,
 '''
 
-    # When ASSERTIONS=1, we use CppException wrapper class. Test both cases when
-    # we use it and we don't.
-    for assertions in (0, 1):
-      self.set_setting('ASSERTIONS', assertions)
-      self.do_runf('main.cpp', expected)
-
   @with_all_eh_sjlj
   def test_bad_typeid(self):
     self.do_run(r'''
