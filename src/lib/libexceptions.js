@@ -345,34 +345,30 @@ var LibraryExceptions = {
   },
 
 #elif !DISABLE_EXCEPTION_CATCHING
-  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
-  $incrementExceptionRefcount: (ptr) => {
+  // When EXCEPTION_STACK_TRACES is set, the exception is an instance of
+  // CppException, whereas EXCEPTION_STACK_TRACES is unset it is a raw pointer.
+  $exnToPtr: (exn) => {
 #if EXCEPTION_STACK_TRACES
-    if (ptr instanceof CppException) {
-      ptr = ptr.excPtr;
+    if (exn instanceof CppException) {
+      return exn.excPtr;
     }
 #endif
-    ___cxa_increment_exception_refcount(ptr);
+    return exn;
   },
 
-  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount'],
-  $decrementExceptionRefcount: (ptr) => {
-#if EXCEPTION_STACK_TRACES
-    if (ptr instanceof CppException) {
-      ptr = ptr.excPtr;
-    }
-#endif
-    ___cxa_decrement_exception_refcount(ptr);
+  $incrementExceptionRefcount__deps: ['$exnToPtr', '__cxa_increment_exception_refcount'],
+  $incrementExceptionRefcount: (exn) => {
+    ___cxa_increment_exception_refcount(exnToPtr(exn));
   },
 
-  $getExceptionMessage__deps: ['$getExceptionMessageCommon'],
-  $getExceptionMessage: (ptr) => {
-#if EXCEPTION_STACK_TRACES
-    if (ptr instanceof CppException) {
-      ptr = ptr.excPtr;
-    }
-#endif
-    return getExceptionMessageCommon(ptr);
+  $decrementExceptionRefcount__deps: ['$exnToPtr', '__cxa_decrement_exception_refcount'],
+  $decrementExceptionRefcount: (exn) => {
+    ___cxa_increment_exception_refcount(exnToPtr(exn));
+  },
+
+  $getExceptionMessage__deps: ['$exnToPtr', '$getExceptionMessageCommon'],
+  $getExceptionMessage: (exn) => {
+    return getExceptionMessageCommon(exnToPtr(exn));
   },
 
 #endif
