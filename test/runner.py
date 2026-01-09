@@ -508,7 +508,6 @@ def parse_args():
   parser.add_argument('--continue', dest='_continue', action='store_true',
                       help='Resume from the last run test.'
                            'Useful when combined with --failfast')
-  parser.add_argument('--force64', action='store_true')
   parser.add_argument('--crossplatform-only', action='store_true')
   parser.add_argument('--log-test-environment', action='store_true', help='Prints out detailed information about the current environment. Useful for adding more info to CI test runs.')
   parser.add_argument('--force-browser-process-termination', action='store_true', help='If true, a fail-safe method is used to ensure that all browser processes are terminated before and after the test suite run. Note that this option will terminate all browser processes, not just those launched by the harness, so will result in loss of all open browsing sessions.')
@@ -688,7 +687,6 @@ def main():
   set_env('EMTEST_REBASELINE', options.rebaseline)
   set_env('EMTEST_VERBOSE', options.verbose > 1)
   set_env('EMTEST_CORES', options.cores)
-  set_env('EMTEST_FORCE64', options.force64)
 
   if common.EMTEST_DETECT_TEMPFILE_LEAKS:
     if shared.DEBUG:
