@@ -417,6 +417,7 @@ def read_dwarf_info(wasm, options):
 
   entries = []
   iterator = debug_line_pattern.finditer(output)
+  current_match = None
   try:
     current_match = next(iterator)
     debug_info_end = current_match.start() # end of .debug_info contents
