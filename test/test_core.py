@@ -87,6 +87,7 @@ def esm_integration(func):
   assert callable(func)
 
   @wraps(func)
+  @no_sanitize('sanitizers do not support WASM_ESM_INTEGRATION')
   def decorated(self, *args, **kwargs):
     self.setup_esm_integration()
     return func(self, *args, **kwargs)
