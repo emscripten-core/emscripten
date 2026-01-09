@@ -2011,7 +2011,8 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   settings.PRE_JS_FILES = []
   settings.POST_JS_FILES = []
   # Force node since that is where the tool runs.
-  settings.ENVIRONMENT = ['node']
+  if 'node' not in settings.ENVIRONMENT:
+    settings.ENVIRONMENT.append('node')
   settings.MINIMAL_RUNTIME = 0
   # Required function to trigger TS generation.
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks', '$addRunDependency', '$removeRunDependency']
