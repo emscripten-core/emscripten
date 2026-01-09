@@ -13,6 +13,13 @@
 #include <string.h>
 #include <sys/time.h>
 
+int64_t timeval_delta_ms(struct timeval* begin, struct timeval* end) {
+  int64_t delta_s = end->tv_sec - begin->tv_sec;
+  int64_t delta_us =  end->tv_usec -  begin->tv_usec;
+  assert(delta_s >= 0);
+  return (delta_s * 1000) + (delta_us / 1000);
+}
+
 // Check if timeout works without fds
 void test_timeout_without_fds() {
   printf("test_timeout_without_fds\n");
@@ -23,7 +30,10 @@ void test_timeout_without_fds() {
   gettimeofday(&begin, NULL);
   assert(select(0, NULL, NULL, NULL, &tv) == 0);
   gettimeofday(&end, NULL);
-  assert((end.tv_sec - begin.tv_sec) * 1000000 + end.tv_usec - begin.tv_usec >= 1000000);
+
+  int64_t duration = timeval_delta_ms(&begin, &end);
+  printf(" -> duration: %lld ms\n", duration);
+  assert(duration >= 1000);
 }
 
 // Check if timeout works with fds without events
@@ -42,7 +52,10 @@ void test_timeout_with_fds_without_events() {
   gettimeofday(&begin, NULL);
   assert(select(pipe_a[0] + 1, &readfds, NULL, NULL, &tv) == 0);
   gettimeofday(&end, NULL);
-  assert((end.tv_sec - begin.tv_sec) * 1000000 + end.tv_usec - begin.tv_usec >= 1000000);
+
+  int64_t duration = timeval_delta_ms(&begin, &end);
+  printf(" -> duration: %lld ms\n", duration);
+  assert(duration >= 1000);
 
   close(pipe_a[0]); close(pipe_a[1]);
 }
@@ -78,7 +91,10 @@ void test_unblock_select() {
   assert(select(maxfd + 1, &readfds, NULL, NULL, NULL) == 1);
   gettimeofday(&end, NULL);
   assert(FD_ISSET(pipe_shared[0], &readfds));
-  assert((end.tv_sec - begin.tv_sec) * 1000000 + end.tv_usec - begin.tv_usec >= 1000000);
+
+  int64_t duration = timeval_delta_ms(&begin, &end);
+  printf(" -> duration: %lld ms\n", duration);
+  assert(duration >= 1000);
 
   pthread_join(tid, NULL);
 
@@ -101,8 +117,10 @@ void *do_select_in_thread(void * arg) {
   assert(select(maxfd + 1, &readfds, NULL, NULL, &tv) == 1);
   gettimeofday(&end, NULL);
   assert(FD_ISSET(pipe_shared[0], &readfds));
-  int duration = (end.tv_sec - begin.tv_sec) * 1000000 + end.tv_usec - begin.tv_usec;
-  assert((duration >= 1000000) && (duration < 4000000));
+
+  int64_t duration = timeval_delta_ms(&begin, &end);
+  printf(" -> duration: %lld ms\n", duration);
+  assert((duration >= 1000) && (duration < 4000));
 
   return NULL;
 }
