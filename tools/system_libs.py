@@ -180,7 +180,7 @@ def escape_ninja_path(path):
   return re.sub(r'([ :$])', r'$\1', path)
 
 
-def create_ninja_file(input_files, filename, libname, cflags, asflags=None, customize_build_flags=None):
+def create_ninja_file(input_files, filename, libname, cflags, cxxflags, asflags=None, customize_build_flags=None):
   if asflags is None:
     asflags = []
 
@@ -193,6 +193,7 @@ ninja_required_version = 1.5
 
 ASFLAGS = {join_cmd(asflags)}
 CFLAGS = {join_cmd(cflags)}
+CXXFLAGS = {join_cmd(cxxflags)}
 EMCC = {shared.EMCC}
 EMXX = {shared.EMXX}
 EMAR = {shared.EMAR}
@@ -204,7 +205,7 @@ rule cc
 
 rule cxx
   depfile = $out.d
-  command = $EMXX -MD -MF $out.d $CFLAGS -c $in -o $out
+  command = $EMXX -MD -MF $out.d $CXXFLAGS -c $in -o $out
   description = CXX $out
 
 rule asm
@@ -266,12 +267,15 @@ rule archive
           flags = cflags
         case _:
           cmd = 'cxx'
-          flags = cflags
+          flags = cxxflags
       out += f'build {escape_ninja_path(o)}: {cmd} {escape_ninja_path(src)}\n'
       if customize_build_flags:
         custom_flags = customize_build_flags(flags, src)
         if custom_flags != flags:
-          out += f'  CFLAGS = {join_cmd(custom_flags)}'
+          if flags == cflags:
+            out += f'  CFLAGS = {join_cmd(custom_flags)}'
+          else:
+            out += f'  CXXFLAGS = {join_cmd(custom_flags)}'
       out += '\n'
 
     objects = sorted(objects, key=objectfile_sort_key)
@@ -474,11 +478,14 @@ class Library:
     utils.safe_ensure_dirs(build_dir)
     self.build_dir = build_dir
 
-    cflags = self.get_cflags(None)
+    # Use random file names with .c and .cpp extensions
+    cflags = self.get_cflags('test.c')
+    cxxflags = self.get_cflags('test.cpp')
+
     asflags = get_base_cflags(self.build_dir, preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
-    create_ninja_file(input_files, ninja_file, libname, cflags, asflags=asflags, customize_build_flags=self.customize_build_cmd)
+    create_ninja_file(input_files, ninja_file, libname, cflags, cxxflags, asflags=asflags, customize_build_flags=self.customize_build_cmd)
 
   def build_objects(self, build_dir):
     """
