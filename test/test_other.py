@@ -38,7 +38,6 @@ from common import (
   EMBUILDER,
   EMCMAKE,
   EMCONFIGURE,
-  EMTEST_BUILD_VERBOSE,
   NON_ZERO,
   PYTHON,
   TEST_ROOT,
@@ -938,13 +937,13 @@ f.close()
         if test_dir == 'target_html':
           env['EMCC_SKIP_SANITY_CHECK'] = '1'
         print(str(cmd))
-        self.run_process(cmd, env=env, stdout=None if EMTEST_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EMTEST_BUILD_VERBOSE >= 1 else PIPE)
+        self.run_process(cmd, env=env)
 
         # Build
         cmd = conf['build']
-        if EMTEST_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
+        if common.EMTEST_VERBOSE and 'Ninja' not in generator:
           cmd += ['VERBOSE=1']
-        self.run_process(cmd, stdout=None if EMTEST_BUILD_VERBOSE >= 2 else PIPE)
+        self.run_process(cmd)
         self.assertExists(output_file, 'building a cmake-generated Makefile failed to produce an output file %s!' % output_file)
 
         # Run through node, if CMake produced a .js file.

@@ -35,7 +35,6 @@ from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir
 from tools.utils import (
   WINDOWS,
   exe_path_from_root,
-  exit_with_error,
   path_from_root,
   read_binary,
   read_file,
@@ -60,15 +59,6 @@ EMTEST_RETRY_FLAKY = None
 EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
-
-# Verbosity level control for subprocess calls to configure + make.
-# 0: disabled.
-# 1: Log stderr of configure/make.
-# 2: Log stdout and stderr configure/make. Print out subprocess commands that were executed.
-# 3: Log stdout and stderr, and pass VERBOSE=1 to CMake/configure/make steps.
-EMTEST_BUILD_VERBOSE = int(os.getenv('EMTEST_BUILD_VERBOSE', '0'))
-if 'EM_BUILD_VERBOSE' in os.environ:
-  exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
@@ -1545,20 +1535,7 @@ def build_library(name,
       make = [EMMAKE] + make
 
   if configure:
-    try:
-      with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
-        with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
-          stdout = out if EMTEST_BUILD_VERBOSE < 2 else None
-          stderr = err if EMTEST_BUILD_VERBOSE < 1 else None
-          utils.run_process(configure, env=env, stdout=stdout, stderr=stderr, cwd=project_dir)
-    except subprocess.CalledProcessError:
-      print('-- configure stdout --')
-      print(read_file(Path(project_dir, 'configure_out')))
-      print('-- end configure stdout --')
-      print('-- configure stderr --')
-      print(read_file(Path(project_dir, 'configure_err')))
-      print('-- end configure stderr --')
-      raise
+    utils.run_process(configure, env=env, cwd=project_dir)
     # if we run configure or cmake we don't then need any kind
     # of special env when we run make below
     env = None
@@ -1569,26 +1546,11 @@ def build_library(name,
   def open_make_err(mode='r'):
     return open(os.path.join(project_dir, 'make.err'), mode)
 
-  if EMTEST_BUILD_VERBOSE >= 3:
+  if EMTEST_VERBOSE:
     # VERBOSE=1 is cmake and V=1 is for autoconf
     make_args += ['VERBOSE=1', 'V=1']
 
-  try:
-    with open_make_out('w') as make_out:
-      with open_make_err('w') as make_err:
-        stdout = make_out if EMTEST_BUILD_VERBOSE < 2 else None
-        stderr = make_err if EMTEST_BUILD_VERBOSE < 1 else None
-        utils.run_process(make + make_args, stdout=stdout, stderr=stderr, env=env, cwd=project_dir)
-  except subprocess.CalledProcessError:
-    with open_make_out() as f:
-      print('-- make stdout --')
-      print(f.read())
-      print('-- end make stdout --')
-    with open_make_err() as f:
-      print('-- make stderr --')
-      print(f.read())
-      print('-- end stderr --')
-    raise
+  utils.run_process(make + make_args, env=env, cwd=project_dir)
 
   if cache is not None:
     cache[cache_name] = []
