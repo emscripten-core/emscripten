@@ -592,7 +592,7 @@ class Library:
       result += item.__dict__.get(attr, [])
     return result
 
-  def get_cflags(self, filename):
+  def get_cflags(self, _filename):
     """
     Returns the list of flags to pass to emcc when building this variation
     of the library.
