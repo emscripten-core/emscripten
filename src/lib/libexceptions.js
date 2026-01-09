@@ -357,19 +357,13 @@ var LibraryExceptions = {
   },
 
   $incrementExceptionRefcount__deps: ['$exnToPtr', '__cxa_increment_exception_refcount'],
-  $incrementExceptionRefcount: (exn) => {
-    ___cxa_increment_exception_refcount(exnToPtr(exn));
-  },
+  $incrementExceptionRefcount: (exn) => ___cxa_increment_exception_refcount(exnToPtr(exn)),
 
   $decrementExceptionRefcount__deps: ['$exnToPtr', '__cxa_decrement_exception_refcount'],
-  $decrementExceptionRefcount: (exn) => {
-    ___cxa_decrement_exception_refcount(exnToPtr(exn));
-  },
+  $decrementExceptionRefcount: (exn) => ___cxa_decrement_exception_refcount(exnToPtr(exn)),
 
   $getExceptionMessage__deps: ['$exnToPtr', '$getExceptionMessageCommon'],
-  $getExceptionMessage: (exn) => {
-    return getExceptionMessageCommon(exnToPtr(exn));
-  },
+  $getExceptionMessage: (exn) => getExceptionMessageCommon(exnToPtr(exn)),
 
 #endif
 };
