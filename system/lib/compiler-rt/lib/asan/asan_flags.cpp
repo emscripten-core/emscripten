@@ -146,7 +146,7 @@ static void InitializeDefaultFlags() {
 #define MAKE_OPTION_LOAD(parser, name) \
     options = _emscripten_sanitizer_get_option(name); \
     parser.ParseString(options); \
-    emscripten_builtin_free(options);
+    free(options);
 
   MAKE_OPTION_LOAD(asan_parser, "ASAN_OPTIONS");
 #if CAN_SANITIZE_LEAKS
