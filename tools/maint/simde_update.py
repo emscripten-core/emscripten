@@ -73,9 +73,11 @@ def main():
   with open(path.join(emdir, "system", "include", "compat", "arm_neon.h"), "w+") as f:
     try:
       f.write("#define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
+      f.write("#define SIMDE_ARM_NEON_A32V8_ENABLE_NATIVE_ALIASES\n")
       f.write("#define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
       f.write(neon_h_buf)
       f.write("#undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
+      f.write("#undef SIMDE_ARM_NEON_A32V8_ENABLE_NATIVE_ALIASES\n")
       f.write("#undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
     except Exception:
       print("error writing 'system/include/compat/arm_neon.h'")
