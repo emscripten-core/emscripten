@@ -327,6 +327,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   # Change this to None to get stderr reporting, for debugging purposes
   stderr_redirect = STDOUT
 
+  library_cache: dict[str, tuple[str, object]] = {}
+
   def is_wasm(self):
     return self.get_setting('WASM') != 0
 
@@ -1083,8 +1085,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.assertEqual(read_binary(file1),
                      read_binary(file2))
 
-  library_cache: dict[str, tuple[str, object]] = {}
-
   def get_build_dir(self):
     ret = self.in_dir('building')
     ensure_dir(ret)
@@ -1134,9 +1134,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     cflags = ' '.join(cflags)
     env_init.setdefault('CFLAGS', cflags)
     env_init.setdefault('CXXFLAGS', cflags)
-    return build_library(name, build_dir, generated_libs, configure,
-                         make, make_args, self.library_cache,
-                         cache_name, env_init=env_init, native=native)
+    return self.build_library(name, build_dir, generated_libs, configure,
+                              make, make_args, cache_name, env_init=env_init, native=native)
 
   def clear(self):
     force_delete_contents(self.get_dir())
@@ -1484,78 +1483,64 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.cflags = old_args
     return rtn
 
+  def build_library(self, name, build_dir, generated_libs, configure, make, make_args, cache_name, env_init, native):
+    """Build a library and cache the result.  We build the library file
+    once and cache it for all our tests. (We cache in memory since the test
+    directory is destroyed and recreated for each test. Note that we cache
+    separately for different compilers).  This cache is just during the test
+    runner. There is a different concept of caching as well, see |Cache|.
+    """
+    if type(generated_libs) is not list:
+      generated_libs = [generated_libs]
+    source_dir = test_file(name.replace('_native', ''))
 
-###################################################################################################
+    project_dir = Path(build_dir, name)
+    if os.path.exists(project_dir):
+      shutil.rmtree(project_dir)
+    # Useful in debugging sometimes to comment this out, and two lines above
+    shutil.copytree(source_dir, project_dir)
 
+    generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
 
-def build_library(name,
-                  build_dir,
-                  generated_libs,
-                  configure,
-                  make,
-                  make_args,
-                  cache,
-                  cache_name,
-                  env_init,
-                  native):
-  """Build a library and cache the result.  We build the library file
-  once and cache it for all our tests. (We cache in memory since the test
-  directory is destroyed and recreated for each test. Note that we cache
-  separately for different compilers).  This cache is just during the test
-  runner. There is a different concept of caching as well, see |Cache|.
-  """
-
-  if type(generated_libs) is not list:
-    generated_libs = [generated_libs]
-  source_dir = test_file(name.replace('_native', ''))
-
-  project_dir = Path(build_dir, name)
-  if os.path.exists(project_dir):
-    shutil.rmtree(project_dir)
-  # Useful in debugging sometimes to comment this out, and two lines above
-  shutil.copytree(source_dir, project_dir)
-
-  generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-
-  if native:
-    env = clang_native.get_clang_native_env()
-  else:
-    env = os.environ.copy()
-  env.update(env_init)
-
-  if not native:
-    # Inject emcmake, emconfigure or emmake accordingly, but only if we are
-    # cross compiling.
-    if configure:
-      if configure[0] == 'cmake':
-        configure = [EMCMAKE] + configure
-      else:
-        configure = [EMCONFIGURE] + configure
+    if native:
+      env = clang_native.get_clang_native_env()
     else:
-      make = [EMMAKE] + make
+      env = os.environ.copy()
+    env.update(env_init)
 
-  if configure:
-    utils.run_process(configure, env=env, cwd=project_dir)
-    # if we run configure or cmake we don't then need any kind
-    # of special env when we run make below
-    env = None
+    if not native:
+      # Inject emcmake, emconfigure or emmake accordingly, but only if we are
+      # cross compiling.
+      if configure:
+        if configure[0] == 'cmake':
+          configure = [EMCMAKE] + configure
+        else:
+          configure = [EMCONFIGURE] + configure
+      else:
+        make = [EMMAKE] + make
 
-  def open_make_out(mode='r'):
-    return open(os.path.join(project_dir, 'make.out'), mode)
+    if configure:
+      self.run_process(configure, env=env, cwd=project_dir)
+      # if we run configure or cmake we don't then need any kind
+      # of special env when we run make below
+      env = None
 
-  def open_make_err(mode='r'):
-    return open(os.path.join(project_dir, 'make.err'), mode)
+    def open_make_out(mode='r'):
+      return open(os.path.join(project_dir, 'make.out'), mode)
 
-  if EMTEST_VERBOSE:
-    # VERBOSE=1 is cmake and V=1 is for autoconf
-    make_args += ['VERBOSE=1', 'V=1']
+    def open_make_err(mode='r'):
+      return open(os.path.join(project_dir, 'make.err'), mode)
 
-  utils.run_process(make + make_args, env=env, cwd=project_dir)
+    if EMTEST_VERBOSE:
+      # VERBOSE=1 is cmake and V=1 is for autoconf
+      make_args += ['VERBOSE=1', 'V=1']
 
-  if cache is not None:
-    cache[cache_name] = []
+    self.run_process(make + make_args, env=env, cwd=project_dir)
+
+    # Cache the result
+    self.library_cache[cache_name] = []
     for f in generated_libs:
       basename = os.path.basename(f)
-      cache[cache_name].append((basename, read_binary(f)))
+      self.library_cache[cache_name].append((basename, read_binary(f)))
 
-  return generated_libs
+    return generated_libs
