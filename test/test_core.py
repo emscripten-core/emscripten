@@ -1563,6 +1563,8 @@ myexception,My exception happened
 char const*,
 '''
 
+    self.do_runf('main.cpp', expected)
+
   @with_all_eh_sjlj
   def test_bad_typeid(self):
     self.do_run(r'''
