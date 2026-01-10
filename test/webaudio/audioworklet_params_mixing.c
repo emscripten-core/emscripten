@@ -98,13 +98,11 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
 // it's already fading up or down, we reverse the fade direction).
 EM_JS(void, doFade, (EMSCRIPTEN_AUDIO_WORKLET_NODE_T workletID), {
   var worklet = emscriptenGetAudioObject(workletID);
-  if (worklet) {
-    // Emscripten's API creates these from a C array, indexing them instead of a
-    // name. Chrome and FF work with 0 but Safari requires the correct "0".
-    var param = worklet.parameters.get("0");
-    if (param) {
-      param.setTargetAtTime((param.value > 0.5) ? 0 : 1, 0 /* same as context.currentTime */, 0.5);
-    }
+  // Emscripten's API creates these from a C array, indexing them instead of a
+  // name. Chrome and FF work with 0 but Safari requires the correct "0".
+  var param = worklet.parameters.get("0");
+  if (param) {
+    param.setTargetAtTime((param.value > 0.5) ? 0 : 1, 0 /* same as context.currentTime */, 0.5);
   }
 })
 
