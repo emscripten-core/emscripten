@@ -55,6 +55,18 @@
 #  define SANITIZER_SOLARIS 0
 #endif
 
+#if defined(__HAIKU__)
+#  define SANITIZER_HAIKU 1
+#else
+#  define SANITIZER_HAIKU 0
+#endif
+
+#if defined(__wasi__)
+#  define SANITIZER_WASI 1
+#else
+#  define SANITIZER_WASI 0
+#endif
+
 // - SANITIZER_APPLE: all Apple code
 //   - TARGET_OS_OSX: macOS
 //   - SANITIZER_IOS: devices (iOS and iOS-like)
@@ -142,9 +154,10 @@
 # define SANITIZER_EMSCRIPTEN 0
 #endif
 
-#define SANITIZER_POSIX                                     \
-  (SANITIZER_FREEBSD || SANITIZER_LINUX || SANITIZER_APPLE || \
-   SANITIZER_NETBSD || SANITIZER_SOLARIS || SANITIZER_EMSCRIPTEN)
+#define SANITIZER_POSIX                                        \
+  (SANITIZER_FREEBSD || SANITIZER_LINUX || SANITIZER_APPLE ||  \
+   SANITIZER_NETBSD || SANITIZER_SOLARIS || SANITIZER_HAIKU || \
+   SANITIZER_EMSCRIPTEN)
 
 #if __LP64__ || defined(_WIN64)
 #  define SANITIZER_WORDSIZE 64
@@ -311,6 +324,9 @@
 #  endif
 #endif
 
+// The first address that can be returned by mmap.
+#define SANITIZER_MMAP_BEGIN 0
+
 // The range of addresses which can be returned my mmap.
 // FIXME: this value should be different on different platforms.  Larger values
 // will still work but will consume more memory for TwoLevelByteMap.
@@ -416,7 +432,8 @@
 #  define SANITIZER_SUPPRESS_LEAK_ON_PTHREAD_EXIT 0
 #endif
 
-#if SANITIZER_FREEBSD || SANITIZER_APPLE || SANITIZER_NETBSD || SANITIZER_SOLARIS
+#if SANITIZER_FREEBSD || SANITIZER_APPLE || SANITIZER_NETBSD || \
+    SANITIZER_SOLARIS || SANITIZER_HAIKU
 #  define SANITIZER_MADVISE_DONTNEED MADV_FREE
 #else
 #  define SANITIZER_MADVISE_DONTNEED MADV_DONTNEED
@@ -469,6 +486,21 @@
 #  define SANITIZER_START_BACKGROUND_THREAD_IN_ASAN_INTERNAL 1
 #else
 #  define SANITIZER_START_BACKGROUND_THREAD_IN_ASAN_INTERNAL 0
+#endif
+
+#if SANITIZER_LINUX
+#  if SANITIZER_GLIBC
+// Workaround for
+// glibc/commit/3d3572f59059e2b19b8541ea648a6172136ec42e
+// Linux: Keep termios ioctl constants strictly internal
+#    if __GLIBC_PREREQ(2, 41)
+#      define SANITIZER_TERMIOS_IOCTL_CONSTANTS 0
+#    else
+#      define SANITIZER_TERMIOS_IOCTL_CONSTANTS 1
+#    endif
+#  else
+#    define SANITIZER_TERMIOS_IOCTL_CONSTANTS 1
+#  endif
 #endif
 
 #endif  // SANITIZER_PLATFORM_H

@@ -32,7 +32,7 @@ int main() {
 
   EM_ASM({
     // Use callUserCallback here so that ExitStatus is handled correctly
-    setTimeout(() => callUserCallback(Module._later), 1);
+    setTimeout(() => callUserCallback(_later), 1);
   });
 
   printf("exit, but still alive\n");

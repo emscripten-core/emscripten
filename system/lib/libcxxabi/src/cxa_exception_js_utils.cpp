@@ -4,6 +4,7 @@
 
 #include "cxa_exception.h"
 #include "private_typeinfo.h"
+#include <assert.h>
 #include <stdio.h>
 // #include <stdint.h>
 // #include <stdlib.h>
@@ -87,10 +88,15 @@ void __get_exception_message(void* thrown_object, char** type, char** message) {
   int can_catch = catch_type->can_catch(thrown_type, thrown_object);
   if (can_catch) {
 #if __WASM_EXCEPTIONS__
-    if (isDependentException(&exception_header->unwindHeader))
+    if (isDependentException(&exception_header->unwindHeader)) {
       thrown_object =
         reinterpret_cast<__cxa_dependent_exception*>(exception_header)
           ->primaryException;
+      // can_catch can adjust thrown_object ptr, so rerun it
+      [[maybe_unused]] bool ret =
+        catch_type->can_catch(thrown_type, thrown_object);
+      assert(ret);
+    }
 #endif
 
     const char* what =

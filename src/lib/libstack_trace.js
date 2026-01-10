@@ -7,18 +7,14 @@
 var LibraryStackTrace = {
   $jsStackTrace: () => new Error().stack.toString(),
 
-  $getCallstack__deps: ['$jsStackTrace', '$warnOnce'],
+  $getCallstack__deps: ['$jsStackTrace',
+#if ASSERTIONS
+    '$warnOnce'
+#endif
+  ],
   $getCallstack__docs: '/** @param {number=} flags */',
   $getCallstack: (flags) => {
     var callstack = jsStackTrace();
-
-    // Find the symbols in the callstack that corresponds to the functions that
-    // report callstack information, and remove everything up to these from the
-    // output.
-    var iThisFunc = callstack.lastIndexOf('_emscripten_log');
-    var iThisFunc2 = callstack.lastIndexOf('_emscripten_get_callstack');
-    var iNextLine = callstack.indexOf('\n', Math.max(iThisFunc, iThisFunc2))+1;
-    callstack = callstack.slice(iNextLine);
 
 #if ASSERTIONS
     if (flags & {{{ cDefs.EM_LOG_C_STACK }}}) {
@@ -55,7 +51,7 @@ var LibraryStackTrace = {
           file = parts[2];
           lineno = parts[3];
           // Old Firefox doesn't carry column information, but in new FF30, it
-          // is present. See https://bugzilla.mozilla.org/show_bug.cgi?id=762556
+          // is present. See https://bugzil.la/762556
           column = parts[4]|0;
         } else {
           // Was not able to extract this line for demangling/sourcemapping
@@ -63,6 +59,14 @@ var LibraryStackTrace = {
           callstack += line + '\n';
           continue;
         }
+      }
+
+      // Find the symbols in the callstack that corresponds to the functions that
+      // report callstack information, and remove everything up to these from the
+      // output.
+      if (symbolName == '_emscripten_log' || symbolName == '_emscripten_get_callstack') {
+        callstack = '';
+        continue;
       }
 
       if ((flags & {{{ cDefs.EM_LOG_C_STACK | cDefs.EM_LOG_JS_STACK }}})) {
@@ -97,29 +101,24 @@ var LibraryStackTrace = {
   $convertFrameToPC__docs: '/** @returns {number} */',
   $convertFrameToPC__internal: true,
   $convertFrameToPC: (frame) => {
-#if !USE_OFFSET_CONVERTER
-    abort('Cannot use convertFrameToPC (needed by __builtin_return_address) without -sUSE_OFFSET_CONVERTER');
-#else
-#if ASSERTIONS
-    assert(wasmOffsetConverter);
-#endif
     var match;
 
     if (match = /\bwasm-function\[\d+\]:(0x[0-9a-f]+)/.exec(frame)) {
-      // some engines give the binary offset directly, so we use that as return address
+      // Wasm engines give the binary offset directly, so we use that as return address
       return +match[1];
+#if ASSERTIONS
     } else if (match = /\bwasm-function\[(\d+)\]:(\d+)/.exec(frame)) {
-      // other engines only give function index and offset in the function,
-      // so we try using the offset converter. If that doesn't work,
-      // we pack index and offset into a "return address"
-      return wasmOffsetConverter.convert(+match[1], +match[2]);
+      // Older versions of v8 (e.g node v10) give function index and offset in
+      // the function.  That format is not supported since it does not provide
+      // the information we need to map the frame to a global program counter.
+      warnOnce('legacy backtrace format detected, this version of v8 is no longer supported by the emscripten backtrace mechanism')
+#endif
     } else if (match = /:(\d+):\d+(?:\)|$)/.exec(frame)) {
       // If we are in js, we can use the js line number as the "return address".
       // This should work for wasm2js.  We tag the high bit to distinguish this
       // from wasm addresses.
       return 0x80000000 | +match[1];
     }
-#endif
     // return 0 if we can't find any
     return 0;
   },
@@ -135,7 +134,7 @@ var LibraryStackTrace = {
     }
     // skip this function and the caller to get caller's return address
 #if MEMORY64
-    // MEMORY64 injects and extra wrapper within emscripten_return_address
+    // MEMORY64 injects an extra wrapper within emscripten_return_address
     // to handle BigInt conversions.
     var caller = callstack[level + 4];
 #else
@@ -201,12 +200,12 @@ var LibraryStackTrace = {
   $saveInUnwindCache__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
   $saveInUnwindCache__internal: true,
   $saveInUnwindCache: (callstack) => {
-    callstack.forEach((frame) => {
-      var pc = convertFrameToPC(frame);
+    for (var line of callstack) {
+      var pc = convertFrameToPC(line);
       if (pc) {
-        UNWIND_CACHE[pc] = frame;
+        UNWIND_CACHE[pc] = line;
       }
-    });
+    }
   },
 
   // Unwinds the stack from a cached PC value. See emscripten_stack_snapshot for
@@ -238,40 +237,42 @@ var LibraryStackTrace = {
   },
 
   // Look up the function name from our stack frame cache with our PC representation.
-#if USE_OFFSET_CONVERTER
-  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$stringToNewUTF8'],
+  emscripten_pc_get_function__deps: ['$UNWIND_CACHE', 'free', '$stringToNewUTF8', 'emscripten_stack_snapshot'],
   // Don't treat allocation of _emscripten_pc_get_function.ret as a leak
   emscripten_pc_get_function__noleakcheck: true,
-#endif
   emscripten_pc_get_function: (pc) => {
-#if !USE_OFFSET_CONVERTER
-    abort('Cannot use emscripten_pc_get_function without -sUSE_OFFSET_CONVERTER');
-    return 0;
-#else
-    var name;
-    if (pc & 0x80000000) {
-      // If this is a JavaScript function, try looking it up in the unwind cache.
-      var frame = UNWIND_CACHE[pc];
-      if (!frame) return 0;
+    var frame = UNWIND_CACHE[pc];
+    if (!frame) return 0;
 
-      var match;
-      if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
-        name = match[1];
-      } else if (match = /^(.+?)@/.exec(frame)) {
-        name = match[1];
-      } else {
-        return 0;
-      }
+    var name;
+    var match;
+    // First try to match foo.wasm.sym files explcitly. e.g.
+    //
+    //   at test_return_address.wasm.main (wasm://wasm/test_return_address.wasm-0012cc2a:wasm-function[26]:0x9f3
+    //
+    // Then match JS symbols which don't include that module name:
+    //
+    //   at invokeEntryPoint (.../test_return_address.js:1500:42)
+    //
+    // Finally match firefox format:
+    //
+    //   Object._main@http://server.com:4324:12'
+    if (match = /^\s+at .*\.wasm\.(.*) \(.*\)$/.exec(frame)) {
+      name = match[1];
+    } else if (match = /^\s+at (.*) \(.*\)$/.exec(frame)) {
+      name = match[1];
+    } else if (match = /^(.+?)@/.exec(frame)) {
+      name = match[1];
     } else {
-      name = wasmOffsetConverter.getName(pc);
+      return 0;
     }
-    if (_emscripten_pc_get_function.ret) _free(_emscripten_pc_get_function.ret);
+
+    _free(_emscripten_pc_get_function.ret ?? 0);
     _emscripten_pc_get_function.ret = stringToNewUTF8(name);
     return _emscripten_pc_get_function.ret;
-#endif
   },
 
-  $convertPCtoSourceLocation__deps: ['$UNWIND_CACHE', '$convertFrameToPC'],
+  $convertPCtoSourceLocation__deps: ['$UNWIND_CACHE'],
   $convertPCtoSourceLocation: (pc) => {
     if (UNWIND_CACHE.last_get_source_pc == pc) return UNWIND_CACHE.last_source;
 
@@ -307,7 +308,7 @@ var LibraryStackTrace = {
     var result = convertPCtoSourceLocation(pc);
     if (!result) return 0;
 
-    if (_emscripten_pc_get_file.ret) _free(_emscripten_pc_get_file.ret);
+    _free(_emscripten_pc_get_file.ret ?? 0);
     _emscripten_pc_get_file.ret = stringToNewUTF8(result.file);
     return _emscripten_pc_get_file.ret;
   },

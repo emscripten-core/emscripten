@@ -32,3 +32,10 @@ var scriptArgs = [];
  * @suppress {duplicate}
  */
 var quit = function(status) {};
+
+/**
+ * @param {string} cmd
+ * @param {Array.<string>=} args
+ * @return {string}
+ */
+os.system = function (cmd, args) {};

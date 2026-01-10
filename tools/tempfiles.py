@@ -3,9 +3,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import tempfile
 import atexit
 import sys
+import tempfile
 
 from . import utils
 
@@ -34,12 +34,12 @@ class TempFiles:
     The file will be deleted immediately once the 'with' block is exited.
     """
     class TempFileObject:
-      def __enter__(self_):
+      def __enter__(self_):  # noqa: DC02
         self_.file = tempfile.NamedTemporaryFile(dir=self.tmpdir, suffix=suffix, delete=False)
         self_.file.close() # NamedTemporaryFile passes out open file handles, but callers prefer filenames (and open their own handles manually if needed)
         return self_.file.name
 
-      def __exit__(self_, _type, _value, _traceback):
+      def __exit__(self_, _type, _value, _traceback):  # noqa: DC02
         if not self.save_debug_files:
           utils.delete_file(self_.file.name)
     return TempFileObject()

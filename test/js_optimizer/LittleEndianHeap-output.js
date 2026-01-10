@@ -33,3 +33,23 @@ LE_HEAP_STORE_F64(x * 8, a);
 HEAP[x];
 
 HeAp[x];
+
+LE_ATOMICS_ADD(heap, offset, value);
+
+LE_ATOMICS_AND(heap, offset, value);
+
+LE_ATOMICS_COMPAREEXCHANGE(heap, offset, expected, replacement);
+
+LE_ATOMICS_EXCHANGE(heap, offset, value);
+
+LE_ATOMICS_LOAD(heap, offset);
+
+LE_ATOMICS_OR(heap, offset, value);
+
+LE_ATOMICS_SUB(heap, offset, value);
+
+LE_ATOMICS_WAIT(heap, offset, value, timeout);
+
+LE_ATOMICS_WAITASYNC(heap, offset, value, timeout);
+
+LE_ATOMICS_XOR(heap, offset, value);

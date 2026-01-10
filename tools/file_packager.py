@@ -21,7 +21,7 @@ data downloads.
 
 Usage:
 
-  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
+  file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--export-es6] [--help]
 
   --preload  ,
   --embed    See emcc --help for more details on those options.
@@ -40,6 +40,8 @@ Usage:
   --wasm64 When used with `--obj-output` create a wasm64 object file
 
   --export-name=EXPORT_NAME Use custom export name (default is `Module`)
+
+  --export-es6 Wrap generated code inside ES6 exported function
 
   --no-force Don't create output if no valid input file is specified.
 
@@ -65,40 +67,28 @@ Notes:
     subdir\file, in JS it will be subdir/file. For simplicity we treat the web platform as a *NIX.
 """
 
-import base64
 import ctypes
 import fnmatch
 import hashlib
 import json
 import os
 import posixpath
-import random
 import shutil
 import sys
+from dataclasses import dataclass
 from subprocess import PIPE
 from textwrap import dedent
-from typing import List
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import shared, utils, js_manipulation
-
+from tools import diagnostics, js_manipulation, shared, utils
+from tools.response_file import substitute_response_files
 
 DEBUG = os.environ.get('EMCC_DEBUG')
 
-IMAGE_SUFFIXES = ('.jpg', '.png', '.bmp')
-AUDIO_SUFFIXES = ('.ogg', '.wav', '.mp3')
-AUDIO_MIMETYPES = {'ogg': 'audio/ogg', 'wav': 'audio/wav', 'mp3': 'audio/mpeg'}
-
-DDS_HEADER_SIZE = 128
-
-# Set to 1 to randomize file order and add some padding,
-# to work around silly av false positives
-AV_WORKAROUND = 0
-
-excluded_patterns: List[str] = []
+excluded_patterns: list[str] = []
 new_data_files = []
 walked = []
 
@@ -128,14 +118,15 @@ class Options:
     self.use_preload_plugins = False
     self.support_node = True
     self.wasm64 = False
+    self.export_es6 = False
 
 
+@dataclass
 class DataFile:
-  def __init__(self, srcpath, dstpath, mode, explicit_dst_path):
-    self.srcpath = srcpath
-    self.dstpath = dstpath
-    self.mode = mode
-    self.explicit_dst_path = explicit_dst_path
+  srcpath: str
+  dstpath: str
+  mode: str
+  explicit_dst_path: bool
 
 
 options = Options()
@@ -145,11 +136,6 @@ def err(*args):
   print(*args, file=sys.stderr)
 
 
-def base64_encode(b):
-  b64 = base64.b64encode(b)
-  return b64.decode('ascii')
-
-
 def has_hidden_attribute(filepath):
   """Win32 code to test whether the given file has the hidden property set."""
 
@@ -157,8 +143,7 @@ def has_hidden_attribute(filepath):
     return False
 
   try:
-    attrs = ctypes.windll.kernel32.GetFileAttributesW(
-        u'%s' % filepath)
+    attrs = ctypes.windll.kernel32.GetFileAttributesW(filepath)
     assert attrs != -1
     result = bool(attrs & 2)
   except Exception:
@@ -234,7 +219,7 @@ def to_asm_string(string):
     }
     if c in escape_chars:
       return escape_chars[c]
-    # Enscode all other chars are three octal digits(!)
+    # Encode all other chars as three octal digits(!)
     return '\\%s%s%s' % (oct(c >> 6), oct(c >> 3), oct(c >> 0))
 
   return ''.join(escape(c) for c in string.encode('utf-8'))
@@ -262,7 +247,7 @@ def generate_object_file(data_files):
   embed_files = [f for f in data_files if f.mode == 'embed']
   assert embed_files
 
-  asm_file = shared.replace_suffix(options.obj_output, '.s')
+  asm_file = utils.replace_suffix(options.obj_output, '.s')
 
   used = set()
   for f in embed_files:
@@ -284,7 +269,7 @@ def generate_object_file(data_files):
       # The name of file
       {f.c_symbol_name}_name:
       .asciz "{dstpath}"
-      .size {f.c_symbol_name}_name, {len(dstpath)+1}
+      .size {f.c_symbol_name}_name, {len(dstpath) + 1}
 
       # The size of the file followed by the content itself
       {f.c_symbol_name}:
@@ -318,8 +303,6 @@ def generate_object_file(data_files):
       # A list of triples of:
       # (file_name_ptr, file_data_size, file_data_ptr)
       # The list in null terminate with a single 0
-      .globl __emscripten_embedded_file_data
-      .export_name __emscripten_embedded_file_data, __emscripten_embedded_file_data
       .section .rodata.__emscripten_embedded_file_data,"",@
       __emscripten_embedded_file_data:
       .p2align {align}
@@ -364,16 +347,25 @@ def main():  # noqa: C901, PLR0912, PLR0915
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
   if len(sys.argv) == 1:
-    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node]
-  See the source for more details.''')
+    err('''Usage: file_packager TARGET [--preload A [B..]] [--embed C [D..]] [--exclude E [F..]] [--js-output=OUTPUT.js] [--no-force] [--use-preload-cache] [--indexedDB-name=EM_PRELOAD_CACHE] [--separate-metadata] [--lz4] [--use-preload-plugins] [--no-node] [--export-es6] [--help]
+  Try 'file_packager --help' for more details.''')
     return 1
 
-  data_target = sys.argv[1]
+  # read response files very early on
+  try:
+    args = substitute_response_files(sys.argv[1:])
+  except OSError as e:
+    utils.exit_with_error(e)
+
+  if '--help' in args:
+    print(__doc__.strip())
+    return 0
+
+  data_target = args[0]
   data_files = []
-  plugins = []
   leading = ''
 
-  for arg in sys.argv[2:]:
+  for arg in args[1:]:
     if arg == '--preload':
       leading = 'preload'
     elif arg == '--embed':
@@ -383,6 +375,9 @@ def main():  # noqa: C901, PLR0912, PLR0915
     elif arg == '--no-force':
       options.force = False
       leading = ''
+    elif arg == '--export-es6':
+      options.export_es6 = True
+      leading = ''
     elif arg == '--use-preload-cache':
       options.use_preload_cache = True
       leading = ''
@@ -390,7 +385,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
       options.indexeddb_name = arg.split('=', 1)[1] if '=' in arg else None
       leading = ''
     elif arg == '--no-heap-copy':
-      err('ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
+      diagnostics.warn('ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
       leading = ''
     elif arg == '--separate-metadata':
       options.separate_metadata = True
@@ -424,10 +419,6 @@ def main():  # noqa: C901, PLR0912, PLR0915
       leading = ''
     elif arg == '--quiet':
       options.quiet = True
-    elif arg.startswith('--plugin'):
-      plugin = utils.read_file(arg.split('=', 1)[1])
-      eval(plugin) # should append itself to plugins
-      leading = ''
     elif leading in {'preload', 'embed'}:
       mode = leading
       # position of @ if we're doing 'src@dst'. '__' is used to keep the index
@@ -447,30 +438,33 @@ def main():  # noqa: C901, PLR0912, PLR0915
         data_files.append(DataFile(srcpath=srcpath, dstpath=dstpath, mode=mode,
                                    explicit_dst_path=uses_at_notation))
       else:
-        err('error: ' + arg + ' does not exist')
-        return 1
+        diagnostics.error(f'${arg} does not exist')
     elif leading == 'exclude':
       excluded_patterns.append(arg)
     else:
-      err('Unknown parameter:', arg)
-      return 1
+      diagnostics.error('Unknown parameter:', arg)
 
   options.has_preloaded = any(f.mode == 'preload' for f in data_files)
   options.has_embedded = any(f.mode == 'embed' for f in data_files)
 
-  if options.separate_metadata:
-    if not options.has_preloaded or not options.jsoutput:
-      err('cannot separate-metadata without both --preloaded files '
-          'and a specified --js-output')
-      return 1
+  if options.has_preloaded and options.has_embedded:
+    diagnostics.error('--preload and --embed are mutually exclusive (See https://github.com/emscripten-core/emscripten/issues/24803)')
+
+  if options.has_embedded and not options.obj_output:
+    diagnostics.error('--obj-output is required when using --embed.  This outputs an object file for linking directly into your application and is more efficient than the old JS encoding')
+
+  if options.separate_metadata and (not options.has_preloaded or not options.jsoutput):
+    diagnostics.error('cannot separate-metadata without both --preloaded files and a specified --js-output')
 
   if not options.from_emcc and not options.quiet:
-    err('Remember to build the main file with `-sFORCE_FILESYSTEM` '
+    diagnostics.warn('Remember to build the main file with `-sFORCE_FILESYSTEM` '
         'so that it includes support for loading this file package')
 
   if options.jsoutput and os.path.abspath(options.jsoutput) == os.path.abspath(data_target):
-    err('error: TARGET should not be the same value of --js-output')
-    return 1
+    diagnostics.error('TARGET should not be the same value of --js-output')
+
+  if options.from_emcc and options.export_es6:
+    diagnostics.error("Can't use --export-es6 option together with --from-emcc since the code should be embedded within emcc's code")
 
   walked.append(__file__)
   for file_ in data_files:
@@ -483,8 +477,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
   data_files = [file_ for file_ in new_data_files
                 if not os.path.isdir(file_.srcpath)]
   if len(data_files) == 0:
-    err('Nothing to do!')
-    sys.exit(1)
+    diagnostics.error('Nothing to do!')
 
   # Absolutize paths, and check that they make sense
   # os.getcwd() always returns the hard path with any symbolic links resolved,
@@ -511,7 +504,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
         sys.exit(1)
       file_.dstpath = abspath[len(curr_abspath) + 1:]
       if os.path.isabs(path):
-        err('Warning: Embedding an absolute file/directory name "%s" to the '
+        diagnostics.warn('Embedding an absolute file/directory name "%s" to the '
             'virtual filesystem. The file will be made available in the '
             'relative path "%s". You can use the `--preload-file srcpath@dstpath` '
             'syntax to explicitly specify the target location the absolute source '
@@ -544,45 +537,15 @@ def main():  # noqa: C901, PLR0912, PLR0915
   data_files = sorted(data_files, key=lambda file_: file_.dstpath)
   data_files = [file_ for file_ in data_files if not was_seen(file_.dstpath)]
 
-  if AV_WORKAROUND:
-    random.shuffle(data_files)
-
-  # Apply plugins
-  for file_ in data_files:
-    for plugin in plugins:
-      plugin(file_)
-
-  metadata = {'files': []}
-
-  if options.obj_output:
-    if not options.has_embedded:
-      err('--obj-output is only applicable when embedding files')
-      return 1
-    generate_object_file(data_files)
-    if not options.has_preloaded:
-      return 0
-
-  ret = generate_js(data_target, data_files, metadata)
-
-  if options.force or len(data_files):
-    if options.jsoutput is None:
-      print(ret)
-    else:
-      # Overwrite the old jsoutput file (if exists) only when its content
-      # differs from the current generated one, otherwise leave the file
-      # untouched preserving its old timestamp
-      if os.path.isfile(options.jsoutput):
-        old = utils.read_file(options.jsoutput)
-        if old != ret:
-          utils.write_file(options.jsoutput, ret)
-      else:
-        utils.write_file(options.jsoutput, ret)
-      if options.separate_metadata:
-        utils.write_file(options.jsoutput + '.metadata', json.dumps(metadata, separators=(',', ':')))
-
   if options.depfile:
+    targets = []
+    if options.obj_output:
+      targets.append(options.obj_output)
+    if options.jsoutput:
+      targets.append(data_target)
+      targets.append(options.jsoutput)
     with open(options.depfile, 'w') as f:
-      for target in (data_target, options.jsoutput):
+      for target in targets:
         if target:
           f.write(escape_for_makefile(target))
           f.write(' \\\n')
@@ -590,6 +553,31 @@ def main():  # noqa: C901, PLR0912, PLR0915
       for dependency in walked:
         f.write(escape_for_makefile(dependency))
         f.write(' \\\n')
+
+  if options.obj_output:
+    if not options.has_embedded:
+      diagnostics.error('--obj-output is only applicable when embedding files')
+    generate_object_file(data_files)
+  else:
+    metadata = {'files': []}
+
+    ret = generate_preload_js(data_target, data_files, metadata)
+
+    if options.force or data_files:
+      if options.jsoutput is None:
+        print(ret)
+      else:
+        # Overwrite the old jsoutput file (if exists) only when its content
+        # differs from the current generated one, otherwise leave the file
+        # untouched preserving its old timestamp
+        if os.path.isfile(options.jsoutput):
+          old = utils.read_file(options.jsoutput)
+          if old != ret:
+            utils.write_file(options.jsoutput, ret)
+        else:
+          utils.write_file(options.jsoutput, ret)
+        if options.separate_metadata:
+          utils.write_file(options.jsoutput + '.metadata', json.dumps(metadata, separators=(',', ':')))
 
   return 0
 
@@ -602,36 +590,55 @@ def escape_for_makefile(fpath):
   return fpath.replace('$', '$$').replace('#', '\\#').replace(' ', '\\ ')
 
 
-def generate_js(data_target, data_files, metadata):
+def generate_preload_js(data_target, data_files, metadata):
   # emcc will add this to the output itself, so it is only needed for
   # standalone calls
   if options.from_emcc:
     ret = ''
   else:
-    ret = '''
+    if options.export_es6:
+      ret = 'export default async function loadDataFile(Module) {\n'
+    else:
+      ret = '''
   var Module = typeof %(EXPORT_NAME)s != 'undefined' ? %(EXPORT_NAME)s : {};\n''' % {"EXPORT_NAME": options.export_name}
 
   ret += '''
-  Module['expectedDataFileDownloads'] ??= 0;
-  Module['expectedDataFileDownloads']++;
-  (() => {
+  if (!Module['expectedDataFileDownloads']) Module['expectedDataFileDownloads'] = 0;
+  Module['expectedDataFileDownloads']++;'''
+
+  if not options.export_es6:
+    ret += '''
+  (() => {'''
+
+  ret += '''
     // Do not attempt to redownload the virtual filesystem data when in a pthread or a Wasm Worker context.
     var isPthread = typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD;
     var isWasmWorker = typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER;
     if (isPthread || isWasmWorker) return;\n'''
 
   if options.support_node:
-    ret += "    var isNode = typeof process === 'object' && typeof process.versions === 'object' && typeof process.versions.node === 'string';\n"
-  ret += '    function loadPackage(metadata) {\n'
+    ret += "    var isNode = globalThis.process && globalThis.process.versions && globalThis.process.versions.node && globalThis.process.type != 'renderer';\n"
+
+  if options.support_node and options.export_es6:
+        ret += '''if (isNode) {
+    const { createRequire } = await import('node:module');
+    /** @suppress{duplicate} */
+    var require = createRequire(import.meta.url);
+  }\n'''
+
+  if options.export_es6:
+    ret += 'return new Promise((loadDataResolve, loadDataReject) => {\n'
+  ret += '    async function loadPackage(metadata) {\n'
 
   code = '''
       function assert(check, msg) {
-        if (!check) throw msg + new Error().stack;
+        if (!check) throw new Error(msg);
       }\n'''
 
   # Set up folders
   partial_dirs = []
   for file_ in data_files:
+    assert file_.mode == 'preload'
     dirname = os.path.dirname(file_.dstpath)
     dirname = dirname.lstrip('/') # absolute paths start with '/', remove that
     if dirname != '':
@@ -643,110 +650,73 @@ def generate_js(data_target, data_files, metadata):
                    % (json.dumps('/' + '/'.join(parts[:i])), json.dumps(parts[i])))
           partial_dirs.append(partial)
 
-  if options.has_preloaded:
-    # Bundle all datafiles into one archive. Avoids doing lots of simultaneous
-    # XHRs which has overhead.
-    start = 0
-    with open(data_target, 'wb') as data:
-      for file_ in data_files:
-        file_.data_start = start
-        curr = utils.read_binary(file_.srcpath)
-        file_.data_end = start + len(curr)
-        if AV_WORKAROUND:
-            curr += '\x00'
-        start += len(curr)
-        data.write(curr)
+  # Bundle all datafiles into one archive. Avoids doing lots of simultaneous
+  # XHRs which has overhead.
+  start = 0
+  with open(data_target, 'wb') as data:
+    for file_ in data_files:
+      file_.data_start = start
+      curr = utils.read_binary(file_.srcpath)
+      file_.data_end = start + len(curr)
+      start += len(curr)
+      data.write(curr)
 
-    if start > 256 * 1024 * 1024:
-      err('warning: file packager is creating an asset bundle of %d MB. '
-          'this is very large, and browsers might have trouble loading it. '
-          'see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/'
-          % (start / (1024 * 1024)))
+  if start > 256 * 1024 * 1024:
+    diagnostics.warn('file packager is creating an asset bundle of %d MB. '
+        'this is very large, and browsers might have trouble loading it. '
+        'see https://hacks.mozilla.org/2015/02/synchronous-execution-and-filesystem-access-in-emscripten/'
+        % (start / (1024 * 1024)))
 
-    create_preloaded = '''
-          Module['FS_createPreloadedFile'](this.name, null, byteArray, true, true,
-            () => Module['removeRunDependency'](`fp ${that.name}`),
-            () => err(`Preloading file ${that.name} failed`),
-            false, true); // canOwn this data in the filesystem, it is a slide into the heap that will never change\n'''
-    create_data = '''// canOwn this data in the filesystem, it is a slide into the heap that will never change
-          Module['FS_createDataFile'](this.name, null, byteArray, true, true, true);
-          Module['removeRunDependency'](`fp ${that.name}`);'''
+  create_preloaded = '''
+        try {
+          // canOwn this data in the filesystem, it is a slice into the heap that will never change
+          await Module['FS_preloadFile'](name, null, data, true, true, false, true);
+          Module['removeRunDependency'](`fp ${name}`);
+        } catch (e) {
+          err(`Preloading file ${name} failed`, e);
+        }\n'''
+  create_data = '''// canOwn this data in the filesystem, it is a slice into the heap that will never change
+        Module['FS_createDataFile'](name, null, data, true, true, true);
+        Module['removeRunDependency'](`fp ${name}`);'''
 
-    if not options.lz4:
-      # Data requests - for getting a block of data out of the big archive - have
-      # a similar API to XHRs
-      code += '''
-      /** @constructor */
-      function DataRequest(start, end, audio) {
-        this.start = start;
-        this.end = end;
-        this.audio = audio;
-      }
-      DataRequest.prototype = {
-        requests: {},
-        open: function(mode, name) {
-          this.name = name;
-          this.requests[name] = this;
-          Module['addRunDependency'](`fp ${this.name}`);
-        },
-        send: function() {},
-        onload: function() {
-          var byteArray = this.byteArray.subarray(this.start, this.end);
-          this.finish(byteArray);
-        },
-        finish: function(byteArray) {
-          var that = this;
-          %s
-          this.requests[this.name] = null;
-        }
-      };
+  finish_handler = create_preloaded if options.use_preload_plugins else create_data
 
-      var files = metadata['files'];
-      for (var i = 0; i < files.length; ++i) {
-        new DataRequest(files[i]['start'], files[i]['end'], files[i]['audio'] || 0).open('GET', files[i]['filename']);
-      }\n''' % (create_preloaded if options.use_preload_plugins else create_data)
+  if not options.lz4:
+    # Data requests - for getting a block of data out of the big archive - have
+    # a similar API to XHRs
+    code += '''
+    for (var file of metadata['files']) {
+      var name = file['filename']
+      Module['addRunDependency'](`fp ${name}`);
+    }\n'''
 
-  if options.has_embedded and not options.obj_output:
-    err('--obj-output is recommended when using --embed.  This outputs an object file for linking directly into your application is more efficient than JS encoding')
+  catch_handler = ''
+  if options.export_es6:
+    catch_handler += '''
+        .catch((error) => {
+          loadDataReject(error);
+        })'''
 
-  for counter, file_ in enumerate(data_files):
+  for file_ in data_files:
     filename = file_.dstpath
     dirname = os.path.dirname(filename)
-    basename = os.path.basename(filename)
-    if file_.mode == 'embed':
-      if not options.obj_output:
-        # Embed (only needed when not generating object file output)
-        data = base64_encode(utils.read_binary(file_.srcpath))
-        code += "      var fileData%d = '%s';\n" % (counter, data)
-        # canOwn this data in the filesystem (i.e. there is no need to create a copy in the FS layer).
-        code += ("      Module['FS_createDataFile']('%s', '%s', atob(fileData%d), true, true, true);\n"
-                 % (dirname, basename, counter))
-    elif file_.mode == 'preload':
-      # Preload
-      metadata_el = {
-        'filename': file_.dstpath,
-        'start': file_.data_start,
-        'end': file_.data_end,
-      }
-      if filename[-4:] in AUDIO_SUFFIXES:
-        metadata_el['audio'] = 1
-
-      metadata['files'].append(metadata_el)
-    else:
-      assert 0
+    metadata['files'].append({
+      'filename': file_.dstpath,
+      'start': file_.data_start,
+      'end': file_.data_end,
+    })
 
   if options.has_preloaded:
     if not options.lz4:
       # Get the big archive and split it up
       use_data = '''// Reuse the bytearray from the XHR as the source for file reads.
-          DataRequest.prototype.byteArray = byteArray;
-          var files = metadata['files'];
-          for (var i = 0; i < files.length; ++i) {
-            DataRequest.prototype.requests[files[i].filename].onload();
-          }'''
-      use_data += ("          Module['removeRunDependency']('datafile_%s');\n"
-                   % js_manipulation.escape_for_js_string(data_target))
-
+          for (var file of metadata['files']) {
+            var name = file['filename'];
+            var data = byteArray.subarray(file['start'], file['end']);
+            %s
+          }
+          Module['removeRunDependency']('datafile_%s');''' % (finish_handler,
+                                                              js_manipulation.escape_for_js_string(data_target))
     else:
       # LZ4FS usage
       temp = data_target + '.orig'
@@ -759,6 +729,9 @@ def generate_js(data_target, data_files, metadata):
             assert(typeof Module['LZ4'] === 'object', 'LZ4 not present - was your app build with -sLZ4?');
             Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
             Module['removeRunDependency']('datafile_%s');''' % (meta, "true" if options.use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
+
+    if options.export_es6:
+      use_data += '\nloadDataResolve();'
 
     package_name = data_target
     remote_package_size = os.path.getsize(package_name)
@@ -775,7 +748,7 @@ def generate_js(data_target, data_files, metadata):
       var REMOTE_PACKAGE_BASE = '%s';
       var REMOTE_PACKAGE_NAME = Module['locateFile'] ? Module['locateFile'](REMOTE_PACKAGE_BASE, '') : REMOTE_PACKAGE_BASE;\n''' % (js_manipulation.escape_for_js_string(data_target), js_manipulation.escape_for_js_string(remote_package_name))
     metadata['remote_package_size'] = remote_package_size
-    ret += '''var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n'''
+    ret += "      var REMOTE_PACKAGE_SIZE = metadata['remote_package_size'];\n"
 
     if options.use_preload_cache:
       # Set the id to a hash of the preloaded data, so that caches survive over multiple builds
@@ -792,46 +765,33 @@ def generate_js(data_target, data_files, metadata):
         var DB_VERSION = 1;
         var METADATA_STORE_NAME = 'METADATA';
         var PACKAGE_STORE_NAME = 'PACKAGES';
-        function openDatabase(callback, errback) {'''
-      if options.support_node:
-        code += '''
-            if (isNode) {
-              return errback();
-            }'''
-      code += '''
-          var indexedDB;
-          if (typeof window === 'object') {
-            indexedDB = window.indexedDB || window.mozIndexedDB || window.webkitIndexedDB || window.msIndexedDB;
-          } else if (typeof location !== 'undefined') {
-            // worker
-            indexedDB = self.indexedDB;
-          } else {
-            throw 'using IndexedDB to cache data can only be done on a web page or in a web worker';
+
+        async function openDatabase() {
+          if (typeof indexedDB == 'undefined') {
+            throw new Error('using IndexedDB to cache data can only be done on a web page or in a web worker');
           }
-          try {
+          return new Promise((resolve, reject) => {
             var openRequest = indexedDB.open(DB_NAME, DB_VERSION);
-          } catch (e) {
-            return errback(e);
-          }
-          openRequest.onupgradeneeded = (event) => {
-            var db = /** @type {IDBDatabase} */ (event.target.result);
+            openRequest.onupgradeneeded = (event) => {
+              var db = /** @type {IDBDatabase} */ (event.target.result);
 
-            if (db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
-              db.deleteObjectStore(PACKAGE_STORE_NAME);
-            }
-            var packages = db.createObjectStore(PACKAGE_STORE_NAME);
+              if (db.objectStoreNames.contains(PACKAGE_STORE_NAME)) {
+                db.deleteObjectStore(PACKAGE_STORE_NAME);
+              }
+              var packages = db.createObjectStore(PACKAGE_STORE_NAME);
 
-            if (db.objectStoreNames.contains(METADATA_STORE_NAME)) {
-              db.deleteObjectStore(METADATA_STORE_NAME);
-            }
-            var metadata = db.createObjectStore(METADATA_STORE_NAME);
-          };
-          openRequest.onsuccess = (event) => {
-            var db = /** @type {IDBDatabase} */ (event.target.result);
-            callback(db);
-          };
-          openRequest.onerror = (error) => errback(error);
-        };
+              if (db.objectStoreNames.contains(METADATA_STORE_NAME)) {
+                db.deleteObjectStore(METADATA_STORE_NAME);
+              }
+              var metadata = db.createObjectStore(METADATA_STORE_NAME);
+            };
+            openRequest.onsuccess = (event) => {
+              var db = /** @type {IDBDatabase} */ (event.target.result);
+              resolve(db);
+            };
+            openRequest.onerror = reject;
+          });
+        }
 
         // This is needed as chromium has a limit on per-entry files in IndexedDB
         // https://cs.chromium.org/chromium/src/content/renderer/indexed_db/webidbdatabase_impl.cc?type=cs&sq=package:chromium&g=0&l=177
@@ -839,67 +799,68 @@ def generate_js(data_target, data_files, metadata):
         // We set the chunk size to 64MB to stay well-below the limit
         var CHUNK_SIZE = 64 * 1024 * 1024;
 
-        function cacheRemotePackage(
-          db,
-          packageName,
-          packageData,
-          packageMeta,
-          callback,
-          errback
-        ) {
+        async function cacheRemotePackage(db, packageName, packageData, packageMeta) {
           var transactionPackages = db.transaction([PACKAGE_STORE_NAME], IDB_RW);
           var packages = transactionPackages.objectStore(PACKAGE_STORE_NAME);
           var chunkSliceStart = 0;
           var nextChunkSliceStart = 0;
           var chunkCount = Math.ceil(packageData.byteLength / CHUNK_SIZE);
           var finishedChunks = 0;
-          for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
-            nextChunkSliceStart += CHUNK_SIZE;
-            var putPackageRequest = packages.put(
-              packageData.slice(chunkSliceStart, nextChunkSliceStart),
-              `package/${packageName}/${chunkId}`
-            );
-            chunkSliceStart = nextChunkSliceStart;
-            putPackageRequest.onsuccess = (event) => {
-              finishedChunks++;
-              if (finishedChunks == chunkCount) {
-                var transaction_metadata = db.transaction(
-                  [METADATA_STORE_NAME],
-                  IDB_RW
-                );
-                var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
-                var putMetadataRequest = metadata.put(
-                  {
-                    'uuid': packageMeta.uuid,
-                    'chunkCount': chunkCount
-                  },
-                  `metadata/${packageName}`
-                );
-                putMetadataRequest.onsuccess = (event) =>  callback(packageData);
-                putMetadataRequest.onerror = (error) => errback(error);
-              }
-            };
-            putPackageRequest.onerror = (error) => errback(error);
-          }
+
+          return new Promise((resolve, reject) => {
+            for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
+              nextChunkSliceStart += CHUNK_SIZE;
+              var putPackageRequest = packages.put(
+                packageData.slice(chunkSliceStart, nextChunkSliceStart),
+                `package/${packageName}/${chunkId}`
+              );
+              chunkSliceStart = nextChunkSliceStart;
+              putPackageRequest.onsuccess = (event) => {
+                finishedChunks++;
+                if (finishedChunks == chunkCount) {
+                  var transaction_metadata = db.transaction(
+                    [METADATA_STORE_NAME],
+                    IDB_RW
+                  );
+                  var metadata = transaction_metadata.objectStore(METADATA_STORE_NAME);
+                  var putMetadataRequest = metadata.put(
+                    {
+                      'uuid': packageMeta.uuid,
+                      'chunkCount': chunkCount
+                    },
+                    `metadata/${packageName}`
+                  );
+                  putMetadataRequest.onsuccess = (event) => resolve(packageData);
+                  putMetadataRequest.onerror = reject;
+                }
+              };
+              putPackageRequest.onerror = reject;
+            }
+          });
         }
 
-        /* Check if there's a cached package, and if so whether it's the latest available */
-        function checkCachedPackage(db, packageName, callback, errback) {
+        /*
+         * Check if there's a cached package, and if so whether it's the latest available.
+         * Resolves to the cached metadata, or `null` if it is missing or out-of-date.
+         */
+        async function checkCachedPackage(db, packageName) {
           var transaction = db.transaction([METADATA_STORE_NAME], IDB_RO);
           var metadata = transaction.objectStore(METADATA_STORE_NAME);
           var getRequest = metadata.get(`metadata/${packageName}`);
-          getRequest.onsuccess = (event) => {
-            var result = event.target.result;
-            if (!result) {
-              return callback(false, null);
-            } else {
-              return callback(PACKAGE_UUID === result['uuid'], result);
+          return new Promise((resolve, reject) => {
+            getRequest.onsuccess = (event) => {
+              var result = event.target.result;
+              if (result && PACKAGE_UUID === result['uuid']) {
+                resolve(result);
+              } else {
+                resolve(null);
+              }
             }
-          };
-          getRequest.onerror = (error) => errback(error);
+            getRequest.onerror = reject;
+          });
         }
 
-        function fetchCachedPackage(db, packageName, metadata, callback, errback) {
+        async function fetchCachedPackage(db, packageName, metadata) {
           var transaction = db.transaction([PACKAGE_STORE_NAME], IDB_RO);
           var packages = transaction.objectStore(PACKAGE_STORE_NAME);
 
@@ -908,41 +869,43 @@ def generate_js(data_target, data_files, metadata):
           var chunkCount = metadata['chunkCount'];
           var chunks = new Array(chunkCount);
 
-          for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
-            var getRequest = packages.get(`package/${packageName}/${chunkId}`);
-            getRequest.onsuccess = (event) => {
-              if (!event.target.result) {
-                errback(new Error(`CachedPackageNotFound for: ${packageName}`));
-                return;
-              }
-              // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
-              if (chunkCount == 1) {
-                callback(event.target.result);
-              } else {
-                chunksDone++;
-                totalSize += event.target.result.byteLength;
-                chunks.push(event.target.result);
-                if (chunksDone == chunkCount) {
-                  if (chunksDone == 1) {
-                    callback(event.target.result);
-                  } else {
-                    var tempTyped = new Uint8Array(totalSize);
-                    var byteOffset = 0;
-                    for (var chunkId in chunks) {
-                      var buffer = chunks[chunkId];
-                      tempTyped.set(new Uint8Array(buffer), byteOffset);
-                      byteOffset += buffer.byteLength;
-                      buffer = undefined;
+          return new Promise((resolve, reject) => {
+            for (var chunkId = 0; chunkId < chunkCount; chunkId++) {
+              var getRequest = packages.get(`package/${packageName}/${chunkId}`);
+              getRequest.onsuccess = (event) => {
+                if (!event.target.result) {
+                  reject(`CachedPackageNotFound for: ${packageName}`);
+                  return;
+                }
+                // If there's only 1 chunk, there's nothing to concatenate it with so we can just return it now
+                if (chunkCount == 1) {
+                  resolve(event.target.result);
+                } else {
+                  chunksDone++;
+                  totalSize += event.target.result.byteLength;
+                  chunks.push(event.target.result);
+                  if (chunksDone == chunkCount) {
+                    if (chunksDone == 1) {
+                      resolve(event.target.result);
+                    } else {
+                      var tempTyped = new Uint8Array(totalSize);
+                      var byteOffset = 0;
+                      for (var chunkId in chunks) {
+                        var buffer = chunks[chunkId];
+                        tempTyped.set(new Uint8Array(buffer), byteOffset);
+                        byteOffset += buffer.byteLength;
+                        buffer = undefined;
+                      }
+                      chunks = undefined;
+                      resolve(tempTyped.buffer);
+                      tempTyped = undefined;
                     }
-                    chunks = undefined;
-                    callback(tempTyped.buffer);
-                    tempTyped = undefined;
                   }
                 }
-              }
-            };
-            getRequest.onerror = (error) => errback(error);
-          }
+              };
+              getRequest.onerror = reject;
+            }
+          });
         }\n'''
 
     # add Node.js support code, if necessary
@@ -950,203 +913,184 @@ def generate_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          require('node:fs').readFile(packageName, (err, contents) => {
-            if (err) {
-              errback(err);
-            } else {
-              callback(contents.buffer);
-            }
-          });
-          return;
+          var contents = require('fs').readFileSync(packageName);
+          return new Uint8Array(contents).buffer;
         }'''.strip()
 
     ret += '''
-      function fetchRemotePackage(packageName, packageSize, callback, errback) {
+      async function fetchRemotePackage(packageName, packageSize) {
         %(node_support_code)s
-        Module['dataFileDownloads'] ??= {};
-        fetch(packageName)
-          .catch((cause) => Promise.reject(new Error(`Network Error: ${packageName}`, {cause}))) // If fetch fails, rewrite the error to include the failing URL & the cause.
-          .then((response) => {
-            if (!response.ok) {
-              return Promise.reject(new Error(`${response.status}: ${response.url}`));
-            }
+        if (!Module['dataFileDownloads']) Module['dataFileDownloads'] = {};
+        try {
+          var response = await fetch(packageName);
+        } catch (e) {
+          throw new Error(`Network Error: ${packageName}`, {e});
+        }
+        if (!response.ok) {
+          throw new Error(`${response.status}: ${response.url}`);
+        }
 
-            if (!response.body && response.arrayBuffer) { // If we're using the polyfill, readers won't be available...
-              return response.arrayBuffer().then(callback);
-            }
+        const chunks = [];
+        const headers = response.headers;
+        const total = Number(headers.get('Content-Length') || packageSize);
+        let loaded = 0;
 
-            const reader = response.body.getReader();
-            const iterate = () => reader.read().then(handleChunk).catch((cause) => {
-              return Promise.reject(new Error(`Unexpected error while handling : ${response.url} ${cause}`, {cause}));
-            });
+        Module['setStatus'] && Module['setStatus']('Downloading data...');
+        const reader = response.body.getReader();
 
-            const chunks = [];
-            const headers = response.headers;
-            const total = Number(headers.get('Content-Length') ?? packageSize);
-            let loaded = 0;
+        while (1) {
+          var {done, value} = await reader.read();
+          if (done) break;
+          chunks.push(value);
+          loaded += value.length;
+          Module['dataFileDownloads'][packageName] = {loaded, total};
 
-            const handleChunk = ({done, value}) => {
-              if (!done) {
-                chunks.push(value);
-                loaded += value.length;
-                Module['dataFileDownloads'][packageName] = {loaded, total};
+          let totalLoaded = 0;
+          let totalSize = 0;
 
-                let totalLoaded = 0;
-                let totalSize = 0;
+          for (const download of Object.values(Module['dataFileDownloads'])) {
+            totalLoaded += download.loaded;
+            totalSize += download.total;
+          }
 
-                for (const download of Object.values(Module['dataFileDownloads'])) {
-                  totalLoaded += download.loaded;
-                  totalSize += download.total;
-                }
+          Module['setStatus'] && Module['setStatus'](`Downloading data... (${totalLoaded}/${totalSize})`);
+        }
 
-                Module['setStatus']?.(`Downloading data... (${totalLoaded}/${totalSize})`);
-                return iterate();
-              } else {
-                const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
-                let offset = 0;
-                for (const chunk of chunks) {
-                  packageData.set(chunk, offset);
-                  offset += chunk.length;
-                }
-                callback(packageData.buffer);
-              }
-            };
-
-            Module['setStatus']?.('Downloading data...');
-            return iterate();
-          });
-      };
-
-      function handleError(error) {
-        console.error('package error:', error);
-      };\n''' % {'node_support_code': node_support_code}
+        const packageData = new Uint8Array(chunks.map((c) => c.length).reduce((a, b) => a + b, 0));
+        let offset = 0;
+        for (const chunk of chunks) {
+          packageData.set(chunk, offset);
+          offset += chunk.length;
+        }
+        return packageData.buffer;
+      }\n''' % {'node_support_code': node_support_code}
 
     code += '''
-      function processPackageData(arrayBuffer) {
+      async function processPackageData(arrayBuffer) {
         assert(arrayBuffer, 'Loading data file failed.');
-        assert(arrayBuffer.constructor.name === ArrayBuffer.name, 'bad input to processPackageData');
+        assert(arrayBuffer.constructor.name === ArrayBuffer.name, 'bad input to processPackageData ' + arrayBuffer.constructor.name);
         var byteArray = new Uint8Array(arrayBuffer);
         var curr;
         %s
-      };
+      }
       Module['addRunDependency']('datafile_%s');\n''' % (use_data, js_manipulation.escape_for_js_string(data_target))
     # use basename because from the browser's point of view,
     # we need to find the datafile in the same dir as the html file
 
     code += '''
-      Module['preloadResults'] ??= {};\n'''
+      if (!Module['preloadResults']) Module['preloadResults'] = {};\n'''
 
     if options.use_preload_cache:
       code += '''
-        function preloadFallback(error) {
+        async function preloadFallback(error) {
           console.error(error);
           console.error('falling back to default preload behavior');
-          fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, processPackageData, handleError);
-        };
+          processPackageData(await fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE));
+        }
 
-        openDatabase(
-          (db) => checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME,
-              (useCached, metadata) => {
-                Module['preloadResults'][PACKAGE_NAME] = {fromCache: useCached};
-                if (useCached) {
-                  fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, metadata, processPackageData, preloadFallback);
-                } else {
-                  fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE,
-                    (packageData) => {
-                      cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}, processPackageData,
-                        (error) => {
-                          console.error(error);
-                          processPackageData(packageData);
-                        });
-                    }
-                  , preloadFallback);
-                }
-              }, preloadFallback)
-        , preloadFallback);
+        try {
+          var db = await openDatabase();
+          var pkgMetadata = await checkCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME);
+          var useCached = !!pkgMetadata;
+          Module['preloadResults'][PACKAGE_NAME] = {fromCache: useCached};
+          if (useCached) {
+            processPackageData(await fetchCachedPackage(db, PACKAGE_PATH + PACKAGE_NAME, pkgMetadata));
+          } else {
+            var packageData = await fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
+            try {
+              processPackageData(await cacheRemotePackage(db, PACKAGE_PATH + PACKAGE_NAME, packageData, {uuid:PACKAGE_UUID}))
+            } catch (error) {
+              console.error(error);
+              processPackageData(packageData);
+            }
+          }
+        } catch(e) {
+          await preloadFallback(e)%s;
+        }
 
-        Module['setStatus']?.('Downloading...');\n'''
+        Module['setStatus'] && Module['setStatus']('Downloading...');\n''' % catch_handler
     else:
       # Not using preload cache, so we might as well start the xhr ASAP,
       # potentially before JS parsing of the main codebase if it's after us.
       # Only tricky bit is the fetch is async, but also when runWithFS is called
       # is async, so we handle both orderings.
       ret += '''
-      var fetchedCallback = null;
-      var fetched = Module['getPreloadedPackage'] ? Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE) : null;
+      var fetchPromise;
+      var fetched = Module['getPreloadedPackage'] && Module['getPreloadedPackage'](REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE);
 
-      if (!fetched) fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE, (data) => {
-        if (fetchedCallback) {
-          fetchedCallback(data);
-          fetchedCallback = null;
-        } else {
-          fetched = data;
-        }
-      }, handleError);\n'''
+      if (!fetched) {
+        // Note that we don't use await here because we want to execute the
+        // the rest of this function immediately.
+        fetchPromise = fetchRemotePackage(REMOTE_PACKAGE_NAME, REMOTE_PACKAGE_SIZE)%s;
+      }\n''' % catch_handler
 
       code += '''
       Module['preloadResults'][PACKAGE_NAME] = {fromCache: false};
-      if (fetched) {
-        processPackageData(fetched);
-        fetched = null;
-      } else {
-        fetchedCallback = processPackageData;
-      }\n'''
+      if (!fetched) {
+        fetched = await fetchPromise;
+      }
+      processPackageData(fetched);\n'''
 
   ret += '''
-    function runWithFS(Module) {\n'''
+    async function runWithFS(Module) {\n'''
   ret += code
   ret += '''
     }
     if (Module['calledRun']) {
-      runWithFS(Module);
+      runWithFS(Module)%s;
     } else {
-      (Module['preRun'] ??= []).push(runWithFS); // FS is not initialized yet, wait for it
-    }\n'''
+      if (!Module['preRun']) Module['preRun'] = [];
+      Module['preRun'].push(runWithFS); // FS is not initialized yet, wait for it
+    }\n''' % catch_handler
 
   if options.separate_metadata:
     node_support_code = ''
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          require('node:fs').readFile(metadataUrl, 'utf8', (err, contents) => {
-            if (err) {
-              return Promise.reject(err);
-            } else {
-              loadPackage(JSON.parse(contents));
-            }
-          });
-          return;
+          var contents = require('fs').readFileSync(metadataUrl, 'utf8');
+          // The await here is needed, even though JSON.parse is a sync API.  It works
+          // around a issue with `removeRunDependency` otherwise being called to early
+          // on the metadata object.
+          var json = await JSON.parse(contents);
+          return loadPackage(json);
         }'''.strip()
 
     ret += '''
     Module['removeRunDependency']('%(metadata_file)s');
   }
 
-  function runMetaWithFS() {
+  async function runMetaWithFS() {
     Module['addRunDependency']('%(metadata_file)s');
     var metadataUrl = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
     %(node_support_code)s
-    fetch(metadataUrl)
-      .then((response) => {
-        if (response.ok) {
-          return response.json();
-        }
-        return Promise.reject(new Error(`${response.status}: ${response.url}`));
-      })
-      .then(loadPackage);
+    var response = await fetch(metadataUrl);
+    if (!response.ok) {
+      throw new Error(`${response.status}: ${response.url}`);
+    }
+    var json = await response.json();
+    await loadPackage(json);
   }
 
   if (Module['calledRun']) {
     runMetaWithFS();
   } else {
-    (Module['preRun'] ??= []).push(runMetaWithFS);
+    if (!Module['preRun']) Module['preRun'] = [];
+    Module['preRun'].push(runMetaWithFS);
   }\n''' % {'node_support_code': node_support_code, 'metadata_file': os.path.basename(options.jsoutput + '.metadata')}
   else:
     ret += '''
     }
     loadPackage(%s);\n''' % json.dumps(metadata)
 
-  ret += '''
+  if options.export_es6:
+    ret += '''
+  });
+}
+// END the loadDataFile function
+'''
+  else:
+    ret += '''
   })();\n'''
 
   return ret

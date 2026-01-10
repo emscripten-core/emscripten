@@ -22,8 +22,8 @@ addToLibrary({
     },
     mount(mount) {
 #if expectToReceiveOnModule('websocket')
-      // The incomming Module['websocket'] can be used for configuring 
-      // configuring subprotocol/url, etc
+      // The incoming Module['websocket'] can be used for configuring 
+      // subprotocol/url, etc
       SOCKFS.websocketArgs = {{{ makeModuleReceiveExpr('websocket', '{}') }}};
       // Add the Event registration mechanism to the exported websocket configuration
       // object so we can register network callbacks from native JavaScript too.
@@ -44,7 +44,15 @@ addToLibrary({
       return FS.createNode(null, '/', {{{ cDefs.S_IFDIR | 0o777 }}}, 0);
     },
     createSocket(family, type, protocol) {
+      // Emscripten only supports AF_INET
+      if (family != {{{ cDefs.AF_INET }}}) {
+        throw new FS.ErrnoError({{{ cDefs.EAFNOSUPPORT }}});
+      }
       type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // Some applications may pass it; it makes no sense for a single process.
+      // Emscripten only supports SOCK_STREAM and SOCK_DGRAM
+      if (type != {{{ cDefs.SOCK_STREAM }}} && type != {{{ cDefs.SOCK_DGRAM }}}) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
       var streaming = type == {{{ cDefs.SOCK_STREAM }}};
       if (streaming && protocol && protocol != {{{ cDefs.IPPROTO_TCP }}}) {
         throw new FS.ErrnoError({{{ cDefs.EPROTONOSUPPORT }}}); // if SOCK_STREAM, must be tcp or 0.
@@ -194,7 +202,7 @@ addToLibrary({
             }
 
             if (subProtocols !== 'null') {
-              // The regex trims the string (removes spaces at the beginning and end, then splits the string by
+              // The regex trims the string (removes spaces at the beginning and end), then splits the string by
               // <any space>,<any space> into an Array. Whitespace removal is important for Websockify and ws.
               subProtocols = subProtocols.replace(/^ +| +$/g,"").split(/ *, */);
 
@@ -292,7 +300,9 @@ addToLibrary({
             var encoder = new TextEncoder(); // should be utf-8
             data = encoder.encode(data); // make a typed array from the string
           } else {
+#if ASSERTIONS
             assert(data.byteLength !== undefined); // must receive an ArrayBuffer
+#endif
             if (data.byteLength == 0) {
               // An empty ArrayBuffer will emit a pseudo disconnect event
               // as recv/recvmsg will return zero which indicates that a socket
@@ -313,7 +323,7 @@ addToLibrary({
               data.length === 10 &&
               data[0] === 255 && data[1] === 255 && data[2] === 255 && data[3] === 255 &&
               data[4] === 'p'.charCodeAt(0) && data[5] === 'o'.charCodeAt(0) && data[6] === 'r'.charCodeAt(0) && data[7] === 't'.charCodeAt(0)) {
-            // update the peer's port and it's key in the peer map
+            // update the peer's port and its key in the peer map
             var newport = ((data[8] << 8) | data[9]);
             SOCKFS.websocket_sock_ops.removePeer(sock, peer);
             peer.port = newport;
@@ -413,6 +423,14 @@ addToLibrary({
             }
             {{{ makeSetValue('arg', '0', 'bytes', 'i32') }}};
             return 0;
+          case {{{ cDefs.FIONBIO }}}:
+            var on = {{{ makeGetValue('arg', '0', 'i32') }}};
+            if (on) {
+              sock.stream.flags |= {{{ cDefs.O_NONBLOCK }}};
+            } else {
+              sock.stream.flags &= ~{{{ cDefs.O_NONBLOCK }}};
+            }
+            return 0;
           default:
             return {{{ cDefs.EINVAL }}};
         }
@@ -427,9 +445,7 @@ addToLibrary({
           sock.server = null;
         }
         // close any peer connections
-        var peers = Object.keys(sock.peers);
-        for (var i = 0; i < peers.length; i++) {
-          var peer = sock.peers[peers[i]];
+        for (var peer of Object.values(sock.peers)) {
           try {
             peer.socket.close();
           } catch (e) {
@@ -622,7 +638,7 @@ addToLibrary({
         var data = buffer.slice(offset, offset + length);
 #if PTHREADS
         // WebSockets .send() does not allow passing a SharedArrayBuffer, so
-        // clone the the SharedArrayBuffer as regular ArrayBuffer before
+        // clone the SharedArrayBuffer as regular ArrayBuffer before
         // sending.
         if (data instanceof SharedArrayBuffer) {
           data = new Uint8Array(new Uint8Array(data)).buffer;
@@ -732,10 +748,10 @@ addToLibrary({
         if (event === 'error') {
           withStackSave(() => {
             var msg = stringToUTF8OnStack(data[2]);
-            {{{ makeDynCall('viiii', 'callback') }}}(data[0], data[1], msg, userData);
+            {{{ makeDynCall('viipp', 'callback') }}}(data[0], data[1], msg, userData);
           });
         } else {
-          {{{ makeDynCall('vii', 'callback') }}}(data, userData);
+          {{{ makeDynCall('vip', 'callback') }}}(data, userData);
         }
       });
     };

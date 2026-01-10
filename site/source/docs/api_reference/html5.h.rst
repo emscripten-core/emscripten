@@ -90,6 +90,54 @@ The ``useCapture`` parameter  maps to ``useCapture`` in `EventTarget.addEventLis
 
 Most functions return the result using the type :c:data:`EMSCRIPTEN_RESULT`. Zero and positive values denote success. Negative values signal failure. None of the functions fail or abort by throwing a JavaScript or C++ exception. If a particular browser does not support the given feature, the value :c:data:`EMSCRIPTEN_RESULT_NOT_SUPPORTED` will be returned at the time the callback is registered.
 
+Unregister function
+-------------------
+
+In order to unregister a single event handler callback, call the following function:
+
+  .. code-block:: cpp
+
+    EMSCRIPTEN_RESULT emscripten_html5_remove_event_listener(
+      const char *target,   // ID of the target HTML element.
+      void *userData,       // User-defined data (passed to the callback).
+      int eventTypeId,      // The event type ID (EMSCRIPTEN_EVENT_XXX).
+      void *callback        // Callback function.
+    );
+
+
+The ``target``, ``userData`` and ``callback`` parameters are the same parameters provided in ``emscripten_set_some_callback`` with the only difference being that, since this function applies to all types of callbacks, the type of ``callback`` is ``void *``.
+
+Note in particular that the value of ``userData`` will need to match with the call that was used to register the callback. If you are having trouble, double check the value of ``userData``.
+
+The ``eventTypeId`` represents the event type, the same Id received in the callback functions.
+
+The function returns ``EMSCRIPTEN_RESULT_SUCCESS`` when the event handler callback is removed and ``EMSCRIPTEN_RESULT_INVALID_PARAM`` otherwise.
+
+  .. code-block:: cpp
+
+    // Example
+
+    bool my_mouse_callback_1(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData) {
+      // ...
+    }
+
+    bool my_mouse_callback_2(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData) {
+      // ...
+    }
+
+    void main() {
+
+      // 1. set callbacks for mouse down and mouse move
+      emscripten_set_mousedown_callback("#mydiv", 0, my_mouse_callback_1);
+      emscripten_set_mousedown_callback("#mydiv", (void *) 34, my_mouse_callback_2);
+      emscripten_set_mousemove_callback("#mydiv", 0, my_mouse_callback_1);
+
+      // 2. remove these callbacks
+      emscripten_html5_remove_event_listener("#mydiv", 0, EMSCRIPTEN_EVENT_MOUSEDOWN, my_mouse_callback_1);
+      emscripten_html5_remove_event_listener("#mydiv", (void *) 34, EMSCRIPTEN_EVENT_MOUSEDOWN, my_mouse_callback_2);
+      emscripten_html5_remove_event_listener("#mydiv", 0, EMSCRIPTEN_EVENT_MOUSEMOVE, my_mouse_callback_1);
+    }
+
 
 Callback functions
 ------------------
@@ -290,7 +338,7 @@ Struct
 
     A system and implementation dependent numeric code identifying the unmodified value of the pressed key; this is usually the same as ``keyCode``.
 
-    .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available. Note thought that while this field is deprecated, the cross-browser support for ``which`` may be better than for the other fields, so experimentation is recommended. Read issue https://github.com/emscripten-core/emscripten/issues/2817 for more information.
+    .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available. Note though that while this field is deprecated, the cross-browser support for ``which`` may be better than for the other fields, so experimentation is recommended. Read issue https://github.com/emscripten-core/emscripten/issues/2817 for more information.
 
 
 Callback functions
@@ -410,7 +458,7 @@ Struct
   .. c:member:: int canvasX
      int canvasY
 
-    These fields give the mouse coordinates mapped to the Emscripten canvas client area (Emscripten-specific extension; coordinates are rounded down the nearest integer).
+    These fields give the mouse coordinates mapped to the Emscripten canvas client area (Emscripten-specific extension; coordinates are rounded down to the nearest integer).
 
 
   .. c:member:: int padding
@@ -467,7 +515,7 @@ Functions
 
   Returns the most recently received mouse event state.
 
-  Note that for this function call to succeed, :c:func:`emscripten_set_xxx_callback <emscripten_set_click_callback>` must have first been called with one of the mouse event types and a non-zero callback function pointer to enable the Mouse state capture.
+  Note that for this function call to succeed, :c:func:`emscripten_set_xxx_callback <emscripten_set_click_callback>` must have first been called with one of the mouse event types and a non-zero callback function pointer to enable the mouse state capture.
 
   :param EmscriptenMouseEvent* mouseState: The most recently received mouse event state.
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
@@ -513,7 +561,7 @@ Struct
     double deltaY
     double deltaZ
 
-    Movement of the wheel on each of the axis. Note that these values may be fractional, so you should avoid simply casting them to integer, or it might result
+    Movement of the wheel on each of the axes. Note that these values may be fractional, so you should avoid simply casting them to integer, or it might result
     in scroll values of 0. The positive Y scroll direction is when scrolling the page downwards (page CSS pixel +Y direction), which corresponds to scrolling
     the mouse wheel downwards (away from the screen) on Windows, Linux, and also on macOS when the 'natural scroll' option is disabled.
 
@@ -746,7 +794,7 @@ Struct
 
     The `orientation <https://developer.mozilla.org/en-US/Apps/Build/gather_and_modify_data/responding_to_device_orientation_changes#Device_Orientation_API>`_ of the device in terms of the transformation from a coordinate frame fixed on the Earth to a coordinate frame fixed in the device.
 
-    The image (source: `dev.opera.com <http://dev.opera.com/articles/view/w3c-device-orientation-api/>`_) and definitions below illustrate the co-ordinate frame:
+    The image (source: `dev.opera.com <http://dev.opera.com/articles/view/w3c-device-orientation-api/>`_) and definitions below illustrate the coordinate frame:
 
       - :c:type:`~EmscriptenDeviceOrientationEvent.alpha`: the rotation of the device around the Z axis.
       - :c:type:`~EmscriptenDeviceOrientationEvent.beta`: the rotation of the device around the X axis.
@@ -800,7 +848,7 @@ Functions
 
   Returns the most recently received ``deviceorientation`` event state.
 
-  Note that for this function call to succeed, :c:func:`emscripten_set_deviceorientation_callback` must have first been called with one of the mouse event types and a non-zero callback function pointer to enable the ``deviceorientation`` state capture.
+  Note that for this function call to succeed, :c:func:`emscripten_set_deviceorientation_callback` must have first been called with a non-zero callback function pointer to enable the ``deviceorientation`` state capture.
 
   :param orientationState: The most recently received ``deviceorientation`` event state.
   :type orientationState: EmscriptenDeviceOrientationEvent*
@@ -892,7 +940,7 @@ Functions
 
   Returns the most recently received `devicemotion <http://w3c.github.io/deviceorientation/spec-source-orientation.html#devicemotion>`_ event state.
 
-  Note that for this function call to succeed, :c:func:`emscripten_set_devicemotion_callback` must have first been called with one of the mouse event types and a non-zero callback function pointer to enable the ``devicemotion`` state capture.
+  Note that for this function call to succeed, :c:func:`emscripten_set_devicemotion_callback` must have first been called with a non-zero callback function pointer to enable the ``devicemotion`` state capture.
 
   :param motionState: The most recently received ``devicemotion`` event state.
   :type motionState: EmscriptenDeviceMotionEvent*
@@ -1719,7 +1767,7 @@ Functions
   .. note::
 
      Gamepad API uses an array of gamepad state objects to return the state of
-     each device. The devices are identified via the index they are present in in
+     each device. The devices are identified via the index they are present in
      this array. Because of that, if one first connects gamepad A, then gamepad
      B, and then disconnects gamepad A, the gamepad B shall not take the place of
      gamepad A, so in this scenario, this function will still keep returning two
@@ -1755,7 +1803,7 @@ Defines
 .. c:macro:: EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE
   EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE
 
-    Emscripten `batterymanager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events.
+    Emscripten `BatteryManager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events.
 
 
 Struct
@@ -1763,7 +1811,7 @@ Struct
 
 .. c:type:: EmscriptenBatteryEvent
 
-  The event structure passed in the `batterymanager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
+  The event structure passed in the `BatteryManager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
 
 
   .. c:member:: double chargingTime
@@ -1788,14 +1836,14 @@ Callback functions
 
 .. c:type:: em_battery_callback_func
 
-  Function pointer for the :c:func:`batterymanager event callback functions <emscripten_set_batterychargingchange_callback>`, defined as:
+  Function pointer for the :c:func:`BatteryManager event callback functions <emscripten_set_batterychargingchange_callback>`, defined as:
 
   .. code-block:: cpp
 
     typedef bool (*em_battery_callback_func)(int eventType, const EmscriptenBatteryEvent *batteryEvent, void *userData);
 
-  :param int eventType: The type of ``batterymanager`` event (:c:data:`EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE`).
-  :param batteryEvent: Information about the ``batterymanager`` event that occurred.
+  :param int eventType: The type of ``BatteryManager`` event (:c:data:`EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE`).
+  :param batteryEvent: Information about the ``BatteryManager`` event that occurred.
   :type batteryEvent: const EmscriptenBatteryEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
@@ -1809,7 +1857,7 @@ Functions
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_batterychargingchange_callback(void *userData, em_battery_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_batterylevelchange_callback(void *userData, em_battery_callback_func callback)
 
-  Registers a callback function for receiving the `batterymanager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
+  Registers a callback function for receiving the `BatteryManager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
 
   :param void* userData: |userData-parameter-doc|
   :param em_battery_callback_func callback: |callback-function-parameter-doc|

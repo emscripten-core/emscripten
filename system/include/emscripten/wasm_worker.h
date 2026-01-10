@@ -113,7 +113,7 @@ int emscripten_navigator_hardware_concurrency(void);
 // the given memory access width can be accessed atomically, and false
 // otherwise. Generally will return true on 1, 2 and 4 byte accesses. On 8 byte
 // accesses, behavior differs across browsers, see
-//  - https://bugzilla.mozilla.org/show_bug.cgi?id=1246139
+//  - https://bugzil.la/1246139
 //  - https://bugs.chromium.org/p/chromium/issues/detail?id=1167449
 int emscripten_atomics_is_lock_free(int byteWidth);
 
@@ -185,9 +185,12 @@ void emscripten_lock_busyspin_waitinf_acquire(emscripten_lock_t *lock __attribut
 // timeout parameter as int64 nanosecond units, this function takes in the wait
 // timeout parameter as double millisecond units. See
 // https://github.com/WebAssembly/threads/issues/175 for more information.
-// NOTE: This function can be called in both main thread and in Workers. If you
-//       use this API in Worker, you cannot utilise an infinite loop programming
-//       model.
+// NOTE: This function can be called in both main thread and in Workers.
+// NOTE 2: This function will always acquire the lock asynchronously. That is,
+//         the lock will only be attempted to acquire after current control flow
+//         yields back to the browser, so that the Wasm call stack is empty.
+//         This is to guarantee a uniform control flow. If you use this API in
+//         a Worker, you cannot utilise an infinite loop programming model.
 void emscripten_lock_async_acquire(emscripten_lock_t *lock __attribute__((nonnull)),
                                    emscripten_async_wait_volatile_callback_t asyncWaitFinished __attribute__((nonnull)),
                                    void *userData,

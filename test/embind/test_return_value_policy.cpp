@@ -108,6 +108,9 @@ struct ValueHolder {
   void setPtr(Value* v) {
     valuePtr = v;
   }
+  Value* getPtrConst() const {
+    return valuePtr;
+  }
   static Value* staticGetPtr() {
     static Value v;
     return &v;
@@ -265,6 +268,7 @@ int main() {
 
     console.log("valueHolder.valueReference");
     valueProp = valueHolder.valueReference;
+    assert(valueProp instanceof Module.Value);
     // Check that both references are updated.
     valueProp.setName("reference");
     valueProp = valueHolder.valueReference;
@@ -290,6 +294,72 @@ int main() {
     console.log("valueHolder.valuePtrTakeOwnership");
     valueHolder.initializeValuePtr();
     valueProp = valueHolder.valuePtrTakeOwnership;
+    valueProp.delete();
+    Module.assertDefault(1);
+    Module.assertDestructed(1);
+    Module.assertAllCountsZero();
+
+    console.log("valueHolder.getterValueDefault");
+    valueProp = valueHolder.getterValueDefault;
+    assert(valueProp instanceof Module.Value);
+    valueProp.delete();
+    // TODO: Investigate if this can be made to only create one copy. The getter
+    // wrapper appears to create an extra copy.
+    Module.assertCopy(2);
+    Module.assertDestructed(2);
+    Module.assertAllCountsZero();
+
+    console.log("valueHolder.getterValueTakeOwnership");
+    valueProp = valueHolder.getterValueTakeOwnership;
+    assert(valueProp instanceof Module.Value);
+    valueProp.delete();
+    // TODO: Investigate if the copy can be removed.
+    Module.assertCopy(1);
+    Module.assertMove(1);
+    Module.assertDestructed(2);
+    Module.assertAllCountsZero();
+
+    console.log("valueHolder.getterValuePtrTakeOwnership");
+    valueProp = valueHolder.getterValuePtrTakeOwnership;
+    assert(valueProp instanceof Module.Value);
+    Module.assertAllCountsZero();
+
+    console.log("valueHolder.getterValuePtrReference");
+    valueProp = valueHolder.getterValuePtrReference;
+    assert(valueProp instanceof Module.Value);
+    Module.assertAllCountsZero();
+
+    console.log("valueHolder.getterSetterValueDefault");
+    valueProp = valueHolder.getterSetterValueDefault;
+    assert(valueProp instanceof Module.Value);
+    valueProp.delete();
+    // TODO: Investigate if this can be made to only create one copy. The getter
+    // wrapper appears to create an extra copy.
+    Module.assertCopy(2);
+    Module.assertDestructed(2);
+    Module.assertAllCountsZero();
+
+    console.log("valueHolder.getterSetterValueTakeOwnership");
+    valueProp = valueHolder.getterSetterValueTakeOwnership;
+    assert(valueProp instanceof Module.Value);
+    valueProp.delete();
+    // TODO: Investigate if the copy can be removed.
+    Module.assertCopy(1);
+    Module.assertMove(1);
+    Module.assertDestructed(2);
+    Module.assertAllCountsZero();
+
+    console.log("valueHolder.getterSetterPtrReference");
+    valueHolder.initializeValuePtr();
+    valueProp = valueHolder.getterSetterPtrReference;
+    assert(valueProp instanceof Module.Value);
+    Module.assertDefault(1);
+    Module.assertAllCountsZero();
+
+    console.log("valueHolder.getterSetterPtrTakeOwnership");
+    valueHolder.initializeValuePtr();
+    valueProp = valueHolder.getterSetterPtrTakeOwnership;
+    assert(valueProp instanceof Module.Value);
     valueProp.delete();
     Module.assertDefault(1);
     Module.assertDestructed(1);
@@ -341,16 +411,30 @@ EMSCRIPTEN_BINDINGS(xxx) {
     .property("valueTakeOwnership", &ValueHolder::value, return_value_policy::take_ownership())
 
     // Test binding raw pointers with the various methods.
+    // Skip the test for default since that is forbidden.
     .property("valuePtrReference", &ValueHolder::valuePtr, return_value_policy::reference())
     .property("valuePtrTakeOwnership", &ValueHolder::valuePtr, return_value_policy::take_ownership())
 
-    // Check that compiling with getter and setter methods works as expected.
-    // These are only tested for compilation since they use the same underlying
-    // mechanisms as the other property bindings.
-    // Getter only.
-    .property("getterValue", &ValueHolder::get, return_value_policy::reference())
-    // Getter and setter.
-    .property("getterSetterValue", &ValueHolder::get, &ValueHolder::set, return_value_policy::reference())
+    // Getter method only with value.
+    .property("getterValueDefault", &ValueHolder::get)
+    // Skip the test for rvp::reference since that is forbidden.
+    .property("getterValueTakeOwnership", &ValueHolder::get, return_value_policy::take_ownership())
+
+    // Getter method only with pointer.
+    // Skip the test for default since that is not allowed.
+    .property("getterValuePtrReference", &ValueHolder::getPtrConst, return_value_policy::reference())
+    .property("getterValuePtrTakeOwnership", &ValueHolder::getPtrConst, return_value_policy::take_ownership())
+
+    // Getter and setter with value.
+    .property("getterSetterValueDefault", &ValueHolder::get, &ValueHolder::set)
+    // Skip the test for rvp::reference since that is forbidden.
+    .property("getterSetterValueTakeOwnership", &ValueHolder::get, &ValueHolder::set, return_value_policy::take_ownership())
+
+    // Getter and setter with pointer.
+    // Skip the test for default since that is not allowed.
+    .property("getterSetterPtrReference", &ValueHolder::getPtrConst, &ValueHolder::setPtr, return_value_policy::reference())
+    .property("getterSetterPtrTakeOwnership", &ValueHolder::getPtrConst, &ValueHolder::setPtr, return_value_policy::take_ownership())
+
     // std::function getter.
     .property("getterPtrWithStdFunctionReference", std::function<const Value*(const ValueHolder&)>(&value_holder), return_value_policy::reference())
     ;

@@ -5,7 +5,7 @@
  */
 
 var LibraryGLUT = {
-  $GLUT__deps: ['$Browser', 'glutPostRedisplay'],
+  $GLUT__deps: ['$Browser', '$getFullscreenElement', 'glutPostRedisplay'],
   $GLUT: {
     initTime: null,
     idleFunc: null,
@@ -42,7 +42,7 @@ var LibraryGLUT = {
 
     onMousemove: (event) => {
       /* Send motion event only if the motion changed, prevents
-       * spamming our app with uncessary callback call. It does happen in
+       * spamming our app with unnecessary callbacks. It does happen in
        * Chrome on Windows.
        */
       var lastX = Browser.mouseX;
@@ -185,14 +185,14 @@ var LibraryGLUT = {
         var key = GLUT.getSpecialKey(event['keyCode']);
         if (key !== null) {
           if (GLUT.specialUpFunc) {
-            event.preventDefault ();
+            event.preventDefault();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.specialUpFunc') }}}(key, Browser.mouseX, Browser.mouseY);
           }
         } else {
           key = GLUT.getASCIIKey(event);
           if (key !== null && GLUT.keyboardUpFunc) {
-            event.preventDefault ();
+            event.preventDefault();
             GLUT.saveModifiers(event);
             {{{ makeDynCall('viii', 'GLUT.keyboardUpFunc') }}}(key, Browser.mouseX, Browser.mouseY);
           }
@@ -257,7 +257,6 @@ var LibraryGLUT = {
       Browser.calculateMouseEvent(event);
 
       // cross-browser wheel delta
-      var e = window.event || event; // old IE support
       // Note the minus sign that flips browser wheel direction (positive direction scrolls page down) to native wheel direction (positive direction is mouse wheel up)
       var delta = -Browser.getMouseWheelDelta(event);
       delta = (delta == 0) ? 0 : (delta > 0 ? Math.max(delta, 1) : Math.min(delta, -1)); // Quantize to integer so that minimum scroll is at least +/- 1.
@@ -279,7 +278,7 @@ var LibraryGLUT = {
     onFullscreenEventChange: (event) => {
       var width;
       var height;
-      if (document["fullscreen"] || document["fullScreen"] || document["mozFullScreen"] || document["webkitIsFullScreen"]) {
+      if (getFullscreenElement()) {
         width = screen["width"];
         height = screen["height"];
       } else {
@@ -298,6 +297,13 @@ var LibraryGLUT = {
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
       }
       _glutPostRedisplay();
+    },
+
+    // Resize callback stage 1: update canvas by setCanvasSize, which notifies resizeListeners including GLUT.reshapeFunc
+    onResize: () => {
+      // Update canvas size to clientWidth and clientHeight, which include CSS scaling
+      var canvas = Browser.getCanvas();
+      Browser.setCanvasSize(canvas.clientWidth, canvas.clientHeight, /*noUpdates*/false);
     }
   },
 
@@ -336,6 +342,10 @@ var LibraryGLUT = {
     // Firefox
     window.addEventListener('DOMMouseScroll', GLUT.onMouseWheel, true);
 
+    // Resize callback stage 1: update canvas which notifies resizeListeners
+    window.addEventListener('resize', GLUT.onResize, true);
+
+    // Resize callback stage 2: updateResizeListeners notifies reshapeFunc
     Browser.resizeListeners.push((width, height) => {
       if (GLUT.reshapeFunc) {
         {{{ makeDynCall('vii', 'GLUT.reshapeFunc') }}}(width, height);
@@ -358,6 +368,8 @@ var LibraryGLUT = {
       window.removeEventListener('mousewheel', GLUT.onMouseWheel, true);
       // Firefox
       window.removeEventListener('DOMMouseScroll', GLUT.onMouseWheel, true);
+
+      window.removeEventListener('resize', GLUT.onResize, true);
 
       var canvas = Browser.getCanvas();
       canvas.width = canvas.height = 1;
@@ -409,7 +421,7 @@ var LibraryGLUT = {
         return GLctx.getContextAttributes().antialias ? 1 : 0;
 
       default:
-        throw "glutGet(" + type + ") not implemented yet";
+        abort("glutGet(" + type + ") not implemented yet");
     }
   },
 
@@ -549,7 +561,7 @@ var LibraryGLUT = {
         cursorStyle = 'none';
         break;
       default:
-        throw "glutSetCursor: Unknown cursor type: " + cursor;
+        abort("glutSetCursor: Unknown cursor type: " + cursor);
     }
     Browser.getCanvas().style.cursor = cursorStyle;
   },
@@ -601,7 +613,7 @@ var LibraryGLUT = {
   },
 
   glutFullScreen__proxy: 'sync',
-  glutFullScreen__deps: ['$GLUT', 'glutPostRedisplay'],
+  glutFullScreen__deps: ['$GLUT'],
   glutFullScreen: () => {
     GLUT.windowX = 0; // TODO
     GLUT.windowY = 0; // TODO
@@ -633,10 +645,10 @@ var LibraryGLUT = {
   },
 
   glutMainLoop__proxy: 'sync',
-  glutMainLoop__deps: ['$GLUT', 'glutReshapeWindow', 'glutPostRedisplay'],
+  glutMainLoop__deps: ['$GLUT', 'glutPostRedisplay'],
   glutMainLoop: () => {
-    var canvas = Browser.getCanvas();
-    _glutReshapeWindow(canvas.width, canvas.height);
+    // Do an initial resize, since there's no window resize event on startup
+    GLUT.onResize();
     _glutPostRedisplay();
     throw 'unwind';
   },

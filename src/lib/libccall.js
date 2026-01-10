@@ -6,6 +6,10 @@
 
 addToLibrary({
   // Returns the C function with a specified identifier (for C++, you need to do manual name mangling)
+#if MODULARIZE == 'instance' && !INCLUDE_FULL_LIBRARY
+  $getCFunc__deps: [() => error('ccall is not yet compatible with MODULARIZE=instance')],
+#endif
+  $getCFunc__internal: true,
   $getCFunc: (ident) => {
     var func = Module['_' + ident]; // closure exported function
 #if ASSERTIONS
@@ -20,7 +24,7 @@ addToLibrary({
   /**
    * @param {string|null=} returnType
    * @param {Array=} argTypes
-   * @param {Arguments|Array=} args
+   * @param {Array=} args
    * @param {Object=} opts
    */`,
   $ccall: (ident, returnType, argTypes, args, opts) => {
@@ -49,6 +53,8 @@ addToLibrary({
       }
 #if MEMORY64
       if (returnType === 'pointer') return Number(ret);
+#elif CAN_ADDRESS_2GB
+      if (returnType === 'pointer') return ret >>> 0;
 #endif
       if (returnType === 'boolean') return Boolean(ret);
       return ret;
@@ -99,7 +105,7 @@ addToLibrary({
       // either. The only valid combination is to have no change in the async
       // data (so we either had one in flight and left it alone, or we didn't have
       // one), or to have nothing in flight and to start one.
-      assert(!(previousAsync && Asyncify.currData), 'We cannot start an async operation when one is already flight');
+      assert(!(previousAsync && Asyncify.currData), 'We cannot start an async operation when one is already in flight');
       assert(!(previousAsync && !Asyncify.currData), 'We cannot stop an async operation in flight');
 #endif
       // This is a new async operation. The wasm is paused and has unwound its stack.
@@ -130,7 +136,11 @@ addToLibrary({
    * @param {Array=} argTypes
    * @param {Object=} opts
    */`,
-  $cwrap__deps: ['$getCFunc', '$ccall'],
+  $cwrap__deps: [ '$ccall',
+#if !ASSERTIONS
+    '$getCFunc',
+#endif
+  ],
   $cwrap: (ident, returnType, argTypes, opts) => {
 #if !ASSERTIONS
     // When the function takes numbers and returns a number, we can just return

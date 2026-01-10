@@ -3,10 +3,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 var LibraryEmbindShared = {
-  $InternalError__postset: "InternalError = Module['InternalError'] = class InternalError extends Error { constructor(message) { super(message); this.name = 'InternalError'; }}",
-  $InternalError:  undefined,
-  $BindingError__postset: "BindingError = Module['BindingError'] = class BindingError extends Error { constructor(message) { super(message); this.name = 'BindingError'; }}",
-  $BindingError: undefined,
+  $InternalError: "= class InternalError extends Error { constructor(message) { super(message); this.name = 'InternalError'; }}",
+  $BindingError: "= class BindingError extends Error { constructor(message) { super(message); this.name = 'BindingError'; }}",
 
   $throwInternalError__deps: ['$InternalError'],
   $throwInternalError: (message) => { throw new InternalError(message); },
@@ -29,8 +27,7 @@ var LibraryEmbindShared = {
 
   $sharedRegisterType__deps: [
     '$awaitingDependencies', '$registeredTypes',
-    '$typeDependencies', '$throwBindingError',
-    '$whenDependentTypesAreResolved'],
+    '$typeDependencies', '$throwBindingError' ],
   $sharedRegisterType__docs: '/** @param {Object=} options */',
   $sharedRegisterType: function(rawType, registeredInstance, options = {}) {
     var name = registeredInstance.name;
@@ -74,7 +71,7 @@ var LibraryEmbindShared = {
     var typeConverters = new Array(dependentTypes.length);
     var unregisteredTypes = [];
     var registered = 0;
-    dependentTypes.forEach((dt, i) => {
+    for (let [i, dt] of dependentTypes.entries()) {
       if (registeredTypes.hasOwnProperty(dt)) {
         typeConverters[i] = registeredTypes[dt];
       } else {
@@ -90,35 +87,16 @@ var LibraryEmbindShared = {
           }
         });
       }
-    });
+    }
     if (0 === unregisteredTypes.length) {
       onComplete(typeConverters);
     }
   },
 
-  $embind_charCodes__deps: ['$embind_init_charCodes'],
-  $embind_charCodes__postset: "embind_init_charCodes()",
-  $embind_charCodes: undefined,
-  $embind_init_charCodes: () => {
-    var codes = new Array(256);
-    for (var i = 0; i < 256; ++i) {
-        codes[i] = String.fromCharCode(i);
-    }
-    embind_charCodes = codes;
-  },
-  $readLatin1String__deps: ['$embind_charCodes'],
-  $readLatin1String: (ptr) => {
-    var ret = "";
-    var c = ptr;
-    while (HEAPU8[c]) {
-        ret += embind_charCodes[HEAPU8[c++]];
-    }
-    return ret;
-  },
-  $getTypeName__deps: ['$readLatin1String', '__getTypeName', 'free'],
+  $getTypeName__deps: ['$AsciiToString', '__getTypeName', 'free'],
   $getTypeName: (type) => {
     var ptr = ___getTypeName(type);
-    var rv = readLatin1String(ptr);
+    var rv = AsciiToString(ptr);
     _free(ptr);
     return rv;
   },
@@ -205,6 +183,11 @@ var LibraryEmbindShared = {
     }
   },
 
+  $getEnumValueType(rawValueType) {
+    // This must match the values of enum_value_type in wire.h
+    return rawValueType === 0 ? 'object' : (rawValueType === 1 ? 'number' : 'string');
+  },
+
   $getRequiredArgCount(argTypes) {
     var requiredArgCount = argTypes.length - 2;
     for (var i = argTypes.length - 1; i >= 2; --i) {
@@ -251,19 +234,20 @@ var LibraryEmbindShared = {
     }
 
     var dtorStack = needsDestructorStack ? "destructors" : "null";
-    var args1 = ["humanName", "throwBindingError", "invoker", "fn", "runDestructors", "retType", "classParam"];
+    var args1 = ["humanName", "throwBindingError", "invoker", "fn", "runDestructors", "fromRetWire", "toClassParamWire"];
 
 #if EMSCRIPTEN_TRACING
     args1.push("Module");
 #endif
 
     if (isClassMethodFunc) {
-      invokerFnBody += `var thisWired = classParam['toWireType'](${dtorStack}, this);\n`;
+      invokerFnBody += `var thisWired = toClassParamWire(${dtorStack}, this);\n`;
     }
 
     for (var i = 0; i < argCount; ++i) {
-      invokerFnBody += `var arg${i}Wired = argType${i}['toWireType'](${dtorStack}, arg${i});\n`;
-      args1.push(`argType${i}`);
+      var argName = `toArg${i}Wire`;
+      invokerFnBody += `var arg${i}Wired = ${argName}(${dtorStack}, arg${i});\n`;
+      args1.push(argName);
     }
 
     invokerFnBody += (returns || isAsync ? "var rv = ":"") + `invoker(${argsListWired});\n`;
@@ -289,7 +273,7 @@ var LibraryEmbindShared = {
     }
 
     if (returns) {
-      invokerFnBody += "var ret = retType['fromWireType'](rv);\n" +
+      invokerFnBody += "var ret = fromRetWire(rv);\n" +
 #if EMSCRIPTEN_TRACING
                        "Module.emscripten_trace_exit_context();\n" +
 #endif
@@ -314,7 +298,7 @@ var LibraryEmbindShared = {
     args1.push('checkArgCount', 'minArgs', 'maxArgs');
     invokerFnBody = `if (arguments.length !== ${args1.length}){ throw new Error(humanName + "Expected ${args1.length} closure arguments " + arguments.length + " given."); }\n${invokerFnBody}`;
 #endif
-    return [args1, invokerFnBody];
+    return new Function(args1, invokerFnBody);
   }
 };
 

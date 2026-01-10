@@ -128,7 +128,7 @@ class _Acquire_ReturnProxy:
     def __enter__(self):
         return self.lock
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, _exc_type, _exc_value, _traceback):
         self.lock.release()
         return None
 
@@ -330,7 +330,7 @@ class BaseFileLock:
         self.acquire()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, _exc_type, _exc_value, _traceback):
         self.release()
         return None
 
@@ -395,16 +395,22 @@ class UnixFileLock(BaseFileLock):
         except (IOError, OSError):
             os.close(fd)
         else:
-            self._lock_file_fd = fd
+            st = os.fstat(fd);
+            if st.st_nlink == 0:
+              # We raced with another process that deleted the lock file before
+              # we called fcntl.flock. This means that lock is not valid (since
+              # another process will just lock a different file) and we need to
+              # try again.
+              # See https://stackoverflow.com/a/51070775
+              os.close(fd)
+            else:
+              self._lock_file_fd = fd
         return None
 
     def _release(self):
-        # Do not remove the lockfile:
-        #
-        #   https://github.com/benediktschmitt/py-filelock/issues/31
-        #   https://stackoverflow.com/questions/17708885/flock-removing-locked-file-without-race-condition
         fd = self._lock_file_fd
         self._lock_file_fd = None
+        os.unlink(self._lock_file)
         fcntl.flock(fd, fcntl.LOCK_UN)
         os.close(fd)
         return None

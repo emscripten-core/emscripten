@@ -3,8 +3,11 @@
 #include <emscripten/websocket.h>
 #include <assert.h>
 
-// This test performs that same server communications using two different
+// This test performs the same server communications using two different
 // sockets. This verifies that multiple sockets are supported simultaneously.
+// Depending on whether TEST_EMSCRIPTEN_WEBSOCKET_DEINITIALIZE is defined, 
+// cleanup is either performed using emscripten_websocket_deinitialize() or
+// emscripten_websocket_close() and emscripten_websocket_delete().
 EMSCRIPTEN_WEBSOCKET_T sock1;
 EMSCRIPTEN_WEBSOCKET_T sock2;
 
@@ -44,6 +47,7 @@ bool WebSocketError(int eventType, const EmscriptenWebSocketErrorEvent *e, void 
 bool WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, void *userData) {
   printf("message(socket=%d, eventType=%d, userData=%p data=%p, numBytes=%d, isText=%d)\n", e->socket, eventType, userData, e->data, e->numBytes, e->isText);
   static int text_received = 0;
+  static int binary_received = 0;
   assert(e->socket == sock1 || e->socket == sock2);
   if (e->isText) {
     printf("text data: \"%s\"\n", e->data);
@@ -54,13 +58,39 @@ bool WebSocketMessage(int eventType, const EmscriptenWebSocketMessageEvent *e, v
 
   // We expect to receive the text message before the binary one
   assert(text_received);
+  binary_received++;
   printf("binary data:");
   for (int i = 0; i < e->numBytes; ++i) {
     printf(" %02X", e->data[i]);
     assert(e->data[i] == i);
   }
   printf("\n");
+
+#ifdef TEST_EMSCRIPTEN_WEBSOCKET_DEINITIALIZE
+  if (binary_received == 2) {
+    // We successfully received binary data from both websockets.
+    // We are done. We can deinitialize and exit.
+    emscripten_websocket_deinitialize();
+    // All websocket handles are invalidated.
+    // It is no longer possible to query their state.
+    unsigned short ready_state;
+    EMSCRIPTEN_RESULT result = emscripten_websocket_get_ready_state(e->socket, &ready_state);
+    assert(result == EMSCRIPTEN_RESULT_INVALID_TARGET);
+    (void)ready_state;
+    sock1 = sock2 = 0;
+    emscripten_force_exit(0);
+  }
+#else
   emscripten_websocket_close(e->socket, 0, 0);
+  // The WebSocket is being closed, but its handle is still valid.
+  // It should therefore still be possible to query its state.
+  unsigned short ready_state;
+  EMSCRIPTEN_RESULT result = emscripten_websocket_get_ready_state(e->socket, &ready_state);
+  assert(result == EMSCRIPTEN_RESULT_SUCCESS);
+  // https://developer.mozilla.org/en-US/docs/Web/API/WebSocket/readyState
+  assert(ready_state == 2); // 2 = CLOSING
+#endif // TEST_EMSCRIPTEN_WEBSOCKET_DEINITIALIZE
+
   return 0;
 }
 

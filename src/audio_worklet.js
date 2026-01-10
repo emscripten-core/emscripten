@@ -1,5 +1,5 @@
 // This file is the main bootstrap script for Wasm Audio Worklets loaded in an
-// Emscripten application.  Build with -sAUDIO_WORKLET=1 linker flag to enable
+// Emscripten application.  Build with -sAUDIO_WORKLET linker flag to enable
 // targeting Audio Worklets.
 
 // AudioWorkletGlobalScope does not have a onmessage/postMessage() functionality
@@ -12,114 +12,235 @@
 // the node constructor's "processorOptions" field, we can share the necessary
 // bootstrap information from the main thread to the AudioWorkletGlobalScope.
 
+#if MINIMAL_RUNTIME
+var instantiatePromise;
+#endif
+
+if (ENVIRONMENT_IS_AUDIO_WORKLET) {
+
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
 function createWasmAudioWorkletProcessor(audioParams) {
+#else
+function createWasmAudioWorkletProcessor() {
+#endif
   class WasmAudioWorkletProcessor extends AudioWorkletProcessor {
     constructor(args) {
       super();
 
-      // Copy needed stack allocation functions from the Module object
-      // to global scope, these will be accessed in hot paths, so maybe
-      // they'll be a bit faster to access directly, rather than referencing
-      // them as properties of the Module object.
-      globalThis.stackAlloc = Module['stackAlloc'];
-      globalThis.stackSave = Module['stackSave'];
-      globalThis.stackRestore = Module['stackRestore'];
-      globalThis.HEAPU32 = Module['HEAPU32'];
-      globalThis.HEAPF32 = Module['HEAPF32'];
-
       // Capture the Wasm function callback to invoke.
       let opts = args.processorOptions;
-      this.callbackFunction = Module['wasmTable'].get(opts['cb']);
-      this.userData = opts['ud'];
+#if ASSERTIONS
+      assert(opts.callback)
+      assert(opts.samplesPerChannel)
+#endif
+      this.callback = {{{ makeDynCall('iipipipp', 'opts.callback') }}};
+      this.userData = opts.userData;
       // Then the samples per channel to process, fixed for the lifetime of the
-      // context that created this processor. Note for when moving to Web Audio
-      // 1.1: the typed array passed to process() should be the same size as this
-      // 'render quantum size', and this exercise of passing in the value
-      // shouldn't be required (to be verified).
-      this.samplesPerChannel = opts['sc'];
+      // context that created this processor. Even though this 'render quantum
+      // size' is fixed at 128 samples in the 1.0 spec, it will be variable in
+      // the 1.1 spec. It's passed in now, just to prove it's settable, but will
+      // eventually be a property of the  AudioWorkletGlobalScope (globalThis).
+      this.samplesPerChannel = opts.samplesPerChannel;
+      this.bytesPerChannel = this.samplesPerChannel * {{{ getNativeTypeSize('float') }}};
+
+      // Prepare the output views; see createOutputViews(). The 'STACK_ALIGN'
+      // deduction stops the STACK_OVERFLOW_CHECK failing (since the stack will
+      // be full if we allocate all the available space) leaving room for a
+      // single AudioSampleFrame as a minimum. There's an arbitrary maximum of
+      // 64 frames, for the case where a multi-MB stack is passed.
+      this.outputViews = new Array(Math.min(((wwParams.stackSize - {{{ STACK_ALIGN }}}) / this.bytesPerChannel) | 0, /*sensible limit*/ 64));
+#if ASSERTIONS
+      assert(this.outputViews.length > 0, `AudioWorklet needs more stack allocating (at least ${this.bytesPerChannel})`);
+#endif
+      this.createOutputViews();
+
+#if ASSERTIONS
+      // Explicitly verify this later in process(). Note to self, stackSave is a
+      // bit of a misnomer as it simply gets the stack address.
+      this.ctorOldStackPtr = stackSave();
+#endif
     }
 
+    /**
+     * Create up-front as many typed views for marshalling the output data as
+     * may be required, allocated at the *top* of the worklet's stack (and whose
+     * addresses are fixed). 
+     */
+    createOutputViews() {
+      // These are still alloc'd to take advantage of the overflow checks, etc.
+      var oldStackPtr = stackSave();
+      var viewDataIdx = {{{ getHeapOffset('stackAlloc(this.outputViews.length * this.bytesPerChannel)', 'float') }}};
+#if WEBAUDIO_DEBUG
+      console.log(`AudioWorklet creating ${this.outputViews.length} buffer one-time views (for a stack size of ${wwParams.stackSize} at address ${ptrToString(viewDataIdx * 4)})`);
+#endif
+      // Inserted in reverse so the lowest indices are closest to the stack top
+      for (var n = this.outputViews.length - 1; n >= 0; n--) {
+        this.outputViews[n] = HEAPF32.subarray(viewDataIdx, viewDataIdx += this.samplesPerChannel);
+      }
+      stackRestore(oldStackPtr);
+    }
+
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
     static get parameterDescriptors() {
       return audioParams;
     }
+#endif
 
+    /**
+     * Marshals all inputs and parameters to the Wasm memory on the thread's
+     * stack, then performs the wasm audio worklet call, and finally marshals
+     * audio output data back.
+     *
+     * @param {Object} parameters
+     */
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
     process(inputList, outputList, parameters) {
-      // Marshal all inputs and parameters to the Wasm memory on the thread stack,
-      // then perform the wasm audio worklet call,
-      // and finally marshal audio output data back.
+#else
+    /** @suppress {checkTypes} */
+    process(inputList, outputList) {
+#endif
 
-      let numInputs = inputList.length,
-        numOutputs = outputList.length,
-        numParams = 0, i, j, k, dataPtr,
-        bytesPerChannel = this.samplesPerChannel * 4,
-        stackMemoryNeeded = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}},
-        oldStackPtr = stackSave(),
-        inputsPtr, outputsPtr, outputDataPtr, paramsPtr,
-        didProduceAudio, paramArray;
+#if ALLOW_MEMORY_GROWTH
+      // Recreate the output views if the heap has changed
+      // TODO: add support for GROWABLE_ARRAYBUFFERS
+      if (HEAPF32.buffer != this.outputViews[0].buffer) {
+        this.createOutputViews();
+      }
+#endif
 
-      // Calculate how much stack space is needed.
-      for (i of inputList) stackMemoryNeeded += i.length * bytesPerChannel;
-      for (i of outputList) stackMemoryNeeded += i.length * bytesPerChannel;
-      for (i in parameters) stackMemoryNeeded += parameters[i].byteLength + {{{ C_STRUCTS.AudioParamFrame.__size__ }}}, ++numParams;
+      var numInputs = inputList.length;
+      var numOutputs = outputList.length;
 
-      // Allocate the necessary stack space.
-      inputsPtr = stackAlloc(stackMemoryNeeded);
+      var entry; // reused list entry or index
+      var subentry; // reused channel or other array in each list entry or index
 
-      // Copy input audio descriptor structs and data to Wasm
-      k = inputsPtr >> 2;
-      dataPtr = inputsPtr + numInputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
-      for (i of inputList) {
+      // Calculate the required stack and output buffer views (stack is further
+      // split into aligned structs and the raw float data).
+      var stackMemoryStruct = (numInputs + numOutputs) * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+      var stackMemoryData = 0;
+      for (entry of inputList) {
+        stackMemoryData += entry.length;
+      }
+      stackMemoryData *= this.bytesPerChannel;
+      // Collect the total number of output channels (mapped to array views)
+      var outputViewsNeeded = 0;
+      for (entry of outputList) {
+        outputViewsNeeded += entry.length;
+      }
+      stackMemoryData += outputViewsNeeded * this.bytesPerChannel;
+      var numParams = 0;
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
+      for (entry in parameters) {
+        ++numParams;
+        stackMemoryStruct += {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
+        stackMemoryData += parameters[entry].byteLength;
+      }
+#endif
+      var oldStackPtr = stackSave();
+#if ASSERTIONS
+      assert(oldStackPtr == this.ctorOldStackPtr, 'AudioWorklet stack address has unexpectedly moved');
+      assert(outputViewsNeeded <= this.outputViews.length, `Too many AudioWorklet outputs (need ${outputViewsNeeded} but have stack space for ${this.outputViews.length})`);
+#endif
+
+      // Allocate the necessary stack space. All pointer variables are in bytes;
+      // 'structPtr' starts at the first struct entry (all run sequentially)
+      // and is the working start to each record; 'dataPtr' is the same for the
+      // audio/params data, starting after *all* the structs.
+      // 'structPtr' begins 16-byte aligned, allocated from the internal
+      // _emscripten_stack_alloc(), as are the output views, and so to ensure
+      // the views fall on the correct addresses (and we finish at stacktop) we
+      // request additional bytes, taking this alignment into account, then
+      // offset `dataPtr` by the difference.
+      var stackMemoryAligned = (stackMemoryStruct + stackMemoryData + 15) & ~15;
+      var structPtr = stackAlloc(stackMemoryAligned);
+      var dataPtr = structPtr + (stackMemoryAligned - stackMemoryData);
+#if ASSERTIONS
+      // TODO: look at why stackAlloc isn't tripping the assertions
+      assert(stackMemoryAligned <= wwParams.stackSize, `Not enough stack allocated to the AudioWorklet (need ${stackMemoryAligned}, got ${wwParams.stackSize})`);
+#endif
+
+      // Copy input audio descriptor structs and data to Wasm (recall, structs
+      // first, audio data after). 'inputsPtr' is the start of the C callback's
+      // input AudioSampleFrame.
+      var /*const*/ inputsPtr = structPtr;
+      for (entry of inputList) {
         // Write the AudioSampleFrame struct instance
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.samplesPerChannel / 4 }}}] = this.samplesPerChannel;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 }}}] = dataPtr;
-        k += {{{ C_STRUCTS.AudioSampleFrame.__size__ / 4 }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.numberOfChannels, 'entry.length', 'u32') }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.samplesPerChannel, 'this.samplesPerChannel', 'u32') }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.data, 'dataPtr', '*') }}};
+        structPtr += {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
         // Marshal the input audio sample data for each audio channel of this input
-        for (j of i) {
-          HEAPF32.set(j, dataPtr>>2);
-          dataPtr += bytesPerChannel;
+        for (subentry of entry) {
+          HEAPF32.set(subentry, {{{ getHeapOffset('dataPtr', 'float') }}});
+          dataPtr += this.bytesPerChannel;
         }
       }
 
-      // Copy output audio descriptor structs to Wasm
-      outputsPtr = dataPtr;
-      k = outputsPtr >> 2;
-      outputDataPtr = (dataPtr += numOutputs * {{{ C_STRUCTS.AudioSampleFrame.__size__ }}}) >> 2;
-      for (i of outputList) {
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
+      // Copy parameters descriptor structs and data to Wasm. 'paramsPtr' is the
+      // start of the C callback's input AudioParamFrame.
+      var /*const*/ paramsPtr = structPtr;
+      for (entry = 0; subentry = parameters[entry++];) {
+        // Write the AudioParamFrame struct instance
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioParamFrame.length, 'subentry.length', 'u32') }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioParamFrame.data, 'dataPtr', '*') }}};
+        structPtr += {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
+        // Marshal the audio parameters array
+        HEAPF32.set(subentry, {{{ getHeapOffset('dataPtr', 'float') }}});
+        dataPtr += subentry.length * {{{ getNativeTypeSize('float') }}};
+      }
+#else
+      var paramsPtr = 0;
+#endif
+
+      // Copy output audio descriptor structs to Wasm. 'outputsPtr' is the start
+      // of the C callback's output AudioSampleFrame. 'dataPtr' will now be
+      // aligned with the output views, ending at stacktop (which is why this
+      // needs to be last).
+      var /*const*/ outputsPtr = structPtr;
+      for (entry of outputList) {
         // Write the AudioSampleFrame struct instance
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.numberOfChannels / 4 }}}] = i.length;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.samplesPerChannel / 4 }}}] = this.samplesPerChannel;
-        HEAPU32[k + {{{ C_STRUCTS.AudioSampleFrame.data / 4 }}}] = dataPtr;
-        k += {{{ C_STRUCTS.AudioSampleFrame.__size__ / 4 }}};
-        // Reserve space for the output data
-        dataPtr += bytesPerChannel * i.length;
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.numberOfChannels, 'entry.length', 'u32') }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.samplesPerChannel, 'this.samplesPerChannel', 'u32') }}};
+        {{{ makeSetValue('structPtr', C_STRUCTS.AudioSampleFrame.data, 'dataPtr', '*') }}};
+        structPtr += {{{ C_STRUCTS.AudioSampleFrame.__size__ }}};
+        // Advance the output pointer to the next output (matching the pre-allocated views)
+        dataPtr += this.bytesPerChannel * entry.length;
       }
 
-      // Copy parameters descriptor structs and data to Wasm
-      paramsPtr = dataPtr;
-      k = paramsPtr >> 2;
-      dataPtr += numParams * {{{ C_STRUCTS.AudioParamFrame.__size__ }}};
-      for (i = 0; paramArray = parameters[i++];) {
-        // Write the AudioParamFrame struct instance
-        HEAPU32[k + {{{ C_STRUCTS.AudioParamFrame.length / 4 }}}] = paramArray.length;
-        HEAPU32[k + {{{ C_STRUCTS.AudioParamFrame.data / 4 }}}] = dataPtr;
-        k += {{{ C_STRUCTS.AudioParamFrame.__size__ / 4 }}};
-        // Marshal the audio parameters array
-        HEAPF32.set(paramArray, dataPtr>>2);
-        dataPtr += paramArray.length*4;
+#if ASSERTIONS
+      // If all the maths worked out, we arrived at the original stack address
+      console.assert(dataPtr == oldStackPtr, `AudioWorklet stack mismatch (audio data finishes at ${dataPtr} instead of ${oldStackPtr})`);
+
+      // Sanity checks. If these trip the most likely cause, beyond unforeseen
+      // stack shenanigans, is that the 'render quantum size' changed after
+      // construction (which shouldn't be possible).
+      if (numOutputs) {
+        // First that the output view addresses match the stack positions
+        dataPtr -= this.bytesPerChannel;
+        for (entry = 0; entry < outputViewsNeeded; entry++) {
+          console.assert(dataPtr == this.outputViews[entry].byteOffset, 'AudioWorklet internal error in addresses of the output array views');
+          dataPtr -= this.bytesPerChannel;
+        }
+        // And that the views' size match the passed in output buffers
+        for (entry of outputList) {
+          for (subentry of entry) {
+            assert(subentry.byteLength == this.bytesPerChannel, `AudioWorklet unexpected output buffer size (expected ${this.bytesPerChannel} got ${subentry.byteLength})`);
+          }
+        }
       }
+#endif
 
       // Call out to Wasm callback to perform audio processing
-      if (didProduceAudio = this.callbackFunction(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData)) {
+      var didProduceAudio = this.callback(numInputs, inputsPtr, numOutputs, outputsPtr, numParams, paramsPtr, this.userData);
+      if (didProduceAudio) {
         // Read back the produced audio data to all outputs and their channels.
-        // (A garbage-free function TypedArray.copy(dstTypedArray, dstOffset,
-        // srcTypedArray, srcOffset, count) would sure be handy..  but web does
-        // not have one, so manually copy all bytes in)
-        for (i of outputList) {
-          for (j of i) {
-            for (k = 0; k < this.samplesPerChannel; ++k) {
-              j[k] = HEAPF32[outputDataPtr++];
-            }
+        // The preallocated 'outputViews' already have the correct offsets and
+        // sizes into the stack (recall from createOutputViews() that they run
+        // backwards).
+        for (entry of outputList) {
+          for (subentry of entry) {
+            subentry.set(this.outputViews[--outputViewsNeeded]);
           }
         }
       }
@@ -134,74 +255,32 @@ function createWasmAudioWorkletProcessor(audioParams) {
   return WasmAudioWorkletProcessor;
 }
 
+#if MIN_FIREFOX_VERSION < 138 || MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+// If this browser does not support the up-to-date AudioWorklet standard
+// that has a MessagePort over to the AudioWorklet, then polyfill that by
+// a hacky AudioWorkletProcessor that provides the MessagePort.
+// Firefox added support in https://hg-edge.mozilla.org/integration/autoland/rev/ab38a1796126f2b3fc06475ffc5a625059af59c1
+// Chrome ticket: https://crbug.com/446920095
+// Safari ticket: https://webkit.org/b/299386
+/**
+ * @suppress {duplicate, checkTypes}
+ */
+var port = globalThis.port || {};
+
 // Specify a worklet processor that will be used to receive messages to this
 // AudioWorkletGlobalScope.  We never connect this initial AudioWorkletProcessor
 // to the audio graph to do any audio processing.
 class BootstrapMessages extends AudioWorkletProcessor {
   constructor(arg) {
     super();
-    // Initialize the global Emscripten Module object that contains e.g. the
-    // Wasm Module and Memory objects.  After this we are ready to load in the
-    // main application JS script, which the main thread will addModule()
-    // to this scope.
-    globalThis.Module = arg['processorOptions'];
-#if !MINIMAL_RUNTIME
-    // Default runtime relies on an injected instantiateWasm() function to
-    // initialize the Wasm Module.
-    globalThis.Module['instantiateWasm'] = (info, receiveInstance) => {
-      var instance = new WebAssembly.Instance(Module['wasm'], info);
-      return receiveInstance(instance, Module['wasm']);
-    };
-#endif
-#if WEBAUDIO_DEBUG
-    console.log('AudioWorklet global scope looks like this:');
-    console.dir(globalThis);
-#endif
+    startWasmWorker(arg.processorOptions)
     // Listen to messages from the main thread. These messages will ask this
     // scope to create the real AudioWorkletProcessors that call out to Wasm to
     // do audio processing.
-    let p = globalThis['messagePort'] = this.port;
-    p.onmessage = async (msg) => {
-      let d = msg.data;
-      if (d['_wpn']) {
-        // '_wpn' is short for 'Worklet Processor Node', using an identifier
-        // that will never conflict with user messages
-#if MODULARIZE
-        // Instantiate the MODULARIZEd Module function, which is stored for us
-        // under the special global name AudioWorkletModule in
-        // MODULARIZE+AUDIO_WORKLET builds.
-        if (globalThis.AudioWorkletModule) {
-          // This populates the Module object with all the Wasm properties
-          globalThis.Module = await AudioWorkletModule(Module);
-          // We have now instantiated the Module function, can discard it from
-          // global scope
-          delete globalThis.AudioWorkletModule;
-        }
-#endif
-        // Register a real AudioWorkletProcessor that will actually do audio processing.
-        // 'ap' being the audio params
-        registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor(d['ap']));
-#if WEBAUDIO_DEBUG
-        console.log(`Registered a new WasmAudioWorkletProcessor "${d['_wpn']}" with AudioParams: ${d['ap']}`);
-#endif
-        // Post a Wasm Call message back telling that we have now registered the
-        // AudioWorkletProcessor, and should trigger the user onSuccess callback
-        // of the emscripten_create_wasm_audio_worklet_processor_async() call.
-        //
-        // '_wsc' is short for 'wasm call', using an identifier that will never
-        // conflict with user messages
-        // 'cb' the callback function
-        // 'ch' the context handle
-        // 'ud' the passed user data
-        p.postMessage({'_wsc': d['cb'], 'x': [d['ch'], 1/*EM_TRUE*/, d['ud']] });
-      } else if (d['_wsc']) {
-#if MEMORY64
-        var ptr = BigInt(d['_wsc']);
-#else
-        var ptr = d['_wsc'];
-#endif
-        Module['wasmTable'].get(ptr)(...d['x']);
-      };
+    if (!(port instanceof MessagePort)) {
+      this.port.onmessage = port.onmessage;
+      /** @suppress {checkTypes} */
+      port = this.port;
     }
   }
 
@@ -217,4 +296,47 @@ class BootstrapMessages extends AudioWorkletProcessor {
 };
 
 // Register the dummy processor that will just receive messages.
-registerProcessor('message', BootstrapMessages);
+registerProcessor('em-bootstrap', BootstrapMessages);
+#endif
+
+port.onmessage = async (msg) => {
+#if MINIMAL_RUNTIME
+  // Wait for the module instantiation before processing messages.
+  await instantiatePromise;
+#endif
+  let d = msg.data;
+  if (d['_boot']) {
+    startWasmWorker(d);
+#if WEBAUDIO_DEBUG
+    console.log('AudioWorklet global scope looks like this:');
+    console.dir(globalThis);
+#endif
+  } else if (d['_wpn']) {
+    // '_wpn' is short for 'Worklet Processor Node', using an identifier
+    // that will never conflict with user messages
+    // Register a real AudioWorkletProcessor that will actually do audio processing.
+#if AUDIO_WORKLET_SUPPORT_AUDIO_PARAMS
+    registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor(d.audioParams));
+#else
+    registerProcessor(d['_wpn'], createWasmAudioWorkletProcessor());
+#endif
+#if WEBAUDIO_DEBUG
+    console.log(`Registered a new WasmAudioWorkletProcessor "${d['_wpn']}" with AudioParams: ${d.audioParams}`);
+#endif
+    // Post a Wasm Call message back telling that we have now registered the
+    // AudioWorkletProcessor, and should trigger the user onSuccess callback
+    // of the emscripten_create_wasm_audio_worklet_processor_async() call.
+    //
+    // '_wsc' is short for 'wasm call', using an identifier that will never
+    // conflict with user messages.
+    //
+    // Note: we convert the pointer arg manually here since the call site
+    // ($_EmAudioDispatchProcessorCallback) is used with various signatures
+    // and we do not know the types in advance.
+    port.postMessage({'_wsc': d.callback, args: [d.contextHandle, 1/*EM_TRUE*/, {{{ to64('d.userData') }}}] });
+  } else if (d['_wsc']) {
+    getWasmTableEntry(d['_wsc'])(...d.args);
+  };
+}
+
+} // ENVIRONMENT_IS_AUDIO_WORKLET

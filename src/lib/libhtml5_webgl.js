@@ -65,7 +65,7 @@ var LibraryHtml5WebGL = {
 #if PTHREADS && OFFSCREEN_FRAMEBUFFER
   'emscripten_webgl_create_context_proxied',
 #endif
-  '$JSEvents', '$webglPowerPreferences', '$findEventTarget', '$findCanvasEventTarget'],
+  '$webglPowerPreferences', '$findCanvasEventTarget'],
   // This function performs proxying manually, depending on the style of context that is to be created.
   emscripten_webgl_do_create_context: (target, attributes) => {
 #if ASSERTIONS
@@ -109,7 +109,10 @@ var LibraryHtml5WebGL = {
 #endif
 
     var canvas = findCanvasEventTarget(target);
-
+#if OFFSCREENCANVAS_SUPPORT
+    // If our canvas from findCanvasEventTarget is actually an offscreen canvas record, we should extract the inner canvas.
+    if (canvas?.canvas) { canvas = canvas.canvas; }
+#endif
 #if GL_DEBUG
     var targetStr = UTF8ToString(target);
 #endif
@@ -303,9 +306,8 @@ var LibraryHtml5WebGL = {
     if (!a) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     c = GL.contexts[c];
     if (!c) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
-    var t = c.GLctx;
+    var t = c.GLctx?.getContextAttributes();
     if (!t) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
-    t = t.getContextAttributes();
 
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 't.alpha', 'i8') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 't.depth', 'i8') }}};
@@ -328,7 +330,6 @@ var LibraryHtml5WebGL = {
   },
 
   emscripten_webgl_destroy_context__proxy: 'sync_on_webgl_context_handle_thread',
-  emscripten_webgl_destroy_context__deps: ['free'],
   emscripten_webgl_destroy_context: (contextHandle) => {
     if (GL.currentContext == contextHandle) GL.currentContext = 0;
     GL.deleteContext(contextHandle);
@@ -428,7 +429,7 @@ var LibraryHtml5WebGL = {
     target ||= Module['canvas'];
 #endif
 
-    var webGlEventHandlerFunc = (e = event) => {
+    var webGlEventHandlerFunc = (e) => {
 #if PTHREADS
       if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
       else
@@ -439,6 +440,8 @@ var LibraryHtml5WebGL = {
     var eventHandler = {
       target: findEventTarget(target),
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: webGlEventHandlerFunc,
       useCapture
@@ -543,45 +546,45 @@ var LibraryHtml5WebGL = {
   emscripten_webgl_get_parameter_i64v: (param, dst) => writeI53ToI64(dst, GLctx.getParameter(param)),
 };
 
-function handleWebGLProxying(funcs) {
-#if SHARED_MEMORY
-// Process 'sync_on_webgl_context_handle_thread' and 'sync_on_current_webgl_context_thread' pseudo-proxying modes
-// to appropriate proxying mechanism, either proxying on-demand, unconditionally, or never, depending on build modes.
-// 'sync_on_webgl_context_handle_thread' is used for function signatures that take a HTML5 WebGL context handle
-// object as the first argument. 'sync_on_current_webgl_context_thread' is used for functions that operate on the
-// implicit "current WebGL context" as activated via emscripten_webgl_make_current() function.
 
+function handleWebGLProxying(funcs) {
+#if PTHREADS
+  // Process 'sync_on_webgl_context_handle_thread' and
+  // 'sync_on_current_webgl_context_thread' pseudo-proxying modes to appropriate
+  // proxying mechanism, either proxying on-demand, unconditionally, or never,
+  // depending on build modes.
+  // 'sync_on_webgl_context_handle_thread' is used for function signatures that
+  // take a HTML5 WebGL context handle object as the first argument.
+  // 'sync_on_current_webgl_context_thread' is used for functions that operate on
+  // the implicit "current WebGL context" as activated via
+  // emscripten_webgl_make_current() function.
   function listOfNFunctionArgs(func) {
-    var args = [];
+    const args = [];
     for (var i = 0; i < func.length; ++i) {
       args.push('p' + i);
     }
     return args;
   }
 
-  var targetingOffscreenCanvas, targetingOffscreenFramebuffer;
-#if OFFSCREENCANVAS_SUPPORT
-  targetingOffscreenCanvas = true;
-#endif
-#if OFFSCREEN_FRAMEBUFFER
-  targetingOffscreenFramebuffer = true;
-#endif
+  const targetingOffscreenCanvas = {{{ OFFSCREENCANVAS_SUPPORT }}};
+  const targetingOffscreenFramebuffer = {{{ OFFSCREEN_FRAMEBUFFER }}};
 
-  for (var i in funcs) {
+  for (const i in funcs) {
     // Is this a function that takes GL context handle as first argument?
-    var proxyContextHandle = funcs[i + '__proxy'] == 'sync_on_webgl_context_handle_thread';
+    const proxyContextHandle = funcs[i + '__proxy'] == 'sync_on_webgl_context_handle_thread';
 
     // Is this a function that operates on the implicit current GL context object?
-    var proxyCurrentContext = funcs[i + '__proxy'] == 'sync_on_current_webgl_context_thread';
+    const proxyCurrentContext = funcs[i + '__proxy'] == 'sync_on_current_webgl_context_thread';
 
     if (!proxyContextHandle && !proxyCurrentContext) {
       continue; // no resolving of pseudo-proxying needed for this function.
     }
 
     if (targetingOffscreenCanvas && (targetingOffscreenFramebuffer || proxyContextHandle)) {
-      // Dynamically check at runtime whether the current thread owns the GL context handle/current GL context
-      // object. If not, proxy the call to main thread.
-      // TODO: this handles the calling pthread and main thread cases, but not yet the case from pthread->pthread.
+      // Dynamically check at runtime whether the current thread owns the GL context
+      // handle/current GL context object. If not, proxy the call to main thread.
+      // TODO: this handles the calling pthread and main thread cases, but not yet
+      // the case from pthread->pthread.
       const sig = funcs[i + '__sig'] || LibraryManager.library[i + '__sig']
       assert(sig);
       funcs[i + '_calling_thread'] = funcs[i];
@@ -592,20 +595,19 @@ function handleWebGLProxying(funcs) {
       funcs[i + '__deps'].push(i + '_calling_thread');
       funcs[i + '__deps'].push(i + '_main_thread');
       delete funcs[i + '__proxy'];
-      var funcArgs = listOfNFunctionArgs(funcs[i]);
-      var funcArgsString = funcArgs.join(',');
-      var retStatement = sig[0] != 'v' ? 'return' : '';
-      var contextCheck = proxyContextHandle ? 'GL.contexts[p0]' : 'GLctx';
+      const funcArgs = listOfNFunctionArgs(funcs[i]);
+      const funcArgsString = funcArgs.join(',');
+      const retStatement = sig[0] != 'v' ? 'return' : '';
+      const contextCheck = proxyContextHandle ? 'GL.contexts[p0]' : 'GLctx';
       var funcBody = `${retStatement} ${contextCheck} ? _${i}_calling_thread(${funcArgsString}) : _${i}_main_thread(${funcArgsString});`;
       if (funcs[i + '_before_on_calling_thread']) {
         funcs[i + '__deps'].push('$' + i + '_before_on_calling_thread');
         funcBody = `${i}_before_on_calling_thread(${funcArgsString}); ` + funcBody;
       }
-      funcArgs.push(funcBody);
-      funcs[i] = new (Function.prototype.bind.call(Function, Function, ...funcArgs));
+      funcs[i] = new Function(funcArgs, funcBody);
     } else if (targetingOffscreenFramebuffer) {
-      // When targeting only OFFSCREEN_FRAMEBUFFER, unconditionally proxy all GL calls to
-      // main thread.
+      // When targeting only OFFSCREEN_FRAMEBUFFER, unconditionally proxy all GL
+      // calls to main thread.
       funcs[i + '__proxy'] = 'sync';
     } else {
       // Building without OFFSCREENCANVAS_SUPPORT or OFFSCREEN_FRAMEBUFFER; or building
@@ -616,12 +618,12 @@ function handleWebGLProxying(funcs) {
     }
   }
 #else
-  // In single threaded mode just delete our custom __proxy addributes, otherwise
+  // In single threaded mode just delete our custom __proxy attributes, otherwise
   // they will causes errors in the JS compiler.
-  for (var i in funcs) {
+  for (const i in funcs) {
     delete funcs[i + '__proxy'];
   }
-#endif // SHARED_MEMORY
+#endif // PTHREADS
 }
 
 handleWebGLProxying(LibraryHtml5WebGL);

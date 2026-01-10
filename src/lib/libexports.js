@@ -13,11 +13,8 @@ addToLibrary({
     if (name[0] == '_') name = name.slice(1);
     var exportedFunc = wasmExports[name];
     if (exportedFunc) {
-      // Record the created function pointer to each function object,
-      // so that if the same function pointer is obtained several times,
-      // the same address will be returned.
-      exportedFunc.ptr ||= addFunction(exportedFunc);
-      return exportedFunc.ptr;
+      // Note: addFunction automatically caches the created function pointer.
+      return addFunction(exportedFunc);
     }
 #if ASSERTIONS
     err(`No exported function found by name "{exportedFunc}"`);

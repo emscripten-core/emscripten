@@ -39,6 +39,11 @@ int stdFunction(const MyClass& target, int i) {
   return i + 1;
 }
 
+MyClass* asyncGetMyClass() {
+  emscripten_sleep(0);
+  return new MyClass();
+}
+
 EM_ASYNC_JS(void, jsSuspend, (), {
   await new Promise(resolve => {
     Module.unsuspendResolve = resolve;
@@ -60,6 +65,7 @@ EMSCRIPTEN_BINDINGS(xxx) {
   function("intFunc", &intFunc, async());
   function("unsuspend", &unsuspend);
   function("suspend", &suspend, async());
+  function("asyncGetMyClass", &asyncGetMyClass, allow_raw_pointers(), async());
 
   class_<MyClass>("MyClass")
     .constructor<>()
@@ -93,6 +99,9 @@ EM_ASYNC_JS(void, test, (), {
     await check(myClass.lambdaMethod(1), 2);
     await check(Module.MyClass.voidClass());
     await check(Module.MyClass.intClass(1), 2);
+    var myClassAsync = await Module.asyncGetMyClass();
+    assert(myClassAsync instanceof Module.MyClass);
+    myClassAsync.delete();
 
     setTimeout(Module.unsuspend);
     await Module.suspend();

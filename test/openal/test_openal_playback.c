@@ -295,10 +295,11 @@ int main() {
 
 #ifdef __EMSCRIPTEN__
 
+  intptr_t first_src = sources[0];
 #if defined(TEST_LOOPED_PLAYBACK)
-  emscripten_set_main_loop_arg(main_tick, (void*)sources[0], 0, 0);
+  emscripten_set_main_loop_arg(main_tick, (void*)first_src, 0, 0);
 #else
-  emscripten_async_call(playSource, (void*)(sources[0]), 700);
+  emscripten_async_call(playSource, (void*)first_src, 700);
 #endif
 #else
   usleep(700000);

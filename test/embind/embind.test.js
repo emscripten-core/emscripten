@@ -397,17 +397,17 @@ module({
 
             var expected = '';
             if(stdStringIsUTF8) {
-                //ASCII
+                // ASCII
                 expected = 'aei';
-                //Latin-1 Supplement
+                // Latin-1 Supplement
                 expected += '\u00E1\u00E9\u00ED';
-                //Greek
+                // Greek
                 expected += '\u03B1\u03B5\u03B9';
-                //Cyrillic
+                // Cyrillic
                 expected += '\u0416\u041B\u0424';
-                //CJK
+                // CJK
                 expected += '\u5F9E\u7345\u5B50';
-                //Euro sign
+                // Euro sign
                 expected += '\u20AC';
             } else {
                 for (var i = 0; i < 128; ++i) {
@@ -857,7 +857,7 @@ module({
             assert.equal(2147483648, cm.load_unsigned_int());
 
             cm.store_unsigned_long(2147483648);
-            assert.equal(2147483648, cm.load_unsigned_long());
+            assert.equal(cm.getCompilerSetting('MEMORY64') ? 2147483648n : 2147483648, cm.load_unsigned_long());
         });
 
         if (cm.getCompilerSetting('ASSERTIONS')) {
@@ -1185,6 +1185,26 @@ module({
        });
     });
 
+    BaseFixture.extend("map_with_greater_comparator", function() {
+        test("std::map with std::greater comparator", function() {
+            var map = cm.embind_test_get_int_string_greater_map();
+            assert.equal(2, map.size());
+            assert.equal("one", map.get(1));
+            assert.equal("two", map.get(2));
+            map.delete();
+        });
+
+        test("std::map with std::greater comparator keys are sorted in reverse", function() {
+            var map = cm.embind_test_get_int_string_greater_map();
+            var keys = map.keys();
+            assert.equal(2, keys.size());
+            assert.equal(2, keys.get(0));
+            assert.equal(1, keys.get(1));
+            keys.delete();
+            map.delete();
+        });
+    });
+
     BaseFixture.extend("optional", function() {
         if (!("embind_test_return_optional_int" in cm)) {
             return;
@@ -1280,6 +1300,12 @@ module({
             }
             cm.embind_test_optional_multiple_arg(1);
             cm.embind_test_optional_multiple_arg(1, 2);
+        });
+        test("std::optional properties can be omitted", function() {
+            // Sanity check: Not omitting still works.
+            cm.embind_test_optional_property({x: 1, y: 2});
+            // Omitting should also work, since "y" is std::optional.
+            cm.embind_test_optional_property({x: 1});
         });
     });
 
@@ -1434,6 +1460,9 @@ module({
             // get & set via std::function
             assert.equal("foo", b.getValFunction());
             b.setValFunction("bar");
+
+            // get & set with templated signature
+            assert.equal("bar", b.getThisPointer().getVal());
 
             // get & set via 'callable'
             assert.equal("bar", b.getValFunctor());
@@ -1808,6 +1837,11 @@ module({
             assert.equal("AbstractClass has no accessible constructor", e.message);
         });
 
+        test("can construct class with external constructor with custom signature", function() {
+            const valHolder = new cm.ValHolder(1,2);
+            assert.equal(valHolder.getVal(), 3);
+        });
+
         test("can construct class with external constructor", function() {
             var e = new cm.HasExternalConstructor("foo");
             assert.instanceof(e, cm.HasExternalConstructor);
@@ -1994,6 +2028,47 @@ module({
 
         test("can pass and return enumeration values to functions", function() {
             assert.equal(cm.EnumClass.TWO, cm.emval_test_take_and_return_EnumClass(cm.EnumClass.TWO));
+        });
+    });
+
+    BaseFixture.extend("enums with integer values", function() {
+        test("can compare enumeration values", function() {
+            assert.equal(cm.EnumNum.ONE, cm.EnumNum.ONE);
+            assert.equal(cm.EnumNum.ONE, 0);
+            assert.notEqual(cm.EnumNum.TWO, cm.EnumNum.ONE);
+        });
+
+        if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
+            test("repr includes enum value", function() {
+                assert.equal(0, IMVU.repr(cm.EnumNum.ONE));
+                assert.equal(1, IMVU.repr(cm.EnumNum.TWO));
+            });
+        }
+
+        test("can pass and return enumeration values to functions", function() {
+            assert.equal(cm.EnumNum.TWO, cm.emval_test_take_and_return_EnumNum(cm.EnumNum.TWO));
+            assert.equal(cm.EnumNum.TWO, cm.emval_test_take_and_return_EnumNum(cm.EnumNum.TWO));
+        });
+    });
+
+
+    BaseFixture.extend("enums with string values", function() {
+        test("can compare enumeration values", function() {
+            assert.equal(cm.EnumStr.ONE, cm.EnumStr.ONE);
+            assert.equal(cm.EnumStr.ONE, 'ONE');
+            assert.notEqual(cm.EnumStr.ONE, cm.EnumStr.TWO);
+        });
+
+        if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
+            test("repr includes enum value", function() {
+                assert.equal('ONE', IMVU.repr(cm.EnumStr.ONE));
+                assert.equal('TWO', IMVU.repr(cm.EnumStr.TWO));
+            });
+        }
+
+        test("can pass and return enumeration values to functions", function() {
+            assert.equal(cm.EnumStr.TWO, cm.emval_test_take_and_return_EnumStr(cm.EnumStr.TWO));
+            assert.equal('TWO', cm.emval_test_take_and_return_EnumStr('TWO'));
         });
     });
 

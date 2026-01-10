@@ -59,7 +59,7 @@ static DummyForPointer emval_pointer_dummy(42);
 
 val emval_test_instance_pointer() {
   DummyForPointer* p = &emval_pointer_dummy;
-  return val(p);
+  return val(p, allow_raw_pointers());
 }
 
 int emval_test_value_from_instance_pointer(val v) {
@@ -224,13 +224,13 @@ std::u32string get_literal_u32string() {
 
 void force_memory_growth() {
   std::size_t old_size = emscripten_get_heap_size();
-  EM_ASM({"globalThis.oldheap = HEAPU8;"});
+  EM_ASM({"globalThis.oldheap = HEAP8;"});
   assert(val::global("oldheap")["byteLength"].as<size_t>() == old_size);
   emscripten_resize_heap(old_size + EMSCRIPTEN_PAGE_SIZE);
   assert(emscripten_get_heap_size() > old_size);
-  // HEAPU8 on the module should now be rebound, and our oldheap should be
+  // HEAP8 on the module should now be rebound, and our oldheap should be
   // detached
-  assert(val::module_property("HEAPU8")["byteLength"].as<size_t>() > old_size);
+  assert(val::module_property("HEAP8")["byteLength"].as<size_t>() > old_size);
   assert(val::global("oldheap")["byteLength"].as<size_t>() == 0);
 }
 
@@ -327,8 +327,16 @@ ValHolder emval_test_return_ValHolder() {
   return val::object();
 }
 
+ValHolder valholder_from_sum(int x, int y) {
+  return val(x+y);
+}
+
 val valholder_get_value_mixin(const ValHolder& target) {
   return target.getVal();
+}
+
+ValHolder* valholder_get_this_ptr(ValHolder& target) {
+  return &target;
 }
 
 void valholder_set_value_mixin(ValHolder& target, const val& value) {
@@ -885,6 +893,15 @@ std::map<std::string, int> embind_test_get_string_int_map() {
   return m;
 };
 
+std::map<int, std::string, std::greater<int>> embind_test_get_int_string_greater_map() {
+    std::map<int, std::string, std::greater<int>> m;
+
+    m[1] = "one";
+    m[2] = "two";
+
+    return m;
+}
+
 struct Vector {
   Vector() = delete;
 
@@ -996,6 +1013,18 @@ Enum emval_test_take_and_return_Enum(Enum e) {
 enum class EnumClass : char { ONE, TWO };
 
 EnumClass emval_test_take_and_return_EnumClass(EnumClass e) {
+  return e;
+}
+
+enum class EnumNum { ONE, TWO };
+
+EnumNum emval_test_take_and_return_EnumNum(EnumNum e) {
+  return e;
+}
+
+enum class EnumStr { ONE, TWO };
+
+EnumStr emval_test_take_and_return_EnumStr(EnumStr e) {
   return e;
 }
 
@@ -1341,6 +1370,13 @@ int embind_test_optional_small_class_arg(std::optional<SmallClass> arg) {
 void embind_test_optional_multiple_arg(int arg1,
                                        std::optional<int> arg2,
                                        std::optional<int> arg3) {
+}
+
+struct StructWithOptionalProperty {
+  int x;
+  std::optional<int> y;
+};
+void embind_test_optional_property(const StructWithOptionalProperty &arg) {
 }
 #endif
 
@@ -1989,6 +2025,7 @@ EMSCRIPTEN_BINDINGS(tests) {
   class_<ValHolder>("ValHolder")
     .smart_ptr<std::shared_ptr<ValHolder>>("std::shared_ptr<ValHolder>")
     .constructor<val>()
+    .constructor<ValHolder(int, int)>(&valholder_from_sum, allow_raw_pointers()) // custom signature with policy
     .function("getVal", &ValHolder::getVal)
     .function("getValNonConst", &ValHolder::getValNonConst)
     .function("getConstVal", &ValHolder::getConstVal)
@@ -1996,6 +2033,7 @@ EMSCRIPTEN_BINDINGS(tests) {
     .function("setVal", &ValHolder::setVal)
     .function("getValFunction", std::function<val(const ValHolder&)>(&valholder_get_value_mixin))
     .function("setValFunction", std::function<void(ValHolder&, const val&)>(&valholder_set_value_mixin))
+    .function<ValHolder*(ValHolder&)>("getThisPointer", std::function<ValHolder*(ValHolder&)>(&valholder_get_this_ptr), allow_raw_pointer<ret_val>())
     .function<val(const ValHolder&)>("getValFunctor", std::bind(&valholder_get_value_mixin, _1))
     .function<void(ValHolder&, const val&)>("setValFunctor", std::bind(&valholder_set_value_mixin, _1, _2))
     .property("val", &ValHolder::getVal, &ValHolder::setVal)
@@ -2324,6 +2362,19 @@ EMSCRIPTEN_BINDINGS(tests) {
     ;
   function("emval_test_take_and_return_EnumClass", &emval_test_take_and_return_EnumClass);
 
+  enum_<EnumNum>("EnumNum", enum_value_type::number)
+    .value("ONE", EnumNum::ONE)
+    .value("TWO", EnumNum::TWO)
+    ;
+  function("emval_test_take_and_return_EnumNum", &emval_test_take_and_return_EnumNum);
+
+
+  enum_<EnumStr>("EnumStr", enum_value_type::string)
+    .value("ONE", EnumStr::ONE)
+    .value("TWO", EnumStr::TWO)
+    ;
+  function("emval_test_take_and_return_EnumStr", &emval_test_take_and_return_EnumStr);
+
   function("emval_test_call_function", &emval_test_call_function);
 
   function("emval_test_return_unique_ptr", &emval_test_return_unique_ptr);
@@ -2369,10 +2420,18 @@ EMSCRIPTEN_BINDINGS(tests) {
   function("embind_test_optional_string_arg", &embind_test_optional_string_arg);
   function("embind_test_optional_small_class_arg", &embind_test_optional_small_class_arg);
   function("embind_test_optional_multiple_arg", &embind_test_optional_multiple_arg);
+  value_object<StructWithOptionalProperty>("StructWithOptionalProperty")
+      .field("x", &StructWithOptionalProperty::x)
+      .field("y", &StructWithOptionalProperty::y)
+  ;
+  function("embind_test_optional_property", &embind_test_optional_property);
 #endif
 
   register_map<std::string, int>("StringIntMap");
   function("embind_test_get_string_int_map", embind_test_get_string_int_map);
+
+  register_map<int, std::string, std::greater<int>>("IntStringMapGreater");
+  function("embind_test_get_int_string_greater_map", embind_test_get_int_string_greater_map);
 
   function("embind_test_getglobal", &embind_test_getglobal);
 

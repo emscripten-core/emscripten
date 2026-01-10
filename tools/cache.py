@@ -11,7 +11,7 @@ import logging
 import os
 from pathlib import Path
 
-from . import filelock, config, utils
+from . import config, filelock, utils
 from .settings import settings
 
 logger = logging.getLogger('cache')
@@ -41,7 +41,7 @@ def acquire_cache_lock(reason):
     logger.debug(f'PID {os.getpid()} acquiring multiprocess file lock to Emscripten cache at {cachedir}')
     assert 'EM_CACHE_IS_LOCKED' not in os.environ, f'attempt to lock the cache while a parent process is holding the lock ({reason})'
     try:
-      cachelock.acquire(60)
+      cachelock.acquire(10 * 60)
     except filelock.Timeout:
       logger.warning(f'Accessing the Emscripten cache at "{cachedir}" (for "{reason}") is taking a long time, another process should be writing to it. If there are none and you suspect this process has deadlocked, try deleting the lock file "{cachelock_name}" and try again. If this occurs deterministically, consider filing a bug.')
       cachelock.acquire()
@@ -83,6 +83,8 @@ def ensure():
 
 def erase():
   ensure_setup()
+  assert not config.FROZEN_CACHE, 'Cache cannot be erased when FROZEN_CACHE is set'
+
   with lock('erase'):
     # Delete everything except the lockfile itself
     utils.delete_contents(cachedir, exclude=[os.path.basename(cachelock_name)])
@@ -122,7 +124,7 @@ def get_lib_dir(absolute):
       subdir.append('thinlto')
     else:
       subdir.append('lto')
-  if settings.RELOCATABLE:
+  if settings.RELOCATABLE or settings.MAIN_MODULE:
     subdir.append('pic')
   if subdir:
     path = Path(path, '-'.join(subdir))
@@ -152,7 +154,7 @@ def get_lib(libname, *args, **kwargs):
 
 # Request a cached file. If it isn't in the cache, it will be created with
 # the given creator function
-def get(shortname, creator, what=None, force=False, quiet=False, deferred=False):
+def get(shortname, creator, what=None, force=False, quiet=False):
   ensure_setup()
   cachename = Path(cachedir, shortname)
   # Check for existence before taking the lock in case we can avoid the
@@ -177,8 +179,12 @@ def get(shortname, creator, what=None, force=False, quiet=False, deferred=False)
     logger.info(message)
     utils.safe_ensure_dirs(cachename.parent)
     creator(str(cachename))
-    if not deferred:
-      assert cachename.exists()
+    # In embuilder/deferred building mode, the library is not actually compiled at
+    # "creation" time; instead, the ninja files are built up incrementally, and
+    # compiled all at once with a single ninja invocation. So in that case we
+    # can't assert that the library was correctly built here.
+    if not os.getenv('EMBUILDER_PORT_BUILD_DEFERRED'):
+      assert cachename.is_file()
     if not quiet:
       logger.info(' - ok')
 
@@ -188,7 +194,7 @@ def get(shortname, creator, what=None, force=False, quiet=False, deferred=False)
 def setup():
   global cachedir, cachelock, cachelock_name
   # figure out the root directory for all caching
-  cachedir = Path(config.CACHE).resolve()
+  cachedir = Path(config.CACHE)
 
   # since the lock itself lives inside the cache directory we need to ensure it
   # exists.

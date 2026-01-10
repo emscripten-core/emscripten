@@ -155,19 +155,67 @@ leaked.
 
 .. note:: If you catch a Wasm exception and do not rethrow it, you need to free
    the storage associated with the exception in JS using
-   ``decrementExceptionRefcount`` method because the exception
-   catching code in Wasm does not have a chance to free it. But currently due to
-   an implementation issue that Wasm EH and Emscripten (JS-based) EH, you need
-   to call incrementExceptionRefcount additionally in case of Emscripten EH. See
-   https://github.com/emscripten-core/emscripten/issues/17115 for details and a
-   code example.
-
-.. todo:: Fix the above-mentinoed `inconsistency
-   <https://github.com/emscripten-core/emscripten/issues/17115>`_ between Wasm
-   EH and Emscripten EH, on the reference counting.
+   ``decrementExceptionRefcount`` method because the exception catching code in
+   Wasm does not have a chance to free it. See
+   ``test_EXPORT_EXCEPTION_HANDLING_HELPERS`` in test/test_core.py for an
+   example usage.
 
 
 Using Exceptions and setjmp-longjmp Together
 ============================================
 
 See :ref:`using-exceptions-and-setjmp-longjmp-together`.
+
+
+Limitations regarding std::terminate()
+======================================
+
+  * Currently `std::set_terminate
+    <https://en.cppreference.com/w/cpp/error/set_terminate>`_ is NOT supported
+    when a thrown exception does not have a matching handler and unwinds all the
+    stack up to the topmost caller and crashes the program, i.e., there is no
+    ``catch`` that catches it and the callers are not marked as ``noexcept``.
+    This applies to both Emscripten-style and WebAssembly exceptions. That
+    functionality requires `two-phase exception handling
+    <https://itanium-cxx-abi.github.io/cxx-abi/abi-eh.html>`_, which neither
+    supports. So the following program does NOT print ``my set_terminate``:
+
+    .. code-block:: cpp
+
+        #include <iostream>
+        #include <exception>
+
+        int main() {
+          std::set_terminate([] {
+            std::cerr << "my set_terminate" << std::endl;
+            std::abort();
+          });
+          throw 3;
+        }
+
+  * When the exception handling encounters a termination condition, libc++abi
+    spec says we call `__cxa_begin_catch()` to mark the exception as handled and
+    then call `std::terminate()`. But currently Wasm EH does not support calling
+    `__cxa_begin_catch()`. So the following program prints ``exception_ptr is
+    null``, where it is supposed to print ``exception_ptr is NOT null``; note
+    that the use of ``noexcept`` here means that the ``throw 3`` will turn into
+    a termination condition.
+
+    .. code-block:: cpp
+
+        #include <iostream>
+        #include <exception>
+
+        int main() noexcept {
+          std::set_terminate([] {
+            auto ptr = std::current_exception();
+            if (ptr)
+              std::cerr << "exception_ptr is NOT null" << std::endl;
+            else
+              std::cerr << "exception_ptr is null" << std::endl;
+            std::abort();
+          });
+          throw 3;
+        }
+
+    This can possibly be supported in the future.

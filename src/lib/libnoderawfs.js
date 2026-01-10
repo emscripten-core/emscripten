@@ -24,7 +24,7 @@ addToLibrary({
     };
     // Use this to reference our in-memory filesystem
     /** @suppress {partialAlias} */
-    var VFS = Object.assign({}, FS);
+    var VFS = {...FS};
     // Wrap the whole in-memory filesystem API with
     // our Node.js based functions
     for (var _key in NODERAWFS) {
@@ -47,7 +47,7 @@ addToLibrary({
       return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
     },
     createStandardStreams() {
-      // FIXME: tty is set to true to appease isatty(), the underlying ioctl syscalls still needs to be implemented, see issue #22264.
+      // FIXME: tty is set to true to appease isatty(), the underlying ioctl syscalls still need to be implemented, see issue #22264.
       FS.createStream({ nfd: 0, position: 0, path: '/dev/stdin', flags: 0, tty: true, seekable: false }, 0);
       var paths = [,'/dev/stdout', '/dev/stderr'];
       for (var i = 1; i < 3; i++) {
@@ -84,11 +84,18 @@ addToLibrary({
       var stream = FS.getStreamChecked(fd);
       return fs.fstatSync(stream.nfd);
     },
-    statfsStream(stream) {
-      return fs.statfsSync(stream.path);
+    statfs(path) {
+      // Node's fs.statfsSync API doesn't provide these attributes so include
+      // some defaults.
+      var defaults = {
+        fsid: 42,
+        flags: 2,
+        namelen: 255,
+      }
+      return Object.assign(defaults, fs.statfsSync(path));
     },
-    statfsNode(node) {
-      return fs.statfsSync(node.path);
+    statfsStream(stream) {
+      return FS.statfs(stream.path);
     },
     chmod(path, mode, dontFollow) {
       mode &= {{{ cDefs.S_IALLUGO }}};
@@ -113,7 +120,13 @@ addToLibrary({
       var stream = FS.getStreamChecked(fd);
       fs.fchownSync(stream.nfd, owner, group);
     },
-    truncate(...args) { fs.truncateSync(...args); },
+    truncate(path, len) {
+      // See https://github.com/nodejs/node/issues/35632
+      if (len < 0) {
+        throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
+      }
+      return fs.truncateSync(path, len);
+    },
     ftruncate(fd, len) {
       // See https://github.com/nodejs/node/issues/35632
       if (len < 0) {
@@ -160,7 +173,8 @@ addToLibrary({
     },
     close(stream) {
       VFS.closeStream(stream.fd);
-      if (!stream.stream_ops && --stream.shared.refcnt === 0) {
+      // Don't close stdin/stdout/stderr since they are used by node itself.
+      if (!stream.stream_ops && --stream.shared.refcnt <= 0 && stream.nfd > 2) {
         // This stream is created by our Node.js filesystem, close the
         // native file descriptor when its reference count drops to 0.
         fs.closeSync(stream.nfd);
@@ -193,7 +207,7 @@ addToLibrary({
       }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
-      var bytesRead = fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
+      var bytesRead = fs.readSync(stream.nfd, buffer, offset, length, position);
       // update position marker when non-seeking
       if (!seeking) stream.position += bytesRead;
       return bytesRead;
@@ -209,13 +223,10 @@ addToLibrary({
       }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
-      var bytesWritten = fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
+      var bytesWritten = fs.writeSync(stream.nfd, buffer, offset, length, position);
       // update position marker when non-seeking
       if (!seeking) stream.position += bytesWritten;
       return bytesWritten;
-    },
-    allocate() {
-      throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
     },
     mmap(stream, length, position, prot, flags) {
       if (!length) {

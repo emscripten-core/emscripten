@@ -11,7 +11,7 @@ var LibraryExceptions = {
   $exceptionCaught: ' []',
 
   // This class is the exception metadata which is prepended to each thrown object (in WASM memory).
-  // It is allocated in one block among with a thrown object in __cxa_allocate_exception and freed
+  // It is allocated in one block along with a thrown object in __cxa_allocate_exception and freed
   // in ___cxa_free_exception. It roughly corresponds to __cxa_exception structure in libcxxabi. The
   // class itself is just a native pointer wrapper, and contains all the necessary accessors for the
   // fields in the native structure.
@@ -20,9 +20,6 @@ var LibraryExceptions = {
   // reference counter) is not protected from that. Also protection is not enough, separate state
   // should be allocated. libcxxabi has concept of dependent exception which is used for that
   // purpose, it references the primary exception.
-#if EXCEPTION_DEBUG
-  $ExceptionInfo__deps: ['$ptrToString'],
-#endif
   $ExceptionInfo: class {
     // excPtr - Thrown object pointer to wrap. Metadata pointer is calculated from it.
     constructor(excPtr) {
@@ -85,7 +82,11 @@ var LibraryExceptions = {
 
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
-  __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'],
+  __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'
+#if !DISABLE_EXCEPTION_CATCHING
+  , '__cxa_increment_exception_refcount'
+#endif
+  ],
   __cxa_throw: (ptr, type, destructor) => {
 #if EXCEPTION_DEBUG
     dbg('__cxa_throw: ' + [ptrToString(ptr), type, ptrToString(destructor)]);
@@ -93,6 +94,9 @@ var LibraryExceptions = {
     var info = new ExceptionInfo(ptr);
     // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
     info.init(type, destructor);
+#if !DISABLE_EXCEPTION_CATCHING
+    ___cxa_increment_exception_refcount(ptr);
+#endif
     {{{ storeException('exceptionLast', 'ptr') }}}
     uncaughtExceptionCount++;
     {{{ makeThrow('exceptionLast') }}}
@@ -101,7 +105,11 @@ var LibraryExceptions = {
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast', '$uncaughtExceptionCount'],
+  __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast', '$uncaughtExceptionCount'
+#if !DISABLE_EXCEPTION_CATCHING
+  , '__cxa_increment_exception_refcount'
+#endif
+  ],
   __cxa_rethrow: () => {
     var info = exceptionCaught.pop();
     if (!info) {
@@ -115,6 +123,9 @@ var LibraryExceptions = {
       info.set_caught(false);
       uncaughtExceptionCount++;
     }
+#if !DISABLE_EXCEPTION_CATCHING
+    ___cxa_increment_exception_refcount(ptr);
+#endif
 #if EXCEPTION_DEBUG
     dbg('__cxa_rethrow, popped ' +
       [ptrToString(ptr), exceptionLast, 'stack', exceptionCaught]);
@@ -125,8 +136,7 @@ var LibraryExceptions = {
 
   llvm_eh_typeid_for: (type) => type,
 
-  __cxa_begin_catch__deps: ['$exceptionCaught', '__cxa_increment_exception_refcount',
-                            '__cxa_get_exception_ptr',
+  __cxa_begin_catch__deps: ['$exceptionCaught', '__cxa_get_exception_ptr',
                             '$uncaughtExceptionCount'],
   __cxa_begin_catch: (ptr) => {
     var info = new ExceptionInfo(ptr);
@@ -139,7 +149,6 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     dbg('__cxa_begin_catch ' + [ptrToString(ptr), 'stack', exceptionCaught]);
 #endif
-    ___cxa_increment_exception_refcount(ptr);
     return ___cxa_get_exception_ptr(ptr);
   },
 
@@ -179,6 +188,14 @@ var LibraryExceptions = {
     return info.excPtr;
   },
 
+  __cxa_current_exception_type() {
+    if (!exceptionCaught.length) {
+      return 0;
+    }
+    var info = exceptionCaught[exceptionCaught.length - 1];
+    return info.get_type();
+  },
+
   __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$exceptionCaught', '__cxa_rethrow'],
   __cxa_rethrow_primary_exception: (ptr) => {
     if (!ptr) return;
@@ -197,7 +214,7 @@ var LibraryExceptions = {
   // unwinding using 'if' blocks around each function, so the remaining
   // functionality boils down to picking a suitable 'catch' block.
   // We'll do that here, instead, to keep things simpler.
-  $findMatchingCatch__deps: ['$exceptionLast', '$ExceptionInfo', '__resumeException', '__cxa_can_catch', '$setTempRet0'],
+  $findMatchingCatch__deps: ['$exceptionLast', '$ExceptionInfo', '__cxa_can_catch', '$setTempRet0'],
   $findMatchingCatch: (args) => {
     var thrown =
 #if EXCEPTION_STACK_TRACES
@@ -278,16 +295,11 @@ var LibraryExceptions = {
   },
 #endif
 #if WASM_EXCEPTIONS
-  $getCppExceptionTag: () =>
-    // In static linking, tags are defined within the wasm module and are
-    // exported, whereas in dynamic linking, tags are defined in library.js in
-    // JS code and wasm modules import them.
-#if RELOCATABLE
-    ___cpp_exception // defined in library.js
-#else
-    wasmExports['__cpp_exception']
-#endif
-  ,
+  $getCppExceptionTag__deps: ['__cpp_exception'],
+  // In static linking, tags are defined within the wasm module and are
+  // exported, whereas in dynamic linking, tags are defined in libcore.js in
+  // JS code and wasm modules import them.
+  $getCppExceptionTag: () => ___cpp_exception,
 
 #if EXCEPTION_STACK_TRACES
   // Throw a WebAssembly.Exception object with the C++ tag with a stack trace
@@ -333,14 +345,25 @@ var LibraryExceptions = {
   },
 
 #elif !DISABLE_EXCEPTION_CATCHING
-  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
-  $incrementExceptionRefcount: (ptr) => ___cxa_increment_exception_refcount(ptr),
+  // When EXCEPTION_STACK_TRACES is set, the exception is an instance of
+  // CppException, whereas EXCEPTION_STACK_TRACES is unset it is a raw pointer.
+  $exnToPtr: (exn) => {
+#if EXCEPTION_STACK_TRACES
+    if (exn instanceof CppException) {
+      return exn.excPtr;
+    }
+#endif
+    return exn;
+  },
 
-  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount'],
-  $decrementExceptionRefcount: (ptr) => ___cxa_decrement_exception_refcount(ptr),
+  $incrementExceptionRefcount__deps: ['$exnToPtr', '__cxa_increment_exception_refcount'],
+  $incrementExceptionRefcount: (exn) => ___cxa_increment_exception_refcount(exnToPtr(exn)),
 
-  $getExceptionMessage__deps: ['$getExceptionMessageCommon'],
-  $getExceptionMessage: (ptr) => getExceptionMessageCommon(ptr),
+  $decrementExceptionRefcount__deps: ['$exnToPtr', '__cxa_decrement_exception_refcount'],
+  $decrementExceptionRefcount: (exn) => ___cxa_decrement_exception_refcount(exnToPtr(exn)),
+
+  $getExceptionMessage__deps: ['$exnToPtr', '$getExceptionMessageCommon'],
+  $getExceptionMessage: (exn) => getExceptionMessageCommon(exnToPtr(exn)),
 
 #endif
 };
@@ -353,7 +376,7 @@ var LibraryExceptions = {
 // of these functions using JS 'arguments' object.
 addCxaCatch = (n) => {
   const args = [];
-  // Confusingly, the actual number of asrgument is n - 2. According to the llvm
+  // Confusingly, the actual number of argument is n - 2. According to the llvm
   // code in WebAssemblyLowerEmscriptenEHSjLj.cpp:
   // This is because a landingpad instruction contains two more arguments, a
   // personality function and a cleanup bit, and __cxa_find_matching_catch_N

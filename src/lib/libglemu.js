@@ -4,12 +4,16 @@
  * SPDX-License-Identifier: MIT
  */
 
+assert(LEGACY_GL_EMULATION, 'libglemu.js should only be included with LEGACY_GL_EMULATION set')
+assert(!FULL_ES2, 'cannot emulate both ES2 and legacy GL');
+assert(!FULL_ES3, 'cannot emulate both ES3 and legacy GL');
+
 {{{
-  globalThis.copySigs = (func) => {
-    if (!RELOCATABLE) return '';
+  const copySigs = (func) => {
+    if (!MAIN_MODULE && !RELOCATABLE) return '';
     return ` _${func}.sig = _emscripten_${func}.sig = orig_${func}.sig;`;
   };
-  globalThis.fromPtr = (arg) => {
+  const fromPtr = (arg) => {
     if (CAN_ADDRESS_2GB) {
       return `${arg} >>>= 0`;
     } else if (MEMORY64) {
@@ -17,7 +21,6 @@
     }
     return '';
   };
-  null;
 }}}
 
 var LibraryGLEmulation = {
@@ -406,7 +409,7 @@ var LibraryGLEmulation = {
             return;
           }
           case 0x0D32: { // GL_MAX_CLIP_PLANES
-            {{{ makeSetValue('params', '0', 'GLEmulation.MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support atleast 6
+            {{{ makeSetValue('params', '0', 'GLEmulation.MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support at least 6
             return;
           }
           case 0x0BA0: { // GL_MATRIX_MODE
@@ -589,7 +592,7 @@ var LibraryGLEmulation = {
           dbg(`Info: ${JSON.stringify(GL.shaderInfos[shader])}`);
           dbg(`Original source: ${GL.shaderOriginalSources[shader]}`);
           dbg(`Source: ${GL.shaderSources[shader]}`);
-          throw 'Shader compilation halt';
+          abort('Shader compilation halt');
         }
 #endif
       };
@@ -623,10 +626,10 @@ var LibraryGLEmulation = {
         if (GL.debug) {
           dbg('[using program with shaders]');
           if (program) {
-            GL.programShaders[program].forEach((shader) => {
+            for (var shader of GL.programShaders[program]) {
               dbg(`  shader ${shader}, original source: ${GL.shaderOriginalSources[shader]}`);
               dbg(`         Source: ${GL.shaderSources[shader]}`);
-            });
+            }
           }
         }
 #endif
@@ -1071,16 +1074,12 @@ var LibraryGLEmulation = {
       var s_requiredTexUnitsForPass = [];
 
       // Static funcs:
-      function abort(info) {
-        assert(false, "[TexEnvJIT] ABORT: " + info);
-      }
-
       function abort_noSupport(info) {
-        abort("No support: " + info);
+        abort("[TexEnvJIT] ABORT: No support: " + info);
       }
 
       function abort_sanity(info) {
-        abort("Sanity failure: " + info);
+        abort("[TexEnvJIT] ABORT: Sanity failure: " + info);
       }
 
       function genTexUnitSampleExpr(texUnitID) {
@@ -1616,8 +1615,8 @@ var LibraryGLEmulation = {
         getActiveTexture: () => s_activeTexture,
 
         traverseState: (keyView) => {
-          for (var i = 0; i < s_texUnits.length; i++) {
-            s_texUnits[i].traverseState(keyView);
+          for (var texUnit of s_texUnits) {
+            texUnit.traverseState(keyView);
           }
         },
 
@@ -2083,8 +2082,8 @@ var LibraryGLEmulation = {
 
       // By attrib state:
       var enabledAttributesKey = 0;
-      for (var i = 0; i < attributes.length; i++) {
-        enabledAttributesKey |= 1 << attributes[i].name;
+      for (var attr of attributes) {
+        enabledAttributesKey |= 1 << attr.name;
       }
 
       // To prevent using more than 31 bits add another level to the maptree
@@ -2222,8 +2221,7 @@ var LibraryGLEmulation = {
             var texUnitUniformList = '';
             var vsTexCoordInits = '';
             this.usedTexUnitList = GLImmediate.TexEnvJIT.getUsedTexUnitList();
-            for (var i = 0; i < this.usedTexUnitList.length; i++) {
-              var texUnit = this.usedTexUnitList[i];
+            for (var texUnit of this.usedTexUnitList) {
               texUnitAttribList += 'attribute vec4 ' + aTexCoordPrefix + texUnit + ';\n';
               texUnitVaryingList += 'varying vec4 ' + vTexCoordPrefix + texUnit + ';\n';
               texUnitUniformList += 'uniform sampler2D ' + uTexUnitPrefix + texUnit + ';\n';
@@ -2968,16 +2966,14 @@ var LibraryGLEmulation = {
         var start = GLImmediate.restrideBuffer;
         bytes = 0;
         // calculate restrided offsets and total size
-        for (var i = 0; i < attributes.length; i++) {
-          var attr = attributes[i];
+        for (var attr of attributes) {
           var size = attr.sizeBytes;
           if (size % 4 != 0) size += 4 - (size % 4); // align everything
           attr.offset = bytes;
           bytes += size;
         }
         // copy out the data (we need to know the stride for that, and define attr.pointer)
-        for (var i = 0; i < attributes.length; i++) {
-          var attr = attributes[i];
+        for (var attr of attributes) {
           var srcStride = Math.max(attr.sizeBytes, attr.stride);
           if ((srcStride & 3) == 0 && (attr.sizeBytes & 3) == 0) {
             for (var j = 0; j < count; j++) {
@@ -3004,8 +3000,7 @@ var LibraryGLEmulation = {
         } else {
           GLImmediate.vertexPointer = clientStartPointer;
         }
-        for (var i = 0; i < attributes.length; i++) {
-          var attr = attributes[i];
+        for (var attr of attributes) {
           attr.offset = attr.pointer - GLImmediate.vertexPointer; // Compute what will be the offset of this attribute in the VBO after we upload.
         }
         GLImmediate.stride = Math.max(maxStride, bytes);
@@ -3063,7 +3058,7 @@ var LibraryGLEmulation = {
           emulatedElementArrayBuffer = true;
         }
       } else if (GLImmediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
-        if (GLImmediate.mode != 7) throw 'unsupported immediate mode ' + GLImmediate.mode; // GL_QUADS
+        if (GLImmediate.mode != 7) abort('unsupported immediate mode ' + GLImmediate.mode); // GL_QUADS
         // GLImmediate.firstVertex is the first vertex we want. Quad indexes are
         // in the pattern 0 1 2, 0 2 3, 4 5 6, 4 6 7, so we need to look at
         // index firstVertex * 1.5 to see it.  Then since indexes are 2 bytes
@@ -3219,7 +3214,7 @@ var LibraryGLEmulation = {
   glTexCoord2fv: (v) =>
     _glTexCoord2i({{{ makeGetValue('v', '0', 'float') }}}, {{{ makeGetValue('v', '4', 'float') }}}),
 
-  glTexCoord4f: () => { throw 'glTexCoord4f: TODO' },
+  glTexCoord4f: () => { abort('glTexCoord4f: TODO') },
 
   glColor4f: (r, g, b, a) => {
     r = Math.max(Math.min(r, 1), 0);
@@ -3464,7 +3459,6 @@ var LibraryGLEmulation = {
     }
   },
 
-  glVertexPointer__deps: ['$GLEmulation'], // if any pointers are used, glVertexPointer must be, and if it is, then we need emulation
   glVertexPointer: (size, type, stride, pointer) => {
     GLImmediate.setClientAttribute(GLImmediate.VERTEX, size, type, stride, pointer);
 #if GL_FFP_ONLY
@@ -3616,7 +3610,7 @@ var LibraryGLEmulation = {
 
   // OpenGL Immediate Mode matrix routines.
   // Note that in the future we might make these available only in certain modes.
-  glMatrixMode__deps: ['$GL', '$GLImmediateSetup', '$GLEmulation'], // emulation is not strictly needed, this is a workaround
+  glMatrixMode__deps: ['$GL', '$GLImmediateSetup'],
   glMatrixMode: (mode) => {
     if (mode == 0x1700 /* GL_MODELVIEW */) {
       GLImmediate.currentMatrix = 0/*m*/;
@@ -3752,9 +3746,9 @@ var LibraryGLEmulation = {
   },
   glRotatef: 'glRotated',
 
-  glDrawBuffer: () => { throw 'glDrawBuffer: TODO' },
+  glDrawBuffer: () => { abort('glDrawBuffer: TODO') },
 #if MAX_WEBGL_VERSION < 2
-  glReadBuffer: () => { throw 'glReadBuffer: TODO' },
+  glReadBuffer: () => { abort('glReadBuffer: TODO') },
 #endif
 
   glClipPlane: (pname, param) => {
@@ -3802,7 +3796,7 @@ var LibraryGLEmulation = {
         // multiply position with current modelviewmatrix
         GLImmediate.matrixLib.mat4.multiplyVec4(GLImmediate.matrix[0], GLEmulation.lightPosition[lightId]);
       } else {
-        throw 'glLightfv: TODO: ' + pname;
+        abort('glLightfv: TODO: ' + pname);
       }
     }
   },
@@ -3811,7 +3805,7 @@ var LibraryGLEmulation = {
     if (pname == 0x0B52) { // GL_LIGHT_MODEL_TWO_SIDE
       GLEmulation.lightModelTwoSide = (param != 0) ? true : false;
     } else {
-      throw 'glLightModelf: TODO: ' + pname;
+      abort('glLightModelf: TODO: ' + pname);
     }
   },
 
@@ -3822,12 +3816,12 @@ var LibraryGLEmulation = {
       GLEmulation.lightModelAmbient[2] = {{{ makeGetValue('param', '8', 'float') }}};
       GLEmulation.lightModelAmbient[3] = {{{ makeGetValue('param', '12', 'float') }}};
     } else {
-      throw 'glLightModelfv: TODO: ' + pname;
+      abort('glLightModelfv: TODO: ' + pname);
     }
   },
 
   glMaterialfv: (face, pname, param) => {
-    if ((face != 0x0404) && (face != 0x0408)) { throw 'glMaterialfv: TODO' + face; } // only GL_FRONT and GL_FRONT_AND_BACK supported
+    if ((face != 0x0404) && (face != 0x0408)) { abort('glMaterialfv: TODO' + face); } // only GL_FRONT and GL_FRONT_AND_BACK supported
 
     if (pname == 0x1200) { // GL_AMBIENT
       GLEmulation.materialAmbient[0] = {{{ makeGetValue('param', '0', 'float') }}};
@@ -3847,22 +3841,22 @@ var LibraryGLEmulation = {
     } else if (pname == 0x1601) { // GL_SHININESS
       GLEmulation.materialShininess[0] = {{{ makeGetValue('param', '0', 'float') }}};
     } else {
-      throw 'glMaterialfv: TODO: ' + pname;
+      abort('glMaterialfv: TODO: ' + pname);
     }
   },
 
-  glTexGeni: (coord, pname, param) => { throw 'glTexGeni: TODO' },
-  glTexGenfv: (coord, pname, param) => { throw 'glTexGenfv: TODO' },
+  glTexGeni: (coord, pname, param) => abort('glTexGeni: TODO'),
+  glTexGenfv: (coord, pname, param) => abort('glTexGenfv: TODO'),
   glTexEnvi: (target, pname, params) => warnOnce('glTexEnvi: TODO'),
   glTexEnvf: (target, pname, params) => warnOnce('glTexEnvf: TODO'),
   glTexEnvfv: (target, pname, params) => warnOnce('glTexEnvfv: TODO'),
 
-  glGetTexEnviv: (target, pname, param) => { throw 'GL emulation not initialized!'; },
-  glGetTexEnvfv: (target, pname, param) => { throw 'GL emulation not initialized!'; },
+  glGetTexEnviv: (target, pname, param) => abort('GL emulation not initialized!'),
+  glGetTexEnvfv: (target, pname, param) => abort('GL emulation not initialized!'),
 
-  glTexImage1D: (target, level, internalformat, width, border, format, type, data) => { throw 'glTexImage1D: TODO' },
-  glTexCoord3f: (target, level, internalformat, width, border, format, type, data) => { throw 'glTexCoord3f: TODO' },
-  glGetTexLevelParameteriv: (target, level, pname, params) => { throw 'glGetTexLevelParameteriv: TODO' },
+  glTexImage1D: (target, level, internalformat, width, border, format, type, data) => abort('glTexImage1D: TODO'),
+  glTexCoord3f: (target, level, internalformat, width, border, format, type, data) => abort('glTexCoord3f: TODO'),
+  glGetTexLevelParameteriv: (target, level, pname, params) => abort('glGetTexLevelParameteriv: TODO'),
 
   glShadeModel: () => warnOnce('TODO: glShadeModel'),
 
@@ -3898,7 +3892,7 @@ var LibraryGLEmulation = {
   },
 
   gluProject: (objX, objY, objZ, model, proj, view, winX, winY, winZ) => {
-    // The algorithm for this functions comes from Mesa
+    // The algorithm for this function comes from Mesa
 
     var inVec = new Float32Array(4);
     var outVec = new Float32Array(4);
@@ -3948,14 +3942,8 @@ var LibraryGLEmulation = {
   gluOrtho2D: (left, right, bottom, top) => _glOrtho(left, right, bottom, top, -1, 1),
 };
 
-// Legacy GL emulation
-if (LEGACY_GL_EMULATION) {
-  extraLibraryFuncs.push('$GLEmulation');
-}
+extraLibraryFuncs.push('$GLEmulation');
 
 recordGLProcAddressGet(LibraryGLEmulation);
 
 addToLibrary(LibraryGLEmulation);
-
-assert(!(FULL_ES2 && LEGACY_GL_EMULATION), 'cannot emulate both ES2 and legacy GL');
-assert(!(FULL_ES3 && LEGACY_GL_EMULATION), 'cannot emulate both ES3 and legacy GL');

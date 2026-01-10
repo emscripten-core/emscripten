@@ -136,7 +136,7 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 
 - The Emscripten implementation does also not support multiprocessing via ``fork()`` and ``join()``.
 
-- For web security purposes, there exists a fixed limit (by default 20) of threads that can be spawned when running in Firefox Nightly. `#1052398 <https://bugzilla.mozilla.org/show_bug.cgi?id=1052398>`_. To adjust the limit, navigate to about:config and change the value of the pref "dom.workers.maxPerDomain".
+- For web security purposes, there exists a fixed limit (by default 20) of threads that can be spawned when running in Firefox Nightly. `#1052398 <https://bugzil.la/1052398>`_. To adjust the limit, navigate to about:config and change the value of the pref "dom.workers.maxPerDomain".
 
 - Some of the features in the pthreads specification are unsupported since the upstream musl library that Emscripten utilizes does not support them, or they are marked optional and a conformant implementation need not support them. Such unsupported features in Emscripten include prioritization of threads, and pthread_rwlock_unlock() is not performed in thread priority order. The functions pthread_mutexattr_set/getprotocol(), pthread_mutexattr_set/getprioceiling() and pthread_attr_set/getscope() are no-ops.
 
@@ -144,7 +144,7 @@ The Emscripten implementation for the pthreads API should follow the POSIX stand
 
 - Note that the function emscripten_num_logical_cores() will always return the value of navigator.hardwareConcurrency, i.e. the number of logical cores on the system, even when shared memory is not supported. This means that it is possible for emscripten_num_logical_cores() to return a value greater than 1, while at the same time emscripten_has_threading_support() can return false. The return value of emscripten_has_threading_support() denotes whether the browser has shared memory support available.
 
-- Pthreads + memory growth (``ALLOW_MEMORY_GROWTH``) is especially tricky, see `Wasm design issue #1271 <https://github.com/WebAssembly/design/issues/1271>`_. This currently causes JS accessing the Wasm memory to be slow - but this will likely only be noticeable if the JS does large amounts of memory reads and writes (Wasm runs at full speed, so moving work over can fix this). This also requires that your JS be aware that the HEAP* views may need to be updated - JS code embedded with ``--js-library`` etc will automatically be transformed to use the ``GROWABLE_HEAP_*`` helper functions where ``HEAP*`` are used, but external code that uses ``Module.HEAP*`` directly may encounter problems with views being smaller than memory.
+- Pthreads + memory growth (``ALLOW_MEMORY_GROWTH``) is especially tricky, see `Wasm design issue #1271 <https://github.com/WebAssembly/design/issues/1271>`_. This currently causes JS accessing the Wasm memory to be slow - but this will likely only be noticeable if the JS does large amounts of memory reads and writes (Wasm runs at full speed, so moving work over can fix this). This also requires that your JS be aware that the HEAP* views may need to be updated - JS code embedded with ``--js-library`` etc will automatically be transformed to auto-update memory views before each access, but external code that uses ``Module.HEAP*`` directly may encounter problems with views being smaller than memory.
 
 .. _Allocator_performance:
 

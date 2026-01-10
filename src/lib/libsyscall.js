@@ -10,14 +10,10 @@ var SyscallsLibrary = {
                    '$PATH',
                    '$FS',
 #endif
-#if SYSCALL_DEBUG
-                   '$strError',
-#endif
   ],
   $SYSCALLS: {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     // global constants
-    DEFAULT_POLLMASK: {{{ cDefs.POLLIN }}} | {{{ cDefs.POLLOUT }}},
 
     // shared utilities
     calculateAt(dirfd, path, allowEmpty) {
@@ -42,12 +38,12 @@ var SyscallsLibrary = {
     },
 
     writeStat(buf, stat) {
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_dev, 'stat.dev', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_mode, 'stat.mode', 'u32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_nlink, 'stat.nlink', SIZE_TYPE) }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_uid, 'stat.uid', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_gid, 'stat.gid', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_rdev, 'stat.rdev', 'u32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
@@ -64,16 +60,16 @@ var SyscallsLibrary = {
       return 0;
     },
     writeStatFs(buf, stats) {
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, 'stats.bsize', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, 'stats.bsize', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, 'stats.blocks', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, 'stats.bfree', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, 'stats.bavail', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'stats.files', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, 'stats.ffree', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, 'stats.fsid', 'i32') }}};
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, 'stats.flags', 'i32') }}};  // ST_NOSUID
-      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, 'stats.namelen', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bsize, 'stats.bsize', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_frsize, 'stats.bsize', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_blocks, 'stats.blocks', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bfree, 'stats.bfree', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_bavail, 'stats.bavail', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_files, 'stats.files', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_ffree, 'stats.ffree', 'i64') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_fsid, 'stats.fsid', 'u32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_flags, 'stats.flags', 'u32') }}};  // ST_NOSUID
+      {{{ makeSetValue('buf', C_STRUCTS.statfs.f_namelen, 'stats.namelen', 'u32') }}};
     },
     doMsync(addr, stream, len, flags, offset) {
       if (!FS.isFile(stream.node.mode)) {
@@ -153,7 +149,11 @@ var SyscallsLibrary = {
   ],
   _mmap_js: (len, prot, flags, fd, offset, allocated, addr) => {
 #if FILESYSTEM && SYSCALLS_REQUIRE_FILESYSTEM
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
+#if ASSERTIONS
+    // musl's mmap doesn't allow values over a certain limit
+    // see OFF_MASK in mmap.c.
+    assert(!isNaN(offset));
+#endif
     var stream = SYSCALLS.getStreamFromFD(fd);
     var res = FS.mmap(stream, len, offset, prot, flags);
     var ptr = res.ptr;
@@ -280,6 +280,7 @@ var SyscallsLibrary = {
         if (!stream.tty) return -{{{ cDefs.ENOTTY }}};
         return -{{{ cDefs.EINVAL }}}; // not supported
       }
+      case {{{ cDefs.FIONBIO }}}:
       case {{{ cDefs.FIONREAD }}}: {
         var argp = syscallGetVarargP();
         return FS.ioctl(stream, op, argp);
@@ -446,7 +447,7 @@ var SyscallsLibrary = {
     }
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
   },
-  __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress', '$DNS'],
+  __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_sendmsg: (fd, message, flags, d1, d2, d3) => {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
@@ -468,7 +469,7 @@ var SyscallsLibrary = {
     var view = new Uint8Array(total);
     var offset = 0;
     for (var i = 0; i < num; i++) {
-      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, POINTER_TYPE) }}};
+      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, '*') }}};
       var iovlen = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
       for (var j = 0; j < iovlen; j++) {
         view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
@@ -480,7 +481,7 @@ var SyscallsLibrary = {
   __syscall_recvmsg__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
   __syscall_recvmsg: (fd, message, flags, d1, d2, d3) => {
     var sock = getSocketFromFD(fd);
-    var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, POINTER_TYPE) }}};
+    var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
     var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
     // get the total amount of data we can read across all arrays
     var total = 0;
@@ -511,7 +512,7 @@ var SyscallsLibrary = {
     var bytesRead = 0;
     var bytesRemaining = msg.buffer.byteLength;
     for (var i = 0; bytesRemaining > 0 && i < num; i++) {
-      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, POINTER_TYPE) }}};
+      var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, '*') }}};
       var iovlen = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
       if (!iovlen) {
         continue;
@@ -540,98 +541,9 @@ var SyscallsLibrary = {
     FS.chdir(stream.path);
     return 0;
   },
-  __syscall__newselect: (nfds, readfds, writefds, exceptfds, timeout) => {
-    // readfds are supported,
-    // writefds checks socket open status
-    // exceptfds are supported, although on web, such exceptional conditions never arise in web sockets
-    //                          and so the exceptfds list will always return empty.
-    // timeout is supported, although on SOCKFS and PIPEFS these are ignored and always treated as 0 - fully async
-#if ASSERTIONS
-    assert(nfds <= 64, 'nfds must be less than or equal to 64');  // fd sets have 64 bits // TODO: this could be 1024 based on current musl headers
-#endif
-
-    var total = 0;
-
-    var srcReadLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0),
-        srcReadHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0);
-    var srcWriteLow = (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0),
-        srcWriteHigh = (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0);
-    var srcExceptLow = (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0),
-        srcExceptHigh = (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
-
-    var dstReadLow = 0,
-        dstReadHigh = 0;
-    var dstWriteLow = 0,
-        dstWriteHigh = 0;
-    var dstExceptLow = 0,
-        dstExceptHigh = 0;
-
-    var allLow = (readfds ? {{{ makeGetValue('readfds', 0, 'i32') }}} : 0) |
-                 (writefds ? {{{ makeGetValue('writefds', 0, 'i32') }}} : 0) |
-                 (exceptfds ? {{{ makeGetValue('exceptfds', 0, 'i32') }}} : 0);
-    var allHigh = (readfds ? {{{ makeGetValue('readfds', 4, 'i32') }}} : 0) |
-                  (writefds ? {{{ makeGetValue('writefds', 4, 'i32') }}} : 0) |
-                  (exceptfds ? {{{ makeGetValue('exceptfds', 4, 'i32') }}} : 0);
-
-    var check = (fd, low, high, val) => fd < 32 ? (low & val) : (high & val);
-
-    for (var fd = 0; fd < nfds; fd++) {
-      var mask = 1 << (fd % 32);
-      if (!(check(fd, allLow, allHigh, mask))) {
-        continue;  // index isn't in the set
-      }
-
-      var stream = SYSCALLS.getStreamFromFD(fd);
-
-      var flags = SYSCALLS.DEFAULT_POLLMASK;
-
-      if (stream.stream_ops.poll) {
-        var timeoutInMillis = -1;
-        if (timeout) {
-          // select(2) is declared to accept "struct timeval { time_t tv_sec; suseconds_t tv_usec; }".
-          // However, musl passes the two values to the syscall as an array of long values.
-          // Note that sizeof(time_t) != sizeof(long) in wasm32. The former is 8, while the latter is 4.
-          // This means using "C_STRUCTS.timeval.tv_usec" leads to a wrong offset.
-          // So, instead, we use POINTER_SIZE.
-          var tv_sec = (readfds ? {{{ makeGetValue('timeout', 0, 'i32') }}} : 0),
-              tv_usec = (readfds ? {{{ makeGetValue('timeout', POINTER_SIZE, 'i32') }}} : 0);
-          timeoutInMillis = (tv_sec + tv_usec / 1000000) * 1000;
-        }
-        flags = stream.stream_ops.poll(stream, timeoutInMillis);
-      }
-
-      if ((flags & {{{ cDefs.POLLIN }}}) && check(fd, srcReadLow, srcReadHigh, mask)) {
-        fd < 32 ? (dstReadLow = dstReadLow | mask) : (dstReadHigh = dstReadHigh | mask);
-        total++;
-      }
-      if ((flags & {{{ cDefs.POLLOUT }}}) && check(fd, srcWriteLow, srcWriteHigh, mask)) {
-        fd < 32 ? (dstWriteLow = dstWriteLow | mask) : (dstWriteHigh = dstWriteHigh | mask);
-        total++;
-      }
-      if ((flags & {{{ cDefs.POLLPRI }}}) && check(fd, srcExceptLow, srcExceptHigh, mask)) {
-        fd < 32 ? (dstExceptLow = dstExceptLow | mask) : (dstExceptHigh = dstExceptHigh | mask);
-        total++;
-      }
-    }
-
-    if (readfds) {
-      {{{ makeSetValue('readfds', '0', 'dstReadLow', 'i32') }}};
-      {{{ makeSetValue('readfds', '4', 'dstReadHigh', 'i32') }}};
-    }
-    if (writefds) {
-      {{{ makeSetValue('writefds', '0', 'dstWriteLow', 'i32') }}};
-      {{{ makeSetValue('writefds', '4', 'dstWriteHigh', 'i32') }}};
-    }
-    if (exceptfds) {
-      {{{ makeSetValue('exceptfds', '0', 'dstExceptLow', 'i32') }}};
-      {{{ makeSetValue('exceptfds', '4', 'dstExceptHigh', 'i32') }}};
-    }
-
-    return total;
-  },
   _msync_js__i53abi: true,
   _msync_js: (addr, len, prot, flags, fd, offset) => {
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(offset)) return -{{{ cDefs.EOVERFLOW }}};
     SYSCALLS.doMsync(addr, SYSCALLS.getStreamFromFD(fd), len, flags, offset);
     return 0;
   },
@@ -639,25 +551,102 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
-  __syscall_poll: (fds, nfds, timeout) => {
-    var nonzero = 0;
+  _poll_js__proxy: 'none',
+  _poll_js__deps: [
+#if PTHREADS
+    '_emscripten_proxy_poll_finish',
+#endif
+  ],
+  _poll_js: (fds, nfds, timeout, ctx, arg) => {
+#if PTHREADS
+    // Enable event handlers only when the poll call is proxied from a worker.
+    var cleanupFuncs = [];
+    var notifyDone = false;
+    function asyncPollComplete(count) {
+      if (notifyDone) {
+        return;
+      }
+      notifyDone = true;
+#if RUNTIME_DEBUG
+      dbg('asyncPollComplete', count);
+#endif
+      cleanupFuncs.forEach(cb => cb());
+      __emscripten_proxy_poll_finish(ctx, arg, count);
+    }
+    function makeNotifyCallback(stream, pollfd) {
+      var cb = (flags) => {
+        if (notifyDone) {
+          return;
+        }
+#if RUNTIME_DEBUG
+        dbg(`async poll notify: stream=${stream}`);
+#endif
+        var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
+        flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
+#if ASSERTIONS
+        assert(flags)
+#endif
+        {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
+        asyncPollComplete(1);
+      }
+      cb.registerCleanupFunc = (f) => {
+        if (f) cleanupFuncs.push(f);
+      }
+      return cb;
+    }
+
+    if (ctx) {
+#if RUNTIME_DEBUG
+      dbg('async poll start');
+#endif
+      if (timeout > 0) {
+        setTimeout(() => {
+#if RUNTIME_DEBUG
+          dbg('poll: timeout');
+#endif
+          asyncPollComplete(0);
+        }, timeout);
+      }
+    }
+#endif
+
+    var count = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
       var fd = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}};
       var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
-      var mask = {{{ cDefs.POLLNVAL }}};
+      var flags = {{{ cDefs.POLLNVAL }}};
       var stream = FS.getStream(fd);
       if (stream) {
-        mask = SYSCALLS.DEFAULT_POLLMASK;
         if (stream.stream_ops.poll) {
-          mask = stream.stream_ops.poll(stream, -1);
+#if PTHREADS
+          if (ctx && timeout) {
+            flags = stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd));
+          } else
+#endif
+          flags = stream.stream_ops.poll(stream, -1);
+        } else {
+          flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
         }
       }
-      mask &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
-      if (mask) nonzero++;
-      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'mask', 'i16') }}};
+      flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
+      if (flags) count++;
+      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
     }
-    return nonzero;
+
+#if PTHREADS
+    if (ctx) {
+      if (count || !timeout) {
+        asyncPollComplete(count);
+      }
+      return 0;
+    }
+#endif
+
+#if ASSERTIONS
+    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
+#endif
+    return count;
   },
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
@@ -670,14 +659,14 @@ var SyscallsLibrary = {
   },
   __syscall_truncate64__i53abi: true,
   __syscall_truncate64: (path, length) => {
-    if (isNaN(length)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(length)) return -{{{ cDefs.EOVERFLOW }}};
     path = SYSCALLS.getStr(path);
     FS.truncate(path, length);
     return 0;
   },
   __syscall_ftruncate64__i53abi: true,
   __syscall_ftruncate64: (fd, length) => {
-    if (isNaN(length)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(length)) return -{{{ cDefs.EOVERFLOW }}};
     FS.ftruncate(fd, length);
     return 0;
   },
@@ -794,7 +783,11 @@ var SyscallsLibrary = {
       }
       case {{{ cDefs.F_SETLK }}}:
       case {{{ cDefs.F_SETLKW }}}:
-        return 0; // Pretend that the locking is successful.
+        // Pretend that the locking is successful. These are process-level locks,
+        // and Emscripten programs are a single process. If we supported linking a
+        // filesystem between programs, we'd need to do more here.
+        // See https://github.com/emscripten-core/emscripten/issues/23697
+        return 0;
 #if SYSCALL_DEBUG
       case {{{ cDefs.F_GETOWN_EX }}}:
       case {{{ cDefs.F_SETOWN }}}:
@@ -815,7 +808,6 @@ var SyscallsLibrary = {
     SYSCALLS.writeStatFs(buf, FS.statfs(SYSCALLS.getStr(path)));
     return 0;
   },
-  __syscall_fstatfs64__deps: ['__syscall_statfs64'],
   __syscall_fstatfs64: (fd, size, buf) => {
 #if ASSERTIONS
     assert(size === {{{ C_STRUCTS.statfs.__size__ }}});
@@ -861,7 +853,7 @@ var SyscallsLibrary = {
     var nofollow = flags & {{{ cDefs.AT_SYMLINK_NOFOLLOW }}};
     flags = flags & (~{{{ cDefs.AT_SYMLINK_NOFOLLOW }}});
 #if ASSERTIONS
-    assert(flags === 0);
+    assert(!flags);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
     (nofollow ? FS.lchown : FS.chown)(path, owner, group);
@@ -881,12 +873,12 @@ var SyscallsLibrary = {
   __syscall_unlinkat: (dirfd, path, flags) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
-    if (flags === 0) {
+    if (!flags) {
       FS.unlink(path);
     } else if (flags === {{{ cDefs.AT_REMOVEDIR }}}) {
       FS.rmdir(path);
     } else {
-      abort('Invalid flags passed to unlinkat');
+      return -{{{ cDefs.EINVAL }}};
     }
     return 0;
   },
@@ -930,7 +922,7 @@ var SyscallsLibrary = {
   __syscall_faccessat: (dirfd, path, amode, flags) => {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
-    assert(flags === 0 || flags == {{{ cDefs.AT_EACCESS }}});
+    assert(!flags || flags == {{{ cDefs.AT_EACCESS }}});
 #endif
     path = SYSCALLS.calculateAt(dirfd, path);
     if (amode & ~{{{ cDefs.S_IRWXO }}}) {
@@ -955,7 +947,7 @@ var SyscallsLibrary = {
   __syscall_utimensat: (dirfd, path, times, flags) => {
     path = SYSCALLS.getStr(path);
 #if ASSERTIONS
-    assert(flags === 0);
+    assert(!flags);
 #endif
     path = SYSCALLS.calculateAt(dirfd, path, true);
     var now = Date.now(), atime, mtime;
@@ -992,12 +984,20 @@ var SyscallsLibrary = {
   },
   __syscall_fallocate__i53abi: true,
   __syscall_fallocate: (fd, mode, offset, len) => {
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
-    var stream = SYSCALLS.getStreamFromFD(fd)
-#if ASSERTIONS
-    assert(mode === 0);
-#endif
-    FS.allocate(stream, offset, len);
+    if (isNaN(offset) || isNaN(len)) return -{{{ cDefs.EOVERFLOW }}};
+    if (mode != 0) {
+      return -{{{ cDefs.ENOTSUP }}}
+    }
+    if (offset < 0 || len < 0) {
+      return -{{{ cDefs.EINVAL }}}
+    }
+    // We only support mode == 0, which means we can implement fallocate
+    // in terms of ftruncate.
+    var oldSize = FS.fstat(fd).size;
+    var newSize = offset + len;
+    if (newSize > oldSize) {
+      FS.ftruncate(fd, newSize);
+    }
     return 0;
   },
   __syscall_dup3: (fd, newfd, flags) => {

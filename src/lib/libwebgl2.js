@@ -386,7 +386,7 @@ var LibraryWebGL2 = {
     program = GL.programs[program];
     var vars = [];
     for (var i = 0; i < count; i++)
-      vars.push(UTF8ToString({{{ makeGetValue('varyings', 'i*4', 'i32') }}}));
+      vars.push(UTF8ToString({{{ makeGetValue('varyings', 'i*' + POINTER_SIZE, '*') }}}));
 
     GLctx.transformFeedbackVaryings(program, vars, bufferMode);
   },
@@ -470,7 +470,7 @@ var LibraryWebGL2 = {
       case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('data', '0', 'ret', 'i32') }}}; break;
       case {{{ cDefs.EM_FUNC_SIG_PARAM_F }}}: {{{ makeSetValue('data', '0', 'ret', 'float') }}}; break;
       case {{{ cDefs.EM_FUNC_SIG_PARAM_B }}}: {{{ makeSetValue('data', '0', 'ret ? 1 : 0', 'i8') }}}; break;
-      default: throw 'internal emscriptenWebGLGetIndexed() error, bad type: ' + type;
+      default: abort('internal emscriptenWebGLGetIndexed() error, bad type: ' + type);
     }
   },
 
@@ -519,7 +519,7 @@ var LibraryWebGL2 = {
     program = GL.programs[program];
     var names = [];
     for (var i = 0; i < uniformCount; i++)
-      names.push(UTF8ToString({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
+      names.push(UTF8ToString({{{ makeGetValue('uniformNames', 'i*' + POINTER_SIZE, '*') }}}));
 
     var result = GLctx.getUniformIndices(program, names);
     if (!result) return; // GL spec: If an error is generated, nothing is written out to uniformIndices.
@@ -947,9 +947,9 @@ var LibraryWebGL2 = {
   // Defined in library_glemu.js when LEGACY_GL_EMULATION is set
   glDrawRangeElements__deps: ['glDrawElements'],
   glDrawRangeElements: (mode, start, end, count, type, indices) => {
-    // TODO: This should be a trivial pass-though function registered at the bottom of this page as
+    // TODO: This should be a trivial pass-through function registered at the bottom of this page as
     // glFuncs[6][1] += ' drawRangeElements';
-    // but due to https://bugzilla.mozilla.org/show_bug.cgi?id=1202427,
+    // but due to https://bugzil.la/1202427,
     // we work around by ignoring the range.
     _glDrawElements(mode, count, type, indices);
   },
@@ -1039,7 +1039,7 @@ var webgl2PassthroughFuncs = [
 // If user passes -sMAX_WEBGL_VERSION >= 2 -sSTRICT but not -lGL (to link in
 // WebGL 1), then WebGL2 library should not be linked in as well.
 if (typeof createGLPassthroughFunctions == 'undefined') {
-  throw 'In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL!';
+  error('In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL!');
 }
 
 createGLPassthroughFunctions(LibraryWebGL2, webgl2PassthroughFuncs);

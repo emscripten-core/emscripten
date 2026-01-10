@@ -4,13 +4,12 @@
 # found in the LICENSE file.
 
 import logging
-from typing import List, Dict
+from dataclasses import dataclass
 
-from . import webassembly, utils
-from .webassembly import OpCode, AtomicOpCode, MemoryOpCode
-from .shared import exit_with_error
+from . import webassembly
 from .settings import settings
-
+from .utils import exit_with_error
+from .webassembly import AtomicOpCode, MemoryOpCode, OpCode
 
 logger = logging.getLogger('extract_metadata')
 
@@ -35,18 +34,19 @@ def is_orig_main_wrapper(module, function):
       opcode = OpCode(opcode)
     except ValueError:
       return False
-    if opcode == OpCode.CALL:
-      callee = module.read_uleb()
-      callee_type = module.get_function_type(callee)
-      if len(callee_type.params) != 0:
+    match opcode:
+      case OpCode.CALL:
+        callee = module.read_uleb()
+        callee_type = module.get_function_type(callee)
+        if len(callee_type.params) != 0:
+          return False
+      case OpCode.LOCAL_GET | OpCode.LOCAL_SET:
+        module.read_uleb()  # local index
+      case OpCode.END | OpCode.RETURN:
+        pass
+      case _:
+        # Any other opcodes and we assume this not a simple wrapper
         return False
-    elif opcode in (OpCode.LOCAL_GET, OpCode.LOCAL_SET):
-      module.read_uleb()  # local index
-    elif opcode in (OpCode.END, OpCode.RETURN):
-      pass
-    else:
-      # Any other opcodes and we assume this not a simple wrapper
-      return False
 
   assert opcode == OpCode.END
   return True
@@ -56,13 +56,14 @@ def get_const_expr_value(expr):
   assert len(expr) == 2
   assert expr[1][0] == OpCode.END
   opcode, immediates = expr[0]
-  if opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
-    assert len(immediates) == 1
-    return immediates[0]
-  elif opcode in (OpCode.GLOBAL_GET,):
-    return 0
-  else:
-    exit_with_error('unexpected opcode in const expr: ' + str(opcode))
+  match opcode:
+    case OpCode.I32_CONST | OpCode.I64_CONST:
+      assert len(immediates) == 1
+      return immediates[0]
+    case OpCode.GLOBAL_GET:
+      return 0
+    case _:
+      exit_with_error('unexpected opcode in const expr: %s', opcode)
 
 
 def get_global_value(globl):
@@ -90,48 +91,50 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
   call_targets = []
   while module.tell() != end:
     opcode = OpCode(module.read_byte())
-    if opcode in (OpCode.END, OpCode.NOP, OpCode.DROP, OpCode.I32_ADD, OpCode.I64_ADD):
-      pass
-    elif opcode in (OpCode.BLOCK,):
-      module.read_type()
-    elif opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
-      const_values.append(module.read_sleb())
-    elif opcode in (OpCode.GLOBAL_SET, OpCode.BR, OpCode.GLOBAL_GET, OpCode.LOCAL_SET, OpCode.LOCAL_GET, OpCode.LOCAL_TEE):
-      module.read_uleb()
-    elif opcode == OpCode.CALL:
-      call_targets.append(module.read_uleb())
-    elif opcode == OpCode.MEMORY_PREFIX:
-      opcode = MemoryOpCode(module.read_byte())
-      if opcode == MemoryOpCode.MEMORY_INIT:
-        segment_idx = module.read_uleb()
-        segment = segments[segment_idx]
-        offset = to_unsigned(const_values[-3])
-        offset_map[segment] = offset
-        memory = module.read_uleb()
-        assert memory == 0
-      elif opcode == MemoryOpCode.MEMORY_FILL:
-        memory = module.read_uleb() # noqa
-        assert memory == 0
-      elif opcode == MemoryOpCode.MEMORY_DROP:
-        segment = module.read_uleb() # noqa
-      else:
-        assert False, "unknown: %s" % opcode
-    elif opcode == OpCode.ATOMIC_PREFIX:
-      opcode = AtomicOpCode(module.read_byte())
-      if opcode in (AtomicOpCode.ATOMIC_I32_RMW_CMPXCHG, AtomicOpCode.ATOMIC_I32_STORE,
-                    AtomicOpCode.ATOMIC_NOTIFY, AtomicOpCode.ATOMIC_WAIT32,
-                    AtomicOpCode.ATOMIC_WAIT64):
+    match opcode:
+      case OpCode.END | OpCode.NOP | OpCode.DROP | OpCode.I32_ADD | OpCode.I64_ADD:
+        pass
+      case OpCode.BLOCK:
+        module.read_type()
+      case OpCode.I32_CONST | OpCode.I64_CONST:
+        const_values.append(module.read_sleb())
+      case OpCode.GLOBAL_SET | OpCode.BR | OpCode.GLOBAL_GET | OpCode.LOCAL_SET | OpCode.LOCAL_GET | OpCode.LOCAL_TEE:
         module.read_uleb()
-        module.read_uleb()
-      else:
+      case OpCode.CALL:
+        call_targets.append(module.read_uleb())
+      case OpCode.MEMORY_PREFIX:
+        opcode = MemoryOpCode(module.read_byte())
+        match opcode:
+          case MemoryOpCode.MEMORY_INIT:
+            segment_idx = module.read_uleb()
+            segment = segments[segment_idx]
+            offset = to_unsigned(const_values[-3])
+            offset_map[segment] = offset
+            memory = module.read_uleb()
+            assert memory == 0
+          case MemoryOpCode.MEMORY_FILL:
+            memory = module.read_uleb() # noqa
+            assert memory == 0
+          case MemoryOpCode.MEMORY_DROP:
+            segment = module.read_uleb() # noqa
+          case _:
+            assert False, "unknown: %s" % opcode
+      case OpCode.ATOMIC_PREFIX:
+        opcode = AtomicOpCode(module.read_byte())
+        if opcode in (AtomicOpCode.ATOMIC_I32_RMW_CMPXCHG, AtomicOpCode.ATOMIC_I32_STORE,
+                      AtomicOpCode.ATOMIC_NOTIFY, AtomicOpCode.ATOMIC_WAIT32,
+                      AtomicOpCode.ATOMIC_WAIT64):
+          module.read_uleb()
+          module.read_uleb()
+        else:
+          assert False, "unknown: %s" % opcode
+      case OpCode.BR_TABLE:
+        count = module.read_uleb()
+        for _ in range(count):
+          depth = module.read_uleb() # noqa
+        default = module.read_uleb() # noqa
+      case _:
         assert False, "unknown: %s" % opcode
-    elif opcode == OpCode.BR_TABLE:
-      count = module.read_uleb()
-      for _ in range(count):
-        depth = module.read_uleb() # noqa
-      default = module.read_uleb() # noqa
-    else:
-      assert False, "unknown: %s" % opcode
 
   # Recursion is safe here because the layout of the wasm-ld-generated
   # start function has a specific structure and has at most on level
@@ -239,15 +242,6 @@ def get_main_reads_params(module, export_map):
   return True
 
 
-def get_global_exports(module, exports):
-  global_exports = {}
-  for export in exports:
-    if export.kind == webassembly.ExternType.GLOBAL:
-      g = module.get_global(export.index)
-      global_exports[export.name] = str(get_global_value(g))
-  return global_exports
-
-
 def get_function_exports(module):
   rtn = {}
   for e in module.get_exports():
@@ -256,24 +250,42 @@ def get_function_exports(module):
   return rtn
 
 
-def update_metadata(filename, metadata):
-  imports = []
-  invoke_funcs = []
-  with webassembly.Module(filename) as module:
-    for i in module.get_imports():
-      if i.kind == webassembly.ExternType.FUNC:
-        if i.field.startswith('invoke_'):
-          invoke_funcs.append(i.field)
-        else:
-          imports.append(i.field)
-      elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
+def get_other_exports(module):
+  rtn = []
+  for e in module.get_exports():
+    if e.kind == webassembly.ExternType.GLOBAL:
+      rtn.append((e, module.get_global(e.index)))
+    elif e.kind != webassembly.ExternType.FUNC:
+      rtn.append((e, None))
+  return rtn
+
+
+def read_module_imports(module, metadata):
+  em_js_funcs = metadata.em_js_funcs
+  types = module.get_types()
+
+  imports = metadata.imports = []
+  invoke_funcs = metadata.invoke_funcs = []
+  em_js_func_types = metadata.em_js_func_types = {}
+
+  for i in module.get_imports():
+    if i.kind == webassembly.ExternType.FUNC:
+      if i.field.startswith('invoke_'):
+        invoke_funcs.append(i.field)
+      else:
+        if i.field in em_js_funcs:
+          em_js_func_types[i.field] = types[i.type]
         imports.append(i.field)
+    elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
+      imports.append(i.field)
 
+
+def update_metadata(filename, metadata):
+  with webassembly.Module(filename) as module:
     metadata.function_exports = get_function_exports(module)
-    metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in module.get_exports()]
-
-  metadata.imports = imports
-  metadata.invoke_funcs = invoke_funcs
+    metadata.other_exports = get_other_exports(module)
+    metadata.all_exports = [e.name.removeprefix('__em_js__') for e in module.get_exports()]
+    read_module_imports(module, metadata)
 
 
 def get_string_at(module, address):
@@ -283,54 +295,38 @@ def get_string_at(module, address):
   return data_to_string(data[offset:str_end])
 
 
+@dataclass(init=False)
 class Metadata:
-  imports: List[str]
-  export: List[str]
-  em_asm_consts: Dict[int, str]
-  js_deps: List[str]
-  em_js_funcs: Dict[str, str]
-  em_js_func_types: Dict[str, str]
-  features: List[str]
-  invoke_funcs: List[str]
+  imports: list[str]
+  export: list[str]
+  em_asm_consts: dict[int, str]
+  js_deps: list[str]
+  em_js_funcs: dict[str, str]
+  em_js_func_types: dict[str, webassembly.FuncType]
+  features: list[str]
+  invoke_funcs: list[str]
   main_reads_params: bool
-  global_exports: List[str]
-
-  def __init__(self):
-    pass
+  function_exports: dict[str, webassembly.FuncType]
+  other_exports: list[webassembly.Export]
+  all_exports: list[str]
 
 
 def extract_metadata(filename):
-  import_names = []
-  invoke_funcs = []
   em_js_funcs = {}
-  em_js_func_types = {}
 
   with webassembly.Module(filename) as module:
     exports = module.get_exports()
-    imports = module.get_imports()
 
     export_map = {e.name: e for e in exports}
     for e in exports:
       if e.kind == webassembly.ExternType.GLOBAL and e.name.startswith('__em_js__'):
-        name = utils.removeprefix(e.name, '__em_js__')
+        name = e.name.removeprefix('__em_js__')
         globl = module.get_global(e.index)
         string_address = to_unsigned(get_global_value(globl))
         em_js_funcs[name] = get_string_at(module, string_address)
 
-    for i in imports:
-      if i.kind == webassembly.ExternType.FUNC:
-        if i.field.startswith('invoke_'):
-          invoke_funcs.append(i.field)
-        else:
-          if i.field in em_js_funcs:
-            types = module.get_types()
-            em_js_func_types[i.field] = types[i.type]
-          import_names.append(i.field)
-      elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
-        import_names.append(i.field)
-
-    features = module.parse_features_section()
-    features = ['--enable-' + f[1] for f in features if f[0] == '+']
+    features = module.get_target_features()
+    features = [f'--enable-{feature}' for feature, used in features.items() if used == webassembly.TargetFeaturePrefix.USED]
     features = [f.replace('--enable-atomics', '--enable-threads') for f in features]
     features = [f.replace('--enable-simd128', '--enable-simd') for f in features]
     features = [f.replace('--enable-nontrapping-fptoint', '--enable-nontrapping-float-to-int') for f in features]
@@ -338,17 +334,16 @@ def extract_metadata(filename):
     # If main does not read its parameters, it will just be a stub that
     # calls __original_main (which has no parameters).
     metadata = Metadata()
-    metadata.imports = import_names
     metadata.function_exports = get_function_exports(module)
-    metadata.all_exports = [utils.removeprefix(e.name, '__em_js__') for e in exports]
+    metadata.other_exports = get_other_exports(module)
+    metadata.all_exports = [e.name.removeprefix('__em_js__') for e in exports]
     metadata.em_asm_consts = get_section_strings(module, export_map, 'em_asm')
     metadata.js_deps = [d for d in get_section_strings(module, export_map, 'em_lib_deps').values() if d]
     metadata.em_js_funcs = em_js_funcs
-    metadata.em_js_func_types = em_js_func_types
     metadata.features = features
-    metadata.invoke_funcs = invoke_funcs
     metadata.main_reads_params = get_main_reads_params(module, export_map)
-    metadata.global_exports = get_global_exports(module, exports)
+
+    read_module_imports(module, metadata)
 
     # print("Metadata parsed: " + pprint.pformat(metadata))
     return metadata

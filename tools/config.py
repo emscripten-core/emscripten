@@ -3,35 +3,26 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import logging
 import os
 import shutil
 import sys
-import logging
-from typing import List, Optional
 
-from . import utils, diagnostics
-from .utils import path_from_root, exit_with_error, __rootpath__
+from . import diagnostics, utils
+from .utils import __rootpath__, exit_with_error, path_from_root
 
 logger = logging.getLogger('config')
 
 # The following class can be overridden by the config file and/or
 # environment variables.  Specifically any variable whose name
-# is in ALL_UPPER_CASE is condifered a valid config file key.
+# is in ALL_UPPER_CASE is considered a valid config file key.
 # See parse_config_file below.
 EMSCRIPTEN_ROOT = __rootpath__
 NODE_JS = None
-NODE_JS_TEST = None
 BINARYEN_ROOT = None
-SPIDERMONKEY_ENGINE = None
-V8_ENGINE: Optional[List[str]] = None
-LLVM_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
-JS_ENGINES: List[List[str]] = []
-WASMER = None
-WASMTIME = None
-WASM_ENGINES: List[List[str]] = []
 FROZEN_CACHE = None
 CACHE = None
 PORTS = None
@@ -39,6 +30,17 @@ COMPILER_WRAPPER = None
 
 # Set by init()
 EM_CONFIG = None
+
+# Settings that are only used for testing.  emcc itself does not use
+# any of these.
+NODE_JS_TEST = None
+SPIDERMONKEY_ENGINE = None
+V8_ENGINE: list[str] | None = None
+LLVM_ROOT = None
+JS_ENGINES: list[list[str]] = []
+WASMER = None
+WASMTIME = None
+WASM_ENGINES: list[list[str]] = []
 
 
 def listify(x):
@@ -59,16 +61,7 @@ def normalize_config_settings():
   global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
   global NODE_JS, NODE_JS_TEST, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
 
-  # EM_CONFIG stuff
-  if not JS_ENGINES:
-    JS_ENGINES = [NODE_JS]
-
-  # Engine tweaks
-  if SPIDERMONKEY_ENGINE:
-    new_spidermonkey = SPIDERMONKEY_ENGINE
-    if '-w' not in str(new_spidermonkey):
-      new_spidermonkey += ['-w']
-    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
+  SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
   NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
   NODE_JS_TEST = fix_js_engine(NODE_JS_TEST, listify(NODE_JS_TEST))
   V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
@@ -99,12 +92,12 @@ def parse_config_file():
 
   Also check EM_<KEY> environment variables to override specific config keys.
   """
-  config = {}
+  config = {'__file__': EM_CONFIG}
   config_text = utils.read_file(EM_CONFIG)
   try:
     exec(config_text, config)
   except Exception as e:
-    exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, str(e), config_text)
+    exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, e, config_text)
 
   CONFIG_KEYS = (
     'NODE_JS',
@@ -229,7 +222,21 @@ def find_config_file():
   #    see below)
   # 5. User home directory config (~/.emscripten), if found.
 
+  if '--em-config' in sys.argv:
+    i = sys.argv.index('--em-config')
+    if len(sys.argv) <= i + 1:
+      exit_with_error('--em-config must be followed by a filename')
+    del sys.argv[i]
+    # Now the i'th argument is the emconfig filename
+    return sys.argv.pop(i)
+
+  if 'EM_CONFIG' in os.environ:
+    return os.environ['EM_CONFIG']
+
   embedded_config = path_from_root('.emscripten')
+  if os.path.isfile(embedded_config):
+    return embedded_config
+
   # For compatibility with `emsdk --embedded` mode also look two levels up.  The
   # layout of the emsdk puts emcc two levels below emsdk.  For example:
   #  - emsdk/upstream/emscripten/emcc
@@ -244,25 +251,11 @@ def find_config_file():
   # See: https://github.com/emscripten-core/emsdk/pull/367
   emsdk_root = os.path.dirname(os.path.dirname(path_from_root()))
   emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
-  user_home_config = os.path.expanduser('~/.emscripten')
-
-  if '--em-config' in sys.argv:
-    i = sys.argv.index('--em-config')
-    if len(sys.argv) <= i + 1:
-      exit_with_error('--em-config must be followed by a filename')
-    del sys.argv[i]
-    # Now the i'th argument is the emconfig filename
-    return sys.argv.pop(i)
-
-  if 'EM_CONFIG' in os.environ:
-    return os.environ['EM_CONFIG']
-
-  if os.path.isfile(embedded_config):
-    return embedded_config
 
   if os.path.isfile(emsdk_embedded_config):
     return emsdk_embedded_config
 
+  user_home_config = os.path.expanduser('~/.emscripten')
   if os.path.isfile(user_home_config):
     return user_home_config
 

@@ -41,16 +41,20 @@ var WasiLibrary = {
   sched_yield__nothrow: true,
   sched_yield: () => 0,
 
-  $getEnvStrings__deps: ['$ENV', '$getExecutableName'],
+  $getEnvStrings__deps: ['$ENV',
+#if !PURE_WASI
+    '$getExecutableName'
+#endif
+  ],
   $getEnvStrings: () => {
     if (!getEnvStrings.strings) {
       // Default values.
-#if !DETERMINISTIC
-      // Browser language detection #8751
-      var lang = ((typeof navigator == 'object' && navigator.languages && navigator.languages[0]) || 'C').replace('-', '_') + '.UTF-8';
-#else
+#if DETERMINISTIC
       // Deterministic language detection, ignore the browser's language.
       var lang = 'C.UTF-8';
+#else
+      // Browser language detection #8751
+      var lang = (globalThis.navigator?.language ?? 'C').replace('-', '_') + '.UTF-8';
 #endif
       var env = {
 #if !PURE_WASI
@@ -63,6 +67,12 @@ var WasiLibrary = {
         '_': getExecutableName()
 #endif
       };
+#if ENVIRONMENT_MAY_BE_NODE && NODE_HOST_ENV
+      if (ENVIRONMENT_IS_NODE) {
+        // When NODE_HOST_ENV is enabled we mirror the entire host environment.
+        env = process.env;
+      }
+#endif
       // Apply the user-provided values, if any.
       for (var x in ENV) {
         // x is a key in ENV; if ENV[x] is undefined, that means it was
@@ -80,27 +90,30 @@ var WasiLibrary = {
     return getEnvStrings.strings;
   },
 
-  environ_sizes_get__deps: ['$getEnvStrings'],
+  environ_sizes_get__deps: ['$getEnvStrings', '$lengthBytesUTF8'],
   environ_sizes_get__nothrow: true,
   environ_sizes_get: (penviron_count, penviron_buf_size) => {
     var strings = getEnvStrings();
     {{{ makeSetValue('penviron_count', 0, 'strings.length', SIZE_TYPE) }}};
     var bufSize = 0;
-    strings.forEach((string) => bufSize += string.length + 1);
+    for (var string of strings) {
+      bufSize += lengthBytesUTF8(string) + 1;
+    }
     {{{ makeSetValue('penviron_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
     return 0;
   },
 
-  environ_get__deps: ['$getEnvStrings', '$stringToAscii'],
+  environ_get__deps: ['$getEnvStrings', '$stringToUTF8'],
   environ_get__nothrow: true,
   environ_get: (__environ, environ_buf) => {
     var bufSize = 0;
-    getEnvStrings().forEach((string, i) => {
+    var envp = 0;
+    for (var string of getEnvStrings()) {
       var ptr = environ_buf + bufSize;
-      {{{ makeSetValue('__environ', `i*${POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
-      stringToAscii(string, ptr);
-      bufSize += string.length + 1;
-    });
+      {{{ makeSetValue('__environ', 'envp', 'ptr', '*') }}};
+      bufSize += stringToUTF8(string, ptr, Infinity) + 1;
+      envp += {{{ POINTER_SIZE }}};
+    }
     return 0;
   },
 
@@ -112,7 +125,9 @@ var WasiLibrary = {
 #if MAIN_READS_PARAMS
     {{{ makeSetValue('pargc', 0, 'mainArgs.length', SIZE_TYPE) }}};
     var bufSize = 0;
-    mainArgs.forEach((arg) => bufSize += arg.length + 1);
+    for (var arg of mainArgs) {
+      bufSize += arg.length + 1;
+    }
     {{{ makeSetValue('pargv_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
 #else
     {{{ makeSetValue('pargc', 0, '0', SIZE_TYPE) }}};
@@ -125,12 +140,12 @@ var WasiLibrary = {
   args_get: (argv, argv_buf) => {
 #if MAIN_READS_PARAMS
     var bufSize = 0;
-    mainArgs.forEach((arg, i) => {
+    for (let [i, arg] of mainArgs.entries()) {
       var ptr = argv_buf + bufSize;
-      {{{ makeSetValue('argv', `i*${POINTER_SIZE}`, 'ptr', POINTER_TYPE) }}};
+      {{{ makeSetValue('argv', `i*${POINTER_SIZE}`, 'ptr', '*') }}};
       stringToAscii(arg, ptr);
       bufSize += arg.length + 1;
-    });
+    }
 #endif
     return 0;
   },
@@ -408,7 +423,7 @@ var WasiLibrary = {
   path_open__sig: 'iiiiiiiiii',
   path_open__deps: ['$wasiRightsToMuslOFlags', '$wasiOFlagsToMuslOFlags', '$preopens'],
   path_open: (fd, dirflags, path, path_len, oflags,
-              fs_rights_base, fs_rights_inherting,
+              fs_rights_base, fs_rights_inheriting,
               fdflags, opened_fd) => {
     if (!(fd in preopens)) {
       return {{{ cDefs.EBADF }}};
@@ -435,7 +450,7 @@ var WasiLibrary = {
       return {{{ cDefs.EBADF }}};
     }
     var preopen_path = preopens[fd];
-    stringToUTF8Array(preopen_path, HEAP8, path, path_len)
+    stringToUTF8(preopen_path, path, path_len)
 #if SYSCALL_DEBUG
     dbg(`fd_prestat_dir_name -> "${preopen_path}"`);
 #endif
@@ -525,41 +540,33 @@ var WasiLibrary = {
     return 0;
   },
 
+  fd_sync__async: true,
   fd_sync: (fd) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
+    var rtn = stream.stream_ops?.fsync?.(stream);
 #if ASYNCIFY
-    return Asyncify.handleSleep((wakeUp) => {
-      var mount = stream.node.mount;
-      if (!mount.type.syncfs) {
-        // We write directly to the file system, so there's nothing to do here.
-        wakeUp(0);
-        return;
-      }
-      mount.type.syncfs(mount, false, (err) => {
-        if (err) {
-          wakeUp({{{ cDefs.EIO }}});
-          return;
-        }
-        wakeUp(0);
+    var mount = stream.node.mount;
+    if (mount.type.syncfs) {
+      return Asyncify.handleSleep((wakeUp) => {
+        mount.type.syncfs(mount, false, (err) => wakeUp(err ? {{{ cDefs.EIO }}} : 0));
       });
-    });
-#else
-    if (stream.stream_ops?.fsync) {
-      return stream.stream_ops.fsync(stream);
     }
-    return 0; // we can't do anything synchronously; the in-memory FS is already synced to
 #endif // ASYNCIFY
-#elif ASSERTIONS
+    return rtn;
+#else // SYSCALLS_REQUIRE_FILESYSTEM
+#if ASSERTIONS
     abort('fd_sync called without SYSCALLS_REQUIRE_FILESYSTEM');
-#else
+#endif
     return {{{ cDefs.ENOSYS }}};
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
-  fd_sync__async: true,
 
   // random.h
 
+#if ENVIRONMENT_MAY_BE_SHELL
+  $initRandomFill__deps: ['$base64Decode'],
+#endif
   $initRandomFill: () => {
 #if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
     // This block is not needed on v19+ since crypto.getRandomValues is builtin
@@ -568,6 +575,18 @@ var WasiLibrary = {
       return (view) => nodeCrypto.randomFillSync(view);
     }
 #endif // ENVIRONMENT_MAY_BE_NODE
+
+#if ENVIRONMENT_MAY_BE_SHELL
+    if (ENVIRONMENT_IS_SHELL) {
+      return (view) => {
+        if (!os.system) {
+          throw new Error('randomFill not supported on d8 unless --enable-os-system is passed');
+        }
+        const b64 = os.system('sh', ['-c', `head -c${view.byteLength} /dev/urandom | base64 --wrap=0`]);
+        view.set(base64Decode(b64));
+      };
+    }
+#endif
 
 #if SHARED_MEMORY
     // like with most Web APIs, we can't use Web Crypto API directly on shared memory,

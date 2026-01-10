@@ -18,7 +18,7 @@ addToLibrary({
   $get_i64__deps: ['setTempRet0'],
   $get_i64: (loc, index, low, high) => {
     dbg('get_i64 ' + [loc, index, low, high]);
-    setTempRet0(high);
+    _setTempRet0(high);
     return low;
   },
   $get_f32: (loc, index, value) => {
@@ -52,7 +52,7 @@ addToLibrary({
   $set_i64__deps: ['setTempRet0'],
   $set_i64: (loc, index, low, high) => {
     dbg('set_i64 ' + [loc, index, low, high]);
-    setTempRet0(high);
+    _setTempRet0(high);
     return low;
   },
   $set_f32: (loc, index, value) => {
@@ -64,7 +64,7 @@ addToLibrary({
     return value;
   },
   $set_funcref: (loc, index, value) => {
-    dbg('set_afuncef ' + [loc, index, value]);
+    dbg('set_funcref ' + [loc, index, value]);
     return value;
   },
   $set_externref: (loc, index, value) => {
@@ -90,7 +90,7 @@ addToLibrary({
   $load_val_i64__deps: ['setTempRet0'],
   $load_val_i64: (loc, low, high) => {
     dbg('load_val_i64 ' + [loc, low, high]);
-    setTempRet0(high);
+    _setTempRet0(high);
     return low;
   },
   $load_val_f32: (loc, value) => {
@@ -112,7 +112,7 @@ addToLibrary({
   $store_val_i64__deps: ['setTempRet0'],
   $store_val_i64: (loc, low, high) => {
     dbg('store_val_i64 ' + [loc, low, high]);
-    setTempRet0(high);
+    _setTempRet0(high);
     return low;
   },
   $store_val_f32: (loc, value) => {
@@ -122,6 +122,14 @@ addToLibrary({
   $store_val_f64: (loc, value) => {
     dbg('store_val_f64 ' + [loc, value]);
     return value;
+  },
+  $memory_grow_pre: (loc, delta) => {
+    dbg('memory_grow_pre ' + [loc, delta]);
+    return delta;
+  },
+  $memory_grow_post: (loc, result) => {
+    dbg('memory_grow_post ' + [loc, result]);
+    return result;
   },
 });
 
@@ -153,4 +161,6 @@ extraLibraryFuncs.push(
   '$store_val_i64',
   '$store_val_f32',
   '$store_val_f64',
+  '$memory_grow_pre',
+  '$memory_grow_post',
 );

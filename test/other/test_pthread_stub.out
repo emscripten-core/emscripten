@@ -1,1 +1,5 @@
+test_c11_threads
+test_pthreads
 cleanup: 42
+test_pthread_getattr_np
+stack_addr: 0, stack_size: 65536, guard_size: 8192

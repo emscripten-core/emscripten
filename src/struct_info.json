@@ -312,6 +312,7 @@
     {
         "file": "bits/ioctl.h",
         "defines": [
+            "FIONBIO",
             "FIONREAD",
             "TCGETA",
             "TCGETS",
@@ -960,7 +961,8 @@
               "accelerationIncludingGravityZ",
               "rotationRateAlpha",
               "rotationRateBeta",
-              "rotationRateGamma"
+              "rotationRateGamma",
+              "supportedFields"
             ],
             "EmscriptenOrientationChangeEvent": [
               "orientationIndex",
@@ -1196,7 +1198,8 @@
                 "readyState",
                 "status",
                 "statusText",
-                "__attributes"
+                "__attributes",
+                "responseUrl"
             ]
         },
         "defines": [
@@ -1264,6 +1267,22 @@
     {
         "file": "emscripten/webaudio.h",
         "structs": {
+            "EmscriptenWebAudioCreateAttributes": [
+              "latencyHint",
+              "sampleRate",
+              "renderSizeHint"
+            ],
+            "WebAudioParamDescriptor": [
+              "defaultValue",
+              "minValue",
+              "maxValue",
+              "automationRate"
+            ],
+            "WebAudioWorkletProcessorCreateOptions": [
+              "name",
+              "numAudioParams",
+              "audioParamDescriptors"
+            ],
             "AudioSampleFrame": [
               "numberOfChannels",
               "samplesPerChannel",
@@ -1272,6 +1291,14 @@
             "AudioParamFrame": [
               "length",
               "data"
+            ],
+            "EmscriptenAudioWorkletNodeCreateOptions": [
+              "numberOfInputs",
+              "numberOfOutputs",
+              "outputChannelCounts",
+              "channelCount",
+              "channelCountMode",
+              "channelInterpretation"
             ]
         }
     },

@@ -14,53 +14,29 @@
 var workerID = 0;
 #endif
 
-if (ENVIRONMENT_IS_PTHREAD) {
-#if !MINIMAL_RUNTIME
-  var wasmModuleReceived;
+#if MAIN_MODULE
+// Map of modules to be shared with new threads.  This gets populated by the
+// main thread and shared with all new workers via the initial `load` message.
+var sharedModules = {};
 #endif
 
-#if ENVIRONMENT_MAY_BE_NODE
-  // Node.js support
-  if (ENVIRONMENT_IS_NODE) {
-    // Create as web-worker-like an environment as we can.
+var startWorker;
 
-    var parentPort = worker_threads['parentPort'];
-    parentPort.on('message', (msg) => onmessage({ data: msg }));
-
-    Object.assign(globalThis, {
-      self: global,
-      postMessage: (msg) => parentPort.postMessage(msg),
-    });
-  }
-#endif // ENVIRONMENT_MAY_BE_NODE
-
+if (ENVIRONMENT_IS_PTHREAD) {
   // Thread-local guard variable for one-time init of the JS state
   var initializedJS = false;
 
-  function threadPrintErr(...args) {
-    var text = args.join(' ');
-#if ENVIRONMENT_MAY_BE_NODE
-    // See https://github.com/emscripten-core/emscripten/issues/14804
-    if (ENVIRONMENT_IS_NODE) {
-      fs.writeSync(2, text + '\n');
-      return;
-    }
-#endif
-    console.error(text);
+#if LOAD_SOURCE_MAP
+  // When using postMessage to send an object, it is processed by the structured
+  // clone algorithm.  The prototype, and hence methods, on that object is then
+  // lost. This function adds back the lost prototype.  This does not work with
+  // nested objects that has prototypes, but it suffices for WasmSourceMap and
+  // WasmOffsetConverter.
+  function resetPrototype(constructor, attrs) {
+    var object = Object.create(constructor.prototype);
+    return Object.assign(object, attrs);
   }
-
-#if expectToReceiveOnModule('printErr')
-  if (!Module['printErr'])
 #endif
-    err = threadPrintErr;
-#if ASSERTIONS || RUNTIME_DEBUG
-  dbg = threadPrintErr;
-#endif
-  function threadAlert(...args) {
-    var text = args.join(' ');
-    postMessage({cmd: 'alert', text, threadId: _pthread_self()});
-  }
-  self.alert = threadAlert;
 
   // Turn unhandled rejected promises into errors so that the main thread will be
   // notified about them.
@@ -84,7 +60,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         self.onmessage = (e) => messageQueue.push(e);
 
         // And add a callback for when the runtime is initialized.
-        self.startWorker = (instance) => {
+        startWorker = () => {
           // Notify the main thread that this thread has loaded.
           postMessage({ cmd: 'loaded' });
           // Process any messages that were queued before the thread was ready.
@@ -106,7 +82,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         // Use `const` here to ensure that the variable is scoped only to
         // that iteration, allowing safe reference from a closure.
         for (const handler of msgData.handlers) {
-          // The the main module has a handler for a certain even, but no
+          // If the main module has a handler for a certain event, but no
           // handler exists on the pthread worker, then proxy that handler
           // back to the main thread.
           if (!Module[handler] || Module[handler].proxy) {
@@ -128,23 +104,30 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
         }
 
+#if !WASM_ESM_INTEGRATION
         wasmMemory = msgData.wasmMemory;
         updateMemoryViews();
+#endif
 
 #if LOAD_SOURCE_MAP
         wasmSourceMap = resetPrototype(WasmSourceMap, msgData.wasmSourceMap);
 #endif
-#if USE_OFFSET_CONVERTER
-        wasmOffsetConverter = resetPrototype(WasmOffsetConverter, msgData.wasmOffsetConverter);
-#endif
 
+#if !WASM_ESM_INTEGRATION
 #if MINIMAL_RUNTIME
         // Pass the shared Wasm module in the Module object for MINIMAL_RUNTIME.
         Module['wasm'] = msgData.wasmModule;
         loadModule();
 #else
-        wasmModuleReceived(msgData.wasmModule);
+        wasmModule = msgData.wasmModule;
+#if MODULARIZE == 'instance'
+        init();
+#else
+        createWasm();
+        run();
+#endif
 #endif // MINIMAL_RUNTIME
+#endif
       } else if (cmd === 'run') {
 #if ASSERTIONS
         assert(msgData.pthread_ptr);
@@ -157,7 +140,9 @@ if (ENVIRONMENT_IS_PTHREAD) {
         // Pass the thread address to wasm to store it for fast access.
         __emscripten_thread_init(msgData.pthread_ptr, /*is_main=*/0, /*is_runtime=*/0, /*can_block=*/1, 0, 0);
 
-        PThread.receiveObjectTransfer(msgData);
+#if OFFSCREENCANVAS_SUPPORT
+        PThread.receiveOffscreenCanvases(msgData);
+#endif
         PThread.threadInitTLS();
 
         // Await mailbox notifications with `Atomics.waitAsync` so we can start

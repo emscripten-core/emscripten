@@ -90,12 +90,13 @@ def get(ports, settings, shared):
       '-I' + source_path + '/psaux',
       '-I' + source_path + '/psnames',
       '-I' + source_path + '/truetype',
-      '-pthread'
+      '-pthread',
     ]
 
     if settings.SUPPORT_LONGJMP == 'wasm':
       flags.append('-sSUPPORT_LONGJMP=wasm')
 
+    ports.make_pkg_config('freetype', TAG, '-sUSE_FREETYPE')
     ports.build_port(source_path, final, 'freetype', flags=flags, srcs=srcs)
 
   return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
@@ -110,4 +111,4 @@ def process_args(ports):
 
 
 def show():
-  return 'freetype (-sUSE_FREETYPE=1 or --use-port=freetype; freetype license)'
+  return 'freetype (-sUSE_FREETYPE or --use-port=freetype; freetype license)'

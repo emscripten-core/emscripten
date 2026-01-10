@@ -54,10 +54,10 @@ LibraryJSEventLoop = {
 
   $emSetImmediate__deps: ['$setImmediateWrapped', '$clearImmediateWrapped', '$emClearImmediate'],
   $emSetImmediate__postset: `
-    if (typeof setImmediate != "undefined") {
+    if (globalThis.setImmediate) {
       emSetImmediate = setImmediateWrapped;
       emClearImmediate = clearImmediateWrapped;
-    } else if (typeof addEventListener == "function") {
+    } else if (globalThis.addEventListener) {
       var __setImmediate_id_counter = 0;
       var __setImmediate_queue = [];
       var __setImmediate_message_id = "_si";
@@ -135,11 +135,16 @@ LibraryJSEventLoop = {
       {{{ runtimeKeepalivePop() }}}
       callUserCallback(() => {
         if ({{{ makeDynCall('idp', 'cb') }}}(t, userData)) {
+          {{{ runtimeKeepalivePush() }}}
           // Save a little bit of code space: modern browsers should treat
           // negative setTimeout as timeout of 0
           // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
-          {{{ runtimeKeepalivePush() }}}
-          setTimeout(tick, n - _emscripten_get_now());
+          var remaining = n - _emscripten_get_now();
+#if ENVIRONMENT_MAY_BE_NODE
+          // Recent revisions of node, however, give TimeoutNegativeWarning
+          remaining = Math.max(0, remaining);
+#endif
+          setTimeout(tick, remaining);
         }
       });
     }
@@ -293,22 +298,11 @@ LibraryJSEventLoop = {
     },
 
     requestAnimationFrame(func) {
-      if (typeof requestAnimationFrame == 'function') {
+      if (globalThis.requestAnimationFrame) {
         requestAnimationFrame(func);
-        return;
+      } else {
+        MainLoop.fakeRequestAnimationFrame(func);
       }
-      var RAF = MainLoop.fakeRequestAnimationFrame;
-#if LEGACY_VM_SUPPORT
-      if (typeof window != 'undefined') {
-        RAF = window['requestAnimationFrame'] ||
-              window['mozRequestAnimationFrame'] ||
-              window['webkitRequestAnimationFrame'] ||
-              window['msRequestAnimationFrame'] ||
-              window['oRequestAnimationFrame'] ||
-              RAF;
-      }
-#endif
-      RAF(func);
     },
   },
 
@@ -346,8 +340,10 @@ LibraryJSEventLoop = {
       };
       MainLoop.method = 'rAF';
     } else if (mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}}) {
-      if (typeof MainLoop.setImmediate == 'undefined') {
-        if (typeof setImmediate == 'undefined') {
+      if (!MainLoop.setImmediate) {
+        if (globalThis.setImmediate) {
+          MainLoop.setImmediate = setImmediate;
+        } else {
           // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
           var setImmediates = [];
           var emscriptenMainLoopMessageId = 'setimmediate';
@@ -369,8 +365,6 @@ LibraryJSEventLoop = {
               postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
             } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
           });
-        } else {
-          MainLoop.setImmediate = setImmediate;
         }
       }
       MainLoop.scheduler = function MainLoop_scheduler_setImmediate() {
@@ -391,9 +385,6 @@ LibraryJSEventLoop = {
   $setMainLoop__deps: [
     '$MainLoop',
     'emscripten_set_main_loop_timing', 'emscripten_get_now',
-#if OFFSCREEN_FRAMEBUFFER
-    'emscripten_webgl_commit_frame',
-#endif
 #if !MINIMAL_RUNTIME
     '$maybeExit',
 #endif
@@ -426,10 +417,10 @@ LibraryJSEventLoop = {
     }
 
     // We create the loop runner here but it is not actually running until
-    // _emscripten_set_main_loop_timing is called (which might happen a
+    // _emscripten_set_main_loop_timing is called (which might happen at a
     // later time).  This member signifies that the current runner has not
     // yet been started so that we can call runtimeKeepalivePush when it
-    // gets it timing set for the first time.
+    // gets its timing set for the first time.
     MainLoop.running = false;
     MainLoop.runner = function MainLoop_runner() {
       if (ABORT) return;

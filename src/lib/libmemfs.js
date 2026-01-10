@@ -6,15 +6,6 @@
 
 addToLibrary({
   $MEMFS__deps: ['$FS', '$mmapAlloc'],
-#if !ASSERTIONS
-  $MEMFS__postset: `
-    // This error may happen quite a bit. To avoid overhead we reuse it (and
-    // suffer a lack of stack info).
-    MEMFS.doesNotExistError = new FS.ErrnoError({{{ cDefs.ENOENT }}});
-    /** @suppress {checkTypes} */
-    MEMFS.doesNotExistError.stack = '<generic error, no stack>';
-    `,
-#endif
   $MEMFS: {
     ops_table: null,
     mount(mount) {
@@ -22,7 +13,7 @@ addToLibrary({
     },
     createNode(parent, name, mode, dev) {
       if (FS.isBlkdev(mode) || FS.isFIFO(mode)) {
-        // no supported
+        // not supported
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
       MEMFS.ops_table ||= {
@@ -51,7 +42,6 @@ addToLibrary({
             llseek: MEMFS.stream_ops.llseek,
             read: MEMFS.stream_ops.read,
             write: MEMFS.stream_ops.write,
-            allocate: MEMFS.stream_ops.allocate,
             mmap: MEMFS.stream_ops.mmap,
             msync: MEMFS.stream_ops.msync
           }
@@ -184,6 +174,13 @@ addToLibrary({
 #if ASSERTIONS
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
 #else
+        // This error may happen quite a bit. To avoid overhead we reuse it (and
+        // suffer a lack of stack info).
+        if (!MEMFS.doesNotExistError) {
+          MEMFS.doesNotExistError = new FS.ErrnoError({{{ cDefs.ENOENT }}});
+          /** @suppress {checkTypes} */
+          MEMFS.doesNotExistError.stack = '<generic error, no stack>';
+        }
         throw MEMFS.doesNotExistError;
 #endif
       },
@@ -268,7 +265,7 @@ addToLibrary({
         // If the buffer is located in main memory (HEAP), and if
         // memory can grow, we can't hold on to references of the
         // memory buffer, as they may get invalidated. That means we
-        // need to do copy its contents.
+        // need to copy its contents.
         if (buffer.buffer === HEAP8.buffer) {
           canOwn = false;
         }
@@ -323,10 +320,6 @@ addToLibrary({
           throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
         }
         return position;
-      },
-      allocate(stream, offset, length) {
-        MEMFS.expandFileStorage(stream.node, offset + length);
-        stream.node.usedBytes = Math.max(stream.node.usedBytes, offset + length);
       },
       mmap(stream, length, position, prot, flags) {
         if (!FS.isFile(stream.node.mode)) {

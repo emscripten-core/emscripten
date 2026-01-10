@@ -170,7 +170,7 @@ addToLibrary({
     // Coordinated Universal Time (UTC) and local standard time."), the same
     // as returned by stdTimezoneOffset.
     // See http://pubs.opengroup.org/onlinepubs/009695399/functions/tzset.html
-    {{{ makeSetValue('timezone', '0', 'stdTimezoneOffset * 60', POINTER_TYPE) }}};
+    {{{ makeSetValue('timezone', '0', 'stdTimezoneOffset * 60', '*') }}};
 
     {{{ makeSetValue('daylight', '0', 'Number(winterOffset != summerOffset)', 'i32') }}};
 
@@ -257,7 +257,7 @@ addToLibrary({
   },
 
   strptime__deps: ['$isLeapYear', '$arraySum', '$addDays', '$MONTH_DAYS_REGULAR', '$MONTH_DAYS_LEAP',
-                   '$jstoi_q', '$intArrayFromString' ],
+                   '$lengthBytesUTF8'],
   strptime: (buf, format, tm) => {
     // char *strptime(const char *restrict buf, const char *restrict format, struct tm *restrict tm);
     // http://pubs.opengroup.org/onlinepubs/009695399/functions/strptime.html
@@ -362,21 +362,21 @@ addToLibrary({
 
       // seconds
       if ((value=getMatch('S'))) {
-        date.sec = jstoi_q(value);
+        date.sec = Number(value);
       }
 
       // minutes
       if ((value=getMatch('M'))) {
-        date.min = jstoi_q(value);
+        date.min = Number(value);
       }
 
       // hours
       if ((value=getMatch('H'))) {
         // 24h clock
-        date.hour = jstoi_q(value);
+        date.hour = Number(value);
       } else if ((value = getMatch('I'))) {
         // AM/PM clock
-        var hour = jstoi_q(value);
+        var hour = Number(value);
         if ((value=getMatch('p'))) {
           hour += value.toUpperCase()[0] === 'P' ? 12 : 0;
         }
@@ -386,13 +386,13 @@ addToLibrary({
       // year
       if ((value=getMatch('Y'))) {
         // parse from four-digit year
-        date.year = jstoi_q(value);
+        date.year = Number(value);
       } else if ((value=getMatch('y'))) {
         // parse from two-digit year...
-        var year = jstoi_q(value);
+        var year = Number(value);
         if ((value=getMatch('C'))) {
           // ...and century
-          year += jstoi_q(value)*100;
+          year += Number(value)*100;
         } else {
           // ...and rule-of-thumb
           year += year<69 ? 2000 : 1900;
@@ -403,7 +403,7 @@ addToLibrary({
       // month
       if ((value=getMatch('m'))) {
         // parse from month number
-        date.month = jstoi_q(value)-1;
+        date.month = Number(value)-1;
       } else if ((value=getMatch('b'))) {
         // parse from month name
         date.month = MONTH_NUMBERS[value.substring(0,3).toUpperCase()] || 0;
@@ -413,10 +413,10 @@ addToLibrary({
       // day
       if ((value=getMatch('d'))) {
         // get day of month directly
-        date.day = jstoi_q(value);
+        date.day = Number(value);
       } else if ((value=getMatch('j'))) {
         // get day of month from day of year ...
-        var day = jstoi_q(value);
+        var day = Number(value);
         var leapYear = isLeapYear(date.year);
         for (var month=0; month<12; ++month) {
           var daysUntilMonth = arraySum(leapYear ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, month-1);
@@ -432,7 +432,7 @@ addToLibrary({
           // Week number of the year (Sunday as the first day of the week) as a decimal number [00,53].
           // All days in a new year preceding the first Sunday are considered to be in week 0.
           var weekDayNumber = DAY_NUMBERS_SUN_FIRST[weekDay];
-          var weekNumber = jstoi_q(value);
+          var weekNumber = Number(value);
 
           // January 1st
           var janFirst = new Date(date.year, 0, 1);
@@ -451,7 +451,7 @@ addToLibrary({
           // Week number of the year (Monday as the first day of the week) as a decimal number [00,53].
           // All days in a new year preceding the first Monday are considered to be in week 0.
           var weekDayNumber = DAY_NUMBERS_MON_FIRST[weekDay];
-          var weekNumber = jstoi_q(value);
+          var weekNumber = Number(value);
 
           // January 1st
           var janFirst = new Date(date.year, 0, 1);
@@ -474,7 +474,7 @@ addToLibrary({
         // GMT offset as either 'Z' or +-HH:MM or +-HH or +-HHMM
         if (value.toLowerCase() === 'z'){
           date.gmtoff = 0;
-        } else {          
+        } else {
           var match = value.match(/^((?:\-|\+)\d\d):?(\d\d)?/);
           date.gmtoff = match[1] * 3600;
           if (match[2]) {
@@ -507,10 +507,10 @@ addToLibrary({
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_yday, 'arraySum(isLeapYear(fullDate.getFullYear()) ? MONTH_DAYS_LEAP : MONTH_DAYS_REGULAR, fullDate.getMonth()-1)+fullDate.getDate()-1', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_isdst, '0', 'i32') }}};
       {{{ makeSetValue('tm', C_STRUCTS.tm.tm_gmtoff, 'date.gmtoff', LONG_TYPE) }}};
- 
+
       // we need to convert the matched sequence into an integer array to take care of UTF-8 characters > 0x7F
       // TODO: not sure that intArrayFromString handles all unicode characters correctly
-      return buf+intArrayFromString(matches[0]).length-1;
+      return buf+lengthBytesUTF8(matches[0]);
     }
 
     return 0;

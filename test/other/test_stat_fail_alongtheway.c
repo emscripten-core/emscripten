@@ -14,7 +14,7 @@ int main() {
   {
     struct stat st;
     assert(stat("path", &st) == 0);
-    assert(st.st_mode = 0777);
+    assert((st.st_mode & ~S_IFMT) == 0777);
   }
   {
     struct stat st;
@@ -25,7 +25,7 @@ int main() {
   {
     struct stat st;
     assert(stat("path/file", &st) == 0);
-    assert(st.st_mode = 0666);
+    assert((st.st_mode & ~S_IFMT) == 0644);
   }
   {
     struct stat st;

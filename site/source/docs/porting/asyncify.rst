@@ -480,7 +480,7 @@ later callback, when nothing else is on the stack.
 Migrating from older Asyncify APIs
 ##################################
 
-If you have code uses the old Emterpreter-Async API, or the old Asyncify, then
+If you have code that uses the old Emterpreter-Async API, or the old Asyncify, then
 almost everything should just work when you replace ``-sEMTERPRETIFY`` usage
 with ``-sASYNCIFY``. In particular all the things like ``emscripten_wget``
 should just work as they did before.

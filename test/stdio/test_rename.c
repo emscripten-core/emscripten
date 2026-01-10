@@ -161,7 +161,7 @@ void test() {
 #endif
   assert(!err);
 
-  // Test that non-existant parent during rename generates the correct error
+  // Test that non-existent parent during rename generates the correct error
   // code.
   err = rename("dir/hicsuntdracones/empty", "dir/hicsuntdracones/renamed");
   assert(err == -1);
@@ -207,8 +207,7 @@ void test() {
   // Create a directory and a file.
   err = wasmfs_create_directory("/js-dir", 0777, js_backend);
   assert(err == 0);
-  int fd = wasmfs_create_file("/js-dir/js-file", 0777, js_backend);
-  assert(fd >= 0);
+  create_file("/js-dir/js-file", "foo", 0777);
 
   // Try to move it.
   err = rename("/js-dir/js-file", "/moved-js-file");

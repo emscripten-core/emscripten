@@ -17,7 +17,7 @@ int main(void) {
   printf("stack size %zd\n", stacksize);
 
   // This test is run with STACK_SIZE=128k so we always expect that to be
-  // the ammount of stack we have in main()
+  // the amount of stack we have in main()
   assert(stacksize == 128*1024);
 
   // This test is run with DEFAULT_PTHREAD_STACK_SIZE=64k.  This would fail if

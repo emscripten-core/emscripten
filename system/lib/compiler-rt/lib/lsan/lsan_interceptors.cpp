@@ -26,7 +26,6 @@
 #if SANITIZER_POSIX
 #include "sanitizer_common/sanitizer_posix.h"
 #endif
-#include "sanitizer_common/sanitizer_tls_get_addr.h"
 #include "lsan.h"
 #include "lsan_allocator.h"
 #include "lsan_common.h"
@@ -89,11 +88,42 @@ INTERCEPTOR(void*, malloc, uptr size) {
 }
 
 INTERCEPTOR(void, free, void *p) {
+  if (UNLIKELY(!p))
+    return;
   if (DlsymAlloc::PointerIsMine(p))
     return DlsymAlloc::Free(p);
   ENSURE_LSAN_INITED;
   lsan_free(p);
 }
+
+#  if SANITIZER_INTERCEPT_FREE_SIZED
+INTERCEPTOR(void, free_sized, void *p, uptr size) {
+  if (UNLIKELY(!p))
+    return;
+  if (DlsymAlloc::PointerIsMine(p))
+    return DlsymAlloc::Free(p);
+  ENSURE_LSAN_INITED;
+  lsan_free_sized(p, size);
+}
+#    define LSAN_MAYBE_INTERCEPT_FREE_SIZED INTERCEPT_FUNCTION(free_sized)
+#  else
+#    define LSAN_MAYBE_INTERCEPT_FREE_SIZED
+#  endif
+
+#  if SANITIZER_INTERCEPT_FREE_ALIGNED_SIZED
+INTERCEPTOR(void, free_aligned_sized, void *p, uptr alignment, uptr size) {
+  if (UNLIKELY(!p))
+    return;
+  if (DlsymAlloc::PointerIsMine(p))
+    return DlsymAlloc::Free(p);
+  ENSURE_LSAN_INITED;
+  lsan_free_aligned_sized(p, alignment, size);
+}
+#    define LSAN_MAYBE_INTERCEPT_FREE_ALIGNED_SIZED \
+      INTERCEPT_FUNCTION(free_aligned_sized)
+#  else
+#    define LSAN_MAYBE_INTERCEPT_FREE_ALIGNED_SIZED
+#  endif
 
 INTERCEPTOR(void*, calloc, uptr nmemb, uptr size) {
   if (DlsymAlloc::Use())
@@ -128,6 +158,9 @@ INTERCEPTOR(void*, valloc, uptr size) {
   GET_STACK_TRACE_MALLOC;
   return lsan_valloc(size, stack);
 }
+#else
+#  define LSAN_MAYBE_INTERCEPT_FREE_SIZED
+#  define LSAN_MAYBE_INTERCEPT_FREE_ALIGNED_SIZED
 #endif  // !SANITIZER_APPLE
 
 #if SANITIZER_INTERCEPT_MEMALIGN
@@ -145,9 +178,7 @@ INTERCEPTOR(void*, memalign, uptr alignment, uptr size) {
 INTERCEPTOR(void *, __libc_memalign, uptr alignment, uptr size) {
   ENSURE_LSAN_INITED;
   GET_STACK_TRACE_MALLOC;
-  void *res = lsan_memalign(alignment, size, stack);
-  DTLS_on_libc_memalign(res, size);
-  return res;
+  return lsan_memalign(alignment, size, stack);
 }
 #define LSAN_MAYBE_INTERCEPT___LIBC_MEMALIGN INTERCEPT_FUNCTION(__libc_memalign)
 #else
@@ -569,6 +600,8 @@ void InitializeInterceptors() {
 
   INTERCEPT_FUNCTION(malloc);
   INTERCEPT_FUNCTION(free);
+  LSAN_MAYBE_INTERCEPT_FREE_SIZED;
+  LSAN_MAYBE_INTERCEPT_FREE_ALIGNED_SIZED;
   LSAN_MAYBE_INTERCEPT_CFREE;
   INTERCEPT_FUNCTION(calloc);
   INTERCEPT_FUNCTION(realloc);

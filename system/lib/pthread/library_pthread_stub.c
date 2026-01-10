@@ -276,10 +276,6 @@ int pthread_condattr_setpshared(pthread_condattr_t *attr, int shared) {
   return 0;
 }
 
-int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr) {
-  return 0;
-}
-
 int pthread_setcancelstate(int state, int* oldstate) {
   return 0;
 }

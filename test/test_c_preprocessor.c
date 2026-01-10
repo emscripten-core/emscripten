@@ -146,7 +146,7 @@ EM_JS(void, test_c_preprocessor, (void), {
   test('#define FOO 42\n#define BAR FOO\nBAR\n', '42\n'); // Test chained expanding a preprocessor symbol
   test('#define MACRO(x) x\nMACRO(42)\n', '42\n'); // Test one-parameter preprocessor macro
   test('#define MACRO(x,y) x\nMACRO(42, 53)\n', '42\n'); // Test a two-parameter preprocessor macro
-  test('#define MACRO(  \t  x   ,   y   )    \t x    \t\nMACRO(42, 53)\n', '42\n'); // Test a macro with odd whitescape in it
+  test('#define MACRO(  \t  x   ,   y   )    \t x    \t\nMACRO(42, 53)\n', '42\n'); // Test a macro with odd whitespace in it
 
   test('#define MACRO(x,y,z) x+y<=z\nMACRO(42,15,30)\n', '42+15<=30\n'); // Test three-arg macro
 
@@ -190,6 +190,11 @@ EM_JS(void, test_c_preprocessor, (void), {
   test('\n#define FOO 1\nFOO\n', '\n1\n'); // Test that preprocessor is not confused by an input that starts with a \n
 
   test('#line 162 "foo.glsl"\n', '#line 162 "foo.glsl"\n'); // Test that #line directives are retained in the output
+
+  test('#define FOO 1\n#ifdef FOO\nA\n#elif defined(BAR)\nB\n#elif defined(BAZ)\nC\n#else\nD\n#endif', "A\n"); // Test #elif support, taking #ifdef path
+  test('#define BAR 1\n#ifdef FOO\nA\n#elif defined(BAR)\nB\n#elif defined(BAZ)\nC\n#else\nD\n#endif', "B\n"); // Test #elif support, taking first #elif path
+  test('#define BAZ 1\n#ifdef FOO\nA\n#elif defined(BAR)\nB\n#elif defined(BAZ)\nC\n#else\nD\n#endif', "C\n"); // Test #elif support, taking a second #elif path
+  test(               '#ifdef FOO\nA\n#elif defined(BAR)\nB\n#elif defined(BAZ)\nC\n#else\nD\n#endif', "D\n"); // Test #elif support, taking the final #else path
 
   if (numFailed) throw numFailed + ' tests failed!';
 });

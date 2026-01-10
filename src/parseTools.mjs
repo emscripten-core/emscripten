@@ -15,13 +15,16 @@ import assert from 'node:assert';
 import {
   addToCompileTimeContext,
   error,
-  printErr,
   readFile,
   runInMacroContext,
-  setCurrentFile,
+  pushCurrentFile,
+  popCurrentFile,
+  localFile,
   warn,
   srcDir,
 } from './utility.mjs';
+
+import { nativeAliases } from './modules.mjs';
 
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
 const WASM_PAGE_SIZE = 64 * 1024;
@@ -36,10 +39,15 @@ export function processMacros(text, filename) {
   // The `?` here in makes the regex non-greedy so it matches with the closest
   // set of closing braces.
   // `[\s\S]` works like `.` but include newline.
-  return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
-    const ret = runInMacroContext(str, {filename: filename});
-    return ret !== null ? ret.toString() : '';
-  });
+  pushCurrentFile(filename);
+  try {
+    return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
+      const ret = runInMacroContext(str, {filename: filename});
+      return ret?.toString() ?? '';
+    });
+  } finally {
+    popCurrentFile();
+  }
 }
 
 function findIncludeFile(filename, currentDir) {
@@ -65,7 +73,7 @@ function findIncludeFile(filename, currentDir) {
 // Also handles #include x.js (similar to C #include <file>)
 export function preprocess(filename) {
   let text = readFile(filename);
-  if (EXPORT_ES6 && USE_ES6_IMPORT_META) {
+  if (EXPORT_ES6) {
     // `eval`, Terser and Closure don't support module syntax; to allow it,
     // we need to temporarily replace `import.meta` and `await import` usages
     // with placeholders during preprocess phase, and back after all the other ops.
@@ -74,19 +82,23 @@ export function preprocess(filename) {
       .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
       .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
   }
+  if (MODULARIZE) {
+    // Same for out use of "top-level-await" which is not actually top level
+    // in the case of MODULARIZE.
+    text = text.replace(/\bawait createWasm\(\)/g, 'EMSCRIPTEN$AWAIT(createWasm())');
+  }
   // Remove windows line endings, if any
   text = text.replace(/\r\n/g, '\n');
 
   const IGNORE = 0;
   const SHOW = 1;
   // This state is entered after we have shown one of the block of an if/elif/else sequence.
-  // Once we enter this state we dont show any blocks or evaluate any
+  // Once we enter this state we don't show any blocks or evaluate any
   // conditions until the sequence ends.
   const IGNORE_ALL = 2;
   const showStack = [];
   const showCurrentLine = () => showStack.every((x) => x == SHOW);
 
-  const oldFilename = setCurrentFile(filename);
   const fileExt = filename.split('.').pop().toLowerCase();
   const isHtml = fileExt === 'html' || fileExt === 'htm' ? true : false;
   let inStyle = false;
@@ -99,6 +111,7 @@ export function preprocess(filename) {
   let ret = '';
   let emptyLine = false;
 
+  pushCurrentFile(filename);
   try {
     for (let [i, line] of lines.entries()) {
       if (isHtml) {
@@ -147,7 +160,7 @@ export function preprocess(filename) {
             }
             const absPath = findIncludeFile(includeFile, path.dirname(filename));
             if (!absPath) {
-              error(`${filename}:${i + 1}: file not found: ${includeFile}`);
+              error(`file not found: ${includeFile}`, i + 1);
               continue;
             }
             const result = preprocess(absPath);
@@ -159,7 +172,7 @@ export function preprocess(filename) {
           }
         } else if (first === '#else') {
           if (showStack.length == 0) {
-            error(`${filename}:${i + 1}: #else without matching #if`);
+            error('#else without matching #if', i + 1);
           }
           const curr = showStack.pop();
           if (curr == IGNORE) {
@@ -169,23 +182,21 @@ export function preprocess(filename) {
           }
         } else if (first === '#endif') {
           if (showStack.length == 0) {
-            error(`${filename}:${i + 1}: #endif without matching #if`);
+            error('#endif without matching #if', i + 1);
           }
           showStack.pop();
         } else if (first === '#warning') {
           if (showCurrentLine()) {
-            printErr(
-              `${filename}:${i + 1}: #warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`,
-            );
+            warn(`#warning ${trimmed.substring(trimmed.indexOf(' ')).trim()}`, i + 1);
           }
         } else if (first === '#error') {
           if (showCurrentLine()) {
-            error(`${filename}:${i + 1}: #error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`);
+            error(`#error ${trimmed.substring(trimmed.indexOf(' ')).trim()}`, i + 1);
           }
         } else if (first === '#preprocess') {
           // Do nothing
         } else {
-          error(`${filename}:${i + 1}: Unknown preprocessor directive ${first}`);
+          error(`Unknown preprocessor directive ${first}`, i + 1);
         }
       } else {
         if (showCurrentLine()) {
@@ -209,7 +220,7 @@ no matching #endif found (${showStack.length$}' unmatched preprocessing directiv
     );
     return ret;
   } finally {
-    setCurrentFile(oldFilename);
+    popCurrentFile();
   }
 }
 
@@ -237,7 +248,7 @@ const SIZE_TYPE = POINTER_TYPE;
 const POINTER_WASM_TYPE = `i${POINTER_BITS}`;
 
 function isPointerType(type) {
-  return type[type.length - 1] == '*';
+  return type.endsWith('*');
 }
 
 // Given an expression like (VALUE=VALUE*2,VALUE<10?VALUE:t+1) , this will
@@ -253,6 +264,24 @@ function makeInlineCalculation(expression, value, tempVar) {
 
 // XXX Make all i64 parts signed
 
+function castToBigInt(x) {
+  // Micro-size-optimization: if x is an integer literal, then we can append
+  // the suffix 'n' instead of casting to BigInt(), to get smaller code size.
+  var n = Number(x);
+  if (Number.isInteger(n) && isFinite(n)) {
+    // NOTE: BigInt(316059037807746200000) != 316059037807746200000n
+    // i.e. constructing numbers with BigInt()s is subject to rounding, if
+    // the input value cannot be exactly represented as a 64-bit double.
+    // Currently the test suite depends on this rounding behavior, so only
+    // apply this literal optimization to safe integers for now.
+    if (Math.abs(n) < Number.MAX_SAFE_INTEGER) {
+      return `${x}n`;
+    }
+  }
+  return `BigInt(${x})`;
+}
+
+
 // Splits a number (an integer in a double, possibly > 32 bits) into an i64
 // value, represented by a low and high i32 pair.
 // Will suffer from rounding and truncation.
@@ -260,7 +289,7 @@ function splitI64(value) {
   if (WASM_BIGINT) {
     // Nothing to do: just make sure it is a BigInt (as it must be of that
     // type, to be sent into wasm).
-    return `BigInt(${value})`;
+    return castToBigInt(value);
   }
 
   // general idea:
@@ -324,12 +353,14 @@ function getNativeTypeSize(type) {
     case 'float': return 4;
     case 'double': return 8;
     default: {
-      if (type[type.length - 1] === '*') {
+      if (type.endsWith('*')) {
         return POINTER_SIZE;
       }
       if (type[0] === 'i') {
         const bits = Number(type.slice(1));
-        assert(bits % 8 === 0, `getNativeTypeSize invalid bits ${bits}, ${type} type`);
+        // [FIXME] Cannot use assert here since this function is included directly
+        // in the runtime JS library, where assert is not always available.
+        // assert(bits % 8 === 0, `getNativeTypeSize invalid bits ${bits}, ${type} type`);
         return bits / 8;
       }
       return 0;
@@ -406,27 +437,13 @@ function asmFloatToInt(x) {
 }
 
 // See makeSetValue
-function makeGetValue(ptr, pos, type, noNeedFirst, unsigned, _ignore, align) {
-  assert(typeof align === 'undefined', 'makeGetValue no longer supports align parameter');
-  assert(
-    typeof noNeedFirst === 'undefined',
-    'makeGetValue no longer supports noNeedFirst parameter',
-  );
-  if (typeof unsigned !== 'undefined') {
-    // TODO(sbc): make this into an error at some point.
-    printErr(
-      'makeGetValue: Please use u8/u16/u32/u64 unsigned types in favor of additional argument',
-    );
-    if (unsigned && type.startsWith('i')) {
-      type = `u${type.slice(1)}`;
-    }
-  } else if (type.startsWith('u')) {
-    // Set `unsigned` based on the type name.
-    unsigned = true;
-  }
+function makeGetValue(ptr, pos, type) {
+  assert(arguments.length == 3, 'makeGetValue expects 3 arguments');
 
   const offset = calcFastOffset(ptr, pos);
   if (type === 'i53' || type === 'u53') {
+    // Set `unsigned` based on the type name.
+    const unsigned = type.startsWith('u');
     return `readI53From${unsigned ? 'U' : 'I'}64(${offset})`;
   }
 
@@ -477,7 +494,7 @@ function makeSetValueImpl(ptr, pos, value, type) {
 
   const slab = getHeapForType(type);
   if (slab == 'HEAPU64' || slab == 'HEAP64') {
-    value = `BigInt(${value})`;
+    value = castToBigInt(value);
   }
   return `${slab}[${getHeapOffset(offset, type)}] = ${value}`;
 }
@@ -598,7 +615,7 @@ function getHeapForType(type) {
 
 export function makeReturn64(value) {
   if (WASM_BIGINT) {
-    return `BigInt(${value})`;
+    return castToBigInt(value);
   }
   const pair = splitI64(value);
   // `return (a, b, c)` in JavaScript will execute `a`, and `b` and return the final
@@ -677,7 +694,7 @@ Please update to new syntax.`);
     if (DYNCALLS) {
       if (!hasExportedSymbol(`dynCall_${sig}`)) {
         if (ASSERTIONS) {
-          return `((${args}) => { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!' })`;
+          return `((${args}) => abort('Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'))`;
         } else {
           return `((${args}) => {} /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */)`;
         }
@@ -691,7 +708,7 @@ Please update to new syntax.`);
   if (DYNCALLS) {
     if (!hasExportedSymbol(`dynCall_${sig}`)) {
       if (ASSERTIONS) {
-        return `((${args}) => { throw 'Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!' })`;
+        return `((${args}) => abort('Internal Error! Attempted to invoke wasm function pointer with signature "${sig}", but no such functions have gotten exported!'))`;
       } else {
         return `((${args}) => {} /* a dynamic function call to signature ${sig}, but there are no exported function pointers with that signature, so this path should never be taken. Build with ASSERTIONS enabled to validate. */)`;
       }
@@ -729,6 +746,14 @@ function makeEval(code) {
   }
   ret += code;
   return ret;
+}
+
+// Add code that runs before the wasm modules is loaded.  This is the first
+// point at which the global `Module` object is guaranteed to exist. This hook
+// is mostly used to read incoming `Module` properties.
+export const ATMODULES = [];
+function addAtModule(code) {
+  ATMODULES.push(code);
 }
 
 // Add code to run soon after the Wasm module has been loaded. This is the first
@@ -780,26 +805,9 @@ function addAtPostRun(code) {
 }
 
 function makeRetainedCompilerSettings() {
-  const ignore = new Set();
-  if (STRICT) {
-    for (const setting of LEGACY_SETTINGS) {
-      ignore.add(setting);
-    }
-  }
-
   const ret = {};
-  for (const x in global) {
-    if (!ignore.has(x) && x[0] !== '_' && x == x.toUpperCase()) {
-      const value = global[x];
-      if (
-        typeof value == 'number' ||
-        typeof value == 'boolean' ||
-        typeof value == 'string' ||
-        Array.isArray(x)
-      ) {
-        ret[x] = value;
-      }
-    }
+  for (const name of PUBLIC_SETTINGS) {
+    ret[name] = globalThis[name];
   }
   return ret;
 }
@@ -879,12 +887,6 @@ function isSymbolNeeded(symName) {
   return false;
 }
 
-function makeRemovedModuleAPIAssert(moduleName, localName) {
-  if (!ASSERTIONS) return '';
-  localName ||= moduleName;
-  return `legacyModuleProp('${moduleName}', '${localName}');`;
-}
-
 function checkReceiving(name) {
   // ALL_INCOMING_MODULE_JS_API contains all valid incoming module API symbols
   // so calling makeModuleReceive* with a symbol not in this list is an error
@@ -899,9 +901,8 @@ function makeModuleReceive(localName, moduleName) {
   if (expectToReceiveOnModule(moduleName)) {
     // Usually the local we use is the same as the Module property name,
     // but sometimes they must differ.
-    ret = `\nif (Module['${moduleName}']) ${localName} = Module['${moduleName}'];`;
+    ret = `if (Module['${moduleName}']) ${localName} = Module['${moduleName}'];`;
   }
-  ret += makeRemovedModuleAPIAssert(moduleName, localName);
   return ret;
 }
 
@@ -914,24 +915,16 @@ function makeModuleReceiveExpr(name, defaultValue) {
   }
 }
 
-function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert) {
+function makeModuleReceiveWithVar(localName, moduleName, defaultValue) {
   moduleName ||= localName;
   checkReceiving(moduleName);
   let ret = `var ${localName}`;
-  if (!expectToReceiveOnModule(moduleName)) {
-    if (defaultValue) {
-      ret += ` = ${defaultValue}`;
-    }
-    ret += ';';
-  } else {
-    if (defaultValue) {
-      ret += ` = Module['${moduleName}'] || ${defaultValue};`;
-    } else {
-      ret += ` = Module['${moduleName}'];`;
-    }
+  if (defaultValue) {
+    ret += ` = ${defaultValue}`;
   }
-  if (!noAssert) {
-    ret += makeRemovedModuleAPIAssert(moduleName, localName);
+  ret += ';';
+  if (expectToReceiveOnModule(moduleName)) {
+    addAtModule(`if (Module['${moduleName}']) ${localName} = Module['${moduleName}'];`);
   }
   return ret;
 }
@@ -939,7 +932,7 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue, noAssert)
 function makeRemovedFSAssert(fsName) {
   assert(ASSERTIONS);
   const lower = fsName.toLowerCase();
-  if (JS_LIBRARIES.includes(path.resolve(path.join('lib', `lib${lower}.js`)))) return '';
+  if (JS_LIBRARIES.includes(localFile(path.join('lib', `lib${lower}.js`)))) return '';
   return `var ${fsName} = '${fsName} is no longer included by default; build with -l${lower}.js';`;
 }
 
@@ -954,16 +947,6 @@ function buildStringArray(array) {
 
 function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
-}
-
-// Called when global runtime symbols such as wasmMemory, wasmExports and
-// wasmTable are set. In this case we maybe need to re-export them on the
-// Module object.
-function receivedSymbol(sym) {
-  if (EXPORTED_RUNTIME_METHODS.has(sym)) {
-    return `Module['${sym}'] = ${sym};`;
-  }
-  return '';
 }
 
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
@@ -1007,14 +990,20 @@ function from64Expr(x) {
   return `Number(${x})`;
 }
 
+// Converts a value to BigInt if building for wasm64, with both 64-bit pointers
+// and 64-bit memory. Used for indices into the memory tables, for example.
 function toIndexType(x) {
-  if (MEMORY64 == 1) return `BigInt(${x})`;
+  if (MEMORY64 == 1) return castToBigInt(x);
   return x;
 }
 
+// Converts a value to BigInt if building for wasm64, regardless of whether the
+// memory is 32- or 64-bit. Used for passing pointer-width values to native
+// code (since pointers are presented as Number in JS and BigInt in wasm we need
+// this conversion before passing them).
 function to64(x) {
   if (!MEMORY64) return x;
-  return `BigInt(${x})`;
+  return castToBigInt(x);
 }
 
 function asyncIf(condition) {
@@ -1054,9 +1043,10 @@ function getUnsharedTextDecoderView(heap, start, end) {
   // No need to worry about this in non-shared memory builds
   if (!SHARED_MEMORY) return unshared;
 
-  // If asked to get an unshared view to what we know will be a shared view, or if in -Oz,
-  // then unconditionally do a .slice() for smallest code size.
-  if (SHRINK_LEVEL == 2 || heap == 'HEAPU8') return shared;
+  // If asked to get an unshared view to what we know will be a shared view, or
+  // if in -Oz, then unconditionally do a .slice() for smallest code size.
+  // This is guaranteed to work but could be slower since it performs a copy.
+  if (SHRINK_LEVEL == 2 || heap.startsWith('HEAP')) return shared;
 
   // Otherwise, generate a runtime type check: must do a .slice() if looking at
   // a SAB, or can use .subarray() otherwise.  Note: We compare with
@@ -1099,10 +1089,6 @@ function getPerformanceNow() {
   }
 }
 
-function implicitSelf() {
-  return ENVIRONMENT.includes('node') ? 'self.' : '';
-}
-
 function ENVIRONMENT_IS_MAIN_THREAD() {
   return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
 }
@@ -1113,6 +1099,47 @@ function ENVIRONMENT_IS_WORKER_THREAD() {
   if (PTHREADS) envs.push('ENVIRONMENT_IS_PTHREAD');
   if (WASM_WORKERS) envs.push('ENVIRONMENT_IS_WASM_WORKER');
   return '(' + envs.join('||') + ')';
+}
+
+function nodeDetectionCode() {
+  if (ENVIRONMENT == 'node') {
+    // The only environment where this code is intended to run is Node.js.
+    // Return unconditional true so that later Closure optimizer will be able to
+    // optimize code size.
+    return 'true';
+  }
+  return "globalThis.process?.versions?.node && globalThis.process?.type != 'renderer'";
+}
+
+function nodePthreadDetection() {
+  // Under node we detect that we are running in a pthread by checking the
+  // workerData property.
+  if (EXPORT_ES6) {
+    return "(await import('node:worker_threads')).workerData === 'em-pthread'";
+  } else {
+    return "require('node:worker_threads').workerData === 'em-pthread'";
+  }
+}
+
+function nodeWWDetection() {
+  // Under node we detect that we are running in a wasm worker by checking the
+  // workerData property.
+  if (EXPORT_ES6) {
+    return "(await import('node:worker_threads')).workerData === 'em-ww'";
+  } else {
+    return "require('node:worker_threads').workerData === 'em-ww'";
+  }
+}
+
+function makeExportAliases() {
+  var res = ''
+  for (var [alias, ex] of Object.entries(nativeAliases)) {
+    if (ASSERTIONS) {
+      res += `  assert(wasmExports['${ex}'], 'alias target "${ex}" not found in wasmExports');\n`;
+    }
+    res += `  globalThis['${alias}'] = wasmExports['${ex}'];\n`;
+  }
+  return res;
 }
 
 addToCompileTimeContext({
@@ -1140,6 +1167,7 @@ addToCompileTimeContext({
   ENVIRONMENT_IS_WORKER_THREAD,
   addAtExit,
   addAtPreRun,
+  addAtModule,
   addAtInit,
   addAtPostCtor,
   addAtPreMain,
@@ -1160,25 +1188,24 @@ addToCompileTimeContext({
   getPerformanceNow,
   getUnsharedTextDecoderView,
   hasExportedSymbol,
-  implicitSelf,
   isSymbolNeeded,
   makeDynCall,
   makeEval,
+  makeExportAliases,
   makeGetValue,
   makeHEAPView,
   makeModuleReceive,
   makeModuleReceiveExpr,
   makeModuleReceiveWithVar,
   makeRemovedFSAssert,
-  makeRemovedModuleAPIAssert,
   makeRetainedCompilerSettings,
   makeReturn64,
   makeSetValue,
   makeThrow,
   modifyJSFunction,
+  nodeDetectionCode,
   receiveI64ParamAsI53,
   receiveI64ParamAsI53Unchecked,
-  receivedSymbol,
   runIfMainThread,
   runIfWorkerThread,
   runtimeKeepalivePop,
@@ -1187,4 +1214,6 @@ addToCompileTimeContext({
   storeException,
   to64,
   toIndexType,
+  nodePthreadDetection,
+  nodeWWDetection,
 });

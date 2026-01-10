@@ -9,7 +9,6 @@
 #include <errno.h>
 #include <unistd.h>
 #include <fcntl.h>
-#include <emscripten.h>
 #include <assert.h>
 #include <string.h>
 
@@ -21,7 +20,7 @@ int main() {
   f = open("/", O_RDONLY);
   f2 = open("/", O_RDONLY);
   f3 = dup(f);
-  printf("errno: %d\n", errno);
+  printf("errno: %s\n", strerror(errno));
   assert(f != -1);
   assert(f2 != -1);
   assert(f3 != -1);
@@ -40,7 +39,7 @@ int main() {
   assert(f != -1);
   assert(f2 != -1);
   assert(f3 != -1);
-  printf("errno: %d\n", errno);
+  printf("errno: %s\n", strerror(errno));
   printf("f: %d\n", f != f2 && f != f3);
   printf("f2,f3: %d\n", f2 == f3);
   printf("close(f1): %d\n", close(f));
@@ -53,7 +52,7 @@ int main() {
   f = dup2(-2, -2);
   printf("f: %d\n", f);
   assert(f == -1);
-  printf("errno: %d\n", errno);
+  printf("errno: %s\n", strerror(errno));
   printf("close(f): %d\n", close(f));
   printf("\n");
   errno = 0;
@@ -64,11 +63,11 @@ int main() {
   f3 = dup2(f, -1);
   printf("f3: %d\n", f3);
   assert(f3 == -1);
-  printf("errno: %d\n", errno);
+  printf("errno: %s\n", strerror(errno));
   f3 = dup2(f, 256000);
   printf("f3: %d\n", f3);
   assert(f3 == -1);
-  printf("errno: %d\n", errno);
+  printf("errno: %s\n", strerror(errno));
   printf("close(f1): %d\n", close(f));
   printf("\n");
   errno = 0;

@@ -10,10 +10,10 @@
 #include "file.h"
 
 namespace wasmfs {
-// A backend (or modular backend) provides a base for the new file system to
-// extend its storage capabilities. Files and directories will be represented
-// in the file system structure, but their underlying backing could exist in
-// persistent storage, another thread, etc.
+// A backend (or modular backend) provides a base to extend WasmFS with new
+// storage capabilities. Files and directories will be represented in the file
+// system structure, but their underlying backing could exist in persistent
+// storage, another thread, etc.
 class Backend {
 
 public:

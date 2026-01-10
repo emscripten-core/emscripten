@@ -53,7 +53,7 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress
   // The TLS region lives at the start of the stack region (the lowest address
   // of the stack).  Since the TLS data alignment may be larger than stack
   // alignment, we may need to round up the lowest stack address to meet this
-  // requirment.
+  // requirement.
   if (__builtin_wasm_tls_align() > STACK_ALIGN) {
     uintptr_t tlsBase = (uintptr_t)stackPlusTLSAddress;
     tlsBase = ROUND_UP(tlsBase, __builtin_wasm_tls_align());
@@ -105,15 +105,17 @@ void emscripten_lock_waitinf_acquire(emscripten_lock_t *lock) {
 }
 
 bool emscripten_lock_busyspin_wait_acquire(emscripten_lock_t *lock, double maxWaitMilliseconds) {
+  // TODO: we changed the performance_now calls to get_now, which can be applied
+  // to the remaining code (since all calls defer to the best internal option).
   emscripten_lock_t val = emscripten_atomic_cas_u32((void*)lock, 0, 1);
   if (!val) return true;
 
-  double t = emscripten_performance_now();
+  double t = emscripten_get_now();
   double waitEnd = t + maxWaitMilliseconds;
   while (t < waitEnd) {
     val = emscripten_atomic_cas_u32((void*)lock, 0, 1);
     if (!val) return true;
-    t = emscripten_performance_now();
+    t = emscripten_get_now();
   }
   return false;
 }

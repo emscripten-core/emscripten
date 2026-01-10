@@ -209,25 +209,39 @@ void formatTime(char *str, int seconds) {
   }
 }
 
-bool battery_callback(int eventType, const EmscriptenBatteryEvent *e, void *userData) {
+void log_battery_state(const EmscriptenBatteryEvent *e) {
   char t1[64];
   formatTime(t1, (int)e->chargingTime);
   char t2[64];
   formatTime(t2, (int)e->dischargingTime);
-  printf("%s: chargingTime: %s, dischargingTime: %s, level: %g%%, charging: %d\n",
-    emscripten_event_type_to_string(eventType), t1, t2, e->level*100, e->charging);
+  printf("battery status: chargingTime: %s, dischargingTime: %s, level: %g%%, charging: %d\n", t1, t2, e->level*100, e->charging);
+}
 
+bool battery_callback(int eventType, const EmscriptenBatteryEvent *e, void *userData) {
+  printf("%s\n", emscripten_event_type_to_string(eventType));
+  log_battery_state(e);
   return 0;
 }
 
 bool webglcontext_callback(int eventType, const void *reserved, void *userData) {
   printf("%s.\n", emscripten_event_type_to_string(eventType));
-
   return 0;
+}
+
+void report_battery_state() {
+  EmscriptenBatteryEvent bs;
+  int ret = emscripten_get_battery_status(&bs);
+  TEST_RESULT(emscripten_get_battery_status);
+  if (ret == EMSCRIPTEN_RESULT_SUCCESS) {
+    log_battery_state(&bs);
+  } else {
+    printf("battery state not yet available\n");
+  }
 }
 
 #ifndef KEEP_ALIVE
 void test_done(void *arg) {
+  report_battery_state();
   emscripten_html5_remove_all_event_listeners();
   exit(0);
 }
@@ -389,13 +403,7 @@ int main() {
   ret = emscripten_set_batterylevelchange_callback(0, battery_callback);
   TEST_RESULT(emscripten_set_batterylevelchange_callback);
 
-  EmscriptenBatteryEvent bs;
-  ret = emscripten_get_battery_status(&bs);
-  TEST_RESULT(emscripten_get_battery_status);
-  if (ret == EMSCRIPTEN_RESULT_SUCCESS) {
-    printf("Current battery status:\n");
-    battery_callback(EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE, &bs, 0);
-  }
+  report_battery_state();
 
   ret = emscripten_set_webglcontextlost_callback("#canvas", 0, 1, webglcontext_callback);
   ASSERT_RESULT(emscripten_set_webglcontextlost_callback);

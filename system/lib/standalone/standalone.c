@@ -25,6 +25,7 @@
 
 #include "lock.h"
 #include "emscripten_internal.h"
+#include "unwind.h"
 
 /*
  * WASI support code. These are compiled with the program, and call out
@@ -62,6 +63,10 @@ weak int _mmap_js(size_t length,
 
 weak int _munmap_js(
   intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
+  return -ENOSYS;
+}
+
+weak int _poll_js(void *fds, int nfds, int timeout, void* ctx, void* arg) {
   return -ENOSYS;
 }
 
@@ -252,7 +257,7 @@ int _wasmfs_stdin_get_char(void) {
 }
 
 // In the non-standalone build we define this helper function in JS to avoid
-// signture mismatch issues.
+// signature mismatch issues.
 // See: https://github.com/emscripten-core/posixtestsuite/issues/6
 void __call_sighandler(sighandler_t handler, int sig) {
   handler(sig);
@@ -308,3 +313,7 @@ weak void _emscripten_get_progname(char* buf, int length) {
 }
 
 weak void _emscripten_runtime_keepalive_clear() {}
+
+void __throw_exception_with_stack_trace(_Unwind_Exception* exception_object) {
+  _Unwind_RaiseException(exception_object);
+}

@@ -12,28 +12,23 @@ int counter = 0;
 
 extern "C" {
 
-int __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE get_counter()
-{
+int __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE get_counter() {
     return counter;
 }
 
-void __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE increment_counter()
-{
+void __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE increment_counter() {
     ++counter;
 }
 
-int __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE sum_int(int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9)
-{
+int __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE sum_int(int v1, int v2, int v3, int v4, int v5, int v6, int v7, int v8, int v9) {
     return v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + v9;
 }
 
-float __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE sum_float(float v1, float v2, float v3, float v4, float v5, float v6, float v7, float v8, float v9)
-{
+float __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE sum_float(float v1, float v2, float v3, float v4, float v5, float v6, float v7, float v8, float v9) {
     return v1 + v2 + v3 + v4 + v5 + v6 + v7 + v8 + v9;
 }
 
-int __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE returns_input(int i)
-{
+int __attribute__((noinline)) EMSCRIPTEN_KEEPALIVE returns_input(int i) {
     return i;
 }
 
@@ -60,13 +55,11 @@ extern void call_through_interface2();
 extern void returns_val_benchmark();
 }
 
-emscripten::val returns_val(emscripten::val value)
-{
+emscripten::val returns_val(emscripten::val value) {
     return emscripten::val(value.as<unsigned>() + 1);
 }
 
-class Vec3
-{
+class Vec3 {
 public:
     Vec3():x(0),y(0),z(0) {}
     Vec3(float x_, float y_, float z_):x(x_),y(y_),z(z_) {}
@@ -75,8 +68,7 @@ public:
 
 Vec3 add(const Vec3 &lhs, const Vec3 &rhs) { return Vec3(lhs.x+rhs.x, lhs.y+rhs.y, lhs.z+rhs.z); }
 
-class Transform
-{
+class Transform {
 public:
     Transform():scale(1) {}
 
@@ -87,64 +79,52 @@ public:
     Vec3 __attribute__((noinline)) GetPosition() const { return pos; }
     Vec3 __attribute__((noinline)) GetRotation() const { return rot; }
     float __attribute__((noinline)) GetScale() const { return scale; }
-    
+
     void __attribute__((noinline)) SetPosition(const Vec3 &pos_) { pos = pos_; }
     void __attribute__((noinline)) SetRotation(const Vec3 &rot_) { rot = rot_; }
     void __attribute__((noinline)) SetScale(float scale_) { scale = scale_; }
 };
 typedef std::shared_ptr<Transform> TransformPtr;
 
-class GameObject
-{
+class GameObject {
 public:
-    GameObject()
-    {
+    GameObject() {
         transform = std::make_shared<Transform>();
     }
     std::shared_ptr<Transform> transform;
-    
+
     TransformPtr __attribute__((noinline)) GetTransform() const { return transform; }
 };
 typedef std::shared_ptr<GameObject> GameObjectPtr;
 
-GameObjectPtr create_game_object()
-{
+GameObjectPtr create_game_object() {
     return std::make_shared<GameObject>();
 }
 
-GameObjectPtr __attribute__((noinline)) pass_gameobject_ptr(GameObjectPtr p)
-{
+GameObjectPtr __attribute__((noinline)) pass_gameobject_ptr(GameObjectPtr p) {
     return p;
 }
 
-class Foo
-{
+class Foo {
 public:
-    Foo()
-    :class_counter(0)
-    {
-    }
+    Foo() : class_counter(0) {}
 
-    void __attribute__((noinline)) incr_global_counter()
-    {
+    void __attribute__((noinline)) incr_global_counter() {
         ++counter;
     }
 
-    void __attribute__((noinline)) incr_class_counter()
-    {
+    void __attribute__((noinline)) incr_class_counter() {
         ++class_counter;
     }
 
-    int class_counter_val() const
-    {
+    int class_counter_val() const {
         return class_counter;
     }
 
     int class_counter;
 };
 
-class Interface
-{
+class Interface {
 public:
     virtual ~Interface() {}
     virtual void call0() = 0;
@@ -247,14 +227,13 @@ void callInterface3(unsigned N, Interface& o) {
     }
 }
 
-EMSCRIPTEN_BINDINGS(benchmark)
-{
+EMSCRIPTEN_BINDINGS(benchmark) {
     using namespace emscripten;
-    
+
     class_<GameObject>("GameObject")
         .smart_ptr<GameObjectPtr>("GameObjectPtr")
         .function("GetTransform", &GameObject::GetTransform);
-        
+
     class_<Transform>("Transform")
         .smart_ptr<TransformPtr>("TransformPtr")
         .function("GetPosition", &Transform::GetPosition)
@@ -263,22 +242,22 @@ EMSCRIPTEN_BINDINGS(benchmark)
         .function("SetPosition", &Transform::SetPosition)
         .function("SetRotation", &Transform::SetRotation)
         .function("SetScale", &Transform::SetScale);
-        
+
     value_array<Vec3>("Vec3")
         .element(&Vec3::x)
         .element(&Vec3::y)
         .element(&Vec3::z);
-        
+
     function("create_game_object", &create_game_object);
     function("pass_gameobject_ptr", &pass_gameobject_ptr);
     function("add", &add);
-    
+
     function("get_counter", &get_counter);
     function("increment_counter", &increment_counter);
     function("returns_input", &returns_input);
     function("sum_int", &sum_int);
     function("sum_float", &sum_float);
-    
+
     class_<Foo>("Foo")
         .constructor<>()
         .function("incr_global_counter", &Foo::incr_global_counter)
@@ -298,11 +277,9 @@ EMSCRIPTEN_BINDINGS(benchmark)
     function("returns_val", &returns_val);
 }
 
-void __attribute__((noinline)) emscripten_get_now_benchmark(int N)
-{
+void __attribute__((noinline)) emscripten_get_now_benchmark(int N) {
     volatile float t = emscripten_get_now();
-    for(int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
         emscripten_get_now();
         emscripten_get_now();
         emscripten_get_now();
@@ -318,11 +295,9 @@ void __attribute__((noinline)) emscripten_get_now_benchmark(int N)
     printf("C++ emscripten_get_now %d iters: %f msecs.\n", N, (t2-t));
 }
 
-void __attribute__((noinline)) increment_counter_benchmark(int N)
-{
+void __attribute__((noinline)) increment_counter_benchmark(int N) {
     volatile float t = emscripten_get_now();
-    for(int i = 0; i < N; ++i)
-    {
+    for ( int i = 0; i < N; ++i) {
         increment_counter();
         increment_counter();
         increment_counter();
@@ -338,12 +313,10 @@ void __attribute__((noinline)) increment_counter_benchmark(int N)
     printf("C++ increment_counter %d iters: %f msecs.\n", N, (t2-t));
 }
 
-void __attribute__((noinline)) increment_class_counter_benchmark(int N)
-{
+void __attribute__((noinline)) increment_class_counter_benchmark(int N) {
     Foo foo;
     volatile float t = emscripten_get_now();
-    for(int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
         foo.incr_class_counter();
         foo.incr_class_counter();
         foo.incr_class_counter();
@@ -359,12 +332,10 @@ void __attribute__((noinline)) increment_class_counter_benchmark(int N)
     printf("C++ increment_class_counter %d iters: %f msecs. result: %d\n", N, (t2-t), foo.class_counter);
 }
 
-void __attribute__((noinline)) returns_input_benchmark()
-{
+void __attribute__((noinline)) returns_input_benchmark() {
     volatile int r = 0;
     volatile float t = emscripten_get_now();
-    for(int i = 0; i < 100000; ++i)
-    {
+    for (int i = 0; i < 100000; ++i) {
         r += returns_input(i);
         r += returns_input(i);
         r += returns_input(i);
@@ -380,12 +351,10 @@ void __attribute__((noinline)) returns_input_benchmark()
     printf("C++ returns_input 100000 iters: %f msecs.\n", (t2-t));
 }
 
-void __attribute__((noinline)) sum_int_benchmark()
-{
+void __attribute__((noinline)) sum_int_benchmark() {
     volatile float t = emscripten_get_now();
     volatile int r = 0;
-    for(int i = 0; i < 100000; ++i)
-    {
+    for (int i = 0; i < 100000; ++i) {
         r += sum_int(i,2,3,4,5,6,7,8,9);
         r += sum_int(i,2,3,4,5,6,7,8,9);
         r += sum_int(i,2,3,4,5,6,7,8,9);
@@ -401,12 +370,10 @@ void __attribute__((noinline)) sum_int_benchmark()
     printf("C++ sum_int 100000 iters: %f msecs.\n", (t2-t));
 }
 
-void __attribute__((noinline)) sum_float_benchmark()
-{
+void __attribute__((noinline)) sum_float_benchmark() {
     volatile float f = 0.f;
     volatile float t = emscripten_get_now();
-    for(int i = 0; i < 100000; ++i)
-    {
+    for (int i = 0; i < 100000; ++i) {
         f += sum_float((float)i,2.f,3.f,4.f,5.f,6.f,7.f,8.f,9.f);
         f += sum_float((float)i,2.f,3.f,4.f,5.f,6.f,7.f,8.f,9.f);
         f += sum_float((float)i,2.f,3.f,4.f,5.f,6.f,7.f,8.f,9.f);
@@ -426,12 +393,12 @@ void __attribute__((noinline)) move_gameobjects_benchmark()
 {
     const int N = 10000;
     GameObjectPtr objects[N];
-    for(int i = 0; i < N; ++i)
+    for (int i = 0; i < N; ++i) {
         objects[i] = create_game_object();
-    
+    }
+
     volatile float t = emscripten_get_now();
-    for(int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
         TransformPtr t = objects[i]->GetTransform();
         Vec3 pos = add(t->GetPosition(), Vec3(2.f, 0.f, 1.f));
         Vec3 rot = add(t->GetRotation(), Vec3(0.1f, 0.2f, 0.3f));
@@ -441,8 +408,9 @@ void __attribute__((noinline)) move_gameobjects_benchmark()
     volatile float t2 = emscripten_get_now();
 
     Vec3 accum;
-    for(int i = 0; i < N; ++i)
+    for (int i = 0; i < N; ++i) {
         accum = add(add(accum, objects[i]->GetTransform()->GetPosition()), objects[i]->GetTransform()->GetRotation());
+    }
     printf("C++ move_gameobjects %d iters: %f msecs. Result: %f\n", N, (t2-t), accum.x+accum.y+accum.z);
 }
 
@@ -450,12 +418,12 @@ void __attribute__((noinline)) pass_gameobject_ptr_benchmark()
 {
     const int N = 100000;
     GameObjectPtr objects[N];
-    for(int i = 0; i < N; ++i)
+    for (int i = 0; i < N; ++i) {
         objects[i] = create_game_object();
-    
+    }
+
     volatile float t = emscripten_get_now();
-    for(int i = 0; i < N; ++i)
-    {
+    for (int i = 0; i < N; ++i) {
         objects[i] = pass_gameobject_ptr(objects[i]);
     }
     volatile float t2 = emscripten_get_now();
@@ -494,22 +462,20 @@ void __attribute__((noinline)) numeric_val_array_benchmark() {
   // val::array(const std::vector<T>& vec) with opt numeric types: 27.500000 msecs.
 }
 
-int EMSCRIPTEN_KEEPALIVE main()
-{
-    for(int i = 1000; i <= 100000; i *= 10)
+int main() {
+    for (int i = 1000; i <= 100000; i *= 10) {
         emscripten_get_now_benchmark(i);
+    }
 
     printf("\n");
-    for(int i = 1000; i <= 100000; i *= 10)
-    {
+    for (int i = 1000; i <= 100000; i *= 10) {
         increment_counter_benchmark(i);
         increment_counter_benchmark_js(i);
         increment_counter_benchmark_embind_js(i);
         printf("\n");
     }
 
-    for(int i = 1000; i <= 100000; i *= 10)
-    {
+    for (int i = 1000; i <= 100000; i *= 10) {
         increment_class_counter_benchmark(i);
         increment_class_counter_benchmark_embind_js(i);
         printf("\n");

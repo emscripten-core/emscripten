@@ -4,7 +4,40 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if ASSERTIONS || RUNTIME_DEBUG || AUTODEBUG
+var runtimeDebug = true; // Switch to false at runtime to disable logging at the right times
+
+// Used by XXXXX_DEBUG settings to output debug messages.
+function dbg(...args) {
+  if (!runtimeDebug && typeof runtimeDebug != 'undefined') return;
+#if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
+  // Avoid using the console for debugging in multi-threaded node applications
+  // See https://github.com/emscripten-core/emscripten/issues/14804
+  if (ENVIRONMENT_IS_NODE) {
+    // TODO(sbc): Unify with err/out implementation in shell.sh.
+    var fs = require('node:fs');
+    var utils = require('node:util');
+    function stringify(a) {
+      switch (typeof a) {
+        case 'object': return utils.inspect(a);
+        case 'undefined': return 'undefined';
+      }
+      return a;
+    }
+    fs.writeSync(2, args.map(stringify).join(' ') + '\n');
+  } else
+#endif
+  // TODO(sbc): Make this configurable somehow.  Its not always convenient for
+  // logging to show up as warnings.
+  console.warn(...args);
+}
+#endif
+
 #if ASSERTIONS
+
+#if STANDALONE_WASM && !WASM_BIGINT
+err('warning: running JS from STANDALONE_WASM without WASM_BIGINT will fail if a syscall with i64 is used (in standalone mode we cannot legalize syscalls)');
+#endif
 
 // Endianness check
 #if !SUPPORT_BIG_ENDIAN
@@ -12,25 +45,25 @@
   var h16 = new Int16Array(1);
   var h8 = new Int8Array(h16.buffer);
   h16[0] = 0x6373;
-  if (h8[0] !== 0x73 || h8[1] !== 0x63) throw 'Runtime error: expected the system to be little-endian! (Run with -sSUPPORT_BIG_ENDIAN to bypass)';
+  if (h8[0] !== 0x73 || h8[1] !== 0x63) abort('Runtime error: expected the system to be little-endian! (Run with -sSUPPORT_BIG_ENDIAN to bypass)');
 })();
 #endif
 
-if (Module['ENVIRONMENT']) {
-  throw new Error('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node)');
-}
-
-function legacyModuleProp(prop, newName, incoming=true) {
+function consumedModuleProp(prop) {
   if (!Object.getOwnPropertyDescriptor(Module, prop)) {
     Object.defineProperty(Module, prop, {
       configurable: true,
-      get() {
-        let extra = incoming ? ' (the initial value can be provided on Module, but after startup the value is only looked for on a local variable of that name)' : '';
-        abort(`\`Module.${prop}\` has been replaced by \`${newName}\`` + extra);
+      set() {
+        abort(`Attempt to set \`Module.${prop}\` after it has already been processed.  This can happen, for example, when code is injected via '--post-js' rather than '--pre-js'`);
 
       }
     });
   }
+}
+
+function makeInvalidEarlyAccess(name) {
+  return () => assert(false, `call to '${name}' via reference taken before Wasm module initialization`);
+
 }
 
 function ignoredModuleProp(prop) {
@@ -44,6 +77,7 @@ function isExportedByForceFilesystem(name) {
   return name === 'FS_createPath' ||
          name === 'FS_createDataFile' ||
          name === 'FS_createPreloadedFile' ||
+         name === 'FS_preloadFile' ||
          name === 'FS_unlink' ||
          name === 'addRunDependency' ||
 #if !WASMFS
@@ -54,22 +88,17 @@ function isExportedByForceFilesystem(name) {
          name === 'removeRunDependency';
 }
 
+#if !MODULARIZE
 /**
- * Intercept access to a global symbol.  This enables us to give informative
- * warnings/errors when folks attempt to use symbols they did not include in
- * their build, or no symbols that no longer exist.
+ * Intercept access to a symbols in the global symbol.  This enables us to give
+ * informative warnings/errors when folks attempt to use symbols they did not
+ * include in their build, or no symbols that no longer exist.
+ *
+ * We don't define this in MODULARIZE mode since in that mode emscripten symbols
+ * are never placed in the global scope.
  */
 function hookGlobalSymbolAccess(sym, func) {
-#if MODULARIZE && !EXPORT_ES6
-  // In MODULARIZE mode the generated code runs inside a function scope and not
-  // the global scope, and JavaScript does not provide access to function scopes
-  // so we cannot dynamically modify the scrope using `defineProperty` in this
-  // case.
-  //
-  // In this mode we simply ignore requests for `hookGlobalSymbolAccess`. Since
-  // this is a debug-only feature, skipping it is not major issue.
-#else
-  if (typeof globalThis != 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {
+  if (!Object.getOwnPropertyDescriptor(globalThis, sym)) {
     Object.defineProperty(globalThis, sym, {
       configurable: true,
       get() {
@@ -78,19 +107,20 @@ function hookGlobalSymbolAccess(sym, func) {
       }
     });
   }
-#endif
 }
 
 function missingGlobal(sym, msg) {
   hookGlobalSymbolAccess(sym, () => {
-    warnOnce(`\`${sym}\` is not longer defined by emscripten. ${msg}`);
+    warnOnce(`\`${sym}\` is no longer defined by emscripten. ${msg}`);
   });
 }
 
 missingGlobal('buffer', 'Please use HEAP8.buffer or wasmMemory.buffer');
 missingGlobal('asm', 'Please use wasmExports instead');
+#endif
 
 function missingLibrarySymbol(sym) {
+#if !MODULARIZE
   hookGlobalSymbolAccess(sym, () => {
     // Can't `abort()` here because it would break code that does runtime
     // checks.  e.g. `if (typeof SDL === 'undefined')`.
@@ -108,6 +138,7 @@ function missingLibrarySymbol(sym) {
     }
     warnOnce(msg);
   });
+#endif
 
   // Any symbol that is not included from the JS library is also (by definition)
   // not exported on the Module object.
@@ -129,10 +160,55 @@ function unexportedRuntimeSymbol(sym) {
           msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
         }
         abort(msg);
-      }
+      },
+#if !DECLARE_ASM_MODULE_EXPORTS
+      // !DECLARE_ASM_MODULE_EXPORTS programmatically exports all wasm symbols
+      // on the Module object.  Ignore these attempts to set the properties
+      // here.
+      set(value) {}
+#endif
     });
   }
 }
+
+#if WASM_WORKERS || PTHREADS
+/**
+ * Override `err`/`out`/`dbg` to report thread / worker information
+ */
+function initWorkerLogging() {
+  function getLogPrefix() {
+#if WASM_WORKERS
+    if (wwParams?.wwID) {
+      return `ww:${wwParams?.wwID}:`
+    }
+#endif
+#if PTHREADS
+    var t = 0;
+    if (runtimeInitialized && typeof _pthread_self != 'undefined'
+#if EXIT_RUNTIME
+    && !runtimeExited
+#endif
+    ) {
+      t = _pthread_self();
+    }
+    return `w:${workerID},t:${ptrToString(t)}:`;
+#else
+    return `ww:0:`;
+#endif
+  }
+
+  // Prefix all dbg() messages with the calling thread info.
+  var origDbg = dbg;
+  dbg = (...args) => origDbg(getLogPrefix(), ...args);
+#if RUNTIME_DEBUG
+  // With RUNTIME_DEBUG also prefix all err() messages.
+  var origErr = err;
+  err = (...args) => origErr(getLogPrefix(), ...args);
+#endif
+}
+
+initWorkerLogging();
+#endif
 
 #if ASSERTIONS == 2
 
@@ -166,8 +242,6 @@ var checkInt64 = (value) => checkInt(value, 64, MIN_INT64, MAX_UINT64);
 #endif // ASSERTIONS
 
 #if RUNTIME_DEBUG
-var runtimeDebug = true; // Switch to false at runtime to disable logging at the right times
-
 var printObjectList = [];
 
 function prettyPrint(arg) {
@@ -191,21 +265,5 @@ function prettyPrint(arg) {
     if (arg > 0) return ptrToString(arg) + ' (' + arg + ')';
   }
   return arg;
-}
-#endif
-
-#if ASSERTIONS || RUNTIME_DEBUG || AUTODEBUG
-// Used by XXXXX_DEBUG settings to output debug messages.
-function dbg(...args) {
-#if ENVIRONMENT_MAY_BE_NODE && PTHREADS
-  // Avoid using the console for debugging in multi-threaded node applications
-  // See https://github.com/emscripten-core/emscripten/issues/14804
-  if (ENVIRONMENT_IS_NODE && fs) {
-    fs.writeSync(2, args.join(' ') + '\n');
-  } else
-#endif
-  // TODO(sbc): Make this configurable somehow.  Its not always convenient for
-  // logging to show up as warnings.
-  console.warn(...args);
 }
 #endif

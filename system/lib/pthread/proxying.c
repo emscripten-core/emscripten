@@ -35,6 +35,8 @@ static em_proxying_queue system_proxying_queue = {
   .capacity = 0,
 };
 
+static _Thread_local bool system_queue_in_use = false;
+
 em_proxying_queue* emscripten_proxy_get_system_queue(void) {
   return &system_proxying_queue;
 }
@@ -110,17 +112,24 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   assert(q != NULL);
   assert(pthread_self());
 
-  // Recursion guard to avoid infinite recursion when we arrive here from the
-  // pthread_lock call below that executes the system queue. The per-task_queue
-  // recursion lock can't catch these recursions because it can only be checked
-  // after the lock has been acquired.
-  static _Thread_local int executing_system_queue = 0;
-  int is_system_queue = q == &system_proxying_queue;
+  // Below is a recursion and deadlock guard: The recursion guard is to avoid
+  // infinite recursion when we arrive here from the pthread_lock call below
+  // that executes the system queue. The per-task_queue recursion lock can't
+  // catch these recursions because it can only be checked after the lock has
+  // been acquired.
+  //
+  // This also guards against deadlocks when adding to the system queue. When
+  // the current thread is adding tasks, it locks the queue, but we can
+  // potentially try to execute the queue during the add (from emscripten_yield
+  // when malloc takes a lock). This will deadlock the thread, so only try to
+  // take the lock if the current thread is not using the queue. We then hope
+  // the queue is executed later when it is unlocked.
+  bool is_system_queue = q == &system_proxying_queue;
   if (is_system_queue) {
-    if (executing_system_queue) {
+    if (system_queue_in_use) {
       return;
     }
-    executing_system_queue = 1;
+    system_queue_in_use = true;
   }
 
   pthread_mutex_lock(&q->mutex);
@@ -133,14 +142,21 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   }
 
   if (is_system_queue) {
-    executing_system_queue = 0;
+    system_queue_in_use = false;
   }
 }
 
 static int do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
+  bool is_system_queue = q == &system_proxying_queue;
+  if (is_system_queue) {
+    system_queue_in_use = true;
+  }
   em_task_queue* tasks = get_or_add_tasks_for_thread(q, target_thread);
+  if (is_system_queue) {
+    system_queue_in_use = false;
+  }
   pthread_mutex_unlock(&q->mutex);
   if (tasks == NULL) {
     return 0;
@@ -587,7 +603,7 @@ typedef struct proxied_js_func_t {
   int funcIndex;
   void* emAsmAddr;
   pthread_t callingThread;
-  int numArgs;
+  int bufSize;
   double* argBuffer;
   double result;
   bool owned;
@@ -596,23 +612,23 @@ typedef struct proxied_js_func_t {
 static void run_js_func(void* arg) {
   proxied_js_func_t* f = (proxied_js_func_t*)arg;
   f->result = _emscripten_receive_on_main_thread_js(
-    f->funcIndex, f->emAsmAddr, f->callingThread, f->numArgs, f->argBuffer);
+    f->funcIndex, f->emAsmAddr, f->callingThread, f->bufSize, f->argBuffer);
   if (f->owned) {
     free(f->argBuffer);
     free(f);
   }
 }
 
-double _emscripten_run_on_main_thread_js(int func_index,
+double _emscripten_run_js_on_main_thread(int func_index,
                                          void* em_asm_addr,
-                                         int num_args,
+                                         int buf_size,
                                          double* buffer,
-                                         int sync) {
+                                         bool sync) {
   proxied_js_func_t f = {
     .funcIndex = func_index,
     .emAsmAddr = em_asm_addr,
     .callingThread = pthread_self(),
-    .numArgs = num_args,
+    .bufSize = buf_size,
     .argBuffer = buffer,
     .owned = false,
   };
@@ -628,14 +644,14 @@ double _emscripten_run_on_main_thread_js(int func_index,
     return f.result;
   }
 
-  // Make a heap-heap allocated copy of the proxied_js_func_t
+  // Make a heap allocated copy of the proxied_js_func_t
   proxied_js_func_t* arg = malloc(sizeof(proxied_js_func_t));
   *arg = f;
   arg->owned = true;
 
-  // Also make a copyh of the argBuffer.
-  arg->argBuffer = malloc(num_args*sizeof(double));
-  memcpy(arg->argBuffer, buffer, num_args*sizeof(double));
+  // Also make a copy of the argBuffer.
+  arg->argBuffer = malloc(buf_size);
+  memcpy(arg->argBuffer, buffer, buf_size);
 
   if (!emscripten_proxy_async(q, target, run_js_func, arg)) {
     assert(false && "emscripten_proxy_async failed");

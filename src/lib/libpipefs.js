@@ -21,6 +21,23 @@ addToLibrary({
         // able to read from the read end after write end is closed.
         refcnt : 2,
         timestamp: new Date(),
+#if PTHREADS
+        readableHandlers: [],
+        registerReadableHandler: (callback) => {
+          callback.registerCleanupFunc(() => {
+            const i = pipe.readableHandlers.indexOf(callback);
+            if (i !== -1) pipe.readableHandlers.splice(i, 1);
+          });
+          pipe.readableHandlers.push(callback);
+        },
+        notifyReadableHandlers: () => {
+          while (pipe.readableHandlers.length > 0) {
+            const cb = pipe.readableHandlers.shift();
+            if (cb) cb({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+          }
+          pipe.readableHandlers = [];
+        }
+#endif
       };
 
       pipe.buckets.push({
@@ -80,21 +97,21 @@ addToLibrary({
           blocks: 0,
         };
       },
-      poll(stream) {
+      poll(stream, timeout, notifyCallback) {
         var pipe = stream.node.pipe;
 
         if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
           return ({{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}});
         }
-        if (pipe.buckets.length > 0) {
-          for (var i = 0; i < pipe.buckets.length; i++) {
-            var bucket = pipe.buckets[i];
-            if (bucket.offset - bucket.roffset > 0) {
-              return ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
-            }
+        for (var bucket of pipe.buckets) {
+          if (bucket.offset - bucket.roffset > 0) {
+            return ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
           }
         }
 
+#if PTHREADS
+        if (notifyCallback) pipe.registerReadableHandler(notifyCallback);
+#endif
         return 0;
       },
       dup(stream) {
@@ -110,8 +127,7 @@ addToLibrary({
         var pipe = stream.node.pipe;
         var currentLength = 0;
 
-        for (var i = 0; i < pipe.buckets.length; i++) {
-          var bucket = pipe.buckets[i];
+        for (var bucket of pipe.buckets) {
           currentLength += bucket.offset - bucket.roffset;
         }
 
@@ -136,22 +152,21 @@ addToLibrary({
         var totalRead = toRead;
         var toRemove = 0;
 
-        for (var i = 0; i < pipe.buckets.length; i++) {
-          var currBucket = pipe.buckets[i];
-          var bucketSize = currBucket.offset - currBucket.roffset;
+        for (var bucket of pipe.buckets) {
+          var bucketSize = bucket.offset - bucket.roffset;
 
           if (toRead <= bucketSize) {
-            var tmpSlice = currBucket.buffer.subarray(currBucket.roffset, currBucket.offset);
+            var tmpSlice = bucket.buffer.subarray(bucket.roffset, bucket.offset);
             if (toRead < bucketSize) {
               tmpSlice = tmpSlice.subarray(0, toRead);
-              currBucket.roffset += toRead;
+              bucket.roffset += toRead;
             } else {
               toRemove++;
             }
             data.set(tmpSlice);
             break;
           } else {
-            var tmpSlice = currBucket.buffer.subarray(currBucket.roffset, currBucket.offset);
+            var tmpSlice = bucket.buffer.subarray(bucket.roffset, bucket.offset);
             data.set(tmpSlice);
             data = data.subarray(tmpSlice.byteLength);
             toRead -= tmpSlice.byteLength;
@@ -201,12 +216,17 @@ addToLibrary({
           currBucket = pipe.buckets[pipe.buckets.length - 1];
         }
 
+#if ASSERTIONS
         assert(currBucket.offset <= PIPEFS.BUCKET_BUFFER_SIZE);
+#endif
 
         var freeBytesInCurrBuffer = PIPEFS.BUCKET_BUFFER_SIZE - currBucket.offset;
         if (freeBytesInCurrBuffer >= dataLen) {
           currBucket.buffer.set(data, currBucket.offset);
           currBucket.offset += dataLen;
+#if PTHREADS
+          pipe.notifyReadableHandlers();
+#endif
           return dataLen;
         } else if (freeBytesInCurrBuffer > 0) {
           currBucket.buffer.set(data.subarray(0, freeBytesInCurrBuffer), currBucket.offset);
@@ -238,6 +258,9 @@ addToLibrary({
           newBucket.buffer.set(data);
         }
 
+#if PTHREADS
+        pipe.notifyReadableHandlers();
+#endif
         return dataLen;
       },
       close(stream) {

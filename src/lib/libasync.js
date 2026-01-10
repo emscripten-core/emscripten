@@ -20,7 +20,10 @@ addToLibrary({
   },
 
 #if ASYNCIFY
-  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback', '$sigToWasmTypes',
+  $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
+#if ASSERTIONS
+    '$createNamedFunction',
+#endif
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
@@ -35,7 +38,7 @@ addToLibrary({
     // Asyncify code that is shared between mode 1 (original) and mode 2 (JSPI).
     //
 #if ASYNCIFY == 1 && MEMORY64
-    rewindArguments: {},
+    rewindArguments: new Map(),
 #endif
     instrumentWasmImports(imports) {
 #if EMBIND_GEN_MODE
@@ -84,7 +87,7 @@ addToLibrary({
                   !isAsyncifyImport &&
                   !changedToDisabled &&
                   !ignoredInvoke) {
-                throw new Error(`import ${x} was not in ASYNCIFY_IMPORTS, but changed the state`);
+                abort(`import ${x} was not in ASYNCIFY_IMPORTS, but changed the state`);
               }
             }
           };
@@ -99,13 +102,57 @@ addToLibrary({
       }
     },
 #if ASYNCIFY == 1 && MEMORY64
-    saveRewindArguments(funcName, passedArguments) {
-      return Asyncify.rewindArguments[funcName] = Array.from(passedArguments)
+    saveRewindArguments(func, passedArguments) {
+      return Asyncify.rewindArguments.set(func, Array.from(passedArguments));
     },
-    restoreRewindArguments(funcName) {
-      return Asyncify.rewindArguments[funcName] || []
+    restoreRewindArguments(func) {
+#if ASSERTIONS
+      assert(Asyncify.rewindArguments.has(func));
+#endif
+      return Asyncify.rewindArguments.get(func);
     },
 #endif
+
+    instrumentFunction(original) {
+      var wrapper = (...args) => {
+#if ASYNCIFY_DEBUG >= 2
+        dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} try ${original}`);
+#endif
+#if ASYNCIFY == 1
+        Asyncify.exportCallStack.push(original);
+        try {
+#endif
+#if ASYNCIFY == 1 && MEMORY64
+          Asyncify.saveRewindArguments(original, args);
+#endif
+          return original(...args);
+#if ASYNCIFY == 1
+        } finally {
+          if (!ABORT) {
+            var top = Asyncify.exportCallStack.pop();
+#if ASSERTIONS
+            assert(top === original);
+#endif
+#if ASYNCIFY_DEBUG >= 2
+            dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} finally ${original}`);
+#endif
+            Asyncify.maybeStopUnwind();
+          }
+        }
+#endif
+      };
+#if ASYNCIFY == 1
+      Asyncify.funcWrappers.set(original, wrapper);
+#endif
+#if MAIN_MODULE
+      wrapper.orig = original;
+#endif
+#if ASSERTIONS
+      wrapper = createNamedFunction(`__asyncify_wrapper_${original.name}`, wrapper);
+#endif
+      return wrapper;
+    },
+
     instrumentWasmExports(exports) {
 #if EMBIND_GEN_MODE
       // Instrumenting is not needed when generating code.
@@ -121,7 +168,7 @@ addToLibrary({
       var ret = {};
       for (let [x, original] of Object.entries(exports)) {
         if (typeof original == 'function') {
-#if ASYNCIFY == 2
+ #if ASYNCIFY == 2
           // Wrap all exports with a promising WebAssembly function.
           let isAsyncifyExport = exportPattern.test(x);
           if (isAsyncifyExport) {
@@ -129,37 +176,10 @@ addToLibrary({
             original = Asyncify.makeAsyncFunction(original);
           }
 #endif
-          ret[x] = (...args) => {
-#if ASYNCIFY_DEBUG >= 2
-            dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} try ${x}`);
-#endif
-#if ASYNCIFY == 1
-            Asyncify.exportCallStack.push(x);
-            try {
-#endif
-#if ASYNCIFY == 1 && MEMORY64
-              Asyncify.saveRewindArguments(x, args);
-#endif
-              return original(...args);
-#if ASYNCIFY == 1
-            } finally {
-              if (!ABORT) {
-                var y = Asyncify.exportCallStack.pop();
-#if ASSERTIONS
-                assert(y === x);
-#endif
-#if ASYNCIFY_DEBUG >= 2
-                dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} finally ${x}`);
-#endif
-                Asyncify.maybeStopUnwind();
-              }
-            }
-#endif
-          };
-#if MAIN_MODULE
-          ret[x].orig = original;
-#endif
-        } else {
+          var wrapper = Asyncify.instrumentFunction(original);
+          ret[x] = wrapper;
+
+       } else {
           ret[x] = original;
         }
       }
@@ -187,21 +207,26 @@ addToLibrary({
     // We must track which wasm exports are called into and
     // exited, so that we know where the call stack began,
     // which is where we must call to rewind it.
+    // This list contains the original Wasm exports.
     exportCallStack: [],
-    callStackNameToId: {},
-    callStackIdToName: {},
+    callstackFuncToId: new Map(),
+    callStackIdToFunc: new Map(),
+    // Maps wasm functions to their corresponding wrapper function.
+    funcWrappers: new Map(),
     callStackId: 0,
     asyncPromiseHandlers: null, // { resolve, reject } pair for when *all* asynchronicity is done
     sleepCallbacks: [], // functions to call every time we sleep
 
-    getCallStackId(funcName) {
-      var id = Asyncify.callStackNameToId[funcName];
-      if (id === undefined) {
-        id = Asyncify.callStackId++;
-        Asyncify.callStackNameToId[funcName] = id;
-        Asyncify.callStackIdToName[id] = funcName;
+    getCallStackId(func) {
+#if ASSERTIONS
+      assert(func);
+#endif
+      if (!Asyncify.callstackFuncToId.has(func)) {
+        var id = Asyncify.callStackId++;
+        Asyncify.callstackFuncToId.set(func, id);
+        Asyncify.callStackIdToFunc.set(id, func);
       }
-      return id;
+      return Asyncify.callstackFuncToId.get(func);
     },
 
     maybeStopUnwind() {
@@ -243,7 +268,7 @@ addToLibrary({
       // An asyncify data structure has three fields:
       //  0  current stack pos
       //  4  max stack pos
-      //  8  id of function at bottom of the call stack (callStackIdToName[id] == name of js function)
+      //  8  id of function at bottom of the call stack (callStackIdToFunc[id] == wasm func)
       //
       // The Asyncify ABI only interprets the first two fields, the rest is for the runtime.
       // We also embed a stack in the same memory region here, right next to the structure.
@@ -264,46 +289,41 @@ addToLibrary({
 #if ASYNCIFY_DEBUG >= 2
       dbg(`ASYNCIFY: setDataRewindFunc(${ptr}), bottomOfCallStack is`, bottomOfCallStack, new Error().stack);
 #endif
+#if ASSERTIONS
+      assert(bottomOfCallStack, 'exportCallStack is empty');
+#endif
       var rewindId = Asyncify.getCallStackId(bottomOfCallStack);
       {{{ makeSetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'rewindId', 'i32') }}};
     },
 
-    getDataRewindFuncName(ptr) {
+    getDataRewindFunc(ptr) {
       var id = {{{ makeGetValue('ptr', C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
-      var name = Asyncify.callStackIdToName[id];
-      return name;
-    },
-
-#if RELOCATABLE
-    getDataRewindFunc__deps: [ '$resolveGlobalSymbol' ],
-#endif
-    getDataRewindFunc(name) {
-      var func = wasmExports[name];
-#if RELOCATABLE
-      // Exported functions in side modules are not listed in `wasmExports`,
-      // So we should use `resolveGlobalSymbol` helper function, which is defined in `library_dylink.js`.
-      if (!func) {
-        func = resolveGlobalSymbol(name, false).sym;
-      }
+      var func = Asyncify.callStackIdToFunc.get(id);
+#if ASSERTIONS
+      assert(func, `id ${id} not found in callStackIdToFunc`);
 #endif
       return func;
     },
 
     doRewind(ptr) {
-      var name = Asyncify.getDataRewindFuncName(ptr);
-      var func = Asyncify.getDataRewindFunc(name);
+      var original = Asyncify.getDataRewindFunc(ptr);
 #if ASYNCIFY_DEBUG
-      dbg('ASYNCIFY: doRewind:', name);
+      dbg('ASYNCIFY: doRewind:', original);
+#endif
+      var func = Asyncify.funcWrappers.get(original);
+#if ASSERTIONS
+      assert(original);
+      assert(func);
 #endif
       // Once we have rewound and the stack we no longer need to artificially
       // keep the runtime alive.
       {{{ runtimeKeepalivePop(); }}}
 #if MEMORY64
       // When re-winding, the arguments to a function are ignored.  For i32 arguments we
-      // can just call the function with no args at all since and the engine will produce zeros
+      // can just call the function with no args at all since the engine will produce zeros
       // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
       // BigInt`.
-      return func(...Asyncify.restoreRewindArguments(name));
+      return func(...Asyncify.restoreRewindArguments(original));
 #else
       return func();
 #endif
@@ -372,7 +392,7 @@ addToLibrary({
             // `Asyncify.handleSleepReturnValue`.
             // `Asyncify.handleSleepReturnValue` contains the return
             // value of the last C function to have executed
-            // `Asyncify.handleSleep()`, where as `asyncWasmReturnValue`
+            // `Asyncify.handleSleep()`, whereas `asyncWasmReturnValue`
             // contains the return value of the exported WASM function
             // that may have called C functions that
             // call `Asyncify.handleSleep()`.
@@ -426,12 +446,10 @@ addToLibrary({
     //
     // This is particularly useful for native JS `async` functions where the
     // returned value will "just work" and be passed back to C++.
-    handleAsync(startAsync) {
-      return Asyncify.handleSleep((wakeUp) => {
-        // TODO: add error handling as a second param when handleSleep implements it.
-        startAsync().then(wakeUp);
-      });
-    },
+    handleAsync: (startAsync) => Asyncify.handleSleep((wakeUp) => {
+      // TODO: add error handling as a second param when handleSleep implements it.
+      startAsync().then(wakeUp);
+    }),
 
 #elif ASYNCIFY == 2
     //
@@ -452,9 +470,7 @@ addToLibrary({
         {{{ runtimeKeepalivePop(); }}}
       }
     },
-    handleSleep(startAsync) {
-      return Asyncify.handleAsync(() => new Promise(startAsync));
-    },
+    handleSleep: (startAsync) => Asyncify.handleAsync(() => new Promise(startAsync)),
     makeAsyncFunction(original) {
 #if ASYNCIFY_DEBUG
       dbg('asyncify: makeAsyncFunction for', original);
@@ -466,33 +482,24 @@ addToLibrary({
 
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep__async: true,
-  emscripten_sleep: (ms) => {
-    // emscripten_sleep() does not return a value, but we still need a |return|
-    // here for stack switching support (ASYNCIFY=2). In that mode this function
-    // returns a Promise instead of nothing, and that Promise is what tells the
-    // wasm VM to pause the stack.
-    return Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms));
-  },
+  emscripten_sleep: (ms) => Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms)),
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data__async: true,
-  emscripten_wget_data: (url, pbuffer, pnum, perror) => {
-    return Asyncify.handleSleep((wakeUp) => {
-      /* no need for run dependency, this is async but will not do any prepare etc. step */
-      asyncLoad(UTF8ToString(url)).then((byteArray) => {
-        // can only allocate the buffer after the wakeUp, not during an asyncing
-        var buffer = _malloc(byteArray.length); // must be freed by caller!
-        HEAPU8.set(byteArray, buffer);
-        {{{ makeSetValue('pbuffer', 0, 'buffer', '*') }}};
-        {{{ makeSetValue('pnum',  0, 'byteArray.length', 'i32') }}};
-        {{{ makeSetValue('perror',  0, '0', 'i32') }}};
-        wakeUp();
-      }, () => {
-        {{{ makeSetValue('perror',  0, '1', 'i32') }}};
-        wakeUp();
-      });
-    });
-  },
+  emscripten_wget_data: (url, pbuffer, pnum, perror) => Asyncify.handleAsync(async () => {
+    /* no need for run dependency, this is async but will not do any prepare etc. step */
+    try {
+      const byteArray = await asyncLoad(UTF8ToString(url));
+      // can only allocate the buffer after the wakeUp, not during an asyncing
+      var buffer = _malloc(byteArray.length); // must be freed by caller!
+      HEAPU8.set(byteArray, buffer);
+      {{{ makeSetValue('pbuffer', 0, 'buffer', '*') }}};
+      {{{ makeSetValue('pnum', 0, 'byteArray.length', 'i32') }}};
+      {{{ makeSetValue('perror', 0, '0', 'i32') }}};
+    } catch (err) {
+      {{{ makeSetValue('perror', 0, '1', 'i32') }}};
+    }
+  }),
 
   emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers__async: true,
@@ -511,21 +518,12 @@ addToLibrary({
     });
   },
 
-  emscripten_lazy_load_code__async: true,
-  emscripten_lazy_load_code: () => Asyncify.handleSleep((wakeUp) => {
-    // Update the expected wasm binary file to be the lazy one.
-    wasmBinaryFile += '.lazy.wasm';
-    // Add a callback for when all run dependencies are fulfilled, which happens when async wasm loading is done.
-    dependenciesFulfilled = wakeUp;
-    // Load the new wasm.
-    createWasm();
-  }),
-
   _load_secondary_module__sig: 'v',
+  _load_secondary_module__async: true,
   _load_secondary_module: async function() {
     // Mark the module as loading for the wasm module (so it doesn't try to load it again).
     wasmExports['load_secondary_module_status'].value = 1;
-    var imports = {'primary': wasmExports};
+    var imports = {'primary': wasmRawExports};
     // Replace '.wasm' suffix with '.deferred.wasm'.
     var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
     await instantiateAsync(null, deferred, imports);
@@ -628,19 +626,19 @@ addToLibrary({
   },
 #else // ASYNCIFY
   emscripten_sleep: () => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_sleep';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_sleep');
   },
   emscripten_wget: (url, file) => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_wget');
   },
   emscripten_wget_data: (url, pbuffer, pnum, perror) => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_wget_data');
   },
   emscripten_scan_registers: (func) => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_scan_registers');
   },
   emscripten_fiber_swap: (oldFiber, newFiber) => {
-    throw 'Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap';
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_fiber_swap');
   },
 #endif // ASYNCIFY
 });

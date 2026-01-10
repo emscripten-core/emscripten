@@ -70,7 +70,7 @@ int main() {
 
   if (!extAvailable) {
     EM_ASM({
-      fetch('http://localhost:8888/report_result?skipped:%20WEBGL_draw_instanced_base_vertex_base_instance%20is%20not%20supported!').then(() => window.close());
+      skipTest('WEBGL_draw_instanced_base_vertex_base_instance is not supported');
     });
     return 0;
   }

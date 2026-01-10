@@ -91,7 +91,6 @@ example, writing a new local file system) or legacy file system compatibility.
 .. js:function:: FS.lookup(parent, name)
 .. js:function:: FS.mknod(path, mode, dev)
 .. js:function:: FS.create(path, mode)
-.. js:function:: FS.allocate(stream, offset, length)
 .. js:function:: FS.mmap(stream, buffer, offset, length, position, prot, flags)
 .. js:function:: FS.ioctl(stream, cmd, arg)
 .. js:function:: FS.staticInit()

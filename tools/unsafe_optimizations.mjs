@@ -6,6 +6,7 @@
 import * as fs from 'node:fs';
 import * as acorn from 'acorn';
 import * as terser from '../third_party/terser/terser.js';
+import {parseArgs} from 'node:util';
 
 // Starting at the AST node 'root', calls the given callback function 'func' on all children and grandchildren of 'root'
 // that are of any of the type contained in array 'types'.
@@ -295,38 +296,17 @@ function runTests() {
   process.exit(numTestFailures);
 }
 
-const args = process.argv.slice(2);
-
-function readBool(arg) {
-  let ret = false;
-  for (;;) {
-    const i = args.indexOf(arg);
-    if (i >= 0) {
-      args.splice(i, 1);
-      ret = true;
-    } else {
-      return ret;
-    }
-  }
-}
-
-function readArg(arg) {
-  let ret = null;
-  for (;;) {
-    const i = args.indexOf(arg);
-    if (i >= 0) {
-      ret = args[i + 1];
-      args.splice(i, 2);
-    } else {
-      return ret;
-    }
-  }
-}
-
-const testMode = readBool('--test');
-const pretty = readBool('--pretty');
-const output = readArg('-o');
-const input = args[0];
+const {
+  values: {test: testMode, pretty, output},
+  positionals: [input],
+} = parseArgs({
+  options: {
+    test: {type: 'boolean'},
+    pretty: {type: 'boolean'},
+    output: {type: 'string', short: 'o'},
+  },
+  allowPositionals: true,
+});
 
 if (testMode) {
   runTests();

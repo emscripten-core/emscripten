@@ -18,6 +18,9 @@ void onDraw(void* arg) {
   glDrawArrays(GL_TRIANGLES, 0, 3);
   glfwSwapBuffers(window);
   glfwPollEvents();
+#ifdef __EMSCRIPTEN__
+  EM_ASM({reftestUnblock()}); // All done, perform the JS side image comparison reftest.
+#endif
 }
 
 void onResize(GLFWwindow* window, int width, int height) {
@@ -112,6 +115,10 @@ int main() {
   }
 
 #ifdef __EMSCRIPTEN__
+  // This test kicks off an asynchronous main loop, so do not perform a synchronous
+  // reftest immediately after falling out from main.
+  EM_ASM({reftestBlock()});
+
   emscripten_set_main_loop_arg(onDraw, &window, 0, 1);
 #else
   while (1) {

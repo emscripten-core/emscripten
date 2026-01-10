@@ -5,30 +5,38 @@
  */
 
 addToLibrary({
-  $preloadPlugins: "{{{ makeModuleReceiveExpr('preloadPlugins', '[]') }}}",
+  $preloadPlugins__postset: () => addAtModule(makeModuleReceive('preloadPlugins')),
+  $preloadPlugins: [],
 
 #if !MINIMAL_RUNTIME
   // Tries to handle an input byteArray using preload plugins. Returns true if
   // it was handled.
   $FS_handledByPreloadPlugin__internal: true,
   $FS_handledByPreloadPlugin__deps: ['$preloadPlugins'],
-  $FS_handledByPreloadPlugin: (byteArray, fullname, finish, onerror) => {
+  $FS_handledByPreloadPlugin: async (byteArray, fullname) => {
 #if LibraryManager.has('libbrowser.js')
     // Ensure plugins are ready.
     if (typeof Browser != 'undefined') Browser.init();
 #endif
 
-    var handled = false;
-    preloadPlugins.forEach((plugin) => {
-      if (handled) return;
+    for (var plugin of preloadPlugins) {
       if (plugin['canHandle'](fullname)) {
-        plugin['handle'](byteArray, fullname, finish, onerror);
-        handled = true;
-      }
-    });
-    return handled;
-  },
+#if ASSERTIONS
+        assert(plugin['handle'].constructor.name === 'AsyncFunction', 'Filesystem plugin handlers must be async functions (See #24914)')
 #endif
+        return plugin['handle'](byteArray, fullname);
+      }
+    }
+    // If no plugin handled this file then return the original/unmodified
+    // byteArray.
+    return byteArray;
+  },
+
+  // Legacy version of FS_preloadFile that uses callback rather than async
+  $FS_createPreloadedFile__deps: ['$FS_preloadFile'],
+  $FS_createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
+    FS_preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish).then(onload).catch(onerror);
+  },
 
   // Preloads a file asynchronously. You can call this before run, for example in
   // preRun. run will be delayed until this file arrives and is set up.
@@ -42,46 +50,40 @@ addToLibrary({
   // You can also call this with a typed array instead of a url. It will then
   // do preloading for the Image/Audio part, as if the typed array were the
   // result of an XHR that you did manually.
-  $FS_createPreloadedFile__deps: [
+  $FS_preloadFile__deps: [
     '$asyncLoad',
     '$PATH_FS',
     '$FS_createDataFile',
-#if !MINIMAL_RUNTIME
+    '$getUniqueRunDependency',
+    '$addRunDependency',
+    '$removeRunDependency',
     '$FS_handledByPreloadPlugin',
-#endif
   ],
-  $FS_createPreloadedFile: (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
+  $FS_preloadFile: async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
     // TODO we should allow people to just pass in a complete filename instead
     // of parent and name being that we just join them anyways
     var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
     var dep = getUniqueRunDependency(`cp ${fullname}`); // might have several active requests for the same fullname
-    function processData(byteArray) {
-      function finish(byteArray) {
-        preFinish?.();
-        if (!dontCreateFile) {
-          FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
-        }
-        onload?.();
-        removeRunDependency(dep);
-      }
-#if !MINIMAL_RUNTIME
-      if (FS_handledByPreloadPlugin(byteArray, fullname, finish, () => {
-        onerror?.();
-        removeRunDependency(dep);
-      })) {
-        return;
-      }
-#endif
-      finish(byteArray);
-    }
     addRunDependency(dep);
-    if (typeof url == 'string') {
-      asyncLoad(url).then(processData, onerror);
-    } else {
-      processData(url);
+
+    try {
+      var byteArray = url;
+      if (typeof url == 'string') {
+        byteArray = await asyncLoad(url);
+      }
+
+      byteArray = await FS_handledByPreloadPlugin(byteArray, fullname);
+      preFinish?.();
+      if (!dontCreateFile) {
+        FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
+      }
+    } finally {
+      removeRunDependency(dep);
     }
   },
-  // convert the 'r', 'r+', etc. to it's corresponding set of O_* flags
+#endif
+
+  // convert the 'r', 'r+', etc. to its corresponding set of O_* flags
   $FS_modeStringToFlags: (str) => {
     var flagModes = {
       'r': {{{ cDefs.O_RDONLY }}},
@@ -149,8 +151,7 @@ addToLibrary({
       } else
 #endif
 #if ENVIRONMENT_MAY_BE_WEB
-      if (typeof window != 'undefined' &&
-        typeof window.prompt == 'function') {
+      if (globalThis.window?.prompt) {
         // Browser.
         result = window.prompt('Input: ');  // returns null on cancel
         if (result !== null) {
@@ -159,8 +160,8 @@ addToLibrary({
       } else
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
-      if (typeof readline == 'function') {
-        // Command line.
+      if (globalThis.readline) {
+        /** @suppress{checkTypes, undefinedVars} */
         result = readline();
         if (result) {
           result += '\n';

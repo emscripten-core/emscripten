@@ -74,7 +74,7 @@ addToLibrary({
     let path = UTF8ToString(path_p);
     return wasmfsTry(() => {
       let entries = fs.readdirSync(path, { withFileTypes: true });
-      entries.forEach((entry) => {
+      for (var entry of entries) {
         let sp = stackSave();
         let name = stringToUTF8OnStack(entry.name);
         let type;
@@ -90,7 +90,7 @@ addToLibrary({
         __wasmfs_node_record_dirent(vec, name, type);
         stackRestore(sp);
         // implicitly return 0
-      });
+      }
     });
   },
 
@@ -156,11 +156,41 @@ addToLibrary({
     });
   },
 
+  _wasmfs_node_truncate__i53abi: true,
+  _wasmfs_node_truncate__deps : ['$wasmfsTry'],
+  _wasmfs_node_truncate : (path_p, len) => {
+    if (isNaN(len)) return -{{{ cDefs.EOVERFLOW }}};
+    return wasmfsTry(() => fs.truncateSync(UTF8ToString(path_p), len));
+  },
+
+  _wasmfs_node_ftruncate__i53abi: true,
+  _wasmfs_node_ftruncate__deps : ['$wasmfsTry'],
+  _wasmfs_node_ftruncate : (fd, len) => {
+    if (isNaN(len)) return -{{{ cDefs.EOVERFLOW }}};
+    return wasmfsTry(() => fs.ftruncateSync(fd, len));
+  },
+
   _wasmfs_node_open__deps: ['$wasmfsTry'],
   _wasmfs_node_open: (path_p, mode_p) => {
-    return wasmfsTry(() =>
-      fs.openSync(UTF8ToString(path_p), UTF8ToString(mode_p))
-    );
+    return wasmfsTry(() => fs.openSync(UTF8ToString(path_p), UTF8ToString(mode_p)));
+  },
+
+  _wasmfs_node_rename__deps: ['$wasmfsTry'],
+  _wasmfs_node_rename: (from_path_p, to_path_p) => {
+    return wasmfsTry(() => fs.renameSync(UTF8ToString(from_path_p), UTF8ToString(to_path_p)));
+  },
+
+  _wasmfs_node_symlink__deps: ['$wasmfsTry'],
+  _wasmfs_node_symlink: (target_path_p, linkpath_path_p) => {
+    return wasmfsTry(() => fs.symlinkSync(UTF8ToString(target_path_p), UTF8ToString(linkpath_path_p)));
+  },
+
+  _wasmfs_node_readlink__deps: ['$wasmfsTry'],
+  _wasmfs_node_readlink: (path_p, target_p, bufsize) => {
+    return wasmfsTry(() => {
+      var target = fs.readlinkSync(UTF8ToString(path_p));
+      return stringToUTF8(target, target_p, bufsize);
+    });
   },
 
   _wasmfs_node_close__deps: [],
@@ -192,4 +222,5 @@ addToLibrary({
       // implicitly return 0
     });
   },
+
 });

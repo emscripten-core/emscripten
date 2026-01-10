@@ -3,6 +3,7 @@ function f() {
     HEAP32[$0 >> 2] = $2 + 1;
     $9 = HEAPU8[$2 >> 0] | 0;
     +HEAPF64[x >> 3];
+    HEAP64[x >> 3] = HEAP64[y >> 3];
 }
 
 function libraryFunc(ptr, val) {

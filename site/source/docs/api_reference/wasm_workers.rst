@@ -117,8 +117,6 @@ If you need to synchronously wait for the posted function to finish from within 
 the ``emscripten_wasm_worker_*()`` thread synchronization functions to sleep the calling thread until
 the callee has finished the operation.
 
-Note that Wasm Workers cannot 
-
 Pthreads have cancellation points
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -153,7 +151,7 @@ a Wasm Worker, consider which type of hierarchy you would like, and if necessary
 hierarchy manually by posting the Worker creation over to the main thread yourself.
 
 Note that support for nested Workers varies across browsers. As of 02/2022, nested Workers are `not
-supported in Safari <https://bugs.webkit.org/show_bug.cgi?id=22723>`_. See `here 
+supported in Safari <https://webkit.org/b/22723>`_. See `here 
 <https://github.com/johanholmerin/nested-worker>`_ for a polyfill.
 
 Pthreads can use the Wasm Worker synchronization API, but not vice versa
@@ -371,7 +369,7 @@ Both APIs allow one to spawn Web Workers from the main thread, though the semant
 
 With the Worker API, the user will be able to spawn a Web Worker from a custom URL. This URL can point to a completely separate JS file that was not compiled with Emscripten, to load up Workers from arbitrary URLs. With Wasm Workers, a custom URL is not specified: Wasm Workers will always spawn a Web Worker that computes in the same WebAssembly+JavaScript context as the main program.
 
-The Worker API does not integrate with SharedArrayBuffer, so interaction with the loaded Worker will always be asynchronous. Wasm Workers howerer is built on top of SharedArrayBuffer, and each Wasm Worker shares and computes in the same WebAssembly Memory address space of the main thread.
+The Worker API does not integrate with SharedArrayBuffer, so interaction with the loaded Worker will always be asynchronous. Wasm Workers however is built on top of SharedArrayBuffer, and each Wasm Worker shares and computes in the same WebAssembly Memory address space of the main thread.
 
 Both the Worker API and Wasm Workers API provide the user with ability to postMessage() function calls to the Worker. In Worker API, this message posting is restricted to need to originate/initiate from the main thread towards the Worker (using the API ``emscripten_call_worker()`` and ``emscripten_worker_respond()`` in ``<emscripten.h>``). With Wasm Workers however one can also postMessage() function calls to their parent (owning) thread.
 
@@ -396,7 +394,6 @@ The following build options are not supported at the moment with Wasm Workers:
 
 - -sSINGLE_FILE
 - Dynamic linking (-sLINKABLE, -sMAIN_MODULE, -sSIDE_MODULE)
-- -sPROXY_TO_WORKER
 - -sPROXY_TO_PTHREAD
 
 Example Code

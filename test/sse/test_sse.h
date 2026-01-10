@@ -27,6 +27,14 @@
 #define align1_double double
 #endif
 
+#ifdef __GNUC__
+#define NOINLINE __attribute__((noinline))
+#elif defined(_MSC_VER)
+#define NOINLINE __declspec(noinline)
+#else
+#define NOINLINE
+#endif
+
 // Recasts floating point representation of f to an integer.
 uint32_t fcastu(float f) { return *(uint32_t*)&f; }
 uint64_t dcastu(double f) { return *(uint64_t*)&f; }
@@ -40,6 +48,10 @@ __attribute__((aligned(32)))
 float interesting_floats_[] = {
   -INFINITY,
   -FLT_MAX,
+  -4294967296.0f, // https://github.com/emscripten-core/emscripten/pull/25130
+  -2147483648.1f,
+  -2147483648.0f,
+  -2147483647.9f,
   -2.5f,
   -1.5f,
   -1.4f,
@@ -55,10 +67,14 @@ float interesting_floats_[] = {
   0.5f,
   0.8f,
   1.0f,
-  1.5f,
+  1.5f, // Test different half-way values to see if banker's rounding happens.
   2.5f,
   3.5f,
-  3.6f,
+  1022.99998194495f, // https://github.com/emscripten-core/emscripten/issues/25129
+  2147483647.9f, // https://github.com/emscripten-core/emscripten/pull/25130
+  2147483648.0f,
+  2147483648.1f,
+  4294967296.0f,
   FLT_MAX,
   INFINITY,
   NAN,
@@ -75,6 +91,10 @@ __attribute__((aligned(32)))
 double interesting_doubles_[] = {
   -INFINITY,
   -FLT_MAX,
+  -4294967296.0, // https://github.com/emscripten-core/emscripten/pull/25130
+  -2147483648.1,
+  -2147483648.0,
+  -2147483647.9,
   -2.5,
   -1.5,
   -1.4,
@@ -90,10 +110,14 @@ double interesting_doubles_[] = {
   0.5,
   0.8,
   1.0,
-  1.5,
+  1.5, // Test different half-way values to see if banker's rounding happens.
   2.5,
   3.5,
-  3.6,
+  1022.99998194495, // https://github.com/emscripten-core/emscripten/issues/25129
+  2147483647.9,
+  2147483648.0, // https://github.com/emscripten-core/emscripten/pull/25130
+  2147483648.1,
+  4294967296.0,
   FLT_MAX,
   INFINITY,
   NAN,
@@ -496,7 +520,7 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         printf("%s(%s, %s) = %s\n", #func, str, str2, str3); \
       }
 
-#define Ret_M128_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingFloats / 4; ++i) \
     for(int k = 0; k < 4; ++k) \
     { \
@@ -505,9 +529,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
       char str[256]; tostr(&m1, str); \
       char str2[256]; tostr(&ret, str2); \
       printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
-    }
+    } \
+  }();
 
-#define Ret_M128d_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128d_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingDoubles / 2; ++i) \
     for(int k = 0; k < 2; ++k) \
     { \
@@ -516,9 +541,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
       char str[256]; tostr(&m1, str); \
       char str2[256]; tostr(&ret, str2); \
       printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
-    }
+    } \
+  }();
 
-#define Ret_M128i_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128i_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingInts / 4; ++i) \
     for(int k = 0; k < 4; ++k) \
     { \
@@ -527,9 +553,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
       char str[256]; tostr(&m1, str); \
       char str2[256]; tostr(&ret, str2); \
       printf("%s(%s, %d) = %s\n", #func, str, Tint, str2); \
-    }
+    } \
+  }();
 
-#define Ret_M128i_int_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128i_int_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingInts / 4; ++i) \
     for(int j = 0; j < numInterestingInts; ++j) \
       for(int k = 0; k < 4; ++k) \
@@ -539,9 +566,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         char str[256]; tostr(&m1, str); \
         char str2[256]; tostr(&ret, str2); \
         printf("%s(%s, 0x%08X, %d) = %s\n", #func, str, interesting_ints[j], Tint, str2); \
-      }
+      } \
+  }();
 
-#define Ret_M128d_M128d_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128d_M128d_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingDoubles / 2; ++i) \
     for(int k = 0; k < 2; ++k) \
       for(int j = 0; j < numInterestingDoubles / 2; ++j) \
@@ -560,9 +588,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         tostr(&m2, str2); \
         tostr(&ret, str3); \
         printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
-      }
+      } \
+  }();
 
-#define Ret_M128i_M128i_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128i_M128i_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingInts / 4; ++i) \
     for(int k = 0; k < 4; ++k) \
       for(int j = 0; j < numInterestingInts / 4; ++j) \
@@ -581,9 +610,10 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         tostr(&m2, str2); \
         tostr(&ret, str3); \
         printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
-      }
+      } \
+  }();
 
-#define Ret_M128_M128_Tint_body(Ret_type, func, Tint) \
+#define Ret_M128_M128_Tint_body(Ret_type, func, Tint) [](){ \
   for(int i = 0; i < numInterestingFloats / 4; ++i) \
     for(int k = 0; k < 4; ++k) \
       for(int j = 0; j < numInterestingFloats / 4; ++j) \
@@ -602,32 +632,34 @@ __m128 ExtractIntInRandomOrder(unsigned int *arr, int i, int n, int prime) {
         tostr(&m2, str2); \
         tostr(&ret, str3); \
         printf("%s(%s, %s, %d) = %s\n", #func, str, str2, Tint, str3); \
-      }
+      } \
+  }();
 
 #define const_int8_unroll(Ret_type, F, func) \
-  F(Ret_type, func, 0); \
-  F(Ret_type, func, 1); \
-  F(Ret_type, func, 2); \
-  F(Ret_type, func, 3); \
-  F(Ret_type, func, 5); \
-  F(Ret_type, func, 7); \
-  F(Ret_type, func, 11); \
-  F(Ret_type, func, 13); \
-  F(Ret_type, func, 15); \
-  F(Ret_type, func, 16); \
-  F(Ret_type, func, 17); \
-  F(Ret_type, func, 23); \
-  F(Ret_type, func, 29); \
-  F(Ret_type, func, 31); \
-  F(Ret_type, func, 37); \
-  F(Ret_type, func, 43); \
-  F(Ret_type, func, 47); \
-  F(Ret_type, func, 59); \
-  F(Ret_type, func, 127); \
-  F(Ret_type, func, 128); \
-  F(Ret_type, func, 191); \
-  F(Ret_type, func, 254); \
-  F(Ret_type, func, 255);
+  F(Ret_type, func, 0b00000000); \
+  F(Ret_type, func, 0b00000001); \
+  F(Ret_type, func, 0b00000010); \
+  F(Ret_type, func, 0b00000100); \
+  F(Ret_type, func, 0b00001000); \
+  F(Ret_type, func, 0b00010000); \
+  F(Ret_type, func, 0b00100000); \
+  F(Ret_type, func, 0b01000000); \
+  F(Ret_type, func, 0b10000000); \
+  F(Ret_type, func, 0b10101010); \
+  F(Ret_type, func, 0b01010101); \
+  F(Ret_type, func, 0b11001100); \
+  F(Ret_type, func, 0b00110011); \
+  F(Ret_type, func, 0b00001111); \
+  F(Ret_type, func, 0b11110000); \
+  F(Ret_type, func, 0b01111111); \
+  F(Ret_type, func, 0b10111111); \
+  F(Ret_type, func, 0b11011111); \
+  F(Ret_type, func, 0b11101111); \
+  F(Ret_type, func, 0b11110111); \
+  F(Ret_type, func, 0b11111011); \
+  F(Ret_type, func, 0b11111101); \
+  F(Ret_type, func, 0b11111110); \
+  F(Ret_type, func, 0b11111111);
 
 #define const_int5_full_unroll(Ret_type, F, func) \
   F(Ret_type, func, 0); \

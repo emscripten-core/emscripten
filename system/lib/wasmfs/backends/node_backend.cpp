@@ -45,8 +45,13 @@ public:
           result = _wasmfs_node_open(path.c_str(), "r");
           break;
         case O_WRONLY:
-          result = _wasmfs_node_open(path.c_str(), "w");
-          break;
+          // TODO(sbc): Specific handling of O_WRONLY.
+          // There is no simple way to map O_WRONLY to an fopen-style
+          // mode string since the only two modes that are write only
+          // are `w` and `a`.  The problem with the former is that it
+          // truncates to file.  The problem with the latter is that it
+          // opens for appending.  For now simply opening in O_RDWR
+          // mode is enough to pass all our tests.
         case O_RDWR:
           result = _wasmfs_node_open(path.c_str(), "r+");
           break;
@@ -118,7 +123,10 @@ private:
   }
 
   int setSize(off_t size) override {
-    WASMFS_UNREACHABLE("TODO: implement NodeFile::setSize");
+    if (state.isOpen()) {
+      return _wasmfs_node_ftruncate(state.getFD(), size);
+    }
+    return _wasmfs_node_truncate(state.path.c_str(), size);
   }
 
   int open(oflags_t flags) override { return state.open(flags); }
@@ -147,6 +155,22 @@ private:
   }
 };
 
+class NodeSymlink : public Symlink {
+public:
+  std::string path;
+
+  NodeSymlink(backend_t backend, std::string path)
+    : Symlink(backend), path(path) {}
+
+  virtual std::string getTarget() const {
+    char buf[PATH_MAX];
+    if (_wasmfs_node_readlink(path.c_str(), buf, PATH_MAX) < 0) {
+      WASMFS_UNREACHABLE("getTarget cannot fail");
+    }
+    return std::string(buf);
+  }
+};
+
 class NodeDirectory : public Directory {
 public:
   NodeState state;
@@ -172,8 +196,7 @@ private:
     } else if (S_ISDIR(mode)) {
       return std::make_shared<NodeDirectory>(mode, getBackend(), childPath);
     } else if (S_ISLNK(mode)) {
-      // return std::make_shared<NodeSymlink>(mode, getBackend(), childPath);
-      return nullptr;
+      return std::make_shared<NodeSymlink>(getBackend(), childPath);
     } else {
       // Unrecognized file kind not made visible to WasmFS.
       return nullptr;
@@ -212,13 +235,26 @@ private:
 
   std::shared_ptr<Symlink> insertSymlink(const std::string& name,
                                          const std::string& target) override {
-    // TODO
-    abort();
+    auto childPath = getChildPath(name);
+    if (_wasmfs_node_symlink(target.c_str(), childPath.c_str())) {
+      return nullptr;
+    }
+    return std::make_shared<NodeSymlink>(getBackend(), childPath);
   }
 
   int insertMove(const std::string& name, std::shared_ptr<File> file) override {
-    // TODO
-    abort();
+    std::string fromPath;
+
+    if (file->is<DataFile>()) {
+      auto nodeFile = std::static_pointer_cast<NodeFile>(file);
+      fromPath = nodeFile->state.path;
+    } else {
+      auto nodeDir = std::static_pointer_cast<NodeDirectory>(file);
+      fromPath = nodeDir->state.path;
+    }
+
+    auto childPath = getChildPath(name);
+    return _wasmfs_node_rename(fromPath.c_str(), childPath.c_str());
   }
 
   ssize_t getNumEntries() override {
@@ -256,8 +292,7 @@ public:
   }
 
   std::shared_ptr<Symlink> createSymlink(std::string target) override {
-    // TODO
-    abort();
+    WASMFS_UNREACHABLE("TODO: implement NodeBackend::createSymlink");
   }
 };
 
