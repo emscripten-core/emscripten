@@ -248,7 +248,7 @@ class Ports:
       os.makedirs(build_dir, exist_ok=True)
       ninja_file = os.path.join(build_dir, 'build.ninja')
       system_libs.ensure_sysroot()
-      system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags)
+      system_libs.create_ninja_file(srcs, ninja_file, output_path, cflags=cflags, cxxflags=cflags + cxxflags)
       if not os.getenv('EMBUILDER_PORT_BUILD_DEFERRED'):
         system_libs.run_ninja(build_dir)
     else:
