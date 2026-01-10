@@ -390,6 +390,15 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.require_engine(nodejs)
     return nodejs
 
+  def get_node_test_version(self, nodejs):
+    override = os.environ.get('OVERRIDE_NODE_JS_TEST_VERSION')
+    if override:
+      override = override.removeprefix('v')
+      override = override.split('-')[0].split('.')
+      override = tuple(int(v) for v in override)
+      return override
+    return shared.get_node_version(nodejs)
+
   def node_is_canary(self, nodejs):
     return nodejs and nodejs[0] and ('canary' in nodejs[0] or 'nightly' in nodejs[0])
 
@@ -432,7 +441,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     nodejs = self.get_nodejs()
     if not nodejs:
       self.skipTest('Test requires nodejs to run')
-    version = shared.get_node_version(nodejs)
+    version = self.get_node_test_version(nodejs)
     if version < (major, minor, revision):
       return False
 
@@ -617,7 +626,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     nodejs = self.get_nodejs()
     if nodejs:
-      node_version = shared.get_node_version(nodejs)
+      node_version = self.get_node_test_version(nodejs)
       if node_version < (13, 0, 0):
         self.node_args.append('--unhandled-rejections=strict')
       elif node_version < (15, 0, 0):
