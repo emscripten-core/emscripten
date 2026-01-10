@@ -482,11 +482,11 @@ addToLibrary({
 
   emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep__async: true,
-  emscripten_sleep: (ms) => Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms)),
+  emscripten_sleep: async (ms) => Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms)),
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data__async: true,
-  emscripten_wget_data: (url, pbuffer, pnum, perror) => Asyncify.handleAsync(async () => {
+  emscripten_wget_data: async (url, pbuffer, pnum, perror) => Asyncify.handleAsync(async () => {
     /* no need for run dependency, this is async but will not do any prepare etc. step */
     try {
       const byteArray = await asyncLoad(UTF8ToString(url));
@@ -503,7 +503,7 @@ addToLibrary({
 
   emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers__async: true,
-  emscripten_scan_registers: (func) => {
+  emscripten_scan_registers: async (func) => {
     return Asyncify.handleSleep((wakeUp) => {
       // We must first unwind, so things are spilled to the stack. Then while
       // we are pausing we do the actual scan. After that we can resume. Note
@@ -591,7 +591,7 @@ addToLibrary({
 
   emscripten_fiber_swap__deps: ["$Asyncify", "$Fibers", '$stackSave'],
   emscripten_fiber_swap__async: true,
-  emscripten_fiber_swap: (oldFiber, newFiber) => {
+  emscripten_fiber_swap: async (oldFiber, newFiber) => {
     if (ABORT) return;
 #if ASYNCIFY_DEBUG
     dbg('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber, 'state:', Asyncify.state);

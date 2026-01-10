@@ -7,7 +7,7 @@ import shutil
 from subprocess import PIPE
 
 from common import RunnerCore, create_file, read_file, test_file
-from decorators import also_with_wasm64, also_without_bigint, parameterized
+from decorators import also_with_wasm64, also_without_bigint, parameterized, requires_jspi
 
 from tools.shared import EMCC
 from tools.utils import delete_file
@@ -719,3 +719,22 @@ console.error('JSLIB: none of the above');
       #endif
     ''')
     self.assert_fail([EMCC, '--js-library=libfoo.js'], 'error: libfoo.js:3: #error "library does not support emscripten > 3.0.0"')
+
+  @requires_jspi
+  def test_jslib_jspi_missing_async(self):
+    create_file('lib.js', r'''
+      addToLibrary({
+        foo__async: true,
+        foo: function(f) {},
+      });
+    ''')
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      extern void foo();
+      EMSCRIPTEN_KEEPALIVE void test() {
+        foo();
+      }
+    ''')
+    err = self.expect_fail([EMCC, 'main.c', '-o', 'out.js', '-sJSPI', '--js-library=lib.js', '-Wno-experimental'])
+    self.assertContained('error: \'foo\' is marked with the __async decorator but is not an async JS function.', err)
+
