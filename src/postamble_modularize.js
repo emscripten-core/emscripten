@@ -59,11 +59,7 @@ var isPthread = {{{ nodePthreadDetection() }}}
 // When running as a pthread, construct a new instance on startup
 #endif
 
-#if MODULARIZE == 'instance'
-isPthread && init();
-#else
 isPthread && {{{ EXPORT_NAME }}}();
-#endif
 
 #endif // PTHREADS
 
@@ -91,10 +87,6 @@ isWW ||= !!globalThis.AudioWorkletGlobalScope;
 // When running as a wasm worker, construct a new instance on startup
 #endif
 
-#if MODULARIZE == 'instance'
-isWW && init();
-#else
 isWW && {{{ EXPORT_NAME }}}();
-#endif
 
 #endif // WASM_WORKERS
