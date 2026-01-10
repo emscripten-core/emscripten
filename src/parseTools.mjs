@@ -331,14 +331,39 @@ function splitI64(value) {
 export function indentify(text, indent) {
   // Don't try to indentify huge strings - we may run out of memory
   if (text.length > 1024 * 1024) return text;
-  if (typeof indent == 'number') {
-    const len = indent;
-    indent = '';
-    for (let i = 0; i < len; i++) {
-      indent += ' ';
+
+  indent = ' '.repeat(indent);
+
+  // Perform indentation in a smart fashion that does not leak indentation
+  // inside multiline strings enclosed in `` characters.
+  let out = '';
+  for (let i = 0; i < text.length; ++i) {
+    // Output a C++ comment as-is, don't get confused by ` inside a C++ comment.
+    if (text[i] == '/' && text[i + 1] == '/') {
+      for (; i < text.length && text[i] != '\n'; ++i) {
+        out += text[i];
+      }
     }
+
+    if (text[i] == '/' && text[i + 1] == '*') {
+      // Skip /* so that /*/ won't be mistaken as start& end of a /* */ comment.
+      out += text[i++];
+      out += text[i++];
+      for (; i < text.length && !(text[i - 1] == '*' && text[i] == '/'); ++i) {
+        out += text[i];
+      }
+    }
+
+    if (text[i] == '`') {
+      out += text[i++]; // Emit `
+      for (; i < text.length && text[i] != '`'; ++i) {
+        out += text[i];
+      }
+    }
+    out += text[i];
+    if (text[i] == '\n') out += indent;
   }
-  return text.replace(/\n/g, `\n${indent}`);
+  return out;
 }
 
 // Correction tools
