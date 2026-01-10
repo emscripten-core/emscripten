@@ -697,15 +697,12 @@ function(${args}) {
       let contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
-        if (
-          (USE_ASAN || USE_LSAN || UBSAN_RUNTIME) &&
-          LibraryManager.library[symbol + '__noleakcheck']
-        ) {
+        if ((USE_ASAN || USE_LSAN) && LibraryManager.library[symbol + '__noleakcheck']) {
           contentText = modifyJSFunction(
             snippet,
-            (args, body) => `(${args}) => withBuiltinMalloc(() => {${body}})`,
+            (args, body) => `(${args}) => noLeakCheck(() => {${body}})`,
           );
-          deps.push('$withBuiltinMalloc');
+          deps.push('$noLeakCheck');
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }

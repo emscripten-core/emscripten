@@ -87,6 +87,7 @@ def esm_integration(func):
   assert callable(func)
 
   @wraps(func)
+  @no_sanitize('sanitizers do not support WASM_ESM_INTEGRATION')
   def decorated(self, *args, **kwargs):
     self.setup_esm_integration()
     return func(self, *args, **kwargs)
@@ -152,7 +153,6 @@ def asan(func):
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
   @no_2gb("asan doesn't support GLOBAL_BASE")
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def decorated(self, *args, **kwargs):
     return func(self, *args, **kwargs)
 
@@ -1507,12 +1507,7 @@ int main(int argc, char **argv) {
 
   @with_all_eh_sjlj
   def test_EXPORT_EXCEPTION_HANDLING_HELPERS(self):
-    self.set_setting('ASSERTIONS', 0)
     self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
-    # FIXME Temporary workaround. See 'FIXME' in the test source code below for
-    # details.
-    if self.get_setting('DISABLE_EXCEPTION_CATCHING') == 0:
-      self.cflags.append('-D__USING_EMSCRIPTEN_EXCEPTION__')
 
     self.maybe_closure()
     create_file('main.cpp', '''
@@ -8805,7 +8800,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_too_many_errors(self):
@@ -8815,7 +8809,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  regex=True)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_errors_same_place(self):
@@ -8830,7 +8823,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_overflow': (['-fsanitize=signed-integer-overflow'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_full_overflow(self, args):
     self.cflags += args
     self.do_runf(
@@ -8846,7 +8838,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_return': (['-fsanitize=return'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_full_no_return(self, args):
     self.cflags += ['-Wno-return-type'] + args
     self.do_runf('core/test_ubsan_full_no_return.cpp',
@@ -8858,7 +8849,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_shift': (['-fsanitize=shift'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_full_left_shift(self, args):
     self.cflags += args
     self.do_runf(
@@ -8875,7 +8865,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'dylink': (['-fsanitize=null', '-sMAIN_MODULE=2'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_full_null_ref(self, args):
     if '-sMAIN_MODULE=2' in args:
       self.check_dylink()
@@ -8892,7 +8881,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       ])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_sanitize_vptr(self):
     self.do_runf(
       'core/test_sanitize_vptr.cpp',
@@ -8925,7 +8913,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ]),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
+  @no_esm_integration('https://github.com/emscripten-core/emscripten/issues/26073')
   def test_ubsan_full_stack_trace(self, g_flags, expected_output):
     if '-gsource-map' in g_flags:
       if self.is_wasm2js():
@@ -8940,7 +8928,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  assert_all=True, expected_output=expected_output)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_typeinfo_eq(self):
     # https://github.com/emscripten-core/emscripten/issues/13330
     src = r'''
@@ -9057,6 +9044,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @asan
   @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
+  @no_modularize_instance('uses MODULARIZE')
   def test_asan_modularized_with_closure(self):
     # the bug is that createModule() returns undefined, instead of the
     # proper Promise object.
