@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.23 (in development)
+4.0.24 (in development)
 -----------------------
+
+4.0.23 - 01/10/26
+-----------------
 - The inconsistency of incrementing / decrementing refcounts between Wasm EH and
   Emscripten EH has been fixed. See `test_EXPORT_EXCEPTION_HANDLING_HELPERS` in
   `test_core.py` to see the usage. (#25988)
