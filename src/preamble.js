@@ -555,7 +555,7 @@ function instantiateSync(file, info) {
   var binary = getBinarySync(file);
 #if NODE_CODE_CACHING
   if (ENVIRONMENT_IS_NODE) {
-    var v8 = require('v8');
+    var v8 = require('node:v8');
     // Include the V8 version in the cache name, so that we don't try to
     // load cached code from another version, which fails silently (it seems
     // to load ok, but we do actually recompile the binary every time).

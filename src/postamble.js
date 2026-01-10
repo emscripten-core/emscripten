@@ -322,7 +322,7 @@ if (ENVIRONMENT_IS_NODE
 #endif
 )
 {
-  const url = await import('url');
+  const url = await import('node:url');
   const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
   if (isMainModule) await init();
 }

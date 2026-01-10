@@ -621,7 +621,7 @@ def generate_preload_js(data_target, data_files, metadata):
 
   if options.support_node and options.export_es6:
         ret += '''if (isNode) {
-    const { createRequire } = await import('module');
+    const { createRequire } = await import('node:module');
     /** @suppress{duplicate} */
     var require = createRequire(import.meta.url);
   }\n'''

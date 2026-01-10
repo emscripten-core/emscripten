@@ -16,7 +16,7 @@ console.log("Running pthread_esm_startup");
 #if ENVIRONMENT_MAY_BE_NODE
 if ({{{ nodeDetectionCode() }}}) {
   // Create as web-worker-like an environment as we can.
-  var worker_threads = await import('worker_threads');
+  var worker_threads = await import('node:worker_threads');
   global.Worker = worker_threads.Worker;
   var parentPort = worker_threads['parentPort'];
   parentPort.on('message', (msg) => global.onmessage?.({ data: msg }));

@@ -13301,6 +13301,15 @@ myMethod: 43
     self.do_runf('test.c', expected, cflags=['--closure=1'], output_basename='test_closure')
     check_for_es6('test_closure.js', False)
 
+  def test_node_prefix_transpile(self):
+    self.run_process([EMCC, test_file('hello_world.c'),  '-sEXPORT_ES6'])
+    content = read_file('a.out.js')
+    self.assertContained('node:', content)
+
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMIN_NODE_VERSION=150000'])
+    content = read_file('a.out.js')
+    self.assertNotContained('node:', content)
+
   def test_gmtime_noleak(self):
     # Confirm that gmtime_r does not leak when called in isolation.
     self.cflags.append('-fsanitize=leak')

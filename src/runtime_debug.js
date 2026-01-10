@@ -15,8 +15,8 @@ function dbg(...args) {
   // See https://github.com/emscripten-core/emscripten/issues/14804
   if (ENVIRONMENT_IS_NODE) {
     // TODO(sbc): Unify with err/out implementation in shell.sh.
-    var fs = require('fs');
-    var utils = require('util');
+    var fs = require('node:fs');
+    var utils = require('node:util');
     function stringify(a) {
       switch (typeof a) {
         case 'object': return utils.inspect(a);
