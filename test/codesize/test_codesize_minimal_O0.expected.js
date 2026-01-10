@@ -107,7 +107,7 @@ if (ENVIRONMENT_IS_NODE) {
 
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
-  var fs = require('fs');
+  var fs = require('node:fs');
 
   scriptDirectory = __dirname + '/';
 
