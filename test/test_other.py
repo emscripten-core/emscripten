@@ -3500,7 +3500,7 @@ More info: https://emscripten.org
   def test_jspi_add_function(self):
     # make sure synchronous functions in the wasmTable aren't processed with Asyncify.makeAsyncFunction
     self.cflags += [
-      '-sASYNCIFY=2',
+      '-sJSPI',
       '-sEXPORTED_RUNTIME_METHODS=addFunction,dynCall',
       '-sALLOW_TABLE_GROWTH=1',
       '-Wno-experimental']
@@ -13554,7 +13554,7 @@ int main() {
     self.assertContained(expected, self.run_js('a.out.js'))
     asyncify_size = os.path.getsize('a.out.wasm')
 
-    self.run_process([EMXX, 'main.cpp', '-sASYNCIFY=2'] + shared_args)
+    self.run_process([EMXX, 'main.cpp', '-sJSPI'] + shared_args)
 
     self.assertContained(expected, self.run_js('a.out.js'))
     stack_switching_size = os.path.getsize('a.out.wasm')
