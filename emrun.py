@@ -1128,6 +1128,8 @@ def get_system_memory():
       return win32api.GlobalMemoryStatusEx()['TotalPhys']
     elif MACOS:
       return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
+    elif FREEBSD:
+      return int(check_output(['sysctl', '-n', 'hw.physmem']).strip())
   except Exception:
     return -1
 
