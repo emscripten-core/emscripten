@@ -931,6 +931,14 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       if s in user_settings:
         diagnostics.warning('unused-command-line-argument', f'{s} is only valid when generating JavaScript output')
 
+  # When there is no final suffix or the suffix is `.out` (as in `a.out`) then default to
+  # making the resulting file exectuable.
+  if settings.ENVIRONMENT_MAY_BE_NODE and options.oformat == OFormat.JS and final_suffix in ('', '.out'):
+    default_setting('EXECUTABLE', 1)
+
+  if settings.EXECUTABLE and not settings.ENVIRONMENT_MAY_BE_NODE:
+    exit_with_error('EXECUTABLE requires `node` in ENVRIONMENT')
+
   if options.oformat == OFormat.MJS:
     default_setting('EXPORT_ES6', 1)
 
