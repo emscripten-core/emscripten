@@ -865,7 +865,7 @@ var LibraryGLFW = {
           var data = e.target.result;
           FS.writeFile(path, new Uint8Array(data));
           if (++written === numfiles) {
-            {{{ makeDynCall('vpip', 'GLFW.active.dropFunc') }}}(GLFW.active.id, count, filenames);
+            {{{ makeDynCall('vpip', 'GLFW.active.dropFunc') }}}(GLFW.active.id, filenamesArray.length, filenames);
 
             for (var i = 0; i < filenamesArray.length; ++i) {
               _free(filenamesArray[i]);
@@ -884,7 +884,7 @@ var LibraryGLFW = {
         }
       } 
 
-      if (typeof DataTransferItem.prototype.webkitGetAsEntry !== "undefined") {
+      if (DataTransferItem.prototype.webkitGetAsEntry) {
         let entriesTree = {};
         function markDone(fullpath, recursive) {
           if (entriesTree[fullpath].subpaths.length != 0) return;
