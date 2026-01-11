@@ -13306,7 +13306,7 @@ myMethod: 43
     content = read_file('a.out.js')
     self.assertContained('node:', content)
 
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMIN_NODE_VERSION=150000'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMIN_NODE_VERSION=150000', '-Wno-transpile'])
     content = read_file('a.out.js')
     self.assertNotContained('node:', content)
 
