@@ -842,7 +842,7 @@ var LibraryGLFW = {
       var filenames = _malloc(event.dataTransfer.files.length * {{{ POINTER_SIZE }}});
       var filenamesArray = [];
       for (var i = 0; i < event.dataTransfer.files.length; ++i) {
-        var path = "/" + drop_dir + "/" + event.dataTransfer.files[i].name.replace(/\//g, "_");
+        var path = `/${drop_dir}/${event.dataTransfer.files[i].name.replace(/\//g, "_")}`;
         var filename = stringToNewUTF8(path);
         filenamesArray.push(filename);
         {{{ makeSetValue('filenames', `i*${POINTER_SIZE}` , 'filename', '*') }}};
@@ -858,7 +858,7 @@ var LibraryGLFW = {
         reader.onloadend = (e) => {
           if (reader.readyState != 2) { // not DONE
             ++written;
-            out('failed to read dropped file: ' +in_path+'/'+file.name+': '+reader.error);
+            err(`failed to read dropped file: ${in_path}/${file.name}: ${reader.error}`);
             return;
           }
 
@@ -879,13 +879,14 @@ var LibraryGLFW = {
       let filesQ = [];
       function finalize() {
         var count = filesQ.length;
-        for (var i = 0; i < count; ++i)
+        for (var i = 0; i < count; ++i) {
           save(filesQ[i].file, filesQ[i].path, count);
+        }
       } 
 
       if (typeof DataTransferItem.prototype.webkitGetAsEntry !== "undefined") {
         let entriesTree = {};
-        var markDone = function (fullpath, recursive) {
+        function markDone(fullpath, recursive) {
           if (entriesTree[fullpath].subpaths.length != 0) return;
           delete entriesTree[fullpath];
           let parentpath = fullpath.substring(0, fullpath.lastIndexOf('/'));
@@ -898,7 +899,7 @@ var LibraryGLFW = {
           if (recursive) markDone(parentpath, true);
           if (Object.keys(entriesTree).length == 0) finalize();
         };
-        var processEntry = function (entry) {
+        function processEntry(entry) {
           let fp = entry.fullPath;
           let pp = fp.substring(0, fp.lastIndexOf('/'));
           entriesTree[fp] = { subpaths: [] };
@@ -922,11 +923,10 @@ var LibraryGLFW = {
         for (const item of event.dataTransfer.items) {
           processEntry(item.webkitGetAsEntry());
         }
-      }
-      else {
-        // fallback for browsers that does not support `webkitGetAsEntry`
-        for (var i = 0; i < event.dataTransfer.files.length; ++i) {
-          filesQ.push({ file: event.dataTransfer.files[i], path: "" });
+      } else {
+        // fallback for browsers that does not support webkitGetAsEntry
+        for (const file of event.dataTransfer.files) {
+          filesQ.push({ file: file, path: "" });
         }
         finalize();
       }
