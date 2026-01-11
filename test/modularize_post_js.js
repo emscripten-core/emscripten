@@ -4,11 +4,17 @@
 // that are built with `-sMODULARIZE`.
 
 #if PTHREADS || WASM_WORKERS
-#if EXPORT_ES6
-const isMainThread = (await import('worker_threads')).isMainThread;
-#else
-const { isMainThread } = require('worker_threads');
+#if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
+let isMainThread = !globalThis.self?.name?.startsWith('em-');
 #endif
+#if ENVIRONMENT_MAY_BE_NODE
+if ({{{ nodeDetectionCode() }}})
+#if EXPORT_ES6
+  ({ isMainThread } = await import('worker_threads'));
+#else
+  ({ isMainThread } = require('worker_threads'));
+#endif
+#endif // ENVIRONMENT_MAY_BE_NODE
 // Avoid instantiating the module on pthreads.
 if (isMainThread)
 #endif
