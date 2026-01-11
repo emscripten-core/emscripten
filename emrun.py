@@ -101,17 +101,20 @@ ADB = None
 WINDOWS = False
 LINUX = False
 MACOS = False
+FREEBSD = False
 if os.name == 'nt':
   WINDOWS = True
   import winreg
 elif platform.system() == 'Linux':
   LINUX = True
+elif platform.system() == 'FreeBSD':
+  FREEBSD = True
 elif platform.mac_ver()[0] != '':
   MACOS = True
   import plistlib
 
 # If you are running on an OS that is not any of these, must add explicit support for it.
-if not WINDOWS and not LINUX and not MACOS:
+if not WINDOWS and not LINUX and not MACOS and not FREEBSD:
   raise Exception("Unknown OS!")
 
 
@@ -1233,6 +1236,11 @@ def find_browser(name):
                          ('firefox_nightly', os.path.expanduser('~/firefox_nightly/firefox')),
                          ('chrome', which('google-chrome-stable')),
                          ('chrome', which('google-chrome'))]
+  elif FREEBSD:
+    browser_locations = [
+      ('firefox', which('firefox')),
+      ('chrome', which('chromium')),
+    ]
 
   for alias, browser_exe in browser_locations:
     if name == alias:
@@ -1622,6 +1630,10 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
         options.browser = 'firefox'
     elif MACOS:
       options.browser = 'open'
+    elif FREEBSD:
+      options.browser = which('xdg-open')
+      if not options.browser:
+        options.browser = 'firefox'
 
   if options.list_browsers:
     if options.android:
