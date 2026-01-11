@@ -318,8 +318,8 @@ class sockets(BrowserCore):
     # this is also a good test of raw usage of emconfigure and emmake
     shutil.copytree(test_file('third_party', 'enet'), 'enet')
     with common.chdir('enet'):
-      self.run_process([path_from_root('emconfigure'), './configure', '--disable-shared'])
-      self.run_process([path_from_root('emmake'), 'make'])
+      self.run_process([common.EMCONFIGURE, './configure', '--disable-shared'])
+      self.run_process([common.EMMAKE, 'make'])
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + self.in_dir('enet', 'include')]
 
     with CompiledServerHarness(test_file('sockets/test_enet_server.c'), enet, 49210) as harness:
