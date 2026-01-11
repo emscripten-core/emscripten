@@ -67,6 +67,7 @@
 #define SYS_fchmodat2		__syscall_fchmodat2
 #define SYS_faccessat		__syscall_faccessat
 #define SYS_pselect6		__syscall_pselect6
+#define SYS_ppoll		__syscall_ppoll
 #define SYS_utimensat		__syscall_utimensat
 #define SYS_fallocate		__syscall_fallocate
 #define SYS_dup3		__syscall_dup3
