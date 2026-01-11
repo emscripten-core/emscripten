@@ -110,6 +110,8 @@ def get(ports, settings, shared):
       '-Wno-unused-parameter',
       '-Wno-nontrivial-memaccess',
       '-fdelayed-template-parsing',
+      # src/boost/boost/print/string_list.hpp calls std::string(NULL), whose
+      # consturctor is declared _Nonnull
       '-Wno-nonnull',
     ]
     if settings.PTHREADS:
