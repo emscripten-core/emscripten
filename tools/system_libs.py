@@ -1144,7 +1144,7 @@ class libc(MuslInternalLibrary,
     # musl modules
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'setjmp',
+        'aio', 'legacy', 'mq', 'setjmp',
         'ldso', 'malloc',
     ]
 
@@ -1158,11 +1158,13 @@ class libc(MuslInternalLibrary,
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'getauxval.c',
         'lookup_name.c',
-        # 'process' exclusion
+        # 'process' exclusions
         'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
         '_Fork.c',
-        # 'env' exclusion
+        # 'env' exclusions
         '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
+        # 'exit' exclusions
+        'assert.c', 'exit.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -1311,10 +1313,6 @@ class libc(MuslInternalLibrary,
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/sched',
         filenames=['sched_yield.c'])
-
-    libc_files += files_in_path(
-        path='system/lib/libc/musl/src/exit',
-        filenames=['abort.c', '_Exit.c', 'atexit.c', 'at_quick_exit.c', 'quick_exit.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
