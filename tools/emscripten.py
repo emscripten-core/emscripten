@@ -445,7 +445,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   # Unmangle previously mangled `import.meta` references in lib*.js.
   # See also: `LibraryManager.load` in modules.js.
   if settings.EXPORT_ES6:
-      glue = glue.replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
+    glue = glue.replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
 
   forwarded_json = json.loads(forwarded_data)
 
