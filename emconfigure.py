@@ -44,9 +44,6 @@ variables so that emcc etc. are used. Typical usage:
     return 1
 
   env = building.get_building_env()
-  # When we configure via a ./configure script, don't do config-time
-  # compilation with emcc, but instead do builds natively with Clang. This
-  # is a heuristic emulation that may or may not work.
   env['EMMAKEN_JUST_CONFIGURE'] = '1'
   print(f'emconfigure: {shlex.join(args)} in directory {os.getcwd()}', file=sys.stderr)
   os.environ.update(env)
