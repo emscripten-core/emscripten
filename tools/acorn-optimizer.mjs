@@ -1,6 +1,7 @@
 #!/usr/bin/env node
 
 import * as acorn from 'acorn';
+import importPhases from 'acorn-import-phases';
 import * as terser from '../third_party/terser/terser.js';
 import * as fs from 'node:fs';
 import assert from 'node:assert';
@@ -1752,7 +1753,7 @@ const registry = {
 
 let ast;
 try {
-  ast = acorn.parse(input, params);
+  ast = acorn.Parser.extend(importPhases()).parse(input, params);
   for (let pass of passes) {
     const resolvedPass = registry[pass];
     assert(resolvedPass, `unknown optimizer pass: ${pass}`);
@@ -1788,6 +1789,9 @@ if (!noPrint) {
   if (suffix) {
     output += suffix + '\n';
   }
+
+  // Terser doesn't understand `import source ...`
+  output = output.replace('import wasmModule from', 'import source wasmModule from');
 
   if (outfile) {
     fs.writeFileSync(outfile, output);
