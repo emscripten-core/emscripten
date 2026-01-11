@@ -681,6 +681,7 @@ jobs:
             lsan.test_pthread_create
             lsan.test_pthread_exit_main_stub
             lsan.test_dylink_iostream
+            ubsan.test_dlfcn_self
             ubsan.test_externref_emjs_dynlink"
       - freeze-cache
       - run-tests:
