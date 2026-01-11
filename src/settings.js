@@ -2259,3 +2259,9 @@ var CROSS_ORIGIN = false;
 // to behave like :ref:`SIDE_MODULE` and produce a dynamically linked
 // library.
 var FAKE_DYLIBS = true;
+
+// Add a #! line to generated JS file and make it executable.  This is useful
+// for building command line tools that run under node.
+// This setting can also be set to a string value, in which case that string
+// will be used as the #! command to embed in the generated file.
+var EXECUTABLE = false;

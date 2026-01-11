@@ -404,7 +404,7 @@ class SettingsManager:
 
   def check_type(self, name, value):
     # These settings have a variable type so cannot be easily type checked.
-    if name in ('SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO', 'MODULARIZE'):
+    if name in ('EXECUTABLE', 'SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO', 'MODULARIZE'):
       return
     expected_type = self.types.get(name)
     if not expected_type:
@@ -414,9 +414,9 @@ class SettingsManager:
       if value in (1, 0):
         value = bool(value)
       if value in ('True', 'False', 'true', 'false'):
-        exit_with_error('attempt to set `%s` to `%s`; use 1/0 to set boolean settings' % (name, value))
+        exit_with_error(f'attempt to set `{name}` to `{value}`; use 1/0 to set boolean settings')
     if type(value) is not expected_type:
-      exit_with_error('setting `%s` expects `%s` but got `%s`' % (name, expected_type.__name__, type(value).__name__))
+      exit_with_error(f'setting `{name}` expects `{expected_type.__name__}` but got `{type(value).__name__}`')
 
   def __getitem__(self, key):
     return self.attrs[key]

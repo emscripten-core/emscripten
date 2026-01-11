@@ -15282,3 +15282,15 @@ for(var i = 0; i < 65536; ++i)
 console.log('OK');'''
     write_file('test.js', read_file(path_from_root('src/binaryDecode.js')) + '\nvar src = ' + binary_encoded + ';\n' + test_js)
     self.assertContained('OK', self.run_js('test.js'))
+
+  @no_windows('depends on UNIX shbang feature')
+  def test_executable(self):
+    # First test without -sEXECUTABLE
+    self.run_process([EMCC, test_file('hello_world.c')])
+    self.assertNotContained('#!/usr/bin/env node', read_file('a.out.js'))
+
+    # Now, test with -sEXECUTABLE
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXECUTABLE'])
+    self.assertContained('#!/usr/bin/env node', read_file('a.out.js'))
+    output = self.run_process([os.path.abspath('a.out.js')], stdout=PIPE).stdout
+    self.assertContained('hello, world!', output)

@@ -21,6 +21,8 @@ See docs/process.md for more on how version tagging works.
 4.0.24 (in development)
 -----------------------
 - compiler-rt was updated to LLVM 21.1.8. (#26405)
+- A new `-sEXECUTABLE` setting was added which adds a #! line to the resulting
+  JavaScript and makes it executable. (#26085)
 
 4.0.23 - 01/10/26
 -----------------
