@@ -2115,22 +2115,6 @@ def phase_source_transforms(options):
   save_intermediate('transformed')
 
 
-# Unmangle previously mangled `import.meta` and `await import` references in
-# both main code and libraries.
-# See also: `preprocess` in parseTools.js.
-def fix_js_mangling(js_file):
-  # We don't apply these mangliings except in MODULARIZE/EXPORT_ES6 modes.
-  if not settings.MODULARIZE:
-    return
-
-  src = read_file(js_file)
-  write_file(js_file, src
-             .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
-             .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import')
-             .replace('EMSCRIPTEN$AWAIT(', 'await ('))
-  save_intermediate('js-mangling')
-
-
 def node_detection_code():
   return "globalThis.process?.versions?.node && globalThis.process?.type != 'renderer'"
 
@@ -2184,9 +2168,21 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   if shared.SKIP_SUBPROCS:
     return
 
-  if settings.MODULARIZE and settings.MODULARIZE != 'instance':
-    modularize()
-  elif settings.USE_CLOSURE_COMPILER:
+  if settings.EXPORT_ES6:
+    src = read_file(final_js)
+    # Replace variants of `window.Module = ` with `export default`
+    # See also: `preamble_modularize.js`
+    src = re.sub(f'window[\\[".]+{settings.EXPORT_NAME}[\\]"]*\\s*=\\s*async function',
+                 f'export default async function {settings.EXPORT_NAME}', src)
+    # Remove the line containing `export{};`
+    if settings.USE_CLOSURE_COMPILER:
+      src = src.replace('export{};\n', '')
+    final_js += '.post-es6.js'
+    write_file(final_js, src)
+    shared.get_temp_files().note(final_js)
+    save_intermediate('es6')
+
+  if settings.MODULARIZE not in [1, 'instance'] and settings.USE_CLOSURE_COMPILER:
     module_export_name_substitution()
 
   # Run a final optimization pass to clean up items that were not possible to
@@ -2206,8 +2202,6 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     # unused things that closure compiler leaves behind (e.g `new Float64Array(x)`).
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
     save_intermediate('unsafe-optimizations2')
-
-  fix_js_mangling(final_js)
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
@@ -2233,7 +2227,6 @@ def phase_final_emitting(options, target, js_target, wasm_target):
       support_target = unsuffixed(js_target) + '.pthread.mjs'
       pthread_code = building.read_and_preprocess(utils.path_from_root('src/pthread_esm_startup.mjs'), expand_macros=True)
       write_file(support_target, pthread_code)
-      fix_js_mangling(support_target)
   else:
     move_file(final_js, js_target)
 
@@ -2435,30 +2428,6 @@ def phase_binaryen(target, options, wasm_target):
       js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
     delete_file(wasm_target)
     write_file(final_js, js)
-
-
-def modularize():
-  global final_js
-  logger.debug(f'Modularizing, creating factory function called `{settings.EXPORT_NAME}`')
-  modularize_src = building.read_and_preprocess(utils.path_from_root('src/modularize.js'), expand_macros=True)
-  if settings.MINIFY_WHITESPACE:
-    with shared.get_temp_files().get_file(suffix='.js') as tmp:
-      write_file(tmp, modularize_src)
-      minified_file = building.acorn_optimizer(tmp, ['--minify-whitespace'])
-      modularize_src = read_file(minified_file)
-
-  # Replace INNER_JS_CODE in the minified code
-  full_src = do_replace(modularize_src, '"<<< INNER_JS_CODE >>>"', read_file(final_js))
-  final_js += '.modular.js'
-  write_file(final_js, full_src)
-  shared.get_temp_files().note(final_js)
-  save_intermediate('modularized')
-
-  # FIXME(https://github.com/emscripten-core/emscripten/issues/24558): Running acorn at this
-  # late phase seems to cause OOM (some kind of infinite loop perhaps) in node.
-  # Instead we minify src/modularize.js in isolation above.
-  #if settings.MINIFY_WHITESPACE:
-  #  final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
 
 
 def module_export_name_substitution():

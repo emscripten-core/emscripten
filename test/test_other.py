@@ -399,12 +399,14 @@ class other(RunnerCore):
     'node': (['-sENVIRONMENT=node'],),
     # load a worker before startup to check ES6 modules there as well
     'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
+    # i.e., OPT_LEVEL >= 2, minified with tools/acorn-optimizer.mjs
+    'optimize': (['-O3'],),
   })
   def test_esm(self, args):
     self.run_process([EMCC, '-o', 'hello_world.mjs',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
-    self.assertContained('export default Module;', read_file('hello_world.mjs'))
+    self.assertContained('export default async function Module', read_file('hello_world.mjs'))
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
   @requires_node_canary
@@ -430,7 +432,7 @@ class other(RunnerCore):
     src = read_file('subdir/hello_world.mjs')
     self.assertContained("new URL('hello_world.wasm', import.meta.url)", src)
     self.assertContained("new Worker(new URL('hello_world.mjs', import.meta.url), {", src)
-    self.assertContained('export default Module;', src)
+    self.assertContained('export default async function Module', src)
     self.assertContained('hello, world!', self.run_js('subdir/hello_world.mjs'))
 
   @node_pthreads
@@ -454,7 +456,7 @@ class other(RunnerCore):
   def test_esm_implies_modularize(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6'])
     src = read_file('a.out.js')
-    self.assertContained('export default Module;', src)
+    self.assertContained('export default async function Module', src)
 
   def test_esm_requires_modularize(self):
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMODULARIZE=0'], 'EXPORT_ES6 requires MODULARIZE to be set')
