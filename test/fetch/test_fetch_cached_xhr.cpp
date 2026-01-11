@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <math.h>
 #include <assert.h>
+#include <stdlib.h>
 #include <emscripten/fetch.h>
 
 int result = 0;

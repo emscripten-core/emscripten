@@ -110,6 +110,7 @@ def get(ports, settings, shared):
       '-Wno-unused-parameter',
       '-Wno-nontrivial-memaccess',
       '-fdelayed-template-parsing',
+      '-Wno-nonnull',
     ]
     if settings.PTHREADS:
       flags += ['-pthread']
