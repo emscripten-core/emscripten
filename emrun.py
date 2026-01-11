@@ -788,6 +788,11 @@ def get_cpu_info():
       sockets = int(re.search(r'Socket\(s\): (.*)', lscpu).group(1).strip())
       physical_cores = sockets * int(re.search(r'Core\(s\) per socket: (.*)', lscpu).group(1).strip())
       logical_cores = physical_cores * int(re.search(r'Thread\(s\) per core: (.*)', lscpu).group(1).strip())
+    elif FREEBSD:
+      cpu_name = check_output(['sysctl', '-n', 'hw.model']).strip()
+      physical_cores = int(check_output(['sysctl', '-n', 'hw.ncpu']).strip())
+      logical_cores = physical_cores
+      frequency = int(check_output(['sysctl', '-n', 'hw.clockrate']).strip())
   except Exception as e:
     import traceback
     loge(traceback.format_exc())
