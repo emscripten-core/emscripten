@@ -1236,18 +1236,13 @@ def find_browser(name):
                             ('iexplore', os.path.join(program_files, 'Internet Explorer/iexplore.exe')),
                             ('opera', os.path.join(program_files, 'Opera/launcher.exe'))]
 
-  elif LINUX:
+  elif LINUX or FREEBSD:
     browser_locations = [('firefox', os.path.expanduser('~/firefox/firefox')),
                          ('firefox_beta', os.path.expanduser('~/firefox_beta/firefox')),
                          ('firefox_aurora', os.path.expanduser('~/firefox_aurora/firefox')),
                          ('firefox_nightly', os.path.expanduser('~/firefox_nightly/firefox')),
                          ('chrome', which('google-chrome-stable')),
                          ('chrome', which('google-chrome'))]
-  elif FREEBSD:
-    browser_locations = [
-      ('firefox', which('firefox')),
-      ('chrome', which('chromium')),
-    ]
 
   for alias, browser_exe in browser_locations:
     if name == alias:
@@ -1631,16 +1626,12 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
   if not options.browser and not options.android:
     if WINDOWS:
       options.browser = 'start'
-    elif LINUX:
+    elif LINUX or FREEBSD:
       options.browser = which('xdg-open')
       if not options.browser:
         options.browser = 'firefox'
     elif MACOS:
       options.browser = 'open'
-    elif FREEBSD:
-      options.browser = which('xdg-open')
-      if not options.browser:
-        options.browser = 'firefox'
 
   if options.list_browsers:
     if options.android:
