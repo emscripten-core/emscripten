@@ -163,8 +163,6 @@ Linux
     # Install CMake (optional, only needed for tests and building Binaryen or LLVM)
     sudo apt-get install cmake
 
-.. note:: If you want to use your system's Node.js instead of the emsdk's, it may be ``node`` instead of ``nodejs``, and you can adjust the ``NODE_JS`` attribute of your ``.emscripten`` file to point to it.
-
 - *Git* is not installed automatically. Git is only needed if you want to use tools from a development branch.
 
   ::
