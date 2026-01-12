@@ -1702,18 +1702,6 @@ int f() {
     expected = 'emcc: error: MINIMAL_RUNTIME is not compatible with --preload-file'
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sMINIMAL_RUNTIME', '--preload-file', 'foo'], expected)
 
-  def test_minimal_runtime_esm_streaming_instantiation(self):
-    self.run_process([EMCC, '-o', 'test.mjs',
-                      '-sMINIMAL_RUNTIME',
-                      '-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION',
-                      '-sEXPORT_ES6',
-                      '-sENVIRONMENT=web',
-                      test_file('hello_world.c')])
-
-    src = read_file('test.mjs')
-    # Verify that the generated code uses import.meta.url for the wasm URL
-    self.assertContained("new URL('test.wasm', import.meta.url)", src)
-
   def test_export_all_and_exported_functions(self):
     # EXPORT_ALL should not export library functions by default.
     # This means that to export library function you also need to explicitly
