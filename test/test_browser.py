@@ -5563,6 +5563,21 @@ Module["preRun"] = () => {
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
   @also_with_threads
+  @requires_dev_dependency('vite')
+  def test_vite_minimal_runtime(self):
+    copytree(test_file('vite'), '.')
+    self.compile_btest('hello_world.c', [
+      '-sEXIT_RUNTIME',
+      '-sMINIMAL_RUNTIME',
+      '-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION',
+      '-sEXPORT_ES6',
+      '-sENVIRONMENT=web',
+      '-o',
+      'hello.mjs'])
+    self.run_process(shared.get_npm_cmd('vite') + ['build'])
+    self.run_browser('dist/index.html', '/report_result?exit:0')
+
+  @also_with_threads
   @requires_dev_dependency('rollup')
   def test_rollup(self):
     copytree(test_file('rollup'), '.')
