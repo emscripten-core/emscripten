@@ -29,14 +29,16 @@ int sync_tunnel_bool(bool);
 int main() {
 #ifdef BAD
   EM_ASM({
-    globalThis.disableErrorReporting = true;
-    window.onerror = async (e) => {
-      var success = e.toString().indexOf("import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state") > 0;
-      if (success) {
-        console.log("reporting success");
-        maybeReportResultToServer(0);
-      }
-    };
+    if (globalThis.window) {
+      globalThis.disableErrorReporting = true;
+      window.onerror = async (e) => {
+        var success = e.toString().indexOf("import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state") > 0;
+        if (success) {
+          console.log("reporting success");
+          maybeReportResultToServer(0);
+        }
+      };
+    }
   });
 #endif
   int x;
@@ -63,10 +65,13 @@ int main() {
   // We should not get here.
   printf("We should not get here\n");
   assert(false);
+  return 1;
 #else
   // Success!
+  printf("done\n");
+#ifdef REPORT_RESULT
   REPORT_RESULT(0);
 #endif
-
   return 0;
+#endif
 }

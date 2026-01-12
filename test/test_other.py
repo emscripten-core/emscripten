@@ -10310,6 +10310,30 @@ _d
     test(['-sASSERTIONS=1'],
          'Aborted(RuntimeError: unreachable). "unreachable" may be due to ASYNCIFY_STACK_SIZE not being large enough (try increasing it)')
 
+  # Test an async return value. The value goes through a custom JS library
+  # method that uses asyncify, and therefore it needs to be declared in
+  # ASYNCIFY_IMPORTS.
+  # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
+  @parameterized({
+    '': (['-sASYNCIFY_IMPORTS=sync_tunnel,sync_tunnel_bool'],), # noqa
+    'pattern_imports': (['-sASYNCIFY_IMPORTS=[sync_tun*]'],), # noqa
+    'response': (['-sASYNCIFY_IMPORTS=@filey.txt'],), # noqa
+    'nothing': (['-DBAD'],), # noqa
+    'empty_list': (['-DBAD', '-sASYNCIFY_IMPORTS=[]'],), # noqa
+    'em_js_bad': (['-DBAD', '-DUSE_EM_JS'],), # noqa
+  })
+  def test_async_returnvalue(self, args):
+    if '-DBAD' in args:
+      returncode = NON_ZERO
+      expected = 'import sync_tunnel was not in ASYNCIFY_IMPORTS, but changed the state'
+    else:
+      returncode = 0
+      expected = 'done\n'
+    if '@' in str(args):
+      create_file('filey.txt', 'sync_tunnel\nsync_tunnel_bool\n')
+    cflags = ['-sASSERTIONS', '-sASYNCIFY', '-sASYNCIFY_IGNORE_INDIRECT', '--js-library', test_file('test_async_returnvalue.js')]
+    self.do_runf('test_async_returnvalue.c', expected, assert_returncode=returncode, cflags=cflags + args)
+
   # Sockets and networking
 
   def test_inet(self):
