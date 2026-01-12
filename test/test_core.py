@@ -256,7 +256,7 @@ def with_asyncify_and_jspi(func):
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
     if jspi:
-      self.set_setting('ASYNCIFY', 2)
+      self.set_setting('JSPI')
       self.require_jspi()
     else:
       self.set_setting('ASYNCIFY')
@@ -275,7 +275,7 @@ def also_with_asyncify_and_jspi(func):
     if asyncify and self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
     if asyncify == 2:
-      self.set_setting('ASYNCIFY', 2)
+      self.set_setting('JSPI')
       self.require_jspi()
     elif asyncify == 1:
       self.set_setting('ASYNCIFY')
@@ -8307,7 +8307,7 @@ Module.onRuntimeInitialized = () => {
   @with_asyncify_and_jspi
   @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_promise(self, exit_runtime):
-    if self.get_setting('ASYNCIFY') == 2:
+    if self.get_setting('JSPI'):
       self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)

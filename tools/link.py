@@ -1603,8 +1603,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # Enable minification of wasm imports and exports when appropriate, if we
   # are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
   # Things that process the JS after this operation would be done must disable this.
-  # ASYNCIFY=2 does not support this optimization yet as it has a hardcoded
-  # check for 'main' as an export name. TODO
+  # JSPI does not support this optimization yet as it has a hardcoded check for 'main' as an
+  # export name. TODO
   if will_metadce() and \
       settings.OPT_LEVEL >= 2 and \
       settings.DEBUG_LEVEL <= 2 and \
@@ -1739,7 +1739,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       settings.ASYNCIFY_IMPORTS += ['invoke_*']
     # add the default imports
     settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
-    # add the default exports (only used for ASYNCIFY == 2)
+    # add the default exports (only used for JSPI)
     settings.ASYNCIFY_EXPORTS += DEFAULT_ASYNCIFY_EXPORTS
 
     # return the full import name, including module. The name may
@@ -1752,7 +1752,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in settings.ASYNCIFY_IMPORTS]
 
     if settings.ASYNCIFY == 2:
-      diagnostics.warning('experimental', '-sASYNCIFY=2 (JSPI) is still experimental')
+      diagnostics.warning('experimental', '-sJSPI (ASYNCIFY=2) is still experimental')
 
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
