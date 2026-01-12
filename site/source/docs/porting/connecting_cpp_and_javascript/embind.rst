@@ -840,6 +840,8 @@ C++ integer.
 
 .. code:: cpp
 
+    enum class Enum { ONE, TWO };
+
     EMSCRIPTEN_BINDINGS(my_enum_example) {
         enum_<Enum>("ObjectEnum", enum_value_type::object)
             .value("ONE", Enum::ONE)
@@ -848,8 +850,8 @@ C++ integer.
 
 .. code:: javascript
 
-    Module.ObjectEnum.ONE.value === 1;
-    Module.ObjectEnum.TWO.value === 2;
+    Module.ObjectEnum.ONE.value === 0;
+    Module.ObjectEnum.TWO.value === 1;
 
 Alternatively, you can use:
 
@@ -884,8 +886,8 @@ Alternatively, you can use:
     Module.StringEnum.ONE === "ONE";
     Module.StringEnum.TWO === "TWO";
 
-Whatever the ``enum_value_type`` used, enum values can always be used as arguments
-to functions expecting the enum type.
+Regardless of the ``enum_value_type`` used, enum values can always be used as
+arguments to functions expecting the enum type.
 
 .. code:: cpp
 

@@ -28,7 +28,7 @@ function startWasmWorker(props) {
 #endif
   // Drop now unneeded references to from the Module object in this Worker,
   // these are not needed anymore.
-  props.wasm = props.memMemory = 0;
+  props.wasm = props.wasmMemory = 0;
 }
 
 #if AUDIO_WORKLET

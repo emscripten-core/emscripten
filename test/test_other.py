@@ -38,7 +38,6 @@ from common import (
   EMBUILDER,
   EMCMAKE,
   EMCONFIGURE,
-  EMTEST_BUILD_VERBOSE,
   NON_ZERO,
   PYTHON,
   TEST_ROOT,
@@ -938,13 +937,13 @@ f.close()
         if test_dir == 'target_html':
           env['EMCC_SKIP_SANITY_CHECK'] = '1'
         print(str(cmd))
-        self.run_process(cmd, env=env, stdout=None if EMTEST_BUILD_VERBOSE >= 2 else PIPE, stderr=None if EMTEST_BUILD_VERBOSE >= 1 else PIPE)
+        self.run_process(cmd, env=env)
 
         # Build
         cmd = conf['build']
-        if EMTEST_BUILD_VERBOSE >= 3 and 'Ninja' not in generator:
+        if common.EMTEST_VERBOSE and 'Ninja' not in generator:
           cmd += ['VERBOSE=1']
-        self.run_process(cmd, stdout=None if EMTEST_BUILD_VERBOSE >= 2 else PIPE)
+        self.run_process(cmd)
         self.assertExists(output_file, 'building a cmake-generated Makefile failed to produce an output file %s!' % output_file)
 
         # Run through node, if CMake produced a .js file.
@@ -3590,6 +3589,7 @@ More info: https://emscripten.org
     '3': [['-sWASM=0'], 'embind_tsgen_ignore_3.d.ts'],
     '4': [['-fsanitize=undefined', '-gsource-map'], 'embind_tsgen_ignore_3.d.ts'],
     '5': [['-sASYNCIFY'], 'embind_tsgen_ignore_3.d.ts'],
+    '6': [['-sENVIRONMENT=worker', '-lworkerfs.js'], 'embind_tsgen.d.ts'],
   })
   def test_embind_tsgen_ignore(self, extra_args, expected_ts_file):
     create_file('fail.js', 'assert(false);')
@@ -3769,19 +3769,6 @@ More info: https://emscripten.org
     self.assertContained('yello', self.run_js('a.out.js'))
     # Check that valid -s option had an effect'
     self.assertContained('SAFE_HEAP', read_file('a.out.js'))
-
-  def test_conftest_s_flag_passing(self):
-    create_file('conftest.c', r'''
-      int main() {
-        return 0;
-      }
-    ''')
-    # the name "conftest.c" is enough to make us use a configure-like mode,
-    # the same as if EMMAKEN_JUST_CONFIGURE=1 were set in the env.
-    cmd = [EMCC, '-sASSERTIONS', 'conftest.c', '-o', 'conftest']
-    output = self.run_process(cmd, stderr=PIPE)
-    self.assertNotContained('emcc: warning: treating -s as linker option', output.stderr)
-    self.assertExists('conftest')
 
   def test_file_packager(self):
     ensure_dir('subdir')
@@ -10685,8 +10672,12 @@ int main () {
 
   # Tests the library_c_preprocessor.js functionality.
   @crossplatform
-  def test_c_preprocessor(self):
-    self.do_runf('test_c_preprocessor.c', cflags=['--js-library', path_from_root('src/lib/libc_preprocessor.js')])
+  @parameterized({
+    '': ([],),
+    'closure': (['--closure=1'],),
+  })
+  def test_c_preprocessor(self, args):
+    self.do_runf('test_c_preprocessor.c', cflags=['--js-library', path_from_root('src/lib/libc_preprocessor.js')] + args)
 
   # Test that legacy settings that have been fixed to a specific value and their value can no longer be changed,
   def test_legacy_settings_forbidden_to_change(self):
@@ -12369,7 +12360,7 @@ exec "$@"
     self.assertFileContents(path_from_root('src/struct_info_generated.json'), read_file('out.json'))
 
     # Same again for wasm64
-    node_version = shared.get_node_version(self.get_nodejs())
+    node_version = self.get_node_test_version(self.get_nodejs())
     if node_version and node_version >= (14, 0, 0):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
       self.assertFileContents(path_from_root('src/struct_info_generated_wasm64.json'), read_file('out.json'))
@@ -12882,7 +12873,7 @@ void foo() {}
     self.build('main.c', cflags=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=0'])
     self.assertNotContained('unhandledRejection', read_file('main.js'))
 
-    if shared.get_node_version(self.get_nodejs())[0] >= 15:
+    if self.get_node_test_version(self.get_nodejs())[0] >= 15:
       self.skipTest('old behaviour of node JS cannot be tested on node v15 or above')
 
     output = self.run_js('main.js')
@@ -13961,7 +13952,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @requires_node
   def test_min_node_version(self):
-    node_version = shared.get_node_version(self.get_nodejs())
+    node_version = self.get_node_test_version(self.get_nodejs())
     node_version = '.'.join(str(x) for x in node_version)
     self.set_setting('MIN_NODE_VERSION', 300000)
     expected = 'This emscripten-generated code requires node v30.0.0 (detected v%s' % node_version
@@ -14469,6 +14460,15 @@ addToLibrary({
     # macros.
     create_file('a.cpp', '#define try\n#define catch if (0)\n#include <emscripten/bind.h>')
     self.run_process([EMXX, '-fno-exceptions', '-std=c++23', '-lembind', 'a.cpp'])
+
+  def test_embind_optional_val_no_bind(self):
+    # Ensure passing std::optional to emscripten::val works if <emscripten/bind.h>
+    # was not included in the compilation unit using val.
+    self.run_process([EMXX,'-lembind',
+                      test_file('embind/test_optional_val_main.cpp'),
+                      test_file('embind/test_optional_val_lib.cpp')])
+    output = self.run_js('a.out.js')
+    self.assertContained('done', output)
 
   def test_no_pthread(self):
     self.do_runf('hello_world.c', cflags=['-pthread', '-no-pthread'])

@@ -101,17 +101,20 @@ ADB = None
 WINDOWS = False
 LINUX = False
 MACOS = False
+FREEBSD = False
 if os.name == 'nt':
   WINDOWS = True
   import winreg
 elif platform.system() == 'Linux':
   LINUX = True
+elif platform.system() == 'FreeBSD':
+  FREEBSD = True
 elif platform.mac_ver()[0] != '':
   MACOS = True
   import plistlib
 
 # If you are running on an OS that is not any of these, must add explicit support for it.
-if not WINDOWS and not LINUX and not MACOS:
+if not WINDOWS and not LINUX and not MACOS and not FREEBSD:
   raise Exception("Unknown OS!")
 
 
@@ -785,6 +788,11 @@ def get_cpu_info():
       sockets = int(re.search(r'Socket\(s\): (.*)', lscpu).group(1).strip())
       physical_cores = sockets * int(re.search(r'Core\(s\) per socket: (.*)', lscpu).group(1).strip())
       logical_cores = physical_cores * int(re.search(r'Thread\(s\) per core: (.*)', lscpu).group(1).strip())
+    elif FREEBSD:
+      cpu_name = check_output(['sysctl', '-n', 'hw.model']).strip()
+      physical_cores = int(check_output(['sysctl', '-n', 'hw.ncpu']).strip())
+      logical_cores = physical_cores
+      frequency = int(check_output(['sysctl', '-n', 'hw.clockrate']).strip())
   except Exception as e:
     import traceback
     loge(traceback.format_exc())
@@ -1120,6 +1128,8 @@ def get_system_memory():
       return win32api.GlobalMemoryStatusEx()['TotalPhys']
     elif MACOS:
       return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
+    elif FREEBSD:
+      return int(check_output(['sysctl', '-n', 'hw.physmem']).strip())
   except Exception:
     return -1
 
@@ -1226,7 +1236,7 @@ def find_browser(name):
                             ('iexplore', os.path.join(program_files, 'Internet Explorer/iexplore.exe')),
                             ('opera', os.path.join(program_files, 'Opera/launcher.exe'))]
 
-  elif LINUX:
+  elif LINUX or FREEBSD:
     browser_locations = [('firefox', os.path.expanduser('~/firefox/firefox')),
                          ('firefox_beta', os.path.expanduser('~/firefox_beta/firefox')),
                          ('firefox_aurora', os.path.expanduser('~/firefox_aurora/firefox')),
@@ -1616,7 +1626,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
   if not options.browser and not options.android:
     if WINDOWS:
       options.browser = 'start'
-    elif LINUX:
+    elif LINUX or FREEBSD:
       options.browser = which('xdg-open')
       if not options.browser:
         options.browser = 'firefox'
