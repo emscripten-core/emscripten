@@ -58,8 +58,8 @@ int display_info(const char *fpath, const struct stat *sb, int tflag, struct FTW
 void on_file_drop(GLFWwindow *window, int count, const char **paths) {
   for (int i = 0; i < count; ++i) {
     printf("dropped file %s\n", paths[i]);
-    int flags = FTW_PHYS; // Do not follow symbolic links
-    if (nftw(paths[i], display_info, 20, flags) == -1) {
+    // FTW_PHYS: Do not follow symbolic links
+    if (nftw(paths[i], display_info, 20, FTW_PHYS) == -1) {
       printf("failed to traverse %s\n", paths[i]);
       perror("nftw");
       assert(false);
