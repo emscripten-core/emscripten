@@ -681,6 +681,7 @@ jobs:
             lsan.test_pthread_create
             lsan.test_pthread_exit_main_stub
             lsan.test_dylink_iostream
+            ubsan.test_dlfcn_self
             ubsan.test_externref_emjs_dynlink"
       - freeze-cache
       - run-tests:
@@ -873,6 +874,8 @@ jobs:
       - upload-test-results
   test-bun:
     executor: linux-python
+    environment:
+      OVERRIDE_NODE_JS_TEST_VERSION: "v24.0.0"
     steps:
       - checkout
       - pip-install
@@ -881,10 +884,14 @@ jobs:
           name: install bun
           command: |
             curl -fsSL https://bun.com/install | bash
-            echo "BUN_ENGINE = os.path.expanduser('~/.bun/bin/bun')" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [BUN_ENGINE]" >> ~/emsdk/.emscripten
+            echo "NODE_JS_TEST = os.path.expanduser('~/.bun/bin/bun')" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [NODE_JS_TEST]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "core0.test_hello_world"
+          test_targets: "
+            core0.test_hello_world
+            core0.test_hello_argc_pthreads
+            core2.test_pthread_create
+            "
   test-jsc:
     executor: linux-python
     steps:
