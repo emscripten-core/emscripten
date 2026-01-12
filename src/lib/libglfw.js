@@ -898,7 +898,7 @@ var LibraryGLFW = {
           if (fpIndex > -1) entriesTree[parentpath].subpaths.splice(fpIndex, 1);
           if (recursive) markDone(parentpath, true);
           if (Object.keys(entriesTree).length == 0) finalize();
-        };
+        }
         function processEntry(entry) {
           let fp = entry.fullPath;
           let pp = fp.substring(0, fp.lastIndexOf('/'));
@@ -919,7 +919,7 @@ var LibraryGLFW = {
             };
             reader.readEntries(rRead);
           }
-        };
+        }
         for (const item of event.dataTransfer.items) {
           processEntry(item.webkitGetAsEntry());
         }
