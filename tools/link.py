@@ -456,18 +456,15 @@ def get_binaryen_passes(options):
 
 def make_js_executable(script):
   src = read_file(script)
-  cmd = config.NODE_JS
-  if len(cmd) > 1 or not os.path.isabs(cmd[0]):
-    # Using -S (--split-string) here means that arguments to the executable are
-    # correctly parsed.  We don't do this by default because old versions of env
-    # don't support -S.
-    cmd = '/usr/bin/env -S ' + shlex.join(cmd)
-  else:
-    cmd = shlex.join(cmd)
-  logger.debug('adding `#!` to JavaScript file: %s' % cmd)
+
+  # By default, the resulting script will run under the version of node in the PATH.
+  if settings.EXECUTABLE == 1:
+    settings.EXECUTABLE = '/usr/bin/env node'
+
+  logger.debug(f'adding `#!` to JavaScript file: {settings.EXECUTABLE}')
   # add shebang
   with open(script, 'w') as f:
-    f.write('#!%s\n' % cmd)
+    f.write(f'#!{settings.EXECUTABLE}\n')
     f.write(src)
   try:
     os.chmod(script, stat.S_IMODE(os.stat(script).st_mode) | stat.S_IXUSR) # make executable
@@ -831,7 +828,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # use node.js raw filesystem access, to behave just like a native executable
     settings.NODERAWFS = 1
     # Add `#!` line to output JS and make it executable.
-    options.executable = True
+    settings.EXECUTABLE = config.NODE_JS[0]
     # autoconf declares functions without their proper signatures, and STRICT causes that to trip up by passing --fatal-warnings to the linker.
     if settings.STRICT:
       exit_with_error('autoconfiguring is not compatible with STRICT')
@@ -2249,7 +2246,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   if settings.SPLIT_MODULE:
     do_split_module(wasm_target, options)
 
-  if options.executable:
+  if settings.EXECUTABLE:
     make_js_executable(js_target)
 
 
