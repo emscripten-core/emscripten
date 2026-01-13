@@ -22,6 +22,7 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - compiler-rt, libcxx, and libcxxabi were updated to LLVM 21.1.8. (#26045,
   #26058)
+- compiler-rt and libunwind were updated to LLVM 21.1.8. (#26036 and #26045)
 - A new `-sEXECUTABLE` setting was added which adds a #! line to the resulting
   JavaScript and makes it executable.  This setting defaults to true when the
   output filename has no extension, or ends in `.out` (e.g. `a.out`) (#26085)
