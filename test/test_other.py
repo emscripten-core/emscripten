@@ -10310,6 +10310,9 @@ _d
     test(['-sASSERTIONS=1'],
          'Aborted(RuntimeError: unreachable). "unreachable" may be due to ASYNCIFY_STACK_SIZE not being large enough (try increasing it)')
 
+  def test_async_exit_after_wakeup(self):
+    self.do_runf('test_async_exit_after_wakeup.c', cflags=['-sASYNCIFY', '--js-library', test_file('test_async_exit_after_wakeup.js')])
+
   # Sockets and networking
 
   def test_inet(self):
