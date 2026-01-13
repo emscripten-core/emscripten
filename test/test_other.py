@@ -15283,14 +15283,28 @@ console.log('OK');'''
     write_file('test.js', read_file(path_from_root('src/binaryDecode.js')) + '\nvar src = ' + binary_encoded + ';\n' + test_js)
     self.assertContained('OK', self.run_js('test.js'))
 
-  @no_windows('depends on UNIX shbang feature')
-  def test_executable(self):
-    # First test without -sEXECUTABLE
+  @crossplatform
+  def test_executable_output_default(self):
+    # By default there should not be a #! line included
     self.run_process([EMCC, test_file('hello_world.c')])
+    self.assertFalse(read_file('a.out.js').startswith('#!'))
     self.assertNotContained('#!/usr/bin/env node', read_file('a.out.js'))
 
-    # Now, test with -sEXECUTABLE
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXECUTABLE'])
-    self.assertContained('#!/usr/bin/env node', read_file('a.out.js'))
-    output = self.run_process([os.path.abspath('a.out.js')], stdout=PIPE).stdout
+  @crossplatform
+  @no_windows('depends on UNIX shbang feature')
+  @parameterized({
+    '': (['-sEXECUTABLE', '-o', 'out.js'],),
+    # -sEXECUTABLE is implied if output filename has no extension
+    'no_extension': (['-o', 'foo'],),
+    # -sEXECUTABLE is implied for `.out` extension, e.g. a.out.
+    'a_out': (['-o', 'a.out'],),
+  })
+  def test_executable_output(self, args):
+    js_filename = args[-1]
+    self.run_process([EMCC, test_file('hello_world.c')] + args)
+    self.assertContained('#!/usr/bin/env node', read_file(js_filename))
+    output = self.run_process([os.path.abspath(js_filename)], stdout=PIPE).stdout
     self.assertContained('hello, world!', output)
+
+  def test_executable_requires_node(self):
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXECUTABLE', '-sENVIRONMENT=web'], 'emcc: error: EXECUTABLE requires `node` in ENVRIONMENT')

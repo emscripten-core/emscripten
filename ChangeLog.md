@@ -23,7 +23,8 @@ See docs/process.md for more on how version tagging works.
 - compiler-rt, libcxx, and libcxxabi were updated to LLVM 21.1.8. (#26405,
   #26058)
 - A new `-sEXECUTABLE` setting was added which adds a #! line to the resulting
-  JavaScript and makes it executable. (#26085)
+  JavaScript and makes it executable.  This setting defaults to true when the
+  output filename has no extension, or ends in `.out` (e.g. `a.out`) (#26085)
 
 4.0.23 - 01/10/26
 -----------------
@@ -47,7 +48,7 @@ See docs/process.md for more on how version tagging works.
 - Source maps now support 'names' field with function name information.
   emsymbolizer will show function names when used with a source map. The size
   of source maps may increase 2-3x and the link time can increase slightly due
-  to more processing on source map creation. (#25298)
+  to more processing on source map creation. (#25928)
 - Emscripten will now cache the JS code that it generates and re-use when
   linking with the same settings at a later date.  This should improve link
   times generally but should especially noticeable when linking lots of small
@@ -244,7 +245,7 @@ See docs/process.md for more on how version tagging works.
 - When JSPI is enabled `async` library functions are no longer automatically
   wrapped with `WebAssembly.Suspending` functions. To automatically wrap library
   functions for use with JSPI they must now explicitly set
-  `myLibraryFunction__async: true`.
+  `myLibraryFunction__async: true`. (#24550)
 - Removed special casing for `size_t` in Embind, since it was also inadvertently
   affecting `unsigned long` on wasm64. Both will now match the behaviour of
   other 64-bit integers on wasm64 and will be passed as `bigint` instead of
