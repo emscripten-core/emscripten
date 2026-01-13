@@ -26,7 +26,7 @@ See docs/process.md for more on how version tagging works.
   output filename has no extension, or ends in `.out` (e.g. `a.out`) (#26085)
 - Embind now supports the JS iterable protocol on bound classes via
   `class_<T>::iterable()`. `register_vector` uses this so bound `std::vector`
-  works with `for...of`/`Array.from()`/spread.
+  works with `for...of`/`Array.from()`/spread. (#25993)
 
 4.0.23 - 01/10/26
 -----------------
