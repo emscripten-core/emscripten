@@ -350,6 +350,19 @@ ${body};
   });
 }
 
+function handleAsyncFunction(snippet) {
+  return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+    if (!oneliner) {
+      body = `{\n${body}\n}`;
+    }
+    return `\
+function(${args}) {
+  let innerFunc = ${async_} () => ${body};
+  return Asyncify.handleAsync(innerFunc);
+}\n`;
+  });
+}
+
 export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
   const symbolDeps = {};
@@ -418,6 +431,11 @@ function(${args}) {
   return ret;
 }`;
       });
+    }
+
+    const isAsyncFunction = LibraryManager.library[symbol + '__async'];
+    if (ASYNCIFY && isAsyncFunction == 'auto') {
+      snippet = handleAsyncFunction(snippet);
     }
 
     const sig = LibraryManager.library[symbol + '__sig'];
@@ -697,15 +715,12 @@ function(${args}) {
       let contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
-        if (
-          (USE_ASAN || USE_LSAN || UBSAN_RUNTIME) &&
-          LibraryManager.library[symbol + '__noleakcheck']
-        ) {
+        if ((USE_ASAN || USE_LSAN) && LibraryManager.library[symbol + '__noleakcheck']) {
           contentText = modifyJSFunction(
             snippet,
-            (args, body) => `(${args}) => withBuiltinMalloc(() => {${body}})`,
+            (args, body) => `(${args}) => noLeakCheck(() => {${body}})`,
           );
-          deps.push('$withBuiltinMalloc');
+          deps.push('$noLeakCheck');
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }

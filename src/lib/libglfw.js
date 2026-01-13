@@ -838,29 +838,34 @@ var LibraryGLFW = {
       event.preventDefault();
 
 #if FILESYSTEM
+      var drop_dir = '.glfw_dropped_files';
       var filenames = _malloc(event.dataTransfer.files.length * {{{ POINTER_SIZE }}});
       var filenamesArray = [];
-      var count = event.dataTransfer.files.length;
+      for (var i = 0; i < event.dataTransfer.files.length; ++i) {
+        var path = `/${drop_dir}/${event.dataTransfer.files[i].name.replace(/\//g, "_")}`;
+        var filename = stringToNewUTF8(path);
+        filenamesArray.push(filename);
+        {{{ makeSetValue('filenames', `i*${POINTER_SIZE}` , 'filename', '*') }}};
+      }
 
       // Read and save the files to emscripten's FS
       var written = 0;
-      var drop_dir = '.glfw_dropped_files';
       FS.createPath('/', drop_dir);
 
-      function save(file) {
-        var path = '/' + drop_dir + '/' + file.name.replace(/\//g, '_');
+      function save(file, in_path, numfiles) {
+        var path = '/' + drop_dir + in_path + '/' + file.name.replace(/\//g, '_');
         var reader = new FileReader();
         reader.onloadend = (e) => {
           if (reader.readyState != 2) { // not DONE
             ++written;
-            out('failed to read dropped file: '+file.name+': '+reader.error);
+            err(`failed to read dropped file: ${in_path}/${file.name}: ${reader.error}`);
             return;
           }
 
           var data = e.target.result;
           FS.writeFile(path, new Uint8Array(data));
-          if (++written === count) {
-            {{{ makeDynCall('vpip', 'GLFW.active.dropFunc') }}}(GLFW.active.id, count, filenames);
+          if (++written === numfiles) {
+            {{{ makeDynCall('vpip', 'GLFW.active.dropFunc') }}}(GLFW.active.id, filenamesArray.length, filenames);
 
             for (var i = 0; i < filenamesArray.length; ++i) {
               _free(filenamesArray[i]);
@@ -869,14 +874,61 @@ var LibraryGLFW = {
           }
         };
         reader.readAsArrayBuffer(file);
-
-        var filename = stringToNewUTF8(path);
-        filenamesArray.push(filename);
-        {{{ makeSetValue('filenames', `i*${POINTER_SIZE}` , 'filename', '*') }}};
       }
 
-      for (var i = 0; i < count; ++i) {
-        save(event.dataTransfer.files[i]);
+      let filesQ = [];
+      function finalize() {
+        var count = filesQ.length;
+        for (var i = 0; i < count; ++i) {
+          save(filesQ[i].file, filesQ[i].path, count);
+        }
+      } 
+
+      if (DataTransferItem.prototype.webkitGetAsEntry) {
+        let entriesTree = {};
+        function markDone(fullpath, recursive) {
+          if (entriesTree[fullpath].subpaths.length != 0) return;
+          delete entriesTree[fullpath];
+          let parentpath = fullpath.substring(0, fullpath.lastIndexOf('/'));
+          if (!entriesTree.hasOwnProperty(parentpath)) {
+            if (Object.keys(entriesTree).length == 0) finalize();
+            return;
+          }
+          const fpIndex = entriesTree[parentpath].subpaths.indexOf(fullpath);
+          if (fpIndex > -1) entriesTree[parentpath].subpaths.splice(fpIndex, 1);
+          if (recursive) markDone(parentpath, true);
+          if (Object.keys(entriesTree).length == 0) finalize();
+        }
+        function processEntry(entry) {
+          let fp = entry.fullPath;
+          let pp = fp.substring(0, fp.lastIndexOf('/'));
+          entriesTree[fp] = { subpaths: [] };
+          if (entry.isFile) {
+            entry.file((f) => { filesQ.push({ file: f, path: pp }); markDone(fp, false); })
+          } else if (entry.isDirectory) {
+            if (entriesTree.hasOwnProperty(pp)) entriesTree[pp].subpaths.push(fp);
+            FS.createPath("/" + drop_dir + pp, entry.name);
+            var reader = entry.createReader();
+            var rRead = function (dirEntries) {
+              if (dirEntries.length == 0) {
+                markDone(fp, true);
+                return;
+              }
+              for (const ent of dirEntries) processEntry(ent);
+              reader.readEntries(rRead);
+            };
+            reader.readEntries(rRead);
+          }
+        }
+        for (const item of event.dataTransfer.items) {
+          processEntry(item.webkitGetAsEntry());
+        }
+      } else {
+        // fallback for browsers that does not support webkitGetAsEntry
+        for (const file of event.dataTransfer.files) {
+          filesQ.push({ file: file, path: "" });
+        }
+        finalize();
       }
 #endif // FILESYSTEM
 
