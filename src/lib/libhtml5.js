@@ -1146,7 +1146,10 @@ var LibraryHTML5 = {
 
   $JSEvents_resizeCanvasForFullscreen__deps: ['$registerRestoreOldStyle', '$getCanvasElementSize', '$setLetterbox', '$setCanvasElementSize', '$getBoundingClientRect'],
   $JSEvents_resizeCanvasForFullscreen: (target, strategy) => {
-    var restoreOldStyle = registerRestoreOldStyle(target);
+    var restoreOldStyle = null;
+    if (!getFullscreenElement()) {
+      restoreOldStyle = registerRestoreOldStyle(target);
+    }
     var cssWidth, cssHeight;
     if (strategy.softFullscreen) {
       cssWidth = innerWidth;
@@ -1223,9 +1226,6 @@ var LibraryHTML5 = {
 
   $registerRestoreOldStyle__deps: ['$getCanvasElementSize', '$setCanvasElementSize', '$currentFullscreenStrategy'],
   $registerRestoreOldStyle: (canvas) => {
-    if (canvas.__emscriptenRestoreOldStyle) {
-      return canvas.__emscriptenRestoreOldStyle;
-    }
     var canvasSize = getCanvasElementSize(canvas);
     var oldWidth = canvasSize[0];
     var oldHeight = canvasSize[1];
@@ -1287,7 +1287,6 @@ var LibraryHTML5 = {
 #endif
           {{{ makeDynCall('iipp', 'currentFullscreenStrategy.canvasResizedCallback') }}}({{{ cDefs.EMSCRIPTEN_EVENT_CANVASRESIZED }}}, 0, currentFullscreenStrategy.canvasResizedCallbackUserData);
         }
-        canvas.__emscriptenRestoreOldStyle = null;
       }
     }
     document.addEventListener('fullscreenchange', restoreOldStyle);
@@ -1295,7 +1294,6 @@ var LibraryHTML5 = {
     // As of Safari 13.0.3 on macOS Catalina 10.15.1 still ships with prefixed webkitfullscreenchange. TODO: revisit this check once Safari ships unprefixed version.
     document.addEventListener('webkitfullscreenchange', restoreOldStyle);
 #endif
-    canvas.__emscriptenRestoreOldStyle = restoreOldStyle;
     return restoreOldStyle;
   },
 
