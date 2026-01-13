@@ -46,7 +46,7 @@ See docs/process.md for more on how version tagging works.
 - Source maps now support 'names' field with function name information.
   emsymbolizer will show function names when used with a source map. The size
   of source maps may increase 2-3x and the link time can increase slightly due
-  to more processing on source map creation. (#25298)
+  to more processing on source map creation. (#25928)
 - Emscripten will now cache the JS code that it generates and re-use when
   linking with the same settings at a later date.  This should improve link
   times generally but should especially noticeable when linking lots of small
