@@ -1177,8 +1177,15 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     if stdout_buffering:
       sys.stdout.write(rtn.stdout)
+      # When we inject stdout/stderr buffering for our own internal purposes, we do not also want to
+      # make it available on the returned object.
+      # If we don't do this then callers would have access to rtn.stdout/rtn.stderr even when they
+      # didn't request it (i.e. even when they did not pass stderr=PIPE), which can lead to tests
+      # that pass in buffering mode, but fail without it.
+      rtn.stdout = None
     if stderr_buffering:
       sys.stderr.write(rtn.stderr)
+      rtn.stderr = None
     return rtn
 
   def emcc(self, filename, args=[], **kwargs):  # noqa
