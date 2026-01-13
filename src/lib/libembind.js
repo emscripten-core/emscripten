@@ -423,16 +423,25 @@ var LibraryEmbind = {
 
   $installIndexedIterator: (proto, sizeMethodName, getMethodName) => {
     const makeIterator = (size, getValue) => {
+#if MEMORY64
+      // size can be either a number or a bigint on wasm64
       const useBigInt = typeof size === 'bigint';
       const one = useBigInt ? 1n : 1;
       let index = useBigInt ? 0n : 0;
+#else
+      let index = 0;
+#endif
       return {
         next() {
           if (index >= size) {
             return { done: true };
           }
           const current = index;
+#if MEMORY64
           index += one;
+#else
+          index++;
+#endif
           const value = getValue(current);
           return { value, done: false };
         },
