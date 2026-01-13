@@ -478,9 +478,8 @@ class Library:
     utils.safe_ensure_dirs(build_dir)
     self.build_dir = build_dir
 
-    # Use random file names with .c and .cpp extensions
-    cflags = self.get_cflags('test.c')
-    cxxflags = self.get_cflags('test.cpp')
+    cflags = self.get_cflags()
+    cxxflags = self.get_cxxflags()
 
     asflags = get_base_cflags(self.build_dir, preprocess=False)
     input_files = self.get_files()
@@ -512,8 +511,10 @@ class Library:
         # pre-processor flags such as `-I` and `-D` but we still want core flags such as
         # `-sMEMORY64`.
         cmd += get_base_cflags(self.build_dir, preprocess=False)
+      elif ext in {'.c', '.S'}:
+        cmd += self.get_cflags()
       else:
-        cmd += self.get_cflags(src)
+        cmd += self.get_cxxflags()
       cmd = self.customize_build_cmd(cmd, src)
 
       object_basename = utils.unsuffixed_basename(src)
@@ -592,7 +593,7 @@ class Library:
       result += item.__dict__.get(attr, [])
     return result
 
-  def get_cflags(self, _filename):
+  def get_cflags(self):
     """
     Returns the list of flags to pass to emcc when building this variation
     of the library.
@@ -605,6 +606,13 @@ class Library:
     if self.includes:
       cflags += ['-I' + utils.path_from_root(i) for i in self._inherit_list('includes')]
     return cflags
+
+  def get_cxxflags(self):
+    """
+    Returns the list of flags to pass to em++ when building this variation
+    of the library.
+    """
+    return self.get_cflags()
 
   def get_base_name_prefix(self):
     """
@@ -716,8 +724,8 @@ class MTLibrary(Library):
     self.is_ww = kwargs.pop('is_ww') and not self.is_mt
     super().__init__(**kwargs)
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def get_cflags(self):
+    cflags = super().get_cflags()
     if self.is_mt:
       cflags += ['-pthread', '-sWASM_WORKERS']
     if self.is_ww:
@@ -757,8 +765,8 @@ class DebugLibrary(Library):
     self.is_debug = kwargs.pop('is_debug')
     super().__init__(**kwargs)
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def get_cflags(self):
+    cflags = super().get_cflags()
     if not self.is_debug:
       cflags += ['-DNDEBUG']
     return cflags
@@ -801,8 +809,8 @@ class ExceptionLibrary(Library):
     self.eh_mode = kwargs.pop('eh_mode')
     super().__init__(**kwargs)
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def get_cflags(self):
+    cflags = super().get_cflags()
     match self.eh_mode:
       case Exceptions.NONE:
         cflags += ['-fno-exceptions']
@@ -856,8 +864,8 @@ class SjLjLibrary(Library):
     self.eh_mode = kwargs.pop('eh_mode')
     super().__init__(**kwargs)
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def get_cflags(self):
+    cflags = super().get_cflags()
     match self.eh_mode:
       case Exceptions.EMSCRIPTEN:
         cflags += ['-sSUPPORT_LONGJMP=emscripten',
@@ -925,8 +933,8 @@ class AsanInstrumentedLibrary(Library):
     self.is_asan = kwargs.pop('is_asan', False)
     super().__init__(**kwargs)
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def get_cflags(self):
+    cflags = super().get_cflags()
     if self.is_asan:
       cflags += ['-fsanitize=address']
     return cflags
@@ -1481,8 +1489,8 @@ class libwasm_workers(DebugLibrary):
     self.is_stub = kwargs.pop('stub')
     super().__init__(**kwargs)
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def get_cflags(self):
+    cflags = super().get_cflags()
     if self.is_debug:
       cflags += ['-D_DEBUG']
       # library_wasm_worker.c contains an assert that a nonnull parameter
@@ -1638,8 +1646,8 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
     # the non-debug version of libc++abi.
     self.is_debug |= settings.EXCEPTION_STACK_TRACES
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def get_cflags(self):
+    cflags = super().get_cflags()
     if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
     match self.eh_mode:
@@ -1750,16 +1758,11 @@ class libunwind(ExceptionLibrary, MTLibrary):
   def can_use(self):
     return super().can_use() and self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM)
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def _get_common_flags(self):
+    cflags = super().get_cflags()
     cflags.append('-DNDEBUG')
     if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
-    if filename.endswith('.c'):
-      cflags.append('-std=c23')
-    else:
-      cflags.append('-std=c++23')
-
     match self.eh_mode:
       case Exceptions.NONE:
         cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
@@ -1767,6 +1770,12 @@ class libunwind(ExceptionLibrary, MTLibrary):
         cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
 
     return cflags
+
+  def get_cflags(self):
+    return self._get_common_flags() + ['-std=c23']
+
+  def get_cxxflags(self):
+    return self._get_common_flags() + ['-std=c++23']
 
 
 class libmalloc(MTLibrary):
@@ -1798,8 +1807,8 @@ class libmalloc(MTLibrary):
     sbrk = utils.path_from_root('system/lib/libc/sbrk.c')
     return [malloc, sbrk]
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def get_cflags(self):
+    cflags = super().get_cflags()
     if self.memvalidate:
       cflags += ['-DEMMALLOC_MEMVALIDATE']
     if self.verbose:
@@ -1935,8 +1944,8 @@ class libGL(MTLibrary):
       name += '-getprocaddr'
     return name
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def get_cflags(self):
+    cflags = super().get_cflags()
     if self.is_legacy:
       cflags += ['-DLEGACY_GL_EMULATION=1']
     cflags += [f'-DMAX_WEBGL_VERSION={2 if self.is_webgl2 else 1}']
@@ -1972,8 +1981,8 @@ class libembind(MTLibrary):
     self.with_rtti = kwargs.pop('with_rtti', False)
     super().__init__(**kwargs)
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def get_cflags(self):
+    cflags = super().get_cflags()
     cflags.append('-std=c++20')
     if not self.with_rtti:
       cflags += ['-fno-rtti', '-DEMSCRIPTEN_HAS_UNBOUND_TYPE_NAMES=0']
@@ -2026,8 +2035,8 @@ class libwasmfs(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     self.ignore_case = kwargs.pop('ignore_case')
     super().__init__(**kwargs)
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def get_cflags(self):
+    cflags = super().get_cflags()
     if self.ignore_case:
       cflags += ['-DWASMFS_CASE_INSENSITIVE']
     return cflags
@@ -2213,8 +2222,8 @@ class libstandalonewasm(MuslInternalLibrary):
       name += '-pure'
     return name
 
-  def get_cflags(self, filename):
-    cflags = super().get_cflags(filename)
+  def get_cflags(self):
+    cflags = super().get_cflags()
     cflags += ['-DNDEBUG', '-DEMSCRIPTEN_STANDALONE_WASM']
     if self.is_mem_grow:
       cflags += ['-DEMSCRIPTEN_MEMORY_GROWTH']
