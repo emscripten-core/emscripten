@@ -525,7 +525,17 @@ var LibraryBrowser = {
         }
       }
       if ((getFullscreenElement() === canvas.parentNode) && (typeof screen != 'undefined')) {
-         var factor = Math.min(screen.width / w, screen.height / h);
+         var fullscreenWidth = (typeof innerWidth != 'undefined') ? innerWidth : 0;
+         var fullscreenHeight = (typeof innerHeight != 'undefined') ? innerHeight : 0;
+         if (typeof visualViewport != 'undefined' && visualViewport) {
+           fullscreenWidth = visualViewport.width;
+           fullscreenHeight = visualViewport.height;
+         }
+         if (!fullscreenWidth || !fullscreenHeight) {
+           fullscreenWidth = screen.width;
+           fullscreenHeight = screen.height;
+         }
+         var factor = Math.min(fullscreenWidth / w, fullscreenHeight / h);
          w = Math.round(w * factor);
          h = Math.round(h * factor);
       }
