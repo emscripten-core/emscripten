@@ -87,6 +87,7 @@ def esm_integration(func):
   assert callable(func)
 
   @wraps(func)
+  @no_sanitize('sanitizers do not support WASM_ESM_INTEGRATION')
   def decorated(self, *args, **kwargs):
     self.setup_esm_integration()
     return func(self, *args, **kwargs)
@@ -152,7 +153,6 @@ def asan(func):
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
   @no_2gb("asan doesn't support GLOBAL_BASE")
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def decorated(self, *args, **kwargs):
     return func(self, *args, **kwargs)
 
@@ -256,7 +256,7 @@ def with_asyncify_and_jspi(func):
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
     if jspi:
-      self.set_setting('ASYNCIFY', 2)
+      self.set_setting('JSPI')
       self.require_jspi()
     else:
       self.set_setting('ASYNCIFY')
@@ -275,7 +275,7 @@ def also_with_asyncify_and_jspi(func):
     if asyncify and self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
     if asyncify == 2:
-      self.set_setting('ASYNCIFY', 2)
+      self.set_setting('JSPI')
       self.require_jspi()
     elif asyncify == 1:
       self.set_setting('ASYNCIFY')
@@ -1507,7 +1507,6 @@ int main(int argc, char **argv) {
 
   @with_all_eh_sjlj
   def test_EXPORT_EXCEPTION_HANDLING_HELPERS(self):
-    self.set_setting('ASSERTIONS', 0)
     self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
 
     self.maybe_closure()
@@ -6020,6 +6019,7 @@ Module.onRuntimeInitialized = () => {
   @no_windows("stat ino values don't match on windows")
   @crossplatform
   @no_wasmfs('Assertion failed: "a_ino == sta.st" in test_fs_readdir_ino_matches_stat_ino.c, line 58. https://github.com/emscripten-core/emscripten/issues/25035')
+  @flaky('https://github.com/emscripten-core/emscripten/issues/26090')
   def test_fs_readdir_ino_matches_stat_ino(self):
     self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
 
@@ -8308,7 +8308,7 @@ Module.onRuntimeInitialized = () => {
   @with_asyncify_and_jspi
   @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_promise(self, exit_runtime):
-    if self.get_setting('ASYNCIFY') == 2:
+    if self.get_setting('JSPI'):
       self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
@@ -8801,7 +8801,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_too_many_errors(self):
@@ -8811,7 +8810,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  regex=True)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_errors_same_place(self):
@@ -8826,7 +8824,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_overflow': (['-fsanitize=signed-integer-overflow'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_full_overflow(self, args):
     self.cflags += args
     self.do_runf(
@@ -8842,7 +8839,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_return': (['-fsanitize=return'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_full_no_return(self, args):
     self.cflags += ['-Wno-return-type'] + args
     self.do_runf('core/test_ubsan_full_no_return.cpp',
@@ -8854,7 +8850,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_shift': (['-fsanitize=shift'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_full_left_shift(self, args):
     self.cflags += args
     self.do_runf(
@@ -8871,7 +8866,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'dylink': (['-fsanitize=null', '-sMAIN_MODULE=2'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_full_null_ref(self, args):
     if '-sMAIN_MODULE=2' in args:
       self.check_dylink()
@@ -8888,7 +8882,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       ])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_sanitize_vptr(self):
     self.do_runf(
       'core/test_sanitize_vptr.cpp',
@@ -8921,7 +8914,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ]),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
+  @no_esm_integration('https://github.com/emscripten-core/emscripten/issues/26073')
   def test_ubsan_full_stack_trace(self, g_flags, expected_output):
     if '-gsource-map' in g_flags:
       if self.is_wasm2js():
@@ -8936,7 +8929,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  assert_all=True, expected_output=expected_output)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_typeinfo_eq(self):
     # https://github.com/emscripten-core/emscripten/issues/13330
     src = r'''
@@ -9053,6 +9045,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @asan
   @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
+  @no_modularize_instance('uses MODULARIZE')
   def test_asan_modularized_with_closure(self):
     # the bug is that createModule() returns undefined, instead of the
     # proper Promise object.

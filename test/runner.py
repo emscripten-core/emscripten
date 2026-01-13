@@ -51,6 +51,18 @@ from tools import building, colored_logger, config, shared, utils
 
 logger = logging.getLogger("runner")
 
+# In git checkouts of emscripten `bootstrap.py` exists to run post-checkout
+# steps.  In packaged versions (e.g. emsdk) this file does not exist (because
+# it is excluded in tools/install.py) and these steps are assumed to have been
+# run already.
+if os.path.exists('.git') and os.path.exists('bootstrap.py'):
+  import bootstrap
+  bootstrap.check()
+else:
+  # The test framework depends on writing files to the `out/` directory.
+  # For git checkouts the bootstrap.py script would take care of creating this.
+  os.makedirs('out', exist_ok=True)
+
 
 # Test modes from 'core' that fully pass all tests. When running a random
 # selection of tests (e.g. "random100" runs 100 random tests) they will be
@@ -428,7 +440,6 @@ def run_tests(options, suites):
   # Run the discovered tests
 
   if os.getenv('CI'):
-    os.makedirs('out', exist_ok=True)
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
     import xmlrunner  # type: ignore  # noqa: PLC0415
@@ -508,7 +519,6 @@ def parse_args():
   parser.add_argument('--continue', dest='_continue', action='store_true',
                       help='Resume from the last run test.'
                            'Useful when combined with --failfast')
-  parser.add_argument('--force64', action='store_true')
   parser.add_argument('--crossplatform-only', action='store_true')
   parser.add_argument('--log-test-environment', action='store_true', help='Prints out detailed information about the current environment. Useful for adding more info to CI test runs.')
   parser.add_argument('--force-browser-process-termination', action='store_true', help='If true, a fail-safe method is used to ensure that all browser processes are terminated before and after the test suite run. Note that this option will terminate all browser processes, not just those launched by the harness, so will result in loss of all open browsing sessions.')
@@ -688,7 +698,6 @@ def main():
   set_env('EMTEST_REBASELINE', options.rebaseline)
   set_env('EMTEST_VERBOSE', options.verbose > 1)
   set_env('EMTEST_CORES', options.cores)
-  set_env('EMTEST_FORCE64', options.force64)
 
   if common.EMTEST_DETECT_TEMPFILE_LEAKS:
     if shared.DEBUG:

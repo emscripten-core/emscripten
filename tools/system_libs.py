@@ -499,6 +499,7 @@ class Library:
     batches = {}
     commands = []
     objects = set()
+    objects_lowercase = set()
     for src in self.get_files():
       ext = utils.suffix(src)
       if ext in {'.s', '.S', '.c'}:
@@ -515,9 +516,9 @@ class Library:
         cmd += self.get_cflags(src)
       cmd = self.customize_build_cmd(cmd, src)
 
-      object_basename = utils.unsuffixed_basename(src).lower()
+      object_basename = utils.unsuffixed_basename(src)
       o = os.path.join(build_dir, object_basename + '.o')
-      if o in objects:
+      if o.lower() in objects_lowercase:
         # If we have seen a file with the same name before, we need a separate
         # command to compile this file with a custom unique output object
         # filename, as batch compile doesn't allow such customization.
@@ -525,7 +526,7 @@ class Library:
         # This is needed to handle, for example, _exit.o and _Exit.o.
         object_uuid = 0
         # Find a unique basename
-        while o in objects:
+        while o.lower() in objects_lowercase:
           object_uuid += 1
           o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
         commands.append(cmd + [src, '-o', o])
@@ -535,11 +536,10 @@ class Library:
         src = os.path.relpath(src, build_dir)
         src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
-        # No -o in command, use original file name.
-        o = os.path.join(build_dir, utils.unsuffixed_basename(src) + '.o')
       else:
         commands.append(cmd + [src, '-o', o])
       objects.add(o)
+      objects_lowercase.add(o.lower())
 
     if batch_inputs:
       # Choose a chunk size that is large enough to avoid too many subprocesses
@@ -1150,7 +1150,7 @@ class libc(MuslInternalLibrary,
     # musl modules
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'setjmp',
+        'aio', 'legacy', 'mq', 'setjmp',
         'ldso', 'malloc',
     ]
 
@@ -1159,16 +1159,17 @@ class libc(MuslInternalLibrary,
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
         'res_query.c', 'res_querydomain.c',
         'proto.c',
-        'ppoll.c',
         'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'getauxval.c',
         'lookup_name.c',
-        # 'process' exclusion
+        # 'process' exclusions
         'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
         '_Fork.c',
-        # 'env' exclusion
+        # 'env' exclusions
         '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
+        # 'exit' exclusions
+        'assert.c', 'exit.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -1317,10 +1318,6 @@ class libc(MuslInternalLibrary,
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/sched',
         filenames=['sched_yield.c'])
-
-    libc_files += files_in_path(
-        path='system/lib/libc/musl/src/exit',
-        filenames=['abort.c', '_Exit.c', 'atexit.c', 'at_quick_exit.c', 'quick_exit.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
