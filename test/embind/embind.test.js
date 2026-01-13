@@ -1163,6 +1163,22 @@ module({
             assert.deepEqual([1, 2, 3], Array.from(iterable));
             iterable.delete();
         });
+
+        test("custom class with size_t is iterable", function() {
+            var iterable = new cm.CustomIterableSizeT();
+            if (cm.getCompilerSetting('MEMORY64')) {
+                assert.equal(typeof iterable.count(), 'bigint');
+            } else {
+                assert.equal(typeof iterable.count(), 'number');
+            }
+            var values = [];
+            for (var value of iterable) {
+                values.push(value);
+            }
+            assert.deepEqual([10, 20, 30], values);
+            assert.deepEqual([10, 20, 30], Array.from(iterable));
+            iterable.delete();
+        });
     });
 
     BaseFixture.extend("map", function() {
