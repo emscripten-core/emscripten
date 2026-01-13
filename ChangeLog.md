@@ -24,6 +24,9 @@ See docs/process.md for more on how version tagging works.
 - A new `-sEXECUTABLE` setting was added which adds a #! line to the resulting
   JavaScript and makes it executable.  This setting defaults to true when the
   output filename has no extension, or ends in `.out` (e.g. `a.out`) (#26085)
+- Embind now supports the JS iterable protocol on bound classes via
+  `class_<T>::iterable()`. `register_vector` uses this so bound `std::vector`
+  works with `for...of`/`Array.from()`/spread. (#25993)
 
 4.0.23 - 01/10/26
 -----------------

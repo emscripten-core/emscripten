@@ -1239,9 +1239,12 @@ The following JavaScript can be used to interact with the above C++.
     // push value into vector
     retVector.push_back(12);
 
-    // retrieve value from the vector
-    for (var i = 0; i < retVector.size(); i++) {
-        console.log("Vector Value: ", retVector.get(i));
+    // retrieve a value from the vector
+    console.log("Vector Value at index 0: ", retVector.get(0));
+
+    // iterate over vector
+    for (var value of retVector) {
+        console.log("Vector Value: ", value);
     }
 
     // expand vector size
