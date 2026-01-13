@@ -22,6 +22,8 @@ See docs/process.md for more on how version tagging works.
 -----------------------
 - libcxx and libcxxabi was updated to LLVM 21.1.8. (#26058)
 - compiler-rt was updated to LLVM 21.1.8. (#26405)
+- A new `-sEXECUTABLE` setting was added which adds a #! line to the resulting
+  JavaScript and makes it executable. (#26085)
 
 4.0.23 - 01/10/26
 -----------------
@@ -661,7 +663,7 @@ See docs/process.md for more on how version tagging works.
 - Fix the location of the dummy `.worker.js` file that is now generated as part
   of pthread builds so that is generated alongside the main JavaScript file.
   See #21701. ()
-- `-sASYNCIFY=2` is setting now deprecated, use `-sJSPI` instead.
+- `-sASYNCIFY=2` is setting now deprecated, use `-sJSPI` instead. (#21824)
 
 3.1.58 - 04/23/24
 -----------------

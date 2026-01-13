@@ -3500,7 +3500,7 @@ More info: https://emscripten.org
   def test_jspi_add_function(self):
     # make sure synchronous functions in the wasmTable aren't processed with Asyncify.makeAsyncFunction
     self.cflags += [
-      '-sASYNCIFY=2',
+      '-sJSPI',
       '-sEXPORTED_RUNTIME_METHODS=addFunction,dynCall',
       '-sALLOW_TABLE_GROWTH=1',
       '-Wno-experimental']
@@ -13554,7 +13554,7 @@ int main() {
     self.assertContained(expected, self.run_js('a.out.js'))
     asyncify_size = os.path.getsize('a.out.wasm')
 
-    self.run_process([EMXX, 'main.cpp', '-sASYNCIFY=2'] + shared_args)
+    self.run_process([EMXX, 'main.cpp', '-sJSPI'] + shared_args)
 
     self.assertContained(expected, self.run_js('a.out.js'))
     stack_switching_size = os.path.getsize('a.out.wasm')
@@ -15282,3 +15282,15 @@ for(var i = 0; i < 65536; ++i)
 console.log('OK');'''
     write_file('test.js', read_file(path_from_root('src/binaryDecode.js')) + '\nvar src = ' + binary_encoded + ';\n' + test_js)
     self.assertContained('OK', self.run_js('test.js'))
+
+  @no_windows('depends on UNIX shbang feature')
+  def test_executable(self):
+    # First test without -sEXECUTABLE
+    self.run_process([EMCC, test_file('hello_world.c')])
+    self.assertNotContained('#!/usr/bin/env node', read_file('a.out.js'))
+
+    # Now, test with -sEXECUTABLE
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXECUTABLE'])
+    self.assertContained('#!/usr/bin/env node', read_file('a.out.js'))
+    output = self.run_process([os.path.abspath('a.out.js')], stdout=PIPE).stdout
+    self.assertContained('hello, world!', output)
