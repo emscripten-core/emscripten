@@ -20,8 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.24 (in development)
 -----------------------
-- libcxx and libcxxabi was updated to LLVM 21.1.8. (#26058)
-- compiler-rt was updated to LLVM 21.1.8. (#26405)
+- compiler-rt, libcxx, and libcxxabi were updated to LLVM 21.1.8. (#26405,
+  #26058)
 - A new `-sEXECUTABLE` setting was added which adds a #! line to the resulting
   JavaScript and makes it executable. (#26085)
 
