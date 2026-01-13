@@ -299,6 +299,7 @@ sigs = {
   _embind_register_float__sig: 'vppp',
   _embind_register_function__sig: 'vpippppii',
   _embind_register_integer__sig: 'vpppii',
+  _embind_register_iterable__sig: 'vpppp',
   _embind_register_memory_view__sig: 'vpip',
   _embind_register_optional__sig: 'vpp',
   _embind_register_smart_ptr__sig: 'vpppipppppppp',
