@@ -192,11 +192,11 @@ var MEMORYPROFILER = false;
 // Source map related options. You can specify both like
 // -gsource-map=inline,names
 // -gsource-map
-var GENERATE_SOURCE_MAP = 0;
+var SOURCE_MAP_GENERATE = 0;
 // -gsource-map=inline
-var EMBED_SOURCE_MAP_SOURCE = 0;
+var SOURCE_MAP_EMBED_SOURCE = 0;
 // -gsource-map=names
-var GENERATE_SOURCE_MAP_NAMES = 0;
+var SOURCE_MAP_GENERATE_NAMES = 0;
 
 var GENERATE_DWARF = false;
 

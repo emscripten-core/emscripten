@@ -565,7 +565,7 @@ def finalize_wasm(infile, outfile, js_syms):
   if infile != outfile:
     shutil.copy(infile, outfile)
 
-  if settings.GENERATE_SOURCE_MAP:
+  if settings.SOURCE_MAP_GENERATE:
     building.emit_wasm_source_map(infile, outfile + '.map', outfile)
     building.save_intermediate(outfile + '.map', 'base_wasm.map')
     base_url = settings.SOURCE_MAP_BASE + os.path.basename(outfile) + '.map'
@@ -601,7 +601,7 @@ def finalize_wasm(infile, outfile, js_syms):
 
   metadata = get_metadata(outfile, outfile, modify_wasm, args)
 
-  if settings.GENERATE_SOURCE_MAP:
+  if settings.SOURCE_MAP_GENERATE:
     building.save_intermediate(outfile + '.map', 'post_finalize.map')
 
   expected_exports = set(settings.EXPORTED_FUNCTIONS)

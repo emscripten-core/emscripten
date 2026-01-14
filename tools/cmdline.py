@@ -365,13 +365,13 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         if debug_level == 0:
           # Set these explicitly so -g0 overrides previous -g on the cmdline
           settings.GENERATE_DWARF = 0
-          settings.GENERATE_SOURCE_MAP = 0
+          settings.SOURCE_MAP_GENERATE = 0
           settings.EMIT_NAME_SECTION = 0
         elif debug_level > 1:
           settings.EMIT_NAME_SECTION = 1
         # if we don't need to preserve LLVM debug info, do not keep this flag
         # for clang
-        if debug_level < 3 and not (settings.GENERATE_SOURCE_MAP or settings.SEPARATE_DWARF):
+        if debug_level < 3 and not (settings.SOURCE_MAP_GENERATE or settings.SEPARATE_DWARF):
           newargs[i] = '-g0'
         else:
           if debug_level == 3:
@@ -381,7 +381,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
             # Lower this to -g3, and report a warning.
             newargs[i] = '-g3'
             diagnostics.warning('deprecated', 'please replace -g4 with -gsource-map')
-            settings.GENERATE_SOURCE_MAP = 1
+            settings.SOURCE_MAP_GENERATE = 1
           elif debug_level > 4:
             exit_with_error("unknown argument: '%s'", arg)
       else:
@@ -402,14 +402,14 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
           settings.GENERATE_DWARF = 1
           settings.DEBUG_LEVEL = 3
         elif debug_level.startswith('source-map'):
-          settings.GENERATE_SOURCE_MAP = 1
+          settings.SOURCE_MAP_GENERATE = 1
           newargs[i] = '-g'
           if '=' in debug_level:
             source_map_options = debug_level.split('=')[1].split(',')
             if 'inline' in source_map_options:
-              settings.EMBED_SOURCE_MAP_SOURCE = 1
+              settings.SOURCE_MAP_EMBED_SOURCE = 1
             if 'names' in source_map_options:
-              settings.GENERATE_SOURCE_MAP_NAMES = 1
+              settings.SOURCE_MAP_GENERATE_NAMES = 1
         elif debug_level == 'z':
           # Ignore `-gz`.  We don't support debug info compression.
           pass

@@ -184,7 +184,7 @@ def lld_flags_for_executable(external_symbols):
   # those things.
   if   (not settings.GENERATE_DWARF and
         not settings.EMIT_SYMBOL_MAP and
-        not settings.GENERATE_SOURCE_MAP and
+        not settings.SOURCE_MAP_GENERATE and
         not settings.EMIT_NAME_SECTION and
         not settings.ASYNCIFY):
     cmd.append('--strip-debug')
@@ -1172,9 +1172,9 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   if settings.SOURCE_MAP_PREFIXES:
     sourcemap_cmd += ['--prefix', *settings.SOURCE_MAP_PREFIXES]
 
-  if settings.EMBED_SOURCE_MAP_SOURCE:
+  if settings.SOURCE_MAP_EMBED_SOURCE:
     sourcemap_cmd += ['--sources']
-  if settings.GENERATE_SOURCE_MAP_NAMES:
+  if settings.SOURCE_MAP_GENERATE_NAMES:
     sourcemap_cmd += ['--names']
 
   # TODO(sbc): Convert to using library internal API instead of running `main` here
@@ -1259,7 +1259,7 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
   # we must tell binaryen to update it
   # TODO: all tools should support source maps; wasm-ctor-eval does not atm,
   #       for example
-  if settings.GENERATE_SOURCE_MAP and outfile and tool in ['wasm-opt', 'wasm-emscripten-finalize', 'wasm-metadce']:
+  if settings.SOURCE_MAP_GENERATE and outfile and tool in ['wasm-opt', 'wasm-emscripten-finalize', 'wasm-metadce']:
     cmd += [f'--input-source-map={infile}.map']
     cmd += [f'--output-source-map={outfile}.map']
   if shared.SKIP_SUBPROCS:

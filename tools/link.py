@@ -764,7 +764,7 @@ def setup_sanitizers(options):
     if settings.MEMORY64:
       exit_with_error('MEMORY64 does not yet work with ASAN')
 
-  if settings.GENERATE_SOURCE_MAP:
+  if settings.SOURCE_MAP_GENERATE:
     settings.LOAD_SOURCE_MAP = 1
 
 
@@ -875,9 +875,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addOnInit', '$addOnExit']
 
   # TODO: support source maps with js_transform
-  if options.js_transform and settings.GENERATE_SOURCE_MAP:
+  if options.js_transform and settings.SOURCE_MAP_GENERATE:
     logger.warning('disabling source maps because a js transform is being done')
-    settings.GENERATE_SOURCE_MAP = 0
+    settings.SOURCE_MAP_GENERATE = 0
 
   # options.output_file is the user-specified one, target is what we will generate
   if options.output_file:
@@ -1633,9 +1633,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
 
-  if settings.SINGLE_FILE and settings.GENERATE_SOURCE_MAP:
+  if settings.SINGLE_FILE and settings.SOURCE_MAP_GENERATE:
     diagnostics.warning('emcc', 'SINGLE_FILE disables source map support (which requires a .map file)')
-    settings.GENERATE_SOURCE_MAP = 0
+    settings.SOURCE_MAP_GENERATE = 0
 
   if options.use_closure_compiler == 2 and not settings.WASM2JS:
     exit_with_error('closure compiler mode 2 assumes the code is asm.js, so not meaningful for wasm')
@@ -1760,7 +1760,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       diagnostics.warning('experimental', '-sJSPI (ASYNCIFY=2) is still experimental')
 
   if settings.WASM2JS:
-    if settings.GENERATE_SOURCE_MAP:
+    if settings.SOURCE_MAP_GENERATE:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
     if settings.MEMORY64:
       exit_with_error('wasm2js does not support MEMORY64')
