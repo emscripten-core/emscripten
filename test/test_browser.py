@@ -3911,7 +3911,7 @@ Module["preRun"] = () => {
    'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=8'],),
   })
   def test_pthread_supported(self, args):
-    self.btest_exit('pthread/test_pthread_supported.cpp', cflags=['-O3'] + args)
+    self.btest_exit('pthread/test_pthread_supported.c', cflags=['-O3'] + args)
 
   def test_pthread_dispatch_after_exit(self):
     self.btest_exit('pthread/test_pthread_dispatch_after_exit.c', cflags=['-pthread'])
@@ -4913,7 +4913,7 @@ Module["preRun"] = () => {
     if is_jspi(args) and self.is_wasm64():
       self.skipTest('_emval_await fails')
 
-    self.btest('embind_with_asyncify.cpp', '1', cflags=['-lembind'] + args)
+    self.btest_exit('embind_with_asyncify.cpp', cflags=['-lembind'] + args)
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
