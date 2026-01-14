@@ -4913,7 +4913,7 @@ Module["preRun"] = () => {
     if is_jspi(args) and self.is_wasm64():
       self.skipTest('_emval_await fails')
 
-    self.btest('embind_with_asyncify.cpp', '1', cflags=['-lembind'] + args)
+    self.btest_exit('embind_with_asyncify.cpp', cflags=['-lembind'] + args)
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):

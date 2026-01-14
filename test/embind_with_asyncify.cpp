@@ -14,5 +14,9 @@ int main() {
   val response = async_response.await();
   val async_text = response.call<val>("text");
   std::string text = async_text.await().as<std::string>();
-  REPORT_RESULT(text == "foo");
+  assert(text == "foo");
+  // This explicit exit() should not be necessary here.
+  // TODO(https://github.com/emscripten-core/emscripten/issues/26093)
+  exit(0);
+  return 0;
 }
