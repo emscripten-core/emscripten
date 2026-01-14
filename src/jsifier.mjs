@@ -263,7 +263,7 @@ function sigToArgs(sig) {
   return args.join(',');
 }
 
-function handleI64Signatures(symbol, snippet, sig, i53abi) {
+function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
   // Handle i64 parameters and return values.
   //
   // When WASM_BIGINT is enabled these arrive as BigInt values which we
@@ -311,9 +311,19 @@ function handleI64Signatures(symbol, snippet, sig, i53abi) {
     }
 
     if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && MEMORY64)) {
-      const await_ = async_ ? 'await ' : '';
       // For functions that where we need to mutate the return value, we
       // also need to wrap the body in an inner function.
+
+      // If the inner function is marked as `__async` then we need to `await`
+      // the result before casting it to BigInt.  Note that we use the `__async`
+      // attribute here rather than the presence of the `async` JS keyword
+      // because this is what tells us that the function is going to return
+      // a promise.  i.e. we support async functions that return promises but
+      // are not marked with the `async` keyword (the latter is only necessary
+      // if the function uses the `await` keyword))
+      const await_ = isAsyncFunction ? 'await ' : '';
+      const orig_async_ = async_;
+      async_ = isAsyncFunction ? 'async ' : async_;
       if (oneliner) {
         // Special case for abort(), this a noreturn function and but closure
         // compiler doesn't have a way to express that, so it complains if we
@@ -332,7 +342,7 @@ return ${makeReturn64(await_ + body)};
       return `\
 ${async_}function(${args}) {
 ${argConversions}
-var ret = (() => { ${body} })();
+var ret = (${orig_async_}() => { ${body} })();
 return ${makeReturn64(await_ + 'ret')};
 }`;
     }
@@ -350,7 +360,12 @@ ${body};
   });
 }
 
-function handleAsyncFunction(snippet) {
+function handleAsyncFunction(snippet, sig) {
+  const return64 = sig && (MEMORY64 && sig.startsWith('p') || sig.startsWith('j'))
+  let handleAsync = 'Asyncify.handleAsync(innerFunc)'
+  if (return64 && ASYNCIFY == 1) {
+    handleAsync = makeReturn64(handleAsync);
+  }
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
     if (!oneliner) {
       body = `{\n${body}\n}`;
@@ -358,7 +373,7 @@ function handleAsyncFunction(snippet) {
     return `\
 function(${args}) {
   let innerFunc = ${async_} () => ${body};
-  return Asyncify.handleAsync(innerFunc);
+  return ${handleAsync};
 }\n`;
   });
 }
@@ -433,29 +448,28 @@ function(${args}) {
       });
     }
 
-    const isAsyncFunction = LibraryManager.library[symbol + '__async'];
-    if (ASYNCIFY && isAsyncFunction == 'auto') {
-      snippet = handleAsyncFunction(snippet);
-    }
-
     const sig = LibraryManager.library[symbol + '__sig'];
+    const isAsyncFunction = ASYNCIFY && LibraryManager.library[symbol + '__async'];
+
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
     if (i53abi) {
       if (!sig) {
         error(`JS library error: '__i53abi' decorator requires '__sig' decorator: '${symbol}'`);
       }
       if (!sig.includes('j')) {
-        error(
-          `JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): '${symbol}'`,
-        );
+        error(`JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): '${symbol}'`);
       }
     }
     if (
       sig &&
       ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))
     ) {
-      snippet = handleI64Signatures(symbol, snippet, sig, i53abi);
+      snippet = handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction);
       compileTimeContext.i53ConversionDeps.forEach((d) => deps.push(d));
+    }
+
+    if (ASYNCIFY && isAsyncFunction == 'auto') {
+      snippet = handleAsyncFunction(snippet, sig);
     }
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
