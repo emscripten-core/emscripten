@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.24 (in development)
 -----------------------
+- Calling pthread_create in a single-threaded build will now return ENOTSUP
+  rather then EAGAIN.  (#26105)
 - compiler-rt and libunwind were updated to LLVM 21.1.8. (#26036 and #26045)
 - A new `-sEXECUTABLE` setting was added which adds a #! line to the resulting
   JavaScript and makes it executable.  This setting defaults to true when the

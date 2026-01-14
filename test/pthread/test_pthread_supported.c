@@ -11,19 +11,20 @@
 #include <assert.h>
 #include <errno.h>
 
-void *ThreadMain(void *arg)
-{
-	pthread_exit(NULL);
+void *ThreadMain(void *arg) {
+  pthread_exit(NULL);
 }
 
-int main()
-{
-	pthread_t thread;
-	int rc = pthread_create(&thread, NULL, ThreadMain, NULL);
-	pthread_join(thread, NULL);
+int main() {
+  pthread_t thread;
+  int rc = pthread_create(&thread, NULL, ThreadMain, NULL);
+  pthread_join(thread, NULL);
 
-	if (emscripten_has_threading_support()) assert(rc == 0);
-	else assert(rc == EAGAIN);
+  if (emscripten_has_threading_support()) {
+    assert(rc == 0);
+  } else {
+    assert(rc == ENOTSUP);
+  }
 
-	return 0;
+  return 0;
 }
