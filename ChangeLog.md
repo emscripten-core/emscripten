@@ -87,7 +87,7 @@ See docs/process.md for more on how version tagging works.
 - The standalone `file_packager.py` script no longer supports `--embed` with JS
   output (use `--obj-output` is now required for embedding data).  This usage
   has been producing a warning since #16050 which is now an error.  (#25049)
-- Embind now requires C++17 or newer. See #24850.
+- Embind now requires C++17 or newer. (#25773)
 
 4.0.19 - 11/04/25
 -----------------
@@ -182,7 +182,7 @@ See docs/process.md for more on how version tagging works.
   (and `FS_createPreloadedFile` API`) was converted from callbacks to async.
   Any externally managed plugins would need to be updated accordingly.  An
   assertion will detect any such non-async plugins in the wild. (#24914)
-- SDL2 updated from 2.32.0 to 2.32.8. (#24912/)
+- SDL2 updated from 2.32.0 to 2.32.8. (#24912)
 - `sdl-config` and `sdl2-config` scripts were simplified to avoid using python
   and the `.bat` file versions were removed, matching upstream SDL. (#24907)
 - The `addRunDependency`/`removeRunDependency` now assert in debug builds if
@@ -436,7 +436,7 @@ See docs/process.md for more on how version tagging works.
 ----------------
 - Emscripten version was bumped to 4.0.0. Happy new year, happy new major
   version!  While version has a few interesting changes, there is nothing huge
-  that makes it different from any other release. (#19053)
+  that makes it different from any other release. (#23235)
 - `-sWASM_LEGACY_EXCEPTIONS` option is added. (#23365) If true, it will emit
   instructions for the legacy Wasm exception handling proposal
   (https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md),
@@ -1597,7 +1597,7 @@ See docs/process.md for more on how version tagging works.
 - Due to an llvm change (https://reviews.llvm.org/D118573) some clang flags
   that did not previously have any effect are now honored (e.g.
   `-fnew-alignment` and `-fshort-wchar`).
-- llvm dependency updated to 15.0.0 to match upstream. (#16178)
+- llvm dependency updated to 15.0.0 to match upstream. (#16182)
 - The `__EMSCRIPTEN_major__`, `__EMSCRIPTEN_minor__` and `__EMSCRIPTEN_tiny__`
   macros are now available via the `emscripten/version.h` header file.  For the
   time being, unless you enable `-sSTRICT`, these are still also defined
@@ -1778,7 +1778,7 @@ See docs/process.md for more on how version tagging works.
 -------------------
 - Added `EM_ASYNC_JS` macro - similar to `EM_JS`, but allows using `await`
   inside the JS block and automatically integrates with Asyncify without
-  the need for listing the declared function in `ASYNCIFY_IMPORTS` (#9709).
+  the need for listing the declared function in `ASYNCIFY_IMPORTS` (#14728).
 - Errors that occur on pthreads (e.g. uncaught exception) will now get re-thrown
   on the main thread rather than simply being logged (#13666).
 
@@ -2550,7 +2550,7 @@ See docs/process.md for more on how version tagging works.
   a global setting in the emscripten config file that would inject extra
   compiler options.
 - Allow spaces in a path to Python interpreter when running emscripten from Unix
-  shell (#11005).
+  shell (#11006).
 - Support atexit() in standalone mode (#10995). This also fixes stdio stream
   flushing on exit in that mode.
 
