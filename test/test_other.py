@@ -3291,10 +3291,11 @@ More info: https://emscripten.org
     ''')
     self.do_runf('main.cpp', 'done', cflags=['-lembind', '-sASYNCIFY', '--post-js', 'post.js'])
 
+  @also_with_wasm64
   @parameterized({
-    '': [['-sDYNAMIC_EXECUTION=1']],
-    'no_dynamic': [['-sDYNAMIC_EXECUTION=0']],
-    'dyncall': [['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB']],
+    '': (['-sDYNAMIC_EXECUTION=1'],),
+    'no_dynamic': (['-sDYNAMIC_EXECUTION=0'],),
+    'dyncall': (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'],),
   })
   @requires_jspi
   def test_embind_jspi(self, args):
@@ -15095,7 +15096,7 @@ addToLibrary({
 
     # Since we are building without -pthread the thread constructor will fail,
     # and in debug mode at least we expect to see the error message from libc++
-    expected = 'system_error was thrown in -fno-exceptions mode with error 6 and message "thread constructor failed"'
+    expected = 'system_error was thrown in -fno-exceptions mode with error 138 and message "thread constructor failed"'
     self.do_runf('main.cpp', expected, assert_returncode=NON_ZERO)
 
   def test_parsetools_make_removed_fs_assert(self):
