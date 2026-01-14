@@ -10,8 +10,7 @@
  * This implementation is specifically tailored to only handle 'arraybuffer'
  * responses.
  */
-// TODO Use a regular class name when #5840 is fixed.
-var FetchXHR = class {
+class FetchXHR {
   // --- Public XHR Properties ---
 
   // Event Handlers
