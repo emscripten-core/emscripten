@@ -15095,7 +15095,7 @@ addToLibrary({
 
     # Since we are building without -pthread the thread constructor will fail,
     # and in debug mode at least we expect to see the error message from libc++
-    expected = 'system_error was thrown in -fno-exceptions mode with error 6 and message "thread constructor failed"'
+    expected = 'system_error was thrown in -fno-exceptions mode with error 138 and message "thread constructor failed"'
     self.do_runf('main.cpp', expected, assert_returncode=NON_ZERO)
 
   def test_parsetools_make_removed_fs_assert(self):
