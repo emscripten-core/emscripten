@@ -91,6 +91,7 @@ int __syscall_readlinkat(int dirfd, intptr_t path, intptr_t buf, size_t bufsize)
 int __syscall_fchmodat2(int dirfd, intptr_t path, int mode, int flags);
 int __syscall_faccessat(int dirfd, intptr_t path, int amode, int flags);
 int __syscall_pselect6(int nfds, intptr_t readfds, intptr_t writefds, intptr_t exceptfds, intptr_t timeout, intptr_t sigmask);
+int __syscall_ppoll(intptr_t fds, int nfds, intptr_t timeout, intptr_t sigmask, int size);
 int __syscall_utimensat(int dirfd, intptr_t path, intptr_t times, int flags);
 int __syscall_fallocate(int fd, int mode, off_t offset, off_t len);
 int __syscall_dup3(int fd, int suggestfd, int flags);

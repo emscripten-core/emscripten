@@ -1141,6 +1141,44 @@ module({
             small.delete();
             vec.delete();
         });
+
+        test("std::vector is iterable", function() {
+            var vec = cm.emval_test_return_vector();
+            var values = [];
+            for (var value of vec) {
+                values.push(value);
+            }
+            assert.deepEqual([10, 20, 30], values);
+            assert.deepEqual([10, 20, 30], Array.from(vec));
+            vec.delete();
+        });
+
+        test("custom class is iterable", function() {
+            var iterable = new cm.CustomIterable();
+            var values = [];
+            for (var value of iterable) {
+                values.push(value);
+            }
+            assert.deepEqual([1, 2, 3], values);
+            assert.deepEqual([1, 2, 3], Array.from(iterable));
+            iterable.delete();
+        });
+
+        test("custom class with size_t is iterable", function() {
+            var iterable = new cm.CustomIterableSizeT();
+            if (cm.getCompilerSetting('MEMORY64')) {
+                assert.equal(typeof iterable.count(), 'bigint');
+            } else {
+                assert.equal(typeof iterable.count(), 'number');
+            }
+            var values = [];
+            for (var value of iterable) {
+                values.push(value);
+            }
+            assert.deepEqual([10, 20, 30], values);
+            assert.deepEqual([10, 20, 30], Array.from(iterable));
+            iterable.delete();
+        });
     });
 
     BaseFixture.extend("map", function() {

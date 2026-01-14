@@ -3500,7 +3500,7 @@ More info: https://emscripten.org
   def test_jspi_add_function(self):
     # make sure synchronous functions in the wasmTable aren't processed with Asyncify.makeAsyncFunction
     self.cflags += [
-      '-sASYNCIFY=2',
+      '-sJSPI',
       '-sEXPORTED_RUNTIME_METHODS=addFunction,dynCall',
       '-sALLOW_TABLE_GROWTH=1',
       '-Wno-experimental']
@@ -10310,6 +10310,9 @@ _d
     test(['-sASSERTIONS=1'],
          'Aborted(RuntimeError: unreachable). "unreachable" may be due to ASYNCIFY_STACK_SIZE not being large enough (try increasing it)')
 
+  def test_async_exit_after_wakeup(self):
+    self.do_runf('test_async_exit_after_wakeup.c', cflags=['-sASYNCIFY', '--js-library', test_file('test_async_exit_after_wakeup.js')])
+
   # Sockets and networking
 
   def test_inet(self):
@@ -13554,7 +13557,7 @@ int main() {
     self.assertContained(expected, self.run_js('a.out.js'))
     asyncify_size = os.path.getsize('a.out.wasm')
 
-    self.run_process([EMXX, 'main.cpp', '-sASYNCIFY=2'] + shared_args)
+    self.run_process([EMXX, 'main.cpp', '-sJSPI'] + shared_args)
 
     self.assertContained(expected, self.run_js('a.out.js'))
     stack_switching_size = os.path.getsize('a.out.wasm')
@@ -15282,3 +15285,29 @@ for(var i = 0; i < 65536; ++i)
 console.log('OK');'''
     write_file('test.js', read_file(path_from_root('src/binaryDecode.js')) + '\nvar src = ' + binary_encoded + ';\n' + test_js)
     self.assertContained('OK', self.run_js('test.js'))
+
+  @crossplatform
+  def test_executable_output_default(self):
+    # By default there should not be a #! line included
+    self.run_process([EMCC, test_file('hello_world.c')])
+    self.assertFalse(read_file('a.out.js').startswith('#!'))
+    self.assertNotContained('#!/usr/bin/env node', read_file('a.out.js'))
+
+  @crossplatform
+  @no_windows('depends on UNIX shbang feature')
+  @parameterized({
+    '': (['-sEXECUTABLE', '-o', 'out.js'],),
+    # -sEXECUTABLE is implied if output filename has no extension
+    'no_extension': (['-o', 'foo'],),
+    # -sEXECUTABLE is implied for `.out` extension, e.g. a.out.
+    'a_out': (['-o', 'a.out'],),
+  })
+  def test_executable_output(self, args):
+    js_filename = args[-1]
+    self.run_process([EMCC, test_file('hello_world.c')] + args)
+    self.assertContained('#!/usr/bin/env node', read_file(js_filename))
+    output = self.run_process([os.path.abspath(js_filename)], stdout=PIPE).stdout
+    self.assertContained('hello, world!', output)
+
+  def test_executable_requires_node(self):
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXECUTABLE', '-sENVIRONMENT=web'], 'emcc: error: EXECUTABLE requires `node` in ENVRIONMENT')

@@ -574,6 +574,10 @@ Options that are modified or new in *emcc* are listed below:
   These rules only apply when linking.  When compiling to object code (See `-c`
   below) the name of the output file is irrelevant.
 
+  Note: Linking to a file with no extension (or a file ending in ``.out``, like
+  ``a.out``) will cause the generated JavaScript file to be exectuable, and
+  include a ``#!`` line to make it runnable directly.
+
 .. _emcc-c:
 
 ``-c``

@@ -56,7 +56,7 @@ SKIP_SUBPROCS = False
 # in debian/stable (bookworm).  We need at least v18.3.0 because we make
 # use of util.parseArg which was added in v18.3.0.
 MINIMUM_NODE_VERSION = (18, 3, 0)
-EXPECTED_LLVM_VERSION = 22
+EXPECTED_LLVM_VERSION = 23
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
