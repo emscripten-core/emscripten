@@ -756,4 +756,4 @@ console.error('JSLIB: none of the above');
     'closure': (['--closure', '1'],),
   })
   def test_multiline_string(self, args):
-    self.do_run_in_out_file_test('test_multiline_string.c', cflags=['--js-library', test_file('test_multiline_string.js')] + args)
+    self.do_run_in_out_file_test('jslib/test_multiline_string.c', cflags=['--js-library', test_file('jslib/test_multiline_string.js')] + args)
