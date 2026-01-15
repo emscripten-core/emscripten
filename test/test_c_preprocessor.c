@@ -37,8 +37,8 @@ EM_JS_DEPS(main, "$preprocess_c_code,$remove_cpp_comments_in_shaders");
 
 EM_JS(void, test_c_preprocessor, (void), {
   var numFailed = 0;
-  function test(input, expected) {
-    var obtained = preprocess_c_code(input);
+  function test(input, expected, defs={}) {
+    var obtained = preprocess_c_code(input, defs);
     function remove_nl(t) { return t.replace(/\\n/g, String.fromCharCode(92) + 'n'); }
 
     if (obtained == expected) {
@@ -195,6 +195,30 @@ EM_JS(void, test_c_preprocessor, (void), {
   test('#define BAR 1\n#ifdef FOO\nA\n#elif defined(BAR)\nB\n#elif defined(BAZ)\nC\n#else\nD\n#endif', "B\n"); // Test #elif support, taking first #elif path
   test('#define BAZ 1\n#ifdef FOO\nA\n#elif defined(BAR)\nB\n#elif defined(BAZ)\nC\n#else\nD\n#endif', "C\n"); // Test #elif support, taking a second #elif path
   test(               '#ifdef FOO\nA\n#elif defined(BAR)\nB\n#elif defined(BAZ)\nC\n#else\nD\n#endif', "D\n"); // Test #elif support, taking the final #else path
+
+  // Allow passing boolean values in defs, and those should be evaluated logically, and not as strings, e.g. "#if true" should not attempt to find if a preprocessing "#define true" exists.
+  test('#if FOO\nA\n#else\nB\n#endif', 'A\n', { 'FOO': true });
+  test('#if FOO\nA\n#else\nB\n#endif', 'B\n', { 'FOO': false });
+
+  // Allow passing integer values in defs, and those should be evaluated logically.
+  test('#if FOO\nA\n#else\nB\n#endif', 'A\n', { 'FOO': 1 });
+  test('#if FOO\nA\n#else\nB\n#endif', 'A\n', { 'FOO': 2 });
+  test('#if FOO\nA\n#else\nB\n#endif', 'B\n', { 'FOO': 0 });
+
+  // Allow passing string values in defs, and those should be expanded.
+  test('FOO\n', 'A\n',         { 'FOO': 'A' });
+  test('FOOBAR\n', 'FOOBAR\n', { 'FOO': 'A' });
+
+  // Test expanding a preprocessing define to an empty literal
+  test('FOO\n', '\n',         { 'FOO': "" });
+
+  // Allow passing lambdas in defs, and if they return booleans, those should be evaluated logically.
+  test('#if FOO(42)\nA\n#else\nB\n#endif', 'A\n', { 'FOO': (x) => { return x == 42; } });
+  test('#if FOO(44)\nA\n#else\nB\n#endif', 'B\n', { 'FOO': (x) => { return x == 42; } });
+
+  // Allow passing lambdas in defs, and if they return integers, those should be evaluated logically.
+  test('#if FOO(42)\nA\n#else\nB\n#endif', 'A\n', { 'FOO': (x) => { return x == 42 ? 1 : 0; } });
+  test('#if FOO(44)\nA\n#else\nB\n#endif', 'B\n', { 'FOO': (x) => { return x == 42 ? 1 : 0; } });
 
   if (numFailed) throw numFailed + ' tests failed!';
 });
