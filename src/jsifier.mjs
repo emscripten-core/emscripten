@@ -732,7 +732,7 @@ function(${args}) {
           contentText = `var ${mangled} = ` + contentText + ';';
         } else if (contentText.startsWith('class ')) {
           // Handle class declarations (which also have typeof == 'function'.)
-          contentText = contentText.replace(/^class /, `class ${mangled} `);
+          contentText = contentText.replace(/^class(?:\s+(?!extends\b)[^{\s]+)?/, `class ${mangled}`);
         } else {
           // Handle regular (non-arrow) functions
           contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);

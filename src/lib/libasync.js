@@ -323,10 +323,9 @@ addToLibrary({
       // can just call the function with no args at all since the engine will produce zeros
       // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
       // BigInt`.
-      return func(...Asyncify.restoreRewindArguments(original));
-#else
-      return func();
+      func = func.bind(0, ...Asyncify.restoreRewindArguments(original));
 #endif
+      return callUserCallback(func);
     },
 
     // This receives a function to call to start the async operation, and
@@ -480,9 +479,8 @@ addToLibrary({
 #endif
   },
 
-  emscripten_sleep__deps: ['$safeSetTimeout'],
   emscripten_sleep__async: true,
-  emscripten_sleep: (ms) => Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms)),
+  emscripten_sleep: (ms) => Asyncify.handleSleep((wakeUp) => setTimeout(wakeUp, ms)),
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data__async: 'auto',

@@ -9587,7 +9587,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
       '-sINCOMING_MODULE_JS_API=onRuntimeInitialized',
     ]
     self.cflags += args
-    self.do_core_test('embind_lib_with_asyncify.cpp')
+    # This error here is because delayed_throw occurs during execution, and
+    # even though it is caught, its influence on the returncode persists.
+    # TODO: Should that be changed?
+    self.do_core_test('embind_lib_with_asyncify.cpp', assert_returncode=NON_ZERO)
 
   @no_asan('asyncify stack operations confuse asan')
   @with_asyncify_and_jspi

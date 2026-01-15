@@ -7970,6 +7970,10 @@ addToLibrary({
     output = self.run_js('a.out.js')
     self.assertEqual('', output)
 
+  def test_no_entry_with_assertions(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '--no-entry', '-sASSERTIONS'])
+    self.assertNotContained('hello, world!', self.run_js('a.out.js'))
+
   def test_source_file_with_fixed_language_mode(self):
     create_file('src_tmp_fixed_lang', '''
 #include <string>
