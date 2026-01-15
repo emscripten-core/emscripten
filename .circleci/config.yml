@@ -905,6 +905,7 @@ jobs:
       - run-tests:
           test_targets: "
             core0.test_hello_world
+            core0.test_hello_argc_pthreads
             core2.test_pthread_create
             "
   test-jsc:
