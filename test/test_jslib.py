@@ -748,3 +748,12 @@ console.error('JSLIB: none of the above');
       }
     ''')
     self.do_runf('src.c', 'MyClass: 42', cflags=['--js-library', 'lib.js'])
+
+  # Tests that JS library functions containing multiline strings are not disturbed by e.g. inserting indentation into the output.
+  @parameterized({
+    '': ([],),
+    'single_file': (['-sSINGLE_FILE'],),
+    'closure': (['--closure', '1'],),
+  })
+  def test_multiline_string(self, args):
+    self.do_run_in_out_file_test('jslib/test_multiline_string.c', cflags=['--js-library', test_file('jslib/test_multiline_string.js')] + args)
