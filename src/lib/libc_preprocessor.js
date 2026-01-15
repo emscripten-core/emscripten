@@ -128,22 +128,33 @@ addToLibrary({
             var kind2 = classifyChar(str, j);
             if (kind2 != 2/*0-9*/ && kind2 != 3/*a-z*/) {
               var symbol = str.substring(i, j);
-              var pp = defs[symbol];
-              if (pp) {
+              if (Object.hasOwn(defs, symbol)) {
+                var pp = defs[symbol];
                 var expanded = str.substring(lineStart, i);
-                if (pp.length) { // Expanding a macro? (#define FOO(X) ...)
-                  while (isWhitespace(str, j)) ++j;
-                  if (str[j] == '(') {
-                    var closeParens = find_closing_parens_index(str, j);
-                    // N.b. this has a limitation that multiparameter macros cannot nest with other multiparameter macros
-                    // e.g. FOO(a, BAR(b, c)) is not supported.
-                    expanded += pp(str.substring(j+1, closeParens).split(',')) + str.substring(closeParens+1, lineEnd);
-                  } else {
-                    var j2 = nextWhitespace(str, j);
-                    expanded += pp([str.substring(j, j2)]) + str.substring(j2, lineEnd);
+                if (typeof pp == 'function') { // definition is a function?
+                  if (pp.length) { // Expanding a macro? (#define FOO(X) ...)
+                    while (str[j] && isWhitespace(str, j)) ++j;
+                    if (str[j] == '(') {
+                      var closeParens = find_closing_parens_index(str, j);
+                      // N.b. this has a limitation that multiparameter macros cannot nest with other multiparameter macros
+                      // e.g. FOO(a, BAR(b, c)) is not supported.
+                      var ret = pp(str.substring(j+1, closeParens).split(','));
+                      if (ret === !!ret) ret = ret|0;
+                      expanded += ret + str.substring(closeParens+1, lineEnd);
+                    } else {
+                      var j2 = nextWhitespace(str, j);
+                      expanded += pp([str.substring(j, j2)]) + str.substring(j2, lineEnd);
+                    }
+                  } else { // A zero-arg function macro (#define FOO() BAR)?
+                    expanded += pp() + str.substring(j, lineEnd);
                   }
-                } else { // Expanding a non-macro (#define FOO BAR)
-                  expanded += pp() + str.substring(j, lineEnd);
+                } else if (pp === !!pp) { // Definition is a boolean?
+                  // Expand boolean args from defs, e.g. 'FOO': true as integer 1,
+                  // so that further preprocessing won't attempt to search for
+                  // a preprocessing macro 'true' as being defined.
+                  expanded += (pp|0) + str.substring(j, lineEnd);
+                } else { // Definition is a non-macro string or an integer (#define FOO BAR)
+                  expanded += pp + str.substring(j, lineEnd);
                 }
                 return expandMacros(expanded, 0);
               }
