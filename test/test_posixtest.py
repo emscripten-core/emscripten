@@ -16,7 +16,7 @@ import unittest
 import test_posixtest_browser
 from browser_common import browser_should_skip_feature
 from common import RunnerCore, path_from_root
-from decorators import node_pthreads
+from decorators import requires_pthreads
 
 from tools.feature_matrix import Feature
 
@@ -160,7 +160,7 @@ expect_fail = {
 
 def make_test(name, testfile, browser):
 
-  @node_pthreads
+  @requires_pthreads
   def f(self):
     if name in disabled:
       self.skipTest(disabled[name])
