@@ -85,6 +85,7 @@ from decorators import (
   with_all_eh_sjlj,
   with_all_fs,
   with_all_sjlj,
+  with_asyncify_and_jspi,
   with_env_modify,
 )
 
@@ -11582,11 +11583,11 @@ int main(void) {
     self.do_other_test('test_pthread_self_join_detach.c')
 
   @node_pthreads
+  @with_asyncify_and_jspi
   def test_pthread_asyncify(self):
     # We had a infinite recursion bug when enabling PTHREADS_DEBUG + ASYNCIFY.
     # This was because PTHREADS_DEBUG calls back into WebAssembly for each call to `err()`.
     self.set_setting('PTHREADS_DEBUG')
-    self.set_setting('ASYNCIFY')
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.do_other_test('test_pthread_asyncify.c')
 
