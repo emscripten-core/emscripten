@@ -87,7 +87,6 @@ CXXFLAGS = [
     '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
     '-D__EMSCRIPTEN_EXCEPTIONS__',
     '-I' + utils.path_from_root('system/lib/wasmfs/'),
-    '-std=c++17',
 ]
 
 DEFAULT_JSON_FILES = [
