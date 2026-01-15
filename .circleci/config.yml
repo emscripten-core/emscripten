@@ -892,6 +892,24 @@ jobs:
             core0.test_hello_argc_pthreads
             core2.test_pthread_create
             "
+  test-deno:
+    executor: linux-python
+    environment:
+      OVERRIDE_NODE_JS_TEST_VERSION: "v24.0.0"
+    steps:
+      - checkout
+      - pip-install
+      - install-emsdk
+      - run:
+          name: install deno
+          command: |
+            curl -fsSL https://deno.land/install.sh | sh
+            echo "NODE_JS_TEST = [os.path.expanduser('~/.deno/bin/deno'), '--allow-read', '--unstable-detect-cjs']" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [NODE_JS_TEST]" >> ~/emsdk/.emscripten
+      - run-tests:
+          test_targets: "
+            core0.test_hello_world
+            "
   test-jsc:
     executor: linux-python
     steps:
@@ -1385,6 +1403,7 @@ workflows:
           requires:
             - build-linux
       - test-bun
+      - test-deno
       - test-jsc
       - test-spidermonkey
       - test-node-compat
