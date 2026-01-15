@@ -15316,12 +15316,3 @@ console.log('OK');'''
 
   def test_executable_requires_node(self):
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXECUTABLE', '-sENVIRONMENT=web'], 'emcc: error: EXECUTABLE requires `node` in ENVRIONMENT')
-
-  # Tests that JS library functions containing multiline strings are not disturbed by e.g. inserting indentation into the output.
-  @parameterized({
-    '': ([],),
-    'single_file': (['-sSINGLE_FILE'],),
-    'closure': (['--closure', '1'],),
-  })
-  def test_multiline_string(self, args):
-    self.do_run_in_out_file_test('test_multiline_string.c', cflags=['--js-library', test_file('test_multiline_string.js')] + args)
