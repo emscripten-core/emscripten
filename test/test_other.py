@@ -6643,7 +6643,7 @@ int main(int argc, char** argv) {
     if '-pthread' in args:
       self.skipTest('Problems with readFile from pthread')
     if '-pthread' in args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
     create_file('hello1_dep.c', r'''
 #include <stdio.h>
 
@@ -12357,7 +12357,7 @@ exec "$@"
     self.assertFileContents(path_from_root('src/struct_info_generated.json'), read_file('out.json'))
 
     # Same again for wasm64
-    node_version = self.get_node_test_version(self.get_nodejs())
+    node_version = shared.get_node_version(self.get_nodejs())
     if node_version and node_version >= (14, 0, 0):
       self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
       self.assertFileContents(path_from_root('src/struct_info_generated_wasm64.json'), read_file('out.json'))
@@ -12870,7 +12870,7 @@ void foo() {}
     self.build('main.c', cflags=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=0'])
     self.assertNotContained('unhandledRejection', read_file('main.js'))
 
-    if self.get_node_test_version(self.get_nodejs())[0] >= 15:
+    if shared.get_node_version(self.get_nodejs())[0] >= 15:
       self.skipTest('old behaviour of node JS cannot be tested on node v15 or above')
 
     output = self.run_js('main.js')
@@ -12881,7 +12881,7 @@ void foo() {}
     self.do_runf('other/test_default_pthread_stack_size.c')
 
     # Same again with pthreads enabled
-    self.setup_node_pthreads()
+    self.require_pthreads()
     self.do_other_test('test_default_pthread_stack_size.c')
 
     # Same again but with a custom stack size
@@ -13949,7 +13949,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @requires_node
   def test_min_node_version(self):
-    node_version = self.get_node_test_version(self.get_nodejs())
+    node_version = shared.get_node_version(self.get_nodejs())
     node_version = '.'.join(str(x) for x in node_version)
     self.set_setting('MIN_NODE_VERSION', 300000)
     expected = 'This emscripten-generated code requires node v30.0.0 (detected v%s' % node_version
@@ -14230,7 +14230,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   })
   def test_preload_module(self, args):
     if '-pthread' in args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
     # TODO(sbc): This test is copyied from test_browser.py.  Perhaps find a better way to
     # share code between them.
     create_file('library.c', r'''
