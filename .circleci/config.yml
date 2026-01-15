@@ -892,6 +892,22 @@ jobs:
             core0.test_hello_argc_pthreads
             core2.test_pthread_create
             "
+  test-deno:
+    executor: linux-python
+    steps:
+      - checkout
+      - pip-install
+      - install-emsdk
+      - run:
+          name: install deno
+          command: |
+            curl -fsSL https://deno.land/install.sh | sh
+            echo "DENO = [os.path.expanduser('~/.deno/bin/deno'), '--allow-read', '--unstable-detect-cjs']" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [DENO]" >> ~/emsdk/.emscripten
+      - run-tests:
+          test_targets: "
+            core0.test_hello_world
+            "
   test-jsc:
     executor: linux-python
     steps:
@@ -1385,6 +1401,7 @@ workflows:
           requires:
             - build-linux
       - test-bun
+      - test-deno
       - test-jsc
       - test-spidermonkey
       - test-node-compat
