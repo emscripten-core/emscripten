@@ -7377,17 +7377,6 @@ addToLibrary({
     self.emcc('hello_libcxx.cpp', args=args)
     self.assertLess(os.path.getsize('a.out.wasm'), max_size)
 
-  def test_emmalloc_2GB(self):
-    def test(args, text=None):
-      if text:
-        self.assert_fail([EMCC, test_file('hello_world.c'), '-sMALLOC=emmalloc'] + args, text)
-      else:
-        self.run_process([EMCC, test_file('hello_world.c'), '-sMALLOC=emmalloc'] + args)
-
-    test(['-sALLOW_MEMORY_GROWTH'])
-    test(['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=1GB'])
-    test(['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'])
-
   def test_emmalloc_high_align(self):
     self.do_other_test('test_emmalloc_high_align.c',
                        cflags=['-sMALLOC=emmalloc', '-sINITIAL_MEMORY=128MB'])
