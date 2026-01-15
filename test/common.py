@@ -389,7 +389,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     return None
 
   def require_pthreads(self):
-    self.setup_pthreads()
+    self.cflags += ['-Wno-pthreads-mem-growth', '-pthread']
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('non-browser pthreads not yet supported with MINIMAL_RUNTIME')
     for engine in self.js_engines:
       if engine_is_node(engine):
         self.require_node()
@@ -585,11 +587,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def setup_wasmfs_test(self):
     self.set_setting('WASMFS')
     self.cflags += ['-DWASMFS']
-
-  def setup_pthreads(self):
-    self.cflags += ['-Wno-pthreads-mem-growth', '-pthread']
-    if self.get_setting('MINIMAL_RUNTIME'):
-      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
