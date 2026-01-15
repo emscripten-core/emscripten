@@ -208,7 +208,7 @@ def node_pthreads(func):
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    self.setup_node_pthreads()
+    self.require_pthreads()
     return func(self, *args, **kwargs)
   return decorated
 

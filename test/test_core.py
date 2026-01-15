@@ -1991,7 +1991,7 @@ int main(int argc, char **argv) {
   @flaky('https://github.com/emscripten-core/emscripten/issues/25175')
   def test_main_thread_em_asm(self, args):
     if args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
     src = read_file(test_file('core/test_em_asm_2.cpp'))
     create_file('test.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
@@ -2061,7 +2061,7 @@ int main(int argc, char **argv) {
       self.check_dylink()
     self.cflags += ['-sEXPORTED_FUNCTIONS=_main,_malloc'] + args
     if '-pthread' in args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
 
     self.do_core_test('test_em_js.cpp', force_c=force_c)
     if self.get_setting('WASM_ESM_INTEGRATION'):
@@ -2742,7 +2742,7 @@ The current type of b is: 9
     self.do_runf('pthread/test_pthread_run_script.c')
 
     # Run the test again with PROXY_TO_PTHREAD
-    self.setup_node_pthreads()
+    self.require_pthreads()
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_runf('pthread/test_pthread_run_script.c')
@@ -2918,7 +2918,7 @@ The current type of b is: 9
   })
   def test_dlfcn_basic(self, args):
     if args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
     self.cflags += args
     create_file('libside.cpp', '''
       #include <cstdio>
@@ -6811,7 +6811,7 @@ void* operator new(size_t size) {
       self.cflags += ['-lstubs']
     if use_pthreads:
       self.cflags.append('-pthread')
-      self.setup_node_pthreads()
+      self.require_pthreads()
     self.cflags += ['-sUSE_SQLITE3']
     self.do_run_in_out_file_test('sqlite/test.c')
 
@@ -9433,7 +9433,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ''')
 
     if args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
 
     self.dylink_test(
       r'''
@@ -9661,7 +9661,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   def test_pipe_select(self, args):
     if args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
     self.do_runf('core/test_pipe_select.c', cflags=args)
 
   @also_without_bigint
@@ -9759,7 +9759,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance(self, args):
     if args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
     create_file('library.js', '''\
     addToLibrary({
       $baz: () => console.log('baz'),
