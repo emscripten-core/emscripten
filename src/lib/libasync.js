@@ -348,7 +348,8 @@ addToLibrary({
         var reachedAfterCallback = false;
         startAsync((handleSleepReturnValue = 0) => {
 #if ASSERTIONS
-          assert(!handleSleepReturnValue || typeof handleSleepReturnValue == 'number' || typeof handleSleepReturnValue == 'boolean'); // old emterpretify API supported other stuff
+          // old emterpretify API supported other stuff
+          assert(['undefined', 'number', 'boolean', 'bigint'].includes(typeof handleSleepReturnValue), `invalid type for handleSleepReturnValue: '${typeof handleSleepReturnValue}'`);
 #endif
           if (ABORT) return;
           Asyncify.handleSleepReturnValue = handleSleepReturnValue;
