@@ -177,6 +177,7 @@ var LibraryEmbind = {
       this.constructors = [];
       this.base = base;
       this.properties = [];
+      this.iterableElementType = null;
       this.destructorType = 'none';
       if (base) {
         this.destructorType = 'stack';
@@ -185,11 +186,16 @@ var LibraryEmbind = {
 
     print(nameMap, out) {
       out.push(`export interface ${this.name}`);
+      const extendsParts = [];
       if (this.base) {
-        out.push(` extends ${this.base.name}`);
+        extendsParts.push(this.base.name);
       } else {
-        out.push(' extends ClassHandle');
+        extendsParts.push('ClassHandle');
       }
+      if (this.iterableElementType) {
+        extendsParts.push(`Iterable<${nameMap(this.iterableElementType, true)}>`);
+      }
+      out.push(` extends ${extendsParts.join(', ')}`);
       out.push(' {\n');
       for (const property of this.properties) {
         const props = [];
@@ -651,6 +657,15 @@ var LibraryEmbind = {
       }
     );
 
+  },
+  _embind_register_iterable__deps: ['$whenDependentTypesAreResolved'],
+  _embind_register_iterable: (rawClassType, rawElementType, sizeMethodName, getMethodName) => {
+    whenDependentTypesAreResolved([], [rawClassType, rawElementType], (types) => {
+      const classType = types[0];
+      const elementType = types[1];
+      classType.iterableElementType = elementType;
+      return [];
+    });
   },
   _embind_register_class_constructor__deps: ['$whenDependentTypesAreResolved', '$createFunctionDefinition'],
   _embind_register_class_constructor: function(

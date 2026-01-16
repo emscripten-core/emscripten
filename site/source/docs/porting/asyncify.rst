@@ -83,13 +83,13 @@ And you can run it with
 
 ::
 
-    nodejs a.out.js
+    node a.out.js
 
 Or with JSPI
 
 ::
 
-    nodejs --experimental-wasm-stack-switching a.out.js
+    node --experimental-wasm-stack-switching a.out.js
 
 You should then see something like this:
 

@@ -22,7 +22,12 @@ addToLibrary({
   //   https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the
   // target memory location.
+#if ENVIRONMENT_MAY_BE_NODE
+  // Under Deno Atomics.waitAsync currently broken: https://github.com/denoland/deno/issues/14786
+  $waitAsyncPolyfilled: '=(!Atomics.waitAsync || globalThis.Deno || (globalThis.navigator?.userAgent && Number((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91));',
+#else
   $waitAsyncPolyfilled: '=(!Atomics.waitAsync || (globalThis.navigator?.userAgent && Number((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91));',
+#endif
   $polyfillWaitAsync__deps: ['$waitAsyncPolyfilled'],
   $polyfillWaitAsync__postset: `if (waitAsyncPolyfilled) {
   let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];

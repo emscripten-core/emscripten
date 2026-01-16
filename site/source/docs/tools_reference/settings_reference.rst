@@ -3449,6 +3449,18 @@ library.
 
 Default value: true
 
+.. _executable:
+
+EXECUTABLE
+==========
+
+Add a #! line to generated JS file and make it executable.  This is useful
+for building command line tools that run under node.
+This setting can also be set to a string value, in which case that string
+will be used as the #! command to embed in the generated file.
+
+Default value: false
+
 .. _deprecated-settings:
 
 ===================

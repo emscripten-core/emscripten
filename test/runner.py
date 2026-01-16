@@ -51,6 +51,18 @@ from tools import building, colored_logger, config, shared, utils
 
 logger = logging.getLogger("runner")
 
+# In git checkouts of emscripten `bootstrap.py` exists to run post-checkout
+# steps.  In packaged versions (e.g. emsdk) this file does not exist (because
+# it is excluded in tools/install.py) and these steps are assumed to have been
+# run already.
+if os.path.exists('.git') and os.path.exists('bootstrap.py'):
+  import bootstrap
+  bootstrap.check()
+else:
+  # The test framework depends on writing files to the `out/` directory.
+  # For git checkouts the bootstrap.py script would take care of creating this.
+  os.makedirs('out', exist_ok=True)
+
 
 # Test modes from 'core' that fully pass all tests. When running a random
 # selection of tests (e.g. "random100" runs 100 random tests) they will be
@@ -428,7 +440,6 @@ def run_tests(options, suites):
   # Run the discovered tests
 
   if os.getenv('CI'):
-    os.makedirs('out', exist_ok=True)
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
     import xmlrunner  # type: ignore  # noqa: PLC0415

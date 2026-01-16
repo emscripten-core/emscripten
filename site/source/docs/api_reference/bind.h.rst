@@ -641,6 +641,38 @@ Classes
       :param typename... Policies: |policies-argument|
       :returns: |class_-function-returns|
 
+   .. cpp:function:: const class_& iterable() const
+
+      .. code-block:: cpp
+
+         // prototype
+         template<typename ElementType>
+         EMSCRIPTEN_ALWAYS_INLINE const class_& iterable(const char* sizeMethodName, const char* getMethodName) const
+
+      Makes a bound class iterable in JavaScript by installing ``Symbol.iterator``.
+      This enables use with ``for...of`` loops, ``Array.from()``, and spread syntax.
+
+      :tparam ElementType: The type of elements yielded by the iterator.
+
+      :param sizeMethodName: Name of the bound method that returns the number of elements.
+
+      :param getMethodName: Name of the bound method that retrieves an element by index.
+
+      :returns: |class_-function-returns|
+
+      .. code-block:: cpp
+
+         class_<MyContainer>("MyContainer")
+            .function("size", &MyContainer::size)
+            .function("get", &MyContainer::get)
+            .iterable<int>("size", "get");
+
+      .. code-block:: javascript
+
+         const container = new Module.MyContainer();
+         for (const item of container) { /* ... */ }
+         const arr = Array.from(container);
+
 
    .. cpp:function:: const class_& property() const
 

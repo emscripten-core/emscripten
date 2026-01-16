@@ -18,7 +18,7 @@ from common import (
   read_file,
   test_file,
 )
-from decorators import node_pthreads, parameterized
+from decorators import parameterized, requires_pthreads
 
 from tools import building, shared
 
@@ -319,7 +319,7 @@ class codesize(RunnerCore):
     self.cflags.append('--no-entry')
     self.run_codesize_test('minimal.c', args, check_full_js=check_full_js)
 
-  @node_pthreads
+  @requires_pthreads
   @parameterized({
     '': ([],),
     'memgrowth': (['-sALLOW_MEMORY_GROWTH'],),

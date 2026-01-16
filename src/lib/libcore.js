@@ -1997,6 +1997,9 @@ addToLibrary({
       }
     }
 #endif
+#if RUNTIME_DEBUG
+    dbg("handleException: got unexpected exception, calling quit_")
+#endif
     quit_(1, e);
   },
 
@@ -2066,10 +2069,11 @@ addToLibrary({
       return;
     }
     try {
-      func();
-      maybeExit();
+      return func();
     } catch (e) {
       handleException(e);
+    } finally {
+      maybeExit();
     }
   },
 
