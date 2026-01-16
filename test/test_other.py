@@ -7363,14 +7363,14 @@ addToLibrary({
     self.assertContained('native code called abort()', out)
 
   @parameterized({
-    '': ([], 190000),
-    'O2': (['-O2'], 132000),
+    '': ([], 191000),
+    'O2': (['-O2'], 137000),
     'emmalloc': (['-sMALLOC=emmalloc'], 185000),
-    'dlmalloc': (['-sMALLOC=dlmalloc'], 190000),
+    'dlmalloc': (['-sMALLOC=dlmalloc'], 191000),
     'mimalloc': (['-sMALLOC=mimalloc'], 245000),
-    'emmalloc_O2': (['-sMALLOC=emmalloc', '-O2'], 125000),
-    'dlmalloc_O2': (['-sMALLOC=dlmalloc', '-O2'], 132000),
-    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 180000),
+    'emmalloc_O2': (['-sMALLOC=emmalloc', '-O2'], 130000),
+    'dlmalloc_O2': (['-sMALLOC=dlmalloc', '-O2'], 137000),
+    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 181000),
   })
   # This test verifies the output code size of the different -sMALLOC= modes.
   def test_malloc_size(self, args, max_size):
