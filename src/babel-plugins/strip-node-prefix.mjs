@@ -6,9 +6,7 @@
 
 // A babel plugin to remove the leading `node:` prefix from all imports.
 
-import { types as t } from '@babel/core';
-
-export default function () {
+export default function ({ types: t }) {
   return {
     name: 'strip-node-prefix',
     visitor: {
