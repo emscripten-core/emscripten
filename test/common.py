@@ -664,7 +664,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         int(emcc_min_node_version_str[4:6]),
       )
       if node_version < emcc_min_node_version:
-        self.cflags += building.get_emcc_node_flags(node_version)
+        self.cflags.append('-sMIN_NODE_VERSION=%02d%02d%02d' % node_version)
         self.cflags.append('-Wno-transpile')
 
       # This allows much of the test suite to be run on older versions of node that don't
