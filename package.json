@@ -21,7 +21,6 @@
     "@babel/core": "^7.28.4",
     "@babel/preset-env": "^7.28.3",
     "acorn": "^8.15.0",
-    "acorn-import-phases": "^1.0.4",
     "google-closure-compiler": "20240317.0.0",
     "html-minifier-terser": "7.2.0"
   },

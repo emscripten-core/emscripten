@@ -7,7 +7,7 @@
 #include "minimum_runtime_check.js"
 
 #if MODULARIZE
-#include "preamble_modularize.js"
+var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
 var Module;
