@@ -45,6 +45,7 @@ from common import (
   RunnerCore,
   copytree,
   create_file,
+  engine_is_node,
   ensure_dir,
   env_modify,
   exe_path_from_root,
@@ -5790,12 +5791,13 @@ int main(int argc, char **argv) {
                          self.run_js('a.out.js', args=['waka']))
 
   @crossplatform
+  @requires_node
   def test_browser_language_detection(self):
     # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
     expected_lang = os.environ.get('LANG')
     if expected_lang is None:
       # If the LANG env. var doesn't exist (Windows), ask Node for the language.
-      cmd = config.NODE_JS_TEST + ['-e', 'console.log(navigator.languages[0] || "en_US")']
+      cmd = self.js_engines[0] + ['-e', 'console.log(navigator.languages[0] || "en_US")']
       expected_lang = self.run_process(cmd, stdout=PIPE).stdout
       expected_lang = expected_lang.strip().replace('-', '_')
       expected_lang = f'{expected_lang}.UTF-8'
@@ -7815,7 +7817,10 @@ addToLibrary({
     src = read_file('a.out.js')
     for env in ['web', 'worker', 'node', 'shell']:
       for engine in config.JS_ENGINES:
-        actual = 'NODE' if engine == config.NODE_JS_TEST else 'SHELL'
+        if engine_is_node(engine):
+          actual = 'NODE'
+        else:
+          actual = 'SHELL'
         print(env, actual, engine)
         module = {'ENVIRONMENT': env}
         if env != actual:
@@ -8669,12 +8674,13 @@ int main() {
 
   @requires_node
   def test_jsrun(self):
-    print(config.NODE_JS_TEST)
+    engine = self.js_engines[0]
+    print(engine)
     jsrun.WORKING_ENGINES = {}
     # Test that engine check passes
-    self.assertTrue(jsrun.check_engine(config.NODE_JS_TEST))
+    self.assertTrue(jsrun.check_engine(engine))
     # Run it a second time (cache hit)
-    self.assertTrue(jsrun.check_engine(config.NODE_JS_TEST))
+    self.assertTrue(jsrun.check_engine(engine))
 
     # Test that engine check fails
     bogus_engine = ['/fake/inline4']
@@ -8682,14 +8688,14 @@ int main() {
     self.assertFalse(jsrun.check_engine(bogus_engine))
 
     # Test the other possible way (list vs string) to express an engine
-    if type(config.NODE_JS_TEST) is list:
-      engine2 = config.NODE_JS_TEST[0]
+    if type(engine) is list:
+      engine2 = engine[0]
     else:
-      engine2 = [config.NODE_JS_TEST]
+      engine2 = [engine]
     self.assertTrue(jsrun.check_engine(engine2))
 
     # Test that self.run_js requires the engine
-    self.run_js(test_file('hello_world.js'), config.NODE_JS_TEST)
+    self.run_js(test_file('hello_world.js'), engine)
     caught_exit = 0
     try:
       self.run_js(test_file('hello_world.js'), bogus_engine)
@@ -10146,10 +10152,11 @@ T6:(else) !ASSERTIONS""", output)
   def test_system_node_js(self):
     self.do_runf('test_system.c', 'Hello from echo', cflags=['-DENV_NODE'])
 
+  @requires_node
   def test_node_eval(self):
     self.run_process([EMCC, '-sENVIRONMENT=node', test_file('hello_world.c'), '-o', 'a.js', '-O3'])
     js = read_file('a.js')
-    ret = self.run_process(config.NODE_JS_TEST + ['-e', js], stdout=PIPE).stdout
+    ret = self.run_process(self.js_engines[0] + ['-e', js], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
 
   def test_is_bitcode(self):
@@ -13479,7 +13486,9 @@ int main() {
 
   # Tests the internal test suite of tools/unsafe_optimizations.js
   def test_unsafe_optimizations(self):
-    self.run_process(config.NODE_JS_TEST + [path_from_root('tools', 'unsafe_optimizations.mjs'), '--test'])
+    # Note: Here we use config.NODE_JS (the version of node used by the compiler) rather than the
+    # version of node in JS_ENGINES.
+    self.run_process(config.NODE_JS + [path_from_root('tools/unsafe_optimizations.mjs'), '--test'])
 
   @requires_v8
   def test_extended_const(self):

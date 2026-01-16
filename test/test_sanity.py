@@ -606,7 +606,7 @@ fi
 
   @no_windows('Test relies on Unix-specific shell script')
   def test_js_engine_path(self):
-    # Test that running JS commands works for node, d8, and jsc and is not path dependent
+    # Test that running JS commands works for all JS_ENGINES, and is not path dependent
     restore_and_set_up()
 
     sample_script = test_file('print_args.js')
@@ -616,17 +616,10 @@ fi
     test_path = self.in_dir('fake', 'abcd8765')
     ensure_dir(test_path)
 
-    jsengines = [('d8',     config.V8_ENGINE),
-                 ('d8_g',   config.V8_ENGINE),
-                 ('js',     config.SPIDERMONKEY_ENGINE),
-                 ('node',   config.NODE_JS_TEST),
-                 ('nodejs', config.NODE_JS_TEST)]
-    for filename, engine in jsengines:
+    for engine in config.JS_ENGINES:
       delete_file(SANITY_FILE)
-      if not engine:
-        print('WARNING: Not testing engine %s, not configured.' % (filename))
-        continue
       engine = engine[0]
+      filename = os.path.splitext(os.path.basename(engine))[0] + '_runner'
       print(filename, engine)
 
       test_engine_path = os.path.join(test_path, filename)
