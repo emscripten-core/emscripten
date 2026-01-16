@@ -138,7 +138,7 @@ def strip_debug_sections(wasm):
     if section_id == 0:
       name_len, name_pos = read_var_uint(wasm, section_body)
       name_end = name_pos + name_len
-      name = wasm[name_pos:name_end]
+      name = str(wasm[name_pos:name_end])
       if name in {'linking', 'sourceMappingURL'} or name.startswith(('reloc..debug_', '.debug_')):
         continue  # skip debug related sections
     stripped = stripped + wasm[section_start:pos]
