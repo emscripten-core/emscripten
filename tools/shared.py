@@ -297,7 +297,8 @@ def check_node_version():
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
     return
 
-  if version < MINIMUM_NODE_VERSION:
+  # Skip the version check is we are running `bun` instead of node.
+  if version < MINIMUM_NODE_VERSION and 'bun' not in os.path.basename(config.NODE_JS[0]):
     expected = '.'.join(str(v) for v in MINIMUM_NODE_VERSION)
     diagnostics.warning('version-check', f'node version appears too old (seeing "{actual}", expected "v{expected}")')
 

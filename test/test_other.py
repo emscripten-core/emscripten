@@ -11352,7 +11352,8 @@ int main(void) {
   def test_em_asm_invalid(self):
     # Test that invalid EM_ASM in side modules since is detected at build time.
     err = self.expect_fail([EMCC, '-sSIDE_MODULE', test_file('other/test_em_asm_invalid.c')])
-    self.assertContained("SyntaxError: Unexpected token '*'", err)
+    # Check for the error message syntax produced by either Node or Bun
+    self.assertContained(["SyntaxError: Unexpected token '*'", 'error: Unexpected *'], err)
     self.assertContained('emcc: error: EM_ASM function validation failed', err)
 
   def test_boost_graph(self):
@@ -12406,7 +12407,8 @@ exec "$@"
   def test_em_js_invalid(self):
     # Test that invalid EM_JS in side modules since is detected at build time.
     err = self.expect_fail([EMCC, '-sSIDE_MODULE', test_file('other/test_em_js_invalid.c')])
-    self.assertContained("SyntaxError: Unexpected token '*'", err)
+    # Check for the error message syntax produced by either Node or Bun
+    self.assertContained(["SyntaxError: Unexpected token '*'", 'error: Unexpected *'], err)
     self.assertContained('emcc: error: EM_JS function validation failed', err)
 
   @crossplatform

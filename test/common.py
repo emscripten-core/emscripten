@@ -419,10 +419,16 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         return engine
     return None
 
+  def get_bun(self):
+    for engine in config.JS_ENGINES:
+      if engine_is_bun(engine):
+        return engine
+    return None
+
   def require_node(self):
     if 'EMTEST_SKIP_NODE' in os.environ:
       self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
-    nodejs = self.get_nodejs()
+    nodejs = self.get_nodejs() or self.get_bun()
     if not nodejs:
       self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(nodejs)
@@ -940,9 +946,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       engine = self.get_current_js_engine()
     # Make a copy of the engine command before we modify/extend it.
     engine = list(engine)
-    if engine == config.NODE_JS_TEST:
+    if engine_is_node(engine) or engine_is_bun(engine):
       engine += self.node_args
-    elif engine == config.V8_ENGINE:
+    elif engine_is_v8(engine):
       engine += self.v8_args
     elif engine == config.SPIDERMONKEY_ENGINE:
       engine += self.spidermonkey_args

@@ -67,7 +67,7 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import shared, system_libs, utils
+from tools import config, shared, system_libs, utils
 
 QUIET = (__name__ != '__main__')
 DEBUG = False
@@ -96,9 +96,9 @@ DEFAULT_JSON_FILES = [
 ]
 
 
-def show(msg):
+def show(msg, *args):
   if shared.DEBUG or not QUIET:
-    sys.stderr.write('gen_struct_info: %s\n' % msg)
+    print('gen_struct_info:', msg, *args, file=sys.stderr)
 
 
 # The Scope class generates C code which, in turn, outputs JSON.
@@ -249,7 +249,7 @@ def inspect_headers(headers, cflags):
     sys.exit(1)
 
   # Run the compiled program.
-  show('Calling generated program... ' + js_file_path)
+  show('Running generated program... ' + js_file_path, config.NODE_JS)
   info = shared.run_js_tool(js_file_path, stdout=shared.PIPE)
 
   if not DEBUG:
