@@ -67,7 +67,7 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import building, shared, system_libs, utils
+from tools import shared, system_libs, utils
 
 QUIET = (__name__ != '__main__')
 DEBUG = False
@@ -205,8 +205,6 @@ def generate_cmd(js_file_path, src_file_path, cflags):
   else:
     compiler = shared.EMCC
 
-  node_flags = building.get_emcc_node_flags(shared.check_node_version())
-
   # -O1+ produces calls to iprintf, which libcompiler_rt doesn't support
   cmd = [compiler] + cflags + ['-o', js_file_path, src_file_path,
                                '-O0',
@@ -217,7 +215,7 @@ def generate_cmd(js_file_path, src_file_path, cflags):
                                '-sINCOMING_MODULE_JS_API=',
                                '-sSTRICT',
                                '-sSUPPORT_LONGJMP=0',
-                               '-sASSERTIONS=0'] + node_flags
+                               '-sASSERTIONS=0']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
