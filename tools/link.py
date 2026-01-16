@@ -2115,6 +2115,28 @@ def phase_source_transforms(options):
   save_intermediate('transformed')
 
 
+# Unmangle previously mangled `await import` and `await` references in
+# both main code and libraries.
+# See also: `preprocess` in parseTools.js.
+def fix_js_mangling(js_file):
+  # Mangling only takes place under closure in MODULARIZE mode.
+  if not settings.MODULARIZE or not settings.USE_CLOSURE_COMPILER:
+    return
+
+  src = read_file(js_file)
+
+  if settings.EXPORT_ES6:
+    # Also remove the line containing `export{};`
+    src = src \
+      .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import') \
+      .replace('export{};\n', '')
+
+  src = src.replace('EMSCRIPTEN$AWAIT(', 'await (')
+
+  write_file(js_file, src)
+  save_intermediate('js-mangling')
+
+
 def node_detection_code():
   return "globalThis.process?.versions?.node && globalThis.process?.type != 'renderer'"
 
@@ -2191,6 +2213,8 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
     save_intermediate('unsafe-optimizations2')
 
+  fix_js_mangling(final_js)
+
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
     extern_pre_js = read_js_files(options.extern_pre_js)
@@ -2215,6 +2239,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
       support_target = unsuffixed(js_target) + '.pthread.mjs'
       pthread_code = building.read_and_preprocess(utils.path_from_root('src/pthread_esm_startup.mjs'), expand_macros=True)
       write_file(support_target, pthread_code)
+      fix_js_mangling(support_target)
   else:
     move_file(final_js, js_target)
 

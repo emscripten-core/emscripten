@@ -73,6 +73,16 @@ function findIncludeFile(filename, currentDir) {
 // Also handles #include x.js (similar to C #include <file>)
 export function preprocess(filename) {
   let text = readFile(filename);
+  if (MODULARIZE && USE_CLOSURE_COMPILER) {
+    // Closure doesn't support "top-level await" which is not actually the top
+    // level in case of MODULARIZE. Temporarily replace `await` usages with
+    // placeholders during preprocess phase, and back after all the other ops.
+    // See also: `fix_js_mangling` in emcc.py.
+    if (EXPORT_ES6) {
+      text = text.replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
+    }
+    text = text.replace(/\bawait createWasm\(\)/g, 'EMSCRIPTEN$AWAIT(createWasm())');
+  }
   // Remove windows line endings, if any
   text = text.replace(/\r\n/g, '\n');
 
