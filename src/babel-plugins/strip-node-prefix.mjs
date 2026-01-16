@@ -6,7 +6,12 @@
 
 // A babel plugin to remove the leading `node:` prefix from all imports.
 
-export default function ({ types: t }) {
+export default function ({ types: t, targets }) {
+  // Skip this plugin for Node.js >= 16
+  if (+targets().node.split('.')[0] >= 16) {
+    return {};
+  }
+
   return {
     name: 'strip-node-prefix',
     visitor: {
