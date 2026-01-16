@@ -9585,6 +9585,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),
       '--no-entry',
       '-sINCOMING_MODULE_JS_API=onRuntimeInitialized',
+      '-sNO_EXIT_RUNTIME',
     ]
     self.cflags += args
     # This error here is because delayed_throw occurs during execution, and
