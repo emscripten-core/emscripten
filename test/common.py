@@ -684,9 +684,10 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES
-    if self.get_current_js_engine() != config.NODE_JS_TEST:
-      # If our primary JS engine is something other than node then enable
-      # shell support.
+    engine = self.get_current_js_engine()
+    if not engine_is_node(engine) and not engine_is_bun(engine):
+      # If our current JS engine a "shell" environment we need to explicitly enable support for
+      # it in ENVIRONMENT.
       default_envs = 'web,webview,worker,node'
       self.set_setting('ENVIRONMENT', default_envs + ',shell')
 
@@ -830,9 +831,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
     es_check_env = os.environ.copy()
-    # Use NODE_JS here (the version of node that the compiler uses) rather then NODE_JS_TEST (the
-    # version of node being used to run the tests) since we only care about having something that
-    # can run the es-check tool.
+    # Use NODE_JS here (the version of node that the compiler uses) rather than the version of node
+    # from JS_ENGINES (the version of node being used to run the tests) since we only care about
+    # having something that can run the es-check tool.
     es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     inputfile = os.path.abspath(filename)
     # For some reason es-check requires unix paths, even on windows
