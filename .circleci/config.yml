@@ -681,6 +681,8 @@ jobs:
             lsan.test_pthread_create
             lsan.test_pthread_exit_main_stub
             lsan.test_dylink_iostream
+            lsan.test_embind_lib_with_asyncify
+            ubsan.test_dlfcn_self
             ubsan.test_externref_emjs_dynlink"
       - freeze-cache
       - run-tests:
@@ -881,10 +883,32 @@ jobs:
           name: install bun
           command: |
             curl -fsSL https://bun.com/install | bash
-            echo "BUN_ENGINE = os.path.expanduser('~/.bun/bin/bun')" >> ~/emsdk/.emscripten
-            echo "JS_ENGINES = [BUN_ENGINE]" >> ~/emsdk/.emscripten
+            echo "BUN = os.path.expanduser('~/.bun/bin/bun')" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [BUN]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "core0.test_hello_world"
+          test_targets: "
+            core0.test_hello_world
+            core0.test_hello_argc_pthreads
+            core2.test_pthread_create
+            "
+  test-deno:
+    executor: linux-python
+    steps:
+      - checkout
+      - pip-install
+      - install-emsdk
+      - run:
+          name: install deno
+          command: |
+            curl -fsSL https://deno.land/install.sh | sh
+            echo "DENO = [os.path.expanduser('~/.deno/bin/deno'), '--allow-read', '--unstable-detect-cjs']" >> ~/emsdk/.emscripten
+            echo "JS_ENGINES = [DENO]" >> ~/emsdk/.emscripten
+      - run-tests:
+          test_targets: "
+            core0.test_hello_world
+            core0.test_hello_argc_pthreads
+            core2.test_pthread_create
+            "
   test-jsc:
     executor: linux-python
     steps:
@@ -1378,6 +1402,7 @@ workflows:
           requires:
             - build-linux
       - test-bun
+      - test-deno
       - test-jsc
       - test-spidermonkey
       - test-node-compat

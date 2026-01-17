@@ -265,6 +265,27 @@ def get_output_suffix(args):
     return '.js'
 
 
+def match_engine_executable(engine, name):
+  basename = os.path.basename(engine[0])
+  return name in basename
+
+
+def engine_is_node(engine):
+  return match_engine_executable(engine, 'node')
+
+
+def engine_is_v8(engine):
+  return match_engine_executable(engine, 'd8') or match_engine_executable(engine, 'v8')
+
+
+def engine_is_deno(engine):
+  return match_engine_executable(engine, 'deno')
+
+
+def engine_is_bun(engine):
+  return match_engine_executable(engine, 'bun')
+
+
 class RunnerMeta(type):
   @classmethod
   def make_test(mcs, name, func, suffix, args):
@@ -362,9 +383,25 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def get_v8(self):
     """Return v8 engine, if one is configured, otherwise None"""
-    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
-      return None
-    return config.V8_ENGINE
+    for engine in config.JS_ENGINES:
+      if engine_is_v8(engine):
+        return engine
+    return None
+
+  def require_pthreads(self):
+    self.cflags += ['-Wno-pthreads-mem-growth', '-pthread']
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('non-browser pthreads not yet supported with MINIMAL_RUNTIME')
+    for engine in self.js_engines:
+      if engine_is_node(engine):
+        self.require_node()
+        nodejs = self.get_nodejs()
+        self.node_args += shared.node_pthread_flags(nodejs)
+        return
+      elif engine_is_bun(engine) or engine_is_deno(engine):
+        self.require_engine(engine)
+        return
+    self.fail('no JS engine found capable of running pthreads')
 
   def require_v8(self):
     if 'EMTEST_SKIP_V8' in os.environ:
@@ -377,14 +414,21 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def get_nodejs(self):
     """Return nodejs engine, if one is configured, otherwise None"""
-    if config.NODE_JS_TEST not in config.JS_ENGINES:
-      return None
-    return config.NODE_JS_TEST
+    for engine in config.JS_ENGINES:
+      if engine_is_node(engine):
+        return engine
+    return None
+
+  def get_bun(self):
+    for engine in config.JS_ENGINES:
+      if engine_is_bun(engine):
+        return engine
+    return None
 
   def require_node(self):
     if 'EMTEST_SKIP_NODE' in os.environ:
       self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
-    nodejs = self.get_nodejs()
+    nodejs = self.get_nodejs() or self.get_bun()
     if not nodejs:
       self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(nodejs)
@@ -550,15 +594,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.set_setting('WASMFS')
     self.cflags += ['-DWASMFS']
 
-  def setup_node_pthreads(self):
-    self.require_node()
-    self.cflags += ['-Wno-pthreads-mem-growth', '-pthread']
-    if self.get_setting('MINIMAL_RUNTIME'):
-      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    nodejs = self.get_nodejs()
-    self.js_engines = [nodejs]
-    self.node_args += shared.node_pthread_flags(nodejs)
-
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
     self.canonical_temp_dir = get_canonical_temp_dir(self.temp_dir)
@@ -635,7 +670,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         int(emcc_min_node_version_str[4:6]),
       )
       if node_version < emcc_min_node_version:
-        self.cflags += building.get_emcc_node_flags(node_version)
+        self.cflags.append('-sMIN_NODE_VERSION=%02d%02d%02d' % node_version)
         self.cflags.append('-Wno-transpile')
 
       # This allows much of the test suite to be run on older versions of node that don't
@@ -649,9 +684,10 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES
-    if self.get_current_js_engine() != config.NODE_JS_TEST:
-      # If our primary JS engine is something other than node then enable
-      # shell support.
+    engine = self.get_current_js_engine()
+    if not engine_is_node(engine) and not engine_is_bun(engine):
+      # If our current JS engine a "shell" environment we need to explicitly enable support for
+      # it in ENVIRONMENT.
       default_envs = 'web,webview,worker,node'
       self.set_setting('ENVIRONMENT', default_envs + ',shell')
 
@@ -795,9 +831,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
     es_check_env = os.environ.copy()
-    # Use NODE_JS here (the version of node that the compiler uses) rather then NODE_JS_TEST (the
-    # version of node being used to run the tests) since we only care about having something that
-    # can run the es-check tool.
+    # Use NODE_JS here (the version of node that the compiler uses) rather than the version of node
+    # from JS_ENGINES (the version of node being used to run the tests) since we only care about
+    # having something that can run the es-check tool.
     es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     inputfile = os.path.abspath(filename)
     # For some reason es-check requires unix paths, even on windows
@@ -911,9 +947,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       engine = self.get_current_js_engine()
     # Make a copy of the engine command before we modify/extend it.
     engine = list(engine)
-    if engine == config.NODE_JS_TEST:
+    if engine_is_node(engine) or engine_is_bun(engine):
       engine += self.node_args
-    elif engine == config.V8_ENGINE:
+    elif engine_is_v8(engine):
       engine += self.v8_args
     elif engine == config.SPIDERMONKEY_ENGINE:
       engine += self.spidermonkey_args
@@ -1168,8 +1204,15 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     if stdout_buffering:
       sys.stdout.write(rtn.stdout)
+      # When we inject stdout/stderr buffering for our own internal purposes, we do not also want to
+      # make it available on the returned object.
+      # If we don't do this then callers would have access to rtn.stdout/rtn.stderr even when they
+      # didn't request it (i.e. even when they did not pass stderr=PIPE), which can lead to tests
+      # that pass in buffering mode, but fail without it.
+      rtn.stdout = None
     if stderr_buffering:
       sys.stderr.write(rtn.stderr)
+      rtn.stderr = None
     return rtn
 
   def emcc(self, filename, args=[], **kwargs):  # noqa

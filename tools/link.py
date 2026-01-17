@@ -456,18 +456,15 @@ def get_binaryen_passes(options):
 
 def make_js_executable(script):
   src = read_file(script)
-  cmd = config.NODE_JS
-  if len(cmd) > 1 or not os.path.isabs(cmd[0]):
-    # Using -S (--split-string) here means that arguments to the executable are
-    # correctly parsed.  We don't do this by default because old versions of env
-    # don't support -S.
-    cmd = '/usr/bin/env -S ' + shlex.join(cmd)
-  else:
-    cmd = shlex.join(cmd)
-  logger.debug('adding `#!` to JavaScript file: %s' % cmd)
+
+  # By default, the resulting script will run under the version of node in the PATH.
+  if settings.EXECUTABLE == 1:
+    settings.EXECUTABLE = '/usr/bin/env node'
+
+  logger.debug(f'adding `#!` to JavaScript file: {settings.EXECUTABLE}')
   # add shebang
   with open(script, 'w') as f:
-    f.write('#!%s\n' % cmd)
+    f.write(f'#!{settings.EXECUTABLE}\n')
     f.write(src)
   try:
     os.chmod(script, stat.S_IMODE(os.stat(script).st_mode) | stat.S_IXUSR) # make executable
@@ -831,7 +828,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # use node.js raw filesystem access, to behave just like a native executable
     settings.NODERAWFS = 1
     # Add `#!` line to output JS and make it executable.
-    options.executable = True
+    settings.EXECUTABLE = config.NODE_JS[0]
     # autoconf declares functions without their proper signatures, and STRICT causes that to trip up by passing --fatal-warnings to the linker.
     if settings.STRICT:
       exit_with_error('autoconfiguring is not compatible with STRICT')
@@ -933,6 +930,14 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     for s in JS_ONLY_SETTINGS:
       if s in user_settings:
         diagnostics.warning('unused-command-line-argument', f'{s} is only valid when generating JavaScript output')
+
+  # When there is no final suffix or the suffix is `.out` (as in `a.out`) then default to
+  # making the resulting file exectuable.
+  if settings.ENVIRONMENT_MAY_BE_NODE and options.oformat == OFormat.JS and final_suffix in ('', '.out'):
+    default_setting('EXECUTABLE', 1)
+
+  if settings.EXECUTABLE and not settings.ENVIRONMENT_MAY_BE_NODE:
+    exit_with_error('EXECUTABLE requires `node` in ENVRIONMENT')
 
   if options.oformat == OFormat.MJS:
     default_setting('EXPORT_ES6', 1)
@@ -1087,7 +1092,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if '_main' in settings.EXPORTED_FUNCTIONS or 'main' in settings.EXPORT_IF_DEFINED:
     settings.EXPORT_IF_DEFINED.append('__main_argc_argv')
-  elif settings.ASSERTIONS and not settings.STANDALONE_WASM:
+  elif settings.ASSERTIONS and not settings.STANDALONE_WASM and not options.no_entry:
     # In debug builds when `main` is not explicitly requested as an
     # export we still add it to EXPORT_IF_DEFINED so that we can warn
     # users who forget to explicitly export `main`.
@@ -1603,8 +1608,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # Enable minification of wasm imports and exports when appropriate, if we
   # are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
   # Things that process the JS after this operation would be done must disable this.
-  # ASYNCIFY=2 does not support this optimization yet as it has a hardcoded
-  # check for 'main' as an export name. TODO
+  # JSPI does not support this optimization yet as it has a hardcoded check for 'main' as an
+  # export name. TODO
   if will_metadce() and \
       settings.OPT_LEVEL >= 2 and \
       settings.DEBUG_LEVEL <= 2 and \
@@ -1739,7 +1744,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       settings.ASYNCIFY_IMPORTS += ['invoke_*']
     # add the default imports
     settings.ASYNCIFY_IMPORTS += DEFAULT_ASYNCIFY_IMPORTS
-    # add the default exports (only used for ASYNCIFY == 2)
+    # add the default exports (only used for JSPI)
     settings.ASYNCIFY_EXPORTS += DEFAULT_ASYNCIFY_EXPORTS
 
     # return the full import name, including module. The name may
@@ -1752,7 +1757,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.ASYNCIFY_IMPORTS = [get_full_import_name(i) for i in settings.ASYNCIFY_IMPORTS]
 
     if settings.ASYNCIFY == 2:
-      diagnostics.warning('experimental', '-sASYNCIFY=2 (JSPI) is still experimental')
+      diagnostics.warning('experimental', '-sJSPI (ASYNCIFY=2) is still experimental')
 
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
@@ -2255,7 +2260,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   if settings.SPLIT_MODULE:
     do_split_module(wasm_target, options)
 
-  if options.executable:
+  if settings.EXECUTABLE:
     make_js_executable(js_target)
 
 

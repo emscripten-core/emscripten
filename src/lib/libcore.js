@@ -1463,7 +1463,7 @@ addToLibrary({
     else return lengthBytesUTF8(str);
   },
 
-#if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
+#if USE_ASAN || USE_LSAN
   // When lsan is enabled noLeakCheck will temporarily disable leak checking
   // for the duration of the function.
   $noLeakCheck__deps: ['__lsan_enable', '__lsan_disable'],
@@ -1476,7 +1476,9 @@ addToLibrary({
       if (runtimeInitialized) ___lsan_enable();
     }
   },
+#endif
 
+#if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
   _emscripten_sanitizer_use_colors: () => {
     var setting = Module['printWithColors'];
     if (setting !== undefined) {
@@ -1995,6 +1997,9 @@ addToLibrary({
       }
     }
 #endif
+#if RUNTIME_DEBUG
+    dbg("handleException: got unexpected exception, calling quit_")
+#endif
     quit_(1, e);
   },
 
@@ -2064,10 +2069,11 @@ addToLibrary({
       return;
     }
     try {
-      func();
-      maybeExit();
+      return func();
     } catch (e) {
       handleException(e);
+    } finally {
+      maybeExit();
     }
   },
 

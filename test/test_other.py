@@ -45,6 +45,7 @@ from common import (
   RunnerCore,
   copytree,
   create_file,
+  engine_is_node,
   ensure_dir,
   env_modify,
   exe_path_from_root,
@@ -69,7 +70,6 @@ from decorators import (
   is_slow_test,
   no_mac,
   no_windows,
-  node_pthreads,
   only_windows,
   parameterize,
   parameterized,
@@ -79,6 +79,7 @@ from decorators import (
   requires_network,
   requires_node,
   requires_node_canary,
+  requires_pthreads,
   requires_v8,
   requires_wasm64,
   requires_wasm_eh,
@@ -420,7 +421,7 @@ class other(RunnerCore):
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
   })
-  @node_pthreads
+  @requires_pthreads
   def test_esm_worker(self, args):
     os.mkdir('subdir')
     self.run_process([EMCC, '-o', 'subdir/hello_world.mjs',
@@ -433,7 +434,7 @@ class other(RunnerCore):
     self.assertContained('export default Module;', src)
     self.assertContained('hello, world!', self.run_js('subdir/hello_world.mjs'))
 
-  @node_pthreads
+  @requires_pthreads
   def test_esm_worker_single_file(self):
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-pthread',
                       '--extern-post-js', test_file('modularize_post_js.js'),
@@ -2171,7 +2172,7 @@ Module['postRun'] = () => {
 
     self.assertContained('*hello from lib\n|hello from lib|\n*\n', self.run_js('a.out.js'))
 
-  @node_pthreads
+  @requires_pthreads
   @also_with_modularize
   def test_dylink_pthread_static_data(self):
     # Test that a side module uses the same static data region for global objects across all threads
@@ -2229,20 +2230,20 @@ Module['postRun'] = () => {
   def test_dylink_pthread_warning(self):
     self.assert_fail([EMCC, '-Werror', '-sMAIN_MODULE', '-pthread', test_file('hello_world.c')], 'error: dynamic linking + pthreads is experimental')
 
-  @node_pthreads
+  @requires_pthreads
   def test_dylink_pthread_em_asm(self):
     self.set_setting('MAIN_MODULE', 2)
     self.cflags += ['-Wno-experimental', '-pthread']
     self.do_runf('hello_world_em_asm.c', 'hello, world')
 
-  @node_pthreads
+  @requires_pthreads
   def test_dylink_pthread_em_js(self):
     self.set_setting('MAIN_MODULE', 2)
     self.set_setting('EXPORTED_FUNCTIONS', '_malloc,_main')
     self.cflags += ['-Wno-experimental', '-pthread']
     self.do_runf('core/test_em_js.cpp')
 
-  @node_pthreads
+  @requires_pthreads
   @parameterized({
     '': (False,),
     'flipped': (True,),
@@ -2546,7 +2547,7 @@ F1 -> ''
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  cflags=['--embed-file', 'pngtest.png', '--use-port=libpng'])
 
-  @node_pthreads
+  @requires_pthreads
   @requires_network
   def test_libpng_with_pthreads(self):
     shutil.copy(test_file('third_party/libpng/pngtest.png'), '.')
@@ -3291,10 +3292,11 @@ More info: https://emscripten.org
     ''')
     self.do_runf('main.cpp', 'done', cflags=['-lembind', '-sASYNCIFY', '--post-js', 'post.js'])
 
+  @also_with_wasm64
   @parameterized({
-    '': [['-sDYNAMIC_EXECUTION=1']],
-    'no_dynamic': [['-sDYNAMIC_EXECUTION=0']],
-    'dyncall': [['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB']],
+    '': (['-sDYNAMIC_EXECUTION=1'],),
+    'no_dynamic': (['-sDYNAMIC_EXECUTION=0'],),
+    'dyncall': (['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'],),
   })
   @requires_jspi
   def test_embind_jspi(self, args):
@@ -3500,7 +3502,7 @@ More info: https://emscripten.org
   def test_jspi_add_function(self):
     # make sure synchronous functions in the wasmTable aren't processed with Asyncify.makeAsyncFunction
     self.cflags += [
-      '-sASYNCIFY=2',
+      '-sJSPI',
       '-sEXPORTED_RUNTIME_METHODS=addFunction,dynCall',
       '-sALLOW_TABLE_GROWTH=1',
       '-Wno-experimental']
@@ -4311,7 +4313,7 @@ int main()
 ''', binary=True)
     self.do_runf('src.c', 'File size: 682', cflags=['--embed-file', 'src.c'])
 
-  @node_pthreads
+  @requires_pthreads
   def test_node_emscripten_num_logical_cores(self):
     # Test with node.js that the emscripten_num_logical_cores method is working
     create_file('src.c', r'''
@@ -5789,12 +5791,13 @@ int main(int argc, char **argv) {
                          self.run_js('a.out.js', args=['waka']))
 
   @crossplatform
+  @requires_node
   def test_browser_language_detection(self):
     # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
     expected_lang = os.environ.get('LANG')
     if expected_lang is None:
       # If the LANG env. var doesn't exist (Windows), ask Node for the language.
-      cmd = config.NODE_JS_TEST + ['-e', 'console.log(navigator.languages[0] || "en_US")']
+      cmd = self.js_engines[0] + ['-e', 'console.log(navigator.languages[0] || "en_US")']
       expected_lang = self.run_process(cmd, stdout=PIPE).stdout
       expected_lang = expected_lang.strip().replace('-', '_')
       expected_lang = f'{expected_lang}.UTF-8'
@@ -6130,7 +6133,7 @@ int main(void) {
     self.assertContained('got error: RuntimeError: Aborted', output)
 
   @crossplatform
-  @node_pthreads
+  @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/19683')
   # The flakiness of this test is very high on macOS so just disable it
   # completely.
@@ -6642,7 +6645,7 @@ int main(int argc, char** argv) {
     if '-pthread' in args:
       self.skipTest('Problems with readFile from pthread')
     if '-pthread' in args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
     create_file('hello1_dep.c', r'''
 #include <stdio.h>
 
@@ -7362,30 +7365,19 @@ addToLibrary({
     self.assertContained('native code called abort()', out)
 
   @parameterized({
-    '': ([], 190000),
-    'O2': (['-O2'], 132000),
+    '': ([], 191000),
+    'O2': (['-O2'], 137000),
     'emmalloc': (['-sMALLOC=emmalloc'], 185000),
-    'dlmalloc': (['-sMALLOC=dlmalloc'], 190000),
+    'dlmalloc': (['-sMALLOC=dlmalloc'], 191000),
     'mimalloc': (['-sMALLOC=mimalloc'], 245000),
-    'emmalloc_O2': (['-sMALLOC=emmalloc', '-O2'], 125000),
-    'dlmalloc_O2': (['-sMALLOC=dlmalloc', '-O2'], 132000),
-    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 180000),
+    'emmalloc_O2': (['-sMALLOC=emmalloc', '-O2'], 130000),
+    'dlmalloc_O2': (['-sMALLOC=dlmalloc', '-O2'], 137000),
+    'mimalloc_O2': (['-sMALLOC=mimalloc', '-O2'], 181000),
   })
   # This test verifies the output code size of the different -sMALLOC= modes.
   def test_malloc_size(self, args, max_size):
     self.emcc('hello_libcxx.cpp', args=args)
     self.assertLess(os.path.getsize('a.out.wasm'), max_size)
-
-  def test_emmalloc_2GB(self):
-    def test(args, text=None):
-      if text:
-        self.assert_fail([EMCC, test_file('hello_world.c'), '-sMALLOC=emmalloc'] + args, text)
-      else:
-        self.run_process([EMCC, test_file('hello_world.c'), '-sMALLOC=emmalloc'] + args)
-
-    test(['-sALLOW_MEMORY_GROWTH'])
-    test(['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=1GB'])
-    test(['-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB'])
 
   def test_emmalloc_high_align(self):
     self.do_other_test('test_emmalloc_high_align.c',
@@ -7825,7 +7817,10 @@ addToLibrary({
     src = read_file('a.out.js')
     for env in ['web', 'worker', 'node', 'shell']:
       for engine in config.JS_ENGINES:
-        actual = 'NODE' if engine == config.NODE_JS_TEST else 'SHELL'
+        if engine_is_node(engine):
+          actual = 'NODE'
+        else:
+          actual = 'SHELL'
         print(env, actual, engine)
         module = {'ENVIRONMENT': env}
         if env != actual:
@@ -7968,6 +7963,10 @@ addToLibrary({
     # Verify that main indeed does not run
     output = self.run_js('a.out.js')
     self.assertEqual('', output)
+
+  def test_no_entry_with_assertions(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '--no-entry', '-sASSERTIONS'])
+    self.assertNotContained('hello, world!', self.run_js('a.out.js'))
 
   def test_source_file_with_fixed_language_mode(self):
     create_file('src_tmp_fixed_lang', '''
@@ -8675,12 +8674,13 @@ int main() {
 
   @requires_node
   def test_jsrun(self):
-    print(config.NODE_JS_TEST)
+    engine = self.js_engines[0]
+    print(engine)
     jsrun.WORKING_ENGINES = {}
     # Test that engine check passes
-    self.assertTrue(jsrun.check_engine(config.NODE_JS_TEST))
+    self.assertTrue(jsrun.check_engine(engine))
     # Run it a second time (cache hit)
-    self.assertTrue(jsrun.check_engine(config.NODE_JS_TEST))
+    self.assertTrue(jsrun.check_engine(engine))
 
     # Test that engine check fails
     bogus_engine = ['/fake/inline4']
@@ -8688,14 +8688,14 @@ int main() {
     self.assertFalse(jsrun.check_engine(bogus_engine))
 
     # Test the other possible way (list vs string) to express an engine
-    if type(config.NODE_JS_TEST) is list:
-      engine2 = config.NODE_JS_TEST[0]
+    if type(engine) is list:
+      engine2 = engine[0]
     else:
-      engine2 = [config.NODE_JS_TEST]
+      engine2 = [engine]
     self.assertTrue(jsrun.check_engine(engine2))
 
     # Test that self.run_js requires the engine
-    self.run_js(test_file('hello_world.js'), config.NODE_JS_TEST)
+    self.run_js(test_file('hello_world.js'), engine)
     caught_exit = 0
     try:
       self.run_js(test_file('hello_world.js'), bogus_engine)
@@ -10097,7 +10097,7 @@ T6:(else) !ASSERTIONS""", output)
     self.assertContained('hello, world!', ret)
 
   # Tests that a pthreads + modularize build can be run in node js
-  @node_pthreads
+  @requires_pthreads
   @parameterized({
     '': (False,),
     'es6': (True,),
@@ -10152,10 +10152,11 @@ T6:(else) !ASSERTIONS""", output)
   def test_system_node_js(self):
     self.do_runf('test_system.c', 'Hello from echo', cflags=['-DENV_NODE'])
 
+  @requires_node
   def test_node_eval(self):
     self.run_process([EMCC, '-sENVIRONMENT=node', test_file('hello_world.c'), '-o', 'a.js', '-O3'])
     js = read_file('a.js')
-    ret = self.run_process(config.NODE_JS_TEST + ['-e', js], stdout=PIPE).stdout
+    ret = self.run_process(self.js_engines[0] + ['-e', js], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
 
   def test_is_bitcode(self):
@@ -10309,6 +10310,9 @@ _d
 
     test(['-sASSERTIONS=1'],
          'Aborted(RuntimeError: unreachable). "unreachable" may be due to ASYNCIFY_STACK_SIZE not being large enough (try increasing it)')
+
+  def test_async_exit_after_wakeup(self):
+    self.do_runf('test_async_exit_after_wakeup.c', cflags=['-sASYNCIFY', '--js-library', test_file('test_async_exit_after_wakeup.js')])
 
   # Sockets and networking
 
@@ -11021,7 +11025,7 @@ int main(void) {
       assert_returncode=NON_ZERO,
       expected_output=[expected_output])
 
-  @node_pthreads
+  @requires_pthreads
   def test_proxy_to_pthread_stack(self):
     # Check that the proxied main gets run with STACK_SIZE setting and not
     # DEFAULT_PTHREAD_STACK_SIZE.
@@ -11355,7 +11359,8 @@ int main(void) {
   def test_em_asm_invalid(self):
     # Test that invalid EM_ASM in side modules since is detected at build time.
     err = self.expect_fail([EMCC, '-sSIDE_MODULE', test_file('other/test_em_asm_invalid.c')])
-    self.assertContained("SyntaxError: Unexpected token '*'", err)
+    # Check for the error message syntax produced by either Node or Bun
+    self.assertContained(["SyntaxError: Unexpected token '*'", 'error: Unexpected *'], err)
     self.assertContained('emcc: error: EM_ASM function validation failed', err)
 
   def test_boost_graph(self):
@@ -11572,19 +11577,19 @@ int main(void) {
     # libpthread_stub.a
     self.do_other_test('test_pthread_stub.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_main_pthread_join_detach(self):
     # Verify that we're unable to join the main thread
     self.do_other_test('test_pthread_self_join_detach.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_proxy_pthread_join_detach(self):
     # Verify that we're unable to detach or join the proxied main thread
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_pthread_self_join_detach.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_asyncify(self):
     # We had a infinite recursion bug when enabling PTHREADS_DEBUG + ASYNCIFY.
     # This was because PTHREADS_DEBUG calls back into WebAssembly for each call to `err()`.
@@ -11593,7 +11598,7 @@ int main(void) {
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.do_other_test('test_pthread_asyncify.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_reuse(self):
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_other_test('test_pthread_reuse.c')
@@ -11602,17 +11607,17 @@ int main(void) {
     '': ([],),
     'offscreen_canvas': (['-sOFFSCREENCANVAS_SUPPORT', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$GL'],),
   })
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_hello(self, args):
     self.do_other_test('test_pthread_hello.c', args)
 
   @crossplatform
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_mutex_deadlock(self):
     self.do_runf('other/test_pthread_mutex_deadlock.c', 'pthread mutex deadlock detected',
                  cflags=['-g'], assert_returncode=NON_ZERO)
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_unavailable(self):
     # Run a simple hello world program that uses pthreads
     self.cflags += ['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$stringToNewUTF8,$UTF8ToString']
@@ -12247,7 +12252,7 @@ exec "$@"
   def test_threadprofiler_closure(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-pthread', '--closure=1', '--threadprofiler', '-sASSERTIONS'] + self.get_cflags())
 
-  @node_pthreads
+  @requires_pthreads
   def test_threadprofiler(self):
     self.run_process([EMCC, test_file('test_threadprofiler.cpp'), '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '--threadprofiler', '-sASSERTIONS'])
     output = self.run_js('a.out.js')
@@ -12360,10 +12365,8 @@ exec "$@"
     self.assertFileContents(path_from_root('src/struct_info_generated.json'), read_file('out.json'))
 
     # Same again for wasm64
-    node_version = shared.get_node_version(self.get_nodejs())
-    if node_version and node_version >= (14, 0, 0):
-      self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
-      self.assertFileContents(path_from_root('src/struct_info_generated_wasm64.json'), read_file('out.json'))
+    self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
+    self.assertFileContents(path_from_root('src/struct_info_generated_wasm64.json'), read_file('out.json'))
 
   @crossplatform
   def test_gen_sig_info(self):
@@ -12411,7 +12414,8 @@ exec "$@"
   def test_em_js_invalid(self):
     # Test that invalid EM_JS in side modules since is detected at build time.
     err = self.expect_fail([EMCC, '-sSIDE_MODULE', test_file('other/test_em_js_invalid.c')])
-    self.assertContained("SyntaxError: Unexpected token '*'", err)
+    # Check for the error message syntax produced by either Node or Bun
+    self.assertContained(["SyntaxError: Unexpected token '*'", 'error: Unexpected *'], err)
     self.assertContained('emcc: error: EM_JS function validation failed', err)
 
   @crossplatform
@@ -12788,7 +12792,7 @@ void foo() {}
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
     self.assertContained('`alignMemory` is a library symbol and not included by default; add it to your library.js __deps or to DEFAULT_LIBRARY_FUNCS_TO_INCLUDE on the command line', err)
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_lsan_no_leak(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
@@ -12796,7 +12800,7 @@ void foo() {}
     self.do_run_in_out_file_test('pthread/test_pthread_lsan_no_leak.cpp', cflags=['-fsanitize=leak'])
     self.do_run_in_out_file_test('pthread/test_pthread_lsan_no_leak.cpp', cflags=['-fsanitize=address'])
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_lsan_leak(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
@@ -12821,7 +12825,7 @@ void foo() {}
     self.do_runf('pthread/test_pthread_lsan_leak.cpp', expected, assert_all=True, cflags=['-fsanitize=leak'])
     self.do_runf('pthread/test_pthread_lsan_leak.cpp', expected, assert_all=True, cflags=['-fsanitize=address'])
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_js_exception(self):
     # Ensure that JS exceptions propagate back to the main main thread and cause node
     # to exit with an error.
@@ -12884,7 +12888,7 @@ void foo() {}
     self.do_runf('other/test_default_pthread_stack_size.c')
 
     # Same again with pthreads enabled
-    self.setup_node_pthreads()
+    self.require_pthreads()
     self.do_other_test('test_default_pthread_stack_size.c')
 
     # Same again but with a custom stack size
@@ -12913,7 +12917,7 @@ void foo() {}
   def test_emscripten_main_loop_setimmediate(self):
     self.do_runf('test_emscripten_main_loop_setimmediate.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_trap(self):
     # TODO(https://github.com/emscripten-core/emscripten/issues/15161):
     # Make this work without PROXY_TO_PTHREAD
@@ -12924,13 +12928,13 @@ void foo() {}
     self.assertContained('sent an error!', output)
     self.assertContained('at (test_pthread_trap.wasm.)?thread_main', output, regex=True)
 
-  @node_pthreads
+  @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/24725')
   def test_pthread_kill(self):
     self.do_run_in_out_file_test('pthread/test_pthread_kill.c')
 
   # Tests memory growth in pthreads mode, but still on the main thread.
-  @node_pthreads
+  @requires_pthreads
   @parameterized({
     '': ([], 1),
     'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'], 1),
@@ -12962,7 +12966,7 @@ void foo() {}
     self.assertLess(growable_size, no_growable_size)
 
   # Tests memory growth in a pthread.
-  @node_pthreads
+  @requires_pthreads
   @parameterized({
     '': ([],),
     'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
@@ -12985,7 +12989,7 @@ void foo() {}
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.do_runf('pthread/test_pthread_memory_growth.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
-  @node_pthreads
+  @requires_pthreads
   def test_emscripten_set_interval(self):
     self.do_runf('emscripten_set_interval.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
@@ -12997,11 +13001,11 @@ void foo() {}
   def test_emscripten_unwind_to_js_event_loop(self):
     self.do_runf('test_emscripten_unwind_to_js_event_loop.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_emscripten_set_timeout(self):
     self.do_runf('emscripten_set_timeout.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
-  @node_pthreads
+  @requires_pthreads
   def test_emscripten_set_timeout_loop(self):
     self.do_runf('emscripten_set_timeout_loop.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
@@ -13014,14 +13018,14 @@ void foo() {}
     self.run_process([EMCC, test_file('hello_world.c')])
     self.assertExists('a.out.js')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_out_err(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.cflags.append('-pthread')
     self.do_other_test('test_pthread_out_err.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_icu(self):
     self.set_setting('USE_ICU')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -13029,7 +13033,7 @@ void foo() {}
     self.cflags.append('-pthread')
     self.do_other_test('test_pthread_icu.cpp')
 
-  @node_pthreads
+  @requires_pthreads
   @parameterized({
     '': ([],),
     'strict': (['-sSTRICT'],),
@@ -13037,7 +13041,7 @@ void foo() {}
   def test_pthread_set_main_loop(self, args):
     self.do_other_test('test_pthread_set_main_loop.c', cflags=args)
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_fd_close_wasmfs(self):
     create_file('node_warnings', '')
     self.node_args += ['--trace-warnings', '--redirect-warnings=node_warnings']
@@ -13482,7 +13486,9 @@ int main() {
 
   # Tests the internal test suite of tools/unsafe_optimizations.js
   def test_unsafe_optimizations(self):
-    self.run_process(config.NODE_JS_TEST + [path_from_root('tools', 'unsafe_optimizations.mjs'), '--test'])
+    # Note: Here we use config.NODE_JS (the version of node used by the compiler) rather than the
+    # version of node in JS_ENGINES.
+    self.run_process(config.NODE_JS + [path_from_root('tools/unsafe_optimizations.mjs'), '--test'])
 
   @requires_v8
   def test_extended_const(self):
@@ -13554,7 +13560,7 @@ int main() {
     self.assertContained(expected, self.run_js('a.out.js'))
     asyncify_size = os.path.getsize('a.out.wasm')
 
-    self.run_process([EMXX, 'main.cpp', '-sASYNCIFY=2'] + shared_args)
+    self.run_process([EMXX, 'main.cpp', '-sJSPI'] + shared_args)
 
     self.assertContained(expected, self.run_js('a.out.js'))
     stack_switching_size = os.path.getsize('a.out.wasm')
@@ -13857,7 +13863,7 @@ out.js
   def test_itimer(self):
     self.do_other_test('test_itimer.c')
 
-  @node_pthreads
+  @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer_pthread(self):
     self.do_other_test('test_itimer.c')
@@ -13869,14 +13875,14 @@ out.js
       print('wasm engine', engine)
       self.assertContained('done', self.run_js('test_itimer_standalone.wasm', engine))
 
-  @node_pthreads
+  @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer_proxy_to_pthread(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_other_test('test_itimer.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_dbg(self):
     create_file('pre.js', '''
     dbg('start', { foo: 1});
@@ -13974,7 +13980,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     expected = "warning: macro 'emscripten_main_browser_thread_id' has been marked as deprecated: use emscripten_main_runtime_thread_id instead [-Wdeprecated-pragma]"
     self.assertContained(expected, err)
 
-  @node_pthreads
+  @requires_pthreads
   def test_USE_PTHREADS(self):
     self.cflags.remove('-pthread')
     self.set_setting('USE_PTHREADS')
@@ -14101,7 +14107,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_memory_init_file_unsupported(self):
     self.assert_fail([EMCC, test_file('hello_world.c'), '-Werror', '--memory-init-file=1'], 'error: --memory-init-file is no longer supported')
 
-  @node_pthreads
+  @requires_pthreads
   def test_node_pthreads_err_out(self):
     create_file('post.js', 'err(1, 2, "hello"); out("foo", 42);')
     self.do_runf('hello_world.c', '1 2 hello\nfoo 42\n', cflags=['--post-js=post.js'])
@@ -14233,7 +14239,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   })
   def test_preload_module(self, args):
     if '-pthread' in args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
     # TODO(sbc): This test is copyied from test_browser.py.  Perhaps find a better way to
     # share code between them.
     create_file('library.c', r'''
@@ -14286,7 +14292,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       expected = "sharedModules: { '/library.so': Module [WebAssembly.Module] {} }\ndone\n"
     self.do_runf('main.c', expected, cflags=['-sMAIN_MODULE=2', '--preload-file', 'tmp.so@library.so', '--use-preload-plugins'] + args)
 
-  @node_pthreads
+  @requires_pthreads
   def test_standalone_whole_archive(self):
     self.cflags += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lstandalonewasm', '-Wl,--no-whole-archive']
     self.do_runf('hello_world.c')
@@ -15092,7 +15098,7 @@ addToLibrary({
 
     # Since we are building without -pthread the thread constructor will fail,
     # and in debug mode at least we expect to see the error message from libc++
-    expected = 'system_error was thrown in -fno-exceptions mode with error 6 and message "thread constructor failed"'
+    expected = 'system_error was thrown in -fno-exceptions mode with error 138 and message "thread constructor failed"'
     self.do_runf('main.cpp', expected, assert_returncode=NON_ZERO)
 
   def test_parsetools_make_removed_fs_assert(self):
@@ -15282,3 +15288,29 @@ for(var i = 0; i < 65536; ++i)
 console.log('OK');'''
     write_file('test.js', read_file(path_from_root('src/binaryDecode.js')) + '\nvar src = ' + binary_encoded + ';\n' + test_js)
     self.assertContained('OK', self.run_js('test.js'))
+
+  @crossplatform
+  def test_executable_output_default(self):
+    # By default there should not be a #! line included
+    self.run_process([EMCC, test_file('hello_world.c')])
+    self.assertFalse(read_file('a.out.js').startswith('#!'))
+    self.assertNotContained('#!/usr/bin/env node', read_file('a.out.js'))
+
+  @crossplatform
+  @no_windows('depends on UNIX shbang feature')
+  @parameterized({
+    '': (['-sEXECUTABLE', '-o', 'out.js'],),
+    # -sEXECUTABLE is implied if output filename has no extension
+    'no_extension': (['-o', 'foo'],),
+    # -sEXECUTABLE is implied for `.out` extension, e.g. a.out.
+    'a_out': (['-o', 'a.out'],),
+  })
+  def test_executable_output(self, args):
+    js_filename = args[-1]
+    self.run_process([EMCC, test_file('hello_world.c')] + args)
+    self.assertContained('#!/usr/bin/env node', read_file(js_filename))
+    output = self.run_process([os.path.abspath(js_filename)], stdout=PIPE).stdout
+    self.assertContained('hello, world!', output)
+
+  def test_executable_requires_node(self):
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXECUTABLE', '-sENVIRONMENT=web'], 'emcc: error: EXECUTABLE requires `node` in ENVRIONMENT')
