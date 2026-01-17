@@ -543,7 +543,7 @@ def version_split(v):
 @ToolchainProfiler.profile()
 def transpile(filename):
   config = {
-    'sourceType': 'script',
+    'sourceType': 'module' if settings.EXPORT_ES6 else 'script',
     'presets': ['@babel/preset-env'],
     'plugins': [],
     'targets': {},
@@ -551,6 +551,8 @@ def transpile(filename):
       # Allow Babel to parse "top-level await" which is not actually the top
       # level in case of MODULARIZE.
       'allowAwaitOutsideFunction': True,
+      # Allow Babel to parse "import.meta".
+      'allowImportExportEverywhere': settings.EXPORT_ES6,
       # FIXME: Remove when updating to Babel 8, see:
       # https://babeljs.io/docs/v8-migration-api#javascript-nodes
       'createImportExpressions': True,
