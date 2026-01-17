@@ -1140,9 +1140,9 @@ function nodePthreadDetection() {
   // Under node we detect that we are running in a pthread by checking the
   // workerData property.
   if (EXPORT_ES6) {
-    return "(await import('worker_threads')).workerData === 'em-pthread'";
+    return "(await import('node:worker_threads')).workerData === 'em-pthread'";
   } else {
-    return "require('worker_threads').workerData === 'em-pthread'";
+    return "require('node:worker_threads').workerData === 'em-pthread'";
   }
 }
 
@@ -1150,9 +1150,9 @@ function nodeWWDetection() {
   // Under node we detect that we are running in a wasm worker by checking the
   // workerData property.
   if (EXPORT_ES6) {
-    return "(await import('worker_threads')).workerData === 'em-ww'";
+    return "(await import('node:worker_threads')).workerData === 'em-ww'";
   } else {
-    return "require('worker_threads').workerData === 'em-ww'";
+    return "require('node:worker_threads').workerData === 'em-ww'";
   }
 }
 

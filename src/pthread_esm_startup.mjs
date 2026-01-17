@@ -17,7 +17,7 @@ console.log("Running pthread_esm_startup");
 if ({{{ nodeDetectionCode() }}}) {
   // Create as web-worker-like an environment as we can.
   globalThis.self = globalThis;
-  var worker_threads = await import('worker_threads');
+  var worker_threads = await import('node:worker_threads');
   globalThis.Worker = worker_threads.Worker;
   var parentPort = worker_threads['parentPort'];
   // Deno and Bun already have `postMessage` defined on the global scope and
