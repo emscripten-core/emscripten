@@ -446,9 +446,9 @@ addToLibrary({
     //
     // This is particularly useful for native JS `async` functions where the
     // returned value will "just work" and be passed back to C++.
-    handleAsync: (startAsync) => Asyncify.handleSleep((wakeUp) => {
+    handleAsync: (startAsync) => Asyncify.handleSleep(async (wakeUp) => {
       // TODO: add error handling as a second param when handleSleep implements it.
-      startAsync().then(wakeUp);
+      wakeUp(await startAsync());
     }),
 
 #elif ASYNCIFY == 2
@@ -480,8 +480,8 @@ addToLibrary({
 #endif
   },
 
-  emscripten_sleep__async: true,
-  emscripten_sleep: (ms) => Asyncify.handleSleep((wakeUp) => setTimeout(wakeUp, ms)),
+  emscripten_sleep__async: 'auto',
+  emscripten_sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
   emscripten_wget_data__async: 'auto',
@@ -518,7 +518,7 @@ addToLibrary({
   },
 
   _load_secondary_module__sig: 'v',
-  _load_secondary_module__async: true,
+  _load_secondary_module__async: 'auto',
   _load_secondary_module: async function() {
     // Mark the module as loading for the wasm module (so it doesn't try to load it again).
     wasmExports['load_secondary_module_status'].value = 1;

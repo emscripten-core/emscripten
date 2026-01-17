@@ -711,8 +711,10 @@ def main():
 
   check_js_engines()
 
-  # Remove any old test files before starting the run
-  cleanup_emscripten_temp()
+  # Remove any old test files before starting the run. Skip cleanup when we're running in debug mode
+  # where we want to preserve any files created (e.g. emscripten.lock from shared.py).
+  if not (shared.DEBUG or common.EMTEST_SAVE_DIR):
+    cleanup_emscripten_temp()
   utils.delete_file(common.flaky_tests_log_filename)
 
   browser_common.init(options.force_browser_process_termination)

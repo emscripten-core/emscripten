@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 4.0.24 (in development)
 -----------------------
+- compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 21.1.8.
+- (#26036, #26045, and #26058)
 - Calling pthread_create in a single-threaded build will now return ENOTSUP
   rather then EAGAIN.  (#26105)
 - compiler-rt and libunwind were updated to LLVM 21.1.8. (#26036 and #26045)

@@ -1,8 +1,4 @@
 addToLibrary({
-  async_func__async: true,
-  async_func: (value) => {
-    return Asyncify.handleSleep((wakeUp) => {
-      setTimeout(() => wakeUp(42), 0);
-    });
-  },
+  async_func__async: 'auto',
+  async_func: (value) => new Promise((resolve) => setTimeout(() => resolve(42), 0)),
 });

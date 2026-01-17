@@ -27,6 +27,7 @@ from common import (
   RunnerCore,
   compiler_for,
   create_file,
+  engine_is_node,
   env_modify,
   path_from_root,
   read_binary,
@@ -8679,7 +8680,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # set us to test in just this engine
       self.require_engine(engine)
       # tell the compiler to build with just that engine
-      if engine == config.NODE_JS_TEST:
+      if engine_is_node(engine):
         right = 'node'
         wrong = 'shell'
       else:
@@ -9585,6 +9586,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),
       '--no-entry',
       '-sINCOMING_MODULE_JS_API=onRuntimeInitialized',
+      '-sNO_EXIT_RUNTIME',
     ]
     self.cflags += args
     # This error here is because delayed_throw occurs during execution, and

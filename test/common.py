@@ -419,10 +419,16 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         return engine
     return None
 
+  def get_bun(self):
+    for engine in config.JS_ENGINES:
+      if engine_is_bun(engine):
+        return engine
+    return None
+
   def require_node(self):
     if 'EMTEST_SKIP_NODE' in os.environ:
       self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
-    nodejs = self.get_nodejs()
+    nodejs = self.get_nodejs() or self.get_bun()
     if not nodejs:
       self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(nodejs)
@@ -664,7 +670,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         int(emcc_min_node_version_str[4:6]),
       )
       if node_version < emcc_min_node_version:
-        self.cflags += building.get_emcc_node_flags(node_version)
+        self.cflags.append('-sMIN_NODE_VERSION=%02d%02d%02d' % node_version)
         self.cflags.append('-Wno-transpile')
 
       # This allows much of the test suite to be run on older versions of node that don't
@@ -678,9 +684,10 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES
-    if self.get_current_js_engine() != config.NODE_JS_TEST:
-      # If our primary JS engine is something other than node then enable
-      # shell support.
+    engine = self.get_current_js_engine()
+    if not engine_is_node(engine) and not engine_is_bun(engine):
+      # If our current JS engine a "shell" environment we need to explicitly enable support for
+      # it in ENVIRONMENT.
       default_envs = 'web,webview,worker,node'
       self.set_setting('ENVIRONMENT', default_envs + ',shell')
 
@@ -824,9 +831,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
     es_check_env = os.environ.copy()
-    # Use NODE_JS here (the version of node that the compiler uses) rather then NODE_JS_TEST (the
-    # version of node being used to run the tests) since we only care about having something that
-    # can run the es-check tool.
+    # Use NODE_JS here (the version of node that the compiler uses) rather than the version of node
+    # from JS_ENGINES (the version of node being used to run the tests) since we only care about
+    # having something that can run the es-check tool.
     es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     inputfile = os.path.abspath(filename)
     # For some reason es-check requires unix paths, even on windows
@@ -940,9 +947,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       engine = self.get_current_js_engine()
     # Make a copy of the engine command before we modify/extend it.
     engine = list(engine)
-    if engine == config.NODE_JS_TEST:
+    if engine_is_node(engine) or engine_is_bun(engine):
       engine += self.node_args
-    elif engine == config.V8_ENGINE:
+    elif engine_is_v8(engine):
       engine += self.v8_args
     elif engine == config.SPIDERMONKEY_ENGINE:
       engine += self.spidermonkey_args
