@@ -546,6 +546,11 @@ def transpile(filename):
     'sourceType': 'script',
     'presets': ['@babel/preset-env'],
     'targets': {},
+    'parserOpts': {
+      # Allow Babel to parse "top-level await" which is not actually the top
+      # level in case of MODULARIZE.
+      'allowAwaitOutsideFunction': True,
+    },
   }
   if settings.MIN_CHROME_VERSION != UNSUPPORTED:
     config['targets']['chrome'] = str(settings.MIN_CHROME_VERSION)
