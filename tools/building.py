@@ -545,11 +545,15 @@ def transpile(filename):
   config = {
     'sourceType': 'script',
     'presets': ['@babel/preset-env'],
+    'plugins': [],
     'targets': {},
     'parserOpts': {
       # Allow Babel to parse "top-level await" which is not actually the top
       # level in case of MODULARIZE.
       'allowAwaitOutsideFunction': True,
+      # FIXME: Remove when updating to Babel 8, see:
+      # https://babeljs.io/docs/v8-migration-api#javascript-nodes
+      'createImportExpressions': True,
     },
   }
   if settings.MIN_CHROME_VERSION != UNSUPPORTED:
@@ -560,6 +564,7 @@ def transpile(filename):
     config['targets']['safari'] = version_split(settings.MIN_SAFARI_VERSION)
   if settings.MIN_NODE_VERSION != UNSUPPORTED:
     config['targets']['node'] = version_split(settings.MIN_NODE_VERSION)
+    config['plugins'] = [path_from_root('src/babel-plugins/strip-node-prefix.mjs')]
   config_json = json.dumps(config, indent=2)
   outfile = shared.get_temp_files().get('babel.js').name
   config_file = shared.get_temp_files().get('babel_config.json').name

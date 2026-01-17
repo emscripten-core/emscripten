@@ -351,7 +351,7 @@ addToLibrary({
       var cmdstr = UTF8ToString(command);
       if (!cmdstr.length) return 0; // this is what glibc seems to do (shell works test?)
 
-      var cp = require('child_process');
+      var cp = require('node:child_process');
       var ret = cp.spawnSync(cmdstr, [], {shell:true, stdio:'inherit'});
 
       var _W_EXITCODE = (ret, sig) => ((ret) << 8 | (sig));

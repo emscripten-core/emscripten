@@ -461,6 +461,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     getTempVertexBuffer: (sizeBytes) => {
       var idx = GL.log2ceilLookup(sizeBytes);
       var ringbuffer = GL.currentContext.tempVertexBuffers1[idx];
+#if GL_ASSERTIONS
+      assert(ringbuffer, `MAX_TEMP_BUFFER_SIZE is not large enough to store a buffer of size ${sizeBytes}`);
+#endif
       var nextFreeBufferIndex = GL.currentContext.tempVertexBufferCounters1[idx];
       GL.currentContext.tempVertexBufferCounters1[idx] = (GL.currentContext.tempVertexBufferCounters1[idx]+1) & (GL.numTempVertexBuffersPerSize-1);
       var vbo = ringbuffer[nextFreeBufferIndex];

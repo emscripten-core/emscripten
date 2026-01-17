@@ -2167,7 +2167,7 @@ def create_esm_wrapper(wrapper_file, support_target, wasm_target):
 import init from '{support_url}';
 const isNode = {node_detection_code()};
 if (isNode) {{
-  const url = await import('url');
+  const url = await import('node:url');
   const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
   if (isMainModule) await init();
 }}''')
