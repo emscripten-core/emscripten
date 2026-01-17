@@ -544,7 +544,12 @@ def version_split(v):
 def transpile(filename):
   config = {
     'sourceType': 'module' if settings.EXPORT_ES6 else 'script',
-    'presets': ['@babel/preset-env'],
+    'presets': [
+      ['@babel/preset-env', {
+        # Avoid transforming `import()` expressions to non-ESM module formats.
+        'exclude': ['@babel/plugin-transform-dynamic-import'],
+      }],
+    ],
     'plugins': [],
     'targets': {},
     'parserOpts': {
