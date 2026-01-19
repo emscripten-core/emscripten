@@ -78,6 +78,7 @@ export function preprocess(filename) {
     // level in case of MODULARIZE. Temporarily replace `await` usages with
     // placeholders during preprocess phase, and back after all the other ops.
     // See also: `fix_js_mangling` in emcc.py.
+    // FIXME: Remove after https://github.com/google/closure-compiler/issues/3835 is fixed.
     if (EXPORT_ES6) {
       text = text.replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
     }

@@ -113,7 +113,7 @@ if (ENVIRONMENT_IS_NODE) {
   // When building an ES module `require` is not normally available.
   // We need to use `createRequire()` to construct the require()` function.
   const { createRequire } = await import('node:module');
-  globalThis.require = createRequire(import.meta.url);
+  global.require = createRequire(import.meta.url);
 #endif
 
 #if PTHREADS || WASM_WORKERS
