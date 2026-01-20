@@ -9847,8 +9847,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
 # Generate tests for everything
 def make_run(name, cflags=None, settings=None, env=None, # noqa
-             require_v8=False, v8_args=None,
-             require_node=False, node_args=None,
+             v8_args=None, node_args=None,
              require_wasm64=False,
              init=None):
   if cflags is None:
@@ -9893,11 +9892,6 @@ def make_run(name, cflags=None, settings=None, env=None, # noqa
     if v8_args:
       self.v8_args += v8_args
 
-    if require_v8:
-      self.require_v8()
-    elif require_node:
-      self.require_node()
-
     if require_wasm64:
       self.require_wasm64()
 
@@ -9931,9 +9925,7 @@ core_2gb = make_run('core_2gb', cflags=['--profiling-funcs'],
 
 # MEMORY64=1
 wasm64 = make_run('wasm64', cflags=['--profiling-funcs'],
-                  settings={'MEMORY64': 1}, require_wasm64=True, require_node=True)
-wasm64_v8 = make_run('wasm64_v8', cflags=['--profiling-funcs'],
-                     settings={'MEMORY64': 1}, require_wasm64=True, require_v8=True)
+                  settings={'MEMORY64': 1}, require_wasm64=True)
 # Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
 # suite with any kind of parallelism.
 wasm64_4gb = make_run('wasm64_4gb', cflags=['--profiling-funcs'],

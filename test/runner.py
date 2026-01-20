@@ -93,7 +93,6 @@ passing_core_test_modes = [
   'lsan',
   'ubsan',
   'wasm64',
-  'wasm64_v8',
   'wasm64_4gb',
   'esm_integration',
   'instance',
