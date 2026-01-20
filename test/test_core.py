@@ -8675,10 +8675,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
         js = read_file(self.output_name('test_hello_world'))
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
-    for engine in config.JS_ENGINES:
+    for engine in self.js_engines:
       print(f'engine: {engine}')
       # set us to test in just this engine
-      self.require_engine(engine)
+      self.require_engine(engine, force=True)
       # tell the compiler to build with just that engine
       if engine_is_node(engine):
         right = 'node'
@@ -8688,19 +8688,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
         wrong = 'node'
       # test with the right env
       self.set_setting('ENVIRONMENT', right)
-      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
+      print('right ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
       # test with the wrong env
       self.set_setting('ENVIRONMENT', wrong)
-      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
+      print('wrong ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       try:
         test(assert_returncode=NON_ZERO)
         raise Exception('unexpected success')
       except Exception as e:
-        self.assertContained('not compiled for this environment', str(e))
+        self.assertContained(['environment detected but not enabled at build time', 'not compiled for this environment'], str(e))
       # test with a combined env
       self.set_setting('ENVIRONMENT', right + ',' + wrong)
-      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
+      print('both ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
 
   @requires_node

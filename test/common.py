@@ -447,9 +447,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
 
-  def require_engine(self, engine):
+  def require_engine(self, engine, force=False):
     logger.debug(f'require_engine: {engine}')
-    if self.required_engine and self.required_engine != engine:
+    if not force and self.required_engine and self.required_engine != engine:
       self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
     self.required_engine = engine
     self.js_engines = [engine]
