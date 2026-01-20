@@ -20,7 +20,20 @@ See docs/process.md for more on how version tagging works.
 
 4.0.24 (in development)
 -----------------------
-- compiler-rt was updated to LLVM 21.1.8. (#26405)
+- compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 21.1.8.
+- (#26036, #26045, and #26058)
+- Calling pthread_create in a single-threaded build will now return ENOTSUP
+  rather then EAGAIN.  (#26105)
+- compiler-rt and libunwind were updated to LLVM 21.1.8. (#26036 and #26045)
+- A new `-sEXECUTABLE` setting was added which adds a #! line to the resulting
+  JavaScript and makes it executable.  This setting defaults to true when the
+  output filename has no extension, or ends in `.out` (e.g. `a.out`) (#26085)
+- Embind now supports the JS iterable protocol on bound classes via
+  `class_<T>::iterable()`. `register_vector` uses this so bound `std::vector`
+  works with `for...of`/`Array.from()`/spread. (#25993)
+- ASYNCIFY/JSPI functions in JS library files can now be marked as `__async:
+  'auto'`, which allows async JS function to be used unmodified with
+  ASYNCIFY/JSPI. (#26130, #26019)
 
 4.0.23 - 01/10/26
 -----------------
@@ -44,7 +57,7 @@ See docs/process.md for more on how version tagging works.
 - Source maps now support 'names' field with function name information.
   emsymbolizer will show function names when used with a source map. The size
   of source maps may increase 2-3x and the link time can increase slightly due
-  to more processing on source map creation. (#25298)
+  to more processing on source map creation. (#25928)
 - Emscripten will now cache the JS code that it generates and re-use when
   linking with the same settings at a later date.  This should improve link
   times generally but should especially noticeable when linking lots of small
@@ -81,7 +94,7 @@ See docs/process.md for more on how version tagging works.
 - The standalone `file_packager.py` script no longer supports `--embed` with JS
   output (use `--obj-output` is now required for embedding data).  This usage
   has been producing a warning since #16050 which is now an error.  (#25049)
-- Embind now requires C++17 or newer. See #24850.
+- Embind now requires C++17 or newer. (#25773)
 
 4.0.19 - 11/04/25
 -----------------
@@ -176,7 +189,7 @@ See docs/process.md for more on how version tagging works.
   (and `FS_createPreloadedFile` API`) was converted from callbacks to async.
   Any externally managed plugins would need to be updated accordingly.  An
   assertion will detect any such non-async plugins in the wild. (#24914)
-- SDL2 updated from 2.32.0 to 2.32.8. (#24912/)
+- SDL2 updated from 2.32.0 to 2.32.8. (#24912)
 - `sdl-config` and `sdl2-config` scripts were simplified to avoid using python
   and the `.bat` file versions were removed, matching upstream SDL. (#24907)
 - The `addRunDependency`/`removeRunDependency` now assert in debug builds if
@@ -241,7 +254,7 @@ See docs/process.md for more on how version tagging works.
 - When JSPI is enabled `async` library functions are no longer automatically
   wrapped with `WebAssembly.Suspending` functions. To automatically wrap library
   functions for use with JSPI they must now explicitly set
-  `myLibraryFunction__async: true`.
+  `myLibraryFunction__async: true`. (#24550)
 - Removed special casing for `size_t` in Embind, since it was also inadvertently
   affecting `unsigned long` on wasm64. Both will now match the behaviour of
   other 64-bit integers on wasm64 and will be passed as `bigint` instead of
@@ -430,7 +443,7 @@ See docs/process.md for more on how version tagging works.
 ----------------
 - Emscripten version was bumped to 4.0.0. Happy new year, happy new major
   version!  While version has a few interesting changes, there is nothing huge
-  that makes it different from any other release. (#19053)
+  that makes it different from any other release. (#23235)
 - `-sWASM_LEGACY_EXCEPTIONS` option is added. (#23365) If true, it will emit
   instructions for the legacy Wasm exception handling proposal
   (https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md),
@@ -660,7 +673,7 @@ See docs/process.md for more on how version tagging works.
 - Fix the location of the dummy `.worker.js` file that is now generated as part
   of pthread builds so that is generated alongside the main JavaScript file.
   See #21701. ()
-- `-sASYNCIFY=2` is setting now deprecated, use `-sJSPI` instead.
+- `-sASYNCIFY=2` is setting now deprecated, use `-sJSPI` instead. (#21824)
 
 3.1.58 - 04/23/24
 -----------------
@@ -1591,7 +1604,7 @@ See docs/process.md for more on how version tagging works.
 - Due to an llvm change (https://reviews.llvm.org/D118573) some clang flags
   that did not previously have any effect are now honored (e.g.
   `-fnew-alignment` and `-fshort-wchar`).
-- llvm dependency updated to 15.0.0 to match upstream. (#16178)
+- llvm dependency updated to 15.0.0 to match upstream. (#16182)
 - The `__EMSCRIPTEN_major__`, `__EMSCRIPTEN_minor__` and `__EMSCRIPTEN_tiny__`
   macros are now available via the `emscripten/version.h` header file.  For the
   time being, unless you enable `-sSTRICT`, these are still also defined
@@ -1772,7 +1785,7 @@ See docs/process.md for more on how version tagging works.
 -------------------
 - Added `EM_ASYNC_JS` macro - similar to `EM_JS`, but allows using `await`
   inside the JS block and automatically integrates with Asyncify without
-  the need for listing the declared function in `ASYNCIFY_IMPORTS` (#9709).
+  the need for listing the declared function in `ASYNCIFY_IMPORTS` (#14728).
 - Errors that occur on pthreads (e.g. uncaught exception) will now get re-thrown
   on the main thread rather than simply being logged (#13666).
 
@@ -2544,7 +2557,7 @@ See docs/process.md for more on how version tagging works.
   a global setting in the emscripten config file that would inject extra
   compiler options.
 - Allow spaces in a path to Python interpreter when running emscripten from Unix
-  shell (#11005).
+  shell (#11006).
 - Support atexit() in standalone mode (#10995). This also fixes stdio stream
   flushing on exit in that mode.
 

@@ -277,12 +277,12 @@ addToLibrary({
   def test_jslib_invalid_decorator(self):
     create_file('lib.js', r'''
 addToLibrary({
-  jslibfunc__async: 'hello',
+  jslibfunc__internal: 'hello',
   jslibfunc: (x) => {},
 });
 ''')
     self.assert_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'],
-                     "lib.js: Decorator (jslibfunc__async} has wrong type. Expected 'boolean' not 'string'")
+                     "lib.js: Decorator (jslibfunc__internal) has wrong type. Expected 'boolean' not 'string'")
 
   @also_with_wasm64
   @also_without_bigint
@@ -719,3 +719,41 @@ console.error('JSLIB: none of the above');
       #endif
     ''')
     self.assert_fail([EMCC, '--js-library=libfoo.js'], 'error: libfoo.js:3: #error "library does not support emscripten > 3.0.0"')
+
+  def test_jslib_named_class(self):
+    create_file('lib.js', r'''
+      class ParentClass {}
+      addToLibrary({
+        $ParentClass: ParentClass,
+        $MyClass__deps: ['$ParentClass'],
+        $MyClass: class extends ParentClass {
+          constructor() { super(); this.x = 42; }
+        },
+        log_class__deps: ['$MyClass'],
+        log_class: () => {
+          var i = new MyClass();
+          out('MyClass: ' + i.x);
+        }
+      });
+    ''')
+    create_file('src.c', r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+
+      extern void log_class();
+
+      int main() {
+        log_class();
+        return 0;
+      }
+    ''')
+    self.do_runf('src.c', 'MyClass: 42', cflags=['--js-library', 'lib.js'])
+
+  # Tests that JS library functions containing multiline strings are not disturbed by e.g. inserting indentation into the output.
+  @parameterized({
+    '': ([],),
+    'single_file': (['-sSINGLE_FILE'],),
+    'closure': (['--closure', '1'],),
+  })
+  def test_multiline_string(self, args):
+    self.do_run_in_out_file_test('jslib/test_multiline_string.c', cflags=['--js-library', test_file('jslib/test_multiline_string.js')] + args)

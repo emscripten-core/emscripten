@@ -203,12 +203,12 @@ def requires_jspi(func):
   return decorated
 
 
-def node_pthreads(func):
+def requires_pthreads(func):
   assert callable(func)
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    self.setup_node_pthreads()
+    self.require_pthreads()
     return func(self, *args, **kwargs)
   return decorated
 

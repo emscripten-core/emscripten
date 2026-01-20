@@ -555,7 +555,7 @@ function instantiateSync(file, info) {
   var binary = getBinarySync(file);
 #if NODE_CODE_CACHING
   if (ENVIRONMENT_IS_NODE) {
-    var v8 = require('v8');
+    var v8 = require('node:v8');
     // Include the V8 version in the cache name, so that we don't try to
     // load cached code from another version, which fails silently (it seems
     // to load ok, but we do actually recompile the binary every time).
@@ -676,7 +676,7 @@ function getWasmImports() {
 #endif
 #if ASYNCIFY && (ASSERTIONS || ASYNCIFY == 2)
   // instrumenting imports is used in asyncify in two ways: to add assertions
-  // that check for proper import use, and for ASYNCIFY=2 we use them to set up
+  // that check for proper import use, and for JSPI we use them to set up
   // the Promise API on the import side.
 #if PTHREADS
   // In pthreads builds getWasmImports is called more than once but we only
