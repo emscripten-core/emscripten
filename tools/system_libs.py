@@ -1015,7 +1015,6 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
       '-DLIBC_COPT_PUBLIC_PACKAGING',
       # Disable accurate pass to speed up certain math operations
       '-DLIBC_MATH=LIBC_MATH_FAST',
-      '-DLIBC_MATH_SKIP_ACCURATE_PASS',
       '-D__LIBC_USE_BUILTIN_CEIL_FLOOR_RINT_TRUNC',
       # Reduce size bloats from string conversions.
       '-DLIBC_COPT_STRTOFLOAT_DISABLE_EISEL_LEMIRE',
@@ -1023,7 +1022,7 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
       # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
       '-Wno-unused-variable',
       '-mrelaxed-simd',
-      '-ffast-math',
+      '-ffp-contract=fast',
   ]
 
   def get_files(self):
