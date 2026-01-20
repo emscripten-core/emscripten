@@ -8675,7 +8675,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
         js = read_file(self.output_name('test_hello_world'))
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
-    for engine in config.JS_ENGINES:
+    for engine in self.js_engines:
       print(f'engine: {engine}')
       # set us to test in just this engine
       self.require_engine(engine)
