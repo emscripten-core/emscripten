@@ -61,7 +61,7 @@ from decorators import (
   requires_jspi,
   requires_native_clang,
   requires_node,
-  requires_node_canary,
+  requires_node_25,
   requires_pthreads,
   requires_v8,
   requires_wasm2js,
@@ -449,7 +449,7 @@ class TestCoreBase(RunnerCore):
     return all(f not in self.cflags for f in prohibited) and any(f in self.cflags for f in required)
 
   def setup_esm_integration(self):
-    self.require_node_canary()
+    self.require_node_25()
     self.node_args += ['--experimental-wasm-modules', '--no-warnings']
     self.set_setting('WASM_ESM_INTEGRATION')
     self.cflags += ['-Wno-experimental']
@@ -8490,7 +8490,7 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_hello_world.c')
 
   # Test that pthread_join works correctly with asyncify.
-  @requires_node_canary
+  @requires_node_25
   @requires_pthreads
   def test_pthread_join_and_asyncify(self):
     # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552

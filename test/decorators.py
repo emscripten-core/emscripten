@@ -129,12 +129,12 @@ def requires_node(func):
   return decorated
 
 
-def requires_node_canary(func):
+def requires_node_25(func):
   assert callable(func)
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    self.require_node_canary()
+    self.require_node_25()
     return func(self, *args, **kwargs)
 
   return decorated
