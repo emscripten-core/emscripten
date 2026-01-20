@@ -8499,31 +8499,51 @@ int main() {
     '''
     self.cflags += ['-g']
 
-    # Stack trace and message example for this example code:
-    # exiting due to exception: [object WebAssembly.Exception],Error: std::runtime_error,my message
-    #     at src.wasm.__cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
-    #     at src.wasm.bar() (wasm://wasm/009a7c9a:wasm-function[12]:0xf53)
-    #     at src.wasm.foo() (wasm://wasm/009a7c9a:wasm-function[19]:0x154e)
-    #     at __original_main (wasm://wasm/009a7c9a:wasm-function[20]:0x15a6)
-    #     at src.wasm.main (wasm://wasm/009a7c9a:wasm-function[56]:0x25be)
-    #     at test.js:833:22
-    #     at callMain (test.js:4567:15)
-    #     at doRun (test.js:4621:23)
-    #     at run (test.js:4636:5)
-    stack_trace_checks = [
-      'std::runtime_error[:,][ ]?my message',  # 'std::runtime_error: my message' for Emscripten EH
-      'at (src.wasm.)?_?__cxa_throw',  # '___cxa_throw' (JS symbol) for Emscripten EH
-      'at (src.wasm.)?bar',
-      'at (src.wasm.)?foo',
-      'at (src.wasm.)?main']
-
-    if '-fwasm-exceptions' in self.cflags:
-      # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
-      # optional 'traceStack' option in WebAssembly.Exception constructor
-      # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
-      # and embeds stack traces unconditionally. Change this back to
-      # self.require_wasm_legacy_eh() if this issue is fixed later.
-      self.require_v8()
+    if '-fwasm-exceptions' in self.cflags and engine_is_node(self.js_engines[0]):
+      if not self.try_require_node_version(24):
+        # Node versions prior to v24 do not implement the new 'traceStack' option in
+        # WebAssembly.Exception constructor.
+        # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
+        self.skipTest('test requires node v24 or above')
+      # Stack trace and message example for this example code running under node:
+      # Exception [WebAssembly.Exception] {
+      #    message: [ 'std::runtime_error', 'my message' ]
+      # }
+      # Thrown at:
+      #     at ___throw_exception_with_stack_trace (/usr/local/google/home/sbc/dev/wasm/emscripten/out/test/src.js:702:15)
+      #     at $__cxa_throw (wasm://wasm/src.wasm-00512f82:1:15731)
+      #     at $bar() (wasm://wasm/src.wasm-00512f82:1:2562)
+      #     at $foo() (wasm://wasm/src.wasm-00512f82:1:2598)
+      #     at $__original_main (wasm://wasm/src.wasm-00512f82:1:2766)
+      #     at $main (wasm://wasm/src.wasm-00512f82:1:2793)
+      #     at callMain (/usr/local/google/home/sbc/dev/wasm/emscripten/out/test/src.js:920:15)
+      #     at doRun (/usr/local/google/home/sbc/dev/wasm/emscripten/out/test/src.js:959:24)
+      #     at run (/usr/local/google/home/sbc/dev/wasm/emscripten/out/test/src.js:972:5)
+      #     at removeRunDependency (/usr/local/google/home/sbc/dev/wasm/emscripten/out/test/src.js:527:11)
+      stack_trace_checks = [
+        'std::runtime_error.*my message',
+        r'at \$__cxa_throw \(wasm://',
+        r'at \$bar\(\) \(wasm://',
+        r'at \$foo\(\) \(wasm://',
+        r'at \$main \(wasm://']
+    else:
+      # Stack trace and message example for this example code running under v8:
+      # exiting due to exception: [object WebAssembly.Exception],Error: std::runtime_error,my message
+      #     at src.wasm.__cxa_throw (wasm://wasm/009a7c9a:wasm-function[1551]:0x24367)
+      #     at src.wasm.bar() (wasm://wasm/009a7c9a:wasm-function[12]:0xf53)
+      #     at src.wasm.foo() (wasm://wasm/009a7c9a:wasm-function[19]:0x154e)
+      #     at __original_main (wasm://wasm/009a7c9a:wasm-function[20]:0x15a6)
+      #     at src.wasm.main (wasm://wasm/009a7c9a:wasm-function[56]:0x25be)
+      #     at test.js:833:22
+      #     at callMain (test.js:4567:15)
+      #     at doRun (test.js:4621:23)
+      #     at run (test.js:4636:5)
+      stack_trace_checks = [
+        'std::runtime_error[:,][ ]?my message',  # 'std::runtime_error: my message' for Emscripten EH
+        'at (src.wasm.)?_?__cxa_throw',  # '___cxa_throw' (JS symbol) for Emscripten EH
+        'at (src.wasm.)?bar',
+        'at (src.wasm.)?foo',
+        'at (src.wasm.)?main']
 
     # Stack traces are enabled when either of ASSERTIONS or
     # EXCEPTION_STACK_TRACES is enabled. You can't disable
@@ -8557,13 +8577,6 @@ int main() {
   @with_all_eh_sjlj
   def test_exceptions_rethrow_stack_trace_and_message(self):
     self.cflags += ['-g']
-    if '-fwasm-exceptions' in self.cflags:
-      # FIXME Node v18.13 (LTS as of Jan 2023) has not yet implemented the new
-      # optional 'traceStack' option in WebAssembly.Exception constructor
-      # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
-      # and embeds stack traces unconditionally. Change this back to
-      # self.require_wasm_legacy_eh() if this issue is fixed later.
-      self.require_v8()
     # Rethrowing exception currently loses the stack trace before the rethrowing
     # due to how rethrowing is implemented. So in the examples below we don't
     # print 'bar' at the moment.
@@ -8605,11 +8618,23 @@ int main() {
         return 0;
       }
     '''
-    rethrow_stack_trace_checks = [
-      'std::runtime_error[:,][ ]?my message',  # 'std::runtime_error: my message' for Emscripten EH
-      'at ((src.wasm.)?_?__cxa_rethrow|___resumeException)',  # '___resumeException' (JS symbol) for Emscripten EH
-      'at (src.wasm.)?foo',
-      'at (src.wasm.)?main']
+    if '-fwasm-exceptions' in self.cflags and engine_is_node(self.js_engines[0]):
+      if not self.try_require_node_version(24):
+        # Node versions prior to v24 do not implement the new 'traceStack' option in
+        # WebAssembly.Exception constructor.
+        # (https://developer.mozilla.org/en-US/docs/WebAssembly/JavaScript_interface/Exception/Exception)
+        self.skipTest('test requires node v24 or above')
+      rethrow_stack_trace_checks = [
+        'std::runtime_error.*my message',
+        r'at \$__cxa_rethrow.* \(wasm://',
+        r'at \$foo\(\) \(wasm://',
+        r'at \$main \(wasm://']
+    else:
+      rethrow_stack_trace_checks = [
+        'std::runtime_error[:,][ ]?my message',  # 'std::runtime_error: my message' for Emscripten EH
+        'at ((src.wasm.)?_?__cxa_rethrow|___resumeException)',  # '___resumeException' (JS symbol) for Emscripten EH
+        'at (src.wasm.)?foo',
+        'at (src.wasm.)?main']
 
     self.set_setting('ASSERTIONS', 1)
     err = self.do_run(rethrow_src1, assert_all=True, assert_returncode=NON_ZERO,

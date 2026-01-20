@@ -1076,6 +1076,8 @@ jobs:
             other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
+            other.test_exceptions_stack_trace*
+            other.test_exceptions_rethrow_stack_trace*
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
             core2.test_sse2
