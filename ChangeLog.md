@@ -34,7 +34,7 @@ See docs/process.md for more on how version tagging works.
 - ASYNCIFY/JSPI functions in JS library files can now be marked as `__async:
   'auto'`, which allows async JS function to be used unmodified with
   ASYNCIFY/JSPI. (#26130, #26019)
-- SDL3 port updated to 3.2.30. (#25273)
+- SDL3 port updated to 3.2.30. (#26135)
 
 4.0.23 - 01/10/26
 -----------------
