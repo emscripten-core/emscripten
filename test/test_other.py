@@ -78,7 +78,7 @@ from decorators import (
   requires_native_clang,
   requires_network,
   requires_node,
-  requires_node_canary,
+  requires_node_25,
   requires_pthreads,
   requires_v8,
   requires_wasm64,
@@ -408,7 +408,7 @@ class other(RunnerCore):
     self.assertContained('export default Module;', read_file('hello_world.mjs'))
     self.assertContained('hello, world!', self.run_js('hello_world.mjs'))
 
-  @requires_node_canary
+  @requires_node_25
   def test_esm_source_phase_imports(self):
     self.node_args += ['--experimental-wasm-modules', '--no-warnings']
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-sSOURCE_PHASE_IMPORTS',
@@ -3457,7 +3457,7 @@ More info: https://emscripten.org
 
     self.do_runf('embind/test_return_value_policy.cpp')
 
-  @requires_node_canary
+  @requires_node_25
   def test_embind_resource_management(self):
     self.node_args.append('--js-explicit-resource-management')
 
@@ -6483,7 +6483,7 @@ int main() {
     self.assertContained('done', self.run_js('a.out.js'))
 
   @requires_wasm64
-  @requires_node_canary
+  @requires_node_25
   def test_failing_growth_wasm64(self):
     self.require_wasm64()
     create_file('test.c', r'''
@@ -12969,13 +12969,13 @@ void foo() {}
     if '-sGROWABLE_ARRAYBUFFERS' in cflags:
       self.node_args.append('--experimental-wasm-rab-integration')
       self.v8_args.append('--experimental-wasm-rab-integration')
-      self.require_node_canary()
+      self.require_node_25()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
-  @requires_node_canary
+  @requires_node_25
   def test_growable_arraybuffers(self):
     self.node_args.append('--experimental-wasm-rab-integration')
     self.v8_args.append('--experimental-wasm-rab-integration')
@@ -13003,13 +13003,13 @@ void foo() {}
     if WINDOWS and platform.machine() == 'ARM64':
       # https://github.com/emscripten-core/emscripten/issues/25627
       # TODO: Switch this to a "require Node.js 24" check
-      self.require_node_canary()
+      self.require_node_25()
 
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     if '-sGROWABLE_ARRAYBUFFERS' in cflags:
       self.node_args.append('--experimental-wasm-rab-integration')
       self.v8_args.append('--experimental-wasm-rab-integration')
-      self.require_node_canary()
+      self.require_node_25()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.do_runf('pthread/test_pthread_memory_growth.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
@@ -15030,7 +15030,7 @@ addToLibrary({
                  cflags=['--pre-js', 'pre.js',
                             '--extern-post-js', test_file('modularize_post_js.js')] + args)
 
-  @requires_node_canary
+  @requires_node_25
   def test_js_base64_api(self):
     self.node_args += ['--js_base_64']
     self.do_runf('hello_world.c', 'hello, world!', cflags=['-sSINGLE_FILE'], output_basename='baseline')

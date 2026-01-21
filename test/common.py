@@ -439,18 +439,14 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.require_engine(nodejs)
     return nodejs
 
-  def node_is_canary(self, nodejs):
-    return nodejs and nodejs[0] and ('canary' in nodejs[0] or 'nightly' in nodejs[0])
-
-  def require_node_canary(self):
-    if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
-      self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
+  def require_node_25(self):
+    if 'EMTEST_SKIP_NODE_25' in os.environ:
+      self.skipTest('test requires node v25 and EMTEST_SKIP_NODE_25 is set')
     nodejs = self.get_nodejs()
-    if self.node_is_canary(nodejs):
-      self.require_engine(nodejs)
-      return
-
-    self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
+    if not nodejs:
+      self.skipTest('Test requires nodejs to run')
+    if not self.try_require_node_version(25, 0, 0):
+      self.fail('node v25 required to run this test.  Use EMTEST_SKIP_NODE_25 to skip')
 
   def require_engine(self, engine, force=False):
     logger.debug(f'require_engine: {engine}')

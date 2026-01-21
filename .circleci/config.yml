@@ -106,27 +106,21 @@ commands:
             cat ~/emsdk/.emscripten
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
   install-node-oldest:
-    description: "install node (oldest)"
+    description: "install node 12.22.9 (oldest)"
     steps:
       - install-node-version:
           # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
           node_version: "12.22.9"
   install-node-lts:
-    description: "install node (current LTS)"
+    description: "install node 22.21.0 (current LTS)"
     steps:
       - install-node-version:
          node_version: "22.21.0"
   install-node-newest:
-    description: "install node (newest)"
+    description: "install node 25.4.0 (newest)"
     steps:
       - install-node-version:
-         node_version: "24.10.0"
-  install-node-canary:
-    description: "install canary version of node"
-    steps:
-      - install-node-version:
-         node_version: "25.0.0-v8-canary2025053097d65d1dc1"
-         canary: true
+         node_version: "25.4.0"
   install-v8:
     description: "install v8 using jsvu"
     steps:
@@ -639,7 +633,7 @@ jobs:
   test-core0:
     executor: ubuntu-lts
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
     steps:
       - run-tests-linux:
           test_targets: "core0"
@@ -647,7 +641,7 @@ jobs:
     executor: ubuntu-lts
     environment:
       EMTEST_BROWSER: "node"
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
     steps:
       - run-tests-linux:
           # also run a few asan tests.  Run these with frozen_cache disabled
@@ -697,7 +691,7 @@ jobs:
   test-core3:
     executor: ubuntu-lts
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
     steps:
       - run-tests-linux:
           frozen_cache: false
@@ -784,14 +778,14 @@ jobs:
   test-modularize-instance:
     executor: ubuntu-lts
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
     steps:
       - run-tests-linux:
           test_targets: "instance"
   test-stress:
     executor: ubuntu-lts
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
     steps:
       - run-tests-linux:
           test_targets: "stress"
@@ -805,14 +799,14 @@ jobs:
       # hardcodes /root into its launcher scripts so we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
-      - install-node-canary
+      - install-node-newest
       - run-tests:
           title: "esm_integration"
           test_targets: "esm_integration"
       - upload-test-results
   test-wasm2js1:
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
     executor: ubuntu-lts
     steps:
       - run-tests-linux:
@@ -829,12 +823,12 @@ jobs:
       # hardcodes /root into its launcher scripts so we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
-      - install-node-canary
-      # When running wasm64 tests we need to make sure we use the testing
-      # version of node (node canary) when running the compiler output (e.g.
+      - install-node-newest
+      # When running wasm64 tests we need to make sure we use the latest
+      # version of node (node 25) when running the compiler output (e.g.
       # in configure tests.
       - run:
-          name: configure node canary
+          name: configure node v25
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
@@ -852,12 +846,12 @@ jobs:
       # hardcodes /root into its launcher scripts so we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
-      - install-node-canary
-      # When running wasm64 tests we need to make sure we use the testing
-      # version of node (node canary) when running the compiler output (e.g.
+      - install-node-newest
+      # When running wasm64 tests we need to make sure we use the latest
+      # version of node (node v25) when running the compiler output (e.g.
       # in configure tests.
       - run:
-          name: configure node canary
+          name: configure node v25
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64"
@@ -980,24 +974,6 @@ jobs:
       - run:
           name: configure compiler to use 18.3.0
           command: echo "NODE_JS = '$(which node)'" >> ~/emsdk/.emscripten
-      - install-node-canary
-      - run-tests:
-          title: "node (canary)"
-          test_targets: "
-            other.test_deterministic
-            other.test_gen_struct_info
-            other.test_native_call_before_init
-            other.test_node_unhandled_rejection
-            other.test_*growable_arraybuffers
-            other.test_add_js_function_bigint_memory64
-            core2.test_hello_world
-            core2.test_esm_integration*
-            core0.test_esm_integration*
-            core0.test_pthread_join_and_asyncify
-            core0.test_async_ccall_promise_jspi*
-            core0.test_cubescript_jspi
-            core0.test_poll_blocking_asyncify_jspi
-            "
       # Run some basic tests with the minimum version of node that we currently
       # support in the generated code.
       - install-node-oldest
@@ -1093,24 +1069,34 @@ jobs:
           # those flags should not be injected on newer versions.
           title: "node (latest)"
           test_targets: "-v
+            other.test_deterministic
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_node_unhandled_rejection
+            other.test_*growable_arraybuffers
+            other.test_add_js_function_bigint_memory64
             other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
+            core2.test_hello_world
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
             core2.test_sse2
             core2.test_source_map
             core2.test_exceptions_wasm_legacy
             core2.test_pthread_unhandledrejection
+            core2.test_esm_integration*
+            core0.test_esm_integration*
+            core0.test_pthread_join_and_asyncify
+            core0.test_async_ccall_promise_jspi*
+            core0.test_cubescript_jspi
+            core0.test_poll_blocking_asyncify_jspi
             "
       - upload-test-results
   test-other:
     executor: ubuntu-lts
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_NEW_CMAKE: "1"
@@ -1295,7 +1281,7 @@ jobs:
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
       EMTEST_BROWSER: "0"
     steps:
       - checkout
