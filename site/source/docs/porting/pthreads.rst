@@ -59,6 +59,10 @@ In addition, Emscripten currently has a simple model of file I/O only happening
 on the main application thread (as we support JS plugin filesystems, which
 cannot share memory); this is another set of operations that are proxied.
 
+When a JS library function is marked as both ``__proxy: 'sync'`` and ``__proxy:
+'async'`` the calling thread will block until the async operation on the
+main thread is completed (i.e. the returned promise is resolved).
+
 Proxying can cause problems in certain cases, see the section on blocking below.
 
 Blocking on the main browser thread
