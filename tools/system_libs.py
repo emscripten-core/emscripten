@@ -1008,7 +1008,22 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libllvmlibc'
   never_force = True
   includes = ['system/lib/llvm-libc']
-  cflags = ['-Os', '-DLIBC_NAMESPACE=__llvm_libc', '-DLLVM_LIBC', '-DLIBC_COPT_PUBLIC_PACKAGING']
+  cflags = [
+      '-Os',
+      '-DLIBC_NAMESPACE=__llvm_libc',
+      '-DLLVM_LIBC',
+      '-DLIBC_COPT_PUBLIC_PACKAGING',
+      # Disable accurate pass to speed up certain math operations
+      '-DLIBC_MATH=LIBC_MATH_FAST',
+      '-D__LIBC_USE_BUILTIN_CEIL_FLOOR_RINT_TRUNC',
+      # Reduce size bloats from string conversions.
+      '-DLIBC_COPT_STRTOFLOAT_DISABLE_EISEL_LEMIRE',
+      # To Enable FMA, we need to set the following flags. But we can't really ship this in a default libc build.
+      # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
+      '-Wno-unused-variable',
+      '-mrelaxed-simd',
+      '-ffp-contract=fast',
+  ]
 
   def get_files(self):
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
