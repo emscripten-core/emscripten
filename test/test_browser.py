@@ -5476,7 +5476,6 @@ Module["preRun"] = () => {
   @requires_sound_hardware
   @requires_shared_array_buffer
   @also_with_minimal_runtime
-  @flaky('https://github.com/emscripten-core/emscripten/issues/25245')
   def test_audio_worklet_emscripten_locks(self):
     self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
