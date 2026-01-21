@@ -378,6 +378,12 @@ function(${args}) {
   });
 }
 
+// The three different inter-thread proxying methods.
+// See system/lib/pthread/proxying.c
+const PROXY_ASYNC = 0;
+const PROXY_SYNC = 1;
+const PROXY_SYNC_ASYNC = 2;
+
 export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
   const symbolDeps = {};
@@ -478,11 +484,19 @@ function(${args}) {
         error(`JS library error: invalid proxying mode '${symbol}__proxy: ${proxyingMode}' specified`);
       }
       if (SHARED_MEMORY && proxyingMode != 'none') {
-        const sync = proxyingMode === 'sync';
         if (PTHREADS) {
           snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
             if (oneliner) {
               body = `return ${body}`;
+            }
+            let proxyMode = PROXY_ASYNC;
+            if (proxyingMode === 'sync') {
+              const isAsyncFunction = LibraryManager.library[symbol + '__async'];
+              if (isAsyncFunction) {
+                proxyMode = PROXY_SYNC_ASYNC;
+              } else {
+                proxyMode = PROXY_SYNC;
+              }
             }
             const rtnType = sig && sig.length ? sig[0] : null;
             const proxyFunc =
@@ -491,7 +505,7 @@ function(${args}) {
             return `
 ${async_}function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+sync}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${proxyMode}${args ? ', ' : ''}${args});
 ${body}
 }\n`;
           });

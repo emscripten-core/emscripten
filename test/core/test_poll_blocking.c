@@ -7,7 +7,6 @@
 
 // Duplicate of test_select_blocking.c using poll() instead of select()
 
-#include <sys/select.h>
 #include <poll.h>
 #include <time.h>
 #include <assert.h>

@@ -28,6 +28,7 @@ from common import (
   compiler_for,
   create_file,
   engine_is_node,
+  engine_is_v8,
   env_modify,
   path_from_root,
   read_binary,
@@ -8496,8 +8497,8 @@ Module.onRuntimeInitialized = () => {
     self.require_jspi()
     self.do_runf('core/test_pthread_join_and_asyncify.c', 'joining thread!\njoined thread!',
                  cflags=['-sJSPI',
-                            '-sEXIT_RUNTIME=1',
-                            '-pthread', '-sPROXY_TO_PTHREAD'])
+                         '-sEXIT_RUNTIME=1',
+                         '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_sanitize('no wasm2js support yet in sanitizers')
@@ -9655,6 +9656,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @requires_pthreads
   def test_poll_blocking(self):
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @with_asyncify_and_jspi
+  def test_poll_blocking_asyncify(self):
+    if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
+      self.skipTest('test requires setTimeout which is not supported under v8')
+    self.do_runf('core/test_poll_blocking_asyncify.c')
 
   @parameterized({
     '': ([],),

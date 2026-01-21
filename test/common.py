@@ -266,23 +266,28 @@ def get_output_suffix(args):
 
 
 def match_engine_executable(engine, name):
+  assert type(engine) is list
   basename = os.path.basename(engine[0])
   return name in basename
 
 
 def engine_is_node(engine):
+  assert type(engine) is list
   return match_engine_executable(engine, 'node')
 
 
 def engine_is_v8(engine):
+  assert type(engine) is list
   return match_engine_executable(engine, 'd8') or match_engine_executable(engine, 'v8')
 
 
 def engine_is_deno(engine):
+  assert type(engine) is list
   return match_engine_executable(engine, 'deno')
 
 
 def engine_is_bun(engine):
+  assert type(engine) is list
   return match_engine_executable(engine, 'bun')
 
 
