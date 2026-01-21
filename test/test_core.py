@@ -9604,7 +9604,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')
 
-  @requires_v8
   @no_wasm2js('wasm2js does not support reference types')
   @no_sanitize('.s files cannot be sanitized')
   def test_externref(self):
