@@ -1224,7 +1224,7 @@ var LibraryPThread = {
   _emscripten_dlsync_threads: () => {
     const callingThread = PThread.currentProxiedOperationCallerThread;
     if (callingThread) {
-      return dlsyncThreadsAsync()
+      return dlsyncThreadsAsync();
     }
     for (const ptr of Object.keys(PThread.pthreads)) {
       const pthread_ptr = Number(ptr);
