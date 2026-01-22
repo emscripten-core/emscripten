@@ -63,7 +63,6 @@ from decorators import (
   requires_node,
   requires_node_25,
   requires_pthreads,
-  requires_v8,
   requires_wasm2js,
   requires_wasm_eh,
   skip_if,
@@ -8241,11 +8240,6 @@ int main() {
 ''')
 
     self.do_runf('main.c', 'hello 0\nhello 1\nhello 2\nhello 3\nhello 4\n')
-
-  @requires_v8
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
-  def test_async_hello_v8(self):
-    self.test_async_hello()
 
   @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_bad(self):

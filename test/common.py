@@ -451,7 +451,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def require_engine(self, engine, force=False):
     logger.debug(f'require_engine: {engine}')
     if not force and self.required_engine and self.required_engine != engine:
-      self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
+      self.fail(f'test requires `{engine}` but `{self.required_engine}` was previously required')
     self.required_engine = engine
     self.js_engines = [engine]
     self.wasm_engines = []
@@ -468,7 +468,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [v8]
+      self.require_engine(v8)
       return
 
     self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
@@ -481,7 +481,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if version < (major, minor, revision):
       return False
 
-    self.js_engines = [nodejs]
+    self.require_engine(nodejs)
     return True
 
   def require_simd(self):
@@ -496,7 +496,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [v8]
+      self.require_engine(v8)
       return
 
     self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
@@ -516,7 +516,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [v8]
+      self.require_engine(v8)
       return
 
     self.fail('either d8 or node >= 17 required to run legacy wasm-eh tests.  Use EMTEST_SKIP_WASM_LEGACY_EH to skip')
@@ -537,7 +537,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [v8]
+      self.require_engine(v8)
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
@@ -566,7 +566,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [v8]
+      self.require_engine(v8)
       return
 
     self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
