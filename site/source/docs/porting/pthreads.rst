@@ -60,7 +60,7 @@ different threads.
 
 When a JS library function is marked as both ``__proxy: 'sync'`` and ``__async:
 'auto'``, it is expected to return a promise
-(see :ref:`Marking JS library functions as async <marking_async_functions>`).
+(see :ref:`marking_async_functions`).
 The calling thread will block until the async operation on the
 main thread is completed (i.e. the returned promise is resolved), and the value
 that the promise resolves to will be returned to the caller. This allows
