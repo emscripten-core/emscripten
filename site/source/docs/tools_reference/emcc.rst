@@ -521,12 +521,6 @@ Options that are modified or new in *emcc* are listed below:
   [compile+link]
   Enables warnings about the use of absolute paths in ``-I`` and ``-L`` command line directives. This is used to warn against unintentional use of absolute paths, which is sometimes dangerous when referring to nonportable local system headers.
 
-.. _proxy-to-worker:
-
-``--proxy-to-worker``
-  [link]
-  Runs the main application code in a worker, proxying events to it and output from it. If emitting HTML, this emits a **.html** file, and a separate **.js** file containing the JavaScript to be run in a worker. If emitting JavaScript, the target file name contains the part to be run on the main thread, while a second **.js** file with suffix ".worker.js" will contain the worker portion.
-
 .. _emcc-emrun:
 
 ``--emrun``

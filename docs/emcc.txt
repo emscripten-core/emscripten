@@ -523,15 +523,6 @@ Options that are modified or new in *emcc* are listed below:
    unintentional use of absolute paths, which is sometimes dangerous
    when referring to nonportable local system headers.
 
-"--proxy-to-worker"
-   [link] Runs the main application code in a worker, proxying events
-   to it and output from it. If emitting HTML, this emits a **.html**
-   file, and a separate **.js** file containing the JavaScript to be
-   run in a worker. If emitting JavaScript, the target file name
-   contains the part to be run on the main thread, while a second
-   **.js** file with suffix ".worker.js" will contain the worker
-   portion.
-
 "--emrun"
    [link] Enables the generated output to be aware of the emrun
    command line tool. This allows "stdout", "stderr" and

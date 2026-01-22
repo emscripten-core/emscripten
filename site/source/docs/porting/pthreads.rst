@@ -34,12 +34,6 @@ Additional flags
   The main thread also does things like create pthreads for you, so that you
   can depend on them synchronously.
 
-Note that Emscripten has the
-``--proxy-to-worker`` :ref:`linker flag <proxy-to-worker>` which sounds similar
-but is unrelated. That flag does not use pthreads or SharedArrayBuffer, and
-instead uses a plain Web Worker to run your main program (and postMessage to
-proxy messages back and forth).
-
 Proxying
 ========
 
