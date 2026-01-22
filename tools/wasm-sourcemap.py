@@ -34,6 +34,7 @@ logger = logging.getLogger('wasm-sourcemap')
 # FIXME: Generate Scopes info
 generate_scopes = False
 
+
 def parse_args(args):
   parser = argparse.ArgumentParser(prog='wasm-sourcemap.py', description=__doc__)
   parser.add_argument('wasm', help='wasm file')
