@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 4.0.24 (in development)
 -----------------------
+- Source map's 'names' field support is removed, because the way we used it was
+  inconsistent with JS and was not supported in browser devtools. We plan to
+  provide this information using Scopes encoding later. (#26149)
 - compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 21.1.8.
 - (#26036, #26045, and #26058)
 - Calling pthread_create in a single-threaded build will now return ENOTSUP
