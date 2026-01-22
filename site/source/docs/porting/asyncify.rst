@@ -161,6 +161,8 @@ You will see something like this:
 That shows that the C code only continued to execute after the async JS
 completed.
 
+.. _marking_async_functions:
+
 Marking JS library functions as async
 #####################################
 
