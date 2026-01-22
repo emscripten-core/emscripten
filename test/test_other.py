@@ -5797,7 +5797,7 @@ int main(int argc, char **argv) {
     expected_lang = os.environ.get('LANG')
     if expected_lang is None:
       # If the LANG env. var doesn't exist (Windows), ask Node for the language.
-      cmd = self.js_engines[0] + ['-e', 'console.log(navigator.languages[0] || "en_US")']
+      cmd = self.get_current_js_engine() + ['-e', 'console.log(navigator.languages[0] || "en_US")']
       expected_lang = self.run_process(cmd, stdout=PIPE).stdout
       expected_lang = expected_lang.strip().replace('-', '_')
       expected_lang = f'{expected_lang}.UTF-8'
@@ -8699,7 +8699,7 @@ int main() {
 
   @requires_node
   def test_jsrun(self):
-    engine = self.js_engines[0]
+    engine = self.get_current_js_engine()
     print(engine)
     jsrun.WORKING_ENGINES = {}
     # Test that engine check passes
@@ -10181,7 +10181,7 @@ T6:(else) !ASSERTIONS""", output)
   def test_node_eval(self):
     self.run_process([EMCC, '-sENVIRONMENT=node', test_file('hello_world.c'), '-o', 'a.js', '-O3'])
     js = read_file('a.js')
-    ret = self.run_process(self.js_engines[0] + ['-e', js], stdout=PIPE).stdout
+    ret = self.run_process(self.get_current_js_engine() + ['-e', js], stdout=PIPE).stdout
     self.assertContained('hello, world!', ret)
 
   def test_is_bitcode(self):
