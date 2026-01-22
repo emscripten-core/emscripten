@@ -59,8 +59,11 @@ can also be used directly for more precise control over how work is run on
 different threads.
 
 When a JS library function is marked as both ``__proxy: 'sync'`` and ``__async:
-'auto'`` (see :ref:`Marking JS library functions as async <marking_async_functions>`) the calling thread will block until the async operation on the
-main thread is completed (i.e. the returned promise is resolved).  This allows
+'auto'``, it is expected to return a promise
+(see :ref:`Marking JS library functions as async <marking_async_functions>`).
+The calling thread will block until the async operation on the
+main thread is completed (i.e. the returned promise is resolved), and the value
+that the promise resolves to will be returned to the caller. This allows
 functions that would require :ref:`ASYNCIFY` (when called from the main browser
 thread) to be called without :ref:`ASYNCIFY` from a background thread.  In other
 words, background threads can block on proxied work even without :ref:`ASYNCIFY`
