@@ -23,8 +23,8 @@ See docs/process.md for more on how version tagging works.
 - Source map's 'names' field support is removed, because the way we used it was
   inconsistent with JS and was not supported in browser devtools. We plan to
   provide this information using Scopes encoding later. (#26149)
-- compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 21.1.8.
-- (#26036, #26045, and #26058)
+- compiler-rt, libcxx, libcxxabi, libunwind, and llvm-libc were updated to LLVM
+- 21.1.8. (#26036, #26045, #26058, and #26151)
 - Calling pthread_create in a single-threaded build will now return ENOTSUP
   rather then EAGAIN.  (#26105)
 - compiler-rt and libunwind were updated to LLVM 21.1.8. (#26036 and #26045)
