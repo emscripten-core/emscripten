@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.24 (in development)
------------------------
+5.0.1 (in development)
+----------------------
+
+5.0.0 - 01/24/26
+----------------
 - Source map's 'names' field support is removed, because the way we used it was
   inconsistent with JS and was not supported in browser devtools. We plan to
   provide this information using Scopes encoding later. (#26149)
