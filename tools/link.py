@@ -58,7 +58,7 @@ from .utils import (
 
 logger = logging.getLogger('link')
 
-DEFAULT_SHELL_HTML = utils.path_from_root('src/shell.html')
+DEFAULT_SHELL_HTML = utils.path_from_root('html/shell.html')
 
 DEFAULT_ASYNCIFY_IMPORTS = ['__asyncjs__*']
 
@@ -1139,7 +1139,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if not options.shell_path:
     # Minimal runtime uses a different default shell file
     if settings.MINIMAL_RUNTIME:
-      options.shell_path = options.shell_path = utils.path_from_root('src/shell_minimal_runtime.html')
+      options.shell_path = options.shell_path = utils.path_from_root('html/shell_minimal_runtime.html')
     else:
       options.shell_path = DEFAULT_SHELL_HTML
 
@@ -1627,7 +1627,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
      settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
-     (options.shell_path == DEFAULT_SHELL_HTML or options.shell_path == utils.path_from_root('src/shell_minimal.html')):
+     (options.shell_path == DEFAULT_SHELL_HTML or options.shell_path == utils.path_from_root('html/shell_minimal.html')):
     exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-sMODULARIZE -sEXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
   if settings.WASM_BIGINT:
@@ -2538,7 +2538,7 @@ def generate_traditional_runtime_html(target, options, js_target, wasm_target):
 ''' % (script.inline, get_subresource_location_js(wasm_target + '.js'))
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
-  shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
+  shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('html/shell.css')))
   logo_filename = utils.path_from_root('media/powered_by_logo_shell.png')
   logo_b64 = base64_encode(logo_filename)
   shell = shell.replace('{{{ SHELL_LOGO }}}', f'<img id="emscripten_logo" src="data:image/png;base64,{logo_b64}">')
