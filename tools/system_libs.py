@@ -1875,8 +1875,8 @@ class libmimalloc(MTLibrary):
     '-DMI_DEBUG=0',
     # disable `assert()` in the underlying emmalloc allocator
     '-DNDEBUG',
-    # avoid use of `__builtin_thread_pointer()`
-    '-DMI_LIBC_MUSL',
+    # enable use of `__builtin_thread_pointer()`
+    '-DMI_USE_BUILTIN_THREAD_POINTER',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
