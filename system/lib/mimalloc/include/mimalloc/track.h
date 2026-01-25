@@ -5,8 +5,8 @@ terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
 -----------------------------------------------------------------------------*/
 #pragma once
-#ifndef MIMALLOC_TRACK_H
-#define MIMALLOC_TRACK_H
+#ifndef MI_TRACK_H
+#define MI_TRACK_H
 
 /* ------------------------------------------------------------------------------------------------------
 Track memory ranges with macros for tools like Valgrind address sanitizer, or other memory checkers.
@@ -34,7 +34,7 @@ The corresponding `mi_track_free` still uses the block start pointer and origina
 The `mi_track_resize` is currently unused but could be called on reallocations within a block.
 `mi_track_init` is called at program start.
 
-The following macros are for tools like asan and valgrind to track whether memory is 
+The following macros are for tools like asan and valgrind to track whether memory is
 defined, undefined, or not accessible at all:
 
   #define mi_track_mem_defined(p,size)
@@ -47,7 +47,7 @@ defined, undefined, or not accessible at all:
 // valgrind tool
 
 #define MI_TRACK_ENABLED      1
-#define MI_TRACK_HEAP_DESTROY 1           // track free of individual blocks on heap_destroy
+#define MI_TRACK_HEAP_DESTROY 1           // track free of individual blocks on theap_destroy
 #define MI_TRACK_TOOL         "valgrind"
 
 #include <valgrind/valgrind.h>
@@ -82,10 +82,6 @@ defined, undefined, or not accessible at all:
 #define MI_TRACK_HEAP_DESTROY 1
 #define MI_TRACK_TOOL         "ETW"
 
-#ifndef WIN32_LEAN_AND_MEAN
-#define WIN32_LEAN_AND_MEAN
-#endif
-#include <windows.h>
 #include "../src/prim/windows/etw.h"
 
 #define mi_track_init()                           EventRegistermicrosoft_windows_mimalloc();
@@ -96,7 +92,7 @@ defined, undefined, or not accessible at all:
 // no tracking
 
 #define MI_TRACK_ENABLED      0
-#define MI_TRACK_HEAP_DESTROY 0 
+#define MI_TRACK_HEAP_DESTROY 0
 #define MI_TRACK_TOOL         "none"
 
 #define mi_track_malloc_size(p,reqsize,size,zero)
@@ -146,4 +142,4 @@ defined, undefined, or not accessible at all:
   }
 #endif
 
-#endif
+#endif // MI_TRACK_H
