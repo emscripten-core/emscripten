@@ -1872,6 +1872,10 @@ class libmimalloc(MTLibrary):
     # disable large pages by default, see:
     # https://github.com/microsoft/mimalloc/commit/9199d54bcf1e6dea0deb61a3a8a4b3ea4b45a341
     '-DMI_ENABLE_LARGE_PAGES=0',
+    # halve the page size to 32KiB on wasm64 and to 16KiB on wasm32
+    # https://github.com/microsoft/mimalloc/issues/647#issuecomment-1324109021
+    # https://github.com/emscripten-core/emscripten/issues/20645#issuecomment-1962964755
+    '-DMI_ARENA_SLICE_SHIFT=(12 + MI_SIZE_SHIFT)',
     # build mimalloc with an override of malloc/free
     '-DMI_MALLOC_OVERRIDE',
     # TODO: add build modes that include debug checks 1,2,3
