@@ -77,7 +77,7 @@ def generate_minimal_runtime_load_statement(target_basename):
       then_statements += ['''\
   // Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this"
   // directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see
-  // https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
+  // https://bugzil.la/1540101
   var js = URL.createObjectURL(new Blob([r[0]], { type: \'application/javascript\' }));
   script(js).then((c) => c({
   %s
@@ -86,7 +86,7 @@ def generate_minimal_runtime_load_statement(target_basename):
       then_statements += ['''\
   // Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this"
   // directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see
-  // https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
+  // https://bugzil.la/1540101
   var js = r[0];
   js({
   %s

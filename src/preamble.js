@@ -488,27 +488,43 @@ async function getWasmBinary(binaryFile) {
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
 var splitModuleProxyHandler = {
-  get(target, prop, receiver) {
-    return (...args) => {
+  get(target, moduleName, receiver) {
+    if (moduleName.startsWith('placeholder')) {
+      let secondaryFile;
+      if (moduleName == 'placeholder') { // old format
+        secondaryFile = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
+      } else { // new format
+        let moduleID = moduleName.split('.')[1];
+        secondaryFile = wasmBinaryFile.slice(0, -5) + '.' + moduleID + '.wasm';
+      }
+      return new Proxy({}, {
+        get(target, base, receiver) {
+          return (...args) => {
 #if ASYNCIFY == 2
-      throw new Error('Placeholder function "' + prop + '" should not be called when using JSPI.');
+            throw new Error('Placeholder function "' + base + '" should not be called when using JSPI.');
 #else
-      err(`placeholder function called: ${prop}`);
-      var imports = {'primary': wasmExports};
-      // Replace '.wasm' suffix with '.deferred.wasm'.
-      var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm'
-      loadSplitModule(deferred, imports, prop);
-      err('instantiated deferred module, continuing');
+#if RUNTIME_DEBUG
+            dbg(`placeholder function called: ${base}`);
+#endif
+            var imports = {'primary': wasmExports};
+            // Replace '.wasm' suffix with '.deferred.wasm'.
+            loadSplitModule(secondaryFile, imports, base);
+#if RUNTIME_DEBUG
+            dbg('instantiated deferred module, continuing');
+#endif
 #if RELOCATABLE
-      // When the table is dynamically laid out, the placeholder functions names
-      // are offsets from the table base. In the main module, the table base is
-      // always 1.
-      return wasmTable.get(1 + parseInt(prop))(...args);
-#else
-      return wasmTable.get(prop)(...args);
+            // When the table is dynamically laid out, the placeholder functions names
+            // are offsets from the table base. In the main module, the table base is
+            // always 1.
+            base = 1 + parseInt(base);
 #endif
+            return wasmTable.get({{{ toIndexType('base') }}})(...args);
 #endif
+          }
+        }
+      });
     }
+    return target[moduleName];
   }
 };
 #endif
@@ -654,21 +670,22 @@ function getWasmImports() {
 #endif
 #endif
   // prepare imports
-  return {
+  var imports = {
 #if MINIFY_WASM_IMPORTED_MODULES
     'a': wasmImports,
 #else // MINIFY_WASM_IMPORTED_MODULES
     'env': wasmImports,
     '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
-#if SPLIT_MODULE
-    'placeholder': new Proxy({}, splitModuleProxyHandler),
-#endif
 #if RELOCATABLE
     'GOT.mem': new Proxy(wasmImports, GOTHandler),
     'GOT.func': new Proxy(wasmImports, GOTHandler),
 #endif
-  }
+  };
+#if SPLIT_MODULE
+  imports = new Proxy(imports, splitModuleProxyHandler);
+#endif
+  return imports;
 }
 
 // Create the wasm instance.
@@ -713,7 +730,9 @@ function getWasmImports() {
     wasmExports = applySignatureConversions(wasmExports);
 #endif
 
-    {{{ receivedSymbol('wasmExports') }}}
+#if EXPORTED_RUNTIME_METHODS.includes('wasmExports')
+    Module['wasmExports'] = wasmExports;
+#endif
 
 #if PTHREADS
 #if MAIN_MODULE

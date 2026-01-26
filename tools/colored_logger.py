@@ -4,126 +4,114 @@
 # found in the LICENSE file.
 
 """Enables colored logger just by importing this module
+
+Also, provides utiliy functions to use ANSI colors in the terminal.
 """
 
 import ctypes
 import sys
 import logging
+from functools import wraps
 
 
-def add_coloring_to_emit_windows(fn):
+# ANSI colors
+RED = 1
+GREEN = 2
+YELLOW = 3
+BLUE = 4
+MAGENTA = 5
+CYAN = 6
+WHITE = 7
+
+color_enabled = False
+
+
+def output_color(color):
+  if color_enabled:
+    return '\033[3%sm' % color
+  return ''
+
+
+def bold():
+  if color_enabled:
+    return '\033[1m'
+  return ''
+
+
+def reset_color():
+  if color_enabled:
+    return '\033[0m'
+  return ''
+
+
+def with_bold_color(color, string):
+  return output_color(color) + bold() + string + reset_color()
+
+
+def with_color(color, string):
+  return output_color(color) + string + reset_color()
+
+
+def with_bold(string):
+  return bold() + string + reset_color()
+
+
+def ansi_color_available():
+  if not sys.platform.startswith('win'):
+    return sys.stderr.isatty()
+
   # Constants from the Windows API
   STD_OUTPUT_HANDLE = -11
+  ENABLE_VIRTUAL_TERMINAL_PROCESSING = 0x0004
 
-  def _get_color():
-    SHORT = ctypes.c_short
-    WORD = ctypes.c_ushort
+  kernel32 = ctypes.windll.kernel32
+  stdout_handle = kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
 
-    class COORD(ctypes.Structure):
-      _fields_ = [
-        ("X", SHORT),
-        ("Y", SHORT)]
+  console_mode = ctypes.c_uint()
+  # Attempt to enable ANSI color processing (ENABLE_VIRTUAL_TERMINAL_PROCESSING).
+  # Assume that failure of either GetConsoleMode or SetConsoleMode means that stdout
+  # is not attached to a terminal or that the terminal does not support this mode.
+  if kernel32.GetConsoleMode(stdout_handle, ctypes.byref(console_mode)) == 0:
+    return False
+  if kernel32.SetConsoleMode(stdout_handle, console_mode.value | ENABLE_VIRTUAL_TERMINAL_PROCESSING) == 0:
+    return False
 
-    class SMALL_RECT(ctypes.Structure):
-      _fields_ = [
-        ("Left", SHORT),
-        ("Top", SHORT),
-        ("Right", SHORT),
-        ("Bottom", SHORT)]
-
-    class CONSOLE_SCREEN_BUFFER_INFO(ctypes.Structure):
-      _fields_ = [
-        ("dwSize", COORD),
-        ("dwCursorPosition", COORD),
-        ("wAttributes", WORD),
-        ("srWindow", SMALL_RECT),
-        ("dwMaximumWindowSize", COORD)]
-
-    hdl = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
-    csbi = CONSOLE_SCREEN_BUFFER_INFO()
-    ctypes.windll.kernel32.GetConsoleScreenBufferInfo(hdl, ctypes.byref(csbi))
-    return csbi.wAttributes
-
-  def _set_color(code):
-    hdl = ctypes.windll.kernel32.GetStdHandle(STD_OUTPUT_HANDLE)
-    ctypes.windll.kernel32.SetConsoleTextAttribute(hdl, code)
-
-  def new(*args):
-    # wincon.h
-    FOREGROUND_BLACK     = 0x0000 # noqa
-    FOREGROUND_BLUE      = 0x0001 # noqa
-    FOREGROUND_GREEN     = 0x0002 # noqa
-    FOREGROUND_CYAN      = 0x0003 # noqa
-    FOREGROUND_RED       = 0x0004 # noqa
-    FOREGROUND_MAGENTA   = 0x0005 # noqa
-    FOREGROUND_YELLOW    = 0x0006 # noqa
-    FOREGROUND_GREY      = 0x0007 # noqa
-    FOREGROUND_INTENSITY = 0x0008 # foreground color is intensified.
-
-    FOREGROUND_WHITE     = FOREGROUND_BLUE|FOREGROUND_GREEN |FOREGROUND_RED # noqa
-
-    BACKGROUND_BLACK     = 0x0000 # noqa
-    BACKGROUND_BLUE      = 0x0010 # noqa
-    BACKGROUND_GREEN     = 0x0020 # noqa
-    BACKGROUND_CYAN      = 0x0030 # noqa
-    BACKGROUND_RED       = 0x0040 # noqa
-    BACKGROUND_MAGENTA   = 0x0050 # noqa
-    BACKGROUND_YELLOW    = 0x0060 # noqa
-    BACKGROUND_GREY      = 0x0070 # noqa
-    BACKGROUND_INTENSITY = 0x0080 # background color is intensified.
-    levelno = args[1].levelno
-    if (levelno >= 50):
-        color = BACKGROUND_YELLOW | FOREGROUND_RED | FOREGROUND_INTENSITY | BACKGROUND_INTENSITY
-    elif (levelno >= 40):
-        color = FOREGROUND_RED | FOREGROUND_INTENSITY
-    elif (levelno >= 30):
-        color = FOREGROUND_YELLOW | FOREGROUND_INTENSITY
-    elif (levelno >= 20):
-        color = FOREGROUND_GREEN
-    elif (levelno >= 10):
-        color = FOREGROUND_MAGENTA
-    else:
-        color = FOREGROUND_WHITE
-
-    old_color = _get_color()
-    _set_color(color)
-    ret = fn(*args)
-    _set_color(old_color)
-    return ret
-
-  new.orig_func = fn
-  return new
+  return True
 
 
 def add_coloring_to_emit_ansi(fn):
   # add methods we need to the class
+  @wraps(fn)
   def new(*args):
     levelno = args[1].levelno
+    color = None
     if levelno >= 40:
-      color = '\x1b[31m' # red
+      color = RED
     elif levelno >= 30:
-      color = '\x1b[33m' # yellow
+      color = YELLOW
     elif levelno >= 20:
-      color = '\x1b[32m' # green
+      color = GREEN
     elif levelno >= 10:
-      color = '\x1b[35m' # pink
-    else:
-      color = '\x1b[0m' # normal
-    args[1].msg = color + args[1].msg + '\x1b[0m'  # normal
+      color = MAGENTA
+    if color:
+      args[1].msg = with_color(color, args[1].msg)
     return fn(*args)
 
   new.orig_func = fn
   return new
 
 
-def enable():
-  if sys.stderr.isatty():
-    if sys.platform.startswith('win'):
-      logging.StreamHandler.emit = add_coloring_to_emit_windows(logging.StreamHandler.emit)
-    else:
+def enable(force=False):
+  global color_enabled
+  if not color_enabled:
+    if ansi_color_available() or force:
       logging.StreamHandler.emit = add_coloring_to_emit_ansi(logging.StreamHandler.emit)
+      color_enabled = True
 
 
 def disable():
-  if hasattr(logging.StreamHandler.emit, 'orig_func'):
-    logging.StreamHandler.emit = logging.StreamHandler.emit.orig_func
+  global color_enabled
+  if color_enabled:
+    if hasattr(logging.StreamHandler.emit, 'orig_func'):
+      logging.StreamHandler.emit = logging.StreamHandler.emit.orig_func
+    color_enabled = False

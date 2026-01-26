@@ -31,13 +31,12 @@ import time
 import tarfile
 from dataclasses import dataclass
 from enum import Enum, auto, unique
-from subprocess import PIPE
 
 
 from tools import shared, system_libs, utils, cmdline
 from tools import diagnostics, building, compile
 from tools.shared import unsuffixed_basename, get_file_suffix
-from tools.shared import run_process, exit_with_error, DEBUG
+from tools.shared import exit_with_error, DEBUG
 from tools.shared import in_temp
 from tools.shared import DYLIB_EXTENSIONS
 from tools.cmdline import CLANG_FLAGS_WITH_ARGS
@@ -242,27 +241,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(utils.EMSCRIPTEN_VERSION)
     return 0
 
-  if '--cflags' in args:
-    # fake running the command, to see the full args we pass to clang
-    args = [x for x in args if x != '--cflags']
-    with shared.get_temp_files().get_file(suffix='.o') as temp_target:
-      input_file = 'hello_world.c'
-      compiler = shared.EMCC
-      if shared.run_via_emxx:
-        compiler = shared.EMXX
-      cmd = [compiler, utils.path_from_root('test', input_file), '-v', '-c', '-o', temp_target] + args
-      proc = run_process(cmd, stderr=PIPE, check=False)
-      if proc.returncode != 0:
-        print(proc.stderr)
-        exit_with_error('error getting cflags')
-      lines = [x for x in proc.stderr.splitlines() if clang in x and input_file in x]
-      if not lines:
-        exit_with_error(f'unable to parse output of `{cmd}`:\n{proc.stderr}')
-      parts = shlex.split(lines[0].replace('\\', '\\\\'))
-      parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
-      print(shlex.join(parts[1:]))
-    return 0
-
   if '-dumpmachine' in args or '-print-target-triple' in args or '--print-target-triple' in args:
     print(shared.get_llvm_target())
     return 0
@@ -270,10 +248,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if '-print-search-dirs' in args or '--print-search-dirs' in args:
     print(f'programs: ={config.LLVM_ROOT}')
     print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
-    return 0
-
-  if '-print-resource-dir' in args:
-    shared.check_call([clang] + args)
     return 0
 
   if '-print-libgcc-file-name' in args or '--print-libgcc-file-name' in args:
@@ -313,6 +287,17 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
   phase_setup(options, state)
+
+  if '-print-resource-dir' in args or any(a.startswith('--print-prog-name') for a in args):
+    shared.exec_process([clang] + compile.get_cflags(tuple(args)) + args)
+    assert False, 'exec_process should not return'
+
+  if '--cflags' in args:
+    # Just print the flags we pass to clang and exit.  We need to do this after
+    # phase_setup because the setup sets things like SUPPORT_LONGJMP.
+    cflags = compile.get_cflags(x for x in args if x != '--cflags')
+    print(shlex.join(cflags))
+    return 0
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -431,9 +416,6 @@ def phase_setup(options, state):
   if settings.PTHREADS or settings.WASM_WORKERS:
     settings.SHARED_MEMORY = 1
 
-  if settings.SHARED_MEMORY:
-    settings.BULK_MEMORY = 1
-
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
     # on the command line.  This is no longer valid so report either an error or a warning (for
@@ -531,7 +513,7 @@ def phase_compile_inputs(options, state, newargs):
     else:
       cmd = get_clang_command() + newargs
     shared.exec_process(cmd)
-    assert False, 'exec_process does not return'
+    assert False, 'exec_process should not return'
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags

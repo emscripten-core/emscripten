@@ -36,6 +36,18 @@ var LibraryEmbind = {
       this.destructorType = 'none'; // Same as emval.
     }
   },
+  $UserTypeDefinition: class {
+    constructor(typeId, name, definition) {
+      this.typeId = typeId;
+      this.name = name;
+      this.definition = definition;
+      this.destructorType = 'none'; // Same as emval.
+    }
+
+    print(nameMap, out) {
+      out.push(`type ${this.name} = ${this.definition};\n\n`);
+    }
+  },
   $OptionalType: class {
     constructor(type) {
       this.type = type;
@@ -562,6 +574,14 @@ var LibraryEmbind = {
   _embind_register_user_type: (rawType, name) => {
     name = AsciiToString(name);
     registerType(rawType, new UserType(rawType, name));
+  },
+  _embind_register_user_type_definition__deps: ['$registerType', '$AsciiToString', '$UserTypeDefinition'],
+  _embind_register_user_type_definition: (rawType, name, definition) => {
+    name = AsciiToString(name);
+    definition = AsciiToString(definition);
+    const userTypeDef = new UserTypeDefinition(rawType, name, definition);
+    registerType(rawType, userTypeDef);
+    moduleDefinitions.push(userTypeDef);
   },
   _embind_register_optional__deps: ['$OptionalType'],
   _embind_register_optional: (rawOptionalType, rawType) => {

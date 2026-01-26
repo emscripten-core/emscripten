@@ -13,6 +13,11 @@ user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", fal
 user_pref("browser.sessionstore.restore_on_demand", false);
 user_pref("browser.sessionstore.max_resumed_crashes", -1);
 user_pref("toolkit.startup.max_resumed_crashes", -1);
+// Ease shutting down browser instances in the parallel browser harness
+user_pref("browser.warnOnQuit", false);
+user_pref("browser.warnOnQuitShortcut", false);
+// Hide about:config confirmation prompt - devs are advanced users
+user_pref("browser.aboutConfig.showWarning", false);
 // Don't show the slow script dialog popup
 user_pref("dom.max_script_run_time", 0);
 user_pref("dom.max_chrome_script_run_time", 0);

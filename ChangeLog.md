@@ -18,8 +18,25 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.16 (in development)
+4.0.17 (in development)
 -----------------------
+- Mutable Wasm globals can now be exported from native code.  Currently these
+  cannot be declared in C/C++ but can be defined and exported in assembly code.
+  This currently only works for mutable globals since immutables are already
+  (and continue to be) exported as plain JS numbers. (#25530)
+- Minimum Firefox version was bumped up to Firefox 68 ESR, since older Firefox
+  versions are not able to run the parallel browser harness: (#25493)
+  - Firefox: v65 -> v68
+- For windows users, colored console output for error messages and logging now
+  requires Windows 10 or above. (#25502)
+- Fixed an issue from previous release 4.0.16 where "-sENVIRONMENT=worker" was
+  erroneously made to imply "-sENVIRONMENT=web,worker" (#25514)
+- Passing '-sENVIRONMENT=worker' is now disallowed due to being ambiguous in
+  its meaning. Instead, use '-sENVIRONMENT=web,worker' or
+  '-sENVIRONMENT=node,worker' to refer to either Web or Node.js multithreading.
+
+4.0.16 - 10/07/25
+-----------------
 - A warning was added about usage of embind without C++17 or above. (#25424)
 - The minimum supported versions of Node, Chrome and Firefox were bumped
   enabling the removal of the `globalThis` polyfill and universally enabling
@@ -322,7 +339,7 @@ See docs/process.md for more on how version tagging works.
 - Emscripten version was bumped to 4.0.0. Happy new year, happy new major
   version!  While version has a few interesting changes, there is nothing huge
   that makes it different from any other release. (#19053)
-- `-sWASM_LEAGCY_EXCEPTIONS` option is added. (#23365) If true, it will emit
+- `-sWASM_LEGACY_EXCEPTIONS` option is added. (#23365) If true, it will emit
   instructions for the legacy Wasm exception handling proposal
   (https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/legacy/Exceptions.md),
   and if false, the new standardized exception handling proposal

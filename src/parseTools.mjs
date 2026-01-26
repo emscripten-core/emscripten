@@ -24,6 +24,8 @@ import {
   srcDir,
 } from './utility.mjs';
 
+import { nativeAliases } from './modules.mjs';
+
 const FOUR_GB = 4 * 1024 * 1024 * 1024;
 const WASM_PAGE_SIZE = 64 * 1024;
 const FLOAT_TYPES = new Set(['float', 'double']);
@@ -964,16 +966,6 @@ function hasExportedSymbol(sym) {
   return WASM_EXPORTS.has(sym);
 }
 
-// Called when global runtime symbols such as wasmMemory, wasmExports and
-// wasmTable are set. In this case we maybe need to re-export them on the
-// Module object.
-function receivedSymbol(sym) {
-  if (EXPORTED_RUNTIME_METHODS.has(sym)) {
-    return `Module['${sym}'] = ${sym};`;
-  }
-  return '';
-}
-
 // JS API I64 param handling: if we have BigInt support, the ABI is simple,
 // it is a BigInt. Otherwise, we legalize into pairs of i32s.
 export function defineI64Param(name) {
@@ -1155,6 +1147,17 @@ function nodeWWDetection() {
   }
 }
 
+function makeExportAliases() {
+  var res = ''
+  for (var [alias, ex] of Object.entries(nativeAliases)) {
+    if (ASSERTIONS) {
+      res += `  assert(wasmExports['${ex}'], 'alias target "${ex}" not found in wasmExports');\n`;
+    }
+    res += `  globalThis['${alias}'] = wasmExports['${ex}'];\n`;
+  }
+  return res;
+}
+
 addToCompileTimeContext({
   ATEXITS,
   ATPRERUNS,
@@ -1204,6 +1207,7 @@ addToCompileTimeContext({
   isSymbolNeeded,
   makeDynCall,
   makeEval,
+  makeExportAliases,
   makeGetValue,
   makeHEAPView,
   makeModuleReceive,
@@ -1218,7 +1222,6 @@ addToCompileTimeContext({
   nodeDetectionCode,
   receiveI64ParamAsI53,
   receiveI64ParamAsI53Unchecked,
-  receivedSymbol,
   runIfMainThread,
   runIfWorkerThread,
   runtimeKeepalivePop,

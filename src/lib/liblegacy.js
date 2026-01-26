@@ -2,6 +2,16 @@
  * @license
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
+ *
+ * Legacy library symbols that are no longer used by emscripten itself but
+ * could have external users.
+ *
+ * Symbols in this file are not available in `-sSTRICT` mode.
+ *
+ * Any usage of symbols in this file will result in a `-Wdeprecated` warning.
+ *
+ * Symbol in this file should be removed after "enough time" has passed such
+ * that all external users have been able to transision away.
  */
 
 legacyFuncs = {
@@ -73,8 +83,10 @@ legacyFuncs = {
     if (!dontAddNull) {{{ makeSetValue('buffer', 0, 0, 'i8') }}};
   },
 
-  $allocateUTF8: '$stringToNewUTF8',
-  $allocateUTF8OnStack: '$stringToUTF8OnStack',
+  $allocateUTF8__deps: ['$stringToNewUTF8'],
+  $allocateUTF8: (...args) => stringToNewUTF8(...args),
+  $allocateUTF8OnStack__deps: ['$stringToUTF8OnStack'],
+  $allocateUTF8OnStack: (...args) => stringToUTF8OnStack(...args),
 
 #if LINK_AS_CXX
   $demangle__deps: ['$withStackSave', '__cxa_demangle', 'free', '$stringToUTF8OnStack'],
@@ -114,21 +126,24 @@ legacyFuncs = {
   },
 
   // Legacy names for runtime `out`/`err` symbols.
-  $print: 'out',
-  $printErr: 'err',
+  $print: '=out',
+  $printErr: '=err',
 
   // Converts a JS string to an integer base-10. Despite _s, which
   // suggests signaling error handling, this returns NaN on error.
   // (This was a mistake in the original implementation, and kept
   // to avoid breakage.)
   $jstoi_s: 'Number',
+
+  $getNativeTypeSize__deps: ['$POINTER_SIZE'],
+  $getNativeTypeSize: {{{ getNativeTypeSize }}},
 };
 
 if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {
   for (const name of Object.keys(legacyFuncs)) {
     if (!isDecorator(name)) {
-      depsKey = `${name}__deps`;
-      legacyFuncs[depsKey] = legacyFuncs[depsKey] || [];
+      const depsKey = `${name}__deps`;
+      legacyFuncs[depsKey] ??= []
       legacyFuncs[depsKey].push(() => {
         warn(`JS library symbol '${name}' is deprecated. Please open a bug if you have a continuing need for this symbol [-Wdeprecated]`);
       });

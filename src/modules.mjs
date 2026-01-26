@@ -29,6 +29,9 @@ import {preprocess, processMacros} from './parseTools.mjs';
 
 // List of symbols that were added from the library.
 export const librarySymbols = [];
+// Map of library symbols which are aliases for native symbols
+// e.g. `wasmTable` -> `__indirect_function_table`
+export const nativeAliases = {};
 
 const srcDir = fileURLToPath(new URL('.', import.meta.url));
 const systemLibdir = path.join(srcDir, 'lib');
@@ -430,6 +433,11 @@ function exportSymbol(name) {
 function exportRuntimeSymbols() {
   // optionally export something.
   function shouldExport(name) {
+    // Native exports are not available to be exported initially.  Instead,
+    // they get exported later in `assignWasmExports`.
+    if (nativeAliases[name]) {
+      return false;
+    }
     // If requested to be exported, export it.
     if (EXPORTED_RUNTIME_METHODS.has(name)) {
       // Unless we are in MODULARIZE=instance mode then HEAP objects are
@@ -448,7 +456,6 @@ function exportRuntimeSymbols() {
     'err',
     'callMain',
     'abort',
-    'wasmMemory',
     'wasmExports',
     'HEAPF32',
     'HEAPF64',
@@ -562,13 +569,7 @@ function exportLibrarySymbols() {
   assert(MODULARIZE != 'instance');
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
-    if (EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) {
-      // Special case for wasmTable which can be both a JS library symbol but
-      // also a wasm export. See isDirectWasmExport in jsifier.mjs.
-      // FIXME: Remove this hack 
-      if (ident == 'wasmTable' && WASM_EXPORTS.has('__indirect_function_table')) {
-        continue;
-      }
+    if ((EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) && !nativeAliases[ident]) {
       results.push(exportSymbol(ident));
     }
   }

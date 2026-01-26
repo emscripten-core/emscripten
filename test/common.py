@@ -10,6 +10,7 @@ from subprocess import PIPE, STDOUT
 from typing import Dict, Tuple
 from urllib.parse import unquote, unquote_plus, urlparse, parse_qs
 from http.server import ThreadingHTTPServer, SimpleHTTPRequestHandler
+from retryable_unittest import RetryableTestCase
 import contextlib
 import difflib
 import hashlib
@@ -51,6 +52,11 @@ logger = logging.getLogger('common')
 # will run in headless mode with a temporary profile with the same options
 # used in CI. To use a custom start command specify the executable and command
 # line flags.
+#
+# Note that when specifying EMTEST_BROWSER to run tests on a Safari browser:
+# the command line must point to the root of the app bundle, and not to the
+# Safari executable inside the bundle. I.e. pass EMTEST_BROWSER=/Applications/Safari.app
+# instead of EMTEST_BROWSER=/Applications/Safari.app/Contents/MacOS/Safari
 #
 # There are two special values that can be used here if running in an actual
 # browser is not desired:
@@ -127,6 +133,21 @@ class FirefoxConfig:
     shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
 
 
+class SafariConfig:
+  default_flags = ('', )
+  executable_name = 'Safari'
+  # For the macOS 'open' command, pass
+  #   --new: to make a new Safari app be launched, rather than add a tab to an existing Safari process/window
+  #   --fresh: do not restore old tabs (e.g. if user had old navigated windows open)
+  #   --background: Open the new Safari window behind the current Terminal window, to make following the test run more pleasing (this is for convenience only)
+  #   -a <exe_name>: The path to the executable to open, in this case Safari
+  launch_prefix = ('open', '--new', '--fresh', '--background', '-a')
+
+  @staticmethod
+  def configure(data_dir):
+    """ Safari has no special configuration step."""
+
+
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
 NON_ZERO = -1
@@ -179,6 +200,12 @@ def test_file(*path_components):
   return str(Path(TEST_ROOT, *path_components))
 
 
+def maybe_test_file(filename):
+  if not os.path.exists(filename) and os.path.exists(test_file(filename)):
+    filename = test_file(filename)
+  return filename
+
+
 def copytree(src, dest):
   shutil.copytree(src, dest, dirs_exist_ok=True)
 
@@ -197,6 +224,20 @@ def is_chrome():
 
 def is_firefox():
   return EMTEST_BROWSER and 'firefox' in EMTEST_BROWSER.lower()
+
+
+def is_safari():
+  return EMTEST_BROWSER and 'safari' in EMTEST_BROWSER.lower()
+
+
+def get_browser_config():
+  if is_chrome():
+    return ChromeConfig()
+  elif is_firefox():
+    return FirefoxConfig()
+  elif is_safari():
+    return SafariConfig()
+  return None
 
 
 def compiler_for(filename, force_c=False):
@@ -246,8 +287,8 @@ def is_slow_test(func):
   return decorated
 
 
-def record_flaky_test(test_name, attempt_count, exception_msg):
-  logging.info(f'Retrying flaky test "{test_name}" (attempt {attempt_count}/{EMTEST_RETRY_FLAKY} failed):\n{exception_msg}')
+def record_flaky_test(test_name, attempt_count, max_attempts, exception_msg):
+  logging.info(f'Retrying flaky test "{test_name}" (attempt {attempt_count}/{max_attempts} failed):\n{exception_msg}')
   open(flaky_tests_log_filename, 'a').write(f'{test_name}\n')
 
 
@@ -273,7 +314,7 @@ def flaky(note=''):
           return func(self, *args, **kwargs)
         except (AssertionError, subprocess.TimeoutExpired) as exc:
           preserved_exc = exc
-          record_flaky_test(self.id(), i, exc)
+          record_flaky_test(self.id(), i, EMTEST_RETRY_FLAKY, exc)
 
       raise AssertionError('Flaky test has failed too many times') from preserved_exc
 
@@ -992,7 +1033,7 @@ class RunnerMeta(type):
     return type.__new__(mcs, name, bases, new_attrs)
 
 
-class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
+class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   # default temporary directory settings. set_temp_dir may be called later to
   # override these
   temp_dir = shared.TEMP_DIR
@@ -1132,8 +1173,9 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
   def require_wasm_legacy_eh(self):
-    if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_EH is set)')
+    if 'EMTEST_SKIP_WASM_LEGACY_EH' in os.environ:
+      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_WASM_LEGACY_EH is set)')
+
     self.set_setting('WASM_LEGACY_EXCEPTIONS')
     if self.try_require_node_version(17):
       return
@@ -1144,11 +1186,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-    self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+    self.fail('either d8 or node >= 17 required to run legacy wasm-eh tests.  Use EMTEST_SKIP_WASM_LEGACY_EH to skip')
 
   def require_wasm_eh(self):
-    if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
+    if 'EMTEST_SKIP_WASM_EH' in os.environ:
+      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_WASM_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     if self.try_require_node_version(24):
       self.node_args.append('--experimental-wasm-exnref')
@@ -1164,7 +1206,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
-    self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+    self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_WASM_EH to skip')
 
   def require_jspi(self):
     if 'EMTEST_SKIP_JSPI' in os.environ:
@@ -1486,8 +1528,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
   # Build JavaScript code from source code
   def build(self, filename, libraries=None, includes=None, force_c=False, cflags=None, output_basename=None, output_suffix=None):
-    if not os.path.exists(filename):
-      filename = test_file(filename)
+    filename = maybe_test_file(filename)
     compiler = [compiler_for(filename, force_c)]
 
     if force_c:
@@ -1719,10 +1760,10 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
 
     if regex:
       if type(values) is str:
-        self.assertTrue(re.search(values, string, re.DOTALL), 'Expected regex "%s" to match on:\n%s' % (values, string))
+        self.assertTrue(re.search(values, string, re.DOTALL), 'Expected regex "%s" to match on:\n%s' % (values, limit_size(string)))
       else:
         match_any = any(re.search(o, string, re.DOTALL) for o in values)
-        self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, string))
+        self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, limit_size(string)))
       return
 
     if type(values) not in [list, tuple]:
@@ -1847,6 +1888,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return rtn
 
   def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
+    filename = maybe_test_file(filename)
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
     cmd = [compiler_for(filename), filename] + self.get_cflags(compile_only=compile_only) + args
     if output_filename:
@@ -2016,8 +2058,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return self._build_and_run(filename, expected_output, **kwargs)
 
   def do_run_in_out_file_test(self, srcfile, **kwargs):
-    if not os.path.exists(srcfile):
-      srcfile = test_file(srcfile)
+    srcfile = maybe_test_file(srcfile)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = shared.unsuffixed(srcfile) + out_suffix + '.out'
     if EMTEST_REBASELINE:
@@ -2202,7 +2243,12 @@ def make_test_server(in_queue, out_queue, port):
       self.send_header('Cross-Origin-Opener-Policy', 'same-origin')
       self.send_header('Cross-Origin-Embedder-Policy', 'require-corp')
       self.send_header('Cross-Origin-Resource-Policy', 'cross-origin')
-      self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
+
+      self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0')
+      self.send_header('Expires', '0')
+      self.send_header('Pragma', 'no-cache')
+      self.send_header('Vary', '*') # Safari insists on caching if this header is not present in addition to the above
+
       return SimpleHTTPRequestHandler.end_headers(self)
 
     def do_POST(self):  # noqa: DC04
@@ -2289,9 +2335,13 @@ def make_test_server(in_queue, out_queue, port):
           raise Exception('browser harness error, excessive response to server - test must be fixed! "%s"' % self.path)
         self.send_response(200)
         self.send_header('Content-type', 'text/plain')
-        self.send_header('Cache-Control', 'no-cache, must-revalidate')
+
+        self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate, private, max-age=0')
+        self.send_header('Expires', '0')
+        self.send_header('Pragma', 'no-cache')
+        self.send_header('Vary', '*') # Safari insists on caching if this header is not present in addition to the above
+
         self.send_header('Connection', 'close')
-        self.send_header('Expires', '-1')
         self.end_headers()
         self.wfile.write(b'OK')
 
@@ -2409,11 +2459,7 @@ def configure_test_browser():
     EMTEST_BROWSER = '"' + EMTEST_BROWSER.replace("\\", "\\\\") + '"'
 
   if EMTEST_BROWSER_AUTO_CONFIG:
-    config = None
-    if is_chrome():
-      config = ChromeConfig()
-    elif is_firefox():
-      config = FirefoxConfig()
+    config = get_browser_config()
     if config:
       EMTEST_BROWSER += ' ' + ' '.join(config.default_flags)
       if EMTEST_HEADLESS == 1:
@@ -2432,6 +2478,22 @@ def list_processes_by_name(exe_name):
         pass
 
   return pids
+
+
+def terminate_list_of_processes(proc_list):
+  for proc in proc_list:
+    try:
+      proc.terminate()
+      # If the browser doesn't shut down gracefully (in response to SIGTERM)
+      # after 2 seconds kill it with force (SIGKILL).
+      try:
+        proc.wait(2)
+      except (subprocess.TimeoutExpired, psutil.TimeoutExpired):
+        logger.info('Browser did not respond to `terminate`.  Using `kill`')
+        proc.kill()
+        proc.wait()
+    except (psutil.NoSuchProcess, ProcessLookupError):
+      pass
 
 
 class FileLock:
@@ -2518,19 +2580,7 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def browser_terminate(cls):
-    for proc in cls.browser_procs:
-      try:
-        proc.terminate()
-        # If the browser doesn't shut down gracefully (in response to SIGTERM)
-        # after 2 seconds kill it with force (SIGKILL).
-        try:
-          proc.wait(2)
-        except (subprocess.TimeoutExpired, psutil.TimeoutExpired):
-          logger.info('Browser did not respond to `terminate`.  Using `kill`')
-          proc.kill()
-          proc.wait()
-      except (psutil.NoSuchProcess, ProcessLookupError):
-        pass
+    terminate_list_of_processes(cls.browser_procs)
 
   @classmethod
   def browser_restart(cls):
@@ -2544,11 +2594,17 @@ class BrowserCore(RunnerCore):
   def browser_open(cls, url):
     assert has_browser()
     browser_args = EMTEST_BROWSER
+    parallel_harness = worker_id is not None
 
-    if EMTEST_BROWSER_AUTO_CONFIG:
+    config = get_browser_config()
+    if not config and EMTEST_BROWSER_AUTO_CONFIG:
+      exit_with_error(f'EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox, chrome and safari. EMTEST_BROWSER was "{EMTEST_BROWSER}"')
+
+    # Prepare the browser data directory, if it uses one.
+    if EMTEST_BROWSER_AUTO_CONFIG and config and hasattr(config, 'data_dir_flag'):
       logger.info('Using default CI configuration.')
       browser_data_dir = DEFAULT_BROWSER_DATA_DIR
-      if worker_id is not None:
+      if parallel_harness:
         # Running in parallel mode, give each browser its own profile dir.
         browser_data_dir += '-' + str(worker_id)
 
@@ -2563,12 +2619,6 @@ class BrowserCore(RunnerCore):
       # Recreate the new data directory.
       os.mkdir(browser_data_dir)
 
-      if is_chrome():
-        config = ChromeConfig()
-      elif is_firefox():
-        config = FirefoxConfig()
-      else:
-        exit_with_error(f'EMTEST_BROWSER_AUTO_CONFIG only currently works with firefox or chrome. EMTEST_BROWSER was "{EMTEST_BROWSER}"')
       if WINDOWS:
         # Escape directory delimiter backslashes for shlex.split.
         browser_data_dir = browser_data_dir.replace('\\', '\\\\')
@@ -2576,39 +2626,51 @@ class BrowserCore(RunnerCore):
       browser_args += f' {config.data_dir_flag}"{browser_data_dir}"'
 
     browser_args = shlex.split(browser_args)
+    if hasattr(config, 'launch_prefix'):
+      browser_args = list(config.launch_prefix) + browser_args
+
     logger.info('Launching browser: %s', str(browser_args))
 
-    if WINDOWS and is_firefox():
-      cls.launch_browser_harness_windows_firefox(worker_id, config, browser_args, url)
+    if (WINDOWS and is_firefox()) or is_safari():
+      cls.launch_browser_harness_with_proc_snapshot_workaround(parallel_harness, config, browser_args, url)
     else:
       cls.browser_procs = [subprocess.Popen(browser_args + [url])]
 
   @classmethod
-  def launch_browser_harness_windows_firefox(cls, worker_id, config, browser_args, url):
-    ''' Dedicated function for launching browser harness on Firefox on Windows,
-    which requires extra care for window positioning and process tracking.'''
+  def launch_browser_harness_with_proc_snapshot_workaround(cls, parallel_harness, config, browser_args, url):
+    ''' Dedicated function for launching browser harness in scenarios where
+    we need to identify the launched browser processes via a before-after
+    subprocess snapshotting delta workaround.'''
 
+    # In order for this to work, each browser needs to be launched one at a time
+    # so that we know which process belongs to which browser.
     with FileLock(browser_spawn_lock_filename) as count:
-      # Firefox is a multiprocess browser. On Windows, killing the spawned
-      # process will not bring down the whole browser, but only one browser tab.
-      # So take a delta snapshot before->after spawning the browser to find
-      # which subprocesses we launched.
-      if worker_id is not None:
+      # Take a snapshot before spawning the browser to find which processes
+      # existed before launching the browser.
+      if parallel_harness or is_safari():
         procs_before = list_processes_by_name(config.executable_name)
+
+      # Browser launch
       cls.browser_procs = [subprocess.Popen(browser_args + [url])]
-      # Give Firefox time to spawn its subprocesses. Use an increasing timeout
-      # as a crude way to account for system load.
-      if worker_id is not None:
+
+      # Give the browser time to spawn its subprocesses. Use an increasing
+      # timeout as a crude way to account for system load.
+      if parallel_harness or is_safari():
         time.sleep(2 + count * 0.3)
         procs_after = list_processes_by_name(config.executable_name)
+
+        # Take a snapshot again to find which processes exist after launching
+        # the browser. Then the newly launched browser processes are determined
+        # by the delta before->after.
+        cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
+        if len(cls.browser_procs) == 0:
+          exit_with_error('Could not detect the launched browser subprocesses. The test harness will not be able to close the browser after testing is done, so aborting the test run here.')
+
+      # Firefox on Windows quirk:
       # Make sure that each browser window is visible on the desktop. Otherwise
       # browser might decide that the tab is backgrounded, and not load a test,
       # or it might not tick rAF()s forward, causing tests to hang.
-      if worker_id is not None and not EMTEST_HEADLESS:
-        # On Firefox on Windows we needs to track subprocesses that got created
-        # by Firefox. Other setups can use 'browser_proc' directly to terminate
-        # the browser.
-        cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
+      if WINDOWS and parallel_harness and not EMTEST_HEADLESS:
         # Wrap window positions on a Full HD desktop area modulo primes.
         for proc in cls.browser_procs:
           move_browser_window(proc.pid, (300 + count * 47) % 1901, (10 + count * 37) % 997)
@@ -2682,6 +2744,7 @@ class BrowserCore(RunnerCore):
     if DEBUG:
       print('[browser launch:', html_file, ']')
     assert not (message and expected), 'run_browser expects `expected` or `message`, but not both'
+
     if expected is not None:
       try:
         self.harness_in_queue.put((
@@ -2712,7 +2775,7 @@ class BrowserCore(RunnerCore):
             self.assertContained(expected, output)
           except self.failureException as e:
             if extra_tries > 0:
-              record_flaky_test(self.id(), EMTEST_RETRY_FLAKY - extra_tries, e)
+              record_flaky_test(self.id(), EMTEST_RETRY_FLAKY - extra_tries, EMTEST_RETRY_FLAKY, e)
               if not self.capture_stdio:
                 print('[enabling stdio/stderr reporting]')
                 self.capture_stdio = True
@@ -2747,8 +2810,7 @@ class BrowserCore(RunnerCore):
         cflags += ['report_result.o', '-include', test_file('report_result.h')]
     if EMTEST_BROWSER == 'node':
       cflags.append('-DEMTEST_NODE')
-    if not os.path.exists(filename):
-      filename = test_file(filename)
+    filename = maybe_test_file(filename)
     self.run_process([compiler_for(filename), filename] + self.get_cflags() + cflags)
     # Remove the file since some tests have assertions for how many files are in
     # the output directory.

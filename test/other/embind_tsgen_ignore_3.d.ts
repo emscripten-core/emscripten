@@ -73,6 +73,8 @@ export interface ClassWithSmartPtrConstructor extends ClassHandle {
   fn(_0: number): number;
 }
 
+type AliasedVal = number;
+
 export interface BaseClass extends ClassHandle {
   fn(_0: number): number;
 }
@@ -139,6 +141,7 @@ interface EmbindModule {
     extend(_0: EmbindString, _1: any): any;
   };
   InterfaceWrapper: {};
+  function_consuming_aliased_val(_0: AliasedVal): void;
   a_bool: boolean;
   an_int: number;
   optional_test(_0?: Foo): number | undefined;

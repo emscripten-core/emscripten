@@ -91,7 +91,11 @@ class WasmSourceMap {
 }
 
 var wasmSourceMap;
+#if MINIMAL_RUNTIME
+var wasmSourceMapFile = '{{{ WASM_BINARY_FILE }}}.map';
+#else
 var wasmSourceMapFile = locateFile('{{{ WASM_BINARY_FILE }}}.map');
+#endif
 
 function receiveSourceMapJSON(sourceMap) {
   wasmSourceMap = new WasmSourceMap(sourceMap);
@@ -103,7 +107,11 @@ function getSourceMap() {
 }
 
 async function getSourceMapAsync() {
-  if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+  if (ENVIRONMENT_IS_WEB
+#if ENVIRONMENT_MAY_BE_WORKER
+   || ENVIRONMENT_IS_WORKER
+#endif
+   ) {
     try {
       var response = await fetch(wasmSourceMapFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
       return response.json();
@@ -120,6 +128,7 @@ async function getSourceMapAsync() {
 if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
 #endif
 
+#if !MINIMAL_RUNTIME // MINIMAL_RUNTIME integrates source map loading into postamble_minimal.js
 #if WASM_ASYNC_COMPILATION
 addRunDependency('source-map');
 getSourceMapAsync().then((json) => {
@@ -128,6 +137,7 @@ getSourceMapAsync().then((json) => {
 });
 #else
 receiveSourceMapJSON(getSourceMap());
+#endif
 #endif
 
 #if PTHREADS || WASM_WORKERS

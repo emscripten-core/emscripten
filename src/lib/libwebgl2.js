@@ -949,7 +949,7 @@ var LibraryWebGL2 = {
   glDrawRangeElements: (mode, start, end, count, type, indices) => {
     // TODO: This should be a trivial pass-though function registered at the bottom of this page as
     // glFuncs[6][1] += ' drawRangeElements';
-    // but due to https://bugzilla.mozilla.org/show_bug.cgi?id=1202427,
+    // but due to https://bugzil.la/1202427,
     // we work around by ignoring the range.
     _glDrawElements(mode, count, type, indices);
   },

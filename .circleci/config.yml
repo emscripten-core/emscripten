@@ -209,7 +209,11 @@ commands:
       - run:
           name: "Ccache stats and configuration"
           command: |
+            ls -l ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
+            ls -l ~/cache/sysroot/include/emscripten/heap.h
+            cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin.o.ccache-log
             date
+            cat ~/cache/build/libcompiler_rt/absvdi2.o.ccache-log
             ccache -s
             ccache --print-stats
             ccache -p
@@ -607,6 +611,12 @@ jobs:
             - restore_cache:
                 name: "Restore Ccache cache"
                 key: clang-{{ checksum "~/emsdk/clang_version.txt" }}
+      - run:
+          name: Configure ccache
+          command: |
+            mkdir -p ~/.ccache
+            cat .circleci/ccache.conf
+            cp .circleci/ccache.conf ~/.ccache
       - build-libs
       - run:
           name: Clean build directory
@@ -661,6 +671,7 @@ jobs:
             lsan.test_dlfcn_basic
             lsan.test_pthread_create
             lsan.test_pthread_exit_main_stub
+            lsan.test_dylink_iostream
             ubsan.test_externref_emjs_dynlink"
       - freeze-cache
       - run-tests:
@@ -751,6 +762,7 @@ jobs:
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype
             minimal0.test_utf
+            minimal0.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_static_variable
             minimal0.test_stack_overflow
             omitexports0.test_asyncify_longjmp
@@ -814,7 +826,31 @@ jobs:
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
-          test_targets: "wasm64_4gb
+          test_targets: "wasm64_4gb"
+      - upload-test-results
+  test-wasm64-misc:
+    environment:
+      LANG: "C.UTF-8"
+    # We don't use `bionic` here since its too old to run recent node versions:
+    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
+    executor: linux-python
+    steps:
+      - prepare-for-tests
+      # The linux-python image uses /home/circleci rather than /root and jsvu
+      # hardcodes /root into its launcher scripts so we need to reinstall v8.
+      - run: rm -rf $HOME/.jsvu
+      - install-v8
+      - install-node-canary
+      # When running wasm64 tests we need to make sure we use the testing
+      # version of node (node canary) when running the compiler output (e.g.
+      # in configure tests.
+      - run:
+          name: configure node canary
+          command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
+      - run-tests:
+          title: "wasm64"
+          test_targets: "
+            other.*_wasm64
             core_2gb.test_*em_asm*
             core_2gb.test_*embind*
             core_2gb.test_fs_js_api_wasmfs
@@ -823,8 +859,7 @@ jobs:
             wasm64l.test_bigswitch
             wasm64l.test_module_wasm_memory
             wasm64l.test_longjmp2_emscripten
-            wasm64l.test_embind_val_basics_legacy
-            other.test_failing_growth_wasm64"
+            wasm64l.test_embind_val_basics_legacy"
       - upload-test-results
   test-jsc:
     executor: linux-python
@@ -934,6 +969,7 @@ jobs:
             other.test_native_call_before_init
             other.test_js_optimizer_verbose
             other.test_node_unhandled_rejection
+            other.test_file_packager_separate_metadata
             other.test_full_js_library*
             core2.test_hello_world
             core2.test_fcntl_open_nodefs
@@ -1088,13 +1124,14 @@ jobs:
     executor: focal
     environment:
       EMTEST_LACKS_WEBGPU: "1"
-      EMTEST_SKIP_NODE_CANARY: "1"
     steps:
       - run-tests-chrome:
           title: "browser64_4gb"
           test_targets: "browser64_4gb"
   test-browser-firefox:
     executor: focal
+    environment:
+      EMTEST_LACKS_GROWABLE_ARRAYBUFFERS: "1"
     steps:
       - prepare-for-tests
       - run-tests-firefox:
@@ -1104,18 +1141,11 @@ jobs:
           # initial position of the mouse pointer relative to the canvas.
           # browser.test_html5_webgl_create_context is skipped because
           # anti-aliasing is not well supported.
-          # browser.test_webgl_offscreen_canvas_in_pthread and
-          # browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
-          # are crashing Firefox (bugzil.la/1281796). The former case is
-          # further blocked by issue #6897.
           test_targets: "
             browser
             skip:browser.test_sdl2_mouse
             skip:browser.test_html5_webgl_create_context
-            skip:browser.test_webgl_offscreen_canvas_in_pthread
-            skip:browser.test_webgl_offscreen_canvas_in_mainthread_after_pthread
             skip:browser.test_glut_glutget
-            skip:browser.test_*_growable_arraybuffers
             "
   test-browser-firefox-wasm64:
     executor: focal
@@ -1199,7 +1229,8 @@ jobs:
       # https://github.com/emscripten-core/emscripten/pull/11382#pullrequestreview-428902638
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
+      EMTEST_SKIP_WASM_LEGACY_EH: "1"
+      EMTEST_SKIP_WASM_EH: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
@@ -1235,7 +1266,8 @@ jobs:
       # We don't install d8 or modern node on the mac runner so we skip any
       # tests that depend on those.
       EMTEST_SKIP_V8: "1"
-      EMTEST_SKIP_EH: "1"
+      EMTEST_SKIP_WASM_LEGACY_EH: "1"
+      EMTEST_SKIP_WASM_EH: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
@@ -1275,6 +1307,9 @@ workflows:
           requires:
             - build-linux
       - test-core3:
+          requires:
+            - build-linux
+      - test-wasm64-misc:
           requires:
             - build-linux
       - test-wasm64-4gb:
