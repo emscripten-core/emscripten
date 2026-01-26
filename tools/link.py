@@ -11,7 +11,6 @@ import re
 import shlex
 import shutil
 import stat
-import time
 from subprocess import PIPE
 from urllib.parse import quote
 
@@ -2555,6 +2554,7 @@ def generate_traditional_runtime_html(target, options, js_target, wasm_target):
   write_file(target, shell)
 
 
+@ToolchainProfiler.profile()
 def minify_html(filename):
   if settings.DEBUG_LEVEL >= 2:
     return
@@ -2593,14 +2593,11 @@ def minify_html(filename):
 
   logger.debug(f'minifying HTML file {filename}')
   size_before = os.path.getsize(filename)
-  start_time = time.time()
   shared.check_call(shared.get_npm_cmd('html-minifier-terser') + [filename, '-o', filename] + opts, env=shared.env_with_node_in_path())
 
   # HTML minifier will turn all null bytes into an escaped two-byte sequence "\0". Turn those back to single byte sequences.
   def unescape_nulls(filename):
-    with open(filename, encoding="utf-8") as f:
-      data = f.read()
-
+    data = read_file(filename)
     out = []
     in_escape = False
     i = 0
@@ -2624,15 +2621,13 @@ def minify_html(filename):
       else:
         out.append(ch)
 
-    with open(filename, "wb") as f:
-      f.write(''.join(out).encode("utf-8"))
+    write_file(filename, ''.join(out))
 
   unescape_nulls(filename)
 
-  elapsed_time = time.time() - start_time
   size_after = os.path.getsize(filename)
   delta = size_after - size_before
-  logger.debug(f'HTML minification took {elapsed_time:.2f} seconds, and shrunk size of {filename} from {size_before} to {size_after} bytes, delta={delta} ({delta * 100.0 / size_before:+.2f}%)')
+  logger.debug(f'HTML minification shrunk {filename} from {size_before} to {size_after} bytes, delta={delta} ({delta * 100.0 / size_before:+.2f}%)')
 
 
 def generate_html(target, options, js_target, target_basename, wasm_target):
