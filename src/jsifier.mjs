@@ -206,7 +206,6 @@ const checkDependenciesSkip = new Set([
 const checkDependenciesIgnore = new Set([
   // These are added in bulk to whole library files are so are not precise
   '$PThread',
-  '$WebGPU',
   '$SDL',
   '$GLUT',
   '$GLEW',

@@ -306,9 +306,8 @@ var LibraryHtml5WebGL = {
     if (!a) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     c = GL.contexts[c];
     if (!c) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
-    var t = c.GLctx;
+    var t = c.GLctx?.getContextAttributes();
     if (!t) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
-    t = t.getContextAttributes();
 
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 't.alpha', 'i8') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 't.depth', 'i8') }}};

@@ -3,8 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from tools.toolchain_profiler import ToolchainProfiler
-
 import json
 import logging
 import os
@@ -14,11 +12,20 @@ import sys
 from enum import Enum, auto, unique
 from subprocess import PIPE
 
-from tools import shared, utils, ports, diagnostics, config
-from tools import cache, feature_matrix, colored_logger
+from tools import (
+  cache,
+  colored_logger,
+  config,
+  diagnostics,
+  feature_matrix,
+  ports,
+  shared,
+  utils,
+)
+from tools.settings import MEM_SIZE_SETTINGS, settings, user_settings
 from tools.shared import exit_with_error
-from tools.settings import settings, user_settings, MEM_SIZE_SETTINGS
-from tools.utils import removeprefix, read_file
+from tools.toolchain_profiler import ToolchainProfiler
+from tools.utils import read_file, removeprefix
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
@@ -105,6 +112,7 @@ class EmccOptions:
     self.sanitize_minimal_runtime = False
     self.sanitize = set()
     self.lib_dirs = []
+    self.fast_math = False
 
 
 def is_int(s):
@@ -294,9 +302,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         settings.SHRINK_LEVEL = 0
         settings.DEBUG_LEVEL = max(settings.DEBUG_LEVEL, 1)
       elif requested_level == 'fast':
-        # TODO(https://github.com/emscripten-core/emscripten/issues/21497):
-        # If we ever map `-ffast-math` to `wasm-opt --fast-math` then
-        # then we should enable that too here.
+        # -Ofast typically includes -ffast-math semantics
+        options.fast_math = True
         requested_level = 3
         settings.SHRINK_LEVEL = 0
       else:
@@ -545,6 +552,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       settings.WASM_EXCEPTIONS = 1
     elif arg == '-fignore-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
+    elif arg == '-ffast-math':
+      options.fast_math = True
     elif check_arg('--default-obj-ext'):
       exit_with_error('--default-obj-ext is no longer supported by emcc')
     elif arg.startswith('-fsanitize=cfi'):

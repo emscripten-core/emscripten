@@ -12,26 +12,69 @@ import re
 import shutil
 import time
 import unittest
-from pathlib import Path
 from functools import wraps
+from pathlib import Path
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner')
 
-from tools.shared import PIPE
-from tools.shared import EMCC, EMAR, EMXX, FILE_PACKAGER, LLVM_PROFDATA, LLVM_COV
-from tools.utils import WINDOWS, MACOS, LINUX, write_file, delete_file
-from tools import shared, building, config, utils, webassembly
-import common
-from common import RunnerCore, path_from_root, requires_native_clang, test_file, create_file
-from common import skip_if, no_windows, is_slow_test, parameterized, parameterize, all_engines
-from common import env_modify, with_env_modify, disabled, flaky, node_pthreads, also_without_bigint
-from common import read_file, read_binary, requires_v8, requires_node, requires_dev_dependency, requires_wasm2js, requires_node_canary
-from common import compiler_for, crossplatform, no_4gb, no_2gb, also_with_minimal_runtime, also_with_modularize
-from common import with_all_fs, also_with_nodefs, also_with_nodefs_both, also_with_noderawfs, also_with_wasmfs
-from common import with_all_eh_sjlj, with_all_sjlj, also_with_standalone_wasm, can_do_standalone, no_wasm64, requires_wasm_eh, requires_jspi
-from common import NON_ZERO, WEBIDL_BINDER, EMBUILDER, PYTHON, needs_make
 import clang_native
+import common
+from common import (
+  EMBUILDER,
+  NON_ZERO,
+  PYTHON,
+  WEBIDL_BINDER,
+  RunnerCore,
+  compiler_for,
+  create_file,
+  env_modify,
+  path_from_root,
+  read_binary,
+  read_file,
+  test_file,
+)
+from decorators import (
+  all_engines,
+  also_with_minimal_runtime,
+  also_with_modularize,
+  also_with_nodefs,
+  also_with_nodefs_both,
+  also_with_noderawfs,
+  also_with_standalone_wasm,
+  also_with_wasmfs,
+  also_without_bigint,
+  can_do_standalone,
+  crossplatform,
+  disabled,
+  flaky,
+  is_slow_test,
+  needs_make,
+  no_2gb,
+  no_4gb,
+  no_wasm64,
+  no_windows,
+  node_pthreads,
+  parameterize,
+  parameterized,
+  requires_dev_dependency,
+  requires_jspi,
+  requires_native_clang,
+  requires_node,
+  requires_node_canary,
+  requires_v8,
+  requires_wasm2js,
+  requires_wasm_eh,
+  skip_if,
+  with_all_eh_sjlj,
+  with_all_fs,
+  with_all_sjlj,
+  with_env_modify,
+)
+
+from tools import building, config, shared, utils, webassembly
+from tools.shared import EMAR, EMCC, EMXX, FILE_PACKAGER, LLVM_COV, LLVM_PROFDATA, PIPE
+from tools.utils import LINUX, MACOS, WINDOWS, delete_file, write_file
 
 # decorators for limiting which modes a test can run in
 
@@ -862,7 +905,7 @@ base align: 0, 0, 0, 0'''])
   @no_sanitize('sanitizers do not yet support dynamic linking')
   @no_wasm2js('MAIN_MODULE support')
   @needs_dylink
-  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_stack_placement_pic(self):
     self.set_setting('STACK_SIZE', 1024)
     self.set_setting('MAIN_MODULE')
@@ -984,7 +1027,7 @@ base align: 0, 0, 0, 0'''])
 
   @needs_dylink
   @with_all_sjlj
-  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_longjmp2_main_module(self):
     # Test for binaryen regression:
     # https://github.com/WebAssembly/binaryen/issues/2180
@@ -1813,19 +1856,17 @@ int main() {
     self.do_core_test('test_set_align.c')
 
   @no_modularize_instance('uses Module object directly')
-  @no_js_math('JS_MATH is not compatible with LINKABLE')
-  def test_emscripten_api(self):
-    self.set_setting('EXPORTED_FUNCTIONS', ['_main', '_save_me_aimee'])
-    self.do_core_test('test_emscripten_api.c')
-
-    # Sanitizers are not compatible with LINKABLE (dynamic linking).
-    # LLVM-libc overlay mode is not compatible with whole-archive (LINKABLE)
-    if not is_sanitizing(self.cflags) and not self.is_wasm64() and '-lllvmlibc' not in self.cflags:
-      # test EXPORT_ALL
-      self.clear_setting('EXPORTED_FUNCTIONS')
-      self.set_setting('EXPORT_ALL')
-      self.set_setting('LINKABLE')
-      self.do_core_test('test_emscripten_api.c', cflags=['-Wno-deprecated'])
+  @parameterized({
+    '': (['-sEXPORTED_FUNCTIONS=_main,_save_me_aimee'],),
+    # test EXPORT_ALL too
+    'export_all': (['-sEXPORT_ALL', '-sMAIN_MODULE'],),
+  })
+  def test_emscripten_api(self, args):
+    if '-sMAIN_MODULE' in args:
+      if self.get_setting('JS_MATH'):
+        self.skipTest('JS_MATH is not compatible with MAIN_MODULE')
+      self.check_dylink()
+    self.do_core_test('test_emscripten_api.c', cflags=args)
 
   def test_emscripten_run_script_string_int(self):
     src = r'''
@@ -2950,7 +2991,7 @@ The current type of b is: 9
     self.run_process(cmd)
 
   @needs_dylink
-  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_dlfcn_missing(self):
     self.set_setting('MAIN_MODULE')
     self.set_setting('ASSERTIONS')
@@ -3375,7 +3416,7 @@ Var: 42
     self.do_runf('src.c', 'success.\n')
 
   @needs_dylink
-  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_dlfcn_self(self):
     self.set_setting('MAIN_MODULE')
     self.set_setting('EXPORT_ALL')
@@ -3765,7 +3806,7 @@ caught outer int: 123
 ''')
 
   @needs_dylink
-  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_dlfcn_handle_alloc(self):
     # verify that dlopen does not allocate already used handles
     create_file('a.cpp', r'''
@@ -4067,7 +4108,7 @@ caught outer int: 123
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.cflags.copy()
     if not expected:
-      outfile = shared.replace_suffix(main, '.out')
+      outfile = utils.replace_suffix(main, '.out')
       expected = read_file(outfile)
     if not side:
       side, ext = os.path.splitext(main)
@@ -4564,7 +4605,6 @@ res64 - external 64\n''', header='''\
     ''', expected=['extern is 123.\n'], force_c=True)
 
   @needs_dylink
-  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
   def test_dylink_global_var_export(self):
     self.do_run(r'''
       #include <assert.h>
@@ -4583,7 +4623,7 @@ res64 - external 64\n''', header='''\
         assert(js_address == &my_number);
         return 0;
       }
-    ''', cflags=['-sMAIN_MODULE'], force_c=True)
+    ''', cflags=['-sMAIN_MODULE=2'], force_c=True)
 
   @with_dylink_reversed
   def test_dylink_global_var_modded(self):
@@ -4741,7 +4781,7 @@ res64 - external 64\n''', header='''\
     'missing': ('libc,libmalloc,libc++abi', False, False, False),
     'missing_assertions': ('libc,libmalloc,libc++abi', False, False, True),
   })
-  @no_js_math('JS_MATH is not compatible with SIDE_MODULE')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_dylink_syslibs(self, syslibs, expect_pass=True, with_reversed=True, assertions=True):
     # When testing in WASMFS mode, we also need to force the WASMFS syslib into the test.
     if self.get_setting('WASMFS') and syslibs != '1':
@@ -4936,7 +4976,7 @@ res64 - external 64\n''', header='''\
 
   @with_all_eh_sjlj
   @needs_dylink
-  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_dylink_exceptions_try_catch_6(self):
     create_file('main.cpp', r'''
       #include <assert.h>
@@ -5090,7 +5130,7 @@ res64 - external 64\n''', header='''\
     ''', expected=['sidef: 10'])
 
   @needs_dylink
-  @no_js_math('JS_MATH is not compatible with SIDE_MODULE')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_dylink_dso_needed(self):
     def do_run(src, expected_output, cflags=None):
       create_file('main.c', src + 'int main() { return test_main(); }')
@@ -6301,7 +6341,7 @@ PORT: 3979
     self.do_run_in_out_file_test('netinet/in.cpp')
 
   @needs_dylink
-  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_main_module_static_align(self):
     if self.get_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('no shared modules with memory growth')
@@ -6608,8 +6648,7 @@ void* operator new(size_t size) {
 
   @needs_dylink
   def test_relocatable_void_function(self):
-    self.set_setting('RELOCATABLE')
-    self.do_core_test('test_relocatable_void_function.c', cflags=['-Wno-deprecated'])
+    self.do_core_test('test_relocatable_void_function.c', cflags=['-sMAIN_MODULE=2'])
 
   @wasm_simd
   @parameterized({
@@ -8587,32 +8626,19 @@ Module.onRuntimeInitialized = () => {
     # This test checks for the global variables required to run the memory
     # profiler.  It would fail if these variables were made no longer global
     # or if their identifiers were changed.
-    create_file('main.c', '''
-      int check_memprof_requirements();
-
-      int main() {
-        return check_memprof_requirements();
-      }
-    ''')
-    create_file('lib.js', '''
-      addToLibrary({
-        check_memprof_requirements: () => {
-          if (typeof _emscripten_stack_get_base === 'function' &&
-              typeof _emscripten_stack_get_end === 'function' &&
-              typeof _emscripten_stack_get_current === 'function' &&
-              typeof Module['___heap_base'] === 'number' &&
-              Module['___heap_base'] > 0) {
-             out('able to run memprof');
-             return 0;
-           } else {
-             out('missing the required variables to run memprof');
-             return 1;
-           }
+    create_file('pre.js', '''
+      Module = {
+        onRuntimeInitialized: () => {
+          assert(typeof _emscripten_stack_get_base === 'function');
+          assert(typeof _emscripten_stack_get_end === 'function');
+          assert(typeof _emscripten_stack_get_current === 'function');
+          assert(typeof ___heap_base === 'number');
+          assert(___heap_base > 0);
+          out('able to run memprof');
         }
-      });
+      };
     ''')
-    self.cflags += ['--memoryprofiler', '--js-library', 'lib.js']
-    self.do_runf('main.c', 'able to run memprof')
+    self.do_runf('hello_world.c', 'able to run memprof', cflags=['--memoryprofiler', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized'])
 
   @no_wasmfs('depends on MEMFS which WASMFS does not have')
   def test_fs_dict(self):
@@ -9443,7 +9469,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @needs_dylink
   @node_pthreads
-  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_pthread_dylink_main_module_1(self):
     # TODO: For some reason, -lhtml5 must be passed in -sSTRICT mode, but can NOT
     # be passed when not compiling in -sSTRICT mode. That does not seem intentional?
@@ -9607,7 +9633,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_hello_world.c')
 
   @needs_dylink
-  @no_js_math('JS_MATH is not compatible with MAIN_MODULE')
+  @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_gl_main_module(self):
     # TODO: For some reason, -lGL must be passed in -sSTRICT mode, but can NOT
     # be passed when not compiling in -sSTRICT mode. That does not seem intentional?

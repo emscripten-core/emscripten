@@ -27,6 +27,10 @@ function growMemViews() {
 #include "runtime_asan.js"
 #endif
 
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+#include "binaryDecode.js"
+#endif
+
 #if MODULARIZE
 var readyPromiseResolve, readyPromiseReject;
 #endif

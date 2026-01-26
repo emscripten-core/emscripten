@@ -6,8 +6,8 @@
 import atexit
 import logging
 import os
-import sys
 import subprocess
+import sys
 import tempfile
 import time
 from contextlib import ContextDecorator

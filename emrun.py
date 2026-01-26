@@ -28,6 +28,7 @@ import re
 import shlex
 import shutil
 import socket
+import socketserver
 import stat
 import struct
 import subprocess
@@ -35,18 +36,14 @@ import sys
 import tempfile
 import threading
 import time
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 from operator import itemgetter
+from urllib.parse import unquote, urlsplit
 
-if sys.version_info.major == 2:
-  import SocketServer as socketserver
-  from BaseHTTPServer import HTTPServer
-  from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from urllib import unquote
-  from urlparse import urlsplit
-else:
-  import socketserver
-  from http.server import HTTPServer, SimpleHTTPRequestHandler
-  from urllib.parse import unquote, urlsplit
+# We depend on python 3.8 features
+if sys.version_info < (3, 8): # noqa: UP036
+  print(f'error: emrun requires python 3.8 or above ({sys.executable} {sys.version})', file=sys.stderr)
+  sys.exit(1)
 
 # Populated from cmdline params
 emrun_options = None
@@ -86,7 +83,7 @@ page_exit_code = None
 # launcher.exe that runs the actual opera browser.  So killing browser_process
 # would just kill launcher.exe and not the opera
 # browser itself.
-processname_killed_atexit = ""
+processname_killed_atexit = ''
 
 # Using "0.0.0.0" means "all interfaces", which should allow connecting to this
 # server via LAN addresses. Using "localhost" should allow only connecting from
@@ -120,8 +117,6 @@ if not WINDOWS and not LINUX and not MACOS:
 
 # Returns wallclock time in seconds.
 def tick():
-  # Would like to return time.clock() since it's apparently better for
-  # precision, but it is broken on macOS 10.10 and Python 2.7.8.
   return time.time()
 
 
@@ -392,7 +387,7 @@ def kill_browser_process():
     # so clear that record out.
     processname_killed_atexit = ''
 
-  if len(processname_killed_atexit):
+  if processname_killed_atexit:
     if emrun_options.android:
       logv("Terminating Android app '" + processname_killed_atexit + "'.")
       subprocess.call([ADB, 'shell', 'am', 'force-stop', processname_killed_atexit])
@@ -679,7 +674,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     global page_exit_code, have_received_messages
 
     (_, _, path, query, _) = urlsplit(self.path)
-    logv('POST: "' + self.path + '" (path: "' + path + '", query: "' + query + '")')
+    logv(f'POST: "{self.path}" (path: "{path}", query: "{query}")')
     if query.startswith('file='):
       # Binary file dump/upload handling. Requests to
       # "stdio.html?file=filename" will write binary data to the given file.
@@ -757,12 +752,8 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
 
 # Returns stdout by running command with universal_newlines=True
-def check_output(cmd, universal_newlines=True, *args, **kwargs):
-  if hasattr(subprocess, "run"):
-    return subprocess.run(cmd, universal_newlines=universal_newlines, stdout=subprocess.PIPE, check=True, *args, **kwargs).stdout
-  else:
-    # check_output is considered as an old API so prefer subprocess.run if possible
-    return subprocess.check_output(cmd, universal_newlines=universal_newlines, *args, **kwargs)
+def check_output(cmd, *args, **kwargs):
+  return subprocess.run(cmd, text=True, stdout=subprocess.PIPE, check=True, *args, **kwargs).stdout
 
 
 # From http://stackoverflow.com/questions/4842448/getting-processor-information-in-python
@@ -861,7 +852,7 @@ def win_get_gpu_info():
 
       try:
         driverDate = winreg.QueryValueEx(hVideoCardReg, 'DriverDate')[0]
-        VideoCardDescription += ' (' + driverDate + ')'
+        VideoCardDescription += f' ({driverDate})'
       except WindowsError:
         pass
 
@@ -1895,9 +1886,9 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
 
 def main(args):
   returncode = run(args)
-  logv('emrun quitting with process exit code ' + str(returncode))
+  logv(f'emrun quitting with process exit code {returncode}')
   if temp_firefox_profile_dir is not None:
-    logi('Warning: Had to leave behind a temporary Firefox profile directory ' + temp_firefox_profile_dir + ' because --safe-firefox-profile was set and the browser did not quit before emrun did.')
+    logi(f'Warning: Had to leave behind a temporary Firefox profile directory {temp_firefox_profile_dir} because --safe-firefox-profile was set and the browser did not quit before emrun did.')
   return returncode
 
 

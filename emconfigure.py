@@ -19,8 +19,8 @@ tests will work properly.
 import os
 import shlex
 import sys
-from tools import building
-from tools import shared
+
+from tools import building, shared
 
 
 #

@@ -1615,14 +1615,16 @@ addToLibrary({
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
-  // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
-  // at runtime rather than statically in JS code.
-  $exportWasmSymbols__deps: ['$asmjsMangle',
+  // When DECLARE_ASM_MODULE_EXPORTS is set, this function is programatically
+  // ceated during linking.  See `create_receiving` in `emscripten.py`.
+  // When DECLARE_ASM_MODULE_EXPORTS=0 is set, `assignWasmExports` is instead
+  // defined here as a normal JS library function.
+  $assignWasmExports__deps: ['$asmjsMangle',
 #if DYNCALLS || !WASM_BIGINT
     , '$dynCalls'
 #endif
   ],
-  $exportWasmSymbols: (wasmExports) => {
+  $assignWasmExports: (wasmExports) => {
     for (var [name, exportedSymbol] of Object.entries(wasmExports)) {
       name = asmjsMangle(name);
 #if DYNCALLS || !WASM_BIGINT
@@ -1773,6 +1775,9 @@ addToLibrary({
   },
 
   $dynCall: (sig, ptr, args = [], promising = false) => {
+#if ASSERTIONS
+    assert(ptr, `null function pointer in dynCall`);
+#endif
 #if ASSERTIONS && (DYNCALLS || !WASM_BIGINT || !JSPI)
     assert(!promising, 'async dynCall is not supported in this mode')
 #endif

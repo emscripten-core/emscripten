@@ -1293,7 +1293,10 @@
             "EmscriptenAudioWorkletNodeCreateOptions": [
               "numberOfInputs",
               "numberOfOutputs",
-              "outputChannelCounts"
+              "outputChannelCounts",
+              "channelCount",
+              "channelCountMode",
+              "channelInterpretation"
             ]
         }
     },

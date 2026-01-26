@@ -14,8 +14,8 @@ launcher but don't have symlink support.
 """
 
 import os
-import sys
 import stat
+import sys
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(os.path.dirname(__scriptdir__))
