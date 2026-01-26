@@ -233,7 +233,7 @@ prevent the program from clobbering that memory region.
 
 After splitting, multithreaded applications will currently fetch and compile the
 secondary module separately on each thread. The compiled secondary module is not
-postmessaged to each thread the way the Emscripten postmessages the primary
+post-messaged to each thread the way the Emscripten post-messages the primary
 module to the threads. This is not as bad as it sounds because downloads of the
 secondary module from workers will be serviced from the cache if the appropriate
 Cache-Control headers are set, but improving this is an area for future work.
