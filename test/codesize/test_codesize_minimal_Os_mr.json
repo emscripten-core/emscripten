@@ -1,16 +1,17 @@
 {
   "a.out.js": 497,
   "a.out.js.gz": 297,
-  "a.out.nodebug.wasm": 62,
-  "a.out.nodebug.wasm.gz": 76,
-  "total": 559,
-  "total_gz": 373,
+  "a.out.nodebug.wasm": 75,
+  "a.out.nodebug.wasm.gz": 87,
+  "total": 572,
+  "total_gz": 384,
   "sent": [],
   "imports": [],
   "exports": [
     "a (memory)",
     "b (__wasm_call_ctors)",
-    "c (add)"
+    "c (add)",
+    "d (global_val)"
   ],
   "funcs": [
     "$__wasm_call_ctors",

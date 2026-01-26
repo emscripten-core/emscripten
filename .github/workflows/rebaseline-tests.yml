@@ -15,7 +15,7 @@ jobs:
     name: Rebaseline Tests
     runs-on: ubuntu-latest
     env:
-      GH_TOKEN: ${{ github.token }}
+      GH_TOKEN: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -58,5 +58,5 @@ jobs:
             fi
           fi
           git push origin rebaseline_tests
-          gh pr create --fill --base ${{ github.ref_name }}
+          gh pr create --fill --base ${{ github.ref_name }} --reviewer sbc100,kripken
           gh pr merge --squash --auto

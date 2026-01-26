@@ -99,7 +99,7 @@ class Minifier:
       cmd = get_acorn_cmd() + [temp_file, 'minifyGlobals']
       if minify_whitespace:
         cmd.append('--minify-whitespace')
-      output = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
+      output = utils.run_process(cmd, stdout=subprocess.PIPE).stdout
 
     assert len(output) and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     code, metadata = output.split('// EXTRA_INFO:')

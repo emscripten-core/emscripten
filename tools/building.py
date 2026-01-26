@@ -13,7 +13,7 @@ import shutil
 import subprocess
 import sys
 from subprocess import PIPE
-from typing import Dict, Set
+from typing import Dict, List, Set
 
 from . import (
   cache,
@@ -46,10 +46,9 @@ from .shared import (
   get_emscripten_temp_dir,
   is_c_symbol,
   path_from_root,
-  run_process,
 )
 from .toolchain_profiler import ToolchainProfiler
-from .utils import WINDOWS
+from .utils import WINDOWS, run_process
 
 logger = logging.getLogger('building')
 
@@ -60,6 +59,10 @@ EXPECTED_BINARYEN_VERSION = 124
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
 user_requested_exports: Set[str] = set()
+# A list of feature flags to pass to each binaryen invocation (like `wasm-opt`,
+# etc.). This is received by the first call to binaryen (e.g. `wasm-emscripten-finalize`)
+# which reads it using `--detect-features`.
+binaryen_features: List[str] = []
 
 
 def get_building_env():
@@ -263,8 +266,12 @@ def lld_flags_for_executable(external_symbols):
         # function like we do in STANDALONE_WASM mode.
         cmd += ['--no-entry']
 
+  # The default for `--stack-first` is transitioning from disabled to
+  # enabled.  So be explicit in all cases for now.
   if settings.STACK_FIRST:
     cmd.append('--stack-first')
+  else:
+    cmd.append('--no-stack-first')
 
   if not settings.RELOCATABLE:
     cmd.append('--table-base=%s' % settings.TABLE_BASE)
@@ -843,21 +850,7 @@ def get_last_binaryen_opts():
 def metadce(js_file, wasm_file, debug_info, last):
   logger.debug('running meta-DCE')
   temp_files = shared.get_temp_files()
-  # first, get the JS part of the graph
-  if settings.MAIN_MODULE:
-    # For the main module we include all exports as possible roots, not just function exports.
-    # This means that any usages of data symbols within the JS or in the side modules can/will keep
-    # these exports alive on the wasm module.
-    # This is important today for weak data symbols that are defined by the main and the side module
-    # (i.e.  RTTI info).  We want to make sure the main module's symbols get added to wasmImports
-    # when the main module is loaded.  If this doesn't happen then the symbols in the side module
-    # will take precedence.
-    exports = settings.WASM_EXPORTS
-  else:
-    # Ignore exported wasm globals.  Those get inlined directly into the JS code.
-    exports = sorted(set(settings.WASM_EXPORTS) - set(settings.DATA_EXPORTS))
-
-  extra_info = {"exports": [[asmjs_mangle(x), x] for x in exports]}
+  extra_info = {"exports": [[asmjs_mangle(x), x] for x in settings.WASM_EXPORTS]}
 
   txt = acorn_optimizer(js_file, ['emitDCEGraph', '--no-print'], return_output=True, extra_info=extra_info)
   if shared.SKIP_SUBPROCS:
@@ -1217,10 +1210,10 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
 
 
 def get_binaryen_feature_flags():
-  # settings.BINARYEN_FEATURES is empty unless features have been extracted by
-  # wasm-emscripten-finalize already.
-  if settings.BINARYEN_FEATURES:
-    return settings.BINARYEN_FEATURES
+  # `binaryen_features` is empty unless features have been extracted by
+  # a previous call to a binaryen tool.
+  if binaryen_features:
+    return binaryen_features
   else:
     return ['--detect-features']
 

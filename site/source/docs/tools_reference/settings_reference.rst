@@ -51,11 +51,11 @@ Default value: 0
 CHECK_NULL_WRITES
 =================
 
-When STACK_OVERFLOW_CHECK is enabled we also check writes to address zero.
-This can help detect NULL pointer usage.  If you want to skip this extra
-check (for example, if you want reads from the address zero to always return
-zero) you can disable this here.  This setting has no effect when
-STACK_OVERFLOW_CHECK is disabled.
+When :ref`STACK_OVERFLOW_CHECK` is enabled we also check writes to address
+zero. This can help detect NULL pointer usage.  If you want to skip this
+extra check (for example, if you want reads from the address zero to always
+return zero) you can disable this here.  This setting has no effect when
+:ref:`STACK_OVERFLOW_CHECK` is disabled.
 
 Default value: true
 
@@ -97,7 +97,7 @@ If 1, then completing main() will by default call exit(), unless a refcount
 keeps the runtime alive. Call emscripten_exit_with_live_runtime() to finish
 main() while keeping the runtime alive. Calling emscripten_force_exit() will
 shut down the runtime, invoking atexit()s, and flushing stdio streams.
-This setting is controlled automatically in STANDALONE_WASM mode:
+This setting is controlled automatically in :ref:`STANDALONE_WASM` mode:
 
 - For a command (has a main function) this is always 1
 - For a reactor (no main function) this is always 0
@@ -512,7 +512,7 @@ SYSCALL_DEBUG
 
 Print out all musl syscalls, including translating their numeric index
 to the string name, which can be convenient for debugging. (Other system
-calls are not numbered and already have clear names; use LIBRARY_DEBUG
+calls are not numbered and already have clear names; use :ref:`LIBRARY_DEBUG`
 to get logging for all of them.)
 
 Default value: false
@@ -1051,7 +1051,7 @@ and the program will halt (so this will not introduce silent failures).
   as it may contain thrown exceptions that are never caught (e.g.
   just using std::vector can have that). -fno-rtti may help as well.
 
-This option is mutually exclusive with EXCEPTION_CATCHING_ALLOWED.
+This option is mutually exclusive with :ref:`EXCEPTION_CATCHING_ALLOWED`.
 
 This option only applies to Emscripten (JavaScript-based) exception handling
 and does not control the native Wasm exception handling.
@@ -1068,7 +1068,7 @@ EXCEPTION_CATCHING_ALLOWED
 Enables catching exception but only in the listed functions.  This
 option acts like a more precise version of ``DISABLE_EXCEPTION_CATCHING=0``.
 
-This option is mutually exclusive with DISABLE_EXCEPTION_CATCHING.
+This option is mutually exclusive with :ref:`DISABLE_EXCEPTION_CATCHING`.
 
 This option only applies to Emscripten (JavaScript-based) exception handling
 and does not control the native Wasm exception handling.
@@ -1106,7 +1106,8 @@ EXPORT_EXCEPTION_HANDLING_HELPERS
 =================================
 
 Make the exception message printing function, 'getExceptionMessage' available
-in the JS library for use, by adding necessary symbols to EXPORTED_FUNCTIONS.
+in the JS library for use, by adding necessary symbols to
+:ref:`EXPORTED_FUNCTIONS`.
 
 This works with both Emscripten EH and Wasm EH. When you catch an exception
 from JS, that gives you a user-thrown value in case of Emscripten EH, and a
@@ -1144,7 +1145,7 @@ When this is enabled, exceptions will contain stack traces and uncaught
 exceptions will display stack traces upon exiting. This defaults to true when
 ASSERTIONS is enabled. This option is for users who want exceptions' stack
 traces but do not want other overheads ASSERTIONS can incur.
-This option implies EXPORT_EXCEPTION_HANDLING_HELPERS.
+This option implies :ref:`EXPORT_EXCEPTION_HANDLING_HELPERS`.
 
 Default value: false
 
@@ -1216,8 +1217,8 @@ ASYNCIFY_IMPORTS
 
 Imports which can do an async operation, in addition to the default ones that
 emscripten defines like emscripten_sleep. If you add more you will need to
-mention them to here, or else they will not work (in ASSERTIONS builds an
-error will be shown).
+mention them to here, or else they will not work (in :ref:`ASSERTIONS` builds
+an error will be shown).
 Note that this list used to contain the default ones, which meant that you
 had to list them when adding your own; the default ones are now added
 automatically.
@@ -1230,8 +1231,8 @@ ASYNCIFY_IGNORE_INDIRECT
 ========================
 
 Whether indirect calls can be on the stack during an unwind/rewind.
-If you know they cannot, then setting this can be extremely helpful, as otherwise asyncify
-must assume an indirect call can reach almost everywhere.
+If you know they cannot, then setting this can be extremely helpful, as
+otherwise asyncify must assume an indirect call can reach almost everywhere.
 
 Default value: false
 
@@ -1241,9 +1242,9 @@ ASYNCIFY_STACK_SIZE
 ===================
 
 The size of the asyncify stack - the region used to store unwind/rewind
-info. This must be large enough to store the call stack and locals. If it is too
-small, you will see a wasm trap due to executing an "unreachable" instruction.
-In that case, you should increase this size.
+info. This must be large enough to store the call stack and locals. If it is
+too small, you will see a wasm trap due to executing an "unreachable"
+instruction. In that case, you should increase this size.
 
 Default value: 4096
 
@@ -1264,8 +1265,8 @@ and size.
 
 The names in this list are names from the WebAssembly Names section. The
 wasm backend will emit those names in *human-readable* form instead of
-typical C++ mangling. For example, you should write Struct::func()
-instead of _ZN6Struct4FuncEv. C is also different from C++, as C
+typical C++ mangling. For example, you should write ``Struct::func()``
+instead of ``_ZN6Struct4FuncEv``. C is also different from C++, as C
 names don't end with parameters; as a result foo(int) in C++ would appear
 as just foo in C (C++ has parameters because it needs to differentiate
 overloaded functions). You will see warnings in the console if a name in the
@@ -1304,7 +1305,7 @@ in the safest way possible, this is only useful if you use IGNORE_INDIRECT
 and use this list to fix up some indirect calls that *do* need to be
 instrumented.
 
-See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
+See :ref:`ASYNCIFY_REMOVE` about the names, including wildcard matching and
 character substitutions.
 
 Default value: []
@@ -1329,7 +1330,7 @@ If the Asyncify only-list is provided, then *only* the functions in the list
 will be instrumented. Like the remove-list, getting this wrong will break
 your application.
 
-See notes on ASYNCIFY_REMOVE about the names, including wildcard matching and
+See :ref:`ASYNCIFY_REMOVE` about the names, including wildcard matching and
 character substitutions.
 
 Default value: []
@@ -1539,8 +1540,9 @@ generated code even after running closure compiler (on "Module").  Native
 symbols listed here require an ``_`` prefix.
 
 By default if this setting is not specified on the command line the
-``_main`` function will be implicitly exported.  In STANDALONE_WASM mode the
-default export is ``__start`` (or ``__initialize`` if --no-entry is specified).
+``_main`` function will be implicitly exported.  In :ref:`STANDALONE_WASM`
+mode the default export is ``__start`` (or ``__initialize`` if ``--no-entry``
+is specified).
 
 JS Library symbols can also be added to this list (without the leading `$`).
 
@@ -2043,9 +2045,9 @@ Default value: 1
 STANDALONE_WASM
 ===============
 
-STANDALONE_WASM indicates that we want to emit a wasm file that can run
-without JavaScript. The file will use standard APIs such as wasi as much as
-possible to achieve that.
+Indicates that we want to emit a wasm file that can run without JavaScript.
+The file will use standard APIs such as wasi as much as possible to achieve
+that.
 
 This option does not guarantee that the wasm can be used by itself - if you
 use APIs with no non-JS alternative, we will still use those (e.g., OpenGL
@@ -2837,6 +2839,9 @@ child-src directive to allow blob:. If you aren't using Content Security
 Policy, or your CSP header doesn't include either script-src or child-src,
 then you can safely ignore this warning.
 
+Note that SINGLE_FILE with binary encoding requires the HTML/JS files to be
+served with UTF-8 encoding. See the details on SINGLE_FILE_BINARY_ENCODE.
+
 Default value: false
 
 .. _single_file_binary_encode:
@@ -2850,6 +2855,20 @@ Set this to false to revert back to earlier base64 encoding if you run into
 issues with the binary encoding. (and please let us know of any such issues)
 If no issues arise, this option will permanently become the default in the
 future.
+
+NOTE: Binary encoding requires that the HTML/JS files are served with UTF-8
+encoding, and will not work with the default legacy Windows-1252 encoding
+that browsers might use on Windows. To enable UTF-8 encoding in a
+hand-crafted index.html file, apply any of:
+1. Add `<meta charset="utf-8">` inside the <head> section of HTML, or
+2. Add `<meta http-equiv="content-type" content="text/html; charset=UTF-8" />`` inside <head>, or
+3. Add `<meta http-equiv="content-type" content="application/json; charset=utf-8" />` inside <head>
+(if using -o foo.js with SINGLE_FILE mode to build HTML+JS), or
+4. pass the header `Content-Type: text/html; charset=utf-8` and/or header
+`Content-Type: application/javascript; charset=utf-8` when serving the
+relevant files that contain binary encoded content.
+If none of these are possible, disable binary encoding with
+-sSINGLE_FILE_BINARY_ENCODE=0 to fall back to base64 encoding.
 
 Default value: true
 
@@ -3144,6 +3163,7 @@ not in others like split-dwarf).
 When this flag is turned on, we error at link time if the build requires any
 changes to the wasm after link. This can be useful in testing, for example.
 Some example of features that require post-link wasm changes are:
+
 - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
 - Lowering sign-extension operation when targeting older browsers.
 
@@ -3181,7 +3201,7 @@ JS support libraries for those APIs.  This allows emscripten to produce binaries
 are more WASI compliant and also allows it to process and execute WASI
 binaries built with other SDKs (e.g.  wasi-sdk).
 This setting is experimental and subject to change or removal.
-Implies STANDALONE_WASM.
+Implies :ref:`STANDALONE_WASM`.
 
 .. note:: This is an experimental setting
 
@@ -3197,6 +3217,7 @@ module.  By default the wasm module defines the memory and exports
 it to JavaScript.
 Use of the following settings will enable this settings since they
 depend on being able to define the memory in JavaScript:
+
 - -pthread
 - RELOCATABLE
 - ASYNCIFY_LAZY_LOAD_CODE
@@ -3277,6 +3298,7 @@ extra tracing (for example, tracing that occurs on each turn of the event
 loop or each user callback, which can flood the console).
 This setting is enabled by default if any of the following debugging settings
 are enabled:
+
 - PTHREADS_DEBUG
 - DYLINK_DEBUG
 - LIBRARY_DEBUG
@@ -3297,7 +3319,7 @@ LEGACY_RUNTIME
 
 Include JS library symbols that were previously part of the default runtime.
 Without this, such symbols can be made available by adding them to
-DEFAULT_LIBRARY_FUNCS_TO_INCLUDE, or via the dependencies of another JS
+:ref:`DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`, or via the dependencies of another JS
 library symbol.
 
 Default value: false
@@ -3308,10 +3330,10 @@ SIGNATURE_CONVERSIONS
 =====================
 
 User-defined functions to wrap with signature conversion, which take or return
-pointer argument. Only affects MEMORY64=1 builds, see create_pointer_conversion_wrappers
-in emscripten.py for details.
+pointer argument. Only affects ``MEMORY64=1`` builds, see
+``create_pointer_conversion_wrappers`` in ``emscripten.py`` for details.
 Use _ for non-pointer arguments, p for pointer/i53 arguments, and P for optional pointer/i53 values.
-Example use -sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p
+Example use ``-sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p``
 
 Default value: []
 
@@ -3335,7 +3357,7 @@ WASM_ESM_INTEGRATION
 ====================
 
 Experimental support for wasm ESM integration.
-Requires EXPORT_ES6 and MODULARIZE=instance
+Requires :ref:`EXPORT_ES6` and ``MODULARIZE=instance``
 
 .. note:: This is an experimental setting
 

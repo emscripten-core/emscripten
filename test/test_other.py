@@ -17,6 +17,7 @@ import re
 import select
 import shlex
 import shutil
+import struct
 import subprocess
 import sys
 import tarfile
@@ -89,6 +90,7 @@ from decorators import (
 
 from tools import building, cache, response_file, shared, utils, webassembly
 from tools.building import get_building_env
+from tools.link import binary_encode
 from tools.settings import settings
 from tools.shared import (
   CLANG_CC,
@@ -106,7 +108,15 @@ from tools.shared import (
   config,
 )
 from tools.system_libs import DETERMINISTIC_PREFIX
-from tools.utils import MACOS, WINDOWS, delete_file, read_binary, read_file, write_file
+from tools.utils import (
+  MACOS,
+  WINDOWS,
+  delete_file,
+  read_binary,
+  read_file,
+  write_binary,
+  write_file,
+)
 
 emmake = utils.bat_suffix(path_from_root('emmake'))
 emconfig = utils.bat_suffix(path_from_root('em-config'))
@@ -268,7 +278,7 @@ def requires_pkg_config(func):
 
 
 def llvm_nm(file):
-  output = shared.run_process([LLVM_NM, file], stdout=PIPE).stdout
+  output = utils.run_process([LLVM_NM, file], stdout=PIPE).stdout
 
   symbols = {
     'defs': set(),
@@ -981,8 +991,8 @@ f.close()
     self.run_process(cmd)
     self.assertExists(self.get_dir() + '/build.ninja')
 
-  # Tests that it's possible to pass C++11 or GNU++11 build modes to CMake by building code that
-  # needs C++11 (embind)
+  # Tests that it's possible to pass C++17 or GNU++17 build modes to CMake by building code that
+  # needs C++17 (embind)
   @requires_ninja
   @parameterized({
     '': [[]],
@@ -997,9 +1007,9 @@ f.close()
 
     out = self.run_js('cmake_with_emval.js')
     if '-DNO_GNU_EXTENSIONS=1' in args:
-      self.assertContained('Hello! __STRICT_ANSI__: 1, __cplusplus: 201103', out)
+      self.assertContained('Hello! __STRICT_ANSI__: 1, __cplusplus: 201703', out)
     else:
-      self.assertContained('Hello! __STRICT_ANSI__: 0, __cplusplus: 201103', out)
+      self.assertContained('Hello! __STRICT_ANSI__: 0, __cplusplus: 201703', out)
 
   # Tests that the Emscripten CMake toolchain option
   def test_cmake_bitcode_static_libraries(self):
@@ -1988,7 +1998,6 @@ Module['postRun'] = () => {
     'embed_twice': (['--embed-file', 'somefile.txt', '--embed-file', 'somefile.txt'],),
     'preload': (['--preload-file', 'somefile.txt', '-sSTRICT'],),
     'preload_closure': (['--preload-file', 'somefile.txt', '-O2', '--closure=1'],),
-    'preload_and_embed': (['--preload-file', 'somefile.txt', '--embed-file', 'hello.txt'],),
   })
   @requires_node
   def test_include_file(self, args):
@@ -2122,63 +2131,59 @@ Module['postRun'] = () => {
         'side.wasm',
       ])
 
-  def test_multidynamic_link(self):
+  @parameterized({
+    '': (['-lfile'], ''), # -l, auto detection from library path
+    'suffixed': (['libdir/libfile.so.3.1.4.1.5.9'], '.3.1.4.1.5.9'), # handle libX.so.1.2.3 as well
+  })
+  def test_multidynamic_link(self, link_flags, lib_suffix):
     # Linking the same dynamic library in statically will error, normally, since we statically link
     # it, causing dupe symbols
+    ensure_dir('libdir')
 
-    def test(link_flags, lib_suffix):
-      print(link_flags, lib_suffix)
+    create_file('main.c', r'''
+      #include <stdio.h>
+      extern void printey();
+      extern void printother();
+      int main() {
+        printf("*");
+        printey();
+        printf("\n");
+        printother();
+        printf("\n");
+        printf("*\n");
+        return 0;
+      }
+    ''')
 
-      self.clear()
-      ensure_dir('libdir')
+    create_file('libdir/libfile.c', '''
+      #include <stdio.h>
+      void printey() {
+        printf("hello from lib");
+      }
+    ''')
 
-      create_file('main.c', r'''
-        #include <stdio.h>
-        extern void printey();
-        extern void printother();
-        int main() {
-          printf("*");
-          printey();
-          printf("\n");
-          printother();
-          printf("\n");
-          printf("*\n");
-          return 0;
-        }
-      ''')
+    create_file('libdir/libother.c', '''
+      #include <stdio.h>
+      extern void printey();
+      void printother() {
+        printf("|");
+        printey();
+        printf("|");
+      }
+    ''')
 
-      create_file('libdir/libfile.c', '''
-        #include <stdio.h>
-        void printey() {
-          printf("hello from lib");
-        }
-      ''')
+    # Build libfile normally into an .so
+    self.run_process([EMCC, 'libdir/libfile.c', '-shared', '-o', 'libdir/libfile.so' + lib_suffix])
+    # Build libother and dynamically link it to libfile
+    self.run_process([EMCC, '-Llibdir', 'libdir/libother.c'] + link_flags + ['-shared', '-o', 'libdir/libother.so'])
+    # Build the main file, linking in both the libs
+    self.run_process([EMCC, '-Llibdir', os.path.join('main.c')] + link_flags + ['-lother', '-c'])
+    print('...')
+    # The normal build system is over. We need to do an additional step to link in the dynamic
+    # libraries, since we ignored them before
+    self.run_process([EMCC, '-Llibdir', 'main.o'] + link_flags + ['-lother'])
 
-      create_file('libdir/libother.c', '''
-        #include <stdio.h>
-        extern void printey();
-        void printother() {
-          printf("|");
-          printey();
-          printf("|");
-        }
-      ''')
-
-      # Build libfile normally into an .so
-      self.run_process([EMCC, 'libdir/libfile.c', '-shared', '-o', 'libdir/libfile.so' + lib_suffix])
-      # Build libother and dynamically link it to libfile
-      self.run_process([EMCC, '-Llibdir', 'libdir/libother.c'] + link_flags + ['-shared', '-o', 'libdir/libother.so'])
-      # Build the main file, linking in both the libs
-      self.run_process([EMCC, '-Llibdir', os.path.join('main.c')] + link_flags + ['-lother', '-c'])
-      print('...')
-      # The normal build system is over. We need to do an additional step to link in the dynamic
-      # libraries, since we ignored them before
-      self.run_process([EMCC, '-Llibdir', 'main.o'] + link_flags + ['-lother'])
-
-      self.assertContained('*hello from lib\n|hello from lib|\n*\n', self.run_js('a.out.js'))
-
-    test(['-lfile'], '') # -l, auto detection from library path
-    test(['libdir/libfile.so.3.1.4.1.5.9'], '.3.1.4.1.5.9') # handle libX.so.1.2.3 as well
+    self.assertContained('*hello from lib\n|hello from lib|\n*\n', self.run_js('a.out.js'))
 
   @node_pthreads
   @also_with_modularize
@@ -3385,10 +3390,10 @@ More info: https://emscripten.org
     '2gb': ['-sINITIAL_MEMORY=2200mb', '-sGLOBAL_BASE=2gb'],
   })
   @parameterized({
-    # With no arguments we are effectively testing c++17 since it is the default.
+    # With no arguments we are testing the default C++ version provided by clang.
     '': [],
-    # Ensure embind compiles under C++11 which is the miniumum supported version.
-    'cxx11': ['-std=c++11', '-Wno-#warnings'],
+    # Ensure embind compiles under C++17 which is the miniumum supported version.
+    'cxx17': ['-std=c++17', '-Wno-#warnings'],
     'o1': ['-O1'],
     'o2': ['-O2'],
     'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
@@ -3437,12 +3442,8 @@ More info: https://emscripten.org
     output = self.run_js(js_file)
     self.assertNotContained('FAIL', output)
 
-  def test_embind_cxx11_warning(self):
-    err = self.run_process([EMXX, '-c', '-std=c++11', test_file('embind/test_unsigned.cpp')], stderr=PIPE).stderr
-    self.assertContained('#warning "embind is likely moving to c++17', err)
-
-  def test_embind_cxx03(self):
-    self.assert_fail([EMXX, '-c', '-std=c++03', test_file('embind/test_unsigned.cpp')], '#error "embind requires -std=c++11 or newer"')
+  def test_embind_cxx11(self):
+    self.assert_fail([EMXX, '-c', '-std=c++11', test_file('embind/test_unsigned.cpp')], '#error "embind requires -std=c++17 or newer"')
 
   @requires_node
   def test_embind_finalization(self):
@@ -3742,7 +3743,7 @@ More info: https://emscripten.org
     shared.check_call(cmd)
 
   def test_emit_tsd_wasm_only(self):
-    expected = 'Wasm only output is not compatible --emit-tsd'
+    expected = 'Wasm only output is not compatible with --emit-tsd'
     self.assert_fail([EMCC, test_file('other/test_emit_tsd.c'), '--emit-tsd', 'test_emit_tsd_wasm_only.d.ts', '-o', 'out.wasm'], expected)
 
   def test_emconfig(self):
@@ -3947,8 +3948,8 @@ More info: https://emscripten.org
     create_file('data.txt', 'hello data')
 
     # Without --obj-output we issue a warning
-    err = self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'], stderr=PIPE).stderr
-    self.assertContained('--obj-output is recommended when using --embed', err)
+    err = self.expect_fail([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--js-output=data.js'])
+    self.assertContained('error: --obj-output is required when using --embed', err)
 
     self.run_process([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--obj-output=data.o'])
 
@@ -3968,6 +3969,10 @@ More info: https://emscripten.org
     self.run_process([EMCC, 'test.c', 'data.o', '-sFORCE_FILESYSTEM'])
     output = self.run_js('a.out.js')
     self.assertContained('hello data', output)
+
+  def test_file_packager_preload_and_embed(self):
+    create_file('data.txt', 'hello data')
+    self.assert_fail([FILE_PACKAGER, 'test.data', '--embed', 'data.txt', '--preload', 'data.txt'], 'file_packager: error: --preload and --embed are mutually exclusive (See https://github.com/emscripten-core/emscripten/issues/24803)')
 
   def test_file_packager_export_es6(self):
     create_file('smth.txt', 'hello data')
@@ -8727,15 +8732,16 @@ int main() {
 
   def test_o_level_invalid(self):
     # Test that string values, and negative integers are not accepted
-    self.assert_fail([EMCC, '-Ofoo', test_file('hello_world.c')], 'emcc: error: invalid optimization level: -Ofoo')
-    self.assert_fail([EMCC, '-O-10', test_file('hello_world.c')], 'emcc: error: invalid optimization level: -O-10')
+    self.assert_fail([EMCC, '-Ofoo', test_file('hello_world.c')], "emcc: error: invalid integral value 'foo' in '-Ofoo'")
+    stderr = self.run_process([EMCC, '-O-10', test_file('hello_world.c')], stderr=PIPE).stderr
+    self.assertContained("emcc: warning: optimization level '-O-10' is not supported; using '-O3' instead", stderr)
 
   def test_g_level_invalid(self):
     # Bad integer values are handled by emcc
-    self.assert_fail([EMCC, '-g5', test_file('hello_world.c')], 'emcc: error: invalid debug level: -g5')
-    self.assert_fail([EMCC, '-g-10', test_file('hello_world.c')], 'emcc: error: invalid debug level: -g-10')
+    self.assert_fail([EMCC, '-g5', test_file('hello_world.c')], "emcc: error: unknown argument: '-g5'")
+    self.assert_fail([EMCC, '-g-10', test_file('hello_world.c')], "clang: error: unknown argument: '-g-10'")
     # Unknown string values are passed through to clang which will error out
-    self.assert_fail([EMCC, '-gfoo', test_file('hello_world.c')], "error: unknown argument: '-gfoo'")
+    self.assert_fail([EMCC, '-gfoo', test_file('hello_world.c')], "clang: error: unknown argument: '-gfoo'")
 
   # Tests that if user specifies multiple -o output directives, then the last one will take precedence
   def test_multiple_o_files(self):
@@ -9973,6 +9979,23 @@ int main() {
 
     compile(['-sMIN_SAFARI_VERSION=140100', '-mbulk-memory'])
     verify_features_sec_linked('nontrapping-fptoint', False)
+
+  def test_no_bulk_memory(self):
+    # The test_wasm_features test (above) uses the feature section to confirm
+    # if a feature is present, but that doesn't work in optimizing builds
+    # since we strip the feature section in release builds.
+    # This test confirms that no DATACOUNT section is present in the final
+    # binary.
+
+    def has_data_count(filename):
+      with webassembly.Module(filename) as wasm:
+        return wasm.get_section(webassembly.SecType.DATACOUNT)
+
+    self.emcc('hello_world.c', ['-O3', '-o', 'bulk.js'])
+    self.assertTrue(has_data_count('bulk.wasm'))
+
+    self.emcc('hello_world.c', ['-O3', '-o', 'nobulk.js', '-mno-bulk-memory', '-mno-bulk-memory-opt'])
+    self.assertFalse(has_data_count('nobulk.wasm'))
 
   @crossplatform
   def test_html_preprocess(self):
@@ -13096,6 +13119,9 @@ Module.postRun = () => {{
   def test_hello_world_above_2gb(self):
     self.do_run_in_out_file_test('hello_world.c', cflags=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
 
+  def test_unistd_strerror(self):
+    self.do_run_in_out_file_test('unistd/strerror.c')
+
   def test_hello_function(self):
     # hello_function.cpp is referenced/used in the docs.  This test ensures that it
     # at least compiles.
@@ -15192,3 +15218,16 @@ addToLibrary({
     # These setting is due for removal:
     # https://github.com/emscripten-core/emscripten/issues/25262
     self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sLINKABLE', '-sRELOCATABLE'])
+
+  # Tests encoding of all byte pairs for binary encoding in SINGLE_FILE mode.
+  def test_binary_encode(self):
+    # Encode values 0 .. 65535 into test data
+    test_data = bytearray(struct.pack('<' + 'H' * 65536, *range(65536)))
+    write_binary('data.tmp', test_data)
+    binary_encoded = binary_encode('data.tmp')
+    test_js = '''var u16 = new Uint16Array(binaryDecode(src).buffer);
+for(var i = 0; i < 65536; ++i)
+  if (u16[i] != i) throw i;
+console.log('OK');'''
+    write_file('test.js', read_file(path_from_root('src/binaryDecode.js')) + '\nvar src = ' + binary_encoded + ';\n' + test_js)
+    self.assertContained('OK', self.run_js('test.js'))

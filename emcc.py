@@ -42,12 +42,7 @@ from tools import (
 )
 from tools.cmdline import CLANG_FLAGS_WITH_ARGS, options
 from tools.response_file import substitute_response_files
-from tools.settings import (
-  COMPILE_TIME_SETTINGS,
-  default_setting,
-  settings,
-  user_settings,
-)
+from tools.settings import COMPILE_TIME_SETTINGS, default_setting, settings, user_settings
 from tools.shared import DEBUG, DYLIB_EXTENSIONS, in_temp
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import exit_with_error, get_file_suffix, read_file, unsuffixed_basename
@@ -124,7 +119,7 @@ def create_reproduce_file(name, args):
 
   root = unsuffixed_basename(name)
   with tarfile.open(name, 'w') as reproduce_file:
-    reproduce_file.add(shared.path_from_root('emscripten-version.txt'), os.path.join(root, 'version.txt'))
+    reproduce_file.add(utils.path_from_root('emscripten-version.txt'), os.path.join(root, 'version.txt'))
 
     with shared.get_temp_files().get_file(suffix='.tar') as rsp_name:
       with open(rsp_name, 'w') as rsp:

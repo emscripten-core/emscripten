@@ -4113,7 +4113,6 @@ caught outer int: 123
       side_ = side
       side = main
       main = side_
-      main_cflags += ['--no-entry']
     self.maybe_closure()
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.cflags.copy()
@@ -4626,10 +4625,12 @@ res64 - external 64\n''', header='''\
 
       int main(void) {
         void* js_address = EM_ASM_PTR({
-          console.log("JS:_my_number:", _my_number, HEAP32[_my_number/4]);
+          var value = HEAP32[_my_number/4];
+          console.log("JS:_my_number:", _my_number, value);
+          assert(value == 123456, value);
           return _my_number;
         });
-        printf("C: my_number: %ld %d\n", (long)&my_number, my_number);
+        printf("C: my_number: %lu %d\n", (uintptr_t)&my_number, my_number);
         assert(js_address == &my_number);
         return 0;
       }
@@ -7172,6 +7173,12 @@ void* operator new(size_t size) {
 
     self.set_setting('EXPORTED_FUNCTIONS', ['_print_bool'])
     self.do_runf('core/test_ccall.cpp', 'true')
+
+  @no_modularize_instance('ccall is not yet compatible with MODULARIZE=instance')
+  def test_ccall_return_pointer(self):
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('ccall is not available in MINIMAL_RUNTIME')
+    self.do_core_test('test_ccall_return_pointer.c', cflags=['-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$ccall'])
 
   @no_modularize_instance('uses Module object directly')
   def test_EXPORTED_RUNTIME_METHODS(self):
@@ -9719,7 +9726,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'dylink': [True],
   })
   @no_esm_integration('https://github.com/emscripten-core/emscripten/issues/25543')
-  @no_omit_asm_module_exports('https://github.com/emscripten-core/emscripten/issues/25556')
   def test_wasm_global(self, dynlink):
     if '-flto' in self.cflags or '-flto=thin' in self.cflags:
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25555')

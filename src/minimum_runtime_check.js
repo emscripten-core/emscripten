@@ -32,7 +32,12 @@
     throw new Error(`This emscripten-generated code requires node v${ packedVersionToHumanReadable({{{ MIN_NODE_VERSION }}}) } (detected v${packedVersionToHumanReadable(currentNodeVersion)})`);
   }
 
-  var currentSafariVersion = typeof navigator !== 'undefined' && navigator.userAgent?.includes("Safari/") && navigator.userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/) ? humanReadableVersionToPacked(navigator.userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)[1]) : TARGET_NOT_SUPPORTED;
+  var userAgent = typeof navigator !== 'undefined' && navigator.userAgent;
+  if (!userAgent) {
+    return;
+  }
+
+  var currentSafariVersion = userAgent.includes("Safari/") && userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/) ? humanReadableVersionToPacked(userAgent.match(/Version\/(\d+\.?\d*\.?\d*)/)[1]) : TARGET_NOT_SUPPORTED;
 #if MIN_SAFARI_VERSION == TARGET_NOT_SUPPORTED
   if (currentSafariVersion < TARGET_NOT_SUPPORTED) {
     throw new Error(`This page was compiled without support for Safari browser. Pass -sMIN_SAFARI_VERSION=${currentSafariVersion} or lower to enable support for this browser.`);
@@ -42,7 +47,7 @@
     throw new Error(`This emscripten-generated code requires Safari v${ packedVersionToHumanReadable({{{ MIN_SAFARI_VERSION }}}) } (detected v${currentSafariVersion})`);
   }
 
-  var currentFirefoxVersion = typeof navigator !== 'undefined' && navigator.userAgent?.match(/Firefox\/(\d+(?:\.\d+)?)/) ? parseFloat(navigator.userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)[1]) : TARGET_NOT_SUPPORTED;
+  var currentFirefoxVersion = userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/) ? parseFloat(userAgent.match(/Firefox\/(\d+(?:\.\d+)?)/)[1]) : TARGET_NOT_SUPPORTED;
 #if MIN_FIREFOX_VERSION == TARGET_NOT_SUPPORTED
   if (currentFirefoxVersion < TARGET_NOT_SUPPORTED) {
     throw new Error(`This page was compiled without support for Firefox browser. Pass -sMIN_FIREFOX_VERSION=${currentFirefoxVersion} or lower to enable support for this browser.`);
@@ -52,7 +57,7 @@
     throw new Error(`This emscripten-generated code requires Firefox v{{{ MIN_FIREFOX_VERSION }}} (detected v${currentFirefoxVersion})`);
   }
 
-  var currentChromeVersion = typeof navigator !== 'undefined' && navigator.userAgent?.match(/Chrome\/(\d+(?:\.\d+)?)/) ? parseFloat(navigator.userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)[1]) : TARGET_NOT_SUPPORTED;
+  var currentChromeVersion = userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/) ? parseFloat(userAgent.match(/Chrome\/(\d+(?:\.\d+)?)/)[1]) : TARGET_NOT_SUPPORTED;
 #if MIN_CHROME_VERSION == TARGET_NOT_SUPPORTED
   if (currentChromeVersion < TARGET_NOT_SUPPORTED) {
     throw new Error(`This page was compiled without support for Chrome browser. Pass -sMIN_CHROME_VERSION=${currentChromeVersion} or lower to enable support for this browser.`);

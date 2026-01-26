@@ -50,7 +50,7 @@ function createWasmAudioWorkletProcessor() {
       // 64 frames, for the case where a multi-MB stack is passed.
       this.outputViews = new Array(Math.min(((wwParams.stackSize - {{{ STACK_ALIGN }}}) / this.bytesPerChannel) | 0, /*sensible limit*/ 64));
 #if ASSERTIONS
-      console.assert(this.outputViews.length > 0, `AudioWorklet needs more stack allocating (at least ${this.bytesPerChannel})`);
+      assert(this.outputViews.length > 0, `AudioWorklet needs more stack allocating (at least ${this.bytesPerChannel})`);
 #endif
       this.createOutputViews();
 
@@ -138,8 +138,8 @@ function createWasmAudioWorkletProcessor() {
 #endif
       var oldStackPtr = stackSave();
 #if ASSERTIONS
-      console.assert(oldStackPtr == this.ctorOldStackPtr, 'AudioWorklet stack address has unexpectedly moved');
-      console.assert(outputViewsNeeded <= this.outputViews.length, `Too many AudioWorklet outputs (need ${outputViewsNeeded} but have stack space for ${this.outputViews.length})`);
+      assert(oldStackPtr == this.ctorOldStackPtr, 'AudioWorklet stack address has unexpectedly moved');
+      assert(outputViewsNeeded <= this.outputViews.length, `Too many AudioWorklet outputs (need ${outputViewsNeeded} but have stack space for ${this.outputViews.length})`);
 #endif
 
       // Allocate the necessary stack space. All pointer variables are in bytes;
@@ -154,6 +154,10 @@ function createWasmAudioWorkletProcessor() {
       var stackMemoryAligned = (stackMemoryStruct + stackMemoryData + 15) & ~15;
       var structPtr = stackAlloc(stackMemoryAligned);
       var dataPtr = structPtr + (stackMemoryAligned - stackMemoryData);
+#if ASSERTIONS
+      // TODO: look at why stackAlloc isn't tripping the assertions
+      assert(stackMemoryAligned <= wwParams.stackSize, `Not enough stack allocated to the AudioWorklet (need ${stackMemoryAligned}, got ${wwParams.stackSize})`);
+#endif
 
       // Copy input audio descriptor structs and data to Wasm (recall, structs
       // first, audio data after). 'inputsPtr' is the start of the C callback's
@@ -221,7 +225,7 @@ function createWasmAudioWorkletProcessor() {
         // And that the views' size match the passed in output buffers
         for (entry of outputList) {
           for (subentry of entry) {
-            console.assert(subentry.byteLength == this.bytesPerChannel, `AudioWorklet unexpected output buffer size (expected ${this.bytesPerChannel} got ${subentry.byteLength})`);
+            assert(subentry.byteLength == this.bytesPerChannel, `AudioWorklet unexpected output buffer size (expected ${this.bytesPerChannel} got ${subentry.byteLength})`);
           }
         }
       }

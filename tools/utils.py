@@ -10,8 +10,10 @@ line utility."""
 import functools
 import logging
 import os
+import shlex
 import shutil
 import stat
+import subprocess
 import sys
 from pathlib import Path
 
@@ -23,6 +25,36 @@ MACOS = sys.platform == 'darwin'
 LINUX = sys.platform.startswith('linux')
 
 logger = logging.getLogger('utils')
+
+
+def run_process(cmd, check=True, input=None, *args, **kw):
+  """Runs a subprocess returning the exit code.
+
+  By default this function will raise an exception on failure.  Therefore this should only be
+  used if you want to handle such failures.  For most subprocesses, failures are not recoverable
+  and should be fatal.  In those cases the `check_call` wrapper should be preferred.
+  """
+
+  # Flush standard streams otherwise the output of the subprocess may appear in the
+  # output before messages that we have already written.
+  sys.stdout.flush()
+  sys.stderr.flush()
+  kw.setdefault('text', True)
+  kw.setdefault('encoding', 'utf-8')
+  ret = subprocess.run(cmd, check=check, input=input, *args, **kw)
+  debug_text = '%sexecuted %s' % ('successfully ' if check else '', shlex.join(cmd))
+  logger.debug(debug_text)
+  return ret
+
+
+def exec(cmd):
+  if WINDOWS:
+    rtn = run_process(cmd, stdin=sys.stdin, check=False).returncode
+    sys.exit(rtn)
+  else:
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os.execvp(cmd[0], cmd)
 
 
 def exit_with_error(msg, *args):

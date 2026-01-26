@@ -5,7 +5,6 @@
 
 import argparse
 import os
-import plistlib
 import random
 import re
 import shlex
@@ -24,22 +23,27 @@ from pathlib import Path
 from urllib.request import urlopen
 
 import common
-from common import (
+from browser_common import (
   CHROMIUM_BASED_BROWSERS,
-  EMRUN,
-  WEBIDL_BINDER,
   BrowserCore,
   HttpServerThread,
   Reporting,
-  RunnerCore,
-  copytree,
-  create_file,
-  ensure_dir,
+  browser_should_skip_feature,
   find_browser_test_file,
+  get_browser,
+  get_safari_version,
   has_browser,
   is_chrome,
   is_firefox,
   is_safari,
+)
+from common import (
+  EMRUN,
+  WEBIDL_BINDER,
+  RunnerCore,
+  copytree,
+  create_file,
+  ensure_dir,
   path_from_root,
   read_file,
   test_file,
@@ -64,9 +68,9 @@ from decorators import (
 )
 
 from tools import ports, shared
-from tools.feature_matrix import UNSUPPORTED, Feature, min_browser_versions
-from tools.shared import DEBUG, EMCC, FILE_PACKAGER, PIPE, WINDOWS
-from tools.utils import delete_dir, memoize
+from tools.feature_matrix import Feature
+from tools.shared import DEBUG, EMCC, FILE_PACKAGER, PIPE
+from tools.utils import WINDOWS, delete_dir
 
 
 def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
@@ -177,38 +181,7 @@ def shell_with_script(shell_file, output_file, replacement):
 
 
 def is_swiftshader(_):
-  return is_chrome() and '--use-gl=swiftshader' in common.EMTEST_BROWSER
-
-
-@memoize
-def get_safari_version():
-  if not is_safari():
-    return UNSUPPORTED
-  plist_path = os.path.join(common.EMTEST_BROWSER.strip(), 'Contents', 'version.plist')
-  version_str = plistlib.load(open(plist_path, 'rb')).get('CFBundleShortVersionString')
-  # Split into parts (major.minor.patch)
-  parts = (version_str.split('.') + ['0', '0', '0'])[:3]
-  # Convert each part into integers, discarding any trailing string, e.g. '13a' -> 13.
-  parts = [int(re.match(r"\d+", s).group()) if re.match(r"\d+", s) else 0 for s in parts]
-  # Return version as XXYYZZ
-  return parts[0] * 10000 + parts[1] * 100 + parts[2]
-
-
-@memoize
-def get_firefox_version():
-  if not is_firefox():
-    return UNSUPPORTED
-  exe_path = shlex.split(common.EMTEST_BROWSER)[0]
-  ini_path = os.path.join(os.path.dirname(exe_path), "platform.ini")
-  # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
-  m = re.search(r"^Milestone=(.*)$", open(ini_path).read(), re.MULTILINE)
-  milestone = m.group(1).strip()
-  version = int(re.match(r"(\d+)", milestone).group(1))
-  # On Nightly and Beta, e.g. 145.0a1, pretend it to still mean version 144,
-  # since it is a pre-release version
-  if any(c in milestone for c in ('a', 'b')):
-    version -= 1
-  return version
+  return is_chrome() and '--use-gl=swiftshader' in get_browser()
 
 
 no_swiftshader = skip_if_simple('not compatible with swiftshader', is_swiftshader)
@@ -251,36 +224,6 @@ def also_with_threads(f):
   return decorated
 
 
-def browser_should_skip_feature(skip_env_var, feature):
-  # If an env. var. EMTEST_LACKS_x to skip the given test is set (to either
-  # value 0 or 1), don't bother checking if current browser supports the feature
-  # - just unconditionally run the test, or skip the test.
-  if os.getenv(skip_env_var) is not None:
-    return int(os.getenv(skip_env_var)) != 0
-
-  # If there is no Feature object associated with this capability, then we
-  # should run the test.
-  if feature is None:
-    return False
-
-  # If EMTEST_AUTOSKIP=0, also never skip.
-  if os.getenv('EMTEST_AUTOSKIP') == '0':
-    return False
-
-  # Otherwise EMTEST_AUTOSKIP=1 or EMTEST_AUTOSKIP is not set: check whether
-  # the current browser supports the test or not.
-  min_required = min_browser_versions[feature]
-  not_supported = get_firefox_version() < min_required['firefox'] or get_safari_version() < min_required['safari']
-
-  # Current browser does not support the test, and EMTEST_AUTOSKIP is not set?
-  # Then error out to have end user decide what to do in this situation.
-  if not_supported and os.getenv('EMTEST_AUTOSKIP') is None:
-    return 'error'
-
-  # Report whether to skip the test based on browser support.
-  return not_supported
-
-
 def skipIfFeatureNotAvailable(skip_env_var, feature, message):
   for env_var in skip_env_var if type(skip_env_var) == list else [skip_env_var]:
     should_skip = browser_should_skip_feature(env_var, feature)
@@ -293,9 +236,16 @@ def skipIfFeatureNotAvailable(skip_env_var, feature, message):
     @wraps(f)
     def decorated(self, *args, **kwargs):
       if should_skip == 'error':
-        raise Exception(f'This test requires a browser that supports {feature.name} but your browser {common.EMTEST_BROWSER} does not support this. Run with {skip_env_var}=1 or EMTEST_AUTOSKIP=1 to skip this test automatically.')
+        raise Exception(f'This test requires a browser that supports {feature.name} but your browser {get_browser()} does not support this. Run with {skip_env_var}=1 or EMTEST_AUTOSKIP=1 to skip this test automatically.')
+      elif should_skip and bool(re.search(r"MIN_.*_VERSION", os.getenv('EMCC_CFLAGS', ''))):
+        # should_skip=True, so we should skip running this test. However, user has specified a MIN_x_VERSION
+        # directive in EMCC_CFLAGS, so we cannot even try to compile this test, or otherwise emcc can
+        # error out on the MIN_x_VERSION being too old. So skip both compiling+running this test.
+        self.skipTest(message)
       elif should_skip:
+        # Skip running this test in a browser, but do test compiling it, to get partial coverage.
         self.skip_exec = message
+
       f(self, *args, **kwargs)
 
     return decorated
@@ -326,7 +276,7 @@ class browser(BrowserCore):
   def setUpClass(cls):
     super().setUpClass()
     cls.browser_timeout = 60
-    if common.EMTEST_BROWSER != 'node':
+    if get_browser() != 'node':
       print()
       print('Running the browser tests. Make sure the browser allows popups from localhost.')
       print()
@@ -336,7 +286,7 @@ class browser(BrowserCore):
 
   def require_jspi(self):
     if not is_chrome():
-      self.skipTest(f'Current browser ({common.EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
     super().require_jspi()
 
   def post_manual_reftest(self):
@@ -2725,6 +2675,9 @@ Module["preRun"] = () => {
       self.cflags.append('--pre-js=pre.js')
     self.btest_exit('test_html5_core.c', cflags=opts)
 
+  def test_html5_remove_event_listener(self):
+    self.btest_exit('test_html5_remove_event_listener.c')
+
   @parameterized({
     '': ([],),
     'closure': (['-O2', '-g1', '--closure=1'],),
@@ -2953,7 +2906,7 @@ Module["preRun"] = () => {
     'closure': (['-O2', '-g1', '--closure=1'],),
   })
   def test_html5_mouse(self, opts):
-    self.btest('test_html5_mouse.c', cflags=opts + ['-DAUTOMATE_SUCCESS=1'], expected='0')
+    self.btest_exit('test_html5_mouse.c', cflags=opts + ['-DAUTOMATE_SUCCESS=1'])
 
   @parameterized({
     '': ([],),
@@ -3412,7 +3365,7 @@ Module["preRun"] = () => {
   })
   def test_async(self, opt, args):
     if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({common.EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
 
     self.btest_exit('test_async.c', cflags=[opt, '-g2'] + args)
 
@@ -5106,7 +5059,7 @@ Module["preRun"] = () => {
   })
   def test_embind(self, args):
     if is_jspi(args) and not is_chrome():
-      self.skipTest(f'Current browser ({common.EMTEST_BROWSER}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
     if is_jspi(args) and self.is_wasm64():
       self.skipTest('_emval_await fails')
 
@@ -5377,6 +5330,11 @@ Module["preRun"] = () => {
   @flaky('https://github.com/emscripten-core/emscripten/issues/25270')
   def test_wasm_worker_lock_async_acquire(self):
     self.btest_exit('wasm_worker/lock_async_acquire.c', cflags=['--closure=1', '-sWASM_WORKERS'])
+
+  # Tests emscripten_lock_async_acquire() function when lock is acquired both synchronously and asynchronously.
+  @also_with_minimal_runtime
+  def test_wasm_worker_lock_async_and_sync_acquire(self):
+    self.btest_exit('wasm_worker/lock_async_and_sync_acquire.c', cflags=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_busyspin_wait_acquire() in Worker and main thread.
   @also_with_minimal_runtime
@@ -5784,9 +5742,9 @@ class emrun(RunnerCore):
     self.run_process([EMCC, test_file('test_emrun.c'), '--emrun', '-o', 'hello_world.html'])
     proc = subprocess.Popen([EMRUN, '--no-browser', '.', '--port=3333'], stdout=PIPE)
     try:
-      if common.EMTEST_BROWSER:
+      if get_browser():
         print('Starting browser')
-        browser_cmd = shlex.split(common.EMTEST_BROWSER)
+        browser_cmd = shlex.split(get_browser())
         browser = subprocess.Popen(browser_cmd + ['http://localhost:3333/hello_world.html'])
         try:
           while True:
@@ -5825,11 +5783,11 @@ class emrun(RunnerCore):
                  '--log-stdout', self.in_dir('stdout.txt'),
                  '--log-stderr', self.in_dir('stderr.txt')]
 
-    if common.EMTEST_BROWSER is not None:
+    if get_browser() is not None:
       # If EMTEST_BROWSER carried command line arguments to pass to the browser,
       # (e.g. "firefox -profile /path/to/foo") those can't be passed via emrun,
       # so strip them out.
-      browser_cmd = shlex.split(common.EMTEST_BROWSER)
+      browser_cmd = shlex.split(get_browser())
       browser_path = browser_cmd[0]
       args_base += ['--browser', browser_path]
       if len(browser_cmd) > 1:

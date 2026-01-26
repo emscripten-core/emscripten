@@ -573,7 +573,6 @@ private:
   template<internal::EM_INVOKER_KIND Kind, typename Ret, typename... Args>
   static Ret internalCall(EM_VAL handle, const char *methodName, Args&&... args) {
     using namespace internal;
-#if __cplusplus >= 201703L
     using Policy = WithPolicies<FilterTypes<isPolicy, Args...>>;
     auto filteredArgs = Filter<isNotPolicy>(args...);
     return std::apply(
@@ -582,12 +581,6 @@ private:
         },
         filteredArgs
     );
-#else
-    // When std::apply is not available allow pointers by default. std::apply
-    // could be polyfilled, but it requires a lot of code.
-    static_assert(internal::conjunction<internal::isNotPolicy<Args>...>::value, "Using pointer policies with val requires C++17 or newer.");
-    return internalCallWithPolicy<Kind, WithPolicies<allow_raw_pointers>, Ret>(handle, methodName, std::forward<decltype(args)>(args)...);
-#endif
   }
 
   template<internal::EM_INVOKER_KIND Kind, typename Policy, typename Ret, typename... Args>

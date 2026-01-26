@@ -702,6 +702,7 @@
         "EmscriptenWebAudioCreateAttributes": {
             "__size__": 16,
             "latencyHint": 0,
+            "renderSizeHint": 12,
             "sampleRate": 8
         },
         "EmscriptenWebGLContextAttributes": {

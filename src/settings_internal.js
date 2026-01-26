@@ -16,9 +16,6 @@
 // underscore.
 var WASM_EXPORTS = [];
 
-// Similar to above but only includes the data symbols (address exports).
-var DATA_EXPORTS = [];
-
 // An array of all symbols exported from all the side modules specified on the
 // command line.
 // These are raw symbol names and are not mangled to include the leading
@@ -56,11 +53,6 @@ var TARGET_JS_NAME = '';
 // get away without including the full filesystem - in particular, if open() is
 // never used, then we don't actually need to support operations on streams.
 var SYSCALLS_REQUIRE_FILESYSTEM = true;
-
-// A list of feature flags to pass to each binaryen invocation (like wasm-opt,
-// etc.). This is received from wasm-emscripten-finalize, which reads it from
-// the features section.
-var BINARYEN_FEATURES = [];
 
 // Whether EMCC_AUTODEBUG is on, which automatically instruments code for
 // runtime logging that can help in debugging.
