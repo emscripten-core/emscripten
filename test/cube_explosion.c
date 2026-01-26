@@ -153,7 +153,7 @@ int main(int argc, char *argv[]) {
 
     // get active uniform data for 10 uniforms. XXX they include our additions from shader rewriting! XXX
 
-    // gen texture, we already has one
+    // gen texture, we already have one
 
     GLuint arrayBuffer;
     glGenBuffers(1, &arrayBuffer);

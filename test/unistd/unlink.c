@@ -73,7 +73,7 @@ void test() {
   err = unlink("dir-readonly");
   assert(err == -1);
 
-  // emscripten uses 'musl' what is an implementation of the standard library for Linux-based systems
+  // emscripten uses 'musl' which is an implementation of the standard library for Linux-based systems
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
   // Here errno is supposed to be EISDIR, but it is EPERM for NODERAWFS on macOS.
   // See issue #6121.

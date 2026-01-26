@@ -22,7 +22,7 @@ void send_msg(ENetPeer *peer) {
   ENetPacket * packet = enet_packet_create ("packet",
                                             strlen ("packet") + 1,
                                             ENET_PACKET_FLAG_RELIABLE);
-  /* Extend the packet so and append the string "foo", so it now */
+  /* Extend the packet and append the string "foo", so it now */
   /* contains "packetfoo\0" */
   enet_packet_resize (packet, strlen ("packetfoo") + 1);
   strcpy ((char*)& packet -> data [strlen ("packet")], "foo");
@@ -73,7 +73,7 @@ printf("enet host, got event of type %d\n", event.type);
       enet_packet_destroy (event.packet);
       break;
     case ENET_EVENT_TYPE_DISCONNECT:
-      printf ("%s disconected.\n", (char*)event.peer -> data);
+      printf ("%s disconnected.\n", (char*)event.peer -> data);
       /* Reset the peer's client information. */
       event.peer -> data = NULL;
       enet_host_destroy(host);

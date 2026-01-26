@@ -224,7 +224,7 @@ def lld_flags_for_executable(external_symbols):
     if not settings.WASM_BIGINT:
       # When we don't have WASM_BIGINT available, JS signature legalization
       # in binaryen will mutate the signatures of the imports/exports of our
-      # shared libraries.  Because of this we need to disabled signature
+      # shared libraries.  Because of this we need to disable signature
       # checking of shared library functions in this case.
       cmd.append('--no-shlib-sigcheck')
 
@@ -307,10 +307,7 @@ def get_wasm_bindgen_exported_symbols(input_files):
   return symbols
 
 
-def link_lld(args, target, external_symbols=None, linker_inputs=[]):
-  if not os.path.exists(WASM_LD):
-    exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
-  # runs lld to link things.
+def lld_flags(args, linker_inputs=[]):
   # lld doesn't currently support --start-group/--end-group since the
   # semantics are more like the windows linker where there is no need for
   # grouping.
@@ -334,29 +331,34 @@ def link_lld(args, target, external_symbols=None, linker_inputs=[]):
     # is passed.
     args.append('--keep-section=target_features')
 
-  cmd = [WASM_LD, '-o', target]
+  if settings.MEMORY64:
+    args.append('-mwasm64')
+
   for a in llvm_backend_args():
-    cmd += ['-mllvm', a]
+    args += ['-mllvm', a]
 
   if settings.WASM_EXCEPTIONS:
-    cmd += ['-mllvm', '-wasm-enable-eh']
+    args += ['-mllvm', '-wasm-enable-eh']
     if settings.WASM_LEGACY_EXCEPTIONS:
-      cmd += ['-mllvm', '-wasm-use-legacy-eh']
+      args += ['-mllvm', '-wasm-use-legacy-eh']
     else:
-      cmd += ['-mllvm', '-wasm-use-legacy-eh=0']
+      args += ['-mllvm', '-wasm-use-legacy-eh=0']
   if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
-    cmd += ['-mllvm', '-exception-model=wasm']
+    args += ['-mllvm', '-exception-model=wasm']
 
-  if settings.MEMORY64:
-    cmd.append('-mwasm64')
+  return args
 
+
+def link_lld(args, target, external_symbols=None, linker_inputs=[]):
+  # runs lld to link things.
+  if not os.path.exists(WASM_LD):
+    exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
+  cmd = [WASM_LD, '-o', target]
   # For relocatable output (generating an object file) we don't pass any of the
   # normal linker flags that are used when building and executable
   if '--relocatable' not in args and '-r' not in args:
     cmd += lld_flags_for_executable(external_symbols)
-
-  cmd += args
-
+  cmd += lld_flags(args, linker_inputs)
   cmd = get_command_with_possible_response_file(cmd)
   check_call(cmd)
 
@@ -1053,7 +1055,7 @@ def strip(infile, outfile, debug=False, sections=None):
 
 
 # extract the DWARF info from the main file, and leave the wasm with
-# debug into as a file on the side
+# debug info as a file on the side
 def emit_debug_on_side(wasm_file, wasm_file_with_dwarf):
   embedded_path = settings.SEPARATE_DWARF_URL
   if not embedded_path:
@@ -1122,7 +1124,7 @@ def read_name_section(wasm_file):
         module.seek(section.offset)
         if module.read_string() == 'name':
           name_map = {}
-          # The name section is made up sub-section.
+          # The name section is made up of sub-sections.
           # We are looking for the function names sub-section
           while module.tell() < section.offset + section.size:
             name_type = module.read_uleb()
@@ -1152,7 +1154,7 @@ def write_symbol_map(wasm_file, symbols_file):
 
 
 def is_ar(filename):
-  """Return True if a the given filename is an ar archive, False otherwise.
+  """Return True if the given filename is an ar archive, False otherwise.
   """
   try:
     header = open(filename, 'rb').read(8)

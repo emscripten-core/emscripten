@@ -55,7 +55,7 @@ var wasmModule;
 var ABORT = false;
 
 // set by exit() and abort().  Passed to 'onExit' handler.
-// NOTE: This is also used as the process return code code in shell environments
+// NOTE: This is also used as the process return code in shell environments
 // but only when noExitRuntime is false.
 var EXITSTATUS;
 
@@ -443,6 +443,12 @@ function findWasmBinary() {
   }
 #endif
 
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET && !AUDIO_WORKLET // AUDIO_WORKLET handled above
+  if (ENVIRONMENT_IS_AUDIO_WORKLET) {
+    return '{{{ WASM_BINARY_FILE }}}';
+  }
+#endif
+
   if (Module['locateFile']) {
     return locateFile('{{{ WASM_BINARY_FILE }}}');
   }
@@ -470,7 +476,7 @@ function getBinarySync(file) {
   if (readBinary) {
     return readBinary(file);
   }
-  // Throwing a plain string here, even though it not normally adviables since
+  // Throwing a plain string here, even though it not normally advisable since
   // this gets turning into an `abort` in instantiateArrayBuffer.
 #if WASM_ASYNC_COMPILATION
   throw 'both async and sync fetching of the wasm failed';
@@ -724,6 +730,9 @@ function getWasmImports() {
 #endif
     var origExports = wasmExports;
 #endif
+#if SPLIT_MODULE
+    wasmRawExports = wasmExports;
+#endif
 
 #if ASYNCIFY
     wasmExports = Asyncify.instrumentWasmExports(wasmExports);
@@ -739,14 +748,10 @@ function getWasmImports() {
 #endif
 #endif
 
-
 #if ABORT_ON_WASM_EXCEPTIONS
     wasmExports = instrumentWasmExportsWithAbort(wasmExports);
 #endif
 
-#if SPLIT_MODULE
-  wasmRawExports = wasmExports;
-#endif
 #if MEMORY64 || CAN_ADDRESS_2GB
     wasmExports = applySignatureConversions(wasmExports);
 #endif
@@ -860,7 +865,7 @@ function getWasmImports() {
 
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
-    // Instantiate from the module that was recieved via postMessage from
+    // Instantiate from the module that was received via postMessage from
     // the main thread. We can just use sync instantiation in the worker.
 #if ASSERTIONS
     assert(wasmModule, "wasmModule should have been received via postMessage");

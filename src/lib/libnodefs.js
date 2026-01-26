@@ -145,10 +145,10 @@ addToLibrary({
       };
     },
     // Common code for both node and stream setattr
-    // For node getatrr:
+    // For node getattr:
     //  - arg is a native path
     //  - chmod, utimes, truncate are fs.chmodSync,  fs.utimesSync,  fs.truncateSync
-    // For stream getatrr:
+    // For stream getattr:
     //  - arg is a native file descriptor
     //  - chmod, utimes, truncate are fs.fchmodSync, fs.futimesSync, fs.ftruncateSync
     setattr(arg, node, attr, chmod, utimes, truncate, stat) {
@@ -272,12 +272,12 @@ addToLibrary({
       },
       read(stream, buffer, offset, length, position) {
         return NODEFS.tryFSOperation(() =>
-          fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position)
+          fs.readSync(stream.nfd, buffer, offset, length, position)
         );
       },
       write(stream, buffer, offset, length, position) {
         return NODEFS.tryFSOperation(() =>
-          fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position)
+          fs.writeSync(stream.nfd, buffer, offset, length, position)
         );
       },
       llseek(stream, offset, whence) {

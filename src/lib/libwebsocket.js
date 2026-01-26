@@ -161,7 +161,7 @@ var LibraryWebSocket = {
     }
 
 #if WEBSOCKET_DEBUG
-    dbg(`emscripten_websocket_set_onopen_callback(socketId=${socketId},userData=${userData},callbackFunc='+callbackFunc})`);
+    dbg(`emscripten_websocket_set_onopen_callback(socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
     socket.onopen = function(e) {
 #if WEBSOCKET_DEBUG

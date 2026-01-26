@@ -4,12 +4,12 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Tool for creating/maintains the python launcher scripts for all the emscripten
+"""Tool for creating/maintaining the python launcher scripts for all the emscripten
 python tools.
 
-This tools makes copies or `run_python.sh/.bat` and `run_python_compiler.sh/.bat`
+This tool makes copies or `run_python.sh/.bat` and `run_python_compiler.sh/.bat`
 script for each entry point. On UNIX we previously used symbolic links for
-simplicity but this breaks MINGW users on windows who want use the shell script
+simplicity but this breaks MINGW users on windows who want to use the shell script
 launcher but don't have symlink support.
 """
 
@@ -68,7 +68,8 @@ def make_executable(filename):
 
 def main(all_platforms):
   is_windows = sys.platform.startswith('win')
-  do_unix = all_platforms or not is_windows
+  is_msys2 = 'MSYSTEM' in os.environ
+  do_unix = all_platforms or not is_windows or is_msys2
   do_windows = all_platforms or is_windows
 
   def generate_entry_points(cmd, path):

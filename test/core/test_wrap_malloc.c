@@ -43,7 +43,7 @@ int main() {
     void *ptr = malloc(1024 * 1024);
     // Make sure we do something with the pointer do ensure the optimizer
     // doesn't completely remove the allocation.
-    emscripten_console_logf("alloacted: %p", ptr);
+    emscripten_console_logf("allocated: %p", ptr);
     free(ptr);
   }
 

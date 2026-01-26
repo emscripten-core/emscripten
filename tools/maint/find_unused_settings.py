@@ -11,7 +11,7 @@ root_dir = os.path.dirname(os.path.dirname(script_dir))
 
 sys.path.insert(0, root_dir)
 
-# This avoiding including `LEGACY_SETTINGS`
+# This avoids including `LEGACY_SETTINGS`
 os.environ['EMCC_STRICT'] = '1'
 
 from tools.settings import settings

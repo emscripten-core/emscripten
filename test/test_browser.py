@@ -200,6 +200,21 @@ def also_with_threads(f):
   return decorated
 
 
+def also_with_proxy_to_pthread(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, threads, *args, **kwargs):
+    if threads:
+      self.cflags += ['-pthread', '-sPROXY_TO_PTHREAD']
+    f(self, *args, **kwargs)
+
+  parameterize(decorated, {'': (False,),
+                           'proxy_to_pthread': (True,)})
+
+  return decorated
+
+
 def skipIfFeatureNotAvailable(skip_env_var, feature, message):
   for env_var in skip_env_var if type(skip_env_var) == list else [skip_env_var]:
     should_skip = browser_should_skip_feature(env_var, feature)
@@ -471,14 +486,11 @@ window.close = () => {
     self.btest_exit('main.c', cflags=['--pre-js', 'pre.js', '--use-preload-plugins'])
 
   # Tests that user .html shell files can manually download .data files created with --preload-file cmdline.
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
-  })
-  def test_preload_file_with_manual_data_download(self, args):
+  @also_with_proxy_to_pthread
+  def test_preload_file_with_manual_data_download(self):
     create_file('file.txt', 'Hello!')
 
-    self.compile_btest('browser/test_manual_download_data.c', ['-sEXIT_RUNTIME', '-o', 'out.js', '--preload-file', 'file.txt@/file.txt'] + args)
+    self.compile_btest('browser/test_manual_download_data.c', ['-sEXIT_RUNTIME', '-o', 'out.js', '--preload-file', 'file.txt@/file.txt'])
     shutil.copy(test_file('browser/test_manual_download_data.html'), '.')
 
     # Move .data file out of server root to ensure that getPreloadedPackage is actually used
@@ -528,7 +540,7 @@ window.close = () => {
     self.run_browser(page_file, '/report_result?exit:0')
 
   # Clear all IndexedDB databases. This gives us a fresh state for tests that
-  # chech caching.
+  # check caching.
   def clear_indexed_db(self):
     self.add_browser_reporting()
     create_file('clear_indexed_db.html', '''
@@ -1223,7 +1235,7 @@ window.close = () => {
       self.btest_exit('test_webgl_context_attributes_sdl2.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-sUSE_SDL=2', '-lGLEW'])
     self.btest_exit('test_webgl_context_attributes_glfw.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-DAA_ACTIVATED', '-DDEPTH_ACTIVATED', '-DSTENCIL_ACTIVATED', '-DALPHA_ACTIVATED', '-lGL', '-lglfw', '-lGLEW'])
 
-    # perform tests with attributes desactivated
+    # perform tests with attributes deactivated
     self.btest_exit('test_webgl_context_attributes_glut.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglut', '-lGLEW'])
     self.btest_exit('test_webgl_context_attributes_sdl.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lSDL', '-lGLEW'])
     self.btest_exit('test_webgl_context_attributes_glfw.c', cflags=['--js-library', 'check_webgl_attributes_support.js', '-lGL', '-lglfw', '-lGLEW'])
@@ -1536,12 +1548,9 @@ window.close = () => {
   def test_egl(self, args):
     self.btest_exit('test_egl.c', cflags=['-O2', '-lEGL', '-lGL', '-sGL_ENABLE_GET_PROC_ADDRESS'] + args)
 
-  @parameterized({
-    '': ([],),
-    'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
-  })
-  def test_egl_width_height(self, args):
-    self.btest_exit('test_egl_width_height.c', cflags=['-O2', '-lEGL', '-lGL'] + args)
+  @also_with_proxy_to_pthread
+  def test_egl_width_height(self):
+    self.btest_exit('test_egl_width_height.c', cflags=['-O2', '-lEGL', '-lGL'])
 
   @requires_graphics_hardware
   def test_egl_createcontext_error(self):
@@ -1821,12 +1830,9 @@ window.close = () => {
   def test_emscripten_api_infloop(self):
     self.btest_exit('emscripten_api_browser_infloop.cpp')
 
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
-  })
-  def test_emscripten_main_loop(self, args):
-    self.btest_exit('test_emscripten_main_loop.c', cflags=args)
+  @also_with_proxy_to_pthread
+  def test_emscripten_main_loop(self):
+    self.btest_exit('test_emscripten_main_loop.c')
 
   @parameterized({
     '': ([],),
@@ -1836,12 +1842,9 @@ window.close = () => {
   def test_emscripten_main_loop_settimeout(self, args):
     self.btest_exit('test_emscripten_main_loop_settimeout.c', cflags=args)
 
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
-  })
-  def test_emscripten_main_loop_and_blocker(self, args):
-    self.btest_exit('test_emscripten_main_loop_and_blocker.c', cflags=args)
+  @also_with_proxy_to_pthread
+  def test_emscripten_main_loop_and_blocker(self):
+    self.btest_exit('test_emscripten_main_loop_and_blocker.c')
 
   def test_emscripten_main_loop_and_blocker_exit(self):
     # Same as above but tests that EXIT_RUNTIME works with emscripten_main_loop.  The
@@ -2032,7 +2035,7 @@ void *getBindBuffer() {
     self.reftest('third_party/cubegeom/cubegeom_normal_dap.c', 'third_party/cubegeom/cubegeom_normal.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  def test_cubegeom_normal_dap_far(self): # indices do nto start from 0
+  def test_cubegeom_normal_dap_far(self): # indices do not start from 0
     self.reftest('third_party/cubegeom/cubegeom_normal_dap_far.c', 'third_party/cubegeom/cubegeom_normal.png', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
@@ -3052,8 +3055,13 @@ Module["preRun"] = () => {
     # key events should be detected using SDL_PumpEvents
     self.btest_exit('test_sdl2_pumpevents.c', cflags=['--pre-js', test_file('browser/fake_events.js'), '-sUSE_SDL=2'])
 
+  @also_with_proxy_to_pthread
+  def test_sdl_timer(self):
+    self.btest_exit('test_sdl_timer.c', cflags=['-sUSE_SDL'])
+
+  @also_with_proxy_to_pthread
   def test_sdl2_timer(self):
-    self.btest_exit('test_sdl2_timer.c', cflags=['-sUSE_SDL=2'])
+    self.btest_exit('test_sdl_timer.c', cflags=['-sUSE_SDL=2', '-DUSE_SDL2'])
 
   def test_sdl2_canvas_size(self):
     self.btest_exit('test_sdl2_canvas_size.c', cflags=['-sUSE_SDL=2'])
@@ -3314,7 +3322,7 @@ Module["preRun"] = () => {
     # use EXPORT_NAME
     'export_name': (['-sEXPORT_NAME="HelloWorld"'], '''
        if (typeof Module !== "undefined") throw "what?!"; // do not pollute the global scope, we are modularized!
-       HelloWorld.noInitialRun = true; // errorneous module capture will load this and cause timeout
+       HelloWorld.noInitialRun = true; // erroneous module capture will load this and cause timeout
        let promise = HelloWorld();
        if (!promise instanceof Promise) throw new Error('Return value should be a promise');
     '''),
@@ -3484,7 +3492,7 @@ Module["preRun"] = () => {
   def test_dlopen_blocking(self):
     self.emcc('other/test_dlopen_blocking_side.c', ['-o', 'libside.so', '-sSIDE_MODULE', '-pthread', '-Wno-experimental'])
     # Attempt to use dlopen the side module (without preloading) should fail on the main thread
-    # since the syncronous `readBinary` function does not exist.
+    # since the synchronous `readBinary` function does not exist.
     self.btest_exit('other/test_dlopen_blocking.c', assert_returncode=1, cflags=['-sMAIN_MODULE=2', '-sAUTOLOAD_DYLIBS=0', 'libside.so'])
     # But with PROXY_TO_PTHEAD it does work, since we can do blocking and sync XHR in a worker.
     self.btest_exit('other/test_dlopen_blocking.c', cflags=['-sMAIN_MODULE=2', '-sPROXY_TO_PTHREAD', '-pthread', '-Wno-experimental', '-sAUTOLOAD_DYLIBS=0', 'libside.so'])
@@ -3585,7 +3593,7 @@ Module["preRun"] = () => {
     # Test asynchronously loading two side modules during startup
     # They should always load in the same order
     # Verify that function pointers in the browser's main thread
-    # reffer to the same function as in a pthread worker.
+    # refer to the same function as in a pthread worker.
 
     # The main thread function table is populated asynchronously
     # in the browser's main thread. However, it should still be
@@ -4045,8 +4053,8 @@ Module["preRun"] = () => {
   @no_safari('TODO: Hangs') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   @also_with_wasmfs
   def test_pthread_asan_use_after_free_2(self):
-    # similiar to test_pthread_asan_use_after_free, but using a pool instead
-    # of proxy-to-pthread, and al, '-Wno-experimental'so the allocation happens on the pthread
+    # similar to test_pthread_asan_use_after_free, but using a pool instead
+    # of proxy-to-pthread, and also the allocation happens on the pthread
     # (which tests that it can use the offset converter to get the stack
     # trace there)
     self.btest('pthread/test_pthread_asan_use_after_free_2.cpp', expected='1', cflags=['-fsanitize=address', '-pthread', '-sPTHREAD_POOL_SIZE=1', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free_2.js')])
@@ -4574,21 +4582,15 @@ Module["preRun"] = () => {
 
   # Test that emscripten_get_device_pixel_ratio() is callable from pthreads (and proxies to main
   # thread to obtain the proper window.devicePixelRatio value).
-  @parameterized({
-    '': ([],),
-    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
-  })
-  def test_emscripten_get_device_pixel_ratio(self, args):
-    self.btest_exit('emscripten_get_device_pixel_ratio.c', cflags=args)
+  @also_with_proxy_to_pthread
+  def test_emscripten_get_device_pixel_ratio(self):
+    self.btest_exit('emscripten_get_device_pixel_ratio.c')
 
   # Tests that emscripten_run_script() variants of functions work in pthreads.
-  @parameterized({
-    '': ([],),
-    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
-  })
-  def test_pthread_run_script(self, args):
+  @also_with_proxy_to_pthread
+  def test_pthread_run_script(self):
     shutil.copy(test_file('pthread/foo.js'), '.')
-    self.btest_exit('pthread/test_pthread_run_script.c', cflags=['-O3'] + args)
+    self.btest_exit('pthread/test_pthread_run_script.c', cflags=['-O3'])
 
   # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
   @requires_graphics_hardware
@@ -5267,7 +5269,7 @@ Module["preRun"] = () => {
 
   # Test that it is possible to malloc() a huge 3GB memory block in 4GB mode using dlmalloc.
   @no_firefox('no 4GB support yet')
-  @no_2gb('not enough space tp run in this mode')
+  @no_2gb('not enough space to run in this mode')
   def test_dlmalloc_3gb(self):
     if self.is_4gb():
       self.set_setting('MAXIMUM_MEMORY', '8GB')
@@ -5383,7 +5385,7 @@ Module["preRun"] = () => {
   })
   def test_manual_pthread_proxy_hammer(self, args):
     # the specific symptom of the hang that was fixed is that the test hangs
-    # at some point, using 0% CPU. often that occured in 0-200 iterations, but
+    # at some point, using 0% CPU. often that occurred in 0-200 iterations, but
     # you may want to adjust "ITERATIONS".
     self.btest_exit('pthread/test_pthread_proxy_hammer.cpp',
                     cflags=['-pthread', '-O2', '-sPROXY_TO_PTHREAD',
@@ -5478,6 +5480,44 @@ Module["preRun"] = () => {
   def test_audio_worklet_emscripten_locks(self):
     self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
+  def test_audio_worklet_direct(self):
+    self.add_browser_reporting()
+    self.emcc('hello_world.c', ['-o', 'hello_world.mjs', '-sEXPORT_ES6', '-sSINGLE_FILE', '-sENVIRONMENT=worklet'])
+    create_file('worklet.mjs', '''
+      import Module from "./hello_world.mjs"
+      console.log("in worklet");
+      class MyProcessor extends AudioWorkletProcessor {
+        constructor() {
+          super();
+          Module().then(() => {
+            console.log("done Module constructor");
+            this.port.postMessage("ready");
+          });
+        }
+        process(inputs, outputs, parameters) {
+          return true;
+        }
+      }
+      registerProcessor('my-processor', MyProcessor);
+      console.log("done register");
+    ''')
+    create_file('test.html', '''
+      <script src="browser_reporting.js"></script>
+      <script>
+        async function createContext() {
+          const context = new window.AudioContext();
+          await context.audioWorklet.addModule('worklet.mjs');
+          const node = new AudioWorkletNode(context, 'my-processor');
+          node.port.onmessage = (event) => {
+            console.log(event);
+            reportResultToServer(event.data);
+          }
+        }
+        createContext();
+      </script>
+    ''')
+    self.run_browser('test.html', '/report_result?ready')
+
   # Verifies setting audio context sample rate, and that emscripten_audio_context_sample_rate() works.
   @requires_sound_hardware
   @also_with_minimal_runtime
@@ -5552,7 +5592,7 @@ Module["preRun"] = () => {
     create_file('subdir/foo.txt', 'hello')
     self.compile_btest('hello_world.c', ['-o', 'subdir/hello.js', '-sRUNTIME_DEBUG', '-sCROSS_ORIGIN', '-sPROXY_TO_PTHREAD', '-pthread', '-sEXIT_RUNTIME'] + args)
 
-    class MyReqestHandler(SimpleHTTPRequestHandler):
+    class MyRequestHandler(SimpleHTTPRequestHandler):
       def __init__(self, *args, **kwargs):
         super().__init__(*args, directory='subdir', **kwargs)
 
@@ -5576,7 +5616,7 @@ Module["preRun"] = () => {
     else:
       create_file('test.html', f'<script src="http://localhost:{port}/hello.js"></script>')
 
-    server = HttpServerThread(ThreadingHTTPServer(('localhost', port), MyReqestHandler))
+    server = HttpServerThread(ThreadingHTTPServer(('localhost', port), MyRequestHandler))
     server.start()
     try:
       self.run_browser('test.html', '/report_result?exit:0')

@@ -61,7 +61,7 @@ bool _emscripten_get_now_is_monotonic(void);
 
 void _emscripten_get_progname(char*, int);
 
-// Not defined in musl, but defined in library.js.  Included here to for
+// Not defined in musl, but defined in library.js.  Included here for
 // the benefit of gen_sig_info.py
 char* strptime_l(const char* __restrict __s,
                  const char* __restrict __fmt,
@@ -150,6 +150,8 @@ void _emscripten_log_formatted(int flags, const char* str);
 EmscriptenDeviceOrientationEvent* _emscripten_get_last_deviceorientation_event();
 EmscriptenDeviceMotionEvent* _emscripten_get_last_devicemotion_event();
 EmscriptenMouseEvent* _emscripten_get_last_mouse_event();
+
+int _poll_js(void* fds, int nfds, int timeout, void* ctx, void* arg);
 
 #ifdef __cplusplus
 }

@@ -15,7 +15,7 @@ logger = logging.getLogger('config')
 
 # The following class can be overridden by the config file and/or
 # environment variables.  Specifically any variable whose name
-# is in ALL_UPPER_CASE is condifered a valid config file key.
+# is in ALL_UPPER_CASE is considered a valid config file key.
 # See parse_config_file below.
 EMSCRIPTEN_ROOT = __rootpath__
 NODE_JS = None

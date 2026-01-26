@@ -194,7 +194,7 @@ class WasmSourceMap:
     if lo == 0:
       return None
     # If lower bound is given, return the offset only if the offset is equal to
-    # or greather than the lower bound
+    # or greater than the lower bound
     if lower_bound:
       if self.offsets[lo - 1] >= lower_bound:
         return self.offsets[lo - 1]

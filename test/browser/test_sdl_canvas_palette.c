@@ -13,9 +13,9 @@ int main() {
   SDL_Init(SDL_INIT_VIDEO);
   SDL_Surface *screen = SDL_SetVideoMode(600, 400, 8, SDL_HWSURFACE | SDL_HWPALETTE);
 
-  //initialize sdl palette
-  //with red green and blue
-  //colors
+  // initialize sdl palette
+  // with red green and blue
+  // colors
   SDL_Color pal[3];
   pal[0].r = 255;
   pal[0].g = 0;
@@ -46,8 +46,8 @@ int main() {
     SDL_FillRect(screen, &rect, 2);
   }
 
-  //changing green color
-  //to yellow
+  // changing green color
+  // to yellow
   pal[1].r = 255;
   SDL_SetColors(screen, &pal[1], 1, 1);
 

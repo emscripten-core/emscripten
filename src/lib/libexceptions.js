@@ -11,7 +11,7 @@ var LibraryExceptions = {
   $exceptionCaught: ' []',
 
   // This class is the exception metadata which is prepended to each thrown object (in WASM memory).
-  // It is allocated in one block among with a thrown object in __cxa_allocate_exception and freed
+  // It is allocated in one block along with a thrown object in __cxa_allocate_exception and freed
   // in ___cxa_free_exception. It roughly corresponds to __cxa_exception structure in libcxxabi. The
   // class itself is just a native pointer wrapper, and contains all the necessary accessors for the
   // fields in the native structure.
@@ -82,7 +82,11 @@ var LibraryExceptions = {
 
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
-  __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'],
+  __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'
+#if !DISABLE_EXCEPTION_CATCHING
+  , '__cxa_increment_exception_refcount'
+#endif
+  ],
   __cxa_throw: (ptr, type, destructor) => {
 #if EXCEPTION_DEBUG
     dbg('__cxa_throw: ' + [ptrToString(ptr), type, ptrToString(destructor)]);
@@ -90,6 +94,9 @@ var LibraryExceptions = {
     var info = new ExceptionInfo(ptr);
     // Initialize ExceptionInfo content after it was allocated in __cxa_allocate_exception.
     info.init(type, destructor);
+#if !DISABLE_EXCEPTION_CATCHING
+    ___cxa_increment_exception_refcount(ptr);
+#endif
     {{{ storeException('exceptionLast', 'ptr') }}}
     uncaughtExceptionCount++;
     {{{ makeThrow('exceptionLast') }}}
@@ -98,7 +105,11 @@ var LibraryExceptions = {
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast', '$uncaughtExceptionCount'],
+  __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast', '$uncaughtExceptionCount'
+#if !DISABLE_EXCEPTION_CATCHING
+  , '__cxa_increment_exception_refcount'
+#endif
+  ],
   __cxa_rethrow: () => {
     var info = exceptionCaught.pop();
     if (!info) {
@@ -112,6 +123,9 @@ var LibraryExceptions = {
       info.set_caught(false);
       uncaughtExceptionCount++;
     }
+#if !DISABLE_EXCEPTION_CATCHING
+    ___cxa_increment_exception_refcount(ptr);
+#endif
 #if EXCEPTION_DEBUG
     dbg('__cxa_rethrow, popped ' +
       [ptrToString(ptr), exceptionLast, 'stack', exceptionCaught]);
@@ -122,8 +136,7 @@ var LibraryExceptions = {
 
   llvm_eh_typeid_for: (type) => type,
 
-  __cxa_begin_catch__deps: ['$exceptionCaught', '__cxa_increment_exception_refcount',
-                            '__cxa_get_exception_ptr',
+  __cxa_begin_catch__deps: ['$exceptionCaught', '__cxa_get_exception_ptr',
                             '$uncaughtExceptionCount'],
   __cxa_begin_catch: (ptr) => {
     var info = new ExceptionInfo(ptr);
@@ -136,7 +149,6 @@ var LibraryExceptions = {
 #if EXCEPTION_DEBUG
     dbg('__cxa_begin_catch ' + [ptrToString(ptr), 'stack', exceptionCaught]);
 #endif
-    ___cxa_increment_exception_refcount(ptr);
     return ___cxa_get_exception_ptr(ptr);
   },
 
@@ -353,7 +365,7 @@ var LibraryExceptions = {
 // of these functions using JS 'arguments' object.
 addCxaCatch = (n) => {
   const args = [];
-  // Confusingly, the actual number of asrgument is n - 2. According to the llvm
+  // Confusingly, the actual number of argument is n - 2. According to the llvm
   // code in WebAssemblyLowerEmscriptenEHSjLj.cpp:
   // This is because a landingpad instruction contains two more arguments, a
   // personality function and a cleanup bit, and __cxa_find_matching_catch_N

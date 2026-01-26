@@ -89,7 +89,7 @@ if (!globalThis.BigInt64Array) {
               return Reflect.set(target, idx, value, receiver);
             }
             if (typeof value !== "bigint") {
-              // Chrome error message, Firefox has no "a" in front if "BigInt".
+              // Chrome error message, Firefox has no "a" in front of "BigInt".
               throw new TypeError(`Cannot convert ${value} to a BigInt`);
             }
             var pair = bigIntToParts(value);

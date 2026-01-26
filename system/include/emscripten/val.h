@@ -15,6 +15,7 @@
 #include <vector>
 #include <type_traits>
 #include <pthread.h>
+#include <optional>
 #if __cplusplus >= 202002L
 #include <coroutine>
 #include <exception>
@@ -291,7 +292,7 @@ public:
       val view{ typed_memory_view(std::distance(begin, end), std::to_address(begin)) };
       return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
     }
-    // For numeric arrays, following codes are unreachable and the compiler
+    // For numeric arrays, the following code is unreachable and the compiler
     // will do 'dead code elimination'.
     // Others fallback old way.
 #endif
@@ -795,13 +796,13 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
                                               !std::is_const<T>::value>::type> {
   typedef EM_VAL WireType;
 
-  // Marshall to JS with move semantics when we can invalidate the temporary val
+  // Marshal to JS with move semantics when we can invalidate the temporary val
   // object.
   static WireType toWireType(val&& v, rvp::default_tag) {
     return v.release_ownership();
   }
 
-  // Marshal to JS with copy semantics when we cannot transfer the val objects
+  // Marshal to JS with copy semantics when we cannot transfer the val object's
   // reference count.
   static WireType toWireType(const val& v, rvp::default_tag) {
     EM_VAL handle = v.as_handle();
@@ -813,6 +814,29 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
   static T fromWireType(WireType v) {
     return T(val::take_ownership(v));
   }
+};
+
+template <typename T>
+struct BindingType<std::optional<T>> {
+    using ValBinding = BindingType<val>;
+    using WireType = ValBinding::WireType;
+
+    template<typename ReturnPolicy = void>
+    static WireType toWireType(std::optional<T> value, rvp::default_tag) {
+        if (value) {
+            return ValBinding::toWireType(val(*value, allow_raw_pointers()), rvp::default_tag{});
+        }
+        return ValBinding::toWireType(val::undefined(), rvp::default_tag{});
+    }
+
+
+    static std::optional<T> fromWireType(WireType value) {
+        val optional = val::take_ownership(value);
+        if (optional.isUndefined()) {
+            return {};
+        }
+        return optional.as<T>();
+    }
 };
 
 }
