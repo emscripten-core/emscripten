@@ -8,5 +8,5 @@ st_size: 10
 
 posix_fallocate 3: Invalid argument
 posix_fallocate 4: Invalid argument
-posix_fallocate 5: Value too large for data type
-posix_fallocate 6: Value too large for data type
+posix_fallocate 5: Value too large for defined data type
+posix_fallocate 6: Value too large for defined data type

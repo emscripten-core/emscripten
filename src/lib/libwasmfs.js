@@ -228,7 +228,9 @@ addToLibrary({
     },
     // offset is passed to msync to maintain backwards compatibility with the legacy JS API but is not used by WasmFS.
     msync: (stream, bufferPtr, offset, length, mmapFlags) => {
+#if ASSERTIONS
       assert(offset === 0);
+#endif
       // TODO: assert that stream has the fd corresponding to the mapped buffer (bufferPtr).
       return FS.handleError(__wasmfs_msync(bufferPtr, length, mmapFlags));
     },

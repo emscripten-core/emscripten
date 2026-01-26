@@ -317,6 +317,7 @@ var INLINING_LIMIT = false;
 // function call that uses DataView to enforce LE byte order for HEAP buffer;
 // This makes generated JavaScript run on BE as well as LE machines. (If 0, only
 // LE systems are supported). Does not affect generated wasm.
+// [experimental]
 var SUPPORT_BIG_ENDIAN = false;
 
 // Check each write to the heap, for example, this will give a clear
@@ -913,12 +914,6 @@ var ASYNCIFY_ONLY = [];
 // If enabled will output which functions have been instrumented and why.
 // [link]
 var ASYNCIFY_ADVISE = false;
-
-// Allows lazy code loading: where emscripten_lazy_load_code() is written, we
-// will pause execution, load the rest of the code, and then resume.
-// [link]
-// [deprecated]
-var ASYNCIFY_LAZY_LOAD_CODE = false;
 
 // Runtime debug logging from asyncify internals.
 //
@@ -2006,17 +2001,6 @@ var MINIFY_HTML = true;
 // [link]
 var ASAN_SHADOW_SIZE = -1;
 
-// Whether we should use the offset converter.  This is needed for older
-// versions of v8 (<7.7) that does not give the hex module offset into wasm
-// binary in stack traces, as well as for avoiding using source map entries
-// across function boundaries.
-// [link]
-var USE_OFFSET_CONVERTER = false;
-
-// Whether we should load the WASM source map at runtime.
-// This is enabled automatically when using -gsource-map with sanitizers.
-var LOAD_SOURCE_MAP = false;
-
 // List of path substitutions to apply in the "sources" field of the source map.
 // Corresponds to the ``--prefix`` option used in ``tools/wasm-sourcemap.py``.
 // Must be used with ``-gsource-map``.
@@ -2288,4 +2272,6 @@ var LEGACY_SETTINGS = [
   ['DEMANGLE_SUPPORT', [0], 'No longer supported'],
   ['MAYBE_WASM2JS', [0], 'No longer supported (use -sWASM=2)'],
   ['HEADLESS', [0], 'No longer supported, use headless browsers or Node.js with JSDOM'],
+  ['USE_OFFSET_COVERTER', [0], 'No longer supported, not needed with modern v8 versions'],
+  ['ASYNCIFY_LAZY_LOAD_CODE', [0], 'No longer supported'],
 ];

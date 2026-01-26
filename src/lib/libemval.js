@@ -101,6 +101,7 @@ var LibraryEmVal = {
   _emval_new_array__deps: ['$Emval'],
   _emval_new_array: () => Emval.toHandle([]),
 
+#if !SUPPORT_BIG_ENDIAN
   _emval_new_array_from_memory_view__deps: ['$Emval'],
   _emval_new_array_from_memory_view: (view) => {
     view = Emval.toValue(view);
@@ -109,6 +110,53 @@ var LibraryEmVal = {
     for (var i = 0; i < view.length; i++) a[i] = view[i];
     return Emval.toHandle(a);
   },
+  _emval_array_to_memory_view__deps: ['$Emval'],
+  _emval_array_to_memory_view: (dst, src) => {
+    dst = Emval.toValue(dst);
+    src = Emval.toValue(src);
+    dst.set(src);
+  },
+#else
+  _emval_new_array_from_memory_view__deps: ['$Emval'],
+  _emval_new_array_from_memory_view: (view) => {
+    view = Emval.toValue(view);
+    const dv = new DataView(view.buffer, view.byteOffset);
+    const reader = {
+      Int8Array: dv.getInt8,
+      Uint8Array: dv.getUint8,
+      Int16Array: dv.getInt16,
+      Uint16Array: dv.getUint16,
+      Int32Array: dv.getInt32,
+      Uint32Array: dv.getUint32,
+      BigInt64Array: dv.getBigInt64,
+      BigUint64Array: dv.getBigUint64,
+      Float32Array: dv.getFloat32,
+      Float64Array: dv.getFloat64,
+    }[view[Symbol.toStringTag]];
+    var a = new Array(view.length);
+    for (var i = 0; i < view.length; i++) a[i] = reader.call(dv, i * view.BYTES_PER_ELEMENT, true);
+    return Emval.toHandle(a);
+  },
+  _emval_array_to_memory_view__deps: ['$Emval'],
+  _emval_array_to_memory_view: (dst, src) => {
+    dst = Emval.toValue(dst);
+    src = Emval.toValue(src);
+    const dv = new DataView(dst.buffer, dst.byteOffset);
+    const writer = {
+      Int8Array: dv.setInt8,
+      Uint8Array: dv.setUint8,
+      Int16Array: dv.setInt16,
+      Uint16Array: dv.setUint16,
+      Int32Array: dv.setInt32,
+      Uint32Array: dv.setUint32,
+      BigInt64Array: dv.setBigInt64,
+      BigUint64Array: dv.setBigUint64,
+      Float32Array: dv.setFloat32,
+      Float64Array: dv.setFloat64,
+    }[dst[Symbol.toStringTag]];
+    for (var i = 0; i < src.length; i++) writer.call(dv, i * dst.BYTES_PER_ELEMENT, src[i], true);
+  },
+#endif
 
   _emval_new_object__deps: ['$Emval'],
   _emval_new_object: () => Emval.toHandle({}),
@@ -122,52 +170,13 @@ var LibraryEmVal = {
   _emval_new_u16string__deps: ['$Emval'],
   _emval_new_u16string: (v) => Emval.toHandle(UTF16ToString(v)),
 
-#if SUPPORTS_GLOBALTHIS
-  $emval_get_global: () => globalThis,
-#elif !DYNAMIC_EXECUTION
-  $emval_get_global: () => {
-    if (typeof globalThis == 'object') {
-      return globalThis;
-    }
-    function testGlobal(obj) {
-      obj['$$$embind_global$$$'] = obj;
-      var success = typeof $$$embind_global$$$ == 'object' && obj['$$$embind_global$$$'] == obj;
-      if (!success) {
-        delete obj['$$$embind_global$$$'];
-      }
-      return success;
-    }
-    if (typeof $$$embind_global$$$ == 'object') {
-      return $$$embind_global$$$;
-    }
-    if (typeof global == 'object' && testGlobal(global)) {
-      $$$embind_global$$$ = global;
-    } else if (typeof self == 'object' && testGlobal(self)) {
-      $$$embind_global$$$ = self; // This works for both "window" and "self" (Web Workers) global objects
-    }
-    if (typeof $$$embind_global$$$ == 'object') {
-      return $$$embind_global$$$;
-    }
-    throw Error('unable to get global object.');
-  },
-#else
-  $emval_get_global: () => {
-    if (typeof globalThis == 'object') {
-      return globalThis;
-    }
-    return (function(){
-      return Function;
-    })()('return this')();
-  },
-#endif
-  _emval_get_global__deps: ['$Emval', '$getStringOrSymbol', '$emval_get_global'],
+  _emval_get_global__deps: ['$Emval', '$getStringOrSymbol', '$emGlobalThis'],
   _emval_get_global: (name) => {
-    if (name===0) {
-      return Emval.toHandle(emval_get_global());
-    } else {
-      name = getStringOrSymbol(name);
-      return Emval.toHandle(emval_get_global()[name]);
+    if (!name) {
+      return Emval.toHandle(emGlobalThis);
     }
+    name = getStringOrSymbol(name);
+    return Emval.toHandle(emGlobalThis[name]);
   },
 
   _emval_get_module_property__deps: ['$getStringOrSymbol', '$Emval'],

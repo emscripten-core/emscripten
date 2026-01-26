@@ -366,8 +366,8 @@ named_benchmarkers = {
   'v8-lto': EmscriptenBenchmarker('v8-lto', aot_v8, ['-flto']),
   'v8-ctors': EmscriptenBenchmarker('v8-ctors', aot_v8, ['-sEVAL_CTORS']),
   'v8-64': EmscriptenBenchmarker('v8-64', aot_v8, ['-sMEMORY64=2']),
-  'node': EmscriptenBenchmarker('node', config.NODE_JS),
-  'node-64': EmscriptenBenchmarker('node-64', config.NODE_JS, ['-sMEMORY64=2']),
+  'node': EmscriptenBenchmarker('node', config.NODE_JS_TEST),
+  'node-64': EmscriptenBenchmarker('node-64', config.NODE_JS_TEST, ['-sMEMORY64=2']),
   'cherp-v8': CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
   # TODO: ensure no baseline compiler is used, see v8
   'sm': EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),

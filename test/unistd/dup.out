@@ -1,5 +1,5 @@
 DUP
-errno: No error information
+errno: Success
 f: 1
 f2,f3: 1
 close(f1): 0
@@ -7,7 +7,7 @@ close(f2): 0
 close(f3): 0
 
 DUP2
-errno: No error information
+errno: Success
 f: 1
 f2,f3: 1
 close(f1): 0

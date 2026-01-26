@@ -55,7 +55,13 @@ entry_remap = {
   'emprofile': 'tools/emprofile',
   'emdwp': 'tools/emdwp',
   'emnm': 'tools/emnm',
+  'emsymbolizer': 'tools/emsymbolizer',
 }
+
+
+def make_executable(filename):
+  old_mode = stat.S_IMODE(os.stat(filename).st_mode)
+  os.chmod(filename, old_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
 def main(all_platforms):
@@ -87,7 +93,7 @@ def main(all_platforms):
         out_sh_file = os.path.join(__rootdir__, entry_point)
         with open(out_sh_file, 'w') as f:
           f.write(sh_data)
-        os.chmod(out_sh_file, stat.S_IMODE(os.stat(out_sh_file).st_mode) | stat.S_IXUSR)
+        make_executable(out_sh_file)
 
       if do_windows:
         with open(os.path.join(__rootdir__, entry_point + '.bat'), 'w') as f:

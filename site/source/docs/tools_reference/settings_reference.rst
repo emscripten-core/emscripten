@@ -427,6 +427,8 @@ function call that uses DataView to enforce LE byte order for HEAP buffer;
 This makes generated JavaScript run on BE as well as LE machines. (If 0, only
 LE systems are supported). Does not affect generated wasm.
 
+.. note:: This is an experimental setting
+
 Default value: false
 
 .. _safe_heap:
@@ -1343,18 +1345,6 @@ ASYNCIFY_ADVISE
 ===============
 
 If enabled will output which functions have been instrumented and why.
-
-Default value: false
-
-.. _asyncify_lazy_load_code:
-
-ASYNCIFY_LAZY_LOAD_CODE
-=======================
-
-Allows lazy code loading: where emscripten_lazy_load_code() is written, we
-will pause execution, load the rest of the code, and then resume.
-
-.. note:: This setting is deprecated
 
 Default value: false
 
@@ -3052,28 +3042,6 @@ calculated from INITIAL_MEMORY and MAXIMUM_MEMORY. Will be removed in a
 future release.
 
 Default value: -1
-
-.. _use_offset_converter:
-
-USE_OFFSET_CONVERTER
-====================
-
-Whether we should use the offset converter.  This is needed for older
-versions of v8 (<7.7) that does not give the hex module offset into wasm
-binary in stack traces, as well as for avoiding using source map entries
-across function boundaries.
-
-Default value: false
-
-.. _load_source_map:
-
-LOAD_SOURCE_MAP
-===============
-
-Whether we should load the WASM source map at runtime.
-This is enabled automatically when using -gsource-map with sanitizers.
-
-Default value: false
 
 .. _source_map_prefixes:
 

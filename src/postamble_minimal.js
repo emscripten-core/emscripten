@@ -122,11 +122,14 @@ var imports = {
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
+#if MIN_FIREFOX_VERSION < 58 || MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
 #if ASSERTIONS && !WASM2JS
 // Module['wasm'] should contain a typed array of the Wasm object data, or a
 // precompiled WebAssembly Module.
 assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
+#endif
+#if AUDIO_WORKLET
+instantiatePromise =
 #endif
 (WebAssembly.instantiateStreaming
 #if ENVIRONMENT_MAY_BE_NODE
@@ -136,6 +139,9 @@ assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembl
   ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
+#if AUDIO_WORKLET
+instantiatePromise =
+#endif
 WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then((output) => {
 #endif
 
@@ -152,6 +158,9 @@ assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm 
 
 // Add missingProperties supression here because closure compiler doesn't know that
 // WebAssembly.instantiate is polymorphic in its return value.
+#if AUDIO_WORKLET
+instantiatePromise =
+#endif
 WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProperties} */ (output) => {
 #endif
 
@@ -188,13 +197,6 @@ WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProp
 
 #if MEMORY64 || CAN_ADDRESS_2GB
   wasmExports = applySignatureConversions(wasmExports);
-#endif
-
-#if USE_OFFSET_CONVERTER
-#if PTHREADS
-  if (!ENVIRONMENT_IS_PTHREAD)
-#endif
-    wasmOffsetConverter = new WasmOffsetConverter(Module['wasm'], output.module);
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS

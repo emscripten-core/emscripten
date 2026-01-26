@@ -1074,7 +1074,7 @@ var LibraryGLFW = {
       for (i = 0; i < GLFW.windows.length && GLFW.windows[i] !== null; i++) {
         // no-op
       }
-      if (i > 0) throw "glfwCreateWindow only supports one window at time currently";
+      if (i > 0) abort("glfwCreateWindow only supports one window at time currently");
 
       // id for window
       id = i + 1;
@@ -1580,9 +1580,9 @@ var LibraryGLFW = {
   // TODO: implement
   glfwSetGamma: (monitor, gamma) => 0,
 
-  glfwGetGammaRamp: (monitor) => { throw "glfwGetGammaRamp not implemented."; },
+  glfwGetGammaRamp: (monitor) => abort("glfwGetGammaRamp not implemented."),
 
-  glfwSetGammaRamp: (monitor, ramp) => { throw "glfwSetGammaRamp not implemented."; },
+  glfwSetGammaRamp: (monitor, ramp) => abort("glfwSetGammaRamp not implemented."),
 
   glfwDefaultWindowHints: () => GLFW.defaultWindowHints(),
 
@@ -1738,7 +1738,7 @@ var LibraryGLFW = {
 
   glfwSetWindowAspectRatio: (winid, numer, denom) => 0,
 
-  glfwGetWindowFrameSize: (winid, left, top, right, bottom) => { throw "glfwGetWindowFrameSize not implemented."; },
+  glfwGetWindowFrameSize: (winid, left, top, right, bottom) => abort("glfwGetWindowFrameSize not implemented."),
 
   glfwMaximizeWindow: (winid) => 0,
 
@@ -1746,7 +1746,7 @@ var LibraryGLFW = {
 
   glfwRequestWindowAttention: (winid) => 0, // maybe do window.focus()?
 
-  glfwSetWindowMonitor: (winid, monitor, xpos, ypos, width, height, refreshRate) => { throw "glfwSetWindowMonitor not implemented."; },
+  glfwSetWindowMonitor: (winid, monitor, xpos, ypos, width, height, refreshRate) => abort("glfwSetWindowMonitor not implemented."),
 
   glfwCreateCursor: (image, xhot, yhot) => 0,
 
@@ -1797,9 +1797,9 @@ var LibraryGLFW = {
 
   glfwGetKey: (winid, key) => GLFW.getKey(winid, key),
 
-  glfwGetKeyName: (key, scancode) => { throw "glfwGetKeyName not implemented."; },
+  glfwGetKeyName: (key, scancode) => abort("glfwGetKeyName not implemented."),
 
-  glfwGetKeyScancode: (key) => { throw "glfwGetKeyScancode not implemented."; },
+  glfwGetKeyScancode: (key) => abort("glfwGetKeyScancode not implemented."),
 
   glfwGetMouseButton: (winid, button) => GLFW.getMouseButton(winid, button),
 
@@ -1812,7 +1812,7 @@ var LibraryGLFW = {
 
   glfwSetCharCallback: (winid, cbfun) => GLFW.setCharCallback(winid, cbfun),
 
-  glfwSetCharModsCallback: (winid, cbfun) => { throw "glfwSetCharModsCallback not implemented."; },
+  glfwSetCharModsCallback: (winid, cbfun) => abort("glfwSetCharModsCallback not implemented."),
 
   glfwSetMouseButtonCallback: (winid, cbfun) => GLFW.setMouseButtonCallback(winid, cbfun),
 
@@ -1832,11 +1832,11 @@ var LibraryGLFW = {
 
   glfwSetDropCallback: (winid, cbfun) => GLFW.setDropCallback(winid, cbfun),
 
-  glfwGetTimerValue: () => { throw "glfwGetTimerValue is not implemented."; },
+  glfwGetTimerValue: () => abort("glfwGetTimerValue is not implemented."),
 
-  glfwGetTimerFrequency: () => { throw "glfwGetTimerFrequency is not implemented."; },
+  glfwGetTimerFrequency: () => abort("glfwGetTimerFrequency is not implemented."),
 
-  glfwGetRequiredInstanceExtensions: (count) => { throw "glfwGetRequiredInstanceExtensions is not implemented."; },
+  glfwGetRequiredInstanceExtensions: (count) => abort("glfwGetRequiredInstanceExtensions is not implemented."),
 
   glfwJoystickPresent: (joy) => {
     GLFW.refreshJoysticks();
@@ -1870,7 +1870,7 @@ var LibraryGLFW = {
     return state.buttons;
   },
 
-  glfwGetJoystickHats: (joy, count) => { throw "glfwGetJoystickHats is not implemented"; },
+  glfwGetJoystickHats: (joy, count) => abort("glfwGetJoystickHats is not implemented"),
 
   glfwGetJoystickName: (joy) => {
     if (GLFW.joys[joy]) {
@@ -1879,13 +1879,13 @@ var LibraryGLFW = {
     return 0;
   },
 
-  glfwGetJoystickGUID: (jid) => { throw "glfwGetJoystickGUID not implemented"; },
+  glfwGetJoystickGUID: (jid) => abort("glfwGetJoystickGUID not implemented"),
 
-  glfwSetJoystickUserPointer: (jid, ptr) => { throw "glfwSetJoystickUserPointer not implemented"; },
+  glfwSetJoystickUserPointer: (jid, ptr) => abort("glfwSetJoystickUserPointer not implemented"),
 
-  glfwGetJoystickUserPointer: (jid) => { throw "glfwGetJoystickUserPointer not implemented"; },
+  glfwGetJoystickUserPointer: (jid) => abort("glfwGetJoystickUserPointer not implemented"),
 
-  glfwJoystickIsGamepad: (jid) => { throw "glfwJoystickIsGamepad not implemented"; },
+  glfwJoystickIsGamepad: (jid) => abort("glfwJoystickIsGamepad not implemented"),
 
   glfwSetJoystickCallback: (cbfun) => GLFW.setJoystickCallback(cbfun),
 
@@ -1991,7 +1991,7 @@ var LibraryGLFW = {
     GLFW.setScrollCallback(GLFW.active.id, cbfun);
   },
 
-  glfwGetDesktopMode: (mode) => { throw "glfwGetDesktopMode is not implemented."; },
+  glfwGetDesktopMode: (mode) => abort("glfwGetDesktopMode is not implemented."),
 
   glfwSleep__deps: ['sleep'],
   glfwSleep: (time) => _sleep(time),
@@ -2025,37 +2025,37 @@ var LibraryGLFW = {
   // One single thread
   glfwGetThreadID: () => 0,
 
-  glfwCreateMutex: () => { throw "glfwCreateMutex is not implemented."; },
+  glfwCreateMutex: () => abort("glfwCreateMutex is not implemented."),
 
-  glfwDestroyMutex: (mutex) => { throw "glfwDestroyMutex is not implemented."; },
+  glfwDestroyMutex: (mutex) => abort("glfwDestroyMutex is not implemented."),
 
-  glfwLockMutex: (mutex) => { throw "glfwLockMutex is not implemented."; },
+  glfwLockMutex: (mutex) => abort("glfwLockMutex is not implemented."),
 
-  glfwUnlockMutex: (mutex) => { throw "glfwUnlockMutex is not implemented."; },
+  glfwUnlockMutex: (mutex) => abort("glfwUnlockMutex is not implemented."),
 
-  glfwCreateCond: () => { throw "glfwCreateCond is not implemented."; },
+  glfwCreateCond: () => abort("glfwCreateCond is not implemented."),
 
-  glfwDestroyCond: (cond) => { throw "glfwDestroyCond is not implemented."; },
+  glfwDestroyCond: (cond) => abort("glfwDestroyCond is not implemented."),
 
-  glfwWaitCond: (cond, mutex, timeout) => { throw "glfwWaitCond is not implemented."; },
+  glfwWaitCond: (cond, mutex, timeout) => abort("glfwWaitCond is not implemented."),
 
-  glfwSignalCond: (cond) => { throw "glfwSignalCond is not implemented."; },
+  glfwSignalCond: (cond) => abort("glfwSignalCond is not implemented."),
 
-  glfwBroadcastCond: (cond) => { throw "glfwBroadcastCond is not implemented."; },
+  glfwBroadcastCond: (cond) => abort("glfwBroadcastCond is not implemented."),
 
   glfwGetNumberOfProcessors: () => 1, // Threads are disabled anyway…
 
-  glfwReadImage: (name, img, flags) => { throw "glfwReadImage is not implemented."; },
+  glfwReadImage: (name, img, flags) => abort("glfwReadImage is not implemented."),
 
-  glfwReadMemoryImage: (data, size, img, flags) => { throw "glfwReadMemoryImage is not implemented."; },
+  glfwReadMemoryImage: (data, size, img, flags) => abort("glfwReadMemoryImage is not implemented."),
 
-  glfwFreeImage: (img) => { throw "glfwFreeImage is not implemented."; },
+  glfwFreeImage: (img) => abort("glfwFreeImage is not implemented."),
 
-  glfwLoadTexture2D: (name, flags) => { throw "glfwLoadTexture2D is not implemented."; },
+  glfwLoadTexture2D: (name, flags) => abort("glfwLoadTexture2D is not implemented."),
 
-  glfwLoadMemoryTexture2D: (data, size, flags) => { throw "glfwLoadMemoryTexture2D is not implemented."; },
+  glfwLoadMemoryTexture2D: (data, size, flags) => abort("glfwLoadMemoryTexture2D is not implemented."),
 
-  glfwLoadTextureImage2D: (img, flags) => { throw "glfwLoadTextureImage2D is not implemented."; },
+  glfwLoadTextureImage2D: (img, flags) => abort("glfwLoadTextureImage2D is not implemented."),
 #endif // GLFW2
 };
 

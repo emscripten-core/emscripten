@@ -159,7 +159,7 @@ def get_top_level_ninja_file():
 
 
 def run_ninja(build_dir):
-  cmd = ['ninja', '-C', build_dir, f'-j{shared.get_num_cores()}']
+  cmd = ['ninja', '-C', build_dir, f'-j{utils.get_num_cores()}']
   if shared.PRINT_SUBPROCS:
     cmd.append('-v')
   shared.check_call(cmd, env=clean_env())
@@ -538,7 +538,7 @@ class Library:
       # Choose a chunk size that is large enough to avoid too many subprocesses
       # but not too large to avoid task starvation.
       # For now the heuristic is to split inputs by 2x number of cores.
-      chunk_size = max(1, len(objects) // (2 * shared.get_num_cores()))
+      chunk_size = max(1, len(objects) // (2 * utils.get_num_cores()))
       # Convert batches to commands.
       for cmd, srcs in batches.items():
         cmd = list(cmd)
@@ -942,7 +942,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
-  cflags = ['-fno-builtin', '-DNDEBUG', '-DCOMPILER_RT_HAS_UNAME=1', '-DCOMPILER_RT_HAS_ATOMICS=1']
+  cflags = ['-fno-builtin', '-DNDEBUG', '-DCOMPILER_RT_HAS_ATOMICS=1']
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   profile_src_dir = 'system/lib/compiler-rt/lib/profile'
   includes = ['system/lib/libc', 'system/lib/compiler-rt/include']
@@ -1006,7 +1006,7 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   def get_files(self):
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/complex', '**/*.cpp')
-    files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp')
+    files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp', excludes=['memset.cpp', 'memcpy.cpp'] if self.is_asan else [])
     files += glob_in_path('system/lib/llvm-libc/src/intypes', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')

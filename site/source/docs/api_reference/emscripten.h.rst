@@ -1434,22 +1434,6 @@ Functions
     local state all the way up the stack. As a result, it will add overhead
     to your program.
 
-.. c:function:: void emscripten_lazy_load_code()
-
-    This creates two Wasm files at compile time: the first Wasm which is
-    downloaded and run normally, and a second that is lazy-loaded. When an
-    ``emscripten_lazy_load_code()`` call is reached, we load the second Wasm
-    and resume execution using it.
-
-    The idea here is that the initial download can be quite small, if you
-    place enough ``emscripten_lazy_load_code()`` calls in your codebase, as
-    the optimizer can remove code from the first Wasm if it sees it can't
-    be reached. The second downloaded Wasm can contain your full codebase,
-    including rarely-used functions, in which case the lazy-loading may
-    not happen at all.
-
-  .. note:: This requires building with ``-sASYNCIFY_LAZY_LOAD_CODE``.
-
 ABI functions
 =============
 

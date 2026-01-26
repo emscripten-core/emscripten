@@ -229,93 +229,6 @@ function postRun() {
   <<< ATPOSTRUNS >>>
 }
 
-// A counter of dependencies for calling run(). If we need to
-// do asynchronous work before running, increment this and
-// decrement it. Incrementing must happen in a place like
-// Module.preRun (used by emcc to add file preloading).
-// Note that you can add dependencies in preRun, even though
-// it happens right before run - run will be postponed until
-// the dependencies are met.
-var runDependencies = 0;
-var dependenciesFulfilled = null; // overridden to take different actions when all run dependencies are fulfilled
-#if ASSERTIONS
-var runDependencyTracking = {};
-var runDependencyWatcher = null;
-#endif
-
-function addRunDependency(id) {
-  runDependencies++;
-
-#if expectToReceiveOnModule('monitorRunDependencies')
-  Module['monitorRunDependencies']?.(runDependencies);
-#endif
-
-#if ASSERTIONS
-#if RUNTIME_DEBUG
-  dbg('addRunDependency', id);
-#endif
-  assert(id, 'addRunDependency requires an ID')
-  assert(!runDependencyTracking[id]);
-  runDependencyTracking[id] = 1;
-  if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
-    // Check for missing dependencies every few seconds
-    runDependencyWatcher = setInterval(() => {
-      if (ABORT) {
-        clearInterval(runDependencyWatcher);
-        runDependencyWatcher = null;
-        return;
-      }
-      var shown = false;
-      for (var dep in runDependencyTracking) {
-        if (!shown) {
-          shown = true;
-          err('still waiting on run dependencies:');
-        }
-        err(`dependency: ${dep}`);
-      }
-      if (shown) {
-        err('(end of list)');
-      }
-    }, 10000);
-#if ENVIRONMENT_MAY_BE_NODE
-    // Prevent this timer from keeping the runtime alive if nothing
-    // else is.
-    runDependencyWatcher.unref?.()
-#endif
-  }
-#endif
-}
-
-function removeRunDependency(id) {
-  runDependencies--;
-
-#if expectToReceiveOnModule('monitorRunDependencies')
-  Module['monitorRunDependencies']?.(runDependencies);
-#endif
-
-#if ASSERTIONS
-#if RUNTIME_DEBUG
-  dbg('removeRunDependency', id);
-#endif
-  assert(id, 'removeRunDependency requires an ID');
-  assert(runDependencyTracking[id]);
-  delete runDependencyTracking[id];
-#endif
-  if (runDependencies == 0) {
-#if ASSERTIONS
-    if (runDependencyWatcher !== null) {
-      clearInterval(runDependencyWatcher);
-      runDependencyWatcher = null;
-    }
-#endif
-    if (dependenciesFulfilled) {
-      var callback = dependenciesFulfilled;
-      dependenciesFulfilled = null;
-      callback(); // can add another dependenciesFulfilled
-    }
-  }
-}
-
 /** @param {string|number=} what */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
@@ -430,7 +343,7 @@ function makeAbortWrapper(original) {
   return (...args) => {
     // Don't allow this function to be called if we're aborted!
     if (ABORT) {
-      throw 'program has already aborted!';
+      throw new Error('program has already aborted!');
     }
 
     abortWrapperDepth++;
@@ -497,30 +410,20 @@ function instrumentWasmTableWithAbort() {
 }
 #endif
 
-#if LOAD_SOURCE_MAP
-function receiveSourceMapJSON(sourceMap) {
-  wasmSourceMap = new WasmSourceMap(sourceMap);
-  {{{ runIfMainThread("removeRunDependency('source-map');") }}}
-}
-#endif
-
-#if (PTHREADS || WASM_WORKERS) && (LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER)
-// When using postMessage to send an object, it is processed by the structured
-// clone algorithm.  The prototype, and hence methods, on that object is then
-// lost. This function adds back the lost prototype.  This does not work with
-// nested objects that has prototypes, but it suffices for WasmSourceMap and
-// WasmOffsetConverter.
-function resetPrototype(constructor, attrs) {
-  var object = Object.create(constructor.prototype);
-  return Object.assign(object, attrs);
-}
-#endif
-
 #if !SOURCE_PHASE_IMPORTS && !WASM_ESM_INTEGRATION
 var wasmBinaryFile;
 
+#if WASM2JS && WASM != 2
+
+// When building with wasm2js these 3 functions all no-ops.
+function findWasmBinary(file) {}
+function getBinarySync(file) {}
+function getWasmBinary(file) {}
+
+#else
+
 function findWasmBinary() {
-#if SINGLE_FILE && WASM == 1 && !WASM2JS
+#if SINGLE_FILE
   return base64Decode('<<< WASM_BINARY_DATA >>>');
 #else
 #if EXPORT_ES6 && !AUDIO_WORKLET
@@ -541,7 +444,7 @@ function findWasmBinary() {
 }
 
 function getBinarySync(file) {
-#if SINGLE_FILE && WASM == 1 && !WASM2JS
+#if SINGLE_FILE
   if (ArrayBuffer.isView(file)) {
     return file;
   }
@@ -554,6 +457,8 @@ function getBinarySync(file) {
   if (readBinary) {
     return readBinary(file);
   }
+  // Throwing a plain string here, even though it not normally adviables since
+  // this gets turning into an `abort` in instantiateArrayBuffer.
 #if WASM_ASYNC_COMPILATION
   throw 'both async and sync fetching of the wasm failed';
 #else
@@ -578,6 +483,7 @@ async function getWasmBinary(binaryFile) {
   // Otherwise, getBinarySync should be able to get it synchronously
   return getBinarySync(binaryFile);
 }
+#endif
 
 #if SPLIT_MODULE
 {{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
@@ -644,12 +550,6 @@ function instantiateSync(file, info) {
   module = new WebAssembly.Module(binary);
 #endif // NODE_CODE_CACHING
   var instance = new WebAssembly.Instance(module, info);
-#if USE_OFFSET_CONVERTER
-  wasmOffsetConverter = new WasmOffsetConverter(binary, module);
-#endif
-#if LOAD_SOURCE_MAP
-  receiveSourceMapJSON(getSourceMap());
-#endif
   return [instance, module];
 }
 #endif
@@ -659,11 +559,6 @@ async function instantiateArrayBuffer(binaryFile, imports) {
   try {
     var binary = await getWasmBinary(binaryFile);
     var instance = await WebAssembly.instantiate(binary, imports);
-#if USE_OFFSET_CONVERTER
-    // wasmOffsetConverter needs to be assigned before calling resolve.
-    // See comments below in instantiateAsync.
-    wasmOffsetConverter = new WasmOffsetConverter(binary, instance.module);
-#endif
     return instance;
   } catch (reason) {
     err(`failed to asynchronously prepare wasm: ${reason}`);
@@ -687,8 +582,8 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 
 #if ASSERTIONS
     // Warn on some common problems.
-    if (isFileURI(wasmBinaryFile)) {
-      err(`warning: Loading from a file URI (${wasmBinaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`);
+    if (isFileURI(binaryFile)) {
+      err(`warning: Loading from a file URI (${binaryFile}) is not supported in most browsers. See https://emscripten.org/docs/getting_started/FAQ.html#how-do-i-run-a-local-webserver-for-testing-why-does-my-program-stall-in-downloading-or-preparing`);
     }
 #endif
     abort(reason);
@@ -698,7 +593,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
   if (!binary
-#if MIN_FIREFOX_VERSION < 58 || MIN_CHROME_VERSION < 61 || MIN_SAFARI_VERSION < 150000
+#if MIN_FIREFOX_VERSION < 58 || MIN_SAFARI_VERSION < 150000
       // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
       && WebAssembly.instantiateStreaming
 #endif
@@ -722,31 +617,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
      ) {
     try {
       var response = fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
-#if USE_OFFSET_CONVERTER
-      // We need the wasm binary for the offset converter. Clone the response
-      // in order to get its arrayBuffer (cloning should be more efficient
-      // than doing another entire request).
-      // (We must clone the response now in order to use it later, as if we
-      // try to clone it asynchronously lower down then we will get a
-      // "response was already consumed" error.)
-      var clonedResponse = (await response).clone();
-#endif
       var instantiationResult = await WebAssembly.instantiateStreaming(response, imports);
-#if USE_OFFSET_CONVERTER
-      // When using the offset converter, we must interpose here. First,
-      // the instantiation result must arrive (if it fails, the error
-      // handling later down will handle it). Once it arrives, we can
-      // initialize the offset converter. And only then is it valid to
-      // call receiveInstantiationResult, as that function will use the
-      // offset converter (in the case of pthreads, it will create the
-      // pthreads and send them the offsets along with the wasm instance).
-      var arrayBufferResult = await clonedResponse.arrayBuffer();
-      try {
-        wasmOffsetConverter = new WasmOffsetConverter(new Uint8Array(arrayBufferResult), instantiationResult.module);
-      } catch (reason) {
-        err(`failed to initialize offset-converter: ${reason}`);
-      }
-#endif
       return instantiationResult;
     } catch (reason) {
       // We expect the most common failure cause to be a bad MIME type for the binary,
@@ -771,7 +642,7 @@ function getWasmImports() {
   // instrumenting imports is used in asyncify in two ways: to add assertions
   // that check for proper import use, and for ASYNCIFY=2 we use them to set up
   // the Promise API on the import side.
-#if PTHREADS || ASYNCIFY_LAZY_LOAD_CODE
+#if PTHREADS
   // In pthreads builds getWasmImports is called more than once but we only
   // and the instrument the imports once.
   if (!wasmImports.__instrumented) {
@@ -895,17 +766,13 @@ function getWasmImports() {
 #if DECLARE_ASM_MODULE_EXPORTS
     assignWasmExports(wasmExports);
 #endif
-#if WASM_ASYNC_COMPILATION
+#if WASM_ASYNC_COMPILATION && !MODULARIZE
     removeRunDependency('wasm-instantiate');
 #endif
     return wasmExports;
   }
-#if WASM_ASYNC_COMPILATION
+#if WASM_ASYNC_COMPILATION && !MODULARIZE
   addRunDependency('wasm-instantiate');
-#endif
-
-#if LOAD_SOURCE_MAP
-  {{{ runIfMainThread("addRunDependency('source-map');") }}}
 #endif
 
   // Prefer streaming instantiation if available.
@@ -984,9 +851,6 @@ function getWasmImports() {
 #endif
   var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
   var exports = receiveInstantiationResult(result);
-#if LOAD_SOURCE_MAP
-  receiveSourceMapJSON(await getSourceMapAsync());
-#endif
   return exports;
 #else // WASM_ASYNC_COMPILATION
   var result = instantiateSync(wasmBinaryFile, info);

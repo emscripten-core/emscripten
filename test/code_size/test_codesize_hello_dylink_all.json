@@ -1,7 +1,7 @@
 {
-  "a.out.js": 246891,
-  "a.out.nodebug.wasm": 597794,
-  "total": 844685,
+  "a.out.js": 246021,
+  "a.out.nodebug.wasm": 597767,
+  "total": 843788,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -1986,6 +1986,7 @@
     "_ns_flagdata",
     "_pthread_cleanup_pop",
     "_pthread_cleanup_push",
+    "_sbrk64",
     "_webgl1_match_ext_proc_address_without_suffix",
     "a64l",
     "abort",
@@ -3843,6 +3844,7 @@
     "$_flushlbf",
     "$_pthread_cleanup_pop",
     "$_pthread_cleanup_push",
+    "$_sbrk64",
     "$_webgl1_match_ext_proc_address_without_suffix",
     "$a64l",
     "$abort",

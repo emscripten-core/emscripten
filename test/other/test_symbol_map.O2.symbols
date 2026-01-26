@@ -1,0 +1,9 @@
+0:run_js
+1:emscripten_asm_const_int
+2:__wasm_call_ctors
+3:foo::cpp_func(int)
+4:middle
+5:main
+6:_emscripten_stack_restore
+7:_emscripten_stack_alloc
+8:emscripten_stack_get_current

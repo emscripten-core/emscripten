@@ -1,4 +1,5 @@
 #include <stdio.h>
+#include <emscripten/em_asm.h>
 #include <emscripten/emmalloc.h>
 
 size_t round_to_4k(size_t val) {
@@ -11,6 +12,7 @@ int main() {
   void *ptr3 = malloc(64*1024*1024);
   void *ptr4 = malloc(16*1024);
   void *ptr5 = malloc(2*1024*1024);
+  EM_ASM({}, ptr, ptr2, ptr3, ptr4, ptr5); // Use allocation pointers in an extern call site to avoid them being optimized away
   printf("valid allocs: %d\n", (int)(ptr && ptr2 && ptr3 && ptr4 && ptr5));
   free(ptr2);
   free(ptr4);

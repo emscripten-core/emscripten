@@ -617,14 +617,13 @@ var LibraryDylink = {
     dbg('loadWebAssemblyModule:', libName);
 #endif
     var metadata = getDylinkMetadata(binary);
-    currentModuleWeakSymbols = metadata.weakImports;
-#if ASSERTIONS
-    var originalTable = wasmTable;
-#endif
 
     // loadModule loads the wasm module after all its dependencies have been loaded.
     // can be called both sync/async.
     function loadModule() {
+#if ASSERTIONS
+      var originalTable = wasmTable;
+#endif
 #if PTHREADS
       // The first thread to load a given module needs to allocate the static
       // table and memory regions.  Later threads re-use the same table region
@@ -744,6 +743,7 @@ var LibraryDylink = {
         }
       };
       var proxy = new Proxy({}, proxyHandler);
+      currentModuleWeakSymbols = metadata.weakImports;
       var info = {
         'GOT.mem': new Proxy({}, GOTHandler),
         'GOT.func': new Proxy({}, GOTHandler),
@@ -1174,8 +1174,8 @@ var LibraryDylink = {
   },
 
   $loadDylibs__internal: true,
-  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
-  $loadDylibs: () => {
+  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols', '$addRunDependency', '$removeRunDependency'],
+  $loadDylibs: async () => {
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
       dbg('loadDylibs: no libraries to preload');
@@ -1187,21 +1187,19 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('loadDylibs:', dynamicLibraries);
 #endif
+    addRunDependency('loadDylibs');
 
     // Load binaries asynchronously
-    addRunDependency('loadDylibs');
-    dynamicLibraries
-      .reduce((chain, lib) => chain.then(() =>
-        loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true})
-      ), Promise.resolve())
-      .then(() => {
-        // we got them all, wonderful
-        reportUndefinedSymbols();
-        removeRunDependency('loadDylibs');
-  #if DYLINK_DEBUG
-        dbg('loadDylibs done!');
-  #endif
-      });
+    for (var lib of dynamicLibraries) {
+      await loadDynamicLibrary(lib, {loadAsync: true, global: true, nodelete: true, allowUndefined: true})
+    }
+    // we got them all, wonderful
+    reportUndefinedSymbols();
+
+#if DYLINK_DEBUG
+    dbg('loadDylibs done!');
+#endif
+    removeRunDependency('loadDylibs');
   },
 
   // void* dlopen(const char* filename, int flags);
@@ -1315,11 +1313,11 @@ var LibraryDylink = {
 #if ASSERTIONS
     assert(lib, `Tried to dlsym() from an unopened handle: ${handle}`);
 #endif
-    if (!lib.exports.hasOwnProperty(symbol) || lib.exports[symbol].stub) {
+    newSymIndex = Object.keys(lib.exports).indexOf(symbol);
+    if (newSymIndex == -1 || lib.exports[symbol].stub) {
       dlSetError(`Tried to lookup unknown symbol "${symbol}" in dynamic lib: ${lib.name}`)
       return 0;
     }
-    newSymIndex = Object.keys(lib.exports).indexOf(symbol);
 #if !WASM_BIGINT
     var origSym = 'orig$' + symbol;
     result = lib.exports[origSym];

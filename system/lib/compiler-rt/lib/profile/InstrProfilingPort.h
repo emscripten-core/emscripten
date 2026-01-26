@@ -54,7 +54,7 @@
 #endif
 
 #define COMPILER_RT_MAX_HOSTLEN 128
-#if defined(__ORBIS__) || defined(__wasi__)
+#if defined(__ORBIS__) || defined(__wasi__) || defined(__EMSCRIPTEN__)
 #define COMPILER_RT_GETHOSTNAME(Name, Len) ((void)(Name), (void)(Len), (-1))
 #else
 #define COMPILER_RT_GETHOSTNAME(Name, Len) lprofGetHostName(Name, Len)

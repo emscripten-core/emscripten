@@ -219,6 +219,7 @@ def generate_cmd(js_file_path, src_file_path, cflags):
                                '-Werror',
                                '-Wno-format',
                                '-sBOOTSTRAPPING_STRUCT_INFO',
+                               '-sWASM_ASYNC_COMPILATION=0',
                                '-sINCOMING_MODULE_JS_API=',
                                '-sSTRICT',
                                '-sSUPPORT_LONGJMP=0',

@@ -280,6 +280,12 @@ def create_global_exports(global_exports):
       continue
 
     v = int(v)
+
+    if not settings.MEMORY64:
+      # We assume that global exports are addresses, which need to be interpreted as unsigned.
+      # This is not necessary (and does not work) under wasm64 when the globals are i64.
+      v = v & 0xFFFFFFFF
+
     if settings.RELOCATABLE:
       v += settings.GLOBAL_BASE
     mangled = asmjs_mangle(k)
@@ -900,14 +906,11 @@ def install_debug_wrapper(sym):
   # The emscripten stack functions are called very early (by writeStackCookie) before
   # the runtime is initialized so we can't create these wrappers that check for
   # runtimeInitialized.
-  if sym.startswith(('_asan_', 'emscripten_stack_', '_emscripten_stack_')):
+  if sym.startswith(('__asan_', 'emscripten_stack_', '_emscripten_stack_')):
     return False
   # Likewise `__trap` can occur before the runtime is initialized since it is used in
   # abort.
-  # pthread_self and _emscripten_proxy_execute_task_queue are currently called in some
-  # cases after the runtime has exited.
-  # TODO: Look into removing these, and improving our robustness around thread termination.
-  return sym not in {'__trap', 'pthread_self', '_emscripten_proxy_execute_task_queue'}
+  return sym != '__trap'
 
 
 def should_export(sym):
@@ -1106,7 +1109,6 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_node_record_dirent': '_pp_',
     '__dl_seterr': '_pp',
     '_emscripten_run_js_on_main_thread': '__p_p_',
-    '_emscripten_proxy_execute_task_queue': '_p',
     '_emscripten_thread_exit': '_p',
     '_emscripten_thread_init': '_p_____',
     '_emscripten_thread_free_data': '_p',

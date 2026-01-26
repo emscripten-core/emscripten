@@ -6,43 +6,15 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-var wasmExports;
-
-#if MODULARIZE != 'instance'
-
-#if WASM_WORKERS || PTHREADS
-if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
-// Call createWasm on startup if we are the main thread.
-// Worker threads call this once they receive the module via postMessage
-#endif
-
-#if WASM_ASYNC_COMPILATION
-
-#if MODULARIZE
-// In modularize mode the generated code is within a factory function so we
-// can use await here (since it's not top-level-await).
-wasmExports = await createWasm();
-#else
-// With async instantation wasmExports is assigned asynchronously when the
-// instance is received.
-createWasm();
-#endif
-
-#else
-wasmExports = createWasm();
-#endif
-
-#if WASM_WORKERS || PTHREADS
-}
-#endif
-
-#endif // MODULARIZE != 'instance'
-
 #if PROXY_TO_WORKER
 if (ENVIRONMENT_IS_WORKER) {
 #include "webGLWorker.js'
 #include "proxyWorker.js"
 }
+#endif
+
+#if LOAD_SOURCE_MAP
+#include "source_map_support.js"
 #endif
 
 #if DETERMINISTIC
@@ -64,7 +36,9 @@ var mainArgs = undefined;
 {{{ asyncIf(ASYNCIFY == 2) }}}function callMain() {
 #endif
 #if ASSERTIONS
+#if '$runDependencies' in addedLibraryItems
   assert(runDependencies == 0, 'cannot call main when async dependencies remain! (listen on Module["onRuntimeInitialized"])');
+#endif
   assert(typeof onPreRuns === 'undefined' || onPreRuns.length == 0, 'cannot call main when preRun functions remain to be called');
 #endif
 
@@ -161,6 +135,7 @@ function run(args = arguments_) {
 function run() {
 #endif
 
+#if '$runDependencies' in addedLibraryItems
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
@@ -168,6 +143,7 @@ function run() {
     dependenciesFulfilled = run;
     return;
   }
+#endif
 
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
@@ -185,6 +161,7 @@ function run() {
 
   preRun();
 
+#if '$runDependencies' in addedLibraryItems
   // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
@@ -193,6 +170,7 @@ function run() {
     dependenciesFulfilled = run;
     return;
   }
+#endif
 
   {{{ asyncIf(ASYNCIFY == 2) }}}function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
@@ -310,19 +288,7 @@ function checkUnflushedContent() {
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
-function preInit() {
-#if expectToReceiveOnModule('preInit')
-  if (Module['preInit']) {
-    if (typeof Module['preInit'] == 'function') Module['preInit'] = [Module['preInit']];
-    while (Module['preInit'].length > 0) {
-      Module['preInit'].shift()();
-    }
-  }
-#if ASSERTIONS
-  consumedModuleProp('preInit');
-#endif
-#endif
-}
+var wasmExports;
 
 #if MODULARIZE == 'instance'
 // In MODULARIZE=instance mode we delay most of the initialization work until
@@ -349,7 +315,6 @@ export default async function init(moduleArg = {}) {
 #else
   wasmExports = await createWasm();
 #endif
-  preInit();
   run();
 }
 
@@ -374,12 +339,37 @@ if (ENVIRONMENT_IS_SHELL) {
 }
 #endif
 
-#else // MODULARIZE=instance
+#else // MODULARIZE == instance
 
-preInit();
-{{{ runIfMainThread('run();') }}}
+#if WASM_WORKERS || PTHREADS
+if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
+// Call createWasm on startup if we are the main thread.
+// Worker threads call this once they receive the module via postMessage
+#endif
 
-#endif // MODULARIZE=instance
+#if WASM_ASYNC_COMPILATION
+
+#if MODULARIZE
+// In modularize mode the generated code is within a factory function so we
+// can use await here (since it's not top-level-await).
+wasmExports = await createWasm();
+#else
+// With async instantation wasmExports is assigned asynchronously when the
+// instance is received.
+createWasm();
+#endif
+
+#else
+wasmExports = createWasm();
+#endif
+
+run();
+
+#if WASM_WORKERS || PTHREADS
+}
+#endif
+
+#endif // MODULARIZE != instance
 
 #if BUILD_AS_WORKER
 
@@ -417,7 +407,7 @@ var workerResponded = false, workerCallbackId = -1;
     flushMessages();
 
     var func = Module['_' + msg.data['funcName']];
-    if (!func) throw 'invalid worker function to call: ' + msg.data['funcName'];
+    if (!func) abort('invalid worker function to call: ' + msg.data['funcName']);
     var data = msg.data['data'];
     if (data) {
       if (!data.byteLength) data = new Uint8Array(data);

@@ -547,7 +547,7 @@ def set_initial_memory():
   if settings.IMPORTED_MEMORY:
     if user_specified_initial_heap:
       # Some of these could (and should) be implemented.
-      exit_with_error('INITIAL_HEAP is currently not compatible with IMPORTED_MEMORY (which is enabled indirectly via SHARED_MEMORY, RELOCATABLE, ASYNCIFY_LAZY_LOAD_CODE)')
+      exit_with_error('INITIAL_HEAP is currently not compatible with IMPORTED_MEMORY (which is enabled indirectly via SHARED_MEMORY, RELOCATABLE)')
     # The default for imported memory is to fall back to INITIAL_MEMORY.
     settings.INITIAL_HEAP = -1
 
@@ -675,7 +675,7 @@ def report_incompatible_settings():
     ('GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS', 'NO_GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS', None),
     ('MODULARIZE', 'NODEJS_CATCH_REJECTION', None),
     ('MODULARIZE', 'NODEJS_CATCH_EXIT', None),
-    ('WASM2JS', 'USE_OFFSET_CONVERTER', 'see #14630'),
+    ('LEGACY_VM_SUPPORT', 'MEMORY64', None),
   ]
 
   for a, b, reason in incompatible_settings:
@@ -726,6 +726,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.NODERAWFS = 1
     # Add `#!` line to output JS and make it executable.
     options.executable = True
+    # autoconf declares functions without their proper signatures, and STRICT causes that to trip up by passing --fatal-warnings to the linker.
+    if settings.STRICT:
+      exit_with_error('autoconfiguring is not compatible with STRICT')
 
   if settings.OPT_LEVEL >= 1:
     default_setting('ASSERTIONS', 0)
@@ -842,6 +845,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.GROWABLE_ARRAYBUFFERS:
     diagnostics.warning('experimental', '-sGROWABLE_ARRAYBUFFERS is still experimental and not yet supported in browsers')
 
+  if settings.SUPPORT_BIG_ENDIAN:
+    diagnostics.warning('experimental', '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.')
+    if settings.WASM2JS:
+      exit_with_error('WASMJ2S is currently not compatible with SUPPORT_BIG_ENDIAN')
+
   if settings.WASM_ESM_INTEGRATION:
     diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
     default_setting('MODULARIZE', 'instance')
@@ -855,8 +863,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with -sASYNCIFY')
     if settings.WASM_WORKERS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
-    if settings.USE_OFFSET_CONVERTER:
-      exit_with_error('WASM_ESM_INTEGRATION is not compatible with USE_OFFSET_CONVERTER')
     if not settings.WASM_ASYNC_COMPILATION:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
     if not settings.WASM:
@@ -887,8 +893,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     diagnostics.warning('experimental', 'MODULARIZE=instance is still experimental. Many features may not work or will change.')
     if not settings.EXPORT_ES6:
       exit_with_error('MODULARIZE=instance requires EXPORT_ES6')
-    if settings.ASYNCIFY_LAZY_LOAD_CODE:
-      exit_with_error('MODULARIZE=instance is not compatible with -sASYNCIFY_LAZY_LOAD_CODE')
     if settings.MINIMAL_RUNTIME:
       exit_with_error('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
     if options.use_preload_plugins or len(options.preload_files):
@@ -1046,6 +1050,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     else:
       options.shell_path = DEFAULT_SHELL_HTML
 
+  if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
+    settings.EXPORTED_RUNTIME_METHODS.append('requestFullscreen')
+
   if settings.STRICT:
     if not settings.MODULARIZE:
       default_setting('STRICT_JS', 1)
@@ -1086,6 +1093,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # Use settings
 
+  if settings.JS_MATH:
+    if settings.MAIN_MODULE == 1:
+      exit_with_error('JS_MATH is not compatible with dynamic linking (MAIN_MODULE=1)')
+
   if settings.WASM == 2 and settings.SINGLE_FILE:
     exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
 
@@ -1107,8 +1118,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if 'CLOSURE_WARNINGS' in user_settings:
     if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
       exit_with_error('invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
-
-    diagnostics.warning('deprecated', 'CLOSURE_WARNINGS is deprecated, use -Wclosure/-Wno-closure instead')
     closure_warnings = diagnostics.manager.warnings['closure']
     if settings.CLOSURE_WARNINGS == 'error':
       closure_warnings['error'] = True
@@ -1133,6 +1142,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
+
+    # Certain configurations require the removeRunDependency/addRunDependency system.
+    if settings.LOAD_SOURCE_MAP or settings.PROXY_TO_WORKER or (settings.WASM_ASYNC_COMPILATION and not settings.MODULARIZE):
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
 
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmTable']
@@ -1192,9 +1205,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
                                   'emscripten_stack_get_end',
                                   'emscripten_stack_get_current']
 
-  if settings.ASYNCIFY_LAZY_LOAD_CODE:
-    settings.ASYNCIFY = 1
-
   settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ADD)
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
   settings.ASYNCIFY_ONLY = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ONLY)
@@ -1214,12 +1224,16 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       '$LE_HEAP_STORE_I16',
       '$LE_HEAP_STORE_U32',
       '$LE_HEAP_STORE_I32',
+      '$LE_HEAP_STORE_U64',
+      '$LE_HEAP_STORE_I64',
       '$LE_HEAP_STORE_F32',
       '$LE_HEAP_STORE_F64',
       '$LE_HEAP_LOAD_U16',
       '$LE_HEAP_LOAD_I16',
       '$LE_HEAP_LOAD_U32',
       '$LE_HEAP_LOAD_I32',
+      '$LE_HEAP_LOAD_U64',
+      '$LE_HEAP_LOAD_I64',
       '$LE_HEAP_LOAD_F32',
       '$LE_HEAP_LOAD_F64',
       '$LE_ATOMICS_NATIVE_BYTE_ORDER',
@@ -1383,9 +1397,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
 
   if settings.RELOCATABLE:
-    # TODO(https://reviews.llvm.org/D128515): Make this mandatory once
-    # llvm change lands
-    settings.EXPORT_IF_DEFINED.append('__wasm_apply_data_relocs')
+    settings.REQUIRED_EXPORTS += ['__wasm_apply_data_relocs']
 
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     diagnostics.warning('unused-command-line-argument', 'GLOBAL_BASE is not compatible with SIDE_MODULE')
@@ -1500,7 +1512,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       'removeRunDependency',
     ]
 
-  if settings.PTHREADS or settings.WASM_WORKERS or settings.RELOCATABLE or settings.ASYNCIFY_LAZY_LOAD_CODE:
+  if settings.PTHREADS or settings.WASM_WORKERS or settings.RELOCATABLE:
     settings.IMPORTED_MEMORY = 1
 
   set_initial_memory()
@@ -1514,7 +1526,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # Enable minification of wasm imports and exports when appropriate, if we
   # are emitting an optimized JS+wasm combo (then the JS knows how to load the minified names).
   # Things that process the JS after this operation would be done must disable this.
-  # For example, ASYNCIFY_LAZY_LOAD_CODE needs to identify import names.
   # ASYNCIFY=2 does not support this optimization yet as it has a hardcoded
   # check for 'main' as an export name. TODO
   if will_metadce() and \
@@ -1527,7 +1538,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       not settings.AUTODEBUG and \
       not settings.ASSERTIONS and \
       not settings.RELOCATABLE and \
-      not settings.ASYNCIFY_LAZY_LOAD_CODE and \
           settings.MINIFY_WASM_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
@@ -1563,7 +1573,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if options.sanitize:
     if settings.WASM_WORKERS:
       exit_with_error('WASM_WORKERS is not currently compatible with `-fsanitize` tools')
-    settings.USE_OFFSET_CONVERTER = 1
     # These symbols are needed by `withBuiltinMalloc` which used to implement
     # the `__noleakcheck` attribute.  However this dependency is not yet represented in the JS
     # symbol graph generated when we run the compiler with `--symbols-only`.
@@ -1588,9 +1597,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     inc_initial_memory(50 * 1024 * 1024)
     if settings.PTHREADS:
       inc_initial_memory(50 * 1024 * 1024)
-
-  if settings.USE_OFFSET_CONVERTER:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$UTF8ArrayToString')
 
   if options.sanitize & UBSAN_SANITIZERS:
     if options.sanitize_minimal_runtime:
@@ -2019,7 +2025,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   settings.ENVIRONMENT = ['node']
   settings.MINIMAL_RUNTIME = 0
   # Required function to trigger TS generation.
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks', '$addRunDependency', '$removeRunDependency']
   settings.EXPORT_ES6 = False
   # Disable proxying and thread pooling so a worker is not automatically created.
   settings.PROXY_TO_PTHREAD = False
@@ -2374,10 +2380,6 @@ def phase_binaryen(target, options, wasm_target):
       if settings.MINIFY_WHITESPACE:
         final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
 
-  if settings.ASYNCIFY_LAZY_LOAD_CODE:
-    with ToolchainProfiler.profile_block('asyncify_lazy_load_code'):
-      building.asyncify_lazy_load_code(wasm_target, debug=intermediate_debug_info)
-
   symbols_file = None
   if options.emit_symbol_map:
     symbols_file = shared.replace_or_append_suffix(target, '.symbols')
@@ -2425,8 +2427,9 @@ def phase_binaryen(target, options, wasm_target):
   if options.emit_symbol_map:
     intermediate_debug_info -= 1
     if generating_wasm:
-      building.handle_final_wasm_symbols(wasm_file=wasm_target, symbols_file=symbols_file, debug_info=intermediate_debug_info)
-      save_intermediate_with_wasm('symbolmap', wasm_target)
+      building.write_symbol_map(wasm_target, symbols_file)
+      if not intermediate_debug_info:
+        building.strip(wasm_target, wasm_target, sections=['name'])
 
   if settings.GENERATE_DWARF and settings.SEPARATE_DWARF and generating_wasm:
     # if the dwarf filename wasn't provided, use the default target + a suffix

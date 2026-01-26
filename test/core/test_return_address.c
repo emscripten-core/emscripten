@@ -11,8 +11,13 @@
 
 void *emscripten_return_address(int level);
 const char *emscripten_pc_get_function(void* pc);
+uintptr_t emscripten_stack_snapshot();
 
 __attribute__((noinline)) void func() {
+  // emscripten_pc_get_function only works for addresses that are in the
+  // `UNWIND_CACHE`.  This is populated on demand by
+  // `emscripten_stack_snapshot`.
+  emscripten_stack_snapshot();
   void* rtn_addr = emscripten_return_address(0);
   void* rtn_addr2 = __builtin_return_address(0);
   const char* caller_name = emscripten_pc_get_function(rtn_addr);
@@ -21,10 +26,8 @@ __attribute__((noinline)) void func() {
   assert(rtn_addr != 0);
   assert(rtn_addr2 != 0);
   assert(rtn_addr == rtn_addr2);
-#ifdef DEBUG
   assert(strcmp(caller_name, "main") == 0);
   assert(emscripten_return_address(50) == 0);
-#endif
 }
 
 // We need to take these two arguments or clang can potentially generate

@@ -346,7 +346,7 @@ var LibraryHTML5 = {
   },
 
 #if OFFSCREENCANVAS_SUPPORT
-  $findCanvasEventTarget__deps: ['$GL', '$maybeCStringToJsString'],
+  $findCanvasEventTarget__deps: ['$GL', '$maybeCStringToJsString', '$specialHTMLTargets'],
   $findCanvasEventTarget: (target) => {
     target = maybeCStringToJsString(target);
 
@@ -365,6 +365,8 @@ var LibraryHTML5 = {
     // If not found, if one is querying by using DOM tag name selector 'canvas', grab the first
     // OffscreenCanvas that we can find.
      || (target == 'canvas' && Object.keys(GL.offscreenCanvases)[0])
+    // If not found, check specialHTMLTargets
+     || specialHTMLTargets[target]
     // If that is not found either, query via the regular DOM selector.
 #if PTHREADS
      || (typeof document != 'undefined' && document.querySelector(target));
@@ -1001,10 +1003,8 @@ var LibraryHTML5 = {
   $fillFullscreenChangeEventData: (eventStruct) => {
     var fullscreenElement = getFullscreenElement();
     var isFullscreen = !!fullscreenElement;
-#if !SAFE_HEAP
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
-#endif
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.isFullscreen, 'isFullscreen', 'i8') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenFullscreenChangeEvent.fullscreenEnabled, 'JSEvents.fullscreenEnabled()', 'i8') }}};
     // If transitioning to fullscreen, report info about the element that is now fullscreen.
@@ -1544,10 +1544,8 @@ var LibraryHTML5 = {
   $fillPointerlockChangeEventData: (eventStruct) => {
     var pointerLockElement = document.pointerLockElement;
     var isPointerlocked = !!pointerLockElement;
-#if !SAFE_HEAP
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
-#endif
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenPointerlockChangeEvent.isActive, 'isPointerlocked', 'i8') }}};
     var nodeName = JSEvents.getNodeNameForTarget(pointerLockElement);
     var id = pointerLockElement?.id || '';
@@ -1746,10 +1744,8 @@ var LibraryHTML5 = {
     var visibilityStates = [ "hidden", "visible", "prerender", "unloaded" ];
     var visibilityState = visibilityStates.indexOf(document.visibilityState);
 
-#if !SAFE_HEAP
     // Assigning a boolean to HEAP32 with expected type coercion.
     /** @suppress{checkTypes} */
-#endif
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.hidden, 'document.hidden', 'i8') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenVisibilityChangeEvent.visibilityState, 'visibilityState', 'i32') }}};
   },
@@ -1943,10 +1939,8 @@ var LibraryHTML5 = {
       if (typeof e.buttons[i] == 'object') {
         {{{ makeSetValue('eventStruct+i', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i].pressed', 'i8') }}};
       } else {
-#if !SAFE_HEAP
         // Assigning a boolean to HEAP32, that's ok, but Closure would like to warn about it:
         /** @suppress {checkTypes} */
-#endif
         {{{ makeSetValue('eventStruct+i', C_STRUCTS.EmscriptenGamepadEvent.digitalButton, 'e.buttons[i] == 1', 'i8') }}};
       }
     }
@@ -2028,7 +2022,7 @@ var LibraryHTML5 = {
   emscripten_get_num_gamepads__deps: ['$JSEvents'],
   emscripten_get_num_gamepads: () => {
 #if ASSERTIONS
-    if (!JSEvents.lastGamepadState) throw 'emscripten_get_num_gamepads() can only be called after having first called emscripten_sample_gamepad_data() and that function has returned EMSCRIPTEN_RESULT_SUCCESS!';
+    assert(JSEvents.lastGamepadState, 'emscripten_get_num_gamepads() can only be called after having first called emscripten_sample_gamepad_data() and that function has returned EMSCRIPTEN_RESULT_SUCCESS!');
 #endif
     // N.B. Do not call emscripten_get_num_gamepads() unless having first called emscripten_sample_gamepad_data(), and that has returned EMSCRIPTEN_RESULT_SUCCESS.
     // Otherwise the following line will throw an exception.
@@ -2039,7 +2033,7 @@ var LibraryHTML5 = {
   emscripten_get_gamepad_status__deps: ['$JSEvents', '$fillGamepadEventData'],
   emscripten_get_gamepad_status: (index, gamepadState) => {
 #if ASSERTIONS
-    if (!JSEvents.lastGamepadState) throw 'emscripten_get_gamepad_status() can only be called after having first called emscripten_sample_gamepad_data() and that function has returned EMSCRIPTEN_RESULT_SUCCESS!';
+    assert(JSEvents.lastGamepadState, 'emscripten_get_gamepad_status() can only be called after having first called emscripten_sample_gamepad_data() and that function has returned EMSCRIPTEN_RESULT_SUCCESS!');
 #endif
     // INVALID_PARAM is returned on a Gamepad index that never was there.
     if (index < 0 || index >= JSEvents.lastGamepadState.length) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
@@ -2058,7 +2052,7 @@ var LibraryHTML5 = {
   $registerBeforeUnloadEventCallback: (target, userData, useCapture, callbackfunc, eventTypeId, eventTypeString) => {
     var beforeUnloadEventHandlerFunc = (e = event) => {
       // Note: This is always called on the main browser thread, since it needs synchronously return a value!
-      var confirmationMessage = {{{ makeDynCall('iipp', 'callbackfunc') }}}(eventTypeId, 0, userData);
+      var confirmationMessage = {{{ makeDynCall('pipp', 'callbackfunc') }}}(eventTypeId, 0, userData);
 
       if (confirmationMessage) {
         confirmationMessage = UTF8ToString(confirmationMessage);

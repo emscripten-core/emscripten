@@ -248,8 +248,18 @@ int __pthread_create(pthread_t* restrict res,
   // want libc.need_locks to be set from the moment it starts.
   if (!libc.threads_minus_1++) libc.need_locks = 1;
 
+  // Assign the pthread_t object over immediately, so that by the time pthread_create_js()
+  // is dispatched to a pthread and the pthread main runs, the value will be visible to
+  // the thread to examine.
+  // Use __atomic_store_n() instead of a_store() to avoid splicing the pointer.
+  __atomic_store_n(res, new, __ATOMIC_SEQ_CST);
+
   int rtn = __pthread_create_js(new, &attr, entry, arg);
   if (rtn != 0) {
+    // Reset the pthread_t return value to zero (we assigned to it above,
+    // so by clearing it here we won't litter bits to caller)
+    __atomic_store_n(res, 0, __ATOMIC_SEQ_CST);
+
     if (!--libc.threads_minus_1) libc.need_locks = 0;
 
     // undo previous addition to the thread list
@@ -269,7 +279,6 @@ int __pthread_create(pthread_t* restrict res,
       self->prev,
       new);
 
-  *res = new;
   return 0;
 }
 
