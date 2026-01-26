@@ -2499,7 +2499,7 @@ void *getBindBuffer() {
   @requires_graphics_hardware
   @parameterized({
     '': ([],),
-    'modularized': (['-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],),
+    'modularized': (['-sMODULARIZE'],),
   })
   def test_cpuprofiler_memoryprofiler(self, opts):
     self.btest_exit('hello_world_gles.c', cflags=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'] + opts)
@@ -3797,7 +3797,7 @@ Module["preRun"] = () => {
   # Test that a pthread can spawn another pthread of its own.
   @parameterized({
     '': ([],),
-    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],),
+    'modularize': (['-sMODULARIZE'],),
   })
   def test_pthread_create_pthread(self, args):
     self.btest_exit('pthread/test_pthread_create_pthread.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=2'] + args)
@@ -3976,7 +3976,7 @@ Module["preRun"] = () => {
   # global data section of the application memory area.
   @parameterized({
     '': (['-O3'],),
-    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],),
+    'modularize': (['-sMODULARIZE'],),
   })
   def test_pthread_global_data_initialization(self, args):
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', cflags=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
@@ -4616,8 +4616,7 @@ Module["preRun"] = () => {
   # Tests the absolute minimum pthread-enabled application.
   @parameterized({
     '': ([],),
-    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file',
-                    test_file('shell_that_launches_modularize.html')],),
+    'modularize': (['-sMODULARIZE'],),
   })
   @parameterized({
     '': ([],),
@@ -5455,7 +5454,7 @@ Module["preRun"] = () => {
   @requires_sound_hardware
   @requires_shared_array_buffer
   def test_audio_worklet_modularize(self, args):
-    self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html'), '-DTEST_AND_EXIT'] + args)
+    self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-DTEST_AND_EXIT'] + args)
 
   # Tests an AudioWorklet with multiple stereo inputs mixing in the processor
   # via a varying parameter to a single stereo output (touching all of the API
