@@ -25,6 +25,8 @@ sys.path.insert(0, __rootdir__)
 from tools import shared, utils
 from tools.system_libs import DETERMINISTIC_PREFIX
 
+LLVM_CXXFILT = shared.llvm_tool_path('llvm-cxxfilt')
+
 EMSCRIPTEN_PREFIX = utils.normalize_path(utils.path_from_root())
 
 logger = logging.getLogger('wasm-sourcemap')
@@ -66,12 +68,12 @@ class Prefixes:
 
     source = name
     if not self.preserve_deterministic_prefix and name.startswith(DETERMINISTIC_PREFIX):
-      source = EMSCRIPTEN_PREFIX + utils.removeprefix(name, DETERMINISTIC_PREFIX)
+      source = EMSCRIPTEN_PREFIX + name.removeprefix(DETERMINISTIC_PREFIX)
 
     provided = False
     for p in self.prefixes:
       if source.startswith(p['prefix']):
-        source = p['replacement'] + utils.removeprefix(source, p['prefix'])
+        source = p['replacement'] + source.removeprefix(p['prefix'])
         provided = True
         break
 
@@ -217,34 +219,220 @@ def decode_octal_encoded_utf8(str):
 
 
 def extract_comp_dir_map(text):
+  compile_unit_pattern = re.compile(r"0x[0-9a-f]*: DW_TAG_compile_unit")
+  stmt_list_pattern = re.compile(r"DW_AT_stmt_list\s+\((0x[0-9a-f]*)\)")
+  comp_dir_pattern = re.compile(r"DW_AT_comp_dir\s+\(\"([^\"]+)\"\)")
+
   map_stmt_list_to_comp_dir = {}
-  chunks = re.split(r"0x[0-9a-f]*: DW_TAG_compile_unit", text)
-  for chunk in chunks[1:]:
-    stmt_list_match = re.search(r"DW_AT_stmt_list\s+\((0x[0-9a-f]*)\)", chunk)
+  iterator = compile_unit_pattern.finditer(text)
+  current_match = next(iterator, None)
+
+  while current_match:
+    next_match = next(iterator, None)
+    start = current_match.end()
+    end = next_match.start() if next_match else len(text)
+
+    stmt_list_match = stmt_list_pattern.search(text, start, end)
     if stmt_list_match is not None:
       stmt_list = stmt_list_match.group(1)
-      comp_dir_match = re.search(r"DW_AT_comp_dir\s+\(\"([^\"]+)\"\)", chunk)
+      comp_dir_match = comp_dir_pattern.search(text, start, end)
       comp_dir = decode_octal_encoded_utf8(comp_dir_match.group(1)) if comp_dir_match is not None else ''
       map_stmt_list_to_comp_dir[stmt_list] = comp_dir
+
+    current_match = next_match
+
   return map_stmt_list_to_comp_dir
 
 
-def read_dwarf_entries(wasm, options):
+def demangle_names(names):
+  # Only demangle names that look mangled
+  mangled_names = sorted({n for n in names if n.startswith('_Z')})
+  if not mangled_names:
+    return {}
+  if not os.path.exists(LLVM_CXXFILT):
+    logger.warning('llvm-cxxfilt does not exist')
+    return {}
+
+  # Gather all mangled names and call llvm-cxxfilt only once for all of them
+  input_str = '\n'.join(mangled_names)
+  proc = shared.check_call([LLVM_CXXFILT], input=input_str, stdout=shared.PIPE, stderr=shared.PIPE, text=True)
+  if proc.returncode != 0:
+    logger.warning('llvm-cxxfilt failed: %s' % proc.stderr)
+    return {}
+
+  demangled_list = proc.stdout.splitlines()
+  if len(demangled_list) != len(mangled_names):
+    logger.warning('llvm-cxxfilt output length mismatch')
+    return {}
+
+  return dict(zip(mangled_names, demangled_list, strict=True))
+
+
+class FuncRange:
+  def __init__(self, name, low_pc, high_pc):
+    self.name = name
+    self.low_pc = low_pc
+    self.high_pc = high_pc
+
+
+# This function parses DW_TAG_subprogram entries and gets low_pc and high_pc for
+# each function in a list of FuncRanges. The result list will be sorted in the
+# increasing order of low_pcs.
+def extract_func_ranges(text):
+  # This function handles four cases:
+  # 1. DW_TAG_subprogram with DW_AT_name, DW_AT_low_pc, and DW_AT_high_pc.
+  # 0x000000ba:   DW_TAG_subprogram
+  #                 DW_AT_low_pc  (0x0000005f)
+  #                 DW_AT_high_pc  (0x00000071)
+  #                 DW_AT_name  ("foo")
+  #                 ...
+  #
+  # 2. DW_TAG_subprogram with DW_AT_linkage_name, DW_AT_low_pc, and
+  #    DW_AT_high_pc. Applies to mangled C++ functions.
+  #    (We parse DW_AT_linkage_name instead of DW_AT_name here.)
+  # 0x000000ba:   DW_TAG_subprogram
+  #                 DW_AT_low_pc  (0x0000005f)
+  #                 DW_AT_high_pc  (0x00000071)
+  #                 DW_AT_linkage_name  ("_ZN7MyClass3fooEv")
+  #                 DW_AT_name  ("foo")
+  #                 ...
+  #
+  # 3. DW_TAG_subprogram with DW_AT_specification, DW_AT_low_pc, and
+  #    DW_AT_high_pc. C++ function info can be split into two DIEs (one with
+  #    DW_AT_linkage_name and  DW_AT_declaration (true) and the other with
+  #    DW_AT_specification). In this case we parse DW_AT_specification for the
+  #    function name.
+  # 0x0000006d:   DW_TAG_subprogram
+  #                 DW_AT_linkage_name  ("_ZN7MyClass3fooEv")
+  #                 DW_AT_name  ("foo")
+  #                 DW_AT_declaration  (true)
+  #                 ...
+  # 0x00000097:   DW_TAG_subprogram
+  #                 DW_AT_low_pc  (0x00000007)
+  #                 DW_AT_high_pc  (0x0000004c)
+  #                 DW_AT_specification  (0x0000006d "_ZN7MyClass3fooEv")
+  #                 ...
+  #
+  # 4. DW_TAG_inlined_subroutine with DW_AT_abstract_origin, DW_AT_low_pc, and
+  #    DW_AT_high_pc. This represents an inlined function. We parse
+  #    DW_AT_abstract_origin for the original function name.
+  # 0x0000011a:   DW_TAG_inlined_subroutine
+  #                 DW_AT_abstract_origin  (0x000000da "_ZN7MyClass3barEv")
+  #                 DW_AT_low_pc  (0x00000078)
+  #                 DW_AT_high_pc  (0x00000083)
+  #                 ...
+
+  # Pattern to find the start of the NEXT DWARF tag (boundary marker)
+  next_tag_pattern = re.compile(r'\n0x[0-9a-f]+:')
+  # Pattern to find DWARF tags for functions (Subprogram or Inlined) directly
+  func_pattern = re.compile(r'DW_TAG_(?:subprogram|inlined_subroutine)')
+
+  low_pc_pattern = re.compile(r'DW_AT_low_pc\s+\(0x([0-9a-f]+)\)')
+  high_pc_pattern = re.compile(r'DW_AT_high_pc\s+\(0x([0-9a-f]+)\)')
+  abstract_origin_pattern = re.compile(r'DW_AT_abstract_origin\s+\(0x[0-9a-f]+\s+"([^"]+)"\)')
+  linkage_name_pattern = re.compile(r'DW_AT_linkage_name\s+\("([^"]+)"\)')
+  name_pattern = re.compile(r'DW_AT_name\s+\("([^"]+)"\)')
+  specification_pattern = re.compile(r'DW_AT_specification\s+\(0x[0-9a-f]+\s+"([^"]+)"\)')
+
+  def get_name_from_tag(start, end):
+    m = linkage_name_pattern.search(text, start, end)
+    if m:
+      return m.group(1)
+    m = name_pattern.search(text, start, end)
+    if m:
+      return m.group(1)
+    # If name is missing, check for DW_AT_specification annotation
+    m = specification_pattern.search(text, start, end)
+    if m:
+      return m.group(1)
+    return None
+
+  func_ranges = []
+  for match in func_pattern.finditer(text):
+    # Search from the end of the tag name (e.g. after "DW_TAG_subprogram").
+    # Attributes are expected to follow.
+    search_start = match.end()
+
+    # Search until the beginning of the next tag
+    m_next = next_tag_pattern.search(text, search_start)
+    search_end = m_next.start() if m_next else len(text)
+
+    name = None
+    low_pc = None
+    high_pc = None
+    m = low_pc_pattern.search(text, search_start, search_end)
+    if m:
+      low_pc = int(m.group(1), 16)
+    m = high_pc_pattern.search(text, search_start, search_end)
+    if m:
+      high_pc = int(m.group(1), 16)
+
+    if 'DW_TAG_subprogram' in match.group(0):
+      name = get_name_from_tag(search_start, search_end)
+    else: # is_inlined
+      m = abstract_origin_pattern.search(text, search_start, search_end)
+      if m:
+        name = m.group(1)
+
+    if name and low_pc is not None and high_pc is not None:
+      func_ranges.append(FuncRange(name, low_pc, high_pc))
+
+  # Demangle names
+  all_names = [item.name for item in func_ranges]
+  demangled_map = demangle_names(all_names)
+  for func_range in func_ranges:
+    if func_range.name in demangled_map:
+      func_range.name = demangled_map[func_range.name]
+
+  # To correctly identify the innermost function for a given address,
+  # func_ranges is sorted primarily by low_pc in ascending order and secondarily
+  # by high_pc in descending order. This ensures that for overlapping ranges,
+  # the more specific (inner) range appears later in the list.
+  func_ranges.sort(key=lambda item: (item.low_pc, -item.high_pc))
+  return func_ranges
+
+
+def read_dwarf_info(wasm, options):
   if options.dwarfdump_output:
     output = utils.read_file(options.dwarfdump_output)
   elif options.dwarfdump:
     logger.debug('Reading DWARF information from %s' % wasm)
     if not os.path.exists(options.dwarfdump):
       utils.exit_with_error('llvm-dwarfdump not found: ' + options.dwarfdump)
-    proc = shared.check_call([options.dwarfdump, '-debug-info', '-debug-line', '--recurse-depth=0', wasm], stdout=shared.PIPE)
+    # We need only three tags in the debug info: DW_TAG_compile_unit for
+    # source location, and DW_TAG_subprogram and DW_TAG_inlined_subroutine
+    # for the function ranges.
+    dwarfdump_cmd = [options.dwarfdump, '-debug-info', '-debug-line', wasm,
+                     '-t', 'DW_TAG_compile_unit', '-t', 'DW_TAG_subprogram',
+                     '-t', 'DW_TAG_inlined_subroutine']
+    proc = shared.check_call(dwarfdump_cmd, stdout=shared.PIPE)
     output = proc.stdout
   else:
     utils.exit_with_error('Please specify either --dwarfdump or --dwarfdump-output')
 
+  debug_line_pattern = re.compile(r"debug_line\[(0x[0-9a-f]*)\]")
+  include_dir_pattern = re.compile(r"include_directories\[\s*(\d+)\] = \"([^\"]*)")
+  file_pattern = re.compile(r"file_names\[\s*(\d+)\]:\s+name: \"([^\"]*)\"\s+dir_index: (\d+)")
+  line_pattern = re.compile(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?")
+
   entries = []
-  debug_line_chunks = re.split(r"debug_line\[(0x[0-9a-f]*)\]", output)
-  map_stmt_list_to_comp_dir = extract_comp_dir_map(debug_line_chunks[0])
-  for stmt_list, line_chunk in zip(debug_line_chunks[1::2], debug_line_chunks[2::2]):
+  iterator = debug_line_pattern.finditer(output)
+  try:
+    current_match = next(iterator)
+    debug_info_end = current_match.start() # end of .debug_info contents
+  except StopIteration:
+    debug_info_end = len(output)
+
+  debug_info = output[:debug_info_end] # .debug_info contents
+  map_stmt_list_to_comp_dir = extract_comp_dir_map(debug_info)
+
+  while current_match:
+    next_match = next(iterator, None)
+
+    stmt_list = current_match.group(1)
+    start = current_match.end()
+    end = next_match.start() if next_match else len(output)
+
     comp_dir = map_stmt_list_to_comp_dir.get(stmt_list, '')
 
     # include_directories[  1] = "/Users/yury/Work/junk/sqlite-playground/src"
@@ -263,16 +451,16 @@ def read_dwarf_entries(wasm, options):
     # 0x0000000000000011     28      0      1   0             0  is_stmt
 
     include_directories = {'0': comp_dir}
-    for dir in re.finditer(r"include_directories\[\s*(\d+)\] = \"([^\"]*)", line_chunk):
+    for dir in include_dir_pattern.finditer(output, start, end):
       include_directories[dir.group(1)] = os.path.join(comp_dir, decode_octal_encoded_utf8(dir.group(2)))
 
     files = {}
-    for file in re.finditer(r"file_names\[\s*(\d+)\]:\s+name: \"([^\"]*)\"\s+dir_index: (\d+)", line_chunk):
+    for file in file_pattern.finditer(output, start, end):
       dir = include_directories[file.group(3)]
       file_path = os.path.join(dir, decode_octal_encoded_utf8(file.group(2)))
       files[file.group(1)] = file_path
 
-    for line in re.finditer(r"\n0x([0-9a-f]+)\s+(\d+)\s+(\d+)\s+(\d+)(.*?end_sequence)?", line_chunk):
+    for line in line_pattern.finditer(output, start, end):
       entry = {'address': int(line.group(1), 16), 'line': int(line.group(2)), 'column': int(line.group(3)), 'file': files[line.group(4)], 'eos': line.group(5) is not None}
       if not entry['eos']:
         entries.append(entry)
@@ -285,25 +473,66 @@ def read_dwarf_entries(wasm, options):
         else:
           entries.append(entry)
 
+    current_match = next_match
+
   remove_dead_entries(entries)
 
   # return entries sorted by the address field
-  return sorted(entries, key=lambda entry: entry['address'])
+  entries = sorted(entries, key=lambda entry: entry['address'])
+
+  func_ranges = extract_func_ranges(debug_info)
+  return entries, func_ranges
 
 
-def build_sourcemap(entries, code_section_offset, options):
+def build_sourcemap(entries, func_ranges, code_section_offset, options):
   base_path = options.basepath
   collect_sources = options.sources
   prefixes = SourceMapPrefixes(options.prefix, options.load_prefix, base_path)
 
+  # Add code section offset to the low/high pc in the function PC ranges
+  for func_range in func_ranges:
+    func_range.low_pc += code_section_offset
+    func_range.high_pc += code_section_offset
+
   sources = []
   sources_content = []
+  # There can be duplicate names in case an original source function has
+  # multiple disjoint PC ranges or is inlined to multiple callsites. Make the
+  # 'names' list a unique list of names, and map the function ranges to the
+  # indices in that list.
+  names = sorted({item.name for item in func_ranges})
+  name_to_id = {name: i for i, name in enumerate(names)}
   mappings = []
   sources_map = {}
   last_address = 0
   last_source_id = 0
   last_line = 1
   last_column = 1
+  last_func_id = 0
+
+  active_funcs = []
+  next_func_range_id = 0
+
+  # Get the function name ID that the given address falls into
+  def get_function_id(address):
+    nonlocal active_funcs
+    nonlocal next_func_range_id
+
+    # Maintain a list of "active functions" whose ranges currently cover the
+    # address. As the address advances, it adds new functions that start and
+    # removes functions that end. The last function remaining in the active list
+    # at any point is the innermost function.
+    while next_func_range_id < len(func_ranges) and func_ranges[next_func_range_id].low_pc <= address:
+      # active_funcs contains (high_pc, id) pair
+      active_funcs.append((func_ranges[next_func_range_id].high_pc, next_func_range_id))
+      next_func_range_id += 1
+    active_funcs = [f for f in active_funcs if f[0] > address]
+
+    if active_funcs:
+      func_range_id = active_funcs[-1][1]
+      name = func_ranges[func_range_id].name
+      return name_to_id[name]
+    return None
 
   for entry in entries:
     line = entry['line']
@@ -334,21 +563,27 @@ def build_sourcemap(entries, code_section_offset, options):
           sources_content.append(None)
     else:
       source_id = sources_map[source_name]
+    func_id = get_function_id(address)
 
     address_delta = address - last_address
     source_id_delta = source_id - last_source_id
     line_delta = line - last_line
     column_delta = column - last_column
-    mappings.append(encode_vlq(address_delta) + encode_vlq(source_id_delta) + encode_vlq(line_delta) + encode_vlq(column_delta))
     last_address = address
     last_source_id = source_id
     last_line = line
     last_column = column
+    mapping = encode_vlq(address_delta) + encode_vlq(source_id_delta) + encode_vlq(line_delta) + encode_vlq(column_delta)
+    if func_id is not None:
+      func_id_delta = func_id - last_func_id
+      last_func_id = func_id
+      mapping += encode_vlq(func_id_delta)
+    mappings.append(mapping)
 
   return {'version': 3,
           'sources': sources,
           'sourcesContent': sources_content,
-          'names': [],
+          'names': names,
           'mappings': ','.join(mappings)}
 
 
@@ -359,12 +594,12 @@ def main(args):
   with open(wasm_input, 'rb') as infile:
     wasm = infile.read()
 
-  entries = read_dwarf_entries(wasm_input, options)
+  entries, func_ranges = read_dwarf_info(wasm_input, options)
 
   code_section_offset = get_code_section_offset(wasm)
 
   logger.debug('Saving to %s' % options.output)
-  map = build_sourcemap(entries, code_section_offset, options)
+  map = build_sourcemap(entries, func_ranges, code_section_offset, options)
   with open(options.output, 'w', encoding='utf-8') as outfile:
     json.dump(map, outfile, separators=(',', ':'), ensure_ascii=False)
 

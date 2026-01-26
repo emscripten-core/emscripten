@@ -56,7 +56,7 @@ def process_changed_file(filename):
     # Unhandled file type
     return f'{filename} updated\n'
 
-  filename = utils.removeprefix(filename, 'test/')
+  filename = filename.removeprefix('test/')
   delta = size - old_size
   percent_delta = delta * 100 / old_size
   all_deltas.append(percent_delta)
@@ -79,7 +79,7 @@ def main():
       print('tree is not clean')
       return 1
 
-    subprocess.check_call([utils.bat_suffix(os.path.join('test', 'runner')), '--rebaseline', 'codesize'], cwd=root_dir)
+    subprocess.check_call([utils.exe_path_from_root('test/runner'), '--rebaseline', 'codesize'], cwd=root_dir)
 
   output = run(['git', 'status', '-uno', '--porcelain'])
   filenames = []

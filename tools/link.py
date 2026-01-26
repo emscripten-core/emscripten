@@ -4,8 +4,6 @@
 # found in the LICENSE file.
 
 import base64
-import glob
-import hashlib
 import json
 import logging
 import os
@@ -25,7 +23,6 @@ from . import (
   emscripten,
   extract_metadata,
   feature_matrix,
-  filelock,
   js_manipulation,
   ports,
   shared,
@@ -53,7 +50,6 @@ from .utils import (
   exit_with_error,
   get_file_suffix,
   read_file,
-  removeprefix,
   safe_copy,
   unsuffixed,
   unsuffixed_basename,
@@ -219,47 +215,9 @@ def generate_js_sym_info():
   mode of the js compiler that would generate a list of all possible symbols
   that could be checked in.
   """
-  _, forwarded_data = emscripten.compile_javascript(symbols_only=True)
-  # When running in symbols_only mode compiler.mjs outputs a flat list of C symbols.
-  return json.loads(forwarded_data)
-
-
-def get_cached_file(filetype, filename, generator, cache_limit):
-  """This function implements a file cache which lives inside the main
-  emscripten cache directory but uses a per-file lock rather than a
-  cache-wide lock.
-
-  The cache is pruned (by removing the oldest files) if it grows above
-  a certain number of files.
-  """
-  root = cache.get_path(filetype)
-  utils.safe_ensure_dirs(root)
-
-  cache_file = os.path.join(root, filename)
-
-  with filelock.FileLock(cache_file + '.lock'):
-    if os.path.exists(cache_file):
-      # Cache hit, read the file
-      file_content = read_file(cache_file)
-    else:
-      # Cache miss, generate the symbol list and write the file
-      file_content = generator()
-      write_file(cache_file, file_content)
-
-  if len([f for f in os.listdir(root) if not f.endswith('.lock')]) > cache_limit:
-    with filelock.FileLock(cache.get_path(f'{filetype}.lock')):
-      files = []
-      for f in os.listdir(root):
-        if not f.endswith('.lock'):
-          f = os.path.join(root, f)
-          files.append((f, os.path.getmtime(f)))
-      files.sort(key=lambda x: x[1])
-      # Delete all but the newest N files
-      for f, _ in files[:-cache_limit]:
-        with filelock.FileLock(f + '.lock'):
-          delete_file(f)
-
-  return file_content
+  output = emscripten.compile_javascript(symbols_only=True)
+  # When running in symbols_only mode compiler.mjs outputs symbol metadata as JSON.
+  return json.loads(output)
 
 
 @ToolchainProfiler.profile_block('JS symbol generation')
@@ -269,20 +227,7 @@ def get_js_sym_info():
   if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE:
     return generate_js_sym_info()
 
-  # We define a cache hit as when the settings and `--js-library` contents are
-  # identical.
-  # Ignore certain settings that can are no relevant to library deps.  Here we
-  # skip PRE_JS_FILES/POST_JS_FILES which don't effect the library symbol list
-  # and can contain full paths to temporary files.
-  skip_settings = {'PRE_JS_FILES', 'POST_JS_FILES'}
-  input_files = [json.dumps(settings.external_dict(skip_keys=skip_settings), sort_keys=True, indent=2)]
-  jslibs = glob.glob(utils.path_from_root('src/lib') + '/lib*.js')
-  assert jslibs
-  input_files.extend(read_file(jslib) for jslib in sorted(jslibs))
-  for jslib in settings.JS_LIBRARIES:
-    input_files.append(read_file(jslib))
-  content = '\n'.join(input_files)
-  content_hash = hashlib.sha1(content.encode('utf-8')).hexdigest()
+  content_hash = emscripten.generate_js_compiler_input_hash(symbols_only=True)
 
   def generate_json():
     library_syms = generate_js_sym_info()
@@ -291,7 +236,7 @@ def get_js_sym_info():
   # Limit of the overall size of the cache.
   # This code will get test coverage since a full test run of `other` or `core`
   # generates ~1000 unique symbol lists.
-  file_content = get_cached_file('symbol_lists', f'{content_hash}.json', generate_json, cache_limit=500)
+  file_content = emscripten.get_cached_file('symbol_lists', f'{content_hash}.json', generate_json, cache_limit=500)
   return json.loads(file_content)
 
 
@@ -431,8 +376,10 @@ def get_binaryen_passes(options):
     passes += ['--fpcast-emu']
   if settings.ASYNCIFY == 1:
     passes += ['--asyncify']
-    if settings.RELOCATABLE or settings.MAIN_MODULE:
-      passes += ['--pass-arg=asyncify-relocatable']
+    if settings.MAIN_MODULE:
+      passes += ['--pass-arg=asyncify-export-globals']
+    elif settings.RELOCATABLE:
+      passes += ['--pass-arg=asyncify-import-globals']
     if settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
     if settings.ASYNCIFY_ADVISE:
@@ -1331,13 +1278,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       '$relocateExports',
       '$GOTHandler',
     ]
-
-    if settings.ASYNCIFY == 1:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
-        '__asyncify_state',
-        '__asyncify_data',
-      ]
-
     # shared modules need memory utilities to allocate their memory
     settings.ALLOW_TABLE_GROWTH = 1
 
@@ -2779,7 +2719,7 @@ def process_libraries(options, flags):
     if not flag.startswith('-l'):
       new_flags.append(flag)
       continue
-    lib = removeprefix(flag, '-l')
+    lib = flag.removeprefix('-l')
 
     logger.debug('looking for library "%s"', lib)
 
@@ -2808,17 +2748,17 @@ def process_libraries(options, flags):
       continue
 
     static_lib = f'lib{lib}.a'
-    if not settings.RELOCATABLE and not find_library(static_lib, options.lib_dirs):
+    if not settings.RELOCATABLE and not settings.MAIN_MODULE and not find_library(static_lib, options.lib_dirs):
       # Normally we can rely on the native linker to expand `-l` args.
-      # However, emscripten also supports `.so` files that are actually just
-      # regular object file.  This means we need to support `.so` files even
+      # However, emscripten also supports fake `.so` files that are actually
+      # just regular object files.  This means we need to support `.so` files even
       # when statically linking.  The native linker (wasm-ld) will otherwise
       # ignore .so files in this mode.
       found_dylib = False
       for ext in DYLIB_EXTENSIONS:
         name = 'lib' + lib + ext
         path = find_library(name, options.lib_dirs)
-        if path:
+        if path and not building.is_wasm_dylib(path):
           found_dylib = True
           new_flags.append(path)
           break
@@ -2946,7 +2886,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     # EM_JS function are exports with a special prefix.  We need to strip
     # this prefix to get the actual symbol name.  For the main module, this
     # is handled by extract_metadata.py.
-    exports = [removeprefix(e, '__em_js__') for e in exports]
+    exports = [e.removeprefix('__em_js__') for e in exports]
     settings.SIDE_MODULE_EXPORTS.extend(sorted(exports))
 
     imports = webassembly.get_imports(dylib)

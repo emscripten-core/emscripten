@@ -7,7 +7,7 @@ import shutil
 from subprocess import PIPE
 
 from common import RunnerCore, create_file, read_file, test_file
-from decorators import parameterized
+from decorators import also_with_wasm64, also_without_bigint, parameterized
 
 from tools.shared import EMCC
 from tools.utils import delete_file
@@ -286,7 +286,26 @@ addToLibrary({
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'lib.js'])
     self.assertContained("lib.js: Decorator (jslibfunc__async} has wrong type. Expected 'boolean' not 'string'", err)
 
+  @also_with_wasm64
+  @also_without_bigint
   def test_jslib_i53abi(self):
+    create_file('lib.js', r'''
+mergeInto(LibraryManager.library, {
+  jslibfunc__i53abi: true,
+  jslibfunc__sig: 'j',
+  jslibfunc: (x) => { return 42 },
+});
+''')
+    create_file('test.c', r'''
+#include <stdio.h>
+int64_t jslibfunc();
+int main() {
+  printf("main: %lld\n", jslibfunc());
+}
+''')
+    self.do_runf('test.c', 'main: 42\n', cflags=['--js-library', 'lib.js'])
+
+  def test_jslib_i53abi_errors(self):
     create_file('lib.js', r'''
 mergeInto(LibraryManager.library, {
   jslibfunc__i53abi: true,
@@ -476,6 +495,8 @@ extraLibraryFuncs.push('jsfunc');
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'foo.js'])
     self.assertContained('foo.js:5: file not found: inc.js', err)
 
+  @also_with_wasm64
+  @also_without_bigint
   @parameterized({
     '': ([],),
     'closure': (['--closure=1'],),
@@ -484,7 +505,16 @@ extraLibraryFuncs.push('jsfunc');
     create_file('foo.js', '''
       addToLibrary({
         foo: () => 42,
+        foo__sig: 'i',
+
         foo_alias: 'foo',
+
+        foo_alias_i64: 'foo',
+        foo_alias_i64__sig: 'j',
+        foo_alias_i64__i53abi: true,
+
+        foo_alias_ptr: 'foo',
+        foo_alias_ptr__sig: 'p',
 
         // Normal JS function that calls a native function
         call_native__deps: ['native_func'],
@@ -505,6 +535,8 @@ extraLibraryFuncs.push('jsfunc');
       #include <emscripten.h>
       int foo();
       int foo_alias();
+      void* foo_alias_ptr();
+      int64_t foo_alias_i64();
       int call_native();
       int call_native_alias();
 
@@ -519,6 +551,8 @@ extraLibraryFuncs.push('jsfunc');
       int main() {
         printf("foo: %d\n", foo());
         printf("foo_alias: %d\n", foo_alias());
+        printf("foo_alias_i64: %lld\n", foo_alias_i64());
+        printf("foo_alias_ptr: %p\n", foo_alias_ptr());
         printf("call_native: %d\n", call_native());
         printf("call_native_alias: %d\n", call_native_alias());
         return 0;
@@ -527,6 +561,8 @@ extraLibraryFuncs.push('jsfunc');
     expected = '''\
 foo: 42
 foo_alias: 42
+foo_alias_i64: 42
+foo_alias_ptr: 0x2a
 call_native: 43
 call_native_alias: 44
 '''

@@ -9,6 +9,7 @@ import random
 import re
 import shlex
 import shutil
+import struct
 import subprocess
 import time
 import zlib
@@ -70,8 +71,9 @@ from decorators import (
 
 from tools import ports, shared
 from tools.feature_matrix import Feature
+from tools.link import binary_encode
 from tools.shared import EMCC, FILE_PACKAGER, PIPE
-from tools.utils import WINDOWS, delete_dir
+from tools.utils import WINDOWS, delete_dir, write_binary, write_file
 
 
 def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
@@ -5581,6 +5583,30 @@ Module["preRun"] = () => {
     finally:
       server.stop()
       server.join()
+
+  # Tests encoding of all byte pairs for binary encoding in SINGLE_FILE mode.
+  @parameterized({
+    '': ('',),
+    'strict': ('"use strict";',),
+  })
+  def test_binary_encode(self, extra):
+    # Encode values 0 .. 65535 into test data
+    test_data = bytearray(struct.pack('<' + 'H' * 65536, *range(65536)))
+    write_binary('data.tmp', test_data)
+    binary_encoded = binary_encode('data.tmp')
+
+    write_file('test.html', '''<!DOCTYPE html><html><head><meta charset="utf-8"></head><body><script>
+''' + extra + '\n' + read_file(path_from_root('src/binaryDecode.js')) + '''
+var src = ''' + binary_encoded + ''';
+var u16 = new Uint16Array(binaryDecode(src).buffer);
+for(var i = 0; i < 65536; ++i)
+  if (u16[i] != i) throw i;
+console.log('OK');
+fetch('report_result?0');
+</script></body></html>
+''')
+
+    self.run_browser('test.html', '/report_result?0')
 
 
 class emrun(RunnerCore):

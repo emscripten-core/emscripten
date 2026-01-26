@@ -13,7 +13,6 @@ import time
 import unittest
 import zlib
 from pathlib import Path
-from typing import List
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner.py benchmark')
@@ -137,7 +136,7 @@ class Benchmarker:
       size = os.path.getsize(file)
       gzip_size = len(zlib.compress(read_binary(file)))
       if self.record_stats:
-        add_stat(utils.removeprefix(os.path.basename(file), 'size_'), size, gzip_size)
+        add_stat(os.path.basename(file).removeprefix('size_'), size, gzip_size)
       total_size += size
       total_gzip_size += gzip_size
 
@@ -353,7 +352,7 @@ class CheerpBenchmarker(Benchmarker):
 
 # Benchmarkers
 
-benchmarkers: List[Benchmarker] = []
+benchmarkers: list[Benchmarker] = []
 
 # avoid the baseline compiler running, because it adds a lot of noise
 # (the nondeterministic time it takes to get to the full compiler ends up

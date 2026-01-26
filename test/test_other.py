@@ -48,6 +48,7 @@ from common import (
   create_file,
   ensure_dir,
   env_modify,
+  exe_path_from_root,
   make_executable,
   path_from_root,
   test_file,
@@ -118,13 +119,13 @@ from tools.utils import (
   write_file,
 )
 
-emmake = utils.bat_suffix(path_from_root('emmake'))
-emconfig = utils.bat_suffix(path_from_root('em-config'))
-emsize = utils.bat_suffix(path_from_root('emsize'))
-empath_split = utils.bat_suffix(path_from_root('empath-split'))
-emprofile = utils.bat_suffix(path_from_root('emprofile'))
-emstrip = utils.bat_suffix(path_from_root('emstrip'))
-emsymbolizer = utils.bat_suffix(path_from_root('emsymbolizer'))
+emmake = exe_path_from_root('emmake')
+emconfig = exe_path_from_root('em-config')
+emsize = exe_path_from_root('emsize')
+empath_split = exe_path_from_root('empath-split')
+emprofile = exe_path_from_root('emprofile')
+emstrip = exe_path_from_root('emstrip')
+emsymbolizer = exe_path_from_root('emsymbolizer')
 
 
 def is_bitcode(filename):
@@ -2982,7 +2983,7 @@ More info: https://emscripten.org
   def test_js_optimizer(self, passes, filename=None):
     if not filename:
       testname = self.id().split('.')[-1]
-      filename = utils.removeprefix(testname, 'test_js_optimizer_') + '.js'
+      filename = testname.removeprefix('test_js_optimizer_') + '.js'
     filename = test_file('js_optimizer', filename)
     expected_file = utils.unsuffixed(filename) + '-output.js'
     # test calling optimizer
@@ -3362,9 +3363,14 @@ More info: https://emscripten.org
     'val_invoke': ['embind/test_embind_no_raw_pointers_val_invoke.cpp'],
     'val_call': ['embind/test_embind_no_raw_pointers_val_call.cpp'],
     'val_new': ['embind/test_embind_no_raw_pointers_val_new.cpp'],
+    'wrong_ret_allow': ['embind/test_embind_wrong_ret_allow.cpp'],
+    'wrong_arg_allow': ['embind/test_embind_wrong_arg_allow.cpp'],
   })
   def test_embind_no_raw_pointers(self, filename):
     self.assert_fail([EMCC, '-lembind', test_file(filename)], 'Implicitly binding raw pointers is illegal')
+
+  def test_embind_allow_raw_pointer(self):
+    self.emcc(test_file('embind/test_embind_allow_raw_pointer.cpp'), ['-lembind'])
 
   @is_slow_test
   @parameterized({
@@ -3554,49 +3560,42 @@ More info: https://emscripten.org
 
   @is_slow_test
   @requires_dev_dependency('typescript')
-  def test_embind_tsgen_ignore(self):
+  # These extra arguments are not related to TS binding generation but we want to
+  # verify that they do not interfere with it.
+  @parameterized({
+    '1': [['-sALLOW_MEMORY_GROWTH=1',
+           '-Wno-pthreads-mem-growth',
+           '-sMAXIMUM_MEMORY=4GB',
+           '--pre-js', 'fail.js',
+           '--post-js', 'fail.js',
+           '--extern-pre-js', 'fail.js',
+           '--extern-post-js', 'fail.js',
+           '-sENVIRONMENT=worker',
+           '--use-preload-cache',
+           '--preload-file', 'fail.js',
+           '-O3',
+           '-msimd128',
+           '-pthread',
+           '-sPROXY_TO_PTHREAD',
+           '-sPTHREAD_POOL_SIZE=1',
+           '-sSINGLE_FILE',
+           '-lembind', # Test duplicated link option.
+          ], 'embind_tsgen_ignore_1.d.ts'],
+    '2': [['--embed-file', 'fail.js',
+           '-sMINIMAL_RUNTIME=2',
+           '-sEXPORT_ES6=1',
+           '-sASSERTIONS=0',
+           '-sSTRICT=1',
+          ], 'embind_tsgen_ignore_2.d.ts'],
+    '3': [['-sWASM=0'], 'embind_tsgen_ignore_3.d.ts'],
+    '4': [['-fsanitize=undefined', '-gsource-map'], 'embind_tsgen_ignore_3.d.ts'],
+    '5': [['-sASYNCIFY'], 'embind_tsgen_ignore_3.d.ts'],
+  })
+  def test_embind_tsgen_ignore(self, extra_args, expected_ts_file):
     create_file('fail.js', 'assert(false);')
     self.cflags += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
-    # These extra arguments are not related to TS binding generation but we want to
-    # verify that they do not interfere with it.
-    extra_args = ['-sALLOW_MEMORY_GROWTH=1',
-                  '-Wno-pthreads-mem-growth',
-                  '-sMAXIMUM_MEMORY=4GB',
-                  '--pre-js', 'fail.js',
-                  '--post-js', 'fail.js',
-                  '--extern-pre-js', 'fail.js',
-                  '--extern-post-js', 'fail.js',
-                  '-sENVIRONMENT=worker',
-                  '--use-preload-cache',
-                  '--preload-file', 'fail.js',
-                  '-O3',
-                  '-msimd128',
-                  '-pthread',
-                  '-sPROXY_TO_PTHREAD',
-                  '-sPTHREAD_POOL_SIZE=1',
-                  '-sSINGLE_FILE',
-                  '-lembind', # Test duplicated link option.
-                  ]
     self.emcc('other/embind_tsgen.cpp', extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen_ignore_1.d.ts'), read_file('embind_tsgen.d.ts'))
-    # Test these args separately since they conflict with arguments in the first test.
-    extra_args = ['-sMODULARIZE',
-                  '--embed-file', 'fail.js',
-                  '-sMINIMAL_RUNTIME=2',
-                  '-sEXPORT_ES6=1',
-                  '-sASSERTIONS=0',
-                  '-sSTRICT=1']
-    self.emcc('other/embind_tsgen.cpp', extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen_ignore_2.d.ts'), read_file('embind_tsgen.d.ts'))
-    # Also test this separately since it conflicts with other settings.
-    extra_args = ['-sWASM=0']
-    self.emcc('other/embind_tsgen.cpp', extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
-
-    extra_args = ['-fsanitize=undefined',
-                  '-gsource-map']
-    self.emcc('other/embind_tsgen.cpp', extra_args)
-    self.assertFileContents(test_file('other/embind_tsgen_ignore_3.d.ts'), read_file('embind_tsgen.d.ts'))
+    self.assertFileContents(test_file(f'other/{expected_ts_file}'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_worker_env(self):
     self.cflags += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
@@ -3691,9 +3690,7 @@ More info: https://emscripten.org
     # Check that when Wasm exceptions and assertions are enabled bindings still generate.
     self.run_process([EMXX, test_file('other/embind_tsgen.cpp'),
                       '-lembind', '-fwasm-exceptions', '-sASSERTIONS',
-                      # Use the deprecated `--embind-emit-tsd` to ensure it
-                      # still works until removed.
-                      '--embind-emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated'] +
+                      '--emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated'] +
                      self.get_cflags())
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
@@ -6314,7 +6311,7 @@ print(os.environ.get('NM'))
       [['--cflags', '--libs'], '-sUSE_SDL=2'],
     ]:
       print(args, expected)
-      out = self.run_process([utils.bat_suffix(cache.get_sysroot_dir('bin/sdl2-config'))] + args,
+      out = self.run_process([cache.get_sysroot_dir('bin/sdl2-config')] + args,
                              stdout=PIPE, stderr=PIPE).stdout
       self.assertContained(expected, out)
       print('via emmake')
@@ -8402,8 +8399,7 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-sSIDE_MODULE', '-o', 'libside.so'])
 
     # Attempting to link statically against a side module (libside.so) should fail.
-    err = self.expect_fail([EMCC, '-L.', '-lside'])
-    self.assertContained(r'error: attempted static link of dynamic object \.[/\\]libside.so', err, regex=True)
+    self.assert_fail([EMCC, '-L.', '-lside'], 'wasm-ld: error: unable to find library -lside')
 
     # But a static library in the same location (libside.a) should take precedence.
     self.run_process([EMCC, test_file('hello_world.c'), '-c'])
@@ -9639,12 +9635,49 @@ int main() {
       for loc in locs:
         self.assertIn(loc, out)
 
-    def check_source_map_loc_info(address, loc):
+    def check_source_map_loc_info(address, func, loc):
       out = self.run_process(
           [emsymbolizer, '-s', 'sourcemap', 'test_dwarf.wasm', address],
           stdout=PIPE).stdout
+      self.assertIn(func, out)
       self.assertIn(loc, out)
 
+    def do_tests(src):
+      # 1. Test DWARF + source map together
+      # For DWARF, we check for the full inlined info for both function names and
+      # source locations. Source maps does not provide inlined info. So we only
+      # check for the info of the outermost function.
+      self.run_process([EMCC, test_file(src), '-g', '-gsource-map', '-O1', '-o',
+                        'test_dwarf.js'])
+      check_dwarf_loc_info(out_to_js_call_addr, out_to_js_call_func,
+                           out_to_js_call_loc)
+      check_source_map_loc_info(out_to_js_call_addr, out_to_js_call_func[0],
+                                out_to_js_call_loc[0])
+      check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
+      # Source map shows the original (inlined) source location with the original
+      # function name
+      check_source_map_loc_info(unreachable_addr, unreachable_func[0],
+                                unreachable_loc[0])
+
+      # 2. Test source map only
+      # The addresses, function names, and source locations are the same across
+      # the builds because they are relative offsets from the code section, so we
+      # don't need to recompute them
+      self.run_process([EMCC, test_file(src), '-gsource-map', '-O1', '-o',
+                        'test_dwarf.js'])
+      check_source_map_loc_info(out_to_js_call_addr, out_to_js_call_func[0],
+                                out_to_js_call_loc[0])
+      check_source_map_loc_info(unreachable_addr, unreachable_func[0],
+                                unreachable_loc[0])
+
+      # 3. Test DWARF only
+      self.run_process([EMCC, test_file(src), '-g', '-O1', '-o',
+                        'test_dwarf.js'])
+      check_dwarf_loc_info(out_to_js_call_addr, out_to_js_call_func,
+                           out_to_js_call_loc)
+      check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
+
+    # -- C program test --
     # We test two locations within test_dwarf.c:
     # out_to_js(0);     // line 6
     # __builtin_trap(); // line 13
@@ -9667,31 +9700,32 @@ int main() {
     # The first one corresponds to the innermost inlined location.
     unreachable_loc = ['test_dwarf.c:13:3', 'test_dwarf.c:18:3']
 
-    # 1. Test DWARF + source map together
-    # For DWARF, we check for the full inlined info for both function names and
-    # source locations. Source maps provide neither function names nor inlined
-    # info. So we only check for the source location of the outermost function.
-    check_dwarf_loc_info(out_to_js_call_addr, out_to_js_call_func,
-                         out_to_js_call_loc)
-    check_source_map_loc_info(out_to_js_call_addr, out_to_js_call_loc[0])
-    check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
-    check_source_map_loc_info(unreachable_addr, unreachable_loc[0])
+    do_tests('core/test_dwarf.c')
 
-    # 2. Test source map only
-    # The addresses, function names, and source locations are the same across
-    # the builds because they are relative offsets from the code section, so we
-    # don't need to recompute them
-    self.run_process([EMCC, test_file('core/test_dwarf.c'),
-                      '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
-    check_source_map_loc_info(out_to_js_call_addr, out_to_js_call_loc[0])
-    check_source_map_loc_info(unreachable_addr, unreachable_loc[0])
+    # -- C++ program test --
+    # We test two locations within test_dwarf.cpp:
+    # out_to_js(0);     // line 12
+    # __builtin_trap(); // line 19
+    self.run_process([EMCC, test_file('core/test_dwarf.cpp'),
+                      '-g', '-gsource-map', '-O1', '-o', 'test_dwarf.js'])
+    # Address of out_to_js(0) within MyClass::foo(), uninlined
+    out_to_js_call_addr = self.get_instr_addr('call\t0', 'test_dwarf.wasm')
+    # Address of __builtin_trap() within MyClass::bar(), inlined into main()
+    unreachable_addr = self.get_instr_addr('unreachable', 'test_dwarf.wasm')
 
-    # 3. Test DWARF only
-    self.run_process([EMCC, test_file('core/test_dwarf.c'),
-                      '-g', '-O1', '-o', 'test_dwarf.js'])
-    check_dwarf_loc_info(out_to_js_call_addr, out_to_js_call_func,
-                         out_to_js_call_loc)
-    check_dwarf_loc_info(unreachable_addr, unreachable_func, unreachable_loc)
+    # Function name of out_to_js(0) within MyClass::foo(), uninlined
+    out_to_js_call_func = ['MyClass::foo()']
+    # Function names of __builtin_trap() within MyClass::bar(), inlined into
+    # main(). The first one corresponds to the innermost inlined function.
+    unreachable_func = ['MyClass::bar()', 'main']
+
+    # Source location of out_to_js(0) within MyClass::foo(), uninlined
+    out_to_js_call_loc = ['test_dwarf.cpp:12:3']
+    # Source locations of __builtin_trap() within MyClass::bar(), inlined into
+    # main(). The first one corresponds to the innermost inlined location.
+    unreachable_loc = ['test_dwarf.cpp:19:3', 'test_dwarf.cpp:25:6']
+
+    do_tests('core/test_dwarf.cpp')
 
   def test_emsymbolizer_functions(self):
     'Test emsymbolizer use cases that only provide function-granularity info'
@@ -10204,13 +10238,13 @@ _d
       # Simple one-per-line response file format
       ("EXPORTED_FUNCTIONS=@response.txt", ''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", '''invalid export name: "\\\\'_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b', \\'_c', '_d']", r'''emcc: error: undefined exported symbol: "\\'_c'"'''),
       # stray slash
-      ("EXPORTED_FUNCTIONS=['_a', '_b',\\ '_c', '_d']", '''invalid export name: "\\\\ '_c'"'''),
+      ("EXPORTED_FUNCTIONS=['_a', '_b',\\ '_c', '_d']", r'''emcc: error: undefined exported symbol: "\\ '_c'"'''),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', 'invalid export name: "\\\\"_c""'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b", \\"_c", "_d"]', r'emcc: error: undefined exported symbol: "\\"_c""'),
       # stray slash
-      ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', 'invalid export name: "\\\\ "_c"'),
+      ('EXPORTED_FUNCTIONS=["_a", "_b",\\ "_c", "_d"]', r'emcc: error: undefined exported symbol: "\\ "_c""'),
       # missing comma
       ('EXPORTED_FUNCTIONS=["_a", "_b" "_c", "_d"]', 'wasm-ld: error: symbol exported via --export not found: b" "_c'),
     ]:
@@ -11495,11 +11529,12 @@ int main(void) {
 
   def test_warning_flags(self):
     self.run_process([EMCC, '-c', '-o', 'hello.o', test_file('hello_world.c')])
-    cmd = [EMCC, 'hello.o', '-o', 'a.js', '-g', '--llvm-opts=""']
+    # -g4 will generte a deprecated warning
+    cmd = [EMCC, 'hello.o', '-o', 'a.js', '-g4']
 
     # warning that is enabled by default
     stderr = self.run_process(cmd, stderr=PIPE).stderr
-    self.assertContained('emcc: warning: --llvm-opts is deprecated.  All non-emcc args are passed through to clang. [-Wdeprecated]', stderr)
+    self.assertContained('emcc: warning: please replace -g4 with -gsource-map [-Wdeprecated]', stderr)
 
     # -w to suppress warnings
     stderr = self.run_process(cmd + ['-w'], stderr=PIPE).stderr
@@ -11510,12 +11545,12 @@ int main(void) {
     self.assertNotContained('warning', stderr)
 
     # with -Werror should fail
-    expected = 'error: --llvm-opts is deprecated.  All non-emcc args are passed through to clang. [-Wdeprecated] [-Werror]'
+    expected = 'error: please replace -g4 with -gsource-map [-Wdeprecated] [-Werror]'
     self.assert_fail(cmd + ['-Werror'], expected)
 
     # with -Werror + -Wno-error=<type> should only warn
     stderr = self.run_process(cmd + ['-Werror', '-Wno-error=deprecated'], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: --llvm-opts is deprecated.  All non-emcc args are passed through to clang. [-Wdeprecated]', stderr)
+    self.assertContained('emcc: warning: please replace -g4 with -gsource-map [-Wdeprecated]', stderr)
 
     # check that `-Werror=foo` also enales foo
     expected = 'error: use of legacy setting: TOTAL_MEMORY (setting renamed to INITIAL_MEMORY) [-Wlegacy-settings] [-Werror]'
@@ -14073,7 +14108,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.do_runf('core/test_longjmp.c', cflags=self.get_cflags())
 
   def test_memory_init_file_unsupported(self):
-    self.assert_fail([EMCC, test_file('hello_world.c'), '--memory-init-file=1'], 'error: --memory-init-file is no longer supported')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-Werror', '--memory-init-file=1'], 'error: --memory-init-file is no longer supported')
 
   @node_pthreads
   def test_node_pthreads_err_out(self):
@@ -14852,21 +14887,45 @@ addToLibrary({
     self.do_runf('main.cpp', 'Hello Module!', cflags=['-std=c++20', '-fmodules'])
 
   def test_invalid_export_name(self):
-    create_file('test.c', '__attribute__((export_name("my.func"))) void myfunc() {}')
-    expected = 'emcc: error: invalid export name: "_my.func"'
-    self.assert_fail([EMCC, 'test.c'], expected)
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      #include <stdio.h>
+
+      __attribute__((export_name("my.func"))) int myfunc() { return 42; }
+
+      int main() {
+        int rtn = EM_ASM_INT(return Module['_my.func']());
+        printf("got: %d\n", rtn);
+
+        int rtn2 = EM_ASM_INT(return wasmExports['my.func']());
+        printf("got2: %d\n", rtn2);
+        return 0;
+      }
+    ''')
+    expected = 'emcc: error: export name is not a valid JS symbol: "_my.func".  Use `Module` or `wasmExports` to access this symbol'
+    self.assert_fail([EMCC, '-Werror', 'main.c'], expected)
+
+    # With warning suppressed the above program should work.
+    self.do_runf('main.c', 'got: 42\ngot2: 42\n', cflags=['-Wno-js-compiler'])
 
     # When we are generating only wasm and not JS we don't need exports to
     # be valid JS symbols.
-    self.run_process([EMCC, 'test.c', '--no-entry', '-o', 'out.wasm'])
+    self.run_process([EMCC, '-Werror', 'main.c', '--no-entry', '-o', 'out.wasm'])
 
-    # GCC (and clang) and JavaScript also allow $ in symbol names
-    create_file('valid.c', '''
-                #include <emscripten.h>
-                EMSCRIPTEN_KEEPALIVE
-                void my$func() {}
-                ''')
-    self.run_process([EMCC, 'valid.c'])
+  def test_export_with_dollarsign(self):
+    # GCC (and clang) and JavaScript both allow $ in symbol names
+    create_file('main.c', r'''
+      #include <emscripten.h>
+      #include <stdio.h>
+
+      EMSCRIPTEN_KEEPALIVE int my$func() { return 42; }
+
+      int main() {
+        int rtn = EM_ASM_INT(return _my$func());
+        printf("got: %d\n", rtn);
+        return 0;
+      }''')
+    self.do_runf('main.c', 'got: 42\n')
 
   @also_with_modularize
   def test_instantiate_wasm(self):
@@ -15088,7 +15147,7 @@ addToLibrary({
   @requires_git_checkout
   def test_install(self):
     self.run_process([PYTHON, path_from_root('tools/install.py'), 'newdir'], env=shared.env_with_node_in_path())
-    self.assertExists('newdir/emcc')
+    self.assertExists('newdir/emcc.py')
     # Some files, such as as maintenance tools should not be part of the
     # install.
     self.assertNotExists('newdir/tools/maint/')
@@ -15240,12 +15299,17 @@ addToLibrary({
     self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sLINKABLE', '-sRELOCATABLE'])
 
   # Tests encoding of all byte pairs for binary encoding in SINGLE_FILE mode.
-  def test_binary_encode(self):
+  @parameterized({
+    '': ('',),
+    'strict': ('"use strict";',),
+  })
+  def test_binary_encode(self, extra):
     # Encode values 0 .. 65535 into test data
     test_data = bytearray(struct.pack('<' + 'H' * 65536, *range(65536)))
     write_binary('data.tmp', test_data)
     binary_encoded = binary_encode('data.tmp')
-    test_js = '''var u16 = new Uint16Array(binaryDecode(src).buffer);
+    test_js = extra + '''
+var u16 = new Uint16Array(binaryDecode(src).buffer);
 for(var i = 0; i < 65536; ++i)
   if (u16[i] != i) throw i;
 console.log('OK');'''

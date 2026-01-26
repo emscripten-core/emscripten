@@ -121,9 +121,7 @@ function calculateLibraries() {
 
       if (NODERAWFS) {
         // NODERAWFS requires NODEFS
-        if (!JS_LIBRARIES.includes('libnodefs.js')) {
-          libraries.push('libnodefs.js');
-        }
+        libraries.push('libnodefs.js');
         libraries.push('libnoderawfs.js');
         // NODERAWFS overwrites libpath.js
         libraries.push('libnodepath.js');
@@ -209,7 +207,7 @@ function calculateLibraries() {
   libraries.push(...JS_LIBRARIES);
 
   // Deduplicate libraries to avoid processing any library file multiple times
-  libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
+  libraries = [...new Set(libraries)]
 
   return libraries;
 }
@@ -280,7 +278,28 @@ export const LibraryManager = {
     }
     timer.stop('executeJS')
 
+    this.addAliasDependencies();
+
     timer.stop('load')
+  },
+
+  isAlias(entry) {
+    return (typeof entry == 'string' && entry[0] != '=' && (this.library.hasOwnProperty(entry) || WASM_EXPORTS.has(entry)));
+  },
+
+  /**
+   * Automatically add the target of an alias to it's dependency list.
+   */
+  addAliasDependencies() {
+    const aliases = {};
+    for (const [key, value] of Object.entries(this.library)) {
+      if (this.isAlias(value)) {
+        aliases[key] = value;
+      }
+    }
+    for (const [key, value] of Object.entries(aliases)) {
+      (this.library[key + '__deps'] ??= []).push(value);
+    }
   },
 
   executeJSLibraryFile(filename, contents) {

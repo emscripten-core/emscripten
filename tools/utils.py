@@ -65,17 +65,26 @@ def path_from_root(*pathelems):
   return str(Path(__rootpath__, *pathelems))
 
 
+def exe_path_from_root(*pathelems):
+  return find_exe(path_from_root(*pathelems))
+
+
 def suffix(name):
   """Return the file extension"""
   return os.path.splitext(name)[1]
 
 
-def exe_suffix(cmd):
-  return cmd + '.exe' if WINDOWS else cmd
+def find_exe(*pathelems):
+  path = os.path.join(*pathelems)
 
+  if WINDOWS:
+    # Should we use PATHEXT environment variable here?
+    # For now, specify only enough extensions to find llvm / binaryen / emscripten executables.
+    for ext in ['.exe', '.bat']:
+      if os.path.isfile(path + ext):
+        return path + ext
 
-def bat_suffix(cmd):
-  return cmd + '.bat' if WINDOWS else cmd
+  return path
 
 
 def replace_suffix(filename, new_suffix):
@@ -141,13 +150,6 @@ def safe_copy(src, dst):
   # We always want the target file to be writable even when copying from
   # read-only source. (e.g. a read-only install of emscripten).
   make_writable(dst)
-
-
-# TODO(sbc): Replace with str.removeprefix once we update to python3.9
-def removeprefix(string, prefix):
-  if string.startswith(prefix):
-    return string[len(prefix):]
-  return string
 
 
 def convert_line_endings_in_file(filename, to_eol):
@@ -229,8 +231,7 @@ def get_num_cores():
   return int(os.environ.get('EMCC_CORES', cpu_count))
 
 
-# TODO(sbc): Replace with functools.cache, once we update to python 3.9
-memoize = functools.lru_cache(maxsize=None)
+memoize = functools.cache
 
 
 # TODO: Move this back to shared.py once importing that file becoming side effect free (i.e. it no longer requires a config).

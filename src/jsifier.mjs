@@ -128,18 +128,6 @@ function isDefined(symName) {
   return false;
 }
 
-function resolveAlias(symbol) {
-  while (true) {
-    var value = LibraryManager.library[symbol];
-    if (typeof value == 'string' && value[0] != '=' && (LibraryManager.library.hasOwnProperty(value) || WASM_EXPORTS.has(value))) {
-      symbol = value;
-    } else {
-      break;
-    }
-  }
-  return symbol;
-}
-
 function getTransitiveDeps(symbol) {
   // TODO(sbc): Use some kind of cache to avoid quadratic behaviour here.
   const transitiveDeps = new Set();
@@ -151,12 +139,11 @@ function getTransitiveDeps(symbol) {
       let directDeps = LibraryManager.library[sym + '__deps'] || [];
       directDeps = directDeps.filter((d) => typeof d === 'string');
       for (const dep of directDeps) {
-        const resolved = resolveAlias(dep);
         if (!transitiveDeps.has(dep)) {
           debugLog(`adding dependency ${symbol} -> ${dep}`);
         }
-        transitiveDeps.add(resolved);
-        toVisit.push(resolved);
+        transitiveDeps.add(dep);
+        toVisit.push(dep);
       }
       seen.add(sym);
     }
@@ -266,6 +253,14 @@ function addImplicitDeps(snippet, deps) {
       deps.push('$' + dep);
     }
   }
+}
+
+function sigToArgs(sig) {
+  const args = []
+  for (var i = 1; i < sig.length; i++) {
+    args.push(`a${i}`);
+  }
+  return args.join(',');
 }
 
 function handleI64Signatures(symbol, snippet, sig, i53abi) {
@@ -554,9 +549,8 @@ function(${args}) {
       if (symbolsOnly) {
         if (LibraryManager.library.hasOwnProperty(symbol)) {
           // Resolve aliases before looking up deps
-          var resolvedSymbol = resolveAlias(symbol);
-          var transtiveDeps = getTransitiveDeps(resolvedSymbol);
-          symbolDeps[symbol] = transtiveDeps.filter(
+          var transitiveDeps = getTransitiveDeps(symbol);
+          symbolDeps[symbol] = transitiveDeps.filter(
             (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),
           );
         }
@@ -637,7 +631,7 @@ function(${args}) {
         }
       }
 
-      const isFunction = typeof snippet == 'function';
+      let isFunction = typeof snippet == 'function';
       let isNativeAlias = false;
 
       const postsetId = symbol + '__postset';
@@ -652,30 +646,38 @@ function(${args}) {
         }
       }
 
-      if (typeof snippet == 'string') {
-        if (snippet[0] != '=') {
-          if (LibraryManager.library[snippet] || WASM_EXPORTS.has(snippet)) {
-            // Redirection for aliases. We include the parent, and at runtime
-            // make ourselves equal to it.  This avoid having duplicate
-            // functions with identical content.
-            const aliasTarget = resolveAlias(snippet);
-            if (WASM_EXPORTS.has(aliasTarget)) {
-              //printErr(`native alias: ${mangled} -> ${snippet}`);
-              //console.error(WASM_EXPORTS);
-              nativeAliases[mangled] = aliasTarget;
-              snippet = undefined;
-              isNativeAlias = true;
-            } else {
-              //printErr(`js alias: ${mangled} -> ${snippet}`);
-              deps.push(aliasTarget);
-              snippet = mangleCSymbolName(aliasTarget);
-            }
+      if (LibraryManager.isAlias(snippet)) {
+        // Redirection for aliases. We include the parent, and at runtime
+        // make ourselves equal to it.  This avoid having duplicate
+        // functions with identical content.
+        const aliasTarget = snippet;
+        if (WASM_EXPORTS.has(aliasTarget)) {
+          debugLog(`native alias: ${mangled} -> ${aliasTarget}`);
+          nativeAliases[mangled] = aliasTarget;
+          snippet = undefined;
+          isNativeAlias = true;
+        } else {
+          debugLog(`js alias: ${mangled} -> ${aliasTarget}`);
+          snippet = mangleCSymbolName(aliasTarget);
+          // When we have an alias for another JS function we can normally
+          // point them at the same function.  However, in some cases (where
+          // signatures are relevant and they differ between and alais and
+          // it's target) we need to construct a forwarding function from
+          // one to the other.
+          const isSigRelevant = MAIN_MODULE || RELOCATABLE || MEMORY64 || CAN_ADDRESS_2GB || (sig && sig.includes('j'));
+          const targetSig = LibraryManager.library[aliasTarget + '__sig'];
+          if (isSigRelevant && sig && targetSig && sig != targetSig) {
+            debugLog(`${symbol}: Alias target (${aliasTarget}) has different signature (${sig} vs ${targetSig})`)
+            isFunction = true;
+            snippet = `(${sigToArgs(sig)}) => ${snippet}(${sigToArgs(targetSig)})`;
           }
         }
       } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
         addImplicitDeps(snippet, deps);
-      } else if (isFunction) {
+      }
+
+      if (isFunction) {
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         addImplicitDeps(snippet, deps);
         if (CHECK_DEPS && !isUserSymbol) {

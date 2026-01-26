@@ -11,6 +11,8 @@
 #include <emscripten/fetch.h>
 #include <emscripten/eventloop.h>
 
+bool fetch_abort_queued = false;
+
 int main() {
   emscripten_fetch_attr_t attr;
   emscripten_fetch_attr_init(&attr);
@@ -32,6 +34,8 @@ int main() {
       fetch->dataOffset,
       fetch->dataOffset + fetch->numBytes);
 
+    if (fetch_abort_queued) return;
+    fetch_abort_queued = true;
     emscripten_set_immediate([](void *arg) {
       emscripten_fetch_t *fetch = (emscripten_fetch_t *)arg;
       printf("Abort fetch when downloading\n");

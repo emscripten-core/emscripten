@@ -389,14 +389,15 @@ def kill_browser_process():
 
   if processname_killed_atexit:
     if emrun_options.android:
-      logv("Terminating Android app '" + processname_killed_atexit + "'.")
+      logv(f"Terminating Android app '{processname_killed_atexit}'.")
       subprocess.call([ADB, 'shell', 'am', 'force-stop', processname_killed_atexit])
     else:
-      logv("Terminating all processes that have string '" + processname_killed_atexit + "' in their name.")
+      logv(f"Terminating all processes that have string '{processname_killed_atexit}' in their name.")
       if WINDOWS:
-        process_image = processname_killed_atexit if '.exe' in processname_killed_atexit else (processname_killed_atexit + '.exe')
-        process = subprocess.Popen(['taskkill', '/F', '/IM', process_image, '/T'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        process.communicate()
+        process_image = processname_killed_atexit
+        if not process_image.endswith('.exe'):
+          process_image += '.exe'
+        subprocess.call(['taskkill', '/F', '/IM', process_image, '/T'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       else:
         try:
           subprocess.call(['pkill', processname_killed_atexit])
@@ -749,7 +750,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     self.wfile.write(b'OK')
 
 
-# Returns stdout by running command with universal_newlines=True
+# Returns stdout by running command with text=True
 def check_output(cmd, *args, **kwargs):
   return subprocess.run(cmd, text=True, stdout=subprocess.PIPE, check=True, *args, **kwargs).stdout
 
@@ -1350,12 +1351,12 @@ def subprocess_env():
 def remove_tree(d):
   os.chmod(d, stat.S_IWRITE)
   try:
-    def remove_readonly_and_try_again(func, path, _exc_info):
+    def remove_readonly_and_try_again(func, path, exc_info):
       if not (os.stat(path).st_mode & stat.S_IWRITE):
         os.chmod(path, stat.S_IWRITE)
         func(path)
       else:
-        raise
+        raise exc_info[1]
     shutil.rmtree(d, onerror=remove_readonly_and_try_again)
   except Exception:
     pass

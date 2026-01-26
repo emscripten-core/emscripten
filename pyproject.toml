@@ -1,5 +1,5 @@
 [project]
-requires-python = ">=3.8"
+requires-python = ">=3.10"
 
 [tool.ruff]
 line-length = 100
@@ -55,7 +55,6 @@ lint.ignore = [
   "UP031", # TODO
   "UP032", # TODO
 ]
-lint.per-file-ignores."emrun.py" = [ "PLE0704" ]
 lint.per-file-ignores."tools/ports/*.py" = [ "ARG001", "ARG005" ]
 lint.per-file-ignores."test/other/ports/*.py" = [ "ARG001" ]
 lint.per-file-ignores."test/parallel_testsuite.py" = [ "ARG002" ]

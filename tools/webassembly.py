@@ -246,16 +246,17 @@ class Module:
     while 1:
       opcode = OpCode(self.read_byte())
       args = []
-      if opcode == OpCode.GLOBAL_GET:
-        args.append(self.read_uleb())
-      elif opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
-        args.append(self.read_sleb())
-      elif opcode in (OpCode.REF_NULL,):
-        args.append(self.read_type())
-      elif opcode in (OpCode.END, OpCode.I32_ADD, OpCode.I64_ADD):
-        pass
-      else:
-        raise Exception('unexpected opcode %s' % opcode)
+      match opcode:
+        case OpCode.GLOBAL_GET:
+          args.append(self.read_uleb())
+        case OpCode.I32_CONST | OpCode.I64_CONST:
+          args.append(self.read_sleb())
+        case OpCode.REF_NULL:
+          args.append(self.read_type())
+        case OpCode.END | OpCode.I32_ADD | OpCode.I64_ADD:
+          pass
+        case _:
+          raise Exception('unexpected opcode %s' % opcode)
       code.append((opcode, args))
       if opcode == OpCode.END:
         break
@@ -336,43 +337,44 @@ class Module:
         subsection_type = self.read_uleb()
         subsection_size = self.read_uleb()
         end = self.tell() + subsection_size
-        if subsection_type == DylinkType.MEM_INFO:
-          mem_size = self.read_uleb()
-          mem_align = self.read_uleb()
-          table_size = self.read_uleb()
-          table_align = self.read_uleb()
-        elif subsection_type == DylinkType.NEEDED:
-          needed_count = self.read_uleb()
-          while needed_count:
-            libname = self.read_string()
-            needed.append(libname)
-            needed_count -= 1
-        elif subsection_type == DylinkType.EXPORT_INFO:
-          count = self.read_uleb()
-          while count:
-            sym = self.read_string()
-            flags = self.read_uleb()
-            export_info[sym] = flags
-            count -= 1
-        elif subsection_type == DylinkType.IMPORT_INFO:
-          count = self.read_uleb()
-          while count:
-            module = self.read_string()
-            field = self.read_string()
-            flags = self.read_uleb()
-            import_info.setdefault(module, {})
-            import_info[module][field] = flags
-            count -= 1
-        elif subsection_type == DylinkType.RUNTIME_PATH:
-          count = self.read_uleb()
-          while count:
-            rpath = self.read_string()
-            runtime_paths.append(rpath)
-            count -= 1
-        else:
-          print(f'unknown subsection: {subsection_type}')
-          # ignore unknown subsections
-          self.skip(subsection_size)
+        match subsection_type:
+          case DylinkType.MEM_INFO:
+            mem_size = self.read_uleb()
+            mem_align = self.read_uleb()
+            table_size = self.read_uleb()
+            table_align = self.read_uleb()
+          case DylinkType.NEEDED:
+            needed_count = self.read_uleb()
+            while needed_count:
+              libname = self.read_string()
+              needed.append(libname)
+              needed_count -= 1
+          case DylinkType.EXPORT_INFO:
+            count = self.read_uleb()
+            while count:
+              sym = self.read_string()
+              flags = self.read_uleb()
+              export_info[sym] = flags
+              count -= 1
+          case DylinkType.IMPORT_INFO:
+            count = self.read_uleb()
+            while count:
+              module = self.read_string()
+              field = self.read_string()
+              flags = self.read_uleb()
+              import_info.setdefault(module, {})
+              import_info[module][field] = flags
+              count -= 1
+          case DylinkType.RUNTIME_PATH:
+            count = self.read_uleb()
+            while count:
+              rpath = self.read_string()
+              runtime_paths.append(rpath)
+              count -= 1
+          case _:
+            print(f'unknown subsection: {subsection_type}')
+            # ignore unknown subsections
+            self.skip(subsection_size)
         assert self.tell() == end
     else:
       utils.exit_with_error('error parsing shared library')
@@ -410,21 +412,22 @@ class Module:
       field = self.read_string()
       kind = ExternType(self.read_byte())
       type_ = None
-      if kind == ExternType.FUNC:
-        type_ = self.read_uleb()
-      elif kind == ExternType.GLOBAL:
-        type_ = self.read_sleb()
-        self.read_byte()  # mutable
-      elif kind == ExternType.MEMORY:
-        self.read_limits()  # limits
-      elif kind == ExternType.TABLE:
-        type_ = self.read_sleb()
-        self.read_limits()  # limits
-      elif kind == ExternType.TAG:
-        self.read_byte()  # attribute
-        type_ = self.read_uleb()
-      else:
-        raise AssertionError()
+      match kind:
+        case ExternType.FUNC:
+          type_ = self.read_uleb()
+        case ExternType.GLOBAL:
+          type_ = self.read_sleb()
+          self.read_byte()  # mutable
+        case ExternType.MEMORY:
+          self.read_limits()  # limits
+        case ExternType.TABLE:
+          type_ = self.read_sleb()
+          self.read_limits()  # limits
+        case ExternType.TAG:
+          self.read_byte()  # attribute
+          type_ = self.read_uleb()
+        case _:
+          raise AssertionError()
       imports.append(Import(kind, mod, field, type_))
 
     return imports

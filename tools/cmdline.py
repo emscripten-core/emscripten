@@ -11,7 +11,6 @@ import shlex
 import sys
 from enum import Enum, auto, unique
 from subprocess import PIPE
-from typing import List, Set
 
 from tools import (
   cache,
@@ -25,7 +24,7 @@ from tools import (
 )
 from tools.settings import MEM_SIZE_SETTINGS, settings, user_settings
 from tools.toolchain_profiler import ToolchainProfiler
-from tools.utils import exit_with_error, read_file, removeprefix
+from tools.utils import exit_with_error, read_file
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
@@ -65,21 +64,21 @@ class EmccOptions:
   dash_M = False
   dash_S = False
   dash_c = False
-  dylibs: List[str] = []
-  embed_files: List[str] = []
+  dylibs: list[str] = []
+  embed_files: list[str] = []
   emit_symbol_map = False
   emit_tsd = ''
   emrun = False
-  exclude_files: List[str] = []
+  exclude_files: list[str] = []
   executable = False
-  extern_post_js: List[str] = [] # after all js, external to optimized code
-  extern_pre_js: List[str] = [] # before all js, external to optimized code
+  extern_post_js: list[str] = [] # after all js, external to optimized code
+  extern_pre_js: list[str] = [] # before all js, external to optimized code
   fast_math = False
   ignore_dynamic_linking = False
-  input_files: List[str] = []
+  input_files: list[str] = []
   input_language = None
   js_transform = None
-  lib_dirs: List[str] = []
+  lib_dirs: list[str] = []
   memory_profiler = False
   no_entry = False
   no_minify = False
@@ -94,16 +93,16 @@ class EmccOptions:
   # Linux & MacOS)
   output_eol = os.linesep
   output_file = None
-  post_js: List[str] = [] # after all js
+  post_js: list[str] = [] # after all js
   post_link = False
-  pre_js: List[str] = [] # before all js
-  preload_files: List[str] = []
+  pre_js: list[str] = [] # before all js
+  preload_files: list[str] = []
   relocatable = False
   reproduce = None
   requested_debug = None
-  sanitize: Set[str] = set()
+  sanitize: set[str] = set()
   sanitize_minimal_runtime = False
-  s_args: List[str] = []
+  s_args: list[str] = []
   save_temps = False
   shared = False
   shell_path = None
@@ -113,7 +112,7 @@ class EmccOptions:
   use_closure_compiler = None
   use_preload_cache = False
   use_preload_plugins = False
-  valid_abspaths: List[str] = []
+  valid_abspaths: list[str] = []
 
 
 # Global/singleton EmccOptions
@@ -170,7 +169,7 @@ def is_dash_s_for_emcc(args, i):
       return False
     arg = args[i + 1]
   else:
-    arg = removeprefix(args[i], '-s')
+    arg = args[i].removeprefix('-s')
   arg = arg.split('=')[0]
   return arg.isidentifier() and arg.isupper()
 
@@ -178,7 +177,7 @@ def is_dash_s_for_emcc(args, i):
 def parse_s_args():
   for arg in options.s_args:
     assert arg.startswith('-s')
-    arg = removeprefix(arg, '-s')
+    arg = arg.removeprefix('-s')
     # If not = is specified default to 1
     if '=' in arg:
       key, value = arg.split('=', 1)
@@ -211,6 +210,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
   """
   should_exit = False
   skip = False
+  LEGACY_ARGS = {'--js-opts', '--llvm-opts', '--llvm-lto', '--memory-init-file'}
+  LEGACY_FLAGS = {'--separate-asm', '--jcache', '--proxy-to-worker', '--default-obj-ext',
+                  '--embind-emit-tsd', '--remove-duplicates', '--no-heap-copy'}
 
   for i in range(len(newargs)):
     if skip:
@@ -239,9 +241,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       return False
 
     def check_arg(name):
-      nonlocal arg_value
+      nonlocal arg, arg_value
       if arg.startswith(name) and '=' in arg:
-        arg_value = arg.split('=', 1)[1]
+        arg, arg_value = arg.split('=', 1)
         newargs[i] = ''
         return True
       if arg == name:
@@ -266,6 +268,16 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         exit_with_error("'%s': file not found: '%s'" % (arg, name))
       return name
 
+    if arg in LEGACY_FLAGS:
+      diagnostics.warning('deprecated', f'{arg} is no longer supported')
+      continue
+
+    for l in LEGACY_ARGS:
+      if check_arg(l):
+        consume_arg()
+        diagnostics.warning('deprecated', f'{arg} is no longer supported')
+        continue
+
     if arg.startswith('-s') and is_dash_s_for_emcc(newargs, i):
       s_arg = arg
       if arg == '-s':
@@ -275,7 +287,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.s_args.append(s_arg)
     elif arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
-      opt_level = removeprefix(arg, '-O') or '2'
+      opt_level = arg.removeprefix('-O') or '2'
       if opt_level == 's':
         opt_level = 2
         settings.SHRINK_LEVEL = 1
@@ -302,11 +314,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         newargs[i] = '-O3'
         level = 3
       settings.OPT_LEVEL = level
-    elif check_arg('--js-opts'):
-      logger.warning('--js-opts ignored when using llvm backend')
-      consume_arg()
-    elif check_arg('--llvm-opts'):
-      diagnostics.warning('deprecated', '--llvm-opts is deprecated.  All non-emcc args are passed through to clang.')
     elif arg.startswith('-flto'):
       if '=' in arg:
         settings.LTO = arg.split('=')[1]
@@ -316,9 +323,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       settings.LTO = 0
     elif arg == "--save-temps":
       options.save_temps = True
-    elif check_arg('--llvm-lto'):
-      logger.warning('--llvm-lto ignored when using llvm backend')
-      consume_arg()
     elif check_arg('--closure-args'):
       args = consume_arg()
       settings.CLOSURE_ARGS += shlex.split(args)
@@ -353,7 +357,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.no_minify = True
     elif arg.startswith('-g'):
       options.requested_debug = arg
-      debug_level = removeprefix(arg, '-g') or '3'
+      debug_level = arg.removeprefix('-g') or '3'
       if is_unsigned_int(debug_level):
         # the -gX value is the debug level (-g1, -g2, etc.)
         debug_level = int(debug_level)
@@ -433,8 +437,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.exclude_files.append(consume_arg())
     elif check_flag('--use-preload-cache'):
       options.use_preload_cache = True
-    elif check_flag('--no-heap-copy'):
-      diagnostics.warning('legacy-settings', 'ignoring legacy flag --no-heap-copy (that is the only mode supported now)')
     elif check_flag('--use-preload-plugins'):
       options.use_preload_plugins = True
     elif check_flag('--ignore-dynamic-linking'):
@@ -447,17 +449,10 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.shell_path = consume_arg_file()
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
-    elif check_arg('--embind-emit-tsd'):
-      diagnostics.warning('deprecated', '--embind-emit-tsd is deprecated.  Use --emit-tsd instead.')
-      options.emit_tsd = consume_arg()
     elif check_arg('--emit-tsd'):
       options.emit_tsd = consume_arg()
     elif check_flag('--no-entry'):
       options.no_entry = True
-    elif check_flag('--remove-duplicates'):
-      diagnostics.warning('legacy-settings', '--remove-duplicates is deprecated as it is no longer needed. If you cannot link without it, file a bug with a testcase')
-    elif check_flag('--jcache'):
-      logger.error('jcache is no longer supported')
     elif check_arg('--cache'):
       config.CACHE = os.path.abspath(consume_arg())
       cache.setup()
@@ -482,14 +477,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('--show-ports'):
       ports.show_ports()
       should_exit = True
-    elif check_arg('--memory-init-file'):
-      exit_with_error('--memory-init-file is no longer supported')
-    elif check_flag('--proxy-to-worker'):
-      exit_with_error('--proxy-to-worker is no longer supported')
     elif check_arg('--valid-abspath'):
       options.valid_abspaths.append(consume_arg())
-    elif check_flag('--separate-asm'):
-      exit_with_error('cannot --separate-asm with the wasm backend, since not emitting asm.js')
     elif arg.startswith(('-I', '-L')):
       path_name = arg[2:]
       # Look for '/' explicitly so that we can also diagnose identically if -I/foo/bar is passed on Windows.
@@ -550,8 +539,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       settings.DISABLE_EXCEPTION_CATCHING = 1
     elif arg == '-ffast-math':
       options.fast_math = True
-    elif check_arg('--default-obj-ext'):
-      exit_with_error('--default-obj-ext is no longer supported by emcc')
     elif arg.startswith('-fsanitize=cfi'):
       exit_with_error('emscripten does not currently support -fsanitize=cfi')
     elif check_arg('--output_eol') or check_arg('--output-eol'):
@@ -578,7 +565,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif arg == '-frtti':
       settings.USE_RTTI = 1
     elif arg.startswith('-jsD'):
-      key = removeprefix(arg, '-jsD')
+      key = arg.removeprefix('-jsD')
       if '=' in key:
         key, value = key.split('=')
       else:
@@ -593,7 +580,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('-r'):
       options.relocatable = True
     elif arg.startswith('-o'):
-      options.output_file = removeprefix(arg, '-o')
+      options.output_file = arg.removeprefix('-o')
     elif check_arg('-target') or check_arg('--target'):
       options.target = consume_arg()
       if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
@@ -781,7 +768,7 @@ def apply_user_settings():
 
     filename = None
     if value and value[0] == '@':
-      filename = removeprefix(value, '@')
+      filename = value.removeprefix('@')
       if not os.path.isfile(filename):
         exit_with_error('%s: file not found parsing argument: %s=%s' % (filename, key, value))
       value = read_file(filename).strip()
@@ -823,7 +810,7 @@ def normalize_boolean_setting(name, value):
   # and we can't just flip them, so leave them as-is to be
   # handled in a special way later)
   if name.startswith('NO_') and value in ('0', '1'):
-    name = removeprefix(name, 'NO_')
+    name = name.removeprefix('NO_')
     value = str(1 - int(value))
   return name, value
 

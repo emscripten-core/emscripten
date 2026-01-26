@@ -19,9 +19,9 @@ from subprocess import PIPE
 
 from .toolchain_profiler import ToolchainProfiler
 
-# We depend on python 3.8 features
-if sys.version_info < (3, 8): # noqa: UP036
-  print(f'error: emscripten requires python 3.8 or above ({sys.executable} {sys.version})', file=sys.stderr)
+# We depend on python 3.10 features
+if sys.version_info < (3, 10): # noqa: UP036
+  print(f'error: emscripten requires python 3.10 or above ({sys.executable} {sys.version})', file=sys.stderr)
   sys.exit(1)
 
 from . import colored_logger
@@ -43,7 +43,7 @@ import contextlib
 
 from . import cache, config, diagnostics, filelock, tempfiles, utils
 from .settings import settings
-from .utils import bat_suffix, exit_with_error, memoize, path_from_root, safe_ensure_dirs
+from .utils import exe_path_from_root, exit_with_error, memoize, path_from_root, safe_ensure_dirs
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
@@ -279,7 +279,7 @@ def env_with_node_in_path():
 
 def _get_node_version_pair(nodejs):
   actual = utils.run_process(nodejs + ['--version'], stdout=PIPE).stdout.strip()
-  version = actual.replace('v', '')
+  version = actual.removeprefix('v')
   version = version.split('-')[0].split('.')
   version = tuple(int(v) for v in version)
   return actual, version
@@ -451,7 +451,7 @@ def llvm_tool_path_with_suffix(tool, suffix):
   if suffix:
     tool += '-' + suffix
   llvm_root = os.path.expanduser(config.LLVM_ROOT)
-  return os.path.join(llvm_root, utils.exe_suffix(tool))
+  return utils.find_exe(llvm_root, tool)
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -586,7 +586,7 @@ def is_internal_global(name):
 def is_user_export(name):
   if is_internal_global(name):
     return False
-  return name not in ['__indirect_function_table', 'memory'] and not name.startswith(('dynCall_', 'orig$'))
+  return name not in ['__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'] and not name.startswith(('dynCall_', 'orig$'))
 
 
 def asmjs_mangle(name):
@@ -644,11 +644,11 @@ WASM_LD = llvm_tool_path('wasm-ld')
 LLVM_PROFDATA = llvm_tool_path('llvm-profdata')
 LLVM_COV = llvm_tool_path('llvm-cov')
 
-EMCC = bat_suffix(path_from_root('emcc'))
-EMXX = bat_suffix(path_from_root('em++'))
-EMAR = bat_suffix(path_from_root('emar'))
-EMRANLIB = bat_suffix(path_from_root('emranlib'))
-FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
+EMCC = exe_path_from_root('emcc')
+EMXX = exe_path_from_root('em++')
+EMAR = exe_path_from_root('emar')
+EMRANLIB = exe_path_from_root('emranlib')
+FILE_PACKAGER = exe_path_from_root('tools/file_packager')
 # Windows .dll suffix is not included in this list, since those are never
 # linked to directly on the command line.
 DYLIB_EXTENSIONS = ['.dylib', '.so']

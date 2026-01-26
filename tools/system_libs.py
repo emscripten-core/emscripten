@@ -14,7 +14,6 @@ import textwrap
 from enum import IntEnum, auto
 from glob import iglob
 from time import time
-from typing import List, Optional
 
 from . import building, cache, diagnostics, shared, utils
 from .settings import settings
@@ -255,18 +254,19 @@ rule archive
         o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
       objects.append(o)
       ext = utils.suffix(src)
-      if ext == '.s':
-        cmd = 'asm'
-        flags = asflags
-      elif ext == '.S':
-        cmd = 'asm_cpp'
-        flags = cflags
-      elif ext == '.c':
-        cmd = 'cc'
-        flags = cflags
-      else:
-        cmd = 'cxx'
-        flags = cflags
+      match ext:
+        case '.s':
+          cmd = 'asm'
+          flags = asflags
+        case '.S':
+          cmd = 'asm_cpp'
+          flags = cflags
+        case '.c':
+          cmd = 'cc'
+          flags = cflags
+        case _:
+          cmd = 'cxx'
+          flags = cflags
       out += f'build {escape_ninja_path(o)}: {cmd} {escape_ninja_path(src)}\n'
       if customize_build_flags:
         custom_flags = customize_build_flags(flags, src)
@@ -349,7 +349,7 @@ class Library:
   # automatically get the correct version of the library.
   # This should only be overridden in a concrete library class, e.g. libc,
   # and left as None in an abstract library class, e.g. MTLibrary.
-  name: Optional[str] = None
+  name: str | None = None
 
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
@@ -368,7 +368,7 @@ class Library:
   # directory into the include path, you would write:
   #    includes = [('system', 'lib', 'a'), ('system', 'lib', 'b')]
   # The include path of the parent class is automatically inherited.
-  includes: List[str] = []
+  includes: list[str] = []
 
   # By default, `get_files` look for source files for this library under `src_dir`.
   # It will either use the files listed in `src_files`, or use the glob pattern in
@@ -376,10 +376,10 @@ class Library:
   # When using `src_glob`, you can specify a list of files in `src_glob_exclude`
   # to be excluded from the library.
   # Alternatively, you can override `get_files` to use your own logic.
-  src_dir: Optional[str] = None
-  src_files: Optional[List[str]] = []
-  src_glob: Optional[str] = None
-  src_glob_exclude: Optional[List[str]] = None
+  src_dir: str | None = None
+  src_files: list[str] | None = []
+  src_glob: str | None = None
+  src_glob_exclude: list[str] | None = None
 
   # Whether to always generate WASM object files, even when LTO is set
   force_object_files = False
@@ -449,7 +449,7 @@ class Library:
       return fullpath
     # For libraries (.a) files, we pass the abbreviated `-l` form.
     base = utils.unsuffixed_basename(fullpath)
-    return '-l' + utils.removeprefix(base, 'lib')
+    return '-l' + base.removeprefix('lib')
 
   def get_files(self):
     """
@@ -648,7 +648,7 @@ class Library:
     the behaviour.
     """
     vary_on = cls.vary_on()
-    return [dict(zip(vary_on, toggles)) for toggles in
+    return [dict(zip(vary_on, toggles, strict=True)) for toggles in
             itertools.product([False, True], repeat=len(vary_on))]
 
   @classmethod
@@ -797,14 +797,15 @@ class ExceptionLibrary(Library):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.eh_mode == Exceptions.NONE:
-      cflags += ['-fno-exceptions']
-    elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags += ['-sDISABLE_EXCEPTION_CATCHING=0']
-    elif self.eh_mode == Exceptions.WASM_LEGACY:
-      cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS']
-    elif self.eh_mode == Exceptions.WASM:
-      cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0']
+    match self.eh_mode:
+      case Exceptions.NONE:
+        cflags += ['-fno-exceptions']
+      case Exceptions.EMSCRIPTEN:
+        cflags += ['-sDISABLE_EXCEPTION_CATCHING=0']
+      case Exceptions.WASM_LEGACY:
+        cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS']
+      case Exceptions.WASM:
+        cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0']
 
     return cflags
 
@@ -812,12 +813,13 @@ class ExceptionLibrary(Library):
     name = super().get_base_name()
     # TODO Currently emscripten-based exception is the default mode, thus no
     # suffixes. Change the default to wasm exception later.
-    if self.eh_mode == Exceptions.NONE:
-      name += '-noexcept'
-    elif self.eh_mode == Exceptions.WASM_LEGACY:
-      name += '-legacyexcept'
-    elif self.eh_mode == Exceptions.WASM:
-      name += '-wasmexcept'
+    match self.eh_mode:
+      case Exceptions.NONE:
+        name += '-noexcept'
+      case Exceptions.WASM_LEGACY:
+        name += '-legacyexcept'
+      case Exceptions.WASM:
+        name += '-wasmexcept'
     return name
 
   @classmethod
@@ -850,29 +852,31 @@ class SjLjLibrary(Library):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags += ['-sSUPPORT_LONGJMP=emscripten',
-                 '-sDISABLE_EXCEPTION_THROWING=0']
-    elif self.eh_mode == Exceptions.WASM_LEGACY:
-      cflags += ['-sSUPPORT_LONGJMP=wasm',
-                 '-sWASM_LEGACY_EXCEPTIONS',
-                 '-sDISABLE_EXCEPTION_THROWING',
-                 '-D__WASM_SJLJ__']
-    elif self.eh_mode == Exceptions.WASM:
-      cflags += ['-sSUPPORT_LONGJMP=wasm',
-                 '-sWASM_LEGACY_EXCEPTIONS=0',
-                 '-sDISABLE_EXCEPTION_THROWING',
-                 '-D__WASM_SJLJ__']
+    match self.eh_mode:
+      case Exceptions.EMSCRIPTEN:
+        cflags += ['-sSUPPORT_LONGJMP=emscripten',
+                   '-sDISABLE_EXCEPTION_THROWING=0']
+      case Exceptions.WASM_LEGACY:
+        cflags += ['-sSUPPORT_LONGJMP=wasm',
+                   '-sWASM_LEGACY_EXCEPTIONS',
+                   '-sDISABLE_EXCEPTION_THROWING',
+                   '-D__WASM_SJLJ__']
+      case Exceptions.WASM:
+        cflags += ['-sSUPPORT_LONGJMP=wasm',
+                   '-sWASM_LEGACY_EXCEPTIONS=0',
+                   '-sDISABLE_EXCEPTION_THROWING',
+                   '-D__WASM_SJLJ__']
     return cflags
 
   def get_base_name(self):
     name = super().get_base_name()
     # TODO Currently emscripten-based SjLj is the default mode, thus no
     # suffixes. Change the default to wasm exception later.
-    if self.eh_mode == Exceptions.WASM_LEGACY:
-      name += '-legacysjlj'
-    elif self.eh_mode == Exceptions.WASM:
-      name += '-wasmsjlj'
+    match self.eh_mode:
+      case Exceptions.WASM_LEGACY:
+        name += '-legacysjlj'
+      case Exceptions.WASM:
+        name += '-wasmsjlj'
     return name
 
   @classmethod
@@ -1634,13 +1638,14 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
     cflags = super().get_cflags()
     if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
-    if self.eh_mode == Exceptions.NONE:
-      cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
-    elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
-      # The code used to interpret exceptions during terminate
-      # is not compatible with emscripten exceptions.
-      cflags.append('-DLIBCXXABI_SILENT_TERMINATE')
+    match self.eh_mode:
+      case Exceptions.NONE:
+        cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
+      case Exceptions.EMSCRIPTEN:
+        cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
+        # The code used to interpret exceptions during terminate
+        # is not compatible with emscripten exceptions.
+        cflags.append('-DLIBCXXABI_SILENT_TERMINATE')
     return cflags
 
   def get_files(self):
@@ -1662,18 +1667,19 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       'cxa_exception_js_utils.cpp',
       '__cpp_exception.S',
     ]
-    if self.eh_mode == Exceptions.NONE:
-      filenames += ['cxa_noexception.cpp']
-    elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      filenames += ['cxa_exception_emscripten.cpp']
-    elif self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
-      filenames += [
-        'cxa_exception_storage.cpp',
-        'cxa_exception.cpp',
-        'cxa_personality.cpp',
-      ]
-    else:
-      assert False
+    match self.eh_mode:
+      case Exceptions.NONE:
+        filenames += ['cxa_noexception.cpp']
+      case Exceptions.EMSCRIPTEN:
+        filenames += ['cxa_exception_emscripten.cpp']
+      case Exceptions.WASM_LEGACY | Exceptions.WASM:
+        filenames += [
+          'cxa_exception_storage.cpp',
+          'cxa_exception.cpp',
+          'cxa_personality.cpp',
+        ]
+      case _:
+        assert False
 
     return files_in_path(
         path='system/lib/libcxxabi/src',
@@ -1745,10 +1751,11 @@ class libunwind(ExceptionLibrary, MTLibrary):
     cflags.append('-DNDEBUG')
     if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
-    if self.eh_mode == Exceptions.NONE:
-      cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
-    elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
+    match self.eh_mode:
+      case Exceptions.NONE:
+        cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
+      case Exceptions.EMSCRIPTEN:
+        cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
     return cflags
 
 

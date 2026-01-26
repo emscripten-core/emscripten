@@ -7721,7 +7721,8 @@ void* operator new(size_t size) {
       self.skipTest('asan does not work with SAFE_HEAP')
     self.set_setting('SAFE_HEAP', safe_heap)
     self.cflags += ['-lembind']
-    self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True)
+    out_suffix = '64' if self.get_setting('MEMORY64') else ''
+    self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True, out_suffix=out_suffix)
 
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_binding(self):
@@ -9648,9 +9649,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'dylink': [True],
   })
   @no_esm_integration('https://github.com/emscripten-core/emscripten/issues/25543')
+  @no_omit_asm_module_exports('https://github.com/emscripten-core/emscripten/issues/25550')
   def test_wasm_global(self, dynlink):
     if '-flto' in self.cflags or '-flto=thin' in self.cflags:
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25555')
+    if self.is_wasm2js() and self.is_optimizing():
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25550')
     if dynlink:
       self.check_dylink()
       self.set_setting('MAIN_MODULE', 2)

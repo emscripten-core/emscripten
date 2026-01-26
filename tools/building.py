@@ -13,7 +13,6 @@ import shutil
 import subprocess
 import sys
 from subprocess import PIPE
-from typing import Dict, List, Set
 
 from . import (
   cache,
@@ -56,13 +55,13 @@ logger = logging.getLogger('building')
 binaryen_checked = False
 EXPECTED_BINARYEN_VERSION = 125
 
-_is_ar_cache: Dict[str, bool] = {}
+_is_ar_cache: dict[str, bool] = {}
 # the exports the user requested
-user_requested_exports: Set[str] = set()
+user_requested_exports: set[str] = set()
 # A list of feature flags to pass to each binaryen invocation (like `wasm-opt`,
 # etc.). This is received by the first call to binaryen (e.g. `wasm-emscripten-finalize`)
 # which reads it using `--detect-features`.
-binaryen_features: List[str] = []
+binaryen_features: list[str] = []
 
 
 def get_building_env():
@@ -105,12 +104,13 @@ def llvm_backend_args():
     allowed = ','.join(settings.EXCEPTION_CATCHING_ALLOWED)
     args += ['-emscripten-cxx-exceptions-allowed=' + allowed]
 
-  # asm.js-style setjmp/longjmp handling
-  if settings.SUPPORT_LONGJMP == 'emscripten':
-    args += ['-enable-emscripten-sjlj']
-  # setjmp/longjmp handling using Wasm EH
-  elif settings.SUPPORT_LONGJMP == 'wasm':
-    args += ['-wasm-enable-sjlj']
+  match settings.SUPPORT_LONGJMP:
+    case 'emscripten':
+      # asm.js-style setjmp/longjmp handling
+      args += ['-enable-emscripten-sjlj']
+    case 'wasm':
+      # setjmp/longjmp handling using Wasm EH
+      args += ['-wasm-enable-sjlj']
 
   if settings.WASM_EXCEPTIONS:
     if settings.WASM_LEGACY_EXCEPTIONS:
@@ -915,10 +915,9 @@ def metadce(js_file, wasm_file, debug_info, last):
   # find the unused things in js
   unused_imports = []
   unused_exports = []
-  PREFIX = 'unused: '
   for line in out.splitlines():
-    if line.startswith(PREFIX):
-      name = line.replace(PREFIX, '').strip()
+    if line.startswith('unused:'):
+      name = line.removeprefix('unused:').strip()
       # With dynamic linking we never want to strip the memory or the table
       # This can be removed once SIDE_MODULE_IMPORTS includes tables and memories.
       if settings.MAIN_MODULE and name.split('$')[-1] in ('wasmMemory', 'wasmTable'):
@@ -1219,7 +1218,7 @@ def get_binaryen_feature_flags():
 
 
 def get_binaryen_version(bindir):
-  opt = os.path.join(bindir, utils.exe_suffix('wasm-opt'))
+  opt = utils.find_exe(bindir, 'wasm-opt')
   if not os.path.exists(opt):
     exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % opt)
   try:
