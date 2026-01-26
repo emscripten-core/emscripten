@@ -423,7 +423,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
       mode = leading
       # position of @ if we're doing 'src@dst'. '__' is used to keep the index
       # same with the original if they escaped with '@@'.
-      at_position = arg.replace('@@', '__').find('@')
+      at_position = arg.replace('@@', '__').rfind('@')
       # '@@' in input string means there is an actual @ character, a single '@'
       # means the 'src@dst' notation.
       uses_at_notation = (at_position != -1)

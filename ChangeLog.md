@@ -1654,6 +1654,9 @@ See docs/process.md for more on how version tagging works.
 - `wasmX` test suites that are defined in `test_core.py` have been renamed to
   `coreX` to better reflect where they are defined.  The old suite names such
   as `wasm2` will continue to work for now as aliases.
+- When using `--preload-file` the last `@` is not taken as the dividing point
+  between the source and target filenames.  As previously, `@` can be included
+  explicitly by escaping using `@@`.
 
 3.1.1 - 01/08/2022
 ------------------
