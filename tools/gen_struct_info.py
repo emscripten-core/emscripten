@@ -123,7 +123,7 @@ class Scope:
     self.code.append('puts("{");')
     return self
 
-  def __exit__(self, exc_type, exc_val, exc_tb):
+  def __exit__(self, _exc_type, _exc_val, _exc_tb):
     if self.has_data:
       self.code.append('puts("");')
     self.code.append('printf("}");')
@@ -366,7 +366,7 @@ def main(args):
   if args.wasm64:
     # Always use =2 here so that we don't generate a binary that actually requires
     # memory64 to run.  All we care about is that the output is correct.
-    extra_cflags += ['-sMEMORY64=2', '-Wno-experimental']
+    extra_cflags += ['-sMEMORY64=2']
 
   # Add the user options to the list as well.
   for path in args.includes:

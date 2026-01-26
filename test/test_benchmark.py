@@ -22,7 +22,7 @@ import clang_native
 import jsrun
 import common
 from tools.shared import CLANG_CC, CLANG_CXX
-from common import test_file, read_file, read_binary
+from common import test_file, read_file, read_binary, needs_make
 from tools.shared import run_process, PIPE, EMCC, config
 from tools import building, utils, shared
 
@@ -160,7 +160,7 @@ class NativeBenchmarker(Benchmarker):
     self.cxx = cxx
     self.args = args or [OPTIMIZATIONS]
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     native_args = native_args or []
     shared_args = shared_args or []
     self.parent = parent
@@ -213,7 +213,7 @@ class EmscriptenBenchmarker(Benchmarker):
       self.env.update(env)
     self.binaryen_opts = binaryen_opts or []
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     emcc_args = emcc_args or []
     self.filename = filename
     llvm_root = self.env.get('LLVM') or config.LLVM_ROOT
@@ -294,7 +294,7 @@ class CheerpBenchmarker(Benchmarker):
     self.args = args or [OPTIMIZATIONS]
     self.binaryen_opts = binaryen_opts or []
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser):
+  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
     cheerp_args = [
       '-fno-math-errno',
     ]
@@ -436,7 +436,7 @@ class benchmark(common.RunnerCore):
                    emcc_args=None, native_args=None, shared_args=None,
                    force_c=False, reps=TEST_REPS, native_exec=None,
                    output_parser=None, args_processor=None, lib_builder=None,
-                   skip_native=False):
+                   skip_benchmarkers=None):
     if not benchmarkers:
       raise Exception('error, no benchmarkers')
 
@@ -452,14 +452,14 @@ class benchmark(common.RunnerCore):
     print()
     baseline = None
     for b in benchmarkers:
-      if skip_native and isinstance(b, NativeBenchmarker):
+      if skip_benchmarkers and b.name in skip_benchmarkers:
         continue
       if not b.run:
         # If we won't run the benchmark, we don't need repetitions.
         reps = 0
       baseline = b
       print('Running benchmarker: %s: %s' % (b.__class__.__name__, b.name))
-      b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder, has_output_parser=output_parser is not None)
+      b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder)
       b.bench(args, output_parser, reps, expected_output)
       recorded_stats = b.display(baseline)
       if recorded_stats:
@@ -967,9 +967,9 @@ class benchmark(common.RunnerCore):
 
   def test_malloc_multithreading(self):
     # Multithreaded malloc test. For emcc we use mimalloc here.
-    src = read_file(test_file('other/test_malloc_multithreading.cpp'))
+    src = read_file(test_file('other/test_malloc_multithreading.c'))
     # TODO measure with different numbers of cores and not fixed 4
-    self.do_benchmark('malloc_multithreading', src, 'Done.', shared_args=['-DWORKERS=4', '-pthread'], emcc_args=['-sEXIT_RUNTIME', '-sMALLOC=mimalloc'])
+    self.do_benchmark('malloc_multithreading', src, 'Done.', shared_args=['-DWORKERS=4', '-pthread'], emcc_args=['-sEXIT_RUNTIME', '-sMALLOC=mimalloc', '-sMINIMAL_RUNTIME=0', '-sINITIAL_MEMORY=512MB'])
 
   def test_matrix_multiply(self):
     def output_parser(output):
@@ -981,6 +981,11 @@ class benchmark(common.RunnerCore):
     shutil.copyfile(test_file(f'third_party/lua/{benchmark}.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
+      # Inject -sMEMORY64 into node-64 benchmarking runs.
+      env_init['MYCFLAGS'] = env_init['CFLAGS']
+      if '-sMEMORY64' in env_init['MYCFLAGS']:
+        env_init['MYLDFLAGS'] = '-sMEMORY64'
+
       # We force recomputation for the native benchmarker because this benchmark
       # uses native_exec=True, so we need to copy the native executable
       return self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init, force_rebuild=native)
@@ -1006,7 +1011,7 @@ class benchmark(common.RunnerCore):
     src = read_file(test_file('benchmark/test_zlib_benchmark.c'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'], native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), configure=['cmake', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '.'], make=['cmake', '--build', '.', '--'], make_args=[], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('zlib', src, 'ok.',
                       force_c=True, shared_args=['-I' + test_file('third_party/zlib')], lib_builder=lib_builder)
@@ -1038,16 +1043,13 @@ class benchmark(common.RunnerCore):
     src += read_file(test_file('third_party/bullet/Demos/Benchmarks/main.cpp'))
 
     def lib_builder(name, native, env_init):
+      cflags = ' '.join(self.cflags) + ' ' + env_init['CFLAGS']
       return self.get_library(str(Path('third_party/bullet')),
-                              [Path('src/.libs/libBulletDynamics.a'),
-                               Path('src/.libs/libBulletCollision.a'),
-                               Path('src/.libs/libLinearMath.a')],
-                              # The --host parameter is needed for 2 reasons:
-                              # 1) bullet in it's configure.ac tries to do platform detection and will fail on unknown platforms
-                              # 2) configure will try to compile and run a test file to check if the C compiler is sane. As Cheerp
-                              #    will generate a wasm file (which cannot be run), configure will fail. Passing `--host` enables
-                              #    cross compile mode, which lets configure complete happily.
-                              configure_args=['--disable-demos', '--disable-dependency-tracking', '--host=i686-unknown-linux'], native=native, cache_name_extra=name, env_init=env_init)
+                              ['src/BulletDynamics/libBulletDynamics.a',
+                               'src/BulletCollision/libBulletCollision.a',
+                               'src/LinearMath/libLinearMath.a'],
+                              configure=['cmake', '.'], configure_args=['-DCMAKE_POLICY_VERSION_MINIMUM=3.5','-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF', '-DCMAKE_CXX_STANDARD=14', f'-DCMAKE_CXX_FLAGS={cflags}'],
+                              make=['cmake', '--build', '.', '--'], make_args=[], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('bullet', src, '\nok.\n',
                       shared_args=['-I' + test_file('third_party/bullet/src'), '-I' + test_file('third_party/bullet/Demos/Benchmarks')],
@@ -1070,6 +1072,7 @@ class benchmark(common.RunnerCore):
                       emcc_args=['-sFILESYSTEM', '-sMINIMAL_RUNTIME=0'],
                       force_c=True)
 
+  @needs_make('depends on freetype')
   def test_zzz_poppler(self):
     utils.write_file('pre.js', '''
       var benchmarkArgument = %s;
@@ -1110,9 +1113,11 @@ class benchmark(common.RunnerCore):
     ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):  # noqa
+      if '-sMEMORY64' in env_init['CFLAGS']:
+        env_init['CPPFLAGS'] = '-sMEMORY64'
+        env_init['LDFLAGS'] = '-sMEMORY64'
       return self.get_poppler_library(env_init=env_init)
 
-    # TODO: Fix poppler native build and remove skip_native=True
     self.do_benchmark('poppler', '', 'hashed printout',
                       shared_args=['-I' + test_file('poppler/include'),
                                    '-I' + test_file('freetype/include')],
@@ -1120,4 +1125,7 @@ class benchmark(common.RunnerCore):
                                  test_file('poppler/emscripten_html5.pdf') + '@input.pdf',
                                  '-sERROR_ON_UNDEFINED_SYMBOLS=0',
                                  '-sMINIMAL_RUNTIME=0'], # not minimal because of files
-                      lib_builder=lib_builder, skip_native=True)
+                      lib_builder=lib_builder,
+                      # TODO: Fix poppler native and freetype MEMORY64 builds to be able
+                      # to remove these skips
+                      skip_benchmarkers=['clang', 'gcc', 'v8-64', 'node-64'])

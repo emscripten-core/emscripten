@@ -119,8 +119,8 @@ def check_js_engines():
 def get_and_import_modules():
   modules = []
   for filename in glob.glob(os.path.join(common.TEST_ROOT, 'test*.py')):
-    module_dir, module_file = os.path.split(filename)
-    module_name, module_ext = os.path.splitext(module_file)
+    module_file = os.path.basename(filename)
+    module_name = os.path.splitext(module_file)[0]
     __import__(module_name)
     modules.append(sys.modules[module_name])
   return modules
@@ -398,7 +398,7 @@ def flattened_tests(loaded_tests):
 
 
 def suite_for_module(module, tests, options):
-  suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest', 'test_browser')
+  suite_supported = module.__name__ in ('test_core', 'test_other', 'test_posixtest', 'test_browser', 'test_codesize')
   if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
     has_multiple_tests = len(tests) > 1
     has_multiple_cores = parallel_testsuite.num_cores() > 1
@@ -564,6 +564,8 @@ def main():
 
   # Remove any old test files before starting the run
   utils.delete_file(common.flaky_tests_log_filename)
+  utils.delete_file(common.browser_spawn_lock_filename)
+  utils.delete_file(f'{common.browser_spawn_lock_filename}_counter')
 
   def prepend_default(arg):
     if arg.startswith('test_'):

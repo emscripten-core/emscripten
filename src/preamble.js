@@ -34,7 +34,7 @@ if (WebAssembly.isWasm2js) {
 #endif
 
 #if ASSERTIONS && WASM == 1
-if (typeof WebAssembly != 'object') {
+if (!globalThis.WebAssembly) {
   err('no native wasm support detected');
 }
 #endif
@@ -104,7 +104,7 @@ var isFileURI = (filename) => filename.startsWith('file://');
 #include "runtime_common.js"
 
 #if ASSERTIONS
-assert(typeof Int32Array != 'undefined' && typeof Float64Array !== 'undefined' && Int32Array.prototype.subarray != undefined && Int32Array.prototype.set != undefined,
+assert(globalThis.Int32Array && globalThis.Float64Array && Int32Array.prototype.subarray && Int32Array.prototype.set,
        'JS engine does not provide full typed array support');
 #endif
 
@@ -564,7 +564,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
     err(`failed to asynchronously prepare wasm: ${reason}`);
 #if WASM == 2
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
-    if (typeof location != 'undefined') {
+    if (globalThis.location) {
 #endif
       // WebAssembly compilation failed, try running the JS fallback instead.
       var search = location.search;
@@ -593,7 +593,7 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
   if (!binary
-#if MIN_FIREFOX_VERSION < 58 || MIN_SAFARI_VERSION < 150000
+#if MIN_SAFARI_VERSION < 150000
       // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
       && WebAssembly.instantiateStreaming
 #endif
@@ -723,48 +723,29 @@ function getWasmImports() {
 #endif
 #endif
 
-#if !IMPORTED_MEMORY
-    wasmMemory = wasmExports['memory'];
-    {{{ receivedSymbol('wasmMemory') }}}
-#if ASSERTIONS
-    assert(wasmMemory, 'memory not found in wasm exports');
-#endif
-    updateMemoryViews();
-#endif
-
-#if '$wasmTable' in addedLibraryItems && !RELOCATABLE
-    wasmTable = wasmExports['__indirect_function_table'];
-    {{{ receivedSymbol('wasmTable') }}}
-#if ASSERTIONS && !PURE_WASI
-    assert(wasmTable, 'table not found in wasm exports');
-#endif
-#endif
-
-#if hasExportedSymbol('__cpp_exception') && !RELOCATABLE
-    ___cpp_exception = wasmExports['__cpp_exception'];
-    {{{ receivedSymbol('___cpp_exception') }}};
-#endif
-
 #if hasExportedSymbol('__wasm_apply_data_relocs')
     __RELOC_FUNCS__.push(wasmExports['__wasm_apply_data_relocs']);
+#endif
+
+#if DECLARE_ASM_MODULE_EXPORTS
+    assignWasmExports(wasmExports);
+#else
+    // If we didn't declare the asm exports as top level enties this function
+    // is in charge of programmatically exporting them on the global object.
+    exportWasmSymbols(wasmExports);
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
     instrumentWasmTableWithAbort();
 #endif
 
-#if !DECLARE_ASM_MODULE_EXPORTS
-    // If we didn't declare the asm exports as top level enties this function
-    // is in charge of programmatically exporting them on the global object.
-    exportWasmSymbols(wasmExports);
+#if !IMPORTED_MEMORY
+    updateMemoryViews();
 #endif
 
 #if PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
-#endif
-#if DECLARE_ASM_MODULE_EXPORTS
-    assignWasmExports(wasmExports);
 #endif
 #if WASM_ASYNC_COMPILATION && !MODULARIZE
     removeRunDependency('wasm-instantiate');
@@ -814,8 +795,8 @@ function getWasmImports() {
 #if ASSERTIONS
       try {
 #endif
-        Module['instantiateWasm'](info, (mod, inst) => {
-          resolve(receiveInstance(mod, inst));
+        Module['instantiateWasm'](info, (inst, mod) => {
+          resolve(receiveInstance(inst, mod));
         });
 #if ASSERTIONS
       } catch(e) {

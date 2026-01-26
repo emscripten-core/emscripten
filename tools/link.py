@@ -173,7 +173,7 @@ def setup_environment_settings():
   if any(x for x in settings.ENVIRONMENT if x not in VALID_ENVIRONMENTS):
     exit_with_error(f'Invalid environment specified in "ENVIRONMENT": {settings.ENVIRONMENT}. Should be one of: {",".join(VALID_ENVIRONMENTS)}')
 
-  settings.ENVIRONMENT_MAY_BE_WEB = not settings.ENVIRONMENT or 'web' in settings.ENVIRONMENT
+  settings.ENVIRONMENT_MAY_BE_WEB = not settings.ENVIRONMENT or 'web' in settings.ENVIRONMENT or 'worker' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_WEBVIEW = not settings.ENVIRONMENT or 'webview' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_NODE = not settings.ENVIRONMENT or 'node' in settings.ENVIRONMENT
   settings.ENVIRONMENT_MAY_BE_SHELL = not settings.ENVIRONMENT or 'shell' in settings.ENVIRONMENT
@@ -1473,7 +1473,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # TODO(sbc): Find make a generic way to expose the feature matrix to JS
   # compiler rather then adding them all ad-hoc as internal settings
-  settings.SUPPORTS_GLOBALTHIS = feature_matrix.caniuse(feature_matrix.Feature.GLOBALTHIS)
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(feature_matrix.Feature.PROMISE_ANY)
   if not settings.BULK_MEMORY:
     settings.BULK_MEMORY = feature_matrix.caniuse(feature_matrix.Feature.BULK_MEMORY)
@@ -3103,7 +3102,14 @@ def run(options, linker_args):
     logger.debug('stopping after linking to object file')
     return 0
 
-  linker_args += phase_calculate_system_libraries(options)
+  system_libs = phase_calculate_system_libraries(options)
+  # Only add system libraries that have not already been specified.
+  # This avoids issues where the user explictly includes, for example, `-lGL`.
+  # This is not normally a problem except in the case of -sMAIN_MODULE=1 where
+  # the duplicate library would result in duplicate symbols.
+  for s in system_libs:
+    if s not in linker_args:
+      linker_args.append(s)
 
   js_syms = {}
   if (not settings.SIDE_MODULE or settings.ASYNCIFY) and not shared.SKIP_SUBPROCS:

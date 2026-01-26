@@ -2064,7 +2064,7 @@ var LibraryOpenAL = {
       }
     }
 
-    if (typeof AudioContext != 'undefined' || typeof webkitAudioContext != 'undefined') {
+    if (globalThis.AudioContext || globalThis.webkitAudioContext) {
       var deviceId = AL.newId();
       AL.deviceRefCounts[deviceId] = 0;
       return deviceId;
@@ -2398,16 +2398,14 @@ var LibraryOpenAL = {
       ret = 'Out of Memory';
       break;
     case 0x1004 /* ALC_DEFAULT_DEVICE_SPECIFIER */:
-      if (typeof AudioContext != 'undefined' ||
-          typeof webkitAudioContext != 'undefined') {
+      if (globalThis.AudioContext || globalThis.webkitAudioContext) {
         ret = AL.DEVICE_NAME;
       } else {
         return 0;
       }
       break;
     case 0x1005 /* ALC_DEVICE_SPECIFIER */:
-      if (typeof AudioContext != 'undefined' ||
-          typeof webkitAudioContext != 'undefined') {
+      if (globalThis.AudioContext || globalThis.webkitAudioContext) {
         ret = AL.DEVICE_NAME + '\0';
       } else {
         ret = '\0';

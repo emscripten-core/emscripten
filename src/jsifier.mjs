@@ -27,12 +27,12 @@ import {
 } from './parseTools.mjs';
 import {
   addToCompileTimeContext,
+  debugLog,
   error,
   errorOccured,
   isDecorator,
   isJsOnlySymbol,
   compileTimeContext,
-  printErr,
   readFile,
   runInMacroContext,
   warn,
@@ -147,8 +147,8 @@ function getTransitiveDeps(symbol) {
       directDeps = directDeps.filter((d) => typeof d === 'string');
       for (const dep of directDeps) {
         const resolved = resolveAlias(dep);
-        if (VERBOSE && !transitiveDeps.has(dep)) {
-          printErr(`adding dependency ${symbol} -> ${dep}`);
+        if (!transitiveDeps.has(dep)) {
+          debugLog(`adding dependency ${symbol} -> ${dep}`);
         }
         transitiveDeps.add(resolved);
         toVisit.push(resolved);
@@ -588,8 +588,10 @@ function(${args}) {
               mangled +
                 ' may need to be added to EXPORTED_FUNCTIONS if it arrives from a system library',
             );
-          } else if (VERBOSE || WARN_ON_UNDEFINED_SYMBOLS) {
+          } else if (WARN_ON_UNDEFINED_SYMBOLS) {
             warn(msg);
+          } else {
+            debugLog(msg);
           }
           if (symbol === '__main_argc_argv' && STANDALONE_WASM) {
             warn('To build in STANDALONE_WASM mode without a main(), use emcc --no-entry');
@@ -674,9 +676,7 @@ function(${args}) {
         }
       }
 
-      if (VERBOSE) {
-        printErr(`adding ${symbol} (referenced by ${dependent})`);
-      }
+      debugLog(`adding ${symbol} (referenced by ${dependent})`);
       function addDependency(dep) {
         // dependencies can be JS functions, which we just run
         if (typeof dep == 'function') {
@@ -731,10 +731,12 @@ function(${args}) {
       } else if (typeof snippet == 'undefined') {
         // wasmTable is kind of special.  In the normal configuration we export
         // it from the wasm module under the name `__indirect_function_table`
-        // but we declare it as an 'undefined'.  It then gets assigned manually
-        // once the wasm module is available.
+        // but we declare it as an 'undefined' in `libcore.js`.
+        // Since the normal export mechanism will declare this variable we don't
+        // want the JS library version of this symbol be declared (otherwise
+        // it would be a duplicate decl).
         // TODO(sbc): This is kind of hacky, we should come up with a better solution.
-        var isDirectWasmExport = WASM_ESM_INTEGRATION && mangled == 'wasmTable';
+        var isDirectWasmExport = mangled == 'wasmTable';
         if (isDirectWasmExport) {
           contentText = '';
         } else {
@@ -780,7 +782,9 @@ function(${args}) {
       }
 
       let docs = LibraryManager.library[symbol + '__docs'];
-      if (docs) {
+      // Add the docs if they exist and if we are actually emitting a declaration.
+      // See the TODO about wasmTable above.
+      if (docs && contentText != '') {
         commentText += docs + '\n';
       }
 

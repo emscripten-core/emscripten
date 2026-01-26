@@ -18,6 +18,7 @@ import itertools
 import json
 import logging
 import os
+import psutil
 import re
 import shlex
 import shutil
@@ -36,7 +37,7 @@ import queue
 import clang_native
 import jsrun
 import line_endings
-from tools.shared import EMCC, EMXX, DEBUG
+from tools.shared import EMCC, EMXX, DEBUG, exe_suffix
 from tools.shared import get_canonical_temp_dir, path_from_root
 from tools.utils import MACOS, WINDOWS, read_file, read_binary, write_binary, exit_with_error
 from tools.settings import COMPILE_TIME_SETTINGS
@@ -87,6 +88,7 @@ if 'EM_BUILD_VERBOSE' in os.environ:
 # file to track which tests were flaky so they can be graphed in orange color to
 # visually stand out.
 flaky_tests_log_filename = os.path.join(path_from_root('out/flaky_tests.txt'))
+browser_spawn_lock_filename = os.path.join(path_from_root('out/browser_spawn_lock'))
 
 
 # Default flags used to run browsers in CI testing:
@@ -96,7 +98,7 @@ class ChromeConfig:
     # --no-sandbox because we are running as root and chrome requires
     # this flag for now: https://crbug.com/638180
     '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
-    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-stack-switching --experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
+    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
     '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
@@ -104,6 +106,8 @@ class ChromeConfig:
     '--disk-cache-size=1 --media-cache-size=1 --disable-application-cache',
     # Disable various background tasks downloads (e.g. updates).
     '--disable-background-networking',
+    # Disable native password pop-ups
+    '--password-store=basic',
   )
   headless_flags = '--headless=new --window-size=1024,768'
 
@@ -114,8 +118,9 @@ class ChromeConfig:
 
 class FirefoxConfig:
   data_dir_flag = '-profile '
-  default_flags = ()
+  default_flags = ('-new-instance',)
   headless_flags = '-headless'
+  executable_name = exe_suffix('firefox')
 
   @staticmethod
   def configure(data_dir):
@@ -203,31 +208,40 @@ def compiler_for(filename, force_c=False):
 
 # Generic decorator that calls a function named 'condition' on the test class and
 # skips the test if that function returns true
-def skip_if(func, condition, explanation='', negate=False):
-  assert callable(func)
-  explanation_str = ' : %s' % explanation if explanation else ''
+def skip_if_simple(name, condition, note=''):
+  assert callable(condition)
+  assert not callable(note)
 
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    choice = self.__getattribute__(condition)()
-    if negate:
-      choice = not choice
-    if choice:
-      self.skipTest(condition + explanation_str)
-    func(self, *args, **kwargs)
+  def decorator(func):
+    assert callable(func)
 
-  return decorated
+    @wraps(func)
+    def decorated(self, *args, **kwargs):
+      if condition(self):
+        explanation_str = name
+        if note:
+          explanation_str += ': %s' % note
+        self.skipTest(explanation_str)
+      return func(self, *args, **kwargs)
+
+    return decorated
+
+  return decorator
+
+
+# Same as skip_if_simple but creates a decorator that takes a note as an argument.
+def skip_if(name, condition, default_note=''):
+  assert callable(condition)
+
+  def decorator(note=default_note):
+    return skip_if_simple(name, condition, note)
+
+  return decorator
 
 
 def is_slow_test(func):
   assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    if EMTEST_SKIP_SLOW:
-      return self.skipTest('skipping slow tests')
-    return func(self, *args, **kwargs)
-
+  decorated = skip_if_simple('skipping slow tests', lambda _: EMTEST_SKIP_SLOW)(func)
   decorated.is_slow = True
   return decorated
 
@@ -246,17 +260,17 @@ def flaky(note=''):
   if not EMTEST_RETRY_FLAKY:
     return lambda f: f
 
-  def decorated(f):
-    @wraps(f)
+  def decorated(func):
+    @wraps(func)
     def modified(self, *args, **kwargs):
       # Browser tests have there own method of retrying tests.
       if self.is_browser_test():
         self.flaky = True
-        return f(self, *args, **kwargs)
+        return func(self, *args, **kwargs)
 
       for i in range(EMTEST_RETRY_FLAKY):
         try:
-          return f(self, *args, **kwargs)
+          return func(self, *args, **kwargs)
         except (AssertionError, subprocess.TimeoutExpired) as exc:
           preserved_exc = exc
           record_flaky_test(self.id(), i, exc)
@@ -273,76 +287,22 @@ def disabled(note=''):
   return unittest.skip(note)
 
 
-def no_mac(note=''):
-  assert not callable(note)
-  if MACOS:
-    return unittest.skip(note)
-  return lambda f: f
+no_mac = skip_if('no_mac', lambda _: MACOS)
 
+no_windows = skip_if('no_windows', lambda _: WINDOWS)
 
-def no_windows(note=''):
-  assert not callable(note)
-  if WINDOWS:
-    return unittest.skip(note)
-  return lambda f: f
+no_wasm64 = skip_if('no_wasm64', lambda t: t.is_wasm64())
 
+# 2200mb is the value used by the core_2gb test mode
+no_2gb = skip_if('no_2gb', lambda t: t.get_setting('INITIAL_MEMORY') == '2200mb')
 
-def no_wasm64(note=''):
-  assert not callable(note)
+no_4gb = skip_if('no_4gb', lambda t: t.is_4gb())
 
-  def decorated(f):
-    return skip_if(f, 'is_wasm64', note)
-  return decorated
+only_windows = skip_if('only_windows', lambda _: not WINDOWS)
 
+requires_native_clang = skip_if_simple('native clang tests are disabled', lambda _: EMTEST_LACKS_NATIVE_CLANG)
 
-def no_2gb(note):
-  assert not callable(note)
-
-  def decorator(f):
-    assert callable(f)
-
-    @wraps(f)
-    def decorated(self, *args, **kwargs):
-      # 2200mb is the value used by the core_2gb test mode
-      if self.get_setting('INITIAL_MEMORY') == '2200mb':
-        self.skipTest(note)
-      f(self, *args, **kwargs)
-    return decorated
-  return decorator
-
-
-def no_4gb(note):
-  assert not callable(note)
-
-  def decorator(f):
-    assert callable(f)
-
-    @wraps(f)
-    def decorated(self, *args, **kwargs):
-      if self.is_4gb():
-        self.skipTest(note)
-      f(self, *args, **kwargs)
-    return decorated
-  return decorator
-
-
-def only_windows(note=''):
-  assert not callable(note)
-  if not WINDOWS:
-    return unittest.skip(note)
-  return lambda f: f
-
-
-def requires_native_clang(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    if EMTEST_LACKS_NATIVE_CLANG:
-      return self.skipTest('native clang tests are disabled')
-    return func(self, *args, **kwargs)
-
-  return decorated
+needs_make = skip_if('tool not available on windows bots', lambda _: WINDOWS)
 
 
 def requires_node(func):
@@ -370,7 +330,7 @@ def requires_node_canary(func):
 def node_bigint_flags(node_version):
   # The --experimental-wasm-bigint flag was added in v12, and then removed (enabled by default)
   # in v16.
-  if node_version and node_version < (16, 0, 0) and node_version >= (12, 0, 0):
+  if node_version and node_version < (16, 0, 0):
     return ['--experimental-wasm-bigint']
   else:
     return []
@@ -380,17 +340,8 @@ def node_bigint_flags(node_version):
 # packages, which might not be installed on Emscripten end users' systems.
 def requires_dev_dependency(package):
   assert not callable(package)
-
-  def decorator(f):
-    assert callable(f)
-
-    @wraps(f)
-    def decorated(self, *args, **kwargs):
-      if 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ:
-        self.skipTest(f'test requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set')
-      f(self, *args, **kwargs)
-    return decorated
-  return decorator
+  note = f'requires npm development package "{package}" and EMTEST_SKIP_NODE_DEV_PACKAGES is set'
+  return skip_if_simple('requires_dev_dependency', lambda _: 'EMTEST_SKIP_NODE_DEV_PACKAGES' in os.environ, note)
 
 
 def requires_wasm64(func):
@@ -399,17 +350,6 @@ def requires_wasm64(func):
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm64()
-    return func(self, *args, **kwargs)
-
-  return decorated
-
-
-def requires_wasm_legacy_eh(func):
-  assert callable(func)
-
-  @wraps(func)
-  def decorated(self, *args, **kwargs):
-    self.require_wasm_legacy_eh()
     return func(self, *args, **kwargs)
 
   return decorated
@@ -437,13 +377,13 @@ def requires_v8(func):
   return decorated
 
 
-def requires_wasm2js(f):
-  assert callable(f)
+def requires_wasm2js(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_wasm2js()
-    return f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
@@ -459,32 +399,33 @@ def requires_jspi(func):
   return decorated
 
 
-def node_pthreads(f):
-  assert callable(f)
+def node_pthreads(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.setup_node_pthreads()
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
   return decorated
 
 
-def crossplatform(f):
-  f.is_crossplatform_test = True
-  return f
+def crossplatform(func):
+  assert callable(func)
+  func.is_crossplatform_test = True
+  return func
 
 
 # without EMTEST_ALL_ENGINES set we only run tests in a single VM by
 # default. in some tests we know that cross-VM differences may happen and
 # so are worth testing, and they should be marked with this decorator
-def all_engines(f):
-  assert callable(f)
+def all_engines(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def decorated(self, *args, **kwargs):
     self.use_all_engines = True
     self.set_setting('ENVIRONMENT', 'web,node,shell')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   return decorated
 
@@ -514,20 +455,20 @@ def env_modify(updates):
 def with_env_modify(updates):
   assert not callable(updates)
 
-  def decorated(f):
-    @wraps(f)
+  def decorated(func):
+    @wraps(func)
     def modified(self, *args, **kwargs):
       with env_modify(updates):
-        return f(self, *args, **kwargs)
+        return func(self, *args, **kwargs)
     return modified
 
   return decorated
 
 
-def also_with_wasmfs(f):
-  assert callable(f)
+def also_with_wasmfs(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, wasmfs, *args, **kwargs):
     if DEBUG:
       print('parameterize:wasmfs=%d' % wasmfs)
@@ -535,7 +476,7 @@ def also_with_wasmfs(f):
       self.setup_wasmfs_test()
     else:
       self.cflags += ['-DMEMFS']
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasmfs': (True,)})
@@ -552,7 +493,7 @@ def also_with_nodefs(func):
     else:
       self.cflags += ['-DMEMFS']
       assert fs is None
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (None,),
                           'nodefs': ('nodefs',)})
@@ -571,7 +512,7 @@ def also_with_nodefs_both(func):
     else:
       self.cflags += ['-DMEMFS']
       assert fs is None
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (None,),
                           'nodefs': ('nodefs',),
@@ -593,7 +534,7 @@ def with_all_fs(func):
     else:
       self.cflags += ['-DMEMFS']
       assert fs is None
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False, None),
                           'nodefs': (False, 'nodefs'),
@@ -615,42 +556,17 @@ def also_with_noderawfs(func):
       self.setup_noderawfs_test()
     else:
       self.cflags += ['-DMEMFS']
-    func(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'rawfs': (True,)})
   return metafunc
 
 
-# Decorator version of env_modify
-def also_with_env_modify(name_updates_mapping):
+def also_with_minimal_runtime(func):
+  assert callable(func)
 
-  def decorated(f):
-    @wraps(f)
-    def metafunc(self, updates, *args, **kwargs):
-      if DEBUG:
-        print('parameterize:env_modify=%s' % (updates))
-      if updates:
-        with env_modify(updates):
-          return f(self, *args, **kwargs)
-      else:
-        return f(self, *args, **kwargs)
-
-    params = {'': (None,)}
-    for name, updates in name_updates_mapping.items():
-      params[name] = (updates,)
-
-    parameterize(metafunc, params)
-
-    return metafunc
-
-  return decorated
-
-
-def also_with_minimal_runtime(f):
-  assert callable(f)
-
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, with_minimal_runtime, *args, **kwargs):
     if DEBUG:
       print('parameterize:minimal_runtime=%s' % with_minimal_runtime)
@@ -663,17 +579,17 @@ def also_with_minimal_runtime(f):
       # This extra helper code is needed to cleanly handle calls to exit() which throw
       # an ExitCode exception.
       self.cflags += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'minimal_runtime': (True,)})
   return metafunc
 
 
-def also_without_bigint(f):
-  assert callable(f)
+def also_without_bigint(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, no_bigint, *args, **kwargs):
     if DEBUG:
       print('parameterize:no_bigint=%s' % no_bigint)
@@ -681,34 +597,34 @@ def also_without_bigint(f):
       if self.get_setting('WASM_BIGINT') is not None:
         self.skipTest('redundant in bigint test config')
       self.set_setting('WASM_BIGINT', 0)
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'no_bigint': (True,)})
   return metafunc
 
 
-def also_with_wasm64(f):
-  assert callable(f)
+def also_with_wasm64(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, with_wasm64, *args, **kwargs):
     if DEBUG:
       print('parameterize:wasm64=%s' % with_wasm64)
     if with_wasm64:
       self.require_wasm64()
       self.set_setting('MEMORY64')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasm64': (True,)})
   return metafunc
 
 
-def also_with_wasm2js(f):
-  assert callable(f)
+def also_with_wasm2js(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, with_wasm2js, *args, **kwargs):
     assert self.get_setting('WASM') is None
     if DEBUG:
@@ -716,7 +632,7 @@ def also_with_wasm2js(f):
     if with_wasm2js:
       self.require_wasm2js()
       self.set_setting('WASM', 0)
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'wasm2js': (True,)})
@@ -758,7 +674,7 @@ def also_with_standalone_wasm(impure=False):
         # if we are impure, disallow all wasm engines
         if impure:
           self.wasm_engines = []
-      func(self, *args, **kwargs)
+      return func(self, *args, **kwargs)
 
     parameterize(metafunc, {'': (False,),
                             'standalone': (True,)})
@@ -767,10 +683,10 @@ def also_with_standalone_wasm(impure=False):
   return decorated
 
 
-def also_with_asan(f):
-  assert callable(f)
+def also_with_asan(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, asan, *args, **kwargs):
     if asan:
       if self.is_wasm64():
@@ -778,17 +694,17 @@ def also_with_asan(f):
       if self.is_2gb() or self.is_4gb():
         self.skipTest('asan doesnt support GLOBAL_BASE')
       self.cflags.append('-fsanitize=address')
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'asan': (True,)})
   return metafunc
 
 
-def also_with_modularize(f):
-  assert callable(f)
+def also_with_modularize(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, modularize, *args, **kwargs):
     if modularize:
       if self.get_setting('DECLARE_ASM_MODULE_EXPORTS') == 0:
@@ -798,7 +714,7 @@ def also_with_modularize(f):
       if self.get_setting('WASM_ESM_INTEGRATION'):
         self.skipTest('MODULARIZE is not compatible with WASM_ESM_INTEGRATION')
       self.cflags += ['--extern-post-js', test_file('modularize_post_js.js'), '-sMODULARIZE']
-    f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
                           'modularize': (True,)})
@@ -810,10 +726,10 @@ def also_with_modularize(f):
 # - Emscripten EH + Emscripten SjLj
 # - Wasm EH + Wasm SjLj
 # - Wasm EH + Wasm SjLj (Legacy)
-def with_all_eh_sjlj(f):
-  assert callable(f)
+def with_all_eh_sjlj(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, mode, *args, **kwargs):
     if DEBUG:
       print('parameterize:eh_mode=%s' % mode)
@@ -827,7 +743,6 @@ def with_all_eh_sjlj(f):
         self.require_wasm_eh()
       if mode == 'wasm_legacy':
         self.require_wasm_legacy_eh()
-      f(self, *args, **kwargs)
     else:
       self.set_setting('DISABLE_EXCEPTION_CATCHING', 0)
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
@@ -836,7 +751,7 @@ def with_all_eh_sjlj(f):
       # error out because libc++abi is not included. See
       # https://github.com/emscripten-core/emscripten/pull/14192 for details.
       self.set_setting('DEFAULT_TO_CXX')
-      f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'emscripten': ('emscripten',),
                           'wasm': ('wasm',),
@@ -846,10 +761,10 @@ def with_all_eh_sjlj(f):
 
 # This works just like `with_all_eh_sjlj` above but doesn't enable exceptions.
 # Use this for tests that use setjmp/longjmp but not exceptions handling.
-def with_all_sjlj(f):
-  assert callable(f)
+def with_all_sjlj(func):
+  assert callable(func)
 
-  @wraps(f)
+  @wraps(func)
   def metafunc(self, mode, *args, **kwargs):
     if mode in {'wasm', 'wasm_legacy'}:
       if self.is_wasm2js():
@@ -859,10 +774,9 @@ def with_all_sjlj(f):
         self.require_wasm_eh()
       if mode == 'wasm_legacy':
         self.require_wasm_legacy_eh()
-      f(self, *args, **kwargs)
     else:
       self.set_setting('SUPPORT_LONGJMP', 'emscripten')
-      f(self, *args, **kwargs)
+    return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'emscripten': ('emscripten',),
                           'wasm': ('wasm',),
@@ -938,8 +852,25 @@ def make_dir_writeable(dirname):
 
 
 def force_delete_dir(dirname):
-  make_dir_writeable(dirname)
-  utils.delete_dir(dirname)
+  """Deletes a directory. Returns whether deletion succeeded."""
+  if not os.path.exists(dirname):
+    return True
+  assert not os.path.isfile(dirname)
+
+  try:
+    make_dir_writeable(dirname)
+    utils.delete_dir(dirname)
+  except PermissionError as e:
+    # This issue currently occurs on Windows when running browser tests e.g.
+    # on Firefox browser. Killing Firefox browser is not 100% watertight, and
+    # occassionally a Firefox browser process can be left behind, holding on
+    # to a file handle, preventing the deletion from succeeding.
+    # We expect this issue to only occur on Windows.
+    if not WINDOWS:
+      raise e
+    print(f'Warning: Failed to delete directory "{dirname}"\n{e}')
+    return False
+  return True
 
 
 def force_delete_contents(dirname):
@@ -1111,12 +1042,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return config.V8_ENGINE
 
   def require_v8(self):
+    if 'EMTEST_SKIP_V8' in os.environ:
+      self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
     v8 = self.get_v8()
     if not v8:
-      if 'EMTEST_SKIP_V8' in os.environ:
-        self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
-      else:
-        self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
+      self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
     self.require_engine(v8)
     self.cflags.append('-sENVIRONMENT=shell')
 
@@ -1127,12 +1057,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return config.NODE_JS_TEST
 
   def require_node(self):
+    if 'EMTEST_SKIP_NODE' in os.environ:
+      self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
     nodejs = self.get_nodejs()
     if not nodejs:
-      if 'EMTEST_SKIP_NODE' in os.environ:
-        self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
-      else:
-        self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
+      self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(nodejs)
     return nodejs
 
@@ -1140,15 +1069,14 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return nodejs and nodejs[0] and ('canary' in nodejs[0] or 'nightly' in nodejs[0])
 
   def require_node_canary(self):
+    if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
+      self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
     nodejs = self.get_nodejs()
     if self.node_is_canary(nodejs):
       self.require_engine(nodejs)
       return
 
-    if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
-      self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
-    else:
-      self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
+    self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
 
   def require_engine(self, engine):
     logger.debug(f'require_engine: {engine}')
@@ -1159,6 +1087,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     self.wasm_engines = []
 
   def require_wasm64(self):
+    if 'EMTEST_SKIP_WASM64' in os.environ:
+      self.skipTest('test requires node >= 24 or d8 (and EMTEST_SKIP_WASM64 is set)')
     if self.is_browser_test():
       return
 
@@ -1171,10 +1101,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-    if 'EMTEST_SKIP_WASM64' in os.environ:
-      self.skipTest('test requires node >= 24 or d8 (and EMTEST_SKIP_WASM64 is set)')
-    else:
-      self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+    self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def try_require_node_version(self, major, minor = 0, revision = 0):
     nodejs = self.get_nodejs()
@@ -1188,6 +1115,8 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     return True
 
   def require_simd(self):
+    if 'EMTEST_SKIP_SIMD' in os.environ:
+      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_SIMD is set)')
     if self.is_browser_test():
       return
 
@@ -1200,12 +1129,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-    if 'EMTEST_SKIP_SIMD' in os.environ:
-      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_SIMD is set)')
-    else:
-      self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
+    self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
   def require_wasm_legacy_eh(self):
+    if 'EMTEST_SKIP_EH' in os.environ:
+      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS')
     if self.try_require_node_version(17):
       return
@@ -1216,12 +1144,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.js_engines = [v8]
       return
 
-    if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node >= 17 or d8 (and EMTEST_SKIP_EH is set)')
-    else:
-      self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+    self.fail('either d8 or node >= 17 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_wasm_eh(self):
+    if 'EMTEST_SKIP_EH' in os.environ:
+      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
     if self.try_require_node_version(24):
       self.node_args.append('--experimental-wasm-exnref')
@@ -1237,12 +1164,11 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
-    if 'EMTEST_SKIP_EH' in os.environ:
-      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_EH is set)')
-    else:
-      self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
+    self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_EH to skip')
 
   def require_jspi(self):
+    if 'EMTEST_SKIP_JSPI' in os.environ:
+      self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
     # emcc warns about stack switching being experimental, and we build with
     # warnings-as-errors, so disable that warning
     self.cflags += ['-Wno-experimental']
@@ -1253,8 +1179,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with JSPI')
 
     if self.is_browser_test():
-      if 'EMTEST_SKIP_JSPI' in os.environ:
-        self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
       return
 
     exp_args = ['--experimental-wasm-stack-switching', '--experimental-wasm-type-reflection']
@@ -1270,10 +1194,7 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
       self.v8_args += exp_args
       return
 
-    if 'EMTEST_SKIP_JSPI' in os.environ:
-      self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_JSPI is set)')
-    else:
-      self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
+    self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
   def require_wasm2js(self):
     if self.is_wasm64():
@@ -1314,6 +1235,33 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # Explicitly set dedicated temporary directory for parallel tests
     os.environ['EMCC_TEMP_DIR'] = self.temp_dir
 
+  def parse_wasm(self, filename):
+    wat = self.get_wasm_text(filename)
+    imports = []
+    exports = []
+    funcs = []
+    for line in wat.splitlines():
+      line = line.strip()
+      if line.startswith('(import '):
+        line = line.strip('()')
+        parts = line.split()
+        module = parts[1].strip('"')
+        name = parts[2].strip('"')
+        imports.append('%s.%s' % (module, name))
+      if line.startswith('(export '):
+        line = line.strip('()')
+        name = line.split()[1].strip('"')
+        exports.append(name)
+      if line.startswith('(func '):
+        line = line.strip('()')
+        name = line.split()[1].strip('"')
+        funcs.append(name)
+    return imports, exports, funcs
+
+  def output_name(self, basename):
+    suffix = get_output_suffix(self.get_cflags())
+    return basename + suffix
+
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
@@ -1332,23 +1280,20 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
     # remove this if the issue above is ever fixed.
     self.set_setting('NO_DEFAULT_TO_CXX')
     self.ldflags = []
-    # Increate stack trace limit to maximise usefulness of test failure reports
-    self.node_args = ['--stack-trace-limit=50']
+    # Increase the stack trace limit to maximise usefulness of test failure reports.
+    # Also, include backtrace for all uncuaght exceptions (not just Error).
+    self.node_args = ['--stack-trace-limit=50', '--trace-uncaught']
     self.spidermonkey_args = ['-w']
 
     nodejs = self.get_nodejs()
     if nodejs:
       node_version = shared.get_node_version(nodejs)
-      if node_version < (11, 0, 0):
+      if node_version < (13, 0, 0):
         self.node_args.append('--unhandled-rejections=strict')
-        self.node_args.append('--experimental-wasm-se')
-      else:
-        # Include backtrace for all uncuaght exceptions (not just Error).
-        self.node_args.append('--trace-uncaught')
-        if node_version < (15, 0, 0):
-          # Opt in to node v15 default behaviour:
-          # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-          self.node_args.append('--unhandled-rejections=throw')
+      elif node_version < (15, 0, 0):
+        # Opt in to node v15 default behaviour:
+        # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
+        self.node_args.append('--unhandled-rejections=throw')
       self.node_args += node_bigint_flags(node_version)
 
       # If the version we are running tests in is lower than the version that
@@ -1587,32 +1532,6 @@ class RunnerCore(unittest.TestCase, metaclass=RunnerMeta):
           return src[start:t + 1]
       t += 1
       assert t < len(src)
-
-  def count_funcs(self, javascript_file):
-    num_funcs = 0
-    start_tok = "// EMSCRIPTEN_START_FUNCS"
-    end_tok = "// EMSCRIPTEN_END_FUNCS"
-    start_off = 0
-    end_off = 0
-
-    js = read_file(javascript_file)
-    blob = "".join(js.splitlines())
-
-    start_off = blob.find(start_tok) + len(start_tok)
-    end_off = blob.find(end_tok)
-    asm_chunk = blob[start_off:end_off]
-    num_funcs = asm_chunk.count('function ')
-    return num_funcs
-
-  def count_wasm_contents(self, wasm_binary, what):
-    out = self.run_process([os.path.join(building.get_binaryen_bin(), 'wasm-opt'), wasm_binary, '--metrics'], stdout=PIPE).stdout
-    # output is something like
-    # [?]        : 125
-    for line in out.splitlines():
-      if '[' + what + ']' in line:
-        ret = line.split(':')[1].strip()
-        return int(ret)
-    self.fail('Failed to find [%s] in wasm-opt output' % what)
 
   def get_wasm_text(self, wasm_binary):
     return self.run_process([WASM_DIS, wasm_binary], stdout=PIPE).stdout
@@ -2286,7 +2205,7 @@ def make_test_server(in_queue, out_queue, port):
       self.send_header('Cache-Control', 'no-cache, no-store, must-revalidate')
       return SimpleHTTPRequestHandler.end_headers(self)
 
-    def do_POST(self):
+    def do_POST(self):  # noqa: DC04
       urlinfo = urlparse(self.path)
       query = parse_qs(urlinfo.query)
       content_length = int(self.headers['Content-Length'])
@@ -2501,6 +2420,88 @@ def configure_test_browser():
         EMTEST_BROWSER += f" {config.headless_flags}"
 
 
+def list_processes_by_name(exe_name):
+  pids = []
+  if exe_name:
+    for proc in psutil.process_iter():
+      try:
+        pinfo = proc.as_dict(attrs=['pid', 'name', 'exe'])
+        if pinfo['exe'] and exe_name in pinfo['exe'].replace('\\', '/').split('/'):
+          pids.append(psutil.Process(pinfo['pid']))
+      except psutil.NoSuchProcess: # E.g. "process no longer exists (pid=13132)" (code raced to acquire the iterator and process it)
+        pass
+
+  return pids
+
+
+class FileLock:
+  """Implements a filesystem-based mutex, with an additional feature that it
+  returns an integer counter denoting how many times the lock has been locked
+  before (during the current python test run instance)"""
+  def __init__(self, path):
+    self.path = path
+    self.counter = 0
+
+  def __enter__(self):
+    # Acquire the lock
+    while True:
+      try:
+        self.fd = os.open(self.path, os.O_CREAT | os.O_EXCL | os.O_WRONLY)
+        break
+      except FileExistsError:
+        time.sleep(0.1)
+    # Return the locking count number
+    try:
+      self.counter = int(open(f'{self.path}_counter').read())
+    except Exception:
+      pass
+    return self.counter
+
+  def __exit__(self, *a):
+    # Increment locking count number before releasing the lock
+    with open(f'{self.path}_counter', 'w') as f:
+      f.write(str(self.counter + 1))
+    # And release the lock
+    os.close(self.fd)
+    try:
+      os.remove(self.path)
+    except Exception:
+      pass # Another process has raced to acquire the lock, and will delete it.
+
+
+def move_browser_window(pid, x, y):
+  """Utility function to move the top-level window owned by given process to
+  (x,y) coordinate. Used to ensure each browser window has some visible area."""
+  import win32con
+  import win32gui
+  import win32process
+
+  def enum_windows_callback(hwnd, _unused):
+    _, win_pid = win32process.GetWindowThreadProcessId(hwnd)
+    if win_pid == pid and win32gui.IsWindowVisible(hwnd):
+      # If the browser window is maximized, it won't react to MoveWindow, so
+      # un-maximize the window first to show it in windowed mode.
+      if win32gui.GetWindowPlacement(hwnd)[1] == win32con.SW_SHOWMAXIMIZED:
+        win32gui.ShowWindow(hwnd, win32con.SW_RESTORE)
+
+      # Then cascade the window, but also resize the window size to cover a
+      # smaller area of the desktop, in case the original size was full screen.
+      win32gui.MoveWindow(hwnd, x, y, 800, 600, True)
+    return True
+
+  win32gui.EnumWindows(enum_windows_callback, None)
+
+
+def increment_suffix_number(str_with_maybe_suffix):
+  match = re.match(r"^(.*?)(?:_(\d+))?$", str_with_maybe_suffix)
+  if match:
+    base, number = match.groups()
+    if number:
+      return f'{base}_{int(number) + 1}'
+
+  return f'{str_with_maybe_suffix}_1'
+
+
 class BrowserCore(RunnerCore):
   # note how many tests hang / do not send an output. if many of these
   # happen, likely something is broken and it is best to abort the test
@@ -2517,25 +2518,31 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def browser_terminate(cls):
-    cls.browser_proc.terminate()
-    # If the browser doesn't shut down gracefully (in response to SIGTERM)
-    # after 2 seconds kill it with force (SIGKILL).
-    try:
-      cls.browser_proc.wait(2)
-    except subprocess.TimeoutExpired:
-      logger.info('Browser did not respond to `terminate`.  Using `kill`')
-      cls.browser_proc.kill()
-      cls.browser_proc.wait()
+    for proc in cls.browser_procs:
+      try:
+        proc.terminate()
+        # If the browser doesn't shut down gracefully (in response to SIGTERM)
+        # after 2 seconds kill it with force (SIGKILL).
+        try:
+          proc.wait(2)
+        except (subprocess.TimeoutExpired, psutil.TimeoutExpired):
+          logger.info('Browser did not respond to `terminate`.  Using `kill`')
+          proc.kill()
+          proc.wait()
+      except (psutil.NoSuchProcess, ProcessLookupError):
+        pass
 
   @classmethod
   def browser_restart(cls):
     # Kill existing browser
+    assert has_browser()
     logger.info('Restarting browser process')
     cls.browser_terminate()
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod
   def browser_open(cls, url):
+    assert has_browser()
     browser_args = EMTEST_BROWSER
 
     if EMTEST_BROWSER_AUTO_CONFIG:
@@ -2544,9 +2551,18 @@ class BrowserCore(RunnerCore):
       if worker_id is not None:
         # Running in parallel mode, give each browser its own profile dir.
         browser_data_dir += '-' + str(worker_id)
-      if os.path.exists(browser_data_dir):
-        utils.delete_dir(browser_data_dir)
+
+      # Delete old browser data directory.
+      if WINDOWS:
+        # If we cannot (the data dir is in use on Windows), switch to another dir.
+        while not force_delete_dir(browser_data_dir):
+          browser_data_dir = increment_suffix_number(browser_data_dir)
+      else:
+        force_delete_dir(browser_data_dir)
+
+      # Recreate the new data directory.
       os.mkdir(browser_data_dir)
+
       if is_chrome():
         config = ChromeConfig()
       elif is_firefox():
@@ -2561,7 +2577,41 @@ class BrowserCore(RunnerCore):
 
     browser_args = shlex.split(browser_args)
     logger.info('Launching browser: %s', str(browser_args))
-    cls.browser_proc = subprocess.Popen(browser_args + [url])
+
+    if WINDOWS and is_firefox():
+      cls.launch_browser_harness_windows_firefox(worker_id, config, browser_args, url)
+    else:
+      cls.browser_procs = [subprocess.Popen(browser_args + [url])]
+
+  @classmethod
+  def launch_browser_harness_windows_firefox(cls, worker_id, config, browser_args, url):
+    ''' Dedicated function for launching browser harness on Firefox on Windows,
+    which requires extra care for window positioning and process tracking.'''
+
+    with FileLock(browser_spawn_lock_filename) as count:
+      # Firefox is a multiprocess browser. On Windows, killing the spawned
+      # process will not bring down the whole browser, but only one browser tab.
+      # So take a delta snapshot before->after spawning the browser to find
+      # which subprocesses we launched.
+      if worker_id is not None:
+        procs_before = list_processes_by_name(config.executable_name)
+      cls.browser_procs = [subprocess.Popen(browser_args + [url])]
+      # Give Firefox time to spawn its subprocesses. Use an increasing timeout
+      # as a crude way to account for system load.
+      if worker_id is not None:
+        time.sleep(2 + count * 0.3)
+        procs_after = list_processes_by_name(config.executable_name)
+      # Make sure that each browser window is visible on the desktop. Otherwise
+      # browser might decide that the tab is backgrounded, and not load a test,
+      # or it might not tick rAF()s forward, causing tests to hang.
+      if worker_id is not None and not EMTEST_HEADLESS:
+        # On Firefox on Windows we needs to track subprocesses that got created
+        # by Firefox. Other setups can use 'browser_proc' directly to terminate
+        # the browser.
+        cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
+        # Wrap window positions on a Full HD desktop area modulo primes.
+        for proc in cls.browser_procs:
+          move_browser_window(proc.pid, (300 + count * 47) % 1901, (10 + count * 37) % 997)
 
   @classmethod
   def setUpClass(cls):
@@ -2571,6 +2621,7 @@ class BrowserCore(RunnerCore):
     cls.HARNESS_URL = f'{cls.SERVER_URL}/run_harness'
 
     if not has_browser() or EMTEST_BROWSER == 'node':
+      errlog(f'[Skipping browser launch (EMTEST_BROWSER={EMTEST_BROWSER})]')
       return
 
     cls.harness_in_queue = queue.Queue()
@@ -2578,7 +2629,7 @@ class BrowserCore(RunnerCore):
     cls.harness_server = HttpServerThread(make_test_server(cls.harness_in_queue, cls.harness_out_queue, cls.PORT))
     cls.harness_server.start()
 
-    print(f'[Browser harness server on thread {cls.harness_server.name}]')
+    errlog(f'[Browser harness server on thread {cls.harness_server.name}]')
     cls.browser_open(cls.HARNESS_URL)
 
   @classmethod

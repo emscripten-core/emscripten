@@ -20,7 +20,7 @@ from urllib.request import urlopen
 import common
 from common import BrowserCore, RunnerCore, path_from_root, has_browser, Reporting, is_chrome, is_firefox, CHROMIUM_BASED_BROWSERS
 from common import create_file, parameterized, ensure_dir, disabled, flaky, test_file, WEBIDL_BINDER
-from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree
+from common import read_file, EMRUN, no_wasm64, no_2gb, no_4gb, copytree, skip_if, skip_if_simple
 from common import requires_wasm2js, parameterize, find_browser_test_file, with_all_sjlj
 from common import also_with_minimal_runtime, also_with_wasm2js, also_with_asan, also_with_wasmfs
 from common import HttpServerThread, requires_dev_dependency
@@ -132,32 +132,19 @@ def shell_with_script(shell_file, output_file, replacement):
   create_file(output_file, shell.replace('{{{ SCRIPT }}}', replacement))
 
 
-def no_chrome(note='chrome is not supported'):
-  if is_chrome():
-    return unittest.skip(note)
-  return lambda f: f
+def is_swiftshader(_):
+  return is_chrome() and '--use-gl=swiftshader' in common.EMTEST_BROWSER
 
 
-def no_firefox(note='firefox is not supported'):
-  if is_firefox():
-    return unittest.skip(note)
-  return lambda f: f
+no_swiftshader = skip_if_simple('not compatible with swiftshader', is_swiftshader)
+
+no_chrome = skip_if('no_chrome', lambda _: is_chrome(), 'chrome is not supported')
+
+no_firefox = skip_if('no_firefox', lambda _: is_firefox(), 'firefox is not supported')
 
 
 def is_jspi(args):
   return '-sASYNCIFY=2' in args
-
-
-def no_swiftshader(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, *args, **kwargs):
-    if is_chrome() and '--use-gl=swiftshader' in common.EMTEST_BROWSER:
-      self.skipTest('not compatible with swiftshader')
-    return f(self, *args, **kwargs)
-
-  return decorated
 
 
 def also_with_threads(f):
@@ -202,7 +189,8 @@ requires_graphics_hardware = skipExecIf(os.getenv('EMTEST_LACKS_GRAPHICS_HARDWAR
 requires_webgl2 = unittest.skipIf(webgl2_disabled(), "This test requires WebGL2 to be available")
 requires_webgpu = unittest.skipIf(webgpu_disabled(), "This test requires WebGPU to be available")
 requires_sound_hardware = skipExecIf(os.getenv('EMTEST_LACKS_SOUND_HARDWARE'), 'This test requires sound hardware')
-requires_offscreen_canvas = skipExecIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
+requires_offscreen_canvas = unittest.skipIf(os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'), 'This test requires a browser with OffscreenCanvas')
+requires_es6_workers = unittest.skipIf(os.getenv('EMTEST_LACKS_ES6_WORKERS'), 'This test requires a browser with ES6 Module Workers support')
 
 
 class browser(BrowserCore):
@@ -501,13 +489,24 @@ window.close = () => {
       <script src="browser_reporting.js"></script>
       <script>
         // Clear the cache, so that the next test starts from a clean slate.
-        indexedDB.databases().then(dbs => {
-          Promise.all(dbs.map(db => {
-            return indexedDB.deleteDatabase(db.name);
-          })).then(() => {
-            reportResultToServer("clear");
+        if (indexedDB.databases) {
+          // If the tested browser supports IndexedDB 3.0 API, then enumerate all
+          // available databases and delete them.
+          indexedDB.databases().then(dbs => {
+            Promise.all(dbs.map(db => {
+              return indexedDB.deleteDatabase(db.name);
+            })).then(() => {
+              reportResultToServer("clear");
+            });
           });
-        });
+        } else {
+          // Testing an old browser that does not support indexedDB.databases():
+          // Delete the fixed database EM_PRELOAD_CACHE (this is hardcoded in
+          // file packager)
+          indexedDB.deleteDatabase('EM_PRELOAD_CACHE').onsuccess = () => {
+            reportResultToServer("clear");
+          };
+        }
       </script>
     ''')
     self.run_browser('clear_indexed_db.html', '/report_result?clear')
@@ -894,6 +893,7 @@ window.close = () => {
     self.reftest('test_sdl_canvas_proxy.c', 'test_sdl_canvas_proxy.png', cflags=['--proxy-to-worker', '--preload-file', 'data.txt', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
   def test_glgears_proxy_jstarget(self):
     # test .js target with --proxy-worker; emits 2 js files, client and worker
     self.compile_btest('hello_world_gles_proxy.c', ['-o', 'test.js', '--proxy-to-worker', '-sGL_TESTING', '-lGL', '-lglut'])
@@ -1727,6 +1727,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     'full': ('hello_world_gles_full.c',),
     'full_944': ('hello_world_gles_full_944.c',),
   })
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
   def test_glgears_animation(self, filename):
     shutil.copy(test_file('browser/fake_events.js'), '.')
     args = ['-o', 'something.html',
@@ -1742,6 +1743,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
     self.btest_exit('full_es2_sdlproc.c', cflags=['-sGL_TESTING', '-DHAVE_BUILTIN_SINCOS', '-sFULL_ES2', '-lGL', '-lSDL', '-lglut', '-sGL_ENABLE_GET_PROC_ADDRESS', '-Wno-int-conversion'])
 
   @requires_graphics_hardware
+  @flaky('https://github.com/emscripten-core/emscripten/issues/25329')
   def test_glgears_deriv(self):
     self.reftest('hello_world_gles_deriv.c', 'gears.png', reference_slack=2,
                  cflags=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'])
@@ -1934,6 +1936,7 @@ simulateKeyUp(100, undefined, 'Numpad4');
   @parameterized({
     '': ([],),
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER'],),
+    'pthreads_main_module': (['-pthread', '-sPROXY_TO_PTHREAD', '-sOFFSCREEN_FRAMEBUFFER', '-sMAIN_MODULE', '-Wno-experimental'],),
   })
   @requires_graphics_hardware
   def test_gl_textures(self, args):
@@ -2629,6 +2632,7 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_create_context2.c')
 
   @requires_graphics_hardware
+  @requires_offscreen_canvas
   # Verify bug https://github.com/emscripten-core/emscripten/issues/22943: creating a WebGL context with explicit swap control and offscreenCanvas
   @parameterized({
     'offscreencanvas': (['-sOFFSCREENCANVAS_SUPPORT'],),
@@ -4631,6 +4635,7 @@ Module["preRun"] = () => {
 
   # Tests emscripten_set_canvas_element_size() and OffscreenCanvas functionality in different build configurations.
   @requires_graphics_hardware
+  @requires_offscreen_canvas
   @parameterized({
     '': ([], True),
     'offscreen': (['-sOFFSCREENCANVAS_SUPPORT'], True),
@@ -4717,6 +4722,7 @@ Module["preRun"] = () => {
     'blob_es6': (True, True),
     'url_es6': (True, False),
   })
+  @requires_es6_workers
   def test_mainScriptUrlOrBlob(self, es6, use_blob):
     # TODO: enable this with wasm, currently pthreads/atomics have limitations
     self.set_setting('EXIT_RUNTIME')
@@ -5066,6 +5072,7 @@ Module["preRun"] = () => {
   def test_wasm_worker_hello(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sENVIRONMENT=web'])
 
+  @requires_es6_workers
   def test_wasm_worker_hello_export_es6(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sENVIRONMENT=web', '-sEXPORT_ES6'])
 
@@ -5456,8 +5463,10 @@ Module["preRun"] = () => {
     'pthreads_es6': (['-pthread', '-sPTHREAD_POOL_SIZE=2', '-sEXPORT_ES6'],),
     'es6': (['-sEXPORT_ES6'],),
     'strict': (['-sSTRICT'],),
+    'audio_params_disabled': (['-sAUDIO_WORKLET_SUPPORT_AUDIO_PARAMS=0'],),
   })
   @requires_sound_hardware
+  @requires_es6_workers
   def test_audio_worklet(self, args):
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
@@ -5503,6 +5512,12 @@ Module["preRun"] = () => {
   @flaky('https://github.com/emscripten-core/emscripten/issues/25245')
   def test_audio_worklet_emscripten_locks(self):
     self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
+
+  # Verifies setting audio context sample rate, and that emscripten_audio_context_sample_rate() works.
+  @requires_sound_hardware
+  @also_with_minimal_runtime
+  def test_web_audio_context_sample_rate(self):
+    self.btest_exit('webaudio/audio_context_sample_rate.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
   def test_error_reporting(self):
     # Test catching/reporting Error objects

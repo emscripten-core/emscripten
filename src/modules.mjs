@@ -11,13 +11,13 @@ import {fileURLToPath} from 'node:url';
 import assert from 'node:assert';
 
 import {
+  debugLog,
   isDecorator,
   isJsOnlySymbol,
   error,
   readFile,
   pushCurrentFile,
   popCurrentFile,
-  printErr,
   addToCompileTimeContext,
   runInMacroContext,
   mergeInto,
@@ -266,12 +266,10 @@ export const LibraryManager = {
     for (let filename of this.libraries) {
       const isUserLibrary = !isBeneath(filename, systemLibdir);
 
-      if (VERBOSE) {
-        if (isUserLibrary) {
-          printErr('processing user library: ' + filename);
-        } else {
-          printErr('processing system library: ' + filename);
-        }
+      if (isUserLibrary) {
+        debugLog('processing user library: ' + filename);
+      } else {
+        debugLog('processing system library: ' + filename);
       }
       let origLibrary = undefined;
       let processed = undefined;
@@ -565,6 +563,12 @@ function exportLibrarySymbols() {
   const results = ['// Begin JS library exports'];
   for (const ident of librarySymbols) {
     if (EXPORT_ALL || EXPORTED_FUNCTIONS.has(ident)) {
+      // Special case for wasmTable which can be both a JS library symbol but
+      // also a wasm export. See isDirectWasmExport in jsifier.mjs.
+      // FIXME: Remove this hack 
+      if (ident == 'wasmTable' && WASM_EXPORTS.has('__indirect_function_table')) {
+        continue;
+      }
       results.push(exportSymbol(ident));
     }
   }

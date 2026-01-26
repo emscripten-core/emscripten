@@ -71,11 +71,6 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #endif
 
 // Memory management
-
-#if !WASM_ESM_INTEGRATION || IMPORTED_MEMORY
-var wasmMemory;
-#endif
-
 var
 /** @type {!Int8Array} */
   HEAP8,

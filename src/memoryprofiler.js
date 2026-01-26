@@ -628,7 +628,7 @@ function memoryprofiler_add_hooks() {
   emscriptenMemoryProfiler.initialize();
 }
 
-if (typeof document != 'undefined' && typeof window != 'undefined' && typeof process == 'undefined') {
+if (globalThis.document && globalThis.window && !globalThis.process) {
   emscriptenMemoryProfiler.initialize();
 }
 

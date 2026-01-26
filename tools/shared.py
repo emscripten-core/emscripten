@@ -637,6 +637,11 @@ def asmjs_mangle(name):
   Prepends '_' and replaces non-alphanumerics with '_'.
   Used by wasm backend for JS library consistency with asm.js.
   """
+  # We rename certain well-known exports to match what we call them in JS
+  if name == 'memory':
+    return 'wasmMemory'
+  if name == '__indirect_function_table':
+    return 'wasmTable'
   # We also use this function to convert the clang-mangled `__main_argc_argv`
   # to simply `main` which is expected by the emscripten JS glue code.
   if name == '__main_argc_argv':
@@ -740,9 +745,7 @@ EMCC = bat_suffix(path_from_root('emcc'))
 EMXX = bat_suffix(path_from_root('em++'))
 EMAR = bat_suffix(path_from_root('emar'))
 EMRANLIB = bat_suffix(path_from_root('emranlib'))
-EM_NM = bat_suffix(path_from_root('emnm'))
 FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
-WASM_SOURCEMAP = bat_suffix(path_from_root('tools/wasm-sourcemap'))
 # Windows .dll suffix is not included in this list, since those are never
 # linked to directly on the command line.
 DYLIB_EXTENSIONS = ['.dylib', '.so']

@@ -398,10 +398,10 @@ var LibraryEmbind = {
         return tsName;
       }
       if (type instanceof PointerDefinition) {
-        return `${this.typeToJsName(type.classType)} | null`;
+        return `${this.typeToJsName(type.classType, isFromWireType)} | null`;
       }
       if (type instanceof OptionalType) {
-        return `${this.typeToJsName(type.type)} | undefined`;
+        return `${this.typeToJsName(type.type, isFromWireType)} | undefined`;
       }
       return type.name;
     }
@@ -870,7 +870,6 @@ var LibraryEmbind = {
   // Stub functions used by eval, but not needed for TS generation:
   $makeLegalFunctionName: () => { throw new Error('stub function should not be called'); },
   $runDestructors: () => { throw new Error('stub function should not be called'); },
-  $createNamedFunction: () => { throw new Error('stub function should not be called'); },
   $flushPendingDeletes: () => { throw new Error('stub function should not be called'); },
   $setDelayFunction: () => { throw new Error('stub function should not be called'); },
   $PureVirtualError: () => { throw new Error('stub function should not be called'); },

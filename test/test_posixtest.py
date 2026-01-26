@@ -166,11 +166,14 @@ def make_test(name, testfile, browser):
             '-Wno-int-conversion',
             '-Wno-format',
             '-pthread',
+            # Make sure all tests have callstacks to improve debuggability
+            # of log messages on CI runs.
+            '--profiling-funcs',
             '-sEXIT_RUNTIME',
             '-sTOTAL_MEMORY=256mb',
             '-sPTHREAD_POOL_SIZE=40']
     if browser:
-      self.btest_exit(testfile, args=args)
+      self.btest_exit(testfile, cflags=args)
     else:
       self.do_runf(testfile, cflags=args, output_basename=name)
 

@@ -122,8 +122,6 @@ var LibraryEmbind = {
     }
   },
 
-  $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
-
   $embindRepr: (v) => {
     if (v === null) {
         return 'null';
@@ -1371,7 +1369,7 @@ var LibraryEmbind = {
 #endif
   ],
   $attachFinalizer: (handle) => {
-    if ('undefined' === typeof FinalizationRegistry) {
+    if (!globalThis.FinalizationRegistry) {
       attachFinalizer = (handle) => handle;
       return handle;
     }

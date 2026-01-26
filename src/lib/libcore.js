@@ -41,9 +41,13 @@ addToLibrary({
   setTempRet0: '$setTempRet0',
   getTempRet0: '$getTempRet0',
 
+  // Assign a name to a given function. This is mostly useful for debugging
+  // purposes in cases where new functions are created at runtime.
+  $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
+
   $ptrToString: (ptr) => {
 #if ASSERTIONS
-    assert(typeof ptr === 'number');
+    assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
 #endif
 #if MEMORY64
     // Convert to 64-bit unsigned value.  We need to use BigInt here since
@@ -1340,7 +1344,7 @@ addToLibrary({
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
     // Audio Worklets enabled, do a dynamic check for its presence.
-    if (typeof performance != 'undefined' && {{{ getPerformanceNow() }}}) {
+    if (globalThis.performance && {{{ getPerformanceNow() }}}) {
 #if PTHREADS
       _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
 #else
@@ -1365,7 +1369,7 @@ addToLibrary({
     }
 #endif
 #if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
-    if (typeof performance == 'object' && performance && typeof performance['now'] == 'function') {
+    if (globalThis.performance?.now == 'function') {
       return 1000; // microseconds (1/1000 of a millisecond)
     }
     return 1000*1000; // milliseconds
@@ -1379,7 +1383,7 @@ addToLibrary({
   // implementation is not :(
   $nowIsMonotonic__internal: true,
 #if AUDIO_WORKLET // // https://github.com/WebAudio/web-audio-api/issues/2413
-  $nowIsMonotonic: `((typeof performance == 'object' && performance && typeof performance['now'] == 'function'));`,
+  $nowIsMonotonic: `!!globalThis.performance?.now;`,
 #else
   // Modern environment where performance.now() is supported
   $nowIsMonotonic: 1,
@@ -1610,45 +1614,10 @@ addToLibrary({
   emscripten_asm_const_async_on_main_thread: (emAsmAddr, sigPtr, argbuf) => runMainThreadEmAsm(emAsmAddr, sigPtr, argbuf, 0),
 #endif
 
-  $emGlobalThis__internal: true,
-#if SUPPORTS_GLOBALTHIS
-  $emGlobalThis: 'globalThis',
-#else
-  $getGlobalThis__internal: true,
-  $getGlobalThis: () => {
-    if (typeof globalThis != 'undefined') {
-      return globalThis;
-    }
-#if DYNAMIC_EXECUTION
-    return new Function('return this')();
-#else
-    function testGlobal(obj) {
-      // Use __emGlobalThis as a test symbol to see if `obj` is indeed the
-      // global object.
-      obj['__emGlobalThis'] = obj;
-      var success = typeof __emGlobalThis == 'object' && obj['__emGlobalThis'] === obj;
-      delete obj['__emGlobalThis'];
-      return success;
-    }
-    if (typeof self != 'undefined' && testGlobal(self)) {
-      return self; // This works for both "window" and "self" (Web Workers) global objects
-    }
-#if ENVIRONMENT_MAY_BE_NODE
-    if (typeof global != 'undefined' && testGlobal(global)) {
-      return global;
-    }
-#endif
-    abort('unable to get global object.');
-#endif // DYNAMIC_EXECUTION
-  },
-  $emGlobalThis__deps: ['$getGlobalThis'],
-  $emGlobalThis: 'getGlobalThis()',
-#endif // SUPPORTS_GLOBALTHIS
-
 #if !DECLARE_ASM_MODULE_EXPORTS
   // When DECLARE_ASM_MODULE_EXPORTS is not set we export native symbols
   // at runtime rather than statically in JS code.
-  $exportWasmSymbols__deps: ['$asmjsMangle', '$emGlobalThis',
+  $exportWasmSymbols__deps: ['$asmjsMangle',
 #if DYNCALLS || !WASM_BIGINT
     , '$dynCalls'
 #endif
@@ -1666,9 +1635,9 @@ addToLibrary({
       // similar DECLARE_ASM_MODULE_EXPORTS = 0 treatment.
       if (typeof exportedSymbol.value === 'undefined') {
 #if MINIMAL_RUNTIME
-        emGlobalThis[name] = exportedSymbol;
+        globalThis[name] = exportedSymbol;
 #else
-        emGlobalThis[name] = Module[name] = exportedSymbol;
+        globalThis[name] = Module[name] = exportedSymbol;
 #endif
       }
     }
@@ -2181,6 +2150,8 @@ addToLibrary({
 #endif // MINIMAL_RUNTIME
 
   $asmjsMangle: (x) => {
+    if (x == 'memory') return 'wasmMemory';
+    if (x == '__indirect_function_table') return 'wasmTable';
     if (x == '__main_argc_argv') {
       x = 'main';
     }
@@ -2239,13 +2210,6 @@ addToLibrary({
   __stack_high: '{{{ STACK_HIGH }}}',
   __stack_low: '{{{ STACK_LOW }}}',
   __global_base: '{{{ GLOBAL_BASE }}}',
-#if WASM_EXCEPTIONS
-  // In dynamic linking we define tags here and feed them to each module
-  __cpp_exception: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
-#endif
-#if SUPPORT_LONGJMP == 'wasm'
-  __c_longjmp: "new WebAssembly.Tag({'parameters': ['{{{ POINTER_WASM_TYPE }}}']})",
-#endif
 #if ASYNCIFY == 1
   __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
   __asyncify_data: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(0) }}})",
@@ -2381,7 +2345,7 @@ addToLibrary({
     assert(id, 'addRunDependency requires an ID')
     assert(!runDependencyTracking[id]);
     runDependencyTracking[id] = 1;
-    if (runDependencyWatcher === null && typeof setInterval != 'undefined') {
+    if (runDependencyWatcher === null && globalThis.setInterval) {
       // Check for missing dependencies every few seconds
       runDependencyWatcher = setInterval(() => {
         if (ABORT) {

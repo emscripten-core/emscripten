@@ -5,6 +5,7 @@
 
 from .toolchain_profiler import ToolchainProfiler
 
+import importlib
 import json
 import logging
 import os
@@ -591,6 +592,9 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   if settings.USE_WEBGPU:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/webgpu-externs.js')]
 
+  if settings.AUDIO_WORKLET:
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/audio-worklet-externs.js')]
+
   # Closure compiler needs to know about all exports that come from the wasm module, because to optimize for small code size,
   # the exported symbols are added to global scope via a foreach loop in a way that evades Closure's static analysis. With an explicit
   # externs file for the exports, Closure is able to reason about the exports.
@@ -1174,8 +1178,11 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   # source file paths must be relative to the location of the map (which is
   # emitted alongside the wasm)
   base_path = os.path.dirname(os.path.abspath(final_wasm))
-  sourcemap_cmd = [sys.executable, '-E', path_from_root('tools/wasm-sourcemap.py'),
-                   wasm_file,
+
+  # TODO(sbc): Rename wasm-sourcemap so it can be imported directly without
+  # importlib.
+  wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
+  sourcemap_cmd = [wasm_file,
                    '--dwarfdump=' + LLVM_DWARFDUMP,
                    '-o',  map_file,
                    '--basepath=' + base_path]
@@ -1186,7 +1193,10 @@ def emit_wasm_source_map(wasm_file, map_file, final_wasm):
   if settings.GENERATE_SOURCE_MAP == 2:
     sourcemap_cmd += ['--sources']
 
-  check_call(sourcemap_cmd)
+  # TODO(sbc): Convert to using library internal API instead of running `main` here
+  rtn = wasm_sourcemap.main(sourcemap_cmd)
+  if rtn != 0:
+    exit_with_error('wasm-sourcemap failed (%s)', sourcemap_cmd)
 
 
 def get_binaryen_feature_flags():
