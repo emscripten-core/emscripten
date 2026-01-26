@@ -166,6 +166,14 @@ int main(int argc, char* argv[]) {
   assert(strcmp(buf3, msg2) == 0);
   emscripten_console_logf("read message: %s (%d)", buf3, nread);
 
+  // Test reading from an offset.
+  lseek(fd, 1, SEEK_SET);
+  char buf4[100] = {};
+  nread = read(fd, buf4, 4);
+  assert(nread == 4);
+  assert(strcmp(buf4, "ello") == 0);
+  emscripten_console_logf("read message: %s (%d)", buf4, nread);
+
   err = close(fd);
   assert(err == 0);
 
