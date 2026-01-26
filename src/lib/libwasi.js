@@ -119,7 +119,9 @@ var WasiLibrary = {
 #if MAIN_READS_PARAMS
     {{{ makeSetValue('pargc', 0, 'mainArgs.length', SIZE_TYPE) }}};
     var bufSize = 0;
-    mainArgs.forEach((arg) => bufSize += arg.length + 1);
+    for (var arg of mainArgs) {
+      bufSize += arg.length + 1;
+    }
     {{{ makeSetValue('pargv_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
 #else
     {{{ makeSetValue('pargc', 0, '0', SIZE_TYPE) }}};
@@ -132,12 +134,12 @@ var WasiLibrary = {
   args_get: (argv, argv_buf) => {
 #if MAIN_READS_PARAMS
     var bufSize = 0;
-    mainArgs.forEach((arg, i) => {
+    for (let [i, arg] of mainArgs.entries()) {
       var ptr = argv_buf + bufSize;
       {{{ makeSetValue('argv', `i*${POINTER_SIZE}`, 'ptr', '*') }}};
       stringToAscii(arg, ptr);
       bufSize += arg.length + 1;
-    });
+    }
 #endif
     return 0;
   },

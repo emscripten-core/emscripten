@@ -11,6 +11,7 @@ import shlex
 import sys
 from enum import Enum, auto, unique
 from subprocess import PIPE
+from typing import List, Set
 
 from tools import (
   cache,
@@ -23,9 +24,8 @@ from tools import (
   utils,
 )
 from tools.settings import MEM_SIZE_SETTINGS, settings, user_settings
-from tools.shared import exit_with_error
 from tools.toolchain_profiler import ToolchainProfiler
-from tools.utils import read_file, removeprefix
+from tools.utils import exit_with_error, read_file, removeprefix
 
 SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
@@ -60,59 +60,62 @@ class OFormat(Enum):
 
 
 class EmccOptions:
-  def __init__(self):
-    self.target = ''
-    self.output_file = None
-    self.input_files = []
-    self.no_minify = False
-    self.post_link = False
-    self.save_temps = False
-    self.executable = False
-    self.oformat = None
-    self.requested_debug = None
-    self.emit_symbol_map = False
-    self.use_closure_compiler = None
-    self.js_transform = None
-    self.pre_js = [] # before all js
-    self.post_js = [] # after all js
-    self.extern_pre_js = [] # before all js, external to optimized code
-    self.extern_post_js = [] # after all js, external to optimized code
-    self.preload_files = []
-    self.embed_files = []
-    self.exclude_files = []
-    self.ignore_dynamic_linking = False
-    self.shell_path = None
-    self.source_map_base = ''
-    self.emit_tsd = ''
-    self.emrun = False
-    self.cpu_profiler = False
-    self.memory_profiler = False
-    self.use_preload_cache = False
-    self.use_preload_plugins = False
-    self.valid_abspaths = []
-    # Specifies the line ending format to use for all generated text files.
-    # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
-    # Linux & MacOS)
-    self.output_eol = os.linesep
-    self.no_entry = False
-    self.shared = False
-    self.relocatable = False
-    self.reproduce = None
-    self.syntax_only = False
-    self.dash_c = False
-    self.dash_E = False
-    self.dash_S = False
-    self.dash_M = False
-    self.input_language = None
-    self.nostdlib = False
-    self.nostdlibxx = False
-    self.nodefaultlibs = False
-    self.nolibc = False
-    self.nostartfiles = False
-    self.sanitize_minimal_runtime = False
-    self.sanitize = set()
-    self.lib_dirs = []
-    self.fast_math = False
+  cpu_profiler = False
+  dash_E = False
+  dash_M = False
+  dash_S = False
+  dash_c = False
+  embed_files: List[str] = []
+  emit_symbol_map = False
+  emit_tsd = ''
+  emrun = False
+  exclude_files: List[str] = []
+  executable = False
+  extern_post_js: List[str] = [] # after all js, external to optimized code
+  extern_pre_js: List[str] = [] # before all js, external to optimized code
+  fast_math = False
+  ignore_dynamic_linking = False
+  input_files: List[str] = []
+  input_language = None
+  js_transform = None
+  lib_dirs: List[str] = []
+  memory_profiler = False
+  no_entry = False
+  no_minify = False
+  nodefaultlibs = False
+  nolibc = False
+  nostartfiles = False
+  nostdlib = False
+  nostdlibxx = False
+  oformat = None
+  # Specifies the line ending format to use for all generated text files.
+  # Defaults to using the native EOL on each platform (\r\n on Windows, \n on
+  # Linux & MacOS)
+  output_eol = os.linesep
+  output_file = None
+  post_js: List[str] = [] # after all js
+  post_link = False
+  pre_js: List[str] = [] # before all js
+  preload_files: List[str] = []
+  relocatable = False
+  reproduce = None
+  requested_debug = None
+  sanitize: Set[str] = set()
+  sanitize_minimal_runtime = False
+  save_temps = False
+  shared = False
+  shell_path = None
+  source_map_base = ''
+  syntax_only = False
+  target = ''
+  use_closure_compiler = None
+  use_preload_cache = False
+  use_preload_plugins = False
+  valid_abspaths: List[str] = []
+
+
+# Global/singleton EmccOptions
+options = EmccOptions()
 
 
 def is_int(s):
@@ -152,7 +155,7 @@ def version_string():
   return f'emcc (Emscripten gcc/clang-like replacement + linker emulating GNU ld) {utils.EMSCRIPTEN_VERSION}{revision_suffix}'
 
 
-def is_valid_abspath(options, path_name):
+def is_valid_abspath(path_name):
   # Any path that is underneath the emscripten repository root must be ok.
   if utils.normalize_path(path_name).startswith(utils.normalize_path(utils.path_from_root())):
     return True
@@ -226,9 +229,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
-  options = EmccOptions()
-  settings_changes = []
-  user_js_defines = []
   should_exit = False
   skip = False
 
@@ -423,7 +423,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       if newargs[i] == '--memoryprofiler':
         options.memory_profiler = True
       newargs[i] = ''
-      settings_changes.append('EMSCRIPTEN_TRACING=1')
+      settings.EMSCRIPTEN_TRACING = 1
     elif check_flag('--emit-symbol-map'):
       options.emit_symbol_map = True
       settings.EMIT_SYMBOL_MAP = 1
@@ -489,7 +489,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_arg('--memory-init-file'):
       exit_with_error('--memory-init-file is no longer supported')
     elif check_flag('--proxy-to-worker'):
-      settings_changes.append('PROXY_TO_WORKER=1')
+      settings.PROXY_TO_WORKER = 1
     elif check_arg('--valid-abspath'):
       options.valid_abspaths.append(consume_arg())
     elif check_flag('--separate-asm'):
@@ -498,7 +498,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       path_name = arg[2:]
       # Look for '/' explicitly so that we can also diagnose identically if -I/foo/bar is passed on Windows.
       # Python since 3.13 does not treat '/foo/bar' as an absolute path on Windows.
-      if (path_name.startswith('/') or os.path.isabs(path_name)) and not is_valid_abspath(options, path_name):
+      if (path_name.startswith('/') or os.path.isabs(path_name)) and not is_valid_abspath(path_name):
         # Of course an absolute path to a non-system-specific library or header
         # is fine, and you can ignore this warning. The danger are system headers
         # that are e.g. x86 specific and non-portable. The emscripten bundled
@@ -515,7 +515,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_flag('--cpuprofiler'):
       options.cpu_profiler = True
     elif check_flag('--threadprofiler'):
-      settings_changes.append('PTHREADS_PROFILING=1')
+      settings.PTHREADS_PROFILING = 1
     elif arg in ('-fcolor-diagnostics', '-fdiagnostics-color', '-fdiagnostics-color=always'):
       colored_logger.enable(force=True)
     elif arg in ('-fno-color-diagnostics', '-fno-diagnostics-color', '-fdiagnostics-color=never'):
@@ -589,7 +589,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         value = '1'
       if key in settings.keys():
         exit_with_error(f'{arg}: cannot change built-in settings values with a -jsD directive. Pass -s{key}={value} instead!')
-      user_js_defines += [(key, value)]
+      # Apply user -jsD settings
+      settings[key] = value
       newargs[i] = ''
     elif check_flag('-shared'):
       options.shared = True
@@ -642,8 +643,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
   if should_exit:
     sys.exit(0)
 
-  newargs = [a for a in newargs if a]
-  return options, settings_changes, user_js_defines, newargs
+  return [a for a in newargs if a]
 
 
 def expand_byte_size_suffixes(value):
@@ -855,14 +855,12 @@ def parse_arguments(args):
       newargs[i] += newargs[i + 1]
       newargs[i + 1] = ''
 
-  options, settings_changes, user_js_defines, newargs = parse_args(newargs)
+  newargs = parse_args(newargs)
 
   if options.post_link or options.oformat == OFormat.BARE:
     diagnostics.warning('experimental', '--oformat=bare/--post-link are experimental and subject to change.')
 
-  explicit_settings_changes, newargs = parse_s_args(newargs)
-  settings_changes += explicit_settings_changes
-
+  settings_changes, newargs = parse_s_args(newargs)
   for s in settings_changes:
     key, value = s.split('=', 1)
     key, value = normalize_boolean_setting(key, value)
@@ -874,11 +872,7 @@ def parse_arguments(args):
   if strict_cmdline:
     settings.STRICT = int(strict_cmdline)
 
-  # Apply user -jsD settings
-  for s in user_js_defines:
-    settings[s[0]] = s[1]
-
   # Apply -s settings in newargs here (after optimization levels, so they can override them)
   apply_user_settings()
 
-  return options, newargs
+  return newargs

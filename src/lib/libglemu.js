@@ -10,7 +10,7 @@ assert(!FULL_ES3, 'cannot emulate both ES3 and legacy GL');
 
 {{{
   const copySigs = (func) => {
-    if (!RELOCATABLE) return '';
+    if (!MAIN_MODULE && !RELOCATABLE) return '';
     return ` _${func}.sig = _emscripten_${func}.sig = orig_${func}.sig;`;
   };
   const fromPtr = (arg) => {
@@ -626,10 +626,10 @@ var LibraryGLEmulation = {
         if (GL.debug) {
           dbg('[using program with shaders]');
           if (program) {
-            GL.programShaders[program].forEach((shader) => {
+            for (var shader of GL.programShaders[program]) {
               dbg(`  shader ${shader}, original source: ${GL.shaderOriginalSources[shader]}`);
               dbg(`         Source: ${GL.shaderSources[shader]}`);
-            });
+            }
           }
         }
 #endif

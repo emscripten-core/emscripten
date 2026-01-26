@@ -609,7 +609,7 @@ var GL_WORKAROUND_SAFARI_GETCONTEXT_BUG = true;
 // In WebGL, glGetProcAddress() causes a substantial code size and performance impact, since WebGL
 // does not natively provide such functionality, and it must be emulated. Using glGetProcAddress()
 // is not recommended. If you still need to use this, e.g. when porting an existing renderer,
-// you can link with -sGL_ENABLE_GET_PROC_ADDRESS=1 to get support for this functionality.
+// you can link with -sGL_ENABLE_GET_PROC_ADDRESS to get support for this functionality.
 // [link]
 var GL_ENABLE_GET_PROC_ADDRESS = true;
 
@@ -709,7 +709,7 @@ var LZ4 = false;
 // This option only applies to Emscripten (JavaScript-based) exception handling
 // and does not control the native Wasm exception handling.
 //
-// [compile+link] - affects user code at compile and system libraries at link
+// [compile+link]
 var DISABLE_EXCEPTION_CATCHING = 1;
 
 // Enables catching exception but only in the listed functions.  This
@@ -720,7 +720,7 @@ var DISABLE_EXCEPTION_CATCHING = 1;
 // This option only applies to Emscripten (JavaScript-based) exception handling
 // and does not control the native Wasm exception handling.
 //
-// [compile+link] - affects user code at compile and system libraries at link
+// [compile+link]
 var EXCEPTION_CATCHING_ALLOWED = [];
 
 // Internal: Tracks whether Emscripten should link in exception throwing (C++
@@ -733,13 +733,11 @@ var EXCEPTION_CATCHING_ALLOWED = [];
 // throwing code is not linked in. If so you should either unset the option (if
 // you do want exceptions) or fix the compilation of the source files so that
 // indeed no exceptions are used).
-// TODO(sbc): Move to settings_internal (current blocked due to use in test
-// code).
 //
 // This option only applies to Emscripten (JavaScript-based) exception handling
 // and does not control the native Wasm exception handling.
 //
-// [link]
+// [compile+link]
 var DISABLE_EXCEPTION_THROWING = false;
 
 // Make the exception message printing function, 'getExceptionMessage' available
@@ -1118,6 +1116,7 @@ var INCLUDE_FULL_LIBRARY = false;
 // globals and function pointers are all offset (by gb and fp, respectively)
 // Automatically set for SIDE_MODULE or MAIN_MODULE.
 // [compile+link]
+// [deprecated]
 var RELOCATABLE = false;
 
 // A main module is a file compiled in a way that allows us to link it to
@@ -1148,12 +1147,14 @@ var BUILD_AS_WORKER = false;
 // If set to 1, we build the project into a js file that will run in a worker,
 // and generate an html file that proxies input and output to/from it.
 // [link]
+// [deprecated]
 var PROXY_TO_WORKER = false;
 
 // If set, the script file name the main thread loads.  Useful if your project
 // doesn't run the main emscripten- generated script immediately but does some
 // setup before
 // [link]
+// [deprecated]
 var PROXY_TO_WORKER_FILENAME = '';
 
 // If set to 1, compiles in a small stub main() in between the real main() which
@@ -1184,7 +1185,8 @@ var PROXY_TO_PTHREAD = false;
 // to set this explicitly. Note that MAIN_MODULE and SIDE_MODULE mode 2 do
 // *not* set this, so that we still do normal DCE on them, and in that case
 // you must keep relevant things alive yourself using exporting.
-// [link]
+// [compile+link]
+// [deprecated]
 var LINKABLE = false;
 
 // Emscripten 'strict' build mode: Drop supporting any deprecated build options.
@@ -1607,11 +1609,11 @@ var USE_MODPLUG = false;
 
 // Formats to support in SDL2_image. Valid values: bmp, gif, lbm, pcx, png, pnm,
 // tga, xcf, xpm, xv
-// [link]
+// [compile+link]
 var SDL2_IMAGE_FORMATS = [];
 
 // Formats to support in SDL2_mixer. Valid values: ogg, mp3, mod, mid
-// [link]
+// [compile+link]
 var SDL2_MIXER_FORMATS = ["ogg"];
 
 // 1 = use sqlite3 from emscripten-ports
@@ -1620,13 +1622,13 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 var USE_SQLITE3 = false;
 
 // If 1, target compiling a shared Wasm Memory.
-// [compile+link] - affects user code at compile and system libraries at link.
+// [compile+link]
 var SHARED_MEMORY = false;
 
 // Enables support for Wasm Workers.  Wasm Workers enable applications
 // to create threads using a lightweight web-specific API that builds on top
 // of Wasm SharedArrayBuffer + Atomics API.
-// [compile+link] - affects user code at compile and system libraries at link.
+// [compile+link]
 var WASM_WORKERS = 0;
 
 // If true, enables targeting Wasm Web Audio AudioWorklets. Check out the
@@ -1978,9 +1980,9 @@ var MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION = false;
 // - 1: Default setjmp/longjmp/handling, depending on the mode of exceptions.
 //   'wasm' if '-fwasm-exceptions' is used, 'emscripten' otherwise.
 //
-// [compile+link] - at compile time this enables the transformations needed for
-// longjmp support at codegen time, while at link it allows linking in the
-// library support.
+// At compile time this enables the transformations needed for longjmp support
+// at codegen time, while at link it allows linking in the library support.
+// [compile+link]
 var SUPPORT_LONGJMP = true;
 
 // If set to 1, disables old deprecated HTML5 API event target lookup behavior.
@@ -2107,6 +2109,7 @@ var IMPORTED_MEMORY = false;
 // As well as this the generated JS code will contains help functions
 // to loading split modules.
 // [link]
+// [experimental]
 var SPLIT_MODULE = false;
 
 // For MAIN_MODULE builds, automatically load any dynamic library dependencies
@@ -2173,11 +2176,13 @@ var WASM_BINDGEN = 0;
 // and not yet supported by browsers.
 // Requires EXPORT_ES6
 // [link]
+// [experimental]
 var SOURCE_PHASE_IMPORTS = false;
 
 // Experimental support for wasm ESM integration.
 // Requires EXPORT_ES6 and MODULARIZE=instance
 // [link]
+// [experimental]
 var WASM_ESM_INTEGRATION = false;
 
 // Enable use of the JS arraybuffer-base64 API:
@@ -2198,6 +2203,7 @@ var GROWABLE_ARRAYBUFFERS = false;
 // Experimental support for WebAssembly js-types proposal.
 // It's currently only available under a flag in certain browsers,
 // so we disable it by default to save on code size.
+// [experimental]
 var WASM_JS_TYPES = false;
 
 // If the emscripten-generated program is hosted on separate origin then

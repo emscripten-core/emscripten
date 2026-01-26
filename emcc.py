@@ -26,7 +26,6 @@ import shlex
 import shutil
 import sys
 import tarfile
-import time
 from dataclasses import dataclass
 from enum import Enum, auto, unique
 
@@ -41,7 +40,7 @@ from tools import (
   system_libs,
   utils,
 )
-from tools.cmdline import CLANG_FLAGS_WITH_ARGS
+from tools.cmdline import CLANG_FLAGS_WITH_ARGS, options
 from tools.response_file import substitute_response_files
 from tools.settings import (
   COMPILE_TIME_SETTINGS,
@@ -49,9 +48,9 @@ from tools.settings import (
   settings,
   user_settings,
 )
-from tools.shared import DEBUG, DYLIB_EXTENSIONS, exit_with_error, in_temp
+from tools.shared import DEBUG, DYLIB_EXTENSIONS, in_temp
 from tools.toolchain_profiler import ToolchainProfiler
-from tools.utils import get_file_suffix, read_file, unsuffixed_basename
+from tools.utils import exit_with_error, get_file_suffix, read_file, unsuffixed_basename
 
 logger = logging.getLogger('emcc')
 
@@ -171,10 +170,8 @@ def create_reproduce_file(name, args):
       reproduce_file.add(rsp_name, os.path.join(root, 'response.txt'))
 
 
-#
-# Main run() function
-#
-def run(args):
+@ToolchainProfiler.profile()
+def main(args):
   if shared.run_via_emxx:
     clang = shared.CLANG_CXX
   else:
@@ -228,7 +225,7 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
 
   ## Process argument and setup the compiler
   state = EmccState(args)
-  options, newargs = cmdline.parse_arguments(state.orig_args)
+  newargs = cmdline.parse_arguments(state.orig_args)
 
   if not shared.SKIP_SUBPROCS:
     shared.check_sanity()
@@ -293,7 +290,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
-  phase_setup(options, state)
+  phase_setup(state)
 
   if '-print-resource-dir' in args or any(a.startswith('--print-prog-name') for a in args):
     shared.exec_process([clang] + compile.get_cflags(tuple(args)) + args)
@@ -338,9 +335,6 @@ def separate_linker_flags(newargs):
   - Linker flags include input files and are returned a list of LinkFlag objects.
   - Compiler flags are those to be passed to `clang -c`.
   """
-
-  if settings.RUNTIME_LINKED_LIBS:
-    newargs += settings.RUNTIME_LINKED_LIBS
 
   compiler_args = []
   linker_args = []
@@ -390,7 +384,7 @@ def separate_linker_flags(newargs):
 
 
 @ToolchainProfiler.profile_block('setup')
-def phase_setup(options, state):
+def phase_setup(state):
   """Second phase: configure and setup the compiler based on the specified settings and arguments.
   """
 
@@ -413,7 +407,7 @@ def phase_setup(options, state):
             'unused-command-line-argument',
             "linker flag ignored during compilation: '%s'" % arg)
 
-  if settings.MAIN_MODULE or settings.SIDE_MODULE:
+  if settings.SIDE_MODULE:
     settings.RELOCATABLE = 1
 
   if 'USE_PTHREADS' in user_settings:
@@ -483,11 +477,6 @@ def phase_setup(options, state):
       settings.SUPPORT_LONGJMP = 'wasm'
     else:
       settings.SUPPORT_LONGJMP = 'emscripten'
-
-  # SDL2 requires eglGetProcAddress() to work.
-  # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
-  if settings.USE_SDL == 2 or settings.USE_SDL_MIXER == 2 or settings.USE_SDL_GFX == 2:
-    default_setting('GL_ENABLE_GET_PROC_ADDRESS', 1)
 
 
 @ToolchainProfiler.profile_block('compile inputs')
@@ -597,14 +586,6 @@ def phase_compile_inputs(options, state, newargs):
       pass
 
   return linker_args
-
-
-@ToolchainProfiler.profile()
-def main(args):
-  start_time = time.time()
-  ret = run(args)
-  logger.debug('total time: %.2f seconds', (time.time() - start_time))
-  return ret
 
 
 if __name__ == '__main__':

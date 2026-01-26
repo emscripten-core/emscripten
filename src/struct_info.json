@@ -961,7 +961,8 @@
               "accelerationIncludingGravityZ",
               "rotationRateAlpha",
               "rotationRateBeta",
-              "rotationRateGamma"
+              "rotationRateGamma",
+              "supportedFields"
             ],
             "EmscriptenOrientationChangeEvent": [
               "orientationIndex",

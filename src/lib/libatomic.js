@@ -128,9 +128,9 @@ addToLibrary({
   emscripten_atomic_cancel_all_wait_asyncs__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_all_wait_asyncs: () => {
     let waitAsyncs = Object.values(liveAtomicWaitAsyncs);
-    waitAsyncs.forEach((address) => {
+    for (var address of waitAsyncs) {
       Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
-    });
+    }
     liveAtomicWaitAsyncs = {};
     return waitAsyncs.length;
   },
@@ -138,13 +138,13 @@ addToLibrary({
   emscripten_atomic_cancel_all_wait_asyncs_at_address__deps: ['$liveAtomicWaitAsyncs'],
   emscripten_atomic_cancel_all_wait_asyncs_at_address: (address) => {
     let numCancelled = 0;
-    Object.keys(liveAtomicWaitAsyncs).forEach((waitToken) => {
-      if (liveAtomicWaitAsyncs[waitToken] == address) {
+    for (var [waitToken, waitAddress] of Object.entries(liveAtomicWaitAsyncs)) {
+      if (waitAddress == address) {
         Atomics.notify(HEAP32, {{{ getHeapOffset('address', 'i32') }}});
         delete liveAtomicWaitAsyncs[waitToken];
         numCancelled++;
       }
-    });
+    }
     return numCancelled;
   },
 

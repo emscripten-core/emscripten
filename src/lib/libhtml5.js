@@ -814,6 +814,7 @@ var LibraryHTML5 = {
     a = a || {};
     ag = ag || {};
     rr = rr || {};
+    {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.supportedFields, 'supportedFields', 'i32') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationX, 'a["x"]', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationY, 'a["y"]', 'double') }}};
     {{{ makeSetValue('eventStruct', C_STRUCTS.EmscriptenDeviceMotionEvent.accelerationZ, 'a["z"]', 'double') }}};

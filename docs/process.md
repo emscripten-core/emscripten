@@ -314,9 +314,9 @@ decide collectively to abandon the deprecation, or to delay it.
    warning when the feature is used.  For settings this is normally as simple
    as adding it to `DEPRECATED_SETTINGS` in `settings.py`.
 
-4. Perform a global search of public github repositories for usage of the
-   feature.   If you work for a company with a large internal codebase (e.g.
-   Google) please also search globally there.
+4. Perform a [global search][global_github_search] of public GitHub repositories
+   for usage of the feature.  If you work for a company with a large internal
+   codebase (e.g. Google) please also search globally there.
 
 5. Feedback from steps (2), (3) and (4) should be summarized in the bug where
    discussions about the impact of deprecation can then proceed.
@@ -356,3 +356,4 @@ decide collectively to abandon the deprecation, or to delay it.
 [update_libcxxabi_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libcxxabi.py
 [update_libunwind_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libunwind.py
 [update_musl_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_musl.py
+[global_github_search]: https://github.com/search?q=%2F%28%3F-i%29%5CbMY_SETTING%5Cb%2F+-org%3Aemscripten-core+-path%3Aemcc.*+-path%3Asettings.*+-path%3Asettings_reference.*&type=code

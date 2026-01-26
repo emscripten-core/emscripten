@@ -18,8 +18,22 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.18 (in development)
+4.0.19 (in development)
 -----------------------
+- The `RETAIN_COMPILER_SETTINGS` setting and the corresponding
+  `emscripten_get_compiler_setting` API no longer store or report internal
+  compiler settings (those listed in `setttings_internal.js`).  We made an
+  exception here for `EMSCRIPTEN_VERSION` which is the only internal setting
+  where we could find usage of `emscripten_get_compiler_setting` (in a global
+  GitHub search). (#25667)
+- When using dynamic linking the main module is no longer built as a relocatable
+  binary.  This will significantly reduce the overhead of dynamic linking for
+  the main program, for example, eliminating all internal relocations. If you
+  encounter any issues with new default it is possible to revert to the old
+  behaviour by adding `-sRELOCATABLE` when linking the main module. (#25522)
+
+4.0.18 - 10/24/25
+-----------------
 - The `emrun.py` script no longer support running on python2. (#25597)
 - `-sUSE_WEBGPU` was removed in favor of the external port Emdawnwebgpu which
   are used via `--use-port=emdawnwebgpu`. See 4.0.10 release notes for details.

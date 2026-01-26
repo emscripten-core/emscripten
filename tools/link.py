@@ -37,6 +37,7 @@ from .cmdline import OFormat
 from .minimal_runtime_shell import generate_minimal_runtime_html
 from .settings import (
   DEPRECATED_SETTINGS,
+  EXPERIMENTAL_SETTINGS,
   INCOMPATIBLE_SETTINGS,
   JS_ONLY_SETTINGS,
   default_setting,
@@ -161,10 +162,6 @@ def base64_encode(filename):
   data = utils.read_binary(filename)
   b64 = base64.b64encode(data)
   return b64.decode('ascii')
-
-
-def base64_or_binary_encode(b):
-  return binary_encode(b) if settings.SINGLE_FILE_BINARY_ENCODE else base64_encode(b)
 
 
 def align_to_wasm_page_boundary(address):
@@ -415,7 +412,7 @@ def get_binaryen_passes(options):
     passes += ['--fpcast-emu']
   if settings.ASYNCIFY == 1:
     passes += ['--asyncify']
-    if settings.MAIN_MODULE or settings.SIDE_MODULE:
+    if settings.RELOCATABLE or settings.MAIN_MODULE:
       passes += ['--pass-arg=asyncify-relocatable']
     if settings.ASSERTIONS:
       passes += ['--pass-arg=asyncify-asserts']
@@ -522,14 +519,9 @@ def get_worker_js_suffix():
 
 
 def setup_pthreads():
-  if settings.RELOCATABLE:
-    # pthreads + dynamic linking has certain limitations
-    if settings.SIDE_MODULE:
-      diagnostics.warning('experimental', '-sSIDE_MODULE + pthreads is experimental')
-    elif settings.MAIN_MODULE:
-      diagnostics.warning('experimental', '-sMAIN_MODULE + pthreads is experimental')
-    elif settings.LINKABLE:
-      diagnostics.warning('experimental', '-sLINKABLE + pthreads is experimental')
+  # pthreads + dynamic linking has certain limitations
+  if settings.MAIN_MODULE or settings.RELOCATABLE:
+    diagnostics.warning('experimental', 'dynamic linking + pthreads is experimental')
   if settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
     diagnostics.warning('pthreads-mem-growth', '-pthread + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
 
@@ -673,7 +665,15 @@ def add_system_js_lib(lib):
   settings.JS_LIBRARIES.append(lib)
 
 
-def report_incompatible_settings():
+def check_settings():
+  for s, reason in DEPRECATED_SETTINGS.items():
+    if s in user_settings:
+      diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
+
+  for name, msg in EXPERIMENTAL_SETTINGS.items():
+    if getattr(settings, name):
+      diagnostics.warning('experimental', msg)
+
   for a, b, reason in INCOMPATIBLE_SETTINGS:
     invert_b = b.startswith('NO_')
     if invert_b:
@@ -792,10 +792,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   final_suffix = get_file_suffix(target)
 
-  for s, reason in DEPRECATED_SETTINGS.items():
-    if s in user_settings:
-      diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
-
   # Set the EXPORT_ES6 default early since it affects the setting of the
   # default oformat below.
   if settings.WASM_ESM_INTEGRATION or settings.SOURCE_PHASE_IMPORTS or settings.MODULARIZE == 'instance':
@@ -835,19 +831,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   settings.OUTPUT_FORMAT = options.oformat.name
 
-  if settings.JS_BASE64_API:
-    diagnostics.warning('experimental', '-sJS_BASE64_API is still experimental and not yet supported in browsers')
-
-  if settings.GROWABLE_ARRAYBUFFERS:
-    diagnostics.warning('experimental', '-sGROWABLE_ARRAYBUFFERS is still experimental and not yet supported in browsers')
-
-  if settings.SUPPORT_BIG_ENDIAN:
-    diagnostics.warning('experimental', '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.')
-    if settings.WASM2JS:
-      exit_with_error('WASMJ2S is currently not compatible with SUPPORT_BIG_ENDIAN')
+  if settings.SUPPORT_BIG_ENDIAN and settings.WASM2JS:
+    exit_with_error('WASMJ2S is currently not compatible with SUPPORT_BIG_ENDIAN')
 
   if settings.WASM_ESM_INTEGRATION:
-    diagnostics.warning('experimental', '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers')
     default_setting('MODULARIZE', 'instance')
     if not settings.EXPORT_ES6:
       exit_with_error('WASM_ESM_INTEGRATION requires EXPORT_ES6')
@@ -865,9 +852,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with WASM2JS')
     if settings.ABORT_ON_WASM_EXCEPTIONS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
-
-  if settings.WASM_JS_TYPES:
-    diagnostics.warning('experimental', '-sWASM_JS_TYPES is only supported under a flag in certain browsers')
 
   if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
@@ -1155,6 +1139,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       settings.INCLUDE_FULL_LIBRARY = 1
     # Called from preamble.js once the main module is instantiated.
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$loadDylibs']
+    if not settings.RELOCATABLE:
+      settings.REQUIRED_EXPORTS += ['__stack_pointer']
 
   if settings.MAIN_MODULE == 1 or settings.SIDE_MODULE == 1:
     settings.LINKABLE = 1
@@ -1173,13 +1159,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       '$registerTLSInit',
     ]
 
-  if settings.RELOCATABLE:
+  if settings.MAIN_MODULE or settings.RELOCATABLE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
       '$reportUndefinedSymbols',
       '$relocateExports',
       '$GOTHandler',
-      '__heap_base',
-      '__stack_pointer',
     ]
 
     if settings.ASYNCIFY == 1:
@@ -1395,9 +1379,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # make_invoke depends on stackSave and stackRestore
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$stackSave', '$stackRestore']
 
-  if settings.RELOCATABLE:
-    settings.REQUIRED_EXPORTS += ['__wasm_apply_data_relocs']
-
   if settings.SIDE_MODULE and 'GLOBAL_BASE' in user_settings:
     diagnostics.warning('unused-command-line-argument', 'GLOBAL_BASE is not compatible with SIDE_MODULE')
 
@@ -1534,6 +1515,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       not settings.AUTODEBUG and \
       not settings.ASSERTIONS and \
       not settings.RELOCATABLE and \
+      not settings.MAIN_MODULE and \
           settings.MINIFY_WASM_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
@@ -1782,9 +1764,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.ASYNCIFY == 2:
       diagnostics.warning('experimental', '-sASYNCIFY=2 (JSPI) is still experimental')
 
-  if settings.SOURCE_PHASE_IMPORTS:
-    diagnostics.warning('experimental', '-sSOURCE_PHASE_IMPORTS is still experimental and not yet supported in browsers')
-
   if settings.WASM2JS:
     if settings.GENERATE_SOURCE_MAP:
       exit_with_error('wasm2js does not support source maps yet (debug in wasm for now)')
@@ -1815,6 +1794,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
                                     'emscripten_stack_get_end']
 
   settings.EMSCRIPTEN_VERSION = utils.EMSCRIPTEN_VERSION
+  if settings.RETAIN_COMPILER_SETTINGS:
+    settings.PUBLIC_SETTINGS = [k for k in settings.attrs.keys() if k not in settings.internal_settings]
+    # Also include EMSCRIPTEN_VERSION from the internal settings since there are
+    # known usage of this with `emscripten_get_compiler_setting`.
+    settings.PUBLIC_SETTINGS.append('EMSCRIPTEN_VERSION')
   settings.SOURCE_MAP_BASE = options.source_map_base or ''
 
   settings.LINK_AS_CXX = (shared.run_via_emxx or settings.DEFAULT_TO_CXX) and not options.nostdlibxx
@@ -1887,7 +1871,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
     settings.MAYBE_CLOSURE_COMPILER = 1
 
-  report_incompatible_settings()
+  check_settings()
 
   return target, wasm_target
 
@@ -2269,7 +2253,6 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     generate_worker_js(target, options, js_target, target_basename)
 
   if settings.SPLIT_MODULE:
-    diagnostics.warning('experimental', 'the SPLIT_MODULE setting is experimental and subject to change')
     do_split_module(wasm_target, options)
 
   if options.executable:
@@ -2452,7 +2435,10 @@ def phase_binaryen(target, options, wasm_target):
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
     js = read_file(final_js)
 
-    js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_or_binary_encode(wasm_target))
+    if settings.SINGLE_FILE_BINARY_ENCODE:
+      js = do_replace(js, '"<<< WASM_BINARY_DATA >>>"', binary_encode(wasm_target))
+    else:
+      js = do_replace(js, '<<< WASM_BINARY_DATA >>>', base64_encode(wasm_target))
     delete_file(wasm_target)
     write_file(final_js, js)
 
@@ -2515,7 +2501,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
   base_js_target = os.path.basename(js_target)
 
   if settings.PROXY_TO_WORKER:
-    proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or target_basename) + '.js'
+    proxy_worker_filename = f'"{settings.PROXY_TO_WORKER_FILENAME or target_basename}.js"'
     script.inline = worker_js_script(proxy_worker_filename)
   else:
     # Normal code generation path
@@ -2534,7 +2520,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
       # has be synchronously ready.
       script.un_src()
       script.inline = '''
-          fetch('%s').then((result) => result.arrayBuffer())
+          fetch(%s).then((result) => result.arrayBuffer())
                      .then((buf) => {
                              Module.wasmBinary = buf;
                              %s;
@@ -2553,7 +2539,7 @@ def generate_traditional_runtime_html(target, options, js_target, target_basenam
             // Current browser does not support WebAssembly, load the .wasm.js JavaScript fallback
             // before the main JS runtime.
             var wasm2js = document.createElement('script');
-            wasm2js.src = '%s';
+            wasm2js.src = %s;
             wasm2js.onload = loadMainJs;
             document.body.appendChild(wasm2js);
           } else {
@@ -2674,18 +2660,18 @@ def generate_worker_js(target, options, js_target, target_basename):
     # compiler output goes in .worker.js file
     move_file(js_target, utils.replace_suffix(js_target, get_worker_js_suffix()))
     worker_target_basename = target_basename + '.worker'
-    proxy_worker_filename = (settings.PROXY_TO_WORKER_FILENAME or worker_target_basename) + '.js'
+    proxy_worker_filename = f'"{settings.PROXY_TO_WORKER_FILENAME or worker_target_basename}.js"'
 
   target_contents = worker_js_script(proxy_worker_filename)
   utils.write_file(target, target_contents, options.output_eol)
 
 
-def worker_js_script(proxy_worker_filename):
+def worker_js_script(proxy_worker_filename_enclosed_in_quotes):
   web_gl_client_src = read_file(utils.path_from_root('src/webGLClient.js'))
   proxy_client_src = building.read_and_preprocess(utils.path_from_root('src/proxyClient.js'), expand_macros=True)
-  if not settings.SINGLE_FILE and not os.path.dirname(proxy_worker_filename):
-    proxy_worker_filename = './' + proxy_worker_filename
-  proxy_client_src = do_replace(proxy_client_src, '<<< filename >>>', proxy_worker_filename)
+  if not settings.SINGLE_FILE and not os.path.dirname(proxy_worker_filename_enclosed_in_quotes[1:-1]):
+    proxy_worker_filename_enclosed_in_quotes = f'"./{proxy_worker_filename_enclosed_in_quotes[1:-1]}"'
+  proxy_client_src = do_replace(proxy_client_src, '"<<< filename >>>"', proxy_worker_filename_enclosed_in_quotes)
   return web_gl_client_src + '\n' + proxy_client_src
 
 
@@ -3005,13 +2991,19 @@ def binary_encode(filename):
 
   data = utils.read_binary(filename)
 
-  out = bytearray(len(data) * 2) # Size output buffer conservatively
-  i = 0
+  # Decide whether to enclose the generated binary data in single-quotes '' or
+  # double-quotes "" by looking at which character ends up requiring fewer
+  # escapes of that string character.
+  num_single_quotes = data.count(ord("'"))
+  num_double_quotes = data.count(ord('"'))
+  quote_char = ord("'") if num_single_quotes < num_double_quotes else ord('"')
+
+  out = bytearray(len(data) * 2 + 2) # Size output buffer conservatively
+  out[0] = quote_char # Emit string start quote
+  i = 1
   for d in data:
-    if d == ord('"'):
-      # Escape double quote " character with a backspace since we are writing the binary string inside double quotes.
-      # Also closure optimizer will turn the string into being delimited with double quotes, even if it were single quotes to start with. (" -> 2 bytes)
-      buf = [ord('\\'), d]
+    if d == quote_char:
+      buf = [ord('\\'), d] # Escape the string quote character with a backslash since we are writing the binary data inside a string.
     elif d == ord('\r'):
       buf = [ord('\\'), ord('r')] # Escape carriage return 0x0D as \r -> 2 bytes
     elif d == ord('\n'):
@@ -3023,6 +3015,8 @@ def binary_encode(filename):
     for b in buf: # Write the bytes to output buffer
       out[i] = b
       i += 1
+  out[i] = quote_char # Emit string end quote
+  i += 1
   return out[0:i].decode('utf-8') # Crop output buffer to the actual used size
 
 
@@ -3031,9 +3025,9 @@ def get_subresource_location(path, mimetype='application/octet-stream'):
   if settings.SINGLE_FILE:
     if settings.SINGLE_FILE_BINARY_ENCODE:
       return binary_encode(path)
-    return f'data:{mimetype};base64,{base64_encode(path)}'
+    return f'"data:{mimetype};base64,{base64_encode(path)}"'
   else:
-    return os.path.basename(path)
+    return f'"{os.path.basename(path)}"'
 
 
 def get_subresource_location_js(path):
@@ -3140,6 +3134,9 @@ def run_post_link(wasm_input, options, linker_args):
 def run(options, linker_args):
   # We have now passed the compile phase, allow reading/writing of all settings.
   settings.limit_settings(None)
+
+  if settings.RUNTIME_LINKED_LIBS:
+    linker_args += settings.RUNTIME_LINKED_LIBS
 
   if not linker_args:
     exit_with_error('no input files')

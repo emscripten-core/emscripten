@@ -134,16 +134,28 @@ class ChromeConfig:
   def configure(data_dir):
     """Chrome has no special configuration step."""
 
+  @staticmethod
+  def open_url_args(url):
+    return [url]
+
 
 class FirefoxConfig:
   data_dir_flag = '-profile '
-  default_flags = ('-new-instance',)
+  default_flags = ('-new-instance', '-wait-for-browser')
   headless_flags = '-headless'
   executable_name = utils.exe_suffix('firefox')
 
   @staticmethod
   def configure(data_dir):
     shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
+
+  @staticmethod
+  def open_url_args(url):
+    # Firefox is able to launch URLs by passing them as positional arguments,
+    # but not when the -wait-for-browser flag is in use (which we need to be
+    # able to track browser liveness). So explicitly use -url option parameter
+    # to specify the page to launch. https://bugzil.la/1996614
+    return ['-url', url]
 
 
 class SafariConfig:
@@ -159,6 +171,10 @@ class SafariConfig:
   @staticmethod
   def configure(data_dir):
     """ Safari has no special configuration step."""
+
+  @staticmethod
+  def open_url_args(url):
+    return [url]
 
 
 # Special value for passing to assert_returncode which means we expect that program
@@ -614,7 +630,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if 'EMTEST_SKIP_WASM_EH' in os.environ:
       self.skipTest('test requires node v24 or d8 (and EMTEST_SKIP_WASM_EH is set)')
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    if self.try_require_node_version(24):
+    if self.try_require_node_version(22):
       self.node_args.append('--experimental-wasm-exnref')
       return
 
@@ -1309,22 +1325,20 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       sys.stderr.write(rtn.stderr)
     return rtn
 
-  def emcc(self, filename, args=[], output_filename=None, **kwargs):  # noqa
+  def emcc(self, filename, args=[], **kwargs):  # noqa
     filename = maybe_test_file(filename)
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
     cmd = [compiler_for(filename), filename] + self.get_cflags(compile_only=compile_only) + args
-    if output_filename:
-      cmd += ['-o', output_filename]
     self.run_process(cmd, **kwargs)
 
   # Shared test code between main suite and others
 
-  def expect_fail(self, cmd, expect_traceback=False, **args):
+  def expect_fail(self, cmd, expect_traceback=False, **kwargs):
     """Run a subprocess and assert that it returns non-zero.
 
     Return the stderr of the subprocess.
     """
-    proc = self.run_process(cmd, check=False, stderr=PIPE, **args)
+    proc = self.run_process(cmd, check=False, stderr=PIPE, **kwargs)
     self.assertNotEqual(proc.returncode, 0, 'subprocess unexpectedly succeeded. stderr:\n' + proc.stderr)
     # When we check for failure we expect a user-visible error, not a traceback.
     # However, on windows a python traceback can happen randomly sometimes,
@@ -1336,6 +1350,13 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if EMTEST_VERBOSE:
       sys.stderr.write(proc.stderr)
     return proc.stderr
+
+  def assert_fail(self, cmd, expected, **kwargs):
+    """Just like expect_fail, but also check for expected message in stderr.
+    """
+    err = self.expect_fail(cmd, **kwargs)
+    self.assertContained(expected, err)
+    return err
 
   # excercise dynamic linker.
   #
@@ -1394,29 +1415,18 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         }
       ''')
 
-    # _test_dylink_dso_needed can be potentially called several times by a test.
-    # reset dylink-related options first.
-    self.clear_setting('MAIN_MODULE')
-    self.clear_setting('SIDE_MODULE')
-
-    # XXX in wasm each lib load currently takes 5MB; default INITIAL_MEMORY=16MB is thus not enough
-    if not self.has_changed_setting('INITIAL_MEMORY'):
-      self.set_setting('INITIAL_MEMORY', '32mb')
-
-    so = '.wasm' if self.is_wasm() else '.js'
-
     def ccshared(src, linkto=None):
-      cmdv = [EMCC, src, '-o', utils.unsuffixed(src) + so, '-sSIDE_MODULE'] + self.get_cflags()
+      cmdv = [EMCC, src, '-o', utils.unsuffixed(src) + '.wasm', '-sSIDE_MODULE'] + self.get_cflags()
       if linkto:
         cmdv += linkto
       self.run_process(cmdv)
 
     ccshared('liba.cpp')
-    ccshared('libb.c', ['liba' + so])
-    ccshared('libc.c', ['liba' + so])
+    ccshared('libb.c', ['liba.wasm'])
+    ccshared('libc.c', ['liba.wasm'])
 
     self.set_setting('MAIN_MODULE')
-    extra_args = ['-L.', 'libb' + so, 'libc' + so]
+    extra_args = ['-L.', 'libb.wasm', 'libc.wasm']
     do_run(r'''
       #ifdef __cplusplus
       extern "C" {
@@ -1436,8 +1446,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', cflags=extra_args)
 
     extra_args = []
-    for libname in ('liba', 'libb', 'libc'):
-      extra_args += ['--embed-file', libname + so]
+    for libname in ('liba.wasm', 'libb.wasm', 'libc.wasm'):
+      extra_args += ['--embed-file', libname]
     do_run(r'''
       #include <assert.h>
       #include <dlfcn.h>
@@ -1448,9 +1458,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         void (*bfunc_ptr)(), (*cfunc_ptr)();
 
         // FIXME for RTLD_LOCAL binding symbols to loaded lib is not currently working
-        bdso = dlopen("libb%(so)s", RTLD_NOW|RTLD_GLOBAL);
+        bdso = dlopen("libb.wasm", RTLD_NOW|RTLD_GLOBAL);
         assert(bdso != NULL);
-        cdso = dlopen("libc%(so)s", RTLD_NOW|RTLD_GLOBAL);
+        cdso = dlopen("libc.wasm", RTLD_NOW|RTLD_GLOBAL);
         assert(cdso != NULL);
 
         bfunc_ptr = (void (*)())dlsym(bdso, "bfunc");
@@ -2052,7 +2062,7 @@ class BrowserCore(RunnerCore):
     if (WINDOWS and is_firefox()) or is_safari():
       cls.launch_browser_harness_with_proc_snapshot_workaround(parallel_harness, config, browser_args, url)
     else:
-      cls.browser_procs = [subprocess.Popen(browser_args + [url])]
+      cls.browser_procs = [subprocess.Popen(browser_args + config.open_url_args(url))]
 
   @classmethod
   def launch_browser_harness_with_proc_snapshot_workaround(cls, parallel_harness, config, browser_args, url):
@@ -2069,18 +2079,18 @@ class BrowserCore(RunnerCore):
         procs_before = list_processes_by_name(config.executable_name)
 
       # Browser launch
-      cls.browser_procs = [subprocess.Popen(browser_args + [url])]
+      cls.browser_procs = [subprocess.Popen(browser_args + config.open_url_args(url))]
 
       # Give the browser time to spawn its subprocesses. Use an increasing
       # timeout as a crude way to account for system load.
       if parallel_harness or is_safari():
-        time.sleep(min(2 + count * 0.3, 10))
+        time.sleep(min(5 + count * 0.3, 10))
         procs_after = list_processes_by_name(config.executable_name)
 
         # Take a snapshot again to find which processes exist after launching
         # the browser. Then the newly launched browser processes are determined
         # by the delta before->after.
-        cls.browser_procs = list(set(procs_after).difference(set(procs_before)))
+        cls.browser_procs += list(set(procs_after).difference(set(procs_before)))
         if len(cls.browser_procs) == 0:
           exit_with_error('Could not detect the launched browser subprocesses. The test harness will not be able to close the browser after testing is done, so aborting the test run here.')
 

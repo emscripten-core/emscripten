@@ -107,7 +107,8 @@ var WASI_MODULE_NAME = "wasi_snapshot_preview1";
 var JS_LIBRARIES = [];
 
 // This will contain the emscripten version. This can be useful in combination
-// with RETAIN_COMPILER_SETTINGS
+// with external JS library files that need to check the version of emscripten
+// they are being used with.
 var EMSCRIPTEN_VERSION = '';
 
 // Will be set to 0 if -fno-rtti is used on the command line.
@@ -277,3 +278,6 @@ var OUTPUT_FORMAT = '';
 var LOAD_SOURCE_MAP = false;
 
 var ALIASES = [];
+
+// List of public setting names (Used by RETAIN_COMPILER_SETTINGS)
+var PUBLIC_SETTINGS = [];
