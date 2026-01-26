@@ -93,8 +93,7 @@ _mm_sqrt_sd(__m128d __a, __m128d __b)
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_min_pd(__m128d __a, __m128d __b)
 {
-//  return (__m128d)wasm_f32x4_pmin((v128_t)__a, (v128_t)__b); // TODO: Migrate to this, once it works in VMs
-  return (__m128d)wasm_v128_bitselect((v128_t)__a, (v128_t)__b, (v128_t)wasm_f64x2_lt((v128_t)__a, (v128_t)__b));
+  return (__m128d)wasm_f64x2_pmin((v128_t)__b, (v128_t)__a);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
@@ -106,8 +105,7 @@ _mm_min_sd(__m128d __a, __m128d __b)
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm_max_pd(__m128d __a, __m128d __b)
 {
-//  return (__m128)wasm_f32x4_pmax((v128_t)__a, (v128_t)__b); // TODO: Migrate to this, once it works in VMs
-  return (__m128d)wasm_v128_bitselect((v128_t)__a, (v128_t)__b, (v128_t)wasm_f64x2_gt((v128_t)__a, (v128_t)__b));
+  return (__m128)wasm_f64x2_pmax((v128_t)__b, (v128_t)__a);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
