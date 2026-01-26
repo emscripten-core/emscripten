@@ -1284,7 +1284,6 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('noExitRuntime');
   ignoredModuleProp('noInitialRun');
   ignoredModuleProp('onAbort');
-  ignoredModuleProp('onCustomMessage');
   ignoredModuleProp('onExit');
   ignoredModuleProp('onFree');
   ignoredModuleProp('onFullScreen');

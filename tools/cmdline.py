@@ -65,6 +65,7 @@ class EmccOptions:
   dash_M = False
   dash_S = False
   dash_c = False
+  dylibs: List[str] = []
   embed_files: List[str] = []
   emit_symbol_map = False
   emit_tsd = ''
@@ -102,6 +103,7 @@ class EmccOptions:
   requested_debug = None
   sanitize: Set[str] = set()
   sanitize_minimal_runtime = False
+  s_args: List[str] = []
   save_temps = False
   shared = False
   shell_path = None
@@ -173,36 +175,29 @@ def is_dash_s_for_emcc(args, i):
   return arg.isidentifier() and arg.isupper()
 
 
-def parse_s_args(args):
-  settings_changes = []
-  for i in range(len(args)):
-    if args[i].startswith('-s'):
-      if is_dash_s_for_emcc(args, i):
-        if args[i] == '-s':
-          key = args[i + 1]
-          args[i + 1] = ''
-        else:
-          key = removeprefix(args[i], '-s')
-        args[i] = ''
+def parse_s_args():
+  for arg in options.s_args:
+    assert arg.startswith('-s')
+    arg = removeprefix(arg, '-s')
+    # If not = is specified default to 1
+    if '=' in arg:
+      key, value = arg.split('=', 1)
+    else:
+      key = arg
+      value = '1'
 
-        # If not = is specified default to 1
-        if '=' not in key:
-          key += '=1'
+    # Special handling of browser version targets. A version -1 means that the specific version
+    # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
+    # #if MIN_FIREFOX_VERSION < 68
+    if re.match(r'MIN_.*_VERSION', key):
+      try:
+        if int(value) < 0:
+          value = '0x7FFFFFFF'
+      except Exception:
+        pass
 
-        # Special handling of browser version targets. A version -1 means that the specific version
-        # is not supported at all. Replace those with INT32_MAX to make it possible to compare e.g.
-        # #if MIN_FIREFOX_VERSION < 68
-        if re.match(r'MIN_.*_VERSION(=.*)?', key):
-          try:
-            if int(key.split('=')[1]) < 0:
-              key = key.split('=')[0] + '=0x7FFFFFFF'
-          except Exception:
-            pass
-
-        settings_changes.append(key)
-
-  newargs = [a for a in args if a]
-  return (settings_changes, newargs)
+    key, value = normalize_boolean_setting(key, value)
+    user_settings[key] = value
 
 
 def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
@@ -234,8 +229,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       # Ignore the next argument rather than trying to parse it.  This is needed
       # because that next arg could, for example, start with `-o` and we don't want
       # to confuse that with a normal `-o` flag.
-      skip = True
-    elif arg == '-s' and is_dash_s_for_emcc(newargs, i):
       skip = True
 
     def check_flag(value):
@@ -273,7 +266,14 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         exit_with_error("'%s': file not found: '%s'" % (arg, name))
       return name
 
-    if arg.startswith('-O'):
+    if arg.startswith('-s') and is_dash_s_for_emcc(newargs, i):
+      s_arg = arg
+      if arg == '-s':
+        s_arg = '-s' + newargs[i + 1]
+        newargs[i + 1] = ''
+      newargs[i] = ''
+      options.s_args.append(s_arg)
+    elif arg.startswith('-O'):
       # Let -O default to -O2, which is what gcc does.
       opt_level = removeprefix(arg, '-O') or '2'
       if opt_level == 's':
@@ -485,7 +485,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif check_arg('--memory-init-file'):
       exit_with_error('--memory-init-file is no longer supported')
     elif check_flag('--proxy-to-worker'):
-      settings.PROXY_TO_WORKER = 1
+      exit_with_error('--proxy-to-worker is no longer supported')
     elif check_arg('--valid-abspath'):
       options.valid_abspaths.append(consume_arg())
     elif check_flag('--separate-asm'):
@@ -856,11 +856,7 @@ def parse_arguments(args):
   if options.post_link or options.oformat == OFormat.BARE:
     diagnostics.warning('experimental', '--oformat=bare/--post-link are experimental and subject to change.')
 
-  settings_changes, newargs = parse_s_args(newargs)
-  for s in settings_changes:
-    key, value = s.split('=', 1)
-    key, value = normalize_boolean_setting(key, value)
-    user_settings[key] = value
+  parse_s_args()
 
   # STRICT is used when applying settings so it needs to be applied first before
   # calling `apply_user_settings`.
@@ -868,7 +864,7 @@ def parse_arguments(args):
   if strict_cmdline:
     settings.STRICT = int(strict_cmdline)
 
-  # Apply -s settings in newargs here (after optimization levels, so they can override them)
+  # Apply -s args here (after optimization levels, so they can override them)
   apply_user_settings()
 
   return newargs

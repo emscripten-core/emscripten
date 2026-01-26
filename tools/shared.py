@@ -186,7 +186,7 @@ def check_call(cmd, *args, **kw):
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%s)", shlex.join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
-    exit_with_error("'%s' failed: %s", shlex.join(cmd), str(e))
+    exit_with_error("'%s' failed: %s", shlex.join(cmd), e)
 
 
 def exec_process(cmd):
@@ -339,7 +339,7 @@ def check_node():
   try:
     utils.run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
-    exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
+    exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, e)
 
 
 def generate_sanity():
@@ -517,7 +517,7 @@ def setup_temp_dirs():
     try:
       safe_ensure_dirs(EMSCRIPTEN_TEMP_DIR)
     except Exception as e:
-      exit_with_error(str(e) + f'Could not create canonical temp dir. Check definition of TEMP_DIR in {config.EM_CONFIG}')
+      exit_with_error('error creating canonical temp dir (Check definition of TEMP_DIR in %s): %s', config.EM_CONFIG, e)
 
     # Since the canonical temp directory is, by definition, the same
     # between all processes that run in DEBUG mode we need to use a multi

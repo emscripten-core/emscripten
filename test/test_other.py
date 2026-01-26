@@ -1235,7 +1235,7 @@ f.close()
       shutil.copy(test_file('hello_world.c'), 'test.' + suffix)
       self.do_runf('test.' + suffix, 'hello, world!')
 
-    for suffix in ('lo'):
+    for suffix in ('lo',):
       self.clear()
       print(suffix)
       self.run_process([EMCC, test_file('hello_world.c'), '-shared', '-o', 'binary.' + suffix])
@@ -1424,9 +1424,7 @@ f.close()
     self.emcc('a2.c', ['-r', '-L.', '-lA', '-o', 'a2.o'])
     self.emcc('b2.c', ['-r', '-L.', '-lA', '-o', 'b2.o'])
 
-    self.emcc('main.c', ['-L.', '-lA', 'a2.o', 'b2.o'])
-
-    self.assertContained('result: 1', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'result: 1', cflags=['-L.', '-lA', 'a2.o', 'b2.o'])
 
   def test_multiply_defined_libsymbols_2(self):
     create_file('a.c', "int x() { return 55; }")
@@ -1449,9 +1447,7 @@ f.close()
     building.emar('cr', 'libLIB.a', ['a.o', 'b.o']) # libLIB.a with a and b
 
     # a is in the lib AND in an .o, so should be ignored in the lib. We do still need b from the lib though
-    self.emcc('main.c', ['a.o', 'c.o', '-L.', '-lLIB'])
-
-    self.assertContained('result: 62', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'result: 62', cflags=['a.o', 'c.o', '-L.', '-lLIB'])
 
   def test_link_group(self):
     create_file('lib.c', 'int x() { return 42; }')
@@ -1724,12 +1720,8 @@ int f() {
     ''')
 
     # libfunc2 should not be linked by default, even with EXPORT_ALL
-    self.emcc('lib.c', ['-sEXPORT_ALL', '--pre-js', 'pre.js', '-o', 'a.out.js'])
-    err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('_libfunc2 is not defined', err)
-
-    self.emcc('lib.c', ['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js', '-o', 'a.out.js'])
-    self.assertContained('libfunc\n', self.run_js('a.out.js'))
+    self.do_runf('lib.c', '_libfunc2 is not defined', cflags=['-sEXPORT_ALL', '--pre-js', 'pre.js'], assert_returncode=NON_ZERO)
+    self.do_runf('lib.c', 'libfunc\n', cflags=['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js'])
 
   @all_engines
   @also_with_wasmfs
@@ -1910,8 +1902,7 @@ Module['postRun'] = () => {
       }
     ''')
 
-    self.run_process([EMCC, 'main.c', '-L.', '-la', '-lb'])
-    self.assertContained('a\nb\n', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'a\nb\n', cflags=['-L.', '-la', '-lb'])
 
   def test_archive_duplicate_basenames(self):
     ensure_dir('a')
@@ -1962,9 +1953,7 @@ Module['postRun'] = () => {
 
     # With fastcomp we don't support duplicate members so this should generate
     # a warning.  With the wasm backend (lld) this is fully supported.
-    cmd = [EMCC, 'main.c', '-L.', '-ldup']
-    self.run_process(cmd)
-    self.assertContained('a\nb...\n', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'a\nb...\n', cflags=['-L.', '-ldup'])
 
   def test_export_from_archive(self):
     export_name = 'this_is_an_entry_point'
@@ -2019,10 +2008,7 @@ Module['postRun'] = () => {
       }
     ''')
 
-    self.run_process([EMCC, 'main.c'] + args)
-    # run in node.js to ensure we verify that file preloading works there
-    result = self.run_js('a.out.js')
-    self.assertContained('|hello from a file wi|', result)
+    self.do_runf('main.c', '|hello from a file wi|', cflags=args)
 
   @parameterized({
     '': ([],),
@@ -3614,11 +3600,10 @@ More info: https://emscripten.org
 
   def test_embind_tsgen_worker_env(self):
     self.cflags += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
-    # Passing -sWASM_WORKERS or -sPROXY_TO_WORKER requires the 'worker' environment
+    # Passing -sWASM_WORKERS requires the 'worker' environment
     # at link time. Verify that TS binding generation still works in this case.
-    for flags in (['-sWASM_WORKERS'], ['-sPROXY_TO_WORKER', '-Wno-deprecated']):
-      self.emcc('other/embind_tsgen.cpp', flags)
-      self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+    self.emcc('other/embind_tsgen.cpp', ['-sWASM_WORKERS'])
+    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_dylink(self):
     create_file('side.h', r'''
@@ -5836,12 +5821,12 @@ int main(int argc, char **argv) {
     self.assertContained(f'LANG=({expected_lang}|en_US.UTF-8|C.UTF-8)', output, regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
-    create_file('pre.js', 'var navigator = { language: "fr" };')
+    create_file('pre.js', 'delete global.navigator; globalThis.navigator = { language: "fr" };')
     output = self.do_runf('test_browser_language_detection.c', cflags=['--pre-js', 'pre.js'])
     self.assertContained('LANG=fr.UTF-8', output)
 
     # Accept-Language: fr-FR,fr;q=0.8,en-US;q=0.5,en;q=0.3
-    create_file('pre.js', r'var navigator = { language: "fr-FR" };')
+    create_file('pre.js', r'delete global.navigator; globalThis.navigator = { language: "fr-FR" };')
     self.cflags += ['--pre-js', 'pre.js']
     self.do_runf('test_browser_language_detection.c', 'LANG=fr_FR.UTF-8')
 
@@ -6788,11 +6773,22 @@ int main() {
 
   @also_with_wasmfs
   def test_dlopen_rpath(self):
+    create_file('hello_nested_dep.c', r'''
+    #include <stdio.h>
+
+    void hello_nested_dep() {
+      printf("Hello_nested_dep\n");
+      return;
+    }
+    ''')
     create_file('hello_dep.c', r'''
     #include <stdio.h>
 
+    void hello_nested_dep();
+
     void hello_dep() {
       printf("Hello_dep\n");
+      hello_nested_dep();
       return;
     }
     ''')
@@ -6819,7 +6815,7 @@ int main() {
       void (*f)();
       double (*f2)(double);
 
-      h = dlopen("/usr/lib/libhello.wasm", RTLD_NOW);
+      h = dlopen("/usr/lib/libhello.so", RTLD_NOW);
       assert(h);
       f = dlsym(h, "hello");
       assert(f);
@@ -6834,20 +6830,22 @@ int main() {
     os.mkdir('subdir')
 
     def _build(rpath_flag, expected, **kwds):
-      self.run_process([EMCC, '-o', 'subdir/libhello_dep.so', 'hello_dep.c', '-sSIDE_MODULE'])
-      self.run_process([EMCC, '-o', 'hello.wasm', 'hello.c', '-sSIDE_MODULE', 'subdir/libhello_dep.so'] + rpath_flag)
+      self.run_process([EMCC, '-o', 'subdir/libhello_nested_dep.so', 'hello_nested_dep.c', '-sSIDE_MODULE'])
+      self.run_process([EMCC, '-o', 'subdir/libhello_dep.so', 'hello_dep.c', '-sSIDE_MODULE', 'subdir/libhello_nested_dep.so'] + rpath_flag)
+      self.run_process([EMCC, '-o', 'hello.so', 'hello.c', '-sSIDE_MODULE', 'subdir/libhello_dep.so'] + rpath_flag)
       args = ['--profiling-funcs', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
-                        '--embed-file', 'hello.wasm@/usr/lib/libhello.wasm',
+                        '--embed-file', 'hello.so@/usr/lib/libhello.so',
                         '--embed-file', 'subdir/libhello_dep.so@/usr/lib/subdir/libhello_dep.so',
-                        'hello.wasm', '-sNO_AUTOLOAD_DYLIBS',
-                        '-L./subdir', '-lhello_dep']
+                        '--embed-file', 'subdir/libhello_nested_dep.so@/usr/lib/subdir/libhello_nested_dep.so',
+                        'hello.so', '-sNO_AUTOLOAD_DYLIBS',
+                        '-L./subdir', '-lhello_dep', '-lhello_nested_dep']
       self.do_runf('main.c', expected, cflags=args, **kwds)
 
     # case 1) without rpath: fail to locate the library
     _build([], r"no such file or directory, open '.*libhello_dep\.so'", regex=True, assert_returncode=NON_ZERO)
 
     # case 2) with rpath: success
-    _build(['-Wl,-rpath,$ORIGIN/subdir'], "Hello\nHello_dep\nOk\n")
+    _build(['-Wl,-rpath,$ORIGIN/subdir,-rpath,$ORIGIN'], "Hello\nHello_dep\nHello_nested_dep\nOk\n")
 
   def test_dlopen_bad_flags(self):
     create_file('main.c', r'''
@@ -7855,6 +7853,24 @@ addToLibrary({
         seen = self.run_js('test.js', engine=engine, assert_returncode=NON_ZERO)
         self.assertContained('Module.ENVIRONMENT has been deprecated. To force the environment, use the ENVIRONMENT compile-time option (for example, -sENVIRONMENT=web or -sENVIRONMENT=node', seen)
 
+  @requires_node
+  @with_env_modify({'FOO': 'bar'})
+  @parameterized({
+    '': ([], '|(null)|\n'),
+    'rawfs': (['-sNODERAWFS'], '|bar|\n'),
+    'rawfs_no_env': (['-sNODERAWFS', '-sNODE_HOST_ENV=0'], '|(null)|\n'),
+    'enabled': (['-sNODE_HOST_ENV'], '|bar|\n'),
+  })
+  def test_node_host_env(self, args, expected):
+     create_file('src.c', r'''
+      #include <stdlib.h>
+      #include <stdio.h>
+      int main() {
+        printf("|%s|\n", getenv("FOO"));
+      }
+    ''')
+     self.do_runf('src.c', expected, cflags=args)
+
   def test_override_c_environ(self):
     create_file('pre.js', r'''
       Module.preRun = () => { ENV.hello = '💩 world'; ENV.LANG = undefined; }
@@ -8008,9 +8024,7 @@ int main() {
   @crossplatform
   @parameterized({
     '': ([],),
-    'proxy_to_worker': (['--proxy-to-worker', '-Wno-deprecated'],),
     'single_file': (['-sSINGLE_FILE'],),
-    'proxy_to_worker_wasm2js': (['--proxy-to-worker', '-Wno-deprecated', '-sWASM=0'],),
   })
   def test_output_eol(self, params):
     for eol in ('windows', 'linux'):
@@ -9232,8 +9246,7 @@ end
         return access(argv[1], F_OK);
       }
     ''')
-    self.run_process([EMCC, 'access.c', '-sNODERAWFS'])
-    self.run_js('a.out.js', args=[os.path.abspath('foo')])
+    self.do_runf('access.c', cflags=['-sNODERAWFS'], args=[os.path.abspath('foo')])
 
   def test_noderawfs_readfile_prerun(self):
     create_file('foo', 'bar')
@@ -11919,13 +11932,20 @@ int main () {
     self.do_other_test('test_euidaccess.c')
 
   def test_shared_flag(self):
-    self.run_process([EMCC, '-shared', test_file('hello_world.c'), '-o', 'libother.so'])
+    create_file('side.c', 'int foo;')
+    self.run_process([EMCC, '-shared', 'side.c', '-o', 'libother.so'])
 
     # Test that `-shared` flag causes object file generation but gives a warning
     err = self.run_process([EMCC, '-shared', test_file('hello_world.c'), '-o', 'out.foo', 'libother.so'], stderr=PIPE).stderr
     self.assertContained('linking a library with `-shared` will emit a static object', err)
     self.assertContained('emcc: warning: ignoring dynamic library libother.so when generating an object file, this will need to be included explicitly in the final link', err)
     self.assertIsObjectFile('out.foo')
+
+    # Test that adding `-sFAKE_DYIBS=0` build a real side module
+    err = self.run_process([EMCC, '-shared', '-fPIC', '-sFAKE_DYLIBS=0', test_file('hello_world.c'), '-o', 'out.foo', 'libother.so'], stderr=PIPE).stderr
+    self.assertNotContained('linking a library with `-shared` will emit a static object', err)
+    self.assertNotContained('emcc: warning: ignoring dynamic library libother.so when generating an object file, this will need to be included explicitly in the final link', err)
+    self.assertIsWasmDylib('out.foo')
 
     # Test that using an executable output name overrides the `-shared` flag, but produces a warning.
     err = self.run_process([EMCC, '-shared', test_file('hello_world.c'), '-o', 'out.js'],
@@ -12845,10 +12865,6 @@ void foo() {}
     self.cflags += ['-DEXPECTED_STACK_SIZE=1024', '-sDEFAULT_PTHREAD_STACK_SIZE=1024']
     self.do_other_test('test_default_pthread_stack_size.c')
 
-    # Same again but with a --proxy-to-worker
-    self.cflags += ['--proxy-to-worker', '-Wno-deprecated']
-    self.do_other_test('test_default_pthread_stack_size.c')
-
   def test_emscripten_set_immediate(self):
     self.do_runf('emscripten_set_immediate.c')
 
@@ -13322,8 +13338,14 @@ int main() {
     # Ensure that files referenced in Tutorial.rst are buildable
     self.run_process([EMCC, test_file('hello_world_file.cpp')])
 
+  @also_with_wasm64
   def test_stdint_limits(self):
-    self.do_other_test('test_stdint_limits.c')
+    if self.is_wasm64():
+      suffix = '.64'
+    else:
+      suffix = ''
+    print(suffix)
+    self.do_other_test('test_stdint_limits.c', out_suffix=suffix)
 
   def test_legacy_runtime(self):
     self.set_setting('EXPORTED_FUNCTIONS', ['_malloc', '_main'])
@@ -13390,8 +13412,9 @@ int main() {
   @parameterized({
     # we will warn here since -O2 runs the optimizer and -g enables DWARF
     'O2_g': (True, ['-O2', '-g']),
-    # asyncify will force wasm-opt to run as well, so we warn here too
-    'asyncify_g': (True, ['-sASYNCIFY', '-g']),
+    # asyncify will force wasm-opt to run as well, but without optimizations, so
+    # we do not warn about the lack of optimization
+    'asyncify_g': (False, ['-sASYNCIFY', '-g']),
     # with --profiling-funcs however we do not use DWARF (we just emit the
     # names section) and will not warn.
     'O2_pfuncs': (False, ['-O2', '--profiling-funcs']),
@@ -13425,8 +13448,6 @@ int main() {
   def test_wasm_worker_errors(self):
     expected = '-sSINGLE_FILE is not supported with -sWASM_WORKERS'
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sSINGLE_FILE'], expected)
-    expected = '-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS'
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sPROXY_TO_WORKER'], expected)
     expected = 'dynamic linking is not supported with -sWASM_WORKERS'
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sWASM_WORKERS', '-sMAIN_MODULE'], expected)
 
@@ -13668,11 +13689,19 @@ int main() {
     # c++20 for ends_with().
     self.do_other_test('test_fs_icase.cpp', cflags=['-sCASE_INSENSITIVE_FS', '-std=c++20'])
 
+  @crossplatform
   @with_all_fs
   def test_std_filesystem(self):
-    if (WINDOWS or MACOS) and self.get_setting('NODERAWFS'):
-      self.skipTest('Rawfs directory removal works only on Linux')
+    if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24830')
     self.do_other_test('test_std_filesystem.cpp')
+
+  @crossplatform
+  @with_all_fs
+  def test_std_filesystem_tempdir(self):
+    if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24830')
+    self.do_other_test('test_std_filesystem_tempdir.cpp', cflags=['-g'])
 
   def test_strict_js_closure(self):
     self.do_runf('hello_world.c', cflags=['-sSTRICT_JS', '-Werror=closure', '--closure=1', '-O3'])
@@ -14236,13 +14265,6 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.cflags += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lstandalonewasm', '-Wl,--no-whole-archive']
     self.do_runf('hello_world.c')
 
-  @parameterized({
-    '':   ([],),
-    'single_file': (['-sSINGLE_FILE'],),
-  })
-  def test_proxy_to_worker(self, args):
-    self.do_runf('hello_world.c', cflags=['--proxy-to-worker', '-Wno-deprecated'] + args)
-
   @also_with_standalone_wasm(impure=True)
   def test_console_out(self):
     self.do_other_test('test_console_out.c', regex=True)
@@ -14367,8 +14389,7 @@ addToLibrary({
     # etc., and only provide the emmalloc_malloc etc. family of functions that
     # we can use.
     emmalloc = path_from_root('system', 'lib', 'emmalloc.c')
-    self.run_process([EMCC, test_file('other/test_emmalloc_in_addition.c'), emmalloc] + args)
-    self.assertContained('success', self.run_js('a.out.js'))
+    self.do_runf('other/test_emmalloc_in_addition.c', 'success', cflags=[emmalloc] + args)
 
   def test_unused_destructor(self):
     self.do_runf('other/test_unused_destructor.c', cflags=['-flto', '-O2'])
@@ -14769,8 +14790,7 @@ addToLibrary({
 
   def test_relative_em_cache(self):
     with env_modify({'EM_CACHE': 'foo'}):
-      err = self.expect_fail([EMCC, '-c', test_file('hello_world.c')])
-      self.assertContained('emcc: error: environment variable EM_CACHE must be an absolute path: foo', err)
+      self.assert_fail([EMCC, '-c', test_file('hello_world.c')], 'emcc: error: environment variable EM_CACHE must be an absolute path: foo')
 
   @crossplatform
   def test_create_cache_directory(self):
@@ -15140,14 +15160,14 @@ addToLibrary({
       void foo() { std::cout << "foo" << std::endl; }
     ''')
     create_file('path_list.txt', r'''
-      myapp
+      myapp:
       main.cpp
       foo.cpp
 
-      lib1
+      lib1:
       /emsdk/emscripten/system
 
-      lib2
+      lib2:
       /emsdk/emscripten/system/lib/libc/musl
       /emsdk/emscripten/system/lib/libcxx
     ''')

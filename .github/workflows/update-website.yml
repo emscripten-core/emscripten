@@ -36,13 +36,13 @@ jobs:
           git config --global user.name emscripten-bot
           git config --global user.email emscripten-bot@users.noreply.github.com
           if ./tools/maint/update_docs.py; then
-             echo "rebaseline_tests returned zero, expectations up-to-date"
+             echo "update_docs.py returned zero, expectations up-to-date"
              # Exit early and don't create a PR
              exit 0
           else
             code=$?
             if [[ $code != 2 ]] ; then
-               echo "rebaseline_docs.py failed with unexpected error $code (expected 2)"
+               echo "update_docs.py failed with unexpected error $code (expected 2)"
                exit 1
             fi
           fi
@@ -50,6 +50,6 @@ jobs:
           cd site/emscripten-site
           git push -f origin update
           gh pr create --fill --head update --base gh-pages --reviewer sbc100,kripken
-          # TODO: add --auto here once we have the review requirment in place
-          # for PR to the -site repo
-          gh pr merge --squash # --auto
+          # TODO: Enable this once we figure out how to enforce review
+          # requirment
+          #gh pr merge --squash --auto

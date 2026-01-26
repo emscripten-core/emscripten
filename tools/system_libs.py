@@ -1523,8 +1523,7 @@ class libwasm_workers(DebugLibrary):
 
   def can_use(self):
     # see src/library_wasm_worker.js
-    return super().can_use() and not settings.SINGLE_FILE \
-      and not settings.RELOCATABLE and not settings.PROXY_TO_WORKER
+    return super().can_use() and not settings.SINGLE_FILE and not settings.RELOCATABLE
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
@@ -2411,9 +2410,7 @@ def get_libs_to_link(options):
   else:
     add_library('libsockets')
 
-  if settings.WASM_WORKERS and (not settings.SINGLE_FILE and
-                                not settings.RELOCATABLE and
-                                not settings.PROXY_TO_WORKER):
+  if settings.WASM_WORKERS and (not settings.SINGLE_FILE and not settings.RELOCATABLE):
     # When we include libwasm_workers we use `--whole-archive` to ensure
     # that the static constructor (`emscripten_wasm_worker_main_thread_initialize`)
     # is run.

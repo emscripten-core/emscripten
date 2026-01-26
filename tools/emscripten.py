@@ -233,10 +233,12 @@ def report_missing_exports(js_symbols):
     # maximum compatibility.
     return
 
-  if settings.EXPECT_MAIN and 'main' not in settings.WASM_EXPORTS and '__main_argc_argv' not in settings.WASM_EXPORTS:
-    # For compatibility with the output of wasm-ld we use the same wording here in our
-    # error message as if wasm-ld had failed.
-    exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
+  if settings.EXPECT_MAIN:
+    all_exports = settings.WASM_EXPORTS + settings.SIDE_MODULE_EXPORTS
+    if 'main' not in all_exports and '__main_argc_argv' not in all_exports:
+      # For compatibility with the output of wasm-ld we use the same wording here in our
+      # error message as if wasm-ld had failed.
+      exit_with_error('entry symbol not defined (pass --no-entry to suppress): main')
 
 
 # Test if the parentheses at body[openIdx] and body[closeIdx] are a match to

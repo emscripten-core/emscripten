@@ -18,10 +18,32 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-4.0.20 (in development)
+4.0.21 (in development)
 -----------------------
-- Added `emscripten_html5_remove_event_listener` function in `html5.h` in order to be
-  able to remove a single callback. (#25535)
+- The `-sPROXY_TO_WORKER` setting (along with the corresponding
+  `--proxy-to-worker` flag) was removed due to lack of usage.  If you were
+  depending on this feature but missed the PSA, please let us know about your
+  use case. (#25645, #25440)
+- The fetch library now supports streaming data requests when
+  `-sFETCH_STREAMING` is enabled.
+- A new `NODE_HOST_ENV` setting was added which exposes the host environment
+  variables to the generated program, when running under Node. This setting is
+  enabled by default when `-sNODERAWFS` is used but can also be controlled
+  separately. (#18820)
+- A new `-sFAKE_DYLIBS` setting was added.  When enabled you get the current
+  emscripten behavior of the `-shared` flag, which is to produce regular object
+  files instead of actual shared shared libraries (side modules).  Because this
+  setting is enabled by default this doesn't change the default behavior of the
+  compiler. If you want to experiment with real shared libraries you can
+  explicitly disable this setting. (#25826)
+
+4.0.20 - 11/18/25
+-----------------
+- Linker flags specified on the command line are now passed to `wasm-ld` after
+  the internal emscripten linker flags.  This means that users can now override
+  emscripten defaults with things `-Wl,--stack-first`. (#25803)
+- Added `emscripten_html5_remove_event_listener` function in `html5.h` in order
+  to be able to remove a single callback. (#25535)
 - The standalone `file_packager.py` script no longer supports `--embed` with JS
   output (use `--obj-output` is now required for embedding data).  This usage
   has been producing a warning since #16050 which is now an error.  (#25049)

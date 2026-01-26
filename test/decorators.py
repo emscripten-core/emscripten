@@ -404,6 +404,21 @@ def also_with_wasm64(func):
   return metafunc
 
 
+def also_with_fetch_streaming(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, with_fetch, *args, **kwargs):
+    if with_fetch:
+      self.set_setting('FETCH_STREAMING', '2')
+      self.cflags += ['-DSKIP_SYNC_FETCH_TESTS']
+    f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'fetch_backend': (True,)})
+  return metafunc
+
+
 def also_with_wasm2js(func):
   assert callable(func)
 

@@ -54,7 +54,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 124
+EXPECTED_BINARYEN_VERSION = 125
 
 _is_ar_cache: Dict[str, bool] = {}
 # the exports the user requested
@@ -208,6 +208,7 @@ def lld_flags_for_executable(external_symbols):
   c_exports = [e for e in c_exports if e not in external_symbols]
   c_exports += settings.REQUIRED_EXPORTS
   if settings.MAIN_MODULE:
+    cmd.append('-Bdynamic')
     c_exports += side_module_external_deps(external_symbols)
   for export in c_exports:
     if settings.ERROR_ON_UNDEFINED_SYMBOLS:
@@ -325,9 +326,6 @@ def link_lld(args, target, external_symbols=None, linker_inputs=[]):
     args.insert(0, '--whole-archive')
     args.append('--no-whole-archive')
 
-  if settings.MAIN_MODULE:
-    args.insert(0, '-Bdynamic')
-
   if settings.STRICT and '--no-fatal-warnings' not in args:
     args.append('--fatal-warnings')
 
@@ -336,7 +334,7 @@ def link_lld(args, target, external_symbols=None, linker_inputs=[]):
     # is passed.
     args.append('--keep-section=target_features')
 
-  cmd = [WASM_LD, '-o', target] + args
+  cmd = [WASM_LD, '-o', target]
   for a in llvm_backend_args():
     cmd += ['-mllvm', a]
 
@@ -356,6 +354,8 @@ def link_lld(args, target, external_symbols=None, linker_inputs=[]):
   # normal linker flags that are used when building and executable
   if '--relocatable' not in args and '-r' not in args:
     cmd += lld_flags_for_executable(external_symbols)
+
+  cmd += args
 
   cmd = get_command_with_possible_response_file(cmd)
   check_call(cmd)
@@ -1218,21 +1218,25 @@ def get_binaryen_feature_flags():
     return ['--detect-features']
 
 
-def check_binaryen(bindir):
+def get_binaryen_version(bindir):
   opt = os.path.join(bindir, utils.exe_suffix('wasm-opt'))
   if not os.path.exists(opt):
     exit_with_error('binaryen executable not found (%s). Please check your binaryen installation' % opt)
   try:
-    output = run_process([opt, '--version'], stdout=PIPE).stdout
+    return run_process([opt, '--version'], stdout=PIPE).stdout
   except subprocess.CalledProcessError:
     exit_with_error('error running binaryen executable (%s). Please check your binaryen installation' % opt)
+
+
+def check_binaryen(bindir):
+  output = get_binaryen_version(bindir)
   if output:
     output = output.splitlines()[0]
   try:
     version = output.split()[2]
     version = int(version)
   except (IndexError, ValueError):
-    exit_with_error('error parsing binaryen version (%s). Please check your binaryen installation (%s)' % (output, opt))
+    exit_with_error(f'error parsing binaryen version ({output}). Please check your binaryen installation')
 
   # Allow the expected version or the following one in order avoid needing to update both
   # emscripten and binaryen in lock step in emscripten-releases.
