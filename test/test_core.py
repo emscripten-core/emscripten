@@ -8411,14 +8411,10 @@ Module.onRuntimeInitialized = () => {
       # LTO ends up inlining virt(), so ASYNCIFY_ADD does not work as expected.
       # If wasm-opt were aware of LLVM's no-inline mark this would not happen.
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/21757')
-    try:
+    if should_pass:
       self.do_core_test('test_asyncify_indirect_lists.cpp', assert_identical=True)
-      if not should_pass:
-        should_pass = True
-        raise Exception('should not have passed')
-    except Exception:
-      if should_pass:
-        raise
+    else:
+      self.do_runf(test_file('core/test_asyncify_indirect_lists.cpp'), assert_returncode=NON_ZERO)
 
   @with_dylink_reversed
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
