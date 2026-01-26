@@ -540,7 +540,7 @@ var WasiLibrary = {
     return 0;
   },
 
-  fd_sync__async: true,
+  fd_sync__async: 'auto',
   fd_sync: (fd) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
@@ -548,8 +548,8 @@ var WasiLibrary = {
 #if ASYNCIFY
     var mount = stream.node.mount;
     if (mount.type.syncfs) {
-      return Asyncify.handleSleep((wakeUp) => {
-        mount.type.syncfs(mount, false, (err) => wakeUp(err ? {{{ cDefs.EIO }}} : 0));
+      return new Promise((resolve) => {
+        mount.type.syncfs(mount, false, (err) => resolve(err ? {{{ cDefs.EIO }}} : 0));
       });
     }
 #endif // ASYNCIFY
@@ -571,7 +571,7 @@ var WasiLibrary = {
 #if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
     // This block is not needed on v19+ since crypto.getRandomValues is builtin
     if (ENVIRONMENT_IS_NODE) {
-      var nodeCrypto = require('crypto');
+      var nodeCrypto = require('node:crypto');
       return (view) => nodeCrypto.randomFillSync(view);
     }
 #endif // ENVIRONMENT_MAY_BE_NODE

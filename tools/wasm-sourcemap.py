@@ -31,6 +31,9 @@ EMSCRIPTEN_PREFIX = utils.normalize_path(utils.path_from_root())
 
 logger = logging.getLogger('wasm-sourcemap')
 
+# FIXME: Generate Scopes info
+generate_scopes = False
+
 
 def parse_args(args):
   parser = argparse.ArgumentParser(prog='wasm-sourcemap.py', description=__doc__)
@@ -138,7 +141,7 @@ def strip_debug_sections(wasm):
     if section_id == 0:
       name_len, name_pos = read_var_uint(wasm, section_body)
       name_end = name_pos + name_len
-      name = wasm[name_pos:name_end]
+      name = str(wasm[name_pos:name_end])
       if name in {'linking', 'sourceMappingURL'} or name.startswith(('reloc..debug_', '.debug_')):
         continue  # skip debug related sections
     stripped = stripped + wasm[section_start:pos]
@@ -399,12 +402,17 @@ def read_dwarf_info(wasm, options):
     logger.debug('Reading DWARF information from %s' % wasm)
     if not os.path.exists(options.dwarfdump):
       utils.exit_with_error('llvm-dwarfdump not found: ' + options.dwarfdump)
-    # We need only three tags in the debug info: DW_TAG_compile_unit for
-    # source location, and DW_TAG_subprogram and DW_TAG_inlined_subroutine
-    # for the function ranges.
-    dwarfdump_cmd = [options.dwarfdump, '-debug-info', '-debug-line', wasm,
-                     '-t', 'DW_TAG_compile_unit', '-t', 'DW_TAG_subprogram',
-                     '-t', 'DW_TAG_inlined_subroutine']
+    dwarfdump_cmd = [options.dwarfdump, '-debug-info', '-debug-line', wasm]
+    if generate_scopes:
+      # We need only three tags in the debug info: DW_TAG_compile_unit for
+      # source location, and DW_TAG_subprogram and DW_TAG_inlined_subroutine
+      # for the function ranges.
+      dwarfdump_cmd += ['-t', 'DW_TAG_compile_unit', '-t', 'DW_TAG_subprogram',
+                        '-t', 'DW_TAG_inlined_subroutine']
+    else:
+      # We only need the top-level DW_TAG_compile_unit tags when not generating
+      # the names field
+      dwarfdump_cmd += ['--recurse-depth=0']
     proc = shared.check_call(dwarfdump_cmd, stdout=shared.PIPE)
     output = proc.stdout
   else:
@@ -417,6 +425,7 @@ def read_dwarf_info(wasm, options):
 
   entries = []
   iterator = debug_line_pattern.finditer(output)
+  current_match = None
   try:
     current_match = next(iterator)
     debug_info_end = current_match.start() # end of .debug_info contents
@@ -480,7 +489,10 @@ def read_dwarf_info(wasm, options):
   # return entries sorted by the address field
   entries = sorted(entries, key=lambda entry: entry['address'])
 
-  func_ranges = extract_func_ranges(debug_info)
+  if generate_scopes:
+    func_ranges = extract_func_ranges(debug_info)
+  else:
+    func_ranges = []
   return entries, func_ranges
 
 

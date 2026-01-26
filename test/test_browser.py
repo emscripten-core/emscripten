@@ -182,7 +182,7 @@ requires_safari_version = requires_version('safari', get_safari_version)
 
 
 def is_jspi(args):
-  return '-sASYNCIFY=2' in args
+  return '-sJSPI' in args
 
 
 def also_with_threads(f):
@@ -1426,14 +1426,14 @@ window.close = () => {
                       output_basename=f'idbstore_{stage}')
 
   @parameterized({
-    'asyncify': (1,),
-    'jspi': (2,),
+    'asyncify': (['-sASYNCIFY'],),
+    'jspi': (['-sJSPI'],),
   })
-  def test_idbstore_sync(self, asyncify):
-    if asyncify == 2:
+  def test_idbstore_sync(self, args):
+    if is_jspi(args):
       self.require_jspi()
     secret = str(time.time())
-    self.btest('test_idbstore_sync.c', '8', cflags=['-sSTRICT', '-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '--closure=1', f'-sASYNCIFY={asyncify}'])
+    self.btest('test_idbstore_sync.c', '8', cflags=['-sSTRICT', '-lidbstore.js', f'-DSECRET="{secret}"', '-O3', '--closure=1'] + args)
 
   def test_force_exit(self):
     self.btest_exit('test_force_exit.c')
@@ -3222,11 +3222,11 @@ Module["preRun"] = () => {
     'O3': ('-O3',),
   })
   @parameterized({
-    'asyncify': (['-sASYNCIFY=1'],),
-    'asyncify_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY=1'],),
-    'jspi': (['-sASYNCIFY=2', '-Wno-experimental'],),
-    'jspi_wasm_bigint': (['-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
-    'jspi_wasm_bigint_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY=2', '-sWASM_BIGINT', '-Wno-experimental'],),
+    'asyncify': (['-sASYNCIFY'],),
+    'asyncify_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sASYNCIFY'],),
+    'jspi': (['-sJSPI', '-Wno-experimental'],),
+    'jspi_wasm_bigint': (['-sJSPI', '-sWASM_BIGINT', '-Wno-experimental'],),
+    'jspi_wasm_bigint_minimal_runtime': (['-sMINIMAL_RUNTIME', '-sJSPI', '-sWASM_BIGINT', '-Wno-experimental'],),
   })
   def test_async(self, opt, args):
     if is_jspi(args) and not is_chrome():
@@ -3911,7 +3911,7 @@ Module["preRun"] = () => {
    'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=8'],),
   })
   def test_pthread_supported(self, args):
-    self.btest_exit('pthread/test_pthread_supported.cpp', cflags=['-O3'] + args)
+    self.btest_exit('pthread/test_pthread_supported.c', cflags=['-O3'] + args)
 
   def test_pthread_dispatch_after_exit(self):
     self.btest_exit('pthread/test_pthread_dispatch_after_exit.c', cflags=['-pthread'])
@@ -4904,8 +4904,8 @@ Module["preRun"] = () => {
     self.btest_exit('embind/test_pthreads.cpp', cflags=['-lembind', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
 
   @parameterized({
-    'asyncify': (['-sASYNCIFY=1'],),
-    'jspi': (['-sASYNCIFY=2', '-Wno-experimental'],),
+    'asyncify': (['-sASYNCIFY'],),
+    'jspi': (['-sJSPI', '-Wno-experimental'],),
   })
   def test_embind(self, args):
     if is_jspi(args) and not is_chrome():
@@ -4913,7 +4913,7 @@ Module["preRun"] = () => {
     if is_jspi(args) and self.is_wasm64():
       self.skipTest('_emval_await fails')
 
-    self.btest('embind_with_asyncify.cpp', '1', cflags=['-lembind'] + args)
+    self.btest_exit('embind_with_asyncify.cpp', cflags=['-lembind'] + args)
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
@@ -5300,19 +5300,19 @@ Module["preRun"] = () => {
     create_file('subdir/backendfile2', 'file 2')
     self.btest_exit('wasmfs/wasmfs_fetch.c',
                     cflags=['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD',
-                               '-sFORCE_FILESYSTEM', '-lfetchfs.js',
-                               '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
+                            '-sFORCE_FILESYSTEM', '-lfetchfs.js',
+                            '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @no_firefox('no OPFS support yet')
   @no_wasm64()
   @parameterized({
     '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
-    'jspi': (['-Wno-experimental', '-sASYNCIFY=2'],),
-    'jspi_wasm_bigint': (['-Wno-experimental', '-sASYNCIFY=2', '-sWASM_BIGINT'],),
+    'jspi': (['-Wno-experimental', '-sJSPI'],),
+    'jspi_wasm_bigint': (['-Wno-experimental', '-sJSPI', '-sWASM_BIGINT'],),
   })
   @no_safari('TODO: Fails with abort:Assertion failed: err == 0') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   def test_wasmfs_opfs(self, args):
-    if '-sASYNCIFY=2' in args:
+    if '-sJSPI' in args:
       self.require_jspi()
     test = test_file('wasmfs/wasmfs_opfs.c')
     args = ['-sWASMFS', '-O3'] + args
@@ -5476,7 +5476,6 @@ Module["preRun"] = () => {
   @requires_sound_hardware
   @requires_shared_array_buffer
   @also_with_minimal_runtime
-  @flaky('https://github.com/emscripten-core/emscripten/issues/25245')
   def test_audio_worklet_emscripten_locks(self):
     self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 

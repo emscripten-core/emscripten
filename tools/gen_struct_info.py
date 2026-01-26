@@ -67,7 +67,7 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import building, shared, system_libs, utils
+from tools import config, shared, system_libs, utils
 
 QUIET = (__name__ != '__main__')
 DEBUG = False
@@ -87,7 +87,6 @@ CXXFLAGS = [
     '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
     '-D__EMSCRIPTEN_EXCEPTIONS__',
     '-I' + utils.path_from_root('system/lib/wasmfs/'),
-    '-std=c++17',
 ]
 
 DEFAULT_JSON_FILES = [
@@ -97,9 +96,9 @@ DEFAULT_JSON_FILES = [
 ]
 
 
-def show(msg):
+def show(msg, *args):
   if shared.DEBUG or not QUIET:
-    sys.stderr.write('gen_struct_info: %s\n' % msg)
+    print('gen_struct_info:', msg, *args, file=sys.stderr)
 
 
 # The Scope class generates C code which, in turn, outputs JSON.
@@ -206,8 +205,6 @@ def generate_cmd(js_file_path, src_file_path, cflags):
   else:
     compiler = shared.EMCC
 
-  node_flags = building.get_emcc_node_flags(shared.check_node_version())
-
   # -O1+ produces calls to iprintf, which libcompiler_rt doesn't support
   cmd = [compiler] + cflags + ['-o', js_file_path, src_file_path,
                                '-O0',
@@ -218,7 +215,7 @@ def generate_cmd(js_file_path, src_file_path, cflags):
                                '-sINCOMING_MODULE_JS_API=',
                                '-sSTRICT',
                                '-sSUPPORT_LONGJMP=0',
-                               '-sASSERTIONS=0'] + node_flags
+                               '-sASSERTIONS=0']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
@@ -252,7 +249,7 @@ def inspect_headers(headers, cflags):
     sys.exit(1)
 
   # Run the compiled program.
-  show('Calling generated program... ' + js_file_path)
+  show('Running generated program... ' + js_file_path, config.NODE_JS)
   info = shared.run_js_tool(js_file_path, stdout=shared.PIPE)
 
   if not DEBUG:

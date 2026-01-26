@@ -106,7 +106,7 @@ the variable names used to point to the different tools::
   # .emscripten file from Linux SDK
 
   import os
-  NODE_JS = 'nodejs'
+  NODE_JS = 'node'
   LLVM_ROOT='/home/ubuntu/emsdk/upstream/bin'
 
 .. _emsdk_howto:

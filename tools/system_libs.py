@@ -90,7 +90,8 @@ def clean_env():
   # At least one port also uses autoconf (harfbuzz) so we also need to clear
   # CFLAGS/LDFLAGS which we don't want to affect the inner call to configure.
   safe_env = os.environ.copy()
-  for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS',
+  for opt in ['CPATH', 'C_INCLUDE_PATH', 'CPLUS_INCLUDE_PATH', 'OBJC_INCLUDE_PATH',
+              'CFLAGS', 'CXXFLAGS', 'LDFLAGS',
               'EMCC_CFLAGS',
               'EMCC_AUTODEBUG',
               'EMCC_FORCE_STDLIBS',
@@ -492,6 +493,7 @@ class Library:
     batches = {}
     commands = []
     objects = set()
+    objects_lowercase = set()
     cflags = self.get_cflags()
     for src in self.get_files():
       ext = utils.suffix(src)
@@ -509,9 +511,9 @@ class Library:
         cmd += cflags
       cmd = self.customize_build_cmd(cmd, src)
 
-      object_basename = utils.unsuffixed_basename(src).lower()
+      object_basename = utils.unsuffixed_basename(src)
       o = os.path.join(build_dir, object_basename + '.o')
-      if o in objects:
+      if o.lower() in objects_lowercase:
         # If we have seen a file with the same name before, we need a separate
         # command to compile this file with a custom unique output object
         # filename, as batch compile doesn't allow such customization.
@@ -519,7 +521,7 @@ class Library:
         # This is needed to handle, for example, _exit.o and _Exit.o.
         object_uuid = 0
         # Find a unique basename
-        while o in objects:
+        while o.lower() in objects_lowercase:
           object_uuid += 1
           o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
         commands.append(cmd + [src, '-o', o])
@@ -529,11 +531,10 @@ class Library:
         src = os.path.relpath(src, build_dir)
         src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
-        # No -o in command, use original file name.
-        o = os.path.join(build_dir, utils.unsuffixed_basename(src) + '.o')
       else:
         commands.append(cmd + [src, '-o', o])
       objects.add(o)
+      objects_lowercase.add(o.lower())
 
     if batch_inputs:
       # Choose a chunk size that is large enough to avoid too many subprocesses
@@ -1007,7 +1008,22 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libllvmlibc'
   never_force = True
   includes = ['system/lib/llvm-libc']
-  cflags = ['-Os', '-DLIBC_NAMESPACE=__llvm_libc', '-DLLVM_LIBC', '-DLIBC_COPT_PUBLIC_PACKAGING']
+  cflags = [
+      '-Os',
+      '-DLIBC_NAMESPACE=__llvm_libc',
+      '-DLLVM_LIBC',
+      '-DLIBC_COPT_PUBLIC_PACKAGING',
+      # Disable accurate pass to speed up certain math operations
+      '-DLIBC_MATH=LIBC_MATH_FAST',
+      '-D__LIBC_USE_BUILTIN_CEIL_FLOOR_RINT_TRUNC',
+      # Reduce size bloats from string conversions.
+      '-DLIBC_COPT_STRTOFLOAT_DISABLE_EISEL_LEMIRE',
+      # To Enable FMA, we need to set the following flags. But we can't really ship this in a default libc build.
+      # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
+      '-Wno-unused-variable',
+      '-mrelaxed-simd',
+      '-ffp-contract=fast',
+  ]
 
   def get_files(self):
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
@@ -1017,7 +1033,8 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/math', '*.cpp')
-    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp')
+    # Overlay mode doesn't support mbstate_t which is used by these wchar sources.
+    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes=['wcrtomb.cpp', 'mbrtowc.cpp', 'wctomb.cpp', 'mbtowc.cpp'])
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes=['at_quick_exit.cpp',
@@ -1144,7 +1161,7 @@ class libc(MuslInternalLibrary,
     # musl modules
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'setjmp',
+        'aio', 'legacy', 'mq', 'setjmp',
         'ldso', 'malloc',
     ]
 
@@ -1153,16 +1170,17 @@ class libc(MuslInternalLibrary,
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
         'res_query.c', 'res_querydomain.c',
         'proto.c',
-        'ppoll.c',
         'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'getauxval.c',
         'lookup_name.c',
-        # 'process' exclusion
+        # 'process' exclusions
         'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
         '_Fork.c',
-        # 'env' exclusion
+        # 'env' exclusions
         '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
+        # 'exit' exclusions
+        'assert.c', 'exit.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -1313,10 +1331,6 @@ class libc(MuslInternalLibrary,
         filenames=['sched_yield.c'])
 
     libc_files += files_in_path(
-        path='system/lib/libc/musl/src/exit',
-        filenames=['abort.c', '_Exit.c', 'atexit.c', 'at_quick_exit.c', 'quick_exit.c'])
-
-    libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
         filenames=['dladdr.c', 'dlerror.c', 'dlsym.c', 'dlclose.c'])
 
@@ -1367,7 +1381,6 @@ class libc(MuslInternalLibrary,
           'sigtimedwait.c',
           'wasi-helpers.c',
           'system.c',
-          'proxying_poll.c',
         ])
 
     if settings.RELOCATABLE or settings.MAIN_MODULE:
@@ -1734,7 +1747,10 @@ class libunwind(ExceptionLibrary, MTLibrary):
   # See https://bugs.llvm.org/show_bug.cgi?id=44353
   force_object_files = True
 
-  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_HIDE_SYMBOLS']
+  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_HIDE_SYMBOLS',
+            # TODO Remove this once
+            # https://github.com/llvm/llvm-project/pull/175776 lands
+            '-Wno-c23-extensions']
   src_dir = 'system/lib/libunwind/src'
   # Without this we can't build libunwind since it will pickup the unwind.h
   # that is part of llvm (which is not compatible for some reason).

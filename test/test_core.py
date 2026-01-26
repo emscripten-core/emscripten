@@ -27,6 +27,8 @@ from common import (
   RunnerCore,
   compiler_for,
   create_file,
+  engine_is_node,
+  engine_is_v8,
   env_modify,
   path_from_root,
   read_binary,
@@ -53,15 +55,14 @@ from decorators import (
   no_4gb,
   no_wasm64,
   no_windows,
-  node_pthreads,
   parameterize,
   parameterized,
   requires_dev_dependency,
   requires_jspi,
   requires_native_clang,
   requires_node,
-  requires_node_canary,
-  requires_v8,
+  requires_node_25,
+  requires_pthreads,
   requires_wasm2js,
   requires_wasm_eh,
   skip_if,
@@ -87,6 +88,7 @@ def esm_integration(func):
   assert callable(func)
 
   @wraps(func)
+  @no_sanitize('sanitizers do not support WASM_ESM_INTEGRATION')
   def decorated(self, *args, **kwargs):
     self.setup_esm_integration()
     return func(self, *args, **kwargs)
@@ -152,7 +154,6 @@ def asan(func):
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
   @no_2gb("asan doesn't support GLOBAL_BASE")
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def decorated(self, *args, **kwargs):
     return func(self, *args, **kwargs)
 
@@ -256,7 +257,7 @@ def with_asyncify_and_jspi(func):
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
     if jspi:
-      self.set_setting('ASYNCIFY', 2)
+      self.set_setting('JSPI')
       self.require_jspi()
     else:
       self.set_setting('ASYNCIFY')
@@ -275,7 +276,7 @@ def also_with_asyncify_and_jspi(func):
     if asyncify and self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
     if asyncify == 2:
-      self.set_setting('ASYNCIFY', 2)
+      self.set_setting('JSPI')
       self.require_jspi()
     elif asyncify == 1:
       self.set_setting('ASYNCIFY')
@@ -447,7 +448,7 @@ class TestCoreBase(RunnerCore):
     return all(f not in self.cflags for f in prohibited) and any(f in self.cflags for f in required)
 
   def setup_esm_integration(self):
-    self.require_node_canary()
+    self.require_node_25()
     self.node_args += ['--experimental-wasm-modules', '--no-warnings']
     self.set_setting('WASM_ESM_INTEGRATION')
     self.cflags += ['-Wno-experimental']
@@ -519,7 +520,7 @@ class TestCoreBase(RunnerCore):
   def test_hello_argc(self):
     self.do_core_test('test_hello_argc.c', args=['hello', 'world'])
 
-  @node_pthreads
+  @requires_pthreads
   def test_hello_argc_pthreads(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
@@ -1507,7 +1508,6 @@ int main(int argc, char **argv) {
 
   @with_all_eh_sjlj
   def test_EXPORT_EXCEPTION_HANDLING_HELPERS(self):
-    self.set_setting('ASSERTIONS', 0)
     self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
 
     self.maybe_closure()
@@ -1992,7 +1992,7 @@ int main(int argc, char **argv) {
   @flaky('https://github.com/emscripten-core/emscripten/issues/25175')
   def test_main_thread_em_asm(self, args):
     if args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
     src = read_file(test_file('core/test_em_asm_2.cpp'))
     create_file('test.cpp', src.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
@@ -2062,7 +2062,7 @@ int main(int argc, char **argv) {
       self.check_dylink()
     self.cflags += ['-sEXPORTED_FUNCTIONS=_main,_malloc'] + args
     if '-pthread' in args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
 
     self.do_core_test('test_em_js.cpp', force_c=force_c)
     if self.get_setting('WASM_ESM_INTEGRATION'):
@@ -2565,22 +2565,22 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_atexit_threads.cpp')
 
-  @node_pthreads
+  @requires_pthreads
   def test_atexit_threads(self):
     self.set_setting('EXIT_RUNTIME')
     self.do_core_test('test_atexit_threads.cpp')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_cancel(self):
     self.do_run_in_out_file_test('pthread/test_pthread_cancel.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_cancel_async(self):
     self.do_run_in_out_file_test('pthread/test_pthread_cancel_async.c')
 
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_proxy_deadlock(self):
     self.do_runf('pthread/test_pthread_proxy_deadlock.c')
 
@@ -2591,7 +2591,7 @@ The current type of b is: 9
   def test_pthread_equal(self):
     self.do_run_in_out_file_test('pthread/test_pthread_equal.cpp')
 
-  @node_pthreads
+  @requires_pthreads
   @also_with_modularize
   def test_pthread_proxying(self):
     if '-sMODULARIZE' in self.cflags:
@@ -2604,7 +2604,7 @@ The current type of b is: 9
       self.set_setting('INITIAL_MEMORY=32mb')
     self.do_run_in_out_file_test('pthread/test_pthread_proxying.c', interleaved_output=False)
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_proxying_cpp(self):
     self.set_setting('PROXY_TO_PTHREAD')
     if not self.has_changed_setting('INITIAL_MEMORY'):
@@ -2612,19 +2612,19 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_cpp.cpp',
                                  interleaved_output=False)
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_proxying_dropped_work(self):
     self.set_setting('PTHREAD_POOL_SIZE=2')
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_dropped_work.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_proxying_canceled_work(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_run_in_out_file_test(
         'pthread/test_pthread_proxying_canceled_work.c',
         interleaved_output=False)
 
-  @node_pthreads
+  @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/19795')
   def test_pthread_proxying_refcount(self):
     self.set_setting('EXIT_RUNTIME')
@@ -2632,23 +2632,23 @@ The current type of b is: 9
     self.set_setting('ASSERTIONS=0')
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_refcount.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_dispatch_after_exit(self):
     self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c', interleaved_output=False)
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_atexit(self):
     # Test to ensure threads are still running when atexit-registered functions are called
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_atexit.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_nested_work_queue(self):
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_nested_work_queue.c')
 
-  @node_pthreads
+  @requires_pthreads
   @flaky('Times out in bigendian0 suite only. https://github.com/emscripten-core/emscripten/issues/25316')
   def test_pthread_thread_local_storage(self):
     self.set_setting('PROXY_TO_PTHREAD')
@@ -2657,12 +2657,12 @@ The current type of b is: 9
       self.set_setting('INITIAL_MEMORY', '300mb')
     self.do_run_in_out_file_test('pthread/test_pthread_thread_local_storage.cpp')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_cleanup(self):
     self.set_setting('PTHREAD_POOL_SIZE', 4)
     self.do_run_in_out_file_test('pthread/test_pthread_cleanup.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_setspecific_mainthread(self):
     print('.. return')
     self.do_runf('pthread/test_pthread_setspecific_mainthread.c', 'done!', cflags=['-DRETURN'])
@@ -2671,7 +2671,7 @@ The current type of b is: 9
     print('.. pthread_exit')
     self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
 
-  @node_pthreads
+  @requires_pthreads
   @also_with_minimal_runtime
   def test_pthread_attr_getstack(self):
     if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.cflags):
@@ -2679,7 +2679,7 @@ The current type of b is: 9
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
-  @node_pthreads
+  @requires_pthreads
   @flaky('flaky specifically in esm_integration suite. https://github.com/emscripten-core/emscripten/issues/25151')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
@@ -2690,7 +2690,7 @@ The current type of b is: 9
     self.cflags += ['-sINCOMING_MODULE_JS_API=preRun,onAbort']
     self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_abort_interrupt(self):
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     expected = ['Aborted(). Build with -sASSERTIONS for more info', 'Aborted(native code called abort())']
@@ -2698,7 +2698,7 @@ The current type of b is: 9
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_emmalloc(self):
     self.cflags += ['-fno-builtin']
     self.set_setting('PROXY_TO_PTHREAD')
@@ -2707,27 +2707,27 @@ The current type of b is: 9
     self.set_setting('MALLOC', 'emmalloc')
     self.do_core_test('test_emmalloc.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_stdout_after_main(self):
     # Verify that secondary threads can continue to write to stdout even
     # after the main thread returns.  We had a regression where stdio
     # streams were locked when the main thread returned.
     self.do_runf('pthread/test_pthread_stdout_after_main.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_proxy_to_pthread(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_proxy_to_pthread.c')
 
-  @node_pthreads
+  @requires_pthreads
   @needs_dylink
   def test_pthread_tls_dylink(self):
     self.set_setting('MAIN_MODULE', 2)
     self.cflags.append('-Wno-experimental')
     self.do_run_in_out_file_test('pthread/test_pthread_tls_dylink.c')
 
-  @node_pthreads
+  @requires_pthreads
   @also_with_minimal_runtime
   def test_pthread_tls(self):
     if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.cflags):
@@ -2743,30 +2743,30 @@ The current type of b is: 9
     self.do_runf('pthread/test_pthread_run_script.c')
 
     # Run the test again with PROXY_TO_PTHREAD
-    self.setup_node_pthreads()
+    self.require_pthreads()
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.do_runf('pthread/test_pthread_run_script.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_mutex_robust(self):
     self.do_run_in_out_file_test('pthread/test_pthread_mutex_robust.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_wait32_notify(self):
     self.do_run_in_out_file_test('atomic/test_wait32_notify.c')
 
-  @node_pthreads
+  @requires_pthreads
   @no_wasm2js('https://github.com/WebAssembly/binaryen/issues/5991')
   def test_pthread_wait64_notify(self):
     self.do_run_in_out_file_test('atomic/test_wait64_notify.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_wait_async(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_run_in_out_file_test('atomic/test_wait_async.c')
 
-  @node_pthreads
+  @requires_pthreads
   @also_with_minimal_runtime
   def test_pthread_run_on_main_thread(self):
     if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.cflags):
@@ -2919,7 +2919,7 @@ The current type of b is: 9
   })
   def test_dlfcn_basic(self, args):
     if args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
     self.cflags += args
     create_file('libside.cpp', '''
       #include <cstdio>
@@ -5253,13 +5253,13 @@ main main sees -524, -534, 72.
     self.run_process([EMCC, 'liba.c', '-o', 'liba.so', '-sSIDE_MODULE', 'libb.so'] + self.get_cflags())
     self.do_runf('main.c', 'Hello from b\n', cflags=['-sMAIN_MODULE=2', '-L.', 'liba.so'])
 
-  @node_pthreads
+  @requires_pthreads
   @needs_dylink
   def test_dylink_tls(self):
     self.cflags.append('-Wno-experimental')
     self.dylink_testf(test_file('core/test_dylink_tls.c'))
 
-  @node_pthreads
+  @requires_pthreads
   @needs_dylink
   def test_dylink_tls_export(self):
     self.cflags.append('-Wno-experimental')
@@ -6020,6 +6020,7 @@ Module.onRuntimeInitialized = () => {
   @no_windows("stat ino values don't match on windows")
   @crossplatform
   @no_wasmfs('Assertion failed: "a_ino == sta.st" in test_fs_readdir_ino_matches_stat_ino.c, line 58. https://github.com/emscripten-core/emscripten/issues/25035')
+  @flaky('https://github.com/emscripten-core/emscripten/issues/26090')
   def test_fs_readdir_ino_matches_stat_ino(self):
     self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
 
@@ -6545,7 +6546,7 @@ void* operator new(size_t size) {
 
     self.do_core_test('test_mmap_anon.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_mmap_anon_pthreads(self):
     # Same test with threading enabled so give is some basic sanity
     # checks of the locking on the internal data structures.
@@ -6811,7 +6812,7 @@ void* operator new(size_t size) {
       self.cflags += ['-lstubs']
     if use_pthreads:
       self.cflags.append('-pthread')
-      self.setup_node_pthreads()
+      self.require_pthreads()
     self.cflags += ['-sUSE_SQLITE3']
     self.do_run_in_out_file_test('sqlite/test.c')
 
@@ -7453,7 +7454,7 @@ void* operator new(size_t size) {
     self.maybe_closure()
     self.do_run_in_out_file_test('embind/test_embind_val_basics.cpp', cflags=args)
 
-  @node_pthreads
+  @requires_pthreads
   def test_embind_basics(self):
     self.maybe_closure()
     self.cflags += [
@@ -7608,7 +7609,7 @@ void* operator new(size_t size) {
   def test_embind_val_assignment(self):
     self.assert_fail([EMCC, test_file('embind/test_val_assignment.cpp'), '-lembind', '-c'], 'candidate function not viable: expects an lvalue for object argument')
 
-  @node_pthreads
+  @requires_pthreads
   def test_embind_val_cross_thread(self):
     self.cflags += ['--bind']
     create_file('test_embind_val_cross_thread.cpp', r'''
@@ -7635,7 +7636,7 @@ void* operator new(size_t size) {
     ''')
     self.do_runf('test_embind_val_cross_thread.cpp', 'val accessed from wrong thread', assert_returncode=NON_ZERO)
 
-  @node_pthreads
+  @requires_pthreads
   def test_embind_val_cross_thread_deleted(self):
     self.cflags += ['--bind']
     create_file('test_embind_val_cross_thread.cpp', r'''
@@ -7841,7 +7842,7 @@ void* operator new(size_t size) {
   # WASM_ASYNC_COMPILATION=0 + PTHREAD_POOL_DELAY_LOAD=1.  Also checks that
   # PTHREAD_POOL_DELAY_LOAD=1 adds a pthreadPoolReady promise that users
   # can wait on for pthread initialization.
-  @node_pthreads
+  @requires_pthreads
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
   def test_embind_sync_if_pthread_delayed(self):
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
@@ -8240,11 +8241,6 @@ int main() {
 
     self.do_runf('main.c', 'hello 0\nhello 1\nhello 2\nhello 3\nhello 4\n')
 
-  @requires_v8
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY=1')
-  def test_async_hello_v8(self):
-    self.test_async_hello()
-
   @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_bad(self):
     # check bad ccall use
@@ -8308,7 +8304,7 @@ Module.onRuntimeInitialized = () => {
   @with_asyncify_and_jspi
   @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
   def test_async_ccall_promise(self, exit_runtime):
-    if self.get_setting('ASYNCIFY') == 2:
+    if self.get_setting('JSPI'):
       self.set_setting('JSPI_EXPORTS', ['stringf', 'floatf'])
     self.set_setting('ASSERTIONS')
     self.set_setting('INVOKE_RUN', 0)
@@ -8488,15 +8484,15 @@ Module.onRuntimeInitialized = () => {
     self.do_core_test('test_hello_world.c')
 
   # Test that pthread_join works correctly with asyncify.
-  @requires_node_canary
-  @node_pthreads
+  @requires_node_25
+  @requires_pthreads
   def test_pthread_join_and_asyncify(self):
     # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552
     self.require_jspi()
     self.do_runf('core/test_pthread_join_and_asyncify.c', 'joining thread!\njoined thread!',
                  cflags=['-sJSPI',
-                            '-sEXIT_RUNTIME=1',
-                            '-pthread', '-sPROXY_TO_PTHREAD'])
+                         '-sEXIT_RUNTIME=1',
+                         '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_sanitize('no wasm2js support yet in sanitizers')
@@ -8630,7 +8626,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('ASSERTIONS', 2)
     self.do_runf('stack_overflow.cpp', 'stack overflow', assert_returncode=NON_ZERO)
 
-  @node_pthreads
+  @requires_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
     self.cflags.append('-pthread')
     self.do_run_in_out_file_test('binaryen_2170_emscripten_atomic_cas_u8.cpp')
@@ -8674,12 +8670,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
         js = read_file(self.output_name('test_hello_world'))
       assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
 
-    for engine in config.JS_ENGINES:
+    for engine in self.js_engines:
       print(f'engine: {engine}')
       # set us to test in just this engine
-      self.require_engine(engine)
+      self.require_engine(engine, force=True)
       # tell the compiler to build with just that engine
-      if engine == config.NODE_JS_TEST:
+      if engine_is_node(engine):
         right = 'node'
         wrong = 'shell'
       else:
@@ -8687,19 +8683,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
         wrong = 'node'
       # test with the right env
       self.set_setting('ENVIRONMENT', right)
-      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
+      print('right ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
       # test with the wrong env
       self.set_setting('ENVIRONMENT', wrong)
-      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
+      print('wrong ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       try:
         test(assert_returncode=NON_ZERO)
         raise Exception('unexpected success')
       except Exception as e:
-        self.assertContained('not compiled for this environment', str(e))
+        self.assertContained(['environment detected but not enabled at build time', 'not compiled for this environment'], str(e))
       # test with a combined env
       self.set_setting('ENVIRONMENT', right + ',' + wrong)
-      print('ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
+      print('both ENVIRONMENT =', self.get_setting('ENVIRONMENT'))
       test()
 
   @requires_node
@@ -8801,7 +8797,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_too_many_errors(self):
@@ -8811,7 +8806,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  regex=True)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_errors_same_place(self):
@@ -8826,7 +8820,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_overflow': (['-fsanitize=signed-integer-overflow'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_full_overflow(self, args):
     self.cflags += args
     self.do_runf(
@@ -8842,7 +8835,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_return': (['-fsanitize=return'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_full_no_return(self, args):
     self.cflags += ['-Wno-return-type'] + args
     self.do_runf('core/test_ubsan_full_no_return.cpp',
@@ -8854,7 +8846,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_shift': (['-fsanitize=shift'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_full_left_shift(self, args):
     self.cflags += args
     self.do_runf(
@@ -8871,7 +8862,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'dylink': (['-fsanitize=null', '-sMAIN_MODULE=2'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_full_null_ref(self, args):
     if '-sMAIN_MODULE=2' in args:
       self.check_dylink()
@@ -8888,7 +8878,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
       ])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_sanitize_vptr(self):
     self.do_runf(
       'core/test_sanitize_vptr.cpp',
@@ -8921,7 +8910,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ]),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
+  @no_esm_integration('https://github.com/emscripten-core/emscripten/issues/26073')
   def test_ubsan_full_stack_trace(self, g_flags, expected_output):
     if '-gsource-map' in g_flags:
       if self.is_wasm2js():
@@ -8936,7 +8925,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  assert_all=True, expected_output=expected_output)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
-  @no_esm_integration('sanitizers do not support WASM_ESM_INTEGRATION')
   def test_ubsan_typeinfo_eq(self):
     # https://github.com/emscripten-core/emscripten/issues/13330
     src = r'''
@@ -9053,6 +9041,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @asan
   @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
+  @no_modularize_instance('uses MODULARIZE')
   def test_asan_modularized_with_closure(self):
     # the bug is that createModule() returns undefined, instead of the
     # proper Promise object.
@@ -9079,7 +9068,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  assert_all=True,
                  assert_returncode=NON_ZERO)
 
-  @node_pthreads
+  @requires_pthreads
   def test_safe_stack_pthread(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('STACK_SIZE', 65536)
@@ -9145,7 +9134,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     '': ([],),
     'sync_instantiation': (['-sWASM_ASYNC_COMPILATION=0'],),
   })
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_create(self, args):
     if self.get_setting('WASM_ESM_INTEGRATION') and '-sWASM_ASYNC_COMPILATION=0' in args:
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
@@ -9153,7 +9142,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('STRICT')
     self.do_core_test('pthread/create.c', cflags=args)
 
-  @node_pthreads
+  @requires_pthreads
   @parameterized({
     '': ([],),
     'pooled': (['-sPTHREAD_POOL_SIZE=1'],),
@@ -9167,7 +9156,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('ENVIRONMENT', 'node')
     self.do_run_in_out_file_test('pthread/test_pthread_c11_threads.c')
 
-  @node_pthreads
+  @requires_pthreads
   @parameterized({
     '': (0,),
     'pooled': (1,),
@@ -9176,7 +9165,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     self.do_run_in_out_file_test('pthread/test_pthread_cxx_threads.cpp')
 
-  @node_pthreads
+  @requires_pthreads
   @parameterized({
     '': (0,),
     'pooled': (1,),
@@ -9185,20 +9174,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_busy_wait_atexit(self):
     self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_busy_wait_atexit.cpp')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_create_pool(self):
     # with a pool, we can synchronously depend on workers being available
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.cflags += ['-DALLOW_SYNC']
     self.do_core_test('pthread/create.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_create_proxy(self):
     # with PROXY_TO_PTHREAD, we can synchronously depend on workers being available
     self.set_setting('PROXY_TO_PTHREAD')
@@ -9206,42 +9195,42 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.cflags += ['-DALLOW_SYNC']
     self.do_core_test('pthread/create.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_create_embind_stack_check(self):
     # embind should work with stack overflow checks (see #12356)
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.cflags += ['-lembind']
     self.do_core_test('pthread/create.c', cflags=['-sDEFAULT_TO_CXX'])
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_exceptions(self):
     self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.cflags += ['-fexceptions']
     self.do_core_test('pthread/exceptions.cpp')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_exit_process(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.cflags += ['-DEXIT_RUNTIME', '--pre-js', test_file('core/pthread/test_pthread_exit_runtime.pre.js'), '-sINCOMING_MODULE_JS_API=onRuntimeInitialized,onExit']
     self.do_core_test('pthread/test_pthread_exit_runtime.c', assert_returncode=42)
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_keepalive(self):
     self.do_core_test('pthread/test_pthread_keepalive.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_weak_ref(self):
     self.do_core_test('pthread/test_pthread_weak_ref.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_exit_main(self):
     self.do_core_test('pthread/test_pthread_exit_main.c')
 
   def test_pthread_exit_main_stub(self):
     self.do_core_test('pthread/test_pthread_exit_main.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_unhandledrejection(self):
     # Check that an unhandled promise rejection is propagated to the main thread
     # as an error.
@@ -9249,7 +9238,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.cflags += ['--post-js', test_file('pthread/test_pthread_unhandledrejection.post.js')]
     self.do_runf('pthread/test_pthread_unhandledrejection.c', 'passed')
 
-  @node_pthreads
+  @requires_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   @also_with_modularize
   def test_pthread_return_address(self):
@@ -9262,24 +9251,24 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_emscripten_atomics_stub(self):
     self.do_core_test('pthread/emscripten_atomics.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_emscripten_atomics(self):
     self.cflags.append('-pthread')
     self.do_core_test('pthread/emscripten_atomics.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_emscripten_futexes(self):
     self.cflags.append('-pthread')
     self.cflags += ['-Wno-nonnull'] # This test explicitly checks behavior of passing NULL to emscripten_futex_wake().
     self.do_core_test('pthread/emscripten_futexes.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_stdio_locking(self):
     self.set_setting('PTHREAD_POOL_SIZE', '2')
     self.do_core_test('test_stdio_locking.c')
 
   @with_dylink_reversed
-  @node_pthreads
+  @requires_pthreads
   @flaky('Test asani.test_pthread_dylink_basics is flaky due to some kind of racy interaction with asan + -sPROXY_TO_PTHREAD. https://github.com/emscripten-core/emscripten/issues/25211')
   def test_pthread_dylink_basics(self):
     self.cflags.append('-Wno-experimental')
@@ -9288,7 +9277,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_basic_dylink_test()
 
   @needs_dylink
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_dylink(self):
     self.cflags += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink.c')
@@ -9306,21 +9295,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     '': (['-sNO_AUTOLOAD_DYLIBS'],),
     'autoload': ([],),
   })
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_dylink_entry_point(self, args):
     self.cflags += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink_entry_point.c')
     self.dylink_testf(main, cflags=args, main_cflags=['-sPTHREAD_POOL_SIZE=1'])
 
   @needs_dylink
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_dylink_exceptions(self):
     self.cflags += ['-Wno-experimental', '-pthread']
     self.cflags.append('-fexceptions')
     self.dylink_testf(test_file('core/pthread/test_pthread_dylink_exceptions.cpp'))
 
   @needs_dylink
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_dlopen(self):
     self.cflags += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
@@ -9334,7 +9323,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  assert_all=True)
 
   @needs_dylink
-  @node_pthreads
+  @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/18887')
   def test_pthread_dlopen_many(self):
     # In other suites, this test is flaky.. but in Wasm64 suite, it is failing
@@ -9365,7 +9354,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  assert_all=True)
 
   @needs_dylink
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_dlsym(self):
     self.cflags += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlsym_side.c'))
@@ -9376,7 +9365,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/pthread/test_pthread_dlsym.c')
 
   @needs_dylink
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_dylink_tls(self):
     if '-O2' in self.cflags and self.get_setting('STACK_OVERFLOW_CHECK') == 2:
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/24964: fails with stack overflow (Attempt to set SP to 0x000114d0, with stack limits [0x00000000 - 0x00000000])')
@@ -9386,14 +9375,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.dylink_testf(main, main_cflags=['-sPTHREAD_POOL_SIZE=1'])
 
   @needs_dylink
-  @node_pthreads
+  @requires_pthreads
   def test_pthread_dylink_longjmp(self):
     self.cflags += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink_longjmp.c')
     self.dylink_testf(main, main_cflags=['-sPTHREAD_POOL_SIZE=1'])
 
   @needs_dylink
-  @node_pthreads
+  @requires_pthreads
   @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
   def test_pthread_dylink_main_module_1(self):
     # TODO: For some reason, -lhtml5 must be passed in -sSTRICT mode, but can NOT
@@ -9440,7 +9429,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ''')
 
     if args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
 
     self.dylink_test(
       r'''
@@ -9547,7 +9536,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertNotContained('unhandled exception', output)
     self.assertNotContained('Aborted', output)
 
-  @node_pthreads
+  @requires_pthreads
   @no_esm_integration('ABORT_ON_WASM_EXCEPTIONS is not compatible with WASM_ESM_INTEGRATION')
   def test_abort_on_exceptions_pthreads(self):
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
@@ -9592,9 +9581,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
       '--post-js', test_file('core/embind_lib_with_asyncify.test.js'),
       '--no-entry',
       '-sINCOMING_MODULE_JS_API=onRuntimeInitialized',
+      '-sNO_EXIT_RUNTIME',
     ]
     self.cflags += args
-    self.do_core_test('embind_lib_with_asyncify.cpp')
+    # This error here is because delayed_throw occurs during execution, and
+    # even though it is caught, its influence on the returncode persists.
+    # TODO: Should that be changed?
+    self.do_core_test('embind_lib_with_asyncify.cpp', assert_returncode=NON_ZERO)
 
   @no_asan('asyncify stack operations confuse asan')
   @with_asyncify_and_jspi
@@ -9606,7 +9599,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')
 
-  @requires_v8
   @no_wasm2js('wasm2js does not support reference types')
   @no_sanitize('.s files cannot be sanitized')
   def test_externref(self):
@@ -9651,13 +9643,19 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_syscall_intercept(self):
     self.do_core_test('test_syscall_intercept.c')
 
-  @node_pthreads
+  @requires_pthreads
   def test_select_blocking(self):
     self.do_runf('core/test_select_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
-  @node_pthreads
+  @requires_pthreads
   def test_poll_blocking(self):
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @with_asyncify_and_jspi
+  def test_poll_blocking_asyncify(self):
+    if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
+      self.skipTest('test requires setTimeout which is not supported under v8')
+    self.do_runf('core/test_poll_blocking_asyncify.c')
 
   @parameterized({
     '': ([],),
@@ -9665,7 +9663,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   def test_pipe_select(self, args):
     if args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
     self.do_runf('core/test_pipe_select.c', cflags=args)
 
   @also_without_bigint
@@ -9706,7 +9704,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
     self.do_runf('test_emscripten_async_load_script.c', cflags=['-sFORCE_FILESYSTEM'])
 
-  @node_pthreads
+  @requires_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @also_with_minimal_runtime
   @also_with_modularize
@@ -9717,13 +9715,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
-  @node_pthreads
+  @requires_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_malloc(self):
     self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
-  @node_pthreads
+  @requires_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_wait_async(self):
@@ -9763,7 +9761,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_instance(self, args):
     if args:
-      self.setup_node_pthreads()
+      self.require_pthreads()
     create_file('library.js', '''\
     addToLibrary({
       $baz: () => console.log('baz'),
@@ -9849,8 +9847,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
 # Generate tests for everything
 def make_run(name, cflags=None, settings=None, env=None, # noqa
-             require_v8=False, v8_args=None,
-             require_node=False, node_args=None,
+             v8_args=None, node_args=None,
              require_wasm64=False,
              init=None):
   if cflags is None:
@@ -9895,11 +9892,6 @@ def make_run(name, cflags=None, settings=None, env=None, # noqa
     if v8_args:
       self.v8_args += v8_args
 
-    if require_v8:
-      self.require_v8()
-    elif require_node:
-      self.require_node()
-
     if require_wasm64:
       self.require_wasm64()
 
@@ -9933,9 +9925,7 @@ core_2gb = make_run('core_2gb', cflags=['--profiling-funcs'],
 
 # MEMORY64=1
 wasm64 = make_run('wasm64', cflags=['--profiling-funcs'],
-                  settings={'MEMORY64': 1}, require_wasm64=True, require_node=True)
-wasm64_v8 = make_run('wasm64_v8', cflags=['--profiling-funcs'],
-                     settings={'MEMORY64': 1}, require_wasm64=True, require_v8=True)
+                  settings={'MEMORY64': 1}, require_wasm64=True)
 # Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
 # suite with any kind of parallelism.
 wasm64_4gb = make_run('wasm64_4gb', cflags=['--profiling-funcs'],

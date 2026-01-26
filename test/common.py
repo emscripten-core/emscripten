@@ -35,7 +35,6 @@ from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir
 from tools.utils import (
   WINDOWS,
   exe_path_from_root,
-  exit_with_error,
   path_from_root,
   read_binary,
   read_file,
@@ -60,15 +59,6 @@ EMTEST_RETRY_FLAKY = None
 EMTEST_LACKS_NATIVE_CLANG = None
 EMTEST_VERBOSE = None
 EMTEST_REBASELINE = None
-
-# Verbosity level control for subprocess calls to configure + make.
-# 0: disabled.
-# 1: Log stderr of configure/make.
-# 2: Log stdout and stderr configure/make. Print out subprocess commands that were executed.
-# 3: Log stdout and stderr, and pass VERBOSE=1 to CMake/configure/make steps.
-EMTEST_BUILD_VERBOSE = int(os.getenv('EMTEST_BUILD_VERBOSE', '0'))
-if 'EM_BUILD_VERBOSE' in os.environ:
-  exit_with_error('EM_BUILD_VERBOSE has been renamed to EMTEST_BUILD_VERBOSE')
 
 # Special value for passing to assert_returncode which means we expect that program
 # to fail with non-zero return code, but we don't care about specifically which one.
@@ -275,6 +265,32 @@ def get_output_suffix(args):
     return '.js'
 
 
+def match_engine_executable(engine, name):
+  assert type(engine) is list
+  basename = os.path.basename(engine[0])
+  return name in basename
+
+
+def engine_is_node(engine):
+  assert type(engine) is list
+  return match_engine_executable(engine, 'node')
+
+
+def engine_is_v8(engine):
+  assert type(engine) is list
+  return match_engine_executable(engine, 'd8') or match_engine_executable(engine, 'v8')
+
+
+def engine_is_deno(engine):
+  assert type(engine) is list
+  return match_engine_executable(engine, 'deno')
+
+
+def engine_is_bun(engine):
+  assert type(engine) is list
+  return match_engine_executable(engine, 'bun')
+
+
 class RunnerMeta(type):
   @classmethod
   def make_test(mcs, name, func, suffix, args):
@@ -337,6 +353,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   # Change this to None to get stderr reporting, for debugging purposes
   stderr_redirect = STDOUT
 
+  library_cache: dict[str, tuple[str, object]] = {}
+
   def is_wasm(self):
     return self.get_setting('WASM') != 0
 
@@ -370,9 +388,25 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def get_v8(self):
     """Return v8 engine, if one is configured, otherwise None"""
-    if not config.V8_ENGINE or config.V8_ENGINE not in config.JS_ENGINES:
-      return None
-    return config.V8_ENGINE
+    for engine in config.JS_ENGINES:
+      if engine_is_v8(engine):
+        return engine
+    return None
+
+  def require_pthreads(self):
+    self.cflags += ['-Wno-pthreads-mem-growth', '-pthread']
+    if self.get_setting('MINIMAL_RUNTIME'):
+      self.skipTest('non-browser pthreads not yet supported with MINIMAL_RUNTIME')
+    for engine in self.js_engines:
+      if engine_is_node(engine):
+        self.require_node()
+        nodejs = self.get_nodejs()
+        self.node_args += shared.node_pthread_flags(nodejs)
+        return
+      elif engine_is_bun(engine) or engine_is_deno(engine):
+        self.require_engine(engine)
+        return
+    self.fail('no JS engine found capable of running pthreads')
 
   def require_v8(self):
     if 'EMTEST_SKIP_V8' in os.environ:
@@ -385,36 +419,39 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def get_nodejs(self):
     """Return nodejs engine, if one is configured, otherwise None"""
-    if config.NODE_JS_TEST not in config.JS_ENGINES:
-      return None
-    return config.NODE_JS_TEST
+    for engine in config.JS_ENGINES:
+      if engine_is_node(engine):
+        return engine
+    return None
+
+  def get_bun(self):
+    for engine in config.JS_ENGINES:
+      if engine_is_bun(engine):
+        return engine
+    return None
 
   def require_node(self):
     if 'EMTEST_SKIP_NODE' in os.environ:
       self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
-    nodejs = self.get_nodejs()
+    nodejs = self.get_nodejs() or self.get_bun()
     if not nodejs:
       self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(nodejs)
     return nodejs
 
-  def node_is_canary(self, nodejs):
-    return nodejs and nodejs[0] and ('canary' in nodejs[0] or 'nightly' in nodejs[0])
-
-  def require_node_canary(self):
-    if 'EMTEST_SKIP_NODE_CANARY' in os.environ:
-      self.skipTest('test requires node canary and EMTEST_SKIP_NODE_CANARY is set')
+  def require_node_25(self):
+    if 'EMTEST_SKIP_NODE_25' in os.environ:
+      self.skipTest('test requires node v25 and EMTEST_SKIP_NODE_25 is set')
     nodejs = self.get_nodejs()
-    if self.node_is_canary(nodejs):
-      self.require_engine(nodejs)
-      return
+    if not nodejs:
+      self.skipTest('Test requires nodejs to run')
+    if not self.try_require_node_version(25, 0, 0):
+      self.fail('node v25 required to run this test.  Use EMTEST_SKIP_NODE_25 to skip')
 
-    self.fail('node canary required to run this test.  Use EMTEST_SKIP_NODE_CANARY to skip')
-
-  def require_engine(self, engine):
+  def require_engine(self, engine, force=False):
     logger.debug(f'require_engine: {engine}')
-    if self.required_engine and self.required_engine != engine:
-      self.skipTest(f'Skipping test that requires `{engine}` when `{self.required_engine}` was previously required')
+    if not force and self.required_engine and self.required_engine != engine:
+      self.fail(f'test requires `{engine}` but `{self.required_engine}` was previously required')
     self.required_engine = engine
     self.js_engines = [engine]
     self.wasm_engines = []
@@ -431,7 +468,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [v8]
+      self.require_engine(v8)
       return
 
     self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
@@ -444,7 +481,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if version < (major, minor, revision):
       return False
 
-    self.js_engines = [nodejs]
+    self.require_engine(nodejs)
     return True
 
   def require_simd(self):
@@ -459,7 +496,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [v8]
+      self.require_engine(v8)
       return
 
     self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
@@ -479,7 +516,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [v8]
+      self.require_engine(v8)
       return
 
     self.fail('either d8 or node >= 17 required to run legacy wasm-eh tests.  Use EMTEST_SKIP_WASM_LEGACY_EH to skip')
@@ -500,7 +537,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [v8]
+      self.require_engine(v8)
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
@@ -529,7 +566,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     v8 = self.get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
-      self.js_engines = [v8]
+      self.require_engine(v8)
       return
 
     self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
@@ -557,15 +594,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def setup_wasmfs_test(self):
     self.set_setting('WASMFS')
     self.cflags += ['-DWASMFS']
-
-  def setup_node_pthreads(self):
-    self.require_node()
-    self.cflags += ['-Wno-pthreads-mem-growth', '-pthread']
-    if self.get_setting('MINIMAL_RUNTIME'):
-      self.skipTest('node pthreads not yet supported with MINIMAL_RUNTIME')
-    nodejs = self.get_nodejs()
-    self.js_engines = [nodejs]
-    self.node_args += shared.node_pthread_flags(nodejs)
 
   def set_temp_dir(self, temp_dir):
     self.temp_dir = temp_dir
@@ -643,7 +671,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         int(emcc_min_node_version_str[4:6]),
       )
       if node_version < emcc_min_node_version:
-        self.cflags += building.get_emcc_node_flags(node_version)
+        self.cflags.append('-sMIN_NODE_VERSION=%02d%02d%02d' % node_version)
         self.cflags.append('-Wno-transpile')
 
       # This allows much of the test suite to be run on older versions of node that don't
@@ -657,9 +685,10 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.required_engine = None
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES
-    if self.get_current_js_engine() != config.NODE_JS_TEST:
-      # If our primary JS engine is something other than node then enable
-      # shell support.
+    engine = self.get_current_js_engine()
+    if not engine_is_node(engine) and not engine_is_bun(engine):
+      # If our current JS engine a "shell" environment we need to explicitly enable support for
+      # it in ENVIRONMENT.
       default_envs = 'web,webview,worker,node'
       self.set_setting('ENVIRONMENT', default_envs + ',shell')
 
@@ -803,9 +832,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     # use --quiet once its available
     # See: https://github.com/dollarshaveclub/es-check/pull/126/
     es_check_env = os.environ.copy()
-    # Use NODE_JS here (the version of node that the compiler uses) rather then NODE_JS_TEST (the
-    # version of node being used to run the tests) since we only care about having something that
-    # can run the es-check tool.
+    # Use NODE_JS here (the version of node that the compiler uses) rather than the version of node
+    # from JS_ENGINES (the version of node being used to run the tests) since we only care about
+    # having something that can run the es-check tool.
     es_check_env['PATH'] = os.path.dirname(config.NODE_JS[0]) + os.pathsep + es_check_env['PATH']
     inputfile = os.path.abspath(filename)
     # For some reason es-check requires unix paths, even on windows
@@ -919,9 +948,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       engine = self.get_current_js_engine()
     # Make a copy of the engine command before we modify/extend it.
     engine = list(engine)
-    if engine == config.NODE_JS_TEST:
+    if engine_is_node(engine) or engine_is_bun(engine):
       engine += self.node_args
-    elif engine == config.V8_ENGINE:
+    elif engine_is_v8(engine):
       engine += self.v8_args
     elif engine == config.SPIDERMONKEY_ENGINE:
       engine += self.spidermonkey_args
@@ -1093,8 +1122,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.assertEqual(read_binary(file1),
                      read_binary(file2))
 
-  library_cache: dict[str, tuple[str, object]] = {}
-
   def get_build_dir(self):
     ret = self.in_dir('building')
     ensure_dir(ret)
@@ -1144,9 +1171,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     cflags = ' '.join(cflags)
     env_init.setdefault('CFLAGS', cflags)
     env_init.setdefault('CXXFLAGS', cflags)
-    return build_library(name, build_dir, generated_libs, configure,
-                         make, make_args, self.library_cache,
-                         cache_name, env_init=env_init, native=native)
+    return self.build_library(name, build_dir, generated_libs, configure,
+                              make, make_args, cache_name, env_init=env_init, native=native)
 
   def clear(self):
     force_delete_contents(self.get_dir())
@@ -1179,8 +1205,15 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     if stdout_buffering:
       sys.stdout.write(rtn.stdout)
+      # When we inject stdout/stderr buffering for our own internal purposes, we do not also want to
+      # make it available on the returned object.
+      # If we don't do this then callers would have access to rtn.stdout/rtn.stderr even when they
+      # didn't request it (i.e. even when they did not pass stderr=PIPE), which can lead to tests
+      # that pass in buffering mode, but fail without it.
+      rtn.stdout = None
     if stderr_buffering:
       sys.stderr.write(rtn.stderr)
+      rtn.stderr = None
     return rtn
 
   def emcc(self, filename, args=[], **kwargs):  # noqa
@@ -1494,106 +1527,64 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.cflags = old_args
     return rtn
 
+  def build_library(self, name, build_dir, generated_libs, configure, make, make_args, cache_name, env_init, native):
+    """Build a library and cache the result.  We build the library file
+    once and cache it for all our tests. (We cache in memory since the test
+    directory is destroyed and recreated for each test. Note that we cache
+    separately for different compilers).  This cache is just during the test
+    runner. There is a different concept of caching as well, see |Cache|.
+    """
+    if type(generated_libs) is not list:
+      generated_libs = [generated_libs]
+    source_dir = test_file(name.replace('_native', ''))
 
-###################################################################################################
+    project_dir = Path(build_dir, name)
+    if os.path.exists(project_dir):
+      shutil.rmtree(project_dir)
+    # Useful in debugging sometimes to comment this out, and two lines above
+    shutil.copytree(source_dir, project_dir)
 
+    generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
 
-def build_library(name,
-                  build_dir,
-                  generated_libs,
-                  configure,
-                  make,
-                  make_args,
-                  cache,
-                  cache_name,
-                  env_init,
-                  native):
-  """Build a library and cache the result.  We build the library file
-  once and cache it for all our tests. (We cache in memory since the test
-  directory is destroyed and recreated for each test. Note that we cache
-  separately for different compilers).  This cache is just during the test
-  runner. There is a different concept of caching as well, see |Cache|.
-  """
-
-  if type(generated_libs) is not list:
-    generated_libs = [generated_libs]
-  source_dir = test_file(name.replace('_native', ''))
-
-  project_dir = Path(build_dir, name)
-  if os.path.exists(project_dir):
-    shutil.rmtree(project_dir)
-  # Useful in debugging sometimes to comment this out, and two lines above
-  shutil.copytree(source_dir, project_dir)
-
-  generated_libs = [os.path.join(project_dir, lib) for lib in generated_libs]
-
-  if native:
-    env = clang_native.get_clang_native_env()
-  else:
-    env = os.environ.copy()
-  env.update(env_init)
-
-  if not native:
-    # Inject emcmake, emconfigure or emmake accordingly, but only if we are
-    # cross compiling.
-    if configure:
-      if configure[0] == 'cmake':
-        configure = [EMCMAKE] + configure
-      else:
-        configure = [EMCONFIGURE] + configure
+    if native:
+      env = clang_native.get_clang_native_env()
     else:
-      make = [EMMAKE] + make
+      env = os.environ.copy()
+    env.update(env_init)
 
-  if configure:
-    try:
-      with open(os.path.join(project_dir, 'configure_out'), 'w') as out:
-        with open(os.path.join(project_dir, 'configure_err'), 'w') as err:
-          stdout = out if EMTEST_BUILD_VERBOSE < 2 else None
-          stderr = err if EMTEST_BUILD_VERBOSE < 1 else None
-          utils.run_process(configure, env=env, stdout=stdout, stderr=stderr, cwd=project_dir)
-    except subprocess.CalledProcessError:
-      print('-- configure stdout --')
-      print(read_file(Path(project_dir, 'configure_out')))
-      print('-- end configure stdout --')
-      print('-- configure stderr --')
-      print(read_file(Path(project_dir, 'configure_err')))
-      print('-- end configure stderr --')
-      raise
-    # if we run configure or cmake we don't then need any kind
-    # of special env when we run make below
-    env = None
+    if not native:
+      # Inject emcmake, emconfigure or emmake accordingly, but only if we are
+      # cross compiling.
+      if configure:
+        if configure[0] == 'cmake':
+          configure = [EMCMAKE] + configure
+        else:
+          configure = [EMCONFIGURE] + configure
+      else:
+        make = [EMMAKE] + make
 
-  def open_make_out(mode='r'):
-    return open(os.path.join(project_dir, 'make.out'), mode)
+    if configure:
+      self.run_process(configure, env=env, cwd=project_dir)
+      # if we run configure or cmake we don't then need any kind
+      # of special env when we run make below
+      env = None
 
-  def open_make_err(mode='r'):
-    return open(os.path.join(project_dir, 'make.err'), mode)
+    def open_make_out(mode='r'):
+      return open(os.path.join(project_dir, 'make.out'), mode)
 
-  if EMTEST_BUILD_VERBOSE >= 3:
-    # VERBOSE=1 is cmake and V=1 is for autoconf
-    make_args += ['VERBOSE=1', 'V=1']
+    def open_make_err(mode='r'):
+      return open(os.path.join(project_dir, 'make.err'), mode)
 
-  try:
-    with open_make_out('w') as make_out:
-      with open_make_err('w') as make_err:
-        stdout = make_out if EMTEST_BUILD_VERBOSE < 2 else None
-        stderr = make_err if EMTEST_BUILD_VERBOSE < 1 else None
-        utils.run_process(make + make_args, stdout=stdout, stderr=stderr, env=env, cwd=project_dir)
-  except subprocess.CalledProcessError:
-    with open_make_out() as f:
-      print('-- make stdout --')
-      print(f.read())
-      print('-- end make stdout --')
-    with open_make_err() as f:
-      print('-- make stderr --')
-      print(f.read())
-      print('-- end stderr --')
-    raise
+    if EMTEST_VERBOSE:
+      # VERBOSE=1 is cmake and V=1 is for autoconf
+      make_args += ['VERBOSE=1', 'V=1']
 
-  if cache is not None:
-    cache[cache_name] = []
+    self.run_process(make + make_args, env=env, cwd=project_dir)
+
+    # Cache the result
+    self.library_cache[cache_name] = []
     for f in generated_libs:
       basename = os.path.basename(f)
-      cache[cache_name].append((basename, read_binary(f)))
+      self.library_cache[cache_name].append((basename, read_binary(f)))
 
-  return generated_libs
+    return generated_libs

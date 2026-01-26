@@ -574,7 +574,13 @@ def transpile(filename):
   config = {
     'sourceType': 'script',
     'presets': ['@babel/preset-env'],
+    'plugins': [],
     'targets': {},
+    'parserOpts': {
+      # FIXME: Remove when updating to Babel 8, see:
+      # https://babeljs.io/docs/v8-migration-api#javascript-nodes
+      'createImportExpressions': True,
+    },
   }
   if settings.MIN_CHROME_VERSION != UNSUPPORTED:
     config['targets']['chrome'] = str(settings.MIN_CHROME_VERSION)
@@ -584,6 +590,7 @@ def transpile(filename):
     config['targets']['safari'] = version_split(settings.MIN_SAFARI_VERSION)
   if settings.MIN_NODE_VERSION != UNSUPPORTED:
     config['targets']['node'] = version_split(settings.MIN_NODE_VERSION)
+    config['plugins'] = [path_from_root('src/babel-plugins/strip-node-prefix.mjs')]
   config_json = json.dumps(config, indent=2)
   outfile = shared.get_temp_files().get('babel.js').name
   config_file = shared.get_temp_files().get('babel_config.json').name
@@ -1382,14 +1389,3 @@ def js_legalization_pass_flags():
     # assumes they are imports.
     flags += ['--pass-arg=legalize-js-interface-exported-helpers']
   return flags
-
-
-# Returns a list of flags to pass to emcc that make the output run properly in
-# the given node version.
-def get_emcc_node_flags(node_version):
-  if not node_version:
-    return []
-  # Convert to the format we use in our settings, XXYYZZ, for example,
-  # 10.1.7 will turn into "100107".
-  str_node_version = "%02d%02d%02d" % node_version
-  return [f'-sMIN_NODE_VERSION={str_node_version}']

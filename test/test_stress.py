@@ -17,7 +17,7 @@ import subprocess
 import threading
 
 from common import NON_ZERO, RunnerCore
-from decorators import also_with_modularize, is_slow_test, node_pthreads
+from decorators import also_with_modularize, is_slow_test, requires_pthreads
 
 
 class stress(RunnerCore):
@@ -73,7 +73,7 @@ class stress(RunnerCore):
       raise error_exception
 
   # This is a stress test version that focuses on https://github.com/emscripten-core/emscripten/issues/20067
-  @node_pthreads
+  @requires_pthreads
   @is_slow_test
   def test_stress_proxy_to_pthread_hello_world(self):
     self.skipTest('Occasionally hangs. https://github.com/emscripten-core/emscripten/issues/20067')
@@ -85,7 +85,7 @@ class stress(RunnerCore):
 
   # This is a stress test to verify that the Node.js postMessage() vs uncaughtException
   # race does not affect Emscripten execution.
-  @node_pthreads
+  @requires_pthreads
   @is_slow_test
   def test_stress_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
@@ -99,7 +99,7 @@ class stress(RunnerCore):
     # TODO: investigate why adding assert_returncode=NON_ZERO to above doesn't work.
     # Is the test test_pthread_abort still flaky?
 
-  @node_pthreads
+  @requires_pthreads
   @also_with_modularize
   @is_slow_test
   def test_stress_pthread_proxying(self):

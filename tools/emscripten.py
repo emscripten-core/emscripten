@@ -963,7 +963,7 @@ def install_debug_wrapper(sym):
   # The emscripten stack functions are called very early (by writeStackCookie) before
   # the runtime is initialized so we can't create these wrappers that check for
   # runtimeInitialized.
-  if sym.startswith(('__asan_', 'emscripten_stack_', '_emscripten_stack_')):
+  if sym.startswith(('__asan_', '__lsan_', 'emscripten_stack_', '_emscripten_stack_')):
     return False
   # `__trap` can occur before the runtime is initialized since it is used in abort.
   # `emscripten_get_sbrk_ptr` can be called prior to runtime initialization by
@@ -1203,6 +1203,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_node_record_dirent': '_pp_',
     '__dl_seterr': '_pp',
     '_emscripten_run_js_on_main_thread': '__p_p_',
+    '_emscripten_run_js_on_main_thread_done': '_pp_',
     '_emscripten_thread_exit': '_p',
     '_emscripten_thread_init': '_p_____',
     '_emscripten_thread_free_data': '_p',

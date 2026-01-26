@@ -351,7 +351,7 @@ addToLibrary({
       var cmdstr = UTF8ToString(command);
       if (!cmdstr.length) return 0; // this is what glibc seems to do (shell works test?)
 
-      var cp = require('child_process');
+      var cp = require('node:child_process');
       var ret = cp.spawnSync(cmdstr, [], {shell:true, stdio:'inherit'});
 
       var _W_EXITCODE = (ret, sig) => ((ret) << 8 | (sig));
@@ -1463,36 +1463,22 @@ addToLibrary({
     else return lengthBytesUTF8(str);
   },
 
-#if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
-  // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
-  // to malloc, calloc, free, and memalign.
-  $withBuiltinMalloc__deps: [
-    'malloc', 'calloc', 'free', 'memalign', 'realloc',
-    'emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'emscripten_builtin_calloc', 'emscripten_builtin_realloc'
-  ],
-  $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
-  $withBuiltinMalloc: (func) => {
-    var prev_malloc = typeof _malloc != 'undefined' ? _malloc : undefined;
-    var prev_calloc = typeof _calloc != 'undefined' ? _calloc : undefined;
-    var prev_memalign = typeof _memalign != 'undefined' ? _memalign : undefined;
-    var prev_free = typeof _free != 'undefined' ? _free : undefined;
-    var prev_realloc = typeof _realloc != 'undefined' ? _realloc : undefined;
-    _malloc = _emscripten_builtin_malloc;
-    _calloc = _emscripten_builtin_calloc;
-    _memalign = _emscripten_builtin_memalign;
-    _free = _emscripten_builtin_free;
-    _realloc = _emscripten_builtin_realloc;
+#if USE_ASAN || USE_LSAN
+  // When lsan is enabled noLeakCheck will temporarily disable leak checking
+  // for the duration of the function.
+  $noLeakCheck__deps: ['__lsan_enable', '__lsan_disable'],
+  $noLeakCheck__docs: '/** @suppress{checkTypes} */',
+  $noLeakCheck: (func) => {
+    if (runtimeInitialized) ___lsan_disable();
     try {
       return func();
     } finally {
-      _malloc = prev_malloc;
-      _calloc = prev_calloc;
-      _memalign = prev_memalign;
-      _free = prev_free;
-      _realloc = prev_realloc;
+      if (runtimeInitialized) ___lsan_enable();
     }
   },
+#endif
 
+#if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
   _emscripten_sanitizer_use_colors: () => {
     var setting = Module['printWithColors'];
     if (setting !== undefined) {
@@ -1501,11 +1487,9 @@ addToLibrary({
     return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
   },
 
-  _emscripten_sanitizer_get_option__deps: ['$withBuiltinMalloc', '$stringToNewUTF8', '$UTF8ToString'],
+  _emscripten_sanitizer_get_option__deps: ['$stringToNewUTF8', '$UTF8ToString'],
   _emscripten_sanitizer_get_option__sig: 'pp',
-  _emscripten_sanitizer_get_option: (name) => {
-    return withBuiltinMalloc(() => stringToNewUTF8(Module[UTF8ToString(name)] || ""));
-  },
+  _emscripten_sanitizer_get_option: (name) => stringToNewUTF8(Module[UTF8ToString(name)] || ''),
 #endif
 
   $readEmAsmArgsArray: [],
@@ -2013,6 +1997,9 @@ addToLibrary({
       }
     }
 #endif
+#if RUNTIME_DEBUG
+    dbg("handleException: got unexpected exception, calling quit_")
+#endif
     quit_(1, e);
   },
 
@@ -2082,10 +2069,11 @@ addToLibrary({
       return;
     }
     try {
-      func();
-      maybeExit();
+      return func();
     } catch (e) {
       handleException(e);
+    } finally {
+      maybeExit();
     }
   },
 
