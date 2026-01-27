@@ -5802,10 +5802,8 @@ got: 10
   def test_fs_nodefs_rw(self):
     if not self.get_setting('NODERAWFS'):
       self.setup_nodefs_test()
-    self.set_setting('SYSCALL_DEBUG')
+    self.maybe_closure()
     self.do_runf('fs/test_nodefs_rw.c', 'success')
-    if self.maybe_closure():
-      self.do_runf('fs/test_nodefs_rw.c', 'success')
 
   @also_with_noderawfs
   @requires_node
