@@ -10,6 +10,9 @@
 
 :: All env. vars specified in this file are to be local only to this script.
 @setlocal
+
+@set _EM_LAUNCHER=1
+
 :: -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
 :: of cpython used in cross compilation via setup.py.
 @set _PYTHON_SYSCONFIGDATA_NAME=

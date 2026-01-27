@@ -76,6 +76,10 @@ See docs/process.md for more on how version tagging works.
 
 4.0.21 - 12/02/25
 -----------------
+- The emscripten tools will now warn if they are not run via the launcher
+  scripts.  i.e. it is no longer officially supported to run `python emcc.py`.
+  Instead, `emcc` should be run directly (via the provided `.bat` or shell
+  script). (#20437)
 - The `-sPROXY_TO_WORKER` setting (along with the corresponding
   `--proxy-to-worker` flag) was removed due to lack of usage.  If you were
   depending on this feature but missed the PSA, please let us know about your

@@ -15349,3 +15349,7 @@ console.log('OK');'''
 
   def test_executable_requires_node(self):
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXECUTABLE', '-sENVIRONMENT=web'], 'emcc: error: EXECUTABLE requires `node` in ENVRIONMENT')
+
+  def test_direct_usage_warning(self):
+    err = self.run_process([sys.executable, path_from_root('emcc.py'), '--version'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: python script (`emcc.py`) was run directly rather than run via launcher', err)
