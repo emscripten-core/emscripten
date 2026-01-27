@@ -1631,7 +1631,6 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
-      '-fno-inline-functions',
       '-D_LIBCPP_BUILDING_LIBRARY',
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
@@ -1705,7 +1704,6 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
 
   cflags = [
     '-Oz',
-    '-fno-inline-functions',
     '-DLIBCXX_BUILDING_LIBCXXABI=1',
     '-D_LIBCPP_BUILDING_LIBRARY',
     '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
@@ -1747,7 +1745,7 @@ class libunwind(ExceptionLibrary, MTLibrary):
   # See https://bugs.llvm.org/show_bug.cgi?id=44353
   force_object_files = True
 
-  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_HIDE_SYMBOLS',
+  cflags = ['-Oz', '-D_LIBUNWIND_HIDE_SYMBOLS',
             # TODO Remove this once
             # https://github.com/llvm/llvm-project/pull/175776 lands
             '-Wno-c23-extensions']
