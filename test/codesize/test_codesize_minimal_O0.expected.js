@@ -1277,7 +1277,6 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('freePreloadedMediaOnUse');
   ignoredModuleProp('loadSplitModule');
   ignoredModuleProp('locateFile');
-  ignoredModuleProp('logReadFiles');
   ignoredModuleProp('mainScriptUrlOrBlob');
   ignoredModuleProp('mem');
   ignoredModuleProp('monitorRunDependencies');
