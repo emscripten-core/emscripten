@@ -118,7 +118,7 @@ var emscriptenMemoryProfiler = {
     return '#' + toHex(r) + toHex(g) + toHex(b);
   },
 
-  onSbrkGrow(oldLimit, newLimit) {
+  onSbrkGrow(oldLimit, newLimit, loc) {
     var self = emscriptenMemoryProfiler;
     // On first sbrk(), account for the initial size.
     if (self.sbrkSources.length == 0) {
@@ -130,8 +130,11 @@ var emscriptenMemoryProfiler = {
       });
     }
     if (newLimit <= oldLimit) return;
+    if (loc == undefined) {
+      loc = new Error().stack.toString();
+    }
     self.sbrkSources.push({
-      stack: self.filterCallstackForHeapResize(new Error().stack.toString()),
+      stack: self.filterCallstackForHeapResize(loc),
       begin: oldLimit,
       end: newLimit,
       color: self.hsvToRgb(self.sbrkSources.length * 0.618033988749895 % 1, 0.5, 0.95)
@@ -166,7 +169,7 @@ var emscriptenMemoryProfiler = {
     }
   },
 
-  onMalloc(ptr, size) {
+  onMalloc(ptr, size, loc) {
     if (!ptr) return;
     if (emscriptenMemoryProfiler.sizeOfAllocatedPtr[ptr])
     {
@@ -189,7 +192,9 @@ var emscriptenMemoryProfiler = {
     // Also track if this was a _malloc performed at preRun time.
     if (!self.pagePreRunIsFinished) self.sizeOfPreRunAllocatedPtr[ptr] = size;
 
-    var loc = new Error().stack.toString();
+    if(loc == undefined) {
+        loc = new Error().stack.toString();
+    }
     self.allocationsAtLoc[loc] ||= [0, 0, self.filterCallstackForMalloc(loc)];
     self.allocationsAtLoc[loc][0] += 1;
     self.allocationsAtLoc[loc][1] += size;
@@ -229,9 +234,9 @@ var emscriptenMemoryProfiler = {
     ++self.totalTimesFreeCalled;
   },
 
-  onRealloc(oldAddress, newAddress, size) {
+  onRealloc(oldAddress, newAddress, size, loc) {
     emscriptenMemoryProfiler.onFree(oldAddress);
-    emscriptenMemoryProfiler.onMalloc(newAddress, size);
+    emscriptenMemoryProfiler.onMalloc(newAddress, size, loc);
   },
 
   onPreloadComplete() {
@@ -241,9 +246,10 @@ var emscriptenMemoryProfiler = {
   // Installs startup hook and periodic UI update timer.
   initialize() {
     // Inject the memoryprofiler hooks.
-    Module['onMalloc'] = (ptr, size) => emscriptenMemoryProfiler.onMalloc(ptr, size);
-    Module['onRealloc'] = (oldAddress, newAddress, size) => emscriptenMemoryProfiler.onRealloc(oldAddress, newAddress, size);;
+    Module['onMalloc'] = (ptr, size, loc) => emscriptenMemoryProfiler.onMalloc(ptr, size, loc);
+    Module['onRealloc'] = (oldAddress, newAddress, size, loc) => emscriptenMemoryProfiler.onRealloc(oldAddress, newAddress, size, loc);;
     Module['onFree'] = (ptr) => emscriptenMemoryProfiler.onFree(ptr);
+    Module['onSbrkGrow'] = (old_brk, new_brk, loc) => emscriptenMemoryProfiler.onSbrkGrow(old_brk, new_brk, loc);
     emscriptenMemoryProfiler.recordStackWatermark();
 
     // Add a tracking mechanism to detect when VFS loading is complete.

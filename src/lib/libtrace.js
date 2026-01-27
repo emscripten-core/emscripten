@@ -210,7 +210,9 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_allocation: (address, size) => {
-    Module['onMalloc']?.(address, size);
+#if MEMORYPROFILER
+    Module['onMalloc']?.(address, size) || postMessage({cmd: 'callHandler', handler: 'onMalloc', args: [address, size, new Error().stack.toString()]});
+#endif
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ALLOCATE,
@@ -219,7 +221,9 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_reallocation: (old_address, new_address, size) => {
-    Module['onRealloc']?.(old_address, new_address, size);
+#if MEMORYPROFILER
+    Module['onRealloc']?.(old_address, new_address, size) || postMessage({cmd: 'callHandler', handler: 'onRealloc', args: [old_address, new_address, size, new Error().stack.toString()]});
+#endif
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_REALLOCATE,
@@ -228,7 +232,9 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_free: (address) => {
-    Module['onFree']?.(address);
+#if MEMORYPROFILER
+    Module['onFree']?.(address) || postMessage({cmd: 'callHandler', handler: 'onFree', args: [address]});
+#endif
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_FREE,
