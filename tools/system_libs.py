@@ -1544,7 +1544,7 @@ class libwasm_workers(DebugLibrary):
 class libsockets(MuslInternalLibrary, MTLibrary):
   name = 'libsockets'
 
-  cflags = ['-Os', '-fno-inline-functions', '-fno-builtin', '-Wno-shift-op-parentheses']
+  cflags = ['-Os', '-fno-builtin', '-Wno-shift-op-parentheses']
 
   def get_files(self):
     return files_in_path(
@@ -1558,7 +1558,7 @@ class libsockets(MuslInternalLibrary, MTLibrary):
 class libsockets_proxy(MTLibrary):
   name = 'libsockets_proxy'
 
-  cflags = ['-Os', '-fno-inline-functions']
+  cflags = ['-Os']
 
   def get_files(self):
     return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.c')]
@@ -1902,7 +1902,7 @@ class libmimalloc(MTLibrary):
 class libal(Library):
   name = 'libal'
 
-  cflags = ['-Os', '-fno-inline-functions']
+  cflags = ['-Os']
   src_dir = 'system/lib'
   src_files = ['al.c']
 
@@ -1913,7 +1913,7 @@ class libGL(MTLibrary):
   src_dir = 'system/lib/gl'
   src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c', 'webgl2.c']
 
-  cflags = ['-Oz', '-fno-inline-functions']
+  cflags = ['-Oz']
 
   def __init__(self, **kwargs):
     self.is_legacy = kwargs.pop('is_legacy')
@@ -2107,7 +2107,7 @@ class libhtml5(Library):
   name = 'libhtml5'
 
   includes = ['system/lib/libc']
-  cflags = ['-Oz', '-fno-inline-functions']
+  cflags = ['-Oz']
   src_dir = 'system/lib/html5'
   src_glob = '*.c'
 
@@ -2196,7 +2196,7 @@ class libstandalonewasm(MuslInternalLibrary):
   # LTO defeats the weak linking trick used in __original_main.c
   force_object_files = True
 
-  cflags = ['-Os', '-fno-inline-functions', '-fno-builtin']
+  cflags = ['-Os', '-fno-builtin']
   src_dir = 'system/lib'
 
   def __init__(self, **kwargs):
@@ -2270,7 +2270,7 @@ class libstandalonewasm(MuslInternalLibrary):
 
 class libjsmath(Library):
   name = 'libjsmath'
-  cflags = ['-Os', '-fno-inline-functions']
+  cflags = ['-Os']
   src_dir = 'system/lib'
   src_files = ['jsmath.c']
 
