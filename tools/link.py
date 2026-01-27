@@ -969,7 +969,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
   def limit_incoming_module_api():
-    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
+    if options.oformat == OFormat.HTML and options.shell_html == DEFAULT_SHELL_HTML:
       # Our default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
       default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
     else:
@@ -1135,15 +1135,18 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
     settings.MODULARIZE = 1
 
-  if not options.shell_path:
-    # Minimal runtime uses a different default shell file
-    if settings.MINIMAL_RUNTIME:
-      options.shell_path = options.shell_path = utils.path_from_root('html/shell_minimal_runtime.html')
-    else:
-      options.shell_path = DEFAULT_SHELL_HTML
+  if options.oformat == OFormat.HTML:
+    if not options.shell_html:
+      # Minimal runtime uses a different default shell file
+      if settings.MINIMAL_RUNTIME:
+        options.shell_html = options.shell_html = utils.path_from_root('html/shell_minimal_runtime.html')
+      else:
+        options.shell_html = DEFAULT_SHELL_HTML
 
-  if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
-    settings.EXPORTED_RUNTIME_METHODS.append('requestFullscreen')
+    if options.shell_html == DEFAULT_SHELL_HTML:
+      settings.EXPORTED_RUNTIME_METHODS.append('requestFullscreen')
+  elif options.shell_html:
+    diagnostics.warning('unused-command-line-argument', '--shell-file ignored when not generating html output')
 
   if settings.STRICT:
     if not settings.MODULARIZE:
@@ -1626,8 +1629,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
      settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
-     (options.shell_path == DEFAULT_SHELL_HTML or options.shell_path == utils.path_from_root('html/shell_minimal.html')):
-    exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-sMODULARIZE -sEXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
+     (options.shell_html == DEFAULT_SHELL_HTML or options.shell_html == utils.path_from_root('html/shell_minimal.html')):
+    exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_html}" is not compatible with build options "-sMODULARIZE -sEXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
@@ -2487,12 +2490,12 @@ def module_export_name_substitution():
 def generate_traditional_runtime_html(target, options, js_target, wasm_target):
   script = ScriptSource()
 
-  if settings.EXPORT_NAME != 'Module' and options.shell_path == DEFAULT_SHELL_HTML:
+  if settings.EXPORT_NAME != 'Module' and options.shell_html == DEFAULT_SHELL_HTML:
     # the minimal runtime shell HTML is designed to support changing the export
     # name, but the normal one does not support that currently
     exit_with_error('customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
 
-  shell = building.read_and_preprocess(options.shell_path)
+  shell = building.read_and_preprocess(options.shell_html)
   if '{{{ SCRIPT }}}' not in shell:
     exit_with_error('HTML shell must contain {{{ SCRIPT }}}, see src/shell.html for an example')
 

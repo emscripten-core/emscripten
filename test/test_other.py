@@ -10109,6 +10109,11 @@ T4:ASSERTIONS > 1
 T5:ASSERTIONS
 T6:(else) !ASSERTIONS""", output)
 
+  def test_shell_file_unused(self):
+    create_file('foo.html', '')
+    expected = 'emcc: error: --shell-file ignored when not generating html output [-Wunused-command-line-argument] [-Werror]'
+    self.assert_fail([EMCC, test_file('hello_world.c'), '--shell-file=foo.html', '-Werror'], expected)
+
   # Tests that Emscripten-compiled applications can be run from a relative path with node command line that is different than the current working directory.
   @requires_node
   def test_node_js_run_from_different_directory(self):
