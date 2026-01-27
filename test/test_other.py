@@ -5402,18 +5402,25 @@ int main(int argc, char **argv) {
       #include <stdio.h>
       #include <emscripten/version.h>
       int main() {
+        printf("MAJOR: %d\n", __EMSCRIPTEN_MAJOR__);
+        printf("MINOR: %d\n", __EMSCRIPTEN_MINOR__);
+        printf("TINY: %d\n", __EMSCRIPTEN_TINY__);
+        // Also test legacy names:
         printf("major: %d\n", __EMSCRIPTEN_major__);
         printf("minor: %d\n", __EMSCRIPTEN_minor__);
         printf("tiny: %d\n", __EMSCRIPTEN_tiny__);
       }
     ''')
-    expected = '''\
-major: %d
-minor: %d
-tiny: %d
-''' % (utils.EMSCRIPTEN_VERSION_MAJOR, utils.EMSCRIPTEN_VERSION_MINOR, utils.EMSCRIPTEN_VERSION_TINY)
-    self.do_runf('src.c', expected)
-    self.do_runf('src.c', expected, cflags=['-sSTRICT'])
+    expected = f'''\
+MAJOR: {utils.EMSCRIPTEN_VERSION_MAJOR}
+MINOR: {utils.EMSCRIPTEN_VERSION_MINOR}
+TINY: {utils.EMSCRIPTEN_VERSION_TINY}
+major: {utils.EMSCRIPTEN_VERSION_MAJOR}
+minor: {utils.EMSCRIPTEN_VERSION_MINOR}
+tiny: {utils.EMSCRIPTEN_VERSION_TINY}
+'''
+    self.do_runf('src.c', expected, cflags=['-Wno-deprecated'])
+    self.do_runf('src.c', expected, cflags=['-Wno-deprecated', '-sSTRICT'])
 
   def test_libc_files_without_syscalls(self):
     # a program which includes FS due to libc js library support, but has no syscalls,
@@ -5485,7 +5492,7 @@ int main() {
 
   def test_dashE(self):
     create_file('src.cpp', r'''#include <emscripten.h>
-__EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
+__EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALIVE
 ''')
 
     def test(args):
