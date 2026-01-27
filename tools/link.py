@@ -1627,11 +1627,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
 
-  if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
-     settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
-     (options.shell_html == DEFAULT_SHELL_HTML or options.shell_html == utils.path_from_root('html/shell_minimal.html')):
-    exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_html}" is not compatible with build options "-sMODULARIZE -sEXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
-
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
 
@@ -2540,6 +2535,7 @@ def generate_traditional_runtime_html(target, options, js_target, wasm_target):
 ''' % (script.inline, get_subresource_location_js(wasm_target + '.js'))
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
+  shell = shell.replace('{{{ EXPORT_NAME }}}', settings.EXPORT_NAME)
   shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('html/shell.css')))
   logo_filename = utils.path_from_root('media/powered_by_logo_shell.png')
   logo_b64 = base64_encode(logo_filename)
@@ -2815,7 +2811,10 @@ class ScriptSource:
         </script>
         '''
       else:
-        return f'<script async type="text/javascript" src="{src}"></script>'
+        if settings.MODULARIZE:
+          return f'<script type="text/javascript" src="{src}"></script>'
+        else:
+          return f'<script async type="text/javascript" src="{src}"></script>'
     else:
       return f'<script id="mainScript">\n{self.inline}\n</script>'
 
