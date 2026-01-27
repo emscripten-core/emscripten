@@ -5556,9 +5556,13 @@ Module["preRun"] = () => {
 
   @also_with_threads
   @requires_dev_dependency('vite')
-  def test_vite(self):
+  @parameterized({
+    '': ([],),
+    'minimal': (['-sMINIMAL_RUNTIME', '-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION'],),
+  })
+  def test_vite(self, args):
     copytree(test_file('vite'), '.')
-    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web', '-o', 'hello.mjs'])
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web', '-o', 'hello.mjs'] + args)
     self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
