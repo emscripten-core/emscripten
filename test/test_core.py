@@ -5881,8 +5881,7 @@ got: 10
 
   @no_wasmfs('depends on FS.trackingDelegate which WASMFS does not have')
   def test_fs_trackingdelegate(self):
-    self.set_setting('FS_DEBUG')
-    self.do_run_in_out_file_test('fs/test_trackingdelegate.c')
+    self.do_run_in_out_file_test('fs/test_trackingdelegate.c', cflags=['-sFS_DEBUG'])
 
   @with_all_fs
   def test_fs_writeFile(self):
