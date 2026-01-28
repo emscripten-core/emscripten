@@ -27,6 +27,7 @@ FROZEN_CACHE = None
 CACHE = None
 PORTS = None
 COMPILER_WRAPPER = None
+WASM_BINDGEN = None
 
 # Set by init()
 EM_CONFIG = None
@@ -60,6 +61,7 @@ def fix_js_engine(old, new):
 def normalize_config_settings():
   global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
   global NODE_JS, NODE_JS_TEST, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
+  global WASM_BINDGEN
 
   SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, listify(SPIDERMONKEY_ENGINE))
   NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
@@ -68,6 +70,7 @@ def normalize_config_settings():
   JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
   WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
   CLOSURE_COMPILER = listify(CLOSURE_COMPILER)
+  WASM_BINDGEN = listify(WASM_BINDGEN)
   if not CACHE:
     CACHE = path_from_root('cache')
   if not PORTS:
@@ -117,6 +120,7 @@ def parse_config_file():
     'CACHE',
     'PORTS',
     'COMPILER_WRAPPER',
+    'WASM_BINDGEN',
   )
 
   # Only propagate certain settings from the config file.
