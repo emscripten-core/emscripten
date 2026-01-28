@@ -94,7 +94,7 @@ def generate_minimal_runtime_load_statement(target_basename):
 
   script_xhr = '''\
   function script(url) { // Downloads a script file and adds it to DOM
-    return new Promise((ok, err) => {
+    return new Promise((ok) => {
       var s = document.createElement('script');
       s.src = url;
       s.onload = () => {

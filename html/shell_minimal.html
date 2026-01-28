@@ -84,7 +84,34 @@
         e.preventDefault();
       }, false);
 
+      function setStatus(text) {
+        if (!setStatus.last) setStatus.last = { time: Date.now(), text: '' };
+        if (text === setStatus.last.text) return;
+        var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
+        var now = Date.now();
+        if (m && now - setStatus.last.time < 30) return; // if this is a progress update, skip it if too soon
+        setStatus.last.time = now;
+        setStatus.last.text = text;
+        if (m) {
+          text = m[1];
+          progressElement.value = parseInt(m[2])*100;
+          progressElement.max = parseInt(m[4])*100;
+          progressElement.hidden = false;
+          spinnerElement.hidden = false;
+        } else {
+          progressElement.value = null;
+          progressElement.max = null;
+          progressElement.hidden = true;
+          if (!text) spinnerElement.hidden = true;
+        }
+        statusElement.innerHTML = text;
+      }
+
+#if MODULARIZE || !EXPORT_ES6
+      var moduleArgs = {
+#else
       var Module = {
+#endif
         print(...args) {
           // These replacements are necessary if you render to raw HTML
           //text = text.replace(/&/g, "&amp;");
@@ -99,43 +126,27 @@
           }
         },
         canvas: canvasElement,
-        setStatus(text) {
-          if (!Module.setStatus.last) Module.setStatus.last = { time: Date.now(), text: '' };
-          if (text === Module.setStatus.last.text) return;
-          var m = text.match(/([^(]+)\((\d+(\.\d+)?)\/(\d+)\)/);
-          var now = Date.now();
-          if (m && now - Module.setStatus.last.time < 30) return; // if this is a progress update, skip it if too soon
-          Module.setStatus.last.time = now;
-          Module.setStatus.last.text = text;
-          if (m) {
-            text = m[1];
-            progressElement.value = parseInt(m[2])*100;
-            progressElement.max = parseInt(m[4])*100;
-            progressElement.hidden = false;
-            spinnerElement.hidden = false;
-          } else {
-            progressElement.value = null;
-            progressElement.max = null;
-            progressElement.hidden = true;
-            if (!text) spinnerElement.hidden = true;
-          }
-          statusElement.innerHTML = text;
-        },
+        setStatus: setStatus,
         totalDependencies: 0,
         monitorRunDependencies(left) {
           this.totalDependencies = Math.max(this.totalDependencies, left);
-          Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
+          setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
         }
       };
-      Module.setStatus('Downloading...');
+      setStatus('Downloading...');
       window.onerror = () => {
-        Module.setStatus('Exception thrown, see JavaScript console');
+        setStatus('Exception thrown, see JavaScript console');
         spinnerElement.style.display = 'none';
-        Module.setStatus = (text) => {
+        setStatus = (text) => {
           if (text) console.error('[post-exception status] ' + text);
         };
       };
     </script>
     {{{ SCRIPT }}}
+#if MODULARIZE && !EXPORT_ES6
+    <script type='text/javascript'>
+      {{{ EXPORT_NAME }}}(moduleArgs);
+    </script>
+#endif
   </body>
 </html>

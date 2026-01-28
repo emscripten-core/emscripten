@@ -5779,10 +5779,8 @@ got: 10
   def test_fs_nodefs_rw(self):
     if not self.get_setting('NODERAWFS'):
       self.setup_nodefs_test()
-    self.set_setting('SYSCALL_DEBUG')
+    self.maybe_closure()
     self.do_runf('fs/test_nodefs_rw.c', 'success')
-    if self.maybe_closure():
-      self.do_runf('fs/test_nodefs_rw.c', 'success')
 
   @also_with_noderawfs
   @requires_node
@@ -5852,8 +5850,7 @@ got: 10
 
   @no_wasmfs('depends on FS.trackingDelegate which WASMFS does not have')
   def test_fs_trackingdelegate(self):
-    self.set_setting('FS_DEBUG')
-    self.do_run_in_out_file_test('fs/test_trackingdelegate.c')
+    self.do_run_in_out_file_test('fs/test_trackingdelegate.c', cflags=['-sFS_DEBUG'])
 
   @with_all_fs
   def test_fs_writeFile(self):

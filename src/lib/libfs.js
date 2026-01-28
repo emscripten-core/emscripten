@@ -744,9 +744,7 @@ FS.staticInit();`;
       mode &= {{{ cDefs.S_IRWXUGO }}} | {{{ cDefs.S_ISVTX }}};
       mode |= {{{ cDefs.S_IFDIR }}};
 #if FS_DEBUG
-      if (FS.trackingDelegate['onMakeDirectory']) {
-        FS.trackingDelegate['onMakeDirectory'](path, mode);
-      }
+      FS.trackingDelegate['onMakeDirectory']?.(path, mode);
 #endif
       return FS.mknod(path, mode, 0);
     },
@@ -791,9 +789,7 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['onMakeSymlink']) {
-        FS.trackingDelegate['onMakeSymlink'](oldpath, newpath);
-      }
+      FS.trackingDelegate['onMakeSymlink']?.(oldpath, newpath);
 #endif
       return parent.node_ops.symlink(parent, newname, oldpath);
     },
@@ -867,9 +863,7 @@ FS.staticInit();`;
         }
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['willMovePath']) {
-        FS.trackingDelegate['willMovePath'](old_path, new_path);
-      }
+      FS.trackingDelegate['willMovePath']?.(old_path, new_path);
 #endif
       // remove the node from the lookup hash
       FS.hashRemoveNode(old_node);
@@ -887,9 +881,7 @@ FS.staticInit();`;
         FS.hashAddNode(old_node);
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['onMovePath']) {
-        FS.trackingDelegate['onMovePath'](old_path, new_path);
-      }
+      FS.trackingDelegate['onMovePath']?.(old_path, new_path);
 #endif
     },
     rmdir(path) {
@@ -908,16 +900,12 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EBUSY }}});
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['willDeletePath']) {
-        FS.trackingDelegate['willDeletePath'](path);
-      }
+      FS.trackingDelegate['willDeletePath']?.(path);
 #endif
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
 #if FS_DEBUG
-      if (FS.trackingDelegate['onDeletePath']) {
-        FS.trackingDelegate['onDeletePath'](path);
-      }
+      FS.trackingDelegate['onDeletePath']?.(path);
 #endif
     },
     readdir(path) {
@@ -948,16 +936,12 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EBUSY }}});
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['willDeletePath']) {
-        FS.trackingDelegate['willDeletePath'](path);
-      }
+      FS.trackingDelegate['willDeletePath']?.(path);
 #endif
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
 #if FS_DEBUG
-      if (FS.trackingDelegate['onDeletePath']) {
-        FS.trackingDelegate['onDeletePath'](path);
-      }
+      FS.trackingDelegate['onDeletePath']?.(path);
 #endif
     },
     readlink(path) {
@@ -1152,7 +1136,7 @@ FS.staticInit();`;
         FS.truncate(node, 0);
       }
 #if FS_DEBUG
-      var trackingFlags = flags
+      var origFlags = flags
 #endif
       // we've already handled these, don't pass down to the underlying vfs
       flags &= ~({{{ cDefs.O_EXCL }}} | {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_NOFOLLOW }}});
@@ -1187,9 +1171,7 @@ FS.staticInit();`;
       }
 #endif
 #if FS_DEBUG
-      if (FS.trackingDelegate['onOpenFile']) {
-        FS.trackingDelegate['onOpenFile'](path, trackingFlags);
-      }
+      FS.trackingDelegate['onOpenFile']?.(path, origFlags);
 #endif
       return stream;
     },
@@ -1209,8 +1191,8 @@ FS.staticInit();`;
       }
       stream.fd = null;
 #if FS_DEBUG
-      if (stream.path && FS.trackingDelegate['onCloseFile']) {
-        FS.trackingDelegate['onCloseFile'](stream.path);
+      if (stream.path) {
+        FS.trackingDelegate['onCloseFile']?.(stream.path);
       }
 #endif
     },
@@ -1230,8 +1212,8 @@ FS.staticInit();`;
       stream.position = stream.stream_ops.llseek(stream, offset, whence);
       stream.ungotten = [];
 #if FS_DEBUG
-      if (stream.path && FS.trackingDelegate['onSeekFile']) {
-        FS.trackingDelegate['onSeekFile'](stream.path, stream.position, whence);
+      if (stream.path) {
+        FS.trackingDelegate['onSeekFile']?.(stream.path, stream.position, whence);
       }
 #endif
       return stream.position;
@@ -1264,8 +1246,8 @@ FS.staticInit();`;
       var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
       if (!seeking) stream.position += bytesRead;
 #if FS_DEBUG
-      if (stream.path && FS.trackingDelegate['onReadFile']) {
-        FS.trackingDelegate['onReadFile'](stream.path, bytesRead);
+      if (stream.path) {
+        FS.trackingDelegate['onReadFile']?.(stream.path, bytesRead);
       }
 #endif
       return bytesRead;
@@ -1302,8 +1284,8 @@ FS.staticInit();`;
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
 #if FS_DEBUG
-      if (stream.path && FS.trackingDelegate['onWriteToFile']) {
-        FS.trackingDelegate['onWriteToFile'](stream.path, bytesWritten);
+      if (stream.path) {
+        FS.trackingDelegate['onWriteToFile']?.(stream.path, bytesWritten);
       }
 #endif
       return bytesWritten;

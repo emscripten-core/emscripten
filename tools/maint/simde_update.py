@@ -61,7 +61,7 @@ def main():
   # update simde, causing a larger diff than necessary.
   neon_h_buf = re.sub(SIMDE_FILE_HEADER_RE, r'\1\2\3', neon_h_buf, count=0, flags=re.MULTILINE)
 
-  line_to_prefix = "#  define HEDLEY_EMSCRIPTEN_VERSION HEDLEY_VERSION_ENCODE(__EMSCRIPTEN_major__, __EMSCRIPTEN_minor__, __EMSCRIPTEN_tiny__)\n"
+  line_to_prefix = "#  define HEDLEY_EMSCRIPTEN_VERSION HEDLEY_VERSION_ENCODE(__EMSCRIPTEN_MAJOR__, __EMSCRIPTEN_MINOR__, __EMSCRIPTEN_TINY__)\n"
   line_to_insert = "#include <emscripten/version.h>\n"
   try:
     insert_location = neon_h_buf.index(line_to_prefix)
