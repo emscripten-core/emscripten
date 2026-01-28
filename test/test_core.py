@@ -7017,6 +7017,7 @@ void* operator new(size_t size) {
     self.cflags += ['--post-js', 'post.js', '-Wno-return-stack-address']
 
     self.set_setting('EXPORTED_FUNCTIONS', ['_get_int', '_get_float', '_get_bool', '_get_string', '_print_int', '_print_float', '_print_bool', '_print_string', '_multi', '_pointer', '_call_ccall_again', '_malloc'])
+    self.maybe_closure()
     self.do_core_test('test_ccall.cpp')
 
   @no_modularize_instance('ccall is not compatible with MODULARIZE=instance')
