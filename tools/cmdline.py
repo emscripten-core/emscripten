@@ -508,7 +508,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
       settings.DISABLE_EXCEPTION_THROWING = 1
-      settings.WASM_EXCEPTIONS = 0
     elif arg == '-mbulk-memory':
       feature_matrix.enable_feature(feature_matrix.Feature.BULK_MEMORY,
                                     '-mbulk-memory',
