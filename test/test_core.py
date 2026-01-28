@@ -1720,6 +1720,12 @@ int main() {
     self.assert_fail([EMCC, test_file('hello_world.cpp')] + self.get_cflags(), expected)
     clear_all_relevant_settings(self)
 
+    expected = "error: cannot use 'throw' with exceptions disabled"
+    self.assert_fail([EMCC, test_file('core/test_exceptions.cpp'), '-fwasm-exceptions', '-fno-exceptions'] + self.get_cflags(), expected)
+    clear_all_relevant_settings(self)
+    self.assert_fail([EMCC, test_file('core/test_exceptions.cpp'), '-fno-exceptions', '-fwasm-exceptions'] + self.get_cflags(), expected)
+    clear_all_relevant_settings(self)
+
   # Marked as impure since the WASI reactor modules (modules without main)
   # are not yet supported by the wasm engines we test against.
   @also_with_standalone_wasm(impure=True)
