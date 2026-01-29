@@ -105,7 +105,7 @@ class EmccOptions:
   s_args: list[str] = []
   save_temps = False
   shared = False
-  shell_path = None
+  shell_html = None
   source_map_base = ''
   syntax_only = False
   target = ''
@@ -446,7 +446,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif arg == '-###':
       shared.SKIP_SUBPROCS = True
     elif check_arg('--shell-file'):
-      options.shell_path = consume_arg_file()
+      options.shell_html = consume_arg_file()
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
     elif check_arg('--emit-tsd'):
@@ -508,7 +508,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
       settings.DISABLE_EXCEPTION_THROWING = 1
-      settings.WASM_EXCEPTIONS = 0
     elif arg == '-mbulk-memory':
       feature_matrix.enable_feature(feature_matrix.Feature.BULK_MEMORY,
                                     '-mbulk-memory',

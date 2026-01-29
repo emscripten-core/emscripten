@@ -94,7 +94,7 @@ def generate_minimal_runtime_load_statement(target_basename):
 
   script_xhr = '''\
   function script(url) { // Downloads a script file and adds it to DOM
-    return new Promise((ok, err) => {
+    return new Promise((ok) => {
       var s = document.createElement('script');
       s.src = url;
       s.onload = () => {
@@ -170,7 +170,7 @@ def generate_minimal_runtime_load_statement(target_basename):
 
 def generate_minimal_runtime_html(target, options, js_target, target_basename):
   logger.debug('generating HTML for minimal runtime')
-  shell = utils.read_file(options.shell_path)
+  shell = utils.read_file(options.shell_html)
   if settings.SINGLE_FILE:
     # No extra files needed to download in a SINGLE_FILE build.
     shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', '')
@@ -183,7 +183,7 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
     shell = building.read_and_preprocess(shell_temp)
 
   if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
-    utils.exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
+    utils.exit_with_error(f'--shell-file "{options.shell_html}": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/html/shell_minimal_runtime.html for a template to use as a basis.')
 
   shell = shell.replace('{{{ TARGET_BASENAME }}}', settings.TARGET_BASENAME)
   shell = shell.replace('{{{ EXPORT_NAME }}}', settings.EXPORT_NAME)

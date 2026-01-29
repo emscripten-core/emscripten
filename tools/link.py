@@ -11,7 +11,6 @@ import re
 import shlex
 import shutil
 import stat
-import time
 from subprocess import PIPE
 from urllib.parse import quote
 
@@ -58,7 +57,7 @@ from .utils import (
 
 logger = logging.getLogger('link')
 
-DEFAULT_SHELL_HTML = utils.path_from_root('src/shell.html')
+DEFAULT_SHELL_HTML = utils.path_from_root('html/shell.html')
 
 DEFAULT_ASYNCIFY_IMPORTS = ['__asyncjs__*']
 
@@ -970,7 +969,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
   def limit_incoming_module_api():
-    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
+    if options.oformat == OFormat.HTML and options.shell_html == DEFAULT_SHELL_HTML:
       # Our default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
       default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
     else:
@@ -1136,15 +1135,18 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
     settings.MODULARIZE = 1
 
-  if not options.shell_path:
-    # Minimal runtime uses a different default shell file
-    if settings.MINIMAL_RUNTIME:
-      options.shell_path = options.shell_path = utils.path_from_root('src/shell_minimal_runtime.html')
-    else:
-      options.shell_path = DEFAULT_SHELL_HTML
+  if options.oformat == OFormat.HTML:
+    if not options.shell_html:
+      # Minimal runtime uses a different default shell file
+      if settings.MINIMAL_RUNTIME:
+        options.shell_html = options.shell_html = utils.path_from_root('html/shell_minimal_runtime.html')
+      else:
+        options.shell_html = DEFAULT_SHELL_HTML
 
-  if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
-    settings.EXPORTED_RUNTIME_METHODS.append('requestFullscreen')
+    if options.shell_html == DEFAULT_SHELL_HTML:
+      settings.EXPORTED_RUNTIME_METHODS.append('requestFullscreen')
+  elif options.shell_html:
+    diagnostics.warning('unused-command-line-argument', '--shell-file ignored when not generating html output')
 
   if settings.STRICT:
     if not settings.MODULARIZE:
@@ -1624,11 +1626,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
           settings.MINIFY_WASM_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
-
-  if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
-     settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
-     (options.shell_path == DEFAULT_SHELL_HTML or options.shell_path == utils.path_from_root('src/shell_minimal.html')):
-    exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-sMODULARIZE -sEXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
 
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
@@ -2488,12 +2485,12 @@ def module_export_name_substitution():
 def generate_traditional_runtime_html(target, options, js_target, wasm_target):
   script = ScriptSource()
 
-  if settings.EXPORT_NAME != 'Module' and options.shell_path == DEFAULT_SHELL_HTML:
+  if settings.EXPORT_NAME != 'Module' and options.shell_html == DEFAULT_SHELL_HTML:
     # the minimal runtime shell HTML is designed to support changing the export
     # name, but the normal one does not support that currently
     exit_with_error('customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
 
-  shell = building.read_and_preprocess(options.shell_path)
+  shell = building.read_and_preprocess(options.shell_html)
   if '{{{ SCRIPT }}}' not in shell:
     exit_with_error('HTML shell must contain {{{ SCRIPT }}}, see src/shell.html for an example')
 
@@ -2538,7 +2535,8 @@ def generate_traditional_runtime_html(target, options, js_target, wasm_target):
 ''' % (script.inline, get_subresource_location_js(wasm_target + '.js'))
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
-  shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
+  shell = shell.replace('{{{ EXPORT_NAME }}}', settings.EXPORT_NAME)
+  shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('html/shell.css')))
   logo_filename = utils.path_from_root('media/powered_by_logo_shell.png')
   logo_b64 = base64_encode(logo_filename)
   shell = shell.replace('{{{ SHELL_LOGO }}}', f'<img id="emscripten_logo" src="data:image/png;base64,{logo_b64}">')
@@ -2547,6 +2545,7 @@ def generate_traditional_runtime_html(target, options, js_target, wasm_target):
   write_file(target, shell)
 
 
+@ToolchainProfiler.profile()
 def minify_html(filename):
   if settings.DEBUG_LEVEL >= 2:
     return
@@ -2585,14 +2584,11 @@ def minify_html(filename):
 
   logger.debug(f'minifying HTML file {filename}')
   size_before = os.path.getsize(filename)
-  start_time = time.time()
   shared.check_call(shared.get_npm_cmd('html-minifier-terser') + [filename, '-o', filename] + opts, env=shared.env_with_node_in_path())
 
   # HTML minifier will turn all null bytes into an escaped two-byte sequence "\0". Turn those back to single byte sequences.
   def unescape_nulls(filename):
-    with open(filename, encoding="utf-8") as f:
-      data = f.read()
-
+    data = read_file(filename)
     out = []
     in_escape = False
     i = 0
@@ -2616,15 +2612,13 @@ def minify_html(filename):
       else:
         out.append(ch)
 
-    with open(filename, "wb") as f:
-      f.write(''.join(out).encode("utf-8"))
+    write_file(filename, ''.join(out))
 
   unescape_nulls(filename)
 
-  elapsed_time = time.time() - start_time
   size_after = os.path.getsize(filename)
   delta = size_after - size_before
-  logger.debug(f'HTML minification took {elapsed_time:.2f} seconds, and shrunk size of {filename} from {size_before} to {size_after} bytes, delta={delta} ({delta * 100.0 / size_before:+.2f}%)')
+  logger.debug(f'HTML minification shrunk {filename} from {size_before} to {size_after} bytes, delta={delta} ({delta * 100.0 / size_before:+.2f}%)')
 
 
 def generate_html(target, options, js_target, target_basename, wasm_target):
@@ -2817,7 +2811,10 @@ class ScriptSource:
         </script>
         '''
       else:
-        return f'<script async type="text/javascript" src="{src}"></script>'
+        if settings.MODULARIZE:
+          return f'<script type="text/javascript" src="{src}"></script>'
+        else:
+          return f'<script async type="text/javascript" src="{src}"></script>'
     else:
       return f'<script id="mainScript">\n{self.inline}\n</script>'
 

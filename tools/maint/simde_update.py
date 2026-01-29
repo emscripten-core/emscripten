@@ -61,7 +61,7 @@ def main():
   # update simde, causing a larger diff than necessary.
   neon_h_buf = re.sub(SIMDE_FILE_HEADER_RE, r'\1\2\3', neon_h_buf, count=0, flags=re.MULTILINE)
 
-  line_to_prefix = "#  define HEDLEY_EMSCRIPTEN_VERSION HEDLEY_VERSION_ENCODE(__EMSCRIPTEN_major__, __EMSCRIPTEN_minor__, __EMSCRIPTEN_tiny__)\n"
+  line_to_prefix = "#  define HEDLEY_EMSCRIPTEN_VERSION HEDLEY_VERSION_ENCODE(__EMSCRIPTEN_MAJOR__, __EMSCRIPTEN_MINOR__, __EMSCRIPTEN_TINY__)\n"
   line_to_insert = "#include <emscripten/version.h>\n"
   try:
     insert_location = neon_h_buf.index(line_to_prefix)
@@ -73,9 +73,11 @@ def main():
   with open(path.join(emdir, "system", "include", "compat", "arm_neon.h"), "w+") as f:
     try:
       f.write("#define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
+      f.write("#define SIMDE_ARM_NEON_A32V8_ENABLE_NATIVE_ALIASES\n")
       f.write("#define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
       f.write(neon_h_buf)
       f.write("#undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
+      f.write("#undef SIMDE_ARM_NEON_A32V8_ENABLE_NATIVE_ALIASES\n")
       f.write("#undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
     except Exception:
       print("error writing 'system/include/compat/arm_neon.h'")

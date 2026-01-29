@@ -1,10 +1,10 @@
 {
   "a.out.js": 23375,
   "a.out.js.gz": 9147,
-  "a.out.nodebug.wasm": 239944,
-  "a.out.nodebug.wasm.gz": 81208,
-  "total": 263319,
-  "total_gz": 90355,
+  "a.out.nodebug.wasm": 239224,
+  "a.out.nodebug.wasm.gz": 79795,
+  "total": 262599,
+  "total_gz": 88942,
   "sent": [
     "__cxa_begin_catch",
     "__cxa_end_catch",
@@ -65,7 +65,6 @@
     "env.invoke_iii",
     "env.invoke_iiii",
     "env.invoke_iiiii",
-    "env.invoke_iiiiii",
     "env.invoke_iiiiiii",
     "env.invoke_iiiiiiii",
     "env.invoke_iiiiiiiiiiii",

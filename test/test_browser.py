@@ -734,7 +734,7 @@ window.close = () => {
     # change the file package base dir to look in a "cdn". note that normally
     # you would add this in your own custom html file etc., and not by
     # modifying the existing shell in this manner
-    default_shell = read_file(path_from_root('src/shell.html'))
+    default_shell = read_file(path_from_root('html/shell.html'))
     create_file('shell.html', default_shell.replace('var Module = {', '''
     var Module = {
       locateFile: function(path, prefix) {
@@ -836,7 +836,7 @@ window.close = () => {
     self.run_browser('test.html', '/report_result?1')
 
     # TODO: CORS, test using a full url for locateFile
-    # create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
+    # create_file('shell.html', read_file(path_from_root('html/shell.html')).replace('var Module = {', 'var Module = { locateFile: function (path) {return "http:/localhost:8888/cdn/" + path;}, '))
     # test()
 
   @also_with_wasmfs
@@ -2499,7 +2499,7 @@ void *getBindBuffer() {
   @requires_graphics_hardware
   @parameterized({
     '': ([],),
-    'modularized': (['-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],),
+    'modularized': (['-sMODULARIZE'],),
   })
   def test_cpuprofiler_memoryprofiler(self, opts):
     self.btest_exit('hello_world_gles.c', cflags=['-DLONGTEST=1', '-DTEST_MEMORYPROFILER_ALLOCATIONS_MAP=1', '--cpuprofiler', '--memoryprofiler', '-lGL', '-lglut', '-DANIMATE'] + opts)
@@ -3643,7 +3643,7 @@ Module["preRun"] = () => {
   # pthreads tests
 
   def prep_no_SAB(self):
-    create_file('html.html', read_file(path_from_root('src/shell_minimal.html')).replace('''<body>''', '''<body>
+    create_file('html.html', read_file(path_from_root('html/shell_minimal.html')).replace('''<body>''', '''<body>
       <script>
         SharedArrayBuffer = undefined;
         Atomics = undefined;
@@ -3797,7 +3797,7 @@ Module["preRun"] = () => {
   # Test that a pthread can spawn another pthread of its own.
   @parameterized({
     '': ([],),
-    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],),
+    'modularize': (['-sMODULARIZE'],),
   })
   def test_pthread_create_pthread(self, args):
     self.btest_exit('pthread/test_pthread_create_pthread.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=2'] + args)
@@ -3976,7 +3976,7 @@ Module["preRun"] = () => {
   # global data section of the application memory area.
   @parameterized({
     '': (['-O3'],),
-    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html')],),
+    'modularize': (['-sMODULARIZE'],),
   })
   def test_pthread_global_data_initialization(self, args):
     self.btest_exit('pthread/test_pthread_global_data_initialization.c', cflags=args + ['-pthread', '-sPROXY_TO_PTHREAD', '-sPTHREAD_POOL_SIZE'])
@@ -4155,7 +4155,7 @@ Module["preRun"] = () => {
   def test_wasm_locate_file(self):
     # Test that it is possible to define "Module.locateFile(foo)" function to locate where worker.js will be loaded from.
     ensure_dir('cdn')
-    shell = read_file(path_from_root('src/shell.html'))
+    shell = read_file(path_from_root('html/shell.html'))
     create_file('shell2.html', shell.replace('var Module = {', 'var Module = { locateFile: (filename) => (filename == "test.wasm") ? "cdn/test.wasm" : filename, '))
     self.compile_btest('browser_test_hello_world.c', ['--shell-file', 'shell2.html', '-o', 'test.html'])
     shutil.move('test.wasm', Path('cdn/test.wasm'))
@@ -4616,8 +4616,7 @@ Module["preRun"] = () => {
   # Tests the absolute minimum pthread-enabled application.
   @parameterized({
     '': ([],),
-    'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule', '--shell-file',
-                    test_file('shell_that_launches_modularize.html')],),
+    'modularize': (['-sMODULARIZE'],),
   })
   @parameterized({
     '': ([],),
@@ -4804,7 +4803,7 @@ Module["preRun"] = () => {
         return 0;
       }
     ''')
-    create_file('shell.html', read_file(path_from_root('src/shell.html')).replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
+    create_file('shell.html', read_file(path_from_root('html/shell.html')).replace('Emscripten-Generated Code', 'Emscripten-Generated Emoji 😅'))
     self.btest_exit('main.c', cflags=['--shell-file', 'shell.html'])
 
   # Tests the functionality of the emscripten_thread_sleep() function.
@@ -4953,7 +4952,7 @@ Module["preRun"] = () => {
   def test_no_declare_asm_module_exports(self, args):
     self.btest_exit('declare_asm_module_exports.c', cflags=['-sDECLARE_ASM_MODULE_EXPORTS=0', '-sENVIRONMENT=web', '-O3', '--closure=1'] + args)
 
-  # Tests that the different code paths in src/shell_minimal_runtime.html all work ok.
+  # Tests that the different code paths in html/shell_minimal_runtime.html all work ok.
   @parameterized({
     '': ([],),
     'modularize': (['-sMODULARIZE'],),
@@ -5455,7 +5454,7 @@ Module["preRun"] = () => {
   @requires_sound_hardware
   @requires_shared_array_buffer
   def test_audio_worklet_modularize(self, args):
-    self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-sEXPORT_NAME=MyModule', '--shell-file', test_file('shell_that_launches_modularize.html'), '-DTEST_AND_EXIT'] + args)
+    self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-DTEST_AND_EXIT'] + args)
 
   # Tests an AudioWorklet with multiple stereo inputs mixing in the processor
   # via a varying parameter to a single stereo output (touching all of the API
@@ -5556,9 +5555,13 @@ Module["preRun"] = () => {
 
   @also_with_threads
   @requires_dev_dependency('vite')
-  def test_vite(self):
+  @parameterized({
+    '': ([],),
+    'minimal': (['-sMINIMAL_RUNTIME', '-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION'],),
+  })
+  def test_vite(self, args):
     copytree(test_file('vite'), '.')
-    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web', '-o', 'hello.mjs'])
+    self.compile_btest('hello_world.c', ['-sEXIT_RUNTIME', '-sENVIRONMENT=web', '-o', 'hello.mjs'] + args)
     self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('dist/index.html', '/report_result?exit:0')
 

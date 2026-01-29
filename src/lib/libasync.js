@@ -113,20 +113,18 @@ addToLibrary({
     },
 #endif
 
+#if ASYNCIFY == 1
     instrumentFunction(original) {
       var wrapper = (...args) => {
 #if ASYNCIFY_DEBUG >= 2
         dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} try ${original}`);
 #endif
-#if ASYNCIFY == 1
         Asyncify.exportCallStack.push(original);
         try {
-#endif
-#if ASYNCIFY == 1 && MEMORY64
+#if MEMORY64
           Asyncify.saveRewindArguments(original, args);
 #endif
           return original(...args);
-#if ASYNCIFY == 1
         } finally {
           if (!ABORT) {
             var top = Asyncify.exportCallStack.pop();
@@ -139,11 +137,8 @@ addToLibrary({
             Asyncify.maybeStopUnwind();
           }
         }
-#endif
       };
-#if ASYNCIFY == 1
       Asyncify.funcWrappers.set(original, wrapper);
-#endif
 #if MAIN_MODULE
       wrapper.orig = original;
 #endif
@@ -152,6 +147,7 @@ addToLibrary({
 #endif
       return wrapper;
     },
+#endif // ASYNCIFY == 1
 
     instrumentWasmExports(exports) {
 #if EMBIND_GEN_MODE
@@ -175,11 +171,12 @@ addToLibrary({
             Asyncify.asyncExports.add(original);
             original = Asyncify.makeAsyncFunction(original);
           }
-#endif
+          ret[x] = original;
+#else
           var wrapper = Asyncify.instrumentFunction(original);
           ret[x] = wrapper;
-
-       } else {
+#endif
+        } else {
           ret[x] = original;
         }
       }

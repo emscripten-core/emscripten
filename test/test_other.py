@@ -3493,10 +3493,8 @@ More info: https://emscripten.org
     '': [['-sJSPI_EXPORTS=async*']],
     'deprecated': [['-Wno-deprecated', '-sASYNCIFY_EXPORTS=async*']],
   })
-  def test_jspi_wildcard(self, opts):
-    self.cflags += opts
-
-    self.do_runf('other/test_jspi_wildcard.c', 'done')
+  def test_jspi_wildcard(self, args):
+    self.do_runf('other/test_jspi_wildcard.c', 'done', cflags=args)
 
   @requires_jspi
   def test_jspi_add_function(self):
@@ -3697,10 +3695,9 @@ More info: https://emscripten.org
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_jsgen_method_pointer_stability(self):
-    self.cflags += ['-lembind', '-sEMBIND_AOT']
     # Test that when method pointers are allocated at different addresses that
     # AOT JS generation still works correctly.
-    self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done')
+    self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done', cflags=['-lembind', '-sEMBIND_AOT'])
 
   @requires_dev_dependency('typescript')
   def test_emit_tsd(self):
@@ -5402,18 +5399,25 @@ int main(int argc, char **argv) {
       #include <stdio.h>
       #include <emscripten/version.h>
       int main() {
+        printf("MAJOR: %d\n", __EMSCRIPTEN_MAJOR__);
+        printf("MINOR: %d\n", __EMSCRIPTEN_MINOR__);
+        printf("TINY: %d\n", __EMSCRIPTEN_TINY__);
+        // Also test legacy names:
         printf("major: %d\n", __EMSCRIPTEN_major__);
         printf("minor: %d\n", __EMSCRIPTEN_minor__);
         printf("tiny: %d\n", __EMSCRIPTEN_tiny__);
       }
     ''')
-    expected = '''\
-major: %d
-minor: %d
-tiny: %d
-''' % (utils.EMSCRIPTEN_VERSION_MAJOR, utils.EMSCRIPTEN_VERSION_MINOR, utils.EMSCRIPTEN_VERSION_TINY)
-    self.do_runf('src.c', expected)
-    self.do_runf('src.c', expected, cflags=['-sSTRICT'])
+    expected = f'''\
+MAJOR: {utils.EMSCRIPTEN_VERSION_MAJOR}
+MINOR: {utils.EMSCRIPTEN_VERSION_MINOR}
+TINY: {utils.EMSCRIPTEN_VERSION_TINY}
+major: {utils.EMSCRIPTEN_VERSION_MAJOR}
+minor: {utils.EMSCRIPTEN_VERSION_MINOR}
+tiny: {utils.EMSCRIPTEN_VERSION_TINY}
+'''
+    self.do_runf('src.c', expected, cflags=['-Wno-deprecated'])
+    self.do_runf('src.c', expected, cflags=['-Wno-deprecated', '-sSTRICT'])
 
   def test_libc_files_without_syscalls(self):
     # a program which includes FS due to libc js library support, but has no syscalls,
@@ -5485,7 +5489,7 @@ int main() {
 
   def test_dashE(self):
     create_file('src.cpp', r'''#include <emscripten.h>
-__EMSCRIPTEN_major__ __EMSCRIPTEN_minor__ __EMSCRIPTEN_tiny__ EMSCRIPTEN_KEEPALIVE
+__EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALIVE
 ''')
 
     def test(args):
@@ -5814,8 +5818,7 @@ int main(int argc, char **argv) {
 
     # Accept-Language: fr-FR,fr;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', r'delete global.navigator; globalThis.navigator = { language: "fr-FR" };')
-    self.cflags += ['--pre-js', 'pre.js']
-    self.do_runf('test_browser_language_detection.c', 'LANG=fr_FR.UTF-8')
+    self.do_runf('test_browser_language_detection.c', 'LANG=fr_FR.UTF-8', cflags=['--pre-js=pre.js'])
 
   def test_js_main(self):
     # try to add a main() from JS, at runtime. this is not supported (the
@@ -6992,8 +6995,7 @@ Module.preRun = () => {
         self.set_setting('EXIT_RUNTIME')
       if asyncify == 2:
         self.require_jspi()
-    self.cflags.append('libside.so')
-    self.do_other_test('test_dlopen_blocking.c')
+    self.do_other_test('test_dlopen_blocking.c', cflags=['libside.so'])
 
   def test_dlsym_rtld_default(self):
     create_file('side.c', r'''
@@ -10109,6 +10111,11 @@ T4:ASSERTIONS > 1
 T5:ASSERTIONS
 T6:(else) !ASSERTIONS""", output)
 
+  def test_shell_file_unused(self):
+    create_file('foo.html', '')
+    expected = 'emcc: error: --shell-file ignored when not generating html output [-Wunused-command-line-argument] [-Werror]'
+    self.assert_fail([EMCC, test_file('hello_world.c'), '--shell-file=foo.html', '-Werror'], expected)
+
   # Tests that Emscripten-compiled applications can be run from a relative path with node command line that is different than the current working directory.
   @requires_node
   def test_node_js_run_from_different_directory(self):
@@ -12850,12 +12857,9 @@ void foo() {}
   def test_pthread_js_exception(self):
     # Ensure that JS exceptions propagate back to the main main thread and cause node
     # to exit with an error.
-    self.cflags.append('-pthread')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.build('other/test_pthread_js_exception.c')
-    err = self.run_js('test_pthread_js_exception.js', assert_returncode=NON_ZERO)
-    self.assertContained('missing is not defined', err)
+    self.do_runf('other/test_pthread_js_exception.c', 'missing is not defined', assert_returncode=NON_ZERO, cflags=['-pthread'])
 
   def test_config_closure_compiler(self):
     self.run_process([EMCC, test_file('hello_world.c'), '--closure=1'])
@@ -12913,8 +12917,7 @@ void foo() {}
     self.do_other_test('test_default_pthread_stack_size.c')
 
     # Same again but with a custom stack size
-    self.cflags += ['-DEXPECTED_STACK_SIZE=1024', '-sDEFAULT_PTHREAD_STACK_SIZE=1024']
-    self.do_other_test('test_default_pthread_stack_size.c')
+    self.do_other_test('test_default_pthread_stack_size.c', cflags=['-DEXPECTED_STACK_SIZE=1024', '-sDEFAULT_PTHREAD_STACK_SIZE=1024'])
 
   def test_emscripten_set_immediate(self):
     self.do_runf('emscripten_set_immediate.c')
@@ -12944,8 +12947,7 @@ void foo() {}
     # Make this work without PROXY_TO_PTHREAD
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.cflags += ['--profiling-funcs', '-pthread']
-    output = self.do_runf('pthread/test_pthread_trap.c', assert_returncode=NON_ZERO)
+    output = self.do_runf('pthread/test_pthread_trap.c', assert_returncode=NON_ZERO, cflags=['--profiling-funcs', '-pthread'])
     self.assertContained('sent an error!', output)
     self.assertContained('at (test_pthread_trap.wasm.)?thread_main', output, regex=True)
 
@@ -13043,16 +13045,14 @@ void foo() {}
   def test_pthread_out_err(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.cflags.append('-pthread')
-    self.do_other_test('test_pthread_out_err.c')
+    self.do_other_test('test_pthread_out_err.c', cflags=['-pthread'])
 
   @requires_pthreads
   def test_pthread_icu(self):
     self.set_setting('USE_ICU')
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.cflags.append('-pthread')
-    self.do_other_test('test_pthread_icu.cpp')
+    self.do_other_test('test_pthread_icu.cpp', cflags=['-pthread'])
 
   @requires_pthreads
   @parameterized({
@@ -13120,8 +13120,7 @@ Module.postRun = () => {{
     'Post: \\n' + openFilesPost);
 }}
 ''')
-    self.cflags += ['--pre-js', 'pre.js']
-    self.do_run_in_out_file_test('unistd/close.c')
+    self.do_run_in_out_file_test('unistd/close.c', cflags=['--pre-js', 'pre.js'])
 
   @also_with_wasmfs
   def test_unistd_dup(self):
@@ -13180,8 +13179,7 @@ Module.postRun = () => {{
     self.set_setting('WASMFS')
     os.mkdir('js_backend_files')
     create_file('js_backend_files/file.dat', 'data')
-    self.cflags += ['--preload-file', 'js_backend_files/file.dat']
-    self.do_run_in_out_file_test('wasmfs/wasmfs_before_preload.c')
+    self.do_run_in_out_file_test('wasmfs/wasmfs_before_preload.c', cflags=['--preload-file', 'js_backend_files/file.dat'])
 
   def test_hello_world_above_2gb(self):
     self.do_run_in_out_file_test('hello_world.c', cflags=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
@@ -13817,9 +13815,9 @@ int main() {
   @crossplatform
   def test_stack_overflow(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 1)
-    self.cflags += ['-O1', '--profiling-funcs']
     self.do_runf('core/stack_overflow.c',
                  'Stack overflow detected.  You can try increasing -sSTACK_SIZE',
+                 cflags=['-O1', '--profiling-funcs'],
                  assert_returncode=NON_ZERO)
 
   @crossplatform
@@ -13899,8 +13897,7 @@ out.js
     self.do_other_test('test_itimer.c')
 
   def test_itimer_standalone(self):
-    self.cflags += ['-sSTANDALONE_WASM', '-sWASM_BIGINT']
-    self.do_other_test('test_itimer_standalone.c')
+    self.do_other_test('test_itimer_standalone.c', cflags=['-sSTANDALONE_WASM', '-sWASM_BIGINT'])
     for engine in config.WASM_ENGINES:
       print('wasm engine', engine)
       self.assertContained('done', self.run_js('test_itimer_standalone.wasm', engine))
@@ -13965,13 +13962,13 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_googletest(self):
     # TODO(sbc): Should we package gtest as an emscripten "port"?  I guess we should if
     # we plan on using it in more places.
-    self.cflags += [
+    self.do_other_test('test_googletest.cc', cflags=[
+      '-Wno-character-conversion', '-Wno-unknown-warning-option',
       '-I' + test_file('third_party/googletest/googletest'),
       '-I' + test_file('third_party/googletest/googletest/include'),
       test_file('third_party/googletest/googletest/src/gtest-all.cc'),
       test_file('third_party/googletest/googletest/src/gtest_main.cc'),
-    ]
-    self.do_other_test('test_googletest.cc', cflags=['-Wno-character-conversion', '-Wno-unknown-warning-option'])
+    ])
 
   def test_parseTools_legacy(self):
     create_file('post.js', '''
@@ -14129,10 +14126,9 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
     # When using Wasm exception, SUPPORT_LONGJMP defaults to 'wasm', which does
     # not use the JS-based support. This should succeed.
-    self.cflags.append('-fwasm-exceptions')
     # -fwasm-exceptions exports __cpp_exception, so this is necessary
     self.set_setting('DEFAULT_TO_CXX')
-    self.do_runf('core/test_longjmp.c', cflags=self.get_cflags())
+    self.do_runf('core/test_longjmp.c', cflags=['-fwasm-exceptions'])
 
   def test_memory_init_file_unsupported(self):
     self.assert_fail([EMCC, test_file('hello_world.c'), '-Werror', '--memory-init-file=1'], 'error: --memory-init-file is no longer supported')
@@ -14221,10 +14217,9 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
     print('- with table growth')
     self.set_setting('ALLOW_TABLE_GROWTH')
-    self.cflags += ['-DGROWTH']
     # enable costly assertions to verify correct table behavior
     self.set_setting('ASSERTIONS', 2)
-    self.do_run_in_out_file_test('interop/test_add_function.cpp', interleaved_output=False)
+    self.do_run_in_out_file_test('interop/test_add_function.cpp', interleaved_output=False, cflags=['-DGROWTH'])
 
   @parameterized({
     'memory64_wasm_function': (True, True),
@@ -14800,13 +14795,12 @@ addToLibrary({
     '': [[]],
     'O3': [['-O3']],
   })
-  def test_fp16(self, opts):
+  def test_fp16(self, args):
     self.v8_args += ['--experimental-wasm-fp16']
     # TODO Remove this. Liftoff is currently broken for this test.
     # https://chromium-review.googlesource.com/c/v8/v8/+/5842546
     self.v8_args += ['--no-liftoff']
-    self.cflags += ['-msimd128', '-mfp16', '-sENVIRONMENT=shell'] + opts
-    self.do_runf('test_fp16.c')
+    self.do_runf('test_fp16.c', cflags=['-msimd128', '-mfp16', '-sENVIRONMENT=shell'] + args)
 
   def test_embool(self):
     self.do_other_test('test_embool.c')
