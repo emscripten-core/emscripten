@@ -1167,9 +1167,7 @@ FS.staticInit();`;
       if (Module['logReadFiles'] && !(flags & {{{ cDefs.O_WRONLY}}})) {
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
-#if FS_DEBUG
-          dbg(`FS.trackingDelegate error on read file: ${path}`);
-#endif
+          err(`read file: ${path}`);
         }
       }
 #endif
