@@ -89,9 +89,10 @@ To use the WebAssembly EH and setjmp-longjmp support together:
 the exception mode, is enabled by default, so you don't need to pass it
 explicitly.
 
-But you need to pass ``-sSUPPORT_LONGJMP=wasm`` explicitly when you link C and
-C++ code together, because you don't use exception flags at C compile time, but
-it needs to match the setjmp-longjmp handling model of the C++ code.
+But you need to pass ``-sSUPPORT_LONGJMP=wasm`` at compile time explicitly
+before you link C and C++ code together, because you don't use exception flags
+at C compile time, but it needs to match the setjmp-longjmp handling model of
+the C++ code.
 
 .. code-block:: bash
 
