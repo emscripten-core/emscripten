@@ -15341,7 +15341,7 @@ console.log('OK');'''
 
   def test_logReadFiles(self):
     create_file('test.txt', 'hello')
-    self.cflags += ['--preload-file=test.txt']
+    self.cflags += ['--preload-file=test.txt', '-sINCOMING_MODULE_JS_API=logReadFiles']
 
     output = self.do_runf('checksummer.c', args=['test.txt'])
     self.assertNotContained('read file:', output)

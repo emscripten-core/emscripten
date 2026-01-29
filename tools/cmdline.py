@@ -41,6 +41,7 @@ CLANG_FLAGS_WITH_ARGS = {
 # default set.
 EXTRA_INCOMING_JS_API = [
   'fetchSettings',
+  'logReadFiles',
 ]
 
 logger = logging.getLogger('args')
