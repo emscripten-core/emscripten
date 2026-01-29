@@ -59,12 +59,10 @@ FS.staticInit();`;
     ignorePermissions: true,
 #if FS_DEBUG
     trackingDelegate: {},
+    readFiles: {},
 #endif
     filesystems: null,
     syncFSRequests: 0, // we warn if there are multiple in flight at once
-#if expectToReceiveOnModule('logReadFiles')
-    readFiles: {},
-#endif
 #if ASSERTIONS
     ErrnoError: class extends Error {
 #else
@@ -1160,17 +1158,13 @@ FS.staticInit();`;
       if (created) {
         FS.chmod(node, mode & 0o777);
       }
-#if expectToReceiveOnModule('logReadFiles')
-      if (Module['logReadFiles'] && !(flags & {{{ cDefs.O_WRONLY}}})) {
-        if (!(path in FS.readFiles)) {
-          FS.readFiles[path] = 1;
 #if FS_DEBUG
-          dbg(`FS.trackingDelegate error on read file: ${path}`);
-#endif
+      if (Module['logReadFiles'] && !(flags & {{{ cDefs.O_WRONLY}}})) {
+        if (!FS.readFiles[path]) {
+          FS.readFiles[path] = 1;
+          dbg(`FS: read file: ${path}`);
         }
       }
-#endif
-#if FS_DEBUG
       FS.trackingDelegate['onOpenFile']?.(path, origFlags);
 #endif
       return stream;
