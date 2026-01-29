@@ -376,9 +376,11 @@ FS.staticInit();`;
       // return 0 if any user, group or owner bits are set.
       if (perms.includes('r') && !(node.mode & {{{ cDefs.S_IRUGO }}})) {
         return {{{ cDefs.EACCES }}};
-      } else if (perms.includes('w') && !(node.mode & {{{ cDefs.S_IWUGO }}})) {
+      }
+      if (perms.includes('w') && !(node.mode & {{{ cDefs.S_IWUGO }}})) {
         return {{{ cDefs.EACCES }}};
-      } else if (perms.includes('x') && !(node.mode & {{{ cDefs.S_IXUGO }}})) {
+      }
+      if (perms.includes('x') && !(node.mode & {{{ cDefs.S_IXUGO }}})) {
         return {{{ cDefs.EACCES }}};
       }
       return 0;
@@ -419,10 +421,8 @@ FS.staticInit();`;
         if (FS.isRoot(node) || FS.getPath(node) === FS.cwd()) {
           return {{{ cDefs.EBUSY }}};
         }
-      } else {
-        if (FS.isDir(node.mode)) {
-          return {{{ cDefs.EISDIR }}};
-        }
+      } else if (FS.isDir(node.mode)) {
+        return {{{ cDefs.EISDIR }}};
       }
       return 0;
     },
@@ -432,13 +432,16 @@ FS.staticInit();`;
       }
       if (FS.isLink(node.mode)) {
         return {{{ cDefs.ELOOP }}};
-      } else if (FS.isDir(node.mode)) {
-        if (FS.flagsToPermissionString(flags) !== 'r' // opening for write
-            || (flags & ({{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}}))) { // TODO: check for O_SEARCH? (== search for dir only)
+      }
+      var mode = FS.flagsToPermissionString(flags);
+      if (FS.isDir(node.mode)) {
+        // opening for write
+        // TODO: check for O_SEARCH? (== search for dir only)
+        if (mode !== 'r' || (flags & ({{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}}))) {
           return {{{ cDefs.EISDIR }}};
         }
       }
-      return FS.nodePermissions(node, FS.flagsToPermissionString(flags));
+      return FS.nodePermissions(node, mode);
     },
     checkOpExists(op, err) {
       if (!op) {
@@ -1164,9 +1167,7 @@ FS.staticInit();`;
       if (Module['logReadFiles'] && !(flags & {{{ cDefs.O_WRONLY}}})) {
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
-#if FS_DEBUG
-          dbg(`FS.trackingDelegate error on read file: ${path}`);
-#endif
+          err(`read file: ${path}`);
         }
       }
 #endif

@@ -15338,3 +15338,14 @@ console.log('OK');'''
 
   def test_executable_requires_node(self):
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXECUTABLE', '-sENVIRONMENT=web'], 'emcc: error: EXECUTABLE requires `node` in ENVRIONMENT')
+
+  def test_logReadFiles(self):
+    create_file('test.txt', 'hello')
+    self.cflags += ['--preload-file=test.txt', '-sINCOMING_MODULE_JS_API=logReadFiles']
+
+    output = self.do_runf('checksummer.c', args=['test.txt'])
+    self.assertNotContained('read file:', output)
+
+    create_file('pre.js', 'Module.logReadFiles = 1;')
+    output = self.do_runf('checksummer.c', args=['test.txt'], cflags=['--pre-js=pre.js'])
+    self.assertContained('read file: /test.txt', output)
