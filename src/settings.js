@@ -999,7 +999,7 @@ var INCOMING_MODULE_JS_API = [
   'loadSplitModule', 'locateFile', 'logReadFiles', 'mainScriptUrlOrBlob', 'mem',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
   'onExit', 'onFree', 'onFullScreen', 'onMalloc',
-  'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
+  'onRealloc', 'onRuntimeInitialized', 'onSbrkGrow', 'postMainLoop', 'postRun', 'preInit',
   'preMainLoop', 'preRun',
   'preinitializedWebGLContext', 'preloadPlugins',
   'print', 'printErr', 'setStatus', 'statusMessage', 'stderr',
