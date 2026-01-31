@@ -42,6 +42,7 @@ CLANG_FLAGS_WITH_ARGS = {
 EXTRA_INCOMING_JS_API = [
   'fetchSettings',
   'logReadFiles',
+  'loadSplitModule',
 ]
 
 logger = logging.getLogger('args')
