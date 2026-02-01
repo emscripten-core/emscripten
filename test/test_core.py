@@ -7642,6 +7642,20 @@ void* operator new(size_t size) {
     self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
 
+  def test_embind_val_coro_catch_cpp_exception(self):
+    create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
+      Module.catchCppExceptionPromise().then(console.log);
+    }''')
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
+    self.do_runf('embind/test_val_coro.cpp', 'successfully caught!\n')
+
+  def test_embind_val_coro_await_in_other_promise(self):
+    create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
+        Module.awaitInOtherPromise();
+      }''')
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
+    self.do_runf('embind/test_val_coro.cpp', '42\n')
+
   def test_embind_dynamic_initialization(self):
     self.cflags += ['-lembind']
     self.do_run_in_out_file_test('embind/test_dynamic_initialization.cpp')
