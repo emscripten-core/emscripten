@@ -8,6 +8,7 @@ addToLibrary({
   // Decodes a _known valid_ base64 string (without validation) and returns it as a new Uint8Array.
   // Benchmarked to be around 5x faster compared to a simple
   // "Uint8Array.from(atob(b64), c => c.charCodeAt(0))" (TODO: perhaps use this form in -Oz builds?)
+#if !JS_BASE64_API
   $base64Decode__postset: `
   // Precreate a reverse lookup table from chars
   // "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/" back to
@@ -20,6 +21,7 @@ addToLibrary({
   base64ReverseLookup[43] = 62; // '+'
   base64ReverseLookup[47] = 63; // '/'
 `,
+#endif
   $base64Decode__docs: '/** @noinline */',
   $base64Decode: (b64) => {
 #if JS_BASE64_API
