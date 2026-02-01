@@ -97,7 +97,15 @@ addToLibrary({
           blocks: 0,
         };
       },
-      poll(stream, timeout, notifyCallback) {
+      pollAsync(stream, notifyCallback) {
+        var res = this.poll(stream, 0);
+        if (res != 0) return res;
+#if PTHREADS
+        stream.node.pipe.registerReadableHandler(notifyCallback);
+#endif
+        return 0;
+      },
+      poll(stream, timeout) {
         var pipe = stream.node.pipe;
 
         if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
@@ -109,9 +117,6 @@ addToLibrary({
           }
         }
 
-#if PTHREADS
-        if (notifyCallback) pipe.registerReadableHandler(notifyCallback);
-#endif
         return 0;
       },
       dup(stream) {
