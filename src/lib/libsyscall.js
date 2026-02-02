@@ -707,12 +707,12 @@ var SyscallsLibrary = {
       var name = stream.getdents[idx];
       if (name === '.') {
         id = stream.node.id;
-        type = 4; // DT_DIR
+        type = {{{ cDefs.DT_DIR }}};
       }
       else if (name === '..') {
         var lookup = FS.lookupPath(stream.path, { parent: true });
         id = lookup.node.id;
-        type = 4; // DT_DIR
+        type = {{{ cDefs.DT_DIR }}};
       }
       else {
         var child;
@@ -727,10 +727,10 @@ var SyscallsLibrary = {
           throw e;
         }
         id = child.id;
-        type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
-               FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
-               FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
-               8;                             // DT_REG, regular file.
+        type = FS.isChrdev(child.mode) ? {{{ cDefs.DT_CHR }}} : // character device.
+               FS.isDir(child.mode) ? {{{ cDefs.DT_DIR }}} :    // directory
+               FS.isLink(child.mode) ? {{{ cDefs.DT_LNK }}} :   // symbolic link.
+               {{{ cDefs.DT_REG }}};                            // regular file.
       }
 #if ASSERTIONS
       assert(id);
