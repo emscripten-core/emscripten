@@ -58,6 +58,7 @@ from decorators import (
   also_with_asan,
   also_with_minimal_runtime,
   also_with_modularize,
+  also_with_nodefs_both,
   also_with_noderawfs,
   also_with_standalone_wasm,
   also_with_wasm2js,
@@ -5525,7 +5526,16 @@ __EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALI
   @with_all_fs
   @crossplatform
   def test_fs_bad_lookup(self):
-    self.do_runf(path_from_root('test/fs/test_fs_bad_lookup.c'), expected_output='ok')
+    self.do_runf('fs/test_fs_bad_lookup.c', 'ok')
+
+  @also_with_nodefs_both
+  @crossplatform
+  @parameterized({
+    '': ([],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_fsync(self, args):
+    self.do_runf('fs/test_memfs_fsync.c', 'success', cflags=args)
 
   @with_all_fs
   @crossplatform
