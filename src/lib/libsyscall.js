@@ -625,8 +625,8 @@ var SyscallsLibrary = {
       if (stream) {
         if (stream.stream_ops.poll) {
 #if PTHREADS || ASYNCIFY
-          if (isAsyncContext && timeout) {
-            flags = stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd));
+          if (stream.stream_ops.pollAsync && isAsyncContext && timeout) {
+            flags = stream.stream_ops.pollAsync(stream, makeNotifyCallback(stream, pollfd));
           } else
 #endif
           flags = stream.stream_ops.poll(stream, -1);
