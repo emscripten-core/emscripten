@@ -1325,9 +1325,7 @@ window.close = () => {
     self.btest('fs/test_idbfs_fsync.c', '1', cflags=args + [f'-DSECRET="{secret}"', '-lidbfs.js'])
 
   def test_fs_memfs_fsync(self):
-    args = ['-sASYNCIFY', '-sEXIT_RUNTIME']
-    secret = str(time.time())
-    self.btest_exit('fs/test_memfs_fsync.c', cflags=args + [f'-DSECRET="{secret}"'])
+    self.btest_exit('fs/test_memfs_fsync.c', cflags=['-sASYNCIFY', '-sEXIT_RUNTIME'])
 
   def test_fs_workerfs(self):
     create_file('pre.js', '''
