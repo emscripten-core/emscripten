@@ -19,6 +19,13 @@
 
 #include <emscripten/eventloop.h>
 
+int64_t timeval_delta_ms(struct timeval* begin, struct timeval* end) {
+  int64_t delta_s = end->tv_sec - begin->tv_sec;
+  int64_t delta_us =  end->tv_usec -  begin->tv_usec;
+  assert(delta_s >= 0);
+  return (delta_s * 1000) + (delta_us / 1000);
+}
+
 // Check if timeout works without fds
 void test_timeout_without_fds() {
   printf("test_timeout_without_fds\n");
@@ -28,14 +35,15 @@ void test_timeout_without_fds() {
   assert(poll(NULL, 0, 1000) == 0);
   gettimeofday(&end, NULL);
 
-  long ms = (end.tv_sec - begin.tv_sec) * 1000 + (end.tv_usec - begin.tv_usec) / 1000;
-  printf("poll took: %ldms\n", ms);
-  assert(ms >= 1000);
+  int64_t duration = timeval_delta_ms(&begin, &end);
+  printf(" -> duration: %lld ms\n", duration);
+  assert(duration >= 1000);
 }
 
 int pipe_shared[2];
 
 void write_to_pipe(void * arg) {
+  printf("write_to_pipe\n");
   const char *t = "test\n";
   write(pipe_shared[1], t, strlen(t));
 }
@@ -53,12 +61,15 @@ void test_unblock_poll() {
     {pipe_a[0], POLLIN, 0},
     {pipe_shared[0], POLLIN, 0},
   };
-  emscripten_set_timeout(write_to_pipe, 0, NULL);
+  emscripten_set_timeout(write_to_pipe, 1000, NULL);
   gettimeofday(&begin, NULL);
   assert(poll(fds, 2, -1) == 1);
   gettimeofday(&end, NULL);
   assert(fds[1].revents & POLLIN);
-  assert((end.tv_sec - begin.tv_sec) * 1000000 + end.tv_usec - begin.tv_usec >= 1000000);
+
+  int64_t duration = timeval_delta_ms(&begin, &end);
+  printf(" -> duration: %lld ms\n", duration);
+  assert(duration >= 1000);
 
   close(pipe_a[0]); close(pipe_a[1]);
   close(pipe_shared[0]); close(pipe_shared[1]);

@@ -9573,7 +9573,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_poll_blocking_asyncify(self):
     if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
       self.skipTest('test requires setTimeout which is not supported under v8')
-    self.do_runf('core/test_poll_blocking_asyncify.c')
+    self.do_runf('core/test_poll_blocking_asyncify.c', 'done\n')
 
   @parameterized({
     '': ([],),
