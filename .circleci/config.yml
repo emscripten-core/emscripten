@@ -869,6 +869,8 @@ jobs:
       - upload-test-results
   test-bun:
     executor: linux-python
+    environment:
+      EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
       - checkout
       - pip-install
@@ -880,13 +882,7 @@ jobs:
             echo "BUN = os.path.expanduser('~/.bun/bin/bun')" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [BUN]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "
-            core0.test_hello_world
-            core0.test_hello_argc_pthreads
-            core2.test_pthread_create
-            other.test_esm
-            other.test_esm_pthreads
-            "
+          test_targets: "--crossplatform-only"
   test-deno:
     executor: linux-python
     steps:

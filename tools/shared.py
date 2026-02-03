@@ -286,6 +286,8 @@ def _get_node_version_pair(nodejs):
 
 
 def get_node_version(nodejs):
+  if not nodejs:
+    return None
   return _get_node_version_pair(nodejs)[1]
 
 

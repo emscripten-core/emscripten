@@ -88,7 +88,7 @@ assertEqual(() => [arraytostring(arr2.slice(-1)), '["629n"]']);
 assertEqual(() => [arraytostring(arr2.slice(-5, -1)), '["111n","0n","0n","171n"]']);
 assertEqual(() => [arraytostring(arr2.slice(-5, -6)), '[]']);
 
-arr3 = new BigUint64Array(Array.from({length:5}, (_, idx) => BigInt(idx)));
+let arr3 = new BigUint64Array(Array.from({length:5}, (_, idx) => BigInt(idx)));
 assertEqual(() => [arraytostring(arr3), '["0n","1n","2n","3n","4n"]']);
 arr3.copyWithin(0, 2, 10);
 assertEqual(() => [arraytostring(arr3), '["2n","3n","4n","3n","4n"]']);

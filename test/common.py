@@ -943,6 +943,12 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     """Return the default JS engine to run tests under"""
     return self.js_engines[0]
 
+  def engine_is_bun(self):
+    return engine_is_bun(self.get_current_js_engine())
+
+  def engine_is_node(self):
+    return engine_is_node(self.get_current_js_engine())
+
   def get_engine_with_args(self, engine=None):
     if not engine:
       engine = self.get_current_js_engine()

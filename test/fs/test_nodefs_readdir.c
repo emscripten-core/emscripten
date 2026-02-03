@@ -2,18 +2,35 @@
 #include <dirent.h>
 #include <emscripten.h>
 #include <stdio.h>
+#include <string.h>
+
+int compare_strings(const void* a, const void* b) {
+  return strcmp(*(const char**)a, *(const char**)b);
+}
 
 void list_dir(const char *path) {
+  char* entries[64];
+
   printf("listing contents of dir=%s\n", path);
   struct dirent* entry;
   DIR* dir = opendir(path);
   assert(dir);
   int n = 0;
   while ((entry = readdir(dir)) != NULL) {
-    printf("%s\n", entry->d_name);
+    entries[n] = strdup(entry->d_name);
     ++n;
   }
   assert(n);
+
+  // Sort the array of entries before printing them so that this
+  // part of the test output is deterministic.
+  printf("sorted contents of dir=%s:\n", path);
+  qsort(entries, n, sizeof(char*), compare_strings);
+  for (int i = 0; i < n; i++) {
+    printf("- %s\n", entries[i]);
+    free(entries[i]);
+  }
+
   closedir(dir);
 }
 
