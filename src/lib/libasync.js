@@ -527,6 +527,10 @@ addToLibrary({
 
   $Fibers__deps: ['$Asyncify', 'emscripten_stack_set_limits', '$stackRestore'],
   $Fibers: {
+#if ASYNCIFY == 2
+    lastContinuationId: 0,
+    continuations: [],
+#endif
     nextFiber: 0,
     trampolineRunning: false,
     trampoline() {
@@ -557,6 +561,32 @@ addToLibrary({
 
       stackRestore({{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr,   '*') }}});
 
+#if ASYNCIFY == 2
+      const continuationId = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.asyncify_data + C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
+
+      if (continuationId !== 0) {
+#if ASYNCIFY_DEBUG
+        dbg('ASYNCIFY/FIBER: resuming fiber', newFiber);
+#endif
+        const continuation = Fibers.continuations[continuationId];
+        Fibers.continuations[continuationId] = null;
+        continuation();
+      } else {
+        var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, '*') }}};
+
+#if ASYNCIFY_DEBUG
+        dbg('ASYNCIFY/FIBER: entering fiber', newFiber, 'for the first time');
+#endif
+
+#if STACK_OVERFLOW_CHECK
+        writeStackCookie();
+#endif
+
+        var userData = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.user_data, '*') }}};
+
+        {{{ makeDynCall('vp', 'entryPoint', true) }}}(userData);
+      }
+#else // ASYNCIFY == 1
       var entryPoint = {{{ makeGetValue('newFiber', C_STRUCTS.emscripten_fiber_s.entry, '*') }}};
 
       if (entryPoint !== 0) {
@@ -582,6 +612,7 @@ addToLibrary({
         _asyncify_start_rewind(asyncifyData);
         Asyncify.doRewind(asyncifyData);
       }
+#endif // ASYNCIFY == 1
     },
   },
 
@@ -590,8 +621,36 @@ addToLibrary({
   emscripten_fiber_swap: (oldFiber, newFiber) => {
     if (ABORT) return;
 #if ASYNCIFY_DEBUG
-    dbg('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber, 'state:', Asyncify.state);
+    dbg('ASYNCIFY/FIBER: swap', oldFiber, '->', newFiber,
+#if ASYNCIFY == 1
+    'state:', Asyncify.state
 #endif
+    );
+#endif
+
+#if ASYNCIFY == 2
+    var stackTop = stackSave();
+    {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.stack_ptr, 'stackTop', '*') }}};
+
+    Fibers.nextFiber = newFiber;
+
+    let continuationId = {{{ makeGetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.asyncify_data + C_STRUCTS.asyncify_data_s.rewind_id, 'i32') }}};
+    if (!continuationId) {
+      Fibers.lastContinuationId++;
+      continuationId = Fibers.lastContinuationId;
+    }
+
+    {{{ makeSetValue('oldFiber', C_STRUCTS.emscripten_fiber_s.asyncify_data + C_STRUCTS.asyncify_data_s.rewind_id, 'continuationId', 'i32') }}};
+
+    const promise = new Promise(resolve => { Fibers.continuations[continuationId] = resolve; });
+
+    if (!Fibers.trampolineRunning) {
+      Promise.resolve().then(Fibers.trampoline);
+    }
+
+    return promise;
+
+#else // ASYNCIFY == 1
     if (Asyncify.state === Asyncify.State.Normal) {
       Asyncify.state = Asyncify.State.Unwinding;
 
@@ -619,6 +678,7 @@ addToLibrary({
       _asyncify_stop_rewind();
       Asyncify.currData = null;
     }
+#endif // ASYNCIFY == 1
   },
 #else // ASYNCIFY
   emscripten_sleep: () => {
