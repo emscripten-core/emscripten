@@ -548,7 +548,7 @@ var WasiLibrary = {
 #if ASYNCIFY || PTHREADS
     return new Promise((resolve) => {
       var mount = stream.node.mount;
-      if (mount && mount.type.syncfs) {
+      if (mount?.type.syncfs) {
         mount.type.syncfs(mount, false, (err) => resolve(err ? {{{ cDefs.EIO }}} : 0));
       } else {
         resolve(rtn);
