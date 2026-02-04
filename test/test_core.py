@@ -7643,6 +7643,7 @@ void* operator new(size_t size) {
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
 
   def test_embind_val_coro_catch_cpp_exception(self):
+    self.set_setting('EXCEPTION_STACK_TRACES')
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.catchCppExceptionPromise().then(console.log);
     }''')
