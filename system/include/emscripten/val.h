@@ -806,7 +806,6 @@ inline void val::awaiter::reject_with(val&& error) {
     coro.handle.destroy();
     return;
   }
-  //TODO Else terminate immediately?
 #endif
 
   state.emplace<state_error>(std::move(error));
