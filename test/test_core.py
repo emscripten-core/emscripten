@@ -9532,8 +9532,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @with_asyncify_and_jspi
   @no_modularize_instance('uses ccall')
   def test_em_async_js(self):
-    if not self.get_setting('ASYNCIFY'):
-      self.set_setting('ASYNCIFY')
     self.set_setting('EXPORTED_RUNTIME_METHODS', 'ccall')
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')
