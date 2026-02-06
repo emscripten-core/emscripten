@@ -11,4 +11,6 @@ import sys
 
 from tools import shared
 
-shared.exec_process([shared.LLVM_STRIP] + sys.argv[1:])
+llvm_strip = shared.llvm_tool_path('llvm-strip')
+
+shared.exec_process([llvm_strip] + sys.argv[1:])
