@@ -225,7 +225,9 @@ class codesize(RunnerCore):
   def run_codesize_test(self, filename, cflags, check_funcs=True, check_full_js=False, skip_gz=False):
     # in -Os, -Oz, we remove imports wasm doesn't need
     print('Running codesize test: %s:' % filename, cflags, check_funcs, check_full_js)
-    filename = test_file('codesize', filename)
+    filename = test_file(filename)
+    if not filename:
+      filename = test_file('codesize', filename)
     expected_basename = test_file('codesize', self.id().split('.')[-1])
 
     # Run once without closure and parse output to find wasmImports
@@ -371,6 +373,9 @@ class codesize(RunnerCore):
   })
   def test_codesize_hello(self, args, kwargs={}): # noqa
     self.run_codesize_test('hello_world.c', args, **kwargs)
+
+  def test_codesize_legacy_gl(self):
+    self.run_codesize_test('browser/test_sdl_ogl.c', ['-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'])
 
   @parameterized({
     'O3':                 ('mem.c', ['-O3']),
