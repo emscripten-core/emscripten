@@ -4523,6 +4523,7 @@ Module.print = (x) => { throw '<{(' + x + ')}>' };
     'gch': ['gch'],
     'pch': ['pch'],
   })
+  @crossplatform
   def test_precompiled_headers(self, suffix):
     create_file('header.h', '#define X 5\n')
     self.run_process([EMCC, '-xc++-header', 'header.h', '-c'])
@@ -4545,11 +4546,11 @@ int main() {
 
     # also verify that the gch is actually used
     err = self.run_process([EMXX, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
-    self.assertTextDataContained('*** PCH/Modules Loaded:\nModule: header.h.pch', err)
+    self.assertContained(r'PCH/Modules Loaded:\nModule: .*header.h.pch', err.replace('\r\n', '\n'), regex=True)
     # and sanity check it is not mentioned when not
     delete_file('header.h.' + suffix)
     err = self.run_process([EMXX, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
-    self.assertNotContained('*** PCH/Modules Loaded:\nModule: header.h.' + suffix, err.replace('\r\n', '\n'))
+    self.assertNotContained(r'PCH/Modules Loaded:', err, regex=True)
 
     # with specified target via -o
     delete_file('header.h.' + suffix)
