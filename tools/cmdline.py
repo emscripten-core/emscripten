@@ -793,10 +793,6 @@ def apply_user_settings():
       # used for warnings in emscripten.py
       settings.USER_EXPORTS = settings.EXPORTED_FUNCTIONS.copy()
 
-    # TODO(sbc): Remove this legacy way.
-    if key == 'WASM_OBJECT_FILES':
-      settings.LTO = 0 if value else 'full'
-
     if key == 'JSPI':
       settings.ASYNCIFY = 2
     if key == 'JSPI_IMPORTS':

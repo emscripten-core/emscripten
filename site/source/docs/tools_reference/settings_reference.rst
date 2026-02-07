@@ -3511,7 +3511,7 @@ for backwards compatibility with older versions:
  - ``ELIMINATE_DUPLICATE_FUNCTIONS``: Duplicate function elimination for wasm is handled automatically by binaryen (Valid values: [0, 1])
  - ``ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS``: Duplicate function elimination for wasm is handled automatically by binaryen (Valid values: [0])
  - ``ELIMINATE_DUPLICATE_FUNCTIONS_PASSES``: Duplicate function elimination for wasm is handled automatically by binaryen (Valid values: [5])
- - ``WASM_OBJECT_FILES``: For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow (Valid values: [0, 1])
+ - ``WASM_OBJECT_FILES``: For LTO, use -flto or -fto=thin instead. Otherwise, Wasm object files are the default (Valid values: [1])
  - ``TOTAL_MEMORY``: Valid values: INITIAL_MEMORY
  - ``WASM_MEM_MAX``: Valid values: MAXIMUM_MEMORY
  - ``BINARYEN_MEM_MAX``: Valid values: MAXIMUM_MEMORY

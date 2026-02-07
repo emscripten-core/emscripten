@@ -200,8 +200,7 @@ LEGACY_SETTINGS = [
     ['ELIMINATE_DUPLICATE_FUNCTIONS', [0, 1], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
     ['ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS', [0], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
     ['ELIMINATE_DUPLICATE_FUNCTIONS_PASSES', [5], 'Duplicate function elimination for wasm is handled automatically by binaryen'],
-    # WASM_OBJECT_FILES is handled in emcc.py, supporting both 0 and 1 for now.
-    ['WASM_OBJECT_FILES', [0, 1], 'For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow'],
+    ['WASM_OBJECT_FILES', [1], 'For LTO, use -flto or -fto=thin instead. Otherwise, Wasm object files are the default'],
     ['TOTAL_MEMORY', 'INITIAL_MEMORY'],
     ['WASM_MEM_MAX', 'MAXIMUM_MEMORY'],
     ['BINARYEN_MEM_MAX', 'MAXIMUM_MEMORY'],

@@ -8470,8 +8470,6 @@ int main() {
       ([], False),
       (['-flto'], True),
       (['-flto=thin'], True),
-      (['-sWASM_OBJECT_FILES=0'], True),
-      (['-sWASM_OBJECT_FILES'], False),
     ]:
       self.run_process([EMCC, test_file('hello_world.c')] + flags + ['-c', '-o', 'a.o'])
       seen_bitcode = is_bitcode('a.o')
