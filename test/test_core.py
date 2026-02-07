@@ -31,6 +31,7 @@ from common import (
   engine_is_node,
   engine_is_v8,
   env_modify,
+  get_nodejs,
   path_from_root,
   read_binary,
   read_file,
@@ -6977,7 +6978,7 @@ void* operator new(size_t size) {
     # Binaryen's '--instrument-locals' will add their logging functions if
     # reference-types is enabled. So make sure this test passes when
     # reference-types feature is enabled as well.
-    self.node_args += shared.node_reference_types_flags(self.get_nodejs())
+    self.node_args += shared.node_reference_types_flags(get_nodejs())
     output = self.do_runf('core/test_autodebug.c', 'success', cflags=['-mreference-types'])
     # test that the program both works and also emits some of the logging
     # (but without the specific output, as it is logging the actual locals
@@ -9552,7 +9553,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('wasm2js does not support reference types')
   @no_asan('https://github.com/llvm/llvm-project/pull/83196')
   def test_externref_emjs(self, dynlink):
-    self.node_args += shared.node_reference_types_flags(self.get_nodejs())
+    self.node_args += shared.node_reference_types_flags(get_nodejs())
     if dynlink:
       self.check_dylink()
       self.set_setting('MAIN_MODULE', 2)

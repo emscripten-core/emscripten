@@ -49,6 +49,7 @@ from common import (
   ensure_dir,
   env_modify,
   exe_path_from_root,
+  get_nodejs,
   make_executable,
   path_from_root,
   test_file,
@@ -12946,7 +12947,7 @@ void foo() {}
     self.build('main.c', cflags=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=0'])
     self.assertNotContained('unhandledRejection', read_file('main.js'))
 
-    if not self.get_nodejs() or shared.get_node_version(self.get_nodejs())[0] >= 15:
+    if not get_nodejs() or shared.get_node_version(get_nodejs())[0] >= 15:
       self.skipTest('old behaviour of node JS cannot be tested on node v15 or above')
 
     output = self.run_js('main.js')
@@ -13497,7 +13498,7 @@ int main() {
   @also_with_minimal_runtime
   def test_shared_memory(self):
     self.do_runf('wasm_worker/shared_memory.c', '0', cflags=[])
-    self.node_args += shared.node_pthread_flags(self.get_nodejs())
+    self.node_args += shared.node_pthread_flags(get_nodejs())
     self.do_runf('wasm_worker/shared_memory.c', '1', cflags=['-sSHARED_MEMORY'])
     self.do_runf('wasm_worker/shared_memory.c', '1', cflags=['-sWASM_WORKERS'])
     self.do_runf('wasm_worker/shared_memory.c', '1', cflags=['-pthread'])
@@ -14034,7 +14035,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       # The `requires_node` decorator above also allows for node-like environments such as
       # bun, but this test requires actual node.
       self.skipTest('requires nodejs')
-    node_version = shared.get_node_version(self.get_nodejs())
+    node_version = shared.get_node_version(get_nodejs())
     node_version = '.'.join(str(x) for x in node_version)
     self.set_setting('MIN_NODE_VERSION', 300000)
     expected = 'This emscripten-generated code requires node v30.0.0 (detected v%s' % node_version
