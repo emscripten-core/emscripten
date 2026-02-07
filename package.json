@@ -17,11 +17,11 @@
     "ws": "^8.19.0"
   },
   "dependencies": {
-    "@babel/cli": "^7.28.3",
-    "@babel/core": "^7.28.5",
-    "@babel/preset-env": "^7.28.5",
+    "@babel/cli": "^7.28.6",
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.0",
     "acorn": "^8.15.0",
-    "google-closure-compiler": "20240317.0.0",
+    "google-closure-compiler": "20260128.0.0",
     "html-minifier-terser": "7.2.0"
   },
   "scripts": {
