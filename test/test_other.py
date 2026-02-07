@@ -9994,6 +9994,25 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-O2'] + args)
     self.verify_custom_sec_existence('a.out.wasm', 'target_features', False)
 
+  @parameterized({
+    '': ([],),
+    'nobigint': (['-sWASM_BIGINT=0'],),
+    'O2': (['-O2'],),
+  })
+  def test_func_attr_section(self, args):
+    # Verify that clang function annotation don't survive in the final wasm binary.
+    create_file('test.c', '''
+      [[clang::annotate("foobar")]]
+      int main() {
+        return 0;
+      }
+    ''')
+    self.run_process([EMCC, 'test.c'] + args)
+    with webassembly.Module('a.out.wasm') as module:
+      for section in module.sections():
+        if section.type == webassembly.SecType.CUSTOM:
+          self.assertNotIn('foobar', section.name)
+
   def test_wasm_features(self):
     # Test that wasm features are explicitly enabled or disabled based on
     # target engine version. Here we are reading the features section and
