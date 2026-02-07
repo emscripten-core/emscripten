@@ -307,10 +307,14 @@ null;
 
 }
 
-#if WASM == 2
+#if WASM == 2 || MODULARIZE
 , (error) => {
 #if ASSERTIONS
   console.error(error);
+#endif
+
+#if MODULARIZE
+  readyPromiseReject?.(error);
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_SHELL
@@ -325,7 +329,7 @@ null;
   }
 #endif
 }
-#endif // WASM == 2
+#endif // WASM == 2 || MODULARIZE
 );
 
 #if PTHREADS || WASM_WORKERS
