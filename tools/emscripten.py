@@ -429,11 +429,14 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     set_memory(static_bump)
     logger.debug('stack_low: %d, stack_high: %d, heap_base: %d', settings.STACK_LOW, settings.STACK_HIGH, settings.HEAP_BASE)
 
-    # When building relocatable output (e.g. MAIN_MODULE) the reported table
-    # size does not include the reserved slot at zero for the null pointer.
-    # So we need to offset the elements by 1.
-    if settings.INITIAL_TABLE == -1:
-      settings.INITIAL_TABLE = dylink_sec.table_size + 1
+  if settings.IMPORTED_TABLE and settings.INITIAL_TABLE == -1:
+    # For builds with IMPORTED_TABLE, get the table size from the wasm module's
+    # table import.
+    with webassembly.Module(in_wasm) as module:
+      table_import = module.get_function_table_import()
+      if not table_import:
+        exit_with_error('IMPORTED_TABLE requires a table import in the wasm module')
+      settings.INITIAL_TABLE = table_import.limits.initial
 
   if metadata.invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
@@ -823,8 +826,10 @@ def add_standard_wasm_imports(send_items_map):
   if settings.IMPORTED_MEMORY:
     send_items_map['memory'] = 'wasmMemory'
 
-  if settings.RELOCATABLE:
+  if settings.IMPORTED_TABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
+
+  if settings.RELOCATABLE:
     if settings.MEMORY64:
       send_items_map['__table_base32'] = '___table_base32'
 

@@ -176,6 +176,13 @@ def lld_flags_for_executable(external_symbols):
   if settings.IMPORTED_MEMORY:
     cmd.append('--import-memory')
 
+  if settings.IMPORTED_TABLE:
+    cmd.append('--import-table')
+  else:
+    cmd.append('--export-table')
+    if settings.ALLOW_TABLE_GROWTH:
+      cmd.append('--growable-table')
+
   if settings.SHARED_MEMORY:
     cmd.append('--shared-memory')
 
@@ -235,10 +242,6 @@ def lld_flags_for_executable(external_symbols):
       cmd.append('-pie')
     if not settings.LINKABLE:
       cmd.append('--no-export-dynamic')
-  else:
-    cmd.append('--export-table')
-    if settings.ALLOW_TABLE_GROWTH:
-      cmd.append('--growable-table')
 
   if not settings.SIDE_MODULE:
     cmd += ['-z', 'stack-size=%s' % settings.STACK_SIZE]

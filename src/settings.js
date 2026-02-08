@@ -2142,6 +2142,14 @@ var PURE_WASI = false;
 // [link]
 var IMPORTED_MEMORY = false;
 
+// Set to 1 to define the WebAssembly.Table object outside of the wasm module.
+// By default the wasm module defines the table and exports it to JavaScript.
+// Use of the `RELOCATABLE` setting will enable this setting since it depends
+// on defining the table in JavaScript.
+//
+// [link]
+var IMPORTED_TABLE = false;
+
 // Generate code to load split wasm modules.
 // This option will automatically generate two wasm files as output, one
 // with the ``.orig`` suffix and one without.  The default file (without

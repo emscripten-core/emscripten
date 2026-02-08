@@ -2258,6 +2258,20 @@ int main(int argc, char **argv) {
     self.set_setting('INCOMING_MODULE_JS_API', ['wasmMemory'])
     self.do_runf('core/test_module_wasm_memory.c', 'success', cflags=['--pre-js', test_file('core/test_module_wasm_memory.js')])
 
+  def test_module_wasm_table(self):
+    create_file('pre.js', '''
+    Module['preRun'] = () => {
+      assert(typeof wasmTable === 'object', 'wasmTable should be defined');
+      console.log('table check passed');
+    };
+    ''')
+    # Without IMPORTED_TABLE, wasmTable is not yet defined when pre.js code is run
+    self.do_runf('hello_world.c', 'wasmTable should be defined',
+                 cflags=['--pre-js', 'pre.js'], assert_returncode=NON_ZERO)
+    # With IMPORTED_TABLE, wasmTable is available
+    self.set_setting('IMPORTED_TABLE')
+    self.do_runf('hello_world.c', 'table check passed', cflags=['--pre-js', 'pre.js'])
+
   def test_ssr(self): # struct self-ref
     src = '''
       #include <stdio.h>
