@@ -55,10 +55,12 @@ def glob_in_path(path, glob_pattern, excludes=()):
   return sorted(f for f in files if os.path.basename(f) not in excludes)
 
 
-def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
+def get_base_cflags(build_dir, force_object_files=False, preprocess=True, werror=True):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
-  flags = ['-g', '-sSTRICT', '-Werror']
+  flags = ['-g', '-sSTRICT']
+  if werror:
+    flags += ['-Werror']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE or settings.MAIN_MODULE:
@@ -355,6 +357,10 @@ class Library:
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
 
+  # Enable the `-Werror` compiler flag. Not all system libraries can compile with
+  # `-Werror`. If that is the case, override this to false.
+  enable_werror = True
+
   # A list of flags to pass to emcc.
   # The flags for the parent class is automatically inherited.
   # TODO: Investigate whether perf gains from loop unrolling would be worth the
@@ -476,7 +482,7 @@ class Library:
     self.build_dir = build_dir
 
     cflags = self.get_cflags()
-    asflags = get_base_cflags(self.build_dir, preprocess=False)
+    asflags = get_base_cflags(self.build_dir, preprocess=False, werror=self.enable_werror)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
     create_ninja_file(input_files, ninja_file, libname, cflags, asflags=asflags, customize_build_flags=self.customize_build_cmd)
@@ -506,7 +512,7 @@ class Library:
         # .s files are processed directly by the assembler.  In this case we can't pass
         # pre-processor flags such as `-I` and `-D` but we still want core flags such as
         # `-sMEMORY64`.
-        cmd += get_base_cflags(self.build_dir, preprocess=False)
+        cmd += get_base_cflags(self.build_dir, preprocess=False, werror=self.enable_werror)
       else:
         cmd += cflags
       cmd = self.customize_build_cmd(cmd, src)
@@ -595,7 +601,7 @@ class Library:
     Override and add any flags as needed to handle new variations.
     """
     cflags = self._inherit_list('cflags')
-    cflags += get_base_cflags(self.build_dir, force_object_files=self.force_object_files)
+    cflags += get_base_cflags(self.build_dir, force_object_files=self.force_object_files, werror=self.enable_werror)
 
     if self.includes:
       cflags += ['-I' + utils.path_from_root(i) for i in self._inherit_list('includes')]
@@ -2284,6 +2290,38 @@ class libstubs(DebugLibrary):
   includes = ['system/lib/libc/musl/src/include']
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
+class libomp(Library):
+  name = 'libomp'
+  includes = [
+    '/system/lib/libomp/src',
+    '/system/lib/libomp/src/i18n',
+    '/system/lib/libomp/src/include',
+    '/system/lib/libomp/src/thirdparty/ittnotify',
+  ]
+  # This needs to come from the flags. If it does not, llvm won't add propper magic symbols
+  never_force = True
+  enable_werror = False
+  cflags = [
+    '-D_GLIBCXX_NO_ASSERTIONS', '-Wall', '-Wcast-qual', '-Wformat-pedantic',
+    '-Wimplicit-fallthrough', '-Wsign-compare', '-Wno-extra', '-Wno-pedantic',
+    '-fdata-sections', '-O3', '-DNDEBUG', '-pthread',
+    '-std=c++17', '-D', '_GNU_SOURCE', '-D', '_REENTRANT', '-U_GLIBCXX_ASSERTIONS',
+    '-fno-exceptions', '-fno-rtti', '-Wno-covered-switch-default',
+    '-Wno-frame-address', '-Wno-strict-aliasing', '-Wno-switch',
+    '-Wno-uninitialized', '-Wno-return-type-c-linkage', '-Wno-cast-qual',
+    '-Wno-int-to-void-pointer-cast', '-m32',
+  ]
+  src_dir = 'system/lib/libomp/src'
+  src_files = [
+    'kmp_alloc.cpp', 'kmp_atomic.cpp', 'kmp_csupport.cpp', 'kmp_debug.cpp',
+    'kmp_itt.cpp', 'kmp_environment.cpp', 'kmp_error.cpp', 'kmp_global.cpp',
+    'kmp_i18n.cpp', 'kmp_io.cpp', 'kmp_runtime.cpp', 'kmp_settings.cpp',
+    'kmp_str.cpp', 'kmp_tasking.cpp', 'kmp_threadprivate.cpp', 'kmp_utility.cpp',
+    'kmp_barrier.cpp', 'kmp_wait_release.cpp', 'kmp_affinity.cpp', 'kmp_dispatch.cpp',
+    'kmp_lock.cpp', 'kmp_sched.cpp', 'kmp_collapse.cpp', 'z_Linux_util.cpp',
+    'kmp_gsupport.cpp', 'kmp_taskdeps.cpp', 'kmp_cancel.cpp', 'kmp_ftn_cdecl.cpp',
+    'kmp_ftn_extra.cpp', 'kmp_version.cpp', 'z_Linux_asm.S',
+  ]
 
 def get_libs_to_link(options):
   libs_to_link = []
@@ -2393,6 +2431,9 @@ def get_libs_to_link(options):
   # libc math.
   if settings.JS_MATH:
     add_library('libjsmath')
+
+  if settings.OPENMP:
+    add_library("libomp")
 
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
@@ -2510,6 +2551,8 @@ def install_system_headers(stamp):
     'system/lib/libcxx/include': 'c++/v1',
     'system/lib/libcxxabi/include': 'c++/v1',
     'system/lib/mimalloc/include': '',
+    # Install openmp headers
+    'system/lib/libomp/include': '',
   }
 
   target_include_dir = cache.get_include_dir()
