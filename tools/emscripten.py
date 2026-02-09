@@ -589,7 +589,7 @@ def finalize_wasm(infile, outfile, js_syms):
   # For sections we no longer need, strip now to speed subsequent passes.
   # If Binaryen is not needed, this is also our last chance to strip.
   # The `llvm.func_attr.annotate` are created by `[[clang::annotate]]` or
-  # similar.  We have some plans to use them for emscriptem metadata but
+  # similar.  We have some plans to use them for emscripten metadata but
   # they should not persist in the final binary.
   strip_sections = ['llvm.func_attr.annotate.*']
   if not settings.EMIT_PRODUCERS_SECTION:
