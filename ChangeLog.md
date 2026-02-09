@@ -24,8 +24,8 @@ See docs/process.md for more on how version tagging works.
   To use this feature you now need to explictly add `logReadFiles` to
   `INCOMING_MODULE_JS_API`. (#26190);
 - Support for the `WASM_OBJECT_FILES` setting (which has been long deprecated)
-  was removed.  `-flto` enabled bitcode object, otherwise Wasm object have been
-  the default for a long time now. (#26219).
+  was removed.  `-flto` enables bitcode object files, otherwise Wasm object
+  files have been the default for a long time already. (#26219).
 
 5.0.0 - 01/24/26
 ----------------
