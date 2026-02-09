@@ -85,6 +85,7 @@ mypy_path = "third_party/,third_party/ply,third_party/websockify"
 files = [ "." ]
 exclude = '''
 (?x)(
+out |
 cache |
 third_party |
 conf\.py |

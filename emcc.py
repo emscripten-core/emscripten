@@ -57,6 +57,21 @@ if os.path.exists(utils.path_from_root('.git')) and os.path.exists(utils.path_fr
   import bootstrap
   bootstrap.check()
 
+
+def check_python_path():
+  # When testing emscripten we install test-only python dependecies in `out/python_deps`.
+  # However, these should never become dependnecies of emscripten itself, so we assert here
+  # that we cannot use them, to keep honest
+  root = os.path.normpath(utils.path_from_root())
+  for p in sys.path:
+    p = os.path.normpath(p)
+    assert 'python_deps' not in p
+    if p != root and p != os.path.join(root, 'third_party'):
+      assert not p.startswith(root), f'unexpected element in python path: {p}'
+
+
+check_python_path()
+
 PREPROCESSED_EXTENSIONS = {'.i', '.ii'}
 ASSEMBLY_EXTENSIONS = {'.s'}
 HEADER_EXTENSIONS = {'.h', '.hxx', '.hpp', '.hh', '.H', '.HXX', '.HPP', '.HH'}
