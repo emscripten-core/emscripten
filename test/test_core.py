@@ -2258,6 +2258,7 @@ int main(int argc, char **argv) {
     self.set_setting('INCOMING_MODULE_JS_API', ['wasmMemory'])
     self.do_runf('core/test_module_wasm_memory.c', 'success', cflags=['--pre-js', test_file('core/test_module_wasm_memory.js')])
 
+  @no_wasm2js('no WebAssembly.Table()')
   def test_imported_table(self):
     create_file('pre.js', '''
     Module['preRun'] = () => {
