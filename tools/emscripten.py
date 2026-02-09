@@ -437,6 +437,11 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
       if not table_import:
         exit_with_error('IMPORTED_TABLE requires a table import in the wasm module')
       settings.INITIAL_TABLE = table_import.limits.initial
+    if settings.RELOCATABLE:
+      # When building relocatable output (e.g. MAIN_MODULE) the reported table
+      # size does not include the reserved slot at zero for the null pointer.
+      # So we need to offset the elements by 1.
+      settings.INITIAL_TABLE += 1
 
   if metadata.invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
