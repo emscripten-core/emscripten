@@ -1061,11 +1061,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       fail_message += '\n' + msg
     self.fail(fail_message)
 
-  def assertTextDataContained(self, text1, text2):
-    text1 = text1.replace('\r\n', '\n')
-    text2 = text2.replace('\r\n', '\n')
-    return self.assertContained(text1, text2)
-
   def assertFileContents(self, filename, contents):
     if EMTEST_VERBOSE:
       print(f'Comparing results contents of file: {filename}')
@@ -1108,13 +1103,16 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         additional_info,
       ))
 
-  def assertNotContained(self, value, string):
+  def assertNotContained(self, value, string, regex=False):
     if callable(value):
       value = value() # lazy loading
     if callable(string):
       string = string()
-    if value in string:
-      self.fail("Expected to NOT find '%s' in '%s'" % (limit_size(value), limit_size(string)))
+    if regex:
+      self.assertFalse(re.search(value, string, re.DOTALL), 'Expected regex "%s" NOT to match on:\n%s' % (value, limit_size(string)))
+    else:
+      if value in string:
+        self.fail("Expected to NOT find '%s' in '%s'" % (limit_size(value), limit_size(string)))
 
   def assertContainedIf(self, value, string, condition):
     if condition:
