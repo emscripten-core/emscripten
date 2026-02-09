@@ -829,9 +829,8 @@ def add_standard_wasm_imports(send_items_map):
   if settings.IMPORTED_TABLE:
     send_items_map['__indirect_function_table'] = 'wasmTable'
 
-  if settings.RELOCATABLE:
-    if settings.MEMORY64:
-      send_items_map['__table_base32'] = '___table_base32'
+  if settings.RELOCATABLE and settings.MEMORY64:
+    send_items_map['__table_base32'] = '___table_base32'
 
   if settings.AUTODEBUG:
     extra_sent_items += [
