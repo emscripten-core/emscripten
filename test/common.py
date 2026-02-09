@@ -291,6 +291,26 @@ def engine_is_bun(engine):
   return match_engine_executable(engine, 'bun')
 
 
+def get_engine(predicate):
+  """Return engine that satifies predicate, if one is configured, otherwise None"""
+  for engine in config.JS_ENGINES:
+    if predicate(engine):
+      return engine
+  return None
+
+
+def get_nodejs():
+  return get_engine(engine_is_node)
+
+
+def get_v8():
+  return get_engine(engine_is_v8)
+
+
+def get_bun():
+  return get_engine(engine_is_bun)
+
+
 class RunnerMeta(type):
   @classmethod
   def make_test(mcs, name, func, suffix, args):
@@ -386,13 +406,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('dynamic linking not supported with MEMORY64=2')
 
-  def get_v8(self):
-    """Return v8 engine, if one is configured, otherwise None"""
-    for engine in config.JS_ENGINES:
-      if engine_is_v8(engine):
-        return engine
-    return None
-
   def require_pthreads(self):
     self.cflags += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
@@ -400,7 +413,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     for engine in self.js_engines:
       if engine_is_node(engine):
         self.require_node()
-        nodejs = self.get_nodejs()
+        nodejs = get_nodejs()
         self.node_args += shared.node_pthread_flags(nodejs)
         return
       elif engine_is_bun(engine) or engine_is_deno(engine):
@@ -411,29 +424,16 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def require_v8(self):
     if 'EMTEST_SKIP_V8' in os.environ:
       self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
-    v8 = self.get_v8()
+    v8 = get_v8()
     if not v8:
       self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
     self.require_engine(v8)
     self.cflags.append('-sENVIRONMENT=shell')
 
-  def get_nodejs(self):
-    """Return nodejs engine, if one is configured, otherwise None"""
-    for engine in config.JS_ENGINES:
-      if engine_is_node(engine):
-        return engine
-    return None
-
-  def get_bun(self):
-    for engine in config.JS_ENGINES:
-      if engine_is_bun(engine):
-        return engine
-    return None
-
   def require_node(self):
     if 'EMTEST_SKIP_NODE' in os.environ:
       self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
-    nodejs = self.get_nodejs() or self.get_bun()
+    nodejs = get_nodejs() or get_bun()
     if not nodejs:
       self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(nodejs)
@@ -442,7 +442,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def require_node_25(self):
     if 'EMTEST_SKIP_NODE_25' in os.environ:
       self.skipTest('test requires node v25 and EMTEST_SKIP_NODE_25 is set')
-    nodejs = self.get_nodejs()
+    nodejs = get_nodejs()
     if not nodejs:
       self.skipTest('Test requires nodejs to run')
     if not self.try_require_node_version(25, 0, 0):
@@ -465,7 +465,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(24):
       return
 
-    v8 = self.get_v8()
+    v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
@@ -474,7 +474,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def try_require_node_version(self, major, minor = 0, revision = 0):
-    nodejs = self.get_nodejs()
+    nodejs = get_nodejs()
     if not nodejs:
       self.skipTest('Test requires nodejs to run')
     version = shared.get_node_version(nodejs)
@@ -493,7 +493,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(16):
       return
 
-    v8 = self.get_v8()
+    v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
@@ -513,7 +513,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(17):
       return
 
-    v8 = self.get_v8()
+    v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
@@ -534,7 +534,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.node_args.append('--experimental-wasm-exnref')
       return
 
-    v8 = self.get_v8()
+    v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
@@ -563,7 +563,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.node_args += ['--experimental-wasm-stack-switching']
       return
 
-    v8 = self.get_v8()
+    v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
@@ -651,7 +651,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.node_args = ['--stack-trace-limit=50', '--trace-uncaught']
     self.spidermonkey_args = ['-w']
 
-    nodejs = self.get_nodejs()
+    nodejs = get_nodejs()
     if nodejs:
       node_version = shared.get_node_version(nodejs)
       if node_version < (13, 0, 0):
