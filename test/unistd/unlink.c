@@ -67,24 +67,27 @@ void test() {
   // Test empty pathname
   err = unlink("");
   assert(err == -1);
-  printf("%s\n", strerror(errno));
+  printf("errno: %s\n", strerror(errno));
   assert(errno == ENOENT);
 
   err = unlink("dir-readonly");
   assert(err == -1);
+  printf("errno: %s\n", strerror(errno));
 
   // emscripten uses 'musl' which is an implementation of the standard library for Linux-based systems
 #if defined(__linux__) || defined(__EMSCRIPTEN__)
   // Here errno is supposed to be EISDIR, but it is EPERM for NODERAWFS on macOS.
-  // See issue #6121.
-  assert(errno == EISDIR || errno == EPERM);
+  // See https://github.com/emscripten-core/emscripten/issues/6121.
+  // Also, deno returns ENOTEMPTY:
+  // https://github.com/emscripten-core/emscripten/issues/26240
+  assert(errno == EISDIR || errno == EPERM || errno == ENOTEMPTY);
 #else
   assert(errno == EPERM);
 #endif
 
 #ifndef SKIP_ACCESS_TESTS
   err = unlink("dir-readonly/anotherfile");
-  printf("err: %d %d\n", err, errno);
+  printf("unlink: %d %s\n", err, strerror(errno));
   assert(err == -1);
   assert(errno == EACCES);
 #endif

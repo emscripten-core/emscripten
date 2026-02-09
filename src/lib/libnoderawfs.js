@@ -15,6 +15,11 @@ addToLibrary({
         try {
           return func(...args)
         } catch (e) {
+          // Hack for Deno which throws BadResource instead of EBADF:
+          // https://github.com/emscripten-core/emscripten/issues/26239
+          if (e.name == 'BadResource') {
+            e.code = 'EBADF';
+          }
           if (e.code) {
             throw new FS.ErrnoError(ERRNO_CODES[e.code]);
           }

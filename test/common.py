@@ -311,6 +311,10 @@ def get_bun():
   return get_engine(engine_is_bun)
 
 
+def get_deno():
+  return get_engine(engine_is_deno)
+
+
 class RunnerMeta(type):
   @classmethod
   def make_test(mcs, name, func, suffix, args):
@@ -433,7 +437,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def require_node(self):
     if 'EMTEST_SKIP_NODE' in os.environ:
       self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
-    nodejs = get_nodejs() or get_bun()
+    nodejs = get_nodejs() or get_bun() or get_deno()
     if not nodejs:
       self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(nodejs)
@@ -686,7 +690,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES
     engine = self.get_current_js_engine()
-    if not engine_is_node(engine) and not engine_is_bun(engine):
+    if not engine_is_node(engine) and not engine_is_bun(engine) and not engine_is_deno(engine):
       # If our current JS engine a "shell" environment we need to explicitly enable support for
       # it in ENVIRONMENT.
       default_envs = 'web,webview,worker,node'
@@ -946,6 +950,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def engine_is_bun(self):
     return engine_is_bun(self.get_current_js_engine())
 
+  def engine_is_deno(self):
+    return engine_is_deno(self.get_current_js_engine())
+
   def engine_is_node(self):
     return engine_is_node(self.get_current_js_engine())
 
@@ -956,6 +963,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     engine = list(engine)
     if engine_is_node(engine) or engine_is_bun(engine):
       engine += self.node_args
+    elif engine_is_deno(engine):
+      engine += ['--unstable-detect-cjs', '--allow-all', '--v8-flags=--expose-gc']
     elif engine_is_v8(engine):
       engine += self.v8_args
     elif engine == config.SPIDERMONKEY_ENGINE:
