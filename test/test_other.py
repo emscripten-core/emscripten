@@ -4549,7 +4549,7 @@ int main() {
 
     # also verify that the gch is actually used
     err = self.run_process([EMXX, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
-    self.assertContained(r'PCH/Modules Loaded:\nModule: .*header.h.' + suffix, err.replace('\r\n', '\n'), regex=True)
+    self.assertContained(r'PCH/Modules Loaded:\nModule: .*header.h.' + suffix, err, regex=True)
     # and sanity check it is not mentioned when not
     delete_file('header.h.' + suffix)
     err = self.run_process([EMXX, 'src.cpp', '-include', 'header.h', '-Xclang', '-print-stats'], stderr=PIPE).stderr
