@@ -885,6 +885,8 @@ jobs:
           test_targets: "--crossplatform-only"
   test-deno:
     executor: linux-python
+    environment:
+      EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
       - checkout
       - pip-install
@@ -893,16 +895,10 @@ jobs:
           name: install deno
           command: |
             curl -fsSL https://deno.land/install.sh | sh
-            echo "DENO = [os.path.expanduser('~/.deno/bin/deno'), '--allow-read', '--unstable-detect-cjs']" >> ~/emsdk/.emscripten
+            echo "DENO = os.path.expanduser('~/.deno/bin/deno')" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [DENO]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "
-            core0.test_hello_world
-            core0.test_hello_argc_pthreads
-            core2.test_pthread_create
-            other.test_esm
-            other.test_esm_pthreads
-            "
+          test_targets: "--crossplatform-only"
   test-jsc:
     executor: linux-python
     steps:

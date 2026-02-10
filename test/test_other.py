@@ -71,6 +71,7 @@ from decorators import (
   flaky,
   is_slow_test,
   no_bun,
+  no_deno,
   no_mac,
   no_windows,
   only_windows,
@@ -1669,9 +1670,9 @@ int f() {
     # We must expose __dirname and require globally because emscripten
     # uses those under the hood.
     create_file('main.mjs', '''
-      import { dirname } from 'path';
-      import { createRequire } from 'module';
-      import { fileURLToPath } from 'url';
+      import { dirname } from 'node:path';
+      import { createRequire } from 'node:module';
+      import { fileURLToPath } from 'node:url';
 
       // `fileURLToPath` is used to get a valid path on Windows.
       globalThis.__dirname = dirname(fileURLToPath(import.meta.url));
@@ -4920,6 +4921,7 @@ Waste<3> *getMore() {
     'wasm2js_2': [2],
   })
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
+  @no_deno('https://github.com/emscripten-core/emscripten/issues/26234')
   def test_symbol_map(self, opts, wasm):
     def read_symbol_map(symbols_file):
       symbols = read_file(symbols_file)
@@ -10227,6 +10229,10 @@ T6:(else) !ASSERTIONS""", output)
 
   @requires_node
   def test_node_eval(self):
+    if not self.engine_is_node():
+      # The `requires_node` decorator above also allows for node-like environments such as
+      # deno and bun, but this test requires actual node.
+      self.skipTest('requires nodejs')
     self.run_process([EMCC, '-sENVIRONMENT=node', test_file('hello_world.c'), '-o', 'a.js', '-O3'])
     js = read_file('a.js')
     ret = self.run_process(self.get_current_js_engine() + ['-e', js], stdout=PIPE).stdout
@@ -14052,7 +14058,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
   def test_min_node_version(self):
     if not self.engine_is_node():
       # The `requires_node` decorator above also allows for node-like environments such as
-      # bun, but this test requires actual node.
+      # deno and bun, but this test requires actual node.
       self.skipTest('requires nodejs')
     node_version = shared.get_node_version(get_nodejs())
     node_version = '.'.join(str(x) for x in node_version)
