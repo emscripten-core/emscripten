@@ -315,6 +315,35 @@ def get_deno():
   return get_engine(engine_is_deno)
 
 
+def clean_js_output(output):
+  """Cleanup the JS output prior to running verification steps on it.
+
+  Due to minification, when we get a crash report from JS it can sometimes
+  contains the entire program in the output (since the entire program is
+  on a single line).  In this case we can sometimes get false positives
+  when checking for strings in the output.  To avoid these false positives
+  and the make the output easier to read in such cases we attempt to remove
+  such lines from the JS output.
+  """
+  lines = output.splitlines()
+  long_lines = []
+
+  def cleanup(line):
+    if len(line) > 2048 and line.startswith('var Module=typeof Module!="undefined"'):
+      long_lines.append(line)
+      line = '<REPLACED ENTIRE PROGRAM ON SINGLE LINE>'
+    return line
+
+  lines = [cleanup(l) for l in lines]
+  if not long_lines:
+    # No long lines found just return the unmodified output
+    return output
+
+  # Sanity check that we only a single long line.
+  assert len(long_lines) == 1
+  return '\n'.join(lines)
+
+
 class RunnerMeta(type):
   @classmethod
   def make_test(mcs, name, func, suffix, args):
@@ -915,34 +944,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     non_data_lines = [line for line in wat_lines if '(data ' not in line]
     return len(non_data_lines)
 
-  def clean_js_output(self, output):
-    """Cleanup the JS output prior to running verification steps on it.
-
-    Due to minification, when we get a crash report from JS it can sometimes
-    contains the entire program in the output (since the entire program is
-    on a single line).  In this case we can sometimes get false positives
-    when checking for strings in the output.  To avoid these false positives
-    and the make the output easier to read in such cases we attempt to remove
-    such lines from the JS output.
-    """
-    lines = output.splitlines()
-    long_lines = []
-
-    def cleanup(line):
-      if len(line) > 2048 and line.startswith('var Module=typeof Module!="undefined"'):
-        long_lines.append(line)
-        line = '<REPLACED ENTIRE PROGRAM ON SINGLE LINE>'
-      return line
-
-    lines = [cleanup(l) for l in lines]
-    if not long_lines:
-      # No long lines found just return the unmodified output
-      return output
-
-    # Sanity check that we only a single long line.
-    assert len(long_lines) == 1
-    return '\n'.join(lines)
-
   def get_current_js_engine(self):
     """Return the default JS engine to run tests under"""
     return self.js_engines[0]
@@ -1006,7 +1007,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if not interleaved_output:
       ret += read_file(stderr_file)
     if assert_returncode != 0:
-      ret = self.clean_js_output(ret)
+      ret = clean_js_output(ret)
     if error or timeout_error or EMTEST_VERBOSE:
       print('-- begin program output --')
       print(limit_size(read_file(stdout_file)), end='')
