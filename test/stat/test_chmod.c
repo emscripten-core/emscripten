@@ -22,7 +22,7 @@ void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
   assert(fd >= 0);
 
-  int err = write(fd, buffer, sizeof(char) * strlen(buffer));
+  int err = (int)write(fd, buffer, sizeof(char) * strlen(buffer));
   assert(err ==  (sizeof(char) * strlen(buffer)));
 
   close(fd);
@@ -32,9 +32,6 @@ void setup() {
   create_file("file", "abcdef", 0777);
   create_file("otherfile", "abcdef", 0777);
   symlink("file", "file-link");
-  // some platforms use 777, some use 755 by default for symlinks
-  // make sure we're using 777 for the test
-  lchmod("file-link", 0777);
   mkdir("folder", 0777);
 }
 
@@ -47,54 +44,74 @@ void cleanup() {
 
 void test() {
   int err;
-  int lastctime;
+  time_t lastctime;
+  time_t lastmtime;
   struct stat s;
-  
+
   //
-  // chmod a file
+  // chmod()ing a file should change metadata modification time (ctime),
+  // but not the file modification time (mtime)
   //
   // get the current ctime for the file
   memset(&s, 0, sizeof s);
   stat("file", &s);
   lastctime = s.st_ctime;
+  lastmtime = s.st_mtime;
   sleep(1);
 
   // do the actual chmod
-  err = chmod("file", 0200);
+  err = chmod("file", S_IWUSR);
   assert(!err);
 
   memset(&s, 0, sizeof s);
   stat("file", &s);
-  assert(s.st_mode == (0200 | S_IFREG));
+  assert(s.st_mode == (S_IWUSR | S_IFREG));
   assert(s.st_ctime != lastctime);
+  assert(s.st_mtime == lastmtime);
 
   //
-  // fchmod a file
+  // fchmod()ing a file should change metadata modification time,
+  // but not the file modification time
   //
   lastctime = s.st_ctime;
+  lastmtime = s.st_mtime;
   sleep(1);
 
-  err = fchmod(open("file", O_WRONLY), 0100);
+  err = fchmod(open("file", O_WRONLY), S_IXUSR);
   assert(!err);
 
   memset(&s, 0, sizeof s);
   stat("file", &s);
-  assert(s.st_mode == (0100 | S_IFREG));
+  assert(s.st_mode == (S_IXUSR | S_IFREG));
   assert(s.st_ctime != lastctime);
-
+  assert(s.st_mtime == lastmtime);
 
   //
-  // fchmodat a file
+  // fchmodat()ing a file should also only change metadata modification time,
+  // but not the file modification time.
   //
+  memset(&s, 0, sizeof s);
+  stat("otherfile", &s);
   lastctime = s.st_ctime;
+  lastmtime = s.st_mtime;
   sleep(1);
-  err = fchmodat(AT_FDCWD, "otherfile", 0100, 0);
+  err = fchmodat(AT_FDCWD, "otherfile", S_IXUSR, 0);
   assert(!err);
+
+  assert(symlink("otherfile", "link") == 0);
+  err = fchmodat(AT_FDCWD, "link", S_IXGRP, AT_SYMLINK_NOFOLLOW);
+#if defined(NODEFS) || defined(NODERAWFS)
+  assert(err == -1);
+  assert(errno == ENOTSUP);
+#else
+  assert(err == 0);
+#endif
 
   memset(&s, 0, sizeof s);
   stat("otherfile", &s);
-  assert(s.st_mode == (0100 | S_IFREG));
+  assert(s.st_mode == (S_IXUSR | S_IFREG));
   assert(s.st_ctime != lastctime);
+  assert(s.st_mtime == lastmtime);
 
   //
   // chmod a folder
@@ -103,48 +120,65 @@ void test() {
   memset(&s, 0, sizeof s);
   stat("folder", &s);
   lastctime = s.st_ctime;
+  lastmtime = s.st_mtime;
   sleep(1);
 
   // do the actual chmod
-  err = chmod("folder", 0300);
+  err = chmod("folder", S_IWUSR | S_IXUSR);
   assert(!err);
   memset(&s, 0, sizeof s);
   stat("folder", &s);
-  assert(s.st_mode == (0300 | S_IFDIR));
+  assert(s.st_mode == (S_IWUSR | S_IXUSR | S_IFDIR));
   assert(s.st_ctime != lastctime);
+  assert(s.st_mtime == lastmtime);
 
 #ifndef WASMFS // TODO https://github.com/emscripten-core/emscripten/issues/15948
+  lstat("file-link", &s);
+  mode_t link_mode = s.st_mode;
+  assert((link_mode & 0777) != S_IRUSR);
+
   //
   // chmod a symlink's target
   //
-  err = chmod("file-link", 0400);
+  err = chmod("file-link", S_IRUSR);
   assert(!err);
 
   // make sure the file it references changed
   stat("file-link", &s);
-  assert(s.st_mode == (0400 | S_IFREG));
+  assert(s.st_mode == (S_IRUSR | S_IFREG));
 
   // but the link didn't
   lstat("file-link", &s);
-  assert(s.st_mode == (0777 | S_IFLNK));
+  assert(s.st_mode == link_mode);
 
+  // TODO: lchmod is not supported in NODEFS but it chmods the link target
+  // instead of raising an error. Will fix in a follow up to #23058.
+#ifndef NODEFS
   //
   // chmod the actual symlink
   //
-  err = lchmod("file-link", 0500);
-  assert(!err);
+  err = lchmod("file-link", S_IRUSR | S_IXUSR);
+  // On linux lchmod is not supported so allow that here.
+  assert(!err || errno == ENOTSUP);
+  printf("lchmod -> %s\n", strerror(errno));
 
   // make sure the file it references didn't change
   stat("file-link", &s);
-  assert(s.st_mode == (0400 | S_IFREG));
+  assert(s.st_mode == (S_IRUSR | S_IFREG));
+#endif
 #endif // WASMFS
+
+  assert(stat("", &s) == -1);
+  assert(errno == ENOENT);
+  assert(chmod("", 0777) == -1);
+  assert(errno == ENOENT);
+  assert(chown("", 1000, 1000) == -1);
+  assert(errno == ENOENT);
 
   puts("success");
 }
 
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
   return EXIT_SUCCESS;

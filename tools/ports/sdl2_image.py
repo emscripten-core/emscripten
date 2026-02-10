@@ -3,28 +3,27 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os
-from typing import Dict, Set
-
 TAG = 'release-2.6.0'
 HASH = '2175d11a90211871f2289c8d57b31fe830e4b46af7361925c2c30cd521c1c677d2ee244feb682b6d3909cf085129255934751848fc81b480ea410952d990ffe0'
 
 deps = ['sdl2']
 variants = {
-  'sdl2_image_jpg':  {'SDL2_IMAGE_FORMATS': ["jpg"]},
-  'sdl2_image_png': {'SDL2_IMAGE_FORMATS': ["png"]},
+  'sdl2_image-jpg':    {'SDL2_IMAGE_FORMATS': ["jpg"]},
+  'sdl2_image-png':    {'SDL2_IMAGE_FORMATS': ["png"]},
+  'sdl2_image-jpg-mt': {'SDL2_IMAGE_FORMATS': ["jpg"], 'PTHREADS': 1},
+  'sdl2_image-png-mt': {'SDL2_IMAGE_FORMATS': ["png"], 'PTHREADS': 1},
 }
 
 OPTIONS = {
-  'formats': 'A comma separated list of formats (ex: --use-port=sdl2_image:formats=png,jpg)'
+  'formats': 'A comma separated list of formats (ex: --use-port=sdl2_image:formats=png,jpg)',
 }
 
-SUPPORTED_FORMATS = {'avif', 'bmp', 'gif', 'jpg', 'jxl', 'lbm', 'pcx', 'png',
-                     'pnm', 'qoi', 'svg', 'tga', 'tif', 'webp', 'xcf', 'xpm', 'xv'}
+SUPPORTED_FORMATS = {'bmp', 'gif', 'jpg', 'lbm', 'pcx', 'png',
+                     'pnm', 'qoi', 'svg', 'tga', 'xcf', 'xpm', 'xv'}
 
 # user options (from --use-port)
-opts: Dict[str, Set] = {
-  'formats': set()
+opts: dict[str, set] = {
+  'formats': set(),
 }
 
 
@@ -33,7 +32,7 @@ def needed(settings):
 
 
 def get_formats(settings):
-  return set(settings.SDL2_IMAGE_FORMATS).union(opts['formats'])
+  return opts['formats'].union(settings.SDL2_IMAGE_FORMATS)
 
 
 def get_lib_name(settings):
@@ -41,37 +40,44 @@ def get_lib_name(settings):
 
   libname = 'libSDL2_image'
   if formats != '':
-    libname += '_' + formats
+    libname += '-' + formats
+  if settings.PTHREADS:
+    libname += '-mt'
+  if settings.SUPPORT_LONGJMP == 'wasm':
+    libname += '-wasm-sjlj'
   return libname + '.a'
 
 
 def get(ports, settings, shared):
-  sdl_build = os.path.join(ports.get_build_dir(), 'sdl2')
-  assert os.path.exists(sdl_build), 'You must use SDL2 to use SDL2_image'
   ports.fetch_project('sdl2_image', f'https://github.com/libsdl-org/SDL_image/archive/refs/tags/{TAG}.zip', sha512hash=HASH)
   libname = get_lib_name(settings)
 
   def create(final):
-    src_dir = os.path.join(ports.get_dir(), 'sdl2_image', 'SDL_image-' + TAG)
+    src_dir = ports.get_dir('sdl2_image', 'SDL_image-' + TAG)
     ports.install_headers(src_dir, target='SDL2')
     srcs = '''IMG.c IMG_bmp.c IMG_gif.c IMG_jpg.c IMG_lbm.c IMG_pcx.c IMG_png.c IMG_pnm.c IMG_tga.c
               IMG_tif.c IMG_xcf.c IMG_xpm.c IMG_xv.c IMG_webp.c IMG_ImageIO.m
               IMG_avif.c IMG_jxl.c IMG_svg.c IMG_qoi.c'''.split()
 
-    defs = ['-O2', '-sUSE_SDL=2', '-Wno-format-security']
+    flags = ['-sUSE_SDL=2', '-Wno-format-security']
 
     formats = get_formats(settings)
 
-    for fmt in formats:
-      defs.append('-DLOAD_' + fmt.upper())
+    flags.extend(f'-DLOAD_{fmt.upper()}' for fmt in formats)
 
     if 'png' in formats:
-      defs += ['-sUSE_LIBPNG']
+      flags += ['-sUSE_LIBPNG']
 
     if 'jpg' in formats:
-      defs += ['-sUSE_LIBJPEG']
+      flags += ['-sUSE_LIBJPEG']
 
-    ports.build_port(src_dir, final, 'sdl2_image', flags=defs, srcs=srcs)
+    if settings.PTHREADS:
+      flags += ['-pthread']
+
+    if settings.SUPPORT_LONGJMP == 'wasm':
+      flags.append('-sSUPPORT_LONGJMP=wasm')
+
+    ports.build_port(src_dir, final, 'sdl2_image', flags=flags, srcs=srcs)
 
   return [shared.cache.get_lib(libname, create, what='port')]
 

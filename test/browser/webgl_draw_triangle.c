@@ -5,6 +5,7 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <emscripten/emscripten.h>
@@ -104,8 +105,13 @@ int main() {
   glDrawArrays(GL_TRIANGLES, 0, 3);
 
 #ifdef EXPLICIT_SWAP
+  // Mark the program for deletion, first, as a regression test for the state
+  // restoration. https://github.com/emscripten-core/emscripten/issues/23654
+  glDeleteProgram(program);
+
   emscripten_webgl_commit_frame();
 #endif
 
+  assert(glGetError() == GL_NO_ERROR);
   return 0;
 }

@@ -15,7 +15,7 @@ _Atomic int saw_keydown_event_on_enter_key_on_application_thread = 0;
 _Atomic int saw_keydown_event_on_enter_key_on_main_runtime_thread = 0;
 _Atomic int saw_keypress_event_on_enter_key = 0;
 
-EM_BOOL keydown_callback_on_application_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
+bool keydown_callback_on_application_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   int dom_pk_code = emscripten_compute_dom_pk_code(e->code);
   printf("keydown_callback_on_application_thread received on pthread: %p, application_thread_id: %p, dom_pk_code: %s\n", pthread_self(), application_thread_id, emscripten_dom_pk_code_to_string(dom_pk_code));
   assert(pthread_self() == application_thread_id);
@@ -26,7 +26,7 @@ EM_BOOL keydown_callback_on_application_thread(int eventType, const EmscriptenKe
   return 0;
 }
 
-EM_BOOL keydown_callback_on_main_runtime_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
+bool keydown_callback_on_main_runtime_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   int dom_pk_code = emscripten_compute_dom_pk_code(e->code);
   printf("keydown_callback_on_main_runtime_thread received on pthread: %p, main_runtime_thread_id; %p, dom_pk_code: %s\n", pthread_self(), main_runtime_thread_id, emscripten_dom_pk_code_to_string(dom_pk_code));
   assert(pthread_self() == main_runtime_thread_id);
@@ -48,7 +48,7 @@ EM_BOOL keydown_callback_on_main_runtime_thread(int eventType, const EmscriptenK
   return dom_pk_code == DOM_PK_ENTER;
 }
 
-EM_BOOL keypress_callback_on_application_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
+bool keypress_callback_on_application_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   int dom_pk_code = emscripten_compute_dom_pk_code(e->code);
   printf("keypress_callback_on_application_thread received on pthread: %p, application_thread_id; %p, dom_pk_code: %s\n", pthread_self(), application_thread_id, emscripten_dom_pk_code_to_string(dom_pk_code));
   assert(pthread_self() == application_thread_id);
@@ -61,7 +61,7 @@ EM_BOOL keypress_callback_on_application_thread(int eventType, const EmscriptenK
   return 0;
 }
 
-EM_BOOL keyup_callback_on_application_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
+bool keyup_callback_on_application_thread(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   int dom_pk_code = emscripten_compute_dom_pk_code(e->code);
   printf("keyup_callback_on_application_thread received on pthread: %p, application_thread_id; %p, dom_pk_code: %s\n", pthread_self(), application_thread_id, emscripten_dom_pk_code_to_string(dom_pk_code));
   assert(pthread_self() == application_thread_id);

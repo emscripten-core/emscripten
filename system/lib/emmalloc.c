@@ -21,7 +21,7 @@
  *    amount is 8 bytes, and a multiple of 4 bytes.
  *  - Acquired memory blocks are subdivided into disjoint regions that lie
  *    next to each other.
- *  - A region is either in used or free.
+ *  - A region is either in use or free.
  *    Used regions may be adjacent, and a used and unused region
  *    may be adjacent, but not two unused ones - they would be
  *    merged.
@@ -61,6 +61,8 @@
 #include <emscripten/heap.h>
 #include <emscripten/threading.h>
 
+void *_sbrk64(int64_t numBytes);
+
 #ifdef __EMSCRIPTEN_TRACING__
 #include <emscripten/trace.h>
 #endif
@@ -92,7 +94,7 @@ static_assert(alignof(max_align_t) == 8, "max_align_t must be correct");
 
 // That is, at the bottom and top end of each memory region, the size of that region is stored. That allows traversing the
 // memory regions backwards and forwards. Because each allocation must be at least a multiple of 4 bytes, the lowest two bits of
-// each size field is unused. Free regions are distinguished by used regions by having the FREE_REGION_FLAG bit present
+// each size field is unused. Free regions are distinguished from used regions by having the FREE_REGION_FLAG bit present
 // in the size field. I.e. for free regions, the size field is odd, and for used regions, the size field reads even.
 #define FREE_REGION_FLAG 0x1u
 
@@ -137,6 +139,7 @@ static volatile uint8_t multithreadingLock = 0;
 
 #define IS_POWER_OF_2(val) (((val) & ((val)-1)) == 0)
 #define ALIGN_UP(ptr, alignment) ((uint8_t*)((((uintptr_t)(ptr)) + ((alignment)-1)) & ~((alignment)-1)))
+#define ALIGN_DOWN(ptr, alignment) ((uint8_t*)(((uintptr_t)(ptr)) & ~((alignment)-1)))
 #define HAS_ALIGNMENT(ptr, alignment) ((((uintptr_t)(ptr)) & ((alignment)-1)) == 0)
 
 static_assert(IS_POWER_OF_2(MALLOC_ALIGNMENT), "MALLOC_ALIGNMENT must be a power of two value!");
@@ -358,16 +361,16 @@ static void dump_memory_regions() {
     Region *r = (Region*)root;
     assert(debug_region_is_consistent(r));
     uint8_t *lastRegionEnd = root->endPtr;
-    MAIN_THREAD_ASYNC_EM_ASM(out('Region block '+ptrToString($0)+' - '+ptrToString($1)+ ' ('+toString(Number($2))+' bytes):'),
+    MAIN_THREAD_ASYNC_EM_ASM(out('Region block '+ptrToString($0)+' - '+ptrToString($1)+ ' ('+Number($2)+' bytes):'),
       r, lastRegionEnd, lastRegionEnd-(uint8_t*)r);
     while ((uint8_t*)r < lastRegionEnd) {
-      MAIN_THREAD_ASYNC_EM_ASM(out('Region '+ptrToString($0)+', size: '+toString(Number($1))+' ('+($2?"used":"--FREE--")+')'),
+      MAIN_THREAD_ASYNC_EM_ASM(out('Region '+ptrToString($0)+', size: '+Number($1)+' ('+($2?"used":"--FREE--")+')'),
         r, r->size, region_ceiling_size(r) == r->size);
 
       assert(debug_region_is_consistent(r));
       size_t sizeFromCeiling = size_of_region_from_ceiling(r);
       if (sizeFromCeiling != r->size) {
-        MAIN_THREAD_ASYNC_EM_ASM(out('Corrupt region! Size marker at the end of the region does not match: '+toString(Number($0))), sizeFromCeiling);
+        MAIN_THREAD_ASYNC_EM_ASM(out('Corrupt region! Size marker at the end of the region does not match: '+Number($0)), sizeFromCeiling);
       }
       if (r->size == 0) {
         break;
@@ -382,7 +385,7 @@ static void dump_memory_regions() {
     Region *prev = &freeRegionBuckets[i];
     Region *fr = freeRegionBuckets[i].next;
     while (fr != &freeRegionBuckets[i]) {
-      MAIN_THREAD_ASYNC_EM_ASM(out('In bucket '+$0+', free region '+ptrToString($1)+', size: ' + toString(Number($2)) + ' (size at ceiling: '+toString(Number($3))+'), prev: ' + ptrToString($4) + ', next: ' + ptrToString($5)),
+      MAIN_THREAD_ASYNC_EM_ASM(out('In bucket '+$0+', free region '+ptrToString($1)+', size: ' + Number($2) + ' (size at ceiling: '+Number($3)+'), prev: ' + ptrToString($4) + ', next: ' + ptrToString($5)),
         i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next);
       assert(debug_region_is_consistent(fr));
       assert(region_is_free(fr));
@@ -393,7 +396,7 @@ static void dump_memory_regions() {
       fr = fr->next;
     }
   }
-  MAIN_THREAD_ASYNC_EM_ASM(out('Free bucket index map: ' + toString(Number($0)).toString(2) + ' ' + toString(Number($1)).toString(2)), (uint32_t)(freeRegionBucketsUsed >> 32), (uint32_t)freeRegionBucketsUsed);
+  MAIN_THREAD_ASYNC_EM_ASM(out('Free bucket index map: ' + Number($0).toString(2) + ' ' + Number($1).toString(2)), (uint32_t)(freeRegionBucketsUsed >> 32), (uint32_t)freeRegionBucketsUsed);
   MAIN_THREAD_ASYNC_EM_ASM(out(""));
 }
 
@@ -409,14 +412,14 @@ static int validate_memory_regions() {
   while (root) {
     Region *r = (Region*)root;
     if (!debug_region_is_consistent(r)) {
-      MAIN_THREAD_ASYNC_EM_ASM(err('Used region '+ptrToString($0)+', size: '+toString(Number($1))+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
+      MAIN_THREAD_ASYNC_EM_ASM(err('Used region '+ptrToString($0)+', size: '+Number($1)+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
         r, r->size, region_ceiling_size(r) == r->size);
       return 1;
     }
     uint8_t *lastRegionEnd = root->endPtr;
     while ((uint8_t*)r < lastRegionEnd) {
       if (!debug_region_is_consistent(r)) {
-        MAIN_THREAD_ASYNC_EM_ASM(err('Used region '+ptrToString($0)+', size: '+toString(Number($1))+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
+        MAIN_THREAD_ASYNC_EM_ASM(err('Used region '+ptrToString($0)+', size: '+Number($1)+' ('+($2?"used":"--FREE--")+') is corrupt (size markers in the beginning and at the end of the region do not match!)'),
           r, r->size, region_ceiling_size(r) == r->size);
         return 1;
       }
@@ -432,7 +435,7 @@ static int validate_memory_regions() {
     Region *fr = freeRegionBuckets[i].next;
     while (fr != &freeRegionBuckets[i]) {
       if (!debug_region_is_consistent(fr) || !region_is_free(fr) || fr->prev != prev || fr->next == fr || fr->prev == fr) {
-        MAIN_THREAD_ASYNC_EM_ASM(out('In bucket '+$0+', free region '+ptrToString($1)+', size: ' + toString(Number($2)) + ' (size at ceiling: '+toString(Number($3))+'), prev: ' + ptrToString($4) + ', next: 0x' + ptrToString($5) + ' is corrupt!'),
+        MAIN_THREAD_ASYNC_EM_ASM(out('In bucket '+$0+', free region '+ptrToString($1)+', size: ' + Number($2) + ' (size at ceiling: '+Number($3)+'), prev: ' + ptrToString($4) + ', next: 0x' + ptrToString($5) + ' is corrupt!'),
           i, fr, fr->size, size_of_region_from_ceiling(fr), fr->prev, fr->next);
         return 1;
       }
@@ -467,7 +470,8 @@ static bool claim_more_memory(size_t numBytes) {
   numBytes = (size_t)ALIGN_UP(numBytes, MALLOC_ALIGNMENT);
 
   // Claim memory via sbrk
-  uint8_t *startPtr = (uint8_t*)sbrk(numBytes);
+  assert((int64_t)numBytes >= 0);
+  uint8_t *startPtr = (uint8_t*)_sbrk64((int64_t)numBytes);
   if ((intptr_t)startPtr == -1) {
 #ifdef EMMALLOC_VERBOSE
     MAIN_THREAD_ASYNC_EM_ASM(err('claim_more_memory: sbrk failed!'));
@@ -483,6 +487,9 @@ static bool claim_more_memory(size_t numBytes) {
   // Create a sentinel region at the end of the new heap block
   Region *endSentinelRegion = (Region*)(endPtr - sizeof(Region));
   create_used_region(endSentinelRegion, sizeof(Region));
+#ifdef EMMALLOC_VERBOSE
+  MAIN_THREAD_ASYNC_EM_ASM(out('claim_more_memory: created a sentinel memory region at address ' + ptrToString($0)), endSentinelRegion);
+#endif
 
   // If we are the sole user of sbrk(), it will feed us continuous/consecutive memory addresses - take advantage
   // of that if so: instead of creating two disjoint memory regions blocks, expand the previous one to a larger size.
@@ -572,7 +579,7 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
   assert(freeRegion);
   // Look at the next potential free region to allocate into.
   // First, we should check if the free region has enough of payload bytes contained
-  // in it to accommodate the new allocation. This check needs to take account the
+  // in it to accommodate the new allocation. This check needs to take into account the
   // requested allocation alignment, so the payload memory area needs to be rounded
   // upwards to the desired alignment.
   uint8_t *payloadStartPtr = region_payload_start_ptr(freeRegion);
@@ -629,14 +636,14 @@ static void *attempt_allocate(Region *freeRegion, size_t alignment, size_t size)
 #endif
 
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(out('attempt_allocate - succeeded allocating memory, region ptr=' + ptrToString($0) + ', align=' + $1 + ', payload size=' + toString(Number($2)) + ' bytes)'), freeRegion, alignment, size);
+  MAIN_THREAD_ASYNC_EM_ASM(out('attempt_allocate - succeeded allocating memory, region ptr=' + ptrToString($0) + ', align=' + $1 + ', payload size=' + Number($2) + ' bytes)'), freeRegion, alignment, size);
 #endif
 
   return (uint8_t*)freeRegion + sizeof(size_t);
 }
 
 static size_t validate_alloc_alignment(size_t alignment) {
-  // Cannot perform allocations that are less our minimal alignment, because
+  // Cannot perform allocations that are less than our minimal alignment, because
   // the Region control structures need to be aligned themselves.
   return MAX(alignment, MALLOC_ALIGNMENT);
 }
@@ -651,15 +658,13 @@ static size_t validate_alloc_size(size_t size) {
   return validatedSize;
 }
 
-#ifdef EMMALLOC_VERBOSE
-EM_JS_DEPS(deps, "$ptrToString");
-#endif
+EM_JS_DEPS(_em_malloc_deps, "$ptrToString");
 
 static void *allocate_memory(size_t alignment, size_t size) {
   ASSERT_MALLOC_IS_ACQUIRED();
 
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(out('allocate_memory(align=' + $0 + ', size=' + toString(Number($1)) + ' bytes)'), alignment, size);
+  MAIN_THREAD_ASYNC_EM_ASM(out('allocate_memory(align=' + $0 + ', size=' + Number($1) + ' bytes)'), alignment, size);
 #endif
 
 #ifdef EMMALLOC_MEMVALIDATE
@@ -675,7 +680,7 @@ static void *allocate_memory(size_t alignment, size_t size) {
 
   if (size > MAX_ALLOC_SIZE) {
 #ifdef EMMALLOC_VERBOSE
-    MAIN_THREAD_ASYNC_EM_ASM(out('Allocation failed: attempted allocation size is too large: ' + toString(Number($0)) + 'bytes! (negative integer wraparound?)'), size);
+    MAIN_THREAD_ASYNC_EM_ASM(out('Allocation failed: attempted allocation size is too large: ' + Number($0) + 'bytes! (negative integer wraparound?)'), size);
 #endif
     return 0;
   }
@@ -930,7 +935,7 @@ static int attempt_region_resize(Region *region, size_t size) {
   assert(HAS_ALIGNMENT(size, sizeof(size_t)));
 
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(out('attempt_region_resize(region=' + ptrToString($0) + ', size=' + toString(Number($1)) + ' bytes)'), region, size);
+  MAIN_THREAD_ASYNC_EM_ASM(out('attempt_region_resize(region=' + ptrToString($0) + ', size=' + Number($1) + ' bytes)'), region, size);
 #endif
 
   // First attempt to resize this region, if the next region that follows this one
@@ -957,7 +962,7 @@ static int attempt_region_resize(Region *region, size_t size) {
       return 1;
     }
   } else {
-    // Next region is an used region - we cannot change its starting address. However if we are shrinking the
+    // Next region is a used region - we cannot change its starting address. However if we are shrinking the
     // size of this region, we can create a new free region between this and the next used region.
     if (size + sizeof(Region) <= region->size) {
       size_t freeRegionSize = region->size - size;
@@ -988,7 +993,7 @@ static int acquire_and_attempt_region_resize(Region *region, size_t size) {
 
 void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size) {
 #ifdef EMMALLOC_VERBOSE
-  MAIN_THREAD_ASYNC_EM_ASM(out('aligned_realloc(ptr=' + ptrToString($0) + ', alignment=' + $1 + ', size=' + toString(Number($2))), ptr, alignment, size);
+  MAIN_THREAD_ASYNC_EM_ASM(out('aligned_realloc(ptr=' + ptrToString($0) + ', alignment=' + $1 + ', size=' + Number($2)), ptr, alignment, size);
 #endif
 
   if (!ptr) {
@@ -1002,7 +1007,7 @@ void *emmalloc_aligned_realloc(void *ptr, size_t alignment, size_t size) {
 
   if (size > MAX_ALLOC_SIZE) {
 #ifdef EMMALLOC_VERBOSE
-    MAIN_THREAD_ASYNC_EM_ASM(out('Allocation failed: attempted allocation size is too large: ' + toString(Number($0)) + 'bytes! (negative integer wraparound?)'), size);
+    MAIN_THREAD_ASYNC_EM_ASM(out('Allocation failed: attempted allocation size is too large: ' + Number($0) + 'bytes! (negative integer wraparound?)'), size);
 #endif
     return 0;
   }
@@ -1052,7 +1057,7 @@ void *emmalloc_realloc_try(void *ptr, size_t size) {
 
   if (size > MAX_ALLOC_SIZE) {
 #ifdef EMMALLOC_VERBOSE
-    MAIN_THREAD_ASYNC_EM_ASM(out('Allocation failed: attempted allocation size is too large: ' + toString(Number($0)) + 'bytes! (negative integer wraparound?)'), size);
+    MAIN_THREAD_ASYNC_EM_ASM(out('Allocation failed: attempted allocation size is too large: ' + Number($0) + 'bytes! (negative integer wraparound?)'), size);
 #endif
     return 0;
   }
@@ -1086,7 +1091,7 @@ void *emmalloc_aligned_realloc_uninitialized(void *ptr, size_t alignment, size_t
 
   if (size > MAX_ALLOC_SIZE) {
 #ifdef EMMALLOC_VERBOSE
-    MAIN_THREAD_ASYNC_EM_ASM(out('Allocation failed: attempted allocation size is too large: ' + toString(Number($0)) + 'bytes! (negative integer wraparound?)'), size);
+    MAIN_THREAD_ASYNC_EM_ASM(out('Allocation failed: attempted allocation size is too large: ' + Number($0) + 'bytes! (negative integer wraparound?)'), size);
 #endif
     return 0;
   }
@@ -1113,6 +1118,7 @@ void *emmalloc_aligned_realloc_uninitialized(void *ptr, size_t alignment, size_t
 void *emmalloc_realloc(void *ptr, size_t size) {
   return emmalloc_aligned_realloc(ptr, MALLOC_ALIGNMENT, size);
 }
+EMMALLOC_ALIAS(emscripten_builtin_realloc, emmalloc_realloc);
 EMMALLOC_ALIAS(__libc_realloc, emmalloc_realloc);
 EMMALLOC_ALIAS(realloc,        emmalloc_realloc);
 
@@ -1140,8 +1146,9 @@ void *emmalloc_calloc(size_t num, size_t size) {
   }
   return ptr;
 }
-EMMALLOC_ALIAS(__libc_calloc, emmalloc_calloc);
-EMMALLOC_ALIAS(calloc,        emmalloc_calloc);
+EMMALLOC_ALIAS(emscripten_builtin_calloc, emmalloc_calloc);
+EMMALLOC_ALIAS(__libc_calloc,             emmalloc_calloc);
+EMMALLOC_ALIAS(calloc,                    emmalloc_calloc);
 
 static int count_linked_list_size(Region *list) {
   int size = 1;
@@ -1165,7 +1172,7 @@ struct mallinfo emmalloc_mallinfo() {
   struct mallinfo info;
   // Non-mmapped space allocated (bytes): For emmalloc,
   // let's define this as the difference between heap size and dynamic top end.
-  info.arena = emscripten_get_heap_size() - (size_t)sbrk(0);
+  info.arena = emscripten_get_heap_size() - (size_t)_sbrk64(0);
   // Number of "ordinary" blocks. Let's define this as the number of highest
   // size blocks. (subtract one from each, since there is a sentinel node in each list)
   info.ordblks = count_linked_list_size(&freeRegionBuckets[NUM_FREE_BUCKETS-1])-1;
@@ -1233,49 +1240,102 @@ static int trim_dynamic_heap_reservation(size_t pad) {
   ASSERT_MALLOC_IS_ACQUIRED();
 
   if (!listOfAllRegions) {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): cannot trim memory, emmalloc is currently not initialized to manage any dynamic memory at all.'));
+#endif
     return 0; // emmalloc is not controlling any dynamic memory at all - cannot release memory.
   }
   uint8_t *previousSbrkEndAddress = listOfAllRegions->endPtr;
-  assert(sbrk(0) == previousSbrkEndAddress);
+  void *sbrkAddr = _sbrk64(0);
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): _sbrk64(0) = ' + ptrToString($0) + ', previousSbrkEndAddress = ' + ptrToString($1)), sbrkAddr, previousSbrkEndAddress);
+#endif
+  assert(sbrkAddr == previousSbrkEndAddress);
   size_t lastMemoryRegionSize = ((size_t*)previousSbrkEndAddress)[-1];
-  assert(lastMemoryRegionSize == 16); // // The last memory region should be a sentinel node of exactly 16 bytes in size.
-  Region *endSentinelRegion = (Region*)(previousSbrkEndAddress - sizeof(Region));
+  Region *endSentinelRegion = (Region*)(previousSbrkEndAddress - lastMemoryRegionSize);
   Region *lastActualRegion = prev_region(endSentinelRegion);
 
-  // Round padding up to multiple of 4 bytes to keep sbrk() and memory region alignment intact.
-  // Also have at least 8 bytes of payload so that we can form a full free region.
-  size_t newRegionSize = (size_t)ALIGN_UP(pad, 4);
-  if (pad > 0) {
-    newRegionSize += sizeof(Region) - (newRegionSize - pad);
+  if (!region_is_free(lastActualRegion)) {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Last actual region ' + ptrToString($0) + ' is in use, there is nothing to trim from.'), lastActualRegion);
+#endif
+    return 0;
   }
 
-  if (!region_is_free(lastActualRegion) || lastActualRegion->size <= newRegionSize) {
-    return 0; // Last actual region is in use, or caller desired to leave more free memory intact than there is.
+  // Sanitize odd alignments for padding values - this is the minimum alignment
+  // that emmalloc could handle. Align up to be conservative towards caller.
+  pad = (size_t)ALIGN_UP(pad, 4);
+
+  // Calculate how many bytes we can shrink the sbrk() reservation by.
+  // Is the last free region smaller than what was requested to be left behind?
+  // If so, then there is nothing we can trim.
+  if (pad >= lastActualRegion->size) {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Last actual region does not have enough space to leave ' + Number($0) + ' bytes of free memory in it.'), pad);
+#endif
+    return 0;
   }
 
-  // This many bytes will be shrunk away.
-  size_t shrinkAmount = lastActualRegion->size - newRegionSize;
-  assert(HAS_ALIGNMENT(shrinkAmount, 4));
+  // Subtract region size members off to calculate the excess bytes in payload.
+  size_t shrinkAmount = lastActualRegion->size - pad - 2*sizeof(size_t);
+  // sbrk() alignment is multiple of __alignof__(max_align_t), so round the
+  // trimming down to ensure that alignment is preserved.
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): shrinkAmount ' + Number($0) + '.'), shrinkAmount);
+#endif
+  shrinkAmount = (size_t)ALIGN_DOWN(shrinkAmount, __alignof__(max_align_t));
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): shrinkAmount2 ' + Number($0) + '.'), shrinkAmount);
+#endif
+  // Nothing left to trim?
+  if (!shrinkAmount) {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Aligning for sbrk() requirements removed opportunity to trim.'));
+#endif
+    return 0;
+  }
 
   unlink_from_free_list(lastActualRegion);
-  // If pad == 0, we should delete the last free region altogether. If pad > 0,
-  // shrink the last free region to the desired size.
-  if (newRegionSize > 0) {
+
+  size_t newRegionSize = lastActualRegion->size - shrinkAmount;
+
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Shrinking ' + Number($0) + ' bytes off the free heap end region. New free heap end region size: ' + Number($1) + ' bytes.'), shrinkAmount, newRegionSize);
+#endif
+  // If we can't fit a free Region in the shrunk space, we should delete the 
+  // last free region altogether.
+  if (newRegionSize >= sizeof(Region)) {
     create_free_region(lastActualRegion, newRegionSize);
     link_to_free_list(lastActualRegion);
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Created new free heap end region at ' + ptrToString($0) + '. Size: ' + Number($1) + ' bytes.'), lastActualRegion, newRegionSize);
+#endif
+  } else {
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Not enough room to fit a free heap end region. Discarding it altogether.'));
+#endif
+    newRegionSize = 0;
   }
 
-  // Recreate the sentinel region at the end of the last free region
-  endSentinelRegion = (Region*)((uint8_t*)lastActualRegion + newRegionSize);
-  create_used_region(endSentinelRegion, sizeof(Region));
+  // Call sbrk() to shrink the memory area.
+  void *oldSbrk = _sbrk64(-(int64_t)shrinkAmount);
+  assert((intptr_t)oldSbrk != -1); // Shrinking with sbrk() should never fail.
+
+  // Ask where sbrk got us at.
+  void *sbrkNow = _sbrk64(0);
+
+  // Recreate the sentinel region at the end of the last free region.
+  Region *newEndSentinelRegion = (Region*)((uint8_t*)lastActualRegion + newRegionSize);
+  size_t newEndSentinelRegionSize = (uintptr_t)sbrkNow - (uintptr_t)newEndSentinelRegion;
+
+#ifdef EMMALLOC_VERBOSE
+    MAIN_THREAD_ASYNC_EM_ASM(out('emmalloc_trim(): Created new sentinel end region at ' + ptrToString($0) + '. Size: ' + Number($1) + ' bytes.'), newEndSentinelRegion, newEndSentinelRegionSize);
+#endif
+
+  create_used_region(newEndSentinelRegion, newEndSentinelRegionSize);
 
   // And update the size field of the whole region block.
-  listOfAllRegions->endPtr = (uint8_t*)endSentinelRegion + sizeof(Region);
-
-  // Finally call sbrk() to shrink the memory area.
-  void *oldSbrk = sbrk(-(intptr_t)shrinkAmount);
-  assert((intptr_t)oldSbrk != -1); // Shrinking with sbrk() should never fail.
-  assert(oldSbrk == previousSbrkEndAddress); // Another thread should not have raced to increase sbrk() on us!
+  listOfAllRegions->endPtr = (uint8_t*)newEndSentinelRegion + newEndSentinelRegionSize;
 
   // All successful, and we actually trimmed memory!
   return 1;
@@ -1368,5 +1428,5 @@ void emmalloc_dump_free_dynamic_memory_fragmentation_map() {
 }
 
 size_t emmalloc_unclaimed_heap_memory(void) {
-  return emscripten_get_heap_max() - (size_t)sbrk(0);
+  return emscripten_get_heap_max() - (size_t)_sbrk64(0);
 }

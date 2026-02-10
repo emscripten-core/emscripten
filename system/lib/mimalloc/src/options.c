@@ -9,9 +9,9 @@ terms of the MIT license. A copy of the license can be found in the file
 #include "mimalloc/atomic.h"
 #include "mimalloc/prim.h"  // mi_prim_out_stderr
 
-#include <stdio.h>      // FILE
+#include <stdio.h>      // stdin/stdout
 #include <stdlib.h>     // abort
-#include <stdarg.h>
+
 
 
 static long mi_max_error_count   = 16; // stop outputting errors after this (use < 0 for no limit)
@@ -65,7 +65,7 @@ static mi_option_desc_t options[_mi_option_last] =
   { 0, UNINIT, MI_OPTION_LEGACY(allow_large_os_pages,large_os_pages) },    // use large OS pages, use only with eager commit to prevent fragmentation of VMA's
   { 0, UNINIT, MI_OPTION(reserve_huge_os_pages) },      // per 1GiB huge pages
   {-1, UNINIT, MI_OPTION(reserve_huge_os_pages_at) },   // reserve huge pages at node N
-  { 0, UNINIT, MI_OPTION(reserve_os_memory)     },
+  { 0, UNINIT, MI_OPTION(reserve_os_memory)     },      // reserve N KiB OS memory in advance (use `option_get_size`)
   { 0, UNINIT, MI_OPTION(deprecated_segment_cache) },   // cache N segments per thread
   { 0, UNINIT, MI_OPTION(deprecated_page_reset) },      // reset page memory on free
   { 0, UNINIT, MI_OPTION_LEGACY(abandoned_page_purge,abandoned_page_reset) },       // reset free page memory when a thread terminates
@@ -77,22 +77,29 @@ static mi_option_desc_t options[_mi_option_last] =
 #endif
   { 10,  UNINIT, MI_OPTION_LEGACY(purge_delay,reset_delay) },  // purge delay in milli-seconds
   { 0,   UNINIT, MI_OPTION(use_numa_nodes) },           // 0 = use available numa nodes, otherwise use at most N nodes.
-  { 0,   UNINIT, MI_OPTION(limit_os_alloc) },           // 1 = do not use OS memory for allocation (but only reserved arenas)
+  { 0,   UNINIT, MI_OPTION_LEGACY(disallow_os_alloc,limit_os_alloc) },           // 1 = do not use OS memory for allocation (but only reserved arenas)
   { 100, UNINIT, MI_OPTION(os_tag) },                   // only apple specific for now but might serve more or less related purpose
-  { 16,  UNINIT, MI_OPTION(max_errors) },               // maximum errors that are output
-  { 16,  UNINIT, MI_OPTION(max_warnings) },             // maximum warnings that are output
-  { 8,   UNINIT, MI_OPTION(max_segment_reclaim)},       // max. number of segment reclaims from the abandoned segments per try.
+  { 32,  UNINIT, MI_OPTION(max_errors) },               // maximum errors that are output
+  { 32,  UNINIT, MI_OPTION(max_warnings) },             // maximum warnings that are output
+  { 10,  UNINIT, MI_OPTION(max_segment_reclaim)},       // max. percentage of the abandoned segments to be reclaimed per try.
   { 0,   UNINIT, MI_OPTION(destroy_on_exit)},           // release all OS memory on process exit; careful with dangling pointer or after-exit frees!
   #if (MI_INTPTR_SIZE>4)
-  { 1024L * 1024L, UNINIT, MI_OPTION(arena_reserve) },  // reserve memory N KiB at a time
+  { 1024L*1024L, UNINIT, MI_OPTION(arena_reserve) },    // reserve memory N KiB at a time (=1GiB) (use `option_get_size`)
   #else
-  {  128L * 1024L, UNINIT, MI_OPTION(arena_reserve) },
+  {  128L*1024L, UNINIT, MI_OPTION(arena_reserve) },    // =128MiB on 32-bit
   #endif
   { 10,  UNINIT, MI_OPTION(arena_purge_mult) },        // purge delay multiplier for arena's
   { 1,   UNINIT, MI_OPTION_LEGACY(purge_extend_delay, decommit_extend_delay) },
+  { 1,   UNINIT, MI_OPTION(abandoned_reclaim_on_free) },// reclaim an abandoned segment on a free
+  { 0,   UNINIT, MI_OPTION(disallow_arena_alloc) },     // 1 = do not use arena's for allocation (except if using specific arena id's)
+  { 400, UNINIT, MI_OPTION(retry_on_oom) },             // windows only: retry on out-of-memory for N milli seconds (=400), set to 0 to disable retries.
 };
 
 static void mi_option_init(mi_option_desc_t* desc);
+
+static bool mi_option_has_size_in_kib(mi_option_t option) {
+  return (option == mi_option_reserve_os_memory || option == mi_option_arena_reserve);
+}
 
 void _mi_options_init(void) {
   // called on process load; should not be called before the CRT is initialized!
@@ -104,7 +111,7 @@ void _mi_options_init(void) {
     // if (option != mi_option_verbose)
     {
       mi_option_desc_t* desc = &options[option];
-      _mi_verbose_message("option '%s': %ld\n", desc->name, desc->value);
+      _mi_verbose_message("option '%s': %ld %s\n", desc->name, desc->value, (mi_option_has_size_in_kib(option) ? "KiB" : ""));
     }
   }
   mi_max_error_count = mi_option_get(mi_option_max_errors);
@@ -128,9 +135,13 @@ mi_decl_nodiscard long mi_option_get_clamp(mi_option_t option, long min, long ma
 }
 
 mi_decl_nodiscard size_t mi_option_get_size(mi_option_t option) {
-  mi_assert_internal(option == mi_option_reserve_os_memory || option == mi_option_arena_reserve);
-  long x = mi_option_get(option);
-  return (x < 0 ? 0 : (size_t)x * MI_KiB);
+  mi_assert_internal(mi_option_has_size_in_kib(option));
+  const long x = mi_option_get(option);
+  size_t size = (x < 0 ? 0 : (size_t)x);
+  if (mi_option_has_size_in_kib(option)) {
+    size *= MI_KiB;
+  }
+  return size;
 }
 
 void mi_option_set(mi_option_t option, long value) {
@@ -311,12 +322,12 @@ void _mi_fputs(mi_output_fun* out, void* arg, const char* prefix, const char* me
 }
 
 // Define our own limited `fprintf` that avoids memory allocation.
-// We do this using `snprintf` with a limited buffer.
+// We do this using `_mi_vsnprintf` with a limited buffer.
 static void mi_vfprintf( mi_output_fun* out, void* arg, const char* prefix, const char* fmt, va_list args ) {
   char buf[512];
   if (fmt==NULL) return;
   if (!mi_recurse_enter()) return;
-  vsnprintf(buf,sizeof(buf)-1,fmt,args);
+  _mi_vsnprintf(buf, sizeof(buf)-1, fmt, args);
   mi_recurse_exit();
   _mi_fputs(out,arg,prefix,buf);
 }
@@ -331,7 +342,7 @@ void _mi_fprintf( mi_output_fun* out, void* arg, const char* fmt, ... ) {
 static void mi_vfprintf_thread(mi_output_fun* out, void* arg, const char* prefix, const char* fmt, va_list args) {
   if (prefix != NULL && _mi_strnlen(prefix,33) <= 32 && !_mi_is_main_thread()) {
     char tprefix[64];
-    snprintf(tprefix, sizeof(tprefix), "%sthread 0x%llx: ", prefix, (unsigned long long)_mi_thread_id());
+    _mi_snprintf(tprefix, sizeof(tprefix), "%sthread 0x%tx: ", prefix, (uintptr_t)_mi_thread_id());
     mi_vfprintf(out, arg, tprefix, fmt, args);
   }
   else {
@@ -434,68 +445,6 @@ void _mi_error_message(int err, const char* fmt, ...) {
 // --------------------------------------------------------
 // Initialize options by checking the environment
 // --------------------------------------------------------
-char _mi_toupper(char c) {
-  if (c >= 'a' && c <= 'z') return (c - 'a' + 'A');
-                       else return c;
-}
-
-int _mi_strnicmp(const char* s, const char* t, size_t n) {
-  if (n == 0) return 0;
-  for (; *s != 0 && *t != 0 && n > 0; s++, t++, n--) {
-    if (_mi_toupper(*s) != _mi_toupper(*t)) break;
-  }
-  return (n == 0 ? 0 : *s - *t);
-}
-
-void _mi_strlcpy(char* dest, const char* src, size_t dest_size) {
-  if (dest==NULL || src==NULL || dest_size == 0) return;
-  // copy until end of src, or when dest is (almost) full
-  while (*src != 0 && dest_size > 1) {
-    *dest++ = *src++;
-    dest_size--;
-  }
-  // always zero terminate
-  *dest = 0;
-}
-
-void _mi_strlcat(char* dest, const char* src, size_t dest_size) {
-  if (dest==NULL || src==NULL || dest_size == 0) return;
-  // find end of string in the dest buffer
-  while (*dest != 0 && dest_size > 1) {
-    dest++;
-    dest_size--;
-  }
-  // and catenate
-  _mi_strlcpy(dest, src, dest_size);
-}
-
-size_t _mi_strlen(const char* s) {
-  if (s==NULL) return 0;
-  size_t len = 0;
-  while(s[len] != 0) { len++; }
-  return len;
-}
-
-size_t _mi_strnlen(const char* s, size_t max_len) {
-  if (s==NULL) return 0;
-  size_t len = 0;
-  while(s[len] != 0 && len < max_len) { len++; }
-  return len;
-}
-
-#ifdef MI_NO_GETENV
-static bool mi_getenv(const char* name, char* result, size_t result_size) {
-  MI_UNUSED(name);
-  MI_UNUSED(result);
-  MI_UNUSED(result_size);
-  return false;
-}
-#else
-static bool mi_getenv(const char* name, char* result, size_t result_size) {
-  if (name==NULL || result == NULL || result_size < 64) return false;
-  return _mi_prim_getenv(name,result,result_size);
-}
-#endif
 
 // TODO: implement ourselves to reduce dependencies on the C runtime
 #include <stdlib.h> // strtol
@@ -508,11 +457,11 @@ static void mi_option_init(mi_option_desc_t* desc) {
   char buf[64+1];
   _mi_strlcpy(buf, "mimalloc_", sizeof(buf));
   _mi_strlcat(buf, desc->name, sizeof(buf));
-  bool found = mi_getenv(buf, s, sizeof(s));
+  bool found = _mi_getenv(buf, s, sizeof(s));
   if (!found && desc->legacy_name != NULL) {
     _mi_strlcpy(buf, "mimalloc_", sizeof(buf));
     _mi_strlcat(buf, desc->legacy_name, sizeof(buf));
-    found = mi_getenv(buf, s, sizeof(s));
+    found = _mi_getenv(buf, s, sizeof(s));
     if (found) {
       _mi_warning_message("environment option \"mimalloc_%s\" is deprecated -- use \"mimalloc_%s\" instead.\n", desc->legacy_name, desc->name);
     }
@@ -535,14 +484,20 @@ static void mi_option_init(mi_option_desc_t* desc) {
     else {
       char* end = buf;
       long value = strtol(buf, &end, 10);
-      if (desc->option == mi_option_reserve_os_memory || desc->option == mi_option_arena_reserve) {
-        // this option is interpreted in KiB to prevent overflow of `long`
+      if (mi_option_has_size_in_kib(desc->option)) {
+        // this option is interpreted in KiB to prevent overflow of `long` for large allocations 
+        // (long is 32-bit on 64-bit windows, which allows for 4TiB max.)
+        size_t size = (value < 0 ? 0 : (size_t)value);
+        bool overflow = false;
         if (*end == 'K') { end++; }
-        else if (*end == 'M') { value *= MI_KiB; end++; }
-        else if (*end == 'G') { value *= MI_MiB; end++; }
-        else { value = (value + MI_KiB - 1) / MI_KiB; }
-        if (end[0] == 'I' && end[1] == 'B') { end += 2; }
-        else if (*end == 'B') { end++; }
+        else if (*end == 'M') { overflow = mi_mul_overflow(size,MI_KiB,&size); end++; }
+        else if (*end == 'G') { overflow = mi_mul_overflow(size,MI_MiB,&size); end++; }
+        else if (*end == 'T') { overflow = mi_mul_overflow(size,MI_GiB,&size); end++; }
+        else { size = (size + MI_KiB - 1) / MI_KiB; }
+        if (end[0] == 'I' && end[1] == 'B') { end += 2; } // KiB, MiB, GiB, TiB
+        else if (*end == 'B') { end++; }                  // Kb, Mb, Gb, Tb
+        if (overflow || size > MI_MAX_ALLOC_SIZE) { size = (MI_MAX_ALLOC_SIZE / MI_KiB); }
+        value = (size > LONG_MAX ? LONG_MAX : (long)size);
       }
       if (*end == 0) {
         desc->value = value;

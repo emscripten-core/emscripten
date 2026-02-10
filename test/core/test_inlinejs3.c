@@ -28,7 +28,7 @@ int main(int argc, char **argv) {
                       },
                       i, (double)i / 12);
   }
-  EM_ASM_INT({ globalVar = $0 }, sum); // no outputs, just input
+  EM_ASM_INT({ globalThis.globalVar = $0 }, sum); // no outputs, just input
   sum = 0;
   sum = EM_ASM_INT(return globalVar); // no inputs, just output
   printf("sum: %d\n", sum);

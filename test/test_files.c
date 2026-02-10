@@ -162,6 +162,8 @@ void test_tempfiles() {
   char data[5] = { 10, 30, 20, 11, 88 };
   FILE *n = fopen("/dev/null", "w");
   printf("5 bytes to dev/null: %zu\n", fwrite(data, 1, 5, n));
+  int res = fseek(n, 10, SEEK_CUR);
+  printf("seek /dev/null: %d\n", res);
   fclose(n);
 
   // Test file creation with O_TRUNC (regression test for #16784)

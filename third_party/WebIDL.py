@@ -3443,7 +3443,8 @@ class IDLMethod(IDLInterfaceMember, IDLScope):
               identifier == "Value" or
               identifier == "Operator" or
               identifier == "Const" or
-              identifier == "WebGLHandlesContextLoss"):
+              identifier == "WebGLHandlesContextLoss" or
+              identifier == "BindTo"):
             # Known attributes that we don't need to do anything with here
             pass
         else:

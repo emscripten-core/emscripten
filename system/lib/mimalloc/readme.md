@@ -12,8 +12,8 @@ is a general purpose allocator with excellent [performance](#performance) charac
 Initially developed by Daan Leijen for the runtime systems of the
 [Koka](https://koka-lang.github.io) and [Lean](https://github.com/leanprover/lean) languages.
 
-Latest release tag: `v2.1.2` (2023-04-24).
-Latest stable  tag: `v1.8.2` (2023-04-24).
+Latest release tag: `v2.1.7` (2024-05-21).  
+Latest v1 tag: `v1.8.7` (2024-05-21).
 
 mimalloc is a drop-in replacement for `malloc` and can be used in other programs
 without code changes, for example, on dynamically linked ELF-based systems (Linux, BSD, etc.) you can use it as:
@@ -29,6 +29,8 @@ It also includes a robust way to override the default allocator in [Windows](#ov
   bounded worst-case times with reference counting).
   Partly due to its simplicity, mimalloc has been ported to many systems (Windows, macOS,
   Linux, WASM, various BSD's, Haiku, MUSL, etc) and has excellent support for dynamic overriding.
+  At the same time, it is an industrial strength allocator that runs (very) large scale
+  distributed services on thousands of machines with excellent worst case latencies.
 - __free list sharding__: instead of one big free list (per size class) we have
   many smaller lists per "mimalloc page" which reduces fragmentation and
   increases locality --
@@ -70,13 +72,28 @@ Enjoy!
 
 * `master`: latest stable release (based on `dev-slice`).
 * `dev`: development branch for mimalloc v1. Use this branch for submitting PR's.
-* `dev-slice`: development branch for mimalloc v2. This branch is downstream of `dev`.
+* `dev-slice`: development branch for mimalloc v2. This branch is downstream of `dev` (and is essentially equal to `dev` except for
+`src/segment.c`)
 
 ### Releases
 
-Note: the `v2.x` version has a new algorithm for managing internal mimalloc pages that tends to reduce memory usage
+Note: the `v2.x` version has a different algorithm for managing internal mimalloc pages (as slices) that tends to use reduce 
+memory usage
   and fragmentation compared to mimalloc `v1.x` (especially for large workloads). Should otherwise have similar performance
   (see [below](#performance)); please report if you observe any significant performance regression.
+
+* 2024-05-21, `v1.8.7`, `v2.1.7`: Fix build issues on less common platforms. Started upstreaming patches
+  from the CPython [integration](https://github.com/python/cpython/issues/113141#issuecomment-2119255217). Upstream `vcpkg` patches.
+* 2024-05-13, `v1.8.6`, `v2.1.6`: Fix build errors on various (older) platforms. Refactored aligned allocation.
+* 2024-04-22, `v1.8.4`, `v2.1.4`: Fixes various bugs and build issues. Add `MI_LIBC_MUSL` cmake flag for musl builds.
+  Free-ing code is refactored into a separate module (`free.c`). Mimalloc page info is simplified with the block size
+  directly available (and new `block_size_shift` to improve aligned block free-ing). 
+  New approach to collection of abandoned segments: When
+  a thread terminates the segments it owns are abandoned (containing still live objects) and these can be
+  reclaimed by other threads. We no longer use a list of abandoned segments but this is now done using bitmaps in arena's 
+  which is more concurrent (and more aggressive). Abandoned memory can now also be reclaimed if a thread frees an object in
+  an abandoned page (which can be disabled using `mi_option_abandoned_reclaim_on_free`). The option `mi_option_max_segment_reclaim`
+  gives a maximum percentage of abandoned segments that can be reclaimed per try (=10%).
 
 * 2023-04-24, `v1.8.2`, `v2.1.2`: Fixes build issues on freeBSD, musl, and C17 (UE 5.1.1). Reduce code size/complexity 
   by removing regions and segment-cache's and only use arenas with improved memory purging -- this may improve memory
@@ -89,9 +106,10 @@ Note: the `v2.x` version has a new algorithm for managing internal mimalloc page
   abstraction layer to make it easier to port and separate platform dependent code (in `src/prim`). Fixed C++ STL compilation on older Microsoft C++ compilers, and various small bug fixes.
 
 * 2022-12-23, `v1.7.9`, `v2.0.9`: Supports building with [asan](#asan) and improved [Valgrind](#valgrind) support.
-  Support abitrary large alignments (in particular for `std::pmr` pools). 
+  Support arbitrary large alignments (in particular for `std::pmr` pools). 
   Added C++ STL allocators attached to a specific heap (thanks @vmarkovtsev). 
-  Heap walks now visit all object (including huge objects). Support Windows nano server containers (by Johannes Schindelin,@dscho). Various small bug fixes.
+  Heap walks now visit all object (including huge objects). Support Windows nano server containers (by Johannes Schindelin,@dscho). 
+  Various small bug fixes.
 
 * 2022-11-03, `v1.7.7`, `v2.0.7`: Initial support for [Valgrind](#valgrind) for leak testing and heap block overflow
   detection. Initial
@@ -141,7 +159,7 @@ mimalloc is used in various large scale low-latency services and programs, for e
 
 ## Windows
 
-Open `ide/vs2019/mimalloc.sln` in Visual Studio 2019 and build.
+Open `ide/vs2022/mimalloc.sln` in Visual Studio 2022 and build.
 The `mimalloc` project builds a static library (in `out/msvc-x64`), while the
 `mimalloc-override` project builds a DLL for overriding malloc
 in the entire program.
@@ -221,7 +239,7 @@ target_link_libraries(myapp PUBLIC mimalloc-static)
 to link with the static library. See `test\CMakeLists.txt` for an example.
 
 For best performance in C++ programs, it is also recommended to override the
-global `new` and `delete` operators. For convience, mimalloc provides
+global `new` and `delete` operators. For convenience, mimalloc provides
 [`mimalloc-new-delete.h`](https://github.com/microsoft/mimalloc/blob/master/include/mimalloc-new-delete.h) which does this for you -- just include it in a single(!) source file in your project.
 In C++, mimalloc also provides the `mi_stl_allocator` struct which implements the `std::allocator`
 interface.
@@ -277,17 +295,23 @@ You can set further options either programmatically (using [`mi_option_set`](htt
 
 Advanced options:
 
+- `MIMALLOC_ARENA_EAGER_COMMIT=2`: turns on eager commit for the large arenas (usually 1GiB) from which mimalloc 
+   allocates segments and pages. Set this to 2 (default) to 
+   only enable this on overcommit systems (e.g. Linux). Set this to 1 to enable explicitly on other systems 
+   as well (like Windows or macOS) which may improve performance (as the whole arena is committed at once). 
+   Note that eager commit only increases the commit but not the actual the peak resident set 
+   (rss) so it is generally ok to enable this.
 - `MIMALLOC_PURGE_DELAY=N`: the delay in `N` milli-seconds (by default `10`) after which mimalloc will purge 
    OS pages that are not in use. This signals to the OS that the underlying physical memory can be reused which 
    can reduce memory fragmentation especially in long running (server) programs. Setting `N` to `0` purges immediately when
    a page becomes unused which can improve memory usage but also decreases performance. Setting `N` to a higher
    value like `100` can improve performance (sometimes by a lot) at the cost of potentially using more memory at times.
-   Setting it to `-1` disables purging completely.   
-- `MIMALLOC_ARENA_EAGER_COMMIT=1`: turns on eager commit for the large arenas (usually 1GiB) from which mimalloc 
-   allocates segments and pages. This is by default 
-   only enabled on overcommit systems (e.g. Linux) but enabling it explicitly on other systems (like Windows or macOS)
-   may improve performance. Note that eager commit only increases the commit but not the actual the peak resident set 
-   (rss) so it is generally ok to enable this.
+   Setting it to `-1` disables purging completely.
+- `MIMALLOC_PURGE_DECOMMITS=1`: By default "purging" memory means unused memory is decommitted (`MEM_DECOMMIT` on Windows,
+   `MADV_DONTNEED` (which decresease rss immediately) on `mmap` systems). Set this to 0 to instead "reset" unused
+   memory on a purge (`MEM_RESET` on Windows, generally `MADV_FREE` (which does not decrease rss immediately) on `mmap` systems).
+   Mimalloc generally does not "free" OS memory but only "purges" OS memory, in other words, it tries to keep virtual 
+   address ranges and decommits within those ranges (to make the underlying physical memory available to other processes).
 
 Further options for large workloads and services:
 
@@ -295,9 +319,10 @@ Further options for large workloads and services:
    at runtime. Setting `N` to 1 may avoid problems in some virtual environments. Also, setting it to a lower number than
    the actual NUMA nodes is fine and will only cause threads to potentially allocate more memory across actual NUMA
    nodes (but this can happen in any case as NUMA local allocation is always a best effort but not guaranteed).
-- `MIMALLOC_ALLOW_LARGE_OS_PAGES=1`: use large OS pages (2MiB) when available; for some workloads this can significantly
-   improve performance. Use `MIMALLOC_VERBOSE` to check if the large OS pages are enabled -- usually one needs
-   to explicitly allow large OS pages (as on [Windows][windows-huge] and [Linux][linux-huge]). However, sometimes
+- `MIMALLOC_ALLOW_LARGE_OS_PAGES=1`: use large OS pages (2 or 4MiB) when available; for some workloads this can significantly
+   improve performance. When this option is disabled, it also disables transparent huge pages (THP) for the process 
+   (on Linux and Android). Use `MIMALLOC_VERBOSE` to check if the large OS pages are enabled -- usually one needs
+   to explicitly give permissions for large OS pages (as on [Windows][windows-huge] and [Linux][linux-huge]). However, sometimes
    the OS is very slow to reserve contiguous physical memory for large OS pages so use with care on systems that
    can have fragmented memory (for that reason, we generally recommend to use `MIMALLOC_RESERVE_HUGE_OS_PAGES` instead whenever possible).   
 - `MIMALLOC_RESERVE_HUGE_OS_PAGES=N`: where `N` is the number of 1GiB _huge_ OS pages. This reserves the huge pages at
@@ -306,11 +331,12 @@ Further options for large workloads and services:
    OS pages, use with care as reserving
    contiguous physical memory can take a long time when memory is fragmented (but reserving the huge pages is done at
    startup only once).
-   Note that we usually need to explicitly enable huge OS pages (as on [Windows][windows-huge] and [Linux][linux-huge])).
+   Note that we usually need to explicitly give permission for huge OS pages (as on [Windows][windows-huge] and [Linux][linux-huge])).
    With huge OS pages, it may be beneficial to set the setting
    `MIMALLOC_EAGER_COMMIT_DELAY=N` (`N` is 1 by default) to delay the initial `N` segments (of 4MiB)
    of a thread to not allocate in the huge OS pages; this prevents threads that are short lived
-   and allocate just a little to take up space in the huge OS page area (which cannot be purged).
+   and allocate just a little to take up space in the huge OS page area (which cannot be purged as huge OS pages are pinned
+   to physical memory).
    The huge pages are usually allocated evenly among NUMA nodes.
    We can use `MIMALLOC_RESERVE_HUGE_OS_PAGES_AT=N` where `N` is the numa node (starting at 0) to allocate all
    the huge pages at a specific numa node instead.
@@ -391,32 +417,41 @@ the [shell](https://stackoverflow.com/questions/43941322/dyld-insert-libraries-i
 
 ### Dynamic Override on Windows
 
-<span id="override_on_windows">Overriding on Windows</span> is robust and has the
-particular advantage to be able to redirect all malloc/free calls that go through
+<span id="override_on_windows">Dynamically overriding on mimalloc on Windows</span> 
+is robust and has the particular advantage to be able to redirect all malloc/free calls that go through
 the (dynamic) C runtime allocator, including those from other DLL's or libraries.
+As it intercepts all allocation calls on a low level, it can be used reliably 
+on large programs that include other 3rd party components.
+There are four requirements to make the overriding work robustly:
 
-The overriding on Windows requires that you link your program explicitly with
-the mimalloc DLL and use the C-runtime library as a DLL (using the `/MD` or `/MDd` switch).
-Also, the `mimalloc-redirect.dll` (or `mimalloc-redirect32.dll`) must be put
-in the same folder as the main `mimalloc-override.dll` at runtime (as it is a dependency).
-The redirection DLL ensures that all calls to the C runtime malloc API get redirected to
-mimalloc (in `mimalloc-override.dll`).
+1. Use the C-runtime library as a DLL (using the `/MD` or `/MDd` switch).
+2. Link your program explicitly with `mimalloc-override.dll` library.
+   To ensure the `mimalloc-override.dll` is loaded at run-time it is easiest to insert some
+    call to the mimalloc API in the `main` function, like `mi_version()`
+    (or use the `/INCLUDE:mi_version` switch on the linker). See the `mimalloc-override-test` project
+    for an example on how to use this. 
+3. The [`mimalloc-redirect.dll`](bin) (or `mimalloc-redirect32.dll`) must be put
+   in the same folder as the main `mimalloc-override.dll` at runtime (as it is a dependency of that DLL).
+   The redirection DLL ensures that all calls to the C runtime malloc API get redirected to
+   mimalloc functions (which reside in `mimalloc-override.dll`).
+4. Ensure the `mimalloc-override.dll` comes as early as possible in the import
+   list of the final executable (so it can intercept all potential allocations).
 
-To ensure the mimalloc DLL is loaded at run-time it is easiest to insert some
-call to the mimalloc API in the `main` function, like `mi_version()`
-(or use the `/INCLUDE:mi_version` switch on the linker). See the `mimalloc-override-test` project
-for an example on how to use this. For best performance on Windows with C++, it
+For best performance on Windows with C++, it
 is also recommended to also override the `new`/`delete` operations (by including
-[`mimalloc-new-delete.h`](https://github.com/microsoft/mimalloc/blob/master/include/mimalloc-new-delete.h) a single(!) source file in your project).
+[`mimalloc-new-delete.h`](include/mimalloc-new-delete.h) 
+a single(!) source file in your project).
 
 The environment variable `MIMALLOC_DISABLE_REDIRECT=1` can be used to disable dynamic
 overriding at run-time. Use `MIMALLOC_VERBOSE=1` to check if mimalloc was successfully redirected.
 
-(Note: in principle, it is possible to even patch existing executables without any recompilation
+We cannot always re-link an executable with `mimalloc-override.dll`, and similarly, we cannot always
+ensure the the DLL comes first in the import table of the final executable.
+In many cases though we can patch existing executables without any recompilation
 if they are linked with the dynamic C runtime (`ucrtbase.dll`) -- just put the `mimalloc-override.dll`
 into the import table (and put `mimalloc-redirect.dll` in the same folder)
-Such patching can be done for example with [CFF Explorer](https://ntcore.com/?page_id=388)).
-
+Such patching can be done for example with [CFF Explorer](https://ntcore.com/?page_id=388) or
+the [`minject`](bin) program.
 
 ## Static override
 
@@ -438,7 +473,7 @@ This is provided by [`mimalloc-override.h`](https://github.com/microsoft/mimallo
 under your control or otherwise mixing of pointers from different heaps may occur!
 
 
-## Tools
+# Tools
 
 Generally, we recommend using the standard allocator with memory tracking tools, but mimalloc
 can also be build to support the [address sanitizer][asan] or the excellent [Valgrind] tool. 
@@ -446,7 +481,7 @@ Moreover, it can be build to support Windows event tracing ([ETW]).
 This has a small performance overhead but does allow detecting memory leaks and byte-precise 
 buffer overflows directly on final executables. See also the `test/test-wrong.c` file to test with various tools.
 
-### Valgrind
+## Valgrind
 
 To build with [valgrind] support, use the `MI_TRACK_VALGRIND=ON` cmake option:
 
@@ -480,7 +515,7 @@ Valgrind support is in its initial development -- please report any issues.
 [Valgrind]: https://valgrind.org/
 [valgrind-soname]: https://valgrind.org/docs/manual/manual-core.html#opt.soname-synonyms
 
-### ASAN
+## ASAN
 
 To build with the address sanitizer, use the `-DMI_TRACK_ASAN=ON` cmake option:
 
@@ -509,7 +544,7 @@ Adress sanitizer support is in its initial development -- please report any issu
 
 [asan]: https://github.com/google/sanitizers/wiki/AddressSanitizer
 
-### ETW
+## ETW
 
 Event tracing for Windows ([ETW]) provides a high performance way to capture all allocations though
 mimalloc and analyze them later. To build with ETW support, use the `-DMI_TRACK_ETW=ON` cmake option. 

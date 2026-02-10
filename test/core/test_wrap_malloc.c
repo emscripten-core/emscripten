@@ -11,11 +11,19 @@
 
 static int totalAllocs;
 static int totalFrees;
+static int totalReallocs;
 
 void *malloc(size_t size) {
   ++totalAllocs;
   void *ptr = emscripten_builtin_malloc(size);
   emscripten_console_logf("Allocated %zu bytes, got %p. %d pointers allocated total.", size, ptr, totalAllocs);
+  return ptr;
+}
+
+void *realloc(void* ptr, size_t size) {
+  ++totalReallocs;
+  ptr = emscripten_builtin_realloc(ptr, size);
+  emscripten_console_logf("Reallocated %zu bytes, got %p. %d pointers re-allocated total.", size, ptr, totalReallocs);
   return ptr;
 }
 
@@ -35,13 +43,18 @@ int main() {
     void *ptr = malloc(1024 * 1024);
     // Make sure we do something with the pointer do ensure the optimizer
     // doesn't completely remove the allocation.
-    emscripten_console_logf("alloacted: %p", ptr);
+    emscripten_console_logf("allocated: %p", ptr);
     free(ptr);
   }
 
+  void* ptr = malloc(50);
+  ptr = realloc(ptr, 50);
+
   emscripten_console_logf("totalAllocs: %d", totalAllocs);
   emscripten_console_logf("totalFrees: %d", totalFrees);
-  assert(totalAllocs == 20);
+  emscripten_console_logf("totalReallocs: %d", totalReallocs);
+  assert(totalAllocs == 21);
+  assert(totalReallocs == 1);
   assert(totalFrees == 20);
   emscripten_console_logf("OK.");
   return 0;

@@ -77,7 +77,10 @@
 
 // We prefer to use __EMSCRIPTEN__, but for compatibility, we define
 // EMSCRIPTEN too.
-#ifndef EMSCRIPTEN
+#if defined(IN_STRICT_MODE) && defined(EMSCRIPTEN)
+#error When compiling in -sSTRICT mode, EMSCRIPTEN should not be defined, but it was!
+#endif
+#if !defined(IN_STRICT_MODE) && !defined(EMSCRIPTEN)
 #error EMSCRIPTEN is not defined
 #endif
 

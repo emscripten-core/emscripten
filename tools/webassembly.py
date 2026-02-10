@@ -3,17 +3,18 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Utilties for manipulating WebAssembly binaries from python.
+"""Utilities for manipulating WebAssembly binaries from python.
 """
 
-from collections import namedtuple
-from enum import IntEnum
-from functools import wraps
 import logging
 import os
 import sys
+from collections import namedtuple
+from enum import IntEnum
+from functools import wraps
 
 from . import utils
+from .utils import memoize
 
 sys.path.append(utils.path_from_root('third_party'))
 
@@ -55,19 +56,6 @@ def read_sleb(iobuf):
   return leb128.i.decode_reader(iobuf)[0]
 
 
-def memoize(method):
-
-  @wraps(method)
-  def wrapper(self, *args, **kwargs):
-    assert not kwargs
-    key = (method.__name__, args)
-    if key not in self._cache:
-      self._cache[key] = method(self, *args, **kwargs)
-    return self._cache[key]
-
-  return wrapper
-
-
 def once(method):
 
   @wraps(method)
@@ -87,6 +75,7 @@ class Type(IntEnum):
   V128 = 0x7b # -0x5
   FUNCREF = 0x70 # -0x10
   EXTERNREF = 0x6f # -0x11
+  EXNREF = 0x69 # -0x17
   VOID = 0x40 # -0x40
 
 
@@ -160,6 +149,27 @@ class DylinkType(IntEnum):
   NEEDED = 2
   EXPORT_INFO = 3
   IMPORT_INFO = 4
+  RUNTIME_PATH = 5
+
+
+class TargetFeaturePrefix(IntEnum):
+  USED = 0x2b
+  DISALLOWED = 0x2d
+
+
+class NameType(IntEnum):
+  MODULE = 0
+  FUNCTION = 1
+  LOCAL = 2
+  LABEL = 3
+  TYPE = 4
+  TABLE = 5
+  MEMORY = 6
+  GLOBAL = 7
+  ELEMSEGMENT = 8
+  DATASEGMENT = 9
+  FIELD = 10
+  TAG = 11
 
 
 class InvalidWasmError(BaseException):
@@ -171,7 +181,7 @@ Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
 Import = namedtuple('Import', ['kind', 'module', 'field', 'type'])
 Export = namedtuple('Export', ['name', 'kind', 'index'])
 Global = namedtuple('Global', ['type', 'mutable', 'init'])
-Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info'])
+Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info', 'runtime_paths'])
 Table = namedtuple('Table', ['elem_type', 'limits'])
 FunctionBody = namedtuple('FunctionBody', ['offset', 'size'])
 DataSegment = namedtuple('DataSegment', ['flags', 'init', 'offset', 'size'])
@@ -236,16 +246,17 @@ class Module:
     while 1:
       opcode = OpCode(self.read_byte())
       args = []
-      if opcode == OpCode.GLOBAL_GET:
-        args.append(self.read_uleb())
-      elif opcode in (OpCode.I32_CONST, OpCode.I64_CONST):
-        args.append(self.read_sleb())
-      elif opcode in (OpCode.REF_NULL,):
-        args.append(self.read_type())
-      elif opcode in (OpCode.END, OpCode.I32_ADD, OpCode.I64_ADD):
-        pass
-      else:
-        raise Exception('unexpected opcode %s' % opcode)
+      match opcode:
+        case OpCode.GLOBAL_GET:
+          args.append(self.read_uleb())
+        case OpCode.I32_CONST | OpCode.I64_CONST:
+          args.append(self.read_sleb())
+        case OpCode.REF_NULL:
+          args.append(self.read_type())
+        case OpCode.END | OpCode.I32_ADD | OpCode.I64_ADD:
+          pass
+        case _:
+          raise Exception('unexpected opcode %s' % opcode)
       code.append((opcode, args))
       if opcode == OpCode.END:
         break
@@ -287,32 +298,15 @@ class Module:
       type_form = self.read_byte()
       assert type_form == 0x60
 
-      params = []
       num_params = self.read_uleb()
-      for _ in range(num_params):
-        params.append(self.read_type())
+      params = [self.read_type() for _ in range(num_params)]
 
-      returns = []
       num_returns = self.read_uleb()
-      for _ in range(num_returns):
-        returns.append(self.read_type())
+      returns = [self.read_type() for _ in range(num_returns)]
 
       types.append(FuncType(params, returns))
 
     return types
-
-  def parse_features_section(self):
-    features = []
-    sec = self.get_custom_section('target_features')
-    if sec:
-      self.seek(sec.offset)
-      self.read_string()  # name
-      feature_count = self.read_uleb()
-      while feature_count:
-        prefix = self.read_byte()
-        features.append((chr(prefix), self.read_string()))
-        feature_count -= 1
-    return features
 
   @memoize
   def parse_dylink_section(self):
@@ -323,6 +317,7 @@ class Module:
     needed = []
     export_info = {}
     import_info = {}
+    runtime_paths = []
     self.read_string()  # name
 
     if dylink_section.name == 'dylink':
@@ -342,42 +337,49 @@ class Module:
         subsection_type = self.read_uleb()
         subsection_size = self.read_uleb()
         end = self.tell() + subsection_size
-        if subsection_type == DylinkType.MEM_INFO:
-          mem_size = self.read_uleb()
-          mem_align = self.read_uleb()
-          table_size = self.read_uleb()
-          table_align = self.read_uleb()
-        elif subsection_type == DylinkType.NEEDED:
-          needed_count = self.read_uleb()
-          while needed_count:
-            libname = self.read_string()
-            needed.append(libname)
-            needed_count -= 1
-        elif subsection_type == DylinkType.EXPORT_INFO:
-          count = self.read_uleb()
-          while count:
-            sym = self.read_string()
-            flags = self.read_uleb()
-            export_info[sym] = flags
-            count -= 1
-        elif subsection_type == DylinkType.IMPORT_INFO:
-          count = self.read_uleb()
-          while count:
-            module = self.read_string()
-            field = self.read_string()
-            flags = self.read_uleb()
-            import_info.setdefault(module, {})
-            import_info[module][field] = flags
-            count -= 1
-        else:
-          print(f'unknown subsection: {subsection_type}')
-          # ignore unknown subsections
-          self.skip(subsection_size)
+        match subsection_type:
+          case DylinkType.MEM_INFO:
+            mem_size = self.read_uleb()
+            mem_align = self.read_uleb()
+            table_size = self.read_uleb()
+            table_align = self.read_uleb()
+          case DylinkType.NEEDED:
+            needed_count = self.read_uleb()
+            while needed_count:
+              libname = self.read_string()
+              needed.append(libname)
+              needed_count -= 1
+          case DylinkType.EXPORT_INFO:
+            count = self.read_uleb()
+            while count:
+              sym = self.read_string()
+              flags = self.read_uleb()
+              export_info[sym] = flags
+              count -= 1
+          case DylinkType.IMPORT_INFO:
+            count = self.read_uleb()
+            while count:
+              module = self.read_string()
+              field = self.read_string()
+              flags = self.read_uleb()
+              import_info.setdefault(module, {})
+              import_info[module][field] = flags
+              count -= 1
+          case DylinkType.RUNTIME_PATH:
+            count = self.read_uleb()
+            while count:
+              rpath = self.read_string()
+              runtime_paths.append(rpath)
+              count -= 1
+          case _:
+            print(f'unknown subsection: {subsection_type}')
+            # ignore unknown subsections
+            self.skip(subsection_size)
         assert self.tell() == end
     else:
       utils.exit_with_error('error parsing shared library')
 
-    return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info, import_info)
+    return Dylink(mem_size, mem_align, table_size, table_align, needed, export_info, import_info, runtime_paths)
 
   @memoize
   def get_exports(self):
@@ -410,21 +412,22 @@ class Module:
       field = self.read_string()
       kind = ExternType(self.read_byte())
       type_ = None
-      if kind == ExternType.FUNC:
-        type_ = self.read_uleb()
-      elif kind == ExternType.GLOBAL:
-        type_ = self.read_sleb()
-        self.read_byte()  # mutable
-      elif kind == ExternType.MEMORY:
-        self.read_limits()  # limits
-      elif kind == ExternType.TABLE:
-        type_ = self.read_sleb()
-        self.read_limits()  # limits
-      elif kind == ExternType.TAG:
-        self.read_byte()  # attribute
-        type_ = self.read_uleb()
-      else:
-        raise AssertionError()
+      match kind:
+        case ExternType.FUNC:
+          type_ = self.read_uleb()
+        case ExternType.GLOBAL:
+          type_ = self.read_sleb()
+          self.read_byte()  # mutable
+        case ExternType.MEMORY:
+          self.read_limits()  # limits
+        case ExternType.TABLE:
+          type_ = self.read_sleb()
+          self.read_limits()  # limits
+        case ExternType.TAG:
+          self.read_byte()  # attribute
+          type_ = self.read_uleb()
+        case _:
+          raise AssertionError()
       imports.append(Import(kind, mod, field, type_))
 
     return imports
@@ -519,10 +522,35 @@ class Module:
 
     self.seek(function_section.offset)
     num_types = self.read_uleb()
-    func_types = []
-    for _ in range(num_types):
-      func_types.append(self.read_uleb())
-    return func_types
+    return [self.read_uleb() for _ in range(num_types)]
+
+  @memoize
+  def get_function_names(self, remove_imports=True):
+    num_funcs = self.num_imported_funcs() + len(self.get_functions())
+    names = [None] * num_funcs
+
+    name_section = self.get_custom_section('name')
+    if not name_section:
+      return names
+
+    self.seek(name_section.offset)
+    self.read_string()  # section name
+    section_end = name_section.offset + name_section.size
+
+    while self.tell() < section_end:
+      subsection_id = self.read_byte()
+      subsection_size = self.read_uleb()
+      if subsection_id == 1:  # function names
+        count = self.read_uleb()
+        for _ in range(count):
+          func_idx = self.read_uleb()
+          func_name = self.read_string()
+          assert func_idx < len(names)
+          names[func_idx] = func_name
+      else:
+        self.skip(subsection_size)
+
+    return names[self.num_imported_funcs():] if remove_imports else names
 
   def has_name_section(self):
     return self.get_custom_section('name') is not None
@@ -547,6 +575,12 @@ class Module:
     assert idx >= self.num_imported_funcs()
     return self.get_functions()[idx - self.num_imported_funcs()]
 
+  def iter_functions_by_index(self):
+    self._calc_indexes()
+    for idx in range(self.num_imported_funcs(),
+                     self.num_imported_funcs() + len(self.get_functions())):
+      yield idx, self.get_function(idx)
+
   def get_global(self, idx):
     self._calc_indexes()
     assert idx >= self.num_imported_globals()
@@ -560,6 +594,30 @@ class Module:
     else:
       func_type = self.get_function_types()[idx - self.num_imported_funcs()]
     return self.get_types()[func_type]
+
+  @memoize
+  def get_target_features(self):
+    section = self.get_custom_section('target_features')
+    if not section:
+      return {}
+    self.seek(section.offset)
+    assert self.read_string() == 'target_features'
+    features = {}
+    self.read_byte() # ignore feature count
+    while self.tell() < section.offset + section.size:
+      prefix = TargetFeaturePrefix(self.read_byte())
+      feature = self.read_string()
+      features[feature] = prefix
+    return features
+
+  @memoize
+  def get_sourceMappingURL(self):
+    section = self.get_custom_section('sourceMappingURL')
+    if not section:
+      return ''
+    self.seek(section.offset)
+    self.read_string() # 'sourceMappingURL'
+    return self.read_string()
 
 
 def parse_dylink_section(wasm_file):

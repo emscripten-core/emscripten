@@ -1,0 +1,4 @@
+RLIMIT_NOFILE: rlim_cur: 4096
+RLIMIT_NOFILE: rlim_max: 4096
+RLIMIT_CORE: rlim_cur: -1
+RLIMIT_CORE: rlim_max: -1

@@ -225,7 +225,7 @@ var emscriptenCpuProfiler = {
           if (i != 2) cs += ' <- ';
           var fn = funcs[i];
           var at = fn.indexOf('@');
-          if (at != -1) fn = fn.substr(0, at);
+          if (at != -1) fn = fn.slice(0, at);
           fn = fn.trim();
           cs += '"' + fn + '"';
         }
@@ -593,7 +593,7 @@ var emscriptenCpuProfiler = {
   detectWebGLContext() {
     if (Module['canvas']?.GLctxObject?.GLctx) return Module['canvas'].GLctxObject.GLctx;
     else if (typeof GLctx != 'undefined') return GLctx;
-    else if (Module.ctx) return Module.ctx;
+    else if (Module['ctx']) return Module['ctx'];
     return null;
   },
 
@@ -655,7 +655,7 @@ var emscriptenCpuProfiler = {
       case 9: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9); this.endSection(section); return ret; }; break;
       case 10: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10); this.endSection(section); return ret; }; break;
       case 11: glCtx[f] = (a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11) => { this.enterSection(section); var ret =  glCtx[realf](a1, a2, a3, a4, a5, a6, a7, a8, a9, a10, a11); this.endSection(section); return ret; }; break;
-      default: throw 'hookWebGL failed! Unexpected length ' + glCtx[realf].length;
+      default: throw new Error('hookWebGL failed! Unexpected length ' + glCtx[realf].length);
     }
   },
 
@@ -756,7 +756,7 @@ function cpuprofiler_add_hooks() {
   emscriptenCpuProfiler.initialize();
 }
 
-if (typeof document != 'undefined') {
+if (globalThis.document) {
   emscriptenCpuProfiler.initialize();
 }
 

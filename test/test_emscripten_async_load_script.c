@@ -39,7 +39,8 @@ void load2() {
 }
 
 void error2() {
-  printf("fail2\n");
+  printf("failed to load second script\n");
+  assert(false);
 }
 
 void load1() {
@@ -49,7 +50,8 @@ void load1() {
 }
 
 void error1() {
-  printf("fail1\n");
+  printf("failed to load first script\n");
+  assert(false);
 }
 
 int main() {

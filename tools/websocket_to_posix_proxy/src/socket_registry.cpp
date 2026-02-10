@@ -5,10 +5,13 @@
 #include <algorithm>
 #include "threads.h"
 
-extern MUTEX_T socketRegistryLock;
-
 namespace {
+  MUTEX_T socketRegistryLock;
   std::map<int, std::vector<SOCKET_T> > socketsPerProxyConnection;
+}
+
+void InitWebSocketRegistry() {
+  CREATE_MUTEX(&socketRegistryLock);
 }
 
 void TrackSocketUsedByConnection(int proxyConnection, SOCKET_T usedSocket) {

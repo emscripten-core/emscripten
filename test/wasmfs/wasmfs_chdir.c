@@ -16,14 +16,27 @@
 #include <unistd.h>
 
 int main() {
+  char cwd[100];
+
   // Set up test directories.
   assert(mkdir("working", 0777) != -1);
   assert(mkdir("/working/test", 0777) != -1);
 
-  // Try to print the root directory.
-  char cwd[100];
+  // Try to pass a size of 0.
+  errno = 0;
+  getcwd(cwd, 0);
+  printf("Errno: %s\n", strerror(errno));
+  assert(errno == EINVAL);
+
+  // Try to write to a buffer of size 1.
+  errno = 0;
+  getcwd(cwd, 1);
+  assert(errno == ERANGE);
+
+  // Try to print the root directory, using size 2
   char* ret;
-  ret = getcwd(cwd, sizeof(cwd));
+  errno = 0;
+  ret = getcwd(cwd, 2);
   assert(ret == cwd);
   printf("Current working dir: %s\n", cwd);
 
@@ -86,16 +99,5 @@ int main() {
   assert(ret == cwd);
   printf("Current working dir is still: %s\n", cwd);
 
-  // Try to pass a size of 0.
-  errno = 0;
-  getcwd(cwd, 0);
-  printf("Errno: %s\n", strerror(errno));
-  assert(errno == EINVAL);
-
-  // Try to write to a buffer of size 1.
-  errno = 0;
-  char smallBuffer[1];
-  getcwd(smallBuffer, 1);
-  assert(errno == ERANGE);
   return 0;
 }

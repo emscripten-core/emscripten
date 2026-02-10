@@ -2,9 +2,8 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-// This file defines the global state of the new file system.
-// Current Status: Work in Progress.
-// See https://github.com/emscripten-core/emscripten/issues/15041.
+
+// This file defines the global state.
 
 #include <emscripten/threading.h>
 
@@ -17,7 +16,7 @@
 namespace wasmfs {
 
 #ifdef WASMFS_CASE_INSENSITIVE
-backend_t createIgnoreCaseBackend(std::function<backend_t()> createBacken);
+backend_t createIgnoreCaseBackend(std::function<backend_t()> createBackend);
 #endif
 
 // The below lines are included to make the compiler believe that the global
@@ -90,7 +89,7 @@ WasmFS::~WasmFS() {
 
 // Special backends that want to install themselves as the root use this hook.
 // Otherwise, we use the default backends.
-__attribute__((weak)) extern backend_t wasmfs_create_root_dir(void) {
+__attribute__((weak)) extern "C" backend_t wasmfs_create_root_dir(void) {
 #ifdef WASMFS_CASE_INSENSITIVE
   return createIgnoreCaseBackend([]() { return createMemoryBackend(); });
 #else

@@ -21,10 +21,6 @@ int emscripten_has_threading_support() { return 0; }
 
 int emscripten_num_logical_cores() { return 1; }
 
-void emscripten_force_num_logical_cores(int cores) {
-  // no-op, in singlethreaded builds we will always report exactly one core.
-}
-
 int emscripten_futex_wait(
   volatile void /*uint32_t*/* addr, uint32_t val, double maxWaitMilliseconds) {
   // nop
@@ -96,7 +92,11 @@ int pthread_barrier_destroy(pthread_barrier_t* mutex) { return 0; }
 int pthread_barrier_wait(pthread_barrier_t* mutex) { return 0; }
 
 int __pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
-  return EAGAIN;
+  // ENOTSUP, while not mentioned in the pthread_create docs, does better
+  // describe the situation.
+  // See https://github.com/WebAssembly/wasi-libc/pull/716 for discussion
+  // on this error code vs, for example, EAGAIN.
+  return ENOTSUP;
 }
 
 weak_alias(__pthread_create, emscripten_builtin_pthread_create);
@@ -277,10 +277,6 @@ int pthread_condattr_setclock(pthread_condattr_t *attr, clockid_t clk) {
 }
 
 int pthread_condattr_setpshared(pthread_condattr_t *attr, int shared) {
-  return 0;
-}
-
-int pthread_getattr_np(pthread_t thread, pthread_attr_t *attr) {
   return 0;
 }
 

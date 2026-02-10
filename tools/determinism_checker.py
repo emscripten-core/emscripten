@@ -24,7 +24,7 @@ def run():
 def write(data, subdir):
   if not os.path.exists(subdir):
     os.mkdir(subdir)
-  for relevant_file in data.keys():
+  for relevant_file in data:
     Path(os.path.join(subdir, relevant_file)).write_text(data[relevant_file])
 
 

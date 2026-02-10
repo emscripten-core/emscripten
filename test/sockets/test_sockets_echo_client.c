@@ -29,6 +29,7 @@
 #endif
 
 typedef enum {
+  MSG_CONNECT,
   MSG_READ,
   MSG_WRITE
 } msg_state_t;
@@ -66,13 +67,15 @@ void main_loop() {
   fd_set fdr;
   fd_set fdw;
   int res;
+  // Timeout of zero means don't block. Emscripten doesn't support blocking select in the general case
+  struct timeval tv = {0};
 
   // make sure that server.fd is ready to read / write
   FD_ZERO(&fdr);
   FD_ZERO(&fdw);
   FD_SET(server.fd, &fdr);
   FD_SET(server.fd, &fdw);
-  res = select(64, &fdr, &fdw, NULL, NULL);
+  res = select(64, &fdr, &fdw, NULL, &tv);
   if (res == -1) {
     perror("select failed");
     finish(EXIT_FAILURE);
@@ -107,6 +110,21 @@ void main_loop() {
       assert(!strcmp(server.msg.buffer, MESSAGE));
       finish(EXIT_SUCCESS);
     }
+  }
+
+  if (server.state == MSG_CONNECT) {
+    if (!FD_ISSET(server.fd, &fdw)) {
+      return;
+    }
+    int error = 0;
+    socklen_t len = sizeof(error);
+    int ret = getsockopt(server.fd, SOL_SOCKET, SO_ERROR, &error, &len);
+    if (error != 0) {
+      printf("connect failed: %s\n", strerror(error));
+      finish(EXIT_FAILURE);
+    }
+    printf("connected\n");
+    server.state = MSG_WRITE;
   }
 
   if (server.state == MSG_WRITE) {
@@ -160,7 +178,7 @@ int main() {
   int res;
 
   memset(&server, 0, sizeof(server_t));
-  server.state = MSG_WRITE;
+  server.state = MSG_CONNECT;
 
   // setup the message we're going to echo
   memset(&echo_msg, 0, sizeof(msg_t));
@@ -191,7 +209,7 @@ int main() {
     perror("inet_pton failed");
     finish(EXIT_FAILURE);
   }
-  
+
   res = connect(server.fd, (struct sockaddr *)&addr, sizeof(addr));
   if (res == -1 && errno != EINPROGRESS) {
     perror("connect failed");

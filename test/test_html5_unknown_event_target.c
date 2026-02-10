@@ -8,15 +8,15 @@
 #include <emscripten.h>
 #include <emscripten/html5.h>
 
-EM_BOOL wheel_cb(int eventType, const EmscriptenWheelEvent *wheelEvent __attribute__((nonnull)), void *userData) { return EM_TRUE; }
-EM_BOOL key_cb(int eventType, const EmscriptenKeyboardEvent *e, void *userData) { return EM_TRUE; }
-EM_BOOL mouse_cb(int eventType, const EmscriptenMouseEvent *mouseEvent __attribute__((nonnull)), void *userData) { return EM_TRUE; }
-EM_BOOL ui_cb(int eventType, const EmscriptenUiEvent *uiEvent __attribute__((nonnull)), void *userData) { return EM_TRUE; }
-EM_BOOL focus_cb(int eventType, const EmscriptenFocusEvent *focusEvent __attribute__((nonnull)), void *userData) { return EM_TRUE; }
-EM_BOOL fullscreenchange_cb(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent __attribute__((nonnull)), void *userData) { return EM_TRUE; }
-EM_BOOL pointerlockchange_cb(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent __attribute__((nonnull)), void *userData) { return EM_TRUE; }
-EM_BOOL pointerlockerror_cb(int eventType, const void *reserved, void *userData) { return EM_TRUE; }
-EM_BOOL touch_cb(int eventType, const EmscriptenTouchEvent *touchEvent __attribute__((nonnull)), void *userData) { return EM_TRUE; }
+bool wheel_cb(int eventType, const EmscriptenWheelEvent *wheelEvent __attribute__((nonnull)), void *userData) { return true; }
+bool key_cb(int eventType, const EmscriptenKeyboardEvent *e, void *userData) { return true; }
+bool mouse_cb(int eventType, const EmscriptenMouseEvent *mouseEvent __attribute__((nonnull)), void *userData) { return true; }
+bool ui_cb(int eventType, const EmscriptenUiEvent *uiEvent __attribute__((nonnull)), void *userData) { return true; }
+bool focus_cb(int eventType, const EmscriptenFocusEvent *focusEvent __attribute__((nonnull)), void *userData) { return true; }
+bool fullscreenchange_cb(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent __attribute__((nonnull)), void *userData) { return true; }
+bool pointerlockchange_cb(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent __attribute__((nonnull)), void *userData) { return true; }
+bool pointerlockerror_cb(int eventType, const void *reserved, void *userData) { return true; }
+bool touch_cb(int eventType, const EmscriptenTouchEvent *touchEvent __attribute__((nonnull)), void *userData) { return true; }
 
 int main(int argc, char **argv)
 {

@@ -17,17 +17,32 @@ import shutil
 import subprocess
 import sys
 
+WINDOWS = sys.platform.startswith('win')
+MSYS2 = 'MSYSTEM' in os.environ
+
 EXCLUDES = [os.path.normpath(x) for x in '''
 test/third_party
 tools/maint
+tools/install.py
 site
 node_modules
 Makefile
 .git
+.circleci
+.github
+.mypy_cache
+.ruff_cache
 cache
 cache.lock
+out
 bootstrap.py
 '''.split()]
+
+LAUNCHER_BAT_SCRIPTS = '''
+emcc.bat
+em++.bat
+bootstrap.bat
+'''.split()
 
 EXCLUDE_PATTERNS = '''
 *.pyc
@@ -48,6 +63,15 @@ def add_revision_file(target):
 def copy_emscripten(target):
   script_dir = os.path.dirname(os.path.abspath(__file__))
   emscripten_root = os.path.dirname(script_dir)
+
+  excludes = EXCLUDES
+  # We have a few launcher scripts that are checked into git still.
+  # Exclude the ones not designed for the current platforms.
+  if WINDOWS and not MSYS2:
+    excludes += [os.path.splitext(l)[0] for l in LAUNCHER_BAT_SCRIPTS]
+  elif not MSYS2:
+    excludes += LAUNCHER_BAT_SCRIPTS
+
   os.chdir(emscripten_root)
   for root, dirs, files in os.walk('.'):
     # Handle the case where the target directory is underneath emscripten_root
@@ -76,11 +100,15 @@ def copy_emscripten(target):
         logger.debug('skipping file: ' + os.path.join(root, f))
         continue
       full = os.path.normpath(os.path.join(root, f))
-      if full in EXCLUDES:
+      if full in excludes:
         logger.debug('skipping file: ' + os.path.join(root, f))
         continue
       logger.debug('installing file: ' + os.path.join(root, f))
       shutil.copy2(full, os.path.join(target, root, f), follow_symlinks=False)
+
+
+def npm_install(target):
+  subprocess.check_call([shutil.which('npm'), 'ci', '--omit=dev'], cwd=target)
 
 
 def main():
@@ -96,6 +124,7 @@ def main():
   logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
   os.makedirs(target)
   copy_emscripten(target)
+  npm_install(target)
   if os.path.isdir('.git'):
     # Add revision flag only if the source directory is a Git repository
     # and not a source archive

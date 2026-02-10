@@ -1,6 +1,9 @@
 #ifndef _COMPAT_XLOCALE_H_
 #define _COMPAT_XLOCALE_H_
 
+#define __NEED_locale_t
+#include <bits/alltypes.h>
+
 #include <locale.h>
 
 #ifdef __cplusplus

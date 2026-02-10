@@ -7,7 +7,7 @@ typedef void* (*thread_main_t)(void*);
 int main() {
   puts("hello from main");
 
-  void *lib_handle = dlopen("./liblib.so", RTLD_NOW);
+  void *lib_handle = dlopen("./libside.so", RTLD_NOW);
   if (!lib_handle) {
     puts("cannot load side module");
     puts(dlerror());

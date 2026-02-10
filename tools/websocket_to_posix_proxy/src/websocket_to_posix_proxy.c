@@ -100,20 +100,22 @@ void WebSocketMessageUnmaskPayload(uint8_t* payload,
   }
 }
 
-extern MUTEX_T webSocketSendLock;
+void lock_websocket_send_lock(void);
+void unlock_websocket_send_lock(void);
 
 void SendWebSocketMessage(int client_fd, void *buf, uint64_t numBytes) {
   // Guard send() calls to the client_fd socket so that two threads won't ever race to send to the
   // same socket. (This could be per-socket, currently global for simplicity)
-  LOCK_MUTEX(&webSocketSendLock);
-  uint8_t headerData[sizeof(WebSocketMessageHeader) + 8/*possible extended length*/] = {};
+  lock_websocket_send_lock();
+  uint8_t headerData[sizeof(WebSocketMessageHeader) + 8/*possible extended length*/];
+  memset(headerData, 0, sizeof(headerData));
   WebSocketMessageHeader *header = (WebSocketMessageHeader *)headerData;
   header->opcode = 0x02;
   header->fin = 1;
   int headerBytes = 2;
 
   if (numBytes < 126) {
-    header->payloadLength = numBytes;
+    header->payloadLength = (unsigned int)numBytes;
   } else if (numBytes <= 65535) {
     header->payloadLength = 126;
     *(uint16_t*)(headerData+headerBytes) = htons((unsigned short)numBytes);
@@ -139,7 +141,7 @@ void SendWebSocketMessage(int client_fd, void *buf, uint64_t numBytes) {
 
   send(client_fd, (const char*)headerData, headerBytes, 0); // header
   send(client_fd, (const char*)buf, (int)numBytes, 0); // payload
-  UNLOCK_MUTEX(&webSocketSendLock);
+  unlock_websocket_send_lock();
 }
 
 #define MUSL_PF_UNSPEC       0
@@ -336,7 +338,7 @@ static int Translate_Socket_Domain(int domain) {
 //  case MUSL_AF_KCM: return AF_KCM;
   case MUSL_AF_MAX: return AF_MAX;
   default:
-    fprintf(stderr, "Uncrecognized Socket Domain %d!\n", domain);
+    fprintf(stderr, "Unrecognized Socket Domain %d!\n", domain);
     return domain;
   }
 }
@@ -370,7 +372,7 @@ static int Translate_Socket_Type(int type) {
 //  case MUSL_SOCK_DCCP: return SOCK_DCCP;
 //  case MUSL_SOCK_PACKET: return SOCK_PACKET;
   default:
-    fprintf(stderr, "Uncrecognized socket type %d!\n", type);
+    fprintf(stderr, "Unrecognized socket type %d!\n", type);
     return type;
   }
 }
@@ -517,7 +519,7 @@ static int Translate_Socket_Level(int level) {
 //  case MUSL_SOL_NFC: return SOL_NFC;
 //  case MUSL_SOL_KCM: return SOL_KCM;
   default:
-    fprintf(stderr, "Uncrecognized socket level %d!\n", level);
+    fprintf(stderr, "Unrecognized socket level %d!\n", level);
     return level;
   }
 }
@@ -967,7 +969,8 @@ void Accept(int client_fd, uint8_t *data, uint64_t numBytes) {
   } MSG;
   MSG *d = (MSG*)data;
 
-  uint8_t address[MAX_SOCKADDR_SIZE] = {};
+  uint8_t address[MAX_SOCKADDR_SIZE];
+  memset(address, 0, sizeof(address));
   socklen_t addressLen = (socklen_t)MAX(0, MIN(d->address_len, MAX_SOCKADDR_SIZE));
 
   SOCKET_T ret;
@@ -1446,7 +1449,8 @@ void Getaddrinfo(int client_fd, uint8_t *data, uint64_t numBytes) {
   if (errorCode) PRINT_SOCKET_ERROR(errorCode);
 #endif
 
-  char ai_canonname[MAX_NODE_LEN] = {};
+  char ai_canonname[MAX_NODE_LEN];
+  memset(ai_canonname, 0, sizeof(ai_canonname));
   int ai_addrTotalLen = 0;
   int addrCount = 0;
 
@@ -1490,6 +1494,7 @@ void Getaddrinfo(int client_fd, uint8_t *data, uint64_t numBytes) {
   r->ret = ret;
   r->errno_ = errorCode;
   strncpy(r->ai_canonname, ai_canonname, MAX_NODE_LEN-1);
+  r->ai_canonname[MAX_NODE_LEN-1] = 0; // Null terminate output string if it truncated.
   r->addrCount = addrCount;
 
   struct addrinfo *ai = res;
@@ -1595,7 +1600,7 @@ void ProcessWebSocketMessage(int client_fd, uint8_t *payload, uint64_t numBytes)
       header->function == POSIX_SOCKET_MSG_RECVMSG ||
       header->function == POSIX_SOCKET_MSG_CONNECT ||
       header->function == POSIX_SOCKET_MSG_ACCEPT) {
-    // Synchonous/blocking recv()s can halt indefinitely until a message is actually received. An application might
+    // Synchronous/blocking recv()s can halt indefinitely until a message is actually received. An application might
     // be send()ing messages in one thread while using another thread to wait for recv(). Therefore run these potentially
     // blocking recv()s in a separate thread. The nonblocking operations can run synchronously in calling thread (they could
     // also run in a background thread, but for performance, do not offload them since it is not necessary)

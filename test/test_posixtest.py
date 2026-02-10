@@ -13,8 +13,12 @@ import glob
 import os
 import unittest
 
-from common import RunnerCore, path_from_root, node_pthreads
 import test_posixtest_browser
+from browser_common import browser_should_skip_feature
+from common import RunnerCore, path_from_root
+from decorators import requires_pthreads
+
+from tools.feature_matrix import Feature
 
 testsuite_root = path_from_root('test/third_party/posixtestsuite')
 
@@ -24,7 +28,7 @@ class posixtest(RunnerCore):
 
   This class get populated dynamically below.
   """
-  pass
+  pass  # noqa: PIE790
 
 
 def filter_tests(all_tests):
@@ -32,7 +36,7 @@ def filter_tests(all_tests):
     'pthread_',
     'strftime',
     'asctime',
-    'gmtime'
+    'gmtime',
   ]
 
   def enable_test(t):
@@ -62,7 +66,6 @@ unsupported_noreturn = {
   'test_pthread_atfork_2_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_3_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_4_1': 'fork() and multiple processes are not supported',
-  'test_pthread_kill_1_1': 'signals are not supported',
   'test_pthread_create_1_5': 'fork() and multiple processes are not supported',
   'test_pthread_exit_6_1': 'lacking necessary mmap() support',
   'test_pthread_spin_lock_1_1': 'signals are not supported',
@@ -102,7 +105,6 @@ unsupported = {
   'test_pthread_getcpuclockid_1_1': 'pthread_getcpuclockid not supported',
   'test_pthread_getschedparam_1_3': 'scheduling policy/parameters are not supported',
   'test_pthread_getschedparam_1_2': 'scheduling policy/parameters are not supported',
-  'test_pthread_kill_1_2': 'signals are not supported',
   'test_pthread_mutexattr_getprioceiling_1_2': 'pthread_mutexattr_setprioceiling is not supported',
   'test_pthread_mutexattr_getprotocol_1_2': 'pthread_mutexattr_setprotocol is not supported',
   'test_pthread_mutexattr_setprioceiling_1_1': 'pthread_mutexattr_setprioceiling is not supported',
@@ -158,23 +160,29 @@ expect_fail = {
 
 def make_test(name, testfile, browser):
 
-  @node_pthreads
+  @requires_pthreads
   def f(self):
     if name in disabled:
       self.skipTest(disabled[name])
+    if browser and browser_should_skip_feature('EMTEST_LACKS_SHARED_ARRAY_BUFFER', Feature.THREADS):
+      self.skipTest('This test requires a browser with SharedArrayBuffer support')
+
     args = ['-I' + os.path.join(testsuite_root, 'include'),
             '-Werror',
             '-Wno-format-security',
             '-Wno-int-conversion',
             '-Wno-format',
             '-pthread',
+            # Make sure all tests have callstacks to improve debuggability
+            # of log messages on CI runs.
+            '--profiling-funcs',
             '-sEXIT_RUNTIME',
             '-sTOTAL_MEMORY=256mb',
             '-sPTHREAD_POOL_SIZE=40']
     if browser:
-      self.btest_exit(testfile, args=args)
+      self.btest_exit(testfile, cflags=args)
     else:
-      self.do_runf(testfile, emcc_args=args, output_basename=name)
+      self.do_runf(testfile, cflags=args, output_basename=name)
 
   if name in expect_fail:
     f = unittest.expectedFailure(f)

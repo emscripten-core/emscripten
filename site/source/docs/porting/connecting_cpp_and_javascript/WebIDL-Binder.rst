@@ -318,7 +318,7 @@ You can bind to C++ operators using ``[Operator=]``:
 .. note::
 
   - The operator name can be anything (``add`` is just an example).
-  - Support is currently limited to operators that contain ``=``: ``+=``, ``*=``, ``-=`` etc., and to the array indexing operator ``[]``.
+  - Support is currently limited to the following binary operators: ``+``, ``-``, ``*``, ``/``, ``%``, ``^``, ``&``, ``|``, ``=``, ``<``, ``>``, ``+=``, ``-=``, ``*=``, ``/=``, ``%=``, ``^=``, ``&=``, ``|=``, ``<<``, ``>>``, ``>>=``, ``<<=``, ``==``, ``!=``, ``<=``, ``>=``, ``<=>``, ``&&``, ``||``, and to the array indexing operator ``[]``.
 
 
 enums
@@ -415,6 +415,55 @@ When C++ code has a pointer to a ``Base`` instance and calls ``virtualFunc()``, 
 
   - You *must* implement all the methods you mentioned in the IDL of the ``JSImplementation`` class (``ImplJS``) or compilation will fail with an error.
   - You will also need to provide an interface definition for the ``Base`` class in the IDL file.
+
+Function overloads
+==================
+
+C++ allows function overloads, where multiple member functions have the same name but different arguments. By default, the *WebIDL Binder* allows you to bind overloaded functions if they differ only in the number of arguments:
+
+.. code-block:: cpp
+
+  // C++
+  class OverloadTest {
+  public:
+    void test(int arg1, int arg2) { ... }
+    void test(int arg) { ... }
+  };
+
+.. code-block:: idl
+
+  // WebIDL
+  interface OverloadTest {
+    void OverloadTest();
+    void test(long arg1, long arg2);
+    void test(long arg);
+  };
+
+If your overloaded functions differ in some other way (say, in the types) then you can use the ``[BindTo]`` attribute to tell the tool what function name to bind to (that is, to call):
+
+.. code-block:: cpp
+
+  // C++
+  class BindToTest {
+  public:
+    void test(const char* arg) { ... }
+    void test(int arg) { ... }
+  };
+
+.. code-block:: idl
+
+  // WebIDL
+  interface BindToTest {
+    void BindToTest();
+    [BindTo="test"] void testString([Const] DOMString arg);
+    [BindTo="test"] void testInt(long arg);
+  };
+
+In this case the C++ function ``test(const char*)`` will be named ``testString`` in JavaScript and ``test(int)`` will be named ``testInt``.
+
+.. note::
+
+  You can also use ``[BindTo]`` to just rename a function, e.g. if you want to rename ``MyFunctionName`` to ``myFunctionName``.
 
 Pointers and comparisons
 =========================

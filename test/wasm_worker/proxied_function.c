@@ -6,13 +6,11 @@
 
 void proxied_js_function(void);
 
-void test_finished()
-{
+void test_finished() {
   REPORT_RESULT(0);
 }
 
-void run_in_worker()
-{
+void run_in_worker() {
   int threw = EM_ASM_INT({
     try {
       _proxied_js_function();
@@ -28,8 +26,9 @@ void run_in_worker()
   }
 }
 
-int main()
-{
+int main() {
   emscripten_wasm_worker_post_function_v(emscripten_malloc_wasm_worker(1024), run_in_worker);
-  proxied_js_function(); // Pin a dependency from C code to the JS function to avoid needing to mess with cmdline export directives
+  // Pin a dependency from C code to the JS function to avoid needing to mess
+  // with cmdline export directives
+  proxied_js_function();
 }

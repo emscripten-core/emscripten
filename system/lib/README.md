@@ -1,10 +1,10 @@
-Source code for C/C++ system libaries
-=====================================
+Source code for C/C++ system libraries
+======================================
 
 This directory contains the source code for libc, libc++ and other C/C++ system
 libraries.  Where possible these are clones of upstream projects (e.g. musl).
 For more details about each library see the individual readme files in the
-subdirectoris.
+subdirectories.
 
 Static constructor ordering
 ---------------------------

@@ -82,8 +82,8 @@ var emscriptenMemoryProfiler = {
   // Converts number f to string with at most two decimals, without redundant trailing zeros.
   truncDec(f = 0) {
     var str = f.toFixed(2);
-    if (str.includes('.00', str.length-3)) return str.substr(0, str.length-3);
-    else if (str.includes('0', str.length-1)) return str.substr(0, str.length-1);
+    if (str.includes('.00', str.length-3)) return str.slice(0, -3);
+    else if (str.includes('0', str.length-1)) return str.slice(0, -1);
     else return str;
   },
 
@@ -174,7 +174,7 @@ var emscriptenMemoryProfiler = {
 //      console.error('Allocation error in onMalloc! Pointer ' + ptr + ' had already been tracked as allocated!');
 //      console.error('Previous site of allocation: ' + emscriptenMemoryProfiler.allocationSitePtrs[ptr]);
 //      console.error('This doubly attempted site of allocation: ' + new Error().stack.toString());
-//      throw 'malloc internal inconsistency!';
+//      abort('malloc internal inconsistency!');
       return;
     }
     var self = emscriptenMemoryProfiler;
@@ -208,7 +208,7 @@ var emscriptenMemoryProfiler = {
     {
 // Uncomment to debug internal workings of tracing:
 //      console.error('Detected double free of pointer ' + ptr + ' at location:\n'+ new Error().stack.toString());
-//      throw 'double free!';
+//      abort('double free!');
       return;
     }
 
@@ -262,16 +262,17 @@ var emscriptenMemoryProfiler = {
     }
 
     if (location.search.toLowerCase().includes('trackbytes=')) {
-      emscriptenMemoryProfiler.trackedCallstackMinSizeBytes = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackbytes=') + 'trackbytes='.length), undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
+      emscriptenMemoryProfiler.trackedCallstackMinSizeBytes = parseInt(location.search.slice(location.search.toLowerCase().indexOf('trackbytes=') + 'trackbytes='.length), undefined /* https://github.com/google/closure-compiler/issues/3230 / https://github.com/google/closure-compiler/issues/3548 */);
     }
     if (location.search.toLowerCase().includes('trackcount=')) {
-      emscriptenMemoryProfiler.trackedCallstackMinAllocCount = parseInt(location.search.substr(location.search.toLowerCase().indexOf('trackcount=') + 'trackcount='.length), undefined);
+      emscriptenMemoryProfiler.trackedCallstackMinAllocCount = parseInt(location.search.slice(location.search.toLowerCase().indexOf('trackcount=') + 'trackcount='.length), undefined);
     }
 
     emscriptenMemoryProfiler.memoryprofiler_summary = document.getElementById('memoryprofiler_summary');
     var div;
     if (!emscriptenMemoryProfiler.memoryprofiler_summary) {
       div = document.createElement("div");
+      div.className = 'emscripten-memory-profiler-container';
       div.innerHTML = "<div style='border: 2px solid black; padding: 2px;'><canvas style='border: 1px solid black; margin-left: auto; margin-right: auto; display: block;' id='memoryprofiler_canvas' width='100%' height='50'></canvas><input type='checkbox' id='showHeapResizes' onclick='emscriptenMemoryProfiler.updateUi()'>Display heap and sbrk() resizes. Filter sbrk() and heap resize callstacks by keywords: <input type='text' id='sbrkFilter'>(reopen page with ?sbrkFilter=foo,bar query params to prepopulate this list)<br/>Track all allocation sites larger than <input id='memoryprofiler_min_tracked_alloc_size' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinSizeBytes+"></input> bytes, and all allocation sites with more than <input id='memoryprofiler_min_tracked_alloc_count' type=number value="+emscriptenMemoryProfiler.trackedCallstackMinAllocCount+"></input> outstanding allocations. (visit this page via URL query params foo.html?trackbytes=1000&trackcount=100 to apply custom thresholds starting from page load)<br/><div id='memoryprofiler_summary'></div><input id='memoryprofiler_clear_alloc_stats' type='button' value='Clear alloc stats' ></input><br />Sort allocations by:<select id='memoryProfilerSort'><option value='bytes'>Bytes</option><option value='count'>Count</option><option value='fixed'>Fixed</option></select><div id='memoryprofiler_ptrs'></div>";
     }
     var populateHtmlBody = function() {
@@ -406,7 +407,7 @@ var emscriptenMemoryProfiler = {
     if (i != -1) {
       var end = callstack.indexOf('<br />', i);
       if (end != -1) {
-        return callstack.substr(0, end);
+        return callstack.slice(0, end);
       }
     }
     return callstack;
@@ -416,7 +417,7 @@ var emscriptenMemoryProfiler = {
     // Do not show Memoryprofiler's own callstacks in the callstack prints.
     var i = callstack.indexOf('emscripten_trace_record_');
     if (i != -1) {
-      callstack = callstack.substr(callstack.indexOf('\n', i)+1);
+      callstack = callstack.slice(callstack.indexOf('\n', i)+1);
     }
     return emscriptenMemoryProfiler.filterURLsFromCallstack(callstack);
   },
@@ -427,7 +428,7 @@ var emscriptenMemoryProfiler = {
     var j = callstack.indexOf('growMemory');
     i = (i == -1) ? j : (j == -1 ? i : Math.min(i, j));
     if (i != -1) {
-      callstack = callstack.substr(callstack.indexOf('\n', i)+1);
+      callstack = callstack.slice(callstack.indexOf('\n', i)+1);
     }
     callstack = callstack.replace(/(wasm-function\[\d+\]):0x[0-9a-f]+/g, "$1");
     return emscriptenMemoryProfiler.filterURLsFromCallstack(callstack);
@@ -502,8 +503,8 @@ var emscriptenMemoryProfiler = {
     html += '. STACK_MAX: ' + toHex(stackMax, width) + '.';
     html += '<br />STACK memory area used now (should be zero): ' + self.formatBytes(stackBase - stackCurrent) + '.' + colorBar('#FFFF00') + ' STACK watermark highest seen usage (approximate lower-bound!): ' + self.formatBytes(stackBase - self.stackTopWatermark);
 
-    var heap_base = Module['___heap_base'];
-    var heap_end = _sbrk();
+    var heap_base = ___heap_base;
+    var heap_end = _sbrk({{{ to64('0') }}});
     html += "<br />DYNAMIC memory area size: " + self.formatBytes(heap_end - heap_base);
     html += ". start: " + toHex(heap_base, width);
     html += ". end: " + toHex(heap_end, width) + ".";
@@ -612,8 +613,8 @@ var emscriptenMemoryProfiler = {
             calls.sort((a,b) => b[sortIdx] - a[sortIdx]);
           }
           html += '<h4>Allocation sites with more than ' + self.formatBytes(self.trackedCallstackMinSizeBytes) + ' of accumulated allocations, or more than ' + self.trackedCallstackMinAllocCount + ' simultaneously outstanding allocations:</h4>'
-          for (var i in calls) {
-            html += "<b>" + self.formatBytes(calls[i][1]) + '/' + calls[i][0] + " allocs</b>: " + calls[i][2] + "<br />";
+          for (var call of calls) {
+            html += "<b>" + self.formatBytes(call[1]) + '/' + call[0] + " allocs</b>: " + call[2] + "<br />";
           }
         }
       }
@@ -628,7 +629,7 @@ function memoryprofiler_add_hooks() {
   emscriptenMemoryProfiler.initialize();
 }
 
-if (typeof document != 'undefined' && typeof window != 'undefined' && typeof process == 'undefined') {
+if (globalThis.document && globalThis.window && !globalThis.process) {
   emscriptenMemoryProfiler.initialize();
 }
 

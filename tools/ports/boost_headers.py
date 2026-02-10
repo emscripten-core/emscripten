@@ -20,7 +20,7 @@ def get(ports, settings, shared):
 
   def create(final):
     # includes
-    source_path = os.path.join(ports.get_dir(), 'boost_headers')
+    source_path = ports.get_dir('boost_headers')
     source_path_include = os.path.join(source_path, 'boost')
     ports.install_header_dir(source_path_include, 'boost')
 
@@ -44,4 +44,4 @@ def process_args(ports):
 
 
 def show():
-  return 'boost_headers - Boost headers v1.70.0 (-sUSE_BOOST_HEADERS=1 or --use-port=boost_headers; Boost license)'
+  return f'boost_headers - Boost headers v{TAG} (-sUSE_BOOST_HEADERS=1 or --use-port=boost_headers; Boost license)'

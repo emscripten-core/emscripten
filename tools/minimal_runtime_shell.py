@@ -1,16 +1,13 @@
+import logging
+import os
 import re
 import sys
-import os
-import logging
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from . import shared
-from . import line_endings
-from . import utils
-from . import feature_matrix
+from . import building, shared, utils
 from .settings import settings
 
 logger = logging.getLogger('minimal_runtime_shell')
@@ -29,11 +26,8 @@ def generate_minimal_runtime_load_statement(target_basename):
   # Expand {{{ DOWNLOAD_WASM }}} block from here (if we added #define support, this could be done in
   # the template directly)
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION:
-    if settings.MIN_SAFARI_VERSION != feature_matrix.UNSUPPORTED or settings.ENVIRONMENT_MAY_BE_NODE or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
-      # Firefox 52 added Wasm support, but only Firefox 58 added compileStreaming.
-      # Chrome 57 added Wasm support, but only Chrome 61 added compileStreaming.
+    if settings.MIN_SAFARI_VERSION < 150000 or settings.MIN_NODE_VERSION < 180100 or settings.MIN_FIREFOX_VERSION < 58:
       # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/compileStreaming
-      # In Safari and Node.js, WebAssembly.compileStreaming() is not supported, in which case fall back to regular download.
       download_wasm = f"WebAssembly.compileStreaming ? WebAssembly.compileStreaming(fetch('{target_basename}.wasm')) : binary('{target_basename}.wasm')"
     else:
       # WebAssembly.compileStreaming() is unconditionally supported:
@@ -41,7 +35,7 @@ def generate_minimal_runtime_load_statement(target_basename):
   elif settings.MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION:
     # Same compatibility story as above for
     # https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
-    if settings.MIN_SAFARI_VERSION != feature_matrix.UNSUPPORTED or settings.ENVIRONMENT_MAY_BE_NODE or settings.MIN_FIREFOX_VERSION < 58 or settings.MIN_CHROME_VERSION < 61:
+    if settings.MIN_SAFARI_VERSION < 150000 or settings.MIN_NODE_VERSION < 180100 or settings.MIN_FIREFOX_VERSION < 58:
       download_wasm = f"!WebAssembly.instantiateStreaming && binary('{target_basename}.wasm')"
     else:
       # WebAssembly.instantiateStreaming() is unconditionally supported, so we do not download wasm
@@ -51,7 +45,7 @@ def generate_minimal_runtime_load_statement(target_basename):
     download_wasm = f"binary('{target_basename}.wasm')"
 
   # Main JS file always in first entry
-  files_to_load = [f"script('{target_basename}.js')"]
+  files_to_load = [f"script('{settings.TARGET_JS_NAME}')"]
 
   # Download .wasm file
   if (settings.WASM == 1 and settings.WASM2JS == 0) or not download_wasm:
@@ -63,17 +57,8 @@ def generate_minimal_runtime_load_statement(target_basename):
       files_to_load += [download_wasm]
 
   # Download wasm_worker file
-  if settings.WASM_WORKERS:
-    if settings.MODULARIZE:
-      if settings.WASM_WORKERS == 1: # '$wb': Wasm Worker Blob
-        modularize_imports += ["$wb: URL.createObjectURL(new Blob([r[%d]], { type: 'application/javascript' }))" % len(files_to_load)]
-      modularize_imports += ['js: js']
-    else:
-      if settings.WASM_WORKERS == 1:
-        then_statements += ["%s.$wb = URL.createObjectURL(new Blob([r[%d]], { type: 'application/javascript' }));" % (settings.EXPORT_NAME, len(files_to_load))]
-
-    if download_wasm and settings.WASM_WORKERS == 1:
-      files_to_load += [f"binary('{target_basename}.ww.js')"]
+  if settings.WASM_WORKERS and settings.MODULARIZE:
+    modularize_imports += ['js: js']
 
   # Download Wasm2JS code if target browser does not support WebAssembly
   if settings.WASM == 2:
@@ -90,7 +75,7 @@ def generate_minimal_runtime_load_statement(target_basename):
       then_statements += ['''\
   // Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this"
   // directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see
-  // https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
+  // https://bugzil.la/1540101
   var js = URL.createObjectURL(new Blob([r[0]], { type: \'application/javascript\' }));
   script(js).then((c) => c({
   %s
@@ -99,7 +84,7 @@ def generate_minimal_runtime_load_statement(target_basename):
       then_statements += ['''\
   // Detour the JS code to a separate variable to avoid instantiating with 'r' array as "this"
   // directly to avoid strict ECMAScript/Firefox GC problems that cause a leak, see
-  // https://bugzilla.mozilla.org/show_bug.cgi?id=1540101
+  // https://bugzil.la/1540101
   var js = r[0];
   js({
   %s
@@ -109,7 +94,7 @@ def generate_minimal_runtime_load_statement(target_basename):
 
   script_xhr = '''\
   function script(url) { // Downloads a script file and adds it to DOM
-    return new Promise((ok, err) => {
+    return new Promise((ok) => {
       var s = document.createElement('script');
       s.src = url;
       s.onload = () => {
@@ -164,7 +149,7 @@ def generate_minimal_runtime_load_statement(target_basename):
     else:
       save_js = ''
 
-    files_to_load[0] = f"binary('{target_basename}.js')"
+    files_to_load[0] = f"binary('{settings.TARGET_JS_NAME}')"
     if not settings.MODULARIZE:
       then_statements += ["var url = %sURL.createObjectURL(new Blob([r[0]], { type: 'application/javascript' }));" % save_js,
                           script_load]
@@ -185,7 +170,7 @@ def generate_minimal_runtime_load_statement(target_basename):
 
 def generate_minimal_runtime_html(target, options, js_target, target_basename):
   logger.debug('generating HTML for minimal runtime')
-  shell = utils.read_file(options.shell_path)
+  shell = utils.read_file(options.shell_html)
   if settings.SINGLE_FILE:
     # No extra files needed to download in a SINGLE_FILE build.
     shell = shell.replace('{{{ DOWNLOAD_JS_AND_WASM_FILES }}}', '')
@@ -195,12 +180,12 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
   temp_files = shared.get_temp_files()
   with temp_files.get_file(suffix='.js') as shell_temp:
     utils.write_file(shell_temp, shell)
-    shell = shared.read_and_preprocess(shell_temp)
+    shell = building.read_and_preprocess(shell_temp)
 
   if re.search(r'{{{\s*SCRIPT\s*}}}', shell):
-    shared.exit_with_error('--shell-file "' + options.shell_path + '": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/src/shell_minimal_runtime.html for a template to use as a basis.')
+    utils.exit_with_error(f'--shell-file "{options.shell_html}": MINIMAL_RUNTIME uses a different kind of HTML page shell file than the traditional runtime! Please see $EMSCRIPTEN/html/shell_minimal_runtime.html for a template to use as a basis.')
 
-  shell = shell.replace('{{{ TARGET_BASENAME }}}', target_basename)
+  shell = shell.replace('{{{ TARGET_BASENAME }}}', settings.TARGET_BASENAME)
   shell = shell.replace('{{{ EXPORT_NAME }}}', settings.EXPORT_NAME)
   shell = shell.replace('{{{ TARGET_JS_NAME }}}', settings.TARGET_JS_NAME)
 
@@ -211,5 +196,4 @@ def generate_minimal_runtime_html(target, options, js_target, target_basename):
   else:
     js_contents = ''
   shell = shell.replace('{{{ JS_CONTENTS_IN_SINGLE_FILE_BUILD }}}', js_contents)
-  shell = line_endings.convert_line_endings(shell, '\n', options.output_eol)
-  utils.write_file(target, shell)
+  utils.write_file(target, shell, options.output_eol)

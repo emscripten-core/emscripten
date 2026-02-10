@@ -14,15 +14,10 @@
 // Special placeholder for `import.meta` and `await import`.
 var EMSCRIPTEN$IMPORT$META;
 var EMSCRIPTEN$AWAIT$IMPORT;
+var EMSCRIPTEN$AWAIT;
 
 // Don't minify createRequire
 var createRequire;
-
-// Don't minify startWorker which we use to start workers once the runtime is ready.
-/**
- * @param {Object} Module
- */
-var startWorker = function(Module) {};
 
 // Closure externs used by library_sockfs.js
 
@@ -69,6 +64,11 @@ var Atomics = {};
 Atomics.compareExchange = function() {};
 Atomics.exchange = function() {};
 Atomics.wait = function() {};
+/**
+ * @param {number=} maxWaitMilliseconds
+ * @suppress {duplicate, checkTypes}
+ */
+Atomics.waitAsync = function(i32a, index, value, maxWaitMilliseconds) {};
 Atomics.notify = function() {};
 Atomics.load = function() {};
 Atomics.store = function() {};
@@ -108,6 +108,10 @@ WebAssembly.Instance.prototype.exports;
  * @type {!ArrayBuffer}
  */
 WebAssembly.Memory.prototype.buffer;
+/**
+ * @returns {ArrayBuffer}
+ */
+WebAssembly.Memory.prototype.toResizableBuffer = function() {};
 /**
  * @type {number}
  */
@@ -219,14 +223,6 @@ var event;
 var devicePixelRatio;
 
 /*
- * AudioWorkletGlobalScope globals
- */
-var registerProcessor = function(name, obj) {};
-var currentFrame;
-var currentTime;
-var sampleRate;
-
-/*
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;
@@ -248,7 +244,7 @@ var moduleRtn;
 /**
  * This was removed from upstream closure compiler in
  * https://github.com/google/closure-compiler/commit/f83322c1b.
- * Perhaps we should remove it do?
+ * Perhaps we should remove it too?
  *
  * @param {MediaStreamConstraints} constraints A MediaStreamConstraints object.
  * @param {function(!MediaStream)} successCallback
@@ -261,3 +257,14 @@ var moduleRtn;
  */
 Navigator.prototype.webkitGetUserMedia = function(
     constraints, successCallback, errorCallback) {};
+
+/**
+ * A symbol from the explicit resource management proposal that isn't yet part of Closure.
+ * @type {symbol}
+ */
+Symbol.dispose;
+
+// Common between node-externs and v8-externs
+var os = {};
+
+AudioWorkletProcessor.parameterDescriptors;

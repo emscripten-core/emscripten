@@ -82,7 +82,9 @@ defined, undefined, or not accessible at all:
 #define MI_TRACK_HEAP_DESTROY 1
 #define MI_TRACK_TOOL         "ETW"
 
+#ifndef WIN32_LEAN_AND_MEAN
 #define WIN32_LEAN_AND_MEAN
+#endif
 #include <windows.h>
 #include "../src/prim/windows/etw.h"
 

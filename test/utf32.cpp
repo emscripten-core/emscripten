@@ -12,7 +12,7 @@
 typedef unsigned int utf32;
 typedef unsigned short utf16;
 
-EM_JS_DEPS(deps, "$UTF32ToString,$stringToUTF32");
+EM_JS_DEPS(deps, "$UTF32ToString,$stringToUTF32,$UTF16ToString,$stringToUTF16");
 
 // This code tests that Unicode std::wstrings can be marshalled between C++ and JS.
 int main() {
@@ -51,14 +51,16 @@ int main() {
     assert(memory[5] == 0);
 
     delete[] memory;
+    printf("OK (long).\n");
   } else {
+    assert(sizeof(wchar_t) == 2);
     // sizeof(wchar_t) == 2, and we're building with -fshort-wchar.
     utf16 *memory = new utf16[2*wstr.length()+1];
 
     EM_ASM({
       var str = UTF16ToString($0);
       out(str);
-      var numBytesWritten = stringToUTF16(str, $1, $2);
+      var numBytesWritten = stringToUTF16(str, $1, Number($2));
       if (numBytesWritten != 25*2) throw 'stringToUTF16 wrote an invalid length ' + numBytesWritten;
     }, wstr.c_str(), memory, (2*wstr.length()+1)*sizeof(utf16));
 
@@ -74,13 +76,13 @@ int main() {
     EM_ASM({
       var str = UTF16ToString($0);
       out(str);
-      var numBytesWritten = stringToUTF16(str, $1, $2);
+      var numBytesWritten = stringToUTF16(str, $1, Number($2));
       if (numBytesWritten != 5*2) throw 'stringToUTF16 wrote an invalid length ' + numBytesWritten;
     }, wstr.c_str(), memory, 6*sizeof(utf16));
     assert(memory[5] == 0);
 
     delete[] memory;
+    printf("OK (short).\n");
   }
 
-  printf("OK.\n");
 }

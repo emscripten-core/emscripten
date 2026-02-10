@@ -29,13 +29,6 @@ int emscripten_has_threading_support(void);
 // Returns the number of logical cores on the system.
 int emscripten_num_logical_cores(void);
 
-// Configures the number of logical cores on the system. This can be called at
-// startup to specify the number of cores emscripten_num_logical_cores()
-// reports. The Emscripten system itself does not use this value internally
-// anywhere, it is just a hint to help developers have a single access point
-// 'emscripten_num_logical_cores()' to query the number of cores in the system.
-void emscripten_force_num_logical_cores(int cores);
-
 // If the given memory address contains value val, puts the calling thread to
 // sleep waiting for that address to be notified.
 // Returns -EINVAL if addr is null.

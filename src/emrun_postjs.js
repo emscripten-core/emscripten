@@ -3,11 +3,11 @@
  * Copyright 2013 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  *
- * This file gets implicatly injected as a `--post-js` file when
+ * This file gets implicitly injected as a `--post-js` file when
  * emcc is run with `--emrun`
  */
 
-if (typeof window == "object" && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
+if (globalThis.window && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
   var emrun_register_handlers = () => {
     // When C code exit()s, we may still have remaining stdout and stderr
     // messages in flight. In that case, we can't close the browser until all
@@ -89,7 +89,7 @@ if (typeof window == "object" && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' |
     http.send(data); // XXX  this does not work in workers, for some odd reason (issue #2681)
   };
 
-  if (typeof document != 'undefined') {
+  if (globalThis.document) {
     emrun_register_handlers();
   }
 }

@@ -144,6 +144,12 @@ console.log(new TheModule.Inner().get());
 console.log('getAsArray: ' + new TheModule.Inner().getAsArray(12));
 new TheModule.Inner().mul(2);
 new TheModule.Inner().incInPlace(new TheModule.Inner());
+console.log('add: ' + new TheModule.Inner(1).add(new TheModule.Inner(2)).get_value());
+console.log('mul2: ' + new TheModule.Inner(10).mul2(5));
+
+let bindTo = new TheModule.BindToTest();
+console.log('testString: ' + bindTo.testString('hello'));
+console.log('testInt: ' + bindTo.testInt(10));
 
 console.log(TheModule.enum_value1);
 console.log(TheModule.enum_value2);
@@ -230,16 +236,16 @@ receiver.giveMeArrays([0.5, 0.25, 0.01, -20.42], [1, 4, 9, 10], 4);
 // Test IDL_CHECKS=ALL
 
 try {
-  p = new TheModule.Parent(NaN); // Expects an integer
+  var p = new TheModule.Parent(NaN); // Expects an integer
 } catch (e) {}
 
 try {
-  p = new TheModule.Parent(42);
+  var p = new TheModule.Parent(42);
   p.voidStar(1234) // Expects a wrapped pointer
 } catch (e) {}
 
 try {
-  s = new TheModule.StringUser('abc', 1);
+  var s = new TheModule.StringUser('abc', 1);
   s.Print(123, null); // Expects a string or a wrapped pointer
 } catch (e) {}
 

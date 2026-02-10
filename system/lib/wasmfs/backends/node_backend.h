@@ -27,6 +27,15 @@ int _wasmfs_node_insert_directory(const char* path, mode_t mode);
 int _wasmfs_node_unlink(const char* path);
 int _wasmfs_node_rmdir(const char* path);
 
+int _wasmfs_node_truncate(const char* path, off_t len);
+int _wasmfs_node_ftruncate(int fd, off_t len);
+
+int _wasmfs_node_rename(const char* oldpath, const char* newpath);
+
+int _wasmfs_node_symlink(const char *target, const char *linkpath);
+
+int _wasmfs_node_readlink(const char *path, const char *buf, int bufsize);
+
 // Open the file and return the underlying file descriptor.
 [[nodiscard]] int _wasmfs_node_open(const char* path, const char* mode);
 
@@ -42,4 +51,5 @@ int _wasmfs_node_read(
 // the number of bytes written to `nread`. Return 0 on success or an error code.
 int _wasmfs_node_write(
   int fd, const void* buf, uint32_t len, uint32_t pos, uint32_t* nwritten);
-}
+
+} // extern "C"

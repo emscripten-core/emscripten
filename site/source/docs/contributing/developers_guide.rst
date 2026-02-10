@@ -26,7 +26,7 @@ get using the emsdk:
     emsdk install tot
     emsdk activate tot
 
-This with install the latest "tip-of-tree" binaries needed to run Emscripten.
+This will install the latest "tip-of-tree" binaries needed to run Emscripten.
 You can use these emsdk-provided binaries with a git checkout of the Emscripten
 repository.  To do this, you can either edit your local ``.emscripten`` config
 file, or set ``EM_CONFIG=/path/to/emsdk/.emscripten`` in your environment.
@@ -79,10 +79,10 @@ The :ref:`Emscripten Compiler Frontend (emcc) <emccdoc>` is a python script that
 - **emcc** calls :term:`Clang` to compile C++ and ``wasm-ld`` to link it. It
   builds and integrates with the Emscripten system libraries, both the
   compiled ones and the ones implemented in JS.
-- **emcc** then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/main/emscripten.py>`_
+- **emcc** then calls `emscripten.py <https://github.com/emscripten-core/emscripten/blob/main/tools/emscripten.py>`_
   which performs the final transformation to Wasm (including invoking
   **wasm-emscripten-finalize** from Binaryen) and calls the JS compiler
-  (see ``src/compiler.js`` and related files) which emits the JS.
+  (see ``tools/compiler.mjs`` and related files) which emits the JS.
 - If optimizing Wasm, **emcc** will then call **wasm-opt**, run meta-dce, and
   other useful things. It will also run JS optimizations on the JS that is
   emitted alongside the Wasm.

@@ -7,7 +7,7 @@
 // This file contains implementations of emscripten APIs that are compatible
 // with WasmFS. These replace APIs in src/library*js, and basically do things
 // in a simpler manner for the situation where the FS is in wasm and not JS
-// (in particular, these implemenations avoid calling from JS to wasm, and
+// (in particular, these implementations avoid calling from JS to wasm, and
 // dependency issues that arise from that).
 //
 

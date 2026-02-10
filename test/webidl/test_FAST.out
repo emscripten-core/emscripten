@@ -71,6 +71,10 @@ object
 198
 getAsArray: 24
 Inner::+= => 2
+add: 3
+mul2: 50
+testString: 1
+testInt: 2
 0
 1
 34,34

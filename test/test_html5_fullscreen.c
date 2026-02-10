@@ -5,23 +5,13 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
 #include <string.h>
 #include <emscripten/html5.h>
 #include <GLES2/gl2.h>
 #include <math.h>
-
-void report_result(int result) {
-  if (result == 0) {
-    printf("Test successful!\n");
-  } else {
-    printf("Test failed!\n");
-  }
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
-}
 
 static inline const char *emscripten_event_type_to_string(int eventType) {
   const char *events[] = { "(invalid)", "(none)", "keypress", "keydown", "keyup", "click", "mousedown", "mouseup", "dblclick", "mousemove", "wheel", "resize",
@@ -47,12 +37,14 @@ const char *emscripten_result_to_string(EMSCRIPTEN_RESULT result) {
   return "Unknown EMSCRIPTEN_RESULT!";
 }
 
-#define TEST_RESULT(x) if (ret != EMSCRIPTEN_RESULT_SUCCESS) printf("%s returned %s.\n", #x, emscripten_result_to_string(ret));
+#define TEST_RESULT(x) if (ret != EMSCRIPTEN_RESULT_SUCCESS) { \
+    printf("%s returned %s.\n", #x, emscripten_result_to_string(ret)); \
+    assert(false && #x); \
+  }
 
 // The event handler functions can return 1 to suppress the event and disable the default action. That calls event.preventDefault();
 // Returning 0 signals that the event was not consumed by the code, and will allow the event to pass on and bubble up normally.
-EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData)
-{
+bool key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *userData) {
   if (eventType == EMSCRIPTEN_EVENT_KEYPRESS && (!strcmp(e->key, "f") || e->which == 102)) {
     EmscriptenFullscreenChangeEvent fsce;
     EMSCRIPTEN_RESULT ret = emscripten_get_fullscreen_status(&fsce);
@@ -71,8 +63,7 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
         fprintf(stderr, "Fullscreen exit did not work!\n");
       }
     }
-  }
-  else if (eventType == EMSCRIPTEN_EVENT_KEYPRESS && (!strcmp(e->key, "Esc") || !strcmp(e->key, "Escape") || e->which == 27)) {
+  } else if (eventType == EMSCRIPTEN_EVENT_KEYPRESS && (!strcmp(e->key, "Esc") || !strcmp(e->key, "Escape") || e->which == 27)) {
     emscripten_exit_soft_fullscreen();
   }
   return 0;
@@ -80,26 +71,30 @@ EM_BOOL key_callback(int eventType, const EmscriptenKeyboardEvent *e, void *user
 
 int callCount = 0;
 
-EM_BOOL fullscreenchange_callback(int eventType, const EmscriptenFullscreenChangeEvent *e, void *userData) {
-  printf("%s, isFullscreen: %d, fullscreenEnabled: %d, fs element nodeName: \"%s\", fs element id: \"%s\". New size: %dx%d pixels. Screen size: %dx%d pixels.\n",
-    emscripten_event_type_to_string(eventType), e->isFullscreen, e->fullscreenEnabled, e->nodeName, e->id, e->elementWidth, e->elementHeight, e->screenWidth, e->screenHeight);
+bool fullscreenchange_callback(int eventType, const EmscriptenFullscreenChangeEvent *e, void *userData) {
+  printf("%s, isFullscreen: %d, fullscreenEnabled: %d, fs element nodeName: "
+         "'%s', fs element id: '%s'. New size: %dx%d pixels. Screen size: "
+         "%dx%d pixels.\n",
+         emscripten_event_type_to_string(eventType),
+         e->isFullscreen,
+         e->fullscreenEnabled,
+         e->nodeName,
+         e->id,
+         e->elementWidth,
+         e->elementHeight,
+         e->screenWidth,
+         e->screenHeight);
 
   ++callCount;
   if (callCount == 1) { // Transitioned to fullscreen.
-    if (!e->isFullscreen) {
-      report_result(1);
-    }
+    assert(e->isFullscreen);
   } else if (callCount == 2) { // Transitioned to windowed, we must be back to the default pixel size 300x150.
-    if (e->isFullscreen || e->elementWidth != 300 || e->elementHeight != 150) {
-      report_result(1);
-    } else {
-      report_result(0);
-    }
+    assert(!e->isFullscreen);
   }
   return 0;
 }
 
-EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
+bool mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
   return 0;
 }
 
@@ -118,11 +113,11 @@ void draw() {
   glDrawArrays(GL_TRIANGLES, 0, 3);
 }
 
-EM_BOOL on_canvassize_changed(int eventType, const void *reserved, void *userData) {
+bool on_canvassize_changed(int eventType, const void *reserved, void *userData) {
   int w, h;
   emscripten_get_canvas_element_size("#canvas", &w, &h);
   double cssW, cssH;
-  emscripten_get_element_css_size(0, &cssW, &cssH);
+  emscripten_get_element_css_size("#canvas", &cssW, &cssH);
   printf("Canvas resized: WebGL RTT size: %dx%d, canvas CSS size: %02gx%02g\n", w, h, cssW, cssH);
   return 0;
 }
@@ -134,7 +129,7 @@ void requestFullscreen(int scaleMode, int canvasResolutionScaleMode, int filteri
   s.canvasResolutionScaleMode = canvasResolutionScaleMode;
   s.filteringMode = filteringMode;
   s.canvasResizedCallback = on_canvassize_changed;
-  EMSCRIPTEN_RESULT ret = emscripten_request_fullscreen_strategy(0, 1, &s);
+  EMSCRIPTEN_RESULT ret = emscripten_request_fullscreen_strategy("#canvas", 1, &s);
   TEST_RESULT(requestFullscreen);
 }
 
@@ -145,12 +140,13 @@ void enterSoftFullscreen(int scaleMode, int canvasResolutionScaleMode, int filte
   s.canvasResolutionScaleMode = canvasResolutionScaleMode;
   s.filteringMode = filteringMode;
   s.canvasResizedCallback = on_canvassize_changed;
-  EMSCRIPTEN_RESULT ret = emscripten_enter_soft_fullscreen(0, &s);
+  EMSCRIPTEN_RESULT ret = emscripten_enter_soft_fullscreen("#canvas", &s);
   TEST_RESULT(enterSoftFullscreen);
 }
 
-int on_button_click(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData) {
-  switch((long)userData) {
+bool on_button_click(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData) {
+  printf("on_button_click: %ld\n", (long)userData);
+  switch ((long)userData) {
     case 0: requestFullscreen(EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT, EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE, EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT); break;
     case 1: requestFullscreen(EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH, EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF, EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT); break;
     case 2: requestFullscreen(EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH, EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF, EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT); break;
@@ -247,7 +243,6 @@ int main() {
   emscripten_set_click_callback("#b16", (void*)16, 1, on_button_click);
 
   printf("To finish this test, press f to enter fullscreen mode, and then exit it.\n");
-  printf("On IE, press a mouse key over the canvas after pressing f to activate the fullscreen request event.\n");
 
   emscripten_set_main_loop(draw, 0, 0);
   return 0;

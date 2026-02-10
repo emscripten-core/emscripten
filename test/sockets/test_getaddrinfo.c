@@ -5,17 +5,52 @@
  * found in the LICENSE file.
  */
 
+#define _GNU_SOURCE
+
+#include <assert.h>
 #include <arpa/inet.h>
 #include <sys/socket.h>
 #include <assert.h>
 #include <errno.h>
 #include <netdb.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
-#ifdef __EMSCRIPTEN__
-#include <emscripten.h>
-#endif
+#include <netdb.h>
+
+void print_sockaddr(struct sockaddr_in *sa4, int socktype, int counter) {
+  printf("addr[%d] v4: (socktype=%d family=%d) %s:%d\n", counter, socktype, sa4->sin_family, inet_ntoa(sa4->sin_addr), ntohs(sa4->sin_port));
+}
+
+void print_sockaddr6(struct sockaddr_in6 *sa6, int socktype, int counter) {
+  char buf[1024];
+  printf("addr[%d] v6: (socktype=%d family=%d) %s:%d\n", counter, socktype, sa6->sin6_family, inet_ntop(sa6->sin6_family, &sa6->sin6_addr, buf, sizeof(buf)), ntohs(sa6->sin6_port));
+}
+
+void print_addrinfo_next(struct addrinfo *info, int counter) {
+  if (info->ai_family == AF_INET) {
+    print_sockaddr(((struct sockaddr_in*)info->ai_addr), info->ai_socktype, counter);
+  } else if (info->ai_family == AF_INET6) {
+    print_sockaddr6(((struct sockaddr_in6*)info->ai_addr), info->ai_socktype, counter);
+  } else {
+    assert(false);
+  }
+  if (info->ai_next) {
+    print_addrinfo_next(info->ai_next, counter+1);
+  }
+}
+
+void print_addrinfo(struct addrinfo *info) {
+  print_addrinfo_next(info, 0);
+}
+
+#define CHECK_ERR(code, expected)                                              \
+  do {                                                                         \
+    const char* err = gai_strerror(code);                                      \
+    printf("%s -> %s\n", #code, err);                                          \
+    assert(strcmp(err, expected) == 0);                                        \
+  } while (0)
 
 int main() {
   struct addrinfo hints;
@@ -24,9 +59,15 @@ int main() {
   struct sockaddr_in6 *sa6;
   int err;
 
+  char buf[1024];
+  printf("in6addr_loopback: %s\n", inet_ntop(AF_INET6, &in6addr_loopback, buf, sizeof(buf)));
+
   // no name or service
   //err = getaddrinfo(NULL, NULL, NULL, &servinfo);
-  // XXX musl follows the spec precisely, and it does not allow both to be NULL, despite documenting EAI_NONAME as the right result for that case  assert(err == EAI_NONAME);
+
+  // XXX musl follows the spec precisely, and it does not allow both to be NULL,
+  // despite documenting EAI_NONAME as the right result for that case
+  // assert(err == EAI_NONAME);
 
   // invalid socket type
   memset(&hints, 0, sizeof(hints));
@@ -63,6 +104,7 @@ int main() {
   hints.ai_socktype = SOCK_STREAM;
   err = getaddrinfo(NULL, "80", &hints, &servinfo);
   assert(!err);
+  print_addrinfo(servinfo);
   sa4 = ((struct sockaddr_in*)servinfo->ai_addr);
   assert(servinfo->ai_family == AF_INET);
   assert(servinfo->ai_socktype == SOCK_STREAM);
@@ -77,9 +119,10 @@ int main() {
   err = getaddrinfo(NULL, "81", &hints, &servinfo);
   assert(!err);
   sa6 = ((struct sockaddr_in6*)servinfo->ai_addr);
+  print_addrinfo(servinfo);
   assert(servinfo->ai_family == AF_INET6);
   assert(servinfo->ai_socktype == SOCK_STREAM);
-  memcmp(&sa6->sin6_addr, &in6addr_loopback, sizeof(in6addr_loopback));
+  assert(memcmp(&sa6->sin6_addr, &in6addr_loopback, sizeof(in6addr_loopback)) == 0);
   assert(sa6->sin6_port == ntohs(81));
   freeaddrinfo(servinfo);
 
@@ -91,6 +134,7 @@ int main() {
   err = getaddrinfo(NULL, "82", &hints, &servinfo);
   assert(!err);
   sa4 = ((struct sockaddr_in*)servinfo->ai_addr);
+  print_addrinfo(servinfo);
   assert(servinfo->ai_family == AF_INET);
   assert(servinfo->ai_socktype == SOCK_STREAM);
   assert(*(uint32_t*)&(sa4->sin_addr) == 0);
@@ -104,6 +148,7 @@ int main() {
   err = getaddrinfo("1.2.3.4", "83", &hints, &servinfo);
   assert(!err);
   sa4 = ((struct sockaddr_in*)servinfo->ai_addr);
+  print_addrinfo(servinfo);
   assert(servinfo->ai_family == AF_INET);
   assert(servinfo->ai_socktype == SOCK_DGRAM);
   assert(*(uint32_t*)&(sa4->sin_addr) == 67305985);
@@ -118,6 +163,7 @@ int main() {
   err = getaddrinfo("1.2.3.4", "84", &hints, &servinfo);
   assert(!err);
   sa6 = ((struct sockaddr_in6*)servinfo->ai_addr);
+  print_addrinfo(servinfo);
   assert(servinfo->ai_family == AF_INET6);
   assert(servinfo->ai_socktype == SOCK_STREAM);
   assert(*((uint32_t*)&(sa6->sin6_addr)+2) == htonl(0xffff));
@@ -143,6 +189,7 @@ int main() {
   err = getaddrinfo("2001:0db8:85a3:0042:1000:8a2e:0370:7334", "86", &hints, &servinfo);
   assert(!err);
   sa6 = ((struct sockaddr_in6*)servinfo->ai_addr);
+  print_addrinfo(servinfo);
   assert(servinfo->ai_family == AF_INET6);
   assert(servinfo->ai_socktype == SOCK_DGRAM);
   assert(*((uint32_t*)&(sa6->sin6_addr)+0) == -1207107296);
@@ -178,6 +225,7 @@ int main() {
   err = getaddrinfo("www.mozilla.org", "89", &hints, &servinfo);
   assert(!err);
   sa4 = ((struct sockaddr_in*)servinfo->ai_addr);
+  print_addrinfo(servinfo);
   assert(servinfo->ai_family == AF_INET);
   assert(servinfo->ai_socktype == SOCK_STREAM);
   assert(sa4->sin_port == ntohs(89));
@@ -187,9 +235,10 @@ int main() {
   memset(&hints, 0, sizeof(hints));
   hints.ai_family = AF_INET6;
   hints.ai_socktype = SOCK_STREAM;
-  err = getaddrinfo("www.mozilla.org", "90", &hints, &servinfo);
+  err = getaddrinfo("www.google.com", "90", &hints, &servinfo);
   assert(!err);
   sa6 = ((struct sockaddr_in6*)servinfo->ai_addr);
+  print_addrinfo(servinfo);
   assert(servinfo->ai_family == AF_INET6);
   assert(servinfo->ai_socktype == SOCK_STREAM);
   assert(*((uint32_t*)&(sa6->sin6_addr)+0) != 0 ||
@@ -210,52 +259,55 @@ int main() {
   // test numeric host
   err = getaddrinfo("1.2.3.4", "85", NULL, &servinfo);
   assert(!err);
+  print_addrinfo(servinfo);
   sa4 = ((struct sockaddr_in*)servinfo->ai_addr);
   assert(servinfo->ai_family == AF_INET);
   assert(servinfo->ai_socktype == SOCK_STREAM);
   assert(servinfo->ai_protocol == IPPROTO_TCP);
   assert(sa4->sin_port == ntohs(85));
-  assert(servinfo->ai_next == NULL);
   freeaddrinfo(servinfo);
 
   // test non-numeric host
   err = getaddrinfo("www.mozilla.org", "89", NULL, &servinfo);
   assert(!err);
+  print_addrinfo(servinfo);
   sa4 = ((struct sockaddr_in*)servinfo->ai_addr);
   assert(servinfo->ai_family == AF_INET);
   assert(servinfo->ai_socktype == SOCK_STREAM);
   assert(servinfo->ai_protocol == IPPROTO_TCP);
   assert(sa4->sin_port == ntohs(89));
-  assert(servinfo->ai_next == NULL);
   freeaddrinfo(servinfo);
 
   // test loopback resolution
-  err = getaddrinfo(NULL, "80", NULL, &servinfo);
+  hints.ai_family = AF_INET;
+  err = getaddrinfo(NULL, "80", &hints, &servinfo);
   assert(!err);
+  print_addrinfo(servinfo);
   sa4 = ((struct sockaddr_in*)servinfo->ai_addr);
   assert(servinfo->ai_family == AF_INET);
   assert(servinfo->ai_socktype == SOCK_STREAM);
   assert(servinfo->ai_protocol == IPPROTO_TCP);
   assert(sa4->sin_port == ntohs(80));
-  assert(servinfo->ai_next == NULL);
   freeaddrinfo(servinfo);
 
+#ifdef __EMSCRIPTEN__
   // test gai_strerror
-  assert(strcmp(gai_strerror(0), "Unknown error") == 0);
-  assert(strcmp(gai_strerror(EAI_BADFLAGS), "Invalid flags") == 0);
-  assert(strcmp(gai_strerror(EAI_NONAME), "Name does not resolve") == 0);
-  assert(strcmp(gai_strerror(EAI_AGAIN), "Try again") == 0);
-  assert(strcmp(gai_strerror(EAI_FAIL), "Non-recoverable error") == 0);
-  assert(strcmp(gai_strerror(EAI_FAMILY), "Unrecognized address family or invalid length") == 0);
-  assert(strcmp(gai_strerror(EAI_SOCKTYPE), "Unrecognized socket type") == 0);
-  assert(strcmp(gai_strerror(EAI_SERVICE), "Unrecognized service") == 0);
-  assert(strcmp(gai_strerror(EAI_MEMORY), "Out of memory") == 0);
-  assert(strcmp(gai_strerror(EAI_SYSTEM), "System error") == 0);
-  assert(strcmp(gai_strerror(EAI_OVERFLOW), "Overflow") == 0);
-  assert(strcmp(gai_strerror(EAI_NODATA), "Name has no usable address") == 0);
-  assert(strcmp(gai_strerror(-9), "Unknown error") == 0);
-  assert(strcmp(gai_strerror(-13), "Unknown error") == 0);
-  assert(strcmp(gai_strerror(-100), "Unknown error") == 0);
+  CHECK_ERR(0, "Unknown error");
+  CHECK_ERR(EAI_BADFLAGS, "Invalid flags");
+  CHECK_ERR(EAI_NONAME, "Name does not resolve");
+  CHECK_ERR(EAI_AGAIN, "Try again");
+  CHECK_ERR(EAI_FAIL, "Non-recoverable error");
+  CHECK_ERR(EAI_FAMILY, "Unrecognized address family or invalid length");
+  CHECK_ERR(EAI_SOCKTYPE, "Unrecognized socket type");
+  CHECK_ERR(EAI_SERVICE, "Unrecognized service");
+  CHECK_ERR(EAI_MEMORY, "Out of memory");
+  CHECK_ERR(EAI_SYSTEM, "System error");
+  CHECK_ERR(EAI_OVERFLOW, "Overflow");
+  CHECK_ERR(EAI_NODATA, "Name has no usable address");
+  CHECK_ERR(-9, "Unknown error");
+  CHECK_ERR(-13, "Unknown error");
+  CHECK_ERR(-100, "Unknown error");
+#endif
 
   puts("success");
 

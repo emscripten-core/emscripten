@@ -15,8 +15,7 @@ SDL_Renderer *renderer;
 
 int testImage(const char* fileName) {
   SDL_Surface *image = IMG_Load(fileName);
-  if (!image)
-  {
+  if (!image) {
      printf("IMG_Load: %s\n", IMG_GetError());
      return 0;
   }
@@ -42,7 +41,7 @@ void ready(const char *f) {
 
   SDL_RenderPresent(renderer);
 
-  EM_ASM({ doReftest() });
+  EM_ASM(reftestUnblock());
 }
 
 int main() {
@@ -59,6 +58,7 @@ int main() {
 
   assert(emscripten_run_preload_plugins("screenshot.jpg", ready, NULL) == 0);
 
+  EM_ASM(reftestBlock());
   return 0;
 }
 

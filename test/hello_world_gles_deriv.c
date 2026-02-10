@@ -46,6 +46,9 @@
 #include <string.h>
 #include <sys/time.h>
 #include <unistd.h>
+#ifdef __EMSCRIPTEN__
+#include <emscripten.h>
+#endif
 #ifdef __APPLE__
 #include <OpenGL/gl.h>
 #include <Glut/glut.h>
@@ -541,6 +544,9 @@ gears_draw(void)
    draw_gear(gear3, transform, -3.1, 4.2, -2 * angle - 25.0, blue);
 
    glutSwapBuffers();
+#ifdef __EMSCRIPTEN__
+   EM_ASM({if (typeof reftestUnblock !== 'undefined') reftestUnblock()}); // All done, perform the JS side image comparison reftest.
+#endif
 }
 
 /** 
@@ -730,6 +736,11 @@ main(int argc, char *argv[])
    /* Initialize the gears */
    gears_init();
 
+#ifdef __EMSCRIPTEN__
+   // This test kicks off an asynchronous glutMainLoop(), so do not perform a synchronous
+   // reftest immediately after falling out from main.
+   EM_ASM({if (typeof reftestBlock !== 'undefined') reftestBlock()});
+#endif
    glutMainLoop();
 
    return 0;

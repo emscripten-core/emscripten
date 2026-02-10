@@ -8,7 +8,6 @@
 volatile int32_t addr = 0;
 
 void run_test() {
-  emscripten_out("worker_main");
 #if __EMSCRIPTEN_WASM_WORKERS__
   emscripten_wasm_worker_sleep(1000 * 1000000ull); // Sleep one second.
 #else
@@ -73,12 +72,12 @@ void asyncWaitFinishedShouldBeOk(int32_t* ptr,
   assert(numCalled == 2);
   assert(waitResult == ATOMICS_WAIT_OK);
   emscripten_out("test finished");
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
-#if !defined(__EMSCRIPTEN_WASM_WORKERS__)
+#ifdef __EMSCRIPTEN_WASM_WORKERS__
+  emscripten_terminate_all_wasm_workers();
+#else
   pthread_join(t, NULL);
 #endif
+  emscripten_force_exit(0);
 }
 
 int main() {

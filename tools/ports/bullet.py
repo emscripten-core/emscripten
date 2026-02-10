@@ -18,13 +18,13 @@ def get(ports, settings, shared):
   ports.fetch_project('bullet', f'https://github.com/emscripten-ports/bullet/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = os.path.join(ports.get_dir(), 'bullet', 'Bullet-' + TAG)
+    source_path = ports.get_dir('bullet', 'Bullet-' + TAG)
     src_path = os.path.join(source_path, 'bullet', 'src')
 
     dest_include_path = ports.get_include_dir('bullet')
     for base, _, files in os.walk(src_path):
       for f in files:
-        if shared.suffix(f) != '.h':
+        if os.path.splitext(f)[1] != '.h':
           continue
         fullpath = os.path.join(base, f)
         relpath = os.path.relpath(fullpath, src_path)
@@ -39,9 +39,10 @@ def get(ports, settings, shared):
 
     flags = [
       '-Wno-single-bit-bitfield-constant-conversion',
-      '-std=gnu++14'
+      '-Wno-int-to-void-pointer-cast',
+      '-std=gnu++14',
     ]
-
+    ports.make_pkg_config('bullet', TAG, '-sUSE_BULLET')
     ports.build_port(src_path, final, 'bullet', includes=includes, flags=flags, exclude_dirs=['MiniCL'])
 
   return [shared.cache.get_lib('libbullet.a', create)]
@@ -56,4 +57,4 @@ def process_args(ports):
 
 
 def show():
-  return 'bullet (-sUSE_BULLET=1 or --use-port=bullet; zlib license)'
+  return 'bullet (-sUSE_BULLET or --use-port=bullet; zlib license)'

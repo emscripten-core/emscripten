@@ -95,14 +95,17 @@ struct VoidPointerUser {
 namespace Space {
   struct Inner {
     int value;
-    Inner() : value(1) {}
+    Inner(int x = 1) : value(x) {}
     int get() { return 198; }
+    int get_value() { return value; }
     Inner& operator*=(float x) { return *this; }
     int operator[](int x) { return x*2; }
     void operator+=(const Inner& other) {
       value += other.value;
       printf("Inner::+= => %d\n", value);
     }
+    Inner operator+(const Inner& other) { return Inner(value + other.value); }
+    int operator*(int x) { return value * x; }
   };
 
   // We test compilation of abstract base classes in a namespace here.
@@ -238,4 +241,10 @@ public:
   bool domStringTest(const char* arg) { return strcmp(arg, m_array) == 0; }
 private:
   const char* m_array;
+};
+
+class BindToTest {
+public:
+  int test(const char*) { return 1; }
+  int test(int) { return 2; }
 };

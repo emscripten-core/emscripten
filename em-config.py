@@ -14,8 +14,9 @@ This tool prints the value of the variable to stdout if one
 is found, or exits with 1 if the variable does not exist.
 """
 
-import sys
 import re
+import sys
+
 from tools import config
 
 
@@ -24,7 +25,7 @@ def main():
     not re.match(r"^[\w\W_][\w\W_\d]*$", sys.argv[1]) or \
     not hasattr(config, sys.argv[1]):
     print('Usage: em-config VAR_NAME', file=sys.stderr)
-    exit(1)
+    sys.exit(1)
 
   print(getattr(config, sys.argv[1]))
   return 0

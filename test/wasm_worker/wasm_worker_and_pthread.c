@@ -15,8 +15,7 @@ EM_JS(int, am_i_wasm_worker, (), {
   return ENVIRONMENT_IS_WASM_WORKER;
 });
 
-void *thread_main(void *arg)
-{
+void *thread_main(void *arg) {
   emscripten_out("hello from pthread!");
   assert(am_i_pthread());
   assert(!am_i_wasm_worker());
@@ -26,8 +25,7 @@ void *thread_main(void *arg)
   return 0;
 }
 
-void worker_main()
-{
+void worker_main() {
   emscripten_out("hello from wasm worker!");
   assert(!am_i_pthread());
   assert(am_i_wasm_worker());
@@ -41,8 +39,7 @@ void worker_main()
 #endif
 }
 
-int main()
-{
+int main() {
   pthread_t thread;
   pthread_create(&thread, NULL, thread_main, NULL);
 

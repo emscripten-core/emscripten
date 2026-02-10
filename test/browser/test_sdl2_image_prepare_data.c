@@ -15,8 +15,7 @@ SDL_Renderer *renderer;
 
 int testImage(const char* fileName) {
   SDL_Surface *image = IMG_Load(fileName);
-  if (!image)
-  {
+  if (!image) {
      printf("IMG_Load: %s\n", IMG_GetError());
      return 0;
   }
@@ -57,7 +56,7 @@ void ready(void *arg, const char *fileName) {
 
     SDL_RenderPresent(renderer);
 
-    EM_ASM({ doReftest() });
+    EM_ASM(reftestUnblock());
   }
 }
 
@@ -78,6 +77,7 @@ int main() {
   emscripten_run_preload_plugins_data(buffer, SIZE, "jpg", (void*)25, ready, NULL);
   emscripten_run_preload_plugins_data(buffer, SIZE, "jpg", (void*)33, ready, NULL); // twice to see different filenames
 
+  EM_ASM(reftestBlock());
   return 0;
 }
 

@@ -10,16 +10,15 @@
 #include <string.h>
 #include <unistd.h>
 #include <assert.h>
-#include "emscripten.h"
+#include "emscripten/heap.h"
 
 int get_memory_size() {
-  return EM_ASM_INT({ return HEAP8.length });
+  return emscripten_get_heap_size();
 }
 
 typedef void* voidStar;
 
-int main(int argc, char **argv)
-{
+int main(int argc, char *argv[]) {
   int totalMemory = get_memory_size();
   int chunk = 1024*1024;
   volatile voidStar alloc;

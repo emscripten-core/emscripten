@@ -86,7 +86,7 @@ int main() {
 
   /* Check if the extension is actually supported. Firefox reports
      EXT_disjoint_timer_query on WebGL 2 as well. */
-  if (!strstr(glGetString(GL_EXTENSIONS), "EXT_disjoint_timer_query")) {
+  if (!strstr((const char*)glGetString(GL_EXTENSIONS), "EXT_disjoint_timer_query")) {
     printf("EXT_disjoint_timer_query[_webgl2] not supported\n");
     return 0;
   }

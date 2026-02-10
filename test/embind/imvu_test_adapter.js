@@ -553,7 +553,7 @@ function module(ignore, func) {
     }
 
   (function() {
-    var g = 'undefined' === typeof window ? global : window;
+    var g = 'undefined' === typeof window ? globalThis : window;
 
     // synonyms
     assert.equals = assert.equal;

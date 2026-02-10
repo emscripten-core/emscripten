@@ -5,9 +5,9 @@
 //
 //  Notable changes:
  //   __cxa_allocate_exception doesn't add get_cxa_exception_offset
-//    __cxa_decrement_exception_refcount dosn't call the destructor if rethrown
-//  Both of these changes are mirrored from the historical JS implemenation of
-//  thse functions.
+//    __cxa_decrement_exception_refcount doesn't call the destructor if rethrown
+//  Both of these changes are mirrored from the historical JS implementation of
+//  these functions.
 //
 //===----------------------------------------------------------------------===//
 
@@ -17,8 +17,13 @@
 #include "cxa_exception.h"
 #include "include/atomic_support.h"
 #include "fallback_malloc.h"
+#include "private_typeinfo.h"
 #include "stdio.h"
 #include "assert.h"
+
+#ifdef __WASM_EXCEPTIONS__
+#error "This file should only be included when building with emscripten exceptions"
+#endif
 
 // Define to enable extra debugging on stderr.
 #if EXCEPTIONS_DEBUG

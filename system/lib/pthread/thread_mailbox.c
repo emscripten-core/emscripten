@@ -75,7 +75,7 @@ void _emscripten_check_mailbox() {
   // Before we attempt to execute a request from another thread make sure we
   // are in sync with all the loaded code.
   // For example, in PROXY_TO_PTHREAD the atexit functions are called via
-  // a proxied call, and without this call to syncronize we would crash if
+  // a proxied call, and without this call to synchronize we would crash if
   // any atexit functions were registered from a side module.
   assert(pthread_self());
   em_task_queue* mailbox = pthread_self()->mailbox;
@@ -84,6 +84,9 @@ void _emscripten_check_mailbox() {
   notification_state expected = NOTIFICATION_RECEIVED;
   atomic_compare_exchange_strong(
     &mailbox->notification, &expected, NOTIFICATION_NONE);
+  // After every mailbox check we call `__pthread_testcancel` in case
+  // one of the proxied functions was from pthread_kill(SIGCANCEL).
+  __pthread_testcancel();
 }
 
 void emscripten_thread_mailbox_send(pthread_t thread, task t) {
@@ -105,8 +108,7 @@ void emscripten_thread_mailbox_send(pthread_t thread, task t) {
     if (thread->waiting_async) {
       __builtin_wasm_memory_atomic_notify((int*)thread, -1);
     } else {
-      _emscripten_notify_mailbox_postmessage(
-        thread, pthread_self(), emscripten_main_runtime_thread_id());
+      _emscripten_notify_mailbox_postmessage(thread, pthread_self());
     }
   }
 }

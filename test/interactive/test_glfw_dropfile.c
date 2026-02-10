@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+#include <ftw.h>
 #include <stdbool.h>
 #include <string.h>
 #include <assert.h>
@@ -25,29 +26,44 @@ void render() {
   glClear(GL_COLOR_BUFFER_BIT);
 }
 
-void on_file_drop(GLFWwindow *window, int count, const char **paths) {
-  for (int i = 0; i < count; ++i) {
-    printf("dropped file %s\n", paths[i]);
-
-    FILE *fp = fopen(paths[i], "rb");
+int display_info(const char *fpath, const struct stat *sb, int tflag, struct FTW *ftwbuf) {
+  printf("%-3s %2d %s\n", 
+    (tflag == FTW_D) ? "d" : "f", // Type: directory or file
+    ftwbuf->level,                // Depth level
+    fpath                         // Full path
+  );
+  if ( tflag != FTW_D ) {
+    FILE *fp = fopen(fpath, "rb");
     if (!fp) {
-        printf("failed to open %s\n", paths[i]);
+        printf("failed to open %s\n", fpath);
         perror("fopen");
-        assert(false);
+        return -1;
     }
     int c;
     long size = 0;
-    bool dump = strstr(paths[i], ".txt") != 0;
+    bool dump = strstr(fpath, ".txt") != 0;
     if (dump) printf("text file contents (first 100 bytes): ");
     while ((c = fgetc(fp)) != -1) {
         ++size;
         if (dump && size <= 100) putchar(c);
     }
     if (dump) putchar('\n');
-    printf("read %ld bytes from %s\n", size, paths[i]);
+    printf("read %ld bytes from %s\n", size, fpath);
 
     fclose(fp);
+  }
+  return 0; // Return 0 to continue traversal
+}
 
+void on_file_drop(GLFWwindow *window, int count, const char **paths) {
+  for (int i = 0; i < count; ++i) {
+    printf("dropped file %s\n", paths[i]);
+    // FTW_PHYS: Do not follow symbolic links
+    if (nftw(paths[i], display_info, 20, FTW_PHYS) == -1) {
+      printf("failed to traverse %s\n", paths[i]);
+      perror("nftw");
+      assert(false);
+    }
 #ifdef __EMSCRIPTEN__
     // Emscripten copies the contents of the dropped file into the
     // in-browser filesystem. Delete after usage to free up memory.
@@ -79,7 +95,7 @@ int main() {
   glfwSetDropCallback(g_window, on_file_drop);
 
   // Main loop
-  printf("Drag and drop a file from your desktop onto the green canvas.\n");
+  printf("Drag and drop a file or directory from your desktop onto the green canvas.\n");
 #ifdef __EMSCRIPTEN__
   emscripten_set_main_loop(render, 0, 1);
 #else

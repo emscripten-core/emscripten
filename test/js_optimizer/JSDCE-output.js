@@ -33,6 +33,22 @@ function h(a) {
 
 print(h(123));
 
+export function i(a) {
+  return a + 1;
+}
+
+function j(a) {
+  return a + 1;
+}
+
+export { j as k };
+
+export default function l(a) {
+  return a + 1;
+}
+
+export var m = a => a + 1;
+
 (function() {
   var z = fleefl();
   var zz = fleefl();

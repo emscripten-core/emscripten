@@ -6,7 +6,9 @@
  */
 
 #include <unistd.h>
+#include <stdbool.h>
 #include <sys/types.h>
+#include <sys/stat.h>
 #include <fcntl.h>
 #include <poll.h>
 #include <errno.h>
@@ -16,8 +18,8 @@
 
 unsigned char buf[1 << 16];
 
-#define FALSE 0
-#define TRUE 1
+#define MAX(a, b) (((a) >= (b)) ? (a) : (b))
+
 
 // This test program relies on the simplest read/write behavior when
 // all the data can be read/written in one call.
@@ -39,6 +41,37 @@ void test_read(int fd0, unsigned char *ch, int size) {
   }
 }
 
+// test_select and test_poll perform the exact same actions/assertions but
+// with two different system calls.  They should always give the same
+// result.
+
+void test_select(int *fd, bool data_available) {
+  fd_set rfds;
+  FD_ZERO(&rfds);
+  FD_SET(fd[0], &rfds);
+  FD_SET(fd[1], &rfds);
+
+  fd_set wfds;
+  FD_ZERO(&wfds);
+  FD_SET(fd[0], &wfds);
+  FD_SET(fd[1], &wfds);
+
+  // Don't block at all
+  struct timeval tv = { 0, 0};
+  int maxfd = MAX(fd[0], fd[1]) + 1;
+  int ret = select(maxfd, &rfds, &wfds, NULL, &tv);
+
+  if (data_available) {
+    assert(ret == 2);
+    assert(FD_ISSET(fd[0], &rfds));
+  } else {
+    assert(ret == 1);
+    assert(!FD_ISSET(fd[0], &rfds));
+  }
+
+  assert(FD_ISSET(fd[1], &wfds));
+}
+
 void test_poll(int *fd, int data_available) {
   struct pollfd pfds[2];
   memset(pfds, 0, sizeof pfds);
@@ -56,14 +89,21 @@ void test_poll(int *fd, int data_available) {
     assert(pfds[0].revents == 0);
   }
   assert(pfds[1].revents == POLLOUT);
+
+  // select should report the exact same status.
+  test_select(fd, data_available);
 }
 
-int main() {
+int test_most() {
   int fd[2];
   unsigned char wchar = 0;
   unsigned char rchar = 0;
 
   assert(pipe(fd) == 0);
+
+  // Test that pipe is statable
+  struct stat st;
+  assert(fstat(fd[0], &st) == 0);
 
   // Test that pipe is not seekable
 
@@ -81,13 +121,13 @@ int main() {
   // write about 40 Kb of data
   for (int i = 1; i < 200; ++i) {
     test_write(fd[1], &wchar, i + 2);
-    test_poll(fd, TRUE);
+    test_poll(fd, true);
     test_read (fd[0], &rchar, i);
-    test_poll(fd, TRUE);
+    test_poll(fd, true);
     test_write(fd[1], &wchar, i + 1);
-    test_poll(fd, TRUE);
+    test_poll(fd, true);
     test_read (fd[0], &rchar, i + 3);
-    test_poll(fd, FALSE);
+    test_poll(fd, false);
   }
 
   // Test reading when there is less data available than the read buffer size
@@ -121,11 +161,11 @@ int main() {
 #endif
 
   // Normal operations still work in non-blocking mode
-  test_poll(fd, FALSE);
+  test_poll(fd, false);
   test_write(fd[1], &wchar, 10);
-  test_poll(fd, TRUE);
+  test_poll(fd, true);
   test_read (fd[0], &rchar, 10);
-  test_poll(fd, FALSE);
+  test_poll(fd, false);
 
   // Clear buffer
   memset(buf, 0, sizeof(buf));
@@ -152,5 +192,38 @@ int main() {
   assert(errno == EBADF);
 
   puts("success");
+  return 0;
+}
+
+int test_redirect_stderr_to_pipe() {
+  int stderrfd = fileno(stderr);
+  int pipefd[2];
+  int original_fd = dup(stderrfd); // duplicate stderr to original_fd, and original_fd is used to restore stderr later
+  assert(original_fd >= 0);
+  assert(pipe(pipefd) == 0);
+
+  int read_end_fd = pipefd[0];
+  int write_end_fd = pipefd[1];
+
+  assert(dup2(write_end_fd, stderrfd) == stderrfd); // now things write to fd(stderr) is redirected to write_end_fd
+  assert(close(write_end_fd) == 0); // close the write end of the pipe after duplicating
+
+  assert(write(stderrfd, "xyz", 3) == 3); // write to the stderr, expected to be read from pipe
+
+  assert(dup2(original_fd, stderrfd) == stderrfd); //  restore fd (stderr) to its original state
+  assert(close(original_fd) == 0);
+
+  char buffer[10];
+  memset(buffer, 0, 10);
+  assert(read(read_end_fd, buffer, 10) == 3);
+  assert(strcmp(buffer, "xyz") == 0);
+  assert(close(read_end_fd) == 0); // Close the read end of the pipe
+  printf("success\n");
+  return 0;
+}
+
+int main() {
+  test_most();
+  test_redirect_stderr_to_pipe();
   return 0;
 }

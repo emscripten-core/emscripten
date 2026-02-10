@@ -15,43 +15,59 @@ running multiple build commands in parallel, confusion can occur).
 import argparse
 import fnmatch
 import logging
+import os
 import sys
 import time
 from contextlib import contextmanager
 
-from tools import cache
-from tools import shared
-from tools import system_libs
-from tools import ports
-from tools import utils
+from tools import cache, ports, shared, system_libs, utils
 from tools.settings import settings
 from tools.system_libs import USE_NINJA
 
-
-# Minimal subset of targets used by CI systems to build enough to useful
+# Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libbulkmemory',
     'libcompiler_rt',
-    'libcompiler_rt-wasm-sjlj',
+    'libcompiler_rt-mt',
+    'libcompiler_rt-legacysjlj',
+    'libcompiler_rt-wasmsjlj',
+    'libcompiler_rt-ww',
     'libc',
     'libc-debug',
+    'libc-mt-debug',
+    'libc-ww-debug',
     'libc_optz',
     'libc_optz-debug',
     'libc++abi',
-    'libc++abi-except',
+    'libc++abi-legacyexcept',
+    'libc++abi-wasmexcept',
     'libc++abi-noexcept',
     'libc++abi-debug',
-    'libc++abi-debug-except',
+    'libc++abi-debug-legacyexcept',
+    'libc++abi-debug-wasmexcept',
     'libc++abi-debug-noexcept',
+    'libc++abi-debug-mt-noexcept',
+    'libc++abi-debug-ww-noexcept',
     'libc++',
-    'libc++-except',
+    'libc++-legacyexcept',
+    'libc++-wasmexcept',
     'libc++-noexcept',
+    'libc++-ww-noexcept',
+    'libc++-debug',
+    'libc++-debug-wasmexcept',
+    'libc++-debug-legacyexcept',
+    'libc++-debug-noexcept',
+    'libc++-debug-mt-noexcept',
+    'libc++-debug-ww-noexcept',
     'libal',
     'libdlmalloc',
     'libdlmalloc-tracing',
     'libdlmalloc-debug',
+    'libdlmalloc-mt-debug',
+    'libdlmalloc-ww',
+    'libdlmalloc-ww-debug',
     'libembind',
     'libembind-rtti',
+    'libembind-mt-rtti',
     'libemmalloc',
     'libemmalloc-debug',
     'libemmalloc-memvalidate',
@@ -61,55 +77,60 @@ MINIMAL_TASKS = [
     'libmimalloc-mt',
     'libGL',
     'libGL-getprocaddr',
+    'libGL-mt-getprocaddr',
+    'libGL-emu-getprocaddr',
+    'libGL-emu-webgl2-ofb-getprocaddr',
+    'libGL-webgl2-ofb-getprocaddr',
+    'libGL-ww-getprocaddr',
     'libhtml5',
     'libsockets',
+    'libsockets-mt',
+    'libsockets-ww',
     'libstubs',
     'libstubs-debug',
     'libstandalonewasm-nocatch',
     'crt1',
     'crt1_proxy_main',
     'crtbegin',
-    'libunwind-except',
+    'libunwind-legacyexcept',
+    'libunwind-wasmexcept',
     'libnoexit',
-    'sqlite3',
-    'sqlite3-mt',
-    'libwebgpu',
-    'libwebgpu_cpp',
+    'bullet',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
 # CI (which has slightly more tests than other modes that want to use MINIMAL)
 MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
-    'libcompiler_rt-mt',
     'libc-mt',
-    'libc-mt-debug',
     'libc_optz-mt',
     'libc_optz-mt-debug',
     'libc++abi-mt',
     'libc++abi-mt-noexcept',
     'libc++abi-debug-mt',
-    'libc++abi-debug-mt-noexcept',
     'libc++-mt',
     'libc++-mt-noexcept',
+    'libc++-debug-mt',
     'libdlmalloc-mt',
     'libGL-emu',
     'libGL-emu-webgl2-getprocaddr',
-    'libGL-mt-getprocaddr',
     'libGL-mt-emu',
     'libGL-mt-emu-webgl2-getprocaddr',
     'libGL-mt-emu-webgl2-ofb-getprocaddr',
     'libsockets_proxy',
-    'libsockets-mt',
     'crtbegin',
     'libsanitizer_common_rt',
     'libubsan_rt',
-    'libwasm_workers_stub-debug',
+    'libwasm_workers-debug',
+    'libwasm_workers-debug-stub',
     'libfetch',
     'libfetch-mt',
     'libwasmfs',
     'libwasmfs-debug',
     'libwasmfs_no_fs',
     'giflib',
+    'sdl2',
+    'sdl2_gfx',
+    'sdl3',
 ]
 
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(ports.port_variants.keys()))
@@ -156,8 +177,8 @@ def clear_port(port_name):
 
 
 def build_port(port_name):
-  with get_port_variant(port_name) as port_name:
-    ports.build_port(port_name, settings)
+  with get_port_variant(port_name) as port_name_base:
+    ports.build_port(port_name_base, settings)
 
 
 def get_system_tasks():
@@ -183,10 +204,10 @@ def main():
   parser.add_argument('--lto', action='store_const', const='full', help='build bitcode object for LTO')
   parser.add_argument('--lto=thin', dest='lto', action='store_const', const='thin', help='build bitcode object for ThinLTO')
   parser.add_argument('--pic', action='store_true',
-                      help='build relocatable objects for suitable for dynamic linking')
-  parser.add_argument('--force', action='store_true',
+                      help='build relocatable objects suitable for dynamic linking')
+  parser.add_argument('-f', '--force', action='store_true',
                       help='force rebuild of target (by removing it first)')
-  parser.add_argument('--verbose', action='store_true',
+  parser.add_argument('-v', '--verbose', action='store_true',
                       help='show build commands')
   parser.add_argument('--wasm64', action='store_true',
                       help='use wasm64 architecture')
@@ -195,10 +216,10 @@ def main():
   args = parser.parse_args()
 
   if args.operation != 'rebuild' and len(args.targets) == 0:
-    shared.exit_with_error('no build targets specified')
+    utils.exit_with_error('no build targets specified')
 
   if args.operation == 'rebuild' and not USE_NINJA:
-    shared.exit_with_error('"rebuild" operation is only valid when using Ninja')
+    utils.exit_with_error('"rebuild" operation is only valid when using Ninja')
 
   # process flags
 
@@ -256,7 +277,7 @@ def main():
         tasks.append(name)
     else:
       # There are some ports that we don't want to build as part
-      # of ALL since the are not well tested or widely used:
+      # of ALL since they are not well tested or widely used:
       if 'cocos2d' in targets:
         targets.remove('cocos2d')
 
@@ -265,6 +286,9 @@ def main():
 
   if auto_tasks:
     print('Building targets: %s' % ' '.join(tasks))
+
+  if USE_NINJA:
+    os.environ['EMBUILDER_PORT_BUILD_DEFERRED'] = '1'
 
   for what in tasks:
     for old, new in legacy_prefixes.items():
@@ -283,7 +307,7 @@ def main():
         if USE_NINJA:
           library.generate()
         else:
-          library.build(deterministic_paths=True)
+          library.build()
     elif what == 'sysroot':
       if do_clear:
         cache.erase_file('sysroot_install.stamp')

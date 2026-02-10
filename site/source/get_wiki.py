@@ -57,7 +57,7 @@ def CleanWiki():
     try:
         shutil.rmtree(output_dir, ignore_errors=False, onerror=errorhandler)
         print('Old wiki clone removed')
-    except IOError:
+    except OSError:
         print('No directory to clean found')
 
 

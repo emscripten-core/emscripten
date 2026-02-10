@@ -54,7 +54,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-O1``
   [compile+link]
-  Simple optimizations. During the compile step these include LLVM ``-O1`` optimizations. During the link step this does not include various runtime assertions in JS that `-O0` would do.
+  Simple optimizations. During the compile step these include LLVM ``-O1`` optimizations. During the link step this omits various runtime assertions in JS that `-O0` would include.
 
 .. _emcc-O2:
 
@@ -68,7 +68,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-O3``
   [compile+link]
-  Like ``-O2``, but with additional optimizations that may take longer to run.
+  Like ``-O2``, but with additional optimizations that may take longer to run and may increase code size.
 
   .. note:: This is a good setting for a release build.
 
@@ -76,8 +76,8 @@ Options that are modified or new in *emcc* are listed below:
 
 ``-Og``
   [compile+link]
-  Like ``-O1``. In future versions, this option might disable different
-  optimizations in order to improve debuggability.
+  Like ``-O1``, with an additional flag to extend the liveness of variables for improved debugging.
+  In future versions, additional optimizations might also be disabled.
 
 .. _emcc-Os:
 
@@ -172,21 +172,32 @@ Options that are modified or new in *emcc* are listed below:
 
 .. _emcc-gsource-map:
 
-``-gsource-map``
-  [link]
+``-gsource-map[=inline]``
+  [compile+link]
+  [same as -g3 if passed at compile time, otherwise applies at link]
   Generate a source map using LLVM debug information (which must
-  be present in object files, i.e., they should have been compiled with ``-g``).
+  be present in object files, i.e., they should have been compiled with ``-g``
+  or ``-gsource-map``).
+
   When this option is provided, the **.wasm** file is updated to have a
   ``sourceMappingURL`` section. The resulting URL will have format:
   ``<base-url>`` + ``<wasm-file-name>`` + ``.map``. ``<base-url>`` defaults
   to being empty (which means the source map is served from the same directory
   as the Wasm file). It can be changed using :ref:`--source-map-base <emcc-source-map-base>`.
 
+  Path substitution can be applied to the referenced sources using the
+  ``-sSOURCE_MAP_PREFIXES`` (:ref:`link <source_map_prefixes>`).
+  If ``inline`` is specified, the sources content is embedded in the source map
+  (in this case you don't need path substitution, but it comes with the cost of
+  having a large source map file).
+
 .. _emcc-gN:
 
 ``-g<level>``
   [compile+link]
-  Controls the level of debuggability. Each level builds on the previous one:
+  If used at compile time, adds progressively more DWARF information to the object file,
+  according to the underlying behavior of clang.
+  If used at link time, controls the level of debuggability overall. Each level builds on the previous one:
 
     -
       .. _emcc-g0:
@@ -196,29 +207,31 @@ Options that are modified or new in *emcc* are listed below:
     -
       .. _emcc-g1:
 
-      ``-g1``: When linking, preserve whitespace in JavaScript.
+      ``-g1``: Preserve whitespace in JavaScript.
 
     -
       .. _emcc-g2:
 
-      ``-g2``: When linking, preserve function names in compiled code.
+      ``-g2``: Also preserve function names in compiled code (via the wasm name section).
 
     -
       .. _emcc-g3:
 
-      ``-g3``: When compiling to object files, keep debug info, including JS whitespace, function names, and LLVM debug info (DWARF) if any (this is the same as :ref:`-g <emcc-g>`).
+      ``-g3``: Also keep LLVM debug info (DWARF) if there is any in the object files (this is the same as :ref:`-g <emcc-g>`).
 
 .. _emcc-profiling:
 
 ``--profiling``
-  [same as -g2 if passed at compile time, otherwise applies at link]
-  Use reasonable defaults when emitting JavaScript to make the build readable but still useful for profiling. This sets ``-g2`` (preserve whitespace and function names) and may also enable optimizations that affect performance and otherwise might not be performed in ``-g2``.
+  [link]
+  Make the output suitable for profiling. This means including function names in the wasm and JS output, and
+  preserving whitespace in the JS output. It does not affect optimizations (to ensure that performance profiles
+  reflect production builds). Currently this is the same as ``-g2``.
 
 .. _emcc-profiling-funcs:
 
 ``--profiling-funcs``
   [link]
-  Preserve function names in profiling, but otherwise minify whitespace and names as we normally do in optimized builds. This is useful if you want to look at profiler results based on function names, but do *not* intend to read the emitted code.
+  Preserve wasm function names as in ``--profiling``, but otherwise minify whitespace and names as we normally do in optimized builds. This is useful if you want to look at profiler results based on function names, but do *not* intend to read the emitted code.
 
 ``--tracing``
   [link]
@@ -237,9 +250,19 @@ Options that are modified or new in *emcc* are listed below:
   Save a map file between function indexes in the Wasm and function names. By
   storing the names on a file on the side, you can avoid shipping the names, and
   can still reconstruct meaningful stack traces by translating the indexes back
-  to the names.
+  to the names. This is a simpler format than source maps, but less detailed
+  because it only describes function names and not source locations.
 
   .. note:: When used with ``-sWASM=2``, two symbol files are created. ``[name].js.symbols`` (with WASM symbols) and ``[name].wasm.js.symbols`` (with ASM.js symbols)
+
+.. _emcc-emit-minification-map:
+
+``--emit-minification-map <file>``
+  [link]
+  In cases where emscripten performs import/export minification this option can
+  be used to output a file that maps minified names back to their original
+  names.  The format of this file is single line per import/export of the form
+  ``<minname>:<origname>``.
 
 .. _emcc-lto:
 
@@ -253,7 +276,7 @@ Options that are modified or new in *emcc* are listed below:
   [link]
   Runs the :term:`Closure Compiler`. Possible values are:
 
-    - ``0``: No closure compiler (default in ``-O2`` and below).
+    - ``0``: No closure compiler (default).
     - ``1``: Run closure compiler. This greatly reduces the size of the support JavaScript code (everything but the WebAssembly or asm.js). Note that this increases compile time significantly.
     - ``2``: Run closure compiler on *all* the emitted code, even on **asm.js** output in **asm.js** mode. This can further reduce code size, but does prevent a significant amount of **asm.js** optimizations, so it is not recommended unless you want to reduce code size at all costs.
 
@@ -261,7 +284,6 @@ Options that are modified or new in *emcc* are listed below:
 
     - Consider using ``-sMODULARIZE`` when using closure, as it minifies globals to names that might conflict with others in the global scope. ``MODULARIZE`` puts all the output into a function (see ``src/settings.js``).
     - Closure will minify the name of `Module` itself, by default! Using ``MODULARIZE`` will solve that as well. Another solution is to make sure a global variable called `Module` already exists before the closure-compiled code runs, because then it will reuse that variable.
-    - Closure is only run if JavaScript opts are being done (``-O2`` or above).
 
 ``--closure-args=<args>``
    [link]
@@ -361,7 +383,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note::
 
-    - See `src/shell.html <https://github.com/emscripten-core/emscripten/blob/main/src/shell.html>`_ and `src/shell_minimal.html <https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html>`_ for examples.
+    - See `html/shell.html <https://github.com/emscripten-core/emscripten/blob/main/html/shell.html>`_ and `html/shell_minimal.html <https://github.com/emscripten-core/emscripten/blob/main/html/shell_minimal.html>`_ for examples.
     - This argument is ignored if a target other than HTML is specified using the ``-o`` option.
 
 .. _emcc-source-map-base:
@@ -499,12 +521,6 @@ Options that are modified or new in *emcc* are listed below:
   [compile+link]
   Enables warnings about the use of absolute paths in ``-I`` and ``-L`` command line directives. This is used to warn against unintentional use of absolute paths, which is sometimes dangerous when referring to nonportable local system headers.
 
-.. _proxy-to-worker:
-
-``--proxy-to-worker``
-  [link]
-  Runs the main application code in a worker, proxying events to it and output from it. If emitting HTML, this emits a **.html** file, and a separate **.js** file containing the JavaScript to be run in a worker. If emitting JavaScript, the target file name contains the part to be run on the main thread, while a second **.js** file with suffix ".worker.js" will contain the worker portion.
-
 .. _emcc-emrun:
 
 ``--emrun``
@@ -552,15 +568,19 @@ Options that are modified or new in *emcc* are listed below:
   These rules only apply when linking.  When compiling to object code (See `-c`
   below) the name of the output file is irrelevant.
 
+  Note: Linking to a file with no extension (or a file ending in ``.out``, like
+  ``a.out``) will cause the generated JavaScript file to be exectuable, and
+  include a ``#!`` line to make it runnable directly.
+
 .. _emcc-c:
 
 ``-c``
   [compile]
   Tells *emcc* to emit an object file which can then be linked with other object files to produce an executable.
 
-``--output_eol windows|linux``
+``--output-eol windows|linux``
   [link]
-  Specifies the line ending to generate for the text files that are outputted. If "--output_eol windows" is passed, the final output files will have Windows \r\n line endings in them. With "--output_eol linux", the final generated files will be written with Unix \n line endings.
+  Specifies the line ending to generate for the text files that are outputted. If "--output-eol windows" is passed, the final output files will have Windows ``\r\n`` line endings in them. With "--output-eol linux", the final generated files will be written with Unix ``\n`` line endings.
 
 ``--cflags``
   [other]

@@ -21,5 +21,6 @@ int main(void) {
   printf(",%d,", test(1, 65535));
   printf(",%d,", test(32768, 32767));
   printf(",%d,", test(32768, 32768));
+  printf("\n");
   return 0;
 }

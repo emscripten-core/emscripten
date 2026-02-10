@@ -1,4 +1,3 @@
-#include <emscripten.h>
 #include <emscripten/console.h>
 #include <emscripten/wasm_worker.h>
 #include <assert.h>
@@ -7,63 +6,55 @@
 
 volatile int success = 0;
 
-void v()
-{
-  emscripten_console_log("v");
+void v() {
+  emscripten_out("v");
   ++success;
 }
 
-void vi(int i)
-{
-  emscripten_console_log("vi");
+void vi(int i) {
+  emscripten_out("vi");
   assert(i == 1);
   ++success;
 }
 
-void vii(int i, int j)
-{
-  emscripten_console_log("vii");
+void vii(int i, int j) {
+  emscripten_out("vii");
   assert(i == 2);
   assert(j == 3);
   ++success;
 }
 
-void viii(int i, int j, int k)
-{
-  emscripten_console_log("viii");
+void viii(int i, int j, int k) {
+  emscripten_out("viii");
   assert(i == 4);
   assert(j == 5);
   assert(k == 6);
   ++success;
 }
 
-void vd(double i)
-{
-  emscripten_console_log("vd");
+void vd(double i) {
+  emscripten_out("vd");
   assert(i == 1.5);
   ++success;
 }
 
-void vdd(double i, double j)
-{
-  emscripten_console_log("vdd");
+void vdd(double i, double j) {
+  emscripten_out("vdd");
   assert(i == 2.5);
   assert(j == 3.5);
   ++success;
 }
 
-void vddd(double i, double j, double k)
-{
-  emscripten_console_log("vddd");
+void vddd(double i, double j, double k) {
+  emscripten_out("vddd");
   assert(i == 4.5);
   assert(j == 5.5);
   assert(k == 6.5);
   ++success;
 }
 
-void viiiiiidddddd(int a, int b, int c, int d, int e, int f, double g, double h, double i, double j, double k, double l)
-{
-  emscripten_console_log("viiiiiidddddd");
+void viiiiiidddddd(int a, int b, int c, int d, int e, int f, double g, double h, double i, double j, double k, double l) {
+  emscripten_out("viiiiiidddddd");
   assert(a == 10);
   assert(b == 11);
   assert(c == 12);
@@ -79,8 +70,7 @@ void viiiiiidddddd(int a, int b, int c, int d, int e, int f, double g, double h,
   ++success;
 }
 
-void test_finished()
-{
+void test_finished() {
 #ifdef REPORT_RESULT
   REPORT_RESULT(success);
 #endif
@@ -88,8 +78,7 @@ void test_finished()
 
 char stack[1024];
 
-int main()
-{
+int main() {
   assert(!emscripten_current_thread_is_wasm_worker());
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, v);

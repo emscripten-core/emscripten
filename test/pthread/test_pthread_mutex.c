@@ -23,7 +23,7 @@ pthread_mutex_t lock;
 
 void sleepms(int msecs) {
   // Test two different variants of sleeping to verify
-  // against bug https://bugzilla.mozilla.org/show_bug.cgi?id=1131757
+  // against bug https://bugzil.la/1131757
 #ifdef SPINLOCK_TEST
   double t0 = emscripten_get_now();
   double t1 = t0 + (double)msecs;
@@ -56,7 +56,7 @@ void CreateThread(int i, int n) {
 
 int threadNum = 0;
 
-EM_BOOL WaitToJoin(double time, void *userData) {
+bool WaitToJoin(double time, void *userData) {
   int threadsRunning = 0;
   // Join all threads.
   for (int i = 0; i < NUM_THREADS; ++i) {
@@ -81,9 +81,9 @@ EM_BOOL WaitToJoin(double time, void *userData) {
       emscripten_errf("All threads finished, but counter = %d != %d!", counter, numThreadsToCreateTotal);
     assert(counter == 50);
     emscripten_force_exit(0);
-    return EM_FALSE;
+    return false;
   }
-  return EM_TRUE;
+  return true;
 }
 
 int main() {

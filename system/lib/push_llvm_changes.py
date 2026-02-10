@@ -6,7 +6,7 @@
 
 # Copy local llvm library changes into the upstream llvm tree.
 # This is the logical inverse of update_compiler_rt.py, update_libcxx.py
-# and update_libcxxabi.py which copy changes form the upstream llvm 
+# and update_libcxxabi.py which copy changes from the upstream llvm
 # into emscripten.
 
 import glob
@@ -18,10 +18,11 @@ script_dir = os.path.abspath(os.path.dirname(__file__))
 emscripten_root = os.path.dirname(os.path.dirname(script_dir))
 default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project')
 copy_dirs = [
-  'compiler-rt',
-  'libcxx',
-  'libcxxabi',
-  'libunwind',
+  ('compiler-rt', 'compiler-rt'),
+  ('libcxx', 'libcxx'),
+  ('libcxxabi', 'libcxxabi'),
+  ('libunwind', 'libunwind'),
+  ('llvm-libc', 'libc'),
 ]
 
 
@@ -34,12 +35,12 @@ def main():
     print(f'llvm tree not found: {upstream_root}')
     return 1
 
-  for dir in copy_dirs:
-    assert os.path.exists(os.path.join(upstream_root, dir))
+  for _, upstream_name in copy_dirs:
+    assert os.path.exists(os.path.join(upstream_root, upstream_name))
 
-  for dir in copy_dirs:
-    local_dir = os.path.join(script_dir, dir)
-    upstream_dir = os.path.join(upstream_root, dir)
+  for local_name, upstream_name in copy_dirs:
+    local_dir = os.path.join(script_dir, local_name)
+    upstream_dir = os.path.join(upstream_root, upstream_name)
     print(f'copying {local_dir} -> {upstream_dir}')
     shutil.copytree(local_dir, upstream_dir, dirs_exist_ok=True)
 

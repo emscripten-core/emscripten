@@ -4,6 +4,253 @@
  * SPDX-License-Identifier: MIT
  */
 
+#if FETCH_STREAMING
+/**
+ * A class that mimics the XMLHttpRequest API using the modern Fetch API.
+ * This implementation is specifically tailored to only handle 'arraybuffer'
+ * responses.
+ */
+class FetchXHR {
+  // --- Public XHR Properties ---
+
+  // Event Handlers
+  onload = null;
+  onerror = null;
+  onprogress = null;
+  onreadystatechange = null;
+  ontimeout = null;
+
+  // Request Configuration
+  responseType = 'arraybuffer';
+  withCredentials = false;
+  timeout = 0; // Standard XHR timeout property
+
+  // Response / State Properties
+  readyState = 0; // 0: UNSENT
+  response = null;
+  responseURL = '';
+  status = 0;
+  statusText = '';
+
+  // --- Internal Properties ---
+  _method = '';
+  _url = '';
+  _headers = {};
+  _abortController = null;
+  _aborted = false;
+  _responseHeaders = null;
+
+  // When enabled the the data will be streamed using progress events. If the full result is needed
+  // the data must be collected during the progress events.
+  _streamData = false;
+
+  // --- Private state management ---
+  _changeReadyState(state) {
+    this.readyState = state;
+    this.onreadystatechange?.();
+  }
+
+  // --- Public XHR Methods ---
+
+  /**
+   * Initializes a request.
+   * @param {string} method The HTTP request method (e.g., 'GET', 'POST').
+   * @param {string} url The URL to send the request to.
+   * @param {boolean} [async=true] This parameter is ignored as Fetch is always async.
+   * @param {string|null} [user=null] The username for basic authentication.
+   * @param {string|null} [password=null] The password for basic authentication.
+   */
+  open(method, url, async = true, user = null, password = null) {
+    if (this.readyState !== 0 && this.readyState !== 4) {
+      console.warn("FetchXHR.open() called while a request is in progress.");
+      this.abort();
+    }
+
+    // Reset internal state for the new request
+    this._method = method;
+    this._url = url;
+    this._headers = {};
+    this._responseHeaders = null;
+
+    // The async parameter is part of the XHR API but is an error here because
+    // the Fetch API is inherently asynchronous and does not support synchronous requests.
+    if (!async) {
+      throw new Error("FetchXHR does not support synchronous requests.");
+    }
+
+    // Handle Basic Authentication if user/password are provided.
+    // This creates a base64-encoded string and sets the Authorization header.
+    if (user) {
+      const credentials = btoa(`${user}:${password || ''}`);
+      this._headers['Authorization'] = `Basic ${credentials}`;
+    }
+
+    this._changeReadyState(1); // 1: OPENED
+  }
+
+  /**
+   * Sets the value of an HTTP request header.
+   * @param {string} header The name of the header.
+   * @param {string} value The value of the header.
+   */
+  setRequestHeader(header, value) {
+    if (this.readyState !== 1) {
+      throw new Error('setRequestHeader can only be called when state is OPENED.');
+    }
+    this._headers[header] = value;
+  }
+
+  /**
+   * This method is not effectively implemented because Fetch API relies on the
+   * server's Content-Type header and does not support overriding the MIME type
+   * on the client side in the same way as XHR.
+   * @param {string} mimetype The MIME type to use.
+   */
+  overrideMimeType(mimetype) {
+    throw new Error("overrideMimeType is not supported by the Fetch API and has no effect.");
+  }
+
+  /**
+   * Returns a string containing all the response headers, separated by CRLF.
+   * @returns {string} The response headers.
+   */
+  getAllResponseHeaders() {
+    if (!this._responseHeaders) {
+      return '';
+    }
+
+    let headersString = '';
+    // The Headers object is iterable.
+    for (const [key, value] of this._responseHeaders.entries()) {
+      headersString += `${key}: ${value}\r\n`;
+    }
+    return headersString;
+  }
+
+  /**
+   * Sends the request.
+   * @param body The body of the request.
+   */
+  async send(body = null) {
+    if (this.readyState !== 1) {
+      throw new Error('send() can only be called when state is OPENED.');
+    }
+
+    this._abortController = new AbortController();
+    const signal = this._abortController.signal;
+
+    // Handle timeout
+    let timeoutID;
+    if (this.timeout > 0) {
+      timeoutID = setTimeout(
+        () => this._abortController.abort(new DOMException('The user aborted a request.', 'TimeoutError')),
+        this.timeout
+      );
+    }
+
+    const fetchOptions = {
+      method: this._method,
+      headers: this._headers,
+      body: body,
+      signal: signal,
+      credentials: this.withCredentials ? 'include' : 'same-origin',
+    };
+
+    try {
+      const response = await fetch(this._url, fetchOptions);
+
+      // Populate response properties once headers are received
+      this.status = response.status;
+      this.statusText = response.statusText;
+      this.responseURL = response.url;
+      this._responseHeaders = response.headers;
+      this._changeReadyState(2); // 2: HEADERS_RECEIVED
+
+      // Start processing the body
+      this._changeReadyState(3); // 3: LOADING
+
+      if (!response.body) {
+        throw new Error("Response has no body to read.");
+      }
+
+      const reader = response.body.getReader();
+      const contentLength = +response.headers.get('Content-Length');
+
+      let receivedLength = 0;
+      // When streaming data don't collect all of the chunks into one large chunk. It's up to the
+      // user to collect the data as it comes in.
+      const chunks = this._streamData ? null : [];
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          break;
+        }
+
+        if (!this._streamData) {
+          chunks.push(value);
+        }
+        receivedLength += value.length;
+
+        if (this.onprogress) {
+          // Convert to ArrayBuffer as requested by responseType.
+          this.response = value.buffer;
+          const progressEvent = {
+            lengthComputable: contentLength > 0,
+            loaded: receivedLength,
+            total: contentLength
+          };
+          this.onprogress(progressEvent);
+        }
+      }
+
+      if (this._streamData) {
+        this.response = null;
+      } else {
+        // Combine chunks into a single Uint8Array.
+        const allChunks = new Uint8Array(receivedLength);
+        let position = 0;
+        for (const chunk of chunks) {
+          allChunks.set(chunk, position);
+          position += chunk.length;
+        }
+        // Convert to ArrayBuffer as requested by responseType
+        this.response = allChunks.buffer;
+      }
+    } catch (error) {
+      this.statusText = error.message;
+
+      if (error.name === 'AbortError') {
+        // Do nothing.
+      } else if (error.name === 'TimeoutError') {
+        this.ontimeout?.();
+      } else {
+        // This is a network error
+        this.onerror?.();
+      }
+    } finally {
+      clearTimeout(timeoutID);
+      if (!this._aborted) {
+        this._changeReadyState(4); // 4: DONE
+        // The XHR 'load' event fires for successful HTTP statuses (2xx) as well as
+        // unsuccessful ones (4xx, 5xx). The 'error' event is for network failures.
+        this.onload?.();
+      }
+    }
+  }
+
+  /**
+   * Aborts the request if it has already been sent.
+   */
+  abort() {
+    this._aborted = true;
+    this.status = 0;
+    this._changeReadyState(4); // 4: DONE
+    this._abortController?.abort();
+  }
+}
+#endif
+
 var Fetch = {
   // HandleAllocator for XHR request object
   // xhrs: undefined,
@@ -18,56 +265,55 @@ var Fetch = {
   // dbInstance: undefined,
 
 #if FETCH_SUPPORT_INDEXEDDB
-  // Be cautious that `onerror` may be run synchronously
-  openDatabase(dbname, dbversion, onsuccess, onerror) {
-    try {
+  async openDatabase(dbname, dbversion) {
+    return new Promise((resolve, reject) => {
+      try {
 #if FETCH_DEBUG
-      dbg(`fetch: indexedDB.open(dbname="${dbname}", dbversion="${dbversion}");`);
+        dbg(`fetch: indexedDB.open(dbname="${dbname}", dbversion="${dbversion}");`);
 #endif
-      var openRequest = indexedDB.open(dbname, dbversion);
-    } catch (e) {
-      return onerror(e);
-    }
-
-    openRequest.onupgradeneeded = (event) => {
-#if FETCH_DEBUG
-      dbg('fetch: IndexedDB upgrade needed. Clearing database.');
-#endif
-      var db = /** @type {IDBDatabase} */ (event.target.result);
-      if (db.objectStoreNames.contains('FILES')) {
-        db.deleteObjectStore('FILES');
+        var openRequest = indexedDB.open(dbname, dbversion);
+      } catch (e) {
+        return reject(e);
       }
-      db.createObjectStore('FILES');
-    };
-    openRequest.onsuccess = (event) => onsuccess(event.target.result);
-    openRequest.onerror = onerror;
+
+      openRequest.onupgradeneeded = (event) => {
+#if FETCH_DEBUG
+        dbg('fetch: IndexedDB upgrade needed. Clearing database.');
+#endif
+        var db = /** @type {IDBDatabase} */ (event.target.result);
+        if (db.objectStoreNames.contains('FILES')) {
+          db.deleteObjectStore('FILES');
+        }
+        db.createObjectStore('FILES');
+      };
+      openRequest.onsuccess = (event) => resolve(event.target.result);
+      openRequest.onerror = reject;
+    });
   },
 #endif
 
-  init() {
+  async init() {
     Fetch.xhrs = new HandleAllocator();
 #if FETCH_SUPPORT_INDEXEDDB
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
-    var onsuccess = (db) => {
+
+    addRunDependency('library_fetch_init');
+    try {
+      var db = await Fetch.openDatabase('emscripten_filesystem', 1);
 #if FETCH_DEBUG
       dbg('fetch: IndexedDB successfully opened.');
 #endif
       Fetch.dbInstance = db;
-      removeRunDependency('library_fetch_init');
-    };
-
-    var onerror = () => {
+    } catch (e) {
 #if FETCH_DEBUG
       dbg('fetch: IndexedDB open failed.');
 #endif
       Fetch.dbInstance = false;
+    } finally {
       removeRunDependency('library_fetch_init');
-    };
-
-    addRunDependency('library_fetch_init');
-    Fetch.openDatabase('emscripten_filesystem', 1, onsuccess, onerror);
+    }
 #endif // ~FETCH_SUPPORT_INDEXEDDB
   }
 }
@@ -244,7 +490,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #if FETCH_DEBUG
     dbg('fetch: XHR failed, no URL specified!');
 #endif
-    onerror(fetch, 0, 'no url specified!');
+    onerror(fetch, 'no url specified!');
     return;
   }
   var url_ = UTF8ToString(url);
@@ -268,8 +514,20 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   var userNameStr = userName ? UTF8ToString(userName) : undefined;
   var passwordStr = password ? UTF8ToString(password) : undefined;
 
+#if FETCH_STREAMING == 1
+  if (fetchAttrStreamData) {
+    var xhr = new FetchXHR();
+  } else {
+    var xhr = new XMLHttpRequest();
+  }
+#elif FETCH_STREAMING == 2
+  // This setting forces using FetchXHR for all requests. Used only in testing.
+  var xhr = new FetchXHR();
+#else
   var xhr = new XMLHttpRequest();
+#endif
   xhr.withCredentials = !!{{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.withCredentials, 'u8') }}};;
+  xhr._streamData = fetchAttrStreamData;
 #if FETCH_DEBUG
   dbg(`fetch: xhr.timeout: ${xhr.timeout}, xhr.withCredentials: ${xhr.withCredentials}`);
   dbg(`fetch: xhr.open(requestMethod="${requestMethod}", url: "${url}", userName: ${userNameStr}, password: ${passwordStr}`);
@@ -277,8 +535,8 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   xhr.open(requestMethod, url_, !fetchAttrSynchronous, userNameStr, passwordStr);
   if (!fetchAttrSynchronous) xhr.timeout = timeoutMsecs; // XHR timeout field is only accessible in async XHRs, and must be set after .open() but before .send().
   xhr.url_ = url_; // Save the url for debugging purposes (and for comparing to the responseURL that server side advertised)
-#if ASSERTIONS
-  assert(!fetchAttrStreamData, 'streaming uses moz-chunked-arraybuffer which is no longer supported; TODO: rewrite using fetch()');
+#if ASSERTIONS && !FETCH_STREAMING
+  assert(!fetchAttrStreamData, 'Streaming is only supported when FETCH_STREAMING is enabled.');
 #endif
   xhr.responseType = 'arraybuffer';
 
@@ -329,7 +587,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #endif
       // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
       // freed when emscripten_fetch_close() is called.
-      ptr = _malloc(ptrLen);
+      ptr = _realloc({{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, '*') }}}, ptrLen);
       HEAPU8.set(new Uint8Array(/** @type{Array<number>} */(xhr.response)), ptr);
     }
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
@@ -345,6 +603,12 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
+    if (fetchAttrSynchronous) {
+      // The response url pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+      // freed when emscripten_fetch_close() is called.
+      var ruPtr = stringToNewUTF8(xhr.responseURL);
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.responseUrl, 'ruPtr', '*') }}}
+    }
   }
 
   xhr.onload = (e) => {
@@ -357,12 +621,17 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #if FETCH_DEBUG
       dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" succeeded with status ${xhr.status}`);
 #endif
-      onsuccess?.(fetch, xhr, e);
+#if ASSERTIONS
+      if (fetchAttrStreamData) {
+        assert(xhr.response === null);
+      }
+#endif
+      onsuccess(fetch, xhr, e);
     } else {
 #if FETCH_DEBUG
       dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" failed with status ${xhr.status}`);
 #endif
-      onerror?.(fetch, xhr, e);
+      onerror(fetch, e);
     }
   };
   xhr.onerror = (e) => {
@@ -374,7 +643,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" finished with error, readyState ${xhr.readyState} and status ${xhr.status}`);
 #endif
     saveResponseAndStatus();
-    onerror?.(fetch, xhr, e);
+    onerror(fetch, e);
   };
   xhr.ontimeout = (e) => {
     // check if xhr was aborted by user and don't try to call back
@@ -384,7 +653,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #if FETCH_DEBUG
     dbg(`fetch: xhr of URL "${xhr.url_}" / responseURL "${xhr.responseURL}" timed out, readyState ${xhr.readyState} and status ${xhr.status}`);
 #endif
-    onerror?.(fetch, xhr, e);
+    onerror(fetch, e);
   };
   xhr.onprogress = (e) => {
     // check if xhr was aborted by user and don't try to call back
@@ -400,8 +669,9 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #if ASSERTIONS
       assert(onprogress, 'When doing a streaming fetch, you should have an onprogress handler registered to receive the chunks!');
 #endif
-      // Allocate byte data in Emscripten heap for the streamed memory block (freed immediately after onprogress call)
-      ptr = _malloc(ptrLen);
+      // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+      // freed when emscripten_fetch_close() is called.
+      ptr = _realloc({{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, '*') }}}, ptrLen);
       HEAPU8.set(new Uint8Array(/** @type{Array<number>} */(xhr.response)), ptr);
     }
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
@@ -409,14 +679,12 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, e.loaded - ptrLen);
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, e.total);
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
+    var status = xhr.status;
     // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
-    if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) xhr.status = 200;
-    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
+    if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) status = 200;
+    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'status', 'i16') }}}
     if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
-    onprogress?.(fetch, xhr, e);
-    if (ptr) {
-      _free(ptr);
-    }
+    onprogress(fetch, e);
   };
   xhr.onreadystatechange = (e) => {
     // check if xhr was aborted by user and don't try to call back
@@ -428,7 +696,13 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (xhr.readyState >= 2) {
       {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'xhr.status', 'i16') }}}
     }
-    onreadystatechange?.(fetch, xhr, e);
+    if (!fetchAttrSynchronous && (xhr.readyState === 2 && xhr.responseURL.length > 0)) {
+      // The response url pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+      // freed when emscripten_fetch_close() is called.
+      var ruPtr = stringToNewUTF8(xhr.responseURL);
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.responseUrl, 'ruPtr', '*') }}}
+    }
+    onreadystatechange(fetch, e);
   };
 #if FETCH_DEBUG
   dbg(`fetch: xhr.send(data=${data})`);
@@ -439,7 +713,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
 #if FETCH_DEBUG
     dbg(`fetch: xhr failed with exception: ${e}`);
 #endif
-    onerror?.(fetch, xhr, e);
+    onerror(fetch, e);
   }
 }
 
@@ -475,14 +749,14 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     });
   };
 
-  var reportProgress = (fetch, xhr, e) => {
+  var reportProgress = (fetch, e) => {
     doCallback(() => {
       if (onprogress) {{{ makeDynCall('vp', 'onprogress') }}}(fetch);
       else progresscb?.(fetch);
     });
   };
 
-  var reportError = (fetch, xhr, e) => {
+  var reportError = (fetch, e) => {
 #if FETCH_DEBUG
     dbg(`fetch: operation failed: ${e}`);
 #endif
@@ -493,7 +767,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     });
   };
 
-  var reportReadyStateChange = (fetch, xhr, e) => {
+  var reportReadyStateChange = (fetch, e) => {
 #if FETCH_DEBUG
     dbg(`fetch: ready state change. e: ${e}`);
 #endif
@@ -574,17 +848,15 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
 }
 
 function fetchGetResponseHeadersLength(id) {
-  return lengthBytesUTF8(Fetch.xhrs.get(id).getAllResponseHeaders()) + 1;
+  return lengthBytesUTF8(Fetch.xhrs.get(id).getAllResponseHeaders());
 }
 
 function fetchGetResponseHeaders(id, dst, dstSizeBytes) {
   var responseHeaders = Fetch.xhrs.get(id).getAllResponseHeaders();
-  var lengthBytes = lengthBytesUTF8(responseHeaders) + 1;
-  stringToUTF8(responseHeaders, dst, dstSizeBytes);
-  return Math.min(lengthBytes, dstSizeBytes);
+  return stringToUTF8(responseHeaders, dst, dstSizeBytes) + 1;
 }
 
-//Delete the xhr JS object, allowing it to be garbage collected.
+// Delete the xhr JS object, allowing it to be garbage collected.
 function fetchFree(id) {
 #if FETCH_DEBUG
   dbg(`fetch: fetchFree id:${id}`);

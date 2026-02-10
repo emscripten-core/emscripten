@@ -4,7 +4,7 @@
 #include <assert.h>
 #include <stdlib.h>
 
-double previousSetTimeouTime = 0;
+double previousSetTimeoutTime = 0;
 int funcExecuted = 0;
 
 void testDone(void *userData) {
@@ -13,9 +13,9 @@ void testDone(void *userData) {
   exit(0);
 }
 
-EM_BOOL tick(double time, void *userData) {
-  assert(time >= previousSetTimeouTime);
-  previousSetTimeouTime = time;
+bool tick(double time, void *userData) {
+  assert(time >= previousSetTimeoutTime);
+  previousSetTimeoutTime = time;
   assert((long)userData == 1);
   ++funcExecuted;
   if (funcExecuted == 10)

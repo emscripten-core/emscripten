@@ -5,21 +5,11 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
 #include <string.h>
 #include <emscripten/html5.h>
-
-void report_result(int result) {
-  if (result == 0) {
-    printf("Test successful!\n");
-  } else {
-    printf("Test failed!\n");
-  }
-#ifdef REPORT_RESULT
-  REPORT_RESULT(result);
-#endif
-}
 
 static inline const char *emscripten_event_type_to_string(int eventType) {
   const char *events[] = { "(invalid)", "(none)", "keypress", "keydown", "keyup", "click", "mousedown", "mouseup", "dblclick", "mousemove", "wheel", "resize", 
@@ -62,10 +52,13 @@ void instruction() {
   if (!gotMouseMove) { printf("Please move the mouse on the canvas.\n"); return; }
   if (!gotWheel) { printf("Please scroll the mouse wheel.\n"); return; }
 
-  if (gotClick && gotMouseDown && gotMouseUp && gotDblClick && gotMouseMove && gotWheel) report_result(0);
+  if (gotClick && gotMouseDown && gotMouseUp && gotDblClick && gotMouseMove && gotWheel) {
+    printf("Test successful!\n");
+    emscripten_force_exit(0);
+  }
 }
 
-EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
+bool mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userData) {
   printf("%s, screen: (%d,%d), client: (%d,%d),%s%s%s%s button: %hu, buttons: %hu, movement: (%d,%d), target: (%d, %d)\n",
     emscripten_event_type_to_string(eventType), e->screenX, e->screenY, e->clientX, e->clientY,
     e->ctrlKey ? " CTRL" : "", e->shiftKey ? " SHIFT" : "", e->altKey ? " ALT" : "", e->metaKey ? " META" : "", 
@@ -82,14 +75,14 @@ EM_BOOL mouse_callback(int eventType, const EmscriptenMouseEvent *e, void *userD
   if (eventType == EMSCRIPTEN_EVENT_CLICK && e->screenX == -500000) {
     printf("ERROR! Received an event to a callback that should have been unregistered!\n");
     gotClick = 0;
-    report_result(1);
+    assert(false && "Received an event to a callback that should have been unregistered");
   }
 
   instruction();
   return 0;
 }
 
-EM_BOOL wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userData) {
+bool wheel_callback(int eventType, const EmscriptenWheelEvent *e, void *userData) {
   printf("%s, screen: (%d,%d), client: (%d,%d),%s%s%s%s button: %hu, buttons: %hu, target: (%d, %d), delta:(%g,%g,%g), deltaMode:%u\n",
     emscripten_event_type_to_string(eventType), e->mouse.screenX, e->mouse.screenY, e->mouse.clientX, e->mouse.clientY,
     e->mouse.ctrlKey ? " CTRL" : "", e->mouse.shiftKey ? " SHIFT" : "", e->mouse.altKey ? " ALT" : "", e->mouse.metaKey ? " META" : "", 
@@ -141,7 +134,7 @@ int main() {
   if (mouseEvent.screenX != 123 || mouseEvent.screenY != 456
     || mouseEvent.clientX != 123 || mouseEvent.clientY != 456) {
     printf("ERROR! Incorrect mouse status\n");
-    report_result(1);
+    assert(false && "Incorrect mouse status");
   }
 
   // Test that unregistering a callback works. Clicks should no longer be received.
@@ -164,6 +157,6 @@ int main() {
     sendEvent('mousewheel', { screenX: 1, screenY: 1, clientX: 1, clientY: 1, button: 0, buttons: 0, 'wheelDeltaX': 1, 'wheelDeltaY': 1 });
   );
 #endif
-
-  return 0;
+  emscripten_runtime_keepalive_push();
+  return 99;
 }

@@ -22,7 +22,7 @@ void repeatable() {
 
   int* global_ptr = (int*)dlsym(self, "global");
   assert(global_ptr);
-  assert(*global_ptr = 123);
+  assert(*global_ptr == 123);
 
   void (*foo_ptr)(int) = (void (*)(int))dlsym(self, "foo");
   assert(foo_ptr);
