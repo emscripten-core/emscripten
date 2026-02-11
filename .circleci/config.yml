@@ -503,7 +503,7 @@ commands:
             echo "-----"
             echo "Running browser tests (EMTEST_BROWSER=$EMTEST_BROWSER)"
             echo "-----"
-            test/runner << parameters.test_targets >>
+            test/runner.bat << parameters.test_targets >>
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -1284,14 +1284,17 @@ jobs:
       - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
-      - run-tests:
-          title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
+      # run-tests depends on the ./test/runner script which is normally only
+      # created on UNIX systems (windows uses runner.bat)
+      - run: $EMSDK_PYTHON tools/maint/create_entry_points.py --all
+      - run:
+          name: "crossplatform tests"
+          command: test/runner.bat --crossplatform-only
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
-      - run-tests:
-          title: "sockets.test_nodejs_sockets_echo*"
-          test_targets: "sockets.test_nodejs_sockets_echo*"
+      - run:
+          name: "sockets.test_nodejs_sockets_echo*"
+          command: "test/runner.bat sockets.test_nodejs_sockets_echo*"
       - upload-test-results
 
   test-mac-arm64:
