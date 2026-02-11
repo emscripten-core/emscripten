@@ -20,8 +20,9 @@ def run():
   llvm_strip = shared.llvm_tool_path('llvm-strip')
   new_args = []
   for arg in sys.argv[1:]:
-    if arg.endswith('.js') and os.path.isfile(arg):
-      wasm_file = arg[:-3] + '.wasm'
+    base, ext = os.path.splitext(arg)
+    if ext == '.js' and os.path.isfile(arg):
+      wasm_file = base + '.wasm'
       if os.path.isfile(wasm_file):
         new_args.append(wasm_file)
         continue

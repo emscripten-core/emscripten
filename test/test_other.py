@@ -889,6 +889,7 @@ f.close()
     output = self.run_process([common.LLVM_OBJDUMP, '-h', 'hello.wasm'], stdout=PIPE).stdout
     self.assertNotContained('.debug_info', output)
 
+  def test_emstrip_js(self):
     # Test that emstrip on a .js file strips the corresponding .wasm file
     self.run_process([EMCC, test_file('hello_world.c'), '-g', '-o', 'hello.js'])
     output = self.run_process([common.LLVM_OBJDUMP, '-h', 'hello.wasm'], stdout=PIPE).stdout
