@@ -16,6 +16,7 @@ import sys
 
 from tools import shared
 
+
 def run():
   llvm_strip = shared.llvm_tool_path('llvm-strip')
   new_args = []
