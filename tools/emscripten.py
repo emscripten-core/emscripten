@@ -382,14 +382,16 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   if not settings.WASM_BIGINT and metadata.em_js_funcs:
     for em_js_func, raw in metadata.em_js_funcs.items():
-      c_sig = raw.split('<::>')[0].strip('()')
-      if not c_sig or c_sig == 'void':
-        c_sig = []
+      args, _ = raw.split('<::>', 1)
+      args = args[1:-1].strip()
+
+      if not args or args == 'void':
+        args = []
       else:
-        c_sig = c_sig.split(',')
+        args = args.split(',')
       signature = metadata.em_js_func_types.get(em_js_func)
-      if signature and len(signature.params) != len(c_sig):
-        diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
+      if signature and len(signature.params) != len(args):
+        diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, args, signature.params)
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
@@ -793,8 +795,8 @@ def create_em_js(metadata):
   for name, raw in metadata.em_js_funcs.items():
     assert separator in raw
     args, body = raw.split(separator, 1)
-    args = args[1:-1]
-    if args == 'void':
+    args = args[1:-1].strip()
+    if not args or args == 'void':
       args = []
     else:
       args = args.split(',')
