@@ -2047,7 +2047,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   if '--enable-relaxed-simd' in metadata.features:
     # Relaxed SIMD isn't supported on older versions of node.
     wasm_opt_args += ['--remove-relaxed-simd']
-  if settings.MEMORY64:
+  if '--enable-memory64' in metadata.features:
     # See comment above about lowering memory64.
     wasm_opt_args += ['--memory64-lowering', '--table64-lowering']
   if wasm_opt_args:
