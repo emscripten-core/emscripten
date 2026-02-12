@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 5.0.1 (in development)
 ----------------------
+- The (undocumented) Module.requestAnimationFrame, Module.pauseMainLoop and
+  Module.resumeMainLoop methods are no longer exported by default but must
+  be added to `-sEXPORTED_RUNTIME_METHODS`. ()
 - `logReadFiles` was removed from the default `INCOMING_MODULE_JS_API` list.
   To use this feature you now need to explictly add `logReadFiles` to
   `INCOMING_MODULE_JS_API`. (#26190);

@@ -15438,3 +15438,19 @@ console.log('OK');'''
     create_file('pre.js', 'Module.logReadFiles = 1;')
     output = self.do_runf('checksummer.c', args=['test.txt'], cflags=['--pre-js=pre.js'])
     self.assertContained('read file: /test.txt', output)
+
+  def test_request_animation_frame(self):
+    create_file('test.c', r'''
+      #include <emscripten.h>
+      #include <stdio.h>
+
+      int main() {
+        EM_ASM({
+        Module.requestAnimationFrame(() => console.log('got RAF'));
+        });
+        printf("done\n");
+      }
+    ''')
+    self.do_runf('test.c', "Aborted('requestAnimationFrame' was not exported", assert_returncode=NON_ZERO)
+    # Once added to EXPORTED_RUNTIME_METHODS it should be callable.
+    self.do_runf('test.c', "done\ngot RAF\n", cflags=['-sEXPORTED_RUNTIME_METHODS=requestAnimationFrame'])
