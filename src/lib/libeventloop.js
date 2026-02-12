@@ -339,7 +339,10 @@ LibraryJSEventLoop = {
         MainLoop.requestAnimationFrame(MainLoop.runner);
       };
       MainLoop.method = 'rAF';
-    } else if (mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}}) {
+    } else {
+#if ASSERTIONS
+      assert(mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}});
+#endif
       if (!MainLoop.setImmediate) {
         if (globalThis.setImmediate) {
           MainLoop.setImmediate = setImmediate;
