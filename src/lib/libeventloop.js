@@ -191,13 +191,20 @@ LibraryJSEventLoop = {
     typeof MainLoop != 'undefined' && MainLoop.preMainLoop.push(f);
   },
 
+  $requestAnimationFrame__docs: `
+  /**
+   * @suppress {duplicate, checkTypes}
+   */`,
+  $requestAnimationFrame__deps: ['$MainLoop'],
+  $requestAnimationFrame: 'MainLoop.requestAnimationFrame',
+  $pauseMainLoop__deps: ['$MainLoop'],
+  $pauseMainLoop: 'MainLoop.pause',
+  $resumeMainLoop__deps: ['$MainLoop'],
+  $resumeMainLoop: 'MainLoop.resume',
+
   $MainLoop__internal: true,
   $MainLoop__deps: ['$setMainLoop', '$callUserCallback', 'emscripten_set_main_loop_timing'],
-  $MainLoop__postset: `
-    Module['requestAnimationFrame'] = MainLoop.requestAnimationFrame;
-    Module['pauseMainLoop'] = MainLoop.pause;
-    Module['resumeMainLoop'] = MainLoop.resume;
-    MainLoop.init();`,
+  $MainLoop__postset: `MainLoop.init();`,
   $MainLoop: {
     running: false,
     scheduler: null,
