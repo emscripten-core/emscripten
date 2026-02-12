@@ -1324,6 +1324,8 @@ var _emscripten_stack_get_current = makeInvalidEarlyAccess('_emscripten_stack_ge
 var memory = makeInvalidEarlyAccess('memory');
 var _global_val = Module['_global_val'] = makeInvalidEarlyAccess('_global_val');
 var __indirect_function_table = makeInvalidEarlyAccess('__indirect_function_table');
+var ___rodata_start = makeInvalidEarlyAccess('___rodata_start');
+var ___rodata_end = makeInvalidEarlyAccess('___rodata_end');
 var wasmMemory = makeInvalidEarlyAccess('wasmMemory');
 
 function assignWasmExports(wasmExports) {
@@ -1339,6 +1341,8 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['memory'] != 'undefined', 'missing Wasm export: memory');
   assert(typeof wasmExports['global_val'] != 'undefined', 'missing Wasm export: global_val');
   assert(typeof wasmExports['__indirect_function_table'] != 'undefined', 'missing Wasm export: __indirect_function_table');
+  assert(typeof wasmExports['__rodata_start'] != 'undefined', 'missing Wasm export: __rodata_start');
+  assert(typeof wasmExports['__rodata_end'] != 'undefined', 'missing Wasm export: __rodata_end');
   _add = Module['_add'] = createExportWrapper('add', 2);
   _fflush = createExportWrapper('fflush', 1);
   _emscripten_stack_init = wasmExports['emscripten_stack_init'];
@@ -1351,6 +1355,8 @@ function assignWasmExports(wasmExports) {
   memory = wasmMemory = wasmExports['memory'];
   _global_val = Module['_global_val'] = wasmExports['global_val'].value;
   __indirect_function_table = wasmExports['__indirect_function_table'];
+  ___rodata_start = wasmExports['__rodata_start'].value;
+  ___rodata_end = wasmExports['__rodata_end'].value;
 }
 
 var wasmImports = {

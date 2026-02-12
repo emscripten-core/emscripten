@@ -1,10 +1,10 @@
 {
   "a.out.js": 22509,
   "a.out.js.gz": 9332,
-  "a.out.nodebug.wasm": 1681,
-  "a.out.nodebug.wasm.gz": 960,
-  "total": 24190,
-  "total_gz": 10292,
+  "a.out.nodebug.wasm": 1701,
+  "a.out.nodebug.wasm.gz": 973,
+  "total": 24210,
+  "total_gz": 10305,
   "sent": [
     "a (fd_write)"
   ],
@@ -14,7 +14,9 @@
   "exports": [
     "b (memory)",
     "c (__wasm_call_ctors)",
-    "d (main)"
+    "d (main)",
+    "e (__rodata_start)",
+    "f (__rodata_end)"
   ],
   "funcs": [
     "$__emscripten_stdout_close",

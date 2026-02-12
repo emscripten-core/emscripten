@@ -1,10 +1,10 @@
 {
   "a.out.js": 4640,
   "a.out.js.gz": 2246,
-  "a.out.nodebug.wasm": 5261,
-  "a.out.nodebug.wasm.gz": 2419,
-  "total": 9901,
-  "total_gz": 4665,
+  "a.out.nodebug.wasm": 5279,
+  "a.out.nodebug.wasm.gz": 2431,
+  "total": 9919,
+  "total_gz": 4677,
   "sent": [
     "a (emscripten_resize_heap)"
   ],
@@ -15,7 +15,9 @@
     "b (memory)",
     "c (__wasm_call_ctors)",
     "d (__main_argc_argv)",
-    "e (_emscripten_stack_alloc)"
+    "e (_emscripten_stack_alloc)",
+    "f (__rodata_start)",
+    "g (__rodata_end)"
   ],
   "funcs": [
     "$__wasm_call_ctors",

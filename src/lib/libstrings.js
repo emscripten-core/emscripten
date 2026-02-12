@@ -92,6 +92,11 @@ addToLibrary({
 #endif // TEXTDECODER == 2
   },
 
+#if SHRINK_LEVEL == 0
+  $UTF8ToString_cache__internal: true,
+  $UTF8ToString_cache: {},
+#endif
+
   $UTF8ToString__docs: `
   /**
    * Given a pointer 'ptr' to a null-terminated UTF8-encoded string in the
@@ -106,11 +111,19 @@ addToLibrary({
    * @param {boolean=} ignoreNul - If true, the function will not stop on a NUL character.
    * @return {string}
    */`,
-#if TEXTDECODER == 2
-  $UTF8ToString__deps: ['$UTF8Decoder', '$findStringEnd'],
-#else
-  $UTF8ToString__deps: ['$UTF8ArrayToString'],
+  $UTF8ToString__deps: [
+#if SHRINK_LEVEL == 0
+    '$UTF8ToString_cache',
+    // These deps don't currently work due to https://github.com/llvm/llvm-project/issues/180632
+    //'__rodata_end',
+    //'__rodata_start',
 #endif
+#if TEXTDECODER == 2
+    '$UTF8Decoder', '$findStringEnd',
+#else
+    '$UTF8ArrayToString',
+#endif
+  ],
   $UTF8ToString: (ptr, maxBytesToRead, ignoreNul) => {
 #if ASSERTIONS
     assert(typeof ptr == 'number', `UTF8ToString expects a number (got ${typeof ptr})`);
@@ -118,13 +131,33 @@ addToLibrary({
 #if CAN_ADDRESS_2GB
     ptr >>>= 0;
 #endif
+
+#if SHRINK_LEVEL == 0
+    var useCache = !maxBytesToRead && ptr >= ___rodata_start && ptr < ___rodata_end;
+    if (useCache) {
+      var rtn = UTF8ToString_cache[ptr];
+      if (rtn) {
+        return rtn;
+      }
+    }
+#endif
+
 #if TEXTDECODER == 2
     if (!ptr) return '';
     var end = findStringEnd(HEAPU8, ptr, maxBytesToRead, ignoreNul);
-    return UTF8Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'end') }}});
+    var rtn = UTF8Decoder.decode({{{ getUnsharedTextDecoderView('HEAPU8', 'ptr', 'end') }}});
 #else
-    return ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : '';
+    var rtn = ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : '';
 #endif
+
+#if SHRINK_LEVEL == 0
+    if (useCache) {
+      UTF8ToString_cache[ptr] = rtn;
+    }
+#endif
+
+    return rtn;
+
   },
 
   /**

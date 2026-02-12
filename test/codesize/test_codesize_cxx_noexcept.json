@@ -1,10 +1,10 @@
 {
   "a.out.js": 19555,
   "a.out.js.gz": 8102,
-  "a.out.nodebug.wasm": 134835,
-  "a.out.nodebug.wasm.gz": 50701,
-  "total": 154390,
-  "total_gz": 58803,
+  "a.out.nodebug.wasm": 134880,
+  "a.out.nodebug.wasm.gz": 50737,
+  "total": 154435,
+  "total_gz": 58839,
   "sent": [
     "__cxa_throw",
     "_abort_js",
@@ -31,6 +31,8 @@
   ],
   "exports": [
     "__indirect_function_table",
+    "__rodata_end",
+    "__rodata_start",
     "__wasm_call_ctors",
     "_emscripten_stack_alloc",
     "_emscripten_stack_restore",

@@ -1,10 +1,10 @@
 {
-  "a.out.js": 5475,
-  "a.out.js.gz": 2578,
-  "a.out.nodebug.wasm": 58468,
-  "a.out.nodebug.wasm.gz": 18081,
-  "total": 63943,
-  "total_gz": 20659,
+  "a.out.js": 5594,
+  "a.out.js.gz": 2642,
+  "a.out.nodebug.wasm": 58488,
+  "a.out.nodebug.wasm.gz": 18096,
+  "total": 64082,
+  "total_gz": 20738,
   "sent": [
     "a (emscripten_date_now)",
     "b (emscripten_err)",
@@ -42,7 +42,9 @@
   "exports": [
     "p (memory)",
     "q (__wasm_call_ctors)",
-    "r (main)"
+    "r (main)",
+    "s (__rodata_start)",
+    "t (__rodata_end)"
   ],
   "funcs": [
     "$__cxa_pure_virtual",
