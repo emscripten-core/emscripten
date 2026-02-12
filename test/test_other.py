@@ -2083,6 +2083,52 @@ Module['postRun'] = () => {
     self.run_process([EMCC, 'main.c', '--embed-file', 'tst', '--exclude-file', '*.exe'])
     self.assertEqual(self.run_js('a.out.js').strip(), '')
 
+  def test_exclude_file_negative(self):
+    ensure_dir('tst/abc.exe')
+    ensure_dir('tst/abc.txt')
+
+    create_file('tst/hello.exe', 'hello')
+    create_file('tst/hello.txt', 'world')
+    create_file('tst/abc.exe/foo', 'emscripten')
+    create_file('tst/abc.txt/bar', '!!!')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      int main() {
+        if(!fopen("tst/hello.exe", "rb")) printf("Failed\n");
+        if(!fopen("tst/hello.txt", "rb")) printf("Failed\n");
+        if(fopen("tst/abc.exe/foo", "rb")) printf("Failed\n");
+        if(!fopen("tst/abc.txt/bar", "rb")) printf("Failed\n");
+
+        return 0;
+      }
+    ''')
+
+    self.run_process([EMCC, 'main.c', '--embed-file', 'tst', '--exclude-file', '*.exe', '--exclude-file', '!*hello.exe'])
+    self.assertEqual(self.run_js('a.out.js').strip(), '')
+
+  def test_exclude_file_negative_order(self):
+    ensure_dir('tst/abc.exe')
+    ensure_dir('tst/abc.txt')
+
+    create_file('tst/hello.exe', 'hello')
+    create_file('tst/hello.txt', 'world')
+    create_file('tst/abc.exe/foo', 'emscripten')
+    create_file('tst/abc.txt/bar', '!!!')
+    create_file('main.c', r'''
+      #include <stdio.h>
+      int main() {
+        if(fopen("tst/hello.exe", "rb")) printf("Failed\n");
+        if(!fopen("tst/hello.txt", "rb")) printf("Failed\n");
+        if(fopen("tst/abc.exe/foo", "rb")) printf("Failed\n");
+        if(!fopen("tst/abc.txt/bar", "rb")) printf("Failed\n");
+
+        return 0;
+      }
+    ''')
+
+    self.run_process([EMCC, 'main.c', '--embed-file', 'tst', '--exclude-file', '!*hello.exe', '--exclude-file', '*.exe'])
+    self.assertEqual(self.run_js('a.out.js').strip(), '')
+
   def test_dylink_strict(self):
     self.do_run_in_out_file_test('hello_world.c', cflags=['-sSTRICT', '-sMAIN_MODULE=1'])
 
