@@ -138,8 +138,6 @@ def wasm_simd(func):
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_simd()
-    if self.get_setting('MEMORY64') == 2:
-      self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
     if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     if '-O3' in self.cflags:
