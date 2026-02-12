@@ -8161,6 +8161,36 @@ int main(int argc, char **argv) {
     self.do_runf('main.c', 'argc=2 argv=hello', args=['hello'])
 
   @with_asyncify_and_jspi
+  def test_async_main_loop(self):
+    create_file('main.c', r'''
+#include <assert.h>
+#include <emscripten.h>
+#include <stdio.h>
+
+static int frames;
+static int stack;
+
+void loop() {
+  assert(stack == 0);
+
+  stack++;
+  emscripten_sleep(100);
+  stack--;
+
+  if (++frames >= 10) {
+    emscripten_cancel_main_loop();
+    printf("done\n");
+  }
+}
+
+int main() {
+  emscripten_set_main_loop(loop, 1000, 1);
+  return 0;
+}
+    ''')
+    self.do_runf('main.c', 'done', cflags=['-sEXIT_RUNTIME', '-sEXPORTED_FUNCTIONS=_main,_loop', '-sJSPI_EXPORTS=loop'])
+
+  @with_asyncify_and_jspi
   def test_async_hello(self):
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
