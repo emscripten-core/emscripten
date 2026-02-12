@@ -975,6 +975,7 @@ jobs:
           # We include most but not all of the nodefs and node rawfs tests here.
           # test_fs_nodefs_rw, test_fs_nodefs_statvfs, and test_unistd_io_nodefs_bigint fail.
           test_targets: "
+            other.test_embind_tsgen_remove_relaxed_simd
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_js_optimizer_verbose
