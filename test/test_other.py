@@ -2060,7 +2060,7 @@ Module['postRun'] = () => {
     self.do_runf('main.c', '|frist|\n|sacond|\n|thard|\n',
                  cflags=['--embed-file', 'tst'] + args)
 
-  def test_exclude_file(self):
+  def test_file_packager_exclude_file(self):
     ensure_dir('tst/abc.exe')
     ensure_dir('tst/abc.txt')
 
@@ -2083,7 +2083,7 @@ Module['postRun'] = () => {
     self.run_process([EMCC, 'main.c', '--embed-file', 'tst', '--exclude-file', '*.exe'])
     self.assertEqual(self.run_js('a.out.js').strip(), '')
 
-  def test_exclude_file_negative(self):
+  def test_file_packager_exclude_file_negative(self):
     ensure_dir('tst/abc.exe')
     ensure_dir('tst/abc.txt')
 
@@ -2106,7 +2106,7 @@ Module['postRun'] = () => {
     self.run_process([EMCC, 'main.c', '--embed-file', 'tst', '--exclude-file', '*.exe', '--exclude-file', '!*hello.exe'])
     self.assertEqual(self.run_js('a.out.js').strip(), '')
 
-  def test_exclude_file_negative_order(self):
+  def test_file_packager_exclude_file_negative_order(self):
     ensure_dir('tst/abc.exe')
     ensure_dir('tst/abc.txt')
 
