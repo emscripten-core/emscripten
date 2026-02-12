@@ -92,7 +92,11 @@ int pthread_barrier_destroy(pthread_barrier_t* mutex) { return 0; }
 int pthread_barrier_wait(pthread_barrier_t* mutex) { return 0; }
 
 int __pthread_create(pthread_t *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg) {
-  return EAGAIN;
+  // ENOTSUP, while not mentioned in the pthread_create docs, does better
+  // describe the situation.
+  // See https://github.com/WebAssembly/wasi-libc/pull/716 for discussion
+  // on this error code vs, for example, EAGAIN.
+  return ENOTSUP;
 }
 
 weak_alias(__pthread_create, emscripten_builtin_pthread_create);

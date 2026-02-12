@@ -20,17 +20,17 @@
    or one resource to match different design resolutions.
 
    [Situation 1] Using one design resolution to match different resources.
-     Please look into Appdelegate::applicationDidFinishLaunching.
+     Please look into AppDelegate::applicationDidFinishLaunching.
      We check current device frame size to decide which resource need to be selected.
      So if you want to test this situation which said in title '[Situation 1]',
      you should change ios simulator to different device(e.g. iphone, iphone-retina3.5, iphone-retina4.0, ipad, ipad-retina),
-     or change the window size in "proj.XXX/main.cpp" by "CCEGLView::setFrameSize" if you are using win32 or linux plaform
+     or change the window size in "proj.XXX/main.cpp" by "CCEGLView::setFrameSize" if you are using win32 or linux platform
      and modify "proj.mac/AppController.mm" by changing the window rectangle.
 
    [Situation 2] Using one resource to match different design resolutions.
      The coordinates in your codes is based on your current design resolution rather than resource size.
      Therefore, your design resolution could be very large and your resource size could be small.
-     To test this, just define the marco 'TARGET_DESIGN_RESOLUTION_SIZE' to 'DESIGN_RESOLUTION_2048X1536'
+     To test this, just define the macro 'TARGET_DESIGN_RESOLUTION_SIZE' to 'DESIGN_RESOLUTION_2048X1536'
      and open iphone simulator or create a window of 480x320 size.
 
    [Note] Normally, developer just need to define one design resolution(e.g. 960x640) with one or more resources.

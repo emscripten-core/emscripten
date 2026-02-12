@@ -3,25 +3,21 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import re
-from time import time
-from .toolchain_profiler import ToolchainProfiler
-
 import itertools
 import logging
 import os
-import shutil
-import textwrap
+import re
 import shlex
+import shutil
 import subprocess
+import textwrap
 from enum import IntEnum, auto
 from glob import iglob
-from typing import List, Optional
+from time import time
 
-from . import shared, building, utils
-from . import diagnostics
-from . import cache
+from . import building, cache, diagnostics, shared, utils
 from .settings import settings
+from .toolchain_profiler import ToolchainProfiler
 from .utils import read_file
 
 logger = logging.getLogger('system_libs')
@@ -65,12 +61,16 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   flags = ['-g', '-sSTRICT', '-Werror']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
-  if settings.RELOCATABLE:
-    flags += ['-sRELOCATABLE']
+  if settings.RELOCATABLE or settings.MAIN_MODULE:
+    # Explicitly include `-sRELOCATABLE` when building system libraries.
+    # `-fPIC` alone is not enough to configure trigger the building and
+    # caching of `pic` libraries (see `get_lib_dir` in `cache.py`)
+    # FIXME(sbc): `-fPIC` should really be enough here.
+    flags += ['-fPIC', '-sRELOCATABLE']
     if preprocess:
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
-    flags += ['-Wno-experimental', '-sMEMORY64=' + str(settings.MEMORY64)]
+    flags += ['-sMEMORY64=' + str(settings.MEMORY64)]
 
   source_dir = utils.path_from_root()
   relative_source_dir = os.path.relpath(source_dir, build_dir)
@@ -88,9 +88,10 @@ def clean_env():
   # building system libraries and ports should be hermetic in that it is not
   # affected by things like EMCC_CFLAGS which the user may have set.
   # At least one port also uses autoconf (harfbuzz) so we also need to clear
-  # CFLAGS/LDFLAGS which we don't want to effect the inner call to configure.
+  # CFLAGS/LDFLAGS which we don't want to affect the inner call to configure.
   safe_env = os.environ.copy()
-  for opt in ['CFLAGS', 'CXXFLAGS', 'LDFLAGS',
+  for opt in ['CPATH', 'C_INCLUDE_PATH', 'CPLUS_INCLUDE_PATH', 'OBJC_INCLUDE_PATH',
+              'CFLAGS', 'CXXFLAGS', 'LDFLAGS',
               'EMCC_CFLAGS',
               'EMCC_AUTODEBUG',
               'EMCC_FORCE_STDLIBS',
@@ -140,7 +141,7 @@ def objectfile_sort_key(filename):
 
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
-  suffix = shared.suffix(libname)
+  suffix = utils.suffix(libname)
 
   inputs = sorted(inputs, key=objectfile_sort_key)
   if suffix in ('.bc', '.o'):
@@ -229,13 +230,13 @@ rule archive
   description = AR $out
 
 '''
-  suffix = shared.suffix(libname)
+  suffix = utils.suffix(libname)
   build_dir = os.path.dirname(filename)
 
   if suffix == '.o':
     assert len(input_files) == 1
     input_file = escape_ninja_path(input_files[0])
-    depfile = shared.unsuffixed_basename(input_file) + '.d'
+    depfile = utils.unsuffixed_basename(input_file) + '.d'
     out += f'build {escape_ninja_path(libname)}: direct_cc {input_file}\n'
     out += f'  with_depfile = {depfile}\n'
   else:
@@ -245,7 +246,7 @@ rule archive
       # insensitive filesystem to handle, for example, _exit.o and _Exit.o.
       # This is done even on case sensitive filesystem so that builds are
       # reproducible across platforms.
-      object_basename = shared.unsuffixed_basename(src).lower()
+      object_basename = utils.unsuffixed_basename(src).lower()
       o = os.path.join(build_dir, object_basename + '.o')
       object_uuid = 0
       # Find a unique basename
@@ -253,19 +254,20 @@ rule archive
         object_uuid += 1
         o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
       objects.append(o)
-      ext = shared.suffix(src)
-      if ext == '.s':
-        cmd = 'asm'
-        flags = asflags
-      elif ext == '.S':
-        cmd = 'asm_cpp'
-        flags = cflags
-      elif ext == '.c':
-        cmd = 'cc'
-        flags = cflags
-      else:
-        cmd = 'cxx'
-        flags = cflags
+      ext = utils.suffix(src)
+      match ext:
+        case '.s':
+          cmd = 'asm'
+          flags = asflags
+        case '.S':
+          cmd = 'asm_cpp'
+          flags = cflags
+        case '.c':
+          cmd = 'cc'
+          flags = cflags
+        case _:
+          cmd = 'cxx'
+          flags = cflags
       out += f'build {escape_ninja_path(o)}: {cmd} {escape_ninja_path(src)}\n'
       if customize_build_flags:
         custom_flags = customize_build_flags(flags, src)
@@ -348,7 +350,7 @@ class Library:
   # automatically get the correct version of the library.
   # This should only be overridden in a concrete library class, e.g. libc,
   # and left as None in an abstract library class, e.g. MTLibrary.
-  name: Optional[str] = None
+  name: str | None = None
 
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
@@ -367,7 +369,7 @@ class Library:
   # directory into the include path, you would write:
   #    includes = [('system', 'lib', 'a'), ('system', 'lib', 'b')]
   # The include path of the parent class is automatically inherited.
-  includes: List[str] = []
+  includes: list[str] = []
 
   # By default, `get_files` look for source files for this library under `src_dir`.
   # It will either use the files listed in `src_files`, or use the glob pattern in
@@ -375,10 +377,10 @@ class Library:
   # When using `src_glob`, you can specify a list of files in `src_glob_exclude`
   # to be excluded from the library.
   # Alternatively, you can override `get_files` to use your own logic.
-  src_dir: Optional[str] = None
-  src_files: Optional[List[str]] = []
-  src_glob: Optional[str] = None
-  src_glob_exclude: Optional[List[str]] = None
+  src_dir: str | None = None
+  src_files: list[str] | None = []
+  src_glob: str | None = None
+  src_glob_exclude: list[str] | None = None
 
   # Whether to always generate WASM object files, even when LTO is set
   force_object_files = False
@@ -447,8 +449,8 @@ class Library:
     if self.get_ext() != '.a':
       return fullpath
     # For libraries (.a) files, we pass the abbreviated `-l` form.
-    base = shared.unsuffixed_basename(fullpath)
-    return '-l' + utils.removeprefix(base, 'lib')
+    base = utils.unsuffixed_basename(fullpath)
+    return '-l' + base.removeprefix('lib')
 
   def get_files(self):
     """
@@ -491,9 +493,10 @@ class Library:
     batches = {}
     commands = []
     objects = set()
+    objects_lowercase = set()
     cflags = self.get_cflags()
     for src in self.get_files():
-      ext = shared.suffix(src)
+      ext = utils.suffix(src)
       if ext in {'.s', '.S', '.c'}:
         cmd = shared.EMCC
       else:
@@ -508,9 +511,9 @@ class Library:
         cmd += cflags
       cmd = self.customize_build_cmd(cmd, src)
 
-      object_basename = shared.unsuffixed_basename(src).lower()
+      object_basename = utils.unsuffixed_basename(src)
       o = os.path.join(build_dir, object_basename + '.o')
-      if o in objects:
+      if o.lower() in objects_lowercase:
         # If we have seen a file with the same name before, we need a separate
         # command to compile this file with a custom unique output object
         # filename, as batch compile doesn't allow such customization.
@@ -518,7 +521,7 @@ class Library:
         # This is needed to handle, for example, _exit.o and _Exit.o.
         object_uuid = 0
         # Find a unique basename
-        while o in objects:
+        while o.lower() in objects_lowercase:
           object_uuid += 1
           o = os.path.join(build_dir, f'{object_basename}__{object_uuid}.o')
         commands.append(cmd + [src, '-o', o])
@@ -528,11 +531,10 @@ class Library:
         src = os.path.relpath(src, build_dir)
         src = utils.normalize_path(src)
         batches.setdefault(tuple(cmd), []).append(src)
-        # No -o in command, use original file name.
-        o = os.path.join(build_dir, shared.unsuffixed_basename(src) + '.o')
       else:
         commands.append(cmd + [src, '-o', o])
       objects.add(o)
+      objects_lowercase.add(o.lower())
 
     if batch_inputs:
       # Choose a chunk size that is large enough to avoid too many subprocesses
@@ -647,7 +649,7 @@ class Library:
     the behaviour.
     """
     vary_on = cls.vary_on()
-    return [dict(zip(vary_on, toggles)) for toggles in
+    return [dict(zip(vary_on, toggles, strict=True)) for toggles in
             itertools.product([False, True], repeat=len(vary_on))]
 
   @classmethod
@@ -693,14 +695,14 @@ class Library:
 
     This returns a dictionary of simple names to Library objects.
     """
-    if not hasattr(cls, 'useable_variations'):
-      cls.useable_variations = {}
+    if not hasattr(cls, 'usable_variations'):
+      cls.usable_variations = {}
       for subclass in cls.get_inheritance_tree():
         if subclass.name:
           library = subclass.get_default_variation()
           if library.can_build() and library.can_use():
-            cls.useable_variations[subclass.name] = library
-    return cls.useable_variations
+            cls.usable_variations[subclass.name] = library
+    return cls.usable_variations
 
 
 class MTLibrary(Library):
@@ -796,14 +798,15 @@ class ExceptionLibrary(Library):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.eh_mode == Exceptions.NONE:
-      cflags += ['-fno-exceptions']
-    elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags += ['-sDISABLE_EXCEPTION_CATCHING=0']
-    elif self.eh_mode == Exceptions.WASM_LEGACY:
-      cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS']
-    elif self.eh_mode == Exceptions.WASM:
-      cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0']
+    match self.eh_mode:
+      case Exceptions.NONE:
+        cflags += ['-fno-exceptions']
+      case Exceptions.EMSCRIPTEN:
+        cflags += ['-sDISABLE_EXCEPTION_CATCHING=0']
+      case Exceptions.WASM_LEGACY:
+        cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS']
+      case Exceptions.WASM:
+        cflags += ['-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0']
 
     return cflags
 
@@ -811,12 +814,13 @@ class ExceptionLibrary(Library):
     name = super().get_base_name()
     # TODO Currently emscripten-based exception is the default mode, thus no
     # suffixes. Change the default to wasm exception later.
-    if self.eh_mode == Exceptions.NONE:
-      name += '-noexcept'
-    elif self.eh_mode == Exceptions.WASM_LEGACY:
-      name += '-legacyexcept'
-    elif self.eh_mode == Exceptions.WASM:
-      name += '-wasmexcept'
+    match self.eh_mode:
+      case Exceptions.NONE:
+        name += '-noexcept'
+      case Exceptions.WASM_LEGACY:
+        name += '-legacyexcept'
+      case Exceptions.WASM:
+        name += '-wasmexcept'
     return name
 
   @classmethod
@@ -849,29 +853,31 @@ class SjLjLibrary(Library):
 
   def get_cflags(self):
     cflags = super().get_cflags()
-    if self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags += ['-sSUPPORT_LONGJMP=emscripten',
-                 '-sDISABLE_EXCEPTION_THROWING=0']
-    elif self.eh_mode == Exceptions.WASM_LEGACY:
-      cflags += ['-sSUPPORT_LONGJMP=wasm',
-                 '-sWASM_LEGACY_EXCEPTIONS',
-                 '-sDISABLE_EXCEPTION_THROWING',
-                 '-D__WASM_SJLJ__']
-    elif self.eh_mode == Exceptions.WASM:
-      cflags += ['-sSUPPORT_LONGJMP=wasm',
-                 '-sWASM_LEGACY_EXCEPTIONS=0',
-                 '-sDISABLE_EXCEPTION_THROWING',
-                 '-D__WASM_SJLJ__']
+    match self.eh_mode:
+      case Exceptions.EMSCRIPTEN:
+        cflags += ['-sSUPPORT_LONGJMP=emscripten',
+                   '-sDISABLE_EXCEPTION_THROWING=0']
+      case Exceptions.WASM_LEGACY:
+        cflags += ['-sSUPPORT_LONGJMP=wasm',
+                   '-sWASM_LEGACY_EXCEPTIONS',
+                   '-sDISABLE_EXCEPTION_THROWING',
+                   '-D__WASM_SJLJ__']
+      case Exceptions.WASM:
+        cflags += ['-sSUPPORT_LONGJMP=wasm',
+                   '-sWASM_LEGACY_EXCEPTIONS=0',
+                   '-sDISABLE_EXCEPTION_THROWING',
+                   '-D__WASM_SJLJ__']
     return cflags
 
   def get_base_name(self):
     name = super().get_base_name()
     # TODO Currently emscripten-based SjLj is the default mode, thus no
     # suffixes. Change the default to wasm exception later.
-    if self.eh_mode == Exceptions.WASM_LEGACY:
-      name += '-legacysjlj'
-    elif self.eh_mode == Exceptions.WASM:
-      name += '-wasmsjlj'
+    match self.eh_mode:
+      case Exceptions.WASM_LEGACY:
+        name += '-legacysjlj'
+      case Exceptions.WASM:
+        name += '-wasmsjlj'
     return name
 
   @classmethod
@@ -987,6 +993,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
         'emscripten_setjmp.c',
         'emscripten_exception_builtins.c',
         'emscripten_tempret.s',
+        '__c_longjmp.S',
         '__trap.c',
       ])
 
@@ -1001,7 +1008,22 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libllvmlibc'
   never_force = True
   includes = ['system/lib/llvm-libc']
-  cflags = ['-Os', '-DLIBC_NAMESPACE=__llvm_libc', '-DLLVM_LIBC', '-DLIBC_COPT_PUBLIC_PACKAGING']
+  cflags = [
+      '-Os',
+      '-DLIBC_NAMESPACE=__llvm_libc',
+      '-DLLVM_LIBC',
+      '-DLIBC_COPT_PUBLIC_PACKAGING',
+      # Disable accurate pass to speed up certain math operations
+      '-DLIBC_MATH=LIBC_MATH_FAST',
+      '-D__LIBC_USE_BUILTIN_CEIL_FLOOR_RINT_TRUNC',
+      # Reduce size bloats from string conversions.
+      '-DLIBC_COPT_STRTOFLOAT_DISABLE_EISEL_LEMIRE',
+      # To Enable FMA, we need to set the following flags. But we can't really ship this in a default libc build.
+      # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
+      '-Wno-unused-variable',
+      '-mrelaxed-simd',
+      '-ffp-contract=fast',
+  ]
 
   def get_files(self):
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
@@ -1011,7 +1033,8 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/math', '*.cpp')
-    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp')
+    # Overlay mode doesn't support mbstate_t which is used by these wchar sources.
+    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes=['wcrtomb.cpp', 'mbrtowc.cpp', 'wctomb.cpp', 'mbtowc.cpp'])
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes=['at_quick_exit.cpp',
@@ -1035,9 +1058,6 @@ class libc(MuslInternalLibrary,
   # functions to something else based on assumptions that they behave exactly
   # like the standard library. This can cause unexpected bugs when we use our
   # custom standard library. The same for other libc/libm builds.
-  # We use -fno-inline-functions because it can produce slightly smaller
-  # (and slower) code in some cases.  TODO(sbc): remove this and let llvm weight
-  # the cost/benefit of inlining.
   cflags = ['-Os', '-fno-inline-functions', '-fno-builtin']
 
   # Disable certain warnings for code patterns that are contained in upstream musl
@@ -1138,7 +1158,7 @@ class libc(MuslInternalLibrary,
     # musl modules
     ignore = [
         'ipc', 'passwd', 'signal', 'sched', 'time', 'linux',
-        'aio', 'exit', 'legacy', 'mq', 'setjmp',
+        'aio', 'legacy', 'mq', 'setjmp',
         'ldso', 'malloc',
     ]
 
@@ -1147,16 +1167,17 @@ class libc(MuslInternalLibrary,
         'memcpy.c', 'memset.c', 'memmove.c', 'getaddrinfo.c', 'getnameinfo.c',
         'res_query.c', 'res_querydomain.c',
         'proto.c',
-        'ppoll.c',
         'syscall.c', 'popen.c', 'pclose.c',
         'getgrouplist.c', 'initgroups.c', 'wordexp.c', 'timer_create.c',
         'getauxval.c',
         'lookup_name.c',
-        # 'process' exclusion
+        # 'process' exclusions
         'fork.c', 'vfork.c', 'posix_spawn.c', 'posix_spawnp.c', 'execve.c', 'waitid.c', 'system.c',
         '_Fork.c',
-        # 'env' exclusion
+        # 'env' exclusions
         '__reset_tls.c', '__init_tls.c', '__libc_start_main.c',
+        # 'exit' exclusions
+        'assert.c', 'exit.c',
     ]
 
     ignore += LIBC_SOCKETS
@@ -1307,10 +1328,6 @@ class libc(MuslInternalLibrary,
         filenames=['sched_yield.c'])
 
     libc_files += files_in_path(
-        path='system/lib/libc/musl/src/exit',
-        filenames=['abort.c', '_Exit.c', 'atexit.c', 'at_quick_exit.c', 'quick_exit.c'])
-
-    libc_files += files_in_path(
         path='system/lib/libc/musl/src/ldso',
         filenames=['dladdr.c', 'dlerror.c', 'dlsym.c', 'dlclose.c'])
 
@@ -1363,7 +1380,7 @@ class libc(MuslInternalLibrary,
           'system.c',
         ])
 
-    if settings.RELOCATABLE:
+    if settings.RELOCATABLE or settings.MAIN_MODULE:
       libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
 
     libc_files += files_in_path(
@@ -1521,14 +1538,13 @@ class libwasm_workers(DebugLibrary):
 
   def can_use(self):
     # see src/library_wasm_worker.js
-    return super().can_use() and not settings.SINGLE_FILE \
-      and not settings.RELOCATABLE and not settings.PROXY_TO_WORKER
+    return super().can_use() and not settings.SINGLE_FILE and not settings.RELOCATABLE
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
   name = 'libsockets'
 
-  cflags = ['-Os', '-fno-inline-functions', '-fno-builtin', '-Wno-shift-op-parentheses']
+  cflags = ['-Os', '-fno-builtin', '-Wno-shift-op-parentheses']
 
   def get_files(self):
     return files_in_path(
@@ -1542,7 +1558,7 @@ class libsockets(MuslInternalLibrary, MTLibrary):
 class libsockets_proxy(MTLibrary):
   name = 'libsockets_proxy'
 
-  cflags = ['-Os', '-fno-inline-functions']
+  cflags = ['-Os']
 
   def get_files(self):
     return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.c')]
@@ -1612,7 +1628,6 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
-      '-fno-inline-functions',
       '-D_LIBCPP_BUILDING_LIBRARY',
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
@@ -1633,15 +1648,14 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
     cflags = super().get_cflags()
     if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
-    if self.eh_mode == Exceptions.NONE:
-      cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
-    elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
-      # The code used to interpret exceptions during terminate
-      # is not compatible with emscripten exceptions.
-      cflags.append('-DLIBCXXABI_SILENT_TERMINATE')
-    elif self.eh_mode == Exceptions.WASM_LEGACY:
-      cflags.append('-D__WASM_EXCEPTIONS__')
+    match self.eh_mode:
+      case Exceptions.NONE:
+        cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')
+      case Exceptions.EMSCRIPTEN:
+        cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
+        # The code used to interpret exceptions during terminate
+        # is not compatible with emscripten exceptions.
+        cflags.append('-DLIBCXXABI_SILENT_TERMINATE')
     return cflags
 
   def get_files(self):
@@ -1661,19 +1675,21 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
       'stdlib_typeinfo.cpp',
       'private_typeinfo.cpp',
       'cxa_exception_js_utils.cpp',
+      '__cpp_exception.S',
     ]
-    if self.eh_mode == Exceptions.NONE:
-      filenames += ['cxa_noexception.cpp']
-    elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      filenames += ['cxa_exception_emscripten.cpp']
-    elif self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
-      filenames += [
-        'cxa_exception_storage.cpp',
-        'cxa_exception.cpp',
-        'cxa_personality.cpp',
-      ]
-    else:
-      assert False
+    match self.eh_mode:
+      case Exceptions.NONE:
+        filenames += ['cxa_noexception.cpp']
+      case Exceptions.EMSCRIPTEN:
+        filenames += ['cxa_exception_emscripten.cpp']
+      case Exceptions.WASM_LEGACY | Exceptions.WASM:
+        filenames += [
+          'cxa_exception_storage.cpp',
+          'cxa_exception.cpp',
+          'cxa_personality.cpp',
+        ]
+      case _:
+        assert False
 
     return files_in_path(
         path='system/lib/libcxxabi/src',
@@ -1685,7 +1701,6 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
 
   cflags = [
     '-Oz',
-    '-fno-inline-functions',
     '-DLIBCXX_BUILDING_LIBCXXABI=1',
     '-D_LIBCPP_BUILDING_LIBRARY',
     '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
@@ -1719,12 +1734,6 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     'tzdb_list.cpp',
   ]
 
-  def get_cflags(self):
-    cflags = super().get_cflags()
-    if self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
-      cflags.append('-D__WASM_EXCEPTIONS__')
-    return cflags
-
 
 class libunwind(ExceptionLibrary, MTLibrary):
   name = 'libunwind'
@@ -1733,7 +1742,10 @@ class libunwind(ExceptionLibrary, MTLibrary):
   # See https://bugs.llvm.org/show_bug.cgi?id=44353
   force_object_files = True
 
-  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_HIDE_SYMBOLS']
+  cflags = ['-Oz', '-D_LIBUNWIND_HIDE_SYMBOLS',
+            # TODO Remove this once
+            # https://github.com/llvm/llvm-project/pull/175776 lands
+            '-Wno-c23-extensions']
   src_dir = 'system/lib/libunwind/src'
   # Without this we can't build libunwind since it will pickup the unwind.h
   # that is part of llvm (which is not compatible for some reason).
@@ -1751,12 +1763,11 @@ class libunwind(ExceptionLibrary, MTLibrary):
     cflags.append('-DNDEBUG')
     if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBUNWIND_HAS_NO_THREADS')
-    if self.eh_mode == Exceptions.NONE:
-      cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
-    elif self.eh_mode == Exceptions.EMSCRIPTEN:
-      cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
-    elif self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM):
-      cflags.append('-D__WASM_EXCEPTIONS__')
+    match self.eh_mode:
+      case Exceptions.NONE:
+        cflags.append('-D_LIBUNWIND_HAS_NO_EXCEPTIONS')
+      case Exceptions.EMSCRIPTEN:
+        cflags.append('-D__EMSCRIPTEN_EXCEPTIONS__')
     return cflags
 
 
@@ -1891,7 +1902,7 @@ class libmimalloc(MTLibrary):
 class libal(Library):
   name = 'libal'
 
-  cflags = ['-Os', '-fno-inline-functions']
+  cflags = ['-Os']
   src_dir = 'system/lib'
   src_files = ['al.c']
 
@@ -1902,7 +1913,7 @@ class libGL(MTLibrary):
   src_dir = 'system/lib/gl'
   src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c', 'webgl2.c']
 
-  cflags = ['-Oz', '-fno-inline-functions']
+  cflags = ['-Oz']
 
   def __init__(self, **kwargs):
     self.is_legacy = kwargs.pop('is_legacy')
@@ -1953,21 +1964,6 @@ class libGL(MTLibrary):
       is_enable_get_proc_address=settings.GL_ENABLE_GET_PROC_ADDRESS,
       **kwargs,
     )
-
-
-class libwebgpu(MTLibrary):
-  name = 'libwebgpu'
-
-  src_dir = 'system/lib/webgpu'
-  src_files = ['webgpu.cpp']
-
-
-class libwebgpu_cpp(MTLibrary):
-  name = 'libwebgpu_cpp'
-
-  cflags = ['-std=c++11']
-  src_dir = 'system/lib/webgpu'
-  src_files = ['webgpu_cpp.cpp']
 
 
 class libembind(MTLibrary):
@@ -2111,7 +2107,7 @@ class libhtml5(Library):
   name = 'libhtml5'
 
   includes = ['system/lib/libc']
-  cflags = ['-Oz', '-fno-inline-functions']
+  cflags = ['-Oz']
   src_dir = 'system/lib/html5'
   src_glob = '*.c'
 
@@ -2200,7 +2196,7 @@ class libstandalonewasm(MuslInternalLibrary):
   # LTO defeats the weak linking trick used in __original_main.c
   force_object_files = True
 
-  cflags = ['-Os', '-fno-inline-functions', '-fno-builtin']
+  cflags = ['-Os', '-fno-builtin']
   src_dir = 'system/lib'
 
   def __init__(self, **kwargs):
@@ -2274,7 +2270,7 @@ class libstandalonewasm(MuslInternalLibrary):
 
 class libjsmath(Library):
   name = 'libjsmath'
-  cflags = ['-Os', '-fno-inline-functions']
+  cflags = ['-Os']
   src_dir = 'system/lib'
   src_files = ['jsmath.c']
 
@@ -2354,7 +2350,7 @@ def get_libs_to_link(options):
   def add_forced_libs():
     for forced in force_include:
       if forced not in system_libs_map:
-        shared.exit_with_error('invalid forced library: %s', forced)
+        utils.exit_with_error('invalid forced library: %s', forced)
       add_library(forced)
 
   if options.nodefaultlibs:
@@ -2417,7 +2413,7 @@ def get_libs_to_link(options):
       add_library('libmimalloc')
       if settings.USE_ASAN:
         # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
-        shared.exit_with_error('mimalloc is not compatible with -fsanitize=address')
+        utils.exit_with_error('mimalloc is not compatible with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
   add_library('libcompiler_rt')
@@ -2433,14 +2429,7 @@ def get_libs_to_link(options):
   else:
     add_library('libsockets')
 
-  if settings.USE_WEBGPU:
-    add_library('libwebgpu')
-    if settings.LINK_AS_CXX:
-      add_library('libwebgpu_cpp')
-
-  if settings.WASM_WORKERS and (not settings.SINGLE_FILE and
-                                not settings.RELOCATABLE and
-                                not settings.PROXY_TO_WORKER):
+  if settings.WASM_WORKERS and (not settings.SINGLE_FILE and not settings.RELOCATABLE):
     # When we include libwasm_workers we use `--whole-archive` to ensure
     # that the static constructor (`emscripten_wasm_worker_main_thread_initialize`)
     # is run.
@@ -2504,7 +2493,7 @@ def safe_copytree(src, dst, excludes=None):
     if entry.is_dir():
       safe_copytree(srcname, dstname, excludes)
     else:
-      shared.safe_copy(srcname, dstname)
+      utils.safe_copy(srcname, dstname)
 
 
 def install_system_headers(stamp):
@@ -2541,9 +2530,17 @@ def install_system_headers(stamp):
   version_file = cache.get_include_dir('emscripten/version.h')
   utils.write_file(version_file, textwrap.dedent(f'''\
   /* Automatically generated by tools/system_libs.py */
-  #define __EMSCRIPTEN_major__ {utils.EMSCRIPTEN_VERSION_MAJOR}
-  #define __EMSCRIPTEN_minor__ {utils.EMSCRIPTEN_VERSION_MINOR}
-  #define __EMSCRIPTEN_tiny__ {utils.EMSCRIPTEN_VERSION_TINY}
+  #define __EMSCRIPTEN_MAJOR__ {utils.EMSCRIPTEN_VERSION_MAJOR}
+  #define __EMSCRIPTEN_MINOR__ {utils.EMSCRIPTEN_VERSION_MINOR}
+  #define __EMSCRIPTEN_TINY__ {utils.EMSCRIPTEN_VERSION_TINY}
+
+  // Legacy mixed-case macros:
+  #define __EMSCRIPTEN_major__ __EMSCRIPTEN_MAJOR__
+  #define __EMSCRIPTEN_minor__ __EMSCRIPTEN_MINOR__
+  #define __EMSCRIPTEN_tiny__ __EMSCRIPTEN_TINY__
+  #pragma clang deprecated(__EMSCRIPTEN_major__, "Use __EMSCRIPTEN_MAJOR__ instead")
+  #pragma clang deprecated(__EMSCRIPTEN_minor__, "Use __EMSCRIPTEN_MINOR__ instead")
+  #pragma clang deprecated(__EMSCRIPTEN_tiny__, "Use __EMSCRIPTEN_TINY__ instead")
   '''))
 
   # Create a stamp file that signal that the headers have been installed

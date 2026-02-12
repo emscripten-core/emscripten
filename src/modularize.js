@@ -18,7 +18,12 @@ var {{{ EXPORT_NAME }}} = (() => {
   // When MODULARIZE this JS may be executed later,
   // after document.currentScript is gone, so we save it.
   // In EXPORT_ES6 mode we can just use 'import.meta.url'.
-  var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
+#if MIN_FIREFOX_VERSION < 74 || LEGACY_VM_SUPPORT
+  // This modularize.js script is not Babeled, so manually adapt for old browsers.
+  var _scriptName = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
+#else
+  var _scriptName = globalThis.document?.currentScript?.src;
+#endif
   return async function(moduleArg = {}) {
     var moduleRtn;
 
@@ -28,7 +33,7 @@ var {{{ EXPORT_NAME }}} = (() => {
   };
 })();
 #else
-// When targetting node and ES6 we use `await import ..` in the generated code
+// When targeting node and ES6 we use `await import ..` in the generated code
 // so the outer function needs to be marked as async.
 async function {{{ EXPORT_NAME }}}(moduleArg = {}) {
   var moduleRtn;
@@ -98,7 +103,7 @@ var isWW = {{{ nodeWWDetection() }}};
 #endif
 
 #if AUDIO_WORKLET
-isWW ||= typeof AudioWorkletGlobalScope !== 'undefined';
+isWW ||= !!globalThis.AudioWorkletGlobalScope;
 // When running as a wasm worker, construct a new instance on startup
 #endif
 

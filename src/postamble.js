@@ -6,13 +6,6 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-#if PROXY_TO_WORKER
-if (ENVIRONMENT_IS_WORKER) {
-#include "webGLWorker.js'
-#include "proxyWorker.js"
-}
-#endif
-
 #if LOAD_SOURCE_MAP
 #include "source_map_support.js"
 #endif
@@ -64,10 +57,10 @@ var mainArgs = undefined;
   var argc = args.length;
   var argv = stackAlloc((argc + 1) * {{{ POINTER_SIZE }}});
   var argv_ptr = argv;
-  args.forEach((arg) => {
+  for (var arg of args) {
     {{{ makeSetValue('argv_ptr', 0, 'stringToUTF8OnStack(arg)', '*') }}};
     argv_ptr += {{{ POINTER_SIZE }}};
-  });
+  }
   {{{ makeSetValue('argv_ptr', 0, 0, '*') }}};
 #else
   var argc = 0;
@@ -264,7 +257,7 @@ function checkUnflushedContent() {
 #endif
 #if '$FS' in addedLibraryItems && '$TTY' in addedLibraryItems
     // also flush in the JS FS layer
-    ['stdout', 'stderr'].forEach((name) => {
+    for (var name of ['stdout', 'stderr']) {
       var info = FS.analyzePath('/dev/' + name);
       if (!info) return;
       var stream = info.object;
@@ -273,7 +266,7 @@ function checkUnflushedContent() {
       if (tty?.output?.length) {
         has = true;
       }
-    });
+    }
 #endif
   } catch(e) {}
   out = oldOut;
@@ -289,6 +282,9 @@ function checkUnflushedContent() {
 #endif // ASSERTIONS
 
 var wasmExports;
+#if SPLIT_MODULE
+var wasmRawExports;
+#endif
 
 #if MODULARIZE == 'instance'
 // In MODULARIZE=instance mode we delay most of the initialization work until
@@ -326,7 +322,7 @@ if (ENVIRONMENT_IS_NODE
 #endif
 )
 {
-  const url = await import('url');
+  const url = await import('node:url');
   const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
   if (isMainModule) await init();
 }
@@ -370,59 +366,3 @@ run();
 #endif
 
 #endif // MODULARIZE != instance
-
-#if BUILD_AS_WORKER
-
-var workerResponded = false, workerCallbackId = -1;
-
-(() => {
-  var messageBuffer = null, buffer = 0;
-
-  function flushMessages() {
-    if (!messageBuffer) return;
-    if (runtimeInitialized) {
-      var temp = messageBuffer;
-      messageBuffer = null;
-      temp.forEach((message) => onmessage(message));
-    }
-  }
-
-  function messageResender() {
-    flushMessages();
-    if (messageBuffer) {
-      setTimeout(messageResender, 100); // still more to do
-    }
-  }
-
-  onmessage = (msg) => {
-    // if main has not yet been called (mem init file, other async things), buffer messages
-    if (!runtimeInitialized) {
-      if (!messageBuffer) {
-        messageBuffer = [];
-        setTimeout(messageResender, 100);
-      }
-      messageBuffer.push(msg);
-      return;
-    }
-    flushMessages();
-
-    var func = Module['_' + msg.data['funcName']];
-    if (!func) abort('invalid worker function to call: ' + msg.data['funcName']);
-    var data = msg.data['data'];
-    if (data) {
-      if (!data.byteLength) data = new Uint8Array(data);
-      buffer = _realloc(buffer, data.length);
-      HEAPU8.set(data, buffer);
-    }
-
-    workerResponded = false;
-    workerCallbackId = msg.data['callbackId'];
-    if (data) {
-      func(buffer, data.length);
-    } else {
-      func(0, 0);
-    }
-  }
-})();
-
-#endif

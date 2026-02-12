@@ -11,7 +11,7 @@ import logging
 import os
 from pathlib import Path
 
-from . import filelock, config, utils
+from . import config, filelock, utils
 from .settings import settings
 
 logger = logging.getLogger('cache')
@@ -124,7 +124,7 @@ def get_lib_dir(absolute):
       subdir.append('thinlto')
     else:
       subdir.append('lto')
-  if settings.RELOCATABLE:
+  if settings.RELOCATABLE or settings.MAIN_MODULE:
     subdir.append('pic')
   if subdir:
     path = Path(path, '-'.join(subdir))
@@ -194,7 +194,7 @@ def get(shortname, creator, what=None, force=False, quiet=False):
 def setup():
   global cachedir, cachelock, cachelock_name
   # figure out the root directory for all caching
-  cachedir = Path(config.CACHE).resolve()
+  cachedir = Path(config.CACHE)
 
   # since the lock itself lives inside the cache directory we need to ensure it
   # exists.

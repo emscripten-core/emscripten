@@ -648,7 +648,9 @@ gears_idle(void)
       runs++;
       if (runs == 4) {
         int result = fps;
-        assert(fps >= 15 && fps <= 500);
+        // The test may be run with many browsers in parallel so we accept a
+        // very low FPS.
+        assert(fps >= 1 && fps <= 500);
 #ifdef REPORT_RESULT
         REPORT_RESULT(0);
 #endif

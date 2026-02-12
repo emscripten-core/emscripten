@@ -27,6 +27,10 @@ function growMemViews() {
 #include "runtime_asan.js"
 #endif
 
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+#include "binaryDecode.js"
+#endif
+
 #if MODULARIZE
 var readyPromiseResolve, readyPromiseReject;
 #endif
@@ -34,12 +38,15 @@ var readyPromiseResolve, readyPromiseReject;
 #if (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
   // Create as web-worker-like an environment as we can.
+  globalThis.self = globalThis;
   var parentPort = worker_threads['parentPort'];
-  parentPort.on('message', (msg) => global.onmessage?.({ data: msg }));
-  Object.assign(globalThis, {
-    self: global,
-    postMessage: (msg) => parentPort['postMessage'](msg),
-  });
+  // Deno and Bun already have `postMessage` defined on the global scope and
+  // deliver messages to `globalThis.onmessage`, so we must not duplicate that
+  // behavior here if `postMessage` is already present.
+  if (!globalThis.postMessage) {
+    parentPort.on('message', (msg) => globalThis.onmessage?.({ data: msg }));
+    globalThis.postMessage = (msg) => parentPort['postMessage'](msg);
+  }
   // Node.js Workers do not pass postMessage()s and uncaught exception events to the parent
   // thread necessarily in the same order where they were generated in sequential program order.
   // See https://github.com/nodejs/node/issues/59617
@@ -71,11 +78,6 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #endif
 
 // Memory management
-
-#if !WASM_ESM_INTEGRATION || IMPORTED_MEMORY
-var wasmMemory;
-#endif
-
 var
 /** @type {!Int8Array} */
   HEAP8,
@@ -179,3 +181,9 @@ if (ENVIRONMENT_IS_NODE) {
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #include "memoryprofiler.js"
+
+#if !DECLARE_ASM_MODULE_EXPORTS
+function exportAliases(wasmExports) {
+{{{ makeExportAliases() }}}
+}
+#endif

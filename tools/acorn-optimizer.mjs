@@ -308,7 +308,7 @@ function JSDCE(ast, aggressive) {
           continue;
         }
         if (data.def && !data.use && !data.param) {
-          // this is eliminateable!
+          // this is eliminatable!
           names.add(name);
         }
       }
@@ -387,7 +387,7 @@ function JSDCE(ast, aggressive) {
     for (const [name, data] of Object.entries(scope)) {
       if (data.def && !data.use) {
         assert(!data.param); // can't be
-        // this is eliminateable!
+        // this is eliminatable!
         names.add(name);
       }
     }
@@ -1219,9 +1219,10 @@ function isGrowHEAPAccess(node) {
   if (
     node.type !== 'MemberExpression' ||
     !node.computed || // notice a[X] but not a.X
-    node.object.type !== 'ParenthesizedExpression')
+    (node.object.type !== 'ParenthesizedExpression' && node.object.type !== 'SequenceExpression')
+  )
     return false;
-  const obj = node.object.expression;
+  const obj = node.object.type === 'ParenthesizedExpression' ? node.object.expression : node.object;
   return (
     obj.type === 'SequenceExpression' &&
     obj.expressions.length === 2 &&

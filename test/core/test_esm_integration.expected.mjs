@@ -8,7 +8,7 @@ export { default, _foo, _main, err, stringToNewUTF8 } from './hello_world.suppor
 import init from './hello_world.support.mjs';
 const isNode = globalThis.process?.versions?.node && globalThis.process?.type != 'renderer';
 if (isNode) {
-  const url = await import('url');
+  const url = await import('node:url');
   const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
   if (isMainModule) await init();
 }

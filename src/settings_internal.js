@@ -16,9 +16,6 @@
 // underscore.
 var WASM_EXPORTS = [];
 
-// Similar to above but only includes the global/data symbols.
-var WASM_GLOBAL_EXPORTS = [];
-
 // An array of all symbols exported from all the side modules specified on the
 // command line.
 // These are raw symbol names and are not mangled to include the leading
@@ -56,11 +53,6 @@ var TARGET_JS_NAME = '';
 // get away without including the full filesystem - in particular, if open() is
 // never used, then we don't actually need to support operations on streams.
 var SYSCALLS_REQUIRE_FILESYSTEM = true;
-
-// A list of feature flags to pass to each binaryen invocation (like wasm-opt,
-// etc.). This is received from wasm-emscripten-finalize, which reads it from
-// the features section.
-var BINARYEN_FEATURES = [];
 
 // Whether EMCC_AUTODEBUG is on, which automatically instruments code for
 // runtime logging that can help in debugging.
@@ -107,7 +99,8 @@ var WASI_MODULE_NAME = "wasi_snapshot_preview1";
 var JS_LIBRARIES = [];
 
 // This will contain the emscripten version. This can be useful in combination
-// with RETAIN_COMPILER_SETTINGS
+// with external JS library files that need to check the version of emscripten
+// they are being used with.
 var EMSCRIPTEN_VERSION = '';
 
 // Will be set to 0 if -fno-rtti is used on the command line.
@@ -122,7 +115,7 @@ var DEBUG_LEVEL = 0;
 // This will contain the shrink level (1 or 2 for -Os or -Oz, or just 0).
 var SHRINK_LEVEL = 0;
 
-// Whether or not to emit the name section in the final wasm binaryen.
+// Whether or not to emit the name section in the final wasm binary.
 var EMIT_NAME_SECTION = false;
 
 // Whether we are emitting a symbol map.
@@ -147,6 +140,7 @@ var ENVIRONMENT_MAY_BE_WORKER = true;
 var ENVIRONMENT_MAY_BE_NODE = true;
 var ENVIRONMENT_MAY_BE_SHELL = true;
 var ENVIRONMENT_MAY_BE_WEBVIEW = true;
+var ENVIRONMENT_MAY_BE_AUDIO_WORKLET = true;
 
 // Whether to minify import and export names in the minify_wasm_js stage.
 // Currently always off for MEMORY64.
@@ -157,9 +151,6 @@ var MINIFY_WASM_IMPORTED_MODULES = false;
 
 // Whether to minify exports from the Wasm module.
 var MINIFY_WASM_EXPORT_NAMES = true;
-
-// Used to track whether target environment supports the 'globalThis' attribute.
-var SUPPORTS_GLOBALTHIS = false;
 
 // Used to track whether target environment supports the 'Promise.any'.
 var SUPPORTS_PROMISE_ANY = false;
@@ -183,7 +174,11 @@ var CAN_ADDRESS_2GB = false;
 // This has no effect if DWARF is not being emitted.
 var SEPARATE_DWARF = false;
 
-// New WebAssembly exception handling
+// Target WebAssembly exception handling instead of JavaScript-side exception
+// handling. Furthermore, if WASM_LEGACY_EXCEPTIONS=1, then old legacy Wasm
+// exception handling is used, and if WASM_LEGACY_EXCEPTIONS=0, then Wasm
+// exception handling is targeted.
+// Enabled by passing -fwasm-exceptions on the command line.
 var WASM_EXCEPTIONS = false;
 
 // Set to true if the program has a main function.  By default this is
@@ -196,7 +191,7 @@ var MEMORYPROFILER = false;
 
 // Set automatically to :
 // - 1 when using `-gsource-map`
-// - 2 when using `gsource-map=inline` (embed sources content in souce map)
+// - 2 when using `gsource-map=inline` (embed sources content in source map)
 var GENERATE_SOURCE_MAP = 0;
 
 var GENERATE_DWARF = false;
@@ -232,7 +227,7 @@ var CLOSURE_ARGS = [];
 // set of JavaScript features.  This triggers transpilation using babel.
 var TRANSPILE = false;
 
-// A copy of the default the default INCOMING_MODULE_JS_API. (Soon to
+// A copy of the default INCOMING_MODULE_JS_API. (Soon to
 // include additional items).
 var ALL_INCOMING_MODULE_JS_API = [];
 
@@ -253,8 +248,6 @@ var POST_JS_FILES = [];
 // Set when -pthread / -sPTHREADS is passed
 var PTHREADS = false;
 
-var BULK_MEMORY = false;
-
 var MINIFY_WHITESPACE = true;
 
 var ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = [];
@@ -263,7 +256,7 @@ var WARN_DEPRECATED = true;
 
 // WebGL 2 provides new garbage-free entry points to call to WebGL. Use
 // those always when possible.
-// We currently set this to false for certain browser when large memory sizes
+// We currently set this to false for certain browsers when large memory sizes
 // (2gb+ or 4gb+) are used
 var WEBGL_USE_GARBAGE_FREE_APIS = false;
 
@@ -276,3 +269,8 @@ var OUTPUT_FORMAT = '';
 // Whether we should load the WASM source map at runtime.
 // This is enabled automatically when using -gsource-map with sanitizers.
 var LOAD_SOURCE_MAP = false;
+
+var ALIASES = [];
+
+// List of public setting names (Used by RETAIN_COMPILER_SETTINGS)
+var PUBLIC_SETTINGS = [];

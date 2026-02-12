@@ -81,6 +81,10 @@ addToLibrary({
 
     // Returns a tokenized array of the given string expression, i.e. "FOO > BAR && BAZ" -> ["FOO", ">", "BAR", "&&", "BAZ"]
     // Optionally keeps whitespace as tokens to be able to reconstruct the original input string.
+    /**
+     * @param {string} exprString
+     * @param {(number|boolean)=} keepWhitespace Optional, can be omitted. Defaults to false.
+    */
     function tokenize(exprString, keepWhitespace) {
       var out = [], len = exprString.length;
       for (var i = 0; i <= len; ++i) {
@@ -109,8 +113,12 @@ addToLibrary({
     }
 
     // Expands preprocessing macros on substring str[lineStart...lineEnd]
-    function expandMacros(str, lineStart, lineEnd) {
-      if (lineEnd === undefined) lineEnd = str.length;
+    /**
+    * @param {string} str
+    * @param {number} lineStart
+    * @param {number=} lineEnd Optional, may be omitted.
+    */
+    function expandMacros(str, lineStart, lineEnd=str.length) {
       var len = str.length;
       var out = '';
       for (var i = lineStart; i < lineEnd; ++i) {
@@ -120,24 +128,33 @@ addToLibrary({
             var kind2 = classifyChar(str, j);
             if (kind2 != 2/*0-9*/ && kind2 != 3/*a-z*/) {
               var symbol = str.substring(i, j);
-              var pp = defs[symbol];
-              if (pp) {
-                var expanded = str.substring(lineStart, i);
-                if (pp.length) { // Expanding a macro? (#define FOO(X) ...)
-                  while (isWhitespace(str, j)) ++j;
-                  if (str[j] == '(') {
-                    var closeParens = find_closing_parens_index(str, j);
-                    // N.b. this has a limitation that multiparameter macros cannot nest with other multiparameter macros
-                    // e.g. FOO(a, BAR(b, c)) is not supported.
-                    expanded += pp(str.substring(j+1, closeParens).split(',')) + str.substring(closeParens+1, lineEnd);
-                  } else {
-                    var j2 = nextWhitespace(str, j);
-                    expanded += pp([str.substring(j, j2)]) + str.substring(j2, lineEnd);
+              if (Object.hasOwn(defs, symbol)) {
+                var pp = defs[symbol], expanded;
+                if (typeof pp == 'function') { // definition is a function?
+                  if (pp.length) { // Expanding a macro? (#define FOO(X) ...)
+                    while (str[j] && isWhitespace(str, j)) ++j;
+                    if (str[j] == '(') {
+                      var closeParens = find_closing_parens_index(str, j);
+                      // N.b. this has a limitation that multiparameter macros cannot nest with other multiparameter macros
+                      // e.g. FOO(a, BAR(b, c)) is not supported.
+                      expanded = pp(str.substring(j+1, closeParens).split(','));
+                      if (expanded === !!expanded) expanded = expanded|0; // Convert boolean true/false to int 1/0
+                      j = closeParens+1;
+                    } else {
+                      var start = j;
+                      j = nextWhitespace(str, j);
+                      expanded = pp([str.substring(start, j)]);
+                    }
+                  } else { // A zero-arg function macro (#define FOO() BAR)?
+                    expanded = pp();
                   }
-                } else { // Expanding a non-macro (#define FOO BAR)
-                  expanded += pp() + str.substring(j, lineEnd);
+                } else { // Definition is either a boolean, an integer or a string.. in any case, not a macro.
+                  // Expand boolean args from defs, e.g. 'FOO': true as integer 1,
+                  // so that further preprocessing won't attempt to search for
+                  // a preprocessing macro 'true' as being defined.
+                  expanded = (pp === !!pp ? pp|0 : pp);
                 }
-                return expandMacros(expanded, 0);
+                return expandMacros(str.substring(lineStart, i) + expanded + str.substring(j, lineEnd), 0);
               }
               out += symbol;
               i = j-1;
@@ -168,7 +185,7 @@ addToLibrary({
 
           if (operatorAndPriority == 13 /* parens '(' */) {
             // Find the closing parens position
-            var j = find_closing_parens_index(tokens, i);
+            j = find_closing_parens_index(tokens, i);
             if (j) {
               tokens.splice(i, j+1-i, buildExprTree(tokens.slice(i+1, j)));
               return tokens;
@@ -224,7 +241,7 @@ addToLibrary({
       if (i < 0) i = len;
 
       // Find the first non-whitespace character on the line.
-      for (var j = lineStart; j < i && isWhitespace(code, j); ++j);
+      for (var j = lineStart; j < i && isWhitespace(code, j);) ++j;
 
       // Is this a non-preprocessor directive line?
       var thisLineIsInActivePreprocessingBlock = stack[stack.length-1];
@@ -246,6 +263,14 @@ addToLibrary({
         var exprTree = buildExprTree(tokens);
         var evaluated = exprTree();
         stack.push(!!evaluated * stack[stack.length-1]);
+        break;
+      case 'elif':
+        var tokens = tokenize(expandMacros(expression, 0));
+        var exprTree = buildExprTree(tokens);
+        var evaluated = exprTree();
+        // If the previous #if / #elif block was executed, output NaN so that all further #elif and #else blocks will
+        // short to false.
+        stack[stack.length-1] = !!evaluated * (stack[stack.length-1] ? NaN : 1-stack[stack.length-1]);
         break;
       case 'ifdef': stack.push(!!defs[expression] * stack[stack.length-1]); break;
       case 'ifndef': stack.push(!defs[expression] * stack[stack.length-1]); break;

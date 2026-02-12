@@ -161,9 +161,9 @@ var LibraryWebSocket = {
     }
 
 #if WEBSOCKET_DEBUG
-    dbg(`emscripten_websocket_set_onopen_callback(socketId=${socketId},userData=${userData},callbackFunc='+callbackFunc})`);
+    dbg(`emscripten_websocket_set_onopen_callback(socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-    socket.onopen = function(e) {
+    socket.onopen = (e) => {
 #if WEBSOCKET_DEBUG
       dbg(`websocket event "open": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
@@ -187,7 +187,7 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
     dbg(`emscripten_websocket_set_onerror_callback(socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-    socket.onerror = function(e) {
+    socket.onerror = (e) => {
 #if WEBSOCKET_DEBUG
       dbg(`websocket event "error": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
@@ -211,7 +211,7 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
     dbg(`emscripten_websocket_set_onclose_callback(socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-    socket.onclose = function(e) {
+    socket.onclose = (e) => {
 #if WEBSOCKET_DEBUG
       dbg(`websocket event "close": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
@@ -238,7 +238,7 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
     dbg(`emscripten_websocket_set_onmessage_callback(socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-    socket.onmessage = function(e) {
+    socket.onmessage = (e) => {
 #if WEBSOCKET_DEBUG == 2
       dbg(`websocket event "message": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
@@ -277,7 +277,7 @@ var LibraryWebSocket = {
 
   emscripten_websocket_new__proxy: 'sync',
   emscripten_websocket_new: (createAttributes) => {
-    if (typeof WebSocket == 'undefined') {
+    if (!globalThis.WebSocket) {
 #if WEBSOCKET_DEBUG
       dbg('emscripten_websocket_new(): WebSocket API is not supported by current browser)');
 #endif
@@ -409,21 +409,19 @@ var LibraryWebSocket = {
   emscripten_websocket_is_supported__proxy: 'sync',
   emscripten_websocket_is_supported: () => typeof WebSocket != 'undefined',
 
-  emscripten_websocket_deinitialize__deps: ['$WS'],
+  emscripten_websocket_deinitialize__deps: ['$webSockets', 'emscripten_websocket_delete'],
   emscripten_websocket_deinitialize__proxy: 'sync',
-  emscripten_websocket_deinitialize__deps: ['emscripten_websocket_delete'],
   emscripten_websocket_deinitialize: () => {
 #if WEBSOCKET_DEBUG
     dbg('emscripten_websocket_deinitialize()');
 #endif
-    for (var i in WS.sockets) {
-      var socket = WS.sockets[i];
-      if (socket) {
+    for (var i in webSockets.allocated) {
+      if (webSockets.has(i)) {
+        var socket = webSockets.get(i);
         socket.close();
         _emscripten_websocket_delete(i);
       }
     }
-    WS.sockets = [];
   }
 }
 

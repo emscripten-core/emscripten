@@ -20,14 +20,9 @@ import sys
 import time
 from contextlib import contextmanager
 
-from tools import cache
-from tools import shared
-from tools import system_libs
-from tools import ports
-from tools import utils
+from tools import cache, ports, shared, system_libs, utils
 from tools.settings import settings
 from tools.system_libs import USE_NINJA
-
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
@@ -100,8 +95,6 @@ MINIMAL_TASKS = [
     'libunwind-legacyexcept',
     'libunwind-wasmexcept',
     'libnoexit',
-    'libwebgpu',
-    'libwebgpu_cpp',
     'bullet',
 ]
 
@@ -127,6 +120,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'crtbegin',
     'libsanitizer_common_rt',
     'libubsan_rt',
+    'libwasm_workers-debug',
     'libwasm_workers-debug-stub',
     'libfetch',
     'libfetch-mt',
@@ -134,6 +128,9 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libwasmfs-debug',
     'libwasmfs_no_fs',
     'giflib',
+    'sdl2',
+    'sdl2_gfx',
+    'sdl3',
 ]
 
 PORTS = sorted(list(ports.ports_by_name.keys()) + list(ports.port_variants.keys()))
@@ -207,10 +204,10 @@ def main():
   parser.add_argument('--lto', action='store_const', const='full', help='build bitcode object for LTO')
   parser.add_argument('--lto=thin', dest='lto', action='store_const', const='thin', help='build bitcode object for ThinLTO')
   parser.add_argument('--pic', action='store_true',
-                      help='build relocatable objects for suitable for dynamic linking')
-  parser.add_argument('--force', action='store_true',
+                      help='build relocatable objects suitable for dynamic linking')
+  parser.add_argument('-f', '--force', action='store_true',
                       help='force rebuild of target (by removing it first)')
-  parser.add_argument('--verbose', action='store_true',
+  parser.add_argument('-v', '--verbose', action='store_true',
                       help='show build commands')
   parser.add_argument('--wasm64', action='store_true',
                       help='use wasm64 architecture')
@@ -219,10 +216,10 @@ def main():
   args = parser.parse_args()
 
   if args.operation != 'rebuild' and len(args.targets) == 0:
-    shared.exit_with_error('no build targets specified')
+    utils.exit_with_error('no build targets specified')
 
   if args.operation == 'rebuild' and not USE_NINJA:
-    shared.exit_with_error('"rebuild" operation is only valid when using Ninja')
+    utils.exit_with_error('"rebuild" operation is only valid when using Ninja')
 
   # process flags
 
@@ -280,7 +277,7 @@ def main():
         tasks.append(name)
     else:
       # There are some ports that we don't want to build as part
-      # of ALL since the are not well tested or widely used:
+      # of ALL since they are not well tested or widely used:
       if 'cocos2d' in targets:
         targets.remove('cocos2d')
 

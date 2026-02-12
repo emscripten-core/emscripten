@@ -14,21 +14,18 @@
 # Separate DWARF is not supported yet.
 
 import argparse
-from dataclasses import dataclass
 import json
 import os
 import re
 import subprocess
 import sys
-from typing import Optional
+from dataclasses import dataclass
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import shared
-from tools import webassembly
-
+from tools import shared, utils, webassembly
 
 LLVM_SYMBOLIZER = shared.llvm_tool_path('llvm-symbolizer')
 
@@ -40,10 +37,10 @@ class Error(BaseException):
 # Class to treat location info in a uniform way across information sources.
 @dataclass
 class LocationInfo:
-  source: Optional[str] = None
+  source: str | None = None
   line: int = 0
   column: int = 0
-  func: Optional[str] = None
+  func: str | None = None
 
   def print(self):
     source = self.source if self.source else '??'
@@ -79,7 +76,7 @@ def symbolize_address_symbolizer(module, address, is_dwarf):
          str(address)]
   if shared.DEBUG:
     print(f'Running {" ".join(cmd)}')
-  out = shared.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
+  out = utils.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
   out_lines = out.splitlines()
 
   # Source location regex, e.g., /abc/def.c:3:5
@@ -112,14 +109,15 @@ def get_sourceMappingURL_section(module):
 class WasmSourceMap:
   @dataclass
   class Location:
-    source: Optional[str] = None
+    source: str | None = None
     line: int = 0
     column: int = 0
-    func: Optional[str] = None
+    func: str | None = None
 
   def __init__(self):
     self.version = None
     self.sources = []
+    self.funcs = []
     self.mappings = {}
     self.offsets = []
 
@@ -131,6 +129,7 @@ class WasmSourceMap:
 
     self.version = source_map_json['version']
     self.sources = source_map_json['sources']
+    self.funcs = source_map_json['names']
 
     chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
     vlq_map = {c: i for i, c in enumerate(chars)}
@@ -158,6 +157,7 @@ class WasmSourceMap:
     src = 0
     line = 1
     col = 1
+    func = 0
     for segment in source_map_json['mappings'].split(','):
       data = decodeVLQ(segment)
       info = []
@@ -172,13 +172,15 @@ class WasmSourceMap:
       if len(data) >= 4:
         col += data[3]
         info.append(col)
-      # TODO: see if we need the name, which is the next field (data[4])
+      if len(data) == 5:
+        func += data[4]
+        info.append(func)
 
       self.mappings[offset] = WasmSourceMap.Location(*info)
       self.offsets.append(offset)
     self.offsets.sort()
 
-  def find_offset(self, offset):
+  def find_offset(self, offset, lower_bound=None):
     # Find the largest mapped offset <= the search offset
     lo = 0
     hi = len(self.offsets)
@@ -189,16 +191,28 @@ class WasmSourceMap:
         hi = mid
       else:
         lo = mid + 1
-    return self.offsets[lo - 1]
+    if lo == 0:
+      return None
+    # If lower bound is given, return the offset only if the offset is equal to
+    # or greater than the lower bound
+    if lower_bound:
+      if self.offsets[lo - 1] >= lower_bound:
+        return self.offsets[lo - 1]
+      else:
+        return None
+    else:
+      return self.offsets[lo - 1]
 
-  def lookup(self, offset):
-    nearest = self.find_offset(offset)
-    assert nearest in self.mappings, 'Sourcemap has an offset with no mapping'
+  def lookup(self, offset, lower_bound=None):
+    nearest = self.find_offset(offset, lower_bound)
+    if not nearest:
+      return None
     info = self.mappings[nearest]
     return LocationInfo(
         self.sources[info.source] if info.source is not None else None,
         info.line,
         info.column,
+        self.funcs[info.func] if info.func is not None else None,
       )
 
 
@@ -206,12 +220,8 @@ def symbolize_address_sourcemap(module, address, force_file):
   URL = force_file
   if not URL:
     # If a sourcemap file is not forced, read it from the wasm module
-    section = get_sourceMappingURL_section(module)
-    assert section
-    module.seek(section.offset)
-    assert module.read_string() == 'sourceMappingURL'
     # TODO: support stripping/replacing a prefix from the URL
-    URL = module.read_string()
+    URL = module.get_sourceMappingURL()
 
   if shared.DEBUG:
     print(f'Source Mapping URL: {URL}')

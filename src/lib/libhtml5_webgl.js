@@ -306,9 +306,8 @@ var LibraryHtml5WebGL = {
     if (!a) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_PARAM }}};
     c = GL.contexts[c];
     if (!c) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
-    var t = c.GLctx;
+    var t = c.GLctx?.getContextAttributes();
     if (!t) return {{{ cDefs.EMSCRIPTEN_RESULT_INVALID_TARGET }}};
-    t = t.getContextAttributes();
 
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.alpha, 't.alpha', 'i8') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.depth, 't.depth', 'i8') }}};
@@ -430,7 +429,7 @@ var LibraryHtml5WebGL = {
     target ||= Module['canvas'];
 #endif
 
-    var webGlEventHandlerFunc = (e = event) => {
+    var webGlEventHandlerFunc = (e) => {
 #if PTHREADS
       if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
       else
@@ -441,6 +440,8 @@ var LibraryHtml5WebGL = {
     var eventHandler = {
       target: findEventTarget(target),
       eventTypeString,
+      eventTypeId,
+      userData,
       callbackfunc,
       handlerFunc: webGlEventHandlerFunc,
       useCapture
@@ -617,7 +618,7 @@ function handleWebGLProxying(funcs) {
     }
   }
 #else
-  // In single threaded mode just delete our custom __proxy addributes, otherwise
+  // In single threaded mode just delete our custom __proxy attributes, otherwise
   // they will causes errors in the JS compiler.
   for (const i in funcs) {
     delete funcs[i + '__proxy'];

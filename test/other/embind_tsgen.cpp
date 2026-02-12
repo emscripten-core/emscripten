@@ -39,17 +39,30 @@ class Foo {
   void process(const Test& input) {}
 };
 
+class IterableClass {
+ public:
+  IterableClass() : data{1, 2, 3} {}
+  unsigned int count() const { return 3; }
+  int at(unsigned int index) const { return data[index]; }
+
+ private:
+  int data[3];
+};
+
 Test class_returning_fn() { return Test(); }
 
 std::unique_ptr<Test> class_unique_ptr_returning_fn() {
   return std::make_unique<Test>();
 }
 
-enum Bar { kValueOne, kValueTwo, kValueThree };
-
+enum FirstEnum { kValueOne, kValueTwo, kValueThree };
+enum SecondEnum { kValueA, kValueB, kValueC };
+enum ThirdEnum { kValueAlpha, kValueBeta, kValueGamma };
 enum EmptyEnum {};
 
-Bar enum_returning_fn() { return kValueOne; }
+FirstEnum enum_returning_fn() { return kValueOne; }
+SecondEnum num_enum_returning_fn() { return kValueA; }
+ThirdEnum str_enum_returning_fn() { return kValueAlpha; }
 
 struct ValArr {
   int x, y, z;
@@ -58,11 +71,17 @@ struct ValArr {
 EMSCRIPTEN_DECLARE_VAL_TYPE(CallbackType);
 
 struct ValObj {
-  Bar bar;
+  FirstEnum firstEnum;
+  SecondEnum secondEnum;
+  ThirdEnum thirdEnum;
   std::string string;
   CallbackType callback;
+  std::optional<int> optionalInt;
   ValObj() : callback(val::undefined()) {}
 };
+
+EMSCRIPTEN_DECLARE_VAL_TYPE(AliasedVal);
+
 
 ValObj getValObj() {
   ValObj o;
@@ -104,6 +123,9 @@ int function_with_callback_param(CallbackType ct) {
   return 0;
 }
 
+void function_consuming_aliased_val(AliasedVal) {
+}
+
 int global_fn(int, int) { return 0; }
 
 std::string string_test(std::string arg) {
@@ -112,6 +134,10 @@ std::string string_test(std::string arg) {
 
 std::wstring wstring_test(std::wstring arg) {
   return L"hi";
+}
+
+std::optional<std::string> optional_string_test(std::string arg) {
+  return "hi";
 }
 
 std::optional<int> optional_test(std::optional<Foo> arg) {
@@ -174,23 +200,33 @@ EMSCRIPTEN_BINDINGS(Test) {
 
   constant("an_int", 5);
   constant("a_bool", false);
-  constant("an_enum", Bar::kValueOne);
+  constant("an_enum", FirstEnum::kValueOne);
   constant("a_class_instance", Test());
 
-  enum_<Bar>("Bar")
-      .value("valueOne", Bar::kValueOne)
-      .value("valueTwo", Bar::kValueTwo)
-      .value("valueThree", Bar::kValueThree);
+  enum_<FirstEnum>("FirstEnum", enum_value_type::object)
+      .value("kValueOne", FirstEnum::kValueOne)
+      .value("kValueTwo", FirstEnum::kValueTwo)
+      .value("kValueThree", FirstEnum::kValueThree);
+  enum_<SecondEnum>("SecondEnum", enum_value_type::number)
+      .value("kValueA", SecondEnum::kValueA)
+      .value("kValueB", SecondEnum::kValueB)
+      .value("kValueC", SecondEnum::kValueC);
+  enum_<ThirdEnum>("ThirdEnum", enum_value_type::string)
+      .value("kValueAlpha", ThirdEnum::kValueAlpha)
+      .value("kValueBeta", ThirdEnum::kValueBeta)
+      .value("kValueGamma", ThirdEnum::kValueGamma);
   enum_<EmptyEnum>("EmptyEnum");
 
   function("enum_returning_fn", &enum_returning_fn);
+  function("num_enum_returning_fn", &num_enum_returning_fn);
+  function("str_enum_returning_fn", &str_enum_returning_fn);
 
   value_array<ValArr>("ValArr")
       .element(&ValArr::x)
       .element(&ValArr::y)
       .element(&ValArr::z);
 
-  value_array<std::array<Bar, 4>>("ValArrIx")
+  value_array<std::array<FirstEnum, 4>>("ValArrIx")
     .element(emscripten::index<0>())
     .element(emscripten::index<1>())
     .element(emscripten::index<2>())
@@ -198,12 +234,21 @@ EMSCRIPTEN_BINDINGS(Test) {
 
   value_object<ValObj>("ValObj")
       .field("string", &ValObj::string)
-      .field("bar", &ValObj::bar)
+      .field("firstEnum", &ValObj::firstEnum)
+      .field("secondEnum", &ValObj::secondEnum)
+      .field("thirdEnum", &ValObj::thirdEnum)
+      .field("optionalInt", &ValObj::optionalInt)
       .field("callback", &ValObj::callback);
   function("getValObj", &getValObj);
   function("setValObj", &setValObj);
 
   register_vector<int>("IntVec");
+
+  class_<IterableClass>("IterableClass")
+      .constructor<>()
+      .function("count", &IterableClass::count)
+      .function("at", &IterableClass::at)
+      .iterable<int>("count", "at");
 
   register_map<int, int>("MapIntInt");
 
@@ -212,12 +257,14 @@ EMSCRIPTEN_BINDINGS(Test) {
   function("global_fn", &global_fn);
 
   register_optional<int>();
+  register_optional<std::string>();
   register_optional<Foo>();
   function("optional_test", &optional_test);
   function("optional_and_nonoptional_test", &optional_and_nonoptional_test);
 
   function("string_test", &string_test);
   function("wstring_test", &wstring_test);
+  function("optional_string_test", &optional_string_test);
 
   class_<ClassWithConstructor>("ClassWithConstructor")
       .constructor<int, const ValArr&>()
@@ -240,7 +287,11 @@ EMSCRIPTEN_BINDINGS(Test) {
   function("function_with_callback_param",
            &function_with_callback_param);
 
+  function("function_consuming_aliased_val",
+           &function_consuming_aliased_val);
+
   register_type<CallbackType>("(message: string) => void");
+  register_type<AliasedVal>("AliasedVal", "number");
 
   class_<BaseClass>("BaseClass").function("fn", &BaseClass::fn);
 

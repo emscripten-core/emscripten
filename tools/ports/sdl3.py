@@ -9,9 +9,9 @@ import shutil
 
 from tools import diagnostics
 
-VERSION = '3.2.22'
+VERSION = '3.2.30'
 TAG = f'release-{VERSION}'
-HASH = '2d49f43f37b681b3b12918518fc2bb89fd79f64b6f9592cceb504402a9cfb3d5c0ae6f437cdbcd8fdef11065dfb15a86fcb61a58cf1fa41af71a61f767ab7260'
+HASH = '80ef7b2f257f43fe47c7ea8aa0a64f1c6f23720d91065d5e9b42f0205c62fc98bcf8dd1f1834fe09c66bea2598a18a658b82212cb29810be2d2175dece0aadce'
 SUBDIR = f'SDL-{TAG}'
 
 variants = {'sdl3-mt': {'PTHREADS': 1}}
@@ -23,12 +23,6 @@ def needed(settings):
 
 def get_lib_name(settings):
   return 'libSDL3' + ('-mt' if settings.PTHREADS else '') + '.a'
-
-
-def process_dependencies(settings, cflags_only):
-  if not cflags_only:
-    # SDL3 includes an internal reference to Module['createContext']
-    settings.EXPORTED_RUNTIME_METHODS.append('createContext')
 
 
 def get(ports, settings, shared):
@@ -84,7 +78,7 @@ def get(ports, settings, shared):
       'video/*.c',
       'video/yuv2rgb/*.c',
       'tray/*.c',
-      # Platform speecifc sources
+      # Platform specific sources
       'storage/generic/*.c',
       'tray/unix/*.c',
       'time/unix/*.c',
@@ -136,4 +130,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'sdl2 (-sUSE_SDL=3 or --use-port=sdl3; zlib license)'
+  return 'sdl3 (-sUSE_SDL=3 or --use-port=sdl3; zlib license)'

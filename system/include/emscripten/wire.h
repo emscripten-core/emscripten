@@ -7,8 +7,8 @@
 
 #pragma once
 
-#if __cplusplus < 201103L
-#error Including <emscripten/wire.h> requires building with -std=c++11 or newer!
+#if __cplusplus < 201703L
+#error "embind requires -std=c++17 or newer"
 #endif
 
 // A value moving between JavaScript and C++ has three representations:
@@ -265,6 +265,9 @@ struct WithPolicies {
     };
 };
 
+template<typename... Policies>
+struct WithPolicies<std::tuple<Policies...>> : WithPolicies<Policies...> {};
+
 // BindingType<T>
 
 // The second typename is an unused stub so it's possible to
@@ -491,6 +494,198 @@ struct BindingType<memory_view<ElementType>> {
         return mv;
     }
 };
+
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// POLICIES
+////////////////////////////////////////////////////////////////////////////////
+
+template<int Index>
+struct arg {
+    static constexpr int index = Index + 1;
+};
+
+struct ret_val {
+    static constexpr int index = 0;
+};
+
+namespace internal {
+
+template <typename InputType, bool EnableWrapper>
+struct RawPointerTransformer {
+    // Use decay to handle references to pointers e.g.(T*&)->(T*).
+    using DecayedType = std::decay_t<InputType>;
+    static constexpr bool ShouldWrap = EnableWrapper && std::is_pointer_v<DecayedType>;
+    using type = std::conditional_t<
+        ShouldWrap,
+        internal::AllowedRawPointer<std::remove_pointer_t<DecayedType>>,
+        InputType
+    >;
+};
+
+} // namespace internal
+
+template<typename Slot>
+struct allow_raw_pointer {
+    template<typename InputType, int Index>
+    struct Transform : internal::RawPointerTransformer<
+        InputType,
+        Index == Slot::index
+    > {};
+};
+
+// allow all raw pointers
+struct allow_raw_pointers {
+    template<typename InputType, int Index>
+    struct Transform : internal::RawPointerTransformer<
+        InputType,
+        true
+    > {};
+};
+
+struct async {
+    template<typename InputType, int Index>
+    struct Transform {
+        typedef InputType type;
+    };
+};
+
+struct pure_virtual {
+    template<typename InputType, int Index>
+    struct Transform {
+        typedef InputType type;
+    };
+};
+
+template<typename Slot>
+struct nonnull {
+    static_assert(std::is_same<Slot, ret_val>::value, "Only nonnull return values are currently supported.");
+    template<typename InputType, int Index>
+    struct Transform {
+        typedef InputType type;
+    };
+};
+
+namespace return_value_policy {
+
+struct take_ownership : public allow_raw_pointers {};
+struct reference : public allow_raw_pointers {};
+
+} // end namespace return_value_policy
+
+enum class enum_value_type {
+    object = 0,
+    number = 1,
+    string = 2
+};
+
+namespace internal {
+
+template<typename... Policies>
+struct isPolicy;
+
+template<typename... Rest>
+struct isPolicy<return_value_policy::take_ownership, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename... Rest>
+struct isPolicy<return_value_policy::reference, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename... Rest>
+struct isPolicy<emscripten::async, Rest...> {
+    static constexpr bool value = true;
+};
+
+template <typename T, typename... Rest>
+struct isPolicy<emscripten::allow_raw_pointer<T>, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename... Rest>
+struct isPolicy<allow_raw_pointers, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename... Rest>
+struct isPolicy<emscripten::pure_virtual, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename T, typename... Rest>
+struct isPolicy<emscripten::nonnull<T>, Rest...> {
+    static constexpr bool value = true;
+};
+
+template<typename T, typename... Rest>
+struct isPolicy<T, Rest...> {
+    static constexpr bool value = isPolicy<Rest...>::value;
+};
+
+template<>
+struct isPolicy<> {
+    static constexpr bool value = false;
+};
+
+template<typename T>
+struct isNotPolicy {
+    static constexpr bool value = !isPolicy<T>::value;
+};
+
+template<typename ReturnType, typename... Rest>
+struct GetReturnValuePolicy {
+    using tag = rvp::default_tag;
+};
+
+template<typename ReturnType, typename... Rest>
+struct GetReturnValuePolicy<ReturnType, return_value_policy::take_ownership, Rest...> {
+    using tag = rvp::take_ownership;
+};
+
+template<typename ReturnType, typename... Rest>
+struct GetReturnValuePolicy<ReturnType, return_value_policy::reference, Rest...> {
+    using tag = rvp::reference;
+};
+
+template<typename ReturnType, typename T, typename... Rest>
+struct GetReturnValuePolicy<ReturnType, T, Rest...> {
+    using tag = GetReturnValuePolicy<ReturnType, Rest...>::tag;
+};
+
+template<typename... Policies>
+using isAsync = std::disjunction<std::is_same<async, Policies>...>;
+
+template<typename... Policies>
+using isNonnullReturn = std::disjunction<std::is_same<nonnull<ret_val>, Policies>...>;
+
+// Build a tuple type that contains all the types where the predicate is true.
+// e.g. FilterTypes<std::is_integral, int, char, float> would return std::tuple<int, char>.
+template <template <class> class Predicate, class... T>
+using FilterTypes = decltype(std::tuple_cat(
+        std::declval<
+            typename std::conditional<
+                Predicate<T>::value,
+                std::tuple<T>,
+                std::tuple<>
+            >::type
+        >()...
+    ));
+
+// Build a tuple that contains all the args where the predicate is true.
+template<template <class> class Predicate, typename... Args>
+auto Filter(Args&&... args) {
+    return std::tuple_cat(
+        std::get<Predicate<typename std::decay_t<Args>>::value ? 0 : 1>(
+            std::make_tuple(
+                [](auto&& arg) { return std::forward_as_tuple(std::forward<decltype(arg)>(arg)); },
+                [](auto&&) { return std::tuple<>(); }
+            )
+        )(std::forward<Args>(args))...
+    );
+}
 
 } // namespace internal
 

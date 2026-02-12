@@ -26,6 +26,10 @@ def process_dependencies(settings, cflags_only):
     # SDL2 includes an internal reference to Module['createContext']
     settings.EXPORTED_RUNTIME_METHODS.append('createContext')
 
+    # SDL2 requires eglGetProcAddress() to work.
+    # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
+    settings.GL_ENABLE_GET_PROC_ADDRESS = 1
+
 
 def get(ports, settings, shared):
   # get the port

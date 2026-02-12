@@ -15,9 +15,15 @@ function dbg(...args) {
   // See https://github.com/emscripten-core/emscripten/issues/14804
   if (ENVIRONMENT_IS_NODE) {
     // TODO(sbc): Unify with err/out implementation in shell.sh.
-    var fs = require('fs');
-    var utils = require('util');
-    var stringify = (a) => typeof a == 'object' ? utils.inspect(a) : a;
+    var fs = require('node:fs');
+    var utils = require('node:util');
+    function stringify(a) {
+      switch (typeof a) {
+        case 'object': return utils.inspect(a);
+        case 'undefined': return 'undefined';
+      }
+      return a;
+    }
     fs.writeSync(2, args.map(stringify).join(' ') + '\n');
   } else
 #endif
@@ -92,7 +98,7 @@ function isExportedByForceFilesystem(name) {
  * are never placed in the global scope.
  */
 function hookGlobalSymbolAccess(sym, func) {
-  if (typeof globalThis != 'undefined' && !Object.getOwnPropertyDescriptor(globalThis, sym)) {
+  if (!Object.getOwnPropertyDescriptor(globalThis, sym)) {
     Object.defineProperty(globalThis, sym, {
       configurable: true,
       get() {
@@ -154,7 +160,13 @@ function unexportedRuntimeSymbol(sym) {
           msg += '. Alternatively, forcing filesystem support (-sFORCE_FILESYSTEM) can export this for you';
         }
         abort(msg);
-      }
+      },
+#if !DECLARE_ASM_MODULE_EXPORTS
+      // !DECLARE_ASM_MODULE_EXPORTS programmatically exports all wasm symbols
+      // on the Module object.  Ignore these attempts to set the properties
+      // here.
+      set(value) {}
+#endif
     });
   }
 }

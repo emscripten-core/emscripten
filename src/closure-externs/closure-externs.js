@@ -223,14 +223,6 @@ var event;
 var devicePixelRatio;
 
 /*
- * AudioWorkletGlobalScope globals
- */
-var registerProcessor = function(name, obj) {};
-var currentFrame;
-var currentTime;
-var sampleRate;
-
-/*
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;
@@ -252,7 +244,7 @@ var moduleRtn;
 /**
  * This was removed from upstream closure compiler in
  * https://github.com/google/closure-compiler/commit/f83322c1b.
- * Perhaps we should remove it do?
+ * Perhaps we should remove it too?
  *
  * @param {MediaStreamConstraints} constraints A MediaStreamConstraints object.
  * @param {function(!MediaStream)} successCallback

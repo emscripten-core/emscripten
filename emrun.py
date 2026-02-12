@@ -28,6 +28,7 @@ import re
 import shlex
 import shutil
 import socket
+import socketserver
 import stat
 import struct
 import subprocess
@@ -35,18 +36,14 @@ import sys
 import tempfile
 import threading
 import time
+from http.server import HTTPServer, SimpleHTTPRequestHandler
 from operator import itemgetter
+from urllib.parse import unquote, urlsplit
 
-if sys.version_info.major == 2:
-  import SocketServer as socketserver
-  from BaseHTTPServer import HTTPServer
-  from SimpleHTTPServer import SimpleHTTPRequestHandler
-  from urllib import unquote
-  from urlparse import urlsplit
-else:
-  import socketserver
-  from http.server import HTTPServer, SimpleHTTPRequestHandler
-  from urllib.parse import unquote, urlsplit
+# We depend on python 3.8 features
+if sys.version_info < (3, 8): # noqa: UP036
+  print(f'error: emrun requires python 3.8 or above ({sys.executable} {sys.version})', file=sys.stderr)
+  sys.exit(1)
 
 # Populated from cmdline params
 emrun_options = None
@@ -86,7 +83,7 @@ page_exit_code = None
 # launcher.exe that runs the actual opera browser.  So killing browser_process
 # would just kill launcher.exe and not the opera
 # browser itself.
-processname_killed_atexit = ""
+processname_killed_atexit = ''
 
 # Using "0.0.0.0" means "all interfaces", which should allow connecting to this
 # server via LAN addresses. Using "localhost" should allow only connecting from
@@ -104,24 +101,25 @@ ADB = None
 WINDOWS = False
 LINUX = False
 MACOS = False
+FREEBSD = False
 if os.name == 'nt':
   WINDOWS = True
   import winreg
 elif platform.system() == 'Linux':
   LINUX = True
+elif platform.system() == 'FreeBSD':
+  FREEBSD = True
 elif platform.mac_ver()[0] != '':
   MACOS = True
   import plistlib
 
 # If you are running on an OS that is not any of these, must add explicit support for it.
-if not WINDOWS and not LINUX and not MACOS:
+if not WINDOWS and not LINUX and not MACOS and not FREEBSD:
   raise Exception("Unknown OS!")
 
 
 # Returns wallclock time in seconds.
 def tick():
-  # Would like to return time.clock() since it's apparently better for
-  # precision, but it is broken on macOS 10.10 and Python 2.7.8.
   return time.time()
 
 
@@ -229,8 +227,9 @@ def create_emrun_safe_firefox_profile():
   temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
   with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w') as f:
     f.write('''
-// Lift the default max 20 workers limit to something higher to avoid hangs when page needs to spawn a lot of threads.
-user_pref("dom.workers.maxPerDomain", 100);
+// Old Firefox browsers have a maxPerDomain limit of 20. Newer Firefox browsers default to 512. Match the new
+// default here to help test spawning a lot of threads also on older Firefox versions.
+user_pref("dom.workers.maxPerDomain", 512);
 // Always allow opening popups
 user_pref("browser.popups.showPopupBlocker", false);
 user_pref("dom.disable_open_during_load", false);
@@ -243,6 +242,11 @@ user_pref("services.sync.prefs.sync.browser.sessionstore.restore_on_demand", fal
 user_pref("browser.sessionstore.restore_on_demand", false);
 user_pref("browser.sessionstore.max_resumed_crashes", -1);
 user_pref("toolkit.startup.max_resumed_crashes", -1);
+// Ease shutting down browser instances in the parallel browser harness
+user_pref("browser.warnOnQuit", false);
+user_pref("browser.warnOnQuitShortcut", false);
+// Hide about:config confirmation prompt - devs are advanced users
+user_pref("browser.aboutConfig.showWarning", false);
 // Don't show the slow script dialog popup
 user_pref("dom.max_script_run_time", 0);
 user_pref("dom.max_chrome_script_run_time", 0);
@@ -363,10 +367,10 @@ def kill_browser_process():
   global browser_process, processname_killed_atexit, current_browser_processes
   if browser_process and browser_process.poll() is None:
     try:
-      logv('Terminating browser process pid=' + str(browser_process.pid) + '..')
+      logv(f'Terminating browser process pid={browser_process.pid}..')
       browser_process.kill()
     except Exception as e:
-      logv('Failed with error ' + str(e) + '!')
+      logv(f'Failed with error {e}!')
 
     browser_process = None
     # We have a hold of the target browser process explicitly, no need to resort to killall,
@@ -376,26 +380,27 @@ def kill_browser_process():
   if current_browser_processes:
     for pid in current_browser_processes:
       try:
-        logv('Terminating browser process pid=' + str(pid['pid']) + '..')
+        logv(f'Terminating browser process pid={pid["pid"]}..')
         os.kill(pid['pid'], 9)
       except Exception as e:
-        logv('Failed with error ' + str(e) + '!')
+        logv(f'Failed with error {e}!')
 
     current_browser_processes = None
     # We have a hold of the target browser process explicitly, no need to resort to killall,
     # so clear that record out.
     processname_killed_atexit = ''
 
-  if len(processname_killed_atexit):
+  if processname_killed_atexit:
     if emrun_options.android:
-      logv("Terminating Android app '" + processname_killed_atexit + "'.")
+      logv(f"Terminating Android app '{processname_killed_atexit}'.")
       subprocess.call([ADB, 'shell', 'am', 'force-stop', processname_killed_atexit])
     else:
-      logv("Terminating all processes that have string '" + processname_killed_atexit + "' in their name.")
+      logv(f"Terminating all processes that have string '{processname_killed_atexit}' in their name.")
       if WINDOWS:
-        process_image = processname_killed_atexit if '.exe' in processname_killed_atexit else (processname_killed_atexit + '.exe')
-        process = subprocess.Popen(['taskkill', '/F', '/IM', process_image, '/T'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
-        process.communicate()
+        process_image = processname_killed_atexit
+        if not process_image.endswith('.exe'):
+          process_image += '.exe'
+        subprocess.call(['taskkill', '/F', '/IM', process_image, '/T'], stdout=subprocess.PIPE, stderr=subprocess.PIPE)
       else:
         try:
           subprocess.call(['pkill', processname_killed_atexit])
@@ -413,7 +418,7 @@ def kill_browser_process():
 
 # Heuristic that attempts to search for the browser process IDs that emrun spawned.
 # This depends on the assumption that no other browser process IDs have been spawned
-# during the short time perioed between the time that emrun started, and the browser
+# during the short time period between the time that emrun started, and the browser
 # process navigated to the page.
 # This heuristic is needed because all modern browsers are multiprocess systems -
 # starting a browser process from command line generally launches just a "stub" spawner
@@ -433,7 +438,7 @@ def detect_browser_processes():
     return False
 
   for p in running_browser_processes:
-    logv('Detected running browser process id: ' + str(p['pid']) + ', existed already at emrun startup? ' + str(pid_existed(p['pid'])))
+    logv(f'Detected running browser process id: {p["pid"]}, existed already at emrun startup? {pid_existed(p["pid"])}')
 
   current_browser_processes = [p for p in running_browser_processes if not pid_existed(p['pid'])]
 
@@ -441,7 +446,7 @@ def detect_browser_processes():
     logv('Was unable to detect the browser process that was spawned by emrun. This may occur if the target page was opened in a tab on a browser process that already existed before emrun started up.')
 
 
-# Our custom HTTP web server that will server the target page to run via .html.
+# Our custom HTTP web server that will serve the target page to run via .html.
 # This is used so that we can load the page via a http:// URL instead of a
 # file:// URL, since those wouldn't work too well unless user allowed XHR
 # without CORS rules.  Also, the target page will route its stdout and stderr
@@ -475,7 +480,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
         if len(self.http_message_queue) > 16:
           self.print_next_message()
 
-  # If it's been too long since we we got a message, prints out the oldest
+  # If it's been too long since we got a message, prints out the oldest
   # queued message, ignoring the proper order.  This ensures that if any
   # messages are actually lost, that the message queue will be orderly flushed.
   def print_timed_out_messages(self):
@@ -538,7 +543,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
       time_since_message = now - last_message_time
       if emrun_options.silence_timeout != 0 and time_since_message > emrun_options.silence_timeout:
         self.shutdown()
-        logi('No activity in ' + str(emrun_options.silence_timeout) + ' seconds. Quitting web server with return code ' + str(emrun_options.timeout_returncode) + '. (--silence-timeout option)')
+        logi(f'No activity in {emrun_options.silence_timeout} seconds. Quitting web server with return code {emrun_options.timeout_returncode}. (--silence-timeout option)')
         page_exit_code = emrun_options.timeout_returncode
         emrun_options.kill_exit = True
 
@@ -546,7 +551,7 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
       time_since_start = now - page_start_time
       if emrun_options.timeout != 0 and time_since_start > emrun_options.timeout:
         self.shutdown()
-        logi('Page has not finished in ' + str(emrun_options.timeout) + ' seconds. Quitting web server with return code ' + str(emrun_options.timeout_returncode) + '. (--timeout option)')
+        logi(f'Page has not finished in {emrun_options.timeout} seconds. Quitting web server with return code {emrun_options.timeout_returncode}. (--timeout option)')
         emrun_options.kill_exit = True
         page_exit_code = emrun_options.timeout_returncode
 
@@ -578,7 +583,6 @@ class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
 # Processes HTTP request back to the browser.
 class HTTPHandler(SimpleHTTPRequestHandler):
   def send_head(self):
-    self.protocol_version = 'HTTP/1.1'
     global page_last_served_time
     path = self.translate_path(self.path)
     f = None
@@ -662,18 +666,17 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     if code != 200:
       SimpleHTTPRequestHandler.log_request(self, code)
 
-  def log_message(self, format, *args):
+  def log_message(self, format, *args):  # noqa: DC04
     msg = '%s - - [%s] %s\n' % (self.address_string(), self.log_date_time_string(), format % args)
     # Filter out 404 messages on favicon.ico not being found to remove noise.
     if 'favicon.ico' not in msg:
       sys.stderr.write(msg)
 
-  def do_POST(self):
-    self.protocol_version = 'HTTP/1.1'
+  def do_POST(self):  # # noqa: DC04
     global page_exit_code, have_received_messages
 
     (_, _, path, query, _) = urlsplit(self.path)
-    logv('POST: "' + self.path + '" (path: "' + path + '", query: "' + query + '")')
+    logv(f'POST: "{self.path}" (path: "{path}", query: "{query}")')
     if query.startswith('file='):
       # Binary file dump/upload handling. Requests to
       # "stdio.html?file=filename" will write binary data to the given file.
@@ -686,7 +689,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
         pass
       with open(filename, 'wb') as fh:
         fh.write(data)
-      logi('Wrote ' + str(len(data)) + ' bytes to file "' + filename + '".')
+      logi(f'Wrote {len(data)} bytes to file "{filename}".')
       have_received_messages = True
     elif path == '/system_info':
       system_info = json.loads(get_system_info(format_json=True))
@@ -715,7 +718,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
       elif data.startswith('^exit^'):
         if not emrun_options.serve_after_exit:
           page_exit_code = int(data[6:])
-          logv('Web page has quit with a call to exit() with return code ' + str(page_exit_code) + '. Shutting down web server. Pass --serve-after-exit to keep serving even after the page terminates with exit().')
+          logv(f'Web page has quit with a call to exit() with return code ${page_exit_code}. Shutting down web server. Pass --serve-after-exit to keep serving even after the page terminates with exit().')
           # Set server socket to nonblocking on shutdown to avoid sporadic deadlocks
           self.server.socket.setblocking(False)
           self.server.shutdown()
@@ -750,13 +753,9 @@ class HTTPHandler(SimpleHTTPRequestHandler):
     self.wfile.write(b'OK')
 
 
-# Returns stdout by running command with universal_newlines=True
-def check_output(cmd, universal_newlines=True, *args, **kwargs):
-  if hasattr(subprocess, "run"):
-    return subprocess.run(cmd, universal_newlines=universal_newlines, stdout=subprocess.PIPE, check=True, *args, **kwargs).stdout
-  else:
-    # check_output is considered as an old API so prefer subprocess.run if possible
-    return subprocess.check_output(cmd, universal_newlines=universal_newlines, *args, **kwargs)
+# Returns stdout by running command with text=True
+def check_output(cmd, *args, **kwargs):
+  return subprocess.run(cmd, text=True, stdout=subprocess.PIPE, check=True, *args, **kwargs).stdout
 
 
 # From http://stackoverflow.com/questions/4842448/getting-processor-information-in-python
@@ -789,10 +788,15 @@ def get_cpu_info():
       sockets = int(re.search(r'Socket\(s\): (.*)', lscpu).group(1).strip())
       physical_cores = sockets * int(re.search(r'Core\(s\) per socket: (.*)', lscpu).group(1).strip())
       logical_cores = physical_cores * int(re.search(r'Thread\(s\) per core: (.*)', lscpu).group(1).strip())
+    elif FREEBSD:
+      cpu_name = check_output(['sysctl', '-n', 'hw.model']).strip()
+      physical_cores = int(check_output(['sysctl', '-n', 'hw.ncpu']).strip())
+      logical_cores = physical_cores
+      frequency = int(check_output(['sysctl', '-n', 'hw.clockrate']).strip())
   except Exception as e:
     import traceback
     loge(traceback.format_exc())
-    return {'model': 'Unknown ("' + str(e) + '")',
+    return {'model': f'Unknown ("{e}")',
             'physicalCores': 1,
             'logicalCores': 1,
             'frequency': 0,
@@ -816,7 +820,7 @@ def get_android_cpu_infoline():
       hardware = line[line.find(':') + 1:].strip()
 
   freq = int(check_output([ADB, 'shell', 'cat', '/sys/devices/system/cpu/cpu0/cpufreq/cpuinfo_max_freq']).strip()) // 1000
-  return 'CPU: ' + processor + ', ' + hardware + ' @ ' + str(freq) + ' MHz'
+  return f'CPU: {processor}, {hardware} @ {freq} MHz'
 
 
 def win_get_gpu_info():
@@ -836,12 +840,12 @@ def win_get_gpu_info():
       VideoCardString = winreg.QueryValueEx(hVideoReg, '\\Device\\Video' + str(i))[0]
       # Get Rid of Registry/Machine from the string
       VideoCardStringSplit = VideoCardString.split('\\')
-      ClearnVideoCardString = "\\".join(VideoCardStringSplit[3:])
+      CleanVideoCardString = "\\".join(VideoCardStringSplit[3:])
       # Go up one level for detailed
       # VideoCardStringRoot = "\\".join(VideoCardStringSplit[3:len(VideoCardStringSplit)-1])
 
       # Get the graphics card information
-      hVideoCardReg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, ClearnVideoCardString)
+      hVideoCardReg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, CleanVideoCardString)
       try:
         VideoCardDescription = winreg.QueryValueEx(hVideoCardReg, 'Device Description')[0]
       except WindowsError:
@@ -855,7 +859,7 @@ def win_get_gpu_info():
 
       try:
         driverDate = winreg.QueryValueEx(hVideoCardReg, 'DriverDate')[0]
-        VideoCardDescription += ' (' + driverDate + ')'
+        VideoCardDescription += f' ({driverDate})'
       except WindowsError:
         pass
 
@@ -1009,7 +1013,7 @@ def win_get_file_properties(fname):
   props = {'FixedFileInfo': None, 'StringFileInfo': None, 'FileVersion': None}
 
   import win32api
-  # backslash as parm returns dictionary of numeric info corresponding to VS_FIXEDFILEINFO struct
+  # backslash as param returns dictionary of numeric info corresponding to VS_FIXEDFILEINFO struct
   fixedInfo = win32api.GetFileVersionInfo(fname, '\\')
   props['FixedFileInfo'] = fixedInfo
   props['FileVersion'] = "%d.%d.%d.%d" % (fixedInfo['FileVersionMS'] / 65536,
@@ -1021,7 +1025,7 @@ def win_get_file_properties(fname):
   # pairs that can be used to retrieve string info. We are using only the first pair.
   lang, codepage = win32api.GetFileVersionInfo(fname, '\\VarFileInfo\\Translation')[0]
 
-  # any other must be of the form \StringfileInfo\%04X%04X\parm_name, middle
+  # any other must be of the form \StringfileInfo\%04X%04X\param_name, middle
   # two are language/codepage pair returned from above
 
   strInfo = {}
@@ -1124,6 +1128,8 @@ def get_system_memory():
       return win32api.GlobalMemoryStatusEx()['TotalPhys']
     elif MACOS:
       return int(check_output(['sysctl', '-n', 'hw.memsize']).strip())
+    elif FREEBSD:
+      return int(check_output(['sysctl', '-n', 'hw.physmem']).strip())
   except Exception:
     return -1
 
@@ -1138,19 +1144,15 @@ def which(program):
     if is_exe(program):
       return program
   else:
-    for path in os.environ["PATH"].split(os.pathsep):
+    exe_suffixes = ['']
+    if WINDOWS and '.' not in fname:
+      exe_suffixes = ['.exe', '.cmd', '.bat']
+    for path in os.environ['PATH'].split(os.pathsep):
       path = path.strip('"')
       exe_file = os.path.join(path, program)
-      if is_exe(exe_file):
-        return exe_file
-
-      if WINDOWS and '.' not in fname:
-        if is_exe(exe_file + '.exe'):
-          return exe_file + '.exe'
-        if is_exe(exe_file + '.cmd'):
-          return exe_file + '.cmd'
-        if is_exe(exe_file + '.bat'):
-          return exe_file + '.bat'
+      for ext in exe_suffixes:
+        if is_exe(exe_file + ext):
+          return exe_file + ext
 
   return None
 
@@ -1230,7 +1232,7 @@ def find_browser(name):
                             ('iexplore', os.path.join(program_files, 'Internet Explorer/iexplore.exe')),
                             ('opera', os.path.join(program_files, 'Opera/launcher.exe'))]
 
-  elif LINUX:
+  elif LINUX or FREEBSD:
     browser_locations = [('firefox', os.path.expanduser('~/firefox/firefox')),
                          ('firefox_beta', os.path.expanduser('~/firefox_beta/firefox')),
                          ('firefox_aurora', os.path.expanduser('~/firefox_aurora/firefox')),
@@ -1344,10 +1346,10 @@ def browser_display_name(browser):
 
 def subprocess_env():
   e = os.environ.copy()
-  # https://bugzilla.mozilla.org/show_bug.cgi?id=745154
+  # https://bugzil.la/745154
   e['MOZ_DISABLE_AUTO_SAFE_MODE'] = '1'
-  e['MOZ_DISABLE_SAFE_MODE_KEY'] = '1' # https://bugzilla.mozilla.org/show_bug.cgi?id=653410#c9
-  e['JIT_OPTION_asmJSAtomicsEnable'] = 'true' # https://bugzilla.mozilla.org/show_bug.cgi?id=1299359#c0
+  e['MOZ_DISABLE_SAFE_MODE_KEY'] = '1' # https://bugzil.la/653410#c9
+  e['JIT_OPTION_asmJSAtomicsEnable'] = 'true' # https://bugzil.la/1299359#c0
   return e
 
 
@@ -1355,12 +1357,12 @@ def subprocess_env():
 def remove_tree(d):
   os.chmod(d, stat.S_IWRITE)
   try:
-    def remove_readonly_and_try_again(func, path, _exc_info):
+    def remove_readonly_and_try_again(func, path, exc_info):
       if not (os.stat(path).st_mode & stat.S_IWRITE):
         os.chmod(path, stat.S_IWRITE)
         func(path)
       else:
-        raise
+        raise exc_info[1]
     shutil.rmtree(d, onerror=remove_readonly_and_try_again)
   except Exception:
     pass
@@ -1440,7 +1442,7 @@ def list_processes_by_name(exe_full_path):
     # Fail gracefully if psutil not available
     logv('import psutil failed, unable to detect browser processes')
 
-  logv('Searching for processes by full path name "' + exe_full_path + '".. found ' + str(len(pids)) + ' entries')
+  logv(f'Searching for processes by full path name "{exe_full_path}".. found {len(pids)} entries')
 
   return pids
 
@@ -1562,7 +1564,7 @@ def parse_args(args):
 
   parser.add_argument('--json', action='store_true',
                       help='If specified, --system-info and --browser-info are '
-                           'outputted in JSON format.')
+                           'output in JSON format.')
 
   parser.add_argument('--safe-firefox-profile', action='store_true',
                       help='If true, the browser is launched into a new clean '
@@ -1581,7 +1583,7 @@ def parse_args(args):
   parser.add_argument('cmdlineparams', nargs='*')
 
   # Support legacy argument names with `_` in them (but don't
-  # advertize these in the --help message).
+  # advertise these in the --help message).
   for i, a in enumerate(args):
     if a == '--':
       break
@@ -1620,7 +1622,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
   if not options.browser and not options.android:
     if WINDOWS:
       options.browser = 'start'
-    elif LINUX:
+    elif LINUX or FREEBSD:
       options.browser = which('xdg-open')
       if not options.browser:
         options.browser = 'firefox'
@@ -1686,7 +1688,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
     else:
       hostname = options.hostname
     # create url for browser after opening the server so we have the final port number in case we are binding to port 0
-    url = 'http://' + hostname + ':' + str(options.port) + '/' + url
+    url = f'http://{hostname}:{options.port}/{url}'
 
   if options.android:
     if options.run_browser or options.browser_info:
@@ -1720,7 +1722,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
       # 5. Locate the name of the main activity for the browser in manifest.txt and add an entry to above list in form 'appname/mainactivityname'
 
       if options.android_tunnel:
-        subprocess.check_call([ADB, 'reverse', 'tcp:' + str(options.port), 'tcp:' + str(options.port)])
+        subprocess.check_call([ADB, 'reverse', f'tcp:{options.port}', f'tcp:{options.port}'])
 
       url = url.replace('&', '\\&')
       browser = [ADB, 'shell', 'am', 'start', '-a', 'android.intent.action.VIEW', '-n', browser_app, '-d', url]
@@ -1732,7 +1734,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
     if options.run_browser or options.browser_info:
       browser = find_browser(str(options.browser))
       if not browser:
-        loge('Unable to find browser "' + str(options.browser) + '"! Check the correctness of the passed --browser=xxx parameter!')
+        loge(f'Unable to find browser "{options.browser}"! Check the correctness of the passed --browser=xxx parameter!')
         return 1
       browser_exe = browser[0]
       browser_args = shlex.split(unwrap(options.browser_args))
@@ -1788,7 +1790,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
       run(['adb', 'shell', 'mkdir', '/mnt/sdcard/safe_firefox_profile'])
       run(['adb', 'push', os.path.join(profile_dir, 'prefs.js'), '/mnt/sdcard/safe_firefox_profile/prefs.js'])
     except Exception as e:
-      loge('Creating Firefox profile prefs.js file to internal storage in /mnt/sdcard failed with error ' + str(e) + '!')
+      loge(f'Creating Firefox profile prefs.js file to internal storage in /mnt/sdcard failed with error {e}!')
       loge('Try running without --safe-firefox-profile flag if unattended execution mode is not important, or')
       loge('enable rooted debugging on the Android device to allow adb to write files to /mnt/sdcard.')
     browser += ['--es', 'args', '"--profile /mnt/sdcard/safe_firefox_profile"']
@@ -1838,9 +1840,9 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
       logv(browser_exe)
       previous_browser_processes = list_processes_by_name(browser_exe)
       for p in previous_browser_processes:
-        logv('Before spawning web browser, found a running ' + os.path.basename(browser_exe) + ' browser process id: ' + str(p['pid']))
+        logv(f'Before spawning web browser, found a running {os.path.basename(browser_exe)} browser process id: {p["pid"]}')
     browser_process = subprocess.Popen(browser, env=subprocess_env())
-    logv('Launched browser process with pid=' + str(browser_process.pid))
+    logv(f'Launched browser process with pid={browser_process.pid}')
     if options.kill_exit:
       atexit.register(kill_browser_process)
     # For Android automation, we execute adb, so this process does not
@@ -1852,7 +1854,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
     premature_quit_code = browser_process.poll()
     if premature_quit_code is not None:
       options.serve_after_close = True
-      logv('Warning: emrun got immediately detached from the target browser process (the process quit with exit code ' + str(premature_quit_code) + '). Cannot detect when user closes the browser. Behaving as if --serve-after-close was passed in.')
+      logv(f'Warning: emrun got immediately detached from the target browser process (the process quit with exit code {premature_quit_code}). Cannot detect when user closes the browser. Behaving as if --serve-after-close was passed in.')
       if not options.browser:
         logv('Try passing the --browser=/path/to/browser option to avoid this from occurring. See https://github.com/emscripten-core/emscripten/issues/3234 for more discussion.')
 
@@ -1889,9 +1891,9 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
 
 def main(args):
   returncode = run(args)
-  logv('emrun quitting with process exit code ' + str(returncode))
+  logv(f'emrun quitting with process exit code {returncode}')
   if temp_firefox_profile_dir is not None:
-    logi('Warning: Had to leave behind a temporary Firefox profile directory ' + temp_firefox_profile_dir + ' because --safe-firefox-profile was set and the browser did not quit before emrun did.')
+    logi(f'Warning: Had to leave behind a temporary Firefox profile directory {temp_firefox_profile_dir} because --safe-firefox-profile was set and the browser did not quit before emrun did.')
   return returncode
 
 

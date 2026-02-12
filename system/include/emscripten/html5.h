@@ -420,6 +420,8 @@ EMSCRIPTEN_RESULT emscripten_get_element_css_size(const char *target __attribute
 
 void emscripten_html5_remove_all_event_listeners(void);
 
+EMSCRIPTEN_RESULT emscripten_html5_remove_event_listener(const char *target __attribute__((nonnull)), void *userData, int eventTypeId, void *callback __attribute__((nonnull)));
+
 #define EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD ((pthread_t)0x1)
 #define EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD ((pthread_t)0x2)
 

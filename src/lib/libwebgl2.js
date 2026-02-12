@@ -386,7 +386,7 @@ var LibraryWebGL2 = {
     program = GL.programs[program];
     var vars = [];
     for (var i = 0; i < count; i++)
-      vars.push(UTF8ToString({{{ makeGetValue('varyings', 'i*4', 'i32') }}}));
+      vars.push(UTF8ToString({{{ makeGetValue('varyings', 'i*' + POINTER_SIZE, '*') }}}));
 
     GLctx.transformFeedbackVaryings(program, vars, bufferMode);
   },
@@ -519,7 +519,7 @@ var LibraryWebGL2 = {
     program = GL.programs[program];
     var names = [];
     for (var i = 0; i < uniformCount; i++)
-      names.push(UTF8ToString({{{ makeGetValue('uniformNames', 'i*4', 'i32') }}}));
+      names.push(UTF8ToString({{{ makeGetValue('uniformNames', 'i*' + POINTER_SIZE, '*') }}}));
 
     var result = GLctx.getUniformIndices(program, names);
     if (!result) return; // GL spec: If an error is generated, nothing is written out to uniformIndices.
@@ -947,9 +947,9 @@ var LibraryWebGL2 = {
   // Defined in library_glemu.js when LEGACY_GL_EMULATION is set
   glDrawRangeElements__deps: ['glDrawElements'],
   glDrawRangeElements: (mode, start, end, count, type, indices) => {
-    // TODO: This should be a trivial pass-though function registered at the bottom of this page as
+    // TODO: This should be a trivial pass-through function registered at the bottom of this page as
     // glFuncs[6][1] += ' drawRangeElements';
-    // but due to https://bugzilla.mozilla.org/show_bug.cgi?id=1202427,
+    // but due to https://bugzil.la/1202427,
     // we work around by ignoring the range.
     _glDrawElements(mode, count, type, indices);
   },

@@ -54,24 +54,20 @@ Please note that the 'f' for 'FLOAT_DEFINE' is just the format passed to printf(
 anything printf() understands.
 """
 
-import sys
+import argparse
+import json
 import os
 import re
-import json
-import argparse
-import tempfile
 import shlex
 import subprocess
-import typing
+import sys
+import tempfile
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import building
-from tools import shared
-from tools import system_libs
-from tools import utils
+from tools import config, shared, system_libs, utils
 
 QUIET = (__name__ != '__main__')
 DEBUG = False
@@ -91,20 +87,18 @@ CXXFLAGS = [
     '-I' + utils.path_from_root('system/lib/libcxxabi/src'),
     '-D__EMSCRIPTEN_EXCEPTIONS__',
     '-I' + utils.path_from_root('system/lib/wasmfs/'),
-    '-std=c++17',
 ]
 
 DEFAULT_JSON_FILES = [
     utils.path_from_root('src/struct_info.json'),
     utils.path_from_root('src/struct_info_internal.json'),
     utils.path_from_root('src/struct_info_cxx.json'),
-    utils.path_from_root('src/struct_info_webgpu.json'),
 ]
 
 
-def show(msg):
+def show(msg, *args):
   if shared.DEBUG or not QUIET:
-    sys.stderr.write('gen_struct_info: %s\n' % msg)
+    print('gen_struct_info:', msg, *args, file=sys.stderr)
 
 
 # The Scope class generates C code which, in turn, outputs JSON.
@@ -115,7 +109,7 @@ def show(msg):
 #     scope.set('item2', '%f', '4.2') # generates code that outputs ',\n"item2": 4.2'
 #   # once the scope is exited, it generates code that outputs the end of the JSON object '\n}'
 class Scope:
-  def __init__(self, code: typing.List[str]):
+  def __init__(self, code: list[str]):
     self.code = code
     self.has_data = False
 
@@ -123,7 +117,7 @@ class Scope:
     self.code.append('puts("{");')
     return self
 
-  def __exit__(self, exc_type, exc_val, exc_tb):
+  def __exit__(self, _exc_type, _exc_val, _exc_tb):
     if self.has_data:
       self.code.append('puts("");')
     self.code.append('printf("}");')
@@ -151,7 +145,7 @@ class Scope:
 
     self.code.append(f'printf("{type_}", {value});')
 
-  def gen_inspect_code(self, path: typing.List[str], struct: typing.List[typing.Union[str, dict]]):
+  def gen_inspect_code(self, path: list[str], struct: list[str | dict]):
     if path[0][-1] == '#':
       path[0] = path[0].rstrip('#')
       prefix = ''
@@ -211,8 +205,6 @@ def generate_cmd(js_file_path, src_file_path, cflags):
   else:
     compiler = shared.EMCC
 
-  node_flags = building.get_emcc_node_flags(shared.check_node_version())
-
   # -O1+ produces calls to iprintf, which libcompiler_rt doesn't support
   cmd = [compiler] + cflags + ['-o', js_file_path, src_file_path,
                                '-O0',
@@ -223,7 +215,7 @@ def generate_cmd(js_file_path, src_file_path, cflags):
                                '-sINCOMING_MODULE_JS_API=',
                                '-sSTRICT',
                                '-sSUPPORT_LONGJMP=0',
-                               '-sASSERTIONS=0'] + node_flags
+                               '-sASSERTIONS=0']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
@@ -257,7 +249,7 @@ def inspect_headers(headers, cflags):
     sys.exit(1)
 
   # Run the compiled program.
-  show('Calling generated program... ' + js_file_path)
+  show('Running generated program... ' + js_file_path, config.NODE_JS)
   info = shared.run_js_tool(js_file_path, stdout=shared.PIPE)
 
   if not DEBUG:
@@ -266,7 +258,7 @@ def inspect_headers(headers, cflags):
 
     if os.path.exists(js_file_path):
       os.unlink(js_file_path)
-      wasm_file_path = shared.replace_suffix(js_file_path, '.wasm')
+      wasm_file_path = utils.replace_suffix(js_file_path, '.wasm')
       os.unlink(wasm_file_path)
 
   # Parse the output of the program into a dict.
@@ -366,7 +358,7 @@ def main(args):
   if args.wasm64:
     # Always use =2 here so that we don't generate a binary that actually requires
     # memory64 to run.  All we care about is that the output is correct.
-    extra_cflags += ['-sMEMORY64=2', '-Wno-experimental']
+    extra_cflags += ['-sMEMORY64=2']
 
   # Add the user options to the list as well.
   for path in args.includes:

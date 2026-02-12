@@ -68,7 +68,7 @@ void resize_canvas(void* arg) {
   emscripten_set_canvas_element_size("#canvas", 699, 299);
 }
 
-//should be able to do this regardless of offscreen canvas support
+// should be able to do this regardless of offscreen canvas support
 void get_canvas_size() {
   int w, h;
   emscripten_get_canvas_element_size("#canvas", &w, &h);

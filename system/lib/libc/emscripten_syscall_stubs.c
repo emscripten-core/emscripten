@@ -4,7 +4,7 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * Unimplemented/dummy syscall implementations. These fall into 3 catagories.
+ * Unimplemented/dummy syscall implementations. These fall into 3 categories.
  *
  * 1. Fake it, use dummy/placeholder values and return success.
  * 2. Fake it, as above but warn at runtime if called.
@@ -51,9 +51,9 @@ weak int __syscall_uname(intptr_t buf) {
   if (!buf) {
     return -EFAULT;
   }
-  const char* full_version = STR(__EMSCRIPTEN_major__) "." \
-                             STR(__EMSCRIPTEN_minor__) "." \
-                             STR(__EMSCRIPTEN_tiny__);
+  const char* full_version = STR(__EMSCRIPTEN_MAJOR__) "." \
+                             STR(__EMSCRIPTEN_MINOR__) "." \
+                             STR(__EMSCRIPTEN_TINY__);
 
   struct utsname *utsname = (struct utsname *)buf;
 
@@ -264,6 +264,7 @@ UNIMPLEMENTED(acct, (intptr_t filename))
 UNIMPLEMENTED(mincore, (intptr_t addr, size_t length, intptr_t vec))
 UNIMPLEMENTED(pipe2, (intptr_t fds, int flags))
 UNIMPLEMENTED(pselect6, (int nfds, intptr_t readfds, intptr_t writefds, intptr_t exceptfds, intptr_t timeout, intptr_t sigmaks))
+UNIMPLEMENTED(ppoll, (intptr_t fds, int nfds, intptr_t timeout, intptr_t sigmask, int size))
 UNIMPLEMENTED(recvmmsg, (int sockfd, intptr_t msgvec, size_t vlen, int flags, ...))
 UNIMPLEMENTED(sendmmsg, (int sockfd, intptr_t msgvec, size_t vlen, int flags, ...))
 UNIMPLEMENTED(shutdown, (int sockfd, int how, int dummy, int dummy2, int dummy3, int dummy4))

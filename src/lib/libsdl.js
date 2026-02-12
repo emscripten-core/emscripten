@@ -1461,7 +1461,7 @@ var LibrarySDL = {
     var size  = driverName.length;
 
     if (max_size <= size) {
-      size = max_size - 1; //-1 cause null-terminator
+      size = max_size - 1; // -1 because of null-terminator
     }
 
     while (index < size) {
@@ -1594,8 +1594,8 @@ var LibrarySDL = {
       if (surfData.isFlagSet({{{ cDefs.SDL_HWPALETTE }}})) {
         // If this is needed then
         // we should compact the data from 32bpp to 8bpp index.
-        // I think best way to implement this is use
-        // additional colorMap hash (color->index).
+        // I think the best way to implement this is to use
+        // an additional colorMap hash (color->index).
         // Something like this:
         //
         // var size = surfData.width * surfData.height;
@@ -1743,17 +1743,20 @@ var LibrarySDL = {
     // We actually do the whole screen in Unlock...
   },
 
-#if !ASYNCIFY
+#if ASYNCIFY
+  SDL_Delay: 'emscripten_sleep',
+#else
+#if ASSERTIONS
+  SDL_Delay__deps: ['$warnOnce'],
+#endif
   SDL_Delay: (delay) => {
-    if (!ENVIRONMENT_IS_WORKER) abort('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
+#if ASSERTIONS
+    if (!ENVIRONMENT_IS_WORKER) warnOnce('SDL_Delay called on the main thread! Potential infinite loop, quitting. (consider building with async support like ASYNCIFY)');
+#endif
     // horrible busy-wait, but in a worker it at least does not block rendering
     var now = Date.now();
     while (Date.now() - now < delay) {}
   },
-#else
-  SDL_Delay__deps: ['emscripten_sleep'],
-  SDL_Delay__async: true,
-  SDL_Delay: (delay) => _emscripten_sleep(delay),
 #endif
 
   SDL_WM_SetCaption__proxy: 'sync',
@@ -1948,9 +1951,9 @@ var LibrarySDL = {
 #endif
 
     if (surfData.isFlagSet({{{ cDefs.SDL_HWPALETTE }}})) {
-      //in SDL_HWPALETTE color is index (0..255)
-      //so we should translate 1 byte value to
-      //32 bit canvas
+      // in SDL_HWPALETTE color is index (0..255)
+      // so we should translate 1 byte value to
+      // 32 bit canvas
       color = surfData.colors32[color];
     }
 
@@ -2521,7 +2524,7 @@ var LibrarySDL = {
           source['connect'](SDL.audioContext['destination']);
 
           SDL.fillWebAudioBufferFromHeap(ptr, sizeSamplesPerChannel, soundBuffer);
-          // Workaround https://bugzilla.mozilla.org/show_bug.cgi?id=883675 by setting the buffer only after filling. The order is important here!
+          // Workaround https://bugzil.la/883675 by setting the buffer only after filling. The order is important here!
           source['buffer'] = soundBuffer;
 
           // Schedule the generated sample buffer to be played out at the correct time right after the previously scheduled
@@ -2775,7 +2778,7 @@ var LibrarySDL = {
 
     // To allow user code to work around browser bugs with audio playback on <audio> elements an Web Audio, enable
     // the user code to hook in a callback to decide on a file basis whether each file should use Web Audio or <audio> for decoding and playback.
-    // In particular, see https://bugzilla.mozilla.org/show_bug.cgi?id=654787 and ?id=1012801 for tradeoffs.
+    // In particular, see https://bugzil.la/654787 and https://bugzil.la/1012801 for tradeoffs.
     var canPlayWithWebAudio = Module['SDL_canPlayWithWebAudio'] === undefined || Module['SDL_canPlayWithWebAudio'](filename, arrayBuffer);
 
     if (bytes !== undefined && SDL.webAudioAvailable() && canPlayWithWebAudio) {
@@ -3117,13 +3120,16 @@ var LibrarySDL = {
     try {
       var offscreenCanvas = new OffscreenCanvas(0, 0);
       SDL.ttfContext = offscreenCanvas.getContext('2d');
-      // Firefox support for OffscreenCanvas is still experimental, and it seems
-      // like CI might be creating a context here but one that is not entirely
-      // valid. Check that explicitly and fall back to a plain Canvas if we need
-      // to. See https://github.com/emscripten-core/emscripten/issues/16242
-      if (typeof SDL.ttfContext.measureText != 'function') {
-        abort('bad context');
+#if MIN_FIREFOX_VERSION < 128 // Conservative, not exact
+      // According to https://developer.mozilla.org/en-US/docs/Web/API/OffscreenCanvasRenderingContext2D
+      // OffscreenCanvasRenderingContext2D.measureText() appeared in
+      // Chrome 69, Firefox 105 and Safari 16.4. Fall back to using regular
+      // Canvas2D if OffscreenCanvas2D exists, but does not look workable.
+      // https://github.com/emscripten-core/emscripten/issues/16242
+      if (!SDL.ttfContext.measureText) {
+        throw 1; // no OffscreenCanvasRenderingContext2D.measureText
       }
+#endif
     } catch (ex) {
       var canvas = /** @type {HTMLCanvasElement} */(document.createElement('canvas'));
       SDL.ttfContext = canvas.getContext('2d');
@@ -3169,7 +3175,7 @@ var LibrarySDL = {
     surfData.ctx.font = fontString;
     // use bottom alignment, because it works
     // same in all browsers, more info here:
-    // https://bugzilla.mozilla.org/show_bug.cgi?id=737852
+    // https://bugzil.la/737852
     surfData.ctx.textBaseline = 'bottom';
     surfData.ctx.fillText(text, 0, h|0);
     surfData.ctx.restore();

@@ -22,6 +22,9 @@
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
 #endif
+#if EXPORT_ES6 && (MIN_FIREFOX_VERSION < 114 || MIN_CHROME_VERSION < 80 || MIN_SAFARI_VERSION < 150000)
+#error "internal error, feature_matrix should not allow this"
+#endif
 
 {{{
 #if MEMORY64
@@ -48,6 +51,12 @@ const pthreadWorkerOptions = `{
         // This is the way that we signal to the node worker that it is hosting
         // a pthread.
         'workerData': 'em-pthread',
+#if WASMFS
+        // In WasmFS, close() is not proxied to the main thread. Suppress
+        // warnings when a thread closes a file descriptor it didn't open.
+        // See: https://github.com/emscripten-core/emscripten/issues/24731
+        'trackUnmanagedFds': false,
+#endif
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
         // This is the way that we signal to the Web Worker that it is hosting
@@ -125,7 +134,7 @@ var LibraryPThread = {
 #endif // !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
 #if MAIN_MODULE
       PThread.outstandingPromises = {};
-      // Finished threads are threads that have finished running but we not yet
+      // Finished threads are threads that have finished running but we are not yet
       // joined.
       PThread.finishedThreads = new Set();
 #endif
@@ -167,7 +176,7 @@ var LibraryPThread = {
 #endif
       // Attempt to kill all workers.  Sadly (at least on the web) there is no
       // way to terminate a worker synchronously, or to be notified when a
-      // worker in actually terminated.  This means there is some risk that
+      // worker is actually terminated.  This means there is some risk that
       // pthreads will continue to be executing after `worker.terminate` has
       // returned.  For this reason, we don't call `returnWorkerToPool` here or
       // free the underlying pthread data structures.
@@ -186,7 +195,7 @@ var LibraryPThread = {
       // some operations that leave the worker queue in an invalid state until
       // we are completely done (it would be bad if free() ends up calling a
       // queued pthread_create which looks at the global data structures we are
-      // modifying). To achieve that, defer the free() til the very end, when
+      // modifying). To achieve that, defer the free() until the very end, when
       // we are all done.
       var pthread_ptr = worker.pthread_ptr;
       delete PThread.pthreads[pthread_ptr];
@@ -408,8 +417,9 @@ var LibraryPThread = {
       // Module['pthreadPoolReady'] promise.
       Module['pthreadPoolReady'] = pthreadPoolReady;
       return;
-#endif
+#else
       return pthreadPoolReady;
+#endif
     },
 #endif // PTHREAD_POOL_SIZE
 
@@ -423,7 +433,7 @@ var LibraryPThread = {
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
-      if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+      if (globalThis.trustedTypes?.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (ignored) => new URL('{{{ pthreadWorkerScript }}}', import.meta.url) });
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
@@ -437,14 +447,34 @@ var LibraryPThread = {
           worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
         } else
 #endif
+#if CROSS_ORIGIN && ENVIRONMENT_MAY_BE_WEB
+      // Support cross-origin loading by creating a new Blob URL to actually
+      // perform the `import`.  Without this the `new Worker` would fail
+      // due to CORS restrictions.
+      // https://github.com/emscripten-core/emscripten/issues/21937
+      if (ENVIRONMENT_IS_WEB) {
+        var url = URL.createObjectURL(new Blob([`import '${import.meta.url}'`], { type: 'application/javascript' }));
+        worker = new Worker(url, {{{ pthreadWorkerOptions }}});
+      } else
+#endif
       // We need to generate the URL with import.meta.url as the base URL of the JS file
-      // instead of just using new URL(import.meta.url) because bundler's only recognize
+      // instead of just using new URL(import.meta.url) because bundlers only recognize
       // the first case in their bundling step. The latter ends up producing an invalid
       // URL to import from the server (e.g., for webpack the file:// path).
       // See https://github.com/webpack/webpack/issues/12638
       worker = new Worker(new URL('{{{ pthreadWorkerScript }}}', import.meta.url), {{{ pthreadWorkerOptions }}});
 #else // EXPORT_ES6
       var pthreadMainJs = _scriptName;
+#if CROSS_ORIGIN && ENVIRONMENT_MAY_BE_WEB
+      // In order to support cross origin loading of worker threads load the
+      // worker via a tiny inline `importScripts` call.   For some reason it's
+      // fine to `importScripts` across origins, in cases where new Worker
+      // itself does not allow this.
+      // https://github.com/emscripten-core/emscripten/issues/21937
+      if (ENVIRONMENT_IS_WEB) {
+        pthreadMainJs = URL.createObjectURL(new Blob([`importScripts('${_scriptName}')`], { type: 'application/javascript' }));
+      }
+#endif
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
       // We can't use makeModuleReceiveWithVar here since we want to also
       // call URL.createObjectURL on the mainScriptUrlOrBlob.
@@ -460,7 +490,7 @@ var LibraryPThread = {
 #endif
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
-      if (typeof trustedTypes != 'undefined' && trustedTypes.createPolicy) {
+      if (globalThis.trustedTypes?.createPolicy) {
         var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
         worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
       } else
@@ -514,9 +544,9 @@ var LibraryPThread = {
     worker.terminate();
     // terminate() can be asynchronous, so in theory the worker can continue
     // to run for some amount of time after termination.  However from our POV
-    // the worker now dead and we don't want to hear from it again, so we stub
+    // the worker is now dead and we don't want to hear from it again, so we stub
     // out its message handler here.  This avoids having to check in each of
-    // the onmessage handlers if the message was coming from valid worker.
+    // the onmessage handlers if the message was coming from a valid worker.
     worker.onmessage = (e) => {
 #if ASSERTIONS
       var cmd = e['data'].cmd;
@@ -542,7 +572,7 @@ var LibraryPThread = {
     // Called when a thread needs to be strongly referenced.
     // Currently only used for:
     // - keeping the "main" thread alive in PROXY_TO_PTHREAD mode;
-    // - crashed threads that needs to propagate the uncaught exception
+    // - crashed threads that need to propagate the uncaught exception
     //   back to the main thread.
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
@@ -575,7 +605,7 @@ var LibraryPThread = {
 #if MAIN_MODULE
   $registerTLSInit: (tlsInitFunc, moduleExports, metadata) => {
 #if DYLINK_DEBUG
-    dbg("registerTLSInit: " + tlsInitFunc);
+    dbg('registerTLSInit:', tlsInitFunc, metadata?.tlsExports);
 #endif
     // In relocatable builds, we use the result of calling tlsInitFunc
     // (`_emscripten_tls_init`) to relocate the TLS exports of the module
@@ -594,7 +624,7 @@ var LibraryPThread = {
       }
       var tlsExports = {};
       metadata.tlsExports.forEach((s) => tlsExports[s] = moduleExports[s]);
-      relocateExports(tlsExports, __tls_base, /*replace=*/true);
+      updateGOT(relocateExports(tlsExports, __tls_base), /*replace=*/true);
     }
 
     // Register this function so that its gets called for each thread on
@@ -660,7 +690,7 @@ var LibraryPThread = {
   },
 
   _emscripten_init_main_thread_js: (tb) => {
-    // Pass the thread address to the native code where they stored in wasm
+    // Pass the thread address to the native code where they are stored in wasm
     // globals which act as a form of TLS. Global constructors trying
     // to access this value will read the wrong value, but that is UB anyway.
     __emscripten_thread_init(
@@ -881,10 +911,10 @@ var LibraryPThread = {
 #endif
   },
 
-  // This function is call by a pthread to signal that exit() was called and
+  // This function is called by a pthread to signal that exit() was called and
   // that the entire process should exit.
   // This function is always called from a pthread, but is executed on the
-  // main thread due the __proxy attribute.
+  // main thread due to the __proxy attribute.
   $exitOnMainThread__deps: ['exit'],
   $exitOnMainThread__proxy: 'async',
   $exitOnMainThread: (returnCode) => {
@@ -905,7 +935,7 @@ var LibraryPThread = {
 
   $proxyToMainThread__deps: ['$stackSave', '$stackRestore', '$stackAlloc', '_emscripten_run_js_on_main_thread'],
   $proxyToMainThread__docs: '/** @type{function(number, (number|boolean), ...number)} */',
-  $proxyToMainThread: (funcIndex, emAsmAddr, sync, ...callArgs) => {
+  $proxyToMainThread: (funcIndex, emAsmAddr, proxyMode, ...callArgs) => {
     // EM_ASM proxying is done by passing a pointer to the address of the EM_ASM
     // content as `emAsmAddr`.  JS library proxying is done by passing an index
     // into `proxiedJSCallArgs` as `funcIndex`. If `emAsmAddr` is non-zero then
@@ -914,8 +944,11 @@ var LibraryPThread = {
     // function arguments.
     // The serialization buffer contains the number of call params, and then
     // all the args here.
-    // We also pass 'sync' to C separately, since C needs to look at it.
-    // Allocate a buffer, which will be copied by the C code.
+    //
+    // We also pass 'proxyMode' to C separately, since C needs to look at it.
+    //
+    // Allocate a buffer (on the stack), which will be copied if necessary by
+    // the C code.
     //
     // First passed parameter specifies the number of arguments to the function.
     // When BigInt support is enabled, we must handle types in a more complex
@@ -923,27 +956,26 @@ var LibraryPThread = {
     // type info here). To do that, add a "prefix" before each value that
     // indicates if it is a BigInt, which effectively doubles the number of
     // values we serialize for proxying. TODO: pack this?
-    var serializedNumCallArgs = callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
+    var bufSize = 8 * callArgs.length {{{ WASM_BIGINT ? "* 2" : "" }}};
     var sp = stackSave();
-    var args = stackAlloc(serializedNumCallArgs * 8);
+    var args = stackAlloc(bufSize);
     var b = {{{ getHeapOffset('args', 'i64') }}};
-    for (var i = 0; i < callArgs.length; i++) {
-      var arg = callArgs[i];
+    for (var arg of callArgs) {
 #if WASM_BIGINT
       if (typeof arg == 'bigint') {
         // The prefix is non-zero to indicate a bigint.
-        HEAP64[b + 2*i] = 1n;
-        HEAP64[b + 2*i + 1] = arg;
+        HEAP64[b++] = 1n;
+        HEAP64[b++] = arg;
       } else {
         // The prefix is zero to indicate a JS Number.
-        HEAP64[b + 2*i] = 0n;
-        HEAPF64[b + 2*i + 1] = arg;
+        HEAP64[b++] = 0n;
+        HEAPF64[b++] = arg;
       }
 #else
-      HEAPF64[b + i] = arg;
+      HEAPF64[b++] = arg;
 #endif
     }
-    var rtn = __emscripten_run_js_on_main_thread(funcIndex, emAsmAddr, serializedNumCallArgs, args, sync);
+    var rtn = __emscripten_run_js_on_main_thread(funcIndex, emAsmAddr, bufSize, args, proxyMode);
     stackRestore(sp);
     return rtn;
   },
@@ -953,29 +985,30 @@ var LibraryPThread = {
 
   _emscripten_receive_on_main_thread_js__deps: [
     '$proxyToMainThread',
+    '_emscripten_run_js_on_main_thread_done',
     '$proxiedJSCallArgs'],
-  _emscripten_receive_on_main_thread_js: (funcIndex, emAsmAddr, callingThread, numCallArgs, args) => {
+  _emscripten_receive_on_main_thread_js: (funcIndex, emAsmAddr, callingThread, bufSize, args, ctx, ctxArgs) => {
     // Sometimes we need to backproxy events to the calling thread (e.g.
     // HTML5 DOM events handlers such as
     // emscripten_set_mousemove_callback()), so keep track in a globally
     // accessible variable about the thread that initiated the proxying.
-#if WASM_BIGINT
-    numCallArgs /= 2;
-#endif
-    proxiedJSCallArgs.length = numCallArgs;
+    proxiedJSCallArgs.length = 0;
     var b = {{{ getHeapOffset('args', 'i64') }}};
-    for (var i = 0; i < numCallArgs; i++) {
+    var end = {{{ getHeapOffset('args + bufSize', 'i64') }}};
+    while (b < end) {
 #if WASM_BIGINT
-      if (HEAP64[b + 2*i]) {
+      var arg;
+      if (HEAP64[b++]) {
         // It's a BigInt.
-        proxiedJSCallArgs[i] = HEAP64[b + 2*i + 1];
+        arg = HEAP64[b++];
       } else {
         // It's a Number.
-        proxiedJSCallArgs[i] = HEAPF64[b + 2*i + 1];
+        arg = HEAPF64[b++];
       }
 #else
-      proxiedJSCallArgs[i] = HEAPF64[b + i];
+      var arg = HEAPF64[b++];
 #endif
+      proxiedJSCallArgs.push(arg);
     }
     // Proxied JS library funcs use funcIndex and EM_ASM functions use emAsmAddr
 #if HAVE_EM_ASM
@@ -988,11 +1021,16 @@ var LibraryPThread = {
 #endif
 #if ASSERTIONS
     assert(!(funcIndex && emAsmAddr));
-    assert(func.length == numCallArgs, 'Call args mismatch in _emscripten_receive_on_main_thread_js');
+    assert(func.length == proxiedJSCallArgs.length, 'Call args mismatch in _emscripten_receive_on_main_thread_js');
 #endif
     PThread.currentProxiedOperationCallerThread = callingThread;
     var rtn = func(...proxiedJSCallArgs);
     PThread.currentProxiedOperationCallerThread = 0;
+    if (ctx) {
+      rtn.then((rtn) => __emscripten_run_js_on_main_thread_done(ctx, ctxArgs, rtn));
+      return;
+    }
+
 #if MEMORY64
     // In memory64 mode some proxied functions return bigint/pointer but
     // our return type is i53/double.
@@ -1002,7 +1040,7 @@ var LibraryPThread = {
 #endif
 #if ASSERTIONS
     // Proxied functions can return any type except bigint.  All other types
-    // cooerce to f64/double (the return type of this function in C) but not
+    // coerce to f64/double (the return type of this function in C) but not
     // bigint.
     assert(typeof rtn != "bigint");
 #endif
@@ -1048,9 +1086,6 @@ var LibraryPThread = {
     '$runtimeKeepaliveCounter',
 #endif
   ],
-#if ASYNCIFY
-  $invokeEntryPoint__async: true,
-#endif
   $invokeEntryPoint: {{{ asyncIf(ASYNCIFY == 2) }}}(ptr, arg) => {
 #if PTHREADS_DEBUG
     dbg(`invokeEntryPoint: ${ptrToString(ptr)}`);
@@ -1074,7 +1109,7 @@ var LibraryPThread = {
 
 #if MAIN_MODULE
     // Before we call the thread entry point, make sure any shared libraries
-    // have been loaded on this there.  Otherwise our table might be not be
+    // have been loaded on this thread.  Otherwise our table might be not be
     // in sync and might not contain the function pointer `ptr` at all.
     __emscripten_dlsync_self();
 #endif
@@ -1114,7 +1149,7 @@ var LibraryPThread = {
 #if MAIN_MODULE
   _emscripten_thread_exit_joinable: (thread) => {
     // Called when a thread exits and is joinable.  We mark these threads
-    // as finished, which means that are in state where are no longer actually
+    // as finished, which means they are in state where are no longer actually
     // running, but remain around waiting to be joined.  In this state they
     // cannot run any more proxied work.
     if (!ENVIRONMENT_IS_PTHREAD) markAsFinished(thread);
@@ -1131,19 +1166,16 @@ var LibraryPThread = {
     }
   },
 
-  // Asynchronous version dlsync_threads. Always run on the main thread.
-  // This work happens asynchronously. The `callback` is called once this work
-  // is completed, passing the ctx.
-  // TODO(sbc): Should we make a new form of __proxy attribute for JS library
-  // function that run asynchronously like but blocks the caller until they are
-  // done.  Perhaps "sync_with_ctx"?
-  _emscripten_dlsync_threads_async__deps: ['_emscripten_proxy_dlsync_async', '$makePromise'],
-  _emscripten_dlsync_threads_async: (caller, callback, ctx) => {
+  // Asynchronous version _emscripten_dlsync_threads.
+  // This is always called on the main thread. This work happens asynchronously.
+  $dlsyncThreadsAsync__deps: ['_emscripten_proxy_dlsync_async', '$makePromise'],
+  $dlsyncThreadsAsync: async () => {
+    const caller = PThread.currentProxiedOperationCallerThread;
 #if PTHREADS_DEBUG
-    dbg("_emscripten_dlsync_threads_async caller=" + ptrToString(caller));
+    dbg("dlsyncThreadsAsync caller=" + ptrToString(caller));
 #endif
 #if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! _emscripten_dlsync_threads_async() can only ever be called from main thread');
+    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! dlsyncThreadsAsync() can only ever be called from main thread');
     assert(Object.keys(PThread.outstandingPromises).length === 0);
 #endif
 
@@ -1171,29 +1203,29 @@ var LibraryPThread = {
     }
 
 #if PTHREADS_DEBUG
-    dbg(`_emscripten_dlsync_threads_async: waiting on ${promises.length} promises`);
+    dbg(`dlsyncThreadsAsync: waiting on ${promises.length} promises`);
 #endif
-    // Once all promises are resolved then we know all threads are in sync and
-    // we can call the callback.
-    Promise.all(promises).then(() => {
-      PThread.outstandingPromises = {};
+    await Promise.all(promises);
+
+    PThread.outstandingPromises = {};
 #if PTHREADS_DEBUG
-      dbg('_emscripten_dlsync_threads_async done: calling callback');
+    dbg('dlsyncThreadsAsync done');
 #endif
-      {{{ makeDynCall('vp', 'callback') }}}(ctx);
-    });
   },
 
-  // Synchronous version dlsync_threads. This is only needed for the case then
-  // the main thread call dlopen and in that case we have not choice but to
+  // Synchronous version of dlsync_threads. This is only needed for the case when
+  // the main thread call dlopen and in that case we have no choice but to
   // synchronously block the main thread until all other threads are in sync.
   // When `dlopen` is called from a worker, the worker itself is blocked but
   // the operation its waiting on (on the main thread) can be async.
-  _emscripten_dlsync_threads__deps: ['_emscripten_proxy_dlsync'],
+  _emscripten_dlsync_threads__deps: ['_emscripten_proxy_dlsync', '$dlsyncThreadsAsync'],
+  _emscripten_dlsync_threads__async: 'auto',
+  _emscripten_dlsync_threads__proxy: 'sync',
   _emscripten_dlsync_threads: () => {
-#if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! _emscripten_dlsync_threads() can only ever be called from main thread');
-#endif
+    const callingThread = PThread.currentProxiedOperationCallerThread;
+    if (callingThread) {
+      return dlsyncThreadsAsync();
+    }
     for (const ptr of Object.keys(PThread.pthreads)) {
       const pthread_ptr = Number(ptr);
       if (!PThread.finishedThreads.has(pthread_ptr)) {
@@ -1232,9 +1264,9 @@ var LibraryPThread = {
     }
   }),
 
-  _emscripten_thread_mailbox_await__deps: ['$checkMailbox'],
+  _emscripten_thread_mailbox_await__deps: ['$checkMailbox', '$waitAsyncPolyfilled'],
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
-    if (typeof Atomics.waitAsync === 'function') {
+    if (!waitAsyncPolyfilled) {
       // Wait on the pthread's initial self-pointer field because it is easy and
       // safe to access from sending threads that need to notify the waiting
       // thread.

@@ -27,7 +27,7 @@ addToLibrary({
         return plugin['handle'](byteArray, fullname);
       }
     }
-    // In no plugin handled this file then return the original/unmodified
+    // If no plugin handled this file then return the original/unmodified
     // byteArray.
     return byteArray;
   },
@@ -83,7 +83,7 @@ addToLibrary({
   },
 #endif
 
-  // convert the 'r', 'r+', etc. to it's corresponding set of O_* flags
+  // convert the 'r', 'r+', etc. to its corresponding set of O_* flags
   $FS_modeStringToFlags: (str) => {
     var flagModes = {
       'r': {{{ cDefs.O_RDONLY }}},
@@ -151,8 +151,7 @@ addToLibrary({
       } else
 #endif
 #if ENVIRONMENT_MAY_BE_WEB
-      if (typeof window != 'undefined' &&
-        typeof window.prompt == 'function') {
+      if (globalThis.window?.prompt) {
         // Browser.
         result = window.prompt('Input: ');  // returns null on cancel
         if (result !== null) {
@@ -161,8 +160,8 @@ addToLibrary({
       } else
 #endif
 #if ENVIRONMENT_MAY_BE_SHELL
-      if (typeof readline == 'function') {
-        // Command line.
+      if (globalThis.readline) {
+        /** @suppress{checkTypes, undefinedVars} */
         result = readline();
         if (result) {
           result += '\n';

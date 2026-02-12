@@ -95,7 +95,13 @@ addToLibrary({
       if (!response.ok) {
         throw response;
       }
+#if MIN_FIREFOX_VERSION < 128 || MIN_CHROME_VERSION < 132 || MIN_SAFARI_VERSION < 180000 || MIN_NODE_VERSION < 220300
+      // Use the old .arrayBuffer() method when targeting old environments.
+      var bytes = new Uint8Array(await response['arrayBuffer']());
+#else
+      // Use the new .bytes() method to save a bit of code size when all target environments have it. https://developer.mozilla.org/en-US/docs/Web/API/Response/bytes
       var bytes = await response['bytes']();
+#endif
       for (i = firstChunk; i <= lastChunk; i++) {
         wasmFS$JSMemoryRanges[file].chunks[i] = bytes.slice(i*chunkSize-start,(i+1)*chunkSize-start);
       }

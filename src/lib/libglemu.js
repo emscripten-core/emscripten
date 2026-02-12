@@ -10,7 +10,7 @@ assert(!FULL_ES3, 'cannot emulate both ES3 and legacy GL');
 
 {{{
   const copySigs = (func) => {
-    if (!RELOCATABLE) return '';
+    if (!MAIN_MODULE && !RELOCATABLE) return '';
     return ` _${func}.sig = _emscripten_${func}.sig = orig_${func}.sig;`;
   };
   const fromPtr = (arg) => {
@@ -409,7 +409,7 @@ var LibraryGLEmulation = {
             return;
           }
           case 0x0D32: { // GL_MAX_CLIP_PLANES
-            {{{ makeSetValue('params', '0', 'GLEmulation.MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support atleast 6
+            {{{ makeSetValue('params', '0', 'GLEmulation.MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support at least 6
             return;
           }
           case 0x0BA0: { // GL_MATRIX_MODE
@@ -626,10 +626,10 @@ var LibraryGLEmulation = {
         if (GL.debug) {
           dbg('[using program with shaders]');
           if (program) {
-            GL.programShaders[program].forEach((shader) => {
+            for (var shader of GL.programShaders[program]) {
               dbg(`  shader ${shader}, original source: ${GL.shaderOriginalSources[shader]}`);
               dbg(`         Source: ${GL.shaderSources[shader]}`);
-            });
+            }
           }
         }
 #endif
@@ -3892,7 +3892,7 @@ var LibraryGLEmulation = {
   },
 
   gluProject: (objX, objY, objZ, model, proj, view, winX, winY, winZ) => {
-    // The algorithm for this functions comes from Mesa
+    // The algorithm for this function comes from Mesa
 
     var inVec = new Float32Array(4);
     var outVec = new Float32Array(4);

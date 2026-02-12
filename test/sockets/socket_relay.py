@@ -14,17 +14,16 @@ and then make a connection to another port, and do bidirectional
 communication. We need to actually listen on both ports.
 """
 
-import sys
 import socket
-import time
+import sys
 import threading
-from typing import Optional
+import time
 
 ports = [int(sys.argv[1]), int(sys.argv[2])]
 
 
 class Listener(threading.Thread):
-  other: Optional[Listener] = None  # noqa: F821
+  other: Listener | None = None  # noqa: F821
 
   def run(self):
     self.conn = None

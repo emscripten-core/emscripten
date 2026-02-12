@@ -21,6 +21,9 @@ addToLibrary({
 
 #if ASYNCIFY
   $Asyncify__deps: ['$runAndAbortIfError', '$callUserCallback',
+#if ASSERTIONS
+    '$createNamedFunction',
+#endif
 #if !MINIMAL_RUNTIME
     '$runtimeKeepalivePush', '$runtimeKeepalivePop',
 #endif
@@ -110,20 +113,18 @@ addToLibrary({
     },
 #endif
 
+#if ASYNCIFY == 1
     instrumentFunction(original) {
       var wrapper = (...args) => {
 #if ASYNCIFY_DEBUG >= 2
         dbg(`ASYNCIFY: ${'  '.repeat(Asyncify.exportCallStack.length)} try ${original}`);
 #endif
-#if ASYNCIFY == 1
         Asyncify.exportCallStack.push(original);
         try {
-#endif
-#if ASYNCIFY == 1 && MEMORY64
+#if MEMORY64
           Asyncify.saveRewindArguments(original, args);
 #endif
           return original(...args);
-#if ASYNCIFY == 1
         } finally {
           if (!ABORT) {
             var top = Asyncify.exportCallStack.pop();
@@ -136,16 +137,17 @@ addToLibrary({
             Asyncify.maybeStopUnwind();
           }
         }
-#endif
       };
-#if ASYNCIFY == 1
       Asyncify.funcWrappers.set(original, wrapper);
-#endif
 #if MAIN_MODULE
       wrapper.orig = original;
 #endif
+#if ASSERTIONS
+      wrapper = createNamedFunction(`__asyncify_wrapper_${original.name}`, wrapper);
+#endif
       return wrapper;
     },
+#endif // ASYNCIFY == 1
 
     instrumentWasmExports(exports) {
 #if EMBIND_GEN_MODE
@@ -169,11 +171,12 @@ addToLibrary({
             Asyncify.asyncExports.add(original);
             original = Asyncify.makeAsyncFunction(original);
           }
-#endif
+          ret[x] = original;
+#else
           var wrapper = Asyncify.instrumentFunction(original);
           ret[x] = wrapper;
-
-       } else {
+#endif
+        } else {
           ret[x] = original;
         }
       }
@@ -314,13 +317,12 @@ addToLibrary({
       {{{ runtimeKeepalivePop(); }}}
 #if MEMORY64
       // When re-winding, the arguments to a function are ignored.  For i32 arguments we
-      // can just call the function with no args at all since and the engine will produce zeros
+      // can just call the function with no args at all since the engine will produce zeros
       // for all arguments.  However, for i64 arguments we get `undefined cannot be converted to
       // BigInt`.
-      return func(...Asyncify.restoreRewindArguments(original));
-#else
-      return func();
+      func = func.bind(0, ...Asyncify.restoreRewindArguments(original));
 #endif
+      return callUserCallback(func);
     },
 
     // This receives a function to call to start the async operation, and
@@ -343,7 +345,8 @@ addToLibrary({
         var reachedAfterCallback = false;
         startAsync((handleSleepReturnValue = 0) => {
 #if ASSERTIONS
-          assert(!handleSleepReturnValue || typeof handleSleepReturnValue == 'number' || typeof handleSleepReturnValue == 'boolean'); // old emterpretify API supported other stuff
+          // old emterpretify API supported other stuff
+          assert(['undefined', 'number', 'boolean', 'bigint'].includes(typeof handleSleepReturnValue), `invalid type for handleSleepReturnValue: '${typeof handleSleepReturnValue}'`);
 #endif
           if (ABORT) return;
           Asyncify.handleSleepReturnValue = handleSleepReturnValue;
@@ -386,7 +389,7 @@ addToLibrary({
             // `Asyncify.handleSleepReturnValue`.
             // `Asyncify.handleSleepReturnValue` contains the return
             // value of the last C function to have executed
-            // `Asyncify.handleSleep()`, where as `asyncWasmReturnValue`
+            // `Asyncify.handleSleep()`, whereas `asyncWasmReturnValue`
             // contains the return value of the exported WASM function
             // that may have called C functions that
             // call `Asyncify.handleSleep()`.
@@ -440,9 +443,9 @@ addToLibrary({
     //
     // This is particularly useful for native JS `async` functions where the
     // returned value will "just work" and be passed back to C++.
-    handleAsync: (startAsync) => Asyncify.handleSleep((wakeUp) => {
+    handleAsync: (startAsync) => Asyncify.handleSleep(async (wakeUp) => {
       // TODO: add error handling as a second param when handleSleep implements it.
-      startAsync().then(wakeUp);
+      wakeUp(await startAsync());
     }),
 
 #elif ASYNCIFY == 2
@@ -474,13 +477,12 @@ addToLibrary({
 #endif
   },
 
-  emscripten_sleep__deps: ['$safeSetTimeout'],
-  emscripten_sleep__async: true,
-  emscripten_sleep: (ms) => Asyncify.handleSleep((wakeUp) => safeSetTimeout(wakeUp, ms)),
+  emscripten_sleep__async: 'auto',
+  emscripten_sleep: (ms) => new Promise((resolve) => setTimeout(resolve, ms)),
 
   emscripten_wget_data__deps: ['$asyncLoad', 'malloc'],
-  emscripten_wget_data__async: true,
-  emscripten_wget_data: (url, pbuffer, pnum, perror) => Asyncify.handleAsync(async () => {
+  emscripten_wget_data__async: 'auto',
+  emscripten_wget_data: async (url, pbuffer, pnum, perror) => {
     /* no need for run dependency, this is async but will not do any prepare etc. step */
     try {
       const byteArray = await asyncLoad(UTF8ToString(url));
@@ -493,7 +495,7 @@ addToLibrary({
     } catch (err) {
       {{{ makeSetValue('perror', 0, '1', 'i32') }}};
     }
-  }),
+  },
 
   emscripten_scan_registers__deps: ['$safeSetTimeout'],
   emscripten_scan_registers__async: true,
@@ -513,11 +515,11 @@ addToLibrary({
   },
 
   _load_secondary_module__sig: 'v',
-  _load_secondary_module__async: true,
+  _load_secondary_module__async: 'auto',
   _load_secondary_module: async function() {
     // Mark the module as loading for the wasm module (so it doesn't try to load it again).
     wasmExports['load_secondary_module_status'].value = 1;
-    var imports = {'primary': wasmExports};
+    var imports = {'primary': wasmRawExports};
     // Replace '.wasm' suffix with '.deferred.wasm'.
     var deferred = wasmBinaryFile.slice(0, -5) + '.deferred.wasm';
     await instantiateAsync(null, deferred, imports);

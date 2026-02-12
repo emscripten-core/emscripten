@@ -7,10 +7,6 @@
 
 #pragma once
 
-#if __cplusplus < 201103L
-#error Including <emscripten/val.h> requires building with -std=c++11 or newer!
-#endif
-
 #include <cassert>
 #include <array>
 #include <climits>
@@ -19,6 +15,7 @@
 #include <vector>
 #include <type_traits>
 #include <pthread.h>
+#include <optional>
 #if __cplusplus >= 202002L
 #include <coroutine>
 #include <exception>
@@ -214,6 +211,12 @@ inline void writeGenericWireType(GenericWireType*& cursor, uint64_t wt) {
   ++cursor;
 }
 
+// Explicit overload for size_t to prevent fallback to the 32-bit generic template
+inline void writeGenericWireType(GenericWireType*& cursor, std::size_t wt) {
+  cursor->w[0].s = wt; // Uses the size_t member (64-bit in Memory64)
+  ++cursor;
+}
+
 template<typename T>
 void writeGenericWireType(GenericWireType*& cursor, T* wt) {
   cursor->w[0].p = wt;
@@ -229,6 +232,7 @@ inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<Ele
 
 template<typename T>
 void writeGenericWireType(GenericWireType*& cursor, T wt) {
+  static_assert(sizeof(T) <= sizeof(cursor->w[0].u), "Generic wire type must be smaller than unsigned.");
   cursor->w[0].u = static_cast<unsigned>(wt);
   ++cursor;
 }
@@ -288,7 +292,7 @@ public:
       val view{ typed_memory_view(std::distance(begin, end), std::to_address(begin)) };
       return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
     }
-    // For numeric arrays, following codes are unreachable and the compiler
+    // For numeric arrays, the following code is unreachable and the compiler
     // will do 'dead code elimination'.
     // Others fallback old way.
 #endif
@@ -346,7 +350,7 @@ public:
   explicit val(T&& value, Policies...) {
     using namespace internal;
 
-    new (this) val(internalCall<EM_INVOKER_KIND::CAST, WithPolicies<Policies...>, val>(nullptr, nullptr, std::forward<T>(value)));
+    new (this) val(internalCallWithPolicy<EM_INVOKER_KIND::CAST, WithPolicies<Policies...>, val>(nullptr, nullptr, std::forward<T>(value)));
   }
 
   val() : val(EM_VAL(internal::_EMVAL_UNDEFINED)) {}
@@ -493,28 +497,28 @@ public:
   val new_(Args&&... args) const {
     using namespace internal;
 
-    return internalCall<EM_INVOKER_KIND::CONSTRUCTOR, WithPolicies<>, val>(as_handle(), nullptr, std::forward<Args>(args)...);
+    return internalCall<EM_INVOKER_KIND::CONSTRUCTOR, val>(as_handle(), nullptr, std::forward<Args>(args)...);
   }
 
   template<typename... Args>
   val operator()(Args&&... args) const {
     using namespace internal;
 
-    return internalCall<EM_INVOKER_KIND::FUNCTION, WithPolicies<>, val>(as_handle(), nullptr, std::forward<Args>(args)...);
+    return internalCall<EM_INVOKER_KIND::FUNCTION, val>(as_handle(), nullptr, std::forward<Args>(args)...);
   }
 
   template<typename ReturnValue, typename... Args>
   ReturnValue call(const char* name, Args&&... args) const {
     using namespace internal;
 
-    return internalCall<EM_INVOKER_KIND::METHOD, WithPolicies<>, ReturnValue>(as_handle(), name, std::forward<Args>(args)...);
+    return internalCall<EM_INVOKER_KIND::METHOD, ReturnValue>(as_handle(), name, std::forward<Args>(args)...);
   }
 
   template<typename T, typename ...Policies>
   T as(Policies...) const {
     using namespace internal;
 
-    return internalCall<EM_INVOKER_KIND::CAST, WithPolicies<Policies...>, T>(as_handle(), nullptr, *this);
+    return internalCallWithPolicy<EM_INVOKER_KIND::CAST, WithPolicies<Policies...>, T>(as_handle(), nullptr, *this);
   }
 
 // Prefer calling val::typeOf() over val::typeof(), since this form works in both C++11 and GNU++11 build modes. "typeof" is a reserved word in GNU++11 extensions.
@@ -574,11 +578,21 @@ private:
   template<typename WrapperType>
   friend val internal::wrapped_extend(const std::string& , const val& );
 
-  template<internal::EM_INVOKER_KIND Kind, typename Policy, typename Ret, typename... Args>
+  template<internal::EM_INVOKER_KIND Kind, typename Ret, typename... Args>
   static Ret internalCall(EM_VAL handle, const char *methodName, Args&&... args) {
-    static_assert(!std::is_lvalue_reference<Ret>::value,
-                  "Cannot create a lvalue reference out of a JS value.");
+    using namespace internal;
+    using Policy = WithPolicies<FilterTypes<isPolicy, Args...>>;
+    auto filteredArgs = Filter<isNotPolicy>(args...);
+    return std::apply(
+        [&](auto&&... actualArgs) -> decltype(auto) {
+          return internalCallWithPolicy<Kind, Policy, Ret>(handle, methodName, std::forward<decltype(actualArgs)>(actualArgs)...);
+        },
+        filteredArgs
+    );
+  }
 
+  template<internal::EM_INVOKER_KIND Kind, typename Policy, typename Ret, typename... Args>
+  static Ret internalCallWithPolicy(EM_VAL handle, const char *methodName, Args&&... args) {
     using namespace internal;
 
     using RetWire = BindingType<Ret>::WireType;
@@ -782,13 +796,13 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
                                               !std::is_const<T>::value>::type> {
   typedef EM_VAL WireType;
 
-  // Marshall to JS with move semantics when we can invalidate the temporary val
+  // Marshal to JS with move semantics when we can invalidate the temporary val
   // object.
   static WireType toWireType(val&& v, rvp::default_tag) {
     return v.release_ownership();
   }
 
-  // Marshal to JS with copy semantics when we cannot transfer the val objects
+  // Marshal to JS with copy semantics when we cannot transfer the val object's
   // reference count.
   static WireType toWireType(const val& v, rvp::default_tag) {
     EM_VAL handle = v.as_handle();
@@ -800,6 +814,29 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
   static T fromWireType(WireType v) {
     return T(val::take_ownership(v));
   }
+};
+
+template <typename T>
+struct BindingType<std::optional<T>> {
+    using ValBinding = BindingType<val>;
+    using WireType = ValBinding::WireType;
+
+    template<typename ReturnPolicy = void>
+    static WireType toWireType(std::optional<T> value, rvp::default_tag) {
+        if (value) {
+            return ValBinding::toWireType(val(*value, allow_raw_pointers()), rvp::default_tag{});
+        }
+        return ValBinding::toWireType(val::undefined(), rvp::default_tag{});
+    }
+
+
+    static std::optional<T> fromWireType(WireType value) {
+        val optional = val::take_ownership(value);
+        if (optional.isUndefined()) {
+            return {};
+        }
+        return optional.as<T>();
+    }
 };
 
 }

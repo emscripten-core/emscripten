@@ -170,13 +170,13 @@ var LibraryEmVal = {
   _emval_new_u16string__deps: ['$Emval'],
   _emval_new_u16string: (v) => Emval.toHandle(UTF16ToString(v)),
 
-  _emval_get_global__deps: ['$Emval', '$getStringOrSymbol', '$emGlobalThis'],
+  _emval_get_global__deps: ['$Emval', '$getStringOrSymbol'],
   _emval_get_global: (name) => {
     if (!name) {
-      return Emval.toHandle(emGlobalThis);
+      return Emval.toHandle(globalThis);
     }
     name = getStringOrSymbol(name);
-    return Emval.toHandle(emGlobalThis[name]);
+    return Emval.toHandle(globalThis[name]);
   },
 
   _emval_get_module_property__deps: ['$getStringOrSymbol', '$Emval'],
@@ -279,33 +279,7 @@ var LibraryEmVal = {
     var argFromPtr = argTypes.map(type => type.readValueFromPointer.bind(type));
     argCount--; // remove the extracted return type
 
-#if !DYNAMIC_EXECUTION
-    var argN = new Array(argCount);
-    var invokerFunction = (handle, methodName, destructorsRef, args) => {
-      var offset = 0;
-      for (var i = 0; i < argCount; ++i) {
-        argN[i] = argFromPtr[i](args + offset);
-        offset += GenericWireTypeSize;
-      }
-      var rv;
-      switch (kind) {
-        case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
-          rv = Emval.toValue(handle).apply(null, argN);
-          break;
-        case {{{ cDefs['internal::EM_INVOKER_KIND::CONSTRUCTOR'] }}}:
-          rv = Reflect.construct(Emval.toValue(handle), argN);
-          break;
-        case {{{ cDefs['internal::EM_INVOKER_KIND::CAST'] }}}:
-          // no-op, just return the argument
-          rv = argN[0];
-          break;
-        case {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}}:
-          rv = Emval.toValue(handle)[getStringOrSymbol(methodName)](...argN);
-          break;
-      }
-      return emval_returnValue(toReturnWire, destructorsRef, rv);
-    };
-#else
+#if DYNAMIC_EXECUTION
     var captures = {'toValue': Emval.toValue};
     var args = argFromPtr.map((argFromPtr, i) => {
       var captureName = `argFromPtr${i}`;
@@ -339,6 +313,32 @@ ${functionBody}
 }`;
 
     var invokerFunction = new Function(Object.keys(captures), functionBody)(...Object.values(captures));
+#else
+    var argN = new Array(argCount);
+    var invokerFunction = (handle, methodName, destructorsRef, args) => {
+      var offset = 0;
+      for (var i = 0; i < argCount; ++i) {
+        argN[i] = argFromPtr[i](args + offset);
+        offset += GenericWireTypeSize;
+      }
+      var rv;
+      switch (kind) {
+        case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
+          rv = Emval.toValue(handle).apply(null, argN);
+          break;
+        case {{{ cDefs['internal::EM_INVOKER_KIND::CONSTRUCTOR'] }}}:
+          rv = Reflect.construct(Emval.toValue(handle), argN);
+          break;
+        case {{{ cDefs['internal::EM_INVOKER_KIND::CAST'] }}}:
+          // no-op, just return the argument
+          rv = argN[0];
+          break;
+        case {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}}:
+          rv = Emval.toValue(handle)[getStringOrSymbol(methodName)](...argN);
+          break;
+      }
+      return emval_returnValue(toReturnWire, destructorsRef, rv);
+    };
 #endif
     var functionName = `methodCaller<(${argTypes.map(t => t.name)}) => ${retType.name}>`;
     return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
@@ -351,8 +351,7 @@ ${functionBody}
 
   // Same as `_emval_invoke`, just imported into Wasm under a different return type.
   // TODO: remove this if/when https://github.com/emscripten-core/emscripten/issues/20478 is fixed.
-  _emval_invoke_i64__deps: ['_emval_invoke'],
-  _emval_invoke_i64: '=__emval_invoke',
+  _emval_invoke_i64: '_emval_invoke',
 
   _emval_typeof__deps: ['$Emval'],
   _emval_typeof: (handle) => {
@@ -401,12 +400,10 @@ ${functionBody}
 
 #if ASYNCIFY
   _emval_await__deps: ['$Emval', '$Asyncify'],
-  _emval_await__async: true,
-  _emval_await: (promise) => {
-    return Asyncify.handleAsync(async () => {
-      var value = await Emval.toValue(promise);
-      return Emval.toHandle(value);
-    });
+  _emval_await__async: 'auto',
+  _emval_await: async (promise) => {
+    var value = await Emval.toValue(promise);
+    return Emval.toHandle(value);
   },
 #endif
 

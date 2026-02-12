@@ -105,11 +105,6 @@ void emscripten_idb_delete(const char *db_name, const char *file_id, int *perror
 void emscripten_idb_exists(const char *db_name, const char *file_id, int* pexists, int *perror);
 void emscripten_idb_clear(const char *db_name, int *perror);
 
-void emscripten_idb_load_blob(const char *db_name, const char *file_id, int* pblob, int *perror);
-void emscripten_idb_store_blob(const char *db_name, const char *file_id, void* buffer, int num, int *perror);
-void emscripten_idb_read_from_blob(int blob, int start, int num, void* buffer);
-void emscripten_idb_free_blob(int blob);
-
 // other async utilities
 
 int emscripten_run_preload_plugins(const char* file, em_str_callback_func onload, em_str_callback_func onerror);
@@ -178,7 +173,7 @@ typedef void (*em_dlopen_callback)(void* user_data, void* handle);
 void emscripten_dlopen(const char *filename, int flags, void* user_data, em_dlopen_callback onsuccess, em_arg_callback_func onerror);
 
 // Promisified version of emscripten_dlopen
-// The returned promise will resolve once the dso has been loaded.  Its up to
+// The returned promise will resolve once the dso has been loaded.  It's up to
 // the caller to call emscripten_promise_destroy on this promise.
 em_promise_t emscripten_dlopen_promise(const char *filename, int flags);
 

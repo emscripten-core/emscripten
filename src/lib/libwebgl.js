@@ -358,7 +358,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     },
 
     // The code path for creating textures, buffers, framebuffers and other
-    // objects the same (and not in fast path), so we merge the functions
+    // objects is the same (and not in fast path), so we merge the functions
     // together.
     // 'createFunction' refers to the WebGL context function name to do the actual
     // creation, 'objectTable' points to the GL object table where to populate the
@@ -461,6 +461,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     getTempVertexBuffer: (sizeBytes) => {
       var idx = GL.log2ceilLookup(sizeBytes);
       var ringbuffer = GL.currentContext.tempVertexBuffers1[idx];
+#if GL_ASSERTIONS
+      assert(ringbuffer, `MAX_TEMP_BUFFER_SIZE is not large enough to store a buffer of size ${sizeBytes}`);
+#endif
       var nextFreeBufferIndex = GL.currentContext.tempVertexBufferCounters1[idx];
       GL.currentContext.tempVertexBufferCounters1[idx] = (GL.currentContext.tempVertexBufferCounters1[idx]+1) & (GL.numTempVertexBuffersPerSize-1);
       var vbo = ringbuffer[nextFreeBufferIndex];
@@ -490,7 +493,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     },
 
     // Called at start of each new WebGL rendering frame. This swaps the
-    // doublebuffered temp VB memory pointers, so that every second frame
+    // double-buffered temp VB memory pointers, so that every second frame
     // utilizes different set of temp buffers. The aim is to keep the set of
     // buffers being rendered, and the set of buffers being updated disjoint.
     newRenderingFrameStarted: () => {
@@ -695,8 +698,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     hookWebGL: function(glCtx) {
       glCtx ??= this.detectWebGLContext();
       if (!glCtx) return;
-      if (!((typeof WebGLRenderingContext != 'undefined' && glCtx instanceof WebGLRenderingContext)
-            || (typeof WebGL2RenderingContext != 'undefined' && glCtx instanceof WebGL2RenderingContext))) {
+      if (!((globalThis.WebGLRenderingContext && glCtx instanceof WebGLRenderingContext)
+            || (globalThis.WebGL2RenderingContext && glCtx instanceof WebGL2RenderingContext))) {
         return;
       }
 
@@ -754,7 +757,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // context on a canvas, calling .getContext() will always return that
       // context independent of which 'webgl' or 'webgl2'
       // context version was passed. See:
-      //   https://bugs.webkit.org/show_bug.cgi?id=222758
+      //   https://webkit.org/b/222758
       // and:
       //   https://github.com/emscripten-core/emscripten/issues/13295.
       // TODO: Once the bug is fixed and shipped in Safari, adjust the Safari
@@ -811,7 +814,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         // Bug on Safari on iOS and macOS: texImage2D() and texSubImage2D() do
         // not allow uploading pixel data to half float textures, rendering them
         // useless.
-        // See https://bugs.webkit.org/show_bug.cgi?id=183321, https://bugs.webkit.org/show_bug.cgi?id=169999,
+        // See https://webkit.org/b/183321, https://webkit.org/b/169999,
         // https://stackoverflow.com/questions/54248633/cannot-create-half-float-oes-texture-from-uint16array-on-ipad
         ctx.texImage2D(0xDE1/*GL_TEXTURE_2D*/, 0, 0x1908/*GL_RGBA*/, 1, 1, 0, 0x1908/*GL_RGBA*/, 0x8d61/*HALF_FLOAT_OES*/, new Uint16Array(4));
         var broken = ctx.getError();
@@ -821,7 +824,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
           ctx.realGetSupportedExtensions = ctx.getSupportedExtensions;
           ctx.getSupportedExtensions = function() {
 #if GL_ASSERTIONS
-            warnOnce('Removed broken support for half-float textures. See e.g. https://bugs.webkit.org/show_bug.cgi?id=183321');
+            warnOnce('Removed broken support for half-float textures. See e.g. https://webkit.org/b/183321');
 #endif
             // .getSupportedExtensions() can return null if context is lost, so
             // coerce to empty array.
@@ -859,17 +862,6 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       if (gl.getContextAttributes().antialias) {
         context.defaultFboForbidBlitFramebuffer = true;
       }
-#if MIN_FIREFOX_VERSION < 67
-      else {
-        // The WebGL 2 blit path doesn't work in Firefox < 67 (except in fullscreen).
-        // https://bugzilla.mozilla.org/show_bug.cgi?id=1523030
-        var firefoxMatch = navigator.userAgent.toLowerCase().match(/firefox\/(\d\d)/);
-        if (firefoxMatch != null) {
-          var firefoxVersion = firefoxMatch[1];
-          context.defaultFboForbidBlitFramebuffer = firefoxVersion < 67;
-        }
-      }
-#endif
 #endif
 
       // Create render targets to the FBO
@@ -1207,7 +1199,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
       var GLctx = context.GLctx;
 
-      // Detect the presence of a few extensions manually, ction GL interop
+      // Detect the presence of a few extensions manually, since the GL interop
       // layer itself will need to know if they exist.
 #if LEGACY_GL_EMULATION
       context.compressionExt = GLctx.getExtension('WEBGL_compressed_texture_s3tc');
@@ -1240,21 +1232,21 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
       // However, Firefox exposes the WebGL 1 version on WebGL 2 as well and
       // thus we look for the WebGL 1 version again if the WebGL 2 version
-      // isn't present. https://bugzilla.mozilla.org/show_bug.cgi?id=1328882
+      // isn't present. https://bugzil.la/1328882
       if (context.version < 2 || !GLctx.disjointTimerQueryExt)
 #endif
       {
         GLctx.disjointTimerQueryExt = GLctx.getExtension("EXT_disjoint_timer_query");
       }
 
-      getEmscriptenSupportedExtensions(GLctx).forEach((ext) => {
+      for (var ext of getEmscriptenSupportedExtensions(GLctx)) {
         // WEBGL_lose_context, WEBGL_debug_renderer_info and WEBGL_debug_shaders
         // are not enabled by default.
         if (!ext.includes('lose_context') && !ext.includes('debug')) {
           // Call .getExtension() to enable that extension permanently.
           GLctx.getExtension(ext);
         }
-      });
+      }
     },
 #endif
 
@@ -1391,7 +1383,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         // WebGL doesn't have GL_NUM_COMPRESSED_TEXTURE_FORMATS (it's obsolete
         // since GL_COMPRESSED_TEXTURE_FORMATS returns a JS array that can be
         // queried for length), so implement it ourselves to allow C++ GLES2
-        // code get the length.
+        // code to get the length.
         var formats = GLctx.getParameter(0x86A3 /*GL_COMPRESSED_TEXTURE_FORMATS*/);
         ret = formats ? formats.length : 0;
         break;
@@ -1553,7 +1545,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
   glCompressedTexImage2D: (target, level, internalFormat, width, height, border, imageSize, data) => {
-    // `data` may be null here, which means "allocate uniniitalized space but
+    // `data` may be null here, which means "allocate uninitialized space but
     // don't upload" in GLES parlance, but `compressedTexImage2D` requires the
     // final data parameter, so we simply pass a heap view starting at zero
     // effectively uploading whatever happens to be near address zero.  See
@@ -2253,7 +2245,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     }
   },
 
-  // Returns the index of '[' character in an uniform that represents an array
+  // Returns the index of '[' character in a uniform that represents an array
   // of uniforms (e.g. colors[10])
   // Closure does counterproductive inlining:
   // https://github.com/google/closure-compiler/issues/3203, so prevent inlining
@@ -2302,7 +2294,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // A pair [array length, GLint of the uniform location]
       var sizeAndId = program.uniformSizeAndIdsByName[uniformBaseName];
 
-      // If an uniform with this name exists, and if its index is within the
+      // If a uniform with this name exists, and if its index is within the
       // array limits (if it's even an array), query the WebGLlocation, or
       // return an existing cached location.
       if (sizeAndId && arrayIndex < sizeAndId[0]) {
@@ -3284,9 +3276,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     // Remove all the layout(binding = x) directives so that they do not make
     // their way to the actual WebGL shader compiler. These regexes get quite
     // hairy, check against https://regex101.com/ when working on these.
-    source = source.replace(/layout\s*\(.*?binding\s*=\s*([-\d]+).*?\)/g, ''); // "layout(binding = 3)" -> ""
+    source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*\)/g, ''); // "layout(binding = 3)" -> ""
     source = source.replace(/(layout\s*\((.*?)),\s*binding\s*=\s*([-\d]+)\)/g, '$1)'); // "layout(std140, binding = 1)" -> "layout(std140)"
-    source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*,(.*?)\)/g, 'layout($2)'); // "layout(binding = 1, std140)" -> "layout(std140)"
+    source = source.replace(/layout\s*\(\s*binding\s*=\s*([-\d]+)\s*,\s*(.*?)\)/g, 'layout($2)'); // "layout(binding = 1, std140)" -> "layout(std140)"
 
 #if GL_DEBUG
     dbg(`Shader source after removing layout binding directives: ${source}`;
@@ -3515,9 +3507,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
 #if GL_EXPLICIT_UNIFORM_LOCATION
     // Collect explicit uniform locations from the vertex and fragment shaders.
-    [program['vs'], program['fs']].forEach((s) => {
-      Object.keys(s.explicitUniformLocations).forEach((shaderLocation) => {
-        var loc = s.explicitUniformLocations[shaderLocation];
+    for (var s of [program['vs'], program['fs']]) {
+      for (var [shaderLocation, loc] of Object.entries(s.explicitUniformLocations)) {
         // Record each explicit uniform location temporarily as a non-array uniform
         // with size=1. This is not true, but on the first glGetUniformLocation() call
         // the array sizes will get populated to correct sizes.
@@ -3529,21 +3520,21 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         // Make sure we will never automatically assign locations within the range
         // used for explicit layout(location=x) variables.
         program.uniformIdCounter = Math.max(program.uniformIdCounter, loc + 1);
-      });
-    });
+      }
+    }
 #endif
 
 #if GL_EXPLICIT_UNIFORM_BINDING
     function copyKeys(dst, src) {
-      Object.keys(src).forEach((key) => { dst[key] = src[key] });
+      for (var key of Object.keys(src)) { dst[key] = src[key] };
     }
     // Collect sampler and ubo binding locations from the vertex and fragment shaders.
     program.explicitUniformBindings = {};
     program.explicitSamplerBindings = {};
-    [program['vs'], program['fs']].forEach((s) => {
+    for (var s of [program['vs'], program['fs']]) {
       copyKeys(program.explicitUniformBindings, s.explicitUniformBindings);
       copyKeys(program.explicitSamplerBindings, s.explicitSamplerBindings);
-    });
+    }
     // Record that we need to apply these explicit bindings when glUseProgram() is
     // first called on this program.
     program.explicitProgramBindingsApplied = 0;
@@ -3572,8 +3563,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if MIN_WEBGL_VERSION < 2
       if (GL.currentContext.version >= 2) {
 #endif
-        Object.keys(p.explicitUniformBindings).forEach((ubo) => {
-          var bindings = p.explicitUniformBindings[ubo];
+        for (var [ubo, bindings] of Object.entries(p.explicitUniformBindings)) {
           for (var i = 0; i < bindings[1]; ++i) {
             var blockIndex = GLctx.getUniformBlockIndex(p, ubo + (bindings[1] > 1 ? `[${i}]` : ''));
 #if GL_DEBUG
@@ -3581,20 +3571,19 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
             GLctx.uniformBlockBinding(p, blockIndex, bindings[0]+i);
           }
-        });
+        }
 #if MIN_WEBGL_VERSION < 2
       }
 #endif
 #endif
-      Object.keys(p.explicitSamplerBindings).forEach((sampler) => {
-        var bindings = p.explicitSamplerBindings[sampler];
+      for (var [sampler, bindings] of Object.entries(p.explicitSamplerBindings)) {
         for (var i = 0; i < bindings[1]; ++i) {
 #if GL_DEBUG
           dbg('Applying initial sampler binding point ' + (bindings[0]+i) + ' for sampler "' + sampler + (i > 0 ? '['+i+']' : '') +  '"');
 #endif
           GLctx.uniform1i(GLctx.getUniformLocation(p, sampler + (i ? `[${i}]` : '')), bindings[0]+i);
         }
-      });
+      }
       p.explicitProgramBindingsApplied = 1;
     }
   },
@@ -4317,13 +4306,11 @@ var glPassthroughFuncs = [
 ];
 
 function createGLPassthroughFunctions(lib, funcs) {
-  funcs.forEach((data) => {
-    const num = data[0];
-    const names = data[1];
+  for (const [num, names] of funcs) {
     const args = range(num).map((i) => 'x' + i ).join(', ');
     const stub = `(${args}) => GLctx.NAME(${args})`;
     const sigEnd = range(num).map(() => 'i').join('');
-    names.split(' ').forEach((name) => {
+    for (var name of names.split(' ')) {
       let sig;
       if (name.endsWith('*')) {
         name = name.slice(0, -1);
@@ -4340,27 +4327,48 @@ function createGLPassthroughFunctions(lib, funcs) {
       assert(!(cName in lib), "Cannot reimplement the existing function " + cName);
       lib[cName] = eval(stub.replace('NAME', name));
       assert(lib[cName + '__sig'] || LibraryManager.library[cName + '__sig'], 'missing sig for ' + cName);
-    });
-  });
+    }
+  }
 }
 
 createGLPassthroughFunctions(LibraryGL, glPassthroughFuncs);
 
 autoAddDeps(LibraryGL, '$GL');
 
+function renameSymbol(lib, oldName, newName) {
+  lib[newName] = lib[oldName];
+  delete lib[oldName];
+  for (const suffix of decoratorSuffixes) {
+    const oldDecorator = oldName + suffix;
+    if (lib.hasOwnProperty(oldDecorator)) {
+      const newDecorator = newName + suffix;
+      lib[newDecorator] = lib[oldDecorator];
+      delete lib[oldDecorator];
+    }
+  }
+}
+
 function recordGLProcAddressGet(lib) {
   // GL proc address retrieval - allow access through glX and emscripten_glX, to
   // allow name collisions with user-implemented things having the same name
   // (see gl.c)
-  Object.keys(lib).forEach((x) => {
-    if (x.startsWith('gl') && !isDecorator(x)) {
-      lib['emscripten_' + x] = x;
-      var sig = LibraryManager.library[x + '__sig'];
+  //
+  // We do this by renaming `glX` symbols to `emscripten_glX` and then setting
+  // `glX` as an alias of `emscripten_glX`.  The reason for this renaming is to
+  // ensure that `emscripten_glX` is always available, even in cases where native
+  // code defines `glX`.
+  const glSyms = [];
+  for (const sym of Object.keys(lib)) {
+    if (sym.startsWith('gl') && !isDecorator(sym)) {
+      const newSym = 'emscripten_' + sym;
+      renameSymbol(lib, sym, newSym);
+      lib[sym] = newSym;
+      var sig = LibraryManager.library[sym + '__sig'];
       if (sig) {
-        lib['emscripten_' + x + '__sig'] = sig;
+        lib[newSym + '__sig'] = sig;
       }
     }
-  });
+  }
 }
 
 recordGLProcAddressGet(LibraryGL);

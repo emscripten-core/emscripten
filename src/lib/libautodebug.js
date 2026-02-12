@@ -64,7 +64,7 @@ addToLibrary({
     return value;
   },
   $set_funcref: (loc, index, value) => {
-    dbg('set_afuncef ' + [loc, index, value]);
+    dbg('set_funcref ' + [loc, index, value]);
     return value;
   },
   $set_externref: (loc, index, value) => {

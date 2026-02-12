@@ -6,7 +6,7 @@
 
 // This file is used as the initial script loaded into pthread workers when
 // running in WASM_ESM_INTEGRATION mode.
-// Tyhe point of this file is to delay the loading of the main program module
+// The point of this file is to delay the loading of the main program module
 // until the wasm memory has been received via postMessage.
 
 #if RUNTIME_DEBUG
@@ -14,15 +14,20 @@ console.log("Running pthread_esm_startup");
 #endif
 
 #if ENVIRONMENT_MAY_BE_NODE
-// Create as web-worker-like an environment as we can.
-var worker_threads = await import('worker_threads');
-global.Worker = worker_threads.Worker;
-var parentPort = worker_threads['parentPort'];
-parentPort.on('message', (msg) => global.onmessage?.({ data: msg }));
-Object.assign(globalThis, {
-  self: global,
-  postMessage: (msg) => parentPort['postMessage'](msg),
-});
+if ({{{ nodeDetectionCode() }}}) {
+  // Create as web-worker-like an environment as we can.
+  globalThis.self = globalThis;
+  var worker_threads = await import('node:worker_threads');
+  globalThis.Worker = worker_threads.Worker;
+  var parentPort = worker_threads['parentPort'];
+  // Deno and Bun already have `postMessage` defined on the global scope and
+  // deliver messages to `globalThis.onmessage`, so we must not duplicate that
+  // behavior here if `postMessage` is already present.
+  if (!globalThis.postMessage) {
+    parentPort.on('message', (msg) => globalThis.onmessage?.({ data: msg }));
+    globalThis.postMessage = (msg) => parentPort['postMessage'](msg);
+  }
+}
 #endif
 
 self.onmessage = async (msg) => {

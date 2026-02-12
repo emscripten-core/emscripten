@@ -10,6 +10,12 @@
     },
     {
         "file": "dirent.h",
+        "defines": [
+            "DT_DIR",
+            "DT_CHR",
+            "DT_LNK",
+            "DT_REG"
+        ],
         "structs": {
             "dirent": [
                 "d_ino",
@@ -961,7 +967,8 @@
               "accelerationIncludingGravityZ",
               "rotationRateAlpha",
               "rotationRateBeta",
-              "rotationRateGamma"
+              "rotationRateGamma",
+              "supportedFields"
             ],
             "EmscriptenOrientationChangeEvent": [
               "orientationIndex",
@@ -1268,7 +1275,8 @@
         "structs": {
             "EmscriptenWebAudioCreateAttributes": [
               "latencyHint",
-              "sampleRate"
+              "sampleRate",
+              "renderSizeHint"
             ],
             "WebAudioParamDescriptor": [
               "defaultValue",
@@ -1293,7 +1301,10 @@
             "EmscriptenAudioWorkletNodeCreateOptions": [
               "numberOfInputs",
               "numberOfOutputs",
-              "outputChannelCounts"
+              "outputChannelCounts",
+              "channelCount",
+              "channelCountMode",
+              "channelInterpretation"
             ]
         }
     },
