@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 5.0.2 (in development)
 ----------------------
+- The remaining launcher scripts (e.g. `emcc.bat`) were removed from the git
+  reprository.  These scripts are created by the `./bootstrap` script which
+  must be run before the toolchain is usable (for folks using a git checkout of
+  emscripten). (#26247)
 
 5.0.1 - 02/13/26
 ----------------
