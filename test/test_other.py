@@ -3611,6 +3611,10 @@ More info: https://emscripten.org
     self.emcc('other/embind_tsgen.cpp', extra_args)
     self.assertFileContents(test_file(f'other/{expected_ts_file}'), read_file('embind_tsgen.d.ts'))
 
+  def test_embind_tsgen_remove_relaxed_simd(self):
+    self.emcc('other/test_relaxed_simd.cpp', ['-mrelaxed-simd', '-msse', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'])
+    self.assertContained('print_madd()', read_file('embind_tsgen.d.ts'))
+
   def test_embind_tsgen_worker_env(self):
     self.cflags += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
     # Passing -sWASM_WORKERS requires the 'worker' environment
