@@ -2261,17 +2261,32 @@ int main(int argc, char **argv) {
   @no_wasm2js('no WebAssembly.Table()')
   def test_imported_table(self):
     create_file('pre.js', '''
-    Module['preRun'] = () => {
+    Module['preInit'] = () => {
       assert(typeof wasmTable === 'object', 'wasmTable should be defined');
       console.log('table check passed');
     };
     ''')
-    # Without IMPORTED_TABLE, wasmTable is not yet defined when pre.js code is run
+    # Without IMPORTED_TABLE, wasmTable is not yet defined when preInit is run
     self.do_runf('hello_world.c', 'wasmTable should be defined',
-                 cflags=['--pre-js', 'pre.js'], assert_returncode=NON_ZERO)
+                 cflags=['--pre-js=pre.js'], assert_returncode=NON_ZERO)
     # With IMPORTED_TABLE, wasmTable is available
     self.set_setting('IMPORTED_TABLE')
-    self.do_runf('hello_world.c', 'table check passed', cflags=['--pre-js', 'pre.js'])
+    self.do_runf('hello_world.c', 'table check passed', cflags=['--pre-js=pre.js'])
+
+  @no_wasm2js('no WebAssembly.Memory()')
+  def test_imported_memory(self):
+    create_file('pre.js', '''
+    Module['preInit'] = () => {
+      assert(typeof wasmMemory === 'object', 'wasmMemory should be defined');
+      console.log('memory check passed');
+    };
+    ''')
+    # Without IMPORTED_MEMORY, wasmMemory is not yet defined when preInit is run
+    self.do_runf('hello_world.c', 'wasmMemory should be defined',
+                 cflags=['--pre-js=pre.js'], assert_returncode=NON_ZERO)
+    # With IMPORTED_MEMORY, wasmMemory is available
+    self.set_setting('IMPORTED_MEMORY')
+    self.do_runf('hello_world.c', 'memory check passed', cflags=['--pre-js=pre.js'])
 
   def test_ssr(self): # struct self-ref
     src = '''
