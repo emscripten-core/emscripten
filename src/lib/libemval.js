@@ -405,10 +405,10 @@ ${functionBody}
     // __cxa_throw() is called from the user C++ code when the 'throw' keyword
     // is used, and the value thrown is a C++ pointer. When
     // EXCEPTION_STACK_TRACES is true, we wrap it with CppException. But this
-    // function is called when we throw whatever is contained in 'object', which
-    // can be anything including a CppException object, or a number, or other JS
-    // object. So we don't use storeException() wrapper here and we throw it as
-    // is.
+    // _emval_throw is called when we throw whatever is contained in 'object',
+    // which can be anything including a CppException object, or a number, or
+    // other JS object. So we don't use storeException() wrapper here and we
+    // throw it as is.
 #if EXCEPTION_STACK_TRACES
     if (object instanceof CppException) {
       exceptionLast = object;
