@@ -13,7 +13,7 @@ int main() {
   try {
     error.throw_();
   } catch (const std::runtime_error& ex) {
-    std::clog << "Caught: " << ex.what() << '\n';
+    std::clog << "Caught1: " << ex.what() << '\n';
   }
 
   try {
@@ -28,7 +28,7 @@ int main() {
     try {
       error.throw_(); // Rethrow oopsie
     } catch (const std::runtime_error& ex) {
-      std::clog << "Caught: " << ex.what() << '\n';
+      std::clog << "Caught2: " << ex.what() << '\n';
     }
   }
 }
