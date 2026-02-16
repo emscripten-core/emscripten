@@ -401,7 +401,7 @@ ${functionBody}
     // be an instance of EmscriptenEH, and when EXCEPTION_STACK_TRACES is not
     // set, it will be a pointer (number).
 #if EXCEPTION_STACK_TRACES
-    if (object instanceof EmscriptenEH) {
+    if (object instanceof CppException) {
       exceptionLast = object;
     }
 #else
