@@ -2482,6 +2482,20 @@ int main() {
     self.assert_fail([EMCC, 'main.c'], 'SDL.h:1:2: error: "To use the emscripten port of SDL use -sUSE_SDL or -sUSE_SDL=2"')
     self.run_process([EMCC, 'main.c', '-sUSE_SDL'])
 
+  def test_sdl_undefined(self):
+    create_file('main.c', r'''
+      #include <stdio.h>
+
+      int SDL_Init(int flags);
+
+      int main() {
+        printf("in main: %p\n", SDL_Init);
+        return 0;
+      }
+    ''')
+    self.assert_fail([EMCC, 'main.c'], 'undefined symbol: SDL_Init')
+    self.run_process([EMCC, 'main.c', '-sUSE_SDL'])
+
   def test_sdl_endianness(self):
     create_file('main.c', r'''
       #include <stdio.h>
