@@ -43,6 +43,7 @@ def get(ports, settings, shared):
       '-DCP_USE_DOUBLES=0',
       '-sUSE_ZLIB',
       '-sUSE_LIBPNG',
+      '-sUSE_SDL',
     ]
 
     for dirname in includes:
@@ -65,6 +66,7 @@ def clear(ports, settings, shared):
 def process_dependencies(settings):
   settings.USE_LIBPNG = 1
   settings.USE_ZLIB = 1
+  settings.USE_SDL = 1
 
 
 def process_args(ports):

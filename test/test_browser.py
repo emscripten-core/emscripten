@@ -322,13 +322,6 @@ window.close = () => {
         print(f'overwriting expected image: {reference}')
         self.run_process('pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB actual.png'.split() + [reference])
 
-  def test_sdl1_in_emscripten_nonstrict_mode(self):
-    if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']):
-      self.skipTest('This test requires being run in non-strict mode (EMCC_STRICT env. variable unset)')
-    # TODO: This test is verifying behavior that will be deprecated at some point in the future, remove this test once
-    # system JS libraries are no longer automatically linked to anymore.
-    self.reftest('hello_world_sdl.c', 'htmltest.png')
-
   def test_sdl1(self):
     self.reftest('hello_world_sdl.c', 'htmltest.png', cflags=['-lSDL', '-lGL'])
     self.reftest('hello_world_sdl.c', 'htmltest.png', cflags=['-sUSE_SDL', '-lGL']) # is the default anyhow
@@ -2218,7 +2211,7 @@ void *getBindBuffer() {
 
   @requires_graphics_hardware
   def test_glerror(self):
-    self.btest('gl_error.c', expected='1', cflags=['-sLEGACY_GL_EMULATION', '-lGL'])
+    self.btest('gl_error.c', expected='1', cflags=['-sLEGACY_GL_EMULATION', '-lGL', '-sUSE_SDL'])
 
   @parameterized({
     '': ([],),

@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 5.0.3 (in development)
 ----------------------
+- The `-sUSE_SDL` flag has been required to use SDL headers since #18443.
+  However, due to an oversight it was still possible to use `SDL/SDL.h` without
+  the explicit flag.  This has now been fixed, which means some SDL users of SDL
+  may need to `-sUSE_SDL` when upgrading. (#26279)
 - When building with `-sWASM_WORKERS` emscripten will no longer include pthread
   API stub functions.  These stub functions where never designed to work under
   Wasm Workers, so its safer to error at link time if pthread APIs are used
