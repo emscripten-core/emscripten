@@ -1498,11 +1498,12 @@ var LEGALIZE_JS_FFI = true;
 
 // Ports
 
-// Specify the SDL version that is being linked against.
-// 1, the default, is 1.3, which is implemented in JS
-// 2 is a port of the SDL C code on emscripten-ports
-// When AUTO_JS_LIBRARIES is set to 0 this defaults to 0 and SDL
-// is not linked in.
+// Specify the SDL version that is being linked against:
+//
+// - 0, the default, means no SDL headers or libraries will be used.
+// - 1 is port of SDL 1.3 which is implemented in JS.
+// - 2 and 3 are upstream ports build from the official SDL codebase.
+//
 // Alternate syntax for using the port: --use-port=sdl2
 // [compile+link]
 var USE_SDL = 0;
