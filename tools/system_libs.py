@@ -1648,6 +1648,8 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
     cflags = super().get_cflags()
     if not self.is_mt and not self.is_ww:
       cflags.append('-D_LIBCXXABI_HAS_NO_THREADS')
+    elif self.is_ww:
+      cflags.append('-D_LIBCXXABI_USE_FUTEX')
     match self.eh_mode:
       case Exceptions.NONE:
         cflags.append('-D_LIBCXXABI_NO_EXCEPTIONS')

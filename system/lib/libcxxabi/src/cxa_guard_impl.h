@@ -436,6 +436,16 @@ void PlatformFutexWake(int* addr) {
   __tsan_release(addr);
   syscall(SYS_futex, addr, WAKE, INT_MAX);
 }
+#elif defined(__EMSCRIPTEN__) && defined(__EMSCRIPTEN_SHARED_MEMORY__)
+// WASM Workers: pthread stubs are noops, making GlobalMutex broken
+// (non-atomic read-then-write allows double initialization).
+// InitByteFutex uses atomic CAS for correct single initialization.
+// Wait/wake are no-ops — losers spin in the CAS retry loop.
+// Cannot use memory.atomic.wait32 (traps on the main browser thread).
+// In practice, contention on a single guard is rare and the spin is
+// bounded by the static constructor duration (typically sub-microsecond).
+void PlatformFutexWait(int*, int) {}
+void PlatformFutexWake(int*) {}
 #else
 constexpr void (*PlatformFutexWait)(int*, int) = nullptr;
 constexpr void (*PlatformFutexWake)(int*) = nullptr;
