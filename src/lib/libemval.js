@@ -397,8 +397,9 @@ ${functionBody}
     object = Emval.toValue(object);
 #if !WASM_EXCEPTIONS
     // If we are throwing Emcripten C++ exception, set exceptionLast, as we do
-    // in __cxa_throw. When EXCEPTION_STACK_TRACES is set, a C++ exception is an
-    // instance of EmscriptenEH, and when it is not set, a number.
+    // in __cxa_throw. When EXCEPTION_STACK_TRACES is set, a C++ exception will
+    // be an instance of EmscriptenEH, and when EXCEPTION_STACK_TRACES is not
+    // set, it will be a pointer (number).
 #if EXCEPTION_STACK_TRACES
     if (object instanceof EmscriptenEH) {
       exceptionLast = object;
