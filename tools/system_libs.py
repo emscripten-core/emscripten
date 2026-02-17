@@ -1309,6 +1309,8 @@ class libc(MuslInternalLibrary,
           '__year_to_secs.c',
           '__month_to_secs.c',
           'wcsftime.c',
+          'gettimeofday.c',
+          'time.c',
         ])
 
     libc_files += files_in_path(
@@ -1368,7 +1370,7 @@ class libc(MuslInternalLibrary,
           'emscripten_memset_bulkmem.S',
           'emscripten_mmap.c',
           'emscripten_scan_stack.c',
-          'emscripten_time.c',
+          'dysize.c',
           'mktime.c',
           'kill.c',
           'lookup_name.c',
@@ -2250,13 +2252,11 @@ class libstandalonewasm(MuslInternalLibrary):
         path='system/lib/libc/musl/src/time',
         filenames=['__secs_to_tm.c',
                    '__tz.c',
-                   'gettimeofday.c',
                    'localtime_r.c',
                    'gmtime_r.c',
                    'mktime.c',
                    'strptime.c',
-                   'timegm.c',
-                   'time.c'])
+                   'timegm.c'])
     # It is more efficient to use JS for __assert_fail, as it avoids always
     # including fprintf etc.
     files += files_in_path(

@@ -182,7 +182,7 @@ var WasiLibrary = {
 
   clock_res_get__nothrow: true,
   clock_res_get__proxy: 'none',
-  clock_res_get__deps: ['emscripten_get_now', 'emscripten_get_now_res', '$nowIsMonotonic', '$checkWasiClock'],
+  clock_res_get__deps: ['emscripten_get_now_res', '$nowIsMonotonic', '$checkWasiClock'],
   clock_res_get: (clk_id, pres) => {
     if (!checkWasiClock(clk_id)) {
       return {{{ cDefs.EINVAL }}};
