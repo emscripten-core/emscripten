@@ -18,8 +18,15 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.1 (in development)
+5.0.2 (in development)
 ----------------------
+- The remaining launcher scripts (e.g. `emcc.bat`) were removed from the git
+  repository.  These scripts are created by the `./bootstrap` script which
+  must be run before the toolchain is usable (for folks using a git checkout of
+  emscripten). (#26247)
+
+5.0.1 - 02/13/26
+----------------
 - `logReadFiles` was removed from the default `INCOMING_MODULE_JS_API` list.
   To use this feature you now need to explictly add `logReadFiles` to
   `INCOMING_MODULE_JS_API`. (#26190);

@@ -812,6 +812,29 @@ def normalize_boolean_setting(name, value):
   return name, value
 
 
+def normalize_args(args):
+  """Normalize argument that can be specific as either one or two arguments.
+
+  In some cases these arguments are simply joined together.  For example
+  [`-o` `foo`] becomes `-ofoo` and [`-L` `bar`] becomes `-Lbar`.
+
+  In other cases they are joined by an equals sign.  For example ['--js-library`, `foo.js`]
+  becomes `--js-library=foo.js`.
+  """
+  equals_args = {'--js-library'}
+  join_args = {'-l', '-L', '-I', '-z', '-o', '-x', '-u'} | equals_args
+  for i in range(len(args)):
+    if args[i] in join_args:
+      if args[i] in equals_args:
+        args[i] += '='
+      if len(args) <= i + 1:
+        exit_with_error(f"option '{args[i]}' requires an argument")
+      args[i] += args[i + 1]
+      args[i + 1] = ''
+
+  return [a for a in args if a]
+
+
 @ToolchainProfiler.profile()
 def parse_arguments(args):
   newargs = list(args)
@@ -824,17 +847,7 @@ def parse_arguments(args):
   if not diagnostics.is_enabled('deprecated'):
     settings.WARN_DEPRECATED = 0
 
-  for i in range(len(newargs)):
-    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o', '-x', '-u'):
-      # Scan for flags that can be written as either one or two arguments
-      # and normalize them to the single argument form.
-      if newargs[i] == '--js-library':
-        newargs[i] += '='
-      if len(newargs) <= i + 1:
-        exit_with_error(f"option '{newargs[i]}' requires an argument")
-      newargs[i] += newargs[i + 1]
-      newargs[i + 1] = ''
-
+  newargs = normalize_args(newargs)
   newargs = parse_args(newargs)
 
   if options.post_link or options.oformat == OFormat.BARE:

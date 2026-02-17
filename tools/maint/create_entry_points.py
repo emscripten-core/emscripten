@@ -92,17 +92,17 @@ def main(all_platforms):
         bat_data = bat_data.replace('%~n0', entry_remap[entry_point].replace('/', '\\'))
         ps1_data = ps1_data.replace(r"$MyInvocation.MyCommand.Path -replace '\.ps1$', '.py'", fr'"$PSScriptRoot/{entry_remap[entry_point]}.py"')
 
+      launcher = os.path.join(__rootdir__, entry_point)
       if do_unix:
-        out_sh_file = os.path.join(__rootdir__, entry_point)
-        with open(out_sh_file, 'w') as f:
+        with open(launcher, 'w') as f:
           f.write(sh_data)
-        make_executable(out_sh_file)
+        make_executable(launcher)
 
       if do_windows:
-        with open(os.path.join(__rootdir__, entry_point + '.bat'), 'w') as f:
+        with open(launcher + '.bat', 'w') as f:
           f.write(bat_data)
 
-        with open(os.path.join(__rootdir__, entry_point + '.ps1'), 'w') as f:
+        with open(launcher + '.ps1', 'w') as f:
           f.write(ps1_data)
 
   generate_entry_points(entry_points, os.path.join(__scriptdir__, 'run_python'))
