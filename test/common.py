@@ -1571,6 +1571,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       # cross compiling.
       if configure:
         if configure[0] == 'cmake':
+          # Some tests have very old cmake_minimum_version settings which is not supported by cmake 4+.
+          # Forcing a slighly more recent cmake_minimum_version works around this issue.
           configure = [EMCMAKE] + configure + ['-DCMAKE_POLICY_VERSION_MINIMUM=3.5']
         else:
           configure = [EMCONFIGURE] + configure
