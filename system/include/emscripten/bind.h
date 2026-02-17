@@ -1424,6 +1424,32 @@ struct RegisterClassMethod<FunctionTag<Callable, ReturnType (ThisType, Args...)>
     }
 };
 
+// Helper structs for shifting argument indices when a policy is applied.
+template<typename Slot>
+struct ShiftSlot {
+    using type = Slot;
+};
+
+template<int Index>
+struct ShiftSlot<arg<Index>> {
+    using type = arg<Index + 1>;
+};
+
+template<typename Policy>
+struct ShiftPolicy {
+    using type = Policy;
+};
+
+template<typename Slot>
+struct ShiftPolicy<allow_raw_pointer<Slot>> {
+    using type = allow_raw_pointer<typename ShiftSlot<Slot>::type>;
+};
+
+template<typename Slot>
+struct ShiftPolicy<nonnull<Slot>> {
+    using type = nonnull<typename ShiftSlot<Slot>::type>;
+};
+
 } // end namespace internal
 
 template<typename... ConstructorArgs>
@@ -1532,10 +1558,11 @@ public:
         return *this;
     }
 
-    template<typename WrapperType, typename... ConstructorArgs>
+    template<typename WrapperType, typename... ConstructorArgs, typename... Policies>
     EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
         const char* wrapperClassName,
-        ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>()
+        ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>(),
+        Policies... policies
     ) const {
         using namespace internal;
 
@@ -1549,18 +1576,20 @@ public:
             class_function(
                 "implement",
                 &wrapped_new<WrapperType*, WrapperType, val, ConstructorArgs...>,
-                allow_raw_pointer<ret_val>(), nonnull<ret_val>())
+                allow_raw_pointer<ret_val>(), nonnull<ret_val>(),
+                typename ShiftPolicy<Policies>::type()...)
             .class_function(
                 "extend",
                 &wrapped_extend<WrapperType>)
             ;
     }
 
-    template<typename WrapperType, typename PointerType, typename... ConstructorArgs>
+    template<typename WrapperType, typename PointerType, typename... ConstructorArgs, typename... Policies>
     EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
         const char* wrapperClassName,
         const char* pointerName,
-        ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>()
+        ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>(),
+        Policies... policies
     ) const {
         using namespace internal;
 
@@ -1575,7 +1604,8 @@ public:
             class_function(
                 "implement",
                 &wrapped_new<PointerType, WrapperType, val, ConstructorArgs...>,
-                allow_raw_pointer<ret_val>())
+                allow_raw_pointer<ret_val>(),
+                typename ShiftPolicy<Policies>::type()...)
             .class_function(
                 "extend",
                 &wrapped_extend<WrapperType>)
