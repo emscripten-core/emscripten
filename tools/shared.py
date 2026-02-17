@@ -286,6 +286,8 @@ def _get_node_version_pair(nodejs):
 
 
 def get_node_version(nodejs):
+  if not nodejs:
+    return None
   return _get_node_version_pair(nodejs)[1]
 
 
@@ -640,7 +642,6 @@ LLVM_RANLIB = llvm_tool_path('llvm-ranlib')
 LLVM_NM = llvm_tool_path('llvm-nm')
 LLVM_DWARFDUMP = llvm_tool_path('llvm-dwarfdump')
 LLVM_OBJCOPY = llvm_tool_path('llvm-objcopy')
-LLVM_STRIP = llvm_tool_path('llvm-strip')
 WASM_LD = llvm_tool_path('wasm-ld')
 LLVM_PROFDATA = llvm_tool_path('llvm-profdata')
 LLVM_COV = llvm_tool_path('llvm-cov')

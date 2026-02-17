@@ -251,7 +251,7 @@ function abort(what) {
 #if ASSERTIONS == 0
   what += '. Build with -sASSERTIONS for more info.';
 #elif ASYNCIFY == 1
-  if (what.indexOf('RuntimeError: unreachable') >= 0) {
+  if (what.search(/RuntimeError: [Uu]nreachable/) >= 0) {
     what += '. "unreachable" may be due to ASYNCIFY_STACK_SIZE not being large enough (try increasing it)';
   }
 #endif // ASSERTIONS

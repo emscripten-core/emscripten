@@ -1275,9 +1275,7 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('instantiateWasm');
   ignoredModuleProp('keyboardListeningElement');
   ignoredModuleProp('freePreloadedMediaOnUse');
-  ignoredModuleProp('loadSplitModule');
   ignoredModuleProp('locateFile');
-  ignoredModuleProp('logReadFiles');
   ignoredModuleProp('mainScriptUrlOrBlob');
   ignoredModuleProp('mem');
   ignoredModuleProp('monitorRunDependencies');
@@ -1309,6 +1307,8 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('wasmBinary');
   ignoredModuleProp('websocket');
   ignoredModuleProp('fetchSettings');
+  ignoredModuleProp('logReadFiles');
+  ignoredModuleProp('loadSplitModule');
 }
 
 // Imports from the Wasm binary.

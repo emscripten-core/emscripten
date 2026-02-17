@@ -69,9 +69,9 @@ Using Exceptions and setjmp-longjmp Together
 
 We also have two kinds of :ref:`exception handling support <exceptions>`:
 JavaScript-based support and the new WebAssembly EH-based support. Our
-setjmp-longjmp support use the same mechanisms. Because of that, you should use
-the same kind of EH and setjmp-longjmp support when using exceptions and
-setjmp-longjmp together.
+setjmp-longjmp support use the same mechanisms. Because of that, when they are
+used together, the kind of setjmp-longjmp support will be determined by the EH
+support.
 
 For example, to use the JavaScript-based EH and setjmp-longjmp support together:
 
@@ -79,15 +79,26 @@ For example, to use the JavaScript-based EH and setjmp-longjmp support together:
 
   em++ -fexceptions test.cpp -o test.js
 
-``-sSUPPORT_LONGJMP``, which defaults to ``emscripten`` or ``wasm`` depending on
-the exception mode, is enabled by default, so you don't need to pass it
-explicitly.
-
 To use the WebAssembly EH and setjmp-longjmp support together:
 
 .. code-block:: bash
 
-  em++ -fwasm-exceptions -sSUPPORT_LONGJMP=wasm test.cpp -o test.js
+  em++ -fwasm-exceptions test.cpp -o test.js
+
+``-sSUPPORT_LONGJMP``, which defaults to ``emscripten`` or ``wasm`` depending on
+the exception mode, is enabled by default, so you don't need to pass it
+explicitly.
+
+But you need to pass ``-sSUPPORT_LONGJMP=wasm`` at compile time explicitly
+before you link C and C++ code together, because you don't use exception flags
+at C compile time, but it needs to match the setjmp-longjmp handling model of
+the C++ code.
+
+.. code-block:: bash
+
+  emcc -c -sSUPPORT_LONGJMP=wasm a.c -o a.o
+  em++ -c -fwasm-exceptions b.cpp -o b.o
+  em++ -fwasm-exceptions a.o b.o -o test.js
 
 There is one specific restriction for using WebAssembly EH-based support for
 exceptions and setjmp-longjmp at the same time. You cannot call ``setjmp``

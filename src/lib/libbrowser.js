@@ -44,10 +44,10 @@ var LibraryBrowser = {
       // might create some side data structure for use later (like an Image element, etc.).
 
       var imagePlugin = {};
-      imagePlugin['canHandle'] = function imagePlugin_canHandle(name) {
+      imagePlugin['canHandle'] = (name) => {
         return !Module['noImageDecoding'] && /\.(jpg|jpeg|png|bmp|webp)$/i.test(name);
       };
-      imagePlugin['handle'] = async function imagePlugin_handle(byteArray, name) {
+      imagePlugin['handle'] = async (byteArray, name) => {
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
         if (b.size !== byteArray.length) { // Safari bug #118630
           // Safari's Blob can only take an ArrayBuffer
@@ -79,10 +79,10 @@ var LibraryBrowser = {
       preloadPlugins.push(imagePlugin);
 
       var audioPlugin = {};
-      audioPlugin['canHandle'] = function audioPlugin_canHandle(name) {
+      audioPlugin['canHandle'] = (name) => {
         return !Module['noAudioDecoding'] && name.slice(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
-      audioPlugin['handle'] = async function audioPlugin_handle(byteArray, name) {
+      audioPlugin['handle'] = async (byteArray, name) => {
         return new Promise((resolve, reject) => {
           var done = false;
           function finish(audio) {
@@ -95,7 +95,7 @@ var LibraryBrowser = {
           var url = URL.createObjectURL(b); // XXX we never revoke this!
           var audio = new Audio();
           audio.addEventListener('canplaythrough', () => finish(audio), false); // use addEventListener due to chromium bug 124926
-          audio.onerror = function audio_onerror(event) {
+          audio.onerror = (event) => {
             if (done) return;
             err(`warning: browser could not fully decode audio ${name}, trying slower base64 approach`);
             function encode64(data) {
@@ -735,7 +735,7 @@ var LibraryBrowser = {
       awaited: 0,
       buffer: 0,
     };
-    info.worker.onmessage = function info_worker_onmessage(msg) {
+    info.worker.onmessage = (msg) => {
       if (ABORT) return;
       var info = Browser.workers[id];
       if (!info) return; // worker was destroyed meanwhile

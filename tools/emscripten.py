@@ -382,14 +382,16 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   if not settings.WASM_BIGINT and metadata.em_js_funcs:
     for em_js_func, raw in metadata.em_js_funcs.items():
-      c_sig = raw.split('<::>')[0].strip('()')
-      if not c_sig or c_sig == 'void':
-        c_sig = []
+      args, _ = raw.split('<::>', 1)
+      args = args[1:-1].strip()
+
+      if not args or args == 'void':
+        args = []
       else:
-        c_sig = c_sig.split(',')
+        args = args.split(',')
       signature = metadata.em_js_func_types.get(em_js_func)
-      if signature and len(signature.params) != len(c_sig):
-        diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
+      if signature and len(signature.params) != len(args):
+        diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, args, signature.params)
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
@@ -588,17 +590,21 @@ def finalize_wasm(infile, outfile, js_syms):
 
   # For sections we no longer need, strip now to speed subsequent passes.
   # If Binaryen is not needed, this is also our last chance to strip.
-  strip_sections = []
+  # The `llvm.func_attr.annotate` are created by `[[clang::annotate]]` or
+  # similar.  We have some plans to use them for emscripten metadata but
+  # they should not persist in the final binary.
+  strip_sections = ['llvm.func_attr.annotate.*']
   if not settings.EMIT_PRODUCERS_SECTION:
     strip_sections += ['producers']
   if not need_name_section:
     strip_sections += ['name']
+  if not settings.GENERATE_DWARF:
+    strip_sections += ['.debug*']
 
   # TODO(walkingeyerobot): make this work. it appears to not like the wasm file from wasm-bindgen
-  if not settings.WASM_BINDGEN and (strip_sections or not settings.GENERATE_DWARF):
+  if strip_sections and not settings.WASM_BINDGEN:
     building.save_intermediate(outfile, 'strip.wasm')
-    building.strip(infile, outfile, debug=not settings.GENERATE_DWARF,
-                   sections=strip_sections)
+    building.strip_sections(infile, outfile, strip_sections)
 
   metadata = get_metadata(outfile, outfile, modify_wasm, args)
 
@@ -796,8 +802,8 @@ def create_em_js(metadata):
   for name, raw in metadata.em_js_funcs.items():
     assert separator in raw
     args, body = raw.split(separator, 1)
-    args = args[1:-1]
-    if args == 'void':
+    args = args[1:-1].strip()
+    if not args or args == 'void':
       args = []
     else:
       args = args.split(',')

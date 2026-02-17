@@ -383,7 +383,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note::
 
-    - See `src/shell.html <https://github.com/emscripten-core/emscripten/blob/main/src/shell.html>`_ and `src/shell_minimal.html <https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html>`_ for examples.
+    - See `html/shell.html <https://github.com/emscripten-core/emscripten/blob/main/html/shell.html>`_ and `html/shell_minimal.html <https://github.com/emscripten-core/emscripten/blob/main/html/shell_minimal.html>`_ for examples.
     - This argument is ignored if a target other than HTML is specified using the ``-o`` option.
 
 .. _emcc-source-map-base:

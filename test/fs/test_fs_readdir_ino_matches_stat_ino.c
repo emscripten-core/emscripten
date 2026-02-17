@@ -39,8 +39,8 @@ int main() {
 #ifndef NODERAWFS
   assert(chmod(".", 0675) == 0);
 #endif
-  int a_ino = -1;
-  int b_ino = -1;
+  ino_t a_ino = 0;
+  ino_t b_ino = 0;
   struct dirent *ep;
   while ((ep = readdir(dirp))) {
     if (strcmp(ep->d_name, "a") == 0) {
@@ -51,9 +51,9 @@ int main() {
     }
   }
   assert(errno == 0);
-  assert(a_ino >= 0);
-  assert(b_ino >= 0);
-  printf("readdir a_ino: %d, b_ino: %d\n", a_ino, b_ino);
+  assert(a_ino > 0);
+  assert(b_ino > 0);
+  printf("readdir a_ino: %llu, b_ino: %llu\n", a_ino, b_ino);
   printf("stat    a_ino: %llu, b_ino: %llu\n", sta.st_ino, stb.st_ino);
   assert(a_ino == sta.st_ino);
   assert(b_ino == stb.st_ino);

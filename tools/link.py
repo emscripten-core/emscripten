@@ -57,7 +57,7 @@ from .utils import (
 
 logger = logging.getLogger('link')
 
-DEFAULT_SHELL_HTML = utils.path_from_root('src/shell.html')
+DEFAULT_SHELL_HTML = utils.path_from_root('html/shell.html')
 
 DEFAULT_ASYNCIFY_IMPORTS = ['__asyncjs__*']
 
@@ -969,7 +969,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
   def limit_incoming_module_api():
-    if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
+    if options.oformat == OFormat.HTML and options.shell_html == DEFAULT_SHELL_HTML:
       # Our default shell.html file has minimal set of INCOMING_MODULE_JS_API elements that it expects
       default_setting('INCOMING_MODULE_JS_API', 'canvas,monitorRunDependencies,onAbort,onExit,print,setStatus'.split(','))
     else:
@@ -1135,15 +1135,18 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('EXPORT_ES6 requires MODULARIZE to be set')
     settings.MODULARIZE = 1
 
-  if not options.shell_path:
-    # Minimal runtime uses a different default shell file
-    if settings.MINIMAL_RUNTIME:
-      options.shell_path = options.shell_path = utils.path_from_root('src/shell_minimal_runtime.html')
-    else:
-      options.shell_path = DEFAULT_SHELL_HTML
+  if options.oformat == OFormat.HTML:
+    if not options.shell_html:
+      # Minimal runtime uses a different default shell file
+      if settings.MINIMAL_RUNTIME:
+        options.shell_html = options.shell_html = utils.path_from_root('html/shell_minimal_runtime.html')
+      else:
+        options.shell_html = DEFAULT_SHELL_HTML
 
-  if options.oformat == OFormat.HTML and options.shell_path == DEFAULT_SHELL_HTML:
-    settings.EXPORTED_RUNTIME_METHODS.append('requestFullscreen')
+    if options.shell_html == DEFAULT_SHELL_HTML:
+      settings.EXPORTED_RUNTIME_METHODS.append('requestFullscreen')
+  elif options.shell_html:
+    diagnostics.warning('unused-command-line-argument', '--shell-file ignored when not generating html output')
 
   if settings.STRICT:
     if not settings.MODULARIZE:
@@ -1624,11 +1627,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
     settings.MINIFY_WASM_IMPORTED_MODULES = 1
 
-  if settings.MODULARIZE and not (settings.EXPORT_ES6 and not settings.SINGLE_FILE) and \
-     settings.EXPORT_NAME == 'Module' and options.oformat == OFormat.HTML and \
-     (options.shell_path == DEFAULT_SHELL_HTML or options.shell_path == utils.path_from_root('src/shell_minimal.html')):
-    exit_with_error(f'Due to collision in variable name "Module", the shell file "{options.shell_path}" is not compatible with build options "-sMODULARIZE -sEXPORT_NAME=Module". Either provide your own shell file, change the name of the export to something else to avoid the name collision. (see https://github.com/emscripten-core/emscripten/issues/7950 for details)')
-
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0
 
@@ -1645,8 +1643,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.LEGALIZE_JS_FFI:
     settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
 
-  if settings.SPLIT_MODULE and settings.ASYNCIFY == 2:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
+  if settings.SPLIT_MODULE:
+    settings.INCOMING_MODULE_JS_API += ['loadSplitModule']
+    if settings.ASYNCIFY == 2:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
 
   # wasm side modules have suffix .wasm
   if settings.SIDE_MODULE and utils.suffix(target) in ('.js', '.mjs'):
@@ -2045,12 +2045,21 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   outfile_js = in_temp('tsgen.js')
   # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
   outfile_wasm = in_temp('tsgen.wasm')
-  emscripten.emscript(wasm_target, outfile_wasm, outfile_js, js_syms, finalize=False)
+  metadata = emscripten.emscript(wasm_target, outfile_wasm, outfile_js, js_syms, finalize=False)
+
+  # Strip out any Wasm features that can't run in older versions of node.
+  wasm_opt_args = []
+  if '--enable-relaxed-simd' in metadata.features:
+    # Relaxed SIMD isn't supported on older versions of node.
+    wasm_opt_args += ['--remove-relaxed-simd']
+  if '--enable-memory64' in metadata.features:
+    # See comment above about lowering memory64.
+    wasm_opt_args += ['--memory64-lowering', '--table64-lowering']
+  if wasm_opt_args:
+    building.run_wasm_opt(outfile_wasm, outfile_wasm, wasm_opt_args)
+
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
-  if settings.MEMORY64:
-    # See comment above about lowering memory64.
-    building.run_wasm_opt(outfile_wasm, outfile_wasm, ['--memory64-lowering', '--table64-lowering'])
   if settings.WASM_EXCEPTIONS:
     node_args += shared.node_exception_flags(config.NODE_JS)
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
@@ -2416,7 +2425,7 @@ def phase_binaryen(target, options, wasm_target):
     if generating_wasm:
       building.write_symbol_map(wasm_target, symbols_file)
       if not intermediate_debug_info:
-        building.strip(wasm_target, wasm_target, sections=['name'])
+        building.strip_sections(wasm_target, wasm_target, ['name'])
 
   if settings.GENERATE_DWARF and settings.SEPARATE_DWARF and generating_wasm:
     # if the dwarf filename wasn't provided, use the default target + a suffix
@@ -2434,8 +2443,7 @@ def phase_binaryen(target, options, wasm_target):
   assert intermediate_debug_info == 0
   # strip debug info if it was not already stripped by the last command
   if not debug_function_names and building.binaryen_kept_debug_info and generating_wasm:
-    with ToolchainProfiler.profile_block('strip_name_section'):
-      building.strip(wasm_target, wasm_target, debug=False, sections=["name"])
+    building.strip_sections(wasm_target, wasm_target, ['name'])
 
   # replace placeholder strings with correct subresource locations
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:
@@ -2495,12 +2503,12 @@ def module_export_name_substitution():
 def generate_traditional_runtime_html(target, options, js_target, wasm_target):
   script = ScriptSource()
 
-  if settings.EXPORT_NAME != 'Module' and options.shell_path == DEFAULT_SHELL_HTML:
+  if settings.EXPORT_NAME != 'Module' and options.shell_html == DEFAULT_SHELL_HTML:
     # the minimal runtime shell HTML is designed to support changing the export
     # name, but the normal one does not support that currently
     exit_with_error('customizing EXPORT_NAME requires that the HTML be customized to use that name (see https://github.com/emscripten-core/emscripten/issues/10086)')
 
-  shell = building.read_and_preprocess(options.shell_path)
+  shell = building.read_and_preprocess(options.shell_html)
   if '{{{ SCRIPT }}}' not in shell:
     exit_with_error('HTML shell must contain {{{ SCRIPT }}}, see src/shell.html for an example')
 
@@ -2545,7 +2553,8 @@ def generate_traditional_runtime_html(target, options, js_target, wasm_target):
 ''' % (script.inline, get_subresource_location_js(wasm_target + '.js'))
 
   shell = do_replace(shell, '{{{ SCRIPT }}}', script.replacement())
-  shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('src/shell.css')))
+  shell = shell.replace('{{{ EXPORT_NAME }}}', settings.EXPORT_NAME)
+  shell = shell.replace('{{{ SHELL_CSS }}}', utils.read_file(utils.path_from_root('html/shell.css')))
   logo_filename = utils.path_from_root('media/powered_by_logo_shell.png')
   logo_b64 = base64_encode(logo_filename)
   shell = shell.replace('{{{ SHELL_LOGO }}}', f'<img id="emscripten_logo" src="data:image/png;base64,{logo_b64}">')
@@ -2820,7 +2829,10 @@ class ScriptSource:
         </script>
         '''
       else:
-        return f'<script async type="text/javascript" src="{src}"></script>'
+        if settings.MODULARIZE:
+          return f'<script type="text/javascript" src="{src}"></script>'
+        else:
+          return f'<script async type="text/javascript" src="{src}"></script>'
     else:
       return f'<script id="mainScript">\n{self.inline}\n</script>'
 

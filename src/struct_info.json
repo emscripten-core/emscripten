@@ -10,6 +10,12 @@
     },
     {
         "file": "dirent.h",
+        "defines": [
+            "DT_DIR",
+            "DT_CHR",
+            "DT_LNK",
+            "DT_REG"
+        ],
         "structs": {
             "dirent": [
                 "d_ino",

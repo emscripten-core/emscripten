@@ -182,6 +182,15 @@ var imports = {
 };
 
 #if MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION
+{{{
+#if EXPORT_ES6 && !ENVIRONMENT_MAY_BE_AUDIO_WORKLET
+const moduleUrl = `new URL('${TARGET_BASENAME}.wasm', import.meta.url)`;
+#elif !EXPORT_ES6 || AUDIO_WORKLET
+const moduleUrl = `'${TARGET_BASENAME}.wasm'`;
+#else
+const moduleUrl = `ENVIRONMENT_IS_AUDIO_WORKLET ? '${TARGET_BASENAME}.wasm' : new URL('${TARGET_BASENAME}.wasm', import.meta.url)`;
+#endif
+}}}
 // https://caniuse.com/#feat=wasm and https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
 #if MIN_SAFARI_VERSION < 150000 || ENVIRONMENT_MAY_BE_NODE
 #if ASSERTIONS && !WASM2JS
@@ -197,13 +206,13 @@ instantiatePromise =
   // Node's fetch API cannot be used for local files, so we cannot use instantiateStreaming
   && !ENVIRONMENT_IS_NODE
 #endif
-  ? WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports)
+  ? WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports)
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
 #if AUDIO_WORKLET
 instantiatePromise =
 #endif
-WebAssembly.instantiateStreaming(fetch('{{{ TARGET_BASENAME }}}.wasm'), imports).then((output) => {
+WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports).then((output) => {
 #endif
 
 #else // Non-streaming instantiation

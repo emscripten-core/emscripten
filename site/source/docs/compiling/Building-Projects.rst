@@ -381,8 +381,8 @@ Detecting Emscripten in Preprocessor
 Emscripten provides the following preprocessor macros that can be used to identify the compiler version and platform:
 
  * The preprocessor define ``__EMSCRIPTEN__`` is always defined when compiling programs with Emscripten.
- * The preprocessor variables ``__EMSCRIPTEN_major__``, ``__EMSCRIPTEN_minor__``
-   and ``__EMSCRIPTEN_tiny__`` are defined in ``emscripten/version.h`` and
+ * The preprocessor variables ``__EMSCRIPTEN_MAJOR__``, ``__EMSCRIPTEN_MINOR__``
+   and ``__EMSCRIPTEN_TINY__`` are defined in ``emscripten/version.h`` and
    specify, as integers, the currently used Emscripten compiler version.
  * Emscripten behaves like a variant of Unix, so the preprocessor defines ``unix``, ``__unix`` and ``__unix__`` are always present when compiling code with Emscripten.
  * Emscripten uses Clang/LLVM as its underlying codegen compiler, so the preprocessor defines ``__llvm__`` and ``__clang__`` are defined, and the preprocessor defines ``__clang_major__``, ``__clang_minor__`` and ``__clang_patchlevel__`` indicate the version of Clang that is used.

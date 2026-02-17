@@ -291,6 +291,59 @@ def engine_is_bun(engine):
   return match_engine_executable(engine, 'bun')
 
 
+def get_engine(predicate):
+  """Return engine that satifies predicate, if one is configured, otherwise None"""
+  for engine in config.JS_ENGINES:
+    if predicate(engine):
+      return engine
+  return None
+
+
+def get_nodejs():
+  return get_engine(engine_is_node)
+
+
+def get_v8():
+  return get_engine(engine_is_v8)
+
+
+def get_bun():
+  return get_engine(engine_is_bun)
+
+
+def get_deno():
+  return get_engine(engine_is_deno)
+
+
+def clean_js_output(output):
+  """Cleanup the JS output prior to running verification steps on it.
+
+  Due to minification, when we get a crash report from JS it can sometimes
+  contains the entire program in the output (since the entire program is
+  on a single line).  In this case we can sometimes get false positives
+  when checking for strings in the output.  To avoid these false positives
+  and the make the output easier to read in such cases we attempt to remove
+  such lines from the JS output.
+  """
+  lines = output.splitlines()
+  long_lines = []
+
+  def cleanup(line):
+    if len(line) > 2048 and line.startswith('var Module=typeof Module!="undefined"'):
+      long_lines.append(line)
+      line = '<REPLACED ENTIRE PROGRAM ON SINGLE LINE>'
+    return line
+
+  lines = [cleanup(l) for l in lines]
+  if not long_lines:
+    # No long lines found just return the unmodified output
+    return output
+
+  # Sanity check that we only a single long line.
+  assert len(long_lines) == 1
+  return '\n'.join(lines)
+
+
 class RunnerMeta(type):
   @classmethod
   def make_test(mcs, name, func, suffix, args):
@@ -386,13 +439,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.get_setting('MEMORY64') == 2:
       self.skipTest('dynamic linking not supported with MEMORY64=2')
 
-  def get_v8(self):
-    """Return v8 engine, if one is configured, otherwise None"""
-    for engine in config.JS_ENGINES:
-      if engine_is_v8(engine):
-        return engine
-    return None
-
   def require_pthreads(self):
     self.cflags += ['-Wno-pthreads-mem-growth', '-pthread']
     if self.get_setting('MINIMAL_RUNTIME'):
@@ -400,7 +446,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     for engine in self.js_engines:
       if engine_is_node(engine):
         self.require_node()
-        nodejs = self.get_nodejs()
+        nodejs = get_nodejs()
         self.node_args += shared.node_pthread_flags(nodejs)
         return
       elif engine_is_bun(engine) or engine_is_deno(engine):
@@ -411,29 +457,16 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def require_v8(self):
     if 'EMTEST_SKIP_V8' in os.environ:
       self.skipTest('test requires v8 and EMTEST_SKIP_V8 is set')
-    v8 = self.get_v8()
+    v8 = get_v8()
     if not v8:
       self.fail('d8 required to run this test.  Use EMTEST_SKIP_V8 to skip')
     self.require_engine(v8)
     self.cflags.append('-sENVIRONMENT=shell')
 
-  def get_nodejs(self):
-    """Return nodejs engine, if one is configured, otherwise None"""
-    for engine in config.JS_ENGINES:
-      if engine_is_node(engine):
-        return engine
-    return None
-
-  def get_bun(self):
-    for engine in config.JS_ENGINES:
-      if engine_is_bun(engine):
-        return engine
-    return None
-
   def require_node(self):
     if 'EMTEST_SKIP_NODE' in os.environ:
       self.skipTest('test requires node and EMTEST_SKIP_NODE is set')
-    nodejs = self.get_nodejs() or self.get_bun()
+    nodejs = get_nodejs() or get_bun() or get_deno()
     if not nodejs:
       self.fail('node required to run this test.  Use EMTEST_SKIP_NODE to skip')
     self.require_engine(nodejs)
@@ -442,7 +475,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def require_node_25(self):
     if 'EMTEST_SKIP_NODE_25' in os.environ:
       self.skipTest('test requires node v25 and EMTEST_SKIP_NODE_25 is set')
-    nodejs = self.get_nodejs()
+    nodejs = get_nodejs()
     if not nodejs:
       self.skipTest('Test requires nodejs to run')
     if not self.try_require_node_version(25, 0, 0):
@@ -465,7 +498,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(24):
       return
 
-    v8 = self.get_v8()
+    v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
@@ -474,7 +507,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def try_require_node_version(self, major, minor = 0, revision = 0):
-    nodejs = self.get_nodejs()
+    nodejs = get_nodejs()
     if not nodejs:
       self.skipTest('Test requires nodejs to run')
     version = shared.get_node_version(nodejs)
@@ -493,7 +526,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(16):
       return
 
-    v8 = self.get_v8()
+    v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
@@ -513,7 +546,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(17):
       return
 
-    v8 = self.get_v8()
+    v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
@@ -534,7 +567,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.node_args.append('--experimental-wasm-exnref')
       return
 
-    v8 = self.get_v8()
+    v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
@@ -563,7 +596,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.node_args += ['--experimental-wasm-stack-switching']
       return
 
-    v8 = self.get_v8()
+    v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
@@ -651,7 +684,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.node_args = ['--stack-trace-limit=50', '--trace-uncaught']
     self.spidermonkey_args = ['-w']
 
-    nodejs = self.get_nodejs()
+    nodejs = get_nodejs()
     if nodejs:
       node_version = shared.get_node_version(nodejs)
       if node_version < (13, 0, 0):
@@ -686,7 +719,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.wasm_engines = config.WASM_ENGINES.copy()
     self.use_all_engines = EMTEST_ALL_ENGINES
     engine = self.get_current_js_engine()
-    if not engine_is_node(engine) and not engine_is_bun(engine):
+    if not engine_is_node(engine) and not engine_is_bun(engine) and not engine_is_deno(engine):
       # If our current JS engine a "shell" environment we need to explicitly enable support for
       # it in ENVIRONMENT.
       default_envs = 'web,webview,worker,node'
@@ -911,37 +944,18 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     non_data_lines = [line for line in wat_lines if '(data ' not in line]
     return len(non_data_lines)
 
-  def clean_js_output(self, output):
-    """Cleanup the JS output prior to running verification steps on it.
-
-    Due to minification, when we get a crash report from JS it can sometimes
-    contains the entire program in the output (since the entire program is
-    on a single line).  In this case we can sometimes get false positives
-    when checking for strings in the output.  To avoid these false positives
-    and the make the output easier to read in such cases we attempt to remove
-    such lines from the JS output.
-    """
-    lines = output.splitlines()
-    long_lines = []
-
-    def cleanup(line):
-      if len(line) > 2048 and line.startswith('var Module=typeof Module!="undefined"'):
-        long_lines.append(line)
-        line = '<REPLACED ENTIRE PROGRAM ON SINGLE LINE>'
-      return line
-
-    lines = [cleanup(l) for l in lines]
-    if not long_lines:
-      # No long lines found just return the unmodified output
-      return output
-
-    # Sanity check that we only a single long line.
-    assert len(long_lines) == 1
-    return '\n'.join(lines)
-
   def get_current_js_engine(self):
     """Return the default JS engine to run tests under"""
     return self.js_engines[0]
+
+  def engine_is_bun(self):
+    return engine_is_bun(self.get_current_js_engine())
+
+  def engine_is_deno(self):
+    return engine_is_deno(self.get_current_js_engine())
+
+  def engine_is_node(self):
+    return engine_is_node(self.get_current_js_engine())
 
   def get_engine_with_args(self, engine=None):
     if not engine:
@@ -950,6 +964,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     engine = list(engine)
     if engine_is_node(engine) or engine_is_bun(engine):
       engine += self.node_args
+    elif engine_is_deno(engine):
+      engine += ['--unstable-detect-cjs', '--allow-all', '--v8-flags=--expose-gc']
     elif engine_is_v8(engine):
       engine += self.v8_args
     elif engine == config.SPIDERMONKEY_ENGINE:
@@ -991,7 +1007,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if not interleaved_output:
       ret += read_file(stderr_file)
     if assert_returncode != 0:
-      ret = self.clean_js_output(ret)
+      ret = clean_js_output(ret)
     if error or timeout_error or EMTEST_VERBOSE:
       print('-- begin program output --')
       print(limit_size(read_file(stdout_file)), end='')
@@ -1055,11 +1071,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       fail_message += '\n' + msg
     self.fail(fail_message)
 
-  def assertTextDataContained(self, text1, text2):
-    text1 = text1.replace('\r\n', '\n')
-    text2 = text2.replace('\r\n', '\n')
-    return self.assertContained(text1, text2)
-
   def assertFileContents(self, filename, contents):
     if EMTEST_VERBOSE:
       print(f'Comparing results contents of file: {filename}')
@@ -1102,13 +1113,16 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         additional_info,
       ))
 
-  def assertNotContained(self, value, string):
+  def assertNotContained(self, value, string, regex=False):
     if callable(value):
       value = value() # lazy loading
     if callable(string):
       string = string()
-    if value in string:
-      self.fail("Expected to NOT find '%s' in '%s'" % (limit_size(value), limit_size(string)))
+    if regex:
+      self.assertFalse(re.search(value, string, re.DOTALL), 'Expected regex "%s" NOT to match on:\n%s' % (value, limit_size(string)))
+    else:
+      if value in string:
+        self.fail("Expected to NOT find '%s' in '%s'" % (limit_size(value), limit_size(string)))
 
   def assertContainedIf(self, value, string, condition):
     if condition:

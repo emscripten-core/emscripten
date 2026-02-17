@@ -1144,19 +1144,15 @@ def which(program):
     if is_exe(program):
       return program
   else:
-    for path in os.environ["PATH"].split(os.pathsep):
+    exe_suffixes = ['']
+    if WINDOWS and '.' not in fname:
+      exe_suffixes = ['.exe', '.cmd', '.bat']
+    for path in os.environ['PATH'].split(os.pathsep):
       path = path.strip('"')
       exe_file = os.path.join(path, program)
-      if is_exe(exe_file):
-        return exe_file
-
-      if WINDOWS and '.' not in fname:
-        if is_exe(exe_file + '.exe'):
-          return exe_file + '.exe'
-        if is_exe(exe_file + '.cmd'):
-          return exe_file + '.cmd'
-        if is_exe(exe_file + '.bat'):
-          return exe_file + '.bat'
+      for ext in exe_suffixes:
+        if is_exe(exe_file + ext):
+          return exe_file + ext
 
   return None
 

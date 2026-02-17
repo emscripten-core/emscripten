@@ -18,8 +18,21 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.1 (in development)
+5.0.2 (in development)
 ----------------------
+- The remaining launcher scripts (e.g. `emcc.bat`) were removed from the git
+  repository.  These scripts are created by the `./bootstrap` script which
+  must be run before the toolchain is usable (for folks using a git checkout of
+  emscripten). (#26247)
+
+5.0.1 - 02/13/26
+----------------
+- `logReadFiles` was removed from the default `INCOMING_MODULE_JS_API` list.
+  To use this feature you now need to explictly add `logReadFiles` to
+  `INCOMING_MODULE_JS_API`. (#26190);
+- Support for the `WASM_OBJECT_FILES` setting (which has been long deprecated)
+  was removed.  `-flto` enables bitcode object files, otherwise Wasm object
+  files have been the default for a long time already. (#26219).
 
 5.0.0 - 01/24/26
 ----------------
@@ -27,7 +40,7 @@ See docs/process.md for more on how version tagging works.
   inconsistent with JS and was not supported in browser devtools. We plan to
   provide this information using Scopes encoding later. (#26149)
 - compiler-rt, libcxx, libcxxabi, libunwind, and llvm-libc were updated to LLVM
-- 21.1.8. (#26036, #26045, #26058, and #26151)
+  21.1.8. (#26036, #26045, #26058, and #26151)
 - Calling pthread_create in a single-threaded build will now return ENOTSUP
   rather then EAGAIN.  (#26105)
 - compiler-rt and libunwind were updated to LLVM 21.1.8. (#26036 and #26045)
