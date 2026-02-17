@@ -1935,7 +1935,7 @@ window.close = () => {
   @no_2gb('render fails')
   @no_4gb('render fails')
   def test_gl_stride(self):
-    self.reftest('gl_stride.c', 'gl_stride.png', cflags=['-sGL_UNSAFE_OPTS=0', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
+    self.reftest('gl_stride.c', 'gl_stride.png', cflags=['-sGL_UNSAFE_OPTS=0', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL', '-sUSE_SDL'])
 
   @requires_graphics_hardware
   def test_gl_vertex_buffer_pre(self):

@@ -215,6 +215,7 @@ def generate_cmd(js_file_path, src_file_path, cflags):
                                '-sINCOMING_MODULE_JS_API=',
                                '-sSTRICT',
                                '-sSUPPORT_LONGJMP=0',
+                               '-sUSE_SDL=1',
                                '-sASSERTIONS=0']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches

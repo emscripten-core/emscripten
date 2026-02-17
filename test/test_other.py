@@ -2482,6 +2482,20 @@ int main() {
     self.assert_fail([EMCC, 'main.c'], 'SDL.h:1:2: error: "To use the emscripten port of SDL use -sUSE_SDL or -sUSE_SDL=2"')
     self.run_process([EMCC, 'main.c', '-sUSE_SDL'])
 
+  def test_sdl_undefined(self):
+    create_file('main.c', r'''
+      #include <stdio.h>
+
+      int SDL_Init(int flags);
+
+      int main() {
+        printf("in main: %p\n", SDL_Init);
+        return 0;
+      }
+    ''')
+    self.assert_fail([EMCC, 'main.c'], 'undefined symbol: SDL_Init')
+    self.run_process([EMCC, 'main.c', '-sUSE_SDL'])
+
   def test_sdl_endianness(self):
     create_file('main.c', r'''
       #include <stdio.h>
@@ -2492,7 +2506,7 @@ int main() {
         return 0;
       }
     ''')
-    self.do_runf('main.c', '1234, 1234, 4321\n')
+    self.do_runf('main.c', '1234, 1234, 4321\n', cflags=['-sUSE_SDL'])
 
   def test_sdl_scan_code_from_key(self):
     create_file('main.c', r'''
@@ -2504,7 +2518,7 @@ int main() {
         return 0;
       }
     ''')
-    self.do_runf('main.c', '204\n')
+    self.do_runf('main.c', '204\n', cflags=['-sUSE_SDL'])
 
   def test_sdl_get_key_name(self):
     create_file('main.c', r'''
@@ -2526,7 +2540,7 @@ z -> 'z'
 0 -> '0'
 0 -> '9'
 F1 -> ''
-''')
+''', cflags=['-sUSE_SDL'])
 
   @requires_network
   def test_sdl2_mixer_wav(self):
@@ -8839,7 +8853,7 @@ int main() {
     # everything it needs.
     directories = {'': []}
     for elem in os.listdir(path_from_root('system/include')):
-      if elem == 'fakesdl':
+      if elem == 'SDL':
         continue
       full = path_from_root('system/include', elem)
       if os.path.isdir(full):
@@ -9233,6 +9247,7 @@ end
     self.build('hello_world.c', cflags=[
       '--closure=1',
       '-sINCLUDE_FULL_LIBRARY',
+      '-sUSE_SDL',
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
       '-Werror=closure',
