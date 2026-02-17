@@ -945,7 +945,10 @@ f.close()
       os.mkdir(builddir)
       with common.chdir(builddir):
         # Run Cmake
-        cmd = [EMCMAKE, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
+
+        # Some tests have very old cmake_minimum_version settings which is not supported by cmake 4+.
+        # Forcing a slighly more recent cmake_minimum_version works around this issue.
+        cmd = [EMCMAKE, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir, '-DCMAKE_POLICY_VERSION_MINIMUM=3.5']
 
         env = os.environ.copy()
         # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
