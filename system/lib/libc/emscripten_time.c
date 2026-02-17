@@ -5,17 +5,14 @@
  * found in the LICENSE file.
  */
 
-#include <emscripten/emscripten.h>
-#include <emscripten/html5.h>
+#include <emscripten/html5.h> // For `emscripten_data_now`
 #include <time.h>
-#include <stdbool.h>
 #include <sys/time.h>
-#include <threads.h>
-#include "libc.h"
 
-#include "emscripten_internal.h"
+#include "libc.h" // For `weak`/`weak_alias`
 
-weak time_t __time(time_t *t) {
+
+time_t __time(time_t *t) {
   double ret = emscripten_date_now() / 1000;
   if (t) {
     *t = ret;
@@ -23,10 +20,7 @@ weak time_t __time(time_t *t) {
   return ret;
 }
 
-static thread_local bool checked_monotonic = false;
-static thread_local bool is_monotonic = 0;
-
-weak int __gettimeofday(struct timeval *restrict tv, void *restrict tz) {
+int __gettimeofday(struct timeval *restrict tv, void *restrict tz) {
   double now_ms = emscripten_date_now();
   long long now_s = now_ms / 1000;
   tv->tv_sec = now_s; // seconds
