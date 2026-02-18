@@ -5,14 +5,15 @@
  * found in the LICENSE file.
  */
 
-#include <emscripten/html5.h> // For `emscripten_data_now`
+#include <emscripten/html5.h> // For `emscripten_date_now`
 #include <time.h>
 #include <sys/time.h>
 
-#include "libc.h" // For `weak`/`weak_alias`
+#include "libc.h" // For `weak`
 
-
-time_t __time(time_t *t) {
+// emscripten-specific implementations. These works out slightly smaller than
+// musl's since it they avoid depending on the more general clock_gettime.
+weak time_t time(time_t *t) {
   double ret = emscripten_date_now() / 1000;
   if (t) {
     *t = ret;
@@ -20,7 +21,7 @@ time_t __time(time_t *t) {
   return ret;
 }
 
-int __gettimeofday(struct timeval *restrict tv, void *restrict tz) {
+weak int gettimeofday(struct timeval *restrict tv, void *restrict tz) {
   double now_ms = emscripten_date_now();
   long long now_s = now_ms / 1000;
   tv->tv_sec = now_s; // seconds
@@ -28,10 +29,8 @@ int __gettimeofday(struct timeval *restrict tv, void *restrict tz) {
   return 0;
 }
 
+// Non-standard glibc/BSD extension that is not implemented by musl
 weak int dysize(int year) {
   int leap = ((year % 4 == 0) && ((year % 100 != 0) || (year % 400 == 0)));
   return leap ? 366 : 365;
 }
-
-weak_alias(__time, time);
-weak_alias(__gettimeofday, gettimeofday);

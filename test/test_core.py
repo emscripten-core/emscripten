@@ -7741,6 +7741,10 @@ void* operator new(size_t size) {
   def test_embind_wasm_workers(self):
     self.do_run_in_out_file_test('embind/test_embind_wasm_workers.cpp', cflags=['-lembind', '-sWASM_WORKERS'])
 
+  @with_all_eh_sjlj
+  def test_embind_throw_cpp_exception(self):
+    self.do_run_in_out_file_test('embind/test_embind_throw_cpp_exception.cpp', cflags=['-lembind', '-std=c++20'])
+
   @parameterized({
     '': ('DEFAULT', False),
     'all': ('ALL', False),

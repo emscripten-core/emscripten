@@ -436,15 +436,12 @@ class benchmark(common.RunnerCore):
   def do_benchmark(self, name, src, expected_output='FAIL', args=None,
                    emcc_args=None, native_args=None, shared_args=None,
                    force_c=False, reps=TEST_REPS, native_exec=None,
-                   output_parser=None, args_processor=None, lib_builder=None,
+                   output_parser=None, lib_builder=None,
                    skip_benchmarkers=None):
     if not benchmarkers:
       raise Exception('error, no benchmarkers')
 
     args = args or [DEFAULT_ARG]
-    if args_processor:
-      args = args_processor(args)
-
     dirname = self.get_dir()
     filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
     src = self.hardcode_arguments(src)
@@ -977,7 +974,7 @@ class benchmark(common.RunnerCore):
       return float(re.search(r'Total elapsed: ([\d\.]+)', output).group(1))
     self.do_benchmark('matrix_multiply', read_file(test_file('matrix_multiply.cpp')), 'Total elapsed:', output_parser=output_parser, shared_args=['-I' + test_file('benchmark')])
 
-  def lua(self, benchmark, expected, output_parser=None, args_processor=None):
+  def lua(self, benchmark, expected, output_parser=None):
     self.cflags.remove('-Werror')
     shutil.copyfile(test_file(f'third_party/lua/{benchmark}.lua'), benchmark + '.lua')
 
@@ -995,7 +992,7 @@ class benchmark(common.RunnerCore):
                       force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
                       emcc_args=['--embed-file', benchmark + '.lua', '-sFORCE_FILESYSTEM', '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, native_exec=os.path.join('building', 'third_party', 'lua_native', 'src', 'lua'),
-                      output_parser=output_parser, args_processor=args_processor)
+                      output_parser=output_parser)
 
   def test_zzz_lua_scimark(self):
     def output_parser(output):
