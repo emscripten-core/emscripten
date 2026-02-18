@@ -106,6 +106,7 @@ bool _emval_is_number(EM_VAL object);
 bool _emval_is_string(EM_VAL object);
 bool _emval_in(EM_VAL item, EM_VAL object);
 bool _emval_delete(EM_VAL object, EM_VAL property);
+bool _emval_is_cpp_exception(EM_VAL object);
 [[noreturn]] bool _emval_throw(EM_VAL object);
 EM_VAL _emval_await(EM_VAL promise);
 EM_VAL _emval_iter_begin(EM_VAL iterable);
@@ -732,6 +733,7 @@ public:
     if (auto* result = std::get_if<state_result>(&state)) {
       return std::move(result->result);
     }
+    // If a JS exception ended up here, it will be uncaught as C++ code cannot catch it
     std::get<state_error>(state).error.throw_();
   }
 };
@@ -796,17 +798,24 @@ public:
 inline void val::awaiter::reject_with(val&& error) {
   auto coro = std::get<state_coro>(state);
 
-#ifndef __cpp_exceptions
 
-  // If we don't have C++ exceptions, surrounding C++ code cannot catch the error.
-  // Thus, we can just reject an enclosing JS Promise.
   if (coro.isValPromise) {
-    auto& promise = std::coroutine_handle<promise_type>::from_address(coro.handle.address()).promise();
-    promise.reject_with(std::move(error));
-    coro.handle.destroy();
-    return;
-  }
+    constexpr bool hasCppExceptions =
+#ifdef __cpp_exceptins
+      true
+#else
+      false
 #endif
+    ;
+    if (!(hasCppExceptions && internal::_emval_is_cpp_exception(error.as_handle()))) {
+      // C++ code cannot catch JS exceptions.
+      // Thus, we can just reject an enclosing JS Promise.
+      auto& promise = std::coroutine_handle<promise_type>::from_address(coro.handle.address()).promise();
+      promise.reject_with(std::move(error));
+      coro.handle.destroy();
+      return;
+    }
+  }
 
   state.emplace<state_error>(std::move(error));
   coro.handle.resume();

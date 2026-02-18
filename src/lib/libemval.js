@@ -392,6 +392,20 @@ ${functionBody}
     return delete object[property];
   },
 
+  _emval_is_cpp_exception__deps: ['$Emval'],
+  _emval_is_cpp_exception: (object) => {
+    object = Emval.toValue(object);
+#if WASM_EXCEPTIONS
+    return object instanceof WebAssembly.Exception;
+#else
+#if EXCEPTION_STACK_TRACES
+    return object instanceof CppException;
+#else
+    return object === object+0; // Check if it is a number
+#endif
+#endif
+  },
+
   _emval_throw__deps: ['$Emval',
 #if !WASM_EXCEPTIONS
     '$exceptionLast',

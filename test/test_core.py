@@ -7651,6 +7651,19 @@ void* operator new(size_t size) {
     self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
 
+  def test_embind_val_coro_propagate_js_error_disabled_catch(self):
+    #TODO Is this the default?
+    self.set_setting('DISABLE_EXCEPTION_CATCHING')
+    self.set_setting('NO_DISABLE_EXCEPTION_THROWING')
+    create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
+      Module.failingPromise().then(
+        console.log,
+        err => console.error(`rejected with: ${err.message}`)
+      );
+    }''')
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
+    self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
+
   def test_embind_val_coro_propagate_js_error_noexcept(self):
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.failingPromise().then(
@@ -7662,8 +7675,8 @@ void* operator new(size_t size) {
     self.do_runf('embind/test_val_coro_noexcept.cpp', 'rejected with: bang from JS promise!\n')
 
   def test_embind_val_coro_catch_cpp_exception(self):
+    self.set_setting('EXCEPTION_STACK_TRACES')
     for eh in ('-fexceptions', '-fwasm-exceptions'):
-      self.set_setting('EXCEPTION_STACK_TRACES')
       create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
         Module.catchCppExceptionPromise().then(console.log);
       }''')
