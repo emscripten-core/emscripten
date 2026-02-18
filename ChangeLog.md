@@ -20,6 +20,7 @@ See docs/process.md for more on how version tagging works.
 
 5.0.2 (in development)
 ----------------------
+- SDL2 port updated from 2.32.8 to 2.32.10. (#26298)
 - The remaining launcher scripts (e.g. `emcc.bat`) were removed from the git
   repository.  These scripts are created by the `./bootstrap` script which
   must be run before the toolchain is usable (for folks using a git checkout of
