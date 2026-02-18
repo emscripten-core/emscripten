@@ -23,7 +23,7 @@ import jsrun
 from common import read_binary, read_file, test_file
 from decorators import needs_make
 
-from tools import building, utils
+from tools import utils
 from tools.shared import CLANG_CC, CLANG_CXX, EMCC, PIPE, config
 from tools.utils import run_process
 
@@ -196,23 +196,14 @@ class NativeBenchmarker(Benchmarker):
     return 'dynamically linked - libc etc. are not included!'
 
 
-def run_binaryen_opts(filename, opts):
-  run_process([
-    os.path.join(building.get_binaryen_bin(), 'wasm-opt', '--all-features'),
-    filename,
-    '-o', filename,
-  ] + opts)
-
-
 class EmscriptenBenchmarker(Benchmarker):
-  def __init__(self, name, engine, extra_args=None, env=None, binaryen_opts=None):
+  def __init__(self, name, engine, extra_args=None, env=None):
     self.name = name
     self.engine = engine
     self.extra_args = extra_args or []
     self.env = os.environ.copy()
     if env:
       self.env.update(env)
-    self.binaryen_opts = binaryen_opts or []
 
   def build(self, parent, filename, shared_args, emcc_args, native_args, native_exec, lib_builder):
     emcc_args = emcc_args or []
@@ -250,8 +241,6 @@ class EmscriptenBenchmarker(Benchmarker):
       cmd += ['-sFILESYSTEM=0']
     self.cmd = cmd
     run_process(cmd, env=self.env)
-    if self.binaryen_opts:
-      run_binaryen_opts(utils.replace_suffix(final, '.wasm'), self.binaryen_opts)
     self.filename = final
 
   def run(self, args):
@@ -289,11 +278,10 @@ CHEERP_BIN = '/opt/cheerp/bin/'
 
 
 class CheerpBenchmarker(Benchmarker):
-  def __init__(self, name, engine, args=None, binaryen_opts=None):
+  def __init__(self, name, engine, args=None):
     self.name = name
     self.engine = engine
     self.args = args or [OPTIMIZATIONS]
-    self.binaryen_opts = binaryen_opts or []
 
   def build(self, parent, filename, shared_args, emcc_args, native_args, native_exec, lib_builder):
     cheerp_args = [
@@ -337,8 +325,6 @@ class CheerpBenchmarker(Benchmarker):
       # print(' '.join(cmd))
       run_process(cmd, stdout=PIPE, stderr=PIPE)
       self.filename = final
-      if self.binaryen_opts:
-        run_binaryen_opts(final.replace('.js', '.wasm'), self.binaryen_opts)
     finally:
       for dir_ in dirs_to_delete:
         utils.delete_dir(dir_)
