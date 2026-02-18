@@ -416,9 +416,18 @@ class benchmark(common.RunnerCore):
       }
       utils.write_file('stats.json', json.dumps(output, indent=2) + '\n')
 
-  # avoid depending on argument reception from the commandline
-  def hardcode_arguments(self, code):
+  def hardcode_arguments(self, code, args):
+    """Avoid depending on argument reception from the commandline, where possible.
+
+    Here we take the command line arguments and embed them directly into `main` function.
+    If we cannot find a `main` function, or if we have more than one argument, we
+    do not do any embedding, and the resulting test will depend on arguments being
+    passed via argv (which works in most environments).
+    """
     if not code or 'int main()' in code:
+      return code
+    # We only know how to embed a single argument
+    if len(args) != 1:
       return code
     main_pattern = 'int main(int argc, char **argv)'
     assert main_pattern in code
@@ -430,7 +439,7 @@ class benchmark(common.RunnerCore):
         int ret = benchmark_main(newArgc, newArgv);
         return ret;
       }
-    ''' % DEFAULT_ARG
+    ''' % args[0]
     return code
 
   def do_benchmark(self, name, src, expected_output='FAIL', args=None,
@@ -444,7 +453,7 @@ class benchmark(common.RunnerCore):
     args = args or [DEFAULT_ARG]
     dirname = self.get_dir()
     filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
-    src = self.hardcode_arguments(src)
+    src = self.hardcode_arguments(src, args)
     utils.write_file(filename, src)
 
     print()
