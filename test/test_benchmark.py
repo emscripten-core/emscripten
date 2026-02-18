@@ -21,7 +21,7 @@ import clang_native
 import common
 import jsrun
 from common import read_binary, read_file, test_file
-from decorators import needs_make
+from decorators import needs_make, parameterized
 
 from tools import building, utils
 from tools.shared import CLANG_CC, CLANG_CXX, EMCC, PIPE, config
@@ -474,7 +474,13 @@ class benchmark(common.RunnerCore):
       },
     })
 
-  def test_primes(self, check=True):
+  @parameterized({
+    '': (False,),
+    # Also interesting to test it without the printfs which allow checking the output. Without
+    # printf, code size is dominated by the runtime itself (the compiled code is just a few lines).
+    'nocheck': (True,),
+  })
+  def test_primes(self, check):
     src = r'''
       #include <stdio.h>
       #include <math.h>
@@ -515,11 +521,6 @@ class benchmark(common.RunnerCore):
       }
     '''
     self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [])
-
-  # Also interesting to test it without the printfs which allow checking the output. Without
-  # printf, code size is dominated by the runtime itself (the compiled code is just a few lines).
-  def test_primes_nocheck(self):
-    self.test_primes(check=False)
 
   def test_memops(self):
     src = '''
