@@ -945,7 +945,10 @@ f.close()
       os.mkdir(builddir)
       with common.chdir(builddir):
         # Run Cmake
-        cmd = [EMCMAKE, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir]
+
+        # Some tests have very old cmake_minimum_version settings which is not supported by cmake 4+.
+        # Forcing a slighly more recent cmake_minimum_version works around this issue.
+        cmd = [EMCMAKE, 'cmake'] + cmake_args + ['-G', generator, cmakelistsdir, '-DCMAKE_POLICY_VERSION_MINIMUM=3.5']
 
         env = os.environ.copy()
         # https://github.com/emscripten-core/emscripten/pull/5145: Check that CMake works even if EMCC_SKIP_SANITY_CHECK=1 is passed.
@@ -2247,15 +2250,13 @@ Module['postRun'] = () => {
   @requires_pthreads
   def test_dylink_pthread_em_asm(self):
     self.set_setting('MAIN_MODULE', 2)
-    self.cflags += ['-Wno-experimental', '-pthread']
-    self.do_runf('hello_world_em_asm.c', 'hello, world')
+    self.do_runf('hello_world_em_asm.c', 'hello, world', cflags=['-Wno-experimental', '-pthread'])
 
   @requires_pthreads
   def test_dylink_pthread_em_js(self):
     self.set_setting('MAIN_MODULE', 2)
     self.set_setting('EXPORTED_FUNCTIONS', '_malloc,_main')
-    self.cflags += ['-Wno-experimental', '-pthread']
-    self.do_runf('core/test_em_js.cpp')
+    self.do_runf('core/test_em_js.cpp', cflags=['-Wno-experimental', '-pthread'])
 
   @requires_pthreads
   @parameterized({
@@ -2569,22 +2570,17 @@ F1 -> ''
                  cflags=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-pthread'])
 
   @requires_network
-  def test_giflib(self):
-    # giftext.c contains a sprintf warning
-    self.cflags += ['-Wno-fortify-source']
+  @parameterized({
+    '': (['-sUSE_GIFLIB'],),
+    # Same again with -sMAIN_MODULE (See #18537)
+    'dylink': (['-sUSE_GIFLIB', '-sMAIN_MODULE'],),
+    'use_port': (['--use-port=giflib'],),
+  })
+  def test_giflib(self, args):
     shutil.copy(test_file('third_party/giflib/treescap.gif'), '.')
     self.do_runf('third_party/giflib/giftext.c',
                  'GIF file terminated normally',
-                 cflags=['--embed-file', 'treescap.gif', '-sUSE_GIFLIB'],
-                 args=['treescap.gif'])
-    # Same again with -sMAIN_MODULE (See #18537)
-    self.do_runf('third_party/giflib/giftext.c',
-                 'GIF file terminated normally',
-                 cflags=['--embed-file', 'treescap.gif', '-sUSE_GIFLIB', '-sMAIN_MODULE'],
-                 args=['treescap.gif'])
-    self.do_runf('third_party/giflib/giftext.c',
-                 'GIF file terminated normally',
-                 cflags=['--embed-file', 'treescap.gif', '--use-port=giflib'],
+                 cflags=['--embed-file', 'treescap.gif', '-Wno-fortify-source'] + args,
                  args=['treescap.gif'])
 
   @requires_network
@@ -2612,10 +2608,8 @@ F1 -> ''
 
   @requires_network
   def test_bzip2(self):
-    self.do_runf('bzip2_test.c', 'usage: unzcrash filename',
-                 cflags=['-sUSE_BZIP2', '-Wno-pointer-sign'])
-    self.do_runf('bzip2_test.c', 'usage: unzcrash filename',
-                 cflags=['--use-port=bzip2', '-Wno-pointer-sign'])
+    self.do_runf('bzip2_test.c', 'usage: unzcrash filename', cflags=['-sUSE_BZIP2', '-Wno-pointer-sign'])
+    self.do_runf('bzip2_test.c', 'usage: unzcrash filename', cflags=['--use-port=bzip2', '-Wno-pointer-sign'])
 
   @with_all_sjlj
   @requires_network
@@ -3467,9 +3461,7 @@ More info: https://emscripten.org
     self.assertNotContained('Foo* destructed', output)
 
   def test_embind_return_value_policy(self):
-    self.cflags += ['-lembind']
-
-    self.do_runf('embind/test_return_value_policy.cpp')
+    self.do_runf('embind/test_return_value_policy.cpp', cflags=['-lembind'])
 
   @requires_node_25
   def test_embind_resource_management(self):
@@ -3607,8 +3599,7 @@ More info: https://emscripten.org
   })
   def test_embind_tsgen_ignore(self, extra_args, expected_ts_file):
     create_file('fail.js', 'assert(false);')
-    self.cflags += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
-    self.emcc('other/embind_tsgen.cpp', extra_args)
+    self.emcc('other/embind_tsgen.cpp', ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
     self.assertFileContents(test_file(f'other/{expected_ts_file}'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_remove_relaxed_simd(self):
@@ -3616,10 +3607,9 @@ More info: https://emscripten.org
     self.assertContained('print_madd()', read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_worker_env(self):
-    self.cflags += ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts']
     # Passing -sWASM_WORKERS requires the 'worker' environment
     # at link time. Verify that TS binding generation still works in this case.
-    self.emcc('other/embind_tsgen.cpp', ['-sWASM_WORKERS'])
+    self.emcc('other/embind_tsgen.cpp', ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts', '-sWASM_WORKERS'])
     self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
 
   def test_embind_tsgen_dylink(self):
@@ -6144,8 +6134,7 @@ int main(void) {
     console.log('got module');
     ''')
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
-    self.cflags += ['-sEXPORT_ES6', '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0', '--pre-js=pre.js']
-    self.emcc('hello_world.c', ['-o', 'hello_world.mjs'])
+    self.emcc('hello_world.c', ['-o', 'hello_world.mjs', '-sEXPORT_ES6', '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0', '--pre-js=pre.js'])
     self.assertContained('add-dep\nremove-dep\nhello, world!\ngot module\n', self.run_js('run.mjs'))
 
   def test_modularize_instantiation_error(self):
@@ -8706,8 +8695,7 @@ int main() {
 
   @with_all_eh_sjlj
   def test_exceptions_exit_runtime(self):
-    self.set_setting('EXIT_RUNTIME')
-    self.do_other_test('test_exceptions_exit_runtime.cpp')
+    self.do_other_test('test_exceptions_exit_runtime.cpp', cflags=['-sEXIT_RUNTIME'])
 
   @with_all_eh_sjlj
   def test_multi_inheritance_exception_message(self):
@@ -13419,8 +13407,7 @@ myMethod: 43
 
   def test_gmtime_noleak(self):
     # Confirm that gmtime_r does not leak when called in isolation.
-    self.cflags.append('-fsanitize=leak')
-    self.do_other_test('test_gmtime_noleak.c')
+    self.do_other_test('test_gmtime_noleak.c', cflags=['-fsanitize=leak'])
 
   def test_build_fetch_tests(self):
     # We can't run these outside of the browser, but at least we can
@@ -13701,15 +13688,12 @@ int main() {
     self.do_runf('other/test_parseTools.c', expected, cflags=['-sASSERTIONS=2'], assert_returncode=NON_ZERO)
 
   def test_lto_atexit(self):
-    self.cflags.append('-flto')
-
     # Without EXIT_RUNTIME we don't expect the dtor to run at all
-    output = self.do_runf('other/test_lto_atexit.c', 'main done')
+    output = self.do_runf('other/test_lto_atexit.c', 'main done', cflags=['-flto'])
     self.assertNotContained('my_dtor', output)
 
     # With EXIT_RUNTIME we expect to see the dtor running.
-    self.set_setting('EXIT_RUNTIME')
-    self.do_runf('other/test_lto_atexit.c', 'main done\nmy_dtor\n')
+    self.do_runf('other/test_lto_atexit.c', 'main done\nmy_dtor\n', cflags=['-flto', '-sEXIT_RUNTIME'])
 
   @crossplatform
   def test_prejs_unicode(self):
@@ -14407,8 +14391,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @requires_pthreads
   def test_standalone_whole_archive(self):
-    self.cflags += ['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lstandalonewasm', '-Wl,--no-whole-archive']
-    self.do_runf('hello_world.c')
+    self.do_runf('hello_world.c', cflags=['-sSTANDALONE_WASM', '-pthread', '-Wl,--whole-archive', '-lstandalonewasm', '-Wl,--no-whole-archive'])
 
   @also_with_standalone_wasm(impure=True)
   def test_console_out(self):
