@@ -392,9 +392,9 @@ ${functionBody}
     return delete object[property];
   },
 
-  _emval_throw__deps: ['$Emval'
+  _emval_throw__deps: ['$Emval',
 #if !WASM_EXCEPTIONS
-  , '$exceptionLast'
+    '$exceptionLast',
 #endif
   ],
   _emval_throw: (object) => {
