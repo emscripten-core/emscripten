@@ -166,7 +166,7 @@ class NativeBenchmarker(Benchmarker):
     shared_args = shared_args or []
     self.parent = parent
     if lib_builder:
-      env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"}
+      env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': '-Wno-c++11-narrowing'}
       env.update(clang_native.get_clang_native_env())
       native_args = native_args + lib_builder(self.name, native=True, env_init=env)
     if not native_exec:
@@ -312,7 +312,7 @@ class CheerpBenchmarker(Benchmarker):
         'NM': CHEERP_BIN + 'llvm-nm',
         'LDSHARED': CHEERP_BIN + 'clang',
         'RANLIB': CHEERP_BIN + '../libexec/cheerp-unknown-none-ranlib',
-        'CXXFLAGS': "-Wno-c++11-narrowing",
+        'CXXFLAGS': '-Wno-c++11-narrowing',
         'CHEERP_PREFIX': CHEERP_BIN + '../',
       })
     if PROFILING:
@@ -980,7 +980,7 @@ class benchmark(common.RunnerCore):
 
     def lib_builder(name, native, env_init):
       # Inject -sMEMORY64 into node-64 benchmarking runs.
-      env_init['MYCFLAGS'] = env_init['CFLAGS']
+      env_init['MYCFLAGS'] = env_init.get('CFLAGS', '')
       if '-sMEMORY64' in env_init['MYCFLAGS']:
         env_init['MYLDFLAGS'] = '-sMEMORY64'
 
@@ -1041,7 +1041,7 @@ class benchmark(common.RunnerCore):
     src += read_file(test_file('third_party/bullet/Demos/Benchmarks/main.cpp'))
 
     def lib_builder(name, native, env_init):
-      cflags = ' '.join(self.cflags) + ' ' + env_init['CFLAGS']
+      cflags = ' '.join(self.cflags) + ' ' + env_init.get('CFLAGS', '')
       return self.get_library(str(Path('third_party/bullet')),
                               ['src/BulletDynamics/libBulletDynamics.a',
                                'src/BulletCollision/libBulletCollision.a',
@@ -1111,7 +1111,7 @@ class benchmark(common.RunnerCore):
     ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):  # noqa
-      if '-sMEMORY64' in env_init['CFLAGS']:
+      if '-sMEMORY64' in env_init.get('CFLAGS', ''):
         env_init['CPPFLAGS'] = '-sMEMORY64'
         env_init['LDFLAGS'] = '-sMEMORY64'
       return self.get_poppler_library(env_init=env_init)
