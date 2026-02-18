@@ -109,9 +109,13 @@ class callback_coro {
 public:
   class promise_type {
     std::function<void(int)> callback_;
+    std::function<void()> errorCallback_;
   public:
-    promise_type(std::function<void(int)> callback)
-      : callback_(std::move(callback)) {}
+    promise_type(
+      std::function<void(int)> callback,
+      std::function<void()> errorCallback = std::terminate)
+      : callback_(std::move(callback)),
+        errorCallback_(std::move(errorCallback)) {}
 
     callback_coro get_return_object() const noexcept {
       return callback_coro();
@@ -120,21 +124,19 @@ public:
     auto initial_suspend() const noexcept { return std::suspend_never{}; }
     auto final_suspend() const noexcept { return std::suspend_never{}; }
 
-    void return_value(int ret) { std::move(callback_)(ret); }
+    void return_value(int ret) { callback_(ret); }
 
-#ifdef __cpp_exceptions
-    [[noreturn]] void unhandled_exception() const noexcept { std::terminate(); }
-#endif
+    void unhandled_exception() const noexcept { errorCallback_(); }
   };
 };
 
-callback_coro awaitWithCallback(std::function<void(int)>) {
+callback_coro sleepWithCallback(std::function<void(int)>) {
   co_await promise_sleep(1);
   co_return 42;
 }
 
-void awaitInOtherPromise() {
-  awaitWithCallback([](int ret) { val::global("console").call<void>("log", ret); });
+void awaitInNonValCoro() {
+  sleepWithCallback([](int ret) { val::global("console").call<void>("log", ret); });
 }
 
 
@@ -143,5 +145,5 @@ EMSCRIPTEN_BINDINGS(test_val_coro) {
   function("throwingCoro", throwingCoro<3>);
   function("failingPromise", failingPromise<3>);
   function("catchCppExceptionPromise", catchCppExceptionPromise);
-  function("awaitInOtherPromise", awaitInOtherPromise);
+  function("awaitInNonValCoro", awaitInNonValCoro);
 }

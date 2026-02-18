@@ -798,10 +798,10 @@ inline void val::awaiter::reject_with(val&& error) {
 
 #ifndef __cpp_exceptions
 
-  // If we don't have C++ exceptions, we cannot catch the error.
+  // If we don't have C++ exceptions, surrounding C++ code cannot catch the error.
   // Thus, we can just reject an enclosing JS Promise.
   if (coro.isValPromise) {
-    auto& promise = std::coroutine_handle<promise_type>(coro.handle).promise();
+    auto& promise = std::coroutine_handle<promise_type>::from_address(coro.handle.address()).promise();
     promise.reject_with(std::move(error));
     coro.handle.destroy();
     return;
