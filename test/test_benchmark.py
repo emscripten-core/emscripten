@@ -113,7 +113,7 @@ class Benchmarker:
         final = mean / mean_baseline
         print('  Relative: %.2f X slower' % final)
       else:
-        print()
+        print('  Relative: No baseline recorded yet')
 
     # size
 
@@ -455,13 +455,16 @@ class benchmark(common.RunnerCore):
       if not b.run:
         # If we won't run the benchmark, we don't need repetitions.
         reps = 0
-      baseline = b
       print('Running benchmarker: %s: %s' % (b.__class__.__name__, b.name))
       b.build(self, filename, shared_args, emcc_args, native_args, native_exec, lib_builder)
       b.bench(args, output_parser, reps, expected_output)
       recorded_stats = b.display(baseline)
       if recorded_stats:
         self.add_stats(name, recorded_stats)
+      if not baseline:
+        # Use the first benchmarker as the baseline.  Other benchmarkers can then
+        # report relative performance compared to this.
+        baseline = b
 
   def add_stats(self, name, stats):
     self.stats.append({
