@@ -392,9 +392,37 @@ ${functionBody}
     return delete object[property];
   },
 
-  _emval_throw__deps: ['$Emval'],
+  _emval_throw__deps: ['$Emval',
+#if !WASM_EXCEPTIONS
+    '$exceptionLast',
+#endif
+  ],
   _emval_throw: (object) => {
     object = Emval.toValue(object);
+#if !WASM_EXCEPTIONS
+    // If we are throwing Emcripten C++ exception, set exceptionLast, as we do
+    // in __cxa_throw. When EXCEPTION_STACK_TRACES is set, a C++ exception will
+    // be an instance of EmscriptenEH, and when EXCEPTION_STACK_TRACES is not
+    // set, it will be a pointer (number).
+    //
+    // This is different from __cxa_throw() in libexception.js because
+    // __cxa_throw() is called from the user C++ code when the 'throw' keyword
+    // is used, and the value thrown is a C++ pointer. When
+    // EXCEPTION_STACK_TRACES is true, we wrap it with CppException. But this
+    // _emval_throw is called when we throw whatever is contained in 'object',
+    // which can be anything including a CppException object, or a number, or
+    // other JS object. So we don't use storeException() wrapper here and we
+    // throw it as is.
+#if EXCEPTION_STACK_TRACES
+    if (object instanceof CppException) {
+      exceptionLast = object;
+    }
+#else
+    if (object === object+0) { // Check if it is a number
+      exceptionLast = object;
+    }
+#endif
+#endif
     throw object;
   },
 
