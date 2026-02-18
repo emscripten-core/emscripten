@@ -106,6 +106,10 @@ no_windows = skip_if('no_windows', lambda _: WINDOWS)
 
 no_wasm64 = skip_if('no_wasm64', lambda t: t.is_wasm64())
 
+no_bun = skip_if('no_bun', lambda t: t.engine_is_bun())
+
+no_deno = skip_if('no_deno', lambda t: t.engine_is_deno())
+
 # 2200mb is the value used by the core_2gb test mode
 no_2gb = skip_if('no_2gb', lambda t: t.get_setting('INITIAL_MEMORY') == '2200mb')
 

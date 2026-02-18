@@ -265,7 +265,7 @@ class codesize(RunnerCore):
 
     if '-sSINGLE_FILE' not in cflags:
       # measure the wasm size without the name section
-      building.strip('a.out.wasm', 'a.out.nodebug.wasm', sections=['name'])
+      building.strip_sections('a.out.wasm', 'a.out.nodebug.wasm', ['name'])
       outputs.append('a.out.nodebug.wasm')
 
       imports, exports, funcs = self.parse_wasm('a.out.wasm')

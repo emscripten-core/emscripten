@@ -40,6 +40,8 @@ coverage.xml
 !/tools/run_python_compiler.ps1
 
 # Shell scripts (created by ./tools/maint/create_entry_points.py)
+em++
+emcc
 em-config
 emar
 embuilder
@@ -58,10 +60,13 @@ emscons
 emsize
 emstrip
 emsymbolizer
+test/runner
 tools/file_packager
 tools/webidl_binder
 
 # Windows .bat files (created by ./tools/maint/create_entry_points.py)
+em++.bat
+emcc.bat
 em-config.bat
 emar.bat
 embuilder.bat
@@ -80,5 +85,6 @@ emscons.bat
 emsize.bat
 emstrip.bat
 emsymbolizer.bat
+test/runner.bat
 tools/file_packager.bat
 tools/webidl_binder.bat

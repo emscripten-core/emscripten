@@ -1643,8 +1643,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.LEGALIZE_JS_FFI:
     settings.REQUIRED_EXPORTS += ['__get_temp_ret', '__set_temp_ret']
 
-  if settings.SPLIT_MODULE and settings.ASYNCIFY == 2:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
+  if settings.SPLIT_MODULE:
+    settings.INCOMING_MODULE_JS_API += ['loadSplitModule']
+    if settings.ASYNCIFY == 2:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
 
   # wasm side modules have suffix .wasm
   if settings.SIDE_MODULE and utils.suffix(target) in ('.js', '.mjs'):
@@ -2038,12 +2040,21 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   outfile_js = in_temp('tsgen.js')
   # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
   outfile_wasm = in_temp('tsgen.wasm')
-  emscripten.emscript(wasm_target, outfile_wasm, outfile_js, js_syms, finalize=False)
+  metadata = emscripten.emscript(wasm_target, outfile_wasm, outfile_js, js_syms, finalize=False)
+
+  # Strip out any Wasm features that can't run in older versions of node.
+  wasm_opt_args = []
+  if '--enable-relaxed-simd' in metadata.features:
+    # Relaxed SIMD isn't supported on older versions of node.
+    wasm_opt_args += ['--remove-relaxed-simd']
+  if '--enable-memory64' in metadata.features:
+    # See comment above about lowering memory64.
+    wasm_opt_args += ['--memory64-lowering', '--table64-lowering']
+  if wasm_opt_args:
+    building.run_wasm_opt(outfile_wasm, outfile_wasm, wasm_opt_args)
+
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
-  if settings.MEMORY64:
-    # See comment above about lowering memory64.
-    building.run_wasm_opt(outfile_wasm, outfile_wasm, ['--memory64-lowering', '--table64-lowering'])
   if settings.WASM_EXCEPTIONS:
     node_args += shared.node_exception_flags(config.NODE_JS)
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
@@ -2406,7 +2417,7 @@ def phase_binaryen(target, options, wasm_target):
     if generating_wasm:
       building.write_symbol_map(wasm_target, symbols_file)
       if not intermediate_debug_info:
-        building.strip(wasm_target, wasm_target, sections=['name'])
+        building.strip_sections(wasm_target, wasm_target, ['name'])
 
   if settings.GENERATE_DWARF and settings.SEPARATE_DWARF and generating_wasm:
     # if the dwarf filename wasn't provided, use the default target + a suffix
@@ -2424,8 +2435,7 @@ def phase_binaryen(target, options, wasm_target):
   assert intermediate_debug_info == 0
   # strip debug info if it was not already stripped by the last command
   if not debug_function_names and building.binaryen_kept_debug_info and generating_wasm:
-    with ToolchainProfiler.profile_block('strip_name_section'):
-      building.strip(wasm_target, wasm_target, debug=False, sections=["name"])
+    building.strip_sections(wasm_target, wasm_target, ['name'])
 
   # replace placeholder strings with correct subresource locations
   if final_js and settings.SINGLE_FILE and not settings.WASM2JS:

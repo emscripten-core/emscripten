@@ -163,7 +163,7 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
     dbg(`emscripten_websocket_set_onopen_callback(socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-    socket.onopen = function(e) {
+    socket.onopen = (e) => {
 #if WEBSOCKET_DEBUG
       dbg(`websocket event "open": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
@@ -187,7 +187,7 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
     dbg(`emscripten_websocket_set_onerror_callback(socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-    socket.onerror = function(e) {
+    socket.onerror = (e) => {
 #if WEBSOCKET_DEBUG
       dbg(`websocket event "error": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
@@ -211,7 +211,7 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
     dbg(`emscripten_websocket_set_onclose_callback(socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-    socket.onclose = function(e) {
+    socket.onclose = (e) => {
 #if WEBSOCKET_DEBUG
       dbg(`websocket event "close": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
@@ -238,7 +238,7 @@ var LibraryWebSocket = {
 #if WEBSOCKET_DEBUG
     dbg(`emscripten_websocket_set_onmessage_callback(socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif
-    socket.onmessage = function(e) {
+    socket.onmessage = (e) => {
 #if WEBSOCKET_DEBUG == 2
       dbg(`websocket event "message": socketId=${socketId},userData=${userData},callbackFunc=${callbackFunc})`);
 #endif

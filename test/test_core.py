@@ -27,9 +27,11 @@ from common import (
   RunnerCore,
   compiler_for,
   create_file,
+  engine_is_bun,
   engine_is_node,
   engine_is_v8,
   env_modify,
+  get_nodejs,
   path_from_root,
   read_binary,
   read_file,
@@ -53,6 +55,8 @@ from decorators import (
   needs_make,
   no_2gb,
   no_4gb,
+  no_bun,
+  no_deno,
   no_wasm64,
   no_windows,
   parameterize,
@@ -134,8 +138,6 @@ def wasm_simd(func):
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_simd()
-    if self.get_setting('MEMORY64') == 2:
-      self.skipTest('https://github.com/WebAssembly/binaryen/issues/4638')
     if self.is_wasm2js():
       self.skipTest('wasm2js only supports MVP for now')
     if '-O3' in self.cflags:
@@ -505,6 +507,7 @@ class TestCoreBase(RunnerCore):
                             configure_args=configure_args,
                             cache_name_extra=configure_commands[0])
 
+  @crossplatform
   def test_hello_world(self):
     self.do_core_test('test_hello_world.c')
 
@@ -519,6 +522,7 @@ class TestCoreBase(RunnerCore):
   def test_hello_argc(self):
     self.do_core_test('test_hello_argc.c', args=['hello', 'world'])
 
+  @crossplatform
   @requires_pthreads
   def test_hello_argc_pthreads(self):
     self.set_setting('PROXY_TO_PTHREAD')
@@ -2668,6 +2672,7 @@ The current type of b is: 9
     self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
   @requires_pthreads
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26199')
   @flaky('flaky specifically in esm_integration suite. https://github.com/emscripten-core/emscripten/issues/25151')
   def test_pthread_abort(self):
     self.set_setting('PROXY_TO_PTHREAD')
@@ -4116,6 +4121,7 @@ caught outer int: 123
     self.do_basic_dylink_test(so_dir=so_dir, so_name=so_name, main_cflags=['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=locateFile'])
 
   @with_dylink_reversed
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26202')
   def test_dylink_function_pointer_equality(self):
     self.dylink_test(r'''
       #include <stdio.h>
@@ -5682,6 +5688,7 @@ got: 10
 
   @crossplatform
   @also_with_nodefs_both
+  @no_deno('https://github.com/emscripten-core/emscripten/issues/26235')
   def test_fcntl_open(self):
     nodefs = '-DNODEFS' in self.cflags or '-DNODERAWFS' in self.cflags
     if nodefs and WINDOWS:
@@ -5888,6 +5895,7 @@ got: 10
   @crossplatform
   @also_with_nodefs_both
   @no_wasmfs('Assertion failed: open("./does-not-exist/", O_CREAT, 0777) == -1 in test_fs_enotdir.c line 20. https://github.com/emscripten-core/emscripten/issues/25035')
+  @no_deno('https://github.com/emscripten-core/emscripten/issues/26235')
   def test_fs_enotdir(self):
     if MACOS and '-DNODERAWFS' in self.cflags:
       self.skipTest('BSD libc sets a different errno')
@@ -5948,7 +5956,7 @@ Module.onRuntimeInitialized = () => {
       }
     ''')
     # engines have different error stack format
-    self.do_runf('test.c', 'at Object.readFile', assert_returncode=NON_ZERO)
+    self.do_runf('test.c', 'at (Object.)?readFile', regex=True, assert_returncode=NON_ZERO)
 
   @also_with_noderawfs
   def test_fs_llseek(self):
@@ -5993,7 +6001,7 @@ Module.onRuntimeInitialized = () => {
   @no_windows("stat ino values don't match on windows")
   @crossplatform
   @no_wasmfs('Assertion failed: "a_ino == sta.st" in test_fs_readdir_ino_matches_stat_ino.c, line 58. https://github.com/emscripten-core/emscripten/issues/25035')
-  @flaky('https://github.com/emscripten-core/emscripten/issues/26090')
+  @no_deno('https://github.com/emscripten-core/emscripten/issues/26235')
   def test_fs_readdir_ino_matches_stat_ino(self):
     self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
 
@@ -6098,6 +6106,7 @@ Module.onRuntimeInitialized = () => {
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
   @with_all_fs
+  @no_deno('https://github.com/emscripten-core/emscripten/issues/26241')
   def test_unistd_unlink(self):
     # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
     # so skip testing those bits on that combination.
@@ -6972,7 +6981,7 @@ void* operator new(size_t size) {
     # Binaryen's '--instrument-locals' will add their logging functions if
     # reference-types is enabled. So make sure this test passes when
     # reference-types feature is enabled as well.
-    self.node_args += shared.node_reference_types_flags(self.get_nodejs())
+    self.node_args += shared.node_reference_types_flags(get_nodejs())
     output = self.do_runf('core/test_autodebug.c', 'success', cflags=['-mreference-types'])
     # test that the program both works and also emits some of the logging
     # (but without the specific output, as it is logging the actual locals
@@ -7265,6 +7274,7 @@ void* operator new(size_t size) {
     self.do_core_test('test_emulate_function_pointer_casts.cpp', cflags=['-Wno-deprecated'])
 
   @no_wasm2js('TODO: nicely printed names in wasm2js')
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   @parameterized({
     'normal': ([],),
     'noexcept': (['-fno-exceptions'],),
@@ -7466,7 +7476,7 @@ void* operator new(size_t size) {
           return 0;
       }
     ''')
-    self.do_runf('test.cpp', 'UnboundTypeError: Cannot call compute due to unbound types: Pi')
+    self.do_runf('test.cpp', '(error|UnboundTypeError): Cannot call compute due to unbound types: Pi', regex=True)
 
   @no_big_endian("Accessing the array directly is not available on big endian system")
   def test_embind_memory_view(self):
@@ -7745,6 +7755,10 @@ void* operator new(size_t size) {
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_embind_wasm_workers(self):
     self.do_run_in_out_file_test('embind/test_embind_wasm_workers.cpp', cflags=['-lembind', '-sWASM_WORKERS'])
+
+  @with_all_eh_sjlj
+  def test_embind_throw_cpp_exception(self):
+    self.do_run_in_out_file_test('embind/test_embind_throw_cpp_exception.cpp', cflags=['-lembind', '-std=c++20'])
 
   @parameterized({
     '': ('DEFAULT', False),
@@ -8074,6 +8088,7 @@ void* operator new(size_t size) {
   @no_wasm2js('symbol names look different wasm2js backtraces')
   @no_modularize_instance('assumes .js output filename')
   @also_without_bigint
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_emscripten_log(self):
     self.cflags += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
     if self.maybe_closure():
@@ -8631,7 +8646,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       # set us to test in just this engine
       self.require_engine(engine, force=True)
       # tell the compiler to build with just that engine
-      if engine_is_node(engine):
+      if engine_is_node(engine) or engine_is_bun(engine):
         right = 'node'
         wrong = 'shell'
       else:
@@ -8746,6 +8761,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('test_global_initializer.cpp', 't1 > t0: 1')
 
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_return_address(self):
     if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
@@ -8753,6 +8769,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_too_many_errors(self):
@@ -8762,6 +8779,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  regex=True)
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
   @no_asan('-fsanitize-minimal-runtime cannot be used with ASan')
   @no_lsan('-fsanitize-minimal-runtime cannot be used with LSan')
   def test_ubsan_minimal_errors_same_place(self):
@@ -8776,6 +8794,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_overflow': (['-fsanitize=signed-integer-overflow'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
   def test_ubsan_full_overflow(self, args):
     self.do_runf(
       'core/test_ubsan_full_overflow.c',
@@ -8791,6 +8810,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_return': (['-fsanitize=return'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
   def test_ubsan_full_no_return(self, args):
     self.do_runf('core/test_ubsan_full_no_return.cpp',
                  expected_output='.cpp:1:5: runtime error: execution reached the end of a value-returning function without returning a value',
@@ -8803,6 +8823,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'fsanitize_shift': (['-fsanitize=shift'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
   def test_ubsan_full_left_shift(self, args):
     self.do_runf(
       'core/test_ubsan_full_left_shift.c',
@@ -8819,6 +8840,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'dylink': (['-fsanitize=null', '-sMAIN_MODULE=2'],),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
   def test_ubsan_full_null_ref(self, args):
     if '-sMAIN_MODULE=2' in args:
       self.check_dylink()
@@ -8835,6 +8857,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       ])
 
   @no_wasm2js('TODO: sanitizers in wasm2js')
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
   def test_sanitize_vptr(self):
     self.do_runf(
       'core/test_sanitize_vptr.cpp',
@@ -8867,6 +8890,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     ]),
   })
   @no_wasm2js('TODO: sanitizers in wasm2js')
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
   @no_esm_integration('https://github.com/emscripten-core/emscripten/issues/26073')
   def test_ubsan_full_stack_trace(self, args, expected_output):
     if '-gsource-map' in args:
@@ -9020,6 +9044,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                  assert_returncode=NON_ZERO)
 
   @requires_pthreads
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26199')
   def test_safe_stack_pthread(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
     self.set_setting('STACK_SIZE', 65536)
@@ -9085,6 +9110,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'sync_instantiation': (['-sWASM_ASYNC_COMPILATION=0'],),
   })
   @requires_pthreads
+  @crossplatform
   def test_pthread_create(self, args):
     if self.get_setting('WASM_ESM_INTEGRATION') and '-sWASM_ASYNC_COMPILATION=0' in args:
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
@@ -9176,6 +9202,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('pthread/test_pthread_exit_main.c')
 
   @requires_pthreads
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26199')
   def test_pthread_unhandledrejection(self):
     # Check that an unhandled promise rejection is propagated to the main thread
     # as an error.
@@ -9186,6 +9213,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @requires_pthreads
   @no_wasm2js('wasm2js does not support PROXY_TO_PTHREAD (custom section support)')
   @also_with_modularize
+  @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_pthread_return_address(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
@@ -9468,7 +9496,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('ABORT_ON_WASM_EXCEPTIONS')
     output = self.do_runf('core/test_abort_on_exceptions_main.c', assert_returncode=NON_ZERO, cflags=['--minify=0'])
     # The exception should make it all the way out
-    self.assertContained('Error: crash', output)
+    self.assertContained('[Ee]rror: crash', output, regex=True)
     # And not be translated into abort by makeAbortWrapper
     self.assertNotContained('unhandled exception', output)
     self.assertNotContained('Aborted', output)
@@ -9527,8 +9555,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @with_asyncify_and_jspi
   @no_modularize_instance('uses ccall')
   def test_em_async_js(self):
-    if not self.get_setting('ASYNCIFY'):
-      self.set_setting('ASYNCIFY')
     self.set_setting('EXPORTED_RUNTIME_METHODS', 'ccall')
     self.maybe_closure()
     self.do_core_test('test_em_async_js.c')
@@ -9549,7 +9575,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_wasm2js('wasm2js does not support reference types')
   @no_asan('https://github.com/llvm/llvm-project/pull/83196')
   def test_externref_emjs(self, dynlink):
-    self.node_args += shared.node_reference_types_flags(self.get_nodejs())
+    self.node_args += shared.node_reference_types_flags(get_nodejs())
     if dynlink:
       self.check_dylink()
       self.set_setting('MAIN_MODULE', 2)
@@ -9588,7 +9614,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_poll_blocking_asyncify(self):
     if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
       self.skipTest('test requires setTimeout which is not supported under v8')
-    self.do_runf('core/test_poll_blocking_asyncify.c')
+    self.do_runf('core/test_poll_blocking_asyncify.c', 'done\n')
 
   @parameterized({
     '': ([],),

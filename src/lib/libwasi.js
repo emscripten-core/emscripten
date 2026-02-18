@@ -540,27 +540,32 @@ var WasiLibrary = {
     return 0;
   },
 
+#if SYSCALLS_REQUIRE_FILESYSTEM
   fd_sync__async: 'auto',
   fd_sync: (fd) => {
-#if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
     var rtn = stream.stream_ops?.fsync?.(stream);
-#if ASYNCIFY
-    var mount = stream.node.mount;
-    if (mount.type.syncfs) {
-      return new Promise((resolve) => {
+#if ASYNCIFY || PTHREADS
+    return new Promise((resolve) => {
+      var mount = stream.node.mount;
+      if (mount?.type.syncfs) {
         mount.type.syncfs(mount, false, (err) => resolve(err ? {{{ cDefs.EIO }}} : 0));
-      });
-    }
-#endif // ASYNCIFY
+      } else {
+        resolve(rtn);
+      }
+    });
+#else
     return rtn;
+#endif // ASYNCIFY || PTHREADS
+  },
 #else // SYSCALLS_REQUIRE_FILESYSTEM
+  fd_sync: (fd) => {
 #if ASSERTIONS
     abort('fd_sync called without SYSCALLS_REQUIRE_FILESYSTEM');
 #endif
     return {{{ cDefs.ENOSYS }}};
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
 
   // random.h
 

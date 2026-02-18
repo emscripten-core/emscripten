@@ -1,10 +1,10 @@
 {
   "a.out.js": 7053,
   "a.out.js.gz": 3325,
-  "a.out.nodebug.wasm": 172920,
-  "a.out.nodebug.wasm.gz": 63296,
-  "total": 179973,
-  "total_gz": 66621,
+  "a.out.nodebug.wasm": 172904,
+  "a.out.nodebug.wasm.gz": 63288,
+  "total": 179957,
+  "total_gz": 66613,
   "sent": [
     "__cxa_throw",
     "_abort_js",
