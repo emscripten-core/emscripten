@@ -37,7 +37,7 @@ from tools.utils import run_process
 # 5: 10 seconds
 DEFAULT_ARG = '4'
 
-TEST_REPS = 5
+EMTEST_REPS = int(os.environ.get('EMTEST_REPS', '5'))
 
 # by default, run just core benchmarks
 CORE_BENCHMARKS = True
@@ -79,9 +79,8 @@ class Benchmarker(ABC):
   def get_output_files(self):
     pass
 
-  def bench(self, args, output_parser=None, reps=TEST_REPS, expected_output=None):
+  def bench(self, args, reps, output_parser=None, expected_output=None):
     self.times = []
-    self.reps = reps
     for _ in range(reps):
       start = time.time()
       output = self.run(args)
@@ -115,7 +114,7 @@ class Benchmarker(ABC):
       else:
         median = sorted_times[count // 2]
 
-      print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100 * std / mean, self.reps), end=' ')
+      print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100 * std / mean, len(self.times)), end=' ')
 
       if baseline:
         mean_baseline = sum(baseline.times) / len(baseline.times)
@@ -436,7 +435,7 @@ class benchmark(common.RunnerCore):
 
   def do_benchmark(self, name, src, expected_output='FAIL', args=None,
                    emcc_args=None, native_args=None, shared_args=None,
-                   force_c=False, reps=TEST_REPS, native_exec=None,
+                   force_c=False, reps=EMTEST_REPS, native_exec=None,
                    output_parser=None, lib_builder=None,
                    skip_benchmarkers=None):
     if not benchmarkers:
@@ -458,7 +457,7 @@ class benchmark(common.RunnerCore):
         reps = 0
       print('Running benchmarker: %s: %s' % (b.__class__.__name__, b.name))
       b.build(self, filename, shared_args, emcc_args, native_args, native_exec, lib_builder)
-      b.bench(args, output_parser, reps, expected_output)
+      b.bench(args, reps, output_parser, expected_output)
       recorded_stats = b.display(baseline)
       if recorded_stats:
         self.add_stats(name, recorded_stats)
@@ -736,7 +735,7 @@ class benchmark(common.RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS)
+    self.do_benchmark('conditionals', src, 'ok')
 
   def test_fannkuch(self):
     src = read_file(test_file('third_party/fannkuch.c')).replace(
