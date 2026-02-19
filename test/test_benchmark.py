@@ -12,6 +12,7 @@ import sys
 import time
 import unittest
 import zlib
+from abc import ABC, abstractmethod
 from pathlib import Path
 
 if __name__ == '__main__':
@@ -57,7 +58,7 @@ LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors')
 
 
-class Benchmarker:
+class Benchmarker(ABC):
   # Whether to record statistics. Set by SizeBenchmarker.
   record_stats = False
 
@@ -66,8 +67,16 @@ class Benchmarker:
   def __init__(self, name):
     self.name = name
 
-  # called when we actually start to run benchmarks
-  def prepare(self):
+  @abstractmethod
+  def run(self, args):
+    pass
+
+  @abstractmethod
+  def build(self, parent, filename, shared_args, emcc_args, native_args, native_exec, lib_builder):
+    pass
+
+  @abstractmethod
+  def get_output_files(self):
     pass
 
   def bench(self, args, output_parser=None, reps=TEST_REPS, expected_output=None):
@@ -374,9 +383,6 @@ class benchmark(common.RunnerCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-
-    for benchmarker in benchmarkers:
-      benchmarker.prepare()
 
     fingerprint = ['including compilation', time.asctime()]
     try:
