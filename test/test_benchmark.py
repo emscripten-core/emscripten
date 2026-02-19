@@ -8,6 +8,7 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 import unittest
@@ -141,21 +142,24 @@ class Benchmarker(ABC):
     total_size = 0
     total_gzip_size = 0
 
-    for file in self.get_output_files():
-      size = os.path.getsize(file)
-      gzip_size = len(zlib.compress(read_binary(file)))
+    files = self.get_output_files()
+    if files:
+      for file in files:
+        size = os.path.getsize(file)
+        gzip_size = len(zlib.compress(read_binary(file)))
+        if self.record_stats:
+          add_stat(os.path.basename(file).removeprefix('size_'), size, gzip_size)
+        total_size += size
+        total_gzip_size += gzip_size
+
       if self.record_stats:
-        add_stat(os.path.basename(file).removeprefix('size_'), size, gzip_size)
-      total_size += size
-      total_gzip_size += gzip_size
+        add_stat('total', total_size, total_gzip_size)
 
-    if self.record_stats:
-      add_stat('total', total_size, total_gzip_size)
+      print('        size: %8s, compressed: %8s' % (total_size, total_gzip_size), end=' ')
 
-    print('        size: %8s, compressed: %8s' % (total_size, total_gzip_size), end=' ')
-    if self.get_size_text():
-      print('  (' + self.get_size_text() + ')', end=' ')
-    print()
+      if self.get_size_text():
+        print('  (' + self.get_size_text() + ')', end=' ')
+      print()
 
     return recorded_stats
 
@@ -163,9 +167,32 @@ class Benchmarker(ABC):
     return ''
 
 
+class ToolchainBenchmarker(Benchmarker):
+  """ToolchainBenchmarker performs the compile step during run.  i.e. it measures the perf of the
+  compiler rather than the generated code.
+
+  Some simple tests will just work with these benchmarkers but more complex ones will not because
+  the arguments to `build` are all ignored.
+  """
+
+  def __init__(self, name, command):
+    super().__init__(name)
+    self.command = command
+
+  def run(self, args):
+    return run_process(self.command + args, stdout=PIPE, stderr=subprocess.STDOUT, check=False).stdout
+
+  def get_output_files(self):
+    return []
+
+  def build(self, parent, filename, shared_args, emcc_args, native_args, native_exec, lib_builder):
+    # no-op
+    pass
+
+
 class NativeBenchmarker(Benchmarker):
   def __init__(self, name, cc, cxx, cflags=None):
-    self.name = name
+    super().__init__(name)
     self.cc = cc
     self.cxx = cxx
     self.cflags = cflags or [OPTIMIZATIONS]
@@ -196,7 +223,7 @@ class NativeBenchmarker(Benchmarker):
     self.filename = final
 
   def run(self, args):
-    return run_process([self.filename] + args, stdout=PIPE, stderr=PIPE, check=False).stdout
+    return run_process([self.filename] + args, stdout=PIPE, stderr=subprocess.STDOUT, check=False).stdout
 
   def get_output_files(self):
     return [self.filename]
@@ -207,7 +234,7 @@ class NativeBenchmarker(Benchmarker):
 
 class EmscriptenBenchmarker(Benchmarker):
   def __init__(self, name, engine, cflags=None, env=None):
-    self.name = name
+    super().__init__(name)
     self.engine = engine
     self.cflags = cflags or []
     self.env = os.environ.copy()
@@ -253,7 +280,7 @@ class EmscriptenBenchmarker(Benchmarker):
     self.filename = final
 
   def run(self, args):
-    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
+    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=subprocess.STDOUT)
 
   def get_output_files(self):
     ret = [self.filename]
@@ -288,7 +315,7 @@ CHEERP_BIN = '/opt/cheerp/bin/'
 
 class CheerpBenchmarker(Benchmarker):
   def __init__(self, name, engine, cflags=None):
-    self.name = name
+    super().__init__(name)
     self.engine = engine
     self.cflags = cflags or [OPTIMIZATIONS]
 
@@ -339,7 +366,7 @@ class CheerpBenchmarker(Benchmarker):
         utils.delete_dir(dir_)
 
   def run(self, args):
-    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
+    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=subprocess.STDOUT)
 
   def get_output_files(self):
     return [self.filename, utils.replace_suffix(self.filename, '.wasm')]
@@ -368,6 +395,8 @@ named_benchmarkers = {
   # TODO: ensure no baseline compiler is used, see v8
   'sm': EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),
   'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE),
+  'clang-build': ToolchainBenchmarker('clang', [CLANG_CC]),
+  'emcc-build': ToolchainBenchmarker('emcc', [EMCC]),
 }
 
 for name in EMTEST_BENCHMARKERS.split(','):
@@ -525,6 +554,28 @@ class benchmark(common.RunnerCore):
       }
     '''
     self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [])
+
+  def do_toolchain_benchmark(self, args):
+    # TODO: Perhaps this can be merged with the regular `do_benchmark` somehow.
+    benchmarkers = [
+      named_benchmarkers['clang-build'],
+      named_benchmarkers['emcc-build'],
+    ]
+    baseline = None
+    print()
+    for b in benchmarkers:
+      b.bench(args)
+      b.display(baseline)
+      if not baseline:
+        # Use the first benchmarker as the baseline.  Other benchmarkers can then
+        # report relative performance compared to this.
+        baseline = b
+
+  def test_compile_noop(self):
+    self.do_toolchain_benchmark(['--version'])
+
+  def test_compile_hello(self):
+    self.do_toolchain_benchmark(['-c', test_file('hello_world.c')])
 
   def test_memops(self):
     src = '''
