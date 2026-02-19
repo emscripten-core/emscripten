@@ -164,11 +164,11 @@ class Benchmarker(ABC):
 
 
 class NativeBenchmarker(Benchmarker):
-  def __init__(self, name, cc, cxx, args=None):
+  def __init__(self, name, cc, cxx, cflags=None):
     self.name = name
     self.cc = cc
     self.cxx = cxx
-    self.args = args or [OPTIMIZATIONS]
+    self.cflags = cflags or [OPTIMIZATIONS]
 
   def build(self, parent, filename, shared_args, emcc_args, native_args, native_exec, lib_builder):
     native_args = native_args or []
@@ -184,7 +184,7 @@ class NativeBenchmarker(Benchmarker):
         '-fno-math-errno',
         filename,
         '-o', filename + '.native',
-      ] + self.args + shared_args + native_args + clang_native.get_clang_native_args()
+      ] + self.cflags + shared_args + native_args + clang_native.get_clang_native_args()
       # print(cmd)
       run_process(cmd, env=clang_native.get_clang_native_env())
     else:
@@ -206,10 +206,10 @@ class NativeBenchmarker(Benchmarker):
 
 
 class EmscriptenBenchmarker(Benchmarker):
-  def __init__(self, name, engine, extra_args=None, env=None):
+  def __init__(self, name, engine, cflags=None, env=None):
     self.name = name
     self.engine = engine
-    self.extra_args = extra_args or []
+    self.cflags = cflags or []
     self.env = os.environ.copy()
     if env:
       self.env.update(env)
@@ -223,7 +223,7 @@ class EmscriptenBenchmarker(Benchmarker):
       # Note that we need to pass in all the flags here because some build
       # systems (like zlib) if they see a CFLAGS it will override all their
       # default flags, including optimizations.
-      env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS + [OPTIMIZATIONS] + self.extra_args)
+      env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS + [OPTIMIZATIONS] + self.cflags)
       # This shouldn't be 'emcc_args += ...', because emcc_args is passed in as
       # a parameter and changes will be visible to the caller.
       emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=env_init)
@@ -245,7 +245,7 @@ class EmscriptenBenchmarker(Benchmarker):
       cmd += ['--closure=1', '-sMINIMAL_RUNTIME']
     # add additional emcc args at the end, which may override other things
     # above, such as minimal runtime
-    cmd += emcc_args + self.extra_args
+    cmd += emcc_args + self.cflags
     if '-sFILESYSTEM' not in cmd and '-sFORCE_FILESYSTEM' not in cmd:
       cmd += ['-sFILESYSTEM=0']
     self.cmd = cmd
@@ -287,16 +287,16 @@ CHEERP_BIN = '/opt/cheerp/bin/'
 
 
 class CheerpBenchmarker(Benchmarker):
-  def __init__(self, name, engine, args=None):
+  def __init__(self, name, engine, cflags=None):
     self.name = name
     self.engine = engine
-    self.args = args or [OPTIMIZATIONS]
+    self.cflags = cflags or [OPTIMIZATIONS]
 
   def build(self, parent, filename, shared_args, emcc_args, native_args, native_exec, lib_builder):
     cheerp_args = [
       '-fno-math-errno',
     ]
-    cheerp_args += self.args
+    cheerp_args += self.cflags
     self.parent = parent
     if lib_builder:
       # build as "native" (so no emcc env stuff), but with all the cheerp stuff
