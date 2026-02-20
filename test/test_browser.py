@@ -5039,9 +5039,11 @@ Module["preRun"] = () => {
   def test_wasm_worker_hello_embedded(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS=2'])
 
-  # Tests that it is possible to call emscripten_futex_wait() in Wasm Workers.
+  # Tests that it is possible to call emscripten_futex_wait() in Wasm Workers when pthreads
+  # are also enabled.
   @parameterized({
-    '': ([],),
+    # Without pthreads we expect the stub version of the futex API
+    '': (['-DEXPECT_STUB'],),
     'pthread': (['-pthread'],),
   })
   def test_wasm_worker_futex_wait(self, args):
