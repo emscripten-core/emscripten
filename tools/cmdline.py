@@ -84,6 +84,7 @@ class EmccOptions:
   no_entry = False
   no_minify = False
   nodefaultlibs = False
+  openmp = False
   nolibc = False
   nostartfiles = False
   nostdlib = False
@@ -564,7 +565,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
         exit_with_error(f'invalid value for --output-eol: `{style}`')
     # Record PTHREADS setting because it controls whether --shared-memory is passed to lld
     elif arg in ('-fopenmp', '-fopenmp=libomp'):
-      settings.OPENMP = 1
+      options.openmp = 1
       # Openmp needs pthreads, they are implied by -fopenmp
       settings.PTHREADS = 1
       # Also set the legacy setting name, in case use JS code depends on it.

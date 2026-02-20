@@ -35,8 +35,8 @@ var SIDE_MODULE_IMPORTS = [];
 // programs contains EM_JS or EM_ASM data section, in which case these symbols
 // won't exist.
 var EXPORT_IF_DEFINED = ['__start_em_asm', '__stop_em_asm',
-    '__start_em_lib_deps', '__stop_em_lib_deps',
-    '__start_em_js', '__stop_em_js'];
+                         '__start_em_lib_deps', '__stop_em_lib_deps',
+                         '__start_em_js', '__stop_em_js'];
 
 // Like EXPORTED_FUNCTIONS, but symbol is required to exist in native code.
 // This means wasm-ld will fail if these symbols are missing.
@@ -243,9 +243,6 @@ var HAVE_EM_ASM = true;
 var PRE_JS_FILES = [];
 
 var POST_JS_FILES = [];
-
-// Set when -fopenmp is passed, implies PTHREADS
-var OPENMP = false;
 
 // Set when -pthread / -sPTHREADS is passed
 var PTHREADS = false;

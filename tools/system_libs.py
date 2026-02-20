@@ -56,12 +56,10 @@ def glob_in_path(path, glob_pattern, excludes=()):
   return sorted(f for f in files if os.path.basename(f) not in excludes)
 
 
-def get_base_cflags(build_dir, force_object_files=False, preprocess=True, werror=True):
+def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   # Always build system libraries with debug information.  Non-debug builds
   # will ignore this at link time because we link with `-strip-debug`.
-  flags = ['-g', '-sSTRICT']
-  if werror:
-    flags += ['-Werror']
+  flags = ['-g', '-sSTRICT', '-Werror']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
   if settings.RELOCATABLE or settings.MAIN_MODULE:
@@ -356,10 +354,6 @@ class Library:
   # Set to true to prevent EMCC_FORCE_STDLIBS from linking this library.
   never_force = False
 
-  # Enable the `-Werror` compiler flag. Not all system libraries can compile with
-  # `-Werror`. If that is the case, override this to false.
-  enable_werror = True
-
   # A list of flags to pass to emcc.
   # The flags for the parent class is automatically inherited.
   # TODO: Investigate whether perf gains from loop unrolling would be worth the
@@ -481,7 +475,7 @@ class Library:
     self.build_dir = build_dir
 
     cflags = self.get_cflags()
-    asflags = get_base_cflags(self.build_dir, preprocess=False, werror=self.enable_werror)
+    asflags = get_base_cflags(self.build_dir, preprocess=False)
     input_files = self.get_files()
     ninja_file = os.path.join(build_dir, 'build.ninja')
     create_ninja_file(input_files, ninja_file, libname, cflags, asflags=asflags, customize_build_flags=self.customize_build_cmd)
@@ -510,7 +504,7 @@ class Library:
         # .s files are processed directly by the assembler.  In this case we can't pass
         # pre-processor flags such as `-I` and `-D` but we still want core flags such as
         # `-sMEMORY64`.
-        cmd += get_base_cflags(self.build_dir, preprocess=False, werror=self.enable_werror)
+        cmd += get_base_cflags(self.build_dir, preprocess=False)
       else:
         cmd += cflags
       cmd = self.customize_build_cmd(cmd, src)
@@ -600,7 +594,7 @@ class Library:
     Override and add any flags as needed to handle new variations.
     """
     cflags = self._inherit_list('cflags')
-    cflags += get_base_cflags(self.build_dir, force_object_files=self.force_object_files, werror=self.enable_werror)
+    cflags += get_base_cflags(self.build_dir, force_object_files=self.force_object_files)
 
     if self.includes:
       cflags += ['-I' + utils.path_from_root(i) for i in self._inherit_list('includes')]
@@ -2274,23 +2268,23 @@ class libstubs(DebugLibrary):
 class libomp(Library):
   name = 'libomp'
   includes = [
-    '/system/lib/libomp/src',
-    '/system/lib/libomp/src/i18n',
-    '/system/lib/libomp/src/include',
-    '/system/lib/libomp/src/thirdparty/ittnotify',
+    'system/lib/libomp/src',
+    'system/lib/libomp/src/i18n',
+    'system/lib/libomp/src/thirdparty/ittnotify',
   ]
   # This needs to come from the flags. If it does not, llvm won't add propper magic symbols
   never_force = True
-  enable_werror = False
   cflags = [
-    '-D_GLIBCXX_NO_ASSERTIONS', '-Wall', '-Wcast-qual', '-Wformat-pedantic',
-    '-Wimplicit-fallthrough', '-Wsign-compare', '-Wno-extra', '-Wno-pedantic',
-    '-fdata-sections', '-O3', '-DNDEBUG', '-pthread',
-    '-std=c++17', '-D', '_GNU_SOURCE', '-D', '_REENTRANT', '-U_GLIBCXX_ASSERTIONS',
-    '-fno-exceptions', '-fno-rtti', '-Wno-covered-switch-default',
+    '-O3', '-DNDEBUG', '-pthread',
+    '-D_GNU_SOURCE', '-U_GLIBCXX_ASSERTIONS', '-D_GLIBCXX_NO_ASSERTIONS',
+    '-fno-exceptions', '-fno-rtti',
+    '-Wall', '-Wformat-pedantic',
+    '-Wimplicit-fallthrough', '-Wsign-compare',
+    '-Wno-covered-switch-default',
     '-Wno-frame-address', '-Wno-strict-aliasing', '-Wno-switch',
     '-Wno-uninitialized', '-Wno-return-type-c-linkage', '-Wno-cast-qual',
-    '-Wno-int-to-void-pointer-cast', '-m32',
+    '-Wno-int-to-void-pointer-cast', '-Wno-#warnings','-Wno-unused-function',
+    '-Wno-sign-compare', '-Wno-comment'
   ]
   src_dir = 'system/lib/libomp/src'
   src_files = [
@@ -2413,7 +2407,7 @@ def get_libs_to_link(options):
   if settings.JS_MATH:
     add_library('libjsmath')
 
-  if settings.OPENMP:
+  if options.openmp:
     add_library("libomp")
 
   # C libraries that override libc must come before it
