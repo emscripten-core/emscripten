@@ -3381,6 +3381,9 @@ More info: https://emscripten.org
   def test_embind_allow_raw_pointer(self):
     self.emcc(test_file('embind/test_embind_allow_raw_pointer.cpp'), ['-lembind'])
 
+  def test_embind_subclass_pointer(self):
+    self.emcc(test_file('embind/test_embind_subclass_pointer.cpp'), ['-lembind'])
+
   @is_slow_test
   @parameterized({
     '': [],
