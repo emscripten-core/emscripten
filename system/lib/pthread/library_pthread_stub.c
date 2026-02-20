@@ -17,7 +17,7 @@
 #include <emscripten/threading.h>
 #include <emscripten/emscripten.h>
 
-int emscripten_has_threading_support() { return 0; }
+bool emscripten_has_threading_support() { return false; }
 
 int emscripten_num_logical_cores() { return 1; }
 
@@ -32,7 +32,10 @@ int emscripten_futex_wake(volatile void /*uint32_t*/* addr, int count) {
   return 0; // success
 }
 
-int emscripten_is_main_runtime_thread() { return 1; }
+bool emscripten_is_main_runtime_thread() {
+  // TODO: We probably shouldn't be returning true here in WASM_WORKERS builds.
+  return true;
+}
 
 void emscripten_main_thread_process_queued_calls() {
   // nop

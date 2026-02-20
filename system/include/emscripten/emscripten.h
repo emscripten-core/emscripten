@@ -133,6 +133,8 @@ int emscripten_get_worker_queue_size(worker_handle worker);
 // misc.
 
 long emscripten_get_compiler_setting(const char *name);
+
+// Returns the value of -sASYNCIFY.  Can be 0, 1, or 2 (in the case of JSPI).
 int emscripten_has_asyncify(void);
 
 void emscripten_debugger(void);
