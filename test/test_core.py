@@ -5594,6 +5594,7 @@ got: 10
     create_file('eol.txt', b'\n', binary=True)
     self.cflags += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
+
   def test_openmp_max_threads(self):
     src = r"""
       #include <omp.h>

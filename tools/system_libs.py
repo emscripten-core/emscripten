@@ -2265,6 +2265,7 @@ class libstubs(DebugLibrary):
   includes = ['system/lib/libc/musl/src/include']
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
+
 class libomp(Library):
   name = 'libomp'
   includes = [
@@ -2284,7 +2285,7 @@ class libomp(Library):
     '-Wno-frame-address', '-Wno-strict-aliasing', '-Wno-switch',
     '-Wno-uninitialized', '-Wno-return-type-c-linkage', '-Wno-cast-qual',
     '-Wno-int-to-void-pointer-cast', '-Wno-#warnings','-Wno-unused-function',
-    '-Wno-sign-compare', '-Wno-comment'
+    '-Wno-sign-compare', '-Wno-comment',
   ]
   src_dir = 'system/lib/libomp/src'
   src_files = [
@@ -2297,6 +2298,7 @@ class libomp(Library):
     'kmp_gsupport.cpp', 'kmp_taskdeps.cpp', 'kmp_cancel.cpp', 'kmp_ftn_cdecl.cpp',
     'kmp_ftn_extra.cpp', 'kmp_version.cpp', 'z_Linux_asm.S',
   ]
+
 
 def get_libs_to_link(options):
   libs_to_link = []
