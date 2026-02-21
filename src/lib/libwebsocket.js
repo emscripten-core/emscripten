@@ -275,6 +275,7 @@ var LibraryWebSocket = {
     return {{{ cDefs.EMSCRIPTEN_RESULT_SUCCESS }}};
   },
 
+  emscripten_websocket_new__deps: ['$WS'],
   emscripten_websocket_new__proxy: 'sync',
   emscripten_websocket_new: (createAttributes) => {
     if (!globalThis.WebSocket) {
