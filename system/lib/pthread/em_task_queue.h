@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <pthread.h>
 
 #include "proxying_notification_state.h"
@@ -58,22 +59,22 @@ void em_task_queue_execute(em_task_queue* queue);
 void em_task_queue_cancel(em_task_queue* queue);
 
 // Not thread safe.
-static inline int em_task_queue_is_empty(em_task_queue* queue) {
+static inline bool em_task_queue_is_empty(em_task_queue* queue) {
   return queue->head == queue->tail;
 }
 
 // Not thread safe.
-static inline int em_task_queue_is_full(em_task_queue* queue) {
+static inline bool em_task_queue_is_full(em_task_queue* queue) {
   return queue->head == (queue->tail + 1) % queue->capacity;
 }
 
-// Not thread safe. Returns 1 on success and 0 on failure.
-int em_task_queue_enqueue(em_task_queue* queue, task t);
+// Not thread safe. Returns true on success and false on failure.
+bool em_task_queue_enqueue(em_task_queue* queue, task t);
 
 // Not thread safe. Assumes the queue is not empty.
 task em_task_queue_dequeue(em_task_queue* queue);
 
 // Atomically enqueue the task and schedule the queue to be executed next time
-// its owning thread returns to its event loop. Returns 1 on success and 0
-// otherwise. Internally locks the queue.
-int em_task_queue_send(em_task_queue* queue, task t);
+// its owning thread returns to its event loop. Returns true on success and
+// false otherwise. Internally locks the queue.
+bool em_task_queue_send(em_task_queue* queue, task t);

@@ -25,23 +25,23 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) { abort(); }
 
 void emscripten_proxy_finish(em_proxying_ctx* ctx) { abort(); }
 
-int emscripten_proxy_async(em_proxying_queue* q,
+bool emscripten_proxy_async(em_proxying_queue* q,
+                            pthread_t target_thread,
+                            void (*func)(void*),
+                            void* arg) {
+  abort();
+}
+
+bool emscripten_proxy_sync(em_proxying_queue* q,
                            pthread_t target_thread,
                            void (*func)(void*),
                            void* arg) {
   abort();
 }
 
-int emscripten_proxy_sync(em_proxying_queue* q,
-                          pthread_t target_thread,
-                          void (*func)(void*),
-                          void* arg) {
-  abort();
-}
-
-int emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
-                                   pthread_t target_thread,
-                                   void (*func)(em_proxying_ctx*, void*),
-                                   void* arg) {
+bool emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
+                                    pthread_t target_thread,
+                                    void (*func)(em_proxying_ctx*, void*),
+                                    void* arg) {
   abort();
 }

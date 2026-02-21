@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <emscripten/emscripten.h>
@@ -31,7 +32,8 @@ uintptr_t *emscripten_get_sbrk_ptr(void);
 // src/settings.js variables MEMORY_GROWTH_GEOMETRIC_STEP,
 // MEMORY_GROWTH_GEOMETRIC_CAP and MEMORY_GROWTH_LINEAR_STEP. This function
 // cannot be used to shrink the size of the memory.
-int emscripten_resize_heap(size_t requested_size) EM_IMPORT(emscripten_resize_heap);
+// Returns true on success, false otherwise.
+bool emscripten_resize_heap(size_t requested_size) EM_IMPORT(emscripten_resize_heap);
 
 // Returns the current size of the WebAssembly memory (referred to as heap for
 // legacy reason).

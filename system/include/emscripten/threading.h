@@ -9,6 +9,7 @@
 
 #include <inttypes.h>
 #include <pthread.h>
+#include <stdbool.h>
 
 #include <emscripten/html5.h>  // for EMSCRIPTEN_RESULT
 #include <emscripten/atomic.h>
@@ -24,7 +25,7 @@ extern "C" {
 // pthread_create(), and the compiled page was built with threading support
 // enabled. If this returns 0, calls to pthread_create() will fail with return
 // code EAGAIN.
-int emscripten_has_threading_support(void);
+bool emscripten_has_threading_support(void);
 
 // Returns the number of logical cores on the system.
 int emscripten_num_logical_cores(void);
@@ -39,14 +40,14 @@ int emscripten_futex_wait(volatile void/*uint32_t*/ * _Nonnull addr, uint32_t va
 // Returns -EINVAL if addr is null.
 int emscripten_futex_wake(volatile void/*uint32_t*/ * _Nonnull addr, int count);
 
-// Returns 1 if the current thread is the thread that hosts the Emscripten
+// Returns true if the current thread is the thread that hosts the Emscripten
 // runtime.
-int emscripten_is_main_runtime_thread(void);
+bool emscripten_is_main_runtime_thread(void);
 
-// Returns 1 if the current thread is the main browser thread.  In the case that
-// the emscripten module is run in a worker there may be no pthread for which
-// this returns 1.
-int emscripten_is_main_browser_thread(void);
+// Returns true if the current thread is the main browser thread.  In the case
+// that the Emscripten module is started in a worker there will be no thread
+// for which this returns true.
+bool emscripten_is_main_browser_thread(void);
 
 // A temporary workaround to issue
 // https://github.com/emscripten-core/emscripten/issues/3495:
