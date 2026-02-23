@@ -18,13 +18,12 @@ is_runtime_thread:
 .globaltype supports_wait, i32
 supports_wait:
 
-.section .text,"",@
+#if WASM_WORKERS_ONLY
+.globaltype done_init, i32
+done_init:
+#endif
 
-.globl __get_tp
-__get_tp:
-  .functype __get_tp () -> (PTR)
-  global.get thread_ptr
-  end_function
+.section .text,"",@
 
 .globl __set_thread_state
 __set_thread_state:
@@ -39,10 +38,40 @@ __set_thread_state:
   global.set supports_wait
   end_function
 
+#if WASM_WORKERS_ONLY
+// With Wasm Workers we do lazy initializtion of the thread
+// state so that only workers that call these APIs actually
+// initializes their state.
+.functype __do_set_thread_state () -> ()
+
+lazy_init_thread_state:
+  .functype lazy_init_thread_state () -> ()
+  block
+    global.get done_init
+    br_if 0
+    call __do_set_thread_state
+    i32.const 1
+    global.set done_init
+  end_block
+  end_function
+#endif
+
+.globl __get_tp
+__get_tp:
+  .functype __get_tp () -> (PTR)
+#if WASM_WORKERS_ONLY
+  call lazy_init_thread_state
+#endif
+  global.get thread_ptr
+  end_function
+
 # Semantically the same as testing "!ENVIRONMENT_IS_PTHREAD" in JS
 .globl emscripten_is_main_runtime_thread
 emscripten_is_main_runtime_thread:
   .functype emscripten_is_main_runtime_thread () -> (i32)
+#if WASM_WORKERS_ONLY
+  call lazy_init_thread_state
+#endif
   global.get is_runtime_thread
   end_function
 
@@ -50,6 +79,9 @@ emscripten_is_main_runtime_thread:
 .globl emscripten_is_main_browser_thread
 emscripten_is_main_browser_thread:
   .functype emscripten_is_main_browser_thread () -> (i32)
+#if WASM_WORKERS_ONLY
+  call lazy_init_thread_state
+#endif
   global.get is_main_thread
   end_function
 
@@ -57,5 +89,8 @@ emscripten_is_main_browser_thread:
 .globl _emscripten_thread_supports_atomics_wait
 _emscripten_thread_supports_atomics_wait:
   .functype _emscripten_thread_supports_atomics_wait () -> (i32)
+#if WASM_WORKERS_ONLY
+  call lazy_init_thread_state
+#endif
   global.get supports_wait
   end_function

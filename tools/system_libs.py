@@ -716,7 +716,7 @@ class MTLibrary(Library):
     if self.is_mt:
       cflags += ['-pthread', '-sWASM_WORKERS']
     if self.is_ww:
-      cflags += ['-sWASM_WORKERS']
+      cflags += ['-sWASM_WORKERS', '-DWASM_WORKERS_ONLY']
     return cflags
 
   def get_base_name(self):
@@ -1181,7 +1181,6 @@ class libc(MuslInternalLibrary,
     ]
 
     ignore += LIBC_SOCKETS
-
     if self.is_mt:
       ignore += [
         'clone.c',
@@ -1207,9 +1206,6 @@ class libc(MuslInternalLibrary,
           'pthread_create.c',
           'pthread_kill.c',
           'emscripten_thread_init.c',
-          'emscripten_thread_state.S',
-          'emscripten_futex_wait.c',
-          'emscripten_futex_wake.c',
           'emscripten_yield.c',
         ])
     else:
@@ -1266,6 +1262,25 @@ class libc(MuslInternalLibrary,
           'library_pthread_stub.c',
           'pthread_self_stub.c',
           'proxying_stub.c',
+        ])
+
+      if self.is_ww:
+        libc_files += files_in_path(
+          path='system/lib/libc/musl/src/thread',
+          filenames=[
+            '__lock.c',
+            '__wait.c',
+            'lock_ptc.c',
+          ])
+
+    if self.is_mt or self.is_ww:
+      # Low level thread primitives available in both pthreads and wasm workers builds.
+      libc_files += files_in_path(
+        path='system/lib/pthread',
+        filenames=[
+          'emscripten_thread_state.S',
+          'emscripten_futex_wait.c',
+          'emscripten_futex_wake.c',
         ])
 
     # These files are in libc directories, but only built in libc_optz.
