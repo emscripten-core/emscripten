@@ -1220,12 +1220,6 @@ f.close()
     self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_REJECTION', '-o', 'out.js'])
     self.assertFalse(os.path.exists('out.js'))
 
-  @with_both_compilers
-  def test_failure_modularize_and_catch_exit(self, compiler):
-    # Test that if sMODULARIZE and sNODEJS_CATCH_EXIT are both enabled, then emcc shouldn't succeed, and shouldn't produce an output file.
-    self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_EXIT', '-o', 'out.js'])
-    self.assertFalse(os.path.exists('out.js'))
-
   def test_use_cxx(self):
     create_file('empty_file', ' ')
     dash_xc = self.run_process([EMCC, '-v', '-xc', 'empty_file'], stderr=PIPE).stderr
@@ -4205,37 +4199,6 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
     self.assertContained('bufferTest finished', self.run_js('main.js'))
-
-  @requires_node
-  def test_node_catch_exit(self):
-    # Test that in top level JS exceptions are caught and rethrown when NODEJS_EXIT_CATCH=1
-    # is set but not by default.
-    create_file('count.c', '''
-      #include <string.h>
-      int count(const char *str) {
-        return (int)strlen(str);
-      }
-    ''')
-
-    create_file('index.js', '''
-      const count = require('./count.js');
-
-      console.log(xxx); //< here is the ReferenceError
-    ''')
-
-    reference_error_text = 'console.log(xxx); //< here is the ReferenceError'
-
-    self.run_process([EMCC, 'count.c', '-o', 'count.js', '-sNODEJS_CATCH_EXIT=1'])
-
-    # Check that the ReferenceError is caught and rethrown and thus the original error line is masked
-    self.assertNotContained(reference_error_text,
-                            self.run_js('index.js', assert_returncode=NON_ZERO))
-
-    self.run_process([EMCC, 'count.c', '-o', 'count.js'])
-
-    # Check that the ReferenceError is not caught, so we see the error properly
-    self.assertContained(reference_error_text,
-                         self.run_js('index.js', assert_returncode=NON_ZERO))
 
   @requires_node
   def test_exported_runtime_methods(self):

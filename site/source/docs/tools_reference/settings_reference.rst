@@ -1168,22 +1168,6 @@ https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-
 
 Default value: true
 
-.. _nodejs_catch_exit:
-
-NODEJS_CATCH_EXIT
-=================
-
-Emscripten throws an ExitStatus exception to unwind when exit() is called.
-Without this setting enabled this can show up as a top level unhandled
-exception.
-
-With this setting enabled a global uncaughtException handler is used to
-catch and handle ExitStatus exceptions.  However, this means all other
-uncaught exceptions are also caught and re-thrown, which is not always
-desirable.
-
-Default value: false
-
 .. _nodejs_catch_rejection:
 
 NODEJS_CATCH_REJECTION
@@ -3563,3 +3547,4 @@ for backwards compatibility with older versions:
  - ``ASYNCIFY_LAZY_LOAD_CODE``: No longer supported (Valid values: [0])
  - ``USE_WEBGPU``: No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py (Valid values: [0])
  - ``PROXY_TO_WORKER``: No longer supported (Valid values: [0])
+ - ``NODEJS_CATCH_EXIT``: No longer supported (Valid values: [0])
