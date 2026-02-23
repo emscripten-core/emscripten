@@ -144,3 +144,25 @@ path.isAbsolute;
 path.posix;
 
 crypto.randomFillSync;
+
+/**
+ * @suppress {duplicate}
+ */
+var worker_threads = {};
+
+/**
+ * @type {boolean}
+ */
+worker_threads.isMainThread;
+
+/**
+ * @type {function()}
+ */
+worker_threads.Worker;
+
+/**
+ * @type {Object}
+ */
+worker_threads.workerData;
+
+worker_threads.parentPort;
