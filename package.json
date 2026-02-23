@@ -2,9 +2,9 @@
   "private": true,
   "devDependencies": {
     "@eslint/eslintrc": "^3.3.3",
-    "@eslint/js": "^9.39.2",
+    "@eslint/js": "^10.0.1",
     "es-check": "^9.5.4",
-    "eslint": "^9.39.2",
+    "eslint": "^10.0.0",
     "eslint-config-prettier": "^10.1.8",
     "globals": "^17.3.0",
     "prettier": "^3.8.1",
@@ -12,14 +12,14 @@
     "source-map": "0.7.6",
     "typescript": "^5.9.3",
     "vite": "^7.3.1",
-    "webpack": "^5.104.1",
+    "webpack": "^5.105.2",
     "webpack-cli": "^6.0.1",
     "ws": "^8.19.0"
   },
   "dependencies": {
-    "@babel/cli": "^7.28.3",
-    "@babel/core": "^7.28.5",
-    "@babel/preset-env": "^7.28.5",
+    "@babel/cli": "^7.28.6",
+    "@babel/core": "^7.29.0",
+    "@babel/preset-env": "^7.29.0",
     "acorn": "^8.15.0",
     "google-closure-compiler": "20240317.0.0",
     "html-minifier-terser": "7.2.0"

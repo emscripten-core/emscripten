@@ -18,8 +18,19 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.1 (in development)
+5.0.2 (in development)
 ----------------------
+- Several low level emscripten APIs that return success/failure now return the
+  C `bool` type rather than `int`.  For example `emscripten_proxy_sync` and
+  `emscripten_is_main_runtime_thread`. (#26316)
+- SDL2 port updated from 2.32.8 to 2.32.10. (#26298)
+- The remaining launcher scripts (e.g. `emcc.bat`) were removed from the git
+  repository.  These scripts are created by the `./bootstrap` script which
+  must be run before the toolchain is usable (for folks using a git checkout of
+  emscripten). (#26247)
+
+5.0.1 - 02/13/26
+----------------
 - `logReadFiles` was removed from the default `INCOMING_MODULE_JS_API` list.
   To use this feature you now need to explictly add `logReadFiles` to
   `INCOMING_MODULE_JS_API`. (#26190);

@@ -8,10 +8,12 @@ import math
 import os
 import re
 import shutil
+import subprocess
 import sys
 import time
 import unittest
 import zlib
+from abc import ABC, abstractmethod
 from pathlib import Path
 
 if __name__ == '__main__':
@@ -21,9 +23,9 @@ import clang_native
 import common
 import jsrun
 from common import read_binary, read_file, test_file
-from decorators import needs_make
+from decorators import needs_make, parameterized
 
-from tools import building, utils
+from tools import utils
 from tools.shared import CLANG_CC, CLANG_CXX, EMCC, PIPE, config
 from tools.utils import run_process
 
@@ -36,7 +38,7 @@ from tools.utils import run_process
 # 5: 10 seconds
 DEFAULT_ARG = '4'
 
-TEST_REPS = 5
+EMTEST_REPS = int(os.environ.get('EMTEST_REPS', '5'))
 
 # by default, run just core benchmarks
 CORE_BENCHMARKS = True
@@ -57,7 +59,7 @@ LLVM_FEATURE_FLAGS = ['-mnontrapping-fptoint']
 EMTEST_BENCHMARKERS = os.getenv('EMTEST_BENCHMARKERS', 'clang,v8,v8-lto,v8-ctors')
 
 
-class Benchmarker:
+class Benchmarker(ABC):
   # Whether to record statistics. Set by SizeBenchmarker.
   record_stats = False
 
@@ -66,13 +68,20 @@ class Benchmarker:
   def __init__(self, name):
     self.name = name
 
-  # called when we actually start to run benchmarks
-  def prepare(self):
+  @abstractmethod
+  def run(self, args):
     pass
 
-  def bench(self, args, output_parser=None, reps=TEST_REPS, expected_output=None):
+  @abstractmethod
+  def build(self, parent, filename, shared_args, emcc_args, native_args, native_exec, lib_builder):
+    pass
+
+  @abstractmethod
+  def get_output_files(self):
+    pass
+
+  def bench(self, args, reps, output_parser=None, expected_output=None):
     self.times = []
-    self.reps = reps
     for _ in range(reps):
       start = time.time()
       output = self.run(args)
@@ -106,14 +115,14 @@ class Benchmarker:
       else:
         median = sorted_times[count // 2]
 
-      print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100 * std / mean, self.reps), end=' ')
+      print('   %10s: mean: %4.3f (+-%4.3f) secs  median: %4.3f  range: %4.3f-%4.3f  (noise: %4.3f%%)  (%d runs)' % (self.name, mean, std, median, min(self.times), max(self.times), 100 * std / mean, len(self.times)), end=' ')
 
       if baseline:
         mean_baseline = sum(baseline.times) / len(baseline.times)
         final = mean / mean_baseline
         print('  Relative: %.2f X slower' % final)
       else:
-        print()
+        print('  Relative: No baseline recorded yet')
 
     # size
 
@@ -132,21 +141,24 @@ class Benchmarker:
     total_size = 0
     total_gzip_size = 0
 
-    for file in self.get_output_files():
-      size = os.path.getsize(file)
-      gzip_size = len(zlib.compress(read_binary(file)))
+    files = self.get_output_files()
+    if files:
+      for file in files:
+        size = os.path.getsize(file)
+        gzip_size = len(zlib.compress(read_binary(file)))
+        if self.record_stats:
+          add_stat(os.path.basename(file).removeprefix('size_'), size, gzip_size)
+        total_size += size
+        total_gzip_size += gzip_size
+
       if self.record_stats:
-        add_stat(os.path.basename(file).removeprefix('size_'), size, gzip_size)
-      total_size += size
-      total_gzip_size += gzip_size
+        add_stat('total', total_size, total_gzip_size)
 
-    if self.record_stats:
-      add_stat('total', total_size, total_gzip_size)
+      print('        size: %8s, compressed: %8s' % (total_size, total_gzip_size), end=' ')
 
-    print('        size: %8s, compressed: %8s' % (total_size, total_gzip_size), end=' ')
-    if self.get_size_text():
-      print('  (' + self.get_size_text() + ')', end=' ')
-    print()
+      if self.get_size_text():
+        print('  (' + self.get_size_text() + ')', end=' ')
+      print()
 
     return recorded_stats
 
@@ -154,19 +166,42 @@ class Benchmarker:
     return ''
 
 
+class ToolchainBenchmarker(Benchmarker):
+  """ToolchainBenchmarker performs the compile step during run.  i.e. it measures the perf of the
+  compiler rather than the generated code.
+
+  Some simple tests will just work with these benchmarkers but more complex ones will not because
+  the arguments to `build` are all ignored.
+  """
+
+  def __init__(self, name, command):
+    super().__init__(name)
+    self.command = command
+
+  def run(self, args):
+    return run_process(self.command + args, stdout=PIPE, stderr=subprocess.STDOUT, check=False).stdout
+
+  def get_output_files(self):
+    return []
+
+  def build(self, parent, filename, shared_args, emcc_args, native_args, native_exec, lib_builder):
+    # no-op
+    pass
+
+
 class NativeBenchmarker(Benchmarker):
-  def __init__(self, name, cc, cxx, args=None):
-    self.name = name
+  def __init__(self, name, cc, cxx, cflags=None):
+    super().__init__(name)
     self.cc = cc
     self.cxx = cxx
-    self.args = args or [OPTIMIZATIONS]
+    self.cflags = cflags or [OPTIMIZATIONS]
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
+  def build(self, parent, filename, shared_args, emcc_args, native_args, native_exec, lib_builder):
     native_args = native_args or []
     shared_args = shared_args or []
     self.parent = parent
     if lib_builder:
-      env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': "-Wno-c++11-narrowing"}
+      env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': '-Wno-c++11-narrowing'}
       env.update(clang_native.get_clang_native_env())
       native_args = native_args + lib_builder(self.name, native=True, env_init=env)
     if not native_exec:
@@ -175,7 +210,7 @@ class NativeBenchmarker(Benchmarker):
         '-fno-math-errno',
         filename,
         '-o', filename + '.native',
-      ] + self.args + shared_args + native_args + clang_native.get_clang_native_args()
+      ] + self.cflags + shared_args + native_args + clang_native.get_clang_native_args()
       # print(cmd)
       run_process(cmd, env=clang_native.get_clang_native_env())
     else:
@@ -187,7 +222,7 @@ class NativeBenchmarker(Benchmarker):
     self.filename = final
 
   def run(self, args):
-    return run_process([self.filename] + args, stdout=PIPE, stderr=PIPE, check=False).stdout
+    return run_process([self.filename] + args, stdout=PIPE, stderr=subprocess.STDOUT, check=False).stdout
 
   def get_output_files(self):
     return [self.filename]
@@ -196,25 +231,16 @@ class NativeBenchmarker(Benchmarker):
     return 'dynamically linked - libc etc. are not included!'
 
 
-def run_binaryen_opts(filename, opts):
-  run_process([
-    os.path.join(building.get_binaryen_bin(), 'wasm-opt', '--all-features'),
-    filename,
-    '-o', filename,
-  ] + opts)
-
-
 class EmscriptenBenchmarker(Benchmarker):
-  def __init__(self, name, engine, extra_args=None, env=None, binaryen_opts=None):
-    self.name = name
+  def __init__(self, name, engine, cflags=None, env=None):
+    super().__init__(name)
     self.engine = engine
-    self.extra_args = extra_args or []
+    self.cflags = cflags or []
     self.env = os.environ.copy()
     if env:
       self.env.update(env)
-    self.binaryen_opts = binaryen_opts or []
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
+  def build(self, parent, filename, shared_args, emcc_args, native_args, native_exec, lib_builder):
     emcc_args = emcc_args or []
     self.filename = filename
     llvm_root = self.env.get('LLVM') or config.LLVM_ROOT
@@ -223,7 +249,7 @@ class EmscriptenBenchmarker(Benchmarker):
       # Note that we need to pass in all the flags here because some build
       # systems (like zlib) if they see a CFLAGS it will override all their
       # default flags, including optimizations.
-      env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS + [OPTIMIZATIONS] + self.extra_args)
+      env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS + [OPTIMIZATIONS] + self.cflags)
       # This shouldn't be 'emcc_args += ...', because emcc_args is passed in as
       # a parameter and changes will be visible to the caller.
       emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=env_init)
@@ -245,17 +271,15 @@ class EmscriptenBenchmarker(Benchmarker):
       cmd += ['--closure=1', '-sMINIMAL_RUNTIME']
     # add additional emcc args at the end, which may override other things
     # above, such as minimal runtime
-    cmd += emcc_args + self.extra_args
+    cmd += emcc_args + self.cflags
     if '-sFILESYSTEM' not in cmd and '-sFORCE_FILESYSTEM' not in cmd:
       cmd += ['-sFILESYSTEM=0']
     self.cmd = cmd
     run_process(cmd, env=self.env)
-    if self.binaryen_opts:
-      run_binaryen_opts(utils.replace_suffix(final, '.wasm'), self.binaryen_opts)
     self.filename = final
 
   def run(self, args):
-    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
+    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=subprocess.STDOUT)
 
   def get_output_files(self):
     ret = [self.filename]
@@ -289,17 +313,16 @@ CHEERP_BIN = '/opt/cheerp/bin/'
 
 
 class CheerpBenchmarker(Benchmarker):
-  def __init__(self, name, engine, args=None, binaryen_opts=None):
-    self.name = name
+  def __init__(self, name, engine, cflags=None):
+    super().__init__(name)
     self.engine = engine
-    self.args = args or [OPTIMIZATIONS]
-    self.binaryen_opts = binaryen_opts or []
+    self.cflags = cflags or [OPTIMIZATIONS]
 
-  def build(self, parent, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder):
+  def build(self, parent, filename, shared_args, emcc_args, native_args, native_exec, lib_builder):
     cheerp_args = [
       '-fno-math-errno',
     ]
-    cheerp_args += self.args
+    cheerp_args += self.cflags
     self.parent = parent
     if lib_builder:
       # build as "native" (so no emcc env stuff), but with all the cheerp stuff
@@ -312,7 +335,7 @@ class CheerpBenchmarker(Benchmarker):
         'NM': CHEERP_BIN + 'llvm-nm',
         'LDSHARED': CHEERP_BIN + 'clang',
         'RANLIB': CHEERP_BIN + '../libexec/cheerp-unknown-none-ranlib',
-        'CXXFLAGS': "-Wno-c++11-narrowing",
+        'CXXFLAGS': '-Wno-c++11-narrowing',
         'CHEERP_PREFIX': CHEERP_BIN + '../',
       })
     if PROFILING:
@@ -337,14 +360,12 @@ class CheerpBenchmarker(Benchmarker):
       # print(' '.join(cmd))
       run_process(cmd, stdout=PIPE, stderr=PIPE)
       self.filename = final
-      if self.binaryen_opts:
-        run_binaryen_opts(final.replace('.js', '.wasm'), self.binaryen_opts)
     finally:
       for dir_ in dirs_to_delete:
         utils.delete_dir(dir_)
 
   def run(self, args):
-    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=PIPE)
+    return jsrun.run_js(self.filename, engine=self.engine, args=args, stderr=subprocess.STDOUT)
 
   def get_output_files(self):
     return [self.filename, utils.replace_suffix(self.filename, '.wasm')]
@@ -373,6 +394,8 @@ named_benchmarkers = {
   # TODO: ensure no baseline compiler is used, see v8
   'sm': EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),
   'cherp-sm': CheerpBenchmarker('cheerp-sm-wasm', config.SPIDERMONKEY_ENGINE),
+  'clang-build': ToolchainBenchmarker('clang', [CLANG_CC]),
+  'emcc-build': ToolchainBenchmarker('emcc', [EMCC]),
 }
 
 for name in EMTEST_BENCHMARKERS.split(','):
@@ -388,9 +411,6 @@ class benchmark(common.RunnerCore):
   @classmethod
   def setUpClass(cls):
     super().setUpClass()
-
-    for benchmarker in benchmarkers:
-      benchmarker.prepare()
 
     fingerprint = ['including compilation', time.asctime()]
     try:
@@ -416,9 +436,18 @@ class benchmark(common.RunnerCore):
       }
       utils.write_file('stats.json', json.dumps(output, indent=2) + '\n')
 
-  # avoid depending on argument reception from the commandline
-  def hardcode_arguments(self, code):
+  def hardcode_arguments(self, code, args):
+    """Avoid depending on argument reception from the commandline, where possible.
+
+    Here we take the command line arguments and embed them directly into `main` function.
+    If we cannot find a `main` function, or if we have more than one argument, we
+    do not do any embedding, and the resulting test will depend on arguments being
+    passed via argv (which works in most environments).
+    """
     if not code or 'int main()' in code:
+      return code
+    # We only know how to embed a single argument
+    if len(args) != 1:
       return code
     main_pattern = 'int main(int argc, char **argv)'
     assert main_pattern in code
@@ -430,24 +459,21 @@ class benchmark(common.RunnerCore):
         int ret = benchmark_main(newArgc, newArgv);
         return ret;
       }
-    ''' % DEFAULT_ARG
+    ''' % args[0]
     return code
 
   def do_benchmark(self, name, src, expected_output='FAIL', args=None,
                    emcc_args=None, native_args=None, shared_args=None,
-                   force_c=False, reps=TEST_REPS, native_exec=None,
-                   output_parser=None, args_processor=None, lib_builder=None,
+                   force_c=False, reps=EMTEST_REPS, native_exec=None,
+                   output_parser=None, lib_builder=None,
                    skip_benchmarkers=None):
     if not benchmarkers:
       raise Exception('error, no benchmarkers')
 
     args = args or [DEFAULT_ARG]
-    if args_processor:
-      args = args_processor(args)
-
     dirname = self.get_dir()
     filename = os.path.join(dirname, name + '.c' + ('' if force_c else 'pp'))
-    src = self.hardcode_arguments(src)
+    src = self.hardcode_arguments(src, args)
     utils.write_file(filename, src)
 
     print()
@@ -458,13 +484,16 @@ class benchmark(common.RunnerCore):
       if not b.run:
         # If we won't run the benchmark, we don't need repetitions.
         reps = 0
-      baseline = b
       print('Running benchmarker: %s: %s' % (b.__class__.__name__, b.name))
-      b.build(self, filename, args, shared_args, emcc_args, native_args, native_exec, lib_builder)
-      b.bench(args, output_parser, reps, expected_output)
+      b.build(self, filename, shared_args, emcc_args, native_args, native_exec, lib_builder)
+      b.bench(args, reps, output_parser, expected_output)
       recorded_stats = b.display(baseline)
       if recorded_stats:
         self.add_stats(name, recorded_stats)
+      if not baseline:
+        # Use the first benchmarker as the baseline.  Other benchmarkers can then
+        # report relative performance compared to this.
+        baseline = b
 
   def add_stats(self, name, stats):
     self.stats.append({
@@ -477,7 +506,13 @@ class benchmark(common.RunnerCore):
       },
     })
 
-  def test_primes(self, check=True):
+  @parameterized({
+    '': (False,),
+    # Also interesting to test it without the printfs which allow checking the output. Without
+    # printf, code size is dominated by the runtime itself (the compiled code is just a few lines).
+    'nocheck': (True,),
+  })
+  def test_primes(self, check):
     src = r'''
       #include <stdio.h>
       #include <math.h>
@@ -519,10 +554,27 @@ class benchmark(common.RunnerCore):
     '''
     self.do_benchmark('primes' if check else 'primes-nocheck', src, 'lastprime:' if check else '', shared_args=['-DCHECK'] if check else [])
 
-  # Also interesting to test it without the printfs which allow checking the output. Without
-  # printf, code size is dominated by the runtime itself (the compiled code is just a few lines).
-  def test_primes_nocheck(self):
-    self.test_primes(check=False)
+  def do_toolchain_benchmark(self, args):
+    # TODO: Perhaps this can be merged with the regular `do_benchmark` somehow.
+    benchmarkers = [
+      named_benchmarkers['clang-build'],
+      named_benchmarkers['emcc-build'],
+    ]
+    baseline = None
+    print()
+    for b in benchmarkers:
+      b.bench(args)
+      b.display(baseline)
+      if not baseline:
+        # Use the first benchmarker as the baseline.  Other benchmarkers can then
+        # report relative performance compared to this.
+        baseline = b
+
+  def test_compile_noop(self):
+    self.do_toolchain_benchmark(['--version'])
+
+  def test_compile_hello(self):
+    self.do_toolchain_benchmark(['-c', test_file('hello_world.c')])
 
   def test_memops(self):
     src = '''
@@ -734,7 +786,7 @@ class benchmark(common.RunnerCore):
         return 0;
       }
     '''
-    self.do_benchmark('conditionals', src, 'ok', reps=TEST_REPS)
+    self.do_benchmark('conditionals', src, 'ok')
 
   def test_fannkuch(self):
     src = read_file(test_file('third_party/fannkuch.c')).replace(
@@ -977,13 +1029,13 @@ class benchmark(common.RunnerCore):
       return float(re.search(r'Total elapsed: ([\d\.]+)', output).group(1))
     self.do_benchmark('matrix_multiply', read_file(test_file('matrix_multiply.cpp')), 'Total elapsed:', output_parser=output_parser, shared_args=['-I' + test_file('benchmark')])
 
-  def lua(self, benchmark, expected, output_parser=None, args_processor=None):
+  def lua(self, benchmark, expected, output_parser=None):
     self.cflags.remove('-Werror')
     shutil.copyfile(test_file(f'third_party/lua/{benchmark}.lua'), benchmark + '.lua')
 
     def lib_builder(name, native, env_init):
       # Inject -sMEMORY64 into node-64 benchmarking runs.
-      env_init['MYCFLAGS'] = env_init['CFLAGS']
+      env_init['MYCFLAGS'] = env_init.get('CFLAGS', '')
       if '-sMEMORY64' in env_init['MYCFLAGS']:
         env_init['MYLDFLAGS'] = '-sMEMORY64'
 
@@ -995,7 +1047,7 @@ class benchmark(common.RunnerCore):
                       force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
                       emcc_args=['--embed-file', benchmark + '.lua', '-sFORCE_FILESYSTEM', '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, native_exec=os.path.join('building', 'third_party', 'lua_native', 'src', 'lua'),
-                      output_parser=output_parser, args_processor=args_processor)
+                      output_parser=output_parser)
 
   def test_zzz_lua_scimark(self):
     def output_parser(output):
@@ -1044,7 +1096,7 @@ class benchmark(common.RunnerCore):
     src += read_file(test_file('third_party/bullet/Demos/Benchmarks/main.cpp'))
 
     def lib_builder(name, native, env_init):
-      cflags = ' '.join(self.cflags) + ' ' + env_init['CFLAGS']
+      cflags = ' '.join(self.cflags) + ' ' + env_init.get('CFLAGS', '')
       return self.get_library(str(Path('third_party/bullet')),
                               ['src/BulletDynamics/libBulletDynamics.a',
                                'src/BulletCollision/libBulletCollision.a',
@@ -1114,7 +1166,7 @@ class benchmark(common.RunnerCore):
     ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):  # noqa
-      if '-sMEMORY64' in env_init['CFLAGS']:
+      if '-sMEMORY64' in env_init.get('CFLAGS', ''):
         env_init['CPPFLAGS'] = '-sMEMORY64'
         env_init['LDFLAGS'] = '-sMEMORY64'
       return self.get_poppler_library(env_init=env_init)

@@ -44,13 +44,17 @@
 #endif
 #if ENVIRONMENT_MAY_BE_NODE
   // This is the way that we signal to the node worker that it is hosting
-  // a wasm worker.
+  // a Wasm Worker.
   'workerData': 'em-ww',
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
   // This is the way that we signal to the Web Worker that it is hosting
-  // a pthread.
+  // a Wasm Worker.
+#if ASSERTIONS
+  'name': 'em-ww-' + _wasmWorkersID,
+#else
   'name': 'em-ww',
+#endif
 #endif
 }`;
 }}}

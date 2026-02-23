@@ -8,19 +8,19 @@ Building Emscripten yourself is an alternative to getting binaries using the
 emsdk.
 
 Emscripten itself is written in Python and JavaScript so it does not need to be
-compiled.  However, after checkout you will need to perform various steps
-before it can be used (e.g. ``npm install``).  The ``bootstrap`` script in the
-top level of the repository takes care of running these steps and ``emcc`` will
-error out if it detects that ``bootstrap`` needs to be run.
+compiled.  However, after checkout you will need to run the top level
+``bootstrap`` script before the toolchain is usable.  This performs
+various steps including ``npm install`` and the creation of compiler entry
+points (e.g. `.bat` files on windows).
 
-Emscripten comes with its own versions of some C/C++ system libraries which ``emcc``
-builds automatically as and when needed (in the emsdk builds, these are precompiled).
-You can also build them manually with the ``embuilder`` tool - see ``embuilder --help``
-for more information.
+Emscripten comes with its own versions of some C/C++ system libraries which
+``emcc`` builds automatically as and when needed (in the emsdk builds, these are
+precompiled). You can also build them manually with the ``embuilder`` tool - see
+``embuilder --help`` for more information.
 
-In addition to the main emscripten repository you will also need to checkout
-and build LLVM and Binaryen (as detailed below).  After compiling these, you
-will need to edit your ``.emscripten`` file to point to their corresponding
+In addition to the main emscripten repository you will also need to checkout and
+build LLVM and Binaryen (as detailed below).  After compiling these, you will
+need to edit your ``.emscripten`` file to point to their corresponding
 locations.
 
 Use the ``main`` branches of each of these repositories, or check the `Packaging

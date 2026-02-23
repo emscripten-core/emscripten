@@ -65,16 +65,16 @@ var ENVIRONMENT_IS_AUDIO_WORKLET = !!globalThis.AudioWorkletGlobalScope;
 #endif
 
 #if AUDIO_WORKLET && WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww' || ENVIRONMENT_IS_AUDIO_WORKLET;
+var ENVIRONMENT_IS_WASM_WORKER = {{{ wasmWorkerDetection() }}} || ENVIRONMENT_IS_AUDIO_WORKLET;
 #elif WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+var ENVIRONMENT_IS_WASM_WORKER = {{{ wasmWorkerDetection() }}};
 #endif
 
 #if WASM_WORKERS && ENVIRONMENT_MAY_BE_NODE
 if (ENVIRONMENT_IS_NODE) {
   // The way we signal to a worker that it is hosting a pthread is to construct
   // it with a specific name.
-  ENVIRONMENT_IS_WASM_WORKER = worker_threads['workerData'] == 'em-ww'
+  ENVIRONMENT_IS_WASM_WORKER = worker_threads.workerData == 'em-ww'
 }
 #endif
 
@@ -143,7 +143,7 @@ var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 #if PTHREADS
 // MINIMAL_RUNTIME does not support --proxy-to-worker option, so Worker and Pthread environments
 // coincide.
-var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-pthread');
+var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && {{{ pthreadDetection() }}};
 
 #if !MODULARIZE
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
@@ -156,7 +156,7 @@ if (ENVIRONMENT_IS_NODE) {
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
   // Under node we set `workerData` to `em-pthread` to signal that the worker
   // is hosting a pthread.
-  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-pthread'
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads.workerData == 'em-pthread'
 #if !EXPORT_ES6
   _scriptName = __filename;
 #endif

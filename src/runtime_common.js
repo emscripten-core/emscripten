@@ -39,13 +39,13 @@ var readyPromiseResolve, readyPromiseReject;
 if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
   // Create as web-worker-like an environment as we can.
   globalThis.self = globalThis;
-  var parentPort = worker_threads['parentPort'];
+  var parentPort = worker_threads.parentPort;
   // Deno and Bun already have `postMessage` defined on the global scope and
   // deliver messages to `globalThis.onmessage`, so we must not duplicate that
   // behavior here if `postMessage` is already present.
   if (!globalThis.postMessage) {
     parentPort.on('message', (msg) => globalThis.onmessage?.({ data: msg }));
-    globalThis.postMessage = (msg) => parentPort['postMessage'](msg);
+    globalThis.postMessage = (msg) => parentPort.postMessage(msg);
   }
   // Node.js Workers do not pass postMessage()s and uncaught exception events to the parent
   // thread necessarily in the same order where they were generated in sequential program order.

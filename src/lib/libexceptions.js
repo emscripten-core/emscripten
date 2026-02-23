@@ -82,9 +82,9 @@ var LibraryExceptions = {
 
   // Here, we throw an exception after recording a couple of values that we need to remember
   // We also remember that it was the last exception thrown as we need to know that later.
-  __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount'
+  __cxa_throw__deps: ['$ExceptionInfo', '$exceptionLast', '$uncaughtExceptionCount',
 #if !DISABLE_EXCEPTION_CATCHING
-  , '__cxa_increment_exception_refcount'
+    '__cxa_increment_exception_refcount',
 #endif
   ],
   __cxa_throw: (ptr, type, destructor) => {
@@ -105,9 +105,9 @@ var LibraryExceptions = {
   // This exception will be caught twice, but while begin_catch runs twice,
   // we early-exit from end_catch when the exception has been rethrown, so
   // pop that here from the caught exceptions.
-  __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast', '$uncaughtExceptionCount'
+  __cxa_rethrow__deps: ['$exceptionCaught', '$exceptionLast', '$uncaughtExceptionCount',
 #if !DISABLE_EXCEPTION_CATCHING
-  , '__cxa_increment_exception_refcount'
+    '__cxa_increment_exception_refcount',
 #endif
   ],
   __cxa_rethrow: () => {

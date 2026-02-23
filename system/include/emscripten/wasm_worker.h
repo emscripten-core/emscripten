@@ -1,5 +1,6 @@
 #pragma once
 
+#include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
 #include <emscripten/atomic.h>
@@ -115,7 +116,7 @@ int emscripten_navigator_hardware_concurrency(void);
 // accesses, behavior differs across browsers, see
 //  - https://bugzil.la/1246139
 //  - https://bugs.chromium.org/p/chromium/issues/detail?id=1167449
-int emscripten_atomics_is_lock_free(int byteWidth);
+bool emscripten_atomics_is_lock_free(int byteWidth);
 
 #define emscripten_lock_t volatile uint32_t
 

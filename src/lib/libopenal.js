@@ -760,7 +760,7 @@ var LibraryOpenAL = {
         return AL.currentCtx.distanceModel;
       default:
 #if OPENAL_DEBUG
-        dbg(`${funcname}() param ${ptrToString(param} is unknown or not implemented`);
+        dbg(`${funcname}() param ${ptrToString(param)} is unknown or not implemented`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
@@ -2364,7 +2364,7 @@ var LibraryOpenAL = {
 
     default:
 #if OPENAL_DEBUG
-      dbg(`No value for `${pEnumName}` is known by alcGetEnumValue()`);
+      dbg(`No value for '${pEnumName}' is known by alcGetEnumValue()`);
 #endif
       AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
       return {{{ cDefs.AL_NONE }}};
@@ -2999,7 +2999,7 @@ var LibraryOpenAL = {
 
     default:
 #if OPENAL_DEBUG
-      dbg(`No value for `${name}` is known by alGetEnumValue()`);
+      dbg(`No value for '${name}' is known by alGetEnumValue()`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return 0;

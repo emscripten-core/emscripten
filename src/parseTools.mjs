@@ -1159,6 +1159,22 @@ function nodeWWDetection() {
   }
 }
 
+function wasmWorkerDetection() {
+  if (ASSERTIONS) {
+    return "globalThis.name?.startsWith('em-ww')";
+  } else {
+    return "globalThis.name == 'em-ww'";
+  }
+}
+
+function pthreadDetection() {
+  if (ASSERTIONS) {
+    return "globalThis.name?.startsWith('em-pthread')";
+  } else {
+    return "globalThis.name == 'em-pthread'";
+  }
+}
+
 function makeExportAliases() {
   var res = ''
   for (var [alias, ex] of Object.entries(nativeAliases)) {
@@ -1244,4 +1260,6 @@ addToCompileTimeContext({
   toIndexType,
   nodePthreadDetection,
   nodeWWDetection,
+  wasmWorkerDetection,
+  pthreadDetection,
 });

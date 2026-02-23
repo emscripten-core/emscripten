@@ -2037,15 +2037,25 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
     settings.MEMORY64 = 2
   # Source maps haven't been generated yet and aren't needed to run embind_gen.
   settings.LOAD_SOURCE_MAP = 0
+  settings.GENERATE_SOURCE_MAP = 0
   outfile_js = in_temp('tsgen.js')
   # The Wasm outfile may be modified by emscripten.emscript, so use a temporary file.
   outfile_wasm = in_temp('tsgen.wasm')
-  emscripten.emscript(wasm_target, outfile_wasm, outfile_js, js_syms, finalize=False)
+  metadata = emscripten.emscript(wasm_target, outfile_wasm, outfile_js, js_syms, finalize=False)
+
+  # Strip out any Wasm features that can't run in older versions of node.
+  wasm_opt_args = []
+  if '--enable-relaxed-simd' in metadata.features:
+    # Relaxed SIMD isn't supported on older versions of node.
+    wasm_opt_args += ['--remove-relaxed-simd']
+  if '--enable-memory64' in metadata.features:
+    # See comment above about lowering memory64.
+    wasm_opt_args += ['--memory64-lowering', '--table64-lowering']
+  if wasm_opt_args:
+    building.run_wasm_opt(outfile_wasm, outfile_wasm, wasm_opt_args)
+
   # Build the flags needed by Node.js to properly run the output file.
   node_args = []
-  if settings.MEMORY64:
-    # See comment above about lowering memory64.
-    building.run_wasm_opt(outfile_wasm, outfile_wasm, ['--memory64-lowering', '--table64-lowering'])
   if settings.WASM_EXCEPTIONS:
     node_args += shared.node_exception_flags(config.NODE_JS)
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
