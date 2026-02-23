@@ -74,7 +74,7 @@ var ENVIRONMENT_IS_WASM_WORKER = {{{ wasmWorkerDetection() }}};
 if (ENVIRONMENT_IS_NODE) {
   // The way we signal to a worker that it is hosting a pthread is to construct
   // it with a specific name.
-  ENVIRONMENT_IS_WASM_WORKER = worker_threads['workerData'] == 'em-ww'
+  ENVIRONMENT_IS_WASM_WORKER = worker_threads.workerData == 'em-ww'
 }
 #endif
 
@@ -156,7 +156,7 @@ if (ENVIRONMENT_IS_NODE) {
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
   // Under node we set `workerData` to `em-pthread` to signal that the worker
   // is hosting a pthread.
-  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-pthread'
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads.workerData == 'em-pthread'
 #if !EXPORT_ES6
   _scriptName = __filename;
 #endif
