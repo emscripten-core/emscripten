@@ -2063,7 +2063,7 @@ Module['postRun'] = () => {
     self.do_runf('main.c', '|frist|\n|sacond|\n|thard|\n',
                  cflags=['--embed-file', 'tst'] + args)
 
-  def test_exclude_file(self):
+  def test_embed_file_exclude(self):
     ensure_dir('tst/abc.exe')
     ensure_dir('tst/abc.txt')
 
@@ -2072,19 +2072,22 @@ Module['postRun'] = () => {
     create_file('tst/abc.exe/foo', 'emscripten')
     create_file('tst/abc.txt/bar', '!!!')
     create_file('main.c', r'''
+      #include <assert.h>
       #include <stdio.h>
+      #include <unistd.h>
+      int exists(const char* filename) {
+        return access(filename, F_OK) == 0;
+      }
       int main() {
-        if(fopen("tst/hello.exe", "rb")) printf("Failed\n");
-        if(!fopen("tst/hello.txt", "rb")) printf("Failed\n");
-        if(fopen("tst/abc.exe/foo", "rb")) printf("Failed\n");
-        if(!fopen("tst/abc.txt/bar", "rb")) printf("Failed\n");
-
+        assert(exists("tst/hello.txt"));
+        assert(exists("tst/abc.txt/bar"));
+        assert(!exists("tst/hello.exe"));
+        assert(!exists("tst/abc.exe/foo"));
         return 0;
       }
     ''')
 
-    self.run_process([EMCC, 'main.c', '--embed-file', 'tst', '--exclude-file', '*.exe'])
-    self.assertEqual(self.run_js('a.out.js').strip(), '')
+    self.do_runf('main.c', cflags=['--embed-file', 'tst', '--exclude-file', '*.exe'])
 
   def test_dylink_strict(self):
     self.do_run_in_out_file_test('hello_world.c', cflags=['-sSTRICT', '-sMAIN_MODULE=1'])
