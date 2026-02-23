@@ -90,7 +90,7 @@ isPthread && {{{ EXPORT_NAME }}}();
 // when running in MODULARIZE mode we need use this to know if we should
 // run the module constructor on startup (true only for pthreads).
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-var isWW = globalThis.self?.name == 'em-ww';
+var isWW = {{{ wasmWorkerDetection() }}};
 // In order to support both web and node we also need to detect node here.
 #if ENVIRONMENT_MAY_BE_NODE
 #if !PTHREADS

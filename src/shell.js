@@ -50,7 +50,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #if WASM_WORKERS
 // The way we signal to a worker that it is hosting a pthread is to construct
 // it with a specific name.
-var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+var ENVIRONMENT_IS_WASM_WORKER = {{{ wasmWorkerDetection() }}};
 #endif
 
 #if ENVIRONMENT_MAY_BE_AUDIO_WORKLET

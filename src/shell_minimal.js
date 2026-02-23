@@ -65,9 +65,9 @@ var ENVIRONMENT_IS_AUDIO_WORKLET = !!globalThis.AudioWorkletGlobalScope;
 #endif
 
 #if AUDIO_WORKLET && WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww' || ENVIRONMENT_IS_AUDIO_WORKLET;
+var ENVIRONMENT_IS_WASM_WORKER = {{{ wasmWorkerDetection() }}} || ENVIRONMENT_IS_AUDIO_WORKLET;
 #elif WASM_WORKERS
-var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+var ENVIRONMENT_IS_WASM_WORKER = {{{ wasmWorkerDetection() }}};
 #endif
 
 #if WASM_WORKERS && ENVIRONMENT_MAY_BE_NODE
