@@ -1167,6 +1167,14 @@ function wasmWorkerDetection() {
   }
 }
 
+function pthreadDetection() {
+  if (ASSERTIONS) {
+    return "globalThis.name?.startsWith('em-pthread')";
+  } else {
+    return "globalThis.name == 'em-pthread'";
+  }
+}
+
 function makeExportAliases() {
   var res = ''
   for (var [alias, ex] of Object.entries(nativeAliases)) {
@@ -1253,4 +1261,5 @@ addToCompileTimeContext({
   nodePthreadDetection,
   nodeWWDetection,
   wasmWorkerDetection,
+  pthreadDetection,
 });
