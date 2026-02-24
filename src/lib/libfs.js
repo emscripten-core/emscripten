@@ -698,12 +698,23 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EEXIST }}});
       }
       var errCode = FS.mayCreate(parent, name);
+#if CASE_INSENSITIVE_FS
+      if (errCode && errCode !== {{{ cDefs.EEXIST }}}) {
+#else
       if (errCode) {
+#endif
         throw new FS.ErrnoError(errCode);
       }
       if (!parent.node_ops.mknod) {
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
+#if CASE_INSENSITIVE_FS
+      if(errCode === {{{ cDefs.EEXIST }}}) {
+        var oldNodeLookup = FS.lookupPath(path);
+        var oldNode = oldNodeLookup.node;
+        FS.destroyNode(oldNode);
+      }
+#endif
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
     statfs(path) {
