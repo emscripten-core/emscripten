@@ -5648,6 +5648,13 @@ fetch('report_result?0');
 
     self.run_browser('test.html', '/report_result?0')
 
+  @parameterized({
+    '': ([],),
+    'modularize': (['-sMODULARIZE'],),
+  })
+  def test_shell_minimal(self, args):
+    self.btest_exit('browser_test_hello_world.c', cflags=['--shell-file', path_from_root('html/shell_minimal.html')] + args)
+
 
 class emrun(RunnerCore):
   def test_emrun_info(self):
