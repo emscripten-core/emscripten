@@ -789,16 +789,6 @@ var EXCEPTION_STACK_TRACES = false;
 // [compile+link]
 var WASM_LEGACY_EXCEPTIONS = true;
 
-// Catch unhandled rejections in node. This only affects versions of node older
-// than 15.  Without this, old version node will print a warning, but exit
-// with a zero return code.  With this setting enabled, we handle any unhandled
-// rejection and throw an exception, which will cause the process to exit
-// immediately with a non-0 return code.
-// This is not needed in Node 15+ so this setting will default to false if
-// MIN_NODE_VERSION is 150000 or above.
-// [link]
-var NODEJS_CATCH_REJECTION = true;
-
 // Whether to support async operations in the compiled code. This makes it
 // possible to call JS functions from synchronous-looking code in C/C++.
 //

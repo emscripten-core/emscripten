@@ -1168,21 +1168,6 @@ https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-
 
 Default value: true
 
-.. _nodejs_catch_rejection:
-
-NODEJS_CATCH_REJECTION
-======================
-
-Catch unhandled rejections in node. This only affects versions of node older
-than 15.  Without this, old version node will print a warning, but exit
-with a zero return code.  With this setting enabled, we handle any unhandled
-rejection and throw an exception, which will cause the process to exit
-immediately with a non-0 return code.
-This is not needed in Node 15+ so this setting will default to false if
-MIN_NODE_VERSION is 150000 or above.
-
-Default value: true
-
 .. _asyncify:
 
 ASYNCIFY
@@ -3548,3 +3533,4 @@ for backwards compatibility with older versions:
  - ``USE_WEBGPU``: No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py (Valid values: [0])
  - ``PROXY_TO_WORKER``: No longer supported (Valid values: [0])
  - ``NODEJS_CATCH_EXIT``: No longer supported (Valid values: [0])
+ - ``NODEJS_CATCH_REJECTION``: No longer supported (Valid values: [0])
