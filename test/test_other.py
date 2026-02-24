@@ -2649,6 +2649,26 @@ F1 -> ''
     # Emdawnwebgpu uses C++ internally, so we use a cpp file here so emcc defaults to linking C++.
     self.emcc('hello_world.cpp', ['--use-port=emdawnwebgpu'])
 
+  def test_port_lock_contention(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
+    self.run_process([EMBUILDER, 'clear', '--wasm64', 'emdawnwebgpu'])
+    with cache.lock('clean port'):
+      utils.delete_dir(os.path.join(config.PORTS, 'emdawnwebgpu'))
+    create_file('CMakeLists.txt', '''
+      cmake_minimum_required(VERSION 3.16)
+      file(GLOB MY_SOURCES "*.c")
+      set(CMAKE_C_FLAGS "-sMEMORY64 --use-port=emdawnwebgpu")
+
+      add_library(cpp_lib ${CPP_LIBRARY_TYPE} ${MY_SOURCES})
+    ''')
+    for i in range(100):
+      create_file(f'file{i}.c', f'int v{i} = {i};')
+    self.run_process([EMCMAKE, 'cmake', '-G', 'Ninja'])
+    # All of the the 100 subprocesses should attempt downlowd emdawnwebgpu, but only one
+    # will actually do it.
+    self.run_process(['ninja', '-v'])
+
   @crossplatform
   def test_external_ports_simple(self):
     if config.FROZEN_CACHE:
