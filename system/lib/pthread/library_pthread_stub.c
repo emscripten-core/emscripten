@@ -21,10 +21,16 @@ bool emscripten_has_threading_support() { return false; }
 
 int emscripten_num_logical_cores() { return 1; }
 
-int emscripten_futex_wait(
-  volatile void /*uint32_t*/* addr, uint32_t val, double maxWaitMilliseconds) {
-  // nop
-  return 0; // success
+int emscripten_futex_wait(volatile void /*uint32_t*/* addr,
+                          uint32_t val,
+                          double maxWaitMilliseconds) {
+  if (!addr) {
+    return -EINVAL;
+  }
+  if (*(uint32_t*)addr != val) {
+    return -EWOULDBLOCK;
+  }
+  return -ENOTSUP;
 }
 
 int emscripten_futex_wake(volatile void /*uint32_t*/* addr, int count) {
