@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 5.0.2 (in development)
 ----------------------
+- The `NODEJS_CATCH_REJECTION` setting was removed. This setting only has an
+  effect when targeting very old versions of node (< 15).  Its trivial to replace
+  with a simple `--pre-js` file or with the `--unhandled-rejections=strict`
+  command line flag which it essentially emulates. Versions of node above v15
+  have this behavior by default. (#26330)
 - The `NODEJS_CATCH_EXIT` setting was removed.  This setting was disabled by
   default in #22257, and is no longer used by emscripten itself.  It is also
   problematic as it injects a global process.on handler.  It is easy to replace
