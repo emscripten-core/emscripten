@@ -67,6 +67,8 @@ diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('experimental')
 # Don't show legacy settings warnings by default
+# See https://github.com/emscripten-core/emscripten/pull/10615 for the rationale
+# behind not showing this warning by default.
 diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 # Catch-all for other emcc warnings
 diagnostics.add_warning('linkflags')
