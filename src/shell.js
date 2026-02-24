@@ -225,18 +225,6 @@ if (ENVIRONMENT_IS_NODE) {
   }
 #endif
 
-#if NODEJS_CATCH_EXIT
-  process.on('uncaughtException', (ex) => {
-    // suppress ExitStatus exceptions from showing an error
-#if RUNTIME_DEBUG
-    dbg(`node: uncaughtException: ${ex}`)
-#endif
-    if (ex !== 'unwind' && !(ex instanceof ExitStatus) && !(ex.context instanceof ExitStatus)) {
-      throw ex;
-    }
-  });
-#endif
-
 #if NODEJS_CATCH_REJECTION
   // Without this older versions of node (< v15) will log unhandled rejections
   // but return 0, which is not normally the desired behaviour.  This is

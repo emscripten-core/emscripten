@@ -146,7 +146,6 @@ INCOMPATIBLE_SETTINGS = [
     ('SEPARATE_DWARF', 'WASM2JS', 'as there is no wasm file'),
     ('GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS', 'NO_GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS', None),
     ('MODULARIZE', 'NODEJS_CATCH_REJECTION', None),
-    ('MODULARIZE', 'NODEJS_CATCH_EXIT', None),
     ('LEGACY_VM_SUPPORT', 'MEMORY64', None),
     ('CROSS_ORIGIN', 'NO_DYNAMIC_EXECUTION', None),
     ('CROSS_ORIGIN', 'NO_PTHREADS', None),
@@ -252,6 +251,7 @@ LEGACY_SETTINGS = [
     ['ASYNCIFY_LAZY_LOAD_CODE', [0], 'No longer supported'],
     ['USE_WEBGPU', [0], 'No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py'],
     ['PROXY_TO_WORKER', [0], 'No longer supported'],
+    ['NODEJS_CATCH_EXIT', [0], 'No longer supported'],
 ]
 
 user_settings: dict[str, str] = {}

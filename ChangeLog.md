@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 5.0.2 (in development)
 ----------------------
+- The `NODEJS_CATCH_EXIT` setting was removed.  This setting was disabled by
+  default in #22257, and is no longer used by emscripten itself.  It is also
+  problematic as it injects a global process.on handler.  It is easy to replace
+  with a simple `--pre-js` file for those that require it. (#26326)
 - Several low level emscripten APIs that return success/failure now return the
   C `bool` type rather than `int`.  For example `emscripten_proxy_sync` and
   `emscripten_is_main_runtime_thread`. (#26316)
