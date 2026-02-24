@@ -19,10 +19,7 @@ from subprocess import PIPE
 
 from .toolchain_profiler import ToolchainProfiler
 
-# We depend on python 3.10 features
-if sys.version_info < (3, 10): # noqa: UP036
-  print(f'error: emscripten requires python 3.10 or above ({sys.executable} {sys.version})', file=sys.stderr)
-  sys.exit(1)
+assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
 
 from . import colored_logger
 
