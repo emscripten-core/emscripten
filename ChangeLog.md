@@ -39,6 +39,8 @@ See docs/process.md for more on how version tagging works.
   C `bool` type rather than `int`.  For example `emscripten_proxy_sync` and
   `emscripten_is_main_runtime_thread`. (#26316)
 - SDL2 port updated from 2.32.8 to 2.32.10. (#26298)
+- SDL2 port updated to include stub functions for `SDL_hid_init()` and related
+  functions. (#26297)
 - The remaining launcher scripts (e.g. `emcc.bat`) were removed from the git
   repository.  These scripts are created by the `./bootstrap` script which
   must be run before the toolchain is usable (for folks using a git checkout of
