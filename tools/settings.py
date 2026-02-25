@@ -252,6 +252,7 @@ LEGACY_SETTINGS = [
     ['PROXY_TO_WORKER', [0], 'No longer supported'],
     ['NODEJS_CATCH_EXIT', [0], 'No longer supported'],
     ['NODEJS_CATCH_REJECTION', [0], 'No longer supported'],
+    ['POLYFILL_OLD_MATH_FUNCTIONS', [0], 'No longer supported'],
 ]
 
 user_settings: dict[str, str] = {}
