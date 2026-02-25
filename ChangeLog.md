@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.2 (in development)
+5.0.3 (in development)
 ----------------------
+
+5.0.2 - 02/25/26
+----------------
 - The `NODEJS_CATCH_REJECTION` setting was removed. This setting only has an
   effect when targeting very old versions of node (< 15).  Its trivial to replace
   with a simple `--pre-js` file or with the `--unhandled-rejections=strict`
