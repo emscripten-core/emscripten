@@ -5042,8 +5042,7 @@ Module["preRun"] = () => {
   # Tests that it is possible to call emscripten_futex_wait() in Wasm Workers when pthreads
   # are also enabled.
   @parameterized({
-    # Without pthreads we expect the stub version of the futex API
-    '': (['-DEXPECT_STUB'],),
+    '': ([],),
     'pthread': (['-pthread'],),
   })
   def test_wasm_worker_futex_wait(self, args):

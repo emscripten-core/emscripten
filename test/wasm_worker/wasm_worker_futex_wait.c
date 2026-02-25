@@ -28,10 +28,6 @@ void worker_main() {
   int rc = emscripten_futex_wait(&futex_value, 0, 100);
   double end = emscripten_performance_now();
   printf("emscripten_futex_wait returned: %d after %.2fms\n", rc, end - start);
-#if EXPECT_STUB
-  // The stub implemenation returns -ENOTSUP
-  assert(rc == -ENOTSUP);
-#else
   assert(rc == -ETIMEDOUT);
   assert((end - start) >= 100);
 
@@ -41,7 +37,6 @@ void worker_main() {
   printf("emscripten_futex_wait returned: %d\n", rc);
   assert(rc == 0);
   assert(futex_value == 1);
-#endif
 
 #ifdef REPORT_RESULT
   REPORT_RESULT(0);
