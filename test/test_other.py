@@ -2083,6 +2083,58 @@ Module['postRun'] = () => {
 
     self.do_runf('main.c', cflags=['--embed-file', 'tst', '--exclude-file', '*.exe'])
 
+  def test_embed_file_exclude_negate(self):
+    ensure_dir('tst/abc.exe')
+    ensure_dir('tst/abc.txt')
+
+    create_file('tst/hello.exe', 'hello')
+    create_file('tst/hello.txt', 'world')
+    create_file('tst/abc.exe/foo', 'emscripten')
+    create_file('tst/abc.txt/bar', '!!!')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <unistd.h>
+      int exists(const char* filename) {
+        return access(filename, F_OK) == 0;
+      }
+      int main() {
+        assert(exists("tst/hello.txt"));
+        assert(exists("tst/abc.txt/bar"));
+        assert(exists("tst/hello.exe"));
+        assert(!exists("tst/abc.exe/foo"));
+        return 0;
+      }
+    ''')
+
+    self.do_runf('main.c', cflags=['--embed-file', 'tst', '--exclude-file', '*.exe', '--exclude-file', '!*hello.exe'])
+
+  def test_embed_file_exclude_negate_order(self):
+    ensure_dir('tst/abc.exe')
+    ensure_dir('tst/abc.txt')
+
+    create_file('tst/hello.exe', 'hello')
+    create_file('tst/hello.txt', 'world')
+    create_file('tst/abc.exe/foo', 'emscripten')
+    create_file('tst/abc.txt/bar', '!!!')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <unistd.h>
+      int exists(const char* filename) {
+        return access(filename, F_OK) == 0;
+      }
+      int main() {
+        assert(exists("tst/hello.txt"));
+        assert(exists("tst/abc.txt/bar"));
+        assert(!exists("tst/hello.exe"));
+        assert(!exists("tst/abc.exe/foo"));
+        return 0;
+      }
+    ''')
+
+    self.do_runf('main.c', cflags=['--embed-file', 'tst', '--exclude-file', '!*hello.exe', '--exclude-file', '*.exe'])
+
   def test_dylink_strict(self):
     self.do_run_in_out_file_test('hello_world.c', cflags=['-sSTRICT', '-sMAIN_MODULE=1'])
 

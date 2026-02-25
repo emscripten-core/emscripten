@@ -28,6 +28,7 @@ Usage:
 
   --exclude E [F..] Specifies filename pattern matches to use for excluding given files from being added to the package.
                     See https://docs.python.org/2/library/fnmatch.html for syntax.
+                    Negative patterns are also supported using ! prefex.
 
   --from-emcc Indicate that `file_packager` was called from `emcc` and will be further processed by it, so some code generation can be skipped here
 
@@ -156,8 +157,15 @@ def should_ignore(fullname):
   is hidden (Win32) or it matches any pattern specified in --exclude"""
   if has_hidden_attribute(fullname):
     return True
-
-  return any(fnmatch.fnmatch(fullname, p) for p in excluded_patterns)
+  ignored = False
+  for pattern in excluded_patterns:
+      if pattern.startswith("!"):
+          if fnmatch.fnmatch(fullname, pattern[1:]):
+              ignored = False
+      else:
+          if fnmatch.fnmatch(fullname, pattern):
+              ignored = True
+  return ignored
 
 
 def add(mode, rootpathsrc, rootpathdst):
