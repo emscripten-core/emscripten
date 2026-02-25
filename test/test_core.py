@@ -450,7 +450,8 @@ class TestCoreBase(RunnerCore):
 
   def setup_esm_integration(self):
     self.require_node_25()
-    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
+    # Using instance phase imports current generates am ExperimentalWarning under node.
+    self.node_args += ['--no-warnings']
     self.set_setting('WASM_ESM_INTEGRATION')
     self.cflags += ['-Wno-experimental']
     if self.is_wasm64():
