@@ -45,6 +45,9 @@ See docs/process.md for more on how version tagging works.
   repository.  These scripts are created by the `./bootstrap` script which
   must be run before the toolchain is usable (for folks using a git checkout of
   emscripten). (#26247)
+- When building with `-sWASM_WORKERS` emscripten will no longer include pthread
+  API stub functions.  Instead usage of the pthread API will result in undefined
+  symbols. ()
 
 5.0.1 - 02/13/26
 ----------------
