@@ -1256,13 +1256,10 @@ class libc(MuslInternalLibrary,
           'thrd_sleep.c',
           'thrd_yield.c',
         ])
+
       libc_files += files_in_path(
-        path='system/lib/pthread',
-        filenames=[
-          'library_pthread_stub.c',
-          'pthread_self_stub.c',
-          'proxying_stub.c',
-        ])
+        path='system/lib/libc',
+        filenames=['emscripten_yield_stub.c'])
 
       if self.is_ww:
         libc_files += files_in_path(
@@ -1271,6 +1268,18 @@ class libc(MuslInternalLibrary,
             '__lock.c',
             '__wait.c',
             'lock_ptc.c',
+          ])
+      else:
+        # Include stub version of thread functions when building
+        # in single theaded mode.
+        # Note: We do *not* include these stubs in the Wasm Workers build since it would
+        # never be safe to call these from a Wasm Worker.
+        libc_files += files_in_path(
+          path='system/lib/pthread',
+          filenames=[
+            'library_pthread_stub.c',
+            'pthread_self_stub.c',
+            'proxying_stub.c',
           ])
 
     if self.is_mt or self.is_ww:

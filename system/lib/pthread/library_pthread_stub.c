@@ -17,11 +17,14 @@
 #include <emscripten/threading.h>
 #include <emscripten/emscripten.h>
 
+#ifdef __EMSCRIPTEN_WASM_WORKERS__
+#error "This file contains stubs that should not be included in wasm workers builds."
+#endif
+
 bool emscripten_has_threading_support() { return false; }
 
 int emscripten_num_logical_cores() { return 1; }
 
-#ifndef __EMSCRIPTEN_WASM_WORKERS__
 // These low level primites are defined in both pthreads and wasm workers
 // builds.
 
@@ -55,7 +58,6 @@ void __unlock(void* ptr) {}
 void __acquire_ptc() {}
 
 void __release_ptc() {}
-#endif
 
 void emscripten_main_thread_process_queued_calls() {
   // nop
@@ -63,16 +65,6 @@ void emscripten_main_thread_process_queued_calls() {
 
 void emscripten_current_thread_process_queued_calls() {
   // nop
-}
-
-static void dummy(double now)
-{
-}
-
-weak_alias(dummy, _emscripten_check_timers);
-
-void _emscripten_yield(double now) {
-  _emscripten_check_timers(now);
 }
 
 int pthread_mutex_init(

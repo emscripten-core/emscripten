@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 5.0.3 (in development)
 ----------------------
+- When building with `-sWASM_WORKERS` emscripten will no longer include pthread
+  API stub functions.  These stub functions where never designed to work under
+  Wasm Workers, so its safer to error at link time if pthread APIs are used
+  in Wasm Worker-based programs. (#26336)
 
 5.0.2 - 02/25/26
 ----------------
