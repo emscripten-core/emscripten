@@ -2277,6 +2277,30 @@ Alternate syntax: --use-port=libpng
 
 Default value: false
 
+.. _use_libsquashfs:
+
+USE_LIBSQUASHFS
+===============
+
+1 = use libsquashfs from emscripten-ports
+Alternate syntax: --use-port=libsquashfs
+
+.. note:: Applicable during both linking and compilation
+
+Default value: false
+
+.. _use_emscripten_wasmfs_squashfs:
+
+USE_EMSCRIPTEN_WASMFS_SQUASHFS
+==============================
+
+1 = use emscripten_wasmfs_sqaushfs from emscripten-ports
+Alternate syntax: --use-port=emscripten_wasmfs_sqaushfs
+
+.. note:: Applicable during both linking and compilation
+
+Default value: false
+
 .. _use_regal:
 
 USE_REGAL
