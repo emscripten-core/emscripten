@@ -13525,9 +13525,7 @@ int main() {
 
   @also_with_minimal_runtime
   def test_wasm_worker_cxx_init(self):
-    # For now, C++ init guards do not work with Wasm Workers.
-    # See https://github.com/emscripten-core/emscripten/issues/26277
-    self.assert_fail([EMCC, test_file('wasm_worker/wasm_worker_cxx_init.cpp'), '-sWASM_WORKERS'], 'undefined symbol: pthread_cond_wait')
+    self.do_run_in_out_file_test('wasm_worker/wasm_worker_cxx_init.cpp', cflags=['-sWASM_WORKERS'])
 
   @parameterized({
     # we will warn here since -O2 runs the optimizer and -g enables DWARF
