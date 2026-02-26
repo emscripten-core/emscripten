@@ -18,7 +18,8 @@
 #include <emscripten.h>
 #endif
 
-int main() {
+
+void do_ip_check(char* name) {
   char str[INET_ADDRSTRLEN];
   struct hostent *host = NULL;
   struct hostent hostData;
@@ -30,7 +31,7 @@ int main() {
   // gethostbyname_r calls the same stuff as gethostbyname, so we'll test the
   // more complicated one.
   // resolve the hostname to an actual address
-  gethostbyname_r("slashdot.org", &hostData, buffer, sizeof(buffer), &host, &err);
+  gethostbyname_r(name, &hostData, buffer, sizeof(buffer), &host, &err);
   assert(host->h_addrtype == AF_INET);
   assert(host->h_length == sizeof(uint32_t));
 
@@ -48,10 +49,17 @@ int main() {
   // do a reverse lookup on the ip address
   struct hostent *host1 = gethostbyaddr(&addr, sizeof(addr), host->h_addrtype);
   printf("gethostbyaddr -> %s\n", host1->h_name);
-  assert(strstr(host1->h_name, "slashdot.org"));
+  assert(strstr(host1->h_name, name));
+}
 
+int main() {
+  printf("slashdot.org\n");
+  do_ip_check("slashdot.org");
+  
+  printf("localhost\n");
+  do_ip_check("localhost");
+  
   puts("success");
-
   return EXIT_SUCCESS;
 }
 
