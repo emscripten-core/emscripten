@@ -479,6 +479,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if not nodejs:
       self.skipTest('Test requires nodejs to run')
     if not self.try_require_node_version(25, 0, 0):
+      if os.getenv('EMTEST_AUTOSKIP') == '1':
+        self.skipTest('test requires node v25 and current Node.js version is older than this, with EMTEST_AUTOSKIP being set')
       self.fail('node v25 required to run this test.  Use EMTEST_SKIP_NODE_25 to skip')
 
   def require_engine(self, engine, force=False):
