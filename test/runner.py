@@ -368,13 +368,30 @@ def create_test_run_sorter(sort_failing_tests_at_front):
   return sort_tests_failing_and_slowest_first_comparator
 
 
-def load_test_suites(args, modules, options):
+def use_parallel_suite(module, tests):
+  suite_supported = module.__name__ not in ('test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress')
+  if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
+    has_multiple_cores = parallel_testsuite.num_cores() > 1
+    if suite_supported and has_multiple_cores:
+      return True
+  return False
+
+
+def create_test_suite(is_parallel, options):
+  if is_parallel:
+    return parallel_testsuite.ParallelTestSuite(options)
+  else:
+    return unittest.TestSuite()
+
+
+def load_test_suite(args, modules, options):
   found_start = not options.start_at
 
   loader = unittest.TestLoader()
   error_on_legacy_suite_names(args)
   unmatched_test_names = set(args)
-  suites = []
+  suite = None
+  using_parallel_suite = False
 
   total_tests = 0
   for m in modules:
@@ -394,7 +411,15 @@ def load_test_suites(args, modules, options):
 
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
       tests = flattened_tests(loaded_tests)
-      suite = suite_for_module(m, tests, options)
+      is_parallel_module = use_parallel_suite(m, tests)
+      if not suite:
+        # The first module we encounter dictates whether we use parallel test suite
+        suite = create_test_suite(is_parallel_module, options)
+        using_parallel_suite = is_parallel_module
+      else:
+        # All the following modules must match in their support for the parallel runner.
+        if is_parallel_module != using_parallel_suite:
+          utils.exit_with_error(f'attempt to mix parallel and non-parallel test modules ({m.__name__})')
       if options.failing_and_slow_first:
         tests = sorted(tests, key=cmp_to_key(create_test_run_sorter(options.max_failures < len(tests) / 2)))
       for test in tests:
@@ -407,10 +432,9 @@ def load_test_suites(args, modules, options):
         for _x in range(options.repeat):
           total_tests += 1
           suite.addTest(test)
-      suites.append((m.__name__, suite))
   if not found_start:
     utils.exit_with_error(f'unable to find --start-at test: {options.start_at}')
-  return suites, unmatched_test_names
+  return suite, unmatched_test_names
 
 
 def flattened_tests(loaded_tests):
@@ -420,24 +444,8 @@ def flattened_tests(loaded_tests):
   return tests
 
 
-def suite_for_module(module, tests, options):
-  suite_supported = module.__name__ not in ('test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress')
-  if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
-    has_multiple_tests = len(tests) > 1
-    has_multiple_cores = parallel_testsuite.num_cores() > 1
-    if suite_supported and has_multiple_tests and has_multiple_cores:
-      return parallel_testsuite.ParallelTestSuite(options)
-  return unittest.TestSuite()
-
-
-def run_tests(options, suites):
-  resultMessages = []
-  num_failures = 0
-
-  if len(suites) > 1:
-    print('Test suites:', [s[0] for s in suites])
+def run_tests(options, suite):
   # Run the discovered tests
-
   if os.getenv('CI'):
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
@@ -456,27 +464,15 @@ def run_tests(options, suites):
       print('using verbose test runner (verbose output requested)')
     testRunner = ColorTextRunner(failfast=options.failfast)
 
-  total_core_time = 0
   run_start_time = time.perf_counter()
-  for mod_name, suite in suites:
-    errlog('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
-    res = testRunner.run(suite)
-    msg = ('%s: %s run, %s errors, %s failures, %s skipped' %
-           (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
-    num_failures += len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
-    resultMessages.append(msg)
-    if hasattr(res, 'core_time'):
-      total_core_time += res.core_time
-  total_run_time = time.perf_counter() - run_start_time
-  if total_core_time > 0:
-    errlog('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (total_core_time, total_run_time, total_core_time / total_run_time))
 
-  if len(resultMessages) > 1:
-    errlog('====================')
-    errlog()
-    errlog('TEST SUMMARY')
-    for msg in resultMessages:
-      errlog('    ' + msg)
+  errlog('Running %s tests' % suite.countTestCases())
+  res = testRunner.run(suite)
+  num_failures = len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
+
+  total_run_time = time.perf_counter() - run_start_time
+  if hasattr(res, 'core_time'):
+    errlog('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (res.core_time, total_run_time, res.core_time / total_run_time))
 
   if options.bell:
     sys.stdout.write('\a')
@@ -746,12 +742,12 @@ def main():
     if os.path.exists(common.LAST_TEST):
       options.start_at = utils.read_file(common.LAST_TEST).strip()
 
-  suites, unmatched_tests = load_test_suites(tests, modules, options)
+  suite, unmatched_tests = load_test_suite(tests, modules, options)
   if unmatched_tests:
     errlog('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
     return 1
 
-  num_failures = run_tests(options, suites)
+  num_failures = run_tests(options, suite)
   # Return the number of failures as the process exit code
   # for automating success/failure reporting.  Return codes
   # over 125 are not well supported on UNIX.

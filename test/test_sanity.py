@@ -24,7 +24,7 @@ from common import (
   path_from_root,
   test_file,
 )
-from decorators import crossplatform, no_windows, parameterized, with_env_modify
+from decorators import no_windows, parameterized, with_env_modify
 
 from tools import cache, ports, response_file, shared, utils
 from tools.config import EM_CONFIG
@@ -182,7 +182,6 @@ class sanity(RunnerCore):
     return output
 
   # this should be the very first thing that runs. if this fails, everything else is irrelevant!
-  @crossplatform
   def test_aaa_normal(self):
     # Your existing EM_CONFIG should work!
     restore_and_set_up()
