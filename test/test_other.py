@@ -2542,7 +2542,7 @@ int main() {
         return 0;
       }
     ''')
-    self.do_runf('main.c', '1234, 1234, 4321\n')
+    self.do_runf('main.c', '1234, 1234, 4321\n', cflags=['-sUSE_SDL'])
 
   def test_sdl_scan_code_from_key(self):
     create_file('main.c', r'''
@@ -2554,7 +2554,7 @@ int main() {
         return 0;
       }
     ''')
-    self.do_runf('main.c', '204\n')
+    self.do_runf('main.c', '204\n', cflags=['-sUSE_SDL'])
 
   def test_sdl_get_key_name(self):
     create_file('main.c', r'''
@@ -2576,7 +2576,7 @@ z -> 'z'
 0 -> '0'
 0 -> '9'
 F1 -> ''
-''')
+''', cflags=['-sUSE_SDL'])
 
   @requires_network
   def test_sdl2_mixer_wav(self):
@@ -2902,16 +2902,16 @@ More info: https://emscripten.org
 
   def test_GetProcAddress_LEGACY_GL_EMULATION(self):
     # without legacy gl emulation, getting a proc from there should fail
-    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.c', args=['0'], cflags=['-sLEGACY_GL_EMULATION=0', '-sGL_ENABLE_GET_PROC_ADDRESS'])
+    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.c', args=['0'], cflags=['-sLEGACY_GL_EMULATION=0', '-sGL_ENABLE_GET_PROC_ADDRESS', '-sUSE_SDL'])
     # with it, it should work
-    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.c', args=['1'], cflags=['-sLEGACY_GL_EMULATION', '-sGL_ENABLE_GET_PROC_ADDRESS'])
+    self.do_other_test('test_GetProcAddress_LEGACY_GL_EMULATION.c', args=['1'], cflags=['-sLEGACY_GL_EMULATION', '-sGL_ENABLE_GET_PROC_ADDRESS', '-sUSE_SDL'])
 
   # Verifies that is user is building without -sGL_ENABLE_GET_PROC_ADDRESS, then
   # at link time they should get a helpful error message guiding them to enable
   # the option.
   def test_get_proc_address_error_message(self):
     expected = 'error: linker: Undefined symbol: SDL_GL_GetProcAddress(). Please pass -sGL_ENABLE_GET_PROC_ADDRESS at link time to link in SDL_GL_GetProcAddress().'
-    self.assert_fail([EMCC, '-sGL_ENABLE_GET_PROC_ADDRESS=0', test_file('other/test_GetProcAddress_LEGACY_GL_EMULATION.c')], expected)
+    self.assert_fail([EMCC, '-sGL_ENABLE_GET_PROC_ADDRESS=0', '-sUSE_SDL', test_file('other/test_GetProcAddress_LEGACY_GL_EMULATION.c')], expected)
 
   @parameterized({
     '': (False, False),
@@ -8884,7 +8884,7 @@ int main() {
         if directory and directory != 'compat':
           header = f'{directory}/{header}'
         inc = f'#include <{header}>\n__attribute__((weak)) int foo;\n'
-        cflags = ['-Werror', '-Wall', '-pedantic', '-msimd128', '-msse4']
+        cflags = ['-Werror', '-Wall', '-pedantic', '-msimd128', '-msse4', '-sUSE_SDL']
         if header == 'immintrin.h':
           cflags.append('-mavx2')
         if cxx_only:
@@ -9243,6 +9243,7 @@ end
     self.build('hello_world.c', cflags=[
       '--closure=1',
       '-sINCLUDE_FULL_LIBRARY',
+      '-sUSE_SDL',
       '-sFETCH',
       '-sFETCH_SUPPORT_INDEXEDDB',
       '-Werror=closure',

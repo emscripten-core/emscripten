@@ -338,6 +338,7 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
     obj_file = 'out.o'
     cmd = [compiler, c_file, '-c', '-pthread',
            '--tracing',
+           '-sUSE_SDL',
            '-Wno-deprecated-declarations',
            '-I' + utils.path_from_root('system/lib/libc'),
            '-I' + utils.path_from_root('system/lib/wasmfs'),
