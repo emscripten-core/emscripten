@@ -276,6 +276,7 @@ var LibraryWebSocket = {
   },
 
   emscripten_websocket_new__proxy: 'sync',
+  emscripten_websocket_new__deps: ['$webSockets'],
   emscripten_websocket_new: (createAttributes) => {
     if (!globalThis.WebSocket) {
 #if WEBSOCKET_DEBUG
