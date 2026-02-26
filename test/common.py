@@ -101,6 +101,13 @@ def load_previous_test_run_results():
     return json.load(open(PREVIOUS_TEST_RUN_RESULTS_FILE))
   except FileNotFoundError:
     return {}
+  except json.decoder.JSONDecodeError as e:
+    # It can happen on CI that the previous test run log file write is cut in
+    # the middle if the build job is forcibly terminated at a bad moment,
+    # leaving the log file as partial. Since the log file is used to sort tests
+    # to a fast run order, it is not a catastrophic failure -> only log warning.
+    logger.warning(f'Failed to open previous test run results: {e}')
+    return {}
 
 
 def test_file(*path_components):
