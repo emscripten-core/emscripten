@@ -622,15 +622,10 @@ var GL_ENABLE_GET_PROC_ADDRESS = true;
 // [link]
 var JS_MATH = false;
 
-// If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
-// [link]
-var POLYFILL_OLD_MATH_FUNCTIONS = false;
-
 // Set this to enable compatibility emulations for old JavaScript engines. This gives you
 // the highest possible probability of the code working everywhere, even in rare old
 // browsers and shell environments. Specifically:
 //
-// - Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-sPOLYFILL_OLD_MATH_FUNCTIONS)
 // - Disable WebAssembly. (Must be paired with -sWASM=0)
 // - Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 // - Avoid TypedArray.fill, if necessary, in zeroMemory utility function.

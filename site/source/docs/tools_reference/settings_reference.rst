@@ -952,15 +952,6 @@ can also vary between browsers.
 
 Default value: false
 
-.. _polyfill_old_math_functions:
-
-POLYFILL_OLD_MATH_FUNCTIONS
-===========================
-
-If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
-
-Default value: false
-
 .. _legacy_vm_support:
 
 LEGACY_VM_SUPPORT
@@ -970,7 +961,6 @@ Set this to enable compatibility emulations for old JavaScript engines. This giv
 the highest possible probability of the code working everywhere, even in rare old
 browsers and shell environments. Specifically:
 
-- Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-sPOLYFILL_OLD_MATH_FUNCTIONS)
 - Disable WebAssembly. (Must be paired with -sWASM=0)
 - Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 - Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
@@ -3534,3 +3524,4 @@ for backwards compatibility with older versions:
  - ``PROXY_TO_WORKER``: No longer supported (Valid values: [0])
  - ``NODEJS_CATCH_EXIT``: No longer supported (Valid values: [0])
  - ``NODEJS_CATCH_REJECTION``: No longer supported (Valid values: [0])
+ - ``POLYFILL_OLD_MATH_FUNCTIONS``: No longer supported (Valid values: [0])
