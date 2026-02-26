@@ -416,6 +416,18 @@ var WEBSOCKET_URL = 'ws://';
 // [link]
 var PROXY_POSIX_SOCKETS = false;
 
+// Use Chrome's Direct Sockets API (TCPSocket, TCPServerSocket, UDPSocket)
+// for real TCP/UDP networking in Isolated Web Apps, replacing the
+// WebSocket-to-POSIX-socket proxy. Requires -sJSPI for async bridging.
+// [link]
+var DIRECT_SOCKETS = false;
+
+// Enable WebTransport support on top of DIRECT_SOCKETS.
+// Requires DIRECT_SOCKETS to be enabled. Adds HTTP/3 Extended CONNECT
+// and DATAGRAM frame handling for WebTransport sessions.
+// [link]
+var DIRECT_SOCKETS_WEBTRANSPORT = false;
+
 // A string containing a comma separated list of WebSocket subprotocols
 // as would be present in the Sec-WebSocket-Protocol header.
 // You can set 'null', if you don't want to specify it.

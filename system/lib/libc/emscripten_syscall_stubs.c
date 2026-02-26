@@ -257,7 +257,7 @@ weak int __syscall_prlimit64(int pid, int resource, intptr_t new_limit, intptr_t
 
 weak int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optval, size_t optlen, int dummy) {
   REPORT(setsockopt);
-  return -ENOPROTOOPT; // The option is unknown at the level indicated.
+  return -ENOPROTOOPT;
 }
 
 UNIMPLEMENTED(acct, (intptr_t filename))

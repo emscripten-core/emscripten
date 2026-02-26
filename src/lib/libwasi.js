@@ -326,6 +326,14 @@ var WasiLibrary = {
     // option, use shutdown() to close a socket, and this function should behave like a no-op.
     warnOnce('To close sockets with PROXY_POSIX_SOCKETS bridge, prefer to use the function shutdown() that is proxied, instead of close()')
     return 0;
+#elif DIRECT_SOCKETS
+    var sock = DIRECT_SOCKETS.getSocket(fd);
+    if (sock) {
+      DIRECT_SOCKETS._closeSocket(sock);
+      delete DIRECT_SOCKETS.sockets[fd];
+      return 0;
+    }
+    return 0;
 #elif ASSERTIONS
     abort('fd_close called without SYSCALLS_REQUIRE_FILESYSTEM');
 #else
