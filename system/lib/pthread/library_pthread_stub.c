@@ -17,14 +17,27 @@
 #include <emscripten/threading.h>
 #include <emscripten/emscripten.h>
 
+#ifdef __EMSCRIPTEN_WASM_WORKERS__
+#error "This file contains stubs that should not be included in wasm workers builds."
+#endif
+
 bool emscripten_has_threading_support() { return false; }
 
 int emscripten_num_logical_cores() { return 1; }
 
-int emscripten_futex_wait(
-  volatile void /*uint32_t*/* addr, uint32_t val, double maxWaitMilliseconds) {
-  // nop
-  return 0; // success
+// These low level primites are defined in both pthreads and wasm workers
+// builds.
+
+int emscripten_futex_wait(volatile void /*uint32_t*/* addr,
+                          uint32_t val,
+                          double maxWaitMilliseconds) {
+  if (!addr) {
+    return -EINVAL;
+  }
+  if (*(uint32_t*)addr != val) {
+    return -EWOULDBLOCK;
+  }
+  return -ENOTSUP;
 }
 
 int emscripten_futex_wake(volatile void /*uint32_t*/* addr, int count) {
@@ -33,9 +46,18 @@ int emscripten_futex_wake(volatile void /*uint32_t*/* addr, int count) {
 }
 
 bool emscripten_is_main_runtime_thread() {
-  // TODO: We probably shouldn't be returning true here in WASM_WORKERS builds.
   return true;
 }
+
+void __wait(volatile int *addr, volatile int *waiters, int val, int priv) {}
+
+void __lock(void* ptr) {}
+
+void __unlock(void* ptr) {}
+
+void __acquire_ptc() {}
+
+void __release_ptc() {}
 
 void emscripten_main_thread_process_queued_calls() {
   // nop
@@ -43,16 +65,6 @@ void emscripten_main_thread_process_queued_calls() {
 
 void emscripten_current_thread_process_queued_calls() {
   // nop
-}
-
-static void dummy(double now)
-{
-}
-
-weak_alias(dummy, _emscripten_check_timers);
-
-void _emscripten_yield(double now) {
-  _emscripten_check_timers(now);
 }
 
 int pthread_mutex_init(
@@ -378,16 +390,6 @@ int sem_trywait(sem_t *sem) {
 int sem_destroy(sem_t *sem) {
   return 0;
 }
-
-void __wait(volatile int *addr, volatile int *waiters, int val, int priv) {}
-
-void __lock(void* ptr) {}
-
-void __unlock(void* ptr) {}
-
-void __acquire_ptc() {}
-
-void __release_ptc() {}
 
 // When pthreads is not enabled, we can't use the Atomics futex api to do
 // proper sleeps, so simulate a busy spin wait loop instead.

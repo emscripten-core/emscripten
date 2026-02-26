@@ -1220,12 +1220,6 @@ f.close()
     self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_REJECTION', '-o', 'out.js'])
     self.assertFalse(os.path.exists('out.js'))
 
-  @with_both_compilers
-  def test_failure_modularize_and_catch_exit(self, compiler):
-    # Test that if sMODULARIZE and sNODEJS_CATCH_EXIT are both enabled, then emcc shouldn't succeed, and shouldn't produce an output file.
-    self.expect_fail([compiler, test_file('hello_world.c'), '-sMODULARIZE', '-sNODEJS_CATCH_EXIT', '-o', 'out.js'])
-    self.assertFalse(os.path.exists('out.js'))
-
   def test_use_cxx(self):
     create_file('empty_file', ' ')
     dash_xc = self.run_process([EMCC, '-v', '-xc', 'empty_file'], stderr=PIPE).stderr
@@ -2088,6 +2082,58 @@ Module['postRun'] = () => {
     ''')
 
     self.do_runf('main.c', cflags=['--embed-file', 'tst', '--exclude-file', '*.exe'])
+
+  def test_embed_file_exclude_negate(self):
+    ensure_dir('tst/abc.exe')
+    ensure_dir('tst/abc.txt')
+
+    create_file('tst/hello.exe', 'hello')
+    create_file('tst/hello.txt', 'world')
+    create_file('tst/abc.exe/foo', 'emscripten')
+    create_file('tst/abc.txt/bar', '!!!')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <unistd.h>
+      int exists(const char* filename) {
+        return access(filename, F_OK) == 0;
+      }
+      int main() {
+        assert(exists("tst/hello.txt"));
+        assert(exists("tst/abc.txt/bar"));
+        assert(exists("tst/hello.exe"));
+        assert(!exists("tst/abc.exe/foo"));
+        return 0;
+      }
+    ''')
+
+    self.do_runf('main.c', cflags=['--embed-file', 'tst', '--exclude-file', '*.exe', '--exclude-file', '!*hello.exe'])
+
+  def test_embed_file_exclude_negate_order(self):
+    ensure_dir('tst/abc.exe')
+    ensure_dir('tst/abc.txt')
+
+    create_file('tst/hello.exe', 'hello')
+    create_file('tst/hello.txt', 'world')
+    create_file('tst/abc.exe/foo', 'emscripten')
+    create_file('tst/abc.txt/bar', '!!!')
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <unistd.h>
+      int exists(const char* filename) {
+        return access(filename, F_OK) == 0;
+      }
+      int main() {
+        assert(exists("tst/hello.txt"));
+        assert(exists("tst/abc.txt/bar"));
+        assert(!exists("tst/hello.exe"));
+        assert(!exists("tst/abc.exe/foo"));
+        return 0;
+      }
+    ''')
+
+    self.do_runf('main.c', cflags=['--embed-file', 'tst', '--exclude-file', '!*hello.exe', '--exclude-file', '*.exe'])
 
   def test_dylink_strict(self):
     self.do_run_in_out_file_test('hello_world.c', cflags=['-sSTRICT', '-sMAIN_MODULE=1'])
@@ -4205,37 +4251,6 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
     self.assertContained('bufferTest finished', self.run_js('main.js'))
-
-  @requires_node
-  def test_node_catch_exit(self):
-    # Test that in top level JS exceptions are caught and rethrown when NODEJS_EXIT_CATCH=1
-    # is set but not by default.
-    create_file('count.c', '''
-      #include <string.h>
-      int count(const char *str) {
-        return (int)strlen(str);
-      }
-    ''')
-
-    create_file('index.js', '''
-      const count = require('./count.js');
-
-      console.log(xxx); //< here is the ReferenceError
-    ''')
-
-    reference_error_text = 'console.log(xxx); //< here is the ReferenceError'
-
-    self.run_process([EMCC, 'count.c', '-o', 'count.js', '-sNODEJS_CATCH_EXIT=1'])
-
-    # Check that the ReferenceError is caught and rethrown and thus the original error line is masked
-    self.assertNotContained(reference_error_text,
-                            self.run_js('index.js', assert_returncode=NON_ZERO))
-
-    self.run_process([EMCC, 'count.c', '-o', 'count.js'])
-
-    # Check that the ReferenceError is not caught, so we see the error properly
-    self.assertContained(reference_error_text,
-                         self.run_js('index.js', assert_returncode=NON_ZERO))
 
   @requires_node
   def test_exported_runtime_methods(self):
@@ -12946,47 +12961,6 @@ void foo() {}
     self.assertContained(sys.executable, err)
     self.assertContained('not execute properly!', err)
 
-  @requires_node
-  def test_node_unhandled_rejection(self):
-    create_file('pre.js', '''
-    async function foo() {
-      abort("this error will become an unhandled rejection");
-    }
-    async function doReject() {
-      return foo();
-    }
-    ''')
-    create_file('main.c', '''
-    #include <emscripten.h>
-
-    int main() {
-      EM_ASM(setTimeout(doReject, 0));
-      emscripten_exit_with_live_runtime();
-      __builtin_trap();
-    }
-    ''')
-
-    # With NODEJS_CATCH_REJECTION we expect the unhandled rejection to cause a non-zero
-    # exit code and log the stack trace correctly.
-    self.build('main.c', cflags=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION'])
-    output = self.run_js('main.js', assert_returncode=NON_ZERO)
-    self.assertContained('unhandledRejection', read_file('main.js'))
-    self.assertContained('RuntimeError: Aborted(this error will become an unhandled rejection)', output)
-    self.assertContained('at foo (', output)
-
-    # Without NODEJS_CATCH_REJECTION we expect node to log the unhandled rejection
-    # but return 0.
-    self.node_args = [a for a in self.node_args if '--unhandled-rejections' not in a]
-    self.build('main.c', cflags=['--pre-js=pre.js', '-sNODEJS_CATCH_REJECTION=0'])
-    self.assertNotContained('unhandledRejection', read_file('main.js'))
-
-    if not get_nodejs() or shared.get_node_version(get_nodejs())[0] >= 15:
-      self.skipTest('old behaviour of node JS cannot be tested on node v15 or above')
-
-    output = self.run_js('main.js')
-    self.assertContained('RuntimeError: Aborted(this error will become an unhandled rejection)', output)
-    self.assertContained('at foo (', output)
-
   def test_default_pthread_stack_size(self):
     self.do_runf('other/test_default_pthread_stack_size.c')
 
@@ -13544,6 +13518,14 @@ int main() {
   @also_with_minimal_runtime
   def test_wasm_worker_preprocessor_flags(self):
     self.run_process([EMCC, '-c', test_file('wasm_worker/wasm_worker_preprocessor_flags.c'), '-sWASM_WORKERS'])
+
+  @also_with_minimal_runtime
+  def test_wasm_worker_pthread_api_usage(self):
+    self.assert_fail([EMCC, test_file('wasm_worker/wasm_worker_pthread_api_usage.c'), '-sWASM_WORKERS'], 'undefined symbol: pthread_mutex_lock')
+
+  @also_with_minimal_runtime
+  def test_wasm_worker_cxx_init(self):
+    self.do_run_in_out_file_test('wasm_worker/wasm_worker_cxx_init.cpp', cflags=['-sWASM_WORKERS'])
 
   @parameterized({
     # we will warn here since -O2 runs the optimizer and -g enables DWARF

@@ -107,7 +107,7 @@
         statusElement.innerHTML = text;
       }
 
-#if MODULARIZE || !EXPORT_ES6
+#if MODULARIZE && !EXPORT_ES6
       var moduleArgs = {
 #else
       var Module = {

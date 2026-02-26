@@ -952,15 +952,6 @@ can also vary between browsers.
 
 Default value: false
 
-.. _polyfill_old_math_functions:
-
-POLYFILL_OLD_MATH_FUNCTIONS
-===========================
-
-If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
-
-Default value: false
-
 .. _legacy_vm_support:
 
 LEGACY_VM_SUPPORT
@@ -970,7 +961,6 @@ Set this to enable compatibility emulations for old JavaScript engines. This giv
 the highest possible probability of the code working everywhere, even in rare old
 browsers and shell environments. Specifically:
 
-- Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-sPOLYFILL_OLD_MATH_FUNCTIONS)
 - Disable WebAssembly. (Must be paired with -sWASM=0)
 - Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 - Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
@@ -1165,37 +1155,6 @@ If false, emit instructions for the standardized exception handling proposal:
 https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 
 .. note:: Applicable during both linking and compilation
-
-Default value: true
-
-.. _nodejs_catch_exit:
-
-NODEJS_CATCH_EXIT
-=================
-
-Emscripten throws an ExitStatus exception to unwind when exit() is called.
-Without this setting enabled this can show up as a top level unhandled
-exception.
-
-With this setting enabled a global uncaughtException handler is used to
-catch and handle ExitStatus exceptions.  However, this means all other
-uncaught exceptions are also caught and re-thrown, which is not always
-desirable.
-
-Default value: false
-
-.. _nodejs_catch_rejection:
-
-NODEJS_CATCH_REJECTION
-======================
-
-Catch unhandled rejections in node. This only affects versions of node older
-than 15.  Without this, old version node will print a warning, but exit
-with a zero return code.  With this setting enabled, we handle any unhandled
-rejection and throw an exception, which will cause the process to exit
-immediately with a non-0 return code.
-This is not needed in Node 15+ so this setting will default to false if
-MIN_NODE_VERSION is 150000 or above.
 
 Default value: true
 
@@ -3563,3 +3522,6 @@ for backwards compatibility with older versions:
  - ``ASYNCIFY_LAZY_LOAD_CODE``: No longer supported (Valid values: [0])
  - ``USE_WEBGPU``: No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py (Valid values: [0])
  - ``PROXY_TO_WORKER``: No longer supported (Valid values: [0])
+ - ``NODEJS_CATCH_EXIT``: No longer supported (Valid values: [0])
+ - ``NODEJS_CATCH_REJECTION``: No longer supported (Valid values: [0])
+ - ``POLYFILL_OLD_MATH_FUNCTIONS``: No longer supported (Valid values: [0])

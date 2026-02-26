@@ -18,8 +18,32 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.2 (in development)
+5.0.3 (in development)
 ----------------------
+- When building with `-sWASM_WORKERS` emscripten will no longer include pthread
+  API stub functions.  These stub functions where never designed to work under
+  Wasm Workers, so its safer to error at link time if pthread APIs are used
+  in Wasm Worker-based programs. (#26336)
+- SDL2 port updated to include stub functions for `SDL_hid_init()` and related
+  functions. (#26297)
+
+5.0.2 - 02/25/26
+----------------
+- The `NODEJS_CATCH_REJECTION` setting was removed. This setting only has an
+  effect when targeting very old versions of node (< 15).  Its trivial to replace
+  with a simple `--pre-js` file or with the `--unhandled-rejections=strict`
+  command line flag which it essentially emulates. Versions of node above v15
+  have this behavior by default. (#26330)
+- The `NODEJS_CATCH_EXIT` setting was removed.  This setting was disabled by
+  default in #22257, and is no longer used by emscripten itself.  It is also
+  problematic as it injects a global process.on handler.  It is easy to replace
+  with a simple `--pre-js` file for those that require it. (#26326)
+- The following APIs are now available in Wasm Workers:
+   - emscripten_futex_wait
+   - emscripten_futex_wake
+   - emscripten_is_main_runtime_thread
+   - emscripten_is_main_browser_thread
+  (#26325)
 - Several low level emscripten APIs that return success/failure now return the
   C `bool` type rather than `int`.  For example `emscripten_proxy_sync` and
   `emscripten_is_main_runtime_thread`. (#26316)

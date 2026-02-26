@@ -979,7 +979,6 @@ jobs:
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_js_optimizer_verbose
-            other.test_node_unhandled_rejection
             other.test_file_packager_separate_metadata
             other.test_full_js_library*
             core2.test_hello_world
@@ -1042,7 +1041,6 @@ jobs:
           test_targets: "-v
             other.test_gen_struct_info
             other.test_native_call_before_init
-            other.test_node_unhandled_rejection
             other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
@@ -1065,7 +1063,6 @@ jobs:
             other.test_deterministic
             other.test_gen_struct_info
             other.test_native_call_before_init
-            other.test_node_unhandled_rejection
             other.test_*growable_arraybuffers
             other.test_add_js_function_bigint_memory64
             other.test_js_optimizer_verbose

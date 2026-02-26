@@ -45,6 +45,10 @@ int main(int argc, char *argv[]) {
     assert(document.title === 'a custom window title');
   });
 
+  // Check if linking works with some of the HIDAPI functions added in SDL 2.0.18.
+  SDL_hid_init();
+  SDL_hid_exit();
+
   SDL_DestroyWindow(window);
   SDL_Quit();
 

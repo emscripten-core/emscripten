@@ -5039,7 +5039,8 @@ Module["preRun"] = () => {
   def test_wasm_worker_hello_embedded(self):
     self.btest_exit('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS=2'])
 
-  # Tests that it is possible to call emscripten_futex_wait() in Wasm Workers.
+  # Tests that it is possible to call emscripten_futex_wait() in Wasm Workers when pthreads
+  # are also enabled.
   @parameterized({
     '': ([],),
     'pthread': (['-pthread'],),
@@ -5647,6 +5648,13 @@ fetch('report_result?0');
 ''')
 
     self.run_browser('test.html', '/report_result?0')
+
+  @parameterized({
+    '': ([],),
+    'modularize': (['-sMODULARIZE'],),
+  })
+  def test_shell_minimal(self, args):
+    self.btest_exit('browser_test_hello_world.c', cflags=['--shell-file', path_from_root('html/shell_minimal.html')] + args)
 
 
 class emrun(RunnerCore):

@@ -19,10 +19,7 @@ from subprocess import PIPE
 
 from .toolchain_profiler import ToolchainProfiler
 
-# We depend on python 3.10 features
-if sys.version_info < (3, 10): # noqa: UP036
-  print(f'error: emscripten requires python 3.10 or above ({sys.executable} {sys.version})', file=sys.stderr)
-  sys.exit(1)
+assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
 
 from . import colored_logger
 
@@ -70,6 +67,8 @@ diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('experimental')
 # Don't show legacy settings warnings by default
+# See https://github.com/emscripten-core/emscripten/pull/10615 for the rationale
+# behind not showing this warning by default.
 diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 # Catch-all for other emcc warnings
 diagnostics.add_warning('linkflags')

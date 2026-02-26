@@ -42,11 +42,13 @@ int emscripten_futex_wake(volatile void/*uint32_t*/ * _Nonnull addr, int count);
 
 // Returns true if the current thread is the thread that hosts the Emscripten
 // runtime.
+// Returns false on pthreads and Wasm Workers.
 bool emscripten_is_main_runtime_thread(void);
 
 // Returns true if the current thread is the main browser thread.  In the case
 // that the Emscripten module is started in a worker there will be no thread
 // for which this returns true.
+// Returns false on pthreads and Wasm Workers.
 bool emscripten_is_main_browser_thread(void);
 
 // A temporary workaround to issue
