@@ -211,7 +211,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_allocation: (address, size) => {
-    Module['onMalloc'] && Module['onMalloc'](address, size, jsStackTrace());
+    Module['onMalloc']?.(address, size, jsStackTrace());
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ALLOCATE,
@@ -220,7 +220,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_reallocation: (old_address, new_address, size) => {
-    Module['onRealloc'] && Module['onRealloc'](old_address, new_address, size, jsStackTrace());
+    Module['onRealloc']?.(old_address, new_address, size, jsStackTrace());
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_REALLOCATE,
