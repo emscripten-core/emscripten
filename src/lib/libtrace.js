@@ -41,6 +41,7 @@ var LibraryTracing = {
     EVENT_OFF_HEAP: 'off-heap',
     EVENT_REALLOCATE: 'reallocate',
     EVENT_REPORT_ERROR: 'report-error',
+    EVENT_SBRK_GROW: 'sbrk-grow',
     EVENT_SESSION_NAME: 'session-name',
     EVENT_TASK_ASSOCIATE_DATA: 'task-associate-data',
     EVENT_TASK_END: 'task-end',
@@ -208,6 +209,15 @@ var LibraryTracing = {
     var callstack = (new Error).stack;
     EmscriptenTrace.post([EmscriptenTrace.EVENT_REPORT_ERROR, now,
                           UTF8ToString(error), callstack]);
+  },
+
+  emscripten_trace_sbrk_grow: (old_brk, new_brk) => {
+    Module['onSbrkGrow']?.(old_brk, new_brk, jsStackTrace());
+    if (EmscriptenTrace.postEnabled) {
+      var now = EmscriptenTrace.now();
+      EmscriptenTrace.post([EmscriptenTrace.EVENT_SBRK_GROW,
+                            now, old_brk, new_brk]);
+    }
   },
 
   emscripten_trace_record_allocation: (address, size) => {

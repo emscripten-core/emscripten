@@ -833,6 +833,7 @@ sigs = {
   emscripten_trace_report_error__sig: 'vp',
   emscripten_trace_report_memory_layout__sig: 'v',
   emscripten_trace_report_off_heap_data__sig: 'v',
+  emscripten_trace_sbrk_grow__sig: 'vpp',
   emscripten_trace_set_enabled__sig: 'vi',
   emscripten_trace_set_session_username__sig: 'vp',
   emscripten_trace_task_associate_data__sig: 'vpp',

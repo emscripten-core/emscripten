@@ -78,10 +78,6 @@ function calculateLibraries() {
     libraries.push('libtime.js');
   }
 
-  if (EMSCRIPTEN_TRACING) {
-    libraries.push('libmemoryprofiler.js');
-  }
-
   if (SUPPORT_BASE64_EMBEDDING || ENVIRONMENT_MAY_BE_SHELL) {
     libraries.push('libbase64.js');
   }

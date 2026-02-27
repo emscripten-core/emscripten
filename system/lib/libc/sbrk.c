@@ -21,13 +21,8 @@
 #include <stdlib.h>
 #endif
 
-#ifdef __EMSCRIPTEN_TRACING__
-void emscripten_memprof_sbrk_grow(intptr_t old, intptr_t new);
-#else
-#define emscripten_memprof_sbrk_grow(...) ((void)0)
-#endif
-
 #include <emscripten/heap.h>
+#include <emscripten/trace.h>
 
 extern size_t __heap_base;
 
@@ -93,7 +88,7 @@ void *_sbrk64(int64_t increment) {
     *sbrk_ptr = new_brk;
 #endif
 
-    emscripten_memprof_sbrk_grow(old_brk, new_brk);
+    emscripten_trace_sbrk_grow(old_brk, new_brk);
     return (void*)old_brk;
   }
 }
