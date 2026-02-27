@@ -4891,10 +4891,13 @@ Module["preRun"] = () => {
   def test_emscripten_set_interval(self):
     self.btest_exit('emscripten_set_interval.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
 
-  # Test emscripten_performance_now() and emscripten_date_now()
-  @requires_shared_array_buffer
-  def test_emscripten_performance_now(self):
-    self.btest('emscripten_performance_now.c', '0', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
+  @parameterized({
+    '': ([],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_emscripten_performance_now(self, args):
+    # Test emscripten_performance_now() and emscripten_date_now()
+    self.btest_exit('emscripten_performance_now.c', cflags=args)
 
   def test_embind_with_pthreads(self):
     self.btest_exit('embind/test_pthreads.cpp', cflags=['-lembind', '-pthread', '-sPTHREAD_POOL_SIZE=2'])
