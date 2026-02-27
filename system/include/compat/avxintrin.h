@@ -16,27 +16,81 @@
 #error "AVX instruction set not enabled"
 #endif
 
+typedef float __m256 __attribute__((__vector_size__(32), __aligned__(32)));
+typedef double __m256d __attribute__((__vector_size__(32), __aligned__(32)));
+typedef int32_t __m256i __attribute__((__vector_size__(32), __aligned__(32)));
+
+typedef int32_t __m128i_u __attribute__((__vector_size__(16), __aligned__(1)));
+typedef int32_t __m256i_u __attribute__((__vector_size__(32), __aligned__(1)));
+
 typedef struct {
   __m128d v0;
   __m128d v1;
-} __m256d;
+} __m256d_private;
 
 typedef struct {
   __m128 v0;
   __m128 v1;
-} __m256;
+} __m256_private;
 
 typedef struct {
-  __m128i v0;
-  __m128i v1;
-} __m256i;
+    __m128i v0;
+    __m128i v1;
+} __m256i_private;
 
-typedef int64_t __m128i_u __attribute__((__vector_size__(16), __aligned__(1)));
+__m256_private __m256_to_private(__m256 a) {
+  union {
+    __m256 in;
+    __m256_private out;
+  } ret;
+  ret.in = a;
+  return ret.out;
+}
 
-typedef struct {
-  __m128i_u v0;
-  __m128i_u v1;
-} __m256i_u;
+__m256 __m256_from_private(__m256_private a) {
+  union {
+    __m256_private in;
+    __m256 out;
+  } ret;
+  ret.in = a;
+  return ret.out;
+}
+
+__m256d_private __m256d_to_private(__m256d a) {
+  union {
+    __m256d in;
+    __m256d_private out;
+  } ret;
+  ret.in = a;
+  return ret.out;
+}
+
+__m256d __m256d_from_private(__m256d_private a) {
+  union {
+    __m256d_private in;
+    __m256d out;
+  } ret;
+  ret.in = a;
+  return ret.out;
+}
+
+__m256i_private __m256i_to_private(__m256i a) {
+  union {
+    __m256i in;
+    __m256i_private out;
+  } ret;
+  ret.in = a;
+  return ret.out;
+}
+
+__m256i __m256i_from_private(__m256i_private a) {
+  union {
+    __m256i_private in;
+    __m256i out;
+  } ret;
+  ret.in = a;
+  return ret.out;
+}
 
 union __m256_data {
   __m256i int_view;
@@ -47,162 +101,196 @@ union __m256_data {
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_add_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_add_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_add_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_add_pd(a.v0, b.v0);
+  ret.v1 = _mm_add_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_add_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_add_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_add_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_add_ps(a.v0, b.v0);
+  ret.v1 = _mm_add_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_sub_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_sub_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_sub_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_sub_pd(a.v0, b.v0);
+  ret.v1 = _mm_sub_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_sub_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_sub_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_sub_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_sub_ps(a.v0, b.v0);
+  ret.v1 = _mm_sub_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_addsub_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_addsub_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_addsub_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_addsub_pd(a.v0, b.v0);
+  ret.v1 = _mm_addsub_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_addsub_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_addsub_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_addsub_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_addsub_ps(a.v0, b.v0);
+  ret.v1 = _mm_addsub_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_div_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_div_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_div_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_div_pd(a.v0, b.v0);
+  ret.v1 = _mm_div_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_div_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_div_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_div_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_div_ps(a.v0, b.v0);
+  ret.v1 = _mm_div_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_max_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_max_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_max_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_max_pd(a.v0, b.v0);
+  ret.v1 = _mm_max_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_max_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_max_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_max_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_max_ps(a.v0, b.v0);
+  ret.v1 = _mm_max_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_min_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_min_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_min_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_min_pd(a.v0, b.v0);
+  ret.v1 = _mm_min_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_min_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_min_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_min_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_min_ps(a.v0, b.v0);
+  ret.v1 = _mm_min_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_mul_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_mul_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_mul_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_mul_pd(a.v0, b.v0);
+  ret.v1 = _mm_mul_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_mul_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_mul_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_mul_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_mul_ps(a.v0, b.v0);
+  ret.v1 = _mm_mul_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_sqrt_pd(__m256d __a) {
-  __m256d ret;
-  ret.v0 = _mm_sqrt_pd(__a.v0);
-  ret.v1 = _mm_sqrt_pd(__a.v1);
-  return ret;
+  __m256d_private ret, a;
+  a = __m256d_to_private(__a);
+  ret.v0 = _mm_sqrt_pd(a.v0);
+  ret.v1 = _mm_sqrt_pd(a.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_sqrt_ps(__m256 __a) {
-  __m256 ret;
-  ret.v0 = _mm_sqrt_ps(__a.v0);
-  ret.v1 = _mm_sqrt_ps(__a.v1);
-  return ret;
+  __m256_private ret, a;
+  a = __m256_to_private(__a);
+  ret.v0 = _mm_sqrt_ps(a.v0);
+  ret.v1 = _mm_sqrt_ps(a.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_rsqrt_ps(__m256 __a) {
-  __m256 ret;
-  ret.v0 = _mm_rsqrt_ps(__a.v0);
-  ret.v1 = _mm_rsqrt_ps(__a.v1);
-  return ret;
+  __m256_private ret, a;
+  a = __m256_to_private(__a);
+  ret.v0 = _mm_rsqrt_ps(a.v0);
+  ret.v1 = _mm_rsqrt_ps(a.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_rcp_ps(__m256 __a) {
-  __m256 ret;
-  ret.v0 = _mm_rcp_ps(__a.v0);
-  ret.v1 = _mm_rcp_ps(__a.v1);
-  return ret;
+  __m256_private ret, a;
+  a = __m256_to_private(__a);
+  ret.v0 = _mm_rcp_ps(a.v0);
+  ret.v1 = _mm_rcp_ps(a.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_round_pd(__m256d __a, int __rounding) {
-  __m256d ret;
-  ret.v0 = _mm_round_pd(__a.v0, __rounding);
-  ret.v1 = _mm_round_pd(__a.v1, __rounding);
-  return ret;
+  __m256d_private ret, a;
+  a = __m256d_to_private(__a);
+  ret.v0 = _mm_round_pd(a.v0, __rounding);
+  ret.v1 = _mm_round_pd(a.v1, __rounding);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_round_ps(__m256 __a, int __rounding) {
-  __m256 ret;
-  ret.v0 = _mm_round_ps(__a.v0, __rounding);
-  ret.v1 = _mm_round_ps(__a.v1, __rounding);
-  return ret;
+  __m256_private ret, a;
+  a = __m256_to_private(__a);
+  ret.v0 = _mm_round_ps(a.v0, __rounding);
+  ret.v1 = _mm_round_ps(a.v1, __rounding);
+  return __m256_from_private(ret);
 }
 
 #define _mm256_ceil_pd(V) _mm256_round_pd((V), _MM_FROUND_CEIL)
@@ -210,100 +298,125 @@ _mm256_round_ps(__m256 __a, int __rounding) {
 #define _mm256_ceil_ps(V) _mm256_round_ps((V), _MM_FROUND_CEIL)
 #define _mm256_floor_ps(V) _mm256_round_ps((V), _MM_FROUND_FLOOR)
 
-static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
-_mm256_and_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_and_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_and_pd(__a.v1, __b.v1);
-  return ret;
+static __inline__ __m256d
+  __attribute__((__always_inline__, __nodebug__)) _mm256_and_pd(__m256d __a,
+                                                                __m256d __b) {
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_and_pd(a.v0, b.v0);
+  ret.v1 = _mm_and_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_and_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_and_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_and_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_and_ps(a.v0, b.v0);
+  ret.v1 = _mm_and_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_andnot_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_andnot_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_andnot_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_andnot_pd(a.v0, b.v0);
+  ret.v1 = _mm_andnot_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_andnot_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_andnot_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_andnot_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_andnot_ps(a.v0, b.v0);
+  ret.v1 = _mm_andnot_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_or_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_or_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_or_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_or_pd(a.v0, b.v0);
+  ret.v1 = _mm_or_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_or_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_or_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_or_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_or_ps(a.v0, b.v0);
+  ret.v1 = _mm_or_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_xor_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_xor_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_xor_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_xor_pd(a.v0, b.v0);
+  ret.v1 = _mm_xor_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_xor_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_xor_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_xor_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_xor_ps(a.v0, b.v0);
+  ret.v1 = _mm_xor_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_hadd_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_hadd_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_hadd_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_hadd_pd(a.v0, b.v0);
+  ret.v1 = _mm_hadd_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_hadd_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_hadd_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_hadd_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_hadd_ps(a.v0, b.v0);
+  ret.v1 = _mm_hadd_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_hsub_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_hsub_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_hsub_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_hsub_pd(a.v0, b.v0);
+  ret.v1 = _mm_hsub_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_hsub_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_hsub_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_hsub_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_hsub_ps(a.v0, b.v0);
+  ret.v1 = _mm_hsub_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
@@ -315,10 +428,13 @@ _mm_permutevar_pd(__m128d __a, __m128i __c) {
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_permutevar_pd(__m256d __a, __m256i __c) {
-  __m256d ret;
-  ret.v0 = _mm_permutevar_pd(__a.v0, __c.v0);
-  ret.v1 = _mm_permutevar_pd(__a.v1, __c.v1);
-  return ret;
+  __m256d_private ret, a;
+  __m256i_private c;
+  a = __m256d_to_private(__a);
+  c = __m256i_to_private(__c);
+  ret.v0 = _mm_permutevar_pd(a.v0, c.v0);
+  ret.v1 = _mm_permutevar_pd(a.v1, c.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
@@ -332,10 +448,13 @@ _mm_permutevar_ps(__m128 __a, __m128i __c) {
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_permutevar_ps(__m256 __a, __m256i __c) {
-  __m256 ret;
-  ret.v0 = _mm_permutevar_ps(__a.v0, __c.v0);
-  ret.v1 = _mm_permutevar_ps(__a.v1, __c.v1);
-  return ret;
+  __m256_private ret, a;
+  __m256i_private c;
+  a = __m256_to_private(__a);
+  c = __m256i_to_private(__c);
+  ret.v0 = _mm_permutevar_ps(a.v0, c.v0);
+  ret.v1 = _mm_permutevar_ps(a.v1, c.v1);
+  return __m256_from_private(ret);
 }
 
 #define _mm_permute_pd(__a, __imm)                                             \
@@ -344,7 +463,7 @@ _mm256_permutevar_ps(__m256 __a, __m256i __c) {
 
 #define _mm256_permute_pd(__A, __imm)                                          \
   __extension__({                                                              \
-    __m256d __a = (__A);                                                       \
+    __m256d_private __a = __m256d_to_private(__A);                             \
     _mm256_set_m128d(_mm_permute_pd(__a.v1, (__imm) >> 2),                     \
                      _mm_permute_pd(__a.v0, (__imm)));                         \
   })
@@ -359,45 +478,51 @@ _mm256_permutevar_ps(__m256 __a, __m256i __c) {
 
 #define _mm256_permute_ps(__A, __imm)                                          \
   __extension__({                                                              \
-    __m256 __a = (__A);                                                        \
+    __m256_private __a = __m256_to_private(__A);                               \
     _mm256_set_m128(_mm_permute_ps(__a.v1, (__imm)),                           \
                     _mm_permute_ps(__a.v0, (__imm)));                          \
   })
 
 static __inline__ __m128d
 __avx_select4d(__m256d __a, __m256d __b, const int imm8) {
+  __m256d_private a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
   switch (imm8 & 0xF) {
     case 0:
     case 4:
-      return __a.v0;
+      return a.v0;
     case 1:
     case 5:
-      return __a.v1;
+      return a.v1;
     case 2:
     case 6:
-      return __b.v0;
+      return b.v0;
     case 3:
     case 7:
-      return __b.v1;
+      return b.v1;
     default:
       return (__m128d)wasm_i64x2_const_splat(0);
   }
 }
 
 static __inline__ __m128 __avx_select4(__m256 __a, __m256 __b, const int imm8) {
+  __m256_private a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
   switch (imm8 & 0xF) {
     case 0:
     case 4:
-      return __a.v0;
+      return a.v0;
     case 1:
     case 5:
-      return __a.v1;
+      return a.v1;
     case 2:
     case 6:
-      return __b.v0;
+      return b.v0;
     case 3:
     case 7:
-      return __b.v1;
+      return b.v1;
     default:
       return (__m128)wasm_i64x2_const_splat(0);
   }
@@ -405,19 +530,22 @@ static __inline__ __m128 __avx_select4(__m256 __a, __m256 __b, const int imm8) {
 
 static __inline__ __m128i
 __avx_select4i(__m256i __a, __m256i __b, const int imm8) {
+  __m256i_private a, b;
+  a = __m256i_to_private(__a);
+  b = __m256i_to_private(__b);
   switch (imm8 & 0xF) {
     case 0:
     case 4:
-      return __a.v0;
+      return a.v0;
     case 1:
     case 5:
-      return __a.v1;
+      return a.v1;
     case 2:
     case 6:
-      return __b.v0;
+      return b.v0;
     case 3:
     case 7:
-      return __b.v1;
+      return b.v1;
     default:
       return wasm_i64x2_const_splat(0);
   }
@@ -425,80 +553,86 @@ __avx_select4i(__m256i __a, __m256i __b, const int imm8) {
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_permute2f128_pd(__m256d __a, __m256d __b, const int imm8) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v0 = __avx_select4d(__a, __b, imm8);
   ret.v1 = __avx_select4d(__a, __b, imm8 >> 4);
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_permute2f128_ps(__m256 __a, __m256 __b, const int imm8) {
-  __m256 ret;
+  __m256_private ret;
   ret.v0 = __avx_select4(__a, __b, imm8);
   ret.v1 = __avx_select4(__a, __b, imm8 >> 4);
-  return ret;
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_permute2f128_si256(__m256i __a, __m256i __b, const int imm8) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v0 = __avx_select4i(__a, __b, imm8);
   ret.v1 = __avx_select4i(__a, __b, imm8 >> 4);
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 #define _mm256_blend_pd(__A, __B, imm8)                                        \
   __extension__({                                                              \
-    __m256d __a = (__A);                                                       \
-    __m256d __b = (__B);                                                       \
+    __m256d_private __a = __m256d_to_private(__A);                             \
+    __m256d_private __b = __m256d_to_private(__B);                             \
     _mm256_set_m128d(_mm_blend_pd(__a.v1, __b.v1, (imm8) >> 2),                \
                      _mm_blend_pd(__a.v0, __b.v0, (imm8)));                    \
   })
 
 #define _mm256_blend_ps(__A, __B, imm)                                         \
   __extension__({                                                              \
-    __m256 __a = (__A);                                                        \
-    __m256 __b = (__B);                                                        \
+    __m256_private __a = __m256_to_private(__A);                               \
+    __m256_private __b = __m256_to_private(__B);                               \
     _mm256_set_m128(_mm_blend_ps(__a.v1, __b.v1, (imm) >> 4),                  \
                     _mm_blend_ps(__a.v0, __b.v0, (imm)));                      \
   })
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_blendv_pd(__m256d __a, __m256d __b, __m256d __c) {
-  __m256d ret;
-  ret.v0 = _mm_blendv_pd(__a.v0, __b.v0, __c.v0);
-  ret.v1 = _mm_blendv_pd(__a.v1, __b.v1, __c.v1);
-  return ret;
+  __m256d_private ret, a, b, c;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  c = __m256d_to_private(__c);
+  ret.v0 = _mm_blendv_pd(a.v0, b.v0, c.v0);
+  ret.v1 = _mm_blendv_pd(a.v1, b.v1, c.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c) {
-  __m256 ret;
-  ret.v0 = _mm_blendv_ps(__a.v0, __b.v0, __c.v0);
-  ret.v1 = _mm_blendv_ps(__a.v1, __b.v1, __c.v1);
-  return ret;
+  __m256_private ret, a, b, c;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  c = __m256_to_private(__c);
+  ret.v0 = _mm_blendv_ps(a.v0, b.v0, c.v0);
+  ret.v1 = _mm_blendv_ps(a.v1, b.v1, c.v1);
+  return __m256_from_private(ret);
 }
 
 #define _mm256_dp_ps(__A, __B, imm)                                            \
   __extension__({                                                              \
-    __m256 __a = (__A);                                                        \
-    __m256 __b = (__B);                                                        \
+    __m256_private __a = __m256_to_private(__A);                               \
+    __m256_private __b = __m256_to_private(__B);                               \
     _mm256_set_m128(_mm_dp_ps(__a.v1, __b.v1, (imm)),                          \
                     _mm_dp_ps(__a.v0, __b.v0, (imm)));                         \
   })
 
 #define _mm256_shuffle_ps(__A, __B, mask)                                      \
   __extension__({                                                              \
-    __m256 __a = (__A);                                                        \
-    __m256 __b = (__B);                                                        \
+    __m256_private __a = __m256_to_private(__A);                               \
+    __m256_private __b = __m256_to_private(__B);                               \
     _mm256_set_m128(_mm_shuffle_ps(__a.v1, __b.v1, (mask)),                    \
                     _mm_shuffle_ps(__a.v0, __b.v0, (mask)));                   \
   })
 
 #define _mm256_shuffle_pd(__A, __B, mask)                                      \
   __extension__({                                                              \
-    __m256d __a = (__A);                                                       \
-    __m256d __b = (__B);                                                       \
+    __m256d_private __a = __m256d_to_private(__A);                             \
+    __m256d_private __b = __m256d_to_private(__B);                             \
     _mm256_set_m128d(_mm_shuffle_pd(__a.v1, __b.v1, (mask) >> 2),              \
                      _mm_shuffle_pd(__a.v0, __b.v0, (mask)));                  \
   })
@@ -837,52 +971,56 @@ _mm256_blendv_ps(__m256 __a, __m256 __b, __m256 __c) {
   })
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
-_mm256_cmp_pd(__m256d a, __m256d b, const int imm8) {
-  __m256d ret;
+_mm256_cmp_pd(__m256d __a, __m256d __b, const int imm8) {
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
   ret.v0 = _mm_cmp_pd(a.v0, b.v0, imm8);
   ret.v1 = _mm_cmp_pd(a.v1, b.v1, imm8);
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_cmp_ps(__m256 __a, __m256 __b, const int imm8) {
-  __m256 ret;
-  ret.v0 = _mm_cmp_ps(__a.v0, __b.v0, imm8);
-  ret.v1 = _mm_cmp_ps(__a.v1, __b.v1, imm8);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_cmp_ps(a.v0, b.v0, imm8);
+  ret.v1 = _mm_cmp_ps(a.v1, b.v1, imm8);
+  return __m256_from_private(ret);
 }
 
 #define _mm256_extract_epi32(__A, N)                                           \
   __extension__({                                                              \
-    __m256i __a = (__A);                                                       \
+    __m256i_private __a = __m256i_to_private(__A);                             \
     ((N) & 0x7) < 4 ? _mm_extract_epi32(__a.v0, (N) & 0x3)                     \
                     : _mm_extract_epi32(__a.v1, (N) & 0x3);                    \
   })
 
 #define _mm256_extract_epi16(__A, N)                                           \
   __extension__({                                                              \
-    __m256i __a = (__A);                                                       \
+    __m256i_private __a = __m256i_to_private(__A);                             \
     ((N) & 0xF) < 8 ? _mm_extract_epi16(__a.v0, (N) & 0x7)                     \
                     : _mm_extract_epi16(__a.v1, (N) & 0x7);                    \
   })
 
 #define _mm256_extract_epi8(__A, N)                                            \
   __extension__({                                                              \
-    __m256i __a = (__A);                                                       \
+    __m256i_private __a = __m256i_to_private(__A);                             \
     ((N) & 0x1F) < 16 ? _mm_extract_epi8(__a.v0, (N) & 0xF)                    \
                       : _mm_extract_epi8(__a.v1, (N) & 0xF);                   \
   })
 
 #define _mm256_extract_epi64(__A, N)                                           \
   __extension__({                                                              \
-    __m256i __a = (__A);                                                       \
+    __m256i_private __a = __m256i_to_private(__A);                             \
     ((N) & 0x3) < 2 ? _mm_extract_epi64(__a.v0, (N) & 0x1)                     \
                     : _mm_extract_epi64(__a.v1, (N) & 0x1);                    \
   })
 
 #define _mm256_insert_epi32(__A, __I, N)                                       \
   __extension__({                                                              \
-    __m256i __a = (__A);                                                       \
+    __m256i_private __a = __m256i_to_private(__A);                             \
     int32_t __i = (__I);                                                       \
     ((N) & 0x7) < 4                                                            \
       ? _mm256_set_m128i(__a.v1, _mm_insert_epi32(__a.v0, __i, (N) & 0x3))     \
@@ -891,7 +1029,7 @@ _mm256_cmp_ps(__m256 __a, __m256 __b, const int imm8) {
 
 #define _mm256_insert_epi16(__A, __I, N)                                       \
   __extension__({                                                              \
-    __m256i __a = (__A);                                                       \
+    __m256i_private __a = __m256i_to_private(__A);                             \
     int16_t __i = (__I);                                                       \
     ((N) & 0xF) < 8                                                            \
       ? _mm256_set_m128i(__a.v1, _mm_insert_epi16(__a.v0, __i, (N) & 0x7))     \
@@ -900,7 +1038,7 @@ _mm256_cmp_ps(__m256 __a, __m256 __b, const int imm8) {
 
 #define _mm256_insert_epi8(__A, __I, N)                                        \
   __extension__({                                                              \
-    __m256i __a = (__A);                                                       \
+    __m256i_private __a = __m256i_to_private(__A);                             \
     int8_t __i = (__I);                                                        \
     ((N) & 0x1F) < 16                                                          \
       ? _mm256_set_m128i(__a.v1, _mm_insert_epi8(__a.v0, __i, (N) & 0xF))      \
@@ -909,7 +1047,7 @@ _mm256_cmp_ps(__m256 __a, __m256 __b, const int imm8) {
 
 #define _mm256_insert_epi64(__A, __I, N)                                       \
   __extension__({                                                              \
-    __m256i __a = (__A);                                                       \
+    __m256i_private __a = __m256i_to_private(__A);                             \
     int64_t __i = (__I);                                                       \
     ((N) & 0x3) < 2                                                            \
       ? _mm256_set_m128i(__a.v1, _mm_insert_epi64(__a.v0, __i, (N) & 0x1))     \
@@ -918,139 +1056,159 @@ _mm256_cmp_ps(__m256 __a, __m256 __b, const int imm8) {
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_cvtepi32_pd(__m128i __a) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v0 = _mm_cvtepi32_pd(__a);
   __m128i __a1 = wasm_i32x4_shuffle(__a, __a, 2, 3, 0, 0);
   ret.v1 = _mm_cvtepi32_pd(__a1);
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_cvtepi32_ps(__m256i __a) {
-  __m256 ret;
-  ret.v0 = _mm_cvtepi32_ps(__a.v0);
-  ret.v1 = _mm_cvtepi32_ps(__a.v1);
-  return ret;
+  __m256_private ret;
+  __m256i_private a = __m256i_to_private(__a);
+  ret.v0 = _mm_cvtepi32_ps(a.v0);
+  ret.v1 = _mm_cvtepi32_ps(a.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm256_cvtpd_ps(__m256d __a) {
-  __m128 low = _mm_cvtpd_ps(__a.v0);
-  __m128 high = _mm_cvtpd_ps(__a.v1);
+  __m256d_private a = __m256d_to_private(__a);
+  __m128 low = _mm_cvtpd_ps(a.v0);
+  __m128 high = _mm_cvtpd_ps(a.v1);
   __m128 ret = (__m128)wasm_i32x4_shuffle(low, high, 0, 1, 4, 5);
   return ret;
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_cvtps_epi32(__m256 __a) {
-  __m256i ret;
-  ret.v0 = _mm_cvtps_epi32(__a.v0);
-  ret.v1 = _mm_cvtps_epi32(__a.v1);
-  return ret;
+  __m256i_private ret;
+  __m256_private a = __m256_to_private(__a);
+  ret.v0 = _mm_cvtps_epi32(a.v0);
+  ret.v1 = _mm_cvtps_epi32(a.v1);
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_cvtps_pd(__m128 __a) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v0 = _mm_cvtps_pd(__a);
   __m128 __a1 = (__m128)wasm_i32x4_shuffle(__a, __a, 2, 3, 0, 0);
   ret.v1 = _mm_cvtps_pd(__a1);
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm256_cvttpd_epi32(__m256d __a) {
-  __m128i low = _mm_cvttpd_epi32(__a.v0);
-  __m128i high = _mm_cvttpd_epi32(__a.v1);
+  __m256d_private a = __m256d_to_private(__a);
+  __m128i low = _mm_cvttpd_epi32(a.v0);
+  __m128i high = _mm_cvttpd_epi32(a.v1);
   __m128i ret = wasm_i32x4_shuffle(low, high, 0, 1, 4, 5);
   return ret;
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm256_cvtpd_epi32(__m256d __a) {
-  __m128i low = _mm_cvtpd_epi32(__a.v0);
-  __m128i high = _mm_cvtpd_epi32(__a.v1);
+  __m256d_private a = __m256d_to_private(__a);
+  __m128i low = _mm_cvtpd_epi32(a.v0);
+  __m128i high = _mm_cvtpd_epi32(a.v1);
   __m128i ret = wasm_i32x4_shuffle(low, high, 0, 1, 4, 5);
   return ret;
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_cvttps_epi32(__m256 __a) {
-  __m256i ret;
-  ret.v0 = _mm_cvttps_epi32(__a.v0);
-  ret.v1 = _mm_cvttps_epi32(__a.v1);
-  return ret;
+  __m256i_private ret;
+  __m256_private a = __m256_to_private(__a);
+  ret.v0 = _mm_cvttps_epi32(a.v0);
+  ret.v1 = _mm_cvttps_epi32(a.v1);
+  return __m256i_from_private(ret);
 }
 
 static __inline__ double __attribute__((__always_inline__, __nodebug__))
 _mm256_cvtsd_f64(__m256d __a) {
-  return _mm_cvtsd_f64(__a.v0);
+  __m256d_private a = __m256d_to_private(__a);
+  return _mm_cvtsd_f64(a.v0);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm256_cvtsi256_si32(__m256i __a) {
-  return _mm_cvtsi128_si32(__a.v0);
+  __m256i_private a = __m256i_to_private(__a);
+  return _mm_cvtsi128_si32(a.v0);
 }
 
 static __inline__ float __attribute__((__always_inline__, __nodebug__))
 _mm256_cvtss_f32(__m256 __a) {
-  return _mm_cvtss_f32(__a.v0);
+  __m256_private a = __m256_to_private(__a);
+  return _mm_cvtss_f32(a.v0);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_movehdup_ps(__m256 __a) {
-  __m256 ret;
-  ret.v0 = _mm_movehdup_ps(__a.v0);
-  ret.v1 = _mm_movehdup_ps(__a.v1);
-  return ret;
+  __m256_private ret, a;
+  a = __m256_to_private(__a);
+  ret.v0 = _mm_movehdup_ps(a.v0);
+  ret.v1 = _mm_movehdup_ps(a.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_moveldup_ps(__m256 __a) {
-  __m256 ret;
-  ret.v0 = _mm_moveldup_ps(__a.v0);
-  ret.v1 = _mm_moveldup_ps(__a.v1);
-  return ret;
+  __m256_private ret, a;
+  a = __m256_to_private(__a);
+  ret.v0 = _mm_moveldup_ps(a.v0);
+  ret.v1 = _mm_moveldup_ps(a.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_movedup_pd(__m256d __a) {
-  __m256d ret;
-  ret.v0 = _mm_movedup_pd(__a.v0);
-  ret.v1 = _mm_movedup_pd(__a.v1);
-  return ret;
+  __m256d_private ret, a;
+  a = __m256d_to_private(__a);
+  ret.v0 = _mm_movedup_pd(a.v0);
+  ret.v1 = _mm_movedup_pd(a.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_unpackhi_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_unpackhi_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_unpackhi_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_unpackhi_pd(a.v0, b.v0);
+  ret.v1 = _mm_unpackhi_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_unpacklo_pd(__m256d __a, __m256d __b) {
-  __m256d ret;
-  ret.v0 = _mm_unpacklo_pd(__a.v0, __b.v0);
-  ret.v1 = _mm_unpacklo_pd(__a.v1, __b.v1);
-  return ret;
+  __m256d_private ret, a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  ret.v0 = _mm_unpacklo_pd(a.v0, b.v0);
+  ret.v1 = _mm_unpacklo_pd(a.v1, b.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_unpackhi_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_unpackhi_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_unpackhi_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_unpackhi_ps(a.v0, b.v0);
+  ret.v1 = _mm_unpackhi_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_unpacklo_ps(__m256 __a, __m256 __b) {
-  __m256 ret;
-  ret.v0 = _mm_unpacklo_ps(__a.v0, __b.v0);
-  ret.v1 = _mm_unpacklo_ps(__a.v1, __b.v1);
-  return ret;
+  __m256_private ret, a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  ret.v0 = _mm_unpacklo_ps(a.v0, b.v0);
+  ret.v1 = _mm_unpacklo_ps(a.v1, b.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
@@ -1108,48 +1266,66 @@ _mm_testnzc_ps(__m128 __a, __m128 __b) {
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm256_testz_pd(__m256d __a, __m256d __b) {
-  return _mm_testz_pd(__a.v0, __b.v0) & _mm_testz_pd(__a.v1, __b.v1);
+  __m256d_private a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  return _mm_testz_pd(a.v0, b.v0) & _mm_testz_pd(a.v1, b.v1);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm256_testc_pd(__m256d __a, __m256d __b) {
-  return _mm_testc_pd(__a.v0, __b.v0) & _mm_testc_pd(__a.v1, __b.v1);
+  __m256d_private a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
+  return _mm_testc_pd(a.v0, b.v0) & _mm_testc_pd(a.v1, b.v1);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm256_testnzc_pd(__m256d __a, __m256d __b) {
+  __m256d_private a, b;
+  a = __m256d_to_private(__a);
+  b = __m256d_to_private(__b);
   v128_t __m =
-    wasm_u64x2_shr(wasm_v128_and((v128_t)__a.v0, (v128_t)__b.v0), 63);
+    wasm_u64x2_shr(wasm_v128_and((v128_t)a.v0, (v128_t)b.v0), 63);
   v128_t __m1 =
-    wasm_u64x2_shr(wasm_v128_and((v128_t)__a.v1, (v128_t)__b.v1), 63);
+    wasm_u64x2_shr(wasm_v128_and((v128_t)a.v1, (v128_t)b.v1), 63);
   v128_t __m2 =
-    wasm_u64x2_shr(wasm_v128_andnot((v128_t)__b.v0, (v128_t)__a.v0), 63);
+    wasm_u64x2_shr(wasm_v128_andnot((v128_t)b.v0, (v128_t)a.v0), 63);
   v128_t __m3 =
-    wasm_u64x2_shr(wasm_v128_andnot((v128_t)__b.v1, (v128_t)__a.v1), 63);
+    wasm_u64x2_shr(wasm_v128_andnot((v128_t)b.v1, (v128_t)a.v1), 63);
   return wasm_v128_any_true(wasm_v128_or(__m, __m1)) &
          wasm_v128_any_true(wasm_v128_or(__m2, __m3));
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm256_testz_ps(__m256 __a, __m256 __b) {
-  return _mm_testz_ps(__a.v0, __b.v0) & _mm_testz_ps(__a.v1, __b.v1);
+  __m256_private a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  return _mm_testz_ps(a.v0, b.v0) & _mm_testz_ps(a.v1, b.v1);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm256_testc_ps(__m256 __a, __m256 __b) {
-  return _mm_testc_ps(__a.v0, __b.v0) & _mm_testc_ps(__a.v1, __b.v1);
+  __m256_private a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
+  return _mm_testc_ps(a.v0, b.v0) & _mm_testc_ps(a.v1, b.v1);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm256_testnzc_ps(__m256 __a, __m256 __b) {
+  __m256_private a, b;
+  a = __m256_to_private(__a);
+  b = __m256_to_private(__b);
   v128_t __m =
-    wasm_u32x4_shr(wasm_v128_and((v128_t)__a.v0, (v128_t)__b.v0), 31);
+    wasm_u32x4_shr(wasm_v128_and((v128_t)a.v0, (v128_t)b.v0), 31);
   v128_t __m1 =
-    wasm_u32x4_shr(wasm_v128_and((v128_t)__a.v1, (v128_t)__b.v1), 31);
+    wasm_u32x4_shr(wasm_v128_and((v128_t)a.v1, (v128_t)b.v1), 31);
   v128_t __m2 =
-    wasm_u32x4_shr(wasm_v128_andnot((v128_t)__b.v0, (v128_t)__a.v0), 31);
+    wasm_u32x4_shr(wasm_v128_andnot((v128_t)b.v0, (v128_t)a.v0), 31);
   v128_t __m3 =
-    wasm_u32x4_shr(wasm_v128_andnot((v128_t)__b.v1, (v128_t)__a.v1), 31);
+    wasm_u32x4_shr(wasm_v128_andnot((v128_t)b.v1, (v128_t)a.v1), 31);
 
   return wasm_v128_any_true(wasm_v128_or(__m, __m1)) &
          wasm_v128_any_true(wasm_v128_or(__m2, __m3));
@@ -1157,32 +1333,43 @@ _mm256_testnzc_ps(__m256 __a, __m256 __b) {
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm256_testz_si256(__m256i __a, __m256i __b) {
-  return _mm_testz_si128(__a.v0, __b.v0) & _mm_testz_si128(__a.v1, __b.v1);
+  __m256i_private a, b;
+  a = __m256i_to_private(__a);
+  b = __m256i_to_private(__b);
+  return _mm_testz_si128(a.v0, b.v0) & _mm_testz_si128(a.v1, b.v1);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm256_testc_si256(__m256i __a, __m256i __b) {
-  return _mm_testc_si128(__a.v0, __b.v0) & _mm_testc_si128(__a.v1, __b.v1);
+  __m256i_private a, b;
+  a = __m256i_to_private(__a);
+  b = __m256i_to_private(__b);
+  return _mm_testc_si128(a.v0, b.v0) & _mm_testc_si128(a.v1, b.v1);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm256_testnzc_si256(__m256i __a, __m256i __b) {
-  v128_t __m = wasm_v128_and(__a.v0, __b.v0);
-  v128_t __m1 = wasm_v128_and(__a.v1, __b.v1);
-  v128_t __m2 = wasm_v128_andnot(__b.v0, __a.v0);
-  v128_t __m3 = wasm_v128_andnot(__b.v1, __a.v1);
+  __m256i_private a, b;
+  a = __m256i_to_private(__a);
+  b = __m256i_to_private(__b);
+  v128_t __m = wasm_v128_and(a.v0, b.v0);
+  v128_t __m1 = wasm_v128_and(a.v1, b.v1);
+  v128_t __m2 = wasm_v128_andnot(b.v0, a.v0);
+  v128_t __m3 = wasm_v128_andnot(b.v1, a.v1);
   return wasm_v128_any_true(wasm_v128_or(__m, __m1)) &
          wasm_v128_any_true(wasm_v128_or(__m2, __m3));
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm256_movemask_pd(__m256d __a) {
-  return _mm_movemask_pd(__a.v0) | (_mm_movemask_pd(__a.v1) << 2);
+  __m256d_private a = __m256d_to_private(__a);
+  return _mm_movemask_pd(a.v0) | (_mm_movemask_pd(a.v1) << 2);
 }
 
 static __inline__ int __attribute__((__always_inline__, __nodebug__))
 _mm256_movemask_ps(__m256 __a) {
-  return _mm_movemask_ps(__a.v0) | (_mm_movemask_ps(__a.v1) << 4);
+  __m256_private a = __m256_to_private(__a);
+  return _mm_movemask_ps(a.v0) | (_mm_movemask_ps(a.v1) << 4);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
@@ -1206,122 +1393,128 @@ _mm_broadcast_ss(float const* __a) {
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_broadcast_sd(double const* __a) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v1 = ret.v0 = (__m128d)wasm_v128_load64_splat(__a);
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_broadcast_ss(float const* __a) {
-  __m256 ret;
+  __m256_private ret;
   ret.v1 = ret.v0 = _mm_broadcast_ss(__a);
-  return ret;
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_broadcast_pd(__m128d const* __a) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v1 = ret.v0 = (__m128d)wasm_v128_load(__a);
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_broadcast_ps(__m128 const* __a) {
-  __m256 ret;
+  __m256_private ret;
   ret.v1 = ret.v0 = (__m128)wasm_v128_load(__a);
-  return ret;
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_load_pd(double const* __p) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v0 = _mm_load_pd(__p);
   ret.v1 = _mm_load_pd(__p + 2);
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_load_ps(float const* __p) {
-  __m256 ret;
+  __m256_private ret;
   ret.v0 = _mm_load_ps(__p);
   ret.v1 = _mm_load_ps(__p + 4);
-  return ret;
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_loadu_pd(double const* __p) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v0 = _mm_loadu_pd(__p);
   ret.v1 = _mm_loadu_pd(__p + 2);
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_loadu_ps(float const* __p) {
-  __m256 ret;
+  __m256_private ret;
   ret.v0 = _mm_loadu_ps(__p);
   ret.v1 = _mm_loadu_ps(__p + 4);
-  return ret;
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_load_si256(__m256i const* __p) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v0 = _mm_load_si128((__m128i const*)__p);
   ret.v1 = _mm_load_si128(((__m128i const*)__p) + 1);
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_loadu_si256(__m256i_u const* __p) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v0 = _mm_loadu_si128((__m128i const*)__p);
   ret.v1 = _mm_loadu_si128(((__m128i const*)__p) + 1);
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_lddqu_si256(__m256i_u const* __p) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v0 = _mm_lddqu_si128((__m128i const*)__p);
   ret.v1 = _mm_lddqu_si128(((__m128i const*)__p) + 1);
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_store_pd(double* __p, __m256d __a) {
-  _mm_store_pd(__p, __a.v0);
-  _mm_store_pd(__p + 2, __a.v1);
+  __m256d_private a = __m256d_to_private(__a);
+  _mm_store_pd(__p, a.v0);
+  _mm_store_pd(__p + 2, a.v1);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_store_ps(float* __p, __m256 __a) {
-  _mm_store_ps(__p, __a.v0);
-  _mm_store_ps(__p + 4, __a.v1);
+  __m256_private a = __m256_to_private(__a);
+  _mm_store_ps(__p, a.v0);
+  _mm_store_ps(__p + 4, a.v1);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_storeu_pd(double* __p, __m256d __a) {
-  _mm_storeu_pd(__p, __a.v0);
-  _mm_storeu_pd(__p + 2, __a.v1);
+  __m256d_private a = __m256d_to_private(__a);
+  _mm_storeu_pd(__p, a.v0);
+  _mm_storeu_pd(__p + 2, a.v1);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_storeu_ps(float* __p, __m256 __a) {
-  _mm_storeu_ps(__p, __a.v0);
-  _mm_storeu_ps(__p + 4, __a.v1);
+  __m256_private a = __m256_to_private(__a);
+  _mm_storeu_ps(__p, a.v0);
+  _mm_storeu_ps(__p + 4, a.v1);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_store_si256(__m256i* __p, __m256i __a) {
-  _mm_store_si128((__m128i*)__p, __a.v0);
-  _mm_store_si128(((__m128i*)__p) + 1, __a.v1);
+  __m256i_private a = __m256i_to_private(__a);
+  _mm_store_si128((__m128i*)__p, a.v0);
+  _mm_store_si128(((__m128i*)__p) + 1, a.v1);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_storeu_si256(__m256i_u* __p, __m256i __a) {
-  _mm_storeu_si128((__m128i*)__p, __a.v0);
-  _mm_storeu_si128(((__m128i*)__p) + 1, __a.v1);
+  __m256i_private a = __m256i_to_private(__a);
+  _mm_storeu_si128((__m128i*)__p, a.v0);
+  _mm_storeu_si128(((__m128i*)__p) + 1, a.v1);
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
@@ -1335,10 +1528,11 @@ _mm_maskload_pd(double const* __p, __m128i __m) {
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_maskload_pd(double const* __p, __m256i __m) {
-  __m256d ret;
-  ret.v0 = _mm_maskload_pd(__p, __m.v0);
-  ret.v1 = _mm_maskload_pd(__p + 2, __m.v1);
-  return ret;
+  __m256d_private ret;
+  __m256i_private m = __m256i_to_private(__m);
+  ret.v0 = _mm_maskload_pd(__p, m.v0);
+  ret.v1 = _mm_maskload_pd(__p + 2, m.v1);
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
@@ -1352,10 +1546,11 @@ _mm_maskload_ps(float const* __p, __m128i __m) {
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_maskload_ps(float const* __p, __m256i __m) {
-  __m256 ret;
-  ret.v0 = _mm_maskload_ps(__p, __m.v0);
-  ret.v1 = _mm_maskload_ps(__p + 4, __m.v1);
-  return ret;
+  __m256_private ret;
+  __m256i_private m = __m256i_to_private(__m);
+  ret.v0 = _mm_maskload_ps(__p, m.v0);
+  ret.v1 = _mm_maskload_ps(__p + 4, m.v1);
+  return __m256_from_private(ret);
 }
 
 static __inline__ void
@@ -1373,8 +1568,10 @@ static __inline__ void
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_maskstore_ps(float* __p, __m256i __m, __m256 __a) {
-  _mm_maskstore_ps(__p, __m.v0, __a.v0);
-  _mm_maskstore_ps(__p + 4, __m.v1, __a.v1);
+  __m256_private a = __m256_to_private(__a);
+  __m256i_private m = __m256i_to_private(__m);
+  _mm_maskstore_ps(__p, m.v0, a.v0);
+  _mm_maskstore_ps(__p + 4, m.v1, a.v1);
 }
 
 static __inline__ void
@@ -1388,26 +1585,31 @@ static __inline__ void
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_maskstore_pd(double* __p, __m256i __m, __m256d __a) {
-  _mm_maskstore_pd(__p, __m.v0, __a.v0);
-  _mm_maskstore_pd(__p + 2, __m.v1, __a.v1);
+  __m256i_private m = __m256i_to_private(__m);
+  __m256d_private a = __m256d_to_private(__a);
+  _mm_maskstore_pd(__p, m.v0, a.v0);
+  _mm_maskstore_pd(__p + 2, m.v1, a.v1);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_stream_si256(void* __a, __m256i __b) {
-  _mm_stream_si128((__m128i*)__a, __b.v0);
-  _mm_stream_si128(((__m128i*)__a) + 1, __b.v1);
+  __m256i_private b = __m256i_to_private(__b);
+  _mm_stream_si128((__m128i*)__a, b.v0);
+  _mm_stream_si128(((__m128i*)__a) + 1, b.v1);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_stream_pd(void* __a, __m256d __b) {
-  _mm_stream_pd((double*)__a, __b.v0);
-  _mm_stream_pd(((double*)__a) + 2, __b.v1);
+  __m256d_private b = __m256d_to_private(__b);
+  _mm_stream_pd((double*)__a, b.v0);
+  _mm_stream_pd(((double*)__a) + 2, b.v1);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_stream_ps(void* __p, __m256 __a) {
-  _mm_stream_ps((float*)__p, __a.v0);
-  _mm_stream_ps(((float*)__p) + 4, __a.v1);
+  __m256_private a = __m256_to_private(__a);
+  _mm_stream_ps((float*)__p, a.v0);
+  _mm_stream_ps(((float*)__p) + 4, a.v1);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
@@ -1430,10 +1632,10 @@ _mm256_undefined_si256(void) {
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_set_pd(double __a, double __b, double __c, double __d) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v0 = _mm_set_pd(__c, __d);
   ret.v1 = _mm_set_pd(__a, __b);
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
@@ -1445,10 +1647,10 @@ _mm256_set_ps(float __a,
               float __f,
               float __g,
               float __h) {
-  __m256 ret;
+  __m256_private ret;
   ret.v0 = _mm_set_ps(__e, __f, __g, __h);
   ret.v1 = _mm_set_ps(__a, __b, __c, __d);
-  return ret;
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
@@ -1460,10 +1662,10 @@ _mm256_set_epi32(int __i0,
                  int __i5,
                  int __i6,
                  int __i7) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v0 = _mm_set_epi32(__i4, __i5, __i6, __i7);
   ret.v1 = _mm_set_epi32(__i0, __i1, __i2, __i3);
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
@@ -1483,12 +1685,12 @@ _mm256_set_epi16(short __w15,
                  short __w02,
                  short __w01,
                  short __w00) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v0 =
     _mm_set_epi16(__w07, __w06, __w05, __w04, __w03, __w02, __w01, __w00);
   ret.v1 =
     _mm_set_epi16(__w15, __w14, __w13, __w12, __w11, __w10, __w09, __w08);
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
@@ -1524,7 +1726,7 @@ _mm256_set_epi8(char __b31,
                 char __b02,
                 char __b01,
                 char __b00) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v0 = _mm_set_epi8(__b15,
                         __b14,
                         __b13,
@@ -1557,15 +1759,15 @@ _mm256_set_epi8(char __b31,
                         __b18,
                         __b17,
                         __b16);
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_set_epi64x(long long __a, long long __b, long long __c, long long __d) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v0 = _mm_set_epi64x(__c, __d);
   ret.v1 = _mm_set_epi64x(__a, __b);
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
@@ -1706,65 +1908,65 @@ _mm256_setr_epi64x(long long __a, long long __b, long long __c, long long __d) {
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_set1_pd(double __w) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v1 = ret.v0 = (__m128d)wasm_f64x2_splat(__w);
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_set1_ps(float __w) {
-  __m256 ret;
+  __m256_private ret;
   ret.v1 = ret.v0 = (__m128)wasm_f32x4_splat(__w);
-  return ret;
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_set1_epi32(int __i) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v1 = ret.v0 = wasm_i32x4_splat(__i);
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_set1_epi16(short __w) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v1 = ret.v0 = wasm_i16x8_splat(__w);
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_set1_epi8(char __b) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v1 = ret.v0 = wasm_i8x16_splat(__b);
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_set1_epi64x(long long __q) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v1 = ret.v0 = wasm_i64x2_splat(__q);
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_setzero_pd(void) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v1 = ret.v0 = _mm_setzero_pd();
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_setzero_ps(void) {
-  __m256 ret;
+  __m256_private ret;
   ret.v1 = ret.v0 = _mm_setzero_ps();
-  return ret;
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_setzero_si256(void) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v1 = ret.v0 = _mm_setzero_si128();
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
@@ -1811,149 +2013,155 @@ _mm256_castsi256_pd(__m256i __a) {
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm256_castpd256_pd128(__m256d __a) {
-  return __a.v0;
+  __m256d_private a = __m256d_to_private(__a);
+  return a.v0;
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm256_castps256_ps128(__m256 __a) {
-  return __a.v0;
+  __m256_private a = __m256_to_private(__a);
+  return a.v0;
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm256_castsi256_si128(__m256i __a) {
-  return __a.v0;
+  __m256i_private a = __m256i_to_private(__a);
+  return a.v0;
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_castpd128_pd256(__m128d __a) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v0 = __a;
   ret.v1 = _mm_setzero_pd();
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_castps128_ps256(__m128 __a) {
-  __m256 ret;
+  __m256_private ret;
   ret.v0 = __a;
   ret.v1 = _mm_setzero_ps();
-  return ret;
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_castsi128_si256(__m128i __a) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v0 = __a;
   ret.v1 = _mm_setzero_si128();
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_zextpd128_pd256(__m128d __a) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v0 = __a;
   ret.v1 = _mm_setzero_pd();
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_zextps128_ps256(__m128 __a) {
-  __m256 ret;
+  __m256_private ret;
   ret.v0 = __a;
   ret.v1 = _mm_setzero_ps();
-  return ret;
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_zextsi128_si256(__m128i __a) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v0 = __a;
   ret.v1 = _mm_setzero_si128();
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_insertf128_ps(__m256 __a, __m128 __b, const int imm8) {
-  __m256 ret = __a;
+  __m256_private ret = __m256_to_private(__a);
   if (imm8 & 0x1) {
     ret.v1 = __b;
   } else {
     ret.v0 = __b;
   }
-  return ret;
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_insertf128_pd(__m256d __a, __m128d __b, const int imm8) {
-  __m256d ret = __a;
+  __m256d_private ret = __m256d_to_private(__a);
   if (imm8 & 0x1) {
     ret.v1 = __b;
   } else {
     ret.v0 = __b;
   }
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_insertf128_si256(__m256i __a, __m128i __b, const int imm8) {
-  __m256i ret = __a;
+  __m256i_private ret = __m256i_to_private(__a);
   if (imm8 & 0x1) {
     ret.v1 = __b;
   } else {
     ret.v0 = __b;
   }
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m128 __attribute__((__always_inline__, __nodebug__))
 _mm256_extractf128_ps(__m256 __a, const int imm8) {
+  __m256_private a = __m256_to_private(__a);
   if (imm8 & 0x1) {
-    return __a.v1;
+    return a.v1;
   } else {
-    return __a.v0;
+    return a.v0;
   }
 }
 
 static __inline__ __m128d __attribute__((__always_inline__, __nodebug__))
 _mm256_extractf128_pd(__m256d __a, const int imm8) {
+  __m256d_private a = __m256d_to_private(__a);
   if (imm8 & 0x1) {
-    return __a.v1;
+    return a.v1;
   } else {
-    return __a.v0;
+    return a.v0;
   }
 }
 
 static __inline__ __m128i __attribute__((__always_inline__, __nodebug__))
 _mm256_extractf128_si256(__m256i __a, const int imm8) {
+  __m256i_private a = __m256i_to_private(__a);
   if (imm8 & 0x1) {
-    return __a.v1;
+    return a.v1;
   } else {
-    return __a.v0;
+    return a.v0;
   }
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
 _mm256_set_m128(__m128 __hi, __m128 __lo) {
-  __m256 ret;
+  __m256_private ret;
   ret.v0 = __lo;
   ret.v1 = __hi;
-  return ret;
+  return __m256_from_private(ret);
 }
 
 static __inline__ __m256d __attribute__((__always_inline__, __nodebug__))
 _mm256_set_m128d(__m128d __hi, __m128d __lo) {
-  __m256d ret;
+  __m256d_private ret;
   ret.v0 = __lo;
   ret.v1 = __hi;
-  return ret;
+  return __m256d_from_private(ret);
 }
 
 static __inline__ __m256i __attribute__((__always_inline__, __nodebug__))
 _mm256_set_m128i(__m128i __hi, __m128i __lo) {
-  __m256i ret;
+  __m256i_private ret;
   ret.v0 = __lo;
   ret.v1 = __hi;
-  return ret;
+  return __m256i_from_private(ret);
 }
 
 static __inline__ __m256 __attribute__((__always_inline__, __nodebug__))
@@ -1989,20 +2197,23 @@ _mm256_loadu2_m128i(__m128i_u const* __addr_hi, __m128i_u const* __addr_lo) {
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_storeu2_m128(float* __addr_hi, float* __addr_lo, __m256 __a) {
-  _mm_storeu_ps(__addr_lo, __a.v0);
-  _mm_storeu_ps(__addr_hi, __a.v1);
+  __m256_private a = __m256_to_private(__a);
+  _mm_storeu_ps(__addr_lo, a.v0);
+  _mm_storeu_ps(__addr_hi, a.v1);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_storeu2_m128d(double* __addr_hi, double* __addr_lo, __m256d __a) {
-  _mm_storeu_pd(__addr_lo, __a.v0);
-  _mm_storeu_pd(__addr_hi, __a.v1);
+  __m256d_private a = __m256d_to_private(__a);
+  _mm_storeu_pd(__addr_lo, a.v0);
+  _mm_storeu_pd(__addr_hi, a.v1);
 }
 
 static __inline__ void __attribute__((__always_inline__, __nodebug__))
 _mm256_storeu2_m128i(__m128i_u* __addr_hi, __m128i_u* __addr_lo, __m256i __a) {
-  _mm_storeu_si128((__m128i*)__addr_lo, __a.v0);
-  _mm_storeu_si128((__m128i*)__addr_hi, __a.v1);
+  __m256i_private a = __m256i_to_private(__a);
+  _mm_storeu_si128((__m128i*)__addr_lo, a.v0);
+  _mm_storeu_si128((__m128i*)__addr_hi, a.v1);
 }
 
 #endif /* __emscripten_avxintrin_h__ */
