@@ -3739,8 +3739,8 @@ More info: https://emscripten.org
                       '-lembind', '--emit-tsd', 'embind_tsgen_wasm64.d.ts', 
                       '-Wno-pthreads-mem-growth',
                       '-sUSE_PTHREADS=1',
-                      '-sALLOW_MEMORY_GROWTH=1', 
-                      '-sMAXIMUM_MEMORY=16GB', 
+                      '-sALLOW_MEMORY_GROWTH=1',
+                      '-sMAXIMUM_MEMORY=16GB',
                       '-sMEMORY64'] +
                      self.get_cflags())
     self.assertFileContents(test_file('other/embind_tsgen_wasm64.d.ts'), read_file('embind_tsgen_wasm64.d.ts'))
