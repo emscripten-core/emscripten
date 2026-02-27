@@ -971,9 +971,8 @@ var INCOMING_MODULE_JS_API = [
   'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
   'locateFile', 'mainScriptUrlOrBlob', 'mem',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
-  'onExit', 'onFree', 'onFullScreen', 'onMalloc',
-  'onRealloc', 'onRuntimeInitialized', 'onSbrkGrow', 'postMainLoop', 'postRun', 'preInit',
-  'preMainLoop', 'preRun',
+  'onExit', 'onFullScreen', 'onRuntimeInitialized', 'postMainLoop', 'postRun',
+  'preInit', 'preMainLoop', 'preRun',
   'preinitializedWebGLContext', 'preloadPlugins',
   'print', 'printErr', 'setStatus', 'statusMessage', 'stderr',
   'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
