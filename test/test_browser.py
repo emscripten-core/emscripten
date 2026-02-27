@@ -2218,7 +2218,7 @@ void *getBindBuffer() {
 
   @requires_graphics_hardware
   def test_glerror(self):
-    self.btest('gl_error.c', expected='1', cflags=['-sLEGACY_GL_EMULATION', '-lGL'])
+    self.btest_exit('gl_error.c', cflags=['-sLEGACY_GL_EMULATION', '-lGL'])
 
   @parameterized({
     '': ([],),
