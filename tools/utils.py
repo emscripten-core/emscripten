@@ -152,15 +152,6 @@ def safe_copy(src, dst):
   make_writable(dst)
 
 
-def convert_line_endings_in_file(filename, to_eol):
-  if to_eol == os.linesep:
-    assert os.path.exists(filename)
-    return # No conversion needed
-
-  text = read_file(filename)
-  write_file(filename, text, line_endings=to_eol)
-
-
 def read_file(file_path):
   """Read from a file opened in text mode"""
   with open(file_path, encoding='utf-8') as fh:
