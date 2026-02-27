@@ -130,7 +130,9 @@ var emscriptenMemoryProfiler = {
       });
     }
     if (newLimit <= oldLimit) return;
+#if ASSERTIONS
     assert(loc)
+#endif
     self.sbrkSources.push({
       stack: self.filterCallstackForHeapResize(loc),
       begin: oldLimit,
@@ -190,7 +192,9 @@ var emscriptenMemoryProfiler = {
     // Also track if this was a _malloc performed at preRun time.
     if (!self.pagePreRunIsFinished) self.sizeOfPreRunAllocatedPtr[ptr] = size;
 
+#if ASSERTIONS
     assert(loc)
+#endif
     self.allocationsAtLoc[loc] ||= [0, 0, self.filterCallstackForMalloc(loc)];
     self.allocationsAtLoc[loc][0] += 1;
     self.allocationsAtLoc[loc][1] += size;
