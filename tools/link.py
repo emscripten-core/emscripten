@@ -1295,6 +1295,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
                                   'emscripten_stack_get_base',
                                   'emscripten_stack_get_end',
                                   'emscripten_stack_get_current']
+    settings.INCOMING_MODULE_JS_API += ['preRun']
 
   settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ADD)
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
@@ -1774,6 +1775,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.EMSCRIPTEN_TRACING:
     add_system_js_lib('libtrace.js')
+    settings.INCOMING_MODULE_JS_API += ['onMalloc', 'onRealloc', 'onFree', 'onSbrkGrow']
     if settings.ALLOW_MEMORY_GROWTH:
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['emscripten_trace_report_memory_layout']
       settings.REQUIRED_EXPORTS += ['emscripten_stack_get_current',
