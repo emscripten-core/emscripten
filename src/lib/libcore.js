@@ -1301,12 +1301,12 @@ addToLibrary({
   // ==========================================================================
 
   emscripten_run_script: (ptr) => {
-    {{{ makeEval('eval(UTF8ToString(ptr));') }}}
+    {{{ makeEval('(0, eval)(UTF8ToString(ptr));') }}}
   },
 
   emscripten_run_script_int__docs: '/** @suppress{checkTypes} */',
   emscripten_run_script_int: (ptr) => {
-    {{{ makeEval('return eval(UTF8ToString(ptr))|0;') }}}
+    {{{ makeEval('return (0, eval)(UTF8ToString(ptr))|0;') }}}
   },
 
   // Mark as `noleakcheck` otherwise lsan will report the last returned string
@@ -1314,7 +1314,7 @@ addToLibrary({
   emscripten_run_script_string__noleakcheck: true,
   emscripten_run_script_string__deps: ['$lengthBytesUTF8', '$stringToUTF8', 'realloc'],
   emscripten_run_script_string: (ptr) => {
-    {{{ makeEval("var s = eval(UTF8ToString(ptr));") }}}
+    {{{ makeEval("var s = (0, eval)(UTF8ToString(ptr));") }}}
     if (s == null) {
       return 0;
     }
@@ -2608,7 +2608,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     t = modifyJSFunction(t, (args, body, async_) => `${async_}function (${args}) {\n${pre}${body}${post}}\n`);
   }
 
-  library[x] = eval('(' + t + ')');
+  library[x] = (0, eval)('(' + t + ')');
   // Automatically add dependency on `$SYSCALLS`
   if (!WASMFS && t.includes('SYSCALLS')) {
     library[x + '__deps'].push('$SYSCALLS');
