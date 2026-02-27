@@ -3732,6 +3732,19 @@ More info: https://emscripten.org
                      self.get_cflags())
     self.assertFileContents(test_file('other/embind_tsgen_wasm64.d.ts'), read_file('embind_tsgen_wasm64.d.ts'))
 
+  @requires_wasm64
+  def test_embind_tsgen_wasm64_maximum_memory_over_4gb(self):
+    # Check that when wasm64 is enabled and maximum memory is set to over 4GB that longs & unsigned longs are still mapped to bigint in the generated TS bindings
+    self.run_process([EMXX, test_file('other/embind_tsgen_wasm64.cpp'),
+                      '-lembind', '--emit-tsd', 'embind_tsgen_wasm64.d.ts', 
+                      '-Wno-pthreads-mem-growth',
+                      '-sUSE_PTHREADS=1',
+                      '-sALLOW_MEMORY_GROWTH=1', 
+                      '-sMAXIMUM_MEMORY=16GB', 
+                      '-sMEMORY64'] +
+                     self.get_cflags())
+    self.assertFileContents(test_file('other/embind_tsgen_wasm64.d.ts'), read_file('embind_tsgen_wasm64.d.ts'))
+
   @requires_jspi
   def test_embind_tsgen_jspi(self):
     self.run_process([EMXX, test_file('other/embind_tsgen_jspi.cpp'),

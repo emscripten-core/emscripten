@@ -2024,6 +2024,8 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # TODO Remove lowering when emsdk version of node is >= 24 and just require it.
   if settings.MEMORY64:
     settings.MEMORY64 = 2
+    if settings.MAXIMUM_MEMORY and settings.MAXIMUM_MEMORY > 2 ** 32:
+      settings.MAXIMUM_MEMORY = 2 ** 32
   # Source maps haven't been generated yet and aren't needed to run embind_gen.
   settings.LOAD_SOURCE_MAP = 0
   settings.GENERATE_SOURCE_MAP = 0
