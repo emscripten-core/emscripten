@@ -9,7 +9,8 @@ var LibraryTracing = {
     '$traceConfigure', 'emscripten_trace_configure_for_google_wtf',
     '$traceEnterContext', 'emscripten_trace_exit_context',
     '$traceLogMessage', '$traceMark',
-    'emscripten_get_now'
+    'emscripten_get_now',
+    '$jsStackTrace'
   ],
   $EmscriptenTrace__postset: 'EmscriptenTrace.init()',
   $EmscriptenTrace: {
@@ -210,7 +211,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_allocation: (address, size) => {
-    Module['onMalloc']?.(address, size);
+    Module['onMalloc']?.(address, size, jsStackTrace());
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ALLOCATE,
@@ -219,7 +220,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_reallocation: (old_address, new_address, size) => {
-    Module['onRealloc']?.(old_address, new_address, size);
+    Module['onRealloc']?.(old_address, new_address, size, jsStackTrace());
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_REALLOCATE,
