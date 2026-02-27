@@ -3722,6 +3722,7 @@ More info: https://emscripten.org
   @parameterized({
     '': [[]],
     'pthread': [['-pthread']],
+    'maximum_memory_over_4gb': [['-Wno-pthreads-mem-growth', '-sUSE_PTHREADS=1', '-sALLOW_MEMORY_GROWTH=1', '-sMAXIMUM_MEMORY=16GB']],
   })
   @requires_wasm64
   def test_embind_tsgen_wasm64(self, args):
