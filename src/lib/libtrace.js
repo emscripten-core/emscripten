@@ -9,7 +9,8 @@ var LibraryTracing = {
     '$traceConfigure', 'emscripten_trace_configure_for_google_wtf',
     '$traceEnterContext', 'emscripten_trace_exit_context',
     '$traceLogMessage', '$traceMark',
-    'emscripten_get_now'
+    'emscripten_get_now',
+    '$jsStackTrace'
   ],
   $EmscriptenTrace__postset: 'EmscriptenTrace.init()',
   $EmscriptenTrace: {
@@ -210,9 +211,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_allocation: (address, size) => {
-#if MEMORYPROFILER
-    Module['onMalloc']?.(address, size) || postMessage({cmd: 'callHandler', handler: 'onMalloc', args: [address, size, new Error().stack.toString()]});
-#endif
+    Module['onMalloc'] && Module['onMalloc'](address, size, jsStackTrace());
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ALLOCATE,
@@ -221,9 +220,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_reallocation: (old_address, new_address, size) => {
-#if MEMORYPROFILER
-    Module['onRealloc']?.(old_address, new_address, size) || postMessage({cmd: 'callHandler', handler: 'onRealloc', args: [old_address, new_address, size, new Error().stack.toString()]});
-#endif
+    Module['onRealloc'] && Module['onRealloc'](old_address, new_address, size, jsStackTrace());
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_REALLOCATE,
@@ -232,9 +229,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_free: (address) => {
-#if MEMORYPROFILER
-    Module['onFree']?.(address) || postMessage({cmd: 'callHandler', handler: 'onFree', args: [address]});
-#endif
+    Module['onFree']?.(address);
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_FREE,

@@ -360,6 +360,10 @@ var LibraryPThread = {
 #if expectToReceiveOnModule('printErr')
         'printErr',
 #endif
+        'onMalloc',
+        'onRealloc',
+        'onFree',
+        'onSbrkGrow',
       ];
       for (var handler of knownHandlers) {
         if (Module.propertyIsEnumerable(handler)) {
