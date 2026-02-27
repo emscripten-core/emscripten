@@ -1672,15 +1672,14 @@ window.close = () => {
       time.sleep(2)
 
   @requires_graphics_hardware
-  def test_glgears(self, extra_args=[]):  # noqa
-    self.reftest('hello_world_gles.c', 'gears.png', reference_slack=3,
-                 cflags=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + extra_args)
-
-  @requires_graphics_hardware
-  def test_glgears_pthreads(self, extra_args=[]):  # noqa
+  @parameterized({
+    '': ([],),
     # test that a program that doesn't use pthreads still works with with pthreads enabled
     # (regression test for https://github.com/emscripten-core/emscripten/pull/8059#issuecomment-488105672)
-    self.test_glgears(['-pthread'])
+    'pthreads': (['-pthread'],),
+  })
+  def test_glgears(self, args):
+    self.reftest('hello_world_gles.c', 'gears.png', reference_slack=3, cflags=['-DHAVE_BUILTIN_SINCOS', '-lGL', '-lglut'] + args)
 
   @requires_graphics_hardware
   def test_glgears_long(self):
