@@ -2634,7 +2634,7 @@ F1 -> ''
 
   @requires_network
   def test_libjpeg(self):
-    shutil.copy(test_file('screenshot.jpg'), '.')
+    shutil.copy(test_file('browser/screenshot.jpg'), '.')
     self.do_runf('jpeg_test.c', 'Image is 600 by 450 with 3 components',
                  cflags=['--embed-file', 'screenshot.jpg', '-sUSE_LIBJPEG'],
                  args=['screenshot.jpg'])
