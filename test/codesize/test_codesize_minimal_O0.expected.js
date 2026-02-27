@@ -1288,6 +1288,7 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('onMalloc');
   ignoredModuleProp('onRealloc');
   ignoredModuleProp('onRuntimeInitialized');
+  ignoredModuleProp('onSbrkGrow');
   ignoredModuleProp('postMainLoop');
   ignoredModuleProp('postRun');
   ignoredModuleProp('preInit');
