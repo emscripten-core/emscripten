@@ -38,7 +38,7 @@ typedef struct {
     __m128i v1;
 } __m256i_private;
 
-__m256_private __m256_to_private(__m256 a) {
+static __inline__ __m256_private __m256_to_private(__m256 a) {
   union {
     __m256 in;
     __m256_private out;
@@ -47,7 +47,7 @@ __m256_private __m256_to_private(__m256 a) {
   return ret.out;
 }
 
-__m256 __m256_from_private(__m256_private a) {
+static __inline__ __m256 __m256_from_private(__m256_private a) {
   union {
     __m256_private in;
     __m256 out;
@@ -56,7 +56,7 @@ __m256 __m256_from_private(__m256_private a) {
   return ret.out;
 }
 
-__m256d_private __m256d_to_private(__m256d a) {
+static __inline__ __m256d_private __m256d_to_private(__m256d a) {
   union {
     __m256d in;
     __m256d_private out;
@@ -65,7 +65,7 @@ __m256d_private __m256d_to_private(__m256d a) {
   return ret.out;
 }
 
-__m256d __m256d_from_private(__m256d_private a) {
+static __inline__ __m256d __m256d_from_private(__m256d_private a) {
   union {
     __m256d_private in;
     __m256d out;
@@ -74,7 +74,7 @@ __m256d __m256d_from_private(__m256d_private a) {
   return ret.out;
 }
 
-__m256i_private __m256i_to_private(__m256i a) {
+static __inline__ __m256i_private __m256i_to_private(__m256i a) {
   union {
     __m256i in;
     __m256i_private out;
@@ -83,7 +83,7 @@ __m256i_private __m256i_to_private(__m256i a) {
   return ret.out;
 }
 
-__m256i __m256i_from_private(__m256i_private a) {
+static __inline__ __m256i __m256i_from_private(__m256i_private a) {
   union {
     __m256i_private in;
     __m256i out;
