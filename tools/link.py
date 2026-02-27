@@ -1005,6 +1005,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   else:
     # Otherwise the wasm file is produced alongside the final target.
     wasm_target = get_secondary_target(target, '.wasm')
+    if final_suffix in EXECUTABLE_ENDINGS:
+        options.executable = True
 
   if settings.SAFE_HEAP not in [0, 1, 2]:
     exit_with_error('SAFE_HEAP must be 0, 1 or 2')
