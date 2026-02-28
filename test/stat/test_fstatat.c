@@ -59,7 +59,7 @@ void test() {
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
   // WasmFS correctly counts 512B blocks, but MEMFS counts 4kb blocks.
-#ifdef WASMFS
+#if  defined(WASMFS)  || defined(NODEFS) || defined(NODERAWFS)
   assert(s.st_blocks == 8);
 #else
   assert(s.st_blocks == 1);
@@ -79,7 +79,11 @@ void test() {
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
+#if defined(NODEFS) || defined(NODERAWFS)
+  assert(s.st_blocks == 8);
+#else
   assert(s.st_blocks == 1);
+#endif
 #endif
 
   close(fd);
@@ -115,7 +119,7 @@ void test() {
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
-#ifdef WASMFS
+#if defined(WASMFS) || defined(NODEFS) || defined(NODERAWFS)
   assert(s.st_blocks == 8);
 #else
   assert(s.st_blocks == 1);
@@ -140,7 +144,11 @@ void test() {
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
+#if defined(NODEFS) || defined(NODERAWFS)
+  assert(s.st_blocks == 8);
+#else
   assert(s.st_blocks == 1);
+#endif
 #endif
 
   close(fd);
@@ -159,7 +167,11 @@ void test() {
   assert(s.st_ctime);
 #ifdef __EMSCRIPTEN__
   assert(s.st_blksize == 4096);
+#if defined(NODEFS) || defined(NODERAWFS)
+  assert(s.st_blocks == 0);
+#else
   assert(s.st_blocks == 1);
+#endif
 #endif
 
   puts("success");
