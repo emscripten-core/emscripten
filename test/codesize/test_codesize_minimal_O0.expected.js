@@ -1283,10 +1283,7 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('noInitialRun');
   ignoredModuleProp('onAbort');
   ignoredModuleProp('onExit');
-  ignoredModuleProp('onFree');
   ignoredModuleProp('onFullScreen');
-  ignoredModuleProp('onMalloc');
-  ignoredModuleProp('onRealloc');
   ignoredModuleProp('onRuntimeInitialized');
   ignoredModuleProp('postMainLoop');
   ignoredModuleProp('postRun');
@@ -1309,6 +1306,10 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
   ignoredModuleProp('logReadFiles');
   ignoredModuleProp('loadSplitModule');
+  ignoredModuleProp('onMalloc');
+  ignoredModuleProp('onRealloc');
+  ignoredModuleProp('onFree');
+  ignoredModuleProp('onSbrkGrow');
 }
 
 // Imports from the Wasm binary.

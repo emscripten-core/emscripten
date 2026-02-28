@@ -43,6 +43,10 @@ EXTRA_INCOMING_JS_API = [
   'fetchSettings',
   'logReadFiles',
   'loadSplitModule',
+  'onMalloc',
+  'onRealloc',
+  'onFree',
+  'onSbrkGrow',
 ]
 
 logger = logging.getLogger('args')

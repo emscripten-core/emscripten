@@ -2634,7 +2634,7 @@ F1 -> ''
 
   @requires_network
   def test_libjpeg(self):
-    shutil.copy(test_file('screenshot.jpg'), '.')
+    shutil.copy(test_file('browser/screenshot.jpg'), '.')
     self.do_runf('jpeg_test.c', 'Image is 600 by 450 with 3 components',
                  cflags=['--embed-file', 'screenshot.jpg', '-sUSE_LIBJPEG'],
                  args=['screenshot.jpg'])
@@ -3722,6 +3722,7 @@ More info: https://emscripten.org
   @parameterized({
     '': [[]],
     'pthread': [['-pthread']],
+    'maximum_memory_over_4gb': [['-Wno-pthreads-mem-growth', '-sUSE_PTHREADS=1', '-sALLOW_MEMORY_GROWTH=1', '-sMAXIMUM_MEMORY=16GB']],
   })
   @requires_wasm64
   def test_embind_tsgen_wasm64(self, args):
