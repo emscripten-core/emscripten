@@ -461,9 +461,18 @@ addToLibrary({
     },
     handleAsync: async (startAsync) => {
       {{{ runtimeKeepalivePush(); }}}
+
+      if (typeof MainLoop != 'undefined' && MainLoop.func) {
+        MainLoop.pause();
+      }
+
       try {
         return await startAsync();
       } finally {
+        if (typeof MainLoop != 'undefined' && MainLoop.func) {
+          MainLoop.resume();
+        }
+
         {{{ runtimeKeepalivePop(); }}}
       }
     },
