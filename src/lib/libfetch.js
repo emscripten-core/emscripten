@@ -33,6 +33,7 @@ var LibraryFetch = {
     '$Fetch',
     '$fetchXHR',
     '$callUserCallback',
+    '$readI53FromI64',
     '$writeI53ToI64',
     '$stringToUTF8',
     '$stringToNewUTF8',

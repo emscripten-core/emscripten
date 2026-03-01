@@ -576,21 +576,23 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   // This receives a condition, which determines whether to save the xhr's
   // response, or just 0.
   function saveResponseAndStatus() {
-    var ptr = 0;
-    var ptrLen = 0;
-    if (xhr.response && fetchAttrLoadToMemory && {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, '*') }}} === 0) {
+    let ptrLen = 0;
+    if (fetchAttrLoadToMemory && xhr.response) {
+      let ptr = {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, '*') }}};
       ptrLen = xhr.response.byteLength;
-    }
-    if (ptrLen > 0) {
-#if FETCH_DEBUG
-      dbg(`fetch: allocating ${ptrLen} bytes in Emscripten heap for xhr data`);
-#endif
+
       // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
       // freed when emscripten_fetch_close() is called.
-      ptr = _realloc({{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, '*') }}}, ptrLen);
+      if (ptrLen > readI53FromI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}})) {
+#if FETCH_DEBUG
+        dbg(`fetch: allocating ${ptrLen} bytes in Emscripten heap for xhr data`);
+#endif
+        ptr = _realloc(ptr, ptrLen);
+        {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
+      }
+
       HEAPU8.set(new Uint8Array(/** @type{Array<number>} */(xhr.response)), ptr);
     }
-    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
     var len = xhr.response ? xhr.response.byteLength : 0;
@@ -660,21 +662,27 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (!Fetch.xhrs.has(id)) {
       return;
     }
-    var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData && xhr.response) ? xhr.response.byteLength : 0;
-    var ptr = 0;
-    if (ptrLen > 0 && fetchAttrLoadToMemory && fetchAttrStreamData) {
-#if FETCH_DEBUG
-      dbg(`fetch: allocating ${ptrLen} bytes in Emscripten heap for xhr data`);
-#endif
+    let ptrLen = 0;
+    if (fetchAttrLoadToMemory && fetchAttrStreamData && xhr.response) {
+      let ptr = {{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, '*') }}};
+      ptrLen = xhr.response.byteLength;
+
 #if ASSERTIONS
       assert(onprogress, 'When doing a streaming fetch, you should have an onprogress handler registered to receive the chunks!');
 #endif
+
       // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
       // freed when emscripten_fetch_close() is called.
-      ptr = _realloc({{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, '*') }}}, ptrLen);
+      if (ptrLen > readI53FromI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}})) {
+#if FETCH_DEBUG
+        dbg(`fetch: allocating ${ptrLen} bytes in Emscripten heap for xhr data`);
+#endif
+        ptr = _realloc(ptr, ptrLen);
+        {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
+      }
+
       HEAPU8.set(new Uint8Array(/** @type{Array<number>} */(xhr.response)), ptr);
     }
-    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, e.loaded - ptrLen);
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, e.total);
