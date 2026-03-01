@@ -2702,10 +2702,6 @@ def process_libraries(options, flags):
   system_libs_map = system_libs.Library.get_usable_variations()
 
   for flag in flags:
-    if flag.startswith('--js-library='):
-      js_lib = flag.split('=', 1)[1]
-      settings.JS_LIBRARIES.append(js_lib)
-      continue
     if not flag.startswith('-l'):
       new_flags.append(flag)
       continue
