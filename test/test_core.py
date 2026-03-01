@@ -5969,6 +5969,8 @@ Module.onRuntimeInitialized = () => {
   @also_with_noderawfs
   def test_fs_writev(self):
     self.do_runf('fs/test_writev.c', 'success', cflags=['-sFORCE_FILESYSTEM'])
+    self.do_runf('fs/test_case_insensitive.c', 'success', cflags=['-sFORCE_FILESYSTEM', '-sCASE_INSENSITIVE_FS'])
+
 
   def test_fs_64bit(self):
     if self.get_setting('WASMFS'):
