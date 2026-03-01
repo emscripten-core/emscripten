@@ -19,7 +19,7 @@ jobs:
         run: python3 tools/maint/create_release.py --action
       - name: Create Changelog PR
         id: cpr
-        uses: peter-evans/create-pull-request@v6
+        uses: peter-evans/create-pull-request@v7
         with:
           token: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
           title: Mark ${{ env.RELEASE_VERSION }} as released
