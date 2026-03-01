@@ -372,6 +372,7 @@ sigs = {
   _emval_run_destructors__sig: 'vp',
   _emval_set_property__sig: 'vppp',
   _emval_strictly_equals__sig: 'ipp',
+  _emval_is_cpp_exception__sig: 'ip',
   _emval_throw__sig: 'ip',
   _emval_typeof__sig: 'pp',
   _gmtime_js__sig: 'vjp',
