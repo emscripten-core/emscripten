@@ -972,6 +972,17 @@ f.close()
         if test_dir == 'post_build':
           ret = self.run_process(['ctest'], env=env)
 
+  def test_cmake_executable_suffix(self):
+    # Setting CMAKE_EXECUTABLE_SUFFIX for some reason does not work from the command line.
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/hello'), '-DCMAKE_EXECUTABLE_SUFFIX=.html'])
+    self.run_process(['cmake', '--build', '.'])
+    self.assertNotExists('hello.html')
+
+    # Bet setting CMAKE_EXECUTABLE_SUFFIX_<LANG> does:
+    self.run_process([EMCMAKE, 'cmake', test_file('cmake/hello'), '-DCMAKE_EXECUTABLE_SUFFIX_C=.html'])
+    self.run_process(['cmake', '--build', '.'])
+    self.assertExists('hello.html')
+
   # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten
   # toolchain match with the actual language features that Clang supports.
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang
