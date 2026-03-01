@@ -2184,6 +2184,15 @@ if (isNode) {{
   shared.check_call(cmd, input=mod)
 
 
+def convert_line_endings_in_file(filename, to_eol):
+  if to_eol == os.linesep:
+    assert os.path.exists(filename)
+    return # No conversion needed
+
+  text = read_file(filename)
+  write_file(filename, text, line_endings=to_eol)
+
+
 @ToolchainProfiler.profile_block('final emitting')
 def phase_final_emitting(options, target, js_target, wasm_target):
   global final_js
@@ -2246,7 +2255,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
 
   target_basename = unsuffixed_basename(target)
 
-  utils.convert_line_endings_in_file(js_target, options.output_eol)
+  convert_line_endings_in_file(js_target, options.output_eol)
 
   # If we were asked to also generate HTML, do that
   if options.oformat == OFormat.HTML:
@@ -2636,7 +2645,7 @@ def generate_html(target, options, js_target, target_basename, wasm_target):
   if settings.MINIFY_HTML and (settings.OPT_LEVEL >= 1 or settings.SHRINK_LEVEL >= 1):
     minify_html(target)
 
-  utils.convert_line_endings_in_file(target, options.output_eol)
+  convert_line_endings_in_file(target, options.output_eol)
 
 
 def find_library(lib, lib_dirs):
