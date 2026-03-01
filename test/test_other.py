@@ -344,6 +344,12 @@ class other(RunnerCore):
       os.close(master)
       os.close(slave)
 
+  def create_huge_file(self, name, length):
+    f = open(name,"wb")
+    f.seek(length - 1)
+    f.write(b"\0")
+    f.close()
+
   # Test that running `emcc -v` always works even in the presence of `EMCC_CFLAGS`.
   # This needs to work because many tools run `emcc -v` internally and it should
   # always work even if the user has `EMCC_CFLAGS` set.
@@ -6397,12 +6403,162 @@ int main() {
 
   def test_file_packager_huge(self):
     MESSAGE = 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it'
-    create_file('huge.dat', 'a' * (1024 * 1024 * 257))
+    self.create_huge_file('huge.dat', 1024 * 1024 * 257)
     create_file('tiny.dat', 'a')
     err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'tiny.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertNotContained(MESSAGE, err)
     err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertContained(MESSAGE, err)
+    self.clear()
+
+  def test_file_packager_huge_no_split(self):
+    # Verify that when packaging up to 2046MB of data, file packager should not split up the generated data file.
+    for i in range(7):
+      self.create_huge_file(f'huge{i}.dat', 1024 * 1024 * 256)
+    self.create_huge_file('huge7.dat', 1024 * 1024 * 254)
+    result = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge7.dat'] + [f'huge{i}.dat' for i in range(7)], stdout=PIPE, stderr=PIPE)
+    self.assertContained('warning: file packager is creating an asset bundle of 2046 MB. this is very large, and browsers might have trouble loading it', result.stderr)
+    self.assertExists('test.data')
+    self.assertNotExists('test_1.data')
+    self.assertEqual(os.path.getsize('test.data'), (1024 * 1024 * 1024) + (1022 * 1024 * 1024))
+    create_file('load.js', result.stdout)
+    create_file('src.c', r'''
+    #include <assert.h>
+    #include <sys/stat.h>
+    #include <stdio.h>
+
+    int main() {
+      struct stat buf;
+      assert(stat("huge0.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge1.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge2.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge3.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge4.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge5.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge6.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge7.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 254);
+      printf("done\n");
+      return 0;
+    }
+    ''')
+    self.do_runf('src.c', cflags=['--pre-js=load.js', '-sFORCE_FILESYSTEM'])
+    self.clear()
+
+  def test_file_packager_huge_split(self):
+    # Verify that when size exceeds 2046MB, file packager should split up the generated data file into two.
+    for i in range(7):
+      self.create_huge_file(f'huge{i}.dat', 1024 * 1024 * 256)
+    self.create_huge_file('huge7.dat', (1024 * 1024 * 254) + 1)
+    result = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge7.dat'] + [f'huge{i}.dat' for i in range(7)], stdout=PIPE, stderr=PIPE)
+    self.assertContained('warning: file packager is creating an asset bundle of 1792 MB. this is very large, and browsers might have trouble loading it', result.stderr)
+    self.assertContained('warning: file packager is splitting bundle into 2 chunks', result.stderr)
+    self.assertExists('test.data')
+    self.assertExists('test_1.data')
+    self.assertEqual(os.path.getsize('test.data'), (1024 * 1024 * 256) * 7)
+    self.assertEqual(os.path.getsize('test_1.data'), (1024 * 1024 * 254) + 1)
+    create_file('load.js', result.stdout)
+    create_file('src.c', r'''
+    #include <assert.h>
+    #include <sys/stat.h>
+    #include <stdio.h>
+
+    int main() {
+      struct stat buf;
+      assert(stat("huge0.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge1.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge2.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge3.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge4.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge5.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge6.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge7.dat", &buf) == 0);
+      assert(buf.st_size == (1024 * 1024 * 254) + 1);
+      printf("done\n");
+      return 0;
+    }
+    ''')
+    self.do_runf('src.c', cflags=['--pre-js=load.js', '-sFORCE_FILESYSTEM'])
+    self.clear()
+
+  def test_file_packager_huge_split_metadata(self):
+    # Verify that when size exceeds 2046MB, file packager should split up the generated data and metadata file into two.
+    large_size = 1024 * 1024 * 256
+    final_size = (1024 * 1024 * 254) + 1
+    for i in range(7):
+      self.create_huge_file(f'huge{i}.dat', large_size)
+    self.create_huge_file('huge7.dat', final_size)
+    err = self.run_process([FILE_PACKAGER, 'test.data', '--separate-metadata', '--js-output=immutable.js', '--preload', 'huge7.dat'] + [f'huge{i}.dat' for i in range(7)], stdout=PIPE, stderr=PIPE).stderr
+    self.assertContained('warning: file packager is creating an asset bundle of 1792 MB. this is very large, and browsers might have trouble loading it', err)
+    self.assertContained('warning: file packager is splitting bundle into 2 chunks', err)
+    self.assertExists('test.data')
+    self.assertExists('immutable.js')
+    self.assertExists('immutable_1.js')
+    self.assertExists('test_1.data')
+    self.assertEqual(os.path.getsize('test.data'), (1024 * 1024 * 256) * 7)
+    self.assertEqual(os.path.getsize('test_1.data'), (1024 * 1024 * 254) + 1)
+
+    self.assertExists('immutable.js.metadata')
+    metadata = json.loads(read_file('immutable.js.metadata'))
+    self.assertEqual(len(metadata['files']), 7)
+    for i in range(7):
+      assert metadata['files'][i]['start'] == i * large_size and metadata['files'][i]['end'] == (i * large_size) + large_size and metadata['files'][i]['filename'] == f'/huge{i}.dat'
+    assert metadata['remote_package_size'] == 7 * large_size
+
+    self.assertExists('immutable_1.js.metadata')
+    metadata = json.loads(read_file('immutable_1.js.metadata'))
+    self.assertEqual(len(metadata['files']), 1)
+    assert metadata['files'][0]['start'] == 0 and metadata['files'][0]['end'] == final_size and metadata['files'][0]['filename'] == '/huge7.dat'
+    assert metadata['remote_package_size'] == final_size
+    create_file('src.c', r'''
+    #include <assert.h>
+    #include <sys/stat.h>
+    #include <stdio.h>
+
+    int main() {
+      struct stat buf;
+      assert(stat("huge0.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge1.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge2.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge3.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge4.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge5.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge6.dat", &buf) == 0);
+      assert(buf.st_size == 1024 * 1024 * 256);
+      assert(stat("huge7.dat", &buf) == 0);
+      assert(buf.st_size == (1024 * 1024 * 254) + 1);
+      printf("done\n");
+      return 0;
+    }
+    ''')
+    self.do_runf('src.c', cflags=['--pre-js=immutable.js', '--pre-js=immutable_1.js', '-sFORCE_FILESYSTEM'])
+    self.clear()
+
+  def test_file_packager_huge_split_too_large(self):
+    self.create_huge_file('huge.dat', (1024 * 1024 * 1024) + ((1022 * 1024 * 1024) + 1))
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], check=False, stdout=PIPE, stderr=PIPE)
+    self.assertEqual(proc.returncode, 1)
+    self.assertContained('error: cannot package file huge.dat, which is larger than maximum individual file size limit 2046 MB', proc.stderr)
     self.clear()
 
   @parameterized({
