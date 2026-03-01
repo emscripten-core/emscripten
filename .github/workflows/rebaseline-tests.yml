@@ -18,7 +18,7 @@ jobs:
       GH_TOKEN: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           fetch-depth: 0
           submodules: true

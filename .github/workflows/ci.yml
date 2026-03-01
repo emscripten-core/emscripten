@@ -16,7 +16,7 @@ jobs:
     name: Archive
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+    - uses: actions/checkout@08c6903cd8c0fde910a37f88322edcfb5dd907a8 # v5.0.0
     - name: make dist
       run: |
         make dist
@@ -33,7 +33,7 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: true
           fetch-depth: 0 # We want access to other branches, specifically `main`
