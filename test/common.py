@@ -638,10 +638,17 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.cflags += ['-DWASMFS']
 
   def set_temp_dir(self, temp_dir):
-    self.temp_dir = temp_dir
-    self.canonical_temp_dir = get_canonical_temp_dir(self.temp_dir)
-    # Explicitly set dedicated temporary directory for parallel tests
-    os.environ['EMCC_TEMP_DIR'] = self.temp_dir
+    if temp_dir:
+      self.temp_dir = temp_dir
+      self.canonical_temp_dir = get_canonical_temp_dir(self.temp_dir)
+      # Explicitly set dedicated temporary directory for parallel tests
+      os.environ['EMCC_TEMP_DIR'] = self.temp_dir
+    else:
+      # Deleting these instance fields will mean that the class field is used
+      # instead.
+      del self.temp_dir
+      del self.canonical_temp_dir
+      del os.environ['EMCC_TEMP_DIR']
 
   def parse_wasm(self, filename):
     wat = self.get_wasm_text(filename)
@@ -742,7 +749,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
           self.temp_files_before_run.append(os.path.normpath(os.path.join(root, filename)))
 
     if self.runningInParallel():
-      self.working_dir = tempfile.mkdtemp(prefix='emscripten_test_' + self.__class__.__name__ + '_', dir=self.temp_dir)
+      # When running tests in parallel each test runs it its own new temp directory
+      self.working_dir = tempfile.mkdtemp(prefix='emtest_' + self.__class__.__name__ + '_', dir=self.temp_dir)
     else:
       self.working_dir = path_from_root('out/test')
       if os.path.exists(self.working_dir):
