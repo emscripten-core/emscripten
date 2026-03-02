@@ -13387,6 +13387,11 @@ myMethod: 43
     content = read_file('a.out.js')
     self.assertNotContained('node:', content)
 
+    # Test that the leading `node:` prefix is removed from imports when `--closure=1`
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMIN_NODE_VERSION=150000', '-Wno-transpile', '--closure=1'])
+    content = read_file('a.out.js')
+    self.assertNotContained('node:', content)
+
   def test_gmtime_noleak(self):
     # Confirm that gmtime_r does not leak when called in isolation.
     self.do_other_test('test_gmtime_noleak.c', cflags=['-fsanitize=leak'])

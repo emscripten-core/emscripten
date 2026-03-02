@@ -11,8 +11,7 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
-// Special placeholder for `import.meta` and `await import`.
-var EMSCRIPTEN$IMPORT$META;
+// Special placeholder for `await import` and `await`.
 var EMSCRIPTEN$AWAIT$IMPORT;
 var EMSCRIPTEN$AWAIT;
 

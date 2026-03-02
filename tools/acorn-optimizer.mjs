@@ -1718,6 +1718,7 @@ const params = {
   ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
   allowAwaitOutsideFunction: true,
+  allowImportExportEverywhere: exportES6,
 };
 if (closureFriendly) {
   const currentComments = [];

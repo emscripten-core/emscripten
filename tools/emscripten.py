@@ -444,6 +444,11 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   assert '//FORWARDED_DATA:' in out, 'Did not receive forwarded data in pre output - process failed?'
   glue, forwarded_data = out.split('//FORWARDED_DATA:', 1)
 
+  # Unmangle previously mangled `import.meta` references in lib*.js.
+  # See also: `LibraryManager.load` in modules.js.
+  if settings.EXPORT_ES6:
+    glue = glue.replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
+
   forwarded_json = json.loads(forwarded_data)
 
   if forwarded_json['warnings']:
