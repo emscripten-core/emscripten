@@ -1104,6 +1104,21 @@ var LibraryHTML5 = {
     // EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT + EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE is a mode where no extra logic is performed to the DOM elements.
     if (strategy.scaleMode != {{{ cDefs.EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT }}} || strategy.canvasResolutionScaleMode != {{{ cDefs.EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE }}}) {
       JSEvents_resizeCanvasForFullscreen(target, strategy);
+      var fullscreenChangeHandler = () => {
+        document.removeEventListener('fullscreenchange', fullscreenChangeHandler);
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+        document.removeEventListener('webkitfullscreenchange', fullscreenChangeHandler);
+#endif
+        setTimeout(() => {
+          if (getFullscreenElement() === target) {
+            JSEvents_resizeCanvasForFullscreen(target, strategy);
+          }
+        }, 0);
+      };
+      document.addEventListener('fullscreenchange', fullscreenChangeHandler);
+#if MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
+      document.addEventListener('webkitfullscreenchange', fullscreenChangeHandler);
+#endif
     }
 
     if (target.requestFullscreen) {
@@ -1131,9 +1146,31 @@ var LibraryHTML5 = {
 
   $JSEvents_resizeCanvasForFullscreen__deps: ['$registerRestoreOldStyle', '$getCanvasElementSize', '$setLetterbox', '$setCanvasElementSize', '$getBoundingClientRect'],
   $JSEvents_resizeCanvasForFullscreen: (target, strategy) => {
-    var restoreOldStyle = registerRestoreOldStyle(target);
-    var cssWidth = strategy.softFullscreen ? innerWidth : screen.width;
-    var cssHeight = strategy.softFullscreen ? innerHeight : screen.height;
+    var restoreOldStyle = null;
+    if (!getFullscreenElement()) {
+      restoreOldStyle = registerRestoreOldStyle(target);
+    }
+    var cssWidth, cssHeight;
+    if (strategy.softFullscreen) {
+      cssWidth = innerWidth;
+      cssHeight = innerHeight;
+    } else if (!getFullscreenElement() && typeof screen != 'undefined') {
+      cssWidth = screen.width;
+      cssHeight = screen.height;
+    } else {
+      var viewportWidth = (typeof innerWidth != 'undefined') ? innerWidth : 0;
+      var viewportHeight = (typeof innerHeight != 'undefined') ? innerHeight : 0;
+      if (typeof visualViewport != 'undefined' && visualViewport) {
+        viewportWidth = visualViewport.width;
+        viewportHeight = visualViewport.height;
+      }
+      if ((!viewportWidth || !viewportHeight) && typeof screen != 'undefined') {
+        viewportWidth = screen.width;
+        viewportHeight = screen.height;
+      }
+      cssWidth = viewportWidth;
+      cssHeight = viewportHeight;
+    }
     var rect = getBoundingClientRect(target);
     var windowedCssWidth = rect.width;
     var windowedCssHeight = rect.height;
