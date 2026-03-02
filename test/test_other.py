@@ -5841,7 +5841,7 @@ int main(int argc, char **argv) {
 
   @crossplatform
   @requires_node
-  def test_browser_language_detection(self):
+  def test_language_detection(self):
     # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
     expected_lang = os.environ.get('LANG')
     if expected_lang is None:
@@ -5853,17 +5853,15 @@ int main(int argc, char **argv) {
 
     # We support both "C" and system LANG here since older versions of node do
     # not expose navigator.languages.
-    output = self.do_runf('test_browser_language_detection.c')
-    self.assertContained(f'LANG=({expected_lang}|en_US.UTF-8|C.UTF-8)', output, regex=True)
+    self.do_runf('other/test_language_detection.c', f'LANG=({expected_lang}|en_US.UTF-8|C.UTF-8)', regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', 'delete global.navigator; globalThis.navigator = { language: "fr" };')
-    output = self.do_runf('test_browser_language_detection.c', cflags=['--pre-js', 'pre.js'])
-    self.assertContained('LANG=fr.UTF-8', output)
+    self.do_runf('other/test_language_detection.c', 'LANG=fr.UTF-8', cflags=['--pre-js', 'pre.js'])
 
     # Accept-Language: fr-FR,fr;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', r'delete global.navigator; globalThis.navigator = { language: "fr-FR" };')
-    self.do_runf('test_browser_language_detection.c', 'LANG=fr_FR.UTF-8', cflags=['--pre-js=pre.js'])
+    self.do_runf('other/test_language_detection.c', 'LANG=fr_FR.UTF-8', cflags=['--pre-js=pre.js'])
 
   def test_js_main(self):
     # try to add a main() from JS, at runtime. this is not supported (the
@@ -11836,9 +11834,9 @@ int main(void) {
   # I.e. -sMIN_X_VERSION=-1 is equal to -sMIN_X_VERSION=Infinity
   def test_drop_support_for_browser(self):
     # Test that -1 means "not supported"
-    self.run_process([EMCC, test_file('test_html5_core.c')])
+    self.run_process([EMCC, test_file('browser/test_html5_core.c')])
     self.assertContained('document.webkitFullscreenEnabled', read_file('a.out.js'))
-    self.run_process([EMCC, test_file('test_html5_core.c'), '-sMIN_SAFARI_VERSION=-1'])
+    self.run_process([EMCC, test_file('browser/test_html5_core.c'), '-sMIN_SAFARI_VERSION=-1'])
     self.assertNotContained('document.webkitFullscreenEnabled', read_file('a.out.js'))
 
   def test_errno_type(self):
