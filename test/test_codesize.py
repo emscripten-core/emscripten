@@ -76,7 +76,7 @@ class codesize(RunnerCore):
                                '-ffast-math']
 
     math_sources = [test_file('codesize/math.c')]
-    hello_world_sources = [test_file('small_hello_world.c'),
+    hello_world_sources = [test_file('hello_world_small.c'),
                            '-sMALLOC=none']
     random_printf_sources = [test_file('hello_random_printf.c'),
                              '-sMALLOC=none',
