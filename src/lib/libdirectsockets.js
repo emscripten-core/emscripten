@@ -18,6 +18,9 @@ var DirectSocketsLibrary = {
     // fd -> socket state mapping
     sockets: {},
 
+    // Monotonic counter for unique socket/pipe node names
+    nextId: 0,
+
     // DNS cache: hostname -> {addresses: [...], expires: timestamp}
     dnsCache: {},
 
@@ -31,20 +34,26 @@ var DirectSocketsLibrary = {
     stream_ops: {
       read(stream, buffer, offset, length, position) {
         var sock = stream.node.sock;
-        if (!sock || sock.state !== 'connected') return 0;
+        if (!sock || (sock.state !== 'connected' && sock.state !== 'bound')) return 0;
 
         // Synchronous: consume from recvQueue (filled by background reader)
         if (sock.recvQueue.length > 0) {
-          var chunk = sock.recvQueue[0];
+          var entry = sock.recvQueue[0];
+          // UDP datagrams are {data, remoteAddress, remotePort}; TCP chunks are Uint8Array
+          var chunk = entry.data ? entry.data : entry;
           var toRead = Math.min(chunk.length, length);
-          // Copy out of recvQueue chunk (may be from a non-shared buffer)
           for (var i = 0; i < toRead; i++) {
             buffer[offset + i] = chunk[i];
           }
           if (toRead >= chunk.length) {
             sock.recvQueue.shift();
           } else {
-            sock.recvQueue[0] = chunk.slice(toRead);
+            // Partial read: for TCP, keep remainder; for UDP, discard (datagram semantics)
+            if (entry.data) {
+              sock.recvQueue.shift(); // UDP: truncate
+            } else {
+              sock.recvQueue[0] = chunk.slice(toRead);
+            }
           }
           return toRead;
         }
@@ -121,7 +130,7 @@ var DirectSocketsLibrary = {
 
       // Create an FS node + stream so that write()/read() on this fd
       // routes through our custom stream_ops (same pattern as SOCKFS).
-      var name = 'socket[' + (Object.keys(DIRECT_SOCKETS.sockets).length) + ']';
+      var name = 'socket[' + (DIRECT_SOCKETS.nextId++) + ']';
       var node = FS.createNode(DIRECT_SOCKETS.root, name, {{{ cDefs.S_IFSOCK }}}, 0);
 
       var sock = {
@@ -527,8 +536,9 @@ var DirectSocketsLibrary = {
     },
 
     createPipe() {
-      var readFd = DIRECT_SOCKETS_PIPES.allocatePipeFd('pipe[r' + Object.keys(DIRECT_SOCKETS_PIPES.pipes).length + ']');
-      var writeFd = DIRECT_SOCKETS_PIPES.allocatePipeFd('pipe[w' + Object.keys(DIRECT_SOCKETS_PIPES.pipes).length + ']');
+      var id = DIRECT_SOCKETS.nextId++;
+      var readFd = DIRECT_SOCKETS_PIPES.allocatePipeFd('pipe[r' + id + ']');
+      var writeFd = DIRECT_SOCKETS_PIPES.allocatePipeFd('pipe[w' + id + ']');
       var pipe = {
         buffer: [],          // array of Uint8Array chunks
         closed: { read: false, write: false },
@@ -776,7 +786,8 @@ var DirectSocketsLibrary = {
 #if SOCKET_DEBUG
       dbg(`direct_sockets: connect error: ${e}`);
 #endif
-      sock.state = 'created';
+      // Restore prior state: if socket was bound, keep it bound (important for UDP)
+      sock.state = (sock.localAddress || sock.localPort) ? 'bound' : 'created';
       if (e.name === 'NotAllowedError') return -{{{ cDefs.EACCES }}};
       return -{{{ cDefs.ECONNREFUSED }}};
     }
@@ -1110,7 +1121,7 @@ var DirectSocketsLibrary = {
     var localPort = sock.localPort || 0;
 
     var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(localAddr), localPort, addrlen);
-    return errno ? -{{{ cDefs.EINVAL }}} : 0;
+    return errno ? -errno : 0;
   },
 
   __syscall_getpeername__deps: ['$writeSockaddr', '$DNS'],
@@ -1121,7 +1132,7 @@ var DirectSocketsLibrary = {
     if (!sock.remoteAddress) return -{{{ cDefs.ENOTCONN }}};
 
     var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.remoteAddress), sock.remotePort, addrlen);
-    return errno ? -{{{ cDefs.EINVAL }}} : 0;
+    return errno ? -errno : 0;
   },
 
   __syscall_setsockopt__async: true,
@@ -1615,7 +1626,8 @@ var DirectSocketsLibrary = {
       var argp = {{{ makeGetValue('varargs', 0, 'i32') }}};
       var avail = 0;
       for (var i = 0; i < sock.recvQueue.length; i++) {
-        avail += sock.recvQueue[i].length;
+        var entry = sock.recvQueue[i];
+        avail += (entry.data ? entry.data.length : entry.length);
       }
       {{{ makeSetValue('argp', 0, 'avail', 'i32') }}};
       return 0;
@@ -1629,19 +1641,20 @@ var DirectSocketsLibrary = {
   // DNS resolution - async DoH-based getaddrinfo support
   // ---------------------------------------------------------------------------
 
-  _emscripten_lookup_name__deps: ['$DNS', '$inetPton4'],
+  _emscripten_lookup_name__deps: ['$DNS', '$inetPton4', '$UTF8ToString'],
   _emscripten_lookup_name__async: true,
   _emscripten_lookup_name: async (name) => {
     var hostname = UTF8ToString(name);
 
     // Handle special cases that don't need DoH
+    // DNS.lookup_name returns a string; inetPton4 converts to packed uint32
     if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return DNS.lookup_name('localhost');
+      return inetPton4(DNS.lookup_name('localhost'));
     }
 
     // Check if it's already an IP address (dotted decimal)
     if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
-      return DNS.lookup_name(hostname);
+      return inetPton4(DNS.lookup_name(hostname));
     }
 
     // Try DoH resolution for real hostnames
@@ -1662,7 +1675,7 @@ var DirectSocketsLibrary = {
       if (DNS.address_map) {
         if (!DNS.address_map.addrs) DNS.address_map.addrs = {};
         if (!DNS.address_map.names) DNS.address_map.names = {};
-        DNS.address_map.addrs[hostname] = [realIp];
+        DNS.address_map.addrs[hostname] = realIp;
         DNS.address_map.names[realIp] = hostname;
       }
 
