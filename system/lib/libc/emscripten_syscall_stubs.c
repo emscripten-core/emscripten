@@ -255,11 +255,10 @@ weak int __syscall_prlimit64(int pid, int resource, intptr_t new_limit, intptr_t
   return 0;
 }
 
-// Commented out: Direct Sockets provides its own setsockopt implementation
-// weak int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optval, size_t optlen, int dummy) {
-//   REPORT(setsockopt);
-//   return -ENOPROTOOPT; // The option is unknown at the level indicated.
-// }
+weak int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optval, size_t optlen, int dummy) {
+  REPORT(setsockopt);
+  return -ENOPROTOOPT; // The option is unknown at the level indicated.
+}
 
 UNIMPLEMENTED(acct, (intptr_t filename))
 UNIMPLEMENTED(mincore, (intptr_t addr, size_t length, intptr_t vec))
