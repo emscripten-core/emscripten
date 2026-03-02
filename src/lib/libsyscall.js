@@ -320,7 +320,7 @@ var SyscallsLibrary = {
 // natively in libsockets.a.
 // When building with WASMFS the socket syscalls are implemented natively in
 // libwasmfs.a.
-#if PROXY_POSIX_SOCKETS == 0 && WASMFS == 0
+#if PROXY_POSIX_SOCKETS == 0 && WASMFS == 0 && DIRECT_SOCKETS == 0
   $getSocketFromFD__deps: ['$SOCKFS', '$FS'],
   $getSocketFromFD: (fd) => {
     var socket = SOCKFS.getSocket(fd);

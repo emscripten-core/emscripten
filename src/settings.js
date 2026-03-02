@@ -416,6 +416,10 @@ var WEBSOCKET_URL = 'ws://';
 // [link]
 var PROXY_POSIX_SOCKETS = false;
 
+// If true, use Direct Sockets API for TCP/UDP networking (requires Isolated Web App).
+// [link]
+var DIRECT_SOCKETS = false;
+
 // A string containing a comma separated list of WebSocket subprotocols
 // as would be present in the Sec-WebSocket-Protocol header.
 // You can set 'null', if you don't want to specify it.
