@@ -15089,8 +15089,8 @@ addToLibrary({
   @requires_node_25
   def test_js_base64_api(self):
     self.node_args += ['--js_base_64']
-    # JS_BASE64_API on has an effect when base64 is being used so we need to
-    # disable SINGLE_FILE_BINARY_ENCODE.
+    # JS_BASE64_API only has an effect when base64 is being used so we need to
+    # disable SINGLE_FILE_BINARY_ENCODE for this test.
     self.cflags += ['-sSINGLE_FILE', '-sSINGLE_FILE_BINARY_ENCODE=0']
     self.do_runf('hello_world.c', 'hello, world!', output_basename='baseline')
     self.do_runf('hello_world.c', 'hello, world!', cflags=['-sJS_BASE64_API', '-Wno-experimental'])
