@@ -2310,6 +2310,40 @@ class libstubs(DebugLibrary):
   src_files = ['emscripten_syscall_stubs.c', 'emscripten_libc_stubs.c']
 
 
+class libomp(Library):
+  name = 'libomp'
+  includes = [
+    'system/lib/libomp/src',
+    'system/lib/libomp/src/i18n',
+    'system/lib/libomp/src/thirdparty/ittnotify',
+  ]
+  # This needs to come from the flags. If it does not, llvm won't add propper magic symbols
+  never_force = True
+  cflags = [
+    '-O3', '-DNDEBUG', '-pthread',
+    '-D_GNU_SOURCE', '-U_GLIBCXX_ASSERTIONS', '-D_GLIBCXX_NO_ASSERTIONS',
+    '-fno-exceptions', '-fno-rtti',
+    '-Wall', '-Wformat-pedantic',
+    '-Wimplicit-fallthrough', '-Wsign-compare',
+    '-Wno-covered-switch-default',
+    '-Wno-frame-address', '-Wno-strict-aliasing', '-Wno-switch',
+    '-Wno-uninitialized', '-Wno-return-type-c-linkage', '-Wno-cast-qual',
+    '-Wno-int-to-void-pointer-cast', '-Wno-#warnings','-Wno-unused-function',
+    '-Wno-sign-compare', '-Wno-comment',
+  ]
+  src_dir = 'system/lib/libomp/src'
+  src_files = [
+    'kmp_alloc.cpp', 'kmp_atomic.cpp', 'kmp_csupport.cpp', 'kmp_debug.cpp',
+    'kmp_itt.cpp', 'kmp_environment.cpp', 'kmp_error.cpp', 'kmp_global.cpp',
+    'kmp_i18n.cpp', 'kmp_io.cpp', 'kmp_runtime.cpp', 'kmp_settings.cpp',
+    'kmp_str.cpp', 'kmp_tasking.cpp', 'kmp_threadprivate.cpp', 'kmp_utility.cpp',
+    'kmp_barrier.cpp', 'kmp_wait_release.cpp', 'kmp_affinity.cpp', 'kmp_dispatch.cpp',
+    'kmp_lock.cpp', 'kmp_sched.cpp', 'kmp_collapse.cpp', 'z_Linux_util.cpp',
+    'kmp_gsupport.cpp', 'kmp_taskdeps.cpp', 'kmp_cancel.cpp', 'kmp_ftn_cdecl.cpp',
+    'kmp_ftn_extra.cpp', 'kmp_version.cpp', 'z_Linux_asm.S',
+  ]
+
+
 def get_libs_to_link(options):
   libs_to_link = []
 
@@ -2418,6 +2452,9 @@ def get_libs_to_link(options):
   # libc math.
   if settings.JS_MATH:
     add_library('libjsmath')
+
+  if options.openmp:
+    add_library("libomp")
 
   # C libraries that override libc must come before it
   if settings.PRINTF_LONG_DOUBLE:
@@ -2535,6 +2572,8 @@ def install_system_headers(stamp):
     'system/lib/libcxx/include': 'c++/v1',
     'system/lib/libcxxabi/include': 'c++/v1',
     'system/lib/mimalloc/include': '',
+    # Install openmp headers
+    'system/lib/libomp/include': '',
   }
 
   target_include_dir = cache.get_include_dir()

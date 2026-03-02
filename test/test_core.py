@@ -5571,6 +5571,17 @@ got: 10
     self.cflags += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
+  def test_openmp_max_threads(self):
+    src = r"""
+      #include <omp.h>
+      int main(void) {
+        omp_get_max_threads();
+        return 0;
+      }
+    """
+    self.cflags += ["-fopenmp=libomp"]
+    self.do_run(src, "")
+
   def test_fscanf(self):
     create_file('three_numbers.txt', '-1 0.1 -.1')
     src = r'''
