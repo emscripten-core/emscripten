@@ -1188,7 +1188,7 @@ var DirectSocketsLibrary = {
 #endif
           return 0;
       }
-    } else if (level === {{{ cDefs.IPPROTO_IP }}}) {
+    } else if (level === 0 /* IPPROTO_IP */) {
       switch (optname) {
         case IP_MULTICAST_TTL:
           sock.options.multicastTtl = HEAPU8[optval];
@@ -1203,7 +1203,7 @@ var DirectSocketsLibrary = {
         default:
           return 0;
       }
-    } else if (level === {{{ cDefs.IPPROTO_IPV6 }}}) {
+    } else if (level === 41 /* IPPROTO_IPV6 */) {
       switch (optname) {
         case IPV6_MULTICAST_LOOP:
           sock.options.multicastLoopback = !!HEAPU8[optval];
