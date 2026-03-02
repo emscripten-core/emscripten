@@ -1739,7 +1739,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
       browser_exe = browser[0]
       browser_args = shlex.split(unwrap(options.browser_args))
 
-      if MACOS and ('safari' in browser_exe.lower() or browser_exe == 'open'):
+      if MACOS and 'safari' in browser_exe.lower():
         # Safari has a bug that a command line 'Safari http://page.com' does
         # not launch that page, but instead launches 'file:///http://page.com'.
         # To remedy this, must use the open -a command to run Safari, but
