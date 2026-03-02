@@ -1615,6 +1615,31 @@ int f() {
     # Without the `-sEXPORT_ALL` these symbols will not be visible from JS
     self.do_runf('main.c', '_libf1 is not defined', assert_returncode=NON_ZERO, cflags=['-Oz', '-sMAIN_MODULE', '--pre-js', 'pre.js'])
 
+  def test_export_all_syscall_override(self):
+    create_file('main.c', r'''
+      #include "stdio.h"
+      #include <fcntl.h>
+
+      int syscall_openat_orig(int dirfd, intptr_t path, int flags, void* varags)
+          __attribute__((__import_module__("env"),
+                        __import_name__("__syscall_openat"), __warn_unused_result__));
+
+      int __syscall_openat(int dirfd, intptr_t path, int flags, void* varargs) {
+          printf("__syscall_openat!\n");
+          return syscall_openat_orig(dirfd, path, flags, varargs);
+      }
+
+      int main() {
+          int fd = open("a.c", O_RDONLY);
+          printf("fd: %d\n", fd);
+      }
+    ''')
+
+    self.do_runf('main.c', '__syscall_openat!', cflags=['-sEXPORT_ALL', '-sNODERAWFS'])
+    self.do_runf('main.c', '__syscall_openat!', cflags=['-sMAIN_MODULE', '-sNODERAWFS'])
+    self.do_runf('main.c', '__syscall_openat!', cflags=['-O2', '-sEXPORT_ALL', '-sMAIN_MODULE', '-sNODERAWFS'])
+    self.do_runf('main.c', '__syscall_openat!', cflags=['-sEXPORT_ALL', '-sMAIN_MODULE', '-sNODERAWFS'])
+
   def test_export_keepalive(self):
     create_file('main.c', r'''
       #include <emscripten.h>
