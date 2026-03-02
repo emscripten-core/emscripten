@@ -57,7 +57,14 @@ commands:
   bootstrap:
     description: "bootstrap"
     steps:
+      - restore_cache:
+          keys:
+            - bootstrap-node-deps-{{ arch }}-{{ checksum "package-lock.json" }}
       - run: ./bootstrap
+      - save_cache:
+          key: bootstrap-node-deps-{{ arch }}-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
   pip-install:
     description: "pip install"
     parameters:
@@ -66,9 +73,22 @@ commands:
         type: string
         default: python3
     steps:
+      - restore_cache:
+          keys:
+            - python-deps-v2-{{ arch }}-checksum "requirements-dev.txt" }}
       - run:
           name: pip install
-          command: << parameters.python >> -m pip install -r requirements-dev.txt
+          command: |
+            if [[ -e ~/.cache/pip ]]; then
+              echo "Skipping npm ci due to cache hit"
+            else
+              << parameters.python >> -m pip install -r requirements-dev.txt
+            fi
+      - save_cache:
+          key: python-deps-v2-{{ arch }}-{{ checksum "requirements-dev.txt" }}
+          paths:
+            - ~/.cache/pip
+            - ~/.local/bin
   install-rust:
     steps:
       - run:
@@ -557,10 +577,24 @@ jobs:
     executor: linux-node
     steps:
       - checkout
-      - run: npm ci
+      - restore_cache:
+          keys:
+            - node-deps-{{ arch }}-{{ checksum "package-lock.json" }}
+      - run:
+          name: npm ci
+          command: |
+            if [[ -e node_modules ]]; then
+              echo "Skipping npm ci due to cache hit"
+            else
+              npm ci
+            fi
       - run: |
           npm run lint
           npm run check
+      - save_cache:
+          key: node-deps-{{ arch }}-{{ checksum "package-lock.json" }}
+          paths:
+            - node_modules
   test-sanity:
     executor: ubuntu-lts
     steps:
