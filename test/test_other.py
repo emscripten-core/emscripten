@@ -4488,9 +4488,9 @@ printErr('CWD: ' + process.cwd());
     self.assertContained('EMCC_BUILD_DIR: ' + os.path.realpath(os.path.normpath(self.get_dir())), err)
     self.assertContained('CWD: ' + os.path.realpath(os.path.normpath(self.get_dir())), err)
 
-  def test_float_h(self):
-    process = self.run_process([EMCC, test_file('float+.c')], stdout=PIPE, stderr=PIPE)
-    assert process.returncode == 0, 'float.h should agree with our system: ' + process.stdout + '\n\n\n' + process.stderr
+  def test_gnulib_float_h(self):
+    # Check the static assertions presend in gnulib float+.h.
+    self.run_process([EMCC, '-o', 'out.pch', '-c', test_file('third_party/gnulib/float+.h')])
 
   def test_output_is_dir(self):
     ensure_dir('out_dir')
