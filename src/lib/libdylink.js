@@ -1357,6 +1357,12 @@ var LibraryDylink = {
     var symDict = lib.exports;
     var symName = Object.keys(symDict)[symbolIndex];
     var sym = symDict[symName];
+#if ASYNCIFY
+    // Asyncify wraps exports, and we need to look through those wrappers.
+    if (sym.orig) {
+      sym = sym.orig;
+    }
+#endif
     var result = addFunction(sym, sym.sig);
 #if DYLINK_DEBUG
     dbg(`_dlsym_catchup: result=${result}`);
