@@ -30,30 +30,25 @@ EMSCRIPTEN_WEBAUDIO_T bassID = 0;
 // registered as an internal audio object and the ID returned).
 EM_JS(EMSCRIPTEN_WEBAUDIO_T, createTrack, (EMSCRIPTEN_WEBAUDIO_T ctxID, const char* url, bool looping), {
   var context = emscriptenGetAudioObject(ctxID);
-  if (context) {
-    var audio = document.createElement('audio');
-    // Number() wrapper is a workaround for UTF8ToString() needing a JS number
-    // and from64() not being available in EM_JS macros. Fix in UTF8ToString?
-    audio.src = UTF8ToString(Number(url));
-    audio.loop = looping;
-    var track = context.createMediaElementSource(audio);
-    return emscriptenRegisterAudioObject(track);
-  }
-  return 0;
+  var audio = document.createElement('audio');
+  // Number() wrapper is a workaround for UTF8ToString() needing a JS number
+  // and from64() not being available in EM_JS macros. Fix in UTF8ToString?
+  audio.src = UTF8ToString(Number(url));
+  audio.loop = looping;
+  var track = context.createMediaElementSource(audio);
+  return emscriptenRegisterAudioObject(track);
 })
 
 // Toggles the play/pause of a MediaElementAudioSourceNode given its ID
 EM_JS(void, toggleTrack, (EMSCRIPTEN_WEBAUDIO_T srcID), {
   var source = emscriptenGetAudioObject(srcID);
-  if (source) {
-    var audio = source.mediaElement;
-    if (audio) {
-      if (audio.paused) {
-        audio.currentTime = 0;
-        audio.play();
-      } else {
-        audio.pause();
-      }
+  var audio = source.mediaElement;
+  if (audio) {
+    if (audio.paused) {
+      audio.currentTime = 0;
+      audio.play();
+    } else {
+      audio.pause();
     }
   }
 })
