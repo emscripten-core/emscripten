@@ -15089,8 +15089,11 @@ addToLibrary({
   @requires_node_25
   def test_js_base64_api(self):
     self.node_args += ['--js_base_64']
-    self.do_runf('hello_world.c', 'hello, world!', cflags=['-sSINGLE_FILE'], output_basename='baseline')
-    self.do_runf('hello_world.c', 'hello, world!', cflags=['-sSINGLE_FILE', '-sJS_BASE64_API', '-Wno-experimental'])
+    # JS_BASE64_API on has an effect when base64 is being used so we need to
+    # disable SINGLE_FILE_BINARY_ENCODE.
+    self.cflags += ['-sSINGLE_FILE', '-sSINGLE_FILE_BINARY_ENCODE=0']
+    self.do_runf('hello_world.c', 'hello, world!', output_basename='baseline')
+    self.do_runf('hello_world.c', 'hello, world!', cflags=['-sJS_BASE64_API', '-Wno-experimental'])
     # We expect the resulting JS file to be smaller because it doesn't contain the
     # base64 decoding code
     baseline_size = os.path.getsize('baseline.js')
