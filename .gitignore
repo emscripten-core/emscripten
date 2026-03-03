@@ -39,7 +39,7 @@ coverage.xml
 !/tools/run_python.ps1
 !/tools/run_python_compiler.ps1
 
-/tools/maint/pylauncher/pylauncher.obj
+/tools/pylauncher/pylauncher.obj
 
 # Shell scripts (created by ./tools/maint/create_entry_points.py)
 em++
