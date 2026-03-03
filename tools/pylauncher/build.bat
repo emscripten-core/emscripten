@@ -4,7 +4,7 @@
 :: since Windows 10 (2015) and via Windows Update for Vista/7/8/8.1.
 ::
 :: /O1 : Favor small code (optimization for size)
-:: /GS- : Disable buffer security checks (requires vcruntime)
+:: /GS- : Disable buffer security checks (requires vc runtime and not necessary for our tiny command line wrapper)
 :: /NODEFAULTLIB : Do not link the default libraries
 :: /ENTRY:main : Use main() as entry point directly (no CRT startup)
 :: /Brepro : Deterministic (reproducible) output
