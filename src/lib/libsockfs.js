@@ -5,10 +5,19 @@
  */
 
 addToLibrary({
+#if ENVIRONMENT_MAY_BE_NODE
+#if EXPORT_ES6
+  $nodeWs: "ENVIRONMENT_IS_NODE ? ({{{ makeNodeImport('ws') }}}).default : undefined",
+#else
+  $nodeWs: "ENVIRONMENT_IS_NODE ? {{{ makeNodeImport('ws') }}} : undefined",
+#endif
+  $SOCKFS__deps: ['$FS', '$nodeWs'],
+#else
+  $SOCKFS__deps: ['$FS'],
+#endif
   $SOCKFS__postset: () => {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
-  $SOCKFS__deps: ['$FS'],
   $SOCKFS: {
 #if expectToReceiveOnModule('websocket')
     websocketArgs: {},
@@ -216,7 +225,7 @@ addToLibrary({
             var WebSocketConstructor;
 #if ENVIRONMENT_MAY_BE_NODE
             if (ENVIRONMENT_IS_NODE) {
-              WebSocketConstructor = /** @type{(typeof WebSocket)} */(require('ws'));
+              WebSocketConstructor = /** @type{(typeof WebSocket)} */(nodeWs);
             } else
 #endif // ENVIRONMENT_MAY_BE_NODE
             {
@@ -522,7 +531,7 @@ addToLibrary({
         if (sock.server) {
            throw new FS.ErrnoError({{{ cDefs.EINVAL }}});  // already listening
         }
-        var WebSocketServer = require('ws').Server;
+        var WebSocketServer = nodeWs.Server;
         var host = sock.saddr;
 #if SOCKET_DEBUG
         dbg(`websocket: listen: ${host}:${sock.sport}`);

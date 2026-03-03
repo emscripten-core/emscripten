@@ -159,9 +159,12 @@ addToLibrary({
 
   emscripten_has_threading_support: () => !!globalThis.SharedArrayBuffer,
 
+#if ENVIRONMENT_MAY_BE_NODE
+  emscripten_num_logical_cores__deps: ['$nodeOs'],
+#endif
   emscripten_num_logical_cores: () =>
 #if ENVIRONMENT_MAY_BE_NODE
-    ENVIRONMENT_IS_NODE ? require('node:os').cpus().length :
+    ENVIRONMENT_IS_NODE ? nodeOs.cpus().length :
 #endif
     navigator['hardwareConcurrency'],
 });
