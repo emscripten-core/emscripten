@@ -11292,6 +11292,17 @@ int main(void) {
     test_error('Module = { preRun: [] };')
     test_error('Module.preRun = [];')
 
+  def test_EMSCRIPTEN_macro(self):
+    create_file('src.c', '''
+      #include <emscripten.h>
+
+      #ifdef EMSCRIPTEN
+      int foo;
+      #endif
+    ''')
+    self.assert_fail([EMCC, '-Werror', 'src.c', '-c'], "'EMSCRIPTEN' has been marked as deprecated: use __EMSCRIPTEN__ instead")
+    self.assert_fail([EMCC, '-sSTRICT', '-Werror', 'src.c', '-c'], "'EMSCRIPTEN' has been marked as deprecated: use __EMSCRIPTEN__ instead")
+
   def test_EMSCRIPTEN_and_STRICT(self):
     # __EMSCRIPTEN__ is the proper define; we support EMSCRIPTEN for legacy
     # code, unless STRICT is enabled.
