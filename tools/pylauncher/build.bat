@@ -2,4 +2,4 @@
 :: /O1 : Favor small code (optimization for size)
 :: /Brepro : Use deterministic (reproducible) output without timestamps
 
-cl pylauncher.c /Fe:pylauncher.exe /MT /O1 /link /Brepro
+cl pylauncher.c /Fe:pylauncher.exe /MT /O1 /link /Brepro shlwapi.lib

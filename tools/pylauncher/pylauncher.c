@@ -20,8 +20,6 @@
 #include <stdbool.h>
 #include <stdlib.h>
 
-#pragma comment(lib, "shlwapi.lib")
-
 static bool launcher_debug = false;
 
 static void dbg(const char* format, ...) {
