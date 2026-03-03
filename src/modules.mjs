@@ -90,6 +90,10 @@ function calculateLibraries() {
     libraries.push('libsyscall.js');
   }
 
+  if (settings.DIRECT_SOCKETS) {
+    libraries.push('libdirectsockets.js');
+  }
+
   if (MAIN_MODULE || RELOCATABLE) {
     libraries.push('libdylink.js');
   }
