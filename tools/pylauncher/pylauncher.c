@@ -15,14 +15,12 @@
 #define _WIN32_WINNT 0x0601
 
 #include <windows.h>
-#include <shellapi.h>
 #include <shlwapi.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
 
 #pragma comment(lib, "shlwapi.lib")
-#pragma comment(lib, "shell32.lib")
 
 static bool launcher_debug = false;
 
