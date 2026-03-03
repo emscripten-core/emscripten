@@ -9,6 +9,9 @@
  *
  * The binary will look for a python script that matches its own name and run
  * that using python.exe.
+ *
+ * Built with /NODEFAULTLIB linking only against ucrt.lib (ucrtbase.dll) to
+ * avoid any dependency on a specific Visual C++ Redistributable version.
  */
 
 // Define _WIN32_WINNT to Windows 7 for max portability
@@ -19,6 +22,18 @@
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
+#include <wchar.h>
+
+// ZeroMemory expands to memset which lives in vcruntime, not ucrt.
+// SecureZeroMemory is an inline in <winnt.h> with no runtime dependency.
+#undef ZeroMemory
+#define ZeroMemory SecureZeroMemory
+
+// MSVC names this _wcsdup; alias it to the standard name.
+#ifdef _MSC_VER
+#define wcsdup _wcsdup
+#endif
 
 static bool launcher_debug = false;
 
@@ -142,7 +157,7 @@ static const wchar_t* get_script_path(const wchar_t* launcher_path) {
   return script_path_tools;
 }
 
-int main(int argc, char* argv[]) {
+int main() {
   // Setting EMCC_LAUNCHER_DEBUG enabled debug output for the launcher itself.
   launcher_debug = GetEnvironmentVariableW(L"EMCC_LAUNCHER_DEBUG", NULL, 0);
 
