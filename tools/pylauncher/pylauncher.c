@@ -26,7 +26,7 @@
 
 static bool launcher_debug = false;
 
-static int dbg(const char* format, ...) {
+static void dbg(const char* format, ...) {
   if (launcher_debug) {
     va_list args;
     va_start(args, format);
