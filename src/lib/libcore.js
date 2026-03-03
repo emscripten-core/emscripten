@@ -369,6 +369,11 @@ addToLibrary({
   },
 #endif
 
+#if ENVIRONMENT_MAY_BE_NODE
+  $nodeOs: "{{{ makeNodeImport('node:os') }}}",
+  $nodeChildProcess: "{{{ makeNodeImport('node:child_process') }}}",
+  _emscripten_system__deps: ['$nodeChildProcess'],
+#endif
   _emscripten_system: (command) => {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
