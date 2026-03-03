@@ -14856,10 +14856,7 @@ addToLibrary({
   })
   def test_fp16(self, args):
     self.v8_args += ['--experimental-wasm-fp16']
-    # TODO Remove this. Liftoff is currently broken for this test.
-    # https://chromium-review.googlesource.com/c/v8/v8/+/5842546
-    self.v8_args += ['--no-liftoff']
-    self.do_runf('test_fp16.c', cflags=['-msimd128', '-mfp16', '-sENVIRONMENT=shell'] + args)
+    self.do_runf('test_fp16.c', cflags=['-msimd128', '-mfp16', '-mrelaxed-simd', '-sENVIRONMENT=shell'] + args)
 
   def test_embool(self):
     self.do_other_test('test_embool.c')
