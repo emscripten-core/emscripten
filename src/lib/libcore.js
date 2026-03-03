@@ -2175,31 +2175,6 @@ addToLibrary({
 #endif
   },
 
-#if RELOCATABLE
-  // Globals that are normally exported from the wasm module but in relocatable
-  // mode are created here and imported by the module.
-  __stack_pointer: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(STACK_HIGH) }}})",
-  // tell the memory segments where to place themselves
-  __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
-  // the wasm backend reserves slot 0 for the NULL function pointer
-  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(TABLE_BASE) }}})",
-#if MEMORY64 == 2
-  __memory_base32: "new WebAssembly.Global({'value': 'i32', 'mutable': false}, {{{ GLOBAL_BASE }}})",
-#endif
-#if MEMORY64
-  __table_base32: {{{ TABLE_BASE }}},
-#endif
-  // To support such allocations during startup, track them on __heap_base and
-  // then when the main module is loaded it reads that value and uses it to
-  // initialize sbrk (the main module is relocatable itself, and so it does not
-  // have __heap_base hardcoded into it - it receives it from JS as an extern
-  // global, basically).
-  __heap_base: '{{{ HEAP_BASE }}}',
-  __stack_high: '{{{ STACK_HIGH }}}',
-  __stack_low: '{{{ STACK_LOW }}}',
-  __global_base: '{{{ GLOBAL_BASE }}}',
-#endif // RELOCATABLE
-
   _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
   _emscripten_fs_load_embedded_files: (ptr) => {
 #if RUNTIME_DEBUG
@@ -2253,24 +2228,9 @@ addToLibrary({
     }
   },
 
-  $wasmTable__docs: '/** @type {WebAssembly.Table} */',
-#if RELOCATABLE
-  // In RELOCATABLE mode we create the table in JS.
-  $wasmTable: `=new WebAssembly.Table({
-  'initial': {{{ toIndexType(INITIAL_TABLE) }}},
-#if !ALLOW_TABLE_GROWTH
-  'maximum': {{{ toIndexType(INITIAL_TABLE) }}},
-#endif
-#if MEMORY64 == 1
-  'address': 'i64',
-#endif
-  'element': 'anyfunc'
-});
-`,
-#else
   // `wasmTable` is a JS alias for the Wasm `__indirect_function_table` export
+  $wasmTable__docs: '/** @type {WebAssembly.Table} */',
   $wasmTable: '__indirect_function_table',
-#endif
 
 #if IMPORTED_MEMORY
   // This gets defined in src/runtime_init_memory.js

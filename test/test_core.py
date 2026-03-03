@@ -191,18 +191,9 @@ def needs_dylink(func):
   assert callable(func)
 
   @wraps(func)
-  def decorated(self, relocatable, *args, **kwargs):
+  def decorated(self, *args, **kwargs):
     self.check_dylink()
-    if relocatable:
-      # Since `-sMAIN_MODULE` no longer implies `-sRELOCATABLE` but we want
-      # to keep that combination working we run all the `@needs_dylink` tests
-      # both with and without the explicit `-sRELOCATABLE`
-      self.set_setting('RELOCATABLE')
-      self.cflags.append('-Wno-deprecated')
     return func(self, *args, **kwargs)
-
-  parameterize(decorated, {'': (False,),
-                           'relocatable': (True,)})
 
   return decorated
 
@@ -3319,10 +3310,6 @@ Var: 42
 
     # sanitizers add a lot of extra symbols
     if is_sanitizing(self.cflags):
-      return
-
-    if self.get_setting('RELOCATABLE'):
-      # The relocatable version of this test produces slightly different exports.
       return
 
     def get_data_exports(wasm):
