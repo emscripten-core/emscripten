@@ -2254,8 +2254,7 @@ addToLibrary({
   },
 
   $wasmTable__docs: '/** @type {WebAssembly.Table} */',
-#if RELOCATABLE
-  // In RELOCATABLE mode we create the table in JS.
+#if IMPORTED_TABLE
   $wasmTable: `=new WebAssembly.Table({
   'initial': {{{ toIndexType(INITIAL_TABLE) }}},
 #if !ALLOW_TABLE_GROWTH

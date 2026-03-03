@@ -178,7 +178,7 @@ class InvalidWasmError(BaseException):
 
 Section = namedtuple('Section', ['type', 'size', 'offset', 'name'])
 Limits = namedtuple('Limits', ['flags', 'initial', 'maximum'])
-Import = namedtuple('Import', ['kind', 'module', 'field', 'type'])
+Import = namedtuple('Import', ['kind', 'module', 'field', 'type', 'limits'])
 Export = namedtuple('Export', ['name', 'kind', 'index'])
 Global = namedtuple('Global', ['type', 'mutable', 'init'])
 Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info', 'runtime_paths'])
@@ -412,6 +412,7 @@ class Module:
       field = self.read_string()
       kind = ExternType(self.read_byte())
       type_ = None
+      limits = None
       match kind:
         case ExternType.FUNC:
           type_ = self.read_uleb()
@@ -419,18 +420,25 @@ class Module:
           type_ = self.read_sleb()
           self.read_byte()  # mutable
         case ExternType.MEMORY:
-          self.read_limits()  # limits
+          limits = self.read_limits()  # limits
         case ExternType.TABLE:
           type_ = self.read_sleb()
-          self.read_limits()  # limits
+          limits = self.read_limits()  # limits
         case ExternType.TAG:
           self.read_byte()  # attribute
           type_ = self.read_uleb()
         case _:
           raise AssertionError()
-      imports.append(Import(kind, mod, field, type_))
+      imports.append(Import(kind, mod, field, type_, limits))
 
     return imports
+
+  @memoize
+  def get_function_table_import(self):
+    for import_ in self.get_imports():
+      if import_.module == 'env' and import_.field == '__indirect_function_table':
+        return import_
+    return None
 
   @memoize
   def get_globals(self):

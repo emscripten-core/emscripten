@@ -1167,6 +1167,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$wasmMemory')
 
+  if settings.IMPORTED_TABLE:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$wasmTable')
+
   if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
 
@@ -1592,6 +1595,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.PTHREADS or settings.WASM_WORKERS or settings.RELOCATABLE:
     settings.IMPORTED_MEMORY = 1
+
+  if settings.RELOCATABLE:
+    settings.IMPORTED_TABLE = 1
 
   set_initial_memory()
 

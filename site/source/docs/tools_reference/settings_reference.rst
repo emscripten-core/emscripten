@@ -3203,6 +3203,18 @@ depend on being able to define the memory in JavaScript:
 
 Default value: false
 
+.. _imported_table:
+
+IMPORTED_TABLE
+==============
+
+Set to 1 to define the WebAssembly.Table object outside of the wasm module.
+By default the wasm module defines the table and exports it to JavaScript.
+Use of the `RELOCATABLE` setting will enable this setting since it depends
+on defining the table in JavaScript.
+
+Default value: false
+
 .. _split_module:
 
 SPLIT_MODULE
