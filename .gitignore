@@ -39,6 +39,8 @@ coverage.xml
 !/tools/run_python.ps1
 !/tools/run_python_compiler.ps1
 
+/tools/maint/pylauncher/pylauncher.obj
+
 # Shell scripts (created by ./tools/maint/create_entry_points.py)
 em++
 emcc
@@ -88,3 +90,28 @@ emsymbolizer.bat
 test/runner.bat
 tools/file_packager.bat
 tools/webidl_binder.bat
+
+bootstrap.exe
+em++.exe
+emcc.exe
+em-config.exe
+emar.exe
+embuilder.exe
+emcmake.exe
+emconfigure.exe
+emdump.exe
+emdwp.exe
+emmake.exe
+emnm.exe
+empath-split.exe
+emprofile.exe
+emranlib.exe
+emrun.exe
+emscan-deps.exe
+emscons.exe
+emsize.exe
+emstrip.exe
+emsymbolizer.exe
+tools/file_packager.exe
+tools/webidl_binder.exe
+test/runner.exe
