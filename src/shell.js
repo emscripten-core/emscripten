@@ -107,18 +107,9 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
 #endif
 
-#if ENVIRONMENT_MAY_BE_NODE && (EXPORT_ES6 || PTHREADS || WASM_WORKERS)
+#if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
 if (ENVIRONMENT_IS_NODE) {
-#if EXPORT_ES6
-  // When building an ES module `require` is not normally available.
-  // We need to use `createRequire()` to construct the require()` function.
-  const { createRequire } = await import('node:module');
-  /** @suppress{duplicate} */
-  var require = createRequire(import.meta.url);
-#endif
-
-#if PTHREADS || WASM_WORKERS
-  var worker_threads = require('node:worker_threads');
+  var worker_threads = {{{ makeNodeImport('node:worker_threads') }}};
   global.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 #if PTHREADS
@@ -129,7 +120,6 @@ if (ENVIRONMENT_IS_NODE) {
 #if WASM_WORKERS
   ENVIRONMENT_IS_WASM_WORKER = ENVIRONMENT_IS_WORKER && worker_threads.workerData == 'em-ww'
 #endif
-#endif // PTHREADS || WASM_WORKERS
 }
 #endif // ENVIRONMENT_MAY_BE_NODE
 
@@ -200,11 +190,13 @@ if (ENVIRONMENT_IS_NODE) {
 
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
-  var fs = require('node:fs');
+  var fs = {{{ makeNodeImport('node:fs') }}};
 
 #if EXPORT_ES6
   if (_scriptName.startsWith('file:')) {
-    scriptDirectory = require('node:path').dirname(require('node:url').fileURLToPath(_scriptName)) + '/';
+    var nodePath = {{{ makeNodeImport('node:path') }}};
+    var nodeUrl = {{{ makeNodeImport('node:url') }}};
+    scriptDirectory = nodePath.dirname(nodeUrl.fileURLToPath(_scriptName)) + '/';
   }
 #else
   scriptDirectory = __dirname + '/';
@@ -352,7 +344,7 @@ if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 var defaultPrint = console.log.bind(console);
 var defaultPrintErr = console.error.bind(console);
 if (ENVIRONMENT_IS_NODE) {
-  var utils = require('node:util');
+  var utils = {{{ makeNodeImport('node:util') }}};
   var stringify = (a) => typeof a == 'object' ? utils.inspect(a) : a;
   defaultPrint = (...args) => fs.writeSync(1, args.map(stringify).join(' ') + '\n');
   defaultPrintErr = (...args) => fs.writeSync(2, args.map(stringify).join(' ') + '\n');

@@ -954,6 +954,20 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue) {
   return ret;
 }
 
+function makeNodeImport(module) {
+  if (EXPORT_ES6) {
+    return `await import('${module}')`;
+  }
+  return `require('${module}')`;
+}
+
+function makeNodeFilePath(filename) {
+  if (EXPORT_ES6) {
+    return `new URL('${filename}', import.meta.url)`;
+  }
+  return `__dirname + '/${filename}'`;
+}
+
 function makeRemovedFSAssert(fsName) {
   assert(ASSERTIONS);
   const lower = fsName.toLowerCase();
@@ -1241,6 +1255,8 @@ addToCompileTimeContext({
   makeModuleReceive,
   makeModuleReceiveExpr,
   makeModuleReceiveWithVar,
+  makeNodeFilePath,
+  makeNodeImport,
   makeRemovedFSAssert,
   makeRetainedCompilerSettings,
   makeReturn64,
