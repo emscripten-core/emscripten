@@ -168,8 +168,8 @@ addToLibrary({
         let sp = stackSave();
         let namePtr = stringToUTF8OnStack(name);
         let type = child.kind == "file" ?
-            {{{ cDefine('File::DataFileKind') }}} :
-        {{{ cDefine('File::DirectoryKind') }}};
+            {{{ cDefs['File::DataFileKind'] }}} :
+            {{{ cDefs['File::DirectoryKind'] }}};
           __wasmfs_opfs_record_entry(entriesPtr, namePtr, type)
         stackRestore(sp);
       }

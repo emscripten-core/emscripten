@@ -3,12 +3,6 @@
     // libc
     // ===========================================
     {
-        "file": "pthread.h",
-        "defines": [
-          "PTHREAD_CANCELED"
-        ]
-    },
-    {
         "file": "dirent.h",
         "defines": [
             "DT_DIR",
@@ -133,7 +127,6 @@
             "POLLERR",
             "POLLRDNORM",
             "POLLWRNORM",
-            "POLLPRI",
             "POLLIN",
             "POLLOUT",
             "POLLNVAL"
@@ -162,12 +155,7 @@
                 "tm_wday",
                 "tm_yday",
                 "tm_isdst",
-                "tm_gmtoff",
-                "tm_zone"
-            ],
-            "timeval": [
-                "tv_sec",
-                "tv_usec"
+                "tm_gmtoff"
             ],
             "timespec": [
                 "tv_sec",
@@ -191,21 +179,10 @@
             "AI_PASSIVE",
             "NI_NAMEREQD",
             "EAI_NONAME",
-            "EAI_AGAIN",
-            "EAI_FAIL",
-            "EAI_MEMORY",
-            "EAI_SYSTEM",
             "EAI_SOCKTYPE",
             "EAI_BADFLAGS"
         ],
         "structs": {
-            "hostent": [
-                "h_name",
-                "h_aliases",
-                "h_addrtype",
-                "h_length",
-                "h_addr_list"
-            ],
             "addrinfo": [
                 "ai_flags",
                 "ai_family",
@@ -486,8 +463,6 @@
     {
         "file": "sys/mman.h",
         "defines": [
-            "MAP_ANONYMOUS",
-            "MAP_FIXED",
             "MAP_PRIVATE",
             "PROT_WRITE"
         ]
@@ -495,8 +470,6 @@
     {
         "file": "dlfcn.h",
         "defines": [
-            "RTLD_NOW",
-            "RTLD_LAZY",
             "RTLD_DEFAULT",
             "RTLD_GLOBAL",
             "RTLD_NODELETE"
@@ -530,10 +503,7 @@
                 "c_oflag",
                 "c_cflag",
                 "c_lflag",
-                "c_line",
-                "c_cc",
-                "__c_ispeed",
-                "__c_ospeed"
+                "c_cc"
             ]
         }
     },
@@ -859,29 +829,22 @@
             "EMSCRIPTEN_RESULT_NOT_SUPPORTED",
             "EMSCRIPTEN_RESULT_FAILED",
             "EMSCRIPTEN_RESULT_NO_DATA",
-            "EMSCRIPTEN_RESULT_TIMED_OUT",
 
-            "EMSCRIPTEN_EVENT_TARGET_INVALID",
             "EMSCRIPTEN_EVENT_TARGET_DOCUMENT",
             "EMSCRIPTEN_EVENT_TARGET_WINDOW",
-            "EMSCRIPTEN_EVENT_TARGET_SCREEN",
 
             "EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT",
-            "EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH",
             "EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT",
             "EMSCRIPTEN_FULLSCREEN_SCALE_CENTER",
             "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE",
-            "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF",
             "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF",
             "EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT",
             "EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST",
-            "EMSCRIPTEN_FULLSCREEN_FILTERING_BILINEAR",
 
             "EM_HTML5_SHORT_STRING_LEN_BYTES",
             "EM_HTML5_MEDIUM_STRING_LEN_BYTES",
             "EM_HTML5_LONG_STRING_LEN_BYTES",
 
-            "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW",
             "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK",
             "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS",
 
@@ -931,7 +894,6 @@
               "canvasY"
             ],
             "EmscriptenWheelEvent": [
-              "mouse",
               "deltaX",
               "deltaY",
               "deltaZ",
@@ -1067,7 +1029,6 @@
             "EM_FUNC_SIG_PARAM_I",
             "EM_FUNC_SIG_PARAM_J",
             "EM_FUNC_SIG_PARAM_F",
-            "EM_FUNC_SIG_PARAM_D",
             "EM_FUNC_SIG_PARAM_B",
             "EM_FUNC_SIG_PARAM_F2I"
         ]
@@ -1177,7 +1138,6 @@
         "structs": {
             "emscripten_fetch_attr_t": [
                 "requestMethod",
-                "userData",
                 "onsuccess",
                 "onerror",
                 "onprogress",
@@ -1195,7 +1155,6 @@
             ],
             "emscripten_fetch_t": [
                 "id",
-                "userData",
                 "url",
                 "data",
                 "numBytes",
@@ -1212,11 +1171,9 @@
             "EMSCRIPTEN_FETCH_LOAD_TO_MEMORY",
             "EMSCRIPTEN_FETCH_STREAM_DATA",
             "EMSCRIPTEN_FETCH_PERSIST_FILE",
-            "EMSCRIPTEN_FETCH_APPEND",
             "EMSCRIPTEN_FETCH_REPLACE",
             "EMSCRIPTEN_FETCH_NO_DOWNLOAD",
-            "EMSCRIPTEN_FETCH_SYNCHRONOUS",
-            "EMSCRIPTEN_FETCH_WAITABLE"
+            "EMSCRIPTEN_FETCH_SYNCHRONOUS"
         ]
     },
     {
