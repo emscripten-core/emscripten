@@ -20,19 +20,15 @@
 #include <emscripten/eventloop.h>
 
 int64_t timespec_delta_ms(struct timespec* begin, struct timespec* end) {
-  struct timespec diff = {
-    .tv_sec = end->tv_sec - begin->tv_sec,
-    .tv_nsec = end->tv_nsec - begin->tv_nsec
-  };
+  int64_t delta_sec = end->tv_sec - begin->tv_sec;
+  int64_t delta_nsec = end->tv_nsec - begin->tv_nsec;
 
-  if (diff.tv_nsec < 0) {
-    diff.tv_nsec += 1000000000;
-    diff.tv_sec -= 1;
-  }
+  assert(delta_sec >= 0);
+  assert(delta_nsec > -1000000000 && delta_nsec < 1000000000);
 
-  assert(diff.tv_sec >= 0);
-
-  return (diff.tv_sec * 1000) + (diff.tv_nsec / 1000000);
+  int64_t delta_ms = (delta_sec * 1000) + (delta_nsec / 1000000);
+  assert(delta_ms >= 0);
+  return delta_ms;
 }
 
 // Check if timeout works without fds
