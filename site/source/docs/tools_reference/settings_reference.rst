@@ -1597,21 +1597,6 @@ the module.
 
 Default value: false
 
-.. _relocatable:
-
-RELOCATABLE
-===========
-
-If set to 1, we emit relocatable code from the LLVM backend; both
-globals and function pointers are all offset (by gb and fp, respectively)
-Automatically set for SIDE_MODULE or MAIN_MODULE.
-
-.. note:: Applicable during both linking and compilation
-
-.. note:: This setting is deprecated
-
-Default value: false
-
 .. _main_module:
 
 MAIN_MODULE
@@ -3434,7 +3419,6 @@ these settings please open a bug (or reply to one of the existing bugs).
  - ``LEGALIZE_JS_FFI``: to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
- - ``RELOCATABLE``:  under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
 
 .. _legacy-settings:
 
@@ -3524,3 +3508,4 @@ for backwards compatibility with older versions:
  - ``NODEJS_CATCH_EXIT``: No longer supported (Valid values: [0])
  - ``NODEJS_CATCH_REJECTION``: No longer supported (Valid values: [0])
  - ``POLYFILL_OLD_MATH_FUNCTIONS``: No longer supported (Valid values: [0])
+ - ``RELOCATABLE``: No longer supported (Valid values: [0])
