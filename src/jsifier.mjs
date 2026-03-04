@@ -29,6 +29,7 @@ import {
   addToCompileTimeContext,
   debugLog,
   error,
+  printErr,
   errorOccured,
   isDecorator,
   isJsOnlySymbol,
@@ -559,7 +560,7 @@ function(${args}) {
 
       // if the function was implemented in compiled code, there is no need to
       // include the js version
-      if (WASM_EXPORTS.has(symbol) && !DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.includes(symbol)) {
+      if (WASM_EXPORTS.has(symbol) && !WASM_IMPORTS.includes(symbol)) {
         return;
       }
 

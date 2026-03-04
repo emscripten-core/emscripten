@@ -16,6 +16,9 @@
 // underscore.
 var WASM_EXPORTS = [];
 
+// List of symbols imported from JavaScript
+var WASM_IMPORTS = [];
+
 // An array of all symbols exported from all the side modules specified on the
 // command line.
 // These are raw symbol names and are not mangled to include the leading
