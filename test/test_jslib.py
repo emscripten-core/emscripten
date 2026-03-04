@@ -718,7 +718,7 @@ console.error('JSLIB: none of the above');
       #error "library does not support emscripten > 3.0.0"
       #endif
     ''')
-    self.assert_fail([EMCC, '--js-library=libfoo.js'], 'error: libfoo.js:3: #error "library does not support emscripten > 3.0.0"')
+    self.assert_fail([EMCC, '--js-library=libfoo.js', test_file('hello_world.c')], 'error: libfoo.js:3: #error "library does not support emscripten > 3.0.0"')
 
   def test_jslib_named_class(self):
     create_file('lib.js', r'''

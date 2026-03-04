@@ -338,6 +338,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.js_transform = consume_arg()
     elif check_arg('--reproduce'):
       options.reproduce = consume_arg()
+    elif check_arg('--js-library'):
+      settings.JS_LIBRARIES.append(consume_arg())
     elif check_arg('--pre-js'):
       options.pre_js.append(consume_arg_file())
     elif check_arg('--post-js'):
