@@ -5978,6 +5978,11 @@ Module.onRuntimeInitialized = () => {
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'fILe1.txt', '--from-emcc', '--js-output=script.js'])
     self.do_runf('fs/test_insensitive_hang.c', cflags=['-sFORCE_FILESYSTEM', '-sCASE_INSENSITIVE_FS'])
 
+  def test_insensitive_overwrite(self):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
+    self.set_setting('CASE_INSENSITIVE_FS', ['1'])
+    self.add_pre_run(read_file(test_file('fs/test_insensitive_overwrite.js')))
+    self.do_run_in_out_file_test('fs/test_insensitive_overwrite.c')
 
   def test_fs_64bit(self):
     if self.get_setting('WASMFS'):
