@@ -5969,7 +5969,14 @@ Module.onRuntimeInitialized = () => {
   @also_with_noderawfs
   def test_fs_writev(self):
     self.do_runf('fs/test_writev.c', 'success', cflags=['-sFORCE_FILESYSTEM'])
-    self.do_runf('fs/test_case_insensitive.c', 'success', cflags=['-sFORCE_FILESYSTEM', '-sCASE_INSENSITIVE_FS'])
+
+  def test_insensitive_hang(self):
+    create_file('file1.txt', 'one')
+    create_file('fILe1.txt', 'two')
+    # `--from-emcc` needed here otherwise the output defines `var Module =` which will shadow the
+    # global `Module`.
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'fILe1.txt', '--from-emcc', '--js-output=script.js'])
+    self.do_runf('fs/test_insensitive_hang.c', cflags=['-sFORCE_FILESYSTEM', '-sCASE_INSENSITIVE_FS'])
 
 
   def test_fs_64bit(self):

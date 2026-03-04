@@ -709,7 +709,7 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
 #if CASE_INSENSITIVE_FS
-      if(errCode === {{{ cDefs.EEXIST }}}) {
+      if (errCode === {{{ cDefs.EEXIST }}}) {
         var oldNodeLookup = FS.lookupPath(path);
         var oldNode = oldNodeLookup.node;
         FS.destroyNode(oldNode);
