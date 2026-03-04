@@ -329,6 +329,15 @@ export const LibraryManager = {
       preprocessedName = path.join(getTempDir(), path.basename(filename));
     }
 
+    if (EXPORT_ES6) {
+      // `vm.runInContext` doesn't support module syntax; to allow it,
+      // we need to temporarily replace `import.meta` usages with
+      // placeholders during the JS compile phase, then in Python
+      // we reverse this replacement.
+      // See also: `emscript` in emscripten.py.
+      contents = contents.replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META');
+    }
+
     try {
       runInMacroContext(contents, {filename: preprocessedName})
     } catch (e) {

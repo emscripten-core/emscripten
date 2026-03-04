@@ -23,7 +23,7 @@ export default function ({ types: t, targets }) {
       },
 
       // e.g. `await import('node:fs')`
-      // Note: only here for reference, it's mangled with EMSCRIPTEN$AWAIT$IMPORT below.
+      // Note: when using Closure, it's mangled with EMSCRIPTEN$AWAIT$IMPORT below.
       ImportExpression({ node }) {
         if (t.isStringLiteral(node.source) && node.source.value.startsWith('node:')) {
           node.source.value = node.source.value.slice(5);
@@ -34,8 +34,7 @@ export default function ({ types: t, targets }) {
       CallExpression({ node }) {
         if (
           (t.isIdentifier(node.callee, { name: 'require' }) ||
-            // Special placeholder for `await import`
-            // FIXME: Remove after PR https://github.com/emscripten-core/emscripten/pull/23730 is landed.
+            // Special placeholder for `await import` when using Closure
             t.isIdentifier(node.callee, { name: 'EMSCRIPTEN$AWAIT$IMPORT' })) &&
           t.isStringLiteral(node.arguments[0]) &&
           node.arguments[0].value.startsWith('node:')
