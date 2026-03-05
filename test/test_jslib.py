@@ -480,7 +480,7 @@ extraLibraryFuncs.push('jsfunc');
 
   # Tests using the #error directive in JS library files
   def test_jslib_errors(self):
-    shutil.copy(test_file('error_in_js_libraries.js'), '.')
+    shutil.copy(test_file('jslib/error_in_js_libraries.js'), '.')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'error_in_js_libraries.js'])
     self.assertNotContained('This error should not be present!', err)
     self.assertContained('error: error_in_js_libraries.js:5: #error This is an error string!', err)
@@ -706,11 +706,11 @@ console.error('JSLIB: none of the above');
 
     # When WebGL is implicitly linked in, the implicit linking should happen before any user
     # --js-libraries, so that they can adjust the behavior afterwards.
-    self.do_run_in_out_file_test('test_jslib_override_system_symbol.c', cflags=['--js-library', test_file('test_jslib_override_system_symbol.js'), '-sMAX_WEBGL_VERSION=2'])
+    self.do_run_in_out_file_test('jslib/test_jslib_override_system_symbol.c', cflags=['--js-library', test_file('jslib/test_jslib_override_system_symbol.js'), '-sMAX_WEBGL_VERSION=2'])
 
     # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
-    self.cflags += ['-sAUTO_JS_LIBRARIES=0', '-sMAX_WEBGL_VERSION=2', '-lwebgl.js', '--js-library', test_file('test_jslib_override_system_symbol.js')]
-    self.do_run_in_out_file_test('test_jslib_override_system_symbol.c')
+    self.cflags += ['-sAUTO_JS_LIBRARIES=0', '-sMAX_WEBGL_VERSION=2', '-lwebgl.js', '--js-library', test_file('jslib/test_jslib_override_system_symbol.js')]
+    self.do_run_in_out_file_test('jslib/test_jslib_override_system_symbol.c')
 
   def test_jslib_version_check(self):
     create_file('libfoo.js', '''

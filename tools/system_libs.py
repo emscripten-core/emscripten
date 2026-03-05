@@ -61,12 +61,12 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   flags = ['-g', '-sSTRICT', '-Werror']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
-  if settings.RELOCATABLE or settings.MAIN_MODULE:
-    # Explicitly include `-sRELOCATABLE` when building system libraries.
+  if settings.MAIN_MODULE:
+    # Explicitly include `-sMAIN_MODULE` when building system libraries.
     # `-fPIC` alone is not enough to configure trigger the building and
     # caching of `pic` libraries (see `get_lib_dir` in `cache.py`)
     # FIXME(sbc): `-fPIC` should really be enough here.
-    flags += ['-fPIC', '-sRELOCATABLE']
+    flags += ['-fPIC', '-sMAIN_MODULE']
     if preprocess:
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
@@ -1404,7 +1404,7 @@ class libc(MuslInternalLibrary,
           'system.c',
         ])
 
-    if settings.RELOCATABLE or settings.MAIN_MODULE:
+    if settings.MAIN_MODULE:
       libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
 
     libc_files += files_in_path(
@@ -1562,7 +1562,7 @@ class libwasm_workers(DebugLibrary):
 
   def can_use(self):
     # see src/library_wasm_worker.js
-    return super().can_use() and not settings.SINGLE_FILE and not settings.RELOCATABLE
+    return super().can_use() and not settings.SINGLE_FILE and not settings.MAIN_MODULE
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
@@ -2454,7 +2454,7 @@ def get_libs_to_link(options):
   else:
     add_library('libsockets')
 
-  if settings.WASM_WORKERS and (not settings.SINGLE_FILE and not settings.RELOCATABLE):
+  if settings.WASM_WORKERS and (not settings.SINGLE_FILE and not settings.MAIN_MODULE):
     # When we include libwasm_workers we use `--whole-archive` to ensure
     # that the static constructor (`emscripten_wasm_worker_main_thread_initialize`)
     # is run.

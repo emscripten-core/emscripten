@@ -4488,9 +4488,9 @@ printErr('CWD: ' + process.cwd());
     self.assertContained('EMCC_BUILD_DIR: ' + os.path.realpath(os.path.normpath(self.get_dir())), err)
     self.assertContained('CWD: ' + os.path.realpath(os.path.normpath(self.get_dir())), err)
 
-  def test_float_h(self):
-    process = self.run_process([EMCC, test_file('float+.c')], stdout=PIPE, stderr=PIPE)
-    assert process.returncode == 0, 'float.h should agree with our system: ' + process.stdout + '\n\n\n' + process.stderr
+  def test_gnulib_float_h(self):
+    # Check the static assertions presend in gnulib float+.h.
+    self.run_process([EMCC, '-o', 'out.pch', '-c', test_file('third_party/gnulib/float+.h')])
 
   def test_output_is_dir(self):
     ensure_dir('out_dir')
@@ -5841,7 +5841,7 @@ int main(int argc, char **argv) {
 
   @crossplatform
   @requires_node
-  def test_browser_language_detection(self):
+  def test_language_detection(self):
     # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
     expected_lang = os.environ.get('LANG')
     if expected_lang is None:
@@ -5853,17 +5853,15 @@ int main(int argc, char **argv) {
 
     # We support both "C" and system LANG here since older versions of node do
     # not expose navigator.languages.
-    output = self.do_runf('test_browser_language_detection.c')
-    self.assertContained(f'LANG=({expected_lang}|en_US.UTF-8|C.UTF-8)', output, regex=True)
+    self.do_runf('other/test_language_detection.c', f'LANG=({expected_lang}|en_US.UTF-8|C.UTF-8)', regex=True)
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', 'delete global.navigator; globalThis.navigator = { language: "fr" };')
-    output = self.do_runf('test_browser_language_detection.c', cflags=['--pre-js', 'pre.js'])
-    self.assertContained('LANG=fr.UTF-8', output)
+    self.do_runf('other/test_language_detection.c', 'LANG=fr.UTF-8', cflags=['--pre-js', 'pre.js'])
 
     # Accept-Language: fr-FR,fr;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', r'delete global.navigator; globalThis.navigator = { language: "fr-FR" };')
-    self.do_runf('test_browser_language_detection.c', 'LANG=fr_FR.UTF-8', cflags=['--pre-js=pre.js'])
+    self.do_runf('other/test_language_detection.c', 'LANG=fr_FR.UTF-8', cflags=['--pre-js=pre.js'])
 
   def test_js_main(self):
     # try to add a main() from JS, at runtime. this is not supported (the
@@ -11294,6 +11292,17 @@ int main(void) {
     test_error('Module = { preRun: [] };')
     test_error('Module.preRun = [];')
 
+  def test_EMSCRIPTEN_macro(self):
+    create_file('src.c', '''
+      #include <emscripten.h>
+
+      #ifdef EMSCRIPTEN
+      int foo;
+      #endif
+    ''')
+    self.assert_fail([EMCC, '-Werror', 'src.c', '-c'], "'EMSCRIPTEN' has been marked as deprecated: use __EMSCRIPTEN__ instead")
+    self.assert_fail([EMCC, '-sSTRICT', '-Werror', 'src.c', '-c'], "'EMSCRIPTEN' has been marked as deprecated: use __EMSCRIPTEN__ instead")
+
   def test_EMSCRIPTEN_and_STRICT(self):
     # __EMSCRIPTEN__ is the proper define; we support EMSCRIPTEN for legacy
     # code, unless STRICT is enabled.
@@ -11836,9 +11845,9 @@ int main(void) {
   # I.e. -sMIN_X_VERSION=-1 is equal to -sMIN_X_VERSION=Infinity
   def test_drop_support_for_browser(self):
     # Test that -1 means "not supported"
-    self.run_process([EMCC, test_file('test_html5_core.c')])
+    self.run_process([EMCC, test_file('browser/test_html5_core.c')])
     self.assertContained('document.webkitFullscreenEnabled', read_file('a.out.js'))
-    self.run_process([EMCC, test_file('test_html5_core.c'), '-sMIN_SAFARI_VERSION=-1'])
+    self.run_process([EMCC, test_file('browser/test_html5_core.c'), '-sMIN_SAFARI_VERSION=-1'])
     self.assertNotContained('document.webkitFullscreenEnabled', read_file('a.out.js'))
 
   def test_errno_type(self):
@@ -14858,10 +14867,7 @@ addToLibrary({
   })
   def test_fp16(self, args):
     self.v8_args += ['--experimental-wasm-fp16']
-    # TODO Remove this. Liftoff is currently broken for this test.
-    # https://chromium-review.googlesource.com/c/v8/v8/+/5842546
-    self.v8_args += ['--no-liftoff']
-    self.do_runf('test_fp16.c', cflags=['-msimd128', '-mfp16', '-sENVIRONMENT=shell'] + args)
+    self.do_runf('test_fp16.c', cflags=['-msimd128', '-mfp16', '-mrelaxed-simd', '-sENVIRONMENT=shell'] + args)
 
   def test_embool(self):
     self.do_other_test('test_embool.c')
@@ -15089,8 +15095,11 @@ addToLibrary({
   @requires_node_25
   def test_js_base64_api(self):
     self.node_args += ['--js_base_64']
-    self.do_runf('hello_world.c', 'hello, world!', cflags=['-sSINGLE_FILE'], output_basename='baseline')
-    self.do_runf('hello_world.c', 'hello, world!', cflags=['-sSINGLE_FILE', '-sJS_BASE64_API', '-Wno-experimental'])
+    # JS_BASE64_API only has an effect when base64 is being used so we need to
+    # disable SINGLE_FILE_BINARY_ENCODE for this test.
+    self.cflags += ['-sSINGLE_FILE', '-sSINGLE_FILE_BINARY_ENCODE=0']
+    self.do_runf('hello_world.c', 'hello, world!', output_basename='baseline')
+    self.do_runf('hello_world.c', 'hello, world!', cflags=['-sJS_BASE64_API', '-Wno-experimental'])
     # We expect the resulting JS file to be smaller because it doesn't contain the
     # base64 decoding code
     baseline_size = os.path.getsize('baseline.js')
@@ -15346,20 +15355,10 @@ addToLibrary({
     err_no_fast = self.run_process([EMCC, test_file('hello_world.c'), '-v', '-O2'], stderr=PIPE).stderr
     self.assertNotContained('--fast-math', err_no_fast)
 
-  def test_relocatable(self):
-    # This setting is due for removal:
-    # https://github.com/emscripten-core/emscripten/issues/25262
-    self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sRELOCATABLE'])
-
   def test_linkable(self):
     # This setting is due for removal:
     # https://github.com/emscripten-core/emscripten/issues/25262
     self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sLINKABLE'])
-
-  def test_linkable_relocatable(self):
-    # These setting is due for removal:
-    # https://github.com/emscripten-core/emscripten/issues/25262
-    self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sLINKABLE', '-sRELOCATABLE'])
 
   # Tests encoding of all byte pairs for binary encoding in SINGLE_FILE mode.
   @parameterized({

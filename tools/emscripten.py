@@ -372,9 +372,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
       shutil.copy(in_wasm, out_wasm)
     metadata = get_metadata(in_wasm, out_wasm, False, [])
 
-  if settings.RELOCATABLE and settings.MEMORY64 == 2:
-    metadata.imports += ['__memory_base32']
-
   # If the binary has already been finalized the settings have already been
   # updated and we can skip updating them.
   if finalize:
@@ -422,20 +419,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   for e in settings.EXPORTED_FUNCTIONS:
     if not js_manipulation.isidentifier(e):
       diagnostics.warning('js-compiler', f'export name is not a valid JS symbol: "{e}".  Use `Module` or `wasmExports` to access this symbol')
-
-  # memory and global initializers
-
-  if settings.RELOCATABLE:
-    dylink_sec = webassembly.parse_dylink_section(in_wasm)
-    static_bump = align_memory(dylink_sec.mem_size)
-    set_memory(static_bump)
-    logger.debug('stack_low: %d, stack_high: %d, heap_base: %d', settings.STACK_LOW, settings.STACK_HIGH, settings.HEAP_BASE)
-
-    # When building relocatable output (e.g. MAIN_MODULE) the reported table
-    # size does not include the reserved slot at zero for the null pointer.
-    # So we need to offset the elements by 1.
-    if settings.INITIAL_TABLE == -1:
-      settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
   if metadata.invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
@@ -749,8 +732,6 @@ def create_asm_consts(metadata):
       func = f'function({args}) {{ {body} }}'
     else:
       func = f'({args}) => {{ {body} }}'
-    if settings.RELOCATABLE:
-      addr += settings.GLOBAL_BASE
     asm_consts[addr] = func
   asm_consts = sorted(asm_consts.items())
   return asm_consts
@@ -827,11 +808,6 @@ def add_standard_wasm_imports(send_items_map):
   # TODO(sbc): can we make these into normal library symbols?
   if settings.IMPORTED_MEMORY:
     send_items_map['memory'] = 'wasmMemory'
-
-  if settings.RELOCATABLE:
-    send_items_map['__indirect_function_table'] = 'wasmTable'
-    if settings.MEMORY64:
-      send_items_map['__table_base32'] = '___table_base32'
 
   if settings.AUTODEBUG:
     extra_sent_items += [

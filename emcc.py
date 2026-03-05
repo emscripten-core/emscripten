@@ -404,9 +404,6 @@ def phase_setup(state):
             'unused-command-line-argument',
             "linker flag ignored during compilation: '%s'" % arg)
 
-  if settings.SIDE_MODULE:
-    settings.RELOCATABLE = 1
-
   if 'USE_PTHREADS' in user_settings:
     settings.PTHREADS = settings.USE_PTHREADS
 
