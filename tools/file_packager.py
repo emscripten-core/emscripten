@@ -683,13 +683,12 @@ def generate_preload_js(data_target, data_files, metadata):
         } catch (e) {
           err(`Preloading file ${name} failed`, e);
         }\n'''
-  create_data = '''
-        try {
-        // canOwn this data in the filesystem, it is a slice into the heap that will never change
-        Module['FS_createDataFile'](name, null, data, true, true, true);
+  create_data = '''try {
+          // canOwn this data in the filesystem, it is a slice into the heap that will never change
+          Module['FS_createDataFile'](name, null, data, true, true, true);
         } catch(e) {
           err(`Preloading file ${name} failed`, e);
-        }\n
+        }
         Module['removeRunDependency'](`fp ${name}`);'''
 
   finish_handler = create_preloaded if options.use_preload_plugins else create_data

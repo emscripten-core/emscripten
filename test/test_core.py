@@ -5970,6 +5970,7 @@ Module.onRuntimeInitialized = () => {
   def test_fs_writev(self):
     self.do_runf('fs/test_writev.c', 'success', cflags=['-sFORCE_FILESYSTEM'])
 
+  @no_modularize_instance('uses Module object directly')
   def test_insensitive_hang(self):
     create_file('file1.txt', 'one')
     create_file('fILe1.txt', 'two')
