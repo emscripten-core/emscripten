@@ -262,7 +262,25 @@
         "defines": [
             "IPPROTO_UDP",
             "IPPROTO_TCP",
-            "INADDR_LOOPBACK"
+            "IPPROTO_IP",
+            "IPPROTO_IPV6",
+            "INADDR_LOOPBACK",
+            "IP_MULTICAST_TTL",
+            "IP_MULTICAST_LOOP",
+            "IP_ADD_MEMBERSHIP",
+            "IP_DROP_MEMBERSHIP",
+            "IPV6_MULTICAST_LOOP",
+            "IPV6_MULTICAST_HOPS",
+            "IPV6_JOIN_GROUP",
+            "IPV6_LEAVE_GROUP"
+        ]
+    },
+    {
+        "file": "netinet/tcp.h",
+        "defines": [
+            "TCP_NODELAY",
+            "TCP_KEEPIDLE",
+            "TCP_KEEPINTVL"
         ]
     },
     {
@@ -312,7 +330,13 @@
             "AF_UNSPEC",
             "AF_INET6",
             "SOL_SOCKET",
-            "SO_ERROR"
+            "SO_ERROR",
+            "SO_REUSEADDR",
+            "SO_TYPE",
+            "SO_SNDBUF",
+            "SO_RCVBUF",
+            "SO_KEEPALIVE",
+            "SO_REUSEPORT"
         ]
     },
     {

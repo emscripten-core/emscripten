@@ -97,6 +97,28 @@ alternative, the WebRTC specification provides a mechanism to perform UDP-like
 communication with WebRTC Data Channels. Currently Emscripten does not provide a
 C/C++ API for interacting with WebRTC.
 
+Direct Sockets API (Isolated Web Apps)
+=======================================
+
+The `Direct Sockets API <https://wicg.github.io/direct-sockets/>`_ provides
+real TCP and UDP socket access from the browser, without needing a proxy server.
+This API is only available inside Chrome Isolated Web Apps (IWAs).
+
+Emscripten can route POSIX socket syscalls through the Direct Sockets API using
+``TCPSocket``, ``TCPServerSocket``, and ``UDPSocket``. This enables existing
+C/C++ networking code (including libraries like OpenSSL and Tor) to work
+with real network sockets inside an IWA.
+
+To enable Direct Sockets support, compile and link with
+``-sDIRECT_SOCKETS``. This also requires ``-sASYNCIFY`` (or JSPI).
+
+The following POSIX socket functions are supported:
+ - ``socket()``, ``bind()``, ``connect()``, ``listen()``, ``accept()``,
+   ``send()``, ``recv()``, ``sendto()``, ``recvfrom()``, ``sendmsg()``,
+   ``recvmsg()``, ``shutdown()``, ``getsockname()``, ``getpeername()``,
+   ``setsockopt()``, ``getsockopt()``, ``poll()``, ``ioctl()``,
+   ``fcntl()``, ``pipe()``, ``socketpair()``
+
 WebTransport and QUIC
 =====================
 
