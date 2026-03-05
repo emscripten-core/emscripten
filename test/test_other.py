@@ -1632,6 +1632,16 @@ int f() {
     self.do_runf('main.c', '__syscall_openat!', cflags=['-O2', '-sEXPORT_ALL', '-sMAIN_MODULE', '-sNODERAWFS'])
     self.do_runf('main.c', '__syscall_openat!', cflags=['-sEXPORT_ALL', '-sMAIN_MODULE', '-sNODERAWFS'])
 
+    # Test with ES6 module output
+    self.run_process([EMCC, 'main.c', '-o', 'main.mjs', '-sEXPORT_ALL', '-sMAIN_MODULE', '-sNODERAWFS'])
+    create_file('run.mjs', '''
+    import {default as loadModule} from './main.mjs'
+
+    await loadModule();
+    ''')
+
+    self.assertContained('__syscall_openat!', self.run_js('run.mjs'))
+
   def test_export_keepalive(self):
     create_file('main.c', r'''
       #include <emscripten.h>
