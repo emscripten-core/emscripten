@@ -18,8 +18,8 @@
 
 #define _mm256_mpsadbw_epu8(__A, __B, __imm)                                   \
   __extension__({                                                              \
-    __m256i_internal __a = __m256i_to_internal(__A);                             \
-    __m256i_internal __b = __m256i_to_internal(__B);                             \
+    __m256i_internal __a = __m256i_to_internal(__A);                           \
+    __m256i_internal __b = __m256i_to_internal(__B);                           \
     _mm256_set_m128i(_mm_mpsadbw_epu8(__a.v1, __b.v1, (__imm) >> 3),           \
                      _mm_mpsadbw_epu8(__a.v0, __b.v0, (__imm)));               \
   })
