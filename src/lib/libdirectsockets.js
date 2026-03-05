@@ -1588,7 +1588,7 @@ var DirectSocketsLibrary = {
   },
 
   // ---------------------------------------------------------------------------
-  // DNS resolution - async DoH-based getaddrinfo support
+  // DNS resolution - override emscripten's default to handle Direct Sockets
   // ---------------------------------------------------------------------------
 
   _emscripten_lookup_name__deps: ['$DNS', '$inetPton4', '$UTF8ToString'],
