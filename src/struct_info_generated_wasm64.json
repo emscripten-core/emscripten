@@ -63,16 +63,12 @@
         "EADV": 122,
         "EAFNOSUPPORT": 5,
         "EAGAIN": 6,
-        "EAI_AGAIN": -3,
         "EAI_BADFLAGS": -1,
-        "EAI_FAIL": -4,
         "EAI_FAMILY": -6,
-        "EAI_MEMORY": -10,
         "EAI_NONAME": -2,
         "EAI_OVERFLOW": -12,
         "EAI_SERVICE": -8,
         "EAI_SOCKTYPE": -7,
-        "EAI_SYSTEM": -11,
         "EALREADY": 7,
         "EBADE": 113,
         "EBADF": 8,
@@ -161,8 +157,6 @@
         "EMSCRIPTEN_EVENT_RESIZE": 10,
         "EMSCRIPTEN_EVENT_SCROLL": 11,
         "EMSCRIPTEN_EVENT_TARGET_DOCUMENT": 1,
-        "EMSCRIPTEN_EVENT_TARGET_INVALID": 0,
-        "EMSCRIPTEN_EVENT_TARGET_SCREEN": 3,
         "EMSCRIPTEN_EVENT_TARGET_WINDOW": 2,
         "EMSCRIPTEN_EVENT_TOUCHCANCEL": 25,
         "EMSCRIPTEN_EVENT_TOUCHEND": 23,
@@ -172,24 +166,19 @@
         "EMSCRIPTEN_EVENT_WEBGLCONTEXTLOST": 31,
         "EMSCRIPTEN_EVENT_WEBGLCONTEXTRESTORED": 32,
         "EMSCRIPTEN_EVENT_WHEEL": 9,
-        "EMSCRIPTEN_FETCH_APPEND": 8,
         "EMSCRIPTEN_FETCH_LOAD_TO_MEMORY": 1,
         "EMSCRIPTEN_FETCH_NO_DOWNLOAD": 32,
         "EMSCRIPTEN_FETCH_PERSIST_FILE": 4,
         "EMSCRIPTEN_FETCH_REPLACE": 16,
         "EMSCRIPTEN_FETCH_STREAM_DATA": 2,
         "EMSCRIPTEN_FETCH_SYNCHRONOUS": 64,
-        "EMSCRIPTEN_FETCH_WAITABLE": 128,
         "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_HIDEF": 2,
         "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_NONE": 0,
-        "EMSCRIPTEN_FULLSCREEN_CANVAS_SCALE_STDDEF": 1,
-        "EMSCRIPTEN_FULLSCREEN_FILTERING_BILINEAR": 2,
         "EMSCRIPTEN_FULLSCREEN_FILTERING_DEFAULT": 0,
         "EMSCRIPTEN_FULLSCREEN_FILTERING_NEAREST": 1,
         "EMSCRIPTEN_FULLSCREEN_SCALE_ASPECT": 2,
         "EMSCRIPTEN_FULLSCREEN_SCALE_CENTER": 3,
         "EMSCRIPTEN_FULLSCREEN_SCALE_DEFAULT": 0,
-        "EMSCRIPTEN_FULLSCREEN_SCALE_STRETCH": 1,
         "EMSCRIPTEN_ORIENTATION_UNSUPPORTED": 0,
         "EMSCRIPTEN_RESULT_DEFERRED": 1,
         "EMSCRIPTEN_RESULT_FAILED": -6,
@@ -199,17 +188,14 @@
         "EMSCRIPTEN_RESULT_NOT_SUPPORTED": -1,
         "EMSCRIPTEN_RESULT_NO_DATA": -7,
         "EMSCRIPTEN_RESULT_SUCCESS": 0,
-        "EMSCRIPTEN_RESULT_TIMED_OUT": -8,
         "EMSCRIPTEN_RESULT_UNKNOWN_TARGET": -4,
         "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS": 2,
-        "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW": 0,
         "EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK": 1,
         "EMSGSIZE": 35,
         "EMULTIHOP": 36,
         "EM_CALLBACK_THREAD_CONTEXT_CALLING_THREAD": 2,
         "EM_CALLBACK_THREAD_CONTEXT_MAIN_RUNTIME_THREAD": 1,
         "EM_FUNC_SIG_PARAM_B": 4,
-        "EM_FUNC_SIG_PARAM_D": 3,
         "EM_FUNC_SIG_PARAM_F": 2,
         "EM_FUNC_SIG_PARAM_F2I": 5,
         "EM_FUNC_SIG_PARAM_I": 0,
@@ -332,15 +318,10 @@
         "KMOD_RALT": 512,
         "KMOD_RCTRL": 128,
         "KMOD_RSHIFT": 2,
-        "MAP_ANONYMOUS": 32,
-        "MAP_FIXED": 16,
         "MAP_PRIVATE": 2,
         "NCCS": 32,
         "NI_NAMEREQD": 8,
         "NI_NUMERICHOST": 1,
-        "NOTIFICATION_NONE": 0,
-        "NOTIFICATION_PENDING": 2,
-        "NOTIFICATION_RECEIVED": 1,
         "ONLCR": 4,
         "OPOST": 1,
         "O_ACCMODE": 2097155,
@@ -364,16 +345,12 @@
         "POLLIN": 1,
         "POLLNVAL": 32,
         "POLLOUT": 4,
-        "POLLPRI": 2,
         "POLLRDNORM": 64,
         "POLLWRNORM": 256,
         "PROT_WRITE": 2,
-        "PTHREAD_CANCELED": -1,
         "RTLD_DEFAULT": 0,
         "RTLD_GLOBAL": 256,
-        "RTLD_LAZY": 1,
         "RTLD_NODELETE": 4096,
-        "RTLD_NOW": 2,
         "R_OK": 4,
         "SDLK_LALT": 1250,
         "SDLK_LCTRL": 1248,
@@ -422,7 +399,6 @@
         "SEEK_END": 2,
         "SEEK_SET": 0,
         "SIGALRM": 14,
-        "SIGCANCEL": 33,
         "SIGFPE": 8,
         "SIGHUP": 1,
         "SIGINT": 2,
@@ -747,8 +723,7 @@
             "deltaMode": 88,
             "deltaX": 64,
             "deltaY": 72,
-            "deltaZ": 80,
-            "mouse": 0
+            "deltaZ": 80
         },
         "SDL_AudioSpec": {
             "__size__": 32,
@@ -920,7 +895,6 @@
             "caught": 24,
             "exceptionDestructor": 16,
             "exceptionType": 8,
-            "referenceCount": 0,
             "rethrown": 25
         },
         "__wasi_fdstat_t": {
@@ -1007,7 +981,6 @@
             "requestHeaders": 112,
             "requestMethod": 0,
             "timeoutMSecs": 76,
-            "userData": 32,
             "userName": 96,
             "withCredentials": 80
         },
@@ -1023,8 +996,7 @@
             "status": 58,
             "statusText": 60,
             "totalBytes": 48,
-            "url": 16,
-            "userData": 8
+            "url": 16
         },
         "emscripten_fiber_s": {
             "__size__": 64,
@@ -1038,14 +1010,6 @@
         "flock": {
             "__size__": 32,
             "l_type": 0
-        },
-        "hostent": {
-            "__size__": 32,
-            "h_addr_list": 24,
-            "h_addrtype": 16,
-            "h_aliases": 8,
-            "h_length": 20,
-            "h_name": 0
         },
         "iovec": {
             "__size__": 16,
@@ -1147,14 +1111,11 @@
             "f_namelen": 64
         },
         "termios": {
-            "__c_ispeed": 52,
-            "__c_ospeed": 56,
             "__size__": 60,
             "c_cc": 17,
             "c_cflag": 8,
             "c_iflag": 0,
             "c_lflag": 12,
-            "c_line": 16,
             "c_oflag": 4
         },
         "thread_profiler_block": {
@@ -1168,11 +1129,6 @@
             "tv_nsec": 8,
             "tv_sec": 0
         },
-        "timeval": {
-            "__size__": 16,
-            "tv_sec": 0,
-            "tv_usec": 8
-        },
         "tm": {
             "__size__": 56,
             "tm_gmtoff": 40,
@@ -1184,8 +1140,7 @@
             "tm_sec": 0,
             "tm_wday": 24,
             "tm_yday": 28,
-            "tm_year": 20,
-            "tm_zone": 48
+            "tm_year": 20
         }
     }
 }

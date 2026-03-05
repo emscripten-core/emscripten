@@ -104,6 +104,19 @@ Pthreads and Wasm Workers share several similarities:
 
 However, the differences are more notable.
 
+C11 thread APIs are not available under Wasm Workers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Becuase our C11 threading API is based on pthreads internally these APIs are not
+available under Wasm Worker.
+
+Some standard C++ APIs are not available under Wasm Workers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some parts of the libc++ stndard library are not available under Wasm Workers
+becuase they depend on pthreads internally.  For example `std::call_once``:
+https://github.com/emscripten-core/emscripten/issues/26375.
+
 Pthreads can proxy JS functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 

@@ -108,7 +108,7 @@ assert(globalThis.Int32Array && globalThis.Float64Array && Int32Array.prototype.
        'JS engine does not provide full typed array support');
 #endif
 
-#if RELOCATABLE || MAIN_MODULE
+#if MAIN_MODULE
 var __RELOC_FUNCS__ = [];
 #endif
 
@@ -155,7 +155,7 @@ function initRuntime() {
   checkStackCookie();
 #endif
 
-#if MAIN_MODULE || RELOCATABLE
+#if MAIN_MODULE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
 
@@ -532,12 +532,6 @@ var splitModuleProxyHandler = {
 #if RUNTIME_DEBUG
             dbg('instantiated deferred module, continuing');
 #endif
-#if RELOCATABLE
-            // When the table is dynamically laid out, the placeholder functions names
-            // are offsets from the table base. In the main module, the table base is
-            // always 1.
-            base = 1 + parseInt(base);
-#endif
             return wasmTable.get({{{ toIndexType('base') }}})(...args);
 #endif
           }
@@ -690,7 +684,7 @@ function getWasmImports() {
 #endif
 #endif
   // prepare imports
-#if MAIN_MODULE || RELOCATABLE
+#if MAIN_MODULE
   var GOTProxyHandler = new Proxy(new Set({{{ JSON.stringify(Array.from(WEAK_IMPORTS)) }}}), GOTHandler);
 #endif
   var imports = {
@@ -700,7 +694,7 @@ function getWasmImports() {
     'env': wasmImports,
     '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
-#if MAIN_MODULE || RELOCATABLE
+#if MAIN_MODULE
     'GOT.mem': GOTProxyHandler,
     'GOT.func': GOTProxyHandler,
 #endif
@@ -725,9 +719,6 @@ function getWasmImports() {
     wasmExports = instance.exports;
 
 #if MAIN_MODULE
-#if RELOCATABLE
-    wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
-#endif
     var origExports = wasmExports;
 #endif
 #if SPLIT_MODULE
@@ -786,8 +777,6 @@ function getWasmImports() {
     LDSO.init();
 #endif
     loadDylibs();
-#elif RELOCATABLE
-    reportUndefinedSymbols();
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
