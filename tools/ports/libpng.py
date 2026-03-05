@@ -32,7 +32,7 @@ def get_lib_name(settings):
 
 def get(ports, settings, shared):
   # This is an emscripten-hosted mirror of the libpng repo from Sourceforge.
-  ports.fetch_project('libpng', f'https://sourceforge.net/projects/libpng/files/libpng16/{TAG}/libpng-{TAG}.tar.gz', sha512hash=HASH)
+  ports.fetch_project('libpng', f'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-{TAG}.tar.gz', sha512hash=HASH)
 
   def create(final):
     source_path = ports.get_dir('libpng', 'libpng-' + TAG)
