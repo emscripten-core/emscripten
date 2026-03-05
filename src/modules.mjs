@@ -90,6 +90,10 @@ function calculateLibraries() {
     libraries.push('libsyscall.js');
   }
 
+  if (settings.DOH_DNS) {
+    libraries.push('libdoh.js');
+  }
+
   if (MAIN_MODULE || RELOCATABLE) {
     libraries.push('libdylink.js');
   }
