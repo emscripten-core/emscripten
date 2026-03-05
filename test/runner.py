@@ -127,6 +127,8 @@ misc_test_modes = [
   'browser_2gb',
 ]
 
+default_tests = ['jslib', 'other', 'core0']
+
 
 def check_js_engines():
   if not all(jsrun.check_engine(e) for e in config.JS_ENGINES):
@@ -724,6 +726,10 @@ def main():
 
   tests = [prepend_default(t) for t in options.tests]
 
+  if not tests:
+    errlog(f"Using default tests: {' '.join(default_tests)}")
+    tests = default_tests
+
   modules = get_and_import_modules()
   all_tests = get_all_tests(modules)
   if options.crossplatform_only:
@@ -733,10 +739,6 @@ def main():
     tests = tests_with_expanded_wildcards(tests, all_tests)
     tests = skip_requested_tests(tests, modules)
     tests = args_for_random_tests(tests, modules)
-
-  if not tests:
-    errlog('ERROR: no tests to run')
-    return 1
 
   if not options.start_at and options._continue:
     if os.path.exists(common.LAST_TEST):
