@@ -29,7 +29,6 @@ import {
   addToCompileTimeContext,
   debugLog,
   error,
-  printErr,
   errorOccured,
   isDecorator,
   isJsOnlySymbol,
