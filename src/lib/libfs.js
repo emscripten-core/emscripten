@@ -698,23 +698,12 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EEXIST }}});
       }
       var errCode = FS.mayCreate(parent, name);
-#if CASE_INSENSITIVE_FS
-      if (errCode && errCode !== {{{ cDefs.EEXIST }}}) {
-#else
       if (errCode) {
-#endif
         throw new FS.ErrnoError(errCode);
       }
       if (!parent.node_ops.mknod) {
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
-#if CASE_INSENSITIVE_FS
-      if (errCode === {{{ cDefs.EEXIST }}}) {
-        var oldNodeLookup = FS.lookupPath(path);
-        var oldNode = oldNodeLookup.node;
-        FS.destroyNode(oldNode);
-      }
-#endif
       return parent.node_ops.mknod(parent, name, mode, dev);
     },
     statfs(path) {
@@ -1622,7 +1611,36 @@ FS.staticInit();`;
         path = name ? PATH.join2(parent, name) : parent;
       }
       var mode = FS_getMode(canRead, canWrite);
+#if CASE_INSENSITIVE_FS
+      try {
+#endif
       var node = FS.create(path, mode);
+#if CASE_INSENSITIVE_FS
+      } catch (e) {
+        if (e.errno === {{{ cDefs.EEXIST }}}) {
+          var oldNodeLookup = FS.lookupPath(path);
+          var oldNode = oldNodeLookup.node;
+          if (data.length === oldNode.contents.length) {
+            var isDup = true;
+            for (var i = 0; i < data.length; i++) {
+                var currData = data[i];
+                if (typeof data == 'string') {
+                  currData = data.charCodeAt(i);
+                }
+              if (currData !== oldNode.contents[i]) {
+                isDup = false;
+                break;
+              }
+            }
+            if (isDup) {
+              throw e;
+            }
+          }
+          FS.destroyNode(oldNode);
+          node = FS.create(path, mode);
+        }
+      }
+#endif
       if (data) {
         if (typeof data == 'string') {
           var arr = new Array(data.length);
