@@ -331,7 +331,25 @@ export function addToCompileTimeContext(object) {
   Object.assign(compileTimeContext, object);
 }
 
+const setLikeSettings = [
+  'EXPORTED_FUNCTIONS',
+  'WASM_EXPORTS',
+  'SIDE_MODULE_EXPORTS',
+  'INCOMING_MODULE_JS_API',
+  'ALL_INCOMING_MODULE_JS_API',
+  'EXPORTED_RUNTIME_METHODS',
+  'WEAK_IMPORTS'
+];
+
 export function applySettings(obj) {
+  // Certain settings are read in as lists, but we convert them to Set
+  // within the compiler, for effeciency.
+  for (const key of setLikeSettings) {
+    if (typeof obj[key] !== 'undefined') {
+      obj[key] = new Set(obj[key]);
+    }
+  }
+
   // Make settings available both in the current / global context
   // and also in the macro execution contexted.
   Object.assign(globalThis, obj);

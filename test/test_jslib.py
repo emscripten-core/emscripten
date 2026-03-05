@@ -757,3 +757,7 @@ console.error('JSLIB: none of the above');
   })
   def test_multiline_string(self, args):
     self.do_run_in_out_file_test('jslib/test_multiline_string.c', cflags=['--js-library', test_file('jslib/test_multiline_string.js')] + args)
+
+  def test_export(self):
+    create_file('post.js', 'Module.myFunc();')
+    self.do_runf(test_file('hello_world.c'), 'myFunc included\nmyFunc called\n', cflags=['--js-library', test_file('jslib/test_export.js'), '--extern-post-js=post.js'])
