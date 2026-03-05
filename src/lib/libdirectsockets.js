@@ -259,7 +259,13 @@ var DirectSocketsLibrary = {
       if (sock.options.keepAliveDelay > 0) opts.keepAliveDelay = sock.options.keepAliveDelay;
       if (sock.options.sendBufferSize > 0) opts.sendBufferSize = sock.options.sendBufferSize;
       if (sock.options.receiveBufferSize > 0) opts.receiveBufferSize = sock.options.receiveBufferSize;
-      if (sock.family === {{{ cDefs.AF_INET6 }}}) opts.dnsQueryType = 'ipv6';
+      // Set dnsQueryType per the Direct Sockets spec (SocketDnsQueryType)
+      // to ensure Chrome resolves the correct record type for this socket family
+      if (sock.family === {{{ cDefs.AF_INET6 }}}) {
+        opts.dnsQueryType = 'ipv6';
+      } else if (sock.family === {{{ cDefs.AF_INET }}}) {
+        opts.dnsQueryType = 'ipv4';
+      }
       return opts;
     },
 
@@ -267,7 +273,11 @@ var DirectSocketsLibrary = {
       var opts = {};
       if (sock.options.sendBufferSize > 0) opts.sendBufferSize = sock.options.sendBufferSize;
       if (sock.options.receiveBufferSize > 0) opts.receiveBufferSize = sock.options.receiveBufferSize;
-      if (sock.family === {{{ cDefs.AF_INET6 }}}) opts.dnsQueryType = 'ipv6';
+      if (sock.family === {{{ cDefs.AF_INET6 }}}) {
+        opts.dnsQueryType = 'ipv6';
+      } else if (sock.family === {{{ cDefs.AF_INET }}}) {
+        opts.dnsQueryType = 'ipv4';
+      }
       return opts;
     },
 
