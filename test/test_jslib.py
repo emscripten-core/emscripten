@@ -443,7 +443,7 @@ extraLibraryFuncs.push('jsfunc');
       });
       ''')
     create_file('post.js', 'console.log("Foo:", Module.Foo())')
-    self.do_runf(test_file('hello_world.c'), cflags=['--post-js=post.js', '--js-library=lib.js', '-sEXPORTED_FUNCTIONS=Foo,_main'])
+    self.do_runf('hello_world.c', cflags=['--post-js=post.js', '--js-library=lib.js', '-sEXPORTED_FUNCTIONS=Foo,_main'])
 
   def test_jslib_search_path(self):
     create_file('libfoo.js', '''
