@@ -14,6 +14,7 @@ launcher but don't have symlink support.
 """
 
 import os
+import shutil
 import stat
 import sys
 
@@ -61,12 +62,20 @@ entry_remap = {
 }
 
 
+windows_exe = os.path.join(__rootdir__, 'tools/pylauncher/pylauncher.exe')
+
+
 def make_executable(filename):
   old_mode = stat.S_IMODE(os.stat(filename).st_mode)
   os.chmod(filename, old_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def main(all_platforms):
+def maybe_remove(filename):
+  if os.path.exists(filename):
+    os.remove(filename)
+
+
+def main(all_platforms, use_exe_files):
   is_windows = sys.platform.startswith('win')
   is_msys2 = 'MSYSTEM' in os.environ
   do_unix = all_platforms or not is_windows or is_msys2
@@ -99,15 +108,20 @@ def main(all_platforms):
         make_executable(launcher)
 
       if do_windows:
-        with open(launcher + '.bat', 'w') as f:
-          f.write(bat_data)
-
-        with open(launcher + '.ps1', 'w') as f:
-          f.write(ps1_data)
+        maybe_remove(launcher + '.bat')
+        maybe_remove(launcher + '.ps1')
+        maybe_remove(launcher + '.exe')
+        if use_exe_files:
+          shutil.copyfile(windows_exe, launcher + '.exe')
+        else:
+          with open(launcher + '.bat', 'w') as f:
+            f.write(bat_data)
+          with open(launcher + '.ps1', 'w') as f:
+            f.write(ps1_data)
 
   generate_entry_points(entry_points, os.path.join(__scriptdir__, 'run_python'))
   generate_entry_points(compiler_entry_points, os.path.join(__scriptdir__, 'run_python_compiler'))
 
 
 if __name__ == '__main__':
-  sys.exit(main('--all' in sys.argv))
+  sys.exit(main('--all' in sys.argv, '--exe-files' in sys.argv))

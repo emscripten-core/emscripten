@@ -112,11 +112,7 @@ function stackCheckInit() {
   // See $establishStackSpace for the equivalent code that runs on a thread
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
-#if RELOCATABLE
-  _emscripten_stack_set_limits({{{ STACK_HIGH }}} , {{{ STACK_LOW }}});
-#else
   _emscripten_stack_init();
-#endif
   // TODO(sbc): Move writeStackCookie to native to to avoid this.
   writeStackCookie();
 }

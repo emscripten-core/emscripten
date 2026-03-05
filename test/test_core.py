@@ -191,18 +191,9 @@ def needs_dylink(func):
   assert callable(func)
 
   @wraps(func)
-  def decorated(self, relocatable, *args, **kwargs):
+  def decorated(self, *args, **kwargs):
     self.check_dylink()
-    if relocatable:
-      # Since `-sMAIN_MODULE` no longer implies `-sRELOCATABLE` but we want
-      # to keep that combination working we run all the `@needs_dylink` tests
-      # both with and without the explicit `-sRELOCATABLE`
-      self.set_setting('RELOCATABLE')
-      self.cflags.append('-Wno-deprecated')
     return func(self, *args, **kwargs)
-
-  parameterize(decorated, {'': (False,),
-                           'relocatable': (True,)})
 
   return decorated
 
@@ -3319,10 +3310,6 @@ Var: 42
 
     # sanitizers add a lot of extra symbols
     if is_sanitizing(self.cflags):
-      return
-
-    if self.get_setting('RELOCATABLE'):
-      # The relocatable version of this test produces slightly different exports.
       return
 
     def get_data_exports(wasm):
@@ -8472,7 +8459,7 @@ Module.onRuntimeInitialized = () => {
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
 
-    self.run_process([EMCC, test_file('small_hello_world.c'), '-sWASM=2'])
+    self.run_process([EMCC, test_file('hello_world_small.c'), '-sWASM=2'])
 
     # First run with WebAssembly support enabled
     # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
@@ -8589,11 +8576,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @also_with_standalone_wasm()
   def test_sbrk(self):
-    self.do_runf('test_sbrk_brk.c', 'OK.')
-    self.do_runf('test_sbrk_brk.c', 'OK.', cflags=['-sALLOW_MEMORY_GROWTH'])
+    self.do_core_test('test_sbrk_brk.c')
+    self.do_core_test('test_sbrk_brk.c', cflags=['-sALLOW_MEMORY_GROWTH'])
 
   def test_brk(self):
-    self.do_runf('test_sbrk_brk.c', 'OK.', cflags=['-DTEST_BRK=1'])
+    self.do_core_test('test_sbrk_brk.c', cflags=['-DTEST_BRK=1'])
 
   # Tests that we can use the dlmalloc mallinfo() function to obtain information
   # about malloc()ed blocks and compute how much memory is used/freed.
@@ -8700,7 +8687,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_minimal_runtime_hello_world(self, args):
     self.maybe_closure()
     self.cflags += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    self.do_runf('small_hello_world.c', 'hello!', cflags=['-sMINIMAL_RUNTIME'] + args)
+    self.do_runf('hello_world_small.c', 'hello!', cflags=['-sMINIMAL_RUNTIME'] + args)
 
   # Test that printf() works in MINIMAL_RUNTIME=1
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -8732,7 +8719,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # lsan pulls in $FS
     if '-fsanitize=leak' not in self.cflags:
       self.maybe_closure()
-    self.do_runf('small_hello_world.c', 'hello')
+    self.do_runf('hello_world_small.c', 'hello')
 
   # Tests global initializer with -sMINIMAL_RUNTIME
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -9586,17 +9573,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_syscall_intercept.c')
 
   @requires_pthreads
-  @flaky('https://github.com/emscripten-core/emscripten/issues/26256')
   def test_select_blocking(self):
     self.do_runf('core/test_select_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
   @requires_pthreads
-  @flaky('https://github.com/emscripten-core/emscripten/issues/26256')
   def test_poll_blocking(self):
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
   @with_asyncify_and_jspi
-  @flaky('https://github.com/emscripten-core/emscripten/issues/26256')
   def test_poll_blocking_asyncify(self):
     if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
       self.skipTest('test requires setTimeout which is not supported under v8')

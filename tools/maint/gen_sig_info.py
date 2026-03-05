@@ -395,7 +395,7 @@ def main(args):
   extract_sig_info(sig_info, {'LEGACY_GL_EMULATION': 1}, ['-DGLES'])
   extract_sig_info(sig_info, {'USE_GLFW': 2, 'FULL_ES3': 1, 'MAX_WEBGL_VERSION': 2})
   extract_sig_info(sig_info, {'STANDALONE_WASM': 1})
-  extract_sig_info(sig_info, {'MAIN_MODULE': 2, 'RELOCATABLE': 1, 'ASYNCIFY': 1})
+  extract_sig_info(sig_info, {'MAIN_MODULE': 2, 'ASYNCIFY': 1})
 
   write_sig_library(args.output, sig_info)
   if args.update:

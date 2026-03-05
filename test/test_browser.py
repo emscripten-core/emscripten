@@ -329,14 +329,14 @@ window.close = () => {
       self.skipTest('This test requires being run in non-strict mode (EMCC_STRICT env. variable unset)')
     # TODO: This test is verifying behavior that will be deprecated at some point in the future, remove this test once
     # system JS libraries are no longer automatically linked to anymore.
-    self.reftest('hello_world_sdl.c', 'htmltest.png')
+    self.reftest('hello_world_sdl.c', 'browser/htmltest.png')
 
   def test_sdl1(self):
-    self.reftest('hello_world_sdl.c', 'htmltest.png', cflags=['-lSDL', '-lGL'])
-    self.reftest('hello_world_sdl.c', 'htmltest.png', cflags=['-sUSE_SDL', '-lGL']) # is the default anyhow
+    self.reftest('hello_world_sdl.c', 'browser/htmltest.png', cflags=['-lSDL', '-lGL'])
+    self.reftest('hello_world_sdl.c', 'browser/htmltest.png', cflags=['-sUSE_SDL', '-lGL']) # is the default anyhow
 
   def test_sdl1_es6(self):
-    self.reftest('hello_world_sdl.c', 'htmltest.png', cflags=['-sUSE_SDL', '-lGL', '-sEXPORT_ES6'])
+    self.reftest('hello_world_sdl.c', 'browser/htmltest.png', cflags=['-sUSE_SDL', '-lGL', '-sEXPORT_ES6'])
 
   @no_safari('TODO: Fails in NEW Safari 26.0.1 (21622.1.22.11.15), but not in OLD Safari 17.6 (17618.3.11.11.7, 17618) or Safari 18.5 (20621.2.5.11.8)')
   def test_emscripten_log(self):
@@ -850,7 +850,7 @@ window.close = () => {
 
   def test_sdl_surface_lock_opts(self):
     # Test Emscripten-specific extensions to optimize SDL_LockSurface and SDL_UnlockSurface.
-    self.reftest('hello_world_sdl.c', 'htmltest.png', cflags=['-DTEST_SDL_LOCK_OPTS', '-lSDL', '-lGL'])
+    self.reftest('hello_world_sdl.c', 'browser/htmltest.png', cflags=['-DTEST_SDL_LOCK_OPTS', '-lSDL', '-lGL'])
 
   @also_with_wasmfs
   def test_sdl_image(self):
@@ -1265,7 +1265,7 @@ window.close = () => {
   # Test that -sGL_PREINITIALIZED_CONTEXT works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):
-    self.btest_exit('test_preinitialized_webgl_context.c', cflags=['-sGL_PREINITIALIZED_CONTEXT', '--shell-file', test_file('test_preinitialized_webgl_context.html')])
+    self.btest_exit('test_preinitialized_webgl_context.c', cflags=['-sGL_PREINITIALIZED_CONTEXT', '--shell-file', test_file('browser/test_preinitialized_webgl_context.html')])
 
   @parameterized({
     '': ([],),
@@ -2165,7 +2165,7 @@ void *getBindBuffer() {
     self.btest_exit('test_sdl_surface_refcount.c', cflags=['-lSDL'])
 
   def test_sdl_free_screen(self):
-    self.reftest('test_sdl_free_screen.c', 'htmltest.png', cflags=['-lSDL', '-lGL'])
+    self.reftest('test_sdl_free_screen.c', 'browser/htmltest.png', cflags=['-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_glbegin_points(self):
@@ -2557,7 +2557,7 @@ Module["preRun"] = () => {
     'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
   })
   def test_html5_gamepad(self, args):
-    self.btest_exit('test_gamepad.c', cflags=args)
+    self.btest_exit('test_html5_gamepad.c', cflags=args)
 
   def test_html5_unknown_event_target(self):
     self.btest_exit('test_html5_unknown_event_target.c')
@@ -4405,7 +4405,7 @@ Module["preRun"] = () => {
   # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
   @requires_wasm2js
   def test_preallocated_heap(self):
-    self.btest_exit('test_preallocated_heap.cpp', cflags=['-sWASM=0', '-sIMPORTED_MEMORY', '-sINITIAL_MEMORY=16MB', '-sABORTING_MALLOC=0', '--shell-file', test_file('test_preallocated_heap_shell.html')])
+    self.btest_exit('test_preallocated_heap.cpp', cflags=['-sWASM=0', '-sIMPORTED_MEMORY', '-sINITIAL_MEMORY=16MB', '-sABORTING_MALLOC=0', '--shell-file', test_file('browser/test_preallocated_heap_shell.html')])
 
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   @also_with_wasm2js
@@ -4962,7 +4962,7 @@ Module["preRun"] = () => {
     'streaming_inst': (['-sMINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', '-sENVIRONMENT=web', '--closure=1'],),
   })
   def test_minimal_runtime_hello_world(self, args):
-    self.btest_exit('small_hello_world.c', cflags=args + ['-sMINIMAL_RUNTIME'])
+    self.btest_exit('hello_world_small.c', cflags=args + ['-sMINIMAL_RUNTIME'])
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self):
@@ -4975,7 +4975,7 @@ Module["preRun"] = () => {
   })
   def test_wasm2js_fallback(self, args):
     self.set_setting('EXIT_RUNTIME')
-    self.compile_btest('small_hello_world.c', ['-sWASM=2', '-o', 'test.html'] + args)
+    self.compile_btest('hello_world_small.c', ['-sWASM=2', '-o', 'test.html'] + args)
 
     # First run with WebAssembly support enabled
     # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
@@ -4997,7 +4997,7 @@ Module["preRun"] = () => {
   })
   def test_wasm2js_fallback_on_wasm_compilation_failure(self, args):
     self.set_setting('EXIT_RUNTIME')
-    self.compile_btest('small_hello_world.c', ['-sWASM=2', '-o', 'test.html'] + args)
+    self.compile_btest('hello_world_small.c', ['-sWASM=2', '-o', 'test.html'] + args)
 
     # Run without the .wasm.js file present: with Wasm support, the page should still run
     os.rename('test.wasm.js', 'test.wasm.js.unused')
