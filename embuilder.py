@@ -236,7 +236,7 @@ def main():
     shared.PRINT_SUBPROCS = True
 
   if args.pic:
-    settings.RELOCATABLE = 1
+    settings.MAIN_MODULE = 1
 
   if args.wasm64:
     settings.MEMORY64 = 2

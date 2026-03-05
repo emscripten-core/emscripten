@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 5.0.3 (in development)
 ----------------------
+- Warn on usage of the deprecated `EMSCRIPTEN` macro (`__EMSCRIPTEN__` should
+  be used instead). (#26381)
+- The `-sRELOCATABLE` setting was effectively removed (moved to legacy
+  settings).  This setting was deprecated in #25265 and has not been used
+  internally since #25522.
 - When building with `-sWASM_WORKERS` emscripten will no longer include pthread
   API stub functions.  These stub functions where never designed to work under
   Wasm Workers, so its safer to error at link time if pthread APIs are used

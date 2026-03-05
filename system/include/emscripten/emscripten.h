@@ -28,6 +28,13 @@
 #include "wget.h"
 #include "version.h"
 
+#ifdef __EMSCRIPTEN__
+#ifndef EMSCRIPTEN
+#define EMSCRIPTEN
+#endif
+#pragma clang deprecated(EMSCRIPTEN, "use __EMSCRIPTEN__ instead")
+#endif
+
 #ifdef __cplusplus
 extern "C" {
 #endif

@@ -11292,6 +11292,17 @@ int main(void) {
     test_error('Module = { preRun: [] };')
     test_error('Module.preRun = [];')
 
+  def test_EMSCRIPTEN_macro(self):
+    create_file('src.c', '''
+      #include <emscripten.h>
+
+      #ifdef EMSCRIPTEN
+      int foo;
+      #endif
+    ''')
+    self.assert_fail([EMCC, '-Werror', 'src.c', '-c'], "'EMSCRIPTEN' has been marked as deprecated: use __EMSCRIPTEN__ instead")
+    self.assert_fail([EMCC, '-sSTRICT', '-Werror', 'src.c', '-c'], "'EMSCRIPTEN' has been marked as deprecated: use __EMSCRIPTEN__ instead")
+
   def test_EMSCRIPTEN_and_STRICT(self):
     # __EMSCRIPTEN__ is the proper define; we support EMSCRIPTEN for legacy
     # code, unless STRICT is enabled.
@@ -14856,10 +14867,7 @@ addToLibrary({
   })
   def test_fp16(self, args):
     self.v8_args += ['--experimental-wasm-fp16']
-    # TODO Remove this. Liftoff is currently broken for this test.
-    # https://chromium-review.googlesource.com/c/v8/v8/+/5842546
-    self.v8_args += ['--no-liftoff']
-    self.do_runf('test_fp16.c', cflags=['-msimd128', '-mfp16', '-sENVIRONMENT=shell'] + args)
+    self.do_runf('test_fp16.c', cflags=['-msimd128', '-mfp16', '-mrelaxed-simd', '-sENVIRONMENT=shell'] + args)
 
   def test_embool(self):
     self.do_other_test('test_embool.c')
@@ -14998,7 +15006,7 @@ addToLibrary({
         return {}; // Compiling asynchronously, no exports.
       }''')
     # Test with ASYNCIFY here to ensure that that wasmExports gets set to the wrapped version of the wasm exports.
-    self.do_runf(test_file('test_manual_wasm_instantiate.c'),cflags=['--pre-js=pre.js','-sASYNCIFY','-DASYNCIFY_ENABLED'])
+    self.do_runf('test_manual_wasm_instantiate.c', cflags=['--pre-js=pre.js','-sASYNCIFY','-DASYNCIFY_ENABLED'])
 
   def test_late_module_api_assignment(self):
     # When sync instantiation is used (or when async/await is used in MODULARIZE mode) certain
@@ -15347,20 +15355,10 @@ addToLibrary({
     err_no_fast = self.run_process([EMCC, test_file('hello_world.c'), '-v', '-O2'], stderr=PIPE).stderr
     self.assertNotContained('--fast-math', err_no_fast)
 
-  def test_relocatable(self):
-    # This setting is due for removal:
-    # https://github.com/emscripten-core/emscripten/issues/25262
-    self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sRELOCATABLE'])
-
   def test_linkable(self):
     # This setting is due for removal:
     # https://github.com/emscripten-core/emscripten/issues/25262
     self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sLINKABLE'])
-
-  def test_linkable_relocatable(self):
-    # These setting is due for removal:
-    # https://github.com/emscripten-core/emscripten/issues/25262
-    self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sLINKABLE', '-sRELOCATABLE'])
 
   # Tests encoding of all byte pairs for binary encoding in SINGLE_FILE mode.
   @parameterized({

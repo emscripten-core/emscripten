@@ -1097,9 +1097,12 @@ jobs:
       - run-tests-linux:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
+          test_targets: "other jslib skip:other.test_native_link_error_message"
+      - run-tests-linux:
           # Include a single test from test_benchmark.py to ensure it's always
-          # kept functional.
-          test_targets: "other jslib benchmark.test_primes skip:other.test_native_link_error_message"
+          # kept functional. Must be run separately from above because we cannot
+          # run non-parallel tests in the same run as parallel tests.
+          test_targets: "benchmark.test_primes"
   test-browser-chrome:
     executor: ubuntu-lts
     environment:

@@ -122,7 +122,7 @@ function isDefined(symName) {
   }
   // 'invoke_' symbols are created at runtime in library_dylink.py so can
   // always be considered as defined.
-  if ((MAIN_MODULE || RELOCATABLE) && symName.startsWith('invoke_')) {
+  if (MAIN_MODULE && symName.startsWith('invoke_')) {
     return true;
   }
   return false;
@@ -607,7 +607,7 @@ function(${args}) {
       if (!LibraryManager.library.hasOwnProperty(symbol)) {
         const isWeakImport = WEAK_IMPORTS.has(symbol);
         if (!isDefined(symbol) && !isWeakImport) {
-          if (PROXY_TO_PTHREAD && !(MAIN_MODULE || RELOCATABLE) && symbol == '__main_argc_argv') {
+          if (PROXY_TO_PTHREAD && !MAIN_MODULE && symbol == '__main_argc_argv') {
             error('PROXY_TO_PTHREAD proxies main() for you, but no main exists');
             return;
           }
@@ -638,7 +638,7 @@ function(${args}) {
 
         // emit a stub that will fail at runtime
         var stubFunctionBody = `abort('missing function: ${symbol}');`
-        if (RELOCATABLE || MAIN_MODULE) {
+        if (MAIN_MODULE) {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
           // resolved assert in debug builds or trap in release builds.
@@ -703,7 +703,7 @@ function(${args}) {
           // signatures are relevant and they differ between and alais and
           // it's target) we need to construct a forwarding function from
           // one to the other.
-          const isSigRelevant = MAIN_MODULE || RELOCATABLE || MEMORY64 || CAN_ADDRESS_2GB || (sig && sig.includes('j'));
+          const isSigRelevant = MAIN_MODULE || MEMORY64 || CAN_ADDRESS_2GB || (sig && sig.includes('j'));
           const targetSig = LibraryManager.library[aliasTarget + '__sig'];
           if (isSigRelevant && sig && targetSig && sig != targetSig) {
             debugLog(`${symbol}: Alias target (${aliasTarget}) has different signature (${sig} vs ${targetSig})`)
@@ -802,7 +802,7 @@ function(${args}) {
       }
 
       // Dynamic linking needs signatures to create proper wrappers.
-      if (sig && (MAIN_MODULE || RELOCATABLE)) {
+      if (sig && MAIN_MODULE) {
         if (!WASM_BIGINT) {
           sig = sig[0].replace('j', 'i') + sig.slice(1).replace(/j/g, 'ii');
         }
@@ -814,7 +814,7 @@ function(${args}) {
       }
       if (isStub) {
         contentText += `\n${mangled}.stub = true;`;
-        if (ASYNCIFY && (MAIN_MODULE || RELOCATABLE)) {
+        if (ASYNCIFY && MAIN_MODULE) {
           contentText += `\nasyncifyStubs['${symbol}'] = undefined;`;
         }
       }
