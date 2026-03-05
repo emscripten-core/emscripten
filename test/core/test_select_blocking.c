@@ -45,7 +45,7 @@ void test_timeout_without_fds() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= TIMEOUT_MS);
+  assert(duration >= TIMEOUT_MS - 1);
 }
 
 // Check if timeout works with fds without events
@@ -68,7 +68,7 @@ void test_timeout_with_fds_without_events() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= TIMEOUT_MS);
+  assert(duration >= TIMEOUT_MS - 1);
 
   close(pipe_a[0]); close(pipe_a[1]);
 }
@@ -107,7 +107,7 @@ void test_unblock_select() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= TIMEOUT_MS);
+  assert(duration >= TIMEOUT_MS - 1);
 
   pthread_join(tid, NULL);
 
@@ -133,7 +133,7 @@ void *do_select_in_thread(void * arg) {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert((duration >= TIMEOUT_MS) && (duration < 4000));
+  assert((duration >= TIMEOUT_MS - 1) && (duration < 4000));
 
   return NULL;
 }

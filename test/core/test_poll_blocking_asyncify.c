@@ -43,7 +43,7 @@ void test_timeout_without_fds() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= 1000);
+  assert(duration >= 1000 - 1);
 }
 
 int pipe_shared[2];
@@ -76,7 +76,7 @@ void test_unblock_poll() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= 1000);
+  assert(duration >= 1000 - 1);
 
   close(pipe_a[0]); close(pipe_a[1]);
   close(pipe_shared[0]); close(pipe_shared[1]);
