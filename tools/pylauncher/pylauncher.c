@@ -30,11 +30,6 @@
 #undef ZeroMemory
 #define ZeroMemory SecureZeroMemory
 
-// MSVC names this _wcsdup; alias it to the standard name.
-#ifdef _MSC_VER
-#define wcsdup _wcsdup
-#endif
-
 static bool launcher_debug = false;
 
 static void dbg(const char* format, ...) {
@@ -120,7 +115,7 @@ static const wchar_t* find_args(const wchar_t* command_line) {
  * subdirectory.  e.g. `C:\path\to\tools\emcc.py`
  */
 static const wchar_t* get_script_path(const wchar_t* launcher_path) {
-  wchar_t* script_path = wcsdup(launcher_path);
+  wchar_t* script_path = _wcsdup(launcher_path);
   if (!script_path)
     abort();
   PathRemoveExtensionW(script_path);
@@ -137,7 +132,7 @@ static const wchar_t* get_script_path(const wchar_t* launcher_path) {
 
   // Python file not found alongside launcher; try under tools
   // C:\path\to\emcc.py` => C:\path\to\tools\emcc.py`
-  wchar_t* script_path_copy = wcsdup(script_path);
+  wchar_t* script_path_copy = _wcsdup(script_path);
   wchar_t* basename = PathFindFileNameW(script_path_copy);
   // We need to add 6 more chars for 'tools\'.
   new_size_in_chars += 6;
