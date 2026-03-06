@@ -23,19 +23,18 @@ addToLibrary({
         timestamp: new Date(),
 #if PTHREADS || ASYNCIFY
         readableHandlers: [],
-        registerReadableHandler: (callback) => {
-          callback.registerCleanupFunc(() => {
-            const i = pipe.readableHandlers.indexOf(callback);
-            if (i !== -1) pipe.readableHandlers.splice(i, 1);
-          });
-          pipe.readableHandlers.push(callback);
+        registerReadableHandler: (events, wake) => {
+          pipe.readableHandlers.push({ events, wake });
         },
         notifyReadableHandlers: () => {
-          while (pipe.readableHandlers.length > 0) {
-            const cb = pipe.readableHandlers.shift();
-            if (cb) cb({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+          for (let i = pipe.readableHandlers.length - 1; i >= 0; i--) {
+            const { events, wake } = pipe.readableHandlers[i];
+
+            if (events & ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}})) {
+              pipe.readableHandlers.splice(i, 1);
+              wake();
+            }
           }
-          pipe.readableHandlers = [];
         }
 #endif
       };
@@ -97,7 +96,7 @@ addToLibrary({
           blocks: 0,
         };
       },
-      poll(stream, timeout, notifyCallback) {
+      poll(stream, events, wake) {
         var pipe = stream.node.pipe;
 
         if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
@@ -110,7 +109,7 @@ addToLibrary({
         }
 
 #if PTHREADS || ASYNCIFY
-        if (notifyCallback) pipe.registerReadableHandler(notifyCallback);
+        if (wake) pipe.registerReadableHandler(events, wake);
 #endif
         return 0;
       },

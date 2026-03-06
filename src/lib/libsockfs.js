@@ -68,6 +68,7 @@ addToLibrary({
         peers: {},
         pending: [],
         recv_queue: [],
+        wake_queue: [],
 #if SOCKET_WEBRTC
 #else
         sock_ops: SOCKFS.websocket_sock_ops
@@ -104,9 +105,9 @@ addToLibrary({
     },
     // node and stream ops are backend agnostic
     stream_ops: {
-      poll(stream) {
+      poll(stream, events, wake) {
         var sock = stream.node.sock;
-        return sock.sock_ops.poll(sock);
+        return sock.sock_ops.poll(sock, events, wake);
       },
       ioctl(stream, request, varargs) {
         var sock = stream.node.sock;
@@ -336,6 +337,15 @@ addToLibrary({
 
           sock.recv_queue.push({ addr: peer.addr, port: peer.port, data: data });
           SOCKFS.emit('message', sock.stream.fd);
+
+          for (let i = sock.wake_queue.length - 1; i >= 0; i--) {
+            const { events, wake } = sock.wake_queue[i];
+
+            if (events & ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}})) {
+              sock.wake_queue.splice(i, 1);
+              wake();
+            }
+          }
         };
 
         if (ENVIRONMENT_IS_NODE) {
@@ -378,11 +388,15 @@ addToLibrary({
       //
       // actual sock ops
       //
-      poll(sock) {
+      poll(sock, events, wake) {
         if (sock.type === {{{ cDefs.SOCK_STREAM }}} && sock.server) {
           // listen sockets should only say they're available for reading
           // if there are pending clients.
           return sock.pending.length ? ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}}) : 0;
+        }
+
+        if (wake) {
+          sock.wake_queue.push({ events, wake });
         }
 
         var mask = 0;
@@ -391,7 +405,6 @@ addToLibrary({
           null;
 
         if (sock.recv_queue.length ||
-            !dest ||  // connection-less sockets are always ready to read
             (dest && dest.socket.readyState === dest.socket.CLOSING) ||
             (dest && dest.socket.readyState === dest.socket.CLOSED)) {  // let recv return 0 once closed
           mask |= ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});

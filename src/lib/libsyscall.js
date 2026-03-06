@@ -554,102 +554,78 @@ var SyscallsLibrary = {
   __syscall_poll__proxy: 'sync',
   __syscall_poll__async: 'auto',
   __syscall_poll: (fds, nfds, timeout) => {
+    // Enable event handlers only when the poll call is proxied from a worker.
+    // TODO: Could use `Promise.withResolvers` here if we know its available.
+    function dopoll(wakepoll) {
+      let count = 0;
+
+      for (let i = 0; i < nfds; i++) {
+        let pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
+        let fd = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}};
+        let events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
+        let flags = {{{ cDefs.POLLNVAL }}};
+        let stream = FS.getStream(fd);
+        if (stream) {
+          if (stream.stream_ops.poll) {
+            flags = stream.stream_ops.poll(stream, events, wakepoll);
+          } else {
+            flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
+          }
+        }
+        flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
+        if (flags) count++;
+        {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
+      }
+
+      return count;
+    };
+
 #if PTHREADS || ASYNCIFY
 #if PTHREADS
     const isAsyncContext = PThread.currentProxiedOperationCallerThread;
 #else
     const isAsyncContext = true;
 #endif
-    // Enable event handlers only when the poll call is proxied from a worker.
-    // TODO: Could use `Promise.withResolvers` here if we know its available.
-    var resolve;
-    var promise = new Promise((resolve_) => { resolve = resolve_; });
-    var cleanupFuncs = [];
-    var notifyDone = false;
-    function asyncPollComplete(count) {
-      if (notifyDone) {
-        return;
-      }
-      notifyDone = true;
-#if RUNTIME_DEBUG
-      dbg('asyncPollComplete', count);
-#endif
-      cleanupFuncs.forEach(cb => cb());
-      resolve(count);
-    }
-    function makeNotifyCallback(stream, pollfd) {
-      var cb = (flags) => {
-        if (notifyDone) {
-          return;
-        }
-#if RUNTIME_DEBUG
-        dbg(`async poll notify: stream=${stream}`);
-#endif
-        var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
-        flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
-#if ASSERTIONS
-        assert(flags)
-#endif
-        {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
-        asyncPollComplete(1);
-      }
-      cb.registerCleanupFunc = (f) => {
-        if (f) cleanupFuncs.push(f);
-      }
-      return cb;
-    }
-
     if (isAsyncContext) {
-#if RUNTIME_DEBUG
-      dbg('async poll start');
-#endif
-      if (timeout > 0) {
-        var t = setTimeout(() => {
-#if RUNTIME_DEBUG
-          dbg('poll: timeout', timeout);
-#endif
-          asyncPollComplete(0);
-        }, timeout);
-        cleanupFuncs.push(() => clearTimeout(t));
-      }
-    }
-#endif
+      return new Promise((resolve) => {
+        const count = dopoll(() => {
+          if (awakened) {
+            return;
+          }
 
-    var count = 0;
-    for (var i = 0; i < nfds; i++) {
-      var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
-      var fd = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}};
-      var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
-      var flags = {{{ cDefs.POLLNVAL }}};
-      var stream = FS.getStream(fd);
-      if (stream) {
-        if (stream.stream_ops.poll) {
-#if PTHREADS || ASYNCIFY
-          if (isAsyncContext && timeout) {
-            flags = stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd));
-          } else
+          awakened = true;
+
+          // cancel timeout timer
+          if (timer) {
+            clearTimeout(timer);
+            timer = null;
+          }
+
+          // give the event loop a chance to service other streams before polling again
+          setTimeout(() => {
+            resolve(dopoll(null));
+          }, 0);
+        });
+        let awakened = false;
+        let timer = null;
+
+        if (count) {
+          resolve(count);
+        } else if (timeout >= 0) {
+          timer = setTimeout(() => {
+#if RUNTIME_DEBUG
+            dbg('poll: timeout', timeout);
 #endif
-          flags = stream.stream_ops.poll(stream, -1);
-        } else {
-          flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
+            resolve(0);
+          }, timeout);
         }
-      }
-      flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
-      if (flags) count++;
-      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
-    }
-
-#if PTHREADS || ASYNCIFY
-    if (isAsyncContext) {
-      if (count || !timeout) {
-        asyncPollComplete(count);
-      }
-      return promise;
+      });
     }
 #endif
 
+    const count = dopoll(null);
 #if ASSERTIONS
-    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
+    if (!count && timeout) warnOnce('non-zero poll() timeout not supported in synchronous contexts');
 #endif
     return count;
   },
