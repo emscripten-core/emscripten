@@ -6,6 +6,7 @@
  */
 
 int main() {
-  // Nothing to do here. Test is written in JS. See test/fs/test_insensitive_overwrite.js.
+  // Nothing to do here. Test is written in JS. See
+  // test/fs/test_insensitive_overwrite.js.
   return 0;
 }

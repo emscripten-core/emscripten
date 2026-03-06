@@ -7,7 +7,7 @@ out('file.txt collison: ' + ret.object.name_next);
 var errCode = 0;
 try {
   FS.createDataFile('/', "FIlE.txt", "foo2");
-} catch(e) {
+} catch (e) {
   errCode = e.errno;
 }
 out('errorCode: ' + errCode);

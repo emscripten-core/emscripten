@@ -10,10 +10,9 @@
 
 #include <emscripten.h>
 
-
 void loadScript() {
   printf("load2");
-  FILE *file = fopen("file1.txt", "r");
+  FILE* file = fopen("file1.txt", "r");
 
   if (!file) {
     assert(false);
@@ -25,7 +24,7 @@ void loadScript() {
       putchar(c);
     }
   }
-  fclose (file);
+  fclose(file);
   exit(0);
 }
 
@@ -33,7 +32,6 @@ void scriptLoadFail() {
   printf("failed to load second script\n");
   assert(false);
 }
-
 
 int main() {
   emscripten_async_load_script("script.js", loadScript, scriptLoadFail);
