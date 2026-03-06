@@ -1875,28 +1875,6 @@ FS.staticInit();`;
       node.stream_ops = stream_ops;
       return node;
     },
-
-    // Removed v1 functions
-#if ASSERTIONS
-    absolutePath() {
-      abort('FS.absolutePath has been removed; use PATH_FS.resolve instead');
-    },
-    createFolder() {
-      abort('FS.createFolder has been removed; use FS.mkdir instead');
-    },
-    createLink() {
-      abort('FS.createLink has been removed; use FS.symlink instead');
-    },
-    joinPath() {
-      abort('FS.joinPath has been removed; use PATH.join instead');
-    },
-    mmapAlloc() {
-      abort('FS.mmapAlloc has been replaced by the top level function mmapAlloc');
-    },
-    standardizePath() {
-      abort('FS.standardizePath has been removed; use PATH.normalize instead');
-    },
-#endif
   },
 
   $FS_mkdirTree__docs: `
