@@ -13818,7 +13818,7 @@ int main() {
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.set_setting('CASE_INSENSITIVE_FS', 1)
     self.add_pre_run(read_file(test_file('other/test_overwrite_icase.js')))
-    self.do_run_in_out_file_test('other/test_overwrite_icase.c')
+    self.do_runf('hello_world.c', 'file.txt: 102,111,111,50\nfile.txt collison: undefined\nerrorCode: 20')
 
   @no_windows("Test requires case sensitive base FS")
   @no_mac("Test requires case sensitive base FS")
