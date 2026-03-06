@@ -50,7 +50,7 @@ static const wchar_t* get_python_executable() {
 }
 
 // Get the name of the currently running executable (module)
-static const wchar_t* get_module_path() {
+static wchar_t* get_module_path() {
   DWORD buffer_size = MAX_PATH;
   wchar_t* module_path_w = malloc(sizeof(wchar_t) * buffer_size);
   if (!module_path_w)
@@ -107,15 +107,15 @@ static const wchar_t* find_args(const wchar_t* command_line) {
 }
 
 /**
- * Create the script path by taking the launcher path and replacing the
+ * Create the script path by finding the launcher path and replacing the
  * extension with .py. For example `C:\path\to\emcc.exe` becomes
  * `C:\path\to\emcc.py`.
  *
  * If the corresponging .py file does not exist then also look it in the tools
  * subdirectory.  e.g. `C:\path\to\tools\emcc.py`
  */
-static const wchar_t* get_script_path(const wchar_t* launcher_path) {
-  wchar_t* script_path = _wcsdup(launcher_path);
+static wchar_t* get_script_path() {
+  wchar_t* script_path = get_module_path();
   if (!script_path)
     abort();
   PathRemoveExtensionW(script_path);
@@ -167,11 +167,11 @@ int main() {
   }
 
   const wchar_t* application_name = get_python_executable();
-  const wchar_t* launcher_path_w = get_module_path();
-  const wchar_t* script_path_w = get_script_path(launcher_path_w);
+  wchar_t* script_path_w = get_script_path();
   size_t command_line_len = wcslen(ccache) + wcslen(application_name) + wcslen(script_path_w) + 9;
   wchar_t* command_line = malloc(sizeof(wchar_t) * command_line_len);
   swprintf(command_line, command_line_len, L"%ls\"%ls\" -E \"%ls\"", ccache, application_name, script_path_w);
+  free(script_path_w);
 
   // -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
   // of cpython used in cross compilation via setup.py.
