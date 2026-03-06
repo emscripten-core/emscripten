@@ -10,4 +10,4 @@
 :: /Brepro : Deterministic (reproducible) output
 :: ucrt.lib : Link only against Universal CRT (no vcruntime dependency)
 
-cl pylauncher.c /Fe:pylauncher.exe /O1 /GS- /link /NODEFAULTLIB /ENTRY:main /MACHINE:X64 /Brepro ucrt.lib kernel32.lib shlwapi.lib
+cl pylauncher.c /Fe:pylauncher.exe /O1 /GS- /link /NODEFAULTLIB /ENTRY:main /MACHINE:X64 /Brepro ucrt.lib kernel32.lib
