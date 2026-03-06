@@ -18,7 +18,6 @@
 #define _WIN32_WINNT 0x0601
 
 #include <windows.h>
-#include <shlwapi.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
@@ -29,6 +28,8 @@
 // SecureZeroMemory is an inline in <winnt.h> with no runtime dependency.
 #undef ZeroMemory
 #define ZeroMemory SecureZeroMemory
+
+#define WLEN(lit) (sizeof(lit) / sizeof(wchar_t) - 1)
 
 static bool launcher_debug = false;
 
@@ -106,6 +107,10 @@ static const wchar_t* find_args(const wchar_t* command_line) {
   return p;
 }
 
+static bool path_exists(const wchar_t* path) {
+  return GetFileAttributesW(path) != INVALID_FILE_ATTRIBUTES;
+}
+
 /**
  * Create the script path by finding the launcher path and replacing the
  * extension with .py. For example `C:\path\to\emcc.exe` becomes
@@ -118,30 +123,34 @@ static wchar_t* get_script_path() {
   wchar_t* script_path = get_module_path();
   if (!script_path)
     abort();
-  PathRemoveExtensionW(script_path);
-  size_t current_len = wcslen(script_path);
-  // 4 for `.py` and the null terminator
-  size_t new_size_in_chars = current_len + 4;
-  script_path = realloc(script_path, new_size_in_chars * sizeof(wchar_t));
-  if (!script_path)
+
+  size_t path_len = wcslen(script_path);
+  if (path_len < WLEN(L".exe") || _wcsicmp(script_path + path_len - WLEN(L".exe"), L".exe") != 0)
     abort();
-  wcscat_s(script_path, new_size_in_chars, L".py");
-  if (PathFileExistsW(script_path)) {
+  // Strip .exe
+  path_len -= WLEN(L".exe");
+  // Append .py (no need to realloc since ".py" is shorter than ".exe")
+  wcscpy(script_path + path_len, L".py");
+  path_len += WLEN(L".py");
+
+  if (path_exists(script_path)) {
     return script_path;
   }
 
   // Python file not found alongside launcher; try under tools
   // C:\path\to\emcc.py` => C:\path\to\tools\emcc.py`
-  wchar_t* basename = PathFindFileNameW(script_path);
-  // We need to add 6 more chars for 'tools\'.
-  new_size_in_chars += 6;
-  wchar_t* script_path_tools = malloc(new_size_in_chars * sizeof(wchar_t));
-  wcscpy(script_path_tools, script_path);
-  PathRemoveFileSpecW(script_path_tools);
-  PathCombineW(script_path_tools, script_path_tools, L"tools");
-  PathCombineW(script_path_tools, script_path_tools, basename);
+  size_t dir_len = 0;
+  for (size_t i = path_len; i > 0; i--) {
+    if (script_path[i - 1] == L'\\') {
+      dir_len = i;
+      break;
+    }
+  }
+  size_t tools_path_size = path_len + WLEN(L"tools\\") + 1;
+  wchar_t* script_path_tools = malloc(tools_path_size * sizeof(wchar_t));
+  swprintf(script_path_tools, tools_path_size, L"%.*lstools\\%ls", (int)dir_len, script_path, script_path + dir_len);
 
-  if (!PathFileExistsW(script_path_tools)) {
+  if (!path_exists(script_path_tools)) {
     fprintf(stderr, "pylauncher: target python file not found: %ls / %ls\n", script_path, script_path_tools);
     abort();
   }
