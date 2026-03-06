@@ -152,7 +152,7 @@ static const wchar_t* get_script_path(const wchar_t* launcher_path) {
   return script_path_tools;
 }
 
-void main() {
+int main() {
   // Setting EMCC_LAUNCHER_DEBUG enabled debug output for the launcher itself.
   launcher_debug = GetEnvironmentVariableW(L"EMCC_LAUNCHER_DEBUG", NULL, 0);
 
@@ -217,5 +217,5 @@ void main() {
   CloseHandle(pi.hThread);
 
   dbg("pylauncher: done: %d\n", exit_code);
-  ExitProcess(exit_code);
+  return exit_code;
 }
