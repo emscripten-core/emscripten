@@ -206,7 +206,7 @@ void main() {
 
   dbg("pylauncher: running: %ls\n", command_line);
   if (!CreateProcessW(NULL, command_line, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-    fprintf(stderr, "pylauncher: CreateProcess failed (%d): %ls\n", GetLastError(), command_line);
+    fprintf(stderr, "pylauncher: CreateProcess failed (%lu): %ls\n", GetLastError(), command_line);
     abort();
   }
   WaitForSingleObject(pi.hProcess, INFINITE);
