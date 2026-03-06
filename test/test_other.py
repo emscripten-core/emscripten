@@ -6884,6 +6884,60 @@ int main() {
     # case 2) with rpath: success
     _build(['-Wl,-rpath,$ORIGIN/subdir,-rpath,$ORIGIN'], "Hello\nHello_dep\nHello_nested_dep\nOk\n")
 
+  @also_with_wasmfs
+  def test_dlopen_rpath_no_duplicate_load(self):
+    # Test that a library loaded both directly and as a transitive dependency
+    # via $ORIGIN/.. rpath is not loaded twice. Without path normalization in
+    # loadDynamicLibrary, the LDSO would contain both "/usr/lib/libbase.so"
+    # and "/usr/lib/subdir/../libbase.so" as separate entries.
+    create_file('libbase.cpp', r'''
+    #include <stdio.h>
+    static int init_count = 0;
+    struct Init { Init() { init_count++; } };
+    static Init init;
+    extern "C" {
+      int base_func() { return 42; }
+      int get_init_count() { return init_count; }
+    }
+    ''')
+    create_file('libplugin.c', r'''
+    extern int base_func();
+    int plugin_func() { return base_func() + 1; }
+    ''')
+    create_file('main.c', r'''
+    #include <assert.h>
+    #include <stdio.h>
+    #include <dlfcn.h>
+
+    int main() {
+      void *hbase = dlopen("/usr/lib/libbase.so", RTLD_NOW | RTLD_GLOBAL);
+      assert(hbase);
+
+      void *hplugin = dlopen("/usr/lib/subdir/libplugin.so", RTLD_NOW);
+      assert(hplugin);
+
+      int (*base_func)() = dlsym(hbase, "base_func");
+      int (*plugin_func)() = dlsym(hplugin, "plugin_func");
+      int (*get_init_count)() = dlsym(hbase, "get_init_count");
+
+      printf("base: %d\n", base_func());
+      printf("plugin: %d\n", plugin_func());
+      printf("init_count: %d\n", get_init_count());
+
+      dlclose(hplugin);
+      dlclose(hbase);
+      return 0;
+    }
+    ''')
+    os.mkdir('subdir')
+    self.run_process([EMCC, '-o', 'libbase.so', 'libbase.cpp', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'subdir/libplugin.so', 'libplugin.c', '-sSIDE_MODULE', './libbase.so', '-Wl,-rpath,$ORIGIN/..'])
+    self.do_runf('main.c', 'base: 42\nplugin: 43\ninit_count: 1\n',
+                 cflags=['--profiling-funcs', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
+                         '--embed-file', 'libbase.so@/usr/lib/libbase.so',
+                         '--embed-file', 'subdir/libplugin.so@/usr/lib/subdir/libplugin.so',
+                         '-L.', '-lbase', '-L./subdir', '-lplugin', '-sNO_AUTOLOAD_DYLIBS'])
+
   def test_dlopen_bad_flags(self):
     create_file('main.c', r'''
 #include <dlfcn.h>

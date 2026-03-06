@@ -1103,6 +1103,8 @@ var LibraryDylink = {
      * @param {Object=} localScope
      */`,
   $loadDynamicLibrary: function(libName, flags = {global: true, nodelete: true}, localScope, handle) {
+    // Avoid duplicate LDSO entries from non-canonical paths (e.g. "sub/../lib.so")
+    libName = PATH.normalize(libName);
 #if DYLINK_DEBUG
     dbg(`loadDynamicLibrary: ${libName} handle: ${handle}`);
     dbg('existing:', Object.keys(LDSO.loadedLibsByName));
