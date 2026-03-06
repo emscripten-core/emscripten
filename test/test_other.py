@@ -7604,11 +7604,11 @@ high = 1234
 
   def test_dash_s_bad_json_types(self):
     # Dict rather than string/list
-    expected = "settings must be strings or lists (not $<class 'dict'>"
+    expected = "settings must be strings or lists (not <class 'dict'>"
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS={"a":1}'], expected)
 
     # List element is not a string
-    expected = "list members in settings must be strings (not $<class 'dict'>)"
+    expected = "list members in settings must be strings (not <class 'dict'>)"
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXPORTED_FUNCTIONS=[{"a":1}]'], expected)
 
   def test_zeroinit(self):
