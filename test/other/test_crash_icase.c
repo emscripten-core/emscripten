@@ -29,11 +29,11 @@ void loadScript() {
 }
 
 void scriptLoadFail() {
-  printf("failed to load second script\n");
+  printf("failed to load data_files.js\n");
   assert(false);
 }
 
 int main() {
-  emscripten_async_load_script("script.js", loadScript, scriptLoadFail);
+  emscripten_async_load_script("data_files.js", loadScript, scriptLoadFail);
   return 99;
 }
