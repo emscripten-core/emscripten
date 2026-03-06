@@ -104,11 +104,19 @@ void test_unblock_poll() {
   close(pipe_shared[0]); close(pipe_shared[1]);
 }
 
+int threads_running = 0;
+pthread_mutex_t running_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t running_cv = PTHREAD_COND_INITIALIZER;
+
 void *do_poll_in_thread(void * arg) {
   struct timeval begin, end;
 
   gettimeofday(&begin, NULL);
   struct pollfd fds = {pipe_shared[0], POLLIN, 0};
+  pthread_mutex_lock(&running_lock);
+  threads_running++;
+  pthread_cond_signal(&running_cv);
+  pthread_mutex_unlock(&running_lock);
   assert(poll(&fds, 1, 4000) == 1);
   gettimeofday(&end, NULL);
   assert(fds.revents & POLLIN);
@@ -130,6 +138,11 @@ void test_poll_in_threads() {
 
   assert(pthread_create(&tid1, NULL, do_poll_in_thread, NULL) == 0);
   assert(pthread_create(&tid2, NULL, do_poll_in_thread, NULL) == 0);
+  pthread_mutex_lock(&running_lock);
+  while (threads_running != 2) {
+    pthread_cond_wait(&running_cv, &running_lock);
+  }
+  pthread_mutex_unlock(&running_lock);
 
   sleep_ms(2 * TIMEOUT_MS);
   write(pipe_shared[1], t, strlen(t));

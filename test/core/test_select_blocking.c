@@ -108,6 +108,10 @@ void test_unblock_select() {
   close(pipe_shared[0]); close(pipe_shared[1]);
 }
 
+int threads_running = 0;
+pthread_mutex_t running_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t running_cv = PTHREAD_COND_INITIALIZER;
+
 void *do_select_in_thread(void * arg) {
   struct timeval begin, end;
   fd_set readfds;
@@ -120,6 +124,10 @@ void *do_select_in_thread(void * arg) {
   int maxfd = pipe_shared[0];
 
   gettimeofday(&begin, NULL);
+  pthread_mutex_lock(&running_lock);
+  threads_running++;
+  pthread_cond_signal(&running_cv);
+  pthread_mutex_unlock(&running_lock);
   assert(select(maxfd + 1, &readfds, NULL, NULL, &tv) == 1);
   gettimeofday(&end, NULL);
   assert(FD_ISSET(pipe_shared[0], &readfds));
@@ -141,6 +149,11 @@ void test_select_in_threads() {
 
   assert(pthread_create(&tid1, NULL, do_select_in_thread, NULL) == 0);
   assert(pthread_create(&tid2, NULL, do_select_in_thread, NULL) == 0);
+  pthread_mutex_lock(&running_lock);
+  while (threads_running != 2) {
+    pthread_cond_wait(&running_cv, &running_lock);
+  }
+  pthread_mutex_unlock(&running_lock);
 
   sleep_ms(2 * TIMEOUT_MS);
   write(pipe_shared[1], t, strlen(t));
