@@ -31,6 +31,7 @@ See docs/process.md for more on how version tagging works.
   in Wasm Worker-based programs. (#26336)
 - SDL2 port updated to include stub functions for `SDL_hid_init()` and related
   functions. (#26297)
+- libpng port updated from 1.6.39 to 1.6.55. (#26388)
 
 5.0.2 - 02/25/26
 ----------------
