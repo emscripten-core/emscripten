@@ -158,27 +158,20 @@ void main() {
 
   dbg("pylauncher: main\n");
 
-  const wchar_t* ccache = NULL;
+  const wchar_t* ccache = L"";
   DWORD env_len = GetEnvironmentVariableW(L"_EMCC_CCACHE", NULL, 0);
   if (env_len) {
     dbg("pylauncher: running via ccache.exe\n");
-    ccache = L"ccache.exe";
+    ccache = L"ccache.exe ";
     SetEnvironmentVariableW(L"_EMCC_CCACHE", NULL);
   }
 
   const wchar_t* application_name = get_python_executable();
   const wchar_t* launcher_path_w = get_module_path();
   const wchar_t* script_path_w = get_script_path(launcher_path_w);
-  size_t command_line_len = wcslen(application_name) + wcslen(script_path_w) + 9;
-  if (ccache) {
-    command_line_len += wcslen(ccache) + 1;
-  }
+  size_t command_line_len = wcslen(ccache) + wcslen(application_name) + wcslen(script_path_w) + 9;
   wchar_t* command_line = malloc(sizeof(wchar_t) * command_line_len);
-  if (ccache) {
-    swprintf(command_line, command_line_len, L"%ls \"%ls\" -E \"%ls\"", ccache, application_name, script_path_w);
-  } else {
-    swprintf(command_line, command_line_len, L"\"%ls\" -E \"%ls\"", application_name, script_path_w);
-  }
+  swprintf(command_line, command_line_len, L"%ls\"%ls\" -E \"%ls\"", ccache, application_name, script_path_w);
 
   // -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
   // of cpython used in cross compilation via setup.py.
