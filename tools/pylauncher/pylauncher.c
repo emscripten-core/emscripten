@@ -132,8 +132,7 @@ static wchar_t* get_script_path() {
 
   // Python file not found alongside launcher; try under tools
   // C:\path\to\emcc.py` => C:\path\to\tools\emcc.py`
-  wchar_t* script_path_copy = _wcsdup(script_path);
-  wchar_t* basename = PathFindFileNameW(script_path_copy);
+  wchar_t* basename = PathFindFileNameW(script_path);
   // We need to add 6 more chars for 'tools\'.
   new_size_in_chars += 6;
   wchar_t* script_path_tools = malloc(new_size_in_chars * sizeof(wchar_t));
@@ -146,7 +145,6 @@ static wchar_t* get_script_path() {
     fprintf(stderr, "pylauncher: target python file not found: %ls / %ls\n", script_path, script_path_tools);
     abort();
   }
-  free(script_path_copy);
   free(script_path);
 
   return script_path_tools;
