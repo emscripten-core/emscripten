@@ -10,6 +10,9 @@
  */
 
 #if DIRECT_SOCKETS
+#if !ASYNCIFY
+#error "DIRECT_SOCKETS requires ASYNCIFY or JSPI to be enabled"
+#endif
 
 var DirectSocketsLibrary = {
 
@@ -20,9 +23,6 @@ var DirectSocketsLibrary = {
 
     // Monotonic counter for unique socket/pipe node names
     nextId: 0,
-
-    // DNS cache: hostname -> {addresses: [...], expires: timestamp}
-    dnsCache: {},
 
     // FS mount point for socket nodes (initialized lazily)
     root: null,
@@ -121,8 +121,7 @@ var DirectSocketsLibrary = {
 
     createSocketState(family, type, protocol) {
 #if ASSERTIONS
-      if (typeof globalThis.TCPSocket === 'undefined' &&
-          typeof globalThis.UDPSocket === 'undefined') {
+      if (!globalThis.TCPSocket && !globalThis.UDPSocket) {
         abort('Direct Sockets API is not available. DIRECT_SOCKETS requires a Chrome Isolated Web App (IWA) context. See https://wicg.github.io/direct-sockets/');
       }
 #endif
@@ -247,15 +246,8 @@ var DirectSocketsLibrary = {
       if (info.errno) return { errno: info.errno };
       // readSockaddr returns addr as a string like "1.2.3.4" and port as a number.
 
-      // First check our DoH reverse cache - if this IP was resolved by us,
-      // map it back to the hostname so TCPSocket can do its own resolution
+      // Reverse lookup: map fake 172.29.x.x IPs back to hostnames
       var addr = info.addr;
-      var reverseHostname = DIRECT_SOCKETS.dnsCache['_reverse_' + addr];
-      if (reverseHostname) {
-        return { family: info.family, addr: reverseHostname, port: info.port };
-      }
-
-      // Fall back to emscripten's DNS reverse lookup (for fake 172.29.x.x IPs)
       var resolvedAddr = DNS.lookup_addr(addr) || addr;
       return { family: info.family, addr: resolvedAddr, port: info.port };
     },
@@ -267,7 +259,13 @@ var DirectSocketsLibrary = {
       if (sock.options.keepAliveDelay > 0) opts.keepAliveDelay = sock.options.keepAliveDelay;
       if (sock.options.sendBufferSize > 0) opts.sendBufferSize = sock.options.sendBufferSize;
       if (sock.options.receiveBufferSize > 0) opts.receiveBufferSize = sock.options.receiveBufferSize;
-      if (sock.family === {{{ cDefs.AF_INET6 }}}) opts.dnsQueryType = 'ipv6';
+      // Set dnsQueryType per the Direct Sockets spec (SocketDnsQueryType)
+      // to ensure Chrome resolves the correct record type for this socket family
+      if (sock.family === {{{ cDefs.AF_INET6 }}}) {
+        opts.dnsQueryType = 'ipv6';
+      } else if (sock.family === {{{ cDefs.AF_INET }}}) {
+        opts.dnsQueryType = 'ipv4';
+      }
       return opts;
     },
 
@@ -275,7 +273,11 @@ var DirectSocketsLibrary = {
       var opts = {};
       if (sock.options.sendBufferSize > 0) opts.sendBufferSize = sock.options.sendBufferSize;
       if (sock.options.receiveBufferSize > 0) opts.receiveBufferSize = sock.options.receiveBufferSize;
-      if (sock.family === {{{ cDefs.AF_INET6 }}}) opts.dnsQueryType = 'ipv6';
+      if (sock.family === {{{ cDefs.AF_INET6 }}}) {
+        opts.dnsQueryType = 'ipv6';
+      } else if (sock.family === {{{ cDefs.AF_INET }}}) {
+        opts.dnsQueryType = 'ipv4';
+      }
       return opts;
     },
 
@@ -446,40 +448,6 @@ var DirectSocketsLibrary = {
       return revents;
     },
 
-    // Async DNS resolution via DNS-over-HTTPS (DoH)
-    async resolveDNS(hostname, family) {
-      // Check cache first
-      var cached = DIRECT_SOCKETS.dnsCache[hostname];
-      if (cached && cached.expires > Date.now()) return cached.addresses[0];
-
-      // DoH query via fetch
-      var type = (family === {{{ cDefs.AF_INET6 }}}) ? 'AAAA' : 'A';
-      var typeNum = (type === 'A') ? 1 : 28;
-      try {
-        var resp = await fetch(
-          'https://dns.google/resolve?name=' + encodeURIComponent(hostname) + '&type=' + type,
-          { headers: { 'Accept': 'application/dns-json' } }
-        );
-        var json = await resp.json();
-
-        if (json.Answer && json.Answer.length > 0) {
-          var addresses = json.Answer
-            .filter(function(a) { return a.type === typeNum; })
-            .map(function(a) { return a.data; });
-          if (addresses.length === 0) return null;
-          var ttl = Math.max((json.Answer[0].TTL || 300), 60);
-          DIRECT_SOCKETS.dnsCache[hostname] = {
-            addresses: addresses, expires: Date.now() + ttl * 1000
-          };
-          return addresses[0];
-        }
-      } catch (e) {
-#if SOCKET_DEBUG
-        dbg('direct_sockets: DoH resolution failed for ' + hostname + ': ' + e);
-#endif
-      }
-      return null; // NXDOMAIN
-    },
   },
 
   // ---------------------------------------------------------------------------
@@ -1146,28 +1114,20 @@ var DirectSocketsLibrary = {
 
     // Direct Sockets only supports a few options, and they must be set at
     // construction time. We defer them and apply when connect/bind is called.
-    // musl socket option constants (stable ABI):
-    var SO_REUSEADDR = 2, SO_TYPE = 3, SO_SNDBUF = 7, SO_RCVBUF = 8;
-    var SO_KEEPALIVE = 9, SO_REUSEPORT = 15;
-    var TCP_NODELAY = 1, TCP_KEEPIDLE = 4, TCP_KEEPINTVL = 5;
-    var IP_MULTICAST_TTL = 33, IP_MULTICAST_LOOP = 34;
-    var IP_ADD_MEMBERSHIP = 35, IP_DROP_MEMBERSHIP = 36;
-    var IPV6_MULTICAST_LOOP = 18, IPV6_MULTICAST_HOPS = 19;
-    var IPV6_JOIN_GROUP = 20, IPV6_LEAVE_GROUP = 21;
 
     if (level === {{{ cDefs.SOL_SOCKET }}}) {
       switch (optname) {
-        case SO_REUSEADDR:
-        case SO_REUSEPORT:
+        case {{{ cDefs.SO_REUSEADDR }}}:
+        case {{{ cDefs.SO_REUSEPORT }}}:
           // Silently accept - no equivalent, but harmless
           return 0;
-        case SO_SNDBUF:
+        case {{{ cDefs.SO_SNDBUF }}}:
           sock.options.sendBufferSize = {{{ makeGetValue('optval', 0, 'i32') }}};
           return 0;
-        case SO_RCVBUF:
+        case {{{ cDefs.SO_RCVBUF }}}:
           sock.options.receiveBufferSize = {{{ makeGetValue('optval', 0, 'i32') }}};
           return 0;
-        case SO_KEEPALIVE:
+        case {{{ cDefs.SO_KEEPALIVE }}}:
           // Will be used as keepAliveDelay if enabled - use a default of 60s
           var enabled = {{{ makeGetValue('optval', 0, 'i32') }}};
           if (enabled && sock.options.keepAliveDelay === 0) {
@@ -1185,11 +1145,11 @@ var DirectSocketsLibrary = {
       }
     } else if (level === {{{ cDefs.IPPROTO_TCP }}}) {
       switch (optname) {
-        case TCP_NODELAY:
+        case {{{ cDefs.TCP_NODELAY }}}:
           sock.options.noDelay = !!{{{ makeGetValue('optval', 0, 'i32') }}};
           return 0;
-        case TCP_KEEPIDLE:
-        case TCP_KEEPINTVL:
+        case {{{ cDefs.TCP_KEEPIDLE }}}:
+        case {{{ cDefs.TCP_KEEPINTVL }}}:
           // Map to keepAliveDelay (in milliseconds)
           sock.options.keepAliveDelay = {{{ makeGetValue('optval', 0, 'i32') }}} * 1000;
           return 0;
@@ -1199,32 +1159,32 @@ var DirectSocketsLibrary = {
 #endif
           return 0;
       }
-    } else if (level === 0 /* IPPROTO_IP */) {
+    } else if (level === {{{ cDefs.IPPROTO_IP }}}) {
       switch (optname) {
-        case IP_MULTICAST_TTL:
+        case {{{ cDefs.IP_MULTICAST_TTL }}}:
           sock.options.multicastTtl = HEAPU8[optval];
           return 0;
-        case IP_MULTICAST_LOOP:
+        case {{{ cDefs.IP_MULTICAST_LOOP }}}:
           sock.options.multicastLoopback = !!HEAPU8[optval];
           return 0;
-        case IP_ADD_MEMBERSHIP:
+        case {{{ cDefs.IP_ADD_MEMBERSHIP }}}:
           return DIRECT_SOCKETS.joinMulticastGroup(sock, DIRECT_SOCKETS.parseIpMreq(optval, optlen));
-        case IP_DROP_MEMBERSHIP:
+        case {{{ cDefs.IP_DROP_MEMBERSHIP }}}:
           return DIRECT_SOCKETS.leaveMulticastGroup(sock, DIRECT_SOCKETS.parseIpMreq(optval, optlen));
         default:
           return 0;
       }
-    } else if (level === 41 /* IPPROTO_IPV6 */) {
+    } else if (level === {{{ cDefs.IPPROTO_IPV6 }}}) {
       switch (optname) {
-        case IPV6_MULTICAST_LOOP:
+        case {{{ cDefs.IPV6_MULTICAST_LOOP }}}:
           sock.options.multicastLoopback = !!HEAPU8[optval];
           return 0;
-        case IPV6_MULTICAST_HOPS:
+        case {{{ cDefs.IPV6_MULTICAST_HOPS }}}:
           sock.options.multicastTtl = HEAPU8[optval];
           return 0;
-        case IPV6_JOIN_GROUP:
+        case {{{ cDefs.IPV6_JOIN_GROUP }}}:
           return DIRECT_SOCKETS.joinMulticastGroup(sock, DIRECT_SOCKETS.parseIpv6Mreq(optval, optlen));
-        case IPV6_LEAVE_GROUP:
+        case {{{ cDefs.IPV6_LEAVE_GROUP }}}:
           return DIRECT_SOCKETS.leaveMulticastGroup(sock, DIRECT_SOCKETS.parseIpv6Mreq(optval, optlen));
         default:
           return 0;
@@ -1239,7 +1199,6 @@ var DirectSocketsLibrary = {
     var sock = DIRECT_SOCKETS.getSocket(fd);
     if (!sock) return -{{{ cDefs.EBADF }}};
 
-    var SO_TYPE = 3;
     if (level === {{{ cDefs.SOL_SOCKET }}}) {
       if (optname === {{{ cDefs.SO_ERROR }}}) {
         {{{ makeSetValue('optval', 0, 'sock.error', 'i32') }}};
@@ -1247,7 +1206,7 @@ var DirectSocketsLibrary = {
         sock.error = 0;
         return 0;
       }
-      if (optname === SO_TYPE) {
+      if (optname === {{{ cDefs.SO_TYPE }}}) {
         {{{ makeSetValue('optval', 0, 'sock.type', 'i32') }}};
         {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
         return 0;
@@ -1543,8 +1502,9 @@ var DirectSocketsLibrary = {
   __syscall_socketpair__deps: ['$DIRECT_SOCKETS_PIPES'],
   __syscall_socketpair: (domain, type, protocol, sv) => {
     // Two cross-connected pipes: fd0's write goes to fd1's read and vice versa
-    var fd0 = DIRECT_SOCKETS_PIPES.allocatePipeFd('sockpair[0.' + Object.keys(DIRECT_SOCKETS_PIPES.pipes).length + ']');
-    var fd1 = DIRECT_SOCKETS_PIPES.allocatePipeFd('sockpair[1.' + Object.keys(DIRECT_SOCKETS_PIPES.pipes).length + ']');
+    var id = DIRECT_SOCKETS.nextId++;
+    var fd0 = DIRECT_SOCKETS_PIPES.allocatePipeFd('sockpair[0.' + id + ']');
+    var fd1 = DIRECT_SOCKETS_PIPES.allocatePipeFd('sockpair[1.' + id + ']');
 
     // Create pipe objects directly (no intermediate fds needed)
     var spPipe0to1 = {
@@ -1638,56 +1598,14 @@ var DirectSocketsLibrary = {
   },
 
   // ---------------------------------------------------------------------------
-  // DNS resolution - async DoH-based getaddrinfo support
+  // DNS resolution - override emscripten's default to handle Direct Sockets
   // ---------------------------------------------------------------------------
 
   _emscripten_lookup_name__deps: ['$DNS', '$inetPton4', '$UTF8ToString'],
-  _emscripten_lookup_name__async: true,
-  _emscripten_lookup_name: async (name) => {
+  _emscripten_lookup_name: (name) => {
     var hostname = UTF8ToString(name);
-
-    // Handle special cases that don't need DoH
-    // DNS.lookup_name returns a string; inetPton4 converts to packed uint32
-    if (hostname === 'localhost' || hostname === '127.0.0.1') {
-      return inetPton4(DNS.lookup_name('localhost'));
-    }
-
-    // Check if it's already an IP address (dotted decimal)
-    if (/^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$/.test(hostname)) {
-      return inetPton4(DNS.lookup_name(hostname));
-    }
-
-    // Try DoH resolution for real hostnames
-    var realIp = await DIRECT_SOCKETS.resolveDNS(hostname, {{{ cDefs.AF_INET }}});
-    if (realIp) {
-#if SOCKET_DEBUG
-      dbg('direct_sockets: DoH resolved ' + hostname + ' -> ' + realIp);
-#endif
-      // Convert IP string to packed 32-bit integer (little-endian, same as inetPton4)
-      var parts = realIp.split('.');
-      var packed = ((parseInt(parts[0])) |
-                    (parseInt(parts[1]) << 8) |
-                    (parseInt(parts[2]) << 16) |
-                    (parseInt(parts[3]) << 24)) >>> 0;
-
-      // Register reverse mapping: real IP -> hostname
-      // So parseSockaddr can resolve it back for TCPSocket constructor
-      if (DNS.address_map) {
-        if (!DNS.address_map.addrs) DNS.address_map.addrs = {};
-        if (!DNS.address_map.names) DNS.address_map.names = {};
-        DNS.address_map.addrs[hostname] = realIp;
-        DNS.address_map.names[realIp] = hostname;
-      }
-
-      // Also store in our cache for parseSockaddr
-      DIRECT_SOCKETS.dnsCache['_real_' + hostname] = realIp;
-      DIRECT_SOCKETS.dnsCache['_reverse_' + realIp] = hostname;
-
-      return packed;
-    }
-
-    // Fallback to Emscripten's fake DNS
-    return DNS.lookup_name(hostname);
+    // DNS.lookup_name returns a string ip addr, inetPton4 packs it to uint32
+    return inetPton4(DNS.lookup_name(hostname));
   },
 
   // Internal helper for closing - not a syscall but used by shutdown and close

@@ -97,6 +97,80 @@ alternative, the WebRTC specification provides a mechanism to perform UDP-like
 communication with WebRTC Data Channels. Currently Emscripten does not provide a
 C/C++ API for interacting with WebRTC.
 
+Direct Sockets API (Isolated Web Apps)
+=======================================
+
+The `Direct Sockets API <https://wicg.github.io/direct-sockets/>`_ provides
+real TCP and UDP socket access from the browser, without needing a proxy server.
+
+Emscripten can route POSIX socket syscalls through the Direct Sockets API using
+``TCPSocket``, ``TCPServerSocket``, and ``UDPSocket``. This enables existing
+C/C++ networking code (including libraries like OpenSSL and Tor) to work
+with real network sockets inside the browser.
+
+To enable Direct Sockets support, compile and link with
+``-sDIRECT_SOCKETS``. This also requires ``-sASYNCIFY`` (or JSPI).
+
+Permissions
+-----------
+
+The Direct Sockets API requires a secure context and an isolated context
+(cross-origin isolation). In practice, this means the API is only usable inside
+Chrome Isolated Web Apps. Three permissions policy features control access:
+
+ - ``direct-sockets`` — gates creation of all socket types. Defaults to
+   ``'none'``.
+ - ``direct-sockets-private`` — controls access to private/local network
+   addresses. Without this policy, connections to private IP ranges will be
+   rejected. Defaults to ``'none'``.
+ - ``direct-sockets-multicast`` — required for multicast operations (see below).
+   Defaults to ``'none'``.
+
+All three must be explicitly enabled in the IWA's permissions policy for the
+corresponding functionality to work. Note that ``TCPServerSocket`` is restricted
+to ports above 32767.
+
+The following POSIX socket functions are supported:
+ - ``socket()``, ``bind()``, ``connect()``, ``listen()``, ``accept()``,
+   ``send()``, ``recv()``, ``sendto()``, ``recvfrom()``, ``sendmsg()``,
+   ``recvmsg()``, ``shutdown()``, ``getsockname()``, ``getpeername()``,
+   ``setsockopt()``, ``getsockopt()``, ``poll()``, ``ioctl()``,
+   ``fcntl()``, ``pipe()``, ``socketpair()``
+
+Multicast
+---------
+
+The Direct Sockets API defines a ``MulticastController`` interface for UDP
+bound sockets, providing ``joinGroup()`` and ``leaveGroup()`` methods with
+support for both Any-Source Multicast (ASM) and Source-Specific Multicast (SSM).
+Additional options include ``multicastTimeToLive``, ``multicastLoopback``, and
+``multicastAllowAddressSharing``. Multicast requires the
+``direct-sockets-multicast`` permissions policy, which defaults to ``'none'``.
+
+Emscripten maps ``IP_ADD_MEMBERSHIP`` and ``IP_DROP_MEMBERSHIP`` socket options
+to the ``MulticastController`` API. While this provides exposure to the
+underlying multicast machinery, existing multicast code cross-compiled from a
+POSIX environment should not be expected to work out of the box — the browser's
+multicast surface area is considerably narrower than what a native stack
+provides, and the permission model adds additional constraints.
+
+DNS
+---
+
+The Direct Sockets API provides limited, non-configurable DNS resolution. When
+a hostname is passed to ``TCPSocket`` or ``UDPSocket`` (connected mode), the
+browser resolves it automatically using the OS resolver. The only control
+available is ``dnsQueryType``, which selects between ``'ipv4'`` and ``'ipv6'``
+record types. There is no support for custom DNS servers, caching control, or
+DNSSEC validation.
+
+For POSIX code that calls ``getaddrinfo()`` or ``gethostbyname()`` directly,
+Emscripten's built-in ``DNS.lookup_name`` is used, which is limited to a static
+address map and ``localhost``. This means hostname resolution outside of
+``connect()``/``sendto()`` will fail for real hostnames unless the address map is
+populated ahead of time. A DNS-over-HTTPS resolver is planned to lift this
+limitation — see the companion PR for async DNS resolution via DoH.
+
 WebTransport and QUIC
 =====================
 
