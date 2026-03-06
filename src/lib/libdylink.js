@@ -1282,7 +1282,6 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('dlopenInternal:', filename);
 #endif
-    filename = PATH.normalize(filename);
     var searchpaths = [];
 
     var global = Boolean(flags & {{{ cDefs.RTLD_GLOBAL }}});

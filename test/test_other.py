@@ -6890,15 +6890,12 @@ int main() {
     # via $ORIGIN/.. rpath is not loaded twice. Without path normalization in
     # loadDynamicLibrary, the LDSO would contain both "/usr/lib/libbase.so"
     # and "/usr/lib/subdir/../libbase.so" as separate entries.
-    create_file('libbase.cpp', r'''
-    #include <stdio.h>
+    create_file('libbase.c', r'''
     static int init_count = 0;
-    struct Init { Init() { init_count++; } };
-    static Init init;
-    extern "C" {
-      int base_func() { return 42; }
-      int get_init_count() { return init_count; }
-    }
+    __attribute__((constructor))
+    void init() { init_count++; }
+    int base_func() { return 42; }
+    int get_init_count() { return init_count; }
     ''')
     create_file('libplugin.c', r'''
     extern int base_func();
@@ -6920,20 +6917,21 @@ int main() {
       int (*plugin_func)() = dlsym(hplugin, "plugin_func");
       int (*get_init_count)() = dlsym(hbase, "get_init_count");
 
-      printf("base: %d\n", base_func());
-      printf("plugin: %d\n", plugin_func());
-      printf("init_count: %d\n", get_init_count());
+      assert(base_func() == 42);
+      assert(plugin_func() == 43);
+      assert(get_init_count() == 1);
 
       dlclose(hplugin);
       dlclose(hbase);
+      printf("success\n");
       return 0;
     }
     ''')
     os.mkdir('subdir')
-    self.run_process([EMCC, '-o', 'libbase.so', 'libbase.cpp', '-sSIDE_MODULE'])
+    self.run_process([EMCC, '-o', 'libbase.so', 'libbase.c', '-sSIDE_MODULE'])
     self.run_process([EMCC, '-o', 'subdir/libplugin.so', 'libplugin.c', '-sSIDE_MODULE', './libbase.so', '-Wl,-rpath,$ORIGIN/..'])
-    self.do_runf('main.c', 'base: 42\nplugin: 43\ninit_count: 1\n',
-                 cflags=['--profiling-funcs', '-sMAIN_MODULE=2', '-sINITIAL_MEMORY=32Mb',
+    self.do_runf('main.c', 'success\n',
+                 cflags=['--profiling-funcs', '-sMAIN_MODULE=2',
                          '--embed-file', 'libbase.so@/usr/lib/libbase.so',
                          '--embed-file', 'subdir/libplugin.so@/usr/lib/subdir/libplugin.so',
                          '-L.', '-lbase', '-L./subdir', '-lplugin', '-sNO_AUTOLOAD_DYLIBS'])
