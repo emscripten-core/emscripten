@@ -107,6 +107,10 @@ static const wchar_t* find_args(const wchar_t* command_line) {
   return p;
 }
 
+static bool path_exists(const wchar_t* path) {
+  return GetFileAttributesW(path) != INVALID_FILE_ATTRIBUTES;
+}
+
 /**
  * Create the script path by finding the launcher path and replacing the
  * extension with .py. For example `C:\path\to\emcc.exe` becomes
@@ -129,7 +133,7 @@ static wchar_t* get_script_path() {
   wcscpy(script_path + path_len, L".py");
   path_len += WLEN(L".py");
 
-  if (GetFileAttributesW(script_path) != INVALID_FILE_ATTRIBUTES) {
+  if (path_exists(script_path)) {
     return script_path;
   }
 
@@ -146,7 +150,7 @@ static wchar_t* get_script_path() {
   wchar_t* script_path_tools = malloc(tools_path_size * sizeof(wchar_t));
   swprintf(script_path_tools, tools_path_size, L"%.*lstools\\%ls", (int)dir_len, script_path, script_path + dir_len);
 
-  if (GetFileAttributesW(script_path_tools) == INVALID_FILE_ATTRIBUTES) {
+  if (!path_exists(script_path_tools)) {
     fprintf(stderr, "pylauncher: target python file not found: %ls / %ls\n", script_path, script_path_tools);
     abort();
   }
