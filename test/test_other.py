@@ -12424,8 +12424,6 @@ exec "$@"
     wasm_split_run = [wasm_split, '-g',
                       '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
                       '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
-    if jspi:
-      wasm_split_run += ['--jspi', '--enable-reference-types']
     if self.get_setting('MEMORY64'):
       wasm_split_run += ['--enable-memory64']
     self.run_process(wasm_split_run)
@@ -12482,6 +12480,36 @@ exec "$@"
     self.assertNotIn('profile', result)
     self.assertIn('Hello from main!', result)
     self.assertIn('Hello from lib!', result)
+
+  @also_with_wasm64
+  @requires_jspi
+  def test_split_module_embind_jspi(self):
+    self.set_setting('SPLIT_MODULE')
+    self.cflags += ['-Wno-experimental']
+    self.cflags += ['--post-js', test_file('other/test_split_module_embind_jspi.post.js')]
+    self.cflags += ['--pre-js', test_file('other/test_split_module_embind_jspi.pre.js')]
+    self.cflags += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
+    self.cflags += ['-lembind']
+    self.do_other_test('test_split_module_embind_jspi.cpp')
+    self.assertExists('test_split_module_embind_jspi.wasm')
+    self.assertExists('test_split_module_embind_jspi.wasm.orig')
+    self.assertExists('profile.data')
+
+    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
+    wasm_split_run = [wasm_split, '-g',
+                      '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
+                      '--export-prefix=%', 'test_split_module_embind_jspi.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
+    self.run_process(wasm_split_run)
+
+    os.remove('test_split_module_embind_jspi.wasm')
+    os.rename('primary.wasm', 'test_split_module_embind_jspi.wasm')
+    os.rename('secondary.wasm', 'test_split_module_embind_jspi.deferred.wasm')
+    result = self.run_js('test_split_module_embind_jspi.js')
+    self.assertNotIn('profile', result)
+    self.assertIn('primary_function: 42\n' +
+                  'Custom handler for loading split module.\n' +
+                  'deferred_function: [object Promise]\n' +
+                  'deferred_function await: 82', result)
 
   @crossplatform
   @flaky('https://github.com/emscripten-core/emscripten/issues/25206')

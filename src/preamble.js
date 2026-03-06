@@ -506,7 +506,7 @@ async function getWasmBinary(binaryFile) {
 #endif
 
 #if SPLIT_MODULE
-{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
+{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, JSPI ? '(secondaryFile, imports) => instantiateAsync(null, secondaryFile, imports)' : 'instantiateSync') }}}
 var splitModuleProxyHandler = {
   get(target, moduleName, receiver) {
     if (moduleName.startsWith('placeholder')) {
@@ -519,22 +519,23 @@ var splitModuleProxyHandler = {
       }
       return new Proxy({}, {
         get(target, base, receiver) {
-          return (...args) => {
-#if ASYNCIFY == 2
-            throw new Error('Placeholder function "' + base + '" should not be called when using JSPI.');
-#else
+          let ret = {{{ asyncIf(ASYNCIFY == 2) }}} (...args) => {
 #if RUNTIME_DEBUG
             dbg(`placeholder function called: ${base}`);
 #endif
             var imports = {'primary': wasmRawExports};
             // Replace '.wasm' suffix with '.deferred.wasm'.
-            loadSplitModule(secondaryFile, imports, base);
+            {{{ awaitIf(ASYNCIFY == 2) }}}loadSplitModule(secondaryFile, imports, base);
 #if RUNTIME_DEBUG
             dbg('instantiated deferred module, continuing');
 #endif
-            return wasmTable.get({{{ toIndexType('base') }}})(...args);
+            return wasmTable.get({{{toIndexType('base')}}})(...args);
+          };
+#if JSPI
+          return new WebAssembly.Suspending(ret);
+#else
+          return ret;
 #endif
-          }
         }
       });
     }
