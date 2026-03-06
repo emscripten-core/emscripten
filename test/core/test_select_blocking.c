@@ -19,31 +19,25 @@ void sleep_ms(int ms) {
   usleep(ms * 1000);
 }
 
-int64_t timespec_delta_ms(struct timespec* begin, struct timespec* end) {
-  int64_t delta_sec = end->tv_sec - begin->tv_sec;
-  int64_t delta_nsec = end->tv_nsec - begin->tv_nsec;
-
-  assert(delta_sec >= 0);
-  assert(delta_nsec > -1000000000 && delta_nsec < 1000000000);
-
-  int64_t delta_ms = (delta_sec * 1000) + (delta_nsec / 1000000);
-  assert(delta_ms >= 0);
-  return delta_ms;
+int64_t timeval_delta_ms(struct timeval* begin, struct timeval* end) {
+  int64_t delta_s = end->tv_sec - begin->tv_sec;
+  int64_t delta_us = end->tv_usec - begin->tv_usec;
+  assert(delta_s >= 0);
+  return (delta_s * 1000) + (delta_us / 1000);
 }
 
 // Check if timeout works without fds
 void test_timeout_without_fds() {
   printf("test_timeout_without_fds\n");
-  struct timespec begin, end;
-  struct timeval tv;
+  struct timeval tv, begin, end;
 
   tv.tv_sec = 0;
   tv.tv_usec = TIMEOUT_MS * 1000;
-  clock_gettime(CLOCK_MONOTONIC, &begin);
+  gettimeofday(&begin, NULL);
   assert(select(0, NULL, NULL, NULL, &tv) == 0);
-  clock_gettime(CLOCK_MONOTONIC, &end);
+  gettimeofday(&end, NULL);
 
-  int64_t duration = timespec_delta_ms(&begin, &end);
+  int64_t duration = timeval_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
   assert(duration >= TIMEOUT_MS);
 }
@@ -51,8 +45,7 @@ void test_timeout_without_fds() {
 // Check if timeout works with fds without events
 void test_timeout_with_fds_without_events() {
   printf("test_timeout_with_fds_without_events\n");
-  struct timespec begin, end;
-  struct timeval tv;
+  struct timeval tv, begin, end;
   fd_set readfds;
   int pipe_a[2];
 
@@ -62,11 +55,11 @@ void test_timeout_with_fds_without_events() {
   tv.tv_usec = TIMEOUT_MS * 1000;
   FD_ZERO(&readfds);
   FD_SET(pipe_a[0], &readfds);
-  clock_gettime(CLOCK_MONOTONIC, &begin);
+  gettimeofday(&begin, NULL);
   assert(select(pipe_a[0] + 1, &readfds, NULL, NULL, &tv) == 0);
-  clock_gettime(CLOCK_MONOTONIC, &end);
+  gettimeofday(&end, NULL);
 
-  int64_t duration = timespec_delta_ms(&begin, &end);
+  int64_t duration = timeval_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
   assert(duration >= TIMEOUT_MS);
 
@@ -87,7 +80,7 @@ void *write_after_sleep(void * arg) {
 // Check if select can unblock on an event
 void test_unblock_select() {
   printf("test_unblock_select\n");
-  struct timespec begin, end;
+  struct timeval begin, end;
   fd_set readfds;
   pthread_t tid;
   int pipe_a[2];
@@ -99,13 +92,13 @@ void test_unblock_select() {
   FD_SET(pipe_a[0], &readfds);
   FD_SET(pipe_shared[0], &readfds);
   int maxfd = (pipe_a[0] > pipe_shared[0] ? pipe_a[0] : pipe_shared[0]);
-  clock_gettime(CLOCK_MONOTONIC, &begin);
+  gettimeofday(&begin, NULL);
   assert(pthread_create(&tid, NULL, write_after_sleep, NULL) == 0);
   assert(select(maxfd + 1, &readfds, NULL, NULL, NULL) == 1);
-  clock_gettime(CLOCK_MONOTONIC, &end);
+  gettimeofday(&end, NULL);
   assert(FD_ISSET(pipe_shared[0], &readfds));
 
-  int64_t duration = timespec_delta_ms(&begin, &end);
+  int64_t duration = timeval_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
   assert(duration >= TIMEOUT_MS);
 
@@ -116,9 +109,9 @@ void test_unblock_select() {
 }
 
 void *do_select_in_thread(void * arg) {
-  struct timespec begin, end;
-  struct timeval tv;
+  struct timeval begin, end;
   fd_set readfds;
+  struct timeval tv;
   tv.tv_sec = 4;
   tv.tv_usec = 0;
 
@@ -126,12 +119,12 @@ void *do_select_in_thread(void * arg) {
   FD_SET(pipe_shared[0], &readfds);
   int maxfd = pipe_shared[0];
 
-  clock_gettime(CLOCK_MONOTONIC, &begin);
+  gettimeofday(&begin, NULL);
   assert(select(maxfd + 1, &readfds, NULL, NULL, &tv) == 1);
-  clock_gettime(CLOCK_MONOTONIC, &end);
+  gettimeofday(&end, NULL);
   assert(FD_ISSET(pipe_shared[0], &readfds));
 
-  int64_t duration = timespec_delta_ms(&begin, &end);
+  int64_t duration = timeval_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
   assert((duration >= TIMEOUT_MS) && (duration < 4000));
 

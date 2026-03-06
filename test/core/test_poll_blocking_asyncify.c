@@ -19,29 +19,23 @@
 
 #include <emscripten/eventloop.h>
 
-int64_t timespec_delta_ms(struct timespec* begin, struct timespec* end) {
-  int64_t delta_sec = end->tv_sec - begin->tv_sec;
-  int64_t delta_nsec = end->tv_nsec - begin->tv_nsec;
-
-  assert(delta_sec >= 0);
-  assert(delta_nsec > -1000000000 && delta_nsec < 1000000000);
-
-  int64_t delta_ms = (delta_sec * 1000) + (delta_nsec / 1000000);
-  assert(delta_ms >= 0);
-  return delta_ms;
+int64_t timeval_delta_ms(struct timeval* begin, struct timeval* end) {
+  int64_t delta_s = end->tv_sec - begin->tv_sec;
+  int64_t delta_us =  end->tv_usec -  begin->tv_usec;
+  assert(delta_s >= 0);
+  return (delta_s * 1000) + (delta_us / 1000);
 }
 
 // Check if timeout works without fds
 void test_timeout_without_fds() {
   printf("test_timeout_without_fds\n");
-  struct timespec begin = {0};
-  struct timespec end = {0};
+  struct timeval begin, end;
 
-  clock_gettime(CLOCK_MONOTONIC, &begin);
+  gettimeofday(&begin, NULL);
   assert(poll(NULL, 0, 1000) == 0);
-  clock_gettime(CLOCK_MONOTONIC, &end);
+  gettimeofday(&end, NULL);
 
-  int64_t duration = timespec_delta_ms(&begin, &end);
+  int64_t duration = timeval_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
   assert(duration >= 1000);
 }
@@ -57,8 +51,7 @@ void write_to_pipe(void * arg) {
 // Check if poll can unblock on an event
 void test_unblock_poll() {
   printf("test_unblock_poll\n");
-  struct timespec begin = {0};
-  struct timespec end = {0};
+  struct timeval begin, end;
   int pipe_a[2];
 
   assert(pipe(pipe_a) == 0);
@@ -69,12 +62,12 @@ void test_unblock_poll() {
     {pipe_shared[0], POLLIN, 0},
   };
   emscripten_set_timeout(write_to_pipe, 1000, NULL);
-  clock_gettime(CLOCK_MONOTONIC, &begin);
+  gettimeofday(&begin, NULL);
   assert(poll(fds, 2, -1) == 1);
-  clock_gettime(CLOCK_MONOTONIC, &end);
+  gettimeofday(&end, NULL);
   assert(fds[1].revents & POLLIN);
 
-  int64_t duration = timespec_delta_ms(&begin, &end);
+  int64_t duration = timeval_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
   assert(duration >= 1000);
 
