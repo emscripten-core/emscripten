@@ -8,9 +8,11 @@ determine which python script to run and serves the same purpose as the
 
 ## Building
 
-`build.sh` cross-compiles with MinGW and links against `msvcrt.dll` (present
-on all Windows versions).
+The primary `build.bat` script uses MSVC and links against `ucrtbase.dll` which
+ships as part of the OS since Windows 10 (2015) and is available via
+Windows Update for Vista/7/8/8.1.
 
-`build.bat` uses MSVC and links against
-`ucrtbase.dll` which ships as part of the OS since Windows 10 (2015) and is
-available via Windows Update for Vista/7/8/8.1.
+`build.sh` cross-compiles with MinGW and links against `msvcrt.dll` (present
+on all Windows versions). This script is mostly useful for debugging on Linux.
+The .exe file that is checked in here, and used in by emsdk is currently always
+built with the `build.bat` script above.
