@@ -17,48 +17,57 @@
 #include <sys/time.h>
 
 #define TIMEOUT_MS 300
+// It is possible for the node timers (such as setTimeout or Atomics.wait) to wake up
+// slightly earlier than requested. Because we measure times accurately using
+// clock_gettime, we give tests a 5 milliseconds error margin to avoid flaky timeouts.
+#define TIMEOUT_MARGIN_MS 5
 
 void sleep_ms(int ms) {
   usleep(ms * 1000);
 }
 
-int64_t timeval_delta_ms(struct timeval* begin, struct timeval* end) {
-  int64_t delta_s = end->tv_sec - begin->tv_sec;
-  int64_t delta_us = end->tv_usec - begin->tv_usec;
-  assert(delta_s >= 0);
-  return (delta_s * 1000) + (delta_us / 1000);
+int64_t timespec_delta_ms(struct timespec* begin, struct timespec* end) {
+  int64_t delta_sec = end->tv_sec - begin->tv_sec;
+  int64_t delta_nsec = end->tv_nsec - begin->tv_nsec;
+
+  assert(delta_sec >= 0);
+  assert(delta_nsec > -1000000000 && delta_nsec < 1000000000);
+
+  int64_t delta_ms = (delta_sec * 1000) + (delta_nsec / 1000000);
+  assert(delta_ms >= 0);
+  return delta_ms;
 }
 
 // Check if timeout works without fds
 void test_timeout_without_fds() {
   printf("test_timeout_without_fds\n");
-  struct timeval begin, end;
+  struct timespec begin, end;
 
-  gettimeofday(&begin, NULL);
+  clock_gettime(CLOCK_MONOTONIC, &begin);
   assert(poll(NULL, 0, TIMEOUT_MS) == 0);
-  gettimeofday(&end, NULL);
+  clock_gettime(CLOCK_MONOTONIC, &end);
 
-  int64_t duration = timeval_delta_ms(&begin, &end);
+  int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= TIMEOUT_MS);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
 }
 
 // Check if timeout works with fds without events
 void test_timeout_with_fds_without_events() {
   printf("test_timeout_with_fds_without_events\n");
-  struct timeval begin, end;
+  struct timespec begin, end;
   int pipe_a[2];
 
   assert(pipe(pipe_a) == 0);
 
-  gettimeofday(&begin, NULL);
+  clock_gettime(CLOCK_MONOTONIC, &begin);
   struct pollfd fds = {pipe_a[0], 0, 0};
   assert(poll(&fds, 1, TIMEOUT_MS) == 0);
-  gettimeofday(&end, NULL);
+  clock_gettime(CLOCK_MONOTONIC, &end);
 
-  int64_t duration = timeval_delta_ms(&begin, &end);
+  int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= TIMEOUT_MS);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
 
   close(pipe_a[0]); close(pipe_a[1]);
 }
@@ -77,7 +86,7 @@ void *write_after_sleep(void * arg) {
 // Check if poll can unblock on an event
 void test_unblock_poll() {
   printf("test_unblock_poll\n");
-  struct timeval begin, end;
+  struct timespec begin, end;
   pthread_t tid;
   int pipe_a[2];
 
@@ -88,15 +97,15 @@ void test_unblock_poll() {
     {pipe_a[0], POLLIN, 0},
     {pipe_shared[0], POLLIN, 0},
   };
-  gettimeofday(&begin, NULL);
+  clock_gettime(CLOCK_MONOTONIC, &begin);
   assert(pthread_create(&tid, NULL, write_after_sleep, NULL) == 0);
   assert(poll(fds, 2, -1) == 1);
-  gettimeofday(&end, NULL);
+  clock_gettime(CLOCK_MONOTONIC, &end);
   assert(fds[1].revents & POLLIN);
 
-  int64_t duration = timeval_delta_ms(&begin, &end);
+  int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= TIMEOUT_MS);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
 
   pthread_join(tid, NULL);
 
@@ -105,17 +114,17 @@ void test_unblock_poll() {
 }
 
 void *do_poll_in_thread(void * arg) {
-  struct timeval begin, end;
+  struct timespec begin, end;
 
-  gettimeofday(&begin, NULL);
+  clock_gettime(CLOCK_MONOTONIC, &begin);
   struct pollfd fds = {pipe_shared[0], POLLIN, 0};
   assert(poll(&fds, 1, 4000) == 1);
-  gettimeofday(&end, NULL);
+  clock_gettime(CLOCK_MONOTONIC, &end);
   assert(fds.revents & POLLIN);
 
-  int64_t duration = timeval_delta_ms(&begin, &end);
+  int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert((duration >= TIMEOUT_MS) && (duration < 4000));
+  assert((duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS) && (duration < 4000));
 
   return NULL;
 }
