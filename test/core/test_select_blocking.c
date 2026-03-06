@@ -14,6 +14,10 @@
 #include <sys/time.h>
 
 #define TIMEOUT_MS 300
+// It is possible for the node timers (such as setTimeout or Atomics.wait) to wake up
+// slightly earlier than requested. Because we measure times accurately using
+// clock_gettime, we give tests a 5 milliseconds error margin to avoid flaky timeouts.
+#define TIMEOUT_MARGIN_MS 5
 
 void sleep_ms(int ms) {
   usleep(ms * 1000);
@@ -45,7 +49,7 @@ void test_timeout_without_fds() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= TIMEOUT_MS);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
 }
 
 // Check if timeout works with fds without events
@@ -68,7 +72,7 @@ void test_timeout_with_fds_without_events() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= TIMEOUT_MS);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
 
   close(pipe_a[0]); close(pipe_a[1]);
 }
@@ -107,7 +111,7 @@ void test_unblock_select() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= TIMEOUT_MS);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
 
   pthread_join(tid, NULL);
 
@@ -133,7 +137,7 @@ void *do_select_in_thread(void * arg) {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert((duration >= TIMEOUT_MS) && (duration < 4000));
+  assert((duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS) && (duration < 4000));
 
   return NULL;
 }

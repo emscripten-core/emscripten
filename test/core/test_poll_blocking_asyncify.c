@@ -16,8 +16,12 @@
 #include <sys/time.h>
 #include <time.h>
 #include <unistd.h>
-
 #include <emscripten/eventloop.h>
+
+// It is possible for the node timers (such as setTimeout or Atomics.wait) to wake up
+// slightly earlier than requested. Because we measure times accurately using
+// clock_gettime, we give tests a 5 milliseconds error margin to avoid flaky timeouts.
+#define TIMEOUT_MARGIN_MS 5
 
 int64_t timespec_delta_ms(struct timespec* begin, struct timespec* end) {
   int64_t delta_sec = end->tv_sec - begin->tv_sec;
@@ -43,7 +47,7 @@ void test_timeout_without_fds() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= 1000);
+  assert(duration >= 1000 - TIMEOUT_MARGIN_MS);
 }
 
 int pipe_shared[2];
@@ -76,7 +80,7 @@ void test_unblock_poll() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= 1000);
+  assert(duration >= 1000 - TIMEOUT_MARGIN_MS);
 
   close(pipe_a[0]); close(pipe_a[1]);
   close(pipe_shared[0]); close(pipe_shared[1]);
