@@ -387,15 +387,12 @@ def create_test_suite(is_parallel, options):
 
 
 def load_test_suite(args, modules, options):
-  found_start = not options.start_at
-
   loader = unittest.TestLoader()
   error_on_legacy_suite_names(args)
   unmatched_test_names = set(args)
-  suite = None
-  using_parallel_suite = False
+  using_parallel_suite = None
 
-  total_tests = 0
+  tests = []
   for m in modules:
     names_in_module = []
     for name in list(unmatched_test_names):
@@ -412,28 +409,38 @@ def load_test_suite(args, modules, options):
         options.verbose = max(options.verbose, 1)
 
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
-      tests = flattened_tests(loaded_tests)
+      tests += flattened_tests(loaded_tests)
       is_parallel_module = use_parallel_suite(m)
-      if not suite:
-        # The first module we encounter dictates whether we use parallel test suite
-        suite = create_test_suite(is_parallel_module, options)
+      if using_parallel_suite is None:
         using_parallel_suite = is_parallel_module
       else:
         # All the following modules must match in their support for the parallel runner.
         if is_parallel_module != using_parallel_suite:
           utils.exit_with_error(f'attempt to mix parallel and non-parallel test modules ({m.__name__})')
-      if options.failing_and_slow_first:
-        tests = sorted(tests, key=cmp_to_key(create_test_run_sorter(options.max_failures < len(tests) / 2)))
-      for test in tests:
-        if not found_start:
-          # Skip over tests until we find the start
-          if test.id().endswith(options.start_at):
-            found_start = True
-          else:
-            continue
-        for _x in range(options.repeat):
-          total_tests += 1
-          suite.addTest(test)
+
+  # If we are only running a single tests, never use the parallel tests suite.
+  # This means that the output of a single test is always going to be in `out/test/` rather
+  # than a random temporary directory.
+  if len(tests) == 1 and not options.repeat > 1:
+    using_parallel_suite = False
+  suite = create_test_suite(using_parallel_suite, options)
+
+  if options.failing_and_slow_first:
+    tests = sorted(tests, key=cmp_to_key(create_test_run_sorter(options.max_failures < len(tests) / 2)))
+
+  found_start = not options.start_at
+  total_tests = 0
+  for test in tests:
+    if not found_start:
+      # Skip over tests until we find the start
+      if test.id().endswith(options.start_at):
+        found_start = True
+      else:
+        continue
+    for _x in range(options.repeat):
+      total_tests += 1
+      suite.addTest(test)
+
   if not found_start:
     utils.exit_with_error(f'unable to find --start-at test: {options.start_at}')
   return suite, unmatched_test_names

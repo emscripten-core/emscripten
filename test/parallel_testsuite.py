@@ -34,7 +34,7 @@ def python_multiprocessing_structures_are_buggy():
 
 
 def cap_max_workers_in_pool(max_workers, is_browser):
-  if is_browser and 'EMTEST_CORES' not in os.environ and 'EMCC_CORES' not in os.environ:
+  if max_workers > 1 and is_browser and 'EMTEST_CORES' not in os.environ and 'EMCC_CORES' not in os.environ:
     # TODO experiment with this number. In browser tests we'll be creating
     # a browser instance per worker which is expensive.
     max_workers = max_workers // 2
