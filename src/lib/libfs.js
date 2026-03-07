@@ -1611,13 +1611,40 @@ FS.staticInit();`;
         path = name ? PATH.join2(parent, name) : parent;
       }
       var mode = FS_getMode(canRead, canWrite);
-      var node = FS.create(path, mode);
       if (data) {
         if (typeof data == 'string') {
           var arr = new Array(data.length);
           for (var i = 0, len = data.length; i < len; ++i) arr[i] = data.charCodeAt(i);
           data = arr;
         }
+      }
+#if CASE_INSENSITIVE_FS
+      try {
+#endif
+      var node = FS.create(path, mode);
+#if CASE_INSENSITIVE_FS
+      } catch (e) {
+        if (e.errno === {{{ cDefs.EEXIST }}}) {
+          var oldNodeLookup = FS.lookupPath(path);
+          var oldNode = oldNodeLookup.node;
+          if (data.length === oldNode.contents.length) {
+            var isDup = true;
+            for (var i = 0; i < data.length; i++) {
+              if (data[i] !== oldNode.contents[i]) {
+                isDup = false;
+                break;
+              }
+            }
+            if (isDup) {
+              throw e;
+            }
+          }
+          FS.destroyNode(oldNode);
+          node = FS.create(path, mode);
+        }
+      }
+#endif
+      if (data) {
         // make sure we can write to the file
         FS.chmod(node, mode | {{{ cDefs.S_IWUGO }}});
         var stream = FS.open(node, {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}});

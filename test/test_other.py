@@ -13815,6 +13815,20 @@ int main() {
   def test_fs_icase(self):
     # c++20 for ends_with().
     self.do_other_test('test_fs_icase.cpp', cflags=['-sCASE_INSENSITIVE_FS', '-std=c++20'])
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
+    self.set_setting('CASE_INSENSITIVE_FS', 1)
+    self.add_pre_run(read_file(test_file('other/test_overwrite_icase.js')))
+    self.do_runf('hello_world.c', 'file.txt: 102,111,111,50\nfile.txt collison: undefined\nerrorCode: 20')
+
+  @no_windows("Test requires case sensitive base FS")
+  @no_mac("Test requires case sensitive base FS")
+  def test_crash_icase(self):
+    create_file('file1.txt', 'one')
+    create_file('fILe1.txt', 'two')
+    # `--from-emcc` needed here otherwise the output defines `var Module =` which will shadow the
+    # global `Module`.
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'fILe1.txt', '--from-emcc', '--js-output=data_files.js'])
+    self.do_runf('other/test_crash_icase.c', cflags=['-sFORCE_FILESYSTEM', '-sCASE_INSENSITIVE_FS'])
 
   @crossplatform
   @with_all_fs
