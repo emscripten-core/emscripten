@@ -114,8 +114,10 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
 
   if base_metadata:
     settings.WASM_EXPORTS = base_metadata.all_exports
+    settings.WASM_IMPORTS = base_metadata.imports
   else:
     settings.WASM_EXPORTS = metadata.all_exports
+    settings.WASM_IMPORTS = metadata.imports
   settings.HAVE_EM_ASM = bool(settings.MAIN_MODULE or len(metadata.em_asm_consts) != 0)
 
   if settings.MAIN_MODULE and settings.ASYNCIFY == 1:
@@ -950,7 +952,7 @@ def should_export(sym):
   return settings.EXPORT_ALL or (settings.EXPORT_KEEPALIVE and sym in settings.EXPORTED_FUNCTIONS)
 
 
-def create_receiving(function_exports, other_exports, library_symbols, aliases):
+def create_receiving(function_exports, other_exports, library_symbols, aliases, wasm_imports):
   generate_dyncall_assignment = 'dynCalls' in library_symbols
   receiving = ['\n// Imports from the Wasm binary.']
 
@@ -1000,6 +1002,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
     # In debug builds we generate trapping functions in case
     # folks try to call/use a reference that was taken before the
     # wasm module is available.
+    wasm_imports_mangled = {asmjs_mangle(s) for s in wasm_imports}
     for sym in mangled:
       module_export = (settings.MODULARIZE or not settings.MINIMAL_RUNTIME) and should_export(sym) and settings.MODULARIZE != 'instance'
       if not js_manipulation.isidentifier(sym) and not module_export:
@@ -1010,7 +1013,11 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
           assignment += f" = Module['{sym}']"
         else:
           assignment = f"Module['{sym}']"
-      receiving.append(f"{assignment} = makeInvalidEarlyAccess('{sym}');")
+      # Don't generate early access traps for symbols that are also wasm imports.
+      if sym in wasm_imports_mangled:
+        receiving.append(f"{assignment};")
+      else:
+        receiving.append(f"{assignment} = makeInvalidEarlyAccess('{sym}');")
   else:
     # Declare all exports in a single var statement
     sep = ',\n  '
@@ -1081,7 +1088,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
 
 def create_module(metadata, function_exports, other_exports, library_symbols, aliases):
   module = []
-  module.append(create_receiving(function_exports, other_exports, library_symbols, aliases))
+  module.append(create_receiving(function_exports, other_exports, library_symbols, aliases, metadata.imports))
 
   sending = create_sending(metadata, library_symbols)
   if settings.WASM_ESM_INTEGRATION:
