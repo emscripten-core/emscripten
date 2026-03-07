@@ -106,6 +106,7 @@ bool _emval_is_number(EM_VAL object);
 bool _emval_is_string(EM_VAL object);
 bool _emval_in(EM_VAL item, EM_VAL object);
 bool _emval_delete(EM_VAL object, EM_VAL property);
+bool _emval_is_cpp_exception(EM_VAL object);
 [[noreturn]] bool _emval_throw(EM_VAL object);
 EM_VAL _emval_await(EM_VAL promise);
 EM_VAL _emval_iter_begin(EM_VAL iterable);
@@ -667,40 +668,58 @@ inline val::iterator val::begin() const {
 // of the type of the parent coroutine).
 // This one is used for Promises represented by the `val` type.
 class val::awaiter {
-  // State machine holding awaiter's current state. One of:
-  //  - initially created with promise
-  //  - waiting with a given coroutine handle
-  //  - completed with a result
-  std::variant<val, std::coroutine_handle<val::promise_type>, val> state;
+  struct state_promise { val promise; };
+  struct state_coro {
+    std::coroutine_handle<> handle;
+    /// Is \c std::coroutine_handle<val::promise_type> ?
+    /// In other words, are we also enclosed by a JS Promise?
+    bool isValPromise = false;
+  };
+  struct state_result { val result; };
+  struct state_error { val error; };
 
-  constexpr static std::size_t STATE_PROMISE = 0;
-  constexpr static std::size_t STATE_CORO = 1;
-  constexpr static std::size_t STATE_RESULT = 2;
+  // State machine holding awaiter's current state. One of:
+  std::variant<
+    state_promise, // Initially created with the JS Promise we're awaiting
+    state_coro, // Waiting with a given coroutine handle
+    state_result, // Resolved with result
+    state_error // Rejected with error
+  > state;
+
+  void awaitSuspendImpl(state_coro coro) {
+    internal::_emval_coro_suspend(std::get<state_promise>(state).promise.as_handle(), this);
+    state.emplace<state_coro>(coro);
+  }
 
 public:
-  awaiter(const val& promise)
-    : state(std::in_place_index<STATE_PROMISE>, promise) {}
+  awaiter(val promise)
+    : state(std::in_place_type<state_promise>, std::move(promise)) {}
 
   // just in case, ensure nobody moves / copies this type around
-  awaiter(awaiter&&) = delete;
+  awaiter(const awaiter&) = delete;
+  awaiter& operator=(const awaiter&) = delete;
 
   // Promises don't have a synchronously accessible "ready" state.
-  bool await_ready() { return false; }
+  bool await_ready() const { return false; }
 
   // On suspend, store the coroutine handle and invoke a helper that will do
   // a rough equivalent of
   // `promise.then(value => this.resume_with(value)).catch(error => this.reject_with(error))`.
+
   void await_suspend(std::coroutine_handle<val::promise_type> handle) {
-    internal::_emval_coro_suspend(std::get<STATE_PROMISE>(state).as_handle(), this);
-    state.emplace<STATE_CORO>(handle);
+    awaitSuspendImpl({handle, true});
+  }
+
+  void await_suspend(std::coroutine_handle<> handle) {
+    awaitSuspendImpl({handle, false});
   }
 
   // When JS invokes `resume_with` with some value, store that value and resume
   // the coroutine.
   void resume_with(val&& result) {
-    auto coro = std::move(std::get<STATE_CORO>(state));
-    state.emplace<STATE_RESULT>(std::move(result));
-    coro.resume();
+    auto coro = std::get<state_coro>(state);
+    state.emplace<state_result>(std::move(result));
+    coro.handle.resume();
   }
 
   // When JS invokes `reject_with` with some error value, reject currently suspended
@@ -711,7 +730,11 @@ public:
   // `await_resume` finalizes the awaiter and should return the result
   // of the `co_await ...` expression - in our case, the stored value.
   val await_resume() {
-    return std::move(std::get<STATE_RESULT>(state));
+    if (auto* result = std::get_if<state_result>(&state)) {
+      return std::move(result->result);
+    }
+    // If a JS exception ended up here, it will be uncaught as C++ code cannot catch it
+    std::get<state_error>(state).error.throw_();
   }
 };
 
@@ -773,10 +796,29 @@ public:
 };
 
 inline void val::awaiter::reject_with(val&& error) {
-  auto coro = std::move(std::get<STATE_CORO>(state));
-  auto& promise = coro.promise();
-  promise.reject_with(std::move(error));
-  coro.destroy();
+  auto coro = std::get<state_coro>(state);
+
+
+  if (coro.isValPromise) {
+    constexpr bool hasCppExceptions =
+#ifdef __cpp_exceptins
+      true
+#else
+      false
+#endif
+    ;
+    if (!(hasCppExceptions && internal::_emval_is_cpp_exception(error.as_handle()))) {
+      // C++ code cannot catch JS exceptions.
+      // Thus, we can just reject an enclosing JS Promise.
+      auto& promise = std::coroutine_handle<promise_type>::from_address(coro.handle.address()).promise();
+      promise.reject_with(std::move(error));
+      coro.handle.destroy();
+      return;
+    }
+  }
+
+  state.emplace<state_error>(std::move(error));
+  coro.handle.resume();
 }
 
 #endif
