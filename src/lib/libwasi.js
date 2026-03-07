@@ -569,14 +569,21 @@ var WasiLibrary = {
 
   // random.h
 
-#if ENVIRONMENT_MAY_BE_SHELL
+#if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
+  $nodeCrypto: "ENVIRONMENT_IS_NODE ? {{{ makeNodeImport('node:crypto') }}} : undefined",
+#endif
+
+#if ENVIRONMENT_MAY_BE_SHELL && ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
+  $initRandomFill__deps: ['$base64Decode', '$nodeCrypto'],
+#elif ENVIRONMENT_MAY_BE_SHELL
   $initRandomFill__deps: ['$base64Decode'],
+#elif ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
+  $initRandomFill__deps: ['$nodeCrypto'],
 #endif
   $initRandomFill: () => {
 #if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
     // This block is not needed on v19+ since crypto.getRandomValues is builtin
     if (ENVIRONMENT_IS_NODE) {
-      var nodeCrypto = require('node:crypto');
       return (view) => nodeCrypto.randomFillSync(view);
     }
 #endif // ENVIRONMENT_MAY_BE_NODE

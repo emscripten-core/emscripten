@@ -289,9 +289,12 @@ if (ENVIRONMENT_IS_WASM_WORKER
     _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': readEmAsmArgs(sigPtr, varargs) });
   },
 
+#if ENVIRONMENT_MAY_BE_NODE
+  emscripten_navigator_hardware_concurrency__deps: ['$nodeOs'],
+#endif
   emscripten_navigator_hardware_concurrency: () => {
 #if ENVIRONMENT_MAY_BE_NODE
-    if (ENVIRONMENT_IS_NODE) return require('node:os').cpus().length;
+    if (ENVIRONMENT_IS_NODE) return nodeOs.cpus().length;
 #endif
     return navigator['hardwareConcurrency'];
   },

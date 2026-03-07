@@ -343,6 +343,11 @@ addToLibrary({
   },
 #endif
 
+#if ENVIRONMENT_MAY_BE_NODE
+  $nodeOs: "ENVIRONMENT_IS_NODE ? {{{ makeNodeImport('node:os') }}} : undefined",
+  $nodeChildProcess: "ENVIRONMENT_IS_NODE ? {{{ makeNodeImport('node:child_process') }}} : undefined",
+  _emscripten_system__deps: ['$nodeChildProcess'],
+#endif
   _emscripten_system: (command) => {
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
@@ -351,8 +356,7 @@ addToLibrary({
       var cmdstr = UTF8ToString(command);
       if (!cmdstr.length) return 0; // this is what glibc seems to do (shell works test?)
 
-      var cp = require('node:child_process');
-      var ret = cp.spawnSync(cmdstr, [], {shell:true, stdio:'inherit'});
+      var ret = nodeChildProcess.spawnSync(cmdstr, [], {shell:true, stdio:'inherit'});
 
       var _W_EXITCODE = (ret, sig) => ((ret) << 8 | (sig));
 
