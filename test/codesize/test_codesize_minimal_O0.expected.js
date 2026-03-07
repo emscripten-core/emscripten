@@ -1051,6 +1051,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'FS_preloadFile',
   'FS_modeStringToFlags',
   'FS_getMode',
+  'FS_fileDataToTypedArray',
   'FS_stdin_getChar',
   'FS_mkdirTree',
   '_setNetworkCallback',

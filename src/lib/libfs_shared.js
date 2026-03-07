@@ -107,6 +107,16 @@ addToLibrary({
     return mode;
   },
 
+  $FS_fileDataToTypedArray: (data) => {
+    if (typeof data == 'string') {
+      data = intArrayFromString(data, true);
+    }
+    if (!data.subarray) {
+      data = new Uint8Array(data);
+    }
+    return data;
+  },
+
   $FS_stdin_getChar_buffer: [],
 
   // getChar has 3 particular return values:

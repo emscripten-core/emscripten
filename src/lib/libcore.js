@@ -2193,7 +2193,7 @@ addToLibrary({
 #endif
       FS.createPath('/', PATH.dirname(name), true, true);
       // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
-      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, true);
+      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, /*canOwn=*/true);
     } while ({{{ makeGetValue('ptr', '0', '*') }}});
 #if RUNTIME_DEBUG
     dbg('done preloading data files');

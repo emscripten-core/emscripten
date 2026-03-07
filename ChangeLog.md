@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 5.0.3 (in development)
 ----------------------
+- The low level FS.write API now only accepts TypedArray.  The higher level
+  writeFile and createDataFile file still also accept string and Array.
+  (#26413)
 - Warn on usage of the deprecated `EMSCRIPTEN` macro (`__EMSCRIPTEN__` should
   be used instead). (#26381)
 - The `-sRELOCATABLE` setting was effectively removed (moved to legacy

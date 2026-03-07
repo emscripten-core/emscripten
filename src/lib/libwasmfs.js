@@ -509,20 +509,17 @@ addToLibrary({
     return FS_mknod(path, mode, 0);
   },
 
-  $FS_writeFile__deps: ['_wasmfs_write_file', '$stackSave', '$stackRestore', 'malloc', 'free'],
+  $FS_writeFile__deps: ['$FS_fileDataToTypedArray', '_wasmfs_write_file', '$stackSave', '$stackRestore', 'malloc', 'free'],
   $FS_writeFile: (path, data) => {
     var sp = stackSave();
     var pathBuffer = stringToUTF8OnStack(path);
-    var len = typeof data == 'string' ? lengthBytesUTF8(data) + 1 : data.length;
+    data = FS_fileDataToTypedArray(data);
+    var len = data.length;
     var dataBuffer = _malloc(len);
 #if ASSERTIONS
     assert(dataBuffer);
 #endif
-    if (typeof data == 'string') {
-      len = stringToUTF8(data, dataBuffer, len);
-    } else {
-      HEAPU8.set(data, dataBuffer);
-    }
+    HEAPU8.set(data, dataBuffer);
     var ret = __wasmfs_write_file(pathBuffer, dataBuffer, len);
     _free(dataBuffer);
     stackRestore(sp);

@@ -7,6 +7,7 @@
 var LibraryFS = {
   $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
     '$FS_modeStringToFlags',
+    '$FS_fileDataToTypedArray',
     '$FS_getMode',
     '$intArrayFromString',
 #if LibraryManager.has('libidbfs.js')
@@ -1253,9 +1254,13 @@ FS.staticInit();`;
 #endif
       return bytesRead;
     },
+    /**
+     * @param {TypedArray} buffer
+     */
     write(stream, buffer, offset, length, position, canOwn) {
 #if ASSERTIONS
       assert(offset >= 0);
+      assert(buffer.subarray, 'FS.write expects a TypedArray');
 #endif
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
@@ -1346,17 +1351,14 @@ FS.staticInit();`;
       FS.close(stream);
       return buf;
     },
+    /**
+     * @param {TypedArray|Array|string} data
+     */
     writeFile(path, data, opts = {}) {
       opts.flags = opts.flags || {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}};
       var stream = FS.open(path, opts.flags, opts.mode);
-      if (typeof data == 'string') {
-        data = new Uint8Array(intArrayFromString(data, true));
-      }
-      if (ArrayBuffer.isView(data)) {
-        FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
-      } else {
-        abort('Unsupported data type');
-      }
+      data = FS_fileDataToTypedArray(data);
+      FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
       FS.close(stream);
     },
 
@@ -1604,6 +1606,9 @@ FS.staticInit();`;
       var mode = FS_getMode(canRead, canWrite);
       return FS.create(path, mode);
     },
+    /**
+     * @param {TypedArray|Array|string=} data
+     */
     createDataFile(parent, name, data, canRead, canWrite, canOwn) {
       var path = name;
       if (parent) {
@@ -1613,11 +1618,7 @@ FS.staticInit();`;
       var mode = FS_getMode(canRead, canWrite);
       var node = FS.create(path, mode);
       if (data) {
-        if (typeof data == 'string') {
-          var arr = new Array(data.length);
-          for (var i = 0, len = data.length; i < len; ++i) arr[i] = data.charCodeAt(i);
-          data = arr;
-        }
+        data = FS_fileDataToTypedArray(data);
         // make sure we can write to the file
         FS.chmod(node, mode | {{{ cDefs.S_IWUGO }}});
         var stream = FS.open(node, {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}});
