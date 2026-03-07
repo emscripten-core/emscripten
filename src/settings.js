@@ -422,6 +422,14 @@ var PROXY_POSIX_SOCKETS = false;
 // [link]
 var WEBSOCKET_SUBPROTOCOL = 'binary';
 
+// If true, use DNS-over-HTTPS (DoH) for real DNS resolution via fetch() to
+// dns.google. Replaces Emscripten's fake 172.29.x.x DNS with actual A/AAAA
+// lookups, plus HTTPS/SVCB record support (RFC 9460). Results are cached
+// with TTL and reverse lookups work via getnameinfo/gethostbyaddr.
+// Requires ASYNCIFY or JSPI.
+// [link]
+var DOH_DNS = false;
+
 // Print out debugging information from our OpenAL implementation.
 // [link]
 var OPENAL_DEBUG = false;

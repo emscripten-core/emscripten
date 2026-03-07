@@ -10620,6 +10620,13 @@ ok.
   def test_getaddrinfo(self):
     self.do_runf('sockets/test_getaddrinfo.c', 'success')
 
+  def test_getaddrinfo_doh(self):
+    # Test DNS-over-HTTPS fallback: DoH fetch will fail in test env (no
+    # browser/network), validating that fake DNS fallback works with -sDOH_DNS.
+    self.set_setting('DOH_DNS')
+    self.set_setting('ASYNCIFY')
+    self.do_runf('sockets/test_getaddrinfo.c', 'success')
+
   def test_getnameinfo(self):
     self.do_runf('sockets/test_getnameinfo.c', 'success')
 
