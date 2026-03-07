@@ -1033,12 +1033,14 @@ var MEMFS = {
     } else if (FS.isFile(node.mode)) {
       node.node_ops = MEMFS.ops_table.file.node;
       node.stream_ops = MEMFS.ops_table.file.stream;
+      // The actual number of bytes used in the typed array, as opposed to
+      // contents.length which gives the whole capacity.
       node.usedBytes = 0;
-      // The actual number of bytes used in the typed array, as opposed to contents.length which gives the whole capacity.
-      // When the byte data of the file is populated, this will point to either a typed array, or a normal JS array. Typed arrays are preferred
-      // for performance, and used by default. However, typed arrays are not resizable like normal JS arrays are, so there is a small disk size
-      // penalty involved for appending file writes that continuously grow a file similar to std::vector capacity vs used -scheme.
-      node.contents = null;
+      // The byte data of the file is stored in a typed array.
+      // Note: typed arrays are not resizable like normal JS arrays are, so
+      // there is a small penalty involved for appending file writes that
+      // continuously grow a file similar to std::vector capacity vs used.
+      node.contents = MEMFS.emptyFileContents ??= new Uint8Array(0);
     } else if (FS.isLink(node.mode)) {
       node.node_ops = MEMFS.ops_table.link.node;
       node.stream_ops = MEMFS.ops_table.link.stream;
@@ -1055,42 +1057,34 @@ var MEMFS = {
     return node;
   },
   getFileDataAsTypedArray(node) {
-    if (!node.contents) return new Uint8Array(0);
-    if (node.contents.subarray) return node.contents.subarray(0, node.usedBytes);
-    // Make sure to not return excess unused bytes.
-    return new Uint8Array(node.contents);
+    return node.contents.subarray(0, node.usedBytes);
   },
   expandFileStorage(node, newCapacity) {
-    var prevCapacity = node.contents ? node.contents.length : 0;
+    var prevCapacity = node.contents.length;
     if (prevCapacity >= newCapacity) return;
     // No need to expand, the storage was already large enough.
-    // Don't expand strictly to the given requested limit if it's only a very small increase, but instead geometrically grow capacity.
-    // For small filesizes (<1MB), perform size*2 geometric increase, but for large sizes, do a much more conservative size*1.125 increase to
-    // avoid overshooting the allocation cap by a very large margin.
+    // Don't expand strictly to the given requested limit if it's only a very
+    // small increase, but instead geometrically grow capacity.
+    // For small filesizes (<1MB), perform size*2 geometric increase, but for
+    // large sizes, do a much more conservative size*1.125 increase to avoid
+    // overshooting the allocation cap by a very large margin.
     var CAPACITY_DOUBLING_MAX = 1024 * 1024;
     newCapacity = Math.max(newCapacity, (prevCapacity * (prevCapacity < CAPACITY_DOUBLING_MAX ? 2 : 1.125)) >>> 0);
-    if (prevCapacity != 0) newCapacity = Math.max(newCapacity, 256);
+    if (prevCapacity) newCapacity = Math.max(newCapacity, 256);
     // At minimum allocate 256b for each file when expanding.
-    var oldContents = node.contents;
+    var oldContents = MEMFS.getFileDataAsTypedArray(node);
     node.contents = new Uint8Array(newCapacity);
     // Allocate new storage.
-    if (node.usedBytes > 0) node.contents.set(oldContents.subarray(0, node.usedBytes), 0);
+    node.contents.set(oldContents);
   },
   resizeFileStorage(node, newSize) {
     if (node.usedBytes == newSize) return;
-    if (newSize == 0) {
-      node.contents = null;
-      // Fully decommit when requesting a resize to zero.
-      node.usedBytes = 0;
-    } else {
-      var oldContents = node.contents;
-      node.contents = new Uint8Array(newSize);
-      // Allocate new storage.
-      if (oldContents) {
-        node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes)));
-      }
-      node.usedBytes = newSize;
-    }
+    var oldContents = node.contents;
+    node.contents = new Uint8Array(newSize);
+    // Allocate new storage.
+    node.contents.set(oldContents.subarray(0, Math.min(newSize, node.usedBytes)));
+    // Copy old data over to the new storage.
+    node.usedBytes = newSize;
   },
   node_ops: {
     getattr(node) {
@@ -1195,19 +1189,14 @@ var MEMFS = {
       var contents = stream.node.contents;
       if (position >= stream.node.usedBytes) return 0;
       var size = Math.min(stream.node.usedBytes - position, length);
-      if (size > 8 && contents.subarray) {
-        // non-trivial, and typed array
-        buffer.set(contents.subarray(position, position + size), offset);
-      } else {
-        for (var i = 0; i < size; i++) buffer[offset + i] = contents[position + i];
-      }
+      buffer.set(contents.subarray(position, position + size), offset);
       return size;
     },
     write(stream, buffer, offset, length, position, canOwn) {
       if (!length) return 0;
       var node = stream.node;
       node.mtime = node.ctime = Date.now();
-      if (buffer.subarray && (!node.contents || node.contents.subarray)) {
+      if (buffer.subarray) {
         // This write is from a typed array to a typed array?
         if (canOwn) {
           node.contents = buffer.subarray(offset, offset + length);
@@ -1226,7 +1215,7 @@ var MEMFS = {
       }
       // Appending to an existing file and we need to reallocate, or source data did not come as a typed array.
       MEMFS.expandFileStorage(node, position + length);
-      if (node.contents.subarray && buffer.subarray) {
+      if (buffer.subarray) {
         // Use typed array write which is available.
         node.contents.set(buffer.subarray(offset, offset + length), position);
       } else {
@@ -1259,7 +1248,7 @@ var MEMFS = {
       var allocated;
       var contents = stream.node.contents;
       // Only make a new copy when MAP_PRIVATE is specified.
-      if (!(flags & 2) && contents && contents.buffer === HEAP8.buffer) {
+      if (!(flags & 2) && contents.buffer === HEAP8.buffer) {
         // We can't emulate MAP_SHARED when the file is not backed by the
         // buffer we're mapping to (e.g. the HEAP buffer).
         allocated = false;
