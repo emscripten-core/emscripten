@@ -126,7 +126,7 @@ var runtimeExited = false;
     let shouldExport = false;
     if (MODULARIZE && EXPORT_ALL) {
       shouldExport = true;
-    } else if (EXPORTED_RUNTIME_METHODS.includes(x)) {
+    } else if (EXPORTED_RUNTIME_METHODS.has(x)) {
       shouldExport = true;
     }
     return shouldExport;
