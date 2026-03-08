@@ -1653,7 +1653,7 @@ int f() {
     self.do_runf('lib.c', 'libfunc\n', cflags=['-sEXPORTED_FUNCTIONS=_libfunc2', '-sEXPORT_ALL', '--pre-js', 'pre.js'])
 
   @all_engines
-  @also_with_wasmfs
+  @with_all_fs
   @crossplatform
   @parameterized({
     '': ([],),
@@ -13128,7 +13128,14 @@ void foo() {}
   def test_unistd_swab(self):
     self.do_run_in_out_file_test('unistd/swab.c')
 
+  @also_with_noderawfs
   def test_unistd_isatty(self):
+    if '-DNODERAWFS' in self.cflags:
+      # Under NODERAWFS istty reports accurate information about the file descriptors
+      # of the node process. When we run tests we always capture stdout so we never expect
+      # stdout to be a tty.
+      stdin_isatty = os.isatty(0)
+      self.cflags += ['-DEXPECT_STDOUT=0', f'-DEXPECT_STDIN={int(stdin_isatty)}']
     self.do_runf('unistd/isatty.c', 'success')
 
   def test_unistd_login(self):
