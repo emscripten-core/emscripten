@@ -721,7 +721,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       if node_version[0] < feature_matrix.min_browser_versions[feature_matrix.Feature.JS_BIGINT_INTEGRATION]['node'] / 10000:
         self.cflags.append('-sWASM_BIGINT=0')
 
-    self.v8_args = ['--wasm-staging']
+    self.v8_args = ['--wasm-staging', '--enable-os-system']
     self.env = {}
     self.temp_files_before_run = []
     self.required_engine = None
