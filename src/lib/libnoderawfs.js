@@ -152,9 +152,7 @@ addToLibrary({
       fs.utimesSync(path, atime/1000, mtime/1000);
     },
     open(path, flags, mode) {
-      if (typeof flags == "string") {
-        flags = FS_modeStringToFlags(flags)
-      }
+      flags = FS_modeStringToFlags(flags);
       var pathTruncated = path.split('/').map((s) => s.slice(0, 255)).join('/');
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
       var st = fs.fstatSync(nfd);

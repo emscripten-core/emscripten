@@ -85,6 +85,7 @@ addToLibrary({
 
   // convert the 'r', 'r+', etc. to its corresponding set of O_* flags
   $FS_modeStringToFlags: (str) => {
+    if (typeof str != 'string') return str;
     var flagModes = {
       'r': {{{ cDefs.O_RDONLY }}},
       'r+': {{{ cDefs.O_RDWR }}},

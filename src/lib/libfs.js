@@ -1073,7 +1073,7 @@ FS.staticInit();`;
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
-      flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
+      flags = FS_modeStringToFlags(flags);
       if ((flags & {{{ cDefs.O_CREAT }}})) {
         mode = (mode & {{{ cDefs.S_IALLUGO }}}) | {{{ cDefs.S_IFREG }}};
       } else {
