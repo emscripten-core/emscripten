@@ -13812,16 +13812,21 @@ int main() {
     self.assertContained('AssertionError: attempt to lock the cache while a parent process is holding the lock', err)
 
   @also_with_wasmfs
+  @crossplatform
   def test_fs_icase(self):
     # c++20 for ends_with().
     self.do_other_test('test_fs_icase.cpp', cflags=['-sCASE_INSENSITIVE_FS', '-std=c++20'])
+
+  @crossplatform
+  def test_overwrite_icase_temp(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
+    self.set_setting('INCLUDE_FULL_LIBRARY', 1)
     self.set_setting('CASE_INSENSITIVE_FS', 1)
     self.add_pre_run(read_file(test_file('other/test_overwrite_icase.js')))
     self.do_runf('hello_world.c', 'file.txt: 102,111,111,50\nfile.txt collison: undefined\nerrorCode: 20')
 
-  @no_windows("Test requires case sensitive base FS")
-  @no_mac("Test requires case sensitive base FS")
+  @crossplatform
+  @also_with_wasmfs
   def test_crash_icase(self):
     create_file('file1.txt', 'one')
     create_file('fILe1.txt', 'two')
