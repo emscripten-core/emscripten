@@ -606,13 +606,12 @@ window.close = () => {
       addToLibrary({
         checkPreloadResults: function() {
           var cached = 0;
-          var packages = Object.keys(Module['preloadResults']);
-          packages.forEach(function(package) {
-            var fromCache = Module['preloadResults'][package]['fromCache'];
+          for (var result of Object.values(Module['preloadResults'])) {
+            var fromCache = result['fromCache'];
             if (fromCache) {
               cached++;
             }
-          });
+          }
           return cached;
         }
       });
@@ -945,7 +944,7 @@ window.close = () => {
     'safe_heap_O2': (['-sSAFE_HEAP', '-O2'],),
   })
   def test_sdl_canvas(self, args):
-    self.btest_exit('test_sdl_canvas.c', cflags=['-sSTRICT_JS', '-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'] + args)
+    self.btest_exit('test_sdl_canvas.c', cflags=['-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'] + args)
 
   def test_sdl_canvas_alpha(self):
     # N.B. On Linux with Intel integrated graphics cards, this test needs Firefox 49 or newer.
@@ -1059,7 +1058,7 @@ window.close = () => {
     self.run_browser('page.html', '', '/report_result?exit:0')
 
   def test_glut_touchevents(self):
-    self.btest_exit('glut_touchevents.c', cflags=['-lglut', '-sSTRICT_JS'])
+    self.btest_exit('glut_touchevents.c', cflags=['-lglut'])
 
   def test_glut_wheelevents(self):
     self.btest_exit('glut_wheelevents.c', cflags=['-lglut'])
@@ -4847,8 +4846,6 @@ Module["preRun"] = () => {
   # also also we eval the initial code, so currentScript is not present. That prevents us
   # from finding the file in a subdir, but here we at least check we do not regress compared to the
   # normal case of finding in the current dir.
-  # test both modularize (and creating an instance) and modularize-instance
-  # (which creates by itself)
   @parameterized({
     '': ([], ['-sMODULARIZE'], 'Module();'),
     'subdir': (['subdir'], ['-sMODULARIZE'], 'Module();'),
@@ -4865,7 +4862,7 @@ Module["preRun"] = () => {
         setTimeout(async () => {
           let response = await fetch('test.js');
           let text = await response.text();
-          eval(text);
+          let Module = eval(text + '; Module');
           %s
         }, 1);
       </script>
@@ -4953,7 +4950,6 @@ Module["preRun"] = () => {
 
   @parameterized({
     '': ([],),
-    'strict_js': (['-sSTRICT_JS'],),
     'minimal_runtime': (['-sMINIMAL_RUNTIME=1'],),
     'minimal_runtime_2': (['-sMINIMAL_RUNTIME=2'],),
   })
@@ -5425,8 +5421,8 @@ Module["preRun"] = () => {
   def test_pthread_key_recreation(self):
     self.btest_exit('pthread/test_pthread_key_recreation.c', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=1'])
 
-  def test_full_js_library_strict(self):
-    self.btest_exit('hello_world.c', cflags=['-sINCLUDE_FULL_LIBRARY', '-sSTRICT_JS'])
+  def test_full_js_library(self):
+    self.btest_exit('hello_world.c', cflags=['-sINCLUDE_FULL_LIBRARY'])
 
   # Tests the AudioWorklet demo
   @parameterized({

@@ -23,6 +23,10 @@ See docs/process.md for more on how version tagging works.
 - The deprecated `EMSCRIPTEN` macro is now defined in `emscripten.h` rather than
   on the command line (`__EMSCRIPTEN__`, which is built into LLVM, should be
   used instead). (#26417)
+- The `STRICT_JS` setting is now on by default.  Previously it was enabled by
+  default in `STRICT` mode.  If you have EM_ASM or EM_JS or `--pre-js` code
+  that does not conform to JS strict mode then you may need to disable this
+  with `-sSTRICT_JS=0`. (#26421)
 
 5.0.3 - 03/14/26
 ----------------

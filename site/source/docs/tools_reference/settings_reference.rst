@@ -1701,7 +1701,6 @@ Set the environment variable EMCC_STRICT=1 or pass -sSTRICT to test that a
 codebase builds nicely in forward compatible manner.
 Changes enabled by this:
 
-  - STRICT_JS is enabled.
   - IGNORE_MISSING_MAIN is disabled.
   - AUTO_JS_LIBRARIES is disabled.
   - AUTO_NATIVE_LIBRARIES is disabled.
@@ -1732,7 +1731,7 @@ STRICT_JS
 
 Add ``"use strict;"`` to generated JS
 
-Default value: false
+Default value: true
 
 .. _warn_on_undefined_symbols:
 

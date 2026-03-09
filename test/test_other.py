@@ -3374,7 +3374,6 @@ More info: https://emscripten.org
     'o2': ['-O2'],
     'o2_mem_growth': ['-O2', '-sALLOW_MEMORY_GROWTH', test_file('embind/isMemoryGrowthEnabled=true.cpp')],
     'o2_closure': ['-O2', '--closure=1', '--closure-args', '--externs ' + shlex.quote(test_file('embind/underscore-externs.js')), '-sASSERTIONS=1'],
-    'strict_js': ['-sSTRICT_JS'],
     # DYNCALLS tests the legacy native function API (ASYNCIFY implicitly enables DYNCALLS)
     'dyncalls': ['-sDYNCALLS=1'],
   })
@@ -9022,11 +9021,11 @@ end
     'embind': (['-lembind'],),
   })
   def test_full_js_library(self, args):
-    self.run_process([EMCC, test_file('hello_world.c'), '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'] + args)
+    self.run_process([EMCC, test_file('hello_world.c'), '-sINCLUDE_FULL_LIBRARY'] + args)
 
   def test_full_js_library_undefined(self):
     create_file('main.c', 'void foo(); int main() { foo(); return 0; }')
-    self.assert_fail([EMCC, 'main.c', '-sSTRICT_JS', '-sINCLUDE_FULL_LIBRARY'], 'undefined symbol: foo')
+    self.assert_fail([EMCC, 'main.c', '-sINCLUDE_FULL_LIBRARY'], 'undefined symbol: foo')
 
   def test_full_js_library_except(self):
     self.set_setting('INCLUDE_FULL_LIBRARY', 1)
@@ -13763,9 +13762,6 @@ int main() {
     if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/24830')
     self.do_other_test('test_std_filesystem_tempdir.cpp', cflags=['-g'])
-
-  def test_strict_js_closure(self):
-    self.do_runf('hello_world.c', cflags=['-sSTRICT_JS', '-Werror=closure', '--closure=1', '-O3'])
 
   def test_em_js_deps(self):
     # Check that EM_JS_DEPS works. Specifically, multiple different instances in different
