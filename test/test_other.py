@@ -15028,6 +15028,43 @@ addToLibrary({
     shutil.copy('hello.wasm', 'dist/')
     self.assertContained('hello, world!', self.run_js('dist/bundle.mjs'))
 
+  @crossplatform
+  @requires_dev_dependency('webpack')
+  def test_webpack_esm_output_clean(self):
+    """Verify webpack can build EXPORT_ES6 output without errors.
+
+    When emscripten generates require() in EXPORT_ES6 output (via
+    createRequire from 'node:module'), webpack fails with:
+      UnhandledSchemeError: Reading from "node:module" is not handled by plugins
+    This breaks any webpack/Next.js/Nuxt project using emscripten's ESM output.
+    """
+    copytree(test_file('webpack_es6'), '.')
+    # Compile with default environment (web+node). On main, this generates
+    # 'import { createRequire } from "node:module"' and require() calls for
+    # node support, which webpack cannot resolve for web targets.
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sEXIT_RUNTIME',
+                      '-sMODULARIZE', '-o', 'src/hello.mjs'])
+    self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
+
+  @crossplatform
+  @requires_dev_dependency('vite')
+  def test_vite_esm_output_clean(self):
+    """Verify vite bundles EXPORT_ES6 output without require() or externalizing.
+
+    When emscripten generates require() in EXPORT_ES6 output, vite externalizes
+    the node modules for browser compatibility, emitting a warning. The resulting
+    bundle contains code that references modules unavailable in browsers.
+    """
+    copytree(test_file('vite'), '.')
+    # Compile with default environment (web+node). On main, this generates
+    # require() calls for node support which vite externalizes but leaves
+    # as require() in the bundle output.
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sEXIT_RUNTIME',
+                      '-sMODULARIZE', '-o', 'hello.mjs'])
+    # vite.config.js turns externalization warnings into errors, so vite
+    # will fail with non-zero exit code if require() appears in ESM output.
+    self.run_process(shared.get_npm_cmd('vite') + ['build'])
+
   def test_rlimit(self):
     self.do_other_test('test_rlimit.c', cflags=['-O1'])
 
