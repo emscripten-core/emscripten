@@ -96,11 +96,6 @@ def get_cflags(user_args):
   if settings.WASM_WORKERS:
     cflags.append('-D__EMSCRIPTEN_WASM_WORKERS__=1')
 
-  if not settings.STRICT:
-    # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
-    # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-    cflags.append('-DEMSCRIPTEN')
-
   ports.add_cflags(cflags, settings)
 
   def array_contains_any_of(hay, needles):

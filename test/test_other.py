@@ -11226,17 +11226,6 @@ int main(void) {
     self.assert_fail([EMCC, '-Werror', 'src.c', '-c'], "'EMSCRIPTEN' has been marked as deprecated: use __EMSCRIPTEN__ instead")
     self.assert_fail([EMCC, '-sSTRICT', '-Werror', 'src.c', '-c'], "'EMSCRIPTEN' has been marked as deprecated: use __EMSCRIPTEN__ instead")
 
-  def test_EMSCRIPTEN_and_STRICT(self):
-    # __EMSCRIPTEN__ is the proper define; we support EMSCRIPTEN for legacy
-    # code, unless STRICT is enabled.
-    create_file('src.c', '''
-      #ifndef EMSCRIPTEN
-      #error "not defined"
-      #endif
-    ''')
-    self.run_process([EMCC, 'src.c', '-c'])
-    self.expect_fail([EMCC, 'src.c', '-sSTRICT', '-c'])
-
   def test_exception_settings(self):
     for catching, throwing, opts in itertools.product([0, 1], repeat=3):
       cmd = [EMXX, test_file('other/exceptions_modes_symbols_defined.cpp'), '-sDISABLE_EXCEPTION_THROWING=%d' % (1 - throwing), '-sDISABLE_EXCEPTION_CATCHING=%d' % (1 - catching), '-O%d' % opts]

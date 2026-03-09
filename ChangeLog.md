@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 5.0.4 (in development)
 ----------------------
+- The deprecated `EMSCRIPTEN` macro is now defined in `emscripten.h` rather than
+  on the command line (`__EMSCRIPTEN__`, which is built into LLVM, should be
+  used instead). (#26417)
 
 5.0.3 - 03/14/26
 ----------------
