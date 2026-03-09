@@ -15082,6 +15082,48 @@ addToLibrary({
     shutil.copy('hello.wasm', 'dist/')
     self.assertContained('Hello, world!', self.run_js('dist/bundle.mjs'))
 
+  @crossplatform
+  @requires_dev_dependency('webpack')
+  def test_webpack_esm_output_clean(self):
+    """Verify webpack can build EXPORT_ES6 output without errors.
+
+    When emscripten generates require() in EXPORT_ES6 output (via
+    createRequire from 'node:module'), webpack fails with:
+      UnhandledSchemeError: Reading from "node:module" is not handled by plugins
+    This breaks any webpack/Next.js/Nuxt project using emscripten's ESM output.
+    """
+    copytree(test_file('webpack_es6'), '.')
+    # ESM output is implied by the .mjs extension (EXPORT_ES6 + MODULARIZE).
+    # On main, this generates require() calls for node support, which
+    # webpack cannot resolve for web targets.
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'src/hello.mjs'])
+    self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
+
+  @crossplatform
+  # vite 8 is rolldown-based and its win32 native binding
+  # (@rolldown/binding-win32-x64-msvc) is not installed by `npm ci` on the
+  # Windows CI image due to the npm optional-dependencies bug (npm/cli#4828),
+  # so `vite build` cannot start there.  The same "no require() in ESM output"
+  # property is covered cross-platform (incl. Windows) by the pure-JS
+  # test_webpack_esm_output_clean below.
+  @no_windows('vite 8 rolldown native binding is not installed on Windows CI (npm/cli#4828)')
+  @requires_dev_dependency('vite')
+  def test_vite_esm_output_clean(self):
+    """Verify vite bundles EXPORT_ES6 output without require() or externalizing.
+
+    When emscripten generates require() in EXPORT_ES6 output, vite externalizes
+    the node modules for browser compatibility, emitting a warning. The resulting
+    bundle contains code that references modules unavailable in browsers.
+    """
+    copytree(test_file('vite'), '.')
+    # ESM output is implied by the .mjs extension (EXPORT_ES6 + MODULARIZE).
+    # On main, this generates require() calls for node support which vite
+    # externalizes but leaves as require() in the bundle output.
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'hello.mjs'])
+    # vite.config.js turns externalization warnings into errors, so vite
+    # will fail with non-zero exit code if require() appears in ESM output.
+    self.run_process(shared.get_npm_cmd('vite') + ['build'])
+
   def test_rlimit(self):
     self.do_other_test('test_rlimit.c', cflags=['-O1'])
 
