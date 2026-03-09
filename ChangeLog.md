@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 5.0.3 (in development)
 ----------------------
+- The low level FS.write API now only accepts TypedArray.  The higher level
+  writeFile and createDataFile file still also accept string and Array.
+  (#26413)
 - Warn on usage of the deprecated `EMSCRIPTEN` macro (`__EMSCRIPTEN__` should
   be used instead). (#26381)
 - The `-sRELOCATABLE` setting was effectively removed (moved to legacy
@@ -31,6 +34,7 @@ See docs/process.md for more on how version tagging works.
   in Wasm Worker-based programs. (#26336)
 - SDL2 port updated to include stub functions for `SDL_hid_init()` and related
   functions. (#26297)
+- libpng port updated from 1.6.39 to 1.6.55. (#26388)
 
 5.0.2 - 02/25/26
 ----------------

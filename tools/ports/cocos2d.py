@@ -8,8 +8,8 @@ import re
 
 from tools import diagnostics
 
-TAG = 'version_3_3'
-HASH = 'd7b22660036c684f09754fcbbc7562984f02aa955eef2b76555270c63a717e6672c4fe695afb16280822e8b7c75d4b99ae21975a01a4ed51cad957f7783722cd'
+TAG = 'version_3_3r1'
+HASH = '28037e54bef4ff5363a2a185245afc4670d1664dbded1a13459fef3bcbcd18f61c3df1404415e89aa69cad383637b959a76c4efc7dce55ffaa42a5530b5c9034'
 
 deps = ['libpng', 'zlib']
 
@@ -37,9 +37,6 @@ def get(ports, settings, shared):
       '-DCC_KEYBOARD_SUPPORT',
       '-DGL_ES=1',
       '-DNDEBUG', # '-DCOCOS2D_DEBUG=1' 1 - error/warn, 2 - verbose
-      # Cocos2d source code hasn't switched to __EMSCRIPTEN__.
-      # See https://github.com/emscripten-ports/Cocos2d/pull/3
-      '-DEMSCRIPTEN',
       '-DCP_USE_DOUBLES=0',
       '-sUSE_ZLIB',
       '-sUSE_LIBPNG',

@@ -239,8 +239,7 @@ def main():
     settings.MAIN_MODULE = 1
 
   if args.wasm64:
-    settings.MEMORY64 = 2
-    MINIMAL_TASKS[:] = [t for t in MINIMAL_TASKS if 'emmalloc' not in t]
+    settings.MEMORY64 = 1
 
   do_build = args.operation == 'build'
   do_clear = args.operation == 'clear'
