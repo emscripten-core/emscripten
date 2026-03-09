@@ -944,7 +944,7 @@ window.close = () => {
     'safe_heap_O2': (['-sSAFE_HEAP', '-O2'],),
   })
   def test_sdl_canvas(self, args):
-    self.btest_exit('test_sdl_canvas.c', cflags=['-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'] + args)
+    self.btest_exit('test_sdl_canvas.c', cflags=['-sSTRICT_JS', '-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'] + args)
 
   def test_sdl_canvas_alpha(self):
     # N.B. On Linux with Intel integrated graphics cards, this test needs Firefox 49 or newer.
@@ -1058,7 +1058,7 @@ window.close = () => {
     self.run_browser('page.html', '', '/report_result?exit:0')
 
   def test_glut_touchevents(self):
-    self.btest_exit('glut_touchevents.c', cflags=['-lglut'])
+    self.btest_exit('glut_touchevents.c', cflags=['-lglut', '-sSTRICT_JS'])
 
   def test_glut_wheelevents(self):
     self.btest_exit('glut_wheelevents.c', cflags=['-lglut'])
