@@ -233,6 +233,10 @@ See docs/process.md for more on how version tagging works.
   it may be possible to enable them in future. (#26487)
 - pipe2 implementation was added (with limited flag support) (#26480)
 - ppoll and pselect implementations were added (#26482)
+- The `STRICT_JS` setting is now on by default.  Previously it was enabled by
+  default in `STRICT` mode.  If you have EM_ASM or EM_JS or `--pre-js` code
+  that does not conform to JS strict mode then you may need to disable this
+  with `-sSTRICT_JS=0`. (#26421)
 
 5.0.3 - 03/14/26
 ----------------
