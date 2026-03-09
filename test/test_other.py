@@ -479,6 +479,31 @@ class other(RunnerCore):
   def test_esm_requires_modularize(self):
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMODULARIZE=0'], 'EXPORT_ES6 requires MODULARIZE to be set')
 
+  # Verify that EXPORT_ES6 output uses `await import()` instead of `require()`
+  # for Node.js built-in modules. Using `require()` in ESM files breaks
+  # bundlers (webpack, rollup, vite, esbuild) which cannot resolve CommonJS
+  # require() calls inside ES modules.
+  @crossplatform
+  @parameterized({
+    'default': ([],),
+    'node': (['-sENVIRONMENT=node'],),
+    'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
+  })
+  def test_esm_no_require(self, args):
+    self.run_process([EMCC, '-o', 'hello_world.mjs',
+                      '--extern-post-js', test_file('modularize_post_js.js'),
+                      test_file('hello_world.c')] + args)
+    src = read_file('hello_world.mjs')
+    # EXPORT_ES6 output must not contain require() calls as these are
+    # incompatible with ES modules and break bundlers.
+    # The only acceptable require-like pattern is inside a string/comment.
+    require_calls = re.findall(r'(?<![\w.])require\s*\(', src)
+    self.assertEqual(require_calls, [],
+                     'EXPORT_ES6 output must not contain require() calls '
+                     '(breaks bundlers). Use await import() instead.')
+    # Also verify createRequire is not used as a polyfill
+    self.assertNotContained('createRequire', src)
+
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
     self.run_process([EMCC, '-c', '-ofoo.o', test_file('hello_world.c')])
