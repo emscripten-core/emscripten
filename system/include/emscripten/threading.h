@@ -20,10 +20,9 @@
 extern "C" {
 #endif
 
-// Returns true if the current browser is able to spawn threads with
-// pthread_create(), and the compiled page was built with threading support
-// enabled. If this returns 0, calls to pthread_create() will fail with return
-// code EAGAIN.
+// Returns true if the current runtime is able to spawn threads with shared
+// memory.  If this function returns false then it will not be possible to
+// create new pthreads or Wasm Workers.
 bool emscripten_has_threading_support(void);
 
 // Returns the number of logical cores on the system.
