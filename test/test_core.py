@@ -6306,7 +6306,6 @@ PORT: 3979
   @with_env_modify({'LC_ALL': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
   @crossplatform
   @no_modularize_instance('uses MODULARIZE')
-  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   def test_unicode_js_library(self):
     # First verify that we have correct overridden the default python file encoding.
@@ -8038,7 +8037,6 @@ void* operator new(size_t size) {
 
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_modularize_instance('uses -sMODULARIZE')
-  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
@@ -8985,7 +8983,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_asan_api.c', cflags=['-fsanitize=address'])
 
   @asan
-  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_modularize_instance('uses MODULARIZE')
   def test_asan_modularized_with_closure(self):
@@ -9680,7 +9677,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertFileContents(test_file('core/test_esm_integration.expected.mjs'), read_file('hello_world.mjs'))
 
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
-  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
+  @no_strict_js('EXPORT_ES6 is not compatible with STRICT_JS')
   def test_modularize_instance_hello(self):
     self.do_core_test('test_hello_world.c', cflags=['-sMODULARIZE=instance', '-Wno-experimental'])
 
@@ -9689,7 +9686,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'pthreads': (['-pthread'],),
   })
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
-  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
+  @no_strict_js('EXPORT_ES6 is not compatible with STRICT_JS')
   def test_modularize_instance(self, args):
     if args:
       self.require_pthreads()
@@ -9725,7 +9722,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_4gb('EMBIND_AOT can\'t lower 4gb')
-  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
+  @no_strict_js('EXPORT_ES6 is not compatible with STRICT_JS')
   def test_modularize_instance_embind(self):
     self.run_process([EMXX, test_file('modularize_instance_embind.cpp'),
                       '-sMODULARIZE=instance',

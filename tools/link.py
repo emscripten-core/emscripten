@@ -1148,7 +1148,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     diagnostics.warning('unused-command-line-argument', '--shell-file ignored when not generating html output')
 
   if settings.STRICT:
-    if not settings.MODULARIZE:
+    if not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
     default_setting('DEFAULT_TO_CXX', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
