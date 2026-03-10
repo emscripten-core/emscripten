@@ -589,7 +589,24 @@ void locale::facet::__on_zero_shared() noexcept { delete this; }
 constinit int32_t locale::id::__next_id = 0;
 
 long locale::id::__get() {
+#if defined(__EMSCRIPTEN__) && defined(__EMSCRIPTEN_WASM_WORKERS__)
+  // Avoid `call_once` under Emscripten since we want to avoid the pthread
+  // dependenency that it comes with.
+  // TODO(https://github.com/emscripten-core/emscripten/issues/26426):
+  // Remove this patch once we have some kind of locking primitive
+  // in Wasm Worker that can be used to implement call_once (or
+  // __libcpp_mutex_t/__libcpp_condvar_t).
+  if (__libcpp_atomic_load(&__id_) == 0) {
+    int32_t proposed_id = __libcpp_atomic_add(&__next_id, 1);
+    int32_t expected = 0;
+    // If we race with another thread here the CAS will fail and
+    // the proposed_id will be leaked, but __id_ will be non-zero
+    // in either case.
+    __libcpp_atomic_compare_exchange(&__id_, &expected, proposed_id);
+  }
+#else
   call_once(__flag_, [&] { __id_ = __libcpp_atomic_add(&__next_id, 1); });
+#endif
   return __id_ - 1;
 }
 

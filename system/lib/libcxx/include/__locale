@@ -146,7 +146,9 @@ private:
 };
 
 class _LIBCPP_EXPORTED_FROM_ABI locale::id {
+#if !defined(__EMSCRIPTEN__) || !defined(__EMSCRIPTEN_WASM_WORKERS__)
   once_flag __flag_;
+#endif
   int32_t __id_;
 
   static int32_t __next_id;
