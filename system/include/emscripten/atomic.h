@@ -290,6 +290,14 @@ int emscripten_atomic_cancel_all_wait_asyncs(void);
 // address.  Returns the number of async waits canceled.
 int emscripten_atomic_cancel_all_wait_asyncs_at_address(void *addr __attribute__((nonnull)));
 
+// Returns the value of the expression "Atomics.isLockFree(byteWidth)": true if
+// the given memory access width can be accessed atomically, and false
+// otherwise. Generally will return true on 1, 2 and 4 byte accesses. On 8 byte
+// accesses, behavior differs across browsers, see
+//  - https://bugzil.la/1246139
+//  - https://bugs.chromium.org/p/chromium/issues/detail?id=1167449
+bool emscripten_atomics_is_lock_free(int byteWidth);
+
 #undef _EM_INLINE
 
 #ifdef __cplusplus

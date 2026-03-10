@@ -2753,6 +2753,10 @@ The current type of b is: 9
       self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
     self.do_run_in_out_file_test('pthread/test_pthread_run_on_main_thread.c')
 
+  @requires_pthreads
+  def test_pthread_is_lock_free(self):
+    self.do_runf('pthread/is_lock_free.c', 'done\n', cflags=['-pthread'])
+
   def test_tcgetattr(self):
     self.do_runf('termios/test_tcgetattr.c', 'success')
 
