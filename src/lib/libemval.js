@@ -257,22 +257,32 @@ var LibraryEmVal = {
 
   // Leave id 0 undefined.  It's not a big deal, but might be confusing
   // to have null be a valid method caller.
-  $emval_methodCallers: [undefined],
+  $emval_methodCallers: {list: [undefined], lookup: {}},
 
   $emval_addMethodCaller__deps: ['$emval_methodCallers'],
-  $emval_addMethodCaller: (caller) => {
-    var id = emval_methodCallers.length;
-    emval_methodCallers.push(caller);
+  $emval_addMethodCaller: (sig, caller) => {
+    var id = emval_methodCallers.list.length;
+    emval_methodCallers.list.push(caller);
+    emval_methodCallers.lookup[sig] = id;
     return id;
   },
 
   _emval_create_invoker__deps: [
-    '$emval_addMethodCaller', '$emval_lookupTypes',
+    '$emval_methodCallers', '$emval_addMethodCaller', '$emval_lookupTypes',
     '$createNamedFunction', '$emval_returnValue',
     '$Emval', '$getStringOrSymbol',
   ],
   _emval_create_invoker: (argCount, argTypesPtr, kind) => {
     var GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
+
+    var sig = kind.toString();
+    for (var i = 0; i < argCount; ++i) {
+      sig += ',' + {{{ makeGetValue('argTypesPtr', `i*${POINTER_SIZE}`, '*') }}};
+    }
+    var id = emval_methodCallers.lookup[sig];
+    if (id) {
+      return id;
+    }
 
     var [retType, ...argTypes] = emval_lookupTypes(argCount, argTypesPtr);
     var toReturnWire = retType.toWireType.bind(retType);
@@ -341,12 +351,12 @@ ${functionBody}
     };
 #endif
     var functionName = `methodCaller<(${argTypes.map(t => t.name)}) => ${retType.name}>`;
-    return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
+    return emval_addMethodCaller(sig, createNamedFunction(functionName, invokerFunction));
   },
 
   _emval_invoke__deps: ['$getStringOrSymbol', '$emval_methodCallers', '$Emval'],
   _emval_invoke: (caller, handle, methodName, destructorsRef, args) => {
-    return emval_methodCallers[caller](handle, methodName, destructorsRef, args);
+    return emval_methodCallers.list[caller](handle, methodName, destructorsRef, args);
   },
 
   // Same as `_emval_invoke`, just imported into Wasm under a different return type.
