@@ -2748,6 +2748,13 @@ The current type of b is: 9
   def test_pthread_is_lock_free(self):
     self.do_runf('pthread/is_lock_free.c', 'done\n', cflags=['-pthread'])
 
+  @requires_pthreads
+  def test_emscripten_lock_wait_acquire(self):
+    self.do_runf('wasm_worker/lock_wait_acquire.c', 'done\n', cflags=['-pthread'])
+    if not self.get_setting('WASM_ESM_INTEGRATION'):
+      # Also test the pthreads + WASM_WORKERS combination
+      self.do_runf('wasm_worker/lock_wait_acquire.c', 'done\n', cflags=['-pthread', '-sWASM_WORKERS'])
+
   def test_tcgetattr(self):
     self.do_runf('termios/test_tcgetattr.c', 'success')
 

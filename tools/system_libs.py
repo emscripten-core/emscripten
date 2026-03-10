@@ -1288,6 +1288,7 @@ class libc(MuslInternalLibrary,
         path='system/lib/pthread',
         filenames=[
           'emscripten_thread_state.S',
+          'emscripten_thread_primitives.c',
           'emscripten_futex_wait.c',
           'emscripten_futex_wake.c',
         ])

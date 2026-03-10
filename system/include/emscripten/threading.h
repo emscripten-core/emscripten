@@ -11,11 +11,11 @@
 #include <pthread.h>
 #include <stdbool.h>
 
-#include <emscripten/html5.h>  // for EMSCRIPTEN_RESULT
 #include <emscripten/atomic.h>
+#include <emscripten/threading_primitives.h>
 
 // Legacy proxying functions.  See proxying.h for the new proxying system.
-#include "threading_legacy.h"
+#include <emscripten/threading_legacy.h>
 
 #ifdef __cplusplus
 extern "C" {
