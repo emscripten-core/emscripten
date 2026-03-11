@@ -884,16 +884,7 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_stack.c')
 
   def test_stack_align(self):
-    src = test_file('core/test_stack_align.c')
-
-    def test():
-      self.do_runf(src, ['''align 4: 0
-align 8: 0
-align 16: 0
-align 32: 0
-base align: 0, 0, 0, 0'''])
-
-    test()
+    self.do_core_test('test_stack_align.c')
 
   @no_asan('stack size is too low for asan to work properly')
   def test_stack_placement(self):
