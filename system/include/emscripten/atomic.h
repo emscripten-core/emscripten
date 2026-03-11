@@ -197,6 +197,10 @@ _EM_INLINE void emscripten_atomic_fence(void) {
 // NOTE: This function takes in the wait value in int64_t nanosecond units. Pass
 // in maxWaitNanoseconds = -1 (or ATOMICS_WAIT_DURATION_INFINITE) to wait
 // infinitely long.
+// NOTE: This function is thin wrapper around the Wasm atomic.wait instruction
+// and therefore cannot be used on the main browser thread, or in Audio Worklets.
+// If you need a wait primitive that works everywhere you can use
+// `emscripten_futex_wait`.
 _EM_INLINE ATOMICS_WAIT_RESULT_T emscripten_atomic_wait_u32(void /*uint32_t*/* _Nonnull addr, uint32_t expectedValue, int64_t maxWaitNanoseconds) {
   return __builtin_wasm_memory_atomic_wait32((int32_t*)addr, expectedValue, maxWaitNanoseconds);
 }
@@ -208,6 +212,10 @@ _EM_INLINE ATOMICS_WAIT_RESULT_T emscripten_atomic_wait_u32(void /*uint32_t*/* _
 // NOTE: This function takes in the wait value in int64_t nanosecond units. Pass
 // in maxWaitNanoseconds = -1 (or ATOMICS_WAIT_DURATION_INFINITE) to wait
 // infinitely long.
+// NOTE: This function is thin wrapper around the Wasm atomic.wait instruction
+// and therefore cannot be used on the main browser thread, or in Audio Worklets.
+// If you need a wait primitive that works everywhere you can use
+// `emscripten_futex_wait`.
 _EM_INLINE ATOMICS_WAIT_RESULT_T emscripten_atomic_wait_u64(void /*uint64_t*/* _Nonnull addr, uint64_t expectedValue, int64_t maxWaitNanoseconds) {
   return __builtin_wasm_memory_atomic_wait64((int64_t*)addr, expectedValue, maxWaitNanoseconds);
 }

@@ -29,16 +29,6 @@ bool emscripten_has_threading_support(void);
 // Returns the number of logical cores on the system.
 int emscripten_num_logical_cores(void);
 
-// If the given memory address contains value val, puts the calling thread to
-// sleep waiting for that address to be notified.
-// Returns -EINVAL if addr is null.
-int emscripten_futex_wait(volatile void/*uint32_t*/ * _Nonnull addr, uint32_t val, double maxWaitMilliseconds);
-
-// Wakes the given number of threads waiting on a location. Pass count ==
-// INT_MAX to wake all waiters on that location.
-// Returns -EINVAL if addr is null.
-int emscripten_futex_wake(volatile void/*uint32_t*/ * _Nonnull addr, int count);
-
 // Returns true if the current thread is the thread that hosts the Emscripten
 // runtime.
 // Returns false on pthreads and Wasm Workers.

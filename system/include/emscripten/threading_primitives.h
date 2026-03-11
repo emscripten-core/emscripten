@@ -13,10 +13,6 @@
 extern "C" {
 #endif
 
-// Similar to emscripten_async_wait_callback_t but with a volatile first
-// argument.
-typedef void (*emscripten_async_wait_volatile_callback_t)(volatile void* address, uint32_t value, ATOMICS_WAIT_RESULT_T waitResult, void* userData);
-
 #define emscripten_lock_t volatile uint32_t
 
 // Use with syntax "emscripten_lock_t l = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;"
@@ -34,7 +30,6 @@ void emscripten_lock_init(emscripten_lock_t * _Nonnull lock);
 // NOTE: This function can be only called in a Worker, and not on the main
 //       browser thread, because the main browser thread cannot synchronously
 //       sleep to wait for locks.
-
 bool emscripten_lock_wait_acquire(emscripten_lock_t * _Nonnull lock, int64_t maxWaitNanoseconds);
 
 // Similar to emscripten_lock_wait_acquire(), but instead of waiting for at most
@@ -73,6 +68,10 @@ bool emscripten_lock_busyspin_wait_acquire(emscripten_lock_t * _Nonnull lock, do
 //       careful to analyze that the given lock will be extremely fast to
 //       acquire without contention from other threads.
 void emscripten_lock_busyspin_waitinf_acquire(emscripten_lock_t * _Nonnull lock);
+
+// Similar to emscripten_async_wait_callback_t but with a volatile first
+// argument.
+typedef void (*emscripten_async_wait_volatile_callback_t)(volatile void* address, uint32_t value, ATOMICS_WAIT_RESULT_T waitResult, void* userData);
 
 // Registers an *asynchronous* lock acquire operation. The calling thread will
 // asynchronously try to obtain the given lock after the calling thread yields
@@ -186,6 +185,16 @@ ATOMICS_WAIT_TOKEN_T emscripten_condvar_wait_async(emscripten_condvar_t * _Nonnu
 // Pass numWaitersToSignal == EMSCRIPTEN_NOTIFY_ALL_WAITERS to wake all waiters
 // ("broadcast" operation).
 void emscripten_condvar_signal(emscripten_condvar_t * _Nonnull condvar, int64_t numWaitersToSignal);
+
+// If the given memory address contains value val, puts the calling thread to
+// sleep waiting for that address to be notified.
+// Returns -EINVAL if addr is null.
+int emscripten_futex_wait(volatile void/*uint32_t*/ * _Nonnull addr, uint32_t val, double maxWaitMilliseconds);
+
+// Wakes the given number of threads waiting on a location. Pass count ==
+// INT_MAX to wake all waiters on that location.
+// Returns -EINVAL if addr is null.
+int emscripten_futex_wake(volatile void/*uint32_t*/ * _Nonnull addr, int count);
 
 #ifdef __cplusplus
 }
