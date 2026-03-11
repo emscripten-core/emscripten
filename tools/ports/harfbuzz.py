@@ -116,7 +116,7 @@ def get(ports, settings, shared):
 
     cflags += ['-I' + freetype_include, '-I' + os.path.join(freetype_include, 'config')]
 
-    if settings.RELOCATABLE:
+    if settings.MAIN_MODULE:
       cflags.append('-fPIC')
 
     if settings.PTHREADS:

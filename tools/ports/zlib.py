@@ -23,7 +23,7 @@ def get(ports, settings, shared):
     zconf_h = os.path.join(os.path.dirname(__file__), 'zlib/zconf.h')
     shutil.copyfile(zconf_h, os.path.join(source_path, 'zconf.h'))
     ports.install_headers(source_path)
-    ports.make_pkg_config('zlib', VERSION, '-sUSE_ZIB')
+    ports.make_pkg_config('zlib', VERSION, '-sUSE_ZLIB')
 
     # build
     srcs = 'adler32.c compress.c crc32.c deflate.c gzclose.c gzlib.c gzread.c gzwrite.c infback.c inffast.c inflate.c inftrees.c trees.c uncompr.c zutil.c'.split()

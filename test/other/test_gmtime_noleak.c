@@ -5,7 +5,7 @@
 
 int main() {
   // Verify that it doesn't leak memory on first use (if we call it via
-  // via gmtime thn this can hide the leak because the result is stored
+  // via gmtime then this can hide the leak because the result is stored
   // in static data).
   time_t xmas2002 = 1040786563ll;
 

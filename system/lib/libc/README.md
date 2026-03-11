@@ -15,5 +15,5 @@ Some changes have been made to the version that was taken from upstream, includi
  * Handling trailing % in `strftime` and `wcsftime` format strings.
 
 Copy log.c and log2.c from earlier version of musl which result in smaller
-binary size since they do not rely data tables in log_data.c and log2_data.c.
+binary size since they do not rely on data tables in log_data.c and log2_data.c.
 See https://github.com/emscripten-core/emscripten/issues/15483.

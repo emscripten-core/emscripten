@@ -8,18 +8,20 @@ addToLibrary({
   // Decodes a _known valid_ base64 string (without validation) and returns it as a new Uint8Array.
   // Benchmarked to be around 5x faster compared to a simple
   // "Uint8Array.from(atob(b64), c => c.charCodeAt(0))" (TODO: perhaps use this form in -Oz builds?)
+#if !JS_BASE64_API
   $base64Decode__postset: `
   // Precreate a reverse lookup table from chars
   // "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/" back to
   // bytes to make decoding fast.
-  for (var base64ReverseLookup = new Uint8Array(123/*'z'+1*/), i = 25; i >= 0; --i) {
-    base64ReverseLookup[48+i] = 52+i; // '0-9'
-    base64ReverseLookup[65+i] = i; // 'A-Z'
-    base64ReverseLookup[97+i] = 26+i; // 'a-z'
+  for (var base64ReverseLookup = new Uint8Array(123/*'z'+1*/), __b64i = 25; __b64i >= 0; --__b64i) {
+    base64ReverseLookup[48+__b64i] = 52+__b64i; // '0-9'
+    base64ReverseLookup[65+__b64i] = __b64i; // 'A-Z'
+    base64ReverseLookup[97+__b64i] = 26+__b64i; // 'a-z'
   }
   base64ReverseLookup[43] = 62; // '+'
   base64ReverseLookup[47] = 63; // '/'
 `,
+#endif
   $base64Decode__docs: '/** @noinline */',
   $base64Decode: (b64) => {
 #if JS_BASE64_API

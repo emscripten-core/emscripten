@@ -20,31 +20,37 @@ emcc can be influenced by a few environment variables:
                slows down compilation).
 """
 
-from tools.toolchain_profiler import ToolchainProfiler
-
 import logging
 import os
 import shlex
 import shutil
 import sys
-import time
 import tarfile
+from dataclasses import dataclass
 from enum import Enum, auto, unique
-from subprocess import PIPE
 
+# This assert needs to happen early, before any too-recent python syntax is used.
+# In particular it needs to happen before we import any python file that uses the
+# `match` keyword.
+assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
 
-from tools import shared, system_libs, utils, ports, cmdline
-from tools import diagnostics, building
-from tools.shared import unsuffixed, unsuffixed_basename, get_file_suffix
-from tools.shared import run_process, exit_with_error, DEBUG
-from tools.shared import in_temp
-from tools.shared import DYLIB_EXTENSIONS
-from tools.cmdline import SIMD_INTEL_FEATURE_TOWER, SIMD_NEON_FLAGS, CLANG_FLAGS_WITH_ARGS
+from tools import (
+  building,
+  cache,
+  cmdline,
+  compile,
+  config,
+  diagnostics,
+  shared,
+  system_libs,
+  utils,
+)
+from tools.cmdline import CLANG_FLAGS_WITH_ARGS, options
 from tools.response_file import substitute_response_files
-from tools import config
-from tools import cache
-from tools.settings import default_setting, user_settings, settings, COMPILE_TIME_SETTINGS
-from tools.utils import read_file, memoize
+from tools.settings import COMPILE_TIME_SETTINGS, default_setting, settings, user_settings
+from tools.shared import DEBUG, DYLIB_EXTENSIONS, in_temp
+from tools.toolchain_profiler import ToolchainProfiler
+from tools.utils import exit_with_error, get_file_suffix, read_file, unsuffixed_basename
 
 logger = logging.getLogger('emcc')
 
@@ -89,17 +95,17 @@ class Mode(Enum):
   COMPILE_AND_LINK = auto()
 
 
+@dataclass
 class LinkFlag:
   """Used to represent a linker flag.
 
-  The flag value is stored along with a bool that distingingishes input
+  The flag value is stored along with a bool that distinguishes input
   files from non-files.
 
-  A list of these is return by separate_linker_flags.
+  A list of these is returned by separate_linker_flags.
   """
-  def __init__(self, value, is_file):
-    self.value = value
-    self.is_file = is_file
+  value: str
+  is_file: int
 
 
 class EmccState:
@@ -118,7 +124,7 @@ def create_reproduce_file(name, args):
 
   root = unsuffixed_basename(name)
   with tarfile.open(name, 'w') as reproduce_file:
-    reproduce_file.add(shared.path_from_root('emscripten-version.txt'), os.path.join(root, 'version.txt'))
+    reproduce_file.add(utils.path_from_root('emscripten-version.txt'), os.path.join(root, 'version.txt'))
 
     with shared.get_temp_files().get_file(suffix='.tar') as rsp_name:
       with open(rsp_name, 'w') as rsp:
@@ -164,148 +170,8 @@ def create_reproduce_file(name, args):
       reproduce_file.add(rsp_name, os.path.join(root, 'response.txt'))
 
 
-def cxx_to_c_compiler(cxx):
-  # Convert C++ compiler name into C compiler name
-  dirname, basename = os.path.split(cxx)
-  basename = basename.replace('clang++', 'clang').replace('g++', 'gcc').replace('em++', 'emcc')
-  return os.path.join(dirname, basename)
-
-
-def get_target_flags():
-  return ['-target', shared.get_llvm_target()]
-
-
-def get_clang_flags(user_args):
-  flags = get_target_flags()
-
-  # if exception catching is disabled, we can prevent that code from being
-  # generated in the frontend
-  if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
-    flags.append('-fignore-exceptions')
-
-  if settings.INLINING_LIMIT:
-    flags.append('-fno-inline-functions')
-
-  if settings.PTHREADS:
-    if '-pthread' not in user_args:
-      flags.append('-pthread')
-  elif settings.SHARED_MEMORY:
-    if '-matomics' not in user_args:
-      flags.append('-matomics')
-    if '-mbulk-memory' not in user_args:
-      flags.append('-mbulk-memory')
-
-  if settings.RELOCATABLE and '-fPIC' not in user_args:
-    flags.append('-fPIC')
-
-  if settings.RELOCATABLE or settings.LINKABLE or '-fPIC' in user_args:
-    if not any(a.startswith('-fvisibility') for a in user_args):
-      # For relocatable code we default to visibility=default in emscripten even
-      # though the upstream backend defaults visibility=hidden.  This matches the
-      # expectations of C/C++ code in the wild which expects undecorated symbols
-      # to be exported to other DSO's by default.
-      flags.append('-fvisibility=default')
-
-  if settings.LTO:
-    if not any(a.startswith('-flto') for a in user_args):
-      flags.append('-flto=' + settings.LTO)
-    # setjmp/longjmp handling using Wasm EH
-    # For non-LTO, '-mllvm -wasm-enable-eh' added in
-    # building.llvm_backend_args() sets this feature in clang. But in LTO, the
-    # argument is added to wasm-ld instead, so clang needs to know that EH is
-    # enabled so that it can be added to the attributes in LLVM IR.
-    if settings.SUPPORT_LONGJMP == 'wasm':
-      flags.append('-mexception-handling')
-
-  else:
-    # In LTO mode these args get passed instead at link time when the backend runs.
-    for a in building.llvm_backend_args():
-      flags += ['-mllvm', a]
-
-  return flags
-
-
-@memoize
-def get_cflags(user_args):
-  # Flags we pass to the compiler when building C/C++ code
-  # We add these to the user's flags (newargs), but not when building .s or .S assembly files
-  cflags = get_clang_flags(user_args)
-  cflags.append('--sysroot=' + cache.get_sysroot(absolute=True))
-
-  if settings.EMSCRIPTEN_TRACING:
-    cflags.append('-D__EMSCRIPTEN_TRACING__=1')
-
-  if settings.SHARED_MEMORY:
-    cflags.append('-D__EMSCRIPTEN_SHARED_MEMORY__=1')
-
-  if settings.WASM_WORKERS:
-    cflags.append('-D__EMSCRIPTEN_WASM_WORKERS__=1')
-
-  if not settings.STRICT:
-    # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
-    # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-    cflags.append('-DEMSCRIPTEN')
-
-  ports.add_cflags(cflags, settings)
-
-  def array_contains_any_of(hay, needles):
-    for n in needles:
-      if n in hay:
-        return True
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER) or array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    if '-msimd128' not in user_args and '-mrelaxed-simd' not in user_args:
-      exit_with_error('passing any of ' + ', '.join(SIMD_INTEL_FEATURE_TOWER + SIMD_NEON_FLAGS) + ' flags also requires passing -msimd128 (or -mrelaxed-simd)!')
-    cflags += ['-D__SSE__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[1:]):
-    cflags += ['-D__SSE2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[2:]):
-    cflags += ['-D__SSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[3:]):
-    cflags += ['-D__SSSE3__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[4:]):
-    cflags += ['-D__SSE4_1__=1']
-
-  # Handle both -msse4.2 and its alias -msse4.
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[5:]):
-    cflags += ['-D__SSE4_2__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[7:]):
-    cflags += ['-D__AVX__=1']
-
-  if array_contains_any_of(user_args, SIMD_INTEL_FEATURE_TOWER[8:]):
-    cflags += ['-D__AVX2__=1']
-
-  if array_contains_any_of(user_args, SIMD_NEON_FLAGS):
-    cflags += ['-D__ARM_NEON__=1']
-
-  if '-nostdinc' not in user_args:
-    if not settings.USE_SDL:
-      cflags += ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'fakesdl')]
-    cflags += ['-Xclang', '-iwithsysroot' + os.path.join('/include', 'compat')]
-
-  return cflags
-
-
-def get_library_basename(filename):
-  """Similar to get_file_suffix this strips off all numeric suffixes and then
-  then final non-numeric one.  For example for 'libz.so.1.2.8' returns 'libz'"""
-  filename = os.path.basename(filename)
-  while filename:
-    filename, suffix = os.path.splitext(filename)
-    # Keep stipping suffixes until we strip a non-numeric one.
-    if not suffix[1:].isdigit():
-      return filename
-
-
-#
-# Main run() function
-#
-def run(args):
+@ToolchainProfiler.profile()
+def main(args):
   if shared.run_via_emxx:
     clang = shared.CLANG_CXX
   else:
@@ -319,12 +185,11 @@ def run(args):
   if len(args) == 2 and args[1] == '-v':
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print(cmdline.version_string(), file=sys.stderr)
-    return shared.check_call([clang, '-v'] + get_target_flags(), check=False).returncode
+    return shared.check_call([clang, '-v'] + compile.get_target_flags(), check=False).returncode
 
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
-  EMCC_CFLAGS = os.environ.get('EMCC_CFLAGS')
-  if EMCC_CFLAGS:
+  if EMCC_CFLAGS := os.environ.get('EMCC_CFLAGS'):
     args += shlex.split(EMCC_CFLAGS)
 
   if DEBUG:
@@ -360,7 +225,7 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
 
   ## Process argument and setup the compiler
   state = EmccState(args)
-  options, newargs = cmdline.parse_arguments(state.orig_args)
+  newargs = cmdline.parse_arguments(state.orig_args)
 
   if not shared.SKIP_SUBPROCS:
     shared.check_sanity()
@@ -370,7 +235,7 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
   if '--version' in args:
     print(cmdline.version_string())
     print('''\
-Copyright (C) 2025 the Emscripten authors (see AUTHORS.txt)
+Copyright (C) 2026 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ''')
@@ -380,27 +245,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(utils.EMSCRIPTEN_VERSION)
     return 0
 
-  if '--cflags' in args:
-    # fake running the command, to see the full args we pass to clang
-    args = [x for x in args if x != '--cflags']
-    with shared.get_temp_files().get_file(suffix='.o') as temp_target:
-      input_file = 'hello_world.c'
-      compiler = shared.EMCC
-      if shared.run_via_emxx:
-        compiler = shared.EMXX
-      cmd = [compiler, utils.path_from_root('test', input_file), '-v', '-c', '-o', temp_target] + args
-      proc = run_process(cmd, stderr=PIPE, check=False)
-      if proc.returncode != 0:
-        print(proc.stderr)
-        exit_with_error('error getting cflags')
-      lines = [x for x in proc.stderr.splitlines() if clang in x and input_file in x]
-      if not lines:
-        exit_with_error(f'unable to parse output of `{cmd}`:\n{proc.stderr}')
-      parts = shlex.split(lines[0].replace('\\', '\\\\'))
-      parts = [x for x in parts if x not in ['-c', '-o', '-v', '-emit-llvm'] and input_file not in x and temp_target not in x]
-      print(shlex.join(parts[1:]))
-    return 0
-
   if '-dumpmachine' in args or '-print-target-triple' in args or '--print-target-triple' in args:
     print(shared.get_llvm_target())
     return 0
@@ -408,10 +252,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if '-print-search-dirs' in args or '--print-search-dirs' in args:
     print(f'programs: ={config.LLVM_ROOT}')
     print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
-    return 0
-
-  if '-print-resource-dir' in args:
-    shared.check_call([clang] + args)
     return 0
 
   if '-print-libgcc-file-name' in args or '--print-libgcc-file-name' in args:
@@ -446,11 +286,22 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if 'EMCC_REPRODUCE' in os.environ:
     options.reproduce = os.environ['EMCC_REPRODUCE']
 
-  # For internal consistency, ensure we don't attempt or read or write any link time
+  # For internal consistency, ensure we don't attempt to read or write any link time
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
-  phase_setup(options, state)
+  phase_setup(state)
+
+  if '-print-resource-dir' in args or any(a.startswith('--print-prog-name') for a in args):
+    shared.exec_process([clang] + compile.get_cflags(tuple(args)) + args)
+    assert False, 'exec_process should not return'
+
+  if '--cflags' in args:
+    # Just print the flags we pass to clang and exit.  We need to do this after
+    # phase_setup because the setup sets things like SUPPORT_LONGJMP.
+    cflags = compile.get_cflags(x for x in args if x != '--cflags')
+    print(shlex.join(cflags))
+    return 0
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -461,7 +312,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     linker_args = separate_linker_flags(newargs)[1]
     linker_args = [f.value for f in linker_args]
     # Delay import of link.py to avoid processing this file when only compiling
-    from tools import link
+    from tools import link  # noqa: PLC0415
     link.run_post_link(options.input_files[0], options, linker_args)
     return 0
 
@@ -485,9 +336,6 @@ def separate_linker_flags(newargs):
   - Compiler flags are those to be passed to `clang -c`.
   """
 
-  if settings.RUNTIME_LINKED_LIBS:
-    newargs += settings.RUNTIME_LINKED_LIBS
-
   compiler_args = []
   linker_args = []
 
@@ -510,10 +358,7 @@ def separate_linker_flags(newargs):
       return newargs[i + 1]
 
     if not arg.startswith('-') or arg == '-':
-      # os.devnul should always be reported as existing but there is bug in windows
-      # python before 3.8:
-      # https://bugs.python.org/issue1311
-      if not os.path.exists(arg) and arg not in (os.devnull, '-'):
+      if not os.path.exists(arg) and arg != '-':
         exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
       add_link_arg(arg, True)
     elif arg == '-z':
@@ -536,7 +381,7 @@ def separate_linker_flags(newargs):
 
 
 @ToolchainProfiler.profile_block('setup')
-def phase_setup(options, state):
+def phase_setup(state):
   """Second phase: configure and setup the compiler based on the specified settings and arguments.
   """
 
@@ -559,18 +404,12 @@ def phase_setup(options, state):
             'unused-command-line-argument',
             "linker flag ignored during compilation: '%s'" % arg)
 
-  if settings.MAIN_MODULE or settings.SIDE_MODULE:
-    settings.RELOCATABLE = 1
-
   if 'USE_PTHREADS' in user_settings:
     settings.PTHREADS = settings.USE_PTHREADS
 
   # Pthreads and Wasm Workers require targeting shared Wasm memory (SAB).
   if settings.PTHREADS or settings.WASM_WORKERS:
     settings.SHARED_MEMORY = 1
-
-  if settings.SHARED_MEMORY:
-    settings.BULK_MEMORY = 1
 
   if 'DISABLE_EXCEPTION_CATCHING' in user_settings and 'EXCEPTION_CATCHING_ALLOWED' in user_settings:
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
@@ -633,11 +472,6 @@ def phase_setup(options, state):
     else:
       settings.SUPPORT_LONGJMP = 'emscripten'
 
-  # SDL2 requires eglGetProcAddress() to work.
-  # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
-  if settings.USE_SDL == 2 or settings.USE_SDL_MIXER == 2 or settings.USE_SDL_GFX == 2:
-    default_setting('GL_ENABLE_GET_PROC_ADDRESS', 1)
-
 
 @ToolchainProfiler.profile_block('compile inputs')
 def phase_compile_inputs(options, state, newargs):
@@ -653,13 +487,13 @@ def phase_compile_inputs(options, state, newargs):
   system_libs.ensure_sysroot()
 
   def get_clang_command():
-    return compiler + get_cflags(state.orig_args)
+    return compiler + compile.get_cflags(state.orig_args)
 
   def get_clang_command_preprocessed():
-    return compiler + get_clang_flags(state.orig_args)
+    return compiler + compile.get_clang_flags(state.orig_args)
 
   def get_clang_command_asm():
-    return compiler + get_target_flags()
+    return compiler + compile.get_target_flags()
 
   if state.mode == Mode.COMPILE_ONLY:
     if options.output_file and get_file_suffix(options.output_file) == '.bc' and not settings.LTO and '-emit-llvm' not in state.orig_args:
@@ -669,33 +503,45 @@ def phase_compile_inputs(options, state, newargs):
     else:
       cmd = get_clang_command() + newargs
     shared.exec_process(cmd)
-    assert False, 'exec_process does not return'
+    assert False, 'exec_process should not return'
 
   # In COMPILE_AND_LINK we need to compile source files too, but we also need to
   # filter out the link flags
   assert state.mode == Mode.COMPILE_AND_LINK
   assert not options.dash_c
   compile_args, linker_args = separate_linker_flags(newargs)
+
+  # Map of file basenames to how many times we've seen them.  We use this to generate
+  # unique `_NN` suffix for object files in cases when we are compiling multiple sources that
+  # have the same basename.  e.g. `foo/utils.c` and `bar/utils.c` on the same command line.
   seen_names = {}
 
   def uniquename(name):
     if name not in seen_names:
-      seen_names[name] = str(len(seen_names))
-    return unsuffixed(name) + '_' + seen_names[name] + shared.suffix(name)
+      # No suffix needed the first time we see given name.
+      seen_names[name] = 1
+      return name
+
+    unique_suffix = '_%d' % seen_names[name]
+    seen_names[name] += 1
+    base, ext = os.path.splitext(name)
+    return base + unique_suffix + ext
 
   def get_object_filename(input_file):
-    return in_temp(shared.replace_suffix(uniquename(input_file), '.o'))
+    objfile = unsuffixed_basename(input_file) + '.o'
+    return in_temp(uniquename(objfile))
 
   def compile_source_file(input_file):
     logger.debug(f'compiling source file: {input_file}')
     output_file = get_object_filename(input_file)
-    if get_file_suffix(input_file) in ASSEMBLY_EXTENSIONS:
+    ext = get_file_suffix(input_file)
+    if ext in ASSEMBLY_EXTENSIONS:
       cmd = get_clang_command_asm()
-    elif get_file_suffix(input_file) in PREPROCESSED_EXTENSIONS:
+    elif ext in PREPROCESSED_EXTENSIONS:
       cmd = get_clang_command_preprocessed()
     else:
       cmd = get_clang_command()
-      if get_file_suffix(input_file) in ['.pcm']:
+      if ext == '.pcm':
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
     cmd += compile_args + ['-c', input_file, '-o', output_file]
     if options.requested_debug == '-gsplit-dwarf':
@@ -703,14 +549,14 @@ def phase_compile_inputs(options, state, newargs):
       # but we want the `.dwo` file to be generated in the current working directory,
       # like it is under clang.  We could avoid this hack if we use the clang driver
       # to generate the temporary files, but that would also involve using the clang
-      # driver to perform linking which would be big change.
+      # driver to perform linking which would be a big change.
       cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
       cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
     shared.check_call(cmd)
     if not shared.SKIP_SUBPROCS:
       assert os.path.exists(output_file)
       if options.save_temps:
-        shutil.copyfile(output_file, shared.unsuffixed_basename(input_file) + '.o')
+        shutil.copyfile(output_file, utils.unsuffixed_basename(input_file) + '.o')
     return output_file
 
   # Compile input files individually to temporary locations.
@@ -734,14 +580,6 @@ def phase_compile_inputs(options, state, newargs):
       pass
 
   return [f.value for f in linker_args]
-
-
-@ToolchainProfiler.profile()
-def main(args):
-  start_time = time.time()
-  ret = run(args)
-  logger.debug('total time: %.2f seconds', (time.time() - start_time))
-  return ret
 
 
 if __name__ == '__main__':

@@ -7,8 +7,8 @@
 
 #pragma once
 
-#if __cplusplus < 201103L
-#error Including <emscripten/bind.h> requires building with -std=c++11 or newer!
+#if __cplusplus < 201703L
+#error "embind requires -std=c++17 or newer"
 #endif
 
 #include <cassert>
@@ -18,11 +18,9 @@
 #include <string>
 #include <type_traits>
 #include <vector>
-#if __cplusplus >= 201703L
 #include <optional>
-#endif
 
-#include <emscripten/em_macros.h>
+#include <emscripten/em_asm.h>
 #include <emscripten/val.h>
 #include <emscripten/wire.h>
 
@@ -219,6 +217,12 @@ void _embind_register_class_class_property(
     const char* setterSignature,
     GenericFunction setter);
 
+void _embind_register_iterable(
+    TYPEID classType,
+    TYPEID elementType,
+    const char* sizeMethodName,
+    const char* getMethodName);
+
 EM_VAL _embind_create_inheriting_constructor(
     const char* constructorName,
     TYPEID wrapperType,
@@ -228,7 +232,8 @@ void _embind_register_enum(
     TYPEID enumType,
     const char* name,
     size_t size,
-    bool isSigned);
+    bool isSigned,
+    int policyValue);
 
 void _embind_register_smart_ptr(
     TYPEID pointerType,
@@ -262,6 +267,11 @@ void _embind_register_user_type(
     TYPEID type,
     const char* typeName);
 
+void _embind_register_user_type_definition(
+    TYPEID type,
+    const char* typeName,
+    const char* typeDefinition);
+
 // Register an InitFunc in the global linked list of init functions.
 void _embind_register_bindings(struct InitFunc* f);
 
@@ -270,7 +280,7 @@ void _embind_register_bindings(struct InitFunc* f);
 // to avoid static constructor ordering issues.
 struct InitFunc {
   InitFunc(void (*init_func)()) : init_func(init_func) {
-    // This the function immediately upon constructions, and also register
+    // This calls the function immediately upon construction, and also registers
     // it so that it can be called again on each worker that starts.
     init_func();
     _embind_register_bindings(this);
@@ -282,181 +292,6 @@ struct InitFunc {
 } // end extern "C"
 
 } // end namespace internal
-
-////////////////////////////////////////////////////////////////////////////////
-// POLICIES
-////////////////////////////////////////////////////////////////////////////////
-
-template<int Index>
-struct arg {
-    static constexpr int index = Index + 1;
-};
-
-struct ret_val {
-    static constexpr int index = 0;
-};
-
-/*
-template<typename Slot>
-struct allow_raw_pointer {
-    template<typename InputType, int Index>
-    struct Transform {
-        typedef typename std::conditional<
-            Index == Slot::index,
-            internal::AllowedRawPointer<typename std::remove_pointer<InputType>::type>,
-            InputType
-        >::type type;
-    };
-};
-*/
-
-// allow all raw pointers
-struct allow_raw_pointers {
-    template<typename InputType, int Index>
-    struct Transform {
-        // Use decay to handle references to pointers e.g.(T*&)->(T*).
-        typedef typename std::decay<InputType>::type DecayedType;
-        typedef typename std::conditional<
-            std::is_pointer<DecayedType>::value,
-            internal::AllowedRawPointer<typename std::remove_pointer<DecayedType>::type>,
-            InputType
-        >::type type;
-    };
-};
-
-// this is temporary until arg policies are reworked
-template<typename Slot>
-struct allow_raw_pointer : public allow_raw_pointers {
-};
-
-struct async {
-    template<typename InputType, int Index>
-    struct Transform {
-        typedef InputType type;
-    };
-};
-
-struct pure_virtual {
-    template<typename InputType, int Index>
-    struct Transform {
-        typedef InputType type;
-    };
-};
-
-template<typename Slot>
-struct nonnull {
-    static_assert(std::is_same<Slot, ret_val>::value, "Only nonnull return values are currently supported.");
-    template<typename InputType, int Index>
-    struct Transform {
-        typedef InputType type;
-    };
-};
-
-namespace return_value_policy {
-
-struct take_ownership : public allow_raw_pointers {};
-struct reference : public allow_raw_pointers {};
-
-} // end namespace return_value_policy
-
-namespace internal {
-
-#if __cplusplus >= 201703L
-template <typename... Args> using conjunction = std::conjunction<Args...>;
-template <typename... Args> using disjunction = std::disjunction<Args...>;
-#else
-// Helper available in C++14.
-template <bool _Test, class _T1, class _T2>
-using conditional_t = typename std::conditional<_Test, _T1, _T2>::type;
-
-template<class...> struct conjunction : std::true_type {};
-template<class B1> struct conjunction<B1> : B1 {};
-template<class B1, class... Bn>
-struct conjunction<B1, Bn...>
-    : conditional_t<bool(B1::value), conjunction<Bn...>, B1> {};
-
-template<class...> struct disjunction : std::false_type {};
-template<class B1> struct disjunction<B1> : B1 {};
-template<class B1, class... Bn>
-struct disjunction<B1, Bn...>
-    : conditional_t<bool(B1::value), disjunction<Bn...>, B1> {};
-#endif
-
-template<typename... Policies>
-struct isPolicy;
-
-template<typename... Rest>
-struct isPolicy<return_value_policy::take_ownership, Rest...> {
-    static constexpr bool value = true;
-};
-
-template<typename... Rest>
-struct isPolicy<return_value_policy::reference, Rest...> {
-    static constexpr bool value = true;
-};
-
-template<typename... Rest>
-struct isPolicy<emscripten::async, Rest...> {
-    static constexpr bool value = true;
-};
-
-template <typename T, typename... Rest>
-struct isPolicy<emscripten::allow_raw_pointer<T>, Rest...> {
-    static constexpr bool value = true;
-};
-
-template<typename... Rest>
-struct isPolicy<allow_raw_pointers, Rest...> {
-    static constexpr bool value = true;
-};
-
-template<typename... Rest>
-struct isPolicy<emscripten::pure_virtual, Rest...> {
-    static constexpr bool value = true;
-};
-
-template<typename T, typename... Rest>
-struct isPolicy<emscripten::nonnull<T>, Rest...> {
-    static constexpr bool value = true;
-};
-
-template<typename T, typename... Rest>
-struct isPolicy<T, Rest...> {
-    static constexpr bool value = isPolicy<Rest...>::value;
-};
-
-template<>
-struct isPolicy<> {
-    static constexpr bool value = false;
-};
-
-template<typename ReturnType, typename... Rest>
-struct GetReturnValuePolicy {
-    using tag = rvp::default_tag;
-};
-
-template<typename ReturnType, typename... Rest>
-struct GetReturnValuePolicy<ReturnType, return_value_policy::take_ownership, Rest...> {
-    using tag = rvp::take_ownership;
-};
-
-template<typename ReturnType, typename... Rest>
-struct GetReturnValuePolicy<ReturnType, return_value_policy::reference, Rest...> {
-    using tag = rvp::reference;
-};
-
-template<typename ReturnType, typename T, typename... Rest>
-struct GetReturnValuePolicy<ReturnType, T, Rest...> {
-    using tag = GetReturnValuePolicy<ReturnType, Rest...>::tag;
-};
-
-template<typename... Policies>
-using isAsync = disjunction<std::is_same<async, Policies>...>;
-
-template<typename... Policies>
-using isNonnullReturn = disjunction<std::is_same<nonnull<ret_val>, Policies>...>;
-
-}
 
 ////////////////////////////////////////////////////////////////////////////////
 // select_overload and select_const
@@ -565,97 +400,28 @@ struct FunctorInvoker<ReturnPolicy, FunctorType, void, Args...> {
 
 namespace internal {
 
-template<typename T>
-struct SignatureCode {};
+// TODO: this is a historical default, but we should probably use 'p' instead,
+// and only enable it for smart_ptr_trait<> descendants.
+template<typename T, typename = decltype(__em_asm_sig<int>::value)>
+struct SignatureCode : __em_asm_sig<int> {};
 
-template<>
-struct SignatureCode<int> {
-    static constexpr char get() {
-        return 'i';
-    }
-};
+template<typename T>
+struct SignatureCode<T, decltype(__em_asm_sig<T>::value)> : __em_asm_sig<T> {};
+
+template<typename T>
+struct SignatureCode<T&> : SignatureCode<T*> {};
 
 template<>
 struct SignatureCode<void> {
-    static constexpr char get() {
-        return 'v';
-    }
+    static constexpr char value = 'v';
 };
-
-template<>
-struct SignatureCode<float> {
-    static constexpr char get() {
-        return 'f';
-    }
-};
-
-template<>
-struct SignatureCode<double> {
-    static constexpr char get() {
-        return 'd';
-    }
-};
-
-template<>
-struct SignatureCode<void*> {
-    static constexpr char get() {
-        return 'p';
-    }
-};
-template<>
-struct SignatureCode<size_t> {
-    static constexpr char get() {
-        return 'p';
-    }
-};
-
-template<>
-struct SignatureCode<long long> {
-    static constexpr char get() {
-        return 'j';
-    }
-};
-
-#ifdef __wasm64__
-template<>
-struct SignatureCode<long> {
-    static constexpr char get() {
-        return 'j';
-    }
-};
-#endif
 
 template<typename... Args>
-const char* getGenericSignature() {
-    static constexpr char signature[] = { SignatureCode<Args>::get()..., 0 };
-    return signature;
-}
-
-template<typename T> struct SignatureTranslator { using type = int; };
-template<> struct SignatureTranslator<void> { using type = void; };
-template<> struct SignatureTranslator<float> { using type = float; };
-template<> struct SignatureTranslator<double> { using type = double; };
-#ifdef __wasm64__
-template<> struct SignatureTranslator<long> { using type = long; };
-#endif
-template<> struct SignatureTranslator<long long> { using type = long long; };
-template<> struct SignatureTranslator<unsigned long long> { using type = long long; };
-template<> struct SignatureTranslator<size_t> { using type = size_t; };
-template<typename PtrType>
-struct SignatureTranslator<PtrType*> { using type = void*; };
-template<typename PtrType>
-struct SignatureTranslator<PtrType&> { using type = void*; };
-template<typename ReturnType, typename... Args>
-struct SignatureTranslator<ReturnType (*)(Args...)> { using type = void*; };
-
-template<typename... Args>
-EMSCRIPTEN_ALWAYS_INLINE const char* getSpecificSignature() {
-    return getGenericSignature<typename SignatureTranslator<Args>::type...>();
-}
+constexpr const char Signature[] = { SignatureCode<Args>::value..., 0 };
 
 template<typename Return, typename... Args>
-EMSCRIPTEN_ALWAYS_INLINE const char* getSignature(Return (*)(Args...)) {
-    return getSpecificSignature<Return, Args...>();
+constexpr const char* getSignature(Return (*)(Args...)) {
+    return Signature<Return, Args...>;
 }
 
 } // end namespace internal
@@ -1658,6 +1424,32 @@ struct RegisterClassMethod<FunctionTag<Callable, ReturnType (ThisType, Args...)>
     }
 };
 
+// Helper structs for shifting argument indices when a policy is applied.
+template<typename Slot>
+struct ShiftSlot {
+    using type = Slot;
+};
+
+template<int Index>
+struct ShiftSlot<arg<Index>> {
+    using type = arg<Index + 1>;
+};
+
+template<typename Policy>
+struct ShiftPolicy {
+    using type = Policy;
+};
+
+template<typename Slot>
+struct ShiftPolicy<allow_raw_pointer<Slot>> {
+    using type = allow_raw_pointer<typename ShiftSlot<Slot>::type>;
+};
+
+template<typename Slot>
+struct ShiftPolicy<nonnull<Slot>> {
+    using type = nonnull<typename ShiftSlot<Slot>::type>;
+};
+
 } // end namespace internal
 
 template<typename... ConstructorArgs>
@@ -1766,10 +1558,11 @@ public:
         return *this;
     }
 
-    template<typename WrapperType, typename... ConstructorArgs>
+    template<typename WrapperType, typename... ConstructorArgs, typename... Policies>
     EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
         const char* wrapperClassName,
-        ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>()
+        ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>(),
+        Policies... policies
     ) const {
         using namespace internal;
 
@@ -1783,18 +1576,20 @@ public:
             class_function(
                 "implement",
                 &wrapped_new<WrapperType*, WrapperType, val, ConstructorArgs...>,
-                allow_raw_pointer<ret_val>(), nonnull<ret_val>())
+                allow_raw_pointer<ret_val>(), nonnull<ret_val>(),
+                typename ShiftPolicy<Policies>::type()...)
             .class_function(
                 "extend",
                 &wrapped_extend<WrapperType>)
             ;
     }
 
-    template<typename WrapperType, typename PointerType, typename... ConstructorArgs>
+    template<typename WrapperType, typename PointerType, typename... ConstructorArgs, typename... Policies>
     EMSCRIPTEN_ALWAYS_INLINE const class_& allow_subclass(
         const char* wrapperClassName,
         const char* pointerName,
-        ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>()
+        ::emscripten::constructor<ConstructorArgs...> = ::emscripten::constructor<>(),
+        Policies... policies
     ) const {
         using namespace internal;
 
@@ -1809,7 +1604,8 @@ public:
             class_function(
                 "implement",
                 &wrapped_new<PointerType, WrapperType, val, ConstructorArgs...>,
-                allow_raw_pointer<ret_val>())
+                allow_raw_pointer<ret_val>(),
+                typename ShiftPolicy<Policies>::type()...)
             .class_function(
                 "extend",
                 &wrapped_extend<WrapperType>)
@@ -1827,6 +1623,19 @@ public:
         return *this;
     }
 
+    template<typename ElementType>
+    EMSCRIPTEN_ALWAYS_INLINE const class_& iterable(
+        const char* sizeMethodName,
+        const char* getMethodName) const {
+        using namespace internal;
+        _embind_register_iterable(
+            TypeID<ClassType>::get(),
+            TypeID<ElementType>::get(),
+            sizeMethodName,
+            getMethodName);
+        return *this;
+    }
+
     template<
         typename FieldType,
         typename... Policies,
@@ -1834,7 +1643,7 @@ public:
         // overload.
         typename = typename std::enable_if<
             !std::is_function<FieldType>::value &&
-            internal::conjunction<internal::isPolicy<Policies>...>::value>::type>
+            std::conjunction<internal::isPolicy<Policies>...>::value>::type>
     EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field, Policies...) const {
         using namespace internal;
         using ReturnPolicy = GetReturnValuePolicy<FieldType, Policies...>::tag;
@@ -1862,7 +1671,7 @@ public:
         // overload.
         typename = typename std::enable_if<
             !std::is_function<FieldType>::value &&
-            internal::conjunction<internal::isPolicy<Policies>...>::value>::type>
+            std::conjunction<internal::isPolicy<Policies>...>::value>::type>
     EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field, Policies...) const {
         using namespace internal;
         using ReturnPolicy = GetReturnValuePolicy<FieldType, Policies...>::tag;
@@ -1891,7 +1700,7 @@ public:
         // Prevent the template from wrongly matching the getter/setter overload
         // of this function.
         typename = typename std::enable_if<
-            internal::conjunction<internal::isPolicy<Policies>...>::value>::type>
+            std::conjunction<internal::isPolicy<Policies>...>::value>::type>
     EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, Getter getter, Policies...) const {
         using namespace internal;
 
@@ -1943,8 +1752,8 @@ public:
         auto ster = &SP::template set<ClassType>;
 
         typename WithPolicies<Policies...>::template ArgTypeList<typename GP::ReturnType> returnType;
-        // XXX: This currently applies all the polices (including return value polices) to the
-        // setter function argument to allow pointers. Using return value polices doesn't really
+        // XXX: This currently applies all the policies (including return value policies) to the
+        // setter function argument to allow pointers. Using return value policies doesn't really
         // make sense on an argument, but we don't have separate argument policies yet.
         typename WithPolicies<Policies...>::template ArgTypeList<typename SP::ArgumentType> argType;
 
@@ -2018,7 +1827,6 @@ public:
     }
 };
 
-#if __cplusplus >= 201703L
 template<typename T>
 void register_optional() {
     // Optional types are automatically registered for some internal types so
@@ -2033,7 +1841,6 @@ void register_optional() {
         internal::TypeID<std::optional<T>>::get(),
         internal::TypeID<typename std::remove_pointer<T>::type>::get());
 }
-#endif
 
 ////////////////////////////////////////////////////////////////////////////////
 // VECTORS
@@ -2043,12 +1850,9 @@ namespace internal {
 
 template<typename VectorType>
 struct VectorAccess {
-// This nearly duplicated code is used for generating more specific TypeScript
-// types when using more modern C++ versions.
-#if __cplusplus >= 201703L
     static std::optional<typename VectorType::value_type> get(
         const VectorType& v,
-        typename VectorType::size_type index
+        unsigned int index
     ) {
         if (index < v.size()) {
             return v[index];
@@ -2056,26 +1860,33 @@ struct VectorAccess {
             return {};
         }
     }
-#else
-    static val get(
-        const VectorType& v,
-        typename VectorType::size_type index
-    ) {
-        if (index < v.size()) {
-            return val(v[index], allow_raw_pointers());
-        } else {
-            return val::undefined();
-        }
-    }
-#endif
 
     static bool set(
         VectorType& v,
-        typename VectorType::size_type index,
+        unsigned int index,
         const typename VectorType::value_type& value
     ) {
         v[index] = value;
         return true;
+    }
+
+    static unsigned int size(const VectorType& v) {
+        return v.size();
+    }
+
+    static void resize(
+        VectorType& v,
+        unsigned int len,
+        const typename VectorType::value_type& value
+    ) {
+        v.resize(len, value);
+    }
+
+    static void push_back(
+        VectorType& v,
+        typename VectorType::value_type&& value
+    ) {
+        v.push_back(std::move(value));
     }
 };
 
@@ -2084,21 +1895,18 @@ struct VectorAccess {
 template<typename T, class Allocator=std::allocator<T>>
 class_<std::vector<T, Allocator>> register_vector(const char* name) {
     typedef std::vector<T, Allocator> VecType;
-#if __cplusplus >= 201703L
     register_optional<T>();
-#endif
+    using VectorElementType =
+        typename internal::RawPointerTransformer<T, std::is_pointer<T>::value>::type;
 
-    void (VecType::*push_back)(const T&) = &VecType::push_back;
-    void (VecType::*resize)(const size_t, const T&) = &VecType::resize;
-    size_t (VecType::*size)() const = &VecType::size;
-    return class_<std::vector<T>>(name)
+    return class_<VecType>(name)
         .template constructor<>()
-        .function("push_back", push_back, allow_raw_pointers())
-        .function("resize", resize, allow_raw_pointers())
-        .function("size", size)
-        .function("get", &internal::VectorAccess<VecType>::get, allow_raw_pointers())
-        .function("set", &internal::VectorAccess<VecType>::set, allow_raw_pointers())
-        ;
+        .function("push_back", internal::VectorAccess<VecType>::push_back, allow_raw_pointers())
+        .function("resize", internal::VectorAccess<VecType>::resize, allow_raw_pointers())
+        .function("size", internal::VectorAccess<VecType>::size, allow_raw_pointers())
+        .function("get", internal::VectorAccess<VecType>::get, allow_raw_pointers())
+        .function("set", internal::VectorAccess<VecType>::set, allow_raw_pointers())
+        .template iterable<VectorElementType>("size", "get");
 }
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2109,9 +1917,6 @@ namespace internal {
 
 template<typename MapType>
 struct MapAccess {
-// This nearly duplicated code is used for generating more specific TypeScript
-// types when using more modern C++ versions.
-#if __cplusplus >= 201703L
     static std::optional<typename MapType::mapped_type> get(
         const MapType& m,
         const typename MapType::key_type& k
@@ -2123,19 +1928,6 @@ struct MapAccess {
             return i->second;
         }
     }
-#else
-    static val get(
-        const MapType& m,
-        const typename MapType::key_type& k
-    ) {
-        auto i = m.find(k);
-        if (i == m.end()) {
-            return val::undefined();
-        } else {
-            return val(i->second);
-        }
-    }
-#endif
 
     static void set(
         MapType& m,
@@ -2155,58 +1947,30 @@ struct MapAccess {
       }
       return keys;
     }
+
+    static unsigned int size(const MapType& m) {
+        return m.size();
+    }
 };
 
 } // end namespace internal
 
-template<typename K, typename V, class Compare = std::less<K>, 
+template<typename K, typename V, class Compare = std::less<K>,
     class Allocator = std::allocator<std::pair<const K, V>>>
 class_<std::map<K, V, Compare, Allocator>> register_map(const char* name) {
     typedef std::map<K,V, Compare, Allocator> MapType;
-#if __cplusplus >= 201703L
     register_optional<V>();
-#endif
 
-    size_t (MapType::*size)() const = &MapType::size;
     return class_<MapType>(name)
         .template constructor<>()
-        .function("size", size)
+        .function("size", internal::MapAccess<MapType>::size)
         .function("get", internal::MapAccess<MapType>::get)
         .function("set", internal::MapAccess<MapType>::set)
         .function("keys", internal::MapAccess<MapType>::keys)
         ;
 }
 
-////////////////////////////////////////////////////////////////////////////////
-// std::optional
-////////////////////////////////////////////////////////////////////////////////
 
-#if __cplusplus >= 201703L
-namespace internal {
-template <typename T>
-struct BindingType<std::optional<T>> {
-    using ValBinding = BindingType<val>;
-    using WireType = ValBinding::WireType;
-
-    template<typename ReturnPolicy = void>
-    static WireType toWireType(std::optional<T> value, rvp::default_tag) {
-        if (value) {
-            return ValBinding::toWireType(val(*value, allow_raw_pointers()), rvp::default_tag{});
-        }
-        return ValBinding::toWireType(val::undefined(), rvp::default_tag{});
-    }
-
-
-    static std::optional<T> fromWireType(WireType value) {
-        val optional = val::take_ownership(value);
-        if (optional.isUndefined()) {
-            return {};
-        }
-        return optional.as<T>();
-    }
-};
-} // end namespace internal
-#endif
 
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -2218,13 +1982,14 @@ class enum_ {
 public:
     typedef EnumType enum_type;
 
-    enum_(const char* name) {
+    enum_(const char* name, enum_value_type valueType = enum_value_type::object) {
         using namespace internal;
         _embind_register_enum(
             internal::TypeID<EnumType>::get(),
             name,
             sizeof(EnumType),
-            std::is_signed<typename std::underlying_type<EnumType>::type>::value);
+            std::is_signed<typename std::underlying_type<EnumType>::type>::value,
+            static_cast<int>(valueType));
     }
 
     enum_& value(const char* name, EnumType value) {
@@ -2271,6 +2036,12 @@ template <typename T>
 inline void register_type(const char* name) {
   using namespace internal;
   _embind_register_user_type(TypeID<T>::get(), name);
+}
+
+template <typename T>
+inline void register_type(const char* name, const char* definition) {
+  using namespace internal;
+  _embind_register_user_type_definition(TypeID<T>::get(), name, definition);
 }
 
 // EMSCRIPTEN_BINDINGS creates a static struct to initialize the binding which

@@ -64,6 +64,11 @@ var Atomics = {};
 Atomics.compareExchange = function() {};
 Atomics.exchange = function() {};
 Atomics.wait = function() {};
+/**
+ * @param {number=} maxWaitMilliseconds
+ * @suppress {duplicate, checkTypes}
+ */
+Atomics.waitAsync = function(i32a, index, value, maxWaitMilliseconds) {};
 Atomics.notify = function() {};
 Atomics.load = function() {};
 Atomics.store = function() {};
@@ -103,6 +108,10 @@ WebAssembly.Instance.prototype.exports;
  * @type {!ArrayBuffer}
  */
 WebAssembly.Memory.prototype.buffer;
+/**
+ * @returns {ArrayBuffer}
+ */
+WebAssembly.Memory.prototype.toResizableBuffer = function() {};
 /**
  * @type {number}
  */
@@ -214,14 +223,6 @@ var event;
 var devicePixelRatio;
 
 /*
- * AudioWorkletGlobalScope globals
- */
-var registerProcessor = function(name, obj) {};
-var currentFrame;
-var currentTime;
-var sampleRate;
-
-/*
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;
@@ -243,7 +244,7 @@ var moduleRtn;
 /**
  * This was removed from upstream closure compiler in
  * https://github.com/google/closure-compiler/commit/f83322c1b.
- * Perhaps we should remove it do?
+ * Perhaps we should remove it too?
  *
  * @param {MediaStreamConstraints} constraints A MediaStreamConstraints object.
  * @param {function(!MediaStream)} successCallback

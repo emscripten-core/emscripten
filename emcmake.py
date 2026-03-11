@@ -8,10 +8,8 @@ import os
 import shlex
 import shutil
 import sys
-from tools import shared
-from tools import config
-from tools import utils
-from subprocess import CalledProcessError
+
+from tools import config, shared, utils
 
 
 #
@@ -45,6 +43,11 @@ variables so that emcc etc. are used. Typical usage:
     # See https://github.com/emscripten-core/emscripten/issues/15522
     args.append(f'-DCMAKE_CROSSCOMPILING_EMULATOR={node_js}')
 
+  # Print a better error if we have no CMake executable on the PATH
+  if not os.path.dirname(args[0]) and not shutil.which(args[0]):
+    print(f'emcmake: cmake executable not found on PATH: `{args[0]}`', file=sys.stderr)
+    return 1
+
   # On Windows specify MinGW Makefiles or ninja if we have them and no other
   # toolchain was specified, to keep CMake from pulling in a native Visual
   # Studio, or Unix Makefiles.
@@ -57,12 +60,8 @@ variables so that emcc etc. are used. Typical usage:
       print('emcmake: no compatible cmake generator found; Please install ninja or mingw32-make, or specify a generator explicitly using -G', file=sys.stderr)
       return 1
 
-  print(f'configure: {shlex.join(args)}', file=sys.stderr)
-  try:
-    shared.check_call(args)
-    return 0
-  except CalledProcessError as e:
-    return e.returncode
+  print(f'emcmake: {shlex.join(args)} in directory {os.getcwd()}', file=sys.stderr)
+  shared.exec_process(args)
 
 
 if __name__ == '__main__':

@@ -75,7 +75,7 @@ void _emscripten_check_mailbox() {
   // Before we attempt to execute a request from another thread make sure we
   // are in sync with all the loaded code.
   // For example, in PROXY_TO_PTHREAD the atexit functions are called via
-  // a proxied call, and without this call to syncronize we would crash if
+  // a proxied call, and without this call to synchronize we would crash if
   // any atexit functions were registered from a side module.
   assert(pthread_self());
   em_task_queue* mailbox = pthread_self()->mailbox;

@@ -33,6 +33,7 @@ addToLibrary({
     '$readI53FromU64',
     '$FS_createDataFile',
     '$FS_createPreloadedFile',
+    '$FS_preloadFile',
     '$FS_getMode',
     // For FS.readFile
     '$UTF8ArrayToString',
@@ -117,6 +118,10 @@ addToLibrary({
       return FS_createPreloadedFile(parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish);
     },
 
+    async preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) {
+      return FS_preloadFile(parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish);
+    },
+
 #if hasExportedSymbol('_wasmfs_read_file') // Support the JS function exactly
                                            // when the __wasmfs_* function is
                                            // present to be called (otherwise,
@@ -171,7 +176,7 @@ addToLibrary({
       withStackSave(() => __wasmfs_rmdir(stringToUTF8OnStack(path)))
     ),
     open: (path, flags, mode = 0o666) => withStackSave(() => {
-      flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
+      flags = FS_modeStringToFlags(flags);
       var buffer = stringToUTF8OnStack(path);
       var fd = FS.handleError(__wasmfs_open(buffer, flags, mode));
       return { fd : fd };
@@ -223,7 +228,9 @@ addToLibrary({
     },
     // offset is passed to msync to maintain backwards compatibility with the legacy JS API but is not used by WasmFS.
     msync: (stream, bufferPtr, offset, length, mmapFlags) => {
+#if ASSERTIONS
       assert(offset === 0);
+#endif
       // TODO: assert that stream has the fd corresponding to the mapped buffer (bufferPtr).
       return FS.handleError(__wasmfs_msync(bufferPtr, length, mmapFlags));
     },
@@ -246,13 +253,13 @@ addToLibrary({
       return {
           dev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_dev, "u32") }}},
           mode: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mode, "u32") }}},
-          nlink: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, "u32") }}},
+          nlink: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_nlink, SIZE_TYPE) }}},
           uid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_uid, "u32") }}},
           gid: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_gid, "u32") }}},
           rdev: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_rdev, "u32") }}},
           size: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i53") }}},
-          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "u32") }}},
-          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "u32") }}},
+          blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "i32") }}},
+          blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "i32") }}},
           atime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atim.tv_sec, "i53") }}},
           mtime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtim.tv_sec, "i53") }}},
           ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctim.tv_sec, "i53") }}},
@@ -502,20 +509,17 @@ addToLibrary({
     return FS_mknod(path, mode, 0);
   },
 
-  $FS_writeFile__deps: ['_wasmfs_write_file', '$stackSave', '$stackRestore', 'malloc', 'free'],
+  $FS_writeFile__deps: ['$FS_fileDataToTypedArray', '_wasmfs_write_file', '$stackSave', '$stackRestore', 'malloc', 'free'],
   $FS_writeFile: (path, data) => {
     var sp = stackSave();
     var pathBuffer = stringToUTF8OnStack(path);
-    var len = typeof data == 'string' ? lengthBytesUTF8(data) + 1 : data.length;
+    data = FS_fileDataToTypedArray(data);
+    var len = data.length;
     var dataBuffer = _malloc(len);
 #if ASSERTIONS
     assert(dataBuffer);
 #endif
-    if (typeof data == 'string') {
-      len = stringToUTF8(data, dataBuffer, len);
-    } else {
-      HEAPU8.set(data, dataBuffer);
-    }
+    HEAPU8.set(data, dataBuffer);
     var ret = __wasmfs_write_file(pathBuffer, dataBuffer, len);
     _free(dataBuffer);
     stackRestore(sp);

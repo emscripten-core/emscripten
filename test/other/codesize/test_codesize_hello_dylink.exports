@@ -1,9 +1,0 @@
-__wasm_apply_data_relocs
-__wasm_call_ctors
-_emscripten_find_dylib
-_emscripten_stack_alloc
-_emscripten_stack_restore
-calloc
-emscripten_stack_get_current
-main
-setThrew

@@ -101,6 +101,7 @@ var LibraryEmVal = {
   _emval_new_array__deps: ['$Emval'],
   _emval_new_array: () => Emval.toHandle([]),
 
+#if !SUPPORT_BIG_ENDIAN
   _emval_new_array_from_memory_view__deps: ['$Emval'],
   _emval_new_array_from_memory_view: (view) => {
     view = Emval.toValue(view);
@@ -109,6 +110,53 @@ var LibraryEmVal = {
     for (var i = 0; i < view.length; i++) a[i] = view[i];
     return Emval.toHandle(a);
   },
+  _emval_array_to_memory_view__deps: ['$Emval'],
+  _emval_array_to_memory_view: (dst, src) => {
+    dst = Emval.toValue(dst);
+    src = Emval.toValue(src);
+    dst.set(src);
+  },
+#else
+  _emval_new_array_from_memory_view__deps: ['$Emval'],
+  _emval_new_array_from_memory_view: (view) => {
+    view = Emval.toValue(view);
+    const dv = new DataView(view.buffer, view.byteOffset);
+    const reader = {
+      Int8Array: dv.getInt8,
+      Uint8Array: dv.getUint8,
+      Int16Array: dv.getInt16,
+      Uint16Array: dv.getUint16,
+      Int32Array: dv.getInt32,
+      Uint32Array: dv.getUint32,
+      BigInt64Array: dv.getBigInt64,
+      BigUint64Array: dv.getBigUint64,
+      Float32Array: dv.getFloat32,
+      Float64Array: dv.getFloat64,
+    }[view[Symbol.toStringTag]];
+    var a = new Array(view.length);
+    for (var i = 0; i < view.length; i++) a[i] = reader.call(dv, i * view.BYTES_PER_ELEMENT, true);
+    return Emval.toHandle(a);
+  },
+  _emval_array_to_memory_view__deps: ['$Emval'],
+  _emval_array_to_memory_view: (dst, src) => {
+    dst = Emval.toValue(dst);
+    src = Emval.toValue(src);
+    const dv = new DataView(dst.buffer, dst.byteOffset);
+    const writer = {
+      Int8Array: dv.setInt8,
+      Uint8Array: dv.setUint8,
+      Int16Array: dv.setInt16,
+      Uint16Array: dv.setUint16,
+      Int32Array: dv.setInt32,
+      Uint32Array: dv.setUint32,
+      BigInt64Array: dv.setBigInt64,
+      BigUint64Array: dv.setBigUint64,
+      Float32Array: dv.setFloat32,
+      Float64Array: dv.setFloat64,
+    }[dst[Symbol.toStringTag]];
+    for (var i = 0; i < src.length; i++) writer.call(dv, i * dst.BYTES_PER_ELEMENT, src[i], true);
+  },
+#endif
 
   _emval_new_object__deps: ['$Emval'],
   _emval_new_object: () => Emval.toHandle({}),
@@ -122,52 +170,13 @@ var LibraryEmVal = {
   _emval_new_u16string__deps: ['$Emval'],
   _emval_new_u16string: (v) => Emval.toHandle(UTF16ToString(v)),
 
-#if SUPPORTS_GLOBALTHIS
-  $emval_get_global: () => globalThis,
-#elif !DYNAMIC_EXECUTION
-  $emval_get_global: () => {
-    if (typeof globalThis == 'object') {
-      return globalThis;
-    }
-    function testGlobal(obj) {
-      obj['$$$embind_global$$$'] = obj;
-      var success = typeof $$$embind_global$$$ == 'object' && obj['$$$embind_global$$$'] == obj;
-      if (!success) {
-        delete obj['$$$embind_global$$$'];
-      }
-      return success;
-    }
-    if (typeof $$$embind_global$$$ == 'object') {
-      return $$$embind_global$$$;
-    }
-    if (typeof global == 'object' && testGlobal(global)) {
-      $$$embind_global$$$ = global;
-    } else if (typeof self == 'object' && testGlobal(self)) {
-      $$$embind_global$$$ = self; // This works for both "window" and "self" (Web Workers) global objects
-    }
-    if (typeof $$$embind_global$$$ == 'object') {
-      return $$$embind_global$$$;
-    }
-    throw Error('unable to get global object.');
-  },
-#else
-  $emval_get_global: () => {
-    if (typeof globalThis == 'object') {
-      return globalThis;
-    }
-    return (function(){
-      return Function;
-    })()('return this')();
-  },
-#endif
-  _emval_get_global__deps: ['$Emval', '$getStringOrSymbol', '$emval_get_global'],
+  _emval_get_global__deps: ['$Emval', '$getStringOrSymbol'],
   _emval_get_global: (name) => {
-    if (name===0) {
-      return Emval.toHandle(emval_get_global());
-    } else {
-      name = getStringOrSymbol(name);
-      return Emval.toHandle(emval_get_global()[name]);
+    if (!name) {
+      return Emval.toHandle(globalThis);
     }
+    name = getStringOrSymbol(name);
+    return Emval.toHandle(globalThis[name]);
   },
 
   _emval_get_module_property__deps: ['$getStringOrSymbol', '$Emval'],
@@ -192,9 +201,9 @@ var LibraryEmVal = {
   },
 
   $emval_returnValue__deps: ['$Emval'],
-  $emval_returnValue: (returnType, destructorsRef, handle) => {
+  $emval_returnValue: (toReturnWire, destructorsRef, handle) => {
     var destructors = [];
-    var result = returnType['toWireType'](destructors, handle);
+    var result = toReturnWire(destructors, handle);
     if (destructors.length) {
       // void, primitives and any other types w/o destructors don't need to allocate a handle
       {{{ makeSetValue('destructorsRef', '0', 'Emval.toHandle(destructors)', '*') }}};
@@ -262,19 +271,54 @@ var LibraryEmVal = {
     '$createNamedFunction', '$emval_returnValue',
     '$Emval', '$getStringOrSymbol',
   ],
-  _emval_create_invoker: (argCount, argTypes, kind) => {
+  _emval_create_invoker: (argCount, argTypesPtr, kind) => {
     var GenericWireTypeSize = {{{ 2 * POINTER_SIZE }}};
 
-    var types = emval_lookupTypes(argCount, argTypes);
-    var retType = types.shift();
-    argCount--; // remove the shifted off return type
+    var [retType, ...argTypes] = emval_lookupTypes(argCount, argTypesPtr);
+    var toReturnWire = retType.toWireType.bind(retType);
+    var argFromPtr = argTypes.map(type => type.readValueFromPointer.bind(type));
+    argCount--; // remove the extracted return type
 
-#if !DYNAMIC_EXECUTION
+#if DYNAMIC_EXECUTION
+    var captures = {'toValue': Emval.toValue};
+    var args = argFromPtr.map((argFromPtr, i) => {
+      var captureName = `argFromPtr${i}`;
+      captures[captureName] = argFromPtr;
+      return `${captureName}(args${i ? '+' + i * GenericWireTypeSize : ''})`;
+    });
+    var functionBody;
+    switch (kind){
+      case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
+        functionBody = 'toValue(handle)';
+        break;
+      case {{{ cDefs['internal::EM_INVOKER_KIND::CONSTRUCTOR'] }}}:
+        functionBody = 'new (toValue(handle))';
+        break;
+      case {{{ cDefs['internal::EM_INVOKER_KIND::CAST'] }}}:
+        functionBody = '';
+        break;
+      case {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}}:
+        captures['getStringOrSymbol'] = getStringOrSymbol;
+        functionBody = 'toValue(handle)[getStringOrSymbol(methodName)]';
+        break;
+    }
+    functionBody += `(${args})`;
+    if (!retType.isVoid) {
+      captures['toReturnWire'] = toReturnWire;
+      captures['emval_returnValue'] = emval_returnValue;
+      functionBody = `return emval_returnValue(toReturnWire, destructorsRef, ${functionBody})`;
+    }
+    functionBody = `return function (handle, methodName, destructorsRef, args) {
+${functionBody}
+}`;
+
+    var invokerFunction = new Function(Object.keys(captures), functionBody)(...Object.values(captures));
+#else
     var argN = new Array(argCount);
     var invokerFunction = (handle, methodName, destructorsRef, args) => {
       var offset = 0;
       for (var i = 0; i < argCount; ++i) {
-        argN[i] = types[i]['readValueFromPointer'](args + offset);
+        argN[i] = argFromPtr[i](args + offset);
         offset += GenericWireTypeSize;
       }
       var rv;
@@ -293,55 +337,10 @@ var LibraryEmVal = {
           rv = Emval.toValue(handle)[getStringOrSymbol(methodName)](...argN);
           break;
       }
-      return emval_returnValue(retType, destructorsRef, rv);
+      return emval_returnValue(toReturnWire, destructorsRef, rv);
     };
-#else
-    var functionBody =
-      `return function (handle, methodName, destructorsRef, args) {\n`;
-
-    var offset = 0;
-    var argsList = []; // 'arg0, arg1, arg2, ... , argN'
-    var params = ['toValue', 'retType'];
-    var args = [Emval.toValue, retType];
-    for (var i = 0; i < argCount; ++i) {
-      argsList.push(`arg${i}`);
-      params.push(`argType${i}`);
-      args.push(types[i]);
-      functionBody +=
-        `  var arg${i} = argType${i}.readValueFromPointer(args${offset ? '+' + offset : ''});\n`;
-      offset += GenericWireTypeSize;
-    }
-    var invoker;
-    switch (kind){
-      case {{{ cDefs['internal::EM_INVOKER_KIND::FUNCTION'] }}}:
-        invoker = 'toValue(handle)';
-        break;
-      case {{{ cDefs['internal::EM_INVOKER_KIND::CONSTRUCTOR'] }}}:
-        invoker = 'new (toValue(handle))';
-        break;
-      case {{{ cDefs['internal::EM_INVOKER_KIND::CAST'] }}}:
-        invoker = '';
-        break;
-      case {{{ cDefs['internal::EM_INVOKER_KIND::METHOD'] }}}:
-        params.push('getStringOrSymbol');
-        args.push(getStringOrSymbol);
-        invoker = 'toValue(handle)[getStringOrSymbol(methodName)]';
-        break;
-    }
-    functionBody +=
-      `  var rv = ${invoker}(${argsList.join(', ')});\n`;
-    if (!retType.isVoid) {
-      params.push('emval_returnValue');
-      args.push(emval_returnValue);
-      functionBody +=
-        '  return emval_returnValue(retType, destructorsRef, rv);\n';
-    }
-    functionBody +=
-      "};\n";
-
-    var invokerFunction = new Function(...params, functionBody)(...args);
 #endif
-    var functionName = `methodCaller<(${types.map(t => t.name).join(', ')}) => ${retType.name}>`;
+    var functionName = `methodCaller<(${argTypes.map(t => t.name)}) => ${retType.name}>`;
     return emval_addMethodCaller(createNamedFunction(functionName, invokerFunction));
   },
 
@@ -352,8 +351,7 @@ var LibraryEmVal = {
 
   // Same as `_emval_invoke`, just imported into Wasm under a different return type.
   // TODO: remove this if/when https://github.com/emscripten-core/emscripten/issues/20478 is fixed.
-  _emval_invoke_i64__deps: ['_emval_invoke'],
-  _emval_invoke_i64: '=__emval_invoke',
+  _emval_invoke_i64: '_emval_invoke',
 
   _emval_typeof__deps: ['$Emval'],
   _emval_typeof: (handle) => {
@@ -394,20 +392,46 @@ var LibraryEmVal = {
     return delete object[property];
   },
 
-  _emval_throw__deps: ['$Emval'],
+  _emval_throw__deps: ['$Emval',
+#if !WASM_EXCEPTIONS
+    '$exceptionLast',
+#endif
+  ],
   _emval_throw: (object) => {
     object = Emval.toValue(object);
+#if !WASM_EXCEPTIONS
+    // If we are throwing Emcripten C++ exception, set exceptionLast, as we do
+    // in __cxa_throw. When EXCEPTION_STACK_TRACES is set, a C++ exception will
+    // be an instance of EmscriptenEH, and when EXCEPTION_STACK_TRACES is not
+    // set, it will be a pointer (number).
+    //
+    // This is different from __cxa_throw() in libexception.js because
+    // __cxa_throw() is called from the user C++ code when the 'throw' keyword
+    // is used, and the value thrown is a C++ pointer. When
+    // EXCEPTION_STACK_TRACES is true, we wrap it with CppException. But this
+    // _emval_throw is called when we throw whatever is contained in 'object',
+    // which can be anything including a CppException object, or a number, or
+    // other JS object. So we don't use storeException() wrapper here and we
+    // throw it as is.
+#if EXCEPTION_STACK_TRACES
+    if (object instanceof CppException) {
+      exceptionLast = object;
+    }
+#else
+    if (object === object+0) { // Check if it is a number
+      exceptionLast = object;
+    }
+#endif
+#endif
     throw object;
   },
 
 #if ASYNCIFY
   _emval_await__deps: ['$Emval', '$Asyncify'],
-  _emval_await__async: true,
-  _emval_await: (promise) => {
-    return Asyncify.handleAsync(async () => {
-      var value = await Emval.toValue(promise);
-      return Emval.toHandle(value);
-    });
+  _emval_await__async: 'auto',
+  _emval_await: async (promise) => {
+    var value = await Emval.toValue(promise);
+    return Emval.toHandle(value);
   },
 #endif
 

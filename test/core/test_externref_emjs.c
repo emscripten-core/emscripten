@@ -11,7 +11,7 @@ EM_JS(void, modify_ref, (__externref_t arg), {
 });
 
 EM_JS(void, log_ref, (__externref_t arg), {
-    console.log(arg);
+    console.log(JSON.stringify(arg));
 });
 
 int main() {

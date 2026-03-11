@@ -12,6 +12,7 @@
 #include <emscripten.h>
 #include <emscripten/html5.h>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <optional>
 #include <sys/stat.h>

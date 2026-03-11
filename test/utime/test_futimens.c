@@ -79,7 +79,7 @@ void test() {
   times[1].tv_sec = s.st_mtim.tv_sec;
   times[1].tv_nsec = s.st_mtim.tv_nsec;
 
-  // set the timestampe to the current value
+  // set the timestamp to the current value
   err = futimens(fd, times);
   assert(!err);
   check_times(fd, times, 0);

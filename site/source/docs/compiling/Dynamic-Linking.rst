@@ -12,7 +12,7 @@ with little or no changes (see :ref:`Building-Projects`).
 
 In addition, Emscripten also has support for a form of **dynamic** linking of
 WebAssembly modules.  This can add overhead, so for best performance static
-linking should still be preferred.  However, this overhead can can be reduced
+linking should still be preferred.  However, this overhead can be reduced
 with the use of certain command line flags. See below for details.
 
 Background
@@ -109,9 +109,9 @@ along with the main module, during startup and they are linked together
 before your application starts to run.
 
 -  Build one part of your code as the main module, linking it using
-   ``-sMAIN_MODULE``.
+   ``-sMAIN_MODULE`` (See :ref:`MAIN_MODULE`).
 -  Build other parts of your code as side modules, linking it using
-   ``-sSIDE_MODULE``.
+   ``-sSIDE_MODULE`` (See :ref:`SIDE_MODULE`).
 
 For the main module the output suffix should be ``.js`` (the WebAssembly
 file will be generated alongside it just like normal).  For the side
@@ -127,7 +127,7 @@ the command line when you link the main module. e.g.
 
      emcc -sMAIN_MODULE main.c libsomething.wasm
 
-At runtime, the JavaScript loading code will load ``libsomthing.wasm`` (along
+At runtime, the JavaScript loading code will load ``libsomething.wasm`` (along
 with any other side modules) along with the main module before the application
 starts to run.  The running application then can access code from any of the
 modules linked together.
@@ -152,14 +152,14 @@ By default, main modules disable dead code elimination. That means that
 all the code compiled remains in the output, including all system
 libraries linked in, and also all the JS library code.
 
-That is the default behavior since it is the least surprising. But it is
-also possible to use normal dead code elimination, by building with
-``-sMAIN_MODULE=2`` (instead of 1). In that mode, the main module is
-built normally, with no special behavior for keeping code alive. It is
-then your responsibility to make sure that code that side modules need
-is kept alive. You can do this either by adding to ``EXPORTED_FUNCTIONS`` or
-tagging the symbol ``EMSCRIPTEN_KEEPALIVE`` in the source code.
-See ``other.test_minimal_dynamic`` for an example of this in action.
+That is the default behavior since it is the least surprising. But it is also
+possible to use normal dead code elimination, by building with
+``-sMAIN_MODULE=2`` (instead of 1). In that mode, the main module is built
+normally, with no special behavior for keeping code alive. It is then your
+responsibility to make sure that code that side modules need is kept alive. You
+can do this either by adding to :ref:`EXPORTED_FUNCTIONS` or tagging the symbol
+``EMSCRIPTEN_KEEPALIVE`` in the source code. See ``other.test_minimal_dynamic``
+for an example of this in action.
 
 If you are doing load time dynamic linking then any symbols needed by
 the side modules specified on the command line will be kept alive
@@ -201,25 +201,25 @@ symbols remain unresolved, and code can start to run even if there are.
 It will run successfully if they are not called in practice. If they
 are, you will get a runtime error. What went wrong should be clear from
 the stack trace (in an unminified build); building with
-``-sASSERTIONS`` can help some more.
+:ref:`ASSERTIONS` can help some more.
 
 Limitations
 -----------
 
-- Chromium does not support compiling >4kB WASM on the main thread, and that
-  includes side modules; you can use ``--use-preload-plugins`` (in ``emcc`` or
-  ``file_packager.py``) to make Emscripten compile them on startup
-  `[doc] <https://emscripten.org/docs/porting/files/packaging_files.html#preloading-files>`__
-  `[discuss] <https://groups.google.com/forum/#!topic/emscripten-discuss/cE3hUV3fDSw>`__.
+- Chromium does not support synchronous compiling of Wasm modules over 8Mb on
+  the main thread.  You could run into this limit when using the synchronous
+  ``dlopen`` API to load large side modules.   Emscripten has async versions of
+  ``dlopen`` that can work around this issue (See :c:func:`emscripten_dlopen`).
 - ``EM_ASM`` and ``EM_JS`` code defined within side modules depends on ``eval``
-  support and are therefore incompatible with ``-sDYNAMIC_EXECUTION=0``.
+  support and are therefore incompatible with ``-sDYNAMIC_EXECUTION=0`` (See
+  :ref:`DYNAMIC_EXECUTION`).
 
 
 Pthreads support
 ----------------
 
-Dynamic linking + pthreads is is still experimental.  As such, linking with both
-``MAIN_MODULE`` and ``-pthread`` will produce a warning.
+Dynamic linking + pthreads is still experimental.  As such, linking with both
+:ref:`MAIN_MODULE` and ``-pthread`` will produce a warning.
 
 While load-time dynamic linking works without any complications, runtime dynamic
 linking via ``dlopen``/``dlsym`` can require some extra consideration.  The
@@ -238,6 +238,6 @@ However, there there is one class of application that currently may require
 modification.  If your applications busy waits, or directly uses the
 ``atomic.waitXX`` instructions (or the clang
 ``__builtin_wasm_memory_atomic_waitXX`` builtins) you maybe need to switch it
-to use ``emscripten_futex_wait`` or order avoid deadlocks.  If you don't use
+to use ``emscripten_futex_wait`` in order to avoid deadlocks.  If you don't use
 ``emscripten_futex_wait`` while you block, you could potentially block other
 threads that are calling ``dlopen`` and/or ``dlsym``.

@@ -171,7 +171,7 @@ The device node acts as an interface between the device and the file system. Any
 Setting up standard I/O devices
 ===============================
 
-Emscripten standard I/O works by going though the virtual ``/dev/stdin``, ``/dev/stdout`` and ``/dev/stderr`` devices. You can set them up using your own I/O functions by calling :js:func:`FS.init`.
+Emscripten standard I/O works by going through the virtual ``/dev/stdin``, ``/dev/stdout`` and ``/dev/stderr`` devices. You can set them up using your own I/O functions by calling :js:func:`FS.init`.
 
 By default:
 
@@ -294,6 +294,20 @@ File system API
   .. note:: The underlying implementation does not support user or group permissions. The caller is always treated as the owner of the folder, and only permissions relevant to the owner apply.
 
   :param string path: The path name for the new directory node.
+  :param int mode: :ref:`File permissions <fs-read-and-write-flags>` for the new node. The default setting (`in octal numeric notation <http://en.wikipedia.org/wiki/File_system_permissions#Numeric_notation>`_) is 0777.
+
+
+.. js:function:: FS.mkdirTree(path, mode)
+
+  Creates a new directory node and all parent directories in the file system. For example:
+
+  .. code-block:: javascript
+
+    FS.mkdirTree('/data/subdir1/subdir2');
+
+  .. note:: The underlying implementation does not support user or group permissions. The caller is always treated as the owner of the folder, and only permissions relevant to the owner apply.
+
+  :param string path: The path name for the new directory node.  
   :param int mode: :ref:`File permissions <fs-read-and-write-flags>` for the new node. The default setting (`in octal numeric notation <http://en.wikipedia.org/wiki/File_system_permissions#Numeric_notation>`_) is 0777.
 
 

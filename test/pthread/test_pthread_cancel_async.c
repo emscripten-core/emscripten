@@ -25,7 +25,7 @@ static void cleanup_handler(void *arg)
 }
 
 static void *thread_start(void *arg) {
-  // Setup thread for async cancelation only
+  // Setup thread for async cancellation only
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
 
@@ -38,7 +38,7 @@ static void *thread_start(void *arg) {
 
   // This mutex is locked by the main thread so this call should never return.
   // pthread_mutex_lock is not a cancellation point so deferred cancellation
-  // won't work here, async cancelation should.
+  // won't work here, async cancellation should.
   pthread_mutex_lock(&mutex);
 
   assert(false && "pthread_mutex_lock returned!");

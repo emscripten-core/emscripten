@@ -66,6 +66,8 @@ void emscripten_trace_task_end(void);
 
 void emscripten_trace_close(void);
 
+void emscripten_trace_sbrk_grow(intptr_t old, intptr_t new);
+
 #else
 
 #define emscripten_trace_configure(collector_url, application) ((void)0)
@@ -93,6 +95,7 @@ void emscripten_trace_close(void);
 #define emscripten_trace_task_resume(task_id, explanation) ((void)0)
 #define emscripten_trace_task_end() ((void)0)
 #define emscripten_trace_close() ((void)0)
+#define emscripten_trace_sbrk_grow(old, new) ((void)0)
 
 #endif
 

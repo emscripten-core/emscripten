@@ -5,7 +5,7 @@
 int foo = 3;
 // This should generate a relocation in data section
 static int* _Atomic foo_addr = &foo;
-// This should generate a reloction in the TLS data section
+// This should generate a relocation in the TLS data section
 static _Thread_local int *tls_foo_addr = &foo;
 
 void run_test() {
@@ -14,7 +14,7 @@ void run_test() {
   printf("&tls_foo_addr: %p\n", &tls_foo_addr);
   // The values stored foo_addr and tls_foo_addr should both be
   // the address of foo
-  printf("foo_add=%p tls_foo_addr=%p [delta=%ld]\n", foo_addr, tls_foo_addr, foo_addr - tls_foo_addr);
+  printf("foo_addr=%p tls_foo_addr=%p [delta=%ld]\n", foo_addr, tls_foo_addr, foo_addr - tls_foo_addr);
   assert(foo_addr == &foo);
   assert(tls_foo_addr == &foo);
 }

@@ -47,7 +47,7 @@
                 break;
             case GL_FRAMEBUFFER_INCOMPLETE_MULTISAMPLE:
                 printf("****  The value of GL_RENDERBUFFER_SAMPLES is not the same for all attached renderbuffers; "
-                                "if the value of GL_TEXTURE_SAMPLES is the not same for all attached textures; or, if "
+                                "if the value of GL_TEXTURE_SAMPLES is not the same for all attached textures; or, if "
                                 "the attached images are a mix of renderbuffers and textures, the value of "
                                 "GL_RENDERBUFFER_SAMPLES does not match the value of GL_TEXTURE_SAMPLES."
                                 "Or the value of GL_TEXTURE_FIXED_SAMPLE_LOCATIONS is not the same for all attached "

@@ -19,10 +19,16 @@ extern "C" {
 
 typedef int EMSCRIPTEN_WEBAUDIO_T;
 
+// Default render size of 128 frames
+#define AUDIO_CONTEXT_RENDER_SIZE_DEFAULT 0
+// Let the hardware determine the best render size
+#define AUDIO_CONTEXT_RENDER_SIZE_HARDWARE -1
+
 typedef struct EmscriptenWebAudioCreateAttributes
 {
 	const char *latencyHint; // Specify one of "balanced", "interactive" or "playback"
 	uint32_t sampleRate; // E.g. 44100 or 48000
+	int32_t renderSizeHint; // AUDIO_CONTEXT_RENDER_SIZE_* or number of samples
 } EmscriptenWebAudioCreateAttributes;
 
 // Creates a new Web Audio AudioContext, and returns a handle to it.
@@ -96,8 +102,11 @@ typedef void (*EmscriptenWorkletProcessorCreatedCallback)(EMSCRIPTEN_WEBAUDIO_T 
 void emscripten_create_wasm_audio_worklet_processor_async(EMSCRIPTEN_WEBAUDIO_T audioContext, const WebAudioWorkletProcessorCreateOptions *options, EmscriptenWorkletProcessorCreatedCallback callback, void *userData3);
 
 // Returns the number of samples processed per channel in an AudioSampleFrame, fixed at 128 in the Web Audio API 1.0 specification, and valid for the lifetime of the audio context.
-// For this to change from the default 128, the context would need to be created with a yet unexposed WebAudioWorkletProcessorCreateOptions renderSizeHint, part of the 1.1 Web Audio API.
+// For this to differ from the default 128, the context would need to be created with a WebAudioWorkletProcessorCreateOptions renderSizeHint, part of the 1.1 Web Audio API.
 int emscripten_audio_context_quantum_size(EMSCRIPTEN_WEBAUDIO_T audioContext);
+
+// Returns the sampling rate of the given Audio Context, e.g. 48000 or 44100 or similar.
+int emscripten_audio_context_sample_rate(EMSCRIPTEN_WEBAUDIO_T audioContext);
 
 typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T;
 
@@ -123,6 +132,17 @@ typedef struct AudioParamFrame
 
 typedef bool (*EmscriptenWorkletNodeProcessCallback)(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData4);
 
+typedef enum {
+    WEBAUDIO_CHANNEL_COUNT_MODE_MAX = 0,
+    WEBAUDIO_CHANNEL_COUNT_MODE_CLAMPED_MAX = 1,
+    WEBAUDIO_CHANNEL_COUNT_MODE_EXPLICIT = 2
+} WEBAUDIO_CHANNEL_COUNT_MODE;
+
+typedef enum {
+    WEBAUDIO_CHANNEL_INTERPRETATION_SPEAKERS = 0,
+    WEBAUDIO_CHANNEL_INTERPRETATION_DISCRETE = 1
+} WEBAUDIO_CHANNEL_INTERPRETATION;
+
 typedef struct EmscriptenAudioWorkletNodeCreateOptions
 {
 	// How many audio nodes does this node take inputs from? Default=1
@@ -131,6 +151,13 @@ typedef struct EmscriptenAudioWorkletNodeCreateOptions
 	int numberOfOutputs;
 	// For each output, specifies the number of audio channels (1=mono/2=stereo/etc.) for that output. Default=an array of ones for each output channel.
 	int *outputChannelCounts;
+	// Number of channels used when up-mixing and down-mixing connections to any inputs to the node. Default=2
+	unsigned long channelCount;
+	// How channels will be counted when up-mixing and down-mixing connections to any inputs to the node? Default=max
+	WEBAUDIO_CHANNEL_COUNT_MODE channelCountMode;
+	// How individual channels will be treated when up-mixing and down-mixing connections to any inputs to the node? Default=speakers
+	WEBAUDIO_CHANNEL_INTERPRETATION channelInterpretation;
+
 } EmscriptenAudioWorkletNodeCreateOptions;
 
 // Instantiates the given AudioWorkletProcessor as an AudioWorkletNode, which continuously calls the specified processCallback() function on the browser's audio thread to perform audio processing.

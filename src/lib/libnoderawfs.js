@@ -15,6 +15,11 @@ addToLibrary({
         try {
           return func(...args)
         } catch (e) {
+          // Hack for Deno which throws BadResource instead of EBADF:
+          // https://github.com/emscripten-core/emscripten/issues/26239
+          if (e.name == 'BadResource') {
+            e.code = 'EBADF';
+          }
           if (e.code) {
             throw new FS.ErrnoError(ERRNO_CODES[e.code]);
           }
@@ -47,7 +52,7 @@ addToLibrary({
       return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
     },
     createStandardStreams() {
-      // FIXME: tty is set to true to appease isatty(), the underlying ioctl syscalls still needs to be implemented, see issue #22264.
+      // FIXME: tty is set to true to appease isatty(), the underlying ioctl syscalls still need to be implemented, see issue #22264.
       FS.createStream({ nfd: 0, position: 0, path: '/dev/stdin', flags: 0, tty: true, seekable: false }, 0);
       var paths = [,'/dev/stdout', '/dev/stderr'];
       for (var i = 1; i < 3; i++) {
@@ -84,11 +89,18 @@ addToLibrary({
       var stream = FS.getStreamChecked(fd);
       return fs.fstatSync(stream.nfd);
     },
-    statfsStream(stream) {
-      return fs.statfsSync(stream.path);
+    statfs(path) {
+      // Node's fs.statfsSync API doesn't provide these attributes so include
+      // some defaults.
+      var defaults = {
+        fsid: 42,
+        flags: 2,
+        namelen: 255,
+      }
+      return Object.assign(defaults, fs.statfsSync(path));
     },
-    statfsNode(node) {
-      return fs.statfsSync(node.path);
+    statfsStream(stream) {
+      return FS.statfs(stream.path);
     },
     chmod(path, mode, dontFollow) {
       mode &= {{{ cDefs.S_IALLUGO }}};
@@ -140,9 +152,7 @@ addToLibrary({
       fs.utimesSync(path, atime/1000, mtime/1000);
     },
     open(path, flags, mode) {
-      if (typeof flags == "string") {
-        flags = FS_modeStringToFlags(flags)
-      }
+      flags = FS_modeStringToFlags(flags);
       var pathTruncated = path.split('/').map((s) => s.slice(0, 255)).join('/');
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
       var st = fs.fstatSync(nfd);
@@ -166,7 +176,8 @@ addToLibrary({
     },
     close(stream) {
       VFS.closeStream(stream.fd);
-      if (!stream.stream_ops && --stream.shared.refcnt <= 0) {
+      // Don't close stdin/stdout/stderr since they are used by node itself.
+      if (!stream.stream_ops && --stream.shared.refcnt <= 0 && stream.nfd > 2) {
         // This stream is created by our Node.js filesystem, close the
         // native file descriptor when its reference count drops to 0.
         fs.closeSync(stream.nfd);
@@ -199,7 +210,7 @@ addToLibrary({
       }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
-      var bytesRead = fs.readSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
+      var bytesRead = fs.readSync(stream.nfd, buffer, offset, length, position);
       // update position marker when non-seeking
       if (!seeking) stream.position += bytesRead;
       return bytesRead;
@@ -209,13 +220,13 @@ addToLibrary({
         // this stream is created by in-memory filesystem
         return VFS.write(stream, buffer, offset, length, position);
       }
-      if (stream.flags & +"{{{ cDefs.O_APPEND }}}") {
+      if (stream.flags & {{{ cDefs.O_APPEND }}}) {
         // seek to the end before writing in append mode
-        FS.llseek(stream, 0, +"{{{ cDefs.SEEK_END }}}");
+        FS.llseek(stream, 0, {{{ cDefs.SEEK_END }}});
       }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
-      var bytesWritten = fs.writeSync(stream.nfd, new Int8Array(buffer.buffer, offset, length), 0, length, position);
+      var bytesWritten = fs.writeSync(stream.nfd, buffer, offset, length, position);
       // update position marker when non-seeking
       if (!seeking) stream.position += bytesWritten;
       return bytesWritten;

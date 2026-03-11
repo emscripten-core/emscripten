@@ -43,8 +43,8 @@ class WasmSourceMap {
     }
 
     var offset = 0, src = 0, line = 1, col = 1, name = 0;
-    sourceMap.mappings.split(',').forEach(function (segment, index) {
-      if (!segment) return;
+    for (const [index, segment] of sourceMap.mappings.split(',').entries()) {
+      if (!segment) continue;
       var data = decodeVLQ(segment);
       var info = {};
 
@@ -55,17 +55,12 @@ class WasmSourceMap {
       if (data.length >= 5) info.name = name += data[4];
       this.mapping[offset] = info;
       this.offsets.push(offset);
-    }, this);
+    }
     this.offsets.sort((a, b) => a - b);
   }
 
   lookup(offset) {
     var normalized = this.normalizeOffset(offset);
-#if USE_OFFSET_CONVERTER
-    if (!wasmOffsetConverter.isSameFunc(offset, normalized)) {
-      return null;
-    }
-#endif
     var info = this.mapping[normalized];
     if (!info) {
       return null;
@@ -95,8 +90,16 @@ class WasmSourceMap {
   }
 }
 
+var wasmSourceMap;
+#if MINIMAL_RUNTIME
 var wasmSourceMapFile = '{{{ WASM_BINARY_FILE }}}.map';
-wasmSourceMapFile = locateFile(wasmSourceMapFile);
+#else
+var wasmSourceMapFile = locateFile('{{{ WASM_BINARY_FILE }}}.map');
+#endif
+
+function receiveSourceMapJSON(sourceMap) {
+  wasmSourceMap = new WasmSourceMap(sourceMap);
+}
 
 function getSourceMap() {
   var buf = readBinary(wasmSourceMapFile);
@@ -104,7 +107,11 @@ function getSourceMap() {
 }
 
 async function getSourceMapAsync() {
-  if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
+  if (ENVIRONMENT_IS_WEB
+#if ENVIRONMENT_MAY_BE_WORKER
+   || ENVIRONMENT_IS_WORKER
+#endif
+   ) {
     try {
       var response = await fetch(wasmSourceMapFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
       return response.json();
@@ -114,3 +121,25 @@ async function getSourceMapAsync() {
   }
   return getSourceMap();
 }
+
+
+#if PTHREADS || WASM_WORKERS
+// Source map is received via postMessage on worker threads.
+if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
+#endif
+
+#if !MINIMAL_RUNTIME // MINIMAL_RUNTIME integrates source map loading into postamble_minimal.js
+#if WASM_ASYNC_COMPILATION
+addRunDependency('source-map');
+getSourceMapAsync().then((json) => {
+  receiveSourceMapJSON(json);
+  removeRunDependency('source-map');
+});
+#else
+receiveSourceMapJSON(getSourceMap());
+#endif
+#endif
+
+#if PTHREADS || WASM_WORKERS
+}
+#endif

@@ -11,5 +11,5 @@ loop thread: 9
 loop thread: 10
 loop thread: 11
 loop thread done
-joinng..
+joining..
 join done

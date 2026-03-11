@@ -25,14 +25,6 @@ libc_copy_dirs = [
     'include/llvm-libc-types',
     'shared',
     'config',
-    'src/__support',
-    'src/string',
-    'src/strings',
-    'src/errno',
-    'src/math',
-    'src/stdlib',
-    'src/inttypes',
-    'src/stdio/printf_core',
 ]
 
 def clean_dir(dirname):

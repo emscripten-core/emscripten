@@ -22,7 +22,17 @@
 #undef main
 #endif
 
+// Set this to true to if manually testing in browser to give longer delays
+// and beeps.
+// #define INTERACTIVE true
+
+#ifdef INTERACTIVE
 const int tone_duration = 1000;
+#define DELAY 1500
+#else
+#define DELAY 1
+const int tone_duration = 10;
+#endif
 
 struct BeepObject {
   double toneFrequency;
@@ -196,7 +206,11 @@ void nextTest(void *unused = 0) {
     return;
   }
 
+#ifdef INTERACTIVE
   emscripten_sleep(100);
+#else
+  emscripten_sleep(1);
+#endif
 
   printf("Playing back a beep for %d msecs at %d Hz tone with audio format %s, %d channels, and %d samples/sec.\n",
       tone_duration, (int)Hz, SdlAudioFormatToString(sdlAudioFormats[s]), channels[c], freqs[f]);
@@ -211,9 +225,9 @@ void update() {
     delete beep;
     beep = 0;
 #ifdef __EMSCRIPTEN__
-    emscripten_async_call(nextTest, 0, 1500);
+    emscripten_async_call(nextTest, 0, DELAY);
 #else
-    SDL_Delay(1500);
+    SDL_Delay(DELAY);
     nextTest();
 #endif
   }

@@ -147,7 +147,7 @@ int main() {
     if (!depth && stencil && numDepthBits && numStencilBits && EM_ASM_INT(navigator.userAgent.toLowerCase().indexOf('firefox')) > -1)
     {
       numDepthBits = 0;
-      printf("Applying workaround to ignore Firefox bug https://bugzilla.mozilla.org/show_bug.cgi?id=982477\n");
+      printf("Applying workaround to ignore Firefox bug https://bugzil.la/982477\n");
     }
     assert(!!numDepthBits == !!depth);
     assert(!!numStencilBits == !!stencil);

@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-from typing import Dict, Optional
 
 URL = 'https://emscripten.org'
 DESCRIPTION = 'Test Description'
@@ -18,7 +17,7 @@ OPTIONS = {
 }
 
 # user options (from --use-port)
-opts: Dict[str, Optional[str]] = {
+opts: dict[str, str | None] = {
   'value1': None,
   'value2': None,
   'value3': "v3",

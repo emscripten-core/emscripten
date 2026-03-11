@@ -5,14 +5,25 @@
  * found in the LICENSE file.
  */
 
-#include <stdio.h>
 #include <assert.h>
 #include <emscripten.h>
+#include <stdio.h>
+#include <string.h>
 
 int main() {
+  // Test boolean, int, and string settings
   printf("INVOKE_RUN: %ld\n", emscripten_get_compiler_setting("INVOKE_RUN"));
-  assert((unsigned)emscripten_get_compiler_setting("OPT_LEVEL") <= 3);
-  assert((unsigned)emscripten_get_compiler_setting("DEBUG_LEVEL") <= 4);
-  printf("EMSCRIPTEN_VERSION: %s\n", (char*)emscripten_get_compiler_setting("EMSCRIPTEN_VERSION"));
+  assert((unsigned)emscripten_get_compiler_setting("ASSERTIONS") <= 2);
+  printf("CLOSURE_WARNINGS: %s\n", (char*)emscripten_get_compiler_setting("CLOSURE_WARNINGS"));
+
+  // Internal setting should not be visible.
+  const char* embind = (char*)emscripten_get_compiler_setting("EMBIND");
+  printf("EMBIND: %s\n", embind);
+  assert(strstr(embind, "invalid compiler setting") != NULL);
+
+  // EMSCRIPTEN_VERSION should be allowed though..
+  const char* version = (char*)emscripten_get_compiler_setting("EMSCRIPTEN_VERSION");
+  printf("EMSCRIPTEN_VERSION: %s\n", version);
+  assert(strstr(version, "invalid compiler setting") == NULL);
 }
 

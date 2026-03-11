@@ -54,10 +54,10 @@ LibraryJSEventLoop = {
 
   $emSetImmediate__deps: ['$setImmediateWrapped', '$clearImmediateWrapped', '$emClearImmediate'],
   $emSetImmediate__postset: `
-    if (typeof setImmediate != "undefined") {
+    if (globalThis.setImmediate) {
       emSetImmediate = setImmediateWrapped;
       emClearImmediate = clearImmediateWrapped;
-    } else if (typeof addEventListener == "function") {
+    } else if (globalThis.addEventListener) {
       var __setImmediate_id_counter = 0;
       var __setImmediate_queue = [];
       var __setImmediate_message_id = "_si";
@@ -141,7 +141,7 @@ LibraryJSEventLoop = {
           // (https://stackoverflow.com/questions/8430966/is-calling-settimeout-with-a-negative-delay-ok)
           var remaining = n - _emscripten_get_now();
 #if ENVIRONMENT_MAY_BE_NODE
-          // Recent revsions of node, however, give TimeoutNegativeWarning
+          // Recent revisions of node, however, give TimeoutNegativeWarning
           remaining = Math.max(0, remaining);
 #endif
           setTimeout(tick, remaining);
@@ -201,7 +201,6 @@ LibraryJSEventLoop = {
   $MainLoop: {
     running: false,
     scheduler: null,
-    method: '',
     // Each main loop is numbered with a ID in sequence order. Only one main
     // loop can run at a time. This variable stores the ordinal number of the
     // main loop that is currently allowed to run. All previous main loops
@@ -298,22 +297,11 @@ LibraryJSEventLoop = {
     },
 
     requestAnimationFrame(func) {
-      if (typeof requestAnimationFrame == 'function') {
+      if (globalThis.requestAnimationFrame) {
         requestAnimationFrame(func);
-        return;
+      } else {
+        MainLoop.fakeRequestAnimationFrame(func);
       }
-      var RAF = MainLoop.fakeRequestAnimationFrame;
-#if LEGACY_VM_SUPPORT
-      if (typeof window != 'undefined') {
-        RAF = window['requestAnimationFrame'] ||
-              window['mozRequestAnimationFrame'] ||
-              window['webkitRequestAnimationFrame'] ||
-              window['msRequestAnimationFrame'] ||
-              window['oRequestAnimationFrame'] ||
-              RAF;
-      }
-#endif
-      RAF(func);
     },
   },
 
@@ -344,15 +332,18 @@ LibraryJSEventLoop = {
         var timeUntilNextTick = Math.max(0, MainLoop.tickStartTime + value - _emscripten_get_now())|0;
         setTimeout(MainLoop.runner, timeUntilNextTick); // doing this each time means that on exception, we stop
       };
-      MainLoop.method = 'timeout';
     } else if (mode == {{{ cDefs.EM_TIMING_RAF }}}) {
       MainLoop.scheduler = function MainLoop_scheduler_rAF() {
         MainLoop.requestAnimationFrame(MainLoop.runner);
       };
-      MainLoop.method = 'rAF';
-    } else if (mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}}) {
-      if (typeof MainLoop.setImmediate == 'undefined') {
-        if (typeof setImmediate == 'undefined') {
+    } else {
+#if ASSERTIONS
+      assert(mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}});
+#endif
+      if (!MainLoop.setImmediate) {
+        if (globalThis.setImmediate) {
+          MainLoop.setImmediate = setImmediate;
+        } else {
           // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
           var setImmediates = [];
           var emscriptenMainLoopMessageId = 'setimmediate';
@@ -374,14 +365,11 @@ LibraryJSEventLoop = {
               postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
             } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
           });
-        } else {
-          MainLoop.setImmediate = setImmediate;
         }
       }
       MainLoop.scheduler = function MainLoop_scheduler_setImmediate() {
         MainLoop.setImmediate(MainLoop.runner);
       };
-      MainLoop.method = 'immediate';
     }
     return 0;
   },
@@ -428,10 +416,10 @@ LibraryJSEventLoop = {
     }
 
     // We create the loop runner here but it is not actually running until
-    // _emscripten_set_main_loop_timing is called (which might happen a
+    // _emscripten_set_main_loop_timing is called (which might happen at a
     // later time).  This member signifies that the current runner has not
     // yet been started so that we can call runtimeKeepalivePush when it
-    // gets it timing set for the first time.
+    // gets its timing set for the first time.
     MainLoop.running = false;
     MainLoop.runner = function MainLoop_runner() {
       if (ABORT) return;
@@ -473,14 +461,12 @@ LibraryJSEventLoop = {
         return;
       } else if (MainLoop.timingMode == {{{ cDefs.EM_TIMING_SETTIMEOUT }}}) {
         MainLoop.tickStartTime = _emscripten_get_now();
-      }
-
 #if ASSERTIONS
-      if (MainLoop.method === 'timeout' && Module['ctx']) {
-        warnOnce('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
-        MainLoop.method = ''; // just warn once per call to set main loop
-      }
+        if (Module['ctx']) {
+          warnOnce('Looks like you are rendering without using requestAnimationFrame for the main loop. You should use 0 for the frame rate in emscripten_set_main_loop in order to use requestAnimationFrame, as that can greatly improve your frame rates!');
+        }
 #endif
+      }
 
       MainLoop.runIter(iterFunc);
 

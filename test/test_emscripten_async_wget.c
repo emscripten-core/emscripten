@@ -50,12 +50,12 @@ void wait_wgets() {
     if (!fired) {
       fired = true;
       emscripten_async_wget_data(
-        "http://localhost:8888/screenshot.png",
+        "/screenshot.png",
         (void*)135,
         onLoadedData,
         onErrorData);
       emscripten_async_wget_data(
-        "http://localhost:8888/fail_me",
+        "/fail_me",
         (void*)246,
         onLoadedData,
         onErrorData);
@@ -95,27 +95,27 @@ void onError(const char* file) {
 
 int main() {
   emscripten_async_wget(
-    "http://localhost:8888/this_is_not_a_file",
+    "/this_is_not_a_file",
     "/tmp/null",
     onLoaded,
     onError);
 
   emscripten_async_wget(
-    "http://localhost:8888/test.html",
+    "/test.html",
     "/tmp/test.html",
     onLoaded,
     onError);
 
   // Try downloading the same file a second time
   emscripten_async_wget(
-    "http://localhost:8888/test.html",
+    "/test.html",
     "/tmp/test.html",
     onLoaded,
     onError);
 
   // Try downloading a file to a destination directory that does not exist.
   emscripten_async_wget(
-    "http://localhost:8888/test.html",
+    "/test.html",
     "/this_directory_does_not_exist_and_should_be_created_by_wget/test.html",
     onLoaded,
     onError);
@@ -125,7 +125,7 @@ int main() {
 
   // Try downloading a file to a destination directory that is a nonexisting path relative to CWD.
   emscripten_async_wget(
-    "http://localhost:8888/test.html",
+    "/test.html",
     "this_directory_is_relative_to_cwd/test.html",
     onLoaded,
     onError);
@@ -133,7 +133,7 @@ int main() {
   char name[40];
   strcpy(name, "/tmp/screen_shot.png"); // test for issue #2349, name being free'd
   emscripten_async_wget(
-    "http://localhost:8888/screenshot.png",
+    "/screenshot.png",
     name,
     onLoaded,
     onError);

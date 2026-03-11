@@ -9,7 +9,7 @@ Module['preRun'] = () => {
     console.log('onRuntimeInitialized');
     if (wrappedAdd(5, 6) != 11) throw '5 + 6 should be 11';
     // report success
-    await fetch('http://localhost:8888/report_result?0');
+    await fetch('/report_result?0');
     window.close();
   };
 };

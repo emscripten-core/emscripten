@@ -18,7 +18,7 @@ EM_ASM: Double quotes inside a string
 3. this is "double" "quotes"
 4. this is "double" "quotes"
 5. this is "double" "quotes"
-6. this is "double" "quotes" without esacping
+6. this is "double" "quotes" without escaping
 7. this is "double" "quotes"
 
 EM_ASM: Pass a string

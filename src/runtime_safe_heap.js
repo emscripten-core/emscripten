@@ -5,7 +5,7 @@
  */
 
 #if !SAFE_HEAP
-#error "should only be inclded in SAFE_HEAP mode"
+#error "should only be included in SAFE_HEAP mode"
 #endif
 
 #if SAFE_HEAP_LOG
@@ -33,14 +33,6 @@ function SAFE_HEAP_INDEX(arr, idx, action) {
     if (brk > wasmMemory.buffer.byteLength) abort(`brk <= wasmMemory.buffer.byteLength (brk=${brk}, wasmMemory.buffer.byteLength=${wasmMemory.buffer.byteLength})`);
   }
   return idx;
-}
-
-function SAFE_HEAP_LOAD(arr, idx) {
-  return arr[SAFE_HEAP_INDEX(arr, idx, 'loading')];
-}
-
-function SAFE_HEAP_STORE(arr, idx, value) {
-  return arr[SAFE_HEAP_INDEX(arr, idx, 'storing')] = value;
 }
 
 function segfault() {

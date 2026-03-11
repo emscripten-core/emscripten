@@ -1,0 +1,6 @@
+main
+pthread_create: 0
+thread main
+close: 0
+pthread_join: 0
+done

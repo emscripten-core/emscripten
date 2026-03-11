@@ -59,13 +59,12 @@ addToLibrary({
             throw wholeFileReq;
           }
           var wholeFileData = new Uint8Array(await wholeFileReq.arrayBuffer());
-          var text = new TextDecoder().decode(wholeFileData);
           wasmFS$JSMemoryRanges[file] = {
             size: wholeFileData.byteLength,
             chunks: [wholeFileData],
             chunkSize: wholeFileData.byteLength
           };
-          return Promise.resolve();
+          return;
         }
       }
       var firstChunk = (offset / chunkSize) | 0;
@@ -84,7 +83,7 @@ addToLibrary({
       if (allPresent) {
         // The data is already here, so nothing to do before we continue on to
         // the actual read.
-        return Promise.resolve();
+        return;
       }
       // This is the first time we want the chunks' data.  We'll make
       // one request for all the chunks we need, rather than one
@@ -96,24 +95,25 @@ addToLibrary({
       if (!response.ok) {
         throw response;
       }
+#if MIN_FIREFOX_VERSION < 128 || MIN_CHROME_VERSION < 132 || MIN_SAFARI_VERSION < 180000 || MIN_NODE_VERSION < 220300
+      // Use the old .arrayBuffer() method when targeting old environments.
+      var bytes = new Uint8Array(await response['arrayBuffer']());
+#else
+      // Use the new .bytes() method to save a bit of code size when all target environments have it. https://developer.mozilla.org/en-US/docs/Web/API/Response/bytes
       var bytes = await response['bytes']();
+#endif
       for (i = firstChunk; i <= lastChunk; i++) {
         wasmFS$JSMemoryRanges[file].chunks[i] = bytes.slice(i*chunkSize-start,(i+1)*chunkSize-start);
       }
-      return Promise.resolve();
     }
 
     wasmFS$backends[backend] = {
       // alloc/free operations are not actually async. Just forward to the
       // parent class, but we must return a Promise as the caller expects.
-      allocFile: async (file) => {
-        // nop
-        return Promise.resolve();
-      },
+      allocFile: async (file) => { /* nop */ },
       freeFile: async (file) => {
         // free memory
         wasmFS$JSMemoryRanges[file] = undefined;
-        return Promise.resolve();
       },
 
       write: async (file, buffer, length, offset) => {

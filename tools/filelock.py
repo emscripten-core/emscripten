@@ -128,7 +128,7 @@ class _Acquire_ReturnProxy:
     def __enter__(self):
         return self.lock
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, _exc_type, _exc_value, _traceback):
         self.lock.release()
         return None
 
@@ -330,7 +330,7 @@ class BaseFileLock:
         self.acquire()
         return self
 
-    def __exit__(self, exc_type, exc_value, traceback):
+    def __exit__(self, _exc_type, _exc_value, _traceback):
         self.release()
         return None
 

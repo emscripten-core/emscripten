@@ -43,7 +43,7 @@ void varargs_listoffsets_list_evaluate(int count, va_list ap, int vaIteration) {
   printf("\n");
 }
 
-void varags_listoffsets_list_copy(int count, va_list ap, int iteration) {
+void varargs_listoffsets_list_copy(int count, va_list ap, int iteration) {
   va_list ap_copy;
   va_copy(ap_copy, ap);
   varargs_listoffsets_list_evaluate(count, ap_copy, iteration);
@@ -55,10 +55,10 @@ void varargs_listoffsets_args(int type, int count, ...) {
   va_start(ap, count);
 
   // evaluate a copied list
-  varags_listoffsets_list_copy(count, ap, 1);
-  varags_listoffsets_list_copy(count, ap, 2);
-  varags_listoffsets_list_copy(count, ap, 3);
-  varags_listoffsets_list_copy(count, ap, 4);
+  varargs_listoffsets_list_copy(count, ap, 1);
+  varargs_listoffsets_list_copy(count, ap, 2);
+  varargs_listoffsets_list_copy(count, ap, 3);
+  varargs_listoffsets_list_copy(count, ap, 4);
 }
 
 void varargs_listoffsets_main() {

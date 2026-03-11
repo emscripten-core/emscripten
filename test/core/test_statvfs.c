@@ -20,9 +20,9 @@ int main() {
 
   printf("f_bsize: %lu\n", s.f_bsize);
   printf("f_frsize: %lu\n", s.f_frsize);
-  printf("f_blocks: %u\n", s.f_blocks);
-  printf("f_bfree: %u\n", s.f_bfree);
-  printf("f_bavail: %u\n", s.f_bavail);
+  printf("f_blocks: %llu\n", s.f_blocks);
+  printf("f_bfree: %llu\n", s.f_bfree);
+  printf("f_bavail: %llu\n", s.f_bavail);
   printf("f_files: %d\n", s.f_files > 5);
   printf("f_ffree: %u\n", s.f_ffree <= s.f_files && s.f_ffree > 0);
   printf("f_favail: %u\n", s.f_favail <= s.f_files && s.f_favail > 0);

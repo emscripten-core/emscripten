@@ -597,9 +597,8 @@ _mm_cvtsi32_ss(__m128 __a, int __b)
 static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW)) _mm_cvtss_si32(__m128 __a)
 {
   float e = ((__f32x4)__a)[0];
-  int x = lrint(e);
-  if ((x != 0 || fabsf(e)) < 2.f && !isnan(e) && e <= INT_MAX && e >= INT_MIN)
-    return x;
+  if (e < 2147483648.0f && e >= -2147483648.0f && (lrint(e) != 0 || fabsf(e) < 2.f))
+    return lrint(e);
   else
     return (int)0x80000000;
 }
@@ -608,8 +607,7 @@ static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SL
 static __inline__ int __attribute__((__always_inline__, __nodebug__, DIAGNOSE_SLOW)) _mm_cvttss_si32(__m128 __a)
 {
   float e = ((__f32x4)__a)[0];
-  int x = lrint(e);
-  if ((x != 0 || fabsf(e) < 2.f) && !isnanf(e) && e <= INT_MAX && e >= INT_MIN)
+  if (e < 2147483648.0f && e >= -2147483648.0f && (lrint(e) != 0 || fabsf(e) < 2.f))
     return (int)e;
   else
     return (int)0x80000000;
@@ -629,7 +627,7 @@ _mm_cvtss_si64(__m128 __a)
 {
   float e = ((__f32x4)__a)[0];
   long long x = llrintf(e);
-  if ((x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(e) < 2.f)) && !isnanf(e) && e <= LLONG_MAX && e >= LLONG_MIN)
+  if (e <= LLONG_MAX && e >= LLONG_MIN && (x != 0 || fabsf(e) < 2.f))
     return x;
   else
     return 0x8000000000000000LL;
@@ -640,7 +638,7 @@ _mm_cvttss_si64(__m128 __a)
 {
   float e = ((__f32x4)__a)[0];
   long long x = llrintf(e);
-  if (x != 0xFFFFFFFF00000000ULL && (x != 0 || fabsf(e) < 2.f) && !isnanf(e) && e <= LLONG_MAX && e >= LLONG_MIN)
+  if (e <= LLONG_MAX && e >= LLONG_MIN && (x != 0 || fabsf(e) < 2.f))
     return (long long)e;
   else
     return 0x8000000000000000LL;

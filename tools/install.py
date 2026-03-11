@@ -17,13 +17,21 @@ import shutil
 import subprocess
 import sys
 
+WINDOWS = sys.platform.startswith('win')
+MSYS2 = 'MSYSTEM' in os.environ
+
 EXCLUDES = [os.path.normpath(x) for x in '''
 test/third_party
 tools/maint
+tools/install.py
 site
 node_modules
 Makefile
 .git
+.circleci
+.github
+.mypy_cache
+.ruff_cache
 cache
 cache.lock
 out
@@ -49,6 +57,9 @@ def add_revision_file(target):
 def copy_emscripten(target):
   script_dir = os.path.dirname(os.path.abspath(__file__))
   emscripten_root = os.path.dirname(script_dir)
+
+  excludes = EXCLUDES
+
   os.chdir(emscripten_root)
   for root, dirs, files in os.walk('.'):
     # Handle the case where the target directory is underneath emscripten_root
@@ -77,7 +88,7 @@ def copy_emscripten(target):
         logger.debug('skipping file: ' + os.path.join(root, f))
         continue
       full = os.path.normpath(os.path.join(root, f))
-      if full in EXCLUDES:
+      if full in excludes:
         logger.debug('skipping file: ' + os.path.join(root, f))
         continue
       logger.debug('installing file: ' + os.path.join(root, f))

@@ -3,30 +3,25 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import logging
-import hashlib
-import os
-from pathlib import Path
-import shutil
 import glob
+import hashlib
 import importlib.util
-from inspect import signature
-import sys
+import logging
+import os
+import shutil
 import subprocess
-from typing import Set, Dict
+import sys
+from inspect import signature
+from pathlib import Path
 from urllib.request import urlopen
 
-from tools import cache
-from tools import config
-from tools import shared
-from tools import system_libs
-from tools import utils
+from tools import cache, config, shared, system_libs, utils
 from tools.settings import settings
 from tools.toolchain_profiler import ToolchainProfiler
 
 ports = []
 
-ports_by_name: Dict[str, object] = {}
+ports_by_name: dict[str, object] = {}
 
 ports_needed = set()
 
@@ -119,7 +114,7 @@ def init_external_port(name, port):
 
 def load_port(path, name=None):
   if not name:
-    name = shared.unsuffixed_basename(path)
+    name = utils.unsuffixed_basename(path)
   if name in ports_by_name:
     utils.exit_with_error(f'port path [`{path}`] is invalid: duplicate port name `{name}`')
   port = load_port_module(f'tools.ports.{name}', path)
@@ -148,7 +143,7 @@ def read_ports():
   for filename in os.listdir(contrib_dir):
     if not filename.endswith('.py') or filename == '__init__.py':
       continue
-    name = 'contrib.' + shared.unsuffixed(filename)
+    name = 'contrib.' + utils.unsuffixed(filename)
     load_port(os.path.join(contrib_dir, filename), name)
 
 
@@ -193,7 +188,7 @@ class Ports:
   @staticmethod
   def get_include_dir(*parts):
     dirname = cache.get_include_dir(*parts)
-    shared.safe_ensure_dirs(dirname)
+    utils.safe_ensure_dirs(dirname)
     return dirname
 
   @staticmethod
@@ -219,7 +214,7 @@ class Ports:
     assert os.path.exists(dest)
     if target:
       dest = os.path.join(dest, target)
-      shared.safe_ensure_dirs(dest)
+      utils.safe_ensure_dirs(dest)
     matches = glob.glob(os.path.join(src_dir, pattern))
     assert matches, f'no headers found to install in {src_dir}'
     for f in matches:
@@ -241,7 +236,7 @@ class Ports:
           if ex in dirs:
             dirs.remove(ex)
         for f in files:
-          ext = shared.suffix(f)
+          ext = utils.suffix(f)
           if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
             srcs.append(os.path.join(root, f))
 
@@ -265,7 +260,7 @@ class Ports:
         dirname = os.path.dirname(obj)
         os.makedirs(dirname, exist_ok=True)
         cmd = [shared.EMCC, '-c', src, '-o', obj] + cflags
-        if shared.suffix(src) in ('.cc', '.cxx', '.cpp'):
+        if utils.suffix(src) in ('.cc', '.cxx', '.cpp'):
           cmd[0] = shared.EMXX
           cmd += cxxflags
         commands.append(cmd)
@@ -279,7 +274,7 @@ class Ports:
   @staticmethod
   def get_dir(*parts):
     dirname = os.path.join(config.PORTS, *parts)
-    shared.safe_ensure_dirs(dirname)
+    utils.safe_ensure_dirs(dirname)
     return dirname
 
   @staticmethod
@@ -291,7 +286,7 @@ class Ports:
   def get_build_dir():
     return system_libs.get_build_dir()
 
-  name_cache: Set[str] = set()
+  name_cache: set[str] = set()
 
   @staticmethod
   def fetch_port_artifact(name, url, sha512hash=None):
@@ -377,7 +372,7 @@ class Ports:
 
     def unpack():
       logger.info(f'unpacking port: {name}')
-      shared.safe_ensure_dirs(fullname)
+      utils.safe_ensure_dirs(fullname)
       shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
       utils.write_file(marker, url + '\n')
 
@@ -640,7 +635,7 @@ def get_libs(settings):
   return ret
 
 
-def add_cflags(args, settings): # noqa: U100
+def add_cflags(args, settings):
   """Called during compile phase add any compiler flags (e.g -Ifoo) needed
   by the selected ports.  Can also add/change settings.
 

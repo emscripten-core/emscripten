@@ -51,7 +51,7 @@ int main() {
 
   // mapping a non-zero number of pages should succeed, even for empty files.
   // On native systems this results in pages beyond the length of the file
-  // being inaccessable, but we don't have any real memory protection on
+  // being inaccessible, but we don't have any real memory protection on
   // emscripten so we cannot test that.
   mapped = (char*) mmap(NULL, 2*PAGE_SIZE, PROT_READ, MAP_PRIVATE, fd, 0);
   assert(mapped != MAP_FAILED);

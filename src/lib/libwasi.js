@@ -54,7 +54,7 @@ var WasiLibrary = {
       var lang = 'C.UTF-8';
 #else
       // Browser language detection #8751
-      var lang = ((typeof navigator == 'object' && navigator.language) || 'C').replace('-', '_') + '.UTF-8';
+      var lang = (globalThis.navigator?.language ?? 'C').replace('-', '_') + '.UTF-8';
 #endif
       var env = {
 #if !PURE_WASI
@@ -67,6 +67,12 @@ var WasiLibrary = {
         '_': getExecutableName()
 #endif
       };
+#if ENVIRONMENT_MAY_BE_NODE && NODE_HOST_ENV
+      if (ENVIRONMENT_IS_NODE) {
+        // When NODE_HOST_ENV is enabled we mirror the entire host environment.
+        env = process.env;
+      }
+#endif
       // Apply the user-provided values, if any.
       for (var x in ENV) {
         // x is a key in ENV; if ENV[x] is undefined, that means it was
@@ -119,7 +125,9 @@ var WasiLibrary = {
 #if MAIN_READS_PARAMS
     {{{ makeSetValue('pargc', 0, 'mainArgs.length', SIZE_TYPE) }}};
     var bufSize = 0;
-    mainArgs.forEach((arg) => bufSize += arg.length + 1);
+    for (var arg of mainArgs) {
+      bufSize += arg.length + 1;
+    }
     {{{ makeSetValue('pargv_buf_size', 0, 'bufSize', SIZE_TYPE) }}};
 #else
     {{{ makeSetValue('pargc', 0, '0', SIZE_TYPE) }}};
@@ -132,12 +140,12 @@ var WasiLibrary = {
   args_get: (argv, argv_buf) => {
 #if MAIN_READS_PARAMS
     var bufSize = 0;
-    mainArgs.forEach((arg, i) => {
+    for (let [i, arg] of mainArgs.entries()) {
       var ptr = argv_buf + bufSize;
       {{{ makeSetValue('argv', `i*${POINTER_SIZE}`, 'ptr', '*') }}};
       stringToAscii(arg, ptr);
       bufSize += arg.length + 1;
-    });
+    }
 #endif
     return 0;
   },
@@ -415,7 +423,7 @@ var WasiLibrary = {
   path_open__sig: 'iiiiiiiiii',
   path_open__deps: ['$wasiRightsToMuslOFlags', '$wasiOFlagsToMuslOFlags', '$preopens'],
   path_open: (fd, dirflags, path, path_len, oflags,
-              fs_rights_base, fs_rights_inherting,
+              fs_rights_base, fs_rights_inheriting,
               fdflags, opened_fd) => {
     if (!(fd in preopens)) {
       return {{{ cDefs.EBADF }}};
@@ -532,34 +540,32 @@ var WasiLibrary = {
     return 0;
   },
 
-  fd_sync: (fd) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
+  fd_sync__async: 'auto',
+  fd_sync: (fd) => {
     var stream = SYSCALLS.getStreamFromFD(fd);
-#if ASYNCIFY
-    return Asyncify.handleSleep((wakeUp) => {
+    var rtn = stream.stream_ops?.fsync?.(stream);
+#if ASYNCIFY || PTHREADS
+    return new Promise((resolve) => {
       var mount = stream.node.mount;
-      if (!mount.type.syncfs) {
-        // We write directly to the file system, so there's nothing to do here.
-        wakeUp(0);
-        return;
+      if (mount?.type.syncfs) {
+        mount.type.syncfs(mount, false, (err) => resolve(err ? {{{ cDefs.EIO }}} : 0));
+      } else {
+        resolve(rtn);
       }
-      mount.type.syncfs(mount, false, (err) => {
-        wakeUp(err ? {{{ cDefs.EIO }}} : 0);
-      });
     });
 #else
-    if (stream.stream_ops?.fsync) {
-      return stream.stream_ops.fsync(stream);
-    }
-    return 0; // we can't do anything synchronously; the in-memory FS is already synced to
-#endif // ASYNCIFY
-#elif ASSERTIONS
-    abort('fd_sync called without SYSCALLS_REQUIRE_FILESYSTEM');
-#else
-    return {{{ cDefs.ENOSYS }}};
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
+    return rtn;
+#endif // ASYNCIFY || PTHREADS
   },
-  fd_sync__async: true,
+#else // SYSCALLS_REQUIRE_FILESYSTEM
+  fd_sync: (fd) => {
+#if ASSERTIONS
+    abort('fd_sync called without SYSCALLS_REQUIRE_FILESYSTEM');
+#endif
+    return {{{ cDefs.ENOSYS }}};
+  },
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
 
   // random.h
 
@@ -570,7 +576,7 @@ var WasiLibrary = {
 #if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
     // This block is not needed on v19+ since crypto.getRandomValues is builtin
     if (ENVIRONMENT_IS_NODE) {
-      var nodeCrypto = require('crypto');
+      var nodeCrypto = require('node:crypto');
       return (view) => nodeCrypto.randomFillSync(view);
     }
 #endif // ENVIRONMENT_MAY_BE_NODE

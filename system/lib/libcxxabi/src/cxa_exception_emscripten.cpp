@@ -5,9 +5,9 @@
 //
 //  Notable changes:
  //   __cxa_allocate_exception doesn't add get_cxa_exception_offset
-//    __cxa_decrement_exception_refcount dosn't call the destructor if rethrown
-//  Both of these changes are mirrored from the historical JS implemenation of
-//  thse functions.
+//    __cxa_decrement_exception_refcount doesn't call the destructor if rethrown
+//  Both of these changes are mirrored from the historical JS implementation of
+//  these functions.
 //
 //===----------------------------------------------------------------------===//
 

@@ -10,14 +10,17 @@
 //   2. post invocation from audio worklet thread to main thread
 _Atomic uint32_t callbackCount = 0;
 
+EMSCRIPTEN_WEBAUDIO_T context;
+
 void do_exit() {
   emscripten_out("do_exit");
   assert(callbackCount == 16);
+  emscripten_destroy_audio_context(context);
   emscripten_force_exit(0);
 }
 
 // [v, vi, vii, viii, vd, vdd, vddd, viiiiiidddddd] * [audio_worklet, main]
-// 8 * 2 callbacks invoked, each callbacks check the correctivity of arguments
+// 8 * 2 callbacks invoked, each callbacks check the correctness of arguments
 void v_received_on_audio_worklet() {
   assert(emscripten_current_thread_is_audio_worklet());
   emscripten_out("v_on_audio_worklet");
@@ -198,7 +201,7 @@ uint8_t wasmAudioWorkletStack[4096];
 
 int main() {
   // Create an audio context
-  EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(0 /* use default constructor options */);
+  context = emscripten_create_audio_context(0 /* use default constructor options */);
 
   // and kick off Audio Worklet scope initialization, which shares the Wasm
   // Module and Memory to the AudioWorklet scope and initializes its stack.

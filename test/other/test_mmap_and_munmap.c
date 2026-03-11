@@ -147,7 +147,7 @@ int test_mmap_anon() {
 
   void *m = (char *)mmap(NULL, file_len(), PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
   ASSERT(m != MAP_FAILED, "Failed to mmap pages");
-  ASSERT(munmap(m, file_len()) == 0, "Failed to unmmap allocated pages");
+  ASSERT(munmap(m, file_len()) == 0, "Failed to unmap allocated pages");
   TEST_PASS();
 }
 
@@ -170,7 +170,7 @@ int test_mmap_fixed() {
   char *m3 = (char *)mmap(m, file_len(), PROT_READ, MAP_FIXED, fileno(f_ro), invalid_offset);
   ASSERT(m3 == MAP_FAILED && errno == EINVAL, "Expected EINVAL for invalid offset");
 
-  ASSERT(munmap(m, file_len()) == 0, "Failed to unmmap allocated pages");
+  ASSERT(munmap(m, file_len()) == 0, "Failed to unmap allocated pages");
   TEST_PASS();
 }
 

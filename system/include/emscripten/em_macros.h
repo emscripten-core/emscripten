@@ -25,7 +25,7 @@
 
 /*
  * EM_JS_DEPS: Use this macro to declare indirect dependencies on JS symbols.
- * The first argument is just unique name for the set of dependencies.  The
+ * The first argument is just a unique name for the set of dependencies.  The
  * second argument is a C string that lists JS library symbols in the same way
  * they would be specified in the DEFAULT_LIBRARY_FUNCS_TO_INCLUDE command line
  * setting.

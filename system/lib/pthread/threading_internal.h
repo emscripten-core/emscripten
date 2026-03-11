@@ -37,10 +37,10 @@ typedef struct thread_profiler_block {
 // This function takes care of running the event queue and other housekeeping
 // tasks.
 //
-// If that caller already know the current time it can pass it vai the now
+// If the caller already knows the current time it can pass it via the now
 // argument.  This can save _emscripten_check_timers from needing to call out to
 // JS to get the current time.  Passing 0 means that caller doesn't know the
-// the current time.
+// current time.
 void _emscripten_yield(double now);
 
 void _emscripten_init_main_thread_js(void* tb);
@@ -62,7 +62,7 @@ void _emscripten_thread_set_strongref(pthread_t thread);
 // Checks certain structural invariants.  This allows us to detect when
 // already-freed threads are used in some APIs.  Technically this is undefined
 // behaviour, but we have a couple of places where we add these checks so that
-// we can pass more of the posixtest suite that vanilla musl.
+// we can pass more of the posixtest suite than vanilla musl.
 int _emscripten_thread_is_valid(pthread_t thread);
 
 void _emscripten_thread_exit_joinable(pthread_t thread);
@@ -96,7 +96,9 @@ int __pthread_create_js(struct __pthread *thread, const pthread_attr_t *attr, vo
 int _emscripten_default_pthread_stack_size();
 void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 
-double _emscripten_receive_on_main_thread_js(int funcIndex, void* emAsmAddr, pthread_t callingThread, int numCallArgs, double* args);
+double _emscripten_receive_on_main_thread_js(int funcIndex, void* emAsmAddr, pthread_t callingThread, int numCallArgs, double* args, void* ctx, void* ctxArgs);
+
+void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result);
 
 // Return non-zero if the calling thread supports Atomic.wait (For example
 // if called from the main browser thread, this function will return zero

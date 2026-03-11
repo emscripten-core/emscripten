@@ -54,7 +54,7 @@ uint32_t __wasm_setjmp_test(void* env, void* func_invocation_id) {
 #define C_LONGJMP 1
 
 // Wasm EH allows us to throw and catch multiple values, but that requires
-// multivalue support in the toolchain, whch is not reliable at the time.
+// multivalue support in the toolchain, which is not reliable at the time.
 // TODO Consider switching to throwing two values at the same time later.
 void __wasm_longjmp(void* env, int val) {
   struct jmp_buf_impl* jb = env;

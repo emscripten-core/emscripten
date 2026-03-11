@@ -201,7 +201,7 @@ int main() {
     glfwSetCursorEnterCallback(window, wcurecb);
     glfwSetScrollCallback(window, wscrocb);
 
-    // XXX: stub, events come immediatly
+    // XXX: stub, events come immediately
     // glfwPollEvents();
     // glfwWaitEvents();
 
@@ -252,8 +252,8 @@ int main() {
   }
 
   {
-    assert(glfwExtensionSupported("nonexistant") == 0);
-    assert(glfwGetProcAddress("nonexistant") == NULL);
+    assert(glfwExtensionSupported("nonexistent") == 0);
+    assert(glfwGetProcAddress("nonexistent") == NULL);
   }
 #endif
 

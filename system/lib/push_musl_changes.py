@@ -6,7 +6,7 @@
 
 # Copy local emscripten changes into the upstream musl tree.
 # This is the logical inverse of update_musl.py which copies changes
-# form the upstream musl tree into emscripten.
+# from the upstream musl tree into emscripten.
 
 import glob
 import os

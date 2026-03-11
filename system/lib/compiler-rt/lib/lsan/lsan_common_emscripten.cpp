@@ -139,7 +139,7 @@ static void ProcessThreadsCallback(ThreadContextBase *tctx, void *arg) {
     LOG_THREADS("Stack at %p-%p.\n", (void*)stack_begin, (void*)stack_end);
 
     // We can't get the SP for other threads to narrow down the range, but we
-    // we can for the current thread.
+    // can for the current thread.
     if (tctx->os_id == GetTid()) {
       uptr sp = (uptr) __builtin_frame_address(0);
       if (sp < stack_begin || sp >= stack_end) {
