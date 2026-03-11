@@ -85,11 +85,11 @@ void emscripten_thread_sleep(double msecs);
 // The name parameter is a UTF-8 encoded string which is truncated to 32 bytes.
 // When thread profiler is not enabled (not building with --threadprofiler),
 // this is a no-op.
-void emscripten_set_thread_name(pthread_t threadId, const char *name __attribute__((nonnull)));
+void emscripten_set_thread_name(pthread_t threadId, const char * _Nonnull name);
 
 // Gets the stored pointer to a string representing the canvases to transfer to
 // the created thread.
-int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a __attribute__((nonnull)), const char **str __attribute__((nonnull)));
+int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t * _Nonnull a, const char ** _Nonnull str);
 
 // Specifies a comma-delimited list of canvas DOM element IDs to transfer to the
 // thread to be created.
@@ -97,7 +97,7 @@ int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a __att
 // so must be held alive until pthread_create() has been called. If 0 or "", no
 // canvases are transferred.
 // The special value "#canvas" denotes the element stored in Module.canvas.
-int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t *a __attribute__((nonnull)), const char *str __attribute__((nonnull)));
+int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t * _Nonnull a, const char * _Nonnull str);
 
 // Called when blocking on the main thread. This will error if main thread
 // blocking is not enabled, see ALLOW_BLOCKING_ON_MAIN_THREAD.

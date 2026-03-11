@@ -39,11 +39,11 @@
 extern "C" {
 #endif
 
-void emscripten_run_script(const char *script __attribute__((nonnull)));
-int emscripten_run_script_int(const char *script __attribute__((nonnull)));
-char *emscripten_run_script_string(const char *script __attribute__((nonnull)));
-void emscripten_async_run_script(const char *script __attribute__((nonnull)), int millis);
-void emscripten_async_load_script(const char *script __attribute__((nonnull)), em_callback_func onload, em_callback_func onerror);
+void emscripten_run_script(const char * _Nonnull script);
+int emscripten_run_script_int(const char * _Nonnull script);
+char *emscripten_run_script_string(const char * _Nonnull script);
+void emscripten_async_run_script(const char * _Nonnull script, int millis);
+void emscripten_async_load_script(const char * _Nonnull script, em_callback_func onload, em_callback_func onerror);
 
 void emscripten_set_main_loop(em_callback_func func, int fps, bool simulate_infinite_loop);
 
@@ -86,10 +86,10 @@ double emscripten_get_device_pixel_ratio(void);
 
 char *emscripten_get_window_title(void);
 void emscripten_set_window_title(const char *);
-void emscripten_get_screen_size(int *width __attribute__((nonnull)), int *height __attribute__((nonnull)));
+void emscripten_get_screen_size(int * _Nonnull width, int * _Nonnull height);
 void emscripten_hide_mouse(void);
 void emscripten_set_canvas_size(int width, int height) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_set_canvas_element_size() instead")));
-void emscripten_get_canvas_size(int *width __attribute__((nonnull)), int *height __attribute__((nonnull)), int *isFullscreen __attribute__((nonnull))) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_get_canvas_element_size() and emscripten_get_fullscreen_status() instead")));
+void emscripten_get_canvas_size(int * _Nonnull width, int * _Nonnull height, int * _Nonnull isFullscreen) __attribute__((deprecated("This variant does not allow specifying the target canvas", "Use emscripten_get_canvas_element_size() and emscripten_get_fullscreen_status() instead")));
 
 double emscripten_get_now(void);
 float emscripten_random(void);
@@ -97,12 +97,12 @@ float emscripten_random(void);
 // IDB
 
 typedef void (*em_idb_onload_func)(void*, void*, int);
-void emscripten_idb_async_load(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_idb_onload_func onload, em_arg_callback_func onerror);
-void emscripten_idb_async_store(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* ptr, int num, void* arg, em_arg_callback_func onstore, em_arg_callback_func onerror);
-void emscripten_idb_async_delete(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror);
+void emscripten_idb_async_load(const char * _Nonnull db_name, const char * _Nonnull file_id, void* arg, em_idb_onload_func onload, em_arg_callback_func onerror);
+void emscripten_idb_async_store(const char * _Nonnull db_name, const char * _Nonnull file_id, void* ptr, int num, void* arg, em_arg_callback_func onstore, em_arg_callback_func onerror);
+void emscripten_idb_async_delete(const char * _Nonnull db_name, const char * _Nonnull file_id, void* arg, em_arg_callback_func ondelete, em_arg_callback_func onerror);
 typedef void (*em_idb_exists_func)(void*, int);
-void emscripten_idb_async_exists(const char *db_name __attribute__((nonnull)), const char *file_id __attribute__((nonnull)), void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
-void emscripten_idb_async_clear(const char *db_name __attribute__((nonnull)), void* arg, em_arg_callback_func onclear, em_arg_callback_func onerror);
+void emscripten_idb_async_exists(const char * _Nonnull db_name, const char * _Nonnull file_id, void* arg, em_idb_exists_func oncheck, em_arg_callback_func onerror);
+void emscripten_idb_async_clear(const char * _Nonnull db_name, void* arg, em_arg_callback_func onclear, em_arg_callback_func onerror);
 
 // IDB "sync"
 
