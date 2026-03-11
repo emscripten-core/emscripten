@@ -7,9 +7,9 @@
 
 #pragma once
 
-#include <inttypes.h>
-
 #include <emscripten/em_types.h>
+
+#include <inttypes.h>
 
 #ifdef __cplusplus
 extern "C" {

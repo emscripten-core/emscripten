@@ -7,16 +7,16 @@
 
 #pragma once
 
-#include <pthread.h>
 #include <emscripten/em_types.h>
-
 #include <emscripten/emscripten.h>
 
 // Include eventloop.h, console.h and html5_webgl.h for compat with older
 // version of this header that used to define these functions.
-#include <emscripten/eventloop.h>
 #include <emscripten/console.h>
+#include <emscripten/eventloop.h>
 #include <emscripten/html5_webgl.h>
+
+#include <pthread.h>
 
 #ifdef __cplusplus
 extern "C" {

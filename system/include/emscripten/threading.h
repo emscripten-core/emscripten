@@ -7,15 +7,14 @@
 
 #pragma once
 
+#include <emscripten/atomic.h>
+// Legacy proxying functions.  See proxying.h for the new proxying system.
+#include <emscripten/threading_legacy.h>
+#include <emscripten/threading_primitives.h>
+
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdbool.h>
-
-#include <emscripten/atomic.h>
-#include <emscripten/threading_primitives.h>
-
-// Legacy proxying functions.  See proxying.h for the new proxying system.
-#include <emscripten/threading_legacy.h>
 
 #ifdef __cplusplus
 extern "C" {

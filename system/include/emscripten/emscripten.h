@@ -21,12 +21,12 @@
  */
 
 #include "em_asm.h"
+#include "em_js.h"
 #include "em_macros.h"
 #include "em_types.h"
-#include "em_js.h"
 #include "promise.h"
-#include "wget.h"
 #include "version.h"
+#include "wget.h"
 
 #ifdef __EMSCRIPTEN__
 #ifndef EMSCRIPTEN

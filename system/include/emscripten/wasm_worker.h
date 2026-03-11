@@ -7,12 +7,13 @@
 
 #pragma once
 
-#include <stdbool.h>
-#include <stddef.h>
-#include <stdint.h>
 #include <emscripten/atomic.h>
 #include <emscripten/em_types.h>
 #include <emscripten/threading_primitives.h>
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {
