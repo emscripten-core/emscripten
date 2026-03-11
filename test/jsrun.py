@@ -60,7 +60,7 @@ def check_engine(engine):
     logging.debug('Checking JS engine %s' % engine)
     try:
       output = run_js(utils.path_from_root('test/hello_world.js'), engine, skip_check=True)
-      if 'hello, world!' in output:
+      if 'Hello, world!' in output:
         WORKING_ENGINES[engine_path] = True
       else:
         WORKING_ENGINES[engine_path] = False

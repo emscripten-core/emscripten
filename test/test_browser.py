@@ -5758,7 +5758,7 @@ class emrun(RunnerCore):
       self.assertContained('argv[3]: --3', stdout)
       self.assertContained('argv[4]: escaped space', stdout)
       self.assertContained('argv[5]: with_underscore', stdout)
-      self.assertContained('hello, world!', stdout)
+      self.assertContained('Hello, world!', stdout)
       self.assertContained('Testing ASCII characters: !"$%&\'()*+,-./:;<=>?@[\\]^_`{|}~', stdout)
       self.assertContained('Testing char sequences: %20%21 &auml;', stdout)
       self.assertContained('hello, error stream!', stderr)

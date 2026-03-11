@@ -12,7 +12,7 @@ void dump(char *s) {
 }
 
 int main() {
-  char *original = (char*)"h e l l o ,   w o r l d ! ";
+  char *original = (char*)"H e l l o ,   w o r l d ! ";
   char copy[strlen(original)];
   for (int i = 0; i < strlen(original); i += 2) {
     copy[i/2] = original[i];
