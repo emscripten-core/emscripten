@@ -3,7 +3,7 @@
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
-#if STRICT_JS && !MODULARIZE
+#if STRICT_JS && !MODULARIZE // MODULARIZE handles this itself
 "use strict";
 #endif
 
