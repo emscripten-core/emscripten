@@ -43,6 +43,7 @@ from common import (
   TEST_ROOT,
   WEBIDL_BINDER,
   RunnerCore,
+  copy_asset,
   copytree,
   create_file,
   engine_is_node,
@@ -1244,7 +1245,7 @@ f.close()
     for suffix in ('CPP', 'c++', 'C++', 'cxx', 'CXX', 'cc', 'CC'):
       self.clear()
       print(suffix)
-      shutil.copy(test_file('hello_world.c'), 'test.' + suffix)
+      copy_asset('hello_world.c', 'test.' + suffix)
       self.do_runf('test.' + suffix, 'hello, world!')
 
     for suffix in ('lo',):
@@ -2605,7 +2606,7 @@ F1 -> ''
 
   @requires_network
   def test_libpng(self):
-    shutil.copy(test_file('third_party/libpng/pngtest.png'), '.')
+    copy_asset('third_party/libpng/pngtest.png')
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  cflags=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG'])
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
@@ -2614,7 +2615,7 @@ F1 -> ''
   @requires_pthreads
   @requires_network
   def test_libpng_with_pthreads(self):
-    shutil.copy(test_file('third_party/libpng/pngtest.png'), '.')
+    copy_asset('third_party/libpng/pngtest.png')
     self.do_runf('third_party/libpng/pngtest.c', 'libpng passes test',
                  cflags=['--embed-file', 'pngtest.png', '-sUSE_LIBPNG', '-pthread'])
 
@@ -2626,7 +2627,7 @@ F1 -> ''
     'use_port': (['--use-port=giflib'],),
   })
   def test_giflib(self, args):
-    shutil.copy(test_file('third_party/giflib/treescap.gif'), '.')
+    copy_asset('third_party/giflib/treescap.gif')
     self.do_runf('third_party/giflib/giftext.c',
                  'GIF file terminated normally',
                  cflags=['--embed-file', 'treescap.gif', '-Wno-fortify-source'] + args,
@@ -2634,7 +2635,7 @@ F1 -> ''
 
   @requires_network
   def test_libjpeg(self):
-    shutil.copy(test_file('browser/screenshot.jpg'), '.')
+    copy_asset('browser/screenshot.jpg')
     self.do_runf('jpeg_test.c', 'Image is 600 by 450 with 3 components',
                  cflags=['--embed-file', 'screenshot.jpg', '-sUSE_LIBJPEG'],
                  args=['screenshot.jpg'])
@@ -3069,7 +3070,7 @@ More info: https://emscripten.org
     # run the js optimizer python script. this differs from test_js_optimizer
     # which runs the internal js optimizer JS script directly (which the python
     # script calls)
-    shutil.copy(test_file('js_optimizer', name + '.js'), '.')
+    copy_asset(f'js_optimizer/{name}.js')
     self.run_process([PYTHON, path_from_root('tools/js_optimizer.py'), name + '.js'] + passes)
     actual = read_file(name + '.js.jsopt.js')
     self.assertFileContents(test_file('js_optimizer', name + '-output.js'), actual)
@@ -4232,7 +4233,7 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
 
     # Check that main.js (which requires test.js) completes successfully when run in node.js
     # in order to check that the exports are indeed functioning correctly.
-    shutil.copy(test_file('module_exports/main.js'), '.')
+    copy_asset('module_exports/main.js')
     self.assertContained('bufferTest finished', self.run_js('main.js'))
 
     # Delete test.js again and check it's gone.
@@ -4387,7 +4388,7 @@ int main() {
     # See https://nodejs.org/api/modules.html
     shutil.copy('test_proxyfs.js', 'test_proxyfs1.js')
     shutil.copy('test_proxyfs.js', 'test_proxyfs2.js')
-    shutil.copy(test_file('other/test_proxyfs_main.js'), '.')
+    copy_asset('other/test_proxyfs_main.js')
     out = self.run_js('test_proxyfs_main.js')
     section = "child m1 reads and writes local file."
     self.assertContained(section + ":m1 read embed:test", out)
@@ -4456,21 +4457,21 @@ int main() {
     self.assertContained('test.h', tail)
 
   def test_dependency_file_2(self):
-    shutil.copy(test_file('hello_world.c'), 'a.c')
+    copy_asset('hello_world.c', 'a.c')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test.d', '-c'])
     self.assertContained('a.o: a.c\n', read_file('test.d'))
 
-    shutil.copy(test_file('hello_world.c'), 'a.c')
+    copy_asset('hello_world.c', 'a.c')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test2.d', '-c', '-o', 'test.o'])
     self.assertContained('test.o: a.c\n', read_file('test2.d'))
 
-    shutil.copy(test_file('hello_world.c'), 'a.c')
+    copy_asset('hello_world.c', 'a.c')
     ensure_dir('obj')
     self.run_process([EMCC, 'a.c', '-MMD', '-MF', 'test3.d', '-c', '-o', 'obj/test.o'])
     self.assertContained('obj/test.o: a.c\n', read_file('test3.d'))
 
   def test_compilation_database(self):
-    shutil.copy(test_file('hello_world.c'), 'a.c')
+    copy_asset('hello_world.c', 'a.c')
     self.run_process([EMCC, 'a.c', '-MJ', 'hello.json', '-c', '-o', 'test.o'])
     self.assertContained('"file": "a.c", "output": "test.o"', read_file('hello.json'))
 
@@ -5923,7 +5924,7 @@ This locale is not the C locale.
     def test(args, be_clean):
       print(args)
       self.clear()
-      shutil.copy(test_file('hello_world.c'), 'a.c')
+      copy_asset('hello_world.c', 'a.c')
       create_file('b.c', ' ')
       self.run_process([EMCC, 'a.c', 'b.c'] + args)
       clutter = glob.glob('*.o')
@@ -9181,7 +9182,7 @@ end
   def test_closure_externs(self):
     # Test with relocate path to the externs file to ensure that incoming relative paths
     # are translated correctly (Since closure runs with a different CWD)
-    shutil.copy(test_file('test_closure_externs.js'), 'local_externs.js')
+    copy_asset('test_closure_externs.js', 'local_externs.js')
     test_cases = (
       ['--closure-args', '--externs "local_externs.js"'],
       ['--closure-args', '--externs=local_externs.js'],
@@ -9204,7 +9205,7 @@ end
   # Tests that it is possible to enable the Closure compiler via --closure=1 even if any of the input files reside in a path with unicode characters.
   def test_closure_cmdline_utf8_chars(self):
     test = "☃ äö Ć € ' 🦠.c"
-    shutil.copy(test_file('hello_world.c'), test)
+    copy_asset('hello_world.c', test)
     externs = '💩' + test
     create_file(externs, '')
     self.run_process([EMCC, test, '--closure=1', '--closure-args', '--externs "' + externs + '"'])
@@ -9534,7 +9535,7 @@ int main() {
   def test_wasm_sourcemap(self, sources, prefix, load_prefix, basepath):
     # The no_main.c will be read from relative location if necessary (depends
     # on --sources and --load-prefix options).
-    shutil.copy(test_file('other/wasm_sourcemap/no_main.c'), '.')
+    copy_asset('other/wasm_sourcemap/no_main.c')
     DW_AT_decl_file = '/emscripten/test/other/wasm_sourcemap/no_main.c'
     wasm_map_cmd = [PYTHON, path_from_root('tools/wasm-sourcemap.py'),
                     *sources, *prefix, *load_prefix,
@@ -9567,7 +9568,8 @@ int main() {
   def test_emcc_sourcemap_options(self, prefixes, sources):
     wasm_sourcemap = importlib.import_module('tools.wasm-sourcemap')
     cwd = os.getcwd()
-    src_file = shutil.copy(test_file('hello_123.c'), cwd)
+    copy_asset('hello_123.c')
+    src_file = os.path.abspath('hello_123.c')
     lib_file = DETERMINISTIC_PREFIX + '/system/lib/libc/musl/src/stdio/fflush.c'
     if prefixes:
       prefixes = [p.replace('<cwd>', cwd) for p in prefixes]
@@ -9621,7 +9623,7 @@ int main() {
       if source_map_added_dir:
         expected_source_map_path = source_map_added_dir + '/' + expected_source_map_path
       print(infile, expected_source_map_path)
-      shutil.copy(test_file('hello_123.c'), infile)
+      copy_asset('hello_123.c', infile)
       infiles = [
         infile,
         os.path.abspath(infile),

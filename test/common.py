@@ -115,6 +115,11 @@ def test_file(*path_components):
   return str(Path(TEST_ROOT, *path_components))
 
 
+def copy_asset(filename, target='.'):
+  """Copies file/asset from the test directory into the CWD."""
+  return shutil.copy(test_file(filename), target)
+
+
 def maybe_test_file(filename):
   if not os.path.exists(filename) and os.path.exists(test_file(filename)):
     filename = test_file(filename)

@@ -26,6 +26,7 @@ from common import (
   WEBIDL_BINDER,
   RunnerCore,
   compiler_for,
+  copy_asset,
   create_file,
   engine_is_bun,
   engine_is_node,
@@ -682,7 +683,7 @@ class TestCoreBase(RunnerCore):
     self.do_runf('core/test_core_types.c')
 
   def test_cube2md5(self):
-    shutil.copy(test_file('core/test_cube2md5.txt'), '.')
+    copy_asset('core/test_cube2md5.txt')
     self.do_core_test('test_cube2md5.c', cflags=['--embed-file', 'test_cube2md5.txt'])
 
   @also_with_standalone_wasm()
@@ -2710,7 +2711,7 @@ The current type of b is: 9
     if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
 
-    shutil.copy(test_file('pthread/foo.js'), '.')
+    copy_asset('pthread/foo.js')
     self.do_runf('pthread/test_pthread_run_script.c')
 
     # Run the test again with PROXY_TO_PTHREAD
@@ -6715,7 +6716,7 @@ void* operator new(size_t size) {
   @is_slow_test
   def test_freetype(self):
     # Not needed for js, but useful for debugging
-    shutil.copy(test_file('freetype/LiberationSansBold.ttf'), 'font.ttf')
+    copy_asset('freetype/LiberationSansBold.ttf', 'font.ttf')
     ftlib = self.get_freetype_library()
 
     if self.get_setting('WASMFS'):
@@ -6837,7 +6838,7 @@ void* operator new(size_t size) {
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.cflags.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
     poppler = self.get_poppler_library()
-    shutil.copy(test_file('poppler/paper.pdf'), '.')
+    copy_asset('poppler/paper.pdf')
 
     create_file('pre.js', '''
     Module.preRun = () => {
@@ -7900,7 +7901,7 @@ void* operator new(size_t size) {
   def test_dwarf(self):
     self.cflags.append('-g')
 
-    shutil.copy(test_file('core/test_dwarf.c'), '.')
+    copy_asset('core/test_dwarf.c')
 
     self.emcc('test_dwarf.c')
 
