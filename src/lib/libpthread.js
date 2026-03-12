@@ -208,11 +208,11 @@ var LibraryPThread = {
       // worker pool as an unused worker.
       worker.pthread_ptr = 0;
 
-#if ENVIRONMENT_MAY_BE_NODE && PROXY_TO_PTHREAD
+#if ENVIRONMENT_MAY_BE_NODE
       if (ENVIRONMENT_IS_NODE) {
-        // Once the proxied main thread has finished, mark it as weakly
+        // Once the worker is returned to the pool, mark it as weakly
         // referenced so that its existence does not prevent Node.js from
-        // exiting.  This has no effect if the worker is already weakly
+        // exiting. This has no effect if the worker is already weakly
         // referenced.
         worker.unref();
       }
@@ -687,7 +687,7 @@ var LibraryPThread = {
     msg.moduleCanvasId = threadParams.moduleCanvasId;
     msg.offscreenCanvases = threadParams.offscreenCanvases;
 #endif
-#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE && HAS_MAIN
     if (ENVIRONMENT_IS_NODE) {
       // Mark worker as weakly referenced once we start executing a pthread,
       // so that its existence does not prevent Node.js from exiting.  This
