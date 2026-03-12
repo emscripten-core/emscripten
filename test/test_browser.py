@@ -5171,7 +5171,7 @@ Module["preRun"] = () => {
   # Tests emscripten_lock_init(), emscripten_lock_waitinf_acquire() and emscripten_lock_release()
   @also_with_minimal_runtime
   def test_wasm_worker_lock_waitinf(self):
-    self.btest('wasm_worker/lock_waitinf_acquire.c', expected='4000', cflags=['-sWASM_WORKERS'])
+    self.btest('wasm_worker/lock_waitinf_acquire.c', expected='0', cflags=['-sWASM_WORKERS'])
 
   # Tests emscripten_lock_wait_acquire() and emscripten_lock_try_acquire() in Worker.
   @also_with_minimal_runtime
@@ -5202,7 +5202,7 @@ Module["preRun"] = () => {
   # Tests emscripten_lock_busyspin_waitinf_acquire() in Worker and main thread.
   @also_with_minimal_runtime
   def test_wasm_worker_lock_busyspin_waitinf(self):
-    self.btest('wasm_worker/lock_busyspin_waitinf_acquire.c', expected='1', cflags=['-sWASM_WORKERS'])
+    self.btest('wasm_worker/lock_busyspin_waitinf_acquire.c', expected='0', cflags=['-sWASM_WORKERS'])
 
   # Tests that proxied JS functions cannot be called from Wasm Workers
   @also_with_minimal_runtime
@@ -5222,7 +5222,7 @@ Module["preRun"] = () => {
   # Tests emscripten_semaphore_try_acquire() on the main thread
   @also_with_minimal_runtime
   def test_wasm_worker_semaphore_try_acquire(self):
-    self.btest('wasm_worker/semaphore_try_acquire.c', expected='0', cflags=['-sWASM_WORKERS'])
+    self.btest_exit('wasm_worker/semaphore_try_acquire.c', cflags=['-sWASM_WORKERS'])
 
   # Tests that calling any proxied function in a Wasm Worker will abort at runtime when ASSERTIONS are enabled.
   def test_wasm_worker_proxied_function(self):

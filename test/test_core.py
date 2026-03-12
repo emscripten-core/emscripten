@@ -283,6 +283,23 @@ def also_with_asyncify_and_jspi(func):
   return metafunc
 
 
+def also_with_wasm_workers(func):
+  assert callable(func)
+
+  @wraps(func)
+  def metafunc(self, ww, *args, **kwargs):
+    if ww:
+      if self.get_setting('WASM_ESM_INTEGRATION'):
+        self.skipTest('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+      if is_sanitizing(self.cflags):
+        self.skipTest('sanitizers are not compatible with WASM_WORKERS')
+      self.cflags += ['-sWASM_WORKERS']
+    return func(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,), 'ww': (True,)})
+  return metafunc
+
+
 def no_optimize(note=''):
   assert not callable(note)
 
@@ -2749,12 +2766,33 @@ The current type of b is: 9
   def test_pthread_is_lock_free(self):
     self.do_runf('pthread/is_lock_free.c', 'done\n', cflags=['-pthread'])
 
+  # These wasm_worker tests are also tested in pure wasm-worker mode in test_browser.py.
+  # We test them here in pthread-mode and in pthread+wasm-worker mode.
+
   @requires_pthreads
+  @also_with_wasm_workers
+  def test_emscripten_lock_waitinf_acquire(self):
+    self.do_runf('wasm_worker/lock_waitinf_acquire.c', 'done\n', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=4'])
+
+  @requires_pthreads
+  @also_with_wasm_workers
   def test_emscripten_lock_wait_acquire(self):
     self.do_runf('wasm_worker/lock_wait_acquire.c', 'done\n', cflags=['-pthread'])
-    if not is_sanitizing(self.cflags) and not self.get_setting('WASM_ESM_INTEGRATION'):
-      # Also test the pthreads + WASM_WORKERS combination
-      self.do_runf('wasm_worker/lock_wait_acquire.c', 'done\n', cflags=['-pthread', '-sWASM_WORKERS'])
+
+  @requires_pthreads
+  @also_with_wasm_workers
+  def test_emscripten_lock_busyspin_waitinf(self):
+    self.do_runf('wasm_worker/lock_busyspin_waitinf_acquire.c', 'done\n', cflags=['-pthread'])
+
+  @requires_pthreads
+  @also_with_wasm_workers
+  def test_emscripten_semaphore_waitinf_acquire(self):
+    self.do_runf('wasm_worker/semaphore_waitinf_acquire.c', 'done\n', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=7'])
+
+  @requires_pthreads
+  @also_with_wasm_workers
+  def test_emscripten_semaphore_try_acquire(self):
+    self.do_runf('wasm_worker/semaphore_try_acquire.c', 'done\n', cflags=['-pthread'])
 
   def test_tcgetattr(self):
     self.do_runf('termios/test_tcgetattr.c', 'success')
