@@ -17,9 +17,7 @@ TTF_Font *font;
 #define WIDTH 640
 #define HEIGHT 480
 
-void render()
-{
-
+void render() {
     SDL_Color colorA = { 0xff, 0x99, 0x00, 0xff };
     SDL_Color colorB = { 0x11, 0xff, 0xff, 0xff };
     SDL_FRect upperRect = {0, 0, WIDTH, HEIGHT / 2};
@@ -42,11 +40,10 @@ void render()
     SDL_DestroyTexture(worldTexture);
 }
 
-int main(int argc, char *argv[])
-{
+int main(int argc, char *argv[]) {
     SDL_Init(SDL_INIT_VIDEO);
     TTF_Init();
-    
+
     if (!SDL_CreateWindowAndRenderer("SDL3 TTF", WIDTH, HEIGHT, 0, &window, &renderer)) {
         printf("SDL_CreateWindowAndRenderer: %s\n", SDL_GetError());
         return 1;
