@@ -2164,7 +2164,7 @@ void *getBindBuffer() {
     shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), self.get_dir())
     self.reftest('test_sdl3_ttf_render_text_solid.c', 'test_sdl3_ttf_render_text_solid.png',
                  cflags=[
-                  '-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '-lGL',
+                  '-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '-lGL', '-Wno-experimental',
                   '--embed-file', 'LiberationSansBold.ttf'])
 
   def test_sdl_alloctext(self):

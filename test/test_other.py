@@ -2694,8 +2694,8 @@ F1 -> ''
   @requires_network
   def test_sdl3_ttf(self):
     # A compile-only test that checks if sdl3-ttf, and dependencies freetype and harfbuzz, are buildable.
-    self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['-sUSE_SDL=3', '-sUSE_SDL_TTF=3'])
-    self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['--use-port=sdl3', '--use-port=sdl3_ttf'])
+    self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['-Wno-experimental', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3'])
+    self.emcc(test_file('browser/test_sdl3_ttf.c'), args=['-Wno-experimental', '--use-port=sdl3', '--use-port=sdl3_ttf'])
 
   @requires_network
   def test_contrib_ports(self):
