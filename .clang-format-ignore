@@ -1,0 +1,9 @@
+# ignore third_party code from clang-format checks
+third_party/*
+test/third_party/*
+system/lib/libc/musl
+system/lib/libcxx
+system/lib/libcxxabi
+system/lib/libunwind
+system/lib/mimalloc
+system/lib/llvm-libc

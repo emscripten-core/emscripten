@@ -98,3 +98,18 @@ jobs:
             echo "-- This failure is only a warning and can be ignored"
             exit 1
           fi
+
+  clang-format-diff:
+    env:
+      LLVM_VERSION: 19
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      # Fetch all history for all tags and branches
+      with:
+        fetch-depth: 0
+    - name: Install clang-format
+      run: |
+        sudo apt-get install clang-format-19
+        sudo update-alternatives --install /usr/bin/git-clang-format git-clang-format /usr/bin/git-clang-format-19 100
+    - run: tools/maint/clang-format-diff.sh origin/$GITHUB_BASE_REF
