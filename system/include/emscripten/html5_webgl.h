@@ -7,8 +7,10 @@
 
 #pragma once
 
-#include <stdint.h>
 #include <emscripten/html5.h>
+
+#include <stdint.h>
+#include <pthread.h>
 
 #ifdef __cplusplus
 extern "C" {

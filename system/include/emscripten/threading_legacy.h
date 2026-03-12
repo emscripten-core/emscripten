@@ -9,9 +9,9 @@
 
 #pragma once
 
-#include <stdarg.h>
-
 #include <emscripten/html5.h>
+
+#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {

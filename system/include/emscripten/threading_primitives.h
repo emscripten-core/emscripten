@@ -5,7 +5,13 @@
  * found in the LICENSE file.
  */
 
+#pragma once
+
 #include <emscripten/atomic.h>
+
+#ifdef __cplusplus
+extern "C" {
+#endif
 
 // Similar to emscripten_async_wait_callback_t but with a volatile first
 // argument.
@@ -180,3 +186,7 @@ ATOMICS_WAIT_TOKEN_T emscripten_condvar_wait_async(emscripten_condvar_t * _Nonnu
 // Pass numWaitersToSignal == EMSCRIPTEN_NOTIFY_ALL_WAITERS to wake all waiters
 // ("broadcast" operation).
 void emscripten_condvar_signal(emscripten_condvar_t * _Nonnull condvar, int64_t numWaitersToSignal);
+
+#ifdef __cplusplus
+}
+#endif

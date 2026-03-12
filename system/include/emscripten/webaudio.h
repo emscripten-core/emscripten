@@ -7,11 +7,11 @@
 
 #pragma once
 
-#include <stdint.h>
-#include <memory.h>
-
 #include <emscripten/emscripten.h>
 #include <emscripten/html5.h>
+
+#include <memory.h>
+#include <stdint.h>
 
 #ifdef __cplusplus
 extern "C" {

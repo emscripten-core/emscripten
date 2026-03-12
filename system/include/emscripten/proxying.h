@@ -9,8 +9,9 @@
 
 #include <emscripten/emscripten.h>
 #include <emscripten/promise.h>
-#include <stdbool.h>
+
 #include <pthread.h>
+#include <stdbool.h>
 
 #ifdef __cplusplus
 extern "C" {
