@@ -3,9 +3,8 @@
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
-#if STRICT_JS
+#if STRICT_JS && !MODULARIZE // MODULARIZE handles this itself
 "use strict";
-
 #endif
 
 #include "minimum_runtime_check.js"

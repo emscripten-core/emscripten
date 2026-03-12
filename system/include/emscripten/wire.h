@@ -652,7 +652,7 @@ struct GetReturnValuePolicy<ReturnType, return_value_policy::reference, Rest...>
 
 template<typename ReturnType, typename T, typename... Rest>
 struct GetReturnValuePolicy<ReturnType, T, Rest...> {
-    using tag = GetReturnValuePolicy<ReturnType, Rest...>::tag;
+    using tag = typename GetReturnValuePolicy<ReturnType, Rest...>::tag;
 };
 
 template<typename... Policies>
