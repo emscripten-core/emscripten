@@ -2794,6 +2794,11 @@ The current type of b is: 9
   def test_emscripten_semaphore_try_acquire(self):
     self.do_runf('wasm_worker/semaphore_try_acquire.c', 'done\n', cflags=['-pthread'])
 
+  @requires_pthreads
+  @also_with_wasm_workers
+  def test_emscripten_condvar_waitinf(self):
+    self.do_runf('wasm_worker/condvar_waitinf.c', 'done\n', cflags=['-pthread'])
+
   def test_tcgetattr(self):
     self.do_runf('termios/test_tcgetattr.c', 'success')
 

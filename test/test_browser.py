@@ -5224,6 +5224,10 @@ Module["preRun"] = () => {
   def test_wasm_worker_semaphore_try_acquire(self):
     self.btest_exit('wasm_worker/semaphore_try_acquire.c', cflags=['-sWASM_WORKERS'])
 
+  @also_with_minimal_runtime
+  def test_wasm_worker_condvar_waitinf(self):
+    self.btest_exit('wasm_worker/condvar_waitinf.c', cflags=['-sWASM_WORKERS'])
+
   # Tests that calling any proxied function in a Wasm Worker will abort at runtime when ASSERTIONS are enabled.
   def test_wasm_worker_proxied_function(self):
     error_msg = "abort:Assertion failed: Attempted to call proxied function '_proxied_js_function' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!"
