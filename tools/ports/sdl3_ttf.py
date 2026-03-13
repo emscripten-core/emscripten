@@ -27,7 +27,7 @@ def get(ports, settings, shared):
   def create(final):
     src_root = ports.get_dir('sdl3_ttf', 'SDL_ttf-' + TAG)
     ports.install_header_dir(os.path.join(src_root, 'include'), target='.')
-    flags = ['-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=3', '-sUSE_FREETYPE', '-sUSE_HARFBUZZ']
+    flags = ['-Wno-experimental', '-DTTF_USE_HARFBUZZ=1', '-sUSE_SDL=3', '-sUSE_FREETYPE', '-sUSE_HARFBUZZ']
     if settings.PTHREADS:
       flags += ['-pthread']
 
