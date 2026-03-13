@@ -208,7 +208,7 @@ var LibraryPThread = {
       // worker pool as an unused worker.
       worker.pthread_ptr = 0;
 
-#if ENVIRONMENT_MAY_BE_NODE
+#if ENVIRONMENT_MAY_BE_NODE && (PROXY_TO_PTHREAD || !HAS_MAIN)
       if (ENVIRONMENT_IS_NODE) {
         // Once the worker is returned to the pool, mark it as weakly
         // referenced so that its existence does not prevent Node.js from
