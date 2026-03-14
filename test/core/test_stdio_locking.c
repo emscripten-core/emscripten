@@ -10,8 +10,8 @@
  */
 #include <assert.h>
 #include <stdio.h>
-#include <string.h>
 #include <stdlib.h>
+#include <string.h>
 
 #ifndef __wasm_atomics__
 #error Expected to be compiled with -matomics.
@@ -22,13 +22,12 @@
 #endif
 
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
-#include <emscripten/wasm_worker.h>
 #include <emscripten/eventloop.h>
+#include <emscripten/wasm_worker.h>
 
 emscripten_wasm_worker_t worker[2];
 
-void terminate_worker(void *userData)
-{
+void terminate_worker(void* userData) {
   emscripten_terminate_all_wasm_workers();
   printf("main done\n");
 }
@@ -39,7 +38,7 @@ pthread_t thread[2];
 
 void thread_func(void);
 
-void *thread_main(void *arg) {
+void* thread_main(void* arg) {
   thread_func();
   return 0;
 }
@@ -47,15 +46,15 @@ void *thread_main(void *arg) {
 #error Expected to be compiled with either -sWASM_WORKERS or -pthread.
 #endif
 
-char *char_repeat(int n, char c) {
-  char *dest = malloc(n + 1);
+char* char_repeat(int n, char c) {
+  char* dest = malloc(n + 1);
   memset(dest, c, n);
   dest[n] = '\0';
   return dest;
 }
 
 void thread_func(void) {
-  char *msg = char_repeat(100, 'a');
+  char* msg = char_repeat(100, 'a');
   for (int i = 0; i < 10; ++i)
     printf("%s\n", msg);
   free(msg);
@@ -64,15 +63,15 @@ void thread_func(void) {
 int main() {
   printf("in main\n");
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
-  worker[0] = emscripten_malloc_wasm_worker(/*stack size: */1024);
-  worker[1] = emscripten_malloc_wasm_worker(/*stack size: */1024);
+  worker[0] = emscripten_malloc_wasm_worker(/*stack size: */ 1024);
+  worker[1] = emscripten_malloc_wasm_worker(/*stack size: */ 1024);
   emscripten_wasm_worker_post_function_v(worker[0], thread_func);
   emscripten_wasm_worker_post_function_v(worker[1], thread_func);
 
   // Terminate both workers after a small delay
   emscripten_set_timeout(terminate_worker, 1000, 0);
 #else
-  void *thread_rtn;
+  void* thread_rtn;
   int rc;
 
   rc = pthread_create(&thread[0], NULL, thread_main, NULL);
