@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.3 (in development)
+5.0.4 (in development)
 ----------------------
+
+5.0.3 - 03/14/26
+----------------
 - The low level FS.write API now only accepts TypedArray.  The higher level
   writeFile and createDataFile file still also accept string and Array.
   (#26413)
