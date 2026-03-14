@@ -21,18 +21,7 @@
 #error Expected to be compiled with -mbulk-memory.
 #endif
 
-#ifdef __EMSCRIPTEN_PTHREADS__
-#include <pthread.h>
-
-pthread_t thread[2];
-
-void thread_func(void);
-
-void *thread_main(void *arg) {
-  thread_func();
-  return 0;
-}
-#elif defined(__EMSCRIPTEN_WASM_WORKERS__)
+#ifdef __EMSCRIPTEN_WASM_WORKERS__
 #include <emscripten/wasm_worker.h>
 #include <emscripten/eventloop.h>
 
@@ -42,6 +31,17 @@ void terminate_worker(void *userData)
 {
   emscripten_terminate_all_wasm_workers();
   printf("main done\n");
+}
+#elif defined(__EMSCRIPTEN_PTHREADS__)
+#include <pthread.h>
+
+pthread_t thread[2];
+
+void thread_func(void);
+
+void *thread_main(void *arg) {
+  thread_func();
+  return 0;
 }
 #else
 #error Expected to be compiled with either -sWASM_WORKERS or -pthread.
@@ -63,7 +63,15 @@ void thread_func(void) {
 
 int main() {
   printf("in main\n");
-#ifdef __EMSCRIPTEN_PTHREADS__
+#ifdef __EMSCRIPTEN_WASM_WORKERS__
+  worker[0] = emscripten_malloc_wasm_worker(/*stack size: */1024);
+  worker[1] = emscripten_malloc_wasm_worker(/*stack size: */1024);
+  emscripten_wasm_worker_post_function_v(worker[0], thread_func);
+  emscripten_wasm_worker_post_function_v(worker[1], thread_func);
+
+  // Terminate both workers after a small delay
+  emscripten_set_timeout(terminate_worker, 1000, 0);
+#else
   void *thread_rtn;
   int rc;
 
@@ -82,14 +90,6 @@ int main() {
   assert(thread_rtn == 0);
 
   printf("main done\n");
-#else
-  worker[0] = emscripten_malloc_wasm_worker(/*stack size: */1024);
-  worker[1] = emscripten_malloc_wasm_worker(/*stack size: */1024);
-  emscripten_wasm_worker_post_function_v(worker[0], thread_func);
-  emscripten_wasm_worker_post_function_v(worker[1], thread_func);
-
-  // Terminate both workers after a small delay
-  emscripten_set_timeout(terminate_worker, 1000, 0);
 #endif
   return 0;
 }
