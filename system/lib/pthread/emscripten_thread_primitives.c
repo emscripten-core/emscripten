@@ -87,13 +87,18 @@ int emscripten_semaphore_try_acquire(emscripten_semaphore_t *sem, int num) {
 
 int emscripten_semaphore_wait_acquire(emscripten_semaphore_t *sem, int num, int64_t maxWaitNanoseconds) {
   int val = emscripten_atomic_load_u32((void*)sem);
+  int64_t waitEnd = 0;
   for (;;) {
-    while (val < num) {
-      // TODO: Shave off maxWaitNanoseconds
-      ATOMICS_WAIT_RESULT_T waitResult = emscripten_atomic_wait_u32((void*)sem, val, maxWaitNanoseconds);
-      if (waitResult == ATOMICS_WAIT_TIMED_OUT) return -1;
+    while (val < num && maxWaitNanoseconds > 0) {
+      // Deley initialization of waitEnd until we know we are going to need to
+      // wait (since emscripten_performance_now is not cheap).
+      if (!waitEnd) waitEnd = (int64_t)(emscripten_performance_now() * 1e6) + maxWaitNanoseconds;
+      emscripten_atomic_wait_u32((void*)sem, val, maxWaitNanoseconds);
       val = emscripten_atomic_load_u32((void*)sem);
+      maxWaitNanoseconds = waitEnd - (int64_t)(emscripten_performance_now() * 1e6);
     }
+    // If we exited the loop and still don't have enough, it means we timed out.
+    if (val < num) return -1;
     int ret = (int)emscripten_atomic_cas_u32((void*)sem, val, val - num);
     if (ret == val) return val - num;
     val = ret;

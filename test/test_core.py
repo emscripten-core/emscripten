@@ -2791,6 +2791,11 @@ The current type of b is: 9
 
   @requires_pthreads
   @also_with_wasm_workers
+  def test_emscripten_semaphore_wait_acquire(self):
+    self.do_runf('wasm_worker/semaphore_wait_acquire.c', 'done\n', cflags=['-pthread'])
+
+  @requires_pthreads
+  @also_with_wasm_workers
   def test_emscripten_semaphore_try_acquire(self):
     self.do_runf('wasm_worker/semaphore_try_acquire.c', 'done\n', cflags=['-pthread'])
 

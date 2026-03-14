@@ -5219,6 +5219,11 @@ Module["preRun"] = () => {
   def test_wasm_worker_semaphore_waitinf_acquire(self):
     self.btest('wasm_worker/semaphore_waitinf_acquire.c', expected='0', cflags=['-sWASM_WORKERS'])
 
+  # Tests emscripten_semaphore_wait_acquire()
+  @also_with_minimal_runtime
+  def test_wasm_worker_semaphore_wait_acquire(self):
+    self.btest('wasm_worker/semaphore_wait_acquire.c', expected='0', cflags=['-sWASM_WORKERS'])
+
   # Tests emscripten_semaphore_try_acquire() on the main thread
   @also_with_minimal_runtime
   def test_wasm_worker_semaphore_try_acquire(self):
