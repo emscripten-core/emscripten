@@ -20,24 +20,13 @@
 extern "C" {
 #endif
 
-// Returns true if the current browser is able to spawn threads with
-// pthread_create(), and the compiled page was built with threading support
-// enabled. If this returns 0, calls to pthread_create() will fail with return
-// code EAGAIN.
+// Returns true if the current runtime is able to spawn threads with shared
+// memory.  If this function returns false then it will not be possible to
+// create new pthreads or Wasm Workers.
 bool emscripten_has_threading_support(void);
 
 // Returns the number of logical cores on the system.
 int emscripten_num_logical_cores(void);
-
-// If the given memory address contains value val, puts the calling thread to
-// sleep waiting for that address to be notified.
-// Returns -EINVAL if addr is null.
-int emscripten_futex_wait(volatile void/*uint32_t*/ * _Nonnull addr, uint32_t val, double maxWaitMilliseconds);
-
-// Wakes the given number of threads waiting on a location. Pass count ==
-// INT_MAX to wake all waiters on that location.
-// Returns -EINVAL if addr is null.
-int emscripten_futex_wake(volatile void/*uint32_t*/ * _Nonnull addr, int count);
 
 // Returns true if the current thread is the thread that hosts the Emscripten
 // runtime.

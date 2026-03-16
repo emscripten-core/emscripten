@@ -26,11 +26,12 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
+  diagnostics.warning('experimental', 'sdl3 port is still experimental')
+
   # get the port
   ports.fetch_project('sdl3', f'https://github.com/libsdl-org/SDL/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    diagnostics.warning('experimental', 'sdl3 port is still experimental')
     root_dir = ports.get_dir('sdl3', SUBDIR)
 
     # In addition copy our pre-generated SDL_build_config.h file.
