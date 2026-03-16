@@ -7,3 +7,6 @@ system/lib/libcxxabi
 system/lib/libunwind
 system/lib/mimalloc
 system/lib/llvm-libc
+
+# Don't try to format our weird JS library code
+src/lib
