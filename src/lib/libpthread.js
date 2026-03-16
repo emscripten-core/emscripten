@@ -974,13 +974,14 @@ var LibraryPThread = {
     var b = {{{ getHeapOffset('args', 'i64') }}};
     for (var arg of callArgs) {
 #if WASM_BIGINT
+      // Cast HEAP64 access to Object to avoid Closure Compiler type mismatch warnings (found: bigint, required: number)
       if (typeof arg == 'bigint') {
         // The prefix is non-zero to indicate a bigint.
-        HEAP64[b++] = 1n;
-        HEAP64[b++] = arg;
+        /** @type {!Object} */ (HEAP64)[b++] = 1n;
+        /** @type {!Object} */ (HEAP64)[b++] = arg;
       } else {
         // The prefix is zero to indicate a JS Number.
-        HEAP64[b++] = 0n;
+        /** @type {!Object} */ (HEAP64)[b++] = 0n;
         HEAPF64[b++] = arg;
       }
 #else

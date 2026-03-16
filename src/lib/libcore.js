@@ -21,6 +21,29 @@
 // new function with an '_', it will not be found.
 
 addToLibrary({
+  $HEAP8__docs: '/** @type {!Int8Array} */',
+  $HEAP8: undefined,
+  $HEAPU8__docs: '/** @type {!Uint8Array} */',
+  $HEAPU8: undefined,
+  $HEAP16__docs: '/** @type {!Int16Array} */',
+  $HEAP16: undefined,
+  $HEAPU16__docs: '/** @type {!Uint16Array} */',
+  $HEAPU16: undefined,
+  $HEAP32__docs: '/** @type {!Int32Array} */',
+  $HEAP32: undefined,
+  $HEAPU32__docs: '/** @type {!Uint32Array} */',
+  $HEAPU32: undefined,
+  $HEAPF32__docs: '/** @type {!Float32Array} */',
+  $HEAPF32: undefined,
+  $HEAPF64__docs: '/** @type {!Float64Array} */',
+  $HEAPF64: undefined,
+#if WASM_BIGINT
+  $HEAP64__docs: '/** @type {!BigInt64Array} @suppress {checkTypes} */',
+  $HEAP64: undefined,
+  $HEAPU64__docs: '/** @type {!BigUint64Array} @suppress {checkTypes} */',
+  $HEAPU64: undefined,
+#endif
+
   // JS aliases for native stack manipulation functions and tempret handling
   $stackSave__deps: ['emscripten_stack_get_current'],
   $stackSave: () => _emscripten_stack_get_current(),

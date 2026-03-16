@@ -1164,7 +1164,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if prop not in settings.ALL_INCOMING_MODULE_JS_API:
       diagnostics.warning('unused-command-line-argument', f'invalid entry in INCOMING_MODULE_JS_API: {prop}')
 
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$wasmMemory')
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+    '$wasmMemory',
+    '$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16',
+    '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64',
+  ]
 
   if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
@@ -1547,6 +1551,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # compiler rather then adding them all ad-hoc as internal settings
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(Feature.PROMISE_ANY)
   default_setting('WASM_BIGINT', feature_matrix.caniuse(Feature.JS_BIGINT_INTEGRATION))
+  if settings.WASM_BIGINT:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$HEAP64', '$HEAPU64']
 
   if settings.AUDIO_WORKLET:
     add_system_js_lib('libwebaudio.js')
