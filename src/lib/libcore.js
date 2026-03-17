@@ -21,6 +21,7 @@
 // new function with an '_', it will not be found.
 
 addToLibrary({
+  // HEAP definitions are here to help with TypeScript type generation.
   $HEAP8__docs: '/** @type {!Int8Array} */',
   $HEAP8: undefined,
   $HEAPU8__docs: '/** @type {!Uint8Array} */',
