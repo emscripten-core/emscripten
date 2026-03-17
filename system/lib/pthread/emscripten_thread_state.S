@@ -18,7 +18,7 @@ is_runtime_thread:
 .globaltype supports_wait, i32
 supports_wait:
 
-#if WASM_WORKERS_ONLY
+#if __EMSCRIPTEN_WASM_WORKERS__
 .globaltype done_init, i32
 done_init:
 #endif
@@ -38,7 +38,7 @@ __set_thread_state:
   global.set supports_wait
   end_function
 
-#if WASM_WORKERS_ONLY
+#if __EMSCRIPTEN_WASM_WORKERS__
 // With Wasm Workers we do lazy initializtion of the thread
 // state so that only workers that call these APIs actually
 // initializes their state.
@@ -59,7 +59,7 @@ lazy_init_thread_state:
 .globl __get_tp
 __get_tp:
   .functype __get_tp () -> (PTR)
-#if WASM_WORKERS_ONLY
+#if __EMSCRIPTEN_WASM_WORKERS__
   call lazy_init_thread_state
 #endif
   global.get thread_ptr
@@ -69,7 +69,7 @@ __get_tp:
 .globl emscripten_is_main_runtime_thread
 emscripten_is_main_runtime_thread:
   .functype emscripten_is_main_runtime_thread () -> (i32)
-#if WASM_WORKERS_ONLY
+#if __EMSCRIPTEN_WASM_WORKERS__
   call lazy_init_thread_state
 #endif
   global.get is_runtime_thread
@@ -79,7 +79,7 @@ emscripten_is_main_runtime_thread:
 .globl emscripten_is_main_browser_thread
 emscripten_is_main_browser_thread:
   .functype emscripten_is_main_browser_thread () -> (i32)
-#if WASM_WORKERS_ONLY
+#if __EMSCRIPTEN_WASM_WORKERS__
   call lazy_init_thread_state
 #endif
   global.get is_main_thread
@@ -89,7 +89,7 @@ emscripten_is_main_browser_thread:
 .globl _emscripten_thread_supports_atomics_wait
 _emscripten_thread_supports_atomics_wait:
   .functype _emscripten_thread_supports_atomics_wait () -> (i32)
-#if WASM_WORKERS_ONLY
+#if __EMSCRIPTEN_WASM_WORKERS__
   call lazy_init_thread_state
 #endif
   global.get supports_wait

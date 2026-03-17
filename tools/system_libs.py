@@ -714,9 +714,9 @@ class MTLibrary(Library):
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_mt:
-      cflags += ['-pthread', '-sWASM_WORKERS']
+      cflags += ['-pthread']
     if self.is_ww:
-      cflags += ['-sWASM_WORKERS', '-DWASM_WORKERS_ONLY']
+      cflags += ['-sWASM_WORKERS']
     return cflags
 
   def get_base_name(self):
