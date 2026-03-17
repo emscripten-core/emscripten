@@ -3693,7 +3693,7 @@ More info: https://emscripten.org
                      self.get_cflags())
     self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))
     # Test that the output compiles with a TS file that uses the definitions.
-    cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd.ts'), '--noEmit', '--skipLibCheck']
+    cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd.ts'), '--noEmit']
     shared.check_call(cmd)
 
   @requires_dev_dependency('typescript')
