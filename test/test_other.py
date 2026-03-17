@@ -3716,7 +3716,7 @@ More info: https://emscripten.org
   def test_emit_tsd_heap(self):
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
                       '--emit-tsd', 'test_emit_tsd.d.ts',
-                      '-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU8,HEAP16,HEAPU16,HEAP32,HEAPU32,HEAPF32,HEAPF64',
+                      '-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU8,HEAP16,HEAPU16,HEAP32,HEAPU32,HEAPF32,HEAPF64,HEAP64,HEAPU64',
                       '-Wno-experimental', '-o', 'test_emit_tsd.js'] +
                      self.get_cflags())
     actual = read_file('test_emit_tsd.d.ts')
@@ -3728,6 +3728,8 @@ More info: https://emscripten.org
     self.assertContained("    let HEAPU32: Uint32Array;", actual)
     self.assertContained("    let HEAPF32: Float32Array;", actual)
     self.assertContained("    let HEAPF64: Float64Array;", actual)
+    self.assertContained("    let HEAP64: BigInt64Array;", actual)
+    self.assertContained("    let HEAPU64: BigUint64Array;", actual)
 
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
