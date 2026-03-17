@@ -21,9 +21,11 @@ void run_in_worker() {
 }
 
 int main() {
+  emscripten_out("in main");
   assert(emscripten_is_main_runtime_thread());
   emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stack size: */1024);
   assert(worker);
   emscripten_wasm_worker_post_function_v(worker, run_in_worker);
   emscripten_exit_with_live_runtime();
+  assert(false && "should never get here");
 }

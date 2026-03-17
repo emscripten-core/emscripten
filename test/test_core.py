@@ -9693,6 +9693,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @requires_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  def test_wasm_worker_runtime_debug(self):
+    self.do_runf('wasm_worker/hello_wasm_worker.c', 'wasm worker starting ...', cflags=['-sWASM_WORKERS', '-sRUNTIME_DEBUG'])
+
+  @requires_pthreads
+  @no_sanitize('sanitizers do not support WASM_WORKERS')
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_wait_async(self):
     self.do_runf('atomic/test_wait_async.c', cflags=['-sWASM_WORKERS'])
 

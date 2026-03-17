@@ -45,7 +45,11 @@ addToLibrary({
   // purposes in cases where new functions are created at runtime.
   $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
 
-  $ptrToString: (ptr) => {
+  // This function is referenced *very* early on in some configurations
+  // (e.g WASM_WORKERS + RUNTIME_DEBUG) so we explictly use a function here
+  // rather than an arrow function so that it gets hoisted to the top of the
+  // scope.
+  $ptrToString: function(ptr) {
 #if ASSERTIONS
     assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
 #endif

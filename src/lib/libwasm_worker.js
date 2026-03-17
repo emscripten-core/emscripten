@@ -220,6 +220,9 @@ if (ENVIRONMENT_IS_WASM_WORKER
       worker.on('message', (msg) => worker.onmessage({ data: msg }));
     }
 #endif
+#if RUNTIME_DEBUG
+    dbg("done _emscripten_create_wasm_worker", _wasmWorkersID)
+#endif
     return _wasmWorkersID++;
   },
 
