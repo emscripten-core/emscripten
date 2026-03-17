@@ -65,7 +65,16 @@
 
 addToLibrary({
   $_wasmWorkers: {},
+#if PTHREADS
+  // When the build contains both pthreads and Wasm Workers, offset the
+  // Wasm Worker ID space to avoid collisions with pthread TIDs (which start
+  // at 42). We use `1 << 30` since it's ~1/2 way through `pid_t` space,
+  // essentially giving pthreads the first 1/2 of the range and wasm workers the
+  // second half.
+  $_wasmWorkersID: {{{ 1 << 30 }}},
+#else
   $_wasmWorkersID: 1,
+#endif
 
   // Starting up a Wasm Worker is an asynchronous operation, hence if the parent
   // thread performs any postMessage()-based wasm function calls to the
