@@ -6,7 +6,7 @@
 
 #define UNGET 8
 
-#if defined(__EMSCRIPTEN__) && !defined(_REENTRANT)
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_SHARED_MEMORY__)
 #define FFINALLOCK(f)
 #define FLOCK(f)
 #define FUNLOCK(f)

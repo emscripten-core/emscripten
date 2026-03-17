@@ -1,3 +1,20 @@
+/*
+ * Copyright 2022 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ */
+
+// libc files are compiled as -std=c99 which doesn't normally declare
+// max_align_t.
+#if __STDC_VERSION__ < 201112L
+#define __NEED_max_align_t
+#endif
+
+#include "libc.h"
+#include "stdio_impl.h"
+#include "emscripten_internal.h"
+
 #include <assert.h>
 #include <emscripten/wasm_worker.h>
 #include <emscripten/threading.h>
@@ -6,8 +23,6 @@
 #include <emscripten/console.h>
 #include <malloc.h>
 #include <sys/param.h> // For MAX()
-
-#include "emscripten_internal.h"
 
 #ifndef __EMSCRIPTEN_WASM_WORKERS__
 #error __EMSCRIPTEN_WASM_WORKERS__ should be defined when building this file!
@@ -31,6 +46,15 @@ static void emscripten_wasm_worker_main_thread_initialize() {
   }
   __wasm_init_tls((void*)*sbrk_ptr);
   *sbrk_ptr += ROUND_UP(__builtin_wasm_tls_size(), SBRK_ALIGN);
+}
+
+static FILE *volatile dummy_file = 0;
+weak_alias(dummy_file, __stdin_used);
+weak_alias(dummy_file, __stdout_used);
+weak_alias(dummy_file, __stderr_used);
+
+static void init_file_lock(FILE *f) {
+  if (f && f->lock<0) f->lock = 0;
 }
 
 emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress, size_t stackPlusTLSSize) {
@@ -61,6 +85,22 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress
     stackPlusTLSAddress = (void*)tlsBase;
     stackPlusTLSSize -= padding;
   }
+
+  if (!libc.threaded) {
+    for (FILE *f=*__ofl_lock(); f; f=f->next) {
+      init_file_lock(f);
+    }
+    __ofl_unlock();
+    init_file_lock(__stdin_used);
+    init_file_lock(__stdout_used);
+    init_file_lock(__stderr_used);
+    libc.threaded = 1;
+  }
+
+  // Unlike with ptheads, wasm workers never really exit and so this counter
+  // only going one way here.
+  if (!libc.threads_minus_1++) libc.need_locks = 1;
+
   return _emscripten_create_wasm_worker(stackPlusTLSAddress, stackPlusTLSSize);
 }
 

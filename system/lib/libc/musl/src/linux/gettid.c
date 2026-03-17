@@ -2,9 +2,7 @@
 #include <unistd.h>
 #include "pthread_impl.h"
 
-#ifdef __EMSCRIPTEN_WASM_WORKERS__
-#include <emscripten/wasm_worker.h>
-#elif defined(__EMSCRIPTEN_PTHREADS__)
+#ifdef __EMSCRIPTEN__
 weak int emscripten_wasm_worker_self_id();
 #endif
 
@@ -16,7 +14,14 @@ pid_t gettid(void)
 {
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
 	// Offset the worker ID by 1 so we never return 0 from this function.
-	return emscripten_wasm_worker_self_id() + 1;
+	// Strangly we cannot assume the existence of emscripten_wasm_worker_self_id
+	// here because libc-ww is also used for `-sSHARED_MEMORY` builds (without
+	// libwasm_workers linked in.
+	if (emscripten_wasm_worker_self_id) {
+		return emscripten_wasm_worker_self_id() + 1;
+	} else {
+		return 42;
+	}
 #else
 #if defined(__EMSCRIPTEN_PTHREADS__)
 	// The pthread-variant of libc can also be used alongside wasm workers.

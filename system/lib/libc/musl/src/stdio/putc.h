@@ -16,7 +16,7 @@ static int locking_putc(int c, FILE *f)
 static inline int do_putc(int c, FILE *f)
 {
 	int l = f->lock;
-	if (l < 0 || l && (l & ~MAYBE_WAITERS) == __pthread_self()->tid)
+	if (l < 0 || l && (l & ~MAYBE_WAITERS) == CURRENT_THREAD_ID)
 		return putc_unlocked(c, f);
 	return locking_putc(c, f);
 }

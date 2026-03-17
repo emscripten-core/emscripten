@@ -275,4 +275,13 @@ extern hidden unsigned __default_guardsize;
 
 #define __ATTRP_C11_THREAD ((void*)(uintptr_t)-1)
 
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
+pid_t gettid(void);
+// Unlike `__pthread_self()->tid, `gettid` works under both wasm workers and
+// pthreads.
+#define CURRENT_THREAD_ID gettid()
+#else
+#define CURRENT_THREAD_ID __pthread_self()->tid
+#endif
+
 #endif
