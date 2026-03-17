@@ -521,11 +521,7 @@ function makeSetValueImpl(ptr, pos, value, type) {
   if (slab == 'HEAPU64' || slab == 'HEAP64') {
     value = castToBigInt(value);
   }
-  let left = `${slab}[${getHeapOffset(offset, type)}]`;
-  if (slab == 'HEAP64' || slab == 'HEAPU64') {
-    left = `/** @type {!Object} */ (${slab})[${getHeapOffset(offset, type)}]`;
-  }
-  return `${left} = ${value}`;
+  return `${slab}[${getHeapOffset(offset, type)}] = ${value}`;
 }
 
 function makeHEAPView(which, start, end) {

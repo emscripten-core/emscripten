@@ -38,9 +38,10 @@ addToLibrary({
   $HEAPF64__docs: '/** @type {!Float64Array} */',
   $HEAPF64: undefined,
 #if WASM_BIGINT
-  $HEAP64__docs: '/** @type {!BigInt64Array} @suppress {checkTypes} */',
+  // BigInt64Array type is not correctly defined in closure
+  $HEAP64__docs: '/** not-@type {!BigInt64Array} */',
   $HEAP64: undefined,
-  $HEAPU64__docs: '/** @type {!BigUint64Array} @suppress {checkTypes} */',
+  $HEAPU64__docs: '/** not-@type {!BigUint64Array} */',
   $HEAPU64: undefined,
 #endif
 
