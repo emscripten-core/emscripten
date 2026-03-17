@@ -67,13 +67,15 @@ void emscripten_terminate_wasm_worker(emscripten_wasm_worker_t id);
 void emscripten_terminate_all_wasm_workers(void);
 
 // Returns true if the current thread is executing a Wasm Worker, false
-// otherwise.  Note that calling this function can be relatively slow as it
-// incurs a Wasm->JS transition, so avoid calling it in hot paths.
+// otherwise.
 bool emscripten_current_thread_is_wasm_worker(void);
 
 // Returns a unique ID that identifies the calling Wasm Worker. Similar to
 // pthread_self().  The main browser thread will return 0 as the ID. First Wasm
 // Worker will return 1, and so on.
+// Note: This function also returns 0 when called from other non-Wasm Worker
+// contexts, such as pthreads in a program built with both pthread and Wasm
+// Worker support.
 uint32_t emscripten_wasm_worker_self_id(void);
 
 // emscripten_wasm_worker_post_function_*: Post a pointer to a C/C++ function to
