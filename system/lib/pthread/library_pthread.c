@@ -87,8 +87,10 @@ void emscripten_thread_sleep(double msecs) {
   // If we have less than this many msecs left to wait, busy spin that instead.
   double min_ms_slice_to_sleep = 0.1;
 
-  // runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
-  double max_ms_slice_to_sleep = emscripten_is_main_runtime_thread() ? 1 : 100;
+  // Break up sleeping so that we process proxied work at regular intervals.
+  // TODO(sbc): This should be removed and/or moved down into
+  // `emscripten_futex_wait`.
+  double max_ms_slice_to_sleep = 100;
 
   emscripten_conditional_set_current_thread_status(
     EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_SLEEPING);
