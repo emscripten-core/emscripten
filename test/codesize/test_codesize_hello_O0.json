@@ -1,10 +1,10 @@
 {
   "a.out.js": 24271,
   "a.out.js.gz": 8729,
-  "a.out.nodebug.wasm": 15139,
-  "a.out.nodebug.wasm.gz": 7458,
-  "total": 39410,
-  "total_gz": 16187,
+  "a.out.nodebug.wasm": 14973,
+  "a.out.nodebug.wasm.gz": 7397,
+  "total": 39244,
+  "total_gz": 16126,
   "sent": [
     "fd_write"
   ],
@@ -35,7 +35,6 @@
     "$__fwritex",
     "$__get_tp",
     "$__lock",
-    "$__lockfile",
     "$__lshrti3",
     "$__memcpy",
     "$__memset",
@@ -48,7 +47,6 @@
     "$__towrite",
     "$__trunctfdf2",
     "$__unlock",
-    "$__unlockfile",
     "$__vfprintf_internal",
     "$__wasi_syscall_ret",
     "$__wasm_call_ctors",

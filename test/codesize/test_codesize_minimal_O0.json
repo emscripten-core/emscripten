@@ -1,10 +1,10 @@
 {
   "a.out.js": 19457,
   "a.out.js.gz": 7002,
-  "a.out.nodebug.wasm": 1136,
-  "a.out.nodebug.wasm.gz": 656,
-  "total": 20593,
-  "total_gz": 7658,
+  "a.out.nodebug.wasm": 1015,
+  "a.out.nodebug.wasm.gz": 602,
+  "total": 20472,
+  "total_gz": 7604,
   "sent": [],
   "imports": [],
   "exports": [
@@ -24,11 +24,9 @@
   ],
   "funcs": [
     "$__lock",
-    "$__lockfile",
     "$__ofl_lock",
     "$__ofl_unlock",
     "$__unlock",
-    "$__unlockfile",
     "$__wasm_call_ctors",
     "$_emscripten_stack_alloc",
     "$_emscripten_stack_restore",

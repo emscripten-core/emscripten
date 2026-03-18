@@ -1,7 +1,7 @@
 {
   "a.out.js": 244367,
-  "a.out.nodebug.wasm": 577720,
-  "total": 822087,
+  "a.out.nodebug.wasm": 577300,
+  "total": 821667,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -4319,7 +4319,6 @@
     "$gettid",
     "$gettimeofday",
     "$getw",
-    "$getwc",
     "$getwchar",
     "$glob",
     "$globfree",
@@ -4445,7 +4444,6 @@
     "$lookup",
     "$lprofBufferIOWrite",
     "$lprofBufferWriter",
-    "$lprofLockFileHandle",
     "$lprofMergeValueProfData",
     "$lprofReleaseBuffer",
     "$lprofWriteDataImpl",
@@ -4639,7 +4637,6 @@
     "$putenv",
     "$puts",
     "$putw",
-    "$putwc",
     "$putwchar",
     "$pwrite",
     "$pwritev",
