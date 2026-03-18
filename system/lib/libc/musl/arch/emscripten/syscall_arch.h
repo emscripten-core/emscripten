@@ -21,7 +21,6 @@ int __syscall_access(intptr_t path, int amode);
 int __syscall_sync(void);
 int __syscall_rmdir(intptr_t path);
 int __syscall_dup(int fd);
-int __syscall_pipe(intptr_t fd);
 int __syscall_acct(intptr_t filename);
 int __syscall_ioctl(int fd, int request, ...);
 int __syscall_setpgid(int pid, int gpid);
