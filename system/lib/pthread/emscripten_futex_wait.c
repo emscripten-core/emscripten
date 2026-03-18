@@ -163,7 +163,6 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   }
 #endif
 
-done:
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
 
   if (ret == ATOMICS_WAIT_NOT_EQUAL) {
