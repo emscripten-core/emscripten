@@ -23,6 +23,10 @@ See docs/process.md for more on how version tagging works.
 - The deprecated `EMSCRIPTEN` macro is now defined in `emscripten.h` rather than
   on the command line (`__EMSCRIPTEN__`, which is built into LLVM, should be
   used instead). (#26417)
+- All pthread functions are now undefined when building with `-sWASM_WORKERS`.
+  This is an extension of #26336 which removed many of them.  These APIs were
+  not previously functional under Wasm Workers, but if there is strong use case
+  it may be possible to enable them in future. (#26487)
 
 5.0.3 - 03/14/26
 ----------------
