@@ -1,7 +1,7 @@
 {
   "a.out.js": 244367,
-  "a.out.nodebug.wasm": 577300,
-  "total": 821667,
+  "a.out.nodebug.wasm": 577323,
+  "total": 821690,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -1908,6 +1908,7 @@
     "__sysv_signal",
     "__threwValue",
     "__timezone",
+    "__tls_locale",
     "__tolower_l",
     "__toupper_l",
     "__towctrans_l",
