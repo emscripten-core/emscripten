@@ -136,7 +136,7 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   }
 
   // -1 (or any negative number) means wait indefinitely.
-  int64_t max_wait_ns = -1;
+  int64_t max_wait_ns = ATOMICS_WAIT_DURATION_INFINITE;
   if (max_wait_ms != INFINITY) {
     max_wait_ns = (int64_t)(max_wait_ms*1000*1000);
   }
@@ -166,16 +166,12 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
 done:
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
 
-  // memory.atomic.wait32 returns:
-  //   0 => "ok", woken by another agent.
-  //   1 => "not-equal", loaded value != expected value
-  //   2 => "timed-out", the timeout expired
-  if (ret == 1) {
+  if (ret == ATOMICS_WAIT_NOT_EQUAL) {
     return -EWOULDBLOCK;
   }
-  if (ret == 2) {
+  if (ret == ATOMICS_WAIT_TIMED_OUT) {
     return -ETIMEDOUT;
   }
-  assert(ret == 0);
+  assert(ret == ATOMICS_WAIT_OK);
   return 0;
 }
