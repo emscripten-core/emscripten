@@ -69,7 +69,7 @@ void _emscripten_thread_exit_joinable(pthread_t thread);
 void _emscripten_thread_exit(void* result);
 void _emscripten_process_dlopen_queue(void);
 
-#ifdef NDEBUG
+#if !defined(__EMSCRIPTEN_PTHREADS__) || defined(NDEBUG)
 #define emscripten_set_current_thread_status(newStatus)
 #define emscripten_conditional_set_current_thread_status(expectedStatus, newStatus)
 #else
