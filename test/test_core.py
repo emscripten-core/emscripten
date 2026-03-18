@@ -7307,6 +7307,12 @@ void* operator new(size_t size) {
     self.set_setting('EMULATE_FUNCTION_POINTER_CASTS')
     self.do_core_test('test_emulate_function_pointer_casts.cpp', cflags=['-Wno-deprecated'])
 
+  def test_emulate_function_pointer_casts_directize(self):
+    # Regression test: directize (inside -O2) must not replace type-mismatched
+    # call_indirect with unreachable when fpcast-emu will fix them.
+    # https://github.com/WebAssembly/binaryen/pull/8475
+    self.do_core_test('test_emulate_function_pointer_casts_directize.c', cflags=['-sEMULATE_FUNCTION_POINTER_CASTS'])
+
   @no_wasm2js('TODO: nicely printed names in wasm2js')
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   @parameterized({
