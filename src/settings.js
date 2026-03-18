@@ -2119,9 +2119,10 @@ var SPLIT_MODULE = false;
 // on startup, before loading the main module.
 var AUTOLOAD_DYLIBS = true;
 
-// Include unimplemented JS syscalls to be included in the final output.  This
-// allows programs that depend on these syscalls at runtime to be compiled, even
-// though these syscalls will fail (or do nothing) at runtime.
+// Link against stub implementations of unsupported/unimplemented syscalls. This
+// allows programs that depend on these syscalls to be compiled, even though
+// these functions will fail (or do nothing) at runtime.
+// [link]
 var ALLOW_UNIMPLEMENTED_SYSCALLS = true;
 
 // Allow calls to Worker(...) and importScripts(...) to be Trusted Types
