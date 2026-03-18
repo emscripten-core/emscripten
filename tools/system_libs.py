@@ -746,6 +746,10 @@ class MTLibrary(Library):
     # These are mutually exclusive, only one flag will be set at any give time.
     return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
 
+  def can_build(self):
+    # Wasm workers do not support dynamic linking.
+    return super().can_build() and not (settings.MAIN_MODULE and self.is_ww)
+
 
 class DebugLibrary(Library):
   def __init__(self, **kwargs):
