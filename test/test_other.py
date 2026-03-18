@@ -3712,6 +3712,23 @@ More info: https://emscripten.org
     expected = 'Wasm only output is not compatible with --emit-tsd'
     self.assert_fail([EMCC, test_file('other/test_emit_tsd.c'), '--emit-tsd', 'test_emit_tsd_wasm_only.d.ts', '-o', 'out.wasm'], expected)
 
+  @requires_dev_dependency('typescript')
+  def test_emit_tsd_heap(self):
+    self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                      '--emit-tsd', 'test_emit_tsd.d.ts',
+                      '-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU8,HEAP16,HEAPU16,HEAP32,HEAPU32,HEAPF32,HEAPF64',
+                      '-Wno-experimental', '-o', 'test_emit_tsd.js'] +
+                     self.get_cflags())
+    actual = read_file('test_emit_tsd.d.ts')
+    self.assertContained("    let HEAP8: Int8Array;", actual)
+    self.assertContained("    let HEAPU8: Uint8Array;", actual)
+    self.assertContained("    let HEAP16: Int16Array;", actual)
+    self.assertContained("    let HEAPU16: Uint16Array;", actual)
+    self.assertContained("    let HEAP32: Int32Array;", actual)
+    self.assertContained("    let HEAPU32: Uint32Array;", actual)
+    self.assertContained("    let HEAPF32: Float32Array;", actual)
+    self.assertContained("    let HEAPF64: Float64Array;", actual)
+
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)

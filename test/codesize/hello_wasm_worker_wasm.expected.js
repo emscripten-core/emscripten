@@ -67,7 +67,7 @@ function h() {
         y = b.g;
         z = b.i;
         l = b.h;
-        d ? (z(e.m, e.o), removeEventListener("message", p), k = k.forEach(n), addEventListener("message", n)) : b.f();
+        d ? (z(e.s, e.m, e.o), removeEventListener("message", p), k = k.forEach(n), addEventListener("message", n)) : b.f();
         d || y();
     }));
 }

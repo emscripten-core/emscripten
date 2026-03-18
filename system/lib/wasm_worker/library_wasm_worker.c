@@ -76,3 +76,7 @@ void emscripten_wasm_worker_sleep(int64_t nsecs) {
   int32_t addr = 0;
   emscripten_atomic_wait_u32(&addr, 0, nsecs);
 }
+
+bool emscripten_current_thread_is_wasm_worker() {
+  return emscripten_wasm_worker_self_id() != 0;
+}

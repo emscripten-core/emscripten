@@ -153,7 +153,7 @@ ATOMICS_WAIT_TOKEN_T emscripten_condvar_wait_async(emscripten_condvar_t *condvar
   return emscripten_atomic_wait_async((void*)condvar, val, asyncWaitFinished, userData, maxWaitMilliseconds);
 }
 
-void emscripten_condvar_signal(emscripten_condvar_t *condvar, int64_t numWaitersToSignal) {
+void emscripten_condvar_signal(emscripten_condvar_t *condvar, uint32_t numWaitersToSignal) {
   emscripten_atomic_add_u32((void*)condvar, 1);
   emscripten_atomic_notify((void*)condvar, numWaitersToSignal);
 }
