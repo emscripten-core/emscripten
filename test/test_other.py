@@ -3379,6 +3379,10 @@ More info: https://emscripten.org
     'dyncalls': ['-sDYNCALLS=1'],
   })
   def test_embind(self, *extra_args):
+    """This test is actually a large set of smaller JS unittest.  See test/embind/embind.test.js.
+    By default all of them are run.  If you are debugging and want to run just a subset of the
+    JS tests you can use `EMBIND_TESTS=myregex` to run just the matching tests.
+    """
     if '-sMEMORY64' in extra_args:
       self.require_wasm64()
     self.cflags += [
