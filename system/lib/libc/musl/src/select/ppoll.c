@@ -9,6 +9,16 @@
 
 int ppoll(struct pollfd *fds, nfds_t n, const struct timespec *to, const sigset_t *mask)
 {
+#ifdef __EMSCRIPTEN__
+	// Emscripten does not support true async signals so we just implement ppoll
+	// in terms of poll here in userspace.
+	int timeout = (to == NULL) ? -1 : (to->tv_sec * 1000 + to->tv_nsec / 1000000);
+	sigset_t origmask;
+	pthread_sigmask(SIG_SETMASK, mask, &origmask);
+	int rtn = poll(fds, n, timeout);
+	pthread_sigmask(SIG_SETMASK, &origmask, NULL);
+	return rtn;
+#else
 	time_t s = to ? to->tv_sec : 0;
 	long ns = to ? to->tv_nsec : 0;
 #ifdef SYS_ppoll_time64
@@ -23,4 +33,5 @@ int ppoll(struct pollfd *fds, nfds_t n, const struct timespec *to, const sigset_
 #endif
 	return syscall_cp(SYS_ppoll, fds, n,
 		to ? ((long[]){s, ns}) : 0, mask, _NSIG/8);
+#endif
 }

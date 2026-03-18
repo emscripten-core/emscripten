@@ -262,8 +262,6 @@ weak int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optva
 
 UNIMPLEMENTED(acct, (intptr_t filename))
 UNIMPLEMENTED(mincore, (intptr_t addr, size_t length, intptr_t vec))
-UNIMPLEMENTED(pselect6, (int nfds, intptr_t readfds, intptr_t writefds, intptr_t exceptfds, intptr_t timeout, intptr_t sigmaks))
-UNIMPLEMENTED(ppoll, (intptr_t fds, int nfds, intptr_t timeout, intptr_t sigmask, int size))
 UNIMPLEMENTED(recvmmsg, (int sockfd, intptr_t msgvec, size_t vlen, int flags, ...))
 UNIMPLEMENTED(sendmmsg, (int sockfd, intptr_t msgvec, size_t vlen, int flags, ...))
 UNIMPLEMENTED(shutdown, (int sockfd, int how, int dummy, int dummy2, int dummy3, int dummy4))

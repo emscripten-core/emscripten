@@ -9623,8 +9623,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/test_select_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
   @requires_pthreads
+  def test_pselect_blocking(self):
+    self.do_runf('core/test_pselect_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @requires_pthreads
   def test_poll_blocking(self):
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @requires_pthreads
+  def test_ppoll_blocking(self):
+    self.do_runf('core/test_ppoll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
   @with_asyncify_and_jspi
   def test_poll_blocking_asyncify(self):

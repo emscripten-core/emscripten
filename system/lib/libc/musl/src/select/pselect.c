@@ -9,6 +9,20 @@
 
 int pselect(int n, fd_set *restrict rfds, fd_set *restrict wfds, fd_set *restrict efds, const struct timespec *restrict ts, const sigset_t *restrict mask)
 {
+#ifdef __EMSCRIPTEN__
+	// Emscripten does not support true async signals so we just implement pselect
+	// in terms of select here in userspace.
+	struct timeval tv_timeout;
+	if (ts) {
+		tv_timeout.tv_sec = ts->tv_sec;
+		tv_timeout.tv_usec = ts->tv_nsec / 1000;
+	}
+	sigset_t origmask;
+	pthread_sigmask(SIG_SETMASK, mask, &origmask);
+	int rtn = select(n, rfds, wfds, efds, ts ? &tv_timeout : NULL);
+	pthread_sigmask(SIG_SETMASK, &origmask, NULL);
+	return rtn;
+#else
 	syscall_arg_t data[2] = { (uintptr_t)mask, _NSIG/8 };
 	time_t s = ts ? ts->tv_sec : 0;
 	long ns = ts ? ts->tv_nsec : 0;
@@ -23,4 +37,5 @@ int pselect(int n, fd_set *restrict rfds, fd_set *restrict wfds, fd_set *restric
 #endif
 	return syscall_cp(SYS_pselect6, n, rfds, wfds, efds,
 		ts ? ((long[]){s, ns}) : 0, data);
+#endif
 }
