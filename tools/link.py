@@ -1703,13 +1703,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.REQUIRED_EXPORTS += ['realloc']
     options.post_js.append(utils.path_from_root('src/build_as_worker.js'))
 
+  # Emscripten exception handling can generate invoke calls, and they call
+  # setThrew(). We cannot handle this using deps_info as the invokes are not
+  # emitted because of library function usage, but by codegen itself.
   if not settings.DISABLE_EXCEPTION_CATCHING:
-    settings.REQUIRED_EXPORTS += [
-      # Emscripten exception handling can generate invoke calls, and they call
-      # setThrew(). We cannot handle this using deps_info as the invokes are not
-      # emitted because of library function usage, but by codegen itself.
-      'setThrew',
-    ]
+    settings.REQUIRED_EXPORTS += ['setThrew']
 
   if settings.ASYNCIFY:
     if not settings.ASYNCIFY_IGNORE_INDIRECT:
