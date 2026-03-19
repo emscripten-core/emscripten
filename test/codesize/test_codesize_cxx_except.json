@@ -1,10 +1,10 @@
 {
   "a.out.js": 22875,
   "a.out.js.gz": 8956,
-  "a.out.nodebug.wasm": 172540,
-  "a.out.nodebug.wasm.gz": 57452,
-  "total": 195415,
-  "total_gz": 66408,
+  "a.out.nodebug.wasm": 172516,
+  "a.out.nodebug.wasm.gz": 57438,
+  "total": 195391,
+  "total_gz": 66394,
   "sent": [
     "__cxa_begin_catch",
     "__cxa_end_catch",
@@ -87,7 +87,6 @@
   "exports": [
     "__cxa_can_catch",
     "__cxa_decrement_exception_refcount",
-    "__cxa_free_exception",
     "__cxa_get_exception_ptr",
     "__cxa_increment_exception_refcount",
     "__indirect_function_table",
