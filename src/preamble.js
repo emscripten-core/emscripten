@@ -529,7 +529,7 @@ var splitModuleProxyHandler = {
 #if RUNTIME_DEBUG
             dbg('instantiated deferred module, continuing');
 #endif
-            return wasmTable.get({{{toIndexType('base')}}})(...args);
+            return wasmTable.get({{{ toIndexType('base') }}})(...args);
           };
 #if JSPI
           return new WebAssembly.Suspending(ret);

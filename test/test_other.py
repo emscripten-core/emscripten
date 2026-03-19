@@ -12498,12 +12498,8 @@ exec "$@"
     wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
     wasm_split_run = [wasm_split, '-g',
                       '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
-                      '--export-prefix=%', 'test_split_module_embind_jspi.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
+                      '--export-prefix=%', 'test_split_module_embind_jspi.wasm.orig', '-o1', 'test_split_module_embind_jspi.wasm', '-o2', 'test_split_module_embind_jspi.deferred.wasm', '--profile=profile.data']
     self.run_process(wasm_split_run)
-
-    os.remove('test_split_module_embind_jspi.wasm')
-    os.rename('primary.wasm', 'test_split_module_embind_jspi.wasm')
-    os.rename('secondary.wasm', 'test_split_module_embind_jspi.deferred.wasm')
     result = self.run_js('test_split_module_embind_jspi.js')
     self.assertNotIn('profile', result)
     self.assertIn('primary_function: 42\n' +
