@@ -214,52 +214,60 @@ For example, consider the case where a project "project" uses a library "libstuf
 Emscripten Ports
 ================
 
-Emscripten Ports is a collection of useful libraries, ported to Emscripten. They reside `on GitHub <https://github.com/emscripten-ports>`_, and have integration support in *emcc*. When you request that a port be used, emcc will fetch it from the remote server, set it up and build it locally, then link it with your project, add necessary include to your build commands, etc. For example, SDL2 is in ports, and you can request that it be used with ``--use-port=sdl2``. For example,
+Emscripten Ports is a collection of useful libraries, ported to Emscripten. They
+reside in the `ports directory`_, and have integration with *emcc*. When you
+request that a port be used, emcc will download, build and install it into the
+emscripten sysroot.  For example, to use the SDL2 port in your project you would
+simply add ``--use-port=sdl2`` to your compiler and linker flags. For example:
 
 .. code-block:: bash
 
   emcc test/browser/test_sdl2_glshader.c --use-port=sdl2 -sLEGACY_GL_EMULATION -o sdl2.html
 
-You should see some notifications about SDL2 being used, and built if it wasn't previously. You can then view ``sdl2.html`` in your browser.
+If this if your first time using a given port you may see some notifications about
+it being downloaded and installed as your program is being compiled.
 
 To see a list of all available ports, run ``emcc --show-ports``.
 
-.. note:: *SDL_image* has also been added to ports, use it with
-  ``--use-port=sdl2_image``. For ``sdl2_image`` to be useful, you generally
-  need to specify the image formats you are planning on using with e.g.
-  ``--use-port=sdl2_image:formats=bmp,png,xpm,jpg``. This will also ensure that
-  ``IMG_Init`` works properly when you specify those formats. Alternatively,
-  you can use ``emcc --use-preload-plugins`` and ``--preload-file`` your
-  images, so the browser codecs decode them (see :ref:`preloading-files`).
-  A code path in the ``sdl2_image`` port will load through
-  :c:func:`emscripten_get_preloaded_image_data`, but then your calls to
-  ``IMG_Init`` with those image formats will fail (as while the images will
-  work through preloading, IMG_Init reports no support for those formats, as
-  it doesn't have support compiled in - in other words, ``IMG_Init`` does not
-  report support for formats that only work through preloading).
+You can also use the standalone ``embuilder`` tools to explicitly build ports
+prior to running the compiler.  For example, you can build SDL2 using
+``./embuilder build sdl2``.  See ``embuilder --help`` for more information,
+including a list of all available targets.
 
-.. note:: *SDL_net* has also been added to ports, use it with ``--use-port=sdl2_net``.
+Some ports take extra options. For example, when using the ``sdl2_image`` ports
+you can specify a list of image formats.  e.g.
+``--use-port=sdl2_image:formats=bmp,png,xpm,jpg``.  See `Port-specific Notes`_
+below for more information on this.
 
-.. note:: Emscripten also has support for older SDL1, which is built-in.
-  If you do not specify SDL2 as in the command above, then SDL1 is linked in
-  and the SDL1 include paths are used. SDL1 has support for *sdl-config*,
-  which is present in `system/bin <https://github.com/emscripten-core/emscripten/blob/main/system/bin/sdl-config>`_.
-  Using the native *sdl-config* may result in compilation or missing-symbol errors.
-  You will need to modify the build system to look for files in
-  **emscripten/system** or **emscripten/system/bin** in order to use the
-  Emscripten *sdl-config*.
+Emscripten also has support for the older SDL 1.3, which is built-in. Use can
+use this via ``-sUSE_SDL=1``. SDL 1.3 has support for `sdl-config`_. Using the
+host version *sdl-config* may result in compilation errors. You may need to
+modify the build system to look for *sdl-config** in the emscripten sysroot
+(``<sysroot>/bin/sdl-config``).
 
-.. note:: You can also build a library from ports in a manual way if you prefer
-    that, but then you will need to also apply the python logic that ports does.
-    That code (under ``tools/ports/``) may do things like ensure necessary JS
-    functions are included in the build, add exports, and so forth. In general,
-    it's better to use the ports version as it is what is tested and known to
-    work.
+.. note:: When a port is built and installed into the sysroot it will then be
+   available to all following ``emcc`` commands.  For example, once you have run
+   ``emcc`` with ``--use-port=sdl2`` or run ``./embuilder build sdl2``, future
+   ``emcc`` commands will be able to see the SDL2 headers and libraries.
 
 .. note:: Since emscripten 3.1.54, ``--use-port`` is the preferred syntax to
-  use a port in your project. The legacy syntax (for example ``-sUSE_SDL2``,
-  ``-sUSE_SDL_IMAGE=2``) remains available.
+   use a port in your project. The legacy syntax (for example ``-sUSE_SDL2``,
+   ``-sUSE_SDL_IMAGE=2``) remains available.
 
+Port-specific Notes
+-------------------
+
+The ``sdl2_image`` port generally requires the specification of set of supported
+imagine formats.  For example ``--use-port=sdl2_image:formats=bmp,png,xpm,jpg``.
+This ensures that ``IMG_Init`` works properly when you specify those formats.
+Alternatively, you can use ``emcc --use-preload-plugins`` and ``--preload-file``
+your images, so the browser codecs decode them (see :ref:`preloading-files`). A
+code path in the ``sdl2_image`` port will load through
+:c:func:`emscripten_get_preloaded_image_data`, but then your calls to
+``IMG_Init`` with those image formats will fail (as while the images will work
+through preloading, ``IMG_Init`` reports no support for those formats, as it
+doesn't have support compiled in - in other words, ``IMG_Init`` does not report
+support for formats that only work through preloading).
 
 Contrib ports
 -------------
@@ -272,7 +280,8 @@ See :ref:`Contrib Ports <Contrib-Ports>` for more information.
 Adding more ports
 -----------------
 
-The simplest way to add a new port is to put it under the ``contrib`` directory. Basically, the steps are:
+The simplest way to add a new port is to put it under the ``contrib`` directory.
+Basically, the steps are:
 
  * Make sure the port is open source and has a suitable license.
  * Read the ``README.md`` file under ``tools/ports/contrib`` which contains more information.
@@ -447,3 +456,6 @@ Troubleshooting
 
   One solution is to use :ref:`dynamic-linking <Dynamic-Linking>`. This ensures that libraries are linked only once, in the final build stage.
 - When generating standalone Wasm, make sure to invoke the ``_start`` or (for ``--no-entry``) ``_initialize`` export before attempting to use the module.
+
+.. _ports directory: https://github.com/emscripten-core/emscripten/tree/main/tools/ports
+.. _sdl-config: https://github.com/emscripten-core/emscripten/blob/main/system/bin/sdl-config
