@@ -172,15 +172,15 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
     wakeup_interval = 100 * 1000000;
   }
 
-  // When wakeup_interval is set, we use remainder_ns to track how many ns
-  // remain of the intiial max_wait_ns.
-  int64_t remainder_ns = 0;
+  // When wakeup_interval is set, we use end_time to track the absolute
+  // time when the wait should end.
+  double end_time = 0;
   if (wakeup_interval) {
-    remainder_ns = max_wait_ns;
-    if (remainder_ns < 0) {
+    if (max_wait_ms == INFINITY) {
       max_wait_ns = wakeup_interval;
     } else {
-      max_wait_ns = MIN(remainder_ns, wakeup_interval);
+      end_time = emscripten_get_now() + max_wait_ms;
+      max_wait_ns = MIN(max_wait_ns, wakeup_interval);
     }
   }
 
@@ -222,14 +222,12 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
       emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
       return -ECANCELED;
     }
-    // If remainder_ns is negative it means we want wait forever, and we don't
-    // need to decrement remainder_ns in that case.
-    if (wakeup_interval && remainder_ns >= 0) {
-      remainder_ns -= wakeup_interval;
-      if (remainder_ns <= 0) {
+    if (wakeup_interval && max_wait_ms != INFINITY) {
+      double remainder_ms = end_time - emscripten_get_now();
+      if (remainder_ms <= 0) {
         break;
       }
-      max_wait_ns = MIN(remainder_ns, wakeup_interval);
+      max_wait_ns = MIN((int64_t)(remainder_ms * 1e6), wakeup_interval);
     }
   } while (wakeup_interval && ret == ATOMICS_WAIT_TIMED_OUT);
 #endif
