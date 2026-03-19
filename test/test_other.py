@@ -12428,7 +12428,13 @@ exec "$@"
     self.cflags += ['--pre-js', test_file('other/test_split_module_embind_jspi.pre.js')]
     self.cflags += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
     self.cflags += ['-lembind']
-    self.do_other_test('test_split_module_embind_jspi.cpp')
+    expected_pre_split_output = 'primary_function: 42\n'
+    expected_post_split_output = ('deferred_function: [object Promise]\n'
+                                  'deferred_function await: 82\n')
+    expected_output = (expected_pre_split_output +
+                       'wrote profile data\n' +
+                       expected_post_split_output)
+    result = self.do_runf('other/test_split_module_embind_jspi.cpp', expected_output=expected_output)
     self.assertExists('test_split_module_embind_jspi.wasm')
     self.assertExists('test_split_module_embind_jspi.wasm.orig')
     self.assertExists('profile.data')
@@ -12440,10 +12446,10 @@ exec "$@"
     self.run_process(wasm_split_run)
     result = self.run_js('test_split_module_embind_jspi.js')
     self.assertNotIn('profile', result)
-    self.assertIn('primary_function: 42\n' +
-                  'Custom handler for loading split module.\n' +
-                  'deferred_function: [object Promise]\n' +
-                  'deferred_function await: 82', result)
+    self.assertIn((expected_pre_split_output +
+                   'Custom handler for loading split module.\n' +
+                   expected_post_split_output),
+                  result)
 
   @crossplatform
   @flaky('https://github.com/emscripten-core/emscripten/issues/25206')
