@@ -87,6 +87,9 @@ var LibraryExceptions = {
     '__cxa_increment_exception_refcount',
 #endif
 #if EXCEPTION_STACK_TRACES
+    // When EXCEPTION_STACK_TRACES is enabled, storeEcxeption contains a call to
+    // 'new CppException', whose constructor calls getExceptionMessage. We can't
+    // track the dependency there, so we track it here.
     '$getExceptionMessage',
 #endif
   ],
