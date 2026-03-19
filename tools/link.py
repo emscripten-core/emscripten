@@ -344,6 +344,11 @@ def get_binaryen_passes(options):
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if settings.SAFE_HEAP:
     passes += ['--safe-heap']
+  if settings.EMULATE_FUNCTION_POINTER_CASTS:
+    # fpcast-emu must run before -Ox so that directize (inside -Ox) sees
+    # the rewritten table entries with matching types. It must also run
+    # before asyncify so the byn$fpcast-emu thunks get instrumented.
+    passes += ['--fpcast-emu']
   if optimizing:
     # wasm-emscripten-finalize will strip the features section for us
     # automatically, but if we did not modify the wasm then we didn't run it,
@@ -372,11 +377,6 @@ def get_binaryen_passes(options):
       # legalize it again now, as the instrumentation may need it
       passes += ['--legalize-js-interface']
       passes += building.js_legalization_pass_flags()
-  if settings.EMULATE_FUNCTION_POINTER_CASTS:
-    # note that this pass must run before asyncify, as if it runs afterwards we only
-    # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
-    # be able to further process them.
-    passes += ['--fpcast-emu']
   if settings.ASYNCIFY == 1:
     passes += ['--asyncify']
     if settings.MAIN_MODULE:

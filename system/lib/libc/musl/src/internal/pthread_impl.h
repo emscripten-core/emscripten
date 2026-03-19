@@ -39,7 +39,10 @@ struct pthread {
 
 	/* Part 2 -- implementation details, non-ABI. */
 	int tid;
+#ifndef __EMSCRIPTEN__
+	// Emscripten uses C11 _Thread_local instead for errno
 	int errno_val;
+#endif
 	volatile int detach_state;
 	volatile int cancel;
 	volatile unsigned char canceldisable, cancelasync;
@@ -60,7 +63,10 @@ struct pthread {
 	} robust_list;
 	int h_errno_val;
 	volatile int timer_id;
+#ifndef __EMSCRIPTEN__
+	// Emscripten uses C11 _Thread_local instead for locale
 	locale_t locale;
+#endif
 	volatile int killlock[1];
 	char *dlerror_buf;
 	void *stdio_locks;

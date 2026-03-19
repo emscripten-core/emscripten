@@ -125,6 +125,7 @@ INTERNAL_SETTINGS = {
 # List of incompatible settings, of the form (SETTINGS_A, SETTING_B, OPTIONAL_REASON_FOR_INCOMPAT)
 INCOMPATIBLE_SETTINGS = [
     ('MINIMAL_RUNTIME', 'MAIN_MODULE', None),
+    ('WASM_WORKERS', 'MAIN_MODULE', 'dynamic linking is not supported with -sWASM_WORKERS'),
     ('WASM2JS', 'MAIN_MODULE', 'wasm2js does not support dynamic linking'),
     ('WASM2JS', 'SIDE_MODULE', 'wasm2js does not support dynamic linking'),
     ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),

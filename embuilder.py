@@ -236,6 +236,12 @@ def main():
 
   if args.pic:
     settings.MAIN_MODULE = 1
+    # Note: we have to filter out the `-ww` libraries here because wasm workers don't
+    # support dynamic linking.
+    global MINIMAL_TASKS
+    global MINIMAL_PIC_TASKS
+    MINIMAL_TASKS = [t for t in MINIMAL_TASKS if '-ww' not in t]
+    MINIMAL_PIC_TASKS = [t for t in MINIMAL_PIC_TASKS if '-ww' not in t]
 
   if args.wasm64:
     settings.MEMORY64 = 1

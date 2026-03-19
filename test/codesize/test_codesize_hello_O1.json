@@ -1,10 +1,10 @@
 {
   "a.out.js": 6350,
   "a.out.js.gz": 2461,
-  "a.out.nodebug.wasm": 2675,
-  "a.out.nodebug.wasm.gz": 1490,
-  "total": 9025,
-  "total_gz": 3951,
+  "a.out.nodebug.wasm": 2530,
+  "a.out.nodebug.wasm.gz": 1423,
+  "total": 8880,
+  "total_gz": 3884,
   "sent": [
     "fd_write"
   ],
@@ -25,13 +25,11 @@
     "$__emscripten_stdout_seek",
     "$__errno_location",
     "$__fwritex",
-    "$__lockfile",
     "$__memcpy",
     "$__original_main",
     "$__overflow",
     "$__stdio_write",
     "$__towrite",
-    "$__unlockfile",
     "$__wasi_syscall_ret",
     "$__wasm_call_ctors",
     "$_emscripten_memcpy_bulkmem",

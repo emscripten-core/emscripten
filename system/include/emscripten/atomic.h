@@ -183,7 +183,10 @@ _EM_INLINE void emscripten_atomic_fence(void) {
 
 #define ATOMICS_WAIT_RESULT_T int
 
-// Numbering dictated by https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait
+// Numbering dictated by https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait:
+//   0 => "ok", woken by another agent.
+//   1 => "not-equal", loaded value != expected value
+//   2 => "timed-out", the timeout expired
 #define ATOMICS_WAIT_OK 0
 #define ATOMICS_WAIT_NOT_EQUAL 1
 #define ATOMICS_WAIT_TIMED_OUT 2
