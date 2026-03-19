@@ -151,7 +151,7 @@ void test() {
   );
 #endif
 
-#ifdef IDBFS_AUTO_PERSIST
+#ifdef AUTO_PERSIST
   finish();
 #else
   // sync from memory state to persisted and then
@@ -160,11 +160,18 @@ void test() {
     // Ensure IndexedDB is closed at exit.
     var orig = Module['onExit'];
     Module['onExit'] = (status) => {
+#ifdef OPFS
+      assert(OPFS.worker === null);
+#else
       assert(Object.keys(IDBFS.dbs).length == 0);
+#endif
       orig(status);
     };
     FS.syncfs((err) => {
-      assert(!err);
+      if (err) {
+        console.error('syncfs error', err);
+        assert(false);
+      }
       callUserCallback(_finish);
     });
     });
@@ -174,8 +181,14 @@ void test() {
 int main() {
   EM_ASM(
     FS.mkdir('/working1');
-    FS.mount(IDBFS, {
-#ifdef IDBFS_AUTO_PERSIST
+    FS.mount(
+#ifdef OPFS
+      OPFS,
+#else
+      IDBFS,
+#endif
+      {
+#ifdef AUTO_PERSIST
       autoPersist: true
 #endif
     }, '/working1');
@@ -188,7 +201,10 @@ int main() {
     // sync from persisted state into memory and then
     // run the 'test' function
     FS.syncfs(true, function (err) {
-      assert(!err);
+      if (err) {
+        console.error('syncfs error', err);
+        assert(false);
+      }
       callUserCallback(_test);
     });
   );

@@ -1285,13 +1285,13 @@ window.close = () => {
   @parameterized({
     '': ([],),
     'extra': (['-DEXTRA_WORK'],),
-    'autopersist': (['-DIDBFS_AUTO_PERSIST'],),
+    'autopersist': (['-DAUTO_PERSIST'],),
   })
   def test_fs_idbfs_sync(self, args):
     secret = str(time.time())
-    self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-lidbfs.js'] + args + ['-DFIRST'])
+    self.btest_exit('fs/test_idbfs_opfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-lidbfs.js'] + args + ['-DFIRST'])
     print('done first half')
-    self.btest_exit('fs/test_idbfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-lidbfs.js'] + args)
+    self.btest_exit('fs/test_idbfs_opfs_sync.c', cflags=['-lidbfs.js', f'-DSECRET="{secret}"', '-lidbfs.js'] + args)
 
   @parameterized({
     'open': ('TEST_CASE_OPEN', 2),
@@ -1304,11 +1304,11 @@ window.close = () => {
   def test_fs_idbfs_autopersist(self, test_case, phase_count):
     self.cflags += ['-lidbfs.js', f'-DTEST_CASE={test_case}']
     for phase in range(phase_count):
-      self.btest_exit('fs/test_idbfs_autopersist.c', cflags=[f'-DTEST_PHASE={phase + 1}'])
+      self.btest_exit('fs/test_idbfs_opfs_autopersist.c', cflags=[f'-DTEST_PHASE={phase + 1}'])
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall,$addRunDependency')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall,$addRunDependency,$removeRunDependency')
     create_file('pre.js', '''
       Module.preRun = () => {
         addRunDependency('syncfs');
@@ -1324,8 +1324,55 @@ window.close = () => {
 
     args = ['--pre-js', 'pre.js', '-lidbfs.js', '-sEXIT_RUNTIME', '-sASYNCIFY']
     secret = str(time.time())
-    self.btest('fs/test_idbfs_fsync.c', '1', cflags=args + ['-DFIRST', f'-DSECRET="{secret}"', '-lidbfs.js'])
-    self.btest('fs/test_idbfs_fsync.c', '1', cflags=args + [f'-DSECRET="{secret}"', '-lidbfs.js'])
+    self.btest('fs/test_idbfs_opfs_fsync.c', '1', cflags=args + ['-DFIRST', f'-DSECRET="{secret}"', '-lidbfs.js'])
+    self.btest('fs/test_idbfs_opfs_fsync.c', '1', cflags=args + [f'-DSECRET="{secret}"', '-lidbfs.js'])
+
+  @parameterized({
+    '': ([],),
+    'extra': (['-DEXTRA_WORK'],),
+    'autopersist': (['-DAUTO_PERSIST'],),
+  })
+  def test_fs_opfs_sync(self, args):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$OPFS')
+    secret = str(time.time())
+    self.btest_exit('fs/test_idbfs_opfs_sync.c', cflags=['-DOPFS', '-lopfs.js', f'-DSECRET="{secret}"', '-lopfs.js'] + args + ['-DFIRST'])
+    print('done first half')
+    self.btest_exit('fs/test_idbfs_opfs_sync.c', cflags=['-DOPFS', '-lopfs.js', f'-DSECRET="{secret}"', '-lopfs.js'] + args)
+
+  @parameterized({
+    'open': ('TEST_CASE_OPEN', 2),
+    'close': ('TEST_CASE_CLOSE', 3),
+    'symlink': ('TEST_CASE_SYMLINK', 3),
+    'unlink': ('TEST_CASE_UNLINK', 3),
+    'rename': ('TEST_CASE_RENAME', 3),
+    'mkdir': ('TEST_CASE_MKDIR', 2),
+  })
+  def test_fs_opfs_autopersist(self, test_case, phase_count):
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$OPFS')
+    self.cflags += ['-lopfs.js', f'-DTEST_CASE={test_case}']
+    for phase in range(phase_count):
+      self.btest_exit('fs/test_idbfs_opfs_autopersist.c', cflags=['-DOPFS', f'-DTEST_PHASE={phase + 1}'])
+
+  def test_fs_opfs_fsync(self):
+    # sync from persisted state into memory before main()
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall,$addRunDependency,$removeRunDependency,$OPFS')
+    create_file('pre.js', '''
+      Module.preRun = () => {
+        addRunDependency('syncfs');
+
+        FS.mkdir('/working1');
+        FS.mount(OPFS, {}, '/working1');
+        FS.syncfs(true, function (err) {
+          if (err) throw err;
+          removeRunDependency('syncfs');
+        });
+      };
+    ''')
+
+    args = ['--pre-js', 'pre.js', '-lopfs.js', '-sEXIT_RUNTIME', '-sASYNCIFY']
+    secret = str(time.time())
+    self.btest('fs/test_idbfs_opfs_fsync.c', '1', cflags=args + ['-DOPFS', '-DFIRST', f'-DSECRET="{secret}"', '-lopfs.js'])
+    self.btest('fs/test_idbfs_opfs_fsync.c', '1', cflags=args + ['-DOPFS', f'-DSECRET="{secret}"', '-lopfs.js'])
 
   def test_fs_memfs_fsync(self):
     self.btest_exit('fs/test_memfs_fsync.c', cflags=['-sASYNCIFY', '-sEXIT_RUNTIME'])

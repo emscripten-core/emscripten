@@ -73,12 +73,19 @@ int main() {
   // sync from memory state to persisted and then
   // run 'success'
   EM_ASM(
-    // Ensure IndexedDB is closed at exit.
+    // Ensure IndexedDB/OPFS is closed at exit.
     Module['onExit'] = function() {
+#ifdef OPFS
+      assert(OPFS.worker === null);
+#else
       assert(Object.keys(IDBFS.dbs).length == 0);
+#endif
     };
     FS.syncfs(function (err) {
-      assert(!err);
+      if (err) {
+        console.error('syncfs error', err);
+        assert(false);
+      }
       ccall('success', 'v');
     });
   );

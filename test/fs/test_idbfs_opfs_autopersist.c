@@ -201,8 +201,8 @@ void test(void) {
   }
 
   EM_ASM({
-    // Wait until IDBFS has persisted before exiting
-    runOnceIDBFSIdle(() => {
+    // Wait until IDBFS|OPFS has persisted before exiting
+    runOnceIDBFSOPFSIdle(() => {
       callUserCallback(_finish);
     });
   });
@@ -211,19 +211,28 @@ void test(void) {
 int main(void) {
   printf("Running test case=%d phase=%d\n", TEST_CASE, TEST_PHASE);
   EM_ASM({
-    globalThis.runOnceIDBFSIdle = (callback) => {
+    globalThis.runOnceIDBFSOPFSIdle = (callback) => {
       const { mount } = FS.lookupPath('/working1').node;
+#ifdef OPFS
+      assert('opfsPersistState' in mount, 'mount object must have opfsPersistState');
+      if (mount.opfsPersistState !== 0) {
+#else
       assert('idbPersistState' in mount, 'mount object must have idbPersistState');
       if (mount.idbPersistState !== 0) {
-        // IDBFS hasn't finished persisting. Check again after all pending tasks have executed
-        setTimeout(() => runOnceIDBFSIdle(callback), 0);
+#endif
+        // IDBFS|OPFS hasn't finished persisting. Check again after all pending tasks have executed
+        setTimeout(() => runOnceIDBFSOPFSIdle(callback), 0);
         return;
       }
       callback();
     };
 
     FS.mkdir('/working1');
+  #ifdef OPFS
+    FS.mount(OPFS, {
+  #else
     FS.mount(IDBFS, {
+  #endif
       autoPersist: true
     }, '/working1');
   });
@@ -246,12 +255,12 @@ int main(void) {
         assert(!err, 'syncfs failed');
 
         // FS.syncfs() may run operations on the in-memory filesystem which
-        // might trigger IDBFS.queuePersist() calls. These queued calls will
+        // might trigger IDBFS|OPFS.queuePersist() calls. These queued calls will
         // also persist modifications made by the test. We want to verify that
-        // each operation we test calls IDBFS.queuePersist() on its own, so
+        // each operation we test calls IDBFS|OPFS.queuePersist() on its own, so
         // the interference from FS.syncfs() is unwanted.
-        // Wait until the IDBFS mount has been persisted.
-        runOnceIDBFSIdle(() => {
+        // Wait until the IDBFS|OPFS mount has been persisted.
+        runOnceIDBFSOPFSIdle(() => {
           callUserCallback(_test);
         });
       });
