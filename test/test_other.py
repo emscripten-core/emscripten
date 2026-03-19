@@ -8693,7 +8693,7 @@ int main() {
     self.do_runf('src.cpp', 'ERROR\n')
 
   @with_all_eh_sjlj
-  def test_c_program_eh_dce(self):
+  def test_unused_eh_dce(self):
     # Pure C programs compiled with -fexceptions / -fwasm-exceptions should not
     # pull in libc++abi or exception formatting helpers unless exceptions are
     # actually used. We verify this by ensuring the output Wasm binary is small
