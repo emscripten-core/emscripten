@@ -769,7 +769,7 @@ function getWasmImports() {
     updateGOT(origExports);
 #endif
 
-#if EXPORTED_RUNTIME_METHODS.includes('wasmExports')
+#if EXPORTED_RUNTIME_METHODS.has('wasmExports')
     Module['wasmExports'] = wasmExports;
 #endif
 

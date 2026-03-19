@@ -70,7 +70,7 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
     if preprocess:
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
-    flags += ['-sMEMORY64=' + str(settings.MEMORY64)]
+    flags += ['-sMEMORY64']
 
   source_dir = utils.path_from_root()
   relative_source_dir = os.path.relpath(source_dir, build_dir)
@@ -714,9 +714,9 @@ class MTLibrary(Library):
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_mt:
-      cflags += ['-pthread', '-sWASM_WORKERS']
+      cflags += ['-pthread']
     if self.is_ww:
-      cflags += ['-sWASM_WORKERS', '-DWASM_WORKERS_ONLY']
+      cflags += ['-sWASM_WORKERS']
     return cflags
 
   def get_base_name(self):
@@ -745,6 +745,10 @@ class MTLibrary(Library):
 
     # These are mutually exclusive, only one flag will be set at any give time.
     return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
+
+  def can_build(self):
+    # Wasm workers do not support dynamic linking.
+    return super().can_build() and not (settings.MAIN_MODULE and self.is_ww)
 
 
 class DebugLibrary(Library):
@@ -1288,6 +1292,7 @@ class libc(MuslInternalLibrary,
         path='system/lib/pthread',
         filenames=[
           'emscripten_thread_state.S',
+          'emscripten_thread_primitives.c',
           'emscripten_futex_wait.c',
           'emscripten_futex_wake.c',
         ])
@@ -1494,11 +1499,8 @@ class libc_optz(libc):
 class libprintf_long_double(libc):
   name = 'libprintf_long_double'
   cflags = ['-DEMSCRIPTEN_PRINTF_LONG_DOUBLE']
-
-  def get_files(self):
-    return files_in_path(
-        path='system/lib/libc/musl/src/stdio',
-        filenames=['vfprintf.c'])
+  src_dir = 'system/lib/libc/musl/src/stdio'
+  src_files = ['vfprintf.c']
 
   def can_use(self):
     return super().can_use() and settings.PRINTF_LONG_DOUBLE
@@ -1507,15 +1509,12 @@ class libprintf_long_double(libc):
 class libwasm_workers(DebugLibrary):
   name = 'libwasm_workers'
   includes = ['system/lib/libc']
-
-  def __init__(self, **kwargs):
-    self.is_stub = kwargs.pop('stub')
-    super().__init__(**kwargs)
+  src_dir = 'system/lib/wasm_worker'
+  src_files = ['library_wasm_worker.c', 'wasm_worker_initialize.S']
 
   def get_cflags(self):
-    cflags = super().get_cflags()
+    cflags = super().get_cflags() + ['-sWASM_WORKERS']
     if self.is_debug:
-      cflags += ['-D_DEBUG']
       # library_wasm_worker.c contains an assert that a nonnull parameter
       # is no NULL, which llvm now warns is redundant/tautological.
       cflags += ['-Wno-tautological-pointer-compare']
@@ -1524,45 +1523,12 @@ class libwasm_workers(DebugLibrary):
       # https://github.com/emscripten-core/emscripten/issues/19331
       cflags += ['-O0']
     else:
-      cflags += ['-DNDEBUG', '-Oz']
-    if settings.MAIN_MODULE:
-      cflags += ['-fPIC']
-    if not self.is_stub:
-      cflags += ['-sWASM_WORKERS']
+      cflags += ['-Oz']
     return cflags
-
-  def get_base_name(self):
-    name = super().get_base_name()
-    if self.is_stub:
-      name += '-stub'
-    return name
-
-  @classmethod
-  def vary_on(cls):
-    return super().vary_on() + ['stub']
-
-  @classmethod
-  def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(stub=not settings.WASM_WORKERS, **kwargs)
-
-  def get_files(self):
-    files = []
-    if self.is_stub:
-      files = [
-        'library_wasm_worker_stub.c',
-      ]
-    else:
-      files = [
-        'library_wasm_worker.c',
-        'wasm_worker_initialize.S',
-      ]
-    return files_in_path(
-        path='system/lib/wasm_worker',
-        filenames=files)
 
   def can_use(self):
     # see src/library_wasm_worker.js
-    return super().can_use() and not settings.SINGLE_FILE and not settings.MAIN_MODULE
+    return super().can_use() and not settings.SINGLE_FILE and not settings.MAIN_MODULE and settings.WASM_WORKERS
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):

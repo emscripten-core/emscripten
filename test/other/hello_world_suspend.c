@@ -10,6 +10,6 @@
 
 int main() {
   emscripten_sleep(1);
-  printf("hello, world!\n");
+  printf("Hello, world!\n");
   return 0;
 }

@@ -1701,8 +1701,6 @@ Set the environment variable EMCC_STRICT=1 or pass -sSTRICT to test that a
 codebase builds nicely in forward compatible manner.
 Changes enabled by this:
 
-  - The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
-    is the correct thing to use).
   - STRICT_JS is enabled.
   - IGNORE_MISSING_MAIN is disabled.
   - AUTO_JS_LIBRARIES is disabled.
@@ -3219,9 +3217,9 @@ Default value: true
 ALLOW_UNIMPLEMENTED_SYSCALLS
 ============================
 
-Include unimplemented JS syscalls to be included in the final output.  This
-allows programs that depend on these syscalls at runtime to be compiled, even
-though these syscalls will fail (or do nothing) at runtime.
+Link against stub implementations of unsupported/unimplemented syscalls. This
+allows programs that depend on these syscalls to be compiled, even though
+these functions will fail (or do nothing) at runtime.
 
 Default value: true
 

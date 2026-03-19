@@ -14,6 +14,10 @@
 #include <sys/time.h>
 
 #define TIMEOUT_MS 300
+// It is possible for the node timers (such as setTimeout or Atomics.wait) to wake up
+// slightly earlier than requested. Because we measure times accurately using
+// clock_gettime, we give tests a 5 milliseconds error margin to avoid flaky timeouts.
+#define TIMEOUT_MARGIN_MS 5
 
 void sleep_ms(int ms) {
   usleep(ms * 1000);
@@ -45,7 +49,7 @@ void test_timeout_without_fds() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= TIMEOUT_MS);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
 }
 
 // Check if timeout works with fds without events
@@ -68,7 +72,7 @@ void test_timeout_with_fds_without_events() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= TIMEOUT_MS);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
 
   close(pipe_a[0]); close(pipe_a[1]);
 }
@@ -107,13 +111,17 @@ void test_unblock_select() {
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert(duration >= TIMEOUT_MS);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
 
   pthread_join(tid, NULL);
 
   close(pipe_a[0]); close(pipe_a[1]);
   close(pipe_shared[0]); close(pipe_shared[1]);
 }
+
+int threads_running = 0;
+pthread_mutex_t running_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t running_cv = PTHREAD_COND_INITIALIZER;
 
 void *do_select_in_thread(void * arg) {
   struct timespec begin, end;
@@ -127,13 +135,17 @@ void *do_select_in_thread(void * arg) {
   int maxfd = pipe_shared[0];
 
   clock_gettime(CLOCK_MONOTONIC, &begin);
+  pthread_mutex_lock(&running_lock);
+  threads_running++;
+  pthread_cond_signal(&running_cv);
+  pthread_mutex_unlock(&running_lock);
   assert(select(maxfd + 1, &readfds, NULL, NULL, &tv) == 1);
   clock_gettime(CLOCK_MONOTONIC, &end);
   assert(FD_ISSET(pipe_shared[0], &readfds));
 
   int64_t duration = timespec_delta_ms(&begin, &end);
   printf(" -> duration: %lld ms\n", duration);
-  assert((duration >= TIMEOUT_MS) && (duration < 4000));
+  assert((duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS) && (duration < 4000));
 
   return NULL;
 }
@@ -148,6 +160,11 @@ void test_select_in_threads() {
 
   assert(pthread_create(&tid1, NULL, do_select_in_thread, NULL) == 0);
   assert(pthread_create(&tid2, NULL, do_select_in_thread, NULL) == 0);
+  pthread_mutex_lock(&running_lock);
+  while (threads_running != 2) {
+    pthread_cond_wait(&running_cv, &running_lock);
+  }
+  pthread_mutex_unlock(&running_lock);
 
   sleep_ms(2 * TIMEOUT_MS);
   write(pipe_shared[1], t, strlen(t));

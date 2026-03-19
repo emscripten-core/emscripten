@@ -11,7 +11,7 @@ static _Atomic int doneEntry;
 static pthread_t mythread;
 
 void *ThreadMain(void *threadid) {
-  puts("hello world");
+  puts("Hello, world!");
   doneEntry = 1;
   emscripten_exit_with_live_runtime();
   return NULL;

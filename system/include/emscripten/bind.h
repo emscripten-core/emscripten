@@ -11,18 +11,18 @@
 #error "embind requires -std=c++17 or newer"
 #endif
 
+#include <emscripten/em_asm.h>
+#include <emscripten/val.h>
+#include <emscripten/wire.h>
+
 #include <cassert>
 #include <cstddef>
 #include <functional>
 #include <map>
+#include <optional>
 #include <string>
 #include <type_traits>
 #include <vector>
-#include <optional>
-
-#include <emscripten/em_asm.h>
-#include <emscripten/val.h>
-#include <emscripten/wire.h>
 
 #if __has_feature(leak_sanitizer) || __has_feature(address_sanitizer)
 #include <sanitizer/lsan_interface.h>
@@ -434,7 +434,7 @@ template<typename ReturnType, typename... Args, typename... Policies>
 void function(const char* name, ReturnType (*fn)(Args...), Policies...) {
     using namespace internal;
     typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-    using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+    using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
     auto invoke = Invoker<ReturnPolicy, ReturnType, Args...>::invoke;
     _embind_register_function(
         name,
@@ -1295,7 +1295,7 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...)> {
     template <typename CT, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...)) {
-        using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+        using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
         auto invoke = MethodInvoker<ReturnPolicy, decltype(memberFunction), ReturnType, ClassType*, Args...>::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<ClassType>, Args...> args;
@@ -1325,7 +1325,7 @@ struct RegisterClassMethod<ReturnType (ClassType::*)(Args...) const> {
     template <typename CT, typename... Policies>
     static void invoke(const char* methodName,
                        ReturnType (ClassType::*memberFunction)(Args...) const)  {
-        using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+        using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
         auto invoke = MethodInvoker<ReturnPolicy, decltype(memberFunction), ReturnType, const ClassType*, Args...>::invoke;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, AllowedRawPointer<const ClassType>, Args...> args;
@@ -1356,7 +1356,7 @@ struct RegisterClassMethod<ReturnType (*)(ThisType, Args...)> {
     static void invoke(const char* methodName,
                        ReturnType (*function)(ThisType, Args...)) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+        using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
         auto invoke = FunctionInvoker<ReturnPolicy, decltype(function), ReturnType, ThisType, Args...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
@@ -1385,7 +1385,7 @@ struct RegisterClassMethod<std::function<ReturnType (ThisType, Args...)>> {
     static void invoke(const char* methodName,
                        std::function<ReturnType (ThisType, Args...)> function) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+        using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
         auto invoke = FunctorInvoker<ReturnPolicy, decltype(function), ReturnType, ThisType, Args...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
@@ -1408,7 +1408,7 @@ struct RegisterClassMethod<FunctionTag<Callable, ReturnType (ThisType, Args...)>
     static void invoke(const char* methodName,
                        Callable& callable) {
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, ThisType, Args...> args;
-        using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+        using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
         auto invoke = FunctorInvoker<ReturnPolicy, decltype(callable), ReturnType, ThisType, Args...>::invoke;
         _embind_register_class_function(
             TypeID<ClassType>::get(),
@@ -1546,7 +1546,7 @@ public:
         smart_ptr<SmartPtr>(smartPtrName);
 
         typename WithPolicies<Policies...>::template ArgTypeList<SmartPtr, Args...> args;
-        using ReturnPolicy = GetReturnValuePolicy<SmartPtr, return_value_policy::take_ownership>::tag;
+        using ReturnPolicy = typename GetReturnValuePolicy<SmartPtr, return_value_policy::take_ownership>::tag;
         auto invoke = &Invoker<ReturnPolicy, SmartPtr, Args...>::invoke;
         _embind_register_class_constructor(
             TypeID<ClassType>::get(),
@@ -1646,7 +1646,7 @@ public:
             std::conjunction<internal::isPolicy<Policies>...>::value>::type>
     EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, const FieldType ClassType::*field, Policies...) const {
         using namespace internal;
-        using ReturnPolicy = GetReturnValuePolicy<FieldType, Policies...>::tag;
+        using ReturnPolicy = typename GetReturnValuePolicy<FieldType, Policies...>::tag;
         typename WithPolicies<Policies...>::template ArgTypeList<FieldType> returnType;
 
         auto getter = &MemberAccess<ClassType, FieldType>::template getWire<ClassType, ReturnPolicy>;
@@ -1674,7 +1674,7 @@ public:
             std::conjunction<internal::isPolicy<Policies>...>::value>::type>
     EMSCRIPTEN_ALWAYS_INLINE const class_& property(const char* fieldName, FieldType ClassType::*field, Policies...) const {
         using namespace internal;
-        using ReturnPolicy = GetReturnValuePolicy<FieldType, Policies...>::tag;
+        using ReturnPolicy = typename GetReturnValuePolicy<FieldType, Policies...>::tag;
         typename WithPolicies<Policies...>::template ArgTypeList<FieldType> returnType;
 
         auto getter = &MemberAccess<ClassType, FieldType>::template getWire<ClassType, ReturnPolicy>;
@@ -1708,7 +1708,7 @@ public:
             typename std::conditional<std::is_same<PropertyType, internal::DeduceArgumentsTag>::value,
                                                    Getter,
                                                    FunctionTag<Getter, PropertyType>>::type> GP;
-        using ReturnPolicy = GetReturnValuePolicy<typename GP::ReturnType, Policies...>::tag;
+        using ReturnPolicy = typename GetReturnValuePolicy<typename GP::ReturnType, Policies...>::tag;
         auto gter = &GP::template get<ClassType, ReturnPolicy>;
         typename WithPolicies<Policies...>::template ArgTypeList<typename GP::ReturnType> returnType;
         _embind_register_class_property(
@@ -1747,7 +1747,7 @@ public:
                                                    FunctionTag<Setter, PropertyType>>::type> SP;
 
 
-        using ReturnPolicy = GetReturnValuePolicy<typename GP::ReturnType, Policies...>::tag;
+        using ReturnPolicy = typename GetReturnValuePolicy<typename GP::ReturnType, Policies...>::tag;
         auto gter = &GP::template get<ClassType, ReturnPolicy>;
         auto ster = &SP::template set<ClassType>;
 
@@ -1776,7 +1776,7 @@ public:
         using namespace internal;
 
         typename WithPolicies<Policies...>::template ArgTypeList<ReturnType, Args...> args;
-        using ReturnPolicy = GetReturnValuePolicy<ReturnType, Policies...>::tag;
+        using ReturnPolicy = typename GetReturnValuePolicy<ReturnType, Policies...>::tag;
         auto invoke = internal::Invoker<ReturnPolicy, ReturnType, Args...>::invoke;
         _embind_register_class_class_function(
             TypeID<ClassType>::get(),

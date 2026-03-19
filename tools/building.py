@@ -53,7 +53,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 126
+EXPECTED_BINARYEN_VERSION = 127
 
 _is_ar_cache: dict[str, bool] = {}
 # the exports the user requested
@@ -112,7 +112,7 @@ def llvm_backend_args():
       # setjmp/longjmp handling using Wasm EH
       args += ['-wasm-enable-sjlj']
 
-  if settings.WASM_EXCEPTIONS:
+  if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     if settings.WASM_LEGACY_EXCEPTIONS:
       args += ['-wasm-use-legacy-eh']
     else:
@@ -307,6 +307,7 @@ def lld_flags(args):
 
   if settings.WASM_EXCEPTIONS:
     args += ['-mllvm', '-wasm-enable-eh']
+  if settings.WASM_EXCEPTIONS or settings.SUPPORT_LONGJMP == 'wasm':
     if settings.WASM_LEGACY_EXCEPTIONS:
       args += ['-mllvm', '-wasm-use-legacy-eh']
     else:

@@ -81,7 +81,7 @@ class stress(RunnerCore):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     js_file = self.build('core/test_hello_world.c')
-    self.parallel_stress_test_js_file(js_file, assert_returncode=0, expected='hello, world!', not_expected='error')
+    self.parallel_stress_test_js_file(js_file, assert_returncode=0, expected='Hello, world!', not_expected='error')
 
   # This is a stress test to verify that the Node.js postMessage() vs uncaughtException
   # race does not affect Emscripten execution.

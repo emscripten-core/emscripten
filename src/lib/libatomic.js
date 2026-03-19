@@ -164,4 +164,6 @@ addToLibrary({
     ENVIRONMENT_IS_NODE ? require('node:os').cpus().length :
 #endif
     navigator['hardwareConcurrency'],
+
+  emscripten_atomics_is_lock_free: (width) => Atomics.isLockFree(width),
 });

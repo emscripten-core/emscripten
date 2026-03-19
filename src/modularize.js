@@ -7,6 +7,10 @@
 // This code implements the `-sMODULARIZE` settings by taking the generated
 // JS program code (INNER_JS_CODE) and wrapping it in a factory function.
 
+#if STRICT_JS
+"use strict";
+#endif
+
 #if SOURCE_PHASE_IMPORTS
 import source wasmModule from './{{{ WASM_BINARY_FILE }}}';
 #endif

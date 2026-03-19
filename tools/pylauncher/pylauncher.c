@@ -9,24 +9,31 @@
  *
  * The binary will look for a python script that matches its own name and run
  * that using python.exe.
+ *
+ * Built with /NODEFAULTLIB linking only against ucrt.lib (ucrtbase.dll) to
+ * avoid any dependency on a specific Visual C++ Redistributable version.
  */
 
 // Define _WIN32_WINNT to Windows 7 for max portability
 #define _WIN32_WINNT 0x0601
 
 #include <windows.h>
-#include <shellapi.h>
-#include <shlwapi.h>
 #include <stdio.h>
 #include <stdbool.h>
 #include <stdlib.h>
+#include <string.h>
+#include <wchar.h>
 
-#pragma comment(lib, "shlwapi.lib")
-#pragma comment(lib, "shell32.lib")
+// ZeroMemory expands to memset which lives in vcruntime, not ucrt.
+// SecureZeroMemory is an inline in <winnt.h> with no runtime dependency.
+#undef ZeroMemory
+#define ZeroMemory SecureZeroMemory
+
+#define WLEN(lit) (sizeof(lit) / sizeof(wchar_t) - 1)
 
 static bool launcher_debug = false;
 
-static int dbg(const char* format, ...) {
+static void dbg(const char* format, ...) {
   if (launcher_debug) {
     va_list args;
     va_start(args, format);
@@ -44,7 +51,7 @@ static const wchar_t* get_python_executable() {
 }
 
 // Get the name of the currently running executable (module)
-static const wchar_t* get_module_path() {
+static wchar_t* get_module_path() {
   DWORD buffer_size = MAX_PATH;
   wchar_t* module_path_w = malloc(sizeof(wchar_t) * buffer_size);
   if (!module_path_w)
@@ -100,79 +107,78 @@ static const wchar_t* find_args(const wchar_t* command_line) {
   return p;
 }
 
+static bool path_exists(const wchar_t* path) {
+  return GetFileAttributesW(path) != INVALID_FILE_ATTRIBUTES;
+}
+
 /**
- * Create the script path by taking the launcher path and replacing the
+ * Create the script path by finding the launcher path and replacing the
  * extension with .py. For example `C:\path\to\emcc.exe` becomes
  * `C:\path\to\emcc.py`.
  *
  * If the corresponging .py file does not exist then also look it in the tools
  * subdirectory.  e.g. `C:\path\to\tools\emcc.py`
  */
-static const wchar_t* get_script_path(const wchar_t* launcher_path) {
-  wchar_t* script_path = wcsdup(launcher_path);
+static wchar_t* get_script_path() {
+  wchar_t* script_path = get_module_path();
   if (!script_path)
     abort();
-  PathRemoveExtensionW(script_path);
-  size_t current_len = wcslen(script_path);
-  // 4 for `.py` and the null terminator
-  size_t new_size_in_chars = current_len + 4;
-  script_path = realloc(script_path, new_size_in_chars * sizeof(wchar_t));
-  if (!script_path)
+
+  size_t path_len = wcslen(script_path);
+  if (path_len < WLEN(L".exe") || _wcsicmp(script_path + path_len - WLEN(L".exe"), L".exe") != 0)
     abort();
-  wcscat_s(script_path, new_size_in_chars, L".py");
-  if (PathFileExistsW(script_path)) {
+  // Strip .exe
+  path_len -= WLEN(L".exe");
+  // Append .py (no need to realloc since ".py" is shorter than ".exe")
+  wcscpy(script_path + path_len, L".py");
+  path_len += WLEN(L".py");
+
+  if (path_exists(script_path)) {
     return script_path;
   }
 
   // Python file not found alongside launcher; try under tools
   // C:\path\to\emcc.py` => C:\path\to\tools\emcc.py`
-  wchar_t* script_path_copy = wcsdup(script_path);
-  wchar_t* basename = PathFindFileNameW(script_path_copy);
-  // We need to add 6 more chars for 'tools\'.
-  new_size_in_chars += 6;
-  wchar_t* script_path_tools = malloc(new_size_in_chars * sizeof(wchar_t));
-  wcscpy(script_path_tools, script_path);
-  PathRemoveFileSpecW(script_path_tools);
-  PathCombineW(script_path_tools, script_path_tools, L"tools");
-  PathCombineW(script_path_tools, script_path_tools, basename);
+  size_t dir_len = 0;
+  for (size_t i = path_len; i > 0; i--) {
+    if (script_path[i - 1] == L'\\') {
+      dir_len = i;
+      break;
+    }
+  }
+  size_t tools_path_size = path_len + WLEN(L"tools\\") + 1;
+  wchar_t* script_path_tools = malloc(tools_path_size * sizeof(wchar_t));
+  swprintf(script_path_tools, tools_path_size, L"%.*lstools\\%ls", (int)dir_len, script_path, script_path + dir_len);
 
-  if (!PathFileExistsW(script_path_tools)) {
+  if (!path_exists(script_path_tools)) {
     fprintf(stderr, "pylauncher: target python file not found: %ls / %ls\n", script_path, script_path_tools);
     abort();
   }
-  free(script_path_copy);
   free(script_path);
 
   return script_path_tools;
 }
 
-int main(int argc, char* argv[]) {
+int main() {
   // Setting EMCC_LAUNCHER_DEBUG enabled debug output for the launcher itself.
   launcher_debug = GetEnvironmentVariableW(L"EMCC_LAUNCHER_DEBUG", NULL, 0);
 
   dbg("pylauncher: main\n");
 
-  const wchar_t* ccache = NULL;
+  const wchar_t* ccache_prefix = L"";
   DWORD env_len = GetEnvironmentVariableW(L"_EMCC_CCACHE", NULL, 0);
   if (env_len) {
     dbg("pylauncher: running via ccache.exe\n");
-    ccache = L"ccache.exe";
+    ccache_prefix = L"ccache.exe ";
     SetEnvironmentVariableW(L"_EMCC_CCACHE", NULL);
   }
 
   const wchar_t* application_name = get_python_executable();
-  const wchar_t* launcher_path_w = get_module_path();
-  const wchar_t* script_path_w = get_script_path(launcher_path_w);
-  size_t command_line_len = wcslen(application_name) + wcslen(script_path_w) + 9;
-  if (ccache) {
-    command_line_len += wcslen(ccache) + 1;
-  }
+  wchar_t* script_path_w = get_script_path();
+  size_t command_line_len = wcslen(ccache_prefix) + wcslen(application_name) + wcslen(script_path_w) + 9;
   wchar_t* command_line = malloc(sizeof(wchar_t) * command_line_len);
-  if (ccache) {
-    swprintf(command_line, command_line_len, L"%ls \"%ls\" -E \"%ls\"", ccache, application_name, script_path_w);
-  } else {
-    swprintf(command_line, command_line_len, L"\"%ls\" -E \"%ls\"", application_name, script_path_w);
-  }
+  swprintf(command_line, command_line_len, L"%ls\"%ls\" -E \"%ls\"", ccache_prefix, application_name, script_path_w);
+  free(script_path_w);
 
   // -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
   // of cpython used in cross compilation via setup.py.
@@ -207,7 +213,7 @@ int main(int argc, char* argv[]) {
 
   dbg("pylauncher: running: %ls\n", command_line);
   if (!CreateProcessW(NULL, command_line, NULL, NULL, FALSE, 0, NULL, NULL, &si, &pi)) {
-    fprintf(stderr, "pylauncher: CreateProcess failed (%d): %ls\n", GetLastError(), command_line);
+    fprintf(stderr, "pylauncher: CreateProcess failed (%lu): %ls\n", GetLastError(), command_line);
     abort();
   }
   WaitForSingleObject(pi.hProcess, INFINITE);

@@ -5,7 +5,6 @@
 #define SYS_sync		 __syscall_sync
 #define SYS_rmdir		 __syscall_rmdir
 #define SYS_dup		 __syscall_dup
-#define SYS_pipe		 __syscall_pipe
 #define SYS_acct		 __syscall_acct
 #define SYS_ioctl		 __syscall_ioctl
 #define SYS_setpgid		 __syscall_setpgid

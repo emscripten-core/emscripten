@@ -344,6 +344,11 @@ def get_binaryen_passes(options):
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if settings.SAFE_HEAP:
     passes += ['--safe-heap']
+  if settings.EMULATE_FUNCTION_POINTER_CASTS:
+    # fpcast-emu must run before -Ox so that directize (inside -Ox) sees
+    # the rewritten table entries with matching types. It must also run
+    # before asyncify so the byn$fpcast-emu thunks get instrumented.
+    passes += ['--fpcast-emu']
   if optimizing:
     # wasm-emscripten-finalize will strip the features section for us
     # automatically, but if we did not modify the wasm then we didn't run it,
@@ -372,11 +377,6 @@ def get_binaryen_passes(options):
       # legalize it again now, as the instrumentation may need it
       passes += ['--legalize-js-interface']
       passes += building.js_legalization_pass_flags()
-  if settings.EMULATE_FUNCTION_POINTER_CASTS:
-    # note that this pass must run before asyncify, as if it runs afterwards we only
-    # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
-    # be able to further process them.
-    passes += ['--fpcast-emu']
   if settings.ASYNCIFY == 1:
     passes += ['--asyncify']
     if settings.MAIN_MODULE:
@@ -1148,7 +1148,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     diagnostics.warning('unused-command-line-argument', '--shell-file ignored when not generating html output')
 
   if settings.STRICT:
-    if not settings.MODULARIZE:
+    if not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
     default_setting('DEFAULT_TO_CXX', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
@@ -1164,7 +1164,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if prop not in settings.ALL_INCOMING_MODULE_JS_API:
       diagnostics.warning('unused-command-line-argument', f'invalid entry in INCOMING_MODULE_JS_API: {prop}')
 
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$wasmMemory')
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+    '$wasmMemory',
+    '$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16',
+    '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64',
+  ]
 
   if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
@@ -1547,6 +1551,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # compiler rather then adding them all ad-hoc as internal settings
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(Feature.PROMISE_ANY)
   default_setting('WASM_BIGINT', feature_matrix.caniuse(Feature.JS_BIGINT_INTEGRATION))
+  if settings.WASM_BIGINT:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$HEAP64', '$HEAPU64']
 
   if settings.AUDIO_WORKLET:
     add_system_js_lib('libwebaudio.js')

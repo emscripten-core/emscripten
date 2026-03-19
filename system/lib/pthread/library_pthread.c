@@ -147,7 +147,6 @@ void _emscripten_init_main_thread(void) {
   // Main thread ID is always 1.  It can't be 0 because musl assumes
   // tid is always non-zero.
   __main_pthread.tid = getpid();
-  __main_pthread.locale = &libc.global_locale;
   // pthread struct prev and next should initially point to itself (see __init_tp),
   // this is used by pthread_key_delete for deleting thread-specific data.
   __main_pthread.next = __main_pthread.prev = &__main_pthread;

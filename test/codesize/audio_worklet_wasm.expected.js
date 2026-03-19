@@ -1,4 +1,4 @@
-var m = globalThis.Module || "undefined" != typeof Module ? Module : {}, p = !!globalThis.AudioWorkletGlobalScope, t = "em-ww" == globalThis.name || p, u, z, I, J, G, E, w, X, F, D, C, Y, A, Z;
+var m = globalThis.Module || "undefined" != typeof Module ? Module : {}, p = !!globalThis.AudioWorkletGlobalScope, t = "em-ww" == globalThis.name || p, u, z, J, E, G, I, w, X, F, D, C, Y, A, Z;
 
 function v(a) {
     u = a;
@@ -134,7 +134,7 @@ var K = [], L = a => {
         a = {
             latencyHint: c,
             sampleRate: G[a + 4 >> 2] || void 0,
-            M: 0 > b ? "hardware" : b || "default"
+            N: 0 > b ? "hardware" : b || "default"
         };
     } else a = void 0;
     a = new AudioContext(a);
@@ -204,7 +204,7 @@ var K = [], L = a => {
         });
         e.port.postMessage({
             _boot: 1,
-            N: ba++,
+            M: ba++,
             G: m.wasm,
             H: w,
             K: c,
@@ -246,7 +246,8 @@ function y() {
         C = a.n;
         Y = a.o;
         A = a.k;
-        t ? (Y(u.K, u.F), p || (removeEventListener("message", M), K = K.forEach(L), addEventListener("message", L))) : a.i();
+        t ? (Y(u.M, u.K, u.F), p || (removeEventListener("message", M), K = K.forEach(L), 
+        addEventListener("message", L))) : a.i();
         t || X();
     }));
 }

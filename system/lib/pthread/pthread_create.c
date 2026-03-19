@@ -182,7 +182,6 @@ int __pthread_create(pthread_t* restrict res,
   // pthread struct robust_list head should point to itself.
   new->robust_list.head = &new->robust_list.head;
 
-  new->locale = &libc.global_locale;
   if (attr._a_detach) {
     new->detach_state = DT_DETACHED;
   } else {

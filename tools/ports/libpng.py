@@ -6,8 +6,8 @@
 import os
 import shutil
 
-TAG = '1.6.39'
-HASH = '19851afffbe2ffde62d918f7e9017dec778a7ce9c60c75cdc65072f086e6cdc9d9895eb7b207535a84cb5f4ead77ebc2aa9d80025f153662903023e1f7ab9bae'
+TAG = '1.6.55'
+HASH = '45d3c4c3bd3d22dd93026e1bdff8df8133459a2903fb70be178899a55d256bab55bb5c4220d790202fce578e346c040c5c00e1f004cf5c4dcbf387a30d43e701'
 
 deps = ['zlib']
 variants = {

@@ -7,12 +7,13 @@
 
 #pragma once
 
+#include <emscripten/emscripten.h>
+
 #include <stdbool.h>
 #include <stddef.h>
-#include <stdint.h>
-#include <emscripten/emscripten.h>
-#include <stdint.h>
 #include <stddef.h>
+#include <stdint.h>
+#include <stdint.h>
 
 #define WASM_PAGE_SIZE 65536
 #define EMSCRIPTEN_PAGE_SIZE WASM_PAGE_SIZE
