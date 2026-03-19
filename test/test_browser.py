@@ -4576,8 +4576,6 @@ Module["preRun"] = () => {
     'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=2'],),
   })
   def test_pthread_locale(self, args):
-    self.cflags.append('-I' + path_from_root('system/lib/libc/musl/src/internal'))
-    self.cflags.append('-I' + path_from_root('system/lib/pthread'))
     self.btest_exit('pthread/test_pthread_locale.c', cflags=args)
 
   # Tests the Emscripten HTML5 API emscripten_set_canvas_element_size() and
