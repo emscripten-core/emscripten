@@ -566,9 +566,11 @@ public:
 
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
-  explicit val(EM_VAL handle)
-      : handle(handle), thread(pthread_self())
-  {}
+  explicit val(EM_VAL handle) :
+#ifdef _REENTRANT
+    thread(pthread_self()),
+#endif
+    handle(handle) {}
 
   // Whether this value is a uses incref/decref (true) or is a special reserved
   // value (false).
