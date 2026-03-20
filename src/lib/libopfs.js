@@ -581,7 +581,7 @@ if (WASMFS) {
           return callback(null);
         }
 
-        (async () => {
+        const promise = (async () => {
           // sort paths in ascending order so directory entries are created
           // before the files inside them
           for (const path of create.sort()) {
@@ -620,10 +620,9 @@ if (WASMFS) {
           await (new Promise((resolve, reject) => {
             OPFS.callWorker('flush', { root: mount.mountpoint }, (e) => e ? reject(e) : resolve());
           }));
-        })().then(() => callback(null)).catch((e) => {
-          console.error('reconcile error', e);
-          callback(e);
-        });
+        })();
+        promise.then(callback);
+        promise.catch(callback);
       },
       quit: () => {
         if (OPFS.worker) {
