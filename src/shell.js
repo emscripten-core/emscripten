@@ -342,6 +342,13 @@ if (ENVIRONMENT_IS_NODE) {
   var stringify = (a) => typeof a == 'object' ? utils.inspect(a) : a;
   defaultPrint = (...args) => fs.writeSync(1, args.map(stringify).join(' ') + '\n');
   defaultPrintErr = (...args) => fs.writeSync(2, args.map(stringify).join(' ') + '\n');
+#if (ASSERTIONS || RUNTIME_DEBUG || AUTODEBUG) && (PTHREADS || WASM_WORKERS)
+  // Initialize the lazy-loaded node modules for dbg() now that fs/utils are
+  // available. Declared here (before runtime_debug.js) to avoid Closure
+  // Compiler's JSC_REFERENCE_BEFORE_DECLARE warning.
+  var dbg_node_fs = fs;
+  var dbg_node_utils = utils;
+#endif
 }
 {{{ makeModuleReceiveWithVar('out', 'print',    'defaultPrint') }}}
 {{{ makeModuleReceiveWithVar('err', 'printErr', 'defaultPrintErr') }}}
