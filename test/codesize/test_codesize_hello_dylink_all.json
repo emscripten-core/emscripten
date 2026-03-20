@@ -1,7 +1,7 @@
 {
   "a.out.js": 244367,
-  "a.out.nodebug.wasm": 577323,
-  "total": 821690,
+  "a.out.nodebug.wasm": 577288,
+  "total": 821655,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -2243,7 +2243,6 @@
     "emscripten_proxy_sync",
     "emscripten_proxy_sync_with_ctx",
     "emscripten_scan_stack",
-    "emscripten_set_thread_name",
     "emscripten_stack_get_base",
     "emscripten_stack_get_current",
     "emscripten_stack_get_end",
@@ -4100,7 +4099,6 @@
     "$emscripten_proxy_async",
     "$emscripten_proxy_execute_queue",
     "$emscripten_scan_stack",
-    "$emscripten_set_thread_name",
     "$emscripten_stack_get_base",
     "$emscripten_stack_get_current",
     "$emscripten_stack_get_end",

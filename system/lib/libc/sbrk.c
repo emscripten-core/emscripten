@@ -16,11 +16,11 @@
 #include <limits.h>
 #include <stddef.h>
 #include <stdint.h>
-#ifdef __EMSCRIPTEN_SHARED_MEMORY__ // for error handling, see below
-#include <stdio.h>
-#include <stdlib.h>
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
+#include <stdlib.h> // for abort
 #endif
 
+#include <emscripten/console.h>
 #include <emscripten/heap.h>
 #include <emscripten/trace.h>
 
@@ -116,7 +116,9 @@ void *sbrk(intptr_t increment_) {
 int brk(void* ptr) {
 #ifdef __EMSCRIPTEN_SHARED_MEMORY__
   // FIXME
-  printf("brk() is not threadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
+#ifndef NDEBUG
+  emscripten_err("brk() is not threadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
+#endif
   abort();
 #else
   uintptr_t last = (uintptr_t)sbrk(0);
