@@ -8715,7 +8715,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
         js = read_file(self.output_name('test_hello_world.support'))
       else:
         js = read_file(self.output_name('test_hello_world'))
-      assert ('require(' in js) == ('node' in self.get_setting('ENVIRONMENT')), 'we should have require() calls only if node js specified'
+      # In ESM mode, we use dynamic import() instead of require() for node modules
+      if self.get_setting('WASM_ESM_INTEGRATION'):
+        has_node_imports = 'import(' in js
+      else:
+        has_node_imports = 'require(' in js
+      assert has_node_imports == ('node' in self.get_setting('ENVIRONMENT')), 'we should have node imports only if node js specified'
 
     for engine in self.js_engines:
       print(f'engine: {engine}')
