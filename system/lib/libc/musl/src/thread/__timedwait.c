@@ -59,18 +59,14 @@ int __timedwait_cp(volatile int *addr, int val,
 
 #ifdef __EMSCRIPTEN__
 	double msecsToSleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
-	int is_runtime_thread = emscripten_is_main_runtime_thread();
 
 	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
 	// by the users unless current threads cancelability is set to PTHREAD_CANCEL_DISABLE
 	// which may be either done by the user of __timedwait() function.
 	pthread_t self = pthread_self();
-	if (is_runtime_thread ||
-	    self->canceldisable != PTHREAD_CANCEL_DISABLE ||
-	    self->cancelasync) {
-		// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
-		double max_ms_slice_to_sleep = is_runtime_thread ? 1 : 100;
 
+	if (self->canceldisable != PTHREAD_CANCEL_DISABLE) {
+		double max_ms_slice_to_sleep = 100;
 		double sleepUntilTime = emscripten_get_now() + msecsToSleep;
 		do {
 			if (self->cancel) {
@@ -79,7 +75,7 @@ int __timedwait_cp(volatile int *addr, int val,
 				// __pthread_testcancel(), which won't return at all.
 				__pthread_testcancel();
 				// If __pthread_testcancel does return here it means that canceldisable
-				// must be set to PTHREAD_CANCEL_MASKED.  This appear to mean "return
+				// must be set to PTHREAD_CANCEL_MASKED.  This appears to mean "return
 				// ECANCELLED to the caller".  See pthread_cond_timedwait.c for the only
 				// use of this that I could find.
 				return ECANCELED;

@@ -49,6 +49,7 @@ static int futex_wait_main_browser_thread(volatile void* addr,
   while (1) {
 #ifdef __EMSCRIPTEN_PTHREADS__
     if (cancelable && pthread_self()->cancel) {
+      __pthread_testcancel();
       return -ETIMEDOUT;
     }
 #endif
@@ -213,7 +214,7 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
 #endif
 #ifdef __EMSCRIPTEN_PTHREADS__
     if (cancelable && ret == ATOMICS_WAIT_TIMED_OUT && self->cancel) {
-      // Break out of the loop early if we were cancelled
+      __pthread_testcancel();
       break;
     }
     // If remainder_ns is negative it means we want wait forever, and we don't
