@@ -2779,6 +2779,7 @@ The current type of b is: 9
 
   @requires_pthreads
   @also_with_wasm_workers
+  @no_sanitize('https://github.com/emscripten-core/emscripten/issues/26502')
   def test_emscripten_lock_busyspin_waitinf(self):
     self.do_runf('wasm_worker/lock_busyspin_waitinf_acquire.c', 'done\n', cflags=['-pthread'])
 
