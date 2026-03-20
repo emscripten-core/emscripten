@@ -767,6 +767,7 @@ var DISABLE_EXCEPTION_THROWING = false;
 //
 // See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 // example usage.
+// [deprecated]
 var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 
 // When this is enabled, exceptions will contain stack traces and uncaught

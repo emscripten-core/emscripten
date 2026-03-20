@@ -1499,9 +1499,8 @@ int main(int argc, char **argv) {
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   @with_all_eh_sjlj
-  def test_EXPORT_EXCEPTION_HANDLING_HELPERS(self):
-    self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
-
+  def test_getExceptionMessage(self):
+    self.set_setting('ASSERTIONS')
     self.maybe_closure()
     create_file('main.cpp', '''
       #include <emscripten.h>
@@ -1700,13 +1699,7 @@ int main() {
     self.assert_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_cflags(), expected)
     clear_all_relevant_settings(self)
 
-    # EXPORT_EXCEPTION_HANDLING_HELPERS and EXCEPTION_STACK_TRACES requires
-    # either Emscripten EH or Wasm EH
-    self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
-    expected = 'error: EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions'
-    self.assert_fail([EMCC, test_file('hello_world.cpp')] + self.get_cflags(), expected)
-    clear_all_relevant_settings(self)
-
+    # EXCEPTION_STACK_TRACES requires either Emscripten EH or Wasm EH
     self.set_setting('EXCEPTION_STACK_TRACES')
     expected = 'error: EXCEPTION_STACK_TRACES requires either of -fexceptions or -fwasm-exceptions'
     self.assert_fail([EMCC, test_file('hello_world.cpp')] + self.get_cflags(), expected)

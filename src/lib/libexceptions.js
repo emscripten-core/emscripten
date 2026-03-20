@@ -91,6 +91,10 @@ var LibraryExceptions = {
     // 'new CppException', whose constructor calls getExceptionMessage. We can't
     // track the dependency there, so we track it here.
     '$getExceptionMessage',
+    // These functions can be necessary to prevent memory leaks from the JS
+    // side. Even though they are not used it here directly, we export them when
+    // 'throw' is used here.
+    '$decrementExceptionRefcount', '$incrementExceptionRefcount',
 #endif
   ],
   __cxa_throw: (ptr, type, destructor) => {
@@ -314,7 +318,12 @@ var LibraryExceptions = {
   // https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/Exception
   // In release builds, this function is not needed and the native
   // _Unwind_RaiseException in libunwind is used instead.
-  __throw_exception_with_stack_trace__deps: ['$getCppExceptionTag', '$getExceptionMessage'],
+  __throw_exception_with_stack_trace__deps: [
+    '$getCppExceptionTag', '$getExceptionMessage',
+    // These functions can be necessary to prevent memory leaks from the JS
+    // side. Even though they are not used it here directly, we export them
+    // when 'throw' is used here.
+    '$decrementExceptionRefcount', '$incrementExceptionRefcount'],
   __throw_exception_with_stack_trace: (ex) => {
     var e = new WebAssembly.Exception(getCppExceptionTag(), [ex], {traceStack: true});
     e.message = getExceptionMessage(e);

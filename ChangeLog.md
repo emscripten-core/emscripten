@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 5.0.4 (in development)
 ----------------------
+- `EXPORT_EXCEPTION_HANDLING_HELPERS` is deprecated and setting it will not do
+  anything. `getExceptionMessage` is exported anyway when `ASSERTIONS` or
+  `EXCEPTION_STACK_TRACES` is set, which are set by default at `-O0`.
 - The deprecated `EMSCRIPTEN` macro is now defined in `emscripten.h` rather than
   on the command line (`__EMSCRIPTEN__`, which is built into LLVM, should be
   used instead). (#26417)

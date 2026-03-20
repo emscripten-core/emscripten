@@ -114,6 +114,7 @@ DEPRECATED_SETTINGS = {
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
     'LINKABLE': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)',
+    'EXPORT_EXCEPTION_HANDLING_HELPERS': 'getExceptionMessage is automatically exported when ASSERTIONS or EXCEPTION_STACK_TRACES is 1 and throw is used',
 }
 
 # Settings that don't need to be externalized when serializing to json because they

@@ -144,9 +144,9 @@ message part is empty. If the thrown value is an instance of ``MyException``
 that is a subclass of ``std::exception`` and its ``what`` message is ``My
 exception thrown``, this code will print ``MyException,My exception thrown``.
 
-To use this function, you need to pass ``-sEXPORT_EXCEPTION_HANDLING_HELPERS``
-to the options. You need to enable either of Emscripten EH or Wasm EH to use
-this option.
+``getExceptionMessage`` is available when exceptions are used and either
+``-sASSERTIONS`` or ``-sEXCEPTION_STACK_TRACES`` is set, which are by default
+true at ``-O0``.
 
 If the stack pointer has been moved due to stack allocations within the Wasm
 function before an exception is thrown, you can use ``stackSave()`` and
@@ -156,9 +156,8 @@ leaked.
 .. note:: If you catch a Wasm exception and do not rethrow it, you need to free
    the storage associated with the exception in JS using
    ``decrementExceptionRefcount`` method because the exception catching code in
-   Wasm does not have a chance to free it. See
-   ``test_EXPORT_EXCEPTION_HANDLING_HELPERS`` in test/test_core.py for an
-   example usage.
+   Wasm does not have a chance to free it. See ``test_getExceptionMessage`` in
+   ``test/test_core.py`` for an example usage.
 
 
 Using Exceptions and setjmp-longjmp Together

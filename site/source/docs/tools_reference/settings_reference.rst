@@ -1129,6 +1129,8 @@ manipulate the refcount manually to avoid memory leaks.
 See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 example usage.
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _exception_stack_traces:
@@ -3417,6 +3419,7 @@ these settings please open a bug (or reply to one of the existing bugs).
  - ``LEGALIZE_JS_FFI``: to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
+ - ``EXPORT_EXCEPTION_HANDLING_HELPERS``: getExceptionMessage is automatically exported when ASSERTIONS or EXCEPTION_STACK_TRACES is 1 and throw is used
 
 .. _legacy-settings:
 

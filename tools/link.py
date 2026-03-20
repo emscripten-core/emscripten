@@ -1797,20 +1797,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
       exit_with_error('EXCEPTION_STACK_TRACES requires either of -fexceptions or -fwasm-exceptions')
 
-  # Make `getExceptionMessage` and other necessary functions available for use.
-  if settings.EXPORT_EXCEPTION_HANDLING_HELPERS:
-    # If the user explicitly gave EXPORT_EXCEPTION_HANDLING_HELPERS=1 without
-    # enabling EH, errors out.
-    if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
-      exit_with_error('EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions')
-    # We also export refcount incrementing and decrementing functions because if
-    # you catch an exception from JS, you may need to manipulate the refcount
-    # manually to avoid memory leaks.  See test_EXPORT_EXCEPTION_HANDLING_HELPERS
-    # in test/test_core.py for an example usage.
-    settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', 'incrementExceptionRefcount', 'decrementExceptionRefcount']
-    if settings.WASM_EXCEPTIONS:
-      settings.REQUIRED_EXPORTS += ['__cpp_exception']
-
   if settings.SIDE_MODULE:
     # For side modules, we ignore all REQUIRED_EXPORTS that might have been added above.
     # They all come from either libc or compiler-rt.  The exception is __wasm_call_ctors
