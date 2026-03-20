@@ -904,25 +904,6 @@ var LibraryPThread = {
     return spawnThread(threadParams);
   },
 
-#if (ASSERTIONS || !ALLOW_BLOCKING_ON_MAIN_THREAD) && !MINIMAL_RUNTIME
-  emscripten_check_blocking_allowed__deps: ['$warnOnce'],
-#endif
-  emscripten_check_blocking_allowed: () => {
-#if (ASSERTIONS || !ALLOW_BLOCKING_ON_MAIN_THREAD) && !MINIMAL_RUNTIME
-#if ENVIRONMENT_MAY_BE_NODE
-    if (ENVIRONMENT_IS_NODE) return;
-#endif
-
-    if (ENVIRONMENT_IS_WORKER) return; // Blocking in a worker/pthread is fine.
-
-    warnOnce('Blocking on the main thread is very dangerous, see https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
-#if !ALLOW_BLOCKING_ON_MAIN_THREAD
-    abort('Blocking on the main thread is not allowed by default. See https://emscripten.org/docs/porting/pthreads.html#blocking-on-the-main-browser-thread');
-#endif
-
-#endif
-  },
-
   // This function is called by a pthread to signal that exit() was called and
   // that the entire process should exit.
   // This function is always called from a pthread, but is executed on the

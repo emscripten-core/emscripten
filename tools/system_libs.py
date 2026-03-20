@@ -1188,19 +1188,6 @@ class libc(MuslInternalLibrary,
 
     ignore += LIBC_SOCKETS
     if self.is_mt:
-      ignore += [
-        'clone.c',
-        'pthread_create.c',
-        'pthread_kill.c', 'pthread_sigmask.c',
-        '__set_thread_area.c', 'synccall.c',
-        '__syscall_cp.c', '__tls_get_addr.c',
-        '__unmapself.c',
-        # Empty files, simply ignore them.
-        'syscall_cp.c', 'tls.c',
-        # TODO: Support these. See #12216.
-        'pthread_setname_np.c',
-        'pthread_getname_np.c',
-      ]
       libc_files += files_in_path(
         path='system/lib/pthread',
         filenames=[
@@ -1215,80 +1202,89 @@ class libc(MuslInternalLibrary,
           'emscripten_yield.c',
           'thread_profiler.c',
         ])
+    elif self.is_ww:
+      ignore += ['pthread_self.c']
+      libc_files += files_in_path(
+        path='system/lib/libc',
+        filenames=['emscripten_yield_stub.c'])
     else:
       ignore += ['thread']
       libc_files += files_in_path(
         path='system/lib/libc',
         filenames=['emscripten_yield_stub.c'])
 
-      if self.is_ww:
-        libc_files += files_in_path(
-          path='system/lib/libc/musl/src/thread',
-          filenames=[
-            '__lock.c',
-            '__wait.c',
-            'lock_ptc.c',
-          ])
-      else:
-        # Include stub version of thread functions when building
-        # in single theaded mode.
-        # Note: We do *not* include these stubs in the Wasm Workers build since it would
-        # never be safe to call these from a Wasm Worker.
-        libc_files += files_in_path(
-          path='system/lib/pthread',
-          filenames=[
-            'library_pthread_stub.c',
-            'pthread_self_stub.c',
-            'proxying_stub.c',
-          ])
-        libc_files += files_in_path(
-          path='system/lib/libc/musl/src/thread',
-          filenames=[
-            'pthread_self.c',
-            'pthread_cleanup_push.c',
-            'pthread_attr_init.c',
-            'pthread_attr_destroy.c',
-            'pthread_attr_get.c',
-            'pthread_attr_setdetachstate.c',
-            'pthread_attr_setguardsize.c',
-            'pthread_attr_setinheritsched.c',
-            'pthread_attr_setschedparam.c',
-            'pthread_attr_setschedpolicy.c',
-            'pthread_attr_setscope.c',
-            'pthread_attr_setstack.c',
-            'pthread_attr_setstacksize.c',
-            'pthread_getattr_np.c',
-            'pthread_getconcurrency.c',
-            'pthread_getcpuclockid.c',
-            'pthread_getschedparam.c',
-            'pthread_setschedprio.c',
-            'pthread_setconcurrency.c',
-            'default_attr.c',
-            # C11 thread library functions
-            'call_once.c',
-            'tss_create.c',
-            'tss_delete.c',
-            'tss_set.c',
-            'cnd_broadcast.c',
-            'cnd_destroy.c',
-            'cnd_init.c',
-            'cnd_signal.c',
-            'cnd_timedwait.c',
-            'cnd_wait.c',
-            'mtx_destroy.c',
-            'mtx_init.c',
-            'mtx_lock.c',
-            'mtx_timedlock.c',
-            'mtx_trylock.c',
-            'mtx_unlock.c',
-            'thrd_create.c',
-            'thrd_exit.c',
-            'thrd_join.c',
-            'thrd_sleep.c',
-            'thrd_yield.c',
-          ])
+      # Include stub version of thread functions when building
+      # in single theaded mode.
+      # Note: We do *not* include these stubs in the Wasm Workers build since it would
+      # never be safe to call these from a Wasm Worker.
+      libc_files += files_in_path(
+        path='system/lib/pthread',
+        filenames=[
+          'library_pthread_stub.c',
+          'pthread_self_stub.c',
+          'proxying_stub.c',
+        ])
+      libc_files += files_in_path(
+        path='system/lib/libc/musl/src/thread',
+        filenames=[
+          'pthread_self.c',
+          'pthread_cleanup_push.c',
+          'pthread_attr_init.c',
+          'pthread_attr_destroy.c',
+          'pthread_attr_get.c',
+          'pthread_attr_setdetachstate.c',
+          'pthread_attr_setguardsize.c',
+          'pthread_attr_setinheritsched.c',
+          'pthread_attr_setschedparam.c',
+          'pthread_attr_setschedpolicy.c',
+          'pthread_attr_setscope.c',
+          'pthread_attr_setstack.c',
+          'pthread_attr_setstacksize.c',
+          'pthread_getattr_np.c',
+          'pthread_getconcurrency.c',
+          'pthread_getcpuclockid.c',
+          'pthread_getschedparam.c',
+          'pthread_setschedprio.c',
+          'pthread_setconcurrency.c',
+          'default_attr.c',
+          # C11 thread library functions
+          'call_once.c',
+          'tss_create.c',
+          'tss_delete.c',
+          'tss_set.c',
+          'cnd_broadcast.c',
+          'cnd_destroy.c',
+          'cnd_init.c',
+          'cnd_signal.c',
+          'cnd_timedwait.c',
+          'cnd_wait.c',
+          'mtx_destroy.c',
+          'mtx_init.c',
+          'mtx_lock.c',
+          'mtx_timedlock.c',
+          'mtx_trylock.c',
+          'mtx_unlock.c',
+          'thrd_create.c',
+          'thrd_exit.c',
+          'thrd_join.c',
+          'thrd_sleep.c',
+          'thrd_yield.c',
+        ])
 
     if self.is_mt or self.is_ww:
+      ignore += [
+        'clone.c',
+        'pthread_create.c',
+        'pthread_kill.c', 'pthread_sigmask.c',
+        '__set_thread_area.c', 'synccall.c',
+        '__syscall_cp.c', '__tls_get_addr.c',
+        '__unmapself.c',
+        # Empty files, simply ignore them.
+        'syscall_cp.c', 'tls.c',
+        # TODO: Support these. See #12216.
+        'pthread_setname_np.c',
+        'pthread_getname_np.c',
+      ]
       # Low level thread primitives available in both pthreads and wasm workers builds.
       libc_files += files_in_path(
         path='system/lib/pthread',
@@ -1303,6 +1299,7 @@ class libc(MuslInternalLibrary,
     ignore += ['pow_small.c', 'log_small.c', 'log2_small.c']
 
     ignore = set(ignore)
+    print(ignore)
     for dirpath, dirnames, filenames in os.walk(musl_srcdir):
       # Don't recurse into ignored directories
       remove = [d for d in dirnames if d in ignore]
@@ -1616,7 +1613,6 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
-      '-D_LIBCXXABI_USE_FUTEX',
       '-D_LIBCPP_BUILDING_LIBRARY',
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',

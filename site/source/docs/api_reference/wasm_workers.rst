@@ -89,13 +89,15 @@ Pthreads and Wasm Workers share several similarities:
  * Both can use emscripten_futex_wait/wake API,
  * Both can use GCC __sync_* Atomics API,
  * Both can use C11 and C++11 Atomics APIs,
+ * Both can use pthread_mutex/pthread_cond/pthread_rwlock/pthread_once APIs.
  * Both types of threads have a local stack.
  * Both types of threads have thread-local storage (TLS) support via ``thread_local`` (C++11),
    ``_Thread_local`` (C11) and ``__thread`` (GNU11) keywords.
  * Both types of threads support TLS via explicitly linked in Wasm globals (see
    ``test/wasm_worker/wasm_worker_tls_wasm_assembly.c/.S`` for example code)
  * Both types of threads have a concept of a thread ID (``pthread_self()`` for pthreads,
-   ``emscripten_wasm_worker_self_id()`` for Wasm Workers)
+   ``emscripten_wasm_worker_self_id()`` for Wasm Workers).  `gettid()` works in
+   both contexts so is more portable.
  * Both types of threads can perform an event-based and an infinite loop programming model.
  * Both can use ``EM_ASM`` and ``EM_JS`` API to execute JS code on the calling thread.
  * Both can call out to JS library functions (linked in with ``--js-library`` directive) to

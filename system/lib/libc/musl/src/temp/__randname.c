@@ -11,7 +11,7 @@ char *__randname(char *template)
 	unsigned long r;
 
 	__clock_gettime(CLOCK_REALTIME, &ts);
-	r = ts.tv_sec + ts.tv_nsec + __pthread_self()->tid * 65537UL;
+	r = ts.tv_sec + ts.tv_nsec + CURRENT_THREAD_ID * 65537UL;
 
 	/* XXX EMSCRIPTEN: avoid repeating the same result when __clock_gettime does not change between calls. */
 	static unsigned int counter = 0;

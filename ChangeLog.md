@@ -30,6 +30,8 @@ See docs/process.md for more on how version tagging works.
   This is an extension of #26336 which removed many of them.  These APIs were
   not previously functional under Wasm Workers, but if there is strong use case
   it may be possible to enable them in future. (#26487)
+- Pthread mutex/cond/rwlock primitives now work from with Wasm Workers (and
+  between Wasm Workers and pthreads). (#26510)
 
 5.0.3 - 03/14/26
 ----------------
