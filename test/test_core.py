@@ -429,7 +429,6 @@ def with_both_text_decoder(func):
 
 no_safe_heap = make_no_decorator_for_setting('SAFE_HEAP')
 no_strict = make_no_decorator_for_setting('STRICT')
-no_strict_js = make_no_decorator_for_setting('STRICT_JS')
 no_big_endian = make_no_decorator_for_setting('SUPPORT_BIG_ENDIAN')
 no_omit_asm_module_exports = make_no_decorator_for_setting('DECLARE_ASM_MODULE_EXPORTS=0')
 no_js_math = make_no_decorator_for_setting('JS_MATH')
@@ -9735,7 +9734,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertFileContents(test_file('core/test_esm_integration.expected.mjs'), read_file('hello_world.mjs'))
 
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
-  @no_strict_js('EXPORT_ES6 is not compatible with STRICT_JS')
   def test_modularize_instance_hello(self):
     self.do_core_test('test_hello_world.c', cflags=['-sMODULARIZE=instance', '-Wno-experimental'])
 
@@ -9744,7 +9742,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'pthreads': (['-pthread'],),
   })
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
-  @no_strict_js('EXPORT_ES6 is not compatible with STRICT_JS')
   def test_modularize_instance(self, args):
     if args:
       self.require_pthreads()
@@ -9780,7 +9777,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_4gb('EMBIND_AOT can\'t lower 4gb')
-  @no_strict_js('EXPORT_ES6 is not compatible with STRICT_JS')
   def test_modularize_instance_embind(self):
     self.run_process([EMXX, test_file('modularize_instance_embind.cpp'),
                       '-sMODULARIZE=instance',
@@ -9961,7 +9957,6 @@ instance = make_run('instance', cflags=['-Wno-experimental'], settings={'MODULAR
 
 # Add DEFAULT_TO_CXX=0
 strict = make_run('strict', cflags=[], settings={'STRICT': 1})
-strict_js = make_run('strict_js', cflags=[], settings={'STRICT_JS': 1})
 
 ubsan = make_run('ubsan', cflags=['-fsanitize=undefined', '--profiling'])
 lsan = make_run('lsan', cflags=['-fsanitize=leak', '--profiling'], settings={'ALLOW_MEMORY_GROWTH': 1})

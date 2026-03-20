@@ -1160,7 +1160,6 @@ var LINKABLE = false;
 // codebase builds nicely in forward compatible manner.
 // Changes enabled by this:
 //
-//   - STRICT_JS is enabled.
 //   - IGNORE_MISSING_MAIN is disabled.
 //   - AUTO_JS_LIBRARIES is disabled.
 //   - AUTO_NATIVE_LIBRARIES is disabled.
@@ -1179,7 +1178,7 @@ var IGNORE_MISSING_MAIN = true;
 
 // Add ``"use strict;"`` to generated JS
 // [link]
-var STRICT_JS = false;
+var STRICT_JS = true;
 
 // If set to 1, we will warn on any undefined symbols that are not resolved by
 // the ``library_*.js`` files. Note that it is common in large projects to not
