@@ -6,8 +6,10 @@
 
 .section .globals,"",@
 
+#ifndef __EMSCRIPTEN_WASM_WORKERS__
 .globaltype thread_ptr, PTR
 thread_ptr:
+#endif
 
 .globaltype is_main_thread, i32
 is_main_thread:
@@ -28,8 +30,10 @@ done_init:
 .globl __set_thread_state
 __set_thread_state:
   .functype __set_thread_state (PTR, i32, i32, i32) -> ()
+#ifndef __EMSCRIPTEN_WASM_WORKERS__
   local.get 0
   global.set thread_ptr
+#endif
   local.get 1
   global.set is_main_thread
   local.get 2
@@ -56,14 +60,13 @@ lazy_init_thread_state:
   end_function
 #endif
 
+#ifndef __EMSCRIPTEN_WASM_WORKERS__
 .globl __get_tp
 __get_tp:
   .functype __get_tp () -> (PTR)
-#if __EMSCRIPTEN_WASM_WORKERS__
-  call lazy_init_thread_state
-#endif
   global.get thread_ptr
   end_function
+#endif
 
 # Semantically the same as testing "!ENVIRONMENT_IS_PTHREAD" in JS
 .globl emscripten_is_main_runtime_thread
