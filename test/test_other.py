@@ -2560,6 +2560,11 @@ F1 -> ''
                  args=['screenshot.jpg'])
 
   @requires_network
+  def test_side_module_with_ports(self):
+    # Verify that ports can be used in side modules
+    self.emcc(test_file('jpeg_test.c'), args=['-sUSE_LIBJPEG', '-sSIDE_MODULE', '-ljpeg'])
+
+  @requires_network
   @also_with_wasm64
   def test_bullet(self):
     self.do_runf('test_bullet_hello_world.cpp', 'BULLET RUNNING', cflags=['-sUSE_BULLET'])
