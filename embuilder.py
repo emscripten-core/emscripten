@@ -246,7 +246,6 @@ def main():
 
   if args.wasm64:
     settings.MEMORY64 = 1
-  
   if args.support_longjmp:
     settings.SUPPORT_LONGJMP = args.support_longjmp
 
