@@ -1457,6 +1457,10 @@ int main(int argc, char **argv) {
     self.do_core_test('test_exceptions_rethrow.cpp')
 
   @with_all_eh_sjlj
+  def test_exceptions_rethrow_primary_uncaught(self):
+    self.do_core_test('test_exceptions_rethrow_primary_uncaught.cpp')
+
+  @with_all_eh_sjlj
   def test_exceptions_uncaught_count(self):
     self.do_core_test('test_exceptions_uncaught_count.cpp')
 

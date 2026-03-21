@@ -226,6 +226,7 @@ var LibraryExceptions = {
     var info = new ExceptionInfo(ptr);
     info.set_rethrown(true);
     info.set_caught(false);
+    uncaughtExceptionCount++;
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
     exceptionLast = new CppException(ptr);
