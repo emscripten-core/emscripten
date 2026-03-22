@@ -284,7 +284,7 @@ var LibraryExceptions = {
   },
 
 #endif
-#if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
+#if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_THROWING
   $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$stackSave', '$stackRestore', '$stackAlloc'],
   $getExceptionMessageCommon: (ptr) => {
     var sp = stackSave();
@@ -369,7 +369,7 @@ var LibraryExceptions = {
     return getExceptionMessageCommon(ptr);
   },
 
-#elif !DISABLE_EXCEPTION_CATCHING
+#elif !DISABLE_EXCEPTION_THROWING
   // When EXCEPTION_STACK_TRACES is set, the exception is an instance of
   // CppException, whereas EXCEPTION_STACK_TRACES is unset it is a raw pointer.
   $exnToPtr: (exn) => {
