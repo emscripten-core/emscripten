@@ -2561,8 +2561,44 @@ F1 -> ''
 
   @requires_network
   def test_side_module_with_ports(self):
-    # Verify that ports can be used in side modules
-    self.emcc(test_file('jpeg_test.c'), args=['-sUSE_LIBJPEG', '-sSIDE_MODULE', '-ljpeg'])
+    # Verify that ports can be used in side modules, and that the resulting
+    # side module can be used from a main module.
+    create_file('side.c', r'''
+      #include <stdio.h>
+      #include <jpeglib.h>
+
+      void jpeg_side_test(void) {
+        struct jpeg_decompress_struct cinfo;
+        struct jpeg_error_mgr jerr;
+
+        cinfo.err = jpeg_std_error(&jerr);
+        jpeg_create_decompress(&cinfo);
+        jpeg_destroy_decompress(&cinfo);
+        puts("jpeg side ok");
+      }
+    ''')
+
+    create_file('main.c', r'''
+      #include <stdio.h>
+
+      void jpeg_side_test(void);
+
+      int main() {
+        jpeg_side_test();
+        puts("main ok");
+        return 0;
+      }
+    ''')
+
+    self.emcc('side.c', args=['-sSIDE_MODULE', '-sUSE_LIBJPEG', '-ljpeg', '-o', 'libjpeg_side.so'])
+    self.assertExists('libjpeg_side.so')
+
+    # Linking the side module into the main module should cause it to be loaded
+    # automatically at runtime.
+    self.emcc('main.c', args=['-sMAIN_MODULE=2', 'libjpeg_side.so'])
+    output = self.run_js('a.out.js')
+    self.assertContained('jpeg side ok\n', output)
+    self.assertContained('main ok\n', output)
 
   @requires_network
   @also_with_wasm64
