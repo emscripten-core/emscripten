@@ -11,6 +11,8 @@
 #include <errno.h>
 #include <emscripten.h>
 
+EM_JS_DEPS(deps, "$nodeFs");
+
 int main() {
   FILE *file;
   int res;
@@ -18,8 +20,7 @@ int main() {
 
   // write something locally with node
   EM_ASM(
-    var fs = require('fs');
-    fs.writeFileSync('foobar.txt', 'yeehaw');
+    nodeFs.writeFileSync('foobar.txt', 'yeehaw');
   );
 
   // read and validate the contents of the file
@@ -42,8 +43,7 @@ int main() {
 
   // validate the changes were persisted to the underlying fs
   EM_ASM(
-    var fs = require('fs');
-    var contents = fs.readFileSync('foobar.txt', { encoding: 'utf8' });
+    var contents = nodeFs.readFileSync('foobar.txt', { encoding: 'utf8' });
     assert(contents === 'cheez');
   );
 

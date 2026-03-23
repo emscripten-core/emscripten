@@ -664,6 +664,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.get_setting('WASM_ESM_INTEGRATION'):
       self.skipTest('wasm2js is not compatible with WASM_ESM_INTEGRATION')
 
+  def is_esm(self):
+    return self.get_setting('EXPORT_ES6') or self.get_setting('WASM_ESM_INTEGRATION') or self.get_setting('MODULARIZE') == 'instance'
+
   def setup_nodefs_test(self):
     self.require_node()
     if self.get_setting('WASMFS'):

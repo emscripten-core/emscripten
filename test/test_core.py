@@ -5863,7 +5863,7 @@ got: 10
 
   @requires_node
   def test_fs_nodefs_home(self):
-    self.do_runf('fs/test_nodefs_home.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-lnodefs.js'])
+    self.do_runf('fs/test_nodefs_home.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-lnodefs.js', '-lnodepath.js'])
 
   @requires_node
   def test_fs_nodefs_nofollow(self):
@@ -8715,8 +8715,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
         js = read_file(self.output_name('test_hello_world.support'))
       else:
         js = read_file(self.output_name('test_hello_world'))
-      # In ESM mode, we use dynamic import() instead of require() for node modules
-      if self.get_setting('WASM_ESM_INTEGRATION'):
+      # In ESM mode we use dynamic import() instead of require() for node modules.
+      if self.is_esm():
         has_node_imports = 'import(' in js
       else:
         has_node_imports = 'require(' in js
