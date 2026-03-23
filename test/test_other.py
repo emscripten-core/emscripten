@@ -15177,9 +15177,11 @@ addToLibrary({
   })
   def test_locate_file_abspath_esm(self, args):
     # Verify that `scriptDirectory` is an absolute path when `EXPORT_ES6`
+    # Use dynamic import for path module since ESM output supports top-level await
     create_file('pre.js', '''
+      var nodePath = await import('node:path');
       Module['locateFile'] = (fileName, scriptDirectory) => {
-        assert(require('path')['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+        assert(nodePath.isAbsolute(scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
         return scriptDirectory + fileName;
       };
       ''')
