@@ -9255,6 +9255,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_stdio_locking.c', cflags=['-sPTHREAD_POOL_SIZE=2'])
 
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  @no_sanitize('sanitizers do not support WASM_WORKERS')
   def test_stdio_locking_ww(self):
     # Note: do not combine with test_stdio_locking above because we want to test standalone
     # wasm workers here and `@requires_pthreads` would prevent that.
