@@ -2561,6 +2561,8 @@ F1 -> ''
 
   @requires_network
   def test_side_module_with_ports(self):
+    if config.FROZEN_CACHE:
+      self.skipTest("test doesn't work with frozen cache")
     # Verify that ports can be used in side modules, and that the resulting
     # side module can be used from a main module.
     create_file('side.c', r'''
