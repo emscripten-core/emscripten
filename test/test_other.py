@@ -13747,12 +13747,12 @@ int main() {
     self.do_runf('other/test_crash_icase.c', cflags=['-sFORCE_FILESYSTEM', '-sCASE_INSENSITIVE_FS'])
 
   @crossplatform
-  def test_overwrite_icase(self):
+  def test_collision_icase(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.set_setting('INCLUDE_FULL_LIBRARY', 1)
     self.set_setting('CASE_INSENSITIVE_FS', 1)
-    self.add_pre_run(read_file(test_file('other/test_overwrite_icase.js')))
-    self.do_runf('hello_world.c', 'file.txt: 102,111,111,50\nfile.txt collison: undefined\nerrorCode: 20')
+    self.add_pre_run(read_file(test_file('other/test_collision_icase.js')))
+    self.do_runf('hello_world.c', 'file.txt: 102,111,111\nfile.txt collison: undefined\nerrorCode: 20')
 
   @crossplatform
   @with_all_fs
