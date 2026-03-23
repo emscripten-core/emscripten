@@ -102,6 +102,7 @@
             "F_SETLKW",
             "F_GETLK",
             "S_ISVTX",
+            "O_CLOEXEC",
             "O_RDONLY",
             "O_ACCMODE",
             "F_DUPFD",

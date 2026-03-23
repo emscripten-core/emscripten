@@ -14,3 +14,5 @@ Language: JavaScript
 BasedOnStyle: LLVM
 ColumnLimit: 100
 ---
+Language: Json
+BasedOnStyle: LLVM

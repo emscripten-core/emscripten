@@ -9,24 +9,16 @@
 #include <pthread.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <locale.h>
 #include <emscripten/threading.h>
-// This is really rather naughty, we shouldn't be including
-// musl-internal headers like this.
-#define weak __attribute__(__weak__)
-#define hidden __attribute__((__visibility__("hidden")))
-#include "pthread_impl.h"
-
-#define NUM_THREADS  1
 
 locale_t do_test() {
   pthread_t thread = pthread_self();
-  locale_t loc = thread->locale;
+  locale_t loc = uselocale((locale_t)0);
   printf("  pthread_self() = %p\n", thread);
-  printf("  pthread_self()->locale = %p\n", loc);
+  printf("  current locale: %p\n", loc);
 
-  if (!loc) {
-    puts("ERROR: loc is null");
-  }
+  assert(loc);
   return loc;
 }
 

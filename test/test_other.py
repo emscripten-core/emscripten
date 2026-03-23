@@ -3379,6 +3379,10 @@ More info: https://emscripten.org
     'dyncalls': ['-sDYNCALLS=1'],
   })
   def test_embind(self, *extra_args):
+    """This test is actually a large set of smaller JS unittest.  See test/embind/embind.test.js.
+    By default all of them are run.  If you are debugging and want to run just a subset of the
+    JS tests you can use `EMBIND_TESTS=myregex` to run just the matching tests.
+    """
     if '-sMEMORY64' in extra_args:
       self.require_wasm64()
     self.cflags += [
@@ -3711,6 +3715,23 @@ More info: https://emscripten.org
   def test_emit_tsd_wasm_only(self):
     expected = 'Wasm only output is not compatible with --emit-tsd'
     self.assert_fail([EMCC, test_file('other/test_emit_tsd.c'), '--emit-tsd', 'test_emit_tsd_wasm_only.d.ts', '-o', 'out.wasm'], expected)
+
+  @requires_dev_dependency('typescript')
+  def test_emit_tsd_heap(self):
+    self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                      '--emit-tsd', 'test_emit_tsd.d.ts',
+                      '-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU8,HEAP16,HEAPU16,HEAP32,HEAPU32,HEAPF32,HEAPF64',
+                      '-Wno-experimental', '-o', 'test_emit_tsd.js'] +
+                     self.get_cflags())
+    actual = read_file('test_emit_tsd.d.ts')
+    self.assertContained("    let HEAP8: Int8Array;", actual)
+    self.assertContained("    let HEAPU8: Uint8Array;", actual)
+    self.assertContained("    let HEAP16: Int16Array;", actual)
+    self.assertContained("    let HEAPU16: Uint16Array;", actual)
+    self.assertContained("    let HEAP32: Int32Array;", actual)
+    self.assertContained("    let HEAPU32: Uint32Array;", actual)
+    self.assertContained("    let HEAPF32: Float32Array;", actual)
+    self.assertContained("    let HEAPF64: Float64Array;", actual)
 
   def test_emconfig(self):
     output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
@@ -8671,6 +8692,20 @@ int main() {
     self.set_setting('ASSERTIONS')
     self.do_runf('src.cpp', 'ERROR\n')
 
+  @with_all_eh_sjlj
+  def test_unused_eh_dce(self):
+    # Programs that don't use exceptions should not pull in libc++abi or
+    # exception formatting helpers when compiled with -fexceptions /
+    # -fwasm-exceptions. We verify this by ensuring the output Wasm binary is
+    # small.
+    create_file('main.cpp', 'int main() { return 0; }')
+    self.do_runf('main.cpp', '', cflags=['-O0'])
+
+    self.assertExists('main.wasm')
+    size = os.path.getsize('main.wasm')
+    # 3KB is a very generous upper bound for an empty program without libc++abi
+    self.assertLess(size, 3000)
+
   @requires_node
   def test_jsrun(self):
     engine = self.get_current_js_engine()
@@ -11226,17 +11261,6 @@ int main(void) {
     self.assert_fail([EMCC, '-Werror', 'src.c', '-c'], "'EMSCRIPTEN' has been marked as deprecated: use __EMSCRIPTEN__ instead")
     self.assert_fail([EMCC, '-sSTRICT', '-Werror', 'src.c', '-c'], "'EMSCRIPTEN' has been marked as deprecated: use __EMSCRIPTEN__ instead")
 
-  def test_EMSCRIPTEN_and_STRICT(self):
-    # __EMSCRIPTEN__ is the proper define; we support EMSCRIPTEN for legacy
-    # code, unless STRICT is enabled.
-    create_file('src.c', '''
-      #ifndef EMSCRIPTEN
-      #error "not defined"
-      #endif
-    ''')
-    self.run_process([EMCC, 'src.c', '-c'])
-    self.expect_fail([EMCC, 'src.c', '-sSTRICT', '-c'])
-
   def test_exception_settings(self):
     for catching, throwing, opts in itertools.product([0, 1], repeat=3):
       cmd = [EMXX, test_file('other/exceptions_modes_symbols_defined.cpp'), '-sDISABLE_EXCEPTION_THROWING=%d' % (1 - throwing), '-sDISABLE_EXCEPTION_CATCHING=%d' % (1 - catching), '-O%d' % opts]
@@ -12182,6 +12206,11 @@ exec "$@"
     # automatically sets DISABLE_EXCEPTION_THROWING to 1, which is 0 by default,
     # because Emscripten EH and Wasm SjLj cannot be used at the same time.
     self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-sSUPPORT_LONGJMP=wasm', '-o', 'a.o'])
+    self.assertContained('try', self.get_wasm_text('a.o'))
+
+    # If -sWASM_LEGACY_EXCEPTIONS=0 is provided, it uses the standard Wasm EH.
+    self.run_process([EMCC, test_file('core/test_longjmp.c'), '-c', '-sSUPPORT_LONGJMP=wasm', '-sWASM_LEGACY_EXCEPTIONS=0', '-o', 'b.o'])
+    self.assertContained('try_table', self.get_wasm_text('b.o'))
 
   @parameterized({
     '': [[]],
@@ -12347,8 +12376,6 @@ exec "$@"
     wasm_split_run = [wasm_split, '-g',
                       '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
                       '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
-    if jspi:
-      wasm_split_run += ['--jspi', '--enable-reference-types']
     if self.get_setting('MEMORY64'):
       wasm_split_run += ['--enable-memory64']
     self.run_process(wasm_split_run)
@@ -12405,6 +12432,38 @@ exec "$@"
     self.assertNotIn('profile', result)
     self.assertIn('Hello from main!', result)
     self.assertIn('Hello from lib!', result)
+
+  @also_with_wasm64
+  @requires_jspi
+  def test_split_module_embind_jspi(self):
+    self.set_setting('SPLIT_MODULE')
+    self.cflags += ['-Wno-experimental']
+    self.cflags += ['--post-js', test_file('other/test_split_module_embind_jspi.post.js')]
+    self.cflags += ['--pre-js', test_file('other/test_split_module_embind_jspi.pre.js')]
+    self.cflags += ['-sEXPORTED_FUNCTIONS=_malloc,_free']
+    self.cflags += ['-lembind']
+    expected_pre_split_output = 'primary_function: 42\n'
+    expected_post_split_output = ('deferred_function: [object Promise]\n'
+                                  'deferred_function await: 82\n')
+    expected_output = (expected_pre_split_output +
+                       'wrote profile data\n' +
+                       expected_post_split_output)
+    result = self.do_runf('other/test_split_module_embind_jspi.cpp', expected_output=expected_output)
+    self.assertExists('test_split_module_embind_jspi.wasm')
+    self.assertExists('test_split_module_embind_jspi.wasm.orig')
+    self.assertExists('profile.data')
+
+    wasm_split = os.path.join(building.get_binaryen_bin(), 'wasm-split')
+    wasm_split_run = [wasm_split, '-g',
+                      '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
+                      '--export-prefix=%', 'test_split_module_embind_jspi.wasm.orig', '-o1', 'test_split_module_embind_jspi.wasm', '-o2', 'test_split_module_embind_jspi.deferred.wasm', '--profile=profile.data']
+    self.run_process(wasm_split_run)
+    result = self.run_js('test_split_module_embind_jspi.js')
+    self.assertNotIn('profile', result)
+    self.assertIn((expected_pre_split_output +
+                   'Custom handler for loading split module.\n' +
+                   expected_post_split_output),
+                  result)
 
   @crossplatform
   @flaky('https://github.com/emscripten-core/emscripten/issues/25206')

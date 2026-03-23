@@ -695,8 +695,6 @@ class TestCoreBase(RunnerCore):
     self.do_runf('third_party/sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
   def test_core_types(self):
-    if self.get_setting('STRICT'):
-      self.cflags += ['-DIN_STRICT_MODE=1']
     self.do_runf('core/test_core_types.c')
 
   def test_cube2md5(self):
@@ -1501,9 +1499,8 @@ int main(int argc, char **argv) {
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   @with_all_eh_sjlj
-  def test_EXPORT_EXCEPTION_HANDLING_HELPERS(self):
-    self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
-
+  def test_getExceptionMessage(self):
+    self.set_setting('ASSERTIONS')
     self.maybe_closure()
     create_file('main.cpp', '''
       #include <emscripten.h>
@@ -1702,13 +1699,7 @@ int main() {
     self.assert_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_cflags(), expected)
     clear_all_relevant_settings(self)
 
-    # EXPORT_EXCEPTION_HANDLING_HELPERS and EXCEPTION_STACK_TRACES requires
-    # either Emscripten EH or Wasm EH
-    self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
-    expected = 'error: EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions'
-    self.assert_fail([EMCC, test_file('hello_world.cpp')] + self.get_cflags(), expected)
-    clear_all_relevant_settings(self)
-
+    # EXCEPTION_STACK_TRACES requires either Emscripten EH or Wasm EH
     self.set_setting('EXCEPTION_STACK_TRACES')
     expected = 'error: EXCEPTION_STACK_TRACES requires either of -fexceptions or -fwasm-exceptions'
     self.assert_fail([EMCC, test_file('hello_world.cpp')] + self.get_cflags(), expected)
@@ -2781,6 +2772,7 @@ The current type of b is: 9
 
   @requires_pthreads
   @also_with_wasm_workers
+  @no_sanitize('https://github.com/emscripten-core/emscripten/issues/26502')
   def test_emscripten_lock_busyspin_waitinf(self):
     self.do_runf('wasm_worker/lock_busyspin_waitinf_acquire.c', 'done\n', cflags=['-pthread'])
 
@@ -2788,6 +2780,11 @@ The current type of b is: 9
   @also_with_wasm_workers
   def test_emscripten_semaphore_waitinf_acquire(self):
     self.do_runf('wasm_worker/semaphore_waitinf_acquire.c', 'done\n', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=7'])
+
+  @requires_pthreads
+  @also_with_wasm_workers
+  def test_emscripten_semaphore_wait_acquire(self):
+    self.do_runf('wasm_worker/semaphore_wait_acquire.c', 'done\n', cflags=['-pthread'])
 
   @requires_pthreads
   @also_with_wasm_workers
@@ -6090,6 +6087,7 @@ Module.onRuntimeInitialized = () => {
 
   @also_with_noderawfs
   def test_unistd_close(self):
+    self.maybe_closure()
     self.do_run_in_out_file_test('unistd/close.c')
 
   def test_unistd_fsync_stdout(self):
@@ -7302,6 +7300,12 @@ void* operator new(size_t size) {
     self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('EMULATE_FUNCTION_POINTER_CASTS')
     self.do_core_test('test_emulate_function_pointer_casts.cpp', cflags=['-Wno-deprecated'])
+
+  def test_emulate_function_pointer_casts_directize(self):
+    # Regression test: directize (inside -O2) must not replace type-mismatched
+    # call_indirect with unreachable when fpcast-emu will fix them.
+    # https://github.com/WebAssembly/binaryen/pull/8475
+    self.do_core_test('test_emulate_function_pointer_casts_directize.c', cflags=['-sEMULATE_FUNCTION_POINTER_CASTS'])
 
   @no_wasm2js('TODO: nicely printed names in wasm2js')
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
@@ -9248,8 +9252,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @requires_pthreads
   def test_stdio_locking(self):
-    self.set_setting('PTHREAD_POOL_SIZE', '2')
-    self.do_core_test('test_stdio_locking.c')
+    self.do_core_test('test_stdio_locking.c', cflags=['-sPTHREAD_POOL_SIZE=2'])
+
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  def test_stdio_locking_ww(self):
+    # Note: do not combine with test_stdio_locking above because we want to test standalone
+    # wasm workers here and `@requires_pthreads` would prevent that.
+    self.do_core_test('test_stdio_locking.c', cflags=['-sWASM_WORKERS'])
 
   @with_dylink_reversed
   @requires_pthreads
@@ -9619,8 +9628,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/test_select_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
   @requires_pthreads
+  def test_pselect_blocking(self):
+    self.do_runf('core/test_pselect_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @requires_pthreads
   def test_poll_blocking(self):
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @requires_pthreads
+  def test_ppoll_blocking(self):
+    self.do_runf('core/test_ppoll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
   @with_asyncify_and_jspi
   def test_poll_blocking_asyncify(self):
@@ -9690,6 +9707,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_malloc(self):
     self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', cflags=['-sWASM_WORKERS'])
+
+  @requires_pthreads
+  @no_sanitize('sanitizers do not support WASM_WORKERS')
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  def test_wasm_worker_runtime_debug(self):
+    self.do_runf('wasm_worker/hello_wasm_worker.c', 'wasm worker starting ...', cflags=['-sWASM_WORKERS', '-sRUNTIME_DEBUG'])
 
   @requires_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')

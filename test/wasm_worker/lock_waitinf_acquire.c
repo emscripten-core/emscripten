@@ -4,6 +4,9 @@
 #include <emscripten/threading.h>
 #include <stdlib.h>
 
+#define _GNU_SOURCE
+#include <unistd.h> // for gettid
+
 // This test can be run under pthreads *or* Wasm Workers
 #ifdef __EMSCRIPTEN_PTHREADS__
 #include <pthread.h>
@@ -13,10 +16,7 @@
 #include <emscripten/wasm_worker.h>
 #else
 // When WASM_WORKERS is not defined we create dummy/fake version of
-// emscripten_wasm_worker_self_id and emscripten_wasm_worker_sleep.
-#define _GNU_SOURCE
-#include <unistd.h>
-int emscripten_wasm_worker_self_id() { return gettid(); }
+// emscripten_wasm_worker_sleep.
 void emscripten_wasm_worker_sleep(int64_t nsecs) {
   emscripten_thread_sleep(nsecs / 1000000);
 }
@@ -35,7 +35,7 @@ volatile int sharedState1 = 1;
 volatile int numWorkersAlive = NUM_THREADS;
 
 void test_ended() {
-  emscripten_outf("Worker %d last thread to finish. Reporting test end with sharedState0=%d, sharedState1=%d", emscripten_wasm_worker_self_id(), sharedState0, sharedState1);
+  emscripten_outf("Worker %d last thread to finish. Reporting test end with sharedState0=%d, sharedState1=%d", gettid(), sharedState0, sharedState1);
   assert(sharedState0 == sharedState1 + 1 || sharedState1 == sharedState0 + 1);
   assert(sharedState0 == 4000);
   emscripten_out("done");
@@ -47,7 +47,7 @@ void test_ended() {
 }
 
 void worker_main() {
-  emscripten_outf("Worker %d running...", emscripten_wasm_worker_self_id());
+  emscripten_outf("Worker %d running...", gettid());
   // Create contention on the lock from each thread, and stress the shared state
   // in a racy way that would show a breakage if the lock is not watertight.
   for (int i = 0; i < 1000; ++i) {
@@ -67,7 +67,7 @@ void worker_main() {
     emscripten_lock_release(&lock);
   }
 
-  emscripten_outf("Worker %d finished.", emscripten_wasm_worker_self_id());
+  emscripten_outf("Worker %d finished.", gettid());
 
   // Are we the last thread to finish? If so, test has ended.
   uint32_t v = emscripten_atomic_sub_u32((void*)&numWorkersAlive, 1);

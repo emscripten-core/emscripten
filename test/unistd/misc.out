@@ -13,6 +13,8 @@ nice: -1, errno: 63
 pause: -1, errno: 27
 pipe(good): 0, errno: 0
 pipe(bad): -1, errno: 21
+pipe2(good): 0, errno: 0
+pipe2(bad): -1, errno: 21
 execl: -1, errno: 45
 execle: -1, errno: 45
 execlp: -1, errno: 45

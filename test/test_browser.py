@@ -4576,8 +4576,6 @@ Module["preRun"] = () => {
     'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=2'],),
   })
   def test_pthread_locale(self, args):
-    self.cflags.append('-I' + path_from_root('system/lib/libc/musl/src/internal'))
-    self.cflags.append('-I' + path_from_root('system/lib/pthread'))
     self.btest_exit('pthread/test_pthread_locale.c', cflags=args)
 
   # Tests the Emscripten HTML5 API emscripten_set_canvas_element_size() and
@@ -5076,7 +5074,7 @@ Module["preRun"] = () => {
   # Tests Wasm Worker+pthreads simultaneously
   @also_with_minimal_runtime
   def test_wasm_worker_and_pthreads(self):
-    self.btest('wasm_worker/wasm_worker_and_pthread.c', expected='0', cflags=['-sWASM_WORKERS', '-pthread'])
+    self.btest('wasm_worker/wasm_worker_and_pthread.c', expected='0', cflags=['-sWASM_WORKERS', '-pthread', '-sPTHREAD_POOL_SIZE=1'])
 
   # Tests emscripten_wasm_worker_self_id() function
   @also_with_minimal_runtime
@@ -5219,6 +5217,11 @@ Module["preRun"] = () => {
   def test_wasm_worker_semaphore_waitinf_acquire(self):
     self.btest('wasm_worker/semaphore_waitinf_acquire.c', expected='0', cflags=['-sWASM_WORKERS'])
 
+  # Tests emscripten_semaphore_wait_acquire()
+  @also_with_minimal_runtime
+  def test_wasm_worker_semaphore_wait_acquire(self):
+    self.btest('wasm_worker/semaphore_wait_acquire.c', expected='0', cflags=['-sWASM_WORKERS'])
+
   # Tests emscripten_semaphore_try_acquire() on the main thread
   @also_with_minimal_runtime
   def test_wasm_worker_semaphore_try_acquire(self):
@@ -5321,6 +5324,7 @@ Module["preRun"] = () => {
     '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'jspi': (['-Wno-experimental', '-sJSPI'],),
     'jspi_wasm_bigint': (['-Wno-experimental', '-sJSPI', '-sWASM_BIGINT'],),
+    'asyncify': (['-sASYNCIFY=1'],),
   })
   @no_safari('TODO: Fails with abort:Assertion failed: err == 0') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   def test_wasmfs_opfs(self, args):

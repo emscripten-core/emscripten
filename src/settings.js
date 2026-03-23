@@ -767,6 +767,7 @@ var DISABLE_EXCEPTION_THROWING = false;
 //
 // See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 // example usage.
+// [deprecated]
 var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 
 // When this is enabled, exceptions will contain stack traces and uncaught
@@ -1160,8 +1161,6 @@ var LINKABLE = false;
 // codebase builds nicely in forward compatible manner.
 // Changes enabled by this:
 //
-//   - The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
-//     is the correct thing to use).
 //   - STRICT_JS is enabled.
 //   - IGNORE_MISSING_MAIN is disabled.
 //   - AUTO_JS_LIBRARIES is disabled.
@@ -2121,9 +2120,10 @@ var SPLIT_MODULE = false;
 // on startup, before loading the main module.
 var AUTOLOAD_DYLIBS = true;
 
-// Include unimplemented JS syscalls to be included in the final output.  This
-// allows programs that depend on these syscalls at runtime to be compiled, even
-// though these syscalls will fail (or do nothing) at runtime.
+// Link against stub implementations of unsupported/unimplemented syscalls. This
+// allows programs that depend on these syscalls to be compiled, even though
+// these functions will fail (or do nothing) at runtime.
+// [link]
 var ALLOW_UNIMPLEMENTED_SYSCALLS = true;
 
 // Allow calls to Worker(...) and importScripts(...) to be Trusted Types

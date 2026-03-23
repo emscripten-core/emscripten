@@ -114,6 +114,7 @@ DEPRECATED_SETTINGS = {
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
     'LINKABLE': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)',
+    'EXPORT_EXCEPTION_HANDLING_HELPERS': 'getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
@@ -125,6 +126,7 @@ INTERNAL_SETTINGS = {
 # List of incompatible settings, of the form (SETTINGS_A, SETTING_B, OPTIONAL_REASON_FOR_INCOMPAT)
 INCOMPATIBLE_SETTINGS = [
     ('MINIMAL_RUNTIME', 'MAIN_MODULE', None),
+    ('WASM_WORKERS', 'MAIN_MODULE', 'dynamic linking is not supported with -sWASM_WORKERS'),
     ('WASM2JS', 'MAIN_MODULE', 'wasm2js does not support dynamic linking'),
     ('WASM2JS', 'SIDE_MODULE', 'wasm2js does not support dynamic linking'),
     ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),

@@ -21,6 +21,31 @@
 // new function with an '_', it will not be found.
 
 addToLibrary({
+  // HEAP definitions are here to help with TypeScript type generation.
+  $HEAP8__docs: '/** @type {!Int8Array} */',
+  $HEAP8: undefined,
+  $HEAPU8__docs: '/** @type {!Uint8Array} */',
+  $HEAPU8: undefined,
+  $HEAP16__docs: '/** @type {!Int16Array} */',
+  $HEAP16: undefined,
+  $HEAPU16__docs: '/** @type {!Uint16Array} */',
+  $HEAPU16: undefined,
+  $HEAP32__docs: '/** @type {!Int32Array} */',
+  $HEAP32: undefined,
+  $HEAPU32__docs: '/** @type {!Uint32Array} */',
+  $HEAPU32: undefined,
+  $HEAPF32__docs: '/** @type {!Float32Array} */',
+  $HEAPF32: undefined,
+  $HEAPF64__docs: '/** @type {!Float64Array} */',
+  $HEAPF64: undefined,
+#if WASM_BIGINT
+  // BigInt64Array type is not correctly defined in closure
+  $HEAP64__docs: '/** not-@type {!BigInt64Array} */',
+  $HEAP64: undefined,
+  $HEAPU64__docs: '/** not-@type {!BigUint64Array} */',
+  $HEAPU64: undefined,
+#endif
+
   // JS aliases for native stack manipulation functions and tempret handling
   $stackSave__deps: ['emscripten_stack_get_current'],
   $stackSave: () => _emscripten_stack_get_current(),
@@ -45,7 +70,11 @@ addToLibrary({
   // purposes in cases where new functions are created at runtime.
   $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
 
-  $ptrToString: (ptr) => {
+  // This function is referenced *very* early on in some configurations
+  // (e.g WASM_WORKERS + RUNTIME_DEBUG) so we explictly use a function here
+  // rather than an arrow function so that it gets hoisted to the top of the
+  // scope.
+  $ptrToString: function(ptr) {
 #if ASSERTIONS
     assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
 #endif

@@ -194,10 +194,13 @@ var SyscallsLibrary = {
     var old = SYSCALLS.getStreamFromFD(fd);
     return FS.dupStream(old).fd;
   },
-  __syscall_pipe__deps: ['$PIPEFS'],
-  __syscall_pipe: (fdPtr) => {
+  __syscall_pipe2__deps: ['$PIPEFS'],
+  __syscall_pipe2: (fdPtr, flags) => {
     if (fdPtr == 0) {
       throw new FS.ErrnoError({{{ cDefs.EFAULT }}});
+    }
+    if (flags && flags != {{{ cDefs.O_CLOEXEC }}}) {
+      throw new FS.ErrnoError({{{ cDefs.ENOTSUP }}});
     }
 
     var res = PIPEFS.createPipe();

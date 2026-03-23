@@ -184,7 +184,7 @@ ATOMICS_WAIT_TOKEN_T emscripten_condvar_wait_async(emscripten_condvar_t * _Nonnu
 // Signals the given number of waiters on the specified condition variable.
 // Pass numWaitersToSignal == EMSCRIPTEN_NOTIFY_ALL_WAITERS to wake all waiters
 // ("broadcast" operation).
-void emscripten_condvar_signal(emscripten_condvar_t * _Nonnull condvar, int64_t numWaitersToSignal);
+void emscripten_condvar_signal(emscripten_condvar_t * _Nonnull condvar, uint32_t numWaitersToSignal);
 
 // If the given memory address contains value val, puts the calling thread to
 // sleep waiting for that address to be notified.

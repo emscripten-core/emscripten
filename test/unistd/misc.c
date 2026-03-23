@@ -80,6 +80,13 @@ int main() {
   printf(", errno: %d\n", errno);
   errno = 0;
 
+  printf("pipe2(good): %d", pipe2(pipe_arg, 0));
+  printf(", errno: %d\n", errno);
+  errno = 0;
+  printf("pipe2(bad): %d", pipe2(0, 0));
+  printf(", errno: %d\n", errno);
+  errno = 0;
+
   char* exec_argv[] = {"arg", 0};
   char* exec_env[] = {"a=b", 0};
   printf("execl: %d", execl("working/program", "arg", 0));

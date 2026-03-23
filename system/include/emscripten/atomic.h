@@ -183,7 +183,10 @@ _EM_INLINE void emscripten_atomic_fence(void) {
 
 #define ATOMICS_WAIT_RESULT_T int
 
-// Numbering dictated by https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait
+// Numbering dictated by https://github.com/WebAssembly/threads/blob/master/proposals/threads/Overview.md#wait:
+//   0 => "ok", woken by another agent.
+//   1 => "not-equal", loaded value != expected value
+//   2 => "timed-out", the timeout expired
 #define ATOMICS_WAIT_OK 0
 #define ATOMICS_WAIT_NOT_EQUAL 1
 #define ATOMICS_WAIT_TIMED_OUT 2
@@ -220,7 +223,7 @@ _EM_INLINE ATOMICS_WAIT_RESULT_T emscripten_atomic_wait_u64(void /*uint64_t*/* _
   return __builtin_wasm_memory_atomic_wait64((int64_t*)addr, expectedValue, maxWaitNanoseconds);
 }
 
-#define EMSCRIPTEN_NOTIFY_ALL_WAITERS (-1LL)
+#define EMSCRIPTEN_NOTIFY_ALL_WAITERS UINT32_MAX
 
 // Issues the wasm 'memory.atomic.notify' instruction:
 // Notifies the given number of threads waiting on a location.
@@ -229,7 +232,7 @@ _EM_INLINE ATOMICS_WAIT_RESULT_T emscripten_atomic_wait_u64(void /*uint64_t*/* _
 // Returns the number of threads that were woken up.
 // Note: this function is used to notify both waiters waiting on an u32 and u64
 // addresses.
-_EM_INLINE int64_t emscripten_atomic_notify(void * _Nonnull addr, int64_t count) {
+_EM_INLINE int64_t emscripten_atomic_notify(void * _Nonnull addr, uint32_t count) {
   return __builtin_wasm_memory_atomic_notify((int*)addr, count);
 }
 

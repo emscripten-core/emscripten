@@ -87,8 +87,10 @@ void emscripten_thread_sleep(double msecs) {
   // If we have less than this many msecs left to wait, busy spin that instead.
   double min_ms_slice_to_sleep = 0.1;
 
-  // runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
-  double max_ms_slice_to_sleep = emscripten_is_main_runtime_thread() ? 1 : 100;
+  // Break up sleeping so that we process proxied work at regular intervals.
+  // TODO(sbc): This should be removed and/or moved down into
+  // `emscripten_futex_wait`.
+  double max_ms_slice_to_sleep = 100;
 
   emscripten_conditional_set_current_thread_status(
     EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_SLEEPING);
@@ -147,7 +149,6 @@ void _emscripten_init_main_thread(void) {
   // Main thread ID is always 1.  It can't be 0 because musl assumes
   // tid is always non-zero.
   __main_pthread.tid = getpid();
-  __main_pthread.locale = &libc.global_locale;
   // pthread struct prev and next should initially point to itself (see __init_tp),
   // this is used by pthread_key_delete for deleting thread-specific data.
   __main_pthread.next = __main_pthread.prev = &__main_pthread;

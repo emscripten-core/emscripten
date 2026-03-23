@@ -15,9 +15,6 @@
 #if LINKABLE
 #error "-sLINKABLE is not supported with -sWASM_WORKERS"
 #endif
-#if MAIN_MODULE
-#error "dynamic linking is not supported with -sWASM_WORKERS"
-#endif
 #if WASM2JS && MODULARIZE
 #error "-sWASM=0 + -sMODULARIZE + -sWASM_WORKERS is not supported"
 #endif
@@ -65,7 +62,16 @@
 
 addToLibrary({
   $_wasmWorkers: {},
+#if PTHREADS
+  // When the build contains both pthreads and Wasm Workers, offset the
+  // Wasm Worker ID space to avoid collisions with pthread TIDs (which start
+  // at 42). We use `1 << 30` since it's ~1/2 way through `pid_t` space,
+  // essentially giving pthreads the first 1/2 of the range and wasm workers the
+  // second half.
+  $_wasmWorkersID: {{{ 1 << 30 }}},
+#else
   $_wasmWorkersID: 1,
+#endif
 
   // Starting up a Wasm Worker is an asynchronous operation, hence if the parent
   // thread performs any postMessage()-based wasm function calls to the
@@ -126,7 +132,7 @@ addToLibrary({
     ___set_stack_limits(wwParams.stackLowestAddress + wwParams.stackSize, wwParams.stackLowestAddress);
 #endif
     // Run the C side Worker initialization for stack and TLS.
-    __emscripten_wasm_worker_initialize(wwParams.stackLowestAddress, wwParams.stackSize);
+    __emscripten_wasm_worker_initialize(wwParams.wwID, wwParams.stackLowestAddress, wwParams.stackSize);
 #if PTHREADS
     // Record the pthread configuration, and whether this Wasm Worker supports synchronous blocking in emscripten_futex_wait().
     // (regular Wasm Workers do, AudioWorklets don't)
@@ -220,6 +226,9 @@ if (ENVIRONMENT_IS_WASM_WORKER
       worker.on('message', (msg) => worker.onmessage({ data: msg }));
     }
 #endif
+#if RUNTIME_DEBUG
+    dbg("done _emscripten_create_wasm_worker", _wasmWorkersID)
+#endif
     return _wasmWorkersID++;
   },
 
@@ -240,16 +249,6 @@ if (ENVIRONMENT_IS_WASM_WORKER
     Object.values(_wasmWorkers).forEach((worker) => worker.terminate());
     _wasmWorkers = {};
   },
-
-  emscripten_current_thread_is_wasm_worker: () => {
-#if WASM_WORKERS
-    return ENVIRONMENT_IS_WASM_WORKER;
-#else
-    // implicit return 0;
-#endif
-  },
-
-  emscripten_wasm_worker_self_id: () => wwParams?.wwID,
 
   emscripten_wasm_worker_post_function_v: (id, funcPtr) => {
     _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': [] }); // "WaSm Call"

@@ -714,9 +714,9 @@ class MTLibrary(Library):
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_mt:
-      cflags += ['-pthread', '-sWASM_WORKERS']
+      cflags += ['-pthread']
     if self.is_ww:
-      cflags += ['-sWASM_WORKERS', '-DWASM_WORKERS_ONLY']
+      cflags += ['-sWASM_WORKERS']
     return cflags
 
   def get_base_name(self):
@@ -745,6 +745,10 @@ class MTLibrary(Library):
 
     # These are mutually exclusive, only one flag will be set at any give time.
     return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
+
+  def can_build(self):
+    # Wasm workers do not support dynamic linking.
+    return super().can_build() and not (settings.MAIN_MODULE and self.is_ww)
 
 
 class DebugLibrary(Library):
@@ -912,6 +916,8 @@ class MuslInternalLibrary(Library):
     '-std=c99',
     '-D_XOPEN_SOURCE=700',
     '-Wno-unused-result',  # system call results are often ignored in musl, and in wasi that warns
+    '-Wno-bitwise-op-parentheses',
+    '-Wno-shift-op-parentheses',
   ]
 
 
@@ -1064,11 +1070,9 @@ class libc(MuslInternalLibrary,
   cflags += ['-Wno-ignored-attributes',
              # tre.h defines NDEBUG internally itself
              '-Wno-macro-redefined',
-             '-Wno-shift-op-parentheses',
              '-Wno-string-plus-int',
              '-Wno-missing-braces',
              '-Wno-logical-op-parentheses',
-             '-Wno-bitwise-op-parentheses',
              '-Wno-unused-but-set-variable',
              '-Wno-unused-variable',
              '-Wno-unused-label',
@@ -1076,6 +1080,8 @@ class libc(MuslInternalLibrary,
 
   def __init__(self, **kwargs):
     self.non_lto_files = self.get_libcall_files()
+    # TODO(https://github.com/emscripten-core/emscripten/issues/26506)
+    self.non_lto_files.append(utils.path_from_root('system/lib/libc/musl/src/locale/uselocale.c'))
     super().__init__(**kwargs)
 
   def get_libcall_files(self):
@@ -1207,56 +1213,10 @@ class libc(MuslInternalLibrary,
           'pthread_kill.c',
           'emscripten_thread_init.c',
           'emscripten_yield.c',
+          'thread_profiler.c',
         ])
     else:
       ignore += ['thread']
-      libc_files += files_in_path(
-        path='system/lib/libc/musl/src/thread',
-        filenames=[
-          'pthread_self.c',
-          'pthread_cleanup_push.c',
-          'pthread_attr_init.c',
-          'pthread_attr_destroy.c',
-          'pthread_attr_get.c',
-          'pthread_attr_setdetachstate.c',
-          'pthread_attr_setguardsize.c',
-          'pthread_attr_setinheritsched.c',
-          'pthread_attr_setschedparam.c',
-          'pthread_attr_setschedpolicy.c',
-          'pthread_attr_setscope.c',
-          'pthread_attr_setstack.c',
-          'pthread_attr_setstacksize.c',
-          'pthread_getattr_np.c',
-          'pthread_getconcurrency.c',
-          'pthread_getcpuclockid.c',
-          'pthread_getschedparam.c',
-          'pthread_setschedprio.c',
-          'pthread_setconcurrency.c',
-          'default_attr.c',
-          # C11 thread library functions
-          'call_once.c',
-          'tss_create.c',
-          'tss_delete.c',
-          'tss_set.c',
-          'cnd_broadcast.c',
-          'cnd_destroy.c',
-          'cnd_init.c',
-          'cnd_signal.c',
-          'cnd_timedwait.c',
-          'cnd_wait.c',
-          'mtx_destroy.c',
-          'mtx_init.c',
-          'mtx_lock.c',
-          'mtx_timedlock.c',
-          'mtx_trylock.c',
-          'mtx_unlock.c',
-          'thrd_create.c',
-          'thrd_exit.c',
-          'thrd_join.c',
-          'thrd_sleep.c',
-          'thrd_yield.c',
-        ])
-
       libc_files += files_in_path(
         path='system/lib/libc',
         filenames=['emscripten_yield_stub.c'])
@@ -1280,6 +1240,52 @@ class libc(MuslInternalLibrary,
             'library_pthread_stub.c',
             'pthread_self_stub.c',
             'proxying_stub.c',
+          ])
+        libc_files += files_in_path(
+          path='system/lib/libc/musl/src/thread',
+          filenames=[
+            'pthread_self.c',
+            'pthread_cleanup_push.c',
+            'pthread_attr_init.c',
+            'pthread_attr_destroy.c',
+            'pthread_attr_get.c',
+            'pthread_attr_setdetachstate.c',
+            'pthread_attr_setguardsize.c',
+            'pthread_attr_setinheritsched.c',
+            'pthread_attr_setschedparam.c',
+            'pthread_attr_setschedpolicy.c',
+            'pthread_attr_setscope.c',
+            'pthread_attr_setstack.c',
+            'pthread_attr_setstacksize.c',
+            'pthread_getattr_np.c',
+            'pthread_getconcurrency.c',
+            'pthread_getcpuclockid.c',
+            'pthread_getschedparam.c',
+            'pthread_setschedprio.c',
+            'pthread_setconcurrency.c',
+            'default_attr.c',
+            # C11 thread library functions
+            'call_once.c',
+            'tss_create.c',
+            'tss_delete.c',
+            'tss_set.c',
+            'cnd_broadcast.c',
+            'cnd_destroy.c',
+            'cnd_init.c',
+            'cnd_signal.c',
+            'cnd_timedwait.c',
+            'cnd_wait.c',
+            'mtx_destroy.c',
+            'mtx_init.c',
+            'mtx_lock.c',
+            'mtx_timedlock.c',
+            'mtx_trylock.c',
+            'mtx_unlock.c',
+            'thrd_create.c',
+            'thrd_exit.c',
+            'thrd_join.c',
+            'thrd_sleep.c',
+            'thrd_yield.c',
           ])
 
     if self.is_mt or self.is_ww:
@@ -1408,10 +1414,6 @@ class libc(MuslInternalLibrary,
     if settings.MAIN_MODULE:
       libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
 
-    libc_files += files_in_path(
-        path='system/lib/pthread',
-        filenames=['thread_profiler.c'])
-
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
     # Check for missing file in non_lto_files list.  Do this here
@@ -1502,7 +1504,7 @@ class libprintf_long_double(libc):
     return super().can_use() and settings.PRINTF_LONG_DOUBLE
 
 
-class libwasm_workers(DebugLibrary):
+class libwasm_workers(MuslInternalLibrary, DebugLibrary):
   name = 'libwasm_workers'
   includes = ['system/lib/libc']
   src_dir = 'system/lib/wasm_worker'

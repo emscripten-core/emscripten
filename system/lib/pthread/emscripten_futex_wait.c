@@ -4,22 +4,24 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  */
+
+#include "atomic.h"
+#include "pthread_impl.h"
+#include "threading_internal.h"
+
 #include <assert.h>
+#include <emscripten/threading.h>
 #include <errno.h>
 #include <math.h>
-#include <emscripten/threading.h>
-#include <stdlib.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <sys/param.h>
-#include "atomic.h"
-#include "threading_internal.h"
-#include "pthread_impl.h"
 
 extern void* _emscripten_main_thread_futex;
 
 static int futex_wait_main_browser_thread(volatile void* addr,
                                           uint32_t val,
-                                          double timeout) {
+                                          double timeout, bool cancelable) {
   // Atomics.wait is not available in the main browser thread, so simulate it
   // via busy spinning. Only the main browser thread is allowed to call into
   // this function. It is not thread-safe to be called from any other thread.
@@ -45,6 +47,11 @@ static int futex_wait_main_browser_thread(volatile void* addr,
   assert(last_addr == 0);
 
   while (1) {
+#ifdef __EMSCRIPTEN_PTHREADS__
+    if (cancelable && pthread_self()->cancel) {
+      return -ETIMEDOUT;
+    }
+#endif
     // Check for a timeout.
     now = emscripten_get_now();
     if (now > end) {
@@ -119,63 +126,115 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
     return -EINVAL;
   }
 
-  // Pass 0 here, which means we don't have access to the current time in this
-  // function.  This tells _emscripten_yield to call emscripten_get_now if (and
-  // only if) it needs to know the time.
-  _emscripten_yield(0);
-
   int ret;
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITFUTEX);
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+  bool cancelable = pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS;
+#else
+  bool cancelable = false;
+#endif
 
   // For the main browser thread and audio worklets we can't use
   // __builtin_wasm_memory_atomic_wait32 so we have busy wait instead.
   if (!_emscripten_thread_supports_atomics_wait()) {
-    ret = futex_wait_main_browser_thread(addr, val, max_wait_ms);
+    ret = futex_wait_main_browser_thread(addr, val, max_wait_ms, cancelable);
     emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
     return ret;
   }
 
   // -1 (or any negative number) means wait indefinitely.
-  int64_t max_wait_ns = -1;
+  int64_t max_wait_ns = ATOMICS_WAIT_DURATION_INFINITE;
   if (max_wait_ms != INFINITY) {
-    max_wait_ns = (int64_t)(max_wait_ms*1000*1000);
+    max_wait_ns = (int64_t)(max_wait_ms * 1e6);
   }
-#ifdef EMSCRIPTEN_DYNAMIC_LINKING
-  // After the main thread queues dlopen events, it checks if the target threads
-  // are sleeping.
-  // If `sleeping` is set then the main thread knows that event will be
-  // processed after the sleep (before any other user code).  In this case the
-  // main thread does not wait for any kind of response form the thread.
-  // If `sleeping` is not set then we know we should wait for the thread process
-  // the queue, either from the call here directly after setting `sleeping` to
-  // 1, or from another callsite (e.g. the one in `emscripten_yield`).
-  int is_runtime_thread = emscripten_is_main_runtime_thread();
-  if (!is_runtime_thread) {
-    __pthread_self()->sleeping = 1;
-    _emscripten_process_dlopen_queue();
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+  // When building with pthread support there are two conditions under which we
+  // need to limit the amount of time we spend in atomic.wait.
+  // 1. We are the main runtime thread.  In this case we need to be able to
+  //    process proxied events from workers.  Note that this is not always
+  //    the same as being the main browser thread.  For example, when running
+  //    under node or when launching an emscripten-built program in a Web
+  //    Worker.  In this case we limit our wait slices to 1ms intervals.
+  // 2. When the current thread has async cancellation enabled.  In this case
+  //    we limit the wait duration to 100ms intervals.
+  int64_t wakeup_interval = 0;
+  bool is_runtime_thread = emscripten_is_main_runtime_thread();
+  if (is_runtime_thread) {
+    // If the current thread is the main runtime thread then only wait in 1ms slices.
+    wakeup_interval = 1 * 1000000;
   }
+  else if (cancelable) {
+    // If the current thread is async cancellable then only wait in 100ms slices.
+    wakeup_interval = 100 * 1000000;
+  }
+
+  // When wakeup_interval is set, we use remainder_ns to track how many ns
+  // remain of the intiial max_wait_ns.
+  int64_t remainder_ns = 0;
+  if (wakeup_interval) {
+    remainder_ns = max_wait_ns;
+    if (remainder_ns < 0) {
+      max_wait_ns = wakeup_interval;
+    } else {
+      max_wait_ns = MIN(remainder_ns, wakeup_interval);
+    }
+  }
+
+  do {
 #endif
-  ret = __builtin_wasm_memory_atomic_wait32((int*)addr, val, max_wait_ns);
+    // Pass 0 here, which means we don't have access to the current time in this
+    // function.  This tells _emscripten_yield to call emscripten_get_now if (and
+    // only if) it needs to know the time.
+    _emscripten_yield(0);
+
 #ifdef EMSCRIPTEN_DYNAMIC_LINKING
-  if (!is_runtime_thread) {
-    __pthread_self()->sleeping = 0;
-    _emscripten_process_dlopen_queue();
-  }
+    // After the main thread queues dlopen events, it checks if the target threads
+    // are sleeping.
+    // If `sleeping` is set then the main thread knows that event will be
+    // processed after the sleep (before any other user code).  In this case the
+    // main thread does not wait for any kind of response form the thread.
+    // If `sleeping` is not set then we know we should wait for the thread process
+    // the queue, either from the call here directly after setting `sleeping` to
+    // 1, or from another callsite (e.g. the one in `emscripten_yield`).
+    if (!is_runtime_thread) {
+      __pthread_self()->sleeping = 1;
+      _emscripten_process_dlopen_queue();
+    }
+#endif
+    ret = __builtin_wasm_memory_atomic_wait32((int*)addr, val, max_wait_ns);
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
+    if (!is_runtime_thread) {
+      __pthread_self()->sleeping = 0;
+      _emscripten_process_dlopen_queue();
+    }
+#endif
+#ifdef __EMSCRIPTEN_PTHREADS__
+    if (cancelable && ret == ATOMICS_WAIT_TIMED_OUT && pthread_self()->cancel) {
+      // Break out of the loop early if we were cancelled
+      break;
+    }
+    // If remainder_ns is negative it means we want wait forever, and we don't
+    // need to decrement remainder_ns in that case.
+    if (wakeup_interval && remainder_ns > 0) {
+      remainder_ns -= wakeup_interval;
+      if (remainder_ns <= 0) {
+        break;
+      }
+      max_wait_ns = MIN(remainder_ns, wakeup_interval);
+    }
+  } while (wakeup_interval && ret == ATOMICS_WAIT_TIMED_OUT);
 #endif
 
-done:
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
 
-  // memory.atomic.wait32 returns:
-  //   0 => "ok", woken by another agent.
-  //   1 => "not-equal", loaded value != expected value
-  //   2 => "timed-out", the timeout expired
-  if (ret == 1) {
+  if (ret == ATOMICS_WAIT_NOT_EQUAL) {
     return -EWOULDBLOCK;
   }
-  if (ret == 2) {
+  if (ret == ATOMICS_WAIT_TIMED_OUT) {
     return -ETIMEDOUT;
   }
-  assert(ret == 0);
+  assert(ret == ATOMICS_WAIT_OK);
   return 0;
 }
