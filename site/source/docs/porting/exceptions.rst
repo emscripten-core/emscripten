@@ -146,7 +146,8 @@ exception thrown``, this code will print ``MyException,My exception thrown``.
 
 ``getExceptionMessage`` is available when exceptions are used and either
 ``-sASSERTIONS`` or ``-sEXCEPTION_STACK_TRACES`` is set, which are by default
-true at ``-O0``.
+true at ``-O0``.  At ``-O1`` or above, you can export it separately by
+``-sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount``.
 
 If the stack pointer has been moved due to stack allocations within the Wasm
 function before an exception is thrown, you can use ``stackSave()`` and

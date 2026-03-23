@@ -102,7 +102,7 @@ var LibraryHTML5 = {
         argsList
       });
 
-      JSEvents.deferredCalls.sort((x,y) => x.precedence < y.precedence);
+      JSEvents.deferredCalls.sort((x,y) => x.precedence - y.precedence);
     },
 
     // Erases all deferred calls to the given target function from the queue list.
