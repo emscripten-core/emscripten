@@ -209,14 +209,14 @@ var LibraryExceptions = {
   ],
   __cxa_rethrow_primary_exception: (ptr) => {
     if (!ptr) return;
+#if EXCEPTION_DEBUG
+    dbg('__cxa_rethrow_primary_exception: ' + ptrToString(ptr));
+#endif
     var info = new ExceptionInfo(ptr);
     info.set_rethrown(true);
     info.set_caught(false);
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
-#endif
-#if EXCEPTION_DEBUG
-    dbg('__cxa_rethrow_primary_exception: ' + ptrToString(ptr));
 #endif
     {{{ storeException('exceptionLast', 'ptr') }}}
     {{{ makeThrow('exceptionLast') }}}
