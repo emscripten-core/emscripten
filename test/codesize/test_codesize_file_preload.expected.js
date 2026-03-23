@@ -625,13 +625,10 @@ var initRandomFill = () => {
     var nodeCrypto = require("node:crypto");
     return view => nodeCrypto.randomFillSync(view);
   }
-  return view => crypto.getRandomValues(view);
+  return view => (crypto.getRandomValues(view), 0);
 };
 
-var randomFill = view => {
-  // Lazily init on the first invocation.
-  (randomFill = initRandomFill())(view);
-};
+var randomFill = view => (randomFill = initRandomFill())(view);
 
 var PATH_FS = {
   resolve: (...args) => {

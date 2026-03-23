@@ -593,27 +593,30 @@ var WasiLibrary = {
     }
 #endif
 
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
+    // Audio worklets don't support crypto.getRandomValues
+    if (ENVIRONMENT_IS_AUDIO_WORKLET) { //!globalThis.crypto) {
+      return () => {{{ cDefs.ENOTSUP }}};
+    }
+#endif
+
 #if SHARED_MEMORY
     // like with most Web APIs, we can't use Web Crypto API directly on shared memory,
     // so we need to create an intermediate buffer and copy it to the destination
-    return (view) => view.set(crypto.getRandomValues(new Uint8Array(view.byteLength)));
+    return (view) => (view.set(crypto.getRandomValues(new Uint8Array(view.byteLength))), 0);
 #else
-    return (view) => crypto.getRandomValues(view);
+    return (view) => (crypto.getRandomValues(view), 0);
 #endif
   },
 
   $randomFill__deps: ['$initRandomFill'],
-  $randomFill: (view) => {
-    // Lazily init on the first invocation.
-    (randomFill = initRandomFill())(view);
-  },
+  // Lazily init on the first invocation.
+  $randomFill: (view) => (randomFill = initRandomFill())(view),
 
   random_get__proxy: 'none',
+  random_get__nothrow: true,
   random_get__deps: ['$randomFill'],
-  random_get: (buffer, size) => {
-    randomFill(HEAPU8.subarray(buffer, buffer + size));
-    return 0;
-  },
+  random_get: (buffer, size) => randomFill(HEAPU8.subarray(buffer, buffer + size)),
 };
 
 for (var x in WasiLibrary) {
