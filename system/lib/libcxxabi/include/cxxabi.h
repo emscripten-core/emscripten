@@ -176,9 +176,6 @@ __cxa_increment_exception_refcount(void *primary_exception) _LIBCXXABI_NOEXCEPT;
 extern _LIBCXXABI_FUNC_VIS void
 __cxa_decrement_exception_refcount(void *primary_exception) _LIBCXXABI_NOEXCEPT;
 
-extern _LIBCXXABI_FUNC_VIS void __cxa_increment_uncaught_exception() _LIBCXXABI_NOEXCEPT;
-extern _LIBCXXABI_FUNC_VIS void __cxa_decrement_uncaught_exception() _LIBCXXABI_NOEXCEPT;
-
 // Apple extension to support std::uncaught_exception()
 extern _LIBCXXABI_FUNC_VIS bool __cxa_uncaught_exception() _LIBCXXABI_NOEXCEPT;
 extern _LIBCXXABI_FUNC_VIS unsigned int __cxa_uncaught_exceptions() _LIBCXXABI_NOEXCEPT;
