@@ -222,8 +222,6 @@ sigs = {
   __cxa_current_exception_type__sig: 'p',
   __cxa_current_primary_exception__sig: 'p',
   __cxa_end_catch__sig: 'v',
-  __cxa_decrement_uncaught_exception__sig: 'v',
-  __cxa_increment_uncaught_exception__sig: 'v',
   __cxa_rethrow__sig: 'v',
   __cxa_rethrow_primary_exception__sig: 'vp',
   __cxa_throw__sig: 'vppp',

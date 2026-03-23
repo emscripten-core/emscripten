@@ -399,8 +399,8 @@ ${functionBody}
     return delete object[property];
   },
 
-  _emval_is_cpp_exception__deps: ['$Emval'],
-  _emval_is_cpp_exception: (object) => {
+  $emval_is_cpp_exception__deps: ['$Emval'],
+  $emval_is_cpp_exception: (object) => {
     object = Emval.toValue(object);
 #if WASM_EXCEPTIONS
     return object instanceof WebAssembly.Exception;
@@ -413,7 +413,7 @@ ${functionBody}
 #endif
   },
 
-  _emval_throw__deps: ['$Emval', '_emval_is_cpp_exception',
+  _emval_throw__deps: ['$Emval', '$emval_is_cpp_exception',
 #if !DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS
     '$exceptionLast',
     '$ExceptionInfo',
@@ -429,7 +429,7 @@ ${functionBody}
   _emval_throw: (object) => {
     var orig_object = object;
     object = Emval.toValue(object);
-    if (__emval_is_cpp_exception(orig_object)) {
+    if (emval_is_cpp_exception(orig_object)) {
 #if !DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS
       exceptionLast = object;
       var info = new ExceptionInfo(exnToPtr(object));
