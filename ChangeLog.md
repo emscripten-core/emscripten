@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.4 (in development)
+5.0.5 (in development)
 ----------------------
+
+5.0.4 - 03/23/26
+----------------
 - `EXPORT_EXCEPTION_HANDLING_HELPERS` is deprecated and setting it will not do
   anything. `getExceptionMessage` is exported anyway when `ASSERTIONS` or
   `EXCEPTION_STACK_TRACES` is set, which are set by default at `-O0`. At `-O1`
