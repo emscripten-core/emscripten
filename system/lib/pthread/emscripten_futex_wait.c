@@ -131,7 +131,7 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
 
 #ifdef __EMSCRIPTEN_PTHREADS__
   pthread_t self = pthread_self();
-  bool cancelable = self->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS;
+  bool cancelable = self->cancelasync;
 #else
   bool cancelable = false;
 #endif

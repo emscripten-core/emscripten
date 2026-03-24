@@ -309,7 +309,7 @@ void _emscripten_thread_exit(void* result) {
   assert(self);
 
   self->canceldisable = PTHREAD_CANCEL_DISABLE;
-  self->cancelasync = PTHREAD_CANCEL_DEFERRED;
+  self->cancelasync = 0;
   self->result = result;
 
   _emscripten_thread_mailbox_shutdown(self);
