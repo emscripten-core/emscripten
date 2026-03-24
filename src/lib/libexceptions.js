@@ -121,7 +121,7 @@ var LibraryExceptions = {
 #endif
   ],
   __cxa_rethrow: () => {
-    if (exceptionCaught.length == 0) {
+    if (!exceptionCaught.length) {
       abort('no exception to throw');
     }
     var info = exceptionCaught.at(-1);
