@@ -212,8 +212,9 @@ var LibraryExceptions = {
     return info.get_type();
   },
 
-  __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$uncaughtExceptionCount', '$exceptionLast',
+  __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$uncaughtExceptionCount',
 #if !DISABLE_EXCEPTION_CATCHING
+    '$exceptionLast',
     '__cxa_increment_exception_refcount',
 #endif
   ],
