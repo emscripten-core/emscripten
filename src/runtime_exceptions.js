@@ -27,7 +27,7 @@ class CppException extends EmscriptenEH {
 #endif
     this.excPtr = excPtr;
 #if !DISABLE_EXCEPTION_CATCHING && EXCEPTION_STACK_TRACES
-    const excInfo = getExceptionMessage(excPtr);
+    const excInfo = getExceptionMessage(this);
     this.name = excInfo[0];
     this.message = excInfo[1];
 #endif
