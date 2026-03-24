@@ -130,7 +130,8 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITFUTEX);
 
 #ifdef __EMSCRIPTEN_PTHREADS__
-  bool cancelable = pthread_self()->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS;
+  pthread_t self = pthread_self();
+  bool cancelable = self->cancelasync == PTHREAD_CANCEL_ASYNCHRONOUS;
 #else
   bool cancelable = false;
 #endif
@@ -199,19 +200,19 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
     // the queue, either from the call here directly after setting `sleeping` to
     // 1, or from another callsite (e.g. the one in `emscripten_yield`).
     if (!is_runtime_thread) {
-      __pthread_self()->sleeping = 1;
+      self->sleeping = 1;
       _emscripten_process_dlopen_queue();
     }
 #endif
     ret = __builtin_wasm_memory_atomic_wait32((int*)addr, val, max_wait_ns);
 #ifdef EMSCRIPTEN_DYNAMIC_LINKING
     if (!is_runtime_thread) {
-      __pthread_self()->sleeping = 0;
+      self->sleeping = 0;
       _emscripten_process_dlopen_queue();
     }
 #endif
 #ifdef __EMSCRIPTEN_PTHREADS__
-    if (cancelable && ret == ATOMICS_WAIT_TIMED_OUT && pthread_self()->cancel) {
+    if (cancelable && ret == ATOMICS_WAIT_TIMED_OUT && self->cancel) {
       // Break out of the loop early if we were cancelled
       break;
     }

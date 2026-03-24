@@ -67,12 +67,13 @@ int __timedwait_cp(volatile int *addr, int val,
 	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
 	// by the users unless current threads cancelability is set to PTHREAD_CANCEL_DISABLE
 	// which may be either done by the user of __timedwait() function.
+	pthread_t self = pthread_self();
 	if (is_runtime_thread ||
-	    pthread_self()->canceldisable != PTHREAD_CANCEL_DISABLE ||
-	    pthread_self()->cancelasync) {
+	    self->canceldisable != PTHREAD_CANCEL_DISABLE ||
+	    self->cancelasync) {
 		double sleepUntilTime = emscripten_get_now() + msecsToSleep;
 		do {
-			if (pthread_self()->cancel) {
+			if (self->cancel) {
 				// The thread was canceled by pthread_cancel().
 				// In the case of cancelasync or PTHREAD_CANCEL_ENABLE we can just call
 				// __pthread_testcancel(), which won't return at all.
