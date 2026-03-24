@@ -958,6 +958,9 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
       '-fno-builtin',
       '-DNDEBUG',
       '-DCOMPILER_RT_HAS_ATOMICS=1',
+      # TODO: Remove this if the emutls_key_created variable in emutls.c is
+      # fixed or if the scope of the warning is modified again (see
+      # https://github.com/llvm/llvm-project/pull/178342)
       '-Wno-unused-but-set-variable',
   ]
   src_dir = 'system/lib/compiler-rt/lib/builtins'
@@ -1078,6 +1081,9 @@ class libc(MuslInternalLibrary,
              '-Wno-string-plus-int',
              '-Wno-missing-braces',
              '-Wno-logical-op-parentheses',
+             # TODO: remove this if the cause variable in cxa_default_handlers
+             # is fixed or if the scope of the warning is reduced (see
+             # https://github.com/llvm/llvm-project/pull/178342)
              '-Wno-unused-but-set-variable',
              '-Wno-unused-variable',
              '-Wno-unused-label',
