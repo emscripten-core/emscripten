@@ -100,13 +100,13 @@ int __timedwait_cp(volatile int *addr, int val,
 	}
 #else
 	r = -__futex4_cp(addr, FUTEX_WAIT|priv, val, top);
-#endif
 	if (r != EINTR && r != ETIMEDOUT && r != ECANCELED) r = 0;
 	/* Mitigate bug in old kernels wrongly reporting EINTR for non-
 	 * interrupting (SA_RESTART) signal handlers. This is only practical
 	 * when NO interrupting signal handlers have been installed, and
 	 * works by sigaction tracking whether that's the case. */
 	if (r == EINTR && !__eintr_valid_flag) r = 0;
+#endif
 
 	return r;
 }
