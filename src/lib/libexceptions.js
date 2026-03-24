@@ -384,25 +384,14 @@ var LibraryExceptions = {
   },
 
 #elif !DISABLE_EXCEPTION_CATCHING
-  // When EXCEPTION_STACK_TRACES is set, the exception is an instance of
-  // CppException, whereas EXCEPTION_STACK_TRACES is unset it is a raw pointer.
-  $exnToPtr: (exn) => {
-#if EXCEPTION_STACK_TRACES
-    if (exn instanceof CppException) {
-      return exn.excPtr;
-    }
-#endif
-    return exn;
-  },
+  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
+  $incrementExceptionRefcount: (exn) => ___cxa_increment_exception_refcount(exn.excPtr),
 
-  $incrementExceptionRefcount__deps: ['$exnToPtr', '__cxa_increment_exception_refcount'],
-  $incrementExceptionRefcount: (exn) => ___cxa_increment_exception_refcount(exnToPtr(exn)),
+  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount'],
+  $decrementExceptionRefcount: (exn) => ___cxa_decrement_exception_refcount(exn.excPtr),
 
-  $decrementExceptionRefcount__deps: ['$exnToPtr', '__cxa_decrement_exception_refcount'],
-  $decrementExceptionRefcount: (exn) => ___cxa_decrement_exception_refcount(exnToPtr(exn)),
-
-  $getExceptionMessage__deps: ['$exnToPtr', '$getExceptionMessageCommon'],
-  $getExceptionMessage: (exn) => getExceptionMessageCommon(exnToPtr(exn)),
+  $getExceptionMessage__deps: ['$getExceptionMessageCommon'],
+  $getExceptionMessage: (exn) => getExceptionMessageCommon(exn.excPtr),
 
 #endif
 };
