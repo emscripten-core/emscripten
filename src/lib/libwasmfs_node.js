@@ -157,15 +157,15 @@ addToLibrary({
   },
 
   _wasmfs_node_truncate__i53abi: true,
-  _wasmfs_node_truncate__deps : ['$wasmfsTry'],
-  _wasmfs_node_truncate : (path_p, len) => {
+  _wasmfs_node_truncate__deps: ['$wasmfsTry'],
+  _wasmfs_node_truncate: (path_p, len) => {
     if (isNaN(len)) return -{{{ cDefs.EOVERFLOW }}};
     return wasmfsTry(() => fs.truncateSync(UTF8ToString(path_p), len));
   },
 
   _wasmfs_node_ftruncate__i53abi: true,
-  _wasmfs_node_ftruncate__deps : ['$wasmfsTry'],
-  _wasmfs_node_ftruncate : (fd, len) => {
+  _wasmfs_node_ftruncate__deps: ['$wasmfsTry'],
+  _wasmfs_node_ftruncate: (fd, len) => {
     if (isNaN(len)) return -{{{ cDefs.EOVERFLOW }}};
     return wasmfsTry(() => fs.ftruncateSync(fd, len));
   },
@@ -193,7 +193,7 @@ addToLibrary({
     });
   },
 
-  _wasmfs_node_close__deps: [],
+  _wasmfs_node_close__deps: ['$wasmfsTry'],
   _wasmfs_node_close: (fd) => {
     return wasmfsTry(() => {
       fs.closeSync(fd);
@@ -212,8 +212,8 @@ addToLibrary({
     });
   },
 
-  _wasmfs_node_write__deps : ['$wasmfsTry'],
-  _wasmfs_node_write : (fd, buf_p, len, pos, nwritten_p) => {
+  _wasmfs_node_write__deps: ['$wasmfsTry'],
+  _wasmfs_node_write: (fd, buf_p, len, pos, nwritten_p) => {
     return wasmfsTry(() => {
       // TODO: Cache open file descriptors to guarantee that opened files will
       // still exist when we try to access them.
