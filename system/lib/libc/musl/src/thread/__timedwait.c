@@ -61,8 +61,8 @@ int __timedwait_cp(volatile int *addr, int val,
 	double msecsToSleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
 
 	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
-	// by the users unless current threads cancelability is set to PTHREAD_CANCEL_DISABLE
-	// which may be either done by the user of __timedwait() function.
+	// by the user, unless current thread has cancelation disabled (which may be either done
+	// directly, or indirectly, for example in the __timedwait() function).
 	pthread_t self = pthread_self();
 
 	if (self->canceldisable != PTHREAD_CANCEL_DISABLE) {
@@ -75,15 +75,14 @@ int __timedwait_cp(volatile int *addr, int val,
 				// __pthread_testcancel(), which won't return at all.
 				__pthread_testcancel();
 				// If __pthread_testcancel does return here it means that canceldisable
-				// must be set to PTHREAD_CANCEL_MASKED.  This appears to mean "return
-				// ECANCELLED to the caller".  See pthread_cond_timedwait.c for the only
-				// use of this that I could find.
+				// must be set to PTHREAD_CANCEL_MASKED.  In this case we emulate the
+				// behaviour of the futex syscall and return ECANCELLED here.
+				// See pthread_cond_timedwait.c for the only use of this flag.
 				return ECANCELED;
 			}
 			msecsToSleep = sleepUntilTime - emscripten_get_now();
 			if (msecsToSleep <= 0) {
-				r = ETIMEDOUT;
-				break;
+				return ETIMEDOUT;
 			}
 			// Must wait in slices in case this thread is cancelled in between.
 			if (msecsToSleep > max_ms_slice_to_sleep)
