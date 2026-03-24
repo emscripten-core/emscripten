@@ -227,8 +227,8 @@ var LibraryExceptions = {
     info.set_caught(false);
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
+    exceptionLast = new CppException(ptr);
 #endif
-    {{{ storeException('exceptionLast', 'ptr') }}}
     {{{ makeThrow('exceptionLast') }}}
   },
 
