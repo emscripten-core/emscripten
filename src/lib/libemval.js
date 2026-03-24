@@ -402,16 +402,13 @@ ${functionBody}
   $emval_is_cpp_exception__deps: ['$Emval'],
   $emval_is_cpp_exception: (object) => {
     object = Emval.toValue(object);
-#if WASM_EXCEPTIONS
-    return object instanceof WebAssembly.Exception;
-#else
-#if EXCEPTION_STACK_TRACES
+#if !DISABLE_EXCEPTION_CATCHING
     return object instanceof CppException;
-#else
-    return object === object+0; // Check if it is a number
+#elif WASM_EXCEPTIONS
+    return object instanceof WebAssembly.Exception;
 #endif
-#endif
-  },
+    return false;
+j },
 
   _emval_throw__deps: ['$Emval', '$emval_is_cpp_exception',
 #if !DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS
