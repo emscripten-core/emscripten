@@ -93,16 +93,9 @@ var LibraryDylink = {
     } catch(e) {
       stackRestore(sp);
       // Create a try-catch guard that rethrows the Emscripten EH exception.
-#if EXCEPTION_STACK_TRACES
       // Exceptions thrown from C++ and longjmps will be an instance of
       // EmscriptenEH.
       if (!(e instanceof EmscriptenEH)) throw e;
-#else
-      // Exceptions thrown from C++ will be a pointer (number) and longjmp
-      // will throw the number Infinity. Use the compact and fast "e !== e+0"
-      // test to check if e was not a Number.
-      if (e !== e+0) throw e;
-#endif
       _setThrew(1, 0);
 #if WASM_BIGINT
       // In theory this if statement could be done on
