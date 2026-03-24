@@ -9301,6 +9301,26 @@ end
     ''')
     self.do_runf('access.c', cflags=['-sNODERAWFS'], args=[os.path.abspath('foo')])
 
+  def test_wasmfs_nodefs_stubs(self):
+    # This is equivalent to building with `-sWASMFS -sNODERAWFS`, except that the Wasm
+    # binary can also be used on the web. Ensure that this use case is supported.
+    create_file('main.c', r'''
+      #include <emscripten/emscripten.h>
+      #include <emscripten/wasmfs.h>
+
+      EM_JS(bool, is_node, (), { return ENVIRONMENT_IS_NODE; });
+
+      backend_t wasmfs_create_root_dir() {
+        return is_node() ? wasmfs_create_node_backend("")
+                         : wasmfs_create_memory_backend();
+      }
+
+      int main(int argc, char** argv) {
+        return 0;
+      }
+    ''')
+    self.run_process([EMCC, 'main.c', '-sWASMFS', '-sENVIRONMENT=web'])
+
   def test_noderawfs_readfile_prerun(self):
     create_file('foo', 'bar')
     self.add_pre_run("console.log(FS.readFile('foo', { encoding: 'utf8' }));")
