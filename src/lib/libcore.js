@@ -484,11 +484,7 @@ addToLibrary({
   // a proxy and declare the dependency here.
   _emscripten_throw_longjmp__deps: ['setThrew'],
   _emscripten_throw_longjmp: () => {
-#if EXCEPTION_STACK_TRACES
     throw new EmscriptenSjLj;
-#else
-    throw Infinity;
-#endif
   },
 #elif !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
