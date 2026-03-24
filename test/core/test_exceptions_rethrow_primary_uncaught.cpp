@@ -1,10 +1,9 @@
-#include <exception>
-#include <iostream>
 #include <stdexcept>
+#include <stdio.h>
 
 struct DestructorTester {
   ~DestructorTester() {
-    std::cout << "Destructor Uncaught: " << std::uncaught_exceptions() << "\n";
+    printf("Destructor Uncaught: %d\n", std::uncaught_exceptions());
   }
 };
 
@@ -16,13 +15,13 @@ int main() {
     p = std::current_exception();
   }
 
-  std::cout << "Before Uncaught: " << std::uncaught_exceptions() << "\n";
+  printf("Before Uncaught: %d\n", std::uncaught_exceptions());
   try {
     DestructorTester dt;
     std::rethrow_exception(p);
   } catch (...) {
-    std::cout << "In catch Uncaught: " << std::uncaught_exceptions() << "\n";
+    printf("In catch Uncaught: %d\n", std::uncaught_exceptions());
   }
-  std::cout << "After Uncaught: " << std::uncaught_exceptions() << "\n";
+  printf("After Uncaught: %d\n", std::uncaught_exceptions());
   return 0;
 }
