@@ -171,8 +171,8 @@ addToLibrary({
   },
 
   _wasmfs_node_open__deps: ['$wasmfsTry'],
-  _wasmfs_node_open: (path_p, mode_p) => {
-    return wasmfsTry(() => fs.openSync(UTF8ToString(path_p), UTF8ToString(mode_p)));
+  _wasmfs_node_open: (path_p, flags_p) => {
+    return wasmfsTry(() => fs.openSync(UTF8ToString(path_p), UTF8ToString(flags_p)));
   },
 
   _wasmfs_node_rename__deps: ['$wasmfsTry'],
