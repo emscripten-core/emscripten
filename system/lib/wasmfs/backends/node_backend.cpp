@@ -254,7 +254,7 @@ private:
     }
 
     auto childPath = getChildPath(name);
-    return _wasmfs_node_rename(fromPath.c_str(), childPath.c_str());
+    return -_wasmfs_node_rename(fromPath.c_str(), childPath.c_str());
   }
 
   ssize_t getNumEntries() override {
