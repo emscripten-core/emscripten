@@ -61,9 +61,6 @@ int __timedwait_cp(volatile int *addr, int val,
 	double msecsToSleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
 	int is_runtime_thread = emscripten_is_main_runtime_thread();
 
-	// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
-	double max_ms_slice_to_sleep = is_runtime_thread ? 1 : 100;
-
 	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
 	// by the users unless current threads cancelability is set to PTHREAD_CANCEL_DISABLE
 	// which may be either done by the user of __timedwait() function.
@@ -71,6 +68,9 @@ int __timedwait_cp(volatile int *addr, int val,
 	if (is_runtime_thread ||
 	    self->canceldisable != PTHREAD_CANCEL_DISABLE ||
 	    self->cancelasync) {
+		// Main runtime thread may need to run proxied calls, so sleep in very small slices to be responsive.
+		double max_ms_slice_to_sleep = is_runtime_thread ? 1 : 100;
+
 		double sleepUntilTime = emscripten_get_now() + msecsToSleep;
 		do {
 			if (self->cancel) {
