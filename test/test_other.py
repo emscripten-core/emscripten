@@ -2593,10 +2593,7 @@ F1 -> ''
 
     # Linking the side module into the main module should cause it to be loaded
     # automatically at runtime.
-    self.emcc('main.c', args=['-sMAIN_MODULE=2', 'libgif_side.so'])
-    output = self.run_js('a.out.js')
-    self.assertContained('gif side ok\n', output)
-    self.assertContained('main ok\n', output)
+    self.do_runf('main.c', 'gif side ok\n', cflags=['-sMAIN_MODULE=2', 'libgif_side.so'])
 
   @requires_network
   @also_with_wasm64
