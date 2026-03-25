@@ -296,6 +296,8 @@ public:
   std::shared_ptr<Symlink> createSymlink(std::string target) override {
     WASMFS_UNREACHABLE("TODO: implement NodeBackend::createSymlink");
   }
+
+  bool shouldPopulateRoot() override { return false; }
 };
 
 // TODO: symlink

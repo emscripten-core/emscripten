@@ -106,8 +106,14 @@ std::shared_ptr<Directory> WasmFS::initRootDirectory() {
   // The root directory is its own parent.
   lockedRoot.setParent(rootDirectory);
 
+  // Skip setting up the root directory when not needed (e.g. in NODERAWFS
+  // mode).
+  if (!rootBackend->shouldPopulateRoot()) {
+    return rootDirectory;
+  }
+
   // If the /dev/ directory does not already exist, create it. (It may already
-  // exist in NODERAWFS mode, or if those files have been preloaded.)
+  // exist if those files have been preloaded.)
   auto devDir = lockedRoot.insertDirectory("dev", S_IRUGO | S_IXUGO);
   if (devDir) {
     auto lockedDev = devDir->locked();
