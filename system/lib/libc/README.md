@@ -23,7 +23,7 @@ Verifying upstream musl behaviour
 
 Occasionally when working on libc/musl it can be usefull to verify to behavior
 of upstream musl.  For example, when trying to determine if a certain behavior
-is a bug in emscripten, or an upstream but, or just expected musl behavior.
+is a bug in emscripten, or an upstream bug, or just expected musl behavior.
 
 When I need to do this I use the Alpine linux docker image.  Alpine linux is a
 distro where the sysmtem libc is musl so by default any program you build within
