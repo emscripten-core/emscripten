@@ -307,6 +307,11 @@ var EXITSTATUS;
 // include: runtime_stack_check.js
 // end include: runtime_stack_check.js
 // include: runtime_exceptions.js
+// Base Emscripten EH error class
+class EmscriptenEH {}
+
+class EmscriptenSjLj extends EmscriptenEH {}
+
 // end include: runtime_exceptions.js
 // include: runtime_debug.js
 // end include: runtime_debug.js
@@ -620,13 +625,10 @@ var initRandomFill = () => {
     var nodeCrypto = require("node:crypto");
     return view => nodeCrypto.randomFillSync(view);
   }
-  return view => crypto.getRandomValues(view);
+  return view => (crypto.getRandomValues(view), 0);
 };
 
-var randomFill = view => {
-  // Lazily init on the first invocation.
-  (randomFill = initRandomFill())(view);
-};
+var randomFill = view => (randomFill = initRandomFill())(view);
 
 var PATH_FS = {
   resolve: (...args) => {

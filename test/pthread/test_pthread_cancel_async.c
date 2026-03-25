@@ -11,20 +11,31 @@
 #include <assert.h>
 #include <unistd.h>
 #include <errno.h>
+
+#ifdef __EMSCRIPTEN__
 #include <emscripten/console.h>
-
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-_Atomic long res = 43;
-_Atomic int started = false;
-
-static void cleanup_handler(void *arg)
-{
-  long a = (long)arg;
-  emscripten_outf("Called clean-up handler with arg %ld", a);
-  res -= a;
+#else
+void emscripten_out(const char* msg) {
+  printf("%s\n", msg);
 }
 
-static void *thread_start(void *arg) {
+void emscripten_outf(const char* msg, ...) {
+  printf("%s\n", msg);
+}
+#endif
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+_Atomic bool started = false;
+_Atomic bool done_cleanup = false;
+
+void cleanup_handler(void *arg) {
+  long a = (long)arg;
+  emscripten_outf("Called clean-up handler with arg %ld", a);
+  assert(a == 42);
+  done_cleanup = true;
+}
+
+void *thread_start(void *arg) {
   // Setup thread for async cancellation only
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
@@ -61,7 +72,7 @@ int main() {
   s = pthread_cancel(thr);
   assert(s == 0);
   // Busy wait until thread cancel handler has been run
-  while (res != 1) {
+  while (!done_cleanup) {
     sched_yield();
   }
 

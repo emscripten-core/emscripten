@@ -648,22 +648,21 @@ export function makeReturn64(value) {
   return `(setTempRet0(${pair[1]}), ${pair[0]})`;
 }
 
-function makeThrow(excPtr) {
-  if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
-    var assertInfo =
-      'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
-    if (MAIN_MODULE) {
-      assertInfo +=
-        ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
+function makeThrow() {
+  if (DISABLE_EXCEPTION_CATCHING) {
+    if (ASSERTIONS) {
+      var assertInfo =
+        'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
+      if (MAIN_MODULE) {
+        assertInfo +=
+          ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
+      }
+      return `assert(false, '${assertInfo}');`;
+    } else {
+      return 'abort()';
     }
-    return `assert(false, '${assertInfo}');`;
   }
-  return `throw ${excPtr};`;
-}
-
-function storeException(varName, excPtr) {
-  var exceptionToStore = EXCEPTION_STACK_TRACES ? `new CppException(${excPtr})` : `${excPtr}`;
-  return `${varName} = ${exceptionToStore};`;
+  return 'throw exceptionLast;';
 }
 
 function charCode(char) {
@@ -1255,7 +1254,6 @@ addToCompileTimeContext({
   runtimeKeepalivePop,
   runtimeKeepalivePush,
   splitI64,
-  storeException,
   to64,
   toIndexType,
   nodePthreadDetection,

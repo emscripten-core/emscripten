@@ -1457,8 +1457,12 @@ int main(int argc, char **argv) {
     self.do_core_test('test_exceptions_rethrow.cpp')
 
   @with_all_eh_sjlj
-  def test_exceptions_uncaught_count(self):
-    self.do_core_test('test_exceptions_uncaught_count.cpp')
+  def test_exceptions_uncaught_3(self):
+    self.do_core_test('test_exceptions_uncaught_3.cpp')
+
+  @with_all_eh_sjlj
+  def test_exceptions_uncaught_4(self):
+    self.do_core_test('test_exceptions_uncaught_4.cpp')
 
   @with_all_eh_sjlj
   def test_exceptions_resume(self):
@@ -9255,6 +9259,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_stdio_locking.c', cflags=['-sPTHREAD_POOL_SIZE=2'])
 
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  @no_sanitize('sanitizers do not support WASM_WORKERS')
   def test_stdio_locking_ww(self):
     # Note: do not combine with test_stdio_locking above because we want to test standalone
     # wasm workers here and `@requires_pthreads` would prevent that.
