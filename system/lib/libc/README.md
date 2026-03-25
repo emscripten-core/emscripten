@@ -21,7 +21,7 @@ See https://github.com/emscripten-core/emscripten/issues/15483.
 Verifying upstream musl behaviour
 =================================
 
-Occasionally when working on libc/musl it can be usefull to verify to behavior
+Occasionally when working on libc/musl it can be useful to verify to behavior
 of upstream musl.  For example, when trying to determine if a certain behavior
 is a bug in emscripten, or an upstream bug, or just expected musl behavior.
 
