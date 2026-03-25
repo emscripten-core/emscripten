@@ -596,8 +596,8 @@ var LibraryBrowser = {
   emscripten_run_preload_plugins_data: (data, size, suffix, arg, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
 
-    var _suffix = UTF8ToString(suffix);
-    var name = 'prepare_data_' + (Browser_asyncPrepareDataCounter++) + '.' + _suffix;
+    suffix = UTF8ToString(suffix);
+    var name = `prepare_data_${Browser_asyncPrepareDataCounter++}.${suffix}`;
     var cname = stringToNewUTF8(name);
     FS.createPreloadedFile(
       '/',

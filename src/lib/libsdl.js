@@ -1066,16 +1066,16 @@ var LibrarySDL = {
           {{{ makeSetValue('ptr', C_STRUCTS.SDL_WindowEvent.event, 'visibilityEventID' , 'i8') }}};
           break;
         }
-        default: abort('Unhandled SDL event: ' + event.type);
+        default: abort(`Unhandled SDL event: ${event.type}`);
       }
     },
 
     makeFontString(height, fontName) {
-      if (fontName.charAt(0) != "'" && fontName.charAt(0) != '"') {
+      if (fontName[0] != "'" && fontName[0] != '"') {
         // https://developer.mozilla.org/ru/docs/Web/CSS/font-family
         // Font family names containing whitespace should be quoted.
         // BTW, quote all font names is easier than searching spaces
-        fontName = '"' + fontName + '"';
+        fontName = `"${fontName}"`;
       }
       return height + 'px ' + fontName + ', serif';
     },
@@ -1222,7 +1222,7 @@ var LibrarySDL = {
       for (var c = 0; c < numChannels; ++c) {
         var channelData = dstAudioBuffer['getChannelData'](c);
         if (channelData.length != sizeSamplesPerChannel) {
-          abort('Web Audio output buffer length mismatch! Destination size: ' + channelData.length + ' samples vs expected ' + sizeSamplesPerChannel + ' samples!');
+          abort(`Web Audio output buffer length mismatch! Destination size: ${channelData.length} samples vs expected ${sizeSamplesPerChannel} samples!`);
         }
         if (audio.format == {{{ cDefs.AUDIO_S16LSB }}}) {
           for (var j = 0; j < sizeSamplesPerChannel; ++j) {
@@ -1238,7 +1238,7 @@ var LibrarySDL = {
             channelData[j] = ({{{ makeGetValue('heapPtr', '(j*numChannels + c)*4', 'float') }}});
           }
         } else {
-          abort('Invalid SDL audio format ' + audio.format + '!');
+          abort(`Invalid SDL audio format ${audio.format}!`);
         }
       }
     },
@@ -2264,8 +2264,8 @@ var LibrarySDL = {
           raw = callStbImage('stbi_load', [name]);
           if (!raw) return 0;
 #else
-          warnOnce('Cannot find preloaded image ' + filename);
-          warnOnce('Cannot find preloaded image ' + filename + '. Consider using STB_IMAGE=1 if you want synchronous image decoding (see settings.js), or package files with --use-preload-plugins');
+          warnOnce(`Cannot find preloaded image ${filename}`);
+          warnOnce(`Cannot find preloaded image ${filename}. Consider using STB_IMAGE=1 if you want synchronous image decoding (see settings.js), or package files with --use-preload-plugins`);
           return 0;
 #endif
         } else if (Module['freePreloadedMediaOnUse']) {
@@ -2275,7 +2275,7 @@ var LibrarySDL = {
 
       var surf = SDL.makeSurface(raw.width, raw.height, 0, false, 'load:' + filename);
       var surfData = SDL.surfaces[surf];
-      surfData.ctx.globalCompositeOperation = "copy";
+      surfData.ctx.globalCompositeOperation = 'copy';
       if (!raw.rawData) {
         surfData.ctx.drawImage(raw, 0, 0, raw.width, raw.height, 0, 0, raw.width, raw.height);
       } else {
@@ -2385,12 +2385,12 @@ var LibrarySDL = {
       } else if (SDL.audio.format == {{{ cDefs.AUDIO_F32 }}}) {
         SDL.audio.silence = 0.0; // Float data in range [-1.0, 1.0], silence is 0.0
       } else {
-        abort('Invalid SDL audio format ' + SDL.audio.format + '!');
+        abort(`Invalid SDL audio format ${SDL.audio.format}!`);
       }
       // Round the desired audio frequency up to the next 'common' frequency value.
       // Web Audio API spec states 'An implementation must support sample-rates in at least the range 22050 to 96000.'
       if (SDL.audio.freq <= 0) {
-        abort('Unsupported sound frequency ' + SDL.audio.freq + '!');
+        abort(`Unsupported sound frequency ${SDL.audio.freq}!`);
       } else if (SDL.audio.freq <= 22050) {
         SDL.audio.freq = 22050; // Take it safe and clamp everything lower than 22kHz to that.
       } else if (SDL.audio.freq <= 32000) {
@@ -3137,8 +3137,7 @@ var LibrarySDL = {
 #if ASSERTIONS
     // Check the final context looks valid. See
     // https://github.com/emscripten-core/emscripten/issues/16242
-    assert(typeof SDL.ttfContext.measureText == 'function',
-           'context ' + SDL.ttfContext + 'must provide valid methods');
+    assert(typeof SDL.ttfContext.measureText == 'function', `context ${SDL.ttfContext} must provide valid methods`);
 #endif
     return 0;
   },
@@ -3357,7 +3356,7 @@ var LibrarySDL = {
   SDL_GL_SetAttribute__proxy: 'sync',
   SDL_GL_SetAttribute: (attr, value) => {
     if (!(attr in SDL.glAttributes)) {
-      abort('Unknown SDL GL attribute (' + attr + '). Please check if your SDL version is supported.');
+      abort(`Unknown SDL GL attribute (${attr}). Please check if your SDL version is supported.`);
     }
 
     SDL.glAttributes[attr] = value;
@@ -3366,7 +3365,7 @@ var LibrarySDL = {
   SDL_GL_GetAttribute__proxy: 'sync',
   SDL_GL_GetAttribute: (attr, value) => {
     if (!(attr in SDL.glAttributes)) {
-      abort('Unknown SDL GL attribute (' + attr + '). Please check if your SDL version is supported.');
+      abort(`Unknown SDL GL attribute (${attr}). Please check if your SDL version is supported.`);
     }
 
     if (value) {{{ makeSetValue('value', 0, 'SDL.glAttributes[attr]', 'i32') }}};

@@ -362,7 +362,7 @@ function preMain() {}
 function postRun() {}
 
 /** @param {string|number=} what */ function abort(what) {
-  what = "Aborted(" + what + ")";
+  what = `Aborted(${what})`;
   // TODO(sbc): Should we remove printing and leave it up to whoever
   // catches the exception?
   err(what);
