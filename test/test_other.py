@@ -13165,6 +13165,8 @@ void foo() {}
     self.do_run_in_out_file_test('unistd/swab.c')
 
   @also_with_noderawfs
+  @crossplatform
+  @no_deno('https://github.com/denoland/deno/issues/32995')
   def test_unistd_isatty(self):
     if '-DNODERAWFS' in self.cflags:
       # Under NODERAWFS istty reports accurate information about the file descriptors
@@ -13172,6 +13174,8 @@ void foo() {}
       # stdout to be a tty.
       stdin_isatty = os.isatty(0)
       self.cflags += ['-DEXPECT_STDOUT=0', f'-DEXPECT_STDIN={int(stdin_isatty)}']
+      if WINDOWS:
+        self.skipTest('depends on /dev filesystem')
     self.do_runf('unistd/isatty.c', 'success')
 
   def test_unistd_login(self):
@@ -13184,7 +13188,7 @@ void foo() {}
   @with_all_fs
   def test_unistd_fstatfs(self):
     if '-DNODERAWFS' in self.cflags and WINDOWS:
-      self.skipTest('Cannot look up /dev/stdout on windows')
+      self.skipTest('depends on /dev filesystem')
     self.do_run_in_out_file_test('unistd/fstatfs.c', cflags=['-sASSERTIONS=2'])
 
   @no_windows("test is Linux-specific")

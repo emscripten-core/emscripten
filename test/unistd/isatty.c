@@ -25,6 +25,8 @@ int main() {
   printf("EXPECT_STDIN: %d\n", EXPECT_STDIN);
   printf("EXPECT_STDOUT: %d\n", EXPECT_STDOUT);
 
+  printf("stdin -> %d\n", isatty(0));
+  printf("stdout -> %d\n", isatty(1));
   assert(isatty(0) == EXPECT_STDIN);
   assert(isatty(1) == EXPECT_STDOUT);
 
@@ -35,18 +37,22 @@ int main() {
 
   fd = open("/dev/stdin", O_RDONLY);
   assert(fd >= 0);
+  printf("/dev/stdin -> %d\n", isatty(fd));
   assert(isatty(fd) == EXPECT_STDIN);
 
-  fd = open("/dev/stdout", O_RDONLY);
+  fd = open("/dev/stdout", O_WRONLY);
   assert(fd >= 0);
+  printf("/dev/stdout -> %d\n", isatty(fd));
   assert(isatty(fd) == EXPECT_STDOUT);
 
   fd = open("/dev/null", O_RDONLY);
   assert(fd >= 0);
+  printf("/dev/null -> %d\n", isatty(fd));
   assert(isatty(fd) == 0);
 
   fd = open("/dev", O_RDONLY);
   assert(fd >= 0);
+  printf("/dev -> %d\n", isatty(fd));
   assert(isatty(fd) == 0);
 
   puts("success");
