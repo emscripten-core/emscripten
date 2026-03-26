@@ -1091,8 +1091,6 @@ class libc(MuslInternalLibrary,
 
   def __init__(self, **kwargs):
     self.non_lto_files = self.get_libcall_files()
-    # TODO(https://github.com/emscripten-core/emscripten/issues/26506)
-    self.non_lto_files.append(utils.path_from_root('system/lib/libc/musl/src/locale/uselocale.c'))
     super().__init__(**kwargs)
 
   def get_libcall_files(self):
