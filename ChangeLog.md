@@ -23,6 +23,8 @@ See docs/process.md for more on how version tagging works.
 - C++ exceptions are now always thrown as CppException objects rather than raw
   pointers/numbers.  However, the `.message` and `.stack` fields of the thrown
   object will only be populated if `-sEXCEPTION_STACK_TRACES` is set. (#26523)
+- `emcmake` no longer automatically injects `--experimental-wasm-threads` nodejs
+  flags when used with versions of node older than v16. (#26560)
 
 5.0.4 - 03/23/26
 ----------------

@@ -34,7 +34,7 @@ from common import (
   test_file,
 )
 
-from tools import feature_matrix, shared, utils
+from tools import feature_matrix, utils
 from tools.feature_matrix import UNSUPPORTED
 from tools.shared import DEBUG, EMCC, exit_with_error
 from tools.utils import MACOS, WINDOWS, memoize, path_from_root, read_binary
@@ -929,8 +929,6 @@ class BrowserCore(RunnerCore):
     if not isinstance(expected, list):
       expected = [expected]
     if EMTEST_BROWSER == 'node':
-      nodejs = self.require_node()
-      self.node_args += shared.node_pthread_flags(nodejs)
       output = self.run_js(f'{output_basename}.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:
