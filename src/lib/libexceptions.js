@@ -309,7 +309,7 @@ var LibraryExceptions = {
   },
 
 #endif
-#if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_THROWING
+#if WASM_EXCEPTIONS || !DISABLE_EXCEPTION_CATCHING
   $getExceptionMessageCommon__deps: ['__get_exception_message', 'free', '$stackSave', '$stackRestore', '$stackAlloc'],
   $getExceptionMessageCommon: (ptr) => {
     var sp = stackSave();

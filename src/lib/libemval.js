@@ -11,7 +11,9 @@
 var LibraryEmVal = {
   // Stack of handles available for reuse.
   $emval_freelist: [],
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
   $emval_destructors: [],
+#endif
   // Array of alternating pairs (value, refcount).
   // reserve 0 and some special values. These never get de-allocated.
   $emval_handles: [
@@ -81,7 +83,11 @@ var LibraryEmVal = {
     }
   },
 
-  _emval_decref__deps: ['$emval_freelist', '$emval_handles', '$emval_destructors'],
+  _emval_decref__deps: ['$emval_freelist', '$emval_handles',
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    '$emval_destructors',
+#endif
+  ],
   _emval_decref: (handle) => {
     if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle + 1]) {
   #if ASSERTIONS
@@ -89,11 +95,13 @@ var LibraryEmVal = {
   #endif
       var value = emval_handles[handle];
       emval_handles[handle] = undefined;
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
       var destructor = emval_destructors[handle];
       if (destructor) {
         emval_destructors[handle] = undefined;
         destructor(value);
       }
+#endif
       emval_freelist.push(handle);
     }
   },
@@ -412,9 +420,10 @@ j },
 
   _emval_throw__deps: ['$Emval', '$emval_is_cpp_exception',
 #if !DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS
-    '$exceptionLast',
     '$ExceptionInfo',
-    '$exnToPtr',
+#endif
+#if !DISABLE_EXCEPTION_CATCHING && !WASM_EXCEPTIONS
+    '$exceptionLast',
 #endif
 #if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
     '$incrementUncaughtExceptionCount',
@@ -428,10 +437,12 @@ j },
     object = Emval.toValue(object);
     if (emval_is_cpp_exception(orig_object)) {
 #if !DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS
-      exceptionLast = object;
-      var info = new ExceptionInfo(exnToPtr(object));
+      var info = new ExceptionInfo(object.excPtr);
       info.set_caught(false);
       info.set_rethrown(false);
+#endif
+#if !DISABLE_EXCEPTION_CATCHING && !WASM_EXCEPTIONS
+      exceptionLast = object;
 #endif
 #if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
       incrementUncaughtExceptionCount();
@@ -483,6 +494,8 @@ j },
   _emval_from_current_cxa_exception__deps: ['$Emval', '__cxa_rethrow', '$emval_destructors',
 #if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
     '$decrementUncaughtExceptionCount',
+#endif
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
     '$decrementExceptionRefcount',
 #endif
   ],
@@ -500,7 +513,7 @@ j },
       decrementUncaughtExceptionCount();
 #endif
       var handle = Emval.toHandle(e);
-#if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
       emval_destructors[handle] = decrementExceptionRefcount;
 #endif
       return handle;
