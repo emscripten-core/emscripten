@@ -107,7 +107,7 @@ function stringifyWithFunctions(obj) {
     if (typeof value === 'function' && (str.startsWith(key) || str.startsWith('async ' + key))) {
       rtn += str + ',\n';
     } else {
-      rtn += escapeJSONKey(key) + ':' + str + ',\n';
+      rtn += `${escapeJSONKey(key)}:${str},\n`;
     }
   }
   return rtn + '}';

@@ -1120,7 +1120,7 @@ def read_name_section(wasm_file):
 def write_symbol_map(wasm_file, symbols_file):
   logger.debug('handle_final_wasm_symbols')
   names = read_name_section(wasm_file)
-  assert(names)
+  assert names
   strings = [f'{id}:{name}' for id, name in names.items()]
   contents = '\n'.join(strings) + '\n'
   utils.write_file(symbols_file, contents)

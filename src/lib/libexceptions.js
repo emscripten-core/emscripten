@@ -125,22 +125,18 @@ var LibraryExceptions = {
 #endif
   ],
   __cxa_rethrow: () => {
-    var info = exceptionCaught.pop();
-    if (!info) {
+    if (!exceptionCaught.length) {
       abort('no exception to throw');
     }
+    var info = exceptionCaught.at(-1);
     var ptr = info.excPtr;
-    if (!info.get_rethrown()) {
-      // Only pop if the corresponding push was through rethrow_primary_exception
-      exceptionCaught.push(info);
-      info.set_rethrown(true);
-      info.set_caught(false);
-      uncaughtExceptionCount++;
-    }
+    info.set_rethrown(true);
+    info.set_caught(false);
+    uncaughtExceptionCount++;
 #if !DISABLE_EXCEPTION_CATCHING
     ___cxa_increment_exception_refcount(ptr);
 #if EXCEPTION_DEBUG
-    dbg('__cxa_rethrow, popped ' +
+    dbg('__cxa_rethrow: ' +
       [ptrToString(ptr), exceptionLast, 'stack', exceptionCaught]);
 #endif
     exceptionLast = new CppException(ptr);
@@ -216,13 +212,26 @@ var LibraryExceptions = {
     return info.get_type();
   },
 
-  __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$exceptionCaught', '__cxa_rethrow'],
+  __cxa_rethrow_primary_exception__deps: ['$ExceptionInfo', '$uncaughtExceptionCount',
+#if !DISABLE_EXCEPTION_CATCHING
+    '$exceptionLast',
+    '__cxa_increment_exception_refcount',
+#endif
+  ],
   __cxa_rethrow_primary_exception: (ptr) => {
     if (!ptr) return;
+#if EXCEPTION_DEBUG
+    dbg('__cxa_rethrow_primary_exception: ' + ptrToString(ptr));
+#endif
     var info = new ExceptionInfo(ptr);
-    exceptionCaught.push(info);
     info.set_rethrown(true);
-    ___cxa_rethrow();
+    info.set_caught(false);
+    uncaughtExceptionCount++;
+#if !DISABLE_EXCEPTION_CATCHING
+    ___cxa_increment_exception_refcount(ptr);
+    exceptionLast = new CppException(ptr);
+#endif
+    {{{ makeThrow('exceptionLast') }}}
   },
 
   // Finds a suitable catch clause for when an exception is thrown.
@@ -385,36 +394,15 @@ var LibraryExceptions = {
     return getExceptionMessageCommon(ptr);
   },
 
-#elif !DISABLE_EXCEPTION_THROWING
-  // When EXCEPTION_STACK_TRACES is set, the exception is an instance of
-  // CppException, whereas EXCEPTION_STACK_TRACES is unset it is a raw pointer.
-  $exnToPtr: (exn) => {
-#if EXCEPTION_STACK_TRACES
-    if (exn instanceof CppException) {
-      return exn.excPtr;
-    }
-#endif
-    return exn;
-  },
+#elif !DISABLE_EXCEPTION_CATCHING
+  $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
+  $incrementExceptionRefcount: (exn) => ___cxa_increment_exception_refcount(exn.excPtr),
 
-  $incrementUncaughtExceptionCount__deps: ['$uncaughtExceptionCount'],
-  $incrementUncaughtExceptionCount: () => {
-    uncaughtExceptionCount++;
-  },
+  $decrementExceptionRefcount__deps: ['__cxa_decrement_exception_refcount'],
+  $decrementExceptionRefcount: (exn) => ___cxa_decrement_exception_refcount(exn.excPtr),
 
-  $decrementUncaughtExceptionCount__deps: ['$uncaughtExceptionCount'],
-  $decrementUncaughtExceptionCount: () => {
-    uncaughtExceptionCount--;
-  },
-
-  $incrementExceptionRefcount__deps: ['$exnToPtr', '__cxa_increment_exception_refcount'],
-  $incrementExceptionRefcount: (exn) => ___cxa_increment_exception_refcount(exnToPtr(exn)),
-
-  $decrementExceptionRefcount__deps: ['$exnToPtr', '__cxa_decrement_exception_refcount'],
-  $decrementExceptionRefcount: (exn) => ___cxa_decrement_exception_refcount(exnToPtr(exn)),
-
-  $getExceptionMessage__deps: ['$exnToPtr', '$getExceptionMessageCommon'],
-  $getExceptionMessage: (exn) => getExceptionMessageCommon(exnToPtr(exn)),
+  $getExceptionMessage__deps: ['$getExceptionMessageCommon'],
+  $getExceptionMessage: (exn) => getExceptionMessageCommon(exn.excPtr),
 
 #endif
 };

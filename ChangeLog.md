@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 5.0.5 (in development)
 ----------------------
+- C++ exceptions are now always thrown as CppException objects rather than raw
+  pointers/numbers.  However, the `.message` and `.stack` fields of the thrown
+  object will only be populated if `-sEXCEPTION_STACK_TRACES` is set. (#26523)
 
 5.0.4 - 03/23/26
 ----------------
@@ -36,6 +39,8 @@ See docs/process.md for more on how version tagging works.
   This is an extension of #26336 which removed many of them.  These APIs were
   not previously functional under Wasm Workers, but if there is strong use case
   it may be possible to enable them in future. (#26487)
+- pipe2 implementation was added (with limited flag support) (#26480)
+- ppoll and pselect implementations were added (#26482)
 
 5.0.3 - 03/14/26
 ----------------

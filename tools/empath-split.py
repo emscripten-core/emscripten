@@ -162,7 +162,7 @@ def get_sourceMappingURL(wasm, arg_sourcemap):
 def print_sources(sourcemap):
   with open(sourcemap) as f:
     sources = json.load(f).get('sources')
-    assert(isinstance(sources, list))
+    assert isinstance(sources, list)
     for src in sources:
       print(src)
 
