@@ -38,7 +38,7 @@ def diag(level, msg, *args):
   prefix = level_prefixes[level]
   color = level_colors[level]
   if args:
-    msg = msg % args
+    msg %= args
 
   # Add colors
   prefix = colored_logger.with_bold_color(color, prefix)

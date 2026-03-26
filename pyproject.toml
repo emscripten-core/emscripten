@@ -2,7 +2,9 @@
 requires-python = ">=3.10"
 
 [tool.ruff]
+preview = true
 line-length = 100
+indent-width = 2
 exclude = [
   "./cache/",
   "./node_modules/",
@@ -38,15 +40,26 @@ lint.ignore = [
   "B011", # See https://github.com/PyCQA/flake8-bugbear/issues/66
   "B023",
   "B026",
+  "E272",
   "E402",
+  "E241",
+  "E266",
   "E501",
   "E721",
   "E741",
+  "E111", # Does not seem to honor `indent-width = 2` above
+  "E114", # Does not seem to honor `indent-width = 2` above
+  "E261",
   "PERF203",
   "PERF401",
   "PLC0415",
+  "PLR0904",
+  "PLR0916",
+  "PLR0914",
+  "PLR1702",
   "PLR1704",
   "PLR5501",
+  "PLR6301",
   "PLW0602",
   "PLW0603",
   "PLW1510",

@@ -290,7 +290,7 @@ def print_random_test_statistics(num_tests):
 
 def error_on_legacy_suite_names(args):
   for a in args:
-    if a.startswith('wasm') and not any(a.startswith(p) for p in ('wasm2js', 'wasmfs', 'wasm64')):
+    if a.startswith('wasm') and not a.startswith(('wasm2js', 'wasmfs', 'wasm64')):
       new = a.replace('wasm', 'core', 1)
       utils.exit_with_error('`%s` test suite has been replaced with `%s`', a, new)
 
@@ -372,7 +372,7 @@ def create_test_run_sorter(sort_failing_tests_at_front):
 
 
 def use_parallel_suite(module):
-  suite_supported = module.__name__ not in ('test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress')
+  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress'}
   if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_cores:

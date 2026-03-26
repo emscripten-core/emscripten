@@ -203,7 +203,9 @@ class NativeBenchmarker(Benchmarker):
     if lib_builder:
       env = {'CC': self.cc, 'CXX': self.cxx, 'CXXFLAGS': '-Wno-c++11-narrowing'}
       env.update(clang_native.get_clang_native_env())
-      native_args = native_args + lib_builder(self.name, native=True, env_init=env)
+      # Avoid mutating incoming native_args list
+      native_args = native_args.copy()
+      native_args += lib_builder(self.name, native=True, env_init=env)
     if not native_exec:
       compiler = self.cxx if filename.endswith('cpp') else self.cc
       cmd = compiler + [
@@ -250,9 +252,9 @@ class EmscriptenBenchmarker(Benchmarker):
       # systems (like zlib) if they see a CFLAGS it will override all their
       # default flags, including optimizations.
       env_init['CFLAGS'] = ' '.join(LLVM_FEATURE_FLAGS + [OPTIMIZATIONS] + self.cflags)
-      # This shouldn't be 'emcc_args += ...', because emcc_args is passed in as
-      # a parameter and changes will be visible to the caller.
-      emcc_args = emcc_args + lib_builder('js_' + llvm_root, native=False, env_init=env_init)
+      # Avoid mutating incoming emcc_args
+      emcc_args = emcc_args.copy()
+      emcc_args += lib_builder('js_' + llvm_root, native=False, env_init=env_init)
     final = os.path.dirname(filename) + os.path.sep + self.name + ('_' if self.name else '') + os.path.basename(filename) + '.js'
     final = final.replace('.cpp', '')
     utils.delete_file(final)
@@ -327,7 +329,7 @@ class CheerpBenchmarker(Benchmarker):
     if lib_builder:
       # build as "native" (so no emcc env stuff), but with all the cheerp stuff
       # set in the env
-      cheerp_args = cheerp_args + lib_builder(self.name, native=True, env_init={
+      cheerp_args += lib_builder(self.name, native=True, env_init={
         'CC': CHEERP_BIN + 'clang',
         'CXX': CHEERP_BIN + 'clang++',
         'AR': CHEERP_BIN + '../libexec/cheerp-unknown-none-ar',
@@ -382,7 +384,7 @@ aot_v8 = (config.V8_ENGINE if config.V8_ENGINE else []) + ['--no-liftoff']
 
 named_benchmarkers = {
   'clang': NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
-  'gcc': NativeBenchmarker('gcc',   ['gcc', '-no-pie'],  ['g++', '-no-pie']),
+  'gcc': NativeBenchmarker('gcc', ['gcc', '-no-pie'], ['g++', '-no-pie']),
   'size': SizeBenchmarker('size'),
   'v8': EmscriptenBenchmarker('v8', aot_v8),
   'v8-lto': EmscriptenBenchmarker('v8-lto', aot_v8, ['-flto']),
@@ -1101,7 +1103,7 @@ class benchmark(common.RunnerCore):
                               ['src/BulletDynamics/libBulletDynamics.a',
                                'src/BulletCollision/libBulletCollision.a',
                                'src/LinearMath/libLinearMath.a'],
-                              configure=['cmake', '.'], configure_args=['-DCMAKE_POLICY_VERSION_MINIMUM=3.5','-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF', '-DCMAKE_CXX_STANDARD=14', f'-DCMAKE_CXX_FLAGS={cflags}'],
+                              configure=['cmake', '.'], configure_args=['-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '-DBUILD_DEMOS=OFF', '-DBUILD_EXTRAS=OFF', '-DUSE_GLUT=OFF', '-DCMAKE_CXX_STANDARD=14', f'-DCMAKE_CXX_FLAGS={cflags}'],
                               make=['cmake', '--build', '.', '--'], make_args=[], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('bullet', src, '\nok.\n',

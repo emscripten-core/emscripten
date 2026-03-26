@@ -16,7 +16,7 @@ from tools import config, shared, utils
 # Main run() function
 #
 def run():
-  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
+  if len(sys.argv) < 2 or sys.argv[1] in {'--version', '--help'}:
     print('''\
 emcmake is a helper for cmake, setting various environment
 variables so that emcc etc. are used. Typical usage:

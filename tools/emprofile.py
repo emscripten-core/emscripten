@@ -39,7 +39,7 @@ def create_profiling_graph(outfile):
     print(f'Processing {len(log_files)} profile log files in {profiler_logs_path}...')
   for f in log_files:
     print(f'Processing: {f}')
-    json_data = Path(f).read_text()
+    json_data = Path(f).read_text(encoding='utf-8')
     if len(json_data.strip()) == 0:
       continue
     lines = json_data.split('\n')
@@ -62,8 +62,8 @@ def create_profiling_graph(outfile):
   emprofile_json_data = json.dumps(all_results, indent=2)
 
   html_file = outfile + '.html'
-  html_contents = Path(os.path.dirname(os.path.realpath(__file__)), 'toolchain_profiler.results_template.html').read_text().replace('{{{ emprofile_json_data }}}', emprofile_json_data)
-  Path(html_file).write_text(html_contents)
+  html_contents = Path(os.path.dirname(os.path.realpath(__file__)), 'toolchain_profiler.results_template.html').read_text(encoding='utf-8').replace('{{{ emprofile_json_data }}}', emprofile_json_data)
+  Path(html_file).write_text(html_contents, encoding='utf-8')
   print(f'Wrote "{html_file}"')
   return 0
 

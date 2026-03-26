@@ -39,4 +39,3 @@ def clear(ports, settings, shared):
 
 def show():
   return 'zlib (-sUSE_ZLIB or --use-port=zlib; zlib license)'
-

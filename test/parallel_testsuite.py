@@ -37,7 +37,7 @@ def cap_max_workers_in_pool(max_workers, is_browser):
   if max_workers > 1 and is_browser and 'EMTEST_CORES' not in os.environ and 'EMCC_CORES' not in os.environ:
     # TODO experiment with this number. In browser tests we'll be creating
     # a browser instance per worker which is expensive.
-    max_workers = max_workers // 2
+    max_workers //= 2
   # Python has an issue that it can only use max 61 cores on Windows: https://github.com/python/cpython/issues/89240
   if WINDOWS:
     return min(max_workers, 61)
@@ -158,7 +158,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
           # results may be be None if # of allowed errors was exceeded
           # and the harness aborted.
           if res:
-            if res.test_result not in ['success', 'skipped'] and allowed_failures_counter is not None:
+            if res.test_result not in {'success', 'skipped'} and allowed_failures_counter is not None:
               # Signal existing multiprocess pool runners so that they can exit early if needed.
               allowed_failures_counter.value -= 1
             res.integrate_result(result)
@@ -167,7 +167,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         # Send a task to each worker to tear down the browser and server. This
         # relies on the implementation detail in the worker pool that all workers
         # are cycled through once.
-        num_tear_downs = sum([pool.apply(tear_down, ()) for i in range(use_cores)])
+        num_tear_downs = sum(pool.apply(tear_down, ()) for _ in range(use_cores))
         # Assert the assumed behavior above hasn't changed.
         if num_tear_downs != use_cores and not buffer:
           errlog(f'Expected {use_cores} teardowns, got {num_tear_downs}')
@@ -176,7 +176,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
       previous_test_run_results = common.load_previous_test_run_results()
       for r in results:
         # Save a test result record with the specific suite name (e.g. "core0.test_foo")
-        test_failed = r.test_result not in ['success', 'skipped']
+        test_failed = r.test_result not in {'success', 'skipped'}
 
         def update_test_results_to(test_name):
           fail_frequency = previous_test_run_results[test_name]['fail_frequency'] if test_name in previous_test_run_results else int(test_failed)
@@ -193,7 +193,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
         # for quick --failfast termination, in case a test fails in multiple suites
         update_test_results_to(r.test_name.split(' ')[0])
 
-      json.dump(previous_test_run_results, open(common.PREVIOUS_TEST_RUN_RESULTS_FILE, 'w'), indent=2)
+      utils.write_file(common.PREVIOUS_TEST_RUN_RESULTS_FILE, json.dumps(previous_test_run_results, indent=2))
 
     if EMTEST_VISUALIZE:
       self.visualize_results(results)
@@ -224,7 +224,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
     # shared data structures are hard in the python multi-processing world, so
     # use a file to share the flaky test information across test processes.
-    flaky_tests = open(common.flaky_tests_log_filename).read().split() if os.path.isfile(common.flaky_tests_log_filename) else []
+    flaky_tests = utils.read_file(common.flaky_tests_log_filename).split() if os.path.isfile(common.flaky_tests_log_filename) else []
     # Extract only the test short names
     flaky_tests = [x.split('.')[-1] for x in flaky_tests]
 
@@ -315,7 +315,7 @@ class BufferedParallelTestResult(BufferingMixin, unittest.TestResult):
       dummy_test_task_counter = os.path.getsize(profiler_log_file) if os.path.isfile(profiler_log_file) else 0
       # Remove the redundant 'test_' prefix from each test, since character space is at a premium in the visualized graph.
       test_name = self.test_short_name().removeprefix('test_')
-      with open(profiler_log_file, 'a') as prof:
+      with open(profiler_log_file, 'a', encoding='utf-8') as prof:
         prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"start","time":{self.start_time},"cmdLine":["{test_name}"],"color":"{color}"}}')
         prof.write(f',\n{{"pid":{dummy_test_task_counter},"op":"exit","time":{self.start_time + self.test_duration},"returncode":0}}')
 
