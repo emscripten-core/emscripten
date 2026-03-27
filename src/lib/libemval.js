@@ -417,7 +417,7 @@ ${functionBody}
     return object instanceof WebAssembly.Exception;
 #endif
     return false;
-j },
+  },
 
   _emval_throw__deps: ['$Emval', '$isCppExceptionObject',
 #if !DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS
