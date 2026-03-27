@@ -48,7 +48,7 @@ static int futex_wait_main_browser_thread(volatile void* addr,
 
   while (1) {
 #ifdef __EMSCRIPTEN_PTHREADS__
-    if (cancelable && pthread_self()->cancel) {
+    if (cancelable && __pthread_self()->cancel) {
       __pthread_testcancel();
       return -ETIMEDOUT;
     }
@@ -131,7 +131,7 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITFUTEX);
 
 #ifdef __EMSCRIPTEN_PTHREADS__
-  pthread_t self = pthread_self();
+  pthread_t self = __pthread_self();
   bool cancelable = self->canceldisable != PTHREAD_CANCEL_DISABLE;
 #else
   bool cancelable = false;
