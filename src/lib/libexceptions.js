@@ -366,14 +366,14 @@ var LibraryExceptions = {
     return ___thrown_object_from_unwind_exception(unwind_header);
   },
 
-  $incrementUncaughtExceptionCount__deps: ['__cxa_increment_uncaught_exception'],
+  $incrementUncaughtExceptionCount__deps: ['__increment_uncaught_exception'],
   $incrementUncaughtExceptionCount: () => {
-    ___cxa_increment_uncaught_exception();
+    ___increment_uncaught_exception();
   },
 
-  $decrementUncaughtExceptionCount__deps: ['__cxa_decrement_uncaught_exception'],
+  $decrementUncaughtExceptionCount__deps: ['__decrement_uncaught_exception'],
   $decrementUncaughtExceptionCount: () => {
-    ___cxa_decrement_uncaught_exception();
+    ___decrement_uncaught_exception();
   },
 
   $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount', '$getCppExceptionThrownObjectFromWebAssemblyException'],
