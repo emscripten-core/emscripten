@@ -161,6 +161,18 @@ def asan(func):
   return decorated
 
 
+def requires_wasm_workers(func):
+  assert callable(func)
+
+  @wraps(func)
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  @no_sanitize('sanitizers do not support WASM_WORKERS')
+  def decorated(self, *args, **kwargs):
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 def wasm_relaxed_simd(func):
   assert callable(func)
 
@@ -287,13 +299,11 @@ def also_with_wasm_workers(func):
 
   @wraps(func)
   def metafunc(self, ww, *args, **kwargs):
+    f = func
     if ww:
-      if self.get_setting('WASM_ESM_INTEGRATION'):
-        self.skipTest('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
-      if is_sanitizing(self.cflags):
-        self.skipTest('sanitizers are not compatible with WASM_WORKERS')
+      f = requires_wasm_workers(f)
       self.cflags += ['-sWASM_WORKERS']
-    return func(self, *args, **kwargs)
+    return f(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,), 'ww': (True,)})
   return metafunc
@@ -991,8 +1001,7 @@ class TestCoreBase(RunnerCore):
   def test_longjmp(self):
     self.do_core_test('test_longjmp.c')
 
-  @no_sanitize('sanitizers do not support WASM_WORKERS')
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  @requires_wasm_workers
   def test_longjmp_wasm_workers(self):
     self.do_core_test('test_longjmp.c', cflags=['-sWASM_WORKERS'])
 
@@ -7770,8 +7779,7 @@ void* operator new(size_t size) {
     '''
     self.do_run(src, '418\ndotest returned: 42\n', cflags=['-lembind', '-fno-rtti', '-frtti'])
 
-  @no_sanitize('sanitizers do not support WASM_WORKERS')
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  @requires_wasm_workers
   def test_embind_wasm_workers(self):
     self.do_run_in_out_file_test('embind/test_embind_wasm_workers.cpp', cflags=['-lembind', '-sWASM_WORKERS'])
 
@@ -9259,8 +9267,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_stdio_locking(self):
     self.do_core_test('test_stdio_locking.c', cflags=['-sPTHREAD_POOL_SIZE=2'])
 
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
-  @no_sanitize('sanitizers do not support WASM_WORKERS')
+  @requires_wasm_workers
   def test_stdio_locking_ww(self):
     # Note: do not combine with test_stdio_locking above because we want to test standalone
     # wasm workers here and `@requires_pthreads` would prevent that.
@@ -9697,33 +9704,28 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
     self.do_runf('test_emscripten_async_load_script.c', cflags=['-sFORCE_FILESYSTEM'])
 
-  @no_sanitize('sanitizers do not support WASM_WORKERS')
   @also_with_minimal_runtime
   @also_with_modularize
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  @requires_wasm_workers
   def test_wasm_worker_hello(self):
     if self.is_wasm2js() and '-sMODULARIZE' in self.cflags:
       self.skipTest('WASM2JS + MODULARIZE + WASM_WORKERS is not supported')
     self.maybe_closure()
     self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
-  @no_sanitize('sanitizers do not support WASM_WORKERS')
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  @requires_wasm_workers
   def test_wasm_worker_malloc(self):
     self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
-  @no_sanitize('sanitizers do not support WASM_WORKERS')
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  @requires_wasm_workers
   def test_wasm_worker_runtime_debug(self):
     self.do_runf('wasm_worker/hello_wasm_worker.c', 'wasm worker starting ...', cflags=['-sWASM_WORKERS', '-sRUNTIME_DEBUG'])
 
-  @no_sanitize('sanitizers do not support WASM_WORKERS')
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  @requires_wasm_workers
   def test_wasm_worker_futex_wait(self):
     self.do_runf('wasm_worker/wasm_worker_futex_wait.c', cflags=['-sWASM_WORKERS'])
 
-  @no_sanitize('sanitizers do not support WASM_WORKERS')
-  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  @requires_wasm_workers
   def test_wasm_worker_wait_async(self):
     self.do_runf('atomic/test_wait_async.c', cflags=['-sWASM_WORKERS'])
 
