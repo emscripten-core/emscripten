@@ -29,7 +29,9 @@ struct pthread {
 	uintptr_t *dtv;
 #endif
 	struct pthread *prev, *next; /* non-ABI */
+#ifndef __EMSCRIPTEN__
 	uintptr_t sysinfo;
+#endif
 #ifndef TLS_ABOVE_TP
 #ifdef CANARY_PAD
 	uintptr_t canary_pad;
@@ -49,10 +51,14 @@ struct pthread {
 	unsigned char tsd_used:1;
 	unsigned char dlerror_flag:1;
 	unsigned char *map_base;
+#ifndef __EMSCRIPTEN__
 	size_t map_size;
+#endif
 	void *stack;
 	size_t stack_size;
+#ifndef __EMSCRIPTEN__
 	size_t guard_size;
+#endif
 	void *result;
 	struct __ptcb *cancelbuf;
 	void **tsd;
@@ -61,13 +67,17 @@ struct pthread {
 		long off;
 		volatile void *volatile pending;
 	} robust_list;
+#ifndef __EMSCRIPTEN__
 	int h_errno_val;
 	volatile int timer_id;
+#endif
 #ifndef __EMSCRIPTEN__
 	// Emscripten uses C11 _Thread_local instead for locale
 	locale_t locale;
 #endif
+#ifndef __EMSCRIPTEN__
 	volatile int killlock[1];
+#endif
 	char *dlerror_buf;
 	void *stdio_locks;
 
