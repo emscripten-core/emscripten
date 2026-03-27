@@ -570,9 +570,9 @@ def configure():
   browser_common.configure_test_browser()
 
 
-def cleanup_emscripten_temp():
-  """Deletes all files and directories under Emscripten
-  that look like they might have been created by Emscripten."""
+def cleanup_temp_directory():
+  """Deletes all files and directories in TEMP_DIR that look like they
+  might have been created by Emscripten."""
   for entry in os.listdir(shared.TEMP_DIR):
     if entry.startswith(('emtest_', 'emscripten_')):
       entry = os.path.join(shared.TEMP_DIR, entry)
@@ -716,10 +716,13 @@ def main():
 
   check_js_engines()
 
-  # Remove any old test files before starting the run. Skip cleanup when we're running in debug mode
-  # where we want to preserve any files created (e.g. emscripten.lock from shared.py).
-  if not (shared.DEBUG or common.EMTEST_SAVE_DIR):
-    cleanup_emscripten_temp()
+  # Remove any old test files before starting the run. Skip cleanup when we're
+  # running in debug mode where we want to preserve any files created (e.g.
+  # emscripten.lock from shared.py).
+  # Note: We only do this in the CI environment, since it prevents multiple
+  # emscripten checkouts from running tests at the same time.
+  if os.getenv('CI') and not (shared.DEBUG or common.EMTEST_SAVE_DIR):
+    cleanup_temp_directory()
   utils.delete_file(common.flaky_tests_log_filename)
 
   browser_common.init(options.force_browser_process_termination)
