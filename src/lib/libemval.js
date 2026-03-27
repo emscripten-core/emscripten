@@ -409,9 +409,8 @@ ${functionBody}
     return delete object[property];
   },
 
-  $emval_is_cpp_exception__deps: ['$Emval'],
-  $emval_is_cpp_exception: (object) => {
-    object = Emval.toValue(object);
+  $isCppExceptionObject__deps: ['$Emval'],
+  $isCppExceptionObject: (object) => {
 #if !DISABLE_EXCEPTION_CATCHING
     return object instanceof CppException;
 #elif WASM_EXCEPTIONS
@@ -420,7 +419,7 @@ ${functionBody}
     return false;
 j },
 
-  _emval_throw__deps: ['$Emval', '$emval_is_cpp_exception',
+  _emval_throw__deps: ['$Emval', '$isCppExceptionObject',
 #if !DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS
     '$ExceptionInfo',
 #endif
@@ -435,9 +434,8 @@ j },
 #endif
   ],
   _emval_throw: (object) => {
-    var orig_object = object;
     object = Emval.toValue(object);
-    if (emval_is_cpp_exception(orig_object)) {
+    if (isCppExceptionObject(object)) {
 #if !DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS
       var info = new ExceptionInfo(object.excPtr);
       info.set_caught(false);
