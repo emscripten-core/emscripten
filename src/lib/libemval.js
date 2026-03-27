@@ -491,12 +491,13 @@ ${functionBody}
     }));
   },
 
-  _emval_from_current_cxa_exception__deps: ['$Emval', '__cxa_rethrow', '$emval_exception_decrefs',
+  _emval_from_current_cxa_exception__deps: ['$Emval', '__cxa_rethrow',
 #if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
     '$decrementUncaughtExceptionCount',
 #endif
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
     '$decrementExceptionRefcount',
+    '$emval_exception_decrefs',
 #endif
   ],
   _emval_from_current_cxa_exception: () => {
