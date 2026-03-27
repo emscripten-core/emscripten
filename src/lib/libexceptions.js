@@ -395,6 +395,16 @@ var LibraryExceptions = {
   },
 
 #elif !DISABLE_EXCEPTION_CATCHING
+  $incrementUncaughtExceptionCount__deps: ['$uncaughtExceptionCount'],
+  $incrementUncaughtExceptionCount: () => {
+    uncaughtExceptionCount++;
+  },
+
+  $decrementUncaughtExceptionCount__deps: ['$uncaughtExceptionCount'],
+  $decrementUncaughtExceptionCount: () => {
+    uncaughtExceptionCount--;
+  },
+
   $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
   $incrementExceptionRefcount: (exn) => ___cxa_increment_exception_refcount(exn.excPtr),
 
