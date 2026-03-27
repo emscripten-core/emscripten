@@ -409,15 +409,16 @@ ${functionBody}
     return delete object[property];
   },
 
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
   $isCppExceptionObject__deps: ['$Emval'],
   $isCppExceptionObject: (object) => {
 #if !DISABLE_EXCEPTION_CATCHING
     return object instanceof CppException;
-#elif WASM_EXCEPTIONS
+#else // WASM_EXCEPTIONS
     return object instanceof WebAssembly.Exception;
 #endif
-    return false;
   },
+#endif
 
   _emval_throw__deps: ['$Emval', '$isCppExceptionObject',
 #if !DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS
@@ -435,19 +436,15 @@ ${functionBody}
   ],
   _emval_throw: (object) => {
     object = Emval.toValue(object);
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
     if (isCppExceptionObject(object)) {
-#if !DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS
+#if !DISABLE_EXCEPTION_CATCHING
       var info = new ExceptionInfo(object.excPtr);
       info.set_caught(false);
       info.set_rethrown(false);
-#endif
-#if !DISABLE_EXCEPTION_CATCHING && !WASM_EXCEPTIONS
       exceptionLast = object;
 #endif
-#if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
       incrementUncaughtExceptionCount();
-#endif
-#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
       incrementExceptionRefcount(object);
 #endif
     }
