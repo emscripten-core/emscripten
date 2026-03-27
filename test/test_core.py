@@ -45,6 +45,7 @@ from decorators import (
   also_with_nodefs,
   also_with_nodefs_both,
   also_with_noderawfs,
+  also_with_pthreads,
   also_with_standalone_wasm,
   also_with_wasmfs,
   also_without_bigint,
@@ -6812,16 +6813,10 @@ void* operator new(size_t size) {
   @no_ubsan('local count too large for VMs')
   @is_slow_test
   @also_with_wasmfs
-  @parameterized({
-    '': (False,),
-    'pthreads': (True,),
-  })
-  def test_sqlite(self, use_pthreads):
+  @also_with_pthreads
+  def test_sqlite(self):
     if self.get_setting('STRICT'):
       self.cflags += ['-lstubs']
-    if use_pthreads:
-      self.cflags.append('-pthread')
-      self.require_pthreads()
     self.do_run_in_out_file_test('sqlite/test.c', cflags=['-sUSE_SQLITE3'])
 
   @needs_make('mingw32-make')
@@ -9758,15 +9753,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_modularize_instance_hello(self):
     self.do_core_test('test_hello_world.c', cflags=['-sMODULARIZE=instance', '-Wno-experimental'])
 
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread'],),
-  })
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_strict_js('EXPORT_ES6 is not compatible with STRICT_JS')
-  def test_modularize_instance(self, args):
-    if args:
-      self.require_pthreads()
+  @also_with_pthreads
+  def test_modularize_instance(self):
     create_file('library.js', '''\
     addToLibrary({
       $baz: () => console.log('baz'),
@@ -9778,7 +9768,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
                       '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32,runtimeKeepalivePush,runtimeKeepalivePop',
                       '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
                       '--js-library', 'library.js',
-                      '-o', 'modularize_instance.mjs'] + args + self.get_cflags())
+                      '-o', 'modularize_instance.mjs'] + self.get_cflags())
 
     create_file('runner.mjs', '''
       import { strict as assert } from 'assert';

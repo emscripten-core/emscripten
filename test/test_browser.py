@@ -49,6 +49,7 @@ from decorators import (
   also_with_asan,
   also_with_fetch_streaming,
   also_with_minimal_runtime,
+  also_with_pthreads,
   also_with_wasm2js,
   also_with_wasmfs,
   disabled,
@@ -179,21 +180,6 @@ requires_safari_version = requires_version('safari', get_safari_version)
 
 def is_jspi(args):
   return '-sJSPI' in args
-
-
-def also_with_threads(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, threads, *args, **kwargs):
-    if threads:
-      self.cflags += ['-pthread']
-    f(self, *args, **kwargs)
-
-  parameterize(decorated, {'': (False,),
-                           'pthreads': (True,)})
-
-  return decorated
 
 
 def also_with_proxy_to_pthread(f):
@@ -3676,7 +3662,7 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_64bit_atomics.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test 64-bit C++11 atomics.
-  @also_with_threads
+  @also_with_pthreads
   @parameterized({
     '': ([],),
     'O3': (['-O3'],),
@@ -3932,7 +3918,7 @@ Module["preRun"] = () => {
 
   # Test that -sABORTING_MALLOC=0 works in both pthreads and non-pthreads
   # builds. (sbrk fails gracefully)
-  @also_with_threads
+  @also_with_pthreads
   @parameterized({
     '': ([],),
     'O2': (['-O2'],),
@@ -4157,11 +4143,11 @@ Module["preRun"] = () => {
     shutil.move('test.wasm', Path('cdn/test.wasm'))
     self.run_browser('test.html', '/report_result?0')
 
-  @also_with_threads
+  @also_with_pthreads
   def test_utf8_textdecoder(self):
     self.btest_exit('benchmark/benchmark_utf8.c', 0, cflags=['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt'])
 
-  @also_with_threads
+  @also_with_pthreads
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark/benchmark_utf16.cpp', 0, cflags=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=UTF16ToString,stringToUTF16,lengthBytesUTF16'])
 
@@ -5560,7 +5546,7 @@ Module["preRun"] = () => {
     create_file('post.js', 'throw "foo";')
     self.btest('hello_world.c', cflags=['--post-js=post.js'], expected='exception:foo')
 
-  @also_with_threads
+  @also_with_pthreads
   @also_with_wasm2js
   @parameterized({
     '': ([],),
@@ -5582,7 +5568,7 @@ Module["preRun"] = () => {
       shutil.copy('src/hello.wasm', 'dist/')
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
-  @also_with_threads
+  @also_with_pthreads
   @requires_dev_dependency('vite')
   @parameterized({
     '': ([],),
@@ -5594,7 +5580,7 @@ Module["preRun"] = () => {
     self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
-  @also_with_threads
+  @also_with_pthreads
   @requires_dev_dependency('rollup')
   def test_rollup(self):
     copytree(test_file('rollup'), '.')

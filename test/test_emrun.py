@@ -10,7 +10,7 @@ import subprocess
 
 from browser_common import BrowserCore, get_browser, has_browser
 from common import EMRUN, RunnerCore, path_from_root, read_file, test_file
-from test_browser import also_with_threads
+from decorators import also_with_pthreads
 
 from tools.shared import EMCC, PIPE
 
@@ -60,7 +60,7 @@ class emrun(RunnerCore):
     self.assertContained('error: unrecognized arguments: --foo', err)
     self.assertContained('remember to add `--` between arguments', err)
 
-  @also_with_threads
+  @also_with_pthreads
   def test_emrun(self):
     self.emcc('test_emrun.c', ['--emrun', '-o', 'test_emrun.html'])
     if not has_browser():
