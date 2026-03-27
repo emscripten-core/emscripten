@@ -1507,6 +1507,8 @@ class libprintf_long_double(libc):
   name = 'libprintf_long_double'
   cflags = ['-DEMSCRIPTEN_PRINTF_LONG_DOUBLE']
 
+  # Need to define get_files
+  # so libprintf_long_double.get_files() does not call libc.get_files()
   def get_files(self):
     return files_in_path(
         path='system/lib/libc/musl/src/stdio',
