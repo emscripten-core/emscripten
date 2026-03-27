@@ -12,7 +12,7 @@ var LibraryEmVal = {
   // Stack of handles available for reuse.
   $emval_freelist: [],
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
-  $emval_destructors: [],
+  $emval_exception_decrefs: [],
 #endif
   // Array of alternating pairs (value, refcount).
   // reserve 0 and some special values. These never get de-allocated.
@@ -85,7 +85,7 @@ var LibraryEmVal = {
 
   _emval_decref__deps: ['$emval_freelist', '$emval_handles',
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
-    '$emval_destructors',
+    '$emval_exception_decrefs',
 #endif
   ],
   _emval_decref: (handle) => {
@@ -96,9 +96,11 @@ var LibraryEmVal = {
       var value = emval_handles[handle];
       emval_handles[handle] = undefined;
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
-      var destructor = emval_destructors[handle];
+      // In case the value is a C++ exception, decrement the refcount, so the
+      // memory can be freed correctly
+      var destructor = emval_exception_decrefs[handle];
       if (destructor) {
-        emval_destructors[handle] = undefined;
+        emval_exception_decrefs[handle] = undefined;
         destructor(value);
       }
 #endif
@@ -491,7 +493,7 @@ j },
     }));
   },
 
-  _emval_from_current_cxa_exception__deps: ['$Emval', '__cxa_rethrow', '$emval_destructors',
+  _emval_from_current_cxa_exception__deps: ['$Emval', '__cxa_rethrow', '$emval_exception_decrefs',
 #if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
     '$decrementUncaughtExceptionCount',
 #endif
@@ -514,7 +516,7 @@ j },
 #endif
       var handle = Emval.toHandle(e);
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
-      emval_destructors[handle] = decrementExceptionRefcount;
+      emval_exception_decrefs[handle] = decrementExceptionRefcount;
 #endif
       return handle;
     }
