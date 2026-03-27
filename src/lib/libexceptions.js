@@ -367,14 +367,10 @@ var LibraryExceptions = {
   },
 
   $incrementUncaughtExceptionCount__deps: ['__increment_uncaught_exception'],
-  $incrementUncaughtExceptionCount: () => {
-    ___increment_uncaught_exception();
-  },
+  $incrementUncaughtExceptionCount: '__increment_uncaught_exception',
 
   $decrementUncaughtExceptionCount__deps: ['__decrement_uncaught_exception'],
-  $decrementUncaughtExceptionCount: () => {
-    ___decrement_uncaught_exception();
-  },
+  $decrementUncaughtExceptionCount: '__decrement_uncaught_exception',
 
   $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount', '$getCppExceptionThrownObjectFromWebAssemblyException'],
   $incrementExceptionRefcount: (ex) => {
