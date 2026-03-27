@@ -420,7 +420,10 @@ ${functionBody}
   },
 #endif
 
-  _emval_throw__deps: ['$Emval', '$isCppExceptionObject',
+  _emval_throw__deps: ['$Emval',
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    '$isCppExceptionObject',
+#endif
 #if !DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS
     '$ExceptionInfo',
 #endif
@@ -446,8 +449,8 @@ ${functionBody}
 #endif
       incrementUncaughtExceptionCount();
       incrementExceptionRefcount(object);
-#endif
     }
+#endif
     throw object;
   },
 
