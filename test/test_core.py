@@ -9720,6 +9720,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('wasm_worker/hello_wasm_worker.c', 'wasm worker starting ...', cflags=['-sWASM_WORKERS', '-sRUNTIME_DEBUG'])
 
   @requires_wasm_workers
+  @also_with_pthreads
   def test_wasm_worker_futex_wait(self):
     self.do_runf('wasm_worker/wasm_worker_futex_wait.c', cflags=['-sWASM_WORKERS'])
 
