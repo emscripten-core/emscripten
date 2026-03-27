@@ -172,7 +172,6 @@ int __pthread_create(pthread_t* restrict res,
   offset += sizeof(struct pthread);
 
   new->map_base = block;
-  new->map_size = size;
 
   // The pthread struct has a field that points to itself - this is used as a
   // magic ID to detect whether the pthread_t structure is 'alive'.
