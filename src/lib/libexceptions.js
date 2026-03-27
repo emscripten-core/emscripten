@@ -394,7 +394,8 @@ var LibraryExceptions = {
     return getExceptionMessageCommon(ptr);
   },
 
-#elif !DISABLE_EXCEPTION_CATCHING
+#else
+#if !DISABLE_EXCEPTION_THROWING
   $incrementUncaughtExceptionCount__deps: ['$uncaughtExceptionCount'],
   $incrementUncaughtExceptionCount: () => {
     uncaughtExceptionCount++;
@@ -404,7 +405,9 @@ var LibraryExceptions = {
   $decrementUncaughtExceptionCount: () => {
     uncaughtExceptionCount--;
   },
+#endif
 
+#if !DISABLE_EXCEPTION_CATCHING
   $incrementExceptionRefcount__deps: ['__cxa_increment_exception_refcount'],
   $incrementExceptionRefcount: (exn) => ___cxa_increment_exception_refcount(exn.excPtr),
 
@@ -414,6 +417,7 @@ var LibraryExceptions = {
   $getExceptionMessage__deps: ['$getExceptionMessageCommon'],
   $getExceptionMessage: (exn) => getExceptionMessageCommon(exn.excPtr),
 
+#endif
 #endif
 };
 
