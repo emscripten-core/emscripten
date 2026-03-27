@@ -422,19 +422,13 @@ ${functionBody}
 
   _emval_throw__deps: ['$Emval',
 #if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
-    '$isCppExceptionObject',
-#endif
-#if !DISABLE_EXCEPTION_THROWING && !WASM_EXCEPTIONS
+#if !DISABLE_EXCEPTION_CATCHING
+    '$exceptionLast',
     '$ExceptionInfo',
 #endif
-#if !DISABLE_EXCEPTION_CATCHING && !WASM_EXCEPTIONS
-    '$exceptionLast',
-#endif
-#if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
-    '$incrementUncaughtExceptionCount',
-#endif
-#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
     '$incrementExceptionRefcount',
+    '$incrementUncaughtExceptionCount',
+    '$isCppExceptionObject',
 #endif
   ],
   _emval_throw: (object) => {
