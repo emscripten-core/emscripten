@@ -9722,6 +9722,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  def test_wasm_worker_futex_wait(self):
+    self.do_runf('wasm_worker/wasm_worker_futex_wait.c', cflags=['-sWASM_WORKERS'])
+
+  @no_sanitize('sanitizers do not support WASM_WORKERS')
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_wait_async(self):
     self.do_runf('atomic/test_wait_async.c', cflags=['-sWASM_WORKERS'])
 
