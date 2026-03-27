@@ -58,41 +58,8 @@ int __timedwait_cp(volatile int *addr, int val,
 	}
 
 #ifdef __EMSCRIPTEN__
-	double msecsToSleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
-
-	// cp suffix in the function name means "cancellation point", so this wait can be cancelled
-	// by the user, unless current thread has cancelation disabled (which may be either done
-	// directly, or indirectly, for example in the __timedwait() function).
-	pthread_t self = pthread_self();
-
-	if (self->canceldisable != PTHREAD_CANCEL_DISABLE) {
-		double max_ms_slice_to_sleep = 100;
-		double sleepUntilTime = emscripten_get_now() + msecsToSleep;
-		do {
-			if (self->cancel) {
-				// The thread was canceled by pthread_cancel().
-				// In the case of cancelasync or PTHREAD_CANCEL_ENABLE we can just call
-				// __pthread_testcancel(), which won't return at all.
-				__pthread_testcancel();
-				// If __pthread_testcancel does return here it means that canceldisable
-				// must be set to PTHREAD_CANCEL_MASKED.  In this case we emulate the
-				// behaviour of the futex syscall and return ECANCELLED here.
-				// See pthread_cond_timedwait.c for the only use of this flag.
-				return ECANCELED;
-			}
-			msecsToSleep = sleepUntilTime - emscripten_get_now();
-			if (msecsToSleep <= 0) {
-				return ETIMEDOUT;
-			}
-			// Must wait in slices in case this thread is cancelled in between.
-			if (msecsToSleep > max_ms_slice_to_sleep)
-				msecsToSleep = max_ms_slice_to_sleep;
-			r = -emscripten_futex_wait((void*)addr, val, msecsToSleep);
-		} while (r == ETIMEDOUT);
-	} else {
-		// Can wait in one go.
-		r = -emscripten_futex_wait((void*)addr, val, msecsToSleep);
-	}
+	double msecs_to_sleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
+	r = -emscripten_futex_wait((void*)addr, val, msecs_to_sleep);
 #else
 	r = -__futex4_cp(addr, FUTEX_WAIT|priv, val, top);
 #endif

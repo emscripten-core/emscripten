@@ -132,7 +132,7 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
 
 #ifdef __EMSCRIPTEN_PTHREADS__
   pthread_t self = pthread_self();
-  bool cancelable = !self->canceldisable && self->cancelasync;
+  bool cancelable = self->canceldisable != PTHREAD_CANCEL_DISABLE;
 #else
   bool cancelable = false;
 #endif
@@ -215,7 +215,12 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
 #ifdef __EMSCRIPTEN_PTHREADS__
     if (cancelable && ret == ATOMICS_WAIT_TIMED_OUT && self->cancel) {
       __pthread_testcancel();
-      break;
+      // If __pthread_testcancel does return here it means that canceldisable
+      // must be set to PTHREAD_CANCEL_MASKED.  In this case we emulate the
+      // behaviour of the futex syscall and return ECANCELLED here.
+      // See pthread_cond_timedwait.c for the only use of this flag.
+      emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
+      return -ECANCELED;
     }
     // If remainder_ns is negative it means we want wait forever, and we don't
     // need to decrement remainder_ns in that case.
