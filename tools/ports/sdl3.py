@@ -29,7 +29,7 @@ def get(ports, settings, shared):
   diagnostics.warning('experimental', 'sdl3 port is still experimental')
 
   # get the port
-  ports.fetch_project('sdl3', f'https://github.com/libsdl-org/SDL/archive/refs/tags/{TAG}.zip', sha512hash=HASH)
+  ports.fetch_project('sdl3', f'https://github.com/libsdl-org/SDL/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     root_dir = ports.get_dir('sdl3', SUBDIR)
