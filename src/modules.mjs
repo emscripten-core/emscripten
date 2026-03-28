@@ -495,16 +495,6 @@ function exportRuntimeSymbols() {
     'callMain',
     'abort',
     'wasmExports',
-    'HEAPF32',
-    'HEAPF64',
-    'HEAP8',
-    'HEAPU8',
-    'HEAP16',
-    'HEAPU16',
-    'HEAP32',
-    'HEAPU32',
-    'HEAP64',
-    'HEAPU64',
   ];
 
   if (SUPPORT_BIG_ENDIAN) {

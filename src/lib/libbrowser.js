@@ -568,12 +568,14 @@ var LibraryBrowser = {
     var _file = UTF8ToString(file);
     var data = FS.analyzePath(_file);
     if (!data.exists) return -1;
+    // Here we assume data.object.contents is a TypedArray.
+#if ASSERTIONS
+    assert(data.object.contents.subarray, 'unexpected file content')
+#endif
     FS.createPreloadedFile(
       PATH.dirname(_file),
       PATH.basename(_file),
-      // TODO: This copy is not needed if the contents are already a Uint8Array,
-      //       which they often are (and always are in WasmFS).
-      new Uint8Array(data.object.contents), true, true,
+      data.object.contents, /*canRead=*/true, /*canWrite=*/true,
       () => {
         {{{ runtimeKeepalivePop() }}}
         if (onload) {{{ makeDynCall('vp', 'onload') }}}(file);
@@ -582,7 +584,7 @@ var LibraryBrowser = {
         {{{ runtimeKeepalivePop() }}}
         if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(file);
       },
-      true // don'tCreateFile - it's already there
+      /*dontCreateFile=*/true // it's already there
     );
     return 0;
   },
@@ -594,8 +596,8 @@ var LibraryBrowser = {
   emscripten_run_preload_plugins_data: (data, size, suffix, arg, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
 
-    var _suffix = UTF8ToString(suffix);
-    var name = 'prepare_data_' + (Browser_asyncPrepareDataCounter++) + '.' + _suffix;
+    suffix = UTF8ToString(suffix);
+    var name = `prepare_data_${Browser_asyncPrepareDataCounter++}.${suffix}`;
     var cname = stringToNewUTF8(name);
     FS.createPreloadedFile(
       '/',

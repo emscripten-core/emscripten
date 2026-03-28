@@ -122,10 +122,9 @@ class WasmSourceMap:
     self.offsets = []
 
   def parse(self, filename):
-    with open(filename) as f:
-      source_map_json = json.loads(f.read())
-      if shared.DEBUG:
-        print(source_map_json)
+    source_map_json = json.loads(utils.read_file(filename))
+    if shared.DEBUG:
+      print(source_map_json)
 
     self.version = source_map_json['version']
     self.sources = source_map_json['sources']
@@ -244,11 +243,10 @@ def symbolize_address_symbolmap(module, address, symbol_map_file):
     assert ':' in line, f'invalid symbolmap line: {line}'
     return line.split(':', 1)
 
-  with open(symbol_map_file) as f:
-    lines = f.read().splitlines()
-    for line in lines:
-      index, name = split_symbolmap_line(line)
-      func_names[int(index)] = name
+  lines = utils.read_file(symbol_map_file).splitlines()
+  for line in lines:
+    index, name = split_symbolmap_line(line)
+    func_names[int(index)] = name
 
   func_index = -1
   for i, func in module.iter_functions_by_index():

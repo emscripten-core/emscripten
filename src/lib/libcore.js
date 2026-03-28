@@ -21,6 +21,31 @@
 // new function with an '_', it will not be found.
 
 addToLibrary({
+  // HEAP definitions are here to help with TypeScript type generation.
+  $HEAP8__docs: '/** @type {!Int8Array} */',
+  $HEAP8: undefined,
+  $HEAPU8__docs: '/** @type {!Uint8Array} */',
+  $HEAPU8: undefined,
+  $HEAP16__docs: '/** @type {!Int16Array} */',
+  $HEAP16: undefined,
+  $HEAPU16__docs: '/** @type {!Uint16Array} */',
+  $HEAPU16: undefined,
+  $HEAP32__docs: '/** @type {!Int32Array} */',
+  $HEAP32: undefined,
+  $HEAPU32__docs: '/** @type {!Uint32Array} */',
+  $HEAPU32: undefined,
+  $HEAPF32__docs: '/** @type {!Float32Array} */',
+  $HEAPF32: undefined,
+  $HEAPF64__docs: '/** @type {!Float64Array} */',
+  $HEAPF64: undefined,
+#if WASM_BIGINT
+  // BigInt64Array type is not correctly defined in closure
+  $HEAP64__docs: '/** not-@type {!BigInt64Array} */',
+  $HEAP64: undefined,
+  $HEAPU64__docs: '/** not-@type {!BigUint64Array} */',
+  $HEAPU64: undefined,
+#endif
+
   // JS aliases for native stack manipulation functions and tempret handling
   $stackSave__deps: ['emscripten_stack_get_current'],
   $stackSave: () => _emscripten_stack_get_current(),
@@ -45,7 +70,11 @@ addToLibrary({
   // purposes in cases where new functions are created at runtime.
   $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
 
-  $ptrToString: (ptr) => {
+  // This function is referenced *very* early on in some configurations
+  // (e.g WASM_WORKERS + RUNTIME_DEBUG) so we explictly use a function here
+  // rather than an arrow function so that it gets hoisted to the top of the
+  // scope.
+  $ptrToString: function(ptr) {
 #if ASSERTIONS
     assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
 #endif
@@ -455,11 +484,7 @@ addToLibrary({
   // a proxy and declare the dependency here.
   _emscripten_throw_longjmp__deps: ['setThrew'],
   _emscripten_throw_longjmp: () => {
-#if EXCEPTION_STACK_TRACES
     throw new EmscriptenSjLj;
-#else
-    throw Infinity;
-#endif
   },
 #elif !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
@@ -2193,7 +2218,7 @@ addToLibrary({
 #endif
       FS.createPath('/', PATH.dirname(name), true, true);
       // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
-      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, true);
+      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, /*canOwn=*/true);
     } while ({{{ makeGetValue('ptr', '0', '*') }}});
 #if RUNTIME_DEBUG
     dbg('done preloading data files');
@@ -2568,7 +2593,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     t = modifyJSFunction(t, (args, body, async_) => `${async_}function (${args}) {\n${pre}${body}${post}}\n`);
   }
 
-  library[x] = eval('(' + t + ')');
+  library[x] = eval(`(${t})`);
   // Automatically add dependency on `$SYSCALLS`
   if (!WASMFS && t.includes('SYSCALLS')) {
     library[x + '__deps'].push('$SYSCALLS');

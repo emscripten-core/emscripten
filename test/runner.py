@@ -107,6 +107,7 @@ default_core_test_mode = 'core0'
 # picked from here, but you can force them to be, using something like
 # randombrowser10 (which runs 10 random tests from 'browser').
 misc_test_modes = [
+  'codesize',
   'other',
   'jslib',
   'browser',

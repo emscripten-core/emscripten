@@ -12,6 +12,12 @@
 
 _Atomic uint32_t futex_value = 0;
 
+void do_exit() {
+  emscripten_out("do_exit");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
+
 void wake_worker_after_delay(void *user_data) {
   futex_value = 1;
   emscripten_futex_wake(&futex_value, INT_MAX);
@@ -38,9 +44,7 @@ void worker_main() {
   assert(rc == 0);
   assert(futex_value == 1);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
 }
 
 int main() {

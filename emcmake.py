@@ -35,11 +35,7 @@ variables so that emcc etc. are used. Typical usage:
     args.append('-DCMAKE_TOOLCHAIN_FILE=' + utils.path_from_root('cmake/Modules/Platform/Emscripten.cmake'))
 
   if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
-    node_js = [config.NODE_JS[0]]
-    # In order to allow cmake to run code built with pthreads we need to pass
-    # some extra flags to node.
-    node_js += shared.node_pthread_flags(config.NODE_JS)
-    node_js = ';'.join(node_js)
+    node_js = config.NODE_JS[0]
     # See https://github.com/emscripten-core/emscripten/issues/15522
     args.append(f'-DCMAKE_CROSSCOMPILING_EMULATOR={node_js}')
 

@@ -34,43 +34,41 @@ var LibraryGLEmulation = {
     'glVertexAttribPointer', 'glActiveTexture', '$stringToNewUTF8',
     '$ptrToString', '$getEmscriptenSupportedExtensions',
   ],
-  $GLEmulation__postset:
-#if MAYBE_CLOSURE_COMPILER
-    // Forward declare GL functions that are overridden by GLEmulation here to appease Closure compiler.
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawArrays;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawElements;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glActiveTexture;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glEnable;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDisable;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvf;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvi;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvfv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetIntegerv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glIsEnabled;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetBooleanv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetString;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glCreateShader;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glShaderSource;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glCompileShader;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glAttachShader;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDetachShader;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glUseProgram;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDeleteProgram;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glBindAttribLocation;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glLinkProgram;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glBindBuffer;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetFloatv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glHint;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glEnableVertexAttribArray;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDisableVertexAttribArray;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glVertexAttribPointer;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glTexEnvf;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glTexEnvi;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glTexEnvfv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glGetTexEnviv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glGetTexEnvfv;' +
-#endif
-    'GLEmulation.init();',
+  $GLEmulation__postset: `
+    // Forward declare GL functions that are overridden by GLEmulation.
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawArrays;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawElements;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glActiveTexture;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glEnable;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDisable;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvf;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvi;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvfv;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetIntegerv;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glIsEnabled;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetBooleanv;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetString;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glCreateShader;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glShaderSource;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glCompileShader;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glAttachShader;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDetachShader;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glUseProgram;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDeleteProgram;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glBindAttribLocation;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glLinkProgram;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glBindBuffer;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetFloatv;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glHint;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glEnableVertexAttribArray;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDisableVertexAttribArray;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glVertexAttribPointer;
+    /**@suppress {duplicate, undefinedVars}*/var _glTexEnvf;
+    /**@suppress {duplicate, undefinedVars}*/var _glTexEnvi;
+    /**@suppress {duplicate, undefinedVars}*/var _glTexEnvfv;
+    /**@suppress {duplicate, undefinedVars}*/var _glGetTexEnviv;
+    /**@suppress {duplicate, undefinedVars}*/var _glGetTexEnvfv;
+    GLEmulation.init();`,
   $GLEmulation: {
     // Fog support. Partial, we assume shaders are used that implement fog. We just pass them uniforms
     fogStart: 0,

@@ -307,16 +307,15 @@ var EXITSTATUS;
 // include: runtime_stack_check.js
 // end include: runtime_stack_check.js
 // include: runtime_exceptions.js
+// Base Emscripten EH error class
+class EmscriptenEH {}
+
+class EmscriptenSjLj extends EmscriptenEH {}
+
 // end include: runtime_exceptions.js
 // include: runtime_debug.js
 // end include: runtime_debug.js
 // Memory management
-var /** @type {!Int8Array} */ HEAP8, /** @type {!Uint8Array} */ HEAPU8, /** @type {!Int16Array} */ HEAP16, /** @type {!Uint16Array} */ HEAPU16, /** @type {!Int32Array} */ HEAP32, /** @type {!Uint32Array} */ HEAPU32, /** @type {!Float32Array} */ HEAPF32, /** @type {!Float64Array} */ HEAPF64;
-
-// BigInt64Array type is not correctly defined in closure
-var /** not-@type {!BigInt64Array} */ HEAP64, /* BigUint64Array type is not correctly defined in closure
-/** not-@type {!BigUint64Array} */ HEAPU64;
-
 var runtimeInitialized = false;
 
 function updateMemoryViews() {
@@ -363,7 +362,7 @@ function preMain() {}
 function postRun() {}
 
 /** @param {string|number=} what */ function abort(what) {
-  what = "Aborted(" + what + ")";
+  what = `Aborted(${what})`;
   // TODO(sbc): Should we remove printing and leave it up to whoever
   // catches the exception?
   err(what);
@@ -492,6 +491,26 @@ class ExitStatus {
   }
 }
 
+/** @type {!Int16Array} */ var HEAP16;
+
+/** @type {!Int32Array} */ var HEAP32;
+
+/** not-@type {!BigInt64Array} */ var HEAP64;
+
+/** @type {!Int8Array} */ var HEAP8;
+
+/** @type {!Float32Array} */ var HEAPF32;
+
+/** @type {!Float64Array} */ var HEAPF64;
+
+/** @type {!Uint16Array} */ var HEAPU16;
+
+/** @type {!Uint32Array} */ var HEAPU32;
+
+/** not-@type {!BigUint64Array} */ var HEAPU64;
+
+/** @type {!Uint8Array} */ var HEAPU8;
+
 var callRuntimeCallbacks = callbacks => {
   while (callbacks.length > 0) {
     // Pass the module as the first argument.
@@ -606,13 +625,10 @@ var initRandomFill = () => {
     var nodeCrypto = require("node:crypto");
     return view => nodeCrypto.randomFillSync(view);
   }
-  return view => crypto.getRandomValues(view);
+  return view => (crypto.getRandomValues(view), 0);
 };
 
-var randomFill = view => {
-  // Lazily init on the first invocation.
-  (randomFill = initRandomFill())(view);
-};
+var randomFill = view => (randomFill = initRandomFill())(view);
 
 var PATH_FS = {
   resolve: (...args) => {
@@ -1196,34 +1212,19 @@ var MEMFS = {
       if (!length) return 0;
       var node = stream.node;
       node.mtime = node.ctime = Date.now();
-      if (buffer.subarray) {
-        // This write is from a typed array to a typed array?
-        if (canOwn) {
-          node.contents = buffer.subarray(offset, offset + length);
-          node.usedBytes = length;
-          return length;
-        } else if (node.usedBytes === 0 && position === 0) {
-          // If this is a simple first write to an empty file, do a fast set since we don't need to care about old data.
-          node.contents = buffer.slice(offset, offset + length);
-          node.usedBytes = length;
-          return length;
-        } else if (position + length <= node.usedBytes) {
-          // Writing to an already allocated and used subrange of the file?
-          node.contents.set(buffer.subarray(offset, offset + length), position);
-          return length;
-        }
-      }
-      // Appending to an existing file and we need to reallocate, or source data did not come as a typed array.
-      MEMFS.expandFileStorage(node, position + length);
-      if (buffer.subarray) {
+      if (canOwn) {
+        node.contents = buffer.subarray(offset, offset + length);
+        node.usedBytes = length;
+      } else if (node.usedBytes === 0 && position === 0) {
+        // If this is a simple first write to an empty file, do a fast set since we don't need to care about old data.
+        node.contents = buffer.slice(offset, offset + length);
+        node.usedBytes = length;
+      } else {
+        MEMFS.expandFileStorage(node, position + length);
         // Use typed array write which is available.
         node.contents.set(buffer.subarray(offset, offset + length), position);
-      } else {
-        for (var i = 0; i < length; i++) {
-          node.contents[position + i] = buffer[offset + i];
-        }
+        node.usedBytes = Math.max(node.usedBytes, position + length);
       }
-      node.usedBytes = Math.max(node.usedBytes, position + length);
       return length;
     },
     llseek(stream, offset, whence) {
@@ -1285,6 +1286,7 @@ var MEMFS = {
 };
 
 var FS_modeStringToFlags = str => {
+  if (typeof str != "string") return str;
   var flagModes = {
     "r": 0,
     "r+": 2,
@@ -1298,6 +1300,16 @@ var FS_modeStringToFlags = str => {
     throw new Error(`Unknown file open mode: ${str}`);
   }
   return flags;
+};
+
+var FS_fileDataToTypedArray = data => {
+  if (typeof data == "string") {
+    data = intArrayFromString(data, true);
+  }
+  if (!data.subarray) {
+    data = new Uint8Array(data);
+  }
+  return data;
 };
 
 var FS_getMode = (canRead, canWrite) => {
@@ -2257,7 +2269,7 @@ var FS = {
     if (path === "") {
       throw new FS.ErrnoError(44);
     }
-    flags = typeof flags == "string" ? FS_modeStringToFlags(flags) : flags;
+    flags = FS_modeStringToFlags(flags);
     if ((flags & 64)) {
       mode = (mode & 4095) | 32768;
     } else {
@@ -2489,14 +2501,8 @@ var FS = {
   writeFile(path, data, opts = {}) {
     opts.flags = opts.flags || 577;
     var stream = FS.open(path, opts.flags, opts.mode);
-    if (typeof data == "string") {
-      data = new Uint8Array(intArrayFromString(data, true));
-    }
-    if (ArrayBuffer.isView(data)) {
-      FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
-    } else {
-      abort("Unsupported data type");
-    }
+    data = FS_fileDataToTypedArray(data);
+    FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
     FS.close(stream);
   },
   cwd: () => FS.currentPath,
@@ -2723,11 +2729,7 @@ var FS = {
     var mode = FS_getMode(canRead, canWrite);
     var node = FS.create(path, mode);
     if (data) {
-      if (typeof data == "string") {
-        var arr = new Array(data.length);
-        for (var i = 0, len = data.length; i < len; ++i) arr[i] = data.charCodeAt(i);
-        data = arr;
-      }
+      data = FS_fileDataToTypedArray(data);
       // make sure we can write to the file
       FS.chmod(node, mode | 146);
       var stream = FS.open(node, 577);

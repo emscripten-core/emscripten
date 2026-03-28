@@ -241,7 +241,7 @@ function abort(what) {
   Module['onAbort']?.(what);
 #endif
 
-  what = 'Aborted(' + what + ')';
+  what = `Aborted(${what})`;
   // TODO(sbc): Should we remove printing and leave it up to whoever
   // catches the exception?
   err(what);
@@ -360,11 +360,7 @@ function makeAbortWrapper(original) {
         ABORT // rethrow exception if abort() was called in the original function call above
         || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
 #if SUPPORT_LONGJMP == 'emscripten' // Rethrow longjmp if enabled
-#if EXCEPTION_STACK_TRACES
-        || e instanceof EmscriptenSjLj // EXCEPTION_STACK_TRACES=1 will throw an instance of EmscriptenSjLj
-#else
-        || e === Infinity // EXCEPTION_STACK_TRACES=0 will throw Infinity
-#endif // EXCEPTION_STACK_TRACES
+        || e instanceof EmscriptenSjLj
 #endif
         || e === 'unwind'
       ) {
@@ -506,7 +502,7 @@ async function getWasmBinary(binaryFile) {
 #endif
 
 #if SPLIT_MODULE
-{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
+{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, JSPI ? '(secondaryFile, imports) => instantiateAsync(null, secondaryFile, imports)' : 'instantiateSync') }}}
 var splitModuleProxyHandler = {
   get(target, moduleName, receiver) {
     if (moduleName.startsWith('placeholder')) {
@@ -519,22 +515,23 @@ var splitModuleProxyHandler = {
       }
       return new Proxy({}, {
         get(target, base, receiver) {
-          return (...args) => {
-#if ASYNCIFY == 2
-            throw new Error('Placeholder function "' + base + '" should not be called when using JSPI.');
-#else
+          let ret = {{{ asyncIf(ASYNCIFY == 2) }}} (...args) => {
 #if RUNTIME_DEBUG
             dbg(`placeholder function called: ${base}`);
 #endif
             var imports = {'primary': wasmRawExports};
             // Replace '.wasm' suffix with '.deferred.wasm'.
-            loadSplitModule(secondaryFile, imports, base);
+            {{{ awaitIf(ASYNCIFY == 2) }}}loadSplitModule(secondaryFile, imports, base);
 #if RUNTIME_DEBUG
             dbg('instantiated deferred module, continuing');
 #endif
             return wasmTable.get({{{ toIndexType('base') }}})(...args);
+          };
+#if JSPI
+          return new WebAssembly.Suspending(ret);
+#else
+          return ret;
 #endif
-          }
         }
       });
     }
@@ -768,7 +765,7 @@ function getWasmImports() {
     updateGOT(origExports);
 #endif
 
-#if EXPORTED_RUNTIME_METHODS.includes('wasmExports')
+#if EXPORTED_RUNTIME_METHODS.has('wasmExports')
     Module['wasmExports'] = wasmExports;
 #endif
 

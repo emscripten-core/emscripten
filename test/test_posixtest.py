@@ -77,6 +77,7 @@ unsupported_noreturn = {
   'test_pthread_join_6_3': 'creates too many threads',
   'test_pthread_barrier_wait_3_2': 'signals are not supported',
   'test_pthread_cond_broadcast_1_2': 'tries to create 10,0000 threads, then depends on fork()',
+  'test_pthread_setcanceltype_1_1': 'async cancelation does not work withing pthread_mutex_lock',
 }
 
 unsupported = {

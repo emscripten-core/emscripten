@@ -76,7 +76,7 @@ addToLibrary({
         u0 = ((u0 & 15) << 12) | (u1 << 6) | u2;
       } else {
 #if ASSERTIONS
-        if ((u0 & 0xF8) != 0xF0) warnOnce('Invalid UTF-8 leading byte ' + ptrToString(u0) + ' encountered when deserializing a UTF-8 string in wasm memory to a JS string!');
+        if ((u0 & 0xF8) != 0xF0) warnOnce(`Invalid UTF-8 leading byte ${ptrToString(u0)} encountered when deserializing a UTF-8 string in wasm memory to a JS string!`);
 #endif
         u0 = ((u0 & 7) << 18) | (u1 << 12) | (u2 << 6) | (heapOrArray[idx++] & 63);
       }
@@ -186,7 +186,7 @@ addToLibrary({
       } else {
         if (outIdx + 3 >= endIdx) break;
 #if ASSERTIONS
-        if (u > 0x10FFFF) warnOnce('Invalid Unicode code point ' + ptrToString(u) + ' encountered when serializing a JS string to a UTF-8 string in wasm memory! (Valid unicode code points should be in range 0-0x10FFFF).');
+        if (u > 0x10FFFF) warnOnce(`Invalid Unicode code point ${ptrToString(u)} encountered when serializing a JS string to a UTF-8 string in wasm memory! (Valid unicode code points should be in range 0-0x10FFFF).`);
 #endif
         heap[outIdx++] = 0xF0 | (u >> 18);
         heap[outIdx++] = 0x80 | ((u >> 12) & 63);

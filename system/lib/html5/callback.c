@@ -10,7 +10,7 @@
 
 #include "emscripten_internal.h"
 
-typedef bool (*event_callback)(int event_type, void *event_data __attribute__((nonnull)), void *user_data);
+typedef bool (*event_callback)(int event_type, void * _Nonnull event_data, void *user_data);
 
 typedef struct callback_args_t {
   event_callback callback;

@@ -123,6 +123,17 @@ char* __get_exception_terminate_message(void* thrown_object) {
   free(type);
   return result;
 }
+
+#ifdef __WASM_EXCEPTIONS__
+void __increment_uncaught_exception() throw() {
+  __cxa_get_globals()->uncaughtExceptions += 1;
+}
+
+void __decrement_uncaught_exception() throw() {
+  __cxa_get_globals()->uncaughtExceptions -= 1;
+}
+#endif
+
 } // extern "C"
 
 } // namespace __cxxabiv1

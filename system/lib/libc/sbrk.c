@@ -14,13 +14,14 @@
 
 #include <errno.h>
 #include <limits.h>
+#include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
-#ifdef __EMSCRIPTEN_SHARED_MEMORY__ // for error handling, see below
-#include <stdio.h>
-#include <stdlib.h>
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
+#include <stdlib.h> // for abort
 #endif
 
+#include <emscripten/console.h>
 #include <emscripten/heap.h>
 #include <emscripten/trace.h>
 
@@ -45,12 +46,6 @@ uintptr_t* emscripten_get_sbrk_ptr() {
 // Enforce preserving a minimal alignof(maxalign_t) alignment for sbrk.
 #define SBRK_ALIGNMENT (__alignof__(max_align_t))
 
-#ifdef __EMSCRIPTEN_SHARED_MEMORY__
-#define READ_SBRK_PTR(sbrk_ptr) (__c11_atomic_load((_Atomic(uintptr_t)*)(sbrk_ptr), __ATOMIC_SEQ_CST))
-#else
-#define READ_SBRK_PTR(sbrk_ptr) (*(sbrk_ptr))
-#endif
-
 void *_sbrk64(int64_t increment) {
   if (increment >= 0) {
     increment = (increment + (SBRK_ALIGNMENT-1)) & ~((int64_t)SBRK_ALIGNMENT-1);
@@ -58,12 +53,12 @@ void *_sbrk64(int64_t increment) {
     increment = -(-increment & ~((int64_t)SBRK_ALIGNMENT-1));
   }
 
-  uintptr_t *sbrk_ptr = (uintptr_t*)emscripten_get_sbrk_ptr();
+  _Atomic uintptr_t *sbrk_ptr = (_Atomic uintptr_t *)emscripten_get_sbrk_ptr();
 
   // To make sbrk thread-safe, implement a CAS loop to update the
   // value of sbrk_ptr.
   while (1) {
-    uintptr_t old_brk = READ_SBRK_PTR(sbrk_ptr);
+    uintptr_t old_brk = *sbrk_ptr;
     int64_t new_brk64 = (int64_t)old_brk + increment;
     uintptr_t new_brk = (uintptr_t)new_brk64;
     // Check for a) an over/underflow, which would indicate that we are
@@ -80,8 +75,7 @@ void *_sbrk64(int64_t increment) {
     // by iterating the loop body again.
     uintptr_t expected = old_brk;
 
-    __c11_atomic_compare_exchange_strong((_Atomic(uintptr_t)*)sbrk_ptr,
-      &expected, new_brk, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    atomic_compare_exchange_strong(sbrk_ptr, &expected, new_brk);
 
     if (expected != old_brk) continue; // CAS failed, another thread raced in between.
 #else
@@ -116,7 +110,9 @@ void *sbrk(intptr_t increment_) {
 int brk(void* ptr) {
 #ifdef __EMSCRIPTEN_SHARED_MEMORY__
   // FIXME
-  printf("brk() is not threadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
+#ifndef NDEBUG
+  emscripten_err("brk() is not threadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
+#endif
   abort();
 #else
   uintptr_t last = (uintptr_t)sbrk(0);

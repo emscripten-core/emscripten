@@ -7,38 +7,26 @@
 
 #pragma once
 
+#include <emscripten/atomic.h>
+// Legacy proxying functions.  See proxying.h for the new proxying system.
+#include <emscripten/threading_legacy.h>
+#include <emscripten/threading_primitives.h>
+
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdbool.h>
-
-#include <emscripten/html5.h>  // for EMSCRIPTEN_RESULT
-#include <emscripten/atomic.h>
-
-// Legacy proxying functions.  See proxying.h for the new proxying system.
-#include "threading_legacy.h"
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-// Returns true if the current browser is able to spawn threads with
-// pthread_create(), and the compiled page was built with threading support
-// enabled. If this returns 0, calls to pthread_create() will fail with return
-// code EAGAIN.
+// Returns true if the current runtime is able to spawn threads with shared
+// memory.  If this function returns false then it will not be possible to
+// create new pthreads or Wasm Workers.
 bool emscripten_has_threading_support(void);
 
 // Returns the number of logical cores on the system.
 int emscripten_num_logical_cores(void);
-
-// If the given memory address contains value val, puts the calling thread to
-// sleep waiting for that address to be notified.
-// Returns -EINVAL if addr is null.
-int emscripten_futex_wait(volatile void/*uint32_t*/ * _Nonnull addr, uint32_t val, double maxWaitMilliseconds);
-
-// Wakes the given number of threads waiting on a location. Pass count ==
-// INT_MAX to wake all waiters on that location.
-// Returns -EINVAL if addr is null.
-int emscripten_futex_wake(volatile void/*uint32_t*/ * _Nonnull addr, int count);
 
 // Returns true if the current thread is the thread that hosts the Emscripten
 // runtime.
@@ -85,11 +73,11 @@ void emscripten_thread_sleep(double msecs);
 // The name parameter is a UTF-8 encoded string which is truncated to 32 bytes.
 // When thread profiler is not enabled (not building with --threadprofiler),
 // this is a no-op.
-void emscripten_set_thread_name(pthread_t threadId, const char *name __attribute__((nonnull)));
+void emscripten_set_thread_name(pthread_t threadId, const char * _Nonnull name);
 
 // Gets the stored pointer to a string representing the canvases to transfer to
 // the created thread.
-int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a __attribute__((nonnull)), const char **str __attribute__((nonnull)));
+int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t * _Nonnull a, const char ** _Nonnull str);
 
 // Specifies a comma-delimited list of canvas DOM element IDs to transfer to the
 // thread to be created.
@@ -97,7 +85,7 @@ int emscripten_pthread_attr_gettransferredcanvases(const pthread_attr_t *a __att
 // so must be held alive until pthread_create() has been called. If 0 or "", no
 // canvases are transferred.
 // The special value "#canvas" denotes the element stored in Module.canvas.
-int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t *a __attribute__((nonnull)), const char *str __attribute__((nonnull)));
+int emscripten_pthread_attr_settransferredcanvases(pthread_attr_t * _Nonnull a, const char * _Nonnull str);
 
 // Called when blocking on the main thread. This will error if main thread
 // blocking is not enabled, see ALLOW_BLOCKING_ON_MAIN_THREAD.

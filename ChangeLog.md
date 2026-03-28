@@ -18,8 +18,38 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.3 (in development)
+5.0.5 (in development)
 ----------------------
+- C++ exceptions are now always thrown as CppException objects rather than raw
+  pointers/numbers.  However, the `.message` and `.stack` fields of the thrown
+  object will only be populated if `-sEXCEPTION_STACK_TRACES` is set. (#26523)
+- `emcmake` no longer automatically injects `--experimental-wasm-threads` and
+  `--experimental-wasm-bulk-memory` flags when used with versions of node older
+  than v16. (#26560)
+
+5.0.4 - 03/23/26
+----------------
+- `EXPORT_EXCEPTION_HANDLING_HELPERS` is deprecated and setting it will not do
+  anything. `getExceptionMessage` is exported anyway when `ASSERTIONS` or
+  `EXCEPTION_STACK_TRACES` is set, which are set by default at `-O0`. At `-O1`
+  or above, you can export it separately by
+  `-sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount`.
+  (#26499)
+- The deprecated `EMSCRIPTEN` macro is now defined in `emscripten.h` rather than
+  on the command line (`__EMSCRIPTEN__`, which is built into LLVM, should be
+  used instead). (#26417)
+- All pthread functions are now undefined when building with `-sWASM_WORKERS`.
+  This is an extension of #26336 which removed many of them.  These APIs were
+  not previously functional under Wasm Workers, but if there is strong use case
+  it may be possible to enable them in future. (#26487)
+- pipe2 implementation was added (with limited flag support) (#26480)
+- ppoll and pselect implementations were added (#26482)
+
+5.0.3 - 03/14/26
+----------------
+- The low level FS.write API now only accepts TypedArray.  The higher level
+  writeFile and createDataFile file still also accept string and Array.
+  (#26413)
 - Warn on usage of the deprecated `EMSCRIPTEN` macro (`__EMSCRIPTEN__` should
   be used instead). (#26381)
 - The `-sRELOCATABLE` setting was effectively removed (moved to legacy
@@ -32,6 +62,7 @@ See docs/process.md for more on how version tagging works.
 - SDL2 port updated to include stub functions for `SDL_hid_init()` and related
   functions. (#26297)
 - libpng port updated from 1.6.39 to 1.6.55. (#26388)
+- Added sdl3_ttf port. (#24601)
 
 5.0.2 - 02/25/26
 ----------------

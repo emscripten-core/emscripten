@@ -6,6 +6,6 @@ EMSCRIPTEN_KEEPALIVE void foo() {
 }
 
 int main(int argc, char* argv[]) {
-  printf("hello, world! (%d)\n", argc);
+  printf("Hello, world! (%d)\n", argc);
   return 0;
 }

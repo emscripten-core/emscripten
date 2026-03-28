@@ -7,6 +7,6 @@
 
 int main() {
   cheez burger
-  printf("hello, world!\n");
+  printf("Hello, world!\n");
   return 1;
 }

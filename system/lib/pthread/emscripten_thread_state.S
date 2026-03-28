@@ -6,8 +6,10 @@
 
 .section .globals,"",@
 
+#ifndef __EMSCRIPTEN_WASM_WORKERS__
 .globaltype thread_ptr, PTR
 thread_ptr:
+#endif
 
 .globaltype is_main_thread, i32
 is_main_thread:
@@ -18,7 +20,7 @@ is_runtime_thread:
 .globaltype supports_wait, i32
 supports_wait:
 
-#if WASM_WORKERS_ONLY
+#if __EMSCRIPTEN_WASM_WORKERS__
 .globaltype done_init, i32
 done_init:
 #endif
@@ -28,8 +30,10 @@ done_init:
 .globl __set_thread_state
 __set_thread_state:
   .functype __set_thread_state (PTR, i32, i32, i32) -> ()
+#ifndef __EMSCRIPTEN_WASM_WORKERS__
   local.get 0
   global.set thread_ptr
+#endif
   local.get 1
   global.set is_main_thread
   local.get 2
@@ -38,7 +42,7 @@ __set_thread_state:
   global.set supports_wait
   end_function
 
-#if WASM_WORKERS_ONLY
+#if __EMSCRIPTEN_WASM_WORKERS__
 // With Wasm Workers we do lazy initializtion of the thread
 // state so that only workers that call these APIs actually
 // initializes their state.
@@ -56,20 +60,19 @@ lazy_init_thread_state:
   end_function
 #endif
 
+#ifndef __EMSCRIPTEN_WASM_WORKERS__
 .globl __get_tp
 __get_tp:
   .functype __get_tp () -> (PTR)
-#if WASM_WORKERS_ONLY
-  call lazy_init_thread_state
-#endif
   global.get thread_ptr
   end_function
+#endif
 
 # Semantically the same as testing "!ENVIRONMENT_IS_PTHREAD" in JS
 .globl emscripten_is_main_runtime_thread
 emscripten_is_main_runtime_thread:
   .functype emscripten_is_main_runtime_thread () -> (i32)
-#if WASM_WORKERS_ONLY
+#if __EMSCRIPTEN_WASM_WORKERS__
   call lazy_init_thread_state
 #endif
   global.get is_runtime_thread
@@ -79,7 +82,7 @@ emscripten_is_main_runtime_thread:
 .globl emscripten_is_main_browser_thread
 emscripten_is_main_browser_thread:
   .functype emscripten_is_main_browser_thread () -> (i32)
-#if WASM_WORKERS_ONLY
+#if __EMSCRIPTEN_WASM_WORKERS__
   call lazy_init_thread_state
 #endif
   global.get is_main_thread
@@ -89,7 +92,7 @@ emscripten_is_main_browser_thread:
 .globl _emscripten_thread_supports_atomics_wait
 _emscripten_thread_supports_atomics_wait:
   .functype _emscripten_thread_supports_atomics_wait () -> (i32)
-#if WASM_WORKERS_ONLY
+#if __EMSCRIPTEN_WASM_WORKERS__
   call lazy_init_thread_state
 #endif
   global.get supports_wait

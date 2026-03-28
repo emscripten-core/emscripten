@@ -344,6 +344,11 @@ def get_binaryen_passes(options):
   # safe heap must run before post-emscripten, so post-emscripten can apply the sbrk ptr
   if settings.SAFE_HEAP:
     passes += ['--safe-heap']
+  if settings.EMULATE_FUNCTION_POINTER_CASTS:
+    # fpcast-emu must run before -Ox so that directize (inside -Ox) sees
+    # the rewritten table entries with matching types. It must also run
+    # before asyncify so the byn$fpcast-emu thunks get instrumented.
+    passes += ['--fpcast-emu']
   if optimizing:
     # wasm-emscripten-finalize will strip the features section for us
     # automatically, but if we did not modify the wasm then we didn't run it,
@@ -372,11 +377,6 @@ def get_binaryen_passes(options):
       # legalize it again now, as the instrumentation may need it
       passes += ['--legalize-js-interface']
       passes += building.js_legalization_pass_flags()
-  if settings.EMULATE_FUNCTION_POINTER_CASTS:
-    # note that this pass must run before asyncify, as if it runs afterwards we only
-    # generate the  byn$fpcast_emu  functions after asyncify runs, and so we wouldn't
-    # be able to further process them.
-    passes += ['--fpcast-emu']
   if settings.ASYNCIFY == 1:
     passes += ['--asyncify']
     if settings.MAIN_MODULE:
@@ -660,7 +660,7 @@ def check_settings():
 
 @ToolchainProfiler.profile()
 def setup_sanitizers(options):
-  assert(options.sanitize)
+  assert options.sanitize
 
   if settings.WASM_WORKERS:
     exit_with_error('WASM_WORKERS is not currently compatible with `-fsanitize` tools')
@@ -1148,7 +1148,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     diagnostics.warning('unused-command-line-argument', '--shell-file ignored when not generating html output')
 
   if settings.STRICT:
-    if not settings.MODULARIZE:
+    if not settings.EXPORT_ES6:
       default_setting('STRICT_JS', 1)
     default_setting('DEFAULT_TO_CXX', 0)
     default_setting('IGNORE_MISSING_MAIN', 0)
@@ -1164,7 +1164,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if prop not in settings.ALL_INCOMING_MODULE_JS_API:
       diagnostics.warning('unused-command-line-argument', f'invalid entry in INCOMING_MODULE_JS_API: {prop}')
 
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$wasmMemory')
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
+    '$wasmMemory',
+    '$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16',
+    '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64',
+  ]
 
   if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append('$noExitRuntime')
@@ -1547,6 +1551,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # compiler rather then adding them all ad-hoc as internal settings
   settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(Feature.PROMISE_ANY)
   default_setting('WASM_BIGINT', feature_matrix.caniuse(Feature.JS_BIGINT_INTEGRATION))
+  if settings.WASM_BIGINT:
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$HEAP64', '$HEAPU64']
 
   if settings.AUDIO_WORKLET:
     add_system_js_lib('libwebaudio.js')
@@ -1629,8 +1635,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.SPLIT_MODULE:
     settings.INCOMING_MODULE_JS_API += ['loadSplitModule']
-    if settings.ASYNCIFY == 2:
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['_load_secondary_module']
 
   # wasm side modules have suffix .wasm
   if settings.SIDE_MODULE and utils.suffix(target) in ('.js', '.mjs'):
@@ -1697,27 +1701,11 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.REQUIRED_EXPORTS += ['realloc']
     options.post_js.append(utils.path_from_root('src/build_as_worker.js'))
 
+  # Emscripten exception handling can generate invoke calls, and they call
+  # setThrew(). We cannot handle this using deps_info as the invokes are not
+  # emitted because of library function usage, but by codegen itself.
   if not settings.DISABLE_EXCEPTION_CATCHING:
-    settings.REQUIRED_EXPORTS += [
-      # For normal builds the entries in deps_info.py are enough to include
-      # these symbols whenever __cxa_find_matching_catch_* functions are
-      # found.  However, under LTO these symbols don't exist prior to linking
-      # so we include then unconditionally when exceptions are enabled.
-      '__cxa_can_catch',
-
-      # __cxa_begin_catch depends on this but we can't use deps info in this
-      # case because that only works for user-level code, and __cxa_begin_catch
-      # can be used by the standard library.
-      '__cxa_increment_exception_refcount',
-      # Same for __cxa_end_catch
-      '__cxa_decrement_exception_refcount',
-
-      # Emscripten exception handling can generate invoke calls, and they call
-      # setThrew(). We cannot handle this using deps_info as the invokes are not
-      # emitted because of library function usage, but by codegen itself.
-      'setThrew',
-      '__cxa_free_exception',
-    ]
+    settings.REQUIRED_EXPORTS += ['setThrew']
 
   if settings.ASYNCIFY:
     if not settings.ASYNCIFY_IGNORE_INDIRECT:
@@ -1806,22 +1794,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # errors out.
     if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
       exit_with_error('EXCEPTION_STACK_TRACES requires either of -fexceptions or -fwasm-exceptions')
-    # EXCEPTION_STACK_TRACES implies EXPORT_EXCEPTION_HANDLING_HELPERS
-    settings.EXPORT_EXCEPTION_HANDLING_HELPERS = True
-
-  # Make `getExceptionMessage` and other necessary functions available for use.
-  if settings.EXPORT_EXCEPTION_HANDLING_HELPERS:
-    # If the user explicitly gave EXPORT_EXCEPTION_HANDLING_HELPERS=1 without
-    # enabling EH, errors out.
-    if settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS:
-      exit_with_error('EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions')
-    # We also export refcount incrementing and decrementing functions because if
-    # you catch an exception from JS, you may need to manipulate the refcount
-    # manually to avoid memory leaks.  See test_EXPORT_EXCEPTION_HANDLING_HELPERS
-    # in test/test_core.py for an example usage.
-    settings.EXPORTED_FUNCTIONS += ['getExceptionMessage', 'incrementExceptionRefcount', 'decrementExceptionRefcount']
-    if settings.WASM_EXCEPTIONS:
-      settings.REQUIRED_EXPORTS += ['__cpp_exception']
 
   if settings.SIDE_MODULE:
     # For side modules, we ignore all REQUIRED_EXPORTS that might have been added above.

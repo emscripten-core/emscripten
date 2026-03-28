@@ -50,11 +50,9 @@ def for_all_files(dir, callback):
 # restore the config file and set it up for our uses
 def restore_and_set_up():
   restore()
-  with open(EM_CONFIG, 'a') as f:
-    # make LLVM_ROOT sensitive to the LLVM env var, as we test that
-    f.write('LLVM_ROOT = "%s"\n' % config.LLVM_ROOT)
-    # unfreeze the cache, so we can test that
-    f.write('FROZEN_CACHE = False\n')
+  # make LLVM_ROOT sensitive to the LLVM env var, as we test that
+  add_to_config('LLVM_ROOT = "%s"' % config.LLVM_ROOT)
+  add_to_config('FROZEN_CACHE = False')
 
 
 # wipe the config and sanity files, creating a blank slate
@@ -64,7 +62,7 @@ def wipe():
 
 
 def add_to_config(content):
-  with open(EM_CONFIG, 'a') as f:
+  with open(EM_CONFIG, 'a', encoding='utf-8') as f:
     f.write('\n' + content + '\n')
 
 
@@ -238,7 +236,7 @@ class sanity(RunnerCore):
     # XXX This depends on your local system! it is possible `which` guesses wrong
     # delete_file('a.out.js')
     # output = self.run_process([EMCC, test_file('hello_world.c')], stdout=PIPE, stderr=PIPE).output
-    # self.assertContained('hello, world!', self.run_js('a.out.js'), output)
+    # self.assertContained('Hello, world!', self.run_js('a.out.js'), output)
 
     # Second run, with bad EM_CONFIG
     for settings in ('blah', 'LLVM_ROOT="blarg"; JS_ENGINES=[]; NODE_JS=[]; SPIDERMONKEY_ENGINE=[]'):
@@ -426,7 +424,7 @@ fi
       # -O0 and -O1 will each build a version of libc++.a, but higher level will re-use the
       # one built at -O1.
       self.assertContainedIf(BUILDING_MESSAGE % libname, output, i < 2)
-      self.assertContained('hello, world!', self.run_js('a.out.js'))
+      self.assertContained('Hello, world!', self.run_js('a.out.js'))
       self.assertExists(cache.cachedir)
       self.assertExists(os.path.join(cache.cachedir, libname))
 
@@ -545,10 +543,10 @@ fi
 
     # Test both relative and absolute paths to the config
     self.run_process([EMCC, '--em-config', os.path.abspath('custom_config')] + MINIMAL_HELLO_WORLD)
-    self.assertContained('hello, world!', self.run_js('a.out.js'))
+    self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
     self.run_process([EMCC, '--em-config', 'custom_config'] + MINIMAL_HELLO_WORLD)
-    self.assertContained('hello, world!', self.run_js('a.out.js'))
+    self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
   def test_emcc_ports(self):
     restore_and_set_up()
@@ -638,7 +636,7 @@ fi
       return self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
 
     def test():
-      self.assertContained('hello, world!', self.run_js('a.out.js'))
+      self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
     print('normal build')
     with env_modify({'EMCC_FORCE_STDLIBS': None}):
@@ -658,11 +656,10 @@ fi
     self.clear_cache()
 
     def make_fake(report):
-      with open(EM_CONFIG, 'a') as f:
-        f.write('LLVM_ROOT = "' + self.in_dir('fake', 'bin') + '"\n')
-        # BINARYEN_ROOT needs to exist in the config, even though this test
-        # doesn't actually use it.
-        f.write('BINARYEN_ROOT = "%s"\n' % self.in_dir('fake', 'bin'))
+      add_to_config('LLVM_ROOT = "%s"' % self.in_dir('fake', 'bin'))
+      # BINARYEN_ROOT needs to exist in the config, even though this test
+      # doesn't actually use it.
+      add_to_config('BINARYEN_ROOT = "%s"' % self.in_dir('fake', 'bin'))
 
       make_fake_clang(self.in_dir('fake', 'bin', 'clang'), expected_llvm_version, report)
       make_fake_tool(self.in_dir('fake', 'bin', 'wasm-ld'), expected_llvm_version)
@@ -703,10 +700,10 @@ fi
     env = os.environ.copy()
     env['PATH'] = path_without_tool(env['PATH'], 'wasm-opt')
 
-    open(EM_CONFIG, 'a').write('\nBINARYEN_ROOT = ""\n')
+    add_to_config('BINARYEN_ROOT = ""')
     self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT is set to empty value in %s' % EM_CONFIG, env=env)
 
-    open(EM_CONFIG, 'a').write('\ndel BINARYEN_ROOT\n')
+    add_to_config('del BINARYEN_ROOT')
     self.check_working([EMCC, test_file('hello_world.c')], 'BINARYEN_ROOT not set in config (%s), and `wasm-opt` not found in PATH' % EM_CONFIG, env=env)
 
   @no_windows('Test relies on Unix-specific make_fake_tool')
@@ -811,8 +808,7 @@ fi
   @no_windows('Test relies on Unix-specific make_fake_tool')
   def test_binaryen_version(self):
     restore_and_set_up()
-    with open(EM_CONFIG, 'a') as f:
-      f.write('\nBINARYEN_ROOT = "' + self.in_dir('fake') + '"')
+    add_to_config('BINARYEN_ROOT = "' + self.in_dir('fake') + '"')
 
     make_fake_tool(self.in_dir('fake', 'bin', 'wasm-opt'), 'foo')
     self.check_working([EMCC, test_file('hello_world.c'), '-O2'], 'error parsing binaryen version (wasm-opt version foo). Please check your binaryen installation')

@@ -5,13 +5,14 @@
  */
 
 addToLibrary({
-  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc', '$FS_modeStringToFlags'],
+  $NODERAWFS__deps: ['$ERRNO_CODES', '$FS', '$NODEFS', '$mmapAlloc', '$FS_modeStringToFlags', '$NODERAWFS_stream_funcs'],
   $NODERAWFS__postset: `
     if (!ENVIRONMENT_IS_NODE) {
       throw new Error("NODERAWFS is currently only supported on Node.js environment.")
     }
-    var _wrapNodeError = function(func) {
-      return function(...args) {
+    var nodeTTY = require('node:tty');
+    function _wrapNodeError(func) {
+      return (...args) => {
         try {
           return func(...args)
         } catch (e) {
@@ -26,14 +27,26 @@ addToLibrary({
           throw e;
         }
       }
-    };
+    }
+    function _wrapNodeStreamFunc(func, vfs_func) {
+      return _wrapNodeError((stream, ...args) => {
+        if (stream.stream_ops) {
+          // this stream was created by some other FS. e.g: PIPEFS.
+          return vfs_func(stream, ...args);
+        }
+        return func(stream, ...args);
+      });
+    }
     // Use this to reference our in-memory filesystem
     /** @suppress {partialAlias} */
     var VFS = {...FS};
     // Wrap the whole in-memory filesystem API with
     // our Node.js based functions
-    for (var _key in NODERAWFS) {
-      FS[_key] = _wrapNodeError(NODERAWFS[_key]);
+    for (const [key, value] of Object.entries(NODERAWFS)) {
+      FS[key] = _wrapNodeError(value);
+    }
+    for (const [key, value] of Object.entries(NODERAWFS_stream_funcs)) {
+      FS[key] = _wrapNodeStreamFunc(value, FS[key]);
     }`,
   $NODERAWFS: {
     lookup(parent, name) {
@@ -52,11 +65,10 @@ addToLibrary({
       return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
     },
     createStandardStreams() {
-      // FIXME: tty is set to true to appease isatty(), the underlying ioctl syscalls still need to be implemented, see issue #22264.
-      FS.createStream({ nfd: 0, position: 0, path: '/dev/stdin', flags: 0, tty: true, seekable: false }, 0);
+      FS.createStream({ nfd: 0, position: 0, path: '/dev/stdin', flags: 0, seekable: false }, 0);
       var paths = [,'/dev/stdout', '/dev/stderr'];
       for (var i = 1; i < 3; i++) {
-        FS.createStream({ nfd: i, position: 0, path: paths[i], flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}}, tty: true, seekable: false }, i);
+        FS.createStream({ nfd: i, position: 0, path: paths[i], flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}}, seekable: false }, i);
       }
     },
     // generic function for all node creation
@@ -152,9 +164,7 @@ addToLibrary({
       fs.utimesSync(path, atime/1000, mtime/1000);
     },
     open(path, flags, mode) {
-      if (typeof flags == "string") {
-        flags = FS_modeStringToFlags(flags)
-      }
+      flags = FS_modeStringToFlags(flags);
       var pathTruncated = path.split('/').map((s) => s.slice(0, 255)).join('/');
       var nfd = fs.openSync(pathTruncated, NODEFS.flagsForNode(flags), mode);
       var st = fs.fstatSync(nfd);
@@ -169,27 +179,32 @@ addToLibrary({
     createStream(stream, fd) {
       // Call the original FS.createStream
       var rtn = VFS.createStream(stream, fd);
-      if (typeof rtn.shared.refcnt == 'undefined') {
-        rtn.shared.refcnt = 1;
-      } else {
+      // Detect PIPEFS streams and skip the refcnt/tty initialization in that case.
+      if (!stream.stream_ops) {
+        rtn.shared.refcnt ??= 0;
         rtn.shared.refcnt++;
+        rtn.tty = nodeTTY.isatty(rtn.nfd);
       }
       return rtn;
     },
+  },
+
+  /**
+   * These functions all take a stream as the first argument which
+   * could either be a stream created by NODERAWFS itself, or, for example
+   * one created by PIPEFS.  We wrap all these function in an extra check.
+   */
+  $NODERAWFS_stream_funcs: {
     close(stream) {
       VFS.closeStream(stream.fd);
       // Don't close stdin/stdout/stderr since they are used by node itself.
-      if (!stream.stream_ops && --stream.shared.refcnt <= 0 && stream.nfd > 2) {
+      if (--stream.shared.refcnt <= 0 && stream.nfd > 2) {
         // This stream is created by our Node.js filesystem, close the
         // native file descriptor when its reference count drops to 0.
         fs.closeSync(stream.nfd);
       }
     },
     llseek(stream, offset, whence) {
-      if (stream.stream_ops) {
-        // this stream is created by in-memory filesystem
-        return VFS.llseek(stream, offset, whence);
-      }
       var position = offset;
       if (whence === {{{ cDefs.SEEK_CUR }}}) {
         position += stream.position;
@@ -206,10 +221,6 @@ addToLibrary({
       return position;
     },
     read(stream, buffer, offset, length, position) {
-      if (stream.stream_ops) {
-        // this stream is created by in-memory filesystem
-        return VFS.read(stream, buffer, offset, length, position);
-      }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
       var bytesRead = fs.readSync(stream.nfd, buffer, offset, length, position);
@@ -218,13 +229,9 @@ addToLibrary({
       return bytesRead;
     },
     write(stream, buffer, offset, length, position) {
-      if (stream.stream_ops) {
-        // this stream is created by in-memory filesystem
-        return VFS.write(stream, buffer, offset, length, position);
-      }
-      if (stream.flags & +"{{{ cDefs.O_APPEND }}}") {
+      if (stream.flags & {{{ cDefs.O_APPEND }}}) {
         // seek to the end before writing in append mode
-        FS.llseek(stream, 0, +"{{{ cDefs.SEEK_END }}}");
+        FS.llseek(stream, 0, {{{ cDefs.SEEK_END }}});
       }
       var seeking = typeof position != 'undefined';
       if (!seeking && stream.seekable) position = stream.position;
@@ -237,27 +244,17 @@ addToLibrary({
       if (!length) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
       }
-      if (stream.stream_ops) {
-        // this stream is created by in-memory filesystem
-        return VFS.mmap(stream, length, position, prot, flags);
-      }
-
       var ptr = mmapAlloc(length);
       FS.read(stream, HEAP8, ptr, length, position);
       return { ptr, allocated: true };
     },
     msync(stream, buffer, offset, length, mmapFlags) {
-      if (stream.stream_ops) {
-        // this stream is created by in-memory filesystem
-        return VFS.msync(stream, buffer, offset, length, mmapFlags);
-      }
-
       FS.write(stream, buffer, 0, length, offset);
       // should we check if bytesWritten and length are the same?
       return 0;
     },
-    ioctl() {
+    ioctl(stream, cmd, arg) {
       throw new FS.ErrnoError({{{ cDefs.ENOTTY }}});
-    }
-  }
+    },
+  },
 });

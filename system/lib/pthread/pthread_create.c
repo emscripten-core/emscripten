@@ -182,7 +182,6 @@ int __pthread_create(pthread_t* restrict res,
   // pthread struct robust_list head should point to itself.
   new->robust_list.head = &new->robust_list.head;
 
-  new->locale = &libc.global_locale;
   if (attr._a_detach) {
     new->detach_state = DT_DETACHED;
   } else {
@@ -310,7 +309,7 @@ void _emscripten_thread_exit(void* result) {
   assert(self);
 
   self->canceldisable = PTHREAD_CANCEL_DISABLE;
-  self->cancelasync = PTHREAD_CANCEL_DEFERRED;
+  self->cancelasync = 0;
   self->result = result;
 
   _emscripten_thread_mailbox_shutdown(self);

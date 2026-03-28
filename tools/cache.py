@@ -124,7 +124,7 @@ def get_lib_dir(absolute):
       subdir.append('thinlto')
     else:
       subdir.append('lto')
-  if settings.MAIN_MODULE:
+  if settings.MAIN_MODULE or settings.SIDE_MODULE:
     subdir.append('pic')
   if subdir:
     path = Path(path, '-'.join(subdir))

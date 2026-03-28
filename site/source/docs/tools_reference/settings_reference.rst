@@ -1129,6 +1129,8 @@ manipulate the refcount manually to avoid memory leaks.
 See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 example usage.
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _exception_stack_traces:
@@ -1701,8 +1703,6 @@ Set the environment variable EMCC_STRICT=1 or pass -sSTRICT to test that a
 codebase builds nicely in forward compatible manner.
 Changes enabled by this:
 
-  - The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
-    is the correct thing to use).
   - STRICT_JS is enabled.
   - IGNORE_MISSING_MAIN is disabled.
   - AUTO_JS_LIBRARIES is disabled.
@@ -3219,9 +3219,9 @@ Default value: true
 ALLOW_UNIMPLEMENTED_SYSCALLS
 ============================
 
-Include unimplemented JS syscalls to be included in the final output.  This
-allows programs that depend on these syscalls at runtime to be compiled, even
-though these syscalls will fail (or do nothing) at runtime.
+Link against stub implementations of unsupported/unimplemented syscalls. This
+allows programs that depend on these syscalls to be compiled, even though
+these functions will fail (or do nothing) at runtime.
 
 Default value: true
 
@@ -3419,6 +3419,7 @@ these settings please open a bug (or reply to one of the existing bugs).
  - ``LEGALIZE_JS_FFI``: to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
+ - ``EXPORT_EXCEPTION_HANDLING_HELPERS``: getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.
 
 .. _legacy-settings:
 

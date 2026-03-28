@@ -248,16 +248,23 @@ addToLibrary({
         return size;
       },
 
-      // Writes the byte range (buffer[offset], buffer[offset+length]) to offset 'position' into the file pointed by 'stream'
-      // canOwn: A boolean that tells if this function can take ownership of the passed in buffer from the subbuffer portion
-      //         that the typed array view 'buffer' points to. The underlying ArrayBuffer can be larger than that, but
-      //         canOwn=true will not take ownership of the portion outside the bytes addressed by the view. This means that
-      //         with canOwn=true, creating a copy of the bytes is avoided, but the caller shouldn't touch the passed in range
-      //         of bytes anymore since their contents now represent file data inside the filesystem.
+      /**
+       * Writes the byte range (buffer[offset], buffer[offset+length]) to offset
+       * 'position' into the file pointed by 'stream'.
+       * @param {TypedArray} buffer
+       * @param {boolean=} canOwn - A boolean that tells if this function can
+       *     take ownership of the passed in buffer from the subbuffer portion
+       *     that the typed array view 'buffer' points to. The underlying
+       *     ArrayBuffer can be larger than that, but canOwn=true will not take
+       *     ownership of the portion outside the bytes addressed by the view.
+       *     This means that with canOwn=true, creating a copy of the bytes is
+       *     avoided, but the caller shouldn't touch the passed in range of
+       *     bytes anymore since their contents now represent file data inside
+       *     the filesystem.
+       */
       write(stream, buffer, offset, length, position, canOwn) {
 #if ASSERTIONS
-        // The data buffer should be a typed array view
-        assert(!(buffer instanceof ArrayBuffer));
+        assert(buffer.subarray, 'FS.write expects a TypedArray');
 #endif
 #if ALLOW_MEMORY_GROWTH
         // If the buffer is located in main memory (HEAP), and if
@@ -273,35 +280,21 @@ addToLibrary({
         var node = stream.node;
         node.mtime = node.ctime = Date.now();
 
-        if (buffer.subarray) { // This write is from a typed array to a typed array?
-          if (canOwn) {
+        if (canOwn) {
 #if ASSERTIONS
-            assert(position === 0, 'canOwn must imply no weird position inside the file');
+          assert(position === 0, 'canOwn must imply no weird position inside the file');
 #endif
-            node.contents = buffer.subarray(offset, offset + length);
-            node.usedBytes = length;
-            return length;
-          } else if (node.usedBytes === 0 && position === 0) { // If this is a simple first write to an empty file, do a fast set since we don't need to care about old data.
-            node.contents = buffer.slice(offset, offset + length);
-            node.usedBytes = length;
-            return length;
-          } else if (position + length <= node.usedBytes) { // Writing to an already allocated and used subrange of the file?
-            node.contents.set(buffer.subarray(offset, offset + length), position);
-            return length;
-          }
-        }
-
-        // Appending to an existing file and we need to reallocate, or source data did not come as a typed array.
-        MEMFS.expandFileStorage(node, position+length);
-        if (buffer.subarray) {
+          node.contents = buffer.subarray(offset, offset + length);
+          node.usedBytes = length;
+        } else if (node.usedBytes === 0 && position === 0) { // If this is a simple first write to an empty file, do a fast set since we don't need to care about old data.
+          node.contents = buffer.slice(offset, offset + length);
+          node.usedBytes = length;
+        } else {
+          MEMFS.expandFileStorage(node, position+length);
           // Use typed array write which is available.
           node.contents.set(buffer.subarray(offset, offset + length), position);
-        } else {
-          for (var i = 0; i < length; i++) {
-            node.contents[position + i] = buffer[offset + i]; // Or fall back to manual write if not.
-          }
+          node.usedBytes = Math.max(node.usedBytes, position + length);
         }
-        node.usedBytes = Math.max(node.usedBytes, position + length);
         return length;
       },
 

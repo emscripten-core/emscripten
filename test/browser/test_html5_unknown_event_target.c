@@ -8,18 +8,17 @@
 #include <emscripten.h>
 #include <emscripten/html5.h>
 
-bool wheel_cb(int eventType, const EmscriptenWheelEvent *wheelEvent __attribute__((nonnull)), void *userData) { return true; }
+bool wheel_cb(int eventType, const EmscriptenWheelEvent * _Nonnull wheelEvent, void *userData) { return true; }
 bool key_cb(int eventType, const EmscriptenKeyboardEvent *e, void *userData) { return true; }
-bool mouse_cb(int eventType, const EmscriptenMouseEvent *mouseEvent __attribute__((nonnull)), void *userData) { return true; }
-bool ui_cb(int eventType, const EmscriptenUiEvent *uiEvent __attribute__((nonnull)), void *userData) { return true; }
-bool focus_cb(int eventType, const EmscriptenFocusEvent *focusEvent __attribute__((nonnull)), void *userData) { return true; }
-bool fullscreenchange_cb(int eventType, const EmscriptenFullscreenChangeEvent *fullscreenChangeEvent __attribute__((nonnull)), void *userData) { return true; }
-bool pointerlockchange_cb(int eventType, const EmscriptenPointerlockChangeEvent *pointerlockChangeEvent __attribute__((nonnull)), void *userData) { return true; }
+bool mouse_cb(int eventType, const EmscriptenMouseEvent * _Nonnull mouseEvent, void *userData) { return true; }
+bool ui_cb(int eventType, const EmscriptenUiEvent * _Nonnull uiEvent, void *userData) { return true; }
+bool focus_cb(int eventType, const EmscriptenFocusEvent * _Nonnull focusEvent, void *userData) { return true; }
+bool fullscreenchange_cb(int eventType, const EmscriptenFullscreenChangeEvent * _Nonnull fullscreenChangeEvent, void *userData) { return true; }
+bool pointerlockchange_cb(int eventType, const EmscriptenPointerlockChangeEvent * _Nonnull pointerlockChangeEvent, void *userData) { return true; }
 bool pointerlockerror_cb(int eventType, const void *reserved, void *userData) { return true; }
-bool touch_cb(int eventType, const EmscriptenTouchEvent *touchEvent __attribute__((nonnull)), void *userData) { return true; }
+bool touch_cb(int eventType, const EmscriptenTouchEvent * _Nonnull touchEvent, void *userData) { return true; }
 
-int main(int argc, char **argv)
-{
+int main(int argc, char **argv) {
   assert(emscripten_set_keypress_callback("this_dom_element_does_not_exist", 0, 0, key_cb) == EMSCRIPTEN_RESULT_UNKNOWN_TARGET);
   assert(emscripten_set_keydown_callback("this_dom_element_does_not_exist", 0, 0, key_cb) == EMSCRIPTEN_RESULT_UNKNOWN_TARGET);
   assert(emscripten_set_keyup_callback("this_dom_element_does_not_exist", 0, 0, key_cb) == EMSCRIPTEN_RESULT_UNKNOWN_TARGET);
