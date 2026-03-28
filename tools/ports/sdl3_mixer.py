@@ -26,7 +26,7 @@ def get_lib_name(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('sdl3_mixer', f'https://github.com/libsdl-org/SDL_mixer/archive/refs/tags/{TAG}.zip', sha512hash=HASH)
+  ports.fetch_project('sdl3_mixer', f'https://github.com/libsdl-org/SDL_mixer/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
     src_root = ports.get_dir('sdl3_mixer', 'SDL_mixer-' + TAG)
