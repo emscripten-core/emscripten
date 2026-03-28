@@ -47,8 +47,6 @@
 #define HAVE_STRING_H 1
 #define HAVE_SYS_TYPES_H 1
 #define HAVE_WCHAR_H 1
-#define HAVE_GETRESGID 1
-#define HAVE_GETRESUID 1
 /* #undef HAVE_PTHREAD_NP_H */
 
 /* C library functions */
