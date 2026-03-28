@@ -3201,6 +3201,12 @@ Module["preRun"] = () => {
     self.cflags.append('-Wno-experimental')
     self.btest_exit('test_sdl3_canvas_write.c', cflags=['-sUSE_SDL=3'])
 
+  @requires_sound_hardware
+  def test_sdl3_mixer_wav(self):
+    copy_asset('sounds/the_entertainer.wav', 'sound.wav')
+    self.cflags.append('-Wno-experimental')
+    self.btest_exit('test_sdl3_mixer_wav.c', cflags=['-sUSE_SDL=3', '-sUSE_SDL_MIXER=3', '--preload-file', 'sound.wav'])
+
   @requires_graphics_hardware
   @no_wasm64('cocos2d ports does not compile with wasm64')
   def test_cocos2d_hello(self):
