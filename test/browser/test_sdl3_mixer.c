@@ -20,7 +20,9 @@ MIX_Mixer *mixer = NULL;
 #define WIDTH 640
 #define HEIGHT 480
 
-#define WAV_PATH "/sound.wav"
+#ifndef SOUND_PATH
+#error "must define SOUND_PATH"
+#endif
 
 void sound_loop_then_quit() {
     if (MIX_TrackPlaying(track))
@@ -54,7 +56,7 @@ int main(int argc, char *argv[]) {
         return 1;
     }
 
-    audio = MIX_LoadAudio(mixer, WAV_PATH, false);
+    audio = MIX_LoadAudio(mixer, SOUND_PATH, false);
     if (!audio) {
         printf("MIX_LoadAudio: %s\n", SDL_GetError());
         return 1;

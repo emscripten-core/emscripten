@@ -14,19 +14,49 @@ SUBDIR = f'SDL3_mixer-{TAG}'
 
 deps = ['sdl3']
 
-variants = {'sdl3_mixer-mt': {'PTHREADS': 1}}
+variants = {
+  'sdl3_mixer-ogg': {'SDL3_MIXER_FORMATS': ['ogg']},
+  'sdl3_mixer-none': {'SDL3_MIXER_FORMATS': []},
+  'sdl3_mixer-ogg-mt': {'SDL3_MIXER_FORMATS': ['ogg'], 'PTHREADS': 1},
+  'sdl3_mixer-none-mt': {'SDL3_MIXER_FORMATS': [], 'PTHREADS': 1},
+}
+
+OPTIONS = {
+  'formats': 'A comma separated list of formats (ex: --use-port=sdl3_mixer:formats=ogg,mp3)',
+}
+
+SUPPORTED_FORMATS = {'ogg', 'mp3'}
+
+# user options (from --use-port)
+opts: dict[str, set] = {
+  'formats': set(),
+}
 
 
 def needed(settings):
   return settings.USE_SDL_MIXER == 3
 
 
+def get_formats(settings):
+  return opts['formats'].union(settings.SDL3_MIXER_FORMATS)
+
+
 def get_lib_name(settings):
-  return 'libSDL3_mixer' + ('-mt' if settings.PTHREADS else '') + '.a'
+  formats = '-'.join(sorted(get_formats(settings)))
+
+  libname = 'libSDL3_mixer'
+  if formats != '':
+    libname += '-' + formats
+  if settings.PTHREADS:
+    libname += '-mt'
+  libname += '.a'
+
+  return libname
 
 
 def get(ports, settings, shared):
   ports.fetch_project('sdl3_mixer', f'https://github.com/libsdl-org/SDL_mixer/archive/{TAG}.zip', sha512hash=HASH)
+  libname = get_lib_name(settings)
 
   def create(final):
     src_root = ports.get_dir('sdl3_mixer', 'SDL_mixer-' + TAG)
@@ -35,24 +65,9 @@ def get(ports, settings, shared):
 	    "src/SDL_mixer.c",
 	    "src/SDL_mixer_metadata_tags.c",
 	    "src/SDL_mixer_spatialization.c",
-	    "src/decoder_aiff.c",
-	    "src/decoder_au.c",
-	    "src/decoder_drflac.c",
-	    "src/decoder_drmp3.c",
-	    "src/decoder_flac.c",
-	    "src/decoder_fluidsynth.c",
-	    "src/decoder_gme.c",
-	    "src/decoder_mpg123.c",
-	    "src/decoder_opus.c",
 	    "src/decoder_raw.c",
 	    "src/decoder_sinewave.c",
-	    "src/decoder_stb_vorbis.c",
-	    "src/decoder_timidity.c",
-	    "src/decoder_voc.c",
-	    "src/decoder_vorbis.c",
 	    "src/decoder_wav.c",
-	    "src/decoder_wavpack.c",
-	    "src/decoder_xmp.c",
       ]
 
     flags = ['-sUSE_SDL=3', '-DDECODER_WAV','-Wno-format-security', '-Wno-experimental']
@@ -60,9 +75,24 @@ def get(ports, settings, shared):
     if settings.PTHREADS:
       flags += ['-pthread']
 
-    ports.build_port(src_root, final, 'sdl3_mixer', flags=flags, srcs=srcs)
+    formats = get_formats(settings)
 
-  return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
+    if "ogg" in formats:
+      flags += [
+        '-sUSE_VORBIS',
+        '-DDECODER_OGGVORBIS_VORBISFILE',
+      ]
+      srcs += ["src/decoder_vorbis.c",]
+
+    if "mp3" in formats:
+      flags += [
+        '-sUSE_MPG123',
+        '-DDECODER_MP3_MPG123',
+      ]
+      srcs += ["src/decoder_mpg123.c",]
+
+    ports.build_port(src_root, final, 'sdl3_mixer', flags=flags, srcs=srcs)
+  return [shared.cache.get_lib(libname, create, what='port')]
 
 
 def clear(ports, settings, shared):
@@ -71,6 +101,23 @@ def clear(ports, settings, shared):
 
 def process_dependencies(settings):
   settings.USE_SDL = 3
+  formats = get_formats(settings)
+  if "ogg" in formats:
+    deps.append('vorbis')
+    settings.USE_VORBIS = 1
+  if "mp3" in formats:
+    deps.append('mpg123')
+    settings.USE_MPG123 = 1
+
+
+def handle_options(options, error_handler):
+  formats = options['formats'].split(',')
+  for format in formats:
+    format = format.lower().strip()
+    if format not in SUPPORTED_FORMATS:
+      error_handler(f'{format} is not a supported format')
+    else:
+      opts['formats'].add(format)
 
 
 def show():

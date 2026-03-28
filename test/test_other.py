@@ -2651,7 +2651,9 @@ F1 -> ''
 
   @requires_network
   def test_sdl3_mixer(self):
-    self.emcc('browser/test_sdl3_mixer_wav.c', ['-Wno-experimental', '-sUSE_SDL=3', '-sUSE_SDL_MIXER=3', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl3_mixer.c', ['-Wno-experimental', '-sUSE_SDL=3', '-sUSE_SDL_MIXER=3', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl3_mixer.c', ['-Wno-experimental', '--use-port=sdl3_mixer', '-o', 'a.out.js'])
+    self.emcc('browser/test_sdl3_mixer.c', ['-Wno-experimental', '--use-port=sdl3_mixer:formats=ogg', '-o', 'a.out.js'])
 
   @requires_network
   def test_contrib_ports(self):
