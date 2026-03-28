@@ -46,7 +46,7 @@ hidden char *__gettextdomain(void);
 #define UTF8_LOCALE ((locale_t)&__c_dot_utf8_locale)
 
 #ifdef __EMSCRIPTEN__
-extern _Thread_local locale_t __tls_locale;
+extern thread_local locale_t __tls_locale;
 
 #define CURRENT_LOCALE (__tls_locale)
 

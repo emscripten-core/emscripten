@@ -3,7 +3,7 @@
 #include "libc.h"
 
 #ifdef __EMSCRIPTEN__
-_Thread_local locale_t __tls_locale = &libc.global_locale;
+thread_local locale_t __tls_locale = &libc.global_locale;
 #endif
 
 locale_t __uselocale(locale_t new)

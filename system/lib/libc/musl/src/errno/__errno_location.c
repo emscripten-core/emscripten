@@ -5,7 +5,7 @@
 // For emscripten we use TLS here instead of `__pthread_self`, so that in single
 // threaded builds this gets lowered away to normal global variable.
 // This also works for WASM_WORKERS there `__pthread_self` does not work.
-static _Thread_local int __errno_storage = 0;
+static thread_local int __errno_storage = 0;
 #endif
 
 int *__errno_location(void)

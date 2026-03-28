@@ -35,7 +35,7 @@ static em_proxying_queue system_proxying_queue = {
   .capacity = 0,
 };
 
-static _Thread_local bool system_queue_in_use = false;
+static thread_local bool system_queue_in_use = false;
 
 em_proxying_queue* emscripten_proxy_get_system_queue(void) {
   return &system_proxying_queue;
