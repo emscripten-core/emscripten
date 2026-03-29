@@ -1457,8 +1457,12 @@ int main(int argc, char **argv) {
     self.do_core_test('test_exceptions_rethrow.cpp')
 
   @with_all_eh_sjlj
-  def test_exceptions_uncaught_count(self):
-    self.do_core_test('test_exceptions_uncaught_count.cpp')
+  def test_exceptions_uncaught_3(self):
+    self.do_core_test('test_exceptions_uncaught_3.cpp')
+
+  @with_all_eh_sjlj
+  def test_exceptions_uncaught_4(self):
+    self.do_core_test('test_exceptions_uncaught_4.cpp')
 
   @with_all_eh_sjlj
   def test_exceptions_resume(self):
@@ -7778,6 +7782,10 @@ void* operator new(size_t size) {
   def test_embind_throw_cpp_exception(self):
     self.do_run_in_out_file_test('embind/test_embind_throw_cpp_exception.cpp', cflags=['-lembind', '-std=c++20'])
 
+  @with_all_eh_sjlj
+  def test_embind_throw_val_uncaught_and_refcount(self):
+    self.do_run_in_out_file_test('embind/test_embind_throw_val_uncaught_and_refcount.cpp', cflags=['-lembind', '-std=c++20'])
+
   @parameterized({
     '': ('DEFAULT', False),
     'all': ('ALL', False),
@@ -9692,7 +9700,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
     self.do_runf('test_emscripten_async_load_script.c', cflags=['-sFORCE_FILESYSTEM'])
 
-  @requires_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @also_with_minimal_runtime
   @also_with_modularize
@@ -9703,19 +9710,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
-  @requires_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_malloc(self):
     self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
-  @requires_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_runtime_debug(self):
     self.do_runf('wasm_worker/hello_wasm_worker.c', 'wasm worker starting ...', cflags=['-sWASM_WORKERS', '-sRUNTIME_DEBUG'])
 
-  @requires_pthreads
+  @no_sanitize('sanitizers do not support WASM_WORKERS')
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  def test_wasm_worker_futex_wait(self):
+    self.do_runf('wasm_worker/wasm_worker_futex_wait.c', cflags=['-sWASM_WORKERS'])
+
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_wait_async(self):

@@ -112,7 +112,7 @@ def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
       # CORS preflight makes OPTIONS requests which we need to account for.
       expectedConns = 22
       s.num_get_connections += 1
-      assert(s.num_get_connections < expectedConns)
+      assert s.num_get_connections < expectedConns
 
       if s.path == '/':
         s.sendheaders()
@@ -5054,7 +5054,7 @@ Module["preRun"] = () => {
     'pthread': (['-pthread'],),
   })
   def test_wasm_worker_futex_wait(self, args):
-    self.btest('wasm_worker/wasm_worker_futex_wait.c', expected='0', cflags=['-sWASM_WORKERS=1', '-sASSERTIONS'] + args)
+    self.btest_exit('wasm_worker/wasm_worker_futex_wait.c', cflags=['-sWASM_WORKERS=1', '-sASSERTIONS'] + args)
 
   # Tests Wasm Worker thread stack setup
   @also_with_minimal_runtime

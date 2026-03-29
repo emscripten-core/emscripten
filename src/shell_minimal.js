@@ -53,10 +53,15 @@ var ENVIRONMENT_IS_WEB = !ENVIRONMENT_IS_NODE;
 #endif
 #endif // ASSERTIONS || PTHREADS
 
+#if ENVIRONMENT_MAY_BE_WORKER || (PTHREADS || WASM_WORKERS)
+var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
+#endif
+
 #if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
 if (ENVIRONMENT_IS_NODE) {
   var worker_threads = require('node:worker_threads');
   global.Worker = worker_threads.Worker;
+  ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 }
 #endif
 
@@ -134,10 +139,6 @@ function ready() {
 var isFileURI = (filename) => filename.startsWith('file://');
 var readAsync, readBinary;
 #include "node_shell_read.js"
-#endif
-
-#if ENVIRONMENT_MAY_BE_WORKER || PTHREADS
-var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 #endif
 
 #if PTHREADS

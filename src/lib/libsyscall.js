@@ -339,7 +339,7 @@ var SyscallsLibrary = {
     if (info.errno) throw new FS.ErrnoError(info.errno);
     info.addr = DNS.lookup_addr(info.addr) || info.addr;
 #if SYSCALL_DEBUG
-    dbg('    (socketaddress: "' + [info.addr, info.port] + '")');
+    dbg(`    (socketaddress: "${[info.addr, info.port]}")`);
 #endif
     return info;
   },

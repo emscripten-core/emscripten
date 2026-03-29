@@ -484,11 +484,7 @@ addToLibrary({
   // a proxy and declare the dependency here.
   _emscripten_throw_longjmp__deps: ['setThrew'],
   _emscripten_throw_longjmp: () => {
-#if EXCEPTION_STACK_TRACES
     throw new EmscriptenSjLj;
-#else
-    throw Infinity;
-#endif
   },
 #elif !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
@@ -2597,7 +2593,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     t = modifyJSFunction(t, (args, body, async_) => `${async_}function (${args}) {\n${pre}${body}${post}}\n`);
   }
 
-  library[x] = eval('(' + t + ')');
+  library[x] = eval(`(${t})`);
   // Automatically add dependency on `$SYSCALLS`
   if (!WASMFS && t.includes('SYSCALLS')) {
     library[x + '__deps'].push('$SYSCALLS');

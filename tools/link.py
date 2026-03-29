@@ -660,7 +660,7 @@ def check_settings():
 
 @ToolchainProfiler.profile()
 def setup_sanitizers(options):
-  assert(options.sanitize)
+  assert options.sanitize
 
   if settings.WASM_WORKERS:
     exit_with_error('WASM_WORKERS is not currently compatible with `-fsanitize` tools')

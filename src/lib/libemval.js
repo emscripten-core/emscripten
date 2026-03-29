@@ -11,6 +11,9 @@
 var LibraryEmVal = {
   // Stack of handles available for reuse.
   $emval_freelist: [],
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+  $emval_exception_decrefs: [],
+#endif
   // Array of alternating pairs (value, refcount).
   // reserve 0 and some special values. These never get de-allocated.
   $emval_handles: [
@@ -80,13 +83,27 @@ var LibraryEmVal = {
     }
   },
 
-  _emval_decref__deps: ['$emval_freelist', '$emval_handles'],
+  _emval_decref__deps: ['$emval_freelist', '$emval_handles',
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    '$emval_exception_decrefs',
+#endif
+  ],
   _emval_decref: (handle) => {
     if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle + 1]) {
   #if ASSERTIONS
       assert(emval_handles[handle] !== undefined, `Decref for unallocated handle.`);
   #endif
+      var value = emval_handles[handle];
       emval_handles[handle] = undefined;
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+      // In case the value is a C++ exception, decrement the refcount, so the
+      // memory can be freed correctly
+      var destructor = emval_exception_decrefs[handle];
+      if (destructor) {
+        emval_exception_decrefs[handle] = undefined;
+        destructor(value);
+      }
+#endif
       emval_freelist.push(handle);
     }
   },
@@ -392,36 +409,41 @@ ${functionBody}
     return delete object[property];
   },
 
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+  $isCppExceptionObject__deps: ['$Emval'],
+  $isCppExceptionObject: (object) => {
+#if !DISABLE_EXCEPTION_CATCHING
+    return object instanceof CppException;
+#else // WASM_EXCEPTIONS
+    return object instanceof WebAssembly.Exception;
+#endif
+  },
+#endif
+
   _emval_throw__deps: ['$Emval',
-#if !WASM_EXCEPTIONS
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+#if !DISABLE_EXCEPTION_CATCHING
     '$exceptionLast',
+    '$ExceptionInfo',
+#endif
+    '$incrementExceptionRefcount',
+    '$incrementUncaughtExceptionCount',
+    '$isCppExceptionObject',
 #endif
   ],
   _emval_throw: (object) => {
     object = Emval.toValue(object);
-#if !WASM_EXCEPTIONS
-    // If we are throwing Emcripten C++ exception, set exceptionLast, as we do
-    // in __cxa_throw. When EXCEPTION_STACK_TRACES is set, a C++ exception will
-    // be an instance of EmscriptenEH, and when EXCEPTION_STACK_TRACES is not
-    // set, it will be a pointer (number).
-    //
-    // This is different from __cxa_throw() in libexception.js because
-    // __cxa_throw() is called from the user C++ code when the 'throw' keyword
-    // is used, and the value thrown is a C++ pointer. When
-    // EXCEPTION_STACK_TRACES is true, we wrap it with CppException. But this
-    // _emval_throw is called when we throw whatever is contained in 'object',
-    // which can be anything including a CppException object, or a number, or
-    // other JS object. So we don't use storeException() wrapper here and we
-    // throw it as is.
-#if EXCEPTION_STACK_TRACES
-    if (object instanceof CppException) {
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    if (isCppExceptionObject(object)) {
+#if !DISABLE_EXCEPTION_CATCHING
+      var info = new ExceptionInfo(object.excPtr);
+      info.set_caught(false);
+      info.set_rethrown(false);
       exceptionLast = object;
-    }
-#else
-    if (object === object+0) { // Check if it is a number
-      exceptionLast = object;
-    }
 #endif
+      incrementUncaughtExceptionCount();
+      incrementExceptionRefcount(object);
+    }
 #endif
     throw object;
   },
@@ -463,7 +485,15 @@ ${functionBody}
     }));
   },
 
-  _emval_from_current_cxa_exception__deps: ['$Emval', '__cxa_rethrow'],
+  _emval_from_current_cxa_exception__deps: ['$Emval', '__cxa_rethrow',
+#if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
+    '$decrementUncaughtExceptionCount',
+#endif
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    '$decrementExceptionRefcount',
+    '$emval_exception_decrefs',
+#endif
+  ],
   _emval_from_current_cxa_exception: () => {
     try {
       // Use __cxa_rethrow which already has mechanism for generating
@@ -472,7 +502,16 @@ ${functionBody}
       // with metadata optimised out otherwise.
       ___cxa_rethrow();
     } catch (e) {
-      return Emval.toHandle(e);
+#if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
+      // ___cxa_rethrow incremented uncaughtExceptionCount.
+      // Since we caught it in JS, we need to manually decrement it to balance.
+      decrementUncaughtExceptionCount();
+#endif
+      var handle = Emval.toHandle(e);
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+      emval_exception_decrefs[handle] = decrementExceptionRefcount;
+#endif
+      return handle;
     }
   },
 };

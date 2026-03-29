@@ -18,9 +18,9 @@ int pselect(int n, fd_set *restrict rfds, fd_set *restrict wfds, fd_set *restric
 		tv_timeout.tv_usec = ts->tv_nsec / 1000;
 	}
 	sigset_t origmask;
-	pthread_sigmask(SIG_SETMASK, mask, &origmask);
+	if (mask) pthread_sigmask(SIG_SETMASK, mask, &origmask);
 	int rtn = select(n, rfds, wfds, efds, ts ? &tv_timeout : NULL);
-	pthread_sigmask(SIG_SETMASK, &origmask, NULL);
+	if (mask) pthread_sigmask(SIG_SETMASK, &origmask, NULL);
 	return rtn;
 #else
 	syscall_arg_t data[2] = { (uintptr_t)mask, _NSIG/8 };

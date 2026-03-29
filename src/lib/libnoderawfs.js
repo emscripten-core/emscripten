@@ -10,6 +10,7 @@ addToLibrary({
     if (!ENVIRONMENT_IS_NODE) {
       throw new Error("NODERAWFS is currently only supported on Node.js environment.")
     }
+    var nodeTTY = require('node:tty');
     function _wrapNodeError(func) {
       return (...args) => {
         try {
@@ -64,11 +65,10 @@ addToLibrary({
       return { path, node: { id: st.ino, mode, node_ops: NODERAWFS, path }};
     },
     createStandardStreams() {
-      // FIXME: tty is set to true to appease isatty(), the underlying ioctl syscalls still need to be implemented, see issue #22264.
-      FS.createStream({ nfd: 0, position: 0, path: '/dev/stdin', flags: 0, tty: true, seekable: false }, 0);
+      FS.createStream({ nfd: 0, position: 0, path: '/dev/stdin', flags: 0, seekable: false }, 0);
       var paths = [,'/dev/stdout', '/dev/stderr'];
       for (var i = 1; i < 3; i++) {
-        FS.createStream({ nfd: i, position: 0, path: paths[i], flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}}, tty: true, seekable: false }, i);
+        FS.createStream({ nfd: i, position: 0, path: paths[i], flags: {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}}, seekable: false }, i);
       }
     },
     // generic function for all node creation
@@ -179,10 +179,11 @@ addToLibrary({
     createStream(stream, fd) {
       // Call the original FS.createStream
       var rtn = VFS.createStream(stream, fd);
-      if (typeof rtn.shared.refcnt == 'undefined') {
-        rtn.shared.refcnt = 1;
-      } else {
+      // Detect PIPEFS streams and skip the refcnt/tty initialization in that case.
+      if (!stream.stream_ops) {
+        rtn.shared.refcnt ??= 0;
         rtn.shared.refcnt++;
+        rtn.tty = nodeTTY.isatty(rtn.nfd);
       }
       return rtn;
     },

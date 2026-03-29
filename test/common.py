@@ -457,9 +457,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.skipTest('non-browser pthreads not yet supported with MINIMAL_RUNTIME')
     for engine in self.js_engines:
       if engine_is_node(engine):
-        self.require_node()
-        nodejs = get_nodejs()
-        self.node_args += shared.node_pthread_flags(nodejs)
+        if not self.try_require_node_version(16, 0, 0):
+          self.fail('node v16 required to run this test')
         return
       elif engine_is_bun(engine) or engine_is_deno(engine):
         self.require_engine(engine)

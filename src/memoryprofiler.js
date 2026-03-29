@@ -159,7 +159,7 @@ var emscriptenMemoryProfiler = {
       end: newSize,
       color: self.resizeMemorySources.length % 2 ? '#ff00ff' : '#ff80ff'
     });
-    console.log('memory resize: ' + oldSize + ' ' + newSize);
+    console.log(`memory resize: ${oldSize} ${newSize}`);
   },
 
   recordStackWatermark() {
@@ -174,9 +174,9 @@ var emscriptenMemoryProfiler = {
     if (emscriptenMemoryProfiler.sizeOfAllocatedPtr[ptr])
     {
 // Uncomment to debug internal workings of tracing:
-//      console.error('Allocation error in onMalloc! Pointer ' + ptr + ' had already been tracked as allocated!');
-//      console.error('Previous site of allocation: ' + emscriptenMemoryProfiler.allocationSitePtrs[ptr]);
-//      console.error('This doubly attempted site of allocation: ' + new Error().stack.toString());
+//      console.error(`Allocation error in onMalloc! Pointer ${ptr} had already been tracked as allocated!`);
+//      console.error(`Previous site of allocation: ${emscriptenMemoryProfiler.allocationSitePtrs[ptr]}`);
+//      console.error(`This doubly attempted site of allocation: ${new Error().stack.toString()}`);
 //      abort('malloc internal inconsistency!');
       return;
     }

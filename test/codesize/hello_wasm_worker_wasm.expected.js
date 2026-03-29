@@ -1,6 +1,6 @@
-var c = Module, d = "em-ww" == globalThis.name, e = !!globalThis.WorkerGlobalScope, f, g, C, r, D, n, E, w;
+var c = Module, d = !!globalThis.WorkerGlobalScope, e = "em-ww" == globalThis.name, f, g, C, r, D, n, E, w;
 
-d && (onmessage = a => {
+e && (onmessage = a => {
     onmessage = null;
     f = a = a.data;
     g = a.o;
@@ -13,7 +13,7 @@ d && (onmessage = a => {
 
 function h() {}
 
-d || (g = c.mem || new WebAssembly.Memory({
+e || (g = c.mem || new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0
@@ -26,7 +26,7 @@ var l = [], p = a => {
 }, q = a => {
     l.push(a);
 }, t = () => {
-    r(0, !e, !d, e && 1);
+    r(0, !d, !e, d && 1);
 }, u = {}, v = 1, x = (a, b) => {
     let m = u[v] = new Worker(c.js, {
         name: "em-ww"
@@ -47,7 +47,7 @@ var l = [], p = a => {
     });
 };
 
-d && (u[0] = globalThis, addEventListener("message", q));
+e && (u[0] = globalThis, addEventListener("message", q));
 
 function B() {
     console.log("Hello from wasm worker!");
@@ -72,9 +72,9 @@ function k() {
         r = b.k;
         D = b.l;
         n = b.j;
-        d ? (D(f.v, f.s, f.u), removeEventListener("message", q), l = l.forEach(p), addEventListener("message", p)) : b.h();
-        d || C();
+        e ? (D(f.v, f.s, f.u), removeEventListener("message", q), l = l.forEach(p), addEventListener("message", p)) : b.h();
+        e || C();
     }));
 }
 
-d || k();
+e || k();

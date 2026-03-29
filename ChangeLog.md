@@ -18,8 +18,17 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.4 (in development)
+5.0.5 (in development)
 ----------------------
+- C++ exceptions are now always thrown as CppException objects rather than raw
+  pointers/numbers.  However, the `.message` and `.stack` fields of the thrown
+  object will only be populated if `-sEXCEPTION_STACK_TRACES` is set. (#26523)
+- `emcmake` no longer automatically injects `--experimental-wasm-threads` and
+  `--experimental-wasm-bulk-memory` flags when used with versions of node older
+  than v16. (#26560)
+
+5.0.4 - 03/23/26
+----------------
 - `EXPORT_EXCEPTION_HANDLING_HELPERS` is deprecated and setting it will not do
   anything. `getExceptionMessage` is exported anyway when `ASSERTIONS` or
   `EXCEPTION_STACK_TRACES` is set, which are set by default at `-O0`. At `-O1`
@@ -33,6 +42,8 @@ See docs/process.md for more on how version tagging works.
   This is an extension of #26336 which removed many of them.  These APIs were
   not previously functional under Wasm Workers, but if there is strong use case
   it may be possible to enable them in future. (#26487)
+- pipe2 implementation was added (with limited flag support) (#26480)
+- ppoll and pselect implementations were added (#26482)
 
 5.0.3 - 03/14/26
 ----------------
