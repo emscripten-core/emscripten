@@ -940,13 +940,17 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
   out = run_wasm_opt(wasm_file, wasm_file, args, debug=debug_info, stdout=PIPE)
 
   # get the mapping
-  SEP = ' => '
+  parsed = json.loads(out)
   mapping = {}
-  for line in out.split('\n'):
-    if SEP in line:
-      old, new = line.strip().split(SEP)
-      assert old not in mapping, 'imports must be unique'
-      mapping[old] = new
+  for imp in parsed['imports']:
+    # the module name is ignored; we assume no collisions can happen there
+    module, old, new = imp
+    assert old not in mapping, 'imports must be unique'
+    mapping[old] = new
+  for exp in parsed['exports']:
+    old, new = exp
+    assert old not in mapping, 'exports must be unique'
+    mapping[old] = new
   # apply them
   passes = ['applyImportAndExportNameChanges']
   if settings.MINIFY_WHITESPACE:
