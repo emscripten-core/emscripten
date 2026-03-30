@@ -939,18 +939,45 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
   args += get_last_binaryen_opts()
   out = run_wasm_opt(wasm_file, wasm_file, args, debug=debug_info, stdout=PIPE)
 
-  # get the mapping
-  parsed = json.loads(out)
+  # Get the mapping. This can be in the old format, which is lines of
+  #
+  # OLD => NEW
+  #
+  # Or, it can be the new format:
+  #
+  # {
+  #   "imports": [
+  #     [OLD_MODULE, OLD, NEW],
+  #     ..
+  #   },
+  #   "exports": [
+  #     [OLD, NEW],
+  #     ..
+  #   }
+  # }
+  #
+  # We differentiate them by the first character.
+  # TODO: Remove the old format eventually after the new one rolls in.
   mapping = {}
-  for imp in parsed['imports']:
-    # the module name is ignored; we assume no collisions can happen there
-    module, old, new = imp
-    assert old not in mapping, 'imports must be unique'
-    mapping[old] = new
-  for exp in parsed['exports']:
-    old, new = exp
-    assert old not in mapping, 'exports must be unique'
-    mapping[old] = new
+  if out[0] != '{':
+    SEP = ' => '
+    for line in out.split('\n'):
+      if SEP in line:
+        old, new = line.strip().split(SEP)
+        assert old not in mapping, 'imports must be unique'
+        mapping[old] = new
+  else:
+    parsed = json.loads(out)
+    for imp in parsed['imports']:
+      # the module name is ignored; we assume no collisions can happen there
+      module, old, new = imp
+      assert old not in mapping, 'imports must be unique'
+      mapping[old] = new
+    for exp in parsed['exports']:
+      old, new = exp
+      assert old not in mapping, 'exports must be unique'
+      mapping[old] = new
+
   # apply them
   passes = ['applyImportAndExportNameChanges']
   if settings.MINIFY_WHITESPACE:
