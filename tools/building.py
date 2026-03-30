@@ -956,10 +956,11 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
   #   }
   # }
   #
-  # We differentiate them by the first character.
+  # We differentiate them by the first character (if present).
+  #
   # TODO: Remove the old format eventually after the new one rolls in.
   mapping = {}
-  if out[0] != '{':
+  if not out or out[0] != '{':
     SEP = ' => '
     for line in out.split('\n'):
       if SEP in line:
