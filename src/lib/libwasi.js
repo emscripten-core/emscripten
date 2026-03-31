@@ -17,6 +17,7 @@ var WasiLibrary = {
 #endif
 
   proc_exit__nothrow: true,
+  proc_exit__docs: '/** @noreturn */',
   proc_exit: (code) => {
 #if MINIMAL_RUNTIME
     throw `exit(${code})`;

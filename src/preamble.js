@@ -235,7 +235,10 @@ function postRun() {
   <<< ATPOSTRUNS >>>
 }
 
-/** @param {string|number=} what */
+/**
+ * @param {string|number=} what
+ * @noreturn
+ */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
   Module['onAbort']?.(what);

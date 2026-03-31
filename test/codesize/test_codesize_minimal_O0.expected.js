@@ -508,7 +508,10 @@ function postRun() {
   // No ATPOSTRUNS hooks
 }
 
-/** @param {string|number=} what */
+/**
+ * @param {string|number=} what
+ * @noreturn
+ */
 function abort(what) {
 
   what = `Aborted(${what})`;
