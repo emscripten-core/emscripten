@@ -15,6 +15,10 @@ pipe(good): 0, errno: 0
 pipe(bad): -1, errno: 21
 pipe2(good): 0, errno: 0
 pipe2(bad): -1, errno: 21
+pipe2(O_NONBLOCK): 0, errno: 0
+pipe2(O_NONBLOCK) read flags: 1
+pipe2(O_NONBLOCK) write flags: 1
+pipe2(O_CLOEXEC|O_NONBLOCK): 0, errno: 0
 execl: -1, errno: 45
 execle: -1, errno: 45
 execlp: -1, errno: 45
