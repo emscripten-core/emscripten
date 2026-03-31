@@ -224,7 +224,7 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
     }
     // If remainder_ns is negative it means we want wait forever, and we don't
     // need to decrement remainder_ns in that case.
-    if (wakeup_interval && remainder_ns > 0) {
+    if (wakeup_interval && remainder_ns >= 0) {
       remainder_ns -= wakeup_interval;
       if (remainder_ns <= 0) {
         break;
