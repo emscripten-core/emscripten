@@ -7710,12 +7710,20 @@ void* operator new(size_t size) {
 
   def test_embind_val_coro_catch_cpp_exception(self):
     self.set_setting('EXCEPTION_STACK_TRACES')
-    for eh in ('-fexceptions', '-fwasm-exceptions'):
-      create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
-        Module.catchCppExceptionPromise().then(console.log);
-      }''')
-      self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', eh, '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
-      self.do_runf('embind/test_val_coro.cpp', 'successfully caught!\n')
+    create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
+      Module.catchCppExceptionPromise().then(console.log);
+    }''')
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
+    self.do_runf('embind/test_val_coro.cpp', 'successfully caught!\n')
+
+  @requires_wasm_eh
+  def test_embind_val_coro_catch_cpp_exception_wasm_eh(self):
+    self.set_setting('EXCEPTION_STACK_TRACES')
+    create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
+      Module.catchCppExceptionPromise().then(console.log);
+    }''')
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fwasm-exceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
+    self.do_runf('embind/test_val_coro.cpp', 'successfully caught!\n')
 
   def test_embind_val_coro_await_in_non_val_coro(self):
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
