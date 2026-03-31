@@ -7719,8 +7719,8 @@ void* operator new(size_t size) {
 
   def test_embind_val_coro_await_in_non_val_coro(self):
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
-        Module.awaitInNonValCoro();
-      }''')
+      Module.awaitInNonValCoro();
+    }''')
     self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', '42\n')
 
