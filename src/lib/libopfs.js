@@ -30,275 +30,270 @@ if (WASMFS) {
         }
 
         const opfsSyncWorkerSource = `
-        const OPFS_TIMESTAMPS_FILE = '.emscripten-opfs-stats';
-        const textDecoder = new TextDecoder();
-        const textEncoder = new TextEncoder();
-        const rootDirectoryCache = new Map();
+const OPFS_TIMESTAMPS_FILE = '.emscripten-opfs-stats';
+const textDecoder = new TextDecoder();
+const textEncoder = new TextEncoder();
+const rootDirectoryCache = new Map();
 
-        function splitPath(path) {
-          if (!path) return [];
-          return path.split('/').filter((p) => p.length > 0);
+function splitPath(path) {
+  if (!path) return [];
+  return path.split('/').filter((p) => p.length > 0);
+}
+
+async function openSyncAccessHandleCompat(fileHandle) {
+  // Keep compatibility with old and new Safari signatures.
+  const len = FileSystemFileHandle.prototype.createSyncAccessHandle.length;
+  if (len == 0) {
+    return await fileHandle.createSyncAccessHandle();
+  }
+  try {
+    return await fileHandle.createSyncAccessHandle({ mode: 'in-place' });
+  } catch (e) {
+    if (e instanceof TypeError) {
+      return await fileHandle.createSyncAccessHandle();
+    }
+    throw e;
+  }
+}
+
+async function getRootDirectory(root) {
+  const key = root || '';
+  const cached = rootDirectoryCache.get(key);
+  if (cached) return cached;
+
+  let dir = await navigator.storage.getDirectory();
+  for (const part of splitPath(key)) {
+    dir = await dir.getDirectoryHandle(part, { create: true });
+
+  }
+
+  let meta;
+  let accessHandle;
+  try {
+    const fileHandle = await dir.getFileHandle(OPFS_TIMESTAMPS_FILE, { create: false });
+    accessHandle = await openSyncAccessHandleCompat(fileHandle);
+    const fileSize = accessHandle.getSize();
+    if (fileSize > 0) {
+      const buffer = new Uint8Array(fileSize);
+      accessHandle.read(buffer, { at: 0 });
+      meta = JSON.parse(textDecoder.decode(buffer));
+    }
+  } catch (e) {
+    // ignore
+  } finally {
+    if (accessHandle) {
+      accessHandle.close();
+    }
+  }
+
+  if (!meta || !meta.nodes) {
+    meta = { nodes: {} };
+  }
+
+  rootDirectoryCache.set(key, {
+    dir,
+    meta,
+  });
+
+  return rootDirectoryCache.get(key);
+}
+
+async function updateMeta(root, anyPath, timestamp, mode, isDir, length) {
+  const path = anyPath.startsWith("/") ? anyPath.substring(1) : anyPath;
+  const cached = rootDirectoryCache.get(root);
+  if (!cached) {
+    throw new Error('root "' + root + '" directory not found');
+  }
+  cached.meta.nodes[path] = cached.meta.nodes[path] || {};
+  cached.meta.nodes[path].t = timestamp.getTime();
+  cached.meta.nodes[path].m = mode;
+  cached.meta.nodes[path].d = isDir;
+  cached.meta.nodes[path].l = length;
+}
+
+async function getMeta(root, anyPath) {
+  const path = anyPath.startsWith("/") ? anyPath.substring(1) : anyPath;
+  const cached = rootDirectoryCache.get(root);
+  if (!cached) {
+    throw new Error('root "' + root + '" directory not found');
+  }
+  const meta = cached.meta.nodes[path];
+  return meta ? { timestamp: new Date(meta.t), mode: meta.m, isDir: meta.d, length: meta.l } : null;
+}
+
+async function removeMeta(root, anyPath) {
+  const path = anyPath.startsWith("/") ? anyPath.substring(1) : anyPath;
+  const cached = rootDirectoryCache.get(root);
+  if (!cached) {
+    throw new Error('root "' + root + '" directory not found');
+  }
+  delete cached.meta.nodes[path];
+}
+
+async function flushMeta(root) {
+  const cached = rootDirectoryCache.get(root);
+  if (!cached) {
+    throw new Error('root "' + root + '" directory not found');
+  }
+  if (Object.keys(cached.meta.nodes).length === 0) {
+    try {
+      await cached.dir.removeEntry(OPFS_TIMESTAMPS_FILE);
+    } catch(e) {
+      // ignore 
+    }
+  } else {
+    const fileHandle = await cached.dir.getFileHandle(OPFS_TIMESTAMPS_FILE, { create: true });
+    const accessHandle = await openSyncAccessHandleCompat(fileHandle);
+    accessHandle.truncate(0);
+    accessHandle.write(textEncoder.encode(JSON.stringify(cached.meta)));
+    accessHandle.flush();
+    accessHandle.close();
+  }
+}
+
+async function getDirectory(root, path, create) {
+  const rootDir = (await getRootDirectory(root)).dir;
+  const parts = typeof path === 'string' ? splitPath(path) : path;
+  let dir = rootDir;
+  for (let i = 0; i < parts.length; i++) {
+    dir = await dir.getDirectoryHandle(parts[i], { create });
+  }
+  return dir;
+}
+
+async function getParentDirectory(root, path, create) {
+  const parts = splitPath(path)
+  const dir = await getDirectory(root, parts.slice(0, -1), create);
+  return { dir, name: parts[parts.length - 1] };
+}
+
+async function openHandle(root, path, create) {
+  const { dir, name } = await getParentDirectory(root, path, create);
+  const fileHandle = await dir.getFileHandle(name, { create });
+  return await openSyncAccessHandleCompat(fileHandle);
+}
+
+function toUint8Array(contents, length) {
+  if (contents instanceof ArrayBuffer) {
+    contents = new Uint8Array(contents);
+  } else if (ArrayBuffer.isView(contents)) {
+    contents = new Uint8Array(contents.buffer, contents.byteOffset, contents.byteLength);
+  }
+
+  if (length === undefined) return contents;
+  return contents.subarray(0, Math.min(length, contents.length));
+}
+
+function postSuccess(type, requestId, result, transferable) {
+  self.postMessage({ type, requestId, ok: true, result }, transferable);
+}
+
+function postError(type, requestId, error) {
+  self.postMessage({
+    type,
+    requestId,
+    ok: false,
+    error: {
+      name: error?.name || 'Error',
+      message: error?.message || String(error),
+    },
+  });
+}
+
+const onmessage = async (event) => {
+  const { type, payload = {}, requestId } = event.data || {};
+  try {
+    switch (type) {
+      case 'write': {
+        const { root, path, offset = 0, contents = null, timestamp, mode, writeBeyondEnd = false } = payload;
+        if (contents) { // file
+          const accessHandle = await openHandle(root, path, true);
+          const data = toUint8Array(contents);
+          const written = accessHandle.write(data, { at: offset });
+          await updateMeta(root, path, timestamp, mode, false, accessHandle.getSize());
+          accessHandle.close();
+          postSuccess(type, requestId, { written });
+        } else {
+          await getDirectory(root, path, true);
+          await updateMeta(root, path, timestamp, mode, true, 0);
+          postSuccess(type, requestId, { written: 0 });
         }
+        break;
+      }
+      case 'read': {
+        let length = payload.length;
+        const { root, path, offset = 0 } = payload;
+        const { timestamp, mode } = await getMeta(root, path);
+        const accessHandle = await openHandle(root, path, false);
+        const size = accessHandle.getSize();
+        if (!length) {
+          length = size;
+        }
+        if (offset + length > size) {
+          length = size - offset;
+        }
+        const contents = new Uint8Array(length);
+        const read = accessHandle.read(contents, { at: offset });
+        accessHandle.close();
+        postSuccess(type, requestId, {
+          contents,
+          read,
+          timestamp,
+          mode,
+        }, [contents.buffer]);
+        break;
+      }
+      case 'unlink': {
+        const { root, path } = payload;
+        await removeMeta(root, path);
+        const { dir, name } = await getParentDirectory(root, path, false);
+        await dir.removeEntry(name);
+        postSuccess(type, requestId, { deleted: true });
+        break;
+      }
+      case 'list': {
+        const { root } = payload;
+        const { dir: rootDir, meta } = await getRootDirectory(root);
+        const entries = {};
 
-        async function openSyncAccessHandleCompat(fileHandle) {
-          // Keep compatibility with old and new Safari signatures.
-          const len = FileSystemFileHandle.prototype.createSyncAccessHandle.length;
-          if (len == 0) {
-            return await fileHandle.createSyncAccessHandle();
+        for (const [path, node] of Object.entries(meta.nodes)) {
+          if (node.d) {
+            entries[root + '/' + path] = { timestamp: new Date(node.t), mode: node.m, isDir: node.d, length: 0 };
           }
-          try {
-            return await fileHandle.createSyncAccessHandle({ mode: 'in-place' });
-          } catch (e) {
-            if (e instanceof TypeError) {
-              return await fileHandle.createSyncAccessHandle();
-            }
-            throw e;
-          }
         }
 
-        async function getRootDirectory(root) {
-          const key = root || '';
-          const cached = rootDirectoryCache.get(key);
-          if (cached) return cached;
-
-          let dir = await navigator.storage.getDirectory();
-          for (const part of splitPath(key)) {
-            dir = await dir.getDirectoryHandle(part, { create: true });
-
-          }
-
-          let meta;
-          let accessHandle;
-          try {
-            const fileHandle = await dir.getFileHandle(OPFS_TIMESTAMPS_FILE, { create: false });
-            accessHandle = await openSyncAccessHandleCompat(fileHandle);
-            const fileSize = accessHandle.getSize();
-            if (fileSize > 0) {
-              const buffer = new Uint8Array(fileSize);
-              accessHandle.read(buffer, { at: 0 });
-              meta = JSON.parse(textDecoder.decode(buffer));
-            }
-          } catch (e) {
-            // ignore
-          } finally {
-            if (accessHandle) {
-              accessHandle.close();
-            }
-          }
-
-          if (!meta || !meta.nodes) {
-            meta = { nodes: {} };
-          }
-
-          rootDirectoryCache.set(key, {
-            dir,
-            meta,
-          });
-
-          return rootDirectoryCache.get(key);
-        }
-
-        async function updateMeta(root, anyPath, timestamp, mode, isDir) {
-          const path = anyPath.startsWith("/") ? anyPath.substring(1) : anyPath;
-          const cached = rootDirectoryCache.get(root);
-          if (!cached) {
-            throw new Error('root "' + root + '" directory not found');
-          }
-          cached.meta.nodes[path] = cached.meta.nodes[path] || {};
-          cached.meta.nodes[path].timestamp = timestamp.getTime();
-          cached.meta.nodes[path].mode = mode;
-          cached.meta.nodes[path].isDir = isDir ?? false;
-        }
-
-        async function getMeta(root, anyPath) {
-          const path = anyPath.startsWith("/") ? anyPath.substring(1) : anyPath;
-          const cached = rootDirectoryCache.get(root);
-          if (!cached) {
-            throw new Error('root "' + root + '" directory not found');
-          }
-          const meta = cached.meta.nodes[path];
-          return meta ? { timestamp: new Date(meta.timestamp), mode: meta.mode } : null;
-        }
-
-        async function removeMeta(root, anyPath) {
-          const path = anyPath.startsWith("/") ? anyPath.substring(1) : anyPath;
-          const cached = rootDirectoryCache.get(root);
-          if (!cached) {
-            throw new Error('root "' + root + '" directory not found');
-          }
-          delete cached.meta.nodes[path];
-        }
-
-        async function flushMeta(root) {
-          const cached = rootDirectoryCache.get(root);
-          if (!cached) {
-            throw new Error('root "' + root + '" directory not found');
-          }
-          if (Object.keys(cached.meta.nodes).length === 0) {
-            try {
-              await cached.dir.removeEntry(OPFS_TIMESTAMPS_FILE);
-            } catch(e) {
-              // ignore 
-            }
-          } else {
-            const fileHandle = await cached.dir.getFileHandle(OPFS_TIMESTAMPS_FILE, { create: true });
-            const accessHandle = await openSyncAccessHandleCompat(fileHandle);
-            accessHandle.truncate(0);
-            accessHandle.write(textEncoder.encode(JSON.stringify(cached.meta)));
-            accessHandle.flush();
-            accessHandle.close();
-          }
-        }
-
-        async function getDirectory(root, path, create) {
-          const rootDir = (await getRootDirectory(root)).dir;
-          const parts = typeof path === 'string' ? splitPath(path) : path;
-          let dir = rootDir;
-          for (let i = 0; i < parts.length; i++) {
-            dir = await dir.getDirectoryHandle(parts[i], { create });
-          }
-          return dir;
-        }
-
-        async function getParentDirectory(root, path, create) {
-          const parts = splitPath(path)
-          const dir = await getDirectory(root, parts.slice(0, -1), create);
-          return { dir, name: parts[parts.length - 1] };
-        }
-
-        async function openHandle(root, path, create) {
-          const { dir, name } = await getParentDirectory(root, path, create);
-          const fileHandle = await dir.getFileHandle(name, { create });
-          return await openSyncAccessHandleCompat(fileHandle);
-        }
-
-        function toUint8Array(contents, length) {
-          if (contents instanceof ArrayBuffer) {
-            contents = new Uint8Array(contents);
-          } else if (ArrayBuffer.isView(contents)) {
-            contents = new Uint8Array(contents.buffer, contents.byteOffset, contents.byteLength);
-          }
-
-          if (length === undefined) return contents;
-          return contents.subarray(0, Math.min(length, contents.length));
-        }
-
-        function postSuccess(type, requestId, result, transferable) {
-          self.postMessage({ type, requestId, ok: true, result }, transferable);
-        }
-
-        function postError(type, requestId, error) {
-          self.postMessage({
-            type,
-            requestId,
-            ok: false,
-            error: {
-              name: error?.name || 'Error',
-              message: error?.message || String(error),
-            },
-          });
-        }
-
-        const onmessage = async (event) => {
-          const { type, payload = {}, requestId } = event.data || {};
-          try {
-            switch (type) {
-              case 'write': {
-                const { root, path, offset = 0, contents = null, timestamp, mode } = payload;
-                if (contents) { // file
-                  await updateMeta(root, path, timestamp, mode);
-                  const accessHandle = await openHandle(root, path, true);
-                  const size = accessHandle.getSize();
-                  if (size > offset) {
-                    accessHandle.truncate(offset);
-                  } else if (size < offset) {
-                    throw new Error('offset is greater than the file size, file: ' + path);
-                  }
-                  const data = toUint8Array(contents);
-                  const written = accessHandle.write(data, { at: offset });
-                  accessHandle.close();
-                  postSuccess(type, requestId, { written });
-                } else {
-                  await updateMeta(root, path, timestamp, mode, true);
-                  await getDirectory(root, path, true);
-                  postSuccess(type, requestId, { written: 0 });
-                }
-                break;
+        async function walk(dir, prefix) {
+          for await (const [name, handle] of dir.entries()) {
+            const path = prefix ? prefix + '/' + name : name;
+            if (handle.kind === 'directory') {
+              await walk(handle, path);
+            } else if (handle.kind === 'file') {
+              const meta = await getMeta(root, path);
+              if (meta) {
+                entries[root + '/' + path] = meta;
               }
-              case 'read': {
-                let length = payload.length;
-                const { root, path, offset = 0 } = payload;
-                const { timestamp, mode } = await getMeta(root, path);
-                const accessHandle = await openHandle(root, path, false);
-                const size = accessHandle.getSize();
-                if (!length) {
-                  length = size;
-                }
-                if (offset + length > size) {
-                  length = size - offset;
-                }
-                const contents = new Uint8Array(length);
-                const read = accessHandle.read(contents, { at: offset });
-                accessHandle.close();
-                postSuccess(type, requestId, {
-                  contents,
-                  read,
-                  timestamp,
-                  mode,
-                }, [contents.buffer]);
-                break;
-              }
-              case 'unlink': {
-                const { root, path } = payload;
-                await removeMeta(root, path);
-                const { dir, name } = await getParentDirectory(root, path, false);
-                await dir.removeEntry(name);
-                postSuccess(type, requestId, { deleted: true });
-                break;
-              }
-              case 'list': {
-                const { root } = payload;
-                const { dir: rootDir, meta } = await getRootDirectory(root);
-                const entries = {};
-
-                for (const [path, node] of Object.entries(meta.nodes)) {
-                  if (node.isDir) {
-                    entries[root + '/' + path] = { timestamp: new Date(node.timestamp), mode: node.mode, isDir: node.isDir };
-                  }
-                }
-
-                async function walk(dir, prefix) {
-                  for await (const [name, handle] of dir.entries()) {
-                    const path = prefix ? prefix + '/' + name : name;
-                    if (handle.kind === 'directory') {
-                      await walk(handle, path);
-                    } else if (handle.kind === 'file') {
-                      const meta = await getMeta(root, path);
-                      if (meta) {
-                        entries[root + '/' + path] = meta;
-                      }
-                    }
-                  }
-                }
-
-                await walk(rootDir, '');
-                postSuccess(type, requestId, entries);
-                break;
-              }
-              case 'flush': {
-                const { root } = payload;
-                await flushMeta(root);
-                postSuccess(type, requestId, { flushed: true });
-                break;
-              }
-              default:
-                throw new Error('unknown OPFS worker message type: ' + type);
             }
-          } catch (error) {
-            postError(type, requestId, error);
           }
-        };
-        self.onmessage = (event) => onmessage(event).catch(console.error);
+        }
+
+        await walk(rootDir, '');
+        postSuccess(type, requestId, entries);
+        break;
+      }
+      case 'flush': {
+        const { root } = payload;
+        await flushMeta(root);
+        postSuccess(type, requestId, { flushed: true });
+        break;
+      }
+      default:
+        throw new Error('unknown OPFS worker message type: ' + type);
+    }
+  } catch (error) {
+    postError(type, requestId, error);
+  }
+};
+self.onmessage = (event) => onmessage(event).catch(console.error);
         `;
         OPFS.opfsSyncWorkerUrl = URL.createObjectURL(new Blob([opfsSyncWorkerSource], { type: 'text/javascript' }));
         OPFS.worker = new Worker(OPFS.opfsSyncWorkerUrl);
