@@ -211,7 +211,7 @@ def compile_javascript(symbols_only=False):
   if stderr_file:
     stderr_file = os.path.abspath(stderr_file)
     logger.info('logging stderr in js compiler phase into %s' % stderr_file)
-    stderr_file = open(stderr_file, 'w')
+    stderr_file = open(stderr_file, 'w', encoding='utf-8')
 
   # Save settings to a file to work around v8 issue 1579
   settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
@@ -938,7 +938,7 @@ def install_debug_wrapper(sym):
   # `__trap` can occur before the runtime is initialized since it is used in abort.
   # `emscripten_get_sbrk_ptr` can be called prior to runtime initialization by
   # the dynamic linking code.
-  return sym not in ['__trap', 'emscripten_get_sbrk_ptr']
+  return sym not in {'__trap', 'emscripten_get_sbrk_ptr'}
 
 
 def should_export(sym):

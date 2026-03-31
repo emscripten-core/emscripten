@@ -290,7 +290,7 @@ def print_random_test_statistics(num_tests):
 
 def error_on_legacy_suite_names(args):
   for a in args:
-    if a.startswith('wasm') and not any(a.startswith(p) for p in ('wasm2js', 'wasmfs', 'wasm64')):
+    if a.startswith('wasm') and not a.startswith(('wasm2js', 'wasmfs', 'wasm64')):
       new = a.replace('wasm', 'core', 1)
       utils.exit_with_error('`%s` test suite has been replaced with `%s`', a, new)
 
@@ -372,7 +372,7 @@ def create_test_run_sorter(sort_failing_tests_at_front):
 
 
 def use_parallel_suite(module):
-  suite_supported = module.__name__ not in ('test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress')
+  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress'}
   if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_cores:
@@ -570,9 +570,9 @@ def configure():
   browser_common.configure_test_browser()
 
 
-def cleanup_emscripten_temp():
-  """Deletes all files and directories under Emscripten
-  that look like they might have been created by Emscripten."""
+def cleanup_temp_directory():
+  """Deletes all files and directories in TEMP_DIR that look like they
+  might have been created by Emscripten."""
   for entry in os.listdir(shared.TEMP_DIR):
     if entry.startswith(('emtest_', 'emscripten_')):
       entry = os.path.join(shared.TEMP_DIR, entry)
@@ -716,10 +716,13 @@ def main():
 
   check_js_engines()
 
-  # Remove any old test files before starting the run. Skip cleanup when we're running in debug mode
-  # where we want to preserve any files created (e.g. emscripten.lock from shared.py).
-  if not (shared.DEBUG or common.EMTEST_SAVE_DIR):
-    cleanup_emscripten_temp()
+  # Remove any old test files before starting the run. Skip cleanup when we're
+  # running in debug mode where we want to preserve any files created (e.g.
+  # emscripten.lock from shared.py).
+  # Note: We only do this in the CI environment, since it prevents multiple
+  # emscripten checkouts from running tests at the same time.
+  if os.getenv('CI') and not (shared.DEBUG or common.EMTEST_SAVE_DIR):
+    cleanup_temp_directory()
   utils.delete_file(common.flaky_tests_log_filename)
 
   browser_common.init(options.force_browser_process_termination)

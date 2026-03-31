@@ -79,7 +79,7 @@ def make_fake_tool(filename, version, report_name=None, extra_output=None):
     report_name = os.path.basename(filename)
   print('make_fake_tool: %s' % filename)
   ensure_dir(os.path.dirname(filename))
-  with open(filename, 'w') as f:
+  with open(filename, 'w', encoding='utf-8') as f:
     f.write('#!/bin/sh\n')
     f.write('echo "%s version %s"\n' % (report_name, version))
     f.write('echo "..."\n')
@@ -224,7 +224,7 @@ class sanity(RunnerCore):
         possible_nodes.append('/usr/bin/nodejs')
       self.assertIdentical(possible_nodes, re.search("^ *NODE_JS *= (.*)$", output, re.M).group(1))
 
-    template_data = Path(path_from_root('tools/config_template.py')).read_text()
+    template_data = utils.read_file(path_from_root('tools/config_template.py'))
     self.assertNotContained('{{{', config_data)
     self.assertNotContained('}}}', config_data)
     self.assertContained('{{{', template_data)
@@ -620,7 +620,7 @@ fi
       print(filename, engine)
 
       test_engine_path = os.path.join(test_path, filename)
-      with open(test_engine_path, 'w') as f:
+      with open(test_engine_path, 'w', encoding='utf-8') as f:
         f.write('#!/bin/sh\n')
         f.write('exec %s $@\n' % (engine))
       make_executable(test_engine_path)

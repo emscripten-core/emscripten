@@ -462,7 +462,7 @@ def make_js_executable(script):
 
   logger.debug(f'adding `#!` to JavaScript file: {settings.EXECUTABLE}')
   # add shebang
-  with open(script, 'w') as f:
+  with open(script, 'w', encoding='utf-8') as f:
     f.write(f'#!{settings.EXECUTABLE}\n')
     f.write(src)
   try:
@@ -924,14 +924,14 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     else:
       options.oformat = OFormat.JS
 
-  if options.oformat in (OFormat.WASM, OFormat.OBJECT):
+  if options.oformat in {OFormat.WASM, OFormat.OBJECT}:
     for s in JS_ONLY_SETTINGS:
       if s in user_settings:
         diagnostics.warning('unused-command-line-argument', f'{s} is only valid when generating JavaScript output')
 
   # When there is no final suffix or the suffix is `.out` (as in `a.out`) then default to
   # making the resulting file exectuable.
-  if settings.ENVIRONMENT_MAY_BE_NODE and options.oformat == OFormat.JS and final_suffix in ('', '.out'):
+  if settings.ENVIRONMENT_MAY_BE_NODE and options.oformat == OFormat.JS and final_suffix in {'', '.out'}:
     default_setting('EXECUTABLE', 1)
 
   if settings.EXECUTABLE and not settings.ENVIRONMENT_MAY_BE_NODE:
@@ -964,7 +964,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.ABORT_ON_WASM_EXCEPTIONS:
       exit_with_error('WASM_ESM_INTEGRATION is not compatible with ABORT_ON_WASM_EXCEPTIONS')
 
-  if settings.MODULARIZE and settings.MODULARIZE not in [1, 'instance']:
+  if settings.MODULARIZE and settings.MODULARIZE not in {1, 'instance'}:
     exit_with_error(f'Invalid setting "{settings.MODULARIZE}" for MODULARIZE.')
 
   def limit_incoming_module_api():
@@ -992,7 +992,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.MINIMAL_RUNTIME and len(options.preload_files):
     exit_with_error('MINIMAL_RUNTIME is not compatible with --preload-file')
 
-  if options.oformat in (OFormat.WASM, OFormat.BARE):
+  if options.oformat in {OFormat.WASM, OFormat.BARE}:
     if options.emit_tsd:
       exit_with_error('Wasm only output is not compatible with --emit-tsd')
     # If the user asks directly for a wasm file then this *is* the target
@@ -1005,7 +1005,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # Otherwise the wasm file is produced alongside the final target.
     wasm_target = get_secondary_target(target, '.wasm')
 
-  if settings.SAFE_HEAP not in [0, 1, 2]:
+  if settings.SAFE_HEAP not in {0, 1, 2}:
     exit_with_error('SAFE_HEAP must be 0, 1 or 2')
 
   if not settings.WASM:
@@ -1217,7 +1217,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.USE_CLOSURE_COMPILER = 1
 
   if 'CLOSURE_WARNINGS' in user_settings:
-    if settings.CLOSURE_WARNINGS not in ['quiet', 'warn', 'error']:
+    if settings.CLOSURE_WARNINGS not in {'quiet', 'warn', 'error'}:
       exit_with_error('invalid option -sCLOSURE_WARNINGS=%s specified! Allowed values are "quiet", "warn" or "error".' % settings.CLOSURE_WARNINGS)
     closure_warnings = diagnostics.manager.warnings['closure']
     if settings.CLOSURE_WARNINGS == 'error':
@@ -1309,7 +1309,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # dyncalls which call into the wasm, which then does an indirect call.
     settings.DYNCALLS = 1
 
-  if options.oformat != OFormat.OBJECT and final_suffix in ('.o', '.bc', '.so', '.dylib') and not settings.SIDE_MODULE:
+  if options.oformat != OFormat.OBJECT and final_suffix in {'.o', '.bc', '.so', '.dylib'} and not settings.SIDE_MODULE:
     diagnostics.warning('emcc', 'object file output extension (%s) used for non-object output.  If you meant to build an object file please use `-c, `-r`, or `-shared`' % final_suffix)
 
   if settings.SUPPORT_BIG_ENDIAN:
@@ -1606,7 +1606,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if will_metadce() and \
       settings.OPT_LEVEL >= 2 and \
       settings.DEBUG_LEVEL <= 2 and \
-      options.oformat not in (OFormat.WASM, OFormat.BARE) and \
+      options.oformat not in {OFormat.WASM, OFormat.BARE} and \
       settings.ASYNCIFY != 2 and \
       not settings.LINKABLE and \
       not settings.STANDALONE_WASM and \
@@ -1637,7 +1637,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.INCOMING_MODULE_JS_API += ['loadSplitModule']
 
   # wasm side modules have suffix .wasm
-  if settings.SIDE_MODULE and utils.suffix(target) in ('.js', '.mjs'):
+  if settings.SIDE_MODULE and utils.suffix(target) in {'.js', '.mjs'}:
     diagnostics.warning('emcc', 'JavaScript output suffix requested, but wasm side modules are just wasm files; emitting only a .wasm, no .js')
 
   if options.sanitize:
@@ -1889,7 +1889,7 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
 
   settings.TARGET_BASENAME = unsuffixed_basename(target)
 
-  if options.oformat in (OFormat.JS, OFormat.MJS):
+  if options.oformat in {OFormat.JS, OFormat.MJS}:
     js_target = target
   else:
     js_target = get_secondary_target(target, '.js')
@@ -2434,8 +2434,8 @@ def modularize():
   # FIXME(https://github.com/emscripten-core/emscripten/issues/24558): Running acorn at this
   # late phase seems to cause OOM (some kind of infinite loop perhaps) in node.
   # Instead we minify src/modularize.js in isolation above.
-  #if settings.MINIFY_WHITESPACE:
-  #  final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
+  # if settings.MINIFY_WHITESPACE:
+  #   final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
 
 
 def module_export_name_substitution():
@@ -2854,7 +2854,7 @@ def process_dynamic_libs(dylibs, lib_dirs):
     settings.SIDE_MODULE_EXPORTS.extend(sorted(exports))
 
     imports = webassembly.get_imports(dylib)
-    imports = [i.field for i in imports if i.kind in (webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG)]
+    imports = [i.field for i in imports if i.kind in {webassembly.ExternType.FUNC, webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG}]
     # For now we ignore `invoke_` functions imported by side modules and rely
     # on the dynamic linker to create them on the fly.
     # TODO(sbc): Integrate with metadata.invoke_funcs that comes from the

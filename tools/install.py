@@ -50,7 +50,7 @@ logger = logging.getLogger('install')
 def add_revision_file(target):
   # text=True would be better than encoding here, but it's only supported in 3.7+
   git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], encoding='utf-8').strip()
-  with open(os.path.join(target, 'emscripten-revision.txt'), 'w') as f:
+  with open(os.path.join(target, 'emscripten-revision.txt'), 'w', encoding='utf-8') as f:
     f.write(git_hash + '\n')
 
 
