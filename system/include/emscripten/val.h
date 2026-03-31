@@ -107,7 +107,7 @@ bool _emval_is_number(EM_VAL object);
 bool _emval_is_string(EM_VAL object);
 bool _emval_in(EM_VAL item, EM_VAL object);
 bool _emval_delete(EM_VAL object, EM_VAL property);
-bool _emval_is_cpp_exception(EM_VAL object);
+bool _emval_is_catchable_cpp_exception_object(EM_VAL object);
 [[noreturn]] bool _emval_throw(EM_VAL object);
 EM_VAL _emval_await(EM_VAL promise);
 EM_VAL _emval_iter_begin(EM_VAL iterable);
@@ -690,7 +690,10 @@ class val::awaiter {
   > state;
 
   void awaitSuspendImpl(state_coro coro) {
-    internal::_emval_coro_suspend(std::get<state_promise>(state).promise.as_handle(), this);
+    // Use get_if instead of get because we want it to work with exceptions disabled.
+    auto* promise_ptr = std::get_if<state_promise>(&state);
+    assert(promise_ptr && "Invalid awaiter state: expected JS Promise. An awaiter cannot be awaited multiple times.");
+    internal::_emval_coro_suspend(promise_ptr->promise.as_handle(), this);
     state.emplace<state_coro>(coro);
   }
 
@@ -720,7 +723,9 @@ public:
   // When JS invokes `resume_with` with some value, store that value and resume
   // the coroutine.
   void resume_with(val&& result) {
-    auto coro = std::get<state_coro>(state);
+    auto* coro_ptr = std::get_if<state_coro>(&state);
+    assert(coro_ptr && "Invalid awaiter state: expected suspended coroutine handle.");
+    auto coro = *coro_ptr;
     state.emplace<state_result>(std::move(result));
     coro.handle.resume();
   }
@@ -737,7 +742,9 @@ public:
       return std::move(result->result);
     }
     // If a JS exception ended up here, it will be uncaught as C++ code cannot catch it
-    std::get<state_error>(state).error.throw_();
+    auto* error_ptr = std::get_if<state_error>(&state);
+    assert(error_ptr && "Invalid awaiter state: expected result or error.");
+    error_ptr->error.throw_();
   }
 };
 
@@ -799,18 +806,19 @@ public:
 };
 
 inline void val::awaiter::reject_with(val&& error) {
-  auto coro = std::get<state_coro>(state);
-
+  auto* coro_ptr = std::get_if<state_coro>(&state);
+  assert(coro_ptr && "Invalid awaiter state: expected suspended coroutine handle.");
+  auto coro = *coro_ptr;
 
   if (coro.isValPromise) {
-    constexpr bool hasCppExceptions =
-#ifdef __cpp_exceptins
-      true
+    const bool isCatchableCppException =
+#ifdef __cpp_exceptions
+      internal::_emval_is_catchable_cpp_exception_object(error.as_handle())
 #else
       false
 #endif
     ;
-    if (!(hasCppExceptions && internal::_emval_is_cpp_exception(error.as_handle()))) {
+    if (!isCatchableCppException) {
       // C++ code cannot catch JS exceptions.
       // Thus, we can just reject an enclosing JS Promise.
       auto& promise = std::coroutine_handle<promise_type>::from_address(coro.handle.address()).promise();
