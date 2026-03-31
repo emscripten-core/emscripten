@@ -1545,13 +1545,9 @@ class libwasm_workers(MuslInternalLibrary, DebugLibrary):
 
 class libsockets(MuslInternalLibrary, MTLibrary):
   name = 'libsockets'
-
+  src_dir = 'system/lib/libc/musl/src/network'
+  src_files = LIBC_SOCKETS
   cflags = ['-Os', '-fno-builtin', '-Wno-shift-op-parentheses']
-
-  def get_files(self):
-    return files_in_path(
-      path='system/lib/libc/musl/src/network',
-      filenames=LIBC_SOCKETS)
 
   def can_use(self):
     return super().can_use() and not settings.PROXY_POSIX_SOCKETS
@@ -1559,11 +1555,9 @@ class libsockets(MuslInternalLibrary, MTLibrary):
 
 class libsockets_proxy(MTLibrary):
   name = 'libsockets_proxy'
-
+  src_dir = 'system/lib/websocket'
+  src_files = ['websocket_to_posix_socket.c']
   cflags = ['-Os']
-
-  def get_files(self):
-    return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.c')]
 
   def can_use(self):
     return super().can_use() and settings.PROXY_POSIX_SOCKETS

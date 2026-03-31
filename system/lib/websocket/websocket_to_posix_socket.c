@@ -24,6 +24,18 @@
 // Uncomment to enable more verbose debug printing (in addition to uncommenting POSIX_SOCKET_DEBUG)
 // #define POSIX_SOCKET_DEEP_DEBUG
 
+#ifdef POSIX_SOCKET_DEBUG
+#define DBG_OUT(format, ...) emscripten_errf("[proxy] " format, ##__VA_ARGS__)
+#else
+#define DBG_OUT(...) do {} while(0)
+#endif
+
+#ifdef POSIX_SOCKET_DEEP_DEBUG
+#define DEEP_DBG_OUT(format, ...) emscripten_errf("[proxy] " format, ##__VA_ARGS__)
+#else
+#define DEEP_DBG_OUT(...) do {} while(0)
+#endif
+
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 static void *memdup(const void *ptr, size_t sz) {
@@ -79,17 +91,13 @@ static PosixSocketCallResult *allocate_call_result(int expectedBytes) {
   pthread_mutex_lock(&bridgeLock); // Guard multithreaded access to 'callResultHead' and 'nextId' below
   PosixSocketCallResult *b = (PosixSocketCallResult*)(malloc(sizeof(PosixSocketCallResult)));
   if (!b) {
-#ifdef POSIX_SOCKET_DEBUG
-    emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "allocate_call_result: Failed to allocate call result struct of size %d bytes!\n", (int)sizeof(PosixSocketCallResult));
-#endif
+    DBG_OUT("allocate_call_result: Failed to allocate call result struct of size %zu bytes!", sizeof(PosixSocketCallResult));
     pthread_mutex_unlock(&bridgeLock);
     return 0;
   }
   static int nextId = 1;
   b->callId = nextId++;
-#ifdef POSIX_SOCKET_DEEP_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "allocate_call_result: allocated call ID %d\n", b->callId);
-#endif
+  DEEP_DBG_OUT("allocate_call_result: allocated call ID %d", b->callId);
   b->bytes = expectedBytes;
   b->data = 0;
   b->operationCompleted = 0;
@@ -107,10 +115,8 @@ static PosixSocketCallResult *allocate_call_result(int expectedBytes) {
 }
 
 static void free_call_result(PosixSocketCallResult *buffer) {
-#ifdef POSIX_SOCKET_DEEP_DEBUG
   if (buffer)
-    emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "free_call_result: freed call ID %d\n", buffer->callId);
-#endif
+    DEEP_DBG_OUT("free_call_result: freed call ID %d", buffer->callId);
 
   if (buffer->data) free(buffer->data);
   free(buffer);
@@ -125,9 +131,7 @@ static PosixSocketCallResult *pop_call_result(int callId) {
       if (prev) prev->next = b->next;
       else callResultHead = b->next;
       b->next = 0;
-#ifdef POSIX_SOCKET_DEEP_DEBUG
-      emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "pop_call_result: Removed call ID %d from pending sockets call queue\n", callId);
-#endif
+      DEEP_DBG_OUT("pop_call_result: Removed call ID %d from pending sockets call queue", callId);
       pthread_mutex_unlock(&bridgeLock);
       return b;
     }
@@ -135,22 +139,16 @@ static PosixSocketCallResult *pop_call_result(int callId) {
     b = b->next;
   }
   pthread_mutex_unlock(&bridgeLock);
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "pop_call_result: No such call ID %d in pending sockets call queue!\n", callId);
-#endif
+  DBG_OUT("pop_call_result: No such call ID %d in pending sockets call queue!", callId);
   return 0;
 }
 
 static void wait_for_call_result(PosixSocketCallResult *b) {
-#ifdef POSIX_SOCKET_DEEP_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "wait_for_call_result: Waiting for call ID %d\n", b->callId);
-#endif
+  DEEP_DBG_OUT("wait_for_call_result: Waiting for call ID %d", b->callId);
   while (!b->operationCompleted) {
     emscripten_futex_wait(&b->operationCompleted, 0, 1e9);
   }
-#ifdef POSIX_SOCKET_DEEP_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "wait_for_call_result: Waiting for call ID %d done\n", b->callId);
-#endif
+  DEEP_DBG_OUT("wait_for_call_result: Waiting for call ID %d done", b->callId);
 }
 
 static bool
@@ -158,25 +156,23 @@ bridge_socket_on_message(int eventType,
                          const EmscriptenWebSocketMessageEvent* websocketEvent,
                          void* userData) {
   if (websocketEvent->numBytes < sizeof(SocketCallResultHeader)) {
-    emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "Received corrupt WebSocket result message with size %d, not enough space for header, at least %d bytes!\n", (int)websocketEvent->numBytes, (int)sizeof(SocketCallResultHeader));
+    emscripten_errf("Received corrupt WebSocket result message with size %d, not enough space for header, at least %zu bytes!", websocketEvent->numBytes, sizeof(SocketCallResultHeader));
     return true;
   }
 
   SocketCallResultHeader *header = (SocketCallResultHeader *)websocketEvent->data;
 
-#ifdef POSIX_SOCKET_DEEP_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "POSIX sockets bridge received message on thread %p, size: %d bytes, for call ID %d\n", (void*)pthread_self(), websocketEvent->numBytes, header->callId);
-#endif
+  DEEP_DBG_OUT("POSIX sockets bridge received message on thread %p, size: %d bytes, for call ID %d", (void*)pthread_self(), websocketEvent->numBytes, header->callId);
 
   PosixSocketCallResult *b = pop_call_result(header->callId);
   if (!b) {
-    emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "Received WebSocket result message to unknown call ID %d!\n", (int)header->callId);
+    emscripten_errf("Received WebSocket result message to unknown call ID %d!", header->callId);
     // TODO: Craft a socket result that signifies a failure, and wake the listening thread
     return true;
   }
 
   if (websocketEvent->numBytes < b->bytes) {
-    emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "Received corrupt WebSocket result message with size %d, expected at least %d bytes!\n", (int)websocketEvent->numBytes, b->bytes);
+    emscripten_errf("Received corrupt WebSocket result message with size %d, expected at least %d bytes!", websocketEvent->numBytes, b->bytes);
     // TODO: Craft a socket result that signifies a failure, and wake the listening thread
     return true;
   }
@@ -185,12 +181,12 @@ bridge_socket_on_message(int eventType,
   b->data = (SocketCallResultHeader*)memdup(websocketEvent->data, websocketEvent->numBytes);
 
   if (!b->data) {
-    emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "Out of memory, tried to allocate %d bytes!\n", websocketEvent->numBytes);
+    emscripten_errf("Out of memory, tried to allocate %d bytes!", websocketEvent->numBytes);
     return true;
   }
 
   if (b->operationCompleted != 0) {
-    emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "Memory corruption(?): the received result for completed operation at address %p was expected to be in state 0, but it was at state %d!\n", &b->operationCompleted, (int)b->operationCompleted);
+    emscripten_errf("Memory corruption(?): the received result for completed operation at address %p was expected to be in state 0, but it was at state %d!", &b->operationCompleted, b->operationCompleted);
   }
 
   b->operationCompleted = 1;
@@ -200,14 +196,10 @@ bridge_socket_on_message(int eventType,
 }
 
 EMSCRIPTEN_WEBSOCKET_T emscripten_init_websocket_to_posix_socket_bridge(const char *bridgeUrl) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_JS_STACK, "emscripten_init_websocket_to_posix_socket_bridge(bridgeUrl=\"%s\")\n", bridgeUrl);
-#endif
+  DBG_OUT("emscripten_init_websocket_to_posix_socket_bridge(bridgeUrl='%s')", bridgeUrl);
   pthread_mutex_lock(&bridgeLock); // Guard multithreaded access to 'bridgeSocket'
   if (bridgeSocket) {
-#ifdef POSIX_SOCKET_DEBUG
-    emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_WARN | EM_LOG_JS_STACK, "emscripten_init_websocket_to_posix_socket_bridge(bridgeUrl=\"%s\"): A previous bridge socket connection handle existed! Forcibly tearing old connection down.\n", bridgeUrl);
-#endif
+    DBG_OUT("emscripten_init_websocket_to_posix_socket_bridge(bridgeUrl='%s'): A previous bridge socket connection handle existed! Forcibly tearing old connection down", bridgeUrl);
     emscripten_websocket_close(bridgeSocket, 0, 0);
     emscripten_websocket_delete(bridgeSocket);
     bridgeSocket = 0;
@@ -246,9 +238,7 @@ EMSCRIPTEN_WEBSOCKET_T emscripten_init_websocket_to_posix_socket_bridge(const ch
 #define MAX_OPTIONVALUE_SIZE 16
 
 int socket(int domain, int type, int protocol) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "socket(domain=%d,type=%d,protocol=%d) on thread %p\n", domain, type, protocol, (void*)pthread_self());
-#endif
+  DBG_OUT("socket(domain=%d,type=%d,protocol=%d) on thread %p", domain, type, protocol, (void*)pthread_self());
 
   struct {
     SocketCallHeader header;
@@ -273,9 +263,7 @@ int socket(int domain, int type, int protocol) {
 }
 
 int socketpair(int domain, int type, int protocol, int socket_vector[2]) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "socketpair(domain=%d,type=%d,protocol=%d, socket_vector=[%d,%d])\n", domain, type, protocol, socket_vector[0], socket_vector[1]);
-#endif
+  DBG_OUT("socketpair(domain=%d,type=%d,protocol=%d, socket_vector=[%d,%d])", domain, type, protocol, socket_vector[0], socket_vector[1]);
 
   struct {
     SocketCallHeader header;
@@ -311,9 +299,7 @@ int socketpair(int domain, int type, int protocol, int socket_vector[2]) {
 }
 
 int shutdown(int socket, int how) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "shutdown(socket=%d,how=%d)\n", socket, how);
-#endif
+  DBG_OUT("shutdown(socket=%d,how=%d)", socket, how);
 
   struct {
     SocketCallHeader header;
@@ -336,9 +322,7 @@ int shutdown(int socket, int how) {
 }
 
 int bind(int socket, const struct sockaddr *address, socklen_t address_len) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "bind(socket=%d,address=%p,address_len=%d)\n", socket, address, address_len);
-#endif
+  DBG_OUT("bind(socket=%d,address=%p,address_len=%d)", socket, address, address_len);
 
   typedef struct Data {
     SocketCallHeader header;
@@ -368,9 +352,7 @@ int bind(int socket, const struct sockaddr *address, socklen_t address_len) {
 }
 
 int connect(int socket, const struct sockaddr *address, socklen_t address_len) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "connect(socket=%d,address=%p,address_len=%d)\n", socket, address, address_len);
-#endif
+  DBG_OUT("connect(socket=%d,address=%p,address_len=%d)", socket, address, address_len);
 
   typedef struct Data {
     SocketCallHeader header;
@@ -400,9 +382,7 @@ int connect(int socket, const struct sockaddr *address, socklen_t address_len) {
 }
 
 int listen(int socket, int backlog) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "listen(socket=%d,backlog=%d)\n", socket, backlog);
-#endif
+  DBG_OUT("listen(socket=%d,backlog=%d)", socket, backlog);
 
   struct {
     SocketCallHeader header;
@@ -432,9 +412,7 @@ int accept4(int socket, struct sockaddr *address, socklen_t *address_len, int fl
 }
 
 int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "accept(socket=%d,address=%p,address_len=%p)\n", socket, address, address_len);
-#endif
+  DBG_OUT("accept(socket=%d,address=%p,address_len=%p)", socket, address, address_len);
 
   struct {
     SocketCallHeader header;
@@ -471,9 +449,7 @@ int accept(int socket, struct sockaddr *address, socklen_t *address_len) {
 }
 
 int getsockname(int socket, struct sockaddr *address, socklen_t *address_len) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "getsockname(socket=%d,address=%p,address_len=%p)\n", socket, address, address_len);
-#endif
+  DBG_OUT("getsockname(socket=%d,address=%p,address_len=%p)", socket, address, address_len);
 
   struct {
     SocketCallHeader header;
@@ -510,9 +486,7 @@ int getsockname(int socket, struct sockaddr *address, socklen_t *address_len) {
 }
 
 int getpeername(int socket, struct sockaddr* address, socklen_t* address_len) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "getpeername(socket=%d,address=%p,address_len=%p)\n", socket, address, address_len);
-#endif
+  DBG_OUT("getpeername(socket=%d,address=%p,address_len=%p)", socket, address, address_len);
 
   struct {
     SocketCallHeader header;
@@ -549,9 +523,7 @@ int getpeername(int socket, struct sockaddr* address, socklen_t* address_len) {
 }
 
 ssize_t send(int socket, const void *message, size_t length, int flags) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "send(socket=%d,message=%p,length=%zd,flags=%d)\n", socket, message, length, flags);
-#endif
+  DBG_OUT("send(socket=%d,message=%p,length=%zd,flags=%d)", socket, message, length, flags);
 
   typedef struct MSG {
     SocketCallHeader header;
@@ -583,9 +555,7 @@ ssize_t send(int socket, const void *message, size_t length, int flags) {
 }
 
 ssize_t recv(int socket, void *buffer, size_t length, int flags) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "recv(socket=%d,buffer=%p,length=%zd,flags=%d)\n", socket, buffer, length, flags);
-#endif
+  DBG_OUT("recv(socket=%d,buffer=%p,length=%zd,flags=%d)", socket, buffer, length, flags);
 
   struct {
     SocketCallHeader header;
@@ -625,9 +595,7 @@ ssize_t sendto(int socket,
                int flags,
                const struct sockaddr* dest_addr,
                socklen_t dest_len) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "sendto(socket=%d,message=%p,length=%zd,flags=%d,dest_addr=%p,dest_len=%d)\n", socket, message, length, flags, dest_addr, dest_len);
-#endif
+  DBG_OUT("sendto(socket=%d,message=%p,length=%zd,flags=%d,dest_addr=%p,dest_len=%d)", socket, message, length, flags, dest_addr, dest_len);
 
   typedef struct MSG {
     SocketCallHeader header;
@@ -669,9 +637,7 @@ ssize_t recvfrom(int socket,
                  int flags,
                  struct sockaddr* address,
                  socklen_t* address_len) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "recvfrom(socket=%d,buffer=%p,length=%zd,flags=%d,address=%p,address_len=%p)\n", socket, buffer, length, flags, address, address_len);
-#endif
+  DBG_OUT("recvfrom(socket=%d,buffer=%p,length=%zd,flags=%d,address=%p,address_len=%p)", socket, buffer, length, flags, address, address_len);
 
   struct {
     SocketCallHeader header;
@@ -713,18 +679,14 @@ ssize_t recvfrom(int socket,
 }
 
 ssize_t sendmsg(int socket, const struct msghdr *message, int flags) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "sendmsg(socket=%d,message=%p,flags=%d)\n", socket, message, flags);
-#endif
+  DBG_OUT("sendmsg(socket=%d,message=%p,flags=%d)", socket, message, flags);
 
   abort(); // TODO
   return 0;
 }
 
 ssize_t recvmsg(int socket, struct msghdr *message, int flags) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "recvmsg(socket=%d,message=%p,flags=%d)\n", socket, message, flags);
-#endif
+  DBG_OUT("recvmsg(socket=%d,message=%p,flags=%d)", socket, message, flags);
 
   abort(); // TODO
   return 0;
@@ -735,9 +697,7 @@ int getsockopt(int socket,
                int option_name,
                void* option_value,
                socklen_t* option_len) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "getsockopt(socket=%d,level=%d,option_name=%d,option_value=%p,option_len=%p)\n", socket, level, option_name, option_value, option_len);
-#endif
+  DBG_OUT("getsockopt(socket=%d,level=%d,option_name=%d,option_value=%p,option_len=%p)", socket, level, option_name, option_value, option_len);
 
   struct {
     SocketCallHeader header;
@@ -780,9 +740,7 @@ int setsockopt(int socket,
                int option_name,
                const void* option_value,
                socklen_t option_len) {
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "setsockopt(socket=%d,level=%d,option_name=%d,option_value=%p,option_len=%d)\n", socket, level, option_name, option_value, option_len);
-#endif
+  DBG_OUT("setsockopt(socket=%d,level=%d,option_name=%d,option_value=%p,option_len=%d)", socket, level, option_name, option_value, option_len);
 
   typedef struct MSG {
     SocketCallHeader header;
@@ -871,25 +829,19 @@ int getaddrinfo(const char* node,
     d.ai_protocol = hints->ai_protocol;
   }
 
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "getaddrinfo(node=%s,service=%s,hasHints=%d,ai_flags=%d,ai_family=%d,ai_socktype=%d,ai_protocol=%d,hintsPtr=%p,resPtr=%p)\n", node, service, d.hasHints, d.ai_flags, d.ai_family, d.ai_socktype, d.ai_protocol, hints, res);
-#endif
+  DBG_OUT("getaddrinfo(node=%s,service=%s,hasHints=%d,ai_flags=%d,ai_family=%d,ai_socktype=%d,ai_protocol=%d,hintsPtr=%p,resPtr=%p)", node, service, d.hasHints, d.ai_flags, d.ai_family, d.ai_socktype, d.ai_protocol, hints, res);
 
   emscripten_websocket_send_binary(bridgeSocket, &d, sizeof(d));
 
   wait_for_call_result(b);
   int ret = b->data->ret;
-#ifdef POSIX_SOCKET_DEBUG
-  emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "getaddrinfo finished, ret=%d\n", ret);
-#endif
+  DBG_OUT("getaddrinfo finished, ret=%d", ret);
   if (ret == 0) {
     if (res) {
       Result *r = (Result*)b->data;
       uint8_t *raiAddr = (uint8_t*)&r->addr[0];
       struct addrinfo *results = (struct addrinfo*)malloc(sizeof(struct addrinfo)*r->addrCount);
-#ifdef POSIX_SOCKET_DEBUG
-      emscripten_log(EM_LOG_NO_PATHS | EM_LOG_CONSOLE | EM_LOG_ERROR | EM_LOG_JS_STACK, "%d results\n", r->addrCount);
-#endif
+      DBG_OUT("%d results", r->addrCount);
       for (size_t i = 0; i < r->addrCount; ++i) {
         ResAddrinfo *rai = (ResAddrinfo*)raiAddr;
         results[i].ai_flags = rai->ai_flags;
