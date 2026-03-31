@@ -19,13 +19,13 @@ if ({{{ nodeDetectionCode() }}}) {
   globalThis.self = globalThis;
   var worker_threads = await import('node:worker_threads');
   globalThis.Worker = worker_threads.Worker;
-  var parentPort = worker_threads['parentPort'];
+  var parentPort = worker_threads.parentPort;
   // Deno and Bun already have `postMessage` defined on the global scope and
   // deliver messages to `globalThis.onmessage`, so we must not duplicate that
   // behavior here if `postMessage` is already present.
   if (!globalThis.postMessage) {
     parentPort.on('message', (msg) => globalThis.onmessage?.({ data: msg }));
-    globalThis.postMessage = (msg) => parentPort['postMessage'](msg);
+    globalThis.postMessage = (msg) => parentPort.postMessage(msg);
   }
 }
 #endif

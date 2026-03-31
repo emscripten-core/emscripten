@@ -78,10 +78,6 @@ function calculateLibraries() {
     libraries.push('libtime.js');
   }
 
-  if (EMSCRIPTEN_TRACING) {
-    libraries.push('libmemoryprofiler.js');
-  }
-
   if (SUPPORT_BASE64_EMBEDDING || ENVIRONMENT_MAY_BE_SHELL) {
     libraries.push('libbase64.js');
   }
@@ -94,7 +90,7 @@ function calculateLibraries() {
     libraries.push('libsyscall.js');
   }
 
-  if (MAIN_MODULE || RELOCATABLE) {
+  if (MAIN_MODULE) {
     libraries.push('libdylink.js');
   }
 
@@ -499,16 +495,6 @@ function exportRuntimeSymbols() {
     'callMain',
     'abort',
     'wasmExports',
-    'HEAPF32',
-    'HEAPF64',
-    'HEAP8',
-    'HEAPU8',
-    'HEAP16',
-    'HEAPU16',
-    'HEAP32',
-    'HEAPU32',
-    'HEAP64',
-    'HEAPU64',
   ];
 
   if (SUPPORT_BIG_ENDIAN) {

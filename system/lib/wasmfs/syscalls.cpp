@@ -1331,8 +1331,11 @@ int __syscall_ioctl(int fd, int request, ...) {
   }
 }
 
-int __syscall_pipe(intptr_t fd) {
+int __syscall_pipe2(intptr_t fd, int flags) {
   auto* fds = (__wasi_fd_t*)fd;
+  if (flags && flags != O_CLOEXEC) {
+    return -ENOTSUP;
+  }
 
   // Make a pipe: Two PipeFiles that share a single data source between them, so
   // that writing to one can be read in the other.

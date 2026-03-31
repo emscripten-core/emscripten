@@ -13,21 +13,47 @@
 #include <string.h>
 #include <unistd.h>
 
-int main() {
-  int err;
+#ifndef EXPECT_STDIN
+#define EXPECT_STDIN 1
+#endif
 
-  err = isatty(-1);
-  assert(!err);
+#ifndef EXPECT_STDOUT
+#define EXPECT_STDOUT 1
+#endif
+
+int main() {
+  printf("EXPECT_STDIN: %d\n", EXPECT_STDIN);
+  printf("EXPECT_STDOUT: %d\n", EXPECT_STDOUT);
+
+  printf("stdin -> %d\n", isatty(0));
+  printf("stdout -> %d\n", isatty(1));
+  assert(isatty(0) == EXPECT_STDIN);
+  assert(isatty(1) == EXPECT_STDOUT);
+
+  int err, fd;
+
+  assert(isatty(-1) == 0);
   assert(errno == EBADF);
 
-  err = isatty(open("/dev/stdin", O_RDONLY));
-  assert(err == 1);
+  fd = open("/dev/stdin", O_RDONLY);
+  assert(fd >= 0);
+  printf("/dev/stdin -> %d\n", isatty(fd));
+  assert(isatty(fd) == EXPECT_STDIN);
 
-  err = isatty(open("/dev/null", O_RDONLY));
-  assert(!err);
+  fd = open("/dev/stdout", O_WRONLY);
+  assert(fd >= 0);
+  printf("/dev/stdout -> %d\n", isatty(fd));
+  assert(isatty(fd) == EXPECT_STDOUT);
 
-  err = isatty(open("/dev", O_RDONLY));
-  assert(!err);
+  fd = open("/dev/null", O_RDONLY);
+  assert(fd >= 0);
+  printf("/dev/null -> %d\n", isatty(fd));
+  assert(isatty(fd) == 0);
+
+  fd = open("/dev", O_RDONLY);
+  assert(fd >= 0);
+  printf("/dev -> %d\n", isatty(fd));
+  assert(isatty(fd) == 0);
 
   puts("success");
 

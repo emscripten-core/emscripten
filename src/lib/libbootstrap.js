@@ -15,6 +15,19 @@ assert(Object.keys(LibraryManager.library).length === 0);
 addToLibrary({
   $callRuntimeCallbacks: () => {},
 
+  $HEAP8: undefined,
+  $HEAPU8: undefined,
+  $HEAP16: undefined,
+  $HEAPU16: undefined,
+  $HEAP32: undefined,
+  $HEAPU32: undefined,
+  $HEAPF32: undefined,
+  $HEAPF64: undefined,
+#if WASM_BIGINT
+  $HEAP64: undefined,
+  $HEAPU64: undefined,
+#endif
+
   $wasmMemory: 'memory',
 
   $ExitStatus: class {

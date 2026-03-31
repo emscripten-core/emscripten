@@ -6,7 +6,7 @@
 extern "C" {
 #endif
 
-EMSCRIPTEN_RESULT emscripten_init_websocket_to_posix_socket_bridge(const char *bridgeUrl __attribute__((nonnull)));
+EMSCRIPTEN_RESULT emscripten_init_websocket_to_posix_socket_bridge(const char * _Nonnull bridgeUrl);
 
 #ifdef __cplusplus
 }

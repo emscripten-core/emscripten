@@ -8,6 +8,6 @@
 class Test {}; // This will fail in C mode
 
 int main() {
-  printf("hello, world!\n");
+  printf("Hello, world!\n");
   return 0;
 }

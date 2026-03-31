@@ -68,6 +68,19 @@ The file packager generates a **.data** file and **.js** file. The **.js** file 
   -  Using the *file packager* allows you to run file packaging separately from compiling the code.
   -  You can load multiple datafiles by running the file packager on each and loading the **.js** outputs. See `BananaBread <https://github.com/kripken/BananaBread>`_ for an example of dynamic loading (`cube2/js/game-setup.js <https://github.com/kripken/BananaBread/blob/master/cube2/js/game-setup.js>`_).
 
+You can exclude files from packaging with ``--exclude``:
+
+.. code-block:: bash
+
+    python tools/file_packager.py assets.data \
+      --preload assets \
+      --exclude "*.psd" "*.tmp" "!assets/keep.tmp" \
+      --js-output=assets.js
+
+``--exclude`` patterns use Python ``fnmatch`` syntax. Patterns beginning with ``!``
+act as negative patterns (re-include matches after an earlier exclude pattern).
+Patterns are checked in order.
+
 
 .. _packaging-files-data-file-location:
 

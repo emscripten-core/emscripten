@@ -8,7 +8,7 @@
 #include <stdio.h>
 
 int main(int argc, char** argv) {
-  printf("hello, world! %d\n", argc);
+  printf("Hello, world! %d\n", argc);
   // Skip arg 0 because it will be an absolute path that varies between
   // machines.
   for (int i = 1; i < argc; i++) {

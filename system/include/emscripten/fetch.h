@@ -7,11 +7,12 @@
 
 #pragma once
 
+#include <emscripten/em_types.h>
+
 #include <limits.h>
 #include <stdbool.h>
 #include <stddef.h>
 #include <stdint.h>
-#include <emscripten/em_types.h>
 
 #ifdef __cplusplus
 extern "C" {

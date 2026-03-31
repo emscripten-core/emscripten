@@ -360,6 +360,18 @@ var LibraryPThread = {
 #if expectToReceiveOnModule('printErr')
         'printErr',
 #endif
+#if expectToReceiveOnModule('onMalloc')
+        'onMalloc',
+#endif
+#if expectToReceiveOnModule('onRealloc')
+        'onRealloc',
+#endif
+#if expectToReceiveOnModule('onFree')
+        'onFree',
+#endif
+#if expectToReceiveOnModule('onSbrkGrow')
+        'onSbrkGrow',
+#endif
       ];
       for (var handler of knownHandlers) {
         if (Module.propertyIsEnumerable(handler)) {
@@ -1233,12 +1245,6 @@ var LibraryPThread = {
       }
     }
   },
-#elif RELOCATABLE
-  // Provide a dummy version of _emscripten_thread_exit_joinable when
-  // RELOCATABLE is used without MAIN_MODULE.  This is because the call
-  // site in pthread_create.c is not able to distinguish between these
-  // two cases.
-  _emscripten_thread_exit_joinable: (thread) => {},
 #endif // MAIN_MODULE
 
   $checkMailbox__deps: ['$callUserCallback',

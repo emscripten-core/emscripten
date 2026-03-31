@@ -52,7 +52,7 @@ void test() {
       printf("EXISTING FILE %d,%d\n", i, j);
       int success = open("test-file", flags, 0777) != -1;
       printf("success: %d\n", success);
-      printf("errno: %d\n", errno);
+      printf("errno: %s\n", strerror(errno));
       if ((flags & O_CREAT) && (flags & O_EXCL)) {
         assert(!success);
         assert(errno == EEXIST);
@@ -74,7 +74,7 @@ void test() {
       printf("EXISTING FOLDER %d,%d\n", i, j);
       success = open("test-folder", flags, 0777) != -1;
       printf("success: %d\n", success);
-      printf("errno: %d\n", errno);
+      printf("errno: %s\n", strerror(errno));
       if ((flags & O_CREAT) && (flags & O_EXCL)) {
         assert(!success);
         assert(errno == EEXIST);
@@ -100,7 +100,7 @@ void test() {
       printf("NON-EXISTING %d,%d\n", i, j);
       success = open(nonexistent_name, flags, 0777) != -1;
       printf("success: %d\n", success);
-      printf("errno: %d\n", errno);
+      printf("errno: %s\n", strerror(errno));
       if ((flags & O_CREAT)) {
         assert(success);
         assert(errno == 0);
@@ -132,7 +132,7 @@ void test() {
       printf("EXISTING LINK %d,%d\n", i, j);
       int success = open("test-link", flags, 0777) != -1;
       printf("success: %d\n", success);
-      printf("errno: %d\n", errno);
+      printf("errno: %s\n", strerror(errno));
       if (flags & O_NOFOLLOW) {
         assert(!success);
         assert(errno == ELOOP);
@@ -147,7 +147,7 @@ void test() {
 
   printf("CREAT\n");
   printf("success: %d\n", creat("creat-me", 0777) != -1);
-  printf("errno: %d\n", errno);
+  printf("errno: %s\n", strerror(errno));
   errno = 0;
 }
 

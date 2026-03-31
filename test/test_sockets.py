@@ -395,6 +395,9 @@ class sockets(BrowserCore):
     with NodeJsWebSocketEchoServerProcess():
       self.btest_exit('websocket/test_websocket_send.c', cflags=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'] + args)
 
+  def test_websocket_new(self):
+    self.btest_exit('websocket/test_websocket_new.c', cflags=['-lwebsocket'])
+
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets
   # -> POSIX sockets bridge server
   @requires_shared_array_buffer

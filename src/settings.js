@@ -622,15 +622,10 @@ var GL_ENABLE_GET_PROC_ADDRESS = true;
 // [link]
 var JS_MATH = false;
 
-// If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
-// [link]
-var POLYFILL_OLD_MATH_FUNCTIONS = false;
-
 // Set this to enable compatibility emulations for old JavaScript engines. This gives you
 // the highest possible probability of the code working everywhere, even in rare old
 // browsers and shell environments. Specifically:
 //
-// - Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-sPOLYFILL_OLD_MATH_FUNCTIONS)
 // - Disable WebAssembly. (Must be paired with -sWASM=0)
 // - Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 // - Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
@@ -772,6 +767,7 @@ var DISABLE_EXCEPTION_THROWING = false;
 //
 // See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 // example usage.
+// [deprecated]
 var EXPORT_EXCEPTION_HANDLING_HELPERS = false;
 
 // When this is enabled, exceptions will contain stack traces and uncaught
@@ -788,28 +784,6 @@ var EXCEPTION_STACK_TRACES = false;
 // https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 // [compile+link]
 var WASM_LEGACY_EXCEPTIONS = true;
-
-// Emscripten throws an ExitStatus exception to unwind when exit() is called.
-// Without this setting enabled this can show up as a top level unhandled
-// exception.
-//
-// With this setting enabled a global uncaughtException handler is used to
-// catch and handle ExitStatus exceptions.  However, this means all other
-// uncaught exceptions are also caught and re-thrown, which is not always
-// desirable.
-//
-// [link]
-var NODEJS_CATCH_EXIT = false;
-
-// Catch unhandled rejections in node. This only affects versions of node older
-// than 15.  Without this, old version node will print a warning, but exit
-// with a zero return code.  With this setting enabled, we handle any unhandled
-// rejection and throw an exception, which will cause the process to exit
-// immediately with a non-0 return code.
-// This is not needed in Node 15+ so this setting will default to false if
-// MIN_NODE_VERSION is 150000 or above.
-// [link]
-var NODEJS_CATCH_REJECTION = true;
 
 // Whether to support async operations in the compiled code. This makes it
 // possible to call JS functions from synchronous-looking code in C/C++.
@@ -998,9 +972,8 @@ var INCOMING_MODULE_JS_API = [
   'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
   'locateFile', 'mainScriptUrlOrBlob', 'mem',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
-  'onExit', 'onFree', 'onFullScreen', 'onMalloc',
-  'onRealloc', 'onRuntimeInitialized', 'postMainLoop', 'postRun', 'preInit',
-  'preMainLoop', 'preRun',
+  'onExit', 'onFullScreen', 'onRuntimeInitialized', 'postMainLoop', 'postRun',
+  'preInit', 'preMainLoop', 'preRun',
   'preinitializedWebGLContext', 'preloadPlugins',
   'print', 'printErr', 'setStatus', 'statusMessage', 'stderr',
   'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
@@ -1126,13 +1099,6 @@ var DEFAULT_LIBRARY_FUNCS_TO_INCLUDE = [];
 // [link]
 var INCLUDE_FULL_LIBRARY = false;
 
-// If set to 1, we emit relocatable code from the LLVM backend; both
-// globals and function pointers are all offset (by gb and fp, respectively)
-// Automatically set for SIDE_MODULE or MAIN_MODULE.
-// [compile+link]
-// [deprecated]
-var RELOCATABLE = false;
-
 // A main module is a file compiled in a way that allows us to link it to
 // a side module at runtime.
 //
@@ -1195,14 +1161,11 @@ var LINKABLE = false;
 // codebase builds nicely in forward compatible manner.
 // Changes enabled by this:
 //
-//   - The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
-//     is the correct thing to use).
 //   - STRICT_JS is enabled.
 //   - IGNORE_MISSING_MAIN is disabled.
 //   - AUTO_JS_LIBRARIES is disabled.
 //   - AUTO_NATIVE_LIBRARIES is disabled.
 //   - DEFAULT_TO_CXX is disabled.
-//   - USE_GLFW is set to 0 rather than 2 by default.
 //   - ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
 //   - INCOMING_MODULE_JS_API is set to empty by default.
 // [compile+link]
@@ -2157,9 +2120,10 @@ var SPLIT_MODULE = false;
 // on startup, before loading the main module.
 var AUTOLOAD_DYLIBS = true;
 
-// Include unimplemented JS syscalls to be included in the final output.  This
-// allows programs that depend on these syscalls at runtime to be compiled, even
-// though these syscalls will fail (or do nothing) at runtime.
+// Link against stub implementations of unsupported/unimplemented syscalls. This
+// allows programs that depend on these syscalls to be compiled, even though
+// these functions will fail (or do nothing) at runtime.
+// [link]
 var ALLOW_UNIMPLEMENTED_SYSCALLS = true;
 
 // Allow calls to Worker(...) and importScripts(...) to be Trusted Types

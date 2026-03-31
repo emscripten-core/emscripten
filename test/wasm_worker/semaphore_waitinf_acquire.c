@@ -1,10 +1,17 @@
+#include <assert.h>
 #include <emscripten/console.h>
-#include <emscripten/wasm_worker.h>
 #include <emscripten/threading.h>
 #include <stdlib.h>
-#include <assert.h>
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+#include <pthread.h>
+#else
+#include <emscripten/wasm_worker.h>
+#endif
 
 // Tests emscripten_semaphore_init(), emscripten_semaphore_waitinf_acquire() and emscripten_semaphore_release()
+
+#define NUM_THREADS 6
 
 emscripten_semaphore_t threadsWaiting = (emscripten_semaphore_t)12345315; // initialize with garbage
 emscripten_semaphore_t threadsRunning = EMSCRIPTEN_SEMAPHORE_T_STATIC_INITIALIZER(0); // initialize with static initializer
@@ -62,20 +69,49 @@ void control_thread() {
   assert(threadCounter == 6);
 
   emscripten_out("control_thread: test finished");
-#ifdef REPORT_RESULT
+#if defined(REPORT_RESULT) && !defined(__EMSCRIPTEN_PTHREADS__)
   REPORT_RESULT(0);
 #endif
 }
 
+#ifdef __EMSCRIPTEN_PTHREADS__
+void* control_pthread(void* arg) {
+  control_thread();
+  return NULL;
+}
+void* worker_pthread(void* arg) {
+  worker_main();
+  return NULL;
+}
+#endif
+
 int main() {
+  emscripten_out("in main");
   emscripten_semaphore_init(&threadsWaiting, 0);
 
+#ifdef __EMSCRIPTEN_PTHREADS__
+  pthread_t p;
+  pthread_t workers[NUM_THREADS];
+  int rtn = pthread_create(&p, NULL, control_pthread, NULL);
+  assert(rtn == 0);
+
+  for (int i = 0; i < NUM_THREADS; ++i) {
+    rtn = pthread_create(&workers[i], NULL, worker_pthread, NULL);
+    assert(rtn == 0);
+  }
+
+  pthread_join(p, NULL);
+  for (int i = 0; i < NUM_THREADS; ++i) {
+    pthread_join(workers[i], NULL);
+  }
+  emscripten_out("done");
+#else
   emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
   emscripten_wasm_worker_post_function_v(worker, control_thread);
 
-#define NUM_THREADS 6
   for (int i = 0; i < NUM_THREADS; ++i) {
     emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
     emscripten_wasm_worker_post_function_v(worker, worker_main);
   }
+#endif
 }

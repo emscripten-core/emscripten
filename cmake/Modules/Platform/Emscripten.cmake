@@ -66,7 +66,13 @@ get_filename_component(EMSCRIPTEN_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}" ABSOLUTE)
 list(APPEND CMAKE_MODULE_PATH "${EMSCRIPTEN_ROOT_PATH}/cmake/Modules")
 
 if (CMAKE_HOST_WIN32)
-  set(EMCC_SUFFIX ".bat")
+  # We use windows executables these days rather than `.bat` files, but we
+  # still support a fallback of using `.bat` files.
+  if (EXISTS "${EMSCRIPTEN_ROOT_PATH}/emcc.exe")
+    set(EMCC_SUFFIX ".exe")
+  else()
+    set(EMCC_SUFFIX ".bat")
+  endif()
 else()
   set(EMCC_SUFFIX "")
 endif()
@@ -268,12 +274,15 @@ endif()
 
 set(CMAKE_EXECUTABLE_SUFFIX ".js")
 
-set(CMAKE_C_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
-set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
-set(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS 1)
-set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS 1)
-set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES 1)
-set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+if (CMAKE_HOST_WIN32)
+  # See https://github.com/emscripten-core/emscripten/issues/2386
+  set(CMAKE_C_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
+  set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
+  set(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+  set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+  set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+  set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+endif()
 
 set(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
 set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")

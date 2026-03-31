@@ -22,7 +22,7 @@ def run(*args, **kwargs):
 def is_closed(issue_number):
   output = run(['gh', 'issue', 'view', '--json', 'state', issue_number])
   state = json.loads(output)['state']
-  assert state in ['OPEN', 'CLOSED']
+  assert state in {'OPEN', 'CLOSED'}
   return state == 'CLOSED'
 
 

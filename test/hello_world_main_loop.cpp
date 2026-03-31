@@ -9,7 +9,7 @@ void looper() {
   static int frame = 0;
   frame++;
   if (frame == 10) {
-    puts("hello, world!");
+    puts("Hello, world!");
     emscripten_cancel_main_loop();
   }
 }

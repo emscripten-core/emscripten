@@ -10,6 +10,8 @@
  * for `tools/gen_sig_info.py` to work.   This file contains declarations for
  * functions that are not declared in any other public or private header.
  */
+#ifndef __EMSCRIPTEN_INTERNAL_H__
+#define __EMSCRIPTEN_INTERNAL_H__
 
 #include <emscripten/em_macros.h>
 #include <emscripten/proxying.h>
@@ -148,3 +150,5 @@ int _poll_js(void* fds, int nfds, int timeout, void* ctx, void* arg);
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* __EMSCRIPTEN_INTERNAL_H__ */

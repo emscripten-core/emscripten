@@ -539,8 +539,6 @@ jobs:
       - checkout
       - pip-install
       - run: ruff check
-      # TODO (cclauss): When ruff supports rules these errors without --preview, remove following line
-      - run: ruff check --preview --select=E20,E30,E221,E225,E226
   vulture:
     executor: ubuntu-lts
     steps:
@@ -669,6 +667,7 @@ jobs:
             asan.test_modularize_instance_pthreads
             asan.test_minimal_runtime_hello_world
             asan.test_select_blocking
+            asan.test_ppoll_blocking
             lsan.test_dylink_dso_needed
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
@@ -705,6 +704,7 @@ jobs:
             lto0.test_exceptions_allowed_uncaught
             lto0.test_longjmp_standalone_standalone
             lto0.test_embind_i64_val
+            thinlto0.test_pthread_dlsym
             core3
             core2g.test_externref
             corez.test_dylink_iostream
@@ -979,7 +979,6 @@ jobs:
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_js_optimizer_verbose
-            other.test_node_unhandled_rejection
             other.test_file_packager_separate_metadata
             other.test_full_js_library*
             core2.test_hello_world
@@ -1042,7 +1041,6 @@ jobs:
           test_targets: "-v
             other.test_gen_struct_info
             other.test_native_call_before_init
-            other.test_node_unhandled_rejection
             other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
@@ -1065,12 +1063,12 @@ jobs:
             other.test_deterministic
             other.test_gen_struct_info
             other.test_native_call_before_init
-            other.test_node_unhandled_rejection
             other.test_*growable_arraybuffers
             other.test_add_js_function_bigint_memory64
             other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
+            other.test_js_base64_api
             core2.test_hello_world
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
@@ -1100,6 +1098,11 @@ jobs:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
           test_targets: "other jslib skip:other.test_native_link_error_message"
+      - run-tests-linux:
+          # Include a single test from test_benchmark.py to ensure it's always
+          # kept functional. Must be run separately from above because we cannot
+          # run non-parallel tests in the same run as parallel tests.
+          test_targets: "benchmark.test_primes"
   test-browser-chrome:
     executor: ubuntu-lts
     environment:
@@ -1249,6 +1252,30 @@ jobs:
     steps:
       - test-sockets-chrome
 
+  build-windows-launcher:
+    executor:
+      name: win/server-2022
+      shell: bash.exe -eo pipefail
+    steps:
+      - checkout
+      - run:
+          name: "build pylauncher"
+          shell: cmd.exe
+          command: .circleci\setup_vs2022.bat && cd tools\pylauncher && call build.bat
+      - store_artifacts:
+          path: tools/pylauncher/pylauncher.exe
+          destination: pylauncher.exe
+      - install-emsdk
+      - pip-install:
+          python: "$EMSDK_PYTHON"
+      - run:
+          name: "create_entry_points"
+          command: $EMSDK_PYTHON tools/maint/create_entry_points.py --exe-files
+      - run:
+          name: "crossplatform tests"
+          command: test/runner.exe core0.test_hello_world
+
+
   # windows and mac do not have separate build and test jobs, as they only run
   # a limited set of tests; it is simpler and faster to do it all in one job.
   test-windows:
@@ -1276,6 +1303,10 @@ jobs:
     steps:
       - checkout
       - run:
+          name: Build launcher
+          command: call .circleci\setup_vs2019.bat && cd tools\pylauncher && call build.bat
+          shell: cmd.exe
+      - run:
           name: Install packages
           command: |
             choco install -y cmake.portable ninja pkgconfiglite
@@ -1284,9 +1315,6 @@ jobs:
       - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
-      # run-tests depends on the ./test/runner script which is normally only
-      # created on UNIX systems (windows uses runner.bat)
-      - run: $EMSDK_PYTHON tools/maint/create_entry_points.py --all
       - run:
           name: "crossplatform tests"
           command: test/runner.bat --crossplatform-only
@@ -1391,6 +1419,7 @@ workflows:
       - test-node-compat
       - test-windows
       - test-windows-browser-firefox
+      - build-windows-launcher
       - test-mac-arm64:
           requires:
             - build-linux

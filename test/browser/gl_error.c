@@ -6,8 +6,6 @@
  */
 
 #include <assert.h>
-#include <emscripten.h>
-#include <emscripten/html5.h>
 #include <GL/gl.h>
 #include <stdio.h>
 #include <string.h>
@@ -21,10 +19,17 @@ int main() {
   screen = SDL_SetVideoMode( 256, 256, 16, SDL_OPENGL );
   assert(screen);
 
-  // pop from empty stack
-  glPopMatrix();
-  assert(glGetError() == GL_STACK_UNDERFLOW);
+  // glGetError again should return 0 initially
+  assert(glGetError() == 0);
 
-  REPORT_RESULT(1);
+  // pop from empty stack, causing an underflow error
+  glPopMatrix();
+  GLenum err = glGetError();
+  printf("glGetError -> %d\n", err);
+  assert(err == GL_STACK_UNDERFLOW);
+
+  // Calling glGetError again should report no error.
+  assert(glGetError() == 0);
+
   return 0;
 }

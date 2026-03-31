@@ -88,5 +88,6 @@ int main() {
     for(int j = 0; j < count; ++j)
       assert(data[i][j] == (uint8_t)i);
   }
-  printf("OK. brk at end: %p. \n", sbrk(0));
+  printf("brk at end: %p.\n", sbrk(0));
+  printf("success\n");
 }

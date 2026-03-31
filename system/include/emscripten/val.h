@@ -7,15 +7,16 @@
 
 #pragma once
 
-#include <cassert>
-#include <array>
-#include <climits>
 #include <emscripten/wire.h>
+
+#include <array>
+#include <cassert>
+#include <climits>
 #include <cstdint> // uintptr_t
-#include <vector>
-#include <type_traits>
-#include <pthread.h>
 #include <optional>
+#include <pthread.h>
+#include <type_traits>
+#include <vector>
 #if __cplusplus >= 202002L
 #include <coroutine>
 #include <exception>
@@ -566,9 +567,11 @@ public:
 
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
-  explicit val(EM_VAL handle)
-      : handle(handle), thread(pthread_self())
-  {}
+  explicit val(EM_VAL handle) :
+#ifdef _REENTRANT
+    thread(pthread_self()),
+#endif
+    handle(handle) {}
 
   // Whether this value is a uses incref/decref (true) or is a special reserved
   // value (false).
@@ -596,7 +599,7 @@ private:
   static Ret internalCallWithPolicy(EM_VAL handle, const char *methodName, Args&&... args) {
     using namespace internal;
 
-    using RetWire = BindingType<Ret>::WireType;
+    using RetWire = typename BindingType<Ret>::WireType;
 
     static constexpr typename Policy::template ArgTypeList<Ret, Args...> argTypes;
     thread_local EM_INVOKER mc = _emval_create_invoker(argTypes.getCount(), argTypes.getTypes(), Kind);

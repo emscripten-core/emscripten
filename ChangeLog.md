@@ -18,8 +18,73 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.2 (in development)
+5.0.5 (in development)
 ----------------------
+- C++ exceptions are now always thrown as CppException objects rather than raw
+  pointers/numbers.  However, the `.message` and `.stack` fields of the thrown
+  object will only be populated if `-sEXCEPTION_STACK_TRACES` is set. (#26523)
+- `emcmake` no longer automatically injects `--experimental-wasm-threads` and
+  `--experimental-wasm-bulk-memory` flags when used with versions of node older
+  than v16. (#26560)
+
+5.0.4 - 03/23/26
+----------------
+- `EXPORT_EXCEPTION_HANDLING_HELPERS` is deprecated and setting it will not do
+  anything. `getExceptionMessage` is exported anyway when `ASSERTIONS` or
+  `EXCEPTION_STACK_TRACES` is set, which are set by default at `-O0`. At `-O1`
+  or above, you can export it separately by
+  `-sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount`.
+  (#26499)
+- The deprecated `EMSCRIPTEN` macro is now defined in `emscripten.h` rather than
+  on the command line (`__EMSCRIPTEN__`, which is built into LLVM, should be
+  used instead). (#26417)
+- All pthread functions are now undefined when building with `-sWASM_WORKERS`.
+  This is an extension of #26336 which removed many of them.  These APIs were
+  not previously functional under Wasm Workers, but if there is strong use case
+  it may be possible to enable them in future. (#26487)
+- pipe2 implementation was added (with limited flag support) (#26480)
+- ppoll and pselect implementations were added (#26482)
+
+5.0.3 - 03/14/26
+----------------
+- The low level FS.write API now only accepts TypedArray.  The higher level
+  writeFile and createDataFile file still also accept string and Array.
+  (#26413)
+- Warn on usage of the deprecated `EMSCRIPTEN` macro (`__EMSCRIPTEN__` should
+  be used instead). (#26381)
+- The `-sRELOCATABLE` setting was effectively removed (moved to legacy
+  settings).  This setting was deprecated in #25265 and has not been used
+  internally since #25522.
+- When building with `-sWASM_WORKERS` emscripten will no longer include pthread
+  API stub functions.  These stub functions where never designed to work under
+  Wasm Workers, so its safer to error at link time if pthread APIs are used
+  in Wasm Worker-based programs. (#26336)
+- SDL2 port updated to include stub functions for `SDL_hid_init()` and related
+  functions. (#26297)
+- libpng port updated from 1.6.39 to 1.6.55. (#26388)
+- Added sdl3_ttf port. (#24601)
+
+5.0.2 - 02/25/26
+----------------
+- The `NODEJS_CATCH_REJECTION` setting was removed. This setting only has an
+  effect when targeting very old versions of node (< 15).  Its trivial to replace
+  with a simple `--pre-js` file or with the `--unhandled-rejections=strict`
+  command line flag which it essentially emulates. Versions of node above v15
+  have this behavior by default. (#26330)
+- The `NODEJS_CATCH_EXIT` setting was removed.  This setting was disabled by
+  default in #22257, and is no longer used by emscripten itself.  It is also
+  problematic as it injects a global process.on handler.  It is easy to replace
+  with a simple `--pre-js` file for those that require it. (#26326)
+- The following APIs are now available in Wasm Workers:
+   - emscripten_futex_wait
+   - emscripten_futex_wake
+   - emscripten_is_main_runtime_thread
+   - emscripten_is_main_browser_thread
+  (#26325)
+- Several low level emscripten APIs that return success/failure now return the
+  C `bool` type rather than `int`.  For example `emscripten_proxy_sync` and
+  `emscripten_is_main_runtime_thread`. (#26316)
+- SDL2 port updated from 2.32.8 to 2.32.10. (#26298)
 - The remaining launcher scripts (e.g. `emcc.bat`) were removed from the git
   repository.  These scripts are created by the `./bootstrap` script which
   must be run before the toolchain is usable (for folks using a git checkout of

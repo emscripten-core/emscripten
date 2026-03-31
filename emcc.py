@@ -29,6 +29,11 @@ import tarfile
 from dataclasses import dataclass
 from enum import Enum, auto, unique
 
+# This assert needs to happen early, before any too-recent python syntax is used.
+# In particular it needs to happen before we import any python file that uses the
+# `match` keyword.
+assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
+
 from tools import (
   building,
   cache,
@@ -122,7 +127,7 @@ def create_reproduce_file(name, args):
     reproduce_file.add(utils.path_from_root('emscripten-version.txt'), os.path.join(root, 'version.txt'))
 
     with shared.get_temp_files().get_file(suffix='.tar') as rsp_name:
-      with open(rsp_name, 'w') as rsp:
+      with open(rsp_name, 'w', encoding='utf-8') as rsp:
         ignore_next = False
         output_arg = None
 
@@ -366,7 +371,7 @@ def separate_linker_flags(newargs):
       add_link_arg(get_next_arg())
     elif arg == '-s' or arg.startswith(('-l', '-L', '--js-library=', '-z', '-u')):
       add_link_arg(arg)
-    elif not arg.startswith('-o') and arg not in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
+    elif not arg.startswith('-o') and arg not in {'-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'}:
       # All other flags are for the compiler
       compiler_args.append(arg)
       if skip:
@@ -399,9 +404,6 @@ def phase_setup(state):
             'unused-command-line-argument',
             "linker flag ignored during compilation: '%s'" % arg)
 
-  if settings.SIDE_MODULE:
-    settings.RELOCATABLE = 1
-
   if 'USE_PTHREADS' in user_settings:
     settings.PTHREADS = settings.USE_PTHREADS
 
@@ -413,7 +415,7 @@ def phase_setup(state):
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
     # on the command line.  This is no longer valid so report either an error or a warning (for
     # backwards compat with the old `DISABLE_EXCEPTION_CATCHING=2`
-    if user_settings['DISABLE_EXCEPTION_CATCHING'] in ('0', '2'):
+    if user_settings['DISABLE_EXCEPTION_CATCHING'] in {'0', '2'}:
       diagnostics.warning('deprecated', 'DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED')
     else:
       exit_with_error('DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive')

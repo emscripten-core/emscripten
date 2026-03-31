@@ -26,6 +26,7 @@ from common import (
   WEBIDL_BINDER,
   RunnerCore,
   compiler_for,
+  copy_asset,
   create_file,
   engine_is_bun,
   engine_is_node,
@@ -191,18 +192,9 @@ def needs_dylink(func):
   assert callable(func)
 
   @wraps(func)
-  def decorated(self, relocatable, *args, **kwargs):
+  def decorated(self, *args, **kwargs):
     self.check_dylink()
-    if relocatable:
-      # Since `-sMAIN_MODULE` no longer implies `-sRELOCATABLE` but we want
-      # to keep that combination working we run all the `@needs_dylink` tests
-      # both with and without the explicit `-sRELOCATABLE`
-      self.set_setting('RELOCATABLE')
-      self.cflags.append('-Wno-deprecated')
     return func(self, *args, **kwargs)
-
-  parameterize(decorated, {'': (False,),
-                           'relocatable': (True,)})
 
   return decorated
 
@@ -212,7 +204,7 @@ def requires_x64_cpu(func):
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    if platform.machine().lower() not in ['x86_64', 'amd64']:
+    if platform.machine().lower() not in {'x86_64', 'amd64'}:
       return self.skipTest(f'This test requires a native x64 CPU. Current CPU is {platform.machine()}.')
     return func(self, *args, **kwargs)
 
@@ -288,6 +280,23 @@ def also_with_asyncify_and_jspi(func):
   parameterize(metafunc, {'': (0,),
                           'asyncify': (1,),
                           'jspi': (2,)})
+  return metafunc
+
+
+def also_with_wasm_workers(func):
+  assert callable(func)
+
+  @wraps(func)
+  def metafunc(self, ww, *args, **kwargs):
+    if ww:
+      if self.get_setting('WASM_ESM_INTEGRATION'):
+        self.skipTest('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+      if is_sanitizing(self.cflags):
+        self.skipTest('sanitizers are not compatible with WASM_WORKERS')
+      self.cflags += ['-sWASM_WORKERS']
+    return func(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,), 'ww': (True,)})
   return metafunc
 
 
@@ -450,7 +459,8 @@ class TestCoreBase(RunnerCore):
 
   def setup_esm_integration(self):
     self.require_node_25()
-    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
+    # Using instance phase imports current generates am ExperimentalWarning under node.
+    self.node_args += ['--no-warnings']
     self.set_setting('WASM_ESM_INTEGRATION')
     self.cflags += ['-Wno-experimental']
     if self.is_wasm64():
@@ -685,12 +695,10 @@ class TestCoreBase(RunnerCore):
     self.do_runf('third_party/sha1.c', 'SHA1=15dd99a1991e0b3826fede3deffc1feba42278e6')
 
   def test_core_types(self):
-    if self.get_setting('STRICT'):
-      self.cflags += ['-DIN_STRICT_MODE=1']
     self.do_runf('core/test_core_types.c')
 
   def test_cube2md5(self):
-    shutil.copy(test_file('core/test_cube2md5.txt'), '.')
+    copy_asset('core/test_cube2md5.txt')
     self.do_core_test('test_cube2md5.c', cflags=['--embed-file', 'test_cube2md5.txt'])
 
   @also_with_standalone_wasm()
@@ -892,16 +900,7 @@ class TestCoreBase(RunnerCore):
     self.do_core_test('test_stack.c')
 
   def test_stack_align(self):
-    src = test_file('core/test_stack_align.c')
-
-    def test():
-      self.do_runf(src, ['''align 4: 0
-align 8: 0
-align 16: 0
-align 32: 0
-base align: 0, 0, 0, 0'''])
-
-    test()
+    self.do_core_test('test_stack_align.c')
 
   @no_asan('stack size is too low for asan to work properly')
   def test_stack_placement(self):
@@ -1458,8 +1457,12 @@ int main(int argc, char **argv) {
     self.do_core_test('test_exceptions_rethrow.cpp')
 
   @with_all_eh_sjlj
-  def test_exceptions_uncaught_count(self):
-    self.do_core_test('test_exceptions_uncaught_count.cpp')
+  def test_exceptions_uncaught_3(self):
+    self.do_core_test('test_exceptions_uncaught_3.cpp')
+
+  @with_all_eh_sjlj
+  def test_exceptions_uncaught_4(self):
+    self.do_core_test('test_exceptions_uncaught_4.cpp')
 
   @with_all_eh_sjlj
   def test_exceptions_resume(self):
@@ -1500,9 +1503,8 @@ int main(int argc, char **argv) {
     self.do_runf('main.cpp', None, assert_returncode=NON_ZERO)
 
   @with_all_eh_sjlj
-  def test_EXPORT_EXCEPTION_HANDLING_HELPERS(self):
-    self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
-
+  def test_getExceptionMessage(self):
+    self.set_setting('ASSERTIONS')
     self.maybe_closure()
     create_file('main.cpp', '''
       #include <emscripten.h>
@@ -1701,13 +1703,7 @@ int main() {
     self.assert_fail([EMCC, test_file('hello_world.cpp'), '-fwasm-exceptions'] + self.get_cflags(), expected)
     clear_all_relevant_settings(self)
 
-    # EXPORT_EXCEPTION_HANDLING_HELPERS and EXCEPTION_STACK_TRACES requires
-    # either Emscripten EH or Wasm EH
-    self.set_setting('EXPORT_EXCEPTION_HANDLING_HELPERS')
-    expected = 'error: EXPORT_EXCEPTION_HANDLING_HELPERS requires either of -fexceptions or -fwasm-exceptions'
-    self.assert_fail([EMCC, test_file('hello_world.cpp')] + self.get_cflags(), expected)
-    clear_all_relevant_settings(self)
-
+    # EXCEPTION_STACK_TRACES requires either Emscripten EH or Wasm EH
     self.set_setting('EXCEPTION_STACK_TRACES')
     expected = 'error: EXCEPTION_STACK_TRACES requires either of -fexceptions or -fwasm-exceptions'
     self.assert_fail([EMCC, test_file('hello_world.cpp')] + self.get_cflags(), expected)
@@ -2727,7 +2723,7 @@ The current type of b is: 9
     if not self.is_optimizing() and ('-flto' in self.cflags or '-flto=thin' in self.cflags):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25015')
 
-    shutil.copy(test_file('pthread/foo.js'), '.')
+    copy_asset('pthread/foo.js')
     self.do_runf('pthread/test_pthread_run_script.c')
 
     # Run the test again with PROXY_TO_PTHREAD
@@ -2760,6 +2756,49 @@ The current type of b is: 9
     if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.cflags):
       self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
     self.do_run_in_out_file_test('pthread/test_pthread_run_on_main_thread.c')
+
+  @requires_pthreads
+  def test_pthread_is_lock_free(self):
+    self.do_runf('pthread/is_lock_free.c', 'done\n', cflags=['-pthread'])
+
+  # These wasm_worker tests are also tested in pure wasm-worker mode in test_browser.py.
+  # We test them here in pthread-mode and in pthread+wasm-worker mode.
+
+  @requires_pthreads
+  @also_with_wasm_workers
+  def test_emscripten_lock_waitinf_acquire(self):
+    self.do_runf('wasm_worker/lock_waitinf_acquire.c', 'done\n', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=4'])
+
+  @requires_pthreads
+  @also_with_wasm_workers
+  def test_emscripten_lock_wait_acquire(self):
+    self.do_runf('wasm_worker/lock_wait_acquire.c', 'done\n', cflags=['-pthread'])
+
+  @requires_pthreads
+  @also_with_wasm_workers
+  @no_sanitize('https://github.com/emscripten-core/emscripten/issues/26502')
+  def test_emscripten_lock_busyspin_waitinf(self):
+    self.do_runf('wasm_worker/lock_busyspin_waitinf_acquire.c', 'done\n', cflags=['-pthread'])
+
+  @requires_pthreads
+  @also_with_wasm_workers
+  def test_emscripten_semaphore_waitinf_acquire(self):
+    self.do_runf('wasm_worker/semaphore_waitinf_acquire.c', 'done\n', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=7'])
+
+  @requires_pthreads
+  @also_with_wasm_workers
+  def test_emscripten_semaphore_wait_acquire(self):
+    self.do_runf('wasm_worker/semaphore_wait_acquire.c', 'done\n', cflags=['-pthread'])
+
+  @requires_pthreads
+  @also_with_wasm_workers
+  def test_emscripten_semaphore_try_acquire(self):
+    self.do_runf('wasm_worker/semaphore_try_acquire.c', 'done\n', cflags=['-pthread'])
+
+  @requires_pthreads
+  @also_with_wasm_workers
+  def test_emscripten_condvar_waitinf(self):
+    self.do_runf('wasm_worker/condvar_waitinf.c', 'done\n', cflags=['-pthread'])
 
   def test_tcgetattr(self):
     self.do_runf('termios/test_tcgetattr.c', 'success')
@@ -3320,10 +3359,6 @@ Var: 42
     if is_sanitizing(self.cflags):
       return
 
-    if self.get_setting('RELOCATABLE'):
-      # The relocatable version of this test produces slightly different exports.
-      return
-
     def get_data_exports(wasm):
       wat = self.get_wasm_text(wasm)
       lines = wat.splitlines()
@@ -3335,7 +3370,7 @@ Var: 42
     data_exports = get_data_exports('test_dlfcn_self.wasm')
     # Certain exports are removed by wasm-emscripten-finalize, but this
     # tool is not run in all configurations, so ignore these exports.
-    data_exports = [d for d in data_exports if d not in ('__start_em_asm', '__stop_em_asm')]
+    data_exports = [d for d in data_exports if d not in {'__start_em_asm', '__stop_em_asm'}]
     data_exports = '\n'.join(sorted(data_exports)) + '\n'
     self.assertFileContents(test_file('core/test_dlfcn_self.exports'), data_exports)
 
@@ -3990,9 +4025,7 @@ caught outer int: 123
     if getattr(self, 'dylink_reversed', False):
       # Test the reverse case.  There we flip the role of the side module and main module.
       # - We add --no-entry since the side module doesn't have a `main`
-      side_ = side
-      side = main
-      main = side_
+      side, main = main, side
     self.maybe_closure()
     # Same as dylink_test but takes source code as filenames on disc.
     old_args = self.cflags.copy()
@@ -5895,7 +5928,6 @@ got: 10
   @crossplatform
   @also_with_nodefs_both
   @no_wasmfs('Assertion failed: open("./does-not-exist/", O_CREAT, 0777) == -1 in test_fs_enotdir.c line 20. https://github.com/emscripten-core/emscripten/issues/25035')
-  @no_deno('https://github.com/emscripten-core/emscripten/issues/26235')
   def test_fs_enotdir(self):
     if MACOS and '-DNODERAWFS' in self.cflags:
       self.skipTest('BSD libc sets a different errno')
@@ -5943,7 +5975,7 @@ Module.onRuntimeInitialized = () => {
       #include <emscripten.h>
       #include <stdio.h>
       int main(void) {
-        printf("hello world\n"); // should work with strict mode
+        printf("Hello, world!\n"); // should work with strict mode
         EM_ASM(
           try {
             FS.readFile('/dummy.txt');
@@ -6001,7 +6033,6 @@ Module.onRuntimeInitialized = () => {
   @no_windows("stat ino values don't match on windows")
   @crossplatform
   @no_wasmfs('Assertion failed: "a_ino == sta.st" in test_fs_readdir_ino_matches_stat_ino.c, line 58. https://github.com/emscripten-core/emscripten/issues/25035')
-  @no_deno('https://github.com/emscripten-core/emscripten/issues/26235')
   def test_fs_readdir_ino_matches_stat_ino(self):
     self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
 
@@ -6058,6 +6089,7 @@ Module.onRuntimeInitialized = () => {
 
   @also_with_noderawfs
   def test_unistd_close(self):
+    self.maybe_closure()
     self.do_run_in_out_file_test('unistd/close.c')
 
   def test_unistd_fsync_stdout(self):
@@ -6106,7 +6138,6 @@ Module.onRuntimeInitialized = () => {
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
   @with_all_fs
-  @no_deno('https://github.com/emscripten-core/emscripten/issues/26241')
   def test_unistd_unlink(self):
     # symlinks on node.js on non-linux behave differently (e.g. on Windows they require administrative privileges)
     # so skip testing those bits on that combination.
@@ -6257,7 +6288,7 @@ PORT: 3979
       #include <iostream>
 
       int main() {
-        std::cout << "hello world" << std::endl << 77 << "." << std::endl;
+        std::cout << "Hello, world!" << std::endl << 77 << "." << std::endl;
         return 0;
       }
     ''')
@@ -6269,7 +6300,7 @@ PORT: 3979
 
       # add some timing nondeterminism here, not that we need it, but whatever
       time.sleep(random.random() / (10 * num))
-      self.do_runf('src.cpp', 'hello world\n77.\n')
+      self.do_runf('src.cpp', 'Hello, world!\n77.\n')
 
       # Verify that this build is identical to the previous one
       if os.path.exists('src.js.previous'):
@@ -6321,7 +6352,6 @@ PORT: 3979
   @with_env_modify({'LC_ALL': 'latin-1', 'PYTHONUTF8': '0', 'PYTHONCOERCECLOCALE': '0'})
   @crossplatform
   @no_modularize_instance('uses MODULARIZE')
-  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   def test_unicode_js_library(self):
     # First verify that we have correct overridden the default python file encoding.
@@ -6499,10 +6529,10 @@ void* operator new(size_t size) {
       int main() {
         std::set<int> fetchOriginatorNums;
         fetchOriginatorNums.insert(171);
-        printf("hello world\\n");
+        printf("Hello, world!\\n");
         return 0;
       }
-      ''', 'hello world')
+      ''', 'Hello, world!')
 
   def test_typeid(self):
     self.do_core_test('test_typeid.cpp')
@@ -6736,7 +6766,7 @@ void* operator new(size_t size) {
   @is_slow_test
   def test_freetype(self):
     # Not needed for js, but useful for debugging
-    shutil.copy(test_file('freetype/LiberationSansBold.ttf'), 'font.ttf')
+    copy_asset('freetype/LiberationSansBold.ttf', 'font.ttf')
     ftlib = self.get_freetype_library()
 
     if self.get_setting('WASMFS'):
@@ -6858,7 +6888,7 @@ void* operator new(size_t size) {
     # See https://github.com/emscripten-core/emscripten/issues/20757
     self.cflags.extend(['-Wno-deprecated-declarations', '-Wno-nontrivial-memaccess'])
     poppler = self.get_poppler_library()
-    shutil.copy(test_file('poppler/paper.pdf'), '.')
+    copy_asset('poppler/paper.pdf')
 
     create_file('pre.js', '''
     Module.preRun = () => {
@@ -7203,7 +7233,7 @@ void* operator new(size_t size) {
     response_data = '--start-group ' + objfile + ' --end-group'
     create_file('rsp_file', response_data.replace('\\', '\\\\'))
     self.run_process([EMCC, "-Wl,@rsp_file", '-o', out_js] + self.get_cflags())
-    self.do_run(out_js, 'hello, world', no_build=True)
+    self.do_run(out_js, 'Hello, world!', no_build=True)
 
   @no_modularize_instance('uses Module object directly')
   def test_exported_response(self):
@@ -7272,6 +7302,12 @@ void* operator new(size_t size) {
     self.set_setting('EXIT_RUNTIME', 0)
     self.set_setting('EMULATE_FUNCTION_POINTER_CASTS')
     self.do_core_test('test_emulate_function_pointer_casts.cpp', cflags=['-Wno-deprecated'])
+
+  def test_emulate_function_pointer_casts_directize(self):
+    # Regression test: directize (inside -O2) must not replace type-mismatched
+    # call_indirect with unreachable when fpcast-emu will fix them.
+    # https://github.com/WebAssembly/binaryen/pull/8475
+    self.do_core_test('test_emulate_function_pointer_casts_directize.c', cflags=['-sEMULATE_FUNCTION_POINTER_CASTS'])
 
   @no_wasm2js('TODO: nicely printed names in wasm2js')
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
@@ -7389,10 +7425,9 @@ void* operator new(size_t size) {
     do_test(test1)
 
     print('libcxx - remove 2 ctors from iostream code')
-    output = 'hello, world!'
 
     def test2():
-      self.do_runf('hello_libcxx.cpp', output)
+      self.do_runf('hello_libcxx.cpp', 'Hello, world!')
 
     # in standalone more there is more usage of WASI APIs, which mode 2 is
     # needed to avoid in order to fully optimize, so do not test mode 1 in
@@ -7783,6 +7818,10 @@ void* operator new(size_t size) {
   def test_embind_throw_cpp_exception(self):
     self.do_run_in_out_file_test('embind/test_embind_throw_cpp_exception.cpp', cflags=['-lembind', '-std=c++20'])
 
+  @with_all_eh_sjlj
+  def test_embind_throw_val_uncaught_and_refcount(self):
+    self.do_run_in_out_file_test('embind/test_embind_throw_val_uncaught_and_refcount.cpp', cflags=['-lembind', '-std=c++20'])
+
   @parameterized({
     '': ('DEFAULT', False),
     'all': ('ALL', False),
@@ -7898,7 +7937,7 @@ void* operator new(size_t size) {
     # optimizer can deal with both types.
     map_filename = map_referent + '.map'
 
-    data = json.load(open(map_filename))
+    data = json.loads(utils.read_file(map_filename))
     if hasattr(data, 'file'):
       # the file attribute is optional, but if it is present it needs to refer
       # the output file.
@@ -7959,7 +7998,7 @@ void* operator new(size_t size) {
   def test_dwarf(self):
     self.cflags.append('-g')
 
-    shutil.copy(test_file('core/test_dwarf.c'), '.')
+    copy_asset('core/test_dwarf.c')
 
     self.emcc('test_dwarf.c')
 
@@ -8091,7 +8130,6 @@ void* operator new(size_t size) {
 
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_modularize_instance('uses -sMODULARIZE')
-  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   def test_modularize_closure_pre(self):
     # test that the combination of modularize + closure + pre-js works. in that mode,
     # closure should not minify the Module object in a way that the pre-js cannot use it.
@@ -8139,7 +8177,7 @@ void* operator new(size_t size) {
 
       int main() {
         atexit(cleanup); // this atexit should still be called
-        printf("hello, world!\n");
+        printf("Hello, world!\n");
         // Unusual exit status to make sure it's working!
         #if defined(NORMAL_EXIT)
           exit(117);
@@ -8159,11 +8197,11 @@ void* operator new(size_t size) {
     ''')
     self.cflags += ['--pre-js', 'pre.js', '-sINCOMING_MODULE_JS_API=onExit']
     print('.. exit')
-    self.do_runf('exit.c', 'hello, world!\ncleanup\nI see exit status: 117', assert_returncode=117, cflags=['-DNORMAL_EXIT'])
+    self.do_runf('exit.c', 'Hello, world!\ncleanup\nI see exit status: 117', assert_returncode=117, cflags=['-DNORMAL_EXIT'])
     print('.. _exit')
-    self.do_runf('exit.c', 'hello, world!\nI see exit status: 118', assert_returncode=118, cflags=['-DUNDER_EXIT'])
+    self.do_runf('exit.c', 'Hello, world!\nI see exit status: 118', assert_returncode=118, cflags=['-DUNDER_EXIT'])
     print('.. _Exit')
-    self.do_runf('exit.c', 'hello, world!\nI see exit status: 119', assert_returncode=119, cflags=['-DCAPITAL_EXIT'])
+    self.do_runf('exit.c', 'Hello, world!\nI see exit status: 119', assert_returncode=119, cflags=['-DCAPITAL_EXIT'])
 
   def test_minmax(self):
     self.do_runf('test_minmax.c', 'NAN != NAN\nSuccess!')
@@ -8191,7 +8229,7 @@ void* operator new(size_t size) {
   # Test that a main with arguments is automatically asyncified.
   @with_asyncify_and_jspi
   def test_async_main(self):
-    create_file('main.c',  r'''
+    create_file('main.c', r'''
 #include <stdio.h>
 #include <emscripten.h>
 int main(int argc, char **argv) {
@@ -8207,7 +8245,7 @@ int main(int argc, char **argv) {
     # needs to flush stdio streams
     self.set_setting('EXIT_RUNTIME')
 
-    create_file('main.c',  r'''
+    create_file('main.c', r'''
 #include <stdio.h>
 #include <emscripten.h>
 void f(void *p) {
@@ -8228,7 +8266,7 @@ int main() {
 
   @with_asyncify_and_jspi
   def test_async_loop(self):
-    create_file('main.c',  r'''
+    create_file('main.c', r'''
 #include <stdio.h>
 #include <emscripten.h>
 int main() {
@@ -8512,7 +8550,7 @@ Module.onRuntimeInitialized = () => {
     if self.is_wasm2js():
       self.skipTest('redundant to test wasm2js in wasm2js* mode')
 
-    self.run_process([EMCC, test_file('small_hello_world.c'), '-sWASM=2'])
+    self.run_process([EMCC, test_file('hello_world_small.c'), '-sWASM=2'])
 
     # First run with WebAssembly support enabled
     # Move the Wasm2js fallback away to test it is not accidentally getting loaded.
@@ -8629,11 +8667,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @also_with_standalone_wasm()
   def test_sbrk(self):
-    self.do_runf('test_sbrk_brk.c', 'OK.')
-    self.do_runf('test_sbrk_brk.c', 'OK.', cflags=['-sALLOW_MEMORY_GROWTH'])
+    self.do_core_test('test_sbrk_brk.c')
+    self.do_core_test('test_sbrk_brk.c', cflags=['-sALLOW_MEMORY_GROWTH'])
 
   def test_brk(self):
-    self.do_runf('test_sbrk_brk.c', 'OK.', cflags=['-DTEST_BRK=1'])
+    self.do_core_test('test_sbrk_brk.c', cflags=['-DTEST_BRK=1'])
 
   # Tests that we can use the dlmalloc mallinfo() function to obtain information
   # about malloc()ed blocks and compute how much memory is used/freed.
@@ -8699,7 +8737,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.add_post_run('ThisFunctionDoesNotExist()')
     out_js = self.build('core/test_hello_world.c')
     output = self.run_js(out_js, assert_returncode=NON_ZERO)
-    self.assertStartswith(output, 'hello, world!')
+    self.assertStartswith(output, 'Hello, world!')
     self.assertContained('ThisFunctionDoesNotExist is not defined', output)
 
   def test_postrun_exit_runtime(self):
@@ -8740,7 +8778,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_minimal_runtime_hello_world(self, args):
     self.maybe_closure()
     self.cflags += ['--pre-js', test_file('minimal_runtime_exit_handling.js')]
-    self.do_runf('small_hello_world.c', 'hello!', cflags=['-sMINIMAL_RUNTIME'] + args)
+    self.do_runf('hello_world_small.c', 'hello!', cflags=['-sMINIMAL_RUNTIME'] + args)
 
   # Test that printf() works in MINIMAL_RUNTIME=1
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -8772,7 +8810,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # lsan pulls in $FS
     if '-fsanitize=leak' not in self.cflags:
       self.maybe_closure()
-    self.do_runf('small_hello_world.c', 'hello')
+    self.do_runf('hello_world_small.c', 'hello')
 
   # Tests global initializer with -sMINIMAL_RUNTIME
   @no_wasmfs('https://github.com/emscripten-core/emscripten/issues/16816')
@@ -9038,7 +9076,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('test_asan_api.c', cflags=['-fsanitize=address'])
 
   @asan
-  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_modularize_instance('uses MODULARIZE')
   def test_asan_modularized_with_closure(self):
@@ -9259,8 +9296,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @requires_pthreads
   def test_stdio_locking(self):
-    self.set_setting('PTHREAD_POOL_SIZE', '2')
-    self.do_core_test('test_stdio_locking.c')
+    self.do_core_test('test_stdio_locking.c', cflags=['-sPTHREAD_POOL_SIZE=2'])
+
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  @no_sanitize('sanitizers do not support WASM_WORKERS')
+  def test_stdio_locking_ww(self):
+    # Note: do not combine with test_stdio_locking above because we want to test standalone
+    # wasm workers here and `@requires_pthreads` would prevent that.
+    self.do_core_test('test_stdio_locking.c', cflags=['-sWASM_WORKERS'])
 
   @with_dylink_reversed
   @requires_pthreads
@@ -9630,8 +9673,16 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/test_select_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
   @requires_pthreads
+  def test_pselect_blocking(self):
+    self.do_runf('core/test_pselect_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @requires_pthreads
   def test_poll_blocking(self):
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @requires_pthreads
+  def test_ppoll_blocking(self):
+    self.do_runf('core/test_ppoll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
 
   @with_asyncify_and_jspi
   def test_poll_blocking_asyncify(self):
@@ -9685,7 +9736,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt', '--from-emcc', '--js-output=script2.js'])
     self.do_runf('test_emscripten_async_load_script.c', cflags=['-sFORCE_FILESYSTEM'])
 
-  @requires_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @also_with_minimal_runtime
   @also_with_modularize
@@ -9696,13 +9746,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.maybe_closure()
     self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
-  @requires_pthreads
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_malloc(self):
     self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
-  @requires_pthreads
+  @no_sanitize('sanitizers do not support WASM_WORKERS')
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  def test_wasm_worker_runtime_debug(self):
+    self.do_runf('wasm_worker/hello_wasm_worker.c', 'wasm worker starting ...', cflags=['-sWASM_WORKERS', '-sRUNTIME_DEBUG'])
+
+  @no_sanitize('sanitizers do not support WASM_WORKERS')
+  @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
+  def test_wasm_worker_futex_wait(self):
+    self.do_runf('wasm_worker/wasm_worker_futex_wait.c', cflags=['-sWASM_WORKERS'])
+
   @no_sanitize('sanitizers do not support WASM_WORKERS')
   @no_esm_integration('WASM_ESM_INTEGRATION is not compatible with WASM_WORKERS')
   def test_wasm_worker_wait_async(self):
@@ -9714,7 +9772,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   })
   @esm_integration
   def test_esm_integration_main(self, args):
-    self.do_runf('hello_world.c', 'hello, world!', cflags=args)
+    self.do_runf('hello_world.c', 'Hello, world!', cflags=args)
 
   @esm_integration
   def test_esm_integration(self):
@@ -9726,11 +9784,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
       await init({arguments: ['foo', 'bar']});
       err('this is a pointer:', stringToNewUTF8('hello'));
     ''')
-    self.assertContained('hello, world! (3)', self.run_js('runner.mjs'))
+    self.assertContained('Hello, world! (3)', self.run_js('runner.mjs'))
     self.assertFileContents(test_file('core/test_esm_integration.expected.mjs'), read_file('hello_world.mjs'))
 
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
-  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
+  @no_strict_js('EXPORT_ES6 is not compatible with STRICT_JS')
   def test_modularize_instance_hello(self):
     self.do_core_test('test_hello_world.c', cflags=['-sMODULARIZE=instance', '-Wno-experimental'])
 
@@ -9739,7 +9797,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'pthreads': (['-pthread'],),
   })
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
-  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
+  @no_strict_js('EXPORT_ES6 is not compatible with STRICT_JS')
   def test_modularize_instance(self, args):
     if args:
       self.require_pthreads()
@@ -9775,7 +9833,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_4gb('EMBIND_AOT can\'t lower 4gb')
-  @no_strict_js('MODULARIZE is not compatible with STRICT_JS')
+  @no_strict_js('EXPORT_ES6 is not compatible with STRICT_JS')
   def test_modularize_instance_embind(self):
     self.run_process([EMXX, test_file('modularize_instance_embind.cpp'),
                       '-sMODULARIZE=instance',
@@ -9812,10 +9870,11 @@ NODEFS is no longer included by default; build with -lnodefs.js
     6|       | */
     7|       |
     8|       |#include <stdio.h>
-    9|      1|int main() {
-   10|      1|  printf("hello, world!\\n");
-   11|      1|  return 0;
-   12|      1|}
+    9|       |
+   10|      1|int main() {
+   11|      1|  printf("Hello, world!\\n");
+   12|      1|  return 0;
+   13|      1|}
 
 '''
     self.set_setting('NODERAWFS')

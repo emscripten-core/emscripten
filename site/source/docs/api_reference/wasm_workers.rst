@@ -86,6 +86,7 @@ the middle.
 Pthreads and Wasm Workers share several similarities:
 
  * Both can use emscripten_atomic_* Atomics API,
+ * Both can use emscripten_futex_wait/wake API,
  * Both can use GCC __sync_* Atomics API,
  * Both can use C11 and C++11 Atomics APIs,
  * Both types of threads have a local stack.
@@ -102,6 +103,19 @@ Pthreads and Wasm Workers share several similarities:
  * Neither pthreads nor Wasm Workers can be used in conjunction with ``-sSINGLE_FILE`` linker flag.
 
 However, the differences are more notable.
+
+C11 thread APIs are not available under Wasm Workers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Becuase our C11 threading API is based on pthreads internally these APIs are not
+available under Wasm Worker.
+
+Some standard C++ APIs are not available under Wasm Workers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some parts of the libc++ stndard library are not available under Wasm Workers
+becuase they depend on pthreads internally.  For example `std::call_once``:
+https://github.com/emscripten-core/emscripten/issues/26375.
 
 Pthreads can proxy JS functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^

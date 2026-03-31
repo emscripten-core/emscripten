@@ -68,7 +68,6 @@ int main(int argc, char *argv[])
         touches.item = function(i) { return this[i]; };
 
         var event = document.createEvent('UIEvent');
-        event.target = Module['canvas'];
         event.button = 0;
         event.changedTouches = touches;
         event.initUIEvent(eventType, true, true, window, 1);
