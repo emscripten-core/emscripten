@@ -676,7 +676,7 @@ class val::awaiter {
     std::coroutine_handle<> handle;
     /// Is \c std::coroutine_handle<val::promise_type> ?
     /// In other words, are we also enclosed by a JS Promise?
-    bool isValPromise = false;
+    bool is_val_promise = false;
   };
   struct state_result { val result; };
   struct state_error { val error; };
@@ -689,7 +689,7 @@ class val::awaiter {
     state_error // Rejected with error
   > state;
 
-  void awaitSuspendImpl(state_coro coro) {
+  void await_suspend_impl(state_coro coro) {
     // Use get_if instead of get because we want it to work with exceptions disabled.
     auto* promise_ptr = std::get_if<state_promise>(&state);
     assert(promise_ptr && "Invalid awaiter state: expected JS Promise. An awaiter cannot be awaited multiple times.");
@@ -713,11 +713,11 @@ public:
   // `promise.then(value => this.resume_with(value)).catch(error => this.reject_with(error))`.
 
   void await_suspend(std::coroutine_handle<val::promise_type> handle) {
-    awaitSuspendImpl({handle, true});
+    await_suspend_impl({handle, true});
   }
 
   void await_suspend(std::coroutine_handle<> handle) {
-    awaitSuspendImpl({handle, false});
+    await_suspend_impl({handle, false});
   }
 
   // When JS invokes `resume_with` with some value, store that value and resume
@@ -810,15 +810,15 @@ inline void val::awaiter::reject_with(val&& error) {
   assert(coro_ptr && "Invalid awaiter state: expected suspended coroutine handle.");
   auto coro = *coro_ptr;
 
-  if (coro.isValPromise) {
-    const bool isCatchableCppException =
+  if (coro.is_val_promise) {
+    const bool is_catchable_cpp_exception =
 #ifdef __cpp_exceptions
       internal::_emval_is_catchable_cpp_exception_object(error.as_handle())
 #else
       false
 #endif
     ;
-    if (!isCatchableCppException) {
+    if (!is_catchable_cpp_exception) {
       // C++ code cannot catch JS exceptions.
       // Thus, we can just reject an enclosing JS Promise.
       auto& promise = std::coroutine_handle<promise_type>::from_address(coro.handle.address()).promise();
