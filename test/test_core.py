@@ -7687,7 +7687,6 @@ void* operator new(size_t size) {
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
 
   def test_embind_val_coro_propagate_js_error_disabled_catch(self):
-    #TODO Is this the default?
     self.set_setting('DISABLE_EXCEPTION_CATCHING')
     self.set_setting('NO_DISABLE_EXCEPTION_THROWING')
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
