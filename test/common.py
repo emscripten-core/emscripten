@@ -98,7 +98,7 @@ def errlog(*args):
 
 def load_previous_test_run_results():
   try:
-    return json.load(open(PREVIOUS_TEST_RUN_RESULTS_FILE))
+    return json.loads(utils.read_file(PREVIOUS_TEST_RUN_RESULTS_FILE))
   except FileNotFoundError:
     return {}
   except json.decoder.JSONDecodeError as e:
@@ -135,7 +135,7 @@ def exe_suffix(cmd):
 
 
 def compiler_for(filename, force_c=False):
-  if utils.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
+  if utils.suffix(filename) in {'.cc', '.cxx', '.cpp'} and not force_c:
     return EMXX
   else:
     return EMCC
@@ -143,7 +143,8 @@ def compiler_for(filename, force_c=False):
 
 def record_flaky_test(test_name, attempt_count, max_attempts, exception_msg):
   logger.info(f'Retrying flaky test "{test_name}" (attempt {attempt_count}/{max_attempts} failed):\n{exception_msg}')
-  open(flaky_tests_log_filename, 'a').write(f'{test_name}\n')
+  with open(flaky_tests_log_filename, 'a', encoding='utf-8') as f:
+    f.write(f'{test_name}\n')
 
 
 def node_bigint_flags(node_version):
@@ -519,7 +520,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
-  def try_require_node_version(self, major, minor = 0, revision = 0):
+  def try_require_node_version(self, major, minor=0, revision=0):
     nodejs = get_nodejs()
     if not nodejs:
       self.skipTest('Test requires nodejs to run')
@@ -867,9 +868,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       args += self.ldflags
     if not main_file:
       for i, arg in enumerate(args):
-        if arg in ('--pre-js', '--post-js'):
+        if arg in {'--pre-js', '--post-js'}:
           args[i] = None
-          args[i + 1] = None
+          args[i + 1] = None # noqa: B909
       args = [arg for arg in args if arg is not None]
     return args
 
@@ -925,7 +926,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
 
-    if output_suffix in ('.js', '.mjs'):
+    if output_suffix in {'.js', '.mjs'}:
       # Make sure we produced correct line endings
       self.assertEqual(line_endings.check_line_endings(output), 0)
 
@@ -996,8 +997,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       stderr = STDOUT
     else:
       stderr_file = self.in_dir('stderr')
-      stderr = open(stderr_file, 'w')
-    stdout = open(stdout_file, 'w')
+      stderr = open(stderr_file, 'w', encoding='utf-8')
+    stdout = open(stdout_file, 'w', encoding='utf-8')
     error = None
     timeout_error = None
     engine = self.get_engine_with_args(engine)
@@ -1066,7 +1067,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def assertIdentical(self, values, y, msg=None,
                       fromfile='expected', tofile='actual'):
-    if type(values) not in (list, tuple):
+    if type(values) not in {list, tuple}:
       values = [values]
     for x in values:
       if x == y:
@@ -1091,8 +1092,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     contents = contents.replace('\r', '')
 
     if EMTEST_REBASELINE:
-      with open(filename, 'w') as f:
-        f.write(contents)
+      utils.write_file(filename, contents)
       return
 
     if not os.path.exists(filename):
@@ -1115,7 +1115,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, limit_size(string)))
       return
 
-    if type(values) not in [list, tuple]:
+    if type(values) not in {list, tuple}:
       values = [values]
 
     if not any(v in string for v in values):
@@ -1420,7 +1420,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       utils.write_file(outfile, output)
     return output
 
-  ## Does a complete test - builds, runs, checks output, etc.
+  # Does a complete test - builds, runs, checks output, etc.
   def _build_and_run(self, filename, expected_output, args=None,
                      no_build=False,
                      assert_returncode=0, assert_identical=False, assert_all=False,
@@ -1459,7 +1459,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
                               interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
-        if type(expected_output) not in [list, tuple]:
+        if type(expected_output) not in {list, tuple}:
           expected_output = [expected_output]
         try:
           if assert_identical:

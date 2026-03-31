@@ -400,8 +400,15 @@ typedef struct __locale_struct * locale_t;
 #endif
 
 
+// Musl uses 128 bytes for sigset_t, presumably for some kind of ABI
+// compatability with the kernel or GLIBC, but in emscripten we can be precise.
+// Since we have _NSIG = 65 which only need 2 `long`s for the bitmask.
+// The signals we support are
+// 1 - 31 - standard POSIX signals (see emscripten/bits/signal.h)
+// 32 - 34 - pthread-specific signals (see pthread_impl.h>
+// 35 - 65 - user-defined RT signals (we don't currently have any test coverage of these).
 #if defined(__NEED_sigset_t) && !defined(__DEFINED_sigset_t)
-typedef struct __sigset_t { unsigned long __bits[128/sizeof(long)]; } sigset_t;
+typedef struct __sigset_t { unsigned long __bits[2]; } sigset_t;
 #define __DEFINED_sigset_t
 #endif
 

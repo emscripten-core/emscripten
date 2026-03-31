@@ -407,7 +407,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
             settings.SEPARATE_DWARF = True
           settings.GENERATE_DWARF = 1
           settings.DEBUG_LEVEL = 3
-        elif debug_level in ['source-map', 'source-map=inline']:
+        elif debug_level in {'source-map', 'source-map=inline'}:
           settings.GENERATE_SOURCE_MAP = 1 if debug_level == 'source-map' else 2
           newargs[i] = '-g'
         elif debug_level == 'z':
@@ -507,9 +507,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.cpu_profiler = True
     elif check_flag('--threadprofiler'):
       settings.PTHREADS_PROFILING = 1
-    elif arg in ('-fcolor-diagnostics', '-fdiagnostics-color', '-fdiagnostics-color=always'):
+    elif arg in {'-fcolor-diagnostics', '-fdiagnostics-color', '-fdiagnostics-color=always'}:
       colored_logger.enable(force=True)
-    elif arg in ('-fno-color-diagnostics', '-fno-diagnostics-color', '-fdiagnostics-color=never'):
+    elif arg in {'-fno-color-diagnostics', '-fno-diagnostics-color', '-fdiagnostics-color=never'}:
       colored_logger.disable()
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
@@ -588,17 +588,17 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.output_file = arg.removeprefix('-o')
     elif check_arg('-target') or check_arg('--target'):
       options.target = consume_arg()
-      if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
+      if options.target not in {'wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'}:
         exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
     elif check_arg('--use-port'):
       ports.handle_use_port_arg(settings, consume_arg())
-    elif arg in ('-c', '--precompile'):
+    elif arg in {'-c', '--precompile'}:
       options.dash_c = True
     elif arg == '-S':
       options.dash_S = True
     elif arg == '-E':
       options.dash_E = True
-    elif arg in ('-M', '-MM'):
+    elif arg in {'-M', '-MM'}:
       options.dash_M = True
     elif arg.startswith('-x'):
       # TODO(sbc): Handle multiple -x flags on the same command line
@@ -711,7 +711,7 @@ def parse_value(text, expected_type):
       if text[-1] != ']':
         raise ValueError('unterminated string list. expected final character to be "]"')
       text = text[1:-1]
-    if text.strip() == "":
+    if not text.strip():
       return []
     return parse_string_list_members(text)
 
@@ -724,7 +724,7 @@ def parse_value(text, expected_type):
       return parse_string_list(text)
 
     # if we succeeded in parsing as json, check some properties of it before returning
-    if type(parsed) not in (str, list):
+    if type(parsed) not in {str, list}:
       raise ValueError(f'settings must be strings or lists (not {type(parsed)})')
     if type(parsed) is list:
       for elem in parsed:
@@ -810,7 +810,7 @@ def normalize_boolean_setting(name, value):
   # (note that *non*-boolean setting values have special meanings,
   # and we can't just flip them, so leave them as-is to be
   # handled in a special way later)
-  if name.startswith('NO_') and value in ('0', '1'):
+  if name.startswith('NO_') and value in {'0', '1'}:
     name = name.removeprefix('NO_')
     value = str(1 - int(value))
   return name, value

@@ -9,7 +9,7 @@ import os
 import re
 from typing import Any
 
-from . import diagnostics
+from . import diagnostics, utils
 from .utils import exit_with_error, path_from_root
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
@@ -281,8 +281,7 @@ class SettingsManager:
 
     # Load the JS defaults into python.
     def read_js_settings(filename, attrs):
-      with open(filename) as fh:
-        settings = fh.read()
+      settings = utils.read_file(filename)
       # Use a bunch of regexs to convert the file from JS to python
       # TODO(sbc): This is kind hacky and we should probably convert
       # this file in format that python can read directly (since we
@@ -403,16 +402,16 @@ class SettingsManager:
 
   def check_type(self, name, value):
     # These settings have a variable type so cannot be easily type checked.
-    if name in ('EXECUTABLE', 'SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO', 'MODULARIZE'):
+    if name in {'EXECUTABLE', 'SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO', 'MODULARIZE'}:
       return
     expected_type = self.types.get(name)
     if not expected_type:
       return
     # Allow integers 1 and 0 for type `bool`
     if expected_type == bool:
-      if value in (1, 0):
+      if value in (1, 0):  # noqa: PLR6201
         value = bool(value)
-      if value in ('True', 'False', 'true', 'false'):
+      if value in ('True', 'False', 'true', 'false'):  # noqa: PLR6201
         exit_with_error(f'attempt to set `{name}` to `{value}`; use 1/0 to set boolean settings')
     if type(value) is not expected_type:
       exit_with_error(f'setting `{name}` expects `{expected_type.__name__}` but got `{type(value).__name__}`')

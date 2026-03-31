@@ -75,6 +75,16 @@ def maybe_remove(filename):
     os.remove(filename)
 
 
+def read_file(filename):
+  with open(filename, encoding='utf-8') as f:
+    return f.read()
+
+
+def write_file(filename, content):
+  with open(filename, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+
 def main(all_platforms, use_exe_files):
   is_windows = sys.platform.startswith('win')
   is_msys2 = 'MSYSTEM' in os.environ
@@ -85,12 +95,9 @@ def main(all_platforms, use_exe_files):
     sh_file = path + '.sh'
     bat_file = path + '.bat'
     ps1_file = path + '.ps1'
-    with open(sh_file) as f:
-      sh_file = f.read()
-    with open(bat_file) as f:
-      bat_file = f.read()
-    with open(ps1_file) as f:
-      ps1_file = f.read()
+    sh_file = read_file(sh_file)
+    bat_file = read_file(bat_file)
+    ps1_file = read_file(ps1_file)
 
     for entry_point in cmd:
       sh_data = sh_file
@@ -103,8 +110,7 @@ def main(all_platforms, use_exe_files):
 
       launcher = os.path.join(__rootdir__, entry_point)
       if do_unix:
-        with open(launcher, 'w') as f:
-          f.write(sh_data)
+        write_file(launcher, sh_data)
         make_executable(launcher)
 
       if do_windows:
@@ -114,10 +120,8 @@ def main(all_platforms, use_exe_files):
         if use_exe_files:
           shutil.copyfile(windows_exe, launcher + '.exe')
         else:
-          with open(launcher + '.bat', 'w') as f:
-            f.write(bat_data)
-          with open(launcher + '.ps1', 'w') as f:
-            f.write(ps1_data)
+          write_file(launcher + '.bat', bat_data)
+          write_file(launcher + '.pa1', ps1_data)
 
   generate_entry_points(entry_points, os.path.join(__scriptdir__, 'run_python'))
   generate_entry_points(compiler_entry_points, os.path.join(__scriptdir__, 'run_python_compiler'))

@@ -121,9 +121,9 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
             assert False, "unknown: %s" % opcode
       case OpCode.ATOMIC_PREFIX:
         opcode = AtomicOpCode(module.read_byte())
-        if opcode in (AtomicOpCode.ATOMIC_I32_RMW_CMPXCHG, AtomicOpCode.ATOMIC_I32_STORE,
+        if opcode in {AtomicOpCode.ATOMIC_I32_RMW_CMPXCHG, AtomicOpCode.ATOMIC_I32_STORE,
                       AtomicOpCode.ATOMIC_NOTIFY, AtomicOpCode.ATOMIC_WAIT32,
-                      AtomicOpCode.ATOMIC_WAIT64):
+                      AtomicOpCode.ATOMIC_WAIT64}:
           module.read_uleb()
           module.read_uleb()
         else:
@@ -276,7 +276,7 @@ def read_module_imports(module, metadata):
         if i.field in em_js_funcs:
           em_js_func_types[i.field] = types[i.type]
         imports.append(i.field)
-    elif i.kind in (webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG):
+    elif i.kind in {webassembly.ExternType.GLOBAL, webassembly.ExternType.TAG}:
       imports.append(i.field)
 
 
