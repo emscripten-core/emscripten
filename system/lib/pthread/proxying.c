@@ -339,8 +339,8 @@ void emscripten_proxy_finish(em_proxying_ctx* ctx) {
     pthread_mutex_lock(&ctx->sync.mutex);
     ctx->sync.state = DONE;
     remove_active_ctx(ctx);
-    pthread_mutex_unlock(&ctx->sync.mutex);
     pthread_cond_signal(&ctx->sync.cond);
+    pthread_mutex_unlock(&ctx->sync.mutex);
   } else {
     // Schedule the callback on the caller thread. If the caller thread has
     // already died or dies before the callback is executed, then at least make
