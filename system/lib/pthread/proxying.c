@@ -365,8 +365,8 @@ static void cancel_ctx(void* arg) {
   if (ctx->kind == SYNC) {
     pthread_mutex_lock(&ctx->sync.mutex);
     ctx->sync.state = CANCELED;
-    pthread_mutex_unlock(&ctx->sync.mutex);
     pthread_cond_signal(&ctx->sync.cond);
+    pthread_mutex_unlock(&ctx->sync.mutex);
   } else {
     if (ctx->cb.cancel == NULL ||
         !do_proxy(ctx->cb.queue,
