@@ -27,6 +27,7 @@ See docs/process.md for more on how version tagging works.
   `--experimental-wasm-bulk-memory` flags when used with versions of node older
   than v16. (#26560)
 - SDL3 port updated from 3.2.30 to 3.4.2 (#26572)
+- libpng port updated from 1.6.55 to 1.6.56. (#26592)
 
 5.0.4 - 03/23/26
 ----------------
