@@ -1277,7 +1277,7 @@ var LibraryPThread = {
       // safe to access from sending threads that need to notify the waiting
       // thread.
       // Note: Under wasm64 only the low 32-bit of the pthread_ptr are
-      // read/compared here, but we don't actuallly are about the exact values
+      // read/compared here, but we don't actually care about the exact values
       // here as long as they match.
       var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('pthread_ptr', 'i32') }}}, pthread_ptr);
 #if ASSERTIONS
