@@ -6,8 +6,8 @@
 import os
 import shutil
 
-TAG = '1.6.55'
-HASH = '45d3c4c3bd3d22dd93026e1bdff8df8133459a2903fb70be178899a55d256bab55bb5c4220d790202fce578e346c040c5c00e1f004cf5c4dcbf387a30d43e701'
+TAG = '1.6.56'
+HASH = 'e9b7c90e5b29d877e0c0888fe35e5498ae513619943728d7a05269b261786c476808df06de460ec27f6d045cf7193a5e3656b95c553539b4edcdd2fd0c5fa422'
 
 deps = ['zlib']
 variants = {
@@ -32,6 +32,8 @@ def get_lib_name(settings):
 
 def get(ports, settings, shared):
   # This is an emscripten-hosted mirror of the libpng repo from Sourceforge.
+  # Reviewer - please add libpng-1.6.56 binary to storage
+  # https://sourceforge.net/projects/libpng/files/libpng16/1.6.56/libpng-1.6.56.tar.gz/download
   ports.fetch_project('libpng', f'https://storage.googleapis.com/webassembly/emscripten-ports/libpng-{TAG}.tar.gz', sha512hash=HASH)
 
   def create(final):
