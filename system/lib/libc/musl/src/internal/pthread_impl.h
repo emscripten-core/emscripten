@@ -110,7 +110,7 @@ struct pthread {
 	// to initialize itself yet, the notification has to fall back to the
 	// postMessage path. Once this becomes true, it remains true so we never
 	// fall back to postMessage unnecessarily.
-	_Atomic int waiting_async;
+	_Atomic uint8_t waiting_async;
 	// The address the thread is currently waiting on in emscripten_futex_wait.
 	//
 	// This field encodes the state using the following bitmask:
@@ -126,7 +126,7 @@ struct pthread {
 	// When dynamic linking is enabled, threads use this to facilitate the
 	// synchronization of loaded code between threads.
 	// See emscripten_futex_wait.c.
-	_Atomic char sleeping;
+	_Atomic uint8_t sleeping;
 #endif
 };
 

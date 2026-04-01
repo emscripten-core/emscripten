@@ -1284,8 +1284,7 @@ var LibraryPThread = {
       assert(wait.async);
 #endif
       wait.value.then(checkMailbox);
-      var waitingAsync = pthread_ptr + {{{ C_STRUCTS.pthread.waiting_async }}};
-      Atomics.store(HEAP32, {{{ getHeapOffset('waitingAsync', 'i32') }}}, 1);
+      Atomics.store(HEAPU8, pthread_ptr + {{{ C_STRUCTS.pthread.waiting_async }}}, 1);
     }
     // If `Atomics.waitAsync` is not implemented, then we will always fall back
     // to postMessage and there is no need to do anything here.
