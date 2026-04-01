@@ -13163,7 +13163,6 @@ void foo() {}
 
   @also_with_noderawfs
   @crossplatform
-  @no_deno('https://github.com/denoland/deno/issues/32995')
   def test_unistd_isatty(self):
     if '-DNODERAWFS' in self.cflags:
       # Under NODERAWFS istty reports accurate information about the file descriptors
