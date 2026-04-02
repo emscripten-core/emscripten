@@ -242,7 +242,7 @@ function makeStub(x, library) {
       '}';
   });
 
-  library[x] = eval(`(${t})`);
+  library[x] = t;
 }
 
 for (var x in WasmFSNodeLibrary) {
