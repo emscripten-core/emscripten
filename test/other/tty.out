@@ -1,0 +1,60 @@
+
+Test 1: open custom TTY device and check isatty
+open custom_tty: 1
+isatty: 1
+errno after open: Success
+
+Test 2: read from TTY with data
+read bytes: 4
+read data: ABCD
+errno after read: Success
+
+Test 3: write to TTY
+write bytes: 4
+errno after write: Success
+
+Test 4: ioctl TIOCGWINSZ
+ioctl TIOCGWINSZ: 0
+ws_row: 25 ws_col: 80
+errno after ioctl: Success
+
+Test 5: ioctl TCGETS
+ioctl TCGETS: 0
+errno after TCGETS: Success
+
+Test 6: ioctl TCSETS
+ioctl TCSETS: 0
+errno after TCSETS: Success
+
+Test 7: fsync
+fsync called
+fsync: 0
+errno after fsync: Success
+fsync called
+
+Test 8: no put_char
+open: 1
+write: -1
+errno: No such device or address
+
+Test 9: no get_char
+open: 1
+read: -1
+errno: No such device or address
+
+Test 10: put_char throws
+open: 1
+write: -1
+errno: I/O error
+
+Test 11: get_char throws
+open: 1
+read: -1
+errno: I/O error
+
+Test 12: get_char returns undefined
+open: 1
+read: -1
+errno: Resource temporarily unavailable
+
+done

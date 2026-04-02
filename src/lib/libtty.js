@@ -54,10 +54,10 @@ addToLibrary({
       },
       close(stream) {
         // flush any pending line data
-        stream.tty.ops.fsync(stream.tty);
+        stream.tty.ops.fsync?.(stream.tty);
       },
       fsync(stream) {
-        stream.tty.ops.fsync(stream.tty);
+        stream.tty.ops.fsync?.(stream.tty);
       },
       read(stream, buffer, offset, length, pos /* ignored */) {
         if (!stream.tty || !stream.tty.ops.get_char) {
