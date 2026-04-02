@@ -9305,6 +9305,10 @@ end
     # This is equivalent to building with `-sWASMFS -sNODERAWFS`, except that the Wasm
     # binary can also be used on the web. Ensure that this use case is supported.
     create_file('main.c', r'''
+      #include <stdio.h>
+      #include <assert.h>
+      #include <unistd.h>
+
       #include <emscripten/emscripten.h>
       #include <emscripten/wasmfs.h>
 
@@ -9316,6 +9320,9 @@ end
       }
 
       int main(int argc, char** argv) {
+        printf("testing access to %s\n", argv[1]);
+        int rtn = access(argv[1], F_OK);
+        assert(rtn == 0);
         return 0;
       }
     ''')
