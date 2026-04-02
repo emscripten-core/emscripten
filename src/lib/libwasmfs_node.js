@@ -4,7 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-var WasmFSNodeLibrary = {
+var wasmFSNodeLibrary = {
   $wasmfsNodeIsWindows: "!!process.platform.match(/^win/)",
 
   $wasmfsNodeConvertNodeCode__deps: ['$ERRNO_CODES'],
@@ -236,18 +236,16 @@ function makeStub(x, library) {
 
   delete library[x + '__i53abi'];
   delete library[x + '__deps'];
-  t = modifyJSFunction(t, (args, body) => {
+  library[x] = modifyJSFunction(t, (args, body) => {
     return `(${args}) => {\n` +
       (ASSERTIONS ? "abort('attempt to call Node.js backend function without ENVIRONMENT_MAY_BE_NODE');\n" : '') +
       '}';
   });
-
-  library[x] = t;
 }
 
-for (var x in WasmFSNodeLibrary) {
-  makeStub(x, WasmFSNodeLibrary);
+for (var x in wasmFSNodeLibrary) {
+  makeStub(x, wasmFSNodeLibrary);
 }
 #endif
 
-addToLibrary(WasmFSNodeLibrary);
+addToLibrary(wasmFSNodeLibrary);
