@@ -25,57 +25,57 @@ MIX_Mixer *mixer = NULL;
 #endif
 
 void sound_loop_then_quit() {
-    if (MIX_TrackPlaying(track))
-        return;
+  if (MIX_TrackPlaying(track))
+    return;
 
-    MIX_DestroyAudio(audio);
-    MIX_DestroyTrack(track);
-    MIX_DestroyMixer(mixer);
+  MIX_DestroyAudio(audio);
+  MIX_DestroyTrack(track);
+  MIX_DestroyMixer(mixer);
 
-    emscripten_cancel_main_loop();
-    printf("Shutting down\n");
-    exit(0);
+  emscripten_cancel_main_loop();
+  printf("Shutting down\n");
+  exit(0);
 }
 
 int main(int argc, char *argv[]) {
-    SDL_Init(SDL_INIT_VIDEO);
+  SDL_Init(SDL_INIT_VIDEO);
 
-    if (!MIX_Init()) {
-        printf("MIX_Init failed: %s\n", SDL_GetError());
-        return 1;
-    }
+  if (!MIX_Init()) {
+    printf("MIX_Init failed: %s\n", SDL_GetError());
+    return 1;
+  }
 
-    if (!SDL_CreateWindowAndRenderer("SDL3 MIXER", WIDTH, HEIGHT, 0, &window, &renderer)) {
-        printf("SDL_CreateWindowAndRenderer: %s\n", SDL_GetError());
-        return 1;
-    }
+  if (!SDL_CreateWindowAndRenderer("SDL3 MIXER", WIDTH, HEIGHT, 0, &window, &renderer)) {
+    printf("SDL_CreateWindowAndRenderer: %s\n", SDL_GetError());
+    return 1;
+  }
 
-    mixer = MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL);
-    if (!mixer) {
-        printf("Couldn't create mixer on default device: %s", SDL_GetError());
-        return 1;
-    }
+  mixer = MIX_CreateMixerDevice(SDL_AUDIO_DEVICE_DEFAULT_PLAYBACK, NULL);
+  if (!mixer) {
+    printf("Couldn't create mixer on default device: %s", SDL_GetError());
+    return 1;
+  }
 
-    audio = MIX_LoadAudio(mixer, SOUND_PATH, false);
-    if (!audio) {
-        printf("MIX_LoadAudio: %s\n", SDL_GetError());
-        return 1;
-    }
+  audio = MIX_LoadAudio(mixer, SOUND_PATH, false);
+  if (!audio) {
+    printf("MIX_LoadAudio: %s\n", SDL_GetError());
+    return 1;
+  }
 
-    track = MIX_CreateTrack(mixer);
-    if (!track) {
-        printf("MIX_CreateTrack: %s\n", SDL_GetError());
-        return 1;
-    }
+  track = MIX_CreateTrack(mixer);
+  if (!track) {
+    printf("MIX_CreateTrack: %s\n", SDL_GetError());
+    return 1;
+  }
 
-    MIX_SetTrackAudio(track, audio);
-    SDL_PropertiesID props = SDL_CreateProperties();
-    SDL_SetNumberProperty(props, MIX_PROP_PLAY_LOOPS_NUMBER, 0);
+  MIX_SetTrackAudio(track, audio);
+  SDL_PropertiesID props = SDL_CreateProperties();
+  SDL_SetNumberProperty(props, MIX_PROP_PLAY_LOOPS_NUMBER, 0);
 
-    printf("Starting sound play loop\n");
-    MIX_PlayTrack(track, props);
+  printf("Starting sound play loop\n");
+  MIX_PlayTrack(track, props);
 
-    emscripten_set_main_loop(sound_loop_then_quit, 0, 1);
+  emscripten_set_main_loop(sound_loop_then_quit, 0, 1);
 
-    return 0;
+  return 0;
 }

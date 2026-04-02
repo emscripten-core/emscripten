@@ -1582,7 +1582,7 @@ var SDL2_MIXER_FORMATS = ["ogg"];
 
 // Formats to support in SDL3_mixer. Valid values: ogg, mp3
 // [compile+link]
-var SDL3_MIXER_FORMATS = ["ogg", "mp3"];
+var SDL3_MIXER_FORMATS = ["ogg"];
 
 // 1 = use sqlite3 from emscripten-ports
 // Alternate syntax: --use-port=sqlite3
