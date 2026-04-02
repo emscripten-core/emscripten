@@ -243,8 +243,8 @@ function makeStub(x, library) {
   });
 }
 
-for (var x in wasmFSNodeLibrary) {
-  makeStub(x, wasmFSNodeLibrary);
+for (const name of Object.keys(wasmFSNodeLibrary)) {
+  makeStub(name, wasmFSNodeLibrary);
 }
 #endif
 
