@@ -9251,10 +9251,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_core_test('pthread/emscripten_atomics.c', cflags=['-pthread'])
 
   @requires_pthreads
-  def test_emscripten_futexes(self):
+  def test_emscripten_futex_api_basics(self):
     # This test explicitly checks behavior of passing NULL to emscripten_futex_wake() so
     # need to disable the `-Wno-nonnull` to disabled these warnings.
-    self.do_core_test('pthread/emscripten_futexes.c', cflags=['-pthread', '-Wno-nonnull'])
+    self.do_core_test('pthread/emscripten_futex_api_basics.c', cflags=['-pthread', '-Wno-nonnull'])
 
   @requires_pthreads
   def test_stdio_locking(self):

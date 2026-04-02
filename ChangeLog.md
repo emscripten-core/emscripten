@@ -27,6 +27,9 @@ See docs/process.md for more on how version tagging works.
   `--experimental-wasm-bulk-memory` flags when used with versions of node older
   than v16. (#26560)
 - Added sdl3_mixer port. (#26571)
+- SDL3 port updated from 3.2.30 to 3.4.2 (#26572)
+- Fixed a race condition in syscall proxying that caused some hangs and ASan
+  errors (#26582)
 
 5.0.4 - 03/23/26
 ----------------

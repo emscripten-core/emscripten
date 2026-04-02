@@ -191,7 +191,9 @@ private:
     if (_wasmfs_node_get_mode(childPath.c_str(), &mode)) {
       return nullptr;
     }
-    if (S_ISREG(mode)) {
+    // Allow reading from character device files too (e.g. `/dev/random`,
+    // `/dev/urandom`)
+    if (S_ISREG(mode) || S_ISCHR(mode)) {
       return std::make_shared<NodeFile>(mode, getBackend(), childPath);
     } else if (S_ISDIR(mode)) {
       return std::make_shared<NodeDirectory>(mode, getBackend(), childPath);
@@ -254,7 +256,7 @@ private:
     }
 
     auto childPath = getChildPath(name);
-    return _wasmfs_node_rename(fromPath.c_str(), childPath.c_str());
+    return -_wasmfs_node_rename(fromPath.c_str(), childPath.c_str());
   }
 
   ssize_t getNumEntries() override {

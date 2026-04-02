@@ -14,6 +14,10 @@ int main() {
   rc = emscripten_futex_wait(&futex_value, futex_value, 1);
   assert(rc == -ETIMEDOUT);
 
+  // As should this.
+  rc = emscripten_futex_wait(&futex_value, futex_value, 0);
+  assert(rc == -ETIMEDOUT);
+
   // Check that this thread has removed itself from the wait queue.
   rc = emscripten_futex_wake(&futex_value, INT_MAX);
   assert(rc == 0);

@@ -9,9 +9,9 @@ import shutil
 
 from tools import diagnostics
 
-VERSION = '3.2.30'
+VERSION = '3.4.2'
 TAG = f'release-{VERSION}'
-HASH = '80ef7b2f257f43fe47c7ea8aa0a64f1c6f23720d91065d5e9b42f0205c62fc98bcf8dd1f1834fe09c66bea2598a18a658b82212cb29810be2d2175dece0aadce'
+HASH = 'a17fe538993a3956e0b85fda21e7b431244e803a5facb35bb7a2bfd9ee23f1aac65838ed3225f526b81410cae7c23da7c40693c2e791385281f0764239116bce'
 SUBDIR = f'SDL-{TAG}'
 
 variants = {'sdl3-mt': {'PTHREADS': 1}}
@@ -53,7 +53,7 @@ def get(ports, settings, shared):
       'atomic/*.c',
       'audio/*.c',
       'camera/*.c',
-      'core/*.c',
+      'core/unix/*.c',
       'cpuinfo/*.c',
       'dynapi/*.c',
       'events/*.c',

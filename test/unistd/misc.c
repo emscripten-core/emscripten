@@ -86,6 +86,14 @@ int main() {
   printf("pipe2(bad): %d", pipe2(0, 0));
   printf(", errno: %d\n", errno);
   errno = 0;
+  printf("pipe2(O_NONBLOCK): %d", pipe2(pipe_arg, O_NONBLOCK));
+  printf(", errno: %d\n", errno);
+  printf("pipe2(O_NONBLOCK) read flags: %d\n", (fcntl(pipe_arg[0], F_GETFL) & O_NONBLOCK) != 0);
+  printf("pipe2(O_NONBLOCK) write flags: %d\n", (fcntl(pipe_arg[1], F_GETFL) & O_NONBLOCK) != 0);
+  errno = 0;
+  printf("pipe2(O_CLOEXEC|O_NONBLOCK): %d", pipe2(pipe_arg, O_CLOEXEC | O_NONBLOCK));
+  printf(", errno: %d\n", errno);
+  errno = 0;
 
   char* exec_argv[] = {"arg", 0};
   char* exec_env[] = {"a=b", 0};

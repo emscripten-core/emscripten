@@ -575,6 +575,10 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         var cb = GL.currentContext.clientBuffers[i];
         if (!cb.clientside || !cb.enabled) continue;
 
+#if ASSERTIONS
+        assert(count || !GLctx.currentElementArrayBufferBinding, 'must use array buffers when using element buffer');
+#endif
+
         GL.resetBufferBinding = true;
 
         var size = GL.calcBufLength(cb.size, cb.type, cb.stride, count);
