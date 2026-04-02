@@ -25,9 +25,9 @@ UNSUPPORTED = 0x7FFFFFFF
 OLDEST_SUPPORTED_CHROME = 74  # Released on 2019-04-23
 OLDEST_SUPPORTED_FIREFOX = 68  # Released on 2019-07-09
 OLDEST_SUPPORTED_SAFARI = 120200  # Released on 2019-03-25
-# 12.22.09 is the oldest version of node that we do any testing with.
+# This is the oldest version of node that we do any testing with.
 # Keep this in sync with the test-node-compat in .circleci/config.yml.
-OLDEST_SUPPORTED_NODE = 122209
+OLDEST_SUPPORTED_NODE = 180300
 
 
 class Feature(IntEnum):

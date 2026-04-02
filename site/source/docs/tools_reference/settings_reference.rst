@@ -2919,10 +2919,11 @@ MIN_NODE_VERSION
 Specifies minimum node version to target for the generated code.  This is
 distinct from the minimum version required to run the emscripten compiler.
 Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
-Minimum supported value is 122209, which was released 2022-01-11 (see
-feature_matrix.py). This version aligns with the Ubuntu TLS 22.04 (Jammy).
+Minimum supported value is 180300, which was released 2022-05-18 (see
+feature_matrix.py). This version aligns with the version available in
+debian/stable (bookworm).
 
-Default value: 160000
+Default value: 180300
 
 .. _minimal_runtime:
 
