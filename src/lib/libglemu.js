@@ -3036,7 +3036,7 @@ var LibraryGLEmulation = {
           // upload based on the indices. If they are in a buffer on the GPU, that is very
           // inconvenient! So if you do not have an array buffer, you should also not have
           // an element array buffer. But best is to use both buffers!
-          assert(!GLctx.currentElementArrayBufferBinding);
+          assert(!GLctx.currentElementArrayBufferBinding, 'must use array buffers when using element buffer');
 #endif
           for (var i = 0; i < numProvidedIndexes; i++) {
             var currIndex = {{{ makeGetValue('ptr', 'i*2', 'u16') }}};
