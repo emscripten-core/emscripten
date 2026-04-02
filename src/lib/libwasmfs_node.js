@@ -4,26 +4,7 @@
  * SPDX-License-Identifier: MIT
  */
 
-addToLibrary({
-#if !ENVIRONMENT_MAY_BE_NODE
-  _wasmfs_node_readdir: (path_p, vec) => {},
-  _wasmfs_node_get_mode: (path_p, mode_p) => {},
-  _wasmfs_node_stat_size: (path_p, size_p) => {},
-  _wasmfs_node_fstat_size: (fd, size_p) => {},
-  _wasmfs_node_insert_file: (path_p, mode) => {},
-  _wasmfs_node_insert_directory: (path_p, mode) => {},
-  _wasmfs_node_unlink: (path_p) => {},
-  _wasmfs_node_rmdir: (path_p) => {},
-  _wasmfs_node_truncate: (path_p, len) => {},
-  _wasmfs_node_ftruncate: (fd, len) => {},
-  _wasmfs_node_open: (path_p, flags_p) => {},
-  _wasmfs_node_rename: (from_path_p, to_path_p) => {},
-  _wasmfs_node_symlink: (target_path_p, linkpath_path_p) => {},
-  _wasmfs_node_readlink: (path_p, target_p, bufsize) => {},
-  _wasmfs_node_close: (fd) => {},
-  _wasmfs_node_read: (fd, buf_p, len, pos, nread_p) => {},
-  _wasmfs_node_write: (fd, buf_p, len, pos, nwritten_p) => {},
-#else
+var WasmFSNodeLibrary = {
   $wasmfsNodeIsWindows: "!!process.platform.match(/^win/)",
 
   $wasmfsNodeConvertNodeCode__deps: ['$ERRNO_CODES'],
@@ -241,5 +222,32 @@ addToLibrary({
       // implicitly return 0
     });
   },
+};
+
+#if !ENVIRONMENT_MAY_BE_NODE
+function makeStub(x, library) {
+  if (isJsOnlySymbol(x) || isDecorator(x)) {
+    return;
+  }
+
+  var t = library[x];
+  if (typeof t == 'string') return;
+  t = t.toString();
+
+  delete library[x + '__i53abi'];
+  delete library[x + '__deps'];
+  t = modifyJSFunction(t, (args, body) => {
+    return `(${args}) => {\n` +
+      (ASSERTIONS ? "abort('wasmfs::NodeBackend is no-op when !ENVIRONMENT_MAY_BE_NODE');\n" : '') +
+      '}';
+  });
+
+  library[x] = eval(`(${t})`);
+}
+
+for (var x in WasmFSNodeLibrary) {
+  makeStub(x, WasmFSNodeLibrary);
+}
 #endif
-});
+
+addToLibrary(WasmFSNodeLibrary);
