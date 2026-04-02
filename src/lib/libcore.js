@@ -2593,7 +2593,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     t = modifyJSFunction(t, (args, body, async_) => `${async_}function (${args}) {\n${pre}${body}${post}}\n`);
   }
 
-  library[x] = eval(`(${t})`);
+  library[x] = t;
   // Automatically add dependency on `$SYSCALLS`
   if (!WASMFS && t.includes('SYSCALLS')) {
     library[x + '__deps'].push('$SYSCALLS');
