@@ -238,7 +238,7 @@ function makeStub(x, library) {
   delete library[x + '__deps'];
   t = modifyJSFunction(t, (args, body) => {
     return `(${args}) => {\n` +
-      (ASSERTIONS ? "abort('wasmfs::NodeBackend is no-op when !ENVIRONMENT_MAY_BE_NODE');\n" : '') +
+      (ASSERTIONS ? "abort('attempt to call Node.js backend function without ENVIRONMENT_MAY_BE_NODE');\n" : '') +
       '}';
   });
 
