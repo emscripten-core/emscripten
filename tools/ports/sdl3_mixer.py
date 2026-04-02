@@ -5,8 +5,6 @@
 
 import os
 
-from typing import Dict, Set
-
 VERSION = '3.2.0'
 TAG = f'release-{VERSION}'
 HASH = '96f374b3ca96202973fca84228e7775db3d6e38888888573d0ba0d045bc1d3cc6f876984e50dcce1b65875c80f8e263b5ff687570f4b4c720f48ca3cfaff0648'
