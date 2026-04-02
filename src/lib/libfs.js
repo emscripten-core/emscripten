@@ -1465,17 +1465,40 @@ FS.staticInit();`;
       // them instead.
       if (input) {
         FS.createDevice('/dev', 'stdin', input);
-      } else {
+      } else
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        DEV.register(FS.makedev(7, 0), DEV.nodeInputDevice(process.stdin));
+        FS.mkdev('/dev/stdin', FS.makedev(7, 0));
+      } else
+#endif
+      {
         FS.symlink('/dev/tty', '/dev/stdin');
       }
+
       if (output) {
         FS.createDevice('/dev', 'stdout', null, output);
-      } else {
+      } else
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        DEV.register(FS.makedev(7, 1), DEV.nodeOutputDevice(process.stdout));
+        FS.mkdev('/dev/stdout', FS.makedev(7, 1));
+      } else
+#endif
+      {
         FS.symlink('/dev/tty', '/dev/stdout');
       }
+
       if (error) {
         FS.createDevice('/dev', 'stderr', null, error);
-      } else {
+      } else
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) {
+        DEV.register(FS.makedev(7, 2), DEV.nodeOutputDevice(process.stderr));
+        FS.mkdev('/dev/stderr', FS.makedev(7, 2));
+      } else
+#endif
+      {
         FS.symlink('/dev/tty1', '/dev/stderr');
       }
 

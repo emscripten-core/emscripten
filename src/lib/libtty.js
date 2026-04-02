@@ -6,99 +6,46 @@
 
 addToLibrary({
   $TTY__deps: [
+    '$DEV',
     '$FS',
     '$UTF8ArrayToString',
-    '$FS_stdin_getChar'
+    '$FS_stdin_getChar',
   ],
-#if !MINIMAL_RUNTIME
-  $TTY__postset: () => {
-    addAtInit('TTY.init();');
-    addAtExit('TTY.shutdown();');
-  },
-#endif
   $TTY: {
-    ttys: [],
-    init() {
-      // https://github.com/emscripten-core/emscripten/pull/1555
-      // if (ENVIRONMENT_IS_NODE) {
-      //   // currently, FS.init does not distinguish if process.stdin is a file or TTY
-      //   // device, it always assumes it's a TTY device. because of this, we're forcing
-      //   // process.stdin to UTF8 encoding to at least make stdin reading compatible
-      //   // with text files until FS.init can be refactored.
-      //   process.stdin.setEncoding('utf8');
-      // }
-    },
-    shutdown() {
-      // https://github.com/emscripten-core/emscripten/pull/1555
-      // if (ENVIRONMENT_IS_NODE) {
-      //   // inolen: any idea as to why node -e 'process.stdin.read()' wouldn't exit immediately (with process.stdin being a tty)?
-      //   // isaacs: because now it's reading from the stream, you've expressed interest in it, so that read() kicks off a _read() which creates a ReadReq operation
-      //   // inolen: I thought read() in that case was a synchronous operation that just grabbed some amount of buffered data if it exists?
-      //   // isaacs: it is. but it also triggers a _read() call, which calls readStart() on the handle
-      //   // isaacs: do process.stdin.pause() and i'd think it'd probably close the pending call
-      //   process.stdin.pause();
-      // }
-    },
+    ttys: {},
     register(dev, ops) {
-      TTY.ttys[dev] = { input: [], output: [], ops: ops };
-      FS.registerDevice(dev, TTY.stream_ops);
-    },
-    stream_ops: {
-      open(stream) {
-        var tty = TTY.ttys[stream.node.rdev];
-        if (!tty) {
-          throw new FS.ErrnoError({{{ cDefs.ENODEV }}});
+      const tty = { input: [], output: [], ops };
+      TTY.ttys[dev] = tty;
+      const devops = { tty };
+      devops.write = (devops, buffer) => {
+        if (!ops.put_char) {
+          throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
         }
-        stream.tty = tty;
-        stream.seekable = false;
-      },
-      close(stream) {
-        // flush any pending line data
-        stream.tty.ops.fsync?.(stream.tty);
-      },
-      fsync(stream) {
-        stream.tty.ops.fsync?.(stream.tty);
-      },
-      read(stream, buffer, offset, length, pos /* ignored */) {
-        if (!stream.tty || !stream.tty.ops.get_char) {
+        for (var i = 0; i < buffer.length; i++) {
+          ops.put_char(tty, buffer[i]);
+        }
+        return i;
+      };
+      devops.read = (devops, buffer) => {
+        if (!ops.get_char) {
           throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
         }
         var bytesRead = 0;
-        for (var i = 0; i < length; i++) {
-          var result;
-          try {
-            result = stream.tty.ops.get_char(stream.tty);
-          } catch (e) {
-            throw new FS.ErrnoError({{{ cDefs.EIO }}});
-          }
+        for (var i = 0; i < buffer.length; i++) {
+          var result = ops.get_char(tty);
           if (result === undefined && bytesRead === 0) {
             throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
           }
           if (result === null || result === undefined) break;
           bytesRead++;
-          buffer[offset+i] = result;
-        }
-        if (bytesRead) {
-          stream.node.atime = Date.now();
+          buffer[i] = result;
         }
         return bytesRead;
-      },
-      write(stream, buffer, offset, length, pos) {
-        if (!stream.tty || !stream.tty.ops.put_char) {
-          throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
-        }
-        try {
-          for (var i = 0; i < length; i++) {
-            stream.tty.ops.put_char(stream.tty, buffer[offset+i]);
-          }
-        } catch (e) {
-          throw new FS.ErrnoError({{{ cDefs.EIO }}});
-        }
-        if (length) {
-          stream.node.mtime = stream.node.ctime = Date.now();
-        }
-        return i;
+      };
+      if (ops.fsync) {
+        devops.fsync = (devops) => ops.fsync(tty)
       }
+      DEV.register(dev, devops);
     },
     default_tty_ops: {
       get_char(tty) {
