@@ -1,6 +1,5 @@
 
 Test 1: open custom TTY device and check isatty
-open custom_tty: 1
 isatty: 1
 errno after open: Success
 
@@ -33,27 +32,22 @@ errno after fsync: Success
 fsync called
 
 Test 8: no put_char
-open: 1
 write: -1
 errno: No such device or address
 
 Test 9: no get_char
-open: 1
 read: -1
 errno: No such device or address
 
 Test 10: put_char throws
-open: 1
 write: -1
 errno: I/O error
 
 Test 11: get_char throws
-open: 1
 read: -1
 errno: I/O error
 
 Test 12: get_char returns undefined
-open: 1
 read: -1
 errno: Resource temporarily unavailable
 

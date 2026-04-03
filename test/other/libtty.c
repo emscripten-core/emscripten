@@ -1,3 +1,4 @@
+#include <assert.h>
 #include <emscripten.h>
 #include <errno.h>
 #include <fcntl.h>
@@ -113,7 +114,7 @@ int main() {
 
   printf("\nTest 1: open custom TTY device and check isatty\n");
   int fd = open("/custom_tty", O_RDWR);
-  printf("open custom_tty: %d\n", fd >= 0 ? 1 : 0);
+  assert(fd >= 0);
   printf("isatty: %d\n", isatty(fd));
   printf("errno after open: %s\n", strerror(errno));
   errno = 0;
@@ -160,7 +161,7 @@ int main() {
 
   printf("\nTest 8: no put_char\n");
   fd = open("/tty_no_putchar", O_WRONLY);
-  printf("open: %d\n", fd >= 0 ? 1 : 0);
+  assert(fd >= 0);
   bytesWritten = write(fd, writeBuffer, strlen(writeBuffer));
   printf("write: %zd\n", bytesWritten);
   printf("errno: %s\n", strerror(errno));
@@ -169,7 +170,7 @@ int main() {
 
   printf("\nTest 9: no get_char\n");
   fd = open("/tty_no_getchar", O_RDONLY);
-  printf("open: %d\n", fd >= 0 ? 1 : 0);
+  assert(fd >= 0);
   bytesRead = read(fd, readBuffer, sizeof(readBuffer));
   printf("read: %zd\n", bytesRead);
   printf("errno: %s\n", strerror(errno));
@@ -178,7 +179,7 @@ int main() {
 
   printf("\nTest 10: put_char throws\n");
   fd = open("/tty_throw_putchar", O_WRONLY);
-  printf("open: %d\n", fd >= 0 ? 1 : 0);
+  assert(fd >= 0);
   bytesWritten = write(fd, writeBuffer, strlen(writeBuffer));
   printf("write: %zd\n", bytesWritten);
   printf("errno: %s\n", strerror(errno));
@@ -187,7 +188,7 @@ int main() {
 
   printf("\nTest 11: get_char throws\n");
   fd = open("/tty_throw_getchar", O_RDONLY);
-  printf("open: %d\n", fd >= 0 ? 1 : 0);
+  assert(fd >= 0);
   bytesRead = read(fd, readBuffer, sizeof(readBuffer));
   printf("read: %zd\n", bytesRead);
   printf("errno: %s\n", strerror(errno));
@@ -196,7 +197,7 @@ int main() {
 
   printf("\nTest 12: get_char returns undefined\n");
   fd = open("/tty_empty", O_RDONLY);
-  printf("open: %d\n", fd >= 0 ? 1 : 0);
+  assert(fd >= 0);
   bytesRead = read(fd, readBuffer, sizeof(readBuffer));
   printf("read: %zd\n", bytesRead);
   printf("errno: %s\n", strerror(errno));
