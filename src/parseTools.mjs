@@ -113,7 +113,7 @@ export function preprocess(filename) {
 
   pushCurrentFile(filename);
   try {
-    for (const [i, line] of lines.entries()) {
+    for (let [i, line] of lines.entries()) {
       if (isHtml) {
         if (line.includes('<style') && !inStyle) {
           inStyle = true;
@@ -1176,7 +1176,7 @@ function pthreadDetection() {
 
 function makeExportAliases() {
   var res = ''
-  for (const [alias, ex] of Object.entries(nativeAliases)) {
+  for (var [alias, ex] of Object.entries(nativeAliases)) {
     if (ASSERTIONS) {
       res += `  assert(wasmExports['${ex}'], 'alias target "${ex}" not found in wasmExports');\n`;
     }

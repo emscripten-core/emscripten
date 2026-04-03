@@ -286,7 +286,8 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
       error(`handleI64Signatures: signature '${sig}' too long for ${symbol}(${argNames.join(', ')})`);
       return snippet;
     }
-    for (const [i, name] of argNames.entries()) {
+    for (let i = 0; i < argNames.length; i++) {
+      const name = argNames[i];
       // If sig is shorter than argNames list then argType will be undefined
       // here, which will result in the default case below.
       const argType = sig[i + 1];

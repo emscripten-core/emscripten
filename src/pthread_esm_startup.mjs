@@ -49,7 +49,7 @@ self.onmessage = async (msg) => {
     // Now that the import is completed the main program will have installed
     // its own `onmessage` handler and replaced our handler.
     // Now we can dispatch any queued messages to this new handler.
-    for (const msg of messageQueue) {
+    for (let msg of messageQueue) {
       await self.onmessage(msg);
     }
 
