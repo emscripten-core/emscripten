@@ -16,31 +16,33 @@ addToLibrary({
     register(dev, ops) {
       const tty = { input: [], output: [], ops };
       TTY.ttys[dev] = tty;
-      const devops = { tty };
-      devops.write = (devops, buffer) => {
-        if (!ops.put_char) {
-          throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
-        }
-        for (var i = 0; i < buffer.length; i++) {
-          ops.put_char(tty, buffer[i]);
-        }
-        return i;
-      };
-      devops.read = (devops, buffer) => {
-        if (!ops.get_char) {
-          throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
-        }
-        var bytesRead = 0;
-        for (var i = 0; i < buffer.length; i++) {
-          var result = ops.get_char(tty);
-          if (result === undefined && bytesRead === 0) {
-            throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+      const devops = {
+        tty,
+        write(devops, buffer) {
+          if (!ops.put_char) {
+            throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
           }
-          if (result === null || result === undefined) break;
-          bytesRead++;
-          buffer[i] = result;
-        }
-        return bytesRead;
+          for (var i = 0; i < buffer.length; i++) {
+            ops.put_char(tty, buffer[i]);
+          }
+          return i;
+        },
+        read(devops, buffer) {
+          if (!ops.get_char) {
+            throw new FS.ErrnoError({{{ cDefs.ENXIO }}});
+          }
+          var bytesRead = 0;
+          for (var i = 0; i < buffer.length; i++) {
+            var result = ops.get_char(tty);
+            if (result === undefined && bytesRead === 0) {
+              throw new FS.ErrnoError({{{ cDefs.EAGAIN }}});
+            }
+            if (result === null || result === undefined) break;
+            bytesRead++;
+            buffer[i] = result;
+          }
+          return bytesRead;
+        },
       };
       if (ops.fsync) {
         devops.fsync = (devops) => ops.fsync(tty)
