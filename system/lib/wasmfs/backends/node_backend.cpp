@@ -124,9 +124,9 @@ private:
 
   int setSize(off_t size) override {
     if (state.isOpen()) {
-      return _wasmfs_node_ftruncate(state.getFD(), size);
+      return -_wasmfs_node_ftruncate(state.getFD(), size);
     }
-    return _wasmfs_node_truncate(state.path.c_str(), size);
+    return -_wasmfs_node_truncate(state.path.c_str(), size);
   }
 
   int open(oflags_t flags) override { return state.open(flags); }
