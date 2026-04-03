@@ -17,10 +17,11 @@ function deterministicNow() {
 
 Date.now = deterministicNow;
 
-// Setting performance.now to deterministicNow doesn't work so we instead
-// use a helper function in parseTools (getPerformanceNow()) to call it
-// directly.
-// if (globalThis.performance) performance.now = Date.now;
+// Note: this approach does not work on certain versions of Node.js
+// Specifically it seems like its not possible to override performance.now on
+// node v16 through v18.
+// See getPerformanceNow in parseTools.mjs for how we deal with this.
+if (globalThis.performance) performance.now = deterministicNow;
 
 Module['thisProgram'] = 'thisProgram'; // for consistency between different builds than between runs of the same build
 

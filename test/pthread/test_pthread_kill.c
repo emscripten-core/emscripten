@@ -5,6 +5,7 @@
 
 #include <pthread.h>
 #include <sys/types.h>
+#include <stdbool.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <assert.h>
@@ -12,16 +13,18 @@
 #include <errno.h>
 #include <signal.h>
 
+#include <emscripten/console.h>
+
 pthread_cond_t started_cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t started_lock = PTHREAD_MUTEX_INITIALIZER;
-_Atomic int got_term_signal = 0;
+_Atomic bool got_term_signal = false;
 
 pthread_t thr;
 
 void signal_handler(int sig, siginfo_t * info, void * arg) {
   printf("signal: %d onthread=%d\n", sig, pthread_self() == thr);
   if (sig == SIGTERM) {
-    got_term_signal = 1;
+    got_term_signal = true;
   }
 }
 
@@ -63,9 +66,9 @@ int main() {
   printf("thread has started, sending SIGTERM\n");
 
   s = pthread_kill(thr, SIGTERM);
+  assert(s == 0);
   printf("SIGTERM sent\n");
 
-  assert(s == 0);
 
   pthread_join(thr, NULL);
   return 0;

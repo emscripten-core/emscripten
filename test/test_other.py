@@ -12041,6 +12041,7 @@ int main(int argc, char **argv) {
 }''')
     self.do_runf('src.c', cflags=['-O3', '-sWASM=0'])
 
+  @crossplatform
   def test_deterministic(self):
     # test some things that may not be nondeterministic
     create_file('src.c', r'''
