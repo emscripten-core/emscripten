@@ -1067,6 +1067,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'FS_fileDataToTypedArray',
   'FS_stdin_getChar',
   'FS_mkdirTree',
+  'nodeFsync',
   '_setNetworkCallback',
 ];
 missingLibrarySymbols.forEach(missingLibrarySymbol)
@@ -1254,6 +1255,8 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'FS_createLazyFile',
   'MEMFS',
   'TTY',
+  'DEV',
+  'nodeTTY',
   'PIPEFS',
   'SOCKFS',
 ];
