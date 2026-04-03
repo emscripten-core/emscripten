@@ -35,7 +35,15 @@ int __pthread_mutex_trylock_owner(pthread_mutex_t *m)
 		if (m->_m_waiters) tid |= 0x80000000;
 		self->robust_list.pending = &m->_m_next;
 	}
+#if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
+	if ((type & 15) == PTHREAD_MUTEX_NORMAL) {
+		tid = EBUSY;
+	} else {
+		tid |= old & 0x40000000;
+	}
+#else
 	tid |= old & 0x40000000;
+#endif
 
 	if (a_cas(&m->_m_lock, old, tid) != old) {
 		self->robust_list.pending = 0;
@@ -53,7 +61,16 @@ success:
 	}
 #endif
 
-#if defined(__EMSCRIPTEN__) || !defined(NDEBUG)
+#if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
+	// In debug Emscripten builds, keep normal mutexes encoded the same way as
+	// the fast path (0/EBUSY) so internal users such as dlmalloc still see the
+	// historical lock-word semantics, but record the owner separately for the
+	// deadlock assertion in pthread_mutex_timedlock.
+	if ((type & 15) == PTHREAD_MUTEX_NORMAL) {
+		m->_m_count = self->tid;
+		return 0;
+	}
+#elif defined(__EMSCRIPTEN__) || !defined(NDEBUG)
 	// We can get here for normal mutexes too, but only in debug builds
 	// (where we track ownership purely for debug purposes).
 	if ((type & 15) == PTHREAD_MUTEX_NORMAL) return 0;

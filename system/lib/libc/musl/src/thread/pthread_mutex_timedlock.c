@@ -86,6 +86,11 @@ int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec
 		int own = r & 0x3fffffff;
 		if (!own && (!r || (type&4)))
 			continue;
+#if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
+		if ((type & 15) == PTHREAD_MUTEX_NORMAL) {
+			assert(at || m->_m_count != __pthread_self()->tid && "pthread mutex deadlock detected");
+		}
+#endif
 		if ((type&3) == PTHREAD_MUTEX_ERRORCHECK
 		    && own == __pthread_self()->tid)
 			return EDEADLK;

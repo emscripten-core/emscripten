@@ -31,6 +31,11 @@ int __pthread_mutex_unlock(pthread_mutex_t *m)
 			((char *)next - sizeof(void *)) = prev;
 	}
 #ifdef __EMSCRIPTEN__
+#if !defined(NDEBUG)
+	if (type == PTHREAD_MUTEX_NORMAL) {
+		m->_m_count = 0;
+	}
+#endif
 	cont = a_swap(&m->_m_lock, new);
 #else
 	if (type&8) {
