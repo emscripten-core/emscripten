@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.5 (in development)
+5.0.6 (in development)
 ----------------------
+
+5.0.5 - 04/03/26
+----------------
 - C++ exceptions are now always thrown as CppException objects rather than raw
   pointers/numbers.  However, the `.message` and `.stack` fields of the thrown
   object will only be populated if `-sEXCEPTION_STACK_TRACES` is set. (#26523)
