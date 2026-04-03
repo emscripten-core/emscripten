@@ -902,7 +902,7 @@ var DEV = {
       nodeFsync(nodeStream.fd);
     },
     read(ops, buffer) {
-      return fs.readSync(nodeStream.fd, buffer);
+      return fs.readSync(nodeStream.fd, buffer, 0, buffer.length);
     }
   }),
   nodeOutputDevice: nodeStream => ({
@@ -911,7 +911,7 @@ var DEV = {
       nodeFsync(nodeStream.fd);
     },
     write(ops, buffer) {
-      return fs.writeSync(nodeStream.fd, buffer);
+      return fs.writeSync(nodeStream.fd, buffer, 0, buffer.length);
     },
     getTerminalSize() {
       return nodeStream;
