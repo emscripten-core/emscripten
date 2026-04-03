@@ -15452,7 +15452,7 @@ console.log('OK');'''
   def test_node_stdio_isatty(self):
     self.run_process([EMCC, test_file('other/test_node_stdio_isatty.c'), '-o', 'out.mjs'])
     for arg in ['111', '011', '101', '110', '100', '010', '001', '000']:
-      self.assertEqual(self.run_js(test_file('other/test_node_stdio_isatty.mjs'), args = [arg]), arg + '\n')
+      self.assertEqual(self.run_js(test_file('other/test_node_stdio_isatty.mjs'), args=[arg]), arg + '\n')
 
   @crossplatform
   @no_windows('opens /proc/self/fd/1')
