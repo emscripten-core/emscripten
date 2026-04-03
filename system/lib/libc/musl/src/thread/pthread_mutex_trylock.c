@@ -72,12 +72,16 @@ success:
 	// per-thread list for the deadlock assertion in pthread_mutex_timedlock.
 	if ((type & 15) == PTHREAD_MUTEX_NORMAL) {
 		__emscripten_debug_normal_mutex_note_locked(m);
+		self->robust_list.pending = 0;
 		return 0;
 	}
 #elif defined(__EMSCRIPTEN__) || !defined(NDEBUG)
 	// We can get here for normal mutexes too, but only in debug builds
 	// (where we track ownership purely for debug purposes).
-	if ((type & 15) == PTHREAD_MUTEX_NORMAL) return 0;
+	if ((type & 15) == PTHREAD_MUTEX_NORMAL) {
+		self->robust_list.pending = 0;
+		return 0;
+	}
 #endif
 
 	next = self->robust_list.head;
