@@ -1,5 +1,9 @@
 #include "pthread_impl.h"
 
+#if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
+_Thread_local pthread_mutex_t* __emscripten_debug_normal_mutex_list;
+#endif
+
 int __pthread_mutex_trylock_owner(pthread_mutex_t *m)
 {
 	int old, own;
@@ -64,10 +68,10 @@ success:
 #if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
 	// In debug Emscripten builds, keep normal mutexes encoded the same way as
 	// the fast path (0/EBUSY) so internal users such as dlmalloc still see the
-	// historical lock-word semantics, but record the owner separately for the
-	// deadlock assertion in pthread_mutex_timedlock.
+	// historical lock-word semantics, and track ownership separately in a
+	// per-thread list for the deadlock assertion in pthread_mutex_timedlock.
 	if ((type & 15) == PTHREAD_MUTEX_NORMAL) {
-		m->_m_count = self->tid;
+		__emscripten_debug_normal_mutex_note_locked(m);
 		return 0;
 	}
 #elif defined(__EMSCRIPTEN__) || !defined(NDEBUG)

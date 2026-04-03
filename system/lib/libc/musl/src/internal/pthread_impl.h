@@ -165,6 +165,46 @@ enum {
 #define _b_waiters2 __u.__vi[4]
 #define _b_inst __u.__p[3]
 
+#if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
+extern _Thread_local pthread_mutex_t* __emscripten_debug_normal_mutex_list;
+
+static inline void __emscripten_debug_normal_mutex_note_locked(pthread_mutex_t *m)
+{
+	m->_m_prev = 0;
+	m->_m_next = __emscripten_debug_normal_mutex_list;
+	if (__emscripten_debug_normal_mutex_list) {
+		__emscripten_debug_normal_mutex_list->_m_prev = m;
+	}
+	__emscripten_debug_normal_mutex_list = m;
+}
+
+static inline void __emscripten_debug_normal_mutex_note_unlocked(pthread_mutex_t *m)
+{
+	pthread_mutex_t *prev = (pthread_mutex_t*)m->_m_prev;
+	pthread_mutex_t *next = (pthread_mutex_t*)m->_m_next;
+	if (prev) {
+		prev->_m_next = next;
+	} else {
+		__emscripten_debug_normal_mutex_list = next;
+	}
+	if (next) {
+		next->_m_prev = prev;
+	}
+	m->_m_prev = 0;
+	m->_m_next = 0;
+}
+
+static inline int __emscripten_debug_normal_mutex_owned(pthread_mutex_t *m)
+{
+	for (pthread_mutex_t *it = __emscripten_debug_normal_mutex_list; it; it = (pthread_mutex_t*)it->_m_next) {
+		if (it == m) {
+			return 1;
+		}
+	}
+	return 0;
+}
+#endif
+
 #ifndef TP_OFFSET
 #define TP_OFFSET 0
 #endif

@@ -87,17 +87,21 @@ int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec
 		if (!own && (!r || (type&4)))
 			continue;
 #if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
-		if ((type & 15) == PTHREAD_MUTEX_NORMAL) {
-			assert(at || m->_m_count != __pthread_self()->tid && "pthread mutex deadlock detected");
-		}
+		// Extra check for deadlock in debug builds, but only if we would block
+		// forever (at == NULL). For normal mutexes in debug Emscripten builds,
+		// _m_lock preserves the historical 0/EBUSY encoding, so ownership is
+		// tracked separately in a per-thread list of held normal mutexes.
+		assert(at || (type & 15) != PTHREAD_MUTEX_NORMAL ||
+		              !__emscripten_debug_normal_mutex_owned(m) &&
+		              "pthread mutex deadlock detected");
 #endif
 		if ((type&3) == PTHREAD_MUTEX_ERRORCHECK
 		    && own == __pthread_self()->tid)
 			return EDEADLK;
 #if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
-		// Extra check for deadlock in debug builds, but only if we would block
-		// forever (at == NULL).
-		assert(at || own != __pthread_self()->tid && "pthread mutex deadlock detected");
+		assert(at || (type & 15) == PTHREAD_MUTEX_NORMAL ||
+		              own != __pthread_self()->tid &&
+		              "pthread mutex deadlock detected");
 #endif
 
 		a_inc(&m->_m_waiters);

@@ -33,7 +33,7 @@ int __pthread_mutex_unlock(pthread_mutex_t *m)
 #ifdef __EMSCRIPTEN__
 #if !defined(NDEBUG)
 	if (type == PTHREAD_MUTEX_NORMAL) {
-		m->_m_count = 0;
+		__emscripten_debug_normal_mutex_note_unlocked(m);
 	}
 #endif
 	cont = a_swap(&m->_m_lock, new);
