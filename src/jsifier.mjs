@@ -713,6 +713,9 @@ function(${args}) {
       } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
         addImplicitDeps(snippet, deps);
+      } else if (typeof snippet == 'string' && (snippet.match(/^\s*\([^}]*\)\s*=>/) || snippet.match(/^function\b/))) {
+        // Support functions that are already "stringified"
+        isFunction = true;
       }
 
       if (isFunction) {

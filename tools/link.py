@@ -1286,8 +1286,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.ALLOW_TABLE_GROWTH = 1
 
   # various settings require sbrk() access
-  if settings.DETERMINISTIC or \
-     settings.EMSCRIPTEN_TRACING or \
+  if settings.EMSCRIPTEN_TRACING or \
      settings.SAFE_HEAP or \
      settings.MEMORYPROFILER:
     settings.REQUIRED_EXPORTS += ['sbrk']
