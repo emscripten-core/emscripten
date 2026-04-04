@@ -5347,6 +5347,35 @@ Module["preRun"] = () => {
     args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '--post-js', postjs]
     self.btest(test, cflags=args, expected='0')
 
+  def test_wasmfs_multi_environment(self):
+    # Test that WasmFS's Node backend can be enabled conditionally, allowing
+    # the same binaries to run on both web and Node.js environments.
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <assert.h>
+      #include <unistd.h>
+
+      #include <emscripten/emscripten.h>
+      #include <emscripten/wasmfs.h>
+
+      EM_JS(bool, is_node, (), { return ENVIRONMENT_IS_NODE; });
+
+      // This is equivalent to building with `-sWASMFS -sNODERAWFS`, except
+      // that the Wasm binary can also be used on the web.
+      backend_t wasmfs_create_root_dir() {
+        return is_node() ? wasmfs_create_node_backend("")
+                         : wasmfs_create_memory_backend();
+      }
+
+      int main(int argc, char** argv) {
+        printf("testing access to /tmp\n");
+        int rtn = access("/tmp", F_OK);
+        assert(rtn == 0);
+        return 0;
+      }
+    ''')
+    self.btest_exit('main.c', cflags=['-sWASMFS', '-sENVIRONMENT=web,node'])
+
   @no_firefox('no 4GB support yet')
   def test_emmalloc_memgrowth(self):
     if not self.is_4gb():

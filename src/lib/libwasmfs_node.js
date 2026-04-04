@@ -5,7 +5,7 @@
  */
 
 var wasmFSNodeLibrary = {
-  $wasmfsNodeIsWindows: "!!process.platform.match(/^win/)",
+  $wasmfsNodeIsWindows: "!!globalThis.process?.platform.match(/^win/)",
 
   $wasmfsNodeConvertNodeCode__deps: ['$ERRNO_CODES'],
   $wasmfsNodeConvertNodeCode: (e) => {
