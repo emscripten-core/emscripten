@@ -93,7 +93,6 @@ passing_core_test_modes = [
   'lsan',
   'ubsan',
   'wasm64',
-  'wasm64_v8',
   'wasm64_4gb',
   'esm_integration',
   'instance',
@@ -108,6 +107,7 @@ default_core_test_mode = 'core0'
 # picked from here, but you can force them to be, using something like
 # randombrowser10 (which runs 10 random tests from 'browser').
 misc_test_modes = [
+  'codesize',
   'other',
   'jslib',
   'browser',
@@ -127,6 +127,8 @@ misc_test_modes = [
   'browser64_4gb',
   'browser_2gb',
 ]
+
+default_tests = ['jslib', 'other', 'core0']
 
 
 def check_js_engines():
@@ -288,7 +290,7 @@ def print_random_test_statistics(num_tests):
 
 def error_on_legacy_suite_names(args):
   for a in args:
-    if a.startswith('wasm') and not any(a.startswith(p) for p in ('wasm2js', 'wasmfs', 'wasm64')):
+    if a.startswith('wasm') and not a.startswith(('wasm2js', 'wasmfs', 'wasm64')):
       new = a.replace('wasm', 'core', 1)
       utils.exit_with_error('`%s` test suite has been replaced with `%s`', a, new)
 
@@ -369,15 +371,29 @@ def create_test_run_sorter(sort_failing_tests_at_front):
   return sort_tests_failing_and_slowest_first_comparator
 
 
-def load_test_suites(args, modules, options):
-  found_start = not options.start_at
+def use_parallel_suite(module):
+  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress'}
+  if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
+    has_multiple_cores = parallel_testsuite.num_cores() > 1
+    if suite_supported and has_multiple_cores:
+      return True
+  return False
 
+
+def create_test_suite(is_parallel, options):
+  if is_parallel:
+    return parallel_testsuite.ParallelTestSuite(options)
+  else:
+    return unittest.TestSuite()
+
+
+def load_test_suite(args, modules, options):
   loader = unittest.TestLoader()
   error_on_legacy_suite_names(args)
   unmatched_test_names = set(args)
-  suites = []
+  using_parallel_suite = None
 
-  total_tests = 0
+  tests = []
   for m in modules:
     names_in_module = []
     for name in list(unmatched_test_names):
@@ -394,24 +410,41 @@ def load_test_suites(args, modules, options):
         options.verbose = max(options.verbose, 1)
 
       loaded_tests = loader.loadTestsFromNames(sorted(names_in_module), m)
-      tests = flattened_tests(loaded_tests)
-      suite = suite_for_module(m, tests, options)
-      if options.failing_and_slow_first:
-        tests = sorted(tests, key=cmp_to_key(create_test_run_sorter(options.max_failures < len(tests) / 2)))
-      for test in tests:
-        if not found_start:
-          # Skip over tests until we find the start
-          if test.id().endswith(options.start_at):
-            found_start = True
-          else:
-            continue
-        for _x in range(options.repeat):
-          total_tests += 1
-          suite.addTest(test)
-      suites.append((m.__name__, suite))
+      tests += flattened_tests(loaded_tests)
+      is_parallel_module = use_parallel_suite(m)
+      if using_parallel_suite is None:
+        using_parallel_suite = is_parallel_module
+      else:
+        # All the following modules must match in their support for the parallel runner.
+        if is_parallel_module != using_parallel_suite:
+          utils.exit_with_error(f'attempt to mix parallel and non-parallel test modules ({m.__name__})')
+
+  # If we are only running a single tests, never use the parallel tests suite.
+  # This means that the output of a single test is always going to be in `out/test/` rather
+  # than a random temporary directory.
+  if len(tests) == 1 and not options.repeat > 1:
+    using_parallel_suite = False
+  suite = create_test_suite(using_parallel_suite, options)
+
+  if options.failing_and_slow_first:
+    tests = sorted(tests, key=cmp_to_key(create_test_run_sorter(options.max_failures < len(tests) / 2)))
+
+  found_start = not options.start_at
+  total_tests = 0
+  for test in tests:
+    if not found_start:
+      # Skip over tests until we find the start
+      if test.id().endswith(options.start_at):
+        found_start = True
+      else:
+        continue
+    for _x in range(options.repeat):
+      total_tests += 1
+      suite.addTest(test)
+
   if not found_start:
     utils.exit_with_error(f'unable to find --start-at test: {options.start_at}')
-  return suites, unmatched_test_names
+  return suite, unmatched_test_names
 
 
 def flattened_tests(loaded_tests):
@@ -421,24 +454,8 @@ def flattened_tests(loaded_tests):
   return tests
 
 
-def suite_for_module(module, tests, options):
-  suite_supported = module.__name__ not in ('test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress')
-  if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
-    has_multiple_tests = len(tests) > 1
-    has_multiple_cores = parallel_testsuite.num_cores() > 1
-    if suite_supported and has_multiple_tests and has_multiple_cores:
-      return parallel_testsuite.ParallelTestSuite(options)
-  return unittest.TestSuite()
-
-
-def run_tests(options, suites):
-  resultMessages = []
-  num_failures = 0
-
-  if len(suites) > 1:
-    print('Test suites:', [s[0] for s in suites])
+def run_tests(options, suite):
   # Run the discovered tests
-
   if os.getenv('CI'):
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
@@ -457,27 +474,15 @@ def run_tests(options, suites):
       print('using verbose test runner (verbose output requested)')
     testRunner = ColorTextRunner(failfast=options.failfast)
 
-  total_core_time = 0
   run_start_time = time.perf_counter()
-  for mod_name, suite in suites:
-    errlog('Running %s: (%s tests)' % (mod_name, suite.countTestCases()))
-    res = testRunner.run(suite)
-    msg = ('%s: %s run, %s errors, %s failures, %s skipped' %
-           (mod_name, res.testsRun, len(res.errors), len(res.failures), len(res.skipped)))
-    num_failures += len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
-    resultMessages.append(msg)
-    if hasattr(res, 'core_time'):
-      total_core_time += res.core_time
-  total_run_time = time.perf_counter() - run_start_time
-  if total_core_time > 0:
-    errlog('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (total_core_time, total_run_time, total_core_time / total_run_time))
 
-  if len(resultMessages) > 1:
-    errlog('====================')
-    errlog()
-    errlog('TEST SUMMARY')
-    for msg in resultMessages:
-      errlog('    ' + msg)
+  errlog('Running %s tests' % suite.countTestCases())
+  res = testRunner.run(suite)
+  num_failures = len(res.errors) + len(res.failures) + len(res.unexpectedSuccesses)
+
+  total_run_time = time.perf_counter() - run_start_time
+  if hasattr(res, 'core_time'):
+    errlog('Total core time: %.3fs. Wallclock time: %.3fs. Parallelization: %.2fx.' % (res.core_time, total_run_time, res.core_time / total_run_time))
 
   if options.bell:
     sys.stdout.write('\a')
@@ -565,9 +570,9 @@ def configure():
   browser_common.configure_test_browser()
 
 
-def cleanup_emscripten_temp():
-  """Deletes all files and directories under Emscripten
-  that look like they might have been created by Emscripten."""
+def cleanup_temp_directory():
+  """Deletes all files and directories in TEMP_DIR that look like they
+  might have been created by Emscripten."""
   for entry in os.listdir(shared.TEMP_DIR):
     if entry.startswith(('emtest_', 'emscripten_')):
       entry = os.path.join(shared.TEMP_DIR, entry)
@@ -711,10 +716,13 @@ def main():
 
   check_js_engines()
 
-  # Remove any old test files before starting the run. Skip cleanup when we're running in debug mode
-  # where we want to preserve any files created (e.g. emscripten.lock from shared.py).
-  if not (shared.DEBUG or common.EMTEST_SAVE_DIR):
-    cleanup_emscripten_temp()
+  # Remove any old test files before starting the run. Skip cleanup when we're
+  # running in debug mode where we want to preserve any files created (e.g.
+  # emscripten.lock from shared.py).
+  # Note: We only do this in the CI environment, since it prevents multiple
+  # emscripten checkouts from running tests at the same time.
+  if os.getenv('CI') and not (shared.DEBUG or common.EMTEST_SAVE_DIR):
+    cleanup_temp_directory()
   utils.delete_file(common.flaky_tests_log_filename)
 
   browser_common.init(options.force_browser_process_termination)
@@ -729,6 +737,10 @@ def main():
 
   tests = [prepend_default(t) for t in options.tests]
 
+  if not tests:
+    errlog(f"Using default tests: {' '.join(default_tests)}")
+    tests = default_tests
+
   modules = get_and_import_modules()
   all_tests = get_all_tests(modules)
   if options.crossplatform_only:
@@ -739,20 +751,16 @@ def main():
     tests = skip_requested_tests(tests, modules)
     tests = args_for_random_tests(tests, modules)
 
-  if not tests:
-    errlog('ERROR: no tests to run')
-    return 1
-
   if not options.start_at and options._continue:
     if os.path.exists(common.LAST_TEST):
       options.start_at = utils.read_file(common.LAST_TEST).strip()
 
-  suites, unmatched_tests = load_test_suites(tests, modules, options)
+  suite, unmatched_tests = load_test_suite(tests, modules, options)
   if unmatched_tests:
     errlog('ERROR: could not find the following tests: ' + ' '.join(unmatched_tests))
     return 1
 
-  num_failures = run_tests(options, suites)
+  num_failures = run_tests(options, suite)
   # Return the number of failures as the process exit code
   # for automating success/failure reporting.  Return codes
   # over 125 are not well supported on UNIX.

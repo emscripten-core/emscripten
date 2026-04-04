@@ -83,8 +83,6 @@ static thread_local struct dlevent* thread_local_tail = &main_event;
 static pthread_mutex_t write_lock = PTHREAD_MUTEX_INITIALIZER;
 static thread_local bool skip_dlsync = false;
 
-static void dlsync();
-
 static void do_write_lock() {
   // Once we have the lock we want to avoid automatic code sync as that would
   // result in a deadlock.
@@ -161,7 +159,7 @@ static void load_library_done(struct dso* p) {
   new_dlevent(p, -1);
 #ifdef _REENTRANT
   // Block until all other threads have loaded this module.
-  dlsync();
+  _emscripten_dlsync_threads();
 #endif
   // TODO: figure out some way to tell when its safe to free p->file_data.  Its
   // not safe to do here because some threads could have been asleep then when
@@ -431,35 +429,6 @@ int _emscripten_proxy_dlsync(pthread_t target_thread) {
   }
   return result;
 }
-
-static void done_sync_all(em_proxying_ctx* ctx) {
-  dbg("done_sync_all");
-  emscripten_proxy_finish(ctx);
-}
-
-static void run_dlsync_async(em_proxying_ctx* ctx, void* arg) {
-  pthread_t calling_thread = (pthread_t)arg;
-  dbg("main_thread_dlsync calling=%p", calling_thread);
-  _emscripten_dlsync_threads_async(calling_thread, done_sync_all, ctx);
-}
-
-static void dlsync() {
-  // Call dlsync process.  This call will block until all threads are in sync.
-  // This gets called after a shared library is loaded by a worker.
-  dbg("dlsync main=%p", emscripten_main_runtime_thread_id());
-  if (emscripten_is_main_runtime_thread()) {
-    // dlsync was called on the main thread.  In this case we have no choice by
-    // to run the blocking version of emscripten_dlsync_threads.
-    _emscripten_dlsync_threads();
-  } else {
-    // Otherwise we block here while the asynchronous version runs in the main
-    // thread.
-    em_proxying_queue* q = emscripten_proxy_get_system_queue();
-    int success = emscripten_proxy_sync_with_ctx(
-      q, emscripten_main_runtime_thread_id(), run_dlsync_async, pthread_self());
-    assert(success);
-  }
-}
 #endif // _REENTRANT
 
 static void dlopen_onsuccess(struct dso* dso, void* user_data) {
@@ -683,7 +652,7 @@ void* __dlsym(void* restrict p, const char* restrict s, void* restrict ra) {
     new_dlevent(p, sym_index);
 #ifdef _REENTRANT
     // Block until all other threads have loaded this module.
-    dlsync();
+    _emscripten_dlsync_threads();
 #endif
   }
   dbg("__dlsym done dso:%p res:%p", p, res);

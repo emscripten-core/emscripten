@@ -110,7 +110,7 @@ export function preprocess(filename) {
 
   pushCurrentFile(filename);
   try {
-    for (let [i, line] of lines.entries()) {
+    for (const [i, line] of lines.entries()) {
       if (isHtml) {
         if (line.includes('<style') && !inStyle) {
           inStyle = true;
@@ -645,22 +645,21 @@ export function makeReturn64(value) {
   return `(setTempRet0(${pair[1]}), ${pair[0]})`;
 }
 
-function makeThrow(excPtr) {
-  if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
-    var assertInfo =
-      'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
-    if (MAIN_MODULE) {
-      assertInfo +=
-        ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
+function makeThrow() {
+  if (DISABLE_EXCEPTION_CATCHING) {
+    if (ASSERTIONS) {
+      var assertInfo =
+        'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
+      if (MAIN_MODULE) {
+        assertInfo +=
+          ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
+      }
+      return `assert(false, '${assertInfo}');`;
+    } else {
+      return 'abort()';
     }
-    return `assert(false, '${assertInfo}');`;
   }
-  return `throw ${excPtr};`;
-}
-
-function storeException(varName, excPtr) {
-  var exceptionToStore = EXCEPTION_STACK_TRACES ? `new CppException(${excPtr})` : `${excPtr}`;
-  return `${varName} = ${exceptionToStore};`;
+  return 'throw exceptionLast;';
 }
 
 function charCode(char) {
@@ -1104,7 +1103,10 @@ function formattedMinNodeVersion() {
 }
 
 function getPerformanceNow() {
-  if (DETERMINISTIC) {
+  // This is needed to support Node.js v16 - v18 where `performance.now`
+  // cannot be overridden in the normal way.
+  // TODO(sbc): remove this once we drop support for these versions.
+  if (DETERMINISTIC && ENVIRONMENT_MAY_BE_NODE) {
     return 'deterministicNow';
   } else {
     return 'performance.now';
@@ -1124,10 +1126,13 @@ function ENVIRONMENT_IS_WORKER_THREAD() {
 }
 
 function nodeDetectionCode() {
-  if (ENVIRONMENT == 'node') {
+  if (ENVIRONMENT == 'node' && !ASSERTIONS) {
     // The only environment where this code is intended to run is Node.js.
     // Return unconditional true so that later Closure optimizer will be able to
     // optimize code size.
+    //
+    // Note: we don't do this in debug builds because we have have assertions
+    // that want to be able to check if we really are running on node or not.
     return 'true';
   }
   return "globalThis.process?.versions?.node && globalThis.process?.type != 'renderer'";
@@ -1153,9 +1158,25 @@ function nodeWWDetection() {
   }
 }
 
+function wasmWorkerDetection() {
+  if (ASSERTIONS) {
+    return "globalThis.name?.startsWith('em-ww')";
+  } else {
+    return "globalThis.name == 'em-ww'";
+  }
+}
+
+function pthreadDetection() {
+  if (ASSERTIONS) {
+    return "globalThis.name?.startsWith('em-pthread')";
+  } else {
+    return "globalThis.name == 'em-pthread'";
+  }
+}
+
 function makeExportAliases() {
   var res = ''
-  for (var [alias, ex] of Object.entries(nativeAliases)) {
+  for (const [alias, ex] of Object.entries(nativeAliases)) {
     if (ASSERTIONS) {
       res += `  assert(wasmExports['${ex}'], 'alias target "${ex}" not found in wasmExports');\n`;
     }
@@ -1233,9 +1254,10 @@ addToCompileTimeContext({
   runtimeKeepalivePop,
   runtimeKeepalivePush,
   splitI64,
-  storeException,
   to64,
   toIndexType,
   nodePthreadDetection,
   nodeWWDetection,
+  wasmWorkerDetection,
+  pthreadDetection,
 });

@@ -251,7 +251,7 @@ def apply_min_browser_versions():
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
   elif settings.WASM_WORKERS or settings.SHARED_MEMORY:
     enable_feature(Feature.BULK_MEMORY, 'shared-mem')
-  if settings.RELOCATABLE:
+  if settings.MAIN_MODULE or settings.SIDE_MODULE:
     enable_feature(Feature.MUTABLE_GLOBALS, 'dynamic linking')
   if settings.MEMORY64 == 1:
     enable_feature(Feature.MEMORY64, 'MEMORY64')

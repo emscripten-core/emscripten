@@ -295,7 +295,7 @@ int Thread::run(ThreadStyle style, ThreadRunner runner, void *arg, void *stack,
   // The clone syscall takes arguments in an architecture specific order.
   // Also, we want the result of the syscall to be in a register as the child
   // thread gets a completely different stack after it is created. The stack
-  // variables from this function will not be availalbe the child thread.
+  // variables from this function will not be availalbe to the child thread.
 #if defined(LIBC_TARGET_ARCH_IS_X86_64)
   long register clone_result asm(CLONE_RESULT_REGISTER);
   clone_result = LIBC_NAMESPACE::syscall_impl<long>(

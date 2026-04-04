@@ -1,4 +1,3 @@
-#include <emscripten/threading.h>
 #include <emscripten/wasm_worker.h>
 #include <emscripten/webaudio.h>
 #include <assert.h>
@@ -7,180 +6,228 @@
 //
 // - _emscripten_thread_supports_atomics_wait()
 // - emscripten_lock_init()
-// - emscripten_lock_try_acquire()
 // - emscripten_lock_busyspin_wait_acquire()
-// - emscripten_lock_busyspin_waitinf_acquire()
 // - emscripten_lock_release()
-// - emscripten_get_now()
+// - emscripten_get_now() in AW
+
+// This needs to be big enough for a stereo output (1024 with a 128 frame) + working stack
+#define AUDIO_STACK_SIZE 2048
+
+// Define DISABLE_LOCKS to run the test without locking, which should statistically always fail
+//#define DISABLE_LOCKS
+
+// Number of times mainLoop() calculations get called
+#define MAINLOOP_CALCS 10000
+// Number of times MAINLOOP_CALCS are performed
+#define MAINLOOP_RUNS 200
+// Number of times process() calculations get called (called 3.75x more than mainLoop)
+#define PROCESS_CALCS 2667
+// Number of times PROCESS_CALCS are performed (3.75x more than mainLoop)
+#define PROCESS_RUNS 750
 
 // Internal, found in 'system/lib/pthread/threading_internal.h' (and requires building with -pthread)
 int _emscripten_thread_supports_atomics_wait(void);
 
 typedef enum {
-  // No wait support in audio worklets
-  TEST_HAS_WAIT,
-  // Acquired in main, fail in process
-  TEST_TRY_ACQUIRE,
-  // Keep acquired so time-out
-  TEST_WAIT_ACQUIRE_FAIL,
-  // Release in main, succeed in process
-  TEST_WAIT_ACQUIRE,
-  // Release in process after above
-  TEST_RELEASE,
-  // Released in process above, spin in main
-  TEST_WAIT_INFINITE_1,
-  // Release in process to stop spinning in main
-  TEST_WAIT_INFINITE_2,
-  // Call emscripten_get_now() in process
-  TEST_GET_NOW,
+  // The test hasn't yet started
+  TEST_NOT_STARTED,
+  // Worklet ready and running the test
+  TEST_RUNNING,
+  // Main thread is finished, wait on worklet
+  TEST_DONE_MAIN,
   // Test finished
   TEST_DONE
 } Test;
 
+// Global audio context
+EMSCRIPTEN_WEBAUDIO_T context;
 // Lock used in all the tests
 emscripten_lock_t testLock = EMSCRIPTEN_LOCK_T_STATIC_INITIALIZER;
 // Which test is running (sometimes in the worklet, sometimes in the main thread)
-_Atomic Test whichTest = TEST_HAS_WAIT;
+_Atomic Test whichTest = TEST_NOT_STARTED;
 // Time at which the test starts taken in main()
 double startTime = 0;
 
-bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData) {
+// Counter for main, accessed only by main
+int howManyMain = 0;
+// Counter for the audio worklet, accessed only by the AW
+int howManyProc = 0;
+
+// Our dummy container
+typedef struct {
+  uint32_t val0;
+  uint32_t val1;
+  uint32_t val2;
+} Dummy;
+
+// Container used to run the test
+Dummy testData;
+// Container to hold the expected value
+Dummy trueData;
+
+// Start values
+void initDummy(Dummy* dummy) {
+  dummy->val0 = 4;
+  dummy->val1 = 1;
+  dummy->val2 = 2;
+}
+
+void printDummy(Dummy* dummy) {
+  emscripten_outf("Values: 0x%08X, 0x%08X, 0x%08X", dummy->val0, dummy->val1, dummy->val2);
+}
+
+// Run a simple calculation that will only be stable *if* all values are atomically updated
+// (Currently approx. 200'000x from each thread)
+void runCalcs(Dummy* dummy, int num) {
+  for (int n = 0; n < num; n++) {
+#ifndef DISABLE_LOCKS
+    int have = emscripten_lock_busyspin_wait_acquire(&testLock, 1000);
+    assert(have);
+#endif
+    dummy->val0 += dummy->val1 * dummy->val2;
+    dummy->val1 += dummy->val2 * dummy->val0;
+    dummy->val2 += dummy->val0 * dummy->val1;
+    dummy->val0 /= 4;
+    dummy->val1 /= 3;
+    dummy->val2 /= 2;
+#ifndef DISABLE_LOCKS
+    emscripten_lock_release(&testLock);
+#endif
+  }
+}
+
+void stopping() {
+  emscripten_out("Test done");
+  emscripten_destroy_audio_context(context);
+  emscripten_force_exit(0);
+}
+
+// AW callback
+bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
   assert(emscripten_current_thread_is_audio_worklet());
-
-  // Produce at few empty frames of audio before we start trying to interact
-  // with the with main thread.
-  // On chrome at least it appears the main thread completely blocks until
-  // a few frames have been produced.  This means it may not be safe to interact
-  // with the main thread during initial frames?
-  // In my experiments it seems like 5 was the magic number that I needed to
-  // produce before the main thread could continue to run.
-  // See https://github.com/emscripten-core/emscripten/issues/24213
-  static int count = 0;
-  if (count++ < 5) return true;
-
-  int result = 0;
   switch (whichTest) {
-  case TEST_HAS_WAIT:
-    // Should not have wait support here
-    result = _emscripten_thread_supports_atomics_wait();
-    emscripten_outf("TEST_HAS_WAIT: %d (expect: 0)", result);
-    assert(!result);
-    whichTest = TEST_TRY_ACQUIRE;
+  case TEST_NOT_STARTED:
+    whichTest = TEST_RUNNING;
     break;
-  case TEST_TRY_ACQUIRE:
-    // Was locked after init, should fail to acquire
-    result = emscripten_lock_try_acquire(&testLock);
-    emscripten_outf("TEST_TRY_ACQUIRE: %d (expect: 0)", result);
-    assert(!result);
-    whichTest = TEST_WAIT_ACQUIRE_FAIL;
+  case TEST_RUNNING:
+  case TEST_DONE_MAIN:
+    if (howManyProc-- > 0) {
+      runCalcs(&testData, PROCESS_CALCS);
+    } else {
+      if (whichTest == TEST_DONE_MAIN) {
+        emscripten_outf("Worklet done after %dms (expect: approx. 2s)", (int) (emscripten_get_now() - startTime));
+        // Both loops are finished
+        whichTest = TEST_DONE;
+      }
+    }
     break;
-  case TEST_WAIT_ACQUIRE_FAIL:
-    // Still locked so we fail to acquire
-    result = emscripten_lock_busyspin_wait_acquire(&testLock, 100);
-    emscripten_outf("TEST_WAIT_ACQUIRE_FAIL: %d (expect: 0)", result);
-    assert(!result);
-    whichTest = TEST_WAIT_ACQUIRE;
-  case TEST_WAIT_ACQUIRE:
-    // Will get unlocked in main thread, so should quickly acquire
-    result = emscripten_lock_busyspin_wait_acquire(&testLock, 10000);
-    emscripten_outf("TEST_WAIT_ACQUIRE: %d  (expect: 1)", result);
-    assert(result);
-    whichTest = TEST_RELEASE;
-    break;
-  case TEST_RELEASE:
-    // Unlock, check the result
-    emscripten_lock_release(&testLock);
-    result = emscripten_lock_try_acquire(&testLock);
-    emscripten_outf("TEST_RELEASE: %d (expect: 1)", result);
-    assert(result);
-    whichTest = TEST_WAIT_INFINITE_1;
-    break;
-  case TEST_WAIT_INFINITE_1:
-    // Still locked when we enter here but move on in the main thread
-    break;
-  case TEST_WAIT_INFINITE_2:
-    emscripten_lock_release(&testLock);
-    whichTest = TEST_GET_NOW;
-    break;
-  case TEST_GET_NOW:
-    result = (int) (emscripten_get_now() - startTime);
-    emscripten_outf("TEST_GET_NOW: %d  (expect: > 0)", result);
-    assert(result > 0);
-    whichTest = TEST_DONE;
   case TEST_DONE:
     return false;
-  default:
-    break;
   }
   return true;
 }
 
-EM_JS(void, InitHtmlUi, (EMSCRIPTEN_WEBAUDIO_T audioContext), {
-  let startButton = document.createElement('button');
-  startButton.innerHTML = 'Start playback';
-  document.body.appendChild(startButton);
+// Main thread callback
+bool mainLoop(double time, void* data) {
+  assert(!emscripten_current_thread_is_audio_worklet());
+  switch (whichTest) {
+  case TEST_NOT_STARTED:
+    break;
+  case TEST_RUNNING:
+    if (howManyMain-- > 0) {
+      runCalcs(&testData, MAINLOOP_CALCS);
+    } else {
+      emscripten_outf("Main thread done after %dms (expect: approx. 2s)", (int) (emscripten_get_now() - startTime));
+      // Done here, so signal to process()
+      whichTest = TEST_DONE_MAIN;
+    }
+    break;
+  case TEST_DONE_MAIN:
+    // Wait for process() to finish
+    break;
+  case TEST_DONE:
+    emscripten_out("Multi-thread results:");
+    printDummy(&testData);
+    assert(testData.val0 == trueData.val0
+        && testData.val1 == trueData.val1
+        && testData.val2 == trueData.val2);
+    stopping();
+    return false;
+  }
+  return true;
+}
 
-  audioContext = emscriptenGetAudioObject(audioContext);
-  startButton.onclick = () => {
-    audioContext.resume();
+EMSCRIPTEN_KEEPALIVE void startTest() {
+  if (whichTest == TEST_NOT_STARTED) {
+    startTime = emscripten_get_now();
+    if (emscripten_audio_context_state(context) != AUDIO_CONTEXT_STATE_RUNNING) {
+      emscripten_resume_audio_context_sync(context);
+    }
+    howManyMain = MAINLOOP_RUNS;
+    howManyProc = PROCESS_RUNS;
+  } else {
+    emscripten_out("Reload page to re-run");
+  }
+}
+
+// HTML button to manually run the test
+EM_JS(void, addButton, (), {
+  var button = document.createElement("button");
+  button.appendChild(document.createTextNode("Start Test"));
+  document.body.appendChild(button);
+  document.onclick = () => {
+    _startTest();
   };
 });
 
-bool MainLoop(double time, void* data) {
-  assert(!emscripten_current_thread_is_audio_worklet());
-  static int didUnlock = false;
-  switch (whichTest) {
-  case TEST_WAIT_ACQUIRE:
-    if (!didUnlock) {
-      emscripten_out("main thread releasing lock");
-      // Release here to acquire in process
-      emscripten_lock_release(&testLock);
-      didUnlock = true;
-    }
-    break;
-  case TEST_WAIT_INFINITE_1:
-    // Spin here until released in process (but don't change test until we know this case ran)
-    whichTest = TEST_WAIT_INFINITE_2;
-    emscripten_lock_busyspin_waitinf_acquire(&testLock);
-    emscripten_out("TEST_WAIT_INFINITE (from main)");
-    break;
-  case TEST_DONE:
-    // Finished, exit from the main thread
-    emscripten_out("Test success");
-    emscripten_force_exit(0);
-    return false;
-  default:
-    break;
-  }
-  return true;
-}
-
-void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
+// Audio processor created, now register the audio callback
+void processorCreated(EMSCRIPTEN_WEBAUDIO_T ctx, bool success, void* data) {
+  assert(success && "Audio worklet failed in processorCreated()");
+  emscripten_out("Audio worklet processor created");
+  // Single mono output
   int outputChannelCounts[1] = { 1 };
-  EmscriptenAudioWorkletNodeCreateOptions options = { .numberOfInputs = 0, .numberOfOutputs = 1, .outputChannelCounts = outputChannelCounts };
-  EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext, "noise-generator", &options, &ProcessAudio, NULL);
-  emscripten_audio_node_connect(wasmAudioWorklet, audioContext, 0, 0);
-  InitHtmlUi(audioContext);
+  EmscriptenAudioWorkletNodeCreateOptions opts = {
+    .numberOfOutputs = 1,
+    .outputChannelCounts = outputChannelCounts
+  };
+  EMSCRIPTEN_AUDIO_WORKLET_NODE_T worklet = emscripten_create_wasm_audio_worklet_node(ctx, "locks-test", &opts, &process, data);
+  emscripten_audio_node_connect(worklet, ctx, 0, 0);
 }
 
-void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
-  WebAudioWorkletProcessorCreateOptions opts = { .name = "noise-generator" };
-  emscripten_create_wasm_audio_worklet_processor_async(audioContext, &opts, AudioWorkletProcessorCreated, NULL);
+// Worklet thread inited, now create the audio processor
+void initialised(EMSCRIPTEN_WEBAUDIO_T ctx, bool success, void* data) {
+  assert(success && "Audio worklet failed in initialised()");
+  emscripten_out("Audio worklet initialised");
+  WebAudioWorkletProcessorCreateOptions opts = {
+    .name = "locks-test"
+  };
+  emscripten_create_wasm_audio_worklet_processor_async(ctx, &opts, &processorCreated, data);
 }
-
-uint8_t wasmAudioWorkletStack[2048];
 
 int main() {
-  // Main thread init and acquire (work passes to the processor)
   emscripten_lock_init(&testLock);
-  int hasLock = emscripten_lock_busyspin_wait_acquire(&testLock, 0);
-  assert(hasLock);
+  initDummy(&testData);
+  initDummy(&trueData);
+  // Canonical results, run in a single thread
+  for (int n = MAINLOOP_RUNS; n > 0; n--) {
+    runCalcs(&trueData, MAINLOOP_CALCS);
+  }
+  for (int n = PROCESS_RUNS; n > 0; n--) {
+    runCalcs(&trueData, PROCESS_CALCS);
+  }
+  emscripten_out("Single-thread results:");
+  printDummy(&trueData);
 
-  startTime = emscripten_get_now();
+  char* const workletStack = memalign(16, AUDIO_STACK_SIZE);
+  assert(workletStack);
+  // Audio processor callback setup
+  context = emscripten_create_audio_context(NULL);
+  assert(context);
+  emscripten_start_wasm_audio_worklet_thread_async(context, workletStack, AUDIO_STACK_SIZE, initialised, NULL);
 
-  emscripten_set_timeout_loop(MainLoop, 10, NULL);
-  EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(NULL);
-  emscripten_start_wasm_audio_worklet_thread_async(context, wasmAudioWorkletStack, sizeof(wasmAudioWorkletStack), WebAudioWorkletThreadInitialized, NULL);
+  emscripten_set_timeout_loop(mainLoop, 10, NULL);
+  addButton();
+  startTest(); // <-- May need a manual click to start
 
   emscripten_exit_with_live_runtime();
 }

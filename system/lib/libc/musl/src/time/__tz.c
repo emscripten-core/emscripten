@@ -9,14 +9,9 @@
 #include "lock.h"
 #include "fork_impl.h"
 
-#ifdef __EMSCRIPTEN__
-#include <stdbool.h>
-#include <pthread.h>
-#include "emscripten_internal.h"
-#endif
-
 #if defined(__EMSCRIPTEN__) && !defined(EMSCRIPTEN_STANDALONE_WASM)
 #define USE_EXTERNAL_ZONEINFO
+#include "emscripten_internal.h"
 #endif
 
 #define malloc __libc_malloc
@@ -142,17 +137,10 @@ static size_t zi_dotprod(const unsigned char *z, const unsigned char *v, size_t 
 static void do_tzset()
 {
 #ifdef USE_EXTERNAL_ZONEINFO
-	static pthread_mutex_t lock = PTHREAD_MUTEX_INITIALIZER;
-	static _Atomic bool done_init = false;
-	if (!done_init) {
-		pthread_mutex_lock(&lock);
-		if (!done_init) {
-			_tzset_js(&timezone, &daylight, std_name, dst_name);
-			__tzname[0] = std_name;
-			__tzname[1] = dst_name;
-			done_init = true;
-		}
-		pthread_mutex_unlock(&lock);
+	if (!__tzname[0]) {
+		_tzset_js(&timezone, &daylight, std_name, dst_name);
+		__tzname[0] = std_name;
+		__tzname[1] = dst_name;
 	}
 #else
 	char buf[NAME_MAX+25], *pathname=buf+24;

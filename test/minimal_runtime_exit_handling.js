@@ -11,11 +11,11 @@ if (typeof process != 'undefined') {
       status = status.substr(0, offset)
       process.exitCode = status;
     } else {
-      console.log(e)
+      console.error('top-level-onerror:', e)
       process.exitCode = 1;
     }
   }
 
-  // Unhandled rejections end up here too because we run node with --unhandled-rejections=throw
-  process.on('uncaughtException', function(err, origin) { onerror(err); });
+  process.on('uncaughtException', onerror);
+  process.on('unhandledRejection', onerror);
 }

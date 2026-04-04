@@ -34,32 +34,43 @@ Additional flags
   The main thread also does things like create pthreads for you, so that you
   can depend on them synchronously.
 
-Note that Emscripten has the
-``--proxy-to-worker`` :ref:`linker flag <proxy-to-worker>` which sounds similar
-but is unrelated. That flag does not use pthreads or SharedArrayBuffer, and
-instead uses a plain Web Worker to run your main program (and postMessage to
-proxy messages back and forth).
-
 Proxying
 ========
 
 The Web allows certain operations to only happen from the main browser thread,
-like interacting with the DOM. As a result, various operations are proxied to
-the main browser thread if they are called on a background thread. See
-`bug 3495 <https://github.com/emscripten-core/emscripten/issues/3495>`_ for
-more information and how to try to work around this until then. To check which
-operations are proxied, you can look for the function's implementation in
-the JS library (``src/library_*``) and see if it is annotated with
-``__proxy: 'sync'`` or ``__proxy: 'async'``; however, note that the browser
-itself proxies certain things (like some GL operations), so there is no
-general way to be safe here (aside from not blocking on the main browser
-thread).
+like interacting with the DOM. As a result, these operations need to be proxied
+to the main browser thread if they are called from a background thread.
 
-In addition, Emscripten currently has a simple model of file I/O only happening
-on the main application thread (as we support JS plugin filesystems, which
-cannot share memory); this is another set of operations that are proxied.
+For JS library functions this proxying is automatic.  You can see which
+functions are proxied by looking for the ``__proxy:`` annotations in the JS
+libraries. For example, ``getaddrinfo__proxy: 'sync'`` marks the ``getaddrinfo``
+function for automatic proxying.
 
-Proxying can cause problems in certain cases, see the section on blocking below.
+Functions can be marked using a ``__proxy`` annotation of either ``sync`` or
+``async``.  By far the most common (and useful) is ``sync`` which means that
+the calling thread will be blocked until the main thread has performed the
+proxied function and the return value will be returned synchronously on the
+calling thread.  ``async`` proxied functions will return immediately on the
+calling thread and the JS function will be queued for execution on the main
+thread at some point in the future.
+
+This automatic proxying mechanism is built on the :ref:`proxying-h` API which
+can also be used directly for more precise control over how work is run on
+different threads.
+
+When a JS library function is marked as both ``__proxy: 'sync'`` and ``__async:
+'auto'``, it is expected to return a promise
+(see :ref:`marking_async_functions`).
+The calling thread will block until the async operation on the
+main thread is completed (i.e. the returned promise is resolved), and the value
+that the promise resolves to will be returned to the caller. This allows
+functions that would require :ref:`ASYNCIFY` (when called from the main browser
+thread) to be called without :ref:`ASYNCIFY` from a background thread.  In other
+words, background threads can block on proxied work even without :ref:`ASYNCIFY`
+enabled.
+
+.. note:: Proxying can cause problems, such as deadlocks, in certain cases, see
+  the section on blocking below.
 
 Blocking on the main browser thread
 ===================================

@@ -33,7 +33,10 @@ def check_structs(info):
 
 def check_defines(info):
   for define in info['defines']:
-    key = r'cDefs\.' + define + r'\>'
+    if ':' in define:
+      key = fr"cDefs\['{define}'\]"
+    else:
+      key = fr'cDefs\.{define}\>'
     # grep --quiet returns 0 when there is a match
     if subprocess.run(['git', 'grep', '--quiet', key], check=False).returncode != 0:
       print(define)

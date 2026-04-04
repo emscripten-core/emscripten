@@ -1,4 +1,4 @@
-hello world
+Hello, world!
 looper() : running Shutdown on thread
 got Shutdown
 looper() : done Shutdown exiting

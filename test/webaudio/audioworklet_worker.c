@@ -2,14 +2,14 @@
 #include <emscripten/wasm_worker.h>
 #include <emscripten/threading.h>
 #include <assert.h>
+#include <stdbool.h>
 
 // Tests that
 // - audioworklets and workers can be used at the same time.
 // - an audioworklet can emscripten_futex_wake() a waiting worker.
 // - global values can be shared between audioworklets and workers.
 
-int workletToWorkerFutexLocation = 0;
-int workletToWorkerFlag = 0;
+_Atomic bool workletToWorkerFlag = false;
 EMSCRIPTEN_WEBAUDIO_T context;
 
 void do_exit() {
@@ -19,9 +19,12 @@ void do_exit() {
 }
 
 void run_in_worker() {
-  while (0 == emscripten_futex_wait(&workletToWorkerFutexLocation, 0, 30000)) {
-    if (workletToWorkerFlag == 1) {
-      emscripten_out("Test success");
+  // TODO: Convert to emscripten_futex_wait once it becomes available in Wasm
+  // Workers.
+  double start = emscripten_performance_now();
+  while (1) {
+    if (workletToWorkerFlag == true) {
+      emscripten_outf("Test success (waited %.fms)", emscripten_performance_now() - start);
       emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, &do_exit);
       break;
     }
@@ -31,8 +34,7 @@ void run_in_worker() {
 // This event will fire on the audio worklet thread.
 void MessageReceivedInAudioWorkletThread() {
   assert(emscripten_current_thread_is_audio_worklet());
-  workletToWorkerFlag = 1;
-  emscripten_futex_wake(&workletToWorkerFutexLocation, 1);
+  workletToWorkerFlag = true;
 }
 
 void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {

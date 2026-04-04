@@ -61,16 +61,16 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
   flags = ['-g', '-sSTRICT', '-Werror']
   if settings.LTO and not force_object_files:
     flags += ['-flto=' + settings.LTO]
-  if settings.RELOCATABLE or settings.MAIN_MODULE:
-    # Explicitly include `-sRELOCATABLE` when building system libraries.
+  if settings.MAIN_MODULE or settings.SIDE_MODULE:
+    # Explicitly include `-sMAIN_MODULE` when building system libraries.
     # `-fPIC` alone is not enough to configure trigger the building and
     # caching of `pic` libraries (see `get_lib_dir` in `cache.py`)
     # FIXME(sbc): `-fPIC` should really be enough here.
-    flags += ['-fPIC', '-sRELOCATABLE']
+    flags += ['-fPIC', '-sMAIN_MODULE']
     if preprocess:
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
-    flags += ['-sMEMORY64=' + str(settings.MEMORY64)]
+    flags += ['-sMEMORY64']
 
   source_dir = utils.path_from_root()
   relative_source_dir = os.path.relpath(source_dir, build_dir)
@@ -144,7 +144,7 @@ def create_lib(libname, inputs):
   suffix = utils.suffix(libname)
 
   inputs = sorted(inputs, key=objectfile_sort_key)
-  if suffix in ('.bc', '.o'):
+  if suffix in {'.bc', '.o'}:
     if len(inputs) == 1:
       if inputs[0] != libname:
         shutil.copyfile(inputs[0], libname)
@@ -169,7 +169,7 @@ def run_ninja(build_dir):
 def ensure_target_in_ninja_file(ninja_file, target):
   if os.path.isfile(ninja_file) and target in read_file(ninja_file):
     return
-  with open(ninja_file, 'a') as f:
+  with open(ninja_file, 'a', encoding='utf-8') as f:
     f.write(target + '\n')
 
 
@@ -714,7 +714,7 @@ class MTLibrary(Library):
   def get_cflags(self):
     cflags = super().get_cflags()
     if self.is_mt:
-      cflags += ['-pthread', '-sWASM_WORKERS']
+      cflags += ['-pthread']
     if self.is_ww:
       cflags += ['-sWASM_WORKERS']
     return cflags
@@ -745,6 +745,10 @@ class MTLibrary(Library):
 
     # These are mutually exclusive, only one flag will be set at any give time.
     return [combo for combo in combos if not combo['is_mt'] or not combo['is_ww']]
+
+  def can_build(self):
+    # Wasm workers do not support dynamic linking.
+    return super().can_build() and not (settings.MAIN_MODULE and self.is_ww)
 
 
 class DebugLibrary(Library):
@@ -912,6 +916,8 @@ class MuslInternalLibrary(Library):
     '-std=c99',
     '-D_XOPEN_SOURCE=700',
     '-Wno-unused-result',  # system call results are often ignored in musl, and in wasi that warns
+    '-Wno-bitwise-op-parentheses',
+    '-Wno-shift-op-parentheses',
   ]
 
 
@@ -948,7 +954,15 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
 
-  cflags = ['-fno-builtin', '-DNDEBUG', '-DCOMPILER_RT_HAS_ATOMICS=1']
+  cflags = [
+      '-fno-builtin',
+      '-DNDEBUG',
+      '-DCOMPILER_RT_HAS_ATOMICS=1',
+      # TODO: Remove this if the emutls_key_created variable in emutls.c is
+      # fixed or if the scope of the warning is modified again (see
+      # https://github.com/llvm/llvm-project/pull/178342)
+      '-Wno-unused-but-set-variable',
+  ]
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   profile_src_dir = 'system/lib/compiler-rt/lib/profile'
   includes = ['system/lib/libc', 'system/lib/compiler-rt/include']
@@ -1008,7 +1022,22 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   name = 'libllvmlibc'
   never_force = True
   includes = ['system/lib/llvm-libc']
-  cflags = ['-Os', '-DLIBC_NAMESPACE=__llvm_libc', '-DLLVM_LIBC', '-DLIBC_COPT_PUBLIC_PACKAGING']
+  cflags = [
+      '-Os',
+      '-DLIBC_NAMESPACE=__llvm_libc',
+      '-DLLVM_LIBC',
+      '-DLIBC_COPT_PUBLIC_PACKAGING',
+      # Disable accurate pass to speed up certain math operations
+      '-DLIBC_MATH=LIBC_MATH_FAST',
+      '-D__LIBC_USE_BUILTIN_CEIL_FLOOR_RINT_TRUNC',
+      # Reduce size bloats from string conversions.
+      '-DLIBC_COPT_STRTOFLOAT_DISABLE_EISEL_LEMIRE',
+      # To Enable FMA, we need to set the following flags. But we can't really ship this in a default libc build.
+      # Once llvm-libc gets used, we might need to have a FMA-enalbed flavor to enable these following flags.
+      '-Wno-unused-variable',
+      '-mrelaxed-simd',
+      '-ffp-contract=fast',
+  ]
 
   def get_files(self):
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
@@ -1018,7 +1047,8 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/math', '*.cpp')
-    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp')
+    # Overlay mode doesn't support mbstate_t which is used by these wchar sources.
+    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes=['wcrtomb.cpp', 'mbrtowc.cpp', 'wctomb.cpp', 'mbtowc.cpp'])
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes=['at_quick_exit.cpp',
@@ -1042,20 +1072,18 @@ class libc(MuslInternalLibrary,
   # functions to something else based on assumptions that they behave exactly
   # like the standard library. This can cause unexpected bugs when we use our
   # custom standard library. The same for other libc/libm builds.
-  # We use -fno-inline-functions because it can produce slightly smaller
-  # (and slower) code in some cases.  TODO(sbc): remove this and let llvm weight
-  # the cost/benefit of inlining.
   cflags = ['-Os', '-fno-inline-functions', '-fno-builtin']
 
   # Disable certain warnings for code patterns that are contained in upstream musl
   cflags += ['-Wno-ignored-attributes',
              # tre.h defines NDEBUG internally itself
              '-Wno-macro-redefined',
-             '-Wno-shift-op-parentheses',
              '-Wno-string-plus-int',
              '-Wno-missing-braces',
              '-Wno-logical-op-parentheses',
-             '-Wno-bitwise-op-parentheses',
+             # TODO: remove this if the cause variable in cxa_default_handlers
+             # is fixed or if the scope of the warning is reduced (see
+             # https://github.com/llvm/llvm-project/pull/178342)
              '-Wno-unused-but-set-variable',
              '-Wno-unused-variable',
              '-Wno-unused-label',
@@ -1168,7 +1196,6 @@ class libc(MuslInternalLibrary,
     ]
 
     ignore += LIBC_SOCKETS
-
     if self.is_mt:
       ignore += [
         'clone.c',
@@ -1194,65 +1221,91 @@ class libc(MuslInternalLibrary,
           'pthread_create.c',
           'pthread_kill.c',
           'emscripten_thread_init.c',
-          'emscripten_thread_state.S',
-          'emscripten_futex_wait.c',
-          'emscripten_futex_wake.c',
           'emscripten_yield.c',
+          'thread_profiler.c',
         ])
     else:
       ignore += ['thread']
       libc_files += files_in_path(
-        path='system/lib/libc/musl/src/thread',
-        filenames=[
-          'pthread_self.c',
-          'pthread_cleanup_push.c',
-          'pthread_attr_init.c',
-          'pthread_attr_destroy.c',
-          'pthread_attr_get.c',
-          'pthread_attr_setdetachstate.c',
-          'pthread_attr_setguardsize.c',
-          'pthread_attr_setinheritsched.c',
-          'pthread_attr_setschedparam.c',
-          'pthread_attr_setschedpolicy.c',
-          'pthread_attr_setscope.c',
-          'pthread_attr_setstack.c',
-          'pthread_attr_setstacksize.c',
-          'pthread_getattr_np.c',
-          'pthread_getconcurrency.c',
-          'pthread_getcpuclockid.c',
-          'pthread_getschedparam.c',
-          'pthread_setschedprio.c',
-          'pthread_setconcurrency.c',
-          'default_attr.c',
-          # C11 thread library functions
-          'call_once.c',
-          'tss_create.c',
-          'tss_delete.c',
-          'tss_set.c',
-          'cnd_broadcast.c',
-          'cnd_destroy.c',
-          'cnd_init.c',
-          'cnd_signal.c',
-          'cnd_timedwait.c',
-          'cnd_wait.c',
-          'mtx_destroy.c',
-          'mtx_init.c',
-          'mtx_lock.c',
-          'mtx_timedlock.c',
-          'mtx_trylock.c',
-          'mtx_unlock.c',
-          'thrd_create.c',
-          'thrd_exit.c',
-          'thrd_join.c',
-          'thrd_sleep.c',
-          'thrd_yield.c',
-        ])
+        path='system/lib/libc',
+        filenames=['emscripten_yield_stub.c'])
+
+      if self.is_ww:
+        libc_files += files_in_path(
+          path='system/lib/libc/musl/src/thread',
+          filenames=[
+            '__lock.c',
+            '__wait.c',
+            'lock_ptc.c',
+          ])
+      else:
+        # Include stub version of thread functions when building
+        # in single theaded mode.
+        # Note: We do *not* include these stubs in the Wasm Workers build since it would
+        # never be safe to call these from a Wasm Worker.
+        libc_files += files_in_path(
+          path='system/lib/pthread',
+          filenames=[
+            'library_pthread_stub.c',
+            'pthread_self_stub.c',
+            'proxying_stub.c',
+          ])
+        libc_files += files_in_path(
+          path='system/lib/libc/musl/src/thread',
+          filenames=[
+            'pthread_self.c',
+            'pthread_cleanup_push.c',
+            'pthread_attr_init.c',
+            'pthread_attr_destroy.c',
+            'pthread_attr_get.c',
+            'pthread_attr_setdetachstate.c',
+            'pthread_attr_setguardsize.c',
+            'pthread_attr_setinheritsched.c',
+            'pthread_attr_setschedparam.c',
+            'pthread_attr_setschedpolicy.c',
+            'pthread_attr_setscope.c',
+            'pthread_attr_setstack.c',
+            'pthread_attr_setstacksize.c',
+            'pthread_getattr_np.c',
+            'pthread_getconcurrency.c',
+            'pthread_getcpuclockid.c',
+            'pthread_getschedparam.c',
+            'pthread_setschedprio.c',
+            'pthread_setconcurrency.c',
+            'default_attr.c',
+            # C11 thread library functions
+            'call_once.c',
+            'tss_create.c',
+            'tss_delete.c',
+            'tss_set.c',
+            'cnd_broadcast.c',
+            'cnd_destroy.c',
+            'cnd_init.c',
+            'cnd_signal.c',
+            'cnd_timedwait.c',
+            'cnd_wait.c',
+            'mtx_destroy.c',
+            'mtx_init.c',
+            'mtx_lock.c',
+            'mtx_timedlock.c',
+            'mtx_trylock.c',
+            'mtx_unlock.c',
+            'thrd_create.c',
+            'thrd_exit.c',
+            'thrd_join.c',
+            'thrd_sleep.c',
+            'thrd_yield.c',
+          ])
+
+    if self.is_mt or self.is_ww:
+      # Low level thread primitives available in both pthreads and wasm workers builds.
       libc_files += files_in_path(
         path='system/lib/pthread',
         filenames=[
-          'library_pthread_stub.c',
-          'pthread_self_stub.c',
-          'proxying_stub.c',
+          'emscripten_thread_state.S',
+          'emscripten_thread_primitives.c',
+          'emscripten_futex_wait.c',
+          'emscripten_futex_wake.c',
         ])
 
     # These files are in libc directories, but only built in libc_optz.
@@ -1365,15 +1418,10 @@ class libc(MuslInternalLibrary,
           'sigtimedwait.c',
           'wasi-helpers.c',
           'system.c',
-          'proxying_poll.c',
         ])
 
-    if settings.RELOCATABLE or settings.MAIN_MODULE:
+    if settings.MAIN_MODULE:
       libc_files += files_in_path(path='system/lib/libc', filenames=['dynlink.c'])
-
-    libc_files += files_in_path(
-        path='system/lib/pthread',
-        filenames=['thread_profiler.c'])
 
     libc_files += glob_in_path('system/lib/libc/compat', '*.c')
 
@@ -1459,6 +1507,8 @@ class libprintf_long_double(libc):
   name = 'libprintf_long_double'
   cflags = ['-DEMSCRIPTEN_PRINTF_LONG_DOUBLE']
 
+  # Need to define get_files
+  # so libprintf_long_double.get_files() does not call libc.get_files()
   def get_files(self):
     return files_in_path(
         path='system/lib/libc/musl/src/stdio',
@@ -1468,18 +1518,15 @@ class libprintf_long_double(libc):
     return super().can_use() and settings.PRINTF_LONG_DOUBLE
 
 
-class libwasm_workers(DebugLibrary):
+class libwasm_workers(MuslInternalLibrary, DebugLibrary):
   name = 'libwasm_workers'
   includes = ['system/lib/libc']
-
-  def __init__(self, **kwargs):
-    self.is_stub = kwargs.pop('stub')
-    super().__init__(**kwargs)
+  src_dir = 'system/lib/wasm_worker'
+  src_files = ['library_wasm_worker.c', 'wasm_worker_initialize.S']
 
   def get_cflags(self):
-    cflags = super().get_cflags()
+    cflags = super().get_cflags() + ['-sWASM_WORKERS']
     if self.is_debug:
-      cflags += ['-D_DEBUG']
       # library_wasm_worker.c contains an assert that a nonnull parameter
       # is no NULL, which llvm now warns is redundant/tautological.
       cflags += ['-Wno-tautological-pointer-compare']
@@ -1488,56 +1535,19 @@ class libwasm_workers(DebugLibrary):
       # https://github.com/emscripten-core/emscripten/issues/19331
       cflags += ['-O0']
     else:
-      cflags += ['-DNDEBUG', '-Oz']
-    if settings.MAIN_MODULE:
-      cflags += ['-fPIC']
-    if not self.is_stub:
-      cflags += ['-sWASM_WORKERS']
+      cflags += ['-Oz']
     return cflags
-
-  def get_base_name(self):
-    name = super().get_base_name()
-    if self.is_stub:
-      name += '-stub'
-    return name
-
-  @classmethod
-  def vary_on(cls):
-    return super().vary_on() + ['stub']
-
-  @classmethod
-  def get_default_variation(cls, **kwargs):
-    return super().get_default_variation(stub=not settings.WASM_WORKERS, **kwargs)
-
-  def get_files(self):
-    files = []
-    if self.is_stub:
-      files = [
-        'library_wasm_worker_stub.c',
-      ]
-    else:
-      files = [
-        'library_wasm_worker.c',
-        'wasm_worker_initialize.S',
-      ]
-    return files_in_path(
-        path='system/lib/wasm_worker',
-        filenames=files)
 
   def can_use(self):
     # see src/library_wasm_worker.js
-    return super().can_use() and not settings.SINGLE_FILE and not settings.RELOCATABLE
+    return super().can_use() and not settings.SINGLE_FILE and not settings.MAIN_MODULE and settings.WASM_WORKERS
 
 
 class libsockets(MuslInternalLibrary, MTLibrary):
   name = 'libsockets'
-
-  cflags = ['-Os', '-fno-inline-functions', '-fno-builtin', '-Wno-shift-op-parentheses']
-
-  def get_files(self):
-    return files_in_path(
-      path='system/lib/libc/musl/src/network',
-      filenames=LIBC_SOCKETS)
+  src_dir = 'system/lib/libc/musl/src/network'
+  src_files = LIBC_SOCKETS
+  cflags = ['-Os', '-fno-builtin', '-Wno-shift-op-parentheses']
 
   def can_use(self):
     return super().can_use() and not settings.PROXY_POSIX_SOCKETS
@@ -1545,11 +1555,9 @@ class libsockets(MuslInternalLibrary, MTLibrary):
 
 class libsockets_proxy(MTLibrary):
   name = 'libsockets_proxy'
-
-  cflags = ['-Os', '-fno-inline-functions']
-
-  def get_files(self):
-    return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.c')]
+  src_dir = 'system/lib/websocket'
+  src_files = ['websocket_to_posix_socket.c']
+  cflags = ['-Os']
 
   def can_use(self):
     return super().can_use() and settings.PROXY_POSIX_SOCKETS
@@ -1616,11 +1624,12 @@ class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
   name = 'libc++abi'
   cflags = [
       '-Oz',
-      '-fno-inline-functions',
+      '-D_LIBCXXABI_USE_FUTEX',
       '-D_LIBCPP_BUILDING_LIBRARY',
       '-D_LIBCXXABI_BUILDING_LIBRARY',
       '-DLIBCXXABI_NON_DEMANGLING_TERMINATE',
       '-std=c++23',
+      '-Wno-unused-but-set-variable',
     ]
   includes = ['system/lib/libcxx/src']
 
@@ -1690,7 +1699,6 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
 
   cflags = [
     '-Oz',
-    '-fno-inline-functions',
     '-DLIBCXX_BUILDING_LIBCXXABI=1',
     '-D_LIBCPP_BUILDING_LIBRARY',
     '-D_LIBCPP_DISABLE_VISIBILITY_ANNOTATIONS',
@@ -1732,7 +1740,7 @@ class libunwind(ExceptionLibrary, MTLibrary):
   # See https://bugs.llvm.org/show_bug.cgi?id=44353
   force_object_files = True
 
-  cflags = ['-Oz', '-fno-inline-functions', '-D_LIBUNWIND_HIDE_SYMBOLS',
+  cflags = ['-Oz', '-D_LIBUNWIND_HIDE_SYMBOLS',
             # TODO Remove this once
             # https://github.com/llvm/llvm-project/pull/175776 lands
             '-Wno-c23-extensions']
@@ -1746,7 +1754,7 @@ class libunwind(ExceptionLibrary, MTLibrary):
     super().__init__(**kwargs)
 
   def can_use(self):
-    return super().can_use() and self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM)
+    return super().can_use() and self.eh_mode in {Exceptions.WASM_LEGACY, Exceptions.WASM}
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1771,7 +1779,7 @@ class libmalloc(MTLibrary):
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'):
+    if self.malloc not in {'dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'}:
       raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "mimalloc", "dlmalloc" or "none", see settings.js')
 
     self.is_tracing = kwargs.pop('is_tracing')
@@ -1892,7 +1900,7 @@ class libmimalloc(MTLibrary):
 class libal(Library):
   name = 'libal'
 
-  cflags = ['-Os', '-fno-inline-functions']
+  cflags = ['-Os']
   src_dir = 'system/lib'
   src_files = ['al.c']
 
@@ -1903,7 +1911,7 @@ class libGL(MTLibrary):
   src_dir = 'system/lib/gl'
   src_files = ['gl.c', 'webgl1.c', 'libprocaddr.c', 'webgl2.c']
 
-  cflags = ['-Oz', '-fno-inline-functions']
+  cflags = ['-Oz']
 
   def __init__(self, **kwargs):
     self.is_legacy = kwargs.pop('is_legacy')
@@ -2097,7 +2105,7 @@ class libhtml5(Library):
   name = 'libhtml5'
 
   includes = ['system/lib/libc']
-  cflags = ['-Oz', '-fno-inline-functions']
+  cflags = ['-Oz']
   src_dir = 'system/lib/html5'
   src_glob = '*.c'
 
@@ -2186,7 +2194,7 @@ class libstandalonewasm(MuslInternalLibrary):
   # LTO defeats the weak linking trick used in __original_main.c
   force_object_files = True
 
-  cflags = ['-Os', '-fno-inline-functions', '-fno-builtin']
+  cflags = ['-Os', '-fno-builtin']
   src_dir = 'system/lib'
 
   def __init__(self, **kwargs):
@@ -2260,7 +2268,7 @@ class libstandalonewasm(MuslInternalLibrary):
 
 class libjsmath(Library):
   name = 'libjsmath'
-  cflags = ['-Os', '-fno-inline-functions']
+  cflags = ['-Os']
   src_dir = 'system/lib'
   src_files = ['jsmath.c']
 
@@ -2419,7 +2427,7 @@ def get_libs_to_link(options):
   else:
     add_library('libsockets')
 
-  if settings.WASM_WORKERS and (not settings.SINGLE_FILE and not settings.RELOCATABLE):
+  if settings.WASM_WORKERS and (not settings.SINGLE_FILE and not settings.MAIN_MODULE):
     # When we include libwasm_workers we use `--whole-archive` to ensure
     # that the static constructor (`emscripten_wasm_worker_main_thread_initialize`)
     # is run.
@@ -2520,9 +2528,17 @@ def install_system_headers(stamp):
   version_file = cache.get_include_dir('emscripten/version.h')
   utils.write_file(version_file, textwrap.dedent(f'''\
   /* Automatically generated by tools/system_libs.py */
-  #define __EMSCRIPTEN_major__ {utils.EMSCRIPTEN_VERSION_MAJOR}
-  #define __EMSCRIPTEN_minor__ {utils.EMSCRIPTEN_VERSION_MINOR}
-  #define __EMSCRIPTEN_tiny__ {utils.EMSCRIPTEN_VERSION_TINY}
+  #define __EMSCRIPTEN_MAJOR__ {utils.EMSCRIPTEN_VERSION_MAJOR}
+  #define __EMSCRIPTEN_MINOR__ {utils.EMSCRIPTEN_VERSION_MINOR}
+  #define __EMSCRIPTEN_TINY__ {utils.EMSCRIPTEN_VERSION_TINY}
+
+  // Legacy mixed-case macros:
+  #define __EMSCRIPTEN_major__ __EMSCRIPTEN_MAJOR__
+  #define __EMSCRIPTEN_minor__ __EMSCRIPTEN_MINOR__
+  #define __EMSCRIPTEN_tiny__ __EMSCRIPTEN_TINY__
+  #pragma clang deprecated(__EMSCRIPTEN_major__, "Use __EMSCRIPTEN_MAJOR__ instead")
+  #pragma clang deprecated(__EMSCRIPTEN_minor__, "Use __EMSCRIPTEN_MINOR__ instead")
+  #pragma clang deprecated(__EMSCRIPTEN_tiny__, "Use __EMSCRIPTEN_TINY__ instead")
   '''))
 
   # Create a stamp file that signal that the headers have been installed

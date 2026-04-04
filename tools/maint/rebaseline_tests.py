@@ -41,7 +41,7 @@ def read_size_from_json(content):
 
 
 def process_changed_file(filename):
-  content = open(filename).read()
+  content = utils.read_file(filename)
   old_content = run(['git', 'show', f'HEAD:{filename}'])
   print(f'processing {filename}')
 

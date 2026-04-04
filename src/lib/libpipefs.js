@@ -21,7 +21,7 @@ addToLibrary({
         // able to read from the read end after write end is closed.
         refcnt : 2,
         timestamp: new Date(),
-#if PTHREADS
+#if PTHREADS || ASYNCIFY
         readableHandlers: [],
         registerReadableHandler: (callback) => {
           callback.registerCleanupFunc(() => {
@@ -109,7 +109,7 @@ addToLibrary({
           }
         }
 
-#if PTHREADS
+#if PTHREADS || ASYNCIFY
         if (notifyCallback) pipe.registerReadableHandler(notifyCallback);
 #endif
         return 0;
@@ -224,7 +224,7 @@ addToLibrary({
         if (freeBytesInCurrBuffer >= dataLen) {
           currBucket.buffer.set(data, currBucket.offset);
           currBucket.offset += dataLen;
-#if PTHREADS
+#if PTHREADS || ASYNCIFY
           pipe.notifyReadableHandlers();
 #endif
           return dataLen;
@@ -258,7 +258,7 @@ addToLibrary({
           newBucket.buffer.set(data);
         }
 
-#if PTHREADS
+#if PTHREADS || ASYNCIFY
         pipe.notifyReadableHandlers();
 #endif
         return dataLen;

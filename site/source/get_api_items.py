@@ -65,7 +65,7 @@ def parseFiles():
             filepath = api_reference_directory + file
             print(file)
             # open file
-            with open(filepath) as infile:
+            with open(filepath, encoding='utf-8') as infile:
                 for line in infile:
                     # parse line for API items
                     re.sub(r'^\.\.\s+((\w+)\:(\w+)\:\:(.*))', addapiitems, line)
@@ -74,7 +74,7 @@ def parseFiles():
 def exportItems():
     """Export the API items into form for use in another script.
     """
-    with open(api_item_filename, 'w') as infile:
+    with open(api_item_filename, 'w', encoding='utf-8') as infile:
         # write function lead in
         infile.write("# Auto-generated file (see get_api_items.py)\n\ndef get_mapped_items():\n    mapped_wiki_inline_code = dict()\n")
 

@@ -952,15 +952,6 @@ can also vary between browsers.
 
 Default value: false
 
-.. _polyfill_old_math_functions:
-
-POLYFILL_OLD_MATH_FUNCTIONS
-===========================
-
-If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
-
-Default value: false
-
 .. _legacy_vm_support:
 
 LEGACY_VM_SUPPORT
@@ -970,7 +961,6 @@ Set this to enable compatibility emulations for old JavaScript engines. This giv
 the highest possible probability of the code working everywhere, even in rare old
 browsers and shell environments. Specifically:
 
-- Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-sPOLYFILL_OLD_MATH_FUNCTIONS)
 - Disable WebAssembly. (Must be paired with -sWASM=0)
 - Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 - Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
@@ -1139,6 +1129,8 @@ manipulate the refcount manually to avoid memory leaks.
 See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 example usage.
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _exception_stack_traces:
@@ -1165,37 +1157,6 @@ If false, emit instructions for the standardized exception handling proposal:
 https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 
 .. note:: Applicable during both linking and compilation
-
-Default value: true
-
-.. _nodejs_catch_exit:
-
-NODEJS_CATCH_EXIT
-=================
-
-Emscripten throws an ExitStatus exception to unwind when exit() is called.
-Without this setting enabled this can show up as a top level unhandled
-exception.
-
-With this setting enabled a global uncaughtException handler is used to
-catch and handle ExitStatus exceptions.  However, this means all other
-uncaught exceptions are also caught and re-thrown, which is not always
-desirable.
-
-Default value: false
-
-.. _nodejs_catch_rejection:
-
-NODEJS_CATCH_REJECTION
-======================
-
-Catch unhandled rejections in node. This only affects versions of node older
-than 15.  Without this, old version node will print a warning, but exit
-with a zero return code.  With this setting enabled, we handle any unhandled
-rejection and throw an exception, which will cause the process to exit
-immediately with a non-0 return code.
-This is not needed in Node 15+ so this setting will default to false if
-MIN_NODE_VERSION is 150000 or above.
 
 Default value: true
 
@@ -1638,21 +1599,6 @@ the module.
 
 Default value: false
 
-.. _relocatable:
-
-RELOCATABLE
-===========
-
-If set to 1, we emit relocatable code from the LLVM backend; both
-globals and function pointers are all offset (by gb and fp, respectively)
-Automatically set for SIDE_MODULE or MAIN_MODULE.
-
-.. note:: Applicable during both linking and compilation
-
-.. note:: This setting is deprecated
-
-Default value: false
-
 .. _main_module:
 
 MAIN_MODULE
@@ -1757,14 +1703,11 @@ Set the environment variable EMCC_STRICT=1 or pass -sSTRICT to test that a
 codebase builds nicely in forward compatible manner.
 Changes enabled by this:
 
-  - The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
-    is the correct thing to use).
   - STRICT_JS is enabled.
   - IGNORE_MISSING_MAIN is disabled.
   - AUTO_JS_LIBRARIES is disabled.
   - AUTO_NATIVE_LIBRARIES is disabled.
   - DEFAULT_TO_CXX is disabled.
-  - USE_GLFW is set to 0 rather than 2 by default.
   - ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
   - INCOMING_MODULE_JS_API is set to empty by default.
 
@@ -3276,9 +3219,9 @@ Default value: true
 ALLOW_UNIMPLEMENTED_SYSCALLS
 ============================
 
-Include unimplemented JS syscalls to be included in the final output.  This
-allows programs that depend on these syscalls at runtime to be compiled, even
-though these syscalls will fail (or do nothing) at runtime.
+Link against stub implementations of unsupported/unimplemented syscalls. This
+allows programs that depend on these syscalls to be compiled, even though
+these functions will fail (or do nothing) at runtime.
 
 Default value: true
 
@@ -3476,7 +3419,7 @@ these settings please open a bug (or reply to one of the existing bugs).
  - ``LEGALIZE_JS_FFI``: to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
- - ``RELOCATABLE``:  under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
+ - ``EXPORT_EXCEPTION_HANDLING_HELPERS``: getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.
 
 .. _legacy-settings:
 
@@ -3511,7 +3454,7 @@ for backwards compatibility with older versions:
  - ``ELIMINATE_DUPLICATE_FUNCTIONS``: Duplicate function elimination for wasm is handled automatically by binaryen (Valid values: [0, 1])
  - ``ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS``: Duplicate function elimination for wasm is handled automatically by binaryen (Valid values: [0])
  - ``ELIMINATE_DUPLICATE_FUNCTIONS_PASSES``: Duplicate function elimination for wasm is handled automatically by binaryen (Valid values: [5])
- - ``WASM_OBJECT_FILES``: For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow (Valid values: [0, 1])
+ - ``WASM_OBJECT_FILES``: For LTO, use -flto or -fto=thin instead. Otherwise, Wasm object files are the default (Valid values: [1])
  - ``TOTAL_MEMORY``: Valid values: INITIAL_MEMORY
  - ``WASM_MEM_MAX``: Valid values: MAXIMUM_MEMORY
  - ``BINARYEN_MEM_MAX``: Valid values: MAXIMUM_MEMORY
@@ -3563,3 +3506,7 @@ for backwards compatibility with older versions:
  - ``ASYNCIFY_LAZY_LOAD_CODE``: No longer supported (Valid values: [0])
  - ``USE_WEBGPU``: No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py (Valid values: [0])
  - ``PROXY_TO_WORKER``: No longer supported (Valid values: [0])
+ - ``NODEJS_CATCH_EXIT``: No longer supported (Valid values: [0])
+ - ``NODEJS_CATCH_REJECTION``: No longer supported (Valid values: [0])
+ - ``POLYFILL_OLD_MATH_FUNCTIONS``: No longer supported (Valid values: [0])
+ - ``RELOCATABLE``: No longer supported (Valid values: [0])

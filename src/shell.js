@@ -3,9 +3,8 @@
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
-#if STRICT_JS
+#if STRICT_JS && !MODULARIZE // MODULARIZE handles this itself
 "use strict";
-
 #endif
 
 #include "minimum_runtime_check.js"
@@ -50,7 +49,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #if WASM_WORKERS
 // The way we signal to a worker that it is hosting a pthread is to construct
 // it with a specific name.
-var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+var ENVIRONMENT_IS_WASM_WORKER = {{{ wasmWorkerDetection() }}};
 #endif
 
 #if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
@@ -65,7 +64,7 @@ if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
-#if ENVIRONMENT.length == 1
+#if ENVIRONMENT.length == 1 && !ASSERTIONS
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT[0] === 'web' }}};
 #if PTHREADS && ENVIRONMENT_MAY_BE_NODE
 // node+pthreads always supports workers; detect which we are at runtime
@@ -75,7 +74,7 @@ var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT[0] === 'worker' }}};
 #endif
 var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT[0] === 'node' }}};
 var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT[0] === 'shell' }}};
-#else // ENVIRONMENT
+#else // ENVIRONMENT.length == 1
 // Attempt to auto-detect the environment
 var ENVIRONMENT_IS_WEB = !!globalThis.window;
 var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
@@ -97,7 +96,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 
 // The way we signal to a worker that it is hosting a pthread is to construct
 // it with a specific name.
-var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-pthread');
+var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && {{{ pthreadDetection() }}}
 
 #if MODULARIZE && ASSERTIONS
 if (ENVIRONMENT_IS_PTHREAD) {
@@ -123,10 +122,10 @@ if (ENVIRONMENT_IS_NODE) {
 #if PTHREADS
   // Under node we set `workerData` to `em-pthread` to signal that the worker
   // is hosting a pthread.
-  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-pthread'
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads.workerData == 'em-pthread'
 #endif // PTHREADS
 #if WASM_WORKERS
-  ENVIRONMENT_IS_WASM_WORKER = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-ww'
+  ENVIRONMENT_IS_WASM_WORKER = ENVIRONMENT_IS_WORKER && worker_threads.workerData == 'em-ww'
 #endif
 #endif // PTHREADS || WASM_WORKERS
 }
@@ -221,30 +220,6 @@ if (ENVIRONMENT_IS_NODE) {
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
   if (typeof module != 'undefined') {
     module['exports'] = Module;
-  }
-#endif
-
-#if NODEJS_CATCH_EXIT
-  process.on('uncaughtException', (ex) => {
-    // suppress ExitStatus exceptions from showing an error
-#if RUNTIME_DEBUG
-    dbg(`node: uncaughtException: ${ex}`)
-#endif
-    if (ex !== 'unwind' && !(ex instanceof ExitStatus) && !(ex.context instanceof ExitStatus)) {
-      throw ex;
-    }
-  });
-#endif
-
-#if NODEJS_CATCH_REJECTION
-  // Without this older versions of node (< v15) will log unhandled rejections
-  // but return 0, which is not normally the desired behaviour.  This is
-  // not be needed with node v15 and about because it is now the default
-  // behaviour:
-  // See https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-  var nodeMajor = process.versions.node.split(".")[0];
-  if (nodeMajor < 15) {
-    process.on('unhandledRejection', (reason) => { throw reason; });
   }
 #endif
 

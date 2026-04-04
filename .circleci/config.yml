@@ -7,7 +7,7 @@ orbs:
 executors:
   linux-node:
     docker:
-      - image: cimg/node:20.15.1
+      - image: cimg/node:24.13.1
   linux-python:
     docker:
       - image: cimg/python:3.10.7
@@ -106,27 +106,21 @@ commands:
             cat ~/emsdk/.emscripten
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
   install-node-oldest:
-    description: "install node (oldest)"
+    description: "install node 12.22.9 (oldest)"
     steps:
       - install-node-version:
           # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
           node_version: "12.22.9"
   install-node-lts:
-    description: "install node (current LTS)"
+    description: "install node 22.21.0 (current LTS)"
     steps:
       - install-node-version:
          node_version: "22.21.0"
   install-node-newest:
-    description: "install node (newest)"
+    description: "install node 25.4.0 (newest)"
     steps:
       - install-node-version:
-         node_version: "24.10.0"
-  install-node-canary:
-    description: "install canary version of node"
-    steps:
-      - install-node-version:
-         node_version: "25.0.0-v8-canary2025053097d65d1dc1"
-         canary: true
+         node_version: "25.4.0"
   install-v8:
     description: "install v8 using jsvu"
     steps:
@@ -509,7 +503,7 @@ commands:
             echo "-----"
             echo "Running browser tests (EMTEST_BROWSER=$EMTEST_BROWSER)"
             echo "-----"
-            test/runner << parameters.test_targets >>
+            test/runner.bat << parameters.test_targets >>
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -545,8 +539,6 @@ jobs:
       - checkout
       - pip-install
       - run: ruff check
-      # TODO (cclauss): When ruff supports rules these errors without --preview, remove following line
-      - run: ruff check --preview --select=E20,E30,E221,E225,E226
   vulture:
     executor: ubuntu-lts
     steps:
@@ -639,7 +631,7 @@ jobs:
   test-core0:
     executor: ubuntu-lts
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
     steps:
       - run-tests-linux:
           test_targets: "core0"
@@ -647,7 +639,7 @@ jobs:
     executor: ubuntu-lts
     environment:
       EMTEST_BROWSER: "node"
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
     steps:
       - run-tests-linux:
           # also run a few asan tests.  Run these with frozen_cache disabled
@@ -675,6 +667,7 @@ jobs:
             asan.test_modularize_instance_pthreads
             asan.test_minimal_runtime_hello_world
             asan.test_select_blocking
+            asan.test_ppoll_blocking
             lsan.test_dylink_dso_needed
             lsan.test_stdio_locking
             lsan.test_dlfcn_basic
@@ -697,7 +690,7 @@ jobs:
   test-core3:
     executor: ubuntu-lts
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
     steps:
       - run-tests-linux:
           frozen_cache: false
@@ -711,6 +704,7 @@ jobs:
             lto0.test_exceptions_allowed_uncaught
             lto0.test_longjmp_standalone_standalone
             lto0.test_embind_i64_val
+            thinlto0.test_pthread_dlsym
             core3
             core2g.test_externref
             corez.test_dylink_iostream
@@ -784,14 +778,14 @@ jobs:
   test-modularize-instance:
     executor: ubuntu-lts
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
     steps:
       - run-tests-linux:
           test_targets: "instance"
   test-stress:
     executor: ubuntu-lts
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
     steps:
       - run-tests-linux:
           test_targets: "stress"
@@ -805,14 +799,14 @@ jobs:
       # hardcodes /root into its launcher scripts so we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
-      - install-node-canary
+      - install-node-newest
       - run-tests:
           title: "esm_integration"
           test_targets: "esm_integration"
       - upload-test-results
   test-wasm2js1:
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
     executor: ubuntu-lts
     steps:
       - run-tests-linux:
@@ -829,12 +823,12 @@ jobs:
       # hardcodes /root into its launcher scripts so we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
-      - install-node-canary
-      # When running wasm64 tests we need to make sure we use the testing
-      # version of node (node canary) when running the compiler output (e.g.
+      - install-node-newest
+      # When running wasm64 tests we need to make sure we use the latest
+      # version of node (node 25) when running the compiler output (e.g.
       # in configure tests.
       - run:
-          name: configure node canary
+          name: configure node v25
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
@@ -852,12 +846,12 @@ jobs:
       # hardcodes /root into its launcher scripts so we need to reinstall v8.
       - run: rm -rf $HOME/.jsvu
       - install-v8
-      - install-node-canary
-      # When running wasm64 tests we need to make sure we use the testing
-      # version of node (node canary) when running the compiler output (e.g.
+      - install-node-newest
+      # When running wasm64 tests we need to make sure we use the latest
+      # version of node (node v25) when running the compiler output (e.g.
       # in configure tests.
       - run:
-          name: configure node canary
+          name: configure node v25
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64"
@@ -875,6 +869,8 @@ jobs:
       - upload-test-results
   test-bun:
     executor: linux-python
+    environment:
+      EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
       - checkout
       - pip-install
@@ -886,15 +882,11 @@ jobs:
             echo "BUN = os.path.expanduser('~/.bun/bin/bun')" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [BUN]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "
-            core0.test_hello_world
-            core0.test_hello_argc_pthreads
-            core2.test_pthread_create
-            other.test_esm
-            other.test_esm_pthreads
-            "
+          test_targets: "--crossplatform-only"
   test-deno:
     executor: linux-python
+    environment:
+      EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
       - checkout
       - pip-install
@@ -903,16 +895,10 @@ jobs:
           name: install deno
           command: |
             curl -fsSL https://deno.land/install.sh | sh
-            echo "DENO = [os.path.expanduser('~/.deno/bin/deno'), '--allow-read', '--unstable-detect-cjs']" >> ~/emsdk/.emscripten
+            echo "DENO = os.path.expanduser('~/.deno/bin/deno')" >> ~/emsdk/.emscripten
             echo "JS_ENGINES = [DENO]" >> ~/emsdk/.emscripten
       - run-tests:
-          test_targets: "
-            core0.test_hello_world
-            core0.test_hello_argc_pthreads
-            core2.test_pthread_create
-            other.test_esm
-            other.test_esm_pthreads
-            "
+          test_targets: "--crossplatform-only"
   test-jsc:
     executor: linux-python
     steps:
@@ -980,23 +966,6 @@ jobs:
       - run:
           name: configure compiler to use 18.3.0
           command: echo "NODE_JS = '$(which node)'" >> ~/emsdk/.emscripten
-      - install-node-canary
-      - run-tests:
-          title: "node (canary)"
-          test_targets: "
-            other.test_deterministic
-            other.test_gen_struct_info
-            other.test_native_call_before_init
-            other.test_node_unhandled_rejection
-            other.test_*growable_arraybuffers
-            other.test_add_js_function_bigint_memory64
-            core2.test_hello_world
-            core2.test_esm_integration*
-            core0.test_esm_integration*
-            core0.test_pthread_join_and_asyncify
-            core0.test_async_ccall_promise_jspi*
-            core0.test_cubescript_jspi
-            "
       # Run some basic tests with the minimum version of node that we currently
       # support in the generated code.
       - install-node-oldest
@@ -1006,10 +975,10 @@ jobs:
           # We include most but not all of the nodefs and node rawfs tests here.
           # test_fs_nodefs_rw, test_fs_nodefs_statvfs, and test_unistd_io_nodefs_bigint fail.
           test_targets: "
+            other.test_embind_tsgen_remove_relaxed_simd
             other.test_gen_struct_info
             other.test_native_call_before_init
             other.test_js_optimizer_verbose
-            other.test_node_unhandled_rejection
             other.test_file_packager_separate_metadata
             other.test_full_js_library*
             core2.test_hello_world
@@ -1072,10 +1041,11 @@ jobs:
           test_targets: "-v
             other.test_gen_struct_info
             other.test_native_call_before_init
-            other.test_node_unhandled_rejection
             other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
+            other.test_exceptions_stack_trace*
+            other.test_exceptions_rethrow_stack_trace*
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
             core2.test_sse2
@@ -1090,24 +1060,34 @@ jobs:
           # those flags should not be injected on newer versions.
           title: "node (latest)"
           test_targets: "-v
+            other.test_deterministic
             other.test_gen_struct_info
             other.test_native_call_before_init
-            other.test_node_unhandled_rejection
+            other.test_*growable_arraybuffers
+            other.test_add_js_function_bigint_memory64
             other.test_js_optimizer_verbose
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
+            other.test_js_base64_api
+            core2.test_hello_world
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
             core2.test_sse2
             core2.test_source_map
             core2.test_exceptions_wasm_legacy
             core2.test_pthread_unhandledrejection
+            core2.test_esm_integration*
+            core0.test_esm_integration*
+            core0.test_pthread_join_and_asyncify
+            core0.test_async_ccall_promise_jspi*
+            core0.test_cubescript_jspi
+            core0.test_poll_blocking_asyncify_jspi
             "
       - upload-test-results
   test-other:
     executor: ubuntu-lts
     environment:
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_NEW_CMAKE: "1"
@@ -1118,6 +1098,11 @@ jobs:
           # some native-dependent tests fail because of the lack of native
           # headers on emsdk-bundled clang
           test_targets: "other jslib skip:other.test_native_link_error_message"
+      - run-tests-linux:
+          # Include a single test from test_benchmark.py to ensure it's always
+          # kept functional. Must be run separately from above because we cannot
+          # run non-parallel tests in the same run as parallel tests.
+          test_targets: "benchmark.test_primes"
   test-browser-chrome:
     executor: ubuntu-lts
     environment:
@@ -1237,9 +1222,6 @@ jobs:
           name: Install packages
           command: |
             choco install -y cmake.portable ninja pkgconfiglite
-      - run:
-          name: Add python to bash path
-          command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
       - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
@@ -1258,8 +1240,8 @@ jobs:
             skip:browser.test_glbook
             skip:browser.test_sdl2_mixer_wav_dash_l
             "
-  # TODO(sbc): Re-enable once we figure out why the emrun tests are
-  # locking up.
+  # TODO(https://github.com/emscripten-core/emscripten/issues/26182):
+  # Re-enable once we figure out why the emrun tests are locking up.
   #test-browser-chrome-emrun:
   #  executor: ubuntu-lts
   #  steps:
@@ -1269,6 +1251,30 @@ jobs:
     executor: ubuntu-lts
     steps:
       - test-sockets-chrome
+
+  build-windows-launcher:
+    executor:
+      name: win/server-2022
+      shell: bash.exe -eo pipefail
+    steps:
+      - checkout
+      - run:
+          name: "build pylauncher"
+          shell: cmd.exe
+          command: .circleci\setup_vs2022.bat && cd tools\pylauncher && call build.bat
+      - store_artifacts:
+          path: tools/pylauncher/pylauncher.exe
+          destination: pylauncher.exe
+      - install-emsdk
+      - pip-install:
+          python: "$EMSDK_PYTHON"
+      - run:
+          name: "create_entry_points"
+          command: $EMSDK_PYTHON tools/maint/create_entry_points.py --exe-files
+      - run:
+          name: "crossplatform tests"
+          command: test/runner.exe core0.test_hello_world
+
 
   # windows and mac do not have separate build and test jobs, as they only run
   # a limited set of tests; it is simpler and faster to do it all in one job.
@@ -1292,30 +1298,31 @@ jobs:
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
-      EMTEST_SKIP_NODE_CANARY: "1"
+      EMTEST_SKIP_NODE_25: "1"
       EMTEST_BROWSER: "0"
     steps:
       - checkout
       - run:
+          name: Build launcher
+          command: call .circleci\setup_vs2019.bat && cd tools\pylauncher && call build.bat
+          shell: cmd.exe
+      - run:
           name: Install packages
           command: |
             choco install -y cmake.portable ninja pkgconfiglite
-      - run:
-          name: Add python to bash path
-          command: echo "export PATH=\"$PATH:/c/Python27amd64/\"" >> $BASH_ENV
       # note we do *not* build all libraries and freeze the cache; as we run
       # only limited tests here, it's more efficient to build on demand
       - install-emsdk
       - pip-install:
           python: "$EMSDK_PYTHON"
-      - run-tests:
-          title: "crossplatform tests"
-          test_targets: "--crossplatform-only"
+      - run:
+          name: "crossplatform tests"
+          command: test/runner.bat --crossplatform-only
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
-      - run-tests:
-          title: "sockets.test_nodejs_sockets_echo*"
-          test_targets: "sockets.test_nodejs_sockets_echo*"
+      - run:
+          name: "sockets.test_nodejs_sockets_echo*"
+          command: "test/runner.bat sockets.test_nodejs_sockets_echo*"
       - upload-test-results
 
   test-mac-arm64:
@@ -1412,6 +1419,7 @@ workflows:
       - test-node-compat
       - test-windows
       - test-windows-browser-firefox
+      - build-windows-launcher
       - test-mac-arm64:
           requires:
             - build-linux

@@ -72,21 +72,21 @@ Functions
 
   Signal the end of a task proxied with ``emscripten_proxy_sync_with_ctx``.
 
-.. c:function:: int emscripten_proxy_async(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void* arg)
+.. c:function:: bool emscripten_proxy_async(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void* arg)
 
   Enqueue ``func`` to be called with argument ``arg`` on the given queue and
   thread then return immediately without waiting for ``func`` to be executed.
-  Returns 1 if the work was successfully enqueued or 0 otherwise.
+  Returns true if the work was successfully enqueued or false otherwise.
 
-.. c:function:: int emscripten_proxy_sync(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void* arg)
+.. c:function:: bool emscripten_proxy_sync(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void* arg)
 
   Enqueue ``func`` to be called with argument ``arg`` on the given queue and
   thread then wait for ``func`` to be executed synchronously before returning.
-  Returns 1 if the ``func`` was successfully completed and 0 otherwise,
+  Returns true if the ``func`` was successfully completed and false otherwise,
   including if the target thread is canceled or exits before the work is
   completed.
 
-.. c:function:: int emscripten_proxy_sync_with_ctx(em_proxying_queue* q, pthread_t target_thread, void (*func)(em_proxying_ctx*, void*), void* arg)
+.. c:function:: bool emscripten_proxy_sync_with_ctx(em_proxying_queue* q, pthread_t target_thread, void (*func)(em_proxying_ctx*, void*), void* arg)
 
   The same as ``emscripten_proxy_sync`` except that instead of waiting for the
   proxied function to return, it waits for the proxied task to be explicitly
@@ -94,24 +94,24 @@ Functions
   ``emscripten_proxy_finish`` itself; it could instead store the context pointer
   and call ``emscripten_proxy_finish`` at an arbitrary later time.
 
-.. c:function:: int emscripten_proxy_callback(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void (*callback)(void*), void (*cancel)(void*), void* arg)
+.. c:function:: bool emscripten_proxy_callback(em_proxying_queue* q, pthread_t target_thread, void (*func)(void*), void (*callback)(void*), void (*cancel)(void*), void* arg)
 
   Enqueue ``func`` on the given queue and thread. Once (and if) it finishes
   executing, it will asynchronously proxy ``callback`` back to the current
   thread on the same queue, or if the target thread dies before the work can be
   completed, ``cancel`` will be proxied back instead. All three function will
-  receive the same argument, ``arg``. Returns 1 if ``func`` was successfully
-  enqueued and the target thread notified or 0 otherwise.
+  receive the same argument, ``arg``. Returns true if ``func`` was successfully
+  enqueued and the target thread notified or false otherwise.
 
-.. c:function:: int emscripten_proxy_callback_with_ctx(em_proxying_queue* q, pthread_t target_thread, void (*func)(em_proxying_ctx*, void*), void (*callback)(void*), void (*cancel)(void*), void* arg)
+.. c:function:: bool emscripten_proxy_callback_with_ctx(em_proxying_queue* q, pthread_t target_thread, void (*func)(em_proxying_ctx*, void*), void (*callback)(void*), void (*cancel)(void*), void* arg)
 
   Enqueue ``func`` on the given queue and thread. Once (and if) it finishes the
   task by calling ``emscripten_proxy_finish`` on the given ``em_proxying_ctx``,
   it will asynchronously proxy ``callback`` back to the current thread on the
   same queue, or if the target thread dies before the work can be completed,
   ``cancel`` will be proxied back instead. All three function will receive the
-  same argument, ``arg``. Returns 1 if ``func`` was successfully enqueued and
-  the target thread notified or 0 otherwise.
+  same argument, ``arg``. Returns true if ``func`` was successfully enqueued and
+  the target thread notified or false otherwise.
 
 C++ API
 -------

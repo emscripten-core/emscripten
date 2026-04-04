@@ -107,7 +107,7 @@ function stringifyWithFunctions(obj) {
     if (typeof value === 'function' && (str.startsWith(key) || str.startsWith('async ' + key))) {
       rtn += str + ',\n';
     } else {
-      rtn += escapeJSONKey(key) + ':' + str + ',\n';
+      rtn += `${escapeJSONKey(key)}:${str},\n`;
     }
   }
   return rtn + '}';
@@ -122,7 +122,7 @@ function isDefined(symName) {
   }
   // 'invoke_' symbols are created at runtime in library_dylink.py so can
   // always be considered as defined.
-  if ((MAIN_MODULE || RELOCATABLE) && symName.startsWith('invoke_')) {
+  if (MAIN_MODULE && symName.startsWith('invoke_')) {
     return true;
   }
   return false;
@@ -286,8 +286,7 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
       error(`handleI64Signatures: signature '${sig}' too long for ${symbol}(${argNames.join(', ')})`);
       return snippet;
     }
-    for (let i = 0; i < argNames.length; i++) {
-      const name = argNames[i];
+    for (const [i, name] of argNames.entries()) {
       // If sig is shorter than argNames list then argType will be undefined
       // here, which will result in the default case below.
       const argType = sig[i + 1];
@@ -377,6 +376,12 @@ function(${args}) {
 }\n`;
   });
 }
+
+// The three different inter-thread proxying methods.
+// See system/lib/pthread/proxying.c
+const PROXY_ASYNC = 0;
+const PROXY_SYNC = 1;
+const PROXY_SYNC_ASYNC = 2;
 
 export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
@@ -478,11 +483,19 @@ function(${args}) {
         error(`JS library error: invalid proxying mode '${symbol}__proxy: ${proxyingMode}' specified`);
       }
       if (SHARED_MEMORY && proxyingMode != 'none') {
-        const sync = proxyingMode === 'sync';
         if (PTHREADS) {
           snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
             if (oneliner) {
               body = `return ${body}`;
+            }
+            let proxyMode = PROXY_ASYNC;
+            if (proxyingMode === 'sync') {
+              const isAsyncFunction = LibraryManager.library[symbol + '__async'];
+              if (isAsyncFunction) {
+                proxyMode = PROXY_SYNC_ASYNC;
+              } else {
+                proxyMode = PROXY_SYNC;
+              }
             }
             const rtnType = sig && sig.length ? sig[0] : null;
             const proxyFunc =
@@ -491,7 +504,7 @@ function(${args}) {
             return `
 ${async_}function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+sync}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${proxyMode}${args ? ', ' : ''}${args});
 ${body}
 }\n`;
           });
@@ -593,7 +606,7 @@ function(${args}) {
       if (!LibraryManager.library.hasOwnProperty(symbol)) {
         const isWeakImport = WEAK_IMPORTS.has(symbol);
         if (!isDefined(symbol) && !isWeakImport) {
-          if (PROXY_TO_PTHREAD && !(MAIN_MODULE || RELOCATABLE) && symbol == '__main_argc_argv') {
+          if (PROXY_TO_PTHREAD && !MAIN_MODULE && symbol == '__main_argc_argv') {
             error('PROXY_TO_PTHREAD proxies main() for you, but no main exists');
             return;
           }
@@ -624,7 +637,7 @@ function(${args}) {
 
         // emit a stub that will fail at runtime
         var stubFunctionBody = `abort('missing function: ${symbol}');`
-        if (RELOCATABLE || MAIN_MODULE) {
+        if (MAIN_MODULE) {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
           // resolved assert in debug builds or trap in release builds.
@@ -689,7 +702,7 @@ function(${args}) {
           // signatures are relevant and they differ between and alais and
           // it's target) we need to construct a forwarding function from
           // one to the other.
-          const isSigRelevant = MAIN_MODULE || RELOCATABLE || MEMORY64 || CAN_ADDRESS_2GB || (sig && sig.includes('j'));
+          const isSigRelevant = MAIN_MODULE || MEMORY64 || CAN_ADDRESS_2GB || (sig && sig.includes('j'));
           const targetSig = LibraryManager.library[aliasTarget + '__sig'];
           if (isSigRelevant && sig && targetSig && sig != targetSig) {
             debugLog(`${symbol}: Alias target (${aliasTarget}) has different signature (${sig} vs ${targetSig})`)
@@ -700,6 +713,9 @@ function(${args}) {
       } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
         addImplicitDeps(snippet, deps);
+      } else if (typeof snippet == 'string' && (snippet.match(/^\s*\([^}]*\)\s*=>/) || snippet.match(/^function\b/))) {
+        // Support functions that are already "stringified"
+        isFunction = true;
       }
 
       if (isFunction) {
@@ -788,7 +804,7 @@ function(${args}) {
       }
 
       // Dynamic linking needs signatures to create proper wrappers.
-      if (sig && (MAIN_MODULE || RELOCATABLE)) {
+      if (sig && MAIN_MODULE) {
         if (!WASM_BIGINT) {
           sig = sig[0].replace('j', 'i') + sig.slice(1).replace(/j/g, 'ii');
         }
@@ -800,7 +816,7 @@ function(${args}) {
       }
       if (isStub) {
         contentText += `\n${mangled}.stub = true;`;
-        if (ASYNCIFY && (MAIN_MODULE || RELOCATABLE)) {
+        if (ASYNCIFY && MAIN_MODULE) {
           contentText += `\nasyncifyStubs['${symbol}'] = undefined;`;
         }
       }

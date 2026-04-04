@@ -194,13 +194,22 @@ var SyscallsLibrary = {
     var old = SYSCALLS.getStreamFromFD(fd);
     return FS.dupStream(old).fd;
   },
-  __syscall_pipe__deps: ['$PIPEFS'],
-  __syscall_pipe: (fdPtr) => {
+  __syscall_pipe2__deps: ['$PIPEFS'],
+  __syscall_pipe2: (fdPtr, flags) => {
     if (fdPtr == 0) {
       throw new FS.ErrnoError({{{ cDefs.EFAULT }}});
     }
+    var validFlags = {{{ cDefs.O_CLOEXEC }}} | {{{ cDefs.O_NONBLOCK }}};
+    if (flags & ~validFlags) {
+      throw new FS.ErrnoError({{{ cDefs.ENOTSUP }}});
+    }
 
     var res = PIPEFS.createPipe();
+
+    if (flags & {{{ cDefs.O_NONBLOCK }}}) {
+      FS.getStream(res.readable_fd).flags |= {{{ cDefs.O_NONBLOCK }}};
+      FS.getStream(res.writable_fd).flags |= {{{ cDefs.O_NONBLOCK }}};
+    }
 
     {{{ makeSetValue('fdPtr', 0, 'res.readable_fd', 'i32') }}};
     {{{ makeSetValue('fdPtr', 4, 'res.writable_fd', 'i32') }}};
@@ -336,7 +345,7 @@ var SyscallsLibrary = {
     if (info.errno) throw new FS.ErrnoError(info.errno);
     info.addr = DNS.lookup_addr(info.addr) || info.addr;
 #if SYSCALL_DEBUG
-    dbg('    (socketaddress: "' + [info.addr, info.port] + '")');
+    dbg(`    (socketaddress: "${[info.addr, info.port]}")`);
 #endif
     return info;
   },
@@ -551,15 +560,19 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
-  _poll_js__proxy: 'none',
-  _poll_js__deps: [
+  __syscall_poll__proxy: 'sync',
+  __syscall_poll__async: 'auto',
+  __syscall_poll: (fds, nfds, timeout) => {
+#if PTHREADS || ASYNCIFY
 #if PTHREADS
-    '_emscripten_proxy_poll_finish',
+    const isAsyncContext = PThread.currentProxiedOperationCallerThread;
+#else
+    const isAsyncContext = true;
 #endif
-  ],
-  _poll_js: (fds, nfds, timeout, ctx, arg) => {
-#if PTHREADS
     // Enable event handlers only when the poll call is proxied from a worker.
+    // TODO: Could use `Promise.withResolvers` here if we know its available.
+    var resolve;
+    var promise = new Promise((resolve_) => { resolve = resolve_; });
     var cleanupFuncs = [];
     var notifyDone = false;
     function asyncPollComplete(count) {
@@ -571,7 +584,7 @@ var SyscallsLibrary = {
       dbg('asyncPollComplete', count);
 #endif
       cleanupFuncs.forEach(cb => cb());
-      __emscripten_proxy_poll_finish(ctx, arg, count);
+      resolve(count);
     }
     function makeNotifyCallback(stream, pollfd) {
       var cb = (flags) => {
@@ -595,17 +608,18 @@ var SyscallsLibrary = {
       return cb;
     }
 
-    if (ctx) {
+    if (isAsyncContext) {
 #if RUNTIME_DEBUG
       dbg('async poll start');
 #endif
       if (timeout > 0) {
-        setTimeout(() => {
+        var t = setTimeout(() => {
 #if RUNTIME_DEBUG
-          dbg('poll: timeout');
+          dbg('poll: timeout', timeout);
 #endif
           asyncPollComplete(0);
         }, timeout);
+        cleanupFuncs.push(() => clearTimeout(t));
       }
     }
 #endif
@@ -619,8 +633,8 @@ var SyscallsLibrary = {
       var stream = FS.getStream(fd);
       if (stream) {
         if (stream.stream_ops.poll) {
-#if PTHREADS
-          if (ctx && timeout) {
+#if PTHREADS || ASYNCIFY
+          if (isAsyncContext && timeout) {
             flags = stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd));
           } else
 #endif
@@ -634,12 +648,12 @@ var SyscallsLibrary = {
       {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
     }
 
-#if PTHREADS
-    if (ctx) {
+#if PTHREADS || ASYNCIFY
+    if (isAsyncContext) {
       if (count || !timeout) {
         asyncPollComplete(count);
       }
-      return 0;
+      return promise;
     }
 #endif
 
@@ -702,12 +716,12 @@ var SyscallsLibrary = {
       var name = stream.getdents[idx];
       if (name === '.') {
         id = stream.node.id;
-        type = 4; // DT_DIR
+        type = {{{ cDefs.DT_DIR }}};
       }
       else if (name === '..') {
         var lookup = FS.lookupPath(stream.path, { parent: true });
         id = lookup.node.id;
-        type = 4; // DT_DIR
+        type = {{{ cDefs.DT_DIR }}};
       }
       else {
         var child;
@@ -722,10 +736,10 @@ var SyscallsLibrary = {
           throw e;
         }
         id = child.id;
-        type = FS.isChrdev(child.mode) ? 2 :  // DT_CHR, character device.
-               FS.isDir(child.mode) ? 4 :     // DT_DIR, directory.
-               FS.isLink(child.mode) ? 10 :   // DT_LNK, symbolic link.
-               8;                             // DT_REG, regular file.
+        type = FS.isChrdev(child.mode) ? {{{ cDefs.DT_CHR }}} : // character device.
+               FS.isDir(child.mode) ? {{{ cDefs.DT_DIR }}} :    // directory
+               FS.isLink(child.mode) ? {{{ cDefs.DT_LNK }}} :   // symbolic link.
+               {{{ cDefs.DT_REG }}};                            // regular file.
       }
 #if ASSERTIONS
       assert(id);
@@ -1014,8 +1028,8 @@ var SyscallsLibrary = {
   },
 };
 
-for (var x in SyscallsLibrary) {
-  wrapSyscallFunction(x, SyscallsLibrary, false);
+for (const name of Object.keys(SyscallsLibrary)) {
+  wrapSyscallFunction(name, SyscallsLibrary, false);
 }
 
 addToLibrary(SyscallsLibrary);

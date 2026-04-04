@@ -36,38 +36,38 @@ WEBGL_APICALL void GL_APIENTRY glDrawElementsInstancedBaseVertexBaseInstanceWEBG
 
 WEBGL_APICALL void GL_APIENTRY emscripten_glMultiDrawArraysInstancedBaseInstanceWEBGL(
   GLenum mode,
-  const GLint* firsts __attribute__((nonnull)),
-  const GLsizei* counts __attribute__((nonnull)),
-  const GLsizei* instanceCounts __attribute__((nonnull)),
-  const GLuint* baseInstances __attribute__((nonnull)),
+  const GLint* _Nonnull firsts,
+  const GLsizei* _Nonnull counts,
+  const GLsizei* _Nonnull instanceCounts,
+  const GLuint* _Nonnull baseInstances,
   GLsizei drawCount);
 
 WEBGL_APICALL void GL_APIENTRY emscripten_glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL(
   GLenum mode,
-  const GLsizei* counts __attribute__((nonnull)),
+  const GLsizei* _Nonnull counts,
   GLenum type,
-  const GLvoid* const* offsets __attribute__((nonnull)),
-  const GLsizei* instanceCounts __attribute__((nonnull)),
-  const GLint* baseVertices __attribute__((nonnull)),
-  const GLuint* baseInstances __attribute__((nonnull)),
+  const GLvoid* const* _Nonnull offsets,
+  const GLsizei* _Nonnull instanceCounts,
+  const GLint* _Nonnull baseVertices,
+  const GLuint* _Nonnull baseInstances,
   GLsizei drawCount);
 
 WEBGL_APICALL void GL_APIENTRY glMultiDrawArraysInstancedBaseInstanceWEBGL(
   GLenum mode,
- const GLint* firsts __attribute__((nonnull)),
- const GLsizei* counts __attribute__((nonnull)),
- const GLsizei* instanceCounts __attribute__((nonnull)),
- const GLuint* baseInstances __attribute__((nonnull)),
+ const GLint* _Nonnull firsts,
+ const GLsizei* _Nonnull counts,
+ const GLsizei* _Nonnull instanceCounts,
+ const GLuint* _Nonnull baseInstances,
  GLsizei drawCount);
 
 WEBGL_APICALL void GL_APIENTRY glMultiDrawElementsInstancedBaseVertexBaseInstanceWEBGL(
   GLenum mode,
-  const GLsizei* counts __attribute__((nonnull)),
+  const GLsizei* _Nonnull counts,
   GLenum type,
-  const GLvoid* const* offsets __attribute__((nonnull)),
-  const GLsizei* instanceCounts __attribute__((nonnull)),
-  const GLint* baseVertices __attribute__((nonnull)),
-  const GLuint* baseInstances __attribute__((nonnull)),
+  const GLvoid* const* _Nonnull offsets,
+  const GLsizei* _Nonnull instanceCounts,
+  const GLint* _Nonnull baseVertices,
+  const GLuint* _Nonnull baseInstances,
   GLsizei drawCount);
 
 #endif /* EMSCRIPTEN_GL_WEBGL_multi_draw_instanced_base_vertex_base_instance */

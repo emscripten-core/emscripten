@@ -31,6 +31,9 @@ EMSCRIPTEN_PREFIX = utils.normalize_path(utils.path_from_root())
 
 logger = logging.getLogger('wasm-sourcemap')
 
+# FIXME: Generate Scopes info
+generate_scopes = False
+
 
 def parse_args(args):
   parser = argparse.ArgumentParser(prog='wasm-sourcemap.py', description=__doc__)
@@ -107,8 +110,8 @@ def encode_vlq(n):
   x = (n << 1) if n >= 0 else ((-n << 1) + 1)
   result = ""
   while x > 31:
-    result = result + VLQ_CHARS[32 + (x & 31)]
-    x = x >> 5
+    result += VLQ_CHARS[32 + (x & 31)]
+    x >>= 5
   return result + VLQ_CHARS[x]
 
 
@@ -116,11 +119,11 @@ def read_var_uint(wasm, pos):
   n = 0
   shift = 0
   b = ord(wasm[pos:pos + 1])
-  pos = pos + 1
+  pos += 1
   while b >= 128:
-    n = n | ((b - 128) << shift)
+    n |= ((b - 128) << shift)
     b = ord(wasm[pos:pos + 1])
-    pos = pos + 1
+    pos += 1
     shift += 7
   return n + (b << shift), pos
 
@@ -141,7 +144,7 @@ def strip_debug_sections(wasm):
       name = str(wasm[name_pos:name_end])
       if name in {'linking', 'sourceMappingURL'} or name.startswith(('reloc..debug_', '.debug_')):
         continue  # skip debug related sections
-    stripped = stripped + wasm[section_start:pos]
+    stripped += wasm[section_start:pos]
 
   return stripped
 
@@ -150,7 +153,7 @@ def encode_uint_var(n):
   result = bytearray()
   while n > 127:
     result.append(128 | (n & 127))
-    n = n >> 7
+    n >>= 7
   result.append(n)
   return bytes(result)
 
@@ -171,7 +174,7 @@ def get_code_section_offset(wasm):
     section_size, pos = read_var_uint(wasm, pos_)
     if section_id == 10:
       return pos
-    pos = pos + section_size
+    pos += section_size
 
 
 def remove_dead_entries(entries):
@@ -399,12 +402,17 @@ def read_dwarf_info(wasm, options):
     logger.debug('Reading DWARF information from %s' % wasm)
     if not os.path.exists(options.dwarfdump):
       utils.exit_with_error('llvm-dwarfdump not found: ' + options.dwarfdump)
-    # We need only three tags in the debug info: DW_TAG_compile_unit for
-    # source location, and DW_TAG_subprogram and DW_TAG_inlined_subroutine
-    # for the function ranges.
-    dwarfdump_cmd = [options.dwarfdump, '-debug-info', '-debug-line', wasm,
-                     '-t', 'DW_TAG_compile_unit', '-t', 'DW_TAG_subprogram',
-                     '-t', 'DW_TAG_inlined_subroutine']
+    dwarfdump_cmd = [options.dwarfdump, '-debug-info', '-debug-line', wasm]
+    if generate_scopes:
+      # We need only three tags in the debug info: DW_TAG_compile_unit for
+      # source location, and DW_TAG_subprogram and DW_TAG_inlined_subroutine
+      # for the function ranges.
+      dwarfdump_cmd += ['-t', 'DW_TAG_compile_unit', '-t', 'DW_TAG_subprogram',
+                        '-t', 'DW_TAG_inlined_subroutine']
+    else:
+      # We only need the top-level DW_TAG_compile_unit tags when not generating
+      # the names field
+      dwarfdump_cmd += ['--recurse-depth=0']
     proc = shared.check_call(dwarfdump_cmd, stdout=shared.PIPE)
     output = proc.stdout
   else:
@@ -481,7 +489,10 @@ def read_dwarf_info(wasm, options):
   # return entries sorted by the address field
   entries = sorted(entries, key=lambda entry: entry['address'])
 
-  func_ranges = extract_func_ranges(debug_info)
+  if generate_scopes:
+    func_ranges = extract_func_ranges(debug_info)
+  else:
+    func_ranges = []
   return entries, func_ranges
 
 
@@ -556,8 +567,7 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
       if collect_sources:
         load_name = prefixes.load.resolve(file_name)
         try:
-          with open(load_name) as infile:
-            source_content = infile.read()
+          source_content = utils.read_file(load_name)
           sources_content.append(source_content)
         except OSError:
           print('Failed to read source: %s' % load_name)

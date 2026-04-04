@@ -395,3 +395,5 @@ epub_exclude_files = ['search.html']
 #highlight_language = 'default'
 
 primary_domain = 'cpp'
+
+smartquotes_excludes = {'builders': ['text', 'man']}

@@ -64,6 +64,11 @@
 #include <limits.h>
 #include <stdlib.h>
 
+#ifdef __EMSCRIPTEN__
+#include <emscripten/threading.h>
+#include <math.h>
+#endif
+
 #ifndef _LIBCXXABI_HAS_NO_THREADS
 #  if defined(__ELF__) && defined(_LIBCXXABI_LINK_PTHREAD_LIB)
 #    pragma comment(lib, "pthread")
@@ -424,6 +429,13 @@ void PlatformFutexWake(int* addr) {
   constexpr int WAKE = 1;
   __tsan_release(addr);
   futex(reinterpret_cast<volatile uint32_t*>(addr), WAKE, INT_MAX, NULL, NULL);
+}
+#elif defined(__EMSCRIPTEN__)
+void PlatformFutexWait(int* addr, int expect) {
+  emscripten_futex_wait(addr, expect, INFINITY);
+}
+void PlatformFutexWake(int* addr) {
+  emscripten_futex_wake(addr, INT_MAX);
 }
 #elif defined(SYS_futex)
 void PlatformFutexWait(int* addr, int expect) {

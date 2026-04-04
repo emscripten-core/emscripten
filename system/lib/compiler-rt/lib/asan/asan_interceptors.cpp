@@ -911,4 +911,4 @@ void InitializeAsanInterceptors() {
 
 } // namespace __asan
 
-#endif  // !SANITIZER_FUCHSIA && !SANITIZER_RTEMS && !SANITIZER_EMSCRIPTEN
+#endif  // !SANITIZER_FUCHSIA && !SANITIZER_EMSCRIPTEN

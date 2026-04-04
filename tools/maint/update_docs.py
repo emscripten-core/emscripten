@@ -25,12 +25,12 @@ The change was generated at git revision https://github.com/emscripten-core/emsc
 
 
 def is_git_clean(dirname):
-  return subprocess.check_output(['git', 'status', '-uno', '--porcelain'], text=True, cwd=dirname).strip() == ''
+  return not subprocess.check_output(['git', 'status', '-uno', '--porcelain'], text=True, cwd=dirname).strip()
 
 
 def get_changed_files(dirname):
   files_changed = subprocess.check_output(['git', 'status', '-uno', '--porcelain'], text=True, cwd=dirname).splitlines()
-  return  [line[3:].strip() for line in files_changed]
+  return [line[3:].strip() for line in files_changed]
 
 
 def main(args):

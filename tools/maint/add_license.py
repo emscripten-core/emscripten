@@ -62,9 +62,9 @@ def process_file(filename):
   if any(filename.startswith(ex) for ex in exclude_filenames):
     return
   ext = os.path.splitext(filename)[1]
-  if ext not in ('.py', '.c', '.cpp', '.h', '.js'):
+  if ext not in {'.py', '.c', '.cpp', '.h', '.js'}:
     return
-  with open(filename) as f:
+  with open(filename, encoding='utf-8') as f:
     contents = f.read()
   header = '\n'.join(contents.splitlines()[:30])
   if any(ex in header for ex in exclude_contents):
@@ -72,7 +72,7 @@ def process_file(filename):
   output = subprocess.check_output(['git', 'log', '--pretty=format:%cd', '--date=format:%Y', filename])
   year = output.splitlines()[-1].split()[0]
   print(filename)
-  with open(filename, 'w') as f:
+  with open(filename, 'w', encoding='utf-8') as f:
     if ext == '.py':
       if contents.startswith('#!'):
         line1, rest = contents.split('\n', 1)
@@ -81,18 +81,18 @@ def process_file(filename):
       f.write(py_license % year)
       if not contents.startswith('\n'):
         f.write('\n')
-    elif ext in ('.c', '.h'):
+    elif ext in {'.c', '.h'}:
       f.write(c_license % year)
       if not contents.startswith('\n'):
         f.write('\n')
-    elif ext in ('.cpp', '.js'):
-        if contents.startswith('/*\n'):
-          contents = contents[3:]
-          f.write(c_license_base % year)
-        else:
-          f.write(cpp_license % year)
-          if not contents.startswith('\n'):
-            f.write('\n')
+    elif ext in {'.cpp', '.js'}:
+      if contents.startswith('/*\n'):
+        contents = contents[3:]
+        f.write(c_license_base % year)
+      else:
+        f.write(cpp_license % year)
+        if not contents.startswith('\n'):
+          f.write('\n')
     else:
       assert False
     f.write(contents)

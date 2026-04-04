@@ -225,6 +225,9 @@ addToLibrary({
             ws = new WebSocketConstructor(url, opts);
             ws.binaryType = 'arraybuffer';
           } catch (e) {
+#if SOCKET_DEBUG
+            dbg(`websocket: error connecting: ${e}`);
+#endif
             throw new FS.ErrnoError({{{ cDefs.EHOSTUNREACH }}});
           }
         }

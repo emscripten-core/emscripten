@@ -211,7 +211,7 @@ def compile_javascript(symbols_only=False):
   if stderr_file:
     stderr_file = os.path.abspath(stderr_file)
     logger.info('logging stderr in js compiler phase into %s' % stderr_file)
-    stderr_file = open(stderr_file, 'w')
+    stderr_file = open(stderr_file, 'w', encoding='utf-8')
 
   # Save settings to a file to work around v8 issue 1579
   settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
@@ -372,9 +372,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
       shutil.copy(in_wasm, out_wasm)
     metadata = get_metadata(in_wasm, out_wasm, False, [])
 
-  if settings.RELOCATABLE and settings.MEMORY64 == 2:
-    metadata.imports += ['__memory_base32']
-
   # If the binary has already been finalized the settings have already been
   # updated and we can skip updating them.
   if finalize:
@@ -382,14 +379,16 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   if not settings.WASM_BIGINT and metadata.em_js_funcs:
     for em_js_func, raw in metadata.em_js_funcs.items():
-      c_sig = raw.split('<::>')[0].strip('()')
-      if not c_sig or c_sig == 'void':
-        c_sig = []
+      args, _ = raw.split('<::>', 1)
+      args = args[1:-1].strip()
+
+      if not args or args == 'void':
+        args = []
       else:
-        c_sig = c_sig.split(',')
+        args = args.split(',')
       signature = metadata.em_js_func_types.get(em_js_func)
-      if signature and len(signature.params) != len(c_sig):
-        diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
+      if signature and len(signature.params) != len(args):
+        diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, args, signature.params)
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
@@ -420,20 +419,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   for e in settings.EXPORTED_FUNCTIONS:
     if not js_manipulation.isidentifier(e):
       diagnostics.warning('js-compiler', f'export name is not a valid JS symbol: "{e}".  Use `Module` or `wasmExports` to access this symbol')
-
-  # memory and global initializers
-
-  if settings.RELOCATABLE:
-    dylink_sec = webassembly.parse_dylink_section(in_wasm)
-    static_bump = align_memory(dylink_sec.mem_size)
-    set_memory(static_bump)
-    logger.debug('stack_low: %d, stack_high: %d, heap_base: %d', settings.STACK_LOW, settings.STACK_HIGH, settings.HEAP_BASE)
-
-    # When building relocatable output (e.g. MAIN_MODULE) the reported table
-    # size does not include the reserved slot at zero for the null pointer.
-    # So we need to offset the elements by 1.
-    if settings.INITIAL_TABLE == -1:
-      settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
   if metadata.invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
@@ -593,16 +578,20 @@ def finalize_wasm(infile, outfile, js_syms):
 
   # For sections we no longer need, strip now to speed subsequent passes.
   # If Binaryen is not needed, this is also our last chance to strip.
-  strip_sections = []
+  # The `llvm.func_attr.annotate` are created by `[[clang::annotate]]` or
+  # similar.  We have some plans to use them for emscripten metadata but
+  # they should not persist in the final binary.
+  strip_sections = ['llvm.func_attr.annotate.*']
   if not settings.EMIT_PRODUCERS_SECTION:
     strip_sections += ['producers']
   if not need_name_section:
     strip_sections += ['name']
+  if not settings.GENERATE_DWARF:
+    strip_sections += ['.debug*']
 
-  if strip_sections or not settings.GENERATE_DWARF:
+  if strip_sections:
     building.save_intermediate(outfile, 'strip.wasm')
-    building.strip(infile, outfile, debug=not settings.GENERATE_DWARF,
-                   sections=strip_sections)
+    building.strip_sections(infile, outfile, strip_sections)
 
   metadata = get_metadata(outfile, outfile, modify_wasm, args)
 
@@ -748,8 +737,6 @@ def create_asm_consts(metadata):
       func = f'function({args}) {{ {body} }}'
     else:
       func = f'({args}) => {{ {body} }}'
-    if settings.RELOCATABLE:
-      addr += settings.GLOBAL_BASE
     asm_consts[addr] = func
   asm_consts = sorted(asm_consts.items())
   return asm_consts
@@ -794,8 +781,8 @@ def create_em_js(metadata):
   for name, raw in metadata.em_js_funcs.items():
     assert separator in raw
     args, body = raw.split(separator, 1)
-    args = args[1:-1]
-    if args == 'void':
+    args = args[1:-1].strip()
+    if not args or args == 'void':
       args = []
     else:
       args = args.split(',')
@@ -826,11 +813,6 @@ def add_standard_wasm_imports(send_items_map):
   # TODO(sbc): can we make these into normal library symbols?
   if settings.IMPORTED_MEMORY:
     send_items_map['memory'] = 'wasmMemory'
-
-  if settings.RELOCATABLE:
-    send_items_map['__indirect_function_table'] = 'wasmTable'
-    if settings.MEMORY64:
-      send_items_map['__table_base32'] = '___table_base32'
 
   if settings.AUTODEBUG:
     extra_sent_items += [
@@ -864,11 +846,6 @@ def add_standard_wasm_imports(send_items_map):
       'memory_grow_pre',
       'memory_grow_post',
     ]
-
-  if settings.SPLIT_MODULE and settings.ASYNCIFY == 2:
-    # Calls to this function are generated by binaryen so it must be manually
-    # imported.
-    extra_sent_items.append('__load_secondary_module')
 
   for s in extra_sent_items:
     send_items_map[s] = s
@@ -966,7 +943,7 @@ def install_debug_wrapper(sym):
   # `__trap` can occur before the runtime is initialized since it is used in abort.
   # `emscripten_get_sbrk_ptr` can be called prior to runtime initialization by
   # the dynamic linking code.
-  return sym not in ['__trap', 'emscripten_get_sbrk_ptr']
+  return sym not in {'__trap', 'emscripten_get_sbrk_ptr'}
 
 
 def should_export(sym):
@@ -1201,12 +1178,13 @@ def create_pointer_conversion_wrappers(metadata):
     '_wasmfs_node_record_dirent': '_pp_',
     '__dl_seterr': '_pp',
     '_emscripten_run_js_on_main_thread': '__p_p_',
+    '_emscripten_run_js_on_main_thread_done': '_pp_',
     '_emscripten_thread_exit': '_p',
     '_emscripten_thread_init': '_p_____',
     '_emscripten_thread_free_data': '_p',
     '_emscripten_dlsync_self_async': '_p',
     '_emscripten_proxy_dlsync_async': '_pp',
-    '_emscripten_wasm_worker_initialize': '_p_',
+    '_emscripten_wasm_worker_initialize': '__p_',
     '_emscripten_proxy_poll_finish': '_pp_',
     '_wasmfs_rename': '_pp',
     '_wasmfs_readlink': '_pp',

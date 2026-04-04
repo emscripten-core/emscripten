@@ -1,13 +1,15 @@
 listing contents of dir=/
-.
-..
-dev
-tmp
+sorted contents of dir=/:
+- .
+- ..
+- dev
+- tmp
 listing contents of dir=/working
-.
-..
-existing
-stdout
-test_nodefs_readdir.js
-test_nodefs_readdir.wasm
+sorted contents of dir=/working:
+- .
+- ..
+- existing
+- stdout
+- test_nodefs_readdir.js
+- test_nodefs_readdir.wasm
 success

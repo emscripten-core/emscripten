@@ -7,6 +7,7 @@
 var LibraryFS = {
   $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
     '$FS_modeStringToFlags',
+    '$FS_fileDataToTypedArray',
     '$FS_getMode',
     '$intArrayFromString',
 #if LibraryManager.has('libidbfs.js')
@@ -376,9 +377,11 @@ FS.staticInit();`;
       // return 0 if any user, group or owner bits are set.
       if (perms.includes('r') && !(node.mode & {{{ cDefs.S_IRUGO }}})) {
         return {{{ cDefs.EACCES }}};
-      } else if (perms.includes('w') && !(node.mode & {{{ cDefs.S_IWUGO }}})) {
+      }
+      if (perms.includes('w') && !(node.mode & {{{ cDefs.S_IWUGO }}})) {
         return {{{ cDefs.EACCES }}};
-      } else if (perms.includes('x') && !(node.mode & {{{ cDefs.S_IXUGO }}})) {
+      }
+      if (perms.includes('x') && !(node.mode & {{{ cDefs.S_IXUGO }}})) {
         return {{{ cDefs.EACCES }}};
       }
       return 0;
@@ -419,10 +422,8 @@ FS.staticInit();`;
         if (FS.isRoot(node) || FS.getPath(node) === FS.cwd()) {
           return {{{ cDefs.EBUSY }}};
         }
-      } else {
-        if (FS.isDir(node.mode)) {
-          return {{{ cDefs.EISDIR }}};
-        }
+      } else if (FS.isDir(node.mode)) {
+        return {{{ cDefs.EISDIR }}};
       }
       return 0;
     },
@@ -432,13 +433,16 @@ FS.staticInit();`;
       }
       if (FS.isLink(node.mode)) {
         return {{{ cDefs.ELOOP }}};
-      } else if (FS.isDir(node.mode)) {
-        if (FS.flagsToPermissionString(flags) !== 'r' // opening for write
-            || (flags & ({{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}}))) { // TODO: check for O_SEARCH? (== search for dir only)
+      }
+      var mode = FS.flagsToPermissionString(flags);
+      if (FS.isDir(node.mode)) {
+        // opening for write
+        // TODO: check for O_SEARCH? (== search for dir only)
+        if (mode !== 'r' || (flags & ({{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}}))) {
           return {{{ cDefs.EISDIR }}};
         }
       }
-      return FS.nodePermissions(node, FS.flagsToPermissionString(flags));
+      return FS.nodePermissions(node, mode);
     },
     checkOpExists(op, err) {
       if (!op) {
@@ -744,9 +748,7 @@ FS.staticInit();`;
       mode &= {{{ cDefs.S_IRWXUGO }}} | {{{ cDefs.S_ISVTX }}};
       mode |= {{{ cDefs.S_IFDIR }}};
 #if FS_DEBUG
-      if (FS.trackingDelegate['onMakeDirectory']) {
-        FS.trackingDelegate['onMakeDirectory'](path, mode);
-      }
+      FS.trackingDelegate['onMakeDirectory']?.(path, mode);
 #endif
       return FS.mknod(path, mode, 0);
     },
@@ -791,9 +793,7 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['onMakeSymlink']) {
-        FS.trackingDelegate['onMakeSymlink'](oldpath, newpath);
-      }
+      FS.trackingDelegate['onMakeSymlink']?.(oldpath, newpath);
 #endif
       return parent.node_ops.symlink(parent, newname, oldpath);
     },
@@ -867,9 +867,7 @@ FS.staticInit();`;
         }
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['willMovePath']) {
-        FS.trackingDelegate['willMovePath'](old_path, new_path);
-      }
+      FS.trackingDelegate['willMovePath']?.(old_path, new_path);
 #endif
       // remove the node from the lookup hash
       FS.hashRemoveNode(old_node);
@@ -887,9 +885,7 @@ FS.staticInit();`;
         FS.hashAddNode(old_node);
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['onMovePath']) {
-        FS.trackingDelegate['onMovePath'](old_path, new_path);
-      }
+      FS.trackingDelegate['onMovePath']?.(old_path, new_path);
 #endif
     },
     rmdir(path) {
@@ -908,16 +904,12 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EBUSY }}});
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['willDeletePath']) {
-        FS.trackingDelegate['willDeletePath'](path);
-      }
+      FS.trackingDelegate['willDeletePath']?.(path);
 #endif
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
 #if FS_DEBUG
-      if (FS.trackingDelegate['onDeletePath']) {
-        FS.trackingDelegate['onDeletePath'](path);
-      }
+      FS.trackingDelegate['onDeletePath']?.(path);
 #endif
     },
     readdir(path) {
@@ -948,16 +940,12 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EBUSY }}});
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['willDeletePath']) {
-        FS.trackingDelegate['willDeletePath'](path);
-      }
+      FS.trackingDelegate['willDeletePath']?.(path);
 #endif
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
 #if FS_DEBUG
-      if (FS.trackingDelegate['onDeletePath']) {
-        FS.trackingDelegate['onDeletePath'](path);
-      }
+      FS.trackingDelegate['onDeletePath']?.(path);
 #endif
     },
     readlink(path) {
@@ -1086,7 +1074,7 @@ FS.staticInit();`;
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
-      flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
+      flags = FS_modeStringToFlags(flags);
       if ((flags & {{{ cDefs.O_CREAT }}})) {
         mode = (mode & {{{ cDefs.S_IALLUGO }}}) | {{{ cDefs.S_IFREG }}};
       } else {
@@ -1152,7 +1140,7 @@ FS.staticInit();`;
         FS.truncate(node, 0);
       }
 #if FS_DEBUG
-      var trackingFlags = flags
+      var origFlags = flags
 #endif
       // we've already handled these, don't pass down to the underlying vfs
       flags &= ~({{{ cDefs.O_EXCL }}} | {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_NOFOLLOW }}});
@@ -1180,16 +1168,12 @@ FS.staticInit();`;
       if (Module['logReadFiles'] && !(flags & {{{ cDefs.O_WRONLY}}})) {
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
-#if FS_DEBUG
-          dbg(`FS.trackingDelegate error on read file: ${path}`);
-#endif
+          err(`read file: ${path}`);
         }
       }
 #endif
 #if FS_DEBUG
-      if (FS.trackingDelegate['onOpenFile']) {
-        FS.trackingDelegate['onOpenFile'](path, trackingFlags);
-      }
+      FS.trackingDelegate['onOpenFile']?.(path, origFlags);
 #endif
       return stream;
     },
@@ -1209,8 +1193,8 @@ FS.staticInit();`;
       }
       stream.fd = null;
 #if FS_DEBUG
-      if (stream.path && FS.trackingDelegate['onCloseFile']) {
-        FS.trackingDelegate['onCloseFile'](stream.path);
+      if (stream.path) {
+        FS.trackingDelegate['onCloseFile']?.(stream.path);
       }
 #endif
     },
@@ -1230,8 +1214,8 @@ FS.staticInit();`;
       stream.position = stream.stream_ops.llseek(stream, offset, whence);
       stream.ungotten = [];
 #if FS_DEBUG
-      if (stream.path && FS.trackingDelegate['onSeekFile']) {
-        FS.trackingDelegate['onSeekFile'](stream.path, stream.position, whence);
+      if (stream.path) {
+        FS.trackingDelegate['onSeekFile']?.(stream.path, stream.position, whence);
       }
 #endif
       return stream.position;
@@ -1264,15 +1248,19 @@ FS.staticInit();`;
       var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
       if (!seeking) stream.position += bytesRead;
 #if FS_DEBUG
-      if (stream.path && FS.trackingDelegate['onReadFile']) {
-        FS.trackingDelegate['onReadFile'](stream.path, bytesRead);
+      if (stream.path) {
+        FS.trackingDelegate['onReadFile']?.(stream.path, bytesRead);
       }
 #endif
       return bytesRead;
     },
+    /**
+     * @param {TypedArray} buffer
+     */
     write(stream, buffer, offset, length, position, canOwn) {
 #if ASSERTIONS
       assert(offset >= 0);
+      assert(buffer.subarray, 'FS.write expects a TypedArray');
 #endif
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
@@ -1302,8 +1290,8 @@ FS.staticInit();`;
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
 #if FS_DEBUG
-      if (stream.path && FS.trackingDelegate['onWriteToFile']) {
-        FS.trackingDelegate['onWriteToFile'](stream.path, bytesWritten);
+      if (stream.path) {
+        FS.trackingDelegate['onWriteToFile']?.(stream.path, bytesWritten);
       }
 #endif
       return bytesWritten;
@@ -1363,17 +1351,14 @@ FS.staticInit();`;
       FS.close(stream);
       return buf;
     },
+    /**
+     * @param {TypedArray|Array|string} data
+     */
     writeFile(path, data, opts = {}) {
       opts.flags = opts.flags || {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}};
       var stream = FS.open(path, opts.flags, opts.mode);
-      if (typeof data == 'string') {
-        data = new Uint8Array(intArrayFromString(data, true));
-      }
-      if (ArrayBuffer.isView(data)) {
-        FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
-      } else {
-        abort('Unsupported data type');
-      }
+      data = FS_fileDataToTypedArray(data);
+      FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
       FS.close(stream);
     },
 
@@ -1621,6 +1606,9 @@ FS.staticInit();`;
       var mode = FS_getMode(canRead, canWrite);
       return FS.create(path, mode);
     },
+    /**
+     * @param {TypedArray|Array|string=} data
+     */
     createDataFile(parent, name, data, canRead, canWrite, canOwn) {
       var path = name;
       if (parent) {
@@ -1630,11 +1618,7 @@ FS.staticInit();`;
       var mode = FS_getMode(canRead, canWrite);
       var node = FS.create(path, mode);
       if (data) {
-        if (typeof data == 'string') {
-          var arr = new Array(data.length);
-          for (var i = 0, len = data.length; i < len; ++i) arr[i] = data.charCodeAt(i);
-          data = arr;
-        }
+        data = FS_fileDataToTypedArray(data);
         // make sure we can write to the file
         FS.chmod(node, mode | {{{ cDefs.S_IWUGO }}});
         var stream = FS.open(node, {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}});
@@ -1892,28 +1876,6 @@ FS.staticInit();`;
       node.stream_ops = stream_ops;
       return node;
     },
-
-    // Removed v1 functions
-#if ASSERTIONS
-    absolutePath() {
-      abort('FS.absolutePath has been removed; use PATH_FS.resolve instead');
-    },
-    createFolder() {
-      abort('FS.createFolder has been removed; use FS.mkdir instead');
-    },
-    createLink() {
-      abort('FS.createLink has been removed; use FS.symlink instead');
-    },
-    joinPath() {
-      abort('FS.joinPath has been removed; use PATH.join instead');
-    },
-    mmapAlloc() {
-      abort('FS.mmapAlloc has been replaced by the top level function mmapAlloc');
-    },
-    standardizePath() {
-      abort('FS.standardizePath has been removed; use PATH.normalize instead');
-    },
-#endif
   },
 
   $FS_mkdirTree__docs: `

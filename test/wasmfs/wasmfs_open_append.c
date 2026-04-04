@@ -38,7 +38,7 @@ int main() {
   off_t pos = getPos(fd);
   assert(pos == 0);
 
-  ssize_t nwritten = write(fd, "hello", 5);
+  ssize_t nwritten = write(fd, "Hello", 5);
   assert(nwritten == 5);
 
   pos = getPos(fd);
@@ -79,7 +79,7 @@ int main() {
   char buf[100] = {};
   ssize_t nread = read(fd, buf, 100);
   assert(nread == 15);
-  assert(strcmp(buf, "hello, world!!!") == 0);
+  assert(strcmp(buf, "Hello, world!!!") == 0);
 
   printf("ok\n");
 }

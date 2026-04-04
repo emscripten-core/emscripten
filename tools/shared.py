@@ -19,10 +19,7 @@ from subprocess import PIPE
 
 from .toolchain_profiler import ToolchainProfiler
 
-# We depend on python 3.10 features
-if sys.version_info < (3, 10): # noqa: UP036
-  print(f'error: emscripten requires python 3.10 or above ({sys.executable} {sys.version})', file=sys.stderr)
-  sys.exit(1)
+assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
 
 from . import colored_logger
 
@@ -70,6 +67,8 @@ diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('experimental')
 # Don't show legacy settings warnings by default
+# See https://github.com/emscripten-core/emscripten/pull/10615 for the rationale
+# behind not showing this warning by default.
 diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 # Catch-all for other emcc warnings
 diagnostics.add_warning('linkflags')
@@ -286,6 +285,8 @@ def _get_node_version_pair(nodejs):
 
 
 def get_node_version(nodejs):
+  if not nodejs:
+    return None
   return _get_node_version_pair(nodejs)[1]
 
 
@@ -323,15 +324,6 @@ def node_exception_flags(nodejs):
   if node_version and node_version >= (22, 0, 0) and not settings.WASM_LEGACY_EXCEPTIONS:
     return ['--experimental-wasm-exnref']
   return []
-
-
-def node_pthread_flags(nodejs):
-  node_version = get_node_version(nodejs)
-  # bulk memory and wasm threads were enabled by default in node v16.
-  if node_version and node_version < (16, 0, 0):
-    return ['--experimental-wasm-bulk-memory', '--experimental-wasm-threads']
-  else:
-    return []
 
 
 @memoize
@@ -587,7 +579,7 @@ def is_internal_global(name):
 def is_user_export(name):
   if is_internal_global(name):
     return False
-  return name not in ['__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'] and not name.startswith(('dynCall_', 'orig$'))
+  return name not in {'__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'} and not name.startswith(('dynCall_', 'orig$'))
 
 
 def asmjs_mangle(name):
@@ -640,7 +632,6 @@ LLVM_RANLIB = llvm_tool_path('llvm-ranlib')
 LLVM_NM = llvm_tool_path('llvm-nm')
 LLVM_DWARFDUMP = llvm_tool_path('llvm-dwarfdump')
 LLVM_OBJCOPY = llvm_tool_path('llvm-objcopy')
-LLVM_STRIP = llvm_tool_path('llvm-strip')
 WASM_LD = llvm_tool_path('wasm-ld')
 LLVM_PROFDATA = llvm_tool_path('llvm-profdata')
 LLVM_COV = llvm_tool_path('llvm-cov')

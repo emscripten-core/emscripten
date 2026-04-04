@@ -108,7 +108,7 @@ assert(globalThis.Int32Array && globalThis.Float64Array && Int32Array.prototype.
        'JS engine does not provide full typed array support');
 #endif
 
-#if RELOCATABLE || MAIN_MODULE
+#if MAIN_MODULE
 var __RELOC_FUNCS__ = [];
 #endif
 
@@ -155,7 +155,7 @@ function initRuntime() {
   checkStackCookie();
 #endif
 
-#if MAIN_MODULE || RELOCATABLE
+#if MAIN_MODULE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
 
@@ -235,13 +235,16 @@ function postRun() {
   <<< ATPOSTRUNS >>>
 }
 
-/** @param {string|number=} what */
+/**
+ * @param {string|number=} what
+ * @noreturn
+ */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
   Module['onAbort']?.(what);
 #endif
 
-  what = 'Aborted(' + what + ')';
+  what = `Aborted(${what})`;
   // TODO(sbc): Should we remove printing and leave it up to whoever
   // catches the exception?
   err(what);
@@ -251,7 +254,7 @@ function abort(what) {
 #if ASSERTIONS == 0
   what += '. Build with -sASSERTIONS for more info.';
 #elif ASYNCIFY == 1
-  if (what.indexOf('RuntimeError: unreachable') >= 0) {
+  if (what.search(/RuntimeError: [Uu]nreachable/) >= 0) {
     what += '. "unreachable" may be due to ASYNCIFY_STACK_SIZE not being large enough (try increasing it)';
   }
 #endif // ASSERTIONS
@@ -360,11 +363,7 @@ function makeAbortWrapper(original) {
         ABORT // rethrow exception if abort() was called in the original function call above
         || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
 #if SUPPORT_LONGJMP == 'emscripten' // Rethrow longjmp if enabled
-#if EXCEPTION_STACK_TRACES
-        || e instanceof EmscriptenSjLj // EXCEPTION_STACK_TRACES=1 will throw an instance of EmscriptenSjLj
-#else
-        || e === Infinity // EXCEPTION_STACK_TRACES=0 will throw Infinity
-#endif // EXCEPTION_STACK_TRACES
+        || e instanceof EmscriptenSjLj
 #endif
         || e === 'unwind'
       ) {
@@ -506,7 +505,7 @@ async function getWasmBinary(binaryFile) {
 #endif
 
 #if SPLIT_MODULE
-{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
+{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, JSPI ? '(secondaryFile, imports) => instantiateAsync(null, secondaryFile, imports)' : 'instantiateSync') }}}
 var splitModuleProxyHandler = {
   get(target, moduleName, receiver) {
     if (moduleName.startsWith('placeholder')) {
@@ -519,28 +518,23 @@ var splitModuleProxyHandler = {
       }
       return new Proxy({}, {
         get(target, base, receiver) {
-          return (...args) => {
-#if ASYNCIFY == 2
-            throw new Error('Placeholder function "' + base + '" should not be called when using JSPI.');
-#else
+          let ret = {{{ asyncIf(ASYNCIFY == 2) }}} (...args) => {
 #if RUNTIME_DEBUG
             dbg(`placeholder function called: ${base}`);
 #endif
             var imports = {'primary': wasmRawExports};
             // Replace '.wasm' suffix with '.deferred.wasm'.
-            loadSplitModule(secondaryFile, imports, base);
+            {{{ awaitIf(ASYNCIFY == 2) }}}loadSplitModule(secondaryFile, imports, base);
 #if RUNTIME_DEBUG
             dbg('instantiated deferred module, continuing');
 #endif
-#if RELOCATABLE
-            // When the table is dynamically laid out, the placeholder functions names
-            // are offsets from the table base. In the main module, the table base is
-            // always 1.
-            base = 1 + parseInt(base);
-#endif
             return wasmTable.get({{{ toIndexType('base') }}})(...args);
+          };
+#if JSPI
+          return new WebAssembly.Suspending(ret);
+#else
+          return ret;
 #endif
-          }
         }
       });
     }
@@ -690,7 +684,7 @@ function getWasmImports() {
 #endif
 #endif
   // prepare imports
-#if MAIN_MODULE || RELOCATABLE
+#if MAIN_MODULE
   var GOTProxyHandler = new Proxy(new Set({{{ JSON.stringify(Array.from(WEAK_IMPORTS)) }}}), GOTHandler);
 #endif
   var imports = {
@@ -700,7 +694,7 @@ function getWasmImports() {
     'env': wasmImports,
     '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
-#if MAIN_MODULE || RELOCATABLE
+#if MAIN_MODULE
     'GOT.mem': GOTProxyHandler,
     'GOT.func': GOTProxyHandler,
 #endif
@@ -725,9 +719,6 @@ function getWasmImports() {
     wasmExports = instance.exports;
 
 #if MAIN_MODULE
-#if RELOCATABLE
-    wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
-#endif
     var origExports = wasmExports;
 #endif
 #if SPLIT_MODULE
@@ -777,7 +768,7 @@ function getWasmImports() {
     updateGOT(origExports);
 #endif
 
-#if EXPORTED_RUNTIME_METHODS.includes('wasmExports')
+#if EXPORTED_RUNTIME_METHODS.has('wasmExports')
     Module['wasmExports'] = wasmExports;
 #endif
 
@@ -786,8 +777,6 @@ function getWasmImports() {
     LDSO.init();
 #endif
     loadDylibs();
-#elif RELOCATABLE
-    reportUndefinedSymbols();
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS

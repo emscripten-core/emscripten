@@ -41,6 +41,12 @@ CLANG_FLAGS_WITH_ARGS = {
 # default set.
 EXTRA_INCOMING_JS_API = [
   'fetchSettings',
+  'logReadFiles',
+  'loadSplitModule',
+  'onMalloc',
+  'onRealloc',
+  'onFree',
+  'onSbrkGrow',
 ]
 
 logger = logging.getLogger('args')
@@ -105,7 +111,7 @@ class EmccOptions:
   s_args: list[str] = []
   save_temps = False
   shared = False
-  shell_path = None
+  shell_html = None
   source_map_base = ''
   syntax_only = False
   target = ''
@@ -401,7 +407,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
             settings.SEPARATE_DWARF = True
           settings.GENERATE_DWARF = 1
           settings.DEBUG_LEVEL = 3
-        elif debug_level in ['source-map', 'source-map=inline']:
+        elif debug_level in {'source-map', 'source-map=inline'}:
           settings.GENERATE_SOURCE_MAP = 1 if debug_level == 'source-map' else 2
           newargs[i] = '-g'
         elif debug_level == 'z':
@@ -446,7 +452,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif arg == '-###':
       shared.SKIP_SUBPROCS = True
     elif check_arg('--shell-file'):
-      options.shell_path = consume_arg_file()
+      options.shell_html = consume_arg_file()
     elif check_arg('--source-map-base'):
       options.source_map_base = consume_arg()
     elif check_arg('--emit-tsd'):
@@ -501,14 +507,13 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.cpu_profiler = True
     elif check_flag('--threadprofiler'):
       settings.PTHREADS_PROFILING = 1
-    elif arg in ('-fcolor-diagnostics', '-fdiagnostics-color', '-fdiagnostics-color=always'):
+    elif arg in {'-fcolor-diagnostics', '-fdiagnostics-color', '-fdiagnostics-color=always'}:
       colored_logger.enable(force=True)
-    elif arg in ('-fno-color-diagnostics', '-fno-diagnostics-color', '-fdiagnostics-color=never'):
+    elif arg in {'-fno-color-diagnostics', '-fno-diagnostics-color', '-fdiagnostics-color=never'}:
       colored_logger.disable()
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
       settings.DISABLE_EXCEPTION_THROWING = 1
-      settings.WASM_EXCEPTIONS = 0
     elif arg == '-mbulk-memory':
       feature_matrix.enable_feature(feature_matrix.Feature.BULK_MEMORY,
                                     '-mbulk-memory',
@@ -583,17 +588,17 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.output_file = arg.removeprefix('-o')
     elif check_arg('-target') or check_arg('--target'):
       options.target = consume_arg()
-      if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
+      if options.target not in {'wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'}:
         exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
     elif check_arg('--use-port'):
       ports.handle_use_port_arg(settings, consume_arg())
-    elif arg in ('-c', '--precompile'):
+    elif arg in {'-c', '--precompile'}:
       options.dash_c = True
     elif arg == '-S':
       options.dash_S = True
     elif arg == '-E':
       options.dash_E = True
-    elif arg in ('-M', '-MM'):
+    elif arg in {'-M', '-MM'}:
       options.dash_M = True
     elif arg.startswith('-x'):
       # TODO(sbc): Handle multiple -x flags on the same command line
@@ -706,7 +711,7 @@ def parse_value(text, expected_type):
       if text[-1] != ']':
         raise ValueError('unterminated string list. expected final character to be "]"')
       text = text[1:-1]
-    if text.strip() == "":
+    if not text.strip():
       return []
     return parse_string_list_members(text)
 
@@ -719,12 +724,12 @@ def parse_value(text, expected_type):
       return parse_string_list(text)
 
     # if we succeeded in parsing as json, check some properties of it before returning
-    if type(parsed) not in (str, list):
-      raise ValueError(f'settings must be strings or lists (not ${type(parsed)})')
+    if type(parsed) not in {str, list}:
+      raise ValueError(f'settings must be strings or lists (not {type(parsed)})')
     if type(parsed) is list:
       for elem in parsed:
         if type(elem) is not str:
-          raise ValueError(f'list members in settings must be strings (not ${type(elem)})')
+          raise ValueError(f'list members in settings must be strings (not {type(elem)})')
 
     return parsed
 
@@ -792,10 +797,6 @@ def apply_user_settings():
       # used for warnings in emscripten.py
       settings.USER_EXPORTS = settings.EXPORTED_FUNCTIONS.copy()
 
-    # TODO(sbc): Remove this legacy way.
-    if key == 'WASM_OBJECT_FILES':
-      settings.LTO = 0 if value else 'full'
-
     if key == 'JSPI':
       settings.ASYNCIFY = 2
     if key == 'JSPI_IMPORTS':
@@ -809,10 +810,33 @@ def normalize_boolean_setting(name, value):
   # (note that *non*-boolean setting values have special meanings,
   # and we can't just flip them, so leave them as-is to be
   # handled in a special way later)
-  if name.startswith('NO_') and value in ('0', '1'):
+  if name.startswith('NO_') and value in {'0', '1'}:
     name = name.removeprefix('NO_')
     value = str(1 - int(value))
   return name, value
+
+
+def normalize_args(args):
+  """Normalize argument that can be specific as either one or two arguments.
+
+  In some cases these arguments are simply joined together.  For example
+  [`-o` `foo`] becomes `-ofoo` and [`-L` `bar`] becomes `-Lbar`.
+
+  In other cases they are joined by an equals sign.  For example ['--js-library`, `foo.js`]
+  becomes `--js-library=foo.js`.
+  """
+  equals_args = {'--js-library'}
+  join_args = {'-l', '-L', '-I', '-z', '-o', '-x', '-u'} | equals_args
+  for i in range(len(args)):
+    if args[i] in join_args:
+      if args[i] in equals_args:
+        args[i] += '='
+      if len(args) <= i + 1:
+        exit_with_error(f"option '{args[i]}' requires an argument")
+      args[i] += args[i + 1]
+      args[i + 1] = ''
+
+  return [a for a in args if a]
 
 
 @ToolchainProfiler.profile()
@@ -827,17 +851,7 @@ def parse_arguments(args):
   if not diagnostics.is_enabled('deprecated'):
     settings.WARN_DEPRECATED = 0
 
-  for i in range(len(newargs)):
-    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o', '-x', '-u'):
-      # Scan for flags that can be written as either one or two arguments
-      # and normalize them to the single argument form.
-      if newargs[i] == '--js-library':
-        newargs[i] += '='
-      if len(newargs) <= i + 1:
-        exit_with_error(f"option '{newargs[i]}' requires an argument")
-      newargs[i] += newargs[i + 1]
-      newargs[i + 1] = ''
-
+  newargs = normalize_args(newargs)
   newargs = parse_args(newargs)
 
   if options.post_link or options.oformat == OFormat.BARE:

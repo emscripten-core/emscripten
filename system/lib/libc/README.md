@@ -17,3 +17,24 @@ Some changes have been made to the version that was taken from upstream, includi
 Copy log.c and log2.c from earlier version of musl which result in smaller
 binary size since they do not rely on data tables in log_data.c and log2_data.c.
 See https://github.com/emscripten-core/emscripten/issues/15483.
+
+Verifying upstream musl behaviour
+=================================
+
+Occasionally when working on libc/musl it can be useful to verify to behavior
+of upstream musl.  For example, when trying to determine if a certain behavior
+is a bug in emscripten, or an upstream bug, or just expected musl behavior.
+
+When I need to do this I use the Alpine linux docker image.  Alpine linux is a
+distro where the sysmtem libc is musl so by default any program you build within
+the contains will be using musl libc.
+
+    $ docker run --rm -it -v "$(pwd):/data" alpine /bin/sh
+
+Then from inside the new container you can run tests against Alpine's musl libc.
+For example:
+
+    $ apk add build-base
+    $ cd /data
+    $ gcc -pthread test/pthread/test_pthread_cancel_async.c
+    $ ./a.out

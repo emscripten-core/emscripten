@@ -34,7 +34,7 @@ from common import (
   test_file,
 )
 
-from tools import feature_matrix, shared, utils
+from tools import feature_matrix, utils
 from tools.feature_matrix import UNSUPPORTED
 from tools.shared import DEBUG, EMCC, exit_with_error
 from tools.utils import MACOS, WINDOWS, memoize, path_from_root, read_binary
@@ -215,7 +215,7 @@ class ChromeConfig:
     # --no-sandbox because we are running as root and chrome requires
     # this flag for now: https://crbug.com/638180
     '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
-    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
+    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-type-reflection"',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
     '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
@@ -355,8 +355,8 @@ def make_test_server(in_queue, out_queue, port):
         ctype = self.guess_type(path)
         self.send_header('Content-Type', ctype)
         pieces = self.headers.get('Range').split('=')[1].split('-')
-        start = int(pieces[0]) if pieces[0] != '' else 0
-        end = int(pieces[1]) if pieces[1] != '' else fsize - 1
+        start = int(pieces[0]) if pieces[0] else 0
+        end = int(pieces[1]) if pieces[1] else fsize - 1
         end = min(fsize - 1, end)
         length = end - start + 1
         self.send_header('Content-Range', f'bytes {start}-{end}/{fsize}')
@@ -404,7 +404,7 @@ def make_test_server(in_queue, out_queue, port):
       elif urlinfo.path.startswith('/status/'):
         code_str = urlinfo.path[len('/status/'):]
         code = int(code_str)
-        if code in (301, 302, 303, 307, 308):
+        if code in {301, 302, 303, 307, 308}:
           self.send_response(code)
           self.send_header('Location', '/status/200')
           self.end_headers()
@@ -430,7 +430,7 @@ def make_test_server(in_queue, out_queue, port):
       elif info.path.startswith('/status/'):
         code_str = info.path[len('/status/'):]
         code = int(code_str)
-        if code in (301, 302, 303, 307, 308):
+        if code in {301, 302, 303, 307, 308}:
           # Redirect to /status/200
           self.send_response(code)
           self.send_header('Location', '/status/200')
@@ -496,8 +496,8 @@ def make_test_server(in_queue, out_queue, port):
           ctype = self.guess_type(path)
           self.send_header('Content-type', ctype)
           pieces = self.headers.get('Range').split('=')[1].split('-')
-          start = int(pieces[0]) if pieces[0] != '' else 0
-          end = int(pieces[1]) if pieces[1] != '' else len(data) - 1
+          start = int(pieces[0]) if pieces[0] else 0
+          end = int(pieces[1]) if pieces[1] else len(data) - 1
           end = min(len(data) - 1, end)
           length = end - start + 1
           self.send_header('Content-Length', str(length))
@@ -605,15 +605,14 @@ class FileLock:
         time.sleep(0.1)
     # Return the locking count number
     try:
-      self.counter = int(open(f'{self.path}_counter').read())
+      self.counter = int(utils.read_file(f'{self.path}_counter'))
     except Exception:
       pass
     return self.counter
 
   def __exit__(self, *a):
     # Increment locking count number before releasing the lock
-    with open(f'{self.path}_counter', 'w') as f:
-      f.write(str(self.counter + 1))
+    utils.write_file(f'{self.path}_counter', str(self.counter + 1))
     # And release the lock
     os.close(self.fd)
     try:
@@ -929,8 +928,6 @@ class BrowserCore(RunnerCore):
     if not isinstance(expected, list):
       expected = [expected]
     if EMTEST_BROWSER == 'node':
-      nodejs = self.require_node()
-      self.node_args += shared.node_pthread_flags(nodejs)
       output = self.run_js(f'{output_basename}.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:

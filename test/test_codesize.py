@@ -76,7 +76,7 @@ class codesize(RunnerCore):
                                '-ffast-math']
 
     math_sources = [test_file('codesize/math.c')]
-    hello_world_sources = [test_file('small_hello_world.c'),
+    hello_world_sources = [test_file('hello_world_small.c'),
                            '-sMALLOC=none']
     random_printf_sources = [test_file('hello_random_printf.c'),
                              '-sMALLOC=none',
@@ -265,7 +265,7 @@ class codesize(RunnerCore):
 
     if '-sSINGLE_FILE' not in cflags:
       # measure the wasm size without the name section
-      building.strip('a.out.wasm', 'a.out.nodebug.wasm', sections=['name'])
+      building.strip_sections('a.out.wasm', 'a.out.nodebug.wasm', ['name'])
       outputs.append('a.out.nodebug.wasm')
 
       imports, exports, funcs = self.parse_wasm('a.out.wasm')

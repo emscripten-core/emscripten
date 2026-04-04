@@ -33,11 +33,11 @@ int main() {
   EM_ASM("{out('7. this is \"double\" \"quotes\"')}");
 
   printf("\nEM_ASM: Pass a string\n");
-  EM_ASM(out('1. hello ' + UTF8ToString($0)), "world!");
-  EM_ASM("out('2. hello ' + UTF8ToString($0))", "world!");
-  EM_ASM({"out('3. hello ' + UTF8ToString($0))"}, "world!");
-  EM_ASM({out('4. hello ' + UTF8ToString($0))}, "world!");
-  EM_ASM("{out('5. hello ' + UTF8ToString($0))}", "world!");
+  EM_ASM(out('1. Hello, ' + UTF8ToString($0)), "world!");
+  EM_ASM("out('2. Hello, ' + UTF8ToString($0))", "world!");
+  EM_ASM({"out('3. Hello, ' + UTF8ToString($0))"}, "world!");
+  EM_ASM({out('4. Hello, ' + UTF8ToString($0))}, "world!");
+  EM_ASM("{out('5. Hello, ' + UTF8ToString($0))}", "world!");
 
   printf("\nEM_ASM: Simple expression without trailing semicolon, wrap code block in extra parentheses\n");
   EM_ASM((out('1. expression without trailing semicolon, in parentheses')));

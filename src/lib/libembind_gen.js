@@ -45,7 +45,7 @@ var LibraryEmbind = {
     }
 
     print(nameMap, out) {
-      out.push(`type ${this.name} = ${this.definition};\n\n`);
+      out.push(`export type ${this.name} = ${this.definition};\n\n`);
     }
   },
   $OptionalType: class {

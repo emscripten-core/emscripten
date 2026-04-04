@@ -81,7 +81,7 @@ export interface ClassWithSmartPtrConstructor extends ClassHandle {
   fn(_0: number): number;
 }
 
-type AliasedVal = number;
+export type AliasedVal = number;
 
 export interface BaseClass extends ClassHandle {
   fn(_0: number): number;
