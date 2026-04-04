@@ -1331,8 +1331,11 @@ int __syscall_ioctl(int fd, int request, ...) {
   }
 }
 
-int __syscall_pipe(intptr_t fd) {
+int __syscall_pipe2(intptr_t fd, int flags) {
   auto* fds = (__wasi_fd_t*)fd;
+  if (flags && flags != O_CLOEXEC) {
+    return -ENOTSUP;
+  }
 
   // Make a pipe: Two PipeFiles that share a single data source between them, so
   // that writing to one can be read in the other.
@@ -1716,7 +1719,7 @@ int __syscall_socket(
 }
 
 int __syscall_listen(
-  int sockfd, int backlock, int dummy1, int dummy2, int dummy3, int dummy4) {
+  int sockfd, int backlog, int dummy1, int dummy2, int dummy3, int dummy4) {
   return -ENOSYS;
 }
 
@@ -1766,18 +1769,6 @@ int __syscall_recvmsg(
 int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
   // Advice is currently ignored. TODO some backends might use it
   return 0;
-}
-
-int __syscall__newselect(int nfds,
-                         intptr_t readfds_,
-                         intptr_t writefds_,
-                         intptr_t exceptfds_,
-                         intptr_t timeout_) {
-  // TODO: Implement this syscall. For now, we return an error code,
-  //       specifically ENOMEM which is valid per the docs:
-  //          ENOMEM Unable to allocate memory for internal tables
-  //          https://man7.org/linux/man-pages/man2/select.2.html
-  return -ENOMEM;
 }
 
 } // extern "C"

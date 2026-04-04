@@ -51,7 +51,7 @@ int main() {
     return 1;
   }
   if (exists("file1/dir")) {
-    printf("Path should not exists: file1/dir\n");
+    printf("Path should not exist: file1/dir\n");
     return 1;
   }
 
@@ -61,7 +61,7 @@ int main() {
     return 1;
   }
   if (exists("file2/dir")) {
-    printf("Path should not exists: file2/dir\n");
+    printf("Path should not exist: file2/dir\n");
     return 1;
   }
 
@@ -71,7 +71,7 @@ int main() {
     return 1;
   }
   if (exists("file3/dir")) {
-    printf("Path should not exists: file3/dir\n");
+    printf("Path should not exist: file3/dir\n");
     return 1;
   }
 

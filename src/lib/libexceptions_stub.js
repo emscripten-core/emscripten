@@ -20,10 +20,10 @@ var LibraryExceptions = {};
   '__cxa_find_matching_catch',
   '__resumeException',
 ].forEach((name) => {
-  LibraryExceptions[name] = function() { abort(); };
+  LibraryExceptions[name] = () => abort();
 #if !INCLUDE_FULL_LIBRARY
   // This method of link-time error generation is not compatible with INCLUDE_FULL_LIBRARY
-  LibraryExceptions[name + '__deps'] = [function() {
+  LibraryExceptions[name + '__deps'] = [() => {
     error(`DISABLE_EXCEPTION_THROWING was set (likely due to -fno-exceptions), which means no C++ exception throwing support code is linked in, but such support is required by symbol '${name}'. Either do not set DISABLE_EXCEPTION_THROWING (if you do want exception throwing) or compile all source files with -fno-exceptions (so that no exceptions support code is required); also make sure DISABLE_EXCEPTION_CATCHING is set to the right value - if you want exceptions, it should be off, and vice versa.`);
   }];
 #endif

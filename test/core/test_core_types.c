@@ -75,15 +75,6 @@
 #error __BIG_ENDIAN__ is defined
 #endif
 
-// We prefer to use __EMSCRIPTEN__, but for compatibility, we define
-// EMSCRIPTEN too.
-#if defined(IN_STRICT_MODE) && defined(EMSCRIPTEN)
-#error When compiling in -sSTRICT mode, EMSCRIPTEN should not be defined, but it was!
-#endif
-#if !defined(IN_STRICT_MODE) && !defined(EMSCRIPTEN)
-#error EMSCRIPTEN is not defined
-#endif
-
 #include <stdalign.h>
 #include <stdint.h>
 #include <stddef.h>

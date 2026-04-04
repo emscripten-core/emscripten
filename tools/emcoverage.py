@@ -29,6 +29,7 @@ To display the gathered coverage information, use one of the three subcommands:
 report, html, xml.
 """
 
+import contextlib
 import errno
 import os
 import shutil
@@ -36,8 +37,7 @@ import sys
 import uuid
 from glob import glob
 
-import coverage.cmdline # type: ignore
-import contextlib
+import coverage.cmdline  # type: ignore
 
 SCRIPT_DIR = os.path.dirname(os.path.abspath(__file__))
 
@@ -60,7 +60,7 @@ def main():
     shutil.rmtree(store)
     return
 
-  if sys.argv[1] in ('html', 'report', 'xml'):
+  if sys.argv[1] in {'html', 'report', 'xml'}:
     old_argv = sys.argv
     sys.argv = ['coverage', 'combine'] + glob(os.path.join(store, '*'))
     with contextlib.suppress(SystemExit):

@@ -26,12 +26,12 @@
 // atomics.
 
 EM_JS(void, js_assert_initial_heap_state, (bool isWorker), {
-  dbg(`Checking initial heap state on the ${isWorker ? 'worker' : 'main'} thread`);
+  err(`Checking initial heap state on the ${isWorker ? 'worker' : 'main'} thread`);
   assert(HEAP8.length === 32 * 1024 * 1024, "start at 32MB");
 });
 
 EM_JS(void, js_assert_final_heap_state, (bool isWorker, const char* buffer, int finalHeapSize), {
-  dbg(`Checking final heap state on the ${isWorker ? 'worker' : 'main'} thread`);
+  err(`Checking final heap state on the ${isWorker ? 'worker' : 'main'} thread`);
   assert(HEAP8.length > finalHeapSize, "end with >64MB");
   assert(HEAP8[buffer] === 42, "readable from JS");
 });

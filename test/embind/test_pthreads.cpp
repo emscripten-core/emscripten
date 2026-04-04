@@ -8,7 +8,7 @@ using namespace emscripten;
 
 void thread(void) {
   EM_ASM({
-    globalProperty = {
+    globalThis.globalProperty = {
       foo: function(value) {
         return value;
       }

@@ -5,7 +5,7 @@
 #include <stdbool.h>
 #include <stdio.h>
 
-void fulfill_from_timout(void* arg) {
+void fulfill_from_timeout(void* arg) {
   emscripten_promise_resolve((em_promise_t)arg, EM_PROMISE_FULFILL, (void*)43);
 }
 
@@ -25,7 +25,7 @@ void test_already_fulfilled() {
 
 void test_not_yet_fulfilled() {
   em_promise_t p = emscripten_promise_create();
-  emscripten_async_call(fulfill_from_timout, p, 0);
+  emscripten_async_call(fulfill_from_timeout, p, 0);
 
   printf("waiting on promise: %p\n", p);
   em_settled_result_t res = emscripten_promise_await(p);

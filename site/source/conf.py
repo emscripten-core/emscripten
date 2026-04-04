@@ -71,7 +71,7 @@ extensions = [
 ]
 
 
-#Build "Todo" notes into the source
+# Build "Todo" notes into the source
 #todo_include_todos = 'True' 
 
 # Add any paths that contain templates here, relative to this directory.
@@ -97,7 +97,7 @@ copyright = u'2015, '
 # |version| and |release|, also used in various other places throughout the
 # built documents.
 #
-version_path = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'emscripten-version.txt').resolve()
+version_path = Path(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), 'emscripten-version.txt')
 emscripten_version = version_path.read_text().strip().strip('"')
 
 # The short X.Y version.
@@ -395,3 +395,5 @@ epub_exclude_files = ['search.html']
 #highlight_language = 'default'
 
 primary_domain = 'cpp'
+
+smartquotes_excludes = {'builders': ['text', 'man']}

@@ -14,8 +14,9 @@ This tool prints the value of the variable to stdout if one
 is found, or exits with 1 if the variable does not exist.
 """
 
-import sys
 import re
+import sys
+
 from tools import config
 
 

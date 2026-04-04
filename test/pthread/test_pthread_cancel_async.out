@@ -1,6 +1,7 @@
 Starting thread..
 Thread started!
 Canceling thread..
+pthread_mutex_timedlock timed out
 Called clean-up handler with arg 42
 Joining thread..
 done

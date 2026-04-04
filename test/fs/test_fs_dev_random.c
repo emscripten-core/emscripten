@@ -13,12 +13,14 @@ int main() {
   int nread;
 
   fp = fopen("/dev/random", "r");
-  nread = fread(&data, 1, byte_count, fp);
+  assert(fp != NULL);
+  nread = fread(data, 1, byte_count, fp);
   assert(nread == byte_count);
   fclose(fp);
 
   fp = fopen("/dev/urandom", "r");
-  nread = fread(&data, 1, byte_count, fp);
+  assert(fp != NULL);
+  nread = fread(data, 1, byte_count, fp);
   assert(nread == byte_count);
   fclose(fp);
 

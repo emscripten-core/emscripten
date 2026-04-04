@@ -16,6 +16,7 @@ local_src = os.path.join(script_dir, 'compiler-rt')
 
 copy_dirs = [
     ('include', 'sanitizer'),
+    ('include', 'profile'),
     ('lib', 'sanitizer_common'),
     ('lib', 'asan'),
     ('lib', 'interception'),

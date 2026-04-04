@@ -5,7 +5,7 @@
  */
 
 #if !USE_ASAN
-#error "should only be inclded in USE_ASAN mode"
+#error "should only be included in USE_ASAN mode"
 #endif
 
 // C versions of asan_js_{load|store} will be used from compiled code, which have
@@ -21,14 +21,5 @@ function _asan_js_check_index(arr, index, asanFn) {
     const elemSize = arr.BYTES_PER_ELEMENT;
     asanFn(index * elemSize, elemSize);
   }
-}
-
-function _asan_js_load(arr, index) {
-  _asan_js_check_index(arr, index, ___asan_loadN);
-  return arr[index];
-}
-
-function _asan_js_store(arr, index, value) {
-  _asan_js_check_index(arr, index, ___asan_storeN);
-  return arr[index] = value;
+  return index;
 }

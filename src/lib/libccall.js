@@ -13,7 +13,7 @@ addToLibrary({
   $getCFunc: (ident) => {
     var func = Module['_' + ident]; // closure exported function
 #if ASSERTIONS
-    assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
+    assert(func, `Cannot call unknown function ${ident}, make sure it is exported`);
 #endif
     return func;
   },
@@ -53,6 +53,8 @@ addToLibrary({
       }
 #if MEMORY64
       if (returnType === 'pointer') return Number(ret);
+#elif CAN_ADDRESS_2GB
+      if (returnType === 'pointer') return ret >>> 0;
 #endif
       if (returnType === 'boolean') return Boolean(ret);
       return ret;
@@ -103,14 +105,14 @@ addToLibrary({
       // either. The only valid combination is to have no change in the async
       // data (so we either had one in flight and left it alone, or we didn't have
       // one), or to have nothing in flight and to start one.
-      assert(!(previousAsync && Asyncify.currData), 'We cannot start an async operation when one is already flight');
+      assert(!(previousAsync && Asyncify.currData), 'We cannot start an async operation when one is already in flight');
       assert(!(previousAsync && !Asyncify.currData), 'We cannot stop an async operation in flight');
 #endif
       // This is a new async operation. The wasm is paused and has unwound its stack.
       // We need to return a Promise that resolves the return value
       // once the stack is rewound and execution finishes.
 #if ASSERTIONS
-      assert(asyncMode, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
+      assert(asyncMode, `The call to ${ident} is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.`);
 #endif
       return Asyncify.whenDone().then(onDone);
     }

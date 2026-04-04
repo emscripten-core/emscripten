@@ -19,7 +19,7 @@ int main() {
     assert(str === "\\x26\\xA0\\xF7");
   }, latin1String);
 
-  const char asciiString[] = "Hello world!";
+  const char asciiString[] = "Hello, world!";
   char asciiString2[128] = {};
   EM_ASM({
     var str = AsciiToString($0);
@@ -33,7 +33,7 @@ int main() {
     var str = UTF8ToString($0);
     out(str);
     var numBytesWritten = stringToUTF8(str, $1, $2);
-    if (numBytesWritten != 12) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
+    if (numBytesWritten != 13) throw 'stringToUTF8 wrote an invalid length ' + numBytesWritten;
   }, asciiString, asciiString3, 128);
   assert(!strcmp(asciiString, asciiString3));
 

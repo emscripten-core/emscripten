@@ -4,10 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-from datetime import datetime
 import os
 import subprocess
 import sys
+from datetime import datetime
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))
@@ -85,7 +85,7 @@ def main(argv):
   print('Creating new release: %s' % release_version)
 
   if is_github_runner: # For GitHub Actions workflows
-    with open(os.environ['GITHUB_ENV'], 'a') as f:
+    with open(os.environ['GITHUB_ENV'], 'a', encoding='utf-8') as f:
       f.write(f'RELEASE_VERSION={release_version}')
   else: # Local use
     create_git_branch(release_version)

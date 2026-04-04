@@ -5,15 +5,29 @@
 #include <emscripten/webaudio.h>
 
 // Tests processing two stereo audio inputs being mixed to a single stereo audio
-// output in process(), then applying a fade from the parameters.
+// output in process(), then applying a fade from the parameters. Since this can
+// create variable parameter data sizes, depending on the browser, it's also the
+// ideal to test audio worklets don't corrupt TLS variables.
+
+// Large render size (approx 42ms)
+#define RENDER_SIZE_HINT 2048
 
 // This needs to be big enough for the stereo output, 2x inputs, 2x params and
 // the worker stack. To note that different browsers have different stack size
 // requirement (see notes in process() plus the expansion of the params).
+#ifndef RENDER_SIZE_HINT
 #define AUDIO_STACK_SIZE 6144
+#else
+// float bytes * stereo * ins/outs + extra stack
+#define AUDIO_STACK_SIZE ((RENDER_SIZE_HINT * 4 * 2 * 5) + 1024)
+#endif
 
 // Shared file playback and bootstrap
 #include "audioworklet_test_shared.inc"
+
+// TLS test value to verify the JS-side stays within its stack frame (this is
+// zeroed in the *main* thread on startup).
+__thread int tlsTest = 0x1337D00D;
 
 // Callback to process and mix the audio tracks
 bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, AudioSampleFrame* outputs, int numParams, const AudioParamFrame* params, void* data) {
@@ -21,6 +35,8 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
   audioProcessedCount++;
 #endif
 
+  // JS-setup code shouldn't stomp on this, plus the main thread didn't clear it
+  assert(tlsTest == 0x1337D00D);
   // Single stereo output
   assert(numOutputs == 1);
   assert(outputs[0].numberOfChannels == 2);
@@ -33,7 +49,7 @@ bool process(int numInputs, const AudioSampleFrame* inputs, int numOutputs, Audi
   }
   // Interestingly, params varies per browser. Chrome won't have a length > 1
   // unless the value changes, and FF has all 128 entries even for a k-rate
-  // parameter. The only given is that two params are incoming:
+  // parameter. The only given for this test is that two params are incoming:
   assert(numParams == 2);
   assert(params[0].length == 1 || params[0].length == outSamplesPerChannel);
   assert(params[1].length == 1 || params[1].length == outSamplesPerChannel);
@@ -145,6 +161,8 @@ void initialisedWithParams(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* da
   assert(success && "Audio worklet failed initialised()");
   emscripten_out("Audio worklet initialised");
 
+  // Clear the TLS variable (from the main thread)
+  tlsTest = 0;
   // Custom audio params we'll use as a fader
   WebAudioParamDescriptor faderParam[] = {
     {

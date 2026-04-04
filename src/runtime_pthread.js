@@ -26,7 +26,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // Thread-local guard variable for one-time init of the JS state
   var initializedJS = false;
 
-#if LOAD_SOURCE_MAP || USE_OFFSET_CONVERTER
+#if LOAD_SOURCE_MAP
   // When using postMessage to send an object, it is processed by the structured
   // clone algorithm.  The prototype, and hence methods, on that object is then
   // lost. This function adds back the lost prototype.  This does not work with
@@ -82,7 +82,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         // Use `const` here to ensure that the variable is scoped only to
         // that iteration, allowing safe reference from a closure.
         for (const handler of msgData.handlers) {
-          // The the main module has a handler for a certain even, but no
+          // If the main module has a handler for a certain event, but no
           // handler exists on the pthread worker, then proxy that handler
           // back to the main thread.
           if (!Module[handler] || Module[handler].proxy) {
@@ -112,9 +112,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if LOAD_SOURCE_MAP
         wasmSourceMap = resetPrototype(WasmSourceMap, msgData.wasmSourceMap);
 #endif
-#if USE_OFFSET_CONVERTER
-        wasmOffsetConverter = resetPrototype(WasmOffsetConverter, msgData.wasmOffsetConverter);
-#endif
 
 #if !WASM_ESM_INTEGRATION
 #if MINIMAL_RUNTIME
@@ -122,7 +119,13 @@ if (ENVIRONMENT_IS_PTHREAD) {
         Module['wasm'] = msgData.wasmModule;
         loadModule();
 #else
-        wasmModuleReceived(msgData.wasmModule);
+        wasmModule = msgData.wasmModule;
+#if MODULARIZE == 'instance'
+        init();
+#else
+        createWasm();
+        run();
+#endif
 #endif // MINIMAL_RUNTIME
 #endif
       } else if (cmd === 'run') {

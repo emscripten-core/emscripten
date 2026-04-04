@@ -13,34 +13,57 @@
 #endif
 
 #if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && !GROWABLE_ARRAYBUFFERS
-#include "growableHeap.js"
+// Support for growable heap + pthreads, where the buffer may change, so JS views
+// must be updated.
+function growMemViews() {
+  // `updateMemoryViews` updates all the views simultaneously, so it's enough to check any of them.
+  if (wasmMemory.buffer != HEAP8.buffer) {
+    updateMemoryViews();
+  }
+}
 #endif
 
 #if USE_ASAN
 #include "runtime_asan.js"
 #endif
 
-#if MODULARIZE && USE_READY_PROMISE
+#if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
+#include "binaryDecode.js"
+#endif
+
+#if MODULARIZE
 var readyPromiseResolve, readyPromiseReject;
 #endif
 
-#if PTHREADS || WASM_WORKERS
-#if !MINIMAL_RUNTIME
-var wasmModuleReceived;
-#endif
-
-#if ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION
+#if (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
   // Create as web-worker-like an environment as we can.
-  var parentPort = worker_threads['parentPort'];
-  parentPort.on('message', (msg) => global.onmessage?.({ data: msg }));
-  Object.assign(globalThis, {
-    self: global,
-    postMessage: (msg) => parentPort['postMessage'](msg),
+  globalThis.self = globalThis;
+  var parentPort = worker_threads.parentPort;
+  // Deno and Bun already have `postMessage` defined on the global scope and
+  // deliver messages to `globalThis.onmessage`, so we must not duplicate that
+  // behavior here if `postMessage` is already present.
+  if (!globalThis.postMessage) {
+    parentPort.on('message', (msg) => globalThis.onmessage?.({ data: msg }));
+    globalThis.postMessage = (msg) => parentPort.postMessage(msg);
+  }
+  // Node.js Workers do not pass postMessage()s and uncaught exception events to the parent
+  // thread necessarily in the same order where they were generated in sequential program order.
+  // See https://github.com/nodejs/node/issues/59617
+  // To remedy this, capture all uncaughtExceptions in the Worker, and sequentialize those over
+  // to the same postMessage pipe that other messages use.
+  process.on("uncaughtException", (err) => {
+#if PTHREADS_DEBUG
+    dbg(`uncaughtException on worker thread: ${err.message}`);
+#endif
+    postMessage({ cmd: 'uncaughtException', error: err });
+    // Also shut down the Worker to match the same semantics as if this uncaughtException
+    // handler was not registered.
+    // (n.b. this will not shut down the whole Node.js app process, but just the Worker)
+    process.exit(1);
   });
 }
-#endif // ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION
-#endif
+#endif // (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 
 #if PTHREADS
 #include "runtime_pthread.js"
@@ -54,49 +77,7 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #include "audio_worklet.js"
 #endif
 
-#if LOAD_SOURCE_MAP
-var wasmSourceMap;
-#include "source_map_support.js"
-#endif
-
-#if USE_OFFSET_CONVERTER
-var wasmOffsetConverter;
-#include "wasm_offset_converter.js"
-#endif
-
 // Memory management
-
-#if !WASM_ESM_INTEGRATION || IMPORTED_MEMORY
-var wasmMemory;
-#endif
-
-var
-/** @type {!Int8Array} */
-  HEAP8,
-/** @type {!Uint8Array} */
-  HEAPU8,
-/** @type {!Int16Array} */
-  HEAP16,
-/** @type {!Uint16Array} */
-  HEAPU16,
-/** @type {!Int32Array} */
-  HEAP32,
-/** @type {!Uint32Array} */
-  HEAPU32,
-/** @type {!Float32Array} */
-  HEAPF32,
-/** @type {!Float64Array} */
-  HEAPF64;
-
-#if WASM_BIGINT
-// BigInt64Array type is not correctly defined in closure
-var
-/** not-@type {!BigInt64Array} */
-  HEAP64,
-/* BigUint64Array type is not correctly defined in closure
-/** not-@type {!BigUint64Array} */
-  HEAPU64;
-#endif
 
 #if SUPPORT_BIG_ENDIAN
 /** @type {!DataView} */
@@ -118,7 +99,7 @@ var runtimeExited = false;
     let shouldExport = false;
     if (MODULARIZE && EXPORT_ALL) {
       shouldExport = true;
-    } else if (EXPORTED_RUNTIME_METHODS.includes(x)) {
+    } else if (EXPORTED_RUNTIME_METHODS.has(x)) {
       shouldExport = true;
     }
     return shouldExport;
@@ -173,3 +154,9 @@ if (ENVIRONMENT_IS_NODE) {
 #endif // !IMPORTED_MEMORY && ASSERTIONS
 
 #include "memoryprofiler.js"
+
+#if !DECLARE_ASM_MODULE_EXPORTS
+function exportAliases(wasmExports) {
+{{{ makeExportAliases() }}}
+}
+#endif

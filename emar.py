@@ -8,6 +8,7 @@
 """
 
 import sys
+
 from tools import shared
 
 shared.exec_process([shared.LLVM_AR] + sys.argv[1:])

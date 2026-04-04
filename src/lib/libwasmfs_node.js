@@ -11,7 +11,7 @@ addToLibrary({
   $wasmfsNodeConvertNodeCode: (e) => {
     var code = e.code;
 #if ASSERTIONS
-    assert(code in ERRNO_CODES, 'unexpected node error code: ' + code + ' (' + e + ')');
+    assert(code in ERRNO_CODES, `unexpected node error code: ${code} (${e})`);
 #endif
     return ERRNO_CODES[code];
   },
@@ -31,7 +31,7 @@ addToLibrary({
     if (wasmfsNodeIsWindows) {
       // Node.js on Windows never represents permission bit 'x', so
       // propagate read bits to execute bits
-      stat.mode |= (stat.mode & {{{ cDefs.S_IRUSR | cDefs.S_IRGRP | cDefs.S_IROTH }}}) >> 2;
+      stat.mode |= (stat.mode & {{{ cDefs.S_IRUGO }}}) >> 2;
     }
     return stat;
   },
@@ -74,23 +74,23 @@ addToLibrary({
     let path = UTF8ToString(path_p);
     return wasmfsTry(() => {
       let entries = fs.readdirSync(path, { withFileTypes: true });
-      entries.forEach((entry) => {
+      for (var entry of entries) {
         let sp = stackSave();
         let name = stringToUTF8OnStack(entry.name);
         let type;
         if (entry.isFile()) {
-          type = {{{ cDefine('File::DataFileKind') }}};
+          type = {{{ cDefs['File::DataFileKind'] }}};
         } else if (entry.isDirectory()) {
-          type = {{{ cDefine('File::DirectoryKind') }}};
+          type = {{{ cDefs['File::DirectoryKind'] }}};
         } else if (entry.isSymbolicLink()) {
-          type = {{{ cDefine('File::SymlinkKind') }}};
+          type = {{{ cDefs['File::SymlinkKind'] }}};
         } else {
-          type = {{{ cDefine('File::UnknownKind') }}};
+          type = {{{ cDefs['File::UnknownKind'] }}};
         }
         __wasmfs_node_record_dirent(vec, name, type);
         stackRestore(sp);
         // implicitly return 0
-      });
+      }
     });
   },
 
@@ -206,7 +206,7 @@ addToLibrary({
     return wasmfsTry(() => {
       // TODO: Cache open file descriptors to guarantee that opened files will
       // still exist when we try to access them.
-      let nread = fs.readSync(fd, new Int8Array(HEAPU8.buffer, buf_p, len), 0, len, pos);
+      let nread = fs.readSync(fd, HEAPU8, buf_p, len, pos);
       {{{ makeSetValue('nread_p', 0, 'nread', 'i32') }}};
       // implicitly return 0
     });
@@ -217,7 +217,7 @@ addToLibrary({
     return wasmfsTry(() => {
       // TODO: Cache open file descriptors to guarantee that opened files will
       // still exist when we try to access them.
-      let nwritten = fs.writeSync(fd, new Int8Array(HEAPU8.buffer, buf_p, len), 0, len, pos);
+      let nwritten = fs.writeSync(fd, HEAPU8, buf_p, len, pos);
       {{{ makeSetValue('nwritten_p', 0, 'nwritten', 'i32') }}};
       // implicitly return 0
     });

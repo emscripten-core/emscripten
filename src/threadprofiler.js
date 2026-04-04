@@ -48,7 +48,7 @@ var emscriptenThreadProfiler = {
       if (threadName) {
         threadName = `"${threadName}" (${ptrToString(threadPtr)})`;
       } else {
-        threadName = `(${ptrToString(threadPtr)}})`;
+        threadName = `(${ptrToString(threadPtr)})`;
       }
 
       console.log(`Thread ${threadName} now: ${PThread.threadStatusAsString(threadPtr)}. `);
@@ -107,8 +107,8 @@ var emscriptenThreadProfiler = {
   }
 };
 
-if (typeof document != 'undefined') {
+if (globalThis.document) {
   emscriptenThreadProfiler.initialize();
-} else if (!ENVIRONMENT_IS_PTHREAD && typeof process != 'undefined') {
+} else if (!ENVIRONMENT_IS_PTHREAD && globalThis.process) {
   emscriptenThreadProfiler.initializeNode();
 }

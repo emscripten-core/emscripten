@@ -3,10 +3,12 @@
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
-#if STRICT_JS
+#if STRICT_JS && !MODULARIZE // MODULARIZE handles this itself
 "use strict";
-
 #endif
+
+#include "minimum_runtime_check.js"
+
 // The Module object: Our interface to the outside world. We import
 // and export values on it. There are various ways Module can be used:
 // 1. Not defined. We create it here
@@ -29,9 +31,9 @@ var Module = moduleArg;
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
 var Module;
-// if (!Module)` is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
+// if (!Module) is crucial for Closure Compiler here as it will otherwise replace every `Module` occurrence with a string
 if (!Module) /** @suppress{checkTypes}*/Module = {"__EMSCRIPTEN_PRIVATE_MODULE_EXPORT_NAME_SUBSTITUTION__":1};
-#elif AUDIO_WORKLET
+#elif ENVIRONMENT_MAY_BE_AUDIO_WORKLET
 var Module = globalThis.Module || (typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {});
 #else
 var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {};
@@ -47,11 +49,14 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #if WASM_WORKERS
 // The way we signal to a worker that it is hosting a pthread is to construct
 // it with a specific name.
-var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+var ENVIRONMENT_IS_WASM_WORKER = {{{ wasmWorkerDetection() }}};
+#endif
+
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
+var ENVIRONMENT_IS_AUDIO_WORKLET = !!globalThis.AudioWorkletGlobalScope;
 #endif
 
 #if AUDIO_WORKLET
-var ENVIRONMENT_IS_AUDIO_WORKLET = typeof AudioWorkletGlobalScope !== 'undefined';
 // Audio worklets behave as wasm workers.
 if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 #endif
@@ -59,24 +64,24 @@ if (ENVIRONMENT_IS_AUDIO_WORKLET) ENVIRONMENT_IS_WASM_WORKER = true;
 // Determine the runtime environment we are in. You can customize this by
 // setting the ENVIRONMENT setting at compile time (see settings.js).
 
-#if ENVIRONMENT.length == 1
+#if ENVIRONMENT.length == 1 && !ASSERTIONS
 var ENVIRONMENT_IS_WEB = {{{ ENVIRONMENT[0] === 'web' }}};
 #if PTHREADS && ENVIRONMENT_MAY_BE_NODE
 // node+pthreads always supports workers; detect which we are at runtime
-var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
+var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 #else
 var ENVIRONMENT_IS_WORKER = {{{ ENVIRONMENT[0] === 'worker' }}};
 #endif
 var ENVIRONMENT_IS_NODE = {{{ ENVIRONMENT[0] === 'node' }}};
 var ENVIRONMENT_IS_SHELL = {{{ ENVIRONMENT[0] === 'shell' }}};
-#else // ENVIRONMENT
+#else // ENVIRONMENT.length == 1
 // Attempt to auto-detect the environment
-var ENVIRONMENT_IS_WEB = typeof window == 'object';
-var ENVIRONMENT_IS_WORKER = typeof WorkerGlobalScope != 'undefined';
+var ENVIRONMENT_IS_WEB = !!globalThis.window;
+var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 // N.b. Electron.js environment is simultaneously a NODE-environment, but
 // also a web environment.
 var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
-#if AUDIO_WORKLET
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_AUDIO_WORKLET;
 #else
 var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIRONMENT_IS_WORKER;
@@ -86,12 +91,12 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 #if PTHREADS
 // Three configurations we can be running in:
 // 1) We could be the application main() thread running in the main JS UI thread. (ENVIRONMENT_IS_WORKER == false and ENVIRONMENT_IS_PTHREAD == false)
-// 2) We could be the application main() thread proxied to worker. (with Emscripten -sPROXY_TO_WORKER) (ENVIRONMENT_IS_WORKER == true, ENVIRONMENT_IS_PTHREAD == false)
+// 2) We could be the application main() running directly in a worker. (ENVIRONMENT_IS_WORKER == true, ENVIRONMENT_IS_PTHREAD == false)
 // 3) We could be an application pthread running in a worker. (ENVIRONMENT_IS_WORKER == true and ENVIRONMENT_IS_PTHREAD == true)
 
 // The way we signal to a worker that it is hosting a pthread is to construct
 // it with a specific name.
-var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-pthread');
+var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && {{{ pthreadDetection() }}}
 
 #if MODULARIZE && ASSERTIONS
 if (ENVIRONMENT_IS_PTHREAD) {
@@ -106,22 +111,22 @@ if (ENVIRONMENT_IS_NODE) {
 #if EXPORT_ES6
   // When building an ES module `require` is not normally available.
   // We need to use `createRequire()` to construct the require()` function.
-  const { createRequire } = await import('module');
+  const { createRequire } = await import('node:module');
   /** @suppress{duplicate} */
   var require = createRequire(import.meta.url);
 #endif
 
 #if PTHREADS || WASM_WORKERS
-  var worker_threads = require('worker_threads');
+  var worker_threads = require('node:worker_threads');
   global.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 #if PTHREADS
   // Under node we set `workerData` to `em-pthread` to signal that the worker
   // is hosting a pthread.
-  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-pthread'
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads.workerData == 'em-pthread'
 #endif // PTHREADS
 #if WASM_WORKERS
-  ENVIRONMENT_IS_WASM_WORKER = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-ww'
+  ENVIRONMENT_IS_WASM_WORKER = ENVIRONMENT_IS_WORKER && worker_threads.workerData == 'em-ww'
 #endif
 #endif // PTHREADS || WASM_WORKERS
 }
@@ -144,7 +149,11 @@ var _scriptName = import.meta.url;
 #if !MODULARIZE
 // In MODULARIZE mode _scriptName needs to be captured already at the very top of the page immediately when the page is parsed, so it is generated there
 // before the page load. In non-MODULARIZE modes generate it here.
-var _scriptName = typeof document != 'undefined' ? document.currentScript?.src : undefined;
+#if SINGLE_FILE && OUTPUT_FORMAT == 'HTML'
+var _scriptName = globalThis.document ? URL.createObjectURL(new Blob([document.getElementById('mainScript').textContent], { "type" : "text/javascript" })) : undefined;
+#else
+var _scriptName = globalThis.document?.currentScript?.src;
+#endif
 #endif // !MODULARIZE
 #elif ENVIRONMENT_MAY_BE_NODE || ENVIRONMENT_MAY_BE_WORKER
 var _scriptName;
@@ -188,22 +197,13 @@ if (ENVIRONMENT_IS_NODE) {
   if (!isNode) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
-#if ASSERTIONS
-  var nodeVersion = process.versions.node;
-  var numericVersion = nodeVersion.split('.').slice(0, 3);
-  numericVersion = (numericVersion[0] * 10000) + (numericVersion[1] * 100) + (numericVersion[2].split('-')[0] * 1);
-  if (numericVersion < {{{ MIN_NODE_VERSION }}}) {
-    throw new Error('This emscripten-generated code requires node {{{ formattedMinNodeVersion() }}} (detected v' + nodeVersion + ')');
-  }
-#endif
-
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
-  var fs = require('fs');
+  var fs = require('node:fs');
 
 #if EXPORT_ES6
   if (_scriptName.startsWith('file:')) {
-    scriptDirectory = require('path').dirname(require('url').fileURLToPath(_scriptName)) + '/';
+    scriptDirectory = require('node:path').dirname(require('node:url').fileURLToPath(_scriptName)) + '/';
   }
 #else
   scriptDirectory = __dirname + '/';
@@ -224,30 +224,6 @@ if (ENVIRONMENT_IS_NODE) {
   }
 #endif
 
-#if NODEJS_CATCH_EXIT
-  process.on('uncaughtException', (ex) => {
-    // suppress ExitStatus exceptions from showing an error
-#if RUNTIME_DEBUG
-    dbg(`node: uncaughtException: ${ex}`)
-#endif
-    if (ex !== 'unwind' && !(ex instanceof ExitStatus) && !(ex.context instanceof ExitStatus)) {
-      throw ex;
-    }
-  });
-#endif
-
-#if NODEJS_CATCH_REJECTION
-  // Without this older versions of node (< v15) will log unhandled rejections
-  // but return 0, which is not normally the desired behaviour.  This is
-  // not be needed with node v15 and about because it is now the default
-  // behaviour:
-  // See https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-  var nodeMajor = process.versions.node.split(".")[0];
-  if (nodeMajor < 15) {
-    process.on('unhandledRejection', (reason) => { throw reason; });
-  }
-#endif
-
   quit_ = (status, toThrow) => {
     process.exitCode = status;
     throw toThrow;
@@ -255,7 +231,7 @@ if (ENVIRONMENT_IS_NODE) {
 
 #if WASM == 2
   // If target shell does not support Wasm, load the JS version of the code.
-  if (typeof WebAssembly == 'undefined') {
+  if (!globalThis.WebAssembly) {
     eval(fs.readFileSync(locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
   }
 #endif
@@ -265,14 +241,9 @@ if (ENVIRONMENT_IS_NODE) {
 #if ENVIRONMENT_MAY_BE_SHELL || ASSERTIONS
 if (ENVIRONMENT_IS_SHELL) {
 
-#if ENVIRONMENT.length && ASSERTIONS
-  const isNode = {{{ nodeDetectionCode() }}};
-  if (isNode || typeof window == 'object' || typeof WorkerGlobalScope != 'undefined') throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
-#endif
-
 #if ENVIRONMENT_MAY_BE_SHELL
   readBinary = (f) => {
-    if (typeof readbuffer == 'function') {
+    if (globalThis.readbuffer) {
       return new Uint8Array(readbuffer(f));
     }
     let data = read(f, 'binary');
@@ -290,7 +261,7 @@ if (ENVIRONMENT_IS_SHELL) {
   // v8 uses `arguments_` whereas spidermonkey uses `scriptArgs`
   arguments_ = globalThis.arguments || globalThis.scriptArgs;
 
-  if (typeof quit == 'function') {
+  if (globalThis.quit) {
     quit_ = (status, toThrow) => {
       // Unlike node which has process.exitCode, d8 has no such mechanism. So we
       // have no way to set the exit code and then let the program exit with
@@ -324,7 +295,7 @@ if (ENVIRONMENT_IS_SHELL) {
 
 #if WASM == 2
   // If target shell does not support Wasm, load the JS version of the code.
-  if (typeof WebAssembly == 'undefined') {
+  if (!globalThis.WebAssembly) {
     eval(read(locateFile('{{{ TARGET_BASENAME }}}.wasm.js'))+'');
   }
 #endif
@@ -346,7 +317,7 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 
 #if ENVIRONMENT.length && ASSERTIONS
-  if (!(typeof window == 'object' || typeof WorkerGlobalScope != 'undefined')) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
+  if (!(globalThis.window || globalThis.WorkerGlobalScope)) throw new Error('not compiled for this environment (did you build to HTML and try to run it not on the web, or set ENVIRONMENT to something - like node - and run it someplace else - like on the web?)');
 #endif
 
 #if PTHREADS && ENVIRONMENT_MAY_BE_NODE
@@ -359,7 +330,9 @@ if (ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER) {
   }
 } else
 #endif // ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-#if AUDIO_WORKLET && ASSERTIONS
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
+#endif
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET && ASSERTIONS
 if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 #endif
 {
@@ -378,7 +351,7 @@ if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 var defaultPrint = console.log.bind(console);
 var defaultPrintErr = console.error.bind(console);
 if (ENVIRONMENT_IS_NODE) {
-  var utils = require('util');
+  var utils = require('node:util');
   var stringify = (a) => typeof a == 'object' ? utils.inspect(a) : a;
   defaultPrint = (...args) => fs.writeSync(1, args.map(stringify).join(' ') + '\n');
   defaultPrintErr = (...args) => fs.writeSync(2, args.map(stringify).join(' ') + '\n');
@@ -408,7 +381,7 @@ if (ENVIRONMENT_IS_NODE) {
 // if an assertion fails it cannot print the message
 #if PTHREADS
 assert(
-#if AUDIO_WORKLET
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
   ENVIRONMENT_IS_AUDIO_WORKLET ||
 #endif
   ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');

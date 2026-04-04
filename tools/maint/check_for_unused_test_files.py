@@ -4,10 +4,10 @@
 be deleted.  This is a work in progress and still contains
 false positives in the output."""
 
-import os
-import sys
 import fnmatch
+import os
 import subprocess
+import sys
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
 root_dir = os.path.dirname(os.path.dirname(script_dir))
@@ -27,8 +27,14 @@ ignore_files = {
 ignore_root_patterns = ['runner.*', 'test_*.py']
 ignore_root_files = {
   'check_clean.py',
+  'decorators.py',
   'jsrun.py',
   'clang_native.py',
+  'line_endings.py',
+  'single_line_runner.py',
+  'color_runner.py',
+  'retryable_unittest.py',
+  'browser_common.py',
   'common.py',
   'parallel_testsuite.py',
   'parse_benchmark_output.py',

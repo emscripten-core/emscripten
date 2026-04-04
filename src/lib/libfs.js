@@ -6,8 +6,8 @@
 
 var LibraryFS = {
   $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
-    '$FS_createPreloadedFile',
     '$FS_modeStringToFlags',
+    '$FS_fileDataToTypedArray',
     '$FS_getMode',
     '$intArrayFromString',
 #if LibraryManager.has('libidbfs.js')
@@ -28,6 +28,9 @@ var LibraryFS = {
 #if ASSERTIONS
     '$strError', '$ERRNO_CODES',
 #endif
+#if !MINIMAL_RUNTIME
+    '$FS_createPreloadedFile',
+#endif
   ],
   $FS__postset: () => {
     // TODO: do we need noFSInit?
@@ -35,7 +38,10 @@ var LibraryFS = {
     addAtPostCtor('FS.ignorePermissions = false;');
     addAtExit('FS.quit();');
     return `
+#if !MINIMAL_RUNTIME
 FS.createPreloadedFile = FS_createPreloadedFile;
+FS.preloadFile = FS_preloadFile;
+#endif
 FS.staticInit();`;
   },
   $FS: {
@@ -371,9 +377,11 @@ FS.staticInit();`;
       // return 0 if any user, group or owner bits are set.
       if (perms.includes('r') && !(node.mode & {{{ cDefs.S_IRUGO }}})) {
         return {{{ cDefs.EACCES }}};
-      } else if (perms.includes('w') && !(node.mode & {{{ cDefs.S_IWUGO }}})) {
+      }
+      if (perms.includes('w') && !(node.mode & {{{ cDefs.S_IWUGO }}})) {
         return {{{ cDefs.EACCES }}};
-      } else if (perms.includes('x') && !(node.mode & {{{ cDefs.S_IXUGO }}})) {
+      }
+      if (perms.includes('x') && !(node.mode & {{{ cDefs.S_IXUGO }}})) {
         return {{{ cDefs.EACCES }}};
       }
       return 0;
@@ -414,10 +422,8 @@ FS.staticInit();`;
         if (FS.isRoot(node) || FS.getPath(node) === FS.cwd()) {
           return {{{ cDefs.EBUSY }}};
         }
-      } else {
-        if (FS.isDir(node.mode)) {
-          return {{{ cDefs.EISDIR }}};
-        }
+      } else if (FS.isDir(node.mode)) {
+        return {{{ cDefs.EISDIR }}};
       }
       return 0;
     },
@@ -427,13 +433,16 @@ FS.staticInit();`;
       }
       if (FS.isLink(node.mode)) {
         return {{{ cDefs.ELOOP }}};
-      } else if (FS.isDir(node.mode)) {
-        if (FS.flagsToPermissionString(flags) !== 'r' // opening for write
-            || (flags & ({{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}}))) { // TODO: check for O_SEARCH? (== search for dir only)
+      }
+      var mode = FS.flagsToPermissionString(flags);
+      if (FS.isDir(node.mode)) {
+        // opening for write
+        // TODO: check for O_SEARCH? (== search for dir only)
+        if (mode !== 'r' || (flags & ({{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_CREAT }}}))) {
           return {{{ cDefs.EISDIR }}};
         }
       }
-      return FS.nodePermissions(node, FS.flagsToPermissionString(flags));
+      return FS.nodePermissions(node, mode);
     },
     checkOpExists(op, err) {
       if (!op) {
@@ -578,12 +587,13 @@ FS.staticInit();`;
       };
 
       // sync all mounts
-      mounts.forEach((mount) => {
-        if (!mount.type.syncfs) {
-          return done(null);
+      for (var mount of mounts) {
+        if (mount.type.syncfs) {
+          mount.type.syncfs(mount, populate, done);
+        } else {
+          done(null);
         }
-        mount.type.syncfs(mount, populate, done);
-      });
+      }
     },
     mount(type, opts, mountpoint) {
 #if ASSERTIONS
@@ -652,9 +662,7 @@ FS.staticInit();`;
       var mount = node.mounted;
       var mounts = FS.getMounts(mount);
 
-      Object.keys(FS.nameTable).forEach((hash) => {
-        var current = FS.nameTable[hash];
-
+      for (var [hash, current] of Object.entries(FS.nameTable)) {
         while (current) {
           var next = current.name_next;
 
@@ -664,7 +672,7 @@ FS.staticInit();`;
 
           current = next;
         }
-      });
+      }
 
       // no longer a mountpoint
       node.mounted = null;
@@ -740,9 +748,7 @@ FS.staticInit();`;
       mode &= {{{ cDefs.S_IRWXUGO }}} | {{{ cDefs.S_ISVTX }}};
       mode |= {{{ cDefs.S_IFDIR }}};
 #if FS_DEBUG
-      if (FS.trackingDelegate['onMakeDirectory']) {
-        FS.trackingDelegate['onMakeDirectory'](path, mode);
-      }
+      FS.trackingDelegate['onMakeDirectory']?.(path, mode);
 #endif
       return FS.mknod(path, mode, 0);
     },
@@ -787,9 +793,7 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EPERM }}});
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['onMakeSymlink']) {
-        FS.trackingDelegate['onMakeSymlink'](oldpath, newpath);
-      }
+      FS.trackingDelegate['onMakeSymlink']?.(oldpath, newpath);
 #endif
       return parent.node_ops.symlink(parent, newname, oldpath);
     },
@@ -863,9 +867,7 @@ FS.staticInit();`;
         }
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['willMovePath']) {
-        FS.trackingDelegate['willMovePath'](old_path, new_path);
-      }
+      FS.trackingDelegate['willMovePath']?.(old_path, new_path);
 #endif
       // remove the node from the lookup hash
       FS.hashRemoveNode(old_node);
@@ -883,9 +885,7 @@ FS.staticInit();`;
         FS.hashAddNode(old_node);
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['onMovePath']) {
-        FS.trackingDelegate['onMovePath'](old_path, new_path);
-      }
+      FS.trackingDelegate['onMovePath']?.(old_path, new_path);
 #endif
     },
     rmdir(path) {
@@ -904,16 +904,12 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EBUSY }}});
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['willDeletePath']) {
-        FS.trackingDelegate['willDeletePath'](path);
-      }
+      FS.trackingDelegate['willDeletePath']?.(path);
 #endif
       parent.node_ops.rmdir(parent, name);
       FS.destroyNode(node);
 #if FS_DEBUG
-      if (FS.trackingDelegate['onDeletePath']) {
-        FS.trackingDelegate['onDeletePath'](path);
-      }
+      FS.trackingDelegate['onDeletePath']?.(path);
 #endif
     },
     readdir(path) {
@@ -944,16 +940,12 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EBUSY }}});
       }
 #if FS_DEBUG
-      if (FS.trackingDelegate['willDeletePath']) {
-        FS.trackingDelegate['willDeletePath'](path);
-      }
+      FS.trackingDelegate['willDeletePath']?.(path);
 #endif
       parent.node_ops.unlink(parent, name);
       FS.destroyNode(node);
 #if FS_DEBUG
-      if (FS.trackingDelegate['onDeletePath']) {
-        FS.trackingDelegate['onDeletePath'](path);
-      }
+      FS.trackingDelegate['onDeletePath']?.(path);
 #endif
     },
     readlink(path) {
@@ -1082,7 +1074,7 @@ FS.staticInit();`;
       if (path === "") {
         throw new FS.ErrnoError({{{ cDefs.ENOENT }}});
       }
-      flags = typeof flags == 'string' ? FS_modeStringToFlags(flags) : flags;
+      flags = FS_modeStringToFlags(flags);
       if ((flags & {{{ cDefs.O_CREAT }}})) {
         mode = (mode & {{{ cDefs.S_IALLUGO }}}) | {{{ cDefs.S_IFREG }}};
       } else {
@@ -1117,7 +1109,7 @@ FS.staticInit();`;
         } else {
           // node doesn't exist, try to create it
           // Ignore the permission bits here to ensure we can `open` this new
-          // file below. We use chmod below the apply the permissions once the
+          // file below. We use chmod below to apply the permissions once the
           // file is open.
           node = FS.mknod(path, mode | 0o777, 0);
           created = true;
@@ -1148,7 +1140,7 @@ FS.staticInit();`;
         FS.truncate(node, 0);
       }
 #if FS_DEBUG
-      var trackingFlags = flags
+      var origFlags = flags
 #endif
       // we've already handled these, don't pass down to the underlying vfs
       flags &= ~({{{ cDefs.O_EXCL }}} | {{{ cDefs.O_TRUNC }}} | {{{ cDefs.O_NOFOLLOW }}});
@@ -1176,16 +1168,12 @@ FS.staticInit();`;
       if (Module['logReadFiles'] && !(flags & {{{ cDefs.O_WRONLY}}})) {
         if (!(path in FS.readFiles)) {
           FS.readFiles[path] = 1;
-#if FS_DEBUG
-          dbg(`FS.trackingDelegate error on read file: ${path}`);
-#endif
+          err(`read file: ${path}`);
         }
       }
 #endif
 #if FS_DEBUG
-      if (FS.trackingDelegate['onOpenFile']) {
-        FS.trackingDelegate['onOpenFile'](path, trackingFlags);
-      }
+      FS.trackingDelegate['onOpenFile']?.(path, origFlags);
 #endif
       return stream;
     },
@@ -1205,8 +1193,8 @@ FS.staticInit();`;
       }
       stream.fd = null;
 #if FS_DEBUG
-      if (stream.path && FS.trackingDelegate['onCloseFile']) {
-        FS.trackingDelegate['onCloseFile'](stream.path);
+      if (stream.path) {
+        FS.trackingDelegate['onCloseFile']?.(stream.path);
       }
 #endif
     },
@@ -1226,8 +1214,8 @@ FS.staticInit();`;
       stream.position = stream.stream_ops.llseek(stream, offset, whence);
       stream.ungotten = [];
 #if FS_DEBUG
-      if (stream.path && FS.trackingDelegate['onSeekFile']) {
-        FS.trackingDelegate['onSeekFile'](stream.path, stream.position, whence);
+      if (stream.path) {
+        FS.trackingDelegate['onSeekFile']?.(stream.path, stream.position, whence);
       }
 #endif
       return stream.position;
@@ -1260,15 +1248,19 @@ FS.staticInit();`;
       var bytesRead = stream.stream_ops.read(stream, buffer, offset, length, position);
       if (!seeking) stream.position += bytesRead;
 #if FS_DEBUG
-      if (stream.path && FS.trackingDelegate['onReadFile']) {
-        FS.trackingDelegate['onReadFile'](stream.path, bytesRead);
+      if (stream.path) {
+        FS.trackingDelegate['onReadFile']?.(stream.path, bytesRead);
       }
 #endif
       return bytesRead;
     },
+    /**
+     * @param {TypedArray} buffer
+     */
     write(stream, buffer, offset, length, position, canOwn) {
 #if ASSERTIONS
       assert(offset >= 0);
+      assert(buffer.subarray, 'FS.write expects a TypedArray');
 #endif
       if (length < 0 || position < 0) {
         throw new FS.ErrnoError({{{ cDefs.EINVAL }}});
@@ -1298,8 +1290,8 @@ FS.staticInit();`;
       var bytesWritten = stream.stream_ops.write(stream, buffer, offset, length, position, canOwn);
       if (!seeking) stream.position += bytesWritten;
 #if FS_DEBUG
-      if (stream.path && FS.trackingDelegate['onWriteToFile']) {
-        FS.trackingDelegate['onWriteToFile'](stream.path, bytesWritten);
+      if (stream.path) {
+        FS.trackingDelegate['onWriteToFile']?.(stream.path, bytesWritten);
       }
 #endif
       return bytesWritten;
@@ -1346,7 +1338,7 @@ FS.staticInit();`;
       opts.flags = opts.flags || {{{ cDefs.O_RDONLY }}};
       opts.encoding = opts.encoding || 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
-        throw new Error(`Invalid encoding type "${opts.encoding}"`);
+        abort(`Invalid encoding type "${opts.encoding}"`);
       }
       var stream = FS.open(path, opts.flags);
       var stat = FS.stat(path);
@@ -1359,17 +1351,14 @@ FS.staticInit();`;
       FS.close(stream);
       return buf;
     },
+    /**
+     * @param {TypedArray|Array|string} data
+     */
     writeFile(path, data, opts = {}) {
       opts.flags = opts.flags || {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}};
       var stream = FS.open(path, opts.flags, opts.mode);
-      if (typeof data == 'string') {
-        data = new Uint8Array(intArrayFromString(data, true));
-      }
-      if (ArrayBuffer.isView(data)) {
-        FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
-      } else {
-        throw new Error('Unsupported data type');
-      }
+      data = FS_fileDataToTypedArray(data);
+      FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
       FS.close(stream);
     },
 
@@ -1617,6 +1606,9 @@ FS.staticInit();`;
       var mode = FS_getMode(canRead, canWrite);
       return FS.create(path, mode);
     },
+    /**
+     * @param {TypedArray|Array|string=} data
+     */
     createDataFile(parent, name, data, canRead, canWrite, canOwn) {
       var path = name;
       if (parent) {
@@ -1626,11 +1618,7 @@ FS.staticInit();`;
       var mode = FS_getMode(canRead, canWrite);
       var node = FS.create(path, mode);
       if (data) {
-        if (typeof data == 'string') {
-          var arr = new Array(data.length);
-          for (var i = 0, len = data.length; i < len; ++i) arr[i] = data.charCodeAt(i);
-          data = arr;
-        }
+        data = FS_fileDataToTypedArray(data);
         // make sure we can write to the file
         FS.chmod(node, mode | {{{ cDefs.S_IWUGO }}});
         var stream = FS.open(node, {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}});
@@ -1700,13 +1688,15 @@ FS.staticInit();`;
  #if FS_DEBUG
       dbg(`forceLoadFile: ${obj.url}`)
  #endif
-      if (typeof XMLHttpRequest != 'undefined') {
-        throw new Error("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
+      if (globalThis.XMLHttpRequest) {
+        abort("Lazy loading should have been performed (contents set) in createLazyFile, but it was not. Lazy loading only works in web workers. Use --embed-file or --preload-file in emcc on the main thread.");
       } else { // Command-line.
         try {
           obj.contents = readBinary(obj.url);
-          obj.usedBytes = obj.contents.length;
         } catch (e) {
+ #if FS_DEBUG
+          dbg(`forceLoadFile exception: ${e}`);
+ #endif
           throw new FS.ErrnoError({{{ cDefs.EIO }}});
         }
       }
@@ -1742,7 +1732,7 @@ FS.staticInit();`;
           var xhr = new XMLHttpRequest();
           xhr.open('HEAD', url, false);
           xhr.send(null);
-          if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+          if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort("Couldn't load " + url + ". Status: " + xhr.status);
           var datalength = Number(xhr.getResponseHeader("Content-length"));
           var header;
           var hasByteServing = (header = xhr.getResponseHeader("Accept-Ranges")) && header === "bytes";
@@ -1758,8 +1748,8 @@ FS.staticInit();`;
 
           // Function to get a range from the remote URL.
           var doXHR = (from, to) => {
-            if (from > to) throw new Error("invalid range (" + from + ", " + to + ") or no bytes requested!");
-            if (to > datalength-1) throw new Error("only " + datalength + " bytes available! programmer error!");
+            if (from > to) abort("invalid range (" + from + ", " + to + ") or no bytes requested!");
+            if (to > datalength-1) abort("only " + datalength + " bytes available! programmer error!");
 
             // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
             var xhr = new XMLHttpRequest();
@@ -1773,7 +1763,7 @@ FS.staticInit();`;
             }
 
             xhr.send(null);
-            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) throw new Error("Couldn't load " + url + ". Status: " + xhr.status);
+            if (!(xhr.status >= 200 && xhr.status < 300 || xhr.status === 304)) abort("Couldn't load " + url + ". Status: " + xhr.status);
             if (xhr.response !== undefined) {
               return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
             }
@@ -1787,7 +1777,7 @@ FS.staticInit();`;
             if (typeof lazyArray.chunks[chunkNum] == 'undefined') {
               lazyArray.chunks[chunkNum] = doXHR(start, end);
             }
-            if (typeof lazyArray.chunks[chunkNum] == 'undefined') throw new Error('doXHR failed!');
+            if (typeof lazyArray.chunks[chunkNum] == 'undefined') abort('doXHR failed!');
             return lazyArray.chunks[chunkNum];
           });
 
@@ -1817,8 +1807,8 @@ FS.staticInit();`;
         }
       }
 
-      if (typeof XMLHttpRequest != 'undefined') {
-        if (!ENVIRONMENT_IS_WORKER) throw 'Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc';
+      if (globalThis.XMLHttpRequest) {
+        if (!ENVIRONMENT_IS_WORKER) abort('Cannot do synchronous binary XHRs outside webworkers in modern browsers. Use --embed-file or --preload-file in emcc');
         var lazyArray = new LazyUint8Array();
         var properties = { isDevice: false, contents: lazyArray };
       } else {
@@ -1843,14 +1833,12 @@ FS.staticInit();`;
       });
       // override each stream op with one that tries to force load the lazy file first
       var stream_ops = {};
-      var keys = Object.keys(node.stream_ops);
-      keys.forEach((key) => {
-        var fn = node.stream_ops[key];
+      for (const [key, fn] of Object.entries(node.stream_ops)) {
         stream_ops[key] = (...args) => {
           FS.forceLoadFile(node);
           return fn(...args);
         };
-      });
+      }
       function writeChunks(stream, buffer, offset, length, position) {
         var contents = stream.node.contents;
         if (position >= contents.length)
@@ -1888,28 +1876,6 @@ FS.staticInit();`;
       node.stream_ops = stream_ops;
       return node;
     },
-
-    // Removed v1 functions
-#if ASSERTIONS
-    absolutePath() {
-      abort('FS.absolutePath has been removed; use PATH_FS.resolve instead');
-    },
-    createFolder() {
-      abort('FS.createFolder has been removed; use FS.mkdir instead');
-    },
-    createLink() {
-      abort('FS.createLink has been removed; use FS.symlink instead');
-    },
-    joinPath() {
-      abort('FS.joinPath has been removed; use PATH.join instead');
-    },
-    mmapAlloc() {
-      abort('FS.mmapAlloc has been replaced by the top level function mmapAlloc');
-    },
-    standardizePath() {
-      abort('FS.standardizePath has been removed; use PATH.normalize instead');
-    },
-#endif
   },
 
   $FS_mkdirTree__docs: `

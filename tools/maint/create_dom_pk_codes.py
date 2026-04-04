@@ -30,9 +30,11 @@
 
 # Use #include <emscripten/dom_pk_codes.h> in your code to access these IDs.
 
+# ruff: noqa: E241
+
 import os
-import sys
 import random
+import sys
 
 input_strings = [
   (0x0, 'Unidentified',          'DOM_PK_UNKNOWN'),
@@ -237,29 +239,26 @@ def hash_all(k1, k2):
     else:
       hashes[h] = s[1]
       str_to_hash[s[1]] = h
-  return (hashes, str_to_hash)
+  return str_to_hash
 
 
 # Find an appropriate hash function that is collision free within the set of all input strings
 # Try hash function format h_i = ((h_(i-1) ^ k_1) << k_2) ^ s_i, where h_i is the hash function
 # value at step i, k_1 and k_2 are the constants we are searching, and s_i is the i'th input
 # character
-perfect_hash_table = None
 
 # Last used perfect hash constants.  Stored here so that this script will
 # produce the same output it did when the current output was generated.
 k1 = 0x7E057D79
 k2 = 3
-perfect_hash_table = hash_all(k1, k2)
+str_to_hash = hash_all(k1, k2)
 
-while not perfect_hash_table:
+while not str_to_hash:
   # The search space is super-narrow, but since there are so few items to hash, practically
   # almost any choice gives a collision free hash.
   k1 = int(random.randint(0, 0x7FFFFFFF))
   k2 = int(random.uniform(1, 8))
-  perfect_hash_table = hash_all(k1, k2)
-
-hash_to_str, str_to_hash = perfect_hash_table
+  str_to_hash = hash_all(k1, k2)
 
 print('Found collision-free hash function!', file=sys.stderr)
 print('h_i = ((h_(i-1) ^ %s) << %s) ^ s_i' % (hex(k1), hex(k2)), file=sys.stderr)
@@ -284,8 +283,8 @@ h_filename = os.path.join(root, 'system/include/emscripten/dom_pk_codes.h')
 c_filename = os.path.join(root, 'system/lib/html5/dom_pk_codes.c')
 print(f'Writing: {h_filename}')
 print(f'Writing: {c_filename}')
-h_file = open(h_filename, 'w')
-c_file = open(c_filename, 'w')
+h_file = open(h_filename, 'w', encoding='utf-8')
+c_file = open(c_filename, 'w', encoding='utf-8')
 
 
 # Generate the output file:

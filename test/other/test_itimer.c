@@ -33,14 +33,15 @@ void prof_handler(int dummy) {
 }
 
 void test_oneoff(int which) {
+  printf("test_oneoff\n");
   memset(got_alarm, 0, sizeof(got_alarm));
 
   int rtn;
   struct itimerval val;
   memset(&val, 0, sizeof(val));
 
-  // Set a timer for 1 second
-  val.it_value.tv_sec = 1;
+  // Set a non-repeating timer for 500 milliseconds
+  val.it_value.tv_usec = 500 * 1000;
   rtn = setitimer(which, &val, NULL);
   assert(rtn == 0);
 
@@ -59,9 +60,9 @@ void test_oneoff(int which) {
   assert(val.it_value.tv_sec == 0);
   assert(val.it_value.tv_usec > 0);
 
-  // Wait 1.5s
+  // Wait 800ms
   assert(!got_alarm[which]);
-  usleep(1500 * 1000);
+  usleep(700 * 1000);
 
   // Verify that the time fired and is no longer active
   assert(got_alarm[which]);
@@ -74,6 +75,8 @@ void test_oneoff(int which) {
 #define ERROR_MARGIN 3
 
 void test_sequence(int which) {
+  int64_t ms_to_sleep = NUM_TIMERS * 100 + 50;
+  printf("test_sequence (sleeping for %lldms)\n", ms_to_sleep);
   memset(got_alarm, 0, sizeof(got_alarm));
   // Set a timer to fire every 100ms
   struct itimerval val;
@@ -83,7 +86,7 @@ void test_sequence(int which) {
   val.it_interval.tv_usec = 100 * 1000;
   int rtn = setitimer(which, &val, NULL);
   // Sleep for a little over NUM_TIMERS * 100ms
-  usleep((NUM_TIMERS * 100 + 50) * 1000);
+  usleep(ms_to_sleep * 1000);
   printf("got %d alarms\n", got_alarm[which]);
   // Normally we would expect NUM_TIMERS to fire in this time
   // but leave some wiggle room for scheduling anomalies.

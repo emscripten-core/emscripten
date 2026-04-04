@@ -5,8 +5,8 @@
 
 import os
 
-TAG = 'version_1'
-HASH = '99bee75beb662f8520bbb18ad6dbf8590d30eb3a7360899f0ac4764ca72fe8013da37c9df21e525f9d2dc5632827d4b4cea558cbc938e7fbed0c41a29a7a2dc5'
+VERSION = '1.3.7'
+HASH = '10edd193f44f2b2d6085672e257b5be11066f5db27348d4cab53789bf9e8739c2df2cd7f42b83e4edbab53e10b5dc84320d6aab1deac0d8e18196a8a88b19b77'
 
 deps = ['ogg']
 
@@ -16,12 +16,12 @@ def needed(settings):
 
 
 def get(ports, settings, shared):
-  ports.fetch_project('vorbis', f'https://github.com/emscripten-ports/vorbis/archive/{TAG}.zip', sha512hash=HASH)
+  ports.fetch_project('vorbis', f'https://github.com/xiph/vorbis/releases/download/v{VERSION}/libvorbis-{VERSION}.zip', sha512hash=HASH)
 
   def create(final):
-    source_path = ports.get_dir('vorbis', 'Vorbis-' + TAG)
+    source_path = ports.get_dir('vorbis', 'libvorbis-' + VERSION)
     ports.install_headers(os.path.join(source_path, 'include', 'vorbis'), target='vorbis')
-    ports.make_pkg_config('vorbis', TAG, '-sUSE_VORBIS')
+    ports.make_pkg_config('vorbis', VERSION, '-sUSE_VORBIS')
     ports.build_port(os.path.join(source_path, 'lib'), final, 'vorbis',
                      flags=['-sUSE_OGG'],
                      exclude_files=['psytune', 'barkmel', 'tone', 'misc'])

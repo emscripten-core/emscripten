@@ -1,4 +1,0 @@
-m (memory)
-n (__wasm_call_ctors)
-o (main)
-p (_emscripten_timeout)

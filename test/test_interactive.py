@@ -10,9 +10,11 @@ import shutil
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner.py interactive')
 
-from common import parameterized
-from common import BrowserCore, test_file, create_file, also_with_minimal_runtime
-from tools.shared import WINDOWS
+from browser_common import BrowserCore
+from common import create_file, test_file
+from decorators import also_with_minimal_runtime, parameterized
+
+from tools.utils import WINDOWS
 
 
 class interactive(BrowserCore):
@@ -24,8 +26,11 @@ class interactive(BrowserCore):
     print('Running the interactive tests. Make sure the browser allows popups from localhost.')
     print()
 
+  def test_html5_core(self):
+    self.btest_exit('test_html5_core.c', cflags=['-DKEEP_ALIVE'])
+
   def test_html5_fullscreen(self):
-    self.btest('test_html5_fullscreen.c', expected='0', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-sEXPORTED_FUNCTIONS=_requestFullscreen,_enterSoftFullscreen,_main', '--shell-file', test_file('test_html5_fullscreen.html')])
+    self.btest('test_html5_fullscreen.c', expected='0', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR', '-sEXPORTED_FUNCTIONS=_requestFullscreen,_enterSoftFullscreen,_main', '--shell-file', test_file('browser/test_html5_fullscreen.html')])
 
   def test_html5_emscripten_exit_with_escape(self):
     self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1', cflags=['-DEXIT_WITH_F'])
@@ -34,7 +39,7 @@ class interactive(BrowserCore):
     self.btest('test_html5_emscripten_exit_fullscreen.c', expected='1')
 
   def test_html5_mouse(self):
-    self.btest('test_html5_mouse.c', expected='0', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
+    self.btest_exit('test_html5_mouse.c', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
 
   def test_html5_pointerlockerror(self):
     self.btest('test_html5_pointerlockerror.c', expected='0', cflags=['-sDISABLE_DEPRECATED_FIND_EVENT_TARGET_BEHAVIOR'])
@@ -335,6 +340,53 @@ class interactive(BrowserCore):
     shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
     shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
     self.btest_exit('webaudio/audioworklet_params_mixing.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+
+  # Mixing test above with hard-pans to verify left and right ordering
+  def test_audio_worklet_hard_pans(self):
+    os.mkdir('audio_files')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-beat-right.mp3'), 'audio_files/emscripten-beat.mp3')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-bass-left.mp3'), 'audio_files/emscripten-bass.mp3')
+    self.btest_exit('webaudio/audioworklet_params_mixing.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+
+  # Tests an AudioWorklet with a growable heap
+  def test_audio_worklet_memory_growth(self):
+    os.mkdir('audio_files')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-beat.mp3'), 'audio_files/')
+    shutil.copy(test_file('webaudio/audio_files/emscripten-bass.mp3'), 'audio_files/')
+    self.btest_exit('webaudio/audioworklet_memory_growth.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sALLOW_MEMORY_GROWTH'])
+
+  def test_html_source_map(self):
+    # browsers will try to 'guess' the corresponding original line if a
+    # generated line is unmapped, so if we want to make sure that our
+    # numbering is correct, we need to provide a couple of 'possible wrong
+    # answers'. thus, we add some printf calls so that the cpp file gets
+    # multiple mapped lines. in other words, if the program consists of a
+    # single 'throw' statement, browsers may just map any thrown exception to
+    # that line, because it will be the only mapped line.
+    create_file('src.cpp', r'''
+      #include <cstdio>
+
+      int main() {
+        printf("Starting test\n");
+        try {
+          throw 42; // line 8
+        } catch (int e) { }
+        printf("done\n");
+        return 0;
+      }
+      ''')
+    # use relative paths when calling emcc, because file:// URIs can only load
+    # sourceContent when the maps are relative paths
+    self.compile_btest('src.cpp', ['-o', 'src.html', '-gsource-map'])
+    self.assertExists('src.html')
+    self.assertExists('src.wasm.map')
+    print('''
+If manually bisecting:
+  Open the file with ./emrun out/test/src.html
+  Check that you see src.cpp among the page sources.
+  Even better, add a breakpoint, e.g. on the printf, then reload, then step
+  through and see the print (best to run with --save-dir for the reload).
+''')
 
 
 class interactive64(interactive):

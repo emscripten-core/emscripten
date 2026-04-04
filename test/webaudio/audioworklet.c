@@ -1,5 +1,6 @@
 #include <emscripten/webaudio.h>
 #include <assert.h>
+#include <unistd.h>
 
 /* Steps to use Wasm-based AudioWorklets:
   1. Create a Web Audio AudioContext either via manual JS code and calling
@@ -20,6 +21,8 @@
      begin to fire.
 */
 
+EMSCRIPTEN_WEBAUDIO_T context;
+
 // TEST_AND_EXIT is defined when running in the Emscripten test harness. You can
 // strip these out in your own project (otherwise playback will end quickly).
 #ifdef TEST_AND_EXIT
@@ -28,7 +31,13 @@ int lastTlsVariableValueInAudioThread = 1;
 #endif
 
 // This function will be called for every fixed-size buffer of audio samples to be processed.
-bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs, AudioSampleFrame *outputs, int numParams, const AudioParamFrame *params, void *userData) {
+bool ProcessAudio(int numInputs,
+                  const AudioSampleFrame* inputs,
+                  int numOutputs,
+                  AudioSampleFrame* outputs,
+                  int numParams,
+                  const AudioParamFrame* params,
+                  void* userData) {
 #ifdef TEST_AND_EXIT
   // Only running in the test harness, see main_thread_tls_access()
   assert(testTlsVariable == lastTlsVariableValueInAudioThread);
@@ -37,10 +46,18 @@ bool ProcessAudio(int numInputs, const AudioSampleFrame *inputs, int numOutputs,
   assert(emscripten_current_thread_is_audio_worklet());
 #endif
 
+  // Verify that getentropy fails gracefully (i.e. returns non-zero) when called
+  // inside a worklet (where crypto.getRandomValues is not supported);
+  unsigned char bytes[16];
+  int rtn = getentropy(bytes, sizeof(bytes));
+  assert(rtn != 0);
+
   // Produce noise in all output channels.
-  for(int i = 0; i < numOutputs; ++i)
-    for(int j = 0; j < outputs[i].samplesPerChannel*outputs[i].numberOfChannels; ++j)
+  for (int i = 0; i < numOutputs; ++i) {
+    for (int j = 0; j < outputs[i].samplesPerChannel*outputs[i].numberOfChannels; ++j) {
       outputs[i].data[j] = (rand() / (float)RAND_MAX * 2.0f - 1.0f) * 0.3f;
+    }
+  }
 
   // We generated audio and want to keep this processor going. Return false here to shut down.
   return true;
@@ -70,6 +87,7 @@ bool main_thread_tls_access(double time, void *userData) {
   testTlsVariable = (int)time;
   // Exit to the test harness after enough calls to ProcessAudio()
   if (lastTlsVariableValueInAudioThread >= 100) {
+    emscripten_destroy_audio_context(context);
     emscripten_force_exit(0);
   }
   return true;
@@ -89,7 +107,10 @@ void AudioWorkletProcessorCreated(EMSCRIPTEN_WEBAUDIO_T audioContext, bool succe
   EmscriptenAudioWorkletNodeCreateOptions options = {
     .numberOfInputs = 0,
     .numberOfOutputs = 1,
-    .outputChannelCounts = outputChannelCounts
+    .outputChannelCounts = outputChannelCounts,
+    .channelCount = 1,
+    .channelCountMode = WEBAUDIO_CHANNEL_COUNT_MODE_EXPLICIT,
+    .channelInterpretation = WEBAUDIO_CHANNEL_INTERPRETATION_SPEAKERS,
   };
 
   // Instantiate the noise-generator Audio Worklet Processor.
@@ -128,7 +149,7 @@ int main() {
   assert(!emscripten_current_thread_is_audio_worklet());
 
   // Create an audio context
-  EMSCRIPTEN_WEBAUDIO_T context = emscripten_create_audio_context(0 /* use default constructor options */);
+  context = emscripten_create_audio_context(0 /* use default constructor options */);
 
   // and kick off Audio Worklet scope initialization, which shares the Wasm
   // Module and Memory to the AudioWorklet scope and initializes its stack.

@@ -1,0 +1,6 @@
+0:run_js
+1:emscripten_asm_const_int
+2:middle
+3:main
+4:foo::cpp_func(int)
+5:__wasm_call_ctors

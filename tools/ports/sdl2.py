@@ -5,9 +5,9 @@
 
 import os
 
-VERSION = '2.32.0'
+VERSION = '2.32.10'
 TAG = f'release-{VERSION}'
-HASH = 'd3e4ce9784152aa1194c4f2d2399829f3b01a652915afc6ddaec334068bf95d850edcb43b1a951e0202fc2ecaafc1f58e538ca39b9b16d3fdfe412af0b6aebb0'
+HASH = '001738b610b42a8f8badfd6af3402f0a1a8601034adef0b8c702dd2b1951dc1b71b733a6779d97499b6f7314d226ec0c8dcffeb753f35a5c51e995ca20bdd459'
 SUBDIR = f'SDL-{TAG}'
 
 variants = {'sdl2-mt': {'PTHREADS': 1}}
@@ -25,6 +25,10 @@ def process_dependencies(settings, cflags_only):
   if not cflags_only:
     # SDL2 includes an internal reference to Module['createContext']
     settings.EXPORTED_RUNTIME_METHODS.append('createContext')
+
+    # SDL2 requires eglGetProcAddress() to work.
+    # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
+    settings.GL_ENABLE_GET_PROC_ADDRESS = 1
 
 
 def get(ports, settings, shared):
@@ -49,7 +53,7 @@ def get(ports, settings, shared):
     dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_displayevents.c events/SDL_dropevents.c
     events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_keysym_to_scancode.c
     events/SDL_scancode_tables.c events/SDL_mouse.c events/SDL_quit.c
-    events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
+    events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c hidapi/SDL_hidapi.c
     joystick/controller_type.c joystick/SDL_gamecontroller.c joystick/SDL_joystick.c
     joystick/SDL_steam_virtual_gamepad.c
     power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c

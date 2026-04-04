@@ -8,6 +8,7 @@
 var LibraryBrowser = {
   $Browser__deps: [
     '$callUserCallback',
+    '$getFullscreenElement',
     '$safeSetTimeout',
     '$warnOnce',
 #if FILESYSTEM
@@ -43,101 +44,93 @@ var LibraryBrowser = {
       // might create some side data structure for use later (like an Image element, etc.).
 
       var imagePlugin = {};
-      imagePlugin['canHandle'] = function imagePlugin_canHandle(name) {
+      imagePlugin['canHandle'] = (name) => {
         return !Module['noImageDecoding'] && /\.(jpg|jpeg|png|bmp|webp)$/i.test(name);
       };
-      imagePlugin['handle'] = function imagePlugin_handle(byteArray, name, onload, onerror) {
+      imagePlugin['handle'] = async (byteArray, name) => {
         var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
         if (b.size !== byteArray.length) { // Safari bug #118630
           // Safari's Blob can only take an ArrayBuffer
           b = new Blob([(new Uint8Array(byteArray)).buffer], { type: Browser.getMimetype(name) });
         }
         var url = URL.createObjectURL(b);
+        return new Promise((resolve, reject) => {
+          var img = new Image();
+          img.onload = () => {
 #if ASSERTIONS
-        assert(typeof url == 'string', 'createObjectURL must return a url as a string');
+            assert(img.complete, `Image ${name} could not be decoded`);
 #endif
-        var img = new Image();
-        img.onload = () => {
-#if ASSERTIONS
-          assert(img.complete, `Image ${name} could not be decoded`);
-#endif
-          var canvas = /** @type {!HTMLCanvasElement} */ (document.createElement('canvas'));
-          canvas.width = img.width;
-          canvas.height = img.height;
-          var ctx = canvas.getContext('2d');
-          ctx.drawImage(img, 0, 0);
-          Browser.preloadedImages[name] = canvas;
-          URL.revokeObjectURL(url);
-          onload?.(byteArray);
-        };
-        img.onerror = (event) => {
-          err(`Image ${url} could not be decoded`);
-          onerror?.();
-        };
-        img.src = url;
+            var canvas = /** @type {!HTMLCanvasElement} */ (document.createElement('canvas'));
+            canvas.width = img.width;
+            canvas.height = img.height;
+            var ctx = canvas.getContext('2d');
+            ctx.drawImage(img, 0, 0);
+            Browser.preloadedImages[name] = canvas;
+            URL.revokeObjectURL(url);
+            resolve(byteArray);
+          };
+          img.onerror = (event) => {
+            err(`Image ${url} could not be decoded`);
+            reject();
+          };
+          img.src = url;
+        });
       };
       preloadPlugins.push(imagePlugin);
 
       var audioPlugin = {};
-      audioPlugin['canHandle'] = function audioPlugin_canHandle(name) {
+      audioPlugin['canHandle'] = (name) => {
         return !Module['noAudioDecoding'] && name.slice(-4) in { '.ogg': 1, '.wav': 1, '.mp3': 1 };
       };
-      audioPlugin['handle'] = function audioPlugin_handle(byteArray, name, onload, onerror) {
-        var done = false;
-        function finish(audio) {
-          if (done) return;
-          done = true;
-          Browser.preloadedAudios[name] = audio;
-          onload?.(byteArray);
-        }
-        function fail() {
-          if (done) return;
-          done = true;
-          Browser.preloadedAudios[name] = new Audio(); // empty shim
-          onerror?.();
-        }
-        var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
-        var url = URL.createObjectURL(b); // XXX we never revoke this!
-#if ASSERTIONS
-        assert(typeof url == 'string', 'createObjectURL must return a url as a string');
-#endif
-        var audio = new Audio();
-        audio.addEventListener('canplaythrough', () => finish(audio), false); // use addEventListener due to chromium bug 124926
-        audio.onerror = function audio_onerror(event) {
-          if (done) return;
-          err(`warning: browser could not fully decode audio ${name}, trying slower base64 approach`);
-          function encode64(data) {
-            var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-            var PAD = '=';
-            var ret = '';
-            var leftchar = 0;
-            var leftbits = 0;
-            for (var i = 0; i < data.length; i++) {
-              leftchar = (leftchar << 8) | data[i];
-              leftbits += 8;
-              while (leftbits >= 6) {
-                var curr = (leftchar >> (leftbits-6)) & 0x3f;
-                leftbits -= 6;
-                ret += BASE[curr];
-              }
-            }
-            if (leftbits == 2) {
-              ret += BASE[(leftchar&3) << 4];
-              ret += PAD + PAD;
-            } else if (leftbits == 4) {
-              ret += BASE[(leftchar&0xf) << 2];
-              ret += PAD;
-            }
-            return ret;
+      audioPlugin['handle'] = async (byteArray, name) => {
+        return new Promise((resolve, reject) => {
+          var done = false;
+          function finish(audio) {
+            if (done) return;
+            done = true;
+            Browser.preloadedAudios[name] = audio;
+            resolve(byteArray);
           }
-          audio.src = 'data:audio/x-' + name.slice(-3) + ';base64,' + encode64(byteArray);
-          finish(audio); // we don't wait for confirmation this worked - but it's worth trying
-        };
-        audio.src = url;
-        // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
-        safeSetTimeout(() => {
-          finish(audio); // try to use it even though it is not necessarily ready to play
-        }, 10000);
+          var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
+          var url = URL.createObjectURL(b); // XXX we never revoke this!
+          var audio = new Audio();
+          audio.addEventListener('canplaythrough', () => finish(audio), false); // use addEventListener due to chromium bug 124926
+          audio.onerror = (event) => {
+            if (done) return;
+            err(`warning: browser could not fully decode audio ${name}, trying slower base64 approach`);
+            function encode64(data) {
+              var BASE = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
+              var PAD = '=';
+              var ret = '';
+              var leftchar = 0;
+              var leftbits = 0;
+              for (var i = 0; i < data.length; i++) {
+                leftchar = (leftchar << 8) | data[i];
+                leftbits += 8;
+                while (leftbits >= 6) {
+                  var curr = (leftchar >> (leftbits-6)) & 0x3f;
+                  leftbits -= 6;
+                  ret += BASE[curr];
+                }
+              }
+              if (leftbits == 2) {
+                ret += BASE[(leftchar&3) << 4];
+                ret += PAD + PAD;
+              } else if (leftbits == 4) {
+                ret += BASE[(leftchar&0xf) << 2];
+                ret += PAD;
+              }
+              return ret;
+            }
+            audio.src = 'data:audio/x-' + name.slice(-3) + ';base64,' + encode64(byteArray);
+            finish(audio); // we don't wait for confirmation this worked - but it's worth trying
+          };
+          audio.src = url;
+          // workaround for chrome bug 124926 - we do not always get oncanplaythrough or onerror
+          safeSetTimeout(() => {
+            finish(audio); // try to use it even though it is not necessarily ready to play
+          }, 10000);
+        });
       };
       preloadPlugins.push(audioPlugin);
 #endif
@@ -232,9 +225,7 @@ var LibraryBrowser = {
       function fullscreenChange() {
         Browser.isFullscreen = false;
         var canvasContainer = canvas.parentNode;
-        if ((document['fullscreenElement'] || document['mozFullScreenElement'] ||
-             document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
-             document['webkitCurrentFullScreenElement']) === canvasContainer) {
+        if (getFullscreenElement() === canvasContainer) {
           canvas.exitFullscreen = Browser.exitFullscreen;
           if (Browser.lockPointer) canvas.requestPointerLock();
           Browser.isFullscreen = true;
@@ -383,11 +374,11 @@ var LibraryBrowser = {
               delta *= 80;
               break;
             default:
-              throw 'unrecognized mouse wheel delta mode: ' + event.deltaMode;
+              abort('unrecognized mouse wheel delta mode: ' + event.deltaMode);
           }
           break;
         default:
-          throw 'unrecognized mouse wheel event: ' + event.type;
+          abort('unrecognized mouse wheel event: ' + event.type);
       }
       return delta;
     },
@@ -533,9 +524,7 @@ var LibraryBrowser = {
           h = Math.round(w / Module['forcedAspectRatio']);
         }
       }
-      if (((document['fullscreenElement'] || document['mozFullScreenElement'] ||
-           document['msFullscreenElement'] || document['webkitFullscreenElement'] ||
-           document['webkitCurrentFullScreenElement']) === canvas.parentNode) && (typeof screen != 'undefined')) {
+      if ((getFullscreenElement() === canvas.parentNode) && (typeof screen != 'undefined')) {
          var factor = Math.min(screen.width / w, screen.height / h);
          w = Math.round(w * factor);
          h = Math.round(h * factor);
@@ -579,12 +568,14 @@ var LibraryBrowser = {
     var _file = UTF8ToString(file);
     var data = FS.analyzePath(_file);
     if (!data.exists) return -1;
+    // Here we assume data.object.contents is a TypedArray.
+#if ASSERTIONS
+    assert(data.object.contents.subarray, 'unexpected file content')
+#endif
     FS.createPreloadedFile(
       PATH.dirname(_file),
       PATH.basename(_file),
-      // TODO: This copy is not needed if the contents are already a Uint8Array,
-      //       which they often are (and always are in WasmFS).
-      new Uint8Array(data.object.contents), true, true,
+      data.object.contents, /*canRead=*/true, /*canWrite=*/true,
       () => {
         {{{ runtimeKeepalivePop() }}}
         if (onload) {{{ makeDynCall('vp', 'onload') }}}(file);
@@ -593,7 +584,7 @@ var LibraryBrowser = {
         {{{ runtimeKeepalivePop() }}}
         if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(file);
       },
-      true // don'tCreateFile - it's already there
+      /*dontCreateFile=*/true // it's already there
     );
     return 0;
   },
@@ -605,8 +596,8 @@ var LibraryBrowser = {
   emscripten_run_preload_plugins_data: (data, size, suffix, arg, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
 
-    var _suffix = UTF8ToString(suffix);
-    var name = 'prepare_data_' + (Browser_asyncPrepareDataCounter++) + '.' + _suffix;
+    suffix = UTF8ToString(suffix);
+    var name = `prepare_data_${Browser_asyncPrepareDataCounter++}.${suffix}`;
     var cname = stringToNewUTF8(name);
     FS.createPreloadedFile(
       '/',
@@ -746,7 +737,7 @@ var LibraryBrowser = {
       awaited: 0,
       buffer: 0,
     };
-    info.worker.onmessage = function info_worker_onmessage(msg) {
+    info.worker.onmessage = (msg) => {
       if (ABORT) return;
       var info = Browser.workers[id];
       if (!info) return; // worker was destroyed meanwhile
@@ -815,7 +806,7 @@ var LibraryBrowser = {
 #if BUILD_AS_WORKER
   emscripten_worker_respond_provisionally__proxy: 'sync',
   emscripten_worker_respond_provisionally: (data, size) => {
-    if (workerResponded) throw 'already responded with final response!';
+    if (workerResponded) abort('already responded with final response!');
     var transferObject = {
       'callbackId': workerCallbackId,
       'finalResponse': false,
@@ -830,7 +821,7 @@ var LibraryBrowser = {
 
   emscripten_worker_respond__proxy: 'sync',
   emscripten_worker_respond: (data, size) => {
-    if (workerResponded) throw 'already responded with final response!';
+    if (workerResponded) abort('already responded with final response!');
     workerResponded = true;
     var transferObject = {
       'callbackId': workerCallbackId,

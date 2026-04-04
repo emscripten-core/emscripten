@@ -9,9 +9,9 @@ import shutil
 
 from tools import diagnostics
 
-VERSION = '3.2.4'
+VERSION = '3.4.2'
 TAG = f'release-{VERSION}'
-HASH = 'c26a8afeec481e3ae3b435eec405d9f99d78752ebf5118963cd56728ceff23772769f5291df581329488da7489034e835301b08d61a42c811764e24b3542a4c2'
+HASH = 'a17fe538993a3956e0b85fda21e7b431244e803a5facb35bb7a2bfd9ee23f1aac65838ed3225f526b81410cae7c23da7c40693c2e791385281f0764239116bce'
 SUBDIR = f'SDL-{TAG}'
 
 variants = {'sdl3-mt': {'PTHREADS': 1}}
@@ -25,18 +25,13 @@ def get_lib_name(settings):
   return 'libSDL3' + ('-mt' if settings.PTHREADS else '') + '.a'
 
 
-def process_dependencies(settings, cflags_only):
-  if not cflags_only:
-    # SDL3 includes an internal reference to Module['createContext']
-    settings.EXPORTED_RUNTIME_METHODS.append('createContext')
-
-
 def get(ports, settings, shared):
+  diagnostics.warning('experimental', 'sdl3 port is still experimental')
+
   # get the port
   ports.fetch_project('sdl3', f'https://github.com/libsdl-org/SDL/archive/{TAG}.zip', sha512hash=HASH)
 
   def create(final):
-    diagnostics.warning('experimental', 'sdl3 port is still experimental')
     root_dir = ports.get_dir('sdl3', SUBDIR)
 
     # In addition copy our pre-generated SDL_build_config.h file.
@@ -58,7 +53,7 @@ def get(ports, settings, shared):
       'atomic/*.c',
       'audio/*.c',
       'camera/*.c',
-      'core/*.c',
+      'core/unix/*.c',
       'cpuinfo/*.c',
       'dynapi/*.c',
       'events/*.c',
@@ -84,7 +79,7 @@ def get(ports, settings, shared):
       'video/*.c',
       'video/yuv2rgb/*.c',
       'tray/*.c',
-      # Platform speecifc sources
+      # Platform specific sources
       'storage/generic/*.c',
       'tray/unix/*.c',
       'time/unix/*.c',
@@ -136,4 +131,4 @@ def clear(ports, settings, shared):
 
 
 def show():
-  return 'sdl2 (-sUSE_SDL=3 or --use-port=sdl3; zlib license)'
+  return 'sdl3 (-sUSE_SDL=3 or --use-port=sdl3; zlib license)'

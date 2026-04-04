@@ -14,7 +14,10 @@
 #include <string.h>
 #include <stdlib.h>
 
-pthread_t thread[2];
+#ifdef __EMSCRIPTEN_WASM_WORKERS__
+#include <emscripten/eventloop.h>
+#include <emscripten/wasm_worker.h>
+#endif
 
 char *char_repeat(int n, char c) {
   char *dest = malloc(n + 1);
@@ -23,16 +26,41 @@ char *char_repeat(int n, char c) {
   return dest;
 }
 
-void *thread_main(void *arg) {
+void thread_func() {
   char *msg = char_repeat(100, 'a');
-  for (int i = 0; i < 10; ++i)
-  printf("%s\n", msg);
+  for (int i = 0; i < 10; ++i) {
+    printf("%s\n", msg);
+  }
   free(msg);
+}
+
+#if defined(__EMSCRIPTEN_PTHREADS__)
+void *thread_main(void *arg) {
+  thread_func();
   return 0;
 }
+#endif
+
+#if defined(__EMSCRIPTEN_WASM_WORKERS__)
+void terminate_worker(void* userData) {
+  emscripten_terminate_all_wasm_workers();
+  printf("main done\n");
+}
+#endif
 
 int main() {
   printf("in main\n");
+#ifdef __EMSCRIPTEN_WASM_WORKERS__
+  emscripten_wasm_worker_t worker[2];
+  worker[0] = emscripten_malloc_wasm_worker(/*stack size: */ 1024);
+  worker[1] = emscripten_malloc_wasm_worker(/*stack size: */ 1024);
+  emscripten_wasm_worker_post_function_v(worker[0], thread_func);
+  emscripten_wasm_worker_post_function_v(worker[1], thread_func);
+
+  // Terminate both workers after a small delay
+  emscripten_set_timeout(terminate_worker, 1000, 0);
+#else
+  pthread_t thread[2];
   void *thread_rtn;
   int rc;
 
@@ -49,7 +77,7 @@ int main() {
   rc = pthread_join(thread[1], &thread_rtn);
   assert(rc == 0);
   assert(thread_rtn == 0);
-
   printf("main done\n");
+#endif
   return 0;
 }

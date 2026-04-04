@@ -34,22 +34,10 @@ set(CMAKE_SYSTEM_PROCESSOR ${EMSCRIPTEN_SYSTEM_PROCESSOR})
 # This feature is activated if a shared library project has the property
 # SOVERSION defined.
 set(CMAKE_SHARED_LIBRARY_SONAME_C_FLAG "-Wl,-soname,")
+set(CMAKE_DL_LIBS "")
 
-# In CMake, CMAKE_HOST_WIN32 is set when we are cross-compiling from Win32 to
-# Emscripten:
-# http://www.cmake.org/cmake/help/v2.8.12/cmake.html#variable:CMAKE_HOST_WIN32
-# The variable WIN32 is set only when the target arch that will run the code
-# will be WIN32, so unset WIN32 when cross-compiling.
-set(WIN32)
-
-# The same logic as above applies for APPLE and CMAKE_HOST_APPLE, so unset
-# APPLE.
-set(APPLE)
-
-# And for UNIX and CMAKE_HOST_UNIX. However, Emscripten is often able to mimic
-# being a Linux/Unix system, in which case a lot of existing CMakeLists.txt
-# files can be configured for Emscripten while assuming UNIX build, so this is
-# left enabled.
+# Emscripten has good enough Linux/Unix emualtion that it makes sense to set
+# UNIX by defaut.
 set(UNIX 1)
 
 # Do a no-op access on the CMAKE_TOOLCHAIN_FILE variable so that CMake will not
@@ -60,7 +48,7 @@ endif()
 # Locate where the Emscripten compiler resides in relative to this toolchain file.
 if (NOT DEFINED EMSCRIPTEN_ROOT_PATH)
   get_filename_component(GUESS_EMSCRIPTEN_ROOT_PATH "${CMAKE_CURRENT_LIST_DIR}/../../../" ABSOLUTE)
-  if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib")
+  if (EXISTS "${GUESS_EMSCRIPTEN_ROOT_PATH}/emranlib.py")
     set(EMSCRIPTEN_ROOT_PATH "${GUESS_EMSCRIPTEN_ROOT_PATH}")
   else()
     # If not found by above search, locate using the EMSCRIPTEN environment variable.
@@ -78,7 +66,13 @@ get_filename_component(EMSCRIPTEN_ROOT_PATH "${EMSCRIPTEN_ROOT_PATH}" ABSOLUTE)
 list(APPEND CMAKE_MODULE_PATH "${EMSCRIPTEN_ROOT_PATH}/cmake/Modules")
 
 if (CMAKE_HOST_WIN32)
-  set(EMCC_SUFFIX ".bat")
+  # We use windows executables these days rather than `.bat` files, but we
+  # still support a fallback of using `.bat` files.
+  if (EXISTS "${EMSCRIPTEN_ROOT_PATH}/emcc.exe")
+    set(EMCC_SUFFIX ".exe")
+  else()
+    set(EMCC_SUFFIX ".bat")
+  endif()
 else()
   set(EMCC_SUFFIX "")
 endif()
@@ -93,7 +87,7 @@ set(CMAKE_C_COMPILER_AR "${CMAKE_AR}")
 set(CMAKE_CXX_COMPILER_AR "${CMAKE_AR}")
 set(CMAKE_C_COMPILER_RANLIB "${CMAKE_RANLIB}")
 set(CMAKE_CXX_COMPILER_RANLIB "${CMAKE_RANLIB}")
-set(CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS "${EMSCRIPTEN_ROOT_PATH}/emscan-deps")
+set(CMAKE_CXX_COMPILER_CLANG_SCAN_DEPS "${EMSCRIPTEN_ROOT_PATH}/emscan-deps${EMCC_SUFFIX}")
 
 # Capture the Emscripten version to EMSCRIPTEN_VERSION variable.
 if (NOT EMSCRIPTEN_VERSION)
@@ -209,6 +203,7 @@ if (EMSCRIPTEN_FORCE_COMPILERS)
         set(CMAKE_CXX23_COMPILE_FEATURES "cxx_std_23")
         set(CMAKE_CXX_COMPILE_FEATURES "${CMAKE_CXX_COMPILE_FEATURES};cxx_std_23")
         if ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.25") # 3.25+
+          set(CMAKE_CXX26_COMPILE_FEATURES "cxx_std_26")
           set(CMAKE_CXX_COMPILE_FEATURES "${CMAKE_CXX_COMPILE_FEATURES};cxx_std_26")
         endif()
         if ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "3.21")
@@ -279,12 +274,15 @@ endif()
 
 set(CMAKE_EXECUTABLE_SUFFIX ".js")
 
-set(CMAKE_C_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
-set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
-set(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS 1)
-set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS 1)
-set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES 1)
-set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+if (CMAKE_HOST_WIN32)
+  # See https://github.com/emscripten-core/emscripten/issues/2386
+  set(CMAKE_C_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
+  set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_LIBRARIES 1)
+  set(CMAKE_C_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+  set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_OBJECTS 1)
+  set(CMAKE_C_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+  set(CMAKE_CXX_USE_RESPONSE_FILE_FOR_INCLUDES 1)
+endif()
 
 set(CMAKE_C_RESPONSE_FILE_LINK_FLAG "@")
 set(CMAKE_CXX_RESPONSE_FILE_LINK_FLAG "@")
@@ -297,7 +295,7 @@ set(CMAKE_LINK_LIBRARY_USING_WHOLE_ARCHIVE_SUPPORTED True)
 # detect when building using Emscripten.
 set(EMSCRIPTEN 1 CACHE INTERNAL "If true, we are targeting Emscripten output.")
 
-# Hardwire support for cmake-2.8/Modules/CMakeBackwardsCompatibilityC.cmake
+# Hardwire support for CMake/Modules/CMakeBackwardCompatibilityC.cmake
 # without having CMake to try complex things to autodetect these:
 set(CMAKE_SKIP_COMPATIBILITY_TESTS 1)
 set(CMAKE_SIZEOF_CHAR 1)
@@ -316,7 +314,6 @@ set(CMAKE_HAVE_SYS_PRCTL_H 1)
 set(CMAKE_WORDS_BIGENDIAN 0)
 set(CMAKE_C_BYTE_ORDER "LITTLE_ENDIAN")
 set(CMAKE_CXX_BYTE_ORDER "LITTLE_ENDIAN")
-set(CMAKE_DL_LIBS)
 
 function(em_validate_asmjs_after_build target)
   message(WARNING "em_validate_asmjs_after_build no longer exists")

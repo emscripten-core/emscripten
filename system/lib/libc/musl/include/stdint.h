@@ -35,6 +35,22 @@ typedef uint16_t uint_least16_t;
 typedef uint32_t uint_least32_t;
 typedef uint64_t uint_least64_t;
 
+#ifdef __EMSCRIPTEN__
+#define INT8_MIN   (-1-__INT8_MAX__)
+#define INT16_MIN  (-1-__INT16_MAX__)
+#define INT32_MIN  (-1-__INT32_MAX__)
+#define INT64_MIN  (-1-__INT64_MAX__)
+
+#define INT8_MAX   __INT8_MAX__
+#define INT16_MAX  __INT16_MAX__
+#define INT32_MAX  __INT32_MAX__
+#define INT64_MAX  __INT64_MAX__
+
+#define UINT8_MAX  __UINT8_MAX__
+#define UINT16_MAX __UINT16_MAX__
+#define UINT32_MAX __UINT32_MAX__
+#define UINT64_MAX __UINT64_MAX__
+#else
 #define INT8_MIN   (-1-0x7f)
 #define INT16_MIN  (-1-0x7fff)
 #define INT32_MIN  (-1-0x7fffffff)
@@ -49,6 +65,7 @@ typedef uint64_t uint_least64_t;
 #define UINT16_MAX (0xffff)
 #define UINT32_MAX (0xffffffffu)
 #define UINT64_MAX (0xffffffffffffffffu)
+#endif
 
 #define INT_FAST8_MIN   INT8_MIN
 #define INT_FAST64_MIN  INT64_MIN

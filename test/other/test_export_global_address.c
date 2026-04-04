@@ -9,7 +9,11 @@ int g_foo = 4;
 
 EM_JS(int*, get_foo_from_js, (void), {
   assert(_g_foo !== undefined, "g_foo not exported to JS");
+#if __wasm64__
+  return BigInt(_g_foo);
+#else
   return _g_foo;
+#endif
 });
 
 int main() {

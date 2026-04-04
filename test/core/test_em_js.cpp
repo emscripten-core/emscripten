@@ -63,7 +63,7 @@ EM_JS(int, user_comma, (void), {
   return x[y][1];
 });
 
-EM_JS_DEPS(deps, "$stringToUTF8,$lengthBytesUTF8");
+EM_JS_DEPS(deps, "$UTF8ToString,$stringToUTF8,$lengthBytesUTF8");
 
 EM_JS(char*, return_utf8_str, (void), {
     var jsString = 'こんにちは';
@@ -92,6 +92,10 @@ EM_JS(char*, return_str, (void), {
 });
 
 EM_JS(int, _prefixed, (void), {
+  return 1;
+});
+
+EM_JS(int, strip_whitespace, ( void ), {
   return 1;
 });
 
@@ -126,6 +130,7 @@ int main() {
   free(s2);
 
   printf("    _prefixed: %d\n", _prefixed());
+  printf("    strip_whitespace: %d\n", strip_whitespace());
   printf("    transitive: %d\n", transitive());
 
   printf("END\n");

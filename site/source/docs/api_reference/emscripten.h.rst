@@ -399,7 +399,7 @@ Functions
 
 
   .. note::
-    - Main loop blockers block the main loop from running, and can be counted to show progress. In contrast, ``emscripten_async_calls`` are not counted, do not block the main loop, and can fire at specific time in the future.
+    - Main loop blockers block the main loop from running, and can be counted to show progress. In contrast, :c:func:`emscripten_async_call` is not counted, does not block the main loop, and can fire at a specific time in the future.
 
   :param em_arg_callback_func func: The main loop blocker function. The function signature must have a ``void*`` parameter for passing the ``arg`` value.
   :param void* arg: User-defined arguments to pass to the blocker function.
@@ -789,7 +789,7 @@ Functions
   :param int flags: See dlopen flags.
   :param void* user_data: User data passed to onsuccess, and onerror callbacks.
   :param em_dlopen_callback onsuccess: Called if the library was loaded successfully.
-  :param em_arg_callback_func onerror: Called if there as an error loading the library.
+  :param em_arg_callback_func onerror: Called if there is an error loading the library.
 
 
 Asynchronous IndexedDB API
@@ -1433,22 +1433,6 @@ Functions
     This function requires Asyncify - it relies on that option to spill the
     local state all the way up the stack. As a result, it will add overhead
     to your program.
-
-.. c:function:: void emscripten_lazy_load_code()
-
-    This creates two Wasm files at compile time: the first Wasm which is
-    downloaded and run normally, and a second that is lazy-loaded. When an
-    ``emscripten_lazy_load_code()`` call is reached, we load the second Wasm
-    and resume execution using it.
-
-    The idea here is that the initial download can be quite small, if you
-    place enough ``emscripten_lazy_load_code()`` calls in your codebase, as
-    the optimizer can remove code from the first Wasm if it sees it can't
-    be reached. The second downloaded Wasm can contain your full codebase,
-    including rarely-used functions, in which case the lazy-loading may
-    not happen at all.
-
-  .. note:: This requires building with ``-sASYNCIFY_LAZY_LOAD_CODE``.
 
 ABI functions
 =============

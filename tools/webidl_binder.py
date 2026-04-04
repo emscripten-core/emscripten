@@ -12,7 +12,6 @@ https://emscripten.org/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.
 import argparse
 import os
 import sys
-from typing import List
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -226,7 +225,7 @@ var ensureCache = {
     len = alignMemory(len, 8); // keep things aligned to 8 byte boundaries
     var ret;
     if (ensureCache.pos + len >= ensureCache.size) {
-      // we failed to allocate in the buffer, ensureCache time around :(
+      // we failed to allocate in the buffer, next time around :(
       assert(len > 0); // null terminator, at least
       ensureCache.needed += len;
       ret = Module['_webidl_malloc'](len);
@@ -238,12 +237,6 @@ var ensureCache = {
     }
     return ret;
   },
-  copy(array, view, offset) {
-    offset /= view.BYTES_PER_ELEMENT;
-    for (var i = 0; i < array.length; i++) {
-      view[offset + i] = array[i];
-    }
-  },
 };
 
 /** @suppress {duplicate} (TODO: avoid emitting this multiple times, it is redundant) */
@@ -251,7 +244,9 @@ function ensureString(value) {
   if (typeof value === 'string') {
     var intArray = intArrayFromString(value);
     var offset = ensureCache.alloc(intArray, HEAP8);
-    ensureCache.copy(intArray, HEAP8, offset);
+    for (var i = 0; i < intArray.length; i++) {
+      HEAP8[offset + i] = intArray[i];
+    }
     return offset;
   }
   return value;
@@ -261,7 +256,9 @@ function ensureString(value) {
 function ensureInt8(value) {
   if (typeof value === 'object') {
     var offset = ensureCache.alloc(value, HEAP8);
-    ensureCache.copy(value, HEAP8, offset);
+    for (var i = 0; i < value.length; i++) {
+      HEAP8[offset + i] = value[i];
+    }
     return offset;
   }
   return value;
@@ -271,7 +268,10 @@ function ensureInt8(value) {
 function ensureInt16(value) {
   if (typeof value === 'object') {
     var offset = ensureCache.alloc(value, HEAP16);
-    ensureCache.copy(value, HEAP16, offset);
+    var heapOffset = offset / 2;
+    for (var i = 0; i < value.length; i++) {
+      HEAP16[heapOffset + i] = value[i];
+    }
     return offset;
   }
   return value;
@@ -281,7 +281,10 @@ function ensureInt16(value) {
 function ensureInt32(value) {
   if (typeof value === 'object') {
     var offset = ensureCache.alloc(value, HEAP32);
-    ensureCache.copy(value, HEAP32, offset);
+    var heapOffset = offset / 4;
+    for (var i = 0; i < value.length; i++) {
+      HEAP32[heapOffset + i] = value[i];
+    }
     return offset;
   }
   return value;
@@ -291,7 +294,10 @@ function ensureInt32(value) {
 function ensureFloat32(value) {
   if (typeof value === 'object') {
     var offset = ensureCache.alloc(value, HEAPF32);
-    ensureCache.copy(value, HEAPF32, offset);
+    var heapOffset = offset / 4;
+    for (var i = 0; i < value.length; i++) {
+      HEAPF32[heapOffset + i] = value[i];
+    }
     return offset;
   }
   return value;
@@ -301,7 +307,10 @@ function ensureFloat32(value) {
 function ensureFloat64(value) {
   if (typeof value === 'object') {
     var offset = ensureCache.alloc(value, HEAPF64);
-    ensureCache.copy(value, HEAPF64, offset);
+    var heapOffset = offset / 8;
+    for (var i = 0; i < value.length; i++) {
+      HEAPF64[heapOffset + i] = value[i];
+    }
     return offset;
   }
   return value;
@@ -318,38 +327,38 @@ def full_typename(arg):
 def type_to_c(t, non_pointing=False):
   # print 'to c ', t
   def base_type_to_c(t):
-    if t == 'Long':
-      return 'int'
-    elif t == 'UnsignedLong':
-      return 'unsigned int'
-    elif t == 'LongLong':
-      return 'long long'
-    elif t == 'UnsignedLongLong':
-      return 'unsigned long long'
-    elif t == 'Short':
-      return 'short'
-    elif t == 'UnsignedShort':
-      return 'unsigned short'
-    elif t == 'Byte':
-      return 'char'
-    elif t == 'Octet':
-      return 'unsigned char'
-    elif t == 'Void':
-      return 'void'
-    elif t == 'String':
-      return 'char*'
-    elif t == 'Float':
-      return 'float'
-    elif t == 'Double':
-      return 'double'
-    elif t == 'Boolean':
-      return 'bool'
-    elif t in ('Any', 'VoidPtr'):
-      return 'void*'
-    elif t in interfaces:
+    match t:
+      case 'Long':
+        return 'int'
+      case 'UnsignedLong':
+        return 'unsigned int'
+      case 'LongLong':
+        return 'long long'
+      case 'UnsignedLongLong':
+        return 'unsigned long long'
+      case 'Short':
+        return 'short'
+      case 'UnsignedShort':
+        return 'unsigned short'
+      case 'Byte':
+        return 'char'
+      case 'Octet':
+        return 'unsigned char'
+      case 'Void':
+        return 'void'
+      case 'String':
+        return 'char*'
+      case 'Float':
+        return 'float'
+      case 'Double':
+        return 'double'
+      case 'Boolean':
+        return 'bool'
+      case 'Any' | 'VoidPtr':
+        return 'void*'
+    if t in interfaces:
       return (interfaces[t].getExtendedAttribute('Prefix') or [''])[0] + t + ('' if non_pointing else '*')
-    else:
-      return t
+    return t
 
   t = t.replace(' (Wrapper)', '')
 
@@ -399,7 +408,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,  # no
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
-  legacy_mode = CHECKS not in ['ALL', 'FAST']
+  legacy_mode = CHECKS not in {'ALL', 'FAST'}
   all_checks = CHECKS == 'ALL'
 
   bindings_name = class_name + '_' + func_name
@@ -462,7 +471,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,  # no
     t = all_args[i].type
     return (t.isArray() or t.isAny() or t.isString() or t.isObject() or t.isInterface())
 
-  for i, (js_arg, arg) in enumerate(zip(args, all_args)):
+  for i, (js_arg, arg) in enumerate(zip(args, all_args, strict=True)):
     optional = i >= min_args
     do_default = False
     # Filter out arguments we don't know how to parse. Fast casing only common cases.
@@ -529,17 +538,17 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,  # no
           body += f'  if ({args[i]} === null) {args[i]} = 0;\n'
       else:
         # an array can be received here
-        arg_type = arg.type.name
-        if arg_type in ['Byte', 'Octet']:
-          body += "  if (typeof {0} == 'object') {{ {0} = ensureInt8({0}); }}\n".format(js_arg)
-        elif arg_type in ['Short', 'UnsignedShort']:
-          body += "  if (typeof {0} == 'object') {{ {0} = ensureInt16({0}); }}\n".format(js_arg)
-        elif arg_type in ['Long', 'UnsignedLong']:
-          body += "  if (typeof {0} == 'object') {{ {0} = ensureInt32({0}); }}\n".format(js_arg)
-        elif arg_type == 'Float':
-          body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat32({0}); }}\n".format(js_arg)
-        elif arg_type == 'Double':
-          body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat64({0}); }}\n".format(js_arg)
+        match arg.type.name:
+          case 'Byte' | 'Octet':
+            body += "  if (typeof {0} == 'object') {{ {0} = ensureInt8({0}); }}\n".format(js_arg)
+          case 'Short' | 'UnsignedShort':
+            body += "  if (typeof {0} == 'object') {{ {0} = ensureInt16({0}); }}\n".format(js_arg)
+          case 'Long' | 'UnsignedLong':
+            body += "  if (typeof {0} == 'object') {{ {0} = ensureInt32({0}); }}\n".format(js_arg)
+          case 'Float':
+            body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat32({0}); }}\n".format(js_arg)
+          case 'Double':
+            body += "  if (typeof {0} == 'object') {{ {0} = ensureFloat64({0}); }}\n".format(js_arg)
 
   call_args = pre_arg.copy()
 
@@ -623,9 +632,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,  # no
         cast_self = 'dynamic_cast<' + type_to_c(func_scope) + '>(' + cast_self + ')'
       maybe_deref = deref_if_nonpointer(raw[0])
       operator = operator.strip()
-      if operator in ["+", "-", "*", "/", "%", "^", "&", "|", "=",
+      if operator in {"+", "-", "*", "/", "%", "^", "&", "|", "=",
                       "<", ">", "+=", "-=", "*=", "/=", "%=", "^=", "&=", "|=", "<<", ">>", ">>=",
-                      "<<=", "==", "!=", "<=", ">=", "<=>", "&&", "||"]:
+                      "<<=", "==", "!=", "<=", ">=", "<=>", "&&", "||"}:
         call = '(*%s %s %s%s)' % (cast_self, operator, maybe_deref, args[0])
       elif operator == '[]':
         call = '((*%s)[%s%s])' % (cast_self, maybe_deref, args[0])
@@ -727,7 +736,7 @@ for name in names:
   mid_js += ['\n// Interface: ' + name + '\n\n']
   mid_c += ['\n// Interface: ' + name + '\n\n']
 
-  js_impl_methods: List[str] = []
+  js_impl_methods: list[str] = []
 
   cons = interface.getExtendedAttribute('Constructor')
   if type(cons) is list:
@@ -915,12 +924,12 @@ if len(deferred_js):
 
 # Write
 
-with open(cpp_output, 'w') as c:
+with open(cpp_output, 'w', encoding='utf-8') as c:
   for x in pre_c:
     c.write(x)
   for x in mid_c:
     c.write(x)
 
-with open(js_output, 'w') as js:
+with open(js_output, 'w', encoding='utf-8') as js:
   for x in mid_js:
     js.write(x)

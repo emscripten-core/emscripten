@@ -436,7 +436,7 @@ that you can't use a closure directly, for example, as ``toString``
 isn't compatible with that - just like when using a string to create
 a Web Worker, where you also can't pass a closure. (Note that this
 limitation is just for the values for the keys of the object
-passes to ``addToLibrary`` in the JS library, that is, the toplevel
+passed to ``addToLibrary`` in the JS library, that is, the toplevel
 key-value pairs are special. Interior code inside a function can
 have arbitrary JS, of course).
 
@@ -667,7 +667,7 @@ a 53 bit (double) and returns an integer error code:
     
 Using ``-sWASM_BIGINT`` when linking is an alternative method of handling
 64-bit types in libraries.  ```Number()``` may be needed on the JavaScript
-side to convert it to a useable value.  See `settings reference <https://emscripten.org/docs/tools_reference/settings_reference.html?highlight=environment#wasm-bigint>`_.
+side to convert it to a usable value.  See `settings reference <https://emscripten.org/docs/tools_reference/settings_reference.html?highlight=environment#wasm-bigint>`_.
 
 
 .. _interacting-with-code-access-memory:

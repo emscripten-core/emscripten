@@ -4,20 +4,20 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os
-import sys
-import subprocess
-import re
 import json
+import os
+import re
 import shutil
+import subprocess
+import sys
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
+from tools import building, config, shared, utils
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import path_from_root
-from tools import building, config, shared, utils
 
 temp_files = shared.get_temp_files()
 
@@ -34,7 +34,6 @@ DEBUG = os.environ.get('EMCC_DEBUG')
 
 func_sig = re.compile(r'function ([_\w$]+)\(')
 func_sig_json = re.compile(r'\["defun", ?"([_\w$]+)",')
-import_sig = re.compile(r'(var|const) ([_\w$]+ *=[^;]+);')
 
 
 def get_acorn_cmd():
@@ -92,7 +91,7 @@ class Minifier:
       self.globs = []
 
     with temp_files.get_file('.minifyglobals.js') as temp_file:
-      with open(temp_file, 'w') as f:
+      with open(temp_file, 'w', encoding='utf-8') as f:
         f.write(shell)
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
@@ -100,7 +99,7 @@ class Minifier:
       cmd = get_acorn_cmd() + [temp_file, 'minifyGlobals']
       if minify_whitespace:
         cmd.append('--minify-whitespace')
-      output = shared.run_process(cmd, stdout=subprocess.PIPE).stdout
+      output = utils.run_process(cmd, stdout=subprocess.PIPE).stdout
 
     assert len(output) and not output.startswith('Assertion failed'), 'Error in js optimizer: ' + output
     code, metadata = output.split('// EXTRA_INFO:')
@@ -163,7 +162,7 @@ def run_on_file(filename, passes, extra_info=None):
     end_funcs = js.rfind(end_funcs_marker)
 
     if start_funcs < 0 or end_funcs < start_funcs:
-      shared.exit_with_error('invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s' % (start_funcs, end_funcs))
+      utils.exit_with_error('invalid input file. Did not contain appropriate markers. (start_funcs: %s, end_funcs: %s' % (start_funcs, end_funcs))
 
     minify_globals = 'minifyNames' in passes
     if minify_globals:
@@ -244,7 +243,7 @@ EMSCRIPTEN_FUNCS();
     # if we are making source maps, we want our debug numbering to start from the
     # top of the file, so avoid breaking the JS into chunks
 
-    intended_num_chunks = round(shared.get_num_cores() * NUM_CHUNKS_PER_CORE)
+    intended_num_chunks = round(utils.get_num_cores() * NUM_CHUNKS_PER_CORE)
     chunk_size = min(MAX_CHUNK_SIZE, max(MIN_CHUNK_SIZE, total_size / intended_num_chunks))
     chunks = chunkify(funcs, chunk_size)
 
@@ -283,7 +282,7 @@ EMSCRIPTEN_FUNCS();
       with temp_files.get_file('.cl.js') as cle:
         pre_1, pre_2 = pre.split(start_asm)
         post_1, post_2 = post.split(end_asm)
-        with open(cle, 'w') as f:
+        with open(cle, 'w', encoding='utf-8') as f:
           f.write(pre_1)
           f.write(cl_sep)
           f.write(post_2)
@@ -323,7 +322,7 @@ EMSCRIPTEN_FUNCS();
   filename += '.jo.js'
   temp_files.note(filename)
 
-  with open(filename, 'w') as f:
+  with open(filename, 'w', encoding='utf-8') as f:
     with ToolchainProfiler.profile_block('write_pre'):
       f.write(pre)
       pre = None

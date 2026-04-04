@@ -9,8 +9,6 @@
 #include <stdlib.h>
 #include <emscripten/fetch.h>
 
-#define SERVER "http://localhost:8888"
-
 // 301: Moved Permanently                      - https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/301
 // 302: Found (Previously "Moved Temporarily") - https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/302
 // 303: See Other                              - https://developer.mozilla.org/en-US/docs/Web/HTTP/Status/303
@@ -71,11 +69,13 @@ void start_next_async_fetch() {
     async_method_idx++;
     if (async_method_idx >= num_methods) {
       // All async tests done, now run sync tests
+#ifndef SKIP_SYNC_FETCH_TESTS
       for (int m = 0; m < num_methods; ++m) {
         for (int i = 0; i < num_codes; ++i) {
           fetchSyncTest(redirect_codes[i], methods[m]);
         }
       }
+#endif
       exit(0);
     }
   }

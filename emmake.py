@@ -21,19 +21,19 @@ that configure tests pass. emmake uses Emscripten to
 generate JavaScript.
 """
 
+import os
+import shlex
 import shutil
 import sys
-from tools import building
-from tools import shared
-from tools import utils
-from subprocess import CalledProcessError
+
+from tools import building, utils
 
 
 #
 # Main run() function
 #
 def run():
-  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
+  if len(sys.argv) < 2 or sys.argv[1] in {'--version', '--help'}:
     print('''\
 emmake is a helper for make, setting various environment
 variables so that emcc etc. are used. Typical usage:
@@ -54,14 +54,14 @@ variables so that emcc etc. are used. Typical usage:
         args[0] = mingw32_make
 
   # On Windows, run the execution through shell to get PATH expansion and
-  # executable extension lookup, e.g. 'sdl2-config' will match with
-  # 'sdl2-config.bat' in PATH.
-  print('make: ' + ' '.join(args), file=sys.stderr)
-  try:
-    shared.check_call(args, shell=utils.WINDOWS, env=env)
-    return 0
-  except CalledProcessError as e:
-    return e.returncode
+  # executable extension lookup, e.g. 'make' will match with
+  # 'make.bat' in PATH.
+  print(f'emmake: "{shlex.join(args)}" in "{os.getcwd()}"', file=sys.stderr)
+  if utils.WINDOWS:
+    return utils.run_process(args, check=False, shell=True, env=env).returncode
+  else:
+    os.environ.update(env)
+    utils.exec(args)
 
 
 if __name__ == '__main__':

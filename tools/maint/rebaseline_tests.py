@@ -12,8 +12,8 @@ the generated changes.
 import argparse
 import json
 import os
-import subprocess
 import statistics
+import subprocess
 import sys
 
 script_dir = os.path.dirname(os.path.abspath(__file__))
@@ -21,14 +21,6 @@ root_dir = os.path.dirname(os.path.dirname(script_dir))
 
 sys.path.insert(0, root_dir)
 from tools import utils
-
-TESTS = [
-  'browser.test_small_js_flags',
-  'other.test_INCOMING_MODULE_JS_API',
-  'other.*code_size*',
-  'other.*codesize*',
-  'skip:other.test_jspi_code_size',
-]
 
 
 def run(cmd, **args):
@@ -38,8 +30,18 @@ def run(cmd, **args):
 all_deltas = []
 
 
+def read_size_from_json(content):
+  json_data = json.loads(content)
+  if 'total' in json_data:
+    return json_data['total']
+  # If `total` if not in the json dict then just use the first key.  This happens when only one
+  # file size is reported (in this case we don't calculate or store the `total`).
+  first_key = list(json_data.keys())[0]
+  return json_data[first_key]
+
+
 def process_changed_file(filename):
-  content = open(filename).read()
+  content = utils.read_file(filename)
   old_content = run(['git', 'show', f'HEAD:{filename}'])
   print(f'processing {filename}')
 
@@ -48,15 +50,13 @@ def process_changed_file(filename):
     size = int(content.strip())
     old_size = int(old_content.strip())
   elif ext == '.json':
-    current_json = json.loads(content)
-    old_json = json.loads(old_content)
-    size = current_json['total']
-    old_size = old_json['total']
+    size = read_size_from_json(content)
+    old_size = read_size_from_json(old_content)
   else:
     # Unhandled file type
     return f'{filename} updated\n'
 
-  filename = utils.removeprefix(filename, 'test/')
+  filename = filename.removeprefix('test/')
   delta = size - old_size
   percent_delta = delta * 100 / old_size
   all_deltas.append(percent_delta)
@@ -79,7 +79,7 @@ def main():
       print('tree is not clean')
       return 1
 
-    subprocess.check_call(['test/runner', '--rebaseline', '--browser=0'] + TESTS, cwd=root_dir)
+    subprocess.check_call([utils.exe_path_from_root('test/runner'), '--rebaseline', 'codesize'], cwd=root_dir)
 
   output = run(['git', 'status', '-uno', '--porcelain'])
   filenames = []

@@ -84,7 +84,7 @@ static void InitializeFlags() {
 #if SANITIZER_EMSCRIPTEN
   char *options = _emscripten_sanitizer_get_option("LSAN_OPTIONS");
   parser.ParseString(options);
-  emscripten_builtin_free(options);
+  free(options);
 #else
   parser.ParseString(GetEnv("LSAN_OPTIONS"));
 #endif // SANITIZER_EMSCRIPTEN

@@ -4,7 +4,7 @@
 //
 // Because this lowering happens during compilation this symbol cannot itself be
 // compiled as LTO (since generated new references to LTO symbols at LTO time
-// results int link failure).  We had a bug where this symbol was itself LTO
+// results in link failure).  We had a bug where this symbol was itself LTO
 // which can cause link failures.
 //
 // See: https://github.com/emscripten-core/emscripten/issues/16836

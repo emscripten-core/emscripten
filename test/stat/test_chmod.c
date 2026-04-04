@@ -22,7 +22,7 @@ void create_file(const char *path, const char *buffer, int mode) {
   int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
   assert(fd >= 0);
 
-  int err = write(fd, buffer, sizeof(char) * strlen(buffer));
+  int err = (int)write(fd, buffer, sizeof(char) * strlen(buffer));
   assert(err ==  (sizeof(char) * strlen(buffer)));
 
   close(fd);
@@ -44,12 +44,13 @@ void cleanup() {
 
 void test() {
   int err;
-  int lastctime;
-  int lastmtime;
+  time_t lastctime;
+  time_t lastmtime;
   struct stat s;
 
   //
-  // chmod a file
+  // chmod()ing a file should change metadata modification time (ctime),
+  // but not the file modification time (mtime)
   //
   // get the current ctime for the file
   memset(&s, 0, sizeof s);
@@ -69,7 +70,8 @@ void test() {
   assert(s.st_mtime == lastmtime);
 
   //
-  // fchmod a file
+  // fchmod()ing a file should change metadata modification time,
+  // but not the file modification time
   //
   lastctime = s.st_ctime;
   lastmtime = s.st_mtime;
@@ -85,8 +87,11 @@ void test() {
   assert(s.st_mtime == lastmtime);
 
   //
-  // fchmodat a file
+  // fchmodat()ing a file should also only change metadata modification time,
+  // but not the file modification time.
   //
+  memset(&s, 0, sizeof s);
+  stat("otherfile", &s);
   lastctime = s.st_ctime;
   lastmtime = s.st_mtime;
   sleep(1);
@@ -129,7 +134,7 @@ void test() {
 
 #ifndef WASMFS // TODO https://github.com/emscripten-core/emscripten/issues/15948
   lstat("file-link", &s);
-  int link_mode = s.st_mode;
+  mode_t link_mode = s.st_mode;
   assert((link_mode & 0777) != S_IRUSR);
 
   //

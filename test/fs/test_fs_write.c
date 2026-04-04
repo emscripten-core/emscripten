@@ -41,6 +41,7 @@ int main() {
   size_t n;
   getline(&line, &n, file);
   printf("read %s\n", line);
+  free(line);
 
   return 0;
 }

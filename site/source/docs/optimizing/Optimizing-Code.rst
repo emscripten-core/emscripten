@@ -124,7 +124,7 @@ Link Time Optimization (LTO) lets the compiler do more optimizations, as it can
 inline across separate compilation units, and even with system libraries.
 LTO is enabled by compiling objects files with ``-flto``.  The effect of this
 flag is to emit LTO object files (technically this means emitting bitcode).  The
-linker can handle a mix Wasm object files and LTO object files.  Passing
+linker can handle a mix of Wasm object files and LTO object files.  Passing
 ``-flto`` at link time will also trigger LTO system libraries to be used.
 
 Thus, to allow maximal LTO opportunities with the LLVM Wasm backend, build all

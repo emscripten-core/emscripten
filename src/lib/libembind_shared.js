@@ -71,7 +71,7 @@ var LibraryEmbindShared = {
     var typeConverters = new Array(dependentTypes.length);
     var unregisteredTypes = [];
     var registered = 0;
-    dependentTypes.forEach((dt, i) => {
+    for (let [i, dt] of dependentTypes.entries()) {
       if (registeredTypes.hasOwnProperty(dt)) {
         typeConverters[i] = registeredTypes[dt];
       } else {
@@ -87,7 +87,7 @@ var LibraryEmbindShared = {
           }
         });
       }
-    });
+    }
     if (0 === unregisteredTypes.length) {
       onComplete(typeConverters);
     }
@@ -181,6 +181,11 @@ var LibraryEmbindShared = {
       var argCountMessage = minArgs == maxArgs ? minArgs : `${minArgs} to ${maxArgs}`;
       throwBindingError(`function ${humanName} called with ${numArgs} arguments, expected ${argCountMessage}`);
     }
+  },
+
+  $getEnumValueType(rawValueType) {
+    // This must match the values of enum_value_type in wire.h
+    return rawValueType === 0 ? 'object' : (rawValueType === 1 ? 'number' : 'string');
   },
 
   $getRequiredArgCount(argTypes) {

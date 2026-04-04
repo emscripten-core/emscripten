@@ -10,7 +10,7 @@ assert(!FULL_ES3, 'cannot emulate both ES3 and legacy GL');
 
 {{{
   const copySigs = (func) => {
-    if (!RELOCATABLE) return '';
+    if (!MAIN_MODULE) return '';
     return ` _${func}.sig = _emscripten_${func}.sig = orig_${func}.sig;`;
   };
   const fromPtr = (arg) => {
@@ -34,43 +34,41 @@ var LibraryGLEmulation = {
     'glVertexAttribPointer', 'glActiveTexture', '$stringToNewUTF8',
     '$ptrToString', '$getEmscriptenSupportedExtensions',
   ],
-  $GLEmulation__postset:
-#if MAYBE_CLOSURE_COMPILER
-    // Forward declare GL functions that are overridden by GLEmulation here to appease Closure compiler.
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawArrays;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawElements;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glActiveTexture;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glEnable;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDisable;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvf;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvi;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvfv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetIntegerv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glIsEnabled;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetBooleanv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetString;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glCreateShader;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glShaderSource;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glCompileShader;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glAttachShader;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDetachShader;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glUseProgram;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDeleteProgram;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glBindAttribLocation;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glLinkProgram;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glBindBuffer;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetFloatv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glHint;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glEnableVertexAttribArray;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDisableVertexAttribArray;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glVertexAttribPointer;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glTexEnvf;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glTexEnvi;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glTexEnvfv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glGetTexEnviv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glGetTexEnvfv;' +
-#endif
-    'GLEmulation.init();',
+  $GLEmulation__postset: `
+    // Forward declare GL functions that are overridden by GLEmulation.
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawArrays;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawElements;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glActiveTexture;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glEnable;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDisable;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvf;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvi;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvfv;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetIntegerv;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glIsEnabled;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetBooleanv;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetString;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glCreateShader;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glShaderSource;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glCompileShader;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glAttachShader;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDetachShader;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glUseProgram;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDeleteProgram;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glBindAttribLocation;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glLinkProgram;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glBindBuffer;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetFloatv;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glHint;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glEnableVertexAttribArray;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDisableVertexAttribArray;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glVertexAttribPointer;
+    /**@suppress {duplicate, undefinedVars}*/var _glTexEnvf;
+    /**@suppress {duplicate, undefinedVars}*/var _glTexEnvi;
+    /**@suppress {duplicate, undefinedVars}*/var _glTexEnvfv;
+    /**@suppress {duplicate, undefinedVars}*/var _glGetTexEnviv;
+    /**@suppress {duplicate, undefinedVars}*/var _glGetTexEnvfv;
+    GLEmulation.init();`,
   $GLEmulation: {
     // Fog support. Partial, we assume shaders are used that implement fog. We just pass them uniforms
     fogStart: 0,
@@ -409,7 +407,7 @@ var LibraryGLEmulation = {
             return;
           }
           case 0x0D32: { // GL_MAX_CLIP_PLANES
-            {{{ makeSetValue('params', '0', 'GLEmulation.MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support atleast 6
+            {{{ makeSetValue('params', '0', 'GLEmulation.MAX_CLIP_PLANES', 'i32') }}}; // all implementations need to support at least 6
             return;
           }
           case 0x0BA0: { // GL_MATRIX_MODE
@@ -592,7 +590,7 @@ var LibraryGLEmulation = {
           dbg(`Info: ${JSON.stringify(GL.shaderInfos[shader])}`);
           dbg(`Original source: ${GL.shaderOriginalSources[shader]}`);
           dbg(`Source: ${GL.shaderSources[shader]}`);
-          throw 'Shader compilation halt';
+          abort('Shader compilation halt');
         }
 #endif
       };
@@ -626,10 +624,10 @@ var LibraryGLEmulation = {
         if (GL.debug) {
           dbg('[using program with shaders]');
           if (program) {
-            GL.programShaders[program].forEach((shader) => {
+            for (var shader of GL.programShaders[program]) {
               dbg(`  shader ${shader}, original source: ${GL.shaderOriginalSources[shader]}`);
               dbg(`         Source: ${GL.shaderSources[shader]}`);
-            });
+            }
           }
         }
 #endif
@@ -1074,16 +1072,12 @@ var LibraryGLEmulation = {
       var s_requiredTexUnitsForPass = [];
 
       // Static funcs:
-      function abort(info) {
-        assert(false, "[TexEnvJIT] ABORT: " + info);
-      }
-
       function abort_noSupport(info) {
-        abort("No support: " + info);
+        abort("[TexEnvJIT] ABORT: No support: " + info);
       }
 
       function abort_sanity(info) {
-        abort("Sanity failure: " + info);
+        abort("[TexEnvJIT] ABORT: Sanity failure: " + info);
       }
 
       function genTexUnitSampleExpr(texUnitID) {
@@ -3042,7 +3036,7 @@ var LibraryGLEmulation = {
           // upload based on the indices. If they are in a buffer on the GPU, that is very
           // inconvenient! So if you do not have an array buffer, you should also not have
           // an element array buffer. But best is to use both buffers!
-          assert(!GLctx.currentElementArrayBufferBinding);
+          assert(!GLctx.currentElementArrayBufferBinding, 'must use array buffers when using element buffer');
 #endif
           for (var i = 0; i < numProvidedIndexes; i++) {
             var currIndex = {{{ makeGetValue('ptr', 'i*2', 'u16') }}};
@@ -3062,7 +3056,7 @@ var LibraryGLEmulation = {
           emulatedElementArrayBuffer = true;
         }
       } else if (GLImmediate.mode > 6) { // above GL_TRIANGLE_FAN are the non-GL ES modes
-        if (GLImmediate.mode != 7) throw 'unsupported immediate mode ' + GLImmediate.mode; // GL_QUADS
+        if (GLImmediate.mode != 7) abort('unsupported immediate mode ' + GLImmediate.mode); // GL_QUADS
         // GLImmediate.firstVertex is the first vertex we want. Quad indexes are
         // in the pattern 0 1 2, 0 2 3, 4 5 6, 4 6 7, so we need to look at
         // index firstVertex * 1.5 to see it.  Then since indexes are 2 bytes
@@ -3218,7 +3212,7 @@ var LibraryGLEmulation = {
   glTexCoord2fv: (v) =>
     _glTexCoord2i({{{ makeGetValue('v', '0', 'float') }}}, {{{ makeGetValue('v', '4', 'float') }}}),
 
-  glTexCoord4f: () => { throw 'glTexCoord4f: TODO' },
+  glTexCoord4f: () => { abort('glTexCoord4f: TODO') },
 
   glColor4f: (r, g, b, a) => {
     r = Math.max(Math.min(r, 1), 0);
@@ -3750,9 +3744,9 @@ var LibraryGLEmulation = {
   },
   glRotatef: 'glRotated',
 
-  glDrawBuffer: () => { throw 'glDrawBuffer: TODO' },
+  glDrawBuffer: () => { abort('glDrawBuffer: TODO') },
 #if MAX_WEBGL_VERSION < 2
-  glReadBuffer: () => { throw 'glReadBuffer: TODO' },
+  glReadBuffer: () => { abort('glReadBuffer: TODO') },
 #endif
 
   glClipPlane: (pname, param) => {
@@ -3800,7 +3794,7 @@ var LibraryGLEmulation = {
         // multiply position with current modelviewmatrix
         GLImmediate.matrixLib.mat4.multiplyVec4(GLImmediate.matrix[0], GLEmulation.lightPosition[lightId]);
       } else {
-        throw 'glLightfv: TODO: ' + pname;
+        abort('glLightfv: TODO: ' + pname);
       }
     }
   },
@@ -3809,7 +3803,7 @@ var LibraryGLEmulation = {
     if (pname == 0x0B52) { // GL_LIGHT_MODEL_TWO_SIDE
       GLEmulation.lightModelTwoSide = (param != 0) ? true : false;
     } else {
-      throw 'glLightModelf: TODO: ' + pname;
+      abort('glLightModelf: TODO: ' + pname);
     }
   },
 
@@ -3820,12 +3814,12 @@ var LibraryGLEmulation = {
       GLEmulation.lightModelAmbient[2] = {{{ makeGetValue('param', '8', 'float') }}};
       GLEmulation.lightModelAmbient[3] = {{{ makeGetValue('param', '12', 'float') }}};
     } else {
-      throw 'glLightModelfv: TODO: ' + pname;
+      abort('glLightModelfv: TODO: ' + pname);
     }
   },
 
   glMaterialfv: (face, pname, param) => {
-    if ((face != 0x0404) && (face != 0x0408)) { throw 'glMaterialfv: TODO' + face; } // only GL_FRONT and GL_FRONT_AND_BACK supported
+    if ((face != 0x0404) && (face != 0x0408)) { abort('glMaterialfv: TODO' + face); } // only GL_FRONT and GL_FRONT_AND_BACK supported
 
     if (pname == 0x1200) { // GL_AMBIENT
       GLEmulation.materialAmbient[0] = {{{ makeGetValue('param', '0', 'float') }}};
@@ -3845,22 +3839,22 @@ var LibraryGLEmulation = {
     } else if (pname == 0x1601) { // GL_SHININESS
       GLEmulation.materialShininess[0] = {{{ makeGetValue('param', '0', 'float') }}};
     } else {
-      throw 'glMaterialfv: TODO: ' + pname;
+      abort('glMaterialfv: TODO: ' + pname);
     }
   },
 
-  glTexGeni: (coord, pname, param) => { throw 'glTexGeni: TODO' },
-  glTexGenfv: (coord, pname, param) => { throw 'glTexGenfv: TODO' },
+  glTexGeni: (coord, pname, param) => abort('glTexGeni: TODO'),
+  glTexGenfv: (coord, pname, param) => abort('glTexGenfv: TODO'),
   glTexEnvi: (target, pname, params) => warnOnce('glTexEnvi: TODO'),
   glTexEnvf: (target, pname, params) => warnOnce('glTexEnvf: TODO'),
   glTexEnvfv: (target, pname, params) => warnOnce('glTexEnvfv: TODO'),
 
-  glGetTexEnviv: (target, pname, param) => { throw 'GL emulation not initialized!'; },
-  glGetTexEnvfv: (target, pname, param) => { throw 'GL emulation not initialized!'; },
+  glGetTexEnviv: (target, pname, param) => abort('GL emulation not initialized!'),
+  glGetTexEnvfv: (target, pname, param) => abort('GL emulation not initialized!'),
 
-  glTexImage1D: (target, level, internalformat, width, border, format, type, data) => { throw 'glTexImage1D: TODO' },
-  glTexCoord3f: (target, level, internalformat, width, border, format, type, data) => { throw 'glTexCoord3f: TODO' },
-  glGetTexLevelParameteriv: (target, level, pname, params) => { throw 'glGetTexLevelParameteriv: TODO' },
+  glTexImage1D: (target, level, internalformat, width, border, format, type, data) => abort('glTexImage1D: TODO'),
+  glTexCoord3f: (target, level, internalformat, width, border, format, type, data) => abort('glTexCoord3f: TODO'),
+  glGetTexLevelParameteriv: (target, level, pname, params) => abort('glGetTexLevelParameteriv: TODO'),
 
   glShadeModel: () => warnOnce('TODO: glShadeModel'),
 
@@ -3896,7 +3890,7 @@ var LibraryGLEmulation = {
   },
 
   gluProject: (objX, objY, objZ, model, proj, view, winX, winY, winZ) => {
-    // The algorithm for this functions comes from Mesa
+    // The algorithm for this function comes from Mesa
 
     var inVec = new Float32Array(4);
     var outVec = new Float32Array(4);

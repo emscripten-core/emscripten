@@ -16,7 +16,7 @@
 namespace wasmfs {
 
 #ifdef WASMFS_CASE_INSENSITIVE
-backend_t createIgnoreCaseBackend(std::function<backend_t()> createBacken);
+backend_t createIgnoreCaseBackend(std::function<backend_t()> createBackend);
 #endif
 
 // The below lines are included to make the compiler believe that the global
@@ -89,7 +89,7 @@ WasmFS::~WasmFS() {
 
 // Special backends that want to install themselves as the root use this hook.
 // Otherwise, we use the default backends.
-__attribute__((weak)) extern backend_t wasmfs_create_root_dir(void) {
+__attribute__((weak)) extern "C" backend_t wasmfs_create_root_dir(void) {
 #ifdef WASMFS_CASE_INSENSITIVE
   return createIgnoreCaseBackend([]() { return createMemoryBackend(); });
 #else

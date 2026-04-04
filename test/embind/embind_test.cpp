@@ -1016,6 +1016,18 @@ EnumClass emval_test_take_and_return_EnumClass(EnumClass e) {
   return e;
 }
 
+enum class EnumNum { ONE, TWO };
+
+EnumNum emval_test_take_and_return_EnumNum(EnumNum e) {
+  return e;
+}
+
+enum class EnumStr { ONE, TWO };
+
+EnumStr emval_test_take_and_return_EnumStr(EnumStr e) {
+  return e;
+}
+
 void emval_test_call_function(val v, int i, float f, TupleVector tv, StructVector sv) {
   v(i, f, tv, sv);
 }
@@ -1291,6 +1303,38 @@ std::vector<SmallClass*> emval_test_return_vector_pointers() {
   vec.push_back(new SmallClass());
   return vec;
 }
+
+class CustomIterable {
+ public:
+  CustomIterable() : values_({1, 2, 3}) {}
+
+  unsigned int count() const {
+    return values_.size();
+  }
+
+  int at(unsigned int index) const {
+    return values_[index];
+  }
+
+ private:
+  std::vector<int> values_;
+};
+
+class CustomIterableSizeT {
+ public:
+  CustomIterableSizeT() : values_({10, 20, 30}) {}
+
+  size_t count() const {
+    return values_.size();
+  }
+
+  int at(size_t index) const {
+    return values_[index];
+  }
+
+ private:
+  std::vector<int> values_;
+};
 
 void test_string_with_vec(const std::string& p1, std::vector<std::string>& v1) {
   // THIS DOES NOT WORK -- need to get as val and then call vecFromJSArray
@@ -1896,6 +1940,18 @@ EMSCRIPTEN_BINDINGS(tests) {
   register_vector<std::vector<int>>("IntegerVectorVector");
   register_vector<SmallClass*>("SmallClassPointerVector");
 
+  class_<CustomIterable>("CustomIterable")
+      .constructor<>()
+      .function("count", &CustomIterable::count)
+      .function("at", &CustomIterable::at)
+      .iterable<int>("count", "at");
+
+  class_<CustomIterableSizeT>("CustomIterableSizeT")
+      .constructor<>()
+      .function("count", &CustomIterableSizeT::count)
+      .function("at", &CustomIterableSizeT::at)
+      .iterable<int>("count", "at");
+
   class_<DummyForPointer>("DummyForPointer");
 
   function("mallinfo", &emval_test_mallinfo);
@@ -2350,6 +2406,19 @@ EMSCRIPTEN_BINDINGS(tests) {
     ;
   function("emval_test_take_and_return_EnumClass", &emval_test_take_and_return_EnumClass);
 
+  enum_<EnumNum>("EnumNum", enum_value_type::number)
+    .value("ONE", EnumNum::ONE)
+    .value("TWO", EnumNum::TWO)
+    ;
+  function("emval_test_take_and_return_EnumNum", &emval_test_take_and_return_EnumNum);
+
+
+  enum_<EnumStr>("EnumStr", enum_value_type::string)
+    .value("ONE", EnumStr::ONE)
+    .value("TWO", EnumStr::TWO)
+    ;
+  function("emval_test_take_and_return_EnumStr", &emval_test_take_and_return_EnumStr);
+
   function("emval_test_call_function", &emval_test_call_function);
 
   function("emval_test_return_unique_ptr", &emval_test_return_unique_ptr);
@@ -2404,7 +2473,7 @@ EMSCRIPTEN_BINDINGS(tests) {
 
   register_map<std::string, int>("StringIntMap");
   function("embind_test_get_string_int_map", embind_test_get_string_int_map);
-    
+
   register_map<int, std::string, std::greater<int>>("IntStringMapGreater");
   function("embind_test_get_int_string_greater_map", embind_test_get_int_string_greater_map);
 

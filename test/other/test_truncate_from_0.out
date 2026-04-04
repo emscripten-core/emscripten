@@ -1,0 +1,10 @@
+Creating file: /tmp/file with content=This is some content
+Size of file is: 20
+Truncating file=/tmp/file to length=32
+Size of file is: 32
+Truncating file=/tmp/file to length=17
+Size of file is: 17
+Truncating file=/tmp/file to length=0
+Size of file is: 0
+Truncating file=/tmp/file to length=32
+Size of file is: 32

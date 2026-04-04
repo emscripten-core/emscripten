@@ -7,8 +7,8 @@
 """Wrapper script around `llvm-dwp`.
 """
 
-import sys
 import os
+import sys
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
