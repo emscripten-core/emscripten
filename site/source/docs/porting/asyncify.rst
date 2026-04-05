@@ -177,7 +177,7 @@ object).  For example:
 
    addToLibrary({
      fetch_v1__async: 'auto',
-     fetch_v2: async (url) => {
+     fetch_v1: async (url) => {
        const response = await fetch(UTF8ToString(url);
        const json_data = await response.json();
        return stringToNewUTF8(json_data);
