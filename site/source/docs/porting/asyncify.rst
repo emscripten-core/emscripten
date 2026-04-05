@@ -168,7 +168,7 @@ Marking JS library functions as async
 
 If you mark a JS library function as async using the ``__async`` decorator then
 the compiler will take a care of all the details of using the ``Asyncify`` API
-for you.  The function will also automatically be incldued in
+for you.  The function will also automatically be included in
 :ref:`ASYNCIFY_IMPORTS`.  All you need to do is write normal async JS function
 (either using the explict ``async`` JS keyword or returning a ``Promise``
 object).  For example:
