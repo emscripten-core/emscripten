@@ -92,7 +92,7 @@ int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec
 		// _m_lock preserves the historical 0/EBUSY encoding, so ownership is
 		// tracked separately in a per-thread list of held normal mutexes.
 		assert(at || (type & 15) != PTHREAD_MUTEX_NORMAL ||
-		              !__emscripten_debug_normal_mutex_owned(m) &&
+		              !__emscripten_debug_normal_mutex_owned(__pthread_self(), m) &&
 		              "pthread mutex deadlock detected");
 #endif
 		if ((type&3) == PTHREAD_MUTEX_ERRORCHECK

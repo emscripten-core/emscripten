@@ -118,6 +118,9 @@ struct pthread {
 	// See emscripten_futex_wait.c.
 	_Atomic char sleeping;
 #endif
+#if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
+	pthread_mutex_t* debug_normal_mutex_list;
+#endif
 };
 
 enum {
@@ -166,42 +169,34 @@ enum {
 #define _b_inst __u.__p[3]
 
 #if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
-extern _Thread_local pthread_mutex_t* __emscripten_debug_normal_mutex_list;
-
-static inline void __emscripten_debug_normal_mutex_note_locked(pthread_mutex_t *m)
+static inline void __emscripten_debug_normal_mutex_note_locked(pthread_t self, pthread_mutex_t *m)
 {
+	m->_m_next = self->debug_normal_mutex_list;
 	m->_m_prev = 0;
-	m->_m_next = __emscripten_debug_normal_mutex_list;
-	if (__emscripten_debug_normal_mutex_list) {
-		__emscripten_debug_normal_mutex_list->_m_prev = m;
-	}
-	__emscripten_debug_normal_mutex_list = m;
+	self->debug_normal_mutex_list = m;
 }
 
-static inline void __emscripten_debug_normal_mutex_note_unlocked(pthread_mutex_t *m)
+static inline int __emscripten_debug_normal_mutex_owned(pthread_t self, pthread_mutex_t *m)
 {
-	pthread_mutex_t *prev = (pthread_mutex_t*)m->_m_prev;
-	pthread_mutex_t *next = (pthread_mutex_t*)m->_m_next;
-	if (prev) {
-		prev->_m_next = next;
-	} else {
-		__emscripten_debug_normal_mutex_list = next;
-	}
-	if (next) {
-		next->_m_prev = prev;
-	}
-	m->_m_prev = 0;
-	m->_m_next = 0;
-}
-
-static inline int __emscripten_debug_normal_mutex_owned(pthread_mutex_t *m)
-{
-	for (pthread_mutex_t *it = __emscripten_debug_normal_mutex_list; it; it = (pthread_mutex_t*)it->_m_next) {
+	for (pthread_mutex_t *it = self->debug_normal_mutex_list; it; it = (pthread_mutex_t*)it->_m_next) {
 		if (it == m) {
 			return 1;
 		}
 	}
 	return 0;
+}
+
+static inline void __emscripten_debug_normal_mutex_note_unlocked(pthread_t self, pthread_mutex_t *m)
+{
+	pthread_mutex_t **it = &self->debug_normal_mutex_list;
+	while (*it && *it != m) {
+		it = (pthread_mutex_t**)&(*it)->_m_next;
+	}
+	if (*it == m) {
+		*it = (pthread_mutex_t*)m->_m_next;
+	}
+	m->_m_prev = 0;
+	m->_m_next = 0;
 }
 #endif
 

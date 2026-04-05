@@ -1,9 +1,5 @@
 #include "pthread_impl.h"
 
-#if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
-_Thread_local pthread_mutex_t* __emscripten_debug_normal_mutex_list;
-#endif
-
 int __pthread_mutex_trylock_owner(pthread_mutex_t *m)
 {
 	int old, own;
@@ -71,7 +67,7 @@ success:
 	// historical lock-word semantics, and track ownership separately in a
 	// per-thread list for the deadlock assertion in pthread_mutex_timedlock.
 	if ((type & 15) == PTHREAD_MUTEX_NORMAL) {
-		__emscripten_debug_normal_mutex_note_locked(m);
+		__emscripten_debug_normal_mutex_note_locked(self, m);
 		self->robust_list.pending = 0;
 		return 0;
 	}
