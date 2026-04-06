@@ -237,7 +237,6 @@ function postRun() {
 
 /**
  * @param {string|number=} what
- * @return {void}
  */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
