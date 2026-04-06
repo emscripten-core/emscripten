@@ -237,7 +237,7 @@ function postRun() {
 
 /**
  * @param {string|number=} what
- * @noreturn
+ * @return {void}
  */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
@@ -302,17 +302,18 @@ function abort(what) {
 #if ASSERTIONS && !('$FS' in addedLibraryItems)
 // show errors on likely calls to FS when it was not included
 var FS = {
+  /** @return {*} */
   error() {
     abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM');
   },
   init() { FS.error() },
   createDataFile() { FS.error() },
   createPreloadedFile() { FS.error() },
-  createLazyFile() { FS.error() },
-  open() { FS.error() },
-  mkdev() { FS.error() },
+  createLazyFile() { return (/** @type {?} */ (FS.error())); },
+  open() { return (/** @type {?} */ (FS.error())); },
+  mkdev() { return (/** @type {?} */ (FS.error())); },
   registerDevice() { FS.error() },
-  analyzePath() { FS.error() },
+  analyzePath() { return (/** @type {?} */ (FS.error())); },
 
   ErrnoError() { FS.error() },
 };
