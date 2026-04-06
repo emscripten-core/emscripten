@@ -348,9 +348,31 @@ def get_command_with_possible_response_file(cmd):
     return cmd
 
   logger.debug('using response file for %s' % cmd[0])
-  filename = response_file.create_response_file(cmd[1:], shared.TEMP_DIR)
+  filename = create_response_file(cmd[1:], shared.TEMP_DIR)
   new_cmd = [cmd[0], "@" + filename]
   return new_cmd
+
+
+def create_response_file(args, directory):
+  """Routes the given cmdline param list in args into a new response file and
+  returns the filename to it.
+  """
+  # Backslashes and other special chars need to be escaped in the response file.
+  contents = response_file.create_response_file_contents(args)
+
+  response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp.utf-8', dir=directory, text=True)
+
+  with os.fdopen(response_fd, 'w', encoding='utf-8') as f:
+    f.write(contents)
+
+  if DEBUG:
+    logging.warning(f'Creating response file {response_filename} with following contents: {contents}')
+
+  # Register the created .rsp file to be automatically cleaned up once this
+  # process finishes, so that caller does not have to remember to do it.
+  shared.get_temp_files().note(response_filename)
+
+  return response_filename
 
 
 def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):

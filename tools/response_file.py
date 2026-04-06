@@ -8,7 +8,7 @@ import os
 import shlex
 import tempfile
 
-from . import shared
+# Do not import shared.py so that file_packager.py can run without setting up LLVM_ROOT.
 from .utils import WINDOWS
 
 DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
@@ -37,28 +37,6 @@ def create_response_file_contents(args):
     contents += arg + '\n'
 
   return contents
-
-
-def create_response_file(args, directory):
-  """Routes the given cmdline param list in args into a new response file and
-  returns the filename to it.
-  """
-  # Backslashes and other special chars need to be escaped in the response file.
-  contents = create_response_file_contents(args)
-
-  response_fd, response_filename = tempfile.mkstemp(prefix='emscripten_', suffix='.rsp.utf-8', dir=directory, text=True)
-
-  with os.fdopen(response_fd, 'w', encoding='utf-8') as f:
-    f.write(contents)
-
-  if DEBUG:
-    logging.warning(f'Creating response file {response_filename} with following contents: {contents}')
-
-  # Register the created .rsp file to be automatically cleaned up once this
-  # process finishes, so that caller does not have to remember to do it.
-  shared.get_temp_files().note(response_filename)
-
-  return response_filename
 
 
 def expand_response_file(arg):
