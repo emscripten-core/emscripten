@@ -11721,6 +11721,10 @@ int main(void) {
   def test_pthread_hello(self, args):
     self.do_other_test('test_pthread_hello.c', args)
 
+  # Preserved for future reinstatement of the debug deadlock check from #24607.
+  # This rollback intentionally removes that behavior and returns debug builds to
+  # the pre-4.0.11 fast-path behavior for PTHREAD_MUTEX_NORMAL.
+  @disabled('disabled by revert-pthread-mutex-debug-deadlock-detection rollback')
   @crossplatform
   @requires_pthreads
   def test_pthread_mutex_deadlock(self):

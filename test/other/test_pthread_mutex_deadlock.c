@@ -10,9 +10,8 @@ int main() {
   int rtn = pthread_mutex_lock(&m);
   assert(rtn == 0);
 
-  // Attempt to lock a second time.  In debug builds this should
-  // hit an assertion.  In release builds this will deadlock and
-  // never return.
+  // Attempt to lock a second time. In debug builds with the #24607 behavior
+  // enabled this should hit an assertion. Without that behavior it deadlocks.
   pthread_mutex_lock(&m);
   printf("should never get here\n");
   assert(false);
