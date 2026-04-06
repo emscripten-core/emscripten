@@ -146,11 +146,12 @@ parameters to pass to the function:
        including function names.
        Exporting functions allows you to continue to access them using the
        original name through the global ``Module`` object.
-     - If you want to export a JS library function (something from a
-       ``src/library*.js`` file, for example), then in addition to
-       ``EXPORTED_FUNCTIONS``, you need to add it to ``DEFAULT_LIBRARY_FUNCS_TO_INCLUDE``,
-       as the latter will force the method to actually be included in
-       the build.
+     - If you want to include a JS library element (something from a
+       ``src/library*.js`` file, for example) so C code can use it, you need to
+       add it to ``DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`` to force it to actually be
+       included in the build. If you want to export a JS library element, add it
+       to ``EXPORTED_FUNCTIONS`` (which also includes the JS symbol, subsuming
+       ``DEFAULT_LIBRARY_FUNCS_TO_INCLUDE``).
 
    - The compiler will remove code it does not see is used, to improve code
      size. If you use ``ccall`` in a place it sees, like code in a ``--pre-js``
