@@ -10,11 +10,9 @@ static void worker_loop() {
 
 static void main_loop() {
   static unsigned ticks;
-  static bool reported;
   new std::uint8_t{0};
-  if (!reported && ++ticks == 120) {
-    reported = true;
-    REPORT_RESULT(0);
+  if (++ticks == 120) {
+    emscripten_force_exit(0);
   }
 }
 
