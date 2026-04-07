@@ -1363,13 +1363,13 @@ addToLibrary({
 
   emscripten_date_now: () => Date.now(),
 
-  emscripten_performance_now: () => {{{ getPerformanceNow() }}}(),
+  emscripten_performance_now: () => performance.now(),
 
 #if PTHREADS && !AUDIO_WORKLET
   // Pthreads need their clocks synchronized to the execution of the main
   // thread, so, when using them, make sure to adjust all timings to the
   // respective time origins.
-  emscripten_get_now: () => performance.timeOrigin + {{{ getPerformanceNow() }}}(),
+  emscripten_get_now: () => performance.timeOrigin + performance.now(),
 #else
 #if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
   emscripten_get_now: `;
@@ -1377,11 +1377,11 @@ addToLibrary({
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
     // Audio Worklets enabled, do a dynamic check for its presence.
-    if (globalThis.performance && {{{ getPerformanceNow() }}}) {
+    if (globalThis.performance && performance.now) {
 #if PTHREADS
-      _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
+      _emscripten_get_now = () => performance.timeOrigin + performance.now();
 #else
-      _emscripten_get_now = () => {{{ getPerformanceNow() }}}();
+      _emscripten_get_now = () => performance.now();
 #endif
     } else {
       _emscripten_get_now = Date.now;
@@ -1391,7 +1391,7 @@ addToLibrary({
   // Modern environment where performance.now() is supported:
   // N.B. a shorter form "_emscripten_get_now = performance.now;" is
   // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
-  emscripten_get_now: () => {{{ getPerformanceNow() }}}(),
+  emscripten_get_now: () => performance.now(),
 #endif
 #endif
 

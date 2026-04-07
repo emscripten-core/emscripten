@@ -1775,22 +1775,6 @@ testing.  See test_chunked_synchronous_xhr in runner.py and library.js.
 
 Default value: false
 
-.. _deterministic:
-
-DETERMINISTIC
-=============
-
-If 1, we force Date.now(), Math.random, etc. to return deterministic results.
-This also tries to make execution deterministic across machines and
-environments, for example, not doing anything different based on the
-browser's language setting (which would mean you can get different results
-in different browsers, or in the browser and in node).
-Good for comparing builds for debugging purposes (and nothing else).
-
-.. note:: This setting is deprecated
-
-Default value: false
-
 .. _modularize:
 
 MODULARIZE
@@ -3502,3 +3486,4 @@ for backwards compatibility with older versions:
  - ``POLYFILL_OLD_MATH_FUNCTIONS``: No longer supported (Valid values: [0])
  - ``RELOCATABLE``: No longer supported (Valid values: [0])
  - ``WASM_JS_TYPES``: No longer supported (Valid values: [0])
+ - ``DETERMINISTIC``: No longer supported (Valid values: [0])

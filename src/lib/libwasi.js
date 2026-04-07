@@ -49,13 +49,7 @@ var WasiLibrary = {
   $getEnvStrings: () => {
     if (!getEnvStrings.strings) {
       // Default values.
-#if DETERMINISTIC
-      // Deterministic language detection, ignore the browser's language.
-      var lang = 'C.UTF-8';
-#else
-      // Browser language detection #8751
       var lang = (globalThis.navigator?.language ?? 'C').replace('-', '_') + '.UTF-8';
-#endif
       var env = {
 #if !PURE_WASI
         'USER': 'web_user',

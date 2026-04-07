@@ -253,6 +253,7 @@ LEGACY_SETTINGS = [
     ['POLYFILL_OLD_MATH_FUNCTIONS', [0], 'No longer supported'],
     ['RELOCATABLE', [0], 'No longer supported'],
     ['WASM_JS_TYPES', [0], 'No longer supported'],
+    ['DETERMINISTIC', [0], 'No longer supported'],
 ]
 
 user_settings: dict[str, str] = {}

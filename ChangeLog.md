@@ -26,6 +26,11 @@ See docs/process.md for more on how version tagging works.
 - mimalloc was updated to 3.3.1. (#26696)
 - The `WASM_JS_TYPES` setting was removed, as the corresponsing propsal was
   pushed back to phase 1. (#26739)
+- The `-sDETERMINISTIC` setting was removed.  This setting just injected
+  `src/deterministic.js` as a `--pre-js`.  For now, this file remains part of
+  emscripten so folks can sill use it manually if needed.  If you are a user of
+  this feature please let us know otherwise this may be deleted in a future
+  release. (#26648)
 
 5.0.6 - 04/14/26
 ----------------
