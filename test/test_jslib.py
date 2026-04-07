@@ -353,10 +353,15 @@ int main() {
   # the -jsDfoo=val syntax:
   # See https://github.com/emscripten-core/emscripten/issues/10580.
   def test_jslib_custom_settings(self):
-    self.cflags += ['--js-library', test_file('jslib/test_jslib_custom_settings.js'), '-jsDCUSTOM_JS_OPTION=1']
-    self.do_run_in_out_file_test('jslib/test_jslib_custom_settings.c')
+    test_file_path = test_file('jslib/test_jslib_custom_settings.c')
+    js_lib = test_file('jslib/test_jslib_custom_settings.js')
 
-    self.assert_fail([EMCC, '-jsDWASM=0'], 'cannot change built-in settings values with a -jsD directive')
+    self.do_runf(test_file_path, '1\n', cflags=['--js-library', js_lib, '-jsDCUSTOM_JS_OPTION=1'])
+
+    # verify that the settings can be specified more than once, and that the last one wins.
+    self.do_runf(test_file_path, '2\n', cflags=['--js-library', js_lib, '-jsDCUSTOM_JS_OPTION=1', '-jsDCUSTOM_JS_OPTION=2'])
+
+    self.assert_fail([EMCC, '-jsDWASM=1'], 'cannot change built-in settings values with a -jsD directive')
 
   def test_jslib_native_deps(self):
     # Verify that memset (which lives in compiled code), can be specified as a JS library
