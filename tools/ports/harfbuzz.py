@@ -135,6 +135,7 @@ def get(ports, settings, shared):
     cflags.append('-DHB_NO_PRAGMA_GCC_DIAGNOSTIC_ERROR')
     cflags.append('-DHB_NO_PRAGMA_GCC_DIAGNOSTIC_WARNING')
 
+    ports.make_pkg_config('harfbuzz', VERSION, '-sUSE_HARFBUZZ')
     ports.build_port(os.path.join(source_path, 'src'), final, 'harfbuzz', flags=cflags, srcs=srcs)
 
   return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
