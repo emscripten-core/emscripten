@@ -78,7 +78,7 @@ export function preprocess(filename) {
     // temporarily replace `import.meta` usages with placeholders during the JS
     // compile phase, then in Python we reverse this replacement.
     // See also: `emscript` in emscripten.py.
-    text = text.replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META');
+    text = text.replaceAll('import.meta', 'EMSCRIPTEN$IMPORT$META');
   }
   if (MODULARIZE && USE_CLOSURE_COMPILER) {
     // Closure doesn't support "top-level await" which is not actually the top
@@ -87,9 +87,9 @@ export function preprocess(filename) {
     // See also: `fix_js_mangling` in emcc.py.
     // FIXME: Remove after https://github.com/google/closure-compiler/issues/3835 is fixed.
     if (EXPORT_ES6) {
-      text = text.replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
+      text = text.replaceAll('await import', 'EMSCRIPTEN$AWAIT$IMPORT');
     }
-    text = text.replace(/\bawait createWasm\(\)/g, 'EMSCRIPTEN$AWAIT(createWasm())');
+    text = text.replaceAll('await createWasm()', 'EMSCRIPTEN$AWAIT(createWasm())');
   }
   // Remove windows line endings, if any
   text = text.replace(/\r\n/g, '\n');
