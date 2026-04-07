@@ -1366,6 +1366,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   check_browser_versions()
 
+  if settings.DETERMINISTIC and settings.MIN_NODE_VERSION < 190000:
+    exit_with_error('DETERMINISTIC does not work with node < v19')
+
   if settings.POLYFILL:
     # Emscripten requires certain ES6+ constructs by default in library code
     # - (various ES6 operators available in all browsers listed below)

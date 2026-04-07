@@ -12059,6 +12059,8 @@ int main () {
   printf("JS random: %d\n", EM_ASM_INT({ return Math.random() }));
 }
 ''')
+    if not self.try_require_node_version(19):
+      self.skipTest('-sDETERMINISTIC requires node v19 or above')
     self.run_process([EMCC, 'src.c', '-sDETERMINISTIC'] + self.get_cflags())
     one = self.run_js('a.out.js')
     # ensure even if the time resolution is 1 second, that if we see the real
