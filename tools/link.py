@@ -1959,6 +1959,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # Force node since that is where the tool runs.
   if 'node' not in settings.ENVIRONMENT:
     settings.ENVIRONMENT.append('node')
+  settings.MIN_NODE_VERSION = feature_matrix.OLDEST_SUPPORTED_NODE
   settings.MINIMAL_RUNTIME = 0
   # Required function to trigger TS generation.
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks', '$addRunDependency', '$removeRunDependency']
@@ -1979,7 +1980,6 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
     dirname, basename = os.path.split(lib)
     if basename == 'libembind.js':
       settings.JS_LIBRARIES[i] = os.path.join(dirname, 'libembind_gen.js')
-  settings.MIN_NODE_VERSION = 160000 if settings.MEMORY64 else 150000
   # The final version of the memory64 proposal is not implemented until node
   # v24, so we need to lower it away in order to execute the binary at build
   # time.
