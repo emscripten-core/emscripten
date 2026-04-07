@@ -1380,8 +1380,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # TODO: replace this with feature matrix in the future.
     settings.TRANSPILE = (settings.MIN_FIREFOX_VERSION < 79 or
                           settings.MIN_CHROME_VERSION < 85 or
-                          settings.MIN_SAFARI_VERSION < 140000 or
-                          settings.MIN_NODE_VERSION < 160000)
+                          settings.MIN_SAFARI_VERSION < 140000)
 
   if settings.STB_IMAGE:
     settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']

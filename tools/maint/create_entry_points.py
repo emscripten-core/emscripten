@@ -121,7 +121,7 @@ def main(all_platforms, use_exe_files):
           shutil.copyfile(windows_exe, launcher + '.exe')
         else:
           write_file(launcher + '.bat', bat_data)
-          write_file(launcher + '.pa1', ps1_data)
+          write_file(launcher + '.ps1', ps1_data)
 
   generate_entry_points(entry_points, os.path.join(__scriptdir__, 'run_python'))
   generate_entry_points(compiler_entry_points, os.path.join(__scriptdir__, 'run_python_compiler'))
