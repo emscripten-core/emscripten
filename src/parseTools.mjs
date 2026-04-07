@@ -73,6 +73,13 @@ function findIncludeFile(filename, currentDir) {
 // Also handles #include x.js (similar to C #include <file>)
 export function preprocess(filename) {
   let text = readFile(filename);
+  if (EXPORT_ES6) {
+    // `vm.runInContext` doesn't support module syntax; to allow it, we need to
+    // temporarily replace `import.meta` usages with placeholders during the JS
+    // compile phase, then in Python we reverse this replacement.
+    // See also: `emscript` in emscripten.py.
+    text = text.replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META');
+  }
   if (MODULARIZE && USE_CLOSURE_COMPILER) {
     // Closure doesn't support "top-level await" which is not actually the top
     // level in case of MODULARIZE. Temporarily replace `await` usages with
