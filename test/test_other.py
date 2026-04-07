@@ -13176,6 +13176,9 @@ void foo() {}
         self.skipTest('depends on /dev filesystem')
     self.do_runf('unistd/isatty.c', 'success')
 
+  def test_libtty(self):
+    self.do_other_test('libtty.c', cflags=["-O2"])
+
   def test_unistd_login(self):
     self.do_run_in_out_file_test('unistd/login.c')
 
@@ -15443,3 +15446,16 @@ console.log('OK');'''
     create_file('pre.js', 'Module.logReadFiles = 1;')
     output = self.do_runf('checksummer.c', args=['test.txt'], cflags=['--pre-js=pre.js'])
     self.assertContained('read file: /test.txt', output)
+
+  @crossplatform
+  @no_windows('opens /proc/self/fd/1')
+  def test_node_stdio_isatty(self):
+    self.run_process([EMCC, test_file('other/test_node_stdio_isatty.c'), '-o', 'out.mjs'])
+    for arg in ['111', '011', '101', '110', '100', '010', '001', '000']:
+      self.assertEqual(self.run_js(test_file('other/test_node_stdio_isatty.mjs'), args=[arg]), arg + '\n')
+
+  @crossplatform
+  @no_windows('opens /proc/self/fd/1')
+  def test_node_term_size(self):
+    self.run_process([EMCC, test_file('other/test_node_term_size.c'), '-o', 'out.mjs'])
+    self.assertEqual(self.run_js(test_file('other/test_node_term_size.mjs')), 'rows 50\ncolumns 180\n')

@@ -350,7 +350,6 @@ function initRuntime() {
   runtimeInitialized = true;
   // Begin ATINITS hooks
   if (!Module["noFSInit"] && !FS.initialized) FS.init();
-  TTY.init();
   // End ATINITS hooks
   wasmExports["c"]();
   // Begin ATPOSTCTORS hooks
@@ -686,6 +685,240 @@ var PATH_FS = {
   }
 };
 
+var ERRNO_CODES = {
+  "EPERM": 63,
+  "ENOENT": 44,
+  "ESRCH": 71,
+  "EINTR": 27,
+  "EIO": 29,
+  "ENXIO": 60,
+  "E2BIG": 1,
+  "ENOEXEC": 45,
+  "EBADF": 8,
+  "ECHILD": 12,
+  "EAGAIN": 6,
+  "EWOULDBLOCK": 6,
+  "ENOMEM": 48,
+  "EACCES": 2,
+  "EFAULT": 21,
+  "ENOTBLK": 105,
+  "EBUSY": 10,
+  "EEXIST": 20,
+  "EXDEV": 75,
+  "ENODEV": 43,
+  "ENOTDIR": 54,
+  "EISDIR": 31,
+  "EINVAL": 28,
+  "ENFILE": 41,
+  "EMFILE": 33,
+  "ENOTTY": 59,
+  "ETXTBSY": 74,
+  "EFBIG": 22,
+  "ENOSPC": 51,
+  "ESPIPE": 70,
+  "EROFS": 69,
+  "EMLINK": 34,
+  "EPIPE": 64,
+  "EDOM": 18,
+  "ERANGE": 68,
+  "ENOMSG": 49,
+  "EIDRM": 24,
+  "ECHRNG": 106,
+  "EL2NSYNC": 156,
+  "EL3HLT": 107,
+  "EL3RST": 108,
+  "ELNRNG": 109,
+  "EUNATCH": 110,
+  "ENOCSI": 111,
+  "EL2HLT": 112,
+  "EDEADLK": 16,
+  "ENOLCK": 46,
+  "EBADE": 113,
+  "EBADR": 114,
+  "EXFULL": 115,
+  "ENOANO": 104,
+  "EBADRQC": 103,
+  "EBADSLT": 102,
+  "EDEADLOCK": 16,
+  "EBFONT": 101,
+  "ENOSTR": 100,
+  "ENODATA": 116,
+  "ETIME": 117,
+  "ENOSR": 118,
+  "ENONET": 119,
+  "ENOPKG": 120,
+  "EREMOTE": 121,
+  "ENOLINK": 47,
+  "EADV": 122,
+  "ESRMNT": 123,
+  "ECOMM": 124,
+  "EPROTO": 65,
+  "EMULTIHOP": 36,
+  "EDOTDOT": 125,
+  "EBADMSG": 9,
+  "ENOTUNIQ": 126,
+  "EBADFD": 127,
+  "EREMCHG": 128,
+  "ELIBACC": 129,
+  "ELIBBAD": 130,
+  "ELIBSCN": 131,
+  "ELIBMAX": 132,
+  "ELIBEXEC": 133,
+  "ENOSYS": 52,
+  "ENOTEMPTY": 55,
+  "ENAMETOOLONG": 37,
+  "ELOOP": 32,
+  "EOPNOTSUPP": 138,
+  "EPFNOSUPPORT": 139,
+  "ECONNRESET": 15,
+  "ENOBUFS": 42,
+  "EAFNOSUPPORT": 5,
+  "EPROTOTYPE": 67,
+  "ENOTSOCK": 57,
+  "ENOPROTOOPT": 50,
+  "ESHUTDOWN": 140,
+  "ECONNREFUSED": 14,
+  "EADDRINUSE": 3,
+  "ECONNABORTED": 13,
+  "ENETUNREACH": 40,
+  "ENETDOWN": 38,
+  "ETIMEDOUT": 73,
+  "EHOSTDOWN": 142,
+  "EHOSTUNREACH": 23,
+  "EINPROGRESS": 26,
+  "EALREADY": 7,
+  "EDESTADDRREQ": 17,
+  "EMSGSIZE": 35,
+  "EPROTONOSUPPORT": 66,
+  "ESOCKTNOSUPPORT": 137,
+  "EADDRNOTAVAIL": 4,
+  "ENETRESET": 39,
+  "EISCONN": 30,
+  "ENOTCONN": 53,
+  "ETOOMANYREFS": 141,
+  "EUSERS": 136,
+  "EDQUOT": 19,
+  "ESTALE": 72,
+  "ENOTSUP": 138,
+  "ENOMEDIUM": 148,
+  "EILSEQ": 25,
+  "EOVERFLOW": 61,
+  "ECANCELED": 11,
+  "ENOTRECOVERABLE": 56,
+  "EOWNERDEAD": 62,
+  "ESTRPIPE": 135
+};
+
+var nodeTTY = require("node:tty");
+
+var nodeFsync = fd => {
+  try {
+    fs.fsyncSync(fd);
+  } catch (e) {
+    if (e?.code === "EINVAL") {
+      return;
+    }
+    // On Mac, calling fsync when not isatty returns ENOTSUP
+    // On Windows, stdin/stdout/stderr may be closed, returning EBADF or EPERM
+    const isStdStream = fd === 0 || fd === 1 || fd === 2;
+    if (isStdStream && (e?.code === "ENOTSUP" || e?.code === "EBADF" || e?.code === "EPERM")) {
+      return;
+    }
+    throw e;
+  }
+};
+
+var DEV = {
+  readWriteHelper: (stream, cb, method) => {
+    try {
+      var nbytes = cb();
+    } catch (e) {
+      // Convert Node errors into ErrnoError
+      if (e && e.code && ERRNO_CODES[e.code]) {
+        throw new FS.ErrnoError(ERRNO_CODES[e.code]);
+      }
+      if (e?.errno) {
+        // propagate errno
+        throw e;
+      }
+      // Other errors converted to EIO.
+      throw new FS.ErrnoError(29);
+    }
+    if (nbytes === undefined) {
+      // Prevent an infinite loop caused by incorrect code that doesn't return a
+      // value
+      // Maybe we should set nbytes = buffer.length here instead?
+      throw new FS.ErrnoError(29);
+    }
+    if (nbytes !== 0) {
+      stream.node.timestamp = Date.now();
+    }
+    return nbytes;
+  },
+  devs: [],
+  register(dev, ops) {
+    DEV.devs[dev] = ops;
+    FS.registerDevice(dev, DEV.stream_ops);
+  },
+  TTY_OPS: {
+    ioctl_tiocgwinsz(tty) {
+      const {rows = 24, columns = 80} = tty.devops.getTerminalSize?.() ?? {};
+      return [ rows, columns ];
+    }
+  },
+  stream_ops: {
+    open(stream) {
+      var devops = DEV.devs[stream.node.rdev];
+      if (!devops) {
+        throw new FS.ErrnoError(43);
+      }
+      stream.devops = devops;
+      stream.seekable = false;
+      stream.tty = stream.devops.tty ?? (stream.devops.isatty ? {
+        ops: DEV.TTY_OPS,
+        devops
+      } : undefined);
+      devops.open?.(stream);
+    },
+    close(stream) {
+      // flush any pending line data
+      stream.stream_ops.fsync(stream);
+    },
+    fsync(stream) {
+      stream.devops.fsync?.(stream.devops);
+    },
+    read: function(stream, buffer, offset, length, pos) {
+      buffer = buffer.subarray(offset, offset + length);
+      return DEV.readWriteHelper(stream, () => stream.devops.read(stream.devops, buffer), "read");
+    },
+    write: function(stream, buffer, offset, length, pos) {
+      buffer = buffer.subarray(offset, offset + length);
+      return DEV.readWriteHelper(stream, () => stream.devops.write(stream.devops, buffer), "write");
+    }
+  },
+  nodeInputDevice: nodeStream => ({
+    isatty: nodeTTY.isatty(nodeStream.fd),
+    fsync() {
+      nodeFsync(nodeStream.fd);
+    },
+    read(ops, buffer) {
+      return fs.readSync(nodeStream.fd, buffer, 0, buffer.length);
+    }
+  }),
+  nodeOutputDevice: nodeStream => ({
+    isatty: nodeTTY.isatty(nodeStream.fd),
+    fsync() {
+      nodeFsync(nodeStream.fd);
+    },
+    write(ops, buffer) {
+      return fs.writeSync(nodeStream.fd, buffer, 0, buffer.length);
+    },
+    getTerminalSize() {
+      return nodeStream;
+    }
+  })
+};
+
 var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
 
 var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
@@ -862,73 +1095,46 @@ var FS_stdin_getChar = () => {
 };
 
 var TTY = {
-  ttys: [],
-  init() {},
-  shutdown() {},
+  ttys: {},
   register(dev, ops) {
-    TTY.ttys[dev] = {
+    const tty = {
       input: [],
       output: [],
       ops
     };
-    FS.registerDevice(dev, TTY.stream_ops);
-  },
-  stream_ops: {
-    open(stream) {
-      var tty = TTY.ttys[stream.node.rdev];
-      if (!tty) {
-        throw new FS.ErrnoError(43);
-      }
-      stream.tty = tty;
-      stream.seekable = false;
-    },
-    close(stream) {
-      // flush any pending line data
-      stream.tty.ops.fsync(stream.tty);
-    },
-    fsync(stream) {
-      stream.tty.ops.fsync(stream.tty);
-    },
-    read(stream, buffer, offset, length, pos) {
-      if (!stream.tty || !stream.tty.ops.get_char) {
-        throw new FS.ErrnoError(60);
-      }
-      var bytesRead = 0;
-      for (var i = 0; i < length; i++) {
-        var result;
-        try {
-          result = stream.tty.ops.get_char(stream.tty);
-        } catch (e) {
-          throw new FS.ErrnoError(29);
+    TTY.ttys[dev] = tty;
+    const devops = {
+      tty,
+      write(devops, buffer) {
+        if (!ops.put_char) {
+          throw new FS.ErrnoError(60);
         }
-        if (result === undefined && bytesRead === 0) {
-          throw new FS.ErrnoError(6);
+        for (var i = 0; i < buffer.length; i++) {
+          ops.put_char(tty, buffer[i]);
         }
-        if (result === null || result === undefined) break;
-        bytesRead++;
-        buffer[offset + i] = result;
-      }
-      if (bytesRead) {
-        stream.node.atime = Date.now();
-      }
-      return bytesRead;
-    },
-    write(stream, buffer, offset, length, pos) {
-      if (!stream.tty || !stream.tty.ops.put_char) {
-        throw new FS.ErrnoError(60);
-      }
-      try {
-        for (var i = 0; i < length; i++) {
-          stream.tty.ops.put_char(stream.tty, buffer[offset + i]);
+        return i;
+      },
+      read(devops, buffer) {
+        if (!ops.get_char) {
+          throw new FS.ErrnoError(60);
         }
-      } catch (e) {
-        throw new FS.ErrnoError(29);
+        var bytesRead = 0;
+        for (var i = 0; i < buffer.length; i++) {
+          var result = ops.get_char(tty);
+          if (result === undefined && bytesRead === 0) {
+            throw new FS.ErrnoError(6);
+          }
+          if (result === null || result === undefined) break;
+          bytesRead++;
+          buffer[i] = result;
+        }
+        return bytesRead;
       }
-      if (length) {
-        stream.node.mtime = stream.node.ctime = Date.now();
-      }
-      return i;
+    };
+    if (ops.fsync) {
+      devops.fsync = devops => ops.fsync(tty);
     }
+    DEV.register(dev, devops);
   },
   default_tty_ops: {
     get_char(tty) {
@@ -2612,16 +2818,25 @@ var FS = {
     // them instead.
     if (input) {
       FS.createDevice("/dev", "stdin", input);
+    } else if (ENVIRONMENT_IS_NODE) {
+      DEV.register(FS.makedev(7, 0), DEV.nodeInputDevice(process.stdin));
+      FS.mkdev("/dev/stdin", FS.makedev(7, 0));
     } else {
       FS.symlink("/dev/tty", "/dev/stdin");
     }
     if (output) {
       FS.createDevice("/dev", "stdout", null, output);
+    } else if (ENVIRONMENT_IS_NODE) {
+      DEV.register(FS.makedev(7, 1), DEV.nodeOutputDevice(process.stdout));
+      FS.mkdev("/dev/stdout", FS.makedev(7, 1));
     } else {
       FS.symlink("/dev/tty", "/dev/stdout");
     }
     if (error) {
       FS.createDevice("/dev", "stderr", null, error);
+    } else if (ENVIRONMENT_IS_NODE) {
+      DEV.register(FS.makedev(7, 2), DEV.nodeOutputDevice(process.stderr));
+      FS.mkdev("/dev/stderr", FS.makedev(7, 2));
     } else {
       FS.symlink("/dev/tty1", "/dev/stderr");
     }
