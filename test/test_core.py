@@ -9714,6 +9714,10 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
   @requires_wasm_workers
+  def test_wasm_worker_exceptions(self):
+    self.do_runf('wasm_worker/test_wasm_worker_exceptions.c', 'worker sent an error! Aborted', assert_returncode=NON_ZERO, cflags=['-sWASM_WORKERS'])
+
+  @requires_wasm_workers
   def test_wasm_worker_malloc(self):
     self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
