@@ -115,6 +115,7 @@ DEPRECATED_SETTINGS = {
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
     'LINKABLE': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)',
     'EXPORT_EXCEPTION_HANDLING_HELPERS': 'getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.',
+    'DETERMINISTIC': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/26647)',
 }
 
 # Settings that don't need to be externalized when serializing to json because they

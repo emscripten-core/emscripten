@@ -1787,6 +1787,8 @@ browser's language setting (which would mean you can get different results
 in different browsers, or in the browser and in node).
 Good for comparing builds for debugging purposes (and nothing else).
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _modularize:
@@ -3421,6 +3423,7 @@ these settings please open a bug (or reply to one of the existing bugs).
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
  - ``EXPORT_EXCEPTION_HANDLING_HELPERS``: getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.
+ - ``DETERMINISTIC``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/26647)
 
 .. _legacy-settings:
 

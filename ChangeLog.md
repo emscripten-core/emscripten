@@ -22,6 +22,7 @@ See docs/process.md for more on how version tagging works.
 ----------------------
 - The minimum version of node supported by the generated code was bumped from
   v12.22.0 to v18.3.0. (#26604)
+- The DETERMINISIC settings was marked as deprecated ()
 
 5.0.5 - 04/03/26
 ----------------

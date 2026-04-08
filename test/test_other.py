@@ -12059,7 +12059,7 @@ int main () {
   printf("JS random: %d\n", EM_ASM_INT({ return Math.random() }));
 }
 ''')
-    self.run_process([EMCC, 'src.c', '-sDETERMINISTIC'] + self.get_cflags())
+    self.run_process([EMCC, 'src.c', '-sDETERMINISTIC', '-Wno-deprecated'] + self.get_cflags())
     one = self.run_js('a.out.js')
     # ensure even if the time resolution is 1 second, that if we see the real
     # time we'll see a difference
