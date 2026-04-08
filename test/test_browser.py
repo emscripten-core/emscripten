@@ -4815,7 +4815,7 @@ Module["preRun"] = () => {
 
   # Tests the functionality of the emscripten_thread_sleep() function.
   def test_emscripten_thread_sleep(self):
-    self.btest_exit('pthread/emscripten_thread_sleep.c', cflags=['-pthread'])
+    self.btest_exit('pthread/test_emscripten_thread_sleep.c', cflags=['-pthread'])
 
   # Tests that Emscripten-compiled applications can be run from a relative path in browser that is different than the address of the current page
   def test_browser_run_from_different_directory(self):
@@ -5346,6 +5346,35 @@ Module["preRun"] = () => {
     postjs = test_file('wasmfs/wasmfs_opfs_errors_post.js')
     args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '--post-js', postjs]
     self.btest(test, cflags=args, expected='0')
+
+  def test_wasmfs_multi_environment(self):
+    # Test that WasmFS's Node backend can be enabled conditionally, allowing
+    # the same binaries to run on both web and Node.js environments.
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <assert.h>
+      #include <unistd.h>
+
+      #include <emscripten/emscripten.h>
+      #include <emscripten/wasmfs.h>
+
+      EM_JS(bool, is_node, (), { return ENVIRONMENT_IS_NODE; });
+
+      // This is equivalent to building with `-sWASMFS -sNODERAWFS`, except
+      // that the Wasm binary can also be used on the web.
+      backend_t wasmfs_create_root_dir() {
+        return is_node() ? wasmfs_create_node_backend("")
+                         : wasmfs_create_memory_backend();
+      }
+
+      int main(int argc, char** argv) {
+        printf("testing access to /tmp\n");
+        int rtn = access("/tmp", F_OK);
+        assert(rtn == 0);
+        return 0;
+      }
+    ''')
+    self.btest_exit('main.c', cflags=['-sWASMFS', '-sENVIRONMENT=web,node'])
 
   @no_firefox('no 4GB support yet')
   def test_emmalloc_memgrowth(self):

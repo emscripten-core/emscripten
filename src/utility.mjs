@@ -167,7 +167,7 @@ export function mergeInto(obj, other, options = null) {
             `JS library directive ${key}=${deps} is of type '${type}', but it should be an array`,
           );
         }
-        for (let dep of deps) {
+        for (const dep of deps) {
           if (dep && typeof dep !== 'string' && typeof dep !== 'function') {
             error(
               `__deps entries must be of type 'string' or 'function' not '${typeof dep}': ${key}`,

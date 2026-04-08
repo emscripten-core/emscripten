@@ -1286,8 +1286,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.ALLOW_TABLE_GROWTH = 1
 
   # various settings require sbrk() access
-  if settings.DETERMINISTIC or \
-     settings.EMSCRIPTEN_TRACING or \
+  if settings.EMSCRIPTEN_TRACING or \
      settings.SAFE_HEAP or \
      settings.MEMORYPROFILER:
     settings.REQUIRED_EXPORTS += ['sbrk']
@@ -1381,8 +1380,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # TODO: replace this with feature matrix in the future.
     settings.TRANSPILE = (settings.MIN_FIREFOX_VERSION < 79 or
                           settings.MIN_CHROME_VERSION < 85 or
-                          settings.MIN_SAFARI_VERSION < 140000 or
-                          settings.MIN_NODE_VERSION < 160000)
+                          settings.MIN_SAFARI_VERSION < 140000)
 
   if settings.STB_IMAGE:
     settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
@@ -1961,6 +1959,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # Force node since that is where the tool runs.
   if 'node' not in settings.ENVIRONMENT:
     settings.ENVIRONMENT.append('node')
+  settings.MIN_NODE_VERSION = feature_matrix.OLDEST_SUPPORTED_NODE
   settings.MINIMAL_RUNTIME = 0
   # Required function to trigger TS generation.
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks', '$addRunDependency', '$removeRunDependency']
@@ -1981,7 +1980,6 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
     dirname, basename = os.path.split(lib)
     if basename == 'libembind.js':
       settings.JS_LIBRARIES[i] = os.path.join(dirname, 'libembind_gen.js')
-  settings.MIN_NODE_VERSION = 160000 if settings.MEMORY64 else 150000
   # The final version of the memory64 proposal is not implemented until node
   # v24, so we need to lower it away in order to execute the binary at build
   # time.

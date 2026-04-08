@@ -113,7 +113,7 @@ export function preprocess(filename) {
 
   pushCurrentFile(filename);
   try {
-    for (let [i, line] of lines.entries()) {
+    for (const [i, line] of lines.entries()) {
       if (isHtml) {
         if (line.includes('<style') && !inStyle) {
           inStyle = true;
@@ -1106,7 +1106,10 @@ function formattedMinNodeVersion() {
 }
 
 function getPerformanceNow() {
-  if (DETERMINISTIC) {
+  // This is needed to support Node.js v16 - v18 where `performance.now`
+  // cannot be overridden in the normal way.
+  // TODO(sbc): remove this once we drop support for these versions.
+  if (DETERMINISTIC && ENVIRONMENT_MAY_BE_NODE) {
     return 'deterministicNow';
   } else {
     return 'performance.now';
@@ -1176,7 +1179,7 @@ function pthreadDetection() {
 
 function makeExportAliases() {
   var res = ''
-  for (var [alias, ex] of Object.entries(nativeAliases)) {
+  for (const [alias, ex] of Object.entries(nativeAliases)) {
     if (ASSERTIONS) {
       res += `  assert(wasmExports['${ex}'], 'alias target "${ex}" not found in wasmExports');\n`;
     }

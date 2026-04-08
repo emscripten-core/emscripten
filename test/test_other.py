@@ -12041,6 +12041,7 @@ int main(int argc, char **argv) {
 }''')
     self.do_runf('src.c', cflags=['-O3', '-sWASM=0'])
 
+  @crossplatform
   def test_deterministic(self):
     # test some things that may not be nondeterministic
     create_file('src.c', r'''
@@ -13412,15 +13413,6 @@ myMethod: 43
     print('with old browser + --closure=1')
     self.do_runf('test.c', expected, cflags=['--closure=1'], output_basename='test_closure')
     check_for_es6('test_closure.js', False)
-
-  def test_node_prefix_transpile(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6'])
-    content = read_file('a.out.js')
-    self.assertContained('node:', content)
-
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMIN_NODE_VERSION=150000', '-Wno-transpile'])
-    content = read_file('a.out.js')
-    self.assertNotContained('node:', content)
 
   def test_gmtime_noleak(self):
     # Confirm that gmtime_r does not leak when called in isolation.

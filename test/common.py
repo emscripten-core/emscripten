@@ -28,7 +28,7 @@ import jsrun
 import line_endings
 from retryable_unittest import RetryableTestCase
 
-from tools import building, config, feature_matrix, shared, utils
+from tools import building, config, shared, utils
 from tools.feature_matrix import Feature
 from tools.settings import COMPILE_TIME_SETTINGS
 from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir
@@ -145,15 +145,6 @@ def record_flaky_test(test_name, attempt_count, max_attempts, exception_msg):
   logger.info(f'Retrying flaky test "{test_name}" (attempt {attempt_count}/{max_attempts} failed):\n{exception_msg}')
   with open(flaky_tests_log_filename, 'a', encoding='utf-8') as f:
     f.write(f'{test_name}\n')
-
-
-def node_bigint_flags(node_version):
-  # The --experimental-wasm-bigint flag was added in v12, and then removed (enabled by default)
-  # in v16.
-  if node_version and node_version < (16, 0, 0):
-    return ['--experimental-wasm-bigint']
-  else:
-    return []
 
 
 @contextlib.contextmanager
@@ -457,11 +448,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('non-browser pthreads not yet supported with MINIMAL_RUNTIME')
     for engine in self.js_engines:
-      if engine_is_node(engine):
-        if not self.try_require_node_version(16, 0, 0):
-          self.fail('node v16 required to run this test')
-        return
-      elif engine_is_bun(engine) or engine_is_deno(engine):
+      if engine_is_node(engine) or engine_is_bun(engine) or engine_is_deno(engine):
         self.require_engine(engine)
         return
     self.fail('no JS engine found capable of running pthreads')
@@ -530,23 +517,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     self.require_engine(nodejs)
     return True
-
-  def require_simd(self):
-    if 'EMTEST_SKIP_SIMD' in os.environ:
-      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_SIMD is set)')
-    if self.is_browser_test():
-      return
-
-    if self.try_require_node_version(16):
-      return
-
-    v8 = get_v8()
-    if v8:
-      self.cflags.append('-sENVIRONMENT=shell')
-      self.require_engine(v8)
-      return
-
-    self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
   def require_wasm_legacy_eh(self):
     if 'EMTEST_SKIP_WASM_LEGACY_EH' in os.environ:
@@ -701,13 +671,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     nodejs = get_nodejs()
     if nodejs:
       node_version = shared.get_node_version(nodejs)
-      if node_version < (13, 0, 0):
-        self.node_args.append('--unhandled-rejections=strict')
-      elif node_version < (15, 0, 0):
-        # Opt in to node v15 default behaviour:
-        # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-        self.node_args.append('--unhandled-rejections=throw')
-      self.node_args += node_bigint_flags(node_version)
 
       # If the version we are running tests in is lower than the version that
       # emcc targets then we need to tell emcc to target that older version.
@@ -719,12 +682,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       )
       if node_version < emcc_min_node_version:
         self.cflags.append('-sMIN_NODE_VERSION=%02d%02d%02d' % node_version)
-        self.cflags.append('-Wno-transpile')
-
-      # This allows much of the test suite to be run on older versions of node that don't
-      # support wasm bigint integration
-      if node_version[0] < feature_matrix.min_browser_versions[feature_matrix.Feature.JS_BIGINT_INTEGRATION]['node'] / 10000:
-        self.cflags.append('-sWASM_BIGINT=0')
 
     self.v8_args = ['--wasm-staging']
     self.env = {}
