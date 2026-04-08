@@ -811,14 +811,7 @@ inline void val::awaiter::reject_with(val&& error) {
   auto coro = *coro_ptr;
 
   if (coro.is_val_promise) {
-    const bool is_catchable_cpp_exception =
-#ifdef __cpp_exceptions
-      internal::_emval_is_catchable_cpp_exception_object(error.as_handle())
-#else
-      false
-#endif
-    ;
-    if (!is_catchable_cpp_exception) {
+    if (!internal::_emval_is_catchable_cpp_exception_object(error.as_handle())) {
       // C++ code cannot catch JS exceptions.
       // Thus, we can just reject an enclosing JS Promise.
       auto& promise = std::coroutine_handle<promise_type>::from_address(coro.handle.address()).promise();
