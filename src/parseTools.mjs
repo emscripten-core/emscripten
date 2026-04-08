@@ -75,9 +75,8 @@ export function preprocess(filename) {
   let text = readFile(filename);
   if (EXPORT_ES6) {
     // `vm.runInContext` doesn't support module syntax; to allow it, we need to
-    // temporarily replace `import.meta` usages with placeholders during the JS
-    // compile phase, then in Python we reverse this replacement.
-    // See also: `emscript` in emscripten.py.
+    // temporarily replace `import.meta` usages with placeholders.
+    // See also: `writeOutput` in jsifier.mjs.
     text = text.replaceAll('import.meta', 'EMSCRIPTEN$IMPORT$META');
   }
   if (MODULARIZE && USE_CLOSURE_COMPILER) {
