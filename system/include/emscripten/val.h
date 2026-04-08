@@ -674,8 +674,8 @@ class val::awaiter {
   struct state_promise { val promise; };
   struct state_coro {
     std::coroutine_handle<> handle;
-    /// Is \c std::coroutine_handle<val::promise_type> ?
-    /// In other words, are we also enclosed by a JS Promise?
+    // Is std::coroutine_handle<val::promise_type>?
+    // In other words, are we also enclosed by a JS Promise?
     bool is_val_promise = false;
   };
   struct state_result { val result; };
