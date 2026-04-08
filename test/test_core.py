@@ -9686,10 +9686,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @requires_node
   def test_promise(self):
-    # This test depends on Promise.any, which in turn requires a modern target.  Check that it
-    # fails to even build on old targets.
-    expected = 'error: emscripten_promise_any used, but Promise.any is not supported by the current runtime configuration'
-    self.assert_fail([EMCC, test_file('core/test_promise.c'), '-sMIN_CHROME_VERSION=75'], expected)
     self.do_core_test('test_promise.c')
 
   @with_asyncify_and_jspi

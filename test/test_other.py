@@ -10071,20 +10071,18 @@ int main() {
     verify_features_sec('sign-ext', False)
 
     # Disable via browser selection
-    compile(['-sMIN_SAFARI_VERSION=120200'])
-    verify_features_sec_linked('sign-ext', False)
     compile(['-sMIN_SAFARI_VERSION=140100'])
     verify_features_sec_linked('bulk-memory-opt', False)
     verify_features_sec_linked('nontrapping-fptoint', False)
     # Flag disabling overrides default browser versions
-    compile(['-mno-sign-ext'])
-    verify_features_sec_linked('sign-ext', False)
+    compile(['-mno-bulk-memory'])
+    verify_features_sec_linked('bulk-memory', False)
     # Flag disabling overrides explicit browser version
-    compile(['-sMIN_SAFARI_VERSION=160000', '-mno-sign-ext'])
-    verify_features_sec_linked('sign-ext', False)
+    compile(['-sMIN_SAFARI_VERSION=160000', '-mno-bulk-memory'])
+    verify_features_sec_linked('bulk-memory', False)
     # Flag enabling overrides explicit browser version
-    compile(['-sMIN_FIREFOX_VERSION=68', '-msign-ext'])
-    verify_features_sec_linked('sign-ext', True)
+    compile(['-sMIN_SAFARI_VERSION=140100', '-mnontrapping-fptoint'])
+    verify_features_sec_linked('nontrapping-fptoint', True)
     # Flag disabling overrides explicit version for bulk memory
     compile(['-sMIN_SAFARI_VERSION=150000', '-mno-bulk-memory'])
     verify_features_sec_linked('bulk-memory-opt', False)
@@ -13310,135 +13308,6 @@ Module.postRun = () => {{
     # as `examples/`?)
     self.run_process([EMCC, test_file('hello_function.cpp'), '-o', 'function.html', '-sEXPORTED_FUNCTIONS=_int_sqrt', '-sEXPORTED_RUNTIME_METHODS=ccall,cwrap'])
 
-  @parameterized({
-    '': ([],),
-    'O3': (['-O3'],),
-  })
-  @crossplatform
-  @requires_dev_dependency('es-check')
-  def test_es5_transpile(self, args):
-    self.cflags += ['-Wno-transpile'] + args
-
-    # Create a library file that uses the following ES6 features
-    # - let/const
-    # - arrow funcs
-    # - for..of
-    # - object.assign
-    # - nullish coalescing & chaining
-    # - logical assignment
-    create_file('es6_library.js', '''\
-    addToLibrary({
-      foo: function(arg="hello", ...args) {
-        // Object.assign + let
-        let obj = Object.assign({}, {prop:1});
-        err('prop: ' + obj.prop);
-
-        // for .. of
-        for (var elem of [42, 43]) {
-          err('array elem: ' + elem);
-        }
-
-        // arrow funcs + const
-        const bar = () => 2;
-        err('bar: ' + bar());
-
-        // Computed property names
-        var key = 'mykey';
-        var obj2 = {
-          [key]: 42,
-        };
-        err('computed prop: ' + obj2[key]);
-
-        // Method syntax
-        var obj3 = {
-          myMethod() { return 43 },
-        };
-        global['foo'] = obj3;
-        err('myMethod: ' + obj3.myMethod());
-
-        // Nullish coalescing
-        var definitely = global['maybe'] ?? {};
-
-        // Optional chaining
-        global['maybe']
-          ?.subObj
-          ?.[key]
-          ?.func
-          ?.();
-
-        // Logical assignment
-        var obj4 = null;
-        obj4 ??= 0;
-        obj4 ||= 1;
-        obj4 &&= 2;
-
-        console.log(...args);
-      }
-    });
-    ''')
-    expected = '''\
-prop: 1
-array elem: 42
-array elem: 43
-bar: 2
-computed prop: 42
-myMethod: 43
-'''
-
-    create_file('test.c', 'extern void foo(); int main() { foo(); }')
-    self.cflags += ['--js-library', 'es6_library.js']
-
-    def check_for_es6(filename, expect):
-      js = read_file(filename)
-      if expect:
-        self.assertContained('foo(arg="hello"', js)
-        self.assertContained(['() => 2', '()=>2'], js)
-        self.assertContained('const ', js)
-        self.assertContained('?.[', js)
-        self.assertContained('?.(', js)
-        self.assertContained('??=', js)
-        self.assertContained('||=', js)
-        self.assertContained('&&=', js)
-        self.assertContained('...', js)
-      else:
-        self.verify_es5(filename)
-        self.assertNotContained('foo(arg=', js)
-        self.assertNotContained('() => 2', js)
-        self.assertNotContained('()=>2', js)
-        self.assertNotContained('const ', js)
-        self.assertNotContained('??', js)
-        self.assertNotContained('?.', js)
-        self.assertNotContained('||=', js)
-        self.assertNotContained('&&=', js)
-        self.assertNotContained('...args', js)
-
-    # Check that under normal circumstances none of these features get
-    # removed / transpiled.
-    print('base case')
-    self.do_runf('test.c', expected)
-    check_for_es6('test.js', True)
-
-    # If we select and older browser than closure will kick in by default
-    # to transpile.
-    print('with old browser')
-    self.cflags.remove('-Werror')
-    self.set_setting('LEGACY_VM_SUPPORT')
-    self.do_runf('test.c', expected, output_basename='test_old')
-    check_for_es6('test_old.js', False)
-    if '-O3' in args:
-      # Verify that output is minified
-      self.assertEqual(len(read_file('test_old.js').splitlines()), 1)
-
-    # If we add `-sPOLYFILL=0` that transpiler is not run at all
-    print('with old browser + -sPOLYFILL=0')
-    self.do_runf('test.c', expected, cflags=['-sPOLYFILL=0'], output_basename='test_no_closure')
-    check_for_es6('test_no_closure.js', True)
-
-    # Test that transpiling is compatible with `--closure=1`
-    print('with old browser + --closure=1')
-    self.do_runf('test.c', expected, cflags=['--closure=1'], output_basename='test_closure')
-    check_for_es6('test_closure.js', False)
-
   def test_gmtime_noleak(self):
     # Confirm that gmtime_r does not leak when called in isolation.
     self.do_other_test('test_gmtime_noleak.c', cflags=['-fsanitize=leak'])
@@ -13969,11 +13838,8 @@ out.js
     self.assertTextDataIdentical(expected, response)
 
   def test_min_browser_version(self):
-    expected = 'emcc: error: MIN_SAFARI_VERSION=130000 is not compatible with WASM_BIGINT (MIN_SAFARI_VERSION=150000 or above required)'
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=130000'], expected)
-
-    expected = 'emcc: error: MIN_FIREFOX_VERSION=68 is not compatible with pthreads (MIN_FIREFOX_VERSION=79 or above required)'
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-Wno-transpile', '-Werror', '-pthread', '-sMIN_FIREFOX_VERSION=68'], expected)
+    expected = 'emcc: error: MIN_SAFARI_VERSION=140100 is not compatible with WASM_BIGINT (MIN_SAFARI_VERSION=150000 or above required)'
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-Werror', '-sWASM_BIGINT', '-sMIN_SAFARI_VERSION=140100'], expected)
 
   # Test that using two different ways to disable a target environment at the same time will not produce a warning.
   def test_double_disable_environment(self):
@@ -13990,18 +13856,6 @@ out.js
     self.assertContained('This page was compiled without support for Safari browser', content)
     self.assertContained('This page was compiled without support for Firefox browser', content)
     self.assertContained('This page was compiled without support for Chrome browser', content)
-
-  def test_signext_lowering(self):
-    # Use `-v` to show the sub-commands being run by emcc.
-    cmd = [EMCC, test_file('other/test_signext_lowering.c'), '-v']
-
-    # By default we don't expect the lowering pass to be run.
-    err = self.run_process(cmd, stderr=subprocess.PIPE).stderr
-    self.assertNotContained('--signext-lowering', err)
-
-    # Specifying an older browser version should trigger the lowering pass
-    err = self.run_process(cmd + ['-sMIN_SAFARI_VERSION=120200'], stderr=subprocess.PIPE).stderr
-    self.assertContained('--signext-lowering', err)
 
   @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
   def test_itimer(self):
@@ -14784,7 +14638,7 @@ addToLibrary({
       self.assertEqual(proc.stderr, '')
 
   def test_browser_too_old(self):
-    expected = 'emcc: error: MIN_CHROME_VERSION older than 74 is not supported'
+    expected = 'emcc: error: MIN_CHROME_VERSION older than 85 is not supported'
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sMIN_CHROME_VERSION=10'], expected)
 
   def test_js_only_settings(self):

@@ -2871,10 +2871,8 @@ Monterey and iOS 15.
 NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 see https://github.com/emscripten-core/emscripten/pull/7191.
-Multithreaded Emscripten code will need Safari 12.2 (iPhone 5s+) at minimum,
-with support for DedicatedWorkerGlobalScope.name parameter.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 120200 which was released on 2019-03-25 (see
+Minimum supported value is 140100 which was released on 2021-04-26 (see
 feature_matrix.py).
 
 Default value: 150000
@@ -2884,13 +2882,13 @@ Default value: 150000
 MIN_CHROME_VERSION
 ==================
 
-Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=78 to
-drop support for Chrome 77 and older.
+Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=100 to
+drop support for Chrome 99 and older.
 This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 74, which was released on 2019-04-23 (see
+Minimum supported value is 85, which was released on 2020-08-25 (see
 feature_matrix.py).
 
 Default value: 85
@@ -3112,7 +3110,7 @@ changes to the wasm after link. This can be useful in testing, for example.
 Some example of features that require post-link wasm changes are:
 
 - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
-- Lowering sign-extension operation when targeting older browsers.
+- Lowering nontrapping-float-to-int operations when targeting older browsers.
 
 Default value: false
 
