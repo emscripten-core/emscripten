@@ -7686,10 +7686,10 @@ void* operator new(size_t size) {
 
   @parameterized({
     'emscripten_eh': (['-fexceptions'],),
-    'disable_catching': (), # Use defaults: DISABLE_EXCEPTION_CATCHING, NO_DISABLE_EXCEPTION_THROWING
+    'disable_catching': ([],), # Use defaults: DISABLE_EXCEPTION_CATCHING, NO_DISABLE_EXCEPTION_THROWING
     'no_exceptions': (['-fno-exceptions', '-Wno-coroutine-missing-unhandled-exception'],),
   })
-  def test_embind_val_coro_propagate_js_error(self, extra_flags=[]):
+  def test_embind_val_coro_propagate_js_error(self, extra_flags):
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.failingPromise().then(
         console.log,
@@ -7703,7 +7703,7 @@ void* operator new(size_t size) {
     'emscripten_eh': (['-fexceptions'],),
     'wasm_eh': (['-fwasm-exceptions'],),
   })
-  def test_embind_val_coro_catch_cpp_exception(self, extra_flags=[]):
+  def test_embind_val_coro_catch_cpp_exception(self, extra_flags):
     if self.is_wasm2js() and '-fwasm-exceptions' in extra_flags:
       self.skipTest('wasm2js does not support WASM exceptions')
     self.set_setting('EXCEPTION_STACK_TRACES') # For debugging
