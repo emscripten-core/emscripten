@@ -68,12 +68,7 @@ def has_linking_section(module):
 
 
 def symbolize_address_symbolizer(module, address, is_dwarf):
-  if is_dwarf:
-    vma_adjust = get_codesec_offset(module)
-  else:
-    vma_adjust = 0
-  cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
-         str(address)]
+  cmd = [LLVM_SYMBOLIZER, '-e', module.filename, str(address)]
   if shared.DEBUG:
     print(f'Running {" ".join(cmd)}')
   out = utils.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
