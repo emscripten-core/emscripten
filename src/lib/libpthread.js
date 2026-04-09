@@ -1276,7 +1276,9 @@ var LibraryPThread = {
       // Wait on the pthread's initial self-pointer field because it is easy and
       // safe to access from sending threads that need to notify the waiting
       // thread.
-      // TODO: How to make this work with wasm64?
+      // Note: Under wasm64 only the low 32-bit of the pthread_ptr are
+      // read/compared here, but we don't actually care about the exact values
+      // here as long as they match.
       var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('pthread_ptr', 'i32') }}}, pthread_ptr);
 #if ASSERTIONS
       assert(wait.async);

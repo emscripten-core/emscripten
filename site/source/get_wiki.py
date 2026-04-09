@@ -37,7 +37,7 @@ mapped_wiki_inline_code['setValue(ptr, value, type)'] = ':js:func:`setValue(ptr,
 
 wiki_checkout = 'emscripten.wiki/'
 temp_set_of_codemarkup = set()
-logfile = open(logfilename, 'w')
+logfile = open(logfilename, 'w', encoding='utf-8')
 # snapshot_version_information = '.. note:: This is a **snapshot** of the wiki: %s\n\n' % strftime("%a, %d %b %Y %H:%M", gmtime())
 snapshot_version_information = '.. note:: This article was migrated from the wiki (%s) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!\n\n' % time.strftime("%a, %d %b %Y %H:%M", time.gmtime())
 
@@ -91,7 +91,7 @@ def ConvertFilesToRst():
             continue
 
         inputfilename = wiki_checkout + file
-        markdown = Path(inputfilename).read_text()
+        markdown = Path(inputfilename).read_text(encoding='utf-8')
         if 'This article has moved from the wiki to the new site' in markdown:
             continue
         if 'This page has been migrated to the main site' in markdown:
@@ -127,16 +127,16 @@ def ConvertFilesToRst():
 
         textinfile += snapshot_version_information
 
-        with open(outputfilename) as infile:
+        with open(outputfilename, encoding='utf-8') as infile:
             for line in infile:
                 textinfile += line
 
         # print textinfile
-        with open(outputfilename, 'w') as outfile:
+        with open(outputfilename, 'w', encoding='utf-8') as outfile:
             outfile.write(textinfile)
 
         # write the index
-        with open(output_dir + 'index.rst', 'w') as outfile:
+        with open(output_dir + 'index.rst', 'w', encoding='utf-8') as outfile:
             outfile.write(indexfiletext)
 
 
@@ -184,7 +184,7 @@ def FixupConvertedRstFiles():
             input_file = output_dir + file
             # print input_file
             textinfile = ''
-            with open(input_file) as infile:
+            with open(input_file, encoding='utf-8') as infile:
                 for line in infile:
                     textinfile += line
 
@@ -195,7 +195,7 @@ def FixupConvertedRstFiles():
             # convert codemarkup to links if possible
             textinfile = fixWikiCodeMarkupToCodeLinks(textinfile)
 
-            with open(input_file, 'w') as outfile:
+            with open(input_file, 'w', encoding='utf-8') as outfile:
                 outfile.write(textinfile)
 
     logfile.write('\n\nCODE MARKUP THAT WONT BE LINKED (add entry to mapped_wiki_inline_code if one of these need to be linked. The tool get-api-items.py can be used to generate the list of the documented API items. \n')

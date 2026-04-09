@@ -17,6 +17,7 @@ var WasiLibrary = {
 #endif
 
   proc_exit__nothrow: true,
+  proc_exit__docs: '/** @noreturn */',
   proc_exit: (code) => {
 #if MINIMAL_RUNTIME
     throw `exit(${code})`;
@@ -619,8 +620,8 @@ var WasiLibrary = {
   random_get: (buffer, size) => randomFill(HEAPU8.subarray(buffer, buffer + size)),
 };
 
-for (var x in WasiLibrary) {
-  wrapSyscallFunction(x, WasiLibrary, true);
+for (const name of Object.keys(WasiLibrary)) {
+  wrapSyscallFunction(name, WasiLibrary, true);
 }
 
 addToLibrary(WasiLibrary);

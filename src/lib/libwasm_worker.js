@@ -223,7 +223,17 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
       /** @suppress {checkTypes} */
-      worker.on('message', (msg) => worker.onmessage({ data: msg }));
+      worker.on('message', (msg) => {
+        if (msg['cmd'] == 'uncaughtException') {
+          // Message handler for Node.js specific out-of-order behavior:
+          // https://github.com/nodejs/node/issues/59617
+          // A worker sent an uncaught exception event. Re-raise it on the main thread.
+          err(`worker sent an error! ${msg.error.message}`);
+          throw msg.error;
+        } else {
+          worker.onmessage({ data: msg });
+        }
+      });
     }
 #endif
 #if RUNTIME_DEBUG

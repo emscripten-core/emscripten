@@ -144,7 +144,7 @@ def create_lib(libname, inputs):
   suffix = utils.suffix(libname)
 
   inputs = sorted(inputs, key=objectfile_sort_key)
-  if suffix in ('.bc', '.o'):
+  if suffix in {'.bc', '.o'}:
     if len(inputs) == 1:
       if inputs[0] != libname:
         shutil.copyfile(inputs[0], libname)
@@ -169,7 +169,7 @@ def run_ninja(build_dir):
 def ensure_target_in_ninja_file(ninja_file, target):
   if os.path.isfile(ninja_file) and target in read_file(ninja_file):
     return
-  with open(ninja_file, 'a') as f:
+  with open(ninja_file, 'a', encoding='utf-8') as f:
     f.write(target + '\n')
 
 
@@ -1545,13 +1545,9 @@ class libwasm_workers(MuslInternalLibrary, DebugLibrary):
 
 class libsockets(MuslInternalLibrary, MTLibrary):
   name = 'libsockets'
-
+  src_dir = 'system/lib/libc/musl/src/network'
+  src_files = LIBC_SOCKETS
   cflags = ['-Os', '-fno-builtin', '-Wno-shift-op-parentheses']
-
-  def get_files(self):
-    return files_in_path(
-      path='system/lib/libc/musl/src/network',
-      filenames=LIBC_SOCKETS)
 
   def can_use(self):
     return super().can_use() and not settings.PROXY_POSIX_SOCKETS
@@ -1559,11 +1555,9 @@ class libsockets(MuslInternalLibrary, MTLibrary):
 
 class libsockets_proxy(MTLibrary):
   name = 'libsockets_proxy'
-
+  src_dir = 'system/lib/websocket'
+  src_files = ['websocket_to_posix_socket.c']
   cflags = ['-Os']
-
-  def get_files(self):
-    return [utils.path_from_root('system/lib/websocket/websocket_to_posix_socket.c')]
 
   def can_use(self):
     return super().can_use() and settings.PROXY_POSIX_SOCKETS
@@ -1760,7 +1754,7 @@ class libunwind(ExceptionLibrary, MTLibrary):
     super().__init__(**kwargs)
 
   def can_use(self):
-    return super().can_use() and self.eh_mode in (Exceptions.WASM_LEGACY, Exceptions.WASM)
+    return super().can_use() and self.eh_mode in {Exceptions.WASM_LEGACY, Exceptions.WASM}
 
   def get_cflags(self):
     cflags = super().get_cflags()
@@ -1785,7 +1779,7 @@ class libmalloc(MTLibrary):
 
   def __init__(self, **kwargs):
     self.malloc = kwargs.pop('malloc')
-    if self.malloc not in ('dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'):
+    if self.malloc not in {'dlmalloc', 'emmalloc', 'emmalloc-debug', 'emmalloc-memvalidate', 'emmalloc-verbose', 'emmalloc-memvalidate-verbose', 'mimalloc', 'none'}:
       raise Exception('malloc must be one of "emmalloc[-debug|-memvalidate][-verbose]", "mimalloc", "dlmalloc" or "none", see settings.js')
 
     self.is_tracing = kwargs.pop('is_tracing')

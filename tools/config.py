@@ -124,12 +124,12 @@ def parse_config_file():
     env_var = 'EM_' + key
     env_value = os.environ.get(env_var)
     if env_value is not None:
-      if env_value in ('', '0'):
+      if env_value in {'', '0'}:
         env_value = None
       # Unlike the other keys these two should always be lists.
-      if env_var in ('EM_JS_ENGINES', 'EM_WASM_ENGINES'):
+      if env_var in {'EM_JS_ENGINES', 'EM_WASM_ENGINES'}:
         env_value = env_value.split(',')
-      if env_var in ('EM_CONFIG', 'EM_CACHE', 'EM_PORTS', 'EM_LLVM_ROOT', 'EM_BINARYEN_ROOT'):
+      if env_var in {'EM_CONFIG', 'EM_CACHE', 'EM_PORTS', 'EM_LLVM_ROOT', 'EM_BINARYEN_ROOT'}:
         if not os.path.isabs(env_value):
           exit_with_error(f'environment variable {env_var} must be an absolute path: {env_value}')
       globals()[key] = env_value

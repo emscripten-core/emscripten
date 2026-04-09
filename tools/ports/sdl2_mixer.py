@@ -40,7 +40,7 @@ def get_lib_name(settings):
   formats = '-'.join(sorted(get_formats(settings)))
 
   libname = 'libSDL2_mixer'
-  if formats != '':
+  if formats:
     libname += '-' + formats
   if settings.PTHREADS:
     libname += '-mt'

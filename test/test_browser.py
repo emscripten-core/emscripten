@@ -1800,14 +1800,16 @@ window.close = () => {
       create_file('file2.txt', 'second')
 
     setup()
-    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
+    with open('script2.js', 'w', encoding='utf-8') as f:
+      self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=f)
     self.btest_exit('test_emscripten_async_load_script.c', cflags=['-sFORCE_FILESYSTEM'])
 
     # check using file packager to another dir
     self.clear()
     setup()
     ensure_dir('sub')
-    self.run_process([FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=open('script2.js', 'w'))
+    with open('script2.js', 'w', encoding='utf-8') as f:
+      self.run_process([FILE_PACKAGER, 'sub/test.data', '--preload', 'file1.txt', 'file2.txt'], stdout=f)
     shutil.copy(Path('sub/test.data'), '.')
     self.btest_exit('test_emscripten_async_load_script.c', cflags=['-sFORCE_FILESYSTEM'])
 
@@ -1822,8 +1824,10 @@ window.close = () => {
       create_file('sub/file2.txt', 'second')
 
     setup()
-    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'sub/file1.txt@/target/file1.txt'], stdout=open('script1.js', 'w'))
-    self.run_process([FILE_PACKAGER, 'test2.data', '--preload', 'sub/file2.txt@/target/file2.txt'], stdout=open('script2.js', 'w'))
+    with open('script1.js', 'w', encoding='utf-8') as f:
+      self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'sub/file1.txt@/target/file1.txt'], stdout=f)
+    with open('script2.js', 'w', encoding='utf-8') as f:
+      self.run_process([FILE_PACKAGER, 'test2.data', '--preload', 'sub/file2.txt@/target/file2.txt'], stdout=f)
     self.btest_exit('test_emscripten_overlapped_package.c', cflags=['-sFORCE_FILESYSTEM'])
     self.clear()
 
@@ -2820,7 +2824,7 @@ Module["preRun"] = () => {
     ''')
     create_file('data.txt', 'load me right before...')
     create_file('pre.js', 'Module.locateFile = (x) => "sub/" + x;')
-    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w'))
+    self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'data.txt'], stdout=open('data.js', 'w', encoding='utf-8'))
     # put pre.js first, then the file packager data, so locateFile is there for the file loading code
     self.compile_btest('src.c', ['-O2', '-g', '--pre-js', 'pre.js', '--pre-js', 'data.js', '-o', 'page.html', '-sFORCE_FILESYSTEM'] + args, reporting=Reporting.JS_ONLY)
     ensure_dir('sub')
@@ -4479,7 +4483,7 @@ Module["preRun"] = () => {
     s = '12345678'
     for _ in range(14):
       s = s[::-1] + s # length of str will be 2^17=128KB
-    with open('largefile.txt', 'w') as f:
+    with open('largefile.txt', 'w', encoding='utf-8') as f:
       for _ in range(1024):
         f.write(s)
 
@@ -4665,7 +4669,7 @@ Module["preRun"] = () => {
   @no_2gb('uses INITIAL_MEMORY')
   @no_4gb('uses INITIAL_MEMORY')
   @requires_growable_arraybuffers
-  def test_pthread_growth(self, cflags, pthread_pool_size = 1):
+  def test_pthread_growth(self, cflags, pthread_pool_size=1):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     if '-sGROWABLE_ARRAYBUFFERS' not in cflags:
       self.cflags.append('-Wno-pthreads-mem-growth')
@@ -4811,7 +4815,7 @@ Module["preRun"] = () => {
 
   # Tests the functionality of the emscripten_thread_sleep() function.
   def test_emscripten_thread_sleep(self):
-    self.btest_exit('pthread/emscripten_thread_sleep.c', cflags=['-pthread'])
+    self.btest_exit('pthread/test_emscripten_thread_sleep.c', cflags=['-pthread'])
 
   # Tests that Emscripten-compiled applications can be run from a relative path in browser that is different than the address of the current page
   def test_browser_run_from_different_directory(self):
@@ -5343,6 +5347,35 @@ Module["preRun"] = () => {
     args = ['-sWASMFS', '-pthread', '-sPROXY_TO_PTHREAD', '--post-js', postjs]
     self.btest(test, cflags=args, expected='0')
 
+  def test_wasmfs_multi_environment(self):
+    # Test that WasmFS's Node backend can be enabled conditionally, allowing
+    # the same binaries to run on both web and Node.js environments.
+    create_file('main.c', r'''
+      #include <stdio.h>
+      #include <assert.h>
+      #include <unistd.h>
+
+      #include <emscripten/emscripten.h>
+      #include <emscripten/wasmfs.h>
+
+      EM_JS(bool, is_node, (), { return ENVIRONMENT_IS_NODE; });
+
+      // This is equivalent to building with `-sWASMFS -sNODERAWFS`, except
+      // that the Wasm binary can also be used on the web.
+      backend_t wasmfs_create_root_dir() {
+        return is_node() ? wasmfs_create_node_backend("")
+                         : wasmfs_create_memory_backend();
+      }
+
+      int main(int argc, char** argv) {
+        printf("testing access to /tmp\n");
+        int rtn = access("/tmp", F_OK);
+        assert(rtn == 0);
+        return 0;
+      }
+    ''')
+    self.btest_exit('main.c', cflags=['-sWASMFS', '-sENVIRONMENT=web,node'])
+
   @no_firefox('no 4GB support yet')
   def test_emmalloc_memgrowth(self):
     if not self.is_4gb():
@@ -5383,7 +5416,7 @@ Module["preRun"] = () => {
   # Tests that Emscripten-compiled applications can be run when a slash in the URL query or fragment of the js file
   def test_browser_run_with_slash_in_query_and_hash(self):
     self.compile_btest('browser_test_hello_world.c', ['-o', 'test.html', '-O0'])
-    src = open('test.html').read()
+    src = utils.read_file('test.html')
     # Slash in query
     create_file('test-query.html', src.replace('test.js', 'test.js?type=pass/fail'))
     self.run_browser('test-query.html', '/report_result?0')

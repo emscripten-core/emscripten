@@ -22,7 +22,7 @@ from common import EMRUN, test_file
 
 from tools.config import V8_ENGINE
 from tools.shared import CLANG_CXX, EMCC
-from tools.utils import WINDOWS, run_process
+from tools.utils import WINDOWS, run_process, write_file
 
 # System info
 system_info = subprocess.check_output([EMRUN, '--system_info'], stderr=subprocess.STDOUT, text=True)
@@ -279,13 +279,13 @@ def run_benchmark(benchmark_file, results_file, build_args):
 
     html += '</body></html>'
 
-    open(results_file, 'w').write(html)
+    write_file(results_file, html)
     print('Wrote ' + str(len(html)) + ' bytes to file ' + results_file + '.')
 
 
 if __name__ == '__main__':
     suite = sys.argv[1].lower() if len(sys.argv) == 2 else None
-    if suite in ['sse', 'sse1']:
+    if suite in {'sse', 'sse1'}:
         run_benchmark(test_file('benchmark/benchmark_sse1.cpp'), 'results_sse1.html', ['-msse'])
     elif suite == 'sse2':
         run_benchmark(test_file('benchmark/benchmark_sse2.cpp'), 'results_sse2.html', ['-msse2'])

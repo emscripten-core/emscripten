@@ -79,7 +79,7 @@ def make_source_list(cocos2d_root, cocos2dx_root):
   sources = []
 
   def add_makefile(makefile):
-    with open(makefile) as infile:
+    with open(makefile, encoding='utf-8') as infile:
       add_next = False
       for line in infile:
         if line.startswith('SOURCES'):

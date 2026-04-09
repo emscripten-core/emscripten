@@ -339,8 +339,11 @@ void emscripten_proxy_finish(em_proxying_ctx* ctx) {
     pthread_mutex_lock(&ctx->sync.mutex);
     ctx->sync.state = DONE;
     remove_active_ctx(ctx);
-    pthread_mutex_unlock(&ctx->sync.mutex);
+    // Signal must come before unlock to avoid emscripten_proxy_sync_with ctx
+    // seeing the state as DONE and freeing the ctx before we call unlock.
+    // See https://github.com/emscripten-core/emscripten/pull/26582
     pthread_cond_signal(&ctx->sync.cond);
+    pthread_mutex_unlock(&ctx->sync.mutex);
   } else {
     // Schedule the callback on the caller thread. If the caller thread has
     // already died or dies before the callback is executed, then at least make
@@ -365,8 +368,9 @@ static void cancel_ctx(void* arg) {
   if (ctx->kind == SYNC) {
     pthread_mutex_lock(&ctx->sync.mutex);
     ctx->sync.state = CANCELED;
-    pthread_mutex_unlock(&ctx->sync.mutex);
+    // Signal must be first, see comment in emscripten_proxy_finish.
     pthread_cond_signal(&ctx->sync.cond);
+    pthread_mutex_unlock(&ctx->sync.mutex);
   } else {
     if (ctx->cb.cancel == NULL ||
         !do_proxy(ctx->cb.queue,

@@ -28,7 +28,7 @@ import jsrun
 import line_endings
 from retryable_unittest import RetryableTestCase
 
-from tools import building, config, feature_matrix, shared, utils
+from tools import building, config, shared, utils
 from tools.feature_matrix import Feature
 from tools.settings import COMPILE_TIME_SETTINGS
 from tools.shared import DEBUG, EMCC, EMXX, get_canonical_temp_dir
@@ -98,7 +98,7 @@ def errlog(*args):
 
 def load_previous_test_run_results():
   try:
-    return json.load(open(PREVIOUS_TEST_RUN_RESULTS_FILE))
+    return json.loads(utils.read_file(PREVIOUS_TEST_RUN_RESULTS_FILE))
   except FileNotFoundError:
     return {}
   except json.decoder.JSONDecodeError as e:
@@ -135,7 +135,7 @@ def exe_suffix(cmd):
 
 
 def compiler_for(filename, force_c=False):
-  if utils.suffix(filename) in ('.cc', '.cxx', '.cpp') and not force_c:
+  if utils.suffix(filename) in {'.cc', '.cxx', '.cpp'} and not force_c:
     return EMXX
   else:
     return EMCC
@@ -143,16 +143,8 @@ def compiler_for(filename, force_c=False):
 
 def record_flaky_test(test_name, attempt_count, max_attempts, exception_msg):
   logger.info(f'Retrying flaky test "{test_name}" (attempt {attempt_count}/{max_attempts} failed):\n{exception_msg}')
-  open(flaky_tests_log_filename, 'a').write(f'{test_name}\n')
-
-
-def node_bigint_flags(node_version):
-  # The --experimental-wasm-bigint flag was added in v12, and then removed (enabled by default)
-  # in v16.
-  if node_version and node_version < (16, 0, 0):
-    return ['--experimental-wasm-bigint']
-  else:
-    return []
+  with open(flaky_tests_log_filename, 'a', encoding='utf-8') as f:
+    f.write(f'{test_name}\n')
 
 
 @contextlib.contextmanager
@@ -456,11 +448,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.get_setting('MINIMAL_RUNTIME'):
       self.skipTest('non-browser pthreads not yet supported with MINIMAL_RUNTIME')
     for engine in self.js_engines:
-      if engine_is_node(engine):
-        if not self.try_require_node_version(16, 0, 0):
-          self.fail('node v16 required to run this test')
-        return
-      elif engine_is_bun(engine) or engine_is_deno(engine):
+      if engine_is_node(engine) or engine_is_bun(engine) or engine_is_deno(engine):
         self.require_engine(engine)
         return
     self.fail('no JS engine found capable of running pthreads')
@@ -519,7 +507,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
-  def try_require_node_version(self, major, minor = 0, revision = 0):
+  def try_require_node_version(self, major, minor=0, revision=0):
     nodejs = get_nodejs()
     if not nodejs:
       self.skipTest('Test requires nodejs to run')
@@ -529,23 +517,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     self.require_engine(nodejs)
     return True
-
-  def require_simd(self):
-    if 'EMTEST_SKIP_SIMD' in os.environ:
-      self.skipTest('test requires node >= 16 or d8 (and EMTEST_SKIP_SIMD is set)')
-    if self.is_browser_test():
-      return
-
-    if self.try_require_node_version(16):
-      return
-
-    v8 = get_v8()
-    if v8:
-      self.cflags.append('-sENVIRONMENT=shell')
-      self.require_engine(v8)
-      return
-
-    self.fail('either d8 or node >= 16 required to run wasm64 tests.  Use EMTEST_SKIP_SIMD to skip')
 
   def require_wasm_legacy_eh(self):
     if 'EMTEST_SKIP_WASM_LEGACY_EH' in os.environ:
@@ -700,13 +671,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     nodejs = get_nodejs()
     if nodejs:
       node_version = shared.get_node_version(nodejs)
-      if node_version < (13, 0, 0):
-        self.node_args.append('--unhandled-rejections=strict')
-      elif node_version < (15, 0, 0):
-        # Opt in to node v15 default behaviour:
-        # https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-        self.node_args.append('--unhandled-rejections=throw')
-      self.node_args += node_bigint_flags(node_version)
 
       # If the version we are running tests in is lower than the version that
       # emcc targets then we need to tell emcc to target that older version.
@@ -718,12 +682,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       )
       if node_version < emcc_min_node_version:
         self.cflags.append('-sMIN_NODE_VERSION=%02d%02d%02d' % node_version)
-        self.cflags.append('-Wno-transpile')
-
-      # This allows much of the test suite to be run on older versions of node that don't
-      # support wasm bigint integration
-      if node_version[0] < feature_matrix.min_browser_versions[feature_matrix.Feature.JS_BIGINT_INTEGRATION]['node'] / 10000:
-        self.cflags.append('-sWASM_BIGINT=0')
 
     self.v8_args = ['--wasm-staging']
     self.env = {}
@@ -867,9 +825,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       args += self.ldflags
     if not main_file:
       for i, arg in enumerate(args):
-        if arg in ('--pre-js', '--post-js'):
+        if arg in {'--pre-js', '--post-js'}:
           args[i] = None
-          args[i + 1] = None
+          args[i + 1] = None # noqa: B909
       args = [arg for arg in args if arg is not None]
     return args
 
@@ -925,7 +883,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.run_process(cmd, stderr=self.stderr_redirect if not DEBUG else None)
     self.assertExists(output)
 
-    if output_suffix in ('.js', '.mjs'):
+    if output_suffix in {'.js', '.mjs'}:
       # Make sure we produced correct line endings
       self.assertEqual(line_endings.check_line_endings(output), 0)
 
@@ -996,8 +954,8 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       stderr = STDOUT
     else:
       stderr_file = self.in_dir('stderr')
-      stderr = open(stderr_file, 'w')
-    stdout = open(stdout_file, 'w')
+      stderr = open(stderr_file, 'w', encoding='utf-8')
+    stdout = open(stdout_file, 'w', encoding='utf-8')
     error = None
     timeout_error = None
     engine = self.get_engine_with_args(engine)
@@ -1066,7 +1024,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def assertIdentical(self, values, y, msg=None,
                       fromfile='expected', tofile='actual'):
-    if type(values) not in (list, tuple):
+    if type(values) not in {list, tuple}:
       values = [values]
     for x in values:
       if x == y:
@@ -1091,8 +1049,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     contents = contents.replace('\r', '')
 
     if EMTEST_REBASELINE:
-      with open(filename, 'w') as f:
-        f.write(contents)
+      utils.write_file(filename, contents)
       return
 
     if not os.path.exists(filename):
@@ -1115,7 +1072,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         self.assertTrue(match_any, 'Expected at least one of "%s" to match on:\n%s' % (values, limit_size(string)))
       return
 
-    if type(values) not in [list, tuple]:
+    if type(values) not in {list, tuple}:
       values = [values]
 
     if not any(v in string for v in values):
@@ -1420,7 +1377,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       utils.write_file(outfile, output)
     return output
 
-  ## Does a complete test - builds, runs, checks output, etc.
+  # Does a complete test - builds, runs, checks output, etc.
   def _build_and_run(self, filename, expected_output, args=None,
                      no_build=False,
                      assert_returncode=0, assert_identical=False, assert_all=False,
@@ -1459,7 +1416,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
                               interleaved_output=interleaved_output)
       js_output = js_output.replace('\r\n', '\n')
       if expected_output:
-        if type(expected_output) not in [list, tuple]:
+        if type(expected_output) not in {list, tuple}:
           expected_output = [expected_output]
         try:
           if assert_identical:

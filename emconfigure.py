@@ -27,7 +27,7 @@ from tools import building, shared
 # Main run() function
 #
 def run():
-  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
+  if len(sys.argv) < 2 or sys.argv[1] in {'--version', '--help'}:
     print('''\
 emconfigure is a helper for configure, setting various environment
 variables so that emcc etc. are used. Typical usage:

@@ -91,7 +91,7 @@ class Minifier:
       self.globs = []
 
     with temp_files.get_file('.minifyglobals.js') as temp_file:
-      with open(temp_file, 'w') as f:
+      with open(temp_file, 'w', encoding='utf-8') as f:
         f.write(shell)
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
@@ -282,7 +282,7 @@ EMSCRIPTEN_FUNCS();
       with temp_files.get_file('.cl.js') as cle:
         pre_1, pre_2 = pre.split(start_asm)
         post_1, post_2 = post.split(end_asm)
-        with open(cle, 'w') as f:
+        with open(cle, 'w', encoding='utf-8') as f:
           f.write(pre_1)
           f.write(cl_sep)
           f.write(post_2)
@@ -322,7 +322,7 @@ EMSCRIPTEN_FUNCS();
   filename += '.jo.js'
   temp_files.note(filename)
 
-  with open(filename, 'w') as f:
+  with open(filename, 'w', encoding='utf-8') as f:
     with ToolchainProfiler.profile_block('write_pre'):
       f.write(pre)
       pre = None

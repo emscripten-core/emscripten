@@ -18,14 +18,23 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.5 (in development)
+5.0.6 (in development)
 ----------------------
+- The minimum version of node supported by the generated code was bumped from
+  v12.22.0 to v18.3.0. (#26604)
+- The DETERMINISIC settings was marked as deprecated ()
+
+5.0.5 - 04/03/26
+----------------
 - C++ exceptions are now always thrown as CppException objects rather than raw
   pointers/numbers.  However, the `.message` and `.stack` fields of the thrown
   object will only be populated if `-sEXCEPTION_STACK_TRACES` is set. (#26523)
 - `emcmake` no longer automatically injects `--experimental-wasm-threads` and
   `--experimental-wasm-bulk-memory` flags when used with versions of node older
   than v16. (#26560)
+- SDL3 port updated from 3.2.30 to 3.4.2 (#26572)
+- Fixed a race condition in syscall proxying that caused some hangs and ASan
+  errors (#26582)
 
 5.0.4 - 03/23/26
 ----------------

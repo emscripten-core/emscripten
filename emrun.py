@@ -40,10 +40,7 @@ from http.server import HTTPServer, SimpleHTTPRequestHandler
 from operator import itemgetter
 from urllib.parse import unquote, urlsplit
 
-# We depend on python 3.8 features
-if sys.version_info < (3, 8): # noqa: UP036
-  print(f'error: emrun requires python 3.8 or above ({sys.executable} {sys.version})', file=sys.stderr)
-  sys.exit(1)
+assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
 
 # Populated from cmdline params
 emrun_options = None
@@ -109,7 +106,7 @@ elif platform.system() == 'Linux':
   LINUX = True
 elif platform.system() == 'FreeBSD':
   FREEBSD = True
-elif platform.mac_ver()[0] != '':
+elif platform.mac_ver()[0]:
   MACOS = True
   import plistlib
 
@@ -225,7 +222,7 @@ def delete_emrun_safe_firefox_profile():
 def create_emrun_safe_firefox_profile():
   global temp_firefox_profile_dir
   temp_firefox_profile_dir = tempfile.mkdtemp(prefix='temp_emrun_firefox_profile_')
-  with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w') as f:
+  with open(os.path.join(temp_firefox_profile_dir, 'prefs.js'), 'w', encoding='utf-8') as f:
     f.write('''
 // Old Firefox browsers have a maxPerDomain limit of 20. Newer Firefox browsers default to 512. Match the new
 // default here to help test spawning a lot of threads also on older Firefox versions.
@@ -780,7 +777,7 @@ def get_cpu_info():
       logical_cores = int(check_output(['sysctl', '-n', 'machdep.cpu.thread_count']).strip())
       frequency = int(check_output(['sysctl', '-n', 'hw.cpufrequency']).strip()) // 1000000
     elif LINUX:
-      for line in open('/proc/cpuinfo').readlines():
+      for line in open('/proc/cpuinfo', encoding='utf-8').readlines():
         if 'model name' in line:
           cpu_name = re.sub('.*model name.*:', '', line, count=1).strip()
       lscpu = check_output(['lscpu'])
@@ -1031,7 +1028,7 @@ def win_get_file_properties(fname):
   strInfo = {}
   for propName in propNames:
     strInfoPath = u'\\StringFileInfo\\%04X%04X\\%s' % (lang, codepage, propName)
-    ## print str_info
+    # print str_info
     strInfo[propName] = win32api.GetFileVersionInfo(fname, strInfoPath)
 
   props['StringFileInfo'] = strInfo
@@ -1043,7 +1040,7 @@ def get_computer_model():
   try:
     if MACOS:
       try:
-        with open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'r') as f:
+        with open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), encoding='utf-8') as f:
           model = f.read()
           return model
       except IOError:
@@ -1059,7 +1056,7 @@ def get_computer_model():
         model = check_output(cmd)
         model = re.search('<configCode>(.*)</configCode>', model)
         model = model.group(1).strip()
-        with open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'w') as fh:
+        with open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), 'w', encoding='utf-8') as fh:
           fh.write(model) # Cache the hardware model to disk
         return model
       except Exception:
@@ -1089,7 +1086,7 @@ def get_computer_model():
 
 
 def get_os_version():
-  bitness = ' (64bit)' if platform.machine() in ['AMD64', 'x86_64'] else ' (32bit)'
+  bitness = ' (64bit)' if platform.machine() in {'AMD64', 'x86_64'} else ' (32bit)'
   try:
     if WINDOWS:
       versionHandle = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, "SOFTWARE\\Microsoft\\Windows NT\\CurrentVersion")
@@ -1116,7 +1113,7 @@ def get_system_memory():
       if emrun_options.android:
         lines = check_output([ADB, 'shell', 'cat', '/proc/meminfo']).split('\n')
       else:
-        mem = open('/proc/meminfo', 'r')
+        mem = open('/proc/meminfo', encoding='utf-8')
         lines = mem.readlines()
         mem.close()
       for i in lines:
@@ -1383,13 +1380,14 @@ def get_system_info(format_json):
       return info.strip()
   else:
     try:
-      with open(os.path.expanduser('~/.emrun.generated.guid')) as fh:
+      with open(os.path.expanduser('~/.emrun.generated.guid'), encoding='utf-8') as fh:
         unique_system_id = fh.read().strip()
     except Exception:
       import uuid
       unique_system_id = str(uuid.uuid4())
       try:
-        open(os.path.expanduser('~/.emrun.generated.guid'), 'w').write(unique_system_id)
+        with open(os.path.expanduser('~/.emrun.generated.guid'), 'w', encoding='utf-8') as f:
+          f.write(unique_system_id)
       except Exception as e:
         logv(e)
 
@@ -1822,13 +1820,13 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
 
   if options.log_stdout:
     global browser_stdout_handle
-    browser_stdout_handle = open(options.log_stdout, 'a')
+    browser_stdout_handle = open(options.log_stdout, 'a', encoding='utf-8')
   if options.log_stderr:
     global browser_stderr_handle
     if options.log_stderr == options.log_stdout:
       browser_stderr_handle = browser_stdout_handle
     else:
-      browser_stderr_handle = open(options.log_stderr, 'a')
+      browser_stderr_handle = open(options.log_stderr, 'a', encoding='utf-8')
   if options.run_browser:
     logv("Starting browser: %s" % ' '.join(browser))
     # if browser[0] == 'cmd':

@@ -408,7 +408,7 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,  # no
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
-  legacy_mode = CHECKS not in ['ALL', 'FAST']
+  legacy_mode = CHECKS not in {'ALL', 'FAST'}
   all_checks = CHECKS == 'ALL'
 
   bindings_name = class_name + '_' + func_name
@@ -632,9 +632,9 @@ def render_function(class_name, func_name, sigs, return_type, non_pointer,  # no
         cast_self = 'dynamic_cast<' + type_to_c(func_scope) + '>(' + cast_self + ')'
       maybe_deref = deref_if_nonpointer(raw[0])
       operator = operator.strip()
-      if operator in ["+", "-", "*", "/", "%", "^", "&", "|", "=",
+      if operator in {"+", "-", "*", "/", "%", "^", "&", "|", "=",
                       "<", ">", "+=", "-=", "*=", "/=", "%=", "^=", "&=", "|=", "<<", ">>", ">>=",
-                      "<<=", "==", "!=", "<=", ">=", "<=>", "&&", "||"]:
+                      "<<=", "==", "!=", "<=", ">=", "<=>", "&&", "||"}:
         call = '(*%s %s %s%s)' % (cast_self, operator, maybe_deref, args[0])
       elif operator == '[]':
         call = '((*%s)[%s%s])' % (cast_self, maybe_deref, args[0])
@@ -924,12 +924,12 @@ if len(deferred_js):
 
 # Write
 
-with open(cpp_output, 'w') as c:
+with open(cpp_output, 'w', encoding='utf-8') as c:
   for x in pre_c:
     c.write(x)
   for x in mid_c:
     c.write(x)
 
-with open(js_output, 'w') as js:
+with open(js_output, 'w', encoding='utf-8') as js:
   for x in mid_js:
     js.write(x)

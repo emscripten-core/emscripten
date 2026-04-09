@@ -144,7 +144,8 @@ if EMPROFILE == 1:
       # the parent->child process spawns for the subprocessing pools. Therefore
       # any profiling events that the subprocess children generate are virtually
       # treated as if they were performed by the parent PID.
-      return open(os.path.join(ToolchainProfiler.profiler_logs_path, 'toolchain_profiler.pid_' + str(os.getpid()) + '.json'), 'a')
+      filename = 'toolchain_profiler.pid_' + str(os.getpid()) + '.json'
+      return open(os.path.join(ToolchainProfiler.profiler_logs_path, filename), 'a', encoding='utf-8')
 
     @staticmethod
     def escape_string(arg):
