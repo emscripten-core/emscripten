@@ -363,7 +363,6 @@ function postRun() {}
 
 /**
  * @param {string|number=} what
- * @noreturn
  */ function abort(what) {
   what = `Aborted(${what})`;
   // TODO(sbc): Should we remove printing and leave it up to whoever
@@ -3082,7 +3081,7 @@ function _fd_write(fd, iov, iovcnt, pnum) {
 
 var keepRuntimeAlive = () => true;
 
-/** @noreturn */ var _proc_exit = code => {
+var _proc_exit = code => {
   EXITSTATUS = code;
   if (!keepRuntimeAlive()) {
     ABORT = true;
