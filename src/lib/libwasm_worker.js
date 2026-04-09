@@ -65,10 +65,10 @@ addToLibrary({
 #if PTHREADS
   // When the build contains both pthreads and Wasm Workers, offset the
   // Wasm Worker ID space to avoid collisions with pthread TIDs (which start
-  // at 42). We use `1 << 30` since it's ~1/2 way through `pid_t` space,
+  // at 42). We use `1 << 21` since it's ~1/2 way through `pid_t` space,
   // essentially giving pthreads the first 1/2 of the range and wasm workers the
   // second half.
-  $_wasmWorkersID: {{{ 1 << 30 }}},
+  $_wasmWorkersID: {{{ 1 << 21 }}},
 #else
   $_wasmWorkersID: 1,
 #endif
