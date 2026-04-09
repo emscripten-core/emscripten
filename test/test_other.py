@@ -13038,6 +13038,13 @@ void foo() {}
   def test_pthread_kill(self):
     self.do_run_in_out_file_test('pthread/test_pthread_kill.c')
 
+  @parameterized({
+    '': (['-pthread'],),
+    'stub': ([],),
+  })
+  def test_pthread_kill_self(self, args):
+    self.do_runf('pthread/test_pthread_kill_self.c', 'main\n', assert_returncode=NON_ZERO, cflags=args)
+
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_pthreads
   @parameterized({

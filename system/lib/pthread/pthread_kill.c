@@ -11,10 +11,8 @@
 #include <emscripten_internal.h>
 
 #include "pthread_impl.h"
-#include "lock.h"
 
-void do_raise(void* arg) {
-  int sig = (intptr_t)arg;
+static void do_raise(int sig) {
   if (sig == SIGCANCEL) {
     // For `SIGCANCEL` there is no need to actually call raise to run the
     // handler function.  The calling thread (the one calling `pthread_cancel`)
@@ -31,16 +29,16 @@ void do_raise(void* arg) {
     _emscripten_runtime_keepalive_clear();
     return;
   }
-  raise((intptr_t)sig);
+  raise(sig);
+}
+
+static void proxied_do_raise(void* arg) {
+  do_raise((intptr_t)arg);
 }
 
 int pthread_kill(pthread_t t, int sig) {
   if (sig < 0 || sig >= _NSIG) {
     return EINVAL;
-  }
-  if (t == emscripten_main_runtime_thread_id()) {
-    if (sig == 0) return 0; // signal == 0 is a no-op.
-    return ESRCH;
   }
   if (!t || !_emscripten_thread_is_valid(t)) {
     return ESRCH;
@@ -49,6 +47,10 @@ int pthread_kill(pthread_t t, int sig) {
 
   // The job of pthread_kill is basically to run the (process-wide) signal
   // handler on the target thread.
-  emscripten_proxy_async(emscripten_proxy_get_system_queue(), t, do_raise, (void*)(intptr_t)sig);
+  if (pthread_equal(pthread_self(), t)) {
+    do_raise(sig);
+  } else {
+    emscripten_proxy_async(emscripten_proxy_get_system_queue(), t, proxied_do_raise, (void*)(intptr_t)sig);
+  }
   return 0;
 }

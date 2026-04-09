@@ -260,6 +260,14 @@ int pthread_equal(pthread_t t1, pthread_t t2) {
   return t1 == t2;
 }
 
+int pthread_kill(pthread_t thread, int sig) {
+  if (thread != pthread_self()) {
+    return EINVAL;
+  }
+  raise(sig);
+  return 0;
+}
+
 int pthread_mutexattr_init(pthread_mutexattr_t *attr) {
   return 0;
 }

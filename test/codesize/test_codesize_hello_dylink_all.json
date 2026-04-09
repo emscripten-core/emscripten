@@ -1,7 +1,7 @@
 {
   "a.out.js": 244343,
-  "a.out.nodebug.wasm": 577432,
-  "total": 821775,
+  "a.out.nodebug.wasm": 577473,
+  "total": 821816,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -2879,6 +2879,7 @@
     "pthread_join",
     "pthread_key_create",
     "pthread_key_delete",
+    "pthread_kill",
     "pthread_mutex_consistent",
     "pthread_mutex_destroy",
     "pthread_mutex_init",
@@ -4621,6 +4622,7 @@
     "$pthread_getattr_np",
     "$pthread_getcpuclockid",
     "$pthread_getspecific",
+    "$pthread_kill",
     "$pthread_mutexattr_getprotocol",
     "$pthread_mutexattr_getpshared",
     "$pthread_mutexattr_getrobust",

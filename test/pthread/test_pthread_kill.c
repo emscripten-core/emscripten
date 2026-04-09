@@ -17,14 +17,18 @@
 
 pthread_cond_t started_cond = PTHREAD_COND_INITIALIZER;
 pthread_mutex_t started_lock = PTHREAD_MUTEX_INITIALIZER;
-_Atomic bool got_term_signal = false;
+_Atomic bool got_sigterm = false;
+_Atomic bool got_sigusr1 = false;
 
-pthread_t thr;
+pthread_t main_thread;
+pthread_t child_thread;
 
 void signal_handler(int sig, siginfo_t * info, void * arg) {
-  printf("signal: %d onthread=%d\n", sig, pthread_self() == thr);
+  printf("signal: %d onthread=%d\n", sig, pthread_self() == child_thread);
   if (sig == SIGTERM) {
-    got_term_signal = true;
+    got_sigterm = true;
+  } else if (sig == SIGUSR1) {
+    got_sigusr1 = true;
   }
 }
 
@@ -34,6 +38,7 @@ void setup_handler() {
   act.sa_flags = SA_SIGINFO;
   act.sa_sigaction = signal_handler;
   sigaction(SIGTERM, &act, NULL);
+  sigaction(SIGUSR1, &act, NULL);
 }
 
 
@@ -46,17 +51,26 @@ void *thread_start(void *arg) {
   pthread_cond_signal(&started_cond);
   pthread_mutex_unlock(&started_lock);
   // As long as this thread is running, keep the shared variable latched to nonzero value.
-  while (!got_term_signal) {
+  while (!got_sigterm) {
     sleepms(1);
   }
-  printf("got term signal, shutting down thread\n");
-  pthread_exit(0);
+  printf("got term signal, sending signal back to main thread\n");
+  pthread_kill(main_thread, SIGUSR1);
+  return NULL;
 }
 
 int main() {
+  main_thread = pthread_self();
   setup_handler();
 
-  int s = pthread_create(&thr, NULL, thread_start, 0);
+  printf("tesing pthread_kill with pthread_self\n");
+  assert(!got_sigterm);
+  int s = pthread_kill(pthread_self(), SIGTERM);
+  assert(got_sigterm);
+  got_sigterm = false;
+  assert(s == 0);
+
+  s = pthread_create(&child_thread, NULL, thread_start, 0);
   assert(s == 0);
 
   // Wait until thread kicks in and sets the shared variable.
@@ -65,11 +79,15 @@ int main() {
   pthread_mutex_unlock(&started_lock);
   printf("thread has started, sending SIGTERM\n");
 
-  s = pthread_kill(thr, SIGTERM);
+  s = pthread_kill(child_thread, SIGTERM);
   assert(s == 0);
   printf("SIGTERM sent\n");
 
-
-  pthread_join(thr, NULL);
+  pthread_join(child_thread, NULL);
+  printf("joined child_thread\n");
+  while (!got_sigusr1) {
+    sleepms(1);
+  }
+  printf("got SIGUSR1. all done.\n");
   return 0;
 }
