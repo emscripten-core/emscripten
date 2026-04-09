@@ -4,9 +4,9 @@
 // found in the LICENSE file.
 
 #include <dirent.h>
-#include <syscall_arch.h>
 #include <unistd.h>
 #include <emscripten/wasmfs.h>
+#include <emscripten/syscalls.h>
 
 #include "backend.h"
 #include "file.h"

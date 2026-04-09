@@ -11,6 +11,7 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
 #include <emscripten/html5.h>
+#include <emscripten/syscalls.h>
 #include <errno.h>
 #include <mutex>
 #include <poll.h>
@@ -20,7 +21,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
-#include <syscall_arch.h>
 #include <unistd.h>
 #include <utility>
 #include <vector>
