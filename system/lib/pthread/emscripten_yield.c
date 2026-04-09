@@ -10,7 +10,12 @@
 static _Atomic pthread_t crashed_thread_id = NULL;
 
 void _emscripten_thread_crashed() {
+  // Notify the main thread that the calling thread has crashed. The will bring
+  // down the whole program next time the main thread calls `_emscripten_yield`.
   crashed_thread_id = pthread_self();
+  // Force the main runtime thread to wake up in case it is waiting in
+  // `_emscripten_thread_notify`.
+  _emscripten_thread_notify(emscripten_main_runtime_thread_id());
 }
 
 static void dummy(double now)

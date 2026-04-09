@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 5.0.7 (in development)
 ----------------------
+- The emscripten_futux_wait API is now documented to explicitly allow spurious
+  wakeups. This was part of an internal change to improve inter-thread
+  communication. (#26659)
 
 5.0.6 - 04/14/26
 ----------------

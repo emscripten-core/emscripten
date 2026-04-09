@@ -307,7 +307,9 @@ void *mandelbrot_thread(void *arg)
 
   for(;;)
   {
-    emscripten_futex_wait(&tasksPending[idx], 0, INFINITY);
+    while (tasksPending[idx] == 0) {
+      emscripten_futex_wait(&tasksPending[idx], 0, INFINITY);
+    }
     tasksPending[idx] = 0;
     double t0 = emscripten_get_now();
     int ni;

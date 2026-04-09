@@ -1,10 +1,10 @@
 {
   "a.out.js": 7367,
   "a.out.js.gz": 3603,
-  "a.out.nodebug.wasm": 19004,
-  "a.out.nodebug.wasm.gz": 8786,
-  "total": 26371,
-  "total_gz": 12389,
+  "a.out.nodebug.wasm": 19075,
+  "a.out.nodebug.wasm.gz": 8818,
+  "total": 26442,
+  "total_gz": 12421,
   "sent": [
     "a (memory)",
     "b (exit)",
@@ -96,6 +96,7 @@
     "$_emscripten_thread_free_data",
     "$_emscripten_thread_init",
     "$_emscripten_thread_mailbox_init",
+    "$_emscripten_thread_notify",
     "$_emscripten_tls_init",
     "$_emscripten_yield",
     "$_main_thread",

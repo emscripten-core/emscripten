@@ -1036,7 +1036,7 @@
             "p_proto": 8
         },
         "pthread": {
-            "__size__": 124,
+            "__size__": 128,
             "profilerBlock": 104,
             "stack": 48,
             "stack_size": 52,

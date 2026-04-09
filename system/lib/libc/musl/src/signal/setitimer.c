@@ -8,6 +8,7 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/threading.h>
 #include <assert.h>
+#include <math.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -78,6 +79,18 @@ void _emscripten_check_timers(double now)
 				_emscripten_timeout(which, now);
 		}
 	}
+}
+
+double _emscripten_next_timer()
+{
+	assert(emscripten_is_main_runtime_thread());
+	double next_timer = INFINITY;
+	for (int which = 0; which < 3; which++) {
+		if (current_timeout_ms[which]) {
+			next_timer = fmin(current_timeout_ms[which], next_timer);
+		}
+	}
+	return next_timer - emscripten_get_now();
 }
 #endif
 

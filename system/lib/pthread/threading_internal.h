@@ -9,6 +9,16 @@
 
 #include <pthread.h>
 
+// Defined THREADING_DEBUG here (or in the build system) to enabled verbose
+// logging using emscripten_dbgf.
+// #define THREADING_DEBUG
+
+#ifdef THREADING_DEBUG
+#define DBG(format, ...) emscripten_dbgf(format, ##__VA_ARGS__)
+#else
+#define DBG(format, ...)
+#endif
+
 #define EM_THREAD_NAME_MAX 32
 
 #define EM_THREAD_STATUS int
@@ -106,3 +116,9 @@ void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result)
 int _emscripten_thread_supports_atomics_wait(void);
 
 pid_t _emscripten_get_next_tid();
+
+// Wake the target thread in case it is blocked in emscripten_futex_wait.
+// Note: If threads directly use lower level APIs such
+// __builtin_wasm_memory_atomic_waitXX then they will not be woken by
+// this method.
+void _emscripten_thread_notify(pthread_t thread);
