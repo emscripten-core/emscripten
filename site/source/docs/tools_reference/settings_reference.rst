@@ -1787,6 +1787,8 @@ browser's language setting (which would mean you can get different results
 in different browsers, or in the browser and in node).
 Good for comparing builds for debugging purposes (and nothing else).
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _modularize:
@@ -2919,10 +2921,11 @@ MIN_NODE_VERSION
 Specifies minimum node version to target for the generated code.  This is
 distinct from the minimum version required to run the emscripten compiler.
 Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
-Minimum supported value is 122209, which was released 2022-01-11 (see
-feature_matrix.py). This version aligns with the Ubuntu TLS 22.04 (Jammy).
+Minimum supported value is 180300, which was released 2022-05-18 (see
+feature_matrix.py). This version aligns with the version available in
+debian/stable (bookworm).
 
-Default value: 160000
+Default value: 180300
 
 .. _minimal_runtime:
 
@@ -3420,6 +3423,7 @@ these settings please open a bug (or reply to one of the existing bugs).
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
  - ``EXPORT_EXCEPTION_HANDLING_HELPERS``: getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.
+ - ``DETERMINISTIC``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/26647)
 
 .. _legacy-settings:
 

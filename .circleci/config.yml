@@ -106,11 +106,11 @@ commands:
             cat ~/emsdk/.emscripten
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
   install-node-oldest:
-    description: "install node 12.22.9 (oldest)"
+    description: "install node 18.3.0 (oldest)"
     steps:
       - install-node-version:
           # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
-          node_version: "12.22.9"
+          node_version: "18.3.0"
   install-node-lts:
     description: "install node 22.21.0 (current LTS)"
     steps:
@@ -970,8 +970,7 @@ jobs:
       # support in the generated code.
       - install-node-oldest
       - run-tests:
-          title: "node (oldest / 12.22.9)"
-          extra-cflags: "-sMIN_NODE_VERSION=122209"
+          title: "node (oldest / 18.3.0)"
           # We include most but not all of the nodefs and node rawfs tests here.
           # test_fs_nodefs_rw, test_fs_nodefs_statvfs, and test_unistd_io_nodefs_bigint fail.
           test_targets: "

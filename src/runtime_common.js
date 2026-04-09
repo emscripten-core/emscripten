@@ -136,18 +136,6 @@ function updateMemoryViews() {
 #endif
 }
 
-#if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000
-// The performance global was added to node in v16.0.0:
-// https://nodejs.org/api/globals.html#performance
-if (ENVIRONMENT_IS_NODE) {
-  // This is needed for emscripten_get_now and for pthreads support which
-  // depends on it for accurate timing.
-  // Use `global` rather than `globalThis` here since older versions of node
-  // don't have `globalThis`.
-  global.performance ??= require('perf_hooks').performance;
-}
-#endif
-
 #if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.
 #include "runtime_init_memory.js"
