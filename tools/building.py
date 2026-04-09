@@ -532,6 +532,8 @@ def get_closure_compiler_and_env(user_args):
     # This can happen, for example, on arm64 macOS machines that do not have Rosetta installed.
     logger.debug('falling back to java version of closure compiler')
     user_args.append('--platform=java')
+    if 'JAVA_TOOL_OPTIONS' not in env:
+      env['JAVA_TOOL_OPTIONS'] = '--sun-misc-unsafe-memory-access=allow'
     check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
 
   return closure_cmd, env
