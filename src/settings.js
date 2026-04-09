@@ -1213,6 +1213,7 @@ var SMALL_XHR_CHUNKS = false;
 // in different browsers, or in the browser and in node).
 // Good for comparing builds for debugging purposes (and nothing else).
 // [link]
+// [deprecated]
 var DETERMINISTIC = false;
 
 // By default we emit all code in a straightforward way into the output
