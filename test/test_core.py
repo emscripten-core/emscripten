@@ -7674,7 +7674,7 @@ void* operator new(size_t size) {
     self.do_runf('embind/test_val_coro.cpp', '34\n')
 
   def test_embind_val_coro_propagate_cpp_exception(self):
-    self.set_setting('EXCEPTION_STACK_TRACES')
+    self.set_setting('EXCEPTION_STACK_TRACES') # For err.stack
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.throwingCoro().then(
         console.log,
@@ -7684,53 +7684,33 @@ void* operator new(size_t size) {
     self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'rejected with: std::runtime_error: bang from throwingCoro!\n')
 
-  def test_embind_val_coro_propagate_js_error(self):
+  @parameterized({
+    'emscripten_eh': (['-fexceptions'],),
+    'disable_catching': (), # Use defaults: DISABLE_EXCEPTION_CATCHING, NO_DISABLE_EXCEPTION_THROWING
+    'no_exceptions': (['-fno-exceptions', '-Wno-coroutine-missing-unhandled-exception'],),
+  })
+  def test_embind_val_coro_propagate_js_error(self, extra_flags=[]):
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.failingPromise().then(
         console.log,
         err => console.error(`rejected with: ${err.message}`)
       );
     }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
-    self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
-
-  def test_embind_val_coro_propagate_js_error_disabled_catch(self):
-    self.set_setting('DISABLE_EXCEPTION_CATCHING')
-    self.set_setting('NO_DISABLE_EXCEPTION_THROWING')
-    create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
-      Module.failingPromise().then(
-        console.log,
-        err => console.error(`rejected with: ${err.message}`)
-      );
-    }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
-    self.do_runf('embind/test_val_coro.cpp', 'rejected with: bang from JS promise!\n')
-
-  def test_embind_val_coro_propagate_js_error_noexcept(self):
-    create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
-      Module.failingPromise().then(
-        console.log,
-        err => console.error(`rejected with: ${err.message}`)
-      );
-    }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fno-exceptions', '-Wno-coroutine-missing-unhandled-exception', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', *extra_flags, '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro_noexcept.cpp', 'rejected with: bang from JS promise!\n')
 
-  def test_embind_val_coro_catch_cpp_exception(self):
-    self.set_setting('EXCEPTION_STACK_TRACES')
+  @parameterized({
+    'emscripten_eh': (['-fexceptions'],),
+    'wasm_eh': (['-fwasm-exceptions'],),
+  })
+  def test_embind_val_coro_catch_cpp_exception(self, extra_flags=[]):
+    if self.is_wasm2js() and '-fwasm-exceptions' in extra_flags:
+      self.skipTest('wasm2js does not support WASM exceptions')
+    self.set_setting('EXCEPTION_STACK_TRACES') # For debugging
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
       Module.catchCppExceptionPromise().then(console.log);
     }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fexceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
-    self.do_runf('embind/test_val_coro.cpp', 'successfully caught!\n')
-
-  @no_wasm2js('wasm2js does not support WASM exceptions')
-  def test_embind_val_coro_catch_cpp_exception_wasm_eh(self):
-    self.set_setting('EXCEPTION_STACK_TRACES')
-    create_file('pre.js', r'''Module.onRuntimeInitialized = () => {
-      Module.catchCppExceptionPromise().then(console.log);
-    }''')
-    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', '-fwasm-exceptions', '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
+    self.cflags += ['-std=c++20', '--bind', '--pre-js=pre.js', *extra_flags, '-sINCOMING_MODULE_JS_API=onRuntimeInitialized', '--no-entry']
     self.do_runf('embind/test_val_coro.cpp', 'successfully caught!\n')
 
   def test_embind_val_coro_await_in_non_val_coro(self):
