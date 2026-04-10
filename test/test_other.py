@@ -13045,6 +13045,14 @@ void foo() {}
   def test_pthread_kill_self(self, args):
     self.do_runf('pthread/test_pthread_kill_self.c', 'main\n', assert_returncode=NON_ZERO, cflags=args)
 
+  @requires_pthreads
+  @parameterized({
+    '': (['-sPTHREAD_POOL_SIZE=1'],),
+    'proxied': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
+  })
+  def test_pthread_sigmask(self, args):
+    self.do_runf('pthread/test_pthread_sigmask.c', 'done\n', cflags=args)
+
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_pthreads
   @parameterized({

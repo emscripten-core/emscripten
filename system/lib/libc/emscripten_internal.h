@@ -22,11 +22,16 @@
 #include <stdbool.h>   // for `bool`
 #include <stdint.h>    // for `intptr_t`
 #include <sys/types.h> // for `off_t`
+#include <threads.h>   // for `thread_local`
 #include <time.h>      // for `struct tm`
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// Pending signals for the current thread.  This gets populated when a signal
+// is raised but its blocked by pthread_sigmask.
+extern thread_local sigset_t __sig_pending;
 
 _Noreturn void _abort_js(void);
 

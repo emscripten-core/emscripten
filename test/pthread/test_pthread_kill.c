@@ -41,7 +41,6 @@ void setup_handler() {
   sigaction(SIGUSR1, &act, NULL);
 }
 
-
 void sleepms(long msecs) {
   usleep(msecs * 1000);
 }
