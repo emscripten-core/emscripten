@@ -15,7 +15,7 @@ import common
 from tools import utils
 
 WORKING_ENGINES = {} # Holds all configured engines and whether they work: maps path -> True/False
-DEFAULT_TIMEOUT = 5 * 60
+DEFAULT_TIMEOUT = int(os.environ.get('EMTEST_TIMEOUT', str(5 * 60)))
 
 
 def make_command(filename, engine, args=None):
