@@ -15,12 +15,12 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <syscall_arch.h>
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <sys/utsname.h>
+#include <emscripten/syscalls.h>
 #include <emscripten/console.h>
 #include <emscripten/version.h>
 #include <emscripten/stack.h>

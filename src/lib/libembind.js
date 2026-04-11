@@ -375,7 +375,7 @@ var LibraryEmbind = {
         }
 #if ASSERTIONS
         else if (typeof value != "bigint") {
-          throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${this.name}`);
+          throw new TypeError(`Cannot convert "${embindRepr(value)}" to ${name}`);
         }
         assertIntegerRange(name, value, minRange, maxRange);
 #endif
@@ -404,7 +404,7 @@ var LibraryEmbind = {
       toWireType: (destructors, value) => {
 #if ASSERTIONS
         if (typeof value != "number" && typeof value != "boolean") {
-          throw new TypeError(`Cannot convert ${embindRepr(value)} to ${this.name}`);
+          throw new TypeError(`Cannot convert ${embindRepr(value)} to ${name}`);
         }
 #endif
         // The VM will perform JS to Wasm value conversion, according to the spec:

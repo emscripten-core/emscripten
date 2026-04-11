@@ -13,6 +13,7 @@
 #include <emscripten/threading.h>
 #include <errno.h>
 #include <math.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <sys/param.h>
@@ -111,7 +112,7 @@ static int futex_wait_main_browser_thread(volatile void* addr,
     // here and return, it's the same is if what happened on the main thread
     // was the same as calling _emscripten_yield()
     // a few times before calling emscripten_futex_wait().
-    if (__c11_atomic_load((_Atomic uint32_t*)addr, __ATOMIC_SEQ_CST) != val) {
+    if (atomic_load((_Atomic uint32_t*)addr) != val) {
       return -EWOULDBLOCK;
     }
 

@@ -510,7 +510,6 @@ function postRun() {
 
 /**
  * @param {string|number=} what
- * @noreturn
  */
 function abort(what) {
 

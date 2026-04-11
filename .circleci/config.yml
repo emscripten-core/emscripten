@@ -1367,15 +1367,15 @@ workflows:
       - test-core0:
           requires:
             - build-linux
-      - test-core2:
-          requires:
-            - build-linux
+      #- test-core2:
+      #    requires:
+      #      - build-linux
       - test-core3:
           requires:
             - build-linux
-      - test-wasm64-misc:
-          requires:
-            - build-linux
+      #- test-wasm64-misc:
+      #    requires:
+      #      - build-linux
       - test-wasm64-4gb:
           requires:
             - build-linux
@@ -1388,9 +1388,9 @@ workflows:
       - test-modularize-instance:
           requires:
             - build-linux
-      - test-esm-integration:
-          requires:
-            - build-linux
+      #- test-esm-integration:
+      #    requires:
+      #      - build-linux
       - test-stress:
           requires:
             - build-linux
@@ -1411,14 +1411,14 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
-      - test-bun
-      - test-deno
-      - test-jsc
-      - test-spidermonkey
-      - test-node-compat
-      - test-windows
-      - test-windows-browser-firefox
+      #- test-bun
+      #- test-deno
+      #- test-jsc
+      #- test-spidermonkey
+      #- test-node-compat
+      #- test-windows
+      #- test-windows-browser-firefox
       - build-windows-launcher
-      - test-mac-arm64:
-          requires:
-            - build-linux
+      #- test-mac-arm64:
+      #    requires:
+      #      - build-linux

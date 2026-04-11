@@ -22,7 +22,10 @@ See docs/process.md for more on how version tagging works.
 ----------------------
 - The minimum version of node supported by the generated code was bumped from
   v12.22.0 to v18.3.0. (#26604)
-- The DETERMINISIC settings was marked as deprecated ()
+- The DETERMINISIC settings was marked as deprecated (#26653)
+- Some musl-internal headers are no longer installed into the sysroot include
+  directory.  In particular, `syscall_arch.h` no longer exists, but can be
+  replaced with `emscripten/syscalls.h`. (#26658)
 
 5.0.5 - 04/03/26
 ----------------

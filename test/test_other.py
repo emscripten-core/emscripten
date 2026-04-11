@@ -9684,6 +9684,8 @@ int main() {
 
   def test_emsymbolizer_srcloc(self):
     'Test emsymbolizer use cases that provide src location granularity info'
+    self.skipTest('TODO: Re-enable when https://github.com/llvm/llvm-project/pull/191329 rolls')
+
     def check_dwarf_loc_info(address, funcs, locs):
       out = self.run_process(
           [emsymbolizer, '-s', 'dwarf', 'test_dwarf.wasm', address],
@@ -13037,6 +13039,13 @@ void foo() {}
   @flaky('https://github.com/emscripten-core/emscripten/issues/24725')
   def test_pthread_kill(self):
     self.do_run_in_out_file_test('pthread/test_pthread_kill.c')
+
+  @parameterized({
+    '': (['-pthread'],),
+    'stub': ([],),
+  })
+  def test_pthread_kill_self(self, args):
+    self.do_runf('pthread/test_pthread_kill_self.c', 'main\n', assert_returncode=NON_ZERO, cflags=args)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_pthreads
