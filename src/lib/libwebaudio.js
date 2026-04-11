@@ -165,16 +165,15 @@ var LibraryWebAudio = {
   },
 
 #if AUDIO_WORKLET
-  // emscripten_start_wasm_audio_worklet_thread_async() doesn't use stackAlloc,
+  // _emscripten_create_audio_worklet() doesn't use stackAlloc,
   // etc., but the created worklet does.
-  emscripten_start_wasm_audio_worklet_thread_async__deps: [
-    '$_wasmWorkersID',
+  _emscripten_create_audio_worklet__deps: [
     '$_emAudioDispatchProcessorCallback',
     '$stackAlloc', '$stackRestore', '$stackSave'],
-  emscripten_start_wasm_audio_worklet_thread_async: (contextHandle, stackLowestAddress, stackSize, callback, userData) => {
+  _emscripten_create_audio_worklet: (wwID, contextHandle, stackLowestAddress, stackSize, callback, userData) => {
 
 #if ASSERTIONS || WEBAUDIO_DEBUG
-    emAudioExpectContext(contextHandle, 'emscripten_start_wasm_audio_worklet_thread_async');
+    emAudioExpectContext(contextHandle, '_emscripten_create_audio_worklet');
 #endif
 
     var audioContext = emAudio[contextHandle];
@@ -190,12 +189,12 @@ var LibraryWebAudio = {
 #endif
 
 #if WEBAUDIO_DEBUG
-    dbg(`emscripten_start_wasm_audio_worklet_thread_async() adding audioworklet.js...`);
+    dbg(`_emscripten_create_audio_worklet() adding audioworklet.js...`);
 #endif
 
     var audioWorkletCreationFailed = () => {
 #if ASSERTIONS || WEBAUDIO_DEBUG
-      dbg(`emscripten_start_wasm_audio_worklet_thread_async() addModule() failed!`);
+      dbg(`_emscripten_create_audio_worklet() addModule() failed!`);
 #endif
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 0/*EM_FALSE*/, userData);
     };
@@ -214,7 +213,7 @@ var LibraryWebAudio = {
 
     audioWorklet.addModule({{{ wasmWorkerJs }}}).then(() => {
 #if WEBAUDIO_DEBUG
-      dbg(`emscripten_start_wasm_audio_worklet_thread_async() addModule() completed`);
+      dbg(`_emscripten_create_audio_worklet() addModule() completed`);
 #endif
 
 #if MIN_FIREFOX_VERSION < 138 || MIN_CHROME_VERSION != TARGET_NOT_SUPPORTED || MIN_SAFARI_VERSION != TARGET_NOT_SUPPORTED
@@ -248,7 +247,7 @@ var LibraryWebAudio = {
         // Assign the loaded AudioWorkletGlobalScope a Wasm Worker ID so that
         // it can utilized its own TLS slots, and it is recognized to not be
         // the main browser thread.
-        wwID: _wasmWorkersID++,
+        wwID,
 #if MINIMAL_RUNTIME
         wasm: Module['wasm'],
 #else

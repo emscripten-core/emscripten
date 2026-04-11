@@ -50,7 +50,7 @@
   // This is the way that we signal to the Web Worker that it is hosting
   // a Wasm Worker.
 #if ASSERTIONS
-  'name': 'em-ww-' + _wasmWorkersID,
+  'name': 'em-ww-' + wwID,
 #else
   'name': 'em-ww',
 #endif
@@ -62,16 +62,6 @@
 
 addToLibrary({
   $_wasmWorkers: {},
-#if PTHREADS
-  // When the build contains both pthreads and Wasm Workers, offset the
-  // Wasm Worker ID space to avoid collisions with pthread TIDs (which start
-  // at 42). We use `1 << 21` since it's ~1/2 way through `pid_t` space,
-  // essentially giving pthreads the first 1/2 of the range and wasm workers the
-  // second half.
-  $_wasmWorkersID: {{{ 1 << 21 }}},
-#else
-  $_wasmWorkersID: 1,
-#endif
 
   // Starting up a Wasm Worker is an asynchronous operation, hence if the parent
   // thread performs any postMessage()-based wasm function calls to the
@@ -175,7 +165,7 @@ addToLibrary({
   },
 
   _emscripten_create_wasm_worker__deps: [
-    '$_wasmWorkers', '$_wasmWorkersID',
+    '$_wasmWorkers',
     '$_wasmWorkerAppendToQueue', '$_wasmWorkerRunPostMessage',
 #if ASSERTIONS
     'emscripten_has_threading_support',
@@ -191,11 +181,11 @@ if (ENVIRONMENT_IS_WASM_WORKER
   _wasmWorkers[0] = globalThis;
   addEventListener("message", _wasmWorkerAppendToQueue);
 }`,
-  _emscripten_create_wasm_worker: (stackLowestAddress, stackSize) => {
+  _emscripten_create_wasm_worker: (wwID, stackLowestAddress, stackSize) => {
 #if ASSERTIONS
     if (!_emscripten_has_threading_support()) {
       err('create_wasm_worker: environment does not support SharedArrayBuffer, wasm workers are not available');
-      return 0;
+      return false;
     }
 #endif
     let worker;
@@ -205,15 +195,15 @@ if (ENVIRONMENT_IS_WASM_WORKER
       var p = trustedTypes.createPolicy(
           'emscripten#workerPolicy1', { createScriptURL: (ignored) => {{{ wasmWorkerJs }}}}
       );
-      worker = _wasmWorkers[_wasmWorkersID] = new Worker(p.createScriptURL('ignored'), {{{ wasmWorkerOptions }}});
+      worker = _wasmWorkers[wwID] = new Worker(p.createScriptURL('ignored'), {{{ wasmWorkerOptions }}});
     } else
 #endif
-    worker = _wasmWorkers[_wasmWorkersID] = new Worker({{{ wasmWorkerJs }}}, {{{ wasmWorkerOptions }}});
+    worker = _wasmWorkers[wwID] = new Worker({{{ wasmWorkerJs }}}, {{{ wasmWorkerOptions }}});
     // Craft the Module object for the Wasm Worker scope:
     worker.postMessage({
       // Signal with a non-zero value that this Worker will be a Wasm Worker,
       // and not the main browser thread.
-      wwID: _wasmWorkersID,
+      wwID,
       wasm: wasmModule,
       wasmMemory,
       stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
@@ -237,9 +227,9 @@ if (ENVIRONMENT_IS_WASM_WORKER
     }
 #endif
 #if RUNTIME_DEBUG
-    dbg("done _emscripten_create_wasm_worker", _wasmWorkersID)
+    dbg("done _emscripten_create_wasm_worker", wwID)
 #endif
-    return _wasmWorkersID++;
+    return true;
   },
 
   emscripten_terminate_wasm_worker: (id) => {

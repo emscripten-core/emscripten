@@ -1305,6 +1305,7 @@ class libc(MuslInternalLibrary,
       libc_files += files_in_path(
         path='system/lib/pthread',
         filenames=[
+          'emscripten_get_next_tid.c',
           'emscripten_thread_state.S',
           'emscripten_thread_primitives.c',
           'emscripten_futex_wait.c',
@@ -1525,7 +1526,7 @@ class libwasm_workers(MuslInternalLibrary, DebugLibrary):
   name = 'libwasm_workers'
   includes = ['system/lib/libc']
   src_dir = 'system/lib/wasm_worker'
-  src_files = ['library_wasm_worker.c', 'wasm_worker_initialize.S']
+  src_files = ['library_wasm_worker.c', 'wasm_worker_initialize.S', 'audio_worklet.c']
 
   def get_cflags(self):
     cflags = super().get_cflags() + ['-sWASM_WORKERS']

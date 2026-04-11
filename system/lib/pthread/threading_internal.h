@@ -104,3 +104,5 @@ void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result)
 // if called from the main browser thread, this function will return zero
 // since blocking is not allowed there).
 int _emscripten_thread_supports_atomics_wait(void);
+
+pid_t _emscripten_get_next_tid();
