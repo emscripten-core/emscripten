@@ -11,7 +11,6 @@
 #include <emscripten.h>
 
 void loadScript() {
-  printf("load2");
   FILE* file = fopen("file1.txt", "r");
 
   if (!file) {
@@ -24,6 +23,7 @@ void loadScript() {
       putchar(c);
     }
   }
+  putchar('\n');
   fclose(file);
   exit(0);
 }

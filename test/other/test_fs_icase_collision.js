@@ -10,5 +10,5 @@ catch (e)
 var fileContents = FS.readFile("/file.txt");
 out('file.txt: ' + fileContents);
 var ret = FS.analyzePath('/file.txt');
-out('file.txt collison: ' + ret.object.name_next);
+out('file.txt collision: ' + ret.object.name_next);
 out('errorCode: ' + errCode);
