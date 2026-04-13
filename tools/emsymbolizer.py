@@ -20,7 +20,6 @@ import re
 import subprocess
 import sys
 from dataclasses import dataclass
-from typing import Optional
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -38,10 +37,10 @@ class Error(BaseException):
 # Class to treat location info in a uniform way across information sources.
 @dataclass
 class LocationInfo:
-  source: Optional[str] = None
+  source: str | None = None
   line: int = 0
   column: int = 0
-  func: Optional[str] = None
+  func: str | None = None
 
   def print(self):
     source = self.source if self.source else '??'
@@ -110,25 +109,26 @@ def get_sourceMappingURL_section(module):
 class WasmSourceMap:
   @dataclass
   class Location:
-    source: Optional[str] = None
+    source: str | None = None
     line: int = 0
     column: int = 0
-    func: Optional[str] = None
+    func: str | None = None
 
   def __init__(self):
     self.version = None
     self.sources = []
+    self.funcs = []
     self.mappings = {}
     self.offsets = []
 
   def parse(self, filename):
-    with open(filename) as f:
-      source_map_json = json.loads(f.read())
-      if shared.DEBUG:
-        print(source_map_json)
+    source_map_json = json.loads(utils.read_file(filename))
+    if shared.DEBUG:
+      print(source_map_json)
 
     self.version = source_map_json['version']
     self.sources = source_map_json['sources']
+    self.funcs = source_map_json['names']
 
     chars = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/='
     vlq_map = {c: i for i, c in enumerate(chars)}
@@ -156,6 +156,7 @@ class WasmSourceMap:
     src = 0
     line = 1
     col = 1
+    func = 0
     for segment in source_map_json['mappings'].split(','):
       data = decodeVLQ(segment)
       info = []
@@ -170,7 +171,9 @@ class WasmSourceMap:
       if len(data) >= 4:
         col += data[3]
         info.append(col)
-      # TODO: see if we need the name, which is the next field (data[4])
+      if len(data) == 5:
+        func += data[4]
+        info.append(func)
 
       self.mappings[offset] = WasmSourceMap.Location(*info)
       self.offsets.append(offset)
@@ -190,7 +193,7 @@ class WasmSourceMap:
     if lo == 0:
       return None
     # If lower bound is given, return the offset only if the offset is equal to
-    # or greather than the lower bound
+    # or greater than the lower bound
     if lower_bound:
       if self.offsets[lo - 1] >= lower_bound:
         return self.offsets[lo - 1]
@@ -208,6 +211,7 @@ class WasmSourceMap:
         self.sources[info.source] if info.source is not None else None,
         info.line,
         info.column,
+        self.funcs[info.func] if info.func is not None else None,
       )
 
 
@@ -239,11 +243,10 @@ def symbolize_address_symbolmap(module, address, symbol_map_file):
     assert ':' in line, f'invalid symbolmap line: {line}'
     return line.split(':', 1)
 
-  with open(symbol_map_file) as f:
-    lines = f.read().splitlines()
-    for line in lines:
-      index, name = split_symbolmap_line(line)
-      func_names[int(index)] = name
+  lines = utils.read_file(symbol_map_file).splitlines()
+  for line in lines:
+    index, name = split_symbolmap_line(line)
+    func_names[int(index)] = name
 
   func_index = -1
   for i, func in module.iter_functions_by_index():

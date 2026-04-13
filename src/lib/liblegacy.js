@@ -11,7 +11,7 @@
  * Any usage of symbols in this file will result in a `-Wdeprecated` warning.
  *
  * Symbol in this file should be removed after "enough time" has passed such
- * that all external users have been able to transision away.
+ * that all external users have been able to transition away.
  */
 
 legacyFuncs = {

@@ -39,6 +39,18 @@ val(int64_t v)
     function calls roundtrip the value correctly
     method calls roundtrip the value correctly
 test:
+val(size_t v)
+  testing value 1234
+    setting properties preserves the expected value
+    getting properties returns the original value intact
+    function calls roundtrip the value correctly
+    method calls roundtrip the value correctly
+  testing value 4294967295
+    setting properties preserves the expected value
+    getting properties returns the original value intact
+    function calls roundtrip the value correctly
+    method calls roundtrip the value correctly
+test:
 val(typed_memory_view<uint64_t>)
 test:
 val(typed_memory_view<int64_t>)

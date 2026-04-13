@@ -29,6 +29,11 @@ import tarfile
 from dataclasses import dataclass
 from enum import Enum, auto, unique
 
+# This assert needs to happen early, before any too-recent python syntax is used.
+# In particular it needs to happen before we import any python file that uses the
+# `match` keyword.
+assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
+
 from tools import (
   building,
   cache,
@@ -94,10 +99,10 @@ class Mode(Enum):
 class LinkFlag:
   """Used to represent a linker flag.
 
-  The flag value is stored along with a bool that distingingishes input
+  The flag value is stored along with a bool that distinguishes input
   files from non-files.
 
-  A list of these is return by separate_linker_flags.
+  A list of these is returned by separate_linker_flags.
   """
   value: str
   is_file: int
@@ -122,7 +127,7 @@ def create_reproduce_file(name, args):
     reproduce_file.add(utils.path_from_root('emscripten-version.txt'), os.path.join(root, 'version.txt'))
 
     with shared.get_temp_files().get_file(suffix='.tar') as rsp_name:
-      with open(rsp_name, 'w') as rsp:
+      with open(rsp_name, 'w', encoding='utf-8') as rsp:
         ignore_next = False
         output_arg = None
 
@@ -230,7 +235,7 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
   if '--version' in args:
     print(cmdline.version_string())
     print('''\
-Copyright (C) 2025 the Emscripten authors (see AUTHORS.txt)
+Copyright (C) 2026 the Emscripten authors (see AUTHORS.txt)
 This is free and open source software under the MIT license.
 There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.
 ''')
@@ -281,7 +286,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if 'EMCC_REPRODUCE' in os.environ:
     options.reproduce = os.environ['EMCC_REPRODUCE']
 
-  # For internal consistency, ensure we don't attempt or read or write any link time
+  # For internal consistency, ensure we don't attempt to read or write any link time
   # settings until we reach the linking phase.
   settings.limit_settings(COMPILE_TIME_SETTINGS)
 
@@ -353,10 +358,7 @@ def separate_linker_flags(newargs):
       return newargs[i + 1]
 
     if not arg.startswith('-') or arg == '-':
-      # os.devnul should always be reported as existing but there is bug in windows
-      # python before 3.8:
-      # https://bugs.python.org/issue1311
-      if not os.path.exists(arg) and arg not in (os.devnull, '-'):
+      if not os.path.exists(arg) and arg != '-':
         exit_with_error('%s: No such file or directory ("%s" was expected to be an input file, based on the commandline arguments provided)', arg, arg)
       add_link_arg(arg, True)
     elif arg == '-z':
@@ -369,7 +371,7 @@ def separate_linker_flags(newargs):
       add_link_arg(get_next_arg())
     elif arg == '-s' or arg.startswith(('-l', '-L', '--js-library=', '-z', '-u')):
       add_link_arg(arg)
-    elif not arg.startswith('-o') and arg not in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
+    elif not arg.startswith('-o') and arg not in {'-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'}:
       # All other flags are for the compiler
       compiler_args.append(arg)
       if skip:
@@ -402,9 +404,6 @@ def phase_setup(state):
             'unused-command-line-argument',
             "linker flag ignored during compilation: '%s'" % arg)
 
-  if settings.SIDE_MODULE:
-    settings.RELOCATABLE = 1
-
   if 'USE_PTHREADS' in user_settings:
     settings.PTHREADS = settings.USE_PTHREADS
 
@@ -416,7 +415,7 @@ def phase_setup(state):
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
     # on the command line.  This is no longer valid so report either an error or a warning (for
     # backwards compat with the old `DISABLE_EXCEPTION_CATCHING=2`
-    if user_settings['DISABLE_EXCEPTION_CATCHING'] in ('0', '2'):
+    if user_settings['DISABLE_EXCEPTION_CATCHING'] in {'0', '2'}:
       diagnostics.warning('deprecated', 'DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED')
     else:
       exit_with_error('DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive')
@@ -513,13 +512,13 @@ def phase_compile_inputs(options, state, newargs):
   compile_args, linker_args = separate_linker_flags(newargs)
 
   # Map of file basenames to how many times we've seen them.  We use this to generate
-  # unique `_NN` suffix for object files in cases when we are compiling multiple soures that
+  # unique `_NN` suffix for object files in cases when we are compiling multiple sources that
   # have the same basename.  e.g. `foo/utils.c` and `bar/utils.c` on the same command line.
   seen_names = {}
 
   def uniquename(name):
     if name not in seen_names:
-      # No suffix needed the firt time we see given name.
+      # No suffix needed the first time we see given name.
       seen_names[name] = 1
       return name
 
@@ -550,7 +549,7 @@ def phase_compile_inputs(options, state, newargs):
       # but we want the `.dwo` file to be generated in the current working directory,
       # like it is under clang.  We could avoid this hack if we use the clang driver
       # to generate the temporary files, but that would also involve using the clang
-      # driver to perform linking which would be big change.
+      # driver to perform linking which would be a big change.
       cmd += ['-Xclang', '-split-dwarf-file', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
       cmd += ['-Xclang', '-split-dwarf-output', '-Xclang', unsuffixed_basename(input_file) + '.dwo']
     shared.check_call(cmd)

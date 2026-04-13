@@ -93,7 +93,7 @@ export function preprocess(filename) {
   const IGNORE = 0;
   const SHOW = 1;
   // This state is entered after we have shown one of the block of an if/elif/else sequence.
-  // Once we enter this state we dont show any blocks or evaluate any
+  // Once we enter this state we don't show any blocks or evaluate any
   // conditions until the sequence ends.
   const IGNORE_ALL = 2;
   const showStack = [];
@@ -331,14 +331,39 @@ function splitI64(value) {
 export function indentify(text, indent) {
   // Don't try to indentify huge strings - we may run out of memory
   if (text.length > 1024 * 1024) return text;
-  if (typeof indent == 'number') {
-    const len = indent;
-    indent = '';
-    for (let i = 0; i < len; i++) {
-      indent += ' ';
+
+  indent = ' '.repeat(indent);
+
+  // Perform indentation in a smart fashion that does not leak indentation
+  // inside multiline strings enclosed in `` characters.
+  let out = '';
+  for (let i = 0; i < text.length; ++i) {
+    // Output a C++ comment as-is, don't get confused by ` inside a C++ comment.
+    if (text[i] == '/' && text[i + 1] == '/') {
+      for (; i < text.length && text[i] != '\n'; ++i) {
+        out += text[i];
+      }
     }
+
+    if (text[i] == '/' && text[i + 1] == '*') {
+      // Skip /* so that /*/ won't be mistaken as start& end of a /* */ comment.
+      out += text[i++];
+      out += text[i++];
+      for (; i < text.length && !(text[i - 1] == '*' && text[i] == '/'); ++i) {
+        out += text[i];
+      }
+    }
+
+    if (text[i] == '`') {
+      out += text[i++]; // Emit `
+      for (; i < text.length && text[i] != '`'; ++i) {
+        out += text[i];
+      }
+    }
+    out += text[i];
+    if (text[i] == '\n') out += indent;
   }
-  return text.replace(/\n/g, `\n${indent}`);
+  return out;
 }
 
 // Correction tools
@@ -623,22 +648,21 @@ export function makeReturn64(value) {
   return `(setTempRet0(${pair[1]}), ${pair[0]})`;
 }
 
-function makeThrow(excPtr) {
-  if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
-    var assertInfo =
-      'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
-    if (MAIN_MODULE) {
-      assertInfo +=
-        ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
+function makeThrow() {
+  if (DISABLE_EXCEPTION_CATCHING) {
+    if (ASSERTIONS) {
+      var assertInfo =
+        'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
+      if (MAIN_MODULE) {
+        assertInfo +=
+          ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
+      }
+      return `assert(false, '${assertInfo}');`;
+    } else {
+      return 'abort()';
     }
-    return `assert(false, '${assertInfo}');`;
   }
-  return `throw ${excPtr};`;
-}
-
-function storeException(varName, excPtr) {
-  var exceptionToStore = EXCEPTION_STACK_TRACES ? `new CppException(${excPtr})` : `${excPtr}`;
-  return `${varName} = ${exceptionToStore};`;
+  return 'throw exceptionLast;';
 }
 
 function charCode(char) {
@@ -1102,10 +1126,13 @@ function ENVIRONMENT_IS_WORKER_THREAD() {
 }
 
 function nodeDetectionCode() {
-  if (ENVIRONMENT == 'node') {
+  if (ENVIRONMENT == 'node' && !ASSERTIONS) {
     // The only environment where this code is intended to run is Node.js.
     // Return unconditional true so that later Closure optimizer will be able to
     // optimize code size.
+    //
+    // Note: we don't do this in debug builds because we have have assertions
+    // that want to be able to check if we really are running on node or not.
     return 'true';
   }
   return "globalThis.process?.versions?.node && globalThis.process?.type != 'renderer'";
@@ -1115,9 +1142,9 @@ function nodePthreadDetection() {
   // Under node we detect that we are running in a pthread by checking the
   // workerData property.
   if (EXPORT_ES6) {
-    return "(await import('worker_threads')).workerData === 'em-pthread'";
+    return "(await import('node:worker_threads')).workerData === 'em-pthread'";
   } else {
-    return "require('worker_threads').workerData === 'em-pthread'";
+    return "require('node:worker_threads').workerData === 'em-pthread'";
   }
 }
 
@@ -1125,9 +1152,25 @@ function nodeWWDetection() {
   // Under node we detect that we are running in a wasm worker by checking the
   // workerData property.
   if (EXPORT_ES6) {
-    return "(await import('worker_threads')).workerData === 'em-ww'";
+    return "(await import('node:worker_threads')).workerData === 'em-ww'";
   } else {
-    return "require('worker_threads').workerData === 'em-ww'";
+    return "require('node:worker_threads').workerData === 'em-ww'";
+  }
+}
+
+function wasmWorkerDetection() {
+  if (ASSERTIONS) {
+    return "globalThis.name?.startsWith('em-ww')";
+  } else {
+    return "globalThis.name == 'em-ww'";
+  }
+}
+
+function pthreadDetection() {
+  if (ASSERTIONS) {
+    return "globalThis.name?.startsWith('em-pthread')";
+  } else {
+    return "globalThis.name == 'em-pthread'";
   }
 }
 
@@ -1211,9 +1254,10 @@ addToCompileTimeContext({
   runtimeKeepalivePop,
   runtimeKeepalivePush,
   splitI64,
-  storeException,
   to64,
   toIndexType,
   nodePthreadDetection,
   nodeWWDetection,
+  wasmWorkerDetection,
+  pthreadDetection,
 });

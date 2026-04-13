@@ -13,7 +13,6 @@ import subprocess
 import sys
 from inspect import signature
 from pathlib import Path
-from typing import Dict, Set
 from urllib.request import urlopen
 
 from tools import cache, config, shared, system_libs, utils
@@ -22,7 +21,7 @@ from tools.toolchain_profiler import ToolchainProfiler
 
 ports = []
 
-ports_by_name: Dict[str, object] = {}
+ports_by_name: dict[str, object] = {}
 
 ports_needed = set()
 
@@ -238,7 +237,7 @@ class Ports:
             dirs.remove(ex)
         for f in files:
           ext = utils.suffix(f)
-          if ext in ('.c', '.cpp') and not any((excluded in f) for excluded in exclude_files):
+          if ext in {'.c', '.cpp'} and not any((excluded in f) for excluded in exclude_files):
             srcs.append(os.path.join(root, f))
 
     cflags = system_libs.get_base_cflags(build_dir) + ['-O2', '-I' + src_dir] + flags
@@ -261,7 +260,7 @@ class Ports:
         dirname = os.path.dirname(obj)
         os.makedirs(dirname, exist_ok=True)
         cmd = [shared.EMCC, '-c', src, '-o', obj] + cflags
-        if utils.suffix(src) in ('.cc', '.cxx', '.cpp'):
+        if utils.suffix(src) in {'.cc', '.cxx', '.cpp'}:
           cmd[0] = shared.EMXX
           cmd += cxxflags
         commands.append(cmd)
@@ -287,7 +286,7 @@ class Ports:
   def get_build_dir():
     return system_libs.get_build_dir()
 
-  name_cache: Set[str] = set()
+  name_cache: set[str] = set()
 
   @staticmethod
   def fetch_port_artifact(name, url, sha512hash=None):

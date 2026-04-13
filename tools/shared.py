@@ -19,10 +19,7 @@ from subprocess import PIPE
 
 from .toolchain_profiler import ToolchainProfiler
 
-# We depend on python 3.8 features
-if sys.version_info < (3, 8): # noqa: UP036
-  print(f'error: emscripten requires python 3.8 or above ({sys.executable} {sys.version})', file=sys.stderr)
-  sys.exit(1)
+assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
 
 from . import colored_logger
 
@@ -43,7 +40,7 @@ import contextlib
 
 from . import cache, config, diagnostics, filelock, tempfiles, utils
 from .settings import settings
-from .utils import bat_suffix, exit_with_error, memoize, path_from_root, safe_ensure_dirs
+from .utils import exe_path_from_root, exit_with_error, memoize, path_from_root, safe_ensure_dirs
 
 DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
 PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
@@ -56,7 +53,7 @@ SKIP_SUBPROCS = False
 # in debian/stable (bookworm).  We need at least v18.3.0 because we make
 # use of util.parseArg which was added in v18.3.0.
 MINIMUM_NODE_VERSION = (18, 3, 0)
-EXPECTED_LLVM_VERSION = 22
+EXPECTED_LLVM_VERSION = 23
 
 # These get set by setup_temp_dirs
 TEMP_DIR = None
@@ -70,6 +67,8 @@ diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('experimental')
 # Don't show legacy settings warnings by default
+# See https://github.com/emscripten-core/emscripten/pull/10615 for the rationale
+# behind not showing this warning by default.
 diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 # Catch-all for other emcc warnings
 diagnostics.add_warning('linkflags')
@@ -186,7 +185,7 @@ def check_call(cmd, *args, **kw):
   except subprocess.CalledProcessError as e:
     exit_with_error("'%s' failed (%s)", shlex.join(cmd), returncode_to_str(e.returncode))
   except OSError as e:
-    exit_with_error("'%s' failed: %s", shlex.join(cmd), str(e))
+    exit_with_error("'%s' failed: %s", shlex.join(cmd), e)
 
 
 def exec_process(cmd):
@@ -197,7 +196,7 @@ def exec_process(cmd):
 def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
   """Execute a javascript tool.
 
-  This is used by emcc to run parts of the build process that are written
+  This is used by emcc to run parts of the build process that are
   implemented in javascript.
   """
   command = config.NODE_JS + node_args + [filename] + jsargs
@@ -279,13 +278,15 @@ def env_with_node_in_path():
 
 def _get_node_version_pair(nodejs):
   actual = utils.run_process(nodejs + ['--version'], stdout=PIPE).stdout.strip()
-  version = actual.replace('v', '')
+  version = actual.removeprefix('v')
   version = version.split('-')[0].split('.')
   version = tuple(int(v) for v in version)
   return actual, version
 
 
 def get_node_version(nodejs):
+  if not nodejs:
+    return None
   return _get_node_version_pair(nodejs)[1]
 
 
@@ -297,7 +298,8 @@ def check_node_version():
     diagnostics.warning('version-check', 'cannot check node version: %s', e)
     return
 
-  if version < MINIMUM_NODE_VERSION:
+  # Skip the version check is we are running `bun` instead of node.
+  if version < MINIMUM_NODE_VERSION and 'bun' not in os.path.basename(config.NODE_JS[0]):
     expected = '.'.join(str(v) for v in MINIMUM_NODE_VERSION)
     diagnostics.warning('version-check', f'node version appears too old (seeing "{actual}", expected "v{expected}")')
 
@@ -324,22 +326,13 @@ def node_exception_flags(nodejs):
   return []
 
 
-def node_pthread_flags(nodejs):
-  node_version = get_node_version(nodejs)
-  # bulk memory and wasm threads were enabled by default in node v16.
-  if node_version and node_version < (16, 0, 0):
-    return ['--experimental-wasm-bulk-memory', '--experimental-wasm-threads']
-  else:
-    return []
-
-
 @memoize
 @ToolchainProfiler.profile()
 def check_node():
   try:
     utils.run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
-    exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, str(e))
+    exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, e)
 
 
 def generate_sanity():
@@ -451,7 +444,7 @@ def llvm_tool_path_with_suffix(tool, suffix):
   if suffix:
     tool += '-' + suffix
   llvm_root = os.path.expanduser(config.LLVM_ROOT)
-  return os.path.join(llvm_root, utils.exe_suffix(tool))
+  return utils.find_exe(llvm_root, tool)
 
 
 # Some distributions ship with multiple llvm versions so they add
@@ -517,7 +510,7 @@ def setup_temp_dirs():
     try:
       safe_ensure_dirs(EMSCRIPTEN_TEMP_DIR)
     except Exception as e:
-      exit_with_error(str(e) + f'Could not create canonical temp dir. Check definition of TEMP_DIR in {config.EM_CONFIG}')
+      exit_with_error('error creating canonical temp dir (Check definition of TEMP_DIR in %s): %s', config.EM_CONFIG, e)
 
     # Since the canonical temp directory is, by definition, the same
     # between all processes that run in DEBUG mode we need to use a multi
@@ -586,7 +579,7 @@ def is_internal_global(name):
 def is_user_export(name):
   if is_internal_global(name):
     return False
-  return name not in ['__indirect_function_table', 'memory'] and not name.startswith(('dynCall_', 'orig$'))
+  return name not in {'__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'} and not name.startswith(('dynCall_', 'orig$'))
 
 
 def asmjs_mangle(name):
@@ -639,16 +632,15 @@ LLVM_RANLIB = llvm_tool_path('llvm-ranlib')
 LLVM_NM = llvm_tool_path('llvm-nm')
 LLVM_DWARFDUMP = llvm_tool_path('llvm-dwarfdump')
 LLVM_OBJCOPY = llvm_tool_path('llvm-objcopy')
-LLVM_STRIP = llvm_tool_path('llvm-strip')
 WASM_LD = llvm_tool_path('wasm-ld')
 LLVM_PROFDATA = llvm_tool_path('llvm-profdata')
 LLVM_COV = llvm_tool_path('llvm-cov')
 
-EMCC = bat_suffix(path_from_root('emcc'))
-EMXX = bat_suffix(path_from_root('em++'))
-EMAR = bat_suffix(path_from_root('emar'))
-EMRANLIB = bat_suffix(path_from_root('emranlib'))
-FILE_PACKAGER = bat_suffix(path_from_root('tools/file_packager'))
+EMCC = exe_path_from_root('emcc')
+EMXX = exe_path_from_root('em++')
+EMAR = exe_path_from_root('emar')
+EMRANLIB = exe_path_from_root('emranlib')
+FILE_PACKAGER = exe_path_from_root('tools/file_packager')
 # Windows .dll suffix is not included in this list, since those are never
 # linked to directly on the command line.
 DYLIB_EXTENSIONS = ['.dylib', '.so']

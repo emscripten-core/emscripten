@@ -42,7 +42,7 @@ void emscripten_asm_const_async_on_main_thread(
 }
 #endif // __cplusplus
 
-// EM_ASM does not work strict C mode.
+// EM_ASM does not work in strict C mode.
 #if !defined(__cplusplus) && defined(__STRICT_ANSI__)
 
 #define EM_ASM_ERROR _Pragma("GCC error(\"EM_ASM does not work in -std=c* modes, use -std=gnu* modes instead\")")
@@ -145,7 +145,7 @@ void emscripten_asm_const_async_on_main_thread(
 // incorrectly). So we can use a template class instead to build a temporary
 // buffer of characters.
 
-// As emscripten is require to build successfully with -std=c++03, we cannot
+// As emscripten is required to build successfully with -std=c++03, we cannot
 // use std::tuple or std::integral_constant. Using C++11 features is only a
 // warning in modern Clang, which are ignored in system headers.
 template<typename, typename = void> struct __em_asm_sig {};

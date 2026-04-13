@@ -27,7 +27,7 @@ void* loopthread(void* arg) {
 
 void mainloop() {
   if (loopthread_done) {
-    printf("joinng..\n");
+    printf("joining..\n");
     pthread_join(thread, NULL);
     printf("join done\n");
     emscripten_cancel_main_loop();

@@ -18,7 +18,7 @@
  *
  * What it does not but should probably do:
  * - Transmit events when glfwPollEvents, glfwWaitEvents or glfwSwapBuffers is
- *    called. Events callbacks are called as soon as event are received.
+ *    called. Events callbacks are called as soon as events are received.
  * - Input modes.
  * - Gamma ramps.
  * - Video modes.
@@ -41,7 +41,7 @@ var LibraryGLFW = {
       this.id = id;
       this.x = 0;
       this.y = 0;
-      this.fullscreen = false; // Used to determine if app in fullscreen mode
+      this.fullscreen = false; // Used to determine if app is in fullscreen mode
       this.storedX = 0; // Used to store X before fullscreen
       this.storedY = 0; // Used to store Y before fullscreen
       this.width = width;
@@ -838,29 +838,34 @@ var LibraryGLFW = {
       event.preventDefault();
 
 #if FILESYSTEM
+      var drop_dir = '.glfw_dropped_files';
       var filenames = _malloc(event.dataTransfer.files.length * {{{ POINTER_SIZE }}});
       var filenamesArray = [];
-      var count = event.dataTransfer.files.length;
+      for (var i = 0; i < event.dataTransfer.files.length; ++i) {
+        var path = `/${drop_dir}/${event.dataTransfer.files[i].name.replace(/\//g, "_")}`;
+        var filename = stringToNewUTF8(path);
+        filenamesArray.push(filename);
+        {{{ makeSetValue('filenames', `i*${POINTER_SIZE}` , 'filename', '*') }}};
+      }
 
       // Read and save the files to emscripten's FS
       var written = 0;
-      var drop_dir = '.glfw_dropped_files';
       FS.createPath('/', drop_dir);
 
-      function save(file) {
-        var path = '/' + drop_dir + '/' + file.name.replace(/\//g, '_');
+      function save(file, in_path, numfiles) {
+        var path = '/' + drop_dir + in_path + '/' + file.name.replace(/\//g, '_');
         var reader = new FileReader();
         reader.onloadend = (e) => {
           if (reader.readyState != 2) { // not DONE
             ++written;
-            out('failed to read dropped file: '+file.name+': '+reader.error);
+            err(`failed to read dropped file: ${in_path}/${file.name}: ${reader.error}`);
             return;
           }
 
           var data = e.target.result;
           FS.writeFile(path, new Uint8Array(data));
-          if (++written === count) {
-            {{{ makeDynCall('vpip', 'GLFW.active.dropFunc') }}}(GLFW.active.id, count, filenames);
+          if (++written === numfiles) {
+            {{{ makeDynCall('vpip', 'GLFW.active.dropFunc') }}}(GLFW.active.id, filenamesArray.length, filenames);
 
             for (var i = 0; i < filenamesArray.length; ++i) {
               _free(filenamesArray[i]);
@@ -869,14 +874,61 @@ var LibraryGLFW = {
           }
         };
         reader.readAsArrayBuffer(file);
-
-        var filename = stringToNewUTF8(path);
-        filenamesArray.push(filename);
-        {{{ makeSetValue('filenames', `i*${POINTER_SIZE}` , 'filename', '*') }}};
       }
 
-      for (var i = 0; i < count; ++i) {
-        save(event.dataTransfer.files[i]);
+      let filesQ = [];
+      function finalize() {
+        var count = filesQ.length;
+        for (var i = 0; i < count; ++i) {
+          save(filesQ[i].file, filesQ[i].path, count);
+        }
+      } 
+
+      if (DataTransferItem.prototype.webkitGetAsEntry) {
+        let entriesTree = {};
+        function markDone(fullpath, recursive) {
+          if (entriesTree[fullpath].subpaths.length != 0) return;
+          delete entriesTree[fullpath];
+          let parentpath = fullpath.substring(0, fullpath.lastIndexOf('/'));
+          if (!entriesTree.hasOwnProperty(parentpath)) {
+            if (Object.keys(entriesTree).length == 0) finalize();
+            return;
+          }
+          const fpIndex = entriesTree[parentpath].subpaths.indexOf(fullpath);
+          if (fpIndex > -1) entriesTree[parentpath].subpaths.splice(fpIndex, 1);
+          if (recursive) markDone(parentpath, true);
+          if (Object.keys(entriesTree).length == 0) finalize();
+        }
+        function processEntry(entry) {
+          let fp = entry.fullPath;
+          let pp = fp.substring(0, fp.lastIndexOf('/'));
+          entriesTree[fp] = { subpaths: [] };
+          if (entry.isFile) {
+            entry.file((f) => { filesQ.push({ file: f, path: pp }); markDone(fp, false); })
+          } else if (entry.isDirectory) {
+            if (entriesTree.hasOwnProperty(pp)) entriesTree[pp].subpaths.push(fp);
+            FS.createPath("/" + drop_dir + pp, entry.name);
+            var reader = entry.createReader();
+            var rRead = function (dirEntries) {
+              if (dirEntries.length == 0) {
+                markDone(fp, true);
+                return;
+              }
+              for (const ent of dirEntries) processEntry(ent);
+              reader.readEntries(rRead);
+            };
+            reader.readEntries(rRead);
+          }
+        }
+        for (const item of event.dataTransfer.items) {
+          processEntry(item.webkitGetAsEntry());
+        }
+      } else {
+        // fallback for browsers that does not support webkitGetAsEntry
+        for (const file of event.dataTransfer.files) {
+          filesQ.push({ file: file, path: "" });
+        }
+        finalize();
       }
 #endif // FILESYSTEM
 
@@ -900,7 +952,7 @@ var LibraryGLFW = {
       // As documented in GLFW2 API (http://www.glfw.org/GLFWReference27.pdf#page=22), when size
       // callback function is set, it will be called with the current window size before this
       // function returns.
-      // GLFW3 on the over hand doesn't have this behavior (https://github.com/glfw/glfw/issues/62).
+      // GLFW3 on the other hand doesn't have this behavior (https://github.com/glfw/glfw/issues/62).
       if (!win.windowSizeFunc) return null;
       {{{ makeDynCall('vii', 'win.windowSizeFunc') }}}(win.width, win.height);
 #endif
@@ -975,7 +1027,7 @@ var LibraryGLFW = {
           err('glfwSetInputMode called with GLFW_LOCK_KEY_MODS mode not implemented');
           break;
         }
-        case 0x000330005: { // GLFW_RAW_MOUSE_MOTION
+        case 0x00033005: { // GLFW_RAW_MOUSE_MOTION
           err('glfwSetInputMode called with GLFW_RAW_MOUSE_MOTION mode not implemented');
           break;
         }
@@ -1547,7 +1599,7 @@ var LibraryGLFW = {
     // AFAIK there is no way to do this in javascript
     // Maybe with platform specific ccalls?
     //
-    // Lets report 0 now which is wrong as it can get for end user.
+    // Let's report 0 now which is as wrong as it can get for end user.
     {{{ makeSetValue('width', '0', '0', 'i32') }}};
     {{{ makeSetValue('height', '0', '0', 'i32') }}};
   },
@@ -1805,7 +1857,7 @@ var LibraryGLFW = {
 
   glfwGetCursorPos: (winid, x, y) => GLFW.getCursorPos(winid, x, y),
 
-  // I believe it is not possible to move the mouse with javascript
+  // I believe it is not possible to move the mouse with JavaScript
   glfwSetCursorPos: (winid, x, y) => GLFW.setCursorPos(winid, x, y),
 
   glfwSetKeyCallback: (winid, cbfun) => GLFW.setKeyCallback(winid, cbfun),

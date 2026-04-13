@@ -92,12 +92,12 @@ def main():
     upstream_dir = os.path.join(libc_upstream_dir, dirname)
     local_dir = os.path.join(libc_local_dir, dirname)
     copy_tree(upstream_dir, local_dir)
-  
+
   # Certain llvm-libc files that are incompatible in Emscripten
-  for excludsion_pattern in libc_exclusion_patterns:
-    files_to_exclude = glob.glob(os.path.join(libc_local_dir, excludsion_pattern))
+  for exclusion_pattern in libc_exclusion_patterns:
+    files_to_exclude = glob.glob(os.path.join(libc_local_dir, exclusion_pattern))
     for file in files_to_exclude:
-        os.remove(file)
+      os.remove(file)
 
 if __name__ == '__main__':
   main()

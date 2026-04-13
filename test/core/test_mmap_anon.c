@@ -53,6 +53,6 @@ int main(int argc, char* argv[]) {
 
   assert(munmap(map, NUM_BYTES) == 0);
 
-  printf("hello,world\n");
+  printf("done\n");
   return 0;
 }

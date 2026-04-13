@@ -429,7 +429,7 @@ var LibraryHtml5WebGL = {
     target ||= Module['canvas'];
 #endif
 
-    var webGlEventHandlerFunc = (e = event) => {
+    var webGlEventHandlerFunc = (e) => {
 #if PTHREADS
       if (targetThread) __emscripten_run_callback_on_thread(targetThread, callbackfunc, eventTypeId, 0, userData);
       else
@@ -618,7 +618,7 @@ function handleWebGLProxying(funcs) {
     }
   }
 #else
-  // In single threaded mode just delete our custom __proxy addributes, otherwise
+  // In single threaded mode just delete our custom __proxy attributes, otherwise
   // they will causes errors in the JS compiler.
   for (const i in funcs) {
     delete funcs[i + '__proxy'];

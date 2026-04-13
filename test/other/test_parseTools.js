@@ -12,7 +12,7 @@ addToLibrary({
     return 0;
   },
 
-  // receiveI64ParamAsDoulbe is a legacy function that is no longer
+  // receiveI64ParamAsDouble is a legacy function that is no longer
   // used within emscripten, but we continue to test it in case
   // there are external users.
   test_receiveI64ParamAsDouble: function({{{ defineI64Param('arg1') }}},
@@ -39,7 +39,7 @@ addToLibrary({
     // When interpreted as an unsigned value that bytes stored at in the linear
     // memory represent a number outside of the i53 range so we get some
     // rounding here.
-    // readI53FromU64 doesn't currently have any kind of range checkes, even in
+    // readI53FromU64 doesn't currently have any kind of range checks, even in
     // debug mode.
     val = {{{ makeGetValue('ptr', '0', 'u53') }}};
     out('u53: ' + val.toString(16))

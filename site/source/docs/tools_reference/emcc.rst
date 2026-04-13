@@ -225,7 +225,7 @@ Options that are modified or new in *emcc* are listed below:
   [link]
   Make the output suitable for profiling. This means including function names in the wasm and JS output, and
   preserving whitespace in the JS output. It does not affect optimizations (to ensure that performance profiles
-  reflect production builds). Currenly this is the same as ``-g2``.
+  reflect production builds). Currently this is the same as ``-g2``.
 
 .. _emcc-profiling-funcs:
 
@@ -259,7 +259,7 @@ Options that are modified or new in *emcc* are listed below:
 
 ``--emit-minification-map <file>``
   [link]
-  In cases where emscripten performs import/export minificiton this option can
+  In cases where emscripten performs import/export minification this option can
   be used to output a file that maps minified names back to their original
   names.  The format of this file is single line per import/export of the form
   ``<minname>:<origname>``.
@@ -383,7 +383,7 @@ Options that are modified or new in *emcc* are listed below:
 
   .. note::
 
-    - See `src/shell.html <https://github.com/emscripten-core/emscripten/blob/main/src/shell.html>`_ and `src/shell_minimal.html <https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html>`_ for examples.
+    - See `html/shell.html <https://github.com/emscripten-core/emscripten/blob/main/html/shell.html>`_ and `html/shell_minimal.html <https://github.com/emscripten-core/emscripten/blob/main/html/shell_minimal.html>`_ for examples.
     - This argument is ignored if a target other than HTML is specified using the ``-o`` option.
 
 .. _emcc-source-map-base:
@@ -521,12 +521,6 @@ Options that are modified or new in *emcc* are listed below:
   [compile+link]
   Enables warnings about the use of absolute paths in ``-I`` and ``-L`` command line directives. This is used to warn against unintentional use of absolute paths, which is sometimes dangerous when referring to nonportable local system headers.
 
-.. _proxy-to-worker:
-
-``--proxy-to-worker``
-  [link]
-  Runs the main application code in a worker, proxying events to it and output from it. If emitting HTML, this emits a **.html** file, and a separate **.js** file containing the JavaScript to be run in a worker. If emitting JavaScript, the target file name contains the part to be run on the main thread, while a second **.js** file with suffix ".worker.js" will contain the worker portion.
-
 .. _emcc-emrun:
 
 ``--emrun``
@@ -573,6 +567,10 @@ Options that are modified or new in *emcc* are listed below:
 
   These rules only apply when linking.  When compiling to object code (See `-c`
   below) the name of the output file is irrelevant.
+
+  Note: Linking to a file with no extension (or a file ending in ``.out``, like
+  ``a.out``) will cause the generated JavaScript file to be exectuable, and
+  include a ``#!`` line to make it runnable directly.
 
 .. _emcc-c:
 

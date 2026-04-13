@@ -30,6 +30,8 @@
 
 # Use #include <emscripten/dom_pk_codes.h> in your code to access these IDs.
 
+# ruff: noqa: E241
+
 import os
 import random
 import sys
@@ -281,8 +283,8 @@ h_filename = os.path.join(root, 'system/include/emscripten/dom_pk_codes.h')
 c_filename = os.path.join(root, 'system/lib/html5/dom_pk_codes.c')
 print(f'Writing: {h_filename}')
 print(f'Writing: {c_filename}')
-h_file = open(h_filename, 'w')
-c_file = open(c_filename, 'w')
+h_file = open(h_filename, 'w', encoding='utf-8')
+c_file = open(c_filename, 'w', encoding='utf-8')
 
 
 # Generate the output file:

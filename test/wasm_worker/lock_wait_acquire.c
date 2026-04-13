@@ -2,7 +2,12 @@
 #include <emscripten/wasm_worker.h>
 #include <emscripten/threading.h>
 #include <stdlib.h>
+#include <stdio.h>
 #include <assert.h>
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+#include <pthread.h>
+#endif
 
 // Tests emscripten_lock_wait_acquire() and emscripten_lock_try_acquire() in Worker.
 
@@ -45,9 +50,24 @@ void worker_main() {
 #endif
 }
 
+#ifdef __EMSCRIPTEN_PTHREADS__
+void* thread_main(void* arg) {
+  worker_main();
+  return NULL;
+}
+#else
 char stack[1024];
+#endif
 
 int main() {
+#ifdef __EMSCRIPTEN_PTHREADS__
+  pthread_t t;
+  pthread_create(&t, NULL, thread_main, NULL);
+  pthread_join(t, NULL);
+  printf("done\n");
+#else
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
+#endif
+  return 0;
 }

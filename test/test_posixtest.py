@@ -14,8 +14,11 @@ import os
 import unittest
 
 import test_posixtest_browser
+from browser_common import browser_should_skip_feature
 from common import RunnerCore, path_from_root
-from decorators import node_pthreads
+from decorators import requires_pthreads
+
+from tools.feature_matrix import Feature
 
 testsuite_root = path_from_root('test/third_party/posixtestsuite')
 
@@ -74,6 +77,7 @@ unsupported_noreturn = {
   'test_pthread_join_6_3': 'creates too many threads',
   'test_pthread_barrier_wait_3_2': 'signals are not supported',
   'test_pthread_cond_broadcast_1_2': 'tries to create 10,0000 threads, then depends on fork()',
+  'test_pthread_setcanceltype_1_1': 'async cancelation does not work withing pthread_mutex_lock',
 }
 
 unsupported = {
@@ -157,10 +161,13 @@ expect_fail = {
 
 def make_test(name, testfile, browser):
 
-  @node_pthreads
+  @requires_pthreads
   def f(self):
     if name in disabled:
       self.skipTest(disabled[name])
+    if browser and browser_should_skip_feature('EMTEST_LACKS_SHARED_ARRAY_BUFFER', Feature.THREADS):
+      self.skipTest('This test requires a browser with SharedArrayBuffer support')
+
     args = ['-I' + os.path.join(testsuite_root, 'include'),
             '-Werror',
             '-Wno-format-security',

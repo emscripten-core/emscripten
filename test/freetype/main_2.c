@@ -116,7 +116,7 @@ main( int     argc,
 
   /* use 50pt at 100dpi */
   error = FT_Set_Char_Size( face, 0, 32 * 64, 0, 0 );                /* set character size */
-  if (error) printf("Set_Cshar_Size Error! %d\n", error);
+  if (error) printf("Set_Char_Size Error! %d\n", error);
   	
   slot = face->glyph;
 

@@ -35,7 +35,7 @@ separate and isolated instances of the same program.
 By default, the factory function is called ``Module``, but it can be given a
 unique name via the ``-sEXPORT_NAME`` setting.
 
-For example, a program is built using ``-sMODULARIZE -sEXPORT_NAME=Foo`` can
+For example, a program built using ``-sMODULARIZE -sEXPORT_NAME=Foo`` can
 be instantiated using:
 
 ::
@@ -113,11 +113,11 @@ Limitations
 -----------
 
 Some major features still do not work in this mode.  Many of these we hope to
-fix in future releses.  Current limitations include:
+fix in future releases.  Current limitations include:
 
-* Internal usage (e.g. usage within EM_JS / JS libary code) of the ``Module``
+* Internal usage (e.g. usage within EM_JS / JS library code) of the ``Module``
   global does not work.  This is because symbols are exported directly using
-  ES6 module syntax rathar than using the ``Module`` global.
+  ES6 module syntax rather than using the ``Module`` global.
 
 * The ``wasmExports`` internal global does not exist.
 
@@ -133,7 +133,7 @@ Source Phase Imports (experimental)
 ===================================
 
 `Source phase imports`_ is a JavaScript proposal that adds support for importing
-Wasm modules via ES import statements.  This allows emscripten to elide some of
+Wasm modules via ES import statements.  This allows Emscripten to elide some of
 the auto-generated code for finding and fetching the Wasm binary.
 
 See :ref:`source_phase_imports`.
@@ -146,7 +146,7 @@ ES Module Integration (experimental)
 ====================================
 
 `Wasm ESM integration`_ is a WebAssembly proposal that allows Wasm instances to
-be imported directly as ES modules.  This allows emscripten to elide a lot of
+be imported directly as ES modules.  This allows Emscripten to elide a lot of
 boilerplate code for linking up Wasm and JavaScript.
 
 See :ref:`wasm_esm_integration`.
@@ -156,7 +156,7 @@ Limitations
 
 This setting implicitly enables :ref:`export_es6` and sets :ref:`MODULARIZE` to
 ``instance``.  Because of this all the same limitations mentioned above for
-``-sMODULARIZE=intance`` apply.
+``-sMODULARIZE=instance`` apply.
 
 Some additional limitations are:
 

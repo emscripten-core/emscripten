@@ -13,7 +13,7 @@ Emscripten build output consists of two essential parts: 1) the low level compil
 
 Additional build output files can also exist, depending on which features are used. If the Emscripten file packager is used, a binary ``out.data`` package is generated, along with an associated ``out.data.js`` loader file. Also Emscripten pthreads and Fetch APIs have their own associated Web Worker related script ``.js`` output files.
 
-Developers can choose to output either to JavaScript or HTML. If outputting JavaScript (``emcc -o out.js``), the developer is expected to manually create the ``out.html`` main page in which the code is run in browsers. When targeting HTML with ``emcc -o out.html`` (the recommended build mode), Emscripten will generate the HTML shell file automatically. This shell file can be customized by using the ``emcc -o out.html --shell-file path/to/custom_shell.html`` linker directive. Copy the `default minimal HTML shell file <https://github.com/emscripten-core/emscripten/blob/main/src/shell_minimal.html>`_ from Emscripten repository to your project tree to get a good starting template for a customized shell file.
+Developers can choose to output either to JavaScript or HTML. If outputting JavaScript (``emcc -o out.js``), the developer is expected to manually create the ``out.html`` main page in which the code is run in browsers. When targeting HTML with ``emcc -o out.html`` (the recommended build mode), Emscripten will generate the HTML shell file automatically. This shell file can be customized by using the ``emcc -o out.html --shell-file path/to/custom_shell.html`` linker directive. Copy the `default minimal HTML shell file <https://github.com/emscripten-core/emscripten/blob/main/html/shell_minimal.html>`_ from Emscripten repository to your project tree to get a good starting template for a customized shell file.
 
 The following sections offer tips for improving the site experience.
 
@@ -71,8 +71,6 @@ An inherent property of asm.js and WebAssembly applications is that they need a 
 
 Because this memory allocation needs to be contiguous, it can happen that the user's browser process does have enough memory, but only the address space of the process is too fragmented, and there is not enough linear address space available to satisfy the allocation. To avoid this issue, the best practice is to allocate the ``WebAssembly.Memory`` object (``ArrayBuffer`` for asm.js) up front at the top of the main page, before any other allocations or page script load actions are done. This ensures that the allocation has best chances to succeed. See the fields ``Module['buffer']`` and ``Module['wasmMemory']`` for more information.
 
-Additionally, it is possible to opt in to content process isolation specifically for a web page that needs this kind of a large allocation. To utilize this machinery, specify the HTTP response header ``Large-Allocation: <MBytes>`` when serving the main html page. This support is currently implemented in Firefox 53.
-
 Last, it is easy to accidentally cling to large unneeded blocks of memory after the page has loaded. For example, in WebAssembly, once the WebAssembly Module has been instantiated to a ``WebAssembly.Instance`` object, the original ``WebAssembly.Module`` object is no longer needed in memory, and it is best to clear all references to it so that the garbage collector can reclaim it, because the Module object can be dozens of megabytes in size. Similar, make sure that all XHRed files, asset data and large scripts are not referenced anymore when not used. Check out the browser's memory profiling tool, and the ``about:memory`` page in Firefox to perform memory profiling to ensure that memory is not being wasted.
 
 Robust Error Handling
@@ -106,7 +104,7 @@ This way the page will be future compatible once support for the particular feat
 
 - Use a network limiter tool to constrain download or upload bandwidth speeds to simulate slow network connections. This can uncover bugs related to timing dependencies for network transfers. For example, a small network transfer may be implicitly assumed to finish before a large one, but that might not always be the case.
 
-- When developing the page locally, perform testing by using a local web server and not just via ``file://`` URLs. The script ``emrun.py`` in Emscripten source tree is designed to serve as an ad hoc web server for this purpose. Emrun is preconfigured to handle serving gzip compressed files (with suffix ``.gz``), and enables support for the ``Large-Allocation`` header, and allows command line automation runs of compiled pages.
+- When developing the page locally, perform testing by using a local web server and not just via ``file://`` URLs. The script ``emrun.py`` in Emscripten source tree is designed to serve as an ad hoc web server for this purpose. Emrun is preconfigured to handle serving gzip compressed files (with suffix ``.gz``), and allows command line automation runs of compiled pages.
 
 - Catch all exceptions that come from within entry points that call to compiled asm.js and WebAssembly code. There are three distinct exception classes that compiled code can throw:
 

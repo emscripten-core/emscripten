@@ -3,13 +3,12 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Simple color-enabled diagnositics reporting functions.
+"""Simple color-enabled diagnostics reporting functions.
 """
 
 import logging
 import os
 import sys
-from typing import Dict
 
 from . import colored_logger
 
@@ -39,7 +38,7 @@ def diag(level, msg, *args):
   prefix = level_prefixes[level]
   color = level_colors[level]
   if args:
-    msg = msg % args
+    msg %= args
 
   # Add colors
   prefix = colored_logger.with_bold_color(color, prefix)
@@ -57,7 +56,7 @@ def warn(msg, *args):
 
 
 class WarningManager:
-  warnings: Dict[str, Dict] = {}
+  warnings: dict[str, dict] = {}
 
   def add_warning(self, name, enabled=True, part_of_all=True, shared=False, error=False):
     self.warnings[name] = {
@@ -99,7 +98,7 @@ class WarningManager:
           cmd_args[i] = ''
           continue
 
-      warning_name = cmd_args[i].replace('-Wno-', '').replace('-W', '')
+      warning_name = cmd_args[i].removeprefix('-Wno-').removeprefix('-W')
       enabled = not cmd_args[i].startswith('-Wno-')
 
       # special case pre-existing warn-absolute-paths

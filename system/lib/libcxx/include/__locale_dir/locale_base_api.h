@@ -64,8 +64,6 @@
 // Character manipulation functions
 // --------------------------------
 // namespace __locale {
-//  int     __islower(int, __locale_t);
-//  int     __isupper(int, __locale_t);
 //  int     __isdigit(int, __locale_t);  // required by the headers
 //  int     __isxdigit(int, __locale_t); // required by the headers
 //  int     __toupper(int, __locale_t);
@@ -121,6 +119,8 @@
 #    include <__locale_dir/support/windows.h>
 #  elif defined(__Fuchsia__)
 #    include <__locale_dir/support/fuchsia.h>
+#  elif defined(__linux__)
+#    include <__locale_dir/support/linux.h>
 #  else
 
 // TODO: This is a temporary definition to bridge between the old way we defined the locale base API
@@ -208,11 +208,6 @@ __strtoull(const char* __nptr, char** __endptr, int __base, __locale_t __loc) {
 //
 // Character manipulation functions
 //
-#    if defined(_LIBCPP_BUILDING_LIBRARY)
-inline _LIBCPP_HIDE_FROM_ABI int __islower(int __ch, __locale_t __loc) { return islower_l(__ch, __loc); }
-inline _LIBCPP_HIDE_FROM_ABI int __isupper(int __ch, __locale_t __loc) { return isupper_l(__ch, __loc); }
-#    endif
-
 inline _LIBCPP_HIDE_FROM_ABI int __isdigit(int __ch, __locale_t __loc) { return isdigit_l(__ch, __loc); }
 inline _LIBCPP_HIDE_FROM_ABI int __isxdigit(int __ch, __locale_t __loc) { return isxdigit_l(__ch, __loc); }
 

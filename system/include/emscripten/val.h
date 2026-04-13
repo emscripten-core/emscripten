@@ -7,14 +7,16 @@
 
 #pragma once
 
-#include <cassert>
-#include <array>
-#include <climits>
 #include <emscripten/wire.h>
+
+#include <array>
+#include <cassert>
+#include <climits>
 #include <cstdint> // uintptr_t
-#include <vector>
-#include <type_traits>
+#include <optional>
 #include <pthread.h>
+#include <type_traits>
+#include <vector>
 #if __cplusplus >= 202002L
 #include <coroutine>
 #include <exception>
@@ -210,6 +212,12 @@ inline void writeGenericWireType(GenericWireType*& cursor, uint64_t wt) {
   ++cursor;
 }
 
+// Explicit overload for size_t to prevent fallback to the 32-bit generic template
+inline void writeGenericWireType(GenericWireType*& cursor, std::size_t wt) {
+  cursor->w[0].s = wt; // Uses the size_t member (64-bit in Memory64)
+  ++cursor;
+}
+
 template<typename T>
 void writeGenericWireType(GenericWireType*& cursor, T* wt) {
   cursor->w[0].p = wt;
@@ -225,6 +233,7 @@ inline void writeGenericWireType(GenericWireType*& cursor, const memory_view<Ele
 
 template<typename T>
 void writeGenericWireType(GenericWireType*& cursor, T wt) {
+  static_assert(sizeof(T) <= sizeof(cursor->w[0].u), "Generic wire type must be smaller than unsigned.");
   cursor->w[0].u = static_cast<unsigned>(wt);
   ++cursor;
 }
@@ -284,7 +293,7 @@ public:
       val view{ typed_memory_view(std::distance(begin, end), std::to_address(begin)) };
       return val(internal::_emval_new_array_from_memory_view(view.as_handle()));
     }
-    // For numeric arrays, following codes are unreachable and the compiler
+    // For numeric arrays, the following code is unreachable and the compiler
     // will do 'dead code elimination'.
     // Others fallback old way.
 #endif
@@ -557,9 +566,11 @@ public:
 
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
-  explicit val(EM_VAL handle)
-      : handle(handle), thread(pthread_self())
-  {}
+  explicit val(EM_VAL handle) :
+#ifdef _REENTRANT
+    thread(pthread_self()),
+#endif
+    handle(handle) {}
 
   // Whether this value is a uses incref/decref (true) or is a special reserved
   // value (false).
@@ -587,7 +598,7 @@ private:
   static Ret internalCallWithPolicy(EM_VAL handle, const char *methodName, Args&&... args) {
     using namespace internal;
 
-    using RetWire = BindingType<Ret>::WireType;
+    using RetWire = typename BindingType<Ret>::WireType;
 
     static constexpr typename Policy::template ArgTypeList<Ret, Args...> argTypes;
     thread_local EM_INVOKER mc = _emval_create_invoker(argTypes.getCount(), argTypes.getTypes(), Kind);
@@ -788,13 +799,13 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
                                               !std::is_const<T>::value>::type> {
   typedef EM_VAL WireType;
 
-  // Marshall to JS with move semantics when we can invalidate the temporary val
+  // Marshal to JS with move semantics when we can invalidate the temporary val
   // object.
   static WireType toWireType(val&& v, rvp::default_tag) {
     return v.release_ownership();
   }
 
-  // Marshal to JS with copy semantics when we cannot transfer the val objects
+  // Marshal to JS with copy semantics when we cannot transfer the val object's
   // reference count.
   static WireType toWireType(const val& v, rvp::default_tag) {
     EM_VAL handle = v.as_handle();
@@ -806,6 +817,29 @@ struct BindingType<T, typename std::enable_if<std::is_base_of<val, T>::value &&
   static T fromWireType(WireType v) {
     return T(val::take_ownership(v));
   }
+};
+
+template <typename T>
+struct BindingType<std::optional<T>> {
+    using ValBinding = BindingType<val>;
+    using WireType = ValBinding::WireType;
+
+    template<typename ReturnPolicy = void>
+    static WireType toWireType(std::optional<T> value, rvp::default_tag) {
+        if (value) {
+            return ValBinding::toWireType(val(*value, allow_raw_pointers()), rvp::default_tag{});
+        }
+        return ValBinding::toWireType(val::undefined(), rvp::default_tag{});
+    }
+
+
+    static std::optional<T> fromWireType(WireType value) {
+        val optional = val::take_ownership(value);
+        if (optional.isUndefined()) {
+            return {};
+        }
+        return optional.as<T>();
+    }
 };
 
 }

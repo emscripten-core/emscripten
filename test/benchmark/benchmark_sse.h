@@ -26,7 +26,7 @@
 #define aligned_alloc(align, size) _aligned_malloc((size), (align))
 #endif
 
-// Scalar horizonal max across four lanes.
+// Scalar horizontal max across four lanes.
 float hmax(__m128 m) {
   float f[4];
   _mm_storeu_ps(f, m);

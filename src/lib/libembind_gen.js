@@ -45,7 +45,7 @@ var LibraryEmbind = {
     }
 
     print(nameMap, out) {
-      out.push(`type ${this.name} = ${this.definition};\n\n`);
+      out.push(`export type ${this.name} = ${this.definition};\n\n`);
     }
   },
   $OptionalType: class {
@@ -177,6 +177,7 @@ var LibraryEmbind = {
       this.constructors = [];
       this.base = base;
       this.properties = [];
+      this.iterableElementType = null;
       this.destructorType = 'none';
       if (base) {
         this.destructorType = 'stack';
@@ -185,11 +186,16 @@ var LibraryEmbind = {
 
     print(nameMap, out) {
       out.push(`export interface ${this.name}`);
+      const extendsParts = [];
       if (this.base) {
-        out.push(` extends ${this.base.name}`);
+        extendsParts.push(this.base.name);
       } else {
-        out.push(' extends ClassHandle');
+        extendsParts.push('ClassHandle');
       }
+      if (this.iterableElementType) {
+        extendsParts.push(`Iterable<${nameMap(this.iterableElementType, true)}>`);
+      }
+      out.push(` extends ${extendsParts.join(', ')}`);
       out.push(' {\n');
       for (const property of this.properties) {
         const props = [];
@@ -291,23 +297,36 @@ var LibraryEmbind = {
   },
   $EnumDefinition: class {
     hasPublicSymbol = true;
-    constructor(typeId, name) {
+    constructor(typeId, name, valueType) {
       this.typeId = typeId;
       this.name = name;
       this.items = [];
       this.destructorType = 'none';
+      this.valueType = valueType;
     }
 
     print(nameMap, out) {
-      out.push(`export interface ${this.name}Value<T extends number> {\n`);
-      out.push('  value: T;\n}\n');
+      if (this.valueType === 'object') {
+        out.push(`export interface ${this.name}Value<T extends number> {\n`);
+        out.push('  value: T;\n}\n');
+      }
       out.push(`export type ${this.name} = `);
       if (this.items.length === 0) {
         out.push('never/* Empty Enumerator */');
       } else {
         const outItems = [];
         for (const [name, value] of this.items) {
-          outItems.push(`${this.name}Value<${value}>`);
+          switch (this.valueType) {
+            case 'object':
+              outItems.push(`${this.name}Value<${value}>`);
+              break;
+            case 'number':
+              outItems.push(`${value}`);
+              break;
+            case 'string':
+              outItems.push(`'${name}'`);
+              break;
+          }
         }
         out.push(outItems.join('|'));
       }
@@ -318,7 +337,17 @@ var LibraryEmbind = {
       out.push(`  ${this.name}: {`);
       const outItems = [];
       for (const [name, value] of this.items) {
-        outItems.push(`${name}: ${this.name}Value<${value}>`);
+        switch (this.valueType) {
+          case 'object':
+            outItems.push(`${name}: ${this.name}Value<${value}>`);
+            break;
+          case 'number':
+            outItems.push(`${name}: ${value}`);
+            break;
+          case 'string':
+            outItems.push(`${name}: '${name}'`);
+            break;
+        }
       }
       out.push(outItems.join(', '));
       out.push('};\n');
@@ -357,7 +386,7 @@ var LibraryEmbind = {
       out.push(`export type ${this.name} = {\n`);
       const outFields = [];
       for (const {name, type} of this.fields) {
-        outFields.push(`  ${name}: ${nameMap(type)}`);
+        outFields.push(`  ${name}${type instanceof OptionalType ? '?' : ''}: ${nameMap(type)}`);
       }
       out.push(outFields.join(',\n'))
       out.push('\n};\n\n');
@@ -629,6 +658,15 @@ var LibraryEmbind = {
     );
 
   },
+  _embind_register_iterable__deps: ['$whenDependentTypesAreResolved'],
+  _embind_register_iterable: (rawClassType, rawElementType, sizeMethodName, getMethodName) => {
+    whenDependentTypesAreResolved([], [rawClassType, rawElementType], (types) => {
+      const classType = types[0];
+      const elementType = types[1];
+      classType.iterableElementType = elementType;
+      return [];
+    });
+  },
   _embind_register_class_constructor__deps: ['$whenDependentTypesAreResolved', '$createFunctionDefinition'],
   _embind_register_class_constructor: function(
     rawClassType,
@@ -729,12 +767,13 @@ var LibraryEmbind = {
       return [];
     });
   },
-  // Stub function. This is called a when extending an object and not needed for TS generation.
+  // Stub function. This is called when extending an object and not needed for TS generation.
   _embind_create_inheriting_constructor: (constructorName, wrapperType, properties) => {},
-  _embind_register_enum__deps: ['$AsciiToString', '$EnumDefinition', '$moduleDefinitions'],
-  _embind_register_enum: function(rawType, name, size, isSigned) {
+  _embind_register_enum__deps: ['$AsciiToString', '$EnumDefinition', '$moduleDefinitions', '$getEnumValueType'],
+  _embind_register_enum: function(rawType, name, size, isSigned, rawValueType) {
     name = AsciiToString(name);
-    const enumDef = new EnumDefinition(rawType, name);
+    const valueType = getEnumValueType(rawValueType);
+    const enumDef = new EnumDefinition(rawType, name, valueType);
     registerType(rawType, enumDef);
     moduleDefinitions.push(enumDef);
   },
@@ -883,7 +922,7 @@ var LibraryEmbind = {
     const printer = new TsPrinter(moduleDefinitions);
 #endif
     const output = printer.print();
-    var fs = require('fs');
+    var fs = require('node:fs');
     fs.writeFileSync(process.argv[2], output + '\n');
   },
 

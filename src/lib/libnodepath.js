@@ -12,7 +12,7 @@
 // operations. Hence, using `nodePath` should be safe here.
 
 addToLibrary({
-  $nodePath: "require('path')",
+  $nodePath: "require('node:path')",
   $PATH__deps: ['$nodePath'],
   $PATH: `{
     isAbs: nodePath.isAbsolute,

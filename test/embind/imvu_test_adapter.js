@@ -90,9 +90,19 @@ function module(ignore, func) {
         }
     }
 
-    function run_all(reporter) {
-        for (var i = 0; i < allTests.length; ++i) {
-            var test = allTests[i];
+    function run_tests(reporter, filter = undefined) {
+        let testsToRun = allTests;
+        if (filter) {
+            const filterRegex = new RegExp(filter);
+            testsToRun = allTests.filter((t) => filterRegex.test(t.name));
+            if (!testsToRun.length) {
+                throw new Error(`no tests match the given filter: ${filter}`)
+            }
+            console.log(`running ${testsToRun.length} of ${allTests.length} tests that match filter: ${filter}`)
+        } else  {
+            console.log(`running ${allTests.length} test`)
+        }
+        for (const test of testsToRun) {
             reporter({
                 type: 'test-start',
                 name: test.name
@@ -552,9 +562,7 @@ function module(ignore, func) {
         }
     }
 
-  (function() {
-    var g = 'undefined' === typeof window ? globalThis : window;
-
+(function() {
     // synonyms
     assert.equals = assert.equal;
     assert.notEquals = assert.notEqual;
@@ -563,17 +571,17 @@ function module(ignore, func) {
     assert['undefined'] = assert.equal.bind(null, undefined);
     assert.notUndefined = assert.notEqual.bind(null, undefined);
 
-    g.registerSuperFixture = registerSuperFixture;
-    g.test = test;
-    g.run_all = run_all;
-    g.fixture = fixture;
-//    g.repr = IMVU.repr;
-    g.AssertionError = AssertionError;
-    g.assert = assert;
-    g.test = test;
-    g.TEST_MAX_OUTPUT_SIZE = 1024;
+    globalThis.registerSuperFixture = registerSuperFixture;
+    globalThis.test = test;
+    globalThis.run_tests = run_tests;
+    globalThis.fixture = fixture;
+    // globalThis.repr = IMVU.repr;
+    globalThis.AssertionError = AssertionError;
+    globalThis.assert = assert;
+    globalThis.test = test;
+    globalThis.TEST_MAX_OUTPUT_SIZE = 1024;
 
-    g.setTimeout = function(fn, time) {
+    globalThis.setTimeout = function(fn, time) {
         if (time === 1 || time === 0){
             fn();
             return 0;
@@ -581,7 +589,7 @@ function module(ignore, func) {
         throw new AssertionError("Don't call setTimeout in tests.  Use fakes.");
     };
 
-    g.setInterval = function() {
+    globalThis.setInterval = function() {
         throw new AssertionError("Don't call setInterval in tests.  Use fakes.");
     };
 
@@ -589,19 +597,21 @@ function module(ignore, func) {
         throw new AssertionError("Don't call Math.random in tests.  Use fakes.");
     };
 
-    g.requestAnimationFrame = function() {
+    globalThis.requestAnimationFrame = function() {
         throw new AssertionError("Don't call requestAnimationFrame in tests.  Use fakes.");
     };
-  })();
+})();
 
 // Emscripten runner starts all tests from this function.
 // IMVU runner uses a separate runner & reporting mechanism.
 function run_all_tests() {
     function report_to_stdout(msg) {
-        if (msg.type === "test-complete")
-            console.log(msg.name + ": " + msg.verdict);
+        if (msg.type === "test-complete") {
+            console.log(`${msg.name}: ${msg.verdict}`);
+        }
     }
-    run_all(report_to_stdout);
+    const filter = process.env['EMBIND_TESTS'];
+    run_tests(report_to_stdout, filter);
 }
 
 // Signal the embind test suite that it is being run from the Emscripten python test runner and not the

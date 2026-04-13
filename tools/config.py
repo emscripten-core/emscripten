@@ -7,7 +7,6 @@ import logging
 import os
 import shutil
 import sys
-from typing import List, Optional
 
 from . import diagnostics, utils
 from .utils import __rootpath__, exit_with_error, path_from_root
@@ -16,7 +15,7 @@ logger = logging.getLogger('config')
 
 # The following class can be overridden by the config file and/or
 # environment variables.  Specifically any variable whose name
-# is in ALL_UPPER_CASE is condifered a valid config file key.
+# is in ALL_UPPER_CASE is considered a valid config file key.
 # See parse_config_file below.
 EMSCRIPTEN_ROOT = __rootpath__
 NODE_JS = None
@@ -36,12 +35,12 @@ EM_CONFIG = None
 # any of these.
 NODE_JS_TEST = None
 SPIDERMONKEY_ENGINE = None
-V8_ENGINE: Optional[List[str]] = None
+V8_ENGINE: list[str] | None = None
 LLVM_ROOT = None
-JS_ENGINES: List[List[str]] = []
+JS_ENGINES: list[list[str]] = []
 WASMER = None
 WASMTIME = None
-WASM_ENGINES: List[List[str]] = []
+WASM_ENGINES: list[list[str]] = []
 
 
 def listify(x):
@@ -98,7 +97,7 @@ def parse_config_file():
   try:
     exec(config_text, config)
   except Exception as e:
-    exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, str(e), config_text)
+    exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, e, config_text)
 
   CONFIG_KEYS = (
     'NODE_JS',
@@ -125,12 +124,12 @@ def parse_config_file():
     env_var = 'EM_' + key
     env_value = os.environ.get(env_var)
     if env_value is not None:
-      if env_value in ('', '0'):
+      if env_value in {'', '0'}:
         env_value = None
       # Unlike the other keys these two should always be lists.
-      if env_var in ('EM_JS_ENGINES', 'EM_WASM_ENGINES'):
+      if env_var in {'EM_JS_ENGINES', 'EM_WASM_ENGINES'}:
         env_value = env_value.split(',')
-      if env_var in ('EM_CONFIG', 'EM_CACHE', 'EM_PORTS', 'EM_LLVM_ROOT', 'EM_BINARYEN_ROOT'):
+      if env_var in {'EM_CONFIG', 'EM_CACHE', 'EM_PORTS', 'EM_LLVM_ROOT', 'EM_BINARYEN_ROOT'}:
         if not os.path.isabs(env_value):
           exit_with_error(f'environment variable {env_var} must be an absolute path: {env_value}')
       globals()[key] = env_value

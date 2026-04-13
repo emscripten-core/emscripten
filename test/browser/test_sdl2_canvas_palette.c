@@ -19,9 +19,9 @@ int main() {
 
   SDL_Surface *screen = SDL_CreateRGBSurface(0, 600, 400, 8, 0, 0, 0, 0);
 
-  //initialize sdl palette
-  //with red green and blue
-  //colors
+  // initialize sdl palette
+  // with red green and blue
+  // colors
   SDL_Color pal[4];
   pal[0].r = 255;
   pal[0].g = 0;

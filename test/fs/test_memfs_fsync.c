@@ -23,10 +23,10 @@ int main() {
   struct stat st;
 
   // a file whose contents are just 'az'
-  rtn = stat("/wakaka.txt", &st);
+  rtn = stat("wakaka.txt", &st);
   assert(rtn == -1 && errno == ENOENT);
 
-  fd = open("/wakaka.txt", O_RDWR | O_CREAT, 0666);
+  fd = open("wakaka.txt", O_RDWR | O_CREAT, 0666);
   assert(fd >= 0);
 
   rtn = write(fd, "az", 2);
@@ -38,5 +38,6 @@ int main() {
   rtn = close(fd);
   assert(rtn == 0);
 
+  printf("success\n");
   return 0;
 }

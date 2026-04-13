@@ -15,18 +15,14 @@
 #if LINKABLE
 #error "-sLINKABLE is not supported with -sWASM_WORKERS"
 #endif
-#if RELOCATABLE || MAIN_MODULE
-#error "dynamic linking is not supported with -sWASM_WORKERS"
-#endif
-#if PROXY_TO_WORKER
-#error "-sPROXY_TO_WORKER is not supported with -sWASM_WORKERS"
-#endif
 #if WASM2JS && MODULARIZE
 #error "-sWASM=0 + -sMODULARIZE + -sWASM_WORKERS is not supported"
 #endif
 #if EXPORT_ES6 && (MIN_FIREFOX_VERSION < 114 || MIN_CHROME_VERSION < 80 || MIN_SAFARI_VERSION < 150000)
 #error "internal error, feature_matrix should not allow this"
 #endif
+
+#endif // ~WASM_WORKERS
 
 {{{
   const workerSupportsFutexWait = () => AUDIO_WORKLET ? "!ENVIRONMENT_IS_AUDIO_WORKLET" : '1';
@@ -47,26 +43,38 @@
 #endif
 #if ENVIRONMENT_MAY_BE_NODE
   // This is the way that we signal to the node worker that it is hosting
-  // a wasm worker.
+  // a Wasm Worker.
   'workerData': 'em-ww',
 #endif
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
   // This is the way that we signal to the Web Worker that it is hosting
-  // a pthread.
+  // a Wasm Worker.
+#if ASSERTIONS
+  'name': 'em-ww-' + _wasmWorkersID,
+#else
   'name': 'em-ww',
+#endif
 #endif
 }`;
 }}}
 
-#endif // ~WASM_WORKERS
 
 
 addToLibrary({
   $_wasmWorkers: {},
+#if PTHREADS
+  // When the build contains both pthreads and Wasm Workers, offset the
+  // Wasm Worker ID space to avoid collisions with pthread TIDs (which start
+  // at 42). We use `1 << 30` since it's ~1/2 way through `pid_t` space,
+  // essentially giving pthreads the first 1/2 of the range and wasm workers the
+  // second half.
+  $_wasmWorkersID: {{{ 1 << 30 }}},
+#else
   $_wasmWorkersID: 1,
+#endif
 
   // Starting up a Wasm Worker is an asynchronous operation, hence if the parent
-  // thread performs any postMessage()-based wasm function calls s to the
+  // thread performs any postMessage()-based wasm function calls to the
   // Worker, they must be delayed until the async startup has finished, after
   // which these postponed function calls can be dispatched.
   $_wasmWorkerDelayedMessageQueue: [],
@@ -124,7 +132,7 @@ addToLibrary({
     ___set_stack_limits(wwParams.stackLowestAddress + wwParams.stackSize, wwParams.stackLowestAddress);
 #endif
     // Run the C side Worker initialization for stack and TLS.
-    __emscripten_wasm_worker_initialize(wwParams.stackLowestAddress, wwParams.stackSize);
+    __emscripten_wasm_worker_initialize(wwParams.wwID, wwParams.stackLowestAddress, wwParams.stackSize);
 #if PTHREADS
     // Record the pthread configuration, and whether this Wasm Worker supports synchronous blocking in emscripten_futex_wait().
     // (regular Wasm Workers do, AudioWorklets don't)
@@ -218,6 +226,9 @@ if (ENVIRONMENT_IS_WASM_WORKER
       worker.on('message', (msg) => worker.onmessage({ data: msg }));
     }
 #endif
+#if RUNTIME_DEBUG
+    dbg("done _emscripten_create_wasm_worker", _wasmWorkersID)
+#endif
     return _wasmWorkersID++;
   },
 
@@ -238,16 +249,6 @@ if (ENVIRONMENT_IS_WASM_WORKER
     Object.values(_wasmWorkers).forEach((worker) => worker.terminate());
     _wasmWorkers = {};
   },
-
-  emscripten_current_thread_is_wasm_worker: () => {
-#if WASM_WORKERS
-    return ENVIRONMENT_IS_WASM_WORKER;
-#else
-    // implicit return 0;
-#endif
-  },
-
-  emscripten_wasm_worker_self_id: () => wwParams?.wwID,
 
   emscripten_wasm_worker_post_function_v: (id, funcPtr) => {
     _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': [] }); // "WaSm Call"
@@ -289,13 +290,9 @@ if (ENVIRONMENT_IS_WASM_WORKER
 
   emscripten_navigator_hardware_concurrency: () => {
 #if ENVIRONMENT_MAY_BE_NODE
-    if (ENVIRONMENT_IS_NODE) return require('os').cpus().length;
+    if (ENVIRONMENT_IS_NODE) return require('node:os').cpus().length;
 #endif
     return navigator['hardwareConcurrency'];
-  },
-
-  emscripten_atomics_is_lock_free: (width) => {
-    return Atomics.isLockFree(width);
   },
 
   emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync'],
@@ -341,5 +338,20 @@ if (ENVIRONMENT_IS_WASM_WORKER
       else dispatch(-1/*idx*/, 2/*'timed-out'*/);
     };
     tryAcquireSemaphore();
-  }
+  },
+
+#if !PTHREADS
+  // When pthreads are used we call `__set_thread_state` immediately on worker
+  // creation.  When wasm workers is used without pthreads, we call
+  // `__set_thread_state` lazily to save code size for programs that don't use
+  // the threads state.
+  __do_set_thread_state__deps: ['__set_thread_state'],
+  __do_set_thread_state: (tb) => {
+    ___set_thread_state(
+      /*thread_ptr=*/0,
+      /*is_main_thread=*/!ENVIRONMENT_IS_WORKER,
+      /*is_runtime_thread=*/!ENVIRONMENT_IS_WASM_WORKER,
+      /*supports_wait=*/ENVIRONMENT_IS_WORKER && {{{ workerSupportsFutexWait() }}});
+  },
+#endif
 });

@@ -9,6 +9,7 @@
 #include <stdbool.h>
 #include <stdlib.h>
 #include <stdio.h>
+#include <string.h>
 #include <emscripten.h>
 #include <fcntl.h>
 #include <unistd.h>
@@ -87,8 +88,26 @@ static void test_case_symlink(void) {
     }
     case 3: {
       struct stat st;
+
+      // lstat should report S_IFLNK
       int res = lstat("/working1/symlink", &st);
       assert(res == 0);
+      int fmt = st.st_mode & S_IFMT;
+      printf("lstat => %d\n", fmt);
+      assert(fmt == S_IFLNK);
+
+      // stat should report S_IFREG
+      res = stat("/working1/symlink", &st);
+      assert(res == 0);
+      fmt = st.st_mode & S_IFMT;
+      printf("stat => %d\n", fmt);
+      assert(fmt == S_IFREG);
+
+      // Verify value returned by readlink
+      char buf[256];
+      readlink("/working1/symlink", buf, 256);
+      printf("readlink => %s\n", buf);
+      assert(strcmp("/working1/file", buf) == 0);
       break;
     }
     default:
@@ -190,6 +209,7 @@ void test(void) {
 }
 
 int main(void) {
+  printf("Running test case=%d phase=%d\n", TEST_CASE, TEST_PHASE);
   EM_ASM({
     globalThis.runOnceIDBFSIdle = (callback) => {
       const { mount } = FS.lookupPath('/working1').node;
@@ -214,7 +234,7 @@ int main(void) {
       // Erase persisted state by overwriting the contents of IndexedDB
       // with our empty in-memory filesystem.
       FS.syncfs(false, (err) => {
-        assert(!err);
+        assert(!err, 'syncfs failed');
         callUserCallback(_test);
       });
     });
@@ -223,7 +243,7 @@ int main(void) {
       // All subsequent phases rely on the effects of phases before them.
       // Load the persisted filesystem from IndexedDB into memory.
       FS.syncfs(true, (err) => {
-        assert(!err);
+        assert(!err, 'syncfs failed');
 
         // FS.syncfs() may run operations on the in-memory filesystem which
         // might trigger IDBFS.queuePersist() calls. These queued calls will

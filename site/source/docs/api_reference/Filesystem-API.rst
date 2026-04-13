@@ -171,7 +171,7 @@ The device node acts as an interface between the device and the file system. Any
 Setting up standard I/O devices
 ===============================
 
-Emscripten standard I/O works by going though the virtual ``/dev/stdin``, ``/dev/stdout`` and ``/dev/stderr`` devices. You can set them up using your own I/O functions by calling :js:func:`FS.init`.
+Emscripten standard I/O works by going through the virtual ``/dev/stdin``, ``/dev/stdout`` and ``/dev/stderr`` devices. You can set them up using your own I/O functions by calling :js:func:`FS.init`.
 
 By default:
 

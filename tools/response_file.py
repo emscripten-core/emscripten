@@ -80,7 +80,7 @@ def expand_response_file(arg):
     response_filename = None
 
   # Is the argument is not a response file, or if the file does not exist
-  # just return orginal argument.
+  # just return original argument.
   if not response_filename or not os.path.exists(response_filename):
     return [arg]
 
@@ -103,7 +103,7 @@ def expand_response_file(arg):
     if DEBUG:
       logging.warning(f'failed to parse response file {response_filename} with guessed encoding "{guessed_encoding}". Trying default system encoding...')
     # If that fails, try with the Python default locale.getpreferredencoding()
-    with open(response_filename) as f:
+    with open(response_filename) as f:  # noqa: PLW1514
       args = f.read()
 
   args = shlex.split(args)

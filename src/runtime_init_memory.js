@@ -6,7 +6,7 @@
 
 // Create the wasm memory. (Note: this only applies if IMPORTED_MEMORY is defined)
 #if !IMPORTED_MEMORY
-#error "this file should not be be included when IMPORTED_MEMORY is set"
+#error "this file should not be included when IMPORTED_MEMORY is set"
 #endif
 
 // check for full engine support (use string 'subarray' to avoid closure compiler confusion)
@@ -31,7 +31,7 @@ function initMemory() {
     var INITIAL_MEMORY = {{{ makeModuleReceiveExpr('INITIAL_MEMORY', INITIAL_MEMORY) }}};
 
 #if ASSERTIONS
-    assert(INITIAL_MEMORY >= {{{STACK_SIZE}}}, 'INITIAL_MEMORY should be larger than STACK_SIZE, was ' + INITIAL_MEMORY + '! (STACK_SIZE=' + {{{STACK_SIZE}}} + ')');
+    assert(INITIAL_MEMORY >= {{{ STACK_SIZE }}}, `INITIAL_MEMORY should be larger than STACK_SIZE, was ${INITIAL_MEMORY}! (STACK_SIZE={{{ STACK_SIZE }}})`);
 #endif
     /** @suppress {checkTypes} */
 #if MINIMAL_RUNTIME && WASM_WORKERS

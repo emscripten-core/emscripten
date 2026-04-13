@@ -48,7 +48,7 @@ var emscriptenThreadProfiler = {
       if (threadName) {
         threadName = `"${threadName}" (${ptrToString(threadPtr)})`;
       } else {
-        threadName = `(${ptrToString(threadPtr)}})`;
+        threadName = `(${ptrToString(threadPtr)})`;
       }
 
       console.log(`Thread ${threadName} now: ${PThread.threadStatusAsString(threadPtr)}. `);

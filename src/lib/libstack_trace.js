@@ -134,7 +134,7 @@ var LibraryStackTrace = {
     }
     // skip this function and the caller to get caller's return address
 #if MEMORY64
-    // MEMORY64 injects and extra wrapper within emscripten_return_address
+    // MEMORY64 injects an extra wrapper within emscripten_return_address
     // to handle BigInt conversions.
     var caller = callstack[level + 4];
 #else

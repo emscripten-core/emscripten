@@ -69,11 +69,13 @@ void start_next_async_fetch() {
     async_method_idx++;
     if (async_method_idx >= num_methods) {
       // All async tests done, now run sync tests
+#ifndef SKIP_SYNC_FETCH_TESTS
       for (int m = 0; m < num_methods; ++m) {
         for (int i = 0; i < num_codes; ++i) {
           fetchSyncTest(redirect_codes[i], methods[m]);
         }
       }
+#endif
       exit(0);
     }
   }

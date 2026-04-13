@@ -20,7 +20,7 @@ void do_exit() {
 }
 
 // [v, vi, vii, viii, vd, vdd, vddd, viiiiiidddddd] * [audio_worklet, main]
-// 8 * 2 callbacks invoked, each callbacks check the correctivity of arguments
+// 8 * 2 callbacks invoked, each callbacks check the correctness of arguments
 void v_received_on_audio_worklet() {
   assert(emscripten_current_thread_is_audio_worklet());
   emscripten_out("v_on_audio_worklet");

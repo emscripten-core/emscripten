@@ -86,6 +86,7 @@ the middle.
 Pthreads and Wasm Workers share several similarities:
 
  * Both can use emscripten_atomic_* Atomics API,
+ * Both can use emscripten_futex_wait/wake API,
  * Both can use GCC __sync_* Atomics API,
  * Both can use C11 and C++11 Atomics APIs,
  * Both types of threads have a local stack.
@@ -103,6 +104,19 @@ Pthreads and Wasm Workers share several similarities:
 
 However, the differences are more notable.
 
+C11 thread APIs are not available under Wasm Workers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Becuase our C11 threading API is based on pthreads internally these APIs are not
+available under Wasm Worker.
+
+Some standard C++ APIs are not available under Wasm Workers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some parts of the libc++ stndard library are not available under Wasm Workers
+becuase they depend on pthreads internally.  For example `std::call_once``:
+https://github.com/emscripten-core/emscripten/issues/26375.
+
 Pthreads can proxy JS functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
@@ -116,8 +130,6 @@ function with Wasm Workers can be done by explicitly passing the address of that
 If you need to synchronously wait for the posted function to finish from within a Worker, use one of
 the ``emscripten_wasm_worker_*()`` thread synchronization functions to sleep the calling thread until
 the callee has finished the operation.
-
-Note that Wasm Workers cannot 
 
 Pthreads have cancellation points
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -371,7 +383,7 @@ Both APIs allow one to spawn Web Workers from the main thread, though the semant
 
 With the Worker API, the user will be able to spawn a Web Worker from a custom URL. This URL can point to a completely separate JS file that was not compiled with Emscripten, to load up Workers from arbitrary URLs. With Wasm Workers, a custom URL is not specified: Wasm Workers will always spawn a Web Worker that computes in the same WebAssembly+JavaScript context as the main program.
 
-The Worker API does not integrate with SharedArrayBuffer, so interaction with the loaded Worker will always be asynchronous. Wasm Workers howerer is built on top of SharedArrayBuffer, and each Wasm Worker shares and computes in the same WebAssembly Memory address space of the main thread.
+The Worker API does not integrate with SharedArrayBuffer, so interaction with the loaded Worker will always be asynchronous. Wasm Workers however is built on top of SharedArrayBuffer, and each Wasm Worker shares and computes in the same WebAssembly Memory address space of the main thread.
 
 Both the Worker API and Wasm Workers API provide the user with ability to postMessage() function calls to the Worker. In Worker API, this message posting is restricted to need to originate/initiate from the main thread towards the Worker (using the API ``emscripten_call_worker()`` and ``emscripten_worker_respond()`` in ``<emscripten.h>``). With Wasm Workers however one can also postMessage() function calls to their parent (owning) thread.
 
@@ -396,7 +408,6 @@ The following build options are not supported at the moment with Wasm Workers:
 
 - -sSINGLE_FILE
 - Dynamic linking (-sLINKABLE, -sMAIN_MODULE, -sSIDE_MODULE)
-- -sPROXY_TO_WORKER
 - -sPROXY_TO_PTHREAD
 
 Example Code

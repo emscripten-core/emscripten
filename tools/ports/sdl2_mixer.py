@@ -4,7 +4,6 @@
 # found in the LICENSE file.
 
 import os
-from typing import Dict, Set
 
 TAG = 'release-2.8.0'
 HASH = '494ccd74540f74e717f7e4f1dc7f96398c0f4b1883ab00c4a76b0c7239bd2c185cb4358a35ef47819c49e7c14dac7c37b98a29c7b5237478121571f5e7ac4dfc'
@@ -24,7 +23,7 @@ OPTIONS = {
 SUPPORTED_FORMATS = {'ogg', 'mp3', 'mod', 'mid'}
 
 # user options (from --use-port)
-opts: Dict[str, Set] = {
+opts: dict[str, set] = {
   'formats': set(),
 }
 
@@ -41,7 +40,7 @@ def get_lib_name(settings):
   formats = '-'.join(sorted(get_formats(settings)))
 
   libname = 'libSDL2_mixer'
-  if formats != '':
+  if formats:
     libname += '-' + formats
   if settings.PTHREADS:
     libname += '-mt'

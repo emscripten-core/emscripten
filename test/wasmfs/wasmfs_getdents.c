@@ -109,7 +109,7 @@ int main() {
     for (var i = 0; i < entries.length; i++) {
       console.log(entries[i]);
     }
-    console.log();
+    console.log("");
   });
 
   printf("------------- Reading one from root/working Directory -------------\n");

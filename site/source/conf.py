@@ -71,7 +71,7 @@ extensions = [
 ]
 
 
-#Build "Todo" notes into the source
+# Build "Todo" notes into the source
 #todo_include_todos = 'True' 
 
 # Add any paths that contain templates here, relative to this directory.
@@ -395,3 +395,5 @@ epub_exclude_files = ['search.html']
 #highlight_language = 'default'
 
 primary_domain = 'cpp'
+
+smartquotes_excludes = {'builders': ['text', 'man']}

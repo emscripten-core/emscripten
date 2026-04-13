@@ -26,14 +26,14 @@ extern void __wasm_init_tls(void *memory);
 
 extern int __dso_handle;
 
-// Create a thread-local wasm global which signal that the current thread is non
+// Create a thread-local wasm global which signals that the current thread is not
 // to use the primary/static TLS region.  Once this gets set it forces that all
 // future calls to emscripten_tls_init to dynamically allocate TLS.
 // This is needed because emscripten re-uses module instances owned by the
 // worker for new pthreads.  This in turn means that stale values of __tls_base
 // from a previous pthreads need to be ignored.
-// If this global is true then TLS needs to be dyanically allocated, if its
-// flase we are free to use the existing/global __tls_base.
+// If this global is true then TLS needs to be dynamically allocated, if it's
+// false we are free to use the existing/global __tls_base.
 __asm__(".globaltype g_needs_dynamic_alloc, i32\n"
         "g_needs_dynamic_alloc:\n");
 
@@ -60,11 +60,12 @@ void _emscripten_tls_free() {
 void* _emscripten_tls_init(void) {
   size_t tls_size = __builtin_wasm_tls_size();
   void* tls_block = __builtin_wasm_tls_base();
-  if (pthread_self()->tls_base) {
+  pthread_t self = pthread_self();
+  if (self->tls_base) {
     // The TLS block for the main module is allocated alongside the pthread
     // itself and its stack.
-    tls_block = pthread_self()->tls_base;
-    pthread_self()->tls_base = NULL;
+    tls_block = self->tls_base;
+    self->tls_base = NULL;
   } else if (needs_dynamic_alloc() || (!tls_block && tls_size)) {
     // For non-main modules we do a dynamic allocation.
     set_needs_dynamic_alloc();

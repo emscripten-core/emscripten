@@ -107,7 +107,7 @@ function stringifyWithFunctions(obj) {
     if (typeof value === 'function' && (str.startsWith(key) || str.startsWith('async ' + key))) {
       rtn += str + ',\n';
     } else {
-      rtn += escapeJSONKey(key) + ':' + str + ',\n';
+      rtn += `${escapeJSONKey(key)}:${str},\n`;
     }
   }
   return rtn + '}';
@@ -122,22 +122,10 @@ function isDefined(symName) {
   }
   // 'invoke_' symbols are created at runtime in library_dylink.py so can
   // always be considered as defined.
-  if ((MAIN_MODULE || RELOCATABLE) && symName.startsWith('invoke_')) {
+  if (MAIN_MODULE && symName.startsWith('invoke_')) {
     return true;
   }
   return false;
-}
-
-function resolveAlias(symbol) {
-  while (true) {
-    var value = LibraryManager.library[symbol];
-    if (typeof value == 'string' && value[0] != '=' && (LibraryManager.library.hasOwnProperty(value) || WASM_EXPORTS.has(value))) {
-      symbol = value;
-    } else {
-      break;
-    }
-  }
-  return symbol;
 }
 
 function getTransitiveDeps(symbol) {
@@ -151,12 +139,11 @@ function getTransitiveDeps(symbol) {
       let directDeps = LibraryManager.library[sym + '__deps'] || [];
       directDeps = directDeps.filter((d) => typeof d === 'string');
       for (const dep of directDeps) {
-        const resolved = resolveAlias(dep);
         if (!transitiveDeps.has(dep)) {
           debugLog(`adding dependency ${symbol} -> ${dep}`);
         }
-        transitiveDeps.add(resolved);
-        toVisit.push(resolved);
+        transitiveDeps.add(dep);
+        toVisit.push(dep);
       }
       seen.add(sym);
     }
@@ -268,7 +255,15 @@ function addImplicitDeps(snippet, deps) {
   }
 }
 
-function handleI64Signatures(symbol, snippet, sig, i53abi) {
+function sigToArgs(sig) {
+  const args = []
+  for (var i = 1; i < sig.length; i++) {
+    args.push(`a${i}`);
+  }
+  return args.join(',');
+}
+
+function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
   // Handle i64 parameters and return values.
   //
   // When WASM_BIGINT is enabled these arrive as BigInt values which we
@@ -316,9 +311,19 @@ function handleI64Signatures(symbol, snippet, sig, i53abi) {
     }
 
     if ((sig[0] == 'j' && i53abi) || (sig[0] == 'p' && MEMORY64)) {
-      const await_ = async_ ? 'await ' : '';
       // For functions that where we need to mutate the return value, we
       // also need to wrap the body in an inner function.
+
+      // If the inner function is marked as `__async` then we need to `await`
+      // the result before casting it to BigInt.  Note that we use the `__async`
+      // attribute here rather than the presence of the `async` JS keyword
+      // because this is what tells us that the function is going to return
+      // a promise.  i.e. we support async functions that return promises but
+      // are not marked with the `async` keyword (the latter is only necessary
+      // if the function uses the `await` keyword))
+      const await_ = isAsyncFunction ? 'await ' : '';
+      const orig_async_ = async_;
+      async_ = isAsyncFunction ? 'async ' : async_;
       if (oneliner) {
         // Special case for abort(), this a noreturn function and but closure
         // compiler doesn't have a way to express that, so it complains if we
@@ -337,7 +342,7 @@ return ${makeReturn64(await_ + body)};
       return `\
 ${async_}function(${args}) {
 ${argConversions}
-var ret = (() => { ${body} })();
+var ret = (${orig_async_}() => { ${body} })();
 return ${makeReturn64(await_ + 'ret')};
 }`;
     }
@@ -354,6 +359,30 @@ ${body};
 }`;
   });
 }
+
+function handleAsyncFunction(snippet, sig) {
+  const return64 = sig && (MEMORY64 && sig.startsWith('p') || sig.startsWith('j'))
+  let handleAsync = 'Asyncify.handleAsync(innerFunc)'
+  if (return64 && ASYNCIFY == 1) {
+    handleAsync = makeReturn64(handleAsync);
+  }
+  return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
+    if (!oneliner) {
+      body = `{\n${body}\n}`;
+    }
+    return `\
+function(${args}) {
+  let innerFunc = ${async_} () => ${body};
+  return ${handleAsync};
+}\n`;
+  });
+}
+
+// The three different inter-thread proxying methods.
+// See system/lib/pthread/proxying.c
+const PROXY_ASYNC = 0;
+const PROXY_SYNC = 1;
+const PROXY_SYNC_ASYNC = 2;
 
 export async function runJSify(outputFile, symbolsOnly) {
   const libraryItems = [];
@@ -426,36 +455,48 @@ function(${args}) {
     }
 
     const sig = LibraryManager.library[symbol + '__sig'];
+    const isAsyncFunction = ASYNCIFY && LibraryManager.library[symbol + '__async'];
+
     const i53abi = LibraryManager.library[symbol + '__i53abi'];
     if (i53abi) {
       if (!sig) {
         error(`JS library error: '__i53abi' decorator requires '__sig' decorator: '${symbol}'`);
       }
       if (!sig.includes('j')) {
-        error(
-          `JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): '${symbol}'`,
-        );
+        error(`JS library error: '__i53abi' only makes sense when '__sig' includes 'j' (int64): '${symbol}'`);
       }
     }
     if (
       sig &&
       ((i53abi && sig.includes('j')) || ((MEMORY64 || CAN_ADDRESS_2GB) && sig.includes('p')))
     ) {
-      snippet = handleI64Signatures(symbol, snippet, sig, i53abi);
+      snippet = handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction);
       compileTimeContext.i53ConversionDeps.forEach((d) => deps.push(d));
+    }
+
+    if (ASYNCIFY && isAsyncFunction == 'auto') {
+      snippet = handleAsyncFunction(snippet, sig);
     }
 
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
     if (proxyingMode) {
-      if (proxyingMode !== 'sync' && proxyingMode !== 'async' && proxyingMode !== 'none') {
-        throw new Error(`Invalid proxyingMode ${symbol}__proxy: '${proxyingMode}' specified!`);
+      if (!['sync', 'async', 'none'].includes(proxyingMode)) {
+        error(`JS library error: invalid proxying mode '${symbol}__proxy: ${proxyingMode}' specified`);
       }
       if (SHARED_MEMORY && proxyingMode != 'none') {
-        const sync = proxyingMode === 'sync';
         if (PTHREADS) {
           snippet = modifyJSFunction(snippet, (args, body, async_, oneliner) => {
             if (oneliner) {
               body = `return ${body}`;
+            }
+            let proxyMode = PROXY_ASYNC;
+            if (proxyingMode === 'sync') {
+              const isAsyncFunction = LibraryManager.library[symbol + '__async'];
+              if (isAsyncFunction) {
+                proxyMode = PROXY_SYNC_ASYNC;
+              } else {
+                proxyMode = PROXY_SYNC;
+              }
             }
             const rtnType = sig && sig.length ? sig[0] : null;
             const proxyFunc =
@@ -464,7 +505,7 @@ function(${args}) {
             return `
 ${async_}function(${args}) {
 if (ENVIRONMENT_IS_PTHREAD)
-  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${+sync}${args ? ', ' : ''}${args});
+  return ${proxyFunc}(${proxiedFunctionTable.length}, 0, ${proxyMode}${args ? ', ' : ''}${args});
 ${body}
 }\n`;
           });
@@ -540,23 +581,16 @@ function(${args}) {
         deps.push('setTempRet0');
       }
 
-      let isAsyncFunction = false;
-      if (ASYNCIFY) {
-        const original = LibraryManager.library[symbol];
-        if (typeof original == 'function') {
-          isAsyncFunction = LibraryManager.library[symbol + '__async'];
-        }
-        if (isAsyncFunction) {
-          asyncFuncs.push(symbol);
-        }
+      const isAsyncFunction = LibraryManager.library[symbol + '__async'];
+      if (ASYNCIFY && isAsyncFunction) {
+        asyncFuncs.push(symbol);
       }
 
       if (symbolsOnly) {
         if (LibraryManager.library.hasOwnProperty(symbol)) {
           // Resolve aliases before looking up deps
-          var resolvedSymbol = resolveAlias(symbol);
-          var transtiveDeps = getTransitiveDeps(resolvedSymbol);
-          symbolDeps[symbol] = transtiveDeps.filter(
+          var transitiveDeps = getTransitiveDeps(symbol);
+          symbolDeps[symbol] = transitiveDeps.filter(
             (d) => !isJsOnlySymbol(d) && !(d in LibraryManager.library),
           );
         }
@@ -573,7 +607,7 @@ function(${args}) {
       if (!LibraryManager.library.hasOwnProperty(symbol)) {
         const isWeakImport = WEAK_IMPORTS.has(symbol);
         if (!isDefined(symbol) && !isWeakImport) {
-          if (PROXY_TO_PTHREAD && !(MAIN_MODULE || RELOCATABLE) && symbol == '__main_argc_argv') {
+          if (PROXY_TO_PTHREAD && !MAIN_MODULE && symbol == '__main_argc_argv') {
             error('PROXY_TO_PTHREAD proxies main() for you, but no main exists');
             return;
           }
@@ -604,7 +638,7 @@ function(${args}) {
 
         // emit a stub that will fail at runtime
         var stubFunctionBody = `abort('missing function: ${symbol}');`
-        if (RELOCATABLE || MAIN_MODULE) {
+        if (MAIN_MODULE) {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
           // resolved assert in debug builds or trap in release builds.
@@ -628,16 +662,15 @@ function(${args}) {
 
       const original = LibraryManager.library[symbol];
       let snippet = original;
-
-      // Check for dependencies on `__internal` symbols from user libraries.
       const isUserSymbol = LibraryManager.library[symbol + '__user'];
+      // Check for dependencies on `__internal` symbols from user libraries.
       for (const dep of deps) {
         if (isUserSymbol && LibraryManager.library[dep + '__internal']) {
           warn(`user library symbol '${symbol}' depends on internal symbol '${dep}'`);
         }
       }
 
-      const isFunction = typeof snippet == 'function';
+      let isFunction = typeof snippet == 'function';
       let isNativeAlias = false;
 
       const postsetId = symbol + '__postset';
@@ -652,30 +685,38 @@ function(${args}) {
         }
       }
 
-      if (typeof snippet == 'string') {
-        if (snippet[0] != '=') {
-          if (LibraryManager.library[snippet] || WASM_EXPORTS.has(snippet)) {
-            // Redirection for aliases. We include the parent, and at runtime
-            // make ourselves equal to it.  This avoid having duplicate
-            // functions with identical content.
-            const aliasTarget = resolveAlias(snippet);
-            if (WASM_EXPORTS.has(aliasTarget)) {
-              //printErr(`native alias: ${mangled} -> ${snippet}`);
-              //console.error(WASM_EXPORTS);
-              nativeAliases[mangled] = aliasTarget;
-              snippet = undefined;
-              isNativeAlias = true;
-            } else {
-              //printErr(`js alias: ${mangled} -> ${snippet}`);
-              deps.push(aliasTarget);
-              snippet = mangleCSymbolName(aliasTarget);
-            }
+      if (LibraryManager.isAlias(snippet)) {
+        // Redirection for aliases. We include the parent, and at runtime
+        // make ourselves equal to it.  This avoid having duplicate
+        // functions with identical content.
+        const aliasTarget = snippet;
+        if (WASM_EXPORTS.has(aliasTarget)) {
+          debugLog(`native alias: ${mangled} -> ${aliasTarget}`);
+          nativeAliases[mangled] = aliasTarget;
+          snippet = undefined;
+          isNativeAlias = true;
+        } else {
+          debugLog(`js alias: ${mangled} -> ${aliasTarget}`);
+          snippet = mangleCSymbolName(aliasTarget);
+          // When we have an alias for another JS function we can normally
+          // point them at the same function.  However, in some cases (where
+          // signatures are relevant and they differ between and alais and
+          // it's target) we need to construct a forwarding function from
+          // one to the other.
+          const isSigRelevant = MAIN_MODULE || MEMORY64 || CAN_ADDRESS_2GB || (sig && sig.includes('j'));
+          const targetSig = LibraryManager.library[aliasTarget + '__sig'];
+          if (isSigRelevant && sig && targetSig && sig != targetSig) {
+            debugLog(`${symbol}: Alias target (${aliasTarget}) has different signature (${sig} vs ${targetSig})`)
+            isFunction = true;
+            snippet = `(${sigToArgs(sig)}) => ${snippet}(${sigToArgs(targetSig)})`;
           }
         }
       } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
         addImplicitDeps(snippet, deps);
-      } else if (isFunction) {
+      }
+
+      if (isFunction) {
         snippet = processLibraryFunction(snippet, symbol, mangled, deps, isStub);
         addImplicitDeps(snippet, deps);
         if (CHECK_DEPS && !isUserSymbol) {
@@ -702,15 +743,12 @@ function(${args}) {
       let contentText;
       if (isFunction) {
         // Emit the body of a JS library function.
-        if (
-          (USE_ASAN || USE_LSAN || UBSAN_RUNTIME) &&
-          LibraryManager.library[symbol + '__noleakcheck']
-        ) {
+        if ((USE_ASAN || USE_LSAN) && LibraryManager.library[symbol + '__noleakcheck']) {
           contentText = modifyJSFunction(
             snippet,
-            (args, body) => `(${args}) => withBuiltinMalloc(() => {${body}})`,
+            (args, body) => `(${args}) => noLeakCheck(() => {${body}})`,
           );
-          deps.push('$withBuiltinMalloc');
+          deps.push('$noLeakCheck');
         } else {
           contentText = snippet; // Regular JS function that will be executed in the context of the calling thread.
         }
@@ -722,7 +760,7 @@ function(${args}) {
           contentText = `var ${mangled} = ` + contentText + ';';
         } else if (contentText.startsWith('class ')) {
           // Handle class declarations (which also have typeof == 'function'.)
-          contentText = contentText.replace(/^class /, `class ${mangled} `);
+          contentText = contentText.replace(/^class(?:\s+(?!extends\b)[^{\s]+)?/, `class ${mangled}`);
         } else {
           // Handle regular (non-arrow) functions
           contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
@@ -764,18 +802,19 @@ function(${args}) {
       }
 
       // Dynamic linking needs signatures to create proper wrappers.
-      if (sig && (MAIN_MODULE || RELOCATABLE)) {
+      if (sig && MAIN_MODULE) {
         if (!WASM_BIGINT) {
           sig = sig[0].replace('j', 'i') + sig.slice(1).replace(/j/g, 'ii');
         }
         contentText += `\n${mangled}.sig = '${sig}';`;
       }
       if (ASYNCIFY && isAsyncFunction) {
+        assert(isFunction);
         contentText += `\n${mangled}.isAsync = true;`;
       }
       if (isStub) {
         contentText += `\n${mangled}.stub = true;`;
-        if (ASYNCIFY && (MAIN_MODULE || RELOCATABLE)) {
+        if (ASYNCIFY && MAIN_MODULE) {
           contentText += `\nasyncifyStubs['${symbol}'] = undefined;`;
         }
       }

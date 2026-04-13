@@ -16,14 +16,17 @@ def clearline(stream):
 
 
 def term_width():
-  return shutil.get_terminal_size()[0]
+  return shutil.get_terminal_size().columns
 
 
 class SingleLineTestResult(ColorTextResult):
   """Similar to the standard TextTestResult but uses ANSI escape codes
   for color output and reusing a single line on the terminal.
   """
-  max_status_msg = 20
+
+  # Reserve at least 20 columns for the status message
+  min_status_msg = 20
+  status_limit = None
 
   def _write_status(self, _test, status):
     # Add some color to the status message
@@ -36,7 +39,7 @@ class SingleLineTestResult(ColorTextResult):
       status += '\n'
     else:
       color = CYAN
-    status = status[:self.max_status_msg]
+    status = status[:self.status_limit]
     line = f'{with_color(color, status)}'
     self.stream.write(line)
     self.stream.flush()
@@ -47,11 +50,16 @@ class SingleLineTestResult(ColorTextResult):
     self.showAll = True
     clearline(self.stream)
     prefix_len = self.writeProgressPrefix()
-    max_desc = term_width() - prefix_len - len(' ... ') - self.max_status_msg
+    total_width = term_width()
+    max_desc = total_width - prefix_len - len(' ... ') - self.min_status_msg
     desc = str(test)[:max_desc]
     self.stream.write(desc)
     self.stream.write(' ... ')
     self.stream.flush()
+
+    # Calculate the remaining terminal width available for the _write_status
+    # message. This will never be lower than `self.max_status_msg`
+    self.status_limit = total_width - prefix_len - len(desc) - len(' ... ')
 
   def printErrors(self):
     # All tests have been run at this point so print a final newline

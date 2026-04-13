@@ -67,8 +67,8 @@ Deprecated Settings
 ===================
 
 The following settings have been proposed for removal from emscripten.  These settings
-still function but may be removed in a future version.  If your project is using of
-the these settings please open a bug (or reply to one of the existing bugs).
+still function but may be removed in a future version.  If your project is using one of
+these settings please open a bug (or reply to one of the existing bugs).
 
 '''
 
@@ -80,7 +80,7 @@ Legacy Settings
 ===============
 
 The following settings no longer have any effect but are still accepted by emscripten
-for backwards compatbility with older versions:
+for backwards compatibility with older versions:
 
 '''
 
@@ -165,14 +165,14 @@ def main(args):
   if '--check' in args:
     safe_ensure_dirs(path_from_root('out'))
     tmp_output = path_from_root('out/settings_reference.rst')
-    with open(tmp_output, 'w') as f:
+    with open(tmp_output, 'w', encoding='utf-8') as f:
       write_file(f)
     if read_file(tmp_output) != read_file(output_file):
       print(f'{output_file} is out-of-date.  Please run tools/maint/update_settings_docs.py')
       subprocess.call(['diff', '-u', output_file, tmp_output])
       return 1
   else:
-    with open(output_file, 'w') as f:
+    with open(output_file, 'w', encoding='utf-8') as f:
       write_file(f)
 
   return 0

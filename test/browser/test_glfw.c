@@ -213,7 +213,7 @@ char* GetKeyName(int key){
     case GLFW_KEY_TAB: return "tab";
     case GLFW_KEY_ENTER: return "enter";
     case GLFW_KEY_BACKSPACE: return "backspace";
-    case GLFW_KEY_INSERT: return "insertr";
+    case GLFW_KEY_INSERT: return "insert";
     case GLFW_KEY_DEL: return "del";
     case GLFW_KEY_PAGEUP: return "page up";
     case GLFW_KEY_PAGEDOWN: return "page down";

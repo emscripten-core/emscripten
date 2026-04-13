@@ -29,7 +29,7 @@ def make_command(filename, engine, args=None):
   # it can also use d8 (the v8 engine shell) or jsc (JavaScript Core aka
   # Safari).  Both d8 and jsc require a '--' to delimit arguments to be passed
   # to the executed script from d8/jsc options.  Node does not require a
-  # delimeter--arguments after the filename are passed to the script.
+  # delimiter--arguments after the filename are passed to the script.
   #
   # Check only the last part of the engine path to ensure we don't accidentally
   # label a path to nodejs containing a 'd8' as spidermonkey instead.
@@ -60,7 +60,7 @@ def check_engine(engine):
     logging.debug('Checking JS engine %s' % engine)
     try:
       output = run_js(utils.path_from_root('test/hello_world.js'), engine, skip_check=True)
-      if 'hello, world!' in output:
+      if 'Hello, world!' in output:
         WORKING_ENGINES[engine_path] = True
       else:
         WORKING_ENGINES[engine_path] = False

@@ -27,7 +27,7 @@ from tools import building, shared
 # Main run() function
 #
 def run():
-  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
+  if len(sys.argv) < 2 or sys.argv[1] in {'--version', '--help'}:
     print('''\
 emconfigure is a helper for configure, setting various environment
 variables so that emcc etc. are used. Typical usage:
@@ -40,13 +40,10 @@ variables so that emcc etc. are used. Typical usage:
   args = sys.argv[1:]
 
   if 'cmake' in args:
-    print('error: use `emcmake` rather then `emconfigure` for cmake projects', file=sys.stderr)
+    print('error: use `emcmake` rather than `emconfigure` for cmake projects', file=sys.stderr)
     return 1
 
   env = building.get_building_env()
-  # When we configure via a ./configure script, don't do config-time
-  # compilation with emcc, but instead do builds natively with Clang. This
-  # is a heuristic emulation that may or may not work.
   env['EMMAKEN_JUST_CONFIGURE'] = '1'
   print(f'emconfigure: {shlex.join(args)} in directory {os.getcwd()}', file=sys.stderr)
   os.environ.update(env)

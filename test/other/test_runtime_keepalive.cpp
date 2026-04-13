@@ -8,7 +8,7 @@ int main() {
     Module["onExit"] = () => { out("onExit"); };
     runtimeKeepalivePush();
     out("runtimeKeepalivePush done");
-    counter = 0;
+    var counter = 0;
     function timerCallback() {
       if (counter < 5) {
         runtimeKeepalivePush();

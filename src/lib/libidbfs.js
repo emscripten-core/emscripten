@@ -180,7 +180,7 @@ addToLibrary({
         var stat;
 
         try {
-          stat = FS.stat(path);
+          stat = FS.lstat(path);
         } catch (e) {
           return callback(e);
         }
@@ -232,13 +232,15 @@ addToLibrary({
       try {
         var lookup = FS.lookupPath(path);
         node = lookup.node;
-        stat = FS.stat(path);
+        stat = FS.lstat(path);
       } catch (e) {
         return callback(e);
       }
 
       if (FS.isDir(stat.mode)) {
         return callback(null, { 'timestamp': stat.mtime, 'mode': stat.mode });
+      } else if (FS.isLink(stat.mode)) {
+        return callback(null, { 'timestamp': stat.mtime, 'mode': stat.mode, 'link': node.link, });
       } else if (FS.isFile(stat.mode)) {
         // Performance consideration: storing a normal JavaScript array to a IndexedDB is much slower than storing a typed array.
         // Therefore always convert the file contents to a typed array first before writing the data to IndexedDB.
@@ -252,6 +254,8 @@ addToLibrary({
       try {
         if (FS.isDir(entry['mode'])) {
           FS.mkdirTree(path, entry['mode']);
+        } else if (FS.isLink(entry['mode'])) {
+          FS.symlink(entry['link'], path);
         } else if (FS.isFile(entry['mode'])) {
           FS.writeFile(path, entry['contents'], { canOwn: true });
         } else {
@@ -268,11 +272,11 @@ addToLibrary({
     },
     removeLocalEntry: (path, callback) => {
       try {
-        var stat = FS.stat(path);
+        var stat = FS.lstat(path);
 
         if (FS.isDir(stat.mode)) {
           FS.rmdir(path);
-        } else if (FS.isFile(stat.mode)) {
+        } else {
           FS.unlink(path);
         }
       } catch (e) {

@@ -5,8 +5,8 @@
 
 import os
 
-TAG = '5.4.7'
-HASH = '98c5c8978dfdf867e37e9eb3b3ec83dee92d199243b5119505da83895e33f10d43c841be6a7d3b106daba8a0b2bd25fe099ebff8f87831dcc55c79c78b97d8b8'
+TAG = '5.5.0'
+HASH = '3253d2cdc929da6438095a30d66ef16a1abdbb0ada8fee238705b3b38492f14be9553640fdca6b25661e01155ba5582032e0a2ef064e4c283e85efc0a128cabe'
 
 # contrib port information (required)
 URL = 'https://www.lua.org/'
@@ -36,9 +36,7 @@ def get(ports, settings, shared):
        ldblib.c liolib.c lmathlib.c loadlib.c loslib.c lstrlib.c ltablib.c lutf8lib.c linit.c
        '''.split()
 
-    flags = ['-DLUA_COMPAT_5_3']
-
-    ports.build_port(source_path, final, port_name, srcs=srcs, flags=flags)
+    ports.build_port(source_path, final, port_name, srcs=srcs)
 
   return [shared.cache.get_lib(lib_name, create, what='port')]
 

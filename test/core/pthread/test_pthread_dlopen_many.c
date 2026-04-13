@@ -30,7 +30,7 @@ void* thread_main(void* arg) {
   while (thread_count != NUM_THREADS) {}
 
   char filename[255];
-  sprintf(filename, "liblib%d.so", num);
+  sprintf(filename, "libside%d.so", num);
   printf("loading %s\n", filename);
   void* handle = dlopen(filename, RTLD_NOW|RTLD_GLOBAL);
   printf("done loading %s (total=%d)\n", filename, ++dso_count);

@@ -3,7 +3,7 @@
  * Copyright 2013 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  *
- * This file gets implicatly injected as a `--pre-js` file when
+ * This file gets implicitly injected as a `--pre-js` file when
  * emcc is run with `--emrun`
  */
 

@@ -6,13 +6,6 @@
 
 // === Auto-generated postamble setup entry stuff ===
 
-#if PROXY_TO_WORKER
-if (ENVIRONMENT_IS_WORKER) {
-#include "webGLWorker.js"
-#include "proxyWorker.js"
-}
-#endif
-
 #if LOAD_SOURCE_MAP
 #include "source_map_support.js"
 #endif
@@ -119,11 +112,7 @@ function stackCheckInit() {
   // See $establishStackSpace for the equivalent code that runs on a thread
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
-#if RELOCATABLE
-  _emscripten_stack_set_limits({{{ STACK_HIGH }}} , {{{ STACK_LOW }}});
-#else
   _emscripten_stack_init();
-#endif
   // TODO(sbc): Move writeStackCookie to native to to avoid this.
   writeStackCookie();
 }
@@ -329,7 +318,7 @@ if (ENVIRONMENT_IS_NODE
 #endif
 )
 {
-  const url = await import('url');
+  const url = await import('node:url');
   const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
   if (isMainModule) await init();
 }

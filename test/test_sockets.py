@@ -10,7 +10,6 @@ import socket
 import sys
 import time
 from subprocess import Popen
-from typing import List
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner sockets')
@@ -27,6 +26,7 @@ from decorators import (
   requires_native_clang,
   test_file,
 )
+from test_browser import requires_shared_array_buffer
 
 from tools import config
 from tools.shared import CLANG_CC, EMCC
@@ -186,7 +186,7 @@ def PythonTcpEchoServerProcess(port):
 
 
 class sockets(BrowserCore):
-  cflags: List[str] = []
+  cflags: list[str] = []
 
   @classmethod
   def setUpClass(cls):
@@ -318,8 +318,8 @@ class sockets(BrowserCore):
     # this is also a good test of raw usage of emconfigure and emmake
     shutil.copytree(test_file('third_party', 'enet'), 'enet')
     with common.chdir('enet'):
-      self.run_process([path_from_root('emconfigure'), './configure', '--disable-shared'])
-      self.run_process([path_from_root('emmake'), 'make'])
+      self.run_process([common.EMCONFIGURE, './configure', '--disable-shared'])
+      self.run_process([common.EMMAKE, 'make'])
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + self.in_dir('enet', 'include')]
 
     with CompiledServerHarness(test_file('sockets/test_enet_server.c'), enet, 49210) as harness:
@@ -395,8 +395,12 @@ class sockets(BrowserCore):
     with NodeJsWebSocketEchoServerProcess():
       self.btest_exit('websocket/test_websocket_send.c', cflags=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'] + args)
 
+  def test_websocket_new(self):
+    self.btest_exit('websocket/test_websocket_new.c', cflags=['-lwebsocket'])
+
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets
   # -> POSIX sockets bridge server
+  @requires_shared_array_buffer
   def test_posix_proxy_sockets(self):
     # Build the websocket bridge server
     self.run_process(['cmake', path_from_root('tools/websocket_to_posix_proxy')])

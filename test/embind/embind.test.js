@@ -397,17 +397,17 @@ module({
 
             var expected = '';
             if(stdStringIsUTF8) {
-                //ASCII
+                // ASCII
                 expected = 'aei';
-                //Latin-1 Supplement
+                // Latin-1 Supplement
                 expected += '\u00E1\u00E9\u00ED';
-                //Greek
+                // Greek
                 expected += '\u03B1\u03B5\u03B9';
-                //Cyrillic
+                // Cyrillic
                 expected += '\u0416\u041B\u0424';
-                //CJK
+                // CJK
                 expected += '\u5F9E\u7345\u5B50';
-                //Euro sign
+                // Euro sign
                 expected += '\u20AC';
             } else {
                 for (var i = 0; i < 128; ++i) {
@@ -1140,6 +1140,44 @@ module({
             assert.equal(7, small.member);
             small.delete();
             vec.delete();
+        });
+
+        test("std::vector is iterable", function() {
+            var vec = cm.emval_test_return_vector();
+            var values = [];
+            for (var value of vec) {
+                values.push(value);
+            }
+            assert.deepEqual([10, 20, 30], values);
+            assert.deepEqual([10, 20, 30], Array.from(vec));
+            vec.delete();
+        });
+
+        test("custom class is iterable", function() {
+            var iterable = new cm.CustomIterable();
+            var values = [];
+            for (var value of iterable) {
+                values.push(value);
+            }
+            assert.deepEqual([1, 2, 3], values);
+            assert.deepEqual([1, 2, 3], Array.from(iterable));
+            iterable.delete();
+        });
+
+        test("custom class with size_t is iterable", function() {
+            var iterable = new cm.CustomIterableSizeT();
+            if (cm.getCompilerSetting('MEMORY64')) {
+                assert.equal(typeof iterable.count(), 'bigint');
+            } else {
+                assert.equal(typeof iterable.count(), 'number');
+            }
+            var values = [];
+            for (var value of iterable) {
+                values.push(value);
+            }
+            assert.deepEqual([10, 20, 30], values);
+            assert.deepEqual([10, 20, 30], Array.from(iterable));
+            iterable.delete();
         });
     });
 
@@ -2031,6 +2069,47 @@ module({
         });
     });
 
+    BaseFixture.extend("enums with integer values", function() {
+        test("can compare enumeration values", function() {
+            assert.equal(cm.EnumNum.ONE, cm.EnumNum.ONE);
+            assert.equal(cm.EnumNum.ONE, 0);
+            assert.notEqual(cm.EnumNum.TWO, cm.EnumNum.ONE);
+        });
+
+        if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
+            test("repr includes enum value", function() {
+                assert.equal(0, IMVU.repr(cm.EnumNum.ONE));
+                assert.equal(1, IMVU.repr(cm.EnumNum.TWO));
+            });
+        }
+
+        test("can pass and return enumeration values to functions", function() {
+            assert.equal(cm.EnumNum.TWO, cm.emval_test_take_and_return_EnumNum(cm.EnumNum.TWO));
+            assert.equal(cm.EnumNum.TWO, cm.emval_test_take_and_return_EnumNum(cm.EnumNum.TWO));
+        });
+    });
+
+
+    BaseFixture.extend("enums with string values", function() {
+        test("can compare enumeration values", function() {
+            assert.equal(cm.EnumStr.ONE, cm.EnumStr.ONE);
+            assert.equal(cm.EnumStr.ONE, 'ONE');
+            assert.notEqual(cm.EnumStr.ONE, cm.EnumStr.TWO);
+        });
+
+        if (typeof INVOKED_FROM_EMSCRIPTEN_TEST_RUNNER === "undefined") { // TODO: Enable this to work in Emscripten runner as well!
+            test("repr includes enum value", function() {
+                assert.equal('ONE', IMVU.repr(cm.EnumStr.ONE));
+                assert.equal('TWO', IMVU.repr(cm.EnumStr.TWO));
+            });
+        }
+
+        test("can pass and return enumeration values to functions", function() {
+            assert.equal(cm.EnumStr.TWO, cm.emval_test_take_and_return_EnumStr(cm.EnumStr.TWO));
+            assert.equal('TWO', cm.emval_test_take_and_return_EnumStr('TWO'));
+        });
+    });
+
     BaseFixture.extend("emval call tests", function() {
         test("can call functions from C++", function() {
             var called = false;
@@ -2809,8 +2888,8 @@ module({
 
     BaseFixture.extend("references", function() {
         test("JS object handles can be passed through to C++ by reference", function() {
-            var sh = new cm.StringHolder("Hello world");
-            assert.equal("Hello world", sh.get());
+            var sh = new cm.StringHolder("Hello, world!");
+            assert.equal("Hello, world!", sh.get());
             cm.clear_StringHolder(sh);
             assert.equal("", sh.get());
             sh.delete();
@@ -2819,22 +2898,22 @@ module({
 
     BaseFixture.extend("val::as from pointer to value", function() {
         test("calling as on pointer with value makes a copy", function() {
-            var sh1 = new cm.StringHolder("Hello world");
+            var sh1 = new cm.StringHolder("Hello, world!");
             var sh2 = cm.return_StringHolder_copy(sh1);
-            assert.equal("Hello world", sh1.get());
-            assert.equal("Hello world", sh2.get());
+            assert.equal("Hello, world!", sh1.get());
+            assert.equal("Hello, world!", sh2.get());
             assert.false(sh1.isAliasOf(sh2));
             sh2.delete();
             sh1.delete();
         });
 
         test("calling function that returns a StringHolder", function() {
-            var sh1 = new cm.StringHolder("Hello world");
+            var sh1 = new cm.StringHolder("Hello, world!");
             var sh2 = cm.call_StringHolder_func(function() {
                 return sh1;
             });
-            assert.equal("Hello world", sh1.get());
-            assert.equal("Hello world", sh2.get());
+            assert.equal("Hello, world!", sh1.get());
+            assert.equal("Hello, world!", sh2.get());
             assert.false(sh1.isAliasOf(sh2));
             sh2.delete();
             sh1.delete();

@@ -342,6 +342,11 @@ static void _standalone_populate_preopens(void) {
   _Exit(EX_OSERR);
   software:
   _Exit(EX_SOFTWARE);
+
+}
+
+weak int _poll_js(void *fds, int nfds, int timeout, void* ctx, void* arg) {
+  return -ENOSYS;
 }
 
 // open(), etc. - we just support the standard streams, with no
@@ -1096,7 +1101,7 @@ size_t emscripten_get_heap_max() {
   return emscripten_get_heap_size();
 }
 
-int emscripten_resize_heap(size_t size) {
+bool emscripten_resize_heap(size_t size) {
 #if defined(EMSCRIPTEN_MEMORY_GROWTH)
   size_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
   assert(old_size < size);
@@ -1107,10 +1112,10 @@ int emscripten_resize_heap(size_t size) {
     // Success, update JS (see https://github.com/WebAssembly/WASI/issues/82)
     emscripten_notify_memory_growth(0);
 #endif
-    return 1;
+    return true;
   }
 #endif
-  return 0;
+  return false;
 }
 
 // Call clock_gettime with a particular clock and return the result in ms.
@@ -1234,7 +1239,7 @@ int _wasmfs_stdin_get_char(void) {
 }
 
 // In the non-standalone build we define this helper function in JS to avoid
-// signture mismatch issues.
+// signature mismatch issues.
 // See: https://github.com/emscripten-core/posixtestsuite/issues/6
 void __call_sighandler(sighandler_t handler, int sig) {
   handler(sig);

@@ -17,6 +17,9 @@ import shutil
 import subprocess
 import sys
 
+WINDOWS = sys.platform.startswith('win')
+MSYS2 = 'MSYSTEM' in os.environ
+
 EXCLUDES = [os.path.normpath(x) for x in '''
 test/third_party
 tools/maint
@@ -25,6 +28,10 @@ site
 node_modules
 Makefile
 .git
+.circleci
+.github
+.mypy_cache
+.ruff_cache
 cache
 cache.lock
 out
@@ -43,13 +50,16 @@ logger = logging.getLogger('install')
 def add_revision_file(target):
   # text=True would be better than encoding here, but it's only supported in 3.7+
   git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], encoding='utf-8').strip()
-  with open(os.path.join(target, 'emscripten-revision.txt'), 'w') as f:
+  with open(os.path.join(target, 'emscripten-revision.txt'), 'w', encoding='utf-8') as f:
     f.write(git_hash + '\n')
 
 
 def copy_emscripten(target):
   script_dir = os.path.dirname(os.path.abspath(__file__))
   emscripten_root = os.path.dirname(script_dir)
+
+  excludes = EXCLUDES
+
   os.chdir(emscripten_root)
   for root, dirs, files in os.walk('.'):
     # Handle the case where the target directory is underneath emscripten_root
@@ -78,7 +88,7 @@ def copy_emscripten(target):
         logger.debug('skipping file: ' + os.path.join(root, f))
         continue
       full = os.path.normpath(os.path.join(root, f))
-      if full in EXCLUDES:
+      if full in excludes:
         logger.debug('skipping file: ' + os.path.join(root, f))
         continue
       logger.debug('installing file: ' + os.path.join(root, f))

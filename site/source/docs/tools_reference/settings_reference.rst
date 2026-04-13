@@ -36,7 +36,7 @@ Chooses what kind of stack smash checks to emit to generated code:
 Building with ASSERTIONS=1 causes STACK_OVERFLOW_CHECK default to 1.
 Since ASSERTIONS=1 is the default at -O0, which itself is the default
 optimization level this means that this setting also effectively
-defaults 1, absent any other settings:
+defaults to 1, absent any other settings:
 
 - 0: Stack overflows are not checked.
 - 1: Adds a security cookie at the top of the stack, which is checked at end
@@ -134,7 +134,7 @@ What malloc()/free() to use, out of:
   - emmalloc-verbose - use emmalloc with assertions + verbose logging.
   - emmalloc-memvalidate-verbose - use emmalloc with assertions + heap
     consistency checking + verbose logging.
-  - mimalloc - a powerful mulithreaded allocator. This is recommended in
+  - mimalloc - a powerful multithreaded allocator. This is recommended in
     large applications that have malloc() contention, but it is
     larger and uses more memory.
   - none - no malloc() implementation is provided, but you must implement
@@ -174,7 +174,8 @@ But if you do specify it, it will have an effect now, which it did not
 previously. If you don't want that, just stop passing it in at link time.
 
 Note that this setting does not affect the behavior of operator new in C++.
-This function will always abort on allocation failure if exceptions are disabled.
+This function will always abort on allocation failure if exceptions are
+disabled.
 If you want new to return 0 on failure, use it with std::nothrow.
 
 Default value: true
@@ -188,7 +189,7 @@ The initial amount of heap memory available to the program.  This is the
 memory region available for dynamic allocations via `sbrk`, `malloc` and `new`.
 
 Unlike INITIAL_MEMORY, this setting allows the static and dynamic regions of
-your programs memory to independently grow. In most cases we recommend using
+your program's memory to independently grow. In most cases we recommend using
 this setting rather than `INITIAL_MEMORY`. However, this setting does not work
 for imported memories (e.g. when dynamic linking is used).
 
@@ -321,7 +322,7 @@ Default value: 0
 INITIAL_TABLE
 =============
 
-Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is use
+Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is used
 (and not otherwise). Normally Emscripten can determine the size of the table
 at link time, but in SPLIT_MODULE mode, wasm-split often needs to grow the
 table, so the table size baked into the JS for the instrumented build will be
@@ -348,8 +349,8 @@ GLOBAL_BASE
 ===========
 
 Where global data begins; the start of static memory.
-A GLOBAL_BASE of 1024 or above is useful for optimizing load/store offsets, as it
-enables the --low-memory-unused pass
+A GLOBAL_BASE of 1024 or above is useful for optimizing load/store offsets,
+as it enables the --low-memory-unused pass
 
 Default value: 1024
 
@@ -431,7 +432,7 @@ Default value: false
 SUPPORT_BIG_ENDIAN
 ==================
 
-If set to 1, perform acorn pass that converts each HEAP access into a
+If set to 1, perform an acorn pass that converts each HEAP access into a
 function call that uses DataView to enforce LE byte order for HEAP buffer;
 This makes generated JavaScript run on BE as well as LE machines. (If 0, only
 LE systems are supported). Does not affect generated wasm.
@@ -477,8 +478,8 @@ best it can.  We use 64 bits (i64) to represent values, as if we wrote the
 sent value to memory and loaded the received type from the same memory (using
 truncs/extends/ reinterprets). This means that when types do not match the
 emulated values may not match (this is true of native too, for that matter -
-this is all undefined behavior). This approaches appears good enough to
-support Python (the original motiviation for this feature) and Glib (the
+this is all undefined behavior). This approach appears good enough to
+support Python (the original motivation for this feature) and Glib (the
 continued motivation).
 
 Default value: false
@@ -551,10 +552,10 @@ SOCKET_WEBRTC
 
 As well as being configurable at compile time via the "-s" option the
 WEBSOCKET_URL and WEBSOCKET_SUBPROTOCOL
-settings may configured at run time via the Module object e.g.
+settings may be configured at run time via the Module object e.g.
 Module['websocket'] = {subprotocol: 'base64, binary, text'};
 Module['websocket'] = {url: 'wss://', subprotocol: 'base64'};
-You can set 'subprotocol' to null, if you don't want to specify it
+You can set 'subprotocol' to null, if you don't want to specify it.
 Run time configuration may be useful as it lets an application select
 multiple different services.
 
@@ -565,10 +566,10 @@ Default value: false
 WEBSOCKET_URL
 =============
 
-A string containing either a WebSocket URL prefix (ws:// or wss://) or a complete
-RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
-In the (default) case of only a prefix being specified the URL will be constructed from
-prefix + addr + ':' + port
+A string containing either a WebSocket URL prefix (ws:// or wss://) or a
+complete RFC 6455 URL - "ws[s]:" "//" host [ ":" port ] path [ "?" query ].
+In the (default) case of only a prefix being specified the URL will be
+constructed from prefix + addr + ':' + port
 where addr and port are derived from the socket connect/bind/accept calls.
 
 Default value: 'ws://'
@@ -578,8 +579,8 @@ Default value: 'ws://'
 PROXY_POSIX_SOCKETS
 ===================
 
-If 1, the POSIX sockets API uses a native bridge process server to proxy sockets calls
-from browser to native world.
+If 1, the POSIX sockets API uses a native bridge process server to proxy
+sockets calls from browser to native world.
 
 Default value: false
 
@@ -700,7 +701,7 @@ Default value: true
 GL_EXTENSIONS_IN_PREFIXED_FORMAT
 ================================
 
-If true, all GL extensions are advertised in both unprefixed WebGL extension
+If true, all GL extensions are advertised in unprefixed WebGL extension
 format, but also in desktop/mobile GLES/GL extension format with ``GL_``
 prefix.
 
@@ -722,12 +723,13 @@ Default value: true
 GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS
 ===================================
 
-If true, the function ``emscripten_webgl_enable_extension()`` can be called to
-enable any WebGL extension. If false, to save code size,
-``emscripten_webgl_enable_extension()`` cannot be called to enable any of extensions
-'ANGLE_instanced_arrays', 'OES_vertex_array_object', 'WEBGL_draw_buffers',
-'WEBGL_multi_draw', 'WEBGL_draw_instanced_base_vertex_base_instance',
-or 'WEBGL_multi_draw_instanced_base_vertex_base_instance',
+If true, the function ``emscripten_webgl_enable_extension()`` can be called
+to enable any WebGL extension. If false, to save code size,
+``emscripten_webgl_enable_extension()`` cannot be called to enable any of
+extensions 'ANGLE_instanced_arrays', 'OES_vertex_array_object',
+'WEBGL_draw_buffers', 'WEBGL_multi_draw',
+'WEBGL_draw_instanced_base_vertex_base_instance', or
+'WEBGL_multi_draw_instanced_base_vertex_base_instance',
 but the dedicated functions ``emscripten_webgl_enable_*()``
 found in html5.h are used to enable each of those extensions.
 This way code size is increased only for the extensions that are actually used.
@@ -741,9 +743,9 @@ Default value: true
 GL_TRACK_ERRORS
 ===============
 
-If set to 0, Emscripten GLES2->WebGL translation layer does not track the kind
-of GL errors that exist in GLES2 but do not exist in WebGL. Settings this to 0
-saves code size. (Good to keep at 1 for development)
+If set to 0, Emscripten GLES2->WebGL translation layer does not track the
+kind of GL errors that exist in GLES2 but do not exist in WebGL. Setting
+this to 0 saves code size. (Good to keep at 1 for development)
 
 Default value: true
 
@@ -836,7 +838,7 @@ If true, emulates some WebGL 1 features on WebGL 2 contexts, meaning that
 applications that use WebGL 1/GLES 2 can initialize a WebGL 2/GLES3 context,
 but still keep using WebGL1/GLES 2 functionality that no longer is supported
 in WebGL2/GLES3. Currently this emulates GL_EXT_shader_texture_lod extension
-in GLSLES 1.00 shaders, support for unsized internal texture formats, and the
+in GLSL ES 1.00 shaders, support for unsized internal texture formats, and the
 GL_HALF_FLOAT_OES != GL_HALF_FLOAT mixup.
 
 Default value: false
@@ -950,15 +952,6 @@ can also vary between browsers.
 
 Default value: false
 
-.. _polyfill_old_math_functions:
-
-POLYFILL_OLD_MATH_FUNCTIONS
-===========================
-
-If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
-
-Default value: false
-
 .. _legacy_vm_support:
 
 LEGACY_VM_SUPPORT
@@ -968,7 +961,6 @@ Set this to enable compatibility emulations for old JavaScript engines. This giv
 the highest possible probability of the code working everywhere, even in rare old
 browsers and shell environments. Specifically:
 
-- Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-sPOLYFILL_OLD_MATH_FUNCTIONS)
 - Disable WebAssembly. (Must be paired with -sWASM=0)
 - Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 - Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
@@ -983,20 +975,25 @@ ENVIRONMENT
 ===========
 
 Specify which runtime environments the JS output will be capable of running
-in.  For maximum portability this can configured to support all environments
-or it can be limited to reduce overall code size.  The supported environments
-are:
+in.  For maximum portability this can be configured to support all
+environments or it can be limited to reduce overall code size.  The supported
+environments are:
 
 - 'web'     - the normal web environment.
 - 'webview' - just like web, but in a webview like Cordova; considered to be
   same as "web" in almost every place
 - 'worker'  - a web worker environment.
+- 'worklet' - Audio Worklet environment.
 - 'node'    - Node.js.
 - 'shell'   - a JS shell like d8, js, or jsc.
 
 This setting can be a comma-separated list of these environments, e.g.,
 "web,worker". If this is the empty string, then all environments are
 supported.
+
+Certain settings will automatically add to this list.  For examble, building
+with pthreads will automatically add `worker` and building with
+``AUDIO_WORKLET`` will automatically add `worklet`.
 
 Note that the set of environments recognized here is not identical to the
 ones we identify at runtime using ``ENVIRONMENT_IS_*``. Specifically:
@@ -1124,15 +1121,15 @@ the JS library:
   Given an WebAssembly.Exception object, returns the actual user-thrown C++
   object address in Wasm memory.
 
-Setting this option also adds refcount increasing and decreasing functions
-('incrementExceptionRefcount' and 'decrementExceptionRefcount') in the JS
-library because if you catch an exception from JS, you may need to manipulate
-the refcount manually not to leak memory. What you need to do is different
-depending on the kind of EH you use
-(https://github.com/emscripten-core/emscripten/issues/17115).
+Setting this option also adds refcount incrementing and decrementing
+functions ('incrementExceptionRefcount' and 'decrementExceptionRefcount') in
+the JS library because if you catch an exception from JS, you may need to
+manipulate the refcount manually to avoid memory leaks.
 
 See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 example usage.
+
+.. note:: This setting is deprecated
 
 Default value: false
 
@@ -1160,37 +1157,6 @@ If false, emit instructions for the standardized exception handling proposal:
 https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 
 .. note:: Applicable during both linking and compilation
-
-Default value: true
-
-.. _nodejs_catch_exit:
-
-NODEJS_CATCH_EXIT
-=================
-
-Emscripten throws an ExitStatus exception to unwind when exit() is called.
-Without this setting enabled this can show up as a top level unhandled
-exception.
-
-With this setting enabled a global uncaughtException handler is used to
-catch and handle ExitStatus exceptions.  However, this means all other
-uncaught exceptions are also caught and re-thrown, which is not always
-desirable.
-
-Default value: false
-
-.. _nodejs_catch_rejection:
-
-NODEJS_CATCH_REJECTION
-======================
-
-Catch unhandled rejections in node. This only effect versions of node older
-than 15.  Without this, old version node will print a warning, but exit
-with a zero return code.  With this setting enabled, we handle any unhandled
-rejection and throw an exception, which will cause  the process exit
-immediately with a non-0 return code.
-This not needed in Node 15+ so this setting will default to false if
-MIN_NODE_VERSION is 150000 or above.
 
 Default value: true
 
@@ -1374,7 +1340,7 @@ JSPI
 
 Use VM support for the JavaScript Promise Integration proposal. This allows
 async operations to happen without the overhead of modifying the wasm. This
-is experimental atm while spec discussion is ongoing, see
+is experimental at the moment while spec discussion is ongoing, see
 https://github.com/WebAssembly/js-promise-integration/ TODO: document which
 of the following flags are still relevant in this mode (e.g. IGNORE_INDIRECT
 etc. are not needed)
@@ -1438,8 +1404,8 @@ you have this::
     preRun: [() => console.log('pre run')]
   };
 
-Then MODULE_JS_API must contain 'print' and 'preRun'; if it does not then
-we may not emit code to read and use that value. In other words, this
+Then INCOMING_MODULE_JS_API must contain 'print' and 'preRun'; if it does not
+then we may not emit code to read and use that value. In other words, this
 option lets you set, statically at compile time, the list of which Module
 JS values you will be providing at runtime, so the compiler can better
 optimize.
@@ -1457,7 +1423,7 @@ Default value: (multi-line value, see settings.js)
 CASE_INSENSITIVE_FS
 ===================
 
-If set to nonzero, the provided virtual filesystem if treated
+If set to nonzero, the provided virtual filesystem is treated
 case-insensitive, like Windows and macOS do. If set to 0, the VFS is
 case-sensitive, like on Linux.
 
@@ -1494,7 +1460,7 @@ Default value: false
 NODERAWFS
 =========
 
-Enables support for the NODERAWFS filesystem backend. This is a special
+Enables support for the ``NODERAWFS`` filesystem backend. This is a special
 backend as it replaces all normal filesystem access with direct Node.js
 operations, without the need to do ``FS.mount()``, and this backend only
 works with Node.js. The initial working directory will be same as
@@ -1503,6 +1469,20 @@ Node.js to access the real local filesystem on your OS, the code will not
 necessarily be portable between OSes - it will be as portable as a Node.js
 program would be, which means that differences in how the underlying OS
 handles permissions and errors and so forth may be noticeable.
+
+Enabling this setting will also enable :ref:`NODE_HOST_ENV` by default.
+
+Default value: false
+
+.. _node_host_env:
+
+NODE_HOST_ENV
+=============
+
+When running under Node, expose the underlying OS environment variables.
+This is similar to how ``NODERAWFS`` exposes the underlying FS.
+This setting gets enabled by default when ``NODERAWFS`` is enabled, but can
+also be controlled separately.
 
 Default value: false
 
@@ -1619,21 +1599,6 @@ the module.
 
 Default value: false
 
-.. _relocatable:
-
-RELOCATABLE
-===========
-
-If set to 1, we emit relocatable code from the LLVM backend; both
-globals and function pointers are all offset (by gb and fp, respectively)
-Automatically set for SIDE_MODULE or MAIN_MODULE.
-
-.. note:: Applicable during both linking and compilation
-
-.. note:: This setting is deprecated
-
-Default value: false
-
 .. _main_module:
 
 MAIN_MODULE
@@ -1682,31 +1647,6 @@ If set to 1, this is a worker library, a special kind of library that is run
 in a worker. See emscripten.h
 
 Default value: false
-
-.. _proxy_to_worker:
-
-PROXY_TO_WORKER
-===============
-
-If set to 1, we build the project into a js file that will run in a worker,
-and generate an html file that proxies input and output to/from it.
-
-.. note:: This setting is deprecated
-
-Default value: false
-
-.. _proxy_to_worker_filename:
-
-PROXY_TO_WORKER_FILENAME
-========================
-
-If set, the script file name the main thread loads.  Useful if your project
-doesn't run the main emscripten- generated script immediately but does some
-setup before
-
-.. note:: This setting is deprecated
-
-Default value: ''
 
 .. _proxy_to_pthread:
 
@@ -1763,14 +1703,11 @@ Set the environment variable EMCC_STRICT=1 or pass -sSTRICT to test that a
 codebase builds nicely in forward compatible manner.
 Changes enabled by this:
 
-  - The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
-    is the correct thing to use).
   - STRICT_JS is enabled.
   - IGNORE_MISSING_MAIN is disabled.
   - AUTO_JS_LIBRARIES is disabled.
   - AUTO_NATIVE_LIBRARIES is disabled.
   - DEFAULT_TO_CXX is disabled.
-  - USE_GLFW is set to 0 rather than 2 by default.
   - ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
   - INCOMING_MODULE_JS_API is set to empty by default.
 
@@ -1810,7 +1747,7 @@ implement everything, when you know what is not going to actually be called
 (and don't want to mess with the existing buildsystem), and functions might
 be implemented later on, say in --pre-js, so you may want to build with -s
 WARN_ON_UNDEFINED_SYMBOLS=0 to disable the warnings if they annoy you.  See
-also ERROR_ON_UNDEFINED_SYMBOLS.  Any undefined symbols that are listed in-
+also ERROR_ON_UNDEFINED_SYMBOLS.  Any undefined symbols that are listed in
 EXPORTED_FUNCTIONS will also be reported.
 
 Default value: true
@@ -2104,7 +2041,7 @@ Default value: false
 BINARYEN_EXTRA_PASSES
 =====================
 
-A comma-separated list of extra passes to run in the binaryen optimizer,
+A comma-separated list of extra passes to run in the binaryen optimizer.
 Setting this does not override/replace the default passes. It is appended at
 the end of the list of passes.
 
@@ -2175,8 +2112,8 @@ LEGALIZE_JS_FFI
 
 Whether to legalize the JS FFI interfaces (imports/exports) by wrapping them
 to automatically demote i64 to i32 and promote f32 to f64. This is necessary
-in order to interface with JavaScript.  For non-web/non-JS embeddings, setting
-this to 0 may be desirable.
+in order to interface with JavaScript.  For non-web/non-JS embeddings,
+setting this to 0 may be desirable.
 
 .. note:: This setting is deprecated
 
@@ -2513,6 +2450,11 @@ AUDIO_WORKLET
 If true, enables targeting Wasm Web Audio AudioWorklets. Check out the
 full documentation in site/source/docs/api_reference/wasm_audio_worklets.rst
 
+Note: The setting will implicitly add ``worklet`` to the :ref:`ENVIRONMENT`,
+(i.e. the resulting code and run in a worklet environment) but additionaly
+depends on ``WASM_WORKERS`` and Wasm SharedArrayBuffer to run new Audio
+Worklets.
+
 Default value: 0
 
 .. _audio_worklet_support_audio_params:
@@ -2810,6 +2752,26 @@ If nonzero, enables emscripten_fetch API.
 
 Default value: false
 
+.. _fetch_streaming:
+
+FETCH_STREAMING
+===============
+
+Enables streaming fetched data when the fetch attribute
+EMSCRIPTEN_FETCH_STREAM_DATA is used. For streaming requests, the DOM Fetch
+API is used otherwise XMLHttpRequest is used.
+Both modes generally support the same API, but there are some key
+differences:
+
+ - XHR supports synchronous requests
+ - XHR supports overriding mime types
+ - Fetch supports streaming data using the 'onprogress' callback
+
+If set to a value of 2, only the DOM Fetch backend will be used. This should
+only be used in testing.
+
+Default value: 0
+
 .. _wasmfs:
 
 WASMFS
@@ -2903,7 +2865,7 @@ MIN_FIREFOX_VERSION
 Specifies the oldest major version of Firefox to target. I.e. all Firefox
 versions >= MIN_FIREFOX_VERSION
 are desired to work. Pass -sMIN_FIREFOX_VERSION=majorVersion to drop support
-for Firefox versions older than < majorVersion.
+for Firefox versions older than majorVersion.
 Firefox 79 was released on 2020-07-28.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
 Minimum supported value is 68 which was released on 2019-07-09 (see
@@ -2955,7 +2917,7 @@ MIN_NODE_VERSION
 ================
 
 Specifies minimum node version to target for the generated code.  This is
-distinct from the minimum version required run the emscripten compiler.
+distinct from the minimum version required to run the emscripten compiler.
 Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
 Minimum supported value is 122209, which was released 2022-01-11 (see
 feature_matrix.py). This version aligns with the Ubuntu TLS 22.04 (Jammy).
@@ -3065,11 +3027,11 @@ HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS
 
 Certain browser DOM API operations, such as requesting fullscreen mode
 transition or pointer lock require that the request originates from within
-an user initiated event, such as mouse click or keyboard press. Refactoring
+a user initiated event, such as mouse click or keyboard press. Refactoring
 an application to follow this kind of program structure can be difficult, so
 HTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS allows transparent emulation
 of this by deferring such requests until a suitable event callback is
-generated. Set this to 0 to disable support for deferring to on save code
+generated. Set this to 0 to disable support for deferring to save code
 size if your application does not need support for deferred calls.
 
 Default value: true
@@ -3119,9 +3081,9 @@ Default value: []
 DEFAULT_TO_CXX
 ==============
 
-Default to c++ mode even when run as ``emcc`` rather then ``emc++``.
-When this is disabled ``em++`` is required linking C++ programs. Disabling
-this will match the behaviour of gcc/g++ and clang/clang++.
+Default to c++ mode even when run as ``emcc`` rather than ``emc++``.
+When this is disabled ``em++`` is required when linking C++ programs.
+Disabling this will match the behaviour of gcc/g++ and clang/clang++.
 
 Default value: true
 
@@ -3174,7 +3136,7 @@ Default value: false
 ABORT_ON_WASM_EXCEPTIONS
 ========================
 
-Abort on unhandled excptions that occur when calling exported WebAssembly
+Abort on unhandled exceptions that occur when calling exported WebAssembly
 functions. This makes the program behave more like a native program where the
 OS would terminate the process and no further code can be executed when an
 unhandled exception (e.g. out-of-bounds memory access) happens.
@@ -3187,7 +3149,7 @@ overhead for the extra instrumented function indirection.  Enable this if you
 want Emscripten to handle unhandled exceptions nicely at the cost of a few
 bytes extra.
 Exceptions that occur within the ``main`` function are already handled via an
-alternative mechanimsm.
+alternative mechanism.
 
 Default value: false
 
@@ -3197,9 +3159,9 @@ PURE_WASI
 =========
 
 Build binaries that use as many WASI APIs as possible, and include additional
-JS support libraries for those APIs.  This allows emscripten to produce binaries
-are more WASI compliant and also allows it to process and execute WASI
-binaries built with other SDKs (e.g.  wasi-sdk).
+JS support libraries for those APIs.  This allows emscripten to produce
+binaries that are more WASI compliant and also allows it to process and
+execute WASI binaries built with other SDKs (e.g.  wasi-sdk).
 This setting is experimental and subject to change or removal.
 Implies :ref:`STANDALONE_WASM`.
 
@@ -3230,13 +3192,13 @@ Default value: false
 SPLIT_MODULE
 ============
 
-Generate code to loading split wasm modules.
+Generate code to load split wasm modules.
 This option will automatically generate two wasm files as output, one
 with the ``.orig`` suffix and one without.  The default file (without
-the suffix) when run will generate instrumentation data can later be
+the suffix) when run will generate instrumentation data that can later be
 fed into wasm-split (the binaryen tool).
-As well as this the generated JS code will contains help functions
-to loading split modules.
+As well as this the generated JS code will contain helper functions
+to load split modules.
 
 .. note:: This is an experimental setting
 
@@ -3257,9 +3219,9 @@ Default value: true
 ALLOW_UNIMPLEMENTED_SYSCALLS
 ============================
 
-Include unimplemented JS syscalls to be included in the final output.  This
-allows programs that depend on these syscalls at runtime to be compiled, even
-though these syscalls will fail (or do nothing) at runtime.
+Link against stub implementations of unsupported/unimplemented syscalls. This
+allows programs that depend on these syscalls to be compiled, even though
+these functions will fail (or do nothing) at runtime.
 
 Default value: true
 
@@ -3268,9 +3230,10 @@ Default value: true
 TRUSTED_TYPES
 =============
 
-Allow calls to Worker(...) and importScripts(...) to be Trusted Types compatible.
-Trusted Types is a Web Platform feature designed to mitigate DOM XSS by restricting
-the usage of DOM sink APIs. See https://w3c.github.io/webappsec-trusted-types/.
+Allow calls to Worker(...) and importScripts(...) to be Trusted Types
+compatible. Trusted Types is a Web Platform feature designed to mitigate DOM
+XSS by restricting the usage of DOM sink APIs.
+See https://w3c.github.io/webappsec-trusted-types/.
 
 Default value: false
 
@@ -3319,8 +3282,8 @@ LEGACY_RUNTIME
 
 Include JS library symbols that were previously part of the default runtime.
 Without this, such symbols can be made available by adding them to
-:ref:`DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`, or via the dependencies of another JS
-library symbol.
+:ref:`DEFAULT_LIBRARY_FUNCS_TO_INCLUDE`, or via the dependencies of another
+JS library symbol.
 
 Default value: false
 
@@ -3329,10 +3292,11 @@ Default value: false
 SIGNATURE_CONVERSIONS
 =====================
 
-User-defined functions to wrap with signature conversion, which take or return
-pointer argument. Only affects ``MEMORY64=1`` builds, see
+User-defined functions to wrap with signature conversion, which take or
+return pointer arguments. Only affects ``MEMORY64=1`` builds, see
 ``create_pointer_conversion_wrappers`` in ``emscripten.py`` for details.
-Use _ for non-pointer arguments, p for pointer/i53 arguments, and P for optional pointer/i53 values.
+Use ``_`` for non-pointer arguments, ``p`` for pointer/i53 arguments, and
+``P`` for optional pointer/i53 values.
 Example use ``-sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p``
 
 Default value: []
@@ -3343,8 +3307,8 @@ SOURCE_PHASE_IMPORTS
 ====================
 
 Experimental support for wasm source phase imports.
-This is only currently implemented in the pre-release/nightly version of node,
-and not yet supported by browsers.
+This is only currently implemented in the pre-release/nightly version of
+node, and not yet supported by browsers.
 Requires EXPORT_ES6
 
 .. note:: This is an experimental setting
@@ -3415,6 +3379,31 @@ indirectly using `importScripts`
 
 Default value: false
 
+.. _fake_dylibs:
+
+FAKE_DYLIBS
+===========
+
+This setting changes the behaviour of the ``-shared`` flag.  The default
+setting of ``true`` means the ``-shared`` flag actually produces a normal
+object file (i.e. ``ld -r``).  Setting this to false will cause ``-shared``
+to behave like :ref:`SIDE_MODULE` and produce a dynamically linked
+library.
+
+Default value: true
+
+.. _executable:
+
+EXECUTABLE
+==========
+
+Add a #! line to generated JS file and make it executable.  This is useful
+for building command line tools that run under node.
+This setting can also be set to a string value, in which case that string
+will be used as the #! command to embed in the generated file.
+
+Default value: false
+
 .. _deprecated-settings:
 
 ===================
@@ -3422,17 +3411,15 @@ Deprecated Settings
 ===================
 
 The following settings have been proposed for removal from emscripten.  These settings
-still function but may be removed in a future version.  If your project is using of
-the these settings please open a bug (or reply to one of the existing bugs).
+still function but may be removed in a future version.  If your project is using one of
+these settings please open a bug (or reply to one of the existing bugs).
 
  - ``RUNTIME_LINKED_LIBS``: you can simply list the libraries directly on the commandline now
  - ``CLOSURE_WARNINGS``: use -Wclosure/-Wno-closure instead
  - ``LEGALIZE_JS_FFI``: to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
- - ``RELOCATABLE``:  under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
- - ``PROXY_TO_WORKER``: under consideration for removal (See https://github.com/emscripten-core/emscripten/issues/25440)
- - ``PROXY_TO_WORKER_FILENAME``: under consideration for removal (See https://github.com/emscripten-core/emscripten/issues/25440)
+ - ``EXPORT_EXCEPTION_HANDLING_HELPERS``: getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.
 
 .. _legacy-settings:
 
@@ -3441,7 +3428,7 @@ Legacy Settings
 ===============
 
 The following settings no longer have any effect but are still accepted by emscripten
-for backwards compatbility with older versions:
+for backwards compatibility with older versions:
 
  - ``BINARYEN``: Valid values: WASM
  - ``TOTAL_STACK``: Valid values: STACK_SIZE
@@ -3467,7 +3454,7 @@ for backwards compatbility with older versions:
  - ``ELIMINATE_DUPLICATE_FUNCTIONS``: Duplicate function elimination for wasm is handled automatically by binaryen (Valid values: [0, 1])
  - ``ELIMINATE_DUPLICATE_FUNCTIONS_DUMP_EQUIVALENT_FUNCTIONS``: Duplicate function elimination for wasm is handled automatically by binaryen (Valid values: [0])
  - ``ELIMINATE_DUPLICATE_FUNCTIONS_PASSES``: Duplicate function elimination for wasm is handled automatically by binaryen (Valid values: [5])
- - ``WASM_OBJECT_FILES``: For LTO, use -flto or -fto=thin instead; to disable LTO, just do not pass WASM_OBJECT_FILES=1 as 1 is the default anyhow (Valid values: [0, 1])
+ - ``WASM_OBJECT_FILES``: For LTO, use -flto or -fto=thin instead. Otherwise, Wasm object files are the default (Valid values: [1])
  - ``TOTAL_MEMORY``: Valid values: INITIAL_MEMORY
  - ``WASM_MEM_MAX``: Valid values: MAXIMUM_MEMORY
  - ``BINARYEN_MEM_MAX``: Valid values: MAXIMUM_MEMORY
@@ -3518,3 +3505,8 @@ for backwards compatbility with older versions:
  - ``USE_OFFSET_COVERTER``: No longer supported, not needed with modern v8 versions (Valid values: [0])
  - ``ASYNCIFY_LAZY_LOAD_CODE``: No longer supported (Valid values: [0])
  - ``USE_WEBGPU``: No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py (Valid values: [0])
+ - ``PROXY_TO_WORKER``: No longer supported (Valid values: [0])
+ - ``NODEJS_CATCH_EXIT``: No longer supported (Valid values: [0])
+ - ``NODEJS_CATCH_REJECTION``: No longer supported (Valid values: [0])
+ - ``POLYFILL_OLD_MATH_FUNCTIONS``: No longer supported (Valid values: [0])
+ - ``RELOCATABLE``: No longer supported (Valid values: [0])

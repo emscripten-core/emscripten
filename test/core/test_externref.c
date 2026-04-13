@@ -7,9 +7,9 @@ int main() {
   printf("in main\n");
   log_externref();
   get_externref();
-  printf("extenref stored\n");
+  printf("externref stored\n");
   log_externref();
-  printf("extenref logged\n");
+  printf("externref logged\n");
   return 0;
 }
 

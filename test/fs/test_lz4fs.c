@@ -118,7 +118,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   fclose(f2);
   fclose(f3);
 
-  // attemping to read a lz4 node as a link should be invalid
+  // attempting to read a lz4 node as a link should be invalid
   buffer[0] = '\0';
   assert(readlink("file1.txt", buffer, sizeof(buffer)) == -1);
   assert(buffer[0] == '\0');
@@ -158,7 +158,7 @@ int main() {
       var compressedSize = Module['compressedData']['data'].length;
       var low = COMPLETE_SIZE/3;
       var high = COMPLETE_SIZE/2;
-      console.log('seeing compressed size of ' + compressedSize + ', expect in ' + [low, high]);
+      console.log(`seeing compressed size of ${compressedSize}, expect in ${[low, high]}`);
       assert(compressedSize > low && compressedSize < high); // more than 1/3, because 1/3 is uncompressible, but still, less than 1/2
 
       ccall('finish');

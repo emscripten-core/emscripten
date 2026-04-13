@@ -78,10 +78,6 @@ function calculateLibraries() {
     libraries.push('libtime.js');
   }
 
-  if (EMSCRIPTEN_TRACING) {
-    libraries.push('libmemoryprofiler.js');
-  }
-
   if (SUPPORT_BASE64_EMBEDDING || ENVIRONMENT_MAY_BE_SHELL) {
     libraries.push('libbase64.js');
   }
@@ -94,7 +90,7 @@ function calculateLibraries() {
     libraries.push('libsyscall.js');
   }
 
-  if (MAIN_MODULE || RELOCATABLE) {
+  if (MAIN_MODULE) {
     libraries.push('libdylink.js');
   }
 
@@ -121,9 +117,7 @@ function calculateLibraries() {
 
       if (NODERAWFS) {
         // NODERAWFS requires NODEFS
-        if (!JS_LIBRARIES.includes('libnodefs.js')) {
-          libraries.push('libnodefs.js');
-        }
+        libraries.push('libnodefs.js');
         libraries.push('libnoderawfs.js');
         // NODERAWFS overwrites libpath.js
         libraries.push('libnodepath.js');
@@ -209,7 +203,7 @@ function calculateLibraries() {
   libraries.push(...JS_LIBRARIES);
 
   // Deduplicate libraries to avoid processing any library file multiple times
-  libraries = libraries.filter((item, pos) => libraries.indexOf(item) == pos);
+  libraries = [...new Set(libraries)]
 
   return libraries;
 }
@@ -280,7 +274,28 @@ export const LibraryManager = {
     }
     timer.stop('executeJS')
 
+    this.addAliasDependencies();
+
     timer.stop('load')
+  },
+
+  isAlias(entry) {
+    return (typeof entry == 'string' && entry[0] != '=' && (this.library.hasOwnProperty(entry) || WASM_EXPORTS.has(entry)));
+  },
+
+  /**
+   * Automatically add the target of an alias to it's dependency list.
+   */
+  addAliasDependencies() {
+    const aliases = {};
+    for (const [key, value] of Object.entries(this.library)) {
+      if (this.isAlias(value)) {
+        aliases[key] = value;
+      }
+    }
+    for (const [key, value] of Object.entries(aliases)) {
+      (this.library[key + '__deps'] ??= []).push(value);
+    }
   },
 
   executeJSLibraryFile(filename, contents) {
@@ -480,16 +495,6 @@ function exportRuntimeSymbols() {
     'callMain',
     'abort',
     'wasmExports',
-    'HEAPF32',
-    'HEAPF64',
-    'HEAP8',
-    'HEAPU8',
-    'HEAP16',
-    'HEAPU16',
-    'HEAP32',
-    'HEAPU32',
-    'HEAP64',
-    'HEAPU64',
   ];
 
   if (SUPPORT_BIG_ENDIAN) {

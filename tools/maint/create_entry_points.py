@@ -4,16 +4,17 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Tool for creating/maintains the python launcher scripts for all the emscripten
+"""Tool for creating/maintaining the python launcher scripts for all the emscripten
 python tools.
 
-This tools makes copies or `run_python.sh/.bat` and `run_python_compiler.sh/.bat`
+This tool makes copies or `run_python.sh/.bat` and `run_python_compiler.sh/.bat`
 script for each entry point. On UNIX we previously used symbolic links for
-simplicity but this breaks MINGW users on windows who want use the shell script
+simplicity but this breaks MINGW users on windows who want to use the shell script
 launcher but don't have symlink support.
 """
 
 import os
+import shutil
 import stat
 import sys
 
@@ -61,26 +62,42 @@ entry_remap = {
 }
 
 
+windows_exe = os.path.join(__rootdir__, 'tools/pylauncher/pylauncher.exe')
+
+
 def make_executable(filename):
   old_mode = stat.S_IMODE(os.stat(filename).st_mode)
   os.chmod(filename, old_mode | stat.S_IXUSR | stat.S_IXGRP | stat.S_IXOTH)
 
 
-def main(all_platforms):
+def maybe_remove(filename):
+  if os.path.exists(filename):
+    os.remove(filename)
+
+
+def read_file(filename):
+  with open(filename, encoding='utf-8') as f:
+    return f.read()
+
+
+def write_file(filename, content):
+  with open(filename, 'w', encoding='utf-8') as f:
+    f.write(content)
+
+
+def main(all_platforms, use_exe_files):
   is_windows = sys.platform.startswith('win')
-  do_unix = all_platforms or not is_windows
+  is_msys2 = 'MSYSTEM' in os.environ
+  do_unix = all_platforms or not is_windows or is_msys2
   do_windows = all_platforms or is_windows
 
   def generate_entry_points(cmd, path):
     sh_file = path + '.sh'
     bat_file = path + '.bat'
     ps1_file = path + '.ps1'
-    with open(sh_file) as f:
-      sh_file = f.read()
-    with open(bat_file) as f:
-      bat_file = f.read()
-    with open(ps1_file) as f:
-      ps1_file = f.read()
+    sh_file = read_file(sh_file)
+    bat_file = read_file(bat_file)
+    ps1_file = read_file(ps1_file)
 
     for entry_point in cmd:
       sh_data = sh_file
@@ -91,22 +108,24 @@ def main(all_platforms):
         bat_data = bat_data.replace('%~n0', entry_remap[entry_point].replace('/', '\\'))
         ps1_data = ps1_data.replace(r"$MyInvocation.MyCommand.Path -replace '\.ps1$', '.py'", fr'"$PSScriptRoot/{entry_remap[entry_point]}.py"')
 
+      launcher = os.path.join(__rootdir__, entry_point)
       if do_unix:
-        out_sh_file = os.path.join(__rootdir__, entry_point)
-        with open(out_sh_file, 'w') as f:
-          f.write(sh_data)
-        make_executable(out_sh_file)
+        write_file(launcher, sh_data)
+        make_executable(launcher)
 
       if do_windows:
-        with open(os.path.join(__rootdir__, entry_point + '.bat'), 'w') as f:
-          f.write(bat_data)
-
-        with open(os.path.join(__rootdir__, entry_point + '.ps1'), 'w') as f:
-          f.write(ps1_data)
+        maybe_remove(launcher + '.bat')
+        maybe_remove(launcher + '.ps1')
+        maybe_remove(launcher + '.exe')
+        if use_exe_files:
+          shutil.copyfile(windows_exe, launcher + '.exe')
+        else:
+          write_file(launcher + '.bat', bat_data)
+          write_file(launcher + '.pa1', ps1_data)
 
   generate_entry_points(entry_points, os.path.join(__scriptdir__, 'run_python'))
   generate_entry_points(compiler_entry_points, os.path.join(__scriptdir__, 'run_python_compiler'))
 
 
 if __name__ == '__main__':
-  sys.exit(main('--all' in sys.argv))
+  sys.exit(main('--all' in sys.argv, '--exe-files' in sys.argv))

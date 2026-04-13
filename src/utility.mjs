@@ -151,6 +151,13 @@ export function mergeInto(obj, other, options = null) {
       const decoratorName = key.slice(index);
       const type = typeof other[key];
 
+      if (decoratorName == '__async') {
+        const decorated = key.slice(0, index);
+        if (isJsOnlySymbol(decorated)) {
+          error(`__async decorator applied to JS symbol: ${decorated}`);
+        }
+      }
+
       // Specific type checking for `__deps` which is expected to be an array
       // (not just any old `object`)
       if (decoratorName === '__deps') {
@@ -179,12 +186,12 @@ export function mergeInto(obj, other, options = null) {
           __noleakcheck: 'boolean',
           __internal: 'boolean',
           __user: 'boolean',
-          __async: 'boolean',
+          __async: ['string', 'boolean'],
           __i53abi: 'boolean',
         };
         const expected = decoratorTypes[decoratorName];
         if (type !== expected && !expected.includes(type)) {
-          error(`Decorator (${key}} has wrong type. Expected '${expected}' not '${type}'`);
+          error(`Decorator (${key}) has wrong type. Expected '${expected}' not '${type}'`);
         }
       }
     }
@@ -324,9 +331,27 @@ export function addToCompileTimeContext(object) {
   Object.assign(compileTimeContext, object);
 }
 
+const setLikeSettings = [
+  'EXPORTED_FUNCTIONS',
+  'WASM_EXPORTS',
+  'SIDE_MODULE_EXPORTS',
+  'INCOMING_MODULE_JS_API',
+  'ALL_INCOMING_MODULE_JS_API',
+  'EXPORTED_RUNTIME_METHODS',
+  'WEAK_IMPORTS'
+];
+
 export function applySettings(obj) {
+  // Certain settings are read in as lists, but we convert them to Set
+  // within the compiler, for efficiency.
+  for (const key of setLikeSettings) {
+    if (typeof obj[key] !== 'undefined') {
+      obj[key] = new Set(obj[key]);
+    }
+  }
+
   // Make settings available both in the current / global context
-  // and also in the macro execution contexted.
+  // and also in the macro execution context.
   Object.assign(globalThis, obj);
   addToCompileTimeContext(obj);
 }

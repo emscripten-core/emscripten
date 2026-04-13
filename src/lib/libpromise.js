@@ -257,7 +257,7 @@ addToLibrary({
     return id;
   },
 
-  emscripten_promise_await__async: true,
+  emscripten_promise_await__async: 'auto',
 #if ASYNCIFY
   emscripten_promise_await__deps: ['$getPromise', '$setPromiseResult'],
 #endif
@@ -266,10 +266,10 @@ addToLibrary({
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_await: ${id}`);
 #endif
-    return Asyncify.handleAsync(() => getPromise(id).then(
+    return getPromise(id).then(
       value => setPromiseResult(returnValuePtr, true, value),
       error => setPromiseResult(returnValuePtr, false, error)
-    ));
+    );
 #else
     abort('emscripten_promise_await is only available with ASYNCIFY');
 #endif

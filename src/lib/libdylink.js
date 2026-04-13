@@ -6,8 +6,8 @@
  * Dynamic library loading
  */
 
-#if !MAIN_MODULE && !RELOCATABLE
-#error "library_dylink.js requires MAIN_MODULE or RELOCATABLE"
+#if !MAIN_MODULE
+#error "library_dylink.js requires MAIN_MODULE"
 #endif
 
 {{{
@@ -93,16 +93,9 @@ var LibraryDylink = {
     } catch(e) {
       stackRestore(sp);
       // Create a try-catch guard that rethrows the Emscripten EH exception.
-#if EXCEPTION_STACK_TRACES
       // Exceptions thrown from C++ and longjmps will be an instance of
       // EmscriptenEH.
       if (!(e instanceof EmscriptenEH)) throw e;
-#else
-      // Exceptions thrown from C++ will be a pointer (number) and longjmp
-      // will throw the number Infinity. Use the compact and fast "e !== e+0"
-      // test to check if e was not a Number.
-      if (e !== e+0) throw e;
-#endif
       _setThrew(1, 0);
 #if WASM_BIGINT
       // In theory this if statement could be done on
@@ -117,7 +110,7 @@ var LibraryDylink = {
   // Resolve a global symbol by name.  This is used during module loading to
   // resolve imports, and by `dlsym` when used with `RTLD_DEFAULT`.
   // Returns both the resolved symbol (i.e. a function or a global) along with
-  // the canonical name of the symbol (in some cases is modify the symbol as
+  // the canonical name of the symbol (in some cases modifying the symbol as
   // part of the loop process, so that actual symbol looked up has a different
   // name).
   $resolveGlobalSymbol__deps: ['$isSymbolDefined', '$createNamedFunction',
@@ -166,7 +159,7 @@ var LibraryDylink = {
   $GOT: {},
 
   // Proxy handler used for GOT.mem and GOT.func imports.  Each of these
-  // imports is fullfilled dynamically via the `get` method of this proxy
+  // imports is fulfilled dynamically via the `get` method of this proxy
   // handler.  We abuse the `target` of the Proxy in order to pass the set of
   // weak imports to the handler.
   $GOTHandler__internal: true,
@@ -303,7 +296,7 @@ var LibraryDylink = {
         return value;
       }
 #endif
-      // Detect immuable wasm global exports. These represent data addresses
+      // Detect immutable wasm global exports. These represent data addresses
       // which are relative to `memoryBase`
       if (isImmutableGlobal(value)) {
         return new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}'}, value.value + {{{ to64('memoryBase') }}});
@@ -430,13 +423,6 @@ var LibraryDylink = {
     // that once the program starts it doesn't use this region.  In relocatable
     // mode we can just update the __heap_base symbol that we are exporting to
     // the main module.
-    // When not relocatable `__heap_base` is fixed and exported by the main
-    // module, but we can update the `sbrk_ptr` value instead.  We call
-    // `_emscripten_get_sbrk_ptr` knowing that it is safe to call prior to
-    // runtime initialization (unlike, the higher level sbrk function)
-#if RELOCATABLE
-    GOT['__heap_base'].value = {{{ to64('end') }}};
-#else
 #if PTHREADS
     if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
@@ -444,7 +430,6 @@ var LibraryDylink = {
       {{{ makeSetValue('sbrk_ptr', 0, 'end', '*') }}}
 #if PTHREADS
     }
-#endif
 #endif
     return ret;
   },
@@ -507,7 +492,7 @@ var LibraryDylink = {
       // we should see the dylink custom section right after the magic number and wasm version
       failIf(binary[8] !== 0, 'need the dylink section to be first')
       offset = 9;
-      var section_size = getLEB(); //section size
+      var section_size = getLEB(); // section size
       end = offset + section_size;
       var name = getString();
       failIf(name !== 'dylink.0');
@@ -682,7 +667,7 @@ var LibraryDylink = {
       // table and memory regions.  Later threads re-use the same table region
       // and can ignore the memory region (since memory is shared between
       // threads already).
-      // If `handle` is specified than it is assumed that the calling thread has
+      // If `handle` is specified then it is assumed that the calling thread has
       // exclusive access to it for the duration of this function.  See the
       // locking in `dynlink.c`.
       var firstLoad = !handle || !{{{ makeGetValue('handle', C_STRUCTS.dso.mem_allocated, 'i8') }}};
@@ -728,7 +713,7 @@ var LibraryDylink = {
 
       // This is the export map that we ultimately return.  We declare it here
       // so it can be used within resolveSymbol.  We resolve symbols against
-      // this local symbol map in the case there they are not present on the
+      // this local symbol map in the case where they are not present on the
       // global Module object.  We need this fallback because Modules sometime
       // need to import their own symbols
       var moduleExports;
@@ -857,7 +842,7 @@ var LibraryDylink = {
           {{{ makeEval('ASM_CONSTS[start] = eval(func)') }}};
         }
 
-        // Add any EM_ASM function that exist in the side module
+        // Add any EM_ASM functions that exist in the side module
         if ('__start_em_asm' in moduleExports) {
           var start = moduleExports['__start_em_asm'].value;
           var stop = moduleExports['__stop_em_asm'].value;
@@ -977,13 +962,19 @@ var LibraryDylink = {
     // now load needed libraries and the module itself.
     if (flags.loadAsync) {
       return metadata.neededDynlibs
-        .reduce((chain, dynNeeded) => chain.then(() =>
-          loadDynamicLibrary(dynNeeded, flags, localScope)
-        ), Promise.resolve())
+        .reduce((chain, needed) => chain.then(() => {
+#if FILESYSTEM
+          needed = findLibraryFS(needed, flags.rpath) ?? needed;
+#endif
+          return loadDynamicLibrary(needed, flags, localScope);
+        }), Promise.resolve())
         .then(loadModule);
     }
 
     for (var needed of metadata.neededDynlibs) {
+#if FILESYSTEM
+      needed = findLibraryFS(needed, flags.rpath) ?? needed;
+#endif
       loadDynamicLibrary(needed, flags, localScope)
     }
     return loadModule();
@@ -1126,7 +1117,7 @@ var LibraryDylink = {
         registerDynCallSymbols(dso.exports);
 #endif
       } else if (!dso.global) {
-        // The library was previously loaded only locally but not
+        // The library was previously loaded only locally but now
         // we have a request with global=true.
         dso.global = true;
         mergeLibSymbols(dso.exports, libName)
@@ -1311,22 +1302,13 @@ var LibraryDylink = {
   },
 
   _dlopen_js__deps: ['$dlopenInternal'],
+  _dlopen_js__async: 'auto',
+  _dlopen_js: (handle) =>
 #if ASYNCIFY
-  _dlopen_js__async: true,
-#endif
-  _dlopen_js: {{{ asyncIf(ASYNCIFY == 2) }}} (handle) =>
-#if ASYNCIFY
-    Asyncify.handleSleep((wakeUp) =>
-      dlopenInternal(handle, { loadAsync: true })
-      .then(wakeUp)
-      // Note: this currently relies on being able to catch errors even from `wakeUp` callback itself.
-      // That's why we can't refactor it to `handleAsync` at the moment.
-      .catch(() => wakeUp(0))
-    )
+    dlopenInternal(handle, { loadAsync: true }),
 #else
-    dlopenInternal(handle, { loadAsync: false })
+    dlopenInternal(handle, { loadAsync: false }),
 #endif
-    ,
 
   // Async version of dlopen.
   _emscripten_dlopen_js__deps: ['$dlopenInternal', '$callUserCallback', '$dlSetError'],
@@ -1416,8 +1398,8 @@ var LibraryDylink = {
 #endif
         result = addr;
       } else {
-        // Insert the function into the wasm table.  If its a direct wasm
-        // function the second argument will not be needed.  If its a JS
+        // Insert the function into the wasm table.  If it's a direct wasm
+        // function the second argument will not be needed.  If it's a JS
         // function we rely on the `sig` attribute being set based on the
         // `<func>__sig` specified in library JS file.
         result = addFunction(result, result.sig);

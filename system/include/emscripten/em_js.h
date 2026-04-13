@@ -75,10 +75,11 @@
 
 
 // Normally macros like `true` and `false` are not expanded inside
-// of `EM_JS` or `EM_ASM` blocks.  However, in the case then an
+// of `EM_JS` or `EM_ASM` blocks.  However, in the case when an
 // additional macro later is added these will be expanded and we want
 // to make sure the resulting expansion doesn't break the expectations
 // of JS code
+#include <stdbool.h>
 #if defined(true) && defined(false)
 #undef true
 #undef false

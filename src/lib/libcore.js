@@ -21,6 +21,31 @@
 // new function with an '_', it will not be found.
 
 addToLibrary({
+  // HEAP definitions are here to help with TypeScript type generation.
+  $HEAP8__docs: '/** @type {!Int8Array} */',
+  $HEAP8: undefined,
+  $HEAPU8__docs: '/** @type {!Uint8Array} */',
+  $HEAPU8: undefined,
+  $HEAP16__docs: '/** @type {!Int16Array} */',
+  $HEAP16: undefined,
+  $HEAPU16__docs: '/** @type {!Uint16Array} */',
+  $HEAPU16: undefined,
+  $HEAP32__docs: '/** @type {!Int32Array} */',
+  $HEAP32: undefined,
+  $HEAPU32__docs: '/** @type {!Uint32Array} */',
+  $HEAPU32: undefined,
+  $HEAPF32__docs: '/** @type {!Float32Array} */',
+  $HEAPF32: undefined,
+  $HEAPF64__docs: '/** @type {!Float64Array} */',
+  $HEAPF64: undefined,
+#if WASM_BIGINT
+  // BigInt64Array type is not correctly defined in closure
+  $HEAP64__docs: '/** not-@type {!BigInt64Array} */',
+  $HEAP64: undefined,
+  $HEAPU64__docs: '/** not-@type {!BigUint64Array} */',
+  $HEAPU64: undefined,
+#endif
+
   // JS aliases for native stack manipulation functions and tempret handling
   $stackSave__deps: ['emscripten_stack_get_current'],
   $stackSave: () => _emscripten_stack_get_current(),
@@ -45,7 +70,11 @@ addToLibrary({
   // purposes in cases where new functions are created at runtime.
   $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
 
-  $ptrToString: (ptr) => {
+  // This function is referenced *very* early on in some configurations
+  // (e.g WASM_WORKERS + RUNTIME_DEBUG) so we explictly use a function here
+  // rather than an arrow function so that it gets hoisted to the top of the
+  // scope.
+  $ptrToString: function(ptr) {
 #if ASSERTIONS
     assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
 #endif
@@ -351,7 +380,7 @@ addToLibrary({
       var cmdstr = UTF8ToString(command);
       if (!cmdstr.length) return 0; // this is what glibc seems to do (shell works test?)
 
-      var cp = require('child_process');
+      var cp = require('node:child_process');
       var ret = cp.spawnSync(cmdstr, [], {shell:true, stdio:'inherit'});
 
       var _W_EXITCODE = (ret, sig) => ((ret) << 8 | (sig));
@@ -455,15 +484,11 @@ addToLibrary({
   // a proxy and declare the dependency here.
   _emscripten_throw_longjmp__deps: ['setThrew'],
   _emscripten_throw_longjmp: () => {
-#if EXCEPTION_STACK_TRACES
     throw new EmscriptenSjLj;
-#else
-    throw Infinity;
-#endif
   },
 #elif !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
-  // These are in order to print helpful error messages when either longjmp of
+  // These are in order to print helpful error messages when either longjmp or
   // setjmp is used.
   longjmp__deps: [() => {
     error('longjmp support was disabled (SUPPORT_LONGJMP=0), but it is required by the code (either set SUPPORT_LONGJMP=1, or remove uses of it in the project)');
@@ -666,7 +691,7 @@ addToLibrary({
     }
 
     if (str.indexOf(".") > 0) {
-      // parse IPv4 embedded stress
+      // parse IPv4 embedded address
       str = str.replace(new RegExp('[.]', 'g'), ":");
       words = str.split(":");
       words[words.length-4] = Number(words[words.length-4]) + Number(words[words.length-3])*256;
@@ -686,7 +711,7 @@ addToLibrary({
           }
           offset = z-1;
         } else {
-          // parse hex to field to 16-bit value and write it in network byte-order
+          // parse hex field to 16-bit value and write it in network byte-order
           parts[w+offset] = _htons(parseInt(words[w],16));
         }
       } else {
@@ -756,7 +781,7 @@ addToLibrary({
       // IPv4-compatible IPv6 address if 16-bit value (bytes 11 and 12) == 0x0000 (6th word)
       if (parts[5] === 0) {
         str = "::";
-        //special case IPv6 addresses
+        // special case IPv6 addresses
         if (v4part === "0.0.0.0") v4part = ""; // any/unspecified address
         if (v4part === "0.0.0.1") v4part = "1";// loopback address
         str += v4part;
@@ -1463,36 +1488,22 @@ addToLibrary({
     else return lengthBytesUTF8(str);
   },
 
-#if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
-  // When lsan or asan is enabled withBuiltinMalloc temporarily replaces calls
-  // to malloc, calloc, free, and memalign.
-  $withBuiltinMalloc__deps: [
-    'malloc', 'calloc', 'free', 'memalign', 'realloc',
-    'emscripten_builtin_malloc', 'emscripten_builtin_free', 'emscripten_builtin_memalign', 'emscripten_builtin_calloc', 'emscripten_builtin_realloc'
-  ],
-  $withBuiltinMalloc__docs: '/** @suppress{checkTypes} */',
-  $withBuiltinMalloc: (func) => {
-    var prev_malloc = typeof _malloc != 'undefined' ? _malloc : undefined;
-    var prev_calloc = typeof _calloc != 'undefined' ? _calloc : undefined;
-    var prev_memalign = typeof _memalign != 'undefined' ? _memalign : undefined;
-    var prev_free = typeof _free != 'undefined' ? _free : undefined;
-    var prev_realloc = typeof _realloc != 'undefined' ? _realloc : undefined;
-    _malloc = _emscripten_builtin_malloc;
-    _calloc = _emscripten_builtin_calloc;
-    _memalign = _emscripten_builtin_memalign;
-    _free = _emscripten_builtin_free;
-    _realloc = _emscripten_builtin_realloc;
+#if USE_ASAN || USE_LSAN
+  // When lsan is enabled noLeakCheck will temporarily disable leak checking
+  // for the duration of the function.
+  $noLeakCheck__deps: ['__lsan_enable', '__lsan_disable'],
+  $noLeakCheck__docs: '/** @suppress{checkTypes} */',
+  $noLeakCheck: (func) => {
+    if (runtimeInitialized) ___lsan_disable();
     try {
       return func();
     } finally {
-      _malloc = prev_malloc;
-      _calloc = prev_calloc;
-      _memalign = prev_memalign;
-      _free = prev_free;
-      _realloc = prev_realloc;
+      if (runtimeInitialized) ___lsan_enable();
     }
   },
+#endif
 
+#if USE_ASAN || USE_LSAN || UBSAN_RUNTIME
   _emscripten_sanitizer_use_colors: () => {
     var setting = Module['printWithColors'];
     if (setting !== undefined) {
@@ -1501,11 +1512,9 @@ addToLibrary({
     return ENVIRONMENT_IS_NODE && process.stderr.isTTY;
   },
 
-  _emscripten_sanitizer_get_option__deps: ['$withBuiltinMalloc', '$stringToNewUTF8', '$UTF8ToString'],
+  _emscripten_sanitizer_get_option__deps: ['$stringToNewUTF8', '$UTF8ToString'],
   _emscripten_sanitizer_get_option__sig: 'pp',
-  _emscripten_sanitizer_get_option: (name) => {
-    return withBuiltinMalloc(() => stringToNewUTF8(Module[UTF8ToString(name)] || ""));
-  },
+  _emscripten_sanitizer_get_option: (name) => stringToNewUTF8(Module[UTF8ToString(name)] || ''),
 #endif
 
   $readEmAsmArgsArray: [],
@@ -1592,7 +1601,7 @@ addToLibrary({
       // is a stack allocation that LLVM made, which may go away before the main
       // thread gets the message. For that reason we handle proxying *after* the
       // call to readEmAsmArgs, and therefore we do that manually here instead
-      // of using __proxy. (And dor simplicity, do the same in the sync
+      // of using __proxy. (And for simplicity, do the same in the sync
       // case as well, even though it's not strictly necessary, to keep the two
       // code paths as similar as possible on both sides.)
       return proxyToMainThread(0, emAsmAddr, sync, ...args);
@@ -1615,8 +1624,8 @@ addToLibrary({
 #endif
 
 #if !DECLARE_ASM_MODULE_EXPORTS
-  // When DECLARE_ASM_MODULE_EXPORTS is set, this function is programatically
-  // ceated during linking.  See `create_receiving` in `emscripten.py`.
+  // When DECLARE_ASM_MODULE_EXPORTS is set, this function is programmatically
+  // created during linking.  See `create_receiving` in `emscripten.py`.
   // When DECLARE_ASM_MODULE_EXPORTS=0 is set, `assignWasmExports` is instead
   // defined here as a normal JS library function.
   $assignWasmExports__deps: ['$asmjsMangle',
@@ -2013,6 +2022,9 @@ addToLibrary({
       }
     }
 #endif
+#if RUNTIME_DEBUG
+    dbg("handleException: got unexpected exception, calling quit_")
+#endif
     quit_(1, e);
   },
 
@@ -2082,10 +2094,11 @@ addToLibrary({
       return;
     }
     try {
-      func();
-      maybeExit();
+      return func();
     } catch (e) {
       handleException(e);
+    } finally {
+      maybeExit();
     }
   },
 
@@ -2187,36 +2200,6 @@ addToLibrary({
 #endif
   },
 
-#if RELOCATABLE
-  // Globals that are normally exported from the wasm module but in relocatable
-  // mode are created here and imported by the module.
-  __stack_pointer: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(STACK_HIGH) }}})",
-  // tell the memory segments where to place themselves
-  __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
-  // the wasm backend reserves slot 0 for the NULL function pointer
-  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(TABLE_BASE) }}})",
-#if MEMORY64 == 2
-  __memory_base32: "new WebAssembly.Global({'value': 'i32', 'mutable': false}, {{{ GLOBAL_BASE }}})",
-#endif
-#if MEMORY64
-  __table_base32: {{{ TABLE_BASE }}},
-#endif
-  // To support such allocations during startup, track them on __heap_base and
-  // then when the main module is loaded it reads that value and uses it to
-  // initialize sbrk (the main module is relocatable itself, and so it does not
-  // have __heap_base hardcoded into it - it receives it from JS as an extern
-  // global, basically).
-  __heap_base: '{{{ HEAP_BASE }}}',
-  __stack_high: '{{{ STACK_HIGH }}}',
-  __stack_low: '{{{ STACK_LOW }}}',
-  __global_base: '{{{ GLOBAL_BASE }}}',
-#endif // RELOCATABLE
-
-#if (MAIN_MODULE || RELOCATABLE) && ASYNCIFY == 1
-  __asyncify_state: "new WebAssembly.Global({'value': 'i32', 'mutable': true}, 0)",
-  __asyncify_data: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(0) }}})",
-#endif
-
   _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
   _emscripten_fs_load_embedded_files: (ptr) => {
 #if RUNTIME_DEBUG
@@ -2235,7 +2218,7 @@ addToLibrary({
 #endif
       FS.createPath('/', PATH.dirname(name), true, true);
       // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
-      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, true);
+      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, /*canOwn=*/true);
     } while ({{{ makeGetValue('ptr', '0', '*') }}});
 #if RUNTIME_DEBUG
     dbg('done preloading data files');
@@ -2270,24 +2253,9 @@ addToLibrary({
     }
   },
 
-  $wasmTable__docs: '/** @type {WebAssembly.Table} */',
-#if RELOCATABLE
-  // In RELOCATABLE mode we create the table in JS.
-  $wasmTable: `=new WebAssembly.Table({
-  'initial': {{{ toIndexType(INITIAL_TABLE) }}},
-#if !ALLOW_TABLE_GROWTH
-  'maximum': {{{ toIndexType(INITIAL_TABLE) }}},
-#endif
-#if MEMORY64 == 1
-  'address': 'i64',
-#endif
-  'element': 'anyfunc'
-});
-`,
-#else
   // `wasmTable` is a JS alias for the Wasm `__indirect_function_table` export
+  $wasmTable__docs: '/** @type {WebAssembly.Table} */',
   $wasmTable: '__indirect_function_table',
-#endif
 
 #if IMPORTED_MEMORY
   // This gets defined in src/runtime_init_memory.js
@@ -2622,10 +2590,10 @@ function wrapSyscallFunction(x, library, isWasi) {
   post = handler + post;
 
   if (pre || post) {
-    t = modifyJSFunction(t, (args, body) => `function (${args}) {\n${pre}${body}${post}}\n`);
+    t = modifyJSFunction(t, (args, body, async_) => `${async_}function (${args}) {\n${pre}${body}${post}}\n`);
   }
 
-  library[x] = eval('(' + t + ')');
+  library[x] = eval(`(${t})`);
   // Automatically add dependency on `$SYSCALLS`
   if (!WASMFS && t.includes('SYSCALLS')) {
     library[x + '__deps'].push('$SYSCALLS');

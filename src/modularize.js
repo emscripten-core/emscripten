@@ -7,6 +7,10 @@
 // This code implements the `-sMODULARIZE` settings by taking the generated
 // JS program code (INNER_JS_CODE) and wrapping it in a factory function.
 
+#if STRICT_JS
+"use strict";
+#endif
+
 #if SOURCE_PHASE_IMPORTS
 import source wasmModule from './{{{ WASM_BINARY_FILE }}}';
 #endif
@@ -18,7 +22,12 @@ var {{{ EXPORT_NAME }}} = (() => {
   // When MODULARIZE this JS may be executed later,
   // after document.currentScript is gone, so we save it.
   // In EXPORT_ES6 mode we can just use 'import.meta.url'.
+#if MIN_FIREFOX_VERSION < 74 || LEGACY_VM_SUPPORT
+  // This modularize.js script is not Babeled, so manually adapt for old browsers.
+  var _scriptName = typeof document !== 'undefined' && document.currentScript ? document.currentScript.src : undefined;
+#else
   var _scriptName = globalThis.document?.currentScript?.src;
+#endif
   return async function(moduleArg = {}) {
     var moduleRtn;
 
@@ -28,7 +37,7 @@ var {{{ EXPORT_NAME }}} = (() => {
   };
 })();
 #else
-// When targetting node and ES6 we use `await import ..` in the generated code
+// When targeting node and ES6 we use `await import ..` in the generated code
 // so the outer function needs to be marked as async.
 async function {{{ EXPORT_NAME }}}(moduleArg = {}) {
   var moduleRtn;
@@ -59,7 +68,7 @@ if (typeof exports === 'object' && typeof module === 'object') {
 // when running in MODULARIZE mode we need use this to know if we should
 // run the module constructor on startup (true only for pthreads).
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-var isPthread = globalThis.self?.name?.startsWith('em-pthread');
+var isPthread = {{{ pthreadDetection() }}};
 #if ENVIRONMENT_MAY_BE_NODE
 // In order to support both web and node we also need to detect node here.
 var isNode = {{{ nodeDetectionCode() }}};
@@ -85,7 +94,7 @@ isPthread && {{{ EXPORT_NAME }}}();
 // when running in MODULARIZE mode we need use this to know if we should
 // run the module constructor on startup (true only for pthreads).
 #if ENVIRONMENT_MAY_BE_WEB || ENVIRONMENT_MAY_BE_WORKER
-var isWW = globalThis.self?.name == 'em-ww';
+var isWW = {{{ wasmWorkerDetection() }}};
 // In order to support both web and node we also need to detect node here.
 #if ENVIRONMENT_MAY_BE_NODE
 #if !PTHREADS

@@ -76,7 +76,7 @@ def flaky(note=''):
   def decorated(func):
     @wraps(func)
     def modified(self, *args, **kwargs):
-      # Browser tests have there own method of retrying tests.
+      # Browser tests have their own method of retrying tests.
       if self.is_browser_test():
         self.flaky = True
         return func(self, *args, **kwargs)
@@ -106,6 +106,10 @@ no_windows = skip_if('no_windows', lambda _: WINDOWS)
 
 no_wasm64 = skip_if('no_wasm64', lambda t: t.is_wasm64())
 
+no_bun = skip_if('no_bun', lambda t: t.engine_is_bun())
+
+no_deno = skip_if('no_deno', lambda t: t.engine_is_deno())
+
 # 2200mb is the value used by the core_2gb test mode
 no_2gb = skip_if('no_2gb', lambda t: t.get_setting('INITIAL_MEMORY') == '2200mb')
 
@@ -129,12 +133,12 @@ def requires_node(func):
   return decorated
 
 
-def requires_node_canary(func):
+def requires_node_25(func):
   assert callable(func)
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    self.require_node_canary()
+    self.require_node_25()
     return func(self, *args, **kwargs)
 
   return decorated
@@ -203,12 +207,12 @@ def requires_jspi(func):
   return decorated
 
 
-def node_pthreads(func):
+def requires_pthreads(func):
   assert callable(func)
 
   @wraps(func)
   def decorated(self, *args, **kwargs):
-    self.setup_node_pthreads()
+    self.require_pthreads()
     return func(self, *args, **kwargs)
   return decorated
 
@@ -401,6 +405,21 @@ def also_with_wasm64(func):
 
   parameterize(metafunc, {'': (False,),
                           'wasm64': (True,)})
+  return metafunc
+
+
+def also_with_fetch_streaming(f):
+  assert callable(f)
+
+  @wraps(f)
+  def metafunc(self, with_fetch, *args, **kwargs):
+    if with_fetch:
+      self.set_setting('FETCH_STREAMING', '2')
+      self.cflags += ['-DSKIP_SYNC_FETCH_TESTS']
+    f(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'fetch_backend': (True,)})
   return metafunc
 
 
