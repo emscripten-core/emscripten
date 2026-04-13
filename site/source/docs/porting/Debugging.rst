@@ -329,15 +329,13 @@ unaligned. To do so you can:
 Function Pointer Issues
 -----------------------
 
-If you get
-
-  ::
+If you get ::
 
     RuntimeError: null function or function signature mismatch
 
 (or, in certain build types, an ``abort()`` or an error of "incorrect function
-pointer"), the problem is that a proper function pointer was not found in the
-function pointer table when called.
+pointer"), the problem is that a function of the correct type was not found in
+the function pointer table when called.
 
 There are several possible causes:
 
