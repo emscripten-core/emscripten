@@ -5244,7 +5244,7 @@ Module["preRun"] = () => {
     self.btest('wasm_worker/proxied_function.c', expected='0', cflags=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS=0'])
 
   def test_wasm_worker_pthread_mutex_debug_allocator_regression(self):
-    self.btest_exit('wasm_worker/pthread_mutex_debug_allocator_regression.cpp',
+    self.btest_exit('wasm_worker/pthread_mutex_debug_allocator_regression.c',
                     cflags=['-pthread', '-sWASM_WORKERS'])
 
   @no_firefox('no 4GB support yet')
