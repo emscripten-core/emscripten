@@ -13185,6 +13185,9 @@ void foo() {}
         self.skipTest('depends on /dev filesystem')
     self.do_runf('unistd/isatty.c', 'success')
 
+  def test_libtty(self):
+    self.do_other_test('libtty.c')
+
   def test_unistd_login(self):
     self.do_run_in_out_file_test('unistd/login.c')
 
