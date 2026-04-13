@@ -20,14 +20,12 @@ static void dummy(double now)
 weak_alias(dummy, _emscripten_check_timers);
 
 void _emscripten_yield(double now) {
-  int is_runtime_thread = emscripten_is_main_runtime_thread();
-
   // When a secondary thread crashes, we need to be able to interrupt the main
   // thread even if it's in a blocking/looping on a mutex.  We want to avoid
   // using the normal proxying mechanism to send this message since it can
   // allocate (or otherwise itself crash) so use a low level atomic primitive
   // for this signal.
-  if (is_runtime_thread) {
+  if (emscripten_is_main_runtime_thread()) {
     if (crashed_thread_id) {
       // Mark the crashed thread as strongly referenced so that Node.js doesn't
       // exit while the pthread is propagating the uncaught exception back to

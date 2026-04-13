@@ -118,7 +118,7 @@ if (ENVIRONMENT_IS_NODE) {
 
 #if PTHREADS || WASM_WORKERS
   var worker_threads = require('node:worker_threads');
-  global.Worker = worker_threads.Worker;
+  globalThis.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 #if PTHREADS
   // Under node we set `workerData` to `em-pthread` to signal that the worker

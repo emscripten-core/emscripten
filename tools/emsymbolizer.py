@@ -67,13 +67,8 @@ def has_linking_section(module):
   return module.get_custom_section('linking') is not None
 
 
-def symbolize_address_symbolizer(module, address, is_dwarf):
-  if is_dwarf:
-    vma_adjust = get_codesec_offset(module)
-  else:
-    vma_adjust = 0
-  cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
-         str(address)]
+def symbolize_address_symbolizer(module, address):
+  cmd = [LLVM_SYMBOLIZER, '-e', module.filename, str(address)]
   if shared.DEBUG:
     print(f'Running {" ".join(cmd)}')
   out = utils.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
@@ -280,16 +275,16 @@ def main(args):
 
     if ((has_debug_line_section(module) and not args.source) or
        'dwarf' in args.source):
-      print_loc(symbolize_address_symbolizer(module, address, is_dwarf=True))
+      print_loc(symbolize_address_symbolizer(module, address))
     elif ((get_sourceMappingURL_section(module) and not args.source) or
           'sourcemap' in args.source):
       print_loc(symbolize_address_sourcemap(module, address, args.file))
     elif ((has_name_section(module) and not args.source) or
           'names' in args.source):
-      print_loc(symbolize_address_symbolizer(module, address, is_dwarf=False))
+      print_loc(symbolize_address_symbolizer(module, address))
     elif ((has_linking_section(module) and not args.source) or
           'symtab' in args.source):
-      print_loc(symbolize_address_symbolizer(module, address, is_dwarf=False))
+      print_loc(symbolize_address_symbolizer(module, address))
     elif (args.source == 'symbolmap'):
       print_loc(symbolize_address_symbolmap(module, address, args.file))
     else:

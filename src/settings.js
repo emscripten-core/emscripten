@@ -1213,6 +1213,7 @@ var SMALL_XHR_CHUNKS = false;
 // in different browsers, or in the browser and in node).
 // Good for comparing builds for debugging purposes (and nothing else).
 // [link]
+// [deprecated]
 var DETERMINISTIC = false;
 
 // By default we emit all code in a straightforward way into the output
@@ -1920,9 +1921,10 @@ var MIN_CHROME_VERSION = 85;
 // Specifies minimum node version to target for the generated code.  This is
 // distinct from the minimum version required to run the emscripten compiler.
 // Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
-// Minimum supported value is 122209, which was released 2022-01-11 (see
-// feature_matrix.py). This version aligns with the Ubuntu TLS 22.04 (Jammy).
-var MIN_NODE_VERSION = 160000;
+// Minimum supported value is 180300, which was released 2022-05-18 (see
+// feature_matrix.py). This version aligns with the version available in
+// debian/stable (bookworm).
+var MIN_NODE_VERSION = 180300;
 
 // If true, uses minimal sized runtime without POSIX features, Module,
 // preRun/preInit/etc., Emscripten built-in XHR loading or library_browser.js.

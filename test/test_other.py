@@ -9684,6 +9684,8 @@ int main() {
 
   def test_emsymbolizer_srcloc(self):
     'Test emsymbolizer use cases that provide src location granularity info'
+    self.skipTest('TODO: Re-enable when https://github.com/llvm/llvm-project/pull/191329 rolls')
+
     def check_dwarf_loc_info(address, funcs, locs):
       out = self.run_process(
           [emsymbolizer, '-s', 'dwarf', 'test_dwarf.wasm', address],
@@ -12063,7 +12065,7 @@ int main () {
   printf("JS random: %d\n", EM_ASM_INT({ return Math.random() }));
 }
 ''')
-    self.run_process([EMCC, 'src.c', '-sDETERMINISTIC'] + self.get_cflags())
+    self.run_process([EMCC, 'src.c', '-sDETERMINISTIC', '-Wno-deprecated'] + self.get_cflags())
     one = self.run_js('a.out.js')
     # ensure even if the time resolution is 1 second, that if we see the real
     # time we'll see a difference
@@ -13042,6 +13044,13 @@ void foo() {}
   def test_pthread_kill(self):
     self.do_run_in_out_file_test('pthread/test_pthread_kill.c')
 
+  @parameterized({
+    '': (['-pthread'],),
+    'stub': ([],),
+  })
+  def test_pthread_kill_self(self, args):
+    self.do_runf('pthread/test_pthread_kill_self.c', 'main\n', assert_returncode=NON_ZERO, cflags=args)
+
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_pthreads
   @parameterized({
@@ -13417,15 +13426,6 @@ myMethod: 43
     print('with old browser + --closure=1')
     self.do_runf('test.c', expected, cflags=['--closure=1'], output_basename='test_closure')
     check_for_es6('test_closure.js', False)
-
-  def test_node_prefix_transpile(self):
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6'])
-    content = read_file('a.out.js')
-    self.assertContained('node:', content)
-
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMIN_NODE_VERSION=150000', '-Wno-transpile'])
-    content = read_file('a.out.js')
-    self.assertNotContained('node:', content)
 
   def test_gmtime_noleak(self):
     # Confirm that gmtime_r does not leak when called in isolation.
