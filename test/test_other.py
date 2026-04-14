@@ -13564,6 +13564,13 @@ int main() {
     self.assert_fail([EMCC, test_file('wasm_worker/wasm_worker_pthread_api_usage.c'), '-sWASM_WORKERS'], 'undefined symbol: pthread_mutex_lock')
 
   @also_with_minimal_runtime
+  def test_wasm_worker_pthread_mutex_debug_allocator_regression(self):
+    # Regression test for https://github.com/emscripten-core/emscripten/issues/26619
+    self.do_runf(test_file('other/test_wasm_worker_pthread_mutex_debug_allocator_regression.c'),
+                 'done\n',
+                 cflags=['-pthread', '-sWASM_WORKERS', '-sEXIT_RUNTIME'])
+
+  @also_with_minimal_runtime
   def test_wasm_worker_cxx_init(self):
     self.do_run_in_out_file_test('wasm_worker/wasm_worker_cxx_init.cpp', cflags=['-sWASM_WORKERS'])
 
