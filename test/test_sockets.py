@@ -50,20 +50,19 @@ def requires_python_dev_packages(func):
   return decorated
 
 
-def clean_processes(processes):
-  for p in processes:
-    if getattr(p, 'exitcode', None) is None and getattr(p, 'returncode', None) is None:
-      # ask nicely (to try and catch the children)
-      try:
-        p.terminate() # SIGTERM
-      except OSError:
-        pass
-      time.sleep(1)
-      # send a forcible kill immediately afterwards. If the process did not die before, this should clean it.
-      try:
-        p.terminate() # SIGKILL
-      except OSError:
-        pass
+def clean_process(p):
+  if getattr(p, 'exitcode', None) is None and getattr(p, 'returncode', None) is None:
+    # ask nicely (to try and catch the children)
+    try:
+      p.terminate() # SIGTERM
+    except OSError:
+      pass
+    time.sleep(1)
+    # send a forcible kill immediately afterwards. If the process did not die before, this should clean it.
+    try:
+      p.terminate() # SIGKILL
+    except OSError:
+      pass
 
 
 class WebsockifyServerHarness:
@@ -76,6 +75,11 @@ class WebsockifyServerHarness:
     self.do_server_check = do_server_check
 
   def __enter__(self):
+    try:
+      import websockify  # type: ignore # noqa: PLC0415
+    except ModuleNotFoundError:
+      raise Exception('Unable to import module websockify. Run "python3 -m pip install websockify" or set environment variable EMTEST_SKIP_PYTHON_DEV_PACKAGES=1 to skip this test.') from None
+
     # compile the server
     # NOTE empty filename support is a hack to support
     # the current test_enet
@@ -85,11 +89,6 @@ class WebsockifyServerHarness:
       run_process(cmd, env=clang_native.get_clang_native_env())
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
-
-    try:
-      import websockify  # type: ignore # noqa: PLC0415
-    except ModuleNotFoundError:
-      raise Exception('Unable to import module websockify. Run "python3 -m pip install websockify" or set environment variable EMTEST_SKIP_PYTHON_DEV_PACKAGES=1 to skip this test.') from None
 
     # start the websocket proxy
     print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
@@ -112,7 +111,7 @@ class WebsockifyServerHarness:
       except OSError:
         time.sleep(1)
     else:
-      clean_processes(self.processes)
+      self.clean_processes()
       raise Exception('[Websockify failed to start up in a timely manner]')
 
     print('[Websockify on process %s]' % str(self.processes[-2:]))
@@ -125,12 +124,16 @@ class WebsockifyServerHarness:
     self.websockify.join()
 
     # clean up any processes we started
-    clean_processes(self.processes)
+    self.clean_processes()
+
+  def clean_processes(self):
+    for p in self.processes:
+      clean_process(p)
 
 
 class CompiledServerHarness:
   def __init__(self, filename, args, listen_port):
-    self.processes = []
+    self.process = None
     self.filename = filename
     self.listen_port = listen_port
     self.args = args or []
@@ -149,13 +152,11 @@ class CompiledServerHarness:
     proc = run_process([EMCC, '-Werror', test_file(self.filename), '-o', 'server' + suffix, '-DSOCKK=%d' % self.listen_port] + self.args)
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
-    process = Popen(config.NODE_JS + ['server' + suffix])
-    self.processes.append(process)
+    self.process = Popen(config.NODE_JS + ['server' + suffix])
     return self
 
   def __exit__(self, *args, **kwargs):
-    # clean up any processes we started
-    clean_processes(self.processes)
+    clean_process(self.process)
 
     # always run these tests last
     # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
@@ -164,17 +165,16 @@ class CompiledServerHarness:
 # Executes a native executable server process
 class BackgroundServerProcess:
   def __init__(self, args):
-    self.processes = []
+    self.process = None
     self.args = args
 
   def __enter__(self):
     print('Running background server: ' + str(self.args))
-    process = Popen(self.args)
-    self.processes.append(process)
+    self.process = Popen(self.args)
     return self
 
   def __exit__(self, *args, **kwargs):
-    clean_processes(self.processes)
+    clean_process(self.process)
 
 
 def NodeJsWebSocketEchoServerProcess():
