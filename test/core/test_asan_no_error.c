@@ -19,7 +19,7 @@ int main() {
   strchr("hello", 'z');
   strlen("hello");
 
-  // setlocale is needed here otherwise mbsrtowcs takes the fastcopy
+  // setlocale is needed here otherwise mbsrtowcs takes the fast path
   // via strcpy.
   setlocale(LC_ALL, "en_US.UTF-8");
   const char* s = "abcd";
