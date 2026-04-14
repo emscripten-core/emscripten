@@ -50,20 +50,19 @@ def requires_python_dev_packages(func):
   return decorated
 
 
-def clean_processes(processes):
-  for p in processes:
-    if getattr(p, 'exitcode', None) is None and getattr(p, 'returncode', None) is None:
-      # ask nicely (to try and catch the children)
-      try:
-        p.terminate() # SIGTERM
-      except OSError:
-        pass
-      time.sleep(1)
-      # send a forcible kill immediately afterwards. If the process did not die before, this should clean it.
-      try:
-        p.terminate() # SIGKILL
-      except OSError:
-        pass
+def clean_process(p):
+  if getattr(p, 'exitcode', None) is None and getattr(p, 'returncode', None) is None:
+    # ask nicely (to try and catch the children)
+    try:
+      p.terminate() # SIGTERM
+    except OSError:
+      pass
+    time.sleep(1)
+    # send a forcible kill immediately afterwards. If the process did not die before, this should clean it.
+    try:
+      p.terminate() # SIGKILL
+    except OSError:
+      pass
 
 
 class WebsockifyServerHarness:
@@ -112,7 +111,6 @@ class WebsockifyServerHarness:
       except OSError:
         time.sleep(1)
     else:
-      clean_processes(self.processes)
       raise Exception('[Websockify failed to start up in a timely manner]')
 
     print('[Websockify on process %s]' % str(self.processes[-2:]))
@@ -125,12 +123,13 @@ class WebsockifyServerHarness:
     self.websockify.join()
 
     # clean up any processes we started
-    clean_processes(self.processes)
+    for p in self.processes:
+      clean_process(p)
 
 
 class CompiledServerHarness:
   def __init__(self, filename, args, listen_port):
-    self.processes = []
+    self.process = None
     self.filename = filename
     self.listen_port = listen_port
     self.args = args or []
@@ -149,13 +148,11 @@ class CompiledServerHarness:
     proc = run_process([EMCC, '-Werror', test_file(self.filename), '-o', 'server' + suffix, '-DSOCKK=%d' % self.listen_port] + self.args)
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
-    process = Popen(config.NODE_JS + ['server' + suffix])
-    self.processes.append(process)
+    self.process = Popen(config.NODE_JS + ['server' + suffix])
     return self
 
   def __exit__(self, *args, **kwargs):
-    # clean up any processes we started
-    clean_processes(self.processes)
+    clean_process(self.process)
 
     # always run these tests last
     # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
@@ -164,17 +161,16 @@ class CompiledServerHarness:
 # Executes a native executable server process
 class BackgroundServerProcess:
   def __init__(self, args):
-    self.processes = []
+    self.process = None
     self.args = args
 
   def __enter__(self):
     print('Running background server: ' + str(self.args))
-    process = Popen(self.args)
-    self.processes.append(process)
+    self.process = Popen(self.args)
     return self
 
   def __exit__(self, *args, **kwargs):
-    clean_processes(self.processes)
+    clean_process(self.process)
 
 
 def NodeJsWebSocketEchoServerProcess():
