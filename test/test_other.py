@@ -11723,6 +11723,10 @@ int main(void) {
   def test_pthread_hello(self, args):
     self.do_other_test('test_pthread_hello.c', args)
 
+  # Preserved for future reinstatement of the debug deadlock check from #24607.
+  # This rollback intentionally removes that behavior and returns debug builds to
+  # the pre-4.0.11 fast-path behavior for PTHREAD_MUTEX_NORMAL.
+  @disabled('disabled by revert-pthread-mutex-debug-deadlock-detection rollback')
   @crossplatform
   @requires_pthreads
   def test_pthread_mutex_deadlock(self):
@@ -13566,6 +13570,13 @@ int main() {
   @also_with_minimal_runtime
   def test_wasm_worker_pthread_api_usage(self):
     self.assert_fail([EMCC, test_file('wasm_worker/wasm_worker_pthread_api_usage.c'), '-sWASM_WORKERS'], 'undefined symbol: pthread_mutex_lock')
+
+  @also_with_minimal_runtime
+  def test_wasm_worker_pthread_mutex_debug_allocator_regression(self):
+    # Regression test for https://github.com/emscripten-core/emscripten/issues/26619
+    self.do_runf(test_file('other/test_wasm_worker_pthread_mutex_debug_allocator_regression.c'),
+                 'done\n',
+                 cflags=['-pthread', '-sWASM_WORKERS', '-sEXIT_RUNTIME'])
 
   @also_with_minimal_runtime
   def test_wasm_worker_cxx_init(self):
