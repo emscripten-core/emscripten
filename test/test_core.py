@@ -8958,9 +8958,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'cpp': ['test_asan_no_error.cpp'],
   })
   def test_asan_no_error(self, name):
-    self.set_setting('ALLOW_MEMORY_GROWTH')
-    self.set_setting('INITIAL_MEMORY', '300mb')
-    self.do_runf('core/' + name, '', assert_returncode=NON_ZERO, cflags=['-fsanitize=address'])
+    self.do_runf('core/' + name, 'done\n', cflags=['-fsanitize=address'])
 
   # note: these tests have things like -fno-builtin-memset in order to avoid
   # clang optimizing things away. for example, a memset might be optimized into

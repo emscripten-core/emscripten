@@ -1,5 +1,6 @@
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
 
 int f(char *x) {
   int z = *x;
@@ -15,5 +16,8 @@ int main() {
   memchr("hello", 0, 6);
   strchr("hello", 'z');
   strlen("hello");
-  return ((f(x) + y[9]) % 16) + 1;
+
+  printf("%d %d\n", f(x), y[9]);
+  printf("done\n");
+  return 0;
 }
