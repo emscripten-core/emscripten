@@ -96,7 +96,7 @@ class WebsockifyServerHarness:
     # source_is_ipv6=True here signals to websockify that it should prefer ipv6 address when
     # resolving host names.  This matches what the node `ws` module does and means that `localhost`
     # resolves to `::1` on IPv6 systems.
-    wsp = websockify.WebSocketProxy(verbose=True, source_is_ipv6=True, listen_port=self.listen_port, target_host="127.0.0.1", target_port=self.target_port, run_once=True)
+    wsp = websockify.WebSocketProxy(verbose=True, source_is_ipv6=True, listen_host="127.0.0.1", listen_port=self.listen_port, target_host="127.0.0.1", target_port=self.target_port, run_once=True)
     self.websockify = multiprocessing.Process(target=wsp.start_server)
     self.websockify.start()
     self.processes.append(self.websockify)
@@ -146,7 +146,7 @@ class CompiledServerHarness:
 
     # compile the server
     suffix = '.mjs' if '-sEXPORT_ES6' in self.args else '.js'
-    proc = run_process([EMCC, '-Werror', test_file(self.filename), '-o', 'server' + suffix, '-DSOCKK=%d' % self.listen_port] + self.args)
+    proc = run_process([EMCC, '-Werror', test_file(self.filename), '-o', 'server' + suffix, f'-DSOCKK={self.listen_port}'] + self.args)
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
     process = Popen(config.NODE_JS + ['server' + suffix])
