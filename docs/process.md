@@ -158,14 +158,22 @@ How:
 
 ## Updating the `emscripten.org` Website
 
-The site is currently hosted in `gh-pages` branch of the separate [site
-repository][site_repo]. To update the docs, rebuild them and copy them into
-this repository.  There is a script that will perform these steps automatically:
-[`tools/maint/update_docs.py`][update_docs].  Just run this script with no
-arguments if the emscripten-site repository is checked out alongside emscripten
+The `emscripten.org` site is maintained in the `site/source` directory.  It is
+written in reStructuredText and maintained using the Sphinx tool.
+
+The site is hosted in the `gh-pages` branch of the separate [site
+repository][site_repo].  There is CI job which run on the `main` branch that
+will automatically update the `gh-pages` branch whenever the generated site
+contents change so checking out the `emscripten-site` repository should not
+normally be necessary.
+
+If for some reason you need to update the `emscripten-site` repository manually
+there is a script that will perform the update steps:
+[`tools/maint/update_docs.py`][update_docs].  Run this script with no
+arguments if the `emscripten-site` repository is checked out alongside emscripten
 itself, or pass the location of the checkout if not.
 
-You will need the specific sphinx version installed, which you can do using
+You will need the specific Sphinx version installed, which you can get by running
 `pip3 install -r requirements-dev.txt` (depending on your system, you may then
 need to add `~/.local/bin` to your path, if pip installs to there).
 
