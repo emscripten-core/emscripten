@@ -5,7 +5,7 @@ int __pthread_mutex_trylock_owner(pthread_mutex_t *m)
 	int old, own;
 	int type = m->_m_type;
 	pthread_t self = __pthread_self();
-	int tid = self->tid;
+	int tid = CURRENT_THREAD_ID;
 	volatile void *next;
 
 	old = m->_m_lock;

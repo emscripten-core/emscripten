@@ -87,12 +87,12 @@ int __pthread_mutex_timedlock(pthread_mutex_t *restrict m, const struct timespec
 		if (!own && (!r || (type&4)))
 			continue;
 		if ((type&3) == PTHREAD_MUTEX_ERRORCHECK
-		    && own == __pthread_self()->tid)
+		    && own == CURRENT_THREAD_ID)
 			return EDEADLK;
 #if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
 		// Extra check for deadlock in debug builds, but only if we would block
 		// forever (at == NULL).
-		assert(at || own != __pthread_self()->tid && "pthread mutex deadlock detected");
+		assert(at || own != CURRENT_THREAD_ID && "pthread mutex deadlock detected");
 #endif
 
 		a_inc(&m->_m_waiters);

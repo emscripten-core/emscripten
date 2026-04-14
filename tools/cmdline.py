@@ -216,6 +216,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
   """
   should_exit = False
   skip = False
+  builtin_settings = set(settings.keys())
   LEGACY_ARGS = {'--js-opts', '--llvm-opts', '--llvm-lto', '--memory-init-file'}
   LEGACY_FLAGS = {'--separate-asm', '--jcache', '--proxy-to-worker', '--default-obj-ext',
                   '--embind-emit-tsd', '--remove-duplicates', '--no-heap-copy'}
@@ -572,12 +573,12 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif arg.startswith('-jsD'):
       key = arg.removeprefix('-jsD')
       if '=' in key:
-        key, value = key.split('=')
+        key, value = key.split('=', 1)
       else:
         value = '1'
-      if key in settings.keys():
+      if key in builtin_settings:
         exit_with_error(f'{arg}: cannot change built-in settings values with a -jsD directive. Pass -s{key}={value} instead!')
-      # Apply user -jsD settings
+      # Allow overrides/duplicates for user-defined -jsD flags
       settings[key] = value
       newargs[i] = ''
     elif check_flag('-shared'):

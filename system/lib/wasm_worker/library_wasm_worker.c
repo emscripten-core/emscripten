@@ -14,6 +14,7 @@
 #include "libc.h"
 #include "stdio_impl.h"
 #include "emscripten_internal.h"
+#include "threading_internal.h"
 
 #include <assert.h>
 #include <emscripten/wasm_worker.h>
@@ -101,7 +102,10 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress
   // only going one way here.
   if (!libc.threads_minus_1++) libc.need_locks = 1;
 
-  return _emscripten_create_wasm_worker(stackPlusTLSAddress, stackPlusTLSSize);
+  emscripten_wasm_worker_t wwID = _emscripten_get_next_tid();
+  if (!_emscripten_create_wasm_worker(wwID, stackPlusTLSAddress, stackPlusTLSSize))
+    return 0;
+  return wwID;
 }
 
 emscripten_wasm_worker_t emscripten_malloc_wasm_worker(size_t stackSize) {

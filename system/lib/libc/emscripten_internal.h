@@ -15,6 +15,7 @@
 
 #include <emscripten/em_macros.h>
 #include <emscripten/proxying.h>
+#include <emscripten/webaudio.h>
 #include <emscripten/html5.h>
 #include <emscripten/wasm_worker.h>
 
@@ -22,11 +23,16 @@
 #include <stdbool.h>   // for `bool`
 #include <stdint.h>    // for `intptr_t`
 #include <sys/types.h> // for `off_t`
+#include <threads.h>   // for `thread_local`
 #include <time.h>      // for `struct tm`
 
 #ifdef __cplusplus
 extern "C" {
 #endif
+
+// Pending signals for the current thread.  This gets populated when a signal
+// is raised but it's blocked by pthread_sigmask.
+extern thread_local sigset_t __sig_pending;
 
 _Noreturn void _abort_js(void);
 
@@ -129,7 +135,9 @@ void emscripten_fetch_free(unsigned int);
 
 // Internal implementation function in JavaScript side that emscripten_create_wasm_worker() calls to
 // to perform the wasm worker creation.
-emscripten_wasm_worker_t _emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize);
+bool _emscripten_create_wasm_worker(emscripten_wasm_worker_t wwID, void *stackLowestAddress, uint32_t stackSize);
+
+void _emscripten_create_audio_worklet(emscripten_wasm_worker_t wwID, EMSCRIPTEN_WEBAUDIO_T audioContext, void *stackLowestAddress, uint32_t stackSize, EmscriptenStartWebAudioWorkletCallback callback, void *userData2);
 
 void __resumeException(void* exn);
 void __cxa_call_unexpected(void* exn);

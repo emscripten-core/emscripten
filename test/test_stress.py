@@ -113,3 +113,6 @@ class stress(RunnerCore):
 
     js_file = self.build('pthread/test_pthread_proxying_reduced_stress_test_case.c')
     self.parallel_stress_test_js_file(js_file, not_expected='pthread_self() == unknown', expected='pthread_self() == worker2', assert_returncode=0)
+
+  def test_stress_pthread_malloc(self):
+    self.do_runf('test_stress_pthread_malloc.c', 'done\n', cflags=['-pthread', '-sWASM_WORKERS'])

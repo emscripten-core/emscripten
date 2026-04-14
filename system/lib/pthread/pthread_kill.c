@@ -12,28 +12,8 @@
 
 #include "pthread_impl.h"
 
-static void do_raise(int sig) {
-  if (sig == SIGCANCEL) {
-    // For `SIGCANCEL` there is no need to actually call raise to run the
-    // handler function.  The calling thread (the one calling `pthread_cancel`)
-    // will already have marked us as being cancelled.  All we need to do is
-    // ensure that `pthread_testcancel` is eventually called and that will cause
-    // this thread to exit.  We can't call `pthread_testcancel` here (since we
-    // are being called from the proxy queue process and we don't want to leave
-    // that in a bad state by unwinding).  Instead, we rely on
-    // `pthread_testcancel` at the end of `_emscripten_check_mailbox`.  Before
-    // we return, we do want to make sure we clear the keepalive state so that
-    // the thread will exit even if it has a reason to stay alive.  TODO(sbc):
-    // Is this the correct behaviour, should `pthread_cancel` instead wait for
-    // threads to be done with outstanding work/event loops?
-    _emscripten_runtime_keepalive_clear();
-    return;
-  }
-  raise(sig);
-}
-
-static void proxied_do_raise(void* arg) {
-  do_raise((intptr_t)arg);
+static void proxied_raise(void* arg) {
+  raise((intptr_t)arg);
 }
 
 int pthread_kill(pthread_t t, int sig) {
@@ -48,9 +28,9 @@ int pthread_kill(pthread_t t, int sig) {
   // The job of pthread_kill is basically to run the (process-wide) signal
   // handler on the target thread.
   if (pthread_equal(pthread_self(), t)) {
-    do_raise(sig);
+    raise(sig);
   } else {
-    emscripten_proxy_async(emscripten_proxy_get_system_queue(), t, proxied_do_raise, (void*)(intptr_t)sig);
+    emscripten_proxy_async(emscripten_proxy_get_system_queue(), t, proxied_raise, (void*)(intptr_t)sig);
   }
   return 0;
 }
