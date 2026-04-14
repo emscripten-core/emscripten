@@ -162,7 +162,7 @@ The `emscripten.org` site is maintained in the `site/source` directory.  It is
 written in reStructuredText and maintained using the Sphinx tool.
 
 The site is hosted in the `gh-pages` branch of the separate [site
-repository][site_repo].  There is CI job which run on the `main` branch that
+repository][site_repo].  There is a CI job which runs on the `main` branch that
 will automatically update the `gh-pages` branch whenever the generated site
 contents change so checking out the `emscripten-site` repository should not
 normally be necessary.
