@@ -173,12 +173,6 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
     max_wait_ns = (int64_t)(max_wait_ms * 1e6);
   }
 #ifdef __EMSCRIPTEN_PTHREADS__
-#ifdef EMSCRIPTEN_DYNAMIC_LINKING
-  if (!is_runtime_thread) {
-    self->sleeping = 1;
-    _emscripten_process_dlopen_queue();
-  }
-#endif
   uintptr_t expected_null = 0;
   if (atomic_compare_exchange_strong(&self->wait_addr, &expected_null, (uintptr_t)addr)) {
     DBG("emscripten_futex_wait atomic.wait ns=%lld", max_wait_ns);
@@ -197,7 +191,6 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   self->wait_addr = 0;
 #ifdef EMSCRIPTEN_DYNAMIC_LINKING
   if (!is_runtime_thread) {
-    self->sleeping = 0;
     _emscripten_process_dlopen_queue();
   }
 #endif

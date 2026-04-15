@@ -122,12 +122,6 @@ struct pthread {
 	// Since futex addresses must be 4-byte aligned, the low bit is safe to use.
 	_Atomic uintptr_t wait_addr;
 #endif
-#ifdef EMSCRIPTEN_DYNAMIC_LINKING
-	// When dynamic linking is enabled, threads use this to facilitate the
-	// synchronization of loaded code between threads.
-	// See emscripten_futex_wait.c.
-	_Atomic char sleeping;
-#endif
 };
 
 #ifdef __EMSCRIPTEN__
