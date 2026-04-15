@@ -155,11 +155,6 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
     return ret;
   }
 
-  // Pass 0 here, which means we don't have access to the current time in this
-  // function.  This tells _emscripten_yield to call emscripten_get_now if (and
-  // only if) it needs to know the time.
-  _emscripten_yield(0);
-
   DBG("emscripten_futex_wait ms=%f", max_wait_ms);
 
   bool is_runtime_thread = emscripten_is_main_runtime_thread();
@@ -189,11 +184,12 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   // Clear the wait_addr
   DBG("emscripten_futex_wait done notify=%d cancelable=%d cancel=%d", !!(self->wait_addr & NOTIFY_BIT), cancelable, self->cancel);
   self->wait_addr = 0;
-#ifdef EMSCRIPTEN_DYNAMIC_LINKING
-  if (!is_runtime_thread) {
-    _emscripten_process_dlopen_queue();
-  }
-#endif
+
+  // Pass 0 here, which means we don't have access to the current time in this
+  // function.  This tells _emscripten_yield to call emscripten_get_now if (and
+  // only if) it needs to know the time.
+  _emscripten_yield(0);
+
   if (cancelable && self->cancel) {
     __pthread_testcancel();
     // If __pthread_testcancel does return here it means that canceldisable
