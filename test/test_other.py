@@ -11753,6 +11753,16 @@ int main(void) {
     expected = ['got: hello world string, longer than 16 chars', 'pthread_create: environment does not support SharedArrayBuffer, pthreads are not available']
     self.do_runf('hello_world.c', expected, assert_all=True, assert_returncode=NON_ZERO, cflags=['--pre-js=pre.js'])
 
+  @requires_node
+  @requires_pthreads
+  def test_pthread_mem_leak(self):
+    self.set_setting('MODULARIZE')
+    self.set_setting('EXIT_RUNTIME')
+    self.set_setting('EXPORTED_RUNTIME_METHODS', ['wasmMemory'])
+    self.node_args.append('--expose-gc')
+    self.cflags += ['--extern-post-js', test_file('pthread/test_pthread_mem_leak_post.js')]
+    self.do_runf('hello_world.c', 'SUCCESS: No leak detected', cflags=['-pthread'])
+
   def test_stdin_preprocess(self):
     create_file('temp.h', '#include <string>')
     outputStdin = self.run_process([EMCC, '-x', 'c++', '-dM', '-E', '-'], input="#include <string>", stdout=PIPE).stdout

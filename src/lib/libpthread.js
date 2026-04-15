@@ -86,6 +86,9 @@ var LibraryPThread = {
                    '$spawnThread',
                    '_emscripten_thread_free_data',
                    'exit',
+                   'pthread_self',
+                   '__set_thread_state',
+                   '$waitAsyncPolyfilled',
 #if PTHREADS_DEBUG || ASSERTIONS
                    '$ptrToString',
 #endif
@@ -190,6 +193,22 @@ var LibraryPThread = {
       PThread.runningWorkers = [];
       PThread.pthreads = {};
     },
+
+    terminateRuntime: () => {
+#if ASSERTIONS
+      assert(!ENVIRONMENT_IS_PTHREAD, 'terminateRuntime() can only ever be called from main application thread!');
+#endif
+      PThread.terminateAllThreads();
+      var pthread_ptr = _pthread_self();
+      ___set_thread_state(0, 0, 0, 1);
+      if (!waitAsyncPolyfilled) {
+        // Break the waitAsync loop.  Note that checkMailbox will not
+        // re-register since the `___set_thread_state` above causes _pthread_self
+        // to return 0.
+        Atomics.notify(HEAP32, {{{ getHeapOffset('pthread_ptr', 'i32') }}});
+      }
+    },
+
     returnWorkerToPool: (worker) => {
       // We don't want to run main thread queued calls here, since we are doing
       // some operations that leave the worker queue in an invalid state until

@@ -208,7 +208,7 @@ function exitRuntime() {
 #endif
   <<< ATEXITS >>>
 #if PTHREADS
-  PThread.terminateAllThreads();
+  PThread.terminateRuntime();
 #endif
   runtimeExited = true;
 }

@@ -1,10 +1,10 @@
 {
   "a.out.js": 7367,
-  "a.out.js.gz": 3603,
-  "a.out.nodebug.wasm": 19075,
-  "a.out.nodebug.wasm.gz": 8818,
-  "total": 26442,
-  "total_gz": 12421,
+  "a.out.js.gz": 3605,
+  "a.out.nodebug.wasm": 19079,
+  "a.out.nodebug.wasm.gz": 8824,
+  "total": 26446,
+  "total_gz": 12429,
   "sent": [
     "a (memory)",
     "b (exit)",
@@ -38,13 +38,14 @@
     "n (__pthread_create_js)"
   ],
   "exports": [
-    "A (_emscripten_thread_free_data)",
-    "B (_emscripten_thread_exit)",
-    "C (_emscripten_check_mailbox)",
-    "D (emscripten_stack_set_limits)",
-    "E (_emscripten_stack_restore)",
-    "F (_emscripten_stack_alloc)",
-    "G (emscripten_stack_get_current)",
+    "A (_emscripten_run_js_on_main_thread)",
+    "B (_emscripten_thread_free_data)",
+    "C (_emscripten_thread_exit)",
+    "D (_emscripten_check_mailbox)",
+    "E (emscripten_stack_set_limits)",
+    "F (_emscripten_stack_restore)",
+    "G (_emscripten_stack_alloc)",
+    "H (emscripten_stack_get_current)",
     "o (__wasm_call_ctors)",
     "p (add)",
     "q (main)",
@@ -54,9 +55,9 @@
     "u (pthread_self)",
     "v (_emscripten_proxy_main)",
     "w (_emscripten_thread_init)",
-    "x (_emscripten_thread_crashed)",
-    "y (_emscripten_run_js_on_main_thread_done)",
-    "z (_emscripten_run_js_on_main_thread)"
+    "x (__set_thread_state)",
+    "y (_emscripten_thread_crashed)",
+    "z (_emscripten_run_js_on_main_thread_done)"
   ],
   "funcs": [
     "$__errno_location",
