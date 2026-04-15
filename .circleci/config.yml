@@ -216,7 +216,7 @@ commands:
           command: |
             ls -l ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
             ls -l ~/cache/sysroot/include/emscripten/heap.h
-            cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin.o.ccache-log
+            cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin-mt.o.ccache-log
             date
             cat ~/cache/build/libcompiler_rt/absvdi2.o.ccache-log
             ccache -s

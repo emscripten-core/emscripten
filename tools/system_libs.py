@@ -1609,8 +1609,10 @@ class crt1_proxy_main(MuslInternalLibrary):
     return super().can_use() and settings.PROXY_TO_PTHREAD
 
 
-class crtbegin(MuslInternalLibrary):
-  name = 'crtbegin'
+class crtbegin_mt(MuslInternalLibrary):
+  # This library defines _emscripten_tls_init/_emscripten_tls_free which are linked into
+  # every module (i.e. not just the main module).
+  name = 'crtbegin-mt'
   cflags = ['-pthread']
   src_dir = 'system/lib/pthread'
   src_files = ['emscripten_tls_init.c']
@@ -1621,7 +1623,7 @@ class crtbegin(MuslInternalLibrary):
     return '.o'
 
   def can_use(self):
-    return super().can_use() and settings.SHARED_MEMORY
+    return super().can_use() and settings.PTHREADS
 
 
 class libcxxabi(ExceptionLibrary, MTLibrary, DebugLibrary):
@@ -2331,8 +2333,8 @@ def get_libs_to_link(options):
     libs_to_link.append((lib.get_link_flag(), whole_archive or need_whole_archive))
 
   if not options.nostartfiles:
-    if settings.SHARED_MEMORY:
-      add_library('crtbegin')
+    if settings.PTHREADS:
+      add_library('crtbegin-mt')
 
     if not settings.SIDE_MODULE:
       if settings.STANDALONE_WASM:

@@ -55,10 +55,10 @@ function B() {
 
 function k() {
     E = {
-        e: t,
+        d: t,
         c: w,
         b: x,
-        d: y,
+        e: y,
         f: A,
         g: B,
         a: g
