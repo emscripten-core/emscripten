@@ -409,7 +409,7 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
     emscripten_promise_destroy(promise);
     free(info);
   } else {
-    // Wake up the target thread in case its blocked in futex_wait
+    // Wake up the target thread in case it's blocked in futex_wait
     _emscripten_thread_notify(target_thread);
   }
   return rtn;
