@@ -1,7 +1,8 @@
-#include <limits.h>
-#include <stdio.h>
-#include <stdint.h>
+#include <assert.h>
 #include <inttypes.h>
+#include <limits.h>
+#include <stdint.h>
+#include <stdio.h>
 
 int main () {
   printf("INT_MIN: %d\n", INT_MIN);
@@ -21,6 +22,12 @@ int main () {
 
   printf("INTPTR_MIN: %ld\n", INTPTR_MIN);
   printf("INTPTR_MAX: %ld\n", INTPTR_MAX);
+
+  printf("WCHAR_MIN: %d\n", WCHAR_MIN);
+  printf("WCHAR_MAX: %d\n", WCHAR_MAX);
+
+  printf("WINT_MIN: %u\n", WINT_MIN);
+  printf("WINT_MAX: %u\n", WINT_MAX);
 
   printf("UINTPTR_MAX: %lu\n", UINTPTR_MAX);
 
@@ -42,5 +49,16 @@ int main () {
   printf("UINT16_MAX: %" PRIu16 "\n", UINT16_MAX);
   printf("UINT32_MAX: %" PRIu32 "\n", UINT32_MAX);
   printf("UINT64_MAX: %" PRIu64 "\n", UINT64_MAX);
+
+  // Test macros for creating integer constants
+  printf("INT8_C: (" PRId8 ") %" PRId8 "\n", INT8_C(42));
+  printf("INT16_C: (" PRId16 ") %" PRId16 "\n", INT16_C(42));
+  printf("INT32_C: (" PRId32 ") %" PRId32 "\n", INT32_C(42));
+  printf("INT64_C: (" PRId64 ") %" PRId64 "\n", INT64_C(42));
+
+  printf("INTU8_C: (" PRIu8 ") %" PRIu8 "\n", UINT8_C(42));
+  printf("INTU16_C: (" PRIu16 ") %" PRIu16 "\n", UINT16_C(42));
+  printf("INTU32_C: (" PRIu32 ") %" PRIu32 "\n", UINT32_C(42));
+  printf("INTU64_C: (" PRIu64 ") %" PRIu64 "\n", UINT64_C(42));
   return 0;
 }

@@ -119,7 +119,13 @@ typedef uint64_t uint_least64_t;
 #define UINT16_C(c) c
 #define UINT32_C(c) c ## U
 
-#if UINTPTR_MAX == UINT64_MAX
+// XXX EMSCRIPTEN: Use the clang-builtin macros here when available.
+#ifdef __UINT64_C
+#define INT64_C __INT64_C
+#define UINT64_C __UINT64_C
+#define INTMAX_C __INTMAX_C
+#define UINTMAX_C __UINTMAX_C
+#elif UINTPTR_MAX == UINT64_MAX
 #define INT64_C(c) c ## L
 #define UINT64_C(c) c ## UL
 #define INTMAX_C(c)  c ## L
