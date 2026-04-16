@@ -5754,6 +5754,7 @@ class emrun(RunnerCore):
     self.assertContained('error: unrecognized arguments: --foo', err)
     self.assertContained('remember to add `--` between arguments', err)
 
+  @also_with_threads
   def test_emrun(self):
     self.emcc('test_emrun.c', ['--emrun', '-o', 'test_emrun.html'])
     if not has_browser():
