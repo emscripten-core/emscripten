@@ -1373,9 +1373,9 @@ workflows:
       - test-core3:
           requires:
             - build-linux
-      #- test-wasm64-misc:
-      #    requires:
-      #      - build-linux
+      - test-wasm64-misc:
+          requires:
+            - build-linux
       - test-wasm64-4gb:
           requires:
             - build-linux
