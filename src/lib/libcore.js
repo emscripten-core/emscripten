@@ -1884,7 +1884,7 @@ addToLibrary({
     }
 #if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
     /** @suppress {checkTypes} */
-    assert(wasmTable.get({{{ toIndexType('funcPtr') }}}) == func, 'JavaScript-side Wasm function table mirror is out of date!');
+    assert(wasmTable.get({{{ toIndexType('funcPtr') }}}) == func, 'table mirror is out of date');
 #endif
     return func;
   },

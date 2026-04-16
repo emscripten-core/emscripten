@@ -5237,7 +5237,7 @@ Module["preRun"] = () => {
 
   # Tests that calling any proxied function in a Wasm Worker will abort at runtime when ASSERTIONS are enabled.
   def test_wasm_worker_proxied_function(self):
-    error_msg = "abort:Assertion failed: Attempted to call proxied function '_proxied_js_function' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!"
+    error_msg = "abort:Assertion failed: attempt to call proxied function '_proxied_js_function' from a Wasm Worker (where proxying is not possible)"
     # Test that program aborts in ASSERTIONS-enabled builds
     self.btest('wasm_worker/proxied_function.c', expected=error_msg, cflags=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS'])
     # Test that code does not crash in ASSERTIONS-disabled builds

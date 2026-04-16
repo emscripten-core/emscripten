@@ -12944,7 +12944,7 @@ void foo() {}
     # By default shell support is not included
     self.run_process([EMCC, test_file('hello_world.c')])
     err = self.run_js('a.out.js', assert_returncode=NON_ZERO)
-    self.assertContained('shell environment detected but not enabled at build time.', err)
+    self.assertContained('shell environment detected but not enabled at build time', err)
 
   def test_removed_runtime_function(self):
     create_file('post.js', 'alignMemory(100, 4);')

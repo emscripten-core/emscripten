@@ -694,7 +694,7 @@ var LibraryEmbind = {
     }
 
 #if ASSERTIONS && ASYNCIFY != 2
-    assert(!isAsync, 'Async bindings are only supported with JSPI.');
+    assert(!isAsync, 'async bindings are only supported with JSPI');
 #endif
     var isClassMethodFunc = (argTypes[1] !== null && classType !== null);
 
@@ -821,7 +821,7 @@ var LibraryEmbind = {
   ],
   $embind__requireFunction: (signature, rawFunction, isAsync = false) => {
 #if ASSERTIONS && ASYNCIFY != 2
-    assert(!isAsync, 'Async bindings are only supported with JSPI.');
+    assert(!isAsync, 'async bindings are only supported with JSPI');
 #endif
 
     signature = AsciiToString(signature);

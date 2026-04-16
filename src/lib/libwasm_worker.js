@@ -234,7 +234,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
 
   emscripten_terminate_wasm_worker: (id) => {
 #if ASSERTIONS
-    assert(id != 0, 'emscripten_terminate_wasm_worker() cannot be called with id=0!');
+    assert(id != 0, 'emscripten_terminate_wasm_worker() cannot be called with id=0');
 #endif
     if (_wasmWorkers[id]) {
       _wasmWorkers[id].terminate();
@@ -244,7 +244,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
 
   emscripten_terminate_all_wasm_workers: () => {
 #if ASSERTIONS
-    assert(!ENVIRONMENT_IS_WASM_WORKER, 'emscripten_terminate_all_wasm_workers() cannot be called from a Wasm Worker: only the main browser thread has visibility to terminate all Workers!');
+    assert(!ENVIRONMENT_IS_WASM_WORKER, 'emscripten_terminate_all_wasm_workers() should only be called from the main thread');
 #endif
     Object.values(_wasmWorkers).forEach((worker) => worker.terminate());
     _wasmWorkers = {};
@@ -282,7 +282,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     assert(id >= 0);
     assert(funcPtr);
     assert(sigPtr);
-    assert(UTF8ToString(sigPtr)[0] != 'v', 'Do NOT specify the return argument in the signature string for a call to emscripten_wasm_worker_post_function_sig(), just pass the function arguments.');
+    assert(UTF8ToString(sigPtr)[0] != 'v', 'emscripten_wasm_worker_post_function_sig() supports only void return type');
     assert(varargs);
 #endif
     _wasmWorkers[id].postMessage({'_wsc': funcPtr, 'x': readEmAsmArgs(sigPtr, varargs) });

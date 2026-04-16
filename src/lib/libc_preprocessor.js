@@ -65,7 +65,7 @@ addToLibrary({
     function classifyChar(str, idx) {
       var cc = str.charCodeAt(idx);
   #if ASSERTIONS
-      assert(!(cc > 127), "Only 7-bit ASCII can be used in preprocessor #if/#ifdef/#define statements!");
+      assert(!(cc > 127), "only 7-bit ASCII can be used in preprocessor #if/#ifdef/#define statements");
   #endif
       if (cc > 32) {
         if (cc < 48) return 1; // an operator symbol, any of !"#$%&'()*+,-./
@@ -221,7 +221,7 @@ addToLibrary({
           }
           // else a number:
 #if ASSERTIONS
-          assert(tokens[i] !== ')', 'Parsing failure, mismatched parentheses in parsing!' + tokens.toString());
+          assert(tokens[i] !== ')', 'parse failure, mismatched parentheses in parsing' + tokens.toString());
           assert(operatorAndPriority == -1);
 #endif
           var num = Number(tokens[i]);

@@ -172,7 +172,7 @@ var LibraryPThread = {
 
     terminateAllThreads: () => {
 #if ASSERTIONS
-      assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! terminateAllThreads() can only ever be called from main application thread!');
+      assert(!ENVIRONMENT_IS_PTHREAD, 'terminateAllThreads() should only be called from the main thread');
 #endif
 #if PTHREADS_DEBUG
       dbg('terminateAllThreads');
@@ -196,7 +196,7 @@ var LibraryPThread = {
 
     terminateRuntime: () => {
 #if ASSERTIONS
-      assert(!ENVIRONMENT_IS_PTHREAD, 'terminateRuntime() can only ever be called from main application thread!');
+      assert(!ENVIRONMENT_IS_PTHREAD, 'terminateRuntime() should only be called from the main thread');
 #endif
       PThread.terminateAllThreads();
       var pthread_ptr = _pthread_self();
@@ -280,7 +280,7 @@ var LibraryPThread = {
           if (targetWorker) {
             targetWorker.postMessage(d, d.transferList);
           } else {
-            err(`Internal error! Worker sent a message "${cmd}" to target pthread ${d.targetThread}, but that thread no longer exists!`);
+            err(`worker sent message (${cmd}) to pthread (${d.targetThread}) that no longer exists`);
           }
           return;
         }
@@ -357,9 +357,9 @@ var LibraryPThread = {
 #endif
 
 #if ASSERTIONS
-      assert(wasmMemory instanceof WebAssembly.Memory, 'WebAssembly memory should have been loaded by now!');
+      assert(wasmMemory instanceof WebAssembly.Memory, 'wasmMemory should have been loaded by now');
 #if !WASM_ESM_INTEGRATION
-      assert(wasmModule instanceof WebAssembly.Module, 'WebAssembly Module should have been loaded by now!');
+      assert(wasmModule instanceof WebAssembly.Module, 'wasmModule should have been loaded by now');
 #endif
 #endif
 
@@ -617,8 +617,8 @@ var LibraryPThread = {
     dbg(`cleanupThread: ${ptrToString(pthread_ptr)}`)
 #endif
 #if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! cleanupThread() can only ever be called from main application thread!');
-    assert(pthread_ptr, 'Internal Error! Null pthread_ptr in cleanupThread!');
+    assert(!ENVIRONMENT_IS_PTHREAD, 'cleanupThread() should only be called from the main thread');
+    assert(pthread_ptr, 'null pthread_ptr passed to cleanupThread');
 #endif
     var worker = PThread.pthreads[pthread_ptr];
 #if MAIN_MODULE
@@ -675,8 +675,8 @@ var LibraryPThread = {
 
   $spawnThread: (threadParams) => {
 #if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! spawnThread() can only ever be called from main application thread!');
-    assert(threadParams.pthread_ptr, 'Internal error, no pthread ptr!');
+    assert(!ENVIRONMENT_IS_PTHREAD, 'spawnThread() should only be called from the main thread');
+    assert(threadParams.pthread_ptr, 'spawnThread called with null pthread ptr');
 #endif
 
     var worker = PThread.getNewWorker();
@@ -685,7 +685,7 @@ var LibraryPThread = {
       return {{{ cDefs.EAGAIN }}};
     }
 #if ASSERTIONS
-    assert(!worker.pthread_ptr, 'Internal error!');
+    assert(!worker.pthread_ptr);
 #endif
 
     PThread.runningWorkers.push(worker);
@@ -1206,7 +1206,7 @@ var LibraryPThread = {
     dbg("dlsyncThreadsAsync caller=" + ptrToString(caller));
 #endif
 #if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! dlsyncThreadsAsync() can only ever be called from main thread');
+    assert(!ENVIRONMENT_IS_PTHREAD, 'dlsyncThreadsAsync() should only be called from the main thread');
     assert(Object.keys(PThread.outstandingPromises).length === 0);
 #endif
 

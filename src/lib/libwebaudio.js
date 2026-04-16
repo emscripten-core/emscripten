@@ -19,7 +19,7 @@ var LibraryWebAudio = {
   $emscriptenRegisterAudioObject__deps: ['$emAudio', '$emAudioCounter'],
   $emscriptenRegisterAudioObject: (object) => {
 #if ASSERTIONS
-    assert(object, 'Called emscriptenRegisterAudioObject() with a null object handle!');
+    assert(object, 'null pointer passed to emscriptenRegisterAudioObject');
 #endif
     emAudio[++emAudioCounter] = object;
 #if WEBAUDIO_DEBUG
@@ -36,7 +36,7 @@ var LibraryWebAudio = {
 #endif
 #if ASSERTIONS
     var obj = emAudio[handle];
-    assert(obj, `Called ${methodName}() on a nonexisting handle ${handle}`);
+    assert(obj, `${methodName}() called on a nonexisting handle ${handle}`);
     return obj;
 #endif
   },
@@ -180,11 +180,11 @@ var LibraryWebAudio = {
     var audioWorklet = audioContext.audioWorklet;
 
 #if ASSERTIONS
-    assert(stackLowestAddress != 0, 'AudioWorklets require a dedicated stack space for audio data marshalling between Wasm and JS!');
-    assert(stackLowestAddress % 16 == 0, `AudioWorklet stack should be aligned to 16 bytes! (was ${stackLowestAddress} == ${stackLowestAddress%16} mod 16) Use e.g. memalign(16, stackSize) to align the stack!`);
-    assert(stackSize != 0, 'AudioWorklets require a dedicated stack space for audio data marshalling between Wasm and JS!');
+    assert(stackLowestAddress != 0, 'AudioWorklets require a dedicated stack space for audio data marshalling between Wasm and JS');
+    assert(stackLowestAddress % 16 == 0, `AudioWorklet stack should be aligned to 16 bytes (was ${stackLowestAddress} == ${stackLowestAddress%16} mod 16) Use e.g. memalign(16, stackSize) to align the stack`);
+    assert(stackSize != 0, 'AudioWorklets require a dedicated stack space for audio data marshalling between Wasm and JS');
     assert(stackSize % 16 == 0, `AudioWorklet stack size should be a multiple of 16 bytes! (was ${stackSize} == ${stackSize%16} mod 16)`);
-    assert(!audioContext.audioWorkletInitialized, `emscripten_create_wasm_audio_worklet() was already called for AudioContext ${contextHandle}! Only call this function once per AudioContext!`);
+    assert(!audioContext.audioWorkletInitialized, `emscripten_create_wasm_audio_worklet() was already called for AudioContext ${contextHandle}! Only call this function once per AudioContext`);
     audioContext.audioWorkletInitialized = 1;
 #endif
 
@@ -449,7 +449,7 @@ var LibraryWebAudio = {
   emscripten_audio_worklet_post_function_sig: (audioContext, funcPtr, sigPtr, varargs) => {
 #if ASSERTIONS
     assert(sigPtr);
-    assert(UTF8ToString(sigPtr)[0] != 'v', 'Do NOT specify the return argument in the signature string for a call to emscripten_audio_worklet_post_function_sig(), just pass the function arguments.');
+    assert(UTF8ToString(sigPtr)[0] != 'v', 'emscripten_audio_worklet_post_function_sig() supports only void return type');
     assert(varargs);
 #endif
     emAudioWorkletPostFunction(audioContext, funcPtr, readEmAsmArgs(sigPtr, varargs));

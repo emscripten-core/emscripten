@@ -674,7 +674,7 @@ function makeDynCall(sig, funcPtr, promising = false) {
     !sig.includes('j'),
     'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!',
   );
-  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI.');
+  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI');
 
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
