@@ -565,7 +565,7 @@ static inline bool mi_lock_try_acquire(mi_lock_t* lock) {
 }
 static inline void mi_lock_acquire(mi_lock_t* lock) {
   for (int i = 0; i < 1000; i++) {  // for at most 1000 tries?
-    if (mi_lock_try_acquire(&lock->mutex)) return;
+    if (mi_lock_try_acquire(lock)) return;
     mi_atomic_yield();
   }
 }
@@ -573,7 +573,7 @@ static inline void mi_lock_release(mi_lock_t* lock) {
   mi_atomic_store_release(&lock->mutex, (uintptr_t)0);
 }
 static inline void mi_lock_init(mi_lock_t* lock) {
-  mi_lock_release(&lock->mutex);
+  mi_lock_release(lock);
 }
 static inline void mi_lock_done(mi_lock_t* lock) {
   (void)(lock);
