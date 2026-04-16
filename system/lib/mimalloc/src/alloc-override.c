@@ -32,7 +32,8 @@ typedef void* mi_nothrow_t;
     #pragma GCC diagnostic ignored "-Wattributes"  // or we get warnings that nodiscard is ignored on a forward
     #define MI_FORWARD(fun)      __attribute__((alias(#fun), used, visibility("default"), copy(fun)));
   #else
-    #define MI_FORWARD(fun)      __attribute__((alias(#fun), used, visibility("default")));
+    // XXX EMSCRIPTEN: Add "weak"
+    #define MI_FORWARD(fun)      __attribute__((alias(#fun), used, visibility("default"), weak));
   #endif
   #define MI_FORWARD1(fun,x)      MI_FORWARD(fun)
   #define MI_FORWARD2(fun,x,y)    MI_FORWARD(fun)
@@ -218,7 +219,7 @@ typedef void* mi_nothrow_t;
   mi_decl_export void  free(void* p)                    MI_FORWARD0(mi_free, p)
   // In principle we do not need to forward `strdup`/`strndup` but on some systems these do not use `malloc` internally (but a more primitive call)
   // We only override if `strdup` is not a macro (as on some older libc's, see issue #885)
-  #if !defined(strdup) && !defined(__EMSCRIPTEN__)
+  #if !defined(strdup)
   mi_decl_export char* strdup(const char* str)             MI_FORWARD1(mi_strdup, str)
   #endif
   #if !defined(strndup) && (!defined(__APPLE__) || (defined(MAC_OS_X_VERSION_10_7) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7))
@@ -336,9 +337,11 @@ extern "C" {
   #endif
 
   // No forwarding here due to aliasing/name mangling issues
+  mi_decl_weak // XXX EMSCRIPTEN
   void*  valloc(size_t size)               { return mi_valloc(size); }
   void   vfree(void* p)                    { mi_free(p); }
   size_t malloc_good_size(size_t size)     { return mi_malloc_good_size(size); }
+  mi_decl_weak // XXX EMSCRIPTEN
   int    posix_memalign(void** p, size_t alignment, size_t size) { return mi_posix_memalign(p, alignment, size); }
 
   // `aligned_alloc` is only available when __USE_ISOC11 is defined.
@@ -349,6 +352,7 @@ extern "C" {
   // Fortunately, in the case where `aligned_alloc` is declared as `static inline` it
   // uses internally `memalign`, `posix_memalign`, or `_aligned_malloc` so we  can avoid overriding it ourselves.
   #if !defined(__GLIBC__) || __USE_ISOC11
+  mi_decl_weak // XXX EMSCRIPTEN
   void* aligned_alloc(size_t alignment, size_t size) { return mi_aligned_alloc(alignment, size); }
   #endif
 #endif
@@ -356,10 +360,12 @@ extern "C" {
 // no forwarding here due to aliasing/name mangling issues
 void  cfree(void* p)                                    { mi_free(p); }
 void* pvalloc(size_t size)                              { return mi_pvalloc(size); }
+mi_decl_weak // XXX EMSCRIPTEN
 void* memalign(size_t alignment, size_t size)           { return mi_memalign(alignment, size); }
 #if !defined(_WIN32)
 void* _aligned_malloc(size_t alignment, size_t size)    { return mi_aligned_alloc(alignment, size); }
 #endif
+mi_decl_weak // XXX EMSCRIPTEN
 void* reallocarray(void* p, size_t count, size_t size)  { return mi_reallocarray(p, count, size); }
 // some systems define reallocarr so mark it as a weak symbol (#751)
 mi_decl_weak int reallocarr(void* p, size_t count, size_t size)    { return mi_reallocarr(p, count, size); }
@@ -370,6 +376,7 @@ mi_decl_weak int reallocarr(void* p, size_t count, size_t size)    { return mi_r
   void* __libc_calloc(size_t count, size_t size)        MI_FORWARD2(mi_calloc, count, size)
   void* __libc_realloc(void* p, size_t size)            MI_FORWARD2(mi_realloc, p, size)
   void  __libc_free(void* p)                            MI_FORWARD0(mi_free, p)
+  mi_decl_weak // XXX EMSCRIPTEN
   void* __libc_memalign(size_t alignment, size_t size)  { return mi_memalign(alignment, size); }
 
 #ifdef __EMSCRIPTEN__ // emscripten adds some more on top of WASI
