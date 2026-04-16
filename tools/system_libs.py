@@ -1878,6 +1878,9 @@ class libmimalloc(MTLibrary):
     '-DMI_ARENA_SLICE_SHIFT=(12 + MI_SIZE_SHIFT)',
     # `malloc`ed pointers must be aligned at least as strictly as max_align_t
     '-DMI_MAX_ALIGN_SIZE=8',
+    # reserve memory in 64 MiB chunks (internally divided by 4)
+    # Note: keep in sync with the -sINITIAL_HEAP default
+    '-DMI_DEFAULT_ARENA_RESERVE=65536',
     # build mimalloc with an override of malloc/free
     '-DMI_MALLOC_OVERRIDE',
     # TODO: add build modes that include debug checks 1,2,3
