@@ -8654,10 +8654,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @parameterized({
     '': ([],),
     'emmalloc': (['-sMALLOC=emmalloc'],),
-    # See issue #23090 regarding -sINITIAL_MEMORY=34078720 (32.5 MiB)
-    'mimalloc': (['-sMALLOC=mimalloc', '-sINITIAL_MEMORY=34078720'],),
+    'mimalloc': (['-sMALLOC=mimalloc', '-sABORTING_MALLOC=0'],),
   })
   def test_wrap_malloc(self, args):
+    # See issue #23090 regarding -sINITIAL_MEMORY=34078720 (32.5 MiB)
+    if '-sMALLOC=mimalloc' in args and not self.has_changed_setting('INITIAL_MEMORY'):
+      self.set_setting('INITIAL_MEMORY', '34078720')
     self.do_runf('core/test_wrap_malloc.c', 'OK.', cflags=args)
 
   def test_environment(self):
