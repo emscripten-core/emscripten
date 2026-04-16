@@ -90,7 +90,11 @@ double _emscripten_next_timer()
 			next_timer = fmin(current_timeout_ms[which], next_timer);
 		}
 	}
-	return next_timer - emscripten_get_now();
+	// Avoid calling emscripten_get_now() unless we need to here.
+	if (next_timer != INFINITY) {
+		next_timer -= emscripten_get_now();
+	}
+	return next_timer;
 }
 #endif
 
