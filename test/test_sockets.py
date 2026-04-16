@@ -75,6 +75,11 @@ class WebsockifyServerHarness:
     self.do_server_check = do_server_check
 
   def __enter__(self):
+    try:
+      import websockify  # type: ignore # noqa: PLC0415
+    except ModuleNotFoundError:
+      raise Exception('Unable to import module websockify. Run "python3 -m pip install websockify" or set environment variable EMTEST_SKIP_PYTHON_DEV_PACKAGES=1 to skip this test.') from None
+
     # compile the server
     # NOTE empty filename support is a hack to support
     # the current test_enet
@@ -84,11 +89,6 @@ class WebsockifyServerHarness:
       run_process(cmd, env=clang_native.get_clang_native_env())
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
-
-    try:
-      import websockify  # type: ignore # noqa: PLC0415
-    except ModuleNotFoundError:
-      raise Exception('Unable to import module websockify. Run "python3 -m pip install websockify" or set environment variable EMTEST_SKIP_PYTHON_DEV_PACKAGES=1 to skip this test.') from None
 
     # start the websocket proxy
     print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
@@ -111,6 +111,7 @@ class WebsockifyServerHarness:
       except OSError:
         time.sleep(1)
     else:
+      self.clean_processes()
       raise Exception('[Websockify failed to start up in a timely manner]')
 
     print('[Websockify on process %s]' % str(self.processes[-2:]))
@@ -123,6 +124,9 @@ class WebsockifyServerHarness:
     self.websockify.join()
 
     # clean up any processes we started
+    self.clean_processes()
+
+  def clean_processes(self):
     for p in self.processes:
       clean_process(p)
 
