@@ -7,6 +7,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
+#include <limits.h>
 #include <time.h>
 #include <string.h>
 #include <assert.h>
@@ -241,7 +242,66 @@ void test_year_overflow() {
   assert(errno == 0);
   assert(tbig > 9464876000000);
 #endif
+
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE)
+  // JS Date max value is 8,640,000,000,000,000 ms from epoch
+  // Which is 8,640,000,000,000 seconds.
+  // 10^15 is definitely out of range.
+  time_t way_too_big = 1000000000000000LL;
+  assert(localtime(&way_too_big) == NULL);
+  assert(gmtime(&way_too_big) == NULL);
+
+  time_t way_too_small = -1000000000000000LL;
+  assert(localtime(&way_too_small) == NULL);
+  assert(gmtime(&way_too_small) == NULL);
+#else
+  // In standalone mode, or native, 10^15 is representable.
+  time_t way_too_big = 1000000000000000LL;
+  assert(localtime(&way_too_big) != NULL);
+  assert(gmtime(&way_too_big) != NULL);
+
+  time_t way_too_small = -1000000000000000LL;
+  assert(localtime(&way_too_small) != NULL);
+  assert(gmtime(&way_too_small) != NULL);
+
+  // We need much larger values to trigger overflow in musl (year > INT_MAX)
+  time_t musl_too_big = 1000000000000000000LL; // 10^18
+  assert(localtime(&musl_too_big) == NULL);
+  assert(gmtime(&musl_too_big) == NULL);
+
+  time_t musl_too_small = -1000000000000000000LL;
+  assert(localtime(&musl_too_small) == NULL);
+  assert(gmtime(&musl_too_small) == NULL);
+#endif
 }
+
+void test_mktime_constancy() {
+  // mktime shall not modify the tm struct if it fails
+  struct tm t;
+  memset(&t, 0, sizeof(t));
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE)
+  t.tm_year = 200000000; // Large year to trigger failure
+#else
+  t.tm_year = INT_MAX;
+  t.tm_mon = INT_MAX;    // Together they trigger overflow in musl
+#endif
+  struct tm t_orig = t;
+  assert(mktime(&t) == -1);
+  assert(memcmp(&t, &t_orig, sizeof(t)) == 0);
+
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE)
+  // localtime_r shall not modify the tm struct if it fails
+  // This is only guaranteed by Emscripten's JS-based implementation.
+  // Musl's native localtime_r may modify the struct before failing.
+  time_t big_time = 1000000000000000LL;
+  struct tm t_local;
+  memset(&t_local, 0xAA, sizeof(t_local));
+  struct tm t_local_orig = t_local;
+  assert(localtime_r(&big_time, &t_local) == NULL);
+  assert(memcmp(&t_local, &t_local_orig, sizeof(t_local)) == 0);
+#endif
+}
+
 
 void test_difftime() {
   // Verify difftime() calculates accurate time difference.
@@ -327,6 +387,7 @@ int main() {
   test_gmtime_roundtrip();
   test_mktime_roundtrip();
   test_year_overflow();
+  test_mktime_constancy();
   test_difftime();
   test_dysize();
   test_asctime();
