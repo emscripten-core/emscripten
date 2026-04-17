@@ -50,8 +50,10 @@ extern "C" {
 using namespace wasmfs;
 
 int __syscall_dup3(int oldfd, int newfd, int flags) {
-  if (flags & !O_CLOEXEC) {
-    // TODO: Test this case.
+  if (flags & ~O_CLOEXEC) {
+    return -EINVAL;
+  }
+  if (oldfd == newfd) {
     return -EINVAL;
   }
 
@@ -62,9 +64,6 @@ int __syscall_dup3(int oldfd, int newfd, int flags) {
   }
   if (newfd < 0 || newfd >= WASMFS_FD_MAX) {
     return -EBADF;
-  }
-  if (oldfd == newfd) {
-    return -EINVAL;
   }
 
   // If the file descriptor newfd was previously open, it will just be

@@ -1015,16 +1015,18 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_dup3: (fd, newfd, flags) => {
+    if (fd === newfd) return -{{{ cDefs.EINVAL }}};
+    if (flags & ~{{{ cDefs.O_CLOEXEC }}}) return -{{{ cDefs.EINVAL }}};
     var old = SYSCALLS.getStreamFromFD(fd);
-#if ASSERTIONS
-    assert(!flags);
-#endif
-    if (old.fd === newfd) return -{{{ cDefs.EINVAL }}};
     // Check newfd is within range of valid open file descriptors.
     if (newfd < 0 || newfd >= FS.MAX_OPEN_FDS) return -{{{ cDefs.EBADF }}};
     var existing = FS.getStream(newfd);
     if (existing) FS.close(existing);
-    return FS.dupStream(old, newfd).fd;
+    var stream = FS.dupStream(old, newfd);
+    if (flags & {{{ cDefs.O_CLOEXEC }}}) {
+      stream.flags |= {{{ cDefs.O_CLOEXEC }}};
+    }
+    return stream.fd;
   },
 };
 
