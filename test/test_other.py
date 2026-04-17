@@ -13502,6 +13502,7 @@ int main() {
     # Ensure that files referenced in Tutorial.rst are buildable
     self.run_process([EMCC, test_file('hello_world_file.cpp')])
 
+  @crossplatform
   @also_with_wasm64
   def test_stdint_limits(self):
     if self.is_wasm64():

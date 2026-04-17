@@ -942,6 +942,7 @@ jobs:
             echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
           test_targets: "
+            other.test_stdint_limits_wasm64
             core0.test_hello_argc
             core2.test_demangle_stacks_symbol_map"
       - upload-test-results
@@ -1416,7 +1417,7 @@ workflows:
       #- test-bun
       #- test-deno
       #- test-jsc
-      #- test-spidermonkey
+      - test-spidermonkey
       #- test-node-compat
       #- test-windows
       #- test-windows-browser-firefox
