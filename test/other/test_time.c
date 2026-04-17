@@ -6,6 +6,7 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
 #include <time.h>
 #include <string.h>
 #include <assert.h>
@@ -27,7 +28,7 @@ void check_gmtime_localtime(time_t time) {
   assert(loc);
   assert(strftime(locbuf, sizeof(locbuf) - 1, fmt, loc) > 0);
 
-  printf("time: %lld, gmtime: %s\n", time, gmbuf);
+  printf("time: %jd, gmtime: %s\n", (intmax_t)time, gmbuf);
 
   // gmtime and localtime should be equal when timezone is UTC
   assert(timezone != 0 || strcmp(gmbuf, locbuf) == 0);
@@ -218,12 +219,28 @@ void test_yday() {
 }
 
 void test_year_overflow() {
-  // Verify that timestamps outside of the range supported by date.getNow()
-  // cause failure with EOVERFLOW.
+  // Verify that timestamps outside of the range supported JavaScript Date
+  // object with result in a graceful failure with EOVERFLOW.
   struct tm tm_big = {0};
-  tm_big.tm_year = 292278994;
+  // The range of is approximately 273,790 years from the epoc in either
+  // direction.
+  tm_big.tm_year = 300000;
+  struct tm tm_big_copy = tm_big;
+  errno = 0;
   time_t tbig = mktime(&tm_big);
-  assert((tbig == -1 && errno == EOVERFLOW) || tbig == 9223431975273600);
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE)
+  assert(tbig == -1);
+  assert(errno == EOVERFLOW);
+  // When mktime fails with EOVERFLOW it should not touch the bits of
+  // its argument.
+  assert(memcmp(&tm_big, &tm_big_copy, sizeof(tm_big)) == 0);
+#else
+  // Outside of emscripten, or in standalone mode mktime can support larger
+  // values like this. According to the C standard, the range of tm_year (and
+  // time_t) is implementation-defined
+  assert(errno == 0);
+  assert(tbig > 9464876000000);
+#endif
 }
 
 void test_difftime() {
