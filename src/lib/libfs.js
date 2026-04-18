@@ -501,7 +501,14 @@ FS.staticInit();`;
       var arg = setattr ? stream : node;
       setattr ??= node.node_ops.setattr;
       FS.checkOpExists(setattr, {{{ cDefs.EPERM }}})
-      setattr(arg, attr);
+      try {
+        setattr(arg, attr);
+      } catch (e) {
+        if (e instanceof RangeError) {
+          throw new FS.ErrnoError({{{ cDefs.EFBIG }}});
+        }
+        throw e;
+      }
     },
 
     //
