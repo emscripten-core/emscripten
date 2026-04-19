@@ -1489,19 +1489,12 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       va_start(v1, cmd);
       flags = va_arg(v1, int);
       va_end(v1);
+
+      auto lockedOpenFile = openFile->locked();
+      auto oldFlags = lockedOpenFile.getFlags();
       // This syscall should ignore most flags.
-      flags = flags & ~(O_RDONLY | O_WRONLY | O_RDWR | O_CREAT | O_EXCL |
-                        O_NOCTTY | O_TRUNC);
-      // Also ignore this flag which musl always adds constantly, but does not
-      // matter for us.
-      flags = flags & ~O_LARGEFILE;
-      // On linux only a few flags can be modified, and we support only a subset
-      // of those. Error on anything else.
-      auto supportedFlags = flags & O_APPEND;
-      if (flags != supportedFlags) {
-        return -EINVAL;
-      }
-      openFile->locked().setFlags(flags);
+      int mask = O_APPEND | O_NONBLOCK | O_ASYNC | O_DIRECT | O_NOATIME;
+      lockedOpenFile.setFlags((oldFlags & ~mask) | (flags & mask));
       return 0;
     }
     case F_GETLK: {

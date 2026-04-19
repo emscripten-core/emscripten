@@ -785,7 +785,8 @@ var SyscallsLibrary = {
         return stream.flags;
       case {{{ cDefs.F_SETFL }}}: {
         var arg = syscallGetVarargI();
-        stream.flags |= arg;
+        var mask = {{{ cDefs.O_APPEND | cDefs.O_ASYNC | cDefs.O_DIRECT | cDefs.O_NOATIME | cDefs.O_NONBLOCK }}};
+        stream.flags = (stream.flags & ~mask) | (arg & mask);
         return 0;
       }
       case {{{ cDefs.F_GETLK }}}: {
