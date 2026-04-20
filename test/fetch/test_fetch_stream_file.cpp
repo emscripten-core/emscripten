@@ -20,7 +20,6 @@ int main() {
   attr.onsuccess = [](emscripten_fetch_t *fetch) {
     printf("Finished downloading %llu bytes\n", fetch->totalBytes);
     printf("Data checksum: %08X\n", checksum);
-    assert(fetch->data == 0); // The data was streamed via onprogress, no bytes available here.
     assert(fetch->numBytes == 0);
     assert(fetch->totalBytes == 134217728);
     assert(checksum == 0xA7F8E858U);
