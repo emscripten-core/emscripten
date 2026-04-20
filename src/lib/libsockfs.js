@@ -212,17 +212,13 @@ addToLibrary({
 #if SOCKET_DEBUG
             dbg(`websocket: connect: ${url}, ${subProtocols.toString()}`);
 #endif
+#if MIN_NODE_VERSION < 220400
             // If node we use the ws library.
-            var WebSocketConstructor;
-#if ENVIRONMENT_MAY_BE_NODE
-            if (ENVIRONMENT_IS_NODE) {
-              WebSocketConstructor = /** @type{(typeof WebSocket)} */(require('ws'));
-            } else
-#endif // ENVIRONMENT_MAY_BE_NODE
-            {
-              WebSocketConstructor = WebSocket;
+            if (ENVIRONMENT_IS_NODE && !globalThis.WebSocket) {
+              globalThis.WebSocket = /** @type{(typeof WebSocket)} */(require('ws'));
             }
-            ws = new WebSocketConstructor(url, opts);
+#endif // MIN_NODE_VERSION < 220400
+            ws = new WebSocket(url, opts);
             ws.binaryType = 'arraybuffer';
           } catch (e) {
 #if SOCKET_DEBUG
@@ -338,8 +334,8 @@ addToLibrary({
           SOCKFS.emit('message', sock.stream.fd);
         }
 
-#if ENVIRONMENT_MAY_BE_NODE
-        if (ENVIRONMENT_IS_NODE) {
+#if MIN_NODE_VERSION < 220400
+        if (ENVIRONMENT_IS_NODE && peer.socket.on) {
            // EventEmitter-style events use by ws library objects in Node.js).
           peer.socket.on('open', handleOpen);
           peer.socket.on('message', (data, isBinary) => {
@@ -511,10 +507,12 @@ addToLibrary({
         sock.connecting = true;
       },
       listen(sock, backlog) {
+#if !ENVIRONMENT_MAY_BE_NODE
+        throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
+#else
         if (!ENVIRONMENT_IS_NODE) {
           throw new FS.ErrnoError({{{ cDefs.EOPNOTSUPP }}});
         }
-#if ENVIRONMENT_MAY_BE_NODE
         if (sock.server) {
            throw new FS.ErrnoError({{{ cDefs.EINVAL }}});  // already listening
         }
