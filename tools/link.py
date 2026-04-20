@@ -3006,13 +3006,43 @@ def package_files(options, target):
   if options.preload_files:
     # Preloading files uses --pre-js code that runs before the module is loaded.
     file_code = shared.check_call(cmd, stdout=PIPE).stdout
-    js_manipulation.add_files_pre_js(settings.PRE_JS_FILES, file_code)
+    add_files_pre_js(settings.PRE_JS_FILES, file_code)
   else:
     # Otherwise, we are embedding files, which does not require --pre-js code,
     # and instead relies on a static constructor to populate the filesystem.
     shared.check_call(cmd)
 
   return rtn
+
+
+def add_files_pre_js(pre_js_list, files_pre_js):
+  # the normal thing is to just combine the pre-js content
+  filename = shared.get_temp_files().get('.js').name
+  utils.write_file(filename, files_pre_js)
+  pre_js_list.insert(0, filename)
+  if not settings.ASSERTIONS:
+    return
+
+  # if a user pre-js tramples the file code's changes to Module.preRun
+  # that could be confusing. show a clear error at runtime if assertions are
+  # enabled
+  pre = shared.get_temp_files().get('.js').name
+  post = shared.get_temp_files().get('.js').name
+  utils.write_file(pre, '''
+    // All the pre-js content up to here must remain later on, we need to run
+    // it.
+    if ((typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER) || (typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET != 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) Module['preRun'] = [];
+    var necessaryPreJSTasks = Module['preRun'].slice();
+  ''')
+  utils.write_file(post, '''
+    if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
+    necessaryPreJSTasks.forEach((task) => {
+      if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
+    });
+  ''')
+
+  pre_js_list.insert(1, pre)
+  pre_js_list.append(post)
 
 
 @ToolchainProfiler.profile_block('calculate linker inputs')

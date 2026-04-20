@@ -84,7 +84,8 @@ __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
 sys.path.insert(0, __rootdir__)
 
-from tools import diagnostics, js_manipulation, shared, utils
+# Do not import shared.py globally so that this command can run without setting up LLVM_ROOT unless the user explicitly specifies flags that depend on it.
+from tools import diagnostics, js_manipulation, utils
 from tools.response_file import substitute_response_files
 
 DEBUG = os.environ.get('EMCC_DEBUG')
@@ -252,6 +253,7 @@ def to_c_symbol(filename, used):
 
 
 def generate_object_file(data_files):
+  from tools import shared
   embed_files = [f for f in data_files if f.mode == 'embed']
   assert embed_files
 
@@ -727,6 +729,7 @@ def generate_preload_js(data_target, data_files, metadata):
                                                               js_manipulation.escape_for_js_string(data_target))
     else:
       # LZ4FS usage
+      from tools import shared
       temp = data_target + '.orig'
       shutil.move(data_target, temp)
       meta = shared.run_js_tool(utils.path_from_root('tools/lz4-compress.mjs'),

@@ -5,7 +5,8 @@
 
 import re
 
-from . import shared, utils
+# Do not import shared.py so that file_packager.py can run without setting up LLVM_ROOT.
+from . import utils
 from .settings import settings
 
 emscripten_license = '''\
@@ -26,36 +27,6 @@ emscripten_license = '''\
 #   SPDX-License-Identifier: MIT
 #  */
 emscripten_license_regex = r'\/\*\*?(\s*\*?\s*@license)?(\s*\*?\s*Copyright \d+ The Emscripten Authors\s*\*?\s*SPDX-License-Identifier: MIT)+\s*\*\/\s*'
-
-
-def add_files_pre_js(pre_js_list, files_pre_js):
-  # the normal thing is to just combine the pre-js content
-  filename = shared.get_temp_files().get('.js').name
-  utils.write_file(filename, files_pre_js)
-  pre_js_list.insert(0, filename)
-  if not settings.ASSERTIONS:
-    return
-
-  # if a user pre-js tramples the file code's changes to Module.preRun
-  # that could be confusing. show a clear error at runtime if assertions are
-  # enabled
-  pre = shared.get_temp_files().get('.js').name
-  post = shared.get_temp_files().get('.js').name
-  utils.write_file(pre, '''
-    // All the pre-js content up to here must remain later on, we need to run
-    // it.
-    if ((typeof ENVIRONMENT_IS_WASM_WORKER != 'undefined' && ENVIRONMENT_IS_WASM_WORKER) || (typeof ENVIRONMENT_IS_PTHREAD != 'undefined' && ENVIRONMENT_IS_PTHREAD) || (typeof ENVIRONMENT_IS_AUDIO_WORKLET != 'undefined' && ENVIRONMENT_IS_AUDIO_WORKLET)) Module['preRun'] = [];
-    var necessaryPreJSTasks = Module['preRun'].slice();
-  ''')
-  utils.write_file(post, '''
-    if (!Module['preRun']) throw 'Module.preRun should exist because file support used it; did a pre-js delete it?';
-    necessaryPreJSTasks.forEach((task) => {
-      if (Module['preRun'].indexOf(task) < 0) throw 'All preRun tasks that exist before user pre-js code should remain after; did you replace Module or modify Module.preRun?';
-    });
-  ''')
-
-  pre_js_list.insert(1, pre)
-  pre_js_list.append(post)
 
 
 def handle_license(js_target):
