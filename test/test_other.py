@@ -11699,7 +11699,8 @@ int main(void) {
     # Verify that we're unable to detach or join the proxied main thread
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.do_other_test('test_pthread_self_join_detach.c')
+    output = self.do_other_test('test_pthread_self_join_detach.c')
+    self.assertNotContained('user callback triggered after runtime exited', output)
 
   @requires_pthreads
   def test_pthread_asyncify(self):
