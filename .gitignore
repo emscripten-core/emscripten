@@ -1,6 +1,7 @@
 # Config file
 .emscripten
 .emscripten_backup
+.idea
 
 # Emsdk generated version info
 .emsdk_version
