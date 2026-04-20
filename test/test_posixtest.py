@@ -60,20 +60,8 @@ def get_tests():
 # Mark certain tests as unsupported
 # TODO: Investigate failing semaphores tests.
 unsupported_noreturn = {
-  'test_pthread_atfork_1_1': 'fork() and multiple processes are not supported',
-  'test_pthread_atfork_1_2': 'fork() and multiple processes are not supported',
-  'test_pthread_atfork_2_1': 'fork() and multiple processes are not supported',
-  'test_pthread_atfork_2_2': 'fork() and multiple processes are not supported',
-  'test_pthread_atfork_3_2': 'fork() and multiple processes are not supported',
-  'test_pthread_atfork_4_1': 'fork() and multiple processes are not supported',
-  'test_pthread_create_1_5': 'fork() and multiple processes are not supported',
-  'test_pthread_exit_6_1': 'lacking necessary mmap() support',
-  'test_pthread_spin_lock_1_1': 'signals are not supported',
   'test_pthread_mutex_lock_5_1': 'signals are not supported',
-  'test_pthread_mutexattr_settype_2_1': 'interrupting pthread_mutex_lock wait via SIGALRM is not supported',
   'test_pthread_spin_lock_3_1': 'signals are not supported',
-  'test_pthread_create_14_1': 'creates too many threads',
-  'test_pthread_detach_4_3': 'creates too many threads',
   'test_pthread_join_6_3': 'creates too many threads',
   'test_pthread_barrier_wait_3_2': 'signals are not supported',
   'test_pthread_cond_broadcast_1_2': 'tries to create 10,0000 threads, then depends on fork()',
@@ -81,6 +69,15 @@ unsupported_noreturn = {
 }
 
 unsupported = {
+  'test_pthread_spin_lock_1_1': 'alarm causes spurious wakeup during pthread_join',
+  'test_pthread_exit_6_1': 'fork() and multiple processes are not supported',
+  'test_pthread_atfork_1_1': 'fork() and multiple processes are not supported',
+  'test_pthread_atfork_1_2': 'fork() and multiple processes are not supported',
+  'test_pthread_atfork_2_1': 'fork() and multiple processes are not supported',
+  'test_pthread_atfork_2_2': 'fork() and multiple processes are not supported',
+  'test_pthread_atfork_3_2': 'fork() and multiple processes are not supported',
+  'test_pthread_atfork_4_1': 'fork() and multiple processes are not supported',
+  'test_pthread_create_1_5': 'fork() and multiple processes are not supported',
   'test_pthread_attr_setinheritsched_2_2': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_4': 'scheduling policy/parameters are not supported',
@@ -144,6 +141,10 @@ flaky = {
   'test_pthread_mutex_init_3_2': 'flaky: https://github.com/emscripten-core/posixtestsuite/pull/9',
 }
 
+no_assert_tests = {
+  'test_pthread_mutexattr_settype_2_1': 'contains deliberate deadlock',
+}
+
 # Mark certain tests as disabled.  These are tests that are either flaky or never return.
 disabled = {
   **flaky,
@@ -159,11 +160,17 @@ expect_fail = {
 }
 
 
+# Debugging test mode where we only run the `unsupported_noreturn` tests.  This allows us
+# to periocially confirm this test test set. Normally combined with lowering the timeout with e.g.
+# EMTEST_TIMEOUT=5
+NORETURN_ONLY = os.environ.get('EMTEST_NORETURN_ONLY')
+
+
 def make_test(name, testfile, browser):
 
   @requires_pthreads
   def f(self):
-    if name in disabled:
+    if not NORETURN_ONLY and name in disabled:
       self.skipTest(disabled[name])
     if browser and browser_should_skip_feature('EMTEST_LACKS_SHARED_ARRAY_BUFFER', Feature.THREADS):
       self.skipTest('This test requires a browser with SharedArrayBuffer support')
@@ -180,6 +187,8 @@ def make_test(name, testfile, browser):
             '-sEXIT_RUNTIME',
             '-sTOTAL_MEMORY=256mb',
             '-sPTHREAD_POOL_SIZE=40']
+    if name in no_assert_tests:
+      args.append('-sASSERTIONS=0')
     if browser:
       self.btest_exit(testfile, cflags=args)
     else:
@@ -199,5 +208,7 @@ for testdir in get_tests():
     test_suffix = os.path.splitext(os.path.basename(test_file))[0]
     test_suffix = test_suffix.replace('-', '_')
     test_name = 'test_' + basename + '_' + test_suffix
+    if NORETURN_ONLY and test_name not in unsupported_noreturn:
+      continue
     setattr(posixtest, test_name, make_test(test_name, test_file, browser=False))
     setattr(test_posixtest_browser.posixtest_browser, test_name, make_test(test_name, test_file, browser=True))
