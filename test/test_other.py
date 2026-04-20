@@ -2617,20 +2617,18 @@ F1 -> ''
   @requires_network
   @crossplatform
   def test_freetype(self):
-    # copy the Liberation Sans Bold truetype file located in the
-    # <emscripten_root>/test/freetype to the compilation folder
-    shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), os.getcwd())
+    copy_asset('freetype/LiberationSansBold.ttf')
     self.cflags += ['--embed-file', 'LiberationSansBold.ttf']
     # the test program will print an ascii representation of a bitmap where the
     # 'w' character has been rendered using the Liberation Sans Bold font.
     # See test_freetype.out
-    self.do_run_in_out_file_test('test_freetype.c', cflags=['-sUSE_FREETYPE'])
     self.do_run_in_out_file_test('test_freetype.c', cflags=['--use-port=freetype'])
 
   @requires_network
-  def test_freetype_with_pthreads(self):
-    # Verify that freetype supports compilation requiring pthreads
-    self.emcc('test_freetype.c', ['-pthread', '-sUSE_FREETYPE', '-o', 'a.out.js'])
+  def test_freetype_pthreads(self):
+    # This test also verifies the `-sUSE_FREETYPE` alternative to --use-port=freetype works.
+    copy_asset('freetype/LiberationSansBold.ttf')
+    self.do_run_in_out_file_test('test_freetype.c', cflags=['--embed-file=LiberationSansBold.ttf', '-pthread', '-sUSE_FREETYPE'])
 
   @requires_network
   def test_icu(self):
