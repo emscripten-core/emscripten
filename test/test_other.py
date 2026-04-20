@@ -3564,11 +3564,11 @@ More info: https://emscripten.org
               ['-o', 'embind_tsgen.js', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
 
     # Test that the output compiles with a TS file that uses the definitions.
-    shutil.copyfile(test_file('other/embind_tsgen_main.ts'), 'main.ts')
+    copy_asset('other/embind_tsgen_main.ts', 'main.ts')
     if '-sEXPORT_ES6' in opts:
       # A package file with type=module is needed to enabled ES modules in TSC and
       # also run the output JS file as a module in node.
-      shutil.copyfile(test_file('other/embind_tsgen_package.json'), 'package.json')
+      copy_asset('other/embind_tsgen_package.json', 'package.json')
 
     cmd = shared.get_npm_cmd('tsc') + ['embind_tsgen.d.ts', 'main.ts', '--target', 'es2021'] + tsc_opts
     shared.check_call(cmd)
