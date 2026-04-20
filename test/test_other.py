@@ -13082,6 +13082,10 @@ void foo() {}
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
+  @requires_pthreads
+  def test_phtread_join_interrupted(self):
+    self.do_runf('pthread/test_pthread_join_interrupted.c', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=1'])
+
   @requires_node_25
   def test_growable_arraybuffers(self):
     self.node_args.append('--experimental-wasm-rab-integration')

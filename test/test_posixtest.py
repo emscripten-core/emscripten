@@ -61,7 +61,8 @@ def get_tests():
 # TODO: Investigate failing semaphores tests.
 unsupported_noreturn = {
   'test_pthread_mutex_lock_5_1': 'signals are not supported',
-  'test_pthread_spin_lock_3_1': 'signals are not supported',
+  'test_pthread_spin_lock_1_1': 'signals are not supported during spin lock',
+  'test_pthread_spin_lock_3_1': 'signals are not supported during spin lock',
   'test_pthread_join_6_3': 'creates too many threads',
   'test_pthread_barrier_wait_3_2': 'signals are not supported',
   'test_pthread_cond_broadcast_1_2': 'tries to create 10,0000 threads, then depends on fork()',
@@ -69,7 +70,6 @@ unsupported_noreturn = {
 }
 
 unsupported = {
-  'test_pthread_spin_lock_1_1': 'alarm causes spurious wakeup during pthread_join',
   'test_pthread_exit_6_1': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_1_1': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_1_2': 'fork() and multiple processes are not supported',

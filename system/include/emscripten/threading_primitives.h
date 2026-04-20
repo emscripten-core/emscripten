@@ -187,12 +187,13 @@ ATOMICS_WAIT_TOKEN_T emscripten_condvar_wait_async(emscripten_condvar_t * _Nonnu
 void emscripten_condvar_signal(emscripten_condvar_t * _Nonnull condvar, uint32_t numWaitersToSignal);
 
 // If the given memory address contains value val, puts the calling thread to
-// sleep waiting for that address to be notified.
-// Note: Like the Linux futex syscall, this API *does* allow spurious wakeups.
-// This differs from the WebAssembly `atomic.wait` instruction itself which
-// does *not* allow supurious wakeups and it means that most callers will want
-// to wrap this some kind of loop.
+// sleep waiting for that address to be notified. Like the linux futex syscall
+// this function returns negative errno values on failure.
 // Returns -EINVAL if addr is null.
+// Returns -ETIMEOUT if the maxWaitMilliseconds timeout was exceeded.
+// Returns -EINTR if the operation was interrupted (e.g. a timer fired, or an
+// async signal was received).
+// Returns 0 on success (i.e. another thread signaled this address)
 int emscripten_futex_wait(volatile void/*uint32_t*/ * _Nonnull addr, uint32_t val, double maxWaitMilliseconds);
 
 // Wakes the given number of threads waiting on a location. Pass count ==

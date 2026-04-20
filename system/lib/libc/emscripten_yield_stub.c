@@ -7,11 +7,14 @@
 
 #include <features.h>
 
-static void dummy(double now) {
+#include "threading_internal.h"
+
+static bool dummy(double now) {
+  return false;
 }
 
 weak_alias(dummy, _emscripten_check_timers);
 
-void _emscripten_yield(double now) {
-  _emscripten_check_timers(now);
+bool _emscripten_yield(double now) {
+  return _emscripten_check_timers(now);
 }

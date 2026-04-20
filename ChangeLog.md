@@ -31,6 +31,11 @@ See docs/process.md for more on how version tagging works.
   emscripten so folks can sill use it manually if needed.  If you are a user of
   this feature please let us know otherwise this may be deleted in a future
   release. (#26648)
+- The emscripten_futux_wait internals were improved to avoid unnecessary thread
+  wakeups.  As part of this change emscripten_futux_wait is now documented to
+  explicitly allow for returning EINTR when the wait is interrupted by an async
+  operation.  All callers of emscripten_futux_wait are advised to use a loop
+  to handle these types of spurious wakeups / interruptions. (#26659, #26735)
 
 5.0.6 - 04/14/26
 ----------------

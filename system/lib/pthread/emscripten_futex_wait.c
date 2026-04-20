@@ -21,6 +21,12 @@
 #include <stdlib.h>
 #include <sys/param.h>
 
+#ifdef __EMSCRIPTEN_PTHREADS__
+// Note: We use a weak reference here.  If it's null we know that threads are
+// not cancelable.
+weak long __cancel(void);
+#endif
+
 extern void* _emscripten_main_thread_futex;
 
 static int futex_wait_main_browser_thread(volatile void* addr,
@@ -53,8 +59,7 @@ static int futex_wait_main_browser_thread(volatile void* addr,
   while (1) {
 #ifdef __EMSCRIPTEN_PTHREADS__
     if (cancelable && __pthread_self()->cancel) {
-      __pthread_testcancel();
-      return -ETIMEDOUT;
+      return __cancel();
     }
 #endif
     // Check for a timeout.
@@ -79,7 +84,10 @@ static int futex_wait_main_browser_thread(volatile void* addr,
       // We were told to stop waiting, so stop.
       break;
     }
-    _emscripten_yield(now);
+    bool timer_fired = _emscripten_yield(now);
+    if (timer_fired) {
+      return -EINTR;
+    }
 
     // Check the value, as if we were starting the futex all over again.
     // This handles the following case:
@@ -132,17 +140,16 @@ static double dummy() {
 
 weak_alias(dummy, _emscripten_next_timer);
 
-int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms) {
+static int _do_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms) {
   if ((((intptr_t)addr)&3) != 0) {
     return -EINVAL;
   }
 
   int ret;
-  emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITFUTEX);
 
 #ifdef __EMSCRIPTEN_PTHREADS__
   pthread_t self = __pthread_self();
-  bool cancelable = self->canceldisable != PTHREAD_CANCEL_DISABLE;
+  bool cancelable = __cancel && self->canceldisable != PTHREAD_CANCEL_DISABLE;
 #else
   bool cancelable = false;
 #endif
@@ -150,9 +157,7 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   // For the main browser thread and audio worklets we can't use
   // __builtin_wasm_memory_atomic_wait32 so we have busy wait instead.
   if (!_emscripten_thread_supports_atomics_wait()) {
-    ret = futex_wait_main_browser_thread(addr, val, max_wait_ms, cancelable);
-    emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
-    return ret;
+    return futex_wait_main_browser_thread(addr, val, max_wait_ms, cancelable);
   }
 
   DBG("emscripten_futex_wait ms=%f", max_wait_ms);
@@ -182,28 +187,31 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   }
 
   // Clear the wait_addr
-  DBG("emscripten_futex_wait done notify=%d cancelable=%d cancel=%d", !!(self->wait_addr & NOTIFY_BIT), cancelable, self->cancel);
-  self->wait_addr = 0;
+  bool notified = atomic_exchange(&self->wait_addr, 0) & NOTIFY_BIT;
+
+  // Here we are mimicking the behaviour of musl's __syscall_cp_c which wraps
+  // the linux futex syscall.
+  if (self->cancel && cancelable) {
+    return __cancel();
+  }
+
+  DBG("emscripten_futex_wait done notified=%d cancelable=%d cancel=%d", notified, cancelable, self->cancel);
 
   // Pass 0 here, which means we don't have access to the current time in this
   // function.  This tells _emscripten_yield to call emscripten_get_now if (and
   // only if) it needs to know the time.
-  _emscripten_yield(0);
-
-  if (cancelable && self->cancel) {
-    __pthread_testcancel();
-    // If __pthread_testcancel does return here it means that canceldisable
-    // must be set to PTHREAD_CANCEL_MASKED.  In this case we emulate the
-    // behaviour of the futex syscall and return ECANCELLED here.
-    // See pthread_cond_timedwait.c for the only use of this flag.
-    emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
-    return -ECANCELED;
+  bool timer_fired = _emscripten_yield(0);
+  if (notified || timer_fired) {
+    return -EINTR;
   }
 #else // __EMSCRIPTEN_PTHREADS__
   ret = __builtin_wasm_memory_atomic_wait32((int*)addr, val, max_wait_ns);
+  bool timer_fired = _emscripten_yield(0);
+  if (timer_fired) {
+    return -EINTR;
+  }
 #endif // __EMSCRIPTEN_PTHREADS__
 
-  emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
 
   if (ret == ATOMICS_WAIT_NOT_EQUAL) {
     return -EWOULDBLOCK;
@@ -213,4 +221,12 @@ int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   }
   assert(ret == ATOMICS_WAIT_OK);
   return 0;
+}
+
+
+int emscripten_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms) {
+  emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITFUTEX);
+  int ret = _do_futex_wait(addr, val, max_wait_ms);
+  emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITFUTEX, EM_THREAD_STATUS_RUNNING);
+  return ret;
 }
