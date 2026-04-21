@@ -36,6 +36,8 @@ See docs/process.md for more on how version tagging works.
   explicitly allow for returning EINTR when the wait is interrupted by an async
   operation.  All callers of emscripten_futux_wait are advised to use a loop
   to handle these types of spurious wakeups / interruptions. (#26659, #26735)
+- Attempting to use PTHREAD_PROCESS_SHARED when creating pthread primitives such
+  as locks and condvars will now fail with ENOTSUP. (#26743)
 
 5.0.6 - 04/14/26
 ----------------

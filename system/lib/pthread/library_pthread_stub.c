@@ -268,43 +268,6 @@ int pthread_kill(pthread_t thread, int sig) {
   return 0;
 }
 
-int pthread_mutexattr_init(pthread_mutexattr_t *attr) {
-  return 0;
-}
-
-int pthread_mutexattr_setprotocol(pthread_mutexattr_t *attr, int protocol) {
-  return 0;
-}
-
-int pthread_mutexattr_settype(pthread_mutexattr_t *attr, int type) {
-  return 0;
-}
-
-int pthread_mutexattr_destroy(pthread_mutexattr_t *attr) {
-  return 0;
-}
-
-int pthread_mutexattr_setpshared(pthread_mutexattr_t *attr, int pshared) {
-  // XXX implement if/when getpshared is required
-  return 0;
-}
-
-int pthread_condattr_init(pthread_condattr_t * attr) {
-  return 0;
-}
-
-int pthread_condattr_destroy(pthread_condattr_t *attr) {
-  return 0;
-}
-
-int pthread_condattr_setclock(pthread_condattr_t *attr, clockid_t clk) {
-  return 0;
-}
-
-int pthread_condattr_setpshared(pthread_condattr_t *attr, int shared) {
-  return 0;
-}
-
 int pthread_setcancelstate(int state, int* oldstate) {
   return 0;
 }
@@ -349,42 +312,6 @@ int pthread_rwlock_unlock(pthread_rwlock_t *rwlock) {
   return 0;
 }
 
-int pthread_rwlockattr_init(pthread_rwlockattr_t *attr) {
-  return 0;
-}
-
-int pthread_rwlockattr_destroy(pthread_rwlockattr_t *attr) {
-  return 0;
-}
-
-int pthread_rwlockattr_setpshared(pthread_rwlockattr_t* attr, int pshared) {
-  return 0;
-}
-
-int pthread_spin_init(pthread_spinlock_t *lock, int pshared) {
-  return 0;
-}
-
-int pthread_spin_destroy(pthread_spinlock_t *lock) {
-  return 0;
-}
-
-int pthread_spin_lock(pthread_spinlock_t *lock) {
-  return 0;
-}
-
-int pthread_spin_trylock(pthread_spinlock_t *lock) {
-  return 0;
-}
-
-int pthread_spin_unlock(pthread_spinlock_t *lock) {
-  return 0;
-}
-
-int sem_init(sem_t *sem, int pshared, unsigned int value) {
-  return 0;
-}
-
 int sem_post(sem_t *sem) {
   return 0;
 }
@@ -394,10 +321,6 @@ int sem_wait(sem_t *sem) {
 }
 
 int sem_trywait(sem_t *sem) {
-  return 0;
-}
-
-int sem_destroy(sem_t *sem) {
   return 0;
 }
 

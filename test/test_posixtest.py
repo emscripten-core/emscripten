@@ -70,6 +70,13 @@ unsupported_noreturn = {
 }
 
 unsupported = {
+  'test_pthread_cond_init_4_2': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_condattr_getpshared_1_2': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_mutexattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_rwlockattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_condattr_setpshared_1_2': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_mutexattr_getpshared_1_2': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_mutexattr_setpshared_2_2': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_exit_6_1': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_1_1': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_1_2': 'fork() and multiple processes are not supported',
