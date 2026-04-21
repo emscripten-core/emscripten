@@ -1887,6 +1887,8 @@ class libmimalloc(MTLibrary):
     '-DMI_DEBUG=0',
     # disable `assert()` in the underlying emmalloc allocator
     '-DNDEBUG',
+    # Emscripten uses musl libc internally
+    '-DMI_LIBC_MUSL',
     # enable use of `__builtin_thread_pointer()`
     '-DMI_USE_BUILTIN_THREAD_POINTER',
   ]
