@@ -18,9 +18,6 @@
 #if WASM2JS && MODULARIZE
 #error "-sWASM=0 + -sMODULARIZE + -sWASM_WORKERS is not supported"
 #endif
-#if EXPORT_ES6 && (MIN_FIREFOX_VERSION < 114 || MIN_CHROME_VERSION < 80 || MIN_SAFARI_VERSION < 150000)
-#error "internal error, feature_matrix should not allow this"
-#endif
 
 #endif // ~WASM_WORKERS
 
