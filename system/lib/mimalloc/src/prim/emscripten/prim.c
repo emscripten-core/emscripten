@@ -251,8 +251,6 @@ bool _mi_prim_thread_is_in_threadpool(void) {
   return false;
 }
 
-#include <emscripten.h>
-
 void _mi_prim_thread_yield(void) {
-  emscripten_sleep(0);
+  sched_yield();
 }
