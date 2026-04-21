@@ -60,9 +60,6 @@ var wasmFSNodeLibrary = {
     return wasmfsNodeFixStat(stat);
   },
 
-  // Ignore closure type errors due to outdated readdirSync annotations, see
-  // https://github.com/google/closure-compiler/pull/4093
-  _wasmfs_node_readdir__docs: '/** @suppress {checkTypes} */',
   _wasmfs_node_readdir__deps: [
     '$wasmfsTry',
     '$stackSave',
