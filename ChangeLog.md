@@ -23,7 +23,7 @@ See docs/process.md for more on how version tagging works.
 - The emscripten_futux_wait API is now documented to explicitly allow spurious
   wakeups. This was part of an internal change to improve inter-thread
   communication. (#26659)
-- mimalloc was updated to 3.3.0. (#26696)
+- mimalloc was updated to 3.3.1. (#26696)
 
 5.0.6 - 04/14/26
 ----------------
