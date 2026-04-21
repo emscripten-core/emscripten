@@ -172,7 +172,7 @@ var LibraryPThread = {
 
     terminateAllThreads: () => {
 #if ASSERTIONS
-      assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! terminateAllThreads() can only ever be called from main application thread!');
+      assert(!ENVIRONMENT_IS_PTHREAD, 'terminateAllThreads() should only be called from the main thread');
 #endif
 #if PTHREADS_DEBUG
       dbg('terminateAllThreads');
@@ -196,7 +196,7 @@ var LibraryPThread = {
 
     terminateRuntime: () => {
 #if ASSERTIONS
-      assert(!ENVIRONMENT_IS_PTHREAD, 'terminateRuntime() can only ever be called from main application thread!');
+      assert(!ENVIRONMENT_IS_PTHREAD, 'terminateRuntime() should only be called from the main thread');
 #endif
       PThread.terminateAllThreads();
       var pthread_ptr = _pthread_self();
@@ -280,7 +280,7 @@ var LibraryPThread = {
           if (targetWorker) {
             targetWorker.postMessage(d, d.transferList);
           } else {
-            err(`Internal error! Worker sent a message "${cmd}" to target pthread ${d.targetThread}, but that thread no longer exists!`);
+            err(`worker sent message (${cmd}) to pthread (${d.targetThread}) that no longer exists`);
           }
           return;
         }
@@ -357,9 +357,9 @@ var LibraryPThread = {
 #endif
 
 #if ASSERTIONS
-      assert(wasmMemory instanceof WebAssembly.Memory, 'WebAssembly memory should have been loaded by now!');
+      assert(wasmMemory instanceof WebAssembly.Memory, 'wasmMemory should have been loaded by now');
 #if !WASM_ESM_INTEGRATION
-      assert(wasmModule instanceof WebAssembly.Module, 'WebAssembly Module should have been loaded by now!');
+      assert(wasmModule instanceof WebAssembly.Module, 'wasmModule should have been loaded by now');
 #endif
 #endif
 
@@ -617,8 +617,8 @@ var LibraryPThread = {
     dbg(`cleanupThread: ${ptrToString(pthread_ptr)}`)
 #endif
 #if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! cleanupThread() can only ever be called from main application thread!');
-    assert(pthread_ptr, 'Internal Error! Null pthread_ptr in cleanupThread!');
+    assert(!ENVIRONMENT_IS_PTHREAD, 'cleanupThread() should only be called from the main thread');
+    assert(pthread_ptr, 'null pthread_ptr passed to cleanupThread');
 #endif
     var worker = PThread.pthreads[pthread_ptr];
 #if MAIN_MODULE
@@ -675,8 +675,8 @@ var LibraryPThread = {
 
   $spawnThread: (threadParams) => {
 #if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! spawnThread() can only ever be called from main application thread!');
-    assert(threadParams.pthread_ptr, 'Internal error, no pthread ptr!');
+    assert(!ENVIRONMENT_IS_PTHREAD, 'spawnThread() should only be called from the main thread');
+    assert(threadParams.pthread_ptr, 'spawnThread called with null pthread ptr');
 #endif
 
     var worker = PThread.getNewWorker();
@@ -685,7 +685,7 @@ var LibraryPThread = {
       return {{{ cDefs.EAGAIN }}};
     }
 #if ASSERTIONS
-    assert(!worker.pthread_ptr, 'Internal error!');
+    assert(!worker.pthread_ptr);
 #endif
 
     PThread.runningWorkers.push(worker);
@@ -1206,7 +1206,7 @@ var LibraryPThread = {
     dbg("dlsyncThreadsAsync caller=" + ptrToString(caller));
 #endif
 #if ASSERTIONS
-    assert(!ENVIRONMENT_IS_PTHREAD, 'Internal Error! dlsyncThreadsAsync() can only ever be called from main thread');
+    assert(!ENVIRONMENT_IS_PTHREAD, 'dlsyncThreadsAsync() should only be called from the main thread');
     assert(Object.keys(PThread.outstandingPromises).length === 0);
 #endif
 
@@ -1270,24 +1270,26 @@ var LibraryPThread = {
                         'pthread_self',
                         '_emscripten_check_mailbox',
                         '_emscripten_thread_mailbox_await'],
-  $checkMailbox: () => callUserCallback(() => {
-    // Only check the mailbox if we have a live pthread runtime. We implement
-    // pthread_self to return 0 if there is no live runtime.
-    //
-    // TODO(https://github.com/emscripten-core/emscripten/issues/25076):
-    // Is this check still needed?  `callUserCallback` is supposed to
-    // ensure the runtime is alive, and if `_pthread_self` is NULL then the
-    // runtime certainly is *not* alive, so this should be a redundant check.
+  $checkMailbox: () => {
+    // checkMailbox can be called after the pthread has shut down. See
+    // Pthread.terminateRuntime().
+    // In this case we return silently without re-registering using waitAsync.
+    // Perhaps there is a more universal way we can detect runtime has exited.
+    // TODO(https://github.com/emscripten-core/emscripten/issues/25076)
+#if ABORT_ON_WASM_EXCEPTIONS
+    if (ABORT) return;
+#endif
     var pthread_ptr = _pthread_self();
-    if (pthread_ptr) {
+    if (!pthread_ptr) return;
+    callUserCallback(() => {
       // If we are using Atomics.waitAsync as our notification mechanism, wait
       // for a notification before processing the mailbox to avoid missing any
       // work that could otherwise arrive after we've finished processing the
       // mailbox and before we're ready for the next notification.
       __emscripten_thread_mailbox_await(pthread_ptr);
       __emscripten_check_mailbox();
-    }
-  }),
+    });
+  },
 
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox', '$waitAsyncPolyfilled'],
   _emscripten_thread_mailbox_await: (pthread_ptr) => {

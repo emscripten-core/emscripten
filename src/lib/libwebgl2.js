@@ -632,7 +632,7 @@ var LibraryWebGL2 = {
 
   glClearBufferiv: (buffer, drawbuffer, value) => {
 #if GL_ASSERTIONS
-    assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferiv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glClearBufferiv must be 4-byte aligned');
 #endif
 
     GLctx.clearBufferiv(buffer, drawbuffer, HEAP32, {{{ getHeapOffset('value', 'i32') }}});
@@ -640,7 +640,7 @@ var LibraryWebGL2 = {
 
   glClearBufferuiv: (buffer, drawbuffer, value) => {
 #if GL_ASSERTIONS
-    assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferuiv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glClearBufferuiv must be 4-byte aligned');
 #endif
 
     GLctx.clearBufferuiv(buffer, drawbuffer, HEAPU32, {{{ getHeapOffset('value', 'u32') }}});
@@ -648,7 +648,7 @@ var LibraryWebGL2 = {
 
   glClearBufferfv: (buffer, drawbuffer, value) => {
 #if GL_ASSERTIONS
-    assert((value & 3) == 0, 'Pointer to float data passed to glClearBufferfv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glClearBufferfv must be 4-byte aligned');
 #endif
 
     GLctx.clearBufferfv(buffer, drawbuffer, HEAPF32, {{{ getHeapOffset('value', 'float') }}});
@@ -787,7 +787,7 @@ var LibraryWebGL2 = {
   glUniform1uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform1uiv', 'location');
-    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1uiv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniform1uiv must be 4-byte aligned');
 #endif
     count && GLctx.uniform1uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count);
   },
@@ -796,7 +796,7 @@ var LibraryWebGL2 = {
   glUniform2uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform2uiv', 'location');
-    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2uiv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniform2uiv must be 4-byte aligned');
 #endif
     count && GLctx.uniform2uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*2);
   },
@@ -805,7 +805,7 @@ var LibraryWebGL2 = {
   glUniform3uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3uiv', 'location');
-    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3uiv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniform3uiv must be 4-byte aligned');
 #endif
     count && GLctx.uniform3uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*3);
   },
@@ -814,7 +814,7 @@ var LibraryWebGL2 = {
   glUniform4uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform4uiv', 'location');
-    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4uiv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniform4uiv must be 4-byte aligned');
 #endif
     count && GLctx.uniform4uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*4);
   },
@@ -823,7 +823,7 @@ var LibraryWebGL2 = {
   glUniformMatrix2x3fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x3fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x3fv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniformMatrix2x3fv must be 4-byte aligned');
 #endif
     count && GLctx.uniformMatrix2x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*6);
   },
@@ -832,7 +832,7 @@ var LibraryWebGL2 = {
   glUniformMatrix3x2fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x2fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x2fv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniformMatrix3x2fv must be 4-byte aligned');
 #endif
     count && GLctx.uniformMatrix3x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*6);
   },
@@ -841,7 +841,7 @@ var LibraryWebGL2 = {
   glUniformMatrix2x4fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x4fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x4fv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniformMatrix2x4fv must be 4-byte aligned');
 #endif
     count && GLctx.uniformMatrix2x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*8);
   },
@@ -850,7 +850,7 @@ var LibraryWebGL2 = {
   glUniformMatrix4x2fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x2fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x2fv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniformMatrix4x2fv must be 4-byte aligned');
 #endif
     count && GLctx.uniformMatrix4x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*8);
   },
@@ -859,7 +859,7 @@ var LibraryWebGL2 = {
   glUniformMatrix3x4fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x4fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x4fv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniformMatrix3x4fv must be 4-byte aligned');
 #endif
     count && GLctx.uniformMatrix3x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*12);
   },
@@ -868,23 +868,23 @@ var LibraryWebGL2 = {
   glUniformMatrix4x3fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x3fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x3fv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniformMatrix4x3fv must be 4-byte aligned');
 #endif
     count && GLctx.uniformMatrix4x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*12);
   },
 
   glVertexAttribI4iv: (index, v) => {
 #if GL_ASSERTIONS
-    assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4iv must be aligned to four bytes!');
-    assert(v != 0, 'Null pointer passed to glVertexAttribI4iv!');
+    assert((v & 3) == 0, 'pointer passed to glVertexAttribI4iv must be 4-byte aligned');
+    assert(v != 0, 'null pointer passed to glVertexAttribI4iv');
 #endif
     GLctx.vertexAttribI4i(index, HEAP32[v>>2], HEAP32[v+4>>2], HEAP32[v+8>>2], HEAP32[v+12>>2]);
   },
 
   glVertexAttribI4uiv: (index, v) => {
 #if GL_ASSERTIONS
-    assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4uiv must be aligned to four bytes!');
-    assert(v != 0, 'Null pointer passed to glVertexAttribI4uiv!');
+    assert((v & 3) == 0, 'pointer passed to glVertexAttribI4uiv must be 4-byte aligned');
+    assert(v != 0, 'null pointer passed to glVertexAttribI4uiv');
 #endif
     GLctx.vertexAttribI4ui(index, HEAPU32[v>>2], HEAPU32[v+4>>2], HEAPU32[v+8>>2], HEAPU32[v+12>>2]);
   },
@@ -1039,7 +1039,7 @@ var webgl2PassthroughFuncs = [
 // If user passes -sMAX_WEBGL_VERSION >= 2 -sSTRICT but not -lGL (to link in
 // WebGL 1), then WebGL2 library should not be linked in as well.
 if (typeof createGLPassthroughFunctions == 'undefined') {
-  error('In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL!');
+  error('In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL');
 }
 
 createGLPassthroughFunctions(LibraryWebGL2, webgl2PassthroughFuncs);

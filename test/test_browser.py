@@ -274,8 +274,8 @@ class browser(BrowserCore):
       print()
 
   def require_jspi(self):
-    if not is_chrome():
-      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) support JSPI today.')
+    if not is_chrome() and not is_firefox():
+      self.skipTest(f'Current browser ({get_browser()}) does not support JSPI. Only chromium-based browsers ({CHROMIUM_BASED_BROWSERS}) and firefox support JSPI today.')
     super().require_jspi()
 
   def post_manual_reftest(self):
@@ -2165,7 +2165,7 @@ void *getBindBuffer() {
 
   def test_sdl3_ttf_render_text_solid(self):
     self.cflags.append('-Wno-experimental')
-    shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), self.get_dir())
+    copy_asset('freetype/LiberationSansBold.ttf')
     self.reftest('test_sdl3_ttf_render_text_solid.c', 'test_sdl3_ttf_render_text_solid.png',
                  cflags=[
                   '-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '-lGL', '-Wno-experimental',
@@ -3139,7 +3139,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_sdl3_ttf(self):
-    shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), self.get_dir())
+    copy_asset('freetype/LiberationSansBold.ttf')
     self.reftest('test_sdl3_ttf.c', 'test_sdl3_ttf.png',
                  cflags=['-O2', '-sUSE_SDL=3', '-sUSE_SDL_TTF=3', '--embed-file', 'LiberationSansBold.ttf', '-Wno-experimental'])
 
@@ -5237,7 +5237,7 @@ Module["preRun"] = () => {
 
   # Tests that calling any proxied function in a Wasm Worker will abort at runtime when ASSERTIONS are enabled.
   def test_wasm_worker_proxied_function(self):
-    error_msg = "abort:Assertion failed: Attempted to call proxied function '_proxied_js_function' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!"
+    error_msg = "abort:Assertion failed: attempt to call proxied function '_proxied_js_function' from a Wasm Worker (where proxying is not possible)"
     # Test that program aborts in ASSERTIONS-enabled builds
     self.btest('wasm_worker/proxied_function.c', expected=error_msg, cflags=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS'])
     # Test that code does not crash in ASSERTIONS-disabled builds
@@ -5332,7 +5332,7 @@ Module["preRun"] = () => {
   })
   @no_safari('TODO: Fails with abort:Assertion failed: err == 0') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   def test_wasmfs_opfs(self, args):
-    if '-sJSPI' in args:
+    if is_jspi(args):
       self.require_jspi()
     test = test_file('wasmfs/wasmfs_opfs.c')
     args = ['-sWASMFS', '-O3'] + args
@@ -5754,6 +5754,7 @@ class emrun(RunnerCore):
     self.assertContained('error: unrecognized arguments: --foo', err)
     self.assertContained('remember to add `--` between arguments', err)
 
+  @also_with_threads
   def test_emrun(self):
     self.emcc('test_emrun.c', ['--emrun', '-o', 'test_emrun.html'])
     if not has_browser():

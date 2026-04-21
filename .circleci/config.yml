@@ -38,7 +38,9 @@ commands:
           command: |
             # TODO: Make these part of the base image
             apt-get install -q -y libu2f-udev libvulkan1 xdg-utils
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-unstable_current_amd64.deb
+            # Temporarily pinning to beta rather than unstable:
+            # See https://github.com/emscripten-core/emscripten/issues/26720
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
             # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
@@ -940,6 +942,8 @@ jobs:
             echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
           test_targets: "
+            other.test_prepost_jspi
+            other.test_stdint_limits_wasm64
             core0.test_hello_argc
             core2.test_demangle_stacks_symbol_map"
       - upload-test-results
@@ -1373,9 +1377,9 @@ workflows:
       - test-core3:
           requires:
             - build-linux
-      #- test-wasm64-misc:
-      #    requires:
-      #      - build-linux
+      - test-wasm64-misc:
+          requires:
+            - build-linux
       - test-wasm64-4gb:
           requires:
             - build-linux
@@ -1414,7 +1418,7 @@ workflows:
       #- test-bun
       #- test-deno
       #- test-jsc
-      #- test-spidermonkey
+      - test-spidermonkey
       #- test-node-compat
       #- test-windows
       #- test-windows-browser-firefox

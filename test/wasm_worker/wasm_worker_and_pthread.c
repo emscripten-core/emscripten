@@ -11,6 +11,10 @@ _Atomic pid_t main_tid = 0;
 _Atomic pid_t pthread_tid = 0;
 _Atomic pid_t worker_tid = 0;
 
+void* _Atomic main_ptr = 0;
+void* _Atomic pthread_ptr = 0;
+void* _Atomic worker_ptr = 0;
+
 EM_JS(int, am_i_pthread, (), {
   return ENVIRONMENT_IS_PTHREAD;
 });
@@ -21,8 +25,10 @@ EM_JS(int, am_i_wasm_worker, (), {
 
 void *thread_main(void *arg) {
   pthread_tid = gettid();
-  emscripten_outf("hello from pthread! (tid=%d)", pthread_tid);
+  pthread_ptr = __builtin_thread_pointer();
+  emscripten_outf("hello from pthread! (tid=%d) (ptr=%p)", pthread_tid, pthread_ptr);
   assert(pthread_tid && pthread_tid > main_tid);
+  assert(pthread_ptr && pthread_ptr != main_ptr);
   assert(am_i_pthread());
   assert(!am_i_wasm_worker());
   assert(!emscripten_current_thread_is_wasm_worker());
@@ -32,8 +38,10 @@ void *thread_main(void *arg) {
 
 void worker_main() {
   worker_tid = gettid();
-  emscripten_outf("hello from wasm worker! (tid=%d)", worker_tid);
+  worker_ptr = __builtin_thread_pointer();
+  emscripten_outf("hello from wasm worker! (tid=%d) (ptr=%p)", worker_tid, worker_ptr);
   assert(worker_tid && worker_tid > pthread_tid);
+  assert(worker_ptr && worker_ptr != pthread_ptr);
   assert(!am_i_pthread());
   assert(am_i_wasm_worker());
   assert(emscripten_current_thread_is_wasm_worker());
@@ -46,7 +54,8 @@ void worker_main() {
 
 int main() {
   main_tid = gettid();
-  emscripten_outf("in main (tid=%d)", main_tid);
+  main_ptr = __builtin_thread_pointer();
+  emscripten_outf("in main (tid=%d) (ptr=%p)", main_tid, main_ptr);
   assert(main_tid > 0);
   pthread_t thread;
   pthread_create(&thread, NULL, thread_main, NULL);

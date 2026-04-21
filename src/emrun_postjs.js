@@ -86,7 +86,10 @@ if (globalThis.window && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIR
     var http = new XMLHttpRequest();
     out(`Dumping out file "${filename}" with ${data.length} bytes of data.`);
     http.open("POST", "stdio.html?file=" + filename, true);
-    http.send(data); // XXX  this does not work in workers, for some odd reason (issue #2681)
+    if (ArrayBuffer.isView(data) && typeof SharedArrayBuffer !== "undefined" && data.buffer instanceof SharedArrayBuffer) {
+      data = new data.constructor(data); // Make a clone of the typed array of the same type, since http.send() does not allow SharedArrayBuffer backing.
+    }
+    http.send(data);
   };
 
   if (globalThis.document) {

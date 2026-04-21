@@ -285,6 +285,11 @@ def engine_is_v8(engine):
   return match_engine_executable(engine, 'd8') or match_engine_executable(engine, 'v8')
 
 
+def engine_is_spidermonkey(engine):
+  assert type(engine) is list
+  return match_engine_executable(engine, 'spidermonkey')
+
+
 def engine_is_deno(engine):
   assert type(engine) is list
   return match_engine_executable(engine, 'deno')
@@ -309,6 +314,10 @@ def get_nodejs():
 
 def get_v8():
   return get_engine(engine_is_v8)
+
+
+def get_spidermonkey():
+  return get_engine(engine_is_spidermonkey)
 
 
 def get_bun():
@@ -499,6 +508,12 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(24):
       return
 
+    spidermonkey = get_spidermonkey()
+    if spidermonkey:
+      self.cflags.append('-sENVIRONMENT=shell')
+      self.require_engine(spidermonkey)
+      return
+
     v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
@@ -510,7 +525,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def try_require_node_version(self, major, minor=0, revision=0):
     nodejs = get_nodejs()
     if not nodejs:
-      self.skipTest('Test requires nodejs to run')
+      return False
     version = shared.get_node_version(nodejs)
     if version < (major, minor, revision):
       return False
@@ -584,6 +599,13 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
+      return
+
+    spidermonkey = get_spidermonkey()
+    if spidermonkey:
+      self.cflags.append('-sENVIRONMENT=shell')
+      self.spidermonkey_args += ['-P', 'wasm_js_promise_integration']
+      self.require_engine(spidermonkey)
       return
 
     self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
@@ -666,7 +688,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     # Increase the stack trace limit to maximise usefulness of test failure reports.
     # Also, include backtrace for all uncaught exceptions (not just Error).
     self.node_args = ['--stack-trace-limit=50', '--trace-uncaught']
-    self.spidermonkey_args = ['-w']
+    self.spidermonkey_args = []
 
     nodejs = get_nodejs()
     if nodejs:

@@ -938,7 +938,8 @@ def install_debug_wrapper(sym):
   # `__trap` can occur before the runtime is initialized since it is used in abort.
   # `emscripten_get_sbrk_ptr` can be called prior to runtime initialization by
   # the dynamic linking code.
-  return sym not in {'__trap', 'emscripten_get_sbrk_ptr'}
+  # `pthread_self` is used in `checkMailbox` after program shutdown.
+  return sym not in {'__trap', 'emscripten_get_sbrk_ptr', 'pthread_self'}
 
 
 def should_export(sym):

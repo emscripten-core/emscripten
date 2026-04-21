@@ -15,10 +15,8 @@ int __dup3(int old, int new, int flags)
 		if (flags & ~O_CLOEXEC) return __syscall_ret(-EINVAL);
 	}
 	while ((r=__syscall(SYS_dup2, old, new))==-EBUSY);
-#ifndef __EMSCRIPTEN__ // CLOEXEC makes no sense for a single process
 	if (r >= 0 && (flags & O_CLOEXEC))
 		__syscall(SYS_fcntl, new, F_SETFD, FD_CLOEXEC);
-#endif
 #else
 	while ((r=__syscall(SYS_dup3, old, new, flags))==-EBUSY);
 #endif

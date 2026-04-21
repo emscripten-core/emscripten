@@ -515,7 +515,7 @@ ${body}
             snippet,
             (args, body) => `
 function(${args}) {
-  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${mangled}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
+  assert(!ENVIRONMENT_IS_WASM_WORKER, "attempt to call proxied function '${mangled}' from a Wasm Worker (where proxying is not possible)");
   ${body}
 }\n`,
           );
@@ -871,7 +871,7 @@ function(${args}) {
           orderedPostSets[j] = temp;
           i--;
           limit--;
-          assert(limit > 0, 'Could not sort postsets!');
+          assert(limit > 0, 'could not sort postsets');
           break;
         }
       }
