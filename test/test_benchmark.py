@@ -22,7 +22,7 @@ if __name__ == '__main__':
 import clang_native
 import common
 import jsrun
-from common import read_binary, read_file, test_file
+from common import copy_asset, read_binary, read_file, test_file
 from decorators import needs_make, parameterized
 
 from tools import utils
@@ -1033,7 +1033,7 @@ class benchmark(common.RunnerCore):
 
   def lua(self, benchmark, expected, output_parser=None):
     self.cflags.remove('-Werror')
-    shutil.copyfile(test_file(f'third_party/lua/{benchmark}.lua'), benchmark + '.lua')
+    copy_asset(f'third_party/lua/{benchmark}.lua')
 
     def lib_builder(name, native, env_init):
       # Inject -sMEMORY64 into node-64 benchmarking runs.

@@ -601,6 +601,13 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.require_engine(v8)
       return
 
+    spidermonkey = get_spidermonkey()
+    if spidermonkey:
+      self.cflags.append('-sENVIRONMENT=shell')
+      self.spidermonkey_args += ['-P', 'wasm_js_promise_integration']
+      self.require_engine(spidermonkey)
+      return
+
     self.fail('either d8 or node v24 required to run JSPI tests.  Use EMTEST_SKIP_JSPI to skip')
 
   def require_wasm2js(self):
@@ -681,7 +688,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     # Increase the stack trace limit to maximise usefulness of test failure reports.
     # Also, include backtrace for all uncaught exceptions (not just Error).
     self.node_args = ['--stack-trace-limit=50', '--trace-uncaught']
-    self.spidermonkey_args = ['-w']
+    self.spidermonkey_args = []
 
     nodejs = get_nodejs()
     if nodejs:

@@ -1270,24 +1270,26 @@ var LibraryPThread = {
                         'pthread_self',
                         '_emscripten_check_mailbox',
                         '_emscripten_thread_mailbox_await'],
-  $checkMailbox: () => callUserCallback(() => {
-    // Only check the mailbox if we have a live pthread runtime. We implement
-    // pthread_self to return 0 if there is no live runtime.
-    //
-    // TODO(https://github.com/emscripten-core/emscripten/issues/25076):
-    // Is this check still needed?  `callUserCallback` is supposed to
-    // ensure the runtime is alive, and if `_pthread_self` is NULL then the
-    // runtime certainly is *not* alive, so this should be a redundant check.
+  $checkMailbox: () => {
+    // checkMailbox can be called after the pthread has shut down. See
+    // Pthread.terminateRuntime().
+    // In this case we return silently without re-registering using waitAsync.
+    // Perhaps there is a more universal way we can detect runtime has exited.
+    // TODO(https://github.com/emscripten-core/emscripten/issues/25076)
+#if ABORT_ON_WASM_EXCEPTIONS
+    if (ABORT) return;
+#endif
     var pthread_ptr = _pthread_self();
-    if (pthread_ptr) {
+    if (!pthread_ptr) return;
+    callUserCallback(() => {
       // If we are using Atomics.waitAsync as our notification mechanism, wait
       // for a notification before processing the mailbox to avoid missing any
       // work that could otherwise arrive after we've finished processing the
       // mailbox and before we're ready for the next notification.
       __emscripten_thread_mailbox_await(pthread_ptr);
       __emscripten_check_mailbox();
-    }
-  }),
+    });
+  },
 
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox', '$waitAsyncPolyfilled'],
   _emscripten_thread_mailbox_await: (pthread_ptr) => {

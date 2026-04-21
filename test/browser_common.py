@@ -10,7 +10,6 @@ import plistlib
 import queue
 import re
 import shlex
-import shutil
 import subprocess
 import threading
 import time
@@ -25,6 +24,7 @@ from common import (
   TEST_ROOT,
   RunnerCore,
   compiler_for,
+  copy_asset,
   create_file,
   errlog,
   force_delete_dir,
@@ -247,7 +247,7 @@ class FirefoxConfig:
 
   @staticmethod
   def configure(data_dir):
-    shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
+    copy_asset('firefox_user.js', os.path.join(data_dir, 'user.js'))
 
   @staticmethod
   def open_url_args(url):

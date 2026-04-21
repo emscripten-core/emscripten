@@ -2617,20 +2617,18 @@ F1 -> ''
   @requires_network
   @crossplatform
   def test_freetype(self):
-    # copy the Liberation Sans Bold truetype file located in the
-    # <emscripten_root>/test/freetype to the compilation folder
-    shutil.copy2(test_file('freetype/LiberationSansBold.ttf'), os.getcwd())
+    copy_asset('freetype/LiberationSansBold.ttf')
     self.cflags += ['--embed-file', 'LiberationSansBold.ttf']
     # the test program will print an ascii representation of a bitmap where the
     # 'w' character has been rendered using the Liberation Sans Bold font.
     # See test_freetype.out
-    self.do_run_in_out_file_test('test_freetype.c', cflags=['-sUSE_FREETYPE'])
     self.do_run_in_out_file_test('test_freetype.c', cflags=['--use-port=freetype'])
 
   @requires_network
-  def test_freetype_with_pthreads(self):
-    # Verify that freetype supports compilation requiring pthreads
-    self.emcc('test_freetype.c', ['-pthread', '-sUSE_FREETYPE', '-o', 'a.out.js'])
+  def test_freetype_pthreads(self):
+    # This test also verifies the `-sUSE_FREETYPE` alternative to --use-port=freetype works.
+    copy_asset('freetype/LiberationSansBold.ttf')
+    self.do_run_in_out_file_test('test_freetype.c', cflags=['--embed-file=LiberationSansBold.ttf', '-pthread', '-sUSE_FREETYPE'])
 
   @requires_network
   def test_freetype_wasm_eh(self):
@@ -3599,11 +3597,11 @@ More info: https://emscripten.org
               ['-o', 'embind_tsgen.js', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + opts)
 
     # Test that the output compiles with a TS file that uses the definitions.
-    shutil.copyfile(test_file('other/embind_tsgen_main.ts'), 'main.ts')
+    copy_asset('other/embind_tsgen_main.ts', 'main.ts')
     if '-sEXPORT_ES6' in opts:
       # A package file with type=module is needed to enabled ES modules in TSC and
       # also run the output JS file as a module in node.
-      shutil.copyfile(test_file('other/embind_tsgen_package.json'), 'package.json')
+      copy_asset('other/embind_tsgen_package.json', 'package.json')
 
     cmd = shared.get_npm_cmd('tsc') + ['embind_tsgen.d.ts', 'main.ts', '--target', 'es2021'] + tsc_opts
     shared.check_call(cmd)
@@ -11734,7 +11732,8 @@ int main(void) {
     # Verify that we're unable to detach or join the proxied main thread
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
-    self.do_other_test('test_pthread_self_join_detach.c')
+    output = self.do_other_test('test_pthread_self_join_detach.c')
+    self.assertNotContained('user callback triggered after runtime exited', output)
 
   @requires_pthreads
   def test_pthread_asyncify(self):

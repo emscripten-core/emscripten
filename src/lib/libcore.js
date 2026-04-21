@@ -1284,11 +1284,19 @@ addToLibrary({
 
   $timers: {},
 
+  $clearTimers__internal: true,
+  $clearTimers: () => {
+    for (var t of Object.values(timers)) {
+      clearTimeout(t.id);
+    }
+  },
+
   // Helper function for setitimer that registers timers with the eventloop.
   // Timers always fire on the main thread, either directly from JS (here) or
   // or when the main thread is busy waiting calling _emscripten_yield.
+  _setitimer_js__postset: () => addAtExit('clearTimers();'),
   _setitimer_js__proxy: 'sync',
-  _setitimer_js__deps: ['$timers', '$callUserCallback', '_emscripten_timeout', 'emscripten_get_now'],
+  _setitimer_js__deps: ['$timers', '$clearTimers', '$callUserCallback', '_emscripten_timeout', 'emscripten_get_now'],
   _setitimer_js: (which, timeout_ms) => {
 #if RUNTIME_DEBUG
     dbg(`setitimer_js ${which} timeout=${timeout_ms}`);
