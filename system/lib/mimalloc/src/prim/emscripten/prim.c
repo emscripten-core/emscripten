@@ -12,6 +12,8 @@ terms of the MIT license. A copy of the license can be found in the file
 #include "mimalloc/atomic.h"
 #include "mimalloc/prim.h"
 
+#include <unistd.h>  // getentropy
+
 // Design
 // ======
 //
