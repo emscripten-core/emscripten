@@ -151,7 +151,6 @@ INCOMPATIBLE_SETTINGS = [
 
 EXPERIMENTAL_SETTINGS = {
     'SPLIT_MODULE': '-sSPLIT_MODULE is experimental and subject to change',
-    'WASM_JS_TYPES': '-sWASM_JS_TYPES is only supported under a flag in certain browsers',
     'SOURCE_PHASE_IMPORTS': '-sSOURCE_PHASE_IMPORTS is experimental and not yet supported in browsers',
     'JS_BASE64_API': '-sJS_BASE64_API is experimental and not yet supported in browsers',
     'GROWABLE_ARRAYBUFFERS': '-sGROWABLE_ARRAYBUFFERS is experimental and not yet supported in browsers',
@@ -253,6 +252,7 @@ LEGACY_SETTINGS = [
     ['NODEJS_CATCH_REJECTION', [0], 'No longer supported'],
     ['POLYFILL_OLD_MATH_FUNCTIONS', [0], 'No longer supported'],
     ['RELOCATABLE', [0], 'No longer supported'],
+    ['WASM_JS_TYPES', [0], 'No longer supported'],
 ]
 
 user_settings: dict[str, str] = {}

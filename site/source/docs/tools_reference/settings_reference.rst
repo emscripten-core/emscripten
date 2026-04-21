@@ -3357,19 +3357,6 @@ node/chrome.
 
 Default value: false
 
-.. _wasm_js_types:
-
-WASM_JS_TYPES
-=============
-
-Experimental support for WebAssembly js-types proposal.
-It's currently only available under a flag in certain browsers,
-so we disable it by default to save on code size.
-
-.. note:: This is an experimental setting
-
-Default value: false
-
 .. _cross_origin:
 
 CROSS_ORIGIN
@@ -3514,3 +3501,4 @@ for backwards compatibility with older versions:
  - ``NODEJS_CATCH_REJECTION``: No longer supported (Valid values: [0])
  - ``POLYFILL_OLD_MATH_FUNCTIONS``: No longer supported (Valid values: [0])
  - ``RELOCATABLE``: No longer supported (Valid values: [0])
+ - ``WASM_JS_TYPES``: No longer supported (Valid values: [0])

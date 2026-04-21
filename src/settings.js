@@ -2207,12 +2207,6 @@ var JS_BASE64_API = false;
 // [link]
 var GROWABLE_ARRAYBUFFERS = false;
 
-// Experimental support for WebAssembly js-types proposal.
-// It's currently only available under a flag in certain browsers,
-// so we disable it by default to save on code size.
-// [experimental]
-var WASM_JS_TYPES = false;
-
 // If the emscripten-generated program is hosted on separate origin then
 // starting new pthread worker can violate CSP rules.  Enabling
 // CROSS_ORIGIN uses an inline worker to instead load the worker script

@@ -24,6 +24,8 @@ See docs/process.md for more on how version tagging works.
   wakeups. This was part of an internal change to improve inter-thread
   communication. (#26659)
 - mimalloc was updated to 3.3.1. (#26696)
+- The `WASM_JS_TYPES` setting was removed, as the corresponsing propsal was
+  pushed back to phase 1. (#26739)
 
 5.0.6 - 04/14/26
 ----------------
