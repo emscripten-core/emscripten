@@ -126,6 +126,9 @@ void _mi_prim_thread_associate_default_theap(mi_theap_t* theap);
 // Is this thread part of a thread pool?
 bool _mi_prim_thread_is_in_threadpool(void);
 
+// Yield to other threads. Should be similar to `sleep(0)`. 
+// Is called only in rare situations and does not have to be lightning fast.
+void _mi_prim_thread_yield(void);
 
 //-------------------------------------------------------------------
 // Access to TLS (thread local storage) slots.
@@ -253,14 +256,16 @@ extern mi_decl_hidden bool _mi_process_is_initialized;                // has mi_
 // but unfortunately, it seems we cannot test for this reliably at this time (see issue #883)
 // Nevertheless, it seems needed on older graviton platforms (see issue #851).
 // For now, we only enable this for specific platforms.
-#if !defined(__APPLE__)  /* on apple (M1) the wrong register is read (tpidr_el0 instead of tpidrro_el0) so fall back to TLS slot assembly (<https://github.com/microsoft/mimalloc/issues/343#issuecomment-763272369>)*/ \
-    && !defined(__CYGWIN__) \
-    && !defined(MI_LIBC_MUSL) \
-    && (!defined(__clang_major__) || __clang_major__ >= 14)  /* older clang versions emit bad code; fall back to using the TLS slot (<https://lore.kernel.org/linux-arm-kernel/202110280952.352F66D8@keescook/T/>) */
-  #if    (defined(__GNUC__) && (__GNUC__ >= 7)  && defined(__aarch64__)) /* aarch64 for older gcc versions (issue #851) */ \
-      || (defined(__GNUC__) && (__GNUC__ >= 11) && defined(__x86_64__)) \
-      || (defined(__clang_major__) && (__clang_major__ >= 14) && (defined(__aarch64__) || defined(__x86_64__)))
-    #define MI_USE_BUILTIN_THREAD_POINTER  1
+#if !defined(MI_USE_BUILTIN_THREAD_POINTER)   /* allow user override */
+  #if !defined(__APPLE__)  /* on apple (M1) the wrong register is read (tpidr_el0 instead of tpidrro_el0) so fall back to TLS slot assembly (<https://github.com/microsoft/mimalloc/issues/343#issuecomment-763272369>)*/ \
+      && !defined(__CYGWIN__) \
+      && !defined(MI_LIBC_MUSL) \
+      && (!defined(__clang_major__) || __clang_major__ >= 14)  /* older clang versions emit bad code; fall back to using the TLS slot (<https://lore.kernel.org/linux-arm-kernel/202110280952.352F66D8@keescook/T/>) */
+    #if    (defined(__GNUC__) && (__GNUC__ >= 7)  && defined(__aarch64__)) /* aarch64 for older gcc versions (issue #851) */ \
+        || (defined(__GNUC__) && (__GNUC__ >= 11) && defined(__x86_64__)) \
+        || (defined(__clang_major__) && (__clang_major__ >= 14) && (defined(__aarch64__) || defined(__x86_64__)))
+      #define MI_USE_BUILTIN_THREAD_POINTER  1
+    #endif
   #endif
 #endif
 
@@ -363,14 +368,14 @@ static inline mi_theap_t* _mi_theap_cached(void);
 
 #if defined(_WIN32)
   #define MI_TLS_MODEL_DYNAMIC_WIN32        1    
-#elif defined(__APPLE__)  // macOS
+#elif defined(__APPLE__) && MI_HAS_TLS_SLOT && !defined(__POWERPC__)  // macOS on arm64 or x64
   // #define MI_TLS_MODEL_DYNAMIC_PTHREADS  1    // also works but a bit slower
   #define MI_TLS_MODEL_FIXED_SLOT           1
   #define MI_TLS_MODEL_FIXED_SLOT_DEFAULT   108  // seems unused. @apple: it would be great to get 2 official slots for custom allocators :-)
   #define MI_TLS_MODEL_FIXED_SLOT_CACHED    109
   // we used before __PTK_FRAMEWORK_OLDGC_KEY9 (89) but that seems used now.
   // see <https://github.com/rweichler/substrate/blob/master/include/pthread_machdep.h>
-#elif defined(__OpenBSD__) || defined(__ANDROID__)
+#elif defined(__APPLE__) || defined(__OpenBSD__) || defined(__ANDROID__)
   #define MI_TLS_MODEL_DYNAMIC_PTHREADS     1
   // #define MI_TLS_MODEL_DYNAMIC_PTHREADS_DEFAULT_ENTRY_IS_NULL  1
 #else

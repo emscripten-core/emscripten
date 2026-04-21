@@ -131,6 +131,7 @@ void          _mi_strlcat(char* dest, const char* src, size_t dest_size);
 size_t        _mi_strlen(const char* s);
 size_t        _mi_strnlen(const char* s, size_t max_len);
 char*         _mi_strnstr(char* s, size_t max_len, const char* pat);
+bool          _mi_streq(const char* s, const char* t);
 bool          _mi_getenv(const char* name, char* result, size_t result_size);
 
 // "options.c"

@@ -118,7 +118,7 @@ mi_decl_noinline void* _mi_meta_zalloc( size_t size, mi_memid_t* pmemid )
   mi_meta_page_t* mpage = mpage0;
   while (mpage != NULL) {
     size_t block_idx;
-    if (mi_bbitmap_try_find_and_clearN(&mpage->blocks_free, block_count, 0, &block_idx)) {
+    if (mi_bbitmap_try_find_and_clearN(&mpage->blocks_free, 0, block_count, &block_idx)) {
       // found and claimed `block_count` blocks
       *pmemid = _mi_memid_create_meta(mpage, block_idx, block_count);
       return mi_meta_block_start(mpage,block_idx);
@@ -136,7 +136,7 @@ mi_decl_noinline void* _mi_meta_zalloc( size_t size, mi_memid_t* pmemid )
   mpage = mi_meta_page_zalloc();
   if (mpage != NULL) {
     size_t block_idx;
-    if (mi_bbitmap_try_find_and_clearN(&mpage->blocks_free, block_count, 0, &block_idx)) {
+    if (mi_bbitmap_try_find_and_clearN(&mpage->blocks_free, 0, block_count, &block_idx)) {
       // found and claimed `block_count` blocks
       *pmemid = _mi_memid_create_meta(mpage, block_idx, block_count);
       return mi_meta_block_start(mpage,block_idx);

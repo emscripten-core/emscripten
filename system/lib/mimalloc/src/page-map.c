@@ -42,6 +42,9 @@ bool _mi_page_map_init(void) {
     if (vbits >= 48) { vbits = 47; }
     #endif
   }
+  if (vbits < MI_ARENA_SLICE_SHIFT) {
+    vbits = MI_ARENA_SLICE_SHIFT;
+  }
 
   // Allocate the page map and commit bits
   mi_page_map_max_address = (void*)(vbits >= MI_SIZE_BITS ? (SIZE_MAX - MI_ARENA_SLICE_SIZE + 1) : (MI_PU(1) << vbits));
@@ -235,6 +238,9 @@ bool _mi_page_map_init(void) {
     #if MI_ARCH_X64  // canonical address is limited to the first 128 TiB
     if (vbits >= 48) { vbits = 47; }
     #endif
+  }
+  if (vbits < MI_PAGE_MAP_SUB_SHIFT + MI_ARENA_SLICE_SHIFT) {
+    vbits = MI_PAGE_MAP_SUB_SHIFT + MI_ARENA_SLICE_SHIFT;
   }
 
   // Allocate the page map and commit bits

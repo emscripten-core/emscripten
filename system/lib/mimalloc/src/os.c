@@ -138,7 +138,9 @@ void* _mi_os_get_aligned_hint(size_t try_alignment, size_t size)
   if (hint == 0 || hint > MI_HINT_MAX) {   // wrap or initialize
     uintptr_t init = MI_HINT_BASE;
     #if (MI_SECURE>=1 || defined(NDEBUG))  // security: randomize start of aligned allocations unless in debug mode
-    const uintptr_t r = _mi_theap_random_next(mi_theap_get_default());
+    mi_theap_t* const theap = _mi_theap_default();     // don't use `mi_theap_get_default()` as that can cause allocation recursively (issue #1267)
+    if (!mi_theap_is_initialized(theap)) return NULL;  // no hint as we lack randomness at this point 
+    const uintptr_t r = _mi_theap_random_next(theap);
     init = init + ((MI_HINT_ALIGN * ((r>>17) & 0xFFFFF)) % MI_HINT_AREA);  // (randomly 20 bits)*4MiB == 0 to 4TiB
     #endif
     uintptr_t expected = hint + size;
@@ -708,10 +710,16 @@ static uint8_t* mi_os_claim_huge_pages(size_t pages, size_t* total_size) {
     if (start == 0) {
       // Initialize the start address after the 32TiB area
       start = ((uintptr_t)8 << 40);   // 8TiB virtual start address
-    #if (MI_SECURE>0 || MI_DEBUG==0)  // security: randomize start of huge pages unless in debug mode
-      uintptr_t r = _mi_theap_random_next(_mi_theap_default());
-      start = start + ((uintptr_t)MI_HUGE_OS_PAGE_SIZE * ((r>>17) & 0x0FFF));  // (randomly 12bits)*1GiB == between 0 to 4TiB
-    #endif
+      #if (MI_SECURE>0 || MI_DEBUG==0)  // security: randomize start of huge pages unless in debug mode
+      mi_theap_t* const theap = _mi_theap_default();     // don't use `mi_theap_get_default()` as that can cause allocation recursively (issue #1267)
+      if (mi_theap_is_initialized(theap)) {              // todo: or no hint at all if we lack randomness?
+        const uintptr_t r = _mi_theap_random_next(theap);
+        start = start + ((uintptr_t)MI_HUGE_OS_PAGE_SIZE * ((r>>17) & 0x0FFF));  // (randomly 12bits)*1GiB == between 0 to 4TiB
+      }
+      else {
+        _mi_warning_message("failed to randomize the start address of huge pages allocation (%zu bytes at %p)", size, start);
+      }
+      #endif
     }
     end = start + size;
   } while (!mi_atomic_cas_weak_acq_rel(&mi_huge_start, &huge_start, end));
@@ -784,16 +792,17 @@ void* _mi_os_alloc_huge_os_pages(size_t pages, int numa_node, mi_msecs_t max_mse
       }
     }
   }
-  mi_assert_internal(page*MI_HUGE_OS_PAGE_SIZE <= size);
+  const size_t allocated = page * MI_HUGE_OS_PAGE_SIZE;
+  mi_assert_internal(allocated <= size);
   if (pages_reserved != NULL) { *pages_reserved = page; }
-  if (psize != NULL) { *psize = page * MI_HUGE_OS_PAGE_SIZE; }
+  if (psize != NULL) { *psize = allocated; }
   if (page != 0) {
     mi_assert(start != NULL);
-    *memid = _mi_memid_create_os(start, size, true /* is committed */, all_zero, true /* is_large */);
+    *memid = _mi_memid_create_os(start, allocated, true /* is committed */, all_zero, true /* is_large */);
     memid->memkind = MI_MEM_OS_HUGE;
     mi_assert(memid->is_pinned);
     #ifdef MI_TRACK_ASAN
-    if (all_zero) { mi_track_mem_defined(start,size); }
+    if (all_zero) { mi_track_mem_defined(start,allocated); }
     #endif
   }
   return (page == 0 ? NULL : start);

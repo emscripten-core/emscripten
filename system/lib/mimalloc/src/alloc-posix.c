@@ -99,7 +99,7 @@ mi_decl_nodiscard mi_decl_restrict void* mi_aligned_alloc(size_t alignment, size
   return p;
 }
 
-mi_decl_nodiscard void* mi_reallocarray( void* p, size_t count, size_t size ) mi_attr_noexcept {  // BSD
+mi_decl_nodiscard void* mi_reallocarray( void* p, size_t count, size_t size ) mi_attr_noexcept {  // BSD <https://man.freebsd.org/cgi/man.cgi?query=reallocarray>
   size_t total;
   if mi_unlikely(mi_count_size_overflow(count, size, &total)) {
     errno = EOVERFLOW;
@@ -110,20 +110,28 @@ mi_decl_nodiscard void* mi_reallocarray( void* p, size_t count, size_t size ) mi
   return newp;
 }
 
-mi_decl_nodiscard int mi_reallocarr( void* p, size_t count, size_t size ) mi_attr_noexcept { // NetBSD
-  mi_assert(p != NULL);
-  if (p == NULL) {
+mi_decl_nodiscard int mi_reallocarr( void* ptrp, size_t count, size_t size ) mi_attr_noexcept { // NetBSD <https://man.netbsd.org/reallocarr.3>
+  mi_assert(size != 0);
+  mi_assert(ptrp != NULL);
+  if (ptrp == NULL || size == 0) {
     return (errno = EINVAL);
   }
   size_t total;
   if mi_unlikely(mi_count_size_overflow(count, size, &total)) {
     return (errno = EOVERFLOW);
   }
-  void** op = (void**)p;
-  void* newp = mi_realloc(*op,total);
-  if (newp == NULL) { return ENOMEM; }
-  *op = newp;
-  return 0;
+  void** op = (void**)ptrp;
+  if (total == 0) {
+    free(*op);
+    *op = NULL;
+    return 0;
+  }
+  else {
+    void* newp = mi_realloc(*op,total);
+    if (newp == NULL) { return (errno = ENOMEM); }
+    *op = newp;
+    return 0;
+  }
 }
 
 void* mi__expand(void* p, size_t newsize) mi_attr_noexcept {  // Microsoft
@@ -132,12 +140,13 @@ void* mi__expand(void* p, size_t newsize) mi_attr_noexcept {  // Microsoft
   return res;
 }
 
-mi_decl_nodiscard mi_decl_restrict unsigned short* mi_wcsdup(const unsigned short* s) mi_attr_noexcept {
+mi_decl_nodiscard mi_decl_restrict wchar_t* mi_wcsdup(const wchar_t* s) mi_attr_noexcept {
   if (s==NULL) return NULL;
-  size_t len;
-  for(len = 0; s[len] != 0; len++) { }
-  size_t size = (len+1)*sizeof(unsigned short);
-  unsigned short* p = (unsigned short*)mi_malloc(size);
+  size_t wlen;
+  for(wlen = 0; s[wlen] != 0 && wlen < PTRDIFF_MAX; wlen++) { }  // prevent overflow on wlen+1
+  size_t size; 
+  if (mi_mul_overflow(wlen+1, sizeof(wchar_t), &size) || size > PTRDIFF_MAX) return NULL;
+  wchar_t* p = (wchar_t*)mi_malloc(size);
   if (p != NULL) {
     _mi_memcpy(p,s,size);
   }
@@ -151,19 +160,19 @@ mi_decl_nodiscard mi_decl_restrict unsigned char* mi_mbsdup(const unsigned char*
 int mi_dupenv_s(char** buf, size_t* size, const char* name) mi_attr_noexcept {
   if (size != NULL) *size = 0;
   if (buf==NULL || name==NULL) return EINVAL;
-  char* p = getenv(name);        // mscver warning 4996
+  char* p = getenv(name);
   if (p==NULL) {
     *buf = NULL;
   }
   else {
     *buf = mi_strdup(p);
     if (*buf==NULL) return ENOMEM;
-    if (size != NULL) { *size = _mi_strlen(p) + 1; }
+    if (size != NULL) { *size = _mi_strlen(p) + 1; }    // cannot overflow as mi_strdup is limited to PTRDIFF_MAX
   }
   return 0;
 }
 
-int mi_wdupenv_s(unsigned short** buf, size_t* size, const unsigned short* name) mi_attr_noexcept {
+int mi_wdupenv_s(wchar_t** buf, size_t* size, const wchar_t* name) mi_attr_noexcept {
   if (size != NULL) *size = 0;
   if (buf==NULL || name==NULL) return EINVAL;  
 #if !defined(_WIN32) || (defined(WINAPI_FAMILY) && (WINAPI_FAMILY != WINAPI_FAMILY_DESKTOP_APP))
@@ -171,14 +180,14 @@ int mi_wdupenv_s(unsigned short** buf, size_t* size, const unsigned short* name)
   *buf = NULL;
   return EINVAL;
 #else
-  unsigned short* p = (unsigned short*)_wgetenv((const wchar_t*)name);  // msvc warning 4996
+  wchar_t* p = (wchar_t*)_wgetenv(name);
   if (p==NULL) {
     *buf = NULL;
   }
   else {
     *buf = mi_wcsdup(p);
     if (*buf==NULL) return ENOMEM;
-    if (size != NULL) { *size = wcslen((const wchar_t*)p) + 1; }
+    if (size != NULL) { *size = wcslen(p) + 1; }  // cannot overflow as wcsdup is limited to PTRDIFF_MAX
   }
   return 0;
 #endif

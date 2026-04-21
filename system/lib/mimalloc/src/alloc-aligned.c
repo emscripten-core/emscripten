@@ -34,6 +34,10 @@ static mi_decl_restrict void* mi_theap_malloc_guarded_aligned(mi_theap_t* theap,
   if mi_unlikely(theap==NULL) { theap = _mi_theap_empty_get(); }
   #endif
   mi_assert_internal(alignment > 0 && alignment < MI_PAGE_MAX_OVERALLOC_ALIGN);
+  if mi_unlikely(alignment >= MI_PAGE_MAX_OVERALLOC_ALIGN || size > (MI_MAX_ALLOC_SIZE - MI_PADDING_SIZE - alignment)) {
+    _mi_error_message(EOVERFLOW, "(guarded) aligned allocation request is too large (size %zu, alignment %zu)\n", size, alignment);
+    return NULL;
+  }
   const size_t oversize = size + alignment - 1;
   void* base = _mi_theap_malloc_guarded(theap, oversize, zero);
   void* p = _mi_align_up_ptr(base, alignment);
@@ -74,9 +78,7 @@ static mi_decl_noinline void* mi_theap_malloc_zero_aligned_at_overalloc(mi_theap
     // in the first (and single) page such that the page info is `MI_PAGE_ALIGN` bytes before it (and can be found in the _mi_page_map).
     if mi_unlikely(offset != 0) {
       // todo: cannot support offset alignment for very large alignments yet
-      #if MI_DEBUG > 0
       _mi_error_message(EOVERFLOW, "aligned allocation with a large alignment cannot be used with an alignment offset (size %zu, alignment %zu, offset %zu)\n", size, alignment, offset);
-      #endif
       return NULL;
     }
     oversize = (size <= MI_SMALL_SIZE_MAX ? MI_SMALL_SIZE_MAX + 1 /* ensure we use generic malloc path */ : size);
@@ -86,7 +88,9 @@ static mi_decl_noinline void* mi_theap_malloc_zero_aligned_at_overalloc(mi_theap
   }
   else {
     // otherwise over-allocate
-    oversize = (size < MI_MAX_ALIGN_SIZE ? MI_MAX_ALIGN_SIZE : size) + alignment - 1;  // adjust for size <= 16; with size 0 and aligment 64k, we would allocate a 64k block and pointing just beyond that.
+    mi_assert_internal(size <= (MI_MAX_ALLOC_SIZE - MI_PADDING_SIZE) && alignment <= MI_PAGE_MAX_OVERALLOC_ALIGN);
+    mi_assert_internal(size < SIZE_MAX - alignment); // `oversize` cannot overflow
+    oversize = (size < MI_MAX_ALIGN_SIZE ? MI_MAX_ALIGN_SIZE : size) + alignment - 1;  // adjust for size <= 16; with size 0 and alignment 64k, we would allocate a 64k block and pointing just beyond that.
     p = mi_theap_malloc_zero_no_guarded(theap, oversize, zero, usable);
     if (p == NULL) return NULL;
   }
@@ -150,9 +154,7 @@ static mi_decl_noinline void* mi_theap_malloc_zero_aligned_at_generic(mi_theap_t
   mi_assert_internal(alignment != 0 && _mi_is_power_of_two(alignment));
   // we don't allocate more than MI_MAX_ALLOC_SIZE (see <https://sourceware.org/ml/libc-announce/2019/msg00001.html>)
   if mi_unlikely(size > (MI_MAX_ALLOC_SIZE - MI_PADDING_SIZE)) {
-    #if MI_DEBUG > 0
     _mi_error_message(EOVERFLOW, "aligned allocation request is too large (size %zu, alignment %zu)\n", size, alignment);
-    #endif
     return NULL;
   }
 
@@ -328,7 +330,7 @@ mi_decl_nodiscard mi_decl_restrict void* mi_heap_calloc_aligned(mi_heap_t* heap,
 
 static void* mi_theap_realloc_zero_aligned_at(mi_theap_t* theap, void* p, size_t newsize, size_t alignment, size_t offset, bool zero) mi_attr_noexcept {
   mi_assert(alignment > 0);
-  if (alignment <= sizeof(uintptr_t)) return _mi_theap_realloc_zero(theap,p,newsize,zero,NULL,NULL);
+  if (alignment <= sizeof(uintptr_t) && offset==0) return _mi_theap_realloc_zero(theap,p,newsize,zero,NULL,NULL);
   if (p == NULL) return mi_theap_malloc_zero_aligned_at(theap,newsize,alignment,offset,zero,NULL);
   size_t size = mi_usable_size(p);
   if (newsize <= size && newsize >= (size - (size / 2))

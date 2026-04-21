@@ -44,7 +44,7 @@ typedef struct mi_stat_counter_s {
   MI_STAT_COUNTER(reset)                    /* reset bytes */ \
   MI_STAT_COUNTER(purged)                   /* purged bytes */ \
   MI_STAT_COUNT(page_committed)             /* committed memory inside pages */ \
-  MI_STAT_COUNT(pages_abandoned)            /* abandonded pages count */ \
+  MI_STAT_COUNT(pages_abandoned)            /* abandoned pages count */ \
   MI_STAT_COUNT(threads)                    /* number of threads */ \
   MI_STAT_COUNT(malloc_normal)              /* allocated bytes <= MI_LARGE_OBJ_SIZE_MAX */ \
   MI_STAT_COUNT(malloc_huge)                /* allocated bytes in huge pages */ \

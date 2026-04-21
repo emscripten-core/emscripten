@@ -250,3 +250,9 @@ void _mi_prim_thread_associate_default_theap(mi_theap_t* theap) {
 bool _mi_prim_thread_is_in_threadpool(void) {
   return false;
 }
+
+#include <emscripten.h>
+
+void _mi_prim_thread_yield(void) {
+  emscripten_sleep(0);
+}

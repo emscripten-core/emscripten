@@ -48,7 +48,6 @@ typedef void* mi_nothrow_t;
   #define MI_FORWARD02(fun,x,y)   { fun(x,y); }
 #endif
 
-
 #if defined(__APPLE__) && defined(MI_SHARED_LIB_EXPORT) && defined(MI_OSX_INTERPOSE)
   // define MI_OSX_IS_INTERPOSED as we should not provide forwarding definitions for
   // functions that are interposed (or the interposing does not work)
@@ -92,12 +91,12 @@ typedef void* mi_nothrow_t;
     MI_INTERPOSE_FUN(vfree,mi_cfree),
     #endif
   };
-  MI_INTERPOSE_DECLS(_mi_interposes_10_7) __OSX_AVAILABLE(10.7) = {
-    MI_INTERPOSE_MI(strndup),
-  };
-  MI_INTERPOSE_DECLS(_mi_interposes_10_15) __OSX_AVAILABLE(10.15) = {
-    MI_INTERPOSE_MI(aligned_alloc),
-  };
+  #if defined(MAC_OS_X_VERSION_10_7) && (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7)
+  MI_INTERPOSE_DECLS(_mi_interposes_10_7)  = { MI_INTERPOSE_MI(strndup) };
+  #endif
+  #if defined(MAC_OS_X_VERSION_10_15) && (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_15)
+  MI_INTERPOSE_DECLS(_mi_interposes_10_15) = { MI_INTERPOSE_MI(aligned_alloc) };
+  #endif
 
   #ifdef __cplusplus
   extern "C" {
@@ -358,7 +357,7 @@ void  cfree(void* p)                                    { mi_free(p); }
 void* pvalloc(size_t size)                              { return mi_pvalloc(size); }
 void* memalign(size_t alignment, size_t size)           { return mi_memalign(alignment, size); }
 #if !defined(_WIN32)
-void* _aligned_malloc(size_t alignment, size_t size)    { return mi_aligned_alloc(alignment, size); }
+void* _aligned_malloc(size_t size, size_t alignment)    { return mi_malloc_aligned(size,alignment); }
 #endif
 void* reallocarray(void* p, size_t count, size_t size)  { return mi_reallocarray(p, count, size); }
 // some systems define reallocarr so mark it as a weak symbol (#751)

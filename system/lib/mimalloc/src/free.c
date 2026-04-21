@@ -267,7 +267,7 @@ static bool mi_abandoned_page_try_reabandon_to_mapped(mi_page_t* page)
   return _mi_arenas_page_try_reabandon_to_mapped(page);
 }
 
-// Release ownership of a page. This may free or reabandond the page if other blocks are concurrently
+// Release ownership of a page. This may free or reabandoned the page if other blocks are concurrently
 // freed in the meantime. Returns `true` if the page was freed.
 // By passing the captured `expected_thread_free`, we can often avoid calling `mi_page_free_collect`.
 static void mi_abandoned_page_unown_from_free(mi_page_t* page, mi_block_t* expected_thread_free) {

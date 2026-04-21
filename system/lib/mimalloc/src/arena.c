@@ -216,7 +216,7 @@ static mi_decl_noinline void* mi_arena_try_alloc_at(
   mi_arena_t* arena, size_t slice_count, bool commit, size_t tseq, mi_memid_t* memid)
 {
   size_t slice_index;
-  if (!mi_bbitmap_try_find_and_clearN(arena->slices_free, slice_count, tseq, &slice_index)) return NULL;
+  if (!mi_bbitmap_try_find_and_clearN(arena->slices_free, tseq, slice_count, &slice_index)) return NULL;
 
   // claimed it!
   void* p = mi_arena_slice_start(arena, slice_index);
@@ -239,7 +239,7 @@ static mi_decl_noinline void* mi_arena_try_alloc_at(
     if (already_committed < slice_count) {
       // not all committed, try to commit now
       bool commit_zero = false;
-      if (!_mi_os_commit_ex(p, mi_size_of_slices(slice_count), &commit_zero, mi_size_of_slices(slice_count - already_committed))) {
+      if (!mi_arena_commit(arena, p, mi_size_of_slices(slice_count), &commit_zero, mi_size_of_slices(slice_count - already_committed))) {
         // if the commit fails, release ownership, and return NULL;
         // note: this does not roll back dirty bits but that is ok.
         mi_bbitmap_setN(arena->slices_free, slice_index, slice_count);
@@ -745,7 +745,7 @@ static mi_page_t* mi_arenas_page_try_find_abandoned(mi_theap_t* theap, size_t sl
 
 static uint8_t* mi_arenas_page_alloc_fresh_area(mi_theap_t* theap, size_t slice_count, size_t block_size, size_t block_alignment, bool os_align, bool commit, mi_memid_t* memid) {
   MI_UNUSED_RELEASE(block_size);
-  const bool allow_large = (MI_SECURE < 2); // 2 = guard page at end of each arena page
+  const bool allow_large = (MI_SECURE < 5); // 5 = guard page at end of each arena page
   const size_t page_alignment = MI_ARENA_SLICE_ALIGN;
 
   mi_heap_t*  const heap = _mi_theap_heap(theap);
@@ -832,7 +832,7 @@ static mi_page_t* mi_arenas_page_alloc_fresh(mi_theap_t* theap, size_t slice_cou
   if (!slice_start) return NULL;
 
   // guard page at the end of mimalloc page?
-  #if (MI_SECURE >= 2 && (!MI_PAGE_META_IS_SEPARATED || MI_PAGE_META_ALIGNED_FREE_SMALL)) || MI_SECURE >= 4
+  #if MI_SECURE>=5
   mi_assert(alloc_size > _mi_os_secure_guard_page_size());
   const size_t page_noguard_size = alloc_size - _mi_os_secure_guard_page_size();
   if (memid.initially_committed) {
@@ -1065,7 +1065,7 @@ void _mi_arenas_page_free(mi_page_t* page, mi_theap_t* current_theapx) {
 
   // recommit guard page at the end?
   // we must do this since we may later allocate large spans over this page and cannot have a guard page in between
-  #if (MI_SECURE >= 2 && (!MI_PAGE_META_IS_SEPARATED || MI_PAGE_META_ALIGNED_FREE_SMALL)) || MI_SECURE >= 4
+  #if MI_SECURE >= 5
   if (!page->memid.is_pinned) {
     _mi_os_secure_guard_page_reset_before(mi_page_slice_start(page) + mi_page_full_size(page), page->memid);
   }
@@ -1266,7 +1266,7 @@ void _mi_arenas_free(void* p, size_t size, mi_memid_t memid) {
     }
     mi_assert_internal(slice_index < arena->slice_count);
     mi_assert_internal(slice_index >= mi_arena_info_slices(arena));
-    if (slice_index < mi_arena_info_slices(arena) || slice_index > arena->slice_count) {
+    if (slice_index < mi_arena_info_slices(arena) || slice_index >= arena->slice_count) {
       _mi_error_message(EINVAL, "trying to free from an invalid arena block: %p, size %zu, memid: 0x%zx\n", p, size, memid);
       return;
     }
@@ -1653,7 +1653,7 @@ bool mi_manage_os_memory_ex(void* start, size_t size, bool is_committed, bool is
   return mi_manage_os_memory_ex2(_mi_subproc(), start, size, numa_node, exclusive, memid, NULL, NULL, arena_id);
 }
 
-bool mi_manage_memory(void* start, size_t size, bool is_committed, bool is_zero, bool is_pinned, int numa_node, bool exclusive, mi_commit_fun_t* commit_fun, void* commit_fun_arg, mi_arena_id_t* arena_id) mi_attr_noexcept
+bool mi_manage_memory(void* start, size_t size, bool is_committed, bool is_pinned, bool is_zero, int numa_node, bool exclusive, mi_commit_fun_t* commit_fun, void* commit_fun_arg, mi_arena_id_t* arena_id) mi_attr_noexcept
 {
   mi_memid_t memid = _mi_memid_create(MI_MEM_EXTERNAL);
   memid.mem.os.base = start;

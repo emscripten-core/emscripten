@@ -323,13 +323,13 @@ bool mi_bbitmap_try_clearNC(mi_bbitmap_t* bbitmap, size_t idx, size_t n);
 bool mi_bbitmap_try_find_and_clear(mi_bbitmap_t* bbitmap, size_t tseq, size_t* pidx);  // 1-bit
 bool mi_bbitmap_try_find_and_clear8(mi_bbitmap_t* bbitmap, size_t tseq, size_t* pidx); // 8-bits
 // bool mi_bbitmap_try_find_and_clearX(mi_bbitmap_t* bbitmap, size_t tseq, size_t* pidx); // MI_BFIELD_BITS
-bool mi_bbitmap_try_find_and_clearNX(mi_bbitmap_t* bbitmap, size_t n, size_t tseq, size_t* pidx); // < MI_BFIELD_BITS
-bool mi_bbitmap_try_find_and_clearNC(mi_bbitmap_t* bbitmap, size_t n, size_t tseq, size_t* pidx); // > MI_BFIELD_BITS <= MI_BCHUNK_BITS
-bool mi_bbitmap_try_find_and_clearN_(mi_bbitmap_t* bbitmap, size_t n, size_t tseq, size_t* pidx); // > MI_BCHUNK_BITS
+bool mi_bbitmap_try_find_and_clearNX(mi_bbitmap_t* bbitmap, size_t tseq, size_t n, size_t* pidx); // < MI_BFIELD_BITS
+bool mi_bbitmap_try_find_and_clearNC(mi_bbitmap_t* bbitmap, size_t tseq, size_t n, size_t* pidx); // > MI_BFIELD_BITS <= MI_BCHUNK_BITS
+bool mi_bbitmap_try_find_and_clearN_(mi_bbitmap_t* bbitmap, size_t tseq, size_t n, size_t* pidx); // > MI_BCHUNK_BITS
 
 // Find a sequence of `n` bits in the bbitmap with all bits set, and try to atomically clear all.
 // Returns true on success, and in that case sets the index: `0 <= *pidx <= MI_BITMAP_MAX_BITS-n`.
-mi_decl_nodiscard static inline bool mi_bbitmap_try_find_and_clearN(mi_bbitmap_t* bbitmap, size_t n, size_t tseq, size_t* pidx) {
+mi_decl_nodiscard static inline bool mi_bbitmap_try_find_and_clearN(mi_bbitmap_t* bbitmap, size_t tseq, size_t n, size_t* pidx) {
   if (n==1) return mi_bbitmap_try_find_and_clear(bbitmap, tseq, pidx);               // small pages
   if (n==8) return mi_bbitmap_try_find_and_clear8(bbitmap, tseq, pidx);              // medium pages
   // if (n==MI_BFIELD_BITS) return mi_bbitmap_try_find_and_clearX(bbitmap, tseq, pidx); // large pages

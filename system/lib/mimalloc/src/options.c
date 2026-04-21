@@ -647,11 +647,11 @@ static void mi_option_init(mi_option_desc_t* desc) {
       buf[i] = _mi_toupper(s[i]);
     }
     buf[len] = 0;
-    if (buf[0] == 0 || strstr("1;TRUE;YES;ON", buf) != NULL) {
+    if (buf[0] == 0 || _mi_streq(buf,"1") || _mi_streq(buf,"TRUE") || _mi_streq(buf,"YES") || _mi_streq(buf,"ON")) {
       desc->value = 1;
       desc->init = MI_OPTION_INITIALIZED;
     }
-    else if (strstr("0;FALSE;NO;OFF", buf) != NULL) {
+    else if (_mi_streq(buf,"0") || _mi_streq(buf,"FALSE") || _mi_streq(buf,"NO") || _mi_streq(buf,"OFF")) {      
       desc->value = 0;
       desc->init = MI_OPTION_INITIALIZED;
     }

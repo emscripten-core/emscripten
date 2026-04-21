@@ -111,7 +111,7 @@ static mi_decl_cache_align mi_tld_t tld_empty = {
   0,                      // default numa node
   &subproc_main,          // subproc
   NULL,                   // theaps list
-  {0},                    // theaps lock
+  MI_LOCK_INITIALIZER,    // theaps lock
   false,                  // recurse
   false,                  // is_in_threadpool
   MI_MEMID_STATIC         // memid
@@ -178,7 +178,7 @@ static mi_decl_cache_align mi_tld_t tld_main = {
   0,                      // numa node
   &subproc_main,          // subproc
   &theap_main,            // theaps list
-  {0},                    // theaps lock
+  MI_LOCK_INITIALIZER,    // theaps lock
   false,                  // recurse
   false,                  // is_in_threadpool
   MI_MEMID_STATIC         // memid
@@ -495,10 +495,10 @@ mi_subproc_t* _mi_subproc_from_id(mi_subproc_id_t subproc_id) {
 }
 
 // destroy all subproc resources including arena's, heap's etc.
-static void mi_subproc_unsafe_destroy(mi_subproc_t* subproc)
+static void mi_subproc_unsafe_destroy(mi_subproc_t* subproc, bool acquire_subprocs_lock)
 {
   // remove from the subproc list
-  mi_lock(&subprocs_lock) {
+  mi_lock_maybe(&subprocs_lock, acquire_subprocs_lock) {
     if (subproc->next!=NULL) { subproc->next->prev = subproc->prev;  }
     if (subproc->prev!=NULL) { subproc->prev->next = subproc->next;  }
                         else { mi_assert_internal(subprocs==subproc);  subprocs = subproc->next; }
@@ -539,7 +539,7 @@ static void mi_subproc_unsafe_destroy(mi_subproc_t* subproc)
 
 void mi_subproc_destroy(mi_subproc_id_t subproc_id) {
   if (subproc_id == NULL) return;
-  mi_subproc_unsafe_destroy(_mi_subproc_from_id(subproc_id));
+  mi_subproc_unsafe_destroy(_mi_subproc_from_id(subproc_id), true /* take lock */);
 }
 
 static void mi_subprocs_unsafe_destroy_all(void) {
@@ -548,12 +548,12 @@ static void mi_subprocs_unsafe_destroy_all(void) {
     while (subproc!=NULL) {
       mi_subproc_t* next = subproc->next;
       if (subproc!=&subproc_main) {
-        mi_subproc_unsafe_destroy(subproc);
+        mi_subproc_unsafe_destroy(subproc, false /* take subprocs lock */);
       }
       subproc = next;
     }
-  }
-  mi_subproc_unsafe_destroy(&subproc_main);
+  }  
+  mi_subproc_unsafe_destroy(&subproc_main, true /* take subprocs lock */);
 }
 
 
@@ -651,8 +651,13 @@ static void mi_thread_theaps_done(mi_tld_t* tld)
         theap = next;
       }
     }
-    if (!all_freed) { mi_subproc_stat_counter_increase(tld->subproc,heaps_delete_wait,1); mi_atomic_yield(); }
-               else { mi_assert_internal(tld->theaps==NULL); }       
+    if (!all_freed) { 
+      mi_subproc_stat_counter_increase(tld->subproc,heaps_delete_wait,1); 
+      _mi_prim_thread_yield(); 
+    }
+    else { 
+      mi_assert_internal(tld->theaps==NULL); 
+    }
   } while (!all_freed);
 
   mi_assert(_mi_theap_default()==(mi_theap_t*)&_mi_theap_empty); // careful to not re-initialize the default theap during theap_delete
@@ -822,8 +827,7 @@ static void mi_win_tls_slot_free(DWORD* raw_index) {
 }
 
 static void mi_tls_slots_init(void) {
-  static mi_atomic_once_t tls_slots_init;
-  if (mi_atomic_once(&tls_slots_init)) {
+  mi_atomic_do_once {
     bool ok = mi_win_tls_slot_alloc(&_mi_theap_default_slot, &_mi_theap_default_expansion_slot, &mi_tls_raw_index_default);
     if (ok) {
       ok = mi_win_tls_slot_alloc(&_mi_theap_cached_slot, &_mi_theap_cached_expansion_slot, &mi_tls_raw_index_cached);
@@ -856,12 +860,29 @@ static void mi_win_tls_slot_set(size_t slot, size_t extended_slot, void* value) 
 mi_decl_hidden pthread_key_t _mi_theap_default_key = 0;
 mi_decl_hidden pthread_key_t _mi_theap_cached_key = 0;
 
+// create a non-zero pthread key
+static int mi_pthread_key_create( pthread_key_t* pkey ) {
+  pthread_key_t key;
+  int err = pthread_key_create(&key, NULL);
+  if (err!=0) return err;
+  if (key==0) {
+    // if we get a zero key, create another one as we use 0 for an invalid key
+    pthread_key_t key2;
+    err = pthread_key_create(&key2, NULL);
+    pthread_key_delete(key);  // delete the old key
+    if (err!=0) return err;
+    key = key2;
+  }
+  mi_assert_internal(key!=0);    
+  *pkey = key;
+  return 0;
+}
+
 static void mi_tls_slots_init(void) {
-  static mi_atomic_once_t tls_keys_init;
-  if (mi_atomic_once(&tls_keys_init)) {
-    int err = pthread_key_create(&_mi_theap_default_key, NULL);
+  mi_atomic_do_once {
+    int err = mi_pthread_key_create(&_mi_theap_default_key);
     if (err==0) {
-      err = pthread_key_create(&_mi_theap_cached_key, NULL);
+      err = mi_pthread_key_create(&_mi_theap_cached_key);
     }
     if (err!=0) {
       _mi_error_message(EFAULT, "unable to allocate pthread keys (error %d)\n", err);
@@ -1062,13 +1083,8 @@ static void mi_detect_cpu_features(void) {
 
 
 // Initialize the process; called by thread_init or the process loader
-void mi_process_init(void) mi_attr_noexcept {
-  // ensure we are called once
-  static mi_atomic_once_t process_init;
-	// #if _MSC_VER < 1920
-	// mi_heap_main_init(); // vs2017 can dynamically re-initialize theap_main
-	// #endif
-  if (!mi_atomic_once(&process_init)) return;
+static void mi_process_init_once(void) mi_attr_noexcept {
+  _mi_process_is_initialized = true;  
   _mi_verbose_message("process init: 0x%zx\n", _mi_thread_id());
 
   mi_detect_cpu_features();
@@ -1108,6 +1124,16 @@ void mi_process_init(void) mi_attr_noexcept {
   }
 }
 
+// Initialize the process; called by thread_init or the process loader
+void mi_process_init(void) mi_attr_noexcept {
+  // #if _MSC_VER < 1920
+	// mi_heap_main_init(); // vs2017 can dynamically re-initialize _mi_heap_main
+	// #endif
+  mi_atomic_do_once {
+    mi_process_init_once();
+  }
+}
+
 // Called when the process is done (cdecl as it is used with `at_exit` on some platforms)
 void mi_cdecl mi_process_done(void) mi_attr_noexcept {
   // only shutdown if we were initialized
@@ -1131,6 +1157,9 @@ void mi_cdecl mi_process_done(void) mi_attr_noexcept {
     mi_theap_collect(_mi_theap_default(), true /* force */);
     #endif
   #endif
+
+  // done with tracking tools
+  mi_track_done()
 
   // Forcefully release all retained memory; this can be dangerous in general if overriding regular malloc/free
   // since after process_done there might still be other code running that calls `free` (like at_exit routines,

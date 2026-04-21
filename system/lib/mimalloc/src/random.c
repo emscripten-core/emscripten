@@ -178,9 +178,12 @@ static void mi_random_init_ex(mi_random_ctx_t* ctx, bool use_weak) {
     if (!use_weak) { _mi_warning_message("unable to use secure randomness\n"); }
     #endif
     uintptr_t x = _mi_os_random_weak(0);
-    for (size_t i = 0; i < 8; i++, x++) {  // key is eight 32-bit words.
+    for (size_t i = 0; i < 32; i+=4, x++) {  
       x = _mi_random_shuffle(x);
-      ((uint32_t*)key)[i] = (uint32_t)x;
+      key[i]   = (uint8_t)(x);
+      key[i+1] = (uint8_t)(x>>8);
+      key[i+2] = (uint8_t)(x>>16);
+      key[i+3] = (uint8_t)(x>>24);      
     }
     ctx->weak = true;
   }

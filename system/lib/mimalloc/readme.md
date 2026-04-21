@@ -15,9 +15,9 @@ is a general purpose allocator with excellent [performance](#performance) charac
 Initially developed by Daan Leijen for the runtime systems of the
 [Koka](https://koka-lang.github.io) and [Lean](https://github.com/leanprover/lean) languages.
 
-Latest release   : `v3.3.0` (2026-04-15) recommended.  
-Latest v2 release: `v2.3.0` (2026-04-15) stable.  
-Latest v1 release: `v1.9.8` (2026-04-15) legacy.
+Latest release   : `v3.3.1` (2026-04-20) recommended.  
+Latest v2 release: `v2.3.1` (2026-04-20) stable.  
+Latest v1 release: `v1.9.9` (2026-04-20) legacy.
 
 mimalloc is a drop-in replacement for `malloc` and can be used in other programs
 without code changes, for example, on dynamically linked ELF-based systems (Linux, BSD, etc.) you can use it as:
@@ -88,6 +88,9 @@ New development is mostly on v3, while v1 and v2 are maintained with security an
 - __v1__: legacy version: initial design of mimalloc (release tags: `v1.9.x`, development branch `dev`). Send PR's against this version if possible.
 
 ### Releases
+* 2026-04-20, `v1.9.9`, `v2.3.1`, `v3.3.1`: various bug and security fixes. Special thanks to 
+  @jinpzhanAMD, @res2k, and @GoldJohnKing for their help in improving Windows finalization, and 
+  @Zoxc for his help in finding various issues.
 * 2026-04-15, `v1.9.8`, `v2.3.0`, `v3.3.0`: initial support for github (binary) releases, 
   fix visiting of full pages during collection (performance),
   fix THP alignment (performance), fix arm64 cross-compilation on Windows, enable guard pages in debug mode,
@@ -399,8 +402,7 @@ OS will copy the entire 1GiB huge page (or 2MiB large page) which can cause the 
 _mimalloc_ can be build in secure mode by using the `-DMI_SECURE=ON` flags in `cmake`. This build enables various mitigations
 to make mimalloc more robust against exploits. In particular:
 
-- All internal mimalloc pages are surrounded by guard pages and the heap metadata is behind a guard page as well (so a buffer overflow
-  exploit cannot reach into the metadata).
+- All internal mimalloc page meta-data is surrounded by guard pages (so a buffer overflow exploit cannot reach into the metadata).
 - All free list pointers are
   [encoded](https://github.com/microsoft/mimalloc/blob/783e3377f79ee82af43a0793910a9f2d01ac7863/include/mimalloc-internal.h#L396)
   with per-page keys which is used both to prevent overwrites with a known pointer, as well as to detect heap corruption.
@@ -408,6 +410,9 @@ to make mimalloc more robust against exploits. In particular:
 - The free lists are initialized in a random order and allocation randomly chooses between extension and reuse within a page to
   mitigate against attacks that rely on a predicable allocation order. Similarly, the larger heap blocks allocated by mimalloc
   from the OS are also address randomized.
+- If enabling `-DMI_SECURE_FULL=ON` there will also be guard pages at the end of each (64KiB) mimalloc page (thus interleaving
+  valid block data with inaccessible gaps). This setting is not recommended in general as it is more expensive and can lead to
+  reaching the maximum VMA limit on Linux systems if the heap gets too large.
 
 As always, evaluate with care as part of an overall security strategy as all of the above are mitigations but not guarantees.
 
