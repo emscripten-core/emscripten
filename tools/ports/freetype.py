@@ -104,7 +104,6 @@ def get(ports, settings, shared):
     if settings.SUPPORT_LONGJMP == 'wasm':
       flags.append('-sSUPPORT_LONGJMP=wasm')
       if not settings.WASM_LEGACY_EXCEPTIONS:
-        flags.append('-fwasm-exceptions')
         flags.append('-sWASM_LEGACY_EXCEPTIONS=0')
 
     ports.make_pkg_config('freetype2', PKG_VERSION, '-sUSE_FREETYPE')
