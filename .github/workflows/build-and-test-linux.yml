@@ -129,7 +129,9 @@ jobs:
         run: mv ~/jsvu-cache ~/.jsvu
 
       - name: Grant permissions to v8
-        run: chmod +x ~/.jsvu/bin/v8
+        run: |
+          chmod +x ~/.jsvu/bin/v8
+          chmod +x ~/.jsvu/engines/v8/v8
 
       - name: Set EM_CONFIG
         run: |
@@ -190,7 +192,9 @@ jobs:
         run: mv ~/jsvu-cache ~/.jsvu
 
       - name: Grant permissions to v8
-        run: chmod +x ~/.jsvu/bin/v8
+        run: |
+          chmod +x ~/.jsvu/bin/v8
+          chmod +x ~/.jsvu/engines/v8/v8
 
       - name: Set EM_CONFIG
         run: |
