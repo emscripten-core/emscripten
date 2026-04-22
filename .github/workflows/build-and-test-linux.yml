@@ -72,7 +72,7 @@ jobs:
           echo "WASM_ENGINES = []" >> $EMSDK/.emscripten
           test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> $EMSDK/.emscripten || true
           test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> $EMSDK/.emscripten || true
-          test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $(~/emsdk/upstream/bin/clang -print-resource-dir) || true
+          test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $($EMSDK/upstream/bin/clang -print-resource-dir) || true
 
       - name: Install Linux dependencies
         run: |
@@ -128,6 +128,9 @@ jobs:
       - name: Restore hidden .jsvu directory
         run: mv ~/jsvu-cache ~/.jsvu
 
+      - name: Grant permissions to v8
+        run: chmod +x ~/.jsvu/bin/v8
+
       - name: Set EM_CONFIG
         run: |
           echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
@@ -142,7 +145,7 @@ jobs:
           echo "WASM_ENGINES = []" >> $EMSDK/.emscripten
           test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> $EMSDK/.emscripten || true
           test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> $EMSDK/.emscripten || true
-          test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $(~/emsdk/upstream/bin/clang -print-resource-dir) || true
+          test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $($EMSDK/upstream/bin/clang -print-resource-dir) || true
 
       - name: Install Linux dependencies
         run: |
@@ -186,6 +189,9 @@ jobs:
       - name: Restore hidden .jsvu directory
         run: mv ~/jsvu-cache ~/.jsvu
 
+      - name: Grant permissions to v8
+        run: chmod +x ~/.jsvu/bin/v8
+
       - name: Set EM_CONFIG
         run: |
           echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
@@ -200,7 +206,7 @@ jobs:
           echo "WASM_ENGINES = []" >> $EMSDK/.emscripten
           test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> $EMSDK/.emscripten || true
           test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> $EMSDK/.emscripten || true
-          test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $(~/emsdk/upstream/bin/clang -print-resource-dir) || true
+          test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $($EMSDK/upstream/bin/clang -print-resource-dir) || true
 
       - name: Install Linux dependencies
         run: |
