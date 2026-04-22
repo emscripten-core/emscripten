@@ -95,7 +95,8 @@ Pthreads and Wasm Workers share several similarities:
  * Both types of threads support TLS via explicitly linked in Wasm globals (see
    ``test/wasm_worker/wasm_worker_tls_wasm_assembly.c/.S`` for example code)
  * Both types of threads have a concept of a thread ID (``pthread_self()`` for pthreads,
-   ``emscripten_wasm_worker_self_id()`` for Wasm Workers)
+   ``emscripten_wasm_worker_self_id()`` for Wasm Workers).  `gettid()` works in
+   both contexts so is more portable.
  * Both types of threads can perform an event-based and an infinite loop programming model.
  * Both can use ``EM_ASM`` and ``EM_JS`` API to execute JS code on the calling thread.
  * Both can call out to JS library functions (linked in with ``--js-library`` directive) to
