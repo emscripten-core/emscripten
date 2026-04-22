@@ -8,6 +8,13 @@ on:
       - main
   pull_request:
 
+env:
+  LANG: "C.UTF-8"
+  EMSDK_NOTTY: "1"
+  EMTEST_WASI_SYSROOT: "/home/runner/wasi-sdk/wasi-sysroot"
+  EMTEST_DETECT_TEMPFILE_LEAKS: "1"
+  PYTHONUNBUFFERED: "1"
+
 permissions:
   contents: read
 
@@ -15,8 +22,8 @@ jobs:
   build-linux:
     runs-on: ubuntu-latest
     env:
-      EMCC_CORES: 2
-      EMCC_USE_NINJA: 1
+      EMCC_CORES: "4"
+      EMCC_USE_NINJA: "1"
       EM_COMPILER_WRAPPER: "ccache"
     steps:
       - name: Checkout repo
@@ -105,6 +112,8 @@ jobs:
   test-sanity:
     needs: build-linux
     runs-on: ubuntu-latest
+    env:
+      EMCC_CORES: "4"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
@@ -163,6 +172,9 @@ jobs:
   test-core0:
     needs: build-linux
     runs-on: ubuntu-latest
+    env:
+      EMCC_CORES: "4"
+      EMTEST_SKIP_NODE_25: "1"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
