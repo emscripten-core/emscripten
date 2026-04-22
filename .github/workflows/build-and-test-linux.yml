@@ -1,6 +1,6 @@
 name: Linux Build and Test
 
-non:
+on:
   create:
     tags:
   push:
