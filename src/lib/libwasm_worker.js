@@ -89,14 +89,15 @@ addToLibrary({
     '_emscripten_wasm_worker_initialize',
 #if PTHREADS
     '__set_thread_state',
+    '$alignMemory',
 #endif
   ],
   $_wasmWorkerInitializeRuntime: () => {
 #if ASSERTIONS
     assert(wwParams);
     assert(wwParams.wwID);
-    assert(wwParams.stackLowestAddress % 16 == 0);
-    assert(wwParams.stackSize % 16 == 0);
+    assert(wwParams.stackLowestAddress % {{{ STACK_ALIGN }}} == 0);
+    assert(wwParams.stackSize % {{{ STACK_ALIGN }}} == 0);
 #endif
 #if RUNTIME_DEBUG
     dbg("wasmWorkerInitializeRuntime wwID:", wwParams.wwID);
@@ -123,7 +124,7 @@ addToLibrary({
 #if PTHREADS
     // Record the pthread configuration, and whether this Wasm Worker supports synchronous blocking in emscripten_futex_wait().
     // (regular Wasm Workers do, AudioWorklets don't)
-    ___set_thread_state(/*thread_ptr=*/0, /*is_main_thread=*/0, /*is_runtime_thread=*/0, /*supports_wait=*/ {{{ workerSupportsFutexWait() }}});
+    ___set_thread_state(wwParams.pthreadPtr ?? 0, /*is_main_thread=*/0, /*is_runtime_thread=*/0, /*supports_wait=*/ {{{ workerSupportsFutexWait() }}});
 #endif
 #if STACK_OVERFLOW_CHECK >= 2
     // Fix up stack base. (TLS frame is created at the bottom address end of the stack)
@@ -178,7 +179,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
   _wasmWorkers[0] = globalThis;
   addEventListener("message", _wasmWorkerAppendToQueue);
 }`,
-  _emscripten_create_wasm_worker: (wwID, stackLowestAddress, stackSize) => {
+  _emscripten_create_wasm_worker: (wwID, stackLowestAddress, stackSize, pthreadPtr) => {
 #if ASSERTIONS
     if (!_emscripten_has_threading_support()) {
       err('create_wasm_worker: environment does not support SharedArrayBuffer, wasm workers are not available');
@@ -203,8 +204,11 @@ if (ENVIRONMENT_IS_WASM_WORKER
       wwID,
       wasm: wasmModule,
       wasmMemory,
-      stackLowestAddress, // sb = stack bottom (lowest stack address, SP points at this when stack is full)
-      stackSize,          // sz = stack size
+      stackLowestAddress,
+      stackSize,
+#if PTHREADS
+      pthreadPtr,
+#endif
     });
     worker.onmessage = _wasmWorkerRunPostMessage;
 #if ENVIRONMENT_MAY_BE_NODE

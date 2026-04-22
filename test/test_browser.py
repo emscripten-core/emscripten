@@ -5077,7 +5077,7 @@ Module["preRun"] = () => {
 
   # Tests Wasm Worker+pthreads simultaneously
   @also_with_minimal_runtime
-  def test_wasm_worker_and_pthreads(self):
+  def test_wasm_worker_and_pthread(self):
     self.btest_exit('wasm_worker/wasm_worker_and_pthread.c', cflags=['-sWASM_WORKERS', '-pthread', '-sPTHREAD_POOL_SIZE=1'])
 
   # Tests emscripten_wasm_worker_self_id() function

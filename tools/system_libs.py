@@ -1547,8 +1547,14 @@ class libwasm_workers(MuslInternalLibrary, DebugLibrary):
   src_dir = 'system/lib/wasm_worker'
   src_files = ['library_wasm_worker.c', 'wasm_worker_initialize.S', 'audio_worklet.c']
 
+  def __init__(self, **kwargs):
+    self.is_mt = kwargs.pop('is_mt')
+    super().__init__(**kwargs)
+
   def get_cflags(self):
     cflags = super().get_cflags() + ['-sWASM_WORKERS']
+    if self.is_mt:
+      cflags += ['-pthread']
     if self.is_debug:
       # library_wasm_worker.c contains an assert that a nonnull parameter
       # is no NULL, which llvm now warns is redundant/tautological.
@@ -1560,6 +1566,23 @@ class libwasm_workers(MuslInternalLibrary, DebugLibrary):
     else:
       cflags += ['-Oz']
     return cflags
+
+  def get_base_name(self):
+    name = super().get_base_name()
+    if self.is_mt:
+      name += '-mt'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    return super().vary_on() + ['is_mt']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(
+      is_mt=settings.PTHREADS,
+      **kwargs,
+    )
 
   def can_use(self):
     # see src/library_wasm_worker.js

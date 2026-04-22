@@ -169,14 +169,31 @@ Note that support for nested Workers varies across browsers. As of 02/2022, nest
 supported in Safari <https://webkit.org/b/22723>`_. See `here 
 <https://github.com/johanholmerin/nested-worker>`_ for a polyfill.
 
-Pthreads can use the Wasm Worker synchronization API, but not vice versa
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Pthreads can use the Wasm Worker synchronization API
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The multithreading synchronization primitives offered in ``emscripten/wasm_worker.h``
 (``emscripten_lock_*``, ``emscripten_semaphore_*``, ``emscripten_condvar_*``) can be freely invoked
-from within pthreads if one so wishes, but Wasm Workers cannot utilize any of the synchronization
-functionality in the Pthread API (``pthread_mutex_*``, ``pthread_cond_``, ``pthread_rwlock_*``, etc),
-since they lack the needed pthread runtime.
+from within pthreads if one so wishes.
+
+Wasm Worker cannot use the pthread API, unless building in hybrid mode
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, Wasm Workers cannot call any pthread APIs (``pthread_mutex_*``,
+``pthread_cond_*``, ``pthread_self()``, etc.), since they lack the needed
+thread metadata.
+
+However, when building in **hybrid mode** (linking with both ``-sWASM_WORKERS``
+and ``-pthread``), Wasm Workers are created with the additional metadata needed.
+In this mode, Wasm Workers support a subset of the pthread API:
+
+- ``pthread_self()`` and ``pthread_equal()``
+- Thread Specific Data (TSD) via ``pthread_getspecific()`` and ``pthread_setspecific()``
+- Thread synchronization API such was `pthread_mutex_*` and `pthread_cond_*`.
+
+APIs that manage the thread lifecycle (like ``pthread_create``,
+``pthread_join``, ``pthread_detach``, ``pthread_cancel``) are still not
+supported for Wasm Workers, even in hybrid mode.
 
 Pthreads have a "thread main" function and atexit handlers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -288,7 +305,7 @@ table.
 
     <tr><td class='cellborder'>Thread ID</td>
     <td class='cellborder'>Creating a pthread obtains its ID. Call <pre>pthread_self()</pre> to acquire ID of calling thread.</td>
-    <td class='cellborder'>Creating a Worker obtains its ID. Call <pre>emscripten_wasm_worker_self_id()</pre> acquire ID of calling thread.</td></tr>
+    <td class='cellborder'>Creating a Worker obtains its ID. Call <pre>emscripten_wasm_worker_self_id()</pre> acquire ID of calling thread.<br>In hybrid mode, <pre>pthread_self()</pre> also works.</td></tr>
 
     <tr><td class='cellborder'>High resolution timer</td>
     <td class='cellborder'>``emscripten_get_now()``</td>
@@ -331,7 +348,7 @@ table.
 
     <tr><td class='cellborder'>Recursive mutex</td>
     <td class='cellborder'><pre>pthread_mutex_*</pre></td>
-    <td class='cellborder'>N/A</td></tr>
+    <td class='cellborder'>Supported in hybrid mode</td></tr>
 
     <tr><td class='cellborder'>Semaphores</td>
     <td class='cellborder'>N/A</td>
@@ -343,7 +360,7 @@ table.
 
     <tr><td class='cellborder'>Read-Write locks</td>
     <td class='cellborder'><pre>pthread_rwlock_*</pre></td>
-    <td class='cellborder'>N/A</td></tr>
+    <td class='cellborder'>Supported in hybrid mode</td></tr>
 
     <tr><td class='cellborder'>Spinlocks</td>
     <td class='cellborder'><pre>pthread_spin_*</pre></td>

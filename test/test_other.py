@@ -13584,6 +13584,8 @@ int main() {
 
   @also_with_minimal_runtime
   def test_wasm_worker_and_pthread(self):
+    self.set_setting('STACK_OVERFLOW_CHECK', 2)
+    self.set_setting('SAFE_HEAP', 2)
     self.do_runf('wasm_worker/wasm_worker_and_pthread.c', 'done\n', cflags=['-sWASM_WORKERS', '-pthread'])
 
   @also_with_minimal_runtime

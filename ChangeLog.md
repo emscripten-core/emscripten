@@ -38,6 +38,11 @@ See docs/process.md for more on how version tagging works.
   to handle these types of spurious wakeups / interruptions. (#26659, #26735)
 - Attempting to use PTHREAD_PROCESS_SHARED when creating pthread primitives such
   as locks and condvars will now fail with ENOTSUP. (#26743)
+- When building code with both Wasm Workers and pthreads (hybrid mode) it is now
+  possible to call most of the core pthread APIs (e.g. lock, condvar, etc) from
+  a Wasm Worker.  This mode increases the memory used by each Wasm Worker by
+  ~500 bytes (in the same way that declaring ~500 bytes of TLS data would).
+  (#26757)
 
 5.0.6 - 04/14/26
 ----------------

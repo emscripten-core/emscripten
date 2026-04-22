@@ -1,6 +1,6 @@
 # Design Doc: Wasm Worker Pthread Compatibility
 
-- **Status**: Draft
+- **Status**: Completed
 - **Bug**: https://github.com/emscripten-core/emscripten/issues/26631
 
 ## Context
@@ -14,31 +14,33 @@ This is not an issue in pure Wasm Workers programs but we also support hybrid
 programs that run both pthreads and Wasm Workers.  In this cases the pthread
 API is available, but will fail in undefined ways if called from Wasm Workers.
 
-This document proposes a plan to improve the hybrid mode by adding the pthread
+This document describes the implementation to improve the hybrid mode by adding the pthread
 metadata (`struct pthread`) to each Wasm Worker, allowing the pthread API (or at
 least some subset of it) APIs to used from Wasm Workers.
 
-## Proposed Changes
+## Implemented Changes
 
 ### 1. Memory Layout
 
-Currently, Wasm Workers allocate space for TLS and stack: `[TLS data] [Stack]`.
-We propose to change this to: `[struct pthread] [TLS data] [Stack]`.
+Normally, Wasm Workers allocate space for only TLS and stack: `[TLS data] [Stack]`.
+For hybrid mode (when pthreed are enabled as well as Wasm Workers) we changed
+this to also include pthread-specific data: `[struct
+pthread] [TSD pointers] [TLS data] [Stack]`.
 
-The `struct pthread` will be located at the very beginning of the allocated
+The `struct pthread` is located at the very beginning of the allocated
 memory block for each Wasm Worker.
 
 ### 2. `struct pthread` Initialization
 
-The `struct pthread` will be initialized by the creator thread in `emscripten_create_wasm_worker` (or `emscripten_malloc_wasm_worker`).
+The `struct pthread` is initialized by the creator thread in `emscripten_create_wasm_worker` (or `emscripten_malloc_wasm_worker`).
 This includes:
 - Zero-initializing the structure.
 - Setting the `self` pointer to the start of the `struct pthread`.
 - Initializing essential fields like `tid`.
 
-On the worker thread side, `_emscripten_wasm_worker_initialize` will need to set
-the thread-local pointer (returned by `__get_tp()`) to the `struct pthread`
-location.
+On the worker thread side, initialization is completed by calling
+`__set_thread_state` (via JS `___set_thread_state` in `libwasm_worker.js`) to
+set the thread pointer, making it available to `__get_tp`.
 
 ### 3. `__get_tp` Support
 
@@ -62,14 +64,14 @@ APIs that will NOT be supported (or will have limited support):
 - `pthread_cancel()`: Not supported in Wasm workers.
 - `pthread_kill()`: Not supported in Wasm workers.
 
-## Implementation Plan
+## Implementation Details
 
-1. Modify `emscripten_create_wasm_worker` in `system/lib/wasm_worker/library_wasm_worker.c` to account for `sizeof(struct pthread)` in memory allocation and initialize the structure.
-2. Update `_emscripten_wasm_worker_initialize` in `system/lib/wasm_worker/wasm_worker_initialize.S` to set the thread pointer.
-3. Modify `system/lib/pthread/emscripten_thread_state.S` to enable `__get_tp` for Wasm workers.
-4. Review and test essential pthread functions (like TSD) in Wasm workers.
-5. Document the supported and unsupported pthread APIs for Wasm workers.
+1. Modified `emscripten_create_wasm_worker` in `system/lib/wasm_worker/library_wasm_worker.c` to account for `sizeof(struct pthread)` in memory allocation and initialize the structure.
+2. Updated `$_wasmWorkerInitializeRuntime` in `src/lib/libwasm_worker.js` to call `___set_thread_state` to set the thread pointer.
+3. Verified that essential pthread functions (like `pthread_self()`) work in Wasm workers in hybrid mode.
 
 ## Verification
-- Add a new test that makes use of `pthread_self()` and low level synchronization APIs from a Wasm Worker.
+- New tests added to ensure `pthread_self()` and low level synchronization APIs
+  work when called from a Wasm Worker.
 - Verify that existing Wasm worker tests still pass.
+- Verify no extra overhead for regular (non-hybrid) Wasm Worker builds.

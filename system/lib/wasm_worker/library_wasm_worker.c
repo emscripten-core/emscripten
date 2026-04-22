@@ -25,8 +25,20 @@
 #include <malloc.h>
 #include <sys/param.h> // For MAX()
 
+#ifdef __EMSCRIPTEN_PTHREADS__
+#include "pthread_impl.h"
+#endif
+
 #ifndef __EMSCRIPTEN_WASM_WORKERS__
 #error __EMSCRIPTEN_WASM_WORKERS__ should be defined when building this file!
+#endif
+
+// Comment this line to enable tracing of thread creation and destruction:
+// #define PTHREAD_DEBUG
+#ifdef PTHREAD_DEBUG
+#define dbg(fmt, ...) emscripten_dbgf(fmt, ##__VA_ARGS__)
+#else
+#define dbg(fmt, ...)
 #endif
 
 #define ROUND_UP(x, ALIGNMENT) (((x)+ALIGNMENT-1)&-ALIGNMENT)
@@ -57,6 +69,73 @@ weak_alias(dummy_file, __stderr_used);
 static void init_file_lock(FILE *f) {
   if (f && f->lock<0) f->lock = 0;
 }
+
+#ifdef __EMSCRIPTEN_PTHREADS__
+/* pthread_key_create.c overrides this */
+static volatile size_t dummy = 0;
+weak_alias(dummy, __pthread_tsd_size);
+
+#define TSD_ALIGN (sizeof(void*))
+
+/**
+ * The layout of the wasm worker stack space in hybrid mode is as follow.
+ * [ struct pthread ] [ pthread TSD slots ] [ TLS data ] [ ... stack ]
+ *
+ * As opposed to the layout for regular Wasm Workers which is just:
+ * [ TLS data ] [ ... stack ]
+ */
+static void* init_pthread_struct(void *stackPlusTLSAddress, pid_t tid, size_t* stackPlusTLSSize) {
+  // TODO: Remove duplication with pthread_create
+
+  pthread_t self = pthread_self();
+  pthread_t new = (pthread_t)stackPlusTLSAddress;
+
+  uintptr_t base = (uintptr_t)stackPlusTLSAddress;
+  uintptr_t offset = base;
+
+  // 3. tsd slots
+  if (__pthread_tsd_size) {
+    offset = ROUND_UP(offset, TSD_ALIGN);
+    new->tsd = (void*)offset;
+    offset += __pthread_tsd_size;
+  }
+
+  // Calculate updated stack size
+  offset = ROUND_UP(offset, STACK_ALIGN);
+  size_t new_stack_size = *stackPlusTLSSize - (offset - base);
+  assert(new_stack_size % STACK_ALIGN == 0);
+  assert(new_stack_size > 0);
+
+  new->self = new;
+  new->tid = tid;
+  new->map_base = stackPlusTLSAddress;
+  new->map_size = *stackPlusTLSSize;
+  new->stack = (void*)(base + *stackPlusTLSSize);
+  new->stack_size = new_stack_size;
+  new->guard_size = __default_guardsize;
+  new->detach_state = DT_DETACHED;
+  new->robust_list.head = &new->robust_list.head;
+
+  __tl_lock();
+
+  new->next = self->next;
+  new->prev = self;
+  new->next->prev = new;
+  new->prev->next = new;
+
+  __tl_unlock();
+
+  dbg("init_pthread_struct: base=%#lx, end=%#lx, used=%zu "
+      "stackold=%zu stacknew=%zu",
+      base,
+      base + *stackPlusTLSSize,
+      offset - base,
+      *stackPlusTLSSize,
+      new_stack_size);
+  *stackPlusTLSSize = new_stack_size;
+  return (void*)offset;
+}
+#endif
 
 emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress, size_t stackPlusTLSSize) {
   assert(stackPlusTLSAddress != 0);
@@ -103,7 +182,11 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress
   if (!libc.threads_minus_1++) libc.need_locks = 1;
 
   emscripten_wasm_worker_t wwID = _emscripten_get_next_tid();
-  if (!_emscripten_create_wasm_worker(wwID, stackPlusTLSAddress, stackPlusTLSSize))
+  void* pthreadPtr = stackPlusTLSAddress;
+#ifdef __EMSCRIPTEN_PTHREADS__
+  stackPlusTLSAddress = init_pthread_struct(stackPlusTLSAddress, wwID, &stackPlusTLSSize);
+#endif
+  if (!_emscripten_create_wasm_worker(wwID, stackPlusTLSAddress, stackPlusTLSSize, pthreadPtr))
     return 0;
   return wwID;
 }
