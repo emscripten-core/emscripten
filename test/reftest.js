@@ -55,14 +55,20 @@ function doReftest() {
       actualCtx.drawImage(actualImage, 0, 0);
       var actual = actualCtx.getImageData(0, 0, actualImage.width, actualImage.height).data;
 
+      // Allow each pixel R,G,B component to be off by a few units to account for possible shading
+      // differences between GPUs.
+      function dampenError(error) {
+        return Math.max(error-2, 0);
+      }
+
       var total = 0;
       var width = img.width;
       var height = img.height;
       for (var x = 0; x < width; x++) {
         for (var y = 0; y < height; y++) {
-          total += Math.abs(expected[y*width*4 + x*4 + 0] - actual[y*width*4 + x*4 + 0]);
-          total += Math.abs(expected[y*width*4 + x*4 + 1] - actual[y*width*4 + x*4 + 1]);
-          total += Math.abs(expected[y*width*4 + x*4 + 2] - actual[y*width*4 + x*4 + 2]);
+          total += dampenError(Math.abs(expected[y*width*4 + x*4 + 0] - actual[y*width*4 + x*4 + 0]));
+          total += dampenError(Math.abs(expected[y*width*4 + x*4 + 1] - actual[y*width*4 + x*4 + 1]));
+          total += dampenError(Math.abs(expected[y*width*4 + x*4 + 2] - actual[y*width*4 + x*4 + 2]));
         }
       }
       // floor, to allow some margin of error for antialiasing
