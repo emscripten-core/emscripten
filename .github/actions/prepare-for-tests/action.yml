@@ -3,9 +3,6 @@ description: 'Prepares the environment for running Emscripten tests'
 runs:
   using: "composite"
   steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
-
     - name: Install Emsdk
       uses: emscripten-core/setup-emsdk@v16
       with:

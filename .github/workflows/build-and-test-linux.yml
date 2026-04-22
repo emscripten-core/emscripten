@@ -109,6 +109,9 @@ jobs:
     env:
       EMCC_CORES: "4"
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Prepare for tests
         uses: ./.github/actions/prepare-for-tests
 
@@ -129,6 +132,9 @@ jobs:
       EMCC_CORES: "4"
       EMTEST_SKIP_NODE_25: "1"
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Prepare for tests
         uses: ./.github/actions/prepare-for-tests
 
@@ -148,6 +154,9 @@ jobs:
     env:
       EMCC_CORES: 4
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Prepare for tests
         uses: ./.github/actions/prepare-for-tests
 
