@@ -48,5 +48,5 @@ void worker_main() {
 }
 
 int main() {
-  emscripten_wasm_worker_post_function_v(emscripten_malloc_wasm_worker(1024), worker_main);
+  emscripten_wasm_worker_post_function_v(emscripten_malloc_wasm_worker(2048), worker_main);
 }

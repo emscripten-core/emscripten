@@ -1306,7 +1306,28 @@ int __syscall_ioctl(int fd, int request, ...) {
   if (!openFile) {
     return -EBADF;
   }
-  if (!isTTY(openFile->locked().getFile())) {
+
+  va_list args;
+  va_start(args, request);
+  void* argp = va_arg(args, void*);
+  va_end(args);
+
+  auto openHandle = openFile->locked();
+  auto file = openHandle.getFile();
+
+  if (request == FIONREAD) {
+    off_t size = file->locked().getSize();
+    if (size < 0) {
+      return (int)size;
+    }
+    if (file->isSeekable()) {
+      size -= openHandle.getPosition();
+    }
+    *static_cast<int*>(argp) = static_cast<int>(size);
+    return 0;
+  }
+
+  if (!isTTY(file)) {
     return -ENOTTY;
   }
   // TODO: Full TTY support. For now this is limited, and matches the old FS.

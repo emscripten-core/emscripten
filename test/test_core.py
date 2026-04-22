@@ -8654,8 +8654,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @parameterized({
     '': ([],),
     'emmalloc': (['-sMALLOC=emmalloc'],),
-    # FIXME(https://github.com/emscripten-core/emscripten/issues/23090)
-    # 'mimalloc': (['-sMALLOC=mimalloc'],),
+    # TODO: investigate removing `-sABORTING_MALLOC=0`, as it's only needed for `wasm64_4gb.test_wrap_malloc_mimalloc`
+    'mimalloc': (['-sMALLOC=mimalloc', '-sABORTING_MALLOC=0'],),
   })
   def test_wrap_malloc(self, args):
     self.do_runf('core/test_wrap_malloc.c', 'OK.', cflags=args)

@@ -64,7 +64,8 @@ static void* zone_valloc(malloc_zone_t* zone, size_t size) {
 
 static void zone_free(malloc_zone_t* zone, void* p) {
   MI_UNUSED(zone);
-  mi_cfree(p);
+  // mi_cfree(p);  // checked free as `zone_free` may be called with invalid pointers
+  mi_free(p); // with the page_map and pagemap_commit=1 we can use the regular free
 }
 
 static void* zone_realloc(malloc_zone_t* zone, void* p, size_t newsize) {
@@ -83,7 +84,7 @@ static void zone_destroy(malloc_zone_t* zone) {
 }
 
 static unsigned zone_batch_malloc(malloc_zone_t* zone, size_t size, void** ps, unsigned count) {
-  size_t i;
+  unsigned i;
   for (i = 0; i < count; i++) {
     ps[i] = zone_malloc(zone, size);
     if (ps[i] == NULL) break;
@@ -253,11 +254,8 @@ static malloc_zone_t mi_malloc_zone = {
 // `malloc_zone_calloc` etc. see <https://github.com/aosm/libmalloc/blob/master/man/malloc_zone_malloc.3>
 // ------------------------------------------------------
 
-static inline malloc_zone_t* mi_get_default_zone(void)
-{
-  static bool init;
-  if mi_unlikely(!init) {
-    init = true;
+static inline malloc_zone_t* mi_get_default_zone(void) {
+  mi_atomic_do_once {
     malloc_zone_register(&mi_malloc_zone);  // by calling register we avoid a zone error on free (see <http://eatmyrandom.blogspot.com/2010/03/mallocfree-interception-on-mac-os-x.html>)
   }
   return &mi_malloc_zone;
@@ -328,7 +326,7 @@ static bool zone_check(malloc_zone_t* zone) {
 
 static malloc_zone_t* zone_from_ptr(const void* p) {
   MI_UNUSED(p);
-  return mi_get_default_zone();
+  return (mi_any_heap_contains(p) ? mi_get_default_zone() : NULL);
 }
 
 static void zone_log(malloc_zone_t* zone, void* p) {
@@ -418,9 +416,9 @@ static inline malloc_zone_t* mi_get_default_zone(void)
 }
 
 #if defined(__clang__)
-__attribute__((constructor(0)))
+__attribute__((constructor(101))) // highest priority
 #else
-__attribute__((constructor))      // seems not supported by g++-11 on the M1
+__attribute__((constructor))      // priority level is not supported by gcc
 #endif
 __attribute__((used))
 static void _mi_macos_override_malloc(void) {

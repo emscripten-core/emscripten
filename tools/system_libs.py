@@ -1869,14 +1869,28 @@ class libmimalloc(MTLibrary):
     # build emmalloc as only a system allocator, without exporting itself onto
     # malloc/free in the global scope
     '-DEMMALLOC_NO_STD_EXPORTS',
+    # disable large pages by default, see:
+    # https://github.com/microsoft/mimalloc/commit/9199d54bcf1e6dea0deb61a3a8a4b3ea4b45a341
+    '-DMI_ENABLE_LARGE_PAGES=0',
+    # halve the page size to 32KiB on wasm64 and to 16KiB on wasm32
+    # https://github.com/microsoft/mimalloc/issues/647#issuecomment-1324109021
+    # https://github.com/emscripten-core/emscripten/issues/20645#issuecomment-1962964755
+    '-DMI_ARENA_SLICE_SHIFT=(12 + MI_SIZE_SHIFT)',
+    # `malloc`ed pointers must be aligned at least as strictly as max_align_t
+    '-DMI_MAX_ALIGN_SIZE=8',
+    # reserve memory in 64 MiB chunks (internally divided by 4)
+    # Note: keep in sync with the -sINITIAL_HEAP default
+    '-DMI_DEFAULT_ARENA_RESERVE=65536',
     # build mimalloc with an override of malloc/free
     '-DMI_MALLOC_OVERRIDE',
     # TODO: add build modes that include debug checks 1,2,3
     '-DMI_DEBUG=0',
     # disable `assert()` in the underlying emmalloc allocator
     '-DNDEBUG',
-    # avoid use of `__builtin_thread_pointer()`
+    # Emscripten uses musl libc internally
     '-DMI_LIBC_MUSL',
+    # enable use of `__builtin_thread_pointer()`
+    '-DMI_USE_BUILTIN_THREAD_POINTER',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO

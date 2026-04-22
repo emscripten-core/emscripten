@@ -45,14 +45,19 @@ int main() {
   printf("posix_fallocate 4: %s\n", strerror(err));
 
   // Values over 2^53 are not representable in JS and
-  // should result in EOVERFLOW.
+  // should result in EFBIG.
   err = posix_fallocate(f, 1, 0x00ffffffffffffff);
-  assert(err == EOVERFLOW);
   printf("posix_fallocate 5: %s\n", strerror(err));
+  assert(err == EFBIG);
 
   err = posix_fallocate(f, 0x00ffffffffffffff, 1);
-  assert(err == EOVERFLOW);
   printf("posix_fallocate 6: %s\n", strerror(err));
+  assert(err == EFBIG);
+
+  // 2^53 is representable but too large for a MEMFS file.
+  err = posix_fallocate(f, (off_t)1 << 53, 1);
+  printf("posix_fallocate 7: %s\n", strerror(err));
+  assert(err == EFBIG);
 
   return 0;
 }

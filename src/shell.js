@@ -255,9 +255,6 @@ if (ENVIRONMENT_IS_SHELL) {
 
   globalThis.clearTimeout ??= (id) => {};
 
-  // spidermonkey lacks setTimeout but we use it above in readAsync.
-  globalThis.setTimeout ??= (f) => f();
-
   // v8 uses `arguments_` whereas spidermonkey uses `scriptArgs`
   arguments_ = globalThis.arguments || globalThis.scriptArgs;
 
@@ -286,11 +283,11 @@ if (ENVIRONMENT_IS_SHELL) {
     };
   }
 
-  if (typeof print != 'undefined') {
-    // Prefer to use print/printErr where they exist, as they usually work better.
+  if (globalThis.print) {
+    // Use `print` to implement console.log/error/warn as needed.
     globalThis.console ??= /** @type{!Console} */({});
-    console.log = /** @type{!function(this:Console, ...*): undefined} */ (print);
-    console.warn = console.error = /** @type{!function(this:Console, ...*): undefined} */ (globalThis.printErr ?? print);
+    console.log ??= /** @type{!function(this:Console, ...*): undefined} */ (print);
+    console.warn ??= console.error ??= /** @type{!function(this:Console, ...*): undefined} */ (globalThis.printErr ?? print);
   }
 
 #if WASM == 2

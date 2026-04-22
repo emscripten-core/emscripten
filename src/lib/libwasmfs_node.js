@@ -60,9 +60,6 @@ var wasmFSNodeLibrary = {
     return wasmfsNodeFixStat(stat);
   },
 
-  // Ignore closure type errors due to outdated readdirSync annotations, see
-  // https://github.com/google/closure-compiler/pull/4093
-  _wasmfs_node_readdir__docs: '/** @suppress {checkTypes} */',
   _wasmfs_node_readdir__deps: [
     '$wasmfsTry',
     '$stackSave',
@@ -159,14 +156,14 @@ var wasmFSNodeLibrary = {
   _wasmfs_node_truncate__i53abi: true,
   _wasmfs_node_truncate__deps: ['$wasmfsTry'],
   _wasmfs_node_truncate: (path_p, len) => {
-    if (isNaN(len)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(len)) return {{{ cDefs.EFBIG }}};
     return wasmfsTry(() => fs.truncateSync(UTF8ToString(path_p), len));
   },
 
   _wasmfs_node_ftruncate__i53abi: true,
   _wasmfs_node_ftruncate__deps: ['$wasmfsTry'],
   _wasmfs_node_ftruncate: (fd, len) => {
-    if (isNaN(len)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(len)) return {{{ cDefs.EFBIG }}};
     return wasmfsTry(() => fs.ftruncateSync(fd, len));
   },
 

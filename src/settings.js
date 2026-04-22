@@ -1206,16 +1206,6 @@ var ERROR_ON_UNDEFINED_SYMBOLS = true;
 // [link]
 var SMALL_XHR_CHUNKS = false;
 
-// If 1, we force Date.now(), Math.random, etc. to return deterministic results.
-// This also tries to make execution deterministic across machines and
-// environments, for example, not doing anything different based on the
-// browser's language setting (which would mean you can get different results
-// in different browsers, or in the browser and in node).
-// Good for comparing builds for debugging purposes (and nothing else).
-// [link]
-// [deprecated]
-var DETERMINISTIC = false;
-
 // By default we emit all code in a straightforward way into the output
 // .js file. That means that if you load that in a script tag in a web
 // page, it will use the global scope. With ``MODULARIZE`` set, we instead emit
@@ -2206,12 +2196,6 @@ var JS_BASE64_API = false;
 // [experimental]
 // [link]
 var GROWABLE_ARRAYBUFFERS = false;
-
-// Experimental support for WebAssembly js-types proposal.
-// It's currently only available under a flag in certain browsers,
-// so we disable it by default to save on code size.
-// [experimental]
-var WASM_JS_TYPES = false;
 
 // If the emscripten-generated program is hosted on separate origin then
 // starting new pthread worker can violate CSP rules.  Enabling
