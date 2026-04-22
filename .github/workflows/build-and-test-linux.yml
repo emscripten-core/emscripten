@@ -88,24 +88,19 @@ jobs:
       - name: Build libraries
         run: |
           ./emcc --clear-cache
-          ./embuilder build MINIMAL
           ./test/runner test_hello_world
 
       - name: Clean build directory
         run: rm -rf ~/cache/build
 
-      - name: Rename hidden .jsvu directory
-        run: mv ~/.jsvu ~/jsvu-cache
+      - name: Archive persistent directories
+        run: tar -czf ~/emscripten-cache.tar.gz -C ~/ .jsvu cache vms wasi-sdk
 
       - name: Persist workspace
         uses: actions/upload-artifact@v4
         with:
           name: emscripten-cache
-          path: |
-            ~/jsvu-cache
-            ~/cache
-            ~/vms
-            ~/wasi-sdk
+          path: ~/emscripten-cache.tar.gz
 
   test-sanity:
     needs: build-linux
@@ -125,13 +120,8 @@ jobs:
           name: emscripten-cache
           path: ~/
 
-      - name: Restore hidden .jsvu directory
-        run: mv ~/jsvu-cache ~/.jsvu
-
-      - name: Grant permissions to v8
-        run: |
-          chmod +x ~/.jsvu/bin/v8
-          chmod +x ~/.jsvu/engines/v8/v8
+      - name: Extract persistent directories
+        run: tar -xzf ~/emscripten-cache.tar.gz -C ~/
 
       - name: Set EM_CONFIG
         run: |
@@ -188,13 +178,8 @@ jobs:
           name: emscripten-cache
           path: ~/
 
-      - name: Restore hidden .jsvu directory
-        run: mv ~/jsvu-cache ~/.jsvu
-
-      - name: Grant permissions to v8
-        run: |
-          chmod +x ~/.jsvu/bin/v8
-          chmod +x ~/.jsvu/engines/v8/v8
+      - name: Extract persistent directories
+        run: tar -xzf ~/emscripten-cache.tar.gz -C ~/
 
       - name: Set EM_CONFIG
         run: |
