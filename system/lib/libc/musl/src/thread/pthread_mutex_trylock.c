@@ -53,10 +53,10 @@ success:
 	}
 #endif
 
-#if defined(__EMSCRIPTEN__) || !defined(NDEBUG)
-	// We can get here for normal mutexes too, but only in debug builds
-	// (where we track ownership purely for debug purposes).
-	if ((type & 15) == PTHREAD_MUTEX_NORMAL) return 0;
+#if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
+	// Under emscripten we can get here for normal mutexes too, but only in debug
+	// Jbuilds (where we track ownership purely for debug purposes).
+	if ((type&15) == PTHREAD_MUTEX_NORMAL) return 0;
 #endif
 
 	next = self->robust_list.head;
