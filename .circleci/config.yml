@@ -706,6 +706,7 @@ jobs:
             lto0.test_exceptions_allowed_uncaught
             lto0.test_longjmp_standalone_standalone
             lto0.test_embind_i64_val
+            lto0.test_wasm_worker_futex_wait
             thinlto0.test_pthread_dlsym
             core3
             core2g.test_externref
