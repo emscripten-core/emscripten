@@ -94,12 +94,15 @@ jobs:
       - name: Clean build directory
         run: rm -rf ~/cache/build
 
+      - name: Rename hidden .jsvu directory
+        run: mv ~/.jsvu ~/jsvu-cache
+
       - name: Persist workspace
         uses: actions/upload-artifact@v4
         with:
           name: emscripten-cache
           path: |
-            ~/.jsvu
+            ~/jsvu-cache
             ~/cache
             ~/vms
             ~/wasi-sdk
@@ -121,6 +124,9 @@ jobs:
         with:
           name: emscripten-cache
           path: ~/
+
+      - name: Restore hidden .jsvu directory
+        run: mv ~/jsvu-cache ~/.jsvu
 
       - name: Set EM_CONFIG
         run: |
@@ -176,6 +182,9 @@ jobs:
         with:
           name: emscripten-cache
           path: ~/
+
+      - name: Restore hidden .jsvu directory
+        run: mv ~/jsvu-cache ~/.jsvu
 
       - name: Set EM_CONFIG
         run: |
