@@ -1889,8 +1889,6 @@ class libmimalloc(MTLibrary):
     '-DNDEBUG',
     # Emscripten uses musl libc internally
     '-DMI_LIBC_MUSL',
-    # enable use of `__builtin_thread_pointer()`
-    '-DMI_USE_BUILTIN_THREAD_POINTER',
   ]
 
   # malloc/free/calloc are runtime functions and can be generated during LTO
@@ -1912,6 +1910,13 @@ class libmimalloc(MTLibrary):
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]
   # Include sbrk.c in libc, it uses tracing and libc itself doesn't have a tracing variant.
   src_files += [utils.path_from_root('system/lib/libc/sbrk.c')]
+
+  def get_cflags(self):
+    cflags = super().get_cflags()
+    if self.is_mt:
+      # enable use of `__builtin_thread_pointer()` in multithreaded builds
+      cflags += ['-DMI_USE_BUILTIN_THREAD_POINTER']
+    return cflags
 
   def can_use(self):
     return super().can_use() and settings.MALLOC == 'mimalloc'
