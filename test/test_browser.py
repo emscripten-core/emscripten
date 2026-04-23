@@ -5480,7 +5480,6 @@ Module["preRun"] = () => {
     'audio_params_disabled': (['-sAUDIO_WORKLET_SUPPORT_AUDIO_PARAMS=0'],),
   })
   @requires_sound_hardware
-  @requires_es6_workers
   @requires_shared_array_buffer
   def test_audio_worklet(self, args):
     if '-sEXPORT_ES6' in args and es6_module_workers_disabled():
