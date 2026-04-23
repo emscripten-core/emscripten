@@ -80,7 +80,7 @@ class Benchmarker(ABC):
   def get_output_files(self):
     pass
 
-  def bench(self, args, reps, output_parser=None, expected_output=None):
+  def bench(self, args, reps=EMTEST_REPS, output_parser=None, expected_output=None):
     self.times = []
     for _ in range(reps):
       start = time.time()
