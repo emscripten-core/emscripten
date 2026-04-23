@@ -249,6 +249,10 @@ def webgl2_disabled():
   return browser_should_skip_feature('EMTEST_LACKS_WEBGL2', Feature.WEBGL2) or browser_should_skip_feature('EMTEST_LACKS_GRAPHICS_HARDWARE', Feature.WEBGL2)
 
 
+def es6_module_workers_disabled():
+  return browser_should_skip_feature('EMTEST_LACKS_ES6_WORKERS', Feature.WORKER_ES6_MODULES)
+
+
 requires_graphics_hardware = skipIfFeatureNotAvailable('EMTEST_LACKS_GRAPHICS_HARDWARE', None, 'This test requires graphics hardware')
 requires_webgl2 = skipIfFeatureNotAvailable(['EMTEST_LACKS_WEBGL2', 'EMTEST_LACKS_GRAPHICS_HARDWARE'], Feature.WEBGL2, 'This test requires WebGL2 to be available')
 requires_webgpu = skipIfFeatureNotAvailable(['EMTEST_LACKS_WEBGPU', 'EMTEST_LACKS_GRAPHICS_HARDWARE'], Feature.WEBGPU, 'This test requires WebGPU to be available')
@@ -5479,6 +5483,8 @@ Module["preRun"] = () => {
   @requires_es6_workers
   @requires_shared_array_buffer
   def test_audio_worklet(self, args):
+    if '-sEXPORT_ES6' in args and es6_module_workers_disabled():
+      self.skipTest('This test requires a browser with ES6 Module Workers support')
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-DTEST_AND_EXIT'] + args)
 
   # Tests that audioworklets and workers can be used at the same time
@@ -5529,6 +5535,9 @@ Module["preRun"] = () => {
     self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
 
   def test_audio_worklet_direct(self):
+    if es6_module_workers_disabled():
+      self.skipTest('This test requires a browser with ES6 Module Workers support')
+
     self.add_browser_reporting()
     self.emcc('hello_world.c', ['-o', 'hello_world.mjs', '-sEXPORT_ES6', '-sSINGLE_FILE', '-sENVIRONMENT=worklet'])
     create_file('worklet.mjs', '''
