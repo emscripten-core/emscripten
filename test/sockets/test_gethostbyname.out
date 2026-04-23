@@ -1,3 +1,7 @@
+slashdot.org
 gethostbyname -> 172.29.1.0
 gethostbyaddr -> slashdot.org
+localhost
+gethostbyname -> 127.0.0.1
+gethostbyaddr -> localhost
 success
