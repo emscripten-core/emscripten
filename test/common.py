@@ -271,8 +271,12 @@ def get_output_suffix(args):
 
 def match_engine_executable(engine, name):
   assert type(engine) is list
-  basename = os.path.basename(engine[0])
-  return name in basename
+  # Match engine executable in a way that finds cross-compilation shells, e.g. emsdk big endian node installer will give:
+  # engine = ['qemu-s390x', '-L', '/usr/s390x-linux-gnu/', '/.../node-big-endian-crosscompile/24.7.0_64bit/bin/node']
+  for e in engine:
+    basename = os.path.basename(e)
+    if name in basename:
+      return True
 
 
 def engine_is_node(engine):
