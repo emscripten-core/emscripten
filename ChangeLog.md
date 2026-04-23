@@ -45,6 +45,8 @@ See docs/process.md for more on how version tagging works.
   (#26757)
 - The `-m64` compiler flag is now honored, and works are an alias for
   `-sMEMORY64` and/or `--target=wasm64`. (#26765)
+- The filesystem opteration that create new files now honor the global umask,
+  which defaults for 0o222 and can be updated by calling `umask()`. (#50739)
 
 5.0.6 - 04/14/26
 ----------------

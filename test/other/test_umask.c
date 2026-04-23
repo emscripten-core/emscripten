@@ -23,8 +23,7 @@ mode_t get_umask() {
 }
 
 void create_file(const char *path, const char *buffer) {
-  mode_t mode = 0777 - get_umask();
-  int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, mode);
+  int fd = open(path, O_WRONLY | O_CREAT | O_EXCL, 0666);
   assert(fd >= 0);
 
   int err = write(fd, buffer, sizeof(char) * strlen(buffer));
@@ -59,7 +58,15 @@ int main() {
 
   // Restore the old umask
   umask(old_umask);
-  
+
+  // Test mkdir with umask
+  umask(0077);
+  assert(mkdir("umask_test_dir", 0777) == 0);
+  stat("umask_test_dir", &st);
+  printf("dir mode: %o\n", st.st_mode);
+  assert((st.st_mode & 0777) == 0700);
+  rmdir("umask_test_dir");
+
   puts("success");
   return EXIT_SUCCESS;
 }

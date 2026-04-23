@@ -276,6 +276,7 @@ sigs = {
   __syscall_statfs64__sig: 'ippp',
   __syscall_symlinkat__sig: 'ipip',
   __syscall_truncate64__sig: 'ipj',
+  __syscall_umask__sig: 'ii',
   __syscall_unlinkat__sig: 'iipi',
   __syscall_utimensat__sig: 'iippi',
   _abort_js__sig: 'v',

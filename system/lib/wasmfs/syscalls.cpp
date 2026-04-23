@@ -458,6 +458,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 
       // Mask out everything except the permissions bits.
       mode &= S_IALLUGO;
+      mode &= ~wasmFS.getUmask();
 
       // If there is no explicitly provided backend, use the parent's backend.
       if (!backend) {
@@ -618,6 +619,7 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   // This prevents users from entering S_IFREG for example.
   // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
   mode &= S_IRWXUGO | S_ISVTX;
+  mode &= ~wasmFS.getUmask();
 
   if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
     return -EACCES;
@@ -663,6 +665,12 @@ int wasmfs_create_directory(char* path, int mode, backend_t backend) {
 // TODO: Test this.
 int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
   return doMkdir(path::parseParent((char*)path, dirfd), mode);
+}
+
+int __syscall_umask(int mask) {
+  mode_t old = wasmFS.getUmask();
+  wasmFS.setUmask(mask);
+  return old;
 }
 
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
