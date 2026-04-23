@@ -128,7 +128,12 @@ addToLibrary({
             var kind2 = classifyChar(str, j);
             if (kind2 != 2/*0-9*/ && kind2 != 3/*a-z*/) {
               var symbol = str.substring(i, j);
+#if MIN_FIREFOX_VERSION < 92
+              // Firefox only introduced Object.hasOwn() in Firefox 92.
+              if (defs.hasOwnProperty(symbol)) {
+#else
               if (Object.hasOwn(defs, symbol)) {
+#endif
                 var pp = defs[symbol], expanded;
                 if (typeof pp == 'function') { // definition is a function?
                   if (pp.length) { // Expanding a macro? (#define FOO(X) ...)
