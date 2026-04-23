@@ -31,6 +31,7 @@ VERSION = b'\x01\0\0\0'
 HEADER_SIZE = 8
 
 LIMITS_HAS_MAX = 0x1
+LIMITS_IS_64 = 0x4
 
 SEG_PASSIVE = 0x1
 
@@ -184,6 +185,7 @@ Global = namedtuple('Global', ['type', 'mutable', 'init'])
 Dylink = namedtuple('Dylink', ['mem_size', 'mem_align', 'table_size', 'table_align', 'needed', 'export_info', 'import_info', 'runtime_paths'])
 Table = namedtuple('Table', ['elem_type', 'limits'])
 FunctionBody = namedtuple('FunctionBody', ['offset', 'size'])
+Memory = namedtuple('Memory', ['limits'])
 DataSegment = namedtuple('DataSegment', ['flags', 'init', 'offset', 'size'])
 FuncType = namedtuple('FuncType', ['params', 'returns'])
 
@@ -469,6 +471,20 @@ class Module:
       functions.append(FunctionBody(start, body_size))
       self.seek(start + body_size)
     return functions
+
+  @memoize
+  def get_memories(self):
+    section = self.get_section(SecType.MEMORY)
+    if not section:
+      return []
+    memories = []
+    self.seek(section.offset)
+    num_memories = self.read_uleb()
+    for _ in range(num_memories):
+      limits = self.read_limits()
+      memories.append(Memory(limits))
+
+    return memories
 
   def get_section(self, section_code):
     return next((s for s in self.sections() if s.type == section_code), None)

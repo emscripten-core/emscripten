@@ -3521,8 +3521,7 @@ More info: https://emscripten.org
     self.cflags += [
       '-sJSPI',
       '-sEXPORTED_RUNTIME_METHODS=addFunction,dynCall',
-      '-sALLOW_TABLE_GROWTH=1',
-      '-Wno-experimental']
+      '-sALLOW_TABLE_GROWTH=1']
     self.do_runf('other/test_jspi_add_function.c', 'done')
 
   @requires_jspi
@@ -3546,10 +3545,7 @@ More info: https://emscripten.org
         console.log('done');
       };
     ''')
-    self.do_runf('main.c', 'done', cflags=['-sJSPI',
-                                           '--js-library=lib.js',
-                                           '-Wno-experimental',
-                                           '--post-js=post.js'])
+    self.do_runf('main.c', 'done', cflags=['-sJSPI', '--js-library=lib.js', '--post-js=post.js'])
 
   @requires_dev_dependency('typescript')
   @parameterized({
@@ -3727,7 +3723,7 @@ More info: https://emscripten.org
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
                       '--emit-tsd', 'test_emit_tsd.d.ts', '-sEXPORT_ES6',
                       '-sMODULARIZE', '-sEXPORTED_RUNTIME_METHODS=UTF8ArrayToString,wasmTable',
-                      '-Wno-experimental', '-o', 'test_emit_tsd.js'] +
+                      '-o', 'test_emit_tsd.js'] +
                      self.get_cflags())
     self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))
     # Test that the output compiles with a TS file that uses the definitions.
@@ -3755,7 +3751,7 @@ More info: https://emscripten.org
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
                       '--emit-tsd', 'test_emit_tsd.d.ts',
                       '-sEXPORTED_RUNTIME_METHODS=HEAP8,HEAPU8,HEAP16,HEAPU16,HEAP32,HEAPU32,HEAPF32,HEAPF64',
-                      '-Wno-experimental', '-o', 'test_emit_tsd.js'] +
+                      '-o', 'test_emit_tsd.js'] +
                      self.get_cflags())
     actual = read_file('test_emit_tsd.d.ts')
     self.assertContained("    let HEAP8: Int8Array;", actual)
@@ -14453,11 +14449,36 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
 
   @requires_wasm64
   def test_explicit_target(self):
-    self.do_runf('hello_world.c', cflags=['-target', 'wasm32'])
-    self.do_runf('hello_world.c', cflags=['-target', 'wasm64-unknown-emscripten', '-Wno-experimental'])
+    def is_64(path):
+      with webassembly.Module(path) as wasm:
+        m = wasm.get_memories()[0]
+        return m.limits.flags & webassembly.LIMITS_IS_64
+      assert False
 
-    self.do_runf('hello_world.c', cflags=['--target=wasm32'])
-    self.do_runf('hello_world.c', cflags=['--target=wasm64-unknown-emscripten', '-Wno-experimental'])
+    self.build('hello_world.c', cflags=['-target', 'wasm32'])
+    self.assertFalse(is_64('hello_world.wasm'))
+
+    self.build('hello_world.c', cflags=['-target', 'wasm64'])
+    self.assertTrue(is_64('hello_world.wasm'))
+
+    self.build('hello_world.c', cflags=['-target', 'wasm64-unknown-emscripten'])
+    self.assertTrue(is_64('hello_world.wasm'))
+
+    self.build('hello_world.c', cflags=['--target=wasm32'])
+    self.assertFalse(is_64('hello_world.wasm'))
+
+    self.build('hello_world.c', cflags=['--target=wasm64'])
+    self.assertTrue(is_64('hello_world.wasm'))
+
+    self.build('hello_world.c', cflags=['--target=wasm64-unknown-emscripten'])
+    self.assertTrue(is_64('hello_world.wasm'))
+
+    # Test -m32 and -m64 flags
+    self.build('hello_world.c', cflags=['-m64'])
+    self.assertTrue(is_64('hello_world.wasm'))
+
+    self.build('hello_world.c', cflags=['-m64', '-m32'])
+    self.assertFalse(is_64('hello_world.wasm'))
 
     self.assert_fail([EMCC, test_file('hello_world.c'), '-target', 'wasm32', '-sMEMORY64'], 'emcc: error: wasm32 target is not compatible with -sMEMORY64')
 

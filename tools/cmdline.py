@@ -587,6 +587,10 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.relocatable = True
     elif arg.startswith('-o'):
       options.output_file = arg.removeprefix('-o')
+    elif check_flag('-m64'):
+      settings.MEMORY64 = 1
+    elif check_flag('-m32'):
+      settings.MEMORY64 = 0
     elif check_arg('-target') or check_arg('--target'):
       options.target = consume_arg()
       if options.target not in {'wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'}:

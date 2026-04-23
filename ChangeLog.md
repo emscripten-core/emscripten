@@ -43,6 +43,8 @@ See docs/process.md for more on how version tagging works.
   a Wasm Worker.  This mode increases the memory used by each Wasm Worker by
   ~500 bytes (in the same way that declaring ~500 bytes of TLS data would).
   (#26757)
+- The `-m64` compiler flag is now honored, and works are an alias for
+  `-sMEMORY64` and/or `--target=wasm64`. (#26765)
 
 5.0.6 - 04/14/26
 ----------------
