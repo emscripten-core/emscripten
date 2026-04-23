@@ -1377,7 +1377,7 @@ addToLibrary({
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
     // Audio Worklets enabled, do a dynamic check for its presence.
-    if (globalThis.performance && performance.now) {
+    if (globalThis.performance?.now) {
 #if PTHREADS
       _emscripten_get_now = () => performance.timeOrigin + performance.now();
 #else
@@ -2616,8 +2616,6 @@ function wrapSyscallFunction(x, library, isWasi) {
   // instead of synchronously, and marked with
   //  __proxy: 'async'
   // (but essentially all syscalls do have return values).
-  if (library[x + '__proxy'] === undefined) {
-    library[x + '__proxy'] = 'sync';
-  }
+  library[x + '__proxy'] ??= 'sync';
 #endif
 }
