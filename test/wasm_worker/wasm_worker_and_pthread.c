@@ -23,12 +23,21 @@ EM_JS(int, am_i_wasm_worker, (), {
   return ENVIRONMENT_IS_WASM_WORKER;
 });
 
+void do_exit() {
+  emscripten_out("done");
+  emscripten_terminate_all_wasm_workers();
+  emscripten_force_exit(0);
+}
+
 void *thread_main(void *arg) {
   pthread_tid = gettid();
   pthread_ptr = __builtin_thread_pointer();
-  emscripten_outf("hello from pthread! (tid=%d) (ptr=%p)", pthread_tid, pthread_ptr);
+  emscripten_outf("thread_main: gettid=%d", pthread_tid);
+  emscripten_outf("thread_main: __builtin_thread_pointer=%p", pthread_ptr);
+  emscripten_outf("thread_main: pthread_self=%p", pthread_self());
   assert(pthread_tid && pthread_tid > main_tid);
   assert(pthread_ptr && pthread_ptr != main_ptr);
+  assert(pthread_self() != 0);
   assert(am_i_pthread());
   assert(!am_i_wasm_worker());
   assert(!emscripten_current_thread_is_wasm_worker());
@@ -39,23 +48,28 @@ void *thread_main(void *arg) {
 void worker_main() {
   worker_tid = gettid();
   worker_ptr = __builtin_thread_pointer();
-  emscripten_outf("hello from wasm worker! (tid=%d) (ptr=%p)", worker_tid, worker_ptr);
+  emscripten_outf("worker_main: gettid=%d", worker_tid);
+  emscripten_outf("worker_main: __builtin_thread_pointer=%p", worker_ptr);
+  emscripten_outf("worker_main: pthread_self=%p", pthread_self());
   assert(worker_tid && worker_tid > pthread_tid);
   assert(worker_ptr && worker_ptr != pthread_ptr);
+  // Currently pthead_self return NULL when called from a wasm worker.
+  // See https://github.com/emscripten-core/emscripten/issues/26631
+  assert(pthread_self() == 0);
   assert(!am_i_pthread());
   assert(am_i_wasm_worker());
   assert(emscripten_current_thread_is_wasm_worker());
   assert(emscripten_wasm_worker_self_id() != 0);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, do_exit);
 }
 
 int main() {
   main_tid = gettid();
   main_ptr = __builtin_thread_pointer();
-  emscripten_outf("in main (tid=%d) (ptr=%p)", main_tid, main_ptr);
+  emscripten_outf("main: gettid=%d", main_tid);
+  emscripten_outf("main: __builtin_thread_pointer=%p", main_ptr);
+  emscripten_outf("main: pthread_self=%p", pthread_self());
   assert(main_tid > 0);
   pthread_t thread;
   pthread_create(&thread, NULL, thread_main, NULL);

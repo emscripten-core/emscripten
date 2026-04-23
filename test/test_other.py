@@ -13583,6 +13583,10 @@ int main() {
     self.assert_fail([EMCC, test_file('wasm_worker/wasm_worker_pthread_api_usage.c'), '-sWASM_WORKERS'], 'undefined symbol: pthread_mutex_lock')
 
   @also_with_minimal_runtime
+  def test_wasm_worker_and_pthread(self):
+    self.do_runf('wasm_worker/wasm_worker_and_pthread.c', 'done\n', cflags=['-sWASM_WORKERS', '-pthread'])
+
+  @also_with_minimal_runtime
   def test_wasm_worker_cxx_init(self):
     self.do_run_in_out_file_test('wasm_worker/wasm_worker_cxx_init.cpp', cflags=['-sWASM_WORKERS'])
 
