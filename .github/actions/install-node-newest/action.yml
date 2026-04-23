@@ -1,0 +1,16 @@
+name: 'Install Node Newest'
+description: 'Installs Node v25.4.0'
+runs:
+  using: "composite"
+  steps:
+    - name: Download Node
+      run: |
+        cd $HOME
+        wget https://nodejs.org/dist/v25.4.0/node-v25.4.0-linux-x64.tar.xz
+        tar xf node-v25.4.0-linux-x64.tar.xz
+        echo "NODE_JS_TEST = [os.path.expanduser('~/node-v25.4.0-linux-x64/bin/node')]" >> $EMSDK/.emscripten
+        echo "JS_ENGINES = [NODE_JS_TEST]" >> $EMSDK/.emscripten
+        echo "if os.path.exists(V8_ENGINE[0]): JS_ENGINES.append(V8_ENGINE)" >> $EMSDK/.emscripten
+        cat $EMSDK/.emscripten
+        echo "/home/runner/node-v25.4.0-linux-x64/bin" >> $GITHUB_PATH
+      shell: bash
