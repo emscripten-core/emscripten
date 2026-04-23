@@ -9221,6 +9221,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_weak_ref(self):
     self.do_core_test('pthread/test_pthread_weak_ref.c')
 
+  @no_asan('asan exits the runtime')
+  @requires_pthreads
+  def test_pthread_exit_library(self):
+    # Test that Node.js doesn't exit while there are still pthreads running when there is no main function.
+    self.cflags += ['--pre-js', test_file('core/pthread/test_pthread_exit_library.pre.js')]
+    self.do_core_test('pthread/test_pthread_exit_library.c')
+
   @requires_pthreads
   def test_pthread_exit_main(self):
     self.do_core_test('pthread/test_pthread_exit_main.c')
