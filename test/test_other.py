@@ -345,6 +345,9 @@ class other(RunnerCore):
       os.close(master)
       os.close(slave)
 
+  def get_tsc_cmd(self):
+    return shared.get_npm_cmd('tsc') + ['--skipLibCheck']
+
   # Test that running `emcc -v` always works even in the presence of `EMCC_CFLAGS`.
   # This needs to work because many tools run `emcc -v` internally and it should
   # always work even if the user has `EMCC_CFLAGS` set.
@@ -3566,7 +3569,7 @@ More info: https://emscripten.org
       # also run the output JS file as a module in node.
       copy_asset('other/embind_tsgen_package.json', 'package.json')
 
-    cmd = shared.get_npm_cmd('tsc') + ['embind_tsgen.d.ts', 'main.ts', '--target', 'es2021'] + tsc_opts
+    cmd = self.get_tsc_cmd() + ['embind_tsgen.d.ts', 'main.ts', '--target', 'es2021'] + tsc_opts
     shared.check_call(cmd)
     actual = read_file('embind_tsgen.d.ts')
     self.assertFileContents(test_file('other/embind_tsgen_module.d.ts'), actual)
@@ -3727,7 +3730,7 @@ More info: https://emscripten.org
                      self.get_cflags())
     self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))
     # Test that the output compiles with a TS file that uses the definitions.
-    cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd.ts'), '--noEmit']
+    cmd = self.get_tsc_cmd() + [test_file('other/test_tsd.ts'), '--noEmit']
     shared.check_call(cmd)
 
   @requires_dev_dependency('typescript')
@@ -3739,7 +3742,7 @@ More info: https://emscripten.org
                      self.get_cflags())
     self.assertFileContents(test_file('other/test_emit_tsd_sync.d.ts'), read_file('test_emit_tsd_sync.d.ts'))
     # Test that the output compiles with a TS file that uses the definitions.
-    cmd = shared.get_npm_cmd('tsc') + [test_file('other/test_tsd_sync.ts'), '--noEmit']
+    cmd = self.get_tsc_cmd() + [test_file('other/test_tsd_sync.ts'), '--noEmit']
     shared.check_call(cmd)
 
   def test_emit_tsd_wasm_only(self):
