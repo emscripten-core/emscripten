@@ -294,6 +294,51 @@ jobs:
           name: test-results-other
           path: out/test-results.xml
 
+  linters:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Setup Python
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.10'
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '24.13.1'
+
+      - name: Install Python dependencies
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Run ruff
+        run: ruff check
+        shell: bash
+
+      - name: Run vulture
+        run: vulture . --min-confidence 100
+        shell: bash
+
+      - name: Run mypy
+        run: mypy
+        shell: bash
+
+      - name: Install Node dependencies
+        run: npm ci
+        shell: bash
+
+      - name: Run eslint (lint)
+        run: npm run lint
+        shell: bash
+
+      - name: Run eslint (check)
+        run: npm run check
+        shell: bash
+
+
 
 
 
