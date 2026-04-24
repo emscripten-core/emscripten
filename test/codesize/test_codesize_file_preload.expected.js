@@ -1470,7 +1470,7 @@ var FS = {
     if (!PATH.isAbs(path)) {
       path = FS.cwd() + "/" + path;
     }
-    // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
+    // limit max consecutive symlinks to SYMLOOP_MAX.
     linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
       // split the absolute path
       var parts = path.split("/").filter(p => !!p);

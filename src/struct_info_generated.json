@@ -414,6 +414,7 @@
         "SOCK_STREAM": 1,
         "SOL_SOCKET": 1,
         "SO_ERROR": 4,
+        "SYMLOOP_MAX": 40,
         "S_IALLUGO": 4095,
         "S_IFBLK": 24576,
         "S_IFCHR": 8192,

@@ -327,7 +327,8 @@
     {
         "file": "limits.h",
         "defines": [
-            "TZNAME_MAX"
+            "TZNAME_MAX",
+            "SYMLOOP_MAX"
         ]
     },
     {
