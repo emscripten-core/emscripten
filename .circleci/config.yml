@@ -772,6 +772,11 @@ jobs:
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype
             wasmfs.test_unistd_close_rawfs
+            wasmfs.test_exceptions_minimal_runtime
+            wasmfs.test_minimal_runtime_safe_heap
+            wasmfs.test_minimal_runtime_global_initializer
+            wasmfs.test_minimal_runtime_hello_world*
+            wasmfs.test_dlmalloc
             minimal0.test_utf
             minimal0.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_static_variable
