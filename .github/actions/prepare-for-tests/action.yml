@@ -3,6 +3,9 @@ description: 'Prepares the environment for running Emscripten tests'
 runs:
   using: "composite"
   steps:
+    - name: Install Basic Packages
+      uses: ./.github/actions/install-basic-packages
+
     - name: Install Emsdk
       uses: emscripten-core/setup-emsdk@v16
       with:
@@ -33,12 +36,6 @@ runs:
         test -f ~/vms/wasmtime && echo "WASMTIME = os.path.expanduser(os.path.join('~', 'vms', 'wasmtime')) ; WASM_ENGINES.append(WASMTIME)" >> $EMSDK/.emscripten || true
         test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> $EMSDK/.emscripten || true
         test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $($EMSDK/upstream/bin/clang -print-resource-dir) || true
-      shell: bash
-
-    - name: Install Linux dependencies
-      run: |
-        sudo apt-get update
-        sudo apt-get install -y ninja-build ccache
       shell: bash
 
     - name: Pip install

@@ -75,10 +75,13 @@ jobs:
           test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> $EMSDK/.emscripten || true
           test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $($EMSDK/upstream/bin/clang -print-resource-dir) || true
 
-      - name: Install Linux dependencies
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y ninja-build ccache
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Install ccache
+        run: sudo apt-get install -y ccache
+        shell: bash
+
 
       - name: Pip install
         run: python -m pip install -r requirements-dev.txt

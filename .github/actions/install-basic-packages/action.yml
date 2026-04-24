@@ -1,0 +1,10 @@
+name: 'Install Basic Packages'
+description: 'Installs xz and ninja-build'
+runs:
+  using: 'composite'
+  steps:
+    - name: Install packages
+      run: |
+        sudo apt-get update
+        sudo apt-get install -y xz-utils ninja-build
+      shell: bash
