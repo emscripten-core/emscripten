@@ -11,7 +11,7 @@ runs:
     - name: Install packages
       run: |
         sudo apt-get update
-        sudo apt-get install -y xz-utils ninja-build cmake wget
+        sudo apt-get install -y xz-utils build-essential ninja-build cmake wget
       shell: bash
 
 
