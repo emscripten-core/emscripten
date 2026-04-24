@@ -1552,7 +1552,7 @@ class libwasm_workers(MuslInternalLibrary, DebugLibrary):
     super().__init__(**kwargs)
 
   def get_cflags(self):
-    cflags = super().get_cflags() + ['-sWASM_WORKERS']
+    cflags = super().get_cflags() + ['-sWASM_WORKERS', '-Wno-c23-extensions']
     if self.is_mt:
       cflags += ['-pthread']
     if self.is_debug:

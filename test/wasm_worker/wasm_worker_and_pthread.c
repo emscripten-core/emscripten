@@ -84,6 +84,8 @@ void *thread_main(void *arg) {
   return 0;
 }
 
+#define WW_STACK_SIZE 2048
+
 void worker_main() {
   // Test self ID
   worker_tid = gettid();
@@ -129,6 +131,7 @@ void worker_main() {
   emscripten_outf("worker stack: stack_high=%#lx, stack_low=%#lx, size=%zu, local=%p", stack_high, stack_low, stack_size, &local_data);
   assert(stack_size > 0);
   assert(stack_addr != NULL);
+  assert(stack_size >= WW_STACK_SIZE);
   assert((intptr_t)&local_data <= stack_high);
   assert((intptr_t)&local_data >= stack_low);
 
@@ -153,6 +156,6 @@ int main() {
   pthread_create(&thread, NULL, thread_main, NULL);
   pthread_join(thread, NULL);
 
-  emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stack size: */2048);
+  emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(WW_STACK_SIZE);
   emscripten_wasm_worker_post_function_v(worker, worker_main);
 }

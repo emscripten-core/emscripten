@@ -70,38 +70,56 @@ static void init_file_lock(FILE *f) {
   if (f && f->lock<0) f->lock = 0;
 }
 
+static size_t max_alignment() {
+  return MAX(__builtin_wasm_tls_align(), STACK_ALIGN);
+}
+
 #ifdef __EMSCRIPTEN_PTHREADS__
-/* pthread_key_create.c overrides this */
+_Static_assert(STACK_ALIGN >= _Alignof(struct pthread));
+
+/*
+ * pthread_key_create.c overrides this, meaning we only allocate space for TSD
+ * if needed by the program.
+ */
 static volatile size_t dummy = 0;
 weak_alias(dummy, __pthread_tsd_size);
 
-#define TSD_ALIGN (sizeof(void*))
-
 /**
  * The layout of the wasm worker stack space in hybrid mode is as follow.
- * [ struct pthread ] [ pthread TSD slots ] [ TLS data ] [ ... stack ]
+ * [ struct pthread ] [ pthread TSD slots ] [ ... stack ] [ TLS data ]
  *
  * As opposed to the layout for regular Wasm Workers which is just:
- * [ TLS data ] [ ... stack ]
+ * [ ... stack ] [ TLS data ]
+ *
+ * In either case these sections are all aligned to `max_alignment()`
+ * which is the max alignment of any of the given chunks.
  */
 static void* init_pthread_struct(void *stackPlusTLSAddress, pid_t tid, size_t* stackPlusTLSSize) {
   // TODO: Remove duplication with pthread_create
-
   pthread_t self = pthread_self();
-  pthread_t new = (pthread_t)stackPlusTLSAddress;
 
   uintptr_t base = (uintptr_t)stackPlusTLSAddress;
   uintptr_t offset = base;
 
-  // 3. tsd slots
+  size_t alignment = max_alignment();
+  assert(base % alignment == 0);
+
+  // 1. struct pthread comes first
+  pthread_t new = (pthread_t)offset;
+  memset(new, 0, sizeof(struct pthread));
+  offset += ROUND_UP(sizeof(struct pthread), alignment);
+
+  // 2. tsd slots
   if (__pthread_tsd_size) {
-    offset = ROUND_UP(offset, TSD_ALIGN);
     new->tsd = (void*)offset;
-    offset += __pthread_tsd_size;
+    memset(new->tsd, 0, __pthread_tsd_size);
+    offset += ROUND_UP(__pthread_tsd_size, alignment);
   }
 
+  // 3. Remaining space is for TLS data + stack, which is handled by
+  //    the wasm worker startup code.
+
   // Calculate updated stack size
-  offset = ROUND_UP(offset, STACK_ALIGN);
   size_t new_stack_size = *stackPlusTLSSize - (offset - base);
   assert(new_stack_size % STACK_ALIGN == 0);
   assert(new_stack_size > 0);
@@ -192,11 +210,17 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress
 }
 
 emscripten_wasm_worker_t emscripten_malloc_wasm_worker(size_t stackSize) {
-  // Add the TLS size to the provided stackSize so that the allocation
-  // will always be large enough to hold the worker TLS data.
-  stackSize += ROUND_UP(__builtin_wasm_tls_size(), STACK_ALIGN);
-  void* stackPlusTLSAddress = emscripten_builtin_memalign(MAX(__builtin_wasm_tls_align(), STACK_ALIGN), stackSize);
-  return emscripten_create_wasm_worker(stackPlusTLSAddress, stackSize);
+  // Add the TLS size (and pthread metadata size) to the provided stackSize so
+  // that the allocation will always be large enough.
+  size_t alignment = max_alignment();
+  size_t totalSize = stackSize + ROUND_UP(__builtin_wasm_tls_size(), alignment);
+  #ifdef __EMSCRIPTEN_PTHREADS__
+  totalSize += ROUND_UP(sizeof(struct pthread), alignment);
+  totalSize += ROUND_UP(__pthread_tsd_size, alignment);
+  #endif
+
+  void* address = emscripten_builtin_memalign(alignment, totalSize);
+  return emscripten_create_wasm_worker(address, totalSize);
 }
 
 void emscripten_wasm_worker_sleep(int64_t nsecs) {
