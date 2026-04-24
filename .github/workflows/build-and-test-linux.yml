@@ -191,6 +191,9 @@ jobs:
     needs: build-linux
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Run browser chrome tests
         uses: ./.github/actions/run-tests-chrome
         with:
@@ -201,6 +204,9 @@ jobs:
     needs: build-linux
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Run browser64 tests
         uses: ./.github/actions/run-tests-chrome
         with:
@@ -212,6 +218,9 @@ jobs:
     needs: build-linux
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Run browser_2gb tests
         uses: ./.github/actions/run-tests-chrome
         with:
@@ -222,6 +231,9 @@ jobs:
     needs: build-linux
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Run browser64_4gb tests
         uses: ./.github/actions/run-tests-chrome
         with:
@@ -232,11 +244,15 @@ jobs:
     needs: build-linux
     runs-on: ubuntu-latest
     steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
       - name: Run sockets tests
         uses: ./.github/actions/run-tests-chrome
         with:
           title: 'sockets-chrome'
           test_targets: 'sockets'
+
 
 
 

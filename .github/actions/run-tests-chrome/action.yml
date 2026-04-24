@@ -14,9 +14,6 @@ inputs:
 runs:
   using: 'composite'
   steps:
-    - name: Checkout repo
-      uses: actions/checkout@v4
-
     - name: Prepare for tests
       uses: ./.github/actions/prepare-for-tests
 
