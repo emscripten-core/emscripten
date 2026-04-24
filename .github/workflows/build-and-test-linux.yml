@@ -29,6 +29,9 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v4
 
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
       - name: Get wasmer
         run: |
           wget https://github.com/wasmerio/wasmer/releases/download/v3.1.1/wasmer-linux-amd64.tar.gz
@@ -75,13 +78,9 @@ jobs:
           test -f ~/vms/wasmer && echo "WASMER = os.path.expanduser(os.path.join('~', 'vms', 'wasmer')) ; WASM_ENGINES.append(WASMER)" >> $EMSDK/.emscripten || true
           test -d ~/wasi-sdk && cp -a ~/wasi-sdk/lib/ $($EMSDK/upstream/bin/clang -print-resource-dir) || true
 
-      - name: Install Basic Packages
-        uses: ./.github/actions/install-basic-packages
-
       - name: Install ccache
         run: sudo apt-get install -y ccache
         shell: bash
-
 
       - name: Pip install
         run: python -m pip install -r requirements-dev.txt
