@@ -127,7 +127,7 @@ jobs:
 
   test-core0:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: emscripten-premerge-linux-runners
     env:
       EMCC_CORES: "4"
       EMTEST_SKIP_NODE_25: "1"
