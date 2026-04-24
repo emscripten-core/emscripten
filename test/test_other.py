@@ -346,6 +346,8 @@ class other(RunnerCore):
       os.close(slave)
 
   def run_tsc(self, args):
+    # We use skipLibCheck to prevent tsc from type checking the node_modules in the parent directory
+    # (e.g. in a single test mode).
     return self.run_process(shared.get_npm_cmd('tsc') + ['--skipLibCheck'] + args)
 
   # Test that running `emcc -v` always works even in the presence of `EMCC_CFLAGS`.
