@@ -298,15 +298,15 @@ jobs:
           path: out/test-results.xml
 
   linters:
-    runs-on: ubuntu-latest
+    runs-on: emscripten-premerge-linux-runners
     steps:
       - name: Checkout repo
         uses: actions/checkout@v4
 
-      - name: Setup Python
-        uses: actions/setup-python@v5
-        with:
-          python-version: '3.10'
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+
 
       - name: Setup Node.js
         uses: actions/setup-node@v4
