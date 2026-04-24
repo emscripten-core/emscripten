@@ -21,7 +21,11 @@ using Error = long;
 // The parent directory and the name of an entry within it. The returned string
 // view is either backed by the same memory as the view passed to `parseParent`
 // or is a view into a static string.
-using ParentChild = std::pair<std::shared_ptr<Directory>, std::string_view>;
+struct ParentChild {
+  std::shared_ptr<Directory> parent;
+  std::string_view child;
+  bool hasTrailingSlash;
+};
 
 // If the path refers to a link, whether we should follow that link. Links among
 // the parent directories in the path are always followed.
@@ -33,9 +37,13 @@ private:
 
 public:
   ParsedParent(Error err) : val(err) {}
-  ParsedParent(ParentChild pair) : val(pair) {}
+  ParsedParent(ParentChild pc) : val(pc) {}
+  ParsedParent(std::shared_ptr<Directory> parent,
+               std::string_view child,
+               bool hasTrailingSlash)
+    : val(ParentChild{parent, child, hasTrailingSlash}) {}
   // Always ok to call, returns 0 if there is no error.
-  long getError() {
+  long getError() const {
     if (auto* err = std::get_if<Error>(&val)) {
       assert(*err != 0 && "Unexpected zero error value");
       return *err;
@@ -43,7 +51,7 @@ public:
     return 0;
   }
   // Call only after checking for an error.
-  ParentChild& getParentChild() {
+  const ParentChild& getParentChild() const {
     auto* ptr = std::get_if<ParentChild>(&val);
     assert(ptr && "Unhandled path parsing error!");
     return *ptr;
