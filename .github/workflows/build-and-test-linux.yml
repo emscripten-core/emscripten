@@ -20,7 +20,7 @@ permissions:
 
 jobs:
   build-linux:
-    runs-on: ubuntu-latest
+    runs-on: emscripten-premerge-linux-runners
     env:
       EMCC_CORES: "4"
       EMCC_USE_NINJA: "1"
