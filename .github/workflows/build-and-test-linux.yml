@@ -190,44 +190,54 @@ jobs:
   test-browser-chrome:
     needs: build-linux
     runs-on: ubuntu-latest
-    env:
-      EMTEST_LACKS_WEBGPU: "1"
-      EMTEST_DETECT_TEMPFILE_LEAKS: "0"
-      EMTEST_HEADLESS: "1"
-      EMTEST_BROWSER: "/usr/bin/google-chrome"
-      EMTEST_CORES: "2"
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v4
-
-      - name: Prepare for tests
-        uses: ./.github/actions/prepare-for-tests
-
-      - name: Install Chrome
-        uses: ./.github/actions/install-chrome
-
       - name: Run browser chrome tests
-        run: |
-          export EM_FROZEN_CACHE=""
-          ./test/runner \
-            browser.test_gl_stride \
-            browser.test_memory_growth_during_startup \
-            browser.test_pthread_large_pthread_allocation \
-            browser.test_pthread_sbrk* \
-            browser.test_pthread_asan* \
-            browser.test_webgl_multi_draw* \
-            browser.test_pthread_growth* \
-            browser.test_4gb \
-            browser.test_emmalloc_3gb* \
-            browser.test_dlmalloc_3gb \
-            browser.test_2gb_fail \
-            browser.test_audio_worklet*
-        shell: bash
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
+        uses: ./.github/actions/run-tests-chrome
         with:
-          name: test-results-browser-chrome
-          path: out/test-results.xml
+          title: 'browser-chrome'
+          test_targets: 'browser.test_gl_stride browser.test_memory_growth_during_startup browser.test_pthread_large_pthread_allocation browser.test_pthread_sbrk* browser.test_pthread_asan* browser.test_webgl_multi_draw* browser.test_pthread_growth* browser.test_4gb browser.test_emmalloc_3gb* browser.test_dlmalloc_3gb browser.test_2gb_fail browser.test_audio_worklet*'
+
+  test-browser-chrome-wasm64:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run browser64 tests
+        uses: ./.github/actions/run-tests-chrome
+        with:
+          title: 'browser-chrome-wasm64'
+          test_targets: 'browser64.test_emscripten_animate_canvas_element_size* browser64.test_*malloc_*gb* browser64.test_emmalloc_memgrowth browser64.test_subdata_es2* browser64.test_webgl2_garbage_free_entrypoints* browser64.test_gl_stride browser64.test_webgl2_get_buffer_sub_data browser64.test_webgl2_pbo browser64.test_webgl2_sokol* browser64.test_memory_growth_during_startup browser64.test_pthread_large_pthread_allocation browser64.test_pthread_sbrk* browser64.test_pthread_asan* browser64.test_webgl_multi_draw* browser64.test_pthread_growth*'
+          visualize: 'true'
+
+  test-browser-chrome-2gb:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run browser_2gb tests
+        uses: ./.github/actions/run-tests-chrome
+        with:
+          title: 'browser-chrome-2gb'
+          test_targets: 'browser_2gb'
+
+  test-browser-chrome-wasm64-4gb:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run browser64_4gb tests
+        uses: ./.github/actions/run-tests-chrome
+        with:
+          title: 'browser-chrome-wasm64-4gb'
+          test_targets: 'browser64_4gb'
+
+  test-sockets-chrome:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Run sockets tests
+        uses: ./.github/actions/run-tests-chrome
+        with:
+          title: 'sockets-chrome'
+          test_targets: 'sockets'
+
+
+
 
