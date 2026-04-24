@@ -179,6 +179,8 @@ FS.staticInit();`;
         path = FS.cwd() + '/' + path;
       }
 
+      var hasTrailingSlash = path.endsWith('/');
+
       // limit max consecutive symlinks to SYMLOOP_MAX.
       linkloop: for (var nlinks = 0; nlinks < {{{ cDefs.SYMLOOP_MAX }}}; nlinks++) {
         // split the absolute path
@@ -196,10 +198,16 @@ FS.staticInit();`;
           }
 
           if (parts[i] === '.') {
+            if (!FS.isDir(current.mode)) {
+              throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
+            }
             continue;
           }
 
           if (parts[i] === '..') {
+            if (!FS.isDir(current.mode)) {
+              throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
+            }
             current_path = PATH.dirname(current_path);
             if (FS.isRoot(current)) {
               path = current_path + '/' + parts.slice(i + 1).join('/');
@@ -232,8 +240,9 @@ FS.staticInit();`;
           }
 
           // by default, lookupPath will not follow a symlink if it is the final path component.
-          // setting opts.follow = true will override this behavior.
-          if (FS.isLink(current.mode) && (!islast || opts.follow)) {
+          // setting opts.follow = true or having a trailing slash will override this behavior
+          // (POSIX requires that a trailing slash forces following of symbolic links).
+          if (FS.isLink(current.mode) && (!islast || opts.follow || hasTrailingSlash)) {
             if (!current.node_ops.readlink) {
               throw new FS.ErrnoError({{{ cDefs.ENOSYS }}});
             }
@@ -241,9 +250,15 @@ FS.staticInit();`;
             if (!PATH.isAbs(link)) {
               link = PATH.dirname(current_path) + '/' + link;
             }
-            path = link + '/' + parts.slice(i + 1).join('/');
+            var suffix = parts.slice(i + 1).join('/');
+            path = link + (suffix ? '/' + suffix : '');
             continue linkloop;
           }
+        }
+        // POSIX requires that a pathname with a trailing slash must refer to a
+        // directory.
+        if (hasTrailingSlash && !FS.isDir(current.mode)) {
+          throw new FS.ErrnoError({{{ cDefs.ENOTDIR }}});
         }
         return { path: current_path, node: current };
       }

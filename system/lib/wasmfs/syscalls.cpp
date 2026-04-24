@@ -433,7 +433,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
   if (auto err = parsed.getError()) {
     return err;
   }
-  auto& [parent, childName] = parsed.getParentChild();
+  auto& [parent, childName, hasTrailingSlash] = parsed.getParentChild();
   if (childName.size() > WASMFS_NAME_MAX) {
     return -ENAMETOOLONG;
   }
@@ -444,6 +444,15 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     child = lockedParent.getChild(std::string(childName));
     // The requested node was not found.
     if (!child) {
+      // POSIX requires that a pathname with a trailing slash must refer to a
+      // directory. If it doesn't exist, we can't create it as a directory
+      // here (open() can only create regular files).
+      if (hasTrailingSlash) {
+        if (flags & O_CREAT) {
+          return -EISDIR;
+        }
+        return -ENOENT;
+      }
       // If curr is the last element and the create flag is specified
       // If O_DIRECTORY is also specified, still create a regular file:
       // https://man7.org/linux/man-pages/man2/open.2.html#BUGS
@@ -534,8 +543,9 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
     return -EACCES;
   }
 
-  // Fail if O_DIRECTORY is specified and pathname is not a directory
-  if (flags & O_DIRECTORY && !child->is<Directory>()) {
+  // Fail if O_DIRECTORY (or a trailing slash is specified) and pathname is not
+  // a directory.
+  if ((hasTrailingSlash || (flags & O_DIRECTORY)) && !child->is<Directory>()) {
     return -ENOTDIR;
   }
 
@@ -602,7 +612,7 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   if (auto err = parsed.getError()) {
     return err;
   }
-  auto& [parent, childNameView] = parsed.getParentChild();
+  auto& [parent, childNameView, hasTrailingSlash] = parsed.getParentChild();
   std::string childName(childNameView);
   auto lockedParent = parent->locked();
 
@@ -611,7 +621,11 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   }
 
   // Check if the requested directory already exists.
-  if (lockedParent.getChild(childName)) {
+  auto child = lockedParent.getChild(childName);
+  if (child) {
+    if (hasTrailingSlash && !child->is<Directory>()) {
+      return -ENOTDIR;
+    }
     return -EEXIST;
   }
 
@@ -831,13 +845,18 @@ int __syscall_unlinkat(int dirfd, intptr_t path, int flags) {
   if (auto err = parsed.getError()) {
     return err;
   }
-  auto& [parent, childNameView] = parsed.getParentChild();
+  auto& [parent, childNameView, hasTrailingSlash] = parsed.getParentChild();
   std::string childName(childNameView);
   auto lockedParent = parent->locked();
   auto file = lockedParent.getChild(childName);
   if (!file) {
     return -ENOENT;
   }
+
+  if (hasTrailingSlash && !file->is<Directory>()) {
+    return -ENOTDIR;
+  }
+
   // Disallow removing the root directory, even if it is empty.
   if (file == wasmFS.getRootDirectory()) {
     return -EBUSY;
@@ -879,13 +898,18 @@ int wasmfs_unmount(const char* path) {
   if (auto err = parsed.getError()) {
     return err;
   }
-  auto& [parent, childNameView] = parsed.getParentChild();
+  auto& [parent, childNameView, hasTrailingSlash] = parsed.getParentChild();
   std::string childName(childNameView);
   auto lockedParent = parent->locked();
   auto file = lockedParent.getChild(childName);
   if (!file) {
     return -ENOENT;
   }
+
+  if (hasTrailingSlash && !file->is<Directory>()) {
+    return -ENOTDIR;
+  }
+
   // Disallow removing the root directory, even if it is empty.
   if (file == wasmFS.getRootDirectory()) {
     return -EBUSY;
@@ -993,7 +1017,8 @@ int __syscall_renameat(int olddirfd,
   if (auto err = parsedOld.getError()) {
     return err;
   }
-  auto& [oldParent, oldFileNameView] = parsedOld.getParentChild();
+  auto& [oldParent, oldFileNameView, oldHasTrailingSlash] =
+    parsedOld.getParentChild();
   std::string oldFileName(oldFileNameView);
 
   // Get the new directory.
@@ -1001,7 +1026,8 @@ int __syscall_renameat(int olddirfd,
   if (auto err = parsedNew.getError()) {
     return err;
   }
-  auto& [newParent, newFileNameView] = parsedNew.getParentChild();
+  auto& [newParent, newFileNameView, newHasTrailingSlash] =
+    parsedNew.getParentChild();
   std::string newFileName(newFileNameView);
 
   if (newFileNameView.size() > WASMFS_NAME_MAX) {
@@ -1018,6 +1044,14 @@ int __syscall_renameat(int olddirfd,
 
   if (!oldFile) {
     return -ENOENT;
+  }
+
+  if (oldHasTrailingSlash && !oldFile->is<Directory>()) {
+    return -ENOTDIR;
+  }
+
+  if (newHasTrailingSlash && newFile && !newFile->is<Directory>()) {
+    return -ENOTDIR;
   }
 
   // If the source and destination are the same, do nothing.
@@ -1083,10 +1117,15 @@ int __syscall_symlinkat(intptr_t target, int newdirfd, intptr_t linkpath) {
   if (auto err = parsed.getError()) {
     return err;
   }
-  auto& [parent, childNameView] = parsed.getParentChild();
+  auto& [parent, childNameView, hasTrailingSlash] = parsed.getParentChild();
   if (childNameView.size() > WASMFS_NAME_MAX) {
     return -ENAMETOOLONG;
   }
+
+  if (hasTrailingSlash) {
+    return -ENOENT;
+  }
+
   auto lockedParent = parent->locked();
   std::string childName(childNameView);
   if (lockedParent.getChild(childName)) {
