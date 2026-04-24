@@ -345,8 +345,8 @@ class other(RunnerCore):
       os.close(master)
       os.close(slave)
 
-  def get_tsc_cmd(self):
-    return shared.get_npm_cmd('tsc') + ['--skipLibCheck']
+  def run_tsc(self, args):
+    return self.run_process(shared.get_npm_cmd('tsc') + ['--skipLibCheck'] + args)
 
   # Test that running `emcc -v` always works even in the presence of `EMCC_CFLAGS`.
   # This needs to work because many tools run `emcc -v` internally and it should
@@ -3569,8 +3569,7 @@ More info: https://emscripten.org
       # also run the output JS file as a module in node.
       copy_asset('other/embind_tsgen_package.json', 'package.json')
 
-    cmd = self.get_tsc_cmd() + ['embind_tsgen.d.ts', 'main.ts', '--target', 'es2021'] + tsc_opts
-    shared.check_call(cmd)
+    self.run_tsc(['embind_tsgen.d.ts', 'main.ts', '--target', 'es2021'] + tsc_opts)
     actual = read_file('embind_tsgen.d.ts')
     self.assertFileContents(test_file('other/embind_tsgen_module.d.ts'), actual)
     self.assertContained('main ran\nts ran', self.run_js('main.js'))
@@ -3730,8 +3729,7 @@ More info: https://emscripten.org
                      self.get_cflags())
     self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))
     # Test that the output compiles with a TS file that uses the definitions.
-    cmd = self.get_tsc_cmd() + [test_file('other/test_tsd.ts'), '--noEmit']
-    shared.check_call(cmd)
+    self.run_tsc([test_file('other/test_tsd.ts'), '--noEmit'])
 
   @requires_dev_dependency('typescript')
   def test_emit_tsd_sync_compilation(self):
@@ -3742,8 +3740,7 @@ More info: https://emscripten.org
                      self.get_cflags())
     self.assertFileContents(test_file('other/test_emit_tsd_sync.d.ts'), read_file('test_emit_tsd_sync.d.ts'))
     # Test that the output compiles with a TS file that uses the definitions.
-    cmd = self.get_tsc_cmd() + [test_file('other/test_tsd_sync.ts'), '--noEmit']
-    shared.check_call(cmd)
+    self.run_tsc([test_file('other/test_tsd_sync.ts'), '--noEmit'])
 
   def test_emit_tsd_wasm_only(self):
     expected = 'Wasm only output is not compatible with --emit-tsd'
