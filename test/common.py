@@ -596,7 +596,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     # Support for JSPI came earlier than 22, but the new API changes require v24
     if self.try_require_node_version(24):
-      self.node_args += ['--experimental-wasm-stack-switching']
+      # Node v26 no longer has the experimental cmdline parameter.
+      if not self.try_require_node_version(26):
+        self.node_args += ['--experimental-wasm-stack-switching']
       return
 
     v8 = get_v8()
