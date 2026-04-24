@@ -253,6 +253,48 @@ jobs:
           title: 'sockets-chrome'
           test_targets: 'sockets'
 
+  test-other:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    env:
+      EMCC_CORES: "4"
+      EMTEST_SKIP_NODE_25: "1"
+      EMTEST_SKIP_RUST: "1"
+      EMTEST_SKIP_WASM64: "1"
+      EMTEST_SKIP_NEW_CMAKE: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v4
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Install Scons
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y scons
+        shell: bash
+
+      - name: Setup Rust target
+        run: rustup target add wasm32-unknown-emscripten
+        shell: bash
+
+      - name: Run other and jslib tests
+        run: ./test/runner other jslib skip:other.test_native_link_error_message
+        shell: bash
+
+      - name: Run primes benchmark
+        run: ./test/runner benchmark.test_primes
+        shell: bash
+
+      - name: Upload test results
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: test-results-other
+          path: out/test-results.xml
+
+
 
 
 
