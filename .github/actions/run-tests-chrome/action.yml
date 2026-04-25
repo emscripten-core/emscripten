@@ -20,22 +20,25 @@ runs:
     - name: Install Chrome
       uses: ./.github/actions/install-chrome
 
-    - name: Run browser tests
+    - name: Set environment variables
       run: |
-        export EMTEST_DETECT_TEMPFILE_LEAKS="0"
-        export EMTEST_HEADLESS="1"
-        export EMTEST_BROWSER="/usr/bin/google-chrome"
-        export EMTEST_CORES="2"
-        export EM_FROZEN_CACHE=""
-        export EMTEST_LACKS_WEBGPU="1"
-        export EMTEST_LACKS_SOUND_HARDWARE="1"
+        echo "EMTEST_DETECT_TEMPFILE_LEAKS=0" >> $GITHUB_ENV
+        echo "EMTEST_HEADLESS=1" >> $GITHUB_ENV
+        echo "EMTEST_BROWSER=/usr/bin/google-chrome" >> $GITHUB_ENV
+        echo "EMTEST_CORES=2" >> $GITHUB_ENV
+        echo "EM_FROZEN_CACHE=" >> $GITHUB_ENV
+        echo "EMTEST_LACKS_WEBGPU=1" >> $GITHUB_ENV
+        echo "EMTEST_LACKS_SOUND_HARDWARE=1" >> $GITHUB_ENV
 
         if [ "${{ inputs.visualize }}" = "true" ]; then
-          export EMTEST_VISUALIZE="1"
+          echo "EMTEST_VISUALIZE=1" >> $GITHUB_ENV
         fi
-
-        ./test/runner ${{ inputs.test_targets }}
       shell: bash
+
+    - name: Run browser tests
+      run: ./test/runner ${{ inputs.test_targets }}
+      shell: bash
+
 
     - name: Check profile
       if: inputs.visualize == 'true'
