@@ -2226,8 +2226,6 @@ void *getBindBuffer() {
   def test_gl_subdata(self, args):
     if '-sMIN_WEBGL_VERSION=2' in args and webgl2_disabled():
       self.skipTest('This test requires WebGL2 to be available')
-    if self.is_4gb() and '-sMIN_WEBGL_VERSION=2' in args:
-      self.skipTest('texSubImage2D fails: https://crbug.com/325090165')
     self.reftest('test_gl_subdata.c', 'test_gl_float_tex.png', cflags=['-lGL', '-lglut'] + args)
 
   @requires_graphics_hardware
@@ -2660,7 +2658,6 @@ Module["preRun"] = () => {
 
   # Tests the WebGL 2 glGetBufferSubData() functionality.
   @requires_webgl2
-  @no_4gb('getBufferSubData fails: https://crbug.com/325090165')
   def test_webgl2_get_buffer_sub_data(self):
     self.btest_exit('webgl2_get_buffer_sub_data.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
@@ -2710,8 +2707,6 @@ Module["preRun"] = () => {
   def test_webgl2_garbage_free_entrypoints(self, args):
     if '-DTEST_WEBGL2=1' in args and webgl2_disabled():
       self.skipTest('This test requires WebGL2 to be available')
-    if args and self.is_4gb():
-      self.skipTest('readPixels fails: https://crbug.com/324992397')
     self.btest_exit('webgl2_garbage_free_entrypoints.c', cflags=args)
 
   @requires_webgl2
@@ -2760,7 +2755,6 @@ Module["preRun"] = () => {
     self.btest_exit('webgl2_draw_packed_triangle.c', cflags=['-lGL', '-sMAX_WEBGL_VERSION=2', '-sGL_ASSERTIONS'])
 
   @requires_graphics_hardware
-  @no_4gb('compressedTexSubImage2D fails: https://crbug.com/324562920')
   def test_webgl2_pbo(self):
     self.btest_exit('webgl2_pbo.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
@@ -4229,8 +4223,6 @@ Module["preRun"] = () => {
   # For testing WebGL draft extensions like this, if using chrome as the browser,
   # We might want to append the --enable-webgl-draft-extensions to the EMTEST_BROWSER env arg.
   @requires_graphics_hardware
-  @no_2gb('https://crbug.com/324562920')
-  @no_4gb('https://crbug.com/324562920')
   @parameterized({
     'arrays': (['-DMULTI_DRAW_ARRAYS'],),
     'arrays_instanced': (['-DMULTI_DRAW_ARRAYS_INSTANCED'],),
