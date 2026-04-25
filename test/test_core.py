@@ -6768,6 +6768,7 @@ void* operator new(size_t size) {
     self.do_runf('third_party/libiberty/cp-demangle.c', '*d_demangle(char const*, int, unsigned int*)*', args=['_ZL10d_demanglePKciPj'])
 
   @no_asan('issues with freetype itself')
+  @no_strict('autoconfiguring is not compatible with STRICT')
   @needs_make('configure script')
   @is_slow_test
   def test_freetype(self):
@@ -6853,8 +6854,11 @@ void* operator new(size_t size) {
   })
   # Called thus so it runs late in the alphabetical cycle... it is long
   def test_bullet(self, use_cmake):
-    if WINDOWS and not use_cmake:
-      self.skipTest("Windows cannot run configure sh scripts")
+    if not use_cmake:
+      if WINDOWS:
+        self.skipTest('Windows cannot run configure sh scripts')
+      if self.get_setting('STRICT'):
+        self.skipTest('autoconfiguring is not compatible with STRICT')
 
     self.cflags += [
       '-Wno-c++11-narrowing',
