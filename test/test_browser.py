@@ -2659,6 +2659,8 @@ Module["preRun"] = () => {
   # Tests the WebGL 2 glGetBufferSubData() functionality.
   @requires_webgl2
   def test_webgl2_get_buffer_sub_data(self):
+    if is_chrome() and self.is_4gb():
+      self.skipTest('texSubImage2D fails: https://crbug.com/325090165')
     self.btest_exit('webgl2_get_buffer_sub_data.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @requires_graphics_hardware
@@ -2756,6 +2758,8 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   def test_webgl2_pbo(self):
+    if is_chrome() and self.is_4gb():
+      self.skipTest('compressedTexSubImage2D fails: https://crbug.com/324562920')
     self.btest_exit('webgl2_pbo.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'])
 
   @no_firefox('fails on CI likely due to GPU drivers there')
@@ -4230,6 +4234,9 @@ Module["preRun"] = () => {
     'elements_instanced': (['-DMULTI_DRAW_ELEMENTS_INSTANCED'],),
   })
   def test_webgl_multi_draw(self, args):
+    if is_chrome() and (self.is_2gb() or self.is_4gb()):
+      self.skipTest('https://crbug.com/324562920')
+
     self.reftest('webgl_multi_draw_test.c', 'webgl_multi_draw.png',
                  cflags=['-lGL', '-sOFFSCREEN_FRAMEBUFFER', '-DEXPLICIT_SWAP'] + args)
 
