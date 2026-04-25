@@ -345,7 +345,8 @@ class SettingsManager:
       # When not running in strict mode we also externalize all legacy settings
       # (Since the external tools do process LEGACY_SETTINGS themselves)
       for key in self.legacy_settings:
-        external_settings[key] = self.attrs[key]
+        if key in self.attrs:
+          external_settings[key] = self.attrs[key]
     return external_settings
 
   def keys(self):

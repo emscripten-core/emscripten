@@ -828,8 +828,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # Add `#!` line to output JS and make it executable.
     settings.EXECUTABLE = config.NODE_JS[0]
     # autoconf declares functions without their proper signatures, and STRICT causes that to trip up by passing --fatal-warnings to the linker.
-    if settings.STRICT:
-      exit_with_error('autoconfiguring is not compatible with STRICT')
+    settings.STRICT = 0
 
   if settings.OPT_LEVEL >= 1:
     default_setting('ASSERTIONS', 0)
