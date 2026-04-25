@@ -27,7 +27,7 @@ jobs:
       EM_COMPILER_WRAPPER: "ccache"
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Install Basic Packages
         uses: ./.github/actions/install-basic-packages
@@ -112,7 +112,7 @@ jobs:
       EMCC_CORES: "4"
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Prepare for tests
         uses: ./.github/actions/prepare-for-tests
@@ -135,7 +135,7 @@ jobs:
       EMTEST_SKIP_NODE_25: "1"
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Prepare for tests
         uses: ./.github/actions/prepare-for-tests
@@ -157,7 +157,7 @@ jobs:
       EMCC_CORES: 4
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Prepare for tests
         uses: ./.github/actions/prepare-for-tests
@@ -194,7 +194,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Run browser chrome tests
         uses: ./.github/actions/run-tests-chrome
@@ -207,7 +207,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Run browser64 tests
         uses: ./.github/actions/run-tests-chrome
@@ -221,7 +221,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Run browser_2gb tests
         uses: ./.github/actions/run-tests-chrome
@@ -234,7 +234,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Run browser64_4gb tests
         uses: ./.github/actions/run-tests-chrome
@@ -247,7 +247,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Run sockets tests
         uses: ./.github/actions/run-tests-chrome
@@ -266,7 +266,7 @@ jobs:
       EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Prepare for tests
         uses: ./.github/actions/prepare-for-tests
@@ -300,7 +300,7 @@ jobs:
     runs-on: emscripten-premerge-linux-runners
     steps:
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@v6.0.2
 
       - name: Install Basic Packages
         uses: ./.github/actions/install-basic-packages
@@ -308,7 +308,7 @@ jobs:
 
 
       - name: Setup Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v6.3.0
         with:
           node-version: '24.13.1'
 
