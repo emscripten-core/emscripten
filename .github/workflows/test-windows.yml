@@ -13,7 +13,7 @@ permissions:
 
 jobs:
   test-windows:
-    runs-on: emscripten-premerge-windows-runners
+    runs-on: windows-2022
     defaults:
       run:
         working-directory: 'path with spaces ()'
