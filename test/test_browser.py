@@ -74,7 +74,7 @@ from tools import ports, shared, utils
 from tools.feature_matrix import Feature
 from tools.link import binary_encode
 from tools.shared import EMCC, FILE_PACKAGER, PIPE
-from tools.utils import WINDOWS, delete_dir, write_binary, write_file
+from tools.utils import MACOS, WINDOWS, delete_dir, write_binary, write_file
 
 
 def make_test_chunked_synchronous_xhr_server(support_byte_ranges, data, port):
@@ -1975,6 +1975,8 @@ window.close = () => {
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_regal(self):
+    if MACOS and is_firefox():
+      self.skipTest('This test is known to fail on Firefox on MacOS. https://bugzilla.mozilla.org/show_bug.cgi?id=2034971')
     self.reftest('third_party/cubegeom/cubegeom_pre.c', cflags=['-sUSE_REGAL', '-DUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'])
 
   @requires_graphics_hardware
@@ -2083,6 +2085,8 @@ void *getBindBuffer() {
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao_regal(self):
+    if MACOS and is_firefox():
+      self.skipTest('This test is known to fail on Firefox on MacOS. https://bugzilla.mozilla.org/show_bug.cgi?id=2034971')
     self.reftest('third_party/cubegeom/cubegeom_pre_vao.c', cflags=['-sUSE_REGAL', '-DUSE_REGAL', '-lGL', '-lSDL', '-lc++', '-lc++abi'])
 
   @requires_graphics_hardware
@@ -2097,11 +2101,15 @@ void *getBindBuffer() {
   @requires_graphics_hardware
   @no_swiftshader
   def test_cubegeom_pre_vao_es(self):
+    if MACOS and is_firefox():
+      self.skipTest('This test is known to fail on Firefox on MacOS. https://bugzilla.mozilla.org/show_bug.cgi?id=2034971')
     self.reftest('third_party/cubegeom/cubegeom_pre_vao_es.c', 'third_party/cubegeom/cubegeom_pre_vao.png', cflags=['-sFULL_ES2', '-lGL', '-lSDL'])
 
   @requires_webgl2
   @no_swiftshader
   def test_cubegeom_row_length(self):
+    if MACOS and is_firefox():
+      self.skipTest('This test is known to fail on Firefox on MacOS. https://bugzilla.mozilla.org/show_bug.cgi?id=2034971')
     self.reftest('third_party/cubegeom/cubegeom_pre_vao_es.c', 'third_party/cubegeom/cubegeom_pre_vao.png', cflags=['-sFULL_ES2', '-lGL', '-lSDL', '-DUSE_UNPACK_ROW_LENGTH', '-sMIN_WEBGL_VERSION=2'])
 
   @requires_graphics_hardware
