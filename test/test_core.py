@@ -8501,8 +8501,8 @@ Module.onRuntimeInitialized = () => {
   @requires_jspi
   def test_pthread_join_and_asyncify(self):
     # TODO Test with ASYNCIFY=1 https://github.com/emscripten-core/emscripten/issues/17552
-    self.do_runf('core/test_pthread_join_and_asyncify.c', 'joining thread!\njoined thread!',
-                 cflags=['-sJSPI', '-sEXIT_RUNTIME', '-pthread', '-sPROXY_TO_PTHREAD'])
+    self.do_runf('core/test_pthread_join_and_asyncify.c', 'join returned -> 42\n',
+                 cflags=['-sJSPI', '-sEXIT_RUNTIME=1', '-pthread', '-sPROXY_TO_PTHREAD'])
 
   # Test basic wasm2js functionality in all core compilation modes.
   @no_sanitize('no wasm2js support yet in sanitizers')
