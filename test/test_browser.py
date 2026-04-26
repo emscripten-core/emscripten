@@ -5766,8 +5766,14 @@ class emrun(RunnerCore):
     # delete it. Therefore switch away from that directory before launching.
     os.chdir(path_from_root())
 
+    # emrun tests may run in parallel processes, so each test case should use a unique port number
+    # to avoid port address already in use errors.
+    port = '6939'
+    if '-pthread' in self.cflags:
+      port = '6940'
+
     args_base = [EMRUN, '--timeout', '30', '--safe_firefox_profile',
-                 '--kill-exit', '--port', '6939', '--verbose',
+                 '--kill-exit', '--port', port, '--verbose',
                  '--log-stdout', self.in_dir('stdout.txt'),
                  '--log-stderr', self.in_dir('stderr.txt')]
 
@@ -5792,9 +5798,9 @@ class emrun(RunnerCore):
     for args in [
         [],
         ['--port', '0'],
-        ['--private_browsing', '--port', '6941'],
-        ['--dump_out_directory', 'other dir/multiple', '--port', '6942'],
-        ['--dump_out_directory=foo_bar', '--port', '6942'],
+        ['--private_browsing'],
+        ['--dump_out_directory', 'other dir/multiple'],
+        ['--dump_out_directory=foo_bar'],
     ]:
       args = args_base + args + [self.in_dir('test_emrun.html'), '--', '1', '2', '--3', 'escaped space', 'with_underscore']
       print(shlex.join(args))
