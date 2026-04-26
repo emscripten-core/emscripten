@@ -190,8 +190,8 @@ jobs:
           path: out/test-results.xml
 
   test-browser-chrome:
-    needs: emscripten-premerge-linux-runners
-    runs-on: ubuntu-latest
+    needs: build-linux
+    runs-on: emscripten-premerge-linux-runners
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
