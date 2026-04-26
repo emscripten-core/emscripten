@@ -3307,7 +3307,7 @@ More info: https://emscripten.org
           function("sleep", &emscripten_sleep);
       }
     ''')
-    self.do_runf('main.cpp', 'done', cflags=['-lembind', '-sASYNCIFY', '--post-js', 'post.js'])
+    self.do_runf('main.cpp', 'done\n', cflags=['-lembind', '-sASYNCIFY', '--post-js', 'post.js'])
 
   @also_with_wasm64
   @parameterized({
@@ -3317,7 +3317,7 @@ More info: https://emscripten.org
   })
   @requires_jspi
   def test_embind_jspi(self, args):
-    self.do_runf('embind/embind_jspi_test.cpp', 'done', cflags=['-lembind', '-g'] + args)
+    self.do_runf('embind/embind_jspi_test.cpp', 'done\n', cflags=['-lembind', '-g'] + args)
 
   def test_embind_no_function(self):
     create_file('post.js', '''
@@ -3518,7 +3518,7 @@ More info: https://emscripten.org
     'deprecated': [['-Wno-deprecated', '-sASYNCIFY_EXPORTS=async*']],
   })
   def test_jspi_wildcard(self, args):
-    self.do_runf('other/test_jspi_wildcard.c', 'done', cflags=args)
+    self.do_runf('other/test_jspi_wildcard.c', 'done\n', cflags=args)
 
   @requires_jspi
   def test_jspi_add_function(self):
@@ -3527,7 +3527,7 @@ More info: https://emscripten.org
       '-sJSPI',
       '-sEXPORTED_RUNTIME_METHODS=addFunction,dynCall',
       '-sALLOW_TABLE_GROWTH=1']
-    self.do_runf('other/test_jspi_add_function.c', 'done')
+    self.do_runf('other/test_jspi_add_function.c', 'done\n')
 
   @requires_jspi
   def test_jspi_async_function(self):
@@ -3550,7 +3550,7 @@ More info: https://emscripten.org
         console.log('done');
       };
     ''')
-    self.do_runf('main.c', 'done', cflags=['-sJSPI', '--js-library=lib.js', '--post-js=post.js'])
+    self.do_runf('main.c', 'done\n', cflags=['-sJSPI', '--js-library=lib.js', '--post-js=post.js'])
 
   @requires_dev_dependency('typescript')
   @parameterized({
@@ -3720,7 +3720,7 @@ More info: https://emscripten.org
   def test_embind_jsgen_method_pointer_stability(self):
     # Test that when method pointers are allocated at different addresses that
     # AOT JS generation still works correctly.
-    self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done', cflags=['-lembind', '-sEMBIND_AOT'])
+    self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done\n', cflags=['-lembind', '-sEMBIND_AOT'])
 
   @requires_dev_dependency('typescript')
   def test_emit_tsd(self):
@@ -4273,10 +4273,10 @@ void wakaw::Cm::RasterBase<wakaw::watwat::Polocator>::merbine1<wakaw::Cm::Raster
         out('done');
       };
     ''')
-    self.do_runf('hello_world.c', 'done', cflags=['--pre-js=pre.js', '-sEXPORTED_RUNTIME_METHODS=ptrToString'])
+    self.do_runf('hello_world.c', 'done\n', cflags=['--pre-js=pre.js', '-sEXPORTED_RUNTIME_METHODS=ptrToString'])
 
     # Same again but using EXPORTED_FUNCTIONS instead.
-    self.do_runf('hello_world.c', 'done', cflags=['--pre-js=pre.js', '-sEXPORTED_FUNCTIONS=ptrToString,_main'])
+    self.do_runf('hello_world.c', 'done\n', cflags=['--pre-js=pre.js', '-sEXPORTED_FUNCTIONS=ptrToString,_main'])
 
     # Check that when ptrToString is not exported we get a reasonable error message
     err = self.do_runf('hello_world.c', assert_returncode=NON_ZERO, cflags=['--pre-js=pre.js'])
@@ -5542,14 +5542,14 @@ __EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALI
     'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_fsync(self, args):
-    self.do_runf('fs/test_memfs_fsync.c', 'success', cflags=args)
+    self.do_runf('fs/test_memfs_fsync.c', 'done\n', cflags=args)
 
   @with_all_fs
   @crossplatform
   def test_fs_dev_random(self):
     if WINDOWS and self.get_setting('NODERAWFS'):
       self.skipTest('Crashes on Windows and NodeFS')
-    self.do_runf('fs/test_fs_dev_random.c', 'success')
+    self.do_runf('fs/test_fs_dev_random.c', 'done\n')
 
   @parameterized({
     'none': [{'EMCC_FORCE_STDLIBS': None}, False],
@@ -6506,8 +6506,7 @@ int main() {
 }
 ''')
 
-    self.run_process([EMCC, '-O1', 'test.c', '-sALLOW_MEMORY_GROWTH'])
-    self.assertContained('done', self.run_js('a.out.js'))
+    self.do_runf('test.c', 'done\n', cflags=['-O1', '-sALLOW_MEMORY_GROWTH'])
 
   @requires_wasm64
   @requires_node_25
@@ -6917,10 +6916,10 @@ int main() {
       }''')
     self.run_process([EMCC, '-g', '-o', 'libside.wasm', 'side.c', '-sSIDE_MODULE'])
     self.run_process([EMCC, '-g', '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS'])
-    self.assertContained('done', self.run_js('a.out.js'))
+    self.assertContained('done\n', self.run_js('a.out.js'))
     # Repeat the test without NO_AUTOLOAD_DYLIBS
     self.run_process([EMCC, '-g', '-sMAIN_MODULE=2', 'main.c', 'libside.wasm'])
-    self.assertContained('done', self.run_js('a.out.js'))
+    self.assertContained('done\n', self.run_js('a.out.js'))
 
   def test_dlopen_rtld_global(self):
     # This test checks RTLD_GLOBAL where a module is loaded
@@ -7294,7 +7293,7 @@ int main() {
   @crossplatform
   @also_with_wasmfs
   def test_umask(self):
-    self.do_runf('other/test_umask.c', 'success')
+    self.do_runf('other/test_umask.c', 'done\n')
 
   def test_no_missing_symbols(self):
     # simple hello world should not show any missing symbols
@@ -8299,12 +8298,7 @@ int main() {
 
     # build main module
     args = ['-g', '-sEXPORTED_FUNCTIONS=_main,_foo', '-sMAIN_MODULE=2', '-sNODERAWFS']
-    cmd = [EMCC, test_file('other/alias/main.c'), '-o', 'main.js'] + args
-    print(' '.join(cmd))
-    self.run_process(cmd)
-
-    # run the program
-    self.assertContained('success', self.run_js('main.js'))
+    self.do_runf('other/alias/main.c', 'done\n', cflags=args)
 
   def test_sysconf_phys_pages(self):
     def run(args, expected):
@@ -10573,9 +10567,9 @@ ok.
         printf("got (expected) socket: %s (%s), size %lu (%lu)\n", buffer, correct, strlen(buffer), strlen(correct));
         assert(strlen(buffer) == strlen(correct));
         assert(strcmp(buffer, correct) == 0);
-        puts("success.");
+        puts("done");
       }
-    ''', 'success.')
+    ''', 'done\n')
 
   def test_getpeername_unconnected_socket(self):
     self.do_run(r'''
@@ -10602,25 +10596,25 @@ ok.
     ''', 'getpeername error: Socket not connected', assert_returncode=NON_ZERO)
 
   def test_getsockname_addrlen(self):
-    self.do_runf('sockets/test_getsockname_addrlen.c', 'success')
+    self.do_runf('sockets/test_getsockname_addrlen.c', 'done\n')
 
   def test_sin_zero(self):
-    self.do_runf('sockets/test_sin_zero.c', 'success')
+    self.do_runf('sockets/test_sin_zero.c', 'done\n')
 
   def test_getaddrinfo(self):
-    self.do_runf('sockets/test_getaddrinfo.c', 'success')
+    self.do_runf('sockets/test_getaddrinfo.c', 'done\n')
 
   def test_getnameinfo(self):
-    self.do_runf('sockets/test_getnameinfo.c', 'success')
+    self.do_runf('sockets/test_getnameinfo.c', 'done\n')
 
   def test_gethostbyname(self):
     self.do_run_in_out_file_test('sockets/test_gethostbyname.c')
 
   def test_getprotobyname(self):
-    self.do_runf('sockets/test_getprotobyname.c', 'success')
+    self.do_runf('sockets/test_getprotobyname.c', 'done\n')
 
   def test_create_socket(self):
-    self.do_runf('sockets/test_create_socket.c', 'success')
+    self.do_runf('sockets/test_create_socket.c', 'done\n')
 
   def test_socketpair(self):
     self.do_run(r'''
@@ -11131,8 +11125,7 @@ int main(void) {
   def test_proxy_to_pthread_stack(self):
     # Check that the proxied main gets run with STACK_SIZE setting and not
     # DEFAULT_PTHREAD_STACK_SIZE.
-    self.do_runf('other/test_proxy_to_pthread_stack.c',
-                 ['success'],
+    self.do_runf('other/test_proxy_to_pthread_stack.c', 'done\n',
                  cflags=['-pthread', '-sPROXY_TO_PTHREAD',
                             '-sDEFAULT_PTHREAD_STACK_SIZE=64kb',
                             '-sSTACK_SIZE=128kb', '-sEXIT_RUNTIME',
@@ -11627,7 +11620,7 @@ int main(void) {
     self.run_process([EMCC, '-c', test_file('sockets/test_gethostbyname.c'), '-o', 'a.o'])
     self.run_process([LLVM_AR, 'cr', 'liba.a', 'a.o'])
     create_file('empty.c', 'static int foo = 0;')
-    self.do_runf('empty.c', 'success', cflags=['-la', '-L.'])
+    self.do_runf('empty.c', 'done\n', cflags=['-la', '-L.'])
 
   def test_warning_flags(self):
     self.run_process([EMCC, '-c', '-o', 'hello.o', test_file('hello_world.c')])
@@ -13180,7 +13173,7 @@ void foo() {}
     self.do_run_in_out_file_test('unistd/confstr.c')
 
   def test_unistd_ttyname(self):
-    self.do_runf('unistd/ttyname.c', 'success')
+    self.do_runf('unistd/ttyname.c', 'done\n')
 
   def test_unistd_pathconf(self):
     self.do_run_in_out_file_test('unistd/pathconf.c')
@@ -13199,7 +13192,7 @@ void foo() {}
       self.cflags += ['-DEXPECT_STDOUT=0', f'-DEXPECT_STDIN={int(stdin_isatty)}']
       if WINDOWS:
         self.skipTest('depends on /dev filesystem')
-    self.do_runf('unistd/isatty.c', 'success')
+    self.do_runf('unistd/isatty.c', 'done\n')
 
   def test_unistd_login(self):
     self.do_run_in_out_file_test('unistd/login.c')
@@ -14016,7 +14009,7 @@ out.js
     self.do_other_test('test_itimer_standalone.c', cflags=['-sSTANDALONE_WASM', '-sWASM_BIGINT'])
     for engine in config.WASM_ENGINES:
       print('wasm engine', engine)
-      self.assertContained('done', self.run_js('test_itimer_standalone.wasm', engine))
+      self.assertContained('done\n', self.run_js('test_itimer_standalone.wasm', engine))
 
   @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/20125')
@@ -14296,13 +14289,13 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       assert(s.st_mode & S_IXGRP);
       assert(s.st_mode & S_IXOTH);
 
-      puts("success");
+      puts("done");
     }
 
     int main(int argc, char * argv[]) {
       setup();
       test();
-      return EXIT_SUCCESS;
+      return 0;
     }
     '''
     self.setup_nodefs_test()
@@ -14590,7 +14583,7 @@ addToLibrary({
     # etc., and only provide the emmalloc_malloc etc. family of functions that
     # we can use.
     emmalloc = path_from_root('system', 'lib', 'emmalloc.c')
-    self.do_runf('other/test_emmalloc_in_addition.c', 'success', cflags=[emmalloc] + args)
+    self.do_runf('other/test_emmalloc_in_addition.c', 'done\n', cflags=[emmalloc] + args)
 
   def test_unused_destructor(self):
     self.do_runf('other/test_unused_destructor.c', cflags=['-flto', '-O2'])
@@ -14639,11 +14632,7 @@ addToLibrary({
   def test_embind_optional_val_no_bind(self):
     # Ensure passing std::optional to emscripten::val works if <emscripten/bind.h>
     # was not included in the compilation unit using val.
-    self.run_process([EMXX, '-lembind',
-                      test_file('embind/test_optional_val_main.cpp'),
-                      test_file('embind/test_optional_val_lib.cpp')])
-    output = self.run_js('a.out.js')
-    self.assertContained('done', output)
+    self.do_runf('embind/test_optional_val_main.cpp', 'done\n', cflags=['-lembind', test_file('embind/test_optional_val_lib.cpp')])
 
   def test_no_pthread(self):
     self.do_runf('hello_world.c', cflags=['-pthread', '-no-pthread'])

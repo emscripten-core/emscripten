@@ -26,5 +26,5 @@ int main() {
   // We should have allocated less than 4GB (we can't get to exactly 4GB
   // since we started with some small amount, and then add 512MB chunks).
   assert(num_allocations < 8);
-  puts("success");
+  puts("done");
 }

@@ -1402,10 +1402,10 @@ int main(int argc, char **argv) {
         std::ofstream os("test");
         os << std::unitbuf << "foo"; // trigger a call to std::uncaught_exceptions from
                                      // std::basic_ostream::sentry::~sentry
-        std::cout << "success\n";
+        std::cout << "done\n";
       }
     '''
-    self.do_run(src, 'success\n')
+    self.do_run(src, 'done\n')
 
   @with_all_eh_sjlj
   def test_exceptions_uncaught_2(self):
@@ -2082,7 +2082,7 @@ int main(int argc, char **argv) {
       self.do_core_test('test_em_js_address_taken.c')
 
   def test_runtime_stacksave(self):
-    self.do_runf('core/test_runtime_stacksave.c', 'success')
+    self.do_runf('core/test_runtime_stacksave.c', 'done\n')
 
   # This helper function removes the special 'Warning: Enlarging memory arrays, this is not fast!'
   # warning in WASM2JS modes that can interfere with testing.
@@ -2259,7 +2259,7 @@ int main(int argc, char **argv) {
     self.set_setting('IMPORTED_MEMORY')
     self.set_setting('STRICT')
     self.set_setting('INCOMING_MODULE_JS_API', ['wasmMemory'])
-    self.do_runf('core/test_module_wasm_memory.c', 'success', cflags=['--pre-js', test_file('core/test_module_wasm_memory.js')])
+    self.do_runf('core/test_module_wasm_memory.c', 'done\n', cflags=['--pre-js', test_file('core/test_module_wasm_memory.js')])
 
   def test_ssr(self): # struct self-ref
     src = '''
@@ -2808,7 +2808,7 @@ The current type of b is: 9
     self.do_runf('wasm_worker/condvar_waitinf.c', 'done\n', cflags=['-pthread'])
 
   def test_tcgetattr(self):
-    self.do_runf('termios/test_tcgetattr.c', 'success')
+    self.do_runf('termios/test_tcgetattr.c', 'done\n')
 
   def test_trickystring(self):
     self.do_core_test('test_trickystring.c')
@@ -3341,11 +3341,11 @@ Var: 42
           *postzero = 1;
           assert(*postzero != 0);
         }
-        printf("success.\n");
+        printf("done\n");
         return 0;
       }
       ''')
-    self.do_runf('src.c', 'success.\n')
+    self.do_runf('src.c', 'done\n')
 
   @needs_dylink
   @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
@@ -3411,12 +3411,11 @@ Var: 42
         assert(func_ptr != NULL);
         assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == 13);
 
-        puts("success");
-
+        puts("done");
         return 0;
       }
       ''')
-    self.do_runf('main.c', 'success')
+    self.do_runf('main.c', 'done\n')
 
   @needs_dylink
   def test_dlfcn_info(self):
@@ -3458,12 +3457,11 @@ Var: 42
         assert(func_ptr != NULL);
         assert(func_ptr(0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0) == 13);
 
-        puts("success");
-
+        puts("done");
         return 0;
       }
       ''')
-    self.do_runf('main.c', 'success')
+    self.do_runf('main.c', 'done\n')
 
   @needs_dylink
   def test_dlfcn_stacks(self):
@@ -3511,12 +3509,11 @@ Var: 42
         assert(func_ptr != NULL);
         assert(func_ptr(str) == 6);
 
-        puts("success");
-
+        puts("done");
         return 0;
       }
       ''')
-    self.do_runf('main.c', 'success')
+    self.do_runf('main.c', 'done')
 
   @needs_dylink
   def test_dlfcn_funcs(self):
@@ -4164,6 +4161,7 @@ caught outer int: 123
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26202')
   def test_dylink_function_pointer_equality(self):
     self.dylink_test(r'''
+      #include <assert.h>
       #include <stdio.h>
       #include "header.h"
 
@@ -4171,10 +4169,8 @@ caught outer int: 123
         void* puts_side = get_address();
         printf("main module address %p.\n", &puts);
         printf("side module address %p.\n", puts_side);
-        if (&puts == puts_side)
-          printf("success\n");
-        else
-          printf("failure\n");
+        assert(&puts == puts_side);
+        printf("done\n");
         return 0;
       }
     ''', '''
@@ -4184,7 +4180,7 @@ caught outer int: 123
       void* get_address() {
         return (void*)&puts;
       }
-    ''', 'success', header='void* get_address();', force_c=True)
+    ''', 'done\n', header='void* get_address();', force_c=True)
 
   @with_dylink_reversed
   def test_dylink_floats(self):
@@ -5205,7 +5201,7 @@ main main sees -524, -534, 72.
         puts("failure");
         return 1;
       }
-      puts("success");
+      puts("done");
       return 0;
     }
     '''
@@ -5221,7 +5217,7 @@ main main sees -524, -534, 72.
     self.dylink_test(main=main,
                      side=side,
                      header=header,
-                     expected='success')
+                     expected='done\n')
 
   @needs_dylink
   def test_dylink_argv_argc(self):
@@ -5552,7 +5548,7 @@ got: 10
     if self.get_setting('WASMFS'):
       self.cflags += ['-licasefs.js']
       self.cflags += ['-ljsfilefs.js']
-    self.do_runf('fs/test_mount.c', 'success')
+    self.do_runf('fs/test_mount.c', 'done\n')
 
   def test_getdents64(self):
     self.do_runf('fs/test_getdents64.c', '..')
@@ -5573,7 +5569,7 @@ got: 10
   @also_with_nodefs_both
   def test_fgetc_ungetc(self):
     print('TODO: update this test once the musl ungetc-on-EOF-stream bug is fixed upstream and reaches us')
-    self.do_runf('stdio/test_fgetc_ungetc.c', 'success')
+    self.do_runf('stdio/test_fgetc_ungetc.c', 'done\n')
 
   def test_fgetc_unsigned(self):
     src = r'''
@@ -5695,15 +5691,15 @@ got: 10
 
   def test_stat(self):
     self.set_setting("FORCE_FILESYSTEM")
-    self.do_runf('stat/test_stat.c', 'success')
+    self.do_runf('stat/test_stat.c', 'done\n')
     self.verify_in_strict_mode(self.output_name('test_stat'))
 
   def test_statx(self):
     self.set_setting("FORCE_FILESYSTEM")
-    self.do_runf('stat/test_statx.c', 'success')
+    self.do_runf('stat/test_statx.c', 'done\n')
 
   def test_fstatat(self):
-    self.do_runf('stat/test_fstatat.c', 'success')
+    self.do_runf('stat/test_fstatat.c', 'done\n')
 
   @crossplatform
   @with_all_fs
@@ -5713,11 +5709,11 @@ got: 10
       self.skipTest('mode bits work differently on windows')
     if nodefs and self.get_setting('WASMFS'):
       self.skipTest('test requires symlink creation which currently missing from wasmfs+noderawfs')
-    self.do_runf('stat/test_chmod.c', 'success', cflags=['-Werror=conversion'])
+    self.do_runf('stat/test_chmod.c', 'done\n', cflags=['-Werror=conversion'])
 
   @also_with_wasmfs
   def test_stat_mknod(self):
-    self.do_runf('stat/test_mknod.c', 'success')
+    self.do_runf('stat/test_mknod.c', 'done\n')
 
   @also_with_wasmfs
   def test_fcntl(self):
@@ -5760,12 +5756,12 @@ got: 10
     self.do_core_test('test_libgen.c')
 
   def test_utime(self):
-    self.do_runf('utime/test_utime.c', 'success')
+    self.do_runf('utime/test_utime.c', 'done\n')
 
   @also_with_nodefs_both
   @flaky('https://github.com/emscripten-core/emscripten/issues/25280')
   def test_futimens(self):
-    self.do_runf('utime/test_futimens.c', 'success')
+    self.do_runf('utime/test_futimens.c', 'done\n')
 
   @with_both_text_decoder
   def test_utf(self):
@@ -5836,7 +5832,7 @@ got: 10
     if not self.get_setting('NODERAWFS'):
       self.setup_nodefs_test()
     self.maybe_closure()
-    self.do_runf('fs/test_nodefs_rw.c', 'success')
+    self.do_runf('fs/test_nodefs_rw.c', 'done\n')
 
   @also_with_noderawfs
   @requires_node
@@ -5845,7 +5841,7 @@ got: 10
       self.set_setting('FORCE_FILESYSTEM')
     if not self.get_setting('NODERAWFS'):
       self.setup_nodefs_test()
-    self.do_runf('fs/test_nodefs_cloexec.c', 'success')
+    self.do_runf('fs/test_nodefs_cloexec.c', 'done\n')
 
   @also_with_noderawfs
   @requires_node
@@ -5854,17 +5850,17 @@ got: 10
       self.set_setting('FORCE_FILESYSTEM')
     if not self.get_setting('NODERAWFS'):
       self.setup_nodefs_test()
-    self.do_runf('fs/test_nodefs_dup.c', 'success')
+    self.do_runf('fs/test_nodefs_dup.c', 'done\n')
 
   @requires_node
   def test_fs_nodefs_home(self):
-    self.do_runf('fs/test_nodefs_home.c', 'success', cflags=['-sFORCE_FILESYSTEM', '-lnodefs.js'])
+    self.do_runf('fs/test_nodefs_home.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-lnodefs.js'])
 
   @requires_node
   def test_fs_nodefs_nofollow(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf('fs/test_nodefs_nofollow.c', 'success', cflags=['-lnodefs.js'])
+    self.do_runf('fs/test_nodefs_nofollow.c', 'done\n', cflags=['-lnodefs.js'])
 
   @crossplatform
   @requires_node
@@ -5894,7 +5890,7 @@ got: 10
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
     os.makedirs('existing/a')
-    self.do_runf('fs/test_nodefs_statvfs.c', 'success', cflags=['-lnodefs.js'])
+    self.do_runf('fs/test_nodefs_statvfs.c', 'done\n', cflags=['-lnodefs.js'])
 
   @no_windows('no symlink support on windows')
   @requires_node
@@ -5902,7 +5898,7 @@ got: 10
     self.set_setting('NODERAWFS')
     create_file('filename', 'foo')
     os.symlink('filename', 'linkname')
-    self.do_runf('fs/test_noderawfs_nofollow.c', 'success', cflags=['-lnodefs.js'])
+    self.do_runf('fs/test_noderawfs_nofollow.c', 'done\n', cflags=['-lnodefs.js'])
 
   @no_wasmfs('depends on FS.trackingDelegate which WASMFS does not have')
   def test_fs_trackingdelegate(self):
@@ -5922,7 +5918,7 @@ got: 10
       self.skipTest('specific errno values differ')
     if self.get_setting('WASMFS'):
       self.set_setting("FORCE_FILESYSTEM")
-    self.do_runf('fs/test_fs_js_api.c', 'success')
+    self.do_runf('fs/test_fs_js_api.c', 'done\n')
 
   @also_with_noderawfs
   def test_fs_write(self):
@@ -5941,11 +5937,11 @@ got: 10
   def test_fs_enotdir(self):
     if MACOS and '-DNODERAWFS' in self.cflags:
       self.skipTest('BSD libc sets a different errno')
-    self.do_runf('fs/test_fs_enotdir.c', 'success')
+    self.do_runf('fs/test_fs_enotdir.c', 'done\n')
 
   @also_with_noderawfs
   def test_fs_append(self):
-    self.do_runf('fs/test_append.c', 'success')
+    self.do_runf('fs/test_append.c', 'done\n')
 
   @with_all_fs
   def test_fs_mmap(self):
@@ -6002,25 +5998,25 @@ Module.onRuntimeInitialized = () => {
 
   @also_with_noderawfs
   def test_fs_llseek(self):
-    self.do_runf('fs/test_llseek.c', 'success', cflags=['-sFORCE_FILESYSTEM'])
+    self.do_runf('fs/test_llseek.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
   @also_with_noderawfs
   def test_fs_readv(self):
-    self.do_runf('fs/test_readv.c', 'success', cflags=['-sFORCE_FILESYSTEM'])
+    self.do_runf('fs/test_readv.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
   @also_with_noderawfs
   def test_fs_writev(self):
-    self.do_runf('fs/test_writev.c', 'success', cflags=['-sFORCE_FILESYSTEM'])
+    self.do_runf('fs/test_writev.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
   def test_fs_64bit(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf('fs/test_64bit.c', 'success')
+    self.do_runf('fs/test_64bit.c', 'done\n')
 
   @crossplatform
   @with_all_fs
   def test_fs_stat_unnamed_file_descriptor(self):
-    self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'success')
+    self.do_runf('fs/test_stat_unnamed_file_descriptor.c', 'done\n')
 
   @requires_node
   @crossplatform
@@ -6031,26 +6027,26 @@ Module.onRuntimeInitialized = () => {
     nodefs = '-DNODEFS' in self.cflags or '-DNODERAWFS' in self.cflags
     if nodefs and WINDOWS:
       self.skipTest('No symlinks on Windows')
-    self.do_runf('fs/test_fs_symlink_resolution.c', 'success')
+    self.do_runf('fs/test_fs_symlink_resolution.c', 'done\n')
 
   @with_all_fs
   def test_fs_rename_on_existing(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    self.do_runf('fs/test_fs_rename_on_existing.c', 'success')
+    self.do_runf('fs/test_fs_rename_on_existing.c', 'done\n')
 
   @also_with_nodefs_both
   @no_windows("stat ino values don't match on windows")
   @crossplatform
   @no_wasmfs('Assertion failed: "a_ino == sta.st" in test_fs_readdir_ino_matches_stat_ino.c, line 58. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_fs_readdir_ino_matches_stat_ino(self):
-    self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'success')
+    self.do_runf('fs/test_fs_readdir_ino_matches_stat_ino.c', 'done\n')
 
   @also_with_nodefs_both
   @crossplatform
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   def test_fs_mkdir_dotdot(self):
-    self.do_runf('fs/test_fs_mkdir_dotdot.c', 'success')
+    self.do_runf('fs/test_fs_mkdir_dotdot.c', 'done\n')
 
   def test_sigalrm(self):
     self.do_runf('test_sigalrm.c', 'Received alarm!')
@@ -6107,7 +6103,7 @@ Module.onRuntimeInitialized = () => {
 
   @also_with_noderawfs
   def test_unistd_pipe(self):
-    self.do_runf('unistd/pipe.c', 'success')
+    self.do_runf('unistd/pipe.c', 'done\n')
 
   @also_with_noderawfs
   def test_unistd_dup(self):
@@ -6165,7 +6161,7 @@ Module.onRuntimeInitialized = () => {
       # 0 if root user
       self.cflags += ['-DSKIP_ACCESS_TESTS']
 
-    self.do_runf('unistd/unlink.c', 'success')
+    self.do_runf('unistd/unlink.c', 'done\n')
 
   @also_with_nodefs
   def test_unistd_links(self):
@@ -7025,7 +7021,7 @@ void* operator new(size_t size) {
     # reference-types is enabled. So make sure this test passes when
     # reference-types feature is enabled as well.
     self.node_args += shared.node_reference_types_flags(get_nodejs())
-    output = self.do_runf('core/test_autodebug.c', 'success', cflags=['-mreference-types'])
+    output = self.do_runf('core/test_autodebug.c', 'done\n', cflags=['-mreference-types'])
     # test that the program both works and also emits some of the logging
     # (but without the specific output, as it is logging the actual locals
     # used and so forth, which will change between opt modes and updates of
