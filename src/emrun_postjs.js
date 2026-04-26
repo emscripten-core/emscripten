@@ -29,7 +29,7 @@ if (globalThis.window && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIR
         window.close();
       } catch(e) {}
     };
-    var post = (msg) => {
+    var post = (url, msg) => {
       var http = new XMLHttpRequest();
       ++emrun_num_post_messages_in_flight;
       http.onreadystatechange = () => {
@@ -39,7 +39,7 @@ if (globalThis.window && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIR
           }
         }
       }
-      http.open("POST", "stdio.html", true);
+      http.open("POST", url, true);
       http.send(msg);
     };
     // If the address contains localhost, or we are running the page from port
@@ -57,11 +57,11 @@ if (globalThis.window && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIR
         }
       });
       out = (text) => {
-        post('^out^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text));
+        post('stdio.html', '^out^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text));
         prevPrint(text);
       };
       err = (text) => {
-        post('^err^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text));
+        post('stdio.html', '^err^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text));
         prevErr(text);
       };
 
@@ -69,28 +69,28 @@ if (globalThis.window && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIR
       // page. Note that we may need to wait for the server to be ready.
       var tryToSendPageload = () => {
         try {
-          post('^pageload^');
+          post('stdio.html', '^pageload^');
         } catch (e) {
           setTimeout(tryToSendPageload, 50);
         }
       };
       tryToSendPageload();
     }
+
+    globalThis.__emrun_file_dump = (filename, data) => {
+      out(`Dumping out file "${filename}" with ${data.length} bytes of data.`);
+      if (ArrayBuffer.isView(data) && typeof SharedArrayBuffer !== "undefined" && data.buffer instanceof SharedArrayBuffer) {
+        data = new data.constructor(data); // Make a clone of the typed array of the same type, since http.send() does not allow SharedArrayBuffer backing.
+      }
+      post("stdio.html?file=" + filename, data);
+    };
   };
 
   // POSTs the given binary data represented as a (typed) array data back to the
   // emrun-based web server.
   // To use from C code, call e.g:
   //   EM_ASM({emrun_file_dump("file.dat", HEAPU8.subarray($0, $0 + $1));}, my_data_pointer, my_data_pointer_byte_length);
-  var emrun_file_dump = (filename, data) => {
-    var http = new XMLHttpRequest();
-    out(`Dumping out file "${filename}" with ${data.length} bytes of data.`);
-    http.open("POST", "stdio.html?file=" + filename, true);
-    if (ArrayBuffer.isView(data) && typeof SharedArrayBuffer !== "undefined" && data.buffer instanceof SharedArrayBuffer) {
-      data = new data.constructor(data); // Make a clone of the typed array of the same type, since http.send() does not allow SharedArrayBuffer backing.
-    }
-    http.send(data);
-  };
+  var emrun_file_dump = (filename, data) => { return globalThis.__emrun_file_dump(filename, data); }
 
   if (globalThis.document) {
     emrun_register_handlers();
