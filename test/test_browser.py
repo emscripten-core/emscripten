@@ -5730,9 +5730,9 @@ class emrun(RunnerCore):
     proc = subprocess.Popen([EMRUN, '--no-browser', '.', '--port=3333'], stdout=PIPE)
     try:
       if get_browser():
-        print('Starting browser')
-        browser_cmd = shlex.split(get_browser())
-        browser = subprocess.Popen(browser_cmd + ['http://localhost:3333/hello_world.html'])
+        url = 'http://localhost:3333/hello_world.html?argv0'
+        print(f'Starting browser to {url}')
+        BrowserCore.browser_open(url)
         try:
           while True:
             stdout = proc.stdout.read()
@@ -5740,8 +5740,7 @@ class emrun(RunnerCore):
               break
         finally:
           print('Terminating browser')
-          browser.terminate()
-          browser.wait()
+          BrowserCore.browser_terminate()
     finally:
       print('Terminating emrun server')
       proc.terminate()
