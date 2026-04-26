@@ -1426,10 +1426,10 @@ int main(int argc, char **argv) {
         if (std::uncaught_exceptions())
           std::cout << "ERROR: uncaught_exceptions still set.\n";
         else
-          std::cout << "OK\n";
+          std::cout << "done\n";
       }
     '''
-    self.do_run(src, 'OK\n')
+    self.do_run(src, 'done\n')
 
   @with_all_eh_sjlj
   def test_exceptions_typed(self):
@@ -2838,10 +2838,10 @@ The current type of b is: 9
 
   @also_with_standalone_wasm()
   def test_memcpy_alignment(self):
-    self.do_runf('test_memcpy_alignment.c', 'OK.')
+    self.do_runf('test_memcpy_alignment.c', 'done\n')
 
   def test_memset_alignment(self):
-    self.do_runf('test_memset_alignment.c', 'OK.')
+    self.do_runf('test_memset_alignment.c', 'done\n')
 
   def test_memset(self):
     self.do_core_test('test_memset.c')
@@ -5782,27 +5782,27 @@ got: 10
   @with_both_text_decoder
   @crossplatform
   def test_utf16(self):
-    self.do_runf('core/test_utf16.cpp', 'OK.')
+    self.do_runf('core/test_utf16.cpp', 'done\n')
 
   @with_both_text_decoder
   def test_utf8(self):
-    self.do_runf('core/test_utf8.c', 'OK.')
+    self.do_runf('core/test_utf8.c', 'done\n')
 
   @with_both_text_decoder
   @also_without_bigint
   def test_utf8_bench(self):
     self.cflags += ['--embed-file', test_file('test_utf8_bench.txt') + '@/utf8_corpus.txt']
-    self.do_runf('test_utf8_bench.c', 'OK.')
+    self.do_runf('test_utf8_bench.c', 'done\n')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   @with_both_text_decoder
   @also_with_minimal_runtime
   def test_utf8_invalid(self):
-    self.do_runf('test_utf8_invalid.c', 'OK.')
+    self.do_runf('test_utf8_invalid.c', 'done\n')
 
   def test_utf16_bench(self):
     self.cflags += ['--embed-file', test_file('test_utf16_bench.txt') + '@/utf16_corpus.txt']
-    self.do_runf('test_utf16_bench.c', 'OK.')
+    self.do_runf('test_utf16_bench.c', 'done\n')
 
   def test_wprintf(self):
     self.do_core_test('test_wprintf.cpp')
@@ -8659,7 +8659,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'mimalloc': (['-sMALLOC=mimalloc', '-sABORTING_MALLOC=0'],),
   })
   def test_wrap_malloc(self, args):
-    self.do_runf('core/test_wrap_malloc.c', 'OK.', cflags=args)
+    self.do_runf('core/test_wrap_malloc.c', 'done\n', cflags=args)
 
   def test_environment(self):
     self.set_setting('ASSERTIONS')
