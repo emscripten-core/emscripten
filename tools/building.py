@@ -1355,4 +1355,7 @@ def js_legalization_pass_flags():
     # assumed to be defined and exports within the module, otherwise binaryen
     # assumes they are imports.
     flags += ['--pass-arg=legalize-js-interface-exported-helpers']
+  # Ensure that the legalizer pass does not erase debug info
+  if settings.DEBUG_LEVEL:
+    flags += ['-g']
   return flags

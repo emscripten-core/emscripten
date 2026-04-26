@@ -1032,6 +1032,10 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
         # EMBIND_GEN_MODE is run before binaryen so the asyncify exports that
         # are created by binaryen will be missing.
         continue
+      if settings.LEGALIZE_JS_FFI and sym in {'__get_temp_ret', '__set_temp_ret'}:
+        # The Binaryen legalizer pass will drop exports of __get_temp_ret() and __set_temp_ret()
+        # if they are unused, so do not assert their existence.
+        continue
       receiving.append(f"  assert(typeof wasmExports['{sym}'] != 'undefined', 'missing Wasm export: {sym}');")
   for sym, info in exports.items():
     is_function = type(info) == webassembly.FuncType
