@@ -1255,6 +1255,9 @@ jobs:
   test-browser-chrome-emrun:
     executor: ubuntu-lts
     steps:
+      - checkout
+      - pip-install
+      - install-emsdk
       - run-tests-chrome:
           test_targets: "emrun"
   test-sockets-chrome:
@@ -1406,6 +1409,7 @@ workflows:
           requires:
             - build-linux
       - test-browser-chrome
+      - test-browser-chrome-emrun
       - test-browser-chrome-2gb:
           requires:
             - build-linux
