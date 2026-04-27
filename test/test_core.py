@@ -7017,9 +7017,6 @@ void* operator new(size_t size) {
     if '-msimd128' in self.cflags:
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25001')
 
-    if self.is_wasm2js() and '-O0' in self.cflags:
-      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25549')
-
     # Even though the test itself doesn't directly use reference types,
     # Binaryen's '--instrument-locals' will add their logging functions if
     # reference-types is enabled. So make sure this test passes when
