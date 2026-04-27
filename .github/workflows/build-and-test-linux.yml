@@ -174,6 +174,216 @@ jobs:
 
 
 
+  test-core2:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    env:
+      EMTEST_BROWSER: "node"
+      EMTEST_SKIP_NODE_25: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Run asan+lsan tests
+        run: |
+          ./test/runner \
+            asan.test_stat \
+            asan.test_stack \
+            asan.test_float_builtins \
+            asan.test_embind* \
+            asan.test_abort_on_exceptions \
+            asan.test_ubsan_full_left_shift_fsanitize_integer \
+            asan.test_pthread* \
+            asan.test_dyncall_specific_minimal_runtime \
+            asan.test_async_hello \
+            asan.test_dlfcn_basic \
+            asan.test_async_hello_jspi \
+            asan.test_cubescript \
+            asan.test_externref_emjs_dynlink \
+            asan.test_asyncify_longjmp \
+            asan.test_pthread_run_on_main_thread \
+            asan.test_minimal_runtime_global_initializer \
+            asan.test_fs_js_api_wasmfs \
+            asan.test_modularize_instance_pthreads \
+            asan.test_minimal_runtime_hello_world \
+            asan.test_select_blocking \
+            asan.test_ppoll_blocking \
+            lsan.test_dylink_dso_needed \
+            lsan.test_stdio_locking \
+            lsan.test_dlfcn_basic \
+            lsan.test_pthread_create \
+            lsan.test_pthread_exit_main_stub \
+            lsan.test_dylink_iostream \
+            lsan.test_embind_lib_with_asyncify \
+            ubsan.test_dlfcn_self \
+            ubsan.test_externref_emjs_dynlink
+        shell: bash
+
+      - name: Run core2+extras tests
+        run: |
+          ./test/runner \
+            core2 \
+            browser.test_pthread_join \
+            corez.test_dylink_syslibs_all
+        shell: bash
+
+  test-core3:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    env:
+      EMTEST_SKIP_NODE_25: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Run core3+extras tests
+        run: |
+          ./test/runner \
+            lto2.test_dylink_syslibs_all \
+            lto2.test_float_builtins \
+            lto2.test_avx_nontrapping \
+            lto0.test_exceptions_allowed_uncaught \
+            lto0.test_longjmp_standalone_standalone \
+            lto0.test_embind_i64_val \
+            lto0.test_wasm_worker_futex_wait \
+            thinlto0.test_pthread_dlsym \
+            core3 \
+            core2g.test_externref \
+            corez.test_dylink_iostream \
+            core2ss.test_pthread_dylink \
+            core2ss.test_pthread_thread_local_storage \
+            core2ss.test_wasm_worker_futex_wait \
+            core2s.test_dylink_syslibs_missing_assertions \
+            core2s.test_module_wasm_memory \
+            cores.test_minimal_runtime_safe_heap \
+            wasm2js3.test_memorygrowth_2 \
+            wasm2js2.test_pthread_proxying \
+            wasmfs.test_hello_world \
+            wasmfs.test_pipe_select \
+            wasmfs.test_unistd_links* \
+            wasmfs.test_atexit_standalone \
+            wasmfs.test_emscripten_get_now \
+            wasmfs.test_dyncall_specific_minimal_runtime \
+            wasmfs.test_fcntl_misc \
+            wasmfs.test_readdir_rawfs \
+            wasmfs.test_utime \
+            wasmfs.test_unistd_unlink \
+            wasmfs.test_unistd_dup \
+            wasmfs.test_unistd_access \
+            wasmfs.test_unistd_close \
+            wasmfs.test_unistd_truncate \
+            wasmfs.test_readdir \
+            wasmfs.test_readdir_unlink \
+            wasmfs.test_unistd_pipe \
+            wasmfs.test_unistd_io \
+            wasmfs.test_unistd_curdir \
+            wasmfs.test_poll \
+            wasmfs.test_fs_64bit \
+            wasmfs.test_fs_write \
+            wasmfs.test_fs_writev \
+            wasmfs.test_fs_writev_rawfs \
+            wasmfs.test_fs_readv \
+            wasmfs.test_fs_write \
+            wasmfs.test_fs_readv_rawfs \
+            wasmfs.test_fs_nodefs_nofollow \
+            wasmfs.test_fs_nodefs_readdir \
+            wasmfs.test_fs_nodefs_home \
+            wasmfs.test_fs_nodefs_cloexec \
+            wasmfs.test_fs_nodefs_cloexec_rawfs \
+            wasmfs.test_fs_errorstack \
+            wasmfs.test_fs_errorstack_rawfs \
+            wasmfs.test_fs_emptyPath \
+            wasmfs.test_webidl \
+            wasmfs.test_dlfcn_self \
+            wasmfs.test_dlfcn_unique_sig \
+            wasmfs.test_dylink_basics \
+            wasmfs.test_exit_status \
+            wasmfs.test_minimal_runtime_memorygrowth \
+            wasmfs.test_mmap_anon* \
+            wasmfs.test_mount \
+            wasmfs.test_getcwd_with_non_ascii_name \
+            wasmfs.test_stat \
+            wasmfs.test_fstatat \
+            wasmfs.test_futimens \
+            wasmfs.test_unistd_links \
+            wasmfs.test_fcntl_open \
+            wasmfs.test_fs_llseek \
+            wasmfs.test_fs_llseek_rawfs \
+            wasmfs.test_freetype \
+            wasmfs.test_unistd_close_rawfs \
+            minimal0.test_utf \
+            minimal0.test_ubsan_full_stack_trace_gsource_map \
+            minimal0.test_static_variable \
+            minimal0.test_stack_overflow \
+            omitexports0.test_asyncify_longjmp \
+            omitexports0.test_emscripten_api \
+            strict.test_no_declare_asm_module_exports \
+            strict.test_dylink_global_inits_reversed
+        shell: bash
+
+  test-wasm64-misc:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Reinstall V8
+        run: rm -rf $HOME/.jsvu
+        shell: bash
+
+      - name: Install V8
+        uses: ./.github/actions/install-v8
+
+      - name: Install Node newest
+        uses: ./.github/actions/install-node
+        with:
+          node_version: newest
+
+      - name: Configure Node v25
+        run: echo "NODE_JS = NODE_JS_TEST" >> $EMSDK/.emscripten
+        shell: bash
+
+      - name: Run wasm64 misc tests
+        run: |
+          ./test/runner \
+            other.*_wasm64 \
+            core_2gb.test_*em_asm* \
+            core_2gb.test_*embind* \
+            core_2gb.test_fs_js_api_wasmfs \
+            wasm64.test_safe_stack \
+            wasm64l.test_hello_world \
+            wasm64l.test_bigswitch \
+            wasm64l.test_module_wasm_memory \
+            wasm64l.test_longjmp2_emscripten \
+            wasm64l.test_embind_val_basics_legacy
+        shell: bash
+
+  test-wasm2js1:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    env:
+      EMTEST_SKIP_NODE_25: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Run wasm2js1 tests
+        run: ./test/runner wasm2js1
+        shell: bash
+
   test-browser-chrome:
     needs: build-linux
     runs-on: emscripten-premerge-linux-runners
