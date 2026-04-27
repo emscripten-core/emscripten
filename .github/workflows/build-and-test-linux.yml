@@ -142,7 +142,7 @@ jobs:
 
   test-wasm64-4gb:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: emscripten-premerge-linux-runners
     env:
       EMCC_CORES: 4
     steps:
@@ -176,7 +176,7 @@ jobs:
 
   test-core2:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: emscripten-premerge-linux-runners
     env:
       EMTEST_BROWSER: "node"
       EMTEST_SKIP_NODE_25: "1"
@@ -232,7 +232,7 @@ jobs:
 
   test-core3:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: emscripten-premerge-linux-runners
     env:
       EMTEST_SKIP_NODE_25: "1"
     steps:
@@ -452,7 +452,7 @@ jobs:
 
   test-other:
     needs: build-linux
-    runs-on: ubuntu-latest
+    runs-on: emscripten-premerge-linux-runners
     env:
       EMCC_CORES: "4"
       EMTEST_SKIP_NODE_25: "1"
