@@ -473,7 +473,9 @@ jobs:
         shell: bash
 
       - name: Setup Rust target
-        run: rustup target add wasm32-unknown-emscripten
+        run: |
+          rustup default stable
+          rustup target add wasm32-unknown-emscripten
         shell: bash
 
       - name: Run other and jslib tests
