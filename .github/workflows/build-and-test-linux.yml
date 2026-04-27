@@ -466,10 +466,10 @@ jobs:
       - name: Prepare for tests
         uses: ./.github/actions/prepare-for-tests
 
-      - name: Install Scons
+      - name: Install Scons and rustup
         run: |
           sudo apt-get update
-          sudo apt-get install -y scons
+          sudo apt-get install -y scons rustup
         shell: bash
 
       - name: Setup Rust target
