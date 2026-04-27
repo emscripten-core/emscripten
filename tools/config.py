@@ -74,6 +74,23 @@ def normalize_config_settings():
     PORTS = os.path.join(CACHE, 'ports')
 
 
+def normalize_relative_environment_variables():
+  # User may have specified environment variables to point to the location
+  # of e.g. Python or Node, like with
+  #
+  #  EMSDK_PYTHON=../../path/to/python emcc test/hello_world.c
+  #
+  # As part of its operation, emcc may spawn sub-emcc tasks when building
+  # libraries to cache. These sub-emcc tasks may run in a different CWD, so
+  # normalize the path directives to current environment here, so that any
+  # sub-tool spawns will see the path to the tool from the parent process.
+  # However, be careful not to normalize e.g. 'python' or other PATH lookups.
+  for env_var in {'EMSDK_PYTHON', 'NODE_JS'}:
+    path = os.environ.get(env_var)
+    if path and ('\\' in path or '/' in path):
+      os.environ[env_var] = os.path.abspath(os.environ[env_var])
+
+
 def set_config_from_tool_location(config_key, tool_binary, f):
   val = globals()[config_key]
   if val is None:
@@ -168,6 +185,7 @@ def read_config():
   set_config_from_tool_location('BINARYEN_ROOT', 'wasm-opt', lambda x: os.path.dirname(os.path.dirname(x)))
 
   normalize_config_settings()
+  normalize_relative_environment_variables()
 
 
 def generate_config(path):
