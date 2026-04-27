@@ -189,7 +189,7 @@ void WasmFS::preloadFiles() {
       emscripten_err("Fatal error during file preloading");
       abort();
     }
-    auto& [parent, childName] = parsed.getParentChild();
+    auto& [parent, childName, hasTrailingSlash] = parsed.getParentChild();
     auto created =
       parent->locked().insertDataFile(std::string(childName), (mode_t)mode);
     assert(created && "TODO: handle preload insertion errors");

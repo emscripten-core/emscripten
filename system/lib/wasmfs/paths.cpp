@@ -75,16 +75,18 @@ ParsedParent doParseParent(std::string_view path,
     path.remove_prefix(1);
   }
 
+  bool hasTrailingSlash = false;
   // Ignore trailing '/'.
   while (!path.empty() && path.back() == '/') {
     path.remove_suffix(1);
+    hasTrailingSlash = true;
   }
 
   // An empty path here means that the path was equivalent to "/" and does not
   // contain a child segment for us to return. The root is its own parent, so we
   // can handle this by returning (root, ".").
   if (path.empty()) {
-    return {std::make_pair(std::move(curr), std::string_view("."))};
+    return {std::move(curr), ".", hasTrailingSlash};
   }
 
   while (true) {
@@ -96,7 +98,7 @@ ParsedParent doParseParent(std::string_view path,
     // If this is the leaf segment, return.
     size_t segment_end = path.find_first_of('/');
     if (segment_end == std::string_view::npos) {
-      return {std::make_pair(std::move(curr), path)};
+      return {std::move(curr), path, hasTrailingSlash};
     }
 
     // Try to descend into the child segment.
@@ -122,8 +124,25 @@ ParsedFile doParseFile(std::string_view path,
   if (auto err = parsed.getError()) {
     return {err};
   }
-  auto& [parent, child] = parsed.getParentChild();
-  return getChild(parent, child, links, recursions);
+  auto& [parent, child, hasTrailingSlash] = parsed.getParentChild();
+
+  // POSIX requires that a trailing slash forces following of symbolic links.
+  if (hasTrailingSlash) {
+    links = FollowLinks;
+  }
+
+  auto file = getChild(parent, child, links, recursions);
+  if (auto err = file.getError()) {
+    return err;
+  }
+
+  // POSIX requires that a pathname with a trailing slash must refer to a
+  // directory.
+  if (hasTrailingSlash && file.getFile()->kind != File::DirectoryKind) {
+    return -ENOTDIR;
+  }
+
+  return file;
 }
 
 } // anonymous namespace

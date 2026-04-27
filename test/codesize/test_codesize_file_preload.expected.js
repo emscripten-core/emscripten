@@ -1470,6 +1470,7 @@ var FS = {
     if (!PATH.isAbs(path)) {
       path = FS.cwd() + "/" + path;
     }
+    var hasTrailingSlash = path.endsWith("/");
     // limit max consecutive symlinks to SYMLOOP_MAX.
     linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
       // split the absolute path
@@ -1484,9 +1485,15 @@ var FS = {
           break;
         }
         if (parts[i] === ".") {
+          if (!FS.isDir(current.mode)) {
+            throw new FS.ErrnoError(54);
+          }
           continue;
         }
         if (parts[i] === "..") {
+          if (!FS.isDir(current.mode)) {
+            throw new FS.ErrnoError(54);
+          }
           current_path = PATH.dirname(current_path);
           if (FS.isRoot(current)) {
             path = current_path + "/" + parts.slice(i + 1).join("/");
@@ -1518,8 +1525,9 @@ var FS = {
           current = current.mounted.root;
         }
         // by default, lookupPath will not follow a symlink if it is the final path component.
-        // setting opts.follow = true will override this behavior.
-        if (FS.isLink(current.mode) && (!islast || opts.follow)) {
+        // setting opts.follow = true or having a trailing slash will override this behavior
+        // (POSIX requires that a trailing slash forces following of symbolic links).
+        if (FS.isLink(current.mode) && (!islast || opts.follow || hasTrailingSlash)) {
           if (!current.node_ops.readlink) {
             throw new FS.ErrnoError(52);
           }
@@ -1527,9 +1535,15 @@ var FS = {
           if (!PATH.isAbs(link)) {
             link = PATH.dirname(current_path) + "/" + link;
           }
-          path = link + "/" + parts.slice(i + 1).join("/");
+          var suffix = parts.slice(i + 1).join("/");
+          path = link + (suffix ? "/" + suffix : "");
           continue linkloop;
         }
+      }
+      // POSIX requires that a pathname with a trailing slash must refer to a
+      // directory.
+      if (hasTrailingSlash && !FS.isDir(current.mode)) {
+        throw new FS.ErrnoError(54);
       }
       return {
         path: current_path,
