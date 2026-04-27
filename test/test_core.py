@@ -5730,6 +5730,9 @@ got: 10
   @also_with_nodefs_both
   @no_deno('https://github.com/emscripten-core/emscripten/issues/26235')
   def test_fcntl_open(self):
+    if '-lllvmlibc' in self.cflags:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/26740')
+
     nodefs = '-DNODEFS' in self.cflags or '-DNODERAWFS' in self.cflags
     if nodefs and WINDOWS:
       self.skipTest('Stat mode behavior does not match on Windows')
@@ -7014,7 +7017,7 @@ void* operator new(size_t size) {
   @with_env_modify({'EMCC_AUTODEBUG': '1'})
   def test_autodebug_wasm(self):
     # failed to asynchronously prepare wasm: LinkError: WebAssembly.instantiate(): Import #13 module="env" function="get_v128": function import requires a callable
-    if '-msimd128' in self.cflags:
+    if '-msimd128' in self.cflags or '-lllvmlibc' in self.cflags:
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/25001')
 
     if self.is_wasm2js() and '-O0' in self.cflags:
