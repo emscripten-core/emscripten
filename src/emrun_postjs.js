@@ -7,7 +7,16 @@
  * emcc is run with `--emrun`
  */
 
-if (globalThis.window && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
+// POSTs the given binary data represented as a (typed) array data back to the
+// emrun-based web server.
+// To use from C code, call e.g:
+//   EM_ASM({emrun_file_dump("file.dat", HEAPU8.subarray($0, $0 + $1));}, my_data_pointer, my_data_pointer_byte_length);
+// Note: this functions does nothing by default but gets redefined below
+// in `emrun_register_handlers` when emrun is active, along with `out` and
+// `err`.
+var emrun_file_dump = (filename, data) => {};
+
+if (globalThis.window && globalThis.document && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
   var emrun_register_handlers = () => {
     // When C code exit()s, we may still have remaining stdout and stderr
     // messages in flight. In that case, we can't close the browser until all
@@ -64,6 +73,13 @@ if (globalThis.window && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIR
         post('stdio.html', '^err^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text));
         prevErr(text);
       };
+      emrun_file_dump = (filename, data) => {
+        out(`Dumping out file "${filename}" with ${data.length} bytes of data.`);
+        if (ArrayBuffer.isView(data) && typeof SharedArrayBuffer !== "undefined" && data.buffer instanceof SharedArrayBuffer) {
+          data = new data.constructor(data); // Make a clone of the typed array of the same type, since http.send() does not allow SharedArrayBuffer backing.
+        }
+        post("stdio.html?file=" + filename, data);
+      };
 
       // Notify emrun web server that this browser has successfully launched the
       // page. Note that we may need to wait for the server to be ready.
@@ -76,23 +92,7 @@ if (globalThis.window && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIR
       };
       tryToSendPageload();
     }
-
-    globalThis.__emrun_file_dump = (filename, data) => {
-      out(`Dumping out file "${filename}" with ${data.length} bytes of data.`);
-      if (ArrayBuffer.isView(data) && typeof SharedArrayBuffer !== "undefined" && data.buffer instanceof SharedArrayBuffer) {
-        data = new data.constructor(data); // Make a clone of the typed array of the same type, since http.send() does not allow SharedArrayBuffer backing.
-      }
-      post("stdio.html?file=" + filename, data);
-    };
   };
 
-  // POSTs the given binary data represented as a (typed) array data back to the
-  // emrun-based web server.
-  // To use from C code, call e.g:
-  //   EM_ASM({emrun_file_dump("file.dat", HEAPU8.subarray($0, $0 + $1));}, my_data_pointer, my_data_pointer_byte_length);
-  var emrun_file_dump = (filename, data) => { return globalThis.__emrun_file_dump(filename, data); }
-
-  if (globalThis.document) {
-    emrun_register_handlers();
-  }
+  emrun_register_handlers();
 }
