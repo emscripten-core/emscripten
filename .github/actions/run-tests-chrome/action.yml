@@ -44,11 +44,3 @@ runs:
       if: inputs.visualize == 'true'
       run: test -s out/graph.html
       shell: bash
-
-    - name: Upload test results
-      if: always()
-      uses: actions/upload-artifact@v4
-      with:
-        name: test-results-${{ inputs.title }}
-        path: out/test-results.xml
-

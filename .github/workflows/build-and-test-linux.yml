@@ -120,12 +120,7 @@ jobs:
       - name: Run sanity tests
         run: ./test/runner sanity
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-sanity
-          path: out/test-results.xml
+
 
   test-core0:
     needs: build-linux
@@ -143,12 +138,7 @@ jobs:
       - name: Run core0 tests
         run: ./test/runner core0
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-core0
-          path: out/test-results.xml
+
 
   test-wasm64-4gb:
     needs: build-linux
@@ -182,12 +172,7 @@ jobs:
         run: ./test/runner wasm64_4gb
         shell: bash
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-wasm64-4gb
-          path: out/test-results.xml
+
 
   test-browser-chrome:
     needs: build-linux
@@ -289,12 +274,7 @@ jobs:
         run: ./test/runner benchmark.test_primes
         shell: bash
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-other
-          path: out/test-results.xml
+
 
   build-docs:
     runs-on: ubuntu-latest
@@ -343,12 +323,7 @@ jobs:
         run: ./test/runner instance
         shell: bash
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-modularize-instance
-          path: out/test-results.xml
+
 
   test-stress:
     needs: build-linux
@@ -366,12 +341,7 @@ jobs:
         run: ./test/runner stress
         shell: bash
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-stress
-          path: out/test-results.xml
+
 
   test-esm-integration:
     needs: build-linux
@@ -399,12 +369,7 @@ jobs:
         run: ./test/runner esm_integration
         shell: bash
 
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-esm-integration
-          path: out/test-results.xml
+
 
   linters:
     runs-on: emscripten-premerge-linux-runners
