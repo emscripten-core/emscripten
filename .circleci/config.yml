@@ -1252,13 +1252,11 @@ jobs:
             skip:browser.test_glbook
             skip:browser.test_sdl2_mixer_wav_dash_l
             "
-  # TODO(https://github.com/emscripten-core/emscripten/issues/26182):
-  # Re-enable once we figure out why the emrun tests are locking up.
-  #test-browser-chrome-emrun:
-  #  executor: ubuntu-lts
-  #  steps:
-  #    - run-tests-chrome:
-  #        test_targets: "emrun"
+  test-browser-chrome-emrun:
+    executor: ubuntu-lts
+    steps:
+      - run-tests-chrome:
+          test_targets: "emrun"
   test-sockets-chrome:
     executor: ubuntu-lts
     steps:
