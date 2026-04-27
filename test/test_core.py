@@ -7015,7 +7015,10 @@ void* operator new(size_t size) {
   def test_autodebug_wasm(self):
     # failed to asynchronously prepare wasm: LinkError: WebAssembly.instantiate(): Import #13 module="env" function="get_v128": function import requires a callable
     if '-msimd128' in self.cflags:
-      self.skipTest('Does not work with SIMD. https://github.com/emscripten-core/emscripten/issues/25001')
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25001')
+
+    if self.is_wasm2js() and '-O0' in self.cflags:
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/25549')
 
     # Even though the test itself doesn't directly use reference types,
     # Binaryen's '--instrument-locals' will add their logging functions if
