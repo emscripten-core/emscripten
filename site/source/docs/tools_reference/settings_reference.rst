@@ -2865,11 +2865,9 @@ MIN_SAFARI_VERSION
 ==================
 
 Specifies the oldest version of desktop Safari to target. Version is encoded
-in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
-Safari 14.1.0 was released on April 26, 2021, bundled with macOS 11.0 Big
-Sur and iOS 14.5.
-The previous default, Safari 12.0.0 was released on September 17, 2018,
-bundled with macOS 10.14.0 Mojave.
+in MMmmVV, e.g. 160101 denotes Safari 16.1.1.
+Safari 15 was released on September 20, 2021, bundled with macOS 12.0
+Monterey and iOS 15.
 NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 see https://github.com/emscripten-core/emscripten/pull/7191.
