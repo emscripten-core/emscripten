@@ -3,27 +3,17 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import argparse
 import os
 import shlex
 import subprocess
 
+from browser_common import BrowserCore, get_browser, has_browser
+from common import EMRUN, RunnerCore, path_from_root, read_file, test_file
+from test_browser import also_with_threads
+
 from tools.shared import EMCC, PIPE
 
-from common import (
-  EMRUN,
-  RunnerCore,
-  path_from_root,
-  read_file,
-  test_file
-)
-
-from browser_common import (
-  BrowserCore,
-  get_browser,
-  has_browser
-)
-
-from test_browser import also_with_threads
 
 class emrun(RunnerCore):
   def test_emrun_info(self):

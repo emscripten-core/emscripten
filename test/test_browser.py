@@ -3,11 +3,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import argparse
 import os
 import random
 import re
-import shlex
 import shutil
 import struct
 import subprocess
@@ -33,15 +31,12 @@ from browser_common import (
   find_browser_test_file,
   get_browser,
   get_safari_version,
-  has_browser,
   is_chrome,
   is_firefox,
   is_safari,
 )
 from common import (
-  EMRUN,
   WEBIDL_BINDER,
-  RunnerCore,
   copy_asset,
   copytree,
   create_file,
@@ -73,7 +68,7 @@ from decorators import (
 from tools import ports, shared, utils
 from tools.feature_matrix import Feature
 from tools.link import binary_encode
-from tools.shared import EMCC, FILE_PACKAGER, PIPE
+from tools.shared import EMCC, FILE_PACKAGER
 from tools.utils import WINDOWS, delete_dir, write_binary, write_file
 
 
