@@ -166,7 +166,7 @@ def get_safari_version():
 def get_firefox_version():
   if not is_firefox():
     return UNSUPPORTED
-  exe_path = shlex.split(EMTEST_BROWSER)[0]
+  exe_path = shutil.which(shlex.split(EMTEST_BROWSER)[0])
   ini_path = os.path.join(os.path.dirname(exe_path), '../Resources/platform.ini' if MACOS else 'platform.ini')
   # On Linux, Firefox system installation uses a specific directory structure,
   # where platform.ini is not located in same directory as the browser executable.
