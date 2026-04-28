@@ -169,6 +169,13 @@ def get_firefox_version():
   ini_path = os.path.join(os.path.dirname(exe_path), '../Resources/platform.ini' if MACOS else 'platform.ini')
   # On Linux, Firefox system installation uses a specific directory structure.
   if LINUX and exe_path.startswith('/usr/bin/'):
+
+    # XXX
+    for root, dirs, files in os.walk("/usr/lib"):
+      for name in files:
+        if name.endswith('.ini'):
+          print(os.path.join(root, name))
+
     if os.path.isfile('/usr/lib/firefox-esr/platform.ini'):
       ini_path = '/usr/lib/firefox-esr/platform.ini'
     elif os.path.isfile('/usr/lib/firefox/platform.ini'):
