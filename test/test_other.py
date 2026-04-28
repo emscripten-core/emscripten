@@ -1378,7 +1378,7 @@ f.close()
     self.emcc('a.c', ['-c']) # a.o
     self.emcc('b.c', ['-c']) # b.o
     self.emcc('c.c', ['-c']) # c.o
-    building.emar('cr', 'libLIB.a', ['a.o', 'b.o']) # libLIB.a with a and b
+    self.run_process([EMAR, 'cr', 'libLIB.a', 'a.o', 'b.o']) # libLIB.a with a and b
 
     # a is in the lib AND in an .o, so should be ignored in the lib. We do still need b from the lib though
     self.do_runf('main.c', 'result: 62', cflags=['a.o', 'c.o', '-L.', '-lLIB'])
@@ -1397,7 +1397,7 @@ f.close()
 
     self.emcc('lib.c', ['-c']) # lib.o
     lib_name = 'libLIB.a'
-    building.emar('cr', lib_name, ['lib.o']) # libLIB.a with lib.o
+    self.run_process([EMAR, 'cr', lib_name, 'lib.o']) # libLIB.a with lib.o
 
     def test(compiler, main_name, lib_args, err_expected):
       print(err_expected)
@@ -8997,7 +8997,7 @@ end
     create_file("hyvää päivää", ' ')
     create_file("snowman freezes covid ☃ 🦠", ' ')
     create_file("tmp.rsp", response_file.create_response_file_contents(("file'1", "file'2", "hyvää päivää", "snowman freezes covid ☃ 🦠")))
-    building.emar('cr', 'libfoo.a', ['@tmp.rsp'])
+    self.run_process([EMAR, 'cr', 'libfoo.a', '@tmp.rsp'])
 
   def test_response_file_bom(self):
     # Modern CMake version create response files in UTF-8 but with BOM

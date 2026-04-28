@@ -139,6 +139,13 @@ def objectfile_sort_key(filename):
     return basename
 
 
+def create_lib_emar(output_filename, filenames):
+  utils.delete_file(output_filename)
+  cmd = [shared.EMAR, 'cr', output_filename] + filenames
+  cmd = building.get_command_with_possible_response_file(cmd)
+  utils.run_process(cmd)
+
+
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   suffix = utils.suffix(libname)
@@ -152,7 +159,7 @@ def create_lib(libname, inputs):
       building.link_to_object(inputs, libname)
   else:
     assert suffix == '.a'
-    building.emar('cr', libname, inputs)
+    create_lib_emar(libname, inputs)
 
 
 def get_top_level_ninja_file():

@@ -353,16 +353,6 @@ def get_command_with_possible_response_file(cmd):
   return new_cmd
 
 
-def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
-  utils.delete_file(output_filename)
-  cmd = [EMAR, action, output_filename] + filenames
-  cmd = get_command_with_possible_response_file(cmd)
-  run_process(cmd, stdout=stdout, stderr=stderr, env=env)
-
-  if 'c' in action:
-    assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
-
-
 def opt_level_to_str(opt_level, shrink_level=0):
   # convert opt_level/shrink_level pair to a string argument like -O1
   if opt_level == 0:
