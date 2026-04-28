@@ -9680,8 +9680,6 @@ int main() {
 
   def test_emsymbolizer_srcloc(self):
     # Test emsymbolizer use cases that provide src location granularity info.
-    self.skipTest('TODO: Re-enable when https://github.com/llvm/llvm-project/pull/191329 rolls')
-
     def check_dwarf_loc_info(address, funcs, locs):
       out = self.run_process(
           [emsymbolizer, '-s', 'dwarf', 'test_dwarf.wasm', address],
