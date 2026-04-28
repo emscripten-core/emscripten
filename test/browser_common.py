@@ -37,7 +37,7 @@ from common import (
 from tools import feature_matrix, utils
 from tools.feature_matrix import UNSUPPORTED
 from tools.shared import DEBUG, EMCC, exit_with_error
-from tools.utils import MACOS, WINDOWS, memoize, path_from_root, read_binary
+from tools.utils import LINUX, MACOS, WINDOWS, memoize, path_from_root, read_binary
 
 logger = logging.getLogger('common')
 
@@ -167,6 +167,13 @@ def get_firefox_version():
     return UNSUPPORTED
   exe_path = shlex.split(EMTEST_BROWSER)[0]
   ini_path = os.path.join(os.path.dirname(exe_path), '../Resources/platform.ini' if MACOS else 'platform.ini')
+  # On Linux, Firefox system installation uses a specific directory structure.
+  if LINUX and exe_path.startswith('/usr/bin/'):
+    if os.path.isfile('/usr/lib/firefox-esr/platform.ini'):
+      ini_path = '/usr/lib/firefox-esr/platform.ini'
+    elif os.path.isfile('/usr/lib/firefox/platform.ini'):
+      ini_path = '/usr/lib/firefox/platform.ini'
+
   # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
   m = re.search(r"^Milestone=(.*)$", read_file(ini_path), re.MULTILINE)
   milestone = m.group(1).strip()
@@ -318,7 +325,17 @@ def configure_test_browser():
     return
 
   if not EMTEST_BROWSER:
-    EMTEST_BROWSER = 'google-chrome'
+    def find_in_path(cmd):
+      for path in os.environ['PATH'].split(os.pathsep):
+        exe_file = os.path.join(path, cmd)
+        if WINDOWS:
+          exe_file += '.exe'
+        if os.path.isfile(exe_file):
+          return exe_file
+
+    EMTEST_BROWSER = find_in_path('google-chrome')
+    if not EMTEST_BROWSER:
+      EMTEST_BROWSER = find_in_path('firefox')
 
   if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
     # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
