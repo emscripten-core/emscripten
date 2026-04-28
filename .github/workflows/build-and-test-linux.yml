@@ -388,7 +388,7 @@ jobs:
         run: ./test/runner wasm2js1
         shell: bash
 
-  test-other-engines:
+  test-bun:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
@@ -428,6 +428,32 @@ jobs:
         env:
           EMTEST_SKIP_NEW_CMAKE: "1"
 
+  test-deno:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+
+      - name: Set EM_CONFIG
+        run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Bootstrap
+        run: ./bootstrap
+        shell: bash
+
       - name: Install Deno
         run: |
           curl -fsSL https://deno.land/install.sh | sh
@@ -441,6 +467,32 @@ jobs:
         shell: bash
         env:
           EMTEST_SKIP_NEW_CMAKE: "1"
+
+  test-jsc:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+
+      - name: Set EM_CONFIG
+        run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Bootstrap
+        run: ./bootstrap
+        shell: bash
 
       - name: Install jsvu
         run: npm install jsvu -g
@@ -458,6 +510,36 @@ jobs:
           ./test/runner core0.test_hello_argc other.test_modularize_incoming other.test_modularize_incoming_export_name
         shell: bash
 
+  test-spidermonkey:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+
+      - name: Set EM_CONFIG
+        run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Bootstrap
+        run: ./bootstrap
+        shell: bash
+
+      - name: Install jsvu
+        run: npm install jsvu -g
+        shell: bash
+
       - name: Install SpiderMonkey
         run: |
           jsvu --os=default --engines=spidermonkey
@@ -470,7 +552,32 @@ jobs:
           ./test/runner other.test_prepost_jspi other.test_stdint_limits_wasm64 core0.test_hello_argc core2.test_demangle_stacks_symbol_map
         shell: bash
 
-      # Node compat tests
+  test-node-compat:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+
+      - name: Set EM_CONFIG
+        run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Bootstrap
+        run: ./bootstrap
+        shell: bash
+
       - name: Test Node Oldest (18.3.0)
         uses: actions/setup-node@v6.3.0
         with:
@@ -512,6 +619,7 @@ jobs:
         shell: bash
         env:
           EMTEST_SKIP_V8: "1"
+
 
 
   test-browser-chrome:
