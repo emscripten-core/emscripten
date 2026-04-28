@@ -34,6 +34,33 @@ webside.
  * Add a `[prefix]` to start of the PR title to signify the subsystem or area
    that the PR targets. e.g. `[test] Update foo test` or `[ports] Fix zlib port`
 
+### Writing Tests
+
+See [Emscripten Test Suite][test_suite] for information on how to get started
+running tests.
+
+Almost all PRs should be accompanied by some kind of test.
+
+ * For bug fixes, try to update an existing test rather than adding a new one.
+ * The majority of tests live in `test_other.py` and `test_core.py`.  The
+   difference between these is that tests in `test_core.py` are testing under
+   many different combinations of settings, and so each test added there is
+   the equivalent of adding ~10 new tests to `test_other.py`.
+ * Prefer black box testing where possible (i.e. test the compiler using its
+   public command line interface).
+ * For C/C++ tests longer than a few lines, prefer separate source files over
+   inline C/C++ within python.
+ * C/C++ should use `assert` internally to check expectations and should return
+   0 from their `main` function.
+ * For regression tests, try to minimize and understand the reproducer so that
+   a minimal test can be created.
+ * For simple tests, always prefer C over C++ since it comes with less baggage
+   (i.e. it minimizes the scope of the system under test) and can be compiled
+   very fast.
+ * When testing changes to system libraries, remember to rebuild the libraries
+   you touch (e.g. using `./embuilder`) before running tests (or use `emcc
+   --clear-cache` as a blunt implement for forcing a rebuild of all libraries).
+
 ## Coding Style
 
 ### C/C++ Code
@@ -365,3 +392,4 @@ decide collectively to abandon the deprecation, or to delay it.
 [update_libunwind_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libunwind.py
 [update_musl_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_musl.py
 [global_github_search]: https://github.com/search?q=%2F%28%3F-i%29%5CbMY_SETTING%5Cb%2F+-org%3Aemscripten-core+-path%3Aemcc.*+-path%3Asettings.*+-path%3Asettings_reference.*&type=code
+[test_suite]: https://emscripten.org/docs/getting_started/test-suite.html
