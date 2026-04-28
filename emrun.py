@@ -4,10 +4,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-# This file needs to run on older version of python too (even python 2!) so
-# suppress these upgrade warnings:
-# ruff: noqa: UP015, UP024, UP021, UP025
-
 """emrun: Tool for running an .html page as if it was a standard executable file.
 
 Usage: emrun <options> filename.html <args to program>
@@ -612,7 +608,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
     try:
       f = open(path, 'rb')
-    except IOError:
+    except OSError:
       self.send_error(404, "File not found: " + path)
       return None
 
@@ -848,19 +844,19 @@ def win_get_gpu_info():
       hVideoCardReg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, CleanVideoCardString)
       try:
         VideoCardDescription = winreg.QueryValueEx(hVideoCardReg, 'Device Description')[0]
-      except WindowsError:
+      except OSError:
         VideoCardDescription = winreg.QueryValueEx(hVideoCardReg, 'DriverDesc')[0]
 
       try:
         driverVersion = winreg.QueryValueEx(hVideoCardReg, 'DriverVersion')[0]
         VideoCardDescription += ', driver version ' + driverVersion
-      except WindowsError:
+      except OSError:
         pass
 
       try:
         driverDate = winreg.QueryValueEx(hVideoCardReg, 'DriverDate')[0]
         VideoCardDescription += f' ({driverDate})'
-      except WindowsError:
+      except OSError:
         pass
 
       VideoCardMemorySize = winreg.QueryValueEx(hVideoCardReg, 'HardwareInformation.MemorySize')[0]
@@ -870,7 +866,7 @@ def win_get_gpu_info():
         vram = int(VideoCardMemorySize)
       if not find_gpu_model(VideoCardDescription):
         gpus += [{'model': VideoCardDescription, 'ram': vram}]
-    except WindowsError:
+    except OSError:
       pass
   return gpus
 
@@ -1030,7 +1026,7 @@ def win_get_file_properties(fname):
 
   strInfo = {}
   for propName in propNames:
-    strInfoPath = u'\\StringFileInfo\\%04X%04X\\%s' % (lang, codepage, propName)
+    strInfoPath = '\\StringFileInfo\\%04X%04X\\%s' % (lang, codepage, propName)
     # print str_info
     strInfo[propName] = win32api.GetFileVersionInfo(fname, strInfoPath)
 
@@ -1046,7 +1042,7 @@ def get_computer_model():
         with open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), encoding='utf-8') as f:
           model = f.read()
           return model
-      except IOError:
+      except OSError:
         pass
 
       try:
@@ -1167,7 +1163,7 @@ def win_get_default_browser():
         parts = shlex.split(cmd)
         if len(parts):
           return [parts[0]]
-  except WindowsError:
+  except OSError:
     logv("Unable to find default browser key in Windows registry. Trying fallback.")
 
   # Fall back to 'start "" %1', which we have to treat as if user passed --serve-forever, since
