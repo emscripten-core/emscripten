@@ -172,7 +172,7 @@ def get_firefox_version():
   # where platform.ini is not located in same directory as the browser executable.
   if LINUX and exe_path.startswith('/usr/bin/'):
     def find_system_firefox_platform_ini():
-      for path in {'/usr/lib/firefox-esr/', '/usr/lib/firefox/'}:
+      for path in ['/usr/lib/firefox-esr/', '/usr/lib/firefox/']:
         ini = os.path.join(path, 'platform.ini')
         if os.path.isfile(ini):
           return ini
