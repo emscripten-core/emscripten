@@ -1803,10 +1803,11 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
 
   # Pass the URL to open as the very last item on the command line, and use the -url xxx parameter
   # to open the url to work around https://bugzil.la/1996614.
-  if 'firefox' in browser_exe:
-    browser += ['-url', url]
-  else:
-    browser += [url]
+  if not options.android:
+    if 'firefox' in browser_exe:
+      browser += ['-url', url]
+    else:
+      browser += [url]
 
   if options.system_info:
     logi('Time of run: ' + time.strftime("%x %X"))
