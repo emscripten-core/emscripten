@@ -3,8 +3,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Shared code specific to emscripten.  General purpose and low-level helpers belong instead in
-utils.py."""
+"""Shared code specific to emscripten.
+
+General purpose and low-level helpers belong instead in utils.py.
+"""
 
 import atexit
 import logging
@@ -104,13 +106,12 @@ def run_multiple_processes(commands,
                            env=None,
                            route_stdout_to_temp_files_suffix=None,
                            cwd=None):
-  """Runs multiple subprocess commands.
+  """Run multiple subprocess commands.
 
   route_stdout_to_temp_files_suffix : string
     if not None, all stdouts are instead written to files, and an array
     of filenames is returned.
   """
-
   if env is None:
     env = os.environ.copy()
 
@@ -367,8 +368,7 @@ def perform_sanity_checks(quiet=False):
 
 @ToolchainProfiler.profile()
 def check_sanity(force=False, quiet=False):
-  """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
-  and LLVM) exists.
+  """Check that basic stuff we need (Node.js, and Clang and LLVM) exists.
 
   The test runner always does this check (through |force|). emcc does this less
   frequently, only when ${EM_CONFIG}_sanity does not exist or is older than
@@ -471,7 +471,7 @@ def replace_or_append_suffix(filename, new_suffix):
 # temp directory (TEMP_DIR/emscripten_temp).
 @memoize
 def get_emscripten_temp_dir():
-  """Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist."""
+  """Return path of EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist."""
   global EMSCRIPTEN_TEMP_DIR
   if not EMSCRIPTEN_TEMP_DIR:
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=TEMP_DIR)
@@ -540,8 +540,7 @@ def get_temp_files():
 
 
 def print_compiler_stage(cmd):
-  """Emulate the '-v/-###' flags of clang/gcc by printing the sub-commands
-  that we run."""
+  """Emulate the '-v/-###' flags of clang/gcc by printing the sub-commands that we run."""
 
   def maybe_quote(arg):
     if all(c.isalnum() or c in './-_' for c in arg):

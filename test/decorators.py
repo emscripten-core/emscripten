@@ -605,8 +605,7 @@ def parameterize(func, parameters):
 
 
 def parameterized(parameters):
-  """
-  Mark a test as parameterized.
+  """Mark a test as parameterized.
 
   Usage:
     @parameterized({

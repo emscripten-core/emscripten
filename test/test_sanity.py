@@ -90,7 +90,8 @@ def make_fake_tool(filename, version, report_name=None, extra_output=None):
 
 
 def make_fake_clang(filename, version, targets='wasm32 - WebAssembly 32-bit'):
-  """Create a fake clang that only handles --version
+  """Create a fake clang that only handles --version.
+
   --version writes to stdout (unlike -v which writes to stderr)
   """
   output = 'clang fake output\nRegistered Targets:\n%s' % targets

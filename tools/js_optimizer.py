@@ -63,9 +63,10 @@ def split_funcs(js):
 
 
 class Minifier:
-  """minification support. We calculate minification of
-  globals here, then pass that into the parallel acorn-optimizer.mjs runners which
-  perform minification of locals.
+  """Minification support.
+
+  We calculate minification of globals here, then pass that into the parallel
+  acorn-optimizer.mjs runners which perform minification of locals.
   """
 
   def __init__(self, js):

@@ -8,8 +8,7 @@
 # suppress these upgrade warnings:
 # ruff: noqa: UP015, UP024, UP021, UP025
 
-"""emrun: Implements machinery that allows running a .html page as if it was a
-standard executable file.
+"""emrun: Tool for running an .html page as if it was a standard executable file.
 
 Usage: emrun <options> filename.html <args to program>
 
@@ -136,8 +135,7 @@ http_mutex = threading.RLock()
 
 
 def logi(msg):
-  """Prints a log message to 'info' stdout channel. Always printed.
-  """
+  """Prints a log message to 'info' stdout channel. Always printed."""
   global last_message_time
   with http_mutex:
     sys.stdout.write(msg + '\n')
@@ -147,6 +145,7 @@ def logi(msg):
 
 def logv(msg):
   """Prints a verbose log message to stdout channel.
+
   Only shown if run with --verbose.
   """
   global last_message_time
@@ -158,8 +157,7 @@ def logv(msg):
 
 
 def loge(msg):
-  """Prints an error message to stderr channel.
-  """
+  """Prints an error message to stderr channel."""
   global last_message_time
   with http_mutex:
     sys.stderr.write(msg + '\n')
@@ -174,8 +172,7 @@ def format_eol(msg):
 
 
 def browser_logi(msg):
-  """Prints a message to the browser stdout output stream.
-  """
+  """Prints a message to the browser stdout output stream."""
   global last_message_time
   msg = format_eol(msg)
   browser_stdout_handle.write(msg + '\n')
@@ -184,8 +181,7 @@ def browser_logi(msg):
 
 
 def browser_loge(msg):
-  """Prints a message to the browser stderr output stream.
-  """
+  """Prints a message to the browser stderr output stream."""
   global last_message_time
   msg = format_eol(msg)
   browser_stderr_handle.write(msg + '\n')
@@ -195,7 +191,8 @@ def browser_loge(msg):
 
 def unquote_u(source):
   """Unquotes a unicode string.
-  (translates ascii-encoded utf string back to utf)
+
+  Translates ascii-encoded utf string back to utf.
   """
   result = unquote(source)
   if '%u' in result:
@@ -207,7 +204,7 @@ temp_firefox_profile_dir = None
 
 
 def delete_emrun_safe_firefox_profile():
-  """Deletes the temporary created Firefox profile (if one exists)"""
+  """Delete the temporary created Firefox profile (if one exists)."""
   global temp_firefox_profile_dir
   if temp_firefox_profile_dir is not None:
     logv('remove_tree("' + temp_firefox_profile_dir + '")')
@@ -329,6 +326,7 @@ user_pref("browser.privatebrowsing.autostart", true);
 
 def is_browser_process_alive():
   """Returns whether the browser page we spawned is still running.
+
   (note, not perfect atm, in case we are running in detached mode)
   """
   # If navigation to the web page has not yet occurred, we behave as if the
@@ -358,8 +356,9 @@ def is_browser_process_alive():
 
 
 def kill_browser_process():
-  """Kills browser_process and processname_killed_atexit. Also removes the
-  temporary Firefox profile that was created, if one exists.
+  """Kills browser_process and processname_killed_atexit.
+
+  Also removes the temporary Firefox profile that was created, if one exists.
   """
   global browser_process, processname_killed_atexit, current_browser_processes
   if browser_process and browser_process.poll() is None:
@@ -443,14 +442,18 @@ def detect_browser_processes():
     logv('Was unable to detect the browser process that was spawned by emrun. This may occur if the target page was opened in a tab on a browser process that already existed before emrun started up.')
 
 
-# Our custom HTTP web server that will serve the target page to run via .html.
-# This is used so that we can load the page via a http:// URL instead of a
-# file:// URL, since those wouldn't work too well unless user allowed XHR
-# without CORS rules.  Also, the target page will route its stdout and stderr
-# back to here via HTTP requests.
 class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
-  """Log messaging arriving via HTTP can come in out of sequence. Implement a
-  sequencing mechanism to enforce ordered transmission."""
+  """HTTP Server used to serve the target page to run via .html.
+
+  This is used so that we can load the page via a http:// URL instead of a
+  file:// URL, since those wouldn't work too well unless user allowed XHR
+  without CORS rules.  Also, the target page will route its stdout and stderr
+  back to here via HTTP requests.
+
+  Log messaging arriving via HTTP can come in out of sequence. Implement a
+  sequencing mechanism to enforce ordered transmission.
+  """
+
   expected_http_seq_num = 1
   # Stores messages that have arrived out of order, pending for a send as soon
   # as the missing message arrives.  Kept in sorted order, first element is the

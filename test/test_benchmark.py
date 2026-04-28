@@ -167,8 +167,9 @@ class Benchmarker(ABC):
 
 
 class ToolchainBenchmarker(Benchmarker):
-  """ToolchainBenchmarker performs the compile step during run.  i.e. it measures the perf of the
-  compiler rather than the generated code.
+  """ToolchainBenchmarker performs the compile step during run.
+
+  It measures the perf of the compiler rather than the generated code.
 
   Some simple tests will just work with these benchmarkers but more complex ones will not because
   the arguments to `build` are all ignored.

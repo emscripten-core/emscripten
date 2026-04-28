@@ -211,11 +211,12 @@ def setup_environment_settings():
 
 
 def generate_js_sym_info():
-  """Runs the js compiler to generate a list of all symbols available in the JS
-  libraries.  This must be done separately for each linker invocation since the
-  list of symbols depends on what settings are used.
+  """Run the JS compiler to generate a list of all available JS symbols.
+
+  This must be done separately for each linker invocation since the list of
+  symbols depends on what settings are used.
   TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
-  mode of the js compiler that would generate a list of all possible symbols
+  mode of the JS compiler that would generate a list of all possible symbols
   that could be checked in.
   """
   output = emscripten.compile_javascript(symbols_only=True)
@@ -768,9 +769,10 @@ def setup_sanitizers(options):
 
 
 def get_dylibs(options, linker_args):
-  """Find all the Wasm dynamic libraries specified on the command line,
-  either via `-lfoo` or via `libfoo.so` directly."""
+  """Find all the Wasm dynamic libraries specified on the command line.
 
+  This can either be via `-lfoo` or via `libfoo.so` directly.
+  """
   dylibs = []
   for arg in linker_args:
     if arg.startswith('-l'):
@@ -793,7 +795,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
-
   setup_environment_settings()
 
   apply_library_settings(linker_args)
@@ -2618,12 +2619,14 @@ def find_library(lib, lib_dirs):
 
 
 def map_to_js_libs(library_name):
-  """Given the name of a special Emscripten-implemented system library, returns an
-  pair containing
-  1. Array of absolute paths to JS library files, inside emscripten/src/ that corresponds to the
-     library name. `None` means there is no mapping and the library will be processed by the linker
-     as a require for normal native library.
-  2. Optional name of a corresponding native library to link in.
+  """Map a library name to one or more JS libraries.
+
+  Given the name of a special Emscripten-implemented system library, return a
+  list of absolute paths to JS library files, inside emscripten/src/, that
+  should be included.
+
+  'None' means there is no mapping and the library will be processed by the linker
+  as a require for normal native library.
   """
   # Some native libraries are implemented in Emscripten as system side JS libraries
   library_map = {
@@ -2771,7 +2774,7 @@ class ScriptSource:
     self.src = None
 
   def replacement(self):
-    """Returns the script tag to replace the {{{ SCRIPT }}} tag in the target"""
+    """Return the script tag to replace the {{{ SCRIPT }}} tag in the target."""
     assert (self.src or self.inline) and not (self.src and self.inline)
     if self.src:
       src = quote(self.src)
@@ -2920,13 +2923,13 @@ def move_file(src, dst):
 
 
 def binary_encode(filename):
-  """This function encodes the given binary byte array to a UTF-8 string, by
-  encoding each byte values as UTF-8, except for specific byte values that
+  """Encode the given binary byte array as a compact UTF-8 string.
+
+  Each byte value is encoded as UTF-8, except for specific byte values that
   are escaped as two bytes. This kind of encoding results in a string that will
   compress well by both gzip and brotli, unlike base64 encoding binary data
   would do.
   """
-
   data = utils.read_binary(filename)
 
   # Decide whether to enclose the generated binary data in single-quotes '' or

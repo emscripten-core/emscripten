@@ -3,8 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Utilities for manipulating WebAssembly binaries from python.
-"""
+"""Utilities for manipulating WebAssembly binaries from python."""
 
 import logging
 import os
@@ -191,8 +190,11 @@ FuncType = namedtuple('FuncType', ['params', 'returns'])
 
 
 class Module:
-  """Extremely minimal wasm module reader.  Currently only used
-  for parsing the dylink section."""
+  """Extremely minimal wasm module reader.
+
+  Currently only used for parsing the dylink section.
+  """
+
   def __init__(self, filename):
     self.buf = None # Set this before FS calls below in case they throw.
     self.filename = filename
@@ -274,7 +276,7 @@ class Module:
     self.buf.seek(count, os.SEEK_CUR)
 
   def sections(self):
-    """Generator that lazily returns sections from the wasm file."""
+    """Lazily yield sections from the wasm file."""
     offset = HEADER_SIZE
     while offset < self.size:
       self.seek(offset)

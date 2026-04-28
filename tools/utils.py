@@ -3,9 +3,11 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""General purpose utility functions.  The code in this file should mostly be
-not emscripten-specific, but general purpose enough to be useful in any command
-line utility."""
+"""General purpose utility functions.
+
+The code in this file should mostly be not emscripten-specific, but general
+purpose enough to be useful in any command line utility.
+"""
 
 import functools
 import logging
@@ -28,13 +30,12 @@ logger = logging.getLogger('utils')
 
 
 def run_process(cmd, check=True, input=None, *args, **kw):
-  """Runs a subprocess returning the exit code.
+  """Run a subprocess returning the exit code.
 
   By default this function will raise an exception on failure.  Therefore this should only be
   used if you want to handle such failures.  For most subprocesses, failures are not recoverable
   and should be fatal.  In those cases the `check_call` wrapper should be preferred.
   """
-
   # Flush standard streams otherwise the output of the subprocess may appear in the
   # output before messages that we have already written.
   sys.stdout.flush()
@@ -70,7 +71,7 @@ def exe_path_from_root(*pathelems):
 
 
 def suffix(name):
-  """Return the file extension"""
+  """Return the file extension."""
   return os.path.splitext(name)[1]
 
 
@@ -105,8 +106,10 @@ def unsuffixed_basename(name):
 
 
 def get_file_suffix(filename):
-  """Parses the essential suffix of a filename, discarding Unix-style version
-  numbers in the name. For example for 'libz.so.1.2.8' returns '.so'"""
+  """Return the essential suffix of a filename, discarding Unix-style version numbers.
+
+  For example for 'libz.so.1.2.8' returns '.so'
+  """
   while filename:
     filename, suffix = os.path.splitext(filename)
     if not suffix[1:].isdigit():
@@ -153,19 +156,19 @@ def safe_copy(src, dst):
 
 
 def read_file(file_path):
-  """Read from a file opened in text mode"""
+  """Read from a file opened in text mode."""
   with open(file_path, encoding='utf-8') as fh:
     return fh.read()
 
 
 def read_binary(file_path):
-  """Read from a file opened in binary mode"""
+  """Read from a file opened in binary mode."""
   with open(file_path, 'rb') as fh:
     return fh.read()
 
 
 def write_file(file_path, text, line_endings=None):
-  """Write to a file opened in text mode"""
+  """Write to a file opened in text mode."""
   if line_endings and line_endings != os.linesep:
     text = text.replace('\n', line_endings)
     write_binary(file_path, text.encode('utf-8'))
@@ -175,7 +178,7 @@ def write_file(file_path, text, line_endings=None):
 
 
 def write_binary(file_path, contents):
-  """Write to a file opened in binary mode"""
+  """Write to a file opened in binary mode."""
   with open(file_path, 'wb') as fh:
     fh.write(contents)
 
@@ -194,8 +197,7 @@ def delete_dir(dirname):
 
 
 def delete_contents(dirname, exclude=None):
-  """Delete the contents of a directory without removing
-  the directory itself."""
+  """Delete the contents of a directory without removing the directory itself."""
   if not os.path.exists(dirname):
     return
   for entry in os.listdir(dirname):

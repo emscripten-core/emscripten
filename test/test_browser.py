@@ -311,8 +311,7 @@ window.close = () => {
     ''' + read_file(test_file('reftest.js')))
 
   def reftest(self, filename, reference=None, reference_slack=0, *args, **kwargs):
-    """Special case of `btest` that uses reference image
-    """
+    """Like `btest` but uses a reference image."""
     if not reference:
       reference = utils.replace_suffix(filename, '.png')
     reference = find_browser_test_file(reference)

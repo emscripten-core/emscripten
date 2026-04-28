@@ -89,7 +89,7 @@ if not config.JS_ENGINES:
 
 
 def errlog(*args):
-  """Shorthand for print with file=sys.stderr
+  """Shorthand for print with file=sys.stderr.
 
   Use this for all internal test framework logging..
   """
@@ -116,7 +116,7 @@ def test_file(*path_components):
 
 
 def copy_asset(filename, target='.'):
-  """Copies file/asset from the test directory into the CWD."""
+  """Copy file/asset from the test directory into the CWD."""
   return shutil.copy(test_file(filename), target)
 
 
@@ -236,7 +236,7 @@ def make_dir_writeable(dirname):
 
 
 def force_delete_dir(dirname):
-  """Deletes a directory. Returns whether deletion succeeded."""
+  """Delete a directory, returning whether deletion succeeded."""
   if not os.path.exists(dirname):
     return True
   assert not os.path.isfile(dirname)
@@ -305,7 +305,7 @@ def engine_is_bun(engine):
 
 
 def get_engine(predicate):
-  """Return engine that satifies predicate, if one is configured, otherwise None"""
+  """Return engine that satifies predicate, if one is configured, otherwise None."""
   for engine in config.JS_ENGINES:
     if predicate(engine):
       return engine
@@ -364,8 +364,7 @@ def clean_js_output(output):
 class RunnerMeta(type):
   @classmethod
   def make_test(mcs, name, func, suffix, args):
-    """
-    This is a helper function to create new test functions for each parameterized form.
+    """Helper function for creating new test functions for each parameterized form.
 
     :param name: the original name of the function
     :param func: the original function that we are parameterizing
@@ -944,7 +943,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     return len(non_data_lines)
 
   def get_current_js_engine(self):
-    """Return the default JS engine to run tests under"""
+    """Return the default JS engine to run tests under."""
     return self.js_engines[0]
 
   def engine_is_bun(self):
@@ -1255,8 +1254,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     return proc.stderr
 
   def assert_fail(self, cmd, expected, **kwargs):
-    """Just like expect_fail, but also check for expected message in stderr.
-    """
+    """Just like expect_fail, but also check for expected message in stderr."""
     err = self.expect_fail(cmd, **kwargs)
     self.assertContained(expected, err)
     return err
@@ -1540,11 +1538,13 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     return rtn
 
   def build_library(self, name, build_dir, generated_libs, configure, make, make_args, cache_name, env_init, native):
-    """Build a library and cache the result.  We build the library file
-    once and cache it for all our tests. (We cache in memory since the test
-    directory is destroyed and recreated for each test. Note that we cache
-    separately for different compilers).  This cache is just during the test
-    runner. There is a different concept of caching as well, see |Cache|.
+    """Build a library and cache the result.
+
+    We build the library file once and cache it for all our tests. (We cache
+    in memory since the test directory is destroyed and recreated for each
+    test. Note that we cache separately for different compilers).  This
+    cache is just during the test runner. There is a different concept of
+    caching as well, see |Cache|.
     """
     if type(generated_libs) is not list:
       generated_libs = [generated_libs]

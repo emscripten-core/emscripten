@@ -205,9 +205,7 @@ def caniuse(feature):
 
 
 def enable_feature(feature, reason, override=False):
-  """Updates default settings for browser versions such that the given
-  feature is available everywhere.
-  """
+  """Update default settings for browser versions such that the given feature is available everywhere."""
   if override:
     enable_override_features.add(feature)
   for name, min_version in min_browser_versions[feature].items():
@@ -233,8 +231,7 @@ def enable_feature(feature, reason, override=False):
 
 
 def disable_feature(feature):
-  """Allow the user to disable a feature that would otherwise be on by default.
-  """
+  """Allow the user to disable a feature that would otherwise be on by default."""
   disable_override_features.add(feature)
 
 

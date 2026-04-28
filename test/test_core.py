@@ -451,7 +451,7 @@ def is_sanitizing(args):
 class TestCoreBase(RunnerCore):
   @classmethod
   def setUpClass(cls):
-    """setUpClass included purely so we can verify that is run."""
+    """SetUpClass included purely so we can verify that is run."""
     super().setUpClass()
     cls.doneSetup = True
 

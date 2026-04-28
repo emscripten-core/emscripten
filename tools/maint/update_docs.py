@@ -4,8 +4,12 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Builds the emscripten website from source and creates a new commit & branch
-in the emscripten-site repository containing the changes."""
+"""Build and publish the emscripten website.
+
+This script builds the emscripten website from source and creates a
+new commit & branch in the emscripten-site repository containing any
+changes.
+"""
 
 import os
 import subprocess

@@ -3,9 +3,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""A small wrapper script around the core JS compiler. This calls that
-compiler with the settings given to it. It can also read data from C/C++
-header files (so that the JS compiler can see the constants in those
+"""A small wrapper script around the core JS compiler.
+
+This calls that compiler with the settings given to it. It can also read data
+from C/C++ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
@@ -301,9 +302,9 @@ def trim_asm_const_body(body):
 
 
 def get_cached_file(filetype, filename, generator, cache_limit):
-  """This function implements a file cache which lives inside the main
-  emscripten cache directory but uses a per-file lock rather than a
-  cache-wide lock.
+  """Implement a file cache which lives inside the main emscripten cache directory.
+
+  The defference here is that we use a per-file lock rather than a cache-wide lock.
 
   The cache is pruned (by removing the oldest files) if it grows above
   a certain number of files.

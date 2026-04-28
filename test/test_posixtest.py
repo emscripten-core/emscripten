@@ -3,9 +3,11 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Runs conformance test from the upstream posixtest suite in:
+"""Runs conformance test from the upstream posixtest.
+
+See:
    ./test/third_party/posixtestsuite
-See
+See:
    https://github.com/emscripten-core/posixtestsuite
 """
 
@@ -24,10 +26,11 @@ testsuite_root = path_from_root('test/third_party/posixtestsuite')
 
 
 class posixtest(RunnerCore):
-  """Run the suite under node (and in parallel)
+  """Run the suite under node (and in parallel).
 
   This class get populated dynamically below.
   """
+
   pass  # noqa: PIE790
 
 

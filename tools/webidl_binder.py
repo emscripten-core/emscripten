@@ -4,7 +4,7 @@
 # found in the LICENSE file.
 # noqa: UP035
 
-"""WebIDL binder
+"""WebIDL binder.
 
 https://emscripten.org/docs/porting/connecting_cpp_and_javascript/WebIDL-Binder.html
 """
