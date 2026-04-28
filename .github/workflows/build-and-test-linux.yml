@@ -620,6 +620,83 @@ jobs:
         env:
           EMTEST_SKIP_V8: "1"
 
+  test-browser-firefox:
+    needs: build-linux
+    runs-on: ubuntu-latest
+    env:
+      EMTEST_LACKS_GROWABLE_ARRAYBUFFERS: "1"
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Prepare for tests
+        uses: ./.github/actions/prepare-for-tests
+
+      - name: Install Firefox
+        uses: ./.github/actions/install-firefox
+
+      - name: Run browser tests (firefox)
+        run: |
+          export EMTEST_BROWSER="$HOME/firefox/firefox"
+          export EM_FROZEN_CACHE=""
+          ./test/runner browser skip:browser.test_sdl2_mouse skip:browser.test_html5_webgl_create_context skip:browser.test_glut_glutget
+        shell: bash
+        env:
+          GALLIUM_DRIVER: softpipe
+          EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
+          EMTEST_LACKS_SOUND_HARDWARE: "1"
+          EMTEST_LACKS_WEBGPU: "1"
+          EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+          EMTEST_HEADLESS: "1"
+          EMTEST_CORES: "2"
+          DISPLAY: ":0"
+
+  test-browser-firefox-wasm64:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repo
+        uses: actions/checkout@v6.0.2
+
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
+
+      - name: Install Emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+
+      - name: Set EM_CONFIG
+        run: echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
+        shell: bash
+
+      - name: Pip install
+        run: python -m pip install -r requirements-dev.txt
+        shell: bash
+
+      - name: Bootstrap
+        run: ./bootstrap
+        shell: bash
+
+      - name: Install Firefox
+        uses: ./.github/actions/install-firefox
+
+      - name: Run browser64 tests (firefox)
+        run: |
+          export EMTEST_BROWSER="$HOME/firefox/firefox"
+          export EM_FROZEN_CACHE=""
+          ./test/runner browser64.test_sdl_image browser64.test_dylink_many
+        shell: bash
+        env:
+          GALLIUM_DRIVER: softpipe
+          EMTEST_LACKS_GRAPHICS_HARDWARE: "1"
+          EMTEST_LACKS_SOUND_HARDWARE: "1"
+          EMTEST_LACKS_WEBGPU: "1"
+          EMTEST_DETECT_TEMPFILE_LEAKS: "0"
+          EMTEST_HEADLESS: "1"
+          EMTEST_CORES: "2"
+          DISPLAY: ":0"
+
+
 
 
   test-browser-chrome:
