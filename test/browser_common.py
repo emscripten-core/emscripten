@@ -10,6 +10,7 @@ import plistlib
 import queue
 import re
 import shlex
+import shutil
 import subprocess
 import threading
 import time
@@ -171,7 +172,7 @@ def get_firefox_version():
   if LINUX and exe_path.startswith('/usr/bin/'):
 
     # XXX
-    for root, dirs, files in os.walk("/usr/lib"):
+    for root, _dirs, files in os.walk("/usr/lib"):
       for name in files:
         if name.endswith('.ini'):
           print(os.path.join(root, name))
@@ -332,17 +333,9 @@ def configure_test_browser():
     return
 
   if not EMTEST_BROWSER:
-    def find_in_path(cmd):
-      for path in os.environ['PATH'].split(os.pathsep):
-        exe_file = os.path.join(path, cmd)
-        if WINDOWS:
-          exe_file += '.exe'
-        if os.path.isfile(exe_file):
-          return exe_file
-
-    EMTEST_BROWSER = find_in_path('google-chrome')
+    EMTEST_BROWSER = shutil.which('google-chrome')
     if not EMTEST_BROWSER:
-      EMTEST_BROWSER = find_in_path('firefox')
+      EMTEST_BROWSER = shutil.which('firefox')
     if not EMTEST_BROWSER:
       EMTEST_BROWSER = 'default-browser-not-found'
 
