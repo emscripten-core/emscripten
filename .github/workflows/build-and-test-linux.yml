@@ -8,6 +8,10 @@ on:
       - main
   pull_request:
 
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
 env:
   LANG: "C.UTF-8"
   EMSDK_NOTTY: "1"
@@ -100,7 +104,7 @@ jobs:
         run: tar -czf ~/emscripten-cache.tar.gz -C ~/ .jsvu cache vms wasi-sdk
 
       - name: Persist workspace
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v7.0.1
         with:
           name: emscripten-cache
           path: ~/emscripten-cache.tar.gz

@@ -69,10 +69,3 @@ jobs:
 
       - name: Sockets tests
         run: test/runner.bat sockets.test_nodejs_sockets_echo*
-
-      - name: Upload test results
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: test-results-windows
-          path: 'path with spaces ()/out/test-results.xml'
