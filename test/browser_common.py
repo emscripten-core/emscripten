@@ -168,14 +168,17 @@ def get_firefox_version():
     return UNSUPPORTED
   exe_path = shlex.split(EMTEST_BROWSER)[0]
   ini_path = os.path.join(os.path.dirname(exe_path), '../Resources/platform.ini' if MACOS else 'platform.ini')
-  # On Linux, Firefox system installation uses a specific directory structure.
+  # On Linux, Firefox system installation uses a specific directory structure,
+  # where platform.ini is not located in same directory as the browser executable.
   if LINUX and exe_path.startswith('/usr/bin/'):
 
     # XXX
-    for root, _dirs, files in os.walk("/usr/lib"):
+    print('Searching for platform.ini')
+    for root, _dirs, files in os.walk("/usr"):
       for name in files:
         if name.endswith('.ini'):
           print(os.path.join(root, name))
+    print('Searching for platform.ini over')
 
     if os.path.isfile('/usr/lib/firefox-esr/platform.ini'):
       ini_path = '/usr/lib/firefox-esr/platform.ini'
