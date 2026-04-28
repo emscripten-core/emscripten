@@ -85,7 +85,7 @@ def normalize_relative_environment_variables():
   # normalize the path directives to current environment here, so that any
   # sub-tool spawns will see the path to the tool from the parent process.
   # However, be careful not to normalize e.g. 'python' or other PATH lookups.
-  for env_var in {'EMSDK_PYTHON', 'NODE_JS'}:
+  for env_var in ['EMSDK_PYTHON', 'NODE_JS']:
     path = os.environ.get(env_var)
     if path and ('\\' in path or '/' in path):
       os.environ[env_var] = os.path.abspath(os.environ[env_var])
