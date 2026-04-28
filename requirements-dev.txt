@@ -9,7 +9,7 @@ mypy==1.14
 psutil==7.0.0
 ruff==0.15.7
 types-requests==2.32.0.20241016
-unittest-xml-reporting==4.0.0
+unittest-xml-reporting==3.2.0
 deadcode==2.3.1
 vulture==2.14
 
