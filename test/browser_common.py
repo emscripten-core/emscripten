@@ -36,7 +36,7 @@ from common import (
 )
 
 from tools import feature_matrix, utils
-from tools.feature_matrix import UNSUPPORTED
+from tools.feature_matrix import OLDEST_SUPPORTED_FIREFOX, UNSUPPORTED
 from tools.shared import DEBUG, EMCC, exit_with_error
 from tools.utils import LINUX, MACOS, WINDOWS, memoize, path_from_root, read_binary
 
@@ -171,19 +171,16 @@ def get_firefox_version():
   # On Linux, Firefox system installation uses a specific directory structure,
   # where platform.ini is not located in same directory as the browser executable.
   if LINUX and exe_path.startswith('/usr/bin/'):
+    def find_system_firefox_platform_ini():
+      for path in {'/usr/lib/firefox-esr/', '/usr/lib/firefox/'}:
+        ini = os.path.join(path, 'platform.ini')
+        if os.path.isfile(ini):
+          return ini
 
-    # XXX
-    print('Searching for platform.ini')
-    for root, _dirs, files in os.walk("/usr"):
-      for name in files:
-        if name.endswith('.ini'):
-          print(os.path.join(root, name))
-    print('Searching for platform.ini over')
-
-    if os.path.isfile('/usr/lib/firefox-esr/platform.ini'):
-      ini_path = '/usr/lib/firefox-esr/platform.ini'
-    elif os.path.isfile('/usr/lib/firefox/platform.ini'):
-      ini_path = '/usr/lib/firefox/platform.ini'
+    ini_path = find_system_firefox_platform_ini()
+    if not ini_path:
+      logger.warning(f'Firefox browser detected in {EMTEST_BROWSER}, but could not find Firefox platform.ini to detect Firefox version. Assuming OLDEST_SUPPORTED_FIREFOX={OLDEST_SUPPORTED_FIREFOX}')
+      return OLDEST_SUPPORTED_FIREFOX
 
   # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
   m = re.search(r"^Milestone=(.*)$", read_file(ini_path), re.MULTILINE)
