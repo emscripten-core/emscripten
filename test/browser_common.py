@@ -343,6 +343,8 @@ def configure_test_browser():
     EMTEST_BROWSER = find_in_path('google-chrome')
     if not EMTEST_BROWSER:
       EMTEST_BROWSER = find_in_path('firefox')
+    if not EMTEST_BROWSER:
+      EMTEST_BROWSER = 'default-browser-not-found'
 
   if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
     # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
