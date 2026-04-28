@@ -26,7 +26,7 @@ jobs:
   build-linux:
     runs-on: emscripten-premerge-linux-runners
     env:
-      EMCC_CORES: "4"
+      EMCC_CORES: "8"
       EMCC_USE_NINJA: "1"
       EM_COMPILER_WRAPPER: "ccache"
     steps:
@@ -113,7 +113,7 @@ jobs:
     needs: build-linux
     runs-on: ubuntu-latest
     env:
-      EMCC_CORES: "4"
+      EMCC_CORES: "8"
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -130,7 +130,7 @@ jobs:
     needs: build-linux
     runs-on: emscripten-premerge-linux-runners
     env:
-      EMCC_CORES: "4"
+      EMCC_CORES: "8"
       EMTEST_SKIP_NODE_25: "1"
     steps:
       - name: Checkout repo
@@ -148,7 +148,7 @@ jobs:
     needs: build-linux
     runs-on: emscripten-premerge-linux-runners
     env:
-      EMCC_CORES: 4
+      EMCC_CORES: 8
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -648,7 +648,7 @@ jobs:
           EMTEST_LACKS_WEBGPU: "1"
           EMTEST_DETECT_TEMPFILE_LEAKS: "0"
           EMTEST_HEADLESS: "1"
-          EMTEST_CORES: "2"
+          EMTEST_CORES: "4"
           DISPLAY: ":0"
 
   test-browser-firefox-wasm64:
@@ -693,7 +693,7 @@ jobs:
           EMTEST_LACKS_WEBGPU: "1"
           EMTEST_DETECT_TEMPFILE_LEAKS: "0"
           EMTEST_HEADLESS: "1"
-          EMTEST_CORES: "2"
+          EMTEST_CORES: "4"
           DISPLAY: ":0"
 
 
@@ -769,7 +769,7 @@ jobs:
     needs: build-linux
     runs-on: emscripten-premerge-linux-runners
     env:
-      EMCC_CORES: "4"
+      EMCC_CORES: "8"
       EMTEST_SKIP_NODE_25: "1"
       EMTEST_SKIP_RUST: "1"
       EMTEST_SKIP_WASM64: "1"
