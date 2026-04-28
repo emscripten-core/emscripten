@@ -1917,7 +1917,7 @@ class libmimalloc(MTLibrary):
     # halve the page size to 32KiB on wasm64 and to 16KiB on wasm32
     # https://github.com/microsoft/mimalloc/issues/647#issuecomment-1324109021
     # https://github.com/emscripten-core/emscripten/issues/20645#issuecomment-1962964755
-    '-DMI_ARENA_SLICE_SHIFT=(12 + MI_SIZE_SHIFT)',
+    '-DMI_ARENA_SLICE_SHIFT=(12+MI_SIZE_SHIFT)',
     # `malloc`ed pointers must be aligned at least as strictly as max_align_t
     '-DMI_MAX_ALIGN_SIZE=8',
     # reserve memory in 64 MiB chunks (internally divided by 4)
