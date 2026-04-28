@@ -372,7 +372,7 @@ def create_test_run_sorter(sort_failing_tests_at_front):
 
 
 def use_parallel_suite(module):
-  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress'}
+  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress', 'test_emrun'}
   if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_cores:
