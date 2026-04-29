@@ -10,6 +10,7 @@ runs:
       uses: emscripten-core/setup-emsdk@v16
       with:
         version: tot
+        actions-cache-folder: 'emsdk-install'
 
     - name: Attach workspace
       uses: actions/download-artifact@v4

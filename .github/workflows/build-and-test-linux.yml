@@ -65,6 +65,7 @@ jobs:
         uses: emscripten-core/setup-emsdk@v16
         with:
           version: tot
+          actions-cache-folder: 'emsdk-install'
 
       - name: Set EM_CONFIG
         run: |
