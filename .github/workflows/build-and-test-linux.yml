@@ -92,9 +92,14 @@ jobs:
       - name: Bootstrap
         run: ./bootstrap
 
-      - name: Build libraries
+      - name: Build Hello world
         run: |
           ./emcc --clear-cache
+          ./test/runner test_hello_world
+
+      - name: embuilder build ALL
+        run: |
+          ./embuilder build ALL
           ./test/runner test_hello_world
 
       - name: Clean build directory
@@ -431,7 +436,7 @@ jobs:
           EMTEST_SKIP_WASM_LEGACY_EH: "1"
 
   test-deno:
-    runs-on: ubuntu-latest
+    runs-on: emscripten-premerge-linux-runners
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
