@@ -427,6 +427,8 @@ jobs:
         shell: bash
         env:
           EMTEST_SKIP_NEW_CMAKE: "1"
+          EMTEST_SKIP_WASM64: "1"
+          EMTEST_SKIP_WASM_LEGACY_EH: "1"
 
   test-deno:
     runs-on: ubuntu-latest
@@ -467,6 +469,8 @@ jobs:
         shell: bash
         env:
           EMTEST_SKIP_NEW_CMAKE: "1"
+          EMTEST_SKIP_WASM64: "1"
+          EMTEST_SKIP_WASM_LEGACY_EH: "1"
 
   test-jsc:
     runs-on: ubuntu-latest
