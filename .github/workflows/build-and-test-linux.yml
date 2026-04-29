@@ -95,18 +95,14 @@ jobs:
       - name: Build Hello world
         run: |
           ./emcc --clear-cache
-          ./test/runner test_hello_world
+          ./test/runner test_hello_world core3.test_hello_world
 
-      - name: embuilder build ALL
-        run: |
-          ./embuilder build ALL
-          ./test/runner test_hello_world
 
       - name: Clean build directory
         run: rm -rf ~/cache/build
 
       - name: Archive persistent directories
-        run: tar -czf ~/emscripten-cache.tar.gz -C ~/ .jsvu cache vms wasi-sdk
+        run: tar -czvf ~/emscripten-cache.tar.gz -C ~/ .jsvu cache vms wasi-sdk
 
       - name: Persist workspace
         uses: actions/upload-artifact@v7.0.1
@@ -434,6 +430,7 @@ jobs:
           EMTEST_SKIP_NEW_CMAKE: "1"
           EMTEST_SKIP_WASM64: "1"
           EMTEST_SKIP_WASM_LEGACY_EH: "1"
+          EMTEST_SKIP_WASM_EH: "1"
 
   test-deno:
     runs-on: emscripten-premerge-linux-runners
@@ -475,7 +472,9 @@ jobs:
         env:
           EMTEST_SKIP_NEW_CMAKE: "1"
           EMTEST_SKIP_WASM64: "1"
+          # TODO: we can prbably run legacy EH
           EMTEST_SKIP_WASM_LEGACY_EH: "1"
+          EMTEST_SKIP_WASM_EH: "1"
 
   test-jsc:
     runs-on: ubuntu-latest

@@ -18,7 +18,10 @@ runs:
         path: ~/
 
     - name: Extract persistent directories
-      run: tar -xzf ~/emscripten-cache.tar.gz -C ~/
+      run: |
+        tar -xzvf ~/emscripten-cache.tar.gz -C ~/
+        ls -l ~/
+        ls -l ~/cache || echo "no ~/cache dir"
       shell: bash
 
     - name: Set EM_CONFIG
