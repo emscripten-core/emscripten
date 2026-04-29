@@ -167,7 +167,7 @@ jobs:
       - name: Install Node newest
         uses: ./.github/actions/install-node
         with:
-          node_version: newest
+          node-version: newest
 
       - name: Configure Node v25
         run: echo "NODE_JS = NODE_JS_TEST" >> $EMSDK/.emscripten
@@ -352,7 +352,7 @@ jobs:
       - name: Install Node newest
         uses: ./.github/actions/install-node
         with:
-          node_version: newest
+          node-version: newest
 
       - name: Configure Node v25
         run: echo "NODE_JS = NODE_JS_TEST" >> $EMSDK/.emscripten
@@ -586,7 +586,7 @@ jobs:
         run: ./bootstrap
         shell: bash
 
-      - name: Test Node Oldest (18.3.0)
+      - name: Setup Node Oldest (18.3.0)
         uses: actions/setup-node@v6.3.0
         with:
           node-version: '18.3.0'
@@ -600,10 +600,10 @@ jobs:
         env:
           EMTEST_SKIP_V8: "1"
 
-      - name: Test Node LTS (22.21.0)
+      - name: Setup Node LTS (22.21.0)
         uses: actions/setup-node@v6.3.0
         with:
-          node_version: '22.21.0'
+          node-version: '22.21.0'
 
       - name: Run tests with Node LTS
         run: |
@@ -614,10 +614,10 @@ jobs:
         env:
           EMTEST_SKIP_V8: "1"
 
-      - name: Test Node Newest (25.4.0)
+      - name: Setup Node Newest (25.4.0)
         uses: actions/setup-node@v6.3.0
         with:
-          node_version: '25.4.0'
+          node-version: '25.4.0'
 
       - name: Run tests with Node Newest
         run: |
@@ -898,7 +898,7 @@ jobs:
       - name: Install Node newest
         uses: ./.github/actions/install-node
         with:
-          node_version: newest
+          node-version: newest
 
       - name: Run esm_integration tests
         run: ./test/runner esm_integration
