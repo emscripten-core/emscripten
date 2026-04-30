@@ -933,7 +933,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # When there is no final suffix or the suffix is `.out` (as in `a.out`) then default to
   # making the resulting file exectuable.
   if settings.ENVIRONMENT_MAY_BE_NODE and options.oformat == OFormat.JS and final_suffix in {'', '.out'}:
-    # linker setup phase may have initialized the EXECUTABLE setting already, so only init default here
+    # autoconf handling above may have initialized the EXECUTABLE setting already, so only init default here
     # if not yet set.
     if not settings.EXECUTABLE:
       default_setting('EXECUTABLE', 1)
