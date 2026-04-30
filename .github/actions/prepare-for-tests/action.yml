@@ -23,6 +23,9 @@ runs:
         tar -xzvf ~/emscripten-cache.tar.gz -C ~/
         ls -l ~/
         ls -l ~/cache || echo "no ~/cache dir"
+        # TODO There has to be a better way to do this. Maybe use the setup-emsdk action's builtin support?
+        sed -i "s|\|.*|\|$GITHUB_WORKSPACE/emscripten/emscripten/emsdk-install/emsdk-main/upstream/bin|" ~/cache/sanity.txt
+
       shell: bash
 
     - name: Set EM_CONFIG
