@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.7 (in development)
+5.0.8 (in development)
 ----------------------
+
+5.0.7 - 04/30/26
+----------------
 - mimalloc was updated to 3.3.1. (#26696)
 - The `WASM_JS_TYPES` setting was removed, as the corresponsing propsal was
   pushed back to phase 1. (#26739)
