@@ -25,7 +25,7 @@ runs:
         ls -l ~/cache || echo "no ~/cache dir"
         # TODO There has to be a better way to do this. Maybe use the setup-emsdk action's builtin support?
         echo $GITHUB_WORKSPACE
-        sed -i "s|\|.*|\|$GITHUB_WORKSPACE/emscripten/emscripten/emscripten/emsdk-install/emsdk-main/upstream/bin|" ~/cache/sanity.txt
+        sed -i "s|\|.*|\|$GITHUB_WORKSPACE/emsdk-install/emsdk-main/upstream/bin|" ~/cache/sanity.txt
 
       shell: bash
 
