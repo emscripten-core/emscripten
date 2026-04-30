@@ -39,6 +39,8 @@ export type SecondEnum = 0|1|2;
 
 export type ThirdEnum = 'kValueAlpha'|'kValueBeta'|'kValueGamma';
 
+export type HyphenatedEnum = 'k-hyphen-a'|'k-hyphen-b';
+
 export interface EmptyEnumValue<T extends number> {
   value: T;
 }
@@ -128,6 +130,7 @@ interface EmbindModule {
   FirstEnum: {kValueOne: FirstEnumValue<0>, kValueTwo: FirstEnumValue<1>, kValueThree: FirstEnumValue<2>};
   SecondEnum: {kValueA: 0, kValueB: 1, kValueC: 2};
   ThirdEnum: {kValueAlpha: 'kValueAlpha', kValueBeta: 'kValueBeta', kValueGamma: 'kValueGamma'};
+  HyphenatedEnum: {'k-hyphen-a': 'k-hyphen-a', 'k-hyphen-b': 'k-hyphen-b'};
   EmptyEnum: {};
   enum_returning_fn(): FirstEnum;
   num_enum_returning_fn(): SecondEnum;
