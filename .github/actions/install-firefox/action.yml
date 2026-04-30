@@ -9,9 +9,9 @@ runs:
         tar -C ~ -xf ~/ff.tar.bz2
       shell: bash
 
-    - name: Add audio dependencies
+    - name: Add dependencies
       run: |
         sudo apt-get update -y
-        sudo apt-get install -q -y pulseaudio
+        sudo apt-get install -q -y pulseaudio libgtk-3-bin
         pulseaudio --start
       shell: bash

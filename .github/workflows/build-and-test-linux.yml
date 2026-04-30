@@ -829,10 +829,8 @@ jobs:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
 
-      - name: Setup Python
-        uses: actions/setup-python@v6.2.0
-        with:
-          python-version: '3.10'
+      - name: Install Basic Packages
+        uses: ./.github/actions/install-basic-packages
 
       - name: Pip install
         run: python -m pip install -r requirements-dev.txt
