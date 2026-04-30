@@ -5476,7 +5476,8 @@ Module["preRun"] = () => {
   # Note: doesn't need audio hardware (and has no AW code that tests 2GB or wasm64)
   @requires_shared_array_buffer
   def test_audio_worklet_worker(self):
-    self.btest_exit('webaudio/audioworklet_worker.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
+    # Build with -sRUNTIME_DEBUG to surface https://github.com/emscripten-core/emscripten/issues/26823
+    self.btest_exit('webaudio/audioworklet_worker.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sRUNTIME_DEBUG'])
 
   # Tests that posting functions between the main thread and the audioworklet thread works
   @parameterized({

@@ -191,6 +191,8 @@ function preMain() {
 function exitRuntime() {
 #if RUNTIME_DEBUG
   dbg('exitRuntime');
+  if (!runtimeExited && globalThis.runtimeExiting) throw 'Re-entrant call to exitRuntime!';
+  globalThis.runtimeExiting = true;
 #endif
 #if ASSERTIONS
   assert(!runtimeExited);
