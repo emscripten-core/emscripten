@@ -32,6 +32,7 @@ extern void* _emscripten_main_thread_futex;
 static int futex_wait_main_browser_thread(volatile void* addr,
                                           uint32_t val,
                                           double timeout, bool cancelable) {
+  DBG("futex_wait_main_browser_thread");
   // Atomics.wait is not available in the main browser thread, so simulate it
   // via busy spinning. Only the main browser thread is allowed to call into
   // this function. It is not thread-safe to be called from any other thread.
@@ -154,13 +155,13 @@ static int _do_futex_wait(volatile void *addr, uint32_t val, double max_wait_ms)
   bool cancelable = false;
 #endif
 
+  DBG("emscripten_futex_wait ms=%f", max_wait_ms);
+
   // For the main browser thread and audio worklets we can't use
   // __builtin_wasm_memory_atomic_wait32 so we have busy wait instead.
   if (!_emscripten_thread_supports_atomics_wait()) {
     return futex_wait_main_browser_thread(addr, val, max_wait_ms, cancelable);
   }
-
-  DBG("emscripten_futex_wait ms=%f", max_wait_ms);
 
   bool is_runtime_thread = emscripten_is_main_runtime_thread();
   if (is_runtime_thread) {
