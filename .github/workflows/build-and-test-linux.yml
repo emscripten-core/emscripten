@@ -98,6 +98,25 @@ jobs:
           ./emcc --clear-cache
           ./test/runner test_hello_world core3.test_hello_world
 
+      - name: Build ALL
+        run: |
+          ./embuilder build ALL
+
+      - name: Build MINIMAL (LTO)
+        run: |
+          ./embuilder build MINIMAL --lto
+
+      - name: Build MINIMAL (wasm64)
+        run: |
+          ./embuilder build MINIMAL --wasm64
+
+      - name: Build MINIMAL (PIC)
+        run: |
+          ./embuilder build MINIMAL --pic
+
+      - name: Build MINIMAL (PIC+LTO)
+        run: |
+          ./embuilder build MINIMAL --pic --lto
 
       - name: Clean build directory
         run: rm -rf ~/cache/build
