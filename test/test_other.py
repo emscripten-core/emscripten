@@ -274,8 +274,8 @@ def requires_pkg_config(func):
   @wraps(func)
   def decorated(self, *args, **kwargs):
     if not shutil.which('pkg-config'):
-      if 'EMTEST_SKIP_PKG_CONFIG' in os.environ:
-        self.skipTest('test requires pkg-config and EMTEST_SKIP_PKG_CONFIG is set')
+      if os.getenv('EMTEST_SKIP_PKG_CONFIG') == '1' or os.getenv('EMTEST_AUTOSKIP') == '1':
+        self.skipTest('test requires pkg-config and EMTEST_SKIP_PKG_CONFIG or EMTEST_AUTOSKIP is set')
       else:
         self.fail('pkg-config is required to run this test')
     return func(self, *args, **kwargs)
