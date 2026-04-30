@@ -18,7 +18,7 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.0 (in development)
+5.0.8 (in development)
 ----------------------
 - The minimum versions of browser engines supported by emscripten's generated
   code were bumped, allowing us to remove our internal support for transpilation
