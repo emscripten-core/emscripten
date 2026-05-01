@@ -42,7 +42,7 @@ void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool s
   emscripten_audio_worklet_post_function_v(audioContext, MessageReceivedInAudioWorkletThread);
 }
 
-uint8_t wasmAudioWorkletStack[1024];
+uint8_t wasmAudioWorkletStack[4096];
 
 int main() {
   emscripten_outf("main");
