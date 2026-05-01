@@ -3,6 +3,7 @@
 #include <emscripten/threading.h>
 #include <assert.h>
 #include <stdbool.h>
+#include <errno.h>
 
 // Tests that
 // - audioworklets and workers can be used at the same time.
@@ -21,13 +22,11 @@ void do_exit() {
 void run_in_worker() {
   double start = emscripten_performance_now();
   emscripten_outf("run_in_worker");
-  while (emscripten_futex_wait(&workletToWorkerFlag, 0, 30000) == 0) {
-    if (workletToWorkerFlag == true) {
-      emscripten_outf("Test success (waited %.fms)", emscripten_performance_now() - start);
-      emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, &do_exit);
-      break;
-    }
+  while (emscripten_futex_wait(&workletToWorkerFlag, 0, 30000) == -ETIMEDOUT) {
+    emscripten_outf("worker wait timed out, repeating wait..");
   }
+  emscripten_outf("Test success (waited %.fms)", emscripten_performance_now() - start);
+  emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, &do_exit);
 }
 
 // This event will fire on the audio worklet thread.
