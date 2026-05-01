@@ -189,6 +189,7 @@ void emscripten_condvar_signal(emscripten_condvar_t * _Nonnull condvar, uint32_t
 // If the given memory address contains value val, puts the calling thread to
 // sleep waiting for that address to be notified. Like the linux futex syscall
 // this function returns negative errno values on failure.
+// Pass maxWaitMilliseconds = INFINITY (or __builtin_inf()) to sleep indefinitely.
 // Returns:
 // * negative value -EINVAL if addr is null.
 // * negative value -ETIMEDOUT if the maxWaitMilliseconds timeout was exceeded.
