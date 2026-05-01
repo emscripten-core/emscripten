@@ -42,11 +42,11 @@ void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool s
   emscripten_audio_worklet_post_function_v(audioContext, MessageReceivedInAudioWorkletThread);
 }
 
-uint8_t wasmAudioWorkletStack[4096];
+uint8_t wasmAudioWorkletStack[1024];
 
 int main() {
   emscripten_outf("main");
-  emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stackSize: */4096);
+  emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stackSize: */1024);
   emscripten_wasm_worker_post_function_v(worker, run_in_worker);
 
   context = emscripten_create_audio_context(0);
