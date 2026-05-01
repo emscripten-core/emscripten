@@ -3,7 +3,6 @@
 #include <emscripten/threading.h>
 #include <assert.h>
 #include <stdbool.h>
-#include <errno.h>
 
 // Tests that
 // - audioworklets and workers can be used at the same time.
