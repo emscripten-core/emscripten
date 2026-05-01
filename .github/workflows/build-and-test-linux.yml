@@ -130,7 +130,7 @@ jobs:
 
   test-sanity:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -162,7 +162,7 @@ jobs:
 
   test-wasm64-4gb:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -194,7 +194,7 @@ jobs:
 
   test-core2:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     env:
       EMTEST_BROWSER: "node"
       EMTEST_SKIP_NODE_25: "1"
@@ -347,7 +347,7 @@ jobs:
 
   test-wasm64-misc:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -388,7 +388,7 @@ jobs:
 
   test-wasm2js1:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     env:
       EMTEST_SKIP_NODE_25: "1"
     steps:
@@ -403,7 +403,7 @@ jobs:
         shell: bash
 
   test-bun:
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -490,7 +490,7 @@ jobs:
           EMTEST_SKIP_WASM_EH: "1"
 
   test-jsc:
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -532,7 +532,7 @@ jobs:
         shell: bash
 
   test-spidermonkey:
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -574,7 +574,7 @@ jobs:
         shell: bash
 
   test-node-compat:
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -643,7 +643,7 @@ jobs:
 
   test-browser-firefox:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     env:
       EMTEST_LACKS_GROWABLE_ARRAYBUFFERS: "1"
     steps:
@@ -673,7 +673,7 @@ jobs:
           DISPLAY: ":0"
 
   test-browser-firefox-wasm64:
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -722,7 +722,7 @@ jobs:
 
   test-browser-chrome:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -735,7 +735,7 @@ jobs:
 
   test-browser-chrome-wasm64:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -749,7 +749,7 @@ jobs:
 
   test-browser-chrome-2gb:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -775,7 +775,7 @@ jobs:
 
   test-sockets-chrome:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -824,7 +824,7 @@ jobs:
 
 
   build-docs:
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -854,7 +854,7 @@ jobs:
 
   test-modularize-instance:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     env:
       EMTEST_SKIP_NODE_25: "1"
     steps:
@@ -872,7 +872,7 @@ jobs:
 
   test-stress:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     env:
       EMTEST_SKIP_NODE_25: "1"
     steps:
@@ -890,7 +890,7 @@ jobs:
 
   test-esm-integration:
     needs: build-linux
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
@@ -917,7 +917,7 @@ jobs:
 
 
   linters:
-    runs-on: emscripten-premerge-linux-runners
+    runs-on: ubuntu-latest
     steps:
       - name: Checkout repo
         uses: actions/checkout@v6.0.2
