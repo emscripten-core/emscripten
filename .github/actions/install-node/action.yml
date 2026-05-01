@@ -1,7 +1,7 @@
 name: 'Install Node'
 description: 'Downloads and installs a specified version of Node.js'
 inputs:
-  node_version:
+  node-version:
     description: 'Node version to install'
     required: true
     default: '25.4.0'
@@ -12,11 +12,11 @@ runs:
     - name: Download and Configure Node
       run: |
         cd $HOME
-        case "${{ inputs.node_version }}" in
+        case "${{ inputs.node-version }}" in
           newest) version="25.4.0" ;;
           lts) version="22.21.0" ;;
           oldest) version="18.3.0" ;;
-          *) version="${{ inputs.node_version }}" ;;
+          *) version="${{ inputs.node-version }}" ;;
         esac
         wget https://nodejs.org/dist/v${version}/node-v${version}-linux-x64.tar.xz
         tar xf node-v${version}-linux-x64.tar.xz
