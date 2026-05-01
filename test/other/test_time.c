@@ -345,6 +345,6 @@ int main() {
   check_gmtime_localtime(-62135596800); // beginning of year 1
   check_gmtime_localtime(0x83d4d9a5); // some time in 2040 (time_t > MAX_INT32)
 
-  puts("success");
+  puts("done");
   return 0;
 }

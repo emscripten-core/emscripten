@@ -1,4 +1,5 @@
 #include <emscripten/webaudio.h>
+#include <emscripten/threading.h>
 #include <assert.h>
 #include <unistd.h>
 
@@ -38,12 +39,13 @@ bool ProcessAudio(int numInputs,
                   int numParams,
                   const AudioParamFrame* params,
                   void* userData) {
+  assert(!emscripten_is_main_browser_thread());
+  assert(emscripten_current_thread_is_audio_worklet());
 #ifdef TEST_AND_EXIT
   // Only running in the test harness, see main_thread_tls_access()
   assert(testTlsVariable == lastTlsVariableValueInAudioThread);
   ++testTlsVariable;
   lastTlsVariableValueInAudioThread = testTlsVariable;
-  assert(emscripten_current_thread_is_audio_worklet());
 #endif
 
   // Verify that getentropy fails gracefully (i.e. returns non-zero) when called
@@ -146,6 +148,7 @@ void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool s
 uint8_t wasmAudioWorkletStack[4096];
 
 int main() {
+  assert(emscripten_is_main_browser_thread());
   assert(!emscripten_current_thread_is_audio_worklet());
 
   // Create an audio context

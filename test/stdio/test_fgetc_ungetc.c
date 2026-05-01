@@ -80,7 +80,7 @@ void test() {
 
   fclose(file);
 
-  puts("success");
+  puts("done");
 }
 
 int main() {

@@ -19,10 +19,9 @@ void do_exit() {
 }
 
 void run_in_worker() {
-  // TODO: Convert to emscripten_futex_wait once it becomes available in Wasm
-  // Workers.
   double start = emscripten_performance_now();
-  while (1) {
+  emscripten_outf("run_in_worker");
+  while (emscripten_futex_wait(&workletToWorkerFlag, 0, 30000) == 0) {
     if (workletToWorkerFlag == true) {
       emscripten_outf("Test success (waited %.fms)", emscripten_performance_now() - start);
       emscripten_wasm_worker_post_function_v(EMSCRIPTEN_WASM_WORKER_ID_PARENT, &do_exit);
@@ -33,8 +32,10 @@ void run_in_worker() {
 
 // This event will fire on the audio worklet thread.
 void MessageReceivedInAudioWorkletThread() {
+  emscripten_outf("waking wasm worker from audio worklet");
   assert(emscripten_current_thread_is_audio_worklet());
   workletToWorkerFlag = true;
+  emscripten_futex_wake(&workletToWorkerFlag, 1);
 }
 
 void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool success, void *userData) {
@@ -44,6 +45,7 @@ void WebAudioWorkletThreadInitialized(EMSCRIPTEN_WEBAUDIO_T audioContext, bool s
 uint8_t wasmAudioWorkletStack[4096];
 
 int main() {
+  emscripten_outf("main");
   emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stackSize: */1024);
   emscripten_wasm_worker_post_function_v(worker, run_in_worker);
 

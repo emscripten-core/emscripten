@@ -102,13 +102,13 @@ def clean_env():
   return safe_env
 
 
-def run_build_commands(commands, num_inputs, build_dir=None):
+def run_build_commands(commands, num_inputs, cwd=None):
   # Before running a set of build commands make sure the common sysroot
   # headers are installed.  This prevents each sub-process from attempting
   # to setup the sysroot itself.
   ensure_sysroot()
   start_time = time()
-  shared.run_multiple_processes(commands, env=clean_env(), cwd=build_dir)
+  shared.run_multiple_processes(commands, env=clean_env(), cwd=cwd)
   logger.info(f'compiled {num_inputs} inputs in {time() - start_time:.2f}s')
 
 
@@ -139,6 +139,13 @@ def objectfile_sort_key(filename):
     return basename
 
 
+def create_lib_emar(output_filename, filenames):
+  utils.delete_file(output_filename)
+  cmd = [shared.EMAR, 'cr', output_filename] + filenames
+  cmd = building.get_command_with_possible_response_file(cmd)
+  utils.run_process(cmd)
+
+
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   suffix = utils.suffix(libname)
@@ -152,7 +159,7 @@ def create_lib(libname, inputs):
       building.link_to_object(inputs, libname)
   else:
     assert suffix == '.a'
-    building.emar('cr', libname, inputs)
+    create_lib_emar(libname, inputs)
 
 
 def get_top_level_ninja_file():
@@ -539,8 +546,11 @@ class Library:
         for i in range(0, len(srcs), chunk_size):
           chunk_srcs = srcs[i:i + chunk_size]
           commands.append(building.get_command_with_possible_response_file(cmd + chunk_srcs))
-
-    run_build_commands(commands, num_inputs=len(objects), build_dir=build_dir)
+      # We need to run all these commands with cwd=build_dir because we used relative paths above
+      run_build_commands(commands, num_inputs=len(objects), cwd=build_dir)
+    else:
+      # No need to set cwd here, since all inputs are absolute paths.
+      run_build_commands(commands, num_inputs=len(objects))
     return objects
 
   def customize_build_cmd(self, cmd, _filename):

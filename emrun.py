@@ -774,7 +774,11 @@ def get_cpu_info():
       cpu_name = check_output(['sysctl', '-n', 'machdep.cpu.brand_string']).strip()
       physical_cores = int(check_output(['sysctl', '-n', 'machdep.cpu.core_count']).strip())
       logical_cores = int(check_output(['sysctl', '-n', 'machdep.cpu.thread_count']).strip())
-      frequency = int(check_output(['sysctl', '-n', 'hw.cpufrequency']).strip()) // 1000000
+      frequency = check_output(['sysctl', '-n', 'hw.cpufrequency']).strip()
+      if not frequency:
+        # Apple Silicon macOS devices have hw.tbfrequency instead of hw.cpufrequency
+        frequency = check_output(['sysctl', '-n', 'hw.tbfrequency']).strip()
+      frequency = int(frequency) // 1000000
     elif LINUX:
       for line in open('/proc/cpuinfo', encoding='utf-8').readlines():
         if 'model name' in line:
@@ -917,12 +921,15 @@ def macos_get_gpu_info():
     info = info.split("Chipset Model:")[1:]
     for gpu in info:
       model_name = gpu.split('\n')[0].strip()
-      bus = re.search("Bus: (.*)", gpu).group(1).strip()
-      memory = int(re.search("VRAM (.*?): (.*) MB", gpu).group(2).strip())
-      gpus += [{'model': model_name + ' (' + bus + ')', 'ram': memory * 1024 * 1024}]
-    return gpus
+      if 'Bus' in gpu and 'VRAM' in gpu:
+        bus = re.search("Bus: (.*)", gpu).group(1).strip()
+        memory = int(re.search("VRAM (.*?): (.*) MB", gpu).group(2).strip())
+        gpus += [{'model': model_name + ' (' + bus + ')', 'ram': memory * 1024 * 1024}]
+      else:
+        gpus += [{'model': model_name, 'ram': 0}]
   except Exception:
     pass
+  return gpus
 
 
 def get_gpu_info():

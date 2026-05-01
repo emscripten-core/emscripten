@@ -350,7 +350,11 @@ if (ENVIRONMENT_IS_WASM_WORKER
   __do_set_thread_state: (tb) => {
     ___set_thread_state(
       /*thread_ptr=*/0,
+#if AUDIO_WORKLET
+      /*is_main_thread=*/!ENVIRONMENT_IS_WORKER && !ENVIRONMENT_IS_AUDIO_WORKLET,
+#else
       /*is_main_thread=*/!ENVIRONMENT_IS_WORKER,
+#endif
       /*is_runtime_thread=*/!ENVIRONMENT_IS_WASM_WORKER,
       /*supports_wait=*/ENVIRONMENT_IS_WORKER && {{{ workerSupportsFutexWait() }}});
   },
