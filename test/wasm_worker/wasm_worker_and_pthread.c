@@ -84,7 +84,7 @@ void *thread_main(void *arg) {
   return 0;
 }
 
-#define WW_STACK_SIZE 2048
+#define WW_STACK_SIZE 4096
 
 void worker_main() {
   // Test self ID
