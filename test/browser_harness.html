@@ -38,7 +38,9 @@
           // should load a new page, since the iframe doesn't currently have
           // a way to tell us it completed (even if it did, we'd need to poll
           // the server to know when the next test page is ready to load).
-          setTimeout(check, 10);
+          // (A timeout value of 100msecs has been seen to stall test
+          //  browser.test_audio_worklet_worker on Chrome)
+          setTimeout(check, 200);
         })
         .catch(() => {
           document.body.innerHTML = 'Tests complete. View log in console.';
