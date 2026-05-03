@@ -102,13 +102,13 @@ def clean_env():
   return safe_env
 
 
-def run_build_commands(commands, num_inputs, build_dir=None):
+def run_build_commands(commands, num_inputs, cwd=None):
   # Before running a set of build commands make sure the common sysroot
   # headers are installed.  This prevents each sub-process from attempting
   # to setup the sysroot itself.
   ensure_sysroot()
   start_time = time()
-  shared.run_multiple_processes(commands, env=clean_env(), cwd=build_dir)
+  shared.run_multiple_processes(commands, env=clean_env(), cwd=cwd)
   logger.info(f'compiled {num_inputs} inputs in {time() - start_time:.2f}s')
 
 
@@ -139,6 +139,13 @@ def objectfile_sort_key(filename):
     return basename
 
 
+def create_lib_emar(output_filename, filenames):
+  utils.delete_file(output_filename)
+  cmd = [shared.EMAR, 'cr', output_filename] + filenames
+  cmd = building.get_command_with_possible_response_file(cmd)
+  utils.run_process(cmd)
+
+
 def create_lib(libname, inputs):
   """Create a library from a set of input objects."""
   suffix = utils.suffix(libname)
@@ -152,7 +159,7 @@ def create_lib(libname, inputs):
       building.link_to_object(inputs, libname)
   else:
     assert suffix == '.a'
-    building.emar('cr', libname, inputs)
+    create_lib_emar(libname, inputs)
 
 
 def get_top_level_ninja_file():
@@ -284,8 +291,7 @@ rule archive
 
 
 class Library:
-  """
-  `Library` is the base class of all system libraries.
+  """`Library` is the base class of all system libraries.
 
   There are two types of libraries: abstract and concrete.
     * An abstract library, e.g. MTLibrary, is a subclass of `Library` that
@@ -386,8 +392,7 @@ class Library:
   force_object_files = False
 
   def __init__(self):
-    """
-    Creates a variation of this library.
+    """Create a variation of the library.
 
     A variation is a specific combination of settings a library can have.
     For example, libc++-mt-noexcept is a variation of libc++.
@@ -405,8 +410,7 @@ class Library:
       raise NotImplementedError('Cannot instantiate an abstract library')
 
   def can_use(self):
-    """
-    Whether this library can be used in the current environment.
+    """Whether this library can be used in the current environment.
 
     For example, libmalloc would override this and return False
     if the user requested no malloc.
@@ -414,8 +418,7 @@ class Library:
     return True
 
   def can_build(self):
-    """
-    Whether this library can be built in the current environment.
+    """Whether this library can be built in the current environment.
 
     Override this if, for example, the library can only be built on WASM backend.
     """
@@ -428,8 +431,7 @@ class Library:
     return cache.get_lib_name(self.get_filename(), absolute=absolute)
 
   def build(self):
-    """
-    Gets the cached path of this library.
+    """Get the cached path of this library.
 
     This will trigger a build if this library is not in the cache.
     """
@@ -439,8 +441,7 @@ class Library:
     return cache.get(self.get_path(), self.do_generate, force=USE_NINJA == 2, quiet=USE_NINJA)
 
   def get_link_flag(self):
-    """
-    Gets the link flags needed to use the library.
+    """Get the link flags needed to use the library.
 
     This will trigger a build if this library is not in the cache.
     """
@@ -453,8 +454,7 @@ class Library:
     return '-l' + base.removeprefix('lib')
 
   def get_files(self):
-    """
-    Gets a list of source files for this library.
+    """Get a list of source files for this library.
 
     Typically, you will use `src_dir`, `src_files`, `src_glob` and `src_glob_exclude`.
     If those are insufficient to describe the files needed, you can override this method.
@@ -482,8 +482,7 @@ class Library:
     create_ninja_file(input_files, ninja_file, libname, cflags, asflags=asflags, customize_build_flags=self.customize_build_cmd)
 
   def build_objects(self, build_dir):
-    """
-    Returns a list of compiled object files for this library.
+    """Return a list of compiled object files for this library.
 
     By default, this builds all the source files returned by `self.get_files()`,
     with the `cflags` returned by `self.get_cflags()`.
@@ -547,18 +546,23 @@ class Library:
         for i in range(0, len(srcs), chunk_size):
           chunk_srcs = srcs[i:i + chunk_size]
           commands.append(building.get_command_with_possible_response_file(cmd + chunk_srcs))
-
-    run_build_commands(commands, num_inputs=len(objects), build_dir=build_dir)
+      # We need to run all these commands with cwd=build_dir because we used relative paths above
+      run_build_commands(commands, num_inputs=len(objects), cwd=build_dir)
+    else:
+      # No need to set cwd here, since all inputs are absolute paths.
+      run_build_commands(commands, num_inputs=len(objects))
     return objects
 
   def customize_build_cmd(self, cmd, _filename):
-    """Allows libraries to customize the build command used on per-file basis.
+    """Return a build command specialized for the given filename.
 
-    For example, libc uses this to replace -Oz with -O2 for some subset of files."""
+    This allows libraries to customize the build command used on per-file basis.
+    For example, libc uses this to replace -Oz with -O2 for some subset of files.
+    """
     return cmd
 
   def do_build(self, out_filename, generate_only=False):
-    """Builds the library and returns the path to the file."""
+    """Build the library and returns the path to the file."""
     assert out_filename == self.get_path(absolute=True)
     build_dir = os.path.join(get_build_dir(), self.get_base_name())
     if USE_NINJA:
@@ -588,9 +592,7 @@ class Library:
     return result
 
   def get_cflags(self):
-    """
-    Returns the list of flags to pass to emcc when building this variation
-    of the library.
+    """Return the list emcc flags to use when building this variation of the library.
 
     Override and add any flags as needed to handle new variations.
     """
@@ -602,36 +604,30 @@ class Library:
     return cflags
 
   def get_base_name_prefix(self):
-    """
-    Returns the base name of the library without any suffixes.
-    """
+    """Return the base name of the library without any suffixes."""
     return self.name
 
   def get_base_name(self):
-    """
-    Returns the base name of the library file.
+    """Return the base name of the library file.
 
     This will include suffixes such as -mt, but will not include a file extension.
     """
     return self.get_base_name_prefix()
 
   def get_ext(self):
-    """
-    Return the appropriate file extension for this library.
-    """
+    """Return the appropriate file extension for this library."""
     return '.a'
 
   def get_filename(self):
-    """
-    Return the full name of the library file, including the file extension.
-    """
+    """Return the full name of the library file, including the file extension."""
     return self.get_base_name() + self.get_ext()
 
   @classmethod
   def vary_on(cls):
-    """
-    Returns a list of strings that are the names of boolean constructor
-    arguments that defines the variations of this library.
+    """Return a list of boolean string variations for this library.
+
+    Return a list of strings that are the names of boolean constructor arguments
+    that defines the variations of this library.
 
     This is used by the default implementation of `cls.variations()` to generate
     every possible combination of boolean values to pass to these arguments.
@@ -640,8 +636,9 @@ class Library:
 
   @classmethod
   def variations(cls):
-    """
-    Returns a list of keyword arguments to pass to the constructor to create
+    """Return every possible variation of this library.
+
+    Return a list of keyword arguments to pass to the constructor to create
     every possible variation of this library.
 
     By default, this is every possible combination of boolean values to pass
@@ -654,8 +651,7 @@ class Library:
 
   @classmethod
   def get_default_variation(cls, **kwargs):
-    """
-    Construct the variation suitable for the current invocation of emscripten.
+    """Construct the variation suitable for the current invocation of emscripten.
 
     Subclasses should pass the keyword arguments they introduce to the
     superclass version, and propagate **kwargs. The base class collects
@@ -665,16 +661,14 @@ class Library:
 
   @classmethod
   def get_inheritance_tree(cls):
-    """Returns all the classes in the inheritance tree of the current class."""
+    """Return all the classes in the inheritance tree of the current class."""
     yield cls
     for subclass in cls.__subclasses__():
       yield from subclass.get_inheritance_tree()
 
   @classmethod
   def get_all_variations(cls):
-    """
-    Gets all the variations of libraries in the inheritance tree of the current
-    library.
+    """Get all the variations of libraries in the inheritance tree of the current library.
 
     Calling Library.get_all_variations() returns the variations of ALL libraries
     that can be built as a dictionary of variation names to Library objects.
@@ -690,8 +684,7 @@ class Library:
 
   @classmethod
   def get_usable_variations(cls):
-    """
-    Gets all libraries suitable for the current invocation of emscripten.
+    """Get all libraries suitable for the current invocation of emscripten.
 
     This returns a dictionary of simple names to Library objects.
     """
@@ -778,9 +771,9 @@ class DebugLibrary(Library):
 
 
 class Exceptions(IntEnum):
-  """
-  This represents exception handling mode of Emscripten. Currently there are
-  three modes of exception handling:
+  """Represents the exception handling mode of Emscripten.
+
+  Currently there are three modes of exception handling:
   - NONE: Does not handle exceptions. This includes -fno-exceptions, which
     prevents both throwing and catching, and -fignore-exceptions, which only
     allows throwing, but library-wise they use the same version.
@@ -789,6 +782,7 @@ class Exceptions(IntEnum):
   - WASM_LEGACY: Wasm native exception handling support (legacy)
   - WASM: Wasm native exception handling support
   """
+
   NONE = auto()
   EMSCRIPTEN = auto()
   WASM_LEGACY = auto()
@@ -1269,10 +1263,27 @@ class libc(MuslInternalLibrary,
             'pthread_attr_setscope.c',
             'pthread_attr_setstack.c',
             'pthread_attr_setstacksize.c',
+            'pthread_condattr_destroy.c',
+            'pthread_condattr_init.c',
+            'pthread_condattr_setpshared.c',
+            'pthread_condattr_setclock.c',
+            'pthread_mutexattr_destroy.c',
+            'pthread_mutexattr_init.c',
+            'pthread_mutexattr_setprotocol.c',
+            'pthread_mutexattr_settype.c',
+            'pthread_mutexattr_setpshared.c',
+            'pthread_rwlockattr_destroy.c',
+            'pthread_rwlockattr_init.c',
+            'pthread_rwlockattr_setpshared.c',
             'pthread_getattr_np.c',
             'pthread_getconcurrency.c',
             'pthread_getcpuclockid.c',
             'pthread_getschedparam.c',
+            'pthread_spin_destroy.c',
+            'pthread_spin_init.c',
+            'pthread_spin_lock.c',
+            'pthread_spin_trylock.c',
+            'pthread_spin_unlock.c',
             'pthread_setschedprio.c',
             'pthread_setconcurrency.c',
             'default_attr.c',
@@ -1293,6 +1304,8 @@ class libc(MuslInternalLibrary,
             'mtx_timedlock.c',
             'mtx_trylock.c',
             'mtx_unlock.c',
+            'sem_destroy.c',
+            'sem_init.c',
             'thrd_create.c',
             'thrd_exit.c',
             'thrd_join.c',
@@ -1528,8 +1541,14 @@ class libwasm_workers(MuslInternalLibrary, DebugLibrary):
   src_dir = 'system/lib/wasm_worker'
   src_files = ['library_wasm_worker.c', 'wasm_worker_initialize.S', 'audio_worklet.c']
 
+  def __init__(self, **kwargs):
+    self.is_mt = kwargs.pop('is_mt')
+    super().__init__(**kwargs)
+
   def get_cflags(self):
-    cflags = super().get_cflags() + ['-sWASM_WORKERS']
+    cflags = super().get_cflags() + ['-sWASM_WORKERS', '-Wno-c23-extensions']
+    if self.is_mt:
+      cflags += ['-pthread']
     if self.is_debug:
       # library_wasm_worker.c contains an assert that a nonnull parameter
       # is no NULL, which llvm now warns is redundant/tautological.
@@ -1541,6 +1560,23 @@ class libwasm_workers(MuslInternalLibrary, DebugLibrary):
     else:
       cflags += ['-Oz']
     return cflags
+
+  def get_base_name(self):
+    name = super().get_base_name()
+    if self.is_mt:
+      name += '-mt'
+    return name
+
+  @classmethod
+  def vary_on(cls):
+    return super().vary_on() + ['is_mt']
+
+  @classmethod
+  def get_default_variation(cls, **kwargs):
+    return super().get_default_variation(
+      is_mt=settings.PTHREADS,
+      **kwargs,
+    )
 
   def can_use(self):
     # see src/library_wasm_worker.js
@@ -1875,7 +1911,7 @@ class libmimalloc(MTLibrary):
     # halve the page size to 32KiB on wasm64 and to 16KiB on wasm32
     # https://github.com/microsoft/mimalloc/issues/647#issuecomment-1324109021
     # https://github.com/emscripten-core/emscripten/issues/20645#issuecomment-1962964755
-    '-DMI_ARENA_SLICE_SHIFT=(12 + MI_SIZE_SHIFT)',
+    '-DMI_ARENA_SLICE_SHIFT=(12+MI_SIZE_SHIFT)',
     # `malloc`ed pointers must be aligned at least as strictly as max_align_t
     '-DMI_MAX_ALIGN_SIZE=8',
     # reserve memory in 64 MiB chunks (internally divided by 4)

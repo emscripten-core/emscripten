@@ -8,6 +8,7 @@
 #pragma once
 
 #include <pthread.h>
+#include <stdbool.h>
 
 // Defined THREADING_DEBUG here (or in the build system) to enabled verbose
 // logging using emscripten_dbgf.
@@ -51,7 +52,9 @@ typedef struct thread_profiler_block {
 // argument.  This can save _emscripten_check_timers from needing to call out to
 // JS to get the current time.  Passing 0 means that caller doesn't know the
 // current time.
-void _emscripten_yield(double now);
+//
+// Returns true is a timer was fired, false otherwise.
+bool _emscripten_yield(double now);
 
 void _emscripten_init_main_thread_js(void* tb);
 void _emscripten_thread_profiler_enable();

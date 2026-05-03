@@ -13,7 +13,7 @@ void do_abort() {
 
 int main() {
   emscripten_out("in main");
-  emscripten_wasm_worker_post_function_v(emscripten_malloc_wasm_worker(1024), do_abort);
+  emscripten_wasm_worker_post_function_v(emscripten_malloc_wasm_worker(4096), do_abort);
   emscripten_exit_with_live_runtime();
   assert(false && "should never get here");
 }

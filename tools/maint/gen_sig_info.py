@@ -4,7 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""This tool extracts native/C signature information for JS library functions
+"""Extract native/C signature information for use in JS library functions.
 
 It generates a file called `src/lib/libsigs.js` which contains `__sig` declarations
 for the majority of JS library functions.

@@ -4,8 +4,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""This is the Emscripten test runner. To run some tests, specify which tests
-you want, for example
+"""Emscripten test runner.
+
+To run some tests, specify which tests you want, for example
 
   test/runner core0.test_hello_world
 
@@ -372,7 +373,7 @@ def create_test_run_sorter(sort_failing_tests_at_front):
 
 
 def use_parallel_suite(module):
-  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress'}
+  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress', 'test_emrun'}
   if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_cores:
@@ -571,8 +572,7 @@ def configure():
 
 
 def cleanup_temp_directory():
-  """Deletes all files and directories in TEMP_DIR that look like they
-  might have been created by Emscripten."""
+  """Delete all files and directories in TEMP_DIR that look like they might have been created by Emscripten."""
   for entry in os.listdir(shared.TEMP_DIR):
     if entry.startswith(('emtest_', 'emscripten_')):
       entry = os.path.join(shared.TEMP_DIR, entry)
@@ -592,8 +592,7 @@ def print_repository_info(directory, repository_name):
 
 
 def log_test_environment():
-  """Print detailed information about the current test environment. Useful for
-  logging test run configuration in a CI."""
+  """Print detailed information about the current test environment. Useful for logging test run configuration in a CI."""
   print('======================== Test Setup ========================')
   print(f'Test time: {datetime.datetime.now(datetime.timezone.utc).strftime("%A, %B %d, %Y %H:%M:%S %Z")}')
   print(f'Python: "{sys.executable}". Version: {sys.version}')
@@ -616,6 +615,7 @@ def log_test_environment():
   node_js_version = utils.run_process(config.NODE_JS + ['--version'], stdout=subprocess.PIPE).stdout.strip()
   print(f'NODE_JS: {config.NODE_JS}. Version: {node_js_version}')
 
+  print(f'JS_ENGINES: {config.JS_ENGINES}')
   print(f'BINARYEN_ROOT: {config.BINARYEN_ROOT}')
   wasm_opt_version = building.get_binaryen_version(building.get_binaryen_bin()).strip()
   print(f'wasm-opt version: {wasm_opt_version}')

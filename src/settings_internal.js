@@ -152,9 +152,6 @@ var MINIFY_WASM_IMPORTED_MODULES = false;
 // Whether to minify exports from the Wasm module.
 var MINIFY_WASM_EXPORT_NAMES = true;
 
-// Used to track whether target environment supports the 'Promise.any'.
-var SUPPORTS_PROMISE_ANY = false;
-
 // Internal: value of -flto argument (either full or thin)
 var LTO = 0;
 
@@ -222,10 +219,6 @@ var MAYBE_CLOSURE_COMPILER = false;
 // This list is populated from the --closure-args argument and can be extended
 // in ports using settings.CLOSURE_ARGS
 var CLOSURE_ARGS = [];
-
-// Set when some minimum browser version triggers doesn't support the minimum
-// set of JavaScript features.  This triggers transpilation using babel.
-var TRANSPILE = false;
 
 // A copy of the default INCOMING_MODULE_JS_API. (Soon to
 // include additional items).

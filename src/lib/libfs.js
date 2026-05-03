@@ -179,8 +179,8 @@ FS.staticInit();`;
         path = FS.cwd() + '/' + path;
       }
 
-      // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
-      linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
+      // limit max consecutive symlinks to SYMLOOP_MAX.
+      linkloop: for (var nlinks = 0; nlinks < {{{ cDefs.SYMLOOP_MAX }}}; nlinks++) {
         // split the absolute path
         var parts = path.split('/').filter((p) => !!p);
 

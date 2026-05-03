@@ -64,21 +64,25 @@ void _emscripten_timeout(int which, double now)
 	raise(signum);
 }
 
-void _emscripten_check_timers(double now)
+bool _emscripten_check_timers(double now)
 {
 	// Timers always run on the main runtime thread. They are registered with
 	// _setitimer_js which is proxied to the main runtime thread.
 	assert(emscripten_is_main_runtime_thread());
+	bool rtn = false;
 	for (int which = 0; which < 3; which++) {
 		if (current_timeout_ms[which]) {
 			// Only call out to JS to get the current time if it was not passed in
 			// *and* we have one or more timers set.
 			if (!now)
 			 	now = emscripten_get_now();
-			if (now >= current_timeout_ms[which])
+			if (now >= current_timeout_ms[which]) {
+				rtn = true;
 				_emscripten_timeout(which, now);
+			}
 		}
 	}
+	return rtn;
 }
 
 double _emscripten_next_timer()

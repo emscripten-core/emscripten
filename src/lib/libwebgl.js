@@ -4042,11 +4042,13 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   $convertOffsets__internal: true,
   $convertOffsets: (offsets, count) => {
     var offsets32 = stackAlloc(count * 4);
-    var i64ptr = offsets >> 3;
-    var i32ptr = offsets32 >> 2;
+    var i64ptr = {{{ getHeapOffset('offsets', 'i64') }}};
+    var i32ptr = {{{ getHeapOffset('offsets32', 'i32') }}};
     for (var i = 0; i < count; i++, i32ptr++, i64ptr++) {
       var i64val = HEAPU64[i64ptr];
-      assert(i64val >= 0 && i32ptr <= 0xffffffff);
+#if ASSERTIONS
+      assert(i64val >= 0 && i64val <= 0xffffffff);
+#endif
       HEAPU32[i32ptr] = Number(i64val);
     }
     return offsets32;

@@ -29,7 +29,6 @@ static int g_pid = 42;
 static int g_pgid = 42;
 static int g_ppid = 1;
 static int g_sid = 42;
-static mode_t g_umask = S_IWGRP | S_IWOTH;
 
 #ifdef NDEBUG
 #define REPORT(name)
@@ -119,12 +118,6 @@ weak int __syscall_getgroups32(int size, intptr_t list) {
 
 weak int __syscall_setsid() {
   return 0; // no-op
-}
-
-weak int __syscall_umask(int mask) {
-  int old = g_umask;
-  g_umask = mask;
-  return old;
 }
 
 struct kusage {

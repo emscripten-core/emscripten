@@ -10,6 +10,7 @@ import plistlib
 import queue
 import re
 import shlex
+import shutil
 import subprocess
 import threading
 import time
@@ -35,9 +36,9 @@ from common import (
 )
 
 from tools import feature_matrix, utils
-from tools.feature_matrix import UNSUPPORTED
+from tools.feature_matrix import OLDEST_SUPPORTED_FIREFOX, UNSUPPORTED
 from tools.shared import DEBUG, EMCC, exit_with_error
-from tools.utils import MACOS, WINDOWS, memoize, path_from_root, read_binary
+from tools.utils import LINUX, MACOS, WINDOWS, memoize, path_from_root, read_binary
 
 logger = logging.getLogger('common')
 
@@ -78,10 +79,13 @@ browser_spawn_lock_filename = path_from_root('out/browser_spawn_lock')
 
 
 class Reporting(Enum):
-  """When running browser tests we normally automatically include support
+  """Browser reporting method.
+
+  When running browser tests we normally automatically include support
   code for reporting results back to the browser.  This enum allows tests
   to decide what type of support code they need/want.
   """
+
   NONE = 0
   # Include the JS helpers for reporting results
   JS_ONLY = 1
@@ -137,8 +141,7 @@ def init(force_browser_process_termination):
 
 
 def find_browser_test_file(filename):
-  """Looks for files in test/browser and then in test/
-  """
+  """Looks for files in test/browser and then in test/."""
   if not os.path.exists(filename):
     fullname = test_file('browser', filename)
     if not os.path.exists(fullname):
@@ -165,8 +168,22 @@ def get_safari_version():
 def get_firefox_version():
   if not is_firefox():
     return UNSUPPORTED
-  exe_path = shlex.split(EMTEST_BROWSER)[0]
+  exe_path = shutil.which(shlex.split(EMTEST_BROWSER)[0])
   ini_path = os.path.join(os.path.dirname(exe_path), '../Resources/platform.ini' if MACOS else 'platform.ini')
+  # On Linux, Firefox system installation uses a specific directory structure,
+  # where platform.ini is not located in same directory as the browser executable.
+  if LINUX and exe_path.startswith('/usr/bin/'):
+    def find_system_firefox_platform_ini():
+      for path in ['/usr/lib/firefox-esr/', '/usr/lib/firefox/']:
+        ini = os.path.join(path, 'platform.ini')
+        if os.path.isfile(ini):
+          return ini
+
+    ini_path = find_system_firefox_platform_ini()
+    if not ini_path:
+      logger.warning(f'Firefox browser detected in {EMTEST_BROWSER}, but could not find Firefox platform.ini to detect Firefox version. Assuming OLDEST_SUPPORTED_FIREFOX={OLDEST_SUPPORTED_FIREFOX}')
+      return OLDEST_SUPPORTED_FIREFOX
+
   # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
   m = re.search(r"^Milestone=(.*)$", read_file(ini_path), re.MULTILINE)
   milestone = m.group(1).strip()
@@ -270,7 +287,7 @@ class SafariConfig:
 
   @staticmethod
   def configure(data_dir):
-    """ Safari has no special configuration step."""
+    """Safari has no special configuration step."""
 
   @staticmethod
   def open_url_args(url):
@@ -319,6 +336,11 @@ def configure_test_browser():
 
   if not EMTEST_BROWSER:
     EMTEST_BROWSER = 'google-chrome'
+    if not shutil.which(EMTEST_BROWSER):
+      EMTEST_BROWSER = 'firefox'
+      if not shutil.which(EMTEST_BROWSER):
+        # FIXME: This should really be and error, but this code currently also runs for non-browser tests.
+        EMTEST_BROWSER = 'default-browser-not-found'
 
   if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
     # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
@@ -522,6 +544,7 @@ def make_test_server(in_queue, out_queue, port):
 
 class HttpServerThread(threading.Thread):
   """A generic thread class to create and run an http server."""
+
   def __init__(self, server):
     super().__init__()
     self.server = server
@@ -531,7 +554,7 @@ class HttpServerThread(threading.Thread):
     self.server.shutdown()
 
   def run(self):
-    """Creates the server instance and serves forever until stop() is called."""
+    """Create a server instance and serve forever until stop() is called."""
     # Start the server's main loop (this blocks until shutdown() is called)
     self.server.serve_forever()
 
@@ -542,7 +565,8 @@ worker_id = None
 
 
 def init_worker(counter, lock):
-  """ Initializer function for each worker.
+  """Initializer function for each worker.
+
   It acquires a lock, gets a unique ID from the shared counter,
   and stores it in a global variable specific to this worker process.
   """
@@ -555,8 +579,11 @@ def init_worker(counter, lock):
 
 
 def move_browser_window(pid, x, y):
-  """Utility function to move the top-level window owned by given process to
-  (x,y) coordinate. Used to ensure each browser window has some visible area."""
+  """Utility function to move the top-level window.
+
+  Move the windows owned by given process to (x,y) coordinate.
+  Used to ensure each browser window has some visible area.
+  """
   import win32con
   import win32gui
   import win32process
@@ -588,9 +615,13 @@ def increment_suffix_number(str_with_maybe_suffix):
 
 
 class FileLock:
-  """Implements a filesystem-based mutex, with an additional feature that it
-  returns an integer counter denoting how many times the lock has been locked
-  before (during the current python test run instance)"""
+  """Implements a filesystem-based mutex.
+
+  In additon the context manager returns an integer counter denoting how
+  many times the lock has been locked before (during the current python test
+  run instance)
+  """
+
   def __init__(self, path):
     self.path = path
     self.counter = 0
@@ -697,10 +728,12 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def launch_browser_harness_with_proc_snapshot_workaround(cls, parallel_harness, config, browser_args, url):
-    ''' Dedicated function for launching browser harness in scenarios where
-    we need to identify the launched browser processes via a before-after
-    subprocess snapshotting delta workaround.'''
+    """Launch a browser using before-after subprocess snapshotting.
 
+    Dedicated function for launching browser harness in scenarios where
+    we need to identify the launched browser processes via a before-after
+    subprocess snapshotting delta workaround.
+    """
     # In order for this to work, each browser needs to be launched one at a time
     # so that we know which process belongs to which browser.
     with FileLock(browser_spawn_lock_filename) as count:
@@ -889,8 +922,7 @@ class BrowserCore(RunnerCore):
     utils.delete_file('browser_reporting.js')
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
-    """Special case of `btest` that reports its result solely via exiting
-    with a given result code.
+    """Special case of `btest` that reports its result solely via exiting with a given result code.
 
     In this case we set EXIT_RUNTIME and we don't need to provide the
     REPORT_RESULT macro to the C code.

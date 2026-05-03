@@ -215,7 +215,7 @@ void test() {
   assert(errno == EXDEV);
 #endif
 
-  puts("success");
+  puts("done");
 }
 
 int main() {

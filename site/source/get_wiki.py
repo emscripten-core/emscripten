@@ -43,8 +43,7 @@ snapshot_version_information = '.. note:: This article was migrated from the wik
 
 
 def CleanWiki():
-    """Delete the wiki clone directory and all contained files.
-    """
+    """Delete the wiki clone directory and all contained files."""
 
     def errorhandler(func, path, exc_info):
         # where  func is os.listdir, os.remove, or os.rmdir; path is the argument to that function that caused it to fail; and  exc_info is a tuple returned by  sys.exc_info()
@@ -62,9 +61,7 @@ def CleanWiki():
 
 
 def CloneWiki():
-    """
-    Clone the wiki into a temporary location (first cleaning)
-    """
+    """Clone the wiki into a temporary location (first cleaning)."""
     # Clean up existing repo
     CleanWiki()
 
@@ -82,9 +79,7 @@ def CloneWiki():
 
 
 def ConvertFilesToRst():
-    """
-    Add template to specified page object (wikitools)
-    """
+    """Add template to specified page object (wikitools)."""
     indexfiletext = '============================\nWiki snapshot (ready-for-review)\n============================\n\n%s\n.. toctree::\n    :maxdepth: 2\n' % snapshot_version_information
     for file in os.listdir(wiki_checkout):
         if not file.endswith(".md"):
@@ -141,13 +136,10 @@ def ConvertFilesToRst():
 
 
 def FixupConvertedRstFiles():
-    """Add template to specified page object (wikitools)
-    """
+    """Add template to specified page object (wikitools)."""
 
     def fixInternalWikiLinks(aOldText):
-        """
-        Fixes wiki links in [[linkname]] format by changing this to a document link in current directory.
-        """
+        """Fixes wiki links in [[linkname]] format by changing this to a document link in current directory."""
         def fixwikilinks(matchobj):
             # print 'matcobj0: %s' % matchobj.group(0)
             # print 'matcobj1: %s' % matchobj.group(1)
@@ -163,9 +155,7 @@ def FixupConvertedRstFiles():
         return re.sub(r'\[\[(.+?)\]\]', fixwikilinks, aOldText)
 
     def fixWikiCodeMarkupToCodeLinks(aOldText):
-        """
-        Links "known" code objects if they are found in wiki markup.
-        """
+        """Links "known" code objects if they are found in wiki markup."""
         def fixcodemarkuplinks(matchobj):
             # print 'Inline code: %s' % matchobj.group(0)
             # print 'matcobj1: %s' % matchobj.group(1)

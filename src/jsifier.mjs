@@ -497,7 +497,7 @@ function(${args}) {
                 proxyMode = PROXY_SYNC;
               }
             }
-            const rtnType = sig && sig.length ? sig[0] : null;
+            const rtnType = sig?.[0];
             const proxyFunc =
               MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
             deps.push('$' + proxyFunc);
@@ -567,11 +567,7 @@ function(${args}) {
       }
       addedLibraryItems[symbol] = true;
 
-      if (!(symbol + '__deps' in LibraryManager.library)) {
-        LibraryManager.library[symbol + '__deps'] = [];
-      }
-
-      const deps = LibraryManager.library[symbol + '__deps'];
+      const deps = LibraryManager.library[symbol + '__deps'] ??= [];
       let sig = LibraryManager.library[symbol + '__sig'];
       if (!WASM_BIGINT && sig && sig[0] == 'j') {
         // Without WASM_BIGINT functions that return i64 depend on setTempRet0
@@ -702,7 +698,7 @@ function(${args}) {
           // signatures are relevant and they differ between and alais and
           // it's target) we need to construct a forwarding function from
           // one to the other.
-          const isSigRelevant = MAIN_MODULE || MEMORY64 || CAN_ADDRESS_2GB || (sig && sig.includes('j'));
+          const isSigRelevant = MAIN_MODULE || MEMORY64 || CAN_ADDRESS_2GB || sig?.includes('j');
           const targetSig = LibraryManager.library[aliasTarget + '__sig'];
           if (isSigRelevant && sig && targetSig && sig != targetSig) {
             debugLog(`${symbol}: Alias target (${aliasTarget}) has different signature (${sig} vs ${targetSig})`)

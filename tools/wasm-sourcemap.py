@@ -4,10 +4,11 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Utility tools that extracts DWARF information encoded in a wasm output
-produced by the LLVM tools, and encodes it as a wasm source map. Additionally,
-it can collect original sources, change files prefixes, and strip debug
-sections from a wasm file.
+"""Utility tools that extracts DWARF information from a WebAssembly file.
+
+This script take the output produced by the LLVM tools, and encodes it as
+a wasm source map. Additionally, it can collect original sources, change
+files prefixes, and strip debug sections from a wasm file.
 """
 
 import argparse

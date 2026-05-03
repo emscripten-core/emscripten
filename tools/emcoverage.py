@@ -4,8 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""
-This is the Emscripten coverage tool.
+"""Emscripten coverage tool.
 
 Usage: emcoverage.py <help|reset|report|html|xml|COMMAND> ...
 

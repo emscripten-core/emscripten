@@ -3,7 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Stress test versions of some existing tests from test_core.py
+"""Stress test versions of some existing tests from test_core.py.
+
 These don't run in test_core.py itself because that is already run in parallel and these
 stress tests each saturate the CPU cores.
 

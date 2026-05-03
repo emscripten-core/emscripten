@@ -13,6 +13,7 @@ var SyscallsLibrary = {
   ],
   $SYSCALLS: {
 #if SYSCALLS_REQUIRE_FILESYSTEM
+    currentUmask: 0o022,
     // global constants
 
     // shared utilities
@@ -839,17 +840,27 @@ var SyscallsLibrary = {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     var mode = varargs ? syscallGetVarargI() : 0;
+    if (flags & {{{ cDefs.O_CREAT }}}) {
+      mode &= ~SYSCALLS.currentUmask;
+    }
     return FS.open(path, flags, mode).fd;
+  },
+  __syscall_umask: (mask) => {
+    var old = SYSCALLS.currentUmask;
+    SYSCALLS.currentUmask = mask;
+    return old;
   },
   __syscall_mkdirat: (dirfd, path, mode) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
+    mode &= ~SYSCALLS.currentUmask;
     FS.mkdir(path, mode, 0);
     return 0;
   },
   __syscall_mknodat: (dirfd, path, mode, dev) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
+    mode &= ~SYSCALLS.currentUmask;
     // we don't want this in the JS API as it uses mknod to create all nodes.
     switch (mode & {{{ cDefs.S_IFMT }}}) {
       case {{{ cDefs.S_IFREG }}}:

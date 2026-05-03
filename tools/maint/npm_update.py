@@ -4,8 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Update npm dependencies using npm-check-updates
-"""
+"""Update npm dependencies using npm-check-updates."""
 
 import os
 import subprocess

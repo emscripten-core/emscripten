@@ -127,7 +127,7 @@ Examples:
   to disable). This has the effect that Wasm i64 values are passed and returned
   between Wasm and JS as BigInt values rather than being split by Binaryen into
   pairs of Numbers.
-* Sign-extension operators (enabled by default, use ``-mno-sign-ext`` to disable).
+* Sign-extension operators (enabled by default)
 
 For the features that are enabled by default (or will be when sufficient
 browser support exists), it's also possible to control them by specifying

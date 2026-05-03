@@ -22,7 +22,7 @@ void run_in_worker() {
 int main() {
   emscripten_err("err from main thread");
   emscripten_dbg("dbg from main thread");
-  emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stack size: */1024);
+  emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stack size: */4096);
   assert(worker);
   emscripten_wasm_worker_post_function_v(worker, run_in_worker);
   emscripten_exit_with_live_runtime();

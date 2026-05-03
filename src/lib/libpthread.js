@@ -22,9 +22,6 @@
 #if EVAL_CTORS
 #error "EVAL_CTORS is not compatible with pthreads yet (passive segments)"
 #endif
-#if EXPORT_ES6 && (MIN_FIREFOX_VERSION < 114 || MIN_CHROME_VERSION < 80 || MIN_SAFARI_VERSION < 150000)
-#error "internal error, feature_matrix should not allow this"
-#endif
 
 {{{
 #if MEMORY64

@@ -26,7 +26,6 @@ from decorators import (
   requires_native_clang,
   test_file,
 )
-from test_browser import requires_shared_array_buffer
 
 from tools import config
 from tools.shared import CLANG_CC, EMCC
@@ -400,7 +399,6 @@ class sockets(BrowserCore):
 
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets
   # -> POSIX sockets bridge server
-  @requires_shared_array_buffer
   def test_posix_proxy_sockets(self):
     # Build the websocket bridge server
     self.run_process(['cmake', path_from_root('tools/websocket_to_posix_proxy')])
