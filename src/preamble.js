@@ -188,12 +188,19 @@ function preMain() {
 #endif
 
 #if EXIT_RUNTIME
+
+#if ASSERTIONS
+var runtimeExiting = false;
+#endif
+
 function exitRuntime() {
 #if RUNTIME_DEBUG
   dbg('exitRuntime');
 #endif
 #if ASSERTIONS
   assert(!runtimeExited);
+  assert(!runtimeExiting, 'Re-entrant call to exitRuntime()! This can happen if an atexit() registered callback throws an exception.');
+  runtimeExiting = true;
 #endif
 #if ASYNCIFY == 1 && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
