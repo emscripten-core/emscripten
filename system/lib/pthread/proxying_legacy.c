@@ -530,9 +530,9 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
 }
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeoutMSecs) {
-  int done = atomic_load(&call->operationDone);
-  if (done)
+  if (call->operationDone) {
     return EMSCRIPTEN_RESULT_SUCCESS;
+  }
 
   emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
 
