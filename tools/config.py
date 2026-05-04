@@ -74,6 +74,20 @@ def normalize_config_settings():
     PORTS = os.path.join(CACHE, 'ports')
 
 
+def normalize_relative_python_path():
+  # User may have specified the EMSDK_PYTHON environment variable to point to
+  # the Python interpreter, e.g.
+  #
+  #  EMSDK_PYTHON=../../path/to/python emcc test/hello_world.c
+  #
+  # As part of its operation, emcc may spawn sub-emcc tasks when building
+  # libraries to cache. These sub-emcc tasks will run in a different CWD, so
+  # reinitialize EMSDK_PYTHON here so that sub-tool spawns will use the same
+  # Python interpreter as the parent.
+  if os.environ.get('EMSDK_PYTHON'):
+    os.environ['EMSDK_PYTHON'] = sys.executable
+
+
 def set_config_from_tool_location(config_key, tool_binary, f):
   val = globals()[config_key]
   if val is None:
@@ -168,6 +182,7 @@ def read_config():
   set_config_from_tool_location('BINARYEN_ROOT', 'wasm-opt', lambda x: os.path.dirname(os.path.dirname(x)))
 
   normalize_config_settings()
+  normalize_relative_python_path()
 
 
 def generate_config(path):

@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-"""Find entries in struct_info.json that are not needed by
-any JS library code and can be removed."""
+"""Find entries in struct_info.json that are not needed by any JS library code and can be removed."""
 
 import json
 import os

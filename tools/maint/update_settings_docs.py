@@ -4,8 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Convert src/settings.js into ReSt docs that get published as
-part of the emscripten docs.
+"""Convert src/settings.js into `.rst` format for the website.
 
 This parser for src/settings.js is somewhat fragile, and
 comments need to be written in a ReSt friendly way.  This

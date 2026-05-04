@@ -16,6 +16,7 @@
 #include <threads.h>
 #include <stdarg.h>
 #include <stdbool.h>
+#include <stdatomic.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -29,6 +30,7 @@
 
 #include "dynlink.h"
 #include "pthread_impl.h"
+#include "threading_internal.h"
 #include "emscripten_internal.h"
 
 //#define DYLINK_DEBUG
@@ -406,13 +408,9 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
     emscripten_promise_resolve(promise, EM_PROMISE_FULFILL, NULL);
     emscripten_promise_destroy(promise);
     free(info);
-  } else if (target_thread->sleeping) {
-    // If the target thread is in the sleeping state (and this check is
-    // performed after the enqueuing of the async work) then we know its safe to
-    // resolve the promise early, since the thread will process our event as
-    // soon as it wakes up.
-    emscripten_promise_resolve(promise, EM_PROMISE_FULFILL, NULL);
-    return 0;
+  } else {
+    // Wake up the target thread in case it's blocked in futex_wait
+    _emscripten_thread_notify(target_thread);
   }
   return rtn;
 }

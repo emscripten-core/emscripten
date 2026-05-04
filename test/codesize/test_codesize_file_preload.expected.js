@@ -363,7 +363,6 @@ function postRun() {}
 
 /**
  * @param {string|number=} what
- * @noreturn
  */ function abort(what) {
   what = `Aborted(${what})`;
   // TODO(sbc): Should we remove printing and leave it up to whoever
@@ -1471,7 +1470,7 @@ var FS = {
     if (!PATH.isAbs(path)) {
       path = FS.cwd() + "/" + path;
     }
-    // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
+    // limit max consecutive symlinks to SYMLOOP_MAX.
     linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
       // split the absolute path
       var parts = path.split("/").filter(p => !!p);
@@ -1754,7 +1753,14 @@ var FS = {
     var arg = setattr ? stream : node;
     setattr ??= node.node_ops.setattr;
     FS.checkOpExists(setattr, 63);
-    setattr(arg, attr);
+    try {
+      setattr(arg, attr);
+    } catch (e) {
+      if (e instanceof RangeError) {
+        throw new FS.ErrnoError(22);
+      }
+      throw e;
+    }
   },
   chrdev_stream_ops: {
     open(stream) {
@@ -2991,6 +2997,7 @@ var FS = {
    */ var UTF8ToString = (ptr, maxBytesToRead, ignoreNul) => ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : "";
 
 var SYSCALLS = {
+  currentUmask: 18,
   calculateAt(dirfd, path, allowEmpty) {
     if (PATH.isAbs(path)) {
       return path;
@@ -3082,7 +3089,7 @@ function _fd_write(fd, iov, iovcnt, pnum) {
 
 var keepRuntimeAlive = () => true;
 
-/** @noreturn */ var _proc_exit = code => {
+var _proc_exit = code => {
   EXITSTATUS = code;
   if (!keepRuntimeAlive()) {
     ABORT = true;

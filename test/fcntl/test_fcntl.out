@@ -25,7 +25,31 @@ errno: 0
 F_SETFL: 0
 errno: 0
 
-F_GETFL/2: 1
+F_GETFL/2 (O_RDWR and O_APPEND): 1 1
+errno: 0
+
+F_SETFL clear O_APPEND: 0
+errno: 0
+
+F_GETFL/3 (O_RDWR and no O_APPEND): 1 0
+errno: 0
+
+F_SETFL O_NONBLOCK: 0
+errno: 0
+
+F_GETFL/4 (O_NONBLOCK): 1
+errno: 0
+
+F_SETFL clear O_NONBLOCK: 0
+errno: 0
+
+F_GETFL/5 (no O_NONBLOCK): 0
+errno: 0
+
+F_SETFL ignore O_TRUNC: 0
+errno: 0
+
+F_GETFL/6 (no O_TRUNC): 0
 errno: 0
 
 F_GETLK: 0

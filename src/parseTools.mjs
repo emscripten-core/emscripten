@@ -677,7 +677,7 @@ function makeDynCall(sig, funcPtr, promising = false) {
     !sig.includes('j'),
     'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!',
   );
-  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI.');
+  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI');
 
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
@@ -1108,17 +1108,6 @@ function formattedMinNodeVersion() {
   return `v${major}.${minor}.${rev}`;
 }
 
-function getPerformanceNow() {
-  // This is needed to support Node.js v16 - v18 where `performance.now`
-  // cannot be overridden in the normal way.
-  // TODO(sbc): remove this once we drop support for these versions.
-  if (DETERMINISTIC && ENVIRONMENT_MAY_BE_NODE) {
-    return 'deterministicNow';
-  } else {
-    return 'performance.now';
-  }
-}
-
 function ENVIRONMENT_IS_MAIN_THREAD() {
   return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
 }
@@ -1234,7 +1223,6 @@ addToCompileTimeContext({
   getHeapForType,
   getHeapOffset,
   getNativeTypeSize,
-  getPerformanceNow,
   getUnsharedTextDecoderView,
   hasExportedSymbol,
   isSymbolNeeded,

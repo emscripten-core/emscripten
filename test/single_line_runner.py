@@ -21,9 +21,7 @@ def term_width():
 
 
 class SingleLineTestResult(ColorTextResult):
-  """Similar to the standard TextTestResult but uses ANSI escape codes
-  for color output and reusing a single line on the terminal.
-  """
+  """Like standard TextTestResult but uses ANSI escape codes for color output and reusing a single line on the terminal."""
 
   # Reserve at least 20 columns for the status message
   min_status_msg = 20
@@ -91,7 +89,8 @@ class SingleLineTestResult(ColorTextResult):
 
 
 class SingleLineTestRunner(ColorTextRunner):
-  """Subclass of TextTestResult that uses SingleLineTestResult"""
+  """Subclass of TextTestResult that uses SingleLineTestResult."""
+
   resultclass = SingleLineTestResult # type: ignore
 
   def __init__(self, *args, **kwargs):

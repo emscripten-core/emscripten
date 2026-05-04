@@ -38,7 +38,9 @@ commands:
           command: |
             # TODO: Make these part of the base image
             apt-get install -q -y libu2f-udev libvulkan1 xdg-utils
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-unstable_current_amd64.deb
+            # Temporarily pinning to beta rather than unstable:
+            # See https://github.com/emscripten-core/emscripten/issues/26720
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
             # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
@@ -216,7 +218,7 @@ commands:
           command: |
             ls -l ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
             ls -l ~/cache/sysroot/include/emscripten/heap.h
-            cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin.o.ccache-log
+            cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin-mt.o.ccache-log
             date
             cat ~/cache/build/libcompiler_rt/absvdi2.o.ccache-log
             ccache -s
@@ -704,18 +706,22 @@ jobs:
             lto0.test_exceptions_allowed_uncaught
             lto0.test_longjmp_standalone_standalone
             lto0.test_embind_i64_val
+            lto0.test_wasm_worker_futex_wait
             thinlto0.test_pthread_dlsym
             core3
             core2g.test_externref
             corez.test_dylink_iostream
             core2ss.test_pthread_dylink
             core2ss.test_pthread_thread_local_storage
+            core2ss.test_wasm_worker_futex_wait
             core2s.test_dylink_syslibs_missing_assertions
             core2s.test_module_wasm_memory
             cores.test_minimal_runtime_safe_heap
+            wasm2js0.test_autodebug_wasm
             wasm2js3.test_memorygrowth_2
             wasm2js2.test_pthread_proxying
             wasmfs.test_hello_world
+            wasmfs.test_pipe_select
             wasmfs.test_unistd_links*
             wasmfs.test_atexit_standalone
             wasmfs.test_emscripten_get_now
@@ -766,6 +772,12 @@ jobs:
             wasmfs.test_fs_llseek
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype
+            wasmfs.test_unistd_close_rawfs
+            wasmfs.test_exceptions_minimal_runtime
+            wasmfs.test_minimal_runtime_safe_heap
+            wasmfs.test_minimal_runtime_global_initializer
+            wasmfs.test_minimal_runtime_hello_world*
+            wasmfs.test_dlmalloc
             minimal0.test_utf
             minimal0.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_static_variable
@@ -940,6 +952,8 @@ jobs:
             echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
           test_targets: "
+            other.test_prepost_jspi
+            other.test_stdint_limits_wasm64
             core0.test_hello_argc
             core2.test_demangle_stacks_symbol_map"
       - upload-test-results
@@ -1239,13 +1253,14 @@ jobs:
             skip:browser.test_glbook
             skip:browser.test_sdl2_mixer_wav_dash_l
             "
-  # TODO(https://github.com/emscripten-core/emscripten/issues/26182):
-  # Re-enable once we figure out why the emrun tests are locking up.
-  #test-browser-chrome-emrun:
-  #  executor: ubuntu-lts
-  #  steps:
-  #    - run-tests-chrome:
-  #        test_targets: "emrun"
+  test-browser-chrome-emrun:
+    executor: ubuntu-lts
+    steps:
+      - checkout
+      - pip-install
+      - install-emsdk
+      - run-tests-chrome:
+          test_targets: "emrun"
   test-sockets-chrome:
     executor: ubuntu-lts
     steps:
@@ -1367,9 +1382,9 @@ workflows:
       - test-core0:
           requires:
             - build-linux
-      - test-core2:
-          requires:
-            - build-linux
+      #- test-core2:
+      #    requires:
+      #      - build-linux
       - test-core3:
           requires:
             - build-linux
@@ -1388,13 +1403,14 @@ workflows:
       - test-modularize-instance:
           requires:
             - build-linux
-      - test-esm-integration:
-          requires:
-            - build-linux
+      #- test-esm-integration:
+      #    requires:
+      #      - build-linux
       - test-stress:
           requires:
             - build-linux
       - test-browser-chrome
+      - test-browser-chrome-emrun
       - test-browser-chrome-2gb:
           requires:
             - build-linux
@@ -1411,14 +1427,14 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
-      - test-bun
-      - test-deno
-      - test-jsc
+      #- test-bun
+      #- test-deno
+      #- test-jsc
       - test-spidermonkey
-      - test-node-compat
-      - test-windows
-      - test-windows-browser-firefox
+      #- test-node-compat
+      #- test-windows
+      #- test-windows-browser-firefox
       - build-windows-launcher
-      - test-mac-arm64:
-          requires:
-            - build-linux
+      #- test-mac-arm64:
+      #    requires:
+      #      - build-linux

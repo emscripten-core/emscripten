@@ -79,18 +79,25 @@ int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int prioceiling)
 void emscripten_thread_sleep(double msecs) {
   // We include emscripten_current_thread_process_queued_calls before and
   // after sleeping since that is how we recieve "async" signals.
-  // We include __pthread_testcancel here becuase clock_nanosleep is
+  // We include __pthread_testcancel here because clock_nanosleep is
   // a pthread cancelation point.
   emscripten_current_thread_process_queued_calls();
   __pthread_testcancel();
-  emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING,
-                                                   EM_THREAD_STATUS_SLEEPING);
-  uint32_t dummyZeroAddress = 0;
-  emscripten_futex_wait(&dummyZeroAddress, 0, msecs);
-  emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_SLEEPING,
-                                                   EM_THREAD_STATUS_RUNNING);
-  emscripten_current_thread_process_queued_calls();
-  __pthread_testcancel();
+  if (msecs > 0) {
+    uint32_t dummyZeroAddress = 0;
+    double start = emscripten_get_now();
+    double elapsed = 0;
+    while (elapsed < msecs) {
+      emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING,
+                                                       EM_THREAD_STATUS_SLEEPING);
+      emscripten_futex_wait(&dummyZeroAddress, 0, msecs - elapsed);
+      emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_SLEEPING,
+                                                       EM_THREAD_STATUS_RUNNING);
+      emscripten_current_thread_process_queued_calls();
+      __pthread_testcancel();
+      elapsed = emscripten_get_now() - start;
+    }
+  }
 }
 
 static struct pthread __main_pthread;

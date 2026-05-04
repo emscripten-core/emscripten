@@ -8,6 +8,17 @@
 #pragma once
 
 #include <pthread.h>
+#include <stdbool.h>
+
+// Defined THREADING_DEBUG here (or in the build system) to enabled verbose
+// logging using emscripten_dbgf.
+// #define THREADING_DEBUG
+
+#ifdef THREADING_DEBUG
+#define DBG(format, ...) emscripten_dbgf(format, ##__VA_ARGS__)
+#else
+#define DBG(format, ...)
+#endif
 
 #define EM_THREAD_NAME_MAX 32
 
@@ -41,7 +52,9 @@ typedef struct thread_profiler_block {
 // argument.  This can save _emscripten_check_timers from needing to call out to
 // JS to get the current time.  Passing 0 means that caller doesn't know the
 // current time.
-void _emscripten_yield(double now);
+//
+// Returns true is a timer was fired, false otherwise.
+bool _emscripten_yield(double now);
 
 void _emscripten_init_main_thread_js(void* tb);
 void _emscripten_thread_profiler_enable();
@@ -104,3 +117,11 @@ void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result)
 // if called from the main browser thread, this function will return zero
 // since blocking is not allowed there).
 int _emscripten_thread_supports_atomics_wait(void);
+
+pid_t _emscripten_get_next_tid();
+
+// Wake the target thread in case it is blocked in emscripten_futex_wait.
+// Note: If threads directly use lower level APIs such
+// __builtin_wasm_memory_atomic_waitXX then they will not be woken by
+// this method.
+void _emscripten_thread_notify(pthread_t thread);

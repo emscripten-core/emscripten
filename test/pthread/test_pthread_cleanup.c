@@ -29,10 +29,12 @@ static void cleanup_handler2(void *arg) {
 }
 
 static void *thread_start1(void *arg) {
+  printf("thread_start1\n");
   pthread_cleanup_push(cleanup_handler1, (void*)(42 + (long)arg*100));
   pthread_cleanup_push(cleanup_handler2, (void*)(69 + (long)arg*100));
   pthread_cleanup_pop((int)(intptr_t)arg);
   pthread_cleanup_pop((int)(intptr_t)arg);
+  printf("thread_start1 done\n");
   pthread_exit(0);
 }
 
@@ -60,20 +62,27 @@ static void *thread_start3(void *arg) {
 pthread_t thr[4];
 
 int main() {
+  int s;
   int result = 0;
 
   pthread_cleanup_push(cleanup_handler1, (void*)9998);
   pthread_cleanup_push(cleanup_handler1, (void*)9999);
 
-  int s = pthread_create(&thr[0], NULL, thread_start1, (void*)0);
+  s = pthread_create(&thr[0], NULL, thread_start1, (void*)0);
   assert(s == 0);
+  printf("joining thread 0");
   pthread_join(thr[0], 0);
+  printf("done join");
   s = pthread_create(&thr[1], NULL, thread_start1, (void*)1);
   assert(s == 0);
+  printf("joining thread 1");
   pthread_join(thr[1], 0);
+  printf("done join\n");
   s = pthread_create(&thr[2], NULL, thread_start2, (void*)1);
   assert(s == 0);
+  printf("joining thread 2");
   pthread_join(thr[2], 0);
+  printf("done join");
 // TODO
 //   s = pthread_create(&thr[3], NULL, thread_start3, (void*)1);
 //   assert(s == 0);

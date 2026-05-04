@@ -188,12 +188,19 @@ function preMain() {
 #endif
 
 #if EXIT_RUNTIME
+
+#if ASSERTIONS
+var runtimeExiting = false;
+#endif
+
 function exitRuntime() {
 #if RUNTIME_DEBUG
   dbg('exitRuntime');
 #endif
 #if ASSERTIONS
   assert(!runtimeExited);
+  assert(!runtimeExiting, 'Re-entrant call to exitRuntime()! This can happen if an atexit() registered callback throws an exception.');
+  runtimeExiting = true;
 #endif
 #if ASYNCIFY == 1 && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
@@ -208,7 +215,7 @@ function exitRuntime() {
 #endif
   <<< ATEXITS >>>
 #if PTHREADS
-  PThread.terminateAllThreads();
+  PThread.terminateRuntime();
 #endif
   runtimeExited = true;
 }
@@ -237,7 +244,6 @@ function postRun() {
 
 /**
  * @param {string|number=} what
- * @noreturn
  */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
@@ -301,20 +307,19 @@ function abort(what) {
 
 #if ASSERTIONS && !('$FS' in addedLibraryItems)
 // show errors on likely calls to FS when it was not included
+function fsMissing() {
+  abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM');
+}
 var FS = {
-  error() {
-    abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM');
-  },
-  init() { FS.error() },
-  createDataFile() { FS.error() },
-  createPreloadedFile() { FS.error() },
-  createLazyFile() { FS.error() },
-  open() { FS.error() },
-  mkdev() { FS.error() },
-  registerDevice() { FS.error() },
-  analyzePath() { FS.error() },
-
-  ErrnoError() { FS.error() },
+  init: fsMissing,
+  createDataFile: fsMissing,
+  createPreloadedFile: fsMissing,
+  createLazyFile: fsMissing,
+  open: fsMissing,
+  mkdev: fsMissing,
+  registerDevice:  fsMissing,
+  analyzePath: fsMissing,
+  ErrnoError: fsMissing,
 };
 {{{
 addAtModule(`

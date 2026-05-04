@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-"""Find files in the test/ that are not referenced and can
-be deleted.  This is a work in progress and still contains
-false positives in the output."""
+"""Find files in the test/ that are not referenced and can be deleted.
+
+This is a work in progress and still contains false positives in the output.
+"""
 
 import fnmatch
 import os

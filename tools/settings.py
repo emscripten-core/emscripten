@@ -115,6 +115,7 @@ DEPRECATED_SETTINGS = {
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
     'LINKABLE': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)',
     'EXPORT_EXCEPTION_HANDLING_HELPERS': 'getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.',
+    'DETERMINISTIC': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/26647)',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
@@ -150,7 +151,6 @@ INCOMPATIBLE_SETTINGS = [
 
 EXPERIMENTAL_SETTINGS = {
     'SPLIT_MODULE': '-sSPLIT_MODULE is experimental and subject to change',
-    'WASM_JS_TYPES': '-sWASM_JS_TYPES is only supported under a flag in certain browsers',
     'SOURCE_PHASE_IMPORTS': '-sSOURCE_PHASE_IMPORTS is experimental and not yet supported in browsers',
     'JS_BASE64_API': '-sJS_BASE64_API is experimental and not yet supported in browsers',
     'GROWABLE_ARRAYBUFFERS': '-sGROWABLE_ARRAYBUFFERS is experimental and not yet supported in browsers',
@@ -252,6 +252,8 @@ LEGACY_SETTINGS = [
     ['NODEJS_CATCH_REJECTION', [0], 'No longer supported'],
     ['POLYFILL_OLD_MATH_FUNCTIONS', [0], 'No longer supported'],
     ['RELOCATABLE', [0], 'No longer supported'],
+    ['WASM_JS_TYPES', [0], 'No longer supported'],
+    ['DETERMINISTIC', [0], 'No longer supported'],
 ]
 
 user_settings: dict[str, str] = {}
