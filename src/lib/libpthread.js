@@ -718,6 +718,14 @@ var LibraryPThread = {
   },
 
   _emscripten_init_main_thread_js: (tb) => {
+    var can_block = !ENVIRONMENT_IS_WEB;
+#if ENVIRONMENT_MAY_BE_WEB
+    // Feature detect whether the main thread can block.
+    try {
+      Atomics.wait(HEAP32, 0, 0, 0)
+      can_block = true;
+    } catch (e) {}
+#endif
     // Pass the thread address to the native code where they are stored in wasm
     // globals which act as a form of TLS. Global constructors trying
     // to access this value will read the wrong value, but that is UB anyway.
@@ -725,7 +733,7 @@ var LibraryPThread = {
       tb,
       /*is_main=*/!ENVIRONMENT_IS_WORKER,
       /*is_runtime=*/1,
-      /*can_block=*/!ENVIRONMENT_IS_WEB,
+      can_block,
       /*default_stacksize=*/{{{ DEFAULT_PTHREAD_STACK_SIZE }}},
 #if PTHREADS_PROFILING
       /*start_profiling=*/true,
