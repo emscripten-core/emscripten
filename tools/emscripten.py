@@ -656,8 +656,8 @@ def create_tsd_exported_runtime_methods(metadata):
           snippet = ' = null'
     js_doc += f'{docs}\nRuntimeExports[\'{name}\']{snippet};\n'
 
-  js_doc_file = in_temp('jsdoc.js')
-  tsc_output_file = in_temp('jsdoc.d.ts')
+  file = 'jsdoc'
+  js_doc_file = in_temp(f'{file}.js')
   utils.write_file(js_doc_file, js_doc)
   tsc = shared.get_npm_cmd('tsc', missing_ok=True)
   # Prefer the npm install'd version of tsc since we know that one is compatible
@@ -669,13 +669,12 @@ def create_tsd_exported_runtime_methods(metadata):
       exit_with_error('tsc executable not found in node_modules or in $PATH')
     # Use the full path from the which command so windows can find tsc.
     tsc = [tsc]
-  cmd = tsc + ['--outFile', tsc_output_file,
-               '--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
+  cmd = tsc + ['--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
                '--declaration',
                '--emitDeclarationOnly',
                '--allowJs', js_doc_file]
   shared.check_call(cmd, cwd=path_from_root())
-  return utils.read_file(tsc_output_file)
+  return utils.read_file(in_temp(f'{file}.d.ts'))
 
 
 def create_tsd(metadata, embind_tsd):

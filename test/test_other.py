@@ -62,6 +62,7 @@ from decorators import (
   also_with_modularize,
   also_with_nodefs_both,
   also_with_noderawfs,
+  also_with_pthreads,
   also_with_standalone_wasm,
   also_with_wasm2js,
   also_with_wasm64,
@@ -15145,22 +15146,17 @@ addToLibrary({
     self.assertNotExists('newdir/tools/maint/')
 
   @requires_node
-  @parameterized({
-    '': ([],),
-    'pthreads': (['-pthread'],),
-  })
+  @also_with_pthreads
   @parameterized({
     '': ([],),
     'closure': (['--closure=1'],),
   })
-  def test_TextDecoder(self, args1, args2):
-    self.cflags += args1 + args2
-
-    self.do_runf('hello_world.c')
+  def test_TextDecoder(self, args):
+    self.do_runf('hello_world.c', cflags=args)
     td_with_fallback = os.path.getsize('hello_world.js')
     print('td_with_fallback:\t%s' % td_with_fallback)
 
-    self.do_runf('hello_world.c', cflags=['-sTEXTDECODER=2'])
+    self.do_runf('hello_world.c', cflags=args + ['-sTEXTDECODER=2'])
     td_without_fallback = os.path.getsize('hello_world.js')
     print('td_without_fallback:\t%s' % td_without_fallback)
 

@@ -2031,7 +2031,7 @@ addToLibrary({
     }
 #endif
 #if RUNTIME_DEBUG
-    dbg("handleException: got unexpected exception, calling quit_")
+    dbg(`handleException: got unexpected exception ${e}, calling quit_`)
 #endif
     quit_(1, e);
   },
