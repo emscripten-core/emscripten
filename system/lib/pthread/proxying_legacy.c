@@ -530,6 +530,10 @@ em_queued_call* emscripten_async_waitable_run_in_main_runtime_thread_(
 }
 
 EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeoutMSecs) {
+  int done = atomic_load(&call->operationDone);
+  if (done)
+    return EMSCRIPTEN_RESULT_SUCCESS;
+
   emscripten_set_current_thread_status(EM_THREAD_STATUS_WAITPROXY);
 
   int r;
@@ -538,7 +542,7 @@ EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call* call, double timeou
     r = -emscripten_futex_wait(&call->operationDone, 0, timeoutMSecs);
 
     timeoutMSecs = target - emscripten_get_now();
-  } while (r == ETIMEDOUT && timeoutMSecs > 0);
+  } while (r == EINTR && timeoutMSecs > 0);
 
   emscripten_set_current_thread_status(EM_THREAD_STATUS_RUNNING);
 
