@@ -2171,6 +2171,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
   // Returns the WebGLUniformLocation object corresponding to the location index
   // integer on the currently active shader in this GL context.
+  $webglGetUniformLocation__deps: ['$webglPrepareUniformLocationsBeforeFirstUse'],
   $webglGetUniformLocation: (location) => {
     var p = GLctx.currentProgram;
 
@@ -2183,6 +2184,12 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_TRACK_ERRORS
     if (p) {
 #endif
+      // Ensure `uniformLocsById`/`uniformArrayNamesById` are populated. Without
+      // this, calling `glUniform*()` on a freshly linked program before any
+      // `glGetUniformLocation()` silently no-ops: `glLinkProgram` resets
+      // `uniformLocsById` to 0 and only `$webglPrepareUniformLocationsBeforeFirstUse`
+      // refills it. The call below is idempotent (guards on `!uniformLocsById`).
+      webglPrepareUniformLocationsBeforeFirstUse(p);
       var webglLoc = p.uniformLocsById[location];
       // p.uniformLocsById[location] stores either an integer, or a
       // WebGLUniformLocation.
@@ -3865,7 +3872,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       GLctx.bufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/,
                           0,
                           HEAPU8.subarray(indices, indices + size));
-      
+
       // Calculating vertex count if shader's attribute data is on client side
       if (count > 0) {
         for (var i = 0; i < GL.currentContext.maxVertexAttribs; ++i) {
