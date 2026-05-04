@@ -14,18 +14,13 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 		else return;
 	}
 	if (waiters) a_inc(waiters);
-#ifdef __EMSCRIPTEN__
-	// loop here to handle spurious wakeups from the underlying
-	// emscripten_futex_wait.
-	int ret = 0;
-	while (*addr==val && ret == 0) {
-		ret = emscripten_futex_wait((void*)addr, val, INFINITY);
-	}
-#else
 	while (*addr==val) {
+#ifdef __EMSCRIPTEN__
+		emscripten_futex_wait((void*)addr, val, INFINITY);
+#else
 		__syscall(SYS_futex, addr, FUTEX_WAIT|priv, val, 0) != -ENOSYS
 		|| __syscall(SYS_futex, addr, FUTEX_WAIT, val, 0);
-	}
 #endif
+	}
 	if (waiters) a_dec(waiters);
 }
