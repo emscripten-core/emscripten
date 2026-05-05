@@ -7,7 +7,7 @@
  * Declarations for internal-only JS library functions.
  *
  * All JS library functions must be declares in one header or anther in order
- * for `tools/gen_sig_info.py` to work.   This file contains declarations for
+ * for `tools/maint/gen_sig_info.py` to work.   This file contains declarations for
  * functions that are not declared in any other public or private header.
  */
 #ifndef __EMSCRIPTEN_INTERNAL_H__
