@@ -31,9 +31,11 @@ exclude_dirs = (
   # Parts of src we don't build
   'malloc',
   # Arch-specific code we don't use
-  'arm', 'x32', 'sh', 'i386', 'x86_64', 'aarch64', 'riscv64',
-  's390x', 'mips', 'mips64', 'mipsn32', 'powerpc', 'powerpc64',
-  'm68k', 'microblaze', 'or1k')
+  'aarch64', 'arm', 'i386', 'loongarch64', 'm68k',
+  'microblaze', 'mips', 'mips64', 'mipsn32', 'or1k',
+  'powerpc', 'powerpc64', 'riscv32', 'riscv64', 's390x',
+  'sh', 'x32', 'x86_64'
+)
 exclude_files = (
   'aio.h',
   'sendfile.h',
