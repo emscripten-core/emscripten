@@ -38,7 +38,9 @@
  */
 float fmaf(float x, float y, float z)
 {
+#ifndef __EMSCRIPTEN__
 	#pragma STDC FENV_ACCESS ON
+#endif
 	double xy, result;
 	union {double f; uint64_t i;} u;
 	int e;

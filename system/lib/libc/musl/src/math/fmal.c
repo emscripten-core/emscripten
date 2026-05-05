@@ -164,7 +164,9 @@ static inline struct dd dd_mul(long double a, long double b)
  */
 long double fmal(long double x, long double y, long double z)
 {
+#ifndef __EMSCRIPTEN__
 	#pragma STDC FENV_ACCESS ON
+#endif
 	long double xs, ys, zs, adj;
 	struct dd xy, r;
 	int oround;

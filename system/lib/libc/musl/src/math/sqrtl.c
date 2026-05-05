@@ -176,6 +176,10 @@ static inline u128 mul128_tail(u128 a, u128 b)
 
 /* see sqrt.c for detailed comments.  */
 
+#ifdef __EMSCRIPTEN__
+// https://github.com/emscripten-core/emscripten/issues/15655
+__attribute__((no_sanitize("address")))
+#endif
 long double sqrtl(long double x)
 {
 	u128 ix, ml;

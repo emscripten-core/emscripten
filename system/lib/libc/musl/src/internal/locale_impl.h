@@ -31,15 +31,31 @@ hidden char *__gettextdomain(void);
 
 #define LOC_MAP_FAILED ((const struct __locale_map *)-1)
 
+#if __EMSCRIPTEN__
+// Disable message translation completely under emscripten since we don't
+// support loading any actual locale data, and even looking up the current
+// local via CURRENT_LOCALE via TLS is not free.
+#define LCTRANS(msg, lc, loc) msg
+#define LCTRANS_CUR(msg) msg
+#else
 #define LCTRANS(msg, lc, loc) __lctrans(msg, (loc)->cat[(lc)])
 #define LCTRANS_CUR(msg) __lctrans_cur(msg)
+#endif
 
 #define C_LOCALE ((locale_t)&__c_locale)
 #define UTF8_LOCALE ((locale_t)&__c_dot_utf8_locale)
 
+#ifdef __EMSCRIPTEN__
+extern _Thread_local locale_t __tls_locale;
+
+#define CURRENT_LOCALE (__tls_locale)
+
+#define CURRENT_UTF8 (!!__tls_locale->cat[LC_CTYPE])
+#else
 #define CURRENT_LOCALE (__pthread_self()->locale)
 
 #define CURRENT_UTF8 (!!__pthread_self()->locale->cat[LC_CTYPE])
+#endif
 
 #undef MB_CUR_MAX
 #define MB_CUR_MAX (CURRENT_UTF8 ? 4 : 1)

@@ -47,6 +47,30 @@ void ns_put32(unsigned long l, unsigned char *cp)
 	*cp++ = l;
 }
 
+int ns_skiprr(const unsigned char *ptr, const unsigned char *eom, ns_sect section, int count)
+{
+	const unsigned char *p = ptr;
+	int r;
+
+	while (count--) {
+		r = dn_skipname(p, eom);
+		if (r < 0) goto bad;
+		if (r + 2 * NS_INT16SZ > eom - p) goto bad;
+		p += r + 2 * NS_INT16SZ;
+		if (section != ns_s_qd) {
+			if (NS_INT32SZ + NS_INT16SZ > eom - p) goto bad;
+			p += NS_INT32SZ;
+			NS_GET16(r, p);
+			if (r > eom - p) goto bad;
+			p += r;
+		}
+	}
+	return p - ptr;
+bad:
+	errno = EMSGSIZE;
+	return -1;
+}
+
 int ns_initparse(const unsigned char *msg, int msglen, ns_msg *handle)
 {
 	int i, r;
@@ -77,35 +101,20 @@ bad:
 	return -1;
 }
 
-int ns_skiprr(const unsigned char *ptr, const unsigned char *eom, ns_sect section, int count)
+int ns_name_uncompress(const unsigned char *msg, const unsigned char *eom,
+                       const unsigned char *src, char *dst, size_t dstsiz)
 {
-	const unsigned char *p = ptr;
 	int r;
-
-	while (count--) {
-		r = dn_skipname(p, eom);
-		if (r < 0) goto bad;
-		if (r + 2 * NS_INT16SZ > eom - p) goto bad;
-		p += r + 2 * NS_INT16SZ;
-		if (section != ns_s_qd) {
-			if (NS_INT32SZ + NS_INT16SZ > eom - p) goto bad;
-			p += NS_INT32SZ;
-			NS_GET16(r, p);
-			if (r > eom - p) goto bad;
-			p += r;
-		}
-	}
-	return p - ptr;
-bad:
-	errno = EMSGSIZE;
-	return -1;
+	r = dn_expand(msg, eom, src, dst, dstsiz);
+	if (r < 0) errno = EMSGSIZE;
+	return r;
 }
 
 int ns_parserr(ns_msg *handle, ns_sect section, int rrnum, ns_rr *rr)
 {
 	int r;
 
-	if (section < 0 || section >= ns_s_max) goto bad;
+	if (section >= ns_s_max) goto bad;
 	if (section != handle->_sect) {
 		handle->_sect = section;
 		handle->_rrnum = 0;
@@ -158,14 +167,5 @@ bad:
 size:
 	errno = EMSGSIZE;
 	return -1;
-}
-
-int ns_name_uncompress(const unsigned char *msg, const unsigned char *eom,
-                       const unsigned char *src, char *dst, size_t dstsiz)
-{
-	int r;
-	r = dn_expand(msg, eom, src, dst, dstsiz);
-	if (r < 0) errno = EMSGSIZE;
-	return r;
 }
 

@@ -3,6 +3,7 @@
 #include "libc.h"
 #include "lock.h"
 
+#ifndef __EMSCRIPTEN__ // XXX Emscripten fork() is not supported: pthread_atfork is a no-op
 #define malloc __libc_malloc
 #define calloc undef
 #define realloc undef
@@ -36,9 +37,13 @@ void __fork_handler(int who)
 		UNLOCK(lock);
 	}
 }
+#endif
 
 int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(void))
 {
+#ifdef __EMSCRIPTEN__ // XXX Emscripten fork() is not supported: pthread_atfork is a no-op
+	return 0;
+#else
 	struct atfork_funcs *new = malloc(sizeof *new);
 	if (!new) return ENOMEM;
 
@@ -52,4 +57,5 @@ int pthread_atfork(void (*prepare)(void), void (*parent)(void), void (*child)(vo
 	funcs = new;
 	UNLOCK(lock);
 	return 0;
+#endif
 }

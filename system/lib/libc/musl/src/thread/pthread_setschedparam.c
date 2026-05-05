@@ -3,6 +3,10 @@
 
 int pthread_setschedparam(pthread_t t, int policy, const struct sched_param *param)
 {
+#ifdef __EMSCRIPTEN__ // XXX Emscripten web or Node workers doesn't support prioritizing threads
+	// no-op
+	return 0;
+#else
 	int r;
 	sigset_t set;
 	__block_app_sigs(&set);
@@ -11,4 +15,5 @@ int pthread_setschedparam(pthread_t t, int policy, const struct sched_param *par
 	UNLOCK(t->killlock);
 	__restore_sigs(&set);
 	return r;
+#endif
 }

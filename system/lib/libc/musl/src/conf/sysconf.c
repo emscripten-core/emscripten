@@ -4,9 +4,16 @@
 #include <sys/resource.h>
 #include <signal.h>
 #include <sys/sysinfo.h>
+#ifndef __EMSCRIPTEN__
 #include <sys/auxv.h>
+#endif
 #include "syscall.h"
 #include "libc.h"
+
+#ifdef __EMSCRIPTEN__
+#include "emscripten/heap.h"
+#include "emscripten/threading.h"
+#endif
 
 #define JT(x) (-256|(x))
 #define VER JT(1)
@@ -29,15 +36,15 @@ long sysconf(int name)
 {
 	static const short values[] = {
 		[_SC_ARG_MAX] = JT_ARG_MAX,
-		[_SC_CHILD_MAX] = RLIM(NPROC),
+		[_SC_CHILD_MAX] = 1024, // XXX EMSCRIPTEN replace RLIM(NPROC),
 		[_SC_CLK_TCK] = 100,
 		[_SC_NGROUPS_MAX] = 32,
-		[_SC_OPEN_MAX] = RLIM(NOFILE),
+		[_SC_OPEN_MAX] = 1024, // XXX EMSCRIPTEN replace RLIM(NOFILE),
 		[_SC_STREAM_MAX] = -1,
 		[_SC_TZNAME_MAX] = TZNAME_MAX,
 		[_SC_JOB_CONTROL] = 1,
 		[_SC_SAVED_IDS] = 1,
-		[_SC_REALTIME_SIGNALS] = VER,
+		[_SC_REALTIME_SIGNALS] = 1,
 		[_SC_PRIORITY_SCHEDULING] = -1,
 		[_SC_TIMERS] = VER,
 		[_SC_ASYNCHRONOUS_IO] = VER,
@@ -54,7 +61,7 @@ long sysconf(int name)
 		[_SC_AIO_LISTIO_MAX] = -1,
 		[_SC_AIO_MAX] = -1,
 		[_SC_AIO_PRIO_DELTA_MAX] = JT_ZERO, /* ?? */
-		[_SC_DELAYTIMER_MAX] = JT_DELAYTIMER_MAX,
+		[_SC_DELAYTIMER_MAX] = _POSIX_DELAYTIMER_MAX,
 		[_SC_MQ_OPEN_MAX] = -1,
 		[_SC_MQ_PRIO_MAX] = JT_MQ_PRIO_MAX,
 		[_SC_VERSION] = VER,
@@ -92,10 +99,10 @@ long sysconf(int name)
 		[_SC_THREAD_THREADS_MAX] = -1,
 		[_SC_THREAD_ATTR_STACKADDR] = VER,
 		[_SC_THREAD_ATTR_STACKSIZE] = VER,
-		[_SC_THREAD_PRIORITY_SCHEDULING] = VER,
+		[_SC_THREAD_PRIORITY_SCHEDULING] = -1, // XXX EMSCRIPTEN replace VER,
 		[_SC_THREAD_PRIO_INHERIT] = -1,
 		[_SC_THREAD_PRIO_PROTECT] = -1,
-		[_SC_THREAD_PROCESS_SHARED] = VER,
+		[_SC_THREAD_PROCESS_SHARED] = -1, // XXX EMSCRIPTEN replace VER,
 		[_SC_NPROCESSORS_CONF] = JT_NPROCESSORS_CONF,
 		[_SC_NPROCESSORS_ONLN] = JT_NPROCESSORS_ONLN,
 		[_SC_PHYS_PAGES] = JT_PHYS_PAGES,
@@ -115,8 +122,8 @@ long sysconf(int name)
 		[_SC_XOPEN_XPG4] = -1,
 		[_SC_NZERO] = NZERO,
 		[_SC_XBS5_ILP32_OFF32] = -1,
-		[_SC_XBS5_ILP32_OFFBIG] = sizeof(long)==4 ? 1 : -1,
-		[_SC_XBS5_LP64_OFF64] = sizeof(long)==8 ? 1 : -1,
+		[_SC_XBS5_ILP32_OFFBIG] = sizeof(long)==4 ? 1 : JT_ZERO,
+		[_SC_XBS5_LP64_OFF64] = sizeof(long)==8 ? 1 : JT_ZERO,
 		[_SC_XBS5_LPBIG_OFFBIG] = -1,
 		[_SC_XOPEN_LEGACY] = -1,
 		[_SC_XOPEN_REALTIME] = -1,
@@ -145,8 +152,8 @@ long sysconf(int name)
 		[_SC_STREAMS] = JT_ZERO,
 		[_SC_2_PBS_CHECKPOINT] = -1,
 		[_SC_V6_ILP32_OFF32] = -1,
-		[_SC_V6_ILP32_OFFBIG] = sizeof(long)==4 ? 1 : -1,
-		[_SC_V6_LP64_OFF64] = sizeof(long)==8 ? 1 : -1,
+		[_SC_V6_ILP32_OFFBIG] = sizeof(long)==4 ? 1 : JT_ZERO,
+		[_SC_V6_LP64_OFF64] = sizeof(long)==8 ? 1 : JT_ZERO,
 		[_SC_V6_LPBIG_OFFBIG] = -1,
 		[_SC_HOST_NAME_MAX] = HOST_NAME_MAX,
 		[_SC_TRACE] = -1,
@@ -201,14 +208,21 @@ long sysconf(int name)
 		return DELAYTIMER_MAX;
 	case JT_NPROCESSORS_CONF & 255:
 	case JT_NPROCESSORS_ONLN & 255: ;
+#ifdef __EMSCRIPTEN__
+		return emscripten_num_logical_cores();
+#else
 		unsigned char set[128] = {1};
 		int i, cnt;
 		__syscall(SYS_sched_getaffinity, 0, sizeof set, set);
 		for (i=cnt=0; i<sizeof set; i++)
 			for (; set[i]; set[i]&=set[i]-1, cnt++);
 		return cnt;
+#endif
 	case JT_PHYS_PAGES & 255:
 	case JT_AVPHYS_PAGES & 255: ;
+#ifdef __EMSCRIPTEN__
+		return emscripten_get_heap_max() / PAGE_SIZE;
+#else
 		unsigned long long mem;
 		struct sysinfo si;
 		__lsysinfo(&si);
@@ -230,6 +244,7 @@ long sysconf(int name)
 		if (values[name] == JT_SIGSTKSZ)
 			val += SIGSTKSZ - MINSIGSTKSZ;
 		return val;
+#endif
 	case JT_ZERO & 255:
 		return 0;
 	}

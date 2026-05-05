@@ -7,6 +7,7 @@ int pthread_mutexattr_setrobust(pthread_mutexattr_t *a, int robust)
 {
 	if (robust > 1U) return EINVAL;
 	if (robust) {
+#ifndef __EMSCRIPTEN__
 		int r = check_robust_result;
 		if (r < 0) {
 			void *p;
@@ -15,6 +16,7 @@ int pthread_mutexattr_setrobust(pthread_mutexattr_t *a, int robust)
 			a_store(&check_robust_result, r);
 		}
 		if (r) return r;
+#endif
 		a->__attr |= 4;
 		return 0;
 	}

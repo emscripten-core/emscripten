@@ -6,7 +6,7 @@
 
 ssize_t sendmsg(int fd, const struct msghdr *msg, int flags)
 {
-#if LONG_MAX > INT_MAX
+#if LONG_MAX > INT_MAX && !defined(__EMSCRIPTEN__)
 	struct msghdr h;
 	/* Kernels before 2.6.38 set SCM_MAX_FD to 255, allocate enough
 	 * space to support an SCM_RIGHTS ancillary message with 255 fds.

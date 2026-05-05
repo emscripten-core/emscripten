@@ -4,6 +4,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <limits.h>
+#include <errno.h>
 
 struct __locale_map;
 
@@ -53,6 +54,11 @@ extern char *__progname, *__progname_full;
 extern hidden const char __libc_version[];
 
 hidden void __synccall(void (*)(void *), void *);
+#ifdef __EMSCRIPTEN__
+hidden int __setxid_emscripten();
+#define __setxid(a, b, c, d) __setxid_emscripten()
+#else
 hidden int __setxid(int, int, int, int);
+#endif
 
 #endif

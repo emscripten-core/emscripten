@@ -8,12 +8,13 @@ hidden long __cancel(), __syscall_cp_asm(), __syscall_cp_c();
 long __cancel()
 {
 	pthread_t self = __pthread_self();
-	if (self->canceldisable == PTHREAD_CANCEL_ENABLE || self->cancelasync)
+	if (self->canceldisable == PTHREAD_CANCEL_ENABLE)
 		pthread_exit(PTHREAD_CANCELED);
 	self->canceldisable = PTHREAD_CANCEL_DISABLE;
 	return -ECANCELED;
 }
 
+#ifndef __EMSCRIPTEN__
 long __syscall_cp_asm(volatile void *, syscall_arg_t,
                       syscall_arg_t, syscall_arg_t, syscall_arg_t,
                       syscall_arg_t, syscall_arg_t, syscall_arg_t);
@@ -71,6 +72,7 @@ static void cancel_handler(int sig, siginfo_t *si, void *ctx)
 
 	__syscall(SYS_tkill, self->tid, SIGCANCEL);
 }
+#endif
 
 void __testcancel()
 {
@@ -79,6 +81,7 @@ void __testcancel()
 		__cancel();
 }
 
+#ifndef __EMSCRIPTEN__
 static void init_cancellation()
 {
 	struct sigaction sa = {
@@ -88,19 +91,30 @@ static void init_cancellation()
 	memset(&sa.sa_mask, -1, _NSIG/8);
 	__libc_sigaction(SIGCANCEL, &sa, 0);
 }
+#endif
 
 int pthread_cancel(pthread_t t)
 {
+#ifndef __EMSCRIPTEN__
 	static int init;
 	if (!init) {
 		init_cancellation();
 		init = 1;
 	}
+#endif
 	a_store(&t->cancel, 1);
 	if (t == pthread_self()) {
 		if (t->canceldisable == PTHREAD_CANCEL_ENABLE && t->cancelasync)
 			pthread_exit(PTHREAD_CANCELED);
 		return 0;
 	}
+#ifdef __EMSCRIPTEN__
+	// Wake the target thread in case it is in emscripten_futex_wait.  Normally,
+	// this is only required when the target is the main runtime thread and there
+	// is an event added to its system queue.
+	// However, all threads need to be interrupted like this in the case they are
+	// cancelled.
+	_emscripten_thread_notify(t);
+#endif
 	return pthread_kill(t, SIGCANCEL);
 }

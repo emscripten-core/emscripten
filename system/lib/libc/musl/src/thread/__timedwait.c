@@ -1,10 +1,17 @@
 #include <pthread.h>
 #include <time.h>
 #include <errno.h>
+#ifdef __EMSCRIPTEN__
+#include <math.h>
+#include <emscripten/threading.h>
+#include <emscripten/emscripten.h>
+#else
 #include "futex.h"
+#endif
 #include "syscall.h"
 #include "pthread_impl.h"
 
+#ifndef __EMSCRIPTEN__
 #define IS32BIT(x) !((x)+0x80000000ULL>>32)
 #define CLAMP(x) (int)(IS32BIT(x) ? (x) : 0x7fffffffU+((0ULL+(x))>>63))
 
@@ -25,6 +32,7 @@ static int __futex4_cp(volatile void *addr, int op, int val, const struct timesp
 	if (r != -ENOSYS) return r;
 	return __syscall_cp(SYS_futex, addr, op & ~FUTEX_PRIVATE, val, to);
 }
+#endif
 
 static volatile int dummy = 0;
 weak_alias(dummy, __eintr_valid_flag);
@@ -49,7 +57,12 @@ int __timedwait_cp(volatile int *addr, int val,
 		top = &to;
 	}
 
+#ifdef __EMSCRIPTEN__
+	double msecs_to_sleep = top ? (top->tv_sec * 1000 + top->tv_nsec / 1000000.0) : INFINITY;
+	r = -emscripten_futex_wait((void*)addr, val, msecs_to_sleep);
+#else
 	r = -__futex4_cp(addr, FUTEX_WAIT|priv, val, top);
+#endif
 	if (r != EINTR && r != ETIMEDOUT && r != ECANCELED) r = 0;
 	/* Mitigate bug in old kernels wrongly reporting EINTR for non-
 	 * interrupting (SA_RESTART) signal handlers. This is only practical
@@ -65,7 +78,14 @@ int __timedwait(volatile int *addr, int val,
 {
 	int cs, r;
 	__pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+#ifdef __EMSCRIPTEN__
+	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING, EM_THREAD_STATUS_WAITMUTEX);
+#endif
 	r = __timedwait_cp(addr, val, clk, at, priv);
+#ifdef __EMSCRIPTEN__
+	emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_WAITMUTEX, EM_THREAD_STATUS_RUNNING);
+#endif
 	__pthread_setcancelstate(cs, 0);
+
 	return r;
 }

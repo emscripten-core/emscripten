@@ -7,6 +7,40 @@
 #include <stddef.h>
 #include <stdarg.h>
 
+#ifdef __EMSCRIPTEN__
+// Declare `struct dso` in this header so that it is visible to gen_struct_info.
+
+#include <emscripten/emscripten.h>
+
+struct dso {
+  // Pointer back to the dlevent in the event sequence which loaded this DSO.
+  struct dlevent* event;
+
+  // Flags used to open the library.  We need to cache these so that other
+  // threads can mirror the open library state.
+  int flags;
+
+  // Location in memory/table of static data/static function addresses
+  // The first thread to load a given module alloces the memory and table
+  // address space and then sets this field to non-zero.
+  uint8_t mem_allocated;
+  void* mem_addr;
+  size_t mem_size;
+  void* table_addr;
+  size_t table_size;
+
+  // For DSO load events, where the DSO comes from a file on disc, this
+  // is a pointer the file data read in by the laoding thread and shared with
+  // others.
+  uint8_t* file_data;
+  size_t file_data_size;
+
+  // Flexible array; must be final element of struct
+  char name[];
+};
+
+#else
+
 #if UINTPTR_MAX == 0xffffffff
 typedef Elf32_Ehdr Ehdr;
 typedef Elf32_Phdr Phdr;
@@ -104,6 +138,8 @@ struct fdpic_dummy_loadmap {
 #define DYN_CNT 37
 
 typedef void (*stage2_func)(unsigned char *, size_t *);
+
+#endif // __EMSCRIPTEN__
 
 hidden void *__dlsym(void *restrict, const char *restrict, void *restrict);
 

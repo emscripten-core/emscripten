@@ -1,3 +1,8 @@
+#ifdef __EMSCRIPTEN__
+#include <math.h>
+#include <emscripten/threading.h>
+#endif
+
 #include "pthread_impl.h"
 
 void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
@@ -10,8 +15,12 @@ void __wait(volatile int *addr, volatile int *waiters, int val, int priv)
 	}
 	if (waiters) a_inc(waiters);
 	while (*addr==val) {
+#ifdef __EMSCRIPTEN__
+		emscripten_futex_wait((void*)addr, val, INFINITY);
+#else
 		__syscall(SYS_futex, addr, FUTEX_WAIT|priv, val, 0) != -ENOSYS
 		|| __syscall(SYS_futex, addr, FUTEX_WAIT, val, 0);
+#endif
 	}
 	if (waiters) a_dec(waiters);
 }

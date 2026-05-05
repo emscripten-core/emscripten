@@ -51,7 +51,7 @@ ssize_t recvmsg(int fd, struct msghdr *msg, int flags)
 {
 	ssize_t r;
 	socklen_t orig_controllen = msg->msg_controllen;
-#if LONG_MAX > INT_MAX
+#if LONG_MAX > INT_MAX && !defined(__EMSCRIPTEN__)
 	struct msghdr h, *orig = msg;
 	if (msg) {
 		h = *msg;
@@ -61,7 +61,7 @@ ssize_t recvmsg(int fd, struct msghdr *msg, int flags)
 #endif
 	r = socketcall_cp(recvmsg, fd, msg, flags, 0, 0, 0);
 	if (r >= 0) __convert_scm_timestamps(msg, orig_controllen);
-#if LONG_MAX > INT_MAX
+#if LONG_MAX > INT_MAX && !defined(__EMSCRIPTEN__)
 	if (orig) *orig = h;
 #endif
 	return r;

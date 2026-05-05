@@ -6,9 +6,15 @@
 
 #define UNGET 8
 
+#if defined(__EMSCRIPTEN__) && !defined(__EMSCRIPTEN_SHARED_MEMORY__)
+#define FFINALLOCK(f)
+#define FLOCK(f)
+#define FUNLOCK(f)
+#else
 #define FFINALLOCK(f) ((f)->lock>=0 ? __lockfile((f)) : 0)
 #define FLOCK(f) int __need_unlock = ((f)->lock>=0 ? __lockfile((f)) : 0)
 #define FUNLOCK(f) do { if (__need_unlock) __unlockfile((f)); } while (0)
+#endif
 
 #define F_PERM 1
 #define F_NORD 4
@@ -66,7 +72,7 @@ hidden int __towrite(FILE *);
 hidden void __stdio_exit(void);
 hidden void __stdio_exit_needed(void);
 
-#if defined(__PIC__) && (100*__GNUC__+__GNUC_MINOR__ >= 303)
+#if defined(__PIC__) && (100*__GNUC__+__GNUC_MINOR__ >= 303) && !defined(__EMSCRIPTEN__)
 __attribute__((visibility("protected")))
 #endif
 int __overflow(FILE *, int), __uflow(FILE *);
@@ -108,5 +114,13 @@ hidden void __getopt_msg(const char *, const char *, const char *, size_t);
 /* Caller-allocated FILE * operations */
 hidden FILE *__fopen_rb_ca(const char *, FILE *, unsigned char *, size_t);
 hidden int __fclose_ca(FILE *);
+
+// XXX EMSCRIPTEN
+extern int vfiprintf(FILE *restrict f, const char *restrict fmt, va_list ap);
+extern int vsiprintf(char *restrict s, const char *restrict fmt, va_list ap);
+extern int vsniprintf(char *restrict s, size_t n, const char *restrict fmt, va_list ap);
+extern int __small_vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap);
+extern int __small_vsprintf(char *restrict s, const char *restrict fmt, va_list ap);
+extern int __small_vsnprintf(char *restrict s, size_t n, const char *restrict fmt, va_list ap);
 
 #endif

@@ -189,7 +189,7 @@ notrans:
 			snprintf(name, sizeof name, "%s/%.*s%.*s/%s/%s.mo\0",
 				dirname, (int)loclen, locname,
 				(int)alt_modlen, modname, catname, domainname);
-			if (map = __map_file(name, &map_size)) break;
+			if ((map = __map_file(name, &map_size))) break;
 
 			/* Try dropping @mod, _YY, then both. */
 			if (alt_modlen) {

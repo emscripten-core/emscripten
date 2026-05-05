@@ -25,6 +25,9 @@ int sem_timedwait(sem_t *restrict sem, const struct timespec *restrict at)
 		r = __timedwait_cp(sem->__val, 0x80000000, CLOCK_REALTIME, at, priv);
 		pthread_cleanup_pop(1);
 		if (r) {
+#ifdef __EMSCRIPTEN__
+			if (r == ECANCELED) r = EINTR;
+#endif
 			errno = r;
 			return -1;
 		}

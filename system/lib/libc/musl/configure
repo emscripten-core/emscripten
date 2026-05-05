@@ -405,7 +405,7 @@ tryflag CFLAGS_NOSSP -fno-stack-protector
 # option is sufficient, and if not, add a macro to cripple these
 # functions with volatile...
 #
-tryflag CFLAGS_MEMOPS -fno-tree-loop-distribute-patterns
+# XXX EMSCRIPTEN tryflag CFLAGS_MEMOPS -fno-tree-loop-distribute-patterns
 
 #
 # Enable debugging if requessted.
@@ -546,7 +546,7 @@ tryflag CFLAGS_AUTO -Wno-pointer-to-int-cast
 #
 tryflag CFLAGS_AUTO -Werror=implicit-function-declaration
 tryflag CFLAGS_AUTO -Werror=implicit-int
-tryflag CFLAGS_AUTO -Werror=pointer-sign
+# XXX EMSCRIPTEN tryflag CFLAGS_AUTO -Werror=pointer-sign
 tryflag CFLAGS_AUTO -Werror=pointer-arith
 tryflag CFLAGS_AUTO -Werror=int-conversion
 tryflag CFLAGS_AUTO -Werror=incompatible-pointer-types

@@ -23,6 +23,11 @@ void __init_ssp(void *entropy)
 
 void __stack_chk_fail(void)
 {
+#if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
+	// Report the reason for the crash, at least in debug builds.
+	// This is the same message that glibc outputs (even in release builds).
+	emscripten_err("*** stack smashing detected ***");
+#endif
 	a_crash();
 }
 

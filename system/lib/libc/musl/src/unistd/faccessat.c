@@ -4,6 +4,7 @@
 #include "syscall.h"
 #include "pthread_impl.h"
 
+#ifndef __EMSCRIPTEN__
 struct ctx {
 	int fd;
 	const char *filename;
@@ -22,9 +23,13 @@ static int checker(void *p)
 	__syscall(SYS_write, c->p, &ret, sizeof ret);
 	return 0;
 }
+#endif
 
 int faccessat(int fd, const char *filename, int amode, int flag)
 {
+#ifdef __EMSCRIPTEN__
+	return syscall(SYS_faccessat, fd, filename, amode, flag);
+#else
 	if (flag) {
 		int ret = __syscall(SYS_faccessat2, fd, filename, amode, flag);
 		if (ret != -ENOSYS) return __syscall_ret(ret);
@@ -58,4 +63,5 @@ int faccessat(int fd, const char *filename, int amode, int flag)
 	__restore_sigs(&set);
 
 	return __syscall_ret(ret);
+#endif
 }

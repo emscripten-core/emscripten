@@ -9,14 +9,19 @@
 #include "lock.h"
 #include "fork_impl.h"
 
+#if defined(__EMSCRIPTEN__) && !defined(EMSCRIPTEN_STANDALONE_WASM)
+#define USE_EXTERNAL_ZONEINFO
+#include "emscripten_internal.h"
+#endif
+
 #define malloc __libc_malloc
 #define calloc undef
 #define realloc undef
 #define free undef
 
-long  __timezone = 0;
-int   __daylight = 0;
-char *__tzname[2] = { 0, 0 };
+weak long  __timezone = 0;
+weak int   __daylight = 0;
+weak char *__tzname[2] = { 0, 0 };
 
 weak_alias(__timezone, timezone);
 weak_alias(__daylight, daylight);
@@ -28,16 +33,21 @@ static char dst_name[TZNAME_MAX+1];
 static int dst_off;
 static int r0[5], r1[5];
 
+#ifndef USE_EXTERNAL_ZONEINFO
 static const unsigned char *zi, *trans, *index, *types, *abbrevs, *abbrevs_end;
 static size_t map_size;
+#endif
 
 static char old_tz_buf[32];
 static char *old_tz = old_tz_buf;
 static size_t old_tz_size = sizeof old_tz_buf;
 
 static volatile int lock[1];
+#ifndef __EMSCRIPTEN__
 volatile int *const __timezone_lockptr = lock;
+#endif
 
+#ifndef USE_EXTERNAL_ZONEINFO
 static int getint(const char **p)
 {
 	unsigned x;
@@ -121,9 +131,17 @@ static size_t zi_dotprod(const unsigned char *z, const unsigned char *v, size_t 
 	}
 	return y;
 }
+#endif
 
 static void do_tzset()
 {
+#ifdef USE_EXTERNAL_ZONEINFO
+	if (!__tzname[0]) {
+		_tzset_js(&timezone, &daylight, std_name, dst_name);
+		__tzname[0] = std_name;
+		__tzname[1] = dst_name;
+	}
+#else
 	char buf[NAME_MAX+25], *pathname=buf+24;
 	const char *try, *s, *p;
 	const unsigned char *map = 0;
@@ -254,8 +272,10 @@ static void do_tzset()
 
 	if (*s == ',') s++, getrule(&s, r0);
 	if (*s == ',') s++, getrule(&s, r1);
+#endif
 }
 
+#ifndef USE_EXTERNAL_ZONEINFO
 /* Search zoneinfo rules to find the one that applies to the given time,
  * and determine alternate opposite-DST-status rule that may be needed. */
 
@@ -415,6 +435,7 @@ dst:
 	*zonename = __tzname[1];
 	UNLOCK(lock);
 }
+#endif
 
 static void __tzset()
 {
@@ -425,14 +446,16 @@ static void __tzset()
 
 weak_alias(__tzset, tzset);
 
-const char *__tm_to_tzname(const struct tm *tm)
+weak const char *__tm_to_tzname(const struct tm *tm)
 {
 	const void *p = tm->__tm_zone;
 	LOCK(lock);
 	do_tzset();
+#ifndef USE_EXTERNAL_ZONEINFO
 	if (p != __utc && p != __tzname[0] && p != __tzname[1] &&
 	    (!zi || (uintptr_t)p-(uintptr_t)abbrevs >= abbrevs_end - abbrevs))
 		p = "";
+#endif
 	UNLOCK(lock);
 	return p;
 }

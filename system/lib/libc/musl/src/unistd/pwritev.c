@@ -6,6 +6,13 @@
 
 ssize_t pwritev(int fd, const struct iovec *iov, int count, off_t ofs)
 {
+#if __EMSCRIPTEN__
+	size_t num;
+	if (__wasi_syscall_ret(__wasi_fd_pwrite(fd, (struct __wasi_ciovec_t*)iov, count, ofs, &num))) {
+		return -1;
+	}
+	return num;
+#else
 	if (ofs == -1) ofs--;
 	int r = __syscall_cp(SYS_pwritev2, fd, iov, count,
 		(long)(ofs), (long)(ofs>>32), RWF_NOAPPEND);
@@ -15,4 +22,5 @@ ssize_t pwritev(int fd, const struct iovec *iov, int count, off_t ofs)
 		return __syscall_ret(-EOPNOTSUPP);
 	return syscall_cp(SYS_pwritev, fd, iov, count,
 		(long)(ofs), (long)(ofs>>32));
+#endif
 }

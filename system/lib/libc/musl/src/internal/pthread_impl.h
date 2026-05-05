@@ -9,6 +9,12 @@
 #include "libc.h"
 #include "syscall.h"
 #include "atomic.h"
+#ifdef __EMSCRIPTEN__
+#include "em_task_queue.h"
+#include "thread_mailbox.h"
+#include "threading_internal.h"
+#include <emscripten/threading.h>
+#endif
 #include "futex.h"
 
 #include "pthread_arch.h"
@@ -33,7 +39,10 @@ struct pthread {
 
 	/* Part 2 -- implementation details, non-ABI. */
 	int tid;
+#ifndef __EMSCRIPTEN__
+	// Emscripten uses C11 _Thread_local instead for errno
 	int errno_val;
+#endif
 	volatile int detach_state;
 	volatile int cancel;
 	volatile unsigned char canceldisable, cancelasync;
@@ -54,7 +63,10 @@ struct pthread {
 	} robust_list;
 	int h_errno_val;
 	volatile int timer_id;
+#ifndef __EMSCRIPTEN__
+	// Emscripten uses C11 _Thread_local instead for locale
 	locale_t locale;
+#endif
 	volatile int killlock[1];
 	char *dlerror_buf;
 	void *stdio_locks;
@@ -65,10 +77,59 @@ struct pthread {
 	uintptr_t canary;
 	uintptr_t *dtv;
 #endif
+
+// XXX Emscripten: Need some custom thread control structures.
+#ifdef __EMSCRIPTEN__
+	// If --threadprofiler is enabled, this pointer is allocated to contain
+	// internal information about the thread state for profiling purposes.
+	thread_profiler_block * _Atomic profilerBlock;
+	// The TLS base to use the main module TLS data.  Secondary modules
+	// still require dynamic allocation.
+	void* tls_base;
+	// The lowest level of the proxying system. Other threads can enqueue
+	// messages on the mailbox and notify this thread to asynchronously
+	// process them once it returns to its event loop. When this thread is
+	// shut down, the mailbox is closed (see below) to prevent further
+	// messages from being enqueued and all the remaining queued messages
+	// are dequeued and their shutdown handlers are executed. This allows
+	// other threads waiting for their messages to be processed to be
+	// notified that their messages will not be processed after all.
+	em_task_queue* mailbox;
+	// To ensure that no other thread is concurrently enqueueing a message
+	// when this thread shuts down, maintain an atomic refcount. Enqueueing
+	// threads atomically increment the count from a nonzero number to
+	// acquire the mailbox and decrement the count when they finish. When
+	// this thread shuts down it will atomically decrement the count and
+	// wait until it reaches 0, at which point the mailbox is considered
+	// closed and no further messages will be enqueued.
+	_Atomic int mailbox_refcount;
+	// Whether the thread has executed an `Atomics.waitAsync` on this
+	// pthread struct and can be notified of new mailbox messages via
+	// `Atomics.notify`. Otherwise, such as when the environment does not
+	// implement `Atomics.waitAsync` or when the thread has not had a chance
+	// to initialize itself yet, the notification has to fall back to the
+	// postMessage path. Once this becomes true, it remains true so we never
+	// fall back to postMessage unnecessarily.
+	_Atomic int waiting_async;
+	// The address the thread is currently waiting on in emscripten_futex_wait.
+	//
+	// This field encodes the state using the following bitmask:
+	// - NULL: Not waiting, no pending notification.
+	// - NOTIFY_BIT (0x1): Not waiting, but a notification was sent.
+	// - addr: Waiting on `addr`, no pending notification.
+	// - addr | NOTIFY_BIT: Waiting on `addr`, notification sent.
+	//
+	// Since futex addresses must be 4-byte aligned, the low bit is safe to use.
+	_Atomic uintptr_t wait_addr;
+#endif
 };
 
+#ifdef __EMSCRIPTEN__
+#define NOTIFY_BIT (1 << 0)
+#endif
+
 enum {
-	DT_EXITED = 0,
+	DT_EXITED,
 	DT_EXITING,
 	DT_JOINABLE,
 	DT_DETACHED,
@@ -99,6 +160,12 @@ enum {
 #define _rw_lock __u.__vi[0]
 #define _rw_waiters __u.__vi[1]
 #define _rw_shared __u.__i[2]
+#ifdef __EMSCRIPTEN__
+// XXX Emscripten: The spec allows detecting when multiple write locks would deadlock, so use an extra field
+// _rw_wr_owner to record which thread owns the write lock in order to avoid hangs.
+// Points to the pthread that currently has the write lock.
+#define _rw_wr_owner __u.__vi[3]
+#endif
 #define _b_lock __u.__vi[0]
 #define _b_waiters __u.__vi[1]
 #define _b_limit __u.__i[2]
@@ -169,14 +236,22 @@ static inline void __wake(volatile void *addr, int cnt, int priv)
 {
 	if (priv) priv = FUTEX_PRIVATE;
 	if (cnt<0) cnt = INT_MAX;
+#ifdef __EMSCRIPTEN__
+	emscripten_futex_wake(addr, (cnt)<0?INT_MAX:(cnt));
+#else
 	__syscall(SYS_futex, addr, FUTEX_WAKE|priv, cnt) != -ENOSYS ||
 	__syscall(SYS_futex, addr, FUTEX_WAKE, cnt);
+#endif
 }
 static inline void __futexwait(volatile void *addr, int val, int priv)
 {
+#ifdef __EMSCRIPTEN__
+	__wait(addr, NULL, val, priv);
+#else
 	if (priv) priv = FUTEX_PRIVATE;
 	__syscall(SYS_futex, addr, FUTEX_WAIT|priv, val, 0) != -ENOSYS ||
 	__syscall(SYS_futex, addr, FUTEX_WAIT, val, 0);
+#endif
 }
 
 hidden void __acquire_ptc(void);
@@ -194,12 +269,27 @@ extern hidden volatile int __abort_lock[1];
 extern hidden unsigned __default_stacksize;
 extern hidden unsigned __default_guardsize;
 
+
+#ifdef __EMSCRIPTEN__
+// Keep in sync with DEFAULT_PTHREAD_STACK_SIZE in settings.js
+#define DEFAULT_STACK_SIZE (64*1024)
+#else
 #define DEFAULT_STACK_SIZE 131072
+#endif
 #define DEFAULT_GUARD_SIZE 8192
 
 #define DEFAULT_STACK_MAX (8<<20)
 #define DEFAULT_GUARD_MAX (1<<20)
 
 #define __ATTRP_C11_THREAD ((void*)(uintptr_t)-1)
+
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
+pid_t gettid(void);
+// Unlike `__pthread_self()->tid, `gettid` works under both wasm workers and
+// pthreads.
+#define CURRENT_THREAD_ID gettid()
+#else
+#define CURRENT_THREAD_ID __pthread_self()->tid
+#endif
 
 #endif

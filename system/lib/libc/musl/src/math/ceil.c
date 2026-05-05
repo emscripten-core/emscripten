@@ -1,14 +1,21 @@
 #include "libm.h"
 
+#ifndef __wasm__
 #if FLT_EVAL_METHOD==0 || FLT_EVAL_METHOD==1
 #define EPS DBL_EPSILON
 #elif FLT_EVAL_METHOD==2
 #define EPS LDBL_EPSILON
 #endif
 static const double_t toint = 1/EPS;
+#endif
 
 double ceil(double x)
 {
+// XXX EMSCRIPTEN: use the wasm instruction via clang builtin
+// See https://github.com/emscripten-core/emscripten/issues/9236
+#ifdef __wasm__
+	return __builtin_ceil(x);
+#else
 	union {double f; uint64_t i;} u = {x};
 	int e = u.i >> 52 & 0x7ff;
 	double_t y;
@@ -28,4 +35,5 @@ double ceil(double x)
 	if (y < 0)
 		return x + y + 1;
 	return x + y;
+#endif
 }

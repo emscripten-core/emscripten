@@ -4,6 +4,10 @@
 #include <pthread.h>
 #include <errno.h>
 
+#ifdef __EMSCRIPTEN__
+#include <wasi/wasi-helpers.h>
+#endif
+
 int getentropy(void *buffer, size_t len)
 {
 	int cs, ret = 0;
@@ -14,6 +18,9 @@ int getentropy(void *buffer, size_t len)
 		return -1;
 	}
 
+#ifdef __EMSCRIPTEN__
+	ret = __wasi_syscall_ret(__wasi_random_get(buffer, len));
+#else
 	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
 
 	while (len) {
@@ -28,6 +35,7 @@ int getentropy(void *buffer, size_t len)
 	}
 
 	pthread_setcancelstate(cs, 0);
+#endif
 
 	return ret;
 }

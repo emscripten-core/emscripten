@@ -5,6 +5,7 @@
 #include <stdint.h>
 #include <errno.h>
 
+#ifndef __EMSCRIPTEN__
 #define V(p) be32toh(*(uint32_t *)(p))
 
 static int cmp(const void *a, const void *b)
@@ -12,9 +13,13 @@ static int cmp(const void *a, const void *b)
 	uint32_t x = V(a), y = V(b);
 	return x<y ? -1 : x>y ? 1 : 0;
 }
+#endif
 
 char *catgets (nl_catd catd, int set_id, int msg_id, const char *s)
 {
+#ifdef __EMSCRIPTEN__
+	return (char *)s;
+#else
 	const char *map = (const char *)catd;
 	uint32_t nsets = V(map+4);
 	const char *sets = map+20;
@@ -35,4 +40,5 @@ char *catgets (nl_catd catd, int set_id, int msg_id, const char *s)
 		return (char *)s;
 	}
 	return (char *)(strings + V(msg+8));
+#endif
 }

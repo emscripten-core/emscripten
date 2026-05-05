@@ -9,6 +9,7 @@
 #include <sys/mman.h>
 #include "libc.h"
 
+#ifndef __EMSCRIPTEN__
 #define V(p) be32toh(*(uint32_t *)(p))
 
 static nl_catd do_catopen(const char *name)
@@ -24,9 +25,11 @@ static nl_catd do_catopen(const char *name)
 	}
 	return (nl_catd)map;
 }
+#endif
 
 nl_catd catopen(const char *name, int oflag)
 {
+#ifndef __EMSCRIPTEN__
 	nl_catd catd;
 
 	if (strchr(name, '/')) return do_catopen(name);
@@ -75,5 +78,6 @@ nl_catd catopen(const char *name, int oflag)
 		if (catd != (nl_catd)-1) return catd;
 	}
 	errno = ENOENT;
+#endif
 	return (nl_catd)-1;
 }

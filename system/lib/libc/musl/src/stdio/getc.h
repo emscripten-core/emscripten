@@ -16,7 +16,7 @@ static int locking_getc(FILE *f)
 static inline int do_getc(FILE *f)
 {
 	int l = f->lock;
-	if (l < 0 || l && (l & ~MAYBE_WAITERS) == __pthread_self()->tid)
+	if (l < 0 || l && (l & ~MAYBE_WAITERS) == CURRENT_THREAD_ID)
 		return getc_unlocked(f);
 	return locking_getc(f);
 }
