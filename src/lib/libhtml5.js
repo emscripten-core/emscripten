@@ -111,6 +111,8 @@ var LibraryHTML5 = {
     },
 
     canPerformEventHandlerRequests() {
+      // Browsers that support navigator.userActivation.isActive: https://developer.mozilla.org/en-US/docs/Web/API/UserActivation/isActive
+#if MIN_CHROME_VERSION < 72 || MIN_FIREFOX_VERSION < 120 || MIN_SAFARI_VERSION < 160400
       if (navigator.userActivation) {
         // Verify against transient activation status from UserActivation API
         // whether it is possible to perform a request here without needing to defer. See
@@ -121,6 +123,10 @@ var LibraryHTML5 = {
       }
 
       return JSEvents.inEventHandler && JSEvents.currentEventHandler.allowsDeferredCalls;
+#else
+      // We are targeting modern browsers where navigator.userActivation.isActive is unconditionally supported.
+      return navigator.userActivation.isActive;
+#endif
     },
 
     runDeferredCalls() {
