@@ -23,7 +23,7 @@ Quick Example
 
   int main()
   {
-    emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stackSize: */1024);
+    emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stackSize: */4096);
     emscripten_wasm_worker_post_function_v(worker, run_in_worker);
   }
 

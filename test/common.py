@@ -457,13 +457,14 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def require_pthreads(self):
     self.cflags += ['-Wno-pthreads-mem-growth', '-pthread']
-    if self.get_setting('MINIMAL_RUNTIME'):
-      self.skipTest('non-browser pthreads not yet supported with MINIMAL_RUNTIME')
-    for engine in self.js_engines:
-      if engine_is_node(engine) or engine_is_bun(engine) or engine_is_deno(engine):
-        self.require_engine(engine)
-        return
-    self.fail('no JS engine found capable of running pthreads')
+    if not self.is_browser_test():
+      if self.get_setting('MINIMAL_RUNTIME'):
+        self.skipTest('non-browser pthreads not yet supported with MINIMAL_RUNTIME')
+      for engine in self.js_engines:
+        if engine_is_node(engine) or engine_is_bun(engine) or engine_is_deno(engine):
+          self.require_engine(engine)
+          return
+      self.fail('no JS engine found capable of running pthreads')
 
   def require_v8(self):
     if 'EMTEST_SKIP_V8' in os.environ:

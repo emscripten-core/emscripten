@@ -24,7 +24,6 @@ from . import (
   utils,
   webassembly,
 )
-from .feature_matrix import UNSUPPORTED
 from .settings import settings
 from .shared import (
   CLANG_CC,
@@ -538,7 +537,7 @@ def get_closure_compiler_and_env(user_args):
   if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
     # Run with Java Closure compiler as a fallback if the native version does not work.
     # This can happen, for example, on arm64 macOS machines that do not have Rosetta installed.
-    logger.warning('falling back to java version of closure compiler')
+    logger.debug('falling back to java version of closure compiler')
     user_args.append('--platform=java')
     check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
 
@@ -552,36 +551,6 @@ def version_split(v):
   m = re.match(r'(\d{2})(\d{2})(\d{2})', v)
   major, minor, rev = m.group(1, 2, 3)
   return f'{int(major)}.{int(minor)}.{int(rev)}'
-
-
-@ToolchainProfiler.profile()
-def transpile(filename):
-  config = {
-    'sourceType': 'script',
-    'presets': ['@babel/preset-env'],
-    'targets': {},
-  }
-  if settings.MIN_CHROME_VERSION != UNSUPPORTED:
-    config['targets']['chrome'] = str(settings.MIN_CHROME_VERSION)
-  if settings.MIN_FIREFOX_VERSION != UNSUPPORTED:
-    config['targets']['firefox'] = str(settings.MIN_FIREFOX_VERSION)
-  if settings.MIN_SAFARI_VERSION != UNSUPPORTED:
-    config['targets']['safari'] = version_split(settings.MIN_SAFARI_VERSION)
-  if settings.MIN_NODE_VERSION != UNSUPPORTED:
-    config['targets']['node'] = version_split(settings.MIN_NODE_VERSION)
-  config_json = json.dumps(config, indent=2)
-  outfile = shared.get_temp_files().get('babel.js').name
-  config_file = shared.get_temp_files().get('babel_config.json').name
-  logger.debug(config_json)
-  utils.write_file(config_file, config_json)
-  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--config-file', config_file]
-  # Babel needs access to `node_modules` for things like `preset-env`, but the
-  # location of the config file (and the current working directory) might not be
-  # in the emscripten tree, so we explicitly set NODE_PATH here.
-  env = shared.env_with_node_in_path()
-  env['NODE_PATH'] = path_from_root('node_modules')
-  check_call(cmd, env=env)
-  return outfile
 
 
 @ToolchainProfiler.profile()
@@ -646,7 +615,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   args += ['--language_in', 'UNSTABLE']
-  # We do transpilation using babel
+  # We currently only use closure compiler for minification, not transpilation.
   args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
   args += ['--emit_use_strict=false']

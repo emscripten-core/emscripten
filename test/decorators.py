@@ -252,6 +252,21 @@ def with_env_modify(updates):
   return decorated
 
 
+def also_with_pthreads(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, threads, *args, **kwargs):
+    if threads:
+      self.require_pthreads()
+    f(self, *args, **kwargs)
+
+  parameterize(decorated, {'': (False,),
+                           'pthreads': (True,)})
+
+  return decorated
+
+
 def also_with_wasmfs(func):
   assert callable(func)
 
@@ -594,7 +609,7 @@ def parameterize(func, parameters):
   test functions.
   """
   prev = getattr(func, '_parameterize', None)
-  assert not any(p.startswith('_') for p in parameters)
+  assert not any(p.startswith('_') for p in parameters), 'test variant names should not start with _'
   if prev:
     # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
     func._parameterize = {

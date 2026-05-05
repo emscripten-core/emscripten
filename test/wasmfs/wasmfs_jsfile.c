@@ -142,8 +142,8 @@ int main() {
       printf("%c", buf[i]);
     }
   }
-  printf("\n");
+  printf("\n\n");
 
-  puts("\ndone.");
+  puts("done");
   return 0;
 }

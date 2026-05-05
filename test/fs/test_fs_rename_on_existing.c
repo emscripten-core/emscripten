@@ -26,5 +26,5 @@ int main() {
   assert(rename("a", "b") == 0);
   assert(unlink("b") == 0);
   create_file("b", "xyz");
-  printf("success\n");
+  printf("done\n");
 }

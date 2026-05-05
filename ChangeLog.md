@@ -18,11 +18,22 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.7 (in development)
+5.0.8 (in development)
 ----------------------
-- The emscripten_futux_wait API is now documented to explicitly allow spurious
-  wakeups. This was part of an internal change to improve inter-thread
-  communication. (#26659)
+- The minimum versions of browser engines supported by emscripten's generated
+  code were bumped, allowing us to remove our internal support for transpilation
+  via babel:
+    MIN_CHROME_VERSION: 74 -> 85
+    MIN_FIREFOX_VERSION: 68 -> 79
+    MIN_SAFARI_VERSION: 12.2 -> 14.1
+  This allows us to assume that features such as mutable-globals, sign-ext, and
+  threading, are universally available.  Disabling these is no longer possible
+  in emscripten.  If you still need to support extremely old browsers, you can
+  manually transpile the output of emscripten (e.g. using babel for JS and
+  binaryen for wasm). (#26677)
+
+5.0.7 - 04/30/26
+----------------
 - mimalloc was updated to 3.3.1. (#26696)
 - The `WASM_JS_TYPES` setting was removed, as the corresponsing propsal was
   pushed back to phase 1. (#26739)
@@ -31,10 +42,10 @@ See docs/process.md for more on how version tagging works.
   emscripten so folks can sill use it manually if needed.  If you are a user of
   this feature please let us know otherwise this may be deleted in a future
   release. (#26648)
-- The emscripten_futux_wait internals were improved to avoid unnecessary thread
-  wakeups.  As part of this change emscripten_futux_wait is now documented to
+- The emscripten_futex_wait internals were improved to avoid unnecessary thread
+  wakeups.  As part of this change emscripten_futex_wait is now documented to
   explicitly allow for returning EINTR when the wait is interrupted by an async
-  operation.  All callers of emscripten_futux_wait are advised to use a loop
+  operation.  All callers of emscripten_futex_wait are advised to use a loop
   to handle these types of spurious wakeups / interruptions. (#26659, #26735)
 - Attempting to use PTHREAD_PROCESS_SHARED when creating pthread primitives such
   as locks and condvars will now fail with ENOTSUP. (#26743)

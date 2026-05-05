@@ -22,22 +22,18 @@ UNSUPPORTED = 0x7FFFFFFF
 
 # N.b. when modifying these values, update comments in src/settings.js on
 # MIN_x_VERSION fields to match accordingly.
-OLDEST_SUPPORTED_CHROME = 74  # Released on 2019-04-23
-OLDEST_SUPPORTED_FIREFOX = 68  # Released on 2019-07-09
-OLDEST_SUPPORTED_SAFARI = 120200  # Released on 2019-03-25
+OLDEST_SUPPORTED_CHROME = 85  # Released on 2020-08-25
+OLDEST_SUPPORTED_FIREFOX = 79  # Released on 2020-07-28
+OLDEST_SUPPORTED_SAFARI = 140100  # Released on 2021-04-26
 # This is the oldest version of node that we do any testing with.
 # Keep this in sync with the test-node-compat in .circleci/config.yml.
 OLDEST_SUPPORTED_NODE = 180300
 
 
 class Feature(IntEnum):
-  MUTABLE_GLOBALS = auto()
   NON_TRAPPING_FPTOINT = auto()
-  SIGN_EXT = auto()
   BULK_MEMORY = auto()
   JS_BIGINT_INTEGRATION = auto()
-  THREADS = auto()
-  PROMISE_ANY = auto()
   MEMORY64 = auto()
   WORKER_ES6_MODULES = auto()
   OFFSCREENCANVAS_SUPPORT = auto()
@@ -52,23 +48,11 @@ disable_override_features = set()
 enable_override_features = set()
 
 min_browser_versions = {
-  Feature.MUTABLE_GLOBALS: {
-    'chrome': 74,
-    'firefox': 61,
-    'safari': 130100,
-    'node': 120000,
-  },
   Feature.NON_TRAPPING_FPTOINT: {
     'chrome': 75,
     'firefox': 65,
     'safari': 150000,
     'node': 130000,
-  },
-  Feature.SIGN_EXT: {
-    'chrome': 74,
-    'firefox': 62,
-    'safari': 140100,
-    'node': 120000,
   },
   Feature.BULK_MEMORY: {
     'chrome': 75,
@@ -81,18 +65,6 @@ min_browser_versions = {
     'firefox': 78,
     'safari': 150000,
     'node': 130000,
-  },
-  Feature.THREADS: {
-    'chrome': 74,
-    'firefox': 79,
-    'safari': 140100,
-    'node': 160400,
-  },
-  Feature.PROMISE_ANY: {
-    'chrome': 85,
-    'firefox': 79,
-    'safari': 140000,
-    'node': 150000,
   },
   Feature.MEMORY64: {
     'chrome': 128,
@@ -165,6 +137,38 @@ min_browser_versions = {
     'safari': UNSUPPORTED,
     'node': 240000,
   },
+
+# The following features we now support unconditionally, but keeping them around
+# in code comments for future reference
+
+#  Feature.MUTABLE_GLOBALS: {
+#    'chrome': 74,
+#    'firefox': 61,
+#    'safari': 130100,
+#    'node': 120000,
+#  },
+
+#  Feature.SIGN_EXT: {
+#    'chrome': 74,
+#    'firefox': 62,
+#    'safari': 140100,
+#    'node': 120000,
+#  },
+
+#  Feature.THREADS: {
+#    'chrome': 74,
+#    'firefox': 79,
+#    'safari': 140100,
+#    'node': 160400,
+#  },
+
+#  Feature.PROMISE_ANY: {
+#    'chrome': 85,
+#    'firefox': 79,
+#    'safari': 140000,
+#    'node': 150000,
+#  },
+
 }
 
 # Static assertion to check that we actually need each of the above feature flags
@@ -244,12 +248,9 @@ def apply_min_browser_versions():
     # unless the user explicitly enabled it.
     enable_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
   if settings.PTHREADS:
-    enable_feature(Feature.THREADS, 'pthreads')
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
   elif settings.WASM_WORKERS or settings.SHARED_MEMORY:
     enable_feature(Feature.BULK_MEMORY, 'shared-mem')
-  if settings.MAIN_MODULE or settings.SIDE_MODULE:
-    enable_feature(Feature.MUTABLE_GLOBALS, 'dynamic linking')
   if settings.MEMORY64 == 1:
     enable_feature(Feature.MEMORY64, 'MEMORY64')
   if settings.EXPORT_ES6 and settings.PTHREADS:

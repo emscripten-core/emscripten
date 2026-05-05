@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #define ALIGN(x,y) ((x)+(y)-1 & -(y))
-#define THREAD_STACK_SIZE 2048
+#define THREAD_STACK_SIZE 4096
 #define NUM_THREADS 2
 void *thread_stack[NUM_THREADS];
 

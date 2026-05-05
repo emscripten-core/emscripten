@@ -196,7 +196,7 @@ normally be necessary.
 
 If for some reason you need to update the `emscripten-site` repository manually
 there is a script that will perform the update steps:
-[`tools/maint/update_docs.py`][update_docs].  Run this script with no
+[`tools/maint/update_website.py`][update_website].  Run this script with no
 arguments if the `emscripten-site` repository is checked out alongside emscripten
 itself, or pass the location of the checkout if not.
 
@@ -208,7 +208,7 @@ need to add `~/.local/bin` to your path, if pip installs to there).
 ### Building and viewing the Website locally
 
 To build the site locally for testing purposes you only need a subset of the
-`update_docs.py` command just mentioned above. Specifically:
+`update_website.py` command just mentioned above. Specifically:
 
 1. Run `pip3` to install python dependencies, as described above.
 2. Run `make -C site html`.
@@ -381,7 +381,7 @@ decide collectively to abandon the deprecation, or to delay it.
 [clang-format]: https://github.com/emscripten-core/emscripten/blob/main/.clang-format
 [pyproject.toml]: https://github.com/emscripten-core/emscripten/blob/main/pyproject.toml
 [mypy]: https://github.com/emscripten-core/emscripten/blob/main/.mypy
-[update_docs]: https://github.com/emscripten-core/emscripten/blob/main/tools/maint/update_docs.py
+[update_website]: https://github.com/emscripten-core/emscripten/blob/main/tools/maint/update_website.py
 [llvm_repo]: https://github.com/llvm/llvm-project
 [llvm_emscripten_fork]: https://github.com/emscripten-core/llvm-project
 [push_llvm_changes_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/push_llvm_changes.py

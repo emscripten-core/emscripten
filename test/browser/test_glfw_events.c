@@ -242,6 +242,6 @@ int main() {
     printf("test failed\n");
     return 1;
   }
-  printf("success\n");
+  printf("done\n");
   return 0;
 }

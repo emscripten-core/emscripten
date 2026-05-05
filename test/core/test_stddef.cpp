@@ -29,6 +29,6 @@ void abort(void);
 int main() {
   // max_align_t on wasm backend is 8.
   assert(_Alignof(max_align_t) == 8);
-  puts("success");
+  puts("done");
   return 0;
 }

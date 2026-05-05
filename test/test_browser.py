@@ -49,6 +49,7 @@ from decorators import (
   also_with_asan,
   also_with_fetch_streaming,
   also_with_minimal_runtime,
+  also_with_pthreads,
   also_with_wasm2js,
   also_with_wasmfs,
   disabled,
@@ -181,21 +182,6 @@ def is_jspi(args):
   return '-sJSPI' in args
 
 
-def also_with_threads(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, threads, *args, **kwargs):
-    if threads:
-      self.cflags += ['-pthread']
-    f(self, *args, **kwargs)
-
-  parameterize(decorated, {'': (False,),
-                           'pthreads': (True,)})
-
-  return decorated
-
-
 def also_with_proxy_to_pthread(f):
   assert callable(f)
 
@@ -256,10 +242,6 @@ requires_microphone_access = skipIfFeatureNotAvailable('EMTEST_LACKS_MICROPHONE_
 requires_offscreen_canvas = skipIfFeatureNotAvailable('EMTEST_LACKS_OFFSCREEN_CANVAS', Feature.OFFSCREENCANVAS_SUPPORT, 'This test requires a browser with OffscreenCanvas')
 requires_es6_workers = skipIfFeatureNotAvailable('EMTEST_LACKS_ES6_WORKERS', Feature.WORKER_ES6_MODULES, 'This test requires a browser with ES6 Module Workers support')
 requires_growable_arraybuffers = skipIfFeatureNotAvailable('EMTEST_LACKS_GROWABLE_ARRAYBUFFERS', Feature.GROWABLE_ARRAYBUFFERS, 'This test requires a browser that supports growable ArrayBuffers')
-# N.b. not all SharedArrayBuffer requiring tests are annotated with this decorator, since at this point there are so many of such tests.
-# As a middle ground, if a test has a name 'thread' or 'wasm_worker' in it, then it does not need decorating. To run all single-threaded tests in
-# the suite, one can run "EMTEST_LACKS_SHARED_ARRAY_BUFFER=1 test/runner browser skip:browser.test_*thread* skip:browser.test_*wasm_worker* skip:browser.test_*audio_worklet*"
-requires_shared_array_buffer = skipIfFeatureNotAvailable('EMTEST_LACKS_SHARED_ARRAY_BUFFER', Feature.THREADS, 'This test requires a browser with SharedArrayBuffer support')
 
 
 class browser(BrowserCore):
@@ -2538,7 +2520,7 @@ Module["preRun"] = () => {
     'closure': (['-O2', '-g1', '--closure=1', '-sHTML5_SUPPORT_DEFERRING_USER_SENSITIVE_REQUESTS=0'],),
     'pthread': (['-pthread'],),
     'proxy_to_pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
-    'legacy': (['-sMIN_FIREFOX_VERSION=0', '-sMIN_SAFARI_VERSION=0', '-sMIN_CHROME_VERSION=0', '-Wno-transpile'],),
+    'legacy': (['-sMIN_FIREFOX_VERSION=0', '-sMIN_SAFARI_VERSION=0', '-sMIN_CHROME_VERSION=0'],),
   })
   def test_html5_core(self, opts):
     if self.is_wasm64() and '-sMIN_CHROME_VERSION=0' in opts:
@@ -2641,7 +2623,7 @@ Module["preRun"] = () => {
 
   @requires_graphics_hardware
   @parameterized({
-    'legacy_browser': (['-sMIN_CHROME_VERSION=0', '-Wno-transpile'],),
+    'legacy_browser': (['-sMIN_CHROME_VERSION=0'],),
     'closure': (['-O2', '-g1', '--closure=1'],),
     'full_es2': (['-sFULL_ES2'],),
   })
@@ -3489,7 +3471,6 @@ Module["preRun"] = () => {
     self.emcc('side.c', ['-o', 'libside.so', '-sSIDE_MODULE'])
     self.btest_exit('other/test_dlopen_async.c', cflags=['-sMAIN_MODULE=2'])
 
-  @requires_shared_array_buffer
   def test_dlopen_blocking(self):
     self.emcc('other/test_dlopen_blocking_side.c', ['-o', 'libside.so', '-sSIDE_MODULE', '-pthread', '-Wno-experimental'])
     # Attempt to use dlopen the side module (without preloading) should fail on the main thread
@@ -3681,7 +3662,7 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_64bit_atomics.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test 64-bit C++11 atomics.
-  @also_with_threads
+  @also_with_pthreads
   @parameterized({
     '': ([],),
     'O3': (['-O3'],),
@@ -3937,7 +3918,7 @@ Module["preRun"] = () => {
 
   # Test that -sABORTING_MALLOC=0 works in both pthreads and non-pthreads
   # builds. (sbrk fails gracefully)
-  @also_with_threads
+  @also_with_pthreads
   @parameterized({
     '': ([],),
     'O2': (['-O2'],),
@@ -4162,11 +4143,11 @@ Module["preRun"] = () => {
     shutil.move('test.wasm', Path('cdn/test.wasm'))
     self.run_browser('test.html', '/report_result?0')
 
-  @also_with_threads
+  @also_with_pthreads
   def test_utf8_textdecoder(self):
     self.btest_exit('benchmark/benchmark_utf8.c', 0, cflags=['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt'])
 
-  @also_with_threads
+  @also_with_pthreads
   def test_utf16_textdecoder(self):
     self.btest_exit('benchmark/benchmark_utf16.cpp', 0, cflags=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=UTF16ToString,stringToUTF16,lengthBytesUTF16'])
 
@@ -4540,7 +4521,6 @@ Module["preRun"] = () => {
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_to_memory_async.c', cflags=['-sFETCH'])
 
-  @requires_shared_array_buffer
   def test_fetch_to_memory_sync(self):
     create_file('myfile.dat', 'hello world\n' * 1000)
     self.btest_exit('fetch/test_fetch_to_memory_sync.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD'])
@@ -4873,11 +4853,9 @@ Module["preRun"] = () => {
   def test_request_animation_frame(self):
     self.btest_exit('test_request_animation_frame.c')
 
-  @requires_shared_array_buffer
   def test_emscripten_set_timeout(self):
     self.btest_exit('emscripten_set_timeout.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
 
-  @requires_shared_array_buffer
   def test_emscripten_set_timeout_loop(self):
     self.btest_exit('emscripten_set_timeout_loop.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
 
@@ -4887,7 +4865,6 @@ Module["preRun"] = () => {
   def test_emscripten_set_immediate_loop(self):
     self.btest_exit('emscripten_set_immediate_loop.c')
 
-  @requires_shared_array_buffer
   def test_emscripten_set_interval(self):
     self.btest_exit('emscripten_set_interval.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
 
@@ -5466,7 +5443,6 @@ Module["preRun"] = () => {
     'audio_params_disabled': (['-sAUDIO_WORKLET_SUPPORT_AUDIO_PARAMS=0'],),
   })
   @requires_sound_hardware
-  @requires_shared_array_buffer
   def test_audio_worklet(self, args):
     if '-sEXPORT_ES6' in args and es6_module_workers_disabled():
       self.skipTest('This test requires a browser with ES6 Module Workers support')
@@ -5474,7 +5450,6 @@ Module["preRun"] = () => {
 
   # Tests that audioworklets and workers can be used at the same time
   # Note: doesn't need audio hardware (and has no AW code that tests 2GB or wasm64)
-  @requires_shared_array_buffer
   def test_audio_worklet_worker(self):
     self.btest_exit('webaudio/audioworklet_worker.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'])
 
@@ -5484,7 +5459,6 @@ Module["preRun"] = () => {
     'closure': (['--closure', '1', '-Oz'],),
   })
   # Note: doesn't need audio hardware (and has no AW code that tests 2GB or wasm64)
-  @requires_shared_array_buffer
   def test_audio_worklet_post_function(self, args):
     self.btest_exit('webaudio/audioworklet_post_function.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS'] + args)
 
@@ -5493,7 +5467,6 @@ Module["preRun"] = () => {
     'closure': (['--closure', '1', '-Oz'],),
   })
   @requires_sound_hardware
-  @requires_shared_array_buffer
   def test_audio_worklet_modularize(self, args):
     self.btest_exit('webaudio/audioworklet.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-sMODULARIZE=1', '-DTEST_AND_EXIT'] + args)
 
@@ -5505,7 +5478,6 @@ Module["preRun"] = () => {
     'minimal_with_closure': (['-sMINIMAL_RUNTIME', '--closure=1', '-Oz'],),
   })
   @requires_sound_hardware
-  @requires_shared_array_buffer
   def test_audio_worklet_params_mixing(self, args):
     os.mkdir('audio_files')
     copy_asset('webaudio/audio_files/emscripten-beat.mp3', 'audio_files/')
@@ -5514,7 +5486,6 @@ Module["preRun"] = () => {
 
   # Tests AudioWorklet with emscripten_lock_busyspin_wait_acquire() and friends
   @requires_sound_hardware
-  @requires_shared_array_buffer
   @also_with_minimal_runtime
   def test_audio_worklet_emscripten_locks(self):
     self.btest_exit('webaudio/audioworklet_emscripten_locks.c', cflags=['-sAUDIO_WORKLET', '-sWASM_WORKERS', '-pthread'])
@@ -5575,7 +5546,7 @@ Module["preRun"] = () => {
     create_file('post.js', 'throw "foo";')
     self.btest('hello_world.c', cflags=['--post-js=post.js'], expected='exception:foo')
 
-  @also_with_threads
+  @also_with_pthreads
   @also_with_wasm2js
   @parameterized({
     '': ([],),
@@ -5597,7 +5568,7 @@ Module["preRun"] = () => {
       shutil.copy('src/hello.wasm', 'dist/')
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
-  @also_with_threads
+  @also_with_pthreads
   @requires_dev_dependency('vite')
   @parameterized({
     '': ([],),
@@ -5609,7 +5580,7 @@ Module["preRun"] = () => {
     self.run_process(shared.get_npm_cmd('vite') + ['build'])
     self.run_browser('dist/index.html', '/report_result?exit:0')
 
-  @also_with_threads
+  @also_with_pthreads
   @requires_dev_dependency('rollup')
   def test_rollup(self):
     copytree(test_file('rollup'), '.')
@@ -5626,7 +5597,6 @@ Module["preRun"] = () => {
     '': ([], 9998),
     'es6': (['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')], 9999),
   })
-  @requires_shared_array_buffer
   def test_cross_origin(self, args, port):
     if '-sEXPORT_ES6' in args and browser_should_skip_feature('EMTEST_LACKS_ES6_WORKERS', Feature.WORKER_ES6_MODULES):
       self.skipTest('This test requires a browser with ES6 Module Workers support')
