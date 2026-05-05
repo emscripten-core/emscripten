@@ -48,6 +48,7 @@ var SyscallsLibrary = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_size, 'stat.size', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blksize, '4096', 'i32') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_blocks, 'stat.blocks', 'i32') }}};
+      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       var atime = stat.atime.getTime();
       var mtime = stat.mtime.getTime();
       var ctime = stat.ctime.getTime();
@@ -57,7 +58,6 @@ var SyscallsLibrary = {
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_mtim.tv_nsec, '(mtime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_sec, 'Math.floor(ctime / 1000)', 'i64') }}};
       {{{ makeSetValue('buf', C_STRUCTS.stat.st_ctim.tv_nsec, '(ctime % 1000) * 1000 * 1000', SIZE_TYPE) }}};
-      {{{ makeSetValue('buf', C_STRUCTS.stat.st_ino, 'stat.ino', 'i64') }}};
       return 0;
     },
     writeStatFs(buf, stats) {

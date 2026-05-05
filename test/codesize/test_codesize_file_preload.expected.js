@@ -3028,16 +3028,16 @@ var SYSCALLS = {
     HEAP64[(((buf) + (24)) >> 3)] = BigInt(stat.size);
     HEAP32[(((buf) + (32)) >> 2)] = 4096;
     HEAP32[(((buf) + (36)) >> 2)] = stat.blocks;
+    HEAP64[(((buf) + (40)) >> 3)] = BigInt(stat.ino);
     var atime = stat.atime.getTime();
     var mtime = stat.mtime.getTime();
     var ctime = stat.ctime.getTime();
-    HEAP64[(((buf) + (40)) >> 3)] = BigInt(Math.floor(atime / 1e3));
-    HEAPU32[(((buf) + (48)) >> 2)] = (atime % 1e3) * 1e3 * 1e3;
-    HEAP64[(((buf) + (56)) >> 3)] = BigInt(Math.floor(mtime / 1e3));
-    HEAPU32[(((buf) + (64)) >> 2)] = (mtime % 1e3) * 1e3 * 1e3;
-    HEAP64[(((buf) + (72)) >> 3)] = BigInt(Math.floor(ctime / 1e3));
-    HEAPU32[(((buf) + (80)) >> 2)] = (ctime % 1e3) * 1e3 * 1e3;
-    HEAP64[(((buf) + (88)) >> 3)] = BigInt(stat.ino);
+    HEAP64[(((buf) + (48)) >> 3)] = BigInt(Math.floor(atime / 1e3));
+    HEAPU32[(((buf) + (56)) >> 2)] = (atime % 1e3) * 1e3 * 1e3;
+    HEAP64[(((buf) + (64)) >> 3)] = BigInt(Math.floor(mtime / 1e3));
+    HEAPU32[(((buf) + (72)) >> 2)] = (mtime % 1e3) * 1e3 * 1e3;
+    HEAP64[(((buf) + (80)) >> 3)] = BigInt(Math.floor(ctime / 1e3));
+    HEAPU32[(((buf) + (88)) >> 2)] = (ctime % 1e3) * 1e3 * 1e3;
     return 0;
   },
   writeStatFs(buf, stats) {

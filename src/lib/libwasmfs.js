@@ -260,10 +260,10 @@ addToLibrary({
           size: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_size, "i53") }}},
           blksize: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blksize, "i32") }}},
           blocks: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_blocks, "i32") }}},
+          ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}},
           atime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_atim.tv_sec, "i53") }}},
           mtime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_mtim.tv_sec, "i53") }}},
-          ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctim.tv_sec, "i53") }}},
-          ino: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ino, "u53") }}}
+          ctime: {{{ makeGetValue('statBuf', C_STRUCTS.stat.st_ctim.tv_sec, "i53") }}}
       }
     },
     stat(path) {
