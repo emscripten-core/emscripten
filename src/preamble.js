@@ -201,6 +201,9 @@ function exitRuntime() {
   assert(!runtimeExited);
   assert(!runtimeExiting, 'Re-entrant call to exitRuntime()! This can happen if an atexit() registered callback throws an exception.');
   runtimeExiting = true;
+#if PTHREADS || WASM_WORKERS
+  assert(!{{{ ENVIRONMENT_IS_WORKER_THREAD() }}}, 'exitRuntime() should only be called from the main thread');
+#endif
 #endif
 #if ASYNCIFY == 1 && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
