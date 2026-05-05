@@ -31,6 +31,7 @@ See docs/process.md for more on how version tagging works.
   in emscripten.  If you still need to support extremely old browsers, you can
   manually transpile the output of emscripten (e.g. using babel for JS and
   binaryen for wasm). (#26677)
+- musl libc updated from v1.2.5 to v1.2.6. (#26860)
 
 5.0.7 - 04/30/26
 ----------------
