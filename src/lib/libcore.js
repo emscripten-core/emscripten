@@ -1522,7 +1522,7 @@ addToLibrary({
 
   _emscripten_sanitizer_get_option__deps: ['$stringToNewUTF8', '$UTF8ToString'],
   _emscripten_sanitizer_get_option__sig: 'pp',
-  _emscripten_sanitizer_get_option: (name) => stringToNewUTF8(Module[UTF8ToString(name)] || ''),
+  _emscripten_sanitizer_get_option: (name) => stringToNewUTF8(Module[UTF8ToString(name)] ?? ''),
 #endif
 
   $readEmAsmArgsArray: [],
@@ -1725,7 +1725,7 @@ addToLibrary({
     return "./this.program";
   },
 #else
-  $getExecutableName: () => thisProgram || './this.program',
+  $getExecutableName: () => thisProgram ?? './this.program',
 #endif
 
   // Receives a Web Audio context plus a set of elements to listen for user
@@ -2246,7 +2246,7 @@ addToLibrary({
       return this.allocated[id] !== undefined;
     }
     allocate(handle) {
-      var id = this.freelist.pop() || this.allocated.length;
+      var id = this.freelist.pop() ?? this.allocated.length;
       this.allocated[id] = handle;
       return id;
     }
