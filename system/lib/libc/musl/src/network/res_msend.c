@@ -19,11 +19,7 @@ static void cleanup(void *p)
 {
 	struct pollfd *pfd = p;
 	for (int i=0; pfd[i].fd >= -1; i++)
-#ifdef __EMSCRIPTEN__
-		if (pfd[i].fd >= 0) __wasi_fd_close((intptr_t)pfd[i].fd);
-#else
 		if (pfd[i].fd >= 0) __syscall(SYS_close, pfd[i].fd);
-#endif
 }
 
 static unsigned long mtime()
@@ -307,11 +303,7 @@ int __res_msend_rc(int nqueries, const unsigned char *const *queries,
 			 * Immediately close TCP socket so as not to consume
 			 * resources we no longer need. */
 			alens[i] = alen;
-#ifdef __EMSCRIPTEN__
-			__wasi_fd_close((intptr_t)pfd[i].fd);
-#else
 			__syscall(SYS_close, pfd[i].fd);
-#endif
 			pfd[i].fd = -1;
 		}
 	}

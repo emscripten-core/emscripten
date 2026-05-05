@@ -11,39 +11,6 @@
 #include <math.h>
 #include <float.h>
 
-#ifndef EMSCRIPTEN_PRINTF_LONG_DOUBLE
-// XXX EMSCRIPTEN - while wasm32 has long double = float128, we don't support
-//                  printing at full precision by default. instead, we lower to
-//                  64-bit double. These macros makes our changes a little less
-//                  invasive.
-typedef double long_double;
-#undef LDBL_TRUE_MIN
-#define LDBL_TRUE_MIN DBL_DENORM_MIN
-#undef LDBL_MIN
-#define LDBL_MIN DBL_MIN
-#undef LDBL_MAX
-#define LDBL_MAX DBL_MAX
-#undef LDBL_EPSILON
-#define LDBL_EPSILON DBL_EPSILON
-#undef LDBL_MANT_DIG
-#define LDBL_MANT_DIG DBL_MANT_DIG
-#undef LDBL_MIN_EXP
-#define LDBL_MIN_EXP DBL_MIN_EXP
-#undef LDBL_MAX_EXP
-#define LDBL_MAX_EXP DBL_MAX_EXP
-#undef LDBL_DIG
-#define LDBL_DIG DBL_DIG
-#undef LDBL_MIN_10_EXP
-#define LDBL_MIN_10_EXP DBL_MIN_10_EXP
-#undef LDBL_MAX_10_EXP
-#define LDBL_MAX_10_EXP DBL_MAX_10_EXP
-#undef frexpl
-#define frexpl(x, exp) frexp(x, exp)
-#else // EMSCRIPTEN_FULL_LONG_DOUBLE_PRINTING
-// XXX EMSCRIPTEN - full long double printing support
-typedef long double long_double;
-#endif
-
 /* Some useful macros */
 
 #define MAX(a,b) ((a)>(b) ? (a) : (b))
@@ -87,9 +54,7 @@ static const unsigned char states[]['z'-'A'+1] = {
 		S('E') = DBL, S('F') = DBL, S('G') = DBL, S('A') = DBL,
 		S('c') = INT, S('C') = UINT,
 		S('s') = PTR, S('S') = PTR, S('p') = UIPTR, S('n') = PTR,
-#ifndef __EMSCRIPTEN__ // 'm' is a gnu extension, and strerror brings in 2.5K of strings
 		S('m') = NOARG,
-#endif
 		S('l') = LPRE, S('h') = HPRE, S('L') = BIGLPRE,
 		S('z') = ZTPRE, S('j') = JPRE, S('t') = ZTPRE,
 	}, { /* 1: l-prefixed */
@@ -137,20 +102,11 @@ static const unsigned char states[]['z'-'A'+1] = {
 union arg
 {
 	uintmax_t i;
-	long_double f;
+	long double f;
 	void *p;
 };
 
-// XXX EMSCRIPTEN -  split out long double, so we don't always link in
-//                   long double support for float printf.
-typedef void (*pop_arg_long_double_t)(union arg *arg, va_list *ap);
-
-static void pop_arg_long_double(union arg *arg, va_list *ap)
-{
-  arg->f = va_arg(*ap, long double);
-}
-
-static void pop_arg(union arg *arg, int type, va_list *ap, pop_arg_long_double_t pop_arg_long_double)
+static void pop_arg(union arg *arg, int type, va_list *ap)
 {
 	switch (type) {
 	       case PTR:	arg->p = va_arg(*ap, void *);
@@ -170,7 +126,7 @@ static void pop_arg(union arg *arg, int type, va_list *ap, pop_arg_long_double_t
 	break; case PDIFF:	arg->i = va_arg(*ap, ptrdiff_t);
 	break; case UIPTR:	arg->i = (uintptr_t)va_arg(*ap, void *);
 	break; case DBL:	arg->f = va_arg(*ap, double);
-	break; case LDBL:	pop_arg_long_double(arg, ap);
+	break; case LDBL:	arg->f = va_arg(*ap, long double);
 	}
 }
 
@@ -218,16 +174,10 @@ static char *fmt_u(uintmax_t x, char *s)
  * depends on the float.h constants being right. If they are wrong, it
  * may overflow the stack. */
 #if LDBL_MANT_DIG == 53
-typedef char compiler_defines_long_double_incorrectly[9-(int)sizeof(long_double)];
+typedef char compiler_defines_long_double_incorrectly[9-(int)sizeof(long double)];
 #endif
 
-// XXX EMSCRIPTEN - access fmt_fp indirectly, so that iprintf doesn't 
-//                  get it linked in
-//                  also use a double argument here, as mentioned before,
-//                  we print float128s at double precision 
-typedef int (*fmt_fp_t)(FILE *f, long_double y, int w, int p, int fl, int t);
-
-static int fmt_fp(FILE *f, long_double y, int w, int p, int fl, int t)
+static int fmt_fp(FILE *f, long double y, int w, int p, int fl, int t)
 {
 	uint32_t big[(LDBL_MANT_DIG+28)/29 + 1          // mantissa expansion
 		+ (LDBL_MAX_EXP+LDBL_MANT_DIG+28+8)/9]; // exponent expansion
@@ -261,7 +211,7 @@ static int fmt_fp(FILE *f, long_double y, int w, int p, int fl, int t)
 	if (y) e2--;
 
 	if ((t|32)=='a') {
-		long_double round = 8.0;
+		long double round = 8.0;
 		int re;
 
 		if (t&32) prefix += 9;
@@ -368,8 +318,8 @@ static int fmt_fp(FILE *f, long_double y, int w, int p, int fl, int t)
 		x = *d % i;
 		/* Are there any significant digits past j? */
 		if (x || d+1!=z) {
-			long_double round = 2/LDBL_EPSILON;
-			long_double small;
+			long double round = 2/LDBL_EPSILON;
+			long double small;
 			if ((*d/i & 1) || (i==1000000000 && d>a && (d[-1]&1)))
 				round += 2;
 			if (x<i/2) small=0x0.8p0;
@@ -477,9 +427,7 @@ static int getint(char **s) {
 	return i;
 }
 
-// XXX EMSCRIPTEN: pass in fmt_fp and pop_arg as a function pointer, so iprintf/__small_printf don't
-//                 force linking in of unnecessary floating-point code.
-static int printf_core(FILE *f, const char *fmt, va_list *ap, union arg *nl_arg, int *nl_type, fmt_fp_t fmt_fp, pop_arg_long_double_t pop_arg_long_double)
+static int printf_core(FILE *f, const char *fmt, va_list *ap, union arg *nl_arg, int *nl_type)
 {
 	char *a, *z, *s=(char *)fmt;
 	unsigned l10n=0, fl;
@@ -576,7 +524,7 @@ static int printf_core(FILE *f, const char *fmt, va_list *ap, union arg *nl_arg,
 			if (argpos>=0) {
 				if (!f) nl_type[argpos]=st;
 				else arg=nl_arg[argpos];
-			} else if (f) pop_arg(&arg, st, ap, pop_arg_long_double);
+			} else if (f) pop_arg(&arg, st, ap);
 			else return 0;
 		}
 
@@ -645,10 +593,8 @@ static int printf_core(FILE *f, const char *fmt, va_list *ap, union arg *nl_arg,
 			*(a=z-(p=1))=arg.i;
 			fl &= ~ZERO_PAD;
 			break;
-#ifndef __EMSCRIPTEN__ // 'm' is a gnu extension, and strerror brings in 2.5K of strings
 		case 'm':
 			if (1) a = strerror(errno); else
-#endif
 		case 's':
 			a = arg.p ? arg.p : "(null)";
 			z = a + strnlen(a, p<0 ? INT_MAX : p);
@@ -702,7 +648,7 @@ static int printf_core(FILE *f, const char *fmt, va_list *ap, union arg *nl_arg,
 	if (!l10n) return 0;
 
 	for (i=1; i<=NL_ARGMAX && nl_type[i]; i++)
-		pop_arg(nl_arg+i, nl_type[i], ap, pop_arg_long_double);
+		pop_arg(nl_arg+i, nl_type[i], ap);
 	for (; i<=NL_ARGMAX && !nl_type[i]; i++);
 	if (i<=NL_ARGMAX) goto inval;
 	return 1;
@@ -715,9 +661,7 @@ overflow:
 	return -1;
 }
 
-// XXX EMSCRIPTEN: pass in fmt_fp and pop_arg as a function pointer, so iprintf/__small_printf don't
-//                 force linking in of floating-point code.
-int __vfprintf_internal(FILE *restrict f, const char *restrict fmt, va_list ap, fmt_fp_t fmt_fp, pop_arg_long_double_t pop_arg_long_double)
+int vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap)
 {
 	va_list ap2;
 	int nl_type[NL_ARGMAX+1] = {0};
@@ -728,7 +672,7 @@ int __vfprintf_internal(FILE *restrict f, const char *restrict fmt, va_list ap, 
 
 	/* the copy allows passing va_list* even if va_list is an array */
 	va_copy(ap2, ap);
-	if (printf_core(0, fmt, &ap2, nl_arg, nl_type, fmt_fp, pop_arg_long_double) < 0) {
+	if (printf_core(0, fmt, &ap2, nl_arg, nl_type) < 0) {
 		va_end(ap2);
 		return -1;
 	}
@@ -743,7 +687,7 @@ int __vfprintf_internal(FILE *restrict f, const char *restrict fmt, va_list ap, 
 		f->wpos = f->wbase = f->wend = 0;
 	}
 	if (!f->wend && __towrite(f)) ret = -1;
-	else ret = printf_core(f, fmt, &ap2, nl_arg, nl_type, fmt_fp, pop_arg_long_double);
+	else ret = printf_core(f, fmt, &ap2, nl_arg, nl_type);
 	if (saved_buf) {
 		f->write(f, 0, 0);
 		if (!f->wpos) ret = -1;
@@ -756,21 +700,4 @@ int __vfprintf_internal(FILE *restrict f, const char *restrict fmt, va_list ap, 
 	FUNLOCK(f);
 	va_end(ap2);
 	return ret;
-}
-
-int vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap)
-{
-	return __vfprintf_internal(f, fmt, ap, fmt_fp, pop_arg_long_double);
-}
-
-// XXX EMSCRIPTEN
-int vfiprintf(FILE *restrict f, const char *restrict fmt, va_list ap)
-{
-	return __vfprintf_internal(f, fmt, ap, NULL, NULL);
-}
-
-// XXX EMSCRIPTEN
-int __small_vfprintf(FILE *restrict f, const char *restrict fmt, va_list ap)
-{
-	return __vfprintf_internal(f, fmt, ap, fmt_fp, NULL);
 }

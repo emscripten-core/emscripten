@@ -30,9 +30,6 @@ int __pthread_mutex_unlock(pthread_mutex_t *m)
 		if (next != &self->robust_list.head) *(volatile void *volatile *)
 			((char *)next - sizeof(void *)) = prev;
 	}
-#ifdef __EMSCRIPTEN__
-	cont = a_swap(&m->_m_lock, new);
-#else
 	if (type&8) {
 		if (old<0 || a_cas(&m->_m_lock, old, new)!=old) {
 			if (new) a_store(&m->_m_waiters, -1);
@@ -43,7 +40,6 @@ int __pthread_mutex_unlock(pthread_mutex_t *m)
 	} else {
 		cont = a_swap(&m->_m_lock, new);
 	}
-#endif
 	if (type != PTHREAD_MUTEX_NORMAL && !priv) {
 		self->robust_list.pending = 0;
 		__vm_unlock();

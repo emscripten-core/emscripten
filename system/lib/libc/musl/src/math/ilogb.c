@@ -3,9 +3,7 @@
 
 int ilogb(double x)
 {
-#ifndef __EMSCRIPTEN__
 	#pragma STDC FENV_ACCESS ON
-#endif
 	union {double f; uint64_t i;} u = {x};
 	uint64_t i = u.i;
 	int e = i>>52 & 0x7ff;

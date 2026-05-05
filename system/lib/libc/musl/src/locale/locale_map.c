@@ -12,14 +12,12 @@
 #define realloc undef
 #define free undef
 
-#ifndef __EMSCRIPTEN__
 const char *__lctrans_impl(const char *msg, const struct __locale_map *lm)
 {
 	const char *trans = 0;
 	if (lm) trans = __mo_lookup(lm->map, lm->map_size, msg);
 	return trans ? trans : msg;
 }
-#endif
 
 static const char envvars[][12] = {
 	"LC_CTYPE",
@@ -65,7 +63,6 @@ const struct __locale_map *__get_locale(int cat, const char *val)
 	for (p=loc_head; p; p=p->next)
 		if (!strcmp(val, p->name)) return p;
 
-#ifndef __EMSCRIPTEN__ // don't support MUSL_LOCPATH which uses mmap
 	if (!libc.secure) path = getenv("MUSL_LOCPATH");
 	/* FIXME: add a default path? */
 
@@ -94,7 +91,6 @@ const struct __locale_map *__get_locale(int cat, const char *val)
 			break;
 		}
 	}
-#endif
 
 	/* If no locale definition was found, make a locale map
 	 * object anyway to store the name, which is kept for the

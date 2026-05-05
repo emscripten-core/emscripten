@@ -5,7 +5,6 @@
 
 #define FENV_SUPPORT 1
 
-#ifndef __wasm__
 /* returns a*b*2^-32 - e, with error 0 <= e < 1.  */
 static inline uint32_t mul32(uint32_t a, uint32_t b)
 {
@@ -21,15 +20,9 @@ static inline uint64_t mul64(uint64_t a, uint64_t b)
 	uint64_t blo = b&0xffffffff;
 	return ahi*bhi + (ahi*blo >> 32) + (alo*bhi >> 32);
 }
-#endif
 
 double sqrt(double x)
 {
-// XXX EMSCRIPTEN: use the wasm instruction via clang builtin
-// See https://github.com/emscripten-core/emscripten/issues/9236
-#ifdef __wasm__
-	return __builtin_sqrt(x);
-#else
 	uint64_t ix, top, m;
 
 	/* special case handling.  */
@@ -162,5 +155,4 @@ double sqrt(double x)
 		y = eval_as_double(y + t);
 	}
 	return y;
-#endif
 }

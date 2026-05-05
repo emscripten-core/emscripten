@@ -38,7 +38,7 @@ extern "C" {
 #define WCHAR_MIN (-1-0x7fffffff+L'\0')
 #endif
 
-#if __cplusplus >= 201103L && !defined(__EMSCRIPTEN__)
+#if __cplusplus >= 201103L
 #define NULL nullptr
 #elif defined(__cplusplus)
 #define NULL 0L

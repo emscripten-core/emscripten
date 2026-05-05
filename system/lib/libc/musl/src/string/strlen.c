@@ -10,8 +10,7 @@
 size_t strlen(const char *s)
 {
 	const char *a = s;
-/* XXX EMSCRIPTEN: add __has_feature check */
-#if defined(__GNUC__) && !__has_feature(address_sanitizer)
+#ifdef __GNUC__
 	typedef size_t __attribute__((__may_alias__)) word;
 	const word *w;
 	for (; (uintptr_t)s % ALIGN; s++) if (!*s) return s-a;

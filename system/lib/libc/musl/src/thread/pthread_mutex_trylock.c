@@ -6,7 +6,6 @@ int __pthread_mutex_trylock_owner(pthread_mutex_t *m)
 	int type = m->_m_type;
 	pthread_t self = __pthread_self();
 	int tid = self->tid;
-	volatile void *next;
 
 	old = m->_m_lock;
 	own = old & 0x3fffffff;
@@ -28,9 +27,7 @@ int __pthread_mutex_trylock_owner(pthread_mutex_t *m)
 	if (type & 128) {
 		if (!self->robust_list.off) {
 			self->robust_list.off = (char*)&m->_m_lock-(char *)&m->_m_next;
-#ifndef __EMSCRIPTEN__ // XXX Emscripten does not have a concept of multiple processes or kernel space, so robust mutex lists don't need to register to kernel.
 			__syscall(SYS_set_robust_list, &self->robust_list, 3*sizeof(long));
-#endif
 		}
 		if (m->_m_waiters) tid |= 0x80000000;
 		self->robust_list.pending = &m->_m_next;
@@ -44,22 +41,14 @@ int __pthread_mutex_trylock_owner(pthread_mutex_t *m)
 	}
 
 success:
-#ifndef __EMSCRIPTEN__
 	if ((type&8) && m->_m_waiters) {
 		int priv = (type & 128) ^ 128;
 		__syscall(SYS_futex, &m->_m_lock, FUTEX_UNLOCK_PI|priv);
 		self->robust_list.pending = 0;
 		return (type&4) ? ENOTRECOVERABLE : EBUSY;
 	}
-#endif
 
-#if defined(__EMSCRIPTEN__) && !defined(NDEBUG)
-	// Under emscripten we can get here for normal mutexes too, but only in debug
-	// builds (where we track ownership purely for debug purposes).
-	if ((type&15) == PTHREAD_MUTEX_NORMAL) return 0;
-#endif
-
-	next = self->robust_list.head;
+	volatile void *next = self->robust_list.head;
 	m->_m_next = next;
 	m->_m_prev = &self->robust_list.head;
 	if (next != &self->robust_list.head) *(volatile void *volatile *)
@@ -77,11 +66,8 @@ success:
 
 int __pthread_mutex_trylock(pthread_mutex_t *m)
 {
-#if !defined(__EMSCRIPTEN__) || defined(NDEBUG)
-	/* XXX EMSCRIPTEN always take the slow path in debug builds so we can trap rather than deadlock */
 	if ((m->_m_type&15) == PTHREAD_MUTEX_NORMAL)
 		return a_cas(&m->_m_lock, 0, EBUSY) & EBUSY;
-#endif
 	return __pthread_mutex_trylock_owner(m);
 }
 

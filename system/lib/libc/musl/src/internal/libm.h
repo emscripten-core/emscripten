@@ -177,13 +177,6 @@ static inline void fp_force_evall(long double x)
 }
 #endif
 
-#ifdef __EMSCRIPTEN__
-/*
- * asm.js doesn't have user-accessible floating point exceptions, so there's
- * no point in trying to force expression evaluations to produce them.
- */
-#define FORCE_EVAL(x)
-#else
 #define FORCE_EVAL(x) do {                        \
 	if (sizeof(x) == sizeof(float)) {         \
 		fp_force_evalf(x);                \
@@ -193,7 +186,6 @@ static inline void fp_force_evall(long double x)
 		fp_force_evall(x);                \
 	}                                         \
 } while(0)
-#endif
 
 #define asuint(f) ((union{float _f; uint32_t _i;}){f})._i
 #define asfloat(i) ((union{uint32_t _i; float _f;}){i})._f

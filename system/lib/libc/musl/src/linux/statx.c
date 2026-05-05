@@ -7,9 +7,6 @@
 
 int statx(int dirfd, const char *restrict path, int flags, unsigned mask, struct statx *restrict stx)
 {
-#ifdef __EMSCRIPTEN__
-	int ret;
-#else
 	int ret = __syscall(SYS_statx, dirfd, path, flags, mask, stx);
 
 #ifndef SYS_fstatat
@@ -17,7 +14,6 @@ int statx(int dirfd, const char *restrict path, int flags, unsigned mask, struct
 #endif
 
 	if (ret != -ENOSYS) return __syscall_ret(ret);
-#endif
 
 	struct stat st;
 	ret = fstatat(dirfd, path, &st, flags);

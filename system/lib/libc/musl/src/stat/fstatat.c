@@ -7,11 +7,6 @@
 #include <sys/sysmacros.h>
 #include "syscall.h"
 
-/* XXX Emscripten: We #define kstat to stat so we can simply make the syscall
- * without the extra copy.
- * See arch/emscripten/kstat.h
- */
-#ifndef __EMSCRIPTEN__
 struct statx {
 	uint32_t stx_mask;
 	uint32_t stx_blksize;
@@ -140,22 +135,10 @@ static int fstatat_kstat(int fd, const char *restrict path, struct stat *restric
 	return 0;
 }
 #endif
-#endif
 
 int __fstatat(int fd, const char *restrict path, struct stat *restrict st, int flag)
 {
 	int ret;
-#ifdef __EMSCRIPTEN__
-	// some logic here copied from fstatat_kstat above
-	if (flag==AT_EMPTY_PATH && fd>=0 && !*path)
-		ret = __syscall(SYS_fstat, fd, st);
-	else if ((fd == AT_FDCWD || *path=='/') && !flag)
-		ret = __syscall(SYS_stat, path, st);
-	else if ((fd == AT_FDCWD || *path=='/') && flag==AT_SYMLINK_NOFOLLOW)
-		ret = __syscall(SYS_lstat, path, st);
-	else
-		ret = __syscall(SYS_fstatat, fd, path, st, flag);
-#else
 #ifdef SYS_fstatat
 	if (sizeof((struct kstat){0}.st_atime_sec) < sizeof(time_t)) {
 		ret = fstatat_statx(fd, path, st, flag);
@@ -164,7 +147,6 @@ int __fstatat(int fd, const char *restrict path, struct stat *restrict st, int f
 	ret = fstatat_kstat(fd, path, st, flag);
 #else
 	ret = fstatat_statx(fd, path, st, flag);
-#endif
 #endif
 	return __syscall_ret(ret);
 }

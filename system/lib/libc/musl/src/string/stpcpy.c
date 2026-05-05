@@ -1,7 +1,6 @@
 #include <string.h>
 #include <stdint.h>
 #include <limits.h>
-#include "libc.h"
 
 #define ALIGN (sizeof(size_t))
 #define ONES ((size_t)-1/UCHAR_MAX)
@@ -10,8 +9,7 @@
 
 char *__stpcpy(char *restrict d, const char *restrict s)
 {
-/* XXX EMSCRIPTEN: add __has_feature check */
-#if defined(__GNUC__) && !__has_feature(address_sanitizer)
+#ifdef __GNUC__
 	typedef size_t __attribute__((__may_alias__)) word;
 	word *wd;
 	const word *ws;

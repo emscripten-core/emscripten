@@ -48,19 +48,9 @@ static inline void unlock(volatile int *l)
 static inline void unlock_requeue(volatile int *l, volatile int *r, int w)
 {
 	a_store(l, 0);
-#ifdef __EMSCRIPTEN__
-	// Here the intent is to wake one waiter, and requeue all other waiters from waiting on address 'l'
-	// to wait on address 'r' instead. This is not possible at the moment with SharedArrayBuffer Atomics,
-	// as it does not have a "wake X waiters and requeue the rest" primitive. However this kind of
-	// primitive is strictly not needed, since it is more like an optimization to avoid spuriously waking
-	// all waiters, just to make them wait on another location immediately afterwards. Here we do exactly
-	// that: wake every waiter.
-	emscripten_futex_wake(l, INT_MAX);
-#else
 	if (w) __wake(l, 1, 1);
 	else __syscall(SYS_futex, l, FUTEX_REQUEUE|FUTEX_PRIVATE, 0, 1, r) != -ENOSYS
 		|| __syscall(SYS_futex, l, FUTEX_REQUEUE, 0, 1, r);
-#endif
 }
 
 enum {
@@ -74,13 +64,6 @@ int __pthread_cond_timedwait(pthread_cond_t *restrict c, pthread_mutex_t *restri
 	struct waiter node = { 0 };
 	int e, seq, clock = c->_c_clock, cs, shared=0, oldstate, tmp;
 	volatile int *fut;
-
-#ifdef __EMSCRIPTEN__
-	// TODO: Optimize this away in MINIMAL_RUNTIME.
-	if (emscripten_is_main_browser_thread()) {
-		emscripten_check_blocking_allowed();
-	}
-#endif
 
 	if ((m->_m_type&15) && (m->_m_lock&INT_MAX) != __pthread_self()->tid)
 		return EPERM;

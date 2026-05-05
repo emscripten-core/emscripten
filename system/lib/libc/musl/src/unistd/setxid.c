@@ -3,12 +3,6 @@
 #include "syscall.h"
 #include "libc.h"
 
-#ifdef __EMSCRIPTEN__
-int __setxid_emscripten() {
-	errno = EPERM; // we don't allow dynamic syscalls, and don't need to support these anyhow
-	return -1;
-}
-#else
 struct ctx {
 	int id, eid, sid;
 	int nr, ret;
@@ -27,7 +21,7 @@ static void do_setxid(void *p)
 		__block_all_sigs(0);
 		__syscall(SYS_kill, __syscall(SYS_getpid), SIGKILL);
 	}
-	c->err = ret;
+	c->ret = ret;
 }
 
 int __setxid(int nr, int id, int eid, int sid)
@@ -38,4 +32,3 @@ int __setxid(int nr, int id, int eid, int sid)
 	__synccall(do_setxid, &c);
 	return __syscall_ret(c.ret > 0 ? -EAGAIN : c.ret);
 }
-#endif

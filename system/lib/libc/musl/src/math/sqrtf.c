@@ -3,24 +3,17 @@
 #include "libm.h"
 #include "sqrt_data.h"
 
-#ifndef __wasm__
 #define FENV_SUPPORT 1
 
 static inline uint32_t mul32(uint32_t a, uint32_t b)
 {
 	return (uint64_t)a*b >> 32;
 }
-#endif
 
 /* see sqrt.c for more detailed comments.  */
 
 float sqrtf(float x)
 {
-// XXX EMSCRIPTEN: use the wasm instruction via clang builtin
-// See https://github.com/emscripten-core/emscripten/issues/9236
-#ifdef __wasm__
-	return __builtin_sqrtf(x);
-#else
 	uint32_t ix, m, m1, m0, even, ey;
 
 	ix = asuint(x);
@@ -87,5 +80,4 @@ float sqrtf(float x)
 		y = eval_as_float(y + t);
 	}
 	return y;
-#endif
 }

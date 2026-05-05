@@ -1,10 +1,6 @@
 #ifndef	_UNISTD_H
 #define	_UNISTD_H
 
-#ifdef __EMSCRIPTEN__
-#include <wasi/api.h>
-#endif
-
 #ifdef __cplusplus
 extern "C" {
 #endif
@@ -15,19 +11,13 @@ extern "C" {
 #define STDOUT_FILENO 1
 #define STDERR_FILENO 2
 
-#ifdef __EMSCRIPTEN__
-#define SEEK_SET __WASI_WHENCE_SET
-#define SEEK_CUR __WASI_WHENCE_CUR
-#define SEEK_END __WASI_WHENCE_END
-#else
 #define SEEK_SET 0
 #define SEEK_CUR 1
 #define SEEK_END 2
 #define SEEK_DATA 3
 #define SEEK_HOLE 4
-#endif // EMSCRIPTEN
 
-#if __cplusplus >= 201103L && !defined(__EMSCRIPTEN__)
+#if __cplusplus >= 201103L
 #define NULL nullptr
 #elif defined(__cplusplus)
 #define NULL 0L
@@ -187,7 +177,7 @@ void setusershell(void);
 void endusershell(void);
 char *getusershell(void);
 int acct(const char *);
-/* XXX EMSCRIPTEN long syscall(long, ...); */
+long syscall(long, ...);
 int execvpe(const char *, char *const [], char *const []);
 int issetugid(void);
 int getentropy(void *, size_t);
@@ -239,44 +229,20 @@ pid_t gettid(void);
 #define _POSIX_FSYNC            _POSIX_VERSION
 #define _POSIX_NO_TRUNC         1
 #define _POSIX_RAW_SOCKETS      _POSIX_VERSION
-
-#ifndef __EMSCRIPTEN__
 #define _POSIX_REALTIME_SIGNALS _POSIX_VERSION
-#else
-#define _POSIX_REALTIME_SIGNALS -1
-#endif
-
 #define _POSIX_REGEXP           1
 #define _POSIX_SAVED_IDS        1
 #define _POSIX_SHELL            1
-
-#ifndef __EMSCRIPTEN__
 #define _POSIX_SPAWN            _POSIX_VERSION
-#else
-#define _POSIX_SPAWN            -1
-#endif
-
 #define _POSIX_VDISABLE         0
 
-#if defined(__EMSCRIPTEN__) && !defined(_REENTRANT) /* XXX Emscripten doesn't always support pthreads */
-#define _POSIX_THREADS          -1
-#else
 #define _POSIX_THREADS          _POSIX_VERSION
-#endif
-#ifndef __EMSCRIPTEN__
 #define _POSIX_THREAD_PROCESS_SHARED _POSIX_VERSION
-#else
-#define _POSIX_THREAD_PROCESS_SHARED -1
-#endif
 #define _POSIX_THREAD_SAFE_FUNCTIONS _POSIX_VERSION
 #define _POSIX_THREAD_ATTR_STACKADDR _POSIX_VERSION
 #define _POSIX_THREAD_ATTR_STACKSIZE _POSIX_VERSION
 #define _POSIX_THREAD_PRIORITY_SCHEDULING _POSIX_VERSION
-#ifdef __EMSCRIPTEN__
-#define _POSIX_THREAD_CPUTIME   -1
-#else
 #define _POSIX_THREAD_CPUTIME   _POSIX_VERSION
-#endif
 #define _POSIX_TIMERS           _POSIX_VERSION
 #define _POSIX_TIMEOUTS         _POSIX_VERSION
 #define _POSIX_MONOTONIC_CLOCK  _POSIX_VERSION
@@ -287,9 +253,7 @@ pid_t gettid(void);
 #define _POSIX_READER_WRITER_LOCKS _POSIX_VERSION
 #define _POSIX_ASYNCHRONOUS_IO  _POSIX_VERSION
 #define _POSIX_SEMAPHORES       _POSIX_VERSION
-#ifndef __EMSCRIPTEN__
 #define _POSIX_SHARED_MEMORY_OBJECTS _POSIX_VERSION
-#endif
 
 #define _POSIX2_C_BIND          _POSIX_VERSION
 

@@ -8,9 +8,7 @@
 
 int catclose (nl_catd catd)
 {
-#ifndef __EMSCRIPTEN__
 	char *map = (char *)catd;
 	munmap(map, V(map+8)+20);
-#endif
 	return 0;
 }

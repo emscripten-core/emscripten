@@ -5,9 +5,7 @@
 
 int fchmodat(int fd, const char *path, mode_t mode, int flag)
 {
-#ifndef __EMSCRIPTEN__
 	if (!flag) return syscall(SYS_fchmodat, fd, path, mode);
-#endif
 
 	int ret = __syscall(SYS_fchmodat2, fd, path, mode, flag);
 	if (ret != -ENOSYS) return __syscall_ret(ret);
@@ -34,17 +32,9 @@ int fchmodat(int fd, const char *path, mode_t mode, int flag)
 	ret = stat(proc, &st);
 	if (!ret) {
 		if (S_ISLNK(st.st_mode)) ret = __syscall_ret(-EOPNOTSUPP);
-#ifdef __EMSCRIPTEN__
-		else ret = syscall(SYS_fchmodat2, AT_FDCWD, proc, mode, 0);
-#else
 		else ret = syscall(SYS_fchmodat, AT_FDCWD, proc, mode);
-#endif
 	}
 
-#ifdef __EMSCRIPTEN__
-	__wasi_fd_close(fd2);
-#else
 	__syscall(SYS_close, fd2);
-#endif
 	return ret;
 }

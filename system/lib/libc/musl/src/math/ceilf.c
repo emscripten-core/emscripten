@@ -2,11 +2,6 @@
 
 float ceilf(float x)
 {
-// XXX EMSCRIPTEN: use the wasm instruction via clang builtin
-// See https://github.com/emscripten-core/emscripten/issues/9236
-#ifdef __wasm__
-	return __builtin_ceilf(x);
-#else
 	union {float f; uint32_t i;} u = {x};
 	int e = (int)(u.i >> 23 & 0xff) - 0x7f;
 	uint32_t m;
@@ -29,5 +24,4 @@ float ceilf(float x)
 			u.f = 1.0;
 	}
 	return u.f;
-#endif
 }
