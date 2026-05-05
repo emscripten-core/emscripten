@@ -29,7 +29,7 @@ int main() {
   emscripten_webgl_make_context_current(ctx);
 
   const char* vs = "#version 300 es\n"
-                   "layout(location = 0) uniform vec3 u_val;\n"
+                   "layout(location = 6) uniform vec3 u_val;\n"
                    "void main() { gl_Position = vec4(u_val, 1.0); }\n";
 
   const char* fs = "#version 300 es\n"
@@ -56,27 +56,27 @@ int main() {
 
   glUseProgram(p);
 
-  // Set a uniform using its explicit layout(location=0) WITHOUT first calling
+  // Set a uniform using its explicit layout(location=6) WITHOUT first calling
   // glGetUniformLocation. Before the fix, this silently no-ops because
   // $webglGetUniformLocation reads from program.uniformLocsById which is still
   // 0 from glLinkProgram, returns undefined, and GLctx.uniform3fv ignores it.
   const float val[] = {1.0f, 2.0f, 3.0f};
-  glUniform3fv(0, 1, val);
+  glUniform3fv(/* location */ 6, 1, val);
   assert(glGetError() == GL_NO_ERROR);
 
   float rb[3] = {-1.f, -1.f, -1.f};
-  glGetUniformfv(p, 0, rb);
+  glGetUniformfv(p, /* location */ 6, rb);
   assert(glGetError() == GL_NO_ERROR);
   assert(rb[0] == 1.0f && rb[1] == 2.0f && rb[2] == 3.0f);
 
   // Subsequent set should also work (was already working before the fix,
   // because the readback's prepare populated uniformLocsById as a side effect).
   const float val2[] = {4.0f, 5.0f, 6.0f};
-  glUniform3fv(0, 1, val2);
+  glUniform3fv(/* location */ 6, 1, val2);
   assert(glGetError() == GL_NO_ERROR);
 
   float rb2[3] = {-1.f, -1.f, -1.f};
-  glGetUniformfv(p, 0, rb2);
+  glGetUniformfv(p, /* location */ 6, rb2);
   assert(glGetError() == GL_NO_ERROR);
   assert(rb2[0] == 4.0f && rb2[1] == 5.0f && rb2[2] == 6.0f);
 

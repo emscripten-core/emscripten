@@ -2184,12 +2184,14 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if GL_TRACK_ERRORS
     if (p) {
 #endif
+#if GL_EXPLICIT_UNIFORM_LOCATION
       // Ensure `uniformLocsById`/`uniformArrayNamesById` are populated. Without
       // this, calling `glUniform*()` on a freshly linked program before any
       // `glGetUniformLocation()` silently no-ops: `glLinkProgram` resets
       // `uniformLocsById` to 0 and only `$webglPrepareUniformLocationsBeforeFirstUse`
       // refills it. The call below is idempotent (guards on `!uniformLocsById`).
       webglPrepareUniformLocationsBeforeFirstUse(p);
+#endif
       var webglLoc = p.uniformLocsById[location];
       // p.uniformLocsById[location] stores either an integer, or a
       // WebGLUniformLocation.
