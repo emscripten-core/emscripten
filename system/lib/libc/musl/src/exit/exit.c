@@ -29,6 +29,7 @@ weak_alias(libc_exit_fini, __libc_exit_fini);
 
 _Noreturn void exit(int code)
 {
+#ifdef _REENTRANT // XXX Emscripten: guard with _REENTRANT
 	/* Handle potentially concurrent or recursive calls to exit,
 	 * whose behaviors have traditionally been undefined by the
 	 * standards. Using a custom lock here avoids pulling in lock
@@ -39,6 +40,7 @@ _Noreturn void exit(int code)
 	int prev = a_cas(exit_lock, 0, tid);
 	if (prev == tid) a_crash();
 	else if (prev) for (;;) __sys_pause();
+#endif
 
 	__funcs_on_exit();
 	__libc_exit_fini();
