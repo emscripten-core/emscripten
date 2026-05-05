@@ -15,8 +15,7 @@
 
 #include <emscripten/console.h>
 
-pthread_cond_t started_cond = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t started_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_barrier_t started;
 _Atomic bool got_sigterm = false;
 _Atomic bool got_sigusr1 = false;
 
@@ -46,9 +45,7 @@ void sleepms(long msecs) {
 }
 
 void *thread_start(void *arg) {
-  pthread_mutex_lock(&started_lock);
-  pthread_cond_signal(&started_cond);
-  pthread_mutex_unlock(&started_lock);
+  pthread_barrier_wait(&started);
   // As long as this thread is running, keep the shared variable latched to nonzero value.
   while (!got_sigterm) {
     sleepms(1);
@@ -69,13 +66,12 @@ int main() {
   got_sigterm = false;
   assert(s == 0);
 
+  pthread_barrier_init(&started, NULL, 2);
   s = pthread_create(&child_thread, NULL, thread_start, 0);
   assert(s == 0);
 
   // Wait until thread kicks in and sets the shared variable.
-  pthread_mutex_lock(&started_lock);
-  pthread_cond_wait(&started_cond, &started_lock);
-  pthread_mutex_unlock(&started_lock);
+  pthread_barrier_wait(&started);
   printf("thread has started, sending SIGTERM\n");
 
   s = pthread_kill(child_thread, SIGTERM);
