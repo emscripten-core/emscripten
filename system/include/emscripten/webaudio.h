@@ -17,6 +17,9 @@
 extern "C" {
 #endif
 
+// A handle type that represents a JavaScript side object related to WebAudio.
+// Used to denote the AudioContext and Audio Nodes, especially the Audio Worklet
+// Node.
 typedef int EMSCRIPTEN_WEBAUDIO_T;
 
 // An outdated node type that represented an AudioWorklet node.
