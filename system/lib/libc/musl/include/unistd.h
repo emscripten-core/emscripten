@@ -257,7 +257,13 @@ pid_t gettid(void);
 
 #define _POSIX2_C_BIND          _POSIX_VERSION
 
-#include <bits/posix.h>
+#if __LONG_MAX == 0x7fffffffL
+#define _POSIX_V6_ILP32_OFFBIG  1
+#define _POSIX_V7_ILP32_OFFBIG  1
+#else
+#define _POSIX_V6_LP64_OFF64  1
+#define _POSIX_V7_LP64_OFF64  1
+#endif
 
 
 

@@ -11,6 +11,11 @@ size_t __stdio_write(FILE *f, const unsigned char *buf, size_t len)
 	size_t rem = iov[0].iov_len + iov[1].iov_len;
 	int iovcnt = 2;
 	ssize_t cnt;
+
+	if (!iov->iov_len) {
+		iov++;
+		iovcnt--;
+	}
 	for (;;) {
 		cnt = syscall(SYS_writev, f->fd, iov, iovcnt);
 		if (cnt == rem) {

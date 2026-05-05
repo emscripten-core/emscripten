@@ -24,7 +24,6 @@ weak_alias(__tzname, tzname);
 
 static char std_name[TZNAME_MAX+1];
 static char dst_name[TZNAME_MAX+1];
-const char __utc[] = "UTC";
 
 static int dst_off;
 static int r0[5], r1[5];

@@ -220,8 +220,13 @@ long sysconf(int name)
 		return (mem > LONG_MAX) ? LONG_MAX : mem;
 	case JT_MINSIGSTKSZ & 255:
 	case JT_SIGSTKSZ & 255: ;
-		long val = __getauxval(AT_MINSIGSTKSZ);
-		if (val < MINSIGSTKSZ) val = MINSIGSTKSZ;
+		/* Value from auxv/kernel is only sigfame size. Clamp it
+		 * to at least 1k below arch's traditional MINSIGSTKSZ,
+		 * then add 1k of working space for signal handler. */
+		unsigned long sigframe_sz = __getauxval(AT_MINSIGSTKSZ);
+		if (sigframe_sz < MINSIGSTKSZ - 1024)
+			sigframe_sz = MINSIGSTKSZ - 1024;
+		unsigned val = sigframe_sz + 1024;
 		if (values[name] == JT_SIGSTKSZ)
 			val += SIGSTKSZ - MINSIGSTKSZ;
 		return val;

@@ -19,6 +19,7 @@ static struct fl
 	void *a[COUNT];
 } builtin, *head;
 
+static int finished_atexit;
 static int slot;
 static volatile int lock[1];
 volatile int *const __atexit_lockptr = lock;
@@ -34,6 +35,10 @@ void __funcs_on_exit()
 		func(arg);
 		LOCK(lock);
 	}
+	/* Unlock to prevent deadlock if a global dtor
+	 * attempts to call atexit. */
+	finished_atexit = 1;
+	UNLOCK(lock);
 }
 
 void __cxa_finalize(void *dso)
@@ -43,6 +48,13 @@ void __cxa_finalize(void *dso)
 int __cxa_atexit(void (*func)(void *), void *arg, void *dso)
 {
 	LOCK(lock);
+
+	/* Prevent dtors from registering further atexit
+	 * handlers that would never be run. */
+	if (finished_atexit) {
+		UNLOCK(lock);
+		return -1;
+	}
 
 	/* Defer initialization of head so it can be in BSS */
 	if (!head) head = &builtin;

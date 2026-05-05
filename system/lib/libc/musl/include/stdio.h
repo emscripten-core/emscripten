@@ -158,6 +158,13 @@ char *ctermid(char *);
 #define L_ctermid 20
 #endif
 
+#if defined(_GNU_SOURCE)
+#define RENAME_NOREPLACE (1 << 0)
+#define RENAME_EXCHANGE  (1 << 1)
+#define RENAME_WHITEOUT  (1 << 2)
+
+int renameat2(int, const char *, int, const char *, unsigned);
+#endif
 
 #if defined(_XOPEN_SOURCE) || defined(_GNU_SOURCE) \
  || defined(_BSD_SOURCE)
