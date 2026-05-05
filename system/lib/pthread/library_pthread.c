@@ -114,16 +114,16 @@ void _emscripten_init_main_thread(void) {
   // a magic ID to detect whether the pthread_t structure is 'alive'.
   __main_pthread.self = &__main_pthread;
   __main_pthread.detach_state = DT_JOINABLE;
+  // pthread struct robust_list head should point to itself.
+  __main_pthread.robust_list.head = &__main_pthread.robust_list.head;
   // Main thread ID is always 1.  It can't be 0 because musl assumes
   // tid is always non-zero.
   __main_pthread.tid = getpid();
-  // Initialize thread-specific data area.
-  __main_pthread.tsd = (void **)__pthread_tsd_main;
-  // pthread struct robust_list head should point to itself.
-  __main_pthread.robust_list.head = &__main_pthread.robust_list.head;
   // pthread struct prev and next should initially point to itself (see __init_tp),
   // this is used by pthread_key_delete for deleting thread-specific data.
   __main_pthread.next = __main_pthread.prev = &__main_pthread;
+  // Initialize thread-specific data area.
+  __main_pthread.tsd = (void **)__pthread_tsd_main;
 
   _emscripten_init_main_thread_js(&__main_pthread);
 
