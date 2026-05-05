@@ -71,6 +71,7 @@ unsupported_noreturn = {
 
 unsupported = {
   'test_pthread_cond_init_4_2': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_barrierattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_condattr_getpshared_1_2': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_mutexattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_rwlockattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
