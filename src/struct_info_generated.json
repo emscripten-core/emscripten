@@ -1077,24 +1077,24 @@
             "__size__": 96,
             "st_atim": {
                 "__size__": 16,
-                "tv_nsec": 48,
-                "tv_sec": 40
+                "tv_nsec": 56,
+                "tv_sec": 48
             },
             "st_blksize": 32,
             "st_blocks": 36,
             "st_ctim": {
                 "__size__": 16,
-                "tv_nsec": 80,
-                "tv_sec": 72
+                "tv_nsec": 88,
+                "tv_sec": 80
             },
             "st_dev": 0,
             "st_gid": 16,
-            "st_ino": 88,
+            "st_ino": 40,
             "st_mode": 4,
             "st_mtim": {
                 "__size__": 16,
-                "tv_nsec": 64,
-                "tv_sec": 56
+                "tv_nsec": 72,
+                "tv_sec": 64
             },
             "st_nlink": 8,
             "st_rdev": 20,
