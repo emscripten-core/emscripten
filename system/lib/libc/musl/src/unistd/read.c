@@ -3,7 +3,7 @@
 
 ssize_t read(int fd, void *buf, size_t count)
 {
-#ifdef __EMSCRIPTEN__
+#if __EMSCRIPTEN__
 	__wasi_iovec_t iov = {
 		.buf = buf,
 		.buf_len = count

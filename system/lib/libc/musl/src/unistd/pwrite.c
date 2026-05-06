@@ -6,7 +6,7 @@
 
 ssize_t pwrite(int fd, const void *buf, size_t size, off_t ofs)
 {
-#ifdef __EMSCRIPTEN__
+#if __EMSCRIPTEN__
 	__wasi_ciovec_t iov = {
 		.buf = buf,
 		.buf_len = size

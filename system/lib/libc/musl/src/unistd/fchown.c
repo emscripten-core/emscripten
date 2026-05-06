@@ -9,7 +9,7 @@
 int fchown(int fd, uid_t uid, gid_t gid)
 {
 	int ret = __syscall(SYS_fchown, fd, uid, gid);
-#ifdef __EMSCRIPTEN__
+#if __EMSCRIPTEN__
 	// We can't continue onwards to try the /proc/fd/NNN approach that musl does,
 	// as we don't support that much of POSIX.
 	return __syscall_ret(ret);
@@ -24,5 +24,5 @@ int fchown(int fd, uid_t uid, gid_t gid)
 #else
 	return syscall(SYS_fchownat, AT_FDCWD, buf, uid, gid, 0);
 #endif
-#endif // __EMSCRIPTEN__
+#endif // EMSCRIPTEN
 }

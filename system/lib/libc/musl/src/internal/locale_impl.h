@@ -31,7 +31,7 @@ hidden char *__gettextdomain(void);
 
 #define LOC_MAP_FAILED ((const struct __locale_map *)-1)
 
-#ifdef __EMSCRIPTEN__
+#if __EMSCRIPTEN__
 // Disable message translation completely under emscripten since we don't
 // support loading any actual locale data, and even looking up the current
 // local via CURRENT_LOCALE via TLS is not free.

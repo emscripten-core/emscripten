@@ -18,7 +18,7 @@ float sqrtf(float x)
 {
 // XXX EMSCRIPTEN: use the wasm instruction via clang builtin
 // See https://github.com/emscripten-core/emscripten/issues/9236
-#ifdef __EMSCRIPTEN__
+#ifdef __wasm__
 	return __builtin_sqrtf(x);
 #else
 	uint32_t ix, m, m1, m0, even, ey;

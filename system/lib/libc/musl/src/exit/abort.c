@@ -6,13 +6,13 @@
 #include "lock.h"
 #include "ksigaction.h"
 
-#ifdef __EMSCRIPTEN__
+#if __EMSCRIPTEN__
 #include "emscripten_internal.h"
 #endif
 
 _Noreturn void abort(void)
 {
-#ifdef __EMSCRIPTEN__
+#if __EMSCRIPTEN__
 	/* In emscripten we call out to JS to perform the actual abort where it can
 	 * produce a nice error.
 	 * Note that the JS library function is not called `abort` to avoid conflict

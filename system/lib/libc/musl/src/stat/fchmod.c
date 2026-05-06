@@ -9,7 +9,7 @@
 int fchmod(int fd, mode_t mode)
 {
 	int ret = __syscall(SYS_fchmod, fd, mode);
-#ifdef __EMSCRIPTEN__
+#if __EMSCRIPTEN__
 	if (ret != -EBADF || !__wasi_fd_is_valid(fd))
 		return __syscall_ret(ret);
 #else
