@@ -5791,8 +5791,8 @@ got: 10
   @with_both_text_decoder
   @also_without_bigint
   def test_utf8_bench(self):
-    self.cflags += ['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt']
-    self.do_runf('benchmark/benchmark_utf8.c', 'OK.')
+    self.cflags += ['--embed-file', test_file('test_utf8_bench.txt') + '@/utf8_corpus.txt']
+    self.do_runf('test_utf8_bench.c', 'OK.')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   @with_both_text_decoder
@@ -5801,8 +5801,8 @@ got: 10
     self.do_runf('test_utf8_invalid.c', 'OK.')
 
   def test_utf16_bench(self):
-    self.cflags += ['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt']
-    self.do_runf('benchmark/benchmark_utf16.cpp', 'OK.')
+    self.cflags += ['--embed-file', test_file('test_utf16_bench.txt') + '@/utf16_corpus.txt']
+    self.do_runf('test_utf16_bench.c', 'OK.')
 
   def test_wprintf(self):
     self.do_core_test('test_wprintf.cpp')

@@ -1342,8 +1342,8 @@ FS.staticInit();`;
       return stream.stream_ops.ioctl(stream, cmd, arg);
     },
     readFile(path, opts = {}) {
-      opts.flags = opts.flags || {{{ cDefs.O_RDONLY }}};
-      opts.encoding = opts.encoding || 'binary';
+      opts.flags = opts.flags ?? {{{ cDefs.O_RDONLY }}};
+      opts.encoding = opts.encoding ?? 'binary';
       if (opts.encoding !== 'utf8' && opts.encoding !== 'binary') {
         abort(`Invalid encoding type "${opts.encoding}"`);
       }
@@ -1362,7 +1362,7 @@ FS.staticInit();`;
      * @param {TypedArray|Array|string} data
      */
     writeFile(path, data, opts = {}) {
-      opts.flags = opts.flags || {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}};
+      opts.flags = opts.flags ?? {{{ cDefs.O_TRUNC | cDefs.O_CREAT | cDefs.O_WRONLY }}};
       var stream = FS.open(path, opts.flags, opts.mode);
       data = FS_fileDataToTypedArray(data);
       FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
@@ -1755,8 +1755,8 @@ FS.staticInit();`;
 
           // Function to get a range from the remote URL.
           var doXHR = (from, to) => {
-            if (from > to) abort("invalid range (" + from + ", " + to + ") or no bytes requested!");
-            if (to > datalength-1) abort("only " + datalength + " bytes available! programmer error!");
+            if (from > to) abort(`invalid range (${from}, ${to}) or no bytes requested!`);
+            if (to > datalength-1) abort(`only ${datalength} bytes available! programmer error!`);
 
             // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
             var xhr = new XMLHttpRequest();
@@ -1774,7 +1774,7 @@ FS.staticInit();`;
             if (xhr.response !== undefined) {
               return new Uint8Array(/** @type{Array<number>} */(xhr.response || []));
             }
-            return intArrayFromString(xhr.responseText || '', true);
+            return intArrayFromString(xhr.responseText ?? '', true);
           };
           var lazyArray = this;
           lazyArray.setDataGetter((chunkNum) => {

@@ -4144,12 +4144,12 @@ Module["preRun"] = () => {
     self.run_browser('test.html', '/report_result?0')
 
   @also_with_pthreads
-  def test_utf8_textdecoder(self):
-    self.btest_exit('benchmark/benchmark_utf8.c', 0, cflags=['--embed-file', test_file('utf8_corpus.txt') + '@/utf8_corpus.txt'])
+  def test_utf8_bench(self):
+    self.btest_exit('test_utf8_bench.c', 0, cflags=['--embed-file', test_file('test_utf8_bench.txt') + '@/utf8_corpus.txt'])
 
   @also_with_pthreads
-  def test_utf16_textdecoder(self):
-    self.btest_exit('benchmark/benchmark_utf16.cpp', 0, cflags=['--embed-file', test_file('utf16_corpus.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=UTF16ToString,stringToUTF16,lengthBytesUTF16'])
+  def test_utf16_bench(self):
+    self.btest_exit('test_utf16_bench.c', 0, cflags=['--embed-file', test_file('test_utf16_bench.txt') + '@/utf16_corpus.txt', '-sEXPORTED_RUNTIME_METHODS=UTF16ToString,stringToUTF16,lengthBytesUTF16'])
 
   # Tests that it is possible to initialize and render WebGL content in a
   # pthread by using OffscreenCanvas.

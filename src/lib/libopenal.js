@@ -253,8 +253,8 @@ var LibraryOpenAL = {
           src.bufOffset = 0.0;
         } else {
           var delta = (currentTime - src.bufStartTime) * src.playbackRate;
-          var loopStart = buf.audioBuf._loopStart || 0.0;
-          var loopEnd = buf.audioBuf._loopEnd || buf.audioBuf.duration;
+          var loopStart = buf.audioBuf._loopStart ?? 0.0;
+          var loopEnd = buf.audioBuf._loopEnd ?? buf.audioBuf.duration;
           if (loopEnd <= loopStart) {
             loopEnd = buf.audioBuf.duration;
           }
@@ -969,8 +969,8 @@ var LibraryOpenAL = {
           return [0, 0];
         }
         return [
-          (buf.audioBuf._loopStart || 0.0) * buf.frequency,
-          (buf.audioBuf._loopEnd || buf.length) * buf.frequency
+          (buf.audioBuf._loopStart ?? 0.0) * buf.frequency,
+          (buf.audioBuf._loopEnd ?? buf.length) * buf.frequency
         ];
       default:
 #if OPENAL_DEBUG

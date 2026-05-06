@@ -1,9 +1,11 @@
 #ifdef __EMSCRIPTEN__
-#include <math.h>
+#include <assert.h> // For INFINITY
+#include <math.h> // For INFINITY
 #endif
 
 #include "pthread_impl.h"
 
+#ifndef __EMSCRIPTEN__
 static int pshared_barrier_wait(pthread_barrier_t *b)
 {
 	int limit = (b->_b_limit & INT_MAX) + 1;
@@ -52,6 +54,7 @@ static int pshared_barrier_wait(pthread_barrier_t *b)
 
 	return ret;
 }
+#endif
 
 struct instance
 {
@@ -69,8 +72,13 @@ int pthread_barrier_wait(pthread_barrier_t *b)
 	/* Trivial case: count was set at 1 */
 	if (!limit) return PTHREAD_BARRIER_SERIAL_THREAD;
 
+#ifdef __EMSCRIPTEN__
+	/* No support for process-shared barriers under emscripten */
+	assert(limit >= 0);
+#else
 	/* Process-shared barriers require a separate, inefficient wait */
 	if (limit < 0) return pshared_barrier_wait(b);
+#endif
 
 	/* Otherwise we need a lock on the barrier object */
 	while (a_swap(&b->_b_lock, 1))
