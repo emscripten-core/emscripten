@@ -44,7 +44,7 @@ addToLibrary({
         HEAPU8.set(fileData.subarray(offset, offset + length), buffer);
         return length;
       },
-      getSize: (file) => wasmFS$JSMemoryFiles[file]?.length || 0,
+      getSize: (file) => wasmFS$JSMemoryFiles[file]?.length ?? 0,
       setSize: (file, size) => {
         // Allocate a new array of the proper size, and copy as much data as
         // possible.

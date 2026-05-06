@@ -94,7 +94,7 @@ weak_alias(dummy, __pthread_tsd_size);
  * In either case these sections are all aligned to `max_alignment()`
  * which is the max alignment of any of the given chunks.
  */
-static void* init_pthread_struct(void *stackPlusTLSAddress, pid_t tid, size_t* stackPlusTLSSize) {
+void* _emscripten_init_pthread(void *stackPlusTLSAddress, size_t* stackPlusTLSSize, pid_t tid) {
   // TODO: Remove duplication with pthread_create
   pthread_t self = pthread_self();
 
@@ -143,7 +143,7 @@ static void* init_pthread_struct(void *stackPlusTLSAddress, pid_t tid, size_t* s
 
   __tl_unlock();
 
-  dbg("init_pthread_struct: base=%#lx, end=%#lx, used=%zu "
+  dbg("_emscripten_init_pthread: base=%#lx, end=%#lx, used=%zu "
       "stackold=%zu stacknew=%zu",
       base,
       base + *stackPlusTLSSize,
@@ -202,7 +202,7 @@ emscripten_wasm_worker_t emscripten_create_wasm_worker(void *stackPlusTLSAddress
   emscripten_wasm_worker_t wwID = _emscripten_get_next_tid();
   void* pthreadPtr = stackPlusTLSAddress;
 #ifdef __EMSCRIPTEN_PTHREADS__
-  stackPlusTLSAddress = init_pthread_struct(stackPlusTLSAddress, wwID, &stackPlusTLSSize);
+  stackPlusTLSAddress = _emscripten_init_pthread(stackPlusTLSAddress, &stackPlusTLSSize, wwID);
 #endif
   if (!_emscripten_create_wasm_worker(wwID, stackPlusTLSAddress, stackPlusTLSSize, pthreadPtr))
     return 0;
