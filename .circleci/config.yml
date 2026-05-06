@@ -786,6 +786,7 @@ jobs:
             omitexports0.test_emscripten_api
             strict.test_no_declare_asm_module_exports
             strict.test_dylink_global_inits_reversed
+            strict.test_wasm_worker_futex_wait_pthreads
             "
   test-modularize-instance:
     executor: ubuntu-lts

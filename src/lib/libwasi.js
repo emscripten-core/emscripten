@@ -22,7 +22,7 @@ var WasiLibrary = {
     throw `exit(${code})`;
 #else
 #if RUNTIME_DEBUG
-    dbg(`proc_exit: ${code}`);
+    dbg(`proc_exit: ${code} (keepRuntimeAlive=${keepRuntimeAlive()})`);
 #endif
     EXITSTATUS = code;
     if (!keepRuntimeAlive()) {
