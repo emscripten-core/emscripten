@@ -25,7 +25,7 @@ typedef int EMSCRIPTEN_WEBAUDIO_T;
 // An outdated node type that represented an AudioWorklet node.
 // If you are using this type in your application, replace it with
 // EMSCRIPTEN_WEBAUDIO_T handle type instead.
-typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T;
+typedef int EMSCRIPTEN_AUDIO_WORKLET_NODE_T __attribute__((deprecated("use EMSCRIPTEN_WEBAUDIO_T instead")));
 
 // Default render size of 128 frames
 #define AUDIO_CONTEXT_RENDER_SIZE_DEFAULT 0
