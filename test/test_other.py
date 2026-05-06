@@ -12295,16 +12295,13 @@ exec "$@"
 
   # Test that {{{ makeDynCall('sig', 'this.foo') }}} macro works, i.e. when 'this.' is referenced inside the macro block.
   # For this test verify the different build options that generate anonymous enclosing function scopes. (DYNCALLS and MEMORY64)
+  @also_with_wasm64
   @parameterized({
-    'plain': [[]],
-    'dyncalls': [['-sDYNCALLS']],
+    '': ([],),
+    'dyncalls': (['-sDYNCALLS'],),
   })
   def test_this_in_dyncall(self, args):
-    self.do_run_in_out_file_test('no_this_in_dyncall.c', cflags=['--js-library', test_file('no_this_in_dyncall.js')] + args)
-
-  @requires_wasm64
-  def test_this_in_dyncall_memory64(self):
-    self.do_run_in_out_file_test('no_this_in_dyncall.c', cflags=['--js-library', test_file('no_this_in_dyncall.js'), '-sMEMORY64'])
+    self.do_run_in_out_file_test('test_this_in_dyncall.c', cflags=['--js-library', test_file('test_this_in_dyncall.js')] + args)
 
   # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
   @parameterized({
