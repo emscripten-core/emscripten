@@ -7118,6 +7118,9 @@ void* operator new(size_t size) {
       print(str(extra_args) + ' ' + which)
       self.do_core_test('test_dyncall_specific.c', cflags=['-D' + which] + extra_args)
 
+  def test_dyncall_ptr_handling(self):
+    self.do_core_test('test_dyncall_ptr_handling.c', cflags=['--js-library', test_file('core/test_dyncall_ptr_handling.js')])
+
   @parameterized({
     '': ([],),
     'legacy': (['-sDYNCALLS'],),
