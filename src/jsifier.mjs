@@ -136,7 +136,7 @@ function getTransitiveDeps(symbol) {
   while (toVisit.length) {
     const sym = toVisit.pop();
     if (!seen.has(sym)) {
-      let directDeps = LibraryManager.library[sym + '__deps'] || [];
+      let directDeps = LibraryManager.library[sym + '__deps'] ?? [];
       directDeps = directDeps.filter((d) => typeof d === 'string');
       for (const dep of directDeps) {
         if (!transitiveDeps.has(dep)) {
@@ -228,7 +228,7 @@ function checkDependencies(symbol, snippet, deps, postset) {
       continue;
     }
     const mangled = mangleCSymbolName(dep);
-    if (!snippet.includes(mangled) && (!postset || !postset.includes(mangled))) {
+    if (!snippet.includes(mangled) && !postset?.includes(mangled)) {
       error(`${symbol}: unused dependency: ${dep}`);
     }
   }
@@ -883,7 +883,7 @@ function(${args}) {
 
     writeOutput('// Begin JS library code\n');
     for (const item of libraryItems.concat(postSets)) {
-      writeOutput(indentify(item || '', 2));
+      writeOutput(indentify(item ?? '', 2));
     }
     writeOutput('// End JS library code\n');
 

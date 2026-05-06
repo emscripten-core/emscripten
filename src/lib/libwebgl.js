@@ -219,7 +219,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       'WEBGL_polygon_mode'
     ];
     // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
-    return (ctx.getSupportedExtensions() || []).filter(ext => supportedExtensions.includes(ext));
+    return ctx.getSupportedExtensions()?.filter(ext => supportedExtensions.includes(ext)) ?? [];
   },
 
   $GLctx__internal: true,
@@ -3317,7 +3317,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     GLctx.compileShader(GL.shaders[shader]);
 #if GL_DEBUG
-    var log = (GLctx.getShaderInfoLog(GL.shaders[shader]) || '').trim();
+    var log = GLctx.getShaderInfoLog(GL.shaders[shader])?.trim();
     if (log) dbg(`glCompileShader: ${log}`);
 #endif
   },
@@ -3501,7 +3501,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     program = GL.programs[program];
     GLctx.linkProgram(program);
 #if GL_DEBUG
-    var log = (GLctx.getProgramInfoLog(program) || '').trim();
+    var log = GLctx.getProgramInfoLog(program)?.trim();
     if (log) dbg(`glLinkProgram: ${log}`);
     if (program.uniformLocsById) dbg(`glLinkProgram invalidated ${Object.keys(program.uniformLocsById).length} uniform location mappings`);
 #endif

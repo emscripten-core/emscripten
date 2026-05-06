@@ -847,14 +847,14 @@ export function modifyJSFunction(text, func) {
   let oneliner = false;
   let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
-    async_ = match[1] || '';
+    async_ = match[1] ?? '';
     args = match[3];
     rest = text.slice(match[0].length);
   } else {
     // Match an arrow function
     let match = text.match(/^\s*(var (\w+) = )?(async\s+)?\(([^)]*)\)\s+=>\s+/);
     if (match) {
-      async_ = match[3] || '';
+      async_ = match[3] ?? '';
       args = match[4];
       rest = text.slice(match[0].length);
       rest = rest.trim();
@@ -864,7 +864,7 @@ export function modifyJSFunction(text, func) {
       // for both, but it would be more complex).
       match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
       assert(match, `could not match function:\n${text}\n`);
-      async_ = match[1] || '';
+      async_ = match[1] ?? '';
       args = match[2];
       rest = text.slice(match[0].length);
     }

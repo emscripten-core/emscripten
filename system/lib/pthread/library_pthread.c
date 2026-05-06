@@ -85,18 +85,17 @@ void emscripten_thread_sleep(double msecs) {
   __pthread_testcancel();
   if (msecs > 0) {
     uint32_t dummyZeroAddress = 0;
-    double start = emscripten_get_now();
-    double elapsed = 0;
-    while (elapsed < msecs) {
+    double target = emscripten_get_now() + msecs;
+    do {
       emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING,
                                                        EM_THREAD_STATUS_SLEEPING);
-      emscripten_futex_wait(&dummyZeroAddress, 0, msecs - elapsed);
+      emscripten_futex_wait(&dummyZeroAddress, 0, msecs);
       emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_SLEEPING,
                                                        EM_THREAD_STATUS_RUNNING);
       emscripten_current_thread_process_queued_calls();
       __pthread_testcancel();
-      elapsed = emscripten_get_now() - start;
-    }
+      msecs = target - emscripten_get_now();
+    } while (msecs > 0);
   }
 }
 

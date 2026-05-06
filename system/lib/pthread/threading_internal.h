@@ -120,6 +120,12 @@ int _emscripten_thread_supports_atomics_wait(void);
 
 pid_t _emscripten_get_next_tid();
 
+// Initialize pthread data, at start of memory region pointed to `base`.
+// `size` is an in/out parameter representing the size of the `base` region
+// on input, and the size of new/adjusted region on output.
+// Return a new/adjusted memory base to be used to stack/tls data.
+void* _emscripten_init_pthread(void *base, size_t* size, pid_t tid);
+
 // Wake the target thread in case it is blocked in emscripten_futex_wait.
 // Note: If threads directly use lower level APIs such
 // __builtin_wasm_memory_atomic_waitXX then they will not be woken by

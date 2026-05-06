@@ -81,7 +81,7 @@ class FetchXHR {
     // Handle Basic Authentication if user/password are provided.
     // This creates a base64-encoded string and sets the Authorization header.
     if (user) {
-      const credentials = btoa(`${user}:${password || ''}`);
+      const credentials = btoa(`${user}:${password ?? ''}`);
       this._headers['Authorization'] = `Basic ${credentials}`;
     }
 
@@ -593,7 +593,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
-    var len = xhr.response ? xhr.response.byteLength : 0;
+    var len = xhr.response?.byteLength ?? 0;
     if (len) {
       // If the final XHR.onload handler receives the bytedata to compute total length, report that,
       // otherwise don't write anything out here, which will retain the latest byte size reported in
@@ -660,7 +660,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (!Fetch.xhrs.has(id)) {
       return;
     }
-    var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData && xhr.response) ? xhr.response.byteLength : 0;
+    var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData) ? xhr.response?.byteLength ?? 0 : 0;
     var ptr = 0;
     if (ptrLen > 0 && fetchAttrLoadToMemory && fetchAttrStreamData) {
 #if FETCH_DEBUG
