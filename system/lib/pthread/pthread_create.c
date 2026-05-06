@@ -107,7 +107,7 @@ int __pthread_create(pthread_t* restrict res,
                      void* (*entry)(void*),
                      void* restrict arg) {
   // Note on LSAN: lsan intercepts/wraps calls to pthread_create so any
-  // allocation we do here should not be considered as leak.
+  // allocations we do here should not be considered leaks.
   // See: lsan_interceptors.cpp.
   if (!res) {
     return EINVAL;
