@@ -9364,7 +9364,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @needs_dylink
   @requires_pthreads
   def test_pthread_dylink_tls(self):
-    if '-O2' in self.cflags and self.get_setting('STACK_OVERFLOW_CHECK') == 2:
+    if self.get_setting('STACK_OVERFLOW_CHECK') == 2:
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/24964: fails with stack overflow (Attempt to set SP to 0x000114d0, with stack limits [0x00000000 - 0x00000000])')
 
     self.cflags += ['-Wno-experimental', '-pthread']
@@ -9964,6 +9964,7 @@ wasmfs = make_run('wasmfs', cflags=['-O2', '-DWASMFS'], settings={'WASMFS': 1})
 # SAFE_HEAP/STACK_OVERFLOW_CHECK
 core0s = make_run('core0s', cflags=['-g'], settings={'SAFE_HEAP': 1})
 core2s = make_run('core2s', cflags=['-O2'], settings={'SAFE_HEAP': 1})
+core0ss = make_run('core0ss', cflags=['-g'], settings={'STACK_OVERFLOW_CHECK': 2})
 core2ss = make_run('core2ss', cflags=['-O2'], settings={'STACK_OVERFLOW_CHECK': 2})
 
 esm_integration = make_run('esm_integration', init=lambda self: self.setup_esm_integration())
