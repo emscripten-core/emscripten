@@ -1040,11 +1040,11 @@
             "p_proto": 16
         },
         "pthread": {
-            "__size__": 224,
-            "profilerBlock": 184,
+            "__size__": 216,
+            "profilerBlock": 176,
             "stack": 80,
             "stack_size": 88,
-            "waiting_async": 212
+            "waiting_async": 204
         },
         "pthread_attr_t": {
             "__size__": 88,
