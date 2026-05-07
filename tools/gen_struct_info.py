@@ -4,7 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""This tool extracts information about structs and defines from the C headers.
+"""Tools that extracts information about structs and defines from the C headers.
 
 The JSON input format is as follows:
 [
@@ -78,6 +78,8 @@ CFLAGS = [
 ]
 
 INTERNAL_CFLAGS = [
+    '-I' + utils.path_from_root('system/lib/libc/musl/arch/emscripten'),
+    '-I' + utils.path_from_root('system/lib/libc/musl/arch/generic'),
     '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
     '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
     '-I' + utils.path_from_root('system/lib/pthread/'),

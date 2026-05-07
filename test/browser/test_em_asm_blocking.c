@@ -1,12 +1,12 @@
 #include <assert.h>
 #include <emscripten/em_asm.h>
 #include <stdio.h>
-#include <thread>
+#include <pthread.h>
 #include <math.h>
 
-std::atomic<int> ret;
+_Atomic int ret;
 
-void foo() {
+void* foo(void* arg) {
   int len = MAIN_THREAD_EM_ASM_INT({
     var elem = document.getElementById('elem');
     window.almost_PI = 3.14159;
@@ -19,11 +19,14 @@ void foo() {
   printf("almost PI: %f\n", almost_PI);
   assert(fabs(almost_PI - 3.14159) < 0.001);
   ret = len;
+  return NULL;
 }
 
 int main() {
-  std::thread t(foo);
-  t.join();
-  printf("ret: %d\n", ret.load());
-  return ret.load();
+  pthread_t t;
+  pthread_create(&t, NULL, foo, NULL);
+  pthread_join(t, NULL);
+  printf("ret: %d\n", ret);
+  assert(ret == 8);
+  return 0;
 }

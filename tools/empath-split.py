@@ -4,10 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""
-Wrapper for 'wasm-split --multi-split' functionality. This script generates a
-.manifest file based on the list of user source paths, using source map
-information.
+"""Wrapper for 'wasm-split --multi-split' functionality.
+
+This script generates a .manifest file based on the list of user source paths,
+using source map information.
 
 This assumes the name section exists in the input wasm file, and also assumes
 the sourceMappingURL section exists in the input or a source map file is

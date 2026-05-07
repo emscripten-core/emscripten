@@ -1,6 +1,13 @@
-// Alternative socket system implementation that gets compiled to
-// libsockets_proxy.a and included when the `-sPROXY_POSIX_SOCKETS`
-// is used.
+/*
+ * Copyright 2019 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
+ * Alternative socket system implementation that gets compiled to
+ * libsockets_proxy.a and included when the `-sPROXY_POSIX_SOCKETS`
+ * is used.
+ */
 
 #include <assert.h>
 #include <errno.h>
@@ -10,9 +17,6 @@
 #include <stdlib.h>
 #include <pthread.h>
 #include <sys/socket.h>
-#if defined(__APPLE__) || defined(__linux__)
-#include <arpa/inet.h>
-#endif
 
 #include <emscripten/console.h>
 #include <emscripten/threading.h>
@@ -39,9 +43,10 @@
 #define MIN(a,b) (((a)<(b))?(a):(b))
 
 static void *memdup(const void *ptr, size_t sz) {
-  if (!ptr) return 0;
+  assert(ptr);
   void *dup = malloc(sz);
-  if (dup) memcpy(dup, ptr, sz);
+  assert(dup);
+  memcpy(dup, ptr, sz);
   return dup;
 }
 
@@ -69,7 +74,7 @@ typedef struct PosixSocketCallResult {
   // number of bytes that server will need to report back.  After the call has
   // finished, this field reports back the number of bytes pointed to by data,
   // >= the expected value.
-  int bytes;
+  size_t bytes;
 
   // Result data:
   SocketCallResultHeader *data;
@@ -85,29 +90,27 @@ static EMSCRIPTEN_WEBSOCKET_T bridgeSocket = (EMSCRIPTEN_WEBSOCKET_T)0;
 
 // Stores a linked list of all currently pending sockets operations (ones that
 // are waiting for a reply back from the sockets proxy server)
-static PosixSocketCallResult *callResultHead = 0;
+static PosixSocketCallResult *callResultHead = NULL;
 
-static PosixSocketCallResult *allocate_call_result(int expectedBytes) {
+static PosixSocketCallResult *allocate_call_result(size_t expectedBytes) {
+  PosixSocketCallResult *b = (PosixSocketCallResult*)malloc(sizeof(PosixSocketCallResult));
+  assert(b);
   pthread_mutex_lock(&bridgeLock); // Guard multithreaded access to 'callResultHead' and 'nextId' below
-  PosixSocketCallResult *b = (PosixSocketCallResult*)(malloc(sizeof(PosixSocketCallResult)));
-  if (!b) {
-    DBG_OUT("allocate_call_result: Failed to allocate call result struct of size %zu bytes!", sizeof(PosixSocketCallResult));
-    pthread_mutex_unlock(&bridgeLock);
-    return 0;
-  }
   static int nextId = 1;
   b->callId = nextId++;
   DEEP_DBG_OUT("allocate_call_result: allocated call ID %d", b->callId);
   b->bytes = expectedBytes;
-  b->data = 0;
+  b->data = NULL;
   b->operationCompleted = 0;
-  b->next = 0;
+  b->next = NULL;
 
   if (!callResultHead) {
     callResultHead = b;
   } else {
     PosixSocketCallResult *t = callResultHead;
-    while (t->next) t = t->next;
+    while (t->next) {
+      t = t->next;
+    }
     t->next = b;
   }
   pthread_mutex_unlock(&bridgeLock);
@@ -115,22 +118,28 @@ static PosixSocketCallResult *allocate_call_result(int expectedBytes) {
 }
 
 static void free_call_result(PosixSocketCallResult *buffer) {
-  if (buffer)
+  if (buffer) {
     DEEP_DBG_OUT("free_call_result: freed call ID %d", buffer->callId);
+  }
 
-  if (buffer->data) free(buffer->data);
+  if (buffer->data) {
+    free(buffer->data);
+  }
   free(buffer);
 }
 
 static PosixSocketCallResult *pop_call_result(int callId) {
   pthread_mutex_lock(&bridgeLock); // Guard multithreaded access to 'callResultHead'
-  PosixSocketCallResult *prev = 0;
+  PosixSocketCallResult *prev = NULL;
   PosixSocketCallResult *b = callResultHead;
   while (b) {
     if (b->callId == callId) {
-      if (prev) prev->next = b->next;
-      else callResultHead = b->next;
-      b->next = 0;
+      if (prev) {
+        prev->next = b->next;
+      } else {
+        callResultHead = b->next;
+      }
+      b->next = NULL;
       DEEP_DBG_OUT("pop_call_result: Removed call ID %d from pending sockets call queue", callId);
       pthread_mutex_unlock(&bridgeLock);
       return b;
@@ -172,18 +181,13 @@ bridge_socket_on_message(int eventType,
   }
 
   if (websocketEvent->numBytes < b->bytes) {
-    emscripten_errf("Received corrupt WebSocket result message with size %d, expected at least %d bytes!", websocketEvent->numBytes, b->bytes);
+    emscripten_errf("Received corrupt WebSocket result message with size %d, expected at least %zu bytes!", websocketEvent->numBytes, b->bytes);
     // TODO: Craft a socket result that signifies a failure, and wake the listening thread
     return true;
   }
 
   b->bytes = websocketEvent->numBytes;
   b->data = (SocketCallResultHeader*)memdup(websocketEvent->data, websocketEvent->numBytes);
-
-  if (!b->data) {
-    emscripten_errf("Out of memory, tried to allocate %d bytes!", websocketEvent->numBytes);
-    return true;
-  }
 
   if (b->operationCompleted != 0) {
     emscripten_errf("Memory corruption(?): the received result for completed operation at address %p was expected to be in state 0, but it was at state %d!", &b->operationCompleted, b->operationCompleted);
@@ -257,7 +261,9 @@ int socket(int domain, int type, int protocol) {
 
   wait_for_call_result(b);
   int ret = b->data->ret;
-  if (ret < 0) errno = b->data->errno_;
+  if (ret < 0) {
+    errno = b->data->errno_;
+  }
   free_call_result(b);
   return ret;
 }
@@ -316,7 +322,9 @@ int shutdown(int socket, int how) {
 
   wait_for_call_result(b);
   int ret = b->data->ret;
-  if (ret != 0) errno = b->data->errno_;
+  if (ret != 0) {
+    errno = b->data->errno_;
+  }
   free_call_result(b);
   return ret;
 }
@@ -338,13 +346,18 @@ int bind(int socket, const struct sockaddr *address, socklen_t address_len) {
   d->header.function = POSIX_SOCKET_MSG_BIND;
   d->socket = socket;
   d->address_len = address_len;
-  if (address) memcpy(d->address, address, address_len);
-  else memset(d->address, 0, address_len);
+  if (address) {
+    memcpy(d->address, address, address_len);
+  } else {
+    memset(d->address, 0, address_len);
+  }
   emscripten_websocket_send_binary(bridgeSocket, d, numBytes);
 
   wait_for_call_result(b);
   int ret = b->data->ret;
-  if (ret != 0) errno = b->data->errno_;
+  if (ret != 0) {
+    errno = b->data->errno_;
+  }
   free_call_result(b);
 
   free(d);
@@ -368,13 +381,18 @@ int connect(int socket, const struct sockaddr *address, socklen_t address_len) {
   d->header.function = POSIX_SOCKET_MSG_CONNECT;
   d->socket = socket;
   d->address_len = address_len;
-  if (address) memcpy(d->address, address, address_len);
-  else memset(d->address, 0, address_len);
+  if (address) {
+    memcpy(d->address, address, address_len);
+  } else {
+    memset(d->address, 0, address_len);
+  }
   emscripten_websocket_send_binary(bridgeSocket, d, numBytes);
 
   wait_for_call_result(b);
   int ret = b->data->ret;
-  if (ret != 0) errno = b->data->errno_;
+  if (ret != 0) {
+    errno = b->data->errno_;
+  }
   free_call_result(b);
 
   free(d);
@@ -399,7 +417,9 @@ int listen(int socket, int backlog) {
 
   wait_for_call_result(b);
   int ret = b->data->ret;
-  if (ret != 0) errno = b->data->errno_;
+  if (ret != 0) {
+    errno = b->data->errno_;
+  }
   free_call_result(b);
   return ret;
 }
@@ -547,7 +567,9 @@ ssize_t send(int socket, const void *message, size_t length, int flags) {
 
   wait_for_call_result(b);
   int ret = b->data->ret;
-  if (ret < 0) errno = b->data->errno_;
+  if (ret < 0) {
+    errno = b->data->errno_;
+  }
   free_call_result(b);
 
   free(d);
@@ -624,7 +646,9 @@ ssize_t sendto(int socket,
 
   wait_for_call_result(b);
   int ret = b->data->ret;
-  if (ret < 0) errno = b->data->errno_;
+  if (ret < 0) {
+    errno = b->data->errno_;
+  }
   free_call_result(b);
 
   free(d);
@@ -759,14 +783,19 @@ int setsockopt(int socket,
   d->socket = socket;
   d->level = level;
   d->option_name = option_name;
-  if (option_value) memcpy(d->option_value, option_value, option_len);
-  else memset(d->option_value, 0, option_len);
+  if (option_value) {
+    memcpy(d->option_value, option_value, option_len);
+  } else {
+    memset(d->option_value, 0, option_len);
+  }
   d->option_len = option_len;
   emscripten_websocket_send_binary(bridgeSocket, d, messageSize);
 
   wait_for_call_result(b);
   int ret = b->data->ret;
-  if (ret != 0) errno = b->data->errno_;
+  if (ret != 0) {
+    errno = b->data->errno_;
+  }
   free_call_result(b);
 
   free(d);
@@ -863,7 +892,9 @@ int getaddrinfo(const char* node,
     }
   } else {
     errno = b->data->errno_;
-    if (res) *res = 0;
+    if (res) {
+      *res = NULL;
+    }
   }
   free_call_result(b);
 

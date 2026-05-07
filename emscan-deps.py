@@ -4,7 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""emscan-deps - clang-scan-deps helper script
+"""emscan-deps - clang-scan-deps helper script.
 
 This script acts as a frontend replacement for clang-scan-deps.
 """

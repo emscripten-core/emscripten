@@ -4,8 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""This is a helper script. It runs make for you, setting
-the environment variables to use emcc and so forth. Usage:
+"""Helper script for running make.
+
+This script runs make with correct environment
+variables to use emcc and so forth. Usage:
 
   emmake make [FLAGS]
 

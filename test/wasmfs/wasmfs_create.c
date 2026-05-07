@@ -26,7 +26,8 @@ int main() {
 
   assert((file.st_mode & S_IFMT) == S_IFREG);
   printf("mode %i\n", file.st_mode);
-  assert(file.st_mode == (S_IRWXUGO | S_IFREG));
+  // The defualt umask is 0022
+  assert(file.st_mode == (0755 | S_IFREG));
 
   assert(errno == 0);
   const char* msg = "Test\n";

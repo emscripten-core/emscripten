@@ -17,13 +17,12 @@ var WasiLibrary = {
 #endif
 
   proc_exit__nothrow: true,
-  proc_exit__docs: '/** @noreturn */',
   proc_exit: (code) => {
 #if MINIMAL_RUNTIME
     throw `exit(${code})`;
 #else
 #if RUNTIME_DEBUG
-    dbg(`proc_exit: ${code}`);
+    dbg(`proc_exit: ${code} (keepRuntimeAlive=${keepRuntimeAlive()})`);
 #endif
     EXITSTATUS = code;
     if (!keepRuntimeAlive()) {
@@ -50,13 +49,7 @@ var WasiLibrary = {
   $getEnvStrings: () => {
     if (!getEnvStrings.strings) {
       // Default values.
-#if DETERMINISTIC
-      // Deterministic language detection, ignore the browser's language.
-      var lang = 'C.UTF-8';
-#else
-      // Browser language detection #8751
       var lang = (globalThis.navigator?.language ?? 'C').replace('-', '_') + '.UTF-8';
-#endif
       var env = {
 #if !PURE_WASI
         'USER': 'web_user',
@@ -303,7 +296,7 @@ var WasiLibrary = {
   fd_pwrite__i53abi: true,
   fd_pwrite: (fd, iov, iovcnt, offset, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(offset)) return {{{ cDefs.EFBIG }}};
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = doWritev(stream, iov, iovcnt, offset);
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
@@ -356,7 +349,7 @@ var WasiLibrary = {
   fd_pread__i53abi: true,
   fd_pread: (fd, iov, iovcnt, offset, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(offset)) return {{{ cDefs.EFBIG }}};
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = doReadv(stream, iov, iovcnt, offset);
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
@@ -371,7 +364,7 @@ var WasiLibrary = {
   fd_seek__i53abi: true,
   fd_seek: (fd, offset, whence, newOffset) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(offset)) return {{{ cDefs.EFBIG }}};
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
@@ -620,8 +613,8 @@ var WasiLibrary = {
   random_get: (buffer, size) => randomFill(HEAPU8.subarray(buffer, buffer + size)),
 };
 
-for (var x in WasiLibrary) {
-  wrapSyscallFunction(x, WasiLibrary, true);
+for (const name of Object.keys(WasiLibrary)) {
+  wrapSyscallFunction(name, WasiLibrary, true);
 }
 
 addToLibrary(WasiLibrary);

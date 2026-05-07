@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 import shutil
+from unittest import TextTestResult
 
 from color_runner import ColorTextResult, ColorTextRunner
 
@@ -20,9 +21,7 @@ def term_width():
 
 
 class SingleLineTestResult(ColorTextResult):
-  """Similar to the standard TextTestResult but uses ANSI escape codes
-  for color output and reusing a single line on the terminal.
-  """
+  """Like standard TextTestResult but uses ANSI escape codes for color output and reusing a single line on the terminal."""
 
   # Reserve at least 20 columns for the status message
   min_status_msg = 20
@@ -67,9 +66,31 @@ class SingleLineTestResult(ColorTextResult):
     self.stream.write('\n')
     super().printErrors()
 
+  # Override addExpectedFailure and addUnexpectedSuccess since, for some reason
+  # these methods in TextTestResult do not use `_write_status` like the other ones.
+  # TODO(sbc): Send a patch to upstream python to sue `_write_status` in TextTestResult.
+  def addExpectedFailure(self, test, err):
+    super(TextTestResult, self).addExpectedFailure(test, err)
+    if self.showAll:
+      self._write_status(test, "expected failure")
+      self.stream.flush()
+    elif self.dots:
+      self.stream.write("x")
+      self.stream.flush()
+
+  def addUnexpectedSuccess(self, test):
+    super(TextTestResult, self).addUnexpectedSuccess(test)
+    if self.showAll:
+      self._write_status(test, "unexpected success")
+      self.stream.flush()
+    elif self.dots:
+      self.stream.write("u")
+      self.stream.flush()
+
 
 class SingleLineTestRunner(ColorTextRunner):
-  """Subclass of TextTestResult that uses SingleLineTestResult"""
+  """Subclass of TextTestResult that uses SingleLineTestResult."""
+
   resultclass = SingleLineTestResult # type: ignore
 
   def __init__(self, *args, **kwargs):

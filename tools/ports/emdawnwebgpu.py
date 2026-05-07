@@ -4,7 +4,8 @@
 # found in the LICENSE file.
 
 # https://dawn.googlesource.com/dawn/+/01940842b667a7812d0e4ca0ef4367fbec294241/src/emdawnwebgpu/pkg/README.md
-r"""
+r"""Emdawnwebgpu.
+
 This "remote port" instructs Emscripten (4.0.10+) how to automatically download
 the actual port for Emdawnwebgpu. See README below for instructions.
 

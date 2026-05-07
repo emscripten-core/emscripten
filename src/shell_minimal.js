@@ -60,7 +60,7 @@ var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 #if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
 if (ENVIRONMENT_IS_NODE) {
   var worker_threads = require('node:worker_threads');
-  global.Worker = worker_threads.Worker;
+  globalThis.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 }
 #endif

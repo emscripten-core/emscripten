@@ -211,11 +211,12 @@ def setup_environment_settings():
 
 
 def generate_js_sym_info():
-  """Runs the js compiler to generate a list of all symbols available in the JS
-  libraries.  This must be done separately for each linker invocation since the
-  list of symbols depends on what settings are used.
+  """Run the JS compiler to generate a list of all available JS symbols.
+
+  This must be done separately for each linker invocation since the list of
+  symbols depends on what settings are used.
   TODO(sbc): Find a way to optimize this.  Potentially we could add a super-set
-  mode of the js compiler that would generate a list of all possible symbols
+  mode of the JS compiler that would generate a list of all possible symbols
   that could be checked in.
   """
   output = emscripten.compile_javascript(symbols_only=True)
@@ -319,7 +320,6 @@ def get_binaryen_lowering_passes():
 
   # List of [<feature_name>, <lowering_flag>, <feature_flags>] triples.
   features = [
-    [Feature.SIGN_EXT, '--signext-lowering', ['--enable-sign-ext']],
     [Feature.NON_TRAPPING_FPTOINT, '--llvm-nontrapping-fptoint-lowering', ['--enable-nontrapping-float-to-int']],
     [Feature.BULK_MEMORY, '--llvm-memory-copy-fill-lowering', ['--enable-bulk-memory', '--enable-bulk-memory-opt']],
   ]
@@ -768,9 +768,10 @@ def setup_sanitizers(options):
 
 
 def get_dylibs(options, linker_args):
-  """Find all the Wasm dynamic libraries specified on the command line,
-  either via `-lfoo` or via `libfoo.so` directly."""
+  """Find all the Wasm dynamic libraries specified on the command line.
 
+  This can either be via `-lfoo` or via `libfoo.so` directly.
+  """
   dylibs = []
   for arg in linker_args:
     if arg.startswith('-l'):
@@ -793,7 +794,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   To revalidate these numbers, run `ruff check --select=C901,PLR091`.
   """
-
   setup_environment_settings()
 
   apply_library_settings(linker_args)
@@ -932,7 +932,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # When there is no final suffix or the suffix is `.out` (as in `a.out`) then default to
   # making the resulting file exectuable.
   if settings.ENVIRONMENT_MAY_BE_NODE and options.oformat == OFormat.JS and final_suffix in {'', '.out'}:
-    default_setting('EXECUTABLE', 1)
+    # autoconf handling above may have initialized the EXECUTABLE setting already, so only init default here
+    # if not yet set.
+    if not settings.EXECUTABLE:
+      default_setting('EXECUTABLE', 1)
 
   if settings.EXECUTABLE and not settings.ENVIRONMENT_MAY_BE_NODE:
     exit_with_error('EXECUTABLE requires `node` in ENVRIONMENT')
@@ -1286,8 +1289,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.ALLOW_TABLE_GROWTH = 1
 
   # various settings require sbrk() access
-  if settings.DETERMINISTIC or \
-     settings.EMSCRIPTEN_TRACING or \
+  if settings.EMSCRIPTEN_TRACING or \
      settings.SAFE_HEAP or \
      settings.MEMORYPROFILER:
     settings.REQUIRED_EXPORTS += ['sbrk']
@@ -1366,23 +1368,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$setStackLimits']
 
   check_browser_versions()
-
-  if settings.POLYFILL:
-    # Emscripten requires certain ES6+ constructs by default in library code
-    # - (various ES6 operators available in all browsers listed below)
-    # - https://caniuse.com/mdn-javascript_operators_nullish_coalescing:
-    #                                          FF:72 CHROME:80 SAFARI:13.1 NODE:14
-    # - https://caniuse.com/mdn-javascript_operators_optional_chaining:
-    #                                          FF:74 CHROME:80 SAFARI:13.1 NODE:14
-    # - https://caniuse.com/mdn-javascript_operators_logical_or_assignment:
-    #                                          FF:79 CHROME:85 SAFARI:14 NODE:16
-    # Taking the highest requirements gives is our minimum:
-    #                             Max Version: FF:79 CHROME:85 SAFARI:14 NODE:16
-    # TODO: replace this with feature matrix in the future.
-    settings.TRANSPILE = (settings.MIN_FIREFOX_VERSION < 79 or
-                          settings.MIN_CHROME_VERSION < 85 or
-                          settings.MIN_SAFARI_VERSION < 140000 or
-                          settings.MIN_NODE_VERSION < 160000)
 
   if settings.STB_IMAGE:
     settings.EXPORTED_FUNCTIONS += ['_stbi_load', '_stbi_load_from_memory', '_stbi_image_free']
@@ -1549,7 +1534,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   # TODO(sbc): Find make a generic way to expose the feature matrix to JS
   # compiler rather then adding them all ad-hoc as internal settings
-  settings.SUPPORTS_PROMISE_ANY = feature_matrix.caniuse(Feature.PROMISE_ANY)
   default_setting('WASM_BIGINT', feature_matrix.caniuse(Feature.JS_BIGINT_INTEGRATION))
   if settings.WASM_BIGINT:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$HEAP64', '$HEAPU64']
@@ -1961,6 +1945,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # Force node since that is where the tool runs.
   if 'node' not in settings.ENVIRONMENT:
     settings.ENVIRONMENT.append('node')
+  settings.MIN_NODE_VERSION = feature_matrix.OLDEST_SUPPORTED_NODE
   settings.MINIMAL_RUNTIME = 0
   # Required function to trigger TS generation.
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks', '$addRunDependency', '$removeRunDependency']
@@ -1981,7 +1966,6 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
     dirname, basename = os.path.split(lib)
     if basename == 'libembind.js':
       settings.JS_LIBRARIES[i] = os.path.join(dirname, 'libembind_gen.js')
-  settings.MIN_NODE_VERSION = 160000 if settings.MEMORY64 else 150000
   # The final version of the memory64 proposal is not implemented until node
   # v24, so we need to lower it away in order to execute the binary at build
   # time.
@@ -2325,14 +2309,6 @@ def phase_binaryen(target, options, wasm_target):
         final_js = building.closure_compiler(final_js, extra_closure_args=settings.CLOSURE_ARGS)
       save_intermediate('closure')
 
-    if settings.TRANSPILE:
-      with ToolchainProfiler.profile_block('transpile'):
-        final_js = building.transpile(final_js)
-      save_intermediate('transpile')
-      # Run acorn one more time to minify whitespace after babel runs
-      if settings.MINIFY_WHITESPACE:
-        final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
-
   symbols_file = None
   if options.emit_symbol_map:
     symbols_file = shared.replace_or_append_suffix(target, '.symbols')
@@ -2620,12 +2596,14 @@ def find_library(lib, lib_dirs):
 
 
 def map_to_js_libs(library_name):
-  """Given the name of a special Emscripten-implemented system library, returns an
-  pair containing
-  1. Array of absolute paths to JS library files, inside emscripten/src/ that corresponds to the
-     library name. `None` means there is no mapping and the library will be processed by the linker
-     as a require for normal native library.
-  2. Optional name of a corresponding native library to link in.
+  """Map a library name to one or more JS libraries.
+
+  Given the name of a special Emscripten-implemented system library, return a
+  list of absolute paths to JS library files, inside emscripten/src/, that
+  should be included.
+
+  'None' means there is no mapping and the library will be processed by the linker
+  as a require for normal native library.
   """
   # Some native libraries are implemented in Emscripten as system side JS libraries
   library_map = {
@@ -2773,7 +2751,7 @@ class ScriptSource:
     self.src = None
 
   def replacement(self):
-    """Returns the script tag to replace the {{{ SCRIPT }}} tag in the target"""
+    """Return the script tag to replace the {{{ SCRIPT }}} tag in the target."""
     assert (self.src or self.inline) and not (self.src and self.inline)
     if self.src:
       src = quote(self.src)
@@ -2922,13 +2900,13 @@ def move_file(src, dst):
 
 
 def binary_encode(filename):
-  """This function encodes the given binary byte array to a UTF-8 string, by
-  encoding each byte values as UTF-8, except for specific byte values that
+  """Encode the given binary byte array as a compact UTF-8 string.
+
+  Each byte value is encoded as UTF-8, except for specific byte values that
   are escaped as two bytes. This kind of encoding results in a string that will
   compress well by both gzip and brotli, unlike base64 encoding binary data
   would do.
   """
-
   data = utils.read_binary(filename)
 
   # Decide whether to enclose the generated binary data in single-quotes '' or

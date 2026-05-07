@@ -111,14 +111,22 @@ struct pthread {
 	// postMessage path. Once this becomes true, it remains true so we never
 	// fall back to postMessage unnecessarily.
 	_Atomic int waiting_async;
-#endif
-#ifdef EMSCRIPTEN_DYNAMIC_LINKING
-	// When dynamic linking is enabled, threads use this to facilitate the
-	// synchronization of loaded code between threads.
-	// See emscripten_futex_wait.c.
-	_Atomic char sleeping;
+	// The address the thread is currently waiting on in emscripten_futex_wait.
+	//
+	// This field encodes the state using the following bitmask:
+	// - NULL: Not waiting, no pending notification.
+	// - NOTIFY_BIT (0x1): Not waiting, but a notification was sent.
+	// - addr: Waiting on `addr`, no pending notification.
+	// - addr | NOTIFY_BIT: Waiting on `addr`, notification sent.
+	//
+	// Since futex addresses must be 4-byte aligned, the low bit is safe to use.
+	_Atomic uintptr_t wait_addr;
 #endif
 };
+
+#ifdef __EMSCRIPTEN__
+#define NOTIFY_BIT (1 << 0)
+#endif
 
 enum {
 	DT_EXITED,

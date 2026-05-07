@@ -71,8 +71,7 @@ def get_global_value(globl):
 
 
 def parse_function_for_memory_inits(module, func_index, offset_map):
-  """Very limited function parser that uses `memory.init` instructions
-  to derive segment offset.
+  """Very limited function parser that uses `memory.init` instructions to derive segment offset.
 
   When segments are passive they don't have an offset but (at least with
   llvm-generated code) are loaded during the start function

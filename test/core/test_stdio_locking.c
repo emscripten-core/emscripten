@@ -52,8 +52,8 @@ int main() {
   printf("in main\n");
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
   emscripten_wasm_worker_t worker[2];
-  worker[0] = emscripten_malloc_wasm_worker(/*stack size: */ 1024);
-  worker[1] = emscripten_malloc_wasm_worker(/*stack size: */ 1024);
+  worker[0] = emscripten_malloc_wasm_worker(/*stack size: */ 4096);
+  worker[1] = emscripten_malloc_wasm_worker(/*stack size: */ 4096);
   emscripten_wasm_worker_post_function_v(worker[0], thread_func);
   emscripten_wasm_worker_post_function_v(worker[1], thread_func);
 

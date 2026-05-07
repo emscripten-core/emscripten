@@ -81,7 +81,7 @@ class FetchXHR {
     // Handle Basic Authentication if user/password are provided.
     // This creates a base64-encoded string and sets the Authorization header.
     if (user) {
-      const credentials = btoa(`${user}:${password || ''}`);
+      const credentials = btoa(`${user}:${password ?? ''}`);
       this._headers['Authorization'] = `Basic ${credentials}`;
     }
 
@@ -536,7 +536,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   if (!fetchAttrSynchronous) xhr.timeout = timeoutMsecs; // XHR timeout field is only accessible in async XHRs, and must be set after .open() but before .send().
   xhr.url_ = url_; // Save the url for debugging purposes (and for comparing to the responseURL that server side advertised)
 #if ASSERTIONS && !FETCH_STREAMING
-  assert(!fetchAttrStreamData, 'Streaming is only supported when FETCH_STREAMING is enabled.');
+  assert(!fetchAttrStreamData, 'streaming is only supported when FETCH_STREAMING is enabled');
 #endif
   xhr.responseType = 'arraybuffer';
 
@@ -593,7 +593,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
-    var len = xhr.response ? xhr.response.byteLength : 0;
+    var len = xhr.response?.byteLength ?? 0;
     if (len) {
       // If the final XHR.onload handler receives the bytedata to compute total length, report that,
       // otherwise don't write anything out here, which will retain the latest byte size reported in
@@ -660,14 +660,14 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (!Fetch.xhrs.has(id)) {
       return;
     }
-    var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData && xhr.response) ? xhr.response.byteLength : 0;
+    var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData) ? xhr.response?.byteLength ?? 0 : 0;
     var ptr = 0;
     if (ptrLen > 0 && fetchAttrLoadToMemory && fetchAttrStreamData) {
 #if FETCH_DEBUG
       dbg(`fetch: allocating ${ptrLen} bytes in Emscripten heap for xhr data`);
 #endif
 #if ASSERTIONS
-      assert(onprogress, 'When doing a streaming fetch, you should have an onprogress handler registered to receive the chunks!');
+      assert(onprogress, 'streaming fetch requires an onprogress handler');
 #endif
       // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
       // freed when emscripten_fetch_close() is called.

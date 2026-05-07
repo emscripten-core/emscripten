@@ -86,6 +86,55 @@ int main() {
   assert(strcmp(buf, "abc") == 0);
   printf("\n");
 
+  printf("DUP3\n");
+  f = open("/", O_RDONLY);
+  f2 = open("/", O_RDONLY);
+  f3 = dup3(f, f2, O_CLOEXEC);
+  assert(f != -1);
+  assert(f2 != -1);
+  assert(f3 != -1);
+  printf("errno: %s\n", strerror(errno));
+  printf("f: %d\n", f != f2 && f != f3);
+  printf("f2,f3: %d\n", f2 == f3);
+  printf("close(f1): %d\n", close(f));
+  printf("close(f2): %d\n", close(f2));
+  printf("close(f3): %d\n", close(f3));
+  printf("\n");
+  errno = 0;
+
+  printf("DUP3 bad fds\n");
+  f = dup3(-2, -2, 0);
+  printf("f: %d\n", f);
+  assert(f == -1);
+  printf("errno: %s\n", strerror(errno));
+  printf("close(f): %d\n", close(f));
+  printf("\n");
+  errno = 0;
+
+  printf("DUP3 same fds\n");
+  f = open("/", O_RDONLY);
+  assert(f != -1);
+  f2 = dup3(f, f, 0);
+  printf("f2: %d\n", f2);
+  assert(f2 == -1);
+  printf("errno: %s\n", strerror(errno));
+  assert(errno == EINVAL);
+  close(f);
+  printf("\n");
+  errno = 0;
+
+  printf("DUP3 invalid flags\n");
+  f = open("/", O_RDONLY);
+  assert(f != -1);
+  f2 = dup3(f, 100, 0x12345678);
+  printf("f2: %d\n", f2);
+  assert(f2 == -1);
+  printf("errno: %s\n", strerror(errno));
+  assert(errno == EINVAL);
+  close(f);
+  printf("\n");
+  errno = 0;
+
   printf("DUP shared seek position\n");
   f = open("./blah.txt", O_RDWR | O_CREAT | O_EXCL, 0600);
   f2 = dup(f);

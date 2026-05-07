@@ -51,7 +51,7 @@ void test() {
 
   close(fd);
 
-  puts("success");
+  puts("done");
 }
 
 int main() {

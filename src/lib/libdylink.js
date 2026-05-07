@@ -1107,7 +1107,7 @@ var LibraryDylink = {
     if (dso) {
       // the library is being loaded or has been loaded already.
 #if ASSERTIONS
-      assert(dso.exports !== 'loading', `Attempt to load '${libName}' twice before the first load completed`);
+      assert(dso.exports !== 'loading', `attempt to load '${libName}' a second time, before the first load completed`);
 #endif
       if (!flags.global) {
         if (localScope) {

@@ -57,7 +57,7 @@ void processorCreated(EMSCRIPTEN_WEBAUDIO_T context, bool success, void* data) {
     .numberOfOutputs = 2,
     .outputChannelCounts = outputChannelCounts
   };
-  EMSCRIPTEN_AUDIO_WORKLET_NODE_T worklet = emscripten_create_wasm_audio_worklet_node(context, "mixer", &opts, &process, NULL);
+  EMSCRIPTEN_WEBAUDIO_T worklet = emscripten_create_wasm_audio_worklet_node(context, "mixer", &opts, &process, NULL);
   // Both outputs connected to the context
   emscripten_audio_node_connect(worklet, context, 0, 0);
   emscripten_audio_node_connect(worklet, context, 1, 0);

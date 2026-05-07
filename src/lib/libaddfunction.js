@@ -17,39 +17,6 @@ addToLibrary({
     // but we don't care as it's only used in a temporary representation.
     return [(n % 128) | 128, n >> 7, ...arr];
   },
-#if WASM_JS_TYPES
-  // Converts a signature like 'vii' into a description of the wasm types, like
-  // { parameters: ['i32', 'i32'], results: [] }.
-  $sigToWasmTypes__internal: true,
-  $sigToWasmTypes: (sig) => {
-#if ASSERTIONS && !WASM_BIGINT
-    assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
-#endif
-    var typeNames = {
-      'i': 'i32',
-      'j': 'i64',
-      'f': 'f32',
-      'd': 'f64',
-      'e': 'externref',
-#if MEMORY64
-      'p': 'i64',
-#else
-      'p': 'i32',
-#endif
-    };
-    var type = {
-      parameters: [],
-      results: sig[0] == 'v' ? [] : [typeNames[sig[0]]]
-    };
-    for (var i = 1; i < sig.length; ++i) {
-#if ASSERTIONS
-      assert(sig[i] in typeNames, 'invalid signature char: ' + sig[i]);
-#endif
-      type.parameters.push(typeNames[sig[i]]);
-    }
-    return type;
-  },
-#endif
   $wasmTypeCodes__internal: true,
   // Note: using template literal here instead of plain object
   // because jsify serializes objects w/o quotes and Closure will then
@@ -81,26 +48,14 @@ addToLibrary({
   // Wraps a JS function as a wasm function with a given signature.
   $convertJsFunctionToWasm__deps: [
     '$uleb128EncodeWithLen',
-#if WASM_JS_TYPES
-    '$sigToWasmTypes',
-#endif
     '$generateTypePack'
   ],
   $convertJsFunctionToWasm: (func, sig) => {
 #if ASSERTIONS && !WASM_BIGINT
     assert(!sig.includes('j'), 'i64 not permitted in function signatures when WASM_BIGINT is disabled');
 #endif
-#if WASM_JS_TYPES
-    // If the type reflection proposal is available, use the new
-    // "WebAssembly.Function" constructor.
-    // Otherwise, construct a minimal wasm module importing the JS function and
-    // re-exporting it.
-    if (WebAssembly.Function) {
-      return new WebAssembly.Function(sigToWasmTypes(sig), func);
-    }
-#endif
-
-    // Rest of the module is static
+    // TODO: If the type reflection proposal ever makes progress we can use
+    // it here instead of creatign a new module.
     var bytes = Uint8Array.of(
       0x00, 0x61, 0x73, 0x6d, // magic ("\0asm")
       0x01, 0x00, 0x00, 0x00, // version: 1
