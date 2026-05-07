@@ -1179,7 +1179,9 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser_2gb"
-          test_targets: "browser_2gb"
+          # Disabling test_mainScriptUrlOrBlob due to
+          # https://github.com/emscripten-core/emscripten/issues/26882
+          test_targets: "browser_2gb skip:browser_2gb.test_mainScriptUrlOrBlob*"
   test-browser-chrome-wasm64-4gb:
     executor: ubuntu-lts
     environment:
@@ -1187,7 +1189,9 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64_4gb"
-          test_targets: "browser64_4gb"
+          # Disabling test_mainScriptUrlOrBlob due to
+          # https://github.com/emscripten-core/emscripten/issues/26882
+          test_targets: "browser64_4gb skip:browser64_4gb.test_mainScriptUrlOrBlob*"
   test-browser-firefox:
     executor: ubuntu-lts
     environment:
