@@ -2121,7 +2121,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   // This function intentionally assigns `HEAP32[x] = someBoolean;` Don't let
   // Closure mind about that.
   $emscriptenWebGLGetUniform__docs: '/** @suppress{checkTypes} */',
-  $emscriptenWebGLGetUniform__deps: ['$webglGetUniformLocation', '$webglPrepareUniformLocationsBeforeFirstUse'],
+  $emscriptenWebGLGetUniform__deps: ['$webglGetProgramUniformLocation', '$webglPrepareUniformLocationsBeforeFirstUse'],
   $emscriptenWebGLGetUniform: (program, location, params, type) => {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null
@@ -2139,7 +2139,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     program = GL.programs[program];
     webglPrepareUniformLocationsBeforeFirstUse(program);
-    var data = GLctx.getUniform(program, webglGetUniformLocation(location));
+    var data = GLctx.getUniform(program, webglGetProgramUniformLocation(program, location));
     if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
         case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
@@ -2173,18 +2173,16 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
   // Returns the WebGLUniformLocation object corresponding to the location index
   // integer on the currently active shader in this GL context.
-  $webglGetUniformLocation__deps: ['$webglPrepareUniformLocationsBeforeFirstUse'],
-  $webglGetUniformLocation: (location) => {
-    var p = GLctx.currentProgram;
-
+  $webglGetProgramUniformLocation__deps: ['$webglPrepareUniformLocationsBeforeFirstUse'],
+  $webglGetProgramUniformLocation: (program, location) => {
 #if !GL_TRACK_ERRORS && ASSERTIONS
     // In -sGL_TRACK_ERRORS=0 build mode do not allow calling glUniform*()
     // without an active GL program.
-    assert(p, 'Attempted to call glUniform*() without an active GL program set! (build with -sGL_TRACK_ERRORS for standards-conformant behavior)');
+    assert(program, 'When building with !GL_TRACK_ERRORS, program cannot be null, in a call to webglGetProgramUniformLocation()');
 #endif
 
 #if GL_TRACK_ERRORS
-    if (p) {
+    if (program) {
 #endif
 #if GL_EXPLICIT_UNIFORM_LOCATION
       // Ensure `uniformLocsById`/`uniformArrayNamesById` are populated. Without
@@ -2192,15 +2190,15 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       // `glGetUniformLocation()` silently no-ops: `glLinkProgram` resets
       // `uniformLocsById` to 0 and only `$webglPrepareUniformLocationsBeforeFirstUse`
       // refills it. The call below is idempotent (guards on `!uniformLocsById`).
-      webglPrepareUniformLocationsBeforeFirstUse(p);
+      webglPrepareUniformLocationsBeforeFirstUse(program);
 #endif
-      var webglLoc = p.uniformLocsById[location];
-      // p.uniformLocsById[location] stores either an integer, or a
+      var webglLoc = program.uniformLocsById[location];
+      // program.uniformLocsById[location] stores either an integer, or a
       // WebGLUniformLocation.
       // If an integer, we have not yet bound the location, so do it now. The
       // integer value specifies the array index we should bind to.
       if (typeof webglLoc == 'number') {
-        p.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(p, p.uniformArrayNamesById[location] + (webglLoc > 0 ? `[${webglLoc}]` : ''));
+        program.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(program, program.uniformArrayNamesById[location] + (webglLoc > 0 ? `[${webglLoc}]` : ''));
       }
       // Else an already cached WebGLUniformLocation, return it.
       return webglLoc;
@@ -2209,6 +2207,17 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       GL.recordError(0x502/*GL_INVALID_OPERATION*/);
     }
 #endif
+  },
+
+  $webglGetUniformLocation__deps: ['$webglGetProgramUniformLocation'],
+  $webglGetUniformLocation: (location) => {
+#if !GL_TRACK_ERRORS && ASSERTIONS
+    // In -sGL_TRACK_ERRORS=0 build mode do not allow calling glUniform*()
+    // without an active GL program.
+    assert(GLctx.currentProgram, 'Attempted to call glUniform*()/webglGetUniformLocation() without an active GL program set! (build with -sGL_TRACK_ERRORS for standards-conformant behavior)');
+#endif
+
+    return webglGetProgramUniformLocation(GLctx.currentProgram, location);
   },
 
   $webglPrepareUniformLocationsBeforeFirstUse__deps: ['$webglGetLeftBracePos'],

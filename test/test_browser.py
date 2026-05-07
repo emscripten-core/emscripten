@@ -1243,6 +1243,14 @@ window.close = () => {
   def test_webgl_uniform_before_get_location(self, args):
     self.btest_exit('webgl_uniform_before_get_location.c', cflags=args + ['-sGL_EXPLICIT_UNIFORM_LOCATION', '-sMIN_WEBGL_VERSION=2'])
 
+  @parameterized({
+    '': ([],),
+    'assertions': (['-sGL_ASSERTIONS'],),
+  })
+  @requires_webgl2
+  def test_webgl_get_uniform_no_active_program(self, args):
+    self.btest_exit('webgl_get_uniform_no_active_program.c', cflags=args + ['-sMIN_WEBGL_VERSION=2'])
+
   @requires_graphics_hardware
   def test_webgl_sampler_layout_binding(self):
     self.btest_exit('webgl_sampler_layout_binding.c', cflags=['-sGL_EXPLICIT_UNIFORM_BINDING'])
