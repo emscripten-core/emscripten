@@ -14,8 +14,10 @@ DESCRIPTION = 'Lua is a powerful, efficient, lightweight, embeddable scripting l
 LICENSE = 'MIT License'
 
 port_name = 'contrib.lua'
-lib_name = 'liblua'
+variants = {'contrib.lua-mt': {'PTHREADS': 1}}
 
+def get_lib_name(settings):
+  return 'liblua' + ('-mt' if settings.PTHREADS else '') + '.a'
 
 def get(ports, settings, shared):
   # get the port
@@ -43,8 +45,8 @@ def get(ports, settings, shared):
 
     ports.build_port(source_path, final, port_name, srcs=srcs, flags=flags)
 
-  return [shared.cache.get_lib(lib_name + ('-mt' if settings.PTHREADS else '') + '.a', create, what='port')]
+  return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]
 
 
 def clear(ports, settings, shared):
-  shared.cache.erase_lib(lib_name + ('-mt' if settings.PTHREADS else '') + '.a')
+  shared.cache.erase_lib(get_lib_name(settings))
