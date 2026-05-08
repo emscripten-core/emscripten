@@ -31,6 +31,7 @@ See docs/process.md for more on how version tagging works.
   emscripten.  If you still need to support extremely old browsers, you can
   manually transpile the output of emscripten (e.g. using babel for JS and
   binaryen for wasm). (#26677)
+- libpng port updated from 1.6.55 to 1.6.56. (#26592)
 
 5.0.7 - 04/30/26
 ----------------
@@ -77,7 +78,6 @@ See docs/process.md for more on how version tagging works.
   `--experimental-wasm-bulk-memory` flags when used with versions of node older
   than v16. (#26560)
 - SDL3 port updated from 3.2.30 to 3.4.2 (#26572)
-- libpng port updated from 1.6.55 to 1.6.56. (#26592)
 - Fixed a race condition in syscall proxying that caused some hangs and ASan
   errors (#26582)
 
