@@ -924,6 +924,7 @@ window.close = () => {
     'safe_heap': (['-sSAFE_HEAP'],),
     'safe_heap_O2': (['-sSAFE_HEAP', '-O2'],),
   })
+  @no_safari('Fails in browser_2gb.test_sdl_canvas_safe_heap variant') # Fails in Safari 26.0.1 (21622.1.22.11.15)
   def test_sdl_canvas(self, args):
     self.btest_exit('test_sdl_canvas.c', cflags=['-sSTRICT_JS', '-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'] + args)
 
