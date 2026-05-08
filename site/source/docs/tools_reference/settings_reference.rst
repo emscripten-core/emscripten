@@ -2758,6 +2758,17 @@ only be used in testing.
 
 Default value: 0
 
+.. _fetch_streaming_max_chunk_size:
+
+FETCH_STREAMING_MAX_CHUNK_SIZE
+==============================
+
+Specifies the maximum chunk size that a streaming fetch will transfer from
+JS over to WebAssembly side. Use this to cap a streaming fetch to avoid
+overallocating WebAssembly memory needlessly.
+
+Default value: 8*1024*1024
+
 .. _wasmfs:
 
 WASMFS
