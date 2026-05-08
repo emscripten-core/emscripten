@@ -3192,6 +3192,7 @@ More info: https://emscripten.org
       (['-Oz', '-gsource-map'], False, True, False),
       (['-gsource-map', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, False),
       (['-gsource-map', '-Og', '-sERROR_ON_WASM_CHANGES_AFTER_LINK'], False, True, False),
+      (['-sSTACK_OVERFLOW_CHECK=2'], False, False, False),
     ]:
       print(flags, expect_dwarf, expect_sourcemap, expect_names)
       self.emcc(test_file(source_file), flags + ['-o', js_file])
