@@ -10,7 +10,6 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <emscripten.h>
-#include <emscripten/eventloop.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -38,10 +37,6 @@ void cleanup() {
   unlink("/working1/moar.txt");
   rmdir("/working1/dir");
   EM_ASM(FS.syncfs(function(){})); // And persist deleted changes
-}
-
-void test_finish(void *user_data) {
-  finish();
 }
 
 EMSCRIPTEN_KEEPALIVE
