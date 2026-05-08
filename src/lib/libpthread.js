@@ -1297,6 +1297,9 @@ var LibraryPThread = {
   },
 
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox', '$waitAsyncPolyfilled'],
+  // Closure's Atomics.waitAsync extern incorrectly returns Promise<string>,
+  // but the spec returns a result object with async/value fields.
+  _emscripten_thread_mailbox_await__docs: '/** @suppress {missingProperties} */',
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
     if (!waitAsyncPolyfilled) {
       // Wait on the pthread's initial self-pointer field because it is easy and

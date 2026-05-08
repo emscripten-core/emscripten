@@ -79,12 +79,6 @@ Atomics.store = function() {};
  */
 var WebAssembly = {};
 /**
- * @constructor
- * @param {Object} globalDescriptor
- * @param {*=} value
- */
-WebAssembly.Global = function(globalDescriptor, value) {};
-/**
  * @param {!WebAssembly.Tag} tag
  * @param {number} index
  */
@@ -257,12 +251,6 @@ var moduleRtn;
  */
 Navigator.prototype.webkitGetUserMedia = function(
     constraints, successCallback, errorCallback) {};
-
-/**
- * A symbol from the explicit resource management proposal that isn't yet part of Closure.
- * @type {symbol}
- */
-Symbol.dispose;
 
 // Common between node-externs and v8-externs
 var os = {};
