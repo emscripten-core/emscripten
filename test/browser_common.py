@@ -339,7 +339,7 @@ def configure_test_browser():
     if not shutil.which(EMTEST_BROWSER):
       EMTEST_BROWSER = 'firefox'
       if not shutil.which(EMTEST_BROWSER):
-        if MACOS and os.path.isfile('/Applications/Safari.app/Contents/MacOS/Safari'):
+        if MACOS and os.path.isdir('/Applications/Safari.app'):
           EMTEST_BROWSER = '/Applications/Safari.app'
         else:
           # FIXME: This should really be and error, but this code currently also runs for non-browser tests.
