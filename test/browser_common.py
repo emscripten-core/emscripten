@@ -339,8 +339,11 @@ def configure_test_browser():
     if not shutil.which(EMTEST_BROWSER):
       EMTEST_BROWSER = 'firefox'
       if not shutil.which(EMTEST_BROWSER):
-        # FIXME: This should really be and error, but this code currently also runs for non-browser tests.
-        EMTEST_BROWSER = 'default-browser-not-found'
+        if MACOS and os.path.isfile('/Applications/Safari.app/Contents/MacOS/Safari'):
+          EMTEST_BROWSER = '/Applications/Safari.app'
+        else:
+          # FIXME: This should really be and error, but this code currently also runs for non-browser tests.
+          EMTEST_BROWSER = 'default-browser-not-found'
 
   if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
     # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
