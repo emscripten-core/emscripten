@@ -710,6 +710,7 @@ jobs:
             core2g.test_externref
             corez.test_dylink_iostream
             core2ss.test_pthread_dylink
+            core2ss.test_pthread_dylink_tls
             core2ss.test_pthread_thread_local_storage
             core2ss.test_wasm_worker_futex_wait
             core2s.test_dylink_syslibs_missing_assertions
