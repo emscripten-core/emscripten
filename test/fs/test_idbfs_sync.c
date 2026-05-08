@@ -10,6 +10,7 @@
 #include <stdlib.h>
 #include <stdio.h>
 #include <emscripten.h>
+#include <emscripten/eventloop.h>
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -37,6 +38,10 @@ void cleanup() {
   unlink("/working1/moar.txt");
   rmdir("/working1/dir");
   EM_ASM(FS.syncfs(function(){})); // And persist deleted changes
+}
+
+void test_finish(void *user_data) {
+  finish();
 }
 
 EMSCRIPTEN_KEEPALIVE
@@ -152,7 +157,18 @@ void test() {
 #endif
 
 #ifdef IDBFS_AUTO_PERSIST
+
+#if FIRST
+  // IDBFS autopersist sync mechanism does not have a completion callback API,
+  // so we don't know exactly when it will be done. If we force-quit the
+  // browser immediately, the IDBFS persist might not have had time to complete.
+  // So give the sync some time to complete, before quitting the first phase of
+  // this test.
+  emscripten_set_timeout(test_finish, 5000, 0);
+#else
   finish();
+#endif
+
 #else
   // sync from memory state to persisted and then
   // run 'finish'
