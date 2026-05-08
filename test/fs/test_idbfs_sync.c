@@ -159,12 +159,18 @@ void test() {
 #ifdef IDBFS_AUTO_PERSIST
 
 #if FIRST
-  // IDBFS autopersist sync mechanism does not have a completion callback API,
-  // so we don't know exactly when it will be done. If we force-quit the
-  // browser immediately, the IDBFS persist might not have had time to complete.
-  // So give the sync some time to complete, before quitting the first phase of
-  // this test.
-  emscripten_set_timeout(test_finish, 5000, 0);
+  // Register an IDBFS autopersist completion callback to detect when the
+  // filesystem sync operation has finished.
+  EM_ASM({
+    IDBFS.onAutoPersistStateChanged = autoPersistActive => {
+      if (autoPersistActive) {
+        console.log('IDBFS persistence operation has started.');
+      } else {
+        console.log('IDBFS persistence operation has finished.');
+        callUserCallback(_finish);
+      }
+    }
+  });
 #else
   finish();
 #endif
