@@ -81,6 +81,7 @@ MINIMAL_TASKS = [
     'libGL-emu-getprocaddr',
     'libGL-emu-webgl2-ofb-getprocaddr',
     'libGL-webgl2-ofb-getprocaddr',
+    'libGL-webgl2-ofb-full_es3-getprocaddr',
     'libGL-ww-getprocaddr',
     'libhtml5',
     'libsockets',

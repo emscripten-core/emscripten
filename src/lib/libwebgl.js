@@ -3825,7 +3825,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       cb.stride = stride;
       cb.ptr = ptr;
       cb.clientside = true;
-      cb.vertexAttribPointerAdaptor = function(index, size, type, normalized, stride, ptr) {
+      cb.vertexAttribPointerAdaptor = /** @this {WebGLRenderingContext} */ function(index, size, type, normalized, stride, ptr) {
         this.vertexAttribPointer(index, size, type, normalized, stride, ptr);
       };
       return;
@@ -4262,9 +4262,14 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if WEBGL_USE_GARBAGE_FREE_APIS
       if ({{{ isCurrentContextWebGL2() }}}) {
         GLctx.bufferSubData(target, mapping.offset, HEAPU8, mapping.mem, mapping.length);
-      } else
+      }
+#if INCLUDE_WEBGL1_FALLBACK
+      else
 #endif
+#endif
+#if INCLUDE_WEBGL1_FALLBACK
       GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
+#endif
     }
     _free(mapping.mem);
     mapping.mem = 0;
