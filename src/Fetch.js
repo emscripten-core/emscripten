@@ -661,7 +661,6 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
       return;
     }
     var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData) ? xhr.response?.byteLength ?? 0 : 0;
-    var bytePos = 0;
 
     // Specifies the maximum chunk size that a streaming fetch will transfer from
     // JS over to WebAssembly side. Used to cap a streaming fetch to avoid
