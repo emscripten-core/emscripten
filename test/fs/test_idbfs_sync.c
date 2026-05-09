@@ -157,7 +157,7 @@ void test() {
   // Register an IDBFS autopersist completion callback to detect when the
   // filesystem sync operation has finished.
   EM_ASM({
-    IDBFS.onAutoPersistStateChanged = autoPersistActive => {
+    IDBFS.onAutoPersistStateChanged = (autoPersistActive) => {
       if (autoPersistActive) {
         console.log('IDBFS persistence operation has started.');
       } else {
