@@ -1810,11 +1810,6 @@ var FETCH = false;
 // [link]
 var FETCH_STREAMING = 0;
 
-// Specifies the maximum chunk size that a streaming fetch will transfer from
-// JS over to WebAssembly side. Use this to cap a streaming fetch to avoid
-// overallocating WebAssembly memory needlessly.
-var FETCH_STREAMING_MAX_CHUNK_SIZE = 8*1024*1024;
-
 // ATTENTION [WIP]: Experimental feature. Please use at your own risk.
 // This will eventually replace the current JS file system implementation.
 // If set to 1, uses new filesystem implementation.

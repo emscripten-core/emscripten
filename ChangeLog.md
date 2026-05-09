@@ -22,9 +22,9 @@ See docs/process.md for more on how version tagging works.
 ----------------------
 - When performing a streaming Fetch operation, the max chunk size of downloaded
   bytes that is handed over to the Wasm side from JS is now capped to maximum
-  of FETCH_STREAMING_MAX_CHUNK_SIZE bytes. This ensures that a streaming Fetch
-  stays streaming, rather than transferring the whole (potentially large) file
-  as one huge chunk, which might not fit in the WebAssembly memory. (#26898)
+  of 8 megabytes. This ensures that a streaming Fetch stays streaming, rather
+  than transferring the whole (potentially large) file as one huge chunk, which
+  might not fit in the WebAssembly memory. (#26898)
 - The minimum versions of browser engines supported by emscripten's generated
   code were bumped, allowing us to remove our internal support for transpilation
   via babel:
