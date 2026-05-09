@@ -13,6 +13,7 @@
 // See https://gcc.gnu.org/onlinedocs/gcc-4.6.4/gcc/Atomic-Builtins.html
 
 #define NUM_THREADS 8
+#define NUM_THREADS_ODD (NUM_THREADS-1)
 
 #define T int
 
@@ -71,13 +72,12 @@ int main() {
     T y = nand_and_fetch(&x, 9);
     assert(y == -2);
     assert(x == -2);
-    const int oddNThreads = NUM_THREADS-1;
     for (int x = 0; x < 100; ++x) { // Test a few times for robustness, since this test is so short-lived.
       nand_and_fetch_data = 0;
       __sync_synchronize(); // This has no effect in this code, but called in here just to test that the compiler generates a valid expression for this.
       if (emscripten_has_threading_support()) {
-        for (int i = 0; i < oddNThreads; ++i) pthread_create(&thread[i], NULL, thread_nand_and_fetch, (void*)-1);
-        for (int i = 0; i < oddNThreads; ++i) pthread_join(thread[i], NULL);
+        for (int i = 0; i < NUM_THREADS_ODD; ++i) pthread_create(&thread[i], NULL, thread_nand_and_fetch, (void*)-1);
+        for (int i = 0; i < NUM_THREADS_ODD; ++i) pthread_join(thread[i], NULL);
         assert(nand_and_fetch_data == -1);
       }
     }
@@ -87,12 +87,11 @@ int main() {
     T y = nand_and_fetch_bool(&x, 9);
     assert(y == -2);
     assert(x == -2);
-    const int oddNThreads = NUM_THREADS-1;
     for (int x = 0; x < 100; ++x) { // Test a few times for robustness, since this test is so short-lived.
       nand_and_fetch_data = 0;
       if (emscripten_has_threading_support()) {
-        for (int i = 0; i < oddNThreads; ++i) pthread_create(&thread[i], NULL, thread_nand_and_fetch_bool, (void*)-1);
-        for (int i = 0; i < oddNThreads; ++i) pthread_join(thread[i], NULL);
+        for (int i = 0; i < NUM_THREADS_ODD; ++i) pthread_create(&thread[i], NULL, thread_nand_and_fetch_bool, (void*)-1);
+        for (int i = 0; i < NUM_THREADS_ODD; ++i) pthread_join(thread[i], NULL);
         assert(nand_and_fetch_data == -1);
       }
     }
