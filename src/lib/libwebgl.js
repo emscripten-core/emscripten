@@ -219,7 +219,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       'WEBGL_polygon_mode'
     ];
     // .getSupportedExtensions() can return null if context is lost, so coerce to empty array.
-    return (ctx.getSupportedExtensions() || []).filter(ext => supportedExtensions.includes(ext));
+    return ctx.getSupportedExtensions()?.filter(ext => supportedExtensions.includes(ext)) ?? [];
   },
 
   $GLctx__internal: true,
@@ -603,7 +603,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
 #if GL_ASSERTIONS
     validateGLObjectID: (objectHandleArray, objectID, callerFunctionName, objectReadableType) => {
-      if (objectID != 0) {
+      // `objectHandleArray` may be uninitialized when GL uniforms are lazily initialized, and `glUniform*` is called
+      // for the first time before uniforms have been populated. So ignore this validation if the handle array is not present.
+      if (objectID != 0 && objectHandleArray) {
         if (objectHandleArray[objectID] === null) {
           err(`${callerFunctionName} called with an already deleted ${objectReadableType} ID ${objectID}!`);
         } else if (!(objectID in objectHandleArray)) {
@@ -2119,7 +2121,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   // This function intentionally assigns `HEAP32[x] = someBoolean;` Don't let
   // Closure mind about that.
   $emscriptenWebGLGetUniform__docs: '/** @suppress{checkTypes} */',
-  $emscriptenWebGLGetUniform__deps: ['$webglGetUniformLocation', '$webglPrepareUniformLocationsBeforeFirstUse'],
+  $emscriptenWebGLGetUniform__deps: ['$webglGetProgramUniformLocation', '$webglPrepareUniformLocationsBeforeFirstUse'],
   $emscriptenWebGLGetUniform: (program, location, params, type) => {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null
@@ -2137,7 +2139,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     program = GL.programs[program];
     webglPrepareUniformLocationsBeforeFirstUse(program);
-    var data = GLctx.getUniform(program, webglGetUniformLocation(location));
+    var data = GLctx.getUniform(program, webglGetProgramUniformLocation(program, location));
     if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
         case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
@@ -2171,25 +2173,32 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
   // Returns the WebGLUniformLocation object corresponding to the location index
   // integer on the currently active shader in this GL context.
-  $webglGetUniformLocation: (location) => {
-    var p = GLctx.currentProgram;
-
+  $webglGetProgramUniformLocation__deps: ['$webglPrepareUniformLocationsBeforeFirstUse'],
+  $webglGetProgramUniformLocation: (program, location) => {
 #if !GL_TRACK_ERRORS && ASSERTIONS
     // In -sGL_TRACK_ERRORS=0 build mode do not allow calling glUniform*()
     // without an active GL program.
-    assert(p, 'Attempted to call glUniform*() without an active GL program set! (build with -sGL_TRACK_ERRORS for standards-conformant behavior)');
+    assert(program, 'When building with !GL_TRACK_ERRORS, program cannot be null, in a call to webglGetProgramUniformLocation()');
 #endif
 
 #if GL_TRACK_ERRORS
-    if (p) {
+    if (program) {
 #endif
-      var webglLoc = p.uniformLocsById[location];
-      // p.uniformLocsById[location] stores either an integer, or a
+#if GL_EXPLICIT_UNIFORM_LOCATION
+      // Ensure `uniformLocsById`/`uniformArrayNamesById` are populated. Without
+      // this, calling `glUniform*()` on a freshly linked program before any
+      // `glGetUniformLocation()` silently no-ops: `glLinkProgram` resets
+      // `uniformLocsById` to 0 and only `$webglPrepareUniformLocationsBeforeFirstUse`
+      // refills it. The call below is idempotent (guards on `!uniformLocsById`).
+      webglPrepareUniformLocationsBeforeFirstUse(program);
+#endif
+      var webglLoc = program.uniformLocsById[location];
+      // program.uniformLocsById[location] stores either an integer, or a
       // WebGLUniformLocation.
       // If an integer, we have not yet bound the location, so do it now. The
       // integer value specifies the array index we should bind to.
       if (typeof webglLoc == 'number') {
-        p.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(p, p.uniformArrayNamesById[location] + (webglLoc > 0 ? `[${webglLoc}]` : ''));
+        program.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(program, program.uniformArrayNamesById[location] + (webglLoc > 0 ? `[${webglLoc}]` : ''));
       }
       // Else an already cached WebGLUniformLocation, return it.
       return webglLoc;
@@ -2198,6 +2207,17 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       GL.recordError(0x502/*GL_INVALID_OPERATION*/);
     }
 #endif
+  },
+
+  $webglGetUniformLocation__deps: ['$webglGetProgramUniformLocation'],
+  $webglGetUniformLocation: (location) => {
+#if !GL_TRACK_ERRORS && ASSERTIONS
+    // In -sGL_TRACK_ERRORS=0 build mode do not allow calling glUniform*()
+    // without an active GL program.
+    assert(GLctx.currentProgram, 'Attempted to call glUniform*()/webglGetUniformLocation() without an active GL program set! (build with -sGL_TRACK_ERRORS for standards-conformant behavior)');
+#endif
+
+    return webglGetProgramUniformLocation(GLctx.currentProgram, location);
   },
 
   $webglPrepareUniformLocationsBeforeFirstUse__deps: ['$webglGetLeftBracePos'],
@@ -3317,7 +3337,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     GLctx.compileShader(GL.shaders[shader]);
 #if GL_DEBUG
-    var log = (GLctx.getShaderInfoLog(GL.shaders[shader]) || '').trim();
+    var log = GLctx.getShaderInfoLog(GL.shaders[shader])?.trim();
     if (log) dbg(`glCompileShader: ${log}`);
 #endif
   },
@@ -3501,7 +3521,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     program = GL.programs[program];
     GLctx.linkProgram(program);
 #if GL_DEBUG
-    var log = (GLctx.getProgramInfoLog(program) || '').trim();
+    var log = GLctx.getProgramInfoLog(program)?.trim();
     if (log) dbg(`glLinkProgram: ${log}`);
     if (program.uniformLocsById) dbg(`glLinkProgram invalidated ${Object.keys(program.uniformLocsById).length} uniform location mappings`);
 #endif
@@ -3805,7 +3825,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       cb.stride = stride;
       cb.ptr = ptr;
       cb.clientside = true;
-      cb.vertexAttribPointerAdaptor = function(index, size, type, normalized, stride, ptr) {
+      cb.vertexAttribPointerAdaptor = /** @this {WebGLRenderingContext} */ function(index, size, type, normalized, stride, ptr) {
         this.vertexAttribPointer(index, size, type, normalized, stride, ptr);
       };
       return;
@@ -3865,7 +3885,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       GLctx.bufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/,
                           0,
                           HEAPU8.subarray(indices, indices + size));
-      
+
       // Calculating vertex count if shader's attribute data is on client side
       if (count > 0) {
         for (var i = 0; i < GL.currentContext.maxVertexAttribs; ++i) {
@@ -4242,9 +4262,14 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #if WEBGL_USE_GARBAGE_FREE_APIS
       if ({{{ isCurrentContextWebGL2() }}}) {
         GLctx.bufferSubData(target, mapping.offset, HEAPU8, mapping.mem, mapping.length);
-      } else
+      }
+#if INCLUDE_WEBGL1_FALLBACK
+      else
 #endif
+#endif
+#if INCLUDE_WEBGL1_FALLBACK
       GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
+#endif
     }
     _free(mapping.mem);
     mapping.mem = 0;

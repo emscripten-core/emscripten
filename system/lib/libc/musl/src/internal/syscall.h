@@ -30,15 +30,9 @@
 typedef long syscall_arg_t;
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 hidden long __syscall_ret(unsigned long),
 	__syscall_cp(syscall_arg_t, syscall_arg_t, syscall_arg_t, syscall_arg_t,
 	             syscall_arg_t, syscall_arg_t, syscall_arg_t);
-#ifdef __cplusplus
-}
-#endif
 
 #ifndef __EMSCRIPTEN__
 #define __syscall1(n,a) __syscall1(n,__scc(a))
@@ -445,11 +439,7 @@ hidden long __emulate_wait4(int, int *, int, void *, int);
 #define sys_wait4(a,b,c,d) __syscall_ret(__sys_wait4(a,b,c,d))
 #define sys_wait4_cp(a,b,c,d) __syscall_ret(__sys_wait4_cp(a,b,c,d))
 
-#ifdef __cplusplus
-hidden void __procfdname(char __buf[], unsigned);
-#else
 hidden void __procfdname(char __buf[static 15+3*sizeof(int)], unsigned);
-#endif
 
 hidden void *__vdsosym(const char *, const char *);
 

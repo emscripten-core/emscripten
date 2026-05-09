@@ -170,7 +170,7 @@ var LibraryWebAudio = {
   _emscripten_create_audio_worklet__deps: [
     '$_emAudioDispatchProcessorCallback',
     '$stackAlloc', '$stackRestore', '$stackSave'],
-  _emscripten_create_audio_worklet: (wwID, contextHandle, stackLowestAddress, stackSize, callback, userData) => {
+  _emscripten_create_audio_worklet: (wwID, contextHandle, stackLowestAddress, stackSize, pthreadPtr, callback, userData) => {
 
 #if ASSERTIONS || WEBAUDIO_DEBUG
     emAudioExpectContext(contextHandle, '_emscripten_create_audio_worklet');
@@ -256,6 +256,9 @@ var LibraryWebAudio = {
         wasmMemory,
         stackLowestAddress, // sb = stack base
         stackSize,          // sz = stack size
+#if PTHREADS
+        pthreadPtr,
+#endif
       });
       audioWorklet.port.onmessage = _emAudioDispatchProcessorCallback;
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);

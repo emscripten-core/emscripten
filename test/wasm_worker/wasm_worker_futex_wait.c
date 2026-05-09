@@ -49,4 +49,5 @@ void worker_main() {
 
 int main() {
   emscripten_wasm_worker_post_function_v(emscripten_malloc_wasm_worker(4096), worker_main);
+  emscripten_exit_with_live_runtime();
 }

@@ -514,14 +514,14 @@ var LibraryHtml5WebGL = {
     writeGLArray(GLctx.getVertexAttrib(index, param), dst, dstLength, dstType),
 
   emscripten_webgl_get_uniform_d__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_uniform_d__deps: ['$webglGetUniformLocation'],
+  emscripten_webgl_get_uniform_d__deps: ['$webglGetProgramUniformLocation'],
   emscripten_webgl_get_uniform_d: (program, location) =>
-    GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location)),
+    GLctx.getUniform(GL.programs[program], webglGetProgramUniformLocation(GL.programs[program], location)),
 
   emscripten_webgl_get_uniform_v__proxy: 'sync_on_current_webgl_context_thread',
-  emscripten_webgl_get_uniform_v__deps: ['$writeGLArray', '$webglGetUniformLocation'],
+  emscripten_webgl_get_uniform_v__deps: ['$writeGLArray', '$webglGetProgramUniformLocation'],
   emscripten_webgl_get_uniform_v: (program, location, dst, dstLength, dstType) =>
-    writeGLArray(GLctx.getUniform(GL.programs[program], webglGetUniformLocation(location)), dst, dstLength, dstType),
+    writeGLArray(GLctx.getUniform(GL.programs[program], webglGetProgramUniformLocation(GL.programs[program], location)), dst, dstLength, dstType),
 
   emscripten_webgl_get_parameter_v__proxy: 'sync_on_current_webgl_context_thread',
   emscripten_webgl_get_parameter_v__deps: ['$writeGLArray'],

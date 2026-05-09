@@ -232,7 +232,7 @@ class ChromeConfig:
     # --no-sandbox because we are running as root and chrome requires
     # this flag for now: https://crbug.com/638180
     '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
-    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-type-reflection"',
+    '--enable-experimental-webassembly-features',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
     '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
@@ -339,8 +339,11 @@ def configure_test_browser():
     if not shutil.which(EMTEST_BROWSER):
       EMTEST_BROWSER = 'firefox'
       if not shutil.which(EMTEST_BROWSER):
-        # FIXME: This should really be and error, but this code currently also runs for non-browser tests.
-        EMTEST_BROWSER = 'default-browser-not-found'
+        if MACOS and os.path.isdir('/Applications/Safari.app'):
+          EMTEST_BROWSER = '/Applications/Safari.app'
+        else:
+          # FIXME: This should really be and error, but this code currently also runs for non-browser tests.
+          EMTEST_BROWSER = 'default-browser-not-found'
 
   if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
     # On Windows env. vars canonically use backslashes as directory delimiters, e.g.

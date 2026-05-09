@@ -5,27 +5,13 @@
  * found in the LICENSE file.
  */
 
-#define _GNU_SOURCE
-#include "../internal/libc.h"
-#include "../internal/pthread_impl.h"
+#include "libc.h"
+#include "pthread_impl.h"
 #include <assert.h>
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <poll.h>
 #include <pthread.h>
 #include <stdarg.h>
-#include <stdlib.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/statvfs.h>
-#include <sys/time.h>
-#include <termios.h>
 #include <threads.h>
 #include <unistd.h>
-#include <utime.h>
 
 #include <emscripten.h>
 #include <emscripten/proxying.h>
@@ -136,6 +122,7 @@ void _emscripten_init_main_thread(void) {
   // pthread struct prev and next should initially point to itself (see __init_tp),
   // this is used by pthread_key_delete for deleting thread-specific data.
   __main_pthread.next = __main_pthread.prev = &__main_pthread;
+  // Initialize thread-specific data area.
   __main_pthread.tsd = (void **)__pthread_tsd_main;
 
   _emscripten_init_main_thread_js(&__main_pthread);

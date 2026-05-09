@@ -61,7 +61,10 @@ struct pthread {
 		long off;
 		volatile void *volatile pending;
 	} robust_list;
+#ifndef __EMSCRIPTEN__
+	// Emscripten uses C11 _Thread_local instead for h_errno
 	int h_errno_val;
+#endif
 	volatile int timer_id;
 #ifndef __EMSCRIPTEN__
 	// Emscripten uses C11 _Thread_local instead for locale

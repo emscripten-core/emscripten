@@ -130,35 +130,31 @@ page_last_served_time = None
 http_mutex = threading.RLock()
 
 
-def logi(msg):
-  """Prints a log message to 'info' stdout channel. Always printed."""
+def print_message(msg, file):
   global last_message_time
   with http_mutex:
-    sys.stdout.write(msg + '\n')
-    sys.stdout.flush()
+    file.write(msg + '\n')
+    file.flush()
     last_message_time = tick()
+
+
+def logi(msg):
+  """Prints a log message to stdout. Always printed."""
+  print_message(msg, sys.stdout)
 
 
 def logv(msg):
-  """Prints a verbose log message to stdout channel.
+  """Prints a verbose log message to stdout.
 
   Only shown if run with --verbose.
   """
-  global last_message_time
   if emrun_options.verbose:
-    with http_mutex:
-      sys.stdout.write(msg + '\n')
-      sys.stdout.flush()
-      last_message_time = tick()
+    print_message(msg, sys.stdout)
 
 
 def loge(msg):
-  """Prints an error message to stderr channel."""
-  global last_message_time
-  with http_mutex:
-    sys.stderr.write(msg + '\n')
-    sys.stderr.flush()
-    last_message_time = tick()
+  """Prints an error message to stderr."""
+  print_message(msg, sys.stderr)
 
 
 def format_eol(msg):

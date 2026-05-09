@@ -26,9 +26,9 @@ See docs/process.md for more on how version tagging works.
     MIN_CHROME_VERSION: 74 -> 85
     MIN_FIREFOX_VERSION: 68 -> 79
     MIN_SAFARI_VERSION: 12.2 -> 14.1
-  This allows us to assume that features such as mutable-globals, sign-ext, and
-  threading, are universally available.  Disabling these is no longer possible
-  in emscripten.  If you still need to support extremely old browsers, you can
+  This allows us to assume that features such as mutable-globals and sign-ext
+  are universally available.  Disabling these is no longer possible in
+  emscripten.  If you still need to support extremely old browsers, you can
   manually transpile the output of emscripten (e.g. using babel for JS and
   binaryen for wasm). (#26677)
 

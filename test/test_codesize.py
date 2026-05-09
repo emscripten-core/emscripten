@@ -363,7 +363,7 @@ class codesize(RunnerCore):
     # larger for wasm backend.
     # This test seems to produce different results under gzip on macOS and Windows machines
     # so skip the gzip size reporting here.
-    'dylink_all': (['-O3', '-sMAIN_MODULE'], {'skip_gz': True}),
+    'dylink_all': (['-O3', '-sMAIN_MODULE', '-sFULL_ES3'], {'skip_gz': True}),
     'dylink': (['-O3', '-sMAIN_MODULE=2'],),
     # WasmFS should not be fully linked into a hello world program.
     'wasmfs': (['-O3', '-sWASMFS'],),
