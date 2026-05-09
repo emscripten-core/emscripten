@@ -753,7 +753,11 @@ Please update to new syntax.`);
 
   if (needArgConversion) {
     if (needRtnConversion) {
-      return `((${args}) => Number(${getWasmTableEntry}.call(null, ${callArgs})))`;
+      if (promising) {
+        return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}).then(Number))`;
+      } else {
+        return `((${args}) => Number(${getWasmTableEntry}.call(null, ${callArgs})))`;
+      }
     } else {
       return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
     }
