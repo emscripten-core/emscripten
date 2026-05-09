@@ -30,6 +30,7 @@ from browser_common import (
   browser_should_skip_feature,
   find_browser_test_file,
   get_browser,
+  get_firefox_version,
   get_safari_version,
   is_chrome,
   is_firefox,
@@ -176,6 +177,7 @@ def requires_version(name, version_getter):
 
 
 requires_safari_version = requires_version('safari', get_safari_version)
+requires_firefox_version = requires_version('firefox', get_firefox_version)
 
 
 def is_jspi(args):
@@ -1249,6 +1251,7 @@ window.close = () => {
     'assertions': (['-sGL_ASSERTIONS'],),
   })
   @requires_webgl2
+  @requires_firefox_version(109) # Old Firefox failed to do glGetUniform(program, ...) if program was not active. https://bugzil.la/1645092
   def test_webgl_get_uniform_no_active_program(self, args):
     self.btest_exit('webgl_get_uniform_no_active_program.c', cflags=args + ['-sMIN_WEBGL_VERSION=2'])
 
