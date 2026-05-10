@@ -32,6 +32,8 @@
 
 static void dummy_0() {}
 weak_alias(dummy_0, __pthread_tsd_run_dtors);
+weak_alias(dummy_0, __do_orphaned_stdio_locks);
+weak_alias(dummy_0, __dl_thread_cleanup);
 
 static void __run_cleanup_handlers() {
   pthread_t self = __pthread_self();
@@ -306,11 +308,21 @@ void _emscripten_thread_exit(void* result) {
   // Call into the musl function that runs destructors of all thread-specific data.
   __pthread_tsd_run_dtors();
 
+  // If this is the main runtime thread, don't proceed with
+  // termination of the thread, but prepare for exit to call
+  // atexit handlers.
+  if (emscripten_is_main_runtime_thread()) {
+    exit(0);
+  }
+
+  // At this point we are committed to thread termination.
+
+  // The thread list lock must be AS-safe.
   __tl_lock();
 
-  /* Process robust list in userspace to handle non-pshared mutexes
-   * and the detached thread case where the robust list head will
-   * be invalid when the kernel would process it. */
+  // Process robust list in userspace to handle non-pshared mutexes
+  // and the detached thread case where the robust list head will
+  // be invalid when the kernel would process it.
   __vm_lock();
   volatile void *volatile *rp;
   while ((rp=self->robust_list.head) && rp != &self->robust_list.head) {
@@ -327,18 +339,17 @@ void _emscripten_thread_exit(void* result) {
   }
   __vm_unlock();
 
-  if (!--libc.threads_minus_1) libc.need_locks = 0;
+  __do_orphaned_stdio_locks();
+  __dl_thread_cleanup();
 
+  // Last, unlink thread from the list. This change will not be visible
+  // until the lock is released via __tl_unlock() below.
+  if (!--libc.threads_minus_1) libc.need_locks = 0;
   self->next->prev = self->prev;
   self->prev->next = self->next;
   self->prev = self->next = self;
 
   __tl_unlock();
-
-  if (emscripten_is_main_runtime_thread()) {
-    exit(0);
-    return;
-  }
 
   // Not hosting a pthread anymore in this worker set __pthread_self to NULL
   __set_thread_state(NULL, 0, 0, 1);
@@ -357,8 +368,10 @@ void _emscripten_thread_exit(void* result) {
     // When dynamic linking is enabled we need to keep track of zombie threads
     _emscripten_thread_exit_joinable(self);
 #endif
+
+    // Wake any joiner.
     a_store(&self->detach_state, DT_EXITED);
-    __wake(&self->detach_state, 1, 1); // Wake any joiner.
+    __wake(&self->detach_state, 1, 1);
   }
 }
 
