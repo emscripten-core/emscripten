@@ -315,14 +315,14 @@ void _emscripten_thread_exit(void* result) {
     exit(0);
   }
 
-  // At this point we are committed to thread termination.
+  /* At this point we are committed to thread termination. */
 
-  // The thread list lock must be AS-safe.
+  /* The thread list lock must be AS-safe. */
   __tl_lock();
 
-  // Process robust list in userspace to handle non-pshared mutexes
-  // and the detached thread case where the robust list head will
-  // be invalid when the kernel would process it.
+  /* Process robust list in userspace to handle non-pshared mutexes
+   * and the detached thread case where the robust list head will
+   * be invalid when the kernel would process it. */
   __vm_lock();
   volatile void *volatile *rp;
   while ((rp=self->robust_list.head) && rp != &self->robust_list.head) {
@@ -342,8 +342,8 @@ void _emscripten_thread_exit(void* result) {
   __do_orphaned_stdio_locks();
   __dl_thread_cleanup();
 
-  // Last, unlink thread from the list. This change will not be visible
-  // until the lock is released via __tl_unlock() below.
+  /* Last, unlink thread from the list. This change will not be visible
+   * until the lock is released via __tl_unlock() below. */
   if (!--libc.threads_minus_1) libc.need_locks = 0;
   self->next->prev = self->prev;
   self->prev->next = self->next;
@@ -354,8 +354,8 @@ void _emscripten_thread_exit(void* result) {
   // Not hosting a pthread anymore in this worker set __pthread_self to NULL
   __set_thread_state(NULL, 0, 0, 1);
 
-  // This atomic potentially competes with a concurrent pthread_detach
-  // call; the loser is responsible for freeing thread resources.
+  /* This atomic potentially competes with a concurrent pthread_detach
+   * call; the loser is responsible for freeing thread resources. */
   int state = a_cas(&self->detach_state, DT_JOINABLE, DT_EXITING);
 
   if (state == DT_DETACHED) {
@@ -369,7 +369,7 @@ void _emscripten_thread_exit(void* result) {
     _emscripten_thread_exit_joinable(self);
 #endif
 
-    // Wake any joiner.
+    /* Wake any joiner. */
     a_store(&self->detach_state, DT_EXITED);
     __wake(&self->detach_state, 1, 1);
   }
