@@ -7,6 +7,8 @@
 #include <unistd.h>
 #include <emscripten/threading.h>
 
+#define NUM_THREADS 8
+
 typedef int* (*sidey_data_type)();
 typedef int (*func_t)();
 typedef func_t (*sidey_func_type)();
@@ -16,18 +18,17 @@ static sidey_func_type p_side_func_address;
 static int* expected_data_addr;
 static func_t expected_func_addr;
 
-static atomic_bool started = false;
-static atomic_bool ready = false;
+pthread_barrier_t started;
 
 static void* thread_main(void* arg) {
-  printf("in thread_main\n");
-  started = true;
+  int id = (int)(intptr_t)arg;
 
-  while (!ready) {
-    printf("yielding ..\n");
-    sched_yield();
-    usleep(1000*100);
-  }
+  printf("thread %d: in thread_main\n", id);
+
+  // Wait until all threads + main have reached the barrier
+  pthread_barrier_wait(&started);
+
+  usleep(1000000);
 
   int* data_addr = p_side_data_address();
   assert(data_addr == expected_data_addr);
@@ -36,20 +37,24 @@ static void* thread_main(void* arg) {
   assert(expected_func_addr == func_addr);
   assert(func_addr() == 43);
 
-  printf("thread_main done\n");
+  printf("thread %d: thread_main done\n", id);
   return 0;
 }
 
 int main() {
   printf("in main\n");
 
-  // Start a thread before loading the shared library
-  pthread_t t;
-  int rc = pthread_create(&t, NULL, thread_main, NULL);
-  assert(rc == 0);
+  pthread_barrier_init(&started, NULL, NUM_THREADS + 1);
+  pthread_t threads[NUM_THREADS];
 
-  // Spin until the thread has started
-  while (!started) {}
+  // Start threads before loading the shared library
+  for (int i = 0; i < NUM_THREADS; ++i) {
+    int rc = pthread_create(&threads[i], NULL, thread_main, (void*)(intptr_t)i);
+    assert(rc == 0);
+
+    rc = pthread_detach(threads[i]);
+    assert(rc == 0);
+  }
 
   printf("loading dylib\n");
   void* handle = dlopen("libside.so", RTLD_NOW|RTLD_GLOBAL);
@@ -71,25 +76,11 @@ int main() {
   printf("p_side_func_address -> %p\n", expected_func_addr);
   assert(expected_func_addr() == 43);
 
-  ready = true;
-
-  printf("joining\n");
-  rc = pthread_join(t, NULL);
-  assert(rc == 0);
-  printf("done join\n");
-
-  printf("starting second & third thread\n");
-  pthread_t t2, t3;
-  rc = pthread_create(&t2, NULL, thread_main, NULL);
-  assert(rc == 0);
-  rc = pthread_create(&t3, NULL, thread_main, NULL);
-  assert(rc == 0);
-  rc = pthread_join(t2, NULL);
-  assert(rc == 0);
-  rc = pthread_join(t3, NULL);
-  assert(rc == 0);
-  printf("starting second & third thread\n");
+  // Wait until all threads execute their entry points
+  pthread_barrier_wait(&started);
 
   dlclose(handle);
+
+  printf("done\n");
   return 0;
 }

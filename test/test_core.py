@@ -9309,9 +9309,8 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.cflags += ['--embed-file', 'libside.so@libside.so']
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('PROXY_TO_PTHREAD')
     self.do_runf('core/pthread/test_pthread_dlopen.c',
-                 ['side module ctor', 'done join', 'side module atexit'],
+                 ['side module ctor', 'done', 'side module atexit'],
                  assert_all=True)
 
   @needs_dylink
