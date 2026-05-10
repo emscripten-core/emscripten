@@ -33,6 +33,6 @@ int main() {
     printf("wrote %d in JS, read %d from C\n", 2 * i, fromC);
   }
 
-  puts("success");
+  puts("done");
 }
 

@@ -1284,11 +1284,19 @@ addToLibrary({
 
   $timers: {},
 
+  $clearTimers__internal: true,
+  $clearTimers: () => {
+    for (var t of Object.values(timers)) {
+      clearTimeout(t.id);
+    }
+  },
+
   // Helper function for setitimer that registers timers with the eventloop.
   // Timers always fire on the main thread, either directly from JS (here) or
   // or when the main thread is busy waiting calling _emscripten_yield.
+  _setitimer_js__postset: () => addAtExit('clearTimers();'),
   _setitimer_js__proxy: 'sync',
-  _setitimer_js__deps: ['$timers', '$callUserCallback', '_emscripten_timeout', 'emscripten_get_now'],
+  _setitimer_js__deps: ['$timers', '$clearTimers', '$callUserCallback', '_emscripten_timeout', 'emscripten_get_now'],
   _setitimer_js: (which, timeout_ms) => {
 #if RUNTIME_DEBUG
     dbg(`setitimer_js ${which} timeout=${timeout_ms}`);
@@ -1355,13 +1363,13 @@ addToLibrary({
 
   emscripten_date_now: () => Date.now(),
 
-  emscripten_performance_now: () => {{{ getPerformanceNow() }}}(),
+  emscripten_performance_now: () => performance.now(),
 
 #if PTHREADS && !AUDIO_WORKLET
   // Pthreads need their clocks synchronized to the execution of the main
   // thread, so, when using them, make sure to adjust all timings to the
   // respective time origins.
-  emscripten_get_now: () => performance.timeOrigin + {{{ getPerformanceNow() }}}(),
+  emscripten_get_now: () => performance.timeOrigin + performance.now(),
 #else
 #if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
   emscripten_get_now: `;
@@ -1369,11 +1377,11 @@ addToLibrary({
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
     // Audio Worklets enabled, do a dynamic check for its presence.
-    if (globalThis.performance && {{{ getPerformanceNow() }}}) {
+    if (globalThis.performance?.now) {
 #if PTHREADS
-      _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
+      _emscripten_get_now = () => performance.timeOrigin + performance.now();
 #else
-      _emscripten_get_now = () => {{{ getPerformanceNow() }}}();
+      _emscripten_get_now = () => performance.now();
 #endif
     } else {
       _emscripten_get_now = Date.now;
@@ -1383,7 +1391,7 @@ addToLibrary({
   // Modern environment where performance.now() is supported:
   // N.B. a shorter form "_emscripten_get_now = performance.now;" is
   // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
-  emscripten_get_now: () => {{{ getPerformanceNow() }}}(),
+  emscripten_get_now: () => performance.now(),
 #endif
 #endif
 
@@ -1514,7 +1522,7 @@ addToLibrary({
 
   _emscripten_sanitizer_get_option__deps: ['$stringToNewUTF8', '$UTF8ToString'],
   _emscripten_sanitizer_get_option__sig: 'pp',
-  _emscripten_sanitizer_get_option: (name) => stringToNewUTF8(Module[UTF8ToString(name)] || ''),
+  _emscripten_sanitizer_get_option: (name) => stringToNewUTF8(Module[UTF8ToString(name)] ?? ''),
 #endif
 
   $readEmAsmArgsArray: [],
@@ -1717,7 +1725,7 @@ addToLibrary({
     return "./this.program";
   },
 #else
-  $getExecutableName: () => thisProgram || './this.program',
+  $getExecutableName: () => thisProgram ?? './this.program',
 #endif
 
   // Receives a Web Audio context plus a set of elements to listen for user
@@ -1884,7 +1892,7 @@ addToLibrary({
     }
 #if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
     /** @suppress {checkTypes} */
-    assert(wasmTable.get({{{ toIndexType('funcPtr') }}}) == func, 'JavaScript-side Wasm function table mirror is out of date!');
+    assert(wasmTable.get({{{ toIndexType('funcPtr') }}}) == func, 'table mirror is out of date');
 #endif
     return func;
   },
@@ -2023,7 +2031,7 @@ addToLibrary({
     }
 #endif
 #if RUNTIME_DEBUG
-    dbg("handleException: got unexpected exception, calling quit_")
+    dbg(`handleException: got unexpected exception ${e}, calling quit_`)
 #endif
     quit_(1, e);
   },
@@ -2238,7 +2246,7 @@ addToLibrary({
       return this.allocated[id] !== undefined;
     }
     allocate(handle) {
-      var id = this.freelist.pop() || this.allocated.length;
+      var id = this.freelist.pop() ?? this.allocated.length;
       this.allocated[id] = handle;
       return id;
     }
@@ -2608,8 +2616,6 @@ function wrapSyscallFunction(x, library, isWasi) {
   // instead of synchronously, and marked with
   //  __proxy: 'async'
   // (but essentially all syscalls do have return values).
-  if (library[x + '__proxy'] === undefined) {
-    library[x + '__proxy'] = 'sync';
-  }
+  library[x + '__proxy'] ??= 'sync';
 #endif
 }

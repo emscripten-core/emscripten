@@ -3,9 +3,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""A small wrapper script around the core JS compiler. This calls that
-compiler with the settings given to it. It can also read data from C/C++
-header files (so that the JS compiler can see the constants in those
+"""A small wrapper script around the core JS compiler.
+
+This calls that compiler with the settings given to it. It can also read data
+from C/C++ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
@@ -301,9 +302,9 @@ def trim_asm_const_body(body):
 
 
 def get_cached_file(filetype, filename, generator, cache_limit):
-  """This function implements a file cache which lives inside the main
-  emscripten cache directory but uses a per-file lock rather than a
-  cache-wide lock.
+  """Implement a file cache which lives inside the main emscripten cache directory.
+
+  The defference here is that we use a per-file lock rather than a cache-wide lock.
 
   The cache is pruned (by removing the oldest files) if it grows above
   a certain number of files.
@@ -540,7 +541,9 @@ def finalize_wasm(infile, outfile, js_syms):
     args.append('--side-module')
   if settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
+    # The check-stack pass in binaryen needs to be able to locate `__stack_pointer` by name.
     modify_wasm = True
+    need_name_section = True
   if settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
 
@@ -655,8 +658,8 @@ def create_tsd_exported_runtime_methods(metadata):
           snippet = ' = null'
     js_doc += f'{docs}\nRuntimeExports[\'{name}\']{snippet};\n'
 
-  js_doc_file = in_temp('jsdoc.js')
-  tsc_output_file = in_temp('jsdoc.d.ts')
+  file = 'jsdoc'
+  js_doc_file = in_temp(f'{file}.js')
   utils.write_file(js_doc_file, js_doc)
   tsc = shared.get_npm_cmd('tsc', missing_ok=True)
   # Prefer the npm install'd version of tsc since we know that one is compatible
@@ -668,13 +671,12 @@ def create_tsd_exported_runtime_methods(metadata):
       exit_with_error('tsc executable not found in node_modules or in $PATH')
     # Use the full path from the which command so windows can find tsc.
     tsc = [tsc]
-  cmd = tsc + ['--outFile', tsc_output_file,
-               '--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
+  cmd = tsc + ['--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
                '--declaration',
                '--emitDeclarationOnly',
                '--allowJs', js_doc_file]
   shared.check_call(cmd, cwd=path_from_root())
-  return utils.read_file(tsc_output_file)
+  return utils.read_file(in_temp(f'{file}.d.ts'))
 
 
 def create_tsd(metadata, embind_tsd):
@@ -938,7 +940,8 @@ def install_debug_wrapper(sym):
   # `__trap` can occur before the runtime is initialized since it is used in abort.
   # `emscripten_get_sbrk_ptr` can be called prior to runtime initialization by
   # the dynamic linking code.
-  return sym not in {'__trap', 'emscripten_get_sbrk_ptr'}
+  # `pthread_self` is used in `checkMailbox` after program shutdown.
+  return sym not in {'__trap', 'emscripten_get_sbrk_ptr', 'pthread_self'}
 
 
 def should_export(sym):

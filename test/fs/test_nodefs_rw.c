@@ -51,7 +51,7 @@ int main() {
   assert(file == NULL);
   assert(errno == ENOENT);
 
-  puts("success");
+  puts("done");
 
   return 0;
 }

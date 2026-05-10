@@ -179,7 +179,6 @@ void test() {
   err = closedir(dir);
   assert(!err);
 
-  puts("success");
 }
 
 void test_scandir() {
@@ -203,6 +202,6 @@ int main() {
   setup();
   test();
   test_scandir();
-
+  puts("done");
   return 0;
 }

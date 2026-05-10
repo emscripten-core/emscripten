@@ -24,7 +24,6 @@ from . import (
   utils,
   webassembly,
 )
-from .feature_matrix import UNSUPPORTED
 from .settings import settings
 from .shared import (
   CLANG_CC,
@@ -131,9 +130,7 @@ def link_to_object(args, target):
 
 
 def side_module_external_deps(external_symbols):
-  """Find the list of the external symbols that are needed by the
-  linked side modules.
-  """
+  """Find the list of the external symbols that are needed by the linked side modules."""
   deps = set()
   for sym in settings.SIDE_MODULE_IMPORTS:
     sym = demangle_c_symbol_name(sym)
@@ -143,9 +140,7 @@ def side_module_external_deps(external_symbols):
 
 
 def create_stub_object(external_symbols):
-  """Create a stub object, based on the JS library symbols and their
-  dependencies, that we can pass to wasm-ld.
-  """
+  """Create a stub object, based on the JS library symbols and their dependencies, for use by wasm-ld."""
   stubfile = shared.get_temp_files().get('libemscripten_js_symbols.so').name
   stubs = ['#STUB']
   for name, deps in external_symbols.items():
@@ -353,16 +348,6 @@ def get_command_with_possible_response_file(cmd):
   return new_cmd
 
 
-def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
-  utils.delete_file(output_filename)
-  cmd = [EMAR, action, output_filename] + filenames
-  cmd = get_command_with_possible_response_file(cmd)
-  run_process(cmd, stdout=stdout, stderr=stderr, env=env)
-
-  if 'c' in action:
-    assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
-
-
 def opt_level_to_str(opt_level, shrink_level=0):
   # convert opt_level/shrink_level pair to a string argument like -O1
   if opt_level == 0:
@@ -521,7 +506,7 @@ def get_closure_compiler_and_env(user_args):
   if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
     # Run with Java Closure compiler as a fallback if the native version does not work.
     # This can happen, for example, on arm64 macOS machines that do not have Rosetta installed.
-    logger.warning('falling back to java version of closure compiler')
+    logger.debug('falling back to java version of closure compiler')
     user_args.append('--platform=java')
     check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
 
@@ -529,43 +514,12 @@ def get_closure_compiler_and_env(user_args):
 
 
 def version_split(v):
-  """Split version setting number (e.g. 162000) into versions string (e.g. "16.2.0")
-  """
+  """Split version setting number (e.g. 162000) into versions string (e.g. "16.2.0")."""
   v = str(v).rjust(6, '0')
   assert len(v) == 6
   m = re.match(r'(\d{2})(\d{2})(\d{2})', v)
   major, minor, rev = m.group(1, 2, 3)
   return f'{int(major)}.{int(minor)}.{int(rev)}'
-
-
-@ToolchainProfiler.profile()
-def transpile(filename):
-  config = {
-    'sourceType': 'script',
-    'presets': ['@babel/preset-env'],
-    'targets': {},
-  }
-  if settings.MIN_CHROME_VERSION != UNSUPPORTED:
-    config['targets']['chrome'] = str(settings.MIN_CHROME_VERSION)
-  if settings.MIN_FIREFOX_VERSION != UNSUPPORTED:
-    config['targets']['firefox'] = str(settings.MIN_FIREFOX_VERSION)
-  if settings.MIN_SAFARI_VERSION != UNSUPPORTED:
-    config['targets']['safari'] = version_split(settings.MIN_SAFARI_VERSION)
-  if settings.MIN_NODE_VERSION != UNSUPPORTED:
-    config['targets']['node'] = version_split(settings.MIN_NODE_VERSION)
-  config_json = json.dumps(config, indent=2)
-  outfile = shared.get_temp_files().get('babel.js').name
-  config_file = shared.get_temp_files().get('babel_config.json').name
-  logger.debug(config_json)
-  utils.write_file(config_file, config_json)
-  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--config-file', config_file]
-  # Babel needs access to `node_modules` for things like `preset-env`, but the
-  # location of the config file (and the current working directory) might not be
-  # in the emscripten tree, so we explicitly set NODE_PATH here.
-  env = shared.env_with_node_in_path()
-  env['NODE_PATH'] = path_from_root('node_modules')
-  check_call(cmd, env=env)
-  return outfile
 
 
 @ToolchainProfiler.profile()
@@ -630,7 +584,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   args += ['--language_in', 'UNSTABLE']
-  # We do transpilation using babel
+  # We currently only use closure compiler for minification, not transpilation.
   args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
   args += ['--emit_use_strict=false']
@@ -1047,7 +1001,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
 
 @ToolchainProfiler.profile()
 def strip_sections(infile, outfile, sections):
-  """Strip specified sections from a wasm file"""
+  """Strip specified sections from a wasm file."""
   cmd = [LLVM_OBJCOPY, infile, outfile] + ['--remove-section=' + section for section in sections]
   check_call(cmd)
 
@@ -1152,8 +1106,7 @@ def write_symbol_map(wasm_file, symbols_file):
 
 
 def is_ar(filename):
-  """Return True if the given filename is an ar archive, False otherwise.
-  """
+  """Return True if the given filename is an ar archive, False otherwise."""
   try:
     header = open(filename, 'rb').read(8)
   except Exception as e:
@@ -1316,13 +1269,13 @@ def new_intermediate_filename(name):
 
 
 def save_intermediate(src, name):
-  """Copy an existing file CANONICAL_TEMP_DIR"""
+  """Copy an existing file CANONICAL_TEMP_DIR."""
   if DEBUG:
     shutil.copyfile(src, new_intermediate_filename(name))
 
 
 def write_intermediate(content, name):
-  """Generate a new debug file CANONICAL_TEMP_DIR"""
+  """Generate a new debug file CANONICAL_TEMP_DIR."""
   if DEBUG:
     utils.write_file(new_intermediate_filename(name), content)
 

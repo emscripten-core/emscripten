@@ -5,7 +5,6 @@
  * found in the LICENSE file.
  */
 
-#define _GNU_SOURCE
 #include "pthread_impl.h"
 #include "stdio_impl.h"
 #include "assert.h"
@@ -14,6 +13,7 @@
 #include <string.h>
 #include <threads.h>
 #include <unistd.h>
+
 #include <emscripten/heap.h>
 #include <emscripten/threading.h>
 
@@ -62,14 +62,6 @@ static void init_file_lock(FILE *f) {
   if (f && f->lock<0) f->lock = 0;
 }
 
-static pid_t next_tid = 0;
-
-// In case the stub syscall is not linked it
-static int dummy_getpid(void) {
-  return 42;
-}
-weak_alias(dummy_getpid, __syscall_getpid);
-
 static int tl_lock_count;
 static int tl_lock_waiters;
 
@@ -115,16 +107,10 @@ int __pthread_create(pthread_t* restrict res,
                      void* (*entry)(void*),
                      void* restrict arg) {
   // Note on LSAN: lsan intercepts/wraps calls to pthread_create so any
-  // allocation we do here should be considered leaks.
+  // allocations we do here should not be considered leaks.
   // See: lsan_interceptors.cpp.
   if (!res) {
     return EINVAL;
-  }
-
-  // Create threads with monotonically increasing TID starting with the main
-  // thread which has TID == PID.
-  if (!next_tid) {
-    next_tid = getpid() + 1;
   }
 
   if (!libc.threaded) {
@@ -177,7 +163,7 @@ int __pthread_create(pthread_t* restrict res,
   // The pthread struct has a field that points to itself - this is used as a
   // magic ID to detect whether the pthread_t structure is 'alive'.
   new->self = new;
-  new->tid = next_tid++;
+  new->tid = _emscripten_get_next_tid();
 
   // pthread struct robust_list head should point to itself.
   new->robust_list.head = &new->robust_list.head;
@@ -305,10 +291,10 @@ void _emscripten_thread_free_data(pthread_t t) {
 }
 
 void _emscripten_thread_exit(void* result) {
-  struct pthread *self = __pthread_self();
+  pthread_t self = __pthread_self();
   assert(self);
 
-  self->canceldisable = PTHREAD_CANCEL_DISABLE;
+  self->canceldisable = 1;
   self->cancelasync = 0;
   self->result = result;
 
@@ -357,8 +343,8 @@ void _emscripten_thread_exit(void* result) {
   // Not hosting a pthread anymore in this worker set __pthread_self to NULL
   __set_thread_state(NULL, 0, 0, 1);
 
-  /* This atomic potentially competes with a concurrent pthread_detach
-   * call; the loser is responsible for freeing thread resources. */
+  // This atomic potentially competes with a concurrent pthread_detach
+  // call; the loser is responsible for freeing thread resources.
   int state = a_cas(&self->detach_state, DT_JOINABLE, DT_EXITING);
 
   if (state == DT_DETACHED) {
@@ -376,7 +362,7 @@ void _emscripten_thread_exit(void* result) {
   }
 }
 
-// Mark as `no_sanitize("address"` since emscripten_pthread_exit destroys
+// Mark as `no_sanitize("address")` since emscripten_pthread_exit destroys
 // the current thread and runs its exit handlers.  Without this asan injects
 // a call to __asan_handle_no_return before emscripten_unwind_to_js_event_loop
 // which seem to cause a crash later down the line.

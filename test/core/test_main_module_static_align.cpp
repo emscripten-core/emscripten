@@ -11,7 +11,7 @@ __attribute__((aligned(16))) volatile char aligned;
 
 int main() {
   assert((((size_t) &aligned) % 16) == 0);
-  puts("done!");
+  puts("done");
   return 0;
 }
 

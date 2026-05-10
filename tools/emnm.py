@@ -4,8 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Wrapper script around `llvm-nm`.
-"""
+"""Wrapper script around `llvm-nm`."""
 
 import os
 import sys

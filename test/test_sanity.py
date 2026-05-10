@@ -90,7 +90,8 @@ def make_fake_tool(filename, version, report_name=None, extra_output=None):
 
 
 def make_fake_clang(filename, version, targets='wasm32 - WebAssembly 32-bit'):
-  """Create a fake clang that only handles --version
+  """Create a fake clang that only handles --version.
+
   --version writes to stdout (unlike -v which writes to stderr)
   """
   output = 'clang fake output\nRegistered Targets:\n%s' % targets
@@ -846,3 +847,26 @@ fi
 
     # Running bootstrap.py should not fail
     self.run_process([utils.exe_path_from_root('bootstrap')], env=env)
+
+  # Verify that if user specifies a relative path to Python executable, then
+  # Emscripten is still able to build.
+  def test_emcc_with_relative_python_path(self):
+    restore_and_set_up()
+    # Clear the cache, since rebuilding the cache has been observed to fail
+    # if Python path is specified as relative.
+    self.clear_cache()
+
+    try:
+      relative_python = os.path.relpath(os.environ.get('EMSDK_PYTHON'), os.getcwd())
+    except ValueError:
+      self.skipTest('Python and Emscripten are located on different drives, cannot run this test.')
+
+    relative_python_escaped = relative_python.replace("\\", "\\\\")
+    add_to_config(f'PYTHON = "{relative_python_escaped}"')
+
+    env = os.environ.copy()
+    env['EMSDK_PYTHON'] = relative_python
+
+    output = self.do([EMCC, test_file('hello_world.c')], env=env)
+    self.assertNotContained('error', output)
+    self.assertExists('a.out.js')

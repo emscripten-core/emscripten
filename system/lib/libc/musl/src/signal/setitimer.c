@@ -8,6 +8,7 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/threading.h>
 #include <assert.h>
+#include <math.h>
 #include <signal.h>
 #include <stdint.h>
 #include <stdio.h>
@@ -63,21 +64,41 @@ void _emscripten_timeout(int which, double now)
 	raise(signum);
 }
 
-void _emscripten_check_timers(double now)
+bool _emscripten_check_timers(double now)
 {
 	// Timers always run on the main runtime thread. They are registered with
 	// _setitimer_js which is proxied to the main runtime thread.
 	assert(emscripten_is_main_runtime_thread());
+	bool rtn = false;
 	for (int which = 0; which < 3; which++) {
 		if (current_timeout_ms[which]) {
 			// Only call out to JS to get the current time if it was not passed in
 			// *and* we have one or more timers set.
 			if (!now)
 			 	now = emscripten_get_now();
-			if (now >= current_timeout_ms[which])
+			if (now >= current_timeout_ms[which]) {
+				rtn = true;
 				_emscripten_timeout(which, now);
+			}
 		}
 	}
+	return rtn;
+}
+
+double _emscripten_next_timer()
+{
+	assert(emscripten_is_main_runtime_thread());
+	double next_timer = INFINITY;
+	for (int which = 0; which < 3; which++) {
+		if (current_timeout_ms[which]) {
+			next_timer = fmin(current_timeout_ms[which], next_timer);
+		}
+	}
+	// Avoid calling emscripten_get_now() unless we need to here.
+	if (next_timer != INFINITY) {
+		next_timer -= emscripten_get_now();
+	}
+	return next_timer;
 }
 #endif
 

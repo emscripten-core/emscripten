@@ -4,8 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""A tool that generates FS API calls to generate a filesystem, and packages the files
-to work with that.
+r"""Tool that generates FS API calls to create a filesystem, and packages the files to work with that.
 
 This is called by emcc. You can also call it yourself.
 
@@ -63,9 +62,9 @@ Usage:
   --quiet Suppress reminder about using `FORCE_FILESYSTEM`
 
 Notes:
-
   * The file packager generates unix-style file paths. So if you are on windows and a file is accessed at
     subdir\file, in JS it will be subdir/file. For simplicity we treat the web platform as a *NIX.
+
 """
 
 import ctypes
@@ -139,7 +138,6 @@ def err(*args):
 
 def has_hidden_attribute(filepath):
   """Win32 code to test whether the given file has the hidden property set."""
-
   if sys.platform != 'win32':
     return False
 
@@ -153,8 +151,11 @@ def has_hidden_attribute(filepath):
 
 
 def should_ignore(fullname):
-  """The packager should never preload/embed files if the file
-  is hidden (Win32) or it matches any pattern specified in --exclude"""
+  """Return True if packager should ignore the given file.
+
+  We do not want to preload/embed a file if it is hidden (Win32) or
+  if it matches any pattern specified in --exclude
+  """
   if has_hidden_attribute(fullname):
     return True
   ignored = False
@@ -169,7 +170,7 @@ def should_ignore(fullname):
 
 
 def add(mode, rootpathsrc, rootpathdst):
-  """Expand directories into individual files
+  """Expand directories into individual files.
 
   rootpathsrc: The path name of the root directory on the local FS we are
                adding to emscripten virtual FS.
@@ -204,8 +205,7 @@ def add(mode, rootpathsrc, rootpathdst):
 
 
 def to_asm_string(string):
-  """Convert a python string to string suitable for including in an
-  assembly file using the `.asciz` directive.
+  """Convert a python string to string suitable for using in `.asciz` assembly directive.
 
   The result will be an UTF-8 encoded string in the data section.
   """

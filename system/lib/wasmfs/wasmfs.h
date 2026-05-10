@@ -25,6 +25,7 @@ class WasmFS {
   FileTable fileTable;
   std::shared_ptr<Directory> rootDirectory;
   std::shared_ptr<Directory> cwd;
+  std::atomic<mode_t> umask = 0022;
   std::mutex mutex;
 
   // Private method to initialize root directory once.
@@ -52,6 +53,14 @@ public:
     const std::lock_guard<std::mutex> lock(mutex);
     cwd = directory;
   };
+
+  mode_t getUmask() {
+    return umask;
+  }
+
+  void setUmask(mode_t mask) {
+    umask = mask;
+  }
 
   backend_t addBackend(std::unique_ptr<Backend> backend) {
     const std::lock_guard<std::mutex> lock(mutex);

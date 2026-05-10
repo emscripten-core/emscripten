@@ -35,14 +35,16 @@ int main()
 	pthread_t thread;
 	int rc = pthread_create(&thread, NULL, ThreadMain, 0);
 	assert(rc == 0);
-	rc = emscripten_futex_wait(&main_thread_wait_val, 1, 15 * 1000);
-	// An rc of 0 means no error, and of EWOULDBLOCK means that the value is
-	// not the expected one, which can happen if the pthread manages to set it
-	// before we reach the futex_wait.
-	if (rc != 0 && rc != -EWOULDBLOCK)
-	{
-		printf("ERROR! futex wait errored %d!\n", rc);
-		return 2;
+	while (main_thread_wait_val != 0) {
+		rc = emscripten_futex_wait(&main_thread_wait_val, 1, 15 * 1000);
+		// An rc of 0 means no error, and of EWOULDBLOCK means that the value is
+		// not the expected one, which can happen if the pthread manages to set it
+		// before we reach the futex_wait.
+		if (rc != 0 && rc != -EWOULDBLOCK)
+		{
+			printf("ERROR! futex wait errored %d!\n", rc);
+			return 2;
+		}
 	}
 	pthread_join(thread, 0);		
 

@@ -32,6 +32,6 @@ int main(void) {
   assert(close(fd2) == 0);
   assert(write(fd3, "ghijkl", 6) == 6);
   assert(close(fd3) == 0);
-  printf("success\n");
+  printf("done\n");
   return 0;
 }

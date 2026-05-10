@@ -15,8 +15,7 @@ DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
 
 
 def create_response_file_contents(args):
-  """Create response file contents based on list of arguments.
-  """
+  """Create response file contents based on list of arguments."""
   escape_chars = ['\\', '\"']
   # When calling llvm-ar on Linux and macOS, single quote characters ' should be escaped.
   if not WINDOWS:
@@ -40,9 +39,7 @@ def create_response_file_contents(args):
 
 
 def create_response_file(args, directory):
-  """Routes the given cmdline param list in args into a new response file and
-  returns the filename to it.
-  """
+  """Route the given cmdline into a new response file and return its name."""
   # Backslashes and other special chars need to be escaped in the response file.
   contents = create_response_file_contents(args)
 
@@ -62,16 +59,15 @@ def create_response_file(args, directory):
 
 
 def expand_response_file(arg):
-  """Reads a response file, and returns the list of cmdline params found in the
-  file.
+  """Read a response file, and returns the list of cmdline params found in the file.
 
   The encoding that the response filename should be read with can be specified
   as a suffix to the file, e.g. "foo.rsp.utf-8" or "foo.rsp.cp1252". If not
   specified, first UTF-8 and then Python locale.getpreferredencoding() are
   attempted.
 
-  The parameter `arg` is the command line argument to be expanded."""
-
+  The parameter `arg` is the command line argument to be expanded.
+  """
   if arg.startswith('@'):
     response_filename = arg[1:]
   elif arg.startswith('-Wl,@'):

@@ -22,7 +22,7 @@ if __name__ == '__main__':
 import clang_native
 import common
 import jsrun
-from common import read_binary, read_file, test_file
+from common import copy_asset, read_binary, read_file, test_file
 from decorators import needs_make, parameterized
 
 from tools import utils
@@ -80,7 +80,7 @@ class Benchmarker(ABC):
   def get_output_files(self):
     pass
 
-  def bench(self, args, reps, output_parser=None, expected_output=None):
+  def bench(self, args, reps=EMTEST_REPS, output_parser=None, expected_output=None):
     self.times = []
     for _ in range(reps):
       start = time.time()
@@ -167,8 +167,9 @@ class Benchmarker(ABC):
 
 
 class ToolchainBenchmarker(Benchmarker):
-  """ToolchainBenchmarker performs the compile step during run.  i.e. it measures the perf of the
-  compiler rather than the generated code.
+  """ToolchainBenchmarker performs the compile step during run.
+
+  It measures the perf of the compiler rather than the generated code.
 
   Some simple tests will just work with these benchmarkers but more complex ones will not because
   the arguments to `build` are all ignored.
@@ -1033,7 +1034,7 @@ class benchmark(common.RunnerCore):
 
   def lua(self, benchmark, expected, output_parser=None):
     self.cflags.remove('-Werror')
-    shutil.copyfile(test_file(f'third_party/lua/{benchmark}.lua'), benchmark + '.lua')
+    copy_asset(f'third_party/lua/{benchmark}.lua')
 
     def lib_builder(name, native, env_init):
       # Inject -sMEMORY64 into node-64 benchmarking runs.

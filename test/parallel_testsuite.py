@@ -200,7 +200,7 @@ class ParallelTestSuite(unittest.BaseTestSuite):
     return result
 
   def get_sorted_tests(self):
-    """A list of this suite's tests, sorted with the @is_slow_test tests first.
+    """Return a list of this suite's tests, sorted with the @is_slow_test tests first.
 
     Future work: measure and store the speed of tests each test sort more accurately.
     """
@@ -239,8 +239,8 @@ class ParallelTestSuite(unittest.BaseTestSuite):
 
 
 class BufferedParallelTestResult(BufferingMixin, unittest.TestResult):
-  """A picklable struct used to communicate test results across processes
-  """
+  """A picklable struct used to communicate test results across processes."""
+
   def __init__(self):
     super().__init__()
     self.test_duration = 0
@@ -257,8 +257,11 @@ class BufferedParallelTestResult(BufferingMixin, unittest.TestResult):
     self.test_duration = elapsed
 
   def integrate_result(self, overall_results):
-    """This method get called on the main thread once the buffered result
-    is received.  It adds the buffered result to the overall result."""
+    """Integrate buffered results from a worker process.
+
+    This method gets called on the main thread once the buffered result is received.
+    It adds the buffered result to the overall result.
+    """
 
     # Turns a <test, string> pair back into something that looks enough
     # link a <test, exc_info> pair. The exc_info triple has the exception

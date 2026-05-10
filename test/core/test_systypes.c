@@ -22,6 +22,6 @@ int main() {
   u_int32_t ui32 = 0;
   int64_t i64 = 0;
   u_int64_t ui64 = 0;
-  puts("success");
+  puts("done");
   return 0;
 }

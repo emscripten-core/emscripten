@@ -329,15 +329,13 @@ unaligned. To do so you can:
 Function Pointer Issues
 -----------------------
 
-If you get an ``abort()`` from a function pointer call to ``nullFunc`` or ``b0``
-or ``b1`` (possibly with an error message saying "incorrect function pointer"),
-the problem is that the function pointer was not found in the expected function
-pointer table when called.
+If you get ::
 
-.. note:: ``nullFunc`` is the function used to populate empty index entries in
-  the function pointer tables (``b0`` and ``b1`` are shorter names used for
-  ``nullFunc`` in more optimized builds).  A function pointer to an invalid
-  index will call this function, which simply calls ``abort()``.
+    RuntimeError: null function or function signature mismatch
+
+(or, in certain build types, an ``abort()`` or an error of "incorrect function
+pointer"), the problem is that a function of the correct type was not found in
+the function pointer table when called.
 
 There are several possible causes:
 

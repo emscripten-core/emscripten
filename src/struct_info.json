@@ -252,6 +252,9 @@
             "F_SETFL",
             "O_NOFOLLOW",
             "O_APPEND",
+            "O_ASYNC",
+            "O_DIRECT",
+            "O_NOATIME",
             "F_SETOWN",
             "O_TRUNC",
             "O_DIRECTORY",
@@ -324,7 +327,8 @@
     {
         "file": "limits.h",
         "defines": [
-            "TZNAME_MAX"
+            "TZNAME_MAX",
+            "SYMLOOP_MAX"
         ]
     },
     {

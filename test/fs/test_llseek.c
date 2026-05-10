@@ -7,8 +7,7 @@
 
 #include <emscripten/emscripten.h>
 
-int main()
-{
+int main() {
   EM_ASM(
     FS.writeFile('testfile', 'a=1\nb=2\n');
     var stream = FS.open('testfile', 'a');
@@ -22,11 +21,9 @@ int main()
       ex = e;
     }
     assert(ex instanceof FS.ErrnoError && ex.errno === 28 /* EINVAL */);
-
-    if (FS.llseek(stream, 0, 1 /* SEEK_CUR */) === 11) {
-      console.log("success");
-    }
+    assert(FS.llseek(stream, 0, 1 /* SEEK_CUR */) === 11);
     FS.close(stream);
+    console.log("done");
   );
 
   return 0;

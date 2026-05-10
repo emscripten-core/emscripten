@@ -1,1 +1,4 @@
+done main
+terminateThread
+done workerThread
 done waiting - thread successfully terminated

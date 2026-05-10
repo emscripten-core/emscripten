@@ -4,9 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Install the parts of emscripten needed for end users. This works like
-a traditional `make dist` target but is written in python so it can be portable
-and run on non-unix platforms (basically windows).
+"""Install the parts of emscripten needed for end users.
+
+This works like a traditional `make dist` target but is written in python
+so it can be portable and run on non-unix platforms (i.e. windows).
 """
 
 import argparse

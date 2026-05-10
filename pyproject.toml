@@ -22,6 +22,7 @@ lint.select = [
   "ARG",
   "ASYNC",
   "B",
+  "D",
   "C4",
   "C90",
   "COM",
@@ -37,6 +38,17 @@ lint.select = [
 ]
 lint.external = [ "D" ]
 lint.ignore = [
+  "D100", # https://docs.astral.sh/ruff/rules/undocumented-public-module/
+  "D101", # https://docs.astral.sh/ruff/rules/undocumented-public-class/
+  "D102", # https://docs.astral.sh/ruff/rules/undocumented-public-method/
+  "D103", # https://docs.astral.sh/ruff/rules/undocumented-public-function/
+  "D104", # https://docs.astral.sh/ruff/rules/undocumented-public-package/
+  "D105", # https://docs.astral.sh/ruff/rules/undocumented-magic-method/
+  "D106", # https://docs.astral.sh/ruff/rules/undocumented-public-nested-class/
+  "D107", # https://docs.astral.sh/ruff/rules/undocumented-public-init/
+  "D203", # https://docs.astral.sh/ruff/rules/incorrect-blank-line-before-class/
+  "D213", # https://docs.astral.sh/ruff/rules/multi-line-summary-second-line/
+  "D401", # https://docs.astral.sh/ruff/rules/non-imperative-mood/
   "B011", # See https://github.com/PyCQA/flake8-bugbear/issues/66
   "B023",
   "B026",

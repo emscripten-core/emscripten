@@ -117,7 +117,16 @@ addToLibrary({
       dup(stream) {
         stream.node.pipe.refcnt++;
       },
-      ioctl(stream, request, varargs) {
+      ioctl(stream, request, argp) {
+        if (request == {{{ cDefs.FIONREAD }}}) {
+          var pipe = stream.node.pipe;
+          var currentLength = 0;
+          for (var bucket of pipe.buckets) {
+            currentLength += bucket.offset - bucket.roffset;
+          }
+          {{{ makeSetValue('argp', 0, 'currentLength', 'i32') }}};
+          return 0;
+        }
         return {{{ cDefs.EINVAL }}};
       },
       fsync(stream) {

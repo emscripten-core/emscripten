@@ -395,7 +395,7 @@ LibraryJSEventLoop = {
    */`,
   $setMainLoop: (iterFunc, fps, simulateInfiniteLoop, arg, noSetTiming) => {
 #if ASSERTIONS
-    assert(!MainLoop.func, 'emscripten_set_main_loop: there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one before setting a new one with different parameters.');
+    assert(!MainLoop.func, 'emscripten_set_main_loop: there can only be one main loop function at once')
 #endif
     MainLoop.func = iterFunc;
     MainLoop.arg = arg;

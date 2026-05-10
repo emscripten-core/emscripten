@@ -14,9 +14,10 @@ EM_ASYNC_JS(int, async_call, (), {
 });
 
 void *run_thread(void *args) {
-  int ret = async_call();
+  intptr_t ret = async_call();
+  printf("async_call done %ld\n", ret);
   assert(ret == 42);
-  return NULL;
+  return (void*)ret;
 }
 
 int main() {
@@ -26,8 +27,9 @@ int main() {
   // Also test that JSPI works on other threads.
   pthread_create(&id, NULL, run_thread, NULL);
   printf("joining thread!\n");
-  pthread_join(id, NULL);
-  printf("joined thread!\n");
-
+  void* rtn;
+  pthread_join(id, &rtn);
+  printf("join returned -> %ld\n", (intptr_t)rtn);
+  assert((intptr_t)rtn == 42);
   return 0;
 }
