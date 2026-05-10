@@ -1725,7 +1725,7 @@ addToLibrary({
     return "./this.program";
   },
 #else
-  $getExecutableName: () => thisProgram ?? './this.program',
+  $getExecutableName: () => thisProgram,
 #endif
 
   // Receives a Web Audio context plus a set of elements to listen for user
