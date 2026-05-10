@@ -69,8 +69,9 @@ struct pthread {
 #ifndef __EMSCRIPTEN__
 	// Emscripten uses C11 _Thread_local instead for locale
 	locale_t locale;
-#endif
+	// Emscripten doesn't use this field.
 	volatile int killlock[1];
+#endif
 	char *dlerror_buf;
 	void *stdio_locks;
 
