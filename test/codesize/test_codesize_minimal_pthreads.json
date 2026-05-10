@@ -1,10 +1,10 @@
 {
   "a.out.js": 7372,
   "a.out.js.gz": 3593,
-  "a.out.nodebug.wasm": 19047,
-  "a.out.nodebug.wasm.gz": 8796,
-  "total": 26419,
-  "total_gz": 12389,
+  "a.out.nodebug.wasm": 19037,
+  "a.out.nodebug.wasm.gz": 8786,
+  "total": 26409,
+  "total_gz": 12379,
   "sent": [
     "a (memory)",
     "b (exit)",
@@ -62,7 +62,6 @@
   "funcs": [
     "$__errno_location",
     "$__memcpy",
-    "$__memset",
     "$__pthread_getspecific",
     "$__pthread_mutex_lock",
     "$__pthread_mutex_trylock",
