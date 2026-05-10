@@ -22,12 +22,6 @@ var createRequire;
 // Closure externs used by library_sockfs.js
 
 /**
- * Backported from latest closure...
- * @see https://developer.mozilla.org/en-US/docs/Web/API/Document/currentScript
- */
-Document.prototype.currentScript;
-
-/**
  * Don't minify Math.*
  */
 /**
@@ -61,17 +55,11 @@ Math.trunc = function() {};
  */
 
 var Atomics = {};
-Atomics.compareExchange = function() {};
-Atomics.exchange = function() {};
-Atomics.wait = function() {};
 /**
  * @param {number=} maxWaitMilliseconds
  * @suppress {duplicate, checkTypes}
  */
 Atomics.waitAsync = function(i32a, index, value, maxWaitMilliseconds) {};
-Atomics.notify = function() {};
-Atomics.load = function() {};
-Atomics.store = function() {};
 
 /**
  * @const
@@ -96,20 +84,10 @@ WebAssembly.Exception.stack;
  * Note: Closure compiler does not support function overloading, omit this overload for now.
  * {function(!WebAssembly.Module, Object=):!Promise<!WebAssembly.Instance>}
  */
-/** @dict */
-WebAssembly.Instance.prototype.exports;
-/**
- * @type {!ArrayBuffer}
- */
-WebAssembly.Memory.prototype.buffer;
 /**
  * @returns {ArrayBuffer}
  */
 WebAssembly.Memory.prototype.toResizableBuffer = function() {};
-/**
- * @type {number}
- */
-WebAssembly.Table.prototype.length;
 /**
  * @param {!Function} func
  * @returns {Function}
