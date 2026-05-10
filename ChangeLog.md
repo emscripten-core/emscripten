@@ -41,6 +41,8 @@ See docs/process.md for more on how version tagging works.
 - The autopersistence feature in IDBFS mount now supports registering a global
   callback `IDBFS.onAutoPersistStateChanged = active => {}`, which will be
   notified of all IDBFS sync start and end events. (#26895)
+- google-closure-compiler was updated to 20260429.0.0. (#26869)
+  Closure compiler now provides a native macOS arm64 binary for Apple Silicon.
 
 5.0.7 - 04/30/26
 ----------------
