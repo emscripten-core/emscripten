@@ -773,12 +773,19 @@ def get_dylibs(options, linker_args):
   This can either be via `-lfoo` or via `libfoo.so` directly.
   """
   dylibs = []
+  # Mimic the behavior of the native linker WRT to the `-Bstack/-Bdynamic` flags.
+  search_for_dylibs = True
   for arg in linker_args:
-    if arg.startswith('-l'):
-      for ext in DYLIB_EXTENSIONS:
-        path = find_library('lib' + arg[2:] + ext, options.lib_dirs)
-        if path and building.is_wasm_dylib(path):
-          dylibs.append(path)
+    if arg in {'-Bstatic', '-static'}:
+      search_for_dylibs = False
+    elif arg == '-Bdynamic':
+      search_for_dylibs = True
+    elif arg.startswith('-l'):
+      if search_for_dylibs:
+        for ext in DYLIB_EXTENSIONS:
+          path = find_library('lib' + arg[2:] + ext, options.lib_dirs)
+          if path and building.is_wasm_dylib(path):
+            dylibs.append(path)
     elif building.is_wasm_dylib(arg):
       dylibs.append(arg)
   return dylibs
