@@ -41,6 +41,22 @@ em_proxying_queue* emscripten_proxy_get_system_queue(void) {
   return &system_proxying_queue;
 }
 
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
+// Proxying queue specially for handling code loading (dlopen) events.
+// Processed by background threads that call `_emscripten_process_dlopen_queue`
+// during futex_wait (i.e. whenever they block).
+static em_proxying_queue dlopen_proxying_queue = {
+  .mutex = PTHREAD_MUTEX_INITIALIZER,
+  .task_queues = NULL,
+  .size = 0,
+  .capacity = 0,
+};
+
+em_proxying_queue* _emscripten_proxy_dlopen_queue(void) {
+  return &dlopen_proxying_queue;
+}
+#endif
+
 em_proxying_queue* em_proxying_queue_create(void) {
   // Allocate the new queue.
   em_proxying_queue* q = malloc(sizeof(em_proxying_queue));
@@ -149,6 +165,9 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
 static bool do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
+  bool is_dlopen_queue = q == &dlopen_proxying_queue;
+#endif
   bool is_system_queue = q == &system_proxying_queue;
   if (is_system_queue) {
     system_queue_in_use = true;
@@ -163,12 +182,17 @@ static bool do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   }
 
   bool ret = em_task_queue_send(tasks, t);
-  // When proxying work to the main thread using the system queue we have a
-  // special case in that we need to wake the target thread in case it is in
-  // `emscripten_futex_wait`.
-  if (ret && is_system_queue &&
-      pthread_equal(target_thread, emscripten_main_runtime_thread_id())) {
-    DBG("waking main runtime thread using _emscripten_thread_notify");
+
+  // When proxying work to the dlopen or system queue we may have to wake the
+  // target thread in case it is blocked in `emscripten_futex_wait`.
+  bool needs_notify =
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
+    is_dlopen_queue ||
+#endif
+    (is_system_queue &&
+     pthread_equal(target_thread, emscripten_main_runtime_thread_id()));
+  if (ret && needs_notify) {
+    DBG("waking target thread using _emscripten_thread_notify");
     _emscripten_thread_notify(target_thread);
   }
   return ret;
