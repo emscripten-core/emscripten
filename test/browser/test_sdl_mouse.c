@@ -9,6 +9,7 @@
 #include <SDL/SDL.h>
 #include <assert.h>
 #include <emscripten.h>
+#include <emscripten/eventloop.h>
 
 #define abs(x) ((x) < 0 ? -(x) : (x))
 
@@ -91,13 +92,7 @@ void one() {
   }
 }
 
-int main() {
-  SDL_Init(SDL_INIT_VIDEO);
-  SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
-
-  SDL_Rect rect = { 0, 0, 600, 450 };
-  SDL_FillRect(screen, &rect, 0x2244ffff);
-
+void simulate_events() {
 #ifdef TEST_SDL_MOUSE_OFFSETS
   int absolute = true;
 #else
@@ -111,4 +106,19 @@ int main() {
   EM_ASM(simulateMouseClick(30, 77, 1, $0), absolute); // trigger the end
 
   emscripten_set_main_loop(one, 0, 0);
+}
+
+int main() {
+  SDL_Init(SDL_INIT_VIDEO);
+  SDL_Surface *screen = SDL_SetVideoMode(600, 450, 32, SDL_HWSURFACE);
+
+  SDL_Rect rect = { 0, 0, 600, 450 };
+  SDL_FillRect(screen, &rect, 0x2244ffff);
+
+  // Safari bug: If simulateMouseMove() is called synchronously in the same function that resizes the canvas element
+  // (as SDL_SetVideoMode() does above), then the simulated mouse events are dispatched to the wrong x/y locations.
+  // We must yield back to the event loop once first to let the browser relayout, and only then we can dispath mouse
+  // events with correct coordinates.
+  // TODO: Figure out a minimal repro of this, and report it to WebKit bug tracker.
+  emscripten_set_timeout(simulate_events, 0, 0);
 }
