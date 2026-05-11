@@ -18,50 +18,69 @@ void one() {
     switch (event.type) {
       case SDL_MOUSEMOTION: {
         SDL_MouseMotionEvent *m = (SDL_MouseMotionEvent*)&event;
+        printf("motion: abs:%d,%d  rel:%d,%d.  state: %d.\n", m->x, m->y, m->xrel, m->yrel, m->state);
         assert(m->state == 0);
         int x, y;
         SDL_GetMouseState(&x, &y);
-        assert(x == m->x && y == m->y);
-        printf("motion: abs:%d,%d  rel:%d,%d\n", m->x, m->y, m->xrel, m->yrel);
+        assert(x == m->x);
+        assert(y == m->y);
         static bool first_motion = true;
         if (first_motion) {
           first_motion = false;
 #ifdef TEST_SDL_MOUSE_OFFSETS
-          assert(abs(m->x-5) <= 1 && abs(m->y-15) <= 1 && abs(m->xrel-5) <= 1 && abs(m->yrel-15) <= 1);
+          assert(abs(m->x-5) <= 1);
+          assert(abs(m->y-15) <= 1);
+          assert(abs(m->xrel-5) <= 1);
+          assert(abs(m->yrel-15) <= 1);
 #else
-          assert(abs(m->x-10) <= 1 && abs(m->y-20) <= 1 && abs(m->xrel-10) <= 1 && abs(m->yrel-20) <= 1);
+          assert(abs(m->x-10) <= 1);
+          assert(abs(m->y-20) <= 1);
+          assert(abs(m->xrel-10) <= 1);
+          assert(abs(m->yrel-20) <= 1);
 #endif
         } else {
 #ifdef TEST_SDL_MOUSE_OFFSETS
-          assert(abs(m->x-25) <= 1 && abs(m->y-72) <= 1 && abs(m->xrel-20) <= 1 && abs(m->yrel-57) <= 1);
+          assert(abs(m->x-25) <= 1);
+          assert(abs(m->y-72) <= 1);
+          assert(abs(m->xrel-20) <= 1);
+          assert(abs(m->yrel-57) <= 1);
 #else
-          assert(abs(m->x-30) <= 1 && abs(m->y-77) <= 1 && abs(m->xrel-20) <= 1 && abs(m->yrel-57) <= 1);
+          assert(abs(m->x-30) <= 1);
+          assert(abs(m->y-77) <= 1);
+          assert(abs(m->xrel-20) <= 1);
+          assert(abs(m->yrel-57) <= 1);
 #endif
         }
         break;
       }
       case SDL_MOUSEBUTTONDOWN: {
         SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
+        printf("button down: %d, state: %d  abs: %d,%d.\n", m->button, m->state, m->x, m->y);
         if (m->button == 2) {
           emscripten_force_exit(0);
         }
-        printf("button down: %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
-        assert(m->button == 1 && m->state == 1);
+        assert(m->button == 1);
+        assert(m->state == 1);
 #ifdef TEST_SDL_MOUSE_OFFSETS
-        assert(abs(m->x-5) <= 1 && abs(m->y-15) <= 1);
+        assert(abs(m->x-5) <= 1);
+        assert(abs(m->y-15) <= 1);
 #else
-        assert(abs(m->x-10) <= 1 && abs(m->y-20) <= 1);
+        assert(abs(m->x-10) <= 1);
+        assert(abs(m->y-20) <= 1);
 #endif
         break;
       }
       case SDL_MOUSEBUTTONUP: {
         SDL_MouseButtonEvent *m = (SDL_MouseButtonEvent*)&event;
-        printf("button up: %d,%d  %d,%d\n", m->button, m->state, m->x, m->y);
-        assert(m->button == 1 && m->state == 0);
+        printf("button up: %d, state: %d  abs: %d,%d.\n", m->button, m->state, m->x, m->y);
+        assert(m->button == 1);
+        assert(m->state == 0);
 #ifdef TEST_SDL_MOUSE_OFFSETS
-        assert(abs(m->x-5) <= 1 && abs(m->y-15) <= 1);
+        assert(abs(m->x-5) <= 1);
+        assert(abs(m->y-15) <= 1);
 #else
-        assert(abs(m->x-10) <= 1 && abs(m->y-20) <= 1);
+        assert(abs(m->x-10) <= 1);
+        assert(abs(m->y-20) <= 1);
 #endif
         // Remove another click we want to ignore
         assert(SDL_PeepEvents(&event, 1, SDL_GETEVENT, SDL_MOUSEBUTTONDOWN, SDL_MOUSEBUTTONDOWN) == 1);
