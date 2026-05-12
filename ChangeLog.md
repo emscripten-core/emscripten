@@ -43,6 +43,11 @@ See docs/process.md for more on how version tagging works.
   notified of all IDBFS sync start and end events. (#26895)
 - google-closure-compiler was updated to 20260429.0.0. (#26869)
   Closure compiler now provides a native macOS arm64 binary for Apple Silicon.
+  (In addition to having native binaries for Win-x64, Linux-x64 and Linux-ARM64)
+  For other platforms for which Closure compiler does not ship a native binary,
+  e.g. Intel x64 Macs and Windows-on-ARM, downloading Java SE Development Kit
+  21.0.11 from https://www.oracle.com/europe/java/technologies/downloads/#java21
+  is required in order to use Emscripten's Closure Compiler integration.
 
 5.0.7 - 04/30/26
 ----------------
