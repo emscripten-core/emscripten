@@ -33,6 +33,22 @@ int main() {
   assert(buffer[3] == 0xab);
   assert(buffer[4] == OLD);
 
+  uint64_t o64 = emscripten_atomic_exchange_u64(&buffer[0], 0xdeadbeefdeadbeef);
+  assert((o64 & 0xff) == 0x91);
+  assert(((o64 >> 8) & 0xff) == 0xef);
+  assert(((o64 >> 16) & 0xff) == 0xcd);
+  assert(((o64 >> 24) & 0xff) == 0xab);
+  assert(((o64 >> 32) & 0xff) == OLD);
+  assert(buffer[0] == 0xef);
+  assert(buffer[1] == 0xbe);
+  assert(buffer[2] == 0xad);
+  assert(buffer[3] == 0xde);
+  assert(buffer[4] == 0xef);
+  assert(buffer[5] == 0xbe);
+  assert(buffer[6] == 0xad);
+  assert(buffer[7] == 0xde);
+  assert(buffer[8] == OLD);
+
   printf("OK\n");
 }
 
