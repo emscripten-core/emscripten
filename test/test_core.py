@@ -6273,7 +6273,7 @@ PORT: 3979
       self.skipTest('atomics support missing')
     # Re-use the out file from the C++ atomic test since they should have
     # identical output.
-    self.do_runf('core/test_atomic_c11.c', read_file(test_file('core/test_atomic_cxx.out')))
+    self.do_runf('core/test_atomic_c11.c', read_file(test_file('core/test_atomic_cxx.out')), cflags=['-Wno-atomic-alignment'])
 
   @also_with_pthreads
   def test_atomic_cxx(self):

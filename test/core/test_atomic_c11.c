@@ -133,6 +133,11 @@
            (unsigned long long)(UNSIGNED_TYPE)(atomicDog));                    \
   }
 
+typedef struct Pair128 {
+  uint64_t m1;
+  uint64_t m2;
+} Pair128;
+
 int main() {
   // test 8, 16, 32 and 64-bit data types
   printf("\n8 bits\n\n");
@@ -144,6 +149,14 @@ int main() {
   printf("\n64 bits\n\n");
   TEST(long long, unsigned long long, 0xFFFFFFFFFFFFFFFF,
        0xF0F0F0F0F0F0F0F0, 0x0F0F0F0F0F0F0F0F);
+
+  printf("\n128 bits\n\n");
+  _Atomic Pair128 atomicPair;
+  printf("is_lock_free: %s\n", atomic_is_lock_free(&atomicPair) ? "true" : "false");
+  atomicPair = (Pair128){1, 2};
+  Pair128 newPair = (Pair128){3, 4};
+  Pair128 oldPair = atomic_exchange(&atomicPair, newPair);
+  printf("exchange: %lld:%lld -> %lld:%lld\n\n", oldPair.m1, oldPair.m2, atomic_load(&atomicPair).m1, atomic_load(&atomicPair).m2);
 
   // test atomic_flag (should also have memory_orders, but probably doesn't
   // matter to find the missing atomic functions)

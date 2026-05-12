@@ -222,5 +222,11 @@ operator-=: 5
 operator|=: ffffffffffffffff
 operator&=: f0f0f0f0f0f0f0f0
 operator^=: ffffffffffffffff
+
+128 bits
+
+is_lock_free: false
+exchange: 1:2 -> 3:4
+
 atomic_flag: false
 done.
