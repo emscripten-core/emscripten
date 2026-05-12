@@ -9246,12 +9246,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.set_setting('EXPORT_NAME', 'foo')
     self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
-  def test_emscripten_atomics_stub(self):
-    self.do_core_test('pthread/emscripten_atomics.c')
-
-  @requires_pthreads
+  @also_with_pthreads
   def test_emscripten_atomics(self):
-    self.do_core_test('pthread/emscripten_atomics.c', cflags=['-pthread'])
+    self.do_core_test('pthread/test_emscripten_atomics.c')
 
   @requires_pthreads
   def test_emscripten_futex_api_basics(self):
