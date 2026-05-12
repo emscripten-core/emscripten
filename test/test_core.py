@@ -6268,12 +6268,17 @@ PORT: 3979
   def test_strcasecmp(self):
     self.do_core_test('test_strcasecmp.c')
 
+  @also_with_pthreads
   def test_atomic(self):
+    if '-pthread' in self.cflags and self.is_wasm2js():
+      self.skipTest('atomics support missing')
     self.do_core_test('test_atomic.c')
 
+  @also_with_pthreads
   def test_atomic_cxx(self):
-    # the wasm backend has lock-free atomics, but not asm.js or asm2wasm
-    self.do_core_test('test_atomic_cxx.cpp', cflags=['-DIS_64BIT_LOCK_FREE=1'])
+    if '-pthread' in self.cflags and self.is_wasm2js():
+      self.skipTest('atomics support missing')
+    self.do_core_test('test_atomic_cxx.cpp')
 
   def test_phiundef(self):
     self.do_core_test('test_phiundef.c')
