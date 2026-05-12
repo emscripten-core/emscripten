@@ -3708,15 +3708,16 @@ Module["preRun"] = () => {
       };
     ''')
     # Test that we warn about blocking on the main thread in debug builds
-    self.btest('pthread/main_thread_join.cpp', expected='got_warn', cflags=['-sEXIT_RUNTIME', '-sASSERTIONS', '--pre-js', 'pre.js', '-pthread', '-sPTHREAD_POOL_SIZE'])
+    self.cflags.append('-D_GNU_SOURCE') # For pthread_tryjoin_np
+    self.btest('pthread/main_thread_join.c', expected='got_warn', cflags=['-sEXIT_RUNTIME', '-sASSERTIONS', '--pre-js', 'pre.js', '-pthread', '-sPTHREAD_POOL_SIZE'])
     # Test that we do not warn about blocking on the main thread in release builds
-    self.btest_exit('pthread/main_thread_join.cpp', cflags=['-O3', '--pre-js', 'pre.js', '-pthread', '-sPTHREAD_POOL_SIZE'])
+    self.btest_exit('pthread/main_thread_join.c', cflags=['-O3', '--pre-js', 'pre.js', '-pthread', '-sPTHREAD_POOL_SIZE'])
     # Test that tryjoin is fine, even if not ALLOW_BLOCKING_ON_MAIN_THREAD
-    self.btest_exit('pthread/main_thread_join.cpp', assert_returncode=2, cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-g', '-DTRY_JOIN', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+    self.btest_exit('pthread/main_thread_join.c', assert_returncode=2, cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-g', '-DTRY_JOIN', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
     # Test that tryjoin is fine, even if not ALLOW_BLOCKING_ON_MAIN_THREAD, and even without a pool
-    self.btest_exit('pthread/main_thread_join.cpp', assert_returncode=2, cflags=['-O3', '-pthread', '-g', '-DTRY_JOIN', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+    self.btest_exit('pthread/main_thread_join.c', assert_returncode=2, cflags=['-O3', '-pthread', '-g', '-DTRY_JOIN', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
     # Test that everything works ok when we are on a pthread
-    self.btest_exit('pthread/main_thread_join.cpp', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sPROXY_TO_PTHREAD', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
+    self.btest_exit('pthread/main_thread_join.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE', '-sPROXY_TO_PTHREAD', '-sALLOW_BLOCKING_ON_MAIN_THREAD=0'])
 
   # Test the old GCC atomic __sync_fetch_and_op builtin operations.
   @parameterized({
@@ -3855,7 +3856,7 @@ Module["preRun"] = () => {
 
   # Test that the pthread_barrier API works ok.
   def test_pthread_barrier(self):
-    self.btest_exit('pthread/test_pthread_barrier.cpp', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_barrier.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test the pthread_once() function.
   def test_pthread_once(self):
@@ -3863,7 +3864,7 @@ Module["preRun"] = () => {
 
   # Test against a certain thread exit time handling bug by spawning tons of threads.
   def test_pthread_spawns(self):
-    self.btest_exit('pthread/test_pthread_spawns.cpp', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '--closure=1', '-sENVIRONMENT=web'])
+    self.btest_exit('pthread/test_pthread_spawns.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '--closure=1', '-sENVIRONMENT=web'])
 
   # It is common for code to flip volatile global vars for thread control. This is a bit lax, but nevertheless, test whether that
   # kind of scheme will work with Emscripten as well.
@@ -3876,11 +3877,11 @@ Module["preRun"] = () => {
 
   # Test thread-specific data (TLS).
   def test_pthread_thread_local_storage(self):
-    self.btest_exit('pthread/test_pthread_thread_local_storage.cpp', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-sASSERTIONS'])
+    self.btest_exit('pthread/test_pthread_thread_local_storage.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-sASSERTIONS'])
 
   # Test the pthread condition variable creation and waiting.
   def test_pthread_condition_variable(self):
-    self.btest_exit('pthread/test_pthread_condition_variable.cpp', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    self.btest_exit('pthread/test_pthread_condition_variable.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
 
   # Test that pthreads are able to do printf.
   @parameterized({
@@ -3910,7 +3911,7 @@ Module["preRun"] = () => {
   # Test that the pthread_create() function operates benignly in the case that threading is not supported.
   @parameterized({
    '': ([],),
-   'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=8'],),
+   'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
   def test_pthread_supported(self, args):
     self.btest_exit('pthread/test_pthread_supported.c', cflags=['-O3'] + args)
@@ -3922,7 +3923,7 @@ Module["preRun"] = () => {
   # needs it to do a proxied operation (before that pthread would wake up the
   # main thread), that it's not a deadlock.
   def test_pthread_proxying_in_futex_wait(self):
-    self.btest_exit('pthread/test_pthread_proxying_in_futex_wait.cpp', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
+    self.btest_exit('pthread/test_pthread_proxying_in_futex_wait.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Test that sbrk() operates properly in multithreaded conditions
   @no_2gb('uses INITIAL_MEMORY')
@@ -4004,7 +4005,7 @@ Module["preRun"] = () => {
 
   # Test that stack base and max correctly bound the stack on pthreads.
   def test_pthread_stack_bounds(self):
-    self.btest_exit('pthread/test_pthread_stack_bounds.cpp', cflags=['-pthread'])
+    self.btest_exit('pthread/test_pthread_stack_bounds.c', cflags=['-pthread'])
 
   # Test that real `thread_local` works.
   def test_pthread_tls(self):
@@ -4012,7 +4013,7 @@ Module["preRun"] = () => {
 
   # Test that real `thread_local` works in main thread without PROXY_TO_PTHREAD.
   def test_pthread_tls_main(self):
-    self.btest_exit('pthread/test_pthread_tls_main.cpp', cflags=['-pthread'])
+    self.btest_exit('pthread/test_pthread_tls_main.c', cflags=['-pthread'])
 
   def test_pthread_safe_stack(self):
     # Note that as the test runs with PROXY_TO_PTHREAD, we set STACK_SIZE,
