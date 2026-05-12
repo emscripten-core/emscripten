@@ -7118,6 +7118,9 @@ void* operator new(size_t size) {
       print(str(extra_args) + ' ' + which)
       self.do_core_test('test_dyncall_specific.c', cflags=['-D' + which] + extra_args)
 
+  def test_dyncall_ptr_handling(self):
+    self.do_core_test('test_dyncall_ptr_handling.c', cflags=['--js-library', test_file('core/test_dyncall_ptr_handling.js')])
+
   @parameterized({
     '': ([],),
     'legacy': (['-sDYNCALLS'],),
@@ -9812,7 +9815,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
 
   @no_esm_integration('fcoverage is not compatible with WASM_ESM_INTEGRATION')
-  @no_wasm64('TODO: fcoverage in memory64')
+  @no_wasm64('https://github.com/emscripten-core/emscripten/issues/26865')
   @no_wasm2js('wasm binary required to produce code coverage results with llvm-cov')
   def test_fcoverage_mapping(self):
     expected = '''\

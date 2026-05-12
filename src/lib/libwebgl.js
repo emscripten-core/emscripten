@@ -249,6 +249,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
 #if FULL_ES2 || LEGACY_GL_EMULATION
     '$registerPreMainLoop',
+    '$webglBufferSubData',
 #endif
   ],
 #if FULL_ES2 || LEGACY_GL_EMULATION
@@ -584,9 +585,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         var size = GL.calcBufLength(cb.size, cb.type, cb.stride, count);
         var buf = GL.getTempVertexBuffer(size);
         GLctx.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, buf);
-        GLctx.bufferSubData(0x8892 /*GL_ARRAY_BUFFER*/,
-                                 0,
-                                 HEAPU8.subarray(cb.ptr, cb.ptr + size));
+        webglBufferSubData(0x8892 /*GL_ARRAY_BUFFER*/, 0, size, cb.ptr);
 #if GL_ASSERTIONS
         GL.validateVertexAttribPointer(cb.size, cb.type, cb.stride, 0);
 #endif
@@ -1258,6 +1257,23 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
   },
 
+  // Wrapper around GLctx.bufferSubData that can hangle both WebGL1 (which
+  // requires new subarray on each call) and WebGL2 (which does not).
+  // Argument ordering is a little strange here, since we want a default
+  // for `src` is has to come last.
+  $webglBufferSubData__internal: true,
+  $webglBufferSubData: (target, offset, size, data, src = HEAPU8) => {
+#if WEBGL_USE_GARBAGE_FREE_APIS
+    if ({{{ isCurrentContextWebGL2() }}}) {
+      size && GLctx.bufferSubData(target, offset, src, data, size);
+      return;
+    }
+#endif
+#if INCLUDE_WEBGL1_FALLBACK
+    GLctx.bufferSubData(target, offset, src.subarray(data, data + size));
+#endif
+  },
+
   $webglGetExtensions__internal: true,
   $webglGetExtensions__deps: ['$getEmscriptenSupportedExtensions'],
   $webglGetExtensions: () => {
@@ -1915,17 +1931,10 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
   },
 
-  glBufferSubData: (target, offset, size, data) => {
-#if WEBGL_USE_GARBAGE_FREE_APIS
-    if ({{{ isCurrentContextWebGL2() }}}) {
-      size && GLctx.bufferSubData(target, offset, HEAPU8, data, size);
-      return;
-    }
-#endif
-#if INCLUDE_WEBGL1_FALLBACK
-    GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
-#endif
-  },
+  // This cannot be simple alias because under wasm64 we need to be able modify
+  // the function at compile time to provide automatically marshal of the pointer arguments.
+  glBufferSubData__deps: ['$webglBufferSubData'],
+  glBufferSubData: (target, offset, size, data) => webglBufferSubData(target, offset, size, data),
 
   // Queries EXT
   glGenQueriesEXT__sig: 'vip',
@@ -3874,6 +3883,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
   },
 
+  glDrawElements__deps: ['$webglBufferSubData'],
   glDrawElements: (mode, count, type, indices) => {
 #if FULL_ES2
     var buf;
@@ -3882,9 +3892,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.getTempIndexBuffer(size);
       GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, buf);
-      GLctx.bufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/,
-                          0,
-                          HEAPU8.subarray(indices, indices + size));
+      webglBufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, 0, size, indices);
 
       // Calculating vertex count if shader's attribute data is on client side
       if (count > 0) {
@@ -4210,7 +4218,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     }
   },
 
-  glFlushMappedBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
+  glFlushMappedBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', '$webglBufferSubData'],
   glFlushMappedBufferRange: (target, offset, length) => {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x500/*GL_INVALID_ENUM*/);
@@ -4236,10 +4244,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return;
     }
 
-    GLctx.bufferSubData(
-      target,
-      mapping.offset,
-      HEAPU8.subarray(mapping.mem + offset, mapping.mem + offset + length));
+    webglBufferSubData(target, mapping.offset, length, mapping.mem + offset);
   },
 
   glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'free'],
@@ -4259,18 +4264,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     }
 
     if (!(mapping.access & 0x10)) { /* GL_MAP_FLUSH_EXPLICIT_BIT */
-#if WEBGL_USE_GARBAGE_FREE_APIS
-      if ({{{ isCurrentContextWebGL2() }}}) {
-        GLctx.bufferSubData(target, mapping.offset, HEAPU8, mapping.mem, mapping.length);
-      }
-#if INCLUDE_WEBGL1_FALLBACK
-      else
-#endif
-#endif
-#if INCLUDE_WEBGL1_FALLBACK
-      GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
-#endif
+      webglBufferSubData(target, mapping.offset, mapping.length, mapping.mem);
     }
+
     _free(mapping.mem);
     mapping.mem = 0;
     return 1;

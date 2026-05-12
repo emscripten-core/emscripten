@@ -44,12 +44,12 @@ USE_NINJA = int(os.environ.get('EMCC_USE_NINJA', '0'))
 DETERMINISTIC_PREFIX = '/emsdk/emscripten'
 
 
-def files_in_path(path, filenames):
+def files_in_path(path: str, filenames: list[str]):
   srcdir = utils.path_from_root(path)
   return [os.path.join(srcdir, f) for f in filenames]
 
 
-def glob_in_path(path, glob_pattern, excludes=()):
+def glob_in_path(path: str, glob_pattern: str, excludes: set[str] = set()): # noqa: B006
   srcdir = utils.path_from_root(path)
   files = iglob(os.path.join(srcdir, glob_pattern), recursive=True)
   return sorted(f for f in files if os.path.basename(f) not in excludes)
@@ -386,7 +386,7 @@ class Library:
   src_dir: str | None = None
   src_files: list[str] | None = []
   src_glob: str | None = None
-  src_glob_exclude: list[str] | None = None
+  src_glob_exclude: set[str] = set()
 
   # Whether to always generate WASM object files, even when LTO is set
   force_object_files = False
@@ -466,7 +466,7 @@ class Library:
       if self.src_files:
         return files_in_path(self.src_dir, self.src_files)
       elif self.src_glob:
-        return glob_in_path(self.src_dir, self.src_glob, self.src_glob_exclude or ())
+        return glob_in_path(self.src_dir, self.src_glob, self.src_glob_exclude)
 
     raise NotImplementedError()
 
@@ -963,7 +963,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   profile_src_dir = 'system/lib/compiler-rt/lib/profile'
   includes = ['system/lib/libc', 'system/lib/compiler-rt/include']
-  excludes = [
+  excludes = {
     # gcc_personality_v0.c depends on libunwind, which don't include by default.
     'gcc_personality_v0.c',
     # bfloat16
@@ -992,7 +992,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     'powixf2.c',
     'trunctfxf2.c',
     'truncxfhf2.c',
-  ]
+  }
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
   src_files += glob_in_path(profile_src_dir, '*.c')
   src_files += glob_in_path(profile_src_dir, '*.cpp')
@@ -1039,22 +1039,22 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   def get_files(self):
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/complex', '**/*.cpp')
-    files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp', excludes=['memset.cpp', 'memcpy.cpp'] if self.is_asan else [])
+    files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp', excludes={'memset.cpp', 'memcpy.cpp'} if self.is_asan else set())
     files += glob_in_path('system/lib/llvm-libc/src/intypes', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/math', '*.cpp')
     # Overlay mode doesn't support mbstate_t which is used by these wchar sources.
-    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes=['wcrtomb.cpp', 'mbrtowc.cpp', 'wctomb.cpp', 'mbtowc.cpp'])
+    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes={'wcrtomb.cpp', 'mbrtowc.cpp', 'wctomb.cpp', 'mbtowc.cpp'})
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '**/*.cpp')
-    files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes=['at_quick_exit.cpp',
+    files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes={'at_quick_exit.cpp',
                                                                                 'quick_exit.cpp',
                                                                                 'atexit.cpp',
                                                                                 'exit.cpp',
                                                                                 '_Exit.cpp',
-                                                                                'getenv.cpp'])
-    files += glob_in_path('system/lib/llvm-libc/src/math/generic', '**/*.cpp', excludes=['atan2l.cpp', 'exp_utils.cpp'])
+                                                                                'getenv.cpp'})
+    files += glob_in_path('system/lib/llvm-libc/src/math/generic', '**/*.cpp', excludes={'atan2l.cpp', 'exp_utils.cpp'})
     files += glob_in_path('system/lib/llvm-libc/src/__support/StringUtil', '**/*.cpp')
     return files
 
@@ -1247,73 +1247,30 @@ class libc(MuslInternalLibrary,
             'pthread_self_stub.c',
             'proxying_stub.c',
           ])
+
+        for pat in ('pthread_*attr*.c',
+                    'pthread_spin*.c',
+                    # C11 thread library functions
+                    'cnd_*.c',
+                    'mtx_*.c',
+                    'tss_*.c',
+                    'thrd_*.c'):
+          libc_files += glob_in_path('system/lib/libc/musl/src/thread', pat)
+
         libc_files += files_in_path(
           path='system/lib/libc/musl/src/thread',
           filenames=[
             'pthread_self.c',
             'pthread_cleanup_push.c',
-            'pthread_attr_init.c',
-            'pthread_attr_destroy.c',
-            'pthread_attr_get.c',
-            'pthread_attr_setdetachstate.c',
-            'pthread_attr_setguardsize.c',
-            'pthread_attr_setinheritsched.c',
-            'pthread_attr_setschedparam.c',
-            'pthread_attr_setschedpolicy.c',
-            'pthread_attr_setscope.c',
-            'pthread_attr_setstack.c',
-            'pthread_attr_setstacksize.c',
-            'pthread_barrierattr_destroy.c',
-            'pthread_barrierattr_init.c',
-            'pthread_barrierattr_setpshared.c',
-            'pthread_condattr_destroy.c',
-            'pthread_condattr_init.c',
-            'pthread_condattr_setpshared.c',
-            'pthread_condattr_setclock.c',
-            'pthread_mutexattr_destroy.c',
-            'pthread_mutexattr_init.c',
-            'pthread_mutexattr_setprotocol.c',
-            'pthread_mutexattr_settype.c',
-            'pthread_mutexattr_setpshared.c',
-            'pthread_rwlockattr_destroy.c',
-            'pthread_rwlockattr_init.c',
-            'pthread_rwlockattr_setpshared.c',
-            'pthread_getattr_np.c',
             'pthread_getconcurrency.c',
             'pthread_getcpuclockid.c',
             'pthread_getschedparam.c',
-            'pthread_spin_destroy.c',
-            'pthread_spin_init.c',
-            'pthread_spin_lock.c',
-            'pthread_spin_trylock.c',
-            'pthread_spin_unlock.c',
             'pthread_setschedprio.c',
             'pthread_setconcurrency.c',
             'default_attr.c',
-            # C11 thread library functions
             'call_once.c',
-            'tss_create.c',
-            'tss_delete.c',
-            'tss_set.c',
-            'cnd_broadcast.c',
-            'cnd_destroy.c',
-            'cnd_init.c',
-            'cnd_signal.c',
-            'cnd_timedwait.c',
-            'cnd_wait.c',
-            'mtx_destroy.c',
-            'mtx_init.c',
-            'mtx_lock.c',
-            'mtx_timedlock.c',
-            'mtx_trylock.c',
-            'mtx_unlock.c',
             'sem_destroy.c',
             'sem_init.c',
-            'thrd_create.c',
-            'thrd_exit.c',
-            'thrd_join.c',
-            'thrd_sleep.c',
-            'thrd_yield.c',
           ])
 
     if self.is_mt or self.is_ww:
@@ -1759,7 +1716,7 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
-  src_glob_exclude = [
+  src_glob_exclude = {
     'xlocale_zos.cpp',
     'mbsnrtowcs.cpp',
     'wcsnrtombs.cpp',
@@ -1775,7 +1732,7 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     'time_zone.cpp',
     'tzdb.cpp',
     'tzdb_list.cpp',
-  ]
+    }
 
 
 class libunwind(ExceptionLibrary, MTLibrary):
@@ -1945,7 +1902,7 @@ class libmimalloc(MTLibrary):
     path='system/lib/mimalloc/src',
     glob_pattern='*.c',
     # mimalloc includes some files at the source level, so exclude them here.
-    excludes=['alloc-override.c', 'free.c', 'page-queue.c', 'static.c'],
+    excludes={'alloc-override.c', 'free.c', 'page-queue.c', 'static.c'},
   )
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]
@@ -2201,7 +2158,7 @@ class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
 
   src_dir = 'system/lib/compiler-rt/lib/sanitizer_common'
   src_glob = '*.cpp'
-  src_glob_exclude = ['sanitizer_common_nolibc.cpp']
+  src_glob_exclude = {'sanitizer_common_nolibc.cpp'}
 
 
 class SanitizerLibrary(CompilerRTLibrary, MTLibrary):
@@ -2217,7 +2174,7 @@ class libubsan_rt(SanitizerLibrary):
   includes = ['system/lib/libc']
   cflags = ['-DUBSAN_CAN_USE_CXXABI']
   src_dir = 'system/lib/compiler-rt/lib/ubsan'
-  src_glob_exclude = ['ubsan_diag_standalone.cpp']
+  src_glob_exclude = {'ubsan_diag_standalone.cpp'}
 
 
 class liblsan_common_rt(SanitizerLibrary):
@@ -2232,8 +2189,8 @@ class liblsan_rt(SanitizerLibrary):
 
   includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/lsan'
-  src_glob_exclude = ['lsan_common.cpp', 'lsan_common_mac.cpp', 'lsan_common_linux.cpp',
-                      'lsan_common_emscripten.cpp']
+  src_glob_exclude = {'lsan_common.cpp', 'lsan_common_mac.cpp', 'lsan_common_linux.cpp',
+                      'lsan_common_emscripten.cpp'}
 
 
 class libasan_rt(SanitizerLibrary):

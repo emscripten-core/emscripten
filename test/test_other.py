@@ -2428,6 +2428,44 @@ int main() {
 }''')
     self.do_runf('test.c', 'done\n', cflags=['-sLEGACY_GL_EMULATION', '-sMAIN_MODULE=2'])
 
+  def test_dylink_library_search(self):
+    # Test library resolution in the case when both static and dynamic library are present.
+    create_file('side_dyn.c', r'''
+      #include <stdio.h>
+      void side_func() {
+        printf("dynamic linking used\n");
+      }
+    ''')
+    create_file('side_static.c', r'''
+      #include <stdio.h>
+      void side_func() {
+        printf("static linking used\n");
+      }
+    ''')
+    self.emcc('side_dyn.c', ['-sSIDE_MODULE', '-olibside.so'])
+    self.emcc('side_static.c', ['-oside_static.o', '-c'])
+    self.run_process([EMAR, 'rc', 'libside.a', 'side_static.o'])
+
+    create_file('main.c', '''
+      void side_func();
+      int main() {
+        side_func();
+        return 0;
+      }
+    ''')
+
+    # By deafult we use static linking and prefer libside.a
+    self.do_runf('main.c', 'static linking used\n', cflags=['-L.', '-lside'])
+
+    # When using -sMAIN_MODULE we choose the dyanmic library
+    self.do_runf('main.c', 'dynamic linking used\n', cflags=['-sMAIN_MODULE=2', '-L.', '-lside'])
+
+    # Same for `-sFAKE_DYLIBS=0
+    self.do_runf('main.c', 'dynamic linking used\n', cflags=['-sFAKE_DYLIBS=0', '-L.', '-lside'])
+
+    # With can also force static linking using `-Bstatic` linker falgs
+    self.do_runf('main.c', 'static linking used\n', cflags=['-sMAIN_MODULE=2', '-L.', '-Bstatic', '-lside'])
+
   def test_js_link(self):
     create_file('before.js', '''
       var MESSAGE = 'hello from js';
@@ -12086,7 +12124,7 @@ int main () {
     self.assertContained('emcc: warning: ignoring dynamic library libother.so when generating an object file, this will need to be included explicitly in the final link', err)
     self.assertIsObjectFile('out.foo')
 
-    # Test that adding `-sFAKE_DYIBS=0` build a real side module
+    # Test that adding `-sFAKE_DYLIBS=0` build a real side module
     err = self.run_process([EMCC, '-shared', '-fPIC', '-sFAKE_DYLIBS=0', test_file('hello_world.c'), '-o', 'out.foo', 'libother.so'], stderr=PIPE).stderr
     self.assertNotContained('linking a library with `-shared` will emit a static object', err)
     self.assertNotContained('emcc: warning: ignoring dynamic library libother.so when generating an object file, this will need to be included explicitly in the final link', err)

@@ -535,7 +535,6 @@ jobs:
       - run: tools/maint/check_emcc_help_text.py
       - run: make -C site html
   ruff:
-    # Keep in sync with ruff commands in tools/maint/pre-push
     executor: ubuntu-lts
     steps:
       - checkout
@@ -1097,6 +1096,7 @@ jobs:
             core0.test_async_ccall_promise_jspi*
             core0.test_cubescript_jspi
             core0.test_poll_blocking_asyncify_jspi
+            wasm64.test_pthread_join_and_asyncify
             "
       - upload-test-results
   test-other:

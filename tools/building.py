@@ -214,7 +214,6 @@ def lld_flags_for_executable(external_symbols):
   cmd.extend(f'--export-if-defined={e}' for e in settings.EXPORT_IF_DEFINED)
 
   if settings.MAIN_MODULE or settings.SIDE_MODULE:
-    cmd.append('--experimental-pic')
     cmd.append('--unresolved-symbols=import-dynamic')
     if not settings.WASM_BIGINT:
       # When we don't have WASM_BIGINT available, JS signature legalization

@@ -30,6 +30,7 @@ from browser_common import (
   browser_should_skip_feature,
   find_browser_test_file,
   get_browser,
+  get_firefox_version,
   get_safari_version,
   is_chrome,
   is_firefox,
@@ -176,6 +177,7 @@ def requires_version(name, version_getter):
 
 
 requires_safari_version = requires_version('safari', get_safari_version)
+requires_firefox_version = requires_version('firefox', get_firefox_version)
 
 
 def is_jspi(args):
@@ -924,6 +926,7 @@ window.close = () => {
     'safe_heap': (['-sSAFE_HEAP'],),
     'safe_heap_O2': (['-sSAFE_HEAP', '-O2'],),
   })
+  @no_safari('Fails in browser_2gb.test_sdl_canvas_safe_heap variant. https://webkit.org/b/314444') # Fails in Safari 26.0.1 (21622.1.22.11.15)
   def test_sdl_canvas(self, args):
     self.btest_exit('test_sdl_canvas.c', cflags=['-sSTRICT_JS', '-sLEGACY_GL_EMULATION', '-lSDL', '-lGL'] + args)
 
@@ -1248,6 +1251,7 @@ window.close = () => {
     'assertions': (['-sGL_ASSERTIONS'],),
   })
   @requires_webgl2
+  @requires_firefox_version(109) # Old Firefox failed to do glGetUniform(program, ...) if program was not active. https://bugzil.la/1645092
   def test_webgl_get_uniform_no_active_program(self, args):
     self.btest_exit('webgl_get_uniform_no_active_program.c', cflags=args + ['-sMIN_WEBGL_VERSION=2'])
 
