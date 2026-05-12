@@ -6957,11 +6957,9 @@ int main() {
         return 0;
       }''')
     self.run_process([EMCC, '-g', '-o', 'libside.wasm', 'side.c', '-sSIDE_MODULE'])
-    self.run_process([EMCC, '-g', '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS'])
-    self.assertContained('done\n', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'done\n', cflags=['-g', '-sMAIN_MODULE=2', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS'])
     # Repeat the test without NO_AUTOLOAD_DYLIBS
-    self.run_process([EMCC, '-g', '-sMAIN_MODULE=2', 'main.c', 'libside.wasm'])
-    self.assertContained('done\n', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'done\n', cflags=['-g', '-sMAIN_MODULE=2', 'libside.wasm'])
 
   def test_dlopen_rtld_global(self):
     # This test checks RTLD_GLOBAL where a module is loaded

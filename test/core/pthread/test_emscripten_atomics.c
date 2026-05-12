@@ -49,6 +49,6 @@ int main() {
   assert(buffer[7] == 0xde);
   assert(buffer[8] == OLD);
 
-  printf("OK\n");
+  printf("done\n");
 }
 
