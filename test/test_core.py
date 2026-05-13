@@ -2610,7 +2610,6 @@ The current type of b is: 9
 
   @requires_pthreads
   def test_pthread_proxying_dropped_work(self):
-    self.set_setting('PTHREAD_POOL_SIZE=2')
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_dropped_work.c')
 
   @requires_pthreads
@@ -2624,7 +2623,6 @@ The current type of b is: 9
   @flaky('https://github.com/emscripten-core/emscripten/issues/19795')
   def test_pthread_proxying_refcount(self):
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('PTHREAD_POOL_SIZE=1')
     self.set_setting('ASSERTIONS=0')
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_refcount.c')
 
@@ -2636,12 +2634,10 @@ The current type of b is: 9
   def test_pthread_atexit(self):
     # Test to ensure threads are still running when atexit-registered functions are called
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_atexit.c')
 
   @requires_pthreads
   def test_pthread_nested_work_queue(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_nested_work_queue.c')
 
   @requires_pthreads
@@ -2655,7 +2651,6 @@ The current type of b is: 9
 
   @requires_pthreads
   def test_pthread_cleanup(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 4)
     self.do_run_in_out_file_test('pthread/test_pthread_cleanup.c')
 
   @requires_pthreads
@@ -2672,7 +2667,6 @@ The current type of b is: 9
   def test_pthread_attr_getstack(self):
     if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.cflags):
       self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
   @requires_pthreads
@@ -2689,7 +2683,6 @@ The current type of b is: 9
 
   @requires_pthreads
   def test_pthread_abort_interrupt(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     expected = ['Aborted(). Build with -sASSERTIONS for more info', 'Aborted(native code called abort())']
     self.do_runf('pthread/test_pthread_abort_interrupt.c', expected, assert_returncode=NON_ZERO)
 
@@ -2775,7 +2768,7 @@ The current type of b is: 9
   @requires_pthreads
   @also_with_wasm_workers
   def test_emscripten_lock_waitinf_acquire(self):
-    self.do_runf('wasm_worker/lock_waitinf_acquire.c', 'done\n', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=4'])
+    self.do_runf('wasm_worker/lock_waitinf_acquire.c', 'done\n', cflags=['-pthread'])
 
   @requires_pthreads
   @also_with_wasm_workers
@@ -2791,7 +2784,7 @@ The current type of b is: 9
   @requires_pthreads
   @also_with_wasm_workers
   def test_emscripten_semaphore_waitinf_acquire(self):
-    self.do_runf('wasm_worker/semaphore_waitinf_acquire.c', 'done\n', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=7'])
+    self.do_runf('wasm_worker/semaphore_waitinf_acquire.c', 'done\n', cflags=['-pthread'])
 
   @requires_pthreads
   @also_with_wasm_workers
@@ -9138,6 +9131,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @parameterized({
     '': ([],),
     'sync_instantiation': (['-sWASM_ASYNC_COMPILATION=0'],),
+    'proxied': (['-sPROXY_TO_PTHREAD'],),
   })
   @requires_pthreads
   @crossplatform
@@ -9146,12 +9140,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
     self.set_setting('ENVIRONMENT', 'node')
     self.set_setting('STRICT')
-    self.do_core_test('pthread/create.c', cflags=args)
+    # Under node we can always synchronously create threads.
+    self.do_core_test('pthread/create.c', cflags=args + ['-DALLOW_SYNC'])
 
   @requires_pthreads
   @parameterized({
     '': ([],),
-    'pooled': (['-sPTHREAD_POOL_SIZE=1'],),
     'proxied': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_pthread_c11_threads(self, args):
@@ -9162,41 +9156,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('pthread/test_pthread_c11_threads.c', cflags=args)
 
   @requires_pthreads
-  @parameterized({
-    '': (0,),
-    'pooled': (1,),
-  })
-  def test_pthread_cxx_threads(self, pthread_pool_size):
-    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
+  def test_pthread_cxx_threads(self):
     self.do_run_in_out_file_test('pthread/test_pthread_cxx_threads.cpp')
 
   @requires_pthreads
-  @parameterized({
-    '': (0,),
-    'pooled': (1,),
-  })
-  def test_pthread_busy_wait(self, pthread_pool_size):
-    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
+  def test_pthread_busy_wait(self):
     self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
 
   @requires_pthreads
   def test_pthread_busy_wait_atexit(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_busy_wait_atexit.cpp')
-
-  @requires_pthreads
-  def test_pthread_create_pool(self):
-    # with a pool, we can synchronously depend on workers being available
-    self.set_setting('PTHREAD_POOL_SIZE', 2)
-    self.do_core_test('pthread/create.c', cflags=['-DALLOW_SYNC'])
-
-  @requires_pthreads
-  def test_pthread_create_proxy(self):
-    # with PROXY_TO_PTHREAD, we can synchronously depend on workers being available
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
-    self.do_core_test('pthread/create.c', cflags=['-DALLOW_SYNC'])
 
   @requires_pthreads
   def test_pthread_create_embind_stack_check(self):
@@ -9206,7 +9176,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @requires_pthreads
   def test_pthread_exceptions(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.do_core_test('pthread/exceptions.cpp', cflags=['-fexceptions'])
 
   @requires_pthreads
@@ -9263,7 +9232,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @requires_pthreads
   def test_stdio_locking(self):
-    self.do_core_test('test_stdio_locking.c', cflags=['-sPTHREAD_POOL_SIZE=2'])
+    self.do_core_test('test_stdio_locking.c')
 
   @requires_wasm_workers
   def test_stdio_locking_ww(self):
@@ -9291,8 +9260,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # where we had a bug with long names + TextDecoder + pthreads + dylink
     very_long_name = 'very_very_very_very_very_very_very_very_very_long.so'
 
-    self.dylink_testf(main, so_name=very_long_name,
-                      main_cflags=['-sPTHREAD_POOL_SIZE=2'])
+    self.dylink_testf(main, so_name=very_long_name)
 
   @needs_dylink
   @parameterized({
@@ -9303,7 +9271,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_dylink_entry_point(self, args):
     self.cflags += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink_entry_point.c')
-    self.dylink_testf(main, cflags=args, main_cflags=['-sPTHREAD_POOL_SIZE=1'])
+    self.dylink_testf(main, cflags=args)
 
   @needs_dylink
   @requires_pthreads
@@ -9370,15 +9338,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @requires_pthreads
   def test_pthread_dylink_tls(self):
     self.cflags += ['-Wno-experimental', '-pthread']
-    main = test_file('core/pthread/test_pthread_dylink_tls.c')
-    self.dylink_testf(main, main_cflags=['-sPTHREAD_POOL_SIZE=1'])
+    self.dylink_testf(test_file('core/pthread/test_pthread_dylink_tls.c'))
 
   @needs_dylink
   @requires_pthreads
   def test_pthread_dylink_longjmp(self):
     self.cflags += ['-Wno-experimental', '-pthread']
-    main = test_file('core/pthread/test_pthread_dylink_longjmp.c')
-    self.dylink_testf(main, main_cflags=['-sPTHREAD_POOL_SIZE=1'])
+    self.dylink_testf(test_file('core/pthread/test_pthread_dylink_longjmp.c'))
 
   @needs_dylink
   @requires_pthreads
