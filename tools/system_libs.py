@@ -1009,6 +1009,12 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
       ])
 
 
+class libasync(Library):
+  name = 'libasync'
+  src_dir = 'system/lib/'
+  src_files = ['libasync.c']
+
+
 class libnoexit(Library):
   name = 'libnoexit'
   src_dir = 'system/lib/libc'
@@ -2419,6 +2425,8 @@ def get_libs_to_link(options):
     add_library('libstandalonewasm')
   if settings.ALLOW_UNIMPLEMENTED_SYSCALLS:
     add_library('libstubs')
+  if settings.ASYNCIFY:
+    add_library('libasync')
   if not options.nolibc:
     if not settings.EXIT_RUNTIME:
       add_library('libnoexit')
