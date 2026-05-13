@@ -10243,7 +10243,7 @@ T6:(else) !ASSERTIONS""", output)
     ensure_dir('subdir')
 
     # build hello_world.c
-    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'subdir/module' + ext, '-pthread', '-sPTHREAD_POOL_SIZE=2', '-sMODULARIZE', '-sEXPORT_NAME=test_module'] + self.get_cflags())
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'subdir/module' + ext, '-pthread', '-sMODULARIZE', '-sEXPORT_NAME=test_module'] + self.get_cflags())
 
     # run the module
     ret = self.run_js('moduleLoader' + ext)
@@ -11734,13 +11734,11 @@ int main(void) {
     # This was because PTHREADS_DEBUG calls back into WebAssembly for each call to `err()`.
     self.set_setting('PTHREADS_DEBUG')
     self.set_setting('ASYNCIFY')
-    self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.do_other_test('test_pthread_asyncify.c')
 
   @requires_pthreads
   def test_pthread_reuse(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
-    self.do_other_test('test_pthread_reuse.c')
+    self.do_other_test('test_pthread_reuse.c', cflags=['-sPTHREAD_POOL_SIZE=1'])
 
   @parameterized({
     '': ([],),
@@ -13083,7 +13081,7 @@ void foo() {}
 
   @requires_pthreads
   @parameterized({
-    '': (['-sPTHREAD_POOL_SIZE=1'],),
+    '': ([],),
     'proxied': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_pthread_sigmask(self, args):
@@ -13092,22 +13090,21 @@ void foo() {}
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_pthreads
   @parameterized({
-    '': ([], 1),
-    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'], 1),
-    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
+    '': ([],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
+    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
-  def test_pthread_growth_mainthread(self, cflags, pthread_pool_size):
+  def test_pthread_growth_mainthread(self, cflags):
     if '-sGROWABLE_ARRAYBUFFERS' in cflags:
       self.node_args.append('--experimental-wasm-rab-integration')
       self.require_node_25()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
-    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
   @requires_pthreads
   def test_phtread_join_interrupted(self):
-    self.do_runf('pthread/test_pthread_join_interrupted.c', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=1'])
+    self.do_runf('pthread/test_pthread_join_interrupted.c', cflags=['-pthread'])
 
   @requires_node_25
   def test_growable_arraybuffers(self):
@@ -13129,16 +13126,15 @@ void foo() {}
     '': ([],),
     'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
     'assert': (['-sASSERTIONS'],),
-    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
+    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
   })
-  def test_pthread_growth(self, cflags, pthread_pool_size=1):
+  def test_pthread_growth(self, cflags):
     if WINDOWS and platform.machine() == 'ARM64':
       # https://github.com/emscripten-core/emscripten/issues/25627
       # TODO: Switch this to a "require Node.js 24" check
       self.require_node_25()
 
-    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     if '-sGROWABLE_ARRAYBUFFERS' in cflags:
       self.node_args.append('--experimental-wasm-rab-integration')
       self.require_node_25()
