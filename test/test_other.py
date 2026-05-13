@@ -3725,15 +3725,22 @@ More info: https://emscripten.org
     self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done\n', cflags=['-lembind', '-sEMBIND_AOT'])
 
   @requires_dev_dependency('typescript')
-  def test_emit_tsd(self):
+  @parameterized({
+    '': [[], ''],
+    'jspi': [['-sJSPI', '-sJSPI_EXPORTS=fooVoid,fooInt'], '_jspi'],
+    'jspi_wildcard': [['-sJSPI', '-sJSPI_EXPORTS=foo*'], '_jspi'],
+  })
+  def test_emit_tsd(self, args, postfix):
+    if postfix == '_jspi':
+      self.require_jspi()
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
-                      '--emit-tsd', 'test_emit_tsd.d.ts', '-sEXPORT_ES6',
+                      '--emit-tsd', f'test_emit_tsd{postfix}.d.ts', '-sEXPORT_ES6',
                       '-sMODULARIZE', '-sEXPORTED_RUNTIME_METHODS=UTF8ArrayToString,wasmTable',
-                      '-o', 'test_emit_tsd.js'] +
+                      '-o', f'test_emit_tsd{postfix}.js'] + args +
                      self.get_cflags())
-    self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))
+    self.assertFileContents(test_file(f'other/test_emit_tsd{postfix}.d.ts'), read_file(f'test_emit_tsd{postfix}.d.ts'))
     # Test that the output compiles with a TS file that uses the definitions.
-    self.run_tsc([test_file('other/test_tsd.ts'), '--noEmit'])
+    self.run_tsc([test_file(f'other/test_tsd{postfix}.ts'), '--noEmit'])
 
   @requires_dev_dependency('typescript')
   def test_emit_tsd_sync_compilation(self):
