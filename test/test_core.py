@@ -6275,6 +6275,14 @@ PORT: 3979
     self.do_core_test('test_atomic.c')
 
   @also_with_pthreads
+  def test_atomic_c11(self):
+    if '-pthread' in self.cflags and self.is_wasm2js():
+      self.skipTest('atomics support missing')
+    # Re-use the out file from the C++ atomic test since they should have
+    # identical output.
+    self.do_runf('core/test_atomic_c11.c', read_file(test_file('core/test_atomic_cxx.out')))
+
+  @also_with_pthreads
   def test_atomic_cxx(self):
     if '-pthread' in self.cflags and self.is_wasm2js():
       self.skipTest('atomics support missing')
