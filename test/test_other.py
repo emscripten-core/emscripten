@@ -13103,7 +13103,7 @@ void foo() {}
     self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
   @requires_pthreads
-  def test_phtread_join_interrupted(self):
+  def test_pthread_join_interrupted(self):
     self.do_runf('pthread/test_pthread_join_interrupted.c', cflags=['-pthread'])
 
   @requires_node_25
