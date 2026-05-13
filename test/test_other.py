@@ -8761,6 +8761,43 @@ int main() {
     self.do_runf('src.cpp', 'ERROR\n')
 
   @with_all_eh_sjlj
+  def test_multi_inheritance_exception_message2(self):
+    # Regression test for a bug that getting exception message in the DEBUG mode
+    # did not retrieve the correct thrown object pointer in case of multiple
+    # inheritance
+    create_file('src.cpp', r'''
+      #include <exception>
+      #include <string>
+
+      class MyException : public virtual std::exception {
+      public:
+        MyException(const char *msg) : m_message(msg) {}
+        const char *what() const noexcept override { return m_message.c_str(); }
+
+      private:
+        std::string m_message;
+      };
+
+      int main() {
+        std::exception_ptr ep;
+        try {
+          throw MyException("hello");
+        } catch (...) {
+          ep = std::current_exception();
+        }
+
+        try {
+          std::rethrow_exception(ep);
+        } catch (const std::exception &e) {
+          std::printf("caught: %s\n", e.what());
+        }
+        return 0;
+      }
+    ''')
+    self.set_setting('ASSERTIONS')
+    self.do_runf('src.cpp', 'caught: hello\n')
+
+  @with_all_eh_sjlj
   def test_unused_eh_dce(self):
     # Programs that don't use exceptions should not pull in libc++abi or
     # exception formatting helpers when compiled with -fexceptions /
