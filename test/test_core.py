@@ -2651,7 +2651,7 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '300mb')
-    self.do_run_in_out_file_test('pthread/test_pthread_thread_local_storage.cpp')
+    self.do_run_in_out_file_test('pthread/test_pthread_thread_local_storage.c')
 
   @requires_pthreads
   def test_pthread_cleanup(self):
