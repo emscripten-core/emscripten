@@ -110,6 +110,11 @@ template<typename TYPE, typename UNSIGNED_TYPE> void test(TYPE mask0, TYPE mask1
 
 }
 
+struct Pair128 {
+  uint64_t m1;
+  uint64_t m2;
+};
+
 int main() {
     // test 8, 16, 32 and 64-bit data types
     printf("\n8 bits\n\n");
@@ -121,12 +126,19 @@ int main() {
     printf("\n64 bits\n\n");
     test<long long, unsigned long long>(0xFFFFFFFFFFFFFFFF, 0xF0F0F0F0F0F0F0F0, 0x0F0F0F0F0F0F0F0F);
 
+    printf("\n128 bits\n\n");
+    std::atomic<Pair128> atomicPair;
+    printf("is_lock_free: %s\n", atomicPair.is_lock_free() ? "true" : "false");
+    atomicPair = {1, 2};
+    Pair128 oldPair = atomicPair.exchange({3, 4});
+    printf("exchange: %lld:%lld -> %lld:%lld\n", oldPair.m1, oldPair.m2, atomicPair.load().m1, atomicPair.load().m2);
+
     // test atomic_flag (should also have memory_orders, but probably doesn't matter
     // to find the missing atomic functions)
     std::atomic_flag af;
     af.clear();
     bool b = af.test_and_set();
-    printf("atomic_flag: %s\n", b ? "true" : "false");
+    printf("\natomic_flag: %s\n", b ? "true" : "false");
 
     printf("done.\n");
     return 0;
