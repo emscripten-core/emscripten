@@ -592,6 +592,7 @@ sigs = {
   emscripten_atomic_cancel_all_wait_asyncs_at_address__sig: 'ip',
   emscripten_atomic_cancel_wait_async__sig: 'ii',
   emscripten_atomic_wait_async__sig: 'ipippd',
+  emscripten_atomic_wait_suspending__sig: 'ipid',
   emscripten_atomics_is_lock_free__sig: 'ii',
   emscripten_audio_context_quantum_size__sig: 'ii',
   emscripten_audio_context_sample_rate__sig: 'ii',
