@@ -65,5 +65,5 @@ int main() {
   testString(u"a");
   testString(u"");
 
-  printf("OK.\n");
+  printf("done\n");
 }

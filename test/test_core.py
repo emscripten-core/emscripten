@@ -1426,10 +1426,10 @@ int main(int argc, char **argv) {
         if (std::uncaught_exceptions())
           std::cout << "ERROR: uncaught_exceptions still set.\n";
         else
-          std::cout << "OK\n";
+          std::cout << "done\n";
       }
     '''
-    self.do_run(src, 'OK\n')
+    self.do_run(src, 'done\n')
 
   @with_all_eh_sjlj
   def test_exceptions_typed(self):
@@ -2838,10 +2838,10 @@ The current type of b is: 9
 
   @also_with_standalone_wasm()
   def test_memcpy_alignment(self):
-    self.do_runf('test_memcpy_alignment.c', 'OK.')
+    self.do_runf('test_memcpy_alignment.c', 'done\n')
 
   def test_memset_alignment(self):
-    self.do_runf('test_memset_alignment.c', 'OK.')
+    self.do_runf('test_memset_alignment.c', 'done\n')
 
   def test_memset(self):
     self.do_core_test('test_memset.c')
@@ -5782,27 +5782,27 @@ got: 10
   @with_both_text_decoder
   @crossplatform
   def test_utf16(self):
-    self.do_runf('core/test_utf16.cpp', 'OK.')
+    self.do_runf('core/test_utf16.cpp', 'done\n')
 
   @with_both_text_decoder
   def test_utf8(self):
-    self.do_runf('core/test_utf8.c', 'OK.')
+    self.do_runf('core/test_utf8.c', 'done\n')
 
   @with_both_text_decoder
   @also_without_bigint
   def test_utf8_bench(self):
     self.cflags += ['--embed-file', test_file('test_utf8_bench.txt') + '@/utf8_corpus.txt']
-    self.do_runf('test_utf8_bench.c', 'OK.')
+    self.do_runf('test_utf8_bench.c', 'done\n')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   @with_both_text_decoder
   @also_with_minimal_runtime
   def test_utf8_invalid(self):
-    self.do_runf('test_utf8_invalid.c', 'OK.')
+    self.do_runf('test_utf8_invalid.c', 'done\n')
 
   def test_utf16_bench(self):
     self.cflags += ['--embed-file', test_file('test_utf16_bench.txt') + '@/utf16_corpus.txt']
-    self.do_runf('test_utf16_bench.c', 'OK.')
+    self.do_runf('test_utf16_bench.c', 'done\n')
 
   def test_wprintf(self):
     self.do_core_test('test_wprintf.cpp')
@@ -6268,12 +6268,17 @@ PORT: 3979
   def test_strcasecmp(self):
     self.do_core_test('test_strcasecmp.c')
 
+  @also_with_pthreads
   def test_atomic(self):
+    if '-pthread' in self.cflags and self.is_wasm2js():
+      self.skipTest('atomics support missing')
     self.do_core_test('test_atomic.c')
 
+  @also_with_pthreads
   def test_atomic_cxx(self):
-    # the wasm backend has lock-free atomics, but not asm.js or asm2wasm
-    self.do_core_test('test_atomic_cxx.cpp', cflags=['-DIS_64BIT_LOCK_FREE=1'])
+    if '-pthread' in self.cflags and self.is_wasm2js():
+      self.skipTest('atomics support missing')
+    self.do_core_test('test_atomic_cxx.cpp')
 
   def test_phiundef(self):
     self.do_core_test('test_phiundef.c')
@@ -8659,7 +8664,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'mimalloc': (['-sMALLOC=mimalloc', '-sABORTING_MALLOC=0'],),
   })
   def test_wrap_malloc(self, args):
-    self.do_runf('core/test_wrap_malloc.c', 'OK.', cflags=args)
+    self.do_runf('core/test_wrap_malloc.c', 'done\n', cflags=args)
 
   def test_environment(self):
     self.set_setting('ASSERTIONS')
@@ -9246,12 +9251,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.set_setting('EXPORT_NAME', 'foo')
     self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
-  def test_emscripten_atomics_stub(self):
-    self.do_core_test('pthread/emscripten_atomics.c')
-
-  @requires_pthreads
+  @also_with_pthreads
   def test_emscripten_atomics(self):
-    self.do_core_test('pthread/emscripten_atomics.c', cflags=['-pthread'])
+    self.do_core_test('pthread/test_emscripten_atomics.c')
 
   @requires_pthreads
   def test_emscripten_futex_api_basics(self):
