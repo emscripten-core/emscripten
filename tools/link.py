@@ -64,6 +64,7 @@ DEFAULT_ASYNCIFY_IMPORTS = ['__asyncjs__*']
 DEFAULT_ASYNCIFY_EXPORTS = [
   'main',
   '__main_argc_argv',
+  '_emscripten_proxy_main',
 ]
 
 VALID_ENVIRONMENTS = {'web', 'webview', 'worker', 'node', 'shell', 'worklet'}
@@ -1694,6 +1695,14 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.REQUIRED_EXPORTS += ['setThrew']
 
   if settings.ASYNCIFY:
+    # Warn against using PTHREAD_POOL_SIZE with ASYNCIFY, since there should be no need for it.
+    if 'PTHREAD_POOL_SIZE' in user_settings:
+      diagnostics.warning('emcc', 'PTHREAD_POOL_SIZE should not be needed under ASYNCIFY')
+    # PTHREAD_POOL_SIZE_STRICT is completely ignored since the warning/error it controls
+    # does not make sense with ASYNCIFY
+    if 'PTHREAD_POOL_SIZE_STRICT' in user_settings:
+      diagnostics.warning('unused-command-line-argument', 'PTHREAD_POOL_SIZE_STRICT is ignored under ASYNCIFY')
+    settings.PTHREAD_POOL_SIZE_STRICT = 0
     if not settings.ASYNCIFY_IGNORE_INDIRECT:
       # if we are not ignoring indirect calls, then we must treat invoke_* as if
       # they are indirect calls, since that is what they do - we can't see their
