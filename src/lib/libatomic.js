@@ -75,11 +75,21 @@ addToLibrary({
   },
 
 #if ASYNCIFY
-  emscripten_atomic_wait_suspending__async: 'auto',
-  emscripten_atomic_wait_suspending__deps: ['$polyfillWaitAsync', '$atomicWaitStates'],
-  emscripten_atomic_wait_suspending: async (addr, val, maxWaitMilliseconds) => {
+  _emscripten_atomic_wait_promise__deps: ['$polyfillWaitAsync', '$atomicWaitStates', '$addPromise'],
+  _emscripten_atomic_wait_promise: (addr, val, maxWaitMilliseconds) => {
     var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
-    return atomicWaitStates.indexOf(await wait.value)
+    if (wait.async) {
+      // In the async case return the promise ID.
+      var chainedPromise = wait.value.then((value) => atomicWaitStates.indexOf(value));
+      var id = addPromise(chainedPromise);
+      return id;
+    }
+    // In the synchronous case return the negative result code
+    return -atomicWaitStates.indexOf(wait.value);
+  },
+#else
+  _emscripten_atomic_wait_promise: (addr, val, maxWaitMilliseconds) => {
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_atomic_wait_suspending');
   },
 #endif
 

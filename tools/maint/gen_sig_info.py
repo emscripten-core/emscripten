@@ -384,6 +384,7 @@ def main(args):
                               'MAX_WEBGL_VERSION': 0,
                               'BUILD_AS_WORKER': 1,
                               'LINK_AS_CXX': 1,
+                              'SHARED_MEMORY': 0,
                               'AUTO_JS_LIBRARIES': 0}, cxx=True)
   extract_sig_info(sig_info, {'AUDIO_WORKLET': 1, 'WASM_WORKERS': 1, 'JS_LIBRARIES': ['libwasm_worker.js', 'libwebaudio.js']})
   extract_sig_info(sig_info, {'USE_GLFW': 3}, ['-DGLFW3'])
@@ -391,6 +392,7 @@ def main(args):
                               'USE_SDL': 0,
                               'MAX_WEBGL_VERSION': 0,
                               'AUTO_JS_LIBRARIES': 0,
+                              'SHARED_MEMORY': 0,
                               'ASYNCIFY': 1}, cxx=True, extra_cflags=['-std=c++20'])
   extract_sig_info(sig_info, {'LEGACY_GL_EMULATION': 1}, ['-DGLES'])
   extract_sig_info(sig_info, {'USE_GLFW': 2, 'FULL_ES3': 1, 'MAX_WEBGL_VERSION': 2})
