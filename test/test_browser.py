@@ -286,7 +286,7 @@ window.close = () => {
     #   pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB infile outfile
     shutil.copy(expected, 'expected.png')
     create_file('reftest.js', f'''
-      const reftestRebaseline = {common.EMTEST_REBASELINE};
+      const reftestRebaseline = {int(common.EMTEST_REBASELINE)};
     ''' + read_file(test_file('reftest.js')))
 
   def reftest(self, filename, reference=None, reference_slack=0, *args, **kwargs):
@@ -308,7 +308,7 @@ window.close = () => {
         self.run_process('pngcrush -rem gAMA -rem cHRM -rem iCCP -rem sRGB actual.png'.split() + [reference])
 
   def test_sdl1_in_emscripten_nonstrict_mode(self):
-    if 'EMCC_STRICT' in os.environ and int(os.environ['EMCC_STRICT']):
+    if utils.get_env_bool('EMCC_STRICT'):
       self.skipTest('This test requires being run in non-strict mode (EMCC_STRICT env. variable unset)')
     # TODO: This test is verifying behavior that will be deprecated at some point in the future, remove this test once
     # system JS libraries are no longer automatically linked to anymore.

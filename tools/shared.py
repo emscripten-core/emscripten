@@ -24,11 +24,20 @@ from .toolchain_profiler import ToolchainProfiler
 assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
 
 from . import colored_logger
+from .utils import (
+  exe_path_from_root,
+  exit_with_error,
+  get_env_bool,
+  get_env_int,
+  memoize,
+  path_from_root,
+  safe_ensure_dirs,
+)
 
 # Configure logging before importing any other local modules so even
 # log message during import are shown as expected.
-DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
-EMCC_LOGGING = int(os.environ.get('EMCC_LOGGING', '1'))
+DEBUG = get_env_int('EMCC_DEBUG')
+EMCC_LOGGING = get_env_bool('EMCC_LOGGING', '1')
 log_level = logging.ERROR
 if DEBUG:
   log_level = logging.DEBUG
@@ -42,10 +51,9 @@ import contextlib
 
 from . import cache, config, diagnostics, filelock, tempfiles, utils
 from .settings import settings
-from .utils import exe_path_from_root, exit_with_error, memoize, path_from_root, safe_ensure_dirs
 
-DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
-PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
+DEBUG_SAVE = DEBUG or get_env_bool('EMCC_DEBUG_SAVE')
+PRINT_SUBPROCS = get_env_bool('EMCC_VERBOSE')
 SKIP_SUBPROCS = False
 
 # Minimum node version required to run the emscripten compiler.  This is
@@ -347,7 +355,7 @@ def perform_sanity_checks(quiet=False):
 
   llvm_ok = check_llvm()
 
-  if os.environ.get('EM_IGNORE_SANITY'):
+  if utils.get_env_bool('EM_IGNORE_SANITY'):
     logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
     return
 
@@ -374,7 +382,7 @@ def check_sanity(force=False, quiet=False):
   EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
   re-check sanity and clear the cache when the version changes.
   """
-  if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
+  if not force and utils.get_env_bool('EMCC_SKIP_SANITY_CHECK'):
     return
 
   # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
@@ -391,7 +399,7 @@ def check_sanity(force=False, quiet=False):
       perform_sanity_checks(quiet)
     return
 
-  if os.environ.get('EM_IGNORE_SANITY'):
+  if utils.get_env_bool('EM_IGNORE_SANITY'):
     perform_sanity_checks(quiet)
     return
 
@@ -498,7 +506,7 @@ def setup_temp_dirs():
   global EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, TEMP_DIR
   EMSCRIPTEN_TEMP_DIR = None
 
-  TEMP_DIR = os.environ.get("EMCC_TEMP_DIR", tempfile.gettempdir())
+  TEMP_DIR = os.environ.get('EMCC_TEMP_DIR', tempfile.gettempdir())
   if not os.path.isdir(TEMP_DIR):
     exit_with_error(f'The temporary directory `{TEMP_DIR}` does not exist! Please make sure that the path is correct.')
 
