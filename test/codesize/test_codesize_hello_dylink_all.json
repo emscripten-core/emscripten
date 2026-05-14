@@ -1,7 +1,7 @@
 {
-  "a.out.js": 270568,
+  "a.out.js": 270705,
   "a.out.nodebug.wasm": 588318,
-  "total": 858886,
+  "total": 859023,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -864,6 +864,7 @@
     "emscripten_promise_create",
     "emscripten_promise_destroy",
     "emscripten_promise_race",
+    "emscripten_promise_ref_await_unchecked",
     "emscripten_promise_resolve",
     "emscripten_promise_then",
     "emscripten_random",
