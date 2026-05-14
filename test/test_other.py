@@ -1355,7 +1355,7 @@ f.close()
 
     # Check linking libA.so multiple times (both directly and indirectly) does not result
     # any multiply defined symbols.  This is especially important with `FAKE_DYLIBS` where
-    # the we model shared libraries using regular object file.   Without special handling
+    # we model shared libraries using regular object files.  Without special handling
     # fake `libA.so` could get linked multiple times.
     self.cflags.remove('-Werror')
     self.emcc('libA.c', ['-shared', '-o', 'libA.so'])
