@@ -179,6 +179,7 @@ def ignore_symbol(s, cxx):
     return True
   if s in {'__stack_base', '__memory_base', '__table_base', '__global_base', '__heap_base',
            '__stack_pointer', '__stack_high', '__stack_low',
+           '_emscripten_atomic_wait_promise',
            # legacy aliases, not callable from native code.
            'stackSave', 'stackRestore', 'stackAlloc', 'getTempRet0', 'setTempRet0',
            }:
@@ -207,6 +208,7 @@ def valuetype_to_chr(t, t64):
     webassembly.Type.I64: 'j',
     webassembly.Type.F32: 'f',
     webassembly.Type.F64: 'd',
+    webassembly.Type.EXTERNREF: 'r',
   }[t]
 
 

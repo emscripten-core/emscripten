@@ -132,9 +132,3 @@ void* _emscripten_init_pthread(void *base, size_t* size, pid_t tid);
 // __builtin_wasm_memory_atomic_waitXX then they will not be woken by
 // this method.
 void _emscripten_thread_notify(pthread_t thread);
-
-// Internal, promise-returning API used to implement
-// emscripten_atomic_wait_suspending.
-intptr_t _emscripten_atomic_wait_promise(volatile void *addr,
-                                         uint32_t value,
-                                         double maxWaitMilliseconds);

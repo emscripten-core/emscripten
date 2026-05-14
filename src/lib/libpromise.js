@@ -268,6 +268,17 @@ addToLibrary({
 #endif
     return getPromise(id);
   },
+
+  // Just like emscripten_promise_await_unchecked above except the argument
+  // is an actual JS promise.  We call this from Wasm when we have an `externref`
+  // that refers to a JS promise object.
+  emscripten_promise_ref_await_unchecked__async: 'auto',
+  emscripten_promise_ref_await_unchecked: (promise) => {
+#if RUNTIME_DEBUG
+    dbg(`emscripten_promise_ref_await_unchecked: ${promise}`);
+#endif
+    return promise;
+  },
 #else
   emscripten_promise_await: (returnValuePtr, id) => {
     abort('emscripten_promise_await is only available with ASYNCIFY');
@@ -275,6 +286,9 @@ addToLibrary({
   emscripten_promise_await_unchecked: (id) => {
     abort('emscripten_promise_await_unchecked is only available with ASYNCIFY');
     return 0;
+  },
+  emscripten_promise_ref_await_unchecked: (id) => {
+    abort('emscripten_promise_await_unchecked is only available with ASYNCIFY');
   },
 #endif
 });
