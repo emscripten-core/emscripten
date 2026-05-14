@@ -2751,6 +2751,18 @@ The current type of b is: 9
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_run_in_out_file_test('atomic/test_wait_async.c')
 
+  # Include @requires_node_25 explictly here so that this test will be disabled
+  # by EMTEST_SKIP_NODE_25.  Without this, the `requires_pthreads` and `requires_jspi` can
+  # end with conflicting requirements because we often run with both v8 (which satisfies
+  # the `requires_jspi` part have node 22 (which satisfies the `requires_pthreads` part).
+  # FIXME: This should not be needed.
+  @requires_node_25
+  @requires_pthreads
+  @with_asyncify_and_jspi
+  @also_with_wasm_workers
+  def test_pthread_wait_suspending(self):
+    self.do_run_in_out_file_test('atomic/test_wait_suspending.c')
+
   @requires_pthreads
   @also_with_minimal_runtime
   def test_pthread_run_on_main_thread(self):
