@@ -8742,30 +8742,36 @@ int main() {
     # did not retrieve the correct thrown object pointer in case of multiple
     # inheritance
     create_file('src.cpp', r'''
-      #include <iostream>
+      #include <exception>
+      #include <string>
 
-      struct Virt {
-        virtual void virt1() {}
-      };
+      class MyException : public virtual std::exception {
+      public:
+        MyException(const char *msg) : m_message(msg) {}
+        const char *what() const noexcept override { return m_message.c_str(); }
 
-      struct MyEx : Virt, public std::runtime_error {
-        explicit MyEx(std::string msg) : std::runtime_error(std::move(msg)) {}
+      private:
+        std::string m_message;
       };
 
       int main() {
+        std::exception_ptr ep;
         try {
-          throw MyEx("ERROR");
+          throw MyException("hello");
         } catch (...) {
-          try {
-            std::rethrow_exception(std::current_exception());
-          } catch (const std::exception &ex) {
-            std::cout << ex.what() << '\n';
-          }
+          ep = std::current_exception();
         }
+
+        try {
+          std::rethrow_exception(ep);
+        } catch (const std::exception &e) {
+          std::printf("caught: %s\n", e.what());
+        }
+        return 0;
       }
     ''')
     self.set_setting('ASSERTIONS')
-    self.do_runf('src.cpp', 'ERROR\n')
+    self.do_runf('src.cpp', 'caught: hello\n')
 
   @with_all_eh_sjlj
   def test_unused_eh_dce(self):
