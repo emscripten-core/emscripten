@@ -6,7 +6,7 @@
 
 addToLibrary({
   $promiseMap__deps: ['$HandleAllocator'],
-  $promiseMap: "new HandleAllocator();",
+  $promiseMap: 'new HandleAllocator();',
 
   $getPromise__deps: ['$promiseMap'],
   $getPromise: (id) => promiseMap.get(id).promise,
@@ -73,7 +73,7 @@ addToLibrary({
         return;
     }
 #if ASSERTIONS
-    abort("unexpected promise callback result " + result);
+    abort(`unexpected promise callback result ${result}`);
 #endif
   },
 
@@ -84,6 +84,7 @@ addToLibrary({
                                '$stackRestore',
                                '$stackSave'],
   $makePromiseCallback: (callback, userData) => {
+    if (!callback) return;
     return (value) => {
 #if RUNTIME_DEBUG
       dbg(`emscripten promise callback: ${value}`);
@@ -131,7 +132,7 @@ addToLibrary({
           throw resultVal;
       }
 #if ASSERTIONS
-      abort("unexpected promise callback result " + result);
+      abort(`unexpected promise callback result ${result}`);
 #endif
     };
   },
@@ -217,7 +218,7 @@ addToLibrary({
     dbg(`emscripten_promise_any: ${promises}`);
 #endif
 #if ASSERTIONS
-    assert(typeof Promise.any != 'undefined', "Promise.any does not exist");
+    assert(typeof Promise.any != 'undefined', 'Promise.any does not exist');
 #endif
     var id = addPromise(Promise.any(promises).catch((err) => {
       if (errorBuf) {
