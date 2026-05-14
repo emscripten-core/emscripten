@@ -575,6 +575,7 @@ void emscripten_dlopen(const char* filename, int flags, void* user_data,
   filename = find_dylib(buf, filename, sizeof buf);
   struct dso* p = find_existing(filename);
   if (p) {
+    do_write_unlock();
     onsuccess(user_data, p);
     return;
   }
