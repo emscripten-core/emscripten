@@ -8742,37 +8742,6 @@ int main() {
     # did not retrieve the correct thrown object pointer in case of multiple
     # inheritance
     create_file('src.cpp', r'''
-      #include <iostream>
-
-      struct Virt {
-        virtual void virt1() {}
-      };
-
-      struct MyEx : Virt, public std::runtime_error {
-        explicit MyEx(std::string msg) : std::runtime_error(std::move(msg)) {}
-      };
-
-      int main() {
-        try {
-          throw MyEx("ERROR");
-        } catch (...) {
-          try {
-            std::rethrow_exception(std::current_exception());
-          } catch (const std::exception &ex) {
-            std::cout << ex.what() << '\n';
-          }
-        }
-      }
-    ''')
-    self.set_setting('ASSERTIONS')
-    self.do_runf('src.cpp', 'ERROR\n')
-
-  @with_all_eh_sjlj
-  def test_multi_inheritance_exception_message2(self):
-    # Regression test for a bug that getting exception message in the DEBUG mode
-    # did not retrieve the correct thrown object pointer in case of multiple
-    # inheritance
-    create_file('src.cpp', r'''
       #include <exception>
       #include <string>
 
