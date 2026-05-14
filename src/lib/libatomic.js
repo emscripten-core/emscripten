@@ -74,6 +74,15 @@ addToLibrary({
     // Any function using Atomics.waitAsync should depend on this.
   },
 
+#if ASYNCIFY
+  emscripten_atomic_wait_suspending__async: 'auto',
+  emscripten_atomic_wait_suspending__deps: ['$polyfillWaitAsync', '$atomicWaitStates'],
+  emscripten_atomic_wait_suspending: async (addr, val, maxWaitMilliseconds) => {
+    var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
+    return atomicWaitStates.indexOf(await wait.value)
+  },
+#endif
+
   $atomicWaitStates__internal: true,
   $atomicWaitStates: ['ok', 'not-equal', 'timed-out'],
   $liveAtomicWaitAsyncs: {},
