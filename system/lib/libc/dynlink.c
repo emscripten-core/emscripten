@@ -83,18 +83,13 @@ static struct dlevent* _Atomic tail = &main_event;
 #ifdef _REENTRANT
 static thread_local struct dlevent* thread_local_tail = &main_event;
 static pthread_mutex_t write_lock = PTHREAD_MUTEX_INITIALIZER;
-static thread_local bool skip_dlsync = false;
 
 static void do_write_lock() {
-  // Once we have the lock we want to avoid automatic code sync as that would
-  // result in a deadlock.
-  skip_dlsync = true;
   pthread_mutex_lock(&write_lock);
 }
 
 static void do_write_unlock() {
   pthread_mutex_unlock(&write_lock);
-  skip_dlsync = false;
 }
 #else // _REENTRANT
 #define do_write_unlock()
