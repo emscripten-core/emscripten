@@ -1353,13 +1353,19 @@ f.close()
       }
     ''')
 
+    # Check linking libA.so multiple times (both directly and indirectly) does not result
+    # any multiply defined symbols.  This is especially important with `FAKE_DYLIBS` where
+    # the we model shared libraries using regular object file.   Without special handling
+    # fake `libA.so` could get linked multiple times.
     self.cflags.remove('-Werror')
     self.emcc('libA.c', ['-shared', '-o', 'libA.so'])
 
-    self.emcc('a2.c', ['-r', '-L.', '-lA', '-o', 'a2.o'])
-    self.emcc('b2.c', ['-r', '-L.', '-lA', '-o', 'b2.o'])
+    err = self.emcc('a2.c', ['-shared', '-L.', '-lA', '-o', 'liba2.so'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: ignoring dynamic library libA.so when generating an object file', err)
+    err = self.emcc('b2.c', ['-shared', '-L.', '-lA', '-o', 'libb2.so'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: ignoring dynamic library libA.so when generating an object file', err)
 
-    self.do_runf('main.c', 'result: 1', cflags=['-L.', '-lA', 'a2.o', 'b2.o'])
+    self.do_runf('main.c', 'result: 1', cflags=['-L.', '-lA', 'liba2.so', 'libb2.so'])
 
   def test_multiply_defined_libsymbols_2(self):
     create_file('a.c', "int x() { return 55; }")
