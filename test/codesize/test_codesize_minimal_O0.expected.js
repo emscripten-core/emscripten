@@ -1049,6 +1049,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'registerPreMainLoop',
   'getPromise',
   'makePromise',
+  'addPromise',
   'idsToPromises',
   'makePromiseCallback',
   'Browser_asyncPrepareDataCounter',
