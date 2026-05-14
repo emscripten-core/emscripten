@@ -1095,6 +1095,8 @@ jobs:
             core0.test_cubescript_jspi
             core0.test_pthread_wait_suspending*
             core0.test_poll_blocking_asyncify_jspi
+            core0.test_promise_await*
+            wasm64.test_promise_await*
             wasm64.test_pthread_join_and_asyncify
             "
       - upload-test-results

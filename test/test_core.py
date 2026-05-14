@@ -9676,6 +9676,33 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/test_promise_await.c', 'emscripten_promise_await is only available with ASYNCIFY',
                  assert_returncode=NON_ZERO)
 
+  # Include @requires_node_25 explictly here so that this test will be disabled
+  # by EMTEST_SKIP_NODE_25.  Without this, the `requires_node` and `requires_jspi` can
+  # end with conflicting requirements because we often run with both v8 (which satisfies
+  # the `requires_jspi` part have node (which satisfies the `requires_node` part).
+  # FIXME: This should not be needed.
+  @requires_node_25
+  @with_asyncify_and_jspi
+  def test_promise_await_unchecked_rejected(self):
+    create_file('test.c', r'''
+#include <emscripten/promise.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+  em_promise_t p = emscripten_promise_create();
+  emscripten_promise_resolve(p, EM_PROMISE_REJECT, (void*)45);
+
+  printf("waiting on promise (unchecked, rejected)\n");
+  (void)emscripten_promise_await_unchecked(p);
+  printf("ERROR: should not be reached\n");
+  __builtin_abort();
+  return 1;
+}
+''')
+    # We expect an unhandled rejection, which in Node.js results in a non-zero exit code.
+    self.do_runf('test.c', 'UnhandledPromiseRejection', assert_returncode=NON_ZERO)
+
   @no_modularize_instance('uses Module object directly')
   def test_emscripten_async_load_script(self):
     create_file('script1.js', 'Module._set(456);''')
