@@ -1610,7 +1610,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
   options = emrun_options = parse_args(args)
 
   if MACOS and options.browser.endswith('.app') and not options.browser.startswith('open'):
-    options.browser_args = '--new --fresh --background -a ' + options.browser + ' ' + str(options.browser_args)
+    options.browser_args = f'--new --fresh --background -a {options.browser} {options.browser_args}'
     options.browser = 'open'
 
   if options.android_tunnel:
