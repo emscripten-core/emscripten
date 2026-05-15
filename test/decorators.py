@@ -460,7 +460,7 @@ def can_do_standalone(self, impure=False):
   # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
   # the WASI APIs that take pointer values don't have 64-bit variants yet.
   if not impure:
-    if self.get_setting('MEMORY64'):
+    if self.is_wasm64():
       return False
     # This is way to detect the core_2gb test mode in test_core.py
     if self.get_setting('INITIAL_MEMORY') == '2200mb':

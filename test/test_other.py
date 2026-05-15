@@ -9210,7 +9210,7 @@ end
 
   @also_with_wasm64
   def test_closure_webgpu(self):
-    if config.FROZEN_CACHE and self.get_setting('MEMORY64'):
+    if config.FROZEN_CACHE and self.is_wasm64():
       # CI configuration doesn't run `embuilder` with wasm64 on ports
       self.skipTest("test doesn't work with frozen cache")
     # Emdawnwebgpu uses C++ internally, so we use a cpp file here so emcc defaults to linking C++.
@@ -11920,7 +11920,7 @@ int main(void) {
     'dylink': (['-sMAIN_MODULE=2'],),
   })
   def test_emdawnwebgpu_link_test(self, args):
-    if config.FROZEN_CACHE and (self.get_setting('MEMORY64') or '-sMAIN_MODULE=2' in args):
+    if config.FROZEN_CACHE and (self.is_wasm64() or '-sMAIN_MODULE=2' in args):
       # CI configuration doesn't run `embuilder` with wasm64 on ports
       self.skipTest("test doesn't work with frozen cache")
     self.emcc(test_file('test_emdawnwebgpu_link_test.cpp'), ['--use-port=emdawnwebgpu', '-sASYNCIFY'] + args)
@@ -12466,7 +12466,7 @@ exec "$@"
     wasm_split_run = [wasm_split, '-g',
                       '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
                       '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
-    if self.get_setting('MEMORY64'):
+    if self.is_wasm64():
       wasm_split_run += ['--enable-memory64']
     self.run_process(wasm_split_run)
 

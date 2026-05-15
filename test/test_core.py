@@ -5324,7 +5324,7 @@ int main()
     self.do_core_test('test_strtok.c')
 
   def test_strtol(self):
-    if self.get_setting('MEMORY64'):
+    if self.is_wasm64():
       out_suffix = '64'
     else:
       out_suffix = ''
@@ -6961,7 +6961,7 @@ void* operator new(size_t size) {
     # and this test would different non-deterministic results based on, for example,
     # what other tests had previously run.
     builder_cmd = [EMBUILDER, 'build', 'libpng']
-    if self.get_setting('MEMORY64'):
+    if self.is_wasm64():
       builder_cmd.append('--wasm64')
       self.cflags.append('-Wno-pointer-to-int-cast')
     self.run_process(builder_cmd)
@@ -7725,7 +7725,7 @@ void* operator new(size_t size) {
     if safe_heap and '-fsanitize=address' in self.cflags:
       self.skipTest('asan does not work with SAFE_HEAP')
     self.set_setting('SAFE_HEAP', safe_heap)
-    out_suffix = '64' if self.get_setting('MEMORY64') else ''
+    out_suffix = '64' if self.is_wasm64() else ''
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True, out_suffix=out_suffix, cflags=['-lembind'])
 
   @no_wasm2js('wasm_bigint')
