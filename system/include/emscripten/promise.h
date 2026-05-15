@@ -147,6 +147,12 @@ typedef struct em_settled_result_t {
 [[nodiscard]] em_settled_result_t
 emscripten_promise_await(em_promise_t promise);
 
+// Just like emscripten_promise_await but does not include a rejection handler
+// and simply returns result if/when the promise is fulfilled.
+// If the promise is rejected it would then get handled elsewhere in the promise
+// chain, or result in a top level unhandled rejection.
+[[nodiscard]] void* emscripten_promise_await_unchecked(em_promise_t promise);
+
 #ifdef __cplusplus
 }
 #endif

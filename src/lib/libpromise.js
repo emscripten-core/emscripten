@@ -247,12 +247,10 @@ addToLibrary({
     return id;
   },
 
+#if ASYNCIFY
   emscripten_promise_await__async: 'auto',
-#if ASYNCIFY
   emscripten_promise_await__deps: ['$getPromise', '$setPromiseResult'],
-#endif
   emscripten_promise_await: (returnValuePtr, id) => {
-#if ASYNCIFY
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_await: ${id}`);
 #endif
@@ -260,8 +258,22 @@ addToLibrary({
       value => setPromiseResult(returnValuePtr, true, value),
       error => setPromiseResult(returnValuePtr, false, error)
     );
-#else
-    abort('emscripten_promise_await is only available with ASYNCIFY');
-#endif
   },
+
+  emscripten_promise_await_unchecked__async: 'auto',
+  emscripten_promise_await_unchecked__deps: ['$getPromise'],
+  emscripten_promise_await_unchecked: (id) => {
+#if RUNTIME_DEBUG
+    dbg(`emscripten_promise_await_unchecked: ${id}`);
+#endif
+    return getPromise(id);
+  },
+#else
+  emscripten_promise_await: (returnValuePtr, id) => {
+    abort('emscripten_promise_await is only available with ASYNCIFY');
+  },
+  emscripten_promise_await_unchecked: (id) => {
+    abort('emscripten_promise_await_unchecked is only available with ASYNCIFY');
+  },
+#endif
 });
