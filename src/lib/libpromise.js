@@ -274,6 +274,7 @@ addToLibrary({
   },
   emscripten_promise_await_unchecked: (id) => {
     abort('emscripten_promise_await_unchecked is only available with ASYNCIFY');
+    return 0;
   },
 #endif
 });
