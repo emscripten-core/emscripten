@@ -530,8 +530,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     output = self.run_process([EMCC, '--print-target-triple'], stdout=PIPE, stderr=PIPE).stdout
     self.assertContained('wasm32-unknown-emscripten', output)
 
-    # Test that -sMEMORY64 triggers the wasm64 triple
+    # Test that -m64 / -sMEMORY64 triggers the wasm64 triple
     output = self.run_process([EMCC, '-sMEMORY64', '-dumpmachine'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertContained('wasm64-unknown-emscripten', output)
+
+    output = self.run_process([EMCC, '-m64', '-dumpmachine'], stdout=PIPE, stderr=PIPE).stdout
     self.assertContained('wasm64-unknown-emscripten', output)
 
   @parameterized({
@@ -703,7 +706,7 @@ f.close()
   @parameterized({
     '': [[]],
     'lto': [['-flto']],
-    'wasm64': [['-sMEMORY64']],
+    'wasm64': [['-m64']],
   })
   def test_print_search_dirs(self, args):
     output = self.run_process([EMCC, '-print-search-dirs'] + args, stdout=PIPE).stdout
@@ -715,7 +718,7 @@ f.close()
     libpath = libpath.split(os.pathsep)
     libpath = [Path(p) for p in libpath]
     settings.LTO = '-flto' in args
-    settings.MEMORY64 = int('-sMEMORY64' in args)
+    settings.MEMORY64 = int('-m64' in args)
     expected = cache.get_lib_dir(absolute=True)
     self.assertIn(expected, libpath)
 
@@ -723,14 +726,14 @@ f.close()
   @parameterized({
     '': [[]],
     'lto': [['-flto']],
-    'wasm64': [['-sMEMORY64']],
+    'wasm64': [['-m64']],
   })
   def test_print_libgcc_file_name(self, args):
     output = self.run_process([EMCC, '-print-libgcc-file-name'] + args, stdout=PIPE).stdout
     output2 = self.run_process([EMCC, '--print-libgcc-file-name'] + args, stdout=PIPE).stdout
     self.assertEqual(output, output2)
     settings.LTO = '-flto' in args
-    settings.MEMORY64 = int('-sMEMORY64' in args)
+    settings.MEMORY64 = int('-m64' in args)
     libdir = cache.get_lib_dir(absolute=True)
     expected = os.path.join(libdir, 'libcompiler_rt.a')
     self.assertEqual(output.strip(), expected)
@@ -757,7 +760,7 @@ f.close()
   @parameterized({
     '': [[]],
     'lto': [['-flto']],
-    'wasm64': [['-sMEMORY64']],
+    'wasm64': [['-m64']],
   })
   def test_print_file_name(self, args):
     # make sure the corresponding version of libc exists in the cache
@@ -767,7 +770,7 @@ f.close()
     self.assertEqual(output, output2)
     filename = Path(output)
     settings.LTO = '-flto' in args
-    settings.MEMORY64 = int('-sMEMORY64' in args)
+    settings.MEMORY64 = int('-m64' in args)
     self.assertContained(cache.get_lib_name('libc.a'), str(filename))
 
   def test_emar_em_config_flag(self):
@@ -1085,17 +1088,17 @@ f.close()
 
   @parameterized({
     '': [None],
-    'wasm64': ['-sMEMORY64'],
+    'wasm64': ['-m64'],
     'pthreads': ['-pthread'],
   })
   def test_cmake_check_type_size(self, cflag):
-    if cflag == '-sMEMORY64':
+    if cflag == '-m64':
       self.require_wasm64()
     cmd = [EMCMAKE, 'cmake', test_file('cmake/check_type_size')]
     if cflag:
       cmd += [f'-DCMAKE_CXX_FLAGS={cflag}', f'-DCMAKE_C_FLAGS={cflag}']
     output = self.run_process(cmd, stdout=PIPE).stdout
-    if cflag == '-sMEMORY64':
+    if cflag == '-m64':
       self.assertContained('CMAKE_SIZEOF_VOID_P -> 8', output)
     else:
       self.assertContained('CMAKE_SIZEOF_VOID_P -> 4', output)
@@ -3445,7 +3448,7 @@ More info: https://emscripten.org
     'no_utf8': ['-sEMBIND_STD_STRING_IS_UTF8=0'],
     'no_dynamic': ['-sDYNAMIC_EXECUTION=0'],
     'aot_js': ['-sDYNAMIC_EXECUTION=0', '-sEMBIND_AOT', '-DSKIP_UNBOUND_TYPES'],
-    'wasm64': ['-sMEMORY64'],
+    'wasm64': ['-m64'],
     '2gb': ['-sINITIAL_MEMORY=2200mb', '-sGLOBAL_BASE=2gb'],
   })
   @parameterized({
@@ -3468,7 +3471,7 @@ More info: https://emscripten.org
     #
     # By default all of them are run.  If you are debugging and want to run just a subset of the
     # JS tests you can use `EMBIND_TESTS=myregex` to run just the matching tests.
-    if '-sMEMORY64' in extra_args:
+    if '-m64' in extra_args:
       self.require_wasm64()
     self.cflags += [
       '--no-entry',
@@ -3657,7 +3660,7 @@ More info: https://emscripten.org
     '4': [['-fsanitize=undefined', '-gsource-map'], 'embind_tsgen_ignore_3.d.ts'],
     '5': [['-sASYNCIFY'], 'embind_tsgen_ignore_3.d.ts'],
     '6': [['-sENVIRONMENT=worker', '-lworkerfs.js'], 'embind_tsgen.d.ts'],
-    '7': [['-sMEMORY64=1', '-gsource-map'], 'embind_tsgen_ignore_7.d.ts'],
+    '7': [['-m64', '-gsource-map'], 'embind_tsgen_ignore_7.d.ts'],
   })
   def test_embind_tsgen_ignore(self, extra_args, expected_ts_file):
     create_file('fail.js', 'assert(false);')
@@ -3737,7 +3740,7 @@ More info: https://emscripten.org
   def test_embind_tsgen_wasm64(self, args):
     # Check that when wasm64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
     self.run_process([EMXX, test_file('other/embind_tsgen_wasm64.cpp'),
-                      '-lembind', '--emit-tsd', 'embind_tsgen_wasm64.d.ts', '-sMEMORY64'] +
+                      '-lembind', '--emit-tsd', 'embind_tsgen_wasm64.d.ts', '-m64'] +
                      args +
                      self.get_cflags())
     self.assertFileContents(test_file('other/embind_tsgen_wasm64.d.ts'), read_file('embind_tsgen_wasm64.d.ts'))
@@ -6590,7 +6593,7 @@ int main() {
   }
 }
 ''')
-    self.do_runf('test.c', 'done\n', cflags=['-sGLOBAL_BASE=2Gb', '-sTOTAL_MEMORY=4Gb', '-sMAXIMUM_MEMORY=5Gb', '-sALLOW_MEMORY_GROWTH', '-sMEMORY64'])
+    self.do_runf('test.c', 'done\n', cflags=['-sGLOBAL_BASE=2Gb', '-sTOTAL_MEMORY=4Gb', '-sMAXIMUM_MEMORY=5Gb', '-sALLOW_MEMORY_GROWTH', '-m64'])
 
   def test_libcxx_minimal(self):
     create_file('vector.cpp', r'''
@@ -10055,7 +10058,7 @@ int main() {
     # in some modes we run wasm-emscripten-finalize, which normally strips the
     # features section for us, so add testing for those
     'nobigint': (['-sWASM_BIGINT=0'],),
-    'wasm64': (['-sMEMORY64'],),
+    'wasm64': (['-m64'],),
   })
   def test_wasm_features_section(self, args):
     # The features section should never be in our output, when we optimize.
@@ -13567,7 +13570,7 @@ int main() {
     # Test that extended-const expressions are used in the data segments.
     self.assertContained(r'\(data (\$\S+ )?\(offset \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat, regex=True)
 
-  # Smoketest for MEMORY64 setting.  Most of the testing of MEMORY64 is by way of the wasm64
+  # Smoketest for wasm64.  Most of the testing of wasm64 is by way of the wasm64
   # variant of the core test suite.
   @parameterized({
     'O0': (['-O0'],),
@@ -13577,8 +13580,8 @@ int main() {
     'Oz': (['-Oz'],),
   })
   @requires_wasm64
-  def test_memory64(self, args):
-    self.do_run_in_out_file_test('core/test_hello_argc.c', args=['hello', 'world'], cflags=['-sMEMORY64'] + args)
+  def test_wasm64(self, args):
+    self.do_run_in_out_file_test('core/test_hello_argc.c', args=['hello', 'world'], cflags=['-m64'] + args)
 
   # Verfy that MAIN_MODULE=1 (which includes all symbols from all libraries)
   # works with -sPROXY_POSIX_SOCKETS and -Oz, both of which affect linking of
@@ -14379,6 +14382,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.assertFalse(is_64('hello_world.wasm'))
 
     self.assert_fail([EMCC, test_file('hello_world.c'), '-target', 'wasm32', '-sMEMORY64'], 'emcc: error: wasm32 target is not compatible with -sMEMORY64')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-target', 'wasm32', '-m64'], 'emcc: error: wasm32 target is not compatible with -sMEMORY64')
 
     self.assert_fail([EMCC, test_file('hello_world.c'), '--target=arm64'], 'emcc: error: unsupported target: arm64 (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten')
 
@@ -14701,7 +14705,7 @@ addToLibrary({
 
   def test_wasm64_no_asan(self):
     expected = 'error: MEMORY64 does not yet work with ASAN'
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'], expected)
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-m64', '-fsanitize=address'], expected)
 
   def test_mimalloc_no_asan(self):
     # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
