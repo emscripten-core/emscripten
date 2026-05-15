@@ -9937,7 +9937,7 @@ core_2gb = make_run('core_2gb', cflags=['--profiling-funcs'],
 # MEMORY64=1
 wasm64 = make_run('wasm64', cflags=['--profiling-funcs'],
                   settings={'MEMORY64': 1}, require_wasm64=True)
-wasm64_O2 = make_run('wasm64', cflags=['-O2'],
+wasm64_O2 = make_run('wasm64_O2', cflags=['-O2'],
                      settings={'MEMORY64': 1}, require_wasm64=True)
 # Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
 # suite with any kind of parallelism.
