@@ -1732,10 +1732,9 @@ int main() {
 
   @no_wasm2js('eval_ctors not supported yet')
   @no_2gb('https://github.com/WebAssembly/binaryen/issues/5893')
+  @no_4gb('https://github.com/WebAssembly/binaryen/issues/5893')
   @also_with_standalone_wasm(impure=True)
   def test_eval_ctors_no_main(self):
-    if self.get_setting('MEMORY64') == 1:
-      self.skipTest('https://github.com/WebAssembly/binaryen/issues/5017')
     self.set_setting('EVAL_CTORS')
     self.do_core_test('test_ctors_no_main.cpp', cflags=['--no-entry'])
 
@@ -9938,6 +9937,8 @@ core_2gb = make_run('core_2gb', cflags=['--profiling-funcs'],
 # MEMORY64=1
 wasm64 = make_run('wasm64', cflags=['--profiling-funcs'],
                   settings={'MEMORY64': 1}, require_wasm64=True)
+wasm64_O2 = make_run('wasm64', cflags=['-O2'],
+                     settings={'MEMORY64': 1}, require_wasm64=True)
 # Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
 # suite with any kind of parallelism.
 wasm64_4gb = make_run('wasm64_4gb', cflags=['--profiling-funcs'],
