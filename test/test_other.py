@@ -1353,13 +1353,19 @@ f.close()
       }
     ''')
 
+    # Check linking libA.so multiple times (both directly and indirectly) does not result
+    # any multiply defined symbols.  This is especially important with `FAKE_DYLIBS` where
+    # we model shared libraries using regular object files.  Without special handling
+    # fake `libA.so` could get linked multiple times.
     self.cflags.remove('-Werror')
     self.emcc('libA.c', ['-shared', '-o', 'libA.so'])
 
-    self.emcc('a2.c', ['-r', '-L.', '-lA', '-o', 'a2.o'])
-    self.emcc('b2.c', ['-r', '-L.', '-lA', '-o', 'b2.o'])
+    err = self.emcc('a2.c', ['-shared', '-L.', '-lA', '-o', 'liba2.so'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: ignoring dynamic library libA.so when generating an object file', err)
+    err = self.emcc('b2.c', ['-shared', '-L.', '-lA', '-o', 'libb2.so'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: ignoring dynamic library libA.so when generating an object file', err)
 
-    self.do_runf('main.c', 'result: 1', cflags=['-L.', '-lA', 'a2.o', 'b2.o'])
+    self.do_runf('main.c', 'result: 1', cflags=['-L.', '-lA', 'liba2.so', 'libb2.so'])
 
   def test_multiply_defined_libsymbols_2(self):
     create_file('a.c', "int x() { return 55; }")
@@ -8742,30 +8748,36 @@ int main() {
     # did not retrieve the correct thrown object pointer in case of multiple
     # inheritance
     create_file('src.cpp', r'''
-      #include <iostream>
+      #include <exception>
+      #include <string>
 
-      struct Virt {
-        virtual void virt1() {}
-      };
+      class MyException : public virtual std::exception {
+      public:
+        MyException(const char *msg) : m_message(msg) {}
+        const char *what() const noexcept override { return m_message.c_str(); }
 
-      struct MyEx : Virt, public std::runtime_error {
-        explicit MyEx(std::string msg) : std::runtime_error(std::move(msg)) {}
+      private:
+        std::string m_message;
       };
 
       int main() {
+        std::exception_ptr ep;
         try {
-          throw MyEx("ERROR");
+          throw MyException("hello");
         } catch (...) {
-          try {
-            std::rethrow_exception(std::current_exception());
-          } catch (const std::exception &ex) {
-            std::cout << ex.what() << '\n';
-          }
+          ep = std::current_exception();
         }
+
+        try {
+          std::rethrow_exception(ep);
+        } catch (const std::exception &e) {
+          std::printf("caught: %s\n", e.what());
+        }
+        return 0;
       }
     ''')
     self.set_setting('ASSERTIONS')
-    self.do_runf('src.cpp', 'ERROR\n')
+    self.do_runf('src.cpp', 'caught: hello\n')
 
   @with_all_eh_sjlj
   def test_unused_eh_dce(self):

@@ -724,6 +724,7 @@ sigs = {
   emscripten_promise_all_settled__sig: 'pppp',
   emscripten_promise_any__sig: 'pppp',
   emscripten_promise_await__sig: 'vpp',
+  emscripten_promise_await_unchecked__sig: 'pp',
   emscripten_promise_create__sig: 'p',
   emscripten_promise_destroy__sig: 'vp',
   emscripten_promise_race__sig: 'ppp',

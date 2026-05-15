@@ -1232,7 +1232,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     filename = maybe_test_file(filename)
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
     cmd = [compiler_for(filename), filename] + self.get_cflags(compile_only=compile_only) + args
-    self.run_process(cmd, **kwargs)
+    return self.run_process(cmd, **kwargs)
 
   # Shared test code between main suite and others
 

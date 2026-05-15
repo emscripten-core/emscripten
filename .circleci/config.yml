@@ -1083,6 +1083,7 @@ jobs:
             other.test_min_node_version
             other.test_node_emscripten_num_logical_cores
             other.test_js_base64_api
+            other.test_closure_webgpu_wasm64
             core2.test_hello_world
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
@@ -1097,6 +1098,8 @@ jobs:
             core0.test_cubescript_jspi
             core0.test_pthread_wait_suspending*
             core0.test_poll_blocking_asyncify_jspi
+            core0.test_promise_await*
+            wasm64.test_promise_await*
             wasm64.test_pthread_join_and_asyncify
             "
       - upload-test-results
