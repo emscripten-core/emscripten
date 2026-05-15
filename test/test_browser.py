@@ -57,6 +57,7 @@ from decorators import (
   flaky,
   no_2gb,
   no_4gb,
+  no_highmem,
   no_wasm64,
   parameterize,
   parameterized,
@@ -1938,8 +1939,7 @@ window.close = () => {
     self.reftest('gl_renderers.c', cflags=['-sGL_UNSAFE_OPTS=0', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
   @requires_graphics_hardware
-  @no_2gb('render fails')
-  @no_4gb('render fails')
+  @no_highmem('render fails')
   def test_gl_stride(self):
     self.reftest('gl_stride.c', cflags=['-sGL_UNSAFE_OPTS=0', '-sLEGACY_GL_EMULATION', '-lGL', '-lSDL'])
 
@@ -3636,8 +3636,7 @@ Module["preRun"] = () => {
     self.btest_exit('main.cpp',
                     cflags=['-Wno-experimental', '-pthread', '-sMAIN_MODULE=2', 'side1.wasm', 'side2.wasm'])
 
-  @no_2gb('uses INITIAL_MEMORY')
-  @no_4gb('uses INITIAL_MEMORY')
+  @no_highmem('uses INITIAL_MEMORY')
   def test_memory_growth_during_startup(self):
     create_file('data.dat', 'X' * (30 * 1024 * 1024))
     self.btest_exit('browser_test_hello_world.c', cflags=['-sASSERTIONS', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=16MB', '-sSTACK_SIZE=16384', '--preload-file', 'data.dat'])
@@ -3788,8 +3787,7 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_preallocates_workers.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=4', '-sPTHREAD_POOL_DELAY_LOAD'])
 
   # Test that allocating a lot of threads doesn't regress. This needs to be checked manually!
-  @no_2gb('uses INITIAL_MEMORY')
-  @no_4gb('uses INITIAL_MEMORY')
+  @no_highmem('uses INITIAL_MEMORY')
   def test_pthread_large_pthread_allocation(self):
     self.btest_exit('pthread/test_large_pthread_allocation.c', cflags=['-sINITIAL_MEMORY=128MB', '-O3', '-pthread', '-sPTHREAD_POOL_SIZE=50'])
 
@@ -3926,8 +3924,7 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_proxying_in_futex_wait.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE'])
 
   # Test that sbrk() operates properly in multithreaded conditions
-  @no_2gb('uses INITIAL_MEMORY')
-  @no_4gb('uses INITIAL_MEMORY')
+  @no_highmem('uses INITIAL_MEMORY')
   @parameterized({
     '': (['-DABORTING_MALLOC=0', '-sABORTING_MALLOC=0'],),
     'aborting_malloc': (['-DABORTING_MALLOC=1'],),
@@ -4032,8 +4029,7 @@ Module["preRun"] = () => {
     self.btest(Path('pthread', name + '.cpp'), expected='1', cflags=['-fsanitize=leak', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
   @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb('ASAN + GLOBAL_BASE')
-  @no_4gb('ASAN + GLOBAL_BASE')
+  @no_highmem('ASAN + GLOBAL_BASE')
   @parameterized({
     # Reusing the LSan test files for ASan.
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
@@ -4044,14 +4040,12 @@ Module["preRun"] = () => {
     self.btest(Path('pthread', name + '.cpp'), expected='1', cflags=['-fsanitize=address', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
   @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb('ASAN + GLOBAL_BASE')
-  @no_4gb('ASAN + GLOBAL_BASE')
+  @no_highmem('ASAN + GLOBAL_BASE')
   def test_pthread_asan_use_after_free(self):
     self.btest('pthread/test_pthread_asan_use_after_free.cpp', expected='1', cflags=['-fsanitize=address', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free.js')])
 
   @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb('ASAN + GLOBAL_BASE')
-  @no_4gb('ASAN + GLOBAL_BASE')
+  @no_highmem('ASAN + GLOBAL_BASE')
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/20006')
   @no_safari('TODO: Hangs') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
   @also_with_wasmfs
@@ -4640,8 +4634,7 @@ Module["preRun"] = () => {
     'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'], 1),
     'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
   })
-  @no_2gb('uses INITIAL_MEMORY')
-  @no_4gb('uses INITIAL_MEMORY')
+  @no_highmem('uses INITIAL_MEMORY')
   @requires_growable_arraybuffers
   def test_pthread_growth_mainthread(self, cflags, pthread_pool_size):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
@@ -4657,8 +4650,7 @@ Module["preRun"] = () => {
     'proxy': (['-sPROXY_TO_PTHREAD'], 2),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
   })
-  @no_2gb('uses INITIAL_MEMORY')
-  @no_4gb('uses INITIAL_MEMORY')
+  @no_highmem('uses INITIAL_MEMORY')
   @requires_growable_arraybuffers
   def test_pthread_growth(self, cflags, pthread_pool_size=1):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
@@ -5232,8 +5224,7 @@ Module["preRun"] = () => {
     self.btest('wasm_worker/proxied_function.c', expected='0', cflags=['--js-library', test_file('wasm_worker/proxied_function.js'), '-sWASM_WORKERS', '-sASSERTIONS=0'])
 
   @no_firefox('no 4GB support yet')
-  @no_2gb('uses MAXIMUM_MEMORY')
-  @no_4gb('uses MAXIMUM_MEMORY')
+  @no_highmem('uses MAXIMUM_MEMORY')
   def test_4gb(self):
     # TODO Convert to an actual browser test when it reaches stable.
     # For now, keep this in browser as this suite runs serially, which
@@ -5371,8 +5362,7 @@ Module["preRun"] = () => {
     self.btest_exit('emmalloc_memgrowth.cpp', cflags=['-sMALLOC=emmalloc', '-sALLOW_MEMORY_GROWTH=1', '-sABORTING_MALLOC=0', '-sASSERTIONS=2', '-sMINIMAL_RUNTIME=1'])
 
   @no_firefox('no 4GB support yet')
-  @no_2gb('uses MAXIMUM_MEMORY')
-  @no_4gb('uses MAXIMUM_MEMORY')
+  @no_highmem('uses MAXIMUM_MEMORY')
   def test_2gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
@@ -5386,8 +5376,7 @@ Module["preRun"] = () => {
     self.do_run_in_out_file_test('browser/test_2gb_fail.c')
 
   @no_firefox('no 4GB support yet')
-  @no_2gb('uses MAXIMUM_MEMORY')
-  @no_4gb('uses MAXIMUM_MEMORY')
+  @no_highmem('uses MAXIMUM_MEMORY')
   def test_4gb_fail(self):
     # TODO Convert to an actual browser test when it reaches stable.
     #      For now, keep this in browser as this suite runs serially, which
