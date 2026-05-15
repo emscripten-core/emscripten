@@ -59,6 +59,7 @@ from decorators import (
   no_4gb,
   no_bun,
   no_deno,
+  no_highmem,
   no_wasm64,
   no_windows,
   parameterize,
@@ -155,7 +156,7 @@ def asan(func):
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb("asan doesn't support GLOBAL_BASE")
+  @no_highmem("asan doesn't support GLOBAL_BASE")
   def decorated(self, *args, **kwargs):
     return func(self, *args, **kwargs)
 
@@ -961,8 +962,7 @@ class TestCoreBase(RunnerCore):
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  @no_4gb('uses INITIAL_MEMORY')
-  @no_2gb('uses INITIAL_MEMORY')
+  @no_highmem('uses INITIAL_MEMORY')
   def test_emmalloc_memory_statistics(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.set_setting('INITIAL_MEMORY', '128MB')
@@ -976,8 +976,7 @@ class TestCoreBase(RunnerCore):
     self.assertContained(r'emmalloc_unclaimed_heap_memory\s*: [1-9]\d+', output, regex=True)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
-  @no_2gb('output is sensitive to absolute data layout')
-  @no_4gb('output is sensitive to absolute data layout')
+  @no_highmem('output is sensitive to absolute data layout')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_trim(self):
@@ -1731,8 +1730,7 @@ int main() {
     self.do_core_test('test_ctors_no_main.cpp', cflags=['--no-entry'])
 
   @no_wasm2js('eval_ctors not supported yet')
-  @no_2gb('https://github.com/WebAssembly/binaryen/issues/5893')
-  @no_4gb('https://github.com/WebAssembly/binaryen/issues/5893')
+  @no_highmem('https://github.com/WebAssembly/binaryen/issues/5893')
   @also_with_standalone_wasm(impure=True)
   def test_eval_ctors_no_main(self):
     self.set_setting('EVAL_CTORS')
@@ -2090,8 +2088,7 @@ int main(int argc, char **argv) {
     return re.sub(r"\nWarning: Enlarging memory arrays, this is not fast! \d+,\d+\n", "\n", text)
 
   # Tests that -sMINIMAL_RUNTIME builds can utilize -sALLOW_MEMORY_GROWTH option.
-  @no_4gb('memory growth issues')
-  @no_2gb('memory growth issues')
+  @no_highmem('memory growth issues')
   @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
   def test_minimal_runtime_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -2106,8 +2103,7 @@ int main(int argc, char **argv) {
     output = self.remove_growth_warning(output)
     self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
 
-  @no_2gb('memory growth issues')
-  @no_4gb('memory growth issues')
+  @no_highmem('memory growth issues')
   def test_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2145,8 +2141,7 @@ int main(int argc, char **argv) {
       output = self.remove_growth_warning(output)
       self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
 
-  @no_4gb('memory growth issues')
-  @no_2gb('memory growth issues')
+  @no_highmem('memory growth issues')
   def test_memorygrowth_2(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2180,8 +2175,7 @@ int main(int argc, char **argv) {
     self.do_core_test('test_memorygrowth_3.c')
 
   @also_with_standalone_wasm()
-  @no_4gb('depends on INITIAL_MEMORY')
-  @no_2gb('depends on INITIAL_MEMORY')
+  @no_highmem('depends on INITIAL_MEMORY')
   def test_memorygrowth_MAXIMUM_MEMORY(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2192,8 +2186,7 @@ int main(int argc, char **argv) {
     self.cflags += ['-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=100Mb']
     self.do_core_test('test_memorygrowth_wasm_mem_max.c')
 
-  @no_4gb('depends on INITIAL_MEMORY')
-  @no_2gb('depends on INITIAL_MEMORY')
+  @no_highmem('depends on INITIAL_MEMORY')
   def test_memorygrowth_linear_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2205,8 +2198,7 @@ int main(int argc, char **argv) {
     self.do_core_test('test_memorygrowth_linear_step.c')
 
   @no_ubsan('UBSan seems to affect the precise memory usage')
-  @no_4gb('depends on specific memory layout')
-  @no_2gb('depends on specific memory layout')
+  @no_highmem('depends on specific memory layout')
   def test_memorygrowth_geometric_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2231,8 +2223,7 @@ int main(int argc, char **argv) {
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
-  @no_4gb('depends on MAXIMUM_MEMORY')
-  @no_2gb('depends on MAXIMUM_MEMORY')
+  @no_highmem('depends on MAXIMUM_MEMORY')
   def test_aborting_new(self, args):
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
@@ -2244,16 +2235,14 @@ int main(int argc, char **argv) {
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
-  @no_4gb('depends on MAXIMUM_MEMORY')
-  @no_2gb('depends on MAXIMUM_MEMORY')
+  @no_highmem('depends on MAXIMUM_MEMORY')
   def test_nothrow_new(self, args):
     self.do_core_test('test_nothrow_new.cpp', cflags=args)
 
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
   @no_lsan('LSan alters the memory size')
-  @no_4gb('depends on memory size')
-  @no_2gb('depends on memory size')
+  @no_highmem('depends on memory size')
   @no_esm_integration('external wasmMemory')
   def test_module_wasm_memory(self):
     self.set_setting('IMPORTED_MEMORY')
@@ -3278,8 +3267,7 @@ Var: 42
 
   @needs_dylink
   @no_sanitize('contains ODR violation')
-  @no_2gb('output is sensitive to absolute data layout')
-  @no_4gb('output is sensitive to absolute data layout')
+  @no_highmem('output is sensitive to absolute data layout')
   def test_dlfcn_alignment_and_zeroing(self):
     self.set_setting('INITIAL_MEMORY', '16mb')
     create_file('libside.c', r'''
@@ -6513,8 +6501,7 @@ int main(void) {
   # Tests that a large allocation should gracefully fail
   @no_asan('the memory size limit here is too small for asan')
   @no_lsan('the memory size limit here is too small for lsan')
-  @no_4gb('output is sensitive to absolute data layout')
-  @no_2gb('output is sensitive to absolute data layout')
+  @no_highmem('output is sensitive to absolute data layout')
   def test_dlmalloc_large(self):
     self.cflags += ['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH=1', '-sMAXIMUM_MEMORY=128MB']
     self.do_runf('dlmalloc_test_large.c', '0 0 0 1')

@@ -115,6 +115,8 @@ no_2gb = skip_if('no_2gb', lambda t: t.get_setting('INITIAL_MEMORY') == '2200mb'
 
 no_4gb = skip_if('no_4gb', lambda t: t.is_4gb())
 
+no_highmem = skip_if('no_highmem', lambda t: t.is_2gb() or t.is_4gb())
+
 only_windows = skip_if('only_windows', lambda _: not WINDOWS)
 
 requires_native_clang = skip_if_simple('native clang tests are disabled', lambda _: common.EMTEST_LACKS_NATIVE_CLANG)
