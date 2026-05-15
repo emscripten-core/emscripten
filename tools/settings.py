@@ -5,7 +5,6 @@
 
 import copy
 import difflib
-import os
 import re
 from typing import Any
 
@@ -300,9 +299,7 @@ class SettingsManager:
     self.attrs.update(internal_attrs)
     self.infer_types()
 
-    strict_override = False
-    if 'EMCC_STRICT' in os.environ:
-      strict_override = int(os.environ.get('EMCC_STRICT'))
+    strict_override = utils.get_env_bool('EMCC_STRICT')
 
     # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
     # details
