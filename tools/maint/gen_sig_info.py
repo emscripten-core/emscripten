@@ -175,7 +175,7 @@ def ignore_symbol(s, cxx):
   # don't need to be auto-generated.
   if s.startswith(('emscripten_gl', 'emscripten_alc')):
     return True
-  if s.startswith('gl') and any(s.endswith(x) for x in ('NV', 'EXT', 'WEBGL', 'ARB', 'ANGLE')):
+  if s.startswith('gl') and s.endswith(('NV', 'EXT', 'WEBGL', 'ARB', 'ANGLE')):
     return True
   if s in {'__stack_base', '__memory_base', '__table_base', '__global_base', '__heap_base',
            '__stack_pointer', '__stack_high', '__stack_low',
@@ -267,7 +267,7 @@ def remove_sigs(sig_info):
 
   def strip_line(l):
     l = l.strip()
-    return any(l.startswith(r) for r in to_remove)
+    return l.startswith(to_remove)
 
   files = glob.glob('src/*.js') + glob.glob('src/**/*.js')
   for file in files:
