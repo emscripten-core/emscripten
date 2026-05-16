@@ -779,7 +779,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       ]
 
       left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
-      left_over_files = [f for f in left_over_files if not any(f.startswith(p) for p in ignorable_file_prefixes)]
+      left_over_files = [f for f in left_over_files if not f.startswith(ignorable_file_prefixes)]
       if left_over_files:
         errlog(f'ERROR: After running test, there are {len(left_over_files)} new temporary files/directories left behind:')
         for f in left_over_files:

@@ -579,7 +579,7 @@ def is_internal_global(name):
                                  '__start_em_lib_deps', '__stop_em_lib_deps',
                                  '__em_lib_deps'}
   internal_prefixes = ('__em_js__', '__em_lib_deps')
-  return name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
+  return name in internal_start_stop_symbols or name.startswith(internal_prefixes)
 
 
 def is_user_export(name):
