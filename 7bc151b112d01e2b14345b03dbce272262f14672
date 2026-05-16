@@ -1,0 +1,23 @@
+site/source/docs/tools_reference/settings_reference.rst
+  58e83036dc2cdeeb 1556-1574
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "7bc151b112d01e2b14345b03dbce272262f14672",
+  "prompts": {
+    "58e83036dc2cdeeb": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1d1f722c8ffeeVax0ZVr4snQ79",
+        "model": "anthropic/claude-opus-4-7"
+      },
+      "human_author": "Guy Bedford",
+      "messages": [],
+      "total_additions": 19,
+      "total_deletions": 0,
+      "accepted_lines": 19,
+      "overriden_lines": 0
+    }
+  }
+}
