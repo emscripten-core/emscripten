@@ -1,0 +1,23 @@
+test/test_other.py
+  6162b70868d9db55 426
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "f299e760abdc00aaadc8989eaaab14521af65121",
+  "prompts": {
+    "6162b70868d9db55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1d1ab6472ffeOJCvyy8sCB5mnY",
+        "model": "anthropic/claude-opus-4-7"
+      },
+      "human_author": "Guy Bedford",
+      "messages": [],
+      "total_additions": 1,
+      "total_deletions": 1,
+      "accepted_lines": 1,
+      "overriden_lines": 0
+    }
+  }
+}
