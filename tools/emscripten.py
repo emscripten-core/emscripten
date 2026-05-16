@@ -686,23 +686,36 @@ def create_tsd(metadata, embind_tsd):
     out += create_tsd_exported_runtime_methods(metadata)
   # Manually generate definitions for any Wasm function exports.
   out += 'interface WasmModule {\n'
+  tsd_skip_exports = set(settings.TSD_SKIP_EXPORTS)
   for name, functype in metadata.function_exports.items():
     mangled = asmjs_mangle(name)
     should_export = settings.EXPORT_KEEPALIVE and mangled in settings.EXPORTED_FUNCTIONS
     if not should_export:
       continue
+    # The toolchain that produced this wasm may own the user-facing JS
+    # type for this export via a --js-library wrapper.  Skip it and let
+    # downstream .d.ts merging supply the real type.
+    if name in tsd_skip_exports or mangled in tsd_skip_exports:
+      continue
+    if len(functype.returns) > 1:
+      # Multi-value returns are valid wasm (e.g. wasm-bindgen lowers Rust
+      # `String` to a (ptr, len) pair) but the raw tuple is rarely what JS
+      # callers see.  If the toolchain knew about this export it would
+      # have listed it in TSD_SKIP_EXPORTS; warn rather than guess a type.
+      diagnostics.warning('emcc', 'skipping wasm export "%s" from --emit-tsd: '
+                          'multi-value return; add to TSD_SKIP_EXPORTS to silence',
+                          name)
+      continue
     arguments = []
     for index, type in enumerate(functype.params):
       arguments.append(f"_{index}: {type_to_ts_type(type)}")
-    out += f'  {mangled}({", ".join(arguments)}): '
-    assert len(functype.returns) <= 1, 'One return type only supported'
     if functype.returns:
       ret_ts_type = type_to_ts_type(functype.returns[0])
     else:
       ret_ts_type = 'void'
     if settings.ASYNCIFY == 2 and any(fnmatch.fnmatch(name, pat) for pat in settings.ASYNCIFY_EXPORTS):
       ret_ts_type = f'Promise<{ret_ts_type}>'
-    out += f'{ret_ts_type};\n'
+    out += f'  {mangled}({", ".join(arguments)}): {ret_ts_type};\n'
   out += '}\n'
   out += f'\n{embind_tsd}'
   # Combine all the various exports.

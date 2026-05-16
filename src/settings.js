@@ -1068,6 +1068,20 @@ var EXPORT_ALL = false;
 // It only does ``Module['X'] = X;``
 var EXPORT_KEEPALIVE = true;
 
+// List of wasm export names that ``--emit-tsd`` should omit from the
+// generated ``.d.ts``.  Intended for cases where a downstream toolchain
+// (e.g. wasm-bindgen, via ``--js-library``) owns the user-facing JS type
+// for those exports and provides its own type declarations.  emcc has no
+// way to recover that JS-level type from the raw wasm signature, so the
+// right thing is to omit the export and let the toolchain's own ``.d.ts``
+// supply the type via downstream merging.
+//
+// Wasm exports with multi-value returns that are not on this list are
+// skipped with a warning rather than typed, since the wasm-level tuple
+// type is rarely what JS callers actually see.
+// [link]
+var TSD_SKIP_EXPORTS = [];
+
 // Remembers the values of these settings, and makes them accessible
 // through getCompilerSetting and emscripten_get_compiler_setting.
 // To see what is retained, look for compilerSettings in the generated code.

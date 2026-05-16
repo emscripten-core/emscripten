@@ -3803,6 +3803,47 @@ More info: https://emscripten.org
     expected = 'Wasm only output is not compatible with --emit-tsd'
     self.assert_fail([EMCC, test_file('other/test_emit_tsd.c'), '--emit-tsd', 'test_emit_tsd_wasm_only.d.ts', '-o', 'out.wasm'], expected)
 
+  def _emit_tsd_multivalue_cmd(self, out_basename, extra=None):
+    return [EMCC, test_file('other/test_emit_tsd_multivalue.c'),
+            '-mmultivalue', '-Xclang', '-target-abi', '-Xclang', 'experimental-mv',
+            '--emit-tsd', f'{out_basename}.d.ts',
+            '-sMODULARIZE', '-sEXPORT_ES6', '-sEXPORT_KEEPALIVE',
+            '-o', f'{out_basename}.mjs'] + (extra or []) + self.get_cflags()
+
+  def test_emit_tsd_multivalue_skipped(self):
+    # Listing a multi-value-return export in TSD_SKIP_EXPORTS produces a
+    # valid .d.ts with that export omitted and no warning.
+    proc = self.run_process(self._emit_tsd_multivalue_cmd(
+        'test_emit_tsd_mv_skip', extra=['-sTSD_SKIP_EXPORTS=make_pair']), stderr=PIPE)
+    actual = read_file('test_emit_tsd_mv_skip.d.ts')
+    self.assertNotContained('make_pair', actual)
+    self.assertContained('_add(_0: number, _1: number): number;', actual)
+    self.assertNotContained('TSD_SKIP_EXPORTS', proc.stderr)
+
+  def test_emit_tsd_multivalue_unhandled(self):
+    # A multi-value-return export not on the skip list is dropped from
+    # the .d.ts with a warning rather than crashing the build.
+    cmd = self._emit_tsd_multivalue_cmd('test_emit_tsd_mv_warn') + ['-Wno-error=emcc']
+    proc = self.run_process(cmd, stderr=PIPE)
+    actual = read_file('test_emit_tsd_mv_warn.d.ts')
+    self.assertNotContained('make_pair', actual)
+    self.assertContained('_add(_0: number, _1: number): number;', actual)
+    self.assertContained('make_pair', proc.stderr)
+    self.assertContained('TSD_SKIP_EXPORTS', proc.stderr)
+
+  def test_emit_tsd_skip_exports_unknown(self):
+    # Skip-list entries that don't match any export are silently ignored
+    # (toolchains may pass conservative lists).
+    proc = self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
+                             '--emit-tsd', 'test_emit_tsd_unknown_skip.d.ts',
+                             '-sMODULARIZE', '-sEXPORT_ES6',
+                             '-sTSD_SKIP_EXPORTS=does_not_exist',
+                             '-o', 'test_emit_tsd_unknown_skip.mjs'] +
+                            self.get_cflags(), stderr=PIPE)
+    actual = read_file('test_emit_tsd_unknown_skip.d.ts')
+    self.assertContained('_fooInt', actual)
+    self.assertNotContained('does_not_exist', proc.stderr)
+
   @requires_dev_dependency('typescript')
   def test_emit_tsd_heap(self):
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
