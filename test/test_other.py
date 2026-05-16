@@ -3803,6 +3803,21 @@ More info: https://emscripten.org
     expected = 'Wasm only output is not compatible with --emit-tsd'
     self.assert_fail([EMCC, test_file('other/test_emit_tsd.c'), '--emit-tsd', 'test_emit_tsd_wasm_only.d.ts', '-o', 'out.wasm'], expected)
 
+  def test_emit_tsd_multivalue(self):
+    # A wasm export that returns multiple values (e.g. wasm-bindgen's
+    # ptr+len pair for `pub fn foo() -> String`) used to crash --emit-tsd
+    # with `AssertionError: One return type only supported`.  It should
+    # now surface as a TypeScript tuple return type.
+    self.run_process([EMCC, test_file('other/test_emit_tsd_multivalue.c'),
+                      '-mmultivalue', '-Xclang', '-target-abi', '-Xclang', 'experimental-mv',
+                      '--emit-tsd', 'test_emit_tsd_multivalue.d.ts',
+                      '-sMODULARIZE', '-sEXPORT_ES6',
+                      '-sEXPORT_KEEPALIVE',
+                      '-o', 'test_emit_tsd_multivalue.mjs'] +
+                     self.get_cflags())
+    actual = read_file('test_emit_tsd_multivalue.d.ts')
+    self.assertContained('_make_pair(_0: number, _1: number): [number, number];', actual)
+
   @requires_dev_dependency('typescript')
   def test_emit_tsd_heap(self):
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
