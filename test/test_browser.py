@@ -5685,14 +5685,14 @@ fetch('report_result?0');
 class browser64(browser):
   def setUp(self):
     super().setUp()
-    self.set_setting('MEMORY64')
+    self.cflags += ['-m64']
     self.require_wasm64()
 
 
 class browser64_4gb(browser):
   def setUp(self):
     super().setUp()
-    self.set_setting('MEMORY64')
+    self.cflags += ['-m64']
     self.set_setting('INITIAL_MEMORY', '4200mb')
     self.set_setting('GLOBAL_BASE', '4gb')
     # Without this we get a warning about GLOBAL_BASE being ignored when used with SIDE_MODULE
@@ -5703,7 +5703,7 @@ class browser64_4gb(browser):
 class browser64_2gb(browser):
   def setUp(self):
     super().setUp()
-    self.set_setting('MEMORY64')
+    self.cflags += ['-m64']
     self.set_setting('INITIAL_MEMORY', '2200mb')
     self.set_setting('GLOBAL_BASE', '2gb')
     # Without this we get a warning about GLOBAL_BASE being ignored when used with SIDE_MODULE

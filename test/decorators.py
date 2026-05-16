@@ -417,7 +417,7 @@ def also_with_wasm64(func):
       print('parameterize:wasm64=%s' % with_wasm64)
     if with_wasm64:
       self.require_wasm64()
-      self.set_setting('MEMORY64')
+      self.cflags += ['-m64']
     return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -459,7 +459,7 @@ def also_with_wasm2js(func):
 
 
 def can_do_standalone(self, impure=False):
-  # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
+  # Pure standalone engines don't support wasm64 yet.  Even with MEMORY64=2 (lowered)
   # the WASI APIs that take pointer values don't have 64-bit variants yet.
   if not impure:
     if self.is_wasm64():

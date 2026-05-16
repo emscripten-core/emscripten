@@ -434,7 +434,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     return False
 
   def is_wasm64(self):
-    return self.get_setting('MEMORY64')
+    return '-m64' in self.cflags
 
   def is_4gb(self):
     return self.get_setting('INITIAL_MEMORY') == '4200mb'
@@ -618,7 +618,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def require_wasm2js(self):
     if self.is_wasm64():
-      self.skipTest('wasm2js is not compatible with MEMORY64')
+      self.skipTest('wasm2js is not compatible with wasm64')
     if self.is_2gb() or self.is_4gb():
       self.skipTest('wasm2js does not support over 2gb of memory')
     if self.get_setting('WASM_ESM_INTEGRATION'):

@@ -309,7 +309,7 @@ class codesize(RunnerCore):
     'Os_mr': (['-Os', '-sMINIMAL_RUNTIME'],),
     # EVAL_CTORS also removes the __wasm_call_ctors function
     'Oz-ctors': (['-Oz', '-sEVAL_CTORS'],),
-    '64': (['-Oz', '-sMEMORY64'],),
+    '64': (['-Oz', '-m64'],),
     # WasmFS should not be fully linked into a minimal program.
     'wasmfs': (['-Oz', '-sWASMFS'],),
     'esm': (['-Oz', '-sEXPORT_ES6'],),
