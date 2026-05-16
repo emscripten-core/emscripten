@@ -126,7 +126,7 @@ def llvm_backend_args():
 
 @ToolchainProfiler.profile()
 def link_to_object(args, target):
-  link_lld(args + ['--relocatable'], target)
+  link_lld([*args, '--relocatable'], target)
 
 
 def side_module_external_deps(external_symbols):
@@ -377,7 +377,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
     with open(temp, 'a', encoding='utf-8') as f:
       f.write('// EXTRA_INFO: ' + json.dumps(extra_info))
     filename = temp
-  cmd = config.NODE_JS + [optimizer, filename] + passes
+  cmd = [*config.NODE_JS, optimizer, filename, *passes]
   if not worker_js:
     # Keep JS code comments intact through the acorn optimization pass so that
     # JSDoc comments will be carried over to a later Closure run.
@@ -557,11 +557,10 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
 
   # Node.js specific externs
   if settings.ENVIRONMENT_MAY_BE_NODE:
-    NODE_EXTERNS_BASE = path_from_root('third_party/closure-compiler/node-externs')
-    NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
-    NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
-                    if name.endswith('.js')]
-    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/node-externs.js')] + NODE_EXTERNS
+    node_extern_dir = path_from_root('third_party/closure-compiler/node-externs')
+    node_externs = os.listdir(node_extern_dir)
+    node_externs = [os.path.join(node_extern_dir, name) for name in node_externs if name.endswith('.js')]
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/node-externs.js'), *node_externs]
 
   # V8/SpiderMonkey shell specific externs
   if settings.ENVIRONMENT_MAY_BE_SHELL:
@@ -571,12 +570,11 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
 
   # Web environment specific externs
   if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
-    BROWSER_EXTERNS_BASE = path_from_root('src/closure-externs/browser-externs')
-    if os.path.isdir(BROWSER_EXTERNS_BASE):
-      BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
-      BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
-                         if name.endswith('.js')]
-      CLOSURE_EXTERNS += BROWSER_EXTERNS
+    browser_externs_dir = path_from_root('src/closure-externs/browser-externs')
+    if os.path.isdir(browser_externs_dir):
+      browser_externs = os.listdir(browser_externs_dir)
+      browser_externs = [os.path.join(browser_externs_dir, name) for name in browser_externs if name.endswith('.js')]
+      CLOSURE_EXTERNS += browser_externs
 
   if settings.DYNCALLS:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
@@ -862,8 +860,8 @@ def metadce(js_file, wasm_file, debug_info, last):
   if settings.MINIFY_WHITESPACE:
     passes.append('--minify-whitespace')
   if DEBUG:
-    logger.debug("unused_imports: %s", str(unused_imports))
-    logger.debug("unused_exports: %s", str(unused_exports))
+    logger.debug(f'unused_imports: {unused_imports}')
+    logger.debug(f'unused_exports: {unused_exports}')
   extra_info = {'unusedImports': unused_imports, 'unusedExports': unused_exports}
   return acorn_optimizer(js_file, passes, extra_info=extra_info)
 
@@ -917,7 +915,7 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
     parsed = json.loads(out)
     for imp in parsed['imports']:
       # the module name is ignored; we assume no collisions can happen there
-      module, old, new = imp
+      _module, old, new = imp
       assert old not in mapping, 'imports must be unique'
       mapping[old] = new
     for exp in parsed['exports']:

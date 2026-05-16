@@ -2071,7 +2071,7 @@ def phase_source_transforms(options):
   final_js += '.tr.js'
   posix = not WINDOWS
   logger.debug('applying transform: %s', options.js_transform)
-  shared.check_call(remove_quotes(shlex.split(options.js_transform, posix=posix) + [os.path.abspath(final_js)]))
+  shared.check_call(remove_quotes([*shlex.split(options.js_transform, posix=posix), os.path.abspath(final_js)]))
   save_intermediate('transformed')
 
 
@@ -2542,7 +2542,7 @@ def minify_html(filename):
 
   logger.debug(f'minifying HTML file {filename}')
   size_before = os.path.getsize(filename)
-  shared.check_call(shared.get_npm_cmd('html-minifier-terser') + [filename, '-o', filename] + opts, env=shared.env_with_node_in_path())
+  shared.check_call([*shared.get_npm_cmd('html-minifier-terser'), filename, '-o', filename, *opts], env=shared.env_with_node_in_path())
 
   # HTML minifier will turn all null bytes into an escaped two-byte sequence "\0". Turn those back to single byte sequences.
   def unescape_nulls(filename):
@@ -2989,7 +2989,7 @@ def package_files(options, target):
     rtn.append(object_file)
 
   cmd = building.get_command_with_possible_response_file(
-    [shared.FILE_PACKAGER, utils.replace_suffix(target, '.data')] + file_args)
+    [shared.FILE_PACKAGER, utils.replace_suffix(target, '.data'), *file_args])
   if options.preload_files:
     # Preloading files uses --pre-js code that runs before the module is loaded.
     file_code = shared.check_call(cmd, stdout=PIPE).stdout

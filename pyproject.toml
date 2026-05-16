@@ -1,4 +1,5 @@
 [project]
+name = "emscripten"
 requires-python = ">=3.10"
 
 [tool.ruff]
@@ -34,6 +35,7 @@ lint.select = [
   "PL",
   "UP",
   "W",
+  "RUF",
   "YTT",
 ]
 lint.external = [ "D" ]
@@ -76,6 +78,11 @@ lint.ignore = [
   "PLW0603",
   "PLW1510",
   "PLW2901",
+  "RUF012", # https://docs.astral.sh/ruff/rules/mutable-class-default/
+  "RUF015", # https://docs.astral.sh/ruff/rules/unnecessary-iterable-allocation-for-first-element/
+  "RUF027", # https://docs.astral.sh/ruff/rules/missing-f-string-syntax/
+  "RUF039", # https://docs.astral.sh/ruff/rules/unraw-re-pattern/
+  "RUF067", # https://docs.astral.sh/ruff/rules/non-empty-init-module/
   "UP030", # TODO
   "UP031", # TODO
   "UP032", # TODO
@@ -84,6 +91,7 @@ lint.per-file-ignores."tools/ports/*.py" = [ "ARG001", "ARG005" ]
 lint.per-file-ignores."test/other/ports/*.py" = [ "ARG001" ]
 lint.per-file-ignores."test/parallel_testsuite.py" = [ "ARG002" ]
 lint.per-file-ignores."test/test_benchmark.py" = [ "ARG002" ]
+lint.per-file-ignores."test/*.py" = [ "RUF005" ]
 lint.mccabe.max-complexity = 51 # Recommended: 10
 lint.pylint.allow-magic-value-types = [
   "bytes",

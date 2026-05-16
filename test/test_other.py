@@ -3,7 +3,6 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-# noqa: E241
 
 import glob
 import importlib
@@ -338,7 +337,7 @@ class other(RunnerCore):
       with env_modify({'TERM': 'xterm-color'}):
         proc = subprocess.Popen(cmd, stdout=slave, stderr=slave)
         while proc.poll() is None:
-          r, w, x = select.select([master], [], [], 1)
+          r, _w, _x = select.select([master], [], [], 1)
           if r:
             output.append(os.read(master, 1024))
         return (proc.returncode, b''.join(output))
@@ -9513,10 +9512,10 @@ int main() {
                          read_file('a.out.js'))
 
   @parameterized({
-    '': ([],), # noqa
-    'O3': (['-O3'],), # noqa
-    'closure': (['--closure=1'],), # noqa
-    'closure_O3': (['--closure=1', '-O3'],), # noqa
+    '': ([],),
+    'O3': (['-O3'],),
+    'closure': (['--closure=1'],),
+    'closure_O3': (['--closure=1', '-O3'],),
   })
   def test_EM_ASM_ES6(self, args):
     create_file('src.c', r'''
@@ -10769,14 +10768,14 @@ int main () {
       self.assertNotContained('invoke_v', output)
 
   @parameterized({
-    'O0': (False, ['-O0']), # noqa
-    'O0_emit': (True, ['-O0', '-sEMIT_EMSCRIPTEN_LICENSE']), # noqa
-    'O2': (False, ['-O2']), # noqa
-    'O2_emit': (True, ['-O2', '-sEMIT_EMSCRIPTEN_LICENSE']), # noqa
-    'O2_js_emit': (True, ['-O2', '-sEMIT_EMSCRIPTEN_LICENSE', '-sWASM=0']), # noqa
-    'O2_closure': (False, ['-O2', '--closure=1']), # noqa
-    'O2_closure_emit': (True, ['-O2', '-sEMIT_EMSCRIPTEN_LICENSE', '--closure=1']), # noqa
-    'O2_closure_js_emit': (True, ['-O2', '-sEMIT_EMSCRIPTEN_LICENSE', '--closure=1', '-sWASM=0']), # noqa
+    'O0': (False, ['-O0']),
+    'O0_emit': (True, ['-O0', '-sEMIT_EMSCRIPTEN_LICENSE']),
+    'O2': (False, ['-O2']),
+    'O2_emit': (True, ['-O2', '-sEMIT_EMSCRIPTEN_LICENSE']),
+    'O2_js_emit': (True, ['-O2', '-sEMIT_EMSCRIPTEN_LICENSE', '-sWASM=0']),
+    'O2_closure': (False, ['-O2', '--closure=1']),
+    'O2_closure_emit': (True, ['-O2', '-sEMIT_EMSCRIPTEN_LICENSE', '--closure=1']),
+    'O2_closure_js_emit': (True, ['-O2', '-sEMIT_EMSCRIPTEN_LICENSE', '--closure=1', '-sWASM=0']),
   })
   def test_emscripten_license(self, expect_license, args):
     # fastcomp does not support the new license flag

@@ -729,7 +729,7 @@ class BrowserCore(RunnerCore):
     if hasattr(config, 'launch_prefix'):
       browser_args = list(config.launch_prefix) + browser_args
 
-    logger.info('Launching browser: %s', str(browser_args))
+    logger.info(f'Launching browser: {browser_args}')
 
     if (WINDOWS and is_firefox()) or is_safari():
       cls.launch_browser_harness_with_proc_snapshot_workaround(parallel_harness, config, browser_args, url)
@@ -872,7 +872,7 @@ class BrowserCore(RunnerCore):
           output = self.harness_out_queue.get(block=True, timeout=timeout)
         except queue.Empty:
           BrowserCore.unresponsive_tests += 1
-          print(f'[unresponsive test: {self.id()} total unresponsive={str(BrowserCore.unresponsive_tests)}]')
+          print(f'[unresponsive test: {self.id()} total unresponsive={BrowserCore.unresponsive_tests}]')
           self.browser_restart()
           # Rather than fail the test here, let fail on the `assertContained` so
           # that the test can be retried via `extra_tries`
