@@ -901,6 +901,7 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('math/fmodf.c')
 
   def test_rounding(self):
+    self.skipTest('https://github.com/emscripten-core/emscripten/pull/26975')
     self.do_core_test('test_rounding.c', cflags=['-Wno-fenv-access'])
 
   def test_stack(self):
