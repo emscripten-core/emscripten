@@ -143,7 +143,7 @@ def create_lib_emar(output_filename, filenames):
   utils.delete_file(output_filename)
   cmd = [shared.EMAR, 'cr', output_filename] + filenames
   cmd = building.get_command_with_possible_response_file(cmd)
-  utils.run_process(cmd)
+  shared.check_call(cmd)
 
 
 def create_lib(libname, inputs):
