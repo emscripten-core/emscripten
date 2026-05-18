@@ -901,8 +901,7 @@ class TestCoreBase(RunnerCore):
     self.do_run_in_out_file_test('math/fmodf.c')
 
   def test_rounding(self):
-    self.skipTest('https://github.com/emscripten-core/emscripten/pull/26975')
-    self.do_core_test('test_rounding.c', cflags=['-Wno-fenv-access'])
+    self.do_core_test('test_rounding.c', cflags=['-Wno-fenv-access', '-Wno-unknown-warning-option'])
 
   def test_stack(self):
     self.set_setting('INLINING_LIMIT')
