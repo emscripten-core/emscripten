@@ -4611,7 +4611,7 @@ Module["preRun"] = () => {
     'modularize': (['-sMODULARIZE'],),
   })
   @parameterized({
-    '': ([],),
+    '': (['-sRUNTIME_DEBUG'],),
     'O3': (['-O3'],),
   })
   def test_pthread_hello_thread(self, opts, modularize):
@@ -4619,7 +4619,7 @@ Module["preRun"] = () => {
 
   # Tests that a pthreads build of -sMINIMAL_RUNTIME works well in different build modes
   @parameterized({
-    '': ([],),
+    '': (['-sRUNTIME_DEBUG'],),
     'modularize': (['-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
     'O3': (['-O3'],),
     'O3_modularize': (['-O3', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
@@ -4674,7 +4674,6 @@ Module["preRun"] = () => {
   })
   @requires_es6_workers
   def test_mainScriptUrlOrBlob(self, es6, use_blob):
-    # TODO: enable this with wasm, currently pthreads/atomics have limitations
     self.set_setting('EXIT_RUNTIME')
     js_name = 'hello_thread_with_loader.%s' % ('mjs' if es6 else 'js')
     if es6:
