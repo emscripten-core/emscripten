@@ -153,6 +153,8 @@ emscripten_promise_await(em_promise_t promise);
 // chain, or result in a top level unhandled rejection.
 [[nodiscard]] void* emscripten_promise_await_unchecked(em_promise_t promise);
 
+[[nodiscard]] void* emscripten_promise_ref_await_unchecked(__externref_t promise);
+
 #ifdef __cplusplus
 }
 #endif
