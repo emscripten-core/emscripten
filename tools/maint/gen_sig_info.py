@@ -175,7 +175,7 @@ def ignore_symbol(s, cxx):
   # don't need to be auto-generated.
   if s.startswith(('emscripten_gl', 'emscripten_alc')):
     return True
-  if s.startswith('gl') and any(s.endswith(x) for x in ('NV', 'EXT', 'WEBGL', 'ARB', 'ANGLE')):
+  if s.startswith('gl') and s.endswith(('NV', 'EXT', 'WEBGL', 'ARB', 'ANGLE')):
     return True
   if s in {'__stack_base', '__memory_base', '__table_base', '__global_base', '__heap_base',
            '__stack_pointer', '__stack_high', '__stack_low',
@@ -267,7 +267,7 @@ def remove_sigs(sig_info):
 
   def strip_line(l):
     l = l.strip()
-    return any(l.startswith(r) for r in to_remove)
+    return l.startswith(to_remove)
 
   files = glob.glob('src/*.js') + glob.glob('src/**/*.js')
   for file in files:
@@ -353,8 +353,8 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
     shared.check_call(cmd)
     sig_info32 = extract_sigs(symbols, obj_file)
 
-    # Run the same command again with memory64.
-    shared.check_call(cmd + ['-sMEMORY64'])
+    # Run the same command again with wasm64.
+    shared.check_call(cmd + ['-m64'])
     sig_info64 = extract_sigs(symbols, obj_file)
 
     for sym, sig32 in sig_info32.items():
@@ -384,6 +384,7 @@ def main(args):
                               'MAX_WEBGL_VERSION': 0,
                               'BUILD_AS_WORKER': 1,
                               'LINK_AS_CXX': 1,
+                              'SHARED_MEMORY': 0,
                               'AUTO_JS_LIBRARIES': 0}, cxx=True)
   extract_sig_info(sig_info, {'AUDIO_WORKLET': 1, 'WASM_WORKERS': 1, 'JS_LIBRARIES': ['libwasm_worker.js', 'libwebaudio.js']})
   extract_sig_info(sig_info, {'USE_GLFW': 3}, ['-DGLFW3'])
@@ -391,6 +392,7 @@ def main(args):
                               'USE_SDL': 0,
                               'MAX_WEBGL_VERSION': 0,
                               'AUTO_JS_LIBRARIES': 0,
+                              'SHARED_MEMORY': 0,
                               'ASYNCIFY': 1}, cxx=True, extra_cflags=['-std=c++20'])
   extract_sig_info(sig_info, {'LEGACY_GL_EMULATION': 1}, ['-DGLES'])
   extract_sig_info(sig_info, {'USE_GLFW': 2, 'FULL_ES3': 1, 'MAX_WEBGL_VERSION': 2})

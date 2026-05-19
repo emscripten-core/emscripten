@@ -434,7 +434,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     return False
 
   def is_wasm64(self):
-    return self.get_setting('MEMORY64')
+    return '-m64' in self.cflags
 
   def is_4gb(self):
     return self.get_setting('INITIAL_MEMORY') == '4200mb'
@@ -491,7 +491,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if not nodejs:
       self.skipTest('Test requires nodejs to run')
     if not self.try_require_node_version(25, 0, 0):
-      if os.getenv('EMTEST_AUTOSKIP') == '1':
+      if utils.get_env_bool('EMTEST_AUTOSKIP'):
         self.skipTest('test requires node v25 and current Node.js version is older than this, with EMTEST_AUTOSKIP being set')
       self.fail('node v25 required to run this test.  Use EMTEST_SKIP_NODE_25 to skip')
 
@@ -618,7 +618,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
   def require_wasm2js(self):
     if self.is_wasm64():
-      self.skipTest('wasm2js is not compatible with MEMORY64')
+      self.skipTest('wasm2js is not compatible with wasm64')
     if self.is_2gb() or self.is_4gb():
       self.skipTest('wasm2js does not support over 2gb of memory')
     if self.get_setting('WASM_ESM_INTEGRATION'):
@@ -779,7 +779,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       ]
 
       left_over_files = set(temp_files_after_run) - set(self.temp_files_before_run)
-      left_over_files = [f for f in left_over_files if not any(f.startswith(p) for p in ignorable_file_prefixes)]
+      left_over_files = [f for f in left_over_files if not f.startswith(ignorable_file_prefixes)]
       if left_over_files:
         errlog(f'ERROR: After running test, there are {len(left_over_files)} new temporary files/directories left behind:')
         for f in left_over_files:
@@ -842,7 +842,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   #                  libraries, for example
   def get_cflags(self, main_file=False, compile_only=False, asm_only=False):
     def is_ldflag(f):
-      return f.startswith('-l') or any(f.startswith(s) for s in ['-sEXPORT_ES6', '-sGL_TESTING', '-sPROXY_TO_PTHREAD', '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE='])
+      return f.startswith(('-l', '-sEXPORT_ES6', '-sGL_TESTING', '-sPROXY_TO_PTHREAD',
+                           '-sENVIRONMENT=', '--pre-js=', '--post-js=', '-sPTHREAD_POOL_SIZE=',
+                           '--profiling-funcs'))
 
     args = self.serialize_settings(compile_only or asm_only) + self.cflags
     if asm_only:
@@ -1232,7 +1234,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     filename = maybe_test_file(filename)
     compile_only = '-c' in args or '-sSIDE_MODULE' in args
     cmd = [compiler_for(filename), filename] + self.get_cflags(compile_only=compile_only) + args
-    self.run_process(cmd, **kwargs)
+    return self.run_process(cmd, **kwargs)
 
   # Shared test code between main suite and others
 

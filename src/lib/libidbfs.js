@@ -18,14 +18,31 @@ addToLibrary({
     DB_VERSION: 21,
     DB_STORE_NAME: 'FILE_DATA',
 
+    // When using the autopersistence mechanism, users can set
+    // IDBFS.onAutoPersistStateChanged callback to receive notification events
+    // for when persistence operations are in-flight. Use the following syntax:
+    /*
+    IDBFS.onAutoPersistStateChanged = autoPersistActive => {
+      if (autoPersistActive) {
+        console.log('IDBFS persistence operation has started.');
+      } else {
+        console.log('IDBFS persistence operation has finished.');
+      }
+    };
+    */
+
     // Queues a new VFS -> IDBFS synchronization operation
     queuePersist: (mount) => {
       function onPersistComplete() {
         if (mount.idbPersistState === 'again') startPersist(); // If a new sync request has appeared in between, kick off a new sync
-        else mount.idbPersistState = 0; // Otherwise reset sync state back to idle to wait for a new sync later
+        else {
+          mount.idbPersistState = 0; // Otherwise reset sync state back to idle to wait for a new sync later
+          IDBFS.onAutoPersistStateChanged?.(false);
+        }
       }
       function startPersist() {
         mount.idbPersistState = 'idb'; // Mark that we are currently running a sync operation
+        IDBFS.onAutoPersistStateChanged?.(true);
         IDBFS.syncfs(mount, /*populate:*/false, onPersistComplete);
       }
 

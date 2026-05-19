@@ -530,8 +530,11 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     output = self.run_process([EMCC, '--print-target-triple'], stdout=PIPE, stderr=PIPE).stdout
     self.assertContained('wasm32-unknown-emscripten', output)
 
-    # Test that -sMEMORY64 triggers the wasm64 triple
+    # Test that -m64 / -sMEMORY64 triggers the wasm64 triple
     output = self.run_process([EMCC, '-sMEMORY64', '-dumpmachine'], stdout=PIPE, stderr=PIPE).stdout
+    self.assertContained('wasm64-unknown-emscripten', output)
+
+    output = self.run_process([EMCC, '-m64', '-dumpmachine'], stdout=PIPE, stderr=PIPE).stdout
     self.assertContained('wasm64-unknown-emscripten', output)
 
   @parameterized({
@@ -703,7 +706,7 @@ f.close()
   @parameterized({
     '': [[]],
     'lto': [['-flto']],
-    'wasm64': [['-sMEMORY64']],
+    'wasm64': [['-m64']],
   })
   def test_print_search_dirs(self, args):
     output = self.run_process([EMCC, '-print-search-dirs'] + args, stdout=PIPE).stdout
@@ -715,7 +718,7 @@ f.close()
     libpath = libpath.split(os.pathsep)
     libpath = [Path(p) for p in libpath]
     settings.LTO = '-flto' in args
-    settings.MEMORY64 = int('-sMEMORY64' in args)
+    settings.MEMORY64 = int('-m64' in args)
     expected = cache.get_lib_dir(absolute=True)
     self.assertIn(expected, libpath)
 
@@ -723,14 +726,14 @@ f.close()
   @parameterized({
     '': [[]],
     'lto': [['-flto']],
-    'wasm64': [['-sMEMORY64']],
+    'wasm64': [['-m64']],
   })
   def test_print_libgcc_file_name(self, args):
     output = self.run_process([EMCC, '-print-libgcc-file-name'] + args, stdout=PIPE).stdout
     output2 = self.run_process([EMCC, '--print-libgcc-file-name'] + args, stdout=PIPE).stdout
     self.assertEqual(output, output2)
     settings.LTO = '-flto' in args
-    settings.MEMORY64 = int('-sMEMORY64' in args)
+    settings.MEMORY64 = int('-m64' in args)
     libdir = cache.get_lib_dir(absolute=True)
     expected = os.path.join(libdir, 'libcompiler_rt.a')
     self.assertEqual(output.strip(), expected)
@@ -757,7 +760,7 @@ f.close()
   @parameterized({
     '': [[]],
     'lto': [['-flto']],
-    'wasm64': [['-sMEMORY64']],
+    'wasm64': [['-m64']],
   })
   def test_print_file_name(self, args):
     # make sure the corresponding version of libc exists in the cache
@@ -767,7 +770,7 @@ f.close()
     self.assertEqual(output, output2)
     filename = Path(output)
     settings.LTO = '-flto' in args
-    settings.MEMORY64 = int('-sMEMORY64' in args)
+    settings.MEMORY64 = int('-m64' in args)
     self.assertContained(cache.get_lib_name('libc.a'), str(filename))
 
   def test_emar_em_config_flag(self):
@@ -1085,17 +1088,17 @@ f.close()
 
   @parameterized({
     '': [None],
-    'wasm64': ['-sMEMORY64'],
+    'wasm64': ['-m64'],
     'pthreads': ['-pthread'],
   })
   def test_cmake_check_type_size(self, cflag):
-    if cflag == '-sMEMORY64':
+    if cflag == '-m64':
       self.require_wasm64()
     cmd = [EMCMAKE, 'cmake', test_file('cmake/check_type_size')]
     if cflag:
       cmd += [f'-DCMAKE_CXX_FLAGS={cflag}', f'-DCMAKE_C_FLAGS={cflag}']
     output = self.run_process(cmd, stdout=PIPE).stdout
-    if cflag == '-sMEMORY64':
+    if cflag == '-m64':
       self.assertContained('CMAKE_SIZEOF_VOID_P -> 8', output)
     else:
       self.assertContained('CMAKE_SIZEOF_VOID_P -> 4', output)
@@ -1353,13 +1356,19 @@ f.close()
       }
     ''')
 
+    # Check linking libA.so multiple times (both directly and indirectly) does not result
+    # any multiply defined symbols.  This is especially important with `FAKE_DYLIBS` where
+    # we model shared libraries using regular object files.  Without special handling
+    # fake `libA.so` could get linked multiple times.
     self.cflags.remove('-Werror')
     self.emcc('libA.c', ['-shared', '-o', 'libA.so'])
 
-    self.emcc('a2.c', ['-r', '-L.', '-lA', '-o', 'a2.o'])
-    self.emcc('b2.c', ['-r', '-L.', '-lA', '-o', 'b2.o'])
+    err = self.emcc('a2.c', ['-shared', '-L.', '-lA', '-o', 'liba2.so'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: ignoring dynamic library libA.so when generating an object file', err)
+    err = self.emcc('b2.c', ['-shared', '-L.', '-lA', '-o', 'libb2.so'], stderr=PIPE).stderr
+    self.assertContained('emcc: warning: ignoring dynamic library libA.so when generating an object file', err)
 
-    self.do_runf('main.c', 'result: 1', cflags=['-L.', '-lA', 'a2.o', 'b2.o'])
+    self.do_runf('main.c', 'result: 1', cflags=['-L.', '-lA', 'liba2.so', 'libb2.so'])
 
   def test_multiply_defined_libsymbols_2(self):
     create_file('a.c', "int x() { return 55; }")
@@ -2428,6 +2437,44 @@ int main() {
 }''')
     self.do_runf('test.c', 'done\n', cflags=['-sLEGACY_GL_EMULATION', '-sMAIN_MODULE=2'])
 
+  def test_dylink_library_search(self):
+    # Test library resolution in the case when both static and dynamic library are present.
+    create_file('side_dyn.c', r'''
+      #include <stdio.h>
+      void side_func() {
+        printf("dynamic linking used\n");
+      }
+    ''')
+    create_file('side_static.c', r'''
+      #include <stdio.h>
+      void side_func() {
+        printf("static linking used\n");
+      }
+    ''')
+    self.emcc('side_dyn.c', ['-sSIDE_MODULE', '-olibside.so'])
+    self.emcc('side_static.c', ['-oside_static.o', '-c'])
+    self.run_process([EMAR, 'rc', 'libside.a', 'side_static.o'])
+
+    create_file('main.c', '''
+      void side_func();
+      int main() {
+        side_func();
+        return 0;
+      }
+    ''')
+
+    # By deafult we use static linking and prefer libside.a
+    self.do_runf('main.c', 'static linking used\n', cflags=['-L.', '-lside'])
+
+    # When using -sMAIN_MODULE we choose the dyanmic library
+    self.do_runf('main.c', 'dynamic linking used\n', cflags=['-sMAIN_MODULE=2', '-L.', '-lside'])
+
+    # Same for `-sFAKE_DYLIBS=0
+    self.do_runf('main.c', 'dynamic linking used\n', cflags=['-sFAKE_DYLIBS=0', '-L.', '-lside'])
+
+    # With can also force static linking using `-Bstatic` linker falgs
+    self.do_runf('main.c', 'static linking used\n', cflags=['-sMAIN_MODULE=2', '-L.', '-Bstatic', '-lside'])
+
   def test_js_link(self):
     create_file('before.js', '''
       var MESSAGE = 'hello from js';
@@ -3401,7 +3448,7 @@ More info: https://emscripten.org
     'no_utf8': ['-sEMBIND_STD_STRING_IS_UTF8=0'],
     'no_dynamic': ['-sDYNAMIC_EXECUTION=0'],
     'aot_js': ['-sDYNAMIC_EXECUTION=0', '-sEMBIND_AOT', '-DSKIP_UNBOUND_TYPES'],
-    'wasm64': ['-sMEMORY64'],
+    'wasm64': ['-m64'],
     '2gb': ['-sINITIAL_MEMORY=2200mb', '-sGLOBAL_BASE=2gb'],
   })
   @parameterized({
@@ -3424,7 +3471,7 @@ More info: https://emscripten.org
     #
     # By default all of them are run.  If you are debugging and want to run just a subset of the
     # JS tests you can use `EMBIND_TESTS=myregex` to run just the matching tests.
-    if '-sMEMORY64' in extra_args:
+    if '-m64' in extra_args:
       self.require_wasm64()
     self.cflags += [
       '--no-entry',
@@ -3556,7 +3603,9 @@ More info: https://emscripten.org
 
   @requires_dev_dependency('typescript')
   @parameterized({
-    'commonjs': [['-sMODULARIZE'], ['--module', 'commonjs', '--moduleResolution', 'node']],
+    # Use `node16` to avoid the deprecated `node` moduleResolution in TS 6.0+. Since there is no
+    # `type: "module"` in package.json, this still tests CommonJS.
+    'commonjs': [['-sMODULARIZE'], ['--module', 'node16', '--moduleResolution', 'node16']],
     'esm': [['-sEXPORT_ES6'], ['--module', 'NodeNext', '--moduleResolution', 'nodenext']],
     'esm_with_jsgen': [['-sEXPORT_ES6', '-sEMBIND_AOT'], ['--module', 'NodeNext', '--moduleResolution', 'nodenext']],
   })
@@ -3611,7 +3660,7 @@ More info: https://emscripten.org
     '4': [['-fsanitize=undefined', '-gsource-map'], 'embind_tsgen_ignore_3.d.ts'],
     '5': [['-sASYNCIFY'], 'embind_tsgen_ignore_3.d.ts'],
     '6': [['-sENVIRONMENT=worker', '-lworkerfs.js'], 'embind_tsgen.d.ts'],
-    '7': [['-sMEMORY64=1', '-gsource-map'], 'embind_tsgen_ignore_7.d.ts'],
+    '7': [['-m64', '-gsource-map'], 'embind_tsgen_ignore_7.d.ts'],
   })
   def test_embind_tsgen_ignore(self, extra_args, expected_ts_file):
     create_file('fail.js', 'assert(false);')
@@ -3691,7 +3740,7 @@ More info: https://emscripten.org
   def test_embind_tsgen_wasm64(self, args):
     # Check that when wasm64 is enabled longs & unsigned longs are mapped to bigint in the generated TS bindings
     self.run_process([EMXX, test_file('other/embind_tsgen_wasm64.cpp'),
-                      '-lembind', '--emit-tsd', 'embind_tsgen_wasm64.d.ts', '-sMEMORY64'] +
+                      '-lembind', '--emit-tsd', 'embind_tsgen_wasm64.d.ts', '-m64'] +
                      args +
                      self.get_cflags())
     self.assertFileContents(test_file('other/embind_tsgen_wasm64.d.ts'), read_file('embind_tsgen_wasm64.d.ts'))
@@ -3725,15 +3774,22 @@ More info: https://emscripten.org
     self.do_runf('other/embind_jsgen_method_pointer_stability.cpp', 'done\n', cflags=['-lembind', '-sEMBIND_AOT'])
 
   @requires_dev_dependency('typescript')
-  def test_emit_tsd(self):
+  @parameterized({
+    '': [[], ''],
+    'jspi': [['-sJSPI', '-sJSPI_EXPORTS=fooVoid,fooInt'], '_jspi'],
+    'jspi_wildcard': [['-sJSPI', '-sJSPI_EXPORTS=foo*'], '_jspi'],
+  })
+  def test_emit_tsd(self, args, postfix):
+    if postfix == '_jspi':
+      self.require_jspi()
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
-                      '--emit-tsd', 'test_emit_tsd.d.ts', '-sEXPORT_ES6',
+                      '--emit-tsd', f'test_emit_tsd{postfix}.d.ts', '-sEXPORT_ES6',
                       '-sMODULARIZE', '-sEXPORTED_RUNTIME_METHODS=UTF8ArrayToString,wasmTable',
-                      '-o', 'test_emit_tsd.js'] +
+                      '-o', f'test_emit_tsd{postfix}.js'] + args +
                      self.get_cflags())
-    self.assertFileContents(test_file('other/test_emit_tsd.d.ts'), read_file('test_emit_tsd.d.ts'))
+    self.assertFileContents(test_file(f'other/test_emit_tsd{postfix}.d.ts'), read_file(f'test_emit_tsd{postfix}.d.ts'))
     # Test that the output compiles with a TS file that uses the definitions.
-    self.run_tsc([test_file('other/test_tsd.ts'), '--noEmit'])
+    self.run_tsc([test_file(f'other/test_tsd{postfix}.ts'), '--noEmit'])
 
   @requires_dev_dependency('typescript')
   def test_emit_tsd_sync_compilation(self):
@@ -6537,7 +6593,7 @@ int main() {
   }
 }
 ''')
-    self.do_runf('test.c', 'done\n', cflags=['-sGLOBAL_BASE=2Gb', '-sTOTAL_MEMORY=4Gb', '-sMAXIMUM_MEMORY=5Gb', '-sALLOW_MEMORY_GROWTH', '-sMEMORY64'])
+    self.do_runf('test.c', 'done\n', cflags=['-sGLOBAL_BASE=2Gb', '-sTOTAL_MEMORY=4Gb', '-sMAXIMUM_MEMORY=5Gb', '-sALLOW_MEMORY_GROWTH', '-m64'])
 
   def test_libcxx_minimal(self):
     create_file('vector.cpp', r'''
@@ -6917,11 +6973,9 @@ int main() {
         return 0;
       }''')
     self.run_process([EMCC, '-g', '-o', 'libside.wasm', 'side.c', '-sSIDE_MODULE'])
-    self.run_process([EMCC, '-g', '-sMAIN_MODULE=2', 'main.c', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS'])
-    self.assertContained('done\n', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'done\n', cflags=['-g', '-sMAIN_MODULE=2', 'libside.wasm', '-sNO_AUTOLOAD_DYLIBS'])
     # Repeat the test without NO_AUTOLOAD_DYLIBS
-    self.run_process([EMCC, '-g', '-sMAIN_MODULE=2', 'main.c', 'libside.wasm'])
-    self.assertContained('done\n', self.run_js('a.out.js'))
+    self.do_runf('main.c', 'done\n', cflags=['-g', '-sMAIN_MODULE=2', 'libside.wasm'])
 
   def test_dlopen_rtld_global(self):
     # This test checks RTLD_GLOBAL where a module is loaded
@@ -8697,30 +8751,36 @@ int main() {
     # did not retrieve the correct thrown object pointer in case of multiple
     # inheritance
     create_file('src.cpp', r'''
-      #include <iostream>
+      #include <exception>
+      #include <string>
 
-      struct Virt {
-        virtual void virt1() {}
-      };
+      class MyException : public virtual std::exception {
+      public:
+        MyException(const char *msg) : m_message(msg) {}
+        const char *what() const noexcept override { return m_message.c_str(); }
 
-      struct MyEx : Virt, public std::runtime_error {
-        explicit MyEx(std::string msg) : std::runtime_error(std::move(msg)) {}
+      private:
+        std::string m_message;
       };
 
       int main() {
+        std::exception_ptr ep;
         try {
-          throw MyEx("ERROR");
+          throw MyException("hello");
         } catch (...) {
-          try {
-            std::rethrow_exception(std::current_exception());
-          } catch (const std::exception &ex) {
-            std::cout << ex.what() << '\n';
-          }
+          ep = std::current_exception();
         }
+
+        try {
+          std::rethrow_exception(ep);
+        } catch (const std::exception &e) {
+          std::printf("caught: %s\n", e.what());
+        }
+        return 0;
       }
     ''')
     self.set_setting('ASSERTIONS')
-    self.do_runf('src.cpp', 'ERROR\n')
+    self.do_runf('src.cpp', 'caught: hello\n')
 
   @with_all_eh_sjlj
   def test_unused_eh_dce(self):
@@ -9091,6 +9151,7 @@ end
     'pthread_offscreen': [['-pthread', '-Wno-experimental', '-sOFFSCREEN_FRAMEBUFFER']],
     'wasmfs': [['-sWASMFS']],
     'min_webgl_version': [['-sMIN_WEBGL_VERSION=2', '-sLEGACY_GL_EMULATION=0']],
+    'full_es3': [['-sMIN_WEBGL_VERSION=2', '-sLEGACY_GL_EMULATION=0', '-sFULL_ES3']],
   })
   def test_closure_full_js_library(self, args):
     # Test for closure errors and warnings in the entire JS library.
@@ -9152,7 +9213,7 @@ end
 
   @also_with_wasm64
   def test_closure_webgpu(self):
-    if config.FROZEN_CACHE and self.get_setting('MEMORY64'):
+    if config.FROZEN_CACHE and self.is_wasm64():
       # CI configuration doesn't run `embuilder` with wasm64 on ports
       self.skipTest("test doesn't work with frozen cache")
     # Emdawnwebgpu uses C++ internally, so we use a cpp file here so emcc defaults to linking C++.
@@ -9997,7 +10058,7 @@ int main() {
     # in some modes we run wasm-emscripten-finalize, which normally strips the
     # features section for us, so add testing for those
     'nobigint': (['-sWASM_BIGINT=0'],),
-    'wasm64': (['-sMEMORY64'],),
+    'wasm64': (['-m64'],),
   })
   def test_wasm_features_section(self, args):
     # The features section should never be in our output, when we optimize.
@@ -10204,7 +10265,7 @@ T6:(else) !ASSERTIONS""", output)
     ensure_dir('subdir')
 
     # build hello_world.c
-    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'subdir/module' + ext, '-pthread', '-sPTHREAD_POOL_SIZE=2', '-sMODULARIZE', '-sEXPORT_NAME=test_module'] + self.get_cflags())
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'subdir/module' + ext, '-pthread', '-sMODULARIZE', '-sEXPORT_NAME=test_module'] + self.get_cflags())
 
     # run the module
     ret = self.run_js('moduleLoader' + ext)
@@ -11695,13 +11756,11 @@ int main(void) {
     # This was because PTHREADS_DEBUG calls back into WebAssembly for each call to `err()`.
     self.set_setting('PTHREADS_DEBUG')
     self.set_setting('ASYNCIFY')
-    self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.do_other_test('test_pthread_asyncify.c')
 
   @requires_pthreads
   def test_pthread_reuse(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
-    self.do_other_test('test_pthread_reuse.c')
+    self.do_other_test('test_pthread_reuse.c', cflags=['-sPTHREAD_POOL_SIZE=1'])
 
   @parameterized({
     '': ([],),
@@ -11864,7 +11923,7 @@ int main(void) {
     'dylink': (['-sMAIN_MODULE=2'],),
   })
   def test_emdawnwebgpu_link_test(self, args):
-    if config.FROZEN_CACHE and (self.get_setting('MEMORY64') or '-sMAIN_MODULE=2' in args):
+    if config.FROZEN_CACHE and (self.is_wasm64() or '-sMAIN_MODULE=2' in args):
       # CI configuration doesn't run `embuilder` with wasm64 on ports
       self.skipTest("test doesn't work with frozen cache")
     self.emcc(test_file('test_emdawnwebgpu_link_test.cpp'), ['--use-port=emdawnwebgpu', '-sASYNCIFY'] + args)
@@ -12083,7 +12142,7 @@ int main () {
     self.assertContained('emcc: warning: ignoring dynamic library libother.so when generating an object file, this will need to be included explicitly in the final link', err)
     self.assertIsObjectFile('out.foo')
 
-    # Test that adding `-sFAKE_DYIBS=0` build a real side module
+    # Test that adding `-sFAKE_DYLIBS=0` build a real side module
     err = self.run_process([EMCC, '-shared', '-fPIC', '-sFAKE_DYLIBS=0', test_file('hello_world.c'), '-o', 'out.foo', 'libother.so'], stderr=PIPE).stderr
     self.assertNotContained('linking a library with `-shared` will emit a static object', err)
     self.assertNotContained('emcc: warning: ignoring dynamic library libother.so when generating an object file, this will need to be included explicitly in the final link', err)
@@ -12410,7 +12469,7 @@ exec "$@"
     wasm_split_run = [wasm_split, '-g',
                       '--enable-mutable-globals', '--enable-bulk-memory', '--enable-nontrapping-float-to-int',
                       '--export-prefix=%', 'test_split_module.wasm.orig', '-o1', 'primary.wasm', '-o2', 'secondary.wasm', '--profile=profile.data']
-    if self.get_setting('MEMORY64'):
+    if self.is_wasm64():
       wasm_split_run += ['--enable-memory64']
     self.run_process(wasm_split_run)
 
@@ -13044,7 +13103,7 @@ void foo() {}
 
   @requires_pthreads
   @parameterized({
-    '': (['-sPTHREAD_POOL_SIZE=1'],),
+    '': ([],),
     'proxied': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_pthread_sigmask(self, args):
@@ -13053,22 +13112,21 @@ void foo() {}
   # Tests memory growth in pthreads mode, but still on the main thread.
   @requires_pthreads
   @parameterized({
-    '': ([], 1),
-    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'], 1),
-    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
+    '': ([],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
+    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
-  def test_pthread_growth_mainthread(self, cflags, pthread_pool_size):
+  def test_pthread_growth_mainthread(self, cflags):
     if '-sGROWABLE_ARRAYBUFFERS' in cflags:
       self.node_args.append('--experimental-wasm-rab-integration')
       self.require_node_25()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
-    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
   @requires_pthreads
-  def test_phtread_join_interrupted(self):
-    self.do_runf('pthread/test_pthread_join_interrupted.c', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=1'])
+  def test_pthread_join_interrupted(self):
+    self.do_runf('pthread/test_pthread_join_interrupted.c', cflags=['-pthread'])
 
   @requires_node_25
   def test_growable_arraybuffers(self):
@@ -13090,16 +13148,15 @@ void foo() {}
     '': ([],),
     'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
     'assert': (['-sASSERTIONS'],),
-    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
+    'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
   })
-  def test_pthread_growth(self, cflags, pthread_pool_size=1):
+  def test_pthread_growth(self, cflags):
     if WINDOWS and platform.machine() == 'ARM64':
       # https://github.com/emscripten-core/emscripten/issues/25627
       # TODO: Switch this to a "require Node.js 24" check
       self.require_node_25()
 
-    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
     if '-sGROWABLE_ARRAYBUFFERS' in cflags:
       self.node_args.append('--experimental-wasm-rab-integration')
       self.require_node_25()
@@ -13513,7 +13570,7 @@ int main() {
     # Test that extended-const expressions are used in the data segments.
     self.assertContained(r'\(data (\$\S+ )?\(offset \(i32.add\s+\(global.get \$\S+\)\s+\(i32.const \d+\)', wat, regex=True)
 
-  # Smoketest for MEMORY64 setting.  Most of the testing of MEMORY64 is by way of the wasm64
+  # Smoketest for wasm64.  Most of the testing of wasm64 is by way of the wasm64
   # variant of the core test suite.
   @parameterized({
     'O0': (['-O0'],),
@@ -13523,8 +13580,8 @@ int main() {
     'Oz': (['-Oz'],),
   })
   @requires_wasm64
-  def test_memory64(self, args):
-    self.do_run_in_out_file_test('core/test_hello_argc.c', args=['hello', 'world'], cflags=['-sMEMORY64'] + args)
+  def test_wasm64(self, args):
+    self.do_run_in_out_file_test('core/test_hello_argc.c', args=['hello', 'world'], cflags=['-m64'] + args)
 
   # Verfy that MAIN_MODULE=1 (which includes all symbols from all libraries)
   # works with -sPROXY_POSIX_SOCKETS and -Oz, both of which affect linking of
@@ -14325,6 +14382,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.assertFalse(is_64('hello_world.wasm'))
 
     self.assert_fail([EMCC, test_file('hello_world.c'), '-target', 'wasm32', '-sMEMORY64'], 'emcc: error: wasm32 target is not compatible with -sMEMORY64')
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-target', 'wasm32', '-m64'], 'emcc: error: wasm32 target is not compatible with -sMEMORY64')
 
     self.assert_fail([EMCC, test_file('hello_world.c'), '--target=arm64'], 'emcc: error: unsupported target: arm64 (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten')
 
@@ -14647,7 +14705,7 @@ addToLibrary({
 
   def test_wasm64_no_asan(self):
     expected = 'error: MEMORY64 does not yet work with ASAN'
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-sMEMORY64', '-fsanitize=address'], expected)
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-m64', '-fsanitize=address'], expected)
 
   def test_mimalloc_no_asan(self):
     # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258

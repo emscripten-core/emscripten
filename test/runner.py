@@ -457,7 +457,7 @@ def flattened_tests(loaded_tests):
 
 def run_tests(options, suite):
   # Run the discovered tests
-  if os.getenv('CI'):
+  if utils.get_env_bool('CI'):
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
     import xmlrunner  # type: ignore  # noqa: PLC0415
@@ -552,16 +552,16 @@ def parse_args():
 
 def configure():
   browser_common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
-  browser_common.EMTEST_BROWSER_AUTO_CONFIG = int(os.getenv('EMTEST_BROWSER_AUTO_CONFIG', '1'))
-  browser_common.EMTEST_HEADLESS = int(os.getenv('EMTEST_HEADLESS', '0'))
-  common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
-  common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
-  common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
-  common.EMTEST_SKIP_FLAKY = int(os.getenv('EMTEST_SKIP_FLAKY', '0'))
-  common.EMTEST_RETRY_FLAKY = int(os.getenv('EMTEST_RETRY_FLAKY', '0'))
-  common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
-  common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
-  common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
+  browser_common.EMTEST_BROWSER_AUTO_CONFIG = utils.get_env_bool('EMTEST_BROWSER_AUTO_CONFIG', '1')
+  browser_common.EMTEST_HEADLESS = utils.get_env_bool('EMTEST_HEADLESS')
+  common.EMTEST_DETECT_TEMPFILE_LEAKS = utils.get_env_bool('EMTEST_DETECT_TEMPFILE_LEAKS')
+  common.EMTEST_ALL_ENGINES = utils.get_env_bool('EMTEST_ALL_ENGINES')
+  common.EMTEST_SKIP_SLOW = utils.get_env_bool('EMTEST_SKIP_SLOW')
+  common.EMTEST_SKIP_FLAKY = utils.get_env_bool('EMTEST_SKIP_FLAKY')
+  common.EMTEST_RETRY_FLAKY = utils.get_env_int('EMTEST_RETRY_FLAKY')
+  common.EMTEST_LACKS_NATIVE_CLANG = utils.get_env_bool('EMTEST_LACKS_NATIVE_CLANG')
+  common.EMTEST_REBASELINE = utils.get_env_bool('EMTEST_REBASELINE')
+  common.EMTEST_VERBOSE = utils.get_env_bool('EMTEST_VERBOSE') or shared.DEBUG
   if common.EMTEST_VERBOSE:
     logging.root.setLevel(logging.DEBUG)
 

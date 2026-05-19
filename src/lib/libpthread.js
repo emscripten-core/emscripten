@@ -296,10 +296,8 @@ var LibraryPThread = {
           markAsFinished(d.thread);
 #endif
         } else if (cmd === 'loaded') {
-          worker.loaded = true;
-#if ENVIRONMENT_MAY_BE_NODE && PTHREAD_POOL_SIZE
-          // Check that this worker doesn't have an associated pthread.
-          if (ENVIRONMENT_IS_NODE && !worker.pthread_ptr) {
+#if ENVIRONMENT_MAY_BE_NODE
+          if (ENVIRONMENT_IS_NODE && !worker.strongref) {
             // Once worker is loaded & idle, mark it as weakly referenced,
             // so that mere existence of a Worker in the pool does not prevent
             // Node.js from exiting the app.
@@ -604,7 +602,12 @@ var LibraryPThread = {
     //   back to the main thread.
 #if ENVIRONMENT_MAY_BE_NODE
     if (ENVIRONMENT_IS_NODE) {
-      PThread.pthreads[thread].ref();
+      var worker = PThread.pthreads[thread];
+      worker.ref();
+      // Also, record that we called strongref, in case this function is called
+      // bafore the 'loaded' callback from the thread (where we would normally
+      // `unref` it.
+      worker.strongref = 1;
     }
 #endif
   },
@@ -702,15 +705,6 @@ var LibraryPThread = {
     // in this file, and not from the external worker.js.
     msg.moduleCanvasId = threadParams.moduleCanvasId;
     msg.offscreenCanvases = threadParams.offscreenCanvases;
-#endif
-#if ENVIRONMENT_MAY_BE_NODE
-    if (ENVIRONMENT_IS_NODE) {
-      // Mark worker as weakly referenced once we start executing a pthread,
-      // so that its existence does not prevent Node.js from exiting.  This
-      // has no effect if the worker is already weakly referenced (e.g. if
-      // this worker was previously idle/unused).
-      worker.unref();
-    }
 #endif
     // Ask the worker to start executing its pthread entry point function.
     worker.postMessage(msg, threadParams.transferList);
@@ -1297,6 +1291,9 @@ var LibraryPThread = {
   },
 
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox', '$waitAsyncPolyfilled'],
+  // Closure's Atomics.waitAsync extern incorrectly returns Promise<string>,
+  // but the spec returns a result object with async/value fields.
+  _emscripten_thread_mailbox_await__docs: '/** @suppress {missingProperties} */',
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
     if (!waitAsyncPolyfilled) {
       // Wait on the pthread's initial self-pointer field because it is easy and

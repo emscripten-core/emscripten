@@ -59,6 +59,7 @@ from decorators import (
   no_4gb,
   no_bun,
   no_deno,
+  no_highmem,
   no_wasm64,
   no_windows,
   parameterize,
@@ -155,7 +156,7 @@ def asan(func):
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb("asan doesn't support GLOBAL_BASE")
+  @no_highmem("asan doesn't support GLOBAL_BASE")
   def decorated(self, *args, **kwargs):
     return func(self, *args, **kwargs)
 
@@ -961,8 +962,7 @@ class TestCoreBase(RunnerCore):
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  @no_4gb('uses INITIAL_MEMORY')
-  @no_2gb('uses INITIAL_MEMORY')
+  @no_highmem('uses INITIAL_MEMORY')
   def test_emmalloc_memory_statistics(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.set_setting('INITIAL_MEMORY', '128MB')
@@ -976,8 +976,7 @@ class TestCoreBase(RunnerCore):
     self.assertContained(r'emmalloc_unclaimed_heap_memory\s*: [1-9]\d+', output, regex=True)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
-  @no_2gb('output is sensitive to absolute data layout')
-  @no_4gb('output is sensitive to absolute data layout')
+  @no_highmem('output is sensitive to absolute data layout')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_trim(self):
@@ -1426,10 +1425,10 @@ int main(int argc, char **argv) {
         if (std::uncaught_exceptions())
           std::cout << "ERROR: uncaught_exceptions still set.\n";
         else
-          std::cout << "OK\n";
+          std::cout << "done\n";
       }
     '''
-    self.do_run(src, 'OK\n')
+    self.do_run(src, 'done\n')
 
   @with_all_eh_sjlj
   def test_exceptions_typed(self):
@@ -1731,11 +1730,9 @@ int main() {
     self.do_core_test('test_ctors_no_main.cpp', cflags=['--no-entry'])
 
   @no_wasm2js('eval_ctors not supported yet')
-  @no_2gb('https://github.com/WebAssembly/binaryen/issues/5893')
+  @no_highmem('https://github.com/WebAssembly/binaryen/issues/5893')
   @also_with_standalone_wasm(impure=True)
   def test_eval_ctors_no_main(self):
-    if self.get_setting('MEMORY64') == 1:
-      self.skipTest('https://github.com/WebAssembly/binaryen/issues/5017')
     self.set_setting('EVAL_CTORS')
     self.do_core_test('test_ctors_no_main.cpp', cflags=['--no-entry'])
 
@@ -2091,8 +2088,7 @@ int main(int argc, char **argv) {
     return re.sub(r"\nWarning: Enlarging memory arrays, this is not fast! \d+,\d+\n", "\n", text)
 
   # Tests that -sMINIMAL_RUNTIME builds can utilize -sALLOW_MEMORY_GROWTH option.
-  @no_4gb('memory growth issues')
-  @no_2gb('memory growth issues')
+  @no_highmem('memory growth issues')
   @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
   def test_minimal_runtime_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -2107,8 +2103,7 @@ int main(int argc, char **argv) {
     output = self.remove_growth_warning(output)
     self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
 
-  @no_2gb('memory growth issues')
-  @no_4gb('memory growth issues')
+  @no_highmem('memory growth issues')
   def test_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2146,8 +2141,7 @@ int main(int argc, char **argv) {
       output = self.remove_growth_warning(output)
       self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
 
-  @no_4gb('memory growth issues')
-  @no_2gb('memory growth issues')
+  @no_highmem('memory growth issues')
   def test_memorygrowth_2(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2181,8 +2175,7 @@ int main(int argc, char **argv) {
     self.do_core_test('test_memorygrowth_3.c')
 
   @also_with_standalone_wasm()
-  @no_4gb('depends on INITIAL_MEMORY')
-  @no_2gb('depends on INITIAL_MEMORY')
+  @no_highmem('depends on INITIAL_MEMORY')
   def test_memorygrowth_MAXIMUM_MEMORY(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2193,8 +2186,7 @@ int main(int argc, char **argv) {
     self.cflags += ['-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=100Mb']
     self.do_core_test('test_memorygrowth_wasm_mem_max.c')
 
-  @no_4gb('depends on INITIAL_MEMORY')
-  @no_2gb('depends on INITIAL_MEMORY')
+  @no_highmem('depends on INITIAL_MEMORY')
   def test_memorygrowth_linear_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2206,8 +2198,7 @@ int main(int argc, char **argv) {
     self.do_core_test('test_memorygrowth_linear_step.c')
 
   @no_ubsan('UBSan seems to affect the precise memory usage')
-  @no_4gb('depends on specific memory layout')
-  @no_2gb('depends on specific memory layout')
+  @no_highmem('depends on specific memory layout')
   def test_memorygrowth_geometric_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2232,8 +2223,7 @@ int main(int argc, char **argv) {
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
-  @no_4gb('depends on MAXIMUM_MEMORY')
-  @no_2gb('depends on MAXIMUM_MEMORY')
+  @no_highmem('depends on MAXIMUM_MEMORY')
   def test_aborting_new(self, args):
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
@@ -2245,16 +2235,14 @@ int main(int argc, char **argv) {
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
-  @no_4gb('depends on MAXIMUM_MEMORY')
-  @no_2gb('depends on MAXIMUM_MEMORY')
+  @no_highmem('depends on MAXIMUM_MEMORY')
   def test_nothrow_new(self, args):
     self.do_core_test('test_nothrow_new.cpp', cflags=args)
 
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
   @no_lsan('LSan alters the memory size')
-  @no_4gb('depends on memory size')
-  @no_2gb('depends on memory size')
+  @no_highmem('depends on memory size')
   @no_esm_integration('external wasmMemory')
   def test_module_wasm_memory(self):
     self.set_setting('IMPORTED_MEMORY')
@@ -2610,7 +2598,6 @@ The current type of b is: 9
 
   @requires_pthreads
   def test_pthread_proxying_dropped_work(self):
-    self.set_setting('PTHREAD_POOL_SIZE=2')
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_dropped_work.c')
 
   @requires_pthreads
@@ -2624,7 +2611,6 @@ The current type of b is: 9
   @flaky('https://github.com/emscripten-core/emscripten/issues/19795')
   def test_pthread_proxying_refcount(self):
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('PTHREAD_POOL_SIZE=1')
     self.set_setting('ASSERTIONS=0')
     self.do_run_in_out_file_test('pthread/test_pthread_proxying_refcount.c')
 
@@ -2636,12 +2622,10 @@ The current type of b is: 9
   def test_pthread_atexit(self):
     # Test to ensure threads are still running when atexit-registered functions are called
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_atexit.c')
 
   @requires_pthreads
   def test_pthread_nested_work_queue(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_nested_work_queue.c')
 
   @requires_pthreads
@@ -2651,11 +2635,10 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '300mb')
-    self.do_run_in_out_file_test('pthread/test_pthread_thread_local_storage.cpp')
+    self.do_run_in_out_file_test('pthread/test_pthread_thread_local_storage.c')
 
   @requires_pthreads
   def test_pthread_cleanup(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 4)
     self.do_run_in_out_file_test('pthread/test_pthread_cleanup.c')
 
   @requires_pthreads
@@ -2672,7 +2655,6 @@ The current type of b is: 9
   def test_pthread_attr_getstack(self):
     if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.cflags):
       self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
 
   @requires_pthreads
@@ -2689,7 +2671,6 @@ The current type of b is: 9
 
   @requires_pthreads
   def test_pthread_abort_interrupt(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     expected = ['Aborted(). Build with -sASSERTIONS for more info', 'Aborted(native code called abort())']
     self.do_runf('pthread/test_pthread_abort_interrupt.c', expected, assert_returncode=NON_ZERO)
 
@@ -2758,6 +2739,18 @@ The current type of b is: 9
     self.set_setting('PROXY_TO_PTHREAD')
     self.do_run_in_out_file_test('atomic/test_wait_async.c')
 
+  # Include @requires_node_25 explictly here so that this test will be disabled
+  # by EMTEST_SKIP_NODE_25.  Without this, the `requires_pthreads` and `requires_jspi` can
+  # end with conflicting requirements because we often run with both v8 (which satisfies
+  # the `requires_jspi` part have node 22 (which satisfies the `requires_pthreads` part).
+  # FIXME: This should not be needed.
+  @requires_node_25
+  @requires_pthreads
+  @with_asyncify_and_jspi
+  @also_with_wasm_workers
+  def test_pthread_wait_suspending(self):
+    self.do_run_in_out_file_test('atomic/test_wait_suspending.c')
+
   @requires_pthreads
   @also_with_minimal_runtime
   def test_pthread_run_on_main_thread(self):
@@ -2775,7 +2768,7 @@ The current type of b is: 9
   @requires_pthreads
   @also_with_wasm_workers
   def test_emscripten_lock_waitinf_acquire(self):
-    self.do_runf('wasm_worker/lock_waitinf_acquire.c', 'done\n', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=4'])
+    self.do_runf('wasm_worker/lock_waitinf_acquire.c', 'done\n', cflags=['-pthread'])
 
   @requires_pthreads
   @also_with_wasm_workers
@@ -2791,7 +2784,7 @@ The current type of b is: 9
   @requires_pthreads
   @also_with_wasm_workers
   def test_emscripten_semaphore_waitinf_acquire(self):
-    self.do_runf('wasm_worker/semaphore_waitinf_acquire.c', 'done\n', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=7'])
+    self.do_runf('wasm_worker/semaphore_waitinf_acquire.c', 'done\n', cflags=['-pthread'])
 
   @requires_pthreads
   @also_with_wasm_workers
@@ -2838,10 +2831,10 @@ The current type of b is: 9
 
   @also_with_standalone_wasm()
   def test_memcpy_alignment(self):
-    self.do_runf('test_memcpy_alignment.c', 'OK.')
+    self.do_runf('test_memcpy_alignment.c', 'done\n')
 
   def test_memset_alignment(self):
-    self.do_runf('test_memset_alignment.c', 'OK.')
+    self.do_runf('test_memset_alignment.c', 'done\n')
 
   def test_memset(self):
     self.do_core_test('test_memset.c')
@@ -3274,8 +3267,7 @@ Var: 42
 
   @needs_dylink
   @no_sanitize('contains ODR violation')
-  @no_2gb('output is sensitive to absolute data layout')
-  @no_4gb('output is sensitive to absolute data layout')
+  @no_highmem('output is sensitive to absolute data layout')
   def test_dlfcn_alignment_and_zeroing(self):
     self.set_setting('INITIAL_MEMORY', '16mb')
     create_file('libside.c', r'''
@@ -5320,7 +5312,7 @@ int main()
     self.do_core_test('test_strtok.c')
 
   def test_strtol(self):
-    if self.get_setting('MEMORY64'):
+    if self.is_wasm64():
       out_suffix = '64'
     else:
       out_suffix = ''
@@ -5782,27 +5774,27 @@ got: 10
   @with_both_text_decoder
   @crossplatform
   def test_utf16(self):
-    self.do_runf('core/test_utf16.cpp', 'OK.')
+    self.do_runf('core/test_utf16.cpp', 'done\n')
 
   @with_both_text_decoder
   def test_utf8(self):
-    self.do_runf('core/test_utf8.c', 'OK.')
+    self.do_runf('core/test_utf8.c', 'done\n')
 
   @with_both_text_decoder
   @also_without_bigint
   def test_utf8_bench(self):
     self.cflags += ['--embed-file', test_file('test_utf8_bench.txt') + '@/utf8_corpus.txt']
-    self.do_runf('test_utf8_bench.c', 'OK.')
+    self.do_runf('test_utf8_bench.c', 'done\n')
 
   # Test that invalid character in UTF8 does not cause decoding to crash.
   @with_both_text_decoder
   @also_with_minimal_runtime
   def test_utf8_invalid(self):
-    self.do_runf('test_utf8_invalid.c', 'OK.')
+    self.do_runf('test_utf8_invalid.c', 'done\n')
 
   def test_utf16_bench(self):
     self.cflags += ['--embed-file', test_file('test_utf16_bench.txt') + '@/utf16_corpus.txt']
-    self.do_runf('test_utf16_bench.c', 'OK.')
+    self.do_runf('test_utf16_bench.c', 'done\n')
 
   def test_wprintf(self):
     self.do_core_test('test_wprintf.cpp')
@@ -6268,12 +6260,25 @@ PORT: 3979
   def test_strcasecmp(self):
     self.do_core_test('test_strcasecmp.c')
 
+  @also_with_pthreads
   def test_atomic(self):
+    if '-pthread' in self.cflags and self.is_wasm2js():
+      self.skipTest('atomics support missing')
     self.do_core_test('test_atomic.c')
 
+  @also_with_pthreads
+  def test_atomic_c11(self):
+    if '-pthread' in self.cflags and self.is_wasm2js():
+      self.skipTest('atomics support missing')
+    # Re-use the out file from the C++ atomic test since they should have
+    # identical output.
+    self.do_runf('core/test_atomic_c11.c', read_file(test_file('core/test_atomic_cxx.out')), cflags=['-Wno-atomic-alignment'])
+
+  @also_with_pthreads
   def test_atomic_cxx(self):
-    # the wasm backend has lock-free atomics, but not asm.js or asm2wasm
-    self.do_core_test('test_atomic_cxx.cpp', cflags=['-DIS_64BIT_LOCK_FREE=1'])
+    if '-pthread' in self.cflags and self.is_wasm2js():
+      self.skipTest('atomics support missing')
+    self.do_core_test('test_atomic_cxx.cpp')
 
   def test_phiundef(self):
     self.do_core_test('test_phiundef.c')
@@ -6496,8 +6501,7 @@ int main(void) {
   # Tests that a large allocation should gracefully fail
   @no_asan('the memory size limit here is too small for asan')
   @no_lsan('the memory size limit here is too small for lsan')
-  @no_4gb('output is sensitive to absolute data layout')
-  @no_2gb('output is sensitive to absolute data layout')
+  @no_highmem('output is sensitive to absolute data layout')
   def test_dlmalloc_large(self):
     self.cflags += ['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH=1', '-sMAXIMUM_MEMORY=128MB']
     self.do_runf('dlmalloc_test_large.c', '0 0 0 1')
@@ -6944,7 +6948,7 @@ void* operator new(size_t size) {
     # and this test would different non-deterministic results based on, for example,
     # what other tests had previously run.
     builder_cmd = [EMBUILDER, 'build', 'libpng']
-    if self.get_setting('MEMORY64'):
+    if self.is_wasm64():
       builder_cmd.append('--wasm64')
       self.cflags.append('-Wno-pointer-to-int-cast')
     self.run_process(builder_cmd)
@@ -7117,6 +7121,9 @@ void* operator new(size_t size) {
     for which, extra_args in cases:
       print(str(extra_args) + ' ' + which)
       self.do_core_test('test_dyncall_specific.c', cflags=['-D' + which] + extra_args)
+
+  def test_dyncall_ptr_handling(self):
+    self.do_core_test('test_dyncall_ptr_handling.c', cflags=['--js-library', test_file('core/test_dyncall_ptr_handling.js')])
 
   @parameterized({
     '': ([],),
@@ -7705,7 +7712,7 @@ void* operator new(size_t size) {
     if safe_heap and '-fsanitize=address' in self.cflags:
       self.skipTest('asan does not work with SAFE_HEAP')
     self.set_setting('SAFE_HEAP', safe_heap)
-    out_suffix = '64' if self.get_setting('MEMORY64') else ''
+    out_suffix = '64' if self.is_wasm64() else ''
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True, out_suffix=out_suffix, cflags=['-lembind'])
 
   @no_wasm2js('wasm_bigint')
@@ -8656,7 +8663,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     'mimalloc': (['-sMALLOC=mimalloc', '-sABORTING_MALLOC=0'],),
   })
   def test_wrap_malloc(self, args):
-    self.do_runf('core/test_wrap_malloc.c', 'OK.', cflags=args)
+    self.do_runf('core/test_wrap_malloc.c', 'done\n', cflags=args)
 
   def test_environment(self):
     self.set_setting('ASSERTIONS')
@@ -9130,6 +9137,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @parameterized({
     '': ([],),
     'sync_instantiation': (['-sWASM_ASYNC_COMPILATION=0'],),
+    'proxied': (['-sPROXY_TO_PTHREAD'],),
   })
   @requires_pthreads
   @crossplatform
@@ -9138,12 +9146,12 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.skipTest('WASM_ESM_INTEGRATION is not compatible with WASM_ASYNC_COMPILATION=0')
     self.set_setting('ENVIRONMENT', 'node')
     self.set_setting('STRICT')
-    self.do_core_test('pthread/create.c', cflags=args)
+    # Under node we can always synchronously create threads.
+    self.do_core_test('pthread/create.c', cflags=args + ['-DALLOW_SYNC'])
 
   @requires_pthreads
   @parameterized({
     '': ([],),
-    'pooled': (['-sPTHREAD_POOL_SIZE=1'],),
     'proxied': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_pthread_c11_threads(self, args):
@@ -9154,41 +9162,17 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_run_in_out_file_test('pthread/test_pthread_c11_threads.c', cflags=args)
 
   @requires_pthreads
-  @parameterized({
-    '': (0,),
-    'pooled': (1,),
-  })
-  def test_pthread_cxx_threads(self, pthread_pool_size):
-    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
+  def test_pthread_cxx_threads(self):
     self.do_run_in_out_file_test('pthread/test_pthread_cxx_threads.cpp')
 
   @requires_pthreads
-  @parameterized({
-    '': (0,),
-    'pooled': (1,),
-  })
-  def test_pthread_busy_wait(self, pthread_pool_size):
-    self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
+  def test_pthread_busy_wait(self):
     self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
 
   @requires_pthreads
   def test_pthread_busy_wait_atexit(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 1)
     self.set_setting('EXIT_RUNTIME')
     self.do_run_in_out_file_test('pthread/test_pthread_busy_wait_atexit.cpp')
-
-  @requires_pthreads
-  def test_pthread_create_pool(self):
-    # with a pool, we can synchronously depend on workers being available
-    self.set_setting('PTHREAD_POOL_SIZE', 2)
-    self.do_core_test('pthread/create.c', cflags=['-DALLOW_SYNC'])
-
-  @requires_pthreads
-  def test_pthread_create_proxy(self):
-    # with PROXY_TO_PTHREAD, we can synchronously depend on workers being available
-    self.set_setting('PROXY_TO_PTHREAD')
-    self.set_setting('EXIT_RUNTIME')
-    self.do_core_test('pthread/create.c', cflags=['-DALLOW_SYNC'])
 
   @requires_pthreads
   def test_pthread_create_embind_stack_check(self):
@@ -9198,7 +9182,6 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @requires_pthreads
   def test_pthread_exceptions(self):
-    self.set_setting('PTHREAD_POOL_SIZE', 2)
     self.do_core_test('pthread/exceptions.cpp', cflags=['-fexceptions'])
 
   @requires_pthreads
@@ -9243,12 +9226,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.set_setting('EXPORT_NAME', 'foo')
     self.do_runf('core/test_return_address.c', 'passed', cflags=['-g'])
 
-  def test_emscripten_atomics_stub(self):
-    self.do_core_test('pthread/emscripten_atomics.c')
-
-  @requires_pthreads
+  @also_with_pthreads
   def test_emscripten_atomics(self):
-    self.do_core_test('pthread/emscripten_atomics.c', cflags=['-pthread'])
+    self.do_core_test('pthread/test_emscripten_atomics.c')
 
   @requires_pthreads
   def test_emscripten_futex_api_basics(self):
@@ -9258,7 +9238,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @requires_pthreads
   def test_stdio_locking(self):
-    self.do_core_test('test_stdio_locking.c', cflags=['-sPTHREAD_POOL_SIZE=2'])
+    self.do_core_test('test_stdio_locking.c')
 
   @requires_wasm_workers
   def test_stdio_locking_ww(self):
@@ -9286,8 +9266,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # where we had a bug with long names + TextDecoder + pthreads + dylink
     very_long_name = 'very_very_very_very_very_very_very_very_very_long.so'
 
-    self.dylink_testf(main, so_name=very_long_name,
-                      main_cflags=['-sPTHREAD_POOL_SIZE=2'])
+    self.dylink_testf(main, so_name=very_long_name)
 
   @needs_dylink
   @parameterized({
@@ -9298,7 +9277,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
   def test_pthread_dylink_entry_point(self, args):
     self.cflags += ['-Wno-experimental', '-pthread']
     main = test_file('core/pthread/test_pthread_dylink_entry_point.c')
-    self.dylink_testf(main, cflags=args, main_cflags=['-sPTHREAD_POOL_SIZE=1'])
+    self.dylink_testf(main, cflags=args)
 
   @needs_dylink
   @requires_pthreads
@@ -9365,15 +9344,13 @@ NODEFS is no longer included by default; build with -lnodefs.js
   @requires_pthreads
   def test_pthread_dylink_tls(self):
     self.cflags += ['-Wno-experimental', '-pthread']
-    main = test_file('core/pthread/test_pthread_dylink_tls.c')
-    self.dylink_testf(main, main_cflags=['-sPTHREAD_POOL_SIZE=1'])
+    self.dylink_testf(test_file('core/pthread/test_pthread_dylink_tls.c'))
 
   @needs_dylink
   @requires_pthreads
   def test_pthread_dylink_longjmp(self):
     self.cflags += ['-Wno-experimental', '-pthread']
-    main = test_file('core/pthread/test_pthread_dylink_longjmp.c')
-    self.dylink_testf(main, main_cflags=['-sPTHREAD_POOL_SIZE=1'])
+    self.dylink_testf(test_file('core/pthread/test_pthread_dylink_longjmp.c'))
 
   @needs_dylink
   @requires_pthreads
@@ -9685,6 +9662,33 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.do_runf('core/test_promise_await.c', 'emscripten_promise_await is only available with ASYNCIFY',
                  assert_returncode=NON_ZERO)
 
+  # Include @requires_node_25 explictly here so that this test will be disabled
+  # by EMTEST_SKIP_NODE_25.  Without this, the `requires_node` and `requires_jspi` can
+  # end with conflicting requirements because we often run with both v8 (which satisfies
+  # the `requires_jspi` part have node (which satisfies the `requires_node` part).
+  # FIXME: This should not be needed.
+  @requires_node_25
+  @with_asyncify_and_jspi
+  def test_promise_await_unchecked_rejected(self):
+    create_file('test.c', r'''
+#include <emscripten/promise.h>
+#include <stdio.h>
+#include <stdlib.h>
+
+int main() {
+  em_promise_t p = emscripten_promise_create();
+  emscripten_promise_resolve(p, EM_PROMISE_REJECT, (void*)45);
+
+  printf("waiting on promise (unchecked, rejected)\n");
+  (void)emscripten_promise_await_unchecked(p);
+  printf("ERROR: should not be reached\n");
+  __builtin_abort();
+  return 1;
+}
+''')
+    # We expect an unhandled rejection, which in Node.js results in a non-zero exit code.
+    self.do_runf('test.c', 'UnhandledPromiseRejection', assert_returncode=NON_ZERO)
+
   @no_modularize_instance('uses Module object directly')
   def test_emscripten_async_load_script(self):
     create_file('script1.js', 'Module._set(456);''')
@@ -9812,7 +9816,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
 
   @no_esm_integration('fcoverage is not compatible with WASM_ESM_INTEGRATION')
-  @no_wasm64('TODO: fcoverage in memory64')
+  @no_wasm64('https://github.com/emscripten-core/emscripten/issues/26865')
   @no_wasm2js('wasm binary required to produce code coverage results with llvm-cov')
   def test_fcoverage_mapping(self):
     expected = '''\
@@ -9917,16 +9921,15 @@ corez = make_run('corez', cflags=['-Oz'])
 core_2gb = make_run('core_2gb', cflags=['--profiling-funcs'],
                     settings={'INITIAL_MEMORY': '2200mb', 'GLOBAL_BASE': '2gb'})
 
-# MEMORY64=1
-wasm64 = make_run('wasm64', cflags=['--profiling-funcs'],
-                  settings={'MEMORY64': 1}, require_wasm64=True)
+wasm64 = make_run('wasm64', cflags=['--profiling-funcs', '-m64'], require_wasm64=True)
+wasm64_O2 = make_run('wasm64_O2', cflags=['-O2', '-m64'], require_wasm64=True)
 # Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
 # suite with any kind of parallelism.
-wasm64_4gb = make_run('wasm64_4gb', cflags=['--profiling-funcs'],
-                      settings={'MEMORY64': 1, 'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
+wasm64_4gb = make_run('wasm64_4gb', cflags=['-m64', '--profiling-funcs'],
+                      settings={'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
                       require_wasm64=True)
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64l', cflags=['-O1', '--profiling-funcs'],
+wasm64l = make_run('wasm64l', cflags=['-m64', '-O1', '--profiling-funcs'],
                    settings={'MEMORY64': 2})
 
 lto0 = make_run('lto0', cflags=['-flto', '-O0'])

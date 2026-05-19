@@ -6,11 +6,11 @@ Dynamic Linking
 
 .. note:: This documentation is somewhat outdated and is in the process of being refreshed.
 
-Emscripten supports linking object files (and ar archives that contain
+Emscripten supports linking object files (and ``ar`` archives that contain
 object files) statically.  This lets most build systems work with Emscripten
 with little or no changes (see :ref:`Building-Projects`).
 
-In addition, Emscripten also has support for a form of **dynamic** linking of
+In addition, Emscripten also has support for **dynamic** linking of
 WebAssembly modules.  This can add overhead, so for best performance static
 linking should still be preferred.  However, this overhead can be reduced
 with the use of certain command line flags. See below for details.
@@ -144,6 +144,24 @@ module into the filesystem, so that ``dlopen`` (or ``fopen``, etc.) can access
 it (except for ``dlopen(NULL)`` which means to open the current executable,
 which just works without filesystem integration). That’s basically it - you can
 then use ``dlopen(), dlsym()``, etc. normally.
+
+Building Dynamic Libraries using ``-shared``
+============================================
+
+In traditional toolchains the ``-shared`` flag is used to generated dynamic
+libraries.  However, because dynamic linking in Emscripten comes with caveats
+and has some overhead, Emscripten does not currently produce real dynamic
+libraries when this flag is used.  Instead, Emscripten will produce a fake
+dynamic library (along with a warning) that is actually a single static object
+file.  When your main program is linked against this fake dynamic library it
+gets linked into your main program like any other object file.
+
+The reason for this behaviour is to allow projects (and build systems) that
+assume a working ``-shared`` flag to build successfully (albeit using static
+linking).
+
+This behaviour can be controlled using the :ref:`FAKE_DYLIBS` settings.  If you
+disable `FAKE_DYLIBS` then ``-shared`` will act like ``-sSIDE_MODULE``.
 
 Code Size
 =========

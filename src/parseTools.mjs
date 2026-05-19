@@ -682,6 +682,7 @@ function makeDynCall(sig, funcPtr, promising = false) {
   }
   args = args.join(', ');
 
+  const needRtnConversion = MEMORY64 && sig[0] == 'p';
   const needArgConversion = MEMORY64 && sig.includes('p');
   let callArgs = args;
   if (needArgConversion) {
@@ -751,7 +752,15 @@ Please update to new syntax.`);
   }
 
   if (needArgConversion) {
-    return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+    if (needRtnConversion) {
+      if (promising) {
+        return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}).then(Number))`;
+      } else {
+        return `((${args}) => Number(${getWasmTableEntry}.call(null, ${callArgs})))`;
+      }
+    } else {
+      return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+    }
   }
   return getWasmTableEntry;
 }
