@@ -276,13 +276,11 @@ EMSCRIPTEN_FUNCS();
   with ToolchainProfiler.profile_block('split_closure_cleanup'):
     if closure or cleanup:
       # run on the shell code, everything but what we acorn-optimize
-      start_asm = '// EMSCRIPTEN_START_ASM\n'
-      end_asm = '// EMSCRIPTEN_END_ASM\n'
       cl_sep = 'wakaUnknownBefore(); var asm=wakaUnknownAfter(wakaGlobal,wakaEnv,wakaBuffer)\n'
 
       with temp_files.get_file('.cl.js') as cle:
-        pre_1, pre_2 = pre.split(start_asm)
-        post_1, post_2 = post.split(end_asm)
+        pre_1, pre_2 = pre.split(start_asm_marker)
+        post_1, post_2 = post.split(end_asm_marker)
         with open(cle, 'w', encoding='utf-8') as f:
           f.write(pre_1)
           f.write(cl_sep)
@@ -303,7 +301,7 @@ EMSCRIPTEN_FUNCS();
           temp_files.note(cld)
         coutput = utils.read_file(cld)
 
-      coutput = coutput.replace('wakaUnknownBefore();', start_asm)
+      coutput = coutput.replace('wakaUnknownBefore();', start_asm_marker)
       after = 'wakaUnknownAfter'
       start = coutput.find(after)
       end = coutput.find(')', start)
@@ -318,7 +316,7 @@ EMSCRIPTEN_FUNCS();
         brace = pre_2.find('{', brace) + 1
         has_useless_code_comment = True
       pre = coutput[:start] + '(' + (USELESS_CODE_COMMENT if has_useless_code_comment else '') + 'function(global,env,buffer) {\n' + pre_2[brace:]
-      post = post_1 + end_asm + coutput[end + 1:]
+      post = post_1 + end_asm_marker + coutput[end + 1:]
 
   filename += '.jo.js'
   temp_files.note(filename)
