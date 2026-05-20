@@ -2207,7 +2207,7 @@ class libasan_rt(SanitizerLibrary):
 # things that we'd normally do in JS. That includes some general things
 # as well as some additional musl components (that normally we reimplement
 # in JS as it's more efficient that way).
-class libstandalonewasm(MuslInternalLibrary):
+class libstandalonewasm(MuslInternalLibrary, MTLibrary):
   name = 'libstandalonewasm'
   # LTO defeats the weak linking trick used in __original_main.c
   force_object_files = True
