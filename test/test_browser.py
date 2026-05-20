@@ -1750,9 +1750,9 @@ window.close = () => {
     for image in images:
       cflags += ['--preload-file', f'{book_path(image)}@{os.path.basename(image)}']
 
-    lib = [l for l in libs if program in os.path.basename(l)][0]
+    libs = [l for l in libs if program in os.path.basename(l)]
 
-    self.reftest(lib, book_path(program.replace('.o', '.png')), cflags=cflags)
+    self.reftest(libs[0], book_path(program.replace('.o', '.png')), cflags=cflags)
 
   @requires_graphics_hardware
   @parameterized({
@@ -3292,12 +3292,12 @@ Module["preRun"] = () => {
   # ASYNCIFY_IMPORTS.
   # To make the test more precise we also use ASYNCIFY_IGNORE_INDIRECT here.
   @parameterized({
-    '': (['-sASYNCIFY_IMPORTS=sync_tunnel,sync_tunnel_bool'],), # noqa
-    'pattern_imports': (['-sASYNCIFY_IMPORTS=[sync_tun*]'],), # noqa
-    'response': (['-sASYNCIFY_IMPORTS=@filey.txt'],), # noqa
-    'nothing': (['-DBAD'],), # noqa
-    'empty_list': (['-DBAD', '-sASYNCIFY_IMPORTS=[]'],), # noqa
-    'em_js_bad': (['-DBAD', '-DUSE_EM_JS'],), # noqa
+    '': (['-sASYNCIFY_IMPORTS=sync_tunnel,sync_tunnel_bool'],),
+    'pattern_imports': (['-sASYNCIFY_IMPORTS=[sync_tun*]'],),
+    'response': (['-sASYNCIFY_IMPORTS=@filey.txt'],),
+    'nothing': (['-DBAD'],),
+    'empty_list': (['-DBAD', '-sASYNCIFY_IMPORTS=[]'],),
+    'em_js_bad': (['-DBAD', '-DUSE_EM_JS'],),
   })
   def test_async_returnvalue(self, args):
     if '@' in str(args):

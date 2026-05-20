@@ -183,7 +183,7 @@ def ignore_symbol(s, cxx):
            'stackSave', 'stackRestore', 'stackAlloc', 'getTempRet0', 'setTempRet0',
            }:
     return True
-  return cxx and s == '__asctime_r' or s.startswith('__cxa_find_matching_catch')
+  return (cxx and s == '__asctime_r') or s.startswith('__cxa_find_matching_catch')
 
 
 def create_c_file(filename, symbol_list, header):
@@ -354,7 +354,7 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
     sig_info32 = extract_sigs(symbols, obj_file)
 
     # Run the same command again with wasm64.
-    shared.check_call(cmd + ['-m64'])
+    shared.check_call([*cmd, '-m64'])
     sig_info64 = extract_sigs(symbols, obj_file)
 
     for sym, sig32 in sig_info32.items():

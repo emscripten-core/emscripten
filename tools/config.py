@@ -197,13 +197,13 @@ def generate_config(path):
   config_data = '\n'.join(config_data) + '\n'
   # autodetect some default paths
   llvm_root = os.path.dirname(shutil.which('wasm-ld') or '/usr/bin/wasm-ld')
-  config_data = config_data.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
+  config_data = config_data.replace("'{{{ LLVM_ROOT }}}'", repr(llvm_root))
 
   binaryen_root = os.path.dirname(os.path.dirname(shutil.which('wasm-opt') or '/usr/local/bin/wasm-opt'))
-  config_data = config_data.replace('\'{{{ BINARYEN_ROOT }}}\'', repr(binaryen_root))
+  config_data = config_data.replace("'{{{ BINARYEN_ROOT }}}'", repr(binaryen_root))
 
   node = shutil.which('node') or shutil.which('nodejs') or 'node'
-  config_data = config_data.replace('\'{{{ NODE }}}\'', repr(node))
+  config_data = config_data.replace("'{{{ NODE }}}'", repr(node))
 
   # write
   utils.write_file(path, config_data)

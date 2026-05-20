@@ -42,7 +42,7 @@ def get_acorn_cmd():
     # Use an 8Mb stack (rather than the ~1Mb default) when running the
     # js optimizer since larger inputs can cause terser to use a lot of stack.
     node.append('--stack-size=8192')
-  return node + [ACORN_OPTIMIZER]
+  return [*node, ACORN_OPTIMIZER]
 
 
 def split_funcs(js):
@@ -97,7 +97,7 @@ class Minifier:
         f.write('\n')
         f.write('// EXTRA_INFO:' + json.dumps(self.serialize()))
 
-      cmd = get_acorn_cmd() + [temp_file, 'minifyGlobals']
+      cmd = [*get_acorn_cmd(), temp_file, 'minifyGlobals']
       if minify_whitespace:
         cmd.append('--minify-whitespace')
       output = utils.run_process(cmd, stdout=subprocess.PIPE).stdout
@@ -262,7 +262,7 @@ EMSCRIPTEN_FUNCS();
       filenames = [write_chunk(chunk, i) for i, chunk in enumerate(chunks)]
 
   with ToolchainProfiler.profile_block('run_optimizer'):
-    commands = [get_acorn_cmd() + [f] + passes for f in filenames]
+    commands = [[*get_acorn_cmd(), f, *passes] for f in filenames]
     filenames = shared.run_multiple_processes(commands, route_stdout_to_temp_files_suffix='js_opt.jo.js')
 
   with ToolchainProfiler.profile_block('split_closure_cleanup'):

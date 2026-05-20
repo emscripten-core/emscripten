@@ -460,7 +460,7 @@ def run_tests(options, suite):
   if utils.get_env_bool('CI'):
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
-    import xmlrunner  # type: ignore  # noqa: PLC0415
+    import xmlrunner  # type: ignore
     testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2,
                                          failfast=options.failfast)
     print('Writing XML test output to ' + os.path.abspath(output.name))

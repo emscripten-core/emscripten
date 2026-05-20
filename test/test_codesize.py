@@ -303,9 +303,9 @@ class codesize(RunnerCore):
     'O1': (['-O1'],),
     'O2': (['-O2'],),
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'],), # noqa
-    'Os': (['-Os'],), # noqa
-    'Oz': (['-Oz'],), # noqa
+    'O3': (['-O3'],),
+    'Os': (['-Os'],),
+    'Oz': (['-Oz'],),
     'Os_mr': (['-Os', '-sMINIMAL_RUNTIME'],),
     # EVAL_CTORS also removes the __wasm_call_ctors function
     'Oz-ctors': (['-Oz', '-sEVAL_CTORS'],),
@@ -328,11 +328,11 @@ class codesize(RunnerCore):
     self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD', '-sSTRICT'] + args)
 
   @parameterized({
-    'noexcept': (['-O2'],), # noqa
+    'noexcept': (['-O2'],),
     # exceptions increases code size significantly
-    'except':   (['-O2', '-fexceptions'],), # noqa
+    'except':   (['-O2', '-fexceptions'],),
     # exceptions does not pull in demangling by default, which increases code size
-    'mangle':   (['-O2', '-fexceptions', '-sEXPORTED_FUNCTIONS=_main,_free,___cxa_demangle', '-Wno-deprecated'],), # noqa
+    'mangle':   (['-O2', '-fexceptions', '-sEXPORTED_FUNCTIONS=_main,_free,___cxa_demangle', '-Wno-deprecated'],),
     # Wasm EH's code size increase is smaller than that of Emscripten EH
     'except_wasm': (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'],),
     'except_wasm_legacy': (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'],),
@@ -386,7 +386,7 @@ class codesize(RunnerCore):
     'O3_grow_standalone': ('mem.c', ['-O3', '-sALLOW_MEMORY_GROWTH', '-sSTANDALONE_WASM']),
     # without argc/argv, no support code for them is emitted, even with lto
     'O3_standalone_narg_flto':
-                          ('mem_no_argv.c', ['-O3', '-sSTANDALONE_WASM', '-flto']),         # noqa
+                          ('mem_no_argv.c', ['-O3', '-sSTANDALONE_WASM', '-flto']),
   })
   def test_codesize_mem(self, filename, args):
     self.run_codesize_test(filename, args)
@@ -400,8 +400,8 @@ class codesize(RunnerCore):
     self.run_codesize_test('libcxxabi_message.cpp', args)
 
   @parameterized({
-    'js_fs':  (['-O3', '-sNO_WASMFS'],), # noqa
-    'wasmfs': (['-O3', '-sWASMFS'],), # noqa
+    'js_fs':  (['-O3', '-sNO_WASMFS'],),
+    'wasmfs': (['-O3', '-sWASMFS'],),
   })
   def test_codesize_files(self, args):
     self.run_codesize_test('files.cpp', args)

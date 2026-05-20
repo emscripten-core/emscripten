@@ -422,7 +422,8 @@ class benchmark(common.RunnerCore):
       pass
     try:
       with common.chdir(os.path.expanduser('~/Dev/mozilla-central')):
-        fingerprint.append('sm: ' + [line for line in run_process(['hg', 'tip'], stdout=PIPE).stdout.splitlines() if 'changeset' in line][0])
+        hg_tip = run_process(['hg', 'tip'], stdout=PIPE).stdout
+        fingerprint.append('sm: ' + next(line for line in hg_tip.splitlines() if 'changeset' in line))
     except Exception:
       pass
     fingerprint.append('llvm: ' + config.LLVM_ROOT)

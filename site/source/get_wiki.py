@@ -197,7 +197,7 @@ def FixupConvertedRstFiles():
 def main():
     parser = optparse.OptionParser(version="%prog 0.1.1", usage="Usage: %prog [options] version")
     parser.add_option("-c", "--clonewiki", action="store_true", default=False, dest="clonewiki", help="Clean and clone the latest wiki")
-    options, args = parser.parse_args()
+    options = parser.parse_args()[0]
 
     print('Clone wiki: %s' % options.clonewiki)
     if options.clonewiki:
