@@ -186,6 +186,11 @@ var LibraryWebAudio = {
     assert(stackSize % 16 == 0, `AudioWorklet stack size should be a multiple of 16 bytes! (was ${stackSize} == ${stackSize%16} mod 16)`);
     assert(!audioContext.audioWorkletInitialized, `emscripten_create_wasm_audio_worklet() was already called for AudioContext ${contextHandle}! Only call this function once per AudioContext`);
     audioContext.audioWorkletInitialized = 1;
+#if PTHREADS
+    assert(pthreadPtr);
+#else
+    assert(!pthreadPtr);
+#endif
 #endif
 
 #if WEBAUDIO_DEBUG
