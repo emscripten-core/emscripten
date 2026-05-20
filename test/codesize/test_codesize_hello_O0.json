@@ -1,10 +1,10 @@
 {
-  "a.out.js": 24220,
-  "a.out.js.gz": 8713,
-  "a.out.nodebug.wasm": 15115,
-  "a.out.nodebug.wasm.gz": 7464,
-  "total": 39335,
-  "total_gz": 16177,
+  "a.out.js": 24254,
+  "a.out.js.gz": 8724,
+  "a.out.nodebug.wasm": 14850,
+  "a.out.nodebug.wasm.gz": 7314,
+  "total": 39104,
+  "total_gz": 16038,
   "sent": [
     "fd_write"
   ],
@@ -71,7 +71,6 @@
     "$pop_arg_long_double",
     "$printf",
     "$printf_core",
-    "$scalbn",
     "$strerror",
     "$strnlen",
     "$vfprintf",

@@ -249,6 +249,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif // GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS
 #if FULL_ES2 || LEGACY_GL_EMULATION
     '$registerPreMainLoop',
+    '$webglBufferSubData',
 #endif
   ],
 #if FULL_ES2 || LEGACY_GL_EMULATION
@@ -584,9 +585,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         var size = GL.calcBufLength(cb.size, cb.type, cb.stride, count);
         var buf = GL.getTempVertexBuffer(size);
         GLctx.bindBuffer(0x8892 /*GL_ARRAY_BUFFER*/, buf);
-        GLctx.bufferSubData(0x8892 /*GL_ARRAY_BUFFER*/,
-                                 0,
-                                 HEAPU8.subarray(cb.ptr, cb.ptr + size));
+        webglBufferSubData(0x8892 /*GL_ARRAY_BUFFER*/, 0, size, cb.ptr);
 #if GL_ASSERTIONS
         GL.validateVertexAttribPointer(cb.size, cb.type, cb.stride, 0);
 #endif
@@ -603,7 +602,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
 #if GL_ASSERTIONS
     validateGLObjectID: (objectHandleArray, objectID, callerFunctionName, objectReadableType) => {
-      if (objectID != 0) {
+      // `objectHandleArray` may be uninitialized when GL uniforms are lazily initialized, and `glUniform*` is called
+      // for the first time before uniforms have been populated. So ignore this validation if the handle array is not present.
+      if (objectID != 0 && objectHandleArray) {
         if (objectHandleArray[objectID] === null) {
           err(`${callerFunctionName} called with an already deleted ${objectReadableType} ID ${objectID}!`);
         } else if (!(objectID in objectHandleArray)) {
@@ -1254,6 +1255,23 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     },
 #endif
 
+  },
+
+  // Wrapper around GLctx.bufferSubData that can hangle both WebGL1 (which
+  // requires new subarray on each call) and WebGL2 (which does not).
+  // Argument ordering is a little strange here, since we want a default
+  // for `src` is has to come last.
+  $webglBufferSubData__internal: true,
+  $webglBufferSubData: (target, offset, size, data, src = HEAPU8) => {
+#if WEBGL_USE_GARBAGE_FREE_APIS
+    if ({{{ isCurrentContextWebGL2() }}}) {
+      size && GLctx.bufferSubData(target, offset, src, data, size);
+      return;
+    }
+#endif
+#if INCLUDE_WEBGL1_FALLBACK
+    GLctx.bufferSubData(target, offset, src.subarray(data, data + size));
+#endif
   },
 
   $webglGetExtensions__internal: true,
@@ -1913,17 +1931,10 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
   },
 
-  glBufferSubData: (target, offset, size, data) => {
-#if WEBGL_USE_GARBAGE_FREE_APIS
-    if ({{{ isCurrentContextWebGL2() }}}) {
-      size && GLctx.bufferSubData(target, offset, HEAPU8, data, size);
-      return;
-    }
-#endif
-#if INCLUDE_WEBGL1_FALLBACK
-    GLctx.bufferSubData(target, offset, HEAPU8.subarray(data, data+size));
-#endif
-  },
+  // This cannot be simple alias because under wasm64 we need to be able modify
+  // the function at compile time to provide automatically marshal of the pointer arguments.
+  glBufferSubData__deps: ['$webglBufferSubData'],
+  glBufferSubData: (target, offset, size, data) => webglBufferSubData(target, offset, size, data),
 
   // Queries EXT
   glGenQueriesEXT__sig: 'vip',
@@ -2119,7 +2130,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   // This function intentionally assigns `HEAP32[x] = someBoolean;` Don't let
   // Closure mind about that.
   $emscriptenWebGLGetUniform__docs: '/** @suppress{checkTypes} */',
-  $emscriptenWebGLGetUniform__deps: ['$webglGetUniformLocation', '$webglPrepareUniformLocationsBeforeFirstUse'],
+  $emscriptenWebGLGetUniform__deps: ['$webglGetProgramUniformLocation', '$webglPrepareUniformLocationsBeforeFirstUse'],
   $emscriptenWebGLGetUniform: (program, location, params, type) => {
     if (!params) {
       // GLES2 specification does not specify how to behave if params is a null
@@ -2137,7 +2148,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     program = GL.programs[program];
     webglPrepareUniformLocationsBeforeFirstUse(program);
-    var data = GLctx.getUniform(program, webglGetUniformLocation(location));
+    var data = GLctx.getUniform(program, webglGetProgramUniformLocation(program, location));
     if (typeof data == 'number' || typeof data == 'boolean') {
       switch (type) {
         case {{{ cDefs.EM_FUNC_SIG_PARAM_I }}}: {{{ makeSetValue('params', '0', 'data', 'i32') }}}; break;
@@ -2171,25 +2182,32 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 
   // Returns the WebGLUniformLocation object corresponding to the location index
   // integer on the currently active shader in this GL context.
-  $webglGetUniformLocation: (location) => {
-    var p = GLctx.currentProgram;
-
+  $webglGetProgramUniformLocation__deps: ['$webglPrepareUniformLocationsBeforeFirstUse'],
+  $webglGetProgramUniformLocation: (program, location) => {
 #if !GL_TRACK_ERRORS && ASSERTIONS
     // In -sGL_TRACK_ERRORS=0 build mode do not allow calling glUniform*()
     // without an active GL program.
-    assert(p, 'Attempted to call glUniform*() without an active GL program set! (build with -sGL_TRACK_ERRORS for standards-conformant behavior)');
+    assert(program, 'When building with !GL_TRACK_ERRORS, program cannot be null, in a call to webglGetProgramUniformLocation()');
 #endif
 
 #if GL_TRACK_ERRORS
-    if (p) {
+    if (program) {
 #endif
-      var webglLoc = p.uniformLocsById[location];
-      // p.uniformLocsById[location] stores either an integer, or a
+#if GL_EXPLICIT_UNIFORM_LOCATION
+      // Ensure `uniformLocsById`/`uniformArrayNamesById` are populated. Without
+      // this, calling `glUniform*()` on a freshly linked program before any
+      // `glGetUniformLocation()` silently no-ops: `glLinkProgram` resets
+      // `uniformLocsById` to 0 and only `$webglPrepareUniformLocationsBeforeFirstUse`
+      // refills it. The call below is idempotent (guards on `!uniformLocsById`).
+      webglPrepareUniformLocationsBeforeFirstUse(program);
+#endif
+      var webglLoc = program.uniformLocsById[location];
+      // program.uniformLocsById[location] stores either an integer, or a
       // WebGLUniformLocation.
       // If an integer, we have not yet bound the location, so do it now. The
       // integer value specifies the array index we should bind to.
       if (typeof webglLoc == 'number') {
-        p.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(p, p.uniformArrayNamesById[location] + (webglLoc > 0 ? `[${webglLoc}]` : ''));
+        program.uniformLocsById[location] = webglLoc = GLctx.getUniformLocation(program, program.uniformArrayNamesById[location] + (webglLoc > 0 ? `[${webglLoc}]` : ''));
       }
       // Else an already cached WebGLUniformLocation, return it.
       return webglLoc;
@@ -2198,6 +2216,17 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       GL.recordError(0x502/*GL_INVALID_OPERATION*/);
     }
 #endif
+  },
+
+  $webglGetUniformLocation__deps: ['$webglGetProgramUniformLocation'],
+  $webglGetUniformLocation: (location) => {
+#if !GL_TRACK_ERRORS && ASSERTIONS
+    // In -sGL_TRACK_ERRORS=0 build mode do not allow calling glUniform*()
+    // without an active GL program.
+    assert(GLctx.currentProgram, 'Attempted to call glUniform*()/webglGetUniformLocation() without an active GL program set! (build with -sGL_TRACK_ERRORS for standards-conformant behavior)');
+#endif
+
+    return webglGetProgramUniformLocation(GLctx.currentProgram, location);
   },
 
   $webglPrepareUniformLocationsBeforeFirstUse__deps: ['$webglGetLeftBracePos'],
@@ -3805,7 +3834,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       cb.stride = stride;
       cb.ptr = ptr;
       cb.clientside = true;
-      cb.vertexAttribPointerAdaptor = function(index, size, type, normalized, stride, ptr) {
+      cb.vertexAttribPointerAdaptor = /** @this {WebGLRenderingContext} */ function(index, size, type, normalized, stride, ptr) {
         this.vertexAttribPointer(index, size, type, normalized, stride, ptr);
       };
       return;
@@ -3854,6 +3883,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
   },
 
+  glDrawElements__deps: ['$webglBufferSubData'],
   glDrawElements: (mode, count, type, indices) => {
 #if FULL_ES2
     var buf;
@@ -3862,10 +3892,8 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       var size = GL.calcBufLength(1, type, 0, count);
       buf = GL.getTempIndexBuffer(size);
       GLctx.bindBuffer(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, buf);
-      GLctx.bufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/,
-                          0,
-                          HEAPU8.subarray(indices, indices + size));
-      
+      webglBufferSubData(0x8893 /*GL_ELEMENT_ARRAY_BUFFER*/, 0, size, indices);
+
       // Calculating vertex count if shader's attribute data is on client side
       if (count > 0) {
         for (var i = 0; i < GL.currentContext.maxVertexAttribs; ++i) {
@@ -4190,7 +4218,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     }
   },
 
-  glFlushMappedBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget'],
+  glFlushMappedBufferRange__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', '$webglBufferSubData'],
   glFlushMappedBufferRange: (target, offset, length) => {
     if (!emscriptenWebGLValidateMapBufferTarget(target)) {
       GL.recordError(0x500/*GL_INVALID_ENUM*/);
@@ -4216,10 +4244,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       return;
     }
 
-    GLctx.bufferSubData(
-      target,
-      mapping.offset,
-      HEAPU8.subarray(mapping.mem + offset, mapping.mem + offset + length));
+    webglBufferSubData(target, mapping.offset, length, mapping.mem + offset);
   },
 
   glUnmapBuffer__deps: ['$emscriptenWebGLGetBufferBinding', '$emscriptenWebGLValidateMapBufferTarget', 'free'],
@@ -4239,13 +4264,9 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     }
 
     if (!(mapping.access & 0x10)) { /* GL_MAP_FLUSH_EXPLICIT_BIT */
-#if WEBGL_USE_GARBAGE_FREE_APIS
-      if ({{{ isCurrentContextWebGL2() }}}) {
-        GLctx.bufferSubData(target, mapping.offset, HEAPU8, mapping.mem, mapping.length);
-      } else
-#endif
-      GLctx.bufferSubData(target, mapping.offset, HEAPU8.subarray(mapping.mem, mapping.mem+mapping.length));
+      webglBufferSubData(target, mapping.offset, mapping.length, mapping.mem);
     }
+
     _free(mapping.mem);
     mapping.mem = 0;
     return 1;

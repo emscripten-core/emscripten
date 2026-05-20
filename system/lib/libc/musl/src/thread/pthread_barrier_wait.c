@@ -1,6 +1,6 @@
 #ifdef __EMSCRIPTEN__
-#include <assert.h> // For INFINITY
-#include <math.h> // For INFINITY
+#include <assert.h> // for assert
+#include <math.h> // for INFINITY
 #endif
 
 #include "pthread_impl.h"

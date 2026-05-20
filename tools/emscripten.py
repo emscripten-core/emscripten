@@ -10,6 +10,7 @@ from C/C++ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
+import fnmatch
 import glob
 import hashlib
 import json
@@ -541,7 +542,9 @@ def finalize_wasm(infile, outfile, js_syms):
     args.append('--side-module')
   if settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
+    # The check-stack pass in binaryen needs to be able to locate `__stack_pointer` by name.
     modify_wasm = True
+    need_name_section = True
   if settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
 
@@ -694,10 +697,12 @@ def create_tsd(metadata, embind_tsd):
     out += f'  {mangled}({", ".join(arguments)}): '
     assert len(functype.returns) <= 1, 'One return type only supported'
     if functype.returns:
-      out += f'{type_to_ts_type(functype.returns[0])}'
+      ret_ts_type = type_to_ts_type(functype.returns[0])
     else:
-      out += 'void'
-    out += ';\n'
+      ret_ts_type = 'void'
+    if settings.ASYNCIFY == 2 and any(fnmatch.fnmatch(name, pat) for pat in settings.ASYNCIFY_EXPORTS):
+      ret_ts_type = f'Promise<{ret_ts_type}>'
+    out += f'{ret_ts_type};\n'
   out += '}\n'
   out += f'\n{embind_tsd}'
   # Combine all the various exports.

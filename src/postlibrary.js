@@ -17,7 +17,7 @@ function processModuleArgs()
   checkIncomingModuleAPI();
 #endif
 
-  {{{ makeModuleReceive('arguments_', 'arguments') }}}
+  {{{ makeModuleReceive('programArgs', 'arguments') }}}
   {{{ makeModuleReceive('thisProgram') }}}
 
 #if ASSERTIONS

@@ -370,7 +370,7 @@ def separate_linker_flags(newargs):
         add_link_arg(flag)
     elif arg == '-Xlinker':
       add_link_arg(get_next_arg())
-    elif arg == '-s' or arg.startswith(('-l', '-L', '--js-library=', '-z', '-u')):
+    elif arg in {'-s', '-Bstatic', '-Bdynamic'} or arg.startswith(('-l', '-L', '--js-library=', '-z', '-u')):
       add_link_arg(arg)
     elif not arg.startswith('-o') and arg not in {'-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'}:
       # All other flags are for the compiler

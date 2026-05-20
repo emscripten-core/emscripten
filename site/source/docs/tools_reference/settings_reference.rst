@@ -311,6 +311,8 @@ The "architecture" to compile for. 0 means the default wasm32, 1 is
 the full end-to-end wasm64 mode, and 2 is wasm64 for clang/lld but lowered to
 wasm32 in Binaryen (such that it can run on wasm32 engines, while internally
 using i64 pointers).
+Nowadays we recommend using the more standard `-m64` or `--target=wasm64`
+flags, which do the same thing.
 Assumes WASM_BIGINT.
 
 .. note:: Applicable during both linking and compilation

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <inttypes.h>
 #include <pthread.h>
 #include <stdbool.h>
 
@@ -105,7 +106,7 @@ void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedS
 #endif
 
 int __pthread_kill_js(pthread_t t, int sig);
-int __pthread_create_js(struct __pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
+int __pthread_create_js(pthread_t thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 int _emscripten_default_pthread_stack_size();
 void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 
@@ -131,3 +132,9 @@ void* _emscripten_init_pthread(void *base, size_t* size, pid_t tid);
 // __builtin_wasm_memory_atomic_waitXX then they will not be woken by
 // this method.
 void _emscripten_thread_notify(pthread_t thread);
+
+// Internal, promise-returning API used to implement
+// emscripten_atomic_wait_suspending.
+intptr_t _emscripten_atomic_wait_promise(volatile void *addr,
+                                         uint32_t value,
+                                         double maxWaitMilliseconds);

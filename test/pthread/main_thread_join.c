@@ -8,11 +8,9 @@
 #include <pthread.h>
 #include <stdio.h>
 
-#include <atomic>
-
 pthread_t thread;
 
-std::atomic<int> tries;
+_Atomic int tries;
 
 static const int EXPECTED_TRIES = 7;
 
@@ -21,7 +19,7 @@ void loop() {
   printf("try...\n");
   if (pthread_tryjoin_np(thread, &retval) == 0) {
     emscripten_cancel_main_loop();
-    assert(tries.load() == EXPECTED_TRIES);
+    assert(tries == EXPECTED_TRIES);
     emscripten_force_exit(2);
   }
   tries++;
@@ -31,9 +29,9 @@ void *ThreadMain(void *arg) {
 #ifdef TRY_JOIN
   // Delay to force the main thread to try and fail a few times before
   // succeeding.
-  while (tries.load() < EXPECTED_TRIES) {}
+  while (tries < EXPECTED_TRIES) {}
 #endif
-	pthread_exit((void*)0);
+  pthread_exit((void*)0);
 }
 
 pthread_t CreateThread() {
