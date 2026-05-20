@@ -149,7 +149,7 @@ def chunkify(funcs, chunk_size):
 
 
 @ToolchainProfiler.profile_block('js_optimizer.run_on_file')
-def run_on_file(filename, passes, extra_info=None):
+def run_on_file(filename, passes):
   with ToolchainProfiler.profile_block('js_optimizer.split_markers'):
     if not isinstance(passes, list):
       passes = [passes]
@@ -227,11 +227,6 @@ EMSCRIPTEN_FUNCS();
 
       minify_info = minifier.serialize()
 
-      if extra_info:
-        for key, value in extra_info.items():
-          assert key not in minify_info or value == minify_info[key], [key, value, minify_info[key]]
-          minify_info[key] = value
-
       # if DEBUG:
       #   print >> sys.stderr, 'minify info:', minify_info
 
@@ -256,16 +251,13 @@ EMSCRIPTEN_FUNCS();
       print('chunkification: num funcs:', len(funcs), 'actual num chunks:', len(chunks), 'chunk size range:', max(lengths), '-', min(lengths), file=sys.stderr)
     funcs = None
 
-    serialized_extra_info = ''
+    serialized_minify_info = ''
     if minify_globals:
-      assert not extra_info
-      serialized_extra_info += '// EXTRA_INFO:' + json.dumps(minify_info)
-    elif extra_info:
-      serialized_extra_info += '// EXTRA_INFO:' + json.dumps(extra_info)
+      serialized_minify_info += '// EXTRA_INFO:' + json.dumps(minify_info)
     with ToolchainProfiler.profile_block('js_optimizer.write_chunks'):
       def write_chunk(chunk, i):
         temp_file = temp_files.get('.jsfunc_%d.js' % i).name
-        utils.write_file(temp_file, chunk + serialized_extra_info)
+        utils.write_file(temp_file, chunk + serialized_minify_info)
         return temp_file
       filenames = [write_chunk(chunk, i) for i, chunk in enumerate(chunks)]
 
@@ -349,13 +341,7 @@ EMSCRIPTEN_FUNCS();
 
 
 def main():
-  last = sys.argv[-1]
-  if '{' in last:
-    extra_info = json.loads(last)
-    sys.argv = sys.argv[:-1]
-  else:
-    extra_info = None
-  out = run_on_file(sys.argv[1], sys.argv[2:], extra_info=extra_info)
+  out = run_on_file(sys.argv[1], sys.argv[2:])
   shutil.copyfile(out, sys.argv[1] + '.jsopt.js')
   return 0
 
