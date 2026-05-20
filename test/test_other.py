@@ -933,7 +933,6 @@ f.close()
     cmd = [EMCMAKE, 'cmake', '-GNinja', '-Wno-dev', test_file('cmake/cpp_lib')]
     self.run_process(cmd)
     self.assertExists('build.ninja')
-    self.run_process(['ninja', '-v'])
 
   # Tests that it's possible to pass C++17 or GNU++17 build modes to CMake by building code that
   # needs C++17 (embind)

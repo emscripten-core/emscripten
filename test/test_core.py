@@ -5144,9 +5144,6 @@ main main sees -524, -534, 72.
   @needs_make('mingw32-make')
   @needs_dylink
   @parameterized({
-    # Cmake support for dyanamic libraries is currently broken.
-    # which means cmake won't build shared libraries yet.
-    # https://gitlab.kitware.com/cmake/cmake/-/work_items/27240
     'cmake': (True,),
     'configure': (False,),
   })
