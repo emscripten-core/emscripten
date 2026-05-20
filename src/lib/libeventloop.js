@@ -344,14 +344,15 @@ LibraryJSEventLoop = {
         if (globalThis.setImmediate) {
           MainLoop.setImmediate = setImmediate;
         } else {
+#if RUNTIME_DEBUG
+          dbg('using polyfill for setImmediate');
+#endif
           // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
           var setImmediates = [];
           var emscriptenMainLoopMessageId = 'setimmediate';
           /** @param {Event} event */
           var MainLoop_setImmediate_messageHandler = (event) => {
-            // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
-            // so check for both cases.
-            if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
+            if (event.data === emscriptenMainLoopMessageId) {
               event.stopPropagation();
               setImmediates.shift()();
             }
@@ -360,10 +361,12 @@ LibraryJSEventLoop = {
           MainLoop.setImmediate = /** @type{function(function(): ?, ...?): number} */((func) => {
             setImmediates.push(func);
             if (ENVIRONMENT_IS_WORKER) {
-              Module['setImmediates'] ??= [];
-              Module['setImmediates'].push(func);
-              postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
-            } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
+              // The postMessge API in a Worker, sends message to the main
+              // thread and does not support the `targetOrigin` (*) argument.
+              postMessage(emscriptenMainLoopMessageId);
+            } else {
+              postMessage(emscriptenMainLoopMessageId, '*');
+            }
           });
         }
       }

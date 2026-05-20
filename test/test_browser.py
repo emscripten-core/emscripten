@@ -1864,6 +1864,10 @@ window.close = () => {
   def test_emscripten_main_loop_setimmediate(self, args):
     self.btest_exit('test_emscripten_main_loop_setimmediate.c', cflags=args)
 
+  def test_emscripten_main_loop_setimmediate_polyfill(self):
+    create_file('remove_setimmediate.js', 'globalThis.setImmediate = undefined;')
+    self.btest_exit('test_emscripten_main_loop_setimmediate.c', cflags=['-sRUNTIME_DEBUG', '--pre-js=remove_setimmediate.js'])
+
   @parameterized({
     '': ([],),
     'O1': (['-O1'],),
