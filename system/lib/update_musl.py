@@ -58,13 +58,16 @@ exclude_files = (
   'sendfile.h',
   'signalfd.h',
   'soundcard.h',
+  'stdint.h',
   'swap.h',
   'timerfd.h',
   'timex.h',
   'vt.h',
 )
 # Allowed files even if they match exclude rules above
-allowed_files = ()
+allowed_files = (
+  Path('include/stdint.h'),
+)
 
 
 if len(sys.argv) > 1:
