@@ -51,7 +51,7 @@ See docs/process.md for more on how version tagging works.
   is required in order to use Emscripten's Closure Compiler integration.
 - The `FAKE_DYLIBS` setting is now disabled by default. This means that
   `-shared` will produce real dynamic libraries by default (`-sSIDE_MODULE` is
-  implied).  Also, if you include real dynamic libraries in your link comment
+  implied).  Also, if you include real dynamic libraries in your link command
   emscripten will now automatically produce a dynamically linked program
   (`-sMAIN_MODULE=2` is implied). (#25930)
 
