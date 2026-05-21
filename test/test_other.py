@@ -831,7 +831,7 @@ f.close()
     # would take 10 minutes+ to finish (CMake feature detection is slow), so
     # combine multiple features into one to try to cover as much as possible
     # while still keeping this test in sensible time limit.
-    'js':            ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug']),
+    'js':            ('target_js',      'test_cmake.js',         ['-DCMAKE_BUILD_TYPE=Debug', '-DCPP_LIBRARY_TYPE=STATIC']),
     'html':          ('target_html',    'hello_world_gles.html', ['-DCMAKE_BUILD_TYPE=Release']),
     'library':       ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=MinSizeRel']),
     'static_cpp':    ('target_library', 'libtest_cmake.a',       ['-DCMAKE_BUILD_TYPE=RelWithDebInfo', '-DCPP_LIBRARY_TYPE=STATIC']),
@@ -932,7 +932,7 @@ f.close()
     # use -Wno-dev to suppress an irrelevant warning about the test files only.
     cmd = [EMCMAKE, 'cmake', '-GNinja', '-Wno-dev', test_file('cmake/cpp_lib')]
     self.run_process(cmd)
-    self.assertExists(self.get_dir() + '/build.ninja')
+    self.assertExists('build.ninja')
 
   # Tests that it's possible to pass C++17 or GNU++17 build modes to CMake by building code that
   # needs C++17 (embind)
@@ -1175,7 +1175,7 @@ f.close()
     for suffix in ('lo',):
       self.clear()
       print(suffix)
-      self.run_process([EMCC, test_file('hello_world.c'), '-shared', '-o', 'binary.' + suffix])
+      self.run_process([EMCC, test_file('hello_world.c'), '-shared', '-fPIC', '-o', 'binary.' + suffix])
       self.run_process([EMCC, 'binary.' + suffix])
       self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
@@ -1366,11 +1366,11 @@ f.close()
     # we model shared libraries using regular object files.  Without special handling
     # fake `libA.so` could get linked multiple times.
     self.cflags.remove('-Werror')
-    self.emcc('libA.c', ['-shared', '-o', so_name])
+    self.emcc('libA.c', ['-sFAKE_DYLIBS', '-shared', '-o', so_name])
 
-    err = self.emcc('a2.c', ['-shared', '-L.'] + link_flags + ['-o', 'liba2.so'], stderr=PIPE).stderr
+    err = self.emcc('a2.c', ['-sFAKE_DYLIBS', '-shared', '-L.'] + link_flags + ['-o', 'liba2.so'], stderr=PIPE).stderr
     self.assertContained(f'emcc: warning: ignoring dynamic library {os.path.basename(so_name)} when generating an object file', err)
-    err = self.emcc('b2.c', ['-shared', '-L.'] + link_flags + ['-o', 'libb2.so'], stderr=PIPE).stderr
+    err = self.emcc('b2.c', ['-sFAKE_DYLIBS', '-shared', '-L.'] + link_flags + ['-o', 'libb2.so'], stderr=PIPE).stderr
     self.assertContained(f'emcc: warning: ignoring dynamic library {os.path.basename(so_name)} when generating an object file', err)
 
     self.do_runf('main.c', 'result: 42 43 1', cflags=['-L.'] + link_flags + ['liba2.so', 'libb2.so'])
@@ -1501,7 +1501,12 @@ int f() {
   # We deliberately ignore duplicate input files in order to allow
   # "libA.so" on the command line twice. This is not really .so support
   # and the .so files are really object files.
-  def test_redundant_link(self):
+  @parameterized({
+    '': ([],),
+    'fake_dylibs': (['-sFAKE_DYLIBS'],),
+  })
+  def test_redundant_link(self, args):
+    self.cflags += args
     create_file('libA.c', 'int mult() { return 1; }')
     create_file('main.c', r'''
       #include <stdio.h>
@@ -1513,7 +1518,7 @@ int f() {
     ''')
 
     self.cflags.remove('-Werror')
-    self.emcc('libA.c', ['-shared', '-o', 'libA.so'])
+    self.emcc('libA.c', ['-fPIC', '-shared', '-o', 'libA.so'])
     self.emcc('main.c', ['libA.so', 'libA.so', '-o', 'a.out.js'])
     self.assertContained('result: 1', self.run_js('a.out.js'))
 
@@ -2414,17 +2419,17 @@ int main() {
       }
     ''')
 
-    # By deafult we use static linking and prefer libside.a
-    self.do_runf('main.c', 'static linking used\n', cflags=['-L.', '-lside'])
+    # By default we use dynamic linking
+    self.do_runf('main.c', 'dynamic linking used\n', cflags=['-L.', '-lside'])
 
-    # When using -sMAIN_MODULE we choose the dyanmic library
-    self.do_runf('main.c', 'dynamic linking used\n', cflags=['-sMAIN_MODULE=2', '-L.', '-lside'])
+    # When using -sMAIN_MODULE=0 we explictly opt out of dynammic linking
+    self.do_runf('main.c', 'static linking used\n', cflags=['-sMAIN_MODULE=0', '-L.', '-lside'])
 
-    # Same for `-sFAKE_DYLIBS=0
-    self.do_runf('main.c', 'dynamic linking used\n', cflags=['-sFAKE_DYLIBS=0', '-L.', '-lside'])
+    # Same for `-sFAKE_DYLIBS
+    self.do_runf('main.c', 'static linking used\n', cflags=['-sFAKE_DYLIBS', '-L.', '-lside'])
 
     # With can also force static linking using `-Bstatic` linker falgs
-    self.do_runf('main.c', 'static linking used\n', cflags=['-sMAIN_MODULE=2', '-L.', '-Bstatic', '-lside'])
+    self.do_runf('main.c', 'static linking used\n', cflags=['-L.', '-Bstatic', '-lside'])
 
   def test_js_link(self):
     create_file('before.js', '''
@@ -4906,20 +4911,6 @@ Waste<3> *getMore() {
     cmd = [EMCC, test_file('hello_world.c'), '--valid-abspath', abs_include_path, '-I%s' % abs_include_path]
     self.run_process(cmd)
     self.assertContained('Hello, world!', self.run_js('a.out.js'))
-
-  def test_warn_dylibs(self):
-    shared_suffixes = ['.so', '.dylib', '.dll']
-
-    for suffix in ('.o', '.bc', '.so', '.dylib', '.js', '.html'):
-      print(suffix)
-      cmd = [EMCC, test_file('hello_world.c'), '-o', 'out' + suffix]
-      if suffix in {'.o', '.bc'}:
-        cmd.append('-c')
-      if suffix in {'.dylib', '.so'}:
-        cmd.append('-shared')
-      err = self.run_process(cmd, stderr=PIPE).stderr
-      warning = 'linking a library with `-shared` will emit a static object file'
-      self.assertContainedIf(warning, err, suffix in shared_suffixes)
 
   @crossplatform
   @parameterized({
@@ -8416,12 +8407,12 @@ int main() {
     self.run_process([EMCC, test_file('hello_world.c'), '-sSIDE_MODULE', '-o', 'libside.so'])
 
     # Attempting to link statically against a side module (libside.so) should fail.
-    self.assert_fail([EMCC, '-L.', '-lside'], 'wasm-ld: error: unable to find library -lside')
+    self.assert_fail([EMCC, '-L.', '-Bstatic', '-lside'], 'wasm-ld: error: unable to find library -lside')
 
     # But a static library in the same location (libside.a) should take precedence.
     self.run_process([EMCC, test_file('hello_world.c'), '-c'])
     self.run_process([EMAR, 'cr', 'libside.a', 'hello_world.o'])
-    self.run_process([EMCC, '-L.', '-lside'])
+    self.run_process([EMCC, '-L.', '-Bstatic', '-lside'])
     self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
   @is_slow_test
@@ -12083,42 +12074,40 @@ int main () {
   def test_euidaccess(self):
     self.do_other_test('test_euidaccess.c')
 
-  def test_shared_flag(self):
-    create_file('side.c', 'int foo;')
-    self.run_process([EMCC, '-shared', 'side.c', '-o', 'libother.so'])
+  def test_fake_dylibs(self):
+    create_file('other.c', 'int foo = 10;')
+    self.run_process([EMCC, '-shared', '-sFAKE_DYLIBS', '-fPIC', 'other.c', '-o', 'libother.so'])
+    self.assertIsObjectFile('libother.so')
 
-    # Test that `-shared` flag causes object file generation but gives a warning
-    err = self.run_process([EMCC, '-shared', test_file('hello_world.c'), '-o', 'out.foo', 'libother.so'], stderr=PIPE).stderr
-    self.assertContained('linking a library with `-shared` will emit a static object', err)
+    # Test that `-sFAKE_DYLIBS` flag causes object file generation and will generate a warning about
+    # dylink dependencies being ignored.
+    err = self.run_process([EMCC, '-shared', '-sFAKE_DYLIBS', '-fPIC', test_file('hello_world.c'), '-o', 'out.foo', 'libother.so'], stderr=PIPE).stderr
     self.assertContained('emcc: warning: ignoring dynamic library libother.so when generating an object file, this will need to be included explicitly in the final link', err)
     self.assertIsObjectFile('out.foo')
 
     # Test that adding `-sFAKE_DYLIBS=0` build a real side module
     err = self.run_process([EMCC, '-shared', '-fPIC', '-sFAKE_DYLIBS=0', test_file('hello_world.c'), '-o', 'out.foo', 'libother.so'], stderr=PIPE).stderr
-    self.assertNotContained('linking a library with `-shared` will emit a static object', err)
     self.assertNotContained('emcc: warning: ignoring dynamic library libother.so when generating an object file, this will need to be included explicitly in the final link', err)
     self.assertIsWasmDylib('out.foo')
 
     # Test that using an executable output name overrides the `-shared` flag, but produces a warning.
-    err = self.run_process([EMCC, '-shared', test_file('hello_world.c'), '-o', 'out.js'],
+    err = self.run_process([EMCC, '-shared', '-sFAKE_DYLIBS', '-fPIC', test_file('hello_world.c'), '-o', 'out.js'],
                            stderr=PIPE).stderr
     self.assertContained('warning: -shared/-r used with executable output suffix', err)
     self.run_js('out.js')
 
   def test_shared_soname(self):
-    self.run_process([EMCC, '-shared', '-Wl,-soname', '-Wl,libfoo.so.13', test_file('hello_world.c'), '-lc', '-o', 'libfoo.so'])
+    self.run_process([EMCC, '-shared', '-sFAKE_DYLIBS', '-Wl,-soname', '-Wl,libfoo.so.13', test_file('hello_world.c'), '-lc', '-o', 'libfoo.so'])
     self.run_process([EMCC, '-sSTRICT', 'libfoo.so'])
     self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
-  def test_shared_and_side_module_flag(self):
-    # Test that `-shared` and `-sSIDE_MODULE` flag causes wasm dylib generation without a warning.
-    err = self.run_process([EMCC, '-shared', '-sSIDE_MODULE', test_file('hello_world.c'), '-o', 'out.foo'], stderr=PIPE).stderr
-    self.assertNotContained('linking a library with `-shared` will emit a static object', err)
+  def test_shared_flag(self):
+    # Test that `-shared` flag causes wasm dylib generation
+    self.run_process([EMCC, '-shared', '-fPIC', test_file('hello_world.c'), '-o', 'out.foo'])
     self.assertIsWasmDylib('out.foo')
 
-    # Test that `-shared` and `-sSIDE_MODULE` flag causes wasm dylib generation without a warning even if given executable output name.
-    err = self.run_process([EMCC, '-shared', '-sSIDE_MODULE', test_file('hello_world.c'), '-o', 'out.wasm'],
-                           stderr=PIPE).stderr
+    # Test that `-shared` causes wasm dylib generation warning even if given executable output name.
+    err = self.run_process([EMCC, '-shared', '-fPIC', test_file('hello_world.c'), '-o', 'out.wasm'], stderr=PIPE).stderr
     self.assertNotContained('warning: -shared/-r used with executable output suffix', err)
     self.assertIsWasmDylib('out.wasm')
 

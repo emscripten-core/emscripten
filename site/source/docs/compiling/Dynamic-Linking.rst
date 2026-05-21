@@ -111,7 +111,8 @@ before your application starts to run.
 -  Build one part of your code as the main module, linking it using
    ``-sMAIN_MODULE`` (See :ref:`MAIN_MODULE`).
 -  Build other parts of your code as side modules, linking it using
-   ``-sSIDE_MODULE`` (See :ref:`SIDE_MODULE`).
+   ``-shared``.  You can also used the emscripten-specific :ref:`SIDE_MODULE`
+   setting which does the same thing by default.
 
 For the main module the output suffix should be ``.js`` (the WebAssembly
 file will be generated alongside it just like normal).  For the side
@@ -149,19 +150,17 @@ Building Dynamic Libraries using ``-shared``
 ============================================
 
 In traditional toolchains the ``-shared`` flag is used to generated dynamic
-libraries.  However, because dynamic linking in Emscripten comes with caveats
-and has some overhead, Emscripten does not currently produce real dynamic
-libraries when this flag is used.  Instead, Emscripten will produce a fake
-dynamic library (along with a warning) that is actually a single static object
-file.  When your main program is linked against this fake dynamic library it
-gets linked into your main program like any other object file.
+libraries.  Historically, due to early limitations, Emscripten would produce a
+fake dynamic library (along with a warning) when the ``-shared`` flag was used.
+When your main program is linked against these fake dynamic library they would
+be linked into your main program like regular static other object files.
 
-The reason for this behaviour is to allow projects (and build systems) that
-assume a working ``-shared`` flag to build successfully (albeit using static
-linking).
+These days Emscripten will produce real dynamic libraries by default and
+``-shared`` is essentially the same as ``-sSIDE_MODULE``.
 
 This behaviour can be controlled using the :ref:`FAKE_DYLIBS` settings.  If you
-disable `FAKE_DYLIBS` then ``-shared`` will act like ``-sSIDE_MODULE``.
+prefer the older behaviour with fake dynamic libraryies you can enable this
+setting.
 
 Code Size
 =========

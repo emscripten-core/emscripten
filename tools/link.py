@@ -805,17 +805,14 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   apply_library_settings(linker_args)
 
-  if settings.SIDE_MODULE or settings.MAIN_MODULE:
-    default_setting('FAKE_DYLIBS', 0)
-
   if options.shared and not settings.FAKE_DYLIBS:
     default_setting('SIDE_MODULE', 1)
 
-  if not settings.FAKE_DYLIBS:
+  if not settings.SIDE_MODULE and not settings.FAKE_DYLIBS:
     options.dylibs = get_dylibs(options, linker_args)
-    # If there are any dynamically linked libraries on the command line then
-    # need to enable `MAIN_MODULE` in order to produce JS code that can load them.
-    if not settings.MAIN_MODULE and not settings.SIDE_MODULE and options.dylibs:
+    # If there are any dynamic libraries on the command line then enable
+    # `MAIN_MODULE` by default in order to produce JS code that can load them.
+    if options.dylibs and not settings.MAIN_MODULE:
       default_setting('MAIN_MODULE', 2)
 
   linker_args += calc_extra_ldflags(options)
@@ -917,8 +914,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if final_suffix in EXECUTABLE_EXTENSIONS:
       diagnostics.warning('emcc', '-shared/-r used with executable output suffix. This behaviour is deprecated.  Please remove -shared/-r to build an executable or avoid the executable suffix (%s) when building object files.' % final_suffix)
     else:
-      if options.shared and 'FAKE_DYLIBS' not in user_settings:
-        diagnostics.warning('emcc', 'linking a library with `-shared` will emit a static object file (FAKE_DYLIBS defaults to true).  If you want to build a runtime shared library use the SIDE_MODULE or FAKE_DYLIBS=0.')
       options.oformat = OFormat.OBJECT
 
   if not options.oformat:

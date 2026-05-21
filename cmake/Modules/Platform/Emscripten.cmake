@@ -18,7 +18,14 @@ set(CMAKE_SYSTEM_NAME Emscripten)
 set(CMAKE_SYSTEM_VERSION 1)
 
 set(CMAKE_CROSSCOMPILING TRUE)
-set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
+
+# Certain cmake versions are not compatible with dynnamic linking due to
+# https://gitlab.kitware.com/cmake/cmake/-/work_items/27240
+if (("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "4.2.0" AND "${CMAKE_VERSION}" VERSION_LESS "4.2.6") OR
+    ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "4.3.0" AND "${CMAKE_VERSION}" VERSION_LESS "4.3.3"))
+  message(WARNING "This version of cmake (${CMAKE_VERSION}) does not support emscripten shared libraries.  Use cmake < 4.2.0 or cmake > 4.3.3 if you need shared library support")
+  set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
+endif()
 
 # Advertise Emscripten as a 32-bit platform (as opposed to
 # CMAKE_SYSTEM_PROCESSOR=x86_64 for 64-bit platform), since some projects (e.g.

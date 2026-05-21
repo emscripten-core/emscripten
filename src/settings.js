@@ -2201,12 +2201,12 @@ var GROWABLE_ARRAYBUFFERS = false;
 // indirectly using `importScripts`
 var CROSS_ORIGIN = false;
 
-// This setting changes the behaviour of the ``-shared`` flag.  The default
-// setting of ``true`` means the ``-shared`` flag actually produces a normal
-// object file (i.e. ``ld -r``).  Setting this to false will cause ``-shared``
-// to behave like :ref:`SIDE_MODULE` and produce a dynamically linked
-// library.
-var FAKE_DYLIBS = true;
+// This setting changes the behaviour of the ``-shared`` flag.  When set to true
+// you get the old emscripten behaviour where the ``-shared`` flag actually
+// produces a normal object file (i.e. ``ld -r``).  When set to true (the
+// default) the ``-shared`` flag is equivelent to :ref:`SIDE_MODULE` and will
+// produce a Wasn dynamic library.
+var FAKE_DYLIBS = false;
 
 // Add a #! line to generated JS file and make it executable.  This is useful
 // for building command line tools that run under node.
