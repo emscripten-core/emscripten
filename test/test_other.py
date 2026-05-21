@@ -420,11 +420,15 @@ class other(RunnerCore):
     self.assertContained('Hello, world!', self.run_js('hello_world.mjs'))
 
   @requires_node_25
-  def test_esm_source_phase_imports(self):
+  @parameterized({
+    '': ([],),
+    'O3': (['-O3'],),
+  })
+  def test_esm_source_phase_imports(self, args):
     self.node_args += ['--experimental-wasm-modules', '--no-warnings']
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-sSOURCE_PHASE_IMPORTS',
                       '--extern-post-js', test_file('modularize_post_js.js'),
-                      test_file('hello_world.c')])
+                      test_file('hello_world.c')] + args)
     self.assertContained('import source wasmModule from', read_file('hello_world.mjs'))
     self.assertContained('Hello, world!', self.run_js('hello_world.mjs'))
 
@@ -2971,6 +2975,7 @@ More info: https://emscripten.org
     'minifyGlobals': (['minifyGlobals'],),
     'minifyLocals': (['minifyLocals'],),
     'JSDCE': (['JSDCE', '--export-es6'],),
+    'JSDCE-sourcePhaseImports': (['JSDCE', '--export-es6'],),
     'JSDCE-hasOwnProperty': (['JSDCE'],),
     'JSDCE-defaultArg': (['JSDCE'],),
     'JSDCE-fors': (['JSDCE'],),
