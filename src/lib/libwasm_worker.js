@@ -353,7 +353,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
   // `__set_thread_state` lazily to save code size for programs that don't use
   // the threads state.
   __do_set_thread_state__deps: ['__set_thread_state'],
-  __do_set_thread_state: (tb) => {
+  __do_set_thread_state: () => {
     ___set_thread_state(
       /*thread_ptr=*/0,
 #if AUDIO_WORKLET
