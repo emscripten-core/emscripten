@@ -318,6 +318,6 @@ if __name__ == '__main__':
   try:
     rv = main(get_args())
   except (Error, webassembly.InvalidWasmError, OSError) as e:
-    print(f'{sys.argv[0]}: {str(e)}', file=sys.stderr)
+    print(f'{sys.argv[0]}: {e}', file=sys.stderr)
     rv = 1
   sys.exit(rv)

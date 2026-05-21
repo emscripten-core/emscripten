@@ -50,7 +50,7 @@ def get_clang_flags(user_args):
     if '-mbulk-memory' not in user_args:
       flags.append('-mbulk-memory')
 
-  if settings.MAIN_MODULE or settings.SIDE_MODULE and '-fPIC' not in user_args:
+  if (settings.MAIN_MODULE or settings.SIDE_MODULE) and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
   if settings.MAIN_MODULE or settings.SIDE_MODULE or settings.LINKABLE or '-fPIC' in user_args:

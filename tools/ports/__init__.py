@@ -241,7 +241,7 @@ class Ports:
           if ext in {'.c', '.cpp'} and not any((excluded in f) for excluded in exclude_files):
             srcs.append(os.path.join(root, f))
 
-    cflags = system_libs.get_base_cflags(build_dir) + ['-O2', '-I' + src_dir] + flags
+    cflags = [*system_libs.get_base_cflags(build_dir), '-O2', '-I' + src_dir, *flags]
     for include in includes:
       cflags.append('-I' + include)
 
@@ -260,7 +260,7 @@ class Ports:
         obj = os.path.join(build_dir, relpath) + '.o'
         dirname = os.path.dirname(obj)
         os.makedirs(dirname, exist_ok=True)
-        cmd = [shared.EMCC, '-c', src, '-o', obj] + cflags
+        cmd = [shared.EMCC, '-c', src, '-o', obj, *cflags]
         if utils.suffix(src) in {'.cc', '.cxx', '.cpp'}:
           cmd[0] = shared.EMXX
           cmd += cxxflags

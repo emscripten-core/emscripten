@@ -63,7 +63,7 @@ def run_benchmark(benchmark_file, results_file, build_args):
     print('wasm_results', wasm_results)
 
     def strip_comments(text):
-        return re.sub(r'//.*?\n|/\*.*?\*/', '', text, flags=re.S) # noqa
+        return re.sub(r'//.*?\n|/\*.*?\*/', '', text, flags=re.S)
 
     benchmark_results = strip_comments(wasm_results)
     print('stripped', benchmark_results)

@@ -8028,7 +8028,7 @@ void* operator new(size_t size) {
     self.assertIn((8, 3), src_to_addr)
 
     def get_dwarf_addr(line, col):
-      addrs = src_to_addr[(line, col)]
+      addrs = src_to_addr[line, col]
       # we assume the simple calls have one address
       self.assertEqual(len(addrs), 1)
       return int(addrs[0], 0)
@@ -10008,4 +10008,4 @@ omitexports0 = make_run('omitexports0', cflags=['-O0'], settings={'DECLARE_ASM_M
 jsmathz = make_run('jsmathz', cflags=['-Oz'], settings={'JS_MATH': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
-del TestCoreBase # noqa
+del TestCoreBase
