@@ -22,6 +22,10 @@
 #endif // ~WASM_WORKERS
 
 {{{
+#if !PTHREADS
+  // In pthread builds this gets defined in libpthread.js
+  const CMD_UNCAUGHT_EXN = 8;
+#endif
   const workerSupportsFutexWait = () => AUDIO_WORKLET ? "!ENVIRONMENT_IS_AUDIO_WORKLET" : '1';
   const wasmWorkerJs = `
 #if MINIMAL_RUNTIME
@@ -215,7 +219,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     if (ENVIRONMENT_IS_NODE) {
       /** @suppress {checkTypes} */
       worker.on('message', (msg) => {
-        if (msg['cmd'] == 'uncaughtException') {
+        if (msg.cmd == {{{ CMD_UNCAUGHT_EXN }}}) {
           // Message handler for Node.js specific out-of-order behavior:
           // https://github.com/nodejs/node/issues/59617
           // A worker sent an uncaught exception event. Re-raise it on the main thread.
