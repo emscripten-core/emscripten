@@ -1342,15 +1342,21 @@ f.close()
     expected = ['unknown file type: foobar.xxx', "archive member 'native.o' is neither Wasm object file nor LLVM bitcode"]
     self.assert_fail([EMCC, 'foobar.xxx', '-o', 'foobar.js'], expected)
 
-  def test_multiply_defined_libsymbols(self):
+  @parameterized({
+    '': (['-lA'], 'libA.so'),
+    'suffixed': (['./libA.so.1.2.3'], 'libA.so.1.2.3'),
+  })
+  def test_multiply_defined_libsymbols(self, link_flags, so_name):
     create_file('libA.c', 'int mult() { return 1; }')
-    create_file('a2.c', 'void x() {}')
-    create_file('b2.c', 'void y() {}')
+    create_file('a2.c', 'int x() { return 42; }')
+    create_file('b2.c', 'int y() { return 43; }')
     create_file('main.c', r'''
       #include <stdio.h>
+      int x();
+      int y();
       int mult();
       int main() {
-        printf("result: %d\n", mult());
+        printf("result: %d %d %d\n", x(), y(), mult());
         return 0;
       }
     ''')
@@ -1360,14 +1366,14 @@ f.close()
     # we model shared libraries using regular object files.  Without special handling
     # fake `libA.so` could get linked multiple times.
     self.cflags.remove('-Werror')
-    self.emcc('libA.c', ['-shared', '-o', 'libA.so'])
+    self.emcc('libA.c', ['-shared', '-o', so_name])
 
-    err = self.emcc('a2.c', ['-shared', '-L.', '-lA', '-o', 'liba2.so'], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: ignoring dynamic library libA.so when generating an object file', err)
-    err = self.emcc('b2.c', ['-shared', '-L.', '-lA', '-o', 'libb2.so'], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: ignoring dynamic library libA.so when generating an object file', err)
+    err = self.emcc('a2.c', ['-shared', '-L.'] + link_flags + ['-o', 'liba2.so'], stderr=PIPE).stderr
+    self.assertContained(f'emcc: warning: ignoring dynamic library {os.path.basename(so_name)} when generating an object file', err)
+    err = self.emcc('b2.c', ['-shared', '-L.'] + link_flags + ['-o', 'libb2.so'], stderr=PIPE).stderr
+    self.assertContained(f'emcc: warning: ignoring dynamic library {os.path.basename(so_name)} when generating an object file', err)
 
-    self.do_runf('main.c', 'result: 1', cflags=['-L.', '-lA', 'liba2.so', 'libb2.so'])
+    self.do_runf('main.c', 'result: 42 43 1', cflags=['-L.'] + link_flags + ['liba2.so', 'libb2.so'])
 
   def test_multiply_defined_libsymbols_2(self):
     create_file('a.c', "int x() { return 55; }")
@@ -2112,60 +2118,6 @@ Module['postRun'] = () => {
         '-sASSERTIONS=2',
         'side.wasm',
       ])
-
-  @parameterized({
-    '': (['-lfile'], ''), # -l, auto detection from library path
-    'suffixed': (['libdir/libfile.so.3.1.4.1.5.9'], '.3.1.4.1.5.9'), # handle libX.so.1.2.3 as well
-  })
-  def test_multidynamic_link(self, link_flags, lib_suffix):
-    # Linking the same dynamic library in statically will error, normally, since we statically link
-    # it, causing dupe symbols
-    ensure_dir('libdir')
-
-    create_file('main.c', r'''
-      #include <stdio.h>
-      extern void printey();
-      extern void printother();
-      int main() {
-        printf("*");
-        printey();
-        printf("\n");
-        printother();
-        printf("\n");
-        printf("*\n");
-        return 0;
-      }
-    ''')
-
-    create_file('libdir/libfile.c', '''
-      #include <stdio.h>
-      void printey() {
-        printf("hello from lib");
-      }
-    ''')
-
-    create_file('libdir/libother.c', '''
-      #include <stdio.h>
-      extern void printey();
-      void printother() {
-        printf("|");
-        printey();
-        printf("|");
-      }
-    ''')
-
-    # Build libfile normally into an .so
-    self.run_process([EMCC, 'libdir/libfile.c', '-shared', '-o', 'libdir/libfile.so' + lib_suffix])
-    # Build libother and dynamically link it to libfile
-    self.run_process([EMCC, '-Llibdir', 'libdir/libother.c'] + link_flags + ['-shared', '-o', 'libdir/libother.so'])
-    # Build the main file, linking in both the libs
-    self.run_process([EMCC, '-Llibdir', os.path.join('main.c')] + link_flags + ['-lother', '-c'])
-    print('...')
-    # The normal build system is over. We need to do an additional step to link in the dynamic
-    # libraries, since we ignored them before
-    self.run_process([EMCC, '-Llibdir', 'main.o'] + link_flags + ['-lother'])
-
-    self.assertContained('*hello from lib\n|hello from lib|\n*\n', self.run_js('a.out.js'))
 
   @requires_pthreads
   @also_with_modularize
