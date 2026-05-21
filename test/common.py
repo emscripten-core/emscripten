@@ -1531,8 +1531,12 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     # https://github.com/emscripten-core/emscripten/issues/16908 is fixed
     self.cflags.append('-Wno-pointer-sign')
     if cmake:
+      if target == 'libz.a':
+        cmake_cmd = ['cmake', '-DBUILD_SHARED_LIBS=OFF', '.']
+      else:
+        cmake_cmd = ['cmake', '.']
       rtn = self.get_library(os.path.join('third_party', 'zlib'), target,
-                             configure=['cmake', '.'],
+                             configure=cmake_cmd,
                              make=['cmake', '--build', '.', '--'],
                              make_args=[])
     else:
