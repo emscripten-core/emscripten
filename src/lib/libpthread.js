@@ -278,14 +278,18 @@ var LibraryPThread = {
 #endif
 
         // If this message is intended to a recipient that is not the main
-        // thread, forward it to the target thread.
-        if (d.targetThread && d.targetThread != _pthread_self()) {
+        // thread, forward it to the target thread. This is currently only
+        // used by `CMD_CHECK_MAILBOX`.
+        if (d.targetThread) {
+#if ASSERTIONS
+          // pthreads should not be relaying messages to themselves.
+          assert(d.targetThread != _pthread_self());
+#endif
           var targetWorker = PThread.pthreads[d.targetThread];
-          if (targetWorker) {
-            targetWorker.postMessage(d, d.transferList);
-          } else {
-            err(`worker sent message (${cmd}) to pthread (${d.targetThread}) that no longer exists`);
-          }
+#if ASSERTIONS
+          if (!targetWorker) err(`worker sent message (${cmd}) to pthread (${d.targetThread}) that no longer exists`);
+#endif
+          targetWorker?.postMessage(d);
           return;
         }
 
