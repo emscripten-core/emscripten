@@ -17,9 +17,9 @@
     "ws": "^8.19.0"
   },
   "dependencies": {
-    "acorn": "^8.15.0",
+    "acorn": "^8.16.0",
     "acorn-import-phases": "^1.0.4",
-    "google-closure-compiler": "20260429.0.0",
+    "google-closure-compiler": "20260519.0.0",
     "html-minifier-terser": "7.2.0"
   },
   "scripts": {
