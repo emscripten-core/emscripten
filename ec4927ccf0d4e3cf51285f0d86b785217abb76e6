@@ -1,0 +1,27 @@
+test/test_other.py
+  6162b70868d9db55 426
+third_party/terser/terser.js
+  6162b70868d9db55 4-5,1164,2867-2868,2917-2919,2930-2931,2935,5104,5107,5121,5164,5168,5176,5178-5192,6554,6566,6590,7551,7554-7555,7561-7564,8202-8208,10056,10058,10537-10543,12241
+third_party/terser/README.md
+  6162b70868d9db55 10
+---
+{
+  "schema_version": "authorship/3.0.0",
+  "git_ai_version": "1.2.8",
+  "base_commit_sha": "ec4927ccf0d4e3cf51285f0d86b785217abb76e6",
+  "prompts": {
+    "6162b70868d9db55": {
+      "agent_id": {
+        "tool": "opencode",
+        "id": "ses_1d1ab6472ffeOJCvyy8sCB5mnY",
+        "model": "anthropic/claude-opus-4-7"
+      },
+      "human_author": null,
+      "messages": [],
+      "total_additions": 65,
+      "total_deletions": 65,
+      "accepted_lines": 61,
+      "overriden_lines": 0
+    }
+  }
+}
