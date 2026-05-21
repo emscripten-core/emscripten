@@ -234,3 +234,5 @@ Navigator.prototype.webkitGetUserMedia = function(
 var os = {};
 
 AudioWorkletProcessor.parameterDescriptors;
+
+var scheduler = {};

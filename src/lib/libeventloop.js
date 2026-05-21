@@ -341,11 +341,19 @@ LibraryJSEventLoop = {
       assert(mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}});
 #endif
       if (!MainLoop.setImmediate) {
-        if (globalThis.setImmediate) {
+        if (globalThis.scheduler) {
+          // Some modern browsers implement scheduler.postTask, but not all.
+#if RUNTIME_DEBUG
+          dbg('setImmediate: using scheduler.postTask');
+#endif
+          MainLoop.setImmediate = scheduler.postTask.bind(scheduler);
+#if ENVIRONMENT_MAY_BE_NODE
+        } else if (globalThis.setImmediate) {
           MainLoop.setImmediate = setImmediate;
+#endif
         } else {
 #if RUNTIME_DEBUG
-          dbg('using polyfill for setImmediate');
+          dbg('setImmediate: using polyfill');
 #endif
           // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
           var setImmediates = [];
