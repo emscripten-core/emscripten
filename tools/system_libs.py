@@ -1325,6 +1325,7 @@ class libc(MuslInternalLibrary,
           '__map_file.c',
           'strftime.c',
           '__tz.c',
+          '__utc.c',
           '__tm_to_secs.c',
           '__year_to_secs.c',
           '__month_to_secs.c',
@@ -2208,7 +2209,7 @@ class libasan_rt(SanitizerLibrary):
 # things that we'd normally do in JS. That includes some general things
 # as well as some additional musl components (that normally we reimplement
 # in JS as it's more efficient that way).
-class libstandalonewasm(MuslInternalLibrary):
+class libstandalonewasm(MuslInternalLibrary, MTLibrary):
   name = 'libstandalonewasm'
   # LTO defeats the weak linking trick used in __original_main.c
   force_object_files = True
@@ -2267,6 +2268,7 @@ class libstandalonewasm(MuslInternalLibrary):
         path='system/lib/libc/musl/src/time',
         filenames=['__secs_to_tm.c',
                    '__tz.c',
+                   '__utc.c',
                    'gettimeofday.c',
                    'localtime_r.c',
                    'gmtime_r.c',

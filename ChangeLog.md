@@ -36,6 +36,7 @@ See docs/process.md for more on how version tagging works.
   emscripten.  If you still need to support extremely old browsers, you can
   manually transpile the output of emscripten (e.g. using babel for JS and
   binaryen for wasm). (#26677)
+- musl libc updated from v1.2.5 to v1.2.6. (#26860)
 - libpng port updated from 1.6.55 to 1.6.56. (#26592)
 - The `-m64` compiler flag is now honored, and works as an alias for
   `-sMEMORY64` and/or `--target=wasm64`. (#26765)
