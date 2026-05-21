@@ -1,4 +1,5 @@
-// XXX Emscripten in sync with musl/arch/i386/bits/stat.h except for the padding and 64-bit time_t redirections change.
+// XXX Emscripten in sync with musl/arch/i386/bits/stat.h except for the padding,
+// 64-bit time_t redirections change and st_ino placement.
 
 /* copied from kernel definition, but with padding replaced
  * by the corresponding correctly-sized userspace types. */
@@ -25,8 +26,8 @@ struct stat {
 		long tv_nsec;
 	} __st_atim32, __st_mtim32, __st_ctim32;
 #endif
-	ino_t st_ino;
 	struct timespec st_atim;
 	struct timespec st_mtim;
 	struct timespec st_ctim;
+	ino_t st_ino;
 };
