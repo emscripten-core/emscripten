@@ -18,7 +18,7 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.8 (in development)
+6.0.0 (in development)
 ----------------------
 - When performing a streaming Fetch operation, the max chunk size of downloaded
   bytes that is handed over to the Wasm side from JS is now capped to maximum
