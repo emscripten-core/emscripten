@@ -46,7 +46,7 @@ logger = logging.getLogger('common')
 # If we are drawing a parallel swimlane graph of test output, we need to use a temp
 # file to track which tests were flaky so they can be graphed in orange color to
 # visually stand out.
-flaky_tests_log_filename = os.path.join(path_from_root('out/flaky_tests.txt'))
+flaky_tests_log_filename = path_from_root('out/flaky_tests.txt')
 
 EMTEST_DETECT_TEMPFILE_LEAKS = None
 EMTEST_SAVE_DIR = None
