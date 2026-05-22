@@ -1288,12 +1288,16 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
 def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
   bindgen_out_dir = get_emscripten_temp_dir() + '/bindgen_out/'
 
-  cmd = config.WASM_BINDGEN + [
-    infile,
-    '--keep-lld-exports',
-    '--keep-debug',
-    '--out-dir',
-    bindgen_out_dir,
+  wasm_bindgen_bin = shutil.which('wasm-bindgen')
+  if not wasm_bindgen_bin:
+    exit_with_error('wasm-bindgen executable not found in $PATH')
+  cmd = [
+      wasm_bindgen_bin,
+      infile,
+      '--keep-lld-exports',
+      '--keep-debug',
+      '--out-dir',
+      bindgen_out_dir,
   ]
   check_call(cmd)
 

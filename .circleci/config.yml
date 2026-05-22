@@ -160,7 +160,6 @@ commands:
             # We use an out-of-tree cache directory so it can be part of the
             # persisted workspace (see below).
             echo "CACHE = os.path.expanduser('~/cache')" >> .emscripten
-            echo "WASM_BINDGEN = os.path.expanduser('~/.cargo/bin/wasm-bindgen')" >> .emscripten
             # Refer to commit 0bc3640 if we need to pin V8 version.
             echo "V8_ENGINE = [os.path.expanduser('~/.jsvu/bin/v8')]" >> .emscripten
             echo "JS_ENGINES = [NODE_JS]" >> .emscripten

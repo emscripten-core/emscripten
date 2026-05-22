@@ -14864,7 +14864,6 @@ addToLibrary({
     self.run_process(['cargo', 'build'])
     lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
     self.assertExists(lib)
-    self.assertExists(os.path.abspath(config.WASM_BINDGEN[0]))
 
     create_file('main.cpp', '')
     create_file('post.js', '''
