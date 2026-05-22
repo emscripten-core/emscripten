@@ -313,6 +313,7 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
     settings.update(extra_settings)
   settings['JS_LIBRARIES'] = [os.path.join(utils.path_from_root('src/lib'), s) for s in settings['JS_LIBRARIES']]
 
+  utils.safe_ensure_dirs(utils.path_from_root('out'))
   settings_json = utils.path_from_root('out/gen_sig_info_settings.json')
   utils.write_file(settings_json, json.dumps(settings))
   output = shared.run_js_tool(utils.path_from_root('tools/compiler.mjs'),
