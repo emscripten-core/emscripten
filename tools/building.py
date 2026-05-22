@@ -274,24 +274,14 @@ def lld_flags_for_executable(external_symbols):
 
 
 def get_wasm_bindgen_exported_symbols(input_files):
-  if not os.path.exists(LLVM_NM):
-    exit_with_error('llvm-nm not found in LLVM directory: %s', LLVM_NM)
-
-  nm_args = [
-      LLVM_NM,
-      '--defined-only',
-      '--extern-only',
-      '--format=just-symbols',
-      '--print-file-name',
-      '--quiet',
-  ]
-  if input_files is not None:
-    nm_args += input_files
+  nm_args = [LLVM_NM, '--defined-only', '--extern-only', '--format=just-symbols',
+             '--print-file-name', '--quiet']
+  nm_args += input_files
 
   result = run_process(nm_args, stdout=subprocess.PIPE)
   symbols = []
   for line in result.stdout.splitlines():
-    (path, symbol) = line.split()
+    path, symbol = line.split()
     # Skip mangled (non-C) symbols
     if symbol.startswith(('_Z', '_R', 'anon.')):
       continue
@@ -1286,7 +1276,7 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
 
 
 def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
-  bindgen_out_dir = get_emscripten_temp_dir() + '/bindgen_out/'
+  bindgen_out_dir = os.path.join(get_emscripten_temp_dir(), 'bindgen_out')
 
   wasm_bindgen_bin = shutil.which('wasm-bindgen')
   if not wasm_bindgen_bin:
@@ -1304,11 +1294,13 @@ def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
   # Don't try to predict the .wasm filename that wasm-bindgen outputs. Instead
   # just grab the .wasm file itself.
   all_output_files = os.listdir(bindgen_out_dir)
-  new_wasm_file = list(filter(lambda x: x.endswith('.wasm'), all_output_files))[0]
+  new_wasm_file = [x for x in all_output_files if x.endswith('.wasm')][0]
   if outfile is None:
     outfile = infile
 
-  shutil.copyfile(bindgen_out_dir + new_wasm_file, outfile)
+  shutil.copyfile(os.path.join(bindgen_out_dir, new_wasm_file), outfile)
+
+  return os.path.join(bindgen_out_dir, 'library_bindgen.js')
 
 
 intermediate_counter = 0
