@@ -524,7 +524,12 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.require_engine(v8)
       return
 
-    self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+    deno = get_deno()
+    if deno:
+      self.require_engine(deno)
+      return
+
+    self.fail('either d8, node >= 24 or deno required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def try_require_node_version(self, major, minor=0, revision=0):
     nodejs = get_nodejs()
