@@ -290,7 +290,6 @@ def extract_sigs(symbols, obj_file):
 
 def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False):
   print(' .. ' + str(extra_settings) + ' + ' + str(extra_cflags))
-  tempfiles = shared.get_temp_files()
   settings = {
     # Enable as many settings as we can here to ensure the maximum number
     # of JS symbols are included.
@@ -313,11 +312,13 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
   if extra_settings:
     settings.update(extra_settings)
   settings['JS_LIBRARIES'] = [os.path.join(utils.path_from_root('src/lib'), s) for s in settings['JS_LIBRARIES']]
-  with tempfiles.get_file('.json') as settings_json:
-    utils.write_file(settings_json, json.dumps(settings))
-    output = shared.run_js_tool(utils.path_from_root('tools/compiler.mjs'),
-                                ['--symbols-only', settings_json],
-                                stdout=subprocess.PIPE)
+
+  settings_json = utils.path_from_root('out/gen_sig_info_settings.json')
+  utils.write_file(settings_json, json.dumps(settings))
+  output = shared.run_js_tool(utils.path_from_root('tools/compiler.mjs'),
+                              ['--symbols-only', settings_json],
+                              stdout=subprocess.PIPE)
+
   symbols = json.loads(output)['deps'].keys()
   symbols = [s for s in symbols if not ignore_symbol(s, cxx)]
   if cxx:
@@ -328,45 +329,46 @@ def extract_sig_info(sig_info, extra_settings=None, extra_cflags=None, cxx=False
     ext = '.c'
     compiler = shared.EMCC
     header = c_header
-  with tempfiles.get_file(ext) as c_file:
-    create_c_file(c_file, symbols, header)
 
-    # We build the `.c` file twice, once with wasm32 and wasm64.
-    # The first build gives is that base signature of each function.
-    # The second build build allows us to determine which args/returns are pointers
-    # or `size_t` types.  These get marked as `p` in the `__sig`.
-    obj_file = 'out.o'
-    cmd = [compiler, c_file, '-c', '-pthread',
-           '--tracing',
-           '-Wno-deprecated-declarations',
-           '-I' + utils.path_from_root('system/lib/libc'),
-           '-I' + utils.path_from_root('system/lib/wasmfs'),
-           '-o', obj_file]
-    if not cxx:
-      cmd += ['-I' + utils.path_from_root('system/lib/pthread'),
-              '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
-              '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
-              '-I' + utils.path_from_root('system/lib/gl'),
-              '-I' + utils.path_from_root('system/lib/libcxxabi/include')]
-    if extra_cflags:
-      cmd += extra_cflags
-    shared.check_call(cmd)
-    sig_info32 = extract_sigs(symbols, obj_file)
+  c_file = utils.path_from_root('out/gen_sig_info' + ext)
+  create_c_file(c_file, symbols, header)
 
-    # Run the same command again with wasm64.
-    shared.check_call([*cmd, '-m64'])
-    sig_info64 = extract_sigs(symbols, obj_file)
+  # We build the `.c` file twice, once with wasm32 and wasm64.
+  # The first build gives is that base signature of each function.
+  # The second build build allows us to determine which args/returns are pointers
+  # or `size_t` types.  These get marked as `p` in the `__sig`.
+  obj_file = 'out.o'
+  cmd = [compiler, c_file, '-c', '-pthread',
+         '--tracing',
+         '-Wno-deprecated-declarations',
+         '-I' + utils.path_from_root('system/lib/libc'),
+         '-I' + utils.path_from_root('system/lib/wasmfs'),
+         '-o', obj_file]
+  if not cxx:
+    cmd += ['-I' + utils.path_from_root('system/lib/pthread'),
+            '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
+            '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
+            '-I' + utils.path_from_root('system/lib/gl'),
+            '-I' + utils.path_from_root('system/lib/libcxxabi/include')]
+  if extra_cflags:
+    cmd += extra_cflags
+  shared.check_call(cmd)
+  sig_info32 = extract_sigs(symbols, obj_file)
 
-    for sym, sig32 in sig_info32.items():
-      assert sym in sig_info64
-      sig64 = sig_info64[sym]
-      sig_string = functype_to_str(sig32, sig64)
-      if sym in sig_info and sig_info[sym] != sig_string:
-        print(sym)
-        print(sig_string)
-        print(sig_info[sym])
-        assert sig_info[sym] == sig_string
-      sig_info[sym] = sig_string
+  # Run the same command again with wasm64.
+  shared.check_call([*cmd, '-m64'])
+  sig_info64 = extract_sigs(symbols, obj_file)
+
+  for sym, sig32 in sig_info32.items():
+    assert sym in sig_info64
+    sig64 = sig_info64[sym]
+    sig_string = functype_to_str(sig32, sig64)
+    if sym in sig_info and sig_info[sym] != sig_string:
+      print(sym)
+      print(sig_string)
+      print(sig_info[sym])
+      assert sig_info[sym] == sig_string
+    sig_info[sym] = sig_string
 
 
 def main(args):
