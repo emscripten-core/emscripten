@@ -174,8 +174,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
           dbg(`worker: Pthread 0x${_pthread_self().toString(16)} completed its main entry point with an 'unwind', keeping the worker alive for asynchronous operation.`);
 #endif
         }
-      } else if (msgData.target === 'setimmediate') {
-        // no-op
       } else if (cmd == {{{ CMD_CHECK_MAILBOX }}}) {
         if (initializedJS) {
           checkMailbox();
