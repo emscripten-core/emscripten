@@ -40,6 +40,14 @@ const CMD_CLEANUP_THREAD = 6;
 const CMD_MARK_AS_FINISHED = 7;
 const CMD_UNCAUGHT_EXN = 8;
 const CMD_CALL_HANDLER = 9;
+#if PTHREAD_MANAGER
+const CMD_LOAD_MANAGER = 10;
+const CMD_CREATE_WORKER = 11;
+const CMD_TERMINATE_WORKER = 12;
+const CMD_FORWARD_TO_WORKER = 13;
+const CMD_FORWARD_FROM_WORKER = 14;
+const CMD_ERROR_FROM_WORKER = 15;
+#endif
 
 #if WASM_ESM_INTEGRATION
 const pthreadWorkerScript = TARGET_BASENAME + '.pthread.mjs';
@@ -113,13 +121,48 @@ var LibraryPThread = {
     // the reverse mapping, each worker has a `pthread_ptr` when its running a
     // pthread.
     pthreads: {},
+#if PTHREAD_MANAGER
+    proxyWorkers: {},
+    // A ProxyWorker acts as a main-thread representative for a Web Worker
+    // managed by the manager worker. It implements the standard Worker
+    // interface (postMessage, terminate, onmessage, onerror) so that the main
+    // thread's scheduler can interact with it transparently and pool it just
+    // like a standard worker.
+    ProxyWorker: class {
+      constructor(workerID) {
+        this.workerID = workerID;
+        PThread.proxyWorkers[workerID] = this;
+        PThread.managerWorker.postMessage({
+          cmd: {{{ CMD_CREATE_WORKER }}},
+          workerID: workerID
+        });
+      }
+      postMessage(msg, transfer) {
+        PThread.managerWorker.postMessage({
+          cmd: {{{ CMD_FORWARD_TO_WORKER }}},
+          workerID: this.workerID,
+          msg: msg,
+          transferList: transfer
+        }, transfer);
+      }
+      terminate() {
+        PThread.managerWorker.postMessage({
+          cmd: {{{ CMD_TERMINATE_WORKER }}},
+          workerID: this.workerID
+        });
+        delete PThread.proxyWorkers[this.workerID];
+      }
+    },
+#endif
 #if MAIN_MODULE
     outstandingPromises: {},
     // Finished threads are threads that have finished running but we are not yet
     // joined.
     finishedThreads: new Set(),
 #endif
-#if ASSERTIONS
+#if ASSERTIONS || PTHREAD_MANAGER
+    // Used for debugging/assertions, or functionally by PTHREAD_MANAGER to
+    // route multiplexed messages/errors to the correct ProxyWorker instance.
     nextWorkerID: 1,
 #endif
     init() {
@@ -128,19 +171,46 @@ var LibraryPThread = {
       }
     },
     initMainThread() {
+#if ENVIRONMENT_MAY_BE_NODE
+      if (ENVIRONMENT_IS_NODE) return;
+#endif
+#if PTHREAD_MANAGER
+#if ASSERTIONS
+      dbg('PThread: initializing manager worker');
+#endif
+      var managerReadyResolve;
+      PThread.managerWorkerReady = new Promise((resolve) => { managerReadyResolve = resolve; });
+      PThread.managerWorker = PThread.createRealWorker();
+      addOnPreRun(async () => {
+        var managerReady = PThread.initManagerWorker(PThread.managerWorker);
+        addRunDependency('manager-worker');
+        await managerReady;
 #if PTHREAD_POOL_SIZE
-      var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
-      // Start loading up the Worker pool, if requested.
-      while (pthreadPoolSize--) {
-        PThread.allocateUnusedWorker();
-      }
+        PThread.spawnPool();
+#endif
+        removeRunDependency('manager-worker');
+        managerReadyResolve();
+      });
+#endif // PTHREAD_MANAGER
+#if PTHREAD_POOL_SIZE
+#if ASSERTIONS
+      dbg('PThread: initializing worker pool');
+#endif
+#if !PTHREAD_MANAGER
+      PThread.spawnPool();
+#endif
 #if !MINIMAL_RUNTIME
       // MINIMAL_RUNTIME takes care of calling loadWasmModuleToAllWorkers
       // in postamble_minimal.js
       addOnPreRun(async () => {
-        var pthreadPoolReady = PThread.loadWasmModuleToAllWorkers();
 #if !PTHREAD_POOL_DELAY_LOAD
         addRunDependency('loading-workers');
+#endif
+#if PTHREAD_MANAGER
+        await PThread.managerWorkerReady;
+#endif
+        var pthreadPoolReady = PThread.loadWasmModuleToAllWorkers();
+#if !PTHREAD_POOL_DELAY_LOAD
         await pthreadPoolReady;
         removeRunDependency('loading-workers');
 #endif // PTHREAD_POOL_DELAY_LOAD
@@ -265,6 +335,37 @@ var LibraryPThread = {
       // module loaded.
       PThread.tlsInitFunctions.forEach((f) => f());
     },
+#if PTHREAD_MANAGER
+    initManagerWorker: (worker) => new Promise((onFinishedLoading) => {
+      worker.onmessage = (e) => {
+        var d = e.data;
+        var cmd = d.cmd;
+        switch (cmd) {
+          case {{{ CMD_FORWARD_FROM_WORKER }}}:
+            PThread.proxyWorkers[d.workerID]?.onmessage({ data: d.msg });
+            break;
+          case {{{ CMD_ERROR_FROM_WORKER }}}:
+            PThread.proxyWorkers[d.workerID]?.onerror(d.error);
+            break;
+          case {{{ CMD_LOADED }}}:
+            onFinishedLoading(worker);
+            break;
+          default:
+            if (cmd) err(`manager worker sent an unknown command ${cmd}`);
+        }
+      };
+      worker.onerror = (e) => {
+        err(`Manager worker sent an error! ${e.filename}:${e.lineno}: ${e.message}`);
+        throw e;
+      };
+      worker.postMessage({
+        cmd: {{{ CMD_LOAD_MANAGER }}},
+#if ASSERTIONS
+        workerID: worker.workerID,
+#endif
+      });
+    }),
+#endif
     // Loads the WebAssembly module into the given Worker.
     // onFinishedLoading: A callback function that will be called once all of
     //                    the workers have been initialized and are
@@ -468,7 +569,7 @@ var LibraryPThread = {
 #endif // PTHREAD_POOL_SIZE
 
     // Creates a new web Worker and places it in the unused worker pool to wait for its use.
-    allocateUnusedWorker() {
+    createRealWorker() {
       var worker;
 #if EXPORT_ES6
       // If we're using module output, use bundler-friendly pattern.
@@ -541,12 +642,34 @@ var LibraryPThread = {
 #endif
       worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
 #endif // EXPORT_ES6
-#if ASSERTIONS
+#if ASSERTIONS || PTHREAD_MANAGER
       worker.workerID = PThread.nextWorkerID++;
 #endif
+      return worker;
+    },
+
+    allocateUnusedWorker() {
+      var worker;
+#if PTHREAD_MANAGER
+      if (PThread.managerWorker) {
+        var workerID = PThread.nextWorkerID++;
+        worker = new PThread.ProxyWorker(workerID);
+      } else
+#endif
+      {
+        worker = PThread.createRealWorker();
+      }
       PThread.unusedWorkers.push(worker);
       return worker;
     },
+#if PTHREAD_POOL_SIZE
+    spawnPool() {
+      var pthreadPoolSize = {{{ PTHREAD_POOL_SIZE }}};
+      while (pthreadPoolSize--) {
+        PThread.allocateUnusedWorker();
+      }
+    },
+#endif
 
     getNewWorker() {
       if (PThread.unusedWorkers.length == 0) {
@@ -697,6 +820,8 @@ var LibraryPThread = {
     assert(!ENVIRONMENT_IS_PTHREAD, 'spawnThread() should only be called from the main thread');
     assert(threadParams.pthread_ptr, 'spawnThread called with null pthread ptr');
 #endif
+
+
 
     var worker = PThread.getNewWorker();
     if (!worker) {

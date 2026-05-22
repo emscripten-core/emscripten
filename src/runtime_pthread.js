@@ -42,15 +42,68 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // notified about them.
   self.onunhandledrejection = (e) => { throw e.reason || e; };
 
+#if PTHREAD_MANAGER
+  const targetWorkers = {};
+
+  function handleManagerMessage(e) {
+    var d = e.data;
+    var cmd = d.cmd;
+    if (cmd === {{{ CMD_CREATE_WORKER }}}) {
+      var workerID = d.workerID;
+      var worker = PThread.createRealWorker();
+      worker.workerID = workerID;
+      targetWorkers[workerID] = worker;
+      worker.onmessage = (e) => {
+        var msg = e.data;
+        var transferList = msg && msg.transferList;
+        postMessage({
+          cmd: {{{ CMD_FORWARD_FROM_WORKER }}},
+          workerID: workerID,
+          msg: msg
+        }, transferList);
+      };
+      worker.onerror = (e) => {
+        postMessage({
+          cmd: {{{ CMD_ERROR_FROM_WORKER }}},
+          workerID: workerID,
+          error: {
+            message: e.message,
+            filename: e.filename,
+            lineno: e.lineno,
+            colno: e.colno
+          }
+        });
+      };
+    } else if (cmd === {{{ CMD_FORWARD_TO_WORKER }}}) {
+      var worker = targetWorkers[d.workerID];
+      if (worker) {
+        worker.postMessage(d.msg, d.transferList);
+      }
+    } else if (cmd === {{{ CMD_TERMINATE_WORKER }}}) {
+      var worker = targetWorkers[d.workerID];
+      if (worker) {
+        worker.terminate();
+        delete targetWorkers[d.workerID];
+      }
+    } else {
+#if ASSERTIONS
+      assert(false, "unknown message in pthread manager: " + cmd);
+#endif
+    }
+  }
+#endif
+
   {{{ asyncIf(ASYNCIFY == 2) }}}function handleMessage(e) {
     try {
       var msgData = e.data;
       //dbg('msgData: ' + Object.keys(msgData));
       var cmd = msgData.cmd;
+
       if (cmd == {{{ CMD_LOAD }}}) { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if ASSERTIONS
         workerID = msgData.workerID;
 #endif
+
 #if PTHREADS_DEBUG
         dbg('worker: loading module')
 #endif
@@ -61,8 +114,12 @@ if (ENVIRONMENT_IS_PTHREAD) {
 
         // And add a callback for when the runtime is initialized.
         startWorker = () => {
+#if PTHREADS_DEBUG
+          dbg('worker: startWorker');
+#endif
           // Notify the main thread that this thread has loaded.
           postMessage({ cmd: {{{ CMD_LOADED }}} });
+
           // Process any messages that were queued before the thread was ready.
           for (let msg of messageQueue) {
             handleMessage(msg);
@@ -128,6 +185,14 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
 #endif // MINIMAL_RUNTIME
 #endif
+#if PTHREAD_MANAGER
+      } else if (cmd == {{{ CMD_LOAD_MANAGER }}}) {
+#if RUNTIME_DEBUG
+        dbg('creating worker manager');
+#endif
+        postMessage({ cmd: {{{ CMD_LOADED }}} });
+        self.onmessage = handleManagerMessage;
+#endif
       } else if (cmd == {{{ CMD_RUN }}}) {
 #if ASSERTIONS
         assert(msgData.pthread_ptr);
@@ -178,6 +243,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         if (initializedJS) {
           checkMailbox();
         }
+
       } else if (cmd) {
         // The received message looks like something that should be handled by this message
         // handler, (since there is a cmd field present), but is not one of the
