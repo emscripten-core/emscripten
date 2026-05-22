@@ -9,9 +9,9 @@ import shlex
 import tempfile
 
 from . import shared
-from .utils import WINDOWS
+from .utils import WINDOWS, get_env_int
 
-DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+DEBUG = get_env_int('EMCC_DEBUG')
 
 
 def create_response_file_contents(args):

@@ -1,6 +1,5 @@
-#include <cassert>
-#include <thread>
-#include <cstdio>
+#include <assert.h>
+#include <threads.h>
 
 thread_local int tls = 1330;
 thread_local int tls2;

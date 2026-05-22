@@ -18,19 +18,43 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.8 (in development)
+6.0.0 (in development)
 ----------------------
+- When performing a streaming Fetch operation, the max chunk size of downloaded
+  bytes that is handed over to the Wasm side from JS is now capped to maximum
+  of 8 megabytes. This ensures that a streaming Fetch stays streaming, rather
+  than transferring the whole (potentially large) file as one huge chunk, which
+  might not fit in the WebAssembly memory. (#26898)
 - The minimum versions of browser engines supported by emscripten's generated
   code were bumped, allowing us to remove our internal support for transpilation
   via babel:
     MIN_CHROME_VERSION: 74 -> 85
     MIN_FIREFOX_VERSION: 68 -> 79
     MIN_SAFARI_VERSION: 12.2 -> 14.1
-  This allows us to assume that features such as mutable-globals, sign-ext, and
-  threading, are universally available.  Disabling these is no longer possible
-  in emscripten.  If you still need to support extremely old browsers, you can
+  This allows us to assume that features such as mutable-globals and sign-ext
+  are universally available.  Disabling these is no longer possible in
+  emscripten.  If you still need to support extremely old browsers, you can
   manually transpile the output of emscripten (e.g. using babel for JS and
   binaryen for wasm). (#26677)
+- musl libc updated from v1.2.5 to v1.2.6. (#26860)
+- libpng port updated from 1.6.55 to 1.6.56. (#26592)
+- The `-m64` compiler flag is now honored, and works as an alias for
+  `-sMEMORY64` and/or `--target=wasm64`. (#26765)
+- The autopersistence feature in IDBFS mount now supports registering a global
+  callback `IDBFS.onAutoPersistStateChanged = active => {}`, which will be
+  notified of all IDBFS sync start and end events. (#26895)
+- google-closure-compiler was updated to 20260429.0.0. (#26869)
+  Closure compiler now provides a native macOS arm64 binary for Apple Silicon,
+  in addition to having native binaries for Win-x64, Linux-x64 and Linux-ARM64.
+  For other platforms for which Closure compiler does not ship a native binary,
+  e.g. Intel x64 Macs and Windows-on-ARM, downloading Java SE Development Kit
+  21.0.11 from https://www.oracle.com/europe/java/technologies/downloads/#java21
+  is required in order to use Emscripten's Closure Compiler integration.
+- The `FAKE_DYLIBS` setting is now disabled by default. This means that
+  `-shared` will produce real dynamic libraries by default (`-sSIDE_MODULE` is
+  implied).  Also, if you include real dynamic libraries in your link command
+  emscripten will now automatically produce a dynamically linked program
+  (`-sMAIN_MODULE=2` is implied). (#25930)
 
 5.0.7 - 04/30/26
 ----------------
@@ -54,8 +78,6 @@ See docs/process.md for more on how version tagging works.
   a Wasm Worker.  This mode increases the memory used by each Wasm Worker by
   ~500 bytes (in the same way that declaring ~500 bytes of TLS data would).
   (#26757)
-- The `-m64` compiler flag is now honored, and works are an alias for
-  `-sMEMORY64` and/or `--target=wasm64`. (#26765)
 - The filesystem opteration that create new files now honor the global umask,
   which defaults for 0o222 and can be updated by calling `umask()`. (#50739)
 

@@ -10,6 +10,7 @@ from C/C++ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
+import fnmatch
 import glob
 import hashlib
 import json
@@ -124,7 +125,7 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     settings.WASM_EXPORTS += ['__asyncify_state', '__asyncify_data']
 
   # start with the MVP features, and add any detected features.
-  building.binaryen_features = ['--mvp-features'] + metadata.features
+  building.binaryen_features = ['--mvp-features', *metadata.features]
   if settings.ASYNCIFY == 2:
     building.binaryen_features += ['--enable-reference-types']
 
@@ -402,13 +403,13 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     # check_call doesn't support the `input` argument.
     if asm_consts:
       validate = '\n'.join([f'var tmp = {f};' for _, f in asm_consts])
-      proc = subprocess.run(config.NODE_JS + ['--check', '-'], input=validate.encode('utf-8'))
+      proc = subprocess.run([*config.NODE_JS, '--check', '-'], input=validate.encode('utf-8'))
       if proc.returncode:
         exit_with_error(f'EM_ASM function validation failed (node returned {proc.returncode})')
 
     if em_js_funcs:
       validate = '\n'.join(em_js_funcs)
-      proc = subprocess.run(config.NODE_JS + ['--check', '-'], input=validate.encode('utf-8'))
+      proc = subprocess.run([*config.NODE_JS, '--check', '-'], input=validate.encode('utf-8'))
       if proc.returncode:
         exit_with_error(f'EM_JS function validation failed (node returned {proc.returncode})')
 
@@ -541,7 +542,9 @@ def finalize_wasm(infile, outfile, js_syms):
     args.append('--side-module')
   if settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
+    # The check-stack pass in binaryen needs to be able to locate `__stack_pointer` by name.
     modify_wasm = True
+    need_name_section = True
   if settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
 
@@ -611,7 +614,7 @@ def finalize_wasm(infile, outfile, js_syms):
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
-  if not settings.STANDALONE_WASM and 'main' in metadata.all_exports or '__main_argc_argv' in metadata.all_exports:
+  if (not settings.STANDALONE_WASM and 'main' in metadata.all_exports) or '__main_argc_argv' in metadata.all_exports:
     if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTS:
       # If `_main` was unexpectedly exported we assume it was added to
       # EXPORT_IF_DEFINED by `phase_linker_setup` in order that we can detect
@@ -669,7 +672,7 @@ def create_tsd_exported_runtime_methods(metadata):
       exit_with_error('tsc executable not found in node_modules or in $PATH')
     # Use the full path from the which command so windows can find tsc.
     tsc = [tsc]
-  cmd = tsc + ['--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
+  cmd = [*tsc, '--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
                '--declaration',
                '--emitDeclarationOnly',
                '--allowJs', js_doc_file]
@@ -694,10 +697,12 @@ def create_tsd(metadata, embind_tsd):
     out += f'  {mangled}({", ".join(arguments)}): '
     assert len(functype.returns) <= 1, 'One return type only supported'
     if functype.returns:
-      out += f'{type_to_ts_type(functype.returns[0])}'
+      ret_ts_type = type_to_ts_type(functype.returns[0])
     else:
-      out += 'void'
-    out += ';\n'
+      ret_ts_type = 'void'
+    if settings.ASYNCIFY == 2 and any(fnmatch.fnmatch(name, pat) for pat in settings.ASYNCIFY_EXPORTS):
+      ret_ts_type = f'Promise<{ret_ts_type}>'
+    out += f'{ret_ts_type};\n'
   out += '}\n'
   out += f'\n{embind_tsd}'
   # Combine all the various exports.

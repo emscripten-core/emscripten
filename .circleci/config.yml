@@ -38,9 +38,7 @@ commands:
           command: |
             # TODO: Make these part of the base image
             apt-get install -q -y libu2f-udev libvulkan1 xdg-utils
-            # Temporarily pinning to beta rather than unstable:
-            # See https://github.com/emscripten-core/emscripten/issues/26720
-            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-beta_current_amd64.deb
+            wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-unstable_current_amd64.deb
             # If that download link breaks, temporarily use this URL instead:
             # wget -O ~/chrome.deb https://storage.googleapis.com/webassembly/chrome/google-chrome-stable_current_amd64.deb
             dpkg -i ~/chrome.deb
@@ -535,7 +533,6 @@ jobs:
       - run: tools/maint/check_emcc_help_text.py
       - run: make -C site html
   ruff:
-    # Keep in sync with ruff commands in tools/maint/pre-push
     executor: ubuntu-lts
     steps:
       - checkout
@@ -712,6 +709,7 @@ jobs:
             core2g.test_externref
             corez.test_dylink_iostream
             core2ss.test_pthread_dylink
+            core2ss.test_pthread_dylink_tls
             core2ss.test_pthread_thread_local_storage
             core2ss.test_wasm_worker_futex_wait
             core2s.test_dylink_syslibs_missing_assertions
@@ -786,6 +784,7 @@ jobs:
             omitexports0.test_emscripten_api
             strict.test_no_declare_asm_module_exports
             strict.test_dylink_global_inits_reversed
+            strict.test_wasm_worker_futex_wait_pthreads
             "
   test-modularize-instance:
     executor: ubuntu-lts
@@ -873,6 +872,8 @@ jobs:
             core_2gb.test_*embind*
             core_2gb.test_fs_js_api_wasmfs
             wasm64.test_safe_stack
+            wasm64.test_promise_await*
+            wasm64.test_pthread_join_and_asyncify
             wasm64l.test_hello_world
             wasm64l.test_bigswitch
             wasm64l.test_module_wasm_memory
@@ -1094,7 +1095,9 @@ jobs:
             core0.test_pthread_join_and_asyncify
             core0.test_async_ccall_promise_jspi*
             core0.test_cubescript_jspi
+            core0.test_pthread_wait_suspending*
             core0.test_poll_blocking_asyncify_jspi
+            core0.test_promise_await*
             "
       - upload-test-results
   test-other:
@@ -1178,7 +1181,9 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser_2gb"
-          test_targets: "browser_2gb"
+          # Disabling test_mainScriptUrlOrBlob due to
+          # https://github.com/emscripten-core/emscripten/issues/26882
+          test_targets: "browser_2gb skip:browser_2gb.test_mainScriptUrlOrBlob*"
   test-browser-chrome-wasm64-4gb:
     executor: ubuntu-lts
     environment:
@@ -1186,7 +1191,9 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64_4gb"
-          test_targets: "browser64_4gb"
+          # Disabling test_mainScriptUrlOrBlob due to
+          # https://github.com/emscripten-core/emscripten/issues/26882
+          test_targets: "browser64_4gb skip:browser64_4gb.test_mainScriptUrlOrBlob*"
   test-browser-firefox:
     executor: ubuntu-lts
     environment:

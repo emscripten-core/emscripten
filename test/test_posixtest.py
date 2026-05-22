@@ -32,15 +32,15 @@ class posixtest(RunnerCore):
 
 
 def filter_tests(all_tests):
-  prefixes = [
+  prefixes = (
     'pthread_',
     'strftime',
     'asctime',
     'gmtime',
-  ]
+  )
 
   def enable_test(t):
-    return any(t.startswith(p) for p in prefixes)
+    return t.startswith(prefixes)
 
   return [t for t in all_tests if enable_test(t)]
 
@@ -71,6 +71,7 @@ unsupported_noreturn = {
 
 unsupported = {
   'test_pthread_cond_init_4_2': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_barrierattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_condattr_getpshared_1_2': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_mutexattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
   'test_pthread_rwlockattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
@@ -180,11 +181,11 @@ def make_test(name, testfile, browser):
             # of log messages on CI runs.
             '--profiling-funcs',
             '-sEXIT_RUNTIME',
-            '-sTOTAL_MEMORY=256mb',
-            '-sPTHREAD_POOL_SIZE=40']
+            '-sTOTAL_MEMORY=256mb']
     if name in no_assert_tests:
       args.append('-sASSERTIONS=0')
     if browser:
+      args.append('-sPTHREAD_POOL_SIZE=40')
       self.btest_exit(testfile, cflags=args)
     else:
       self.do_runf(testfile, cflags=args, output_basename=name)

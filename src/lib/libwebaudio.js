@@ -170,7 +170,7 @@ var LibraryWebAudio = {
   _emscripten_create_audio_worklet__deps: [
     '$_emAudioDispatchProcessorCallback',
     '$stackAlloc', '$stackRestore', '$stackSave'],
-  _emscripten_create_audio_worklet: (wwID, contextHandle, stackLowestAddress, stackSize, callback, userData) => {
+  _emscripten_create_audio_worklet: (wwID, contextHandle, stackLowestAddress, stackSize, pthreadPtr, callback, userData) => {
 
 #if ASSERTIONS || WEBAUDIO_DEBUG
     emAudioExpectContext(contextHandle, '_emscripten_create_audio_worklet');
@@ -186,6 +186,11 @@ var LibraryWebAudio = {
     assert(stackSize % 16 == 0, `AudioWorklet stack size should be a multiple of 16 bytes! (was ${stackSize} == ${stackSize%16} mod 16)`);
     assert(!audioContext.audioWorkletInitialized, `emscripten_create_wasm_audio_worklet() was already called for AudioContext ${contextHandle}! Only call this function once per AudioContext`);
     audioContext.audioWorkletInitialized = 1;
+#if PTHREADS
+    assert(pthreadPtr);
+#else
+    assert(!pthreadPtr);
+#endif
 #endif
 
 #if WEBAUDIO_DEBUG
@@ -256,6 +261,9 @@ var LibraryWebAudio = {
         wasmMemory,
         stackLowestAddress, // sb = stack base
         stackSize,          // sz = stack size
+#if PTHREADS
+        pthreadPtr,
+#endif
       });
       audioWorklet.port.onmessage = _emAudioDispatchProcessorCallback;
       {{{ makeDynCall('viip', 'callback') }}}(contextHandle, 1/*EM_TRUE*/, userData);

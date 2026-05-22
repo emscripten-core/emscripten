@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+# ruff: noqa: RUF005
+
 import itertools
 import logging
 import os
@@ -18,7 +20,7 @@ from time import time
 from . import building, cache, diagnostics, shared, utils
 from .settings import settings
 from .toolchain_profiler import ToolchainProfiler
-from .utils import read_file
+from .utils import get_env_bool, read_file
 
 logger = logging.getLogger('system_libs')
 
@@ -37,19 +39,19 @@ LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
 #
 # Setting EMCC_USE_NINJA=2 means that ninja will automatically be run for each library needed at
 # link time.
-USE_NINJA = int(os.environ.get('EMCC_USE_NINJA', '0'))
+USE_NINJA = get_env_bool('EMCC_USE_NINJA')
 
 # A (fake) deterministic emscripten path to use in __FILE__ macro and debug info
 # to produce reproducible builds across platforms.
 DETERMINISTIC_PREFIX = '/emsdk/emscripten'
 
 
-def files_in_path(path, filenames):
+def files_in_path(path: str, filenames: list[str]):
   srcdir = utils.path_from_root(path)
   return [os.path.join(srcdir, f) for f in filenames]
 
 
-def glob_in_path(path, glob_pattern, excludes=()):
+def glob_in_path(path: str, glob_pattern: str, excludes: set[str] = set()): # noqa: B006
   srcdir = utils.path_from_root(path)
   files = iglob(os.path.join(srcdir, glob_pattern), recursive=True)
   return sorted(f for f in files if os.path.basename(f) not in excludes)
@@ -70,7 +72,7 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
     if preprocess:
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
-    flags += ['-sMEMORY64']
+    flags += ['-m64']
 
   source_dir = utils.path_from_root()
   relative_source_dir = os.path.relpath(source_dir, build_dir)
@@ -143,7 +145,7 @@ def create_lib_emar(output_filename, filenames):
   utils.delete_file(output_filename)
   cmd = [shared.EMAR, 'cr', output_filename] + filenames
   cmd = building.get_command_with_possible_response_file(cmd)
-  utils.run_process(cmd)
+  shared.check_call(cmd)
 
 
 def create_lib(libname, inputs):
@@ -386,7 +388,7 @@ class Library:
   src_dir: str | None = None
   src_files: list[str] | None = []
   src_glob: str | None = None
-  src_glob_exclude: list[str] | None = None
+  src_glob_exclude: set[str] = set()
 
   # Whether to always generate WASM object files, even when LTO is set
   force_object_files = False
@@ -466,7 +468,7 @@ class Library:
       if self.src_files:
         return files_in_path(self.src_dir, self.src_files)
       elif self.src_glob:
-        return glob_in_path(self.src_dir, self.src_glob, self.src_glob_exclude or ())
+        return glob_in_path(self.src_dir, self.src_glob, self.src_glob_exclude)
 
     raise NotImplementedError()
 
@@ -487,7 +489,7 @@ class Library:
     By default, this builds all the source files returned by `self.get_files()`,
     with the `cflags` returned by `self.get_cflags()`.
     """
-    batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
+    batch_inputs = get_env_bool('EMCC_BATCH_BUILD', '1')
     self.build_dir = build_dir
     batches = {}
     commands = []
@@ -963,7 +965,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
   src_dir = 'system/lib/compiler-rt/lib/builtins'
   profile_src_dir = 'system/lib/compiler-rt/lib/profile'
   includes = ['system/lib/libc', 'system/lib/compiler-rt/include']
-  excludes = [
+  excludes = {
     # gcc_personality_v0.c depends on libunwind, which don't include by default.
     'gcc_personality_v0.c',
     # bfloat16
@@ -992,7 +994,7 @@ class libcompiler_rt(MTLibrary, SjLjLibrary):
     'powixf2.c',
     'trunctfxf2.c',
     'truncxfhf2.c',
-  ]
+  }
   src_files = glob_in_path(src_dir, '*.c', excludes=excludes)
   src_files += glob_in_path(profile_src_dir, '*.c')
   src_files += glob_in_path(profile_src_dir, '*.cpp')
@@ -1039,22 +1041,22 @@ class llvmlibc(DebugLibrary, AsanInstrumentedLibrary, MTLibrary):
   def get_files(self):
     files = glob_in_path('system/lib/llvm-libc/src/assert', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/complex', '**/*.cpp')
-    files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp', excludes=['memset.cpp', 'memcpy.cpp'] if self.is_asan else [])
+    files += glob_in_path('system/lib/llvm-libc/src/string', '**/*.cpp', excludes={'memset.cpp', 'memcpy.cpp'} if self.is_asan else set())
     files += glob_in_path('system/lib/llvm-libc/src/intypes', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/strings', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/errno', '**/*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/math', '*.cpp')
     # Overlay mode doesn't support mbstate_t which is used by these wchar sources.
-    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes=['wcrtomb.cpp', 'mbrtowc.cpp', 'wctomb.cpp', 'mbtowc.cpp'])
+    files += glob_in_path('system/lib/llvm-libc/src/wchar', '*.cpp', excludes={'wcrtomb.cpp', 'mbrtowc.cpp', 'wctomb.cpp', 'mbtowc.cpp'})
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '*.cpp')
     files += glob_in_path('system/lib/llvm-libc/src/setjmp', '**/*.cpp')
-    files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes=['at_quick_exit.cpp',
+    files += glob_in_path('system/lib/llvm-libc/src/stdlib', '*.cpp', excludes={'at_quick_exit.cpp',
                                                                                 'quick_exit.cpp',
                                                                                 'atexit.cpp',
                                                                                 'exit.cpp',
                                                                                 '_Exit.cpp',
-                                                                                'getenv.cpp'])
-    files += glob_in_path('system/lib/llvm-libc/src/math/generic', '**/*.cpp', excludes=['atan2l.cpp', 'exp_utils.cpp'])
+                                                                                'getenv.cpp'})
+    files += glob_in_path('system/lib/llvm-libc/src/math/generic', '**/*.cpp', excludes={'atan2l.cpp', 'exp_utils.cpp'})
     files += glob_in_path('system/lib/llvm-libc/src/__support/StringUtil', '**/*.cpp')
     return files
 
@@ -1247,70 +1249,30 @@ class libc(MuslInternalLibrary,
             'pthread_self_stub.c',
             'proxying_stub.c',
           ])
+
+        for pat in ('pthread_*attr*.c',
+                    'pthread_spin*.c',
+                    # C11 thread library functions
+                    'cnd_*.c',
+                    'mtx_*.c',
+                    'tss_*.c',
+                    'thrd_*.c'):
+          libc_files += glob_in_path('system/lib/libc/musl/src/thread', pat)
+
         libc_files += files_in_path(
           path='system/lib/libc/musl/src/thread',
           filenames=[
             'pthread_self.c',
             'pthread_cleanup_push.c',
-            'pthread_attr_init.c',
-            'pthread_attr_destroy.c',
-            'pthread_attr_get.c',
-            'pthread_attr_setdetachstate.c',
-            'pthread_attr_setguardsize.c',
-            'pthread_attr_setinheritsched.c',
-            'pthread_attr_setschedparam.c',
-            'pthread_attr_setschedpolicy.c',
-            'pthread_attr_setscope.c',
-            'pthread_attr_setstack.c',
-            'pthread_attr_setstacksize.c',
-            'pthread_condattr_destroy.c',
-            'pthread_condattr_init.c',
-            'pthread_condattr_setpshared.c',
-            'pthread_condattr_setclock.c',
-            'pthread_mutexattr_destroy.c',
-            'pthread_mutexattr_init.c',
-            'pthread_mutexattr_setprotocol.c',
-            'pthread_mutexattr_settype.c',
-            'pthread_mutexattr_setpshared.c',
-            'pthread_rwlockattr_destroy.c',
-            'pthread_rwlockattr_init.c',
-            'pthread_rwlockattr_setpshared.c',
-            'pthread_getattr_np.c',
             'pthread_getconcurrency.c',
             'pthread_getcpuclockid.c',
             'pthread_getschedparam.c',
-            'pthread_spin_destroy.c',
-            'pthread_spin_init.c',
-            'pthread_spin_lock.c',
-            'pthread_spin_trylock.c',
-            'pthread_spin_unlock.c',
             'pthread_setschedprio.c',
             'pthread_setconcurrency.c',
             'default_attr.c',
-            # C11 thread library functions
             'call_once.c',
-            'tss_create.c',
-            'tss_delete.c',
-            'tss_set.c',
-            'cnd_broadcast.c',
-            'cnd_destroy.c',
-            'cnd_init.c',
-            'cnd_signal.c',
-            'cnd_timedwait.c',
-            'cnd_wait.c',
-            'mtx_destroy.c',
-            'mtx_init.c',
-            'mtx_lock.c',
-            'mtx_timedlock.c',
-            'mtx_trylock.c',
-            'mtx_unlock.c',
             'sem_destroy.c',
             'sem_init.c',
-            'thrd_create.c',
-            'thrd_exit.c',
-            'thrd_join.c',
-            'thrd_sleep.c',
-            'thrd_yield.c',
           ])
 
     if self.is_mt or self.is_ww:
@@ -1323,6 +1285,7 @@ class libc(MuslInternalLibrary,
           'emscripten_thread_primitives.c',
           'emscripten_futex_wait.c',
           'emscripten_futex_wake.c',
+          'emscripten_atomic_wait_suspending.c',
         ])
 
     # These files are in libc directories, but only built in libc_optz.
@@ -1362,6 +1325,7 @@ class libc(MuslInternalLibrary,
           '__map_file.c',
           'strftime.c',
           '__tz.c',
+          '__utc.c',
           '__tm_to_secs.c',
           '__year_to_secs.c',
           '__month_to_secs.c',
@@ -1517,7 +1481,7 @@ class libc_optz(libc):
     # In both cases, the build is not one that is hyper-focused on code size,
     # and so optz is not that important.
     return super().can_use() and settings.SHRINK_LEVEL >= 2 and \
-        not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
+        not settings.LINKABLE and 'EMCC_FORCE_STDLIBS' not in os.environ
 
 
 class libprintf_long_double(libc):
@@ -1756,7 +1720,7 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
 
   src_dir = 'system/lib/libcxx/src'
   src_glob = '**/*.cpp'
-  src_glob_exclude = [
+  src_glob_exclude = {
     'xlocale_zos.cpp',
     'mbsnrtowcs.cpp',
     'wcsnrtombs.cpp',
@@ -1772,7 +1736,7 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     'time_zone.cpp',
     'tzdb.cpp',
     'tzdb_list.cpp',
-  ]
+    }
 
 
 class libunwind(ExceptionLibrary, MTLibrary):
@@ -1942,7 +1906,7 @@ class libmimalloc(MTLibrary):
     path='system/lib/mimalloc/src',
     glob_pattern='*.c',
     # mimalloc includes some files at the source level, so exclude them here.
-    excludes=['alloc-override.c', 'free.c', 'page-queue.c', 'static.c'],
+    excludes={'alloc-override.c', 'free.c', 'page-queue.c', 'static.c'},
   )
   src_files += [utils.path_from_root('system/lib/mimalloc/src/prim/prim.c')]
   src_files += [utils.path_from_root('system/lib/emmalloc.c')]
@@ -2198,7 +2162,7 @@ class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
 
   src_dir = 'system/lib/compiler-rt/lib/sanitizer_common'
   src_glob = '*.cpp'
-  src_glob_exclude = ['sanitizer_common_nolibc.cpp']
+  src_glob_exclude = {'sanitizer_common_nolibc.cpp'}
 
 
 class SanitizerLibrary(CompilerRTLibrary, MTLibrary):
@@ -2214,7 +2178,7 @@ class libubsan_rt(SanitizerLibrary):
   includes = ['system/lib/libc']
   cflags = ['-DUBSAN_CAN_USE_CXXABI']
   src_dir = 'system/lib/compiler-rt/lib/ubsan'
-  src_glob_exclude = ['ubsan_diag_standalone.cpp']
+  src_glob_exclude = {'ubsan_diag_standalone.cpp'}
 
 
 class liblsan_common_rt(SanitizerLibrary):
@@ -2229,8 +2193,8 @@ class liblsan_rt(SanitizerLibrary):
 
   includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/lsan'
-  src_glob_exclude = ['lsan_common.cpp', 'lsan_common_mac.cpp', 'lsan_common_linux.cpp',
-                      'lsan_common_emscripten.cpp']
+  src_glob_exclude = {'lsan_common.cpp', 'lsan_common_mac.cpp', 'lsan_common_linux.cpp',
+                      'lsan_common_emscripten.cpp'}
 
 
 class libasan_rt(SanitizerLibrary):
@@ -2245,7 +2209,7 @@ class libasan_rt(SanitizerLibrary):
 # things that we'd normally do in JS. That includes some general things
 # as well as some additional musl components (that normally we reimplement
 # in JS as it's more efficient that way).
-class libstandalonewasm(MuslInternalLibrary):
+class libstandalonewasm(MuslInternalLibrary, MTLibrary):
   name = 'libstandalonewasm'
   # LTO defeats the weak linking trick used in __original_main.c
   force_object_files = True
@@ -2304,6 +2268,7 @@ class libstandalonewasm(MuslInternalLibrary):
         path='system/lib/libc/musl/src/time',
         filenames=['__secs_to_tm.c',
                    '__tz.c',
+                   '__utc.c',
                    'gettimeofday.c',
                    'localtime_r.c',
                    'gmtime_r.c',
@@ -2359,14 +2324,14 @@ def get_libs_to_link(options):
   # avoids spending time checking for unresolved symbols in your project files,
   # which can speed up linking, but if you do not have the proper list of
   # actually needed libraries, errors can occur.
-  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
+  only_forced = utils.get_env_bool('EMCC_ONLY_FORCED_STDLIBS')
   if only_forced:
     # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
     # of the input files for reverse dependencies.
     diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` to avoid linking standard libraries')
   if force == '1':
     force_include = [name for name, lib in system_libs_map.items() if not lib.never_force]
-  elif force is not None:
+  elif force:
     force_include = force.split(',')
   if force_include:
     logger.debug(f'forcing stdlibs: {force_include}')
@@ -2452,8 +2417,7 @@ def get_libs_to_link(options):
   if settings.PRINTF_LONG_DOUBLE:
     add_library('libprintf_long_double')
   # See comment in libc_optz itself
-  if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and \
-     not os.environ.get('EMCC_FORCE_STDLIBS'):
+  if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and not force:
     add_library('libc_optz')
   if settings.STANDALONE_WASM:
     add_library('libstandalonewasm')

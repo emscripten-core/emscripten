@@ -45,7 +45,7 @@ hidden void _dlstart_c(size_t *sp, size_t *dynv)
 		/* If dynv is null, the entry point was started from loader
 		 * that is not fdpic-aware. We can assume normal fixed-
 		 * displacement ELF loading was performed, but when ldso was
-		 * run as a command, finding the Ehdr is a heursitic: we
+		 * run as a command, finding the Ehdr is a heuristic: we
 		 * have to assume Phdrs start in the first 4k of the file. */
 		base = aux[AT_BASE];
 		if (!base) base = aux[AT_PHDR] & -4096;

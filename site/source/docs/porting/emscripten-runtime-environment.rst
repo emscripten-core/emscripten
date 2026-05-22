@@ -122,7 +122,7 @@ You can add additional operations with :js:func:`addRunDependency`, which is a c
 
 .. note:: Generally it is not necessary to add additional operations — preloading is suitable for almost all use cases.
 
-When all dependencies are met, Emscripten will call ``run()``, which proceeds to call your ``main()`` function. The ``main()`` function should be used to perform initialization tasks, and will often call :c:func:`emscripten_set_main_loop` (as :ref:`described above <emscripten-runtime-environment-howto-main-loop>`). The main loop function will be then be called at the requested frequency.
+When all dependencies are met, Emscripten will call your programs's ``main()`` function. The ``main()`` function should be used to perform initialization tasks, and will often call :c:func:`emscripten_set_main_loop` (as :ref:`described above <emscripten-runtime-environment-howto-main-loop>`). The main loop function will be then be called at the requested frequency.
 
 You can affect the operation of the main loop in several ways:
 

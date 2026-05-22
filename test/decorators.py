@@ -115,6 +115,8 @@ no_2gb = skip_if('no_2gb', lambda t: t.get_setting('INITIAL_MEMORY') == '2200mb'
 
 no_4gb = skip_if('no_4gb', lambda t: t.is_4gb())
 
+no_highmem = skip_if('no_highmem', lambda t: t.is_2gb() or t.is_4gb())
+
 only_windows = skip_if('only_windows', lambda _: not WINDOWS)
 
 requires_native_clang = skip_if_simple('native clang tests are disabled', lambda _: common.EMTEST_LACKS_NATIVE_CLANG)
@@ -415,7 +417,7 @@ def also_with_wasm64(func):
       print('parameterize:wasm64=%s' % with_wasm64)
     if with_wasm64:
       self.require_wasm64()
-      self.set_setting('MEMORY64')
+      self.cflags += ['-m64']
     return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -457,10 +459,10 @@ def also_with_wasm2js(func):
 
 
 def can_do_standalone(self, impure=False):
-  # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
+  # Pure standalone engines don't support wasm64 yet.  Even with MEMORY64=2 (lowered)
   # the WASI APIs that take pointer values don't have 64-bit variants yet.
   if not impure:
-    if self.get_setting('MEMORY64'):
+    if self.is_wasm64():
       return False
     # This is way to detect the core_2gb test mode in test_core.py
     if self.get_setting('INITIAL_MEMORY') == '2200mb':

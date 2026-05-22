@@ -1522,7 +1522,7 @@ addToLibrary({
 
   _emscripten_sanitizer_get_option__deps: ['$stringToNewUTF8', '$UTF8ToString'],
   _emscripten_sanitizer_get_option__sig: 'pp',
-  _emscripten_sanitizer_get_option: (name) => stringToNewUTF8(Module[UTF8ToString(name)] || ''),
+  _emscripten_sanitizer_get_option: (name) => stringToNewUTF8(Module[UTF8ToString(name)] ?? ''),
 #endif
 
   $readEmAsmArgsArray: [],
@@ -1725,7 +1725,7 @@ addToLibrary({
     return "./this.program";
   },
 #else
-  $getExecutableName: () => thisProgram || './this.program',
+  $getExecutableName: () => thisProgram,
 #endif
 
   // Receives a Web Audio context plus a set of elements to listen for user
@@ -1967,44 +1967,17 @@ addToLibrary({
   _emscripten_get_progname__deps: ['$getExecutableName', '$stringToUTF8'],
   _emscripten_get_progname: (str, len) => stringToUTF8(getExecutableName(), str, len),
 
-  emscripten_console_log: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    console.log(UTF8ToString(str));
-  },
+  // These single-line arrow functions use curly braces since otherwise closure
+  // compiler will inject a extra `return` keyword when inlining.
+  // https://github.com/emscripten-core/emscripten/issues/26922
+  emscripten_console_log: (str) => { console.log(UTF8ToString(str)) },
+  emscripten_console_warn: (str) => { console.warn(UTF8ToString(str)) },
+  emscripten_console_error: (str) => { console.error(UTF8ToString(str)) },
+  emscripten_console_trace: (str) => { console.trace(UTF8ToString(str)) },
 
-  emscripten_console_warn: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    console.warn(UTF8ToString(str));
-  },
+  emscripten_throw_number: (number) => { throw number; },
 
-  emscripten_console_error: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    console.error(UTF8ToString(str));
-  },
-
-  emscripten_console_trace: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    console.trace(UTF8ToString(str));
-  },
-
-  emscripten_throw_number: (number) => {
-    throw number;
-  },
-
-  emscripten_throw_string: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    throw UTF8ToString(str);
-  },
+  emscripten_throw_string: (str) => { throw UTF8ToString(str); },
 
 #if !MINIMAL_RUNTIME
 #if STACK_OVERFLOW_CHECK
@@ -2185,7 +2158,7 @@ addToLibrary({
 
   $alignMemory: (size, alignment) => {
 #if ASSERTIONS
-    assert(alignment, "alignment argument is required");
+    assert(alignment, 'alignment argument is required');
 #endif
     return Math.ceil(size / alignment) * alignment;
   },
@@ -2246,7 +2219,7 @@ addToLibrary({
       return this.allocated[id] !== undefined;
     }
     allocate(handle) {
-      var id = this.freelist.pop() || this.allocated.length;
+      var id = this.freelist.pop() ?? this.allocated.length;
       this.allocated[id] = handle;
       return id;
     }

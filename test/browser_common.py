@@ -232,7 +232,7 @@ class ChromeConfig:
     # --no-sandbox because we are running as root and chrome requires
     # this flag for now: https://crbug.com/638180
     '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
-    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-type-reflection"',
+    '--enable-experimental-webassembly-features',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
     '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
@@ -339,8 +339,18 @@ def configure_test_browser():
     if not shutil.which(EMTEST_BROWSER):
       EMTEST_BROWSER = 'firefox'
       if not shutil.which(EMTEST_BROWSER):
-        # FIXME: This should really be and error, but this code currently also runs for non-browser tests.
+        # FIXME: This should really be an error, but this code currently also runs for non-browser tests.
         EMTEST_BROWSER = 'default-browser-not-found'
+
+        if MACOS and os.path.isdir('/Applications/Safari.app'):
+          EMTEST_BROWSER = '/Applications/Safari.app'
+        elif WINDOWS:
+          for browser in [
+            f'{os.getenv("ProgramFiles(x86)", "")}\\Microsoft\\Edge\\Application\\msedge.exe',
+            f'{os.getenv("ProgramFiles", "")}\\Mozilla Firefox\\firefox.exe',
+            f'{os.getenv("LOCALAPPDATA", "")}\\Google\\Chrome SxS\\Application\\chrome.exe']:
+            if os.path.isfile(browser):
+              EMTEST_BROWSER = browser
 
   if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
     # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
@@ -719,7 +729,7 @@ class BrowserCore(RunnerCore):
     if hasattr(config, 'launch_prefix'):
       browser_args = list(config.launch_prefix) + browser_args
 
-    logger.info('Launching browser: %s', str(browser_args))
+    logger.info(f'Launching browser: {browser_args}')
 
     if (WINDOWS and is_firefox()) or is_safari():
       cls.launch_browser_harness_with_proc_snapshot_workaround(parallel_harness, config, browser_args, url)
@@ -862,7 +872,7 @@ class BrowserCore(RunnerCore):
           output = self.harness_out_queue.get(block=True, timeout=timeout)
         except queue.Empty:
           BrowserCore.unresponsive_tests += 1
-          print(f'[unresponsive test: {self.id()} total unresponsive={str(BrowserCore.unresponsive_tests)}]')
+          print(f'[unresponsive test: {self.id()} total unresponsive={BrowserCore.unresponsive_tests}]')
           self.browser_restart()
           # Rather than fail the test here, let fail on the `assertContained` so
           # that the test can be retried via `extra_tries`

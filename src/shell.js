@@ -136,7 +136,7 @@ if (ENVIRONMENT_IS_NODE) {
 // refer to Module (if they choose; they can also define Module)
 {{{ preJS() }}}
 
-var arguments_ = [];
+var programArgs = [];
 var thisProgram = './this.program';
 var quit_ = (status, toThrow) => {
   throw toThrow;
@@ -215,7 +215,7 @@ if (ENVIRONMENT_IS_NODE) {
     thisProgram = process.argv[1].replace(/\\/g, '/');
   }
 
-  arguments_ = process.argv.slice(2);
+  programArgs = process.argv.slice(2);
 
 #if !MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
@@ -255,8 +255,8 @@ if (ENVIRONMENT_IS_SHELL) {
 
   globalThis.clearTimeout ??= (id) => {};
 
-  // v8 uses `arguments_` whereas spidermonkey uses `scriptArgs`
-  arguments_ = globalThis.arguments || globalThis.scriptArgs;
+  // v8 and jsc both use `arguments`. spidermonkey uses `scriptArgs`
+  programArgs = globalThis.arguments ?? globalThis.scriptArgs;
 
   if (globalThis.quit) {
     quit_ = (status, toThrow) => {

@@ -7,6 +7,7 @@
 
 #pragma once
 
+#include <inttypes.h>
 #include <pthread.h>
 #include <stdbool.h>
 
@@ -105,7 +106,7 @@ void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedS
 #endif
 
 int __pthread_kill_js(pthread_t t, int sig);
-int __pthread_create_js(struct __pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
+int __pthread_create_js(pthread_t thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 int _emscripten_default_pthread_stack_size();
 void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 
@@ -120,8 +121,24 @@ int _emscripten_thread_supports_atomics_wait(void);
 
 pid_t _emscripten_get_next_tid();
 
+// Initialize pthread data, at start of memory region pointed to `base`.
+// `size` is an in/out parameter representing the size of the `base` region
+// on input, and the size of new/adjusted region on output.
+// Return a new/adjusted memory base to be used to stack/tls data.
+void* _emscripten_init_pthread(void *base, size_t* size, pid_t tid);
+
 // Wake the target thread in case it is blocked in emscripten_futex_wait.
 // Note: If threads directly use lower level APIs such
 // __builtin_wasm_memory_atomic_waitXX then they will not be woken by
 // this method.
 void _emscripten_thread_notify(pthread_t thread);
+
+// Internal, promise-returning API used to implement
+// emscripten_atomic_wait_suspending.
+intptr_t _emscripten_atomic_wait_promise(volatile void *addr,
+                                         uint32_t value,
+                                         double maxWaitMilliseconds);
+
+// Internal function used in wasm worker builds (included here solely for
+// gen_sig_info.py).
+void __do_set_thread_state(void);

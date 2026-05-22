@@ -1,8 +1,8 @@
 (function (global, factory) {
 typeof exports === 'object' && typeof module !== 'undefined' ? factory(exports) :
 typeof define === 'function' && define.amd ? define(['exports'], factory) :
-(global = global || self, factory(global.Terser = {}));
-}(this, (function (exports) { 'use strict';
+(global = typeof globalThis !== 'undefined' ? globalThis : global || self, factory(global.Terser = {}));
+})(this, (function (exports) { 'use strict';
 
 /***********************************************************************
 
@@ -1161,7 +1161,7 @@ function parse($TEXT, options) {
     // Example: /* I count */ ( /* I don't */ foo() )
     // Useful because comments_before property of call with parens outside
     // contains both comments inside and outside these parens. Used to find the
-    // right #__PURE__ comments for an expression
+    
     const outer_comments_before_counts = new WeakMap();
 
     options = defaults(options, {
@@ -2404,7 +2404,7 @@ function parse($TEXT, options) {
             return new_(allow_calls);
         }
         if (is("name", "import") && is_token(peek(), "punc", ".")) {
-            return import_meta(allow_calls);
+            return parse_import_expr(allow_calls);
         }
         var start = S.token;
         var peeked;
@@ -2864,6 +2864,17 @@ function parse($TEXT, options) {
     function import_statement() {
         var start = prev();
 
+        // import source x from "..."
+        // import defer * as x from "..."
+        var phase = null;
+        if (is("name", "source") || is("name", "defer")) {
+            var peeked = peek();
+            if (!is_token(peeked, "name", "from") && !is_token(peeked, "punc", ",")) {
+                phase = S.token.value;
+                next();
+            }
+        }
+
         var imported_name;
         var imported_names;
         if (is("name")) {
@@ -2898,14 +2909,33 @@ function parse($TEXT, options) {
                 end: mod_str,
             }),
             assert_clause,
+            phase,
             end: S.token,
         });
     }
 
-    function import_meta(allow_calls) {
+    //   import.meta
+    //   import.source("module")
+    //   import.defer("module")
+    function parse_import_expr(allow_calls) {
         var start = S.token;
         expect_token("name", "import");
         expect_token("punc", ".");
+        if (is("name", "source") || is("name", "defer")) {
+            var phase = S.token.value;
+            next();
+            if (!is("punc", "(")) {
+                croak("'import." + phase + "' can only be used in a dynamic import");
+            }
+            next();
+            var args = expr_list(")");
+            return subscripts(new AST_DynamicImport({
+                start: start,
+                phase: phase,
+                args: args,
+                end: prev()
+            }), allow_calls);
+        }
         expect_token("name", "meta");
         return subscripts(new AST_ImportMeta({
             start: start,
@@ -5071,9 +5101,10 @@ var AST_NameMapping = DEFNODE("NameMapping", "foreign_name name", function AST_N
 
 var AST_Import = DEFNODE(
     "Import",
-    "imported_name imported_names module_name assert_clause",
+    "phase imported_name imported_names module_name assert_clause",
     function AST_Import(props) {
         if (props) {
+            this.phase = props.phase;
             this.imported_name = props.imported_name;
             this.imported_names = props.imported_names;
             this.module_name = props.module_name;
@@ -5087,6 +5118,7 @@ var AST_Import = DEFNODE(
     {
         $documentation: "An `import` statement",
         $propdoc: {
+            phase: "[string?] Phase keyword: 'source', 'defer', or null.",
             imported_name: "[AST_SymbolImport] The name of the variable holding the module's default export.",
             imported_names: "[AST_NameMapping*] The names of non-default imported variables",
             module_name: "[AST_String] String literal describing where this module came from",
@@ -5126,6 +5158,40 @@ var AST_ImportMeta = DEFNODE("ImportMeta", null, function AST_ImportMeta(props) 
 }, {
     $documentation: "A reference to import.meta",
 });
+
+var AST_DynamicImport = DEFNODE(
+    "DynamicImport",
+    "phase args",
+    function AST_DynamicImport(props) {
+        if (props) {
+            this.phase = props.phase;
+            this.args = props.args;
+            this.start = props.start;
+            this.end = props.end;
+        }
+
+        this.flags = 0;
+    },
+    {
+        $documentation: "A phased dynamic import expression: `import.source(specifier [, options])` or `import.defer(specifier [, options])`. Plain `import(x)` continues to be parsed as an AST_Call with a synthetic `import` SymbolRef callee.",
+        $propdoc: {
+            phase: "[string] Phase keyword ('source' or 'defer').",
+            args: "[AST_Node*] specifier followed by optional options argument"
+        },
+        _walk: function(visitor) {
+            return visitor._visit(this, function() {
+                var args = this.args;
+                for (var i = 0, len = args.length; i < len; i++) {
+                    args[i]._walk(visitor);
+                }
+            });
+        },
+        _children_backwards(push) {
+            let i = this.args.length;
+            while (i--) push(this.args[i]);
+        },
+    }
+);
 
 var AST_Export = DEFNODE(
     "Export",
@@ -6485,7 +6551,7 @@ var AST_Null = DEFNODE("Null", null, function AST_Null(props) {
     value: null
 }, AST_Atom);
 
-var AST_NaN = DEFNODE("NaN", null, function AST_NaN(props) {
+DEFNODE("NaN", null, function AST_NaN(props) {
     if (props) {
         this.start = props.start;
         this.end = props.end;
@@ -6497,7 +6563,7 @@ var AST_NaN = DEFNODE("NaN", null, function AST_NaN(props) {
     value: 0/0
 }, AST_Atom);
 
-var AST_Undefined = DEFNODE("Undefined", null, function AST_Undefined(props) {
+DEFNODE("Undefined", null, function AST_Undefined(props) {
     if (props) {
         this.start = props.start;
         this.end = props.end;
@@ -6521,7 +6587,7 @@ var AST_Hole = DEFNODE("Hole", null, function AST_Hole(props) {
     value: (function() {}())
 }, AST_Atom);
 
-var AST_Infinity = DEFNODE("Infinity", null, function AST_Infinity(props) {
+DEFNODE("Infinity", null, function AST_Infinity(props) {
     if (props) {
         this.start = props.start;
         this.end = props.end;
@@ -6706,7 +6772,7 @@ const _NOINLINE   = 0b00000100;
 const _KEY        = 0b00001000;
 const _MANGLEPROP = 0b00010000;
 
-// XXX Emscripten: export TreeWalker for walking through AST in acorn-optimizer.mjs.
+// XXX Emscripten: export TreeWalker for walking through AST in acorn-optimizer.js.
 exports.TreeWalker = TreeWalker;
 
 /***********************************************************************
@@ -7449,7 +7515,8 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                 imported_name: imported_name,
                 imported_names : imported_names,
                 module_name : from_moz(M.source),
-                assert_clause: assert_clause_from_moz(M.assertions)
+                assert_clause: assert_clause_from_moz(M.assertions),
+                phase: M.phase || null
             });
         },
 
@@ -7472,6 +7539,31 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                 end: my_end_token(M),
                 foreign_name: new AST_SymbolImportForeign({ name: "*" }),
                 name: from_moz(M.local)
+            });
+        },
+
+        ImportExpression: function(M) {
+            const args = [from_moz(M.source)];
+            if (M.options) {
+                args.push(from_moz(M.options));
+            }
+            if (M.phase) {
+                return new AST_DynamicImport({
+                    start: my_start_token(M),
+                    end: my_end_token(M),
+                    phase: M.phase,
+                    args: args
+                });
+            }
+            return new AST_Call({
+                start: my_start_token(M),
+                end: my_end_token(M),
+                expression: from_moz({
+                    type: "Identifier",
+                    name: "import"
+                }),
+                optional: false,
+                args
             });
         },
 
@@ -7887,19 +7979,6 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             });
         },
 
-        ImportExpression: function(M) {
-          let import_token = my_start_token(M);
-          return new AST_Call({
-            start      : import_token,
-            end        : my_end_token(M),
-            expression : new AST_SymbolRef({
-              start    : import_token,
-              end      : import_token,
-              name     : "import"
-            }),
-            args       : [from_moz(M.source)]
-          });
-        }
     };
 
     MOZ_TO_ME.UpdateExpression =
@@ -8117,6 +8196,16 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
             callee: to_moz(M.expression),
             optional: M.optional,
             arguments: M.args.map(to_moz)
+        };
+    });
+
+    def_to_moz(AST_DynamicImport, function To_Moz_ImportExpression(M) {
+        const [source, options] = M.args.map(to_moz);
+        return {
+            type: "ImportExpression",
+            source,
+            options: options || null,
+            phase: M.phase
         };
     });
 
@@ -8347,12 +8436,14 @@ def_transform(AST_PrefixedTemplateString, function(self, tw) {
                 });
             }
         }
-        return {
+        var moz = {
             type: "ImportDeclaration",
             specifiers: specifiers,
             source: to_moz(M.module_name),
             assertions: assert_clause_to_moz(M.assert_clause)
         };
+        if (M.phase) moz.phase = M.phase;
+        return moz;
     });
 
     def_to_moz(AST_ImportMeta, function To_Moz_MetaProperty() {
@@ -9962,9 +10053,9 @@ function OutputStream(options) {
 // XXX Emscripten localmod: Add a node type for a parenthesized expression so that we can retain
 // Closure annotations that need a form "/**annotation*/(expression)"
     DEFPRINT(AST_ParenthesizedExpression, function(self, output) {
-        output.print('(');
+        output.print("(");
         self.body.print(output);
-        output.print(')');
+        output.print(")");
     });
 // XXX End Emscripten localmod
     function print_braced_empty(self, output) {
@@ -10398,6 +10489,10 @@ function OutputStream(options) {
     DEFPRINT(AST_Import, function(self, output) {
         output.print("import");
         output.space();
+        if (self.phase) {
+            output.print(self.phase);
+            output.space();
+        }
         if (self.imported_name) {
             self.imported_name.print(output);
         }
@@ -10437,6 +10532,15 @@ function OutputStream(options) {
     });
     DEFPRINT(AST_ImportMeta, function(self, output) {
         output.print("import.meta");
+    });
+    DEFPRINT(AST_DynamicImport, function(self, output) {
+        output.print("import." + self.phase);
+        output.with_parens(function() {
+            self.args.forEach(function(arg, i) {
+                if (i) output.comma();
+                arg.print(output);
+            });
+        });
     });
 
     DEFPRINT(AST_NameMapping, function(self, output) {
@@ -12134,4 +12238,4 @@ const base54 = (() => {
 exports.AST_Node = AST_Node;
 exports.AST_Token = AST_Token;
 
-})));
+}));

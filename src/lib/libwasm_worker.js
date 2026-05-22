@@ -22,6 +22,10 @@
 #endif // ~WASM_WORKERS
 
 {{{
+#if !PTHREADS
+  // In pthread builds this gets defined in libpthread.js
+  const CMD_UNCAUGHT_EXN = 8;
+#endif
   const workerSupportsFutexWait = () => AUDIO_WORKLET ? "!ENVIRONMENT_IS_AUDIO_WORKLET" : '1';
   const wasmWorkerJs = `
 #if MINIMAL_RUNTIME
@@ -215,7 +219,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
     if (ENVIRONMENT_IS_NODE) {
       /** @suppress {checkTypes} */
       worker.on('message', (msg) => {
-        if (msg['cmd'] == 'uncaughtException') {
+        if (msg.cmd == {{{ CMD_UNCAUGHT_EXN }}}) {
           // Message handler for Node.js specific out-of-order behavior:
           // https://github.com/nodejs/node/issues/59617
           // A worker sent an uncaught exception event. Re-raise it on the main thread.
@@ -297,6 +301,9 @@ if (ENVIRONMENT_IS_WASM_WORKER
   },
 
   emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync'],
+  // Closure's Atomics.waitAsync extern incorrectly returns Promise<string>,
+  // but the spec returns a result object with async/value fields.
+  emscripten_lock_async_acquire__docs: '/** @suppress {missingProperties} */',
   emscripten_lock_async_acquire: (lock, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let tryAcquireLock = () => {
       do {
@@ -316,6 +323,9 @@ if (ENVIRONMENT_IS_WASM_WORKER
   },
 
   emscripten_semaphore_async_acquire__deps: ['$polyfillWaitAsync'],
+  // Closure's Atomics.waitAsync extern incorrectly returns Promise<string>,
+  // but the spec returns a result object with async/value fields.
+  emscripten_semaphore_async_acquire__docs: '/** @suppress {missingProperties} */',
   emscripten_semaphore_async_acquire: (sem, num, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let dispatch = (idx, ret) => {
       setTimeout(() => {
@@ -347,7 +357,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
   // `__set_thread_state` lazily to save code size for programs that don't use
   // the threads state.
   __do_set_thread_state__deps: ['__set_thread_state'],
-  __do_set_thread_state: (tb) => {
+  __do_set_thread_state: () => {
     ___set_thread_state(
       /*thread_ptr=*/0,
 #if AUDIO_WORKLET

@@ -1,257 +1,267 @@
-var m = globalThis.Module || "undefined" != typeof Module ? Module : {}, q = !!globalThis.AudioWorkletGlobalScope, r = "em-ww" == globalThis.name || q, t, z, J, E, G, I, v, X, F, D, C, Y, A, Z;
+var m = globalThis.Module || typeof Module != "undefined" ? Module : {}, r = !!globalThis.WorkerGlobalScope, t = !!globalThis.AudioWorkletGlobalScope, u = globalThis.name == "em-ww" || t, v, A, K, F, H, J, x, W, O, G, E, D, X, C, Z;
 
-function u(a) {
-    t = a;
-    v = a.H;
-    x();
-    m ||= {};
-    m.wasm = a.G;
+function w(a) {
+    v = a;
+    x = a.I;
     y();
-    a.G = a.H = 0;
+    m ||= {};
+    m.wasm = a.H;
+    z();
+    a.H = a.I = 0;
 }
 
-r && !q && (onmessage = a => {
+u && !t && (onmessage = a => {
     onmessage = null;
-    u(a.data);
+    w(a.data);
 });
 
-if (q) {
+if (t) {
     function a(c) {
-        class l extends AudioWorkletProcessor {
+        class k extends AudioWorkletProcessor {
             constructor(d) {
                 super();
                 d = d.processorOptions;
-                this.v = A.get(d.v);
-                this.A = d.A;
+                this.A = C.get(d.A);
+                this.B = d.B;
                 this.u = d.u;
-                this.s = 4 * this.u;
-                this.B = Array(Math.min((t.F - 16) / this.s | 0, 64));
-                this.L();
+                this.v = this.u * 4;
+                this.C = Array(Math.min((v.G - 16) / this.v | 0, 64));
+                this.J();
             }
-            L() {
-                for (var d = C(), h = D(this.B.length * this.s) >> 2, g = this.B.length - 1; 0 <= g; g--) this.B[g] = E.subarray(h, h += this.u);
-                F(d);
+            J() {
+                for (var d = D(), g = E(this.C.length * this.v) >> 2, f = this.C.length - 1; f >= 0; f--) this.C[f] = F.subarray(g, g += this.u);
+                G(d);
             }
             static get parameterDescriptors() {
                 return c;
             }
-            process(d, h, g) {
-                var e = d.length, w = h.length, f, p, k = 12 * (e + w), n = 0;
-                for (f of d) n += f.length;
-                n *= this.s;
-                var H = 0;
-                for (f of h) H += f.length;
-                n += H * this.s;
-                var O = 0;
-                for (f in g) ++O, k += 8, n += g[f].byteLength;
-                var V = C(), B = k + n + 15 & -16;
-                k = D(B);
-                n = k + (B - n);
-                B = k;
-                for (f of d) {
-                    G[k >> 2] = f.length;
-                    G[k + 4 >> 2] = this.u;
-                    G[k + 8 >> 2] = n;
-                    k += 12;
-                    for (p of f) E.set(p, n >> 2), n += this.s;
+            process(d, g, f) {
+                var l = d.length, n = g.length, e, q, h = (l + n) * 12, p = 0;
+                for (e of d) p += e.length;
+                p *= this.v;
+                var I = 0;
+                for (e of g) I += e.length;
+                p += I * this.v;
+                var P = 0;
+                for (e in f) ++P, h += 8, p += f[e].byteLength;
+                var Y = D(), B = h + p + 15 & -16;
+                h = E(B);
+                p = h + (B - p);
+                B = h;
+                for (e of d) {
+                    H[h >> 2] = e.length;
+                    H[h + 4 >> 2] = this.u;
+                    H[h + 8 >> 2] = p;
+                    h += 12;
+                    for (q of e) F.set(q, p >> 2), p += this.v;
                 }
-                d = k;
-                for (f = 0; p = g[f++]; ) G[k >> 2] = p.length, G[k + 4 >> 2] = n, k += 8, E.set(p, n >> 2), 
-                n += 4 * p.length;
-                g = k;
-                for (f of h) G[k >> 2] = f.length, G[k + 4 >> 2] = this.u, G[k + 8 >> 2] = n, k += 12, 
-                n += this.s * f.length;
-                if (e = this.v(e, B, w, g, O, d, this.A)) for (f of h) for (p of f) p.set(this.B[--H]);
-                F(V);
-                return !!e;
+                d = h;
+                for (e = 0; q = f[e++]; ) H[h >> 2] = q.length, H[h + 4 >> 2] = p, h += 8, F.set(q, p >> 2), 
+                p += q.length * 4;
+                f = h;
+                for (e of g) H[h >> 2] = e.length, H[h + 4 >> 2] = this.u, H[h + 8 >> 2] = p, h += 12, 
+                p += this.v * e.length;
+                if (l = this.A(l, B, n, f, P, d, this.B)) for (e of g) for (q of e) q.set(this.C[--I]);
+                G(Y);
+                return !!l;
             }
         }
-        return l;
+        return k;
     }
     var port = globalThis.port || {};
     class b extends AudioWorkletProcessor {
         constructor(c) {
             super();
-            u(c.processorOptions);
+            w(c.processorOptions);
             port instanceof MessagePort || (this.port.onmessage = port.onmessage, port = this.port);
         }
         process() {}
     }
     registerProcessor("em-bootstrap", b);
     port.onmessage = async c => {
-        await z;
+        await A;
         c = c.data;
-        c._boot ? u(c) : c._wpn ? (registerProcessor(c._wpn, a(c.I)), port.postMessage({
-            _wsc: c.v,
-            C: [ c.J, 1, c.A ]
-        })) : c._wsc && A.get(c._wsc)(...c.C);
-    };
-}
-
-function x() {
-    var a = v.buffer;
-    I = new Uint8Array(a);
-    J = new Int32Array(a);
-    G = new Uint32Array(a);
-    E = new Float32Array(a);
-}
-
-r || (v = m.mem || new WebAssembly.Memory({
-    initial: 256,
-    maximum: 256,
-    shared: !0
-}), x());
-
-var K = [], L = a => {
-    a = a.data;
-    let b = a._wsc;
-    b && A.get(b)(...a.x);
-}, M = a => {
-    K.push(a);
-}, N = a => {
-    a = a.data;
-    var b = a._wsc;
-    b && A.get(b)(...a.C);
-}, Q = (a, b, c, l, d, h) => {
-    var g = P[b], e = g.audioWorklet, w = () => {
-        A.get(d)(b, 0, h);
-    };
-    if (!e) return w();
-    e.addModule(m.js).then((() => {
-        e.port || (e.port = {
-            postMessage: f => {
-                f._boot ? (e.D = new AudioWorkletNode(g, "em-bootstrap", {
-                    processorOptions: f
-                }), e.D.port.onmessage = p => {
-                    e.port.onmessage(p);
-                }) : e.D.port.postMessage(f);
-            }
-        });
-        e.port.postMessage({
-            _boot: 1,
-            M: a,
-            G: m.wasm,
-            H: v,
-            K: c,
-            F: l
-        });
-        e.port.onmessage = N;
-        A.get(d)(b, 1, h);
-    })).catch(w);
-}, R = (a, b, c, l) => {
-    b = P[b];
-    P[a].connect(b.destination || b, c, l);
-}, P = {}, S = 0, T = globalThis.TextDecoder && new TextDecoder, U = (a = 0) => {
-    for (var b = I, c = a, l = c + void 0; b[c] && !(c >= l); ) ++c;
-    if (16 < c - a && b.buffer && T) return T.decode(b.slice(a, c));
-    for (l = ""; a < c; ) {
-        var d = b[a++];
-        if (d & 128) {
-            var h = b[a++] & 63;
-            if (192 == (d & 224)) l += String.fromCharCode((d & 31) << 6 | h); else {
-                var g = b[a++] & 63;
-                d = 224 == (d & 240) ? (d & 15) << 12 | h << 6 | g : (d & 7) << 18 | h << 12 | g << 6 | b[a++] & 63;
-                65536 > d ? l += String.fromCharCode(d) : (d -= 65536, l += String.fromCharCode(55296 | d >> 10, 56320 | d & 1023));
-            }
-        } else l += String.fromCharCode(d);
-    }
-    return l;
-}, aa = a => {
-    if (a) {
-        var b = G[a >> 2];
-        b = (b ? U(b) : "") || void 0;
-        var c = J[a + 8 >> 2];
-        a = {
-            latencyHint: b,
-            sampleRate: G[a + 4 >> 2] || void 0,
-            N: 0 > c ? "hardware" : c || "default"
-        };
-    } else a = void 0;
-    a = new AudioContext(a);
-    P[++S] = a;
-    return S;
-}, ba = (a, b, c, l, d) => {
-    var h = c ? J[c + 4 >> 2] : 0;
-    if (c) {
-        var g = J[c >> 2], e = G[c + 8 >> 2], w = h;
-        if (e) {
-            e >>= 2;
-            for (var f = []; w--; ) f.push(G[e++]);
-            e = f;
-        } else e = void 0;
-        c = {
-            numberOfInputs: g,
-            numberOfOutputs: h,
-            outputChannelCount: e,
-            channelCount: G[c + 12 >> 2] || void 0,
-            channelCountMode: [ , "clamped-max", "explicit" ][J[c + 16 >> 2]],
-            channelInterpretation: [ , "discrete" ][J[c + 20 >> 2]],
-            processorOptions: {
-                v: l,
-                A: d,
-                u: P[a].renderQuantumSize || 128
-            }
-        };
-    } else c = void 0;
-    a = new AudioWorkletNode(P[a], b ? U(b) : "", c);
-    P[++S] = a;
-    return S;
-}, ca = (a, b, c, l) => {
-    var d = (d = G[b >> 2]) ? U(d) : "", h = J[b + 4 >> 2];
-    b = G[b + 8 >> 2];
-    for (var g = [], e = 0; h--; ) g.push({
-        name: e++,
-        defaultValue: E[b >> 2],
-        minValue: E[b + 4 >> 2],
-        maxValue: E[b + 8 >> 2],
-        automationRate: (J[b + 12 >> 2] ? "k" : "a") + "-rate"
-    }), b += 16;
-    P[a].audioWorklet.port.postMessage({
-        _wpn: d,
-        I: g,
-        J: a,
-        v: c,
-        A: l
-    });
-}, da = () => !1, ea = () => q ? () => 138 : a => (a.set(crypto.getRandomValues(new Uint8Array(a.byteLength))), 
-0), W = a => (W = ea())(a), fa = (a, b) => W(I.subarray(a, a + b));
-
-function ha(a) {
-    let b = document.createElement("button");
-    b.innerHTML = "Toggle playback";
-    document.body.appendChild(b);
-    a = P[a];
-    b.onclick = () => {
-        "running" != a.state ? a.resume() : a.suspend();
+        c._boot ? w(c) : c._wpn ? (registerProcessor(c._wpn, a(c.K)), port.postMessage({
+            _wsc: c.A,
+            D: [ c.L, 1, c.B ]
+        })) : c._wsc && C.get(c._wsc)(...c.D);
     };
 }
 
 function y() {
-    Z = {
-        g: ha,
-        c: Q,
-        h: R,
-        e: aa,
-        i: ba,
-        f: ca,
-        b: da,
-        a: v,
-        d: fa
+    var a = x.buffer;
+    J = new Uint8Array(a);
+    K = new Int32Array(a);
+    H = new Uint32Array(a);
+    F = new Float32Array(a);
+}
+
+u || (x = m.mem || new WebAssembly.Memory({
+    initial: 256,
+    maximum: 256,
+    shared: !0
+}), y());
+
+var L = [], M = a => {
+    a = a.data;
+    var b = a._wsc;
+    b && C.get(b)(...a.x);
+}, N = a => {
+    L.push(a);
+}, aa = () => {
+    O(0, !r && !t, !u, r && !t);
+}, ba = a => {
+    a = a.data;
+    var b = a._wsc;
+    b && C.get(b)(...a.D);
+}, ca = (a, b, c, k, d, g, f) => {
+    var l = Q[b], n = l.audioWorklet;
+    d = () => {
+        C.get(g)(b, 0, f);
     };
-    z = WebAssembly.instantiate(m.wasm, {
+    if (!n) return d();
+    n.addModule(m.js).then((() => {
+        n.port || (n.port = {
+            postMessage: e => {
+                e._boot ? (n.F = new AudioWorkletNode(l, "em-bootstrap", {
+                    processorOptions: e
+                }), n.F.port.onmessage = q => {
+                    n.port.onmessage(q);
+                }) : n.F.port.postMessage(e);
+            }
+        });
+        n.port.postMessage({
+            _boot: 1,
+            N: a,
+            H: m.wasm,
+            I: x,
+            M: c,
+            G: k
+        });
+        n.port.onmessage = ba;
+        C.get(g)(b, 1, f);
+    })).catch(d);
+}, da = (a, b, c, k) => {
+    b = Q[b];
+    Q[a].connect(b.destination || b, c, k);
+}, Q = {}, R = 0, S = globalThis.TextDecoder && new TextDecoder, T = (a = 0) => {
+    for (var b = J, c = a, k = c + void 0; b[c] && !(c >= k); ) ++c;
+    if (c - a > 16 && b.buffer && S) return S.decode(b.slice(a, c));
+    for (k = ""; a < c; ) {
+        var d = b[a++];
+        if (d & 128) {
+            var g = b[a++] & 63;
+            if ((d & 224) == 192) k += String.fromCharCode((d & 31) << 6 | g); else {
+                var f = b[a++] & 63;
+                d = (d & 240) == 224 ? (d & 15) << 12 | g << 6 | f : (d & 7) << 18 | g << 12 | f << 6 | b[a++] & 63;
+                d < 65536 ? k += String.fromCharCode(d) : (d -= 65536, k += String.fromCharCode(55296 | d >> 10, 56320 | d & 1023));
+            }
+        } else k += String.fromCharCode(d);
+    }
+    return k;
+}, ea = a => {
+    if (a) {
+        var b = H[a >> 2];
+        b = (b ? T(b) : "") || void 0;
+        var c = K[a + 8 >> 2];
+        a = {
+            latencyHint: b,
+            sampleRate: H[a + 4 >> 2] || void 0,
+            O: c < 0 ? "hardware" : c || "default"
+        };
+    } else a = void 0;
+    a = new AudioContext(a);
+    Q[++R] = a;
+    return R;
+}, fa = (a, b, c, k, d) => {
+    var g = c ? K[c + 4 >> 2] : 0;
+    if (c) {
+        var f = K[c >> 2], l = H[c + 8 >> 2], n = g;
+        if (l) {
+            l >>= 2;
+            for (var e = []; n--; ) e.push(H[l++]);
+            l = e;
+        } else l = void 0;
+        c = {
+            numberOfInputs: f,
+            numberOfOutputs: g,
+            outputChannelCount: l,
+            channelCount: H[c + 12 >> 2] || void 0,
+            channelCountMode: [ , "clamped-max", "explicit" ][K[c + 16 >> 2]],
+            channelInterpretation: [ , "discrete" ][K[c + 20 >> 2]],
+            processorOptions: {
+                A: k,
+                B: d,
+                u: Q[a].renderQuantumSize || 128
+            }
+        };
+    } else c = void 0;
+    a = new AudioWorkletNode(Q[a], b ? T(b) : "", c);
+    Q[++R] = a;
+    return R;
+}, ha = (a, b, c, k) => {
+    var d = (d = H[b >> 2]) ? T(d) : "", g = K[b + 4 >> 2];
+    b = H[b + 8 >> 2];
+    for (var f = [], l = 0; g--; ) f.push({
+        name: l++,
+        defaultValue: F[b >> 2],
+        minValue: F[b + 4 >> 2],
+        maxValue: F[b + 8 >> 2],
+        automationRate: (K[b + 12 >> 2] ? "k" : "a") + "-rate"
+    }), b += 16;
+    Q[a].audioWorklet.port.postMessage({
+        _wpn: d,
+        K: f,
+        L: a,
+        A: c,
+        B: k
+    });
+}, U = globalThis.performance?.now ? () => performance.now() : Date.now, ia = a => {
+    a = [ a ? T(a) : "" ];
+    return console.log(...a);
+}, ja = () => !1, ka = () => t ? () => 138 : a => (a.set(crypto.getRandomValues(new Uint8Array(a.byteLength))), 
+0), V = a => (V = ka())(a), la = (a, b) => V(J.subarray(a, a + b));
+
+function ma(a) {
+    var b = document.createElement("button");
+    b.innerHTML = "Toggle playback";
+    document.body.appendChild(b);
+    a = Q[a];
+    b.onclick = () => {
+        a.state != "running" ? a.resume() : a.suspend();
+    };
+}
+
+function z() {
+    Z = {
+        i: ma,
+        e: aa,
+        d: ca,
+        k: da,
+        g: ea,
+        l: fa,
+        h: ha,
+        b: U,
+        c: ia,
+        j: ja,
+        a: x,
+        f: la
+    };
+    A = WebAssembly.instantiate(m.wasm, {
         a: Z
     }).then((a => {
         a = (a.instance || a).exports;
-        X = a.k;
-        F = a.m;
-        D = a.n;
+        W = a.n;
+        O = a.p;
+        G = a.q;
+        E = a.r;
+        D = a.s;
+        X = a.t;
         C = a.o;
-        Y = a.p;
-        A = a.l;
-        r ? (Y(t.M, t.K, t.F), q || (removeEventListener("message", M), K = K.forEach(L), 
-        addEventListener("message", L))) : a.j();
-        r || X();
+        u ? (X(v.N, v.M, v.G), t || (removeEventListener("message", N), L = L.forEach(M), 
+        addEventListener("message", M))) : a.m();
+        u || W();
     }));
 }
 
-r || y();
+u || z();

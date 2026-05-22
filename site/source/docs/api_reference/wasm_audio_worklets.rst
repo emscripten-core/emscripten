@@ -133,8 +133,8 @@ which resumes the audio context when the user clicks on the DOM Canvas element t
     };
 
     // Create node
-    EMSCRIPTEN_AUDIO_WORKLET_NODE_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext,
-                                                              "noise-generator", &options, &GenerateNoise, 0);
+    EMSCRIPTEN_WEBAUDIO_T wasmAudioWorklet = emscripten_create_wasm_audio_worklet_node(audioContext,
+                                                    "noise-generator", &options, &GenerateNoise, 0);
 
     // Connect it to audio context destination
     emscripten_audio_node_connect(wasmAudioWorklet, audioContext, 0, 0);

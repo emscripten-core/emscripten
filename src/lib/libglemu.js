@@ -857,7 +857,7 @@ var LibraryGLEmulation = {
 #if !FULL_ES2
   $GLImmediate__postset: 'GLImmediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(() => GLImmediate.init());',
 #endif
-  $GLImmediate__deps: ['$Browser', '$GL', '$GLEmulation'],
+  $GLImmediate__deps: ['$Browser', '$GL', '$GLEmulation', '$webglBufferSubData'],
   $GLImmediate: {
     MapTreeLib: null,
     spawnMapTreeLib: () => {
@@ -2552,7 +2552,7 @@ var LibraryGLEmulation = {
               GLImmediate.lastArrayBuffer = arrayBuffer;
             }
 
-            GLctx.bufferSubData(GLctx.ARRAY_BUFFER, start, GLImmediate.vertexData.subarray(start >> 2, end >> 2));
+            webglBufferSubData(GLctx.ARRAY_BUFFER, start, (end - start) >> 2, start >> 2, GLImmediate.vertexData);
           }
 #if GL_UNSAFE_OPTS
           if (canSkip) return;
@@ -3046,12 +3046,13 @@ var LibraryGLEmulation = {
         }
         if (!GLctx.currentElementArrayBufferBinding) {
           // If no element array buffer is bound, then indices is a literal pointer to clientside data
+          var byteSize = numProvidedIndexes << 1;
 #if ASSERTIONS
-          assert(numProvidedIndexes << 1 <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
+          assert(byteSize <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
 #endif
-          var indexBuffer = GL.getTempIndexBuffer(numProvidedIndexes << 1);
+          var indexBuffer = GL.getTempIndexBuffer(byteSize);
           GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
-          GLctx.bufferSubData(GLctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'ptr', 'ptr + (numProvidedIndexes << 1)') }}});
+          webglBufferSubData(GLctx.ELEMENT_ARRAY_BUFFER, 0, byteSize, ptr);
           ptr = 0;
           emulatedElementArrayBuffer = true;
         }
