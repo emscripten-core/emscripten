@@ -14845,7 +14845,7 @@ addToLibrary({
   @requires_rust
   def test_rust_integration_basics(self):
     copytree(test_file('rust/basics'), '.')
-    self.run_process(['cargo', 'build'])
+    self.run_process(['cargo', 'build', '--target=wasm32-unknown-emscripten'])
     lib = 'target/wasm32-unknown-emscripten/debug/libbasics.a'
     self.assertExists(lib)
 
