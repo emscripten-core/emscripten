@@ -312,6 +312,7 @@ var LibraryPThread = {
             // back into user code to free thread data. Without this it's possible
             // the unwind or ExitStatus exception could escape here.
             callUserCallback(() => cleanupThread(d.thread));
+            break;
 #if MAIN_MODULE
           case {{{ CMD_MARK_AS_FINISHED }}}:
             markAsFinished(d.thread);
