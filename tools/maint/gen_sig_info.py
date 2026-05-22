@@ -388,7 +388,7 @@ def main(args):
                               'LINK_AS_CXX': 1,
                               'SHARED_MEMORY': 0,
                               'AUTO_JS_LIBRARIES': 0}, cxx=True)
-  extract_sig_info(sig_info, {'AUDIO_WORKLET': 1, 'WASM_WORKERS': 1, 'JS_LIBRARIES': ['libwasm_worker.js', 'libwebaudio.js']})
+  extract_sig_info(sig_info, {'AUDIO_WORKLET': 1, 'WASM_WORKERS': 1, 'PTHREADS': 0, 'JS_LIBRARIES': ['libwasm_worker.js', 'libwebaudio.js']})
   extract_sig_info(sig_info, {'USE_GLFW': 3}, ['-DGLFW3'])
   extract_sig_info(sig_info, {'JS_LIBRARIES': ['libembind.js', 'libemval.js'],
                               'USE_SDL': 0,

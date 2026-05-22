@@ -226,6 +226,7 @@ sigs = {
   __cxa_rethrow_primary_exception__sig: 'vp',
   __cxa_throw__sig: 'vppp',
   __cxa_uncaught_exceptions__sig: 'i',
+  __do_set_thread_state__sig: 'v',
   __handle_stack_overflow__sig: 'vp',
   __pthread_create_js__sig: 'ipppp',
   __resumeException__sig: 'vp',
