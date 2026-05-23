@@ -3332,8 +3332,8 @@ GROWABLE_ARRAYBUFFERS
 =====================
 
 Enable support for GrowableSharedArrayBuffer.
-This features is only available behind a flag in recent versions of
-node/chrome.
+This feature has only recently become available across major browser engines
+and Node.js.
 
 .. note:: This is an experimental setting
 

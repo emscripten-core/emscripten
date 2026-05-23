@@ -2189,8 +2189,8 @@ var WASM_ESM_INTEGRATION = false;
 var JS_BASE64_API = false;
 
 // Enable support for GrowableSharedArrayBuffer.
-// This features is only available behind a flag in recent versions of
-// node/chrome.
+// This feature has only recently become available across major browser engines
+// and Node.js.
 // [experimental]
 // [link]
 var GROWABLE_ARRAYBUFFERS = false;
