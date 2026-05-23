@@ -301,9 +301,6 @@ if (ENVIRONMENT_IS_WASM_WORKER
   },
 
   emscripten_lock_async_acquire__deps: ['$polyfillWaitAsync'],
-  // Closure's Atomics.waitAsync extern incorrectly returns Promise<string>,
-  // but the spec returns a result object with async/value fields.
-  emscripten_lock_async_acquire__docs: '/** @suppress {missingProperties} */',
   emscripten_lock_async_acquire: (lock, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let tryAcquireLock = () => {
       do {
@@ -323,9 +320,6 @@ if (ENVIRONMENT_IS_WASM_WORKER
   },
 
   emscripten_semaphore_async_acquire__deps: ['$polyfillWaitAsync'],
-  // Closure's Atomics.waitAsync extern incorrectly returns Promise<string>,
-  // but the spec returns a result object with async/value fields.
-  emscripten_semaphore_async_acquire__docs: '/** @suppress {missingProperties} */',
   emscripten_semaphore_async_acquire: (sem, num, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let dispatch = (idx, ret) => {
       setTimeout(() => {
