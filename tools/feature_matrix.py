@@ -67,10 +67,10 @@ min_browser_versions = {
     'node': 130000,
   },
   Feature.MEMORY64: {
-    'chrome': 128,
-    'firefox': 129,
+    'chrome': 133,
+    'firefox': 134,
     'safari': UNSUPPORTED,
-    'node': 230000,
+    'node': 240000,
   },
   # Emscripten itself does not use this feature but we use it in our browser
   # tests.
