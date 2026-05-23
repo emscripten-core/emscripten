@@ -1184,6 +1184,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_thread_init': '_p_____',
     '_emscripten_thread_free_data': '_p',
     '_emscripten_dlsync_self_async': '_p',
+    '_emscripten_proxy_dlsync': '_p',
     '_emscripten_proxy_dlsync_async': '_pp',
     '_emscripten_wasm_worker_initialize': '__p_',
     '_emscripten_proxy_poll_finish': '_pp_',
