@@ -50,7 +50,7 @@ enable_override_features = set()
 min_browser_versions = {
   Feature.NON_TRAPPING_FPTOINT: {
     'chrome': 75,
-    'firefox': 65,
+    'firefox': 64,
     'safari': 150000,
     'node': 130000,
   },
