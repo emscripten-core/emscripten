@@ -132,9 +132,12 @@ min_browser_versions = {
   # This feature is not used anywhere else except the test harness to detect
   # browser version.
   Feature.GROWABLE_ARRAYBUFFERS: {
-    'chrome': 136,
+    'chrome': 144,
     'firefox': 145,
-    'safari': UNSUPPORTED,
+    'safari': 260200,
+    # Supported with flag --experimental-wasm-rab-integration (TODO: Change
+    # this to unflagged version of Node.js 260000, see also the comment in
+    # Feature.WASM_EXCEPTIONS above)
     'node': 240000,
   },
 
@@ -264,3 +267,5 @@ def apply_min_browser_versions():
       enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, 'Wasm Legacy exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=1)')
     else:
       enable_feature(Feature.WASM_EXCEPTIONS, 'Wasm exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')
+  if settings.GROWABLE_ARRAYBUFFERS:
+    enable_feature(Feature.GROWABLE_ARRAYBUFFERS, 'GrowableSharedArrayBuffer')
