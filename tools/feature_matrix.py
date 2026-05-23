@@ -51,7 +51,7 @@ min_browser_versions = {
   # https://caniuse.com/wasm-nontrapping-fptoint
   Feature.NON_TRAPPING_FPTOINT: {
     'chrome': 75,
-    'firefox': 65,
+    'firefox': 64,
     'safari': 150000,
     'node': 130000,
   },
