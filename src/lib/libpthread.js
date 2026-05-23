@@ -293,7 +293,7 @@ var LibraryPThread = {
           return;
         }
 
-        if (d === 'setimmediate') {
+        if (d === 'setimmediate' || d === '_si') {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
           worker.postMessage(d);
