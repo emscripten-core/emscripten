@@ -115,6 +115,12 @@ var LibraryPThread = {
     // the reverse mapping, each worker has a `pthread_ptr` when its running a
     // pthread.
     pthreads: {},
+#if MAIN_MODULE
+    outstandingPromises: {},
+    // Finished threads are threads that have finished running but we are not yet
+    // joined.
+    finishedThreads: new Set(),
+#endif
 #if ASSERTIONS
     nextWorkerID: 1,
 #endif
@@ -130,8 +136,7 @@ var LibraryPThread = {
       while (pthreadPoolSize--) {
         PThread.allocateUnusedWorker();
       }
-#endif
-#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
+#if !MINIMAL_RUNTIME
       // MINIMAL_RUNTIME takes care of calling loadWasmModuleToAllWorkers
       // in postamble_minimal.js
       addOnPreRun(async () => {
@@ -142,13 +147,8 @@ var LibraryPThread = {
         removeRunDependency('loading-workers');
 #endif // PTHREAD_POOL_DELAY_LOAD
       });
-#endif // !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
-#if MAIN_MODULE
-      PThread.outstandingPromises = {};
-      // Finished threads are threads that have finished running but we are not yet
-      // joined.
-      PThread.finishedThreads = new Set();
-#endif
+#endif // !MINIMAL_RUNTIME
+#endif // PTHREAD_POOL_SIZE
     },
 
 #if PTHREADS_PROFILING
