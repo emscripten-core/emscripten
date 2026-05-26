@@ -165,9 +165,6 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
 static bool do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
-#ifdef EMSCRIPTEN_DYNAMIC_LINKING
-  bool is_dlopen_queue = q == &dlopen_proxying_queue;
-#endif
   bool is_system_queue = q == &system_proxying_queue;
   if (is_system_queue) {
     system_queue_in_use = true;
@@ -188,7 +185,7 @@ static bool do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   // after enqueueing the task.
   bool needs_notify =
 #ifdef EMSCRIPTEN_DYNAMIC_LINKING
-    is_dlopen_queue ||
+    q == &dlopen_proxying_queue ||
 #endif
     (is_system_queue &&
      pthread_equal(target_thread, emscripten_main_runtime_thread_id()));
