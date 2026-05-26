@@ -1,11 +1,8 @@
 #include <assert.h>
-#include <stdbool.h>
-#include <stdatomic.h>
 #include <dlfcn.h>
 #include <pthread.h>
 #include <stdio.h>
 #include <unistd.h>
-#include <emscripten/threading.h>
 
 #define NUM_THREADS 8
 
@@ -28,8 +25,6 @@ static void* thread_main(void* arg) {
   // Wait until all threads + main have reached the barrier
   pthread_barrier_wait(&started);
 
-  usleep(1000000);
-
   int* data_addr = p_side_data_address();
   assert(data_addr == expected_data_addr);
 
@@ -50,9 +45,6 @@ int main() {
   // Start threads before loading the shared library
   for (int i = 0; i < NUM_THREADS; ++i) {
     int rc = pthread_create(&threads[i], NULL, thread_main, (void*)(intptr_t)i);
-    assert(rc == 0);
-
-    rc = pthread_detach(threads[i]);
     assert(rc == 0);
   }
 
@@ -78,6 +70,10 @@ int main() {
 
   // Wait until all threads execute their entry points
   pthread_barrier_wait(&started);
+  for (int i = 0; i < NUM_THREADS; ++i) {
+    int rc = pthread_join(threads[i], NULL);
+    assert(rc == 0);
+  }
 
   dlclose(handle);
 
