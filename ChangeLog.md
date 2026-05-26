@@ -37,7 +37,7 @@ See docs/process.md for more on how version tagging works.
   manually transpile the output of emscripten (e.g. using babel for JS and
   binaryen for wasm). (#26677)
 - musl libc updated from v1.2.5 to v1.2.6. (#26860)
-- libpng port updated from 1.6.55 to 1.6.56. (#26592)
+- libpng port updated from 1.6.55 to 1.6.58. (#26592 and #26983)
 - The `-m64` compiler flag is now honored, and works as an alias for
   `-sMEMORY64` and/or `--target=wasm64`. (#26765)
 - The autopersistence feature in IDBFS mount now supports registering a global
