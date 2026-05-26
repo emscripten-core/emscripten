@@ -4051,8 +4051,8 @@ caught outer int: 123
 
     shutil.move(so_file, so_file + '.orig')
 
-    # Verify that building with -sSIDE_MODULE is essentially the same as building with `-shared -fPIC -sFAKE_DYLIBS=0`.
-    flags = ['-shared', '-fPIC', '-sFAKE_DYLIBS=0']
+    # Verify that building with -sSIDE_MODULE is essentially the same as building with `-shared -fPIC`
+    flags = ['-shared', '-fPIC']
     if isinstance(side, list):
       # side is just a library
       self.run_process([EMCC] + side + self.get_cflags() + flags + ['-o', so_file])
@@ -5079,7 +5079,8 @@ res64 - external 64\n''', header='''\
 
   @with_dylink_reversed
   def test_dylink_dot_a(self):
-    # .a linking must force all .o files inside it, when in a shared module
+    # Tests that it's possible to link a .a archive into a dynamic library using
+    # `-Wl,--whole-archive`
     create_file('third.c', 'int sidef() { return 36; }')
     create_file('fourth.c', 'int sideg() { return 17; }')
 
@@ -5097,7 +5098,7 @@ res64 - external 64\n''', header='''\
       }
     ''',
                      # contents of libfourth.a must be included, even if they aren't referred to!
-                     side=['libfourth.a', 'third.o'],
+                     side=['-Wl,--whole-archive', 'libfourth.a', '-Wl,--no-whole-archive', 'third.o'],
                      expected=['sidef: 36, sideg: 17.\n'], force_c=True)
 
   @with_dylink_reversed
@@ -5141,16 +5142,31 @@ main main sees -524, -534, 72.
 '''])
 
   @needs_make('mingw32-make')
-  @with_dylink_reversed
-  def test_dylink_zlib(self):
-    zlib_archive = self.get_zlib_library(cmake=WINDOWS, cflags=['-fPIC'])
+  @needs_dylink
+  @parameterized({
+    'cmake': (True,),
+    'configure': (False,),
+  })
+  def test_dylink_zlib(self, cmake):
+    if cmake:
+      output = self.run_process(['cmake', '--version'], stdout=PIPE).stdout
+      cmake_version = output.splitlines()[0].split()[-1].strip()
+      cmake_version = cmake_version.split('-')[0] # Remove trail like "4.2.0-rc3" -> "4.2.0"
+      cmake_version = tuple(int(part) for part in cmake_version.split('.'))
+      # We don't support dynamic linking with certain versions of cmake
+      # See https://gitlab.kitware.com/cmake/cmake/-/work_items/27240
+      if (cmake_version >= (4, 2, 0) and cmake_version < (4, 2, 6)) or \
+         (cmake_version >= (4, 3, 0) and cmake_version < (4, 3, 3)):
+        self.skipTest(f'incompatible cmake version {cmake_version}')
+    zlib_archive = self.get_zlib_library(cmake=cmake, target='libz.so.1.2.5', cflags=['-fPIC'])[0]
+    zlib_basename = os.path.basename(zlib_archive)
+    shutil.copyfile(zlib_archive, zlib_basename)
     # example.c uses K&R style function declarations
     self.cflags.append('-Wno-deprecated-non-prototype')
     self.cflags.append('-I' + test_file('third_party/zlib'))
-    self.dylink_test(main=read_file(test_file('third_party/zlib/example.c')),
-                     side=zlib_archive,
-                     expected=read_file(test_file('core/test_zlib.out')),
-                     force_c=True)
+    self.do_runf(test_file('third_party/zlib/example.c'),
+                 read_file(test_file('core/test_zlib.out')),
+                 cflags=['-L.', zlib_archive])
 
   # @with_dylink_reversed
   # def test_dylink_bullet(self):
@@ -6958,7 +6974,7 @@ void* operator new(size_t size) {
                             'codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o',
                             'codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o',
                             'bin/libopenjpeg.a'],
-                           configure=['cmake', '.'],
+                           configure=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'],
                            # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
                            make_args=[]) # no -j 2, since parallel builds can fail
 
@@ -8028,7 +8044,7 @@ void* operator new(size_t size) {
     self.assertIn((8, 3), src_to_addr)
 
     def get_dwarf_addr(line, col):
-      addrs = src_to_addr[(line, col)]
+      addrs = src_to_addr[line, col]
       # we assume the simple calls have one address
       self.assertEqual(len(addrs), 1)
       return int(addrs[0], 0)
@@ -10008,4 +10024,4 @@ omitexports0 = make_run('omitexports0', cflags=['-O0'], settings={'DECLARE_ASM_M
 jsmathz = make_run('jsmathz', cflags=['-Oz'], settings={'JS_MATH': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
-del TestCoreBase # noqa
+del TestCoreBase

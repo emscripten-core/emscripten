@@ -15,4 +15,4 @@ sys.path.insert(0, __rootdir__)
 
 from tools import shared
 
-shared.exec_process([shared.LLVM_DWP] + sys.argv[1:])
+shared.exec_process([shared.LLVM_DWP, *sys.argv[1:]])

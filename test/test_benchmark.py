@@ -422,7 +422,8 @@ class benchmark(common.RunnerCore):
       pass
     try:
       with common.chdir(os.path.expanduser('~/Dev/mozilla-central')):
-        fingerprint.append('sm: ' + [line for line in run_process(['hg', 'tip'], stdout=PIPE).stdout.splitlines() if 'changeset' in line][0])
+        hg_tip = run_process(['hg', 'tip'], stdout=PIPE).stdout
+        fingerprint.append('sm: ' + next(line for line in hg_tip.splitlines() if 'changeset' in line))
     except Exception:
       pass
     fingerprint.append('llvm: ' + config.LLVM_ROOT)
@@ -1067,7 +1068,10 @@ class benchmark(common.RunnerCore):
     src = read_file(test_file('benchmark/test_zlib_benchmark.c'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), configure=['cmake', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '.'], make=['cmake', '--build', '.', '--'], make_args=[], native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
+                              configure=['cmake', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '-DBUILD_SHARED_LIBS=OFF', '.'],
+                              make=['cmake', '--build', '.', '--'],
+                              make_args=[], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('zlib', src, 'ok.',
                       force_c=True, shared_args=['-I' + test_file('third_party/zlib')], lib_builder=lib_builder)

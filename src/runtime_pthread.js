@@ -47,7 +47,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
       var msgData = e['data'];
       //dbg('msgData: ' + Object.keys(msgData));
       var cmd = msgData.cmd;
-      if (cmd === 'load') { // Preload command that is called once per worker to parse and load the Emscripten code.
+      if (cmd == {{{ CMD_LOAD }}}) { // Preload command that is called once per worker to parse and load the Emscripten code.
 #if ASSERTIONS
         workerID = msgData.workerID;
 #endif
@@ -62,7 +62,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
         // And add a callback for when the runtime is initialized.
         startWorker = () => {
           // Notify the main thread that this thread has loaded.
-          postMessage({ cmd: 'loaded' });
+          postMessage({ cmd: {{{ CMD_LOADED }}} });
           // Process any messages that were queued before the thread was ready.
           for (let msg of messageQueue) {
             handleMessage(msg);
@@ -93,7 +93,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if RUNTIME_DEBUG
               dbg(`worker: calling handler on main thread: ${handler}`);
 #endif
-              postMessage({ cmd: 'callHandler', handler, args: args });
+              postMessage({ cmd: {{{ CMD_CALL_HANDLER }}}, handler, args: args });
             }
             // Rebind the out / err handlers if needed
             if (handler == 'print') out = Module[handler];
@@ -128,7 +128,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
 #endif // MINIMAL_RUNTIME
 #endif
-      } else if (cmd === 'run') {
+      } else if (cmd == {{{ CMD_RUN }}}) {
 #if ASSERTIONS
         assert(msgData.pthread_ptr);
 #endif
@@ -174,9 +174,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
           dbg(`worker: Pthread 0x${_pthread_self().toString(16)} completed its main entry point with an 'unwind', keeping the worker alive for asynchronous operation.`);
 #endif
         }
-      } else if (msgData.target === 'setimmediate') {
-        // no-op
-      } else if (cmd === 'checkMailbox') {
+      } else if (cmd == {{{ CMD_CHECK_MAILBOX }}}) {
         if (initializedJS) {
           checkMailbox();
         }

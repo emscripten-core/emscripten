@@ -46,7 +46,7 @@ logger = logging.getLogger('common')
 # If we are drawing a parallel swimlane graph of test output, we need to use a temp
 # file to track which tests were flaky so they can be graphed in orange color to
 # visually stand out.
-flaky_tests_log_filename = os.path.join(path_from_root('out/flaky_tests.txt'))
+flaky_tests_log_filename = path_from_root('out/flaky_tests.txt')
 
 EMTEST_DETECT_TEMPFILE_LEAKS = None
 EMTEST_SAVE_DIR = None
@@ -1517,7 +1517,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
 
     return poppler + freetype
 
-  def get_zlib_library(self, cmake, cflags=None):
+  def get_zlib_library(self, cmake, cflags=None, target='libz.a'):
     assert cmake or not WINDOWS, 'on windows, get_zlib_library only supports cmake'
 
     old_args = self.cflags.copy()
@@ -1531,12 +1531,16 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     # https://github.com/emscripten-core/emscripten/issues/16908 is fixed
     self.cflags.append('-Wno-pointer-sign')
     if cmake:
-      rtn = self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
-                             configure=['cmake', '.'],
+      if target == 'libz.a':
+        cmake_cmd = ['cmake', '-DBUILD_SHARED_LIBS=OFF', '.']
+      else:
+        cmake_cmd = ['cmake', '.']
+      rtn = self.get_library(os.path.join('third_party', 'zlib'), target,
+                             configure=cmake_cmd,
                              make=['cmake', '--build', '.', '--'],
                              make_args=[])
     else:
-      rtn = self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), make_args=['libz.a'])
+      rtn = self.get_library(os.path.join('third_party', 'zlib'), target, make_args=['libz.a', target])
     self.cflags = old_args
     return rtn
 

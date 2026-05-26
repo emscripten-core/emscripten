@@ -125,7 +125,7 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     settings.WASM_EXPORTS += ['__asyncify_state', '__asyncify_data']
 
   # start with the MVP features, and add any detected features.
-  building.binaryen_features = ['--mvp-features'] + metadata.features
+  building.binaryen_features = ['--mvp-features', *metadata.features]
   if settings.ASYNCIFY == 2:
     building.binaryen_features += ['--enable-reference-types']
 
@@ -403,13 +403,13 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     # check_call doesn't support the `input` argument.
     if asm_consts:
       validate = '\n'.join([f'var tmp = {f};' for _, f in asm_consts])
-      proc = subprocess.run(config.NODE_JS + ['--check', '-'], input=validate.encode('utf-8'))
+      proc = subprocess.run([*config.NODE_JS, '--check', '-'], input=validate.encode('utf-8'))
       if proc.returncode:
         exit_with_error(f'EM_ASM function validation failed (node returned {proc.returncode})')
 
     if em_js_funcs:
       validate = '\n'.join(em_js_funcs)
-      proc = subprocess.run(config.NODE_JS + ['--check', '-'], input=validate.encode('utf-8'))
+      proc = subprocess.run([*config.NODE_JS, '--check', '-'], input=validate.encode('utf-8'))
       if proc.returncode:
         exit_with_error(f'EM_JS function validation failed (node returned {proc.returncode})')
 
@@ -614,7 +614,7 @@ def finalize_wasm(infile, outfile, js_syms):
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
-  if not settings.STANDALONE_WASM and 'main' in metadata.all_exports or '__main_argc_argv' in metadata.all_exports:
+  if (not settings.STANDALONE_WASM and 'main' in metadata.all_exports) or '__main_argc_argv' in metadata.all_exports:
     if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTS:
       # If `_main` was unexpectedly exported we assume it was added to
       # EXPORT_IF_DEFINED by `phase_linker_setup` in order that we can detect
@@ -672,7 +672,7 @@ def create_tsd_exported_runtime_methods(metadata):
       exit_with_error('tsc executable not found in node_modules or in $PATH')
     # Use the full path from the which command so windows can find tsc.
     tsc = [tsc]
-  cmd = tsc + ['--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
+  cmd = [*tsc, '--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
                '--declaration',
                '--emitDeclarationOnly',
                '--allowJs', js_doc_file]
@@ -1184,6 +1184,7 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_thread_init': '_p_____',
     '_emscripten_thread_free_data': '_p',
     '_emscripten_dlsync_self_async': '_p',
+    '_emscripten_proxy_dlsync': '_p',
     '_emscripten_proxy_dlsync_async': '_pp',
     '_emscripten_wasm_worker_initialize': '__p_',
     '_emscripten_proxy_poll_finish': '_pp_',

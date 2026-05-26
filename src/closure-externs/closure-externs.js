@@ -51,17 +51,6 @@ Math.clz32 = function() {};
 Math.trunc = function() {};
 
 /**
- * Atomics
- */
-
-var Atomics = {};
-/**
- * @param {number=} maxWaitMilliseconds
- * @suppress {duplicate, checkTypes}
- */
-Atomics.waitAsync = function(i32a, index, value, maxWaitMilliseconds) {};
-
-/**
  * @const
  * @suppress {duplicate, checkTypes}
  */
@@ -234,3 +223,5 @@ Navigator.prototype.webkitGetUserMedia = function(
 var os = {};
 
 AudioWorkletProcessor.parameterDescriptors;
+
+var scheduler = {};

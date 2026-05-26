@@ -543,10 +543,10 @@ fi
     utils.write_file(EM_CONFIG, 'asdfasdfasdfasdf\n')
 
     # Test both relative and absolute paths to the config
-    self.run_process([EMCC, '--em-config', os.path.abspath('custom_config')] + MINIMAL_HELLO_WORLD)
+    self.run_process([EMCC, '--em-config', os.path.abspath('custom_config'), *MINIMAL_HELLO_WORLD])
     self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
-    self.run_process([EMCC, '--em-config', 'custom_config'] + MINIMAL_HELLO_WORLD)
+    self.run_process([EMCC, '--em-config', 'custom_config', *MINIMAL_HELLO_WORLD])
     self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
   def test_emcc_ports(self):
@@ -634,7 +634,7 @@ fi
     restore_and_set_up()
 
     def build():
-      return self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
+      return self.check_working([EMCC, *MINIMAL_HELLO_WORLD], '')
 
     def test():
       self.assertContained('Hello, world!', self.run_js('a.out.js'))
@@ -670,7 +670,7 @@ fi
     def test_with_fake(report, expected):
       make_fake(report)
       with env_modify({'EMCC_DEBUG': '1'}):
-        self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], expected)
+        self.check_working([EMCC, *MINIMAL_HELLO_WORLD, '-c'], expected)
 
     test_with_fake('got js backend! JavaScript (asm.js, emscripten) backend', 'LLVM has not been built with the WebAssembly backend')
     delete_dir(shared.CANONICAL_TEMP_DIR)

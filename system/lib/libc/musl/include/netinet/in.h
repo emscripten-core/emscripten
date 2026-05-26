@@ -132,7 +132,8 @@ uint16_t ntohs(uint16_t);
 
 #define IN6_IS_ADDR_V4COMPAT(a) \
         (((uint32_t *) (a))[0] == 0 && ((uint32_t *) (a))[1] == 0 && \
-         ((uint32_t *) (a))[2] == 0 && ((uint8_t *) (a))[15] > 1)
+         ((uint32_t *) (a))[2] == 0 && \
+         !IN6_IS_ADDR_UNSPECIFIED(a) && !IN6_IS_ADDR_LOOPBACK(a))
 
 #define IN6_IS_ADDR_MC_NODELOCAL(a) \
         (IN6_IS_ADDR_MULTICAST(a) && ((((uint8_t *) (a))[1] & 0xf) == 0x1))

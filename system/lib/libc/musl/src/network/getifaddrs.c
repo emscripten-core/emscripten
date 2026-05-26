@@ -13,8 +13,8 @@
 
 /* getifaddrs() reports hardware addresses with PF_PACKET that implies
  * struct sockaddr_ll.  But e.g. Infiniband socket address length is
- * longer than sockaddr_ll.ssl_addr[8] can hold. Use this hack struct
- * to extend ssl_addr - callers should be able to still use it. */
+ * longer than sockaddr_ll.sll_addr[8] can hold. Use this hack struct
+ * to extend sll_addr - callers should be able to still use it. */
 struct sockaddr_ll_hack {
 	unsigned short sll_family, sll_protocol;
 	int sll_ifindex;

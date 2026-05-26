@@ -427,6 +427,17 @@ hidden long __syscall_ret(unsigned long),
 #define __sys_open_cp(...) __SYSCALL_DISP(__sys_open_cp,,__VA_ARGS__)
 #define sys_open_cp(...) __syscall_ret(__sys_open_cp(__VA_ARGS__))
 
+#ifdef SYS_pause
+#define __sys_pause() __syscall(SYS_pause)
+#define __sys_pause_cp() __syscall_cp(SYS_pause)
+#else
+#define __sys_pause() __syscall(SYS_ppoll, 0, 0, 0, 0)
+#define __sys_pause_cp() __syscall_cp(SYS_ppoll, 0, 0, 0, 0)
+#endif
+
+#define sys_pause() __syscall_ret(__sys_pause())
+#define sys_pause_cp() __syscall_ret(__sys_pause_cp())
+
 #ifdef SYS_wait4
 #define __sys_wait4(a,b,c,d) __syscall(SYS_wait4,a,b,c,d)
 #define __sys_wait4_cp(a,b,c,d) __syscall_cp(SYS_wait4,a,b,c,d)

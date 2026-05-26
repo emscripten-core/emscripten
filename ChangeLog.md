@@ -18,7 +18,7 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.8 (in development)
+6.0.0 (in development)
 ----------------------
 - When performing a streaming Fetch operation, the max chunk size of downloaded
   bytes that is handed over to the Wasm side from JS is now capped to maximum
@@ -36,6 +36,7 @@ See docs/process.md for more on how version tagging works.
   emscripten.  If you still need to support extremely old browsers, you can
   manually transpile the output of emscripten (e.g. using babel for JS and
   binaryen for wasm). (#26677)
+- musl libc updated from v1.2.5 to v1.2.6. (#26860)
 - libpng port updated from 1.6.55 to 1.6.58. (#26592 and #26983)
 - The `-m64` compiler flag is now honored, and works as an alias for
   `-sMEMORY64` and/or `--target=wasm64`. (#26765)
@@ -49,6 +50,11 @@ See docs/process.md for more on how version tagging works.
   e.g. Intel x64 Macs and Windows-on-ARM, downloading Java SE Development Kit
   21.0.11 from https://www.oracle.com/europe/java/technologies/downloads/#java21
   is required in order to use Emscripten's Closure Compiler integration.
+- The `FAKE_DYLIBS` setting is now disabled by default. This means that
+  `-shared` will produce real dynamic libraries by default (`-sSIDE_MODULE` is
+  implied).  Also, if you include real dynamic libraries in your link command
+  emscripten will now automatically produce a dynamically linked program
+  (`-sMAIN_MODULE=2` is implied). (#25930)
 
 5.0.7 - 04/30/26
 ----------------

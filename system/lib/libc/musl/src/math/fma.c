@@ -55,7 +55,7 @@ double fma(double x, double y, double z)
 		return x*y + z;
 	if (nz.e >= ZEROINFNAN) {
 		if (nz.e > ZEROINFNAN) /* z==0 */
-			return x*y + z;
+			return x*y;
 		return z;
 	}
 
