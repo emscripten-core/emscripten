@@ -183,8 +183,9 @@ static bool do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
 
   bool ret = em_task_queue_send(tasks, t);
 
-  // When proxying work to the dlopen or system queue we may have to wake the
-  // target thread in case it is blocked in `emscripten_futex_wait`.
+  // Proxying via the dlopen or system queue may target a thread that is
+  // currently blocked in `emscripten_futex_wait`, so explicitly wake it
+  // after enqueueing the task.
   bool needs_notify =
 #ifdef EMSCRIPTEN_DYNAMIC_LINKING
     is_dlopen_queue ||
