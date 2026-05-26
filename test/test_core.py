@@ -9310,7 +9310,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
     # Uncomment to test _emscripten_proxy_dlsync_async()
-    #self.set_setting('PROXY_TO_PTHREAD')
+    # self.set_setting('PROXY_TO_PTHREAD')
     self.do_runf('core/pthread/test_pthread_dlopen.c',
                  ['side module ctor', 'done', 'side module atexit'],
                  assert_all=True)
