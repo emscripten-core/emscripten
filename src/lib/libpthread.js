@@ -270,83 +270,84 @@ var LibraryPThread = {
       PThread.tlsInitFunctions.forEach((f) => f());
     },
     // Loads the WebAssembly module into the given Worker.
-    // onFinishedLoading: A callback function that will be called once all of
-    //                    the workers have been initialized and are
-    //                    ready to host pthreads.
-    loadWasmModuleToWorker: (worker) => new Promise((onFinishedLoading) => {
-      worker.onmessage = (e) => {
-        var d = e['data'];
-        var cmd = d.cmd;
-#if PTHREADS_DEBUG
-        dbg(`main thread: received message '${cmd}' from worker. ${d}`);
-#endif
+    // @returns: A promise the resolves once the worker has loaded the wasm module
+    //           and is ready to run a pthread.
+    loadWasmModuleToWorker: (worker) => {
+      worker.loaded = new Promise((onFinishedLoading) => {
+        worker.onmessage = (e) => {
+          var d = e['data'];
+          var cmd = d.cmd;
+  #if PTHREADS_DEBUG
+          dbg(`main thread: received message '${cmd}' from worker. ${d}`);
+  #endif
 
-        // If this message is intended to a recipient that is not the main
-        // thread, forward it to the target thread.
-        if (d.targetThread && d.targetThread != _pthread_self()) {
-          var targetWorker = PThread.pthreads[d.targetThread];
-          if (targetWorker) {
-            targetWorker.postMessage(d, d.transferList);
-          } else {
-            err(`worker sent message (${cmd}) to pthread (${d.targetThread}) that no longer exists`);
-          }
-          return;
-        }
-
-        if (d === 'setimmediate') {
-          // Worker wants to postMessage() to itself to implement setImmediate()
-          // emulation.
-          worker.postMessage(d);
-          return;
-        }
-
-        switch (cmd) {
-          case {{{ CMD_CHECK_MAILBOX }}}:
-            checkMailbox();
-            break;
-          case {{{ CMD_SPAWN_THREAD }}}:
-            spawnThread(d);
-            break;
-          case {{{ CMD_CLEANUP_THREAD }}}:
-            // cleanupThread needs to be run via callUserCallback since it calls
-            // back into user code to free thread data. Without this it's possible
-            // the unwind or ExitStatus exception could escape here.
-            callUserCallback(() => cleanupThread(d.thread));
-            break;
-#if MAIN_MODULE
-          case {{{ CMD_MARK_AS_FINISHED }}}:
-            markAsFinished(d.thread);
-            break;
-#endif
-          case {{{ CMD_LOADED }}}:
-#if ENVIRONMENT_MAY_BE_NODE
-            if (ENVIRONMENT_IS_NODE && !worker.strongref) {
-              // Once worker is loaded & idle, mark it as weakly referenced,
-              // so that mere existence of a Worker in the pool does not prevent
-              // Node.js from exiting the app.
-              worker.unref();
+          // If this message is intended to a recipient that is not the main
+          // thread, forward it to the target thread.
+          if (d.targetThread && d.targetThread != _pthread_self()) {
+            var targetWorker = PThread.pthreads[d.targetThread];
+            if (targetWorker) {
+              targetWorker.postMessage(d, d.transferList);
+            } else {
+              err(`worker sent message (${cmd}) to pthread (${d.targetThread}) that no longer exists`);
             }
+            return;
+          }
+
+          if (d === 'setimmediate') {
+            // Worker wants to postMessage() to itself to implement setImmediate()
+            // emulation.
+            worker.postMessage(d);
+            return;
+          }
+
+          switch (cmd) {
+            case {{{ CMD_CHECK_MAILBOX }}}:
+              checkMailbox();
+              break;
+            case {{{ CMD_SPAWN_THREAD }}}:
+              spawnThread(d);
+              break;
+            case {{{ CMD_CLEANUP_THREAD }}}:
+              // cleanupThread needs to be run via callUserCallback since it calls
+              // back into user code to free thread data. Without this it's possible
+              // the unwind or ExitStatus exception could escape here.
+              callUserCallback(() => cleanupThread(d.thread));
+              break;
+#if MAIN_MODULE
+            case {{{ CMD_MARK_AS_FINISHED }}}:
+              markAsFinished(d.thread);
+              break;
 #endif
-            onFinishedLoading(worker);
-            break;
+            case {{{ CMD_LOADED }}}:
 #if ENVIRONMENT_MAY_BE_NODE
-          case {{{ CMD_UNCAUGHT_EXN }}}:
-            // Message handler for Node.js specific out-of-order behavior:
-            // https://github.com/nodejs/node/issues/59617
-            // A pthread sent an uncaught exception event. Re-raise it on the main thread.
-            worker.onerror(d.error);
-            break;
+              if (ENVIRONMENT_IS_NODE && !worker.strongref) {
+                // Once worker is loaded & idle, mark it as weakly referenced,
+                // so that mere existence of a Worker in the pool does not prevent
+                // Node.js from exiting the app.
+                worker.unref();
+              }
 #endif
-          case {{{ CMD_CALL_HANDLER }}}:
-            Module[d.handler](...d.args);
-            break;
-          default:
-            // The received message looks like something that should be handled by this message
-            // handler, (since there is a e.data.cmd field present), but is not one of the
-            // recognized commands:
-            if (cmd) err(`worker sent an unknown command ${cmd}`);
-        }
-      };
+              onFinishedLoading();
+              break;
+#if ENVIRONMENT_MAY_BE_NODE
+            case {{{ CMD_UNCAUGHT_EXN }}}:
+              // Message handler for Node.js specific out-of-order behavior:
+              // https://github.com/nodejs/node/issues/59617
+              // A pthread sent an uncaught exception event. Re-raise it on the main thread.
+              worker.onerror(d.error);
+              break;
+#endif
+            case {{{ CMD_CALL_HANDLER }}}:
+              Module[d.handler](...d.args);
+              break;
+            default:
+              // The received message looks like something that should be handled by this message
+              // handler, (since there is a e.data.cmd field present), but is not one of the
+              // recognized commands:
+              if (cmd) err(`worker sent an unknown command ${cmd}`);
+          }
+        };
+      });
 
       worker.onerror = (e) => {
         var message = 'worker sent an error!';
@@ -443,7 +444,9 @@ var LibraryPThread = {
         'workerID': worker.workerID,
 #endif
       });
-    }),
+
+      return worker.loaded;
+    },
 
 #if PTHREAD_POOL_SIZE
     async loadWasmModuleToAllWorkers() {
@@ -730,7 +733,11 @@ var LibraryPThread = {
 #endif
     // Ask the worker to start executing its pthread entry point function.
     worker.postMessage(msg, threadParams.transferList);
+#if ASYNCIFY
+    return worker.loaded;
+#else
     return 0;
+#endif
   },
 
   _emscripten_init_main_thread_js: (tb) => {
@@ -775,6 +782,11 @@ var LibraryPThread = {
   // allocations from __pthread_create_js we could also remove this.
   __pthread_create_js__noleakcheck: true,
 #endif
+  // Pthread creation is async when possible.  This allows us to return to the
+  // event loop and wait for the Worker to be created.
+  // This is needed in browsers where synchronous worker creation is still not
+  // possible: <BUG_LINK>
+  __pthread_create_js__async: 'auto',
   __pthread_create_js__deps: ['$spawnThread', '$pthreadCreateProxied',
     'emscripten_has_threading_support',
 #if OFFSCREENCANVAS_SUPPORT

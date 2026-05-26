@@ -48,6 +48,7 @@ from common import (
 )
 from decorators import (
   also_with_asan,
+  also_with_asyncify_and_jspi,
   also_with_fetch_streaming,
   also_with_minimal_runtime,
   also_with_pthreads,
@@ -66,6 +67,7 @@ from decorators import (
   skip_if,
   skip_if_simple,
   with_all_sjlj,
+  with_asyncify_and_jspi,
 )
 
 from tools import ports, shared, utils
@@ -3666,6 +3668,10 @@ Module["preRun"] = () => {
                expected='abort:Assertion failed: thrd_create(&t4, thread_main, NULL) == thrd_success',
                cflags=['-g2', '-pthread', '-sPTHREAD_POOL_SIZE=3', '-sPTHREAD_POOL_SIZE_STRICT=2'])
 
+  @with_asyncify_and_jspi
+  def test_pthread_asyncify(self):
+    self.btest_exit('pthread/test_pthread_printf.c', cflags=['-pthread'])
+
   def test_pthread_in_pthread_pool_size_strict(self):
     # Check that it fails when there's a pthread creating another pthread.
     self.btest_exit('pthread/test_pthread_create_pthread.c', cflags=['-g2', '-pthread', '-sPTHREAD_POOL_SIZE=2', '-sPTHREAD_POOL_SIZE_STRICT=2'])
@@ -3681,8 +3687,11 @@ Module["preRun"] = () => {
     self.btest_exit('pthread/test_pthread_atomics.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-g1'] + args)
 
   # Test 64-bit atomics.
+  @also_with_asyncify_and_jspi
   def test_pthread_64bit_atomics(self):
-    self.btest_exit('pthread/test_pthread_64bit_atomics.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8'])
+    if not self.get_setting('JSPI') and not self.get_setting('ASYNCIFY'):
+      self.set_setting('PTHREAD_POOL_SIZE', 8)
+    self.btest_exit('pthread/test_pthread_64bit_atomics.c', cflags=['-O3', '-pthread'])
 
   # Test 64-bit C++11 atomics.
   @also_with_pthreads

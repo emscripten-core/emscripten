@@ -603,6 +603,47 @@ def with_all_sjlj(func):
   return metafunc
 
 
+def with_asyncify_and_jspi(func):
+  assert callable(func)
+
+  @wraps(func)
+  def metafunc(self, jspi, *args, **kwargs):
+    if self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    if jspi:
+      self.set_setting('JSPI')
+      self.require_jspi()
+    else:
+      self.set_setting('ASYNCIFY')
+    return func(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (False,),
+                          'jspi': (True,)})
+  return metafunc
+
+
+def also_with_asyncify_and_jspi(func):
+  assert callable(func)
+
+  @wraps(func)
+  def metafunc(self, asyncify, *args, **kwargs):
+    if asyncify and self.get_setting('WASM_ESM_INTEGRATION'):
+      self.skipTest('WASM_ESM_INTEGRATION is not compatible with ASYNCIFY')
+    if asyncify == 2:
+      self.set_setting('JSPI')
+      self.require_jspi()
+    elif asyncify == 1:
+      self.set_setting('ASYNCIFY')
+    else:
+      assert asyncify == 0
+    return func(self, *args, **kwargs)
+
+  parameterize(metafunc, {'': (0,),
+                          'asyncify': (1,),
+                          'jspi': (2,)})
+  return metafunc
+
+
 def parameterize(func, parameters):
   """Add additional parameterization to a test function.
 
