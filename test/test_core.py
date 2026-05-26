@@ -5151,6 +5151,7 @@ main main sees -524, -534, 72.
     if cmake:
       output = self.run_process(['cmake', '--version'], stdout=PIPE).stdout
       cmake_version = output.splitlines()[0].split()[-1].strip()
+      cmake_version = cmake_version.split('-')[0] # Remove trail like "4.2.0-rc3" -> "4.2.0"
       cmake_version = tuple(int(part) for part in cmake_version.split('.'))
       # We don't support dynamic linking with certain versions of cmake
       # See https://gitlab.kitware.com/cmake/cmake/-/work_items/27240
