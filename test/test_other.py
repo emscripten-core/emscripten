@@ -14867,17 +14867,9 @@ addToLibrary({
 
     create_file('main.cpp', '')
     create_file('post.js', '''
-      Module.onRuntimeInitialized = () => {
-        out(Module.rs_add(17, 25));
-      };
+      Module.onRuntimeInitialized = () => out(Module.rs_add(17, 25));
     ''')
-    emcc_args = [
-        lib,
-        '-sWASM_BINDGEN',
-        '--post-js',
-        'post.js',
-        '-lexports.js',
-    ]
+    emcc_args = [lib, '-sWASM_BINDGEN', '--post-js=post.js', '-lexports.js']
 
     self.do_runf('main.cpp', '42', cflags=emcc_args)
 

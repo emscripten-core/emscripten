@@ -278,7 +278,7 @@ def get_wasm_bindgen_exported_symbols(input_files):
              '--print-file-name', '--quiet']
   nm_args += input_files
 
-  result = run_process(nm_args, stdout=subprocess.PIPE)
+  result = check_call(nm_args, stdout=PIPE)
   symbols = []
   for line in result.stdout.splitlines():
     path, symbol = line.split()
