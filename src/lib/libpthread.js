@@ -545,6 +545,7 @@ var LibraryPThread = {
       worker.workerID = PThread.nextWorkerID++;
 #endif
       PThread.unusedWorkers.push(worker);
+      return worker;
     },
 
     getNewWorker() {
@@ -573,8 +574,8 @@ var LibraryPThread = {
 #endif
 #endif // PTHREAD_POOL_SIZE_STRICT
 #if PTHREAD_POOL_SIZE_STRICT < 2 || ENVIRONMENT_MAY_BE_NODE
-        PThread.allocateUnusedWorker();
-        PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
+        var newWorker = PThread.allocateUnusedWorker();
+        PThread.loadWasmModuleToWorker(newWorker);
 #endif
       }
       return PThread.unusedWorkers.pop();
