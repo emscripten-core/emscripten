@@ -271,7 +271,7 @@ var LibraryPThread = {
     //                    ready to host pthreads.
     loadWasmModuleToWorker: (worker) => new Promise((onFinishedLoading) => {
       worker.onmessage = (e) => {
-        var d = e['data'];
+        var d = e.data;
         var cmd = d.cmd;
 #if PTHREADS_DEBUG
         dbg(`main thread: received message '${cmd}' from worker. ${d}`);
@@ -436,7 +436,7 @@ var LibraryPThread = {
         sharedModules,
 #endif
 #if ASSERTIONS
-        'workerID': worker.workerID,
+        workerID: worker.workerID,
 #endif
       });
     }),
@@ -593,7 +593,7 @@ var LibraryPThread = {
     // the onmessage handlers if the message was coming from a valid worker.
     worker.onmessage = (e) => {
 #if ASSERTIONS
-      var cmd = e['data'].cmd;
+      var cmd = e.data.cmd;
       err(`received "${cmd}" command from terminated worker: ${worker.workerID}`);
 #endif
     };

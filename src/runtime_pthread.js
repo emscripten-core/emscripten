@@ -44,7 +44,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 
   {{{ asyncIf(ASYNCIFY == 2) }}}function handleMessage(e) {
     try {
-      var msgData = e['data'];
+      var msgData = e.data;
       //dbg('msgData: ' + Object.keys(msgData));
       var cmd = msgData.cmd;
       if (cmd == {{{ CMD_LOAD }}}) { // Preload command that is called once per worker to parse and load the Emscripten code.
