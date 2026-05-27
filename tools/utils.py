@@ -49,6 +49,17 @@ def run_process(cmd, check=True, input=None, *args, **kw):
   return ret
 
 
+def get_env_bool(name, default='0'):
+  env_var = os.getenv(name, default)
+  assert env_var in {'true', 'false', '1', '0'}, f'invalid environment variable setting {env_var} for {name}'
+  return env_var in {'1', 'true'}
+
+
+def get_env_int(name, default=0):
+  env_var = os.getenv(name, default)
+  return int(env_var)
+
+
 def exec(cmd):
   if WINDOWS:
     rtn = run_process(cmd, stdin=sys.stdin, check=False).returncode
@@ -222,7 +233,7 @@ def get_num_cores():
     cpu_count = len(os.sched_getaffinity(0))
   else:
     cpu_count = os.cpu_count()
-  return int(os.environ.get('EMCC_CORES', cpu_count))
+  return get_env_int('EMCC_CORES', cpu_count)
 
 
 memoize = functools.cache

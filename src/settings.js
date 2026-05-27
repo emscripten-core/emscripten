@@ -256,6 +256,8 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // the full end-to-end wasm64 mode, and 2 is wasm64 for clang/lld but lowered to
 // wasm32 in Binaryen (such that it can run on wasm32 engines, while internally
 // using i64 pointers).
+// Nowadays we recommend using the more standard `-m64` or `--target=wasm64`
+// flags, which do the same thing.
 // Assumes WASM_BIGINT.
 // [compile+link]
 var MEMORY64 = 0;
@@ -2191,8 +2193,8 @@ var WASM_ESM_INTEGRATION = false;
 var JS_BASE64_API = false;
 
 // Enable support for GrowableSharedArrayBuffer.
-// This features is only available behind a flag in recent versions of
-// node/chrome.
+// This feature has only recently become available across major browser engines
+// and Node.js.
 // [experimental]
 // [link]
 var GROWABLE_ARRAYBUFFERS = false;
@@ -2203,12 +2205,12 @@ var GROWABLE_ARRAYBUFFERS = false;
 // indirectly using `importScripts`
 var CROSS_ORIGIN = false;
 
-// This setting changes the behaviour of the ``-shared`` flag.  The default
-// setting of ``true`` means the ``-shared`` flag actually produces a normal
-// object file (i.e. ``ld -r``).  Setting this to false will cause ``-shared``
-// to behave like :ref:`SIDE_MODULE` and produce a dynamically linked
-// library.
-var FAKE_DYLIBS = true;
+// This setting changes the behaviour of the ``-shared`` flag.  When set to true
+// you get the old emscripten behaviour where the ``-shared`` flag actually
+// produces a normal object file (i.e. ``ld -r``).  When set to true (the
+// default) the ``-shared`` flag is equivelent to :ref:`SIDE_MODULE` and will
+// produce a Wasn dynamic library.
+var FAKE_DYLIBS = false;
 
 // Add a #! line to generated JS file and make it executable.  This is useful
 // for building command line tools that run under node.

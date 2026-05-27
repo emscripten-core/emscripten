@@ -311,6 +311,8 @@ The "architecture" to compile for. 0 means the default wasm32, 1 is
 the full end-to-end wasm64 mode, and 2 is wasm64 for clang/lld but lowered to
 wasm32 in Binaryen (such that it can run on wasm32 engines, while internally
 using i64 pointers).
+Nowadays we recommend using the more standard `-m64` or `--target=wasm64`
+flags, which do the same thing.
 Assumes WASM_BIGINT.
 
 .. note:: Applicable during both linking and compilation
@@ -3339,8 +3341,8 @@ GROWABLE_ARRAYBUFFERS
 =====================
 
 Enable support for GrowableSharedArrayBuffer.
-This features is only available behind a flag in recent versions of
-node/chrome.
+This feature has only recently become available across major browser engines
+and Node.js.
 
 .. note:: This is an experimental setting
 
@@ -3363,13 +3365,13 @@ Default value: false
 FAKE_DYLIBS
 ===========
 
-This setting changes the behaviour of the ``-shared`` flag.  The default
-setting of ``true`` means the ``-shared`` flag actually produces a normal
-object file (i.e. ``ld -r``).  Setting this to false will cause ``-shared``
-to behave like :ref:`SIDE_MODULE` and produce a dynamically linked
-library.
+This setting changes the behaviour of the ``-shared`` flag.  When set to true
+you get the old emscripten behaviour where the ``-shared`` flag actually
+produces a normal object file (i.e. ``ld -r``).  When set to true (the
+default) the ``-shared`` flag is equivelent to :ref:`SIDE_MODULE` and will
+produce a Wasn dynamic library.
 
-Default value: true
+Default value: false
 
 .. _executable:
 

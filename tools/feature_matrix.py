@@ -48,32 +48,37 @@ disable_override_features = set()
 enable_override_features = set()
 
 min_browser_versions = {
+  # https://caniuse.com/wasm-nontrapping-fptoint
   Feature.NON_TRAPPING_FPTOINT: {
     'chrome': 75,
-    'firefox': 65,
+    'firefox': 64,
     'safari': 150000,
     'node': 130000,
   },
+  # https://caniuse.com/wasm-bulk-memory
   Feature.BULK_MEMORY: {
     'chrome': 75,
     'firefox': 79,
     'safari': 150000,
     'node': 130000,
   },
+  # https://caniuse.com/wasm-bigint
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,
     'firefox': 78,
     'safari': 150000,
     'node': 130000,
   },
+  # https://caniuse.com/wf-wasm-memory64
   Feature.MEMORY64: {
-    'chrome': 128,
-    'firefox': 129,
+    'chrome': 133,
+    'firefox': 134,
     'safari': UNSUPPORTED,
-    'node': 230000,
+    'node': 240000,
   },
   # Emscripten itself does not use this feature but we use it in our browser
   # tests.
+  # https://caniuse.com/webgl2
   Feature.WEBGL2: {
     'chrome': 56,
     'firefox': 51,
@@ -82,6 +87,7 @@ min_browser_versions = {
   },
   # Emscripten itself does not use this feature but we use it in our browser
   # tests.
+  # https://caniuse.com/webgpu
   Feature.WEBGPU: {
     'chrome': 113,
     'firefox': 141,
@@ -109,6 +115,7 @@ min_browser_versions = {
   },
   # Legacy Wasm exceptions was the first (now legacy) format for native
   # exception handling in WebAssembly.
+  # https://caniuse.com/wf-wasm-exception-handling
   Feature.WASM_LEGACY_EXCEPTIONS: {
     'chrome': 95,
     'firefox': 100,
@@ -117,6 +124,7 @@ min_browser_versions = {
   },
   # Wasm exceptions is a newer format for native exception handling in
   # WebAssembly.
+  # https://caniuse.com/wf-wasm-exnref-exceptions
   Feature.WASM_EXCEPTIONS: {
     'chrome': 137,
     'firefox': 131,
@@ -131,10 +139,14 @@ min_browser_versions = {
   # builds by avoiding need to poll resizes to ArrayBuffer views in Workers.
   # This feature is not used anywhere else except the test harness to detect
   # browser version.
+  # https://caniuse.com/mdn-webassembly_api_memory_toresizablebuffer
   Feature.GROWABLE_ARRAYBUFFERS: {
-    'chrome': 136,
+    'chrome': 144,
     'firefox': 145,
-    'safari': UNSUPPORTED,
+    'safari': 260200,
+    # Supported with flag --experimental-wasm-rab-integration (TODO: Change
+    # this to unflagged version of Node.js 260000, see also the comment in
+    # Feature.WASM_EXCEPTIONS above)
     'node': 240000,
   },
 
@@ -264,3 +276,5 @@ def apply_min_browser_versions():
       enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, 'Wasm Legacy exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=1)')
     else:
       enable_feature(Feature.WASM_EXCEPTIONS, 'Wasm exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')
+  if settings.GROWABLE_ARRAYBUFFERS:
+    enable_feature(Feature.GROWABLE_ARRAYBUFFERS, 'GrowableSharedArrayBuffer')

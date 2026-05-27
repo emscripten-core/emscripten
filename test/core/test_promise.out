@@ -35,4 +35,3 @@ test_null_handlers
 expected success: 42
 expected error: 43
 finish
-warning: emscripten_force_exit cannot actually shut down the runtime, as the build does not have EXIT_RUNTIME set

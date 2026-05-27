@@ -172,7 +172,7 @@ def main(args):
   if len(args) == 2 and args[1] == '-v':
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print(cmdline.version_string(), file=sys.stderr)
-    return shared.check_call([clang, '-v'] + compile.get_target_flags(), check=False).returncode
+    return shared.check_call([clang, '-v', *compile.get_target_flags()], check=False).returncode
 
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
@@ -280,7 +280,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   phase_setup(state)
 
   if '-print-resource-dir' in args or any(a.startswith('--print-prog-name') for a in args):
-    shared.exec_process([clang] + compile.get_cflags(tuple(args)) + args)
+    shared.exec_process([clang, *compile.get_cflags(tuple(args)), *args])
     assert False, 'exec_process should not return'
 
   if '--cflags' in args:
@@ -299,7 +299,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     linker_args = separate_linker_flags(newargs)[1]
     linker_args = [f.value for f in linker_args]
     # Delay import of link.py to avoid processing this file when only compiling
-    from tools import link  # noqa: PLC0415
+    from tools import link
     link.run_post_link(options.input_files[0], options, linker_args)
     return 0
 
@@ -527,7 +527,7 @@ def phase_compile_inputs(options, state, newargs):
       cmd = get_clang_command()
       if ext == '.pcm':
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
-    cmd += compile_args + ['-c', input_file, '-o', output_file]
+    cmd += [*compile_args, '-c', input_file, '-o', output_file]
     if options.requested_debug == '-gsplit-dwarf':
       # When running in COMPILE_AND_LINK mode we compile objects to a temporary location
       # but we want the `.dwo` file to be generated in the current working directory,

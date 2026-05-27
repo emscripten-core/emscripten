@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+# ruff: noqa: RUF005
+
 import itertools
 import logging
 import os
@@ -18,7 +20,7 @@ from time import time
 from . import building, cache, diagnostics, shared, utils
 from .settings import settings
 from .toolchain_profiler import ToolchainProfiler
-from .utils import read_file
+from .utils import get_env_bool, read_file
 
 logger = logging.getLogger('system_libs')
 
@@ -37,7 +39,7 @@ LIBC_SOCKETS = ['socket.c', 'socketpair.c', 'shutdown.c', 'bind.c', 'connect.c',
 #
 # Setting EMCC_USE_NINJA=2 means that ninja will automatically be run for each library needed at
 # link time.
-USE_NINJA = int(os.environ.get('EMCC_USE_NINJA', '0'))
+USE_NINJA = get_env_bool('EMCC_USE_NINJA')
 
 # A (fake) deterministic emscripten path to use in __FILE__ macro and debug info
 # to produce reproducible builds across platforms.
@@ -70,7 +72,7 @@ def get_base_cflags(build_dir, force_object_files=False, preprocess=True):
     if preprocess:
       flags += ['-DEMSCRIPTEN_DYNAMIC_LINKING']
   if settings.MEMORY64:
-    flags += ['-sMEMORY64']
+    flags += ['-m64']
 
   source_dir = utils.path_from_root()
   relative_source_dir = os.path.relpath(source_dir, build_dir)
@@ -143,7 +145,7 @@ def create_lib_emar(output_filename, filenames):
   utils.delete_file(output_filename)
   cmd = [shared.EMAR, 'cr', output_filename] + filenames
   cmd = building.get_command_with_possible_response_file(cmd)
-  utils.run_process(cmd)
+  shared.check_call(cmd)
 
 
 def create_lib(libname, inputs):
@@ -487,7 +489,7 @@ class Library:
     By default, this builds all the source files returned by `self.get_files()`,
     with the `cflags` returned by `self.get_cflags()`.
     """
-    batch_inputs = int(os.environ.get('EMCC_BATCH_BUILD', '1'))
+    batch_inputs = get_env_bool('EMCC_BATCH_BUILD', '1')
     self.build_dir = build_dir
     batches = {}
     commands = []
@@ -1283,6 +1285,7 @@ class libc(MuslInternalLibrary,
           'emscripten_thread_primitives.c',
           'emscripten_futex_wait.c',
           'emscripten_futex_wake.c',
+          'emscripten_atomic_wait_suspending.c',
         ])
 
     # These files are in libc directories, but only built in libc_optz.
@@ -1322,6 +1325,7 @@ class libc(MuslInternalLibrary,
           '__map_file.c',
           'strftime.c',
           '__tz.c',
+          '__utc.c',
           '__tm_to_secs.c',
           '__year_to_secs.c',
           '__month_to_secs.c',
@@ -1477,7 +1481,7 @@ class libc_optz(libc):
     # In both cases, the build is not one that is hyper-focused on code size,
     # and so optz is not that important.
     return super().can_use() and settings.SHRINK_LEVEL >= 2 and \
-        not settings.LINKABLE and not os.environ.get('EMCC_FORCE_STDLIBS')
+        not settings.LINKABLE and 'EMCC_FORCE_STDLIBS' not in os.environ
 
 
 class libprintf_long_double(libc):
@@ -2205,7 +2209,7 @@ class libasan_rt(SanitizerLibrary):
 # things that we'd normally do in JS. That includes some general things
 # as well as some additional musl components (that normally we reimplement
 # in JS as it's more efficient that way).
-class libstandalonewasm(MuslInternalLibrary):
+class libstandalonewasm(MuslInternalLibrary, MTLibrary):
   name = 'libstandalonewasm'
   # LTO defeats the weak linking trick used in __original_main.c
   force_object_files = True
@@ -2264,6 +2268,7 @@ class libstandalonewasm(MuslInternalLibrary):
         path='system/lib/libc/musl/src/time',
         filenames=['__secs_to_tm.c',
                    '__tz.c',
+                   '__utc.c',
                    'gettimeofday.c',
                    'localtime_r.c',
                    'gmtime_r.c',
@@ -2319,14 +2324,14 @@ def get_libs_to_link(options):
   # avoids spending time checking for unresolved symbols in your project files,
   # which can speed up linking, but if you do not have the proper list of
   # actually needed libraries, errors can occur.
-  only_forced = os.environ.get('EMCC_ONLY_FORCED_STDLIBS')
+  only_forced = utils.get_env_bool('EMCC_ONLY_FORCED_STDLIBS')
   if only_forced:
     # One of the purposes EMCC_ONLY_FORCED_STDLIBS was to skip the scanning
     # of the input files for reverse dependencies.
     diagnostics.warning('deprecated', 'EMCC_ONLY_FORCED_STDLIBS is deprecated.  Use `-nostdlib` to avoid linking standard libraries')
   if force == '1':
     force_include = [name for name, lib in system_libs_map.items() if not lib.never_force]
-  elif force is not None:
+  elif force:
     force_include = force.split(',')
   if force_include:
     logger.debug(f'forcing stdlibs: {force_include}')
@@ -2412,8 +2417,7 @@ def get_libs_to_link(options):
   if settings.PRINTF_LONG_DOUBLE:
     add_library('libprintf_long_double')
   # See comment in libc_optz itself
-  if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and \
-     not os.environ.get('EMCC_FORCE_STDLIBS'):
+  if settings.SHRINK_LEVEL >= 2 and not settings.LINKABLE and not force:
     add_library('libc_optz')
   if settings.STANDALONE_WASM:
     add_library('libstandalonewasm')

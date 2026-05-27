@@ -59,6 +59,7 @@ from decorators import (
   no_4gb,
   no_bun,
   no_deno,
+  no_highmem,
   no_wasm64,
   no_windows,
   parameterize,
@@ -155,7 +156,7 @@ def asan(func):
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
   @no_wasm64('TODO: ASAN in memory64')
-  @no_2gb("asan doesn't support GLOBAL_BASE")
+  @no_highmem("asan doesn't support GLOBAL_BASE")
   def decorated(self, *args, **kwargs):
     return func(self, *args, **kwargs)
 
@@ -961,8 +962,7 @@ class TestCoreBase(RunnerCore):
 
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
-  @no_4gb('uses INITIAL_MEMORY')
-  @no_2gb('uses INITIAL_MEMORY')
+  @no_highmem('uses INITIAL_MEMORY')
   def test_emmalloc_memory_statistics(self):
     self.set_setting('MALLOC', 'emmalloc')
     self.set_setting('INITIAL_MEMORY', '128MB')
@@ -976,8 +976,7 @@ class TestCoreBase(RunnerCore):
     self.assertContained(r'emmalloc_unclaimed_heap_memory\s*: [1-9]\d+', output, regex=True)
 
   @no_optimize('output is sensitive to optimization flags, so only test unoptimized builds')
-  @no_2gb('output is sensitive to absolute data layout')
-  @no_4gb('output is sensitive to absolute data layout')
+  @no_highmem('output is sensitive to absolute data layout')
   @no_asan('ASan does not support custom memory allocators')
   @no_lsan('LSan does not support custom memory allocators')
   def test_emmalloc_trim(self):
@@ -1731,11 +1730,9 @@ int main() {
     self.do_core_test('test_ctors_no_main.cpp', cflags=['--no-entry'])
 
   @no_wasm2js('eval_ctors not supported yet')
-  @no_2gb('https://github.com/WebAssembly/binaryen/issues/5893')
+  @no_highmem('https://github.com/WebAssembly/binaryen/issues/5893')
   @also_with_standalone_wasm(impure=True)
   def test_eval_ctors_no_main(self):
-    if self.get_setting('MEMORY64') == 1:
-      self.skipTest('https://github.com/WebAssembly/binaryen/issues/5017')
     self.set_setting('EVAL_CTORS')
     self.do_core_test('test_ctors_no_main.cpp', cflags=['--no-entry'])
 
@@ -2091,8 +2088,7 @@ int main(int argc, char **argv) {
     return re.sub(r"\nWarning: Enlarging memory arrays, this is not fast! \d+,\d+\n", "\n", text)
 
   # Tests that -sMINIMAL_RUNTIME builds can utilize -sALLOW_MEMORY_GROWTH option.
-  @no_4gb('memory growth issues')
-  @no_2gb('memory growth issues')
+  @no_highmem('memory growth issues')
   @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
   def test_minimal_runtime_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
@@ -2107,8 +2103,7 @@ int main(int argc, char **argv) {
     output = self.remove_growth_warning(output)
     self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
 
-  @no_2gb('memory growth issues')
-  @no_4gb('memory growth issues')
+  @no_highmem('memory growth issues')
   def test_memorygrowth(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2146,8 +2141,7 @@ int main(int argc, char **argv) {
       output = self.remove_growth_warning(output)
       self.assertContained('*pre: hello,4.955*\n*hello,4.955*\n*hello,4.955*', output)
 
-  @no_4gb('memory growth issues')
-  @no_2gb('memory growth issues')
+  @no_highmem('memory growth issues')
   def test_memorygrowth_2(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2181,8 +2175,7 @@ int main(int argc, char **argv) {
     self.do_core_test('test_memorygrowth_3.c')
 
   @also_with_standalone_wasm()
-  @no_4gb('depends on INITIAL_MEMORY')
-  @no_2gb('depends on INITIAL_MEMORY')
+  @no_highmem('depends on INITIAL_MEMORY')
   def test_memorygrowth_MAXIMUM_MEMORY(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2193,8 +2186,7 @@ int main(int argc, char **argv) {
     self.cflags += ['-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=64Mb', '-sMAXIMUM_MEMORY=100Mb']
     self.do_core_test('test_memorygrowth_wasm_mem_max.c')
 
-  @no_4gb('depends on INITIAL_MEMORY')
-  @no_2gb('depends on INITIAL_MEMORY')
+  @no_highmem('depends on INITIAL_MEMORY')
   def test_memorygrowth_linear_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2206,8 +2198,7 @@ int main(int argc, char **argv) {
     self.do_core_test('test_memorygrowth_linear_step.c')
 
   @no_ubsan('UBSan seems to affect the precise memory usage')
-  @no_4gb('depends on specific memory layout')
-  @no_2gb('depends on specific memory layout')
+  @no_highmem('depends on specific memory layout')
   def test_memorygrowth_geometric_step(self):
     if self.has_changed_setting('ALLOW_MEMORY_GROWTH'):
       self.skipTest('test needs to modify memory growth')
@@ -2232,8 +2223,7 @@ int main(int argc, char **argv) {
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
-  @no_4gb('depends on MAXIMUM_MEMORY')
-  @no_2gb('depends on MAXIMUM_MEMORY')
+  @no_highmem('depends on MAXIMUM_MEMORY')
   def test_aborting_new(self, args):
     # test that C++ new properly errors if we fail to malloc when growth is
     # enabled, with or without growth
@@ -2245,16 +2235,14 @@ int main(int argc, char **argv) {
   })
   @no_asan('requires more memory when growing')
   @no_lsan('requires more memory when growing')
-  @no_4gb('depends on MAXIMUM_MEMORY')
-  @no_2gb('depends on MAXIMUM_MEMORY')
+  @no_highmem('depends on MAXIMUM_MEMORY')
   def test_nothrow_new(self, args):
     self.do_core_test('test_nothrow_new.cpp', cflags=args)
 
   @no_wasm2js('no WebAssembly.Memory()')
   @no_asan('ASan alters the memory size')
   @no_lsan('LSan alters the memory size')
-  @no_4gb('depends on memory size')
-  @no_2gb('depends on memory size')
+  @no_highmem('depends on memory size')
   @no_esm_integration('external wasmMemory')
   def test_module_wasm_memory(self):
     self.set_setting('IMPORTED_MEMORY')
@@ -3279,8 +3267,7 @@ Var: 42
 
   @needs_dylink
   @no_sanitize('contains ODR violation')
-  @no_2gb('output is sensitive to absolute data layout')
-  @no_4gb('output is sensitive to absolute data layout')
+  @no_highmem('output is sensitive to absolute data layout')
   def test_dlfcn_alignment_and_zeroing(self):
     self.set_setting('INITIAL_MEMORY', '16mb')
     create_file('libside.c', r'''
@@ -4064,8 +4051,8 @@ caught outer int: 123
 
     shutil.move(so_file, so_file + '.orig')
 
-    # Verify that building with -sSIDE_MODULE is essentially the same as building with `-shared -fPIC -sFAKE_DYLIBS=0`.
-    flags = ['-shared', '-fPIC', '-sFAKE_DYLIBS=0']
+    # Verify that building with -sSIDE_MODULE is essentially the same as building with `-shared -fPIC`
+    flags = ['-shared', '-fPIC']
     if isinstance(side, list):
       # side is just a library
       self.run_process([EMCC] + side + self.get_cflags() + flags + ['-o', so_file])
@@ -5092,7 +5079,8 @@ res64 - external 64\n''', header='''\
 
   @with_dylink_reversed
   def test_dylink_dot_a(self):
-    # .a linking must force all .o files inside it, when in a shared module
+    # Tests that it's possible to link a .a archive into a dynamic library using
+    # `-Wl,--whole-archive`
     create_file('third.c', 'int sidef() { return 36; }')
     create_file('fourth.c', 'int sideg() { return 17; }')
 
@@ -5110,7 +5098,7 @@ res64 - external 64\n''', header='''\
       }
     ''',
                      # contents of libfourth.a must be included, even if they aren't referred to!
-                     side=['libfourth.a', 'third.o'],
+                     side=['-Wl,--whole-archive', 'libfourth.a', '-Wl,--no-whole-archive', 'third.o'],
                      expected=['sidef: 36, sideg: 17.\n'], force_c=True)
 
   @with_dylink_reversed
@@ -5154,16 +5142,31 @@ main main sees -524, -534, 72.
 '''])
 
   @needs_make('mingw32-make')
-  @with_dylink_reversed
-  def test_dylink_zlib(self):
-    zlib_archive = self.get_zlib_library(cmake=WINDOWS, cflags=['-fPIC'])
+  @needs_dylink
+  @parameterized({
+    'cmake': (True,),
+    'configure': (False,),
+  })
+  def test_dylink_zlib(self, cmake):
+    if cmake:
+      output = self.run_process(['cmake', '--version'], stdout=PIPE).stdout
+      cmake_version = output.splitlines()[0].split()[-1].strip()
+      cmake_version = cmake_version.split('-')[0] # Remove trail like "4.2.0-rc3" -> "4.2.0"
+      cmake_version = tuple(int(part) for part in cmake_version.split('.'))
+      # We don't support dynamic linking with certain versions of cmake
+      # See https://gitlab.kitware.com/cmake/cmake/-/work_items/27240
+      if (cmake_version >= (4, 2, 0) and cmake_version < (4, 2, 6)) or \
+         (cmake_version >= (4, 3, 0) and cmake_version < (4, 3, 3)):
+        self.skipTest(f'incompatible cmake version {cmake_version}')
+    zlib_archive = self.get_zlib_library(cmake=cmake, target='libz.so.1.2.5', cflags=['-fPIC'])[0]
+    zlib_basename = os.path.basename(zlib_archive)
+    shutil.copyfile(zlib_archive, zlib_basename)
     # example.c uses K&R style function declarations
     self.cflags.append('-Wno-deprecated-non-prototype')
     self.cflags.append('-I' + test_file('third_party/zlib'))
-    self.dylink_test(main=read_file(test_file('third_party/zlib/example.c')),
-                     side=zlib_archive,
-                     expected=read_file(test_file('core/test_zlib.out')),
-                     force_c=True)
+    self.do_runf(test_file('third_party/zlib/example.c'),
+                 read_file(test_file('core/test_zlib.out')),
+                 cflags=['-L.', zlib_archive])
 
   # @with_dylink_reversed
   # def test_dylink_bullet(self):
@@ -5325,7 +5328,7 @@ int main()
     self.do_core_test('test_strtok.c')
 
   def test_strtol(self):
-    if self.get_setting('MEMORY64'):
+    if self.is_wasm64():
       out_suffix = '64'
     else:
       out_suffix = ''
@@ -6514,8 +6517,7 @@ int main(void) {
   # Tests that a large allocation should gracefully fail
   @no_asan('the memory size limit here is too small for asan')
   @no_lsan('the memory size limit here is too small for lsan')
-  @no_4gb('output is sensitive to absolute data layout')
-  @no_2gb('output is sensitive to absolute data layout')
+  @no_highmem('output is sensitive to absolute data layout')
   def test_dlmalloc_large(self):
     self.cflags += ['-sABORTING_MALLOC=0', '-sALLOW_MEMORY_GROWTH=1', '-sMAXIMUM_MEMORY=128MB']
     self.do_runf('dlmalloc_test_large.c', '0 0 0 1')
@@ -6962,7 +6964,7 @@ void* operator new(size_t size) {
     # and this test would different non-deterministic results based on, for example,
     # what other tests had previously run.
     builder_cmd = [EMBUILDER, 'build', 'libpng']
-    if self.get_setting('MEMORY64'):
+    if self.is_wasm64():
       builder_cmd.append('--wasm64')
       self.cflags.append('-Wno-pointer-to-int-cast')
     self.run_process(builder_cmd)
@@ -6972,7 +6974,7 @@ void* operator new(size_t size) {
                             'codec/CMakeFiles/j2k_to_image.dir/__/common/color.c.o',
                             'codec/CMakeFiles/j2k_to_image.dir/__/common/getopt.c.o',
                             'bin/libopenjpeg.a'],
-                           configure=['cmake', '.'],
+                           configure=['cmake', '.', '-DBUILD_SHARED_LIBS=OFF'],
                            # configure_args=['--enable-tiff=no', '--enable-jp3d=no', '--enable-png=no'],
                            make_args=[]) # no -j 2, since parallel builds can fail
 
@@ -7726,7 +7728,7 @@ void* operator new(size_t size) {
     if safe_heap and '-fsanitize=address' in self.cflags:
       self.skipTest('asan does not work with SAFE_HEAP')
     self.set_setting('SAFE_HEAP', safe_heap)
-    out_suffix = '64' if self.get_setting('MEMORY64') else ''
+    out_suffix = '64' if self.is_wasm64() else ''
     self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True, out_suffix=out_suffix, cflags=['-lembind'])
 
   @no_wasm2js('wasm_bigint')
@@ -8042,7 +8044,7 @@ void* operator new(size_t size) {
     self.assertIn((8, 3), src_to_addr)
 
     def get_dwarf_addr(line, col):
-      addrs = src_to_addr[(line, col)]
+      addrs = src_to_addr[line, col]
       # we assume the simple calls have one address
       self.assertEqual(len(addrs), 1)
       return int(addrs[0], 0)
@@ -9935,16 +9937,15 @@ corez = make_run('corez', cflags=['-Oz'])
 core_2gb = make_run('core_2gb', cflags=['--profiling-funcs'],
                     settings={'INITIAL_MEMORY': '2200mb', 'GLOBAL_BASE': '2gb'})
 
-# MEMORY64=1
-wasm64 = make_run('wasm64', cflags=['--profiling-funcs'],
-                  settings={'MEMORY64': 1}, require_wasm64=True)
+wasm64 = make_run('wasm64', cflags=['--profiling-funcs', '-m64'], require_wasm64=True)
+wasm64_O2 = make_run('wasm64_O2', cflags=['-O2', '-m64'], require_wasm64=True)
 # Run the wasm64 tests with all memory offsets > 4gb.  Be careful running this test
 # suite with any kind of parallelism.
-wasm64_4gb = make_run('wasm64_4gb', cflags=['--profiling-funcs'],
-                      settings={'MEMORY64': 1, 'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
+wasm64_4gb = make_run('wasm64_4gb', cflags=['-m64', '--profiling-funcs'],
+                      settings={'INITIAL_MEMORY': '4200mb', 'GLOBAL_BASE': '4gb'},
                       require_wasm64=True)
 # MEMORY64=2, or "lowered"
-wasm64l = make_run('wasm64l', cflags=['-O1', '--profiling-funcs'],
+wasm64l = make_run('wasm64l', cflags=['-m64', '-O1', '--profiling-funcs'],
                    settings={'MEMORY64': 2})
 
 lto0 = make_run('lto0', cflags=['-flto', '-O0'])
@@ -10023,4 +10024,4 @@ omitexports0 = make_run('omitexports0', cflags=['-O0'], settings={'DECLARE_ASM_M
 jsmathz = make_run('jsmathz', cflags=['-Oz'], settings={'JS_MATH': 1})
 
 # TestCoreBase is just a shape for the specific subclasses, we don't test it itself
-del TestCoreBase # noqa
+del TestCoreBase

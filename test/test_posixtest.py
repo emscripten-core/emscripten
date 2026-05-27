@@ -32,15 +32,15 @@ class posixtest(RunnerCore):
 
 
 def filter_tests(all_tests):
-  prefixes = [
+  prefixes = (
     'pthread_',
     'strftime',
     'asctime',
     'gmtime',
-  ]
+  )
 
   def enable_test(t):
-    return any(t.startswith(p) for p in prefixes)
+    return t.startswith(prefixes)
 
   return [t for t in all_tests if enable_test(t)]
 

@@ -47,10 +47,6 @@ addToLibrary({
   #if ASSERTIONS && WASM_WORKERS
     if (!ENVIRONMENT_IS_WASM_WORKER) err('Current environment does not support Atomics.waitAsync(): polyfilling it, but this is going to be suboptimal.');
   #endif
-  /**
-   * @param {number=} maxWaitMilliseconds
-   * @suppress {duplicate, checkTypes}
-   */
   Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
     let val = Atomics.load(i32a, index);
     if (val != value) return { async: false, value: 'not-equal' };
@@ -75,11 +71,21 @@ addToLibrary({
   },
 
 #if ASYNCIFY
-  emscripten_atomic_wait_suspending__async: 'auto',
-  emscripten_atomic_wait_suspending__deps: ['$polyfillWaitAsync', '$atomicWaitStates'],
-  emscripten_atomic_wait_suspending: async (addr, val, maxWaitMilliseconds) => {
+  _emscripten_atomic_wait_promise__deps: ['$polyfillWaitAsync', '$atomicWaitStates', '$addPromise'],
+  _emscripten_atomic_wait_promise: (addr, val, maxWaitMilliseconds) => {
     var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
-    return atomicWaitStates.indexOf(await wait.value)
+    if (wait.async) {
+      // In the async case return the promise ID.
+      var chainedPromise = wait.value.then((value) => atomicWaitStates.indexOf(value));
+      var id = addPromise(chainedPromise);
+      return id;
+    }
+    // In the synchronous case return the negative result code
+    return -atomicWaitStates.indexOf(wait.value);
+  },
+#else
+  _emscripten_atomic_wait_promise: (addr, val, maxWaitMilliseconds) => {
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_atomic_wait_suspending');
   },
 #endif
 
@@ -91,9 +97,6 @@ addToLibrary({
   $liveAtomicWaitAsyncCounter__internal: true,
 
   emscripten_atomic_wait_async__deps: ['$atomicWaitStates', '$liveAtomicWaitAsyncs', '$liveAtomicWaitAsyncCounter', '$polyfillWaitAsync', '$callUserCallback'],
-  // Closure's Atomics.waitAsync extern incorrectly returns Promise<string>,
-  // but the spec returns a result object with async/value fields.
-  emscripten_atomic_wait_async__docs: '/** @suppress {missingProperties} */',
   emscripten_atomic_wait_async: (addr, val, asyncWaitFinished, userData, maxWaitMilliseconds) => {
     let wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
     if (!wait.async) return atomicWaitStates.indexOf(wait.value);

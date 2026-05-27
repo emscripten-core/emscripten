@@ -101,7 +101,8 @@ MINIMAL_TASKS = [
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
 # CI (which has slightly more tests than other modes that want to use MINIMAL)
-MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
+MINIMAL_PIC_TASKS = [
+    *MINIMAL_TASKS,
     'libc-mt',
     'libc_optz-mt',
     'libc_optz-mt-debug',
