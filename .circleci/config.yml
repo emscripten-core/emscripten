@@ -884,6 +884,7 @@ jobs:
     executor: linux-python
     environment:
       EMTEST_SKIP_NEW_CMAKE: "1"
+      EMTEST_SKIP_WASM64: "1"
     steps:
       - checkout
       - pip-install
@@ -1389,9 +1390,9 @@ workflows:
       - test-core0:
           requires:
             - build-linux
-      #- test-core2:
-      #    requires:
-      #      - build-linux
+      - test-core2:
+         requires:
+           - build-linux
       - test-core3:
           requires:
             - build-linux
@@ -1410,9 +1411,9 @@ workflows:
       - test-modularize-instance:
           requires:
             - build-linux
-      #- test-esm-integration:
-      #    requires:
-      #      - build-linux
+      - test-esm-integration:
+         requires:
+           - build-linux
       - test-stress:
           requires:
             - build-linux
@@ -1434,14 +1435,14 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
-      #- test-bun
-      #- test-deno
-      #- test-jsc
+      - test-bun
+      - test-deno
+      - test-jsc
       - test-spidermonkey
-      #- test-node-compat
-      #- test-windows
-      #- test-windows-browser-firefox
+      - test-node-compat
+      - test-windows
+      - test-windows-browser-firefox
       - build-windows-launcher
-      #- test-mac-arm64:
-      #    requires:
-      #      - build-linux
+      - test-mac-arm64:
+         requires:
+           - build-linux
