@@ -55,6 +55,9 @@ See docs/process.md for more on how version tagging works.
   implied).  Also, if you include real dynamic libraries in your link command
   emscripten will now automatically produce a dynamically linked program
   (`-sMAIN_MODULE=2` is implied). (#25930)
+- The `PThread.runningWorkers` field was removed from the `PThread` object.
+  If you have JS code that was depending on this you can transition to using the
+  `PThread.pthreads` object. (#26998)
 
 5.0.7 - 04/30/26
 ----------------

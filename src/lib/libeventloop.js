@@ -60,24 +60,29 @@ LibraryJSEventLoop = {
     } else if (globalThis.addEventListener) {
       var __setImmediate_id_counter = 0;
       var __setImmediate_queue = [];
-      var __setImmediate_message_id = "_si";
+      var __setImmediate_message_id = '_si';
       /** @param {Event} e */
       var __setImmediate_cb = (e) => {
         if (e.data === __setImmediate_message_id) {
           e.stopPropagation();
-          __setImmediate_queue.shift()();
+          __setImmediate_queue.shift()?.();
           ++__setImmediate_id_counter;
         }
       }
       addEventListener("message", __setImmediate_cb, true);
       emSetImmediate = (func) => {
-        postMessage(__setImmediate_message_id, "*");
+#if PTHREADS
+        if (ENVIRONMENT_IS_WORKER) {
+          postMessage(__setImmediate_message_id);
+        } else
+#endif
+        postMessage(__setImmediate_message_id, '*');
         return __setImmediate_id_counter + __setImmediate_queue.push(func) - 1;
       }
       emClearImmediate = /**@type{function(number=)}*/((id) => {
         var index = id - __setImmediate_id_counter;
         // must preserve the order and count of elements in the queue, so replace the pending callback with an empty function
-        if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = () => {};
+        if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = null;
       })
     }`,
   $emSetImmediate: undefined,

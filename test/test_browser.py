@@ -4879,8 +4879,12 @@ Module["preRun"] = () => {
   def test_emscripten_set_timeout_loop(self):
     self.btest_exit('emscripten_set_timeout_loop.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD'])
 
-  def test_emscripten_set_immediate(self):
-    self.btest_exit('emscripten_set_immediate.c')
+  @parameterized({
+    '': ([],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_emscripten_set_immediate(self, args):
+    self.btest_exit('emscripten_set_immediate.c', cflags=args)
 
   def test_emscripten_set_immediate_loop(self):
     self.btest_exit('emscripten_set_immediate_loop.c')
