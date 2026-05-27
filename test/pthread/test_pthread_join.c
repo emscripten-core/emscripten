@@ -34,7 +34,7 @@ int main() {
 
   pthread_t thr;
 
-  assert(EM_ASM_INT(return PThread.runningWorkers.length) == 0);
+  assert(EM_ASM_INT(return Object.keys(PThread.pthreads).length) == 0);
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 8); // This test should be run with a prepopulated pool of size 8.
 
   intptr_t n = 20;
@@ -44,14 +44,14 @@ int main() {
   emscripten_out("Main: Waiting for thread to join");
   int result = 0;
 
-  assert(EM_ASM_INT(return PThread.runningWorkers.length) == 1);
+  assert(EM_ASM_INT(return Object.keys(PThread.pthreads).length) == 1);
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 7);
 
   s = pthread_join(thr, (void**)&result);
   assert(s == 0);
   emscripten_outf("Main: Thread joined with result: %d", result);
 
-  assert(EM_ASM_INT(return PThread.runningWorkers.length) == 0);
+  assert(EM_ASM_INT(return Object.keys(PThread.pthreads).length) == 0);
   assert(EM_ASM_INT(return PThread.unusedWorkers.length) == 8);
 
   assert(result == 6765);
