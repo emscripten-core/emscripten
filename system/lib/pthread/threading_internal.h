@@ -7,6 +7,8 @@
 
 #pragma once
 
+#include <emscripten/proxying.h>
+
 #include <inttypes.h>
 #include <pthread.h>
 #include <stdbool.h>
@@ -82,6 +84,7 @@ int _emscripten_thread_is_valid(pthread_t thread);
 void _emscripten_thread_exit_joinable(pthread_t thread);
 void _emscripten_thread_exit(void* result);
 void _emscripten_process_dlopen_queue(void);
+extern em_proxying_queue* _Atomic _dlopen_proxying_queue;
 
 #if !defined(__EMSCRIPTEN_PTHREADS__) || defined(NDEBUG)
 #define emscripten_set_current_thread_status(newStatus)
