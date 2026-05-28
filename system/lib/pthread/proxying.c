@@ -41,18 +41,6 @@ em_proxying_queue* emscripten_proxy_get_system_queue(void) {
   return &system_proxying_queue;
 }
 
-#ifdef EMSCRIPTEN_DYNAMIC_LINKING
-// Proxying queue specially for handling code loading (dlopen) events.
-// Processed by background threads that call `_emscripten_process_dlopen_queue`
-// during futex_wait (i.e. whenever they block).
-em_proxying_queue _dlopen_proxying_queue = {
-  .mutex = PTHREAD_MUTEX_INITIALIZER,
-  .task_queues = NULL,
-  .size = 0,
-  .capacity = 0,
-};
-#endif
-
 em_proxying_queue* em_proxying_queue_create(void) {
   // Allocate the new queue.
   em_proxying_queue* q = malloc(sizeof(em_proxying_queue));
@@ -182,7 +170,7 @@ static bool do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   // requires a wakeup of the target thread after enqueuing work.
   bool needs_notify =
 #ifdef EMSCRIPTEN_DYNAMIC_LINKING
-    q == &_dlopen_proxying_queue ||
+    q == _dlopen_proxying_queue ||
 #endif
     (is_system_queue &&
      pthread_equal(target_thread, emscripten_main_runtime_thread_id()));

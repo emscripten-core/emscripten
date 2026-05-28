@@ -86,7 +86,7 @@ void _emscripten_thread_exit(void* result);
 
 #ifdef EMSCRIPTEN_DYNAMIC_LINKING
 void _emscripten_process_dlopen_queue(void);
-extern em_proxying_queue _dlopen_proxying_queue;
+extern em_proxying_queue* _dlopen_proxying_queue;
 #endif
 
 #if !defined(__EMSCRIPTEN_PTHREADS__) || defined(NDEBUG)
