@@ -361,7 +361,7 @@ static void thread_sync_done(void* arg) {
 // `_emscripten_proxy_dlsync` below, and processed by background threads
 // that call `_emscripten_process_dlopen_queue` during futex_wait (i.e. whenever
 // they block).
-em_proxying_queue* _dlopen_proxying_queue = NULL;
+em_proxying_queue* _Atomic _dlopen_proxying_queue = NULL;
 static thread_local bool processing_queue = false;
 
 void _emscripten_process_dlopen_queue() {
