@@ -401,10 +401,8 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
 int _emscripten_proxy_dlsync(pthread_t target_thread) {
   assert(emscripten_is_main_runtime_thread());
   int result;
-  if (!emscripten_proxy_sync(&_dlopen_proxying_queue,
-                             target_thread,
-                             do_thread_sync_out,
-                             &result)) {
+  if (!emscripten_proxy_sync(
+        &_dlopen_proxying_queue, target_thread, do_thread_sync_out, &result)) {
     return 0;
   }
   return result;
