@@ -362,7 +362,7 @@ void _emscripten_process_dlopen_queue() {
   if (!processing_queue) {
     assert(!emscripten_is_main_runtime_thread());
     processing_queue = true;
-    emscripten_proxy_execute_queue(_emscripten_proxy_dlopen_queue());
+    emscripten_proxy_execute_queue(&_dlopen_proxying_queue);
     processing_queue = false;
   }
 }
@@ -382,7 +382,7 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
     .promise = promise,
     .result = false,
   };
-  int rtn = emscripten_proxy_callback(_emscripten_proxy_dlopen_queue(),
+  int rtn = emscripten_proxy_callback(&_dlopen_proxying_queue,
                                       target_thread,
                                       do_thread_sync,
                                       thread_sync_done,
@@ -401,7 +401,7 @@ int _emscripten_proxy_dlsync_async(pthread_t target_thread, em_promise_t promise
 int _emscripten_proxy_dlsync(pthread_t target_thread) {
   assert(emscripten_is_main_runtime_thread());
   int result;
-  if (!emscripten_proxy_sync(_emscripten_proxy_dlopen_queue(),
+  if (!emscripten_proxy_sync(&_dlopen_proxying_queue,
                              target_thread,
                              do_thread_sync_out,
                              &result)) {
