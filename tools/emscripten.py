@@ -346,7 +346,8 @@ def compile_javascript_cached():
   # this step is performed while the cache is locked.
   # Sadly we have to skip the caching whenever we have user JS libraries.  This is because
   # these libraries can import arbitrary other JS files (either vis node's `import` or via #include)
-  if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE or settings.JS_LIBRARIES:
+  has_user_libs = any(not lib.startswith(utils.path_from_root('src/')) for lib in settings.JS_LIBRARIES)
+  if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE or has_user_libs:
     return compile_javascript()
 
   content_hash = generate_js_compiler_input_hash()
