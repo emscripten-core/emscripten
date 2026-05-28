@@ -494,7 +494,7 @@ jobs:
     # in about 1/2 the time, so it is not cost-effective (overall it is 2x the
     # cost for the same work), but given this blocks almost all the other jobs
     # we want it to finish asap
-    resource_class: xlarge
+    resource_class: xlarge.gen2
     environment:
       EMCC_CORES: 16
       EMCC_USE_NINJA: 1
