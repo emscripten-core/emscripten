@@ -81,6 +81,7 @@ MINIMAL_TASKS = [
     'libGL-emu-getprocaddr',
     'libGL-emu-webgl2-ofb-getprocaddr',
     'libGL-webgl2-ofb-getprocaddr',
+    'libGL-webgl2-ofb-full_es3-getprocaddr',
     'libGL-ww-getprocaddr',
     'libhtml5',
     'libsockets',
@@ -91,7 +92,7 @@ MINIMAL_TASKS = [
     'libstandalonewasm-nocatch',
     'crt1',
     'crt1_proxy_main',
-    'crtbegin',
+    'crtbegin-mt',
     'libunwind-legacyexcept',
     'libunwind-wasmexcept',
     'libnoexit',
@@ -100,7 +101,8 @@ MINIMAL_TASKS = [
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
 # CI (which has slightly more tests than other modes that want to use MINIMAL)
-MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
+MINIMAL_PIC_TASKS = [
+    *MINIMAL_TASKS,
     'libc-mt',
     'libc_optz-mt',
     'libc_optz-mt-debug',
@@ -117,7 +119,7 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libGL-mt-emu-webgl2-getprocaddr',
     'libGL-mt-emu-webgl2-ofb-getprocaddr',
     'libsockets_proxy',
-    'crtbegin',
+    'crtbegin-mt',
     'libsanitizer_common_rt',
     'libubsan_rt',
     'libwasm_workers-debug',

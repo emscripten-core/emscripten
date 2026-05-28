@@ -3,7 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Stress test versions of some existing tests from test_core.py
+"""Stress test versions of some existing tests from test_core.py.
+
 These don't run in test_core.py itself because that is already run in parallel and these
 stress tests each saturate the CPU cores.
 
@@ -113,3 +114,6 @@ class stress(RunnerCore):
 
     js_file = self.build('pthread/test_pthread_proxying_reduced_stress_test_case.c')
     self.parallel_stress_test_js_file(js_file, not_expected='pthread_self() == unknown', expected='pthread_self() == worker2', assert_returncode=0)
+
+  def test_stress_pthread_malloc(self):
+    self.do_runf('test_stress_pthread_malloc.c', 'done\n', cflags=['-pthread', '-sWASM_WORKERS'])

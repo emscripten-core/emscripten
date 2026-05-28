@@ -136,7 +136,7 @@ function getTransitiveDeps(symbol) {
   while (toVisit.length) {
     const sym = toVisit.pop();
     if (!seen.has(sym)) {
-      let directDeps = LibraryManager.library[sym + '__deps'] || [];
+      let directDeps = LibraryManager.library[sym + '__deps'] ?? [];
       directDeps = directDeps.filter((d) => typeof d === 'string');
       for (const dep of directDeps) {
         if (!transitiveDeps.has(dep)) {
@@ -228,7 +228,7 @@ function checkDependencies(symbol, snippet, deps, postset) {
       continue;
     }
     const mangled = mangleCSymbolName(dep);
-    if (!snippet.includes(mangled) && (!postset || !postset.includes(mangled))) {
+    if (!snippet.includes(mangled) && !postset?.includes(mangled)) {
       error(`${symbol}: unused dependency: ${dep}`);
     }
   }
@@ -497,7 +497,7 @@ function(${args}) {
                 proxyMode = PROXY_SYNC;
               }
             }
-            const rtnType = sig && sig.length ? sig[0] : null;
+            const rtnType = sig?.[0];
             const proxyFunc =
               MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
             deps.push('$' + proxyFunc);
@@ -515,7 +515,7 @@ ${body}
             snippet,
             (args, body) => `
 function(${args}) {
-  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${mangled}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
+  assert(!ENVIRONMENT_IS_WASM_WORKER, "attempt to call proxied function '${mangled}' from a Wasm Worker (where proxying is not possible)");
   ${body}
 }\n`,
           );
@@ -567,11 +567,7 @@ function(${args}) {
       }
       addedLibraryItems[symbol] = true;
 
-      if (!(symbol + '__deps' in LibraryManager.library)) {
-        LibraryManager.library[symbol + '__deps'] = [];
-      }
-
-      const deps = LibraryManager.library[symbol + '__deps'];
+      const deps = LibraryManager.library[symbol + '__deps'] ??= [];
       let sig = LibraryManager.library[symbol + '__sig'];
       if (!WASM_BIGINT && sig && sig[0] == 'j') {
         // Without WASM_BIGINT functions that return i64 depend on setTempRet0
@@ -702,7 +698,7 @@ function(${args}) {
           // signatures are relevant and they differ between and alais and
           // it's target) we need to construct a forwarding function from
           // one to the other.
-          const isSigRelevant = MAIN_MODULE || MEMORY64 || CAN_ADDRESS_2GB || (sig && sig.includes('j'));
+          const isSigRelevant = MAIN_MODULE || MEMORY64 || CAN_ADDRESS_2GB || sig?.includes('j');
           const targetSig = LibraryManager.library[aliasTarget + '__sig'];
           if (isSigRelevant && sig && targetSig && sig != targetSig) {
             debugLog(`${symbol}: Alias target (${aliasTarget}) has different signature (${sig} vs ${targetSig})`)
@@ -871,7 +867,7 @@ function(${args}) {
           orderedPostSets[j] = temp;
           i--;
           limit--;
-          assert(limit > 0, 'Could not sort postsets!');
+          assert(limit > 0, 'could not sort postsets');
           break;
         }
       }
@@ -887,7 +883,7 @@ function(${args}) {
 
     writeOutput('// Begin JS library code\n');
     for (const item of libraryItems.concat(postSets)) {
-      writeOutput(indentify(item || '', 2));
+      writeOutput(indentify(item ?? '', 2));
     }
     writeOutput('// End JS library code\n');
 

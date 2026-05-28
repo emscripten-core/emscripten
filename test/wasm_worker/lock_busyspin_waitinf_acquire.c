@@ -45,7 +45,7 @@ void nothing(void* userData) {
   }
 }
 #else
-char stack[1024];
+char stack[4096];
 #endif
 
 void releaseLock(void *userData) {

@@ -256,6 +256,8 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // the full end-to-end wasm64 mode, and 2 is wasm64 for clang/lld but lowered to
 // wasm32 in Binaryen (such that it can run on wasm32 engines, while internally
 // using i64 pointers).
+// Nowadays we recommend using the more standard `-m64` or `--target=wasm64`
+// flags, which do the same thing.
 // Assumes WASM_BIGINT.
 // [compile+link]
 var MEMORY64 = 0;
@@ -1206,16 +1208,6 @@ var ERROR_ON_UNDEFINED_SYMBOLS = true;
 // [link]
 var SMALL_XHR_CHUNKS = false;
 
-// If 1, we force Date.now(), Math.random, etc. to return deterministic results.
-// This also tries to make execution deterministic across machines and
-// environments, for example, not doing anything different based on the
-// browser's language setting (which would mean you can get different results
-// in different browsers, or in the browser and in node).
-// Good for comparing builds for debugging purposes (and nothing else).
-// [link]
-// [deprecated]
-var DETERMINISTIC = false;
-
 // By default we emit all code in a straightforward way into the output
 // .js file. That means that if you load that in a script tag in a web
 // page, it will use the global scope. With ``MODULARIZE`` set, we instead emit
@@ -1891,29 +1883,25 @@ var AUTO_NATIVE_LIBRARIES = true;
 var MIN_FIREFOX_VERSION = 79;
 
 // Specifies the oldest version of desktop Safari to target. Version is encoded
-// in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
-// Safari 14.1.0 was released on April 26, 2021, bundled with macOS 11.0 Big
-// Sur and iOS 14.5.
-// The previous default, Safari 12.0.0 was released on September 17, 2018,
-// bundled with macOS 10.14.0 Mojave.
+// in MMmmVV, e.g. 160101 denotes Safari 16.1.1.
+// Safari 15 was released on September 20, 2021, bundled with macOS 12.0
+// Monterey and iOS 15.
 // NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 // older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 // see https://github.com/emscripten-core/emscripten/pull/7191.
-// Multithreaded Emscripten code will need Safari 12.2 (iPhone 5s+) at minimum,
-// with support for DedicatedWorkerGlobalScope.name parameter.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 120200 which was released on 2019-03-25 (see
+// Minimum supported value is 140100 which was released on 2021-04-26 (see
 // feature_matrix.py).
 // [link]
 var MIN_SAFARI_VERSION = 150000;
 
-// Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=78 to
-// drop support for Chrome 77 and older.
+// Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=100 to
+// drop support for Chrome 99 and older.
 // This setting also applies to modern Chromium-based Edge, which shares version
 // numbers with Chrome.
 // Chrome 85 was released on 2020-08-25.
 // MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-// Minimum supported value is 74, which was released on 2019-04-23 (see
+// Minimum supported value is 85, which was released on 2020-08-25 (see
 // feature_matrix.py).
 // [link]
 var MIN_CHROME_VERSION = 85;
@@ -2063,7 +2051,7 @@ var SEPARATE_DWARF_URL = '';
 // Some example of features that require post-link wasm changes are:
 //
 // - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
-// - Lowering sign-extension operation when targeting older browsers.
+// - Lowering nontrapping-float-to-int operations when targeting older browsers.
 var ERROR_ON_WASM_CHANGES_AFTER_LINK = false;
 
 // Abort on unhandled exceptions that occur when calling exported WebAssembly
@@ -2201,17 +2189,11 @@ var WASM_ESM_INTEGRATION = false;
 var JS_BASE64_API = false;
 
 // Enable support for GrowableSharedArrayBuffer.
-// This features is only available behind a flag in recent versions of
-// node/chrome.
+// This feature has only recently become available across major browser engines
+// and Node.js.
 // [experimental]
 // [link]
 var GROWABLE_ARRAYBUFFERS = false;
-
-// Experimental support for WebAssembly js-types proposal.
-// It's currently only available under a flag in certain browsers,
-// so we disable it by default to save on code size.
-// [experimental]
-var WASM_JS_TYPES = false;
 
 // If the emscripten-generated program is hosted on separate origin then
 // starting new pthread worker can violate CSP rules.  Enabling
@@ -2219,12 +2201,12 @@ var WASM_JS_TYPES = false;
 // indirectly using `importScripts`
 var CROSS_ORIGIN = false;
 
-// This setting changes the behaviour of the ``-shared`` flag.  The default
-// setting of ``true`` means the ``-shared`` flag actually produces a normal
-// object file (i.e. ``ld -r``).  Setting this to false will cause ``-shared``
-// to behave like :ref:`SIDE_MODULE` and produce a dynamically linked
-// library.
-var FAKE_DYLIBS = true;
+// This setting changes the behaviour of the ``-shared`` flag.  When set to true
+// you get the old emscripten behaviour where the ``-shared`` flag actually
+// produces a normal object file (i.e. ``ld -r``).  When set to true (the
+// default) the ``-shared`` flag is equivelent to :ref:`SIDE_MODULE` and will
+// produce a Wasn dynamic library.
+var FAKE_DYLIBS = false;
 
 // Add a #! line to generated JS file and make it executable.  This is useful
 // for building command line tools that run under node.

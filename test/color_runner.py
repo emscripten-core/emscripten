@@ -10,11 +10,12 @@ from tools.colored_logger import CYAN, GREEN, RED, with_color
 
 
 class BufferingMixin:
-  """This class takes care of redirecting `logging` output in `buffer=True` mode.
+  """Mixin class takes care of redirecting `logging` output in `buffer=True` mode.
 
   To use this class inherit from it along with a one of the standard unittest result
   classes.
   """
+
   def _setupStdout(self):
     super()._setupStdout()
     # In addition to redirecting sys.stderr and sys.stdout, also update the python
@@ -75,6 +76,7 @@ class ProgressMixin:
 
 class ColorTextResult(BufferingMixin, ProgressMixin, unittest.TextTestResult):
   """Adds color the printed test result."""
+
   def _write_status(self, test, status):
     # Add some color to the status message
     if status == 'ok':
@@ -87,7 +89,8 @@ class ColorTextResult(BufferingMixin, ProgressMixin, unittest.TextTestResult):
 
 
 class ColorTextRunner(unittest.TextTestRunner):
-  """Subclass of TextTestRunner that uses ColorTextResult"""
+  """Subclass of TextTestRunner that uses ColorTextResult."""
+
   resultclass = ColorTextResult # type: ignore
 
   def __init__(self, *args, **kwargs):

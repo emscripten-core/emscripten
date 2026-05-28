@@ -5,7 +5,6 @@
 
 import copy
 import difflib
-import os
 import re
 from typing import Any
 
@@ -151,10 +150,9 @@ INCOMPATIBLE_SETTINGS = [
 
 EXPERIMENTAL_SETTINGS = {
     'SPLIT_MODULE': '-sSPLIT_MODULE is experimental and subject to change',
-    'WASM_JS_TYPES': '-sWASM_JS_TYPES is only supported under a flag in certain browsers',
     'SOURCE_PHASE_IMPORTS': '-sSOURCE_PHASE_IMPORTS is experimental and not yet supported in browsers',
     'JS_BASE64_API': '-sJS_BASE64_API is experimental and not yet supported in browsers',
-    'GROWABLE_ARRAYBUFFERS': '-sGROWABLE_ARRAYBUFFERS is experimental and not yet supported in browsers',
+    'GROWABLE_ARRAYBUFFERS': '-sGROWABLE_ARRAYBUFFERS is still experimental and has only recently become available in browsers',
     'SUPPORT_BIG_ENDIAN': '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.',
     'WASM_ESM_INTEGRATION': '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers',
 }
@@ -253,6 +251,8 @@ LEGACY_SETTINGS = [
     ['NODEJS_CATCH_REJECTION', [0], 'No longer supported'],
     ['POLYFILL_OLD_MATH_FUNCTIONS', [0], 'No longer supported'],
     ['RELOCATABLE', [0], 'No longer supported'],
+    ['WASM_JS_TYPES', [0], 'No longer supported'],
+    ['DETERMINISTIC', [0], 'No longer supported'],
 ]
 
 user_settings: dict[str, str] = {}
@@ -299,9 +299,7 @@ class SettingsManager:
     self.attrs.update(internal_attrs)
     self.infer_types()
 
-    strict_override = False
-    if 'EMCC_STRICT' in os.environ:
-      strict_override = int(os.environ.get('EMCC_STRICT'))
+    strict_override = utils.get_env_bool('EMCC_STRICT')
 
     # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
     # details

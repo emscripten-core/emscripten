@@ -102,7 +102,6 @@ int main() {
   assert(strstr(node, "mozilla"));
   assert(!strcmp(serv, "54321"));
 
-  puts("success");
-
-  return EXIT_SUCCESS;
+  puts("done");
+  return 0;
 }

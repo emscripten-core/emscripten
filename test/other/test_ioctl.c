@@ -16,6 +16,6 @@ int main() {
   assert(ioctl(STDOUT_FILENO, FIOCLEX, NULL) == -1);
   assert(errno == EINVAL);
 
-  puts("success");
+  puts("done");
   return 0;
 }

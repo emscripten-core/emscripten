@@ -81,7 +81,7 @@ class FetchXHR {
     // Handle Basic Authentication if user/password are provided.
     // This creates a base64-encoded string and sets the Authorization header.
     if (user) {
-      const credentials = btoa(`${user}:${password || ''}`);
+      const credentials = btoa(`${user}:${password ?? ''}`);
       this._headers['Authorization'] = `Basic ${credentials}`;
     }
 
@@ -536,7 +536,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   if (!fetchAttrSynchronous) xhr.timeout = timeoutMsecs; // XHR timeout field is only accessible in async XHRs, and must be set after .open() but before .send().
   xhr.url_ = url_; // Save the url for debugging purposes (and for comparing to the responseURL that server side advertised)
 #if ASSERTIONS && !FETCH_STREAMING
-  assert(!fetchAttrStreamData, 'Streaming is only supported when FETCH_STREAMING is enabled.');
+  assert(!fetchAttrStreamData, 'streaming is only supported when FETCH_STREAMING is enabled');
 #endif
   xhr.responseType = 'arraybuffer';
 
@@ -593,7 +593,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
     writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, 0);
-    var len = xhr.response ? xhr.response.byteLength : 0;
+    var len = xhr.response?.byteLength ?? 0;
     if (len) {
       // If the final XHR.onload handler receives the bytedata to compute total length, report that,
       // otherwise don't write anything out here, which will retain the latest byte size reported in
@@ -660,31 +660,48 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
     if (!Fetch.xhrs.has(id)) {
       return;
     }
-    var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData && xhr.response) ? xhr.response.byteLength : 0;
-    var ptr = 0;
-    if (ptrLen > 0 && fetchAttrLoadToMemory && fetchAttrStreamData) {
+    var ptrLen = (fetchAttrLoadToMemory && fetchAttrStreamData) ? xhr.response?.byteLength ?? 0 : 0;
+
+    // Specifies the maximum chunk size that a streaming fetch will transfer from
+    // JS over to WebAssembly side. Used to cap a streaming fetch to avoid
+    // overallocating WebAssembly memory needlessly.
+    var FETCH_STREAMING_MAX_CHUNK_SIZE = 8*1024*1024;
+
+    for (var bytePos = 0; bytePos < ptrLen || !ptrLen;) {
+      var sz = Math.min(ptrLen - bytePos, FETCH_STREAMING_MAX_CHUNK_SIZE);
+
+      var ptr = 0;
+      if (sz > 0 && fetchAttrLoadToMemory && fetchAttrStreamData) {
+        // Even though we are doing a streaming fetch (i.e. in small chunks), Safari may call onprogress with a huge
+        // chunk size. This will be a problem for Wasm applications that intend to use streaming fetch to process
+        // an input file in small chunks (to avoid blowing up the WebAssembly heap size). Therefore apply a max
+        // chunk size ceiling to the received chunks, and transfer the data over to WebAssembly using max sized chunks.
+
 #if FETCH_DEBUG
-      dbg(`fetch: allocating ${ptrLen} bytes in Emscripten heap for xhr data`);
+        dbg(`fetch: allocating ${sz} bytes in Emscripten heap for xhr data`);
 #endif
 #if ASSERTIONS
-      assert(onprogress, 'When doing a streaming fetch, you should have an onprogress handler registered to receive the chunks!');
+        assert(onprogress, 'streaming fetch requires an onprogress handler');
 #endif
-      // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
-      // freed when emscripten_fetch_close() is called.
-      ptr = _realloc({{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, '*') }}}, ptrLen);
-      HEAPU8.set(new Uint8Array(/** @type{Array<number>} */(xhr.response)), ptr);
+        // The data pointer malloc()ed here has the same lifetime as the emscripten_fetch_t structure itself has, and is
+        // freed when emscripten_fetch_close() is called.
+        ptr = _realloc({{{ makeGetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, '*') }}}, sz);
+        HEAPU8.set(new Uint8Array(/** @type{Array<number>} */(xhr.response), bytePos, sz), ptr);
+      }
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
+      writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, sz);
+      writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, e.loaded - ptrLen + bytePos);
+      writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, e.total);
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
+      var status = xhr.status;
+      // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
+      if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) status = 200;
+      {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'status', 'i16') }}}
+      if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
+      onprogress(fetch, e);
+      bytePos += sz;
+      if (!ptrLen) break;
     }
-    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.data, 'ptr', '*') }}}
-    writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.numBytes }}}, ptrLen);
-    writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.dataOffset }}}, e.loaded - ptrLen);
-    writeI53ToI64(fetch + {{{ C_STRUCTS.emscripten_fetch_t.totalBytes }}}, e.total);
-    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.readyState, 'xhr.readyState', 'i16') }}}
-    var status = xhr.status;
-    // If loading files from a source that does not give HTTP status code, assume success if we get data bytes
-    if (xhr.readyState >= 3 && xhr.status === 0 && e.loaded > 0) status = 200;
-    {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.status, 'status', 'i16') }}}
-    if (xhr.statusText) stringToUTF8(xhr.statusText, fetch + {{{ C_STRUCTS.emscripten_fetch_t.statusText }}}, 64);
-    onprogress(fetch, e);
   };
   xhr.onreadystatechange = (e) => {
     // check if xhr was aborted by user and don't try to call back

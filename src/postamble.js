@@ -10,10 +10,6 @@
 #include "source_map_support.js"
 #endif
 
-#if DETERMINISTIC
-#include "deterministic.js"
-#endif
-
 #if ASSERTIONS
 var calledRun;
 #endif
@@ -119,7 +115,7 @@ function stackCheckInit() {
 #endif
 
 #if MAIN_READS_PARAMS
-function run(args = arguments_) {
+function run(args = programArgs) {
 #else
 function run() {
 #endif

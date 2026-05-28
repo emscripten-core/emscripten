@@ -90,7 +90,8 @@ def make_fake_tool(filename, version, report_name=None, extra_output=None):
 
 
 def make_fake_clang(filename, version, targets='wasm32 - WebAssembly 32-bit'):
-  """Create a fake clang that only handles --version
+  """Create a fake clang that only handles --version.
+
   --version writes to stdout (unlike -v which writes to stderr)
   """
   output = 'clang fake output\nRegistered Targets:\n%s' % targets
@@ -542,10 +543,10 @@ fi
     utils.write_file(EM_CONFIG, 'asdfasdfasdfasdf\n')
 
     # Test both relative and absolute paths to the config
-    self.run_process([EMCC, '--em-config', os.path.abspath('custom_config')] + MINIMAL_HELLO_WORLD)
+    self.run_process([EMCC, '--em-config', os.path.abspath('custom_config'), *MINIMAL_HELLO_WORLD])
     self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
-    self.run_process([EMCC, '--em-config', 'custom_config'] + MINIMAL_HELLO_WORLD)
+    self.run_process([EMCC, '--em-config', 'custom_config', *MINIMAL_HELLO_WORLD])
     self.assertContained('Hello, world!', self.run_js('a.out.js'))
 
   def test_emcc_ports(self):
@@ -633,7 +634,7 @@ fi
     restore_and_set_up()
 
     def build():
-      return self.check_working([EMCC] + MINIMAL_HELLO_WORLD, '')
+      return self.check_working([EMCC, *MINIMAL_HELLO_WORLD], '')
 
     def test():
       self.assertContained('Hello, world!', self.run_js('a.out.js'))
@@ -669,7 +670,7 @@ fi
     def test_with_fake(report, expected):
       make_fake(report)
       with env_modify({'EMCC_DEBUG': '1'}):
-        self.check_working([EMCC] + MINIMAL_HELLO_WORLD + ['-c'], expected)
+        self.check_working([EMCC, *MINIMAL_HELLO_WORLD, '-c'], expected)
 
     test_with_fake('got js backend! JavaScript (asm.js, emscripten) backend', 'LLVM has not been built with the WebAssembly backend')
     delete_dir(shared.CANONICAL_TEMP_DIR)
@@ -846,3 +847,26 @@ fi
 
     # Running bootstrap.py should not fail
     self.run_process([utils.exe_path_from_root('bootstrap')], env=env)
+
+  # Verify that if user specifies a relative path to Python executable, then
+  # Emscripten is still able to build.
+  def test_emcc_with_relative_python_path(self):
+    restore_and_set_up()
+    # Clear the cache, since rebuilding the cache has been observed to fail
+    # if Python path is specified as relative.
+    self.clear_cache()
+
+    try:
+      relative_python = os.path.relpath(os.environ.get('EMSDK_PYTHON'), os.getcwd())
+    except ValueError:
+      self.skipTest('Python and Emscripten are located on different drives, cannot run this test.')
+
+    relative_python_escaped = relative_python.replace("\\", "\\\\")
+    add_to_config(f'PYTHON = "{relative_python_escaped}"')
+
+    env = os.environ.copy()
+    env['EMSDK_PYTHON'] = relative_python
+
+    output = self.do([EMCC, test_file('hello_world.c')], env=env)
+    self.assertNotContained('error', output)
+    self.assertExists('a.out.js')

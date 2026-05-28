@@ -6,7 +6,7 @@
 
 addToLibrary({
   $promiseMap__deps: ['$HandleAllocator'],
-  $promiseMap: "new HandleAllocator();",
+  $promiseMap: 'new HandleAllocator();',
 
   $getPromise__deps: ['$promiseMap'],
   $getPromise: (id) => promiseMap.get(id).promise,
@@ -24,6 +24,9 @@ addToLibrary({
 #endif
     return promiseInfo;
   },
+
+  $addPromise__deps: ['$promiseMap'],
+  $addPromise: (promise) => promiseMap.allocate({promise}),
 
   $idsToPromises__deps: ['$getPromise'],
   $idsToPromises: (idBuf, size) => {
@@ -70,7 +73,7 @@ addToLibrary({
         return;
     }
 #if ASSERTIONS
-    abort("unexpected promise callback result " + result);
+    abort(`unexpected promise callback result ${result}`);
 #endif
   },
 
@@ -81,6 +84,7 @@ addToLibrary({
                                '$stackRestore',
                                '$stackSave'],
   $makePromiseCallback: (callback, userData) => {
+    if (!callback) return;
     return (value) => {
 #if RUNTIME_DEBUG
       dbg(`emscripten promise callback: ${value}`);
@@ -128,12 +132,12 @@ addToLibrary({
           throw resultVal;
       }
 #if ASSERTIONS
-      abort("unexpected promise callback result " + result);
+      abort(`unexpected promise callback result ${result}`);
 #endif
     };
   },
 
-  emscripten_promise_then__deps: ['$promiseMap',
+  emscripten_promise_then__deps: ['$addPromise',
                                   '$getPromise',
                                   '$makePromiseCallback'],
   emscripten_promise_then: (id, onFulfilled, onRejected, userData) => {
@@ -142,33 +146,30 @@ addToLibrary({
 #endif
     {{{ runtimeKeepalivePush() }}};
     var promise = getPromise(id);
-    var newId = promiseMap.allocate({
-      promise: promise.then(makePromiseCallback(onFulfilled, userData),
-                            makePromiseCallback(onRejected, userData))
-    });
+    var chainedPromise = promise.then(makePromiseCallback(onFulfilled, userData),
+                                      makePromiseCallback(onRejected, userData));
+    var newId = addPromise(chainedPromise);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_then: -> ${newId}`);
 #endif
     return newId;
   },
 
-  emscripten_promise_all__deps: ['$promiseMap', '$idsToPromises'],
+  emscripten_promise_all__deps: ['$addPromise', '$idsToPromises'],
   emscripten_promise_all: (idBuf, resultBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_all: ${promises}`);
 #endif
-    var id = promiseMap.allocate({
-      promise: Promise.all(promises).then((results) => {
-        if (resultBuf) {
-          for (var i = 0; i < size; i++) {
-            var result = results[i];
-            {{{ makeSetValue('resultBuf', `i*${POINTER_SIZE}`, 'result', '*') }}};
-          }
+    var id = addPromise(Promise.all(promises).then((results) => {
+      if (resultBuf) {
+        for (var i = 0; i < size; i++) {
+          var result = results[i];
+          {{{ makeSetValue('resultBuf', `i*${POINTER_SIZE}`, 'result', '*') }}};
         }
-        return resultBuf;
-      })
-    });
+      }
+      return resultBuf;
+    }));
 #if RUNTIME_DEBUG
     dbg(`create: ${id}`);
 #endif
@@ -185,84 +186,71 @@ addToLibrary({
     {{{ makeSetValue('ptr', C_STRUCTS.em_settled_result_t.value, 'value', '*') }}};
   },
 
-  emscripten_promise_all_settled__deps: ['$promiseMap', '$idsToPromises', '$setPromiseResult'],
+  emscripten_promise_all_settled__deps: ['$addPromise', '$idsToPromises', '$setPromiseResult'],
   emscripten_promise_all_settled: (idBuf, resultBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_all_settled: ${promises}`);
 #endif
-    var id = promiseMap.allocate({
-      promise: Promise.allSettled(promises).then((results) => {
-        if (resultBuf) {
-          var offset = resultBuf;
-          for (var i = 0; i < size; i++, offset += {{{ C_STRUCTS.em_settled_result_t.__size__ }}}) {
-            if (results[i].status === 'fulfilled') {
-              setPromiseResult(offset, true, results[i].value);
-            } else {
-              setPromiseResult(offset, false, results[i].reason);
-            }
+    var id = addPromise(Promise.allSettled(promises).then((results) => {
+      if (resultBuf) {
+        var offset = resultBuf;
+        for (var i = 0; i < size; i++, offset += {{{ C_STRUCTS.em_settled_result_t.__size__ }}}) {
+          if (results[i].status === 'fulfilled') {
+            setPromiseResult(offset, true, results[i].value);
+          } else {
+            setPromiseResult(offset, false, results[i].reason);
           }
         }
-        return resultBuf;
-      })
-    });
+      }
+      return resultBuf;
+    }));
 #if RUNTIME_DEBUG
     dbg(`create: ${id}`);
 #endif
     return id;
   },
 
-  emscripten_promise_any__deps: [
-    '$promiseMap', '$idsToPromises',
-#if !SUPPORTS_PROMISE_ANY && !INCLUDE_FULL_LIBRARY
-    () => error("emscripten_promise_any used, but Promise.any is not supported by the current runtime configuration (run with EMCC_DEBUG=1 in the env for more details)"),
-#endif
-  ],
+  emscripten_promise_any__deps: ['$addPromise', '$idsToPromises'],
   emscripten_promise_any: (idBuf, errorBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_any: ${promises}`);
 #endif
 #if ASSERTIONS
-    assert(typeof Promise.any != 'undefined', "Promise.any does not exist");
+    assert(typeof Promise.any != 'undefined', 'Promise.any does not exist');
 #endif
-    var id = promiseMap.allocate({
-      promise: Promise.any(promises).catch((err) => {
-        if (errorBuf) {
-          for (var i = 0; i < size; i++) {
-            {{{ makeSetValue('errorBuf', `i*${POINTER_SIZE}`, 'err.errors[i]', '*') }}};
-          }
+    var id = addPromise(Promise.any(promises).catch((err) => {
+      if (errorBuf) {
+        for (var i = 0; i < size; i++) {
+          {{{ makeSetValue('errorBuf', `i*${POINTER_SIZE}`, 'err.errors[i]', '*') }}};
         }
-        throw errorBuf;
-      })
-    });
+      }
+      throw errorBuf;
+    }));
 #if RUNTIME_DEBUG
     dbg(`create: ${id}`);
 #endif
     return id;
   },
 
-  emscripten_promise_race__deps: ['$promiseMap', '$idsToPromises'],
+  emscripten_promise_race__deps: ['$addPromise', '$idsToPromises'],
   emscripten_promise_race: (idBuf, size) => {
     var promises = idsToPromises(idBuf, size);
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_race: ${promises}`);
 #endif
-    var id = promiseMap.allocate({
-      promise: Promise.race(promises)
-    });
+    var id = addPromise(Promise.race(promises));
 #if RUNTIME_DEBUG
     dbg(`create: ${id}`);
 #endif
     return id;
   },
 
+#if ASYNCIFY
   emscripten_promise_await__async: 'auto',
-#if ASYNCIFY
   emscripten_promise_await__deps: ['$getPromise', '$setPromiseResult'],
-#endif
   emscripten_promise_await: (returnValuePtr, id) => {
-#if ASYNCIFY
 #if RUNTIME_DEBUG
     dbg(`emscripten_promise_await: ${id}`);
 #endif
@@ -270,8 +258,23 @@ addToLibrary({
       value => setPromiseResult(returnValuePtr, true, value),
       error => setPromiseResult(returnValuePtr, false, error)
     );
-#else
-    abort('emscripten_promise_await is only available with ASYNCIFY');
-#endif
   },
+
+  emscripten_promise_await_unchecked__async: 'auto',
+  emscripten_promise_await_unchecked__deps: ['$getPromise'],
+  emscripten_promise_await_unchecked: (id) => {
+#if RUNTIME_DEBUG
+    dbg(`emscripten_promise_await_unchecked: ${id}`);
+#endif
+    return getPromise(id);
+  },
+#else
+  emscripten_promise_await: (returnValuePtr, id) => {
+    abort('emscripten_promise_await is only available with ASYNCIFY');
+  },
+  emscripten_promise_await_unchecked: (id) => {
+    abort('emscripten_promise_await_unchecked is only available with ASYNCIFY');
+    return 0;
+  },
+#endif
 });

@@ -12,17 +12,21 @@ TYPEDEF _Reg register_t;
 TYPEDEF _Int64 time_t;
 TYPEDEF _Int64 suseconds_t;
 
-TYPEDEF signed char     int8_t;
-TYPEDEF signed short    int16_t;
-TYPEDEF signed int      int32_t;
-TYPEDEF signed _Int64   int64_t;
-TYPEDEF signed _Int64   intmax_t;
-TYPEDEF unsigned char   uint8_t;
-TYPEDEF unsigned short  uint16_t;
-TYPEDEF unsigned int    uint32_t;
-TYPEDEF unsigned _Int64 uint64_t;
-TYPEDEF unsigned _Int64 u_int64_t;
-TYPEDEF unsigned _Int64 uintmax_t;
+// XXX EMSCRIPTEN: This file has been modified from the upstream musl version
+// to make use of clang pre-defined macros whereever possible, eliminating
+// possible inconsistencies.
+
+TYPEDEF __INT8_TYPE__    int8_t;
+TYPEDEF __INT16_TYPE__   int16_t;
+TYPEDEF __INT32_TYPE__   int32_t;
+TYPEDEF __INT64_TYPE__   int64_t;
+TYPEDEF __INTMAX_TYPE__  intmax_t;
+TYPEDEF __UINT8_TYPE__   uint8_t;
+TYPEDEF __UINT16_TYPE__  uint16_t;
+TYPEDEF __UINT32_TYPE__  uint32_t;
+TYPEDEF __UINT64_TYPE__  uint64_t;
+TYPEDEF __UINT64_TYPE__  u_int64_t;
+TYPEDEF __UINTMAX_TYPE__ uintmax_t;
 
 TYPEDEF unsigned mode_t;
 TYPEDEF unsigned _Reg nlink_t;

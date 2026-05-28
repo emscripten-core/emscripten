@@ -3,6 +3,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+# ruff:noqa: F841
+
 import logging
 from dataclasses import dataclass
 
@@ -17,8 +19,8 @@ logger = logging.getLogger('extract_metadata')
 def skip_function_header(module):
   num_local_decls = module.read_uleb()
   while num_local_decls:
-    local_count = module.read_uleb()  # noqa
-    local_type = module.read_type()  # noqa
+    local_count = module.read_uleb()
+    local_type = module.read_type()
     num_local_decls -= 1
 
 
@@ -71,8 +73,7 @@ def get_global_value(globl):
 
 
 def parse_function_for_memory_inits(module, func_index, offset_map):
-  """Very limited function parser that uses `memory.init` instructions
-  to derive segment offset.
+  """Very limited function parser that uses `memory.init` instructions to derive segment offset.
 
   When segments are passive they don't have an offset but (at least with
   llvm-generated code) are loaded during the start function
@@ -113,10 +114,10 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
             memory = module.read_uleb()
             assert memory == 0
           case MemoryOpCode.MEMORY_FILL:
-            memory = module.read_uleb() # noqa
+            memory = module.read_uleb()
             assert memory == 0
           case MemoryOpCode.MEMORY_DROP:
-            segment = module.read_uleb() # noqa
+            segment = module.read_uleb()
           case _:
             assert False, "unknown: %s" % opcode
       case OpCode.ATOMIC_PREFIX:
@@ -131,8 +132,8 @@ def parse_function_for_memory_inits(module, func_index, offset_map):
       case OpCode.BR_TABLE:
         count = module.read_uleb()
         for _ in range(count):
-          depth = module.read_uleb() # noqa
-        default = module.read_uleb() # noqa
+          depth = module.read_uleb()
+        default = module.read_uleb()
       case _:
         assert False, "unknown: %s" % opcode
 

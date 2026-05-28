@@ -15,7 +15,7 @@
 
 template<typename TYPE, typename UNSIGNED_TYPE> void test(TYPE mask0, TYPE mask1, TYPE mask2) {
     typedef TYPE dog;
-    
+
     const TYPE numMemoryOrders = 6;
     std::memory_order memoryOrder[numMemoryOrders] = {
         std::memory_order_relaxed,
@@ -28,12 +28,8 @@ template<typename TYPE, typename UNSIGNED_TYPE> void test(TYPE mask0, TYPE mask1
 
     // test atomic<int>
     std::atomic<dog> atomicDog(5);
-    if (sizeof(TYPE) < 8) {
-      printf("atomic<int>.is_lock_free(): %s\n", atomicDog.is_lock_free() ? "true" : "false");
-    } else {
-      printf("atomic<int>.is_lock_free(): %s\n", atomicDog.is_lock_free() == IS_64BIT_LOCK_FREE ? "ok" : "bad :(");
-    }
-    printf("atomic<int> value: %lld\n", (long long)TYPE(atomicDog));
+    printf("is_lock_free: %s\n", atomicDog.is_lock_free() ? "true" : "false");
+    printf("value: %lld\n", (long long)TYPE(atomicDog));
 
     // test store/load
     for (TYPE i = 0; i < numMemoryOrders; i++) {
@@ -114,8 +110,12 @@ template<typename TYPE, typename UNSIGNED_TYPE> void test(TYPE mask0, TYPE mask1
 
 }
 
-int main() {
+struct Pair128 {
+  uint64_t m1;
+  uint64_t m2;
+};
 
+int main() {
     // test 8, 16, 32 and 64-bit data types
     printf("\n8 bits\n\n");
     test<char, unsigned char>(0xFF, 0xF0, 0x0F);
@@ -126,12 +126,19 @@ int main() {
     printf("\n64 bits\n\n");
     test<long long, unsigned long long>(0xFFFFFFFFFFFFFFFF, 0xF0F0F0F0F0F0F0F0, 0x0F0F0F0F0F0F0F0F);
 
-    // test atomic_flag (should also have memory_orders, but probably doesn't matter 
+    printf("\n128 bits\n\n");
+    std::atomic<Pair128> atomicPair;
+    printf("is_lock_free: %s\n", atomicPair.is_lock_free() ? "true" : "false");
+    atomicPair = {1, 2};
+    Pair128 oldPair = atomicPair.exchange({3, 4});
+    printf("exchange: %lld:%lld -> %lld:%lld\n", oldPair.m1, oldPair.m2, atomicPair.load().m1, atomicPair.load().m2);
+
+    // test atomic_flag (should also have memory_orders, but probably doesn't matter
     // to find the missing atomic functions)
     std::atomic_flag af;
     af.clear();
     bool b = af.test_and_set();
-    printf("atomic_flag: %s\n", b ? "true" : "false");
+    printf("\natomic_flag: %s\n", b ? "true" : "false");
 
     printf("done.\n");
     return 0;

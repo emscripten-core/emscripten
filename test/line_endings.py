@@ -11,10 +11,10 @@ from tools import utils
 
 
 def check_line_endings(filename, expect_only=None, print_errors=True, print_info=False):
-  """Detect inconsistent/invalid line endings.
+  r"""Detect inconsistent/invalid line endings.
 
   This function checks and prints out the detected line endings in the given
-  file. If the file only contains either Windows \\r\\n line endings or Unix \\n
+  file. If the file only contains either Windows \r\n line endings or Unix \n
   line endings, it returns 0.  Otherwise, in the presence of old macOS or
   mixed/malformed line endings, a non-zero error code is returned.
   """

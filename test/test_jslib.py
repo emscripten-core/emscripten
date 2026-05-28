@@ -3,10 +3,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import shutil
 from subprocess import PIPE
 
-from common import RunnerCore, create_file, read_file, test_file
+from common import RunnerCore, copy_asset, create_file, read_file, test_file
 from decorators import also_with_wasm64, also_without_bigint, parameterized
 
 from tools.shared import EMCC
@@ -353,10 +352,15 @@ int main() {
   # the -jsDfoo=val syntax:
   # See https://github.com/emscripten-core/emscripten/issues/10580.
   def test_jslib_custom_settings(self):
-    self.cflags += ['--js-library', test_file('jslib/test_jslib_custom_settings.js'), '-jsDCUSTOM_JS_OPTION=1']
-    self.do_run_in_out_file_test('jslib/test_jslib_custom_settings.c')
+    test_file_path = test_file('jslib/test_jslib_custom_settings.c')
+    js_lib = test_file('jslib/test_jslib_custom_settings.js')
 
-    self.assert_fail([EMCC, '-jsDWASM=0'], 'cannot change built-in settings values with a -jsD directive')
+    self.do_runf(test_file_path, '1\n', cflags=['--js-library', js_lib, '-jsDCUSTOM_JS_OPTION=1'])
+
+    # verify that the settings can be specified more than once, and that the last one wins.
+    self.do_runf(test_file_path, '2\n', cflags=['--js-library', js_lib, '-jsDCUSTOM_JS_OPTION=1', '-jsDCUSTOM_JS_OPTION=2'])
+
+    self.assert_fail([EMCC, '-jsDWASM=1'], 'cannot change built-in settings values with a -jsD directive')
 
   def test_jslib_native_deps(self):
     # Verify that memset (which lives in compiled code), can be specified as a JS library
@@ -465,7 +469,7 @@ extraLibraryFuncs.push('jsfunc');
 
   # Tests using the #warning directive in JS library files
   def test_jslib_warnings(self):
-    shutil.copy(test_file('warning_in_js_libraries.js'), '.')
+    copy_asset('warning_in_js_libraries.js')
     proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'warning_in_js_libraries.js'], stdout=PIPE, stderr=PIPE)
     self.assertNotContained('This warning should not be present!', proc.stderr)
     self.assertContained('warning: warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
@@ -480,7 +484,7 @@ extraLibraryFuncs.push('jsfunc');
 
   # Tests using the #error directive in JS library files
   def test_jslib_errors(self):
-    shutil.copy(test_file('jslib/error_in_js_libraries.js'), '.')
+    copy_asset('jslib/error_in_js_libraries.js')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'error_in_js_libraries.js'])
     self.assertNotContained('This error should not be present!', err)
     self.assertContained('error: error_in_js_libraries.js:5: #error This is an error string!', err)

@@ -4,12 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-# This file needs to run on older version of python too (even python 2!) so
-# suppress these upgrade warnings:
-# ruff: noqa: UP015, UP024, UP021, UP025
-
-"""emrun: Implements machinery that allows running a .html page as if it was a
-standard executable file.
+"""emrun: Tool for running an .html page as if it was a standard executable file.
 
 Usage: emrun <options> filename.html <args to program>
 
@@ -135,36 +130,31 @@ page_last_served_time = None
 http_mutex = threading.RLock()
 
 
-def logi(msg):
-  """Prints a log message to 'info' stdout channel. Always printed.
-  """
+def print_message(msg, file):
   global last_message_time
   with http_mutex:
-    sys.stdout.write(msg + '\n')
-    sys.stdout.flush()
+    file.write(msg + '\n')
+    file.flush()
     last_message_time = tick()
+
+
+def logi(msg):
+  """Prints a log message to stdout. Always printed."""
+  print_message(msg, sys.stdout)
 
 
 def logv(msg):
-  """Prints a verbose log message to stdout channel.
+  """Prints a verbose log message to stdout.
+
   Only shown if run with --verbose.
   """
-  global last_message_time
   if emrun_options.verbose:
-    with http_mutex:
-      sys.stdout.write(msg + '\n')
-      sys.stdout.flush()
-      last_message_time = tick()
+    print_message(msg, sys.stdout)
 
 
 def loge(msg):
-  """Prints an error message to stderr channel.
-  """
-  global last_message_time
-  with http_mutex:
-    sys.stderr.write(msg + '\n')
-    sys.stderr.flush()
-    last_message_time = tick()
+  """Prints an error message to stderr."""
+  print_message(msg, sys.stderr)
 
 
 def format_eol(msg):
@@ -174,8 +164,7 @@ def format_eol(msg):
 
 
 def browser_logi(msg):
-  """Prints a message to the browser stdout output stream.
-  """
+  """Prints a message to the browser stdout output stream."""
   global last_message_time
   msg = format_eol(msg)
   browser_stdout_handle.write(msg + '\n')
@@ -184,8 +173,7 @@ def browser_logi(msg):
 
 
 def browser_loge(msg):
-  """Prints a message to the browser stderr output stream.
-  """
+  """Prints a message to the browser stderr output stream."""
   global last_message_time
   msg = format_eol(msg)
   browser_stderr_handle.write(msg + '\n')
@@ -195,7 +183,8 @@ def browser_loge(msg):
 
 def unquote_u(source):
   """Unquotes a unicode string.
-  (translates ascii-encoded utf string back to utf)
+
+  Translates ascii-encoded utf string back to utf.
   """
   result = unquote(source)
   if '%u' in result:
@@ -207,7 +196,7 @@ temp_firefox_profile_dir = None
 
 
 def delete_emrun_safe_firefox_profile():
-  """Deletes the temporary created Firefox profile (if one exists)"""
+  """Delete the temporary created Firefox profile (if one exists)."""
   global temp_firefox_profile_dir
   if temp_firefox_profile_dir is not None:
     logv('remove_tree("' + temp_firefox_profile_dir + '")')
@@ -329,6 +318,7 @@ user_pref("browser.privatebrowsing.autostart", true);
 
 def is_browser_process_alive():
   """Returns whether the browser page we spawned is still running.
+
   (note, not perfect atm, in case we are running in detached mode)
   """
   # If navigation to the web page has not yet occurred, we behave as if the
@@ -358,8 +348,9 @@ def is_browser_process_alive():
 
 
 def kill_browser_process():
-  """Kills browser_process and processname_killed_atexit. Also removes the
-  temporary Firefox profile that was created, if one exists.
+  """Kills browser_process and processname_killed_atexit.
+
+  Also removes the temporary Firefox profile that was created, if one exists.
   """
   global browser_process, processname_killed_atexit, current_browser_processes
   if browser_process and browser_process.poll() is None:
@@ -443,14 +434,18 @@ def detect_browser_processes():
     logv('Was unable to detect the browser process that was spawned by emrun. This may occur if the target page was opened in a tab on a browser process that already existed before emrun started up.')
 
 
-# Our custom HTTP web server that will serve the target page to run via .html.
-# This is used so that we can load the page via a http:// URL instead of a
-# file:// URL, since those wouldn't work too well unless user allowed XHR
-# without CORS rules.  Also, the target page will route its stdout and stderr
-# back to here via HTTP requests.
 class HTTPWebServer(socketserver.ThreadingMixIn, HTTPServer):
-  """Log messaging arriving via HTTP can come in out of sequence. Implement a
-  sequencing mechanism to enforce ordered transmission."""
+  """HTTP Server used to serve the target page to run via .html.
+
+  This is used so that we can load the page via a http:// URL instead of a
+  file:// URL, since those wouldn't work too well unless user allowed XHR
+  without CORS rules.  Also, the target page will route its stdout and stderr
+  back to here via HTTP requests.
+
+  Log messaging arriving via HTTP can come in out of sequence. Implement a
+  sequencing mechanism to enforce ordered transmission.
+  """
+
   expected_http_seq_num = 1
   # Stores messages that have arrived out of order, pending for a send as soon
   # as the missing message arrives.  Kept in sorted order, first element is the
@@ -609,7 +604,7 @@ class HTTPHandler(SimpleHTTPRequestHandler):
 
     try:
       f = open(path, 'rb')
-    except IOError:
+    except OSError:
       self.send_error(404, "File not found: " + path)
       return None
 
@@ -775,7 +770,11 @@ def get_cpu_info():
       cpu_name = check_output(['sysctl', '-n', 'machdep.cpu.brand_string']).strip()
       physical_cores = int(check_output(['sysctl', '-n', 'machdep.cpu.core_count']).strip())
       logical_cores = int(check_output(['sysctl', '-n', 'machdep.cpu.thread_count']).strip())
-      frequency = int(check_output(['sysctl', '-n', 'hw.cpufrequency']).strip()) // 1000000
+      frequency = check_output(['sysctl', '-n', 'hw.cpufrequency']).strip()
+      if not frequency:
+        # Apple Silicon macOS devices have hw.tbfrequency instead of hw.cpufrequency
+        frequency = check_output(['sysctl', '-n', 'hw.tbfrequency']).strip()
+      frequency = int(frequency) // 1000000
     elif LINUX:
       for line in open('/proc/cpuinfo', encoding='utf-8').readlines():
         if 'model name' in line:
@@ -845,19 +844,19 @@ def win_get_gpu_info():
       hVideoCardReg = winreg.OpenKey(winreg.HKEY_LOCAL_MACHINE, CleanVideoCardString)
       try:
         VideoCardDescription = winreg.QueryValueEx(hVideoCardReg, 'Device Description')[0]
-      except WindowsError:
+      except OSError:
         VideoCardDescription = winreg.QueryValueEx(hVideoCardReg, 'DriverDesc')[0]
 
       try:
         driverVersion = winreg.QueryValueEx(hVideoCardReg, 'DriverVersion')[0]
         VideoCardDescription += ', driver version ' + driverVersion
-      except WindowsError:
+      except OSError:
         pass
 
       try:
         driverDate = winreg.QueryValueEx(hVideoCardReg, 'DriverDate')[0]
         VideoCardDescription += f' ({driverDate})'
-      except WindowsError:
+      except OSError:
         pass
 
       VideoCardMemorySize = winreg.QueryValueEx(hVideoCardReg, 'HardwareInformation.MemorySize')[0]
@@ -867,7 +866,7 @@ def win_get_gpu_info():
         vram = int(VideoCardMemorySize)
       if not find_gpu_model(VideoCardDescription):
         gpus += [{'model': VideoCardDescription, 'ram': vram}]
-    except WindowsError:
+    except OSError:
       pass
   return gpus
 
@@ -918,12 +917,15 @@ def macos_get_gpu_info():
     info = info.split("Chipset Model:")[1:]
     for gpu in info:
       model_name = gpu.split('\n')[0].strip()
-      bus = re.search("Bus: (.*)", gpu).group(1).strip()
-      memory = int(re.search("VRAM (.*?): (.*) MB", gpu).group(2).strip())
-      gpus += [{'model': model_name + ' (' + bus + ')', 'ram': memory * 1024 * 1024}]
-    return gpus
+      if 'Bus' in gpu and 'VRAM' in gpu:
+        bus = re.search("Bus: (.*)", gpu).group(1).strip()
+        memory = int(re.search("VRAM (.*?): (.*) MB", gpu).group(2).strip())
+        gpus += [{'model': model_name + ' (' + bus + ')', 'ram': memory * 1024 * 1024}]
+      else:
+        gpus += [{'model': model_name, 'ram': 0}]
   except Exception:
     pass
+  return gpus
 
 
 def get_gpu_info():
@@ -1027,7 +1029,7 @@ def win_get_file_properties(fname):
 
   strInfo = {}
   for propName in propNames:
-    strInfoPath = u'\\StringFileInfo\\%04X%04X\\%s' % (lang, codepage, propName)
+    strInfoPath = '\\StringFileInfo\\%04X%04X\\%s' % (lang, codepage, propName)
     # print str_info
     strInfo[propName] = win32api.GetFileVersionInfo(fname, strInfoPath)
 
@@ -1043,7 +1045,7 @@ def get_computer_model():
         with open(os.path.join(os.getenv("HOME"), '.emrun.hwmodel.cached'), encoding='utf-8') as f:
           model = f.read()
           return model
-      except IOError:
+      except OSError:
         pass
 
       try:
@@ -1164,7 +1166,7 @@ def win_get_default_browser():
         parts = shlex.split(cmd)
         if len(parts):
           return [parts[0]]
-  except WindowsError:
+  except OSError:
     logv("Unable to find default browser key in Windows registry. Trying fallback.")
 
   # Fall back to 'start "" %1', which we have to treat as if user passed --serve-forever, since
@@ -1607,6 +1609,10 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
 
   options = emrun_options = parse_args(args)
 
+  if MACOS and options.browser and options.browser.endswith('.app') and not options.browser.startswith('open'):
+    options.browser_args = f'--new --fresh --background -a {options.browser} {options.browser_args}'
+    options.browser = 'open'
+
   if options.android_tunnel:
     options.android = True
 
@@ -1768,7 +1774,7 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
       if browser_exe == 'cmd':
         url = url.replace('&', '^&')
       url = url.replace('0.0.0.0', 'localhost')
-      browser += browser_args + [url]
+      browser += browser_args
 
   if options.kill_start:
     pname = processname_killed_atexit
@@ -1800,6 +1806,14 @@ def run(args):  # noqa: C901, PLR0912, PLR0915
     profile_dir = create_emrun_safe_firefox_profile()
 
     browser += ['-no-remote', '--profile', profile_dir.replace('\\', '/')]
+
+  # Pass the URL to open as the very last item on the command line, and use the -url xxx parameter
+  # to open the url to work around https://bugzil.la/1996614.
+  if browser_exe and not options.android:
+    if 'firefox' in browser_exe:
+      browser += ['-url', url]
+    else:
+      browser += [url]
 
   if options.system_info:
     logi('Time of run: ' + time.strftime("%x %X"))

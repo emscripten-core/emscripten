@@ -62,5 +62,5 @@ int main() {
   assert(tm.tm_yday == 38);
 #endif
 
-  printf("OK\n");
+  printf("done\n");
 }

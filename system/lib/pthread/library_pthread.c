@@ -5,27 +5,13 @@
  * found in the LICENSE file.
  */
 
-#define _GNU_SOURCE
-#include "../internal/libc.h"
-#include "../internal/pthread_impl.h"
+#include "libc.h"
+#include "pthread_impl.h"
 #include <assert.h>
-#include <dirent.h>
-#include <errno.h>
-#include <fcntl.h>
-#include <poll.h>
 #include <pthread.h>
 #include <stdarg.h>
-#include <stdlib.h>
-#include <sys/ioctl.h>
-#include <sys/mman.h>
-#include <sys/socket.h>
-#include <sys/stat.h>
-#include <sys/statvfs.h>
-#include <sys/time.h>
-#include <termios.h>
 #include <threads.h>
 #include <unistd.h>
-#include <utime.h>
 
 #include <emscripten.h>
 #include <emscripten/proxying.h>
@@ -79,18 +65,24 @@ int pthread_mutexattr_setprioceiling(pthread_mutexattr_t *attr, int prioceiling)
 void emscripten_thread_sleep(double msecs) {
   // We include emscripten_current_thread_process_queued_calls before and
   // after sleeping since that is how we recieve "async" signals.
-  // We include __pthread_testcancel here becuase clock_nanosleep is
+  // We include __pthread_testcancel here because clock_nanosleep is
   // a pthread cancelation point.
   emscripten_current_thread_process_queued_calls();
   __pthread_testcancel();
-  emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING,
-                                                   EM_THREAD_STATUS_SLEEPING);
-  uint32_t dummyZeroAddress = 0;
-  emscripten_futex_wait(&dummyZeroAddress, 0, msecs);
-  emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_SLEEPING,
-                                                   EM_THREAD_STATUS_RUNNING);
-  emscripten_current_thread_process_queued_calls();
-  __pthread_testcancel();
+  if (msecs > 0) {
+    uint32_t dummyZeroAddress = 0;
+    double target = emscripten_get_now() + msecs;
+    do {
+      emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_RUNNING,
+                                                       EM_THREAD_STATUS_SLEEPING);
+      emscripten_futex_wait(&dummyZeroAddress, 0, msecs);
+      emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS_SLEEPING,
+                                                       EM_THREAD_STATUS_RUNNING);
+      emscripten_current_thread_process_queued_calls();
+      __pthread_testcancel();
+      msecs = target - emscripten_get_now();
+    } while (msecs > 0);
+  }
 }
 
 static struct pthread __main_pthread;
@@ -130,6 +122,7 @@ void _emscripten_init_main_thread(void) {
   // pthread struct prev and next should initially point to itself (see __init_tp),
   // this is used by pthread_key_delete for deleting thread-specific data.
   __main_pthread.next = __main_pthread.prev = &__main_pthread;
+  // Initialize thread-specific data area.
   __main_pthread.tsd = (void **)__pthread_tsd_main;
 
   _emscripten_init_main_thread_js(&__main_pthread);

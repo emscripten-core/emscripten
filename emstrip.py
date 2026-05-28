@@ -6,9 +6,9 @@
 
 """Wrapper script around `llvm-strip`.
 
-  It also supports taking a JS file as an argument and running 'llvm-strip' on
-  the corresponding Wasm file. This is convenient for some build systems that
-  expect to strip the output of a compile.
+It also supports taking a JS file as an argument and running 'llvm-strip' on
+the corresponding Wasm file. This is convenient for some build systems that
+expect to strip the output of a compile.
 """
 
 import os
@@ -29,7 +29,7 @@ def run():
         continue
     new_args.append(arg)
 
-  shared.exec_process([llvm_strip] + new_args)
+  shared.exec_process([llvm_strip, *new_args])
 
 
 if __name__ == '__main__':

@@ -674,7 +674,7 @@ function makeDynCall(sig, funcPtr, promising = false) {
     !sig.includes('j'),
     'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!',
   );
-  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI.');
+  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI');
 
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
@@ -682,6 +682,7 @@ function makeDynCall(sig, funcPtr, promising = false) {
   }
   args = args.join(', ');
 
+  const needRtnConversion = MEMORY64 && sig[0] == 'p';
   const needArgConversion = MEMORY64 && sig.includes('p');
   let callArgs = args;
   if (needArgConversion) {
@@ -751,7 +752,15 @@ Please update to new syntax.`);
   }
 
   if (needArgConversion) {
-    return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+    if (needRtnConversion) {
+      if (promising) {
+        return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}).then(Number))`;
+      } else {
+        return `((${args}) => Number(${getWasmTableEntry}.call(null, ${callArgs})))`;
+      }
+    } else {
+      return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+    }
   }
   return getWasmTableEntry;
 }
@@ -847,14 +856,14 @@ export function modifyJSFunction(text, func) {
   let oneliner = false;
   let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
-    async_ = match[1] || '';
+    async_ = match[1] ?? '';
     args = match[3];
     rest = text.slice(match[0].length);
   } else {
     // Match an arrow function
     let match = text.match(/^\s*(var (\w+) = )?(async\s+)?\(([^)]*)\)\s+=>\s+/);
     if (match) {
-      async_ = match[3] || '';
+      async_ = match[3] ?? '';
       args = match[4];
       rest = text.slice(match[0].length);
       rest = rest.trim();
@@ -864,7 +873,7 @@ export function modifyJSFunction(text, func) {
       // for both, but it would be more complex).
       match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
       assert(match, `could not match function:\n${text}\n`);
-      async_ = match[1] || '';
+      async_ = match[1] ?? '';
       args = match[2];
       rest = text.slice(match[0].length);
     }
@@ -1105,17 +1114,6 @@ function formattedMinNodeVersion() {
   return `v${major}.${minor}.${rev}`;
 }
 
-function getPerformanceNow() {
-  // This is needed to support Node.js v16 - v18 where `performance.now`
-  // cannot be overridden in the normal way.
-  // TODO(sbc): remove this once we drop support for these versions.
-  if (DETERMINISTIC && ENVIRONMENT_MAY_BE_NODE) {
-    return 'deterministicNow';
-  } else {
-    return 'performance.now';
-  }
-}
-
 function ENVIRONMENT_IS_MAIN_THREAD() {
   return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
 }
@@ -1231,7 +1229,6 @@ addToCompileTimeContext({
   getHeapForType,
   getHeapOffset,
   getNativeTypeSize,
-  getPerformanceNow,
   getUnsharedTextDecoderView,
   hasExportedSymbol,
   isSymbolNeeded,
