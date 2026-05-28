@@ -146,7 +146,7 @@ addToLibrary({
     // When the function takes numbers and returns a number, we can just return
     // the original function
     var numericArgs = !argTypes || argTypes.every((type) => type === 'number' || type === 'boolean');
-    var numericRet = returnType !== 'string';
+    var numericRet = returnType !== 'string' && returnType !== 'boolean';
     if (numericRet && numericArgs && !opts) {
       return getCFunc(ident);
     }
