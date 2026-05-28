@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 6.0.0 (in development)
 ----------------------
+- On Windows, Emscripten now ships `.exe` tool launchers, rather
+  than `.bat` and/or `.ps1`.  This means that any scripts that explicitly
+  reference, e.g. `emcc.bat`, will need to be updated to just `emcc` (or
+  `emcc.exe`).  For the time being you can still get the old `.bat` files by
+  running `tools/maint/create_entry_points.py --bat-files`. (#24858)
 - When performing a streaming Fetch operation, the max chunk size of downloaded
   bytes that is handed over to the Wasm side from JS is now capped to maximum
   of 8 megabytes. This ensures that a streaming Fetch stays streaming, rather

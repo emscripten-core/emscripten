@@ -524,7 +524,12 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.require_engine(v8)
       return
 
-    self.fail('either d8 or node >= 24 required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
+    deno = get_deno()
+    if deno:
+      self.require_engine(deno)
+      return
+
+    self.fail('either d8, node >= 24 or deno required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def try_require_node_version(self, major, minor=0, revision=0):
     nodejs = get_nodejs()
@@ -549,13 +554,23 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if self.try_require_node_version(17):
       return
 
+    deno = get_deno()
+    if deno:
+      self.require_engine(deno)
+      return
+
+    bun = get_bun()
+    if bun:
+      self.require_engine(bun)
+      return
+
     v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
       return
 
-    self.fail('either d8 or node >= 17 required to run legacy wasm-eh tests.  Use EMTEST_SKIP_WASM_LEGACY_EH to skip')
+    self.fail('either d8, deno, bun or node >= 17 required to run legacy wasm-eh tests.  Use EMTEST_SKIP_WASM_LEGACY_EH to skip')
 
   def require_wasm_eh(self):
     if 'EMTEST_SKIP_WASM_EH' in os.environ:
@@ -570,6 +585,16 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.node_args.append('--experimental-wasm-exnref')
       return
 
+    deno = get_deno()
+    if deno:
+      self.require_engine(deno)
+      return
+
+    bun = get_bun()
+    if bun:
+      self.require_engine(bun)
+      return
+
     v8 = get_v8()
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
@@ -577,7 +602,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       self.v8_args.append('--experimental-wasm-exnref')
       return
 
-    self.fail('either d8 or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_WASM_EH to skip')
+    self.fail('either d8, deno, bun or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_WASM_EH to skip')
 
   def require_jspi(self):
     if 'EMTEST_SKIP_JSPI' in os.environ:
