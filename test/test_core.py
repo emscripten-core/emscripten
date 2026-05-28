@@ -7687,7 +7687,7 @@ void* operator new(size_t size) {
   @parameterized({
     'emscripten_eh': (['-fexceptions'],),
     'disable_catching': ([],), # Use defaults: DISABLE_EXCEPTION_CATCHING, NO_DISABLE_EXCEPTION_THROWING
-    'no_exceptions': (['-fno-exceptions', '-Wno-coroutine-missing-unhandled-exception'],),
+    'no_exceptions': (['-fno-exceptions'],),
   })
   def test_embind_val_coro_propagate_js_error(self, extra_flags):
     create_file('pre.js', r'''Module.onRuntimeInitialized = () => {

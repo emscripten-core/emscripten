@@ -776,9 +776,6 @@ public:
   auto initial_suspend() noexcept { return std::suspend_never{}; }
   auto final_suspend() noexcept { return std::suspend_never{}; }
 
-// When exceptions are disabled we don't define unhandled_exception and rely
-// on the default terminate behavior.
-#ifdef __cpp_exceptions
   // On an unhandled exception, reject the stored promise instead of throwing
   // it asynchronously where it can't be handled.
   void unhandled_exception() {
@@ -791,7 +788,6 @@ public:
       reject(error);
     }
   }
-#endif
 
   // Reject the stored promise due to rejection deeper in the call chain
   void reject_with(val&& error) {
