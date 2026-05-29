@@ -1372,10 +1372,9 @@ window.close = () => {
   def test_separate_metadata_later(self):
     # see issue #6654 - we need to handle separate-metadata both when we run before
     # the main program, and when we are run later
-
     create_file('data.dat', ' ')
     self.run_process([FILE_PACKAGER, 'more.data', '--preload', 'data.dat', '--separate-metadata', '--js-output=more.js'])
-    self.btest(Path('browser/separate_metadata_later.cpp'), '1', cflags=['-sFORCE_FILESYSTEM'])
+    self.btest_exit('separate_metadata_later.c', cflags=['-sFORCE_FILESYSTEM'])
 
   @requires_safari_version(260001, 'TODO: Fails with "Assertion failed: false"') # Fails in Safari 18.5 (20621.2.5.11.8) with Intel x64 CPU only. Passes on Safari 18.5 (20621.2.5.11.8) with ARM M1, Safari 17.6 (17618.3.11.11.7, 17618)/x64 and Safari 26.0.1 (21622.1.22.11.15)/M4
   def test_idbstore(self):

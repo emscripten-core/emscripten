@@ -5,8 +5,8 @@
 
 #include <emscripten.h>
 
-EMSCRIPTEN_KEEPALIVE extern "C" void finish() {
-  REPORT_RESULT(1);
+EMSCRIPTEN_KEEPALIVE void finish() {
+  emscripten_force_exit(0);
 }
 
 int main() {
@@ -17,7 +17,7 @@ int main() {
       Module["removeRunDependency"] = function(id) {
         real(id);
         if (id === "more.js.metadata") {
-          Module["_finish"]();
+          _finish();
         }
       };
       function loadChildScript(name, then) {
@@ -29,5 +29,6 @@ int main() {
       loadChildScript("more.js");
     }, 1);
   });
+  emscripten_exit_with_live_runtime();
+  return 99;
 }
-
