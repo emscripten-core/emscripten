@@ -6137,6 +6137,28 @@ int main(void) {
     self.emcc('hello_world.c', ['-o', 'hello_world.mjs', '-sEXPORT_ES6', '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0', '--pre-js=pre.js'])
     self.assertContained('add-dep\nremove-dep\nHello, world!\ngot module\n', self.run_js('run.mjs'))
 
+  def test_modularize_instance_run_dependency(self):
+    # Ensure that dependencies are fulfilled before the MODULARIZE=instance ready promise is resolved.
+    create_file('pre.js', '''
+    Module.preRun = () => {
+      dbg("add-dep");
+      addRunDependency("my-dep");
+      setTimeout(() => { dbg("remove-dep"); removeRunDependency("my-dep"); }, 100);
+    }
+    ''')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
+
+    create_file('run.mjs', '''
+    import init from './hello_world.mjs';
+    await init();
+    console.log('got module');
+    ''')
+
+    self.emcc('hello_world.c', ['-o', 'hello_world.mjs', '-sMODULARIZE=instance', '-Wno-experimental', '--pre-js=pre.js'])
+
+    expected = 'add-dep\nremove-dep\nHello, world!\ngot module\n'
+    self.assertContained(expected, self.run_js('run.mjs'))
+
   def test_modularize_instantiation_error(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs'] + self.get_cflags())
     create_file('run.mjs', '''

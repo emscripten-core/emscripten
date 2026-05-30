@@ -304,6 +304,13 @@ export default async function init(moduleArg = {}) {
   wasmExports = await createWasm();
 #endif
   run();
+  if (!runtimeInitialized) {
+    return new Promise((resolve, reject) => {
+      // Wrap resolve to discard the 'Module' argument and resolve to undefined
+      readyPromiseResolve = () => resolve();
+      readyPromiseReject = reject;
+    });
+  }
 }
 
 #if ENVIRONMENT_MAY_BE_NODE
