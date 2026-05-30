@@ -114,7 +114,7 @@ function stackCheckInit() {
 }
 #endif
 
-{{{ asyncIf(MODULARIZE || ASYNCIFY == 2 || expectToReceiveOnModule('setStatus') || '$runDependencies' in addedLibraryItems) }}}function run({{{ MAIN_READS_PARAMS ? 'args = programArgs' : '' }}}) {
+{{{ asyncIf(MODULARIZE || ASYNCIFY == 2 || expectToReceiveOnModule('setStatus') || '$addRunBlocker' in addedLibraryItems) }}}function run({{{ MAIN_READS_PARAMS ? 'args = programArgs' : '' }}}) {
 #if ASSERTIONS
   assert(!calledRun);
   calledRun = true;
@@ -133,12 +133,12 @@ function stackCheckInit() {
 
   preRun();
 
-#if '$runDependencies' in addedLibraryItems
-  if (runDependencies > 0) {
+#if '$addRunBlocker' in addedLibraryItems
+  if (runBlockers.length) {
 #if RUNTIME_DEBUG
     dbg('run: waiting on runDependencies');
 #endif
-    await new Promise((resolve) => dependenciesFulfilled = resolve);
+    await resolveRunBlockers();
   }
 #endif
 
@@ -273,7 +273,7 @@ export default async function init(moduleArg = {}) {
 #else
   wasmExports = await createWasm();
 #endif
-  await run();
+  return run();
 }
 
 #if ENVIRONMENT_MAY_BE_NODE

@@ -118,11 +118,11 @@ Execution lifecycle
 
 When an Emscripten-compiled application is loaded, it starts by preparing data in the ``preloading`` phase. Files you marked for :ref:`preloading <emcc-preload-file>` (using ``emcc --preload-file``, or manually from JavaScript with :js:func:`FS.createPreloadedFile`) are set up at this stage.
 
-You can add additional operations with :js:func:`addRunDependency`, which is a counter of all dependencies to be executed before compiled code can run. As these are completed you can call :js:func:`removeRunDependency` to remove the completed dependencies.
+You can add additional operations with :js:func:`addRunBlocker`, which takes a promise that will prevent your program's ``main()`` function from running until it is resolved.
 
 .. note:: Generally it is not necessary to add additional operations — preloading is suitable for almost all use cases.
 
-When all dependencies are met, Emscripten will call your programs's ``main()`` function. The ``main()`` function should be used to perform initialization tasks, and will often call :c:func:`emscripten_set_main_loop` (as :ref:`described above <emscripten-runtime-environment-howto-main-loop>`). The main loop function will be then be called at the requested frequency.
+When all the blockers are resolved, Emscripten will call your programs's ``main()`` function. The ``main()`` function should be used to perform initialization tasks, and will often call :c:func:`emscripten_set_main_loop` (as :ref:`described above <emscripten-runtime-environment-howto-main-loop>`). The main loop function will be then be called at the requested frequency.
 
 You can affect the operation of the main loop in several ways:
 

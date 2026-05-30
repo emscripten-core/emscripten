@@ -137,6 +137,130 @@ legacyFuncs = {
 
   $getNativeTypeSize__deps: ['$POINTER_SIZE'],
   $getNativeTypeSize: {{{ getNativeTypeSize }}},
+
+#if !MINIMAL_RUNTIME
+  // A counter of dependencies for calling run(). If we need to
+  // do asynchronous work before running, increment this and
+  // decrement it. Incrementing must happen in a place like
+  // Module.preRun (used by emcc to add file preloading).
+  // Note that you can add dependencies in preRun, even though
+  // it happens right before run - run will be postponed until
+  // the dependencies are met.
+  $runDependencies__internal: true,
+  $runDependencies: 0,
+  // overridden to take different actions when all run dependencies are fulfilled
+  $dependenciesFulfilled__internal: true,
+  $dependenciesFulfilled: null,
+  $runDependencyPromises__internal: true,
+  $runDependencyPromises: {},
+
+#if ASSERTIONS
+  $runDependencyTracking__internal: true,
+  $runDependencyTracking: {},
+  $runDependencyWatcher__internal: true,
+  $runDependencyWatcher: null,
+#endif
+
+  $getUniqueRunDependency: (id) => {
+#if ASSERTIONS
+    var orig = id;
+    while (1) {
+      if (!runDependencyTracking[id]) return id;
+      id = orig + Math.random();
+    }
+#else
+    return id;
+#endif
+  },
+
+  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency', '$runDependencyPromises', '$addRunBlocker',
+#if ASSERTIONS
+    '$runDependencyTracking',
+    '$runDependencyWatcher',
+#endif
+  ],
+  $addRunDependency: (id) => {
+    runDependencies++;
+
+
+
+    var resolve;
+    var promise = new Promise((r) => { resolve = r; });
+    runDependencyPromises[id] = resolve;
+    addRunBlocker(promise);
+
+#if ASSERTIONS
+#if RUNTIME_DEBUG
+    dbg('addRunDependency', id);
+#endif
+    assert(id, 'addRunDependency requires an ID')
+    assert(!runDependencyTracking[id]);
+    runDependencyTracking[id] = 1;
+    if (runDependencyWatcher === null && globalThis.setInterval) {
+      // Check for missing dependencies every few seconds
+      runDependencyWatcher = setInterval(() => {
+        if (ABORT) {
+          clearInterval(runDependencyWatcher);
+          runDependencyWatcher = null;
+          return;
+        }
+        var shown = false;
+        for (var dep in runDependencyTracking) {
+          if (!shown) {
+            shown = true;
+            err('still waiting on run dependencies:');
+          }
+          err(`dependency: ${dep}`);
+        }
+        if (shown) {
+          err('(end of list)');
+        }
+      }, 10000);
+#if ENVIRONMENT_MAY_BE_NODE
+      // Prevent this timer from keeping the runtime alive if nothing
+      // else is.
+      runDependencyWatcher.unref?.()
+#endif
+    }
+#endif
+  },
+
+  $removeRunDependency__deps: ['$runDependencies', '$runDependencyPromises',
+#if ASSERTIONS
+    '$runDependencyTracking',
+    '$runDependencyWatcher',
+  #endif
+  ],
+  $removeRunDependency: (id) => {
+    runDependencies--;
+
+
+
+#if ASSERTIONS
+#if RUNTIME_DEBUG
+    dbg('removeRunDependency', id);
+#endif
+    assert(id, 'removeRunDependency requires an ID');
+    assert(runDependencyTracking[id]);
+    delete runDependencyTracking[id];
+#endif
+
+    var resolve = runDependencyPromises[id];
+    if (resolve) {
+      delete runDependencyPromises[id];
+      resolve();
+    }
+
+#if ASSERTIONS
+    if (runDependencies == 0) {
+      if (runDependencyWatcher !== null) {
+        clearInterval(runDependencyWatcher);
+        runDependencyWatcher = null;
+      }
+    }
+#endif
+  },
+#endif
 };
 
 if (WARN_DEPRECATED && !INCLUDE_FULL_LIBRARY) {

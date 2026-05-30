@@ -731,9 +731,7 @@ def generate_preload_js(data_target, data_files, metadata, js_file):
             var name = file['filename'];
             var data = byteArray.subarray(file['start'], file['end']);
             %s
-          }
-          Module['removeRunDependency']('datafile_%s');''' % (finish_handler,
-                                                              js_manipulation.escape_for_js_string(data_target))
+          }''' % (finish_handler,)
     else:
       # LZ4FS usage
       temp = data_target + '.orig'
@@ -744,8 +742,7 @@ def generate_preload_js(data_target, data_files, metadata, js_file):
       use_data = '''var compressedData = %s;
             compressedData['data'] = byteArray;
             assert(typeof Module['LZ4'] === 'object', 'LZ4 not present - was your app build with -sLZ4?');
-            await Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);
-            Module['removeRunDependency']('datafile_%s');''' % (meta, "true" if options.use_preload_plugins else "false", js_manipulation.escape_for_js_string(data_target))
+            await Module['LZ4'].loadPackage({ 'metadata': metadata, 'compressedData': compressedData }, %s);''' % (meta, "true" if options.use_preload_plugins else "false")
 
     if options.export_es6:
       use_data += '\nloadDataResolve();'
@@ -989,8 +986,7 @@ def generate_preload_js(data_target, data_files, metadata, js_file):
         var byteArray = new Uint8Array(arrayBuffer);
         var curr;
         %s
-      }
-      Module['addRunDependency']('datafile_%s');\n''' % (use_data, js_manipulation.escape_for_js_string(data_target))
+      }''' % (use_data,)
     # use basename because from the browser's point of view,
     # we need to find the datafile in the same dir as the html file
 
@@ -1051,15 +1047,20 @@ def generate_preload_js(data_target, data_files, metadata, js_file):
   ret += '''
     async function runWithFS(Module) {\n'''
   ret += code
-  ret += '''
+  if options.separate_metadata:
+    ret += '''
+    }
+    return runWithFS(Module)%s;''' % catch_handler
+  else:
+    ret += '''
     }
     // Detect whether the module JS file has already been loaded.
     if (Module['FS_createPath']) {
-      runWithFS(Module)%s;
+      Module['addRunBlocker'](runWithFS(Module)%s);
     } else {
       if (!Module['preRun']) Module['preRun'] = [];
-      Module['preRun'].push(runWithFS); // FS is not initialized yet, wait for it
-    }\n''' % catch_handler
+      Module['preRun'].push((mod) => { mod['addRunBlocker'](runWithFS(mod)); });
+    }''' % catch_handler
 
   if options.separate_metadata:
     node_support_code = ''
@@ -1067,19 +1068,14 @@ def generate_preload_js(data_target, data_files, metadata, js_file):
       node_support_code = '''
         if (isNode) {
           var contents = require('fs').readFileSync(metadataUrl, 'utf8');
-          // The await here is needed, even though JSON.parse is a sync API.  It works
-          // around a issue with `removeRunDependency` otherwise being called to early
-          // on the metadata object.
-          var json = await JSON.parse(contents);
+          var json = JSON.parse(contents);
           return loadPackage(json);
         }'''.strip()
 
     ret += '''
-    Module['removeRunDependency']('%(metadata_file)s');
   }
 
-  async function runMetaWithFS() {
-    Module['addRunDependency']('%(metadata_file)s');
+  async function runMetaWithFS(Module) {
     var metadataUrl = Module['locateFile'] ? Module['locateFile']('%(metadata_file)s', '') : '%(metadata_file)s';
     %(node_support_code)s
     var response = await fetch(metadataUrl);
@@ -1092,10 +1088,10 @@ def generate_preload_js(data_target, data_files, metadata, js_file):
 
   // Detect whether the module JS file has already been loaded.
   if (Module['FS_createPath']) {
-    runMetaWithFS();
+    Module['addRunBlocker'](runMetaWithFS(Module));
   } else {
     if (!Module['preRun']) Module['preRun'] = [];
-    Module['preRun'].push(runMetaWithFS);
+    Module['preRun'].push((mod) => { mod['addRunBlocker'](runMetaWithFS(mod)); });
   }\n''' % {'node_support_code': node_support_code, 'metadata_file': os.path.basename(js_file + '.metadata')}
   else:
     ret += '''

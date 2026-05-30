@@ -94,6 +94,12 @@ See docs/process.md for more on how version tagging works.
   If you have JS code that was depending on this you can transition to using the
   `PThread.pthreads` object. (#26998)
 - The POSIX `pause()` function will now return 0 rather than EINTR. (#27044)
+- Emscripten's startup dependency system was modernized to be promise-based.
+  These APIs are mostly internal.  The new API is called `addRunBlocker`. The
+  previous APIs (`addRunDependency`/`removeRunDependency`) still exist but are
+  deprecated. Internal subsystems (including Fetch, pthread pool seeding,
+  dylib preloading, LZ4 packages, and Filesystem preloading) have been
+  transitioned to use the new `addRunBlocker` API directly.
 
 5.0.7 - 04/30/26
 ----------------

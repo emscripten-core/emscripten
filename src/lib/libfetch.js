@@ -11,8 +11,7 @@ var LibraryFetch = {
   $Fetch__deps: [
     '$HandleAllocator',
 #if FETCH_SUPPORT_INDEXEDDB
-    '$addRunDependency',
-    '$removeRunDependency',
+    '$addRunBlocker',
 #endif
   ],
   $Fetch: Fetch,

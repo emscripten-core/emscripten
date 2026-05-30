@@ -398,11 +398,10 @@ function isExportedByForceFilesystem(name) {
          name === 'FS_createPreloadedFile' ||
          name === 'FS_preloadFile' ||
          name === 'FS_unlink' ||
-         name === 'addRunDependency' ||
          // The old FS has some functionality that WasmFS lacks.
          name === 'FS_createLazyFile' ||
          name === 'FS_createDevice' ||
-         name === 'removeRunDependency';
+         name === 'addRunBlocker';
 }
 
 /**
@@ -908,9 +907,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'alignMemory',
   'mmapAlloc',
   'HandleAllocator',
-  'getUniqueRunDependency',
-  'addRunDependency',
-  'removeRunDependency',
+  'addRunBlocker',
   'addOnPreRun',
   'addOnInit',
   'addOnPostCtor',

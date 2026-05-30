@@ -123,9 +123,7 @@ Module["expectedDataFileDownloads"]++;
           // canOwn this data in the filesystem, it is a slice into the heap that will never change
           Module["FS_createDataFile"](name, null, data, true, true, true);
         }
-        Module["removeRunDependency"]("datafile_a.out.data");
       }
-      Module["addRunDependency"]("datafile_a.out.data");
       if (!Module["preloadResults"]) Module["preloadResults"] = {};
       Module["preloadResults"][PACKAGE_NAME] = {
         fromCache: false
@@ -137,10 +135,12 @@ Module["expectedDataFileDownloads"]++;
     }
     // Detect whether the module JS file has already been loaded.
     if (Module["FS_createPath"]) {
-      runWithFS(Module);
+      Module["addRunBlocker"](runWithFS(Module));
     } else {
       if (!Module["preRun"]) Module["preRun"] = [];
-      Module["preRun"].push(runWithFS);
+      Module["preRun"].push(mod => {
+        mod["addRunBlocker"](runWithFS(mod));
+      });
     }
   }
   loadPackage({
@@ -1303,25 +1303,18 @@ var asyncLoad = async url => {
 
 var FS_createDataFile = (...args) => FS.createDataFile(...args);
 
-var getUniqueRunDependency = id => id;
+var runBlockers = [];
 
-var runDependencies = 0;
-
-var dependenciesFulfilled = null;
-
-var removeRunDependency = id => {
-  runDependencies--;
-  if (runDependencies == 0) {
-    if (dependenciesFulfilled) {
-      var callback = dependenciesFulfilled;
-      dependenciesFulfilled = null;
-      callback();
-    }
+var resolveRunBlockers = async () => {
+  while (runBlockers.length) {
+    var current = runBlockers;
+    runBlockers = [];
+    await Promise.all(current);
   }
 };
 
-var addRunDependency = id => {
-  runDependencies++;
+var addRunBlocker = promise => {
+  runBlockers.push(promise);
 };
 
 var preloadPlugins = [];
@@ -1339,14 +1332,11 @@ var FS_handledByPreloadPlugin = async (byteArray, fullname) => {
   return byteArray;
 };
 
-var FS_preloadFile = async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
+var FS_preloadFile = (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
   // TODO we should allow people to just pass in a complete filename instead
   // of parent and name being that we just join them anyways
   var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
-  var dep = getUniqueRunDependency(`cp ${fullname}`);
-  // might have several active requests for the same fullname
-  addRunDependency(dep);
-  try {
+  var promise = (async () => {
     var byteArray = url;
     if (typeof url == "string") {
       byteArray = await asyncLoad(url);
@@ -1356,9 +1346,9 @@ var FS_preloadFile = async (parent, name, url, canRead, canWrite, dontCreateFile
     if (!dontCreateFile) {
       FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
     }
-  } finally {
-    removeRunDependency(dep);
-  }
+  })();
+  addRunBlocker(promise);
+  return promise;
 };
 
 var FS_createPreloadedFile = (parent, name, url, canRead, canWrite, onload, onerror, dontCreateFile, canOwn, preFinish) => {
@@ -3129,9 +3119,7 @@ FS.staticInit();
 {}
 
 // Begin runtime exports
-Module["addRunDependency"] = addRunDependency;
-
-Module["removeRunDependency"] = removeRunDependency;
+Module["addRunBlocker"] = addRunBlocker;
 
 Module["FS_preloadFile"] = FS_preloadFile;
 
@@ -3180,8 +3168,8 @@ function callMain() {
 
 async function run() {
   preRun();
-  if (runDependencies > 0) {
-    await new Promise(resolve => dependenciesFulfilled = resolve);
+  if (runBlockers.length) {
+    await resolveRunBlockers();
   }
   if (ABORT) return;
   initRuntime();

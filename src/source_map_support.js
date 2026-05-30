@@ -130,11 +130,9 @@ if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
 
 #if !MINIMAL_RUNTIME // MINIMAL_RUNTIME integrates source map loading into postamble_minimal.js
 #if WASM_ASYNC_COMPILATION
-addRunDependency('source-map');
-getSourceMapAsync().then((json) => {
+addRunBlocker(getSourceMapAsync().then((json) => {
   receiveSourceMapJSON(json);
-  removeRunDependency('source-map');
-});
+}));
 #else
 receiveSourceMapJSON(getSourceMap());
 #endif

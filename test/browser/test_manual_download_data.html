@@ -133,6 +133,8 @@
         },
         totalDependencies: 0,
         monitorRunDependencies: (left) => {
+          console.log('monitorRunDependencies called: ' + left);
+          window.monitorRunDependenciesCalled = true;
           this.totalDependencies = Math.max(this.totalDependencies, left);
           Module.setStatus(left ? 'Preparing... (' + (this.totalDependencies-left) + '/' + this.totalDependencies + ')' : 'All downloads complete.');
         },

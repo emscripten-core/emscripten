@@ -267,32 +267,22 @@ Conversion functions — strings, pointers and arrays
 
 
 
-Run dependencies
-================
+Run blockers (dependencies)
+===========================
 
-Note that generally run dependencies are managed by the file packager and other parts of the system. It is rare for developers to use this API directly.
+Note that generally run blockers are managed by the file packager and other internal systems. It is rare for developers to use this API directly.
 
+.. js:function:: addRunBlocker(promise)
+
+  Adds a promise that must be resolved before the program starts running.
 
 .. js:function:: addRunDependency(id)
 
-  Adds an ``id`` to the list of run dependencies.
-
-  This adds a run dependency and increments the run dependency counter.
-
-  .. COMMENT (not rendered): **HamishW** Remember to link to Execution lifecycle in Browser environment or otherwise link to information on using this. Possibly its own topic.
-
-  :param id: An arbitrary id representing the operation.
-  :type id: String
-
-
+  Deprecated: Use ``addRunBlocker`` instead
 
 .. js:function:: removeRunDependency(id)
 
-  Removes a specified ``id`` from the list of run dependencies.
-
-  :param id: The identifier for the specific dependency to be removed (added with :js:func:`addRunDependency`)
-  :type id: String
-
+  Deprecated: When using ``addRunBlocker``, there is no need to manually remove dependencies, just resolve the promise.
 
 
 Stack trace

@@ -54,19 +54,14 @@ addToLibrary({
     '$asyncLoad',
     '$PATH_FS',
     '$FS_createDataFile',
-    '$getUniqueRunDependency',
-    '$addRunDependency',
-    '$removeRunDependency',
+    '$addRunBlocker',
     '$FS_handledByPreloadPlugin',
   ],
-  $FS_preloadFile: async (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
+  $FS_preloadFile: (parent, name, url, canRead, canWrite, dontCreateFile, canOwn, preFinish) => {
     // TODO we should allow people to just pass in a complete filename instead
     // of parent and name being that we just join them anyways
     var fullname = name ? PATH_FS.resolve(PATH.join2(parent, name)) : parent;
-    var dep = getUniqueRunDependency(`cp ${fullname}`); // might have several active requests for the same fullname
-    addRunDependency(dep);
-
-    try {
+    var promise = (async () => {
       var byteArray = url;
       if (typeof url == 'string') {
         byteArray = await asyncLoad(url);
@@ -77,9 +72,9 @@ addToLibrary({
       if (!dontCreateFile) {
         FS_createDataFile(parent, name, byteArray, canRead, canWrite, canOwn);
       }
-    } finally {
-      removeRunDependency(dep);
-    }
+    })();
+    addRunBlocker(promise);
+    return promise;
   },
 #endif
 

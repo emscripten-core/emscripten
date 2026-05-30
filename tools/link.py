@@ -1269,8 +1269,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
 
     if settings.LOAD_SOURCE_MAP:
-      # Loading the source map uses the addRunDependency/removeRunDependency system.
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
+      # Loading the source map uses the addRunBlocker system.
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunBlocker']
 
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$wasmTable']
@@ -1586,10 +1586,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
         'FS_createDevice',
       ]
 
-    settings.EXPORTED_RUNTIME_METHODS += [
-      'addRunDependency',
-      'removeRunDependency',
-    ]
+    settings.EXPORTED_RUNTIME_METHODS += ['addRunBlocker']
 
   if settings.PTHREADS or settings.WASM_WORKERS:
     settings.IMPORTED_MEMORY = 1

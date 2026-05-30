@@ -6,8 +6,7 @@ declare namespace RuntimeExports {
     function FS_unlink(...args: any[]): any;
     function FS_createLazyFile(...args: any[]): any;
     function FS_createDevice(...args: any[]): any;
-    function addRunDependency(id: any): void;
-    function removeRunDependency(id: any): void;
+    function addRunBlocker(promise: any): void;
 }
 interface WasmModule {
   _main(_0: number, _1: number): number;

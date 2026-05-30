@@ -617,7 +617,7 @@ var LibraryBrowser = {
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
-  emscripten_async_load_script__deps: ['$UTF8ToString', '$runDependencies', '$dependenciesFulfilled'],
+  emscripten_async_load_script__deps: ['$UTF8ToString', '$resolveRunBlockers'],
   emscripten_async_load_script: async (url, onload, onerror) => {
     url = UTF8ToString(url);
 #if PTHREADS
@@ -627,20 +627,14 @@ var LibraryBrowser = {
       return;
     }
 #endif
-#if ASSERTIONS
-    assert(runDependencies === 0, 'async_load_script must be run when no other dependencies are active');
-#endif
+
     {{{ runtimeKeepalivePush() }}}
 
     var loadDone = () => {
       {{{ runtimeKeepalivePop() }}}
       if (onload) {
         var onloadCallback = () => callUserCallback({{{ makeDynCall('v', 'onload') }}});
-        if (runDependencies > 0) {
-          dependenciesFulfilled = onloadCallback;
-        } else {
-          onloadCallback();
-        }
+        resolveRunBlockers().then(onloadCallback);
       }
     }
 

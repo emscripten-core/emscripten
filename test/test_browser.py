@@ -1314,16 +1314,18 @@ window.close = () => {
 
   def test_fs_idbfs_fsync(self):
     # sync from persisted state into memory before main()
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall,$addRunDependency')
+    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$ccall,$addRunBlocker')
     create_file('pre.js', '''
       Module.preRun = () => {
-        addRunDependency('syncfs');
+        var resolve;
+        var promise = new Promise((r) => { resolve = r; });
+        addRunBlocker(promise);
 
         FS.mkdir('/working1');
         FS.mount(IDBFS, {}, '/working1');
         FS.syncfs(true, function (err) {
           if (err) throw err;
-          removeRunDependency('syncfs');
+          resolve();
         });
       };
     ''')
@@ -2313,19 +2315,39 @@ void *getBindBuffer() {
     self.btest_exit('main.c', cflags=['-sMAIN_MODULE=2', '-O2', 'supp.wasm'])
 
   @also_with_wasm2js
-  def test_pre_run_deps(self):
-    # Adding a dependency in preRun will delay run
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency')
-    create_file('pre.js', '''
-      Module.preRun = () => {
-        addRunDependency('foo');
-        out('preRun called, added a dependency...');
-        setTimeout(function() {
-          Module.okk = 10;
-          removeRunDependency('foo')
-        }, 2000);
-      };
-    ''')
+  @parameterized({
+    '': (False,),
+    'run_blocker': (True,),
+  })
+  def test_pre_run_deps(self, run_blocker):
+    # Adding a dependency/blocker in preRun will delay run
+    if run_blocker:
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunBlocker')
+      create_file('pre.js', '''
+        Module.preRun = () => {
+          var resolve;
+          var promise = new Promise((r) => { resolve = r; });
+          addRunBlocker(promise);
+          out('preRun called, added a blocker...');
+          setTimeout(function() {
+            Module.okk = 10;
+            resolve();
+          }, 2000);
+        };
+      ''')
+    else:
+      self.cflags += ['-Wno-deprecated']
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency')
+      create_file('pre.js', '''
+        Module.preRun = () => {
+          addRunDependency('foo');
+          out('preRun called, added a dependency...');
+          setTimeout(function() {
+            Module.okk = 10;
+            removeRunDependency('foo')
+          }, 2000);
+        };
+      ''')
 
     self.btest('test_pre_run_deps.c', expected='10', cflags=['--pre-js', 'pre.js'])
 
@@ -2530,14 +2552,27 @@ void *getBindBuffer() {
   def test_glew(self, args):
     self.btest_exit('test_glew.c', cflags=['-lGL', '-lSDL', '-lGLEW'] + args)
 
-  def test_doublestart_bug(self):
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
-    create_file('pre.js', r'''
+  @parameterized({
+    '': (False,),
+    'run_blocker': (True,),
+  })
+  def test_doublestart_bug(self, run_blocker):
+    if run_blocker:
+      create_file('pre.js', r'''
+Module["preRun"] = () => {
+  addRunBlocker(Promise.resolve());
+};
+''')
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunBlocker')
+    else:
+      self.cflags += ['-Wno-deprecated']
+      create_file('pre.js', r'''
 Module["preRun"] = () => {
   addRunDependency('test_run_dependency');
   removeRunDependency('test_run_dependency');
 };
 ''')
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
 
     self.btest_exit('test_doublestart_bug.c', cflags=['--pre-js', 'pre.js'])
 

@@ -6,9 +6,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <assert.h>
+#include <emscripten.h>
 
 int main()
 {
+	assert(MAIN_THREAD_EM_ASM_INT({ return !!window.monitorRunDependenciesCalled; }));
 	FILE *handle = fopen("file.txt", "r");
 	char str[128] = {};
 	fread(str, 1, sizeof(str), handle);

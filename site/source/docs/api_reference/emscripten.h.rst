@@ -327,7 +327,7 @@ Functions
 
   Asynchronously loads a script from a URL.
 
-  This integrates with the run dependencies system, so your script can call ``addRunDependency`` multiple times, prepare various asynchronous tasks, and call ``removeRunDependency`` on them; when all are complete (or if there were no run dependencies to begin with), ``onload`` is called. An example use for this is to load an asset module, that is, the output of the file packager.
+  This integrates with the run-blocker system, so your script can call ``addRunBlocker`` multiple times, with various asynchronous tasks (promises).  Only when all are complete will ``onload`` be called. An example use for this is to load an asset module, that is, the output of the file packager.
 
   This function is currently only available in main browser thread, and it will immediately fail by calling the supplied onerror() handler if called in a pthread.
 

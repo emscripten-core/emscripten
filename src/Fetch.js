@@ -292,28 +292,27 @@ var Fetch = {
   },
 #endif
 
-  async init() {
+  init() {
     Fetch.xhrs = new HandleAllocator();
 #if FETCH_SUPPORT_INDEXEDDB
 #if PTHREADS
     if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
 
-    addRunDependency('library_fetch_init');
-    try {
-      var db = await Fetch.openDatabase('emscripten_filesystem', 1);
+    addRunBlocker((async () => {
+      try {
+        var db = await Fetch.openDatabase('emscripten_filesystem', 1);
 #if FETCH_DEBUG
-      dbg('fetch: IndexedDB successfully opened.');
+        dbg('fetch: IndexedDB successfully opened.');
 #endif
-      Fetch.dbInstance = db;
-    } catch (e) {
+        Fetch.dbInstance = db;
+      } catch (e) {
 #if FETCH_DEBUG
-      dbg('fetch: IndexedDB open failed.');
+        dbg('fetch: IndexedDB open failed.');
 #endif
-      Fetch.dbInstance = false;
-    } finally {
-      removeRunDependency('library_fetch_init');
-    }
+        Fetch.dbInstance = false;
+      }
+    })());
 #endif // ~FETCH_SUPPORT_INDEXEDDB
   }
 }

@@ -88,8 +88,7 @@ var LibraryPThread = {
                    '$markAsFinished',
 #endif
 #if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE && !PTHREAD_POOL_DELAY_LOAD
-                   '$addRunDependency',
-                   '$removeRunDependency',
+                   '$addRunBlocker',
 #endif
                    '$spawnThread',
                    '_emscripten_thread_free_data',
@@ -137,12 +136,10 @@ var LibraryPThread = {
 #if !MINIMAL_RUNTIME
       // MINIMAL_RUNTIME takes care of calling loadWasmModuleToAllWorkers
       // in postamble_minimal.js
-      addOnPreRun(async () => {
+      addOnPreRun(() => {
         var pthreadPoolReady = PThread.loadWasmModuleToAllWorkers();
 #if !PTHREAD_POOL_DELAY_LOAD
-        addRunDependency('loading-workers');
-        await pthreadPoolReady;
-        removeRunDependency('loading-workers');
+        addRunBlocker(pthreadPoolReady);
 #endif // PTHREAD_POOL_DELAY_LOAD
       });
 #endif // !MINIMAL_RUNTIME

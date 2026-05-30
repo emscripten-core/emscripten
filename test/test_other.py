@@ -2945,9 +2945,10 @@ More info: https://emscripten.org
   @parameterized({
     '': (False, False),
     'no_initial_run': (True, False),
-    'run_dep': (False, True),
+    'run_blocker': (False, True),
+    'run_blocker_no_initial_run': (True, True),
   })
-  def test_prepost(self, no_initial_run, run_dep):
+  def test_prepost(self, no_initial_run, run_blocker):
     create_file('pre.js', '''
       Module = {
         "preRun": () => out('pre-run'),
@@ -2957,21 +2958,42 @@ More info: https://emscripten.org
 
     self.do_runf('hello_world.c', 'pre-run\nHello, world!\npost-run\n', cflags=['--pre-js', 'pre.js', '-sWASM_ASYNC_COMPILATION=0'])
 
-    # addRunDependency during preRun should prevent main, and post-run from
-    # running.
-    with open('pre.js', 'a', encoding='utf-8') as f:
-      f.write('Module["preRun"] = () => { out("add-dep"); addRunDependency("dep"); }\n')
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency')
-    output = self.do_runf('hello_world.c', cflags=['--pre-js', 'pre.js', '-sRUNTIME_DEBUG', '-sWASM_ASYNC_COMPILATION=0', '-O2', '--closure=1'])
-    self.assertContained('add-dep\n', output)
-    self.assertNotContained('Hello, world!\n', output)
-    self.assertNotContained('post-run\n', output)
+    if run_blocker:
+      # addRunBlocker during preRun should also prevent main and post-run.
+      with open('pre.js', 'a', encoding='utf-8') as f:
+        f.write('Module["preRun"] = () => { out("add-blocker"); addRunBlocker(new Promise(() => {})); }\n')
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunBlocker')
+      output = self.do_runf('hello_world.c', cflags=['--pre-js', 'pre.js', '-sRUNTIME_DEBUG', '-sWASM_ASYNC_COMPILATION=0', '-O2', '--closure=1'])
+      self.assertContained('add-blocker\n', output)
+      self.assertNotContained('Hello, world!\n', output)
+      self.assertNotContained('post-run\n', output)
+    else:
+      # addRunDependency during preRun should prevent main, and post-run from running.
+      with open('pre.js', 'a', encoding='utf-8') as f:
+        f.write('Module["preRun"] = () => { out("add-dep"); addRunDependency("dep"); }\n')
+      self.cflags += ['-Wno-deprecated']  # avoid warning about addRunDependency
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency')
+      output = self.do_runf('hello_world.c', cflags=['--pre-js', 'pre.js', '-sRUNTIME_DEBUG', '-sWASM_ASYNC_COMPILATION=0', '-O2', '--closure=1'])
+      self.assertContained('add-dep\n', output)
+      self.assertNotContained('Hello, world!\n', output)
+      self.assertNotContained('post-run\n', output)
 
     # noInitialRun prevents run
     args = ['-sWASM_ASYNC_COMPILATION=0', '-sEXPORTED_RUNTIME_METHODS=callMain']
     if no_initial_run:
       args += ['-sINVOKE_RUN=0']
-    if run_dep:
+    if run_blocker:
+      create_file('pre.js', '''
+        Module["preRun"] = () => {
+          var resolve;
+          var promise = new Promise((r) => { resolve = r; });
+          addRunBlocker(promise);
+          Module.resolveBlocker = resolve;
+        };
+      ''')
+      create_file('post.js', 'Module.resolveBlocker();')
+      args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
+    else:
       create_file('pre.js', 'Module["preRun"] = () => addRunDependency("test");')
       create_file('post.js', 'removeRunDependency("test");')
       args += ['--pre-js', 'pre.js', '--post-js', 'post.js']
@@ -2983,7 +3005,7 @@ More info: https://emscripten.org
       # Calling main later should still work, filesystem etc. must be set up.
       print('call main later')
       src = read_file('hello_world.js')
-      src += '\nout("callMain -> " + Module.callMain());\n'
+      src += '\nModule["onRuntimeInitialized"] = () => { out("callMain -> " + Module.callMain()); };\n'
       create_file('hello_world.js', src)
       self.assertContained('Hello, world!\ncallMain -> 0\n', self.run_js('hello_world.js'))
 
@@ -4547,7 +4569,11 @@ printErr('CWD: ' + process.cwd());
     ensure_dir('out_dir')
     self.assert_fail([EMCC, '-c', test_file('hello_world.c'), '-o', 'out_dir/'], 'error: unable to open output file')
 
-  def test_doublestart_bug(self):
+  @parameterized({
+    '': (False,),
+    'run_blocker': (True,),
+  })
+  def test_doublestart_bug(self, run_blocker):
     create_file('code.c', r'''
 #include <stdio.h>
 #include <emscripten.h>
@@ -4564,14 +4590,23 @@ int main(void) {
 }
 ''')
 
-    create_file('pre.js', r'''
+    if run_blocker:
+      create_file('pre.js', r'''
+Module["preRun"] = () => {
+  addRunBlocker(Promise.resolve());
+};
+''')
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunBlocker')
+    else:
+      self.cflags += ['-Wno-deprecated']  # avoid warning about addRunDependency
+      create_file('pre.js', r'''
 Module["preRun"] = () => {
   addRunDependency('test_run_dependency');
   removeRunDependency('test_run_dependency');
 };
 ''')
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
 
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
     output = self.do_runf('code.c', cflags=['--pre-js=pre.js'])
     self.assertEqual(output.count('This should only appear once.'), 1)
 
@@ -6177,32 +6212,71 @@ int main(void) {
     output = self.run_js('run.mjs')
     self.assertContained('done init\nHello, world!\ngot module\n', output)
 
-  def test_modularize_run_dependency(self):
+  @parameterized({
+    '': (False,),
+    'run_blocker': (True,),
+  })
+  def test_modularize_run_dep(self, run_blocker):
     # Ensure that dependencies are fulfilled before the module promise is resolved.
-    create_file('pre.js', '''
-    Module.preRun = () => { dbg("add-dep"); addRunDependency("my dep"); }
-    // Remove the run dependency in 100 milliseconds
-    setTimeout(() => { dbg("remove-dep"); removeRunDependency("my dep") }, 100);
-    ''')
+    if run_blocker:
+      create_file('pre.js', '''
+      Module.preRun = () => {
+        dbg("add-blocker");
+        var resolve;
+        var promise = new Promise((r) => { resolve = r; });
+        addRunBlocker(promise);
+        setTimeout(() => { dbg("remove-blocker"); resolve(); }, 100);
+      }
+      ''')
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunBlocker')
+    else:
+      create_file('pre.js', '''
+      Module.preRun = () => { dbg("add-dep"); addRunDependency("my dep"); }
+      // Remove the run dependency in 100 milliseconds
+      setTimeout(() => { dbg("remove-dep"); removeRunDependency("my dep") }, 100);
+      ''')
+      self.cflags += ['-Wno-deprecated']  # avoid warning about addRunDependency/removeRunDependency
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
+
     create_file('run.mjs', '''
     import Module from './hello_world.mjs';
     await Module();
     console.log('got module');
     ''')
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
-    self.emcc('hello_world.c', ['-o', 'hello_world.mjs', '-sEXPORT_ES6', '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0', '--pre-js=pre.js'])
-    self.assertContained('add-dep\nremove-dep\nHello, world!\ngot module\n', self.run_js('run.mjs'))
 
-  def test_modularize_instance_run_dependency(self):
+    self.emcc('hello_world.c', ['-o', 'hello_world.mjs', '-sEXPORT_ES6', '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0', '--pre-js=pre.js'])
+
+    expected = 'add-blocker\nremove-blocker\n' if run_blocker else 'add-dep\nremove-dep\n'
+    expected += 'Hello, world!\ngot module\n'
+    self.assertContained(expected, self.run_js('run.mjs'))
+
+  @parameterized({
+    '': (False,),
+    'run_blocker': (True,),
+  })
+  def test_modularize_instance_run_dep(self, run_blocker):
     # Ensure that dependencies are fulfilled before the MODULARIZE=instance ready promise is resolved.
-    create_file('pre.js', '''
-    Module.preRun = () => {
-      dbg("add-dep");
-      addRunDependency("my-dep");
-      setTimeout(() => { dbg("remove-dep"); removeRunDependency("my-dep"); }, 100);
-    }
-    ''')
-    self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
+    if run_blocker:
+      create_file('pre.js', '''
+      Module.preRun = () => {
+        dbg("add-blocker");
+        var resolve;
+        var promise = new Promise((r) => { resolve = r; });
+        addRunBlocker(promise);
+        setTimeout(() => { dbg("remove-blocker"); resolve(); }, 100);
+      }
+      ''')
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunBlocker')
+    else:
+      create_file('pre.js', '''
+      Module.preRun = () => {
+        dbg("add-dep");
+        addRunDependency("my-dep");
+        setTimeout(() => { dbg("remove-dep"); removeRunDependency("my-dep"); }, 100);
+      }
+      ''')
+      self.cflags += ['-Wno-deprecated']  # avoid warning about addRunDependency/removeRunDependency
+      self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
 
     create_file('run.mjs', '''
     import init from './hello_world.mjs';
@@ -6212,7 +6286,8 @@ int main(void) {
 
     self.emcc('hello_world.c', ['-o', 'hello_world.mjs', '-sMODULARIZE=instance', '-Wno-experimental', '--pre-js=pre.js'])
 
-    expected = 'add-dep\nremove-dep\nHello, world!\ngot module\n'
+    expected = 'add-blocker\nremove-blocker\n' if run_blocker else 'add-dep\nremove-dep\n'
+    expected += 'Hello, world!\ngot module\n'
     self.assertContained(expected, self.run_js('run.mjs'))
 
   def test_modularize_instantiation_error(self):
