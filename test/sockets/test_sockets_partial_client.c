@@ -45,9 +45,14 @@ void iter() {
   FD_SET(sockfd, &fdr);
   res = select(64, &fdr, NULL, NULL, NULL);
   if (res == -1) {
-    perror("select failed");
-    finish(EXIT_FAILURE);
-  } else if (!FD_ISSET(sockfd, &fdr)) {
+    if (errno != EINTR) {
+      perror("select failed");
+      finish(EXIT_FAILURE);
+    }
+    return;
+  }
+
+  if (!FD_ISSET(sockfd, &fdr)) {
     return;
   }
 

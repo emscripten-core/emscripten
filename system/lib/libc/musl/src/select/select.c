@@ -22,7 +22,7 @@ int select(int n, fd_set *restrict rfds, fd_set *restrict wfds, fd_set *restrict
 
 	if (s<0 || us<0) return __syscall_ret(-EINVAL);
 #ifdef __EMSCRIPTEN__
-	return emscripten_select(n, rfds, wfds, efds, tv);
+	return __syscall_ret(emscripten_select(n, rfds, wfds, efds, tv));
 #else
 	if (us/1000000 > max_time - s) {
 		s = max_time;
@@ -85,7 +85,7 @@ static int emscripten_select(int nfds, fd_set *readfds, fd_set *writefds, fd_set
 	int rtn = __syscall_poll((intptr_t)fds, n, timeout);
 	if (rtn < 0) {
 		free(fds);
-		return -1;
+		return rtn;
 	}
 
 	// Part 2: Translate the result of poll into the results of select();

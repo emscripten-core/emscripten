@@ -33,6 +33,10 @@ See docs/process.md for more on how version tagging works.
   out to `wasm-bindgen` in the users's path and integrate the wasm-bindgen JS
   with the normal Emscripten JS. Some wasm-bindgen features may not yet be fully
   supported. (#23493)
+- The select() and poll() syscalls now fail with EINTR when no FDs are active
+  and they are asked to block in a build that does not support blocking (i.e.
+  now JSPI or ASYNCIFY).  Previously they would return 0 but without any result
+  FSs set (i.e. as if the timeout at expired). (#27049)
 
 6.0.0 - 06/04/26
 ----------------
@@ -84,7 +88,7 @@ See docs/process.md for more on how version tagging works.
 5.0.7 - 04/30/26
 ----------------
 - mimalloc was updated to 3.3.1. (#26696)
-- The `WASM_JS_TYPES` setting was removed, as the corresponsing propsal was
+- The `WASM_JS_TYPES` setting was removed, as the corresponding proposal was
   pushed back to phase 1. (#26739)
 - The `-sDETERMINISTIC` setting was removed.  This setting just injected
   `src/deterministic.js` as a `--pre-js`.  For now, this file remains part of

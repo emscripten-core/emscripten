@@ -1391,7 +1391,7 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
 
   // Process the list of FDs and compute their revents masks. Count the number
   // of nonzero such masks, which is our return value.
-  int nonzero = 0;
+  int count = 0;
   for (nfds_t i = 0; i < nfds; i++) {
     auto* pollfd = &fds[i];
     auto fd = pollfd->fd;
@@ -1426,14 +1426,17 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
     // TODO: set the state based on the state of the other end of the pipe, for
     //       pipes (POLLERR | POLLHUP)
     if (mask) {
-      nonzero++;
+      count++;
     }
     pollfd->revents = mask;
   }
   // TODO: This should block based on the timeout. The old FS did not do so due
   //       to web limitations, which we should perhaps revisit (especially with
   //       pthreads and asyncify).
-  return nonzero;
+  if (timeout && !count) {
+    return -EINTR;
+  }
+  return count;
 }
 
 // libc routes zero-timeout poll() calls here (see musl's poll.c). WasmFS's

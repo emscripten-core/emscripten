@@ -634,9 +634,15 @@ var SyscallsLibrary = {
 #endif
 
     var count = doPoll(fds, nfds, 0, undefined);
+    if (!count && timeout) {
+      // We cannot actually block here since we are not in an async context,
+      // so return -EINTR, as if we were inturrupted by a signal.
 #if ASSERTIONS
-    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
+      warnOnce('non-zero poll() timeout not supported: ' + timeout)
+
 #endif
+      return -{{{ cDefs.EINTR }}};
+    }
     return count;
   },
   // The shared readiness derivation: one pass over the pollfds, writing

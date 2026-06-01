@@ -82,6 +82,9 @@ void iter() {
   if (clientfd) FD_SET(clientfd, &fdw);
   res = select(64, &fdr, &fdw, NULL, NULL);
   if (res == -1) {
+    if (errno == EINTR) {
+      return;
+    }
     perror("select failed");
     exit(EXIT_SUCCESS);
   }

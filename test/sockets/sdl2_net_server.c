@@ -62,7 +62,7 @@ void main_loop() {
 
   /* Check the sd if there is a pending connection.
    * If there is one, accept that, and open a new socket for communicating */
-  SDLNet_CheckSockets(state.socketSet, 20);
+  SDLNet_CheckSockets(state.socketSet, 0);
   int serverSocketActivity = SDLNet_SocketReady(state.sd);
 
   if (serverSocketActivity)
