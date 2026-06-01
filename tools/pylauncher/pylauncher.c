@@ -224,5 +224,6 @@ int main() {
   CloseHandle(pi.hThread);
 
   dbg("pylauncher: done: %d\n", exit_code);
+  ExitProcess(exit_code);
   return exit_code;
 }
