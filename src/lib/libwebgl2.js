@@ -172,7 +172,11 @@ var LibraryWebGL2 = {
     }
   },
 
-  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex'],
+  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex',
+#if !WEBGL_USE_GARBAGE_FREE_APIS
+    '$emscriptenWebGLGetTexPixelData',
+#endif
+  ],
   glTexSubImage3D: (target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
