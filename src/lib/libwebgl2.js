@@ -164,7 +164,7 @@ var LibraryWebGL2 = {
 #if WEBGL_USE_GARBAGE_FREE_APIS
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, heap, toTypedArrayIndex(pixels, heap));
 #else
-      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels, internalFormat);
+      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels);
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixelData);
 #endif
     } else {
@@ -172,13 +172,22 @@ var LibraryWebGL2 = {
     }
   },
 
-  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex'],
+  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex',
+#if !WEBGL_USE_GARBAGE_FREE_APIS
+    '$emscriptenWebGLGetTexPixelData',
+#endif
+  ],
   glTexSubImage3D: (target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
     } else if (pixels) {
       var heap = heapObjectForWebGLType(type);
+#if WEBGL_USE_GARBAGE_FREE_APIS
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap, toTypedArrayIndex(pixels, heap));
+#else
+      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels);
+      GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixelData);
+#endif
     } else {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
     }
