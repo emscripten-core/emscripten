@@ -66,7 +66,7 @@ weak int _munmap_js(
   return -ENOSYS;
 }
 
-weak int _poll_js(void *fds, int nfds, int timeout, void* ctx, void* arg) {
+weak int __syscall_poll(intptr_t fds, int nfds, int timeout) {
   return -ENOSYS;
 }
 

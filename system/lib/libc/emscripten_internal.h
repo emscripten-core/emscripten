@@ -153,8 +153,6 @@ EmscriptenDeviceOrientationEvent* _emscripten_get_last_deviceorientation_event()
 EmscriptenDeviceMotionEvent* _emscripten_get_last_devicemotion_event();
 EmscriptenMouseEvent* _emscripten_get_last_mouse_event();
 
-int _poll_js(void* fds, int nfds, int timeout, void* ctx, void* arg);
-
 #ifdef __cplusplus
 }
 #endif
