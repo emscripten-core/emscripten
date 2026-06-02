@@ -115,10 +115,6 @@ weak int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags)
   return -ENOSYS;
 }
 
-weak int __syscall_pause() {
-  return -ENOSYS;
-}
-
 weak int __syscall_lstat64(intptr_t path, intptr_t buf) {
   return -ENOSYS;
 }

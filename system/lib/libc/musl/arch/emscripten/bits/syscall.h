@@ -1,7 +1,6 @@
 #define SYS_chdir		 __syscall_chdir
 #define SYS_chmod		 __syscall_chmod
 #define SYS_getpid		 __syscall_getpid
-#define SYS_pause		 __syscall_pause
 #define SYS_sync		 __syscall_sync
 #define SYS_rmdir		 __syscall_rmdir
 #define SYS_dup		 __syscall_dup
