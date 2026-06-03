@@ -63,6 +63,7 @@ See docs/process.md for more on how version tagging works.
 - The `PThread.runningWorkers` field was removed from the `PThread` object.
   If you have JS code that was depending on this you can transition to using the
   `PThread.pthreads` object. (#26998)
+- The POSIX `pause()` function will now return 0 rather than EINTR. (#27044)
 
 5.0.7 - 04/30/26
 ----------------
