@@ -779,6 +779,7 @@ public:
   // On an unhandled exception, reject the stored promise instead of throwing
   // it asynchronously where it can't be handled.
   void unhandled_exception() {
+#ifdef __cpp_exceptions
     try {
       std::rethrow_exception(std::current_exception());
     } catch (const val& error) {
@@ -787,6 +788,9 @@ public:
       val error = val(internal::_emval_from_current_cxa_exception());
       reject(error);
     }
+#else
+    std::terminate();
+#endif
   }
 
   // Reject the stored promise due to rejection deeper in the call chain
