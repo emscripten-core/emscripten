@@ -3680,13 +3680,24 @@ Module["preRun"] = () => {
     # Check that it fails when there's a pthread creating another pthread.
     self.btest_exit('pthread/test_pthread_create_pthread.c', cflags=['-g2', '-pthread', '-sPTHREAD_POOL_SIZE=1', '-sPTHREAD_POOL_SIZE_STRICT=2', '-DSMALL_POOL'])
 
+  @parameterized({
+    '': ([],),
+    'pool': (['-sPTHREAD_POOL_SIZE=2'],),
+  })
+  def test_pthread_manager(self, args):
+    self.btest_exit('pthread/test_pthread_manager.c', cflags=['-pthread', '-sPTHREAD_MANAGER'] + args)
+
   # Test that the emscripten_ atomics api functions work.
+  @parameterized({
+    '': (['-sPTHREAD_POOL_SIZE=8'],),
+    'manager': (['-sPTHREAD_MANAGER'],),
+  })
   @parameterized({
     '': ([],),
     'closure': (['--closure=1'],),
   })
-  def test_pthread_atomics(self, args):
-    self.btest_exit('pthread/test_pthread_atomics.c', cflags=['-O3', '-pthread', '-sPTHREAD_POOL_SIZE=8', '-g1'] + args)
+  def test_pthread_atomics(self, args1, args2):
+    self.btest_exit('pthread/test_pthread_atomics.c', cflags=['-O3', '-pthread', '-g1'] + args1 + args2)
 
   # Test 64-bit atomics.
   def test_pthread_64bit_atomics(self):

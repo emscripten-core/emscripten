@@ -1617,6 +1617,11 @@ var WEBAUDIO_DEBUG = 0;
 // repeatedly yield back to the JS event loop in order for the thread to
 // actually start.
 // If your application needs to be able to synchronously create new threads,
+// If true, a dedicated worker is used to manage pthread lifecycles.
+// This allows synchronous thread creation even when the main thread is
+// blocked.
+var PTHREAD_MANAGER = false;
+
 // you can pre-create a pthread pool by specifying -sPTHREAD_POOL_SIZE=x,
 // in which case the specified number of Workers will be preloaded into a pool
 // before the application starts, and that many threads can then be available
