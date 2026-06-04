@@ -186,6 +186,11 @@ weak int __syscall_madvise(intptr_t addr, size_t length, int advice) {
   return 0;
 }
 
+weak int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
+  // this is purely advisory, so we don't warn
+  return 0;
+}
+
 weak int __syscall_mlock(intptr_t addr, size_t len) {
   REPORT(mlock);
   return 0;
