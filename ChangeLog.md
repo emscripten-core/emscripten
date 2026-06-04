@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.0 (in development)
+6.0.1 (in development)
 ----------------------
+
+6.0.0 - 06/04/26
+----------------
 - On Windows, Emscripten now ships `.exe` tool launchers, rather
   than `.bat` and/or `.ps1`.  This means that any scripts that explicitly
   reference, e.g. `emcc.bat`, will need to be updated to just `emcc` (or
