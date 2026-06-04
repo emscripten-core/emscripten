@@ -1,7 +1,17 @@
 [
  {
+  "name": "emcc$defun$_bad",
+  "reaches": []
+ },
+ {
   "name": "emcc$defun$applySignatureConversions",
   "reaches": []
+ },
+ {
+  "name": "emcc$defun$func",
+  "reaches": [
+   "emcc$defun$usedFromDeep2"
+  ]
  },
  {
   "name": "emcc$defun$rootedFunc1",
@@ -48,8 +58,7 @@
  },
  {
   "name": "emcc$defun$usedFromDeep2",
-  "reaches": [],
-  "root": true
+  "reaches": []
  },
  {
   "name": "emcc$defun$user",

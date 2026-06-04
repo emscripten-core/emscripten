@@ -1,8 +1,14 @@
 [
  {
+  "name": "emcc$defun$arrow",
+  "reaches": [
+   "emcc$defun$arrowed",
+   "emcc$defun$caller"
+  ]
+ },
+ {
   "name": "emcc$defun$arrowed",
-  "reaches": [],
-  "root": true
+  "reaches": []
  },
  {
   "name": "emcc$defun$bar",
