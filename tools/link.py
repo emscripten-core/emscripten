@@ -2150,7 +2150,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
 
   if settings.MODULARIZE and settings.MODULARIZE != 'instance':
     modularize()
-  elif settings.USE_CLOSURE_COMPILER:
+  elif settings.USE_CLOSURE_COMPILER and not settings.MODULARIZE:
     module_export_name_substitution()
 
   # Run a final optimization pass to clean up items that were not possible to

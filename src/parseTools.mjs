@@ -41,10 +41,30 @@ export function processMacros(text, filename) {
   // `[\s\S]` works like `.` but include newline.
   pushCurrentFile(filename);
   try {
-    return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
+    text = text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
       const ret = runInMacroContext(str, {filename: filename});
       return ret?.toString() ?? '';
     });
+    // Do special keyword replacement after macro processing, so that
+    // macros can generate keywords (easier to read preprocessed code).
+    if (EXPORT_ES6) {
+      // `eval`, Terser and Closure don't support module syntax; to allow it,
+      // we need to temporarily replace `import.meta` and `await import` usages
+      // with placeholders during preprocess phase, and back after all the other ops.
+      // See also: `phase_final_emitting` in emcc.py.
+      text = text
+        .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
+        .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
+    }
+    if (MODULARIZE) {
+      // Same for out use of "top-level-await" which is not actually top level
+      // in the case of MODULARIZE.
+      text = text.replace(/\bawait createWasm\(\)/g, 'EMSCRIPTEN$AWAIT(createWasm())');
+      text = text.replace(/\bawait run\(\)/g, 'EMSCRIPTEN$AWAIT(run())');
+      text = text.replace(/\bawait instantiatePromise\b/g, 'EMSCRIPTEN$AWAIT(instantiatePromise)');
+      text = text.replace(/\bawait init\(\)/g, 'EMSCRIPTEN$AWAIT(init())');
+    }
+    return text;
   } finally {
     popCurrentFile();
   }
@@ -73,20 +93,6 @@ function findIncludeFile(filename, currentDir) {
 // Also handles #include x.js (similar to C #include <file>)
 export function preprocess(filename) {
   let text = readFile(filename);
-  if (EXPORT_ES6) {
-    // `eval`, Terser and Closure don't support module syntax; to allow it,
-    // we need to temporarily replace `import.meta` and `await import` usages
-    // with placeholders during preprocess phase, and back after all the other ops.
-    // See also: `phase_final_emitting` in emcc.py.
-    text = text
-      .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
-      .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
-  }
-  if (MODULARIZE) {
-    // Same for out use of "top-level-await" which is not actually top level
-    // in the case of MODULARIZE.
-    text = text.replace(/\bawait createWasm\(\)/g, 'EMSCRIPTEN$AWAIT(createWasm())');
-  }
   // Remove windows line endings, if any
   text = text.replace(/\r\n/g, '\n');
 

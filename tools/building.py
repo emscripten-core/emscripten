@@ -540,6 +540,12 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   # should not minify these symbol names.
   CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
+  if settings.MODULARIZE:
+    module_extern_file = shared.get_temp_files().get('.js', prefix='emcc_modularize_extern_')
+    module_extern_file.write(b'/** @suppress {duplicate} */\nvar Module;\n')
+    module_extern_file.close()
+    CLOSURE_EXTERNS += [module_extern_file.name]
+
   if settings.MODULARIZE and settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
 
