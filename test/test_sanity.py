@@ -823,11 +823,11 @@ fi
 
     # Touching package.json should cause compiler to fail with bootstrap message
     Path(utils.path_from_root('package.json')).touch()
-    expected = 'emcc: error: emscripten setup is not complete ("npm packages" is out-of-date). Run `bootstrap` to update'
+    expected = 'emcc: error: emscripten setup is not complete ("npm packages" is out-of-date). Run `bootstrap.py` to update'
     self.assert_fail([EMCC, test_file('hello_world.c')], expected)
 
     # Running bootstrap.py should fix that
-    self.run_process([utils.exe_path_from_root('bootstrap')])
+    self.run_process([sys.executable, utils.path_from_root('bootstrap.py')])
 
     # Now the compiler should work again
     self.run_process([EMCC, test_file('hello_world.c')])
@@ -846,7 +846,7 @@ fi
     env['PATH'] = path_without_tool(env['PATH'], 'clang')
 
     # Running bootstrap.py should not fail
-    self.run_process([utils.exe_path_from_root('bootstrap')], env=env)
+    self.run_process([sys.executable, utils.path_from_root('bootstrap.py')], env=env)
 
   # Verify that if user specifies a relative path to Python executable, then
   # Emscripten is still able to build.

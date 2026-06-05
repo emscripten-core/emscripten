@@ -91,7 +91,6 @@ test/runner.bat
 tools/file_packager.bat
 tools/webidl_binder.bat
 
-bootstrap.exe
 em++.exe
 emcc.exe
 em-config.exe
