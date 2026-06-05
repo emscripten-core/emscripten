@@ -351,7 +351,7 @@ LibraryJSEventLoop = {
 #if RUNTIME_DEBUG
           dbg('setImmediate: using scheduler.postTask');
 #endif
-          MainLoop.setImmediate = scheduler.postTask.bind(scheduler);
+          MainLoop.setImmediate = globalThis.scheduler.postTask.bind(globalThis.scheduler);
 #if ENVIRONMENT_MAY_BE_NODE
         } else if (globalThis.setImmediate) {
           MainLoop.setImmediate = setImmediate;
