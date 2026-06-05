@@ -1346,6 +1346,11 @@ jobs:
           name: "sockets.test_nodejs_sockets_echo*"
           command: "test/runner sockets.test_nodejs_sockets_echo*"
       - upload-test-results
+      - run:
+          name: "check clean"
+          command: |
+            git checkout tools/pylauncher
+            $EMSDK_PYTHON test/check_clean.py
 
   test-mac-arm64:
     executor: mac-arm64
