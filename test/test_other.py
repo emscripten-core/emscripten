@@ -2988,6 +2988,7 @@ More info: https://emscripten.org
     'emitDCEGraph-sig': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-prefixing': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-scopes': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-vardefs': (['emitDCEGraph', '--no-print'],),
     'minimal-runtime-applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
     'applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
     'applyImportAndExportNameChanges': (['applyImportAndExportNameChanges'],),

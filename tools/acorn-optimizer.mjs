@@ -621,10 +621,13 @@ function emitDCEGraph(ast) {
   }
 
   // We track defined functions very carefully, so that we can remove them and
-  // the things they call, but other function scopes (like arrow functions and
-  // object methods) are trickier to track (object methods require knowing what
-  // object a function name is called on), so we do not track those. We consider
-  // all content inside them as top-level, which means it is used.
+  // the things they call. That includes functions defined by assignment of a
+  // function expression or arrow function to a top-level variable (which is
+  // how JS library functions are emitted). Other function scopes (like object
+  // methods, or arrow functions not directly assigned to a variable) are
+  // trickier to track (object methods require knowing what object a function
+  // name is called on), so we do not track those. We consider all content
+  // inside them as top-level, which means it is used.
   var specialScopes = 0;
 
   fullWalk(
@@ -699,6 +702,31 @@ function emitDCEGraph(ast) {
                 emptyOut(node);
               }
             }
+          } else if (
+            value &&
+            (value.type === 'ArrowFunctionExpression' || value.type === 'FunctionExpression') &&
+            !specialScopes &&
+            // If the name already maps to a graph node (a saved export, or an
+            // earlier same-named function) do not track this one: re-mapping
+            // the name would misattribute references to the wrong node, which
+            // could lead to unsound removals. Left untracked, the contents
+            // are treated as top-level code, which is conservative.
+            !nameToGraphName.hasOwnProperty(name)
+          ) {
+            // this is a function defined by assignment to a variable, e.g.
+            //  var x = () => { .. };
+            //  var x = function() { .. };
+            // We track it just like a function declaration, which allows DCE
+            // of wasm exports that are only used inside such functions (e.g.
+            // JS library functions, which are emitted in this form).
+            // References through the name are attributed to this function.
+            // That is precise only if the name is never reassigned (generated
+            // code never reassigns these); if it were, the assignment would
+            // root this node (the assignment target is an identifier use), so
+            // this remains conservative.
+            defuns.push({id: {name}, body: value.body});
+            nameToGraphName[name] = getGraphName(name, 'defun');
+            emptyOut(node); // ignore this in the second pass; we scan defuns separately
           }
         }
         // A variable declaration that has no initial values can be ignored in
