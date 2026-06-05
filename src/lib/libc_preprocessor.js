@@ -209,20 +209,21 @@ addToLibrary({
           if (operatorAndPriority >= 0) {
             var left = buildExprTree(tokens.slice(0, i));
             var right = buildExprTree(tokens.slice(i+1));
-            switch(tokens[i]) {
-              case '&&': return [function() { return left() && right(); }];
-              case '||': return [function() { return left() || right(); }];
-              case '==': return [function() { return left() == right(); }];
-              case '!=': return [function() { return left() != right(); }];
-              case '<' : return [function() { return left() <  right(); }];
-              case '<=': return [function() { return left() <= right(); }];
-              case '>' : return [function() { return left() >  right(); }];
-              case '>=': return [function() { return left() >= right(); }];
-              case  '+': return [function() { return left()  + right(); }];
-              case  '-': return [function() { return left()  - right(); }];
-              case  '*': return [function() { return left()  * right(); }];
-              case  '/': return [function() { return Math.floor(left() / right()); }];
-            }
+            var opers = {
+              '&&': () => left() && right(),
+              '||': () => left() || right(),
+              '==': () => left() == right(),
+              '!=': () => left() != right(),
+              '<' : () => left() <  right(),
+              '<=': () => left() <= right(),
+              '>' : () => left() >  right(),
+              '>=': () => left() >= right(),
+               '+': () => left()  + right(),
+               '-': () => left()  - right(),
+               '*': () => left()  * right(),
+               '/': () => Math.floor(left() / right())
+            };
+            return [opers[tokens[i]]];
           }
           // else a number:
 #if ASSERTIONS
