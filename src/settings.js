@@ -2206,16 +2206,29 @@ var GROWABLE_ARRAYBUFFERS = false;
 var CROSS_ORIGIN = false;
 
 // [experimental] Enables Cross-Origin Storage (COS) API support for Wasm
-// loading on the Web target.  When enabled, Emscripten will compute the
-// SHA-256 hash of the final .wasm binary at link time, embed it in the
-// generated JS glue, and use the browser COS API (if available) as a
-// progressive enhancement: the runtime first tries to retrieve the Wasm
-// module from the shared cross-origin cache keyed by its hash.  On a cache
-// miss the module is fetched over the network as usual and then stored in
-// COS so that other origins can reuse it.  Falls back transparently to the
-// standard fetch path when the browser does not expose the COS API.
-// Only meaningful for the Web environment; has no effect elsewhere.
-// Usage:  emcc -sCROSS_ORIGIN_STORAGE=1 ...
+// loading on the Web target.
+//
+// When enabled, Emscripten computes the SHA-256 hash of the final ``.wasm``
+// binary at link time, embeds it as a build-time constant in the generated
+// JavaScript glue, and uses the browser COS API as a progressive enhancement:
+//
+// - **Cache hit**: the runtime calls
+//   ``navigator.crossOriginStorage.requestFileHandles()`` with the hash and,
+//   if the module is found, reads it directly from the cross-origin cache.
+// - **Cache miss**: the module is fetched over the network as usual, then
+//   stored in COS in the background (non-blocking) with ``origins: '*'`` so
+//   any other origin can reuse it.
+// - **Fallback**: when the browser does not expose the COS API, or when an
+//   unexpected error occurs, the runtime falls through to the standard
+//   ``fetch`` / ``WebAssembly.instantiateStreaming`` path transparently.
+//
+// Only meaningful for the Web environment (``-sENVIRONMENT=web``); has no
+// effect on Node.js or shell targets.  Also has no effect in SINGLE_FILE
+// builds where the Wasm binary is inlined as base64.
+//
+// See :ref:`CrossOriginStorage` for the full guide, including how to test
+// with the COS browser extension polyfill.
+//
 // [link]
 var CROSS_ORIGIN_STORAGE = 0;
 
