@@ -646,10 +646,10 @@ async function instantiateAsync(binary, binaryFile, imports) {
   //   requestFileHandles() succeeds → getFile() → arrayBuffer() → instantiate
   //
   // Cache-miss path (NotFoundError):
-  //   fetch() the wasm over the network → instantiate → store in COS with
-  //   origins:'*' so any origin can reuse the same public binary.
-  //   (Controlled by -sCROSS_ORIGIN_STORAGE_ORIGINS; see settings.js.)
-  //   The store is fire-and-forget so it never delays startup.
+  //   fetch() the wasm over the network → instantiate → store in COS.
+  //   The origins field is controlled by -sCROSS_ORIGIN_STORAGE_ORIGINS
+  //   (default: '*', globally available).  The store is fire-and-forget so
+  //   it never delays startup.
   //
   // Any other error (NotAllowedError, network failure, …) falls through to the
   // standard Emscripten streaming path so the page always loads.

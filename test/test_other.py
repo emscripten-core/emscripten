@@ -15637,13 +15637,16 @@ console.log('OK');'''
 
   def test_cross_origin_storage_not_emitted_for_node_target(self):
     """COS code must NOT appear when targeting Node.js only, even with the flag
-    set; the #if ENVIRONMENT_MAY_BE_WEB guard should strip it."""
-    self.run_process([EMCC, test_file('hello_world.cpp'),
-                      '-sCROSS_ORIGIN_STORAGE=1',
-                      '-sENVIRONMENT=node',
-                      '-o', 'hello.js'])
-    js = read_file('hello.js')
-    self.assertNotContained('crossOriginStorage', js)
+    set; the #if ENVIRONMENT_MAY_BE_WEB guard strips it. A warning must also
+    be emitted since the flag does nothing in this configuration."""
+    proc = self.run_process([EMCC, test_file('hello_world.cpp'),
+                             '-sCROSS_ORIGIN_STORAGE=1',
+                             '-sENVIRONMENT=node',
+                             '-o', 'hello.js'],
+                            stderr=PIPE)
+    self.assertNotContained('crossOriginStorage', read_file('hello.js'))
+    self.assertContained('CROSS_ORIGIN_STORAGE has no effect when the target environment does not include the web',
+                         proc.stderr)
 
   def test_cross_origin_storage_error_with_single_file(self):
     """CROSS_ORIGIN_STORAGE + SINGLE_FILE must be a hard link-time error."""

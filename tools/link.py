@@ -1212,6 +1212,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.CROSS_ORIGIN_STORAGE:
     if settings.SINGLE_FILE:
       exit_with_error('CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE (the .wasm binary is inlined directly into the JS output and has no fetchable URL to key the hash on)')
+    if not settings.ENVIRONMENT_MAY_BE_WEB:
+      diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect when the target environment does not include the web (navigator.crossOriginStorage is not available outside the browser)')
     if not settings.WASM_ASYNC_COMPILATION:
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect when WASM_ASYNC_COMPILATION=0 (synchronous instantiation does not use the COS fetch path)')
     if settings.SPLIT_MODULE:
@@ -1943,7 +1945,10 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
       settings.WASM_SHA256 = hashlib.sha256(wasm_bytes).hexdigest()
       logger.debug(f'CROSS_ORIGIN_STORAGE: wasm SHA-256 = {settings.WASM_SHA256}')
     else:
-      # Inline / SINGLE_FILE builds embed the wasm in JS; no file to hash.
+      # wasm_target does not exist — this should not normally be reached since
+      # SINGLE_FILE (which inlines the wasm) is already rejected above with a
+      # hard error.  Log a warning defensively in case of an unexpected build
+      # configuration.
       logger.warning('CROSS_ORIGIN_STORAGE: wasm file not found for hashing; WASM_SHA256 will be empty')
       settings.WASM_SHA256 = ''
 

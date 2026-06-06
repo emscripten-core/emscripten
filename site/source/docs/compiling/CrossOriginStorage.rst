@@ -117,8 +117,10 @@ site but not beyond.
 Requirements and restrictions
 ------------------------------
 
-- The flag only has an effect when the output targets the **web** environment.
-  It is silently ignored for Node.js-only or shell targets (``-sENVIRONMENT=node``).
+- The flag emits a **warning** when the target environment does not include
+  the web (``-sENVIRONMENT=node``, ``-sENVIRONMENT=shell``):
+  ``navigator.crossOriginStorage`` is a browser API and is never available
+  in those environments.
 - It produces a **hard link-time error** in **SINGLE_FILE** mode
   (``-sSINGLE_FILE``): the Wasm binary is embedded directly into the JS
   output and has no standalone ``.wasm`` file or fetchable URL to key the
@@ -169,10 +171,9 @@ When the page loads, the generated JavaScript follows this logic:
    over the network as usual, invoke ``Module['onCOSCacheMiss'](url)`` if
    defined, call ``WebAssembly.instantiate()`` immediately so the page loads
    without delay, and then write the bytes into COS in the background
-   (fire-and-forget) with ``origins: '*'`` so any other origin can benefit.
-   Once the write completes, invoke ``Module['onCOSStore'](hash)`` if defined::
-
-     navigator.crossOriginStorage.requestFileHandles([hash], { create: true, origins: '*' })
+   (fire-and-forget) using the ``origins`` value controlled by
+   ``-sCROSS_ORIGIN_STORAGE_ORIGINS`` (``'*'`` by default).
+   Once the write completes, invoke ``Module['onCOSStore'](hash)`` if defined.
 
 4. **Fallback** — any unexpected error (``NotAllowedError`` from the browser,
    network failure during the miss path, etc.) is logged with ``err()`` and
