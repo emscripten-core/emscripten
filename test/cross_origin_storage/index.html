@@ -1,0 +1,88 @@
+<!doctype html>
+<!--
+  Cross-Origin Storage (COS) example for Emscripten.
+
+  Build main.cpp first (see build instructions at the top of main.cpp), then
+  serve this directory over HTTP and open this page.
+
+  On the first load the .wasm module is fetched from the network and stored in
+  COS.  On subsequent loads (from this origin or any other) it is served from
+  the cross-origin cache — no network request for the binary.
+
+  Requires the COS browser extension to be installed while the API is not yet
+  natively supported by browsers:
+  https://chromewebstore.google.com/detail/cross-origin-storage/denpnpcgjgikjpoglpjefakmdcbmlgih
+-->
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <title>Emscripten — Cross-Origin Storage example</title>
+    <style>
+      body {
+        font-family: monospace;
+        max-width: 640px;
+        margin: 2rem auto;
+        padding: 0 1rem;
+      }
+      h1 { font-size: 1.2rem; }
+      #status {
+        border: 1px solid #ccc;
+        border-radius: 4px;
+        padding: 0.75rem 1rem;
+        margin-top: 1rem;
+        white-space: pre-wrap;
+        min-height: 8rem;
+      }
+      .ok   { color: green; }
+      .warn { color: orange; }
+      .err  { color: red; }
+    </style>
+  </head>
+  <body>
+    <h1>Emscripten — Cross-Origin Storage example</h1>
+    <p>
+      Open the browser DevTools console to see detailed COS timing.
+      Reload the page after the first load to observe the cache-hit path.
+    </p>
+    <div id="status">Loading…</div>
+
+    <script>
+      const log = (msg, cls = '') => {
+        const el = document.getElementById('status');
+        const line = document.createElement('div');
+        if (cls) line.className = cls;
+        line.textContent = msg;
+        el.appendChild(line);
+        console.log(msg);
+      };
+
+      // Detect COS API availability and report it upfront.
+      if ('crossOriginStorage' in navigator) {
+        log('✓ navigator.crossOriginStorage is available (COS extension active)', 'ok');
+      } else {
+        log('⚠ navigator.crossOriginStorage not found — install the COS extension ' +
+            'to exercise the cross-origin cache path. The module will still load ' +
+            'via the normal fetch path.', 'warn');
+      }
+
+      // Patch Module.print / Module.printErr so Wasm stdout appears on the page.
+      var Module = {
+        print: (text) => log('[wasm] ' + text, 'ok'),
+        printErr: (text) => log('[wasm err] ' + text, 'err'),
+        onRuntimeInitialized: () => {
+          log('✓ Runtime initialised', 'ok');
+          // Call the exported C++ function.
+          const greeting = Module.ccall('greet', 'string', [], []);
+          log('greet() returned: ' + greeting, 'ok');
+        },
+      };
+    </script>
+
+    <!--
+      index.js is the Emscripten-generated glue. When built with
+      -sCROSS_ORIGIN_STORAGE=1 it contains the COS fetch logic and the
+      SHA-256 hash of index.wasm embedded as a build-time constant.
+    -->
+    <script src="index.js"></script>
+  </body>
+</html>
