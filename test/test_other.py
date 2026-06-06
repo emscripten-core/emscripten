@@ -15690,6 +15690,16 @@ console.log('OK');'''
     self.assertContained('CROSS_ORIGIN_STORAGE only covers the primary .wasm file',
                          proc.stderr)
 
+  def test_cross_origin_storage_warning_with_side_module(self):
+    """CROSS_ORIGIN_STORAGE + SIDE_MODULE must warn: no JS glue is emitted."""
+    proc = self.run_process([EMCC, test_file('hello_world.cpp'),
+                             '-sCROSS_ORIGIN_STORAGE=1',
+                             '-sSIDE_MODULE',
+                             '-o', 'hello.wasm'],
+                            stderr=PIPE)
+    self.assertContained('CROSS_ORIGIN_STORAGE has no effect on SIDE_MODULE builds',
+                         proc.stderr)
+
   def test_cross_origin_storage_hash_changes_with_content(self):
     """Two different programs must produce different embedded hashes."""
     self.run_process([EMCC, test_file('hello_world.cpp'),
