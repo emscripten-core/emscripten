@@ -15645,16 +15645,25 @@ console.log('OK');'''
     js = read_file('hello.js')
     self.assertNotContained('crossOriginStorage', js)
 
-  def test_cross_origin_storage_not_emitted_for_single_file(self):
-    """COS code must NOT appear in SINGLE_FILE builds (wasm is inlined as
-    base64; there is no standalone .wasm file to key the hash on)."""
-    self.run_process([EMCC, test_file('hello_world.cpp'),
+  def test_cross_origin_storage_error_with_single_file(self):
+    """CROSS_ORIGIN_STORAGE + SINGLE_FILE must be a hard link-time error."""
+    self.assert_fail([EMCC, test_file('hello_world.cpp'),
                       '-sCROSS_ORIGIN_STORAGE=1',
                       '-sENVIRONMENT=web',
                       '-sSINGLE_FILE',
-                      '-o', 'hello.js'])
-    js = read_file('hello.js')
-    self.assertNotContained('crossOriginStorage', js)
+                      '-o', 'hello.js'],
+                     'CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE')
+
+  def test_cross_origin_storage_warning_without_async_compilation(self):
+    """CROSS_ORIGIN_STORAGE + WASM_ASYNC_COMPILATION=0 must warn."""
+    proc = self.run_process([EMCC, test_file('hello_world.cpp'),
+                             '-sCROSS_ORIGIN_STORAGE=1',
+                             '-sENVIRONMENT=web',
+                             '-sWASM_ASYNC_COMPILATION=0',
+                             '-o', 'hello.js'],
+                            stderr=PIPE)
+    self.assertContained('CROSS_ORIGIN_STORAGE has no effect when WASM_ASYNC_COMPILATION=0',
+                         proc.stderr)
 
   def test_cross_origin_storage_hash_changes_with_content(self):
     """Two different programs must produce different embedded hashes."""

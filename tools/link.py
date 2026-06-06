@@ -1209,6 +1209,12 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.WASM == 2 and settings.SINGLE_FILE:
     exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
 
+  if settings.CROSS_ORIGIN_STORAGE:
+    if settings.SINGLE_FILE:
+      exit_with_error('CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE (the .wasm binary is inlined and cannot be identified by hash)')
+    if not settings.WASM_ASYNC_COMPILATION:
+      diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect when WASM_ASYNC_COMPILATION=0 (synchronous instantiation does not use the COS fetch path)')
+
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and options.oformat != OFormat.HTML:
     exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION is only compatible with html output')
 

@@ -35,6 +35,20 @@ See docs/process.md for more on how version tagging works.
   supported. (#23493)
 - Fixed `getentropy`/`random_get` spuriously failing under Node.js and the
   shell environment for small requests. (#27122)
+- New experimental ``-sCROSS_ORIGIN_STORAGE=1`` linker flag that integrates
+  the proposed `Cross-Origin Storage browser API
+  <https://github.com/WICG/cross-origin-storage>`_ into the Wasm loading path
+  as a progressive enhancement (web target only). At build time Emscripten
+  computes the SHA-256 hash of the final ``.wasm`` binary and embeds it in the
+  generated JS glue. At runtime, if the browser exposes
+  ``navigator.crossOriginStorage``, the runtime first attempts to retrieve the
+  module from the shared cross-origin cache (cache hit); on a miss it fetches
+  normally and stores the binary in COS for future use by any origin. Falls
+  back transparently to the standard fetch path when the API is unavailable.
+  Three optional ``Module`` callbacks are available for instrumentation:
+  ``Module['onCOSCacheHit'](hash)``, ``Module['onCOSCacheMiss'](url)``, and
+  ``Module['onCOSStore'](hash)``. Incompatible with ``-sSINGLE_FILE``
+  (hard error) and ``-sWASM_ASYNC_COMPILATION=0`` (warning).
 
 6.0.0 - 06/04/26
 ----------------
