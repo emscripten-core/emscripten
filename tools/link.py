@@ -1220,10 +1220,16 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; dynamically-linked side modules loaded via dlopen are fetched via the normal path and are not stored in or retrieved from COS')
     if settings.SIDE_MODULE:
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect on SIDE_MODULE builds (no JS glue is emitted to carry the hash or perform the COS lookup)')
-    # Validate CROSS_ORIGIN_STORAGE_ORIGINS.
+    # Resolve and validate CROSS_ORIGIN_STORAGE_ORIGINS.
+    # The default in settings.js is [] (empty sentinel).  When the user has
+    # not explicitly passed -sCROSS_ORIGIN_STORAGE_ORIGINS we default to ['*']
+    # (globally available), which is the appropriate mode for widely-shared
+    # public Wasm binaries.  An explicit =[] means same-site only.
+    if 'CROSS_ORIGIN_STORAGE_ORIGINS' not in user_settings:
+      settings.CROSS_ORIGIN_STORAGE_ORIGINS = ['*']
     origins = settings.CROSS_ORIGIN_STORAGE_ORIGINS
     if not isinstance(origins, list):
-      exit_with_error('CROSS_ORIGIN_STORAGE_ORIGINS must be a list, e.g. [\'*\'] or [\'https://example.com\']')
+      exit_with_error("CROSS_ORIGIN_STORAGE_ORIGINS must be a list, e.g. ['*'] or ['https://example.com']")
     if '*' in origins and len(origins) > 1:
       exit_with_error("CROSS_ORIGIN_STORAGE_ORIGINS: '*' must not be mixed with explicit origins")
     for o in origins:

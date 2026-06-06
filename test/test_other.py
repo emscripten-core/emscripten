@@ -15711,10 +15711,21 @@ console.log('OK');'''
   # ---------------------------------------------------------------------------
 
   def test_cross_origin_storage_origins_default_is_global(self):
-    """Default CROSS_ORIGIN_STORAGE_ORIGINS=['*'] must emit origins:'*'."""
+    """Without -sCROSS_ORIGIN_STORAGE_ORIGINS, the default must be origins:'*'
+    (globally available). The user only needs -sCROSS_ORIGIN_STORAGE=1."""
     self.run_process([EMCC, test_file('hello_world.cpp'),
                       '-sCROSS_ORIGIN_STORAGE=1',
                       '-sENVIRONMENT=web',
+                      '-o', 'hello.js'])
+    self.assertContained("origins: '*'", read_file('hello.js'))
+
+  def test_cross_origin_storage_origins_explicit_wildcard(self):
+    """Explicitly passing -sCROSS_ORIGIN_STORAGE_ORIGINS=['*'] must also emit
+    origins:'*', matching the implicit default."""
+    self.run_process([EMCC, test_file('hello_world.cpp'),
+                      '-sCROSS_ORIGIN_STORAGE=1',
+                      '-sENVIRONMENT=web',
+                      "-sCROSS_ORIGIN_STORAGE_ORIGINS=['*']",
                       '-o', 'hello.js'])
     self.assertContained("origins: '*'", read_file('hello.js'))
 

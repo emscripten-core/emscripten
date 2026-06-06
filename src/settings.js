@@ -2252,35 +2252,29 @@ var CROSS_ORIGIN_STORAGE = 0;
 // Three modes are supported, matching the ``origins`` field of the COS API's
 // ``CrossOriginStorageRequestFileHandleOptions`` dictionary:
 //
-// **Globally available** (default) — any origin can retrieve the file::
+// **Globally available** (default when the setting is not explicitly passed) —
+// any origin can retrieve the file.  When ``-sCROSS_ORIGIN_STORAGE=1`` is
+// used without specifying this setting, ``origins: '*'`` is used automatically.
+// Appropriate for widely-used public binaries (SQLite Wasm, Pyodide,
+// CanvasKit, …) distributed from a public CDN.
 //
-//   -sCROSS_ORIGIN_STORAGE_ORIGINS=['*']
-//
-// This is appropriate for widely-used public binaries (SQLite Wasm, Pyodide,
-// CanvasKit, …) distributed from a public CDN where many unrelated sites load
-// the exact same bytes.  The explainer recommends ``origins: '*'`` for such
-// resources.
-//
-// **Restricted to a specific set of origins** — only listed origins can
+// **Restricted to a specific set of origins** — only listed HTTPS origins can
 // retrieve the file::
 //
 //   -sCROSS_ORIGIN_STORAGE_ORIGINS=['https://app.example.com','https://api.example.com']
 //
-// Useful when a proprietary Wasm binary is shared across a controlled set of
-// related sites (for example, two subdomains of the same company) but should
-// not be globally enumerable.  Each value must be a valid serialized HTTPS
-// origin (scheme + host + optional port, no path).
+// For proprietary resources shared across a controlled set of related sites.
+// Each value must be a valid serialised HTTPS origin (scheme + host + optional
+// port, no path).  Mixing ``'*'`` with explicit origins is a link-time error.
 //
-// **Same-site only** — omit the ``origins`` field entirely so the file is
-// available only to same-site origins::
+// **Same-site only** — pass the setting with an empty list to omit the
+// ``origins`` field, making the file available only to same-site origins::
 //
 //   -sCROSS_ORIGIN_STORAGE_ORIGINS=[]
 //
-// Useful for resources shared across subdomains of a single site.
-//
-// Mixing ``'*'`` with explicit origins is a link-time error.
+// For resources shared across subdomains of a single site but not beyond.
 // [link]
-var CROSS_ORIGIN_STORAGE_ORIGINS = ['*'];
+var CROSS_ORIGIN_STORAGE_ORIGINS = [];
 
 // This setting changes the behaviour of the ``-shared`` flag.  When set to true
 // you get the old emscripten behaviour where the ``-shared`` flag actually

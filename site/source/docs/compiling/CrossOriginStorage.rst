@@ -69,13 +69,14 @@ The ``-sCROSS_ORIGIN_STORAGE_ORIGINS`` setting controls the ``origins`` field
 passed to ``requestFileHandles()`` on the write (cache-miss) path.  It has no
 effect on the read (cache-hit) path.  Three modes are available:
 
-**Globally available** (default) — any origin can retrieve the file:
+**Globally available** (default, no explicit setting needed) — any origin
+can retrieve the file.  This is applied automatically when
+``-sCROSS_ORIGIN_STORAGE=1`` is used without specifying
+``-sCROSS_ORIGIN_STORAGE_ORIGINS``:
 
 .. code-block:: bash
 
-   emcc hello.cpp -o hello.js \
-       -sCROSS_ORIGIN_STORAGE=1 \
-       -sCROSS_ORIGIN_STORAGE_ORIGINS=['*']
+   emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE=1
 
 Use this for widely-shared public binaries distributed from a CDN (SQLite
 Wasm, Pyodide, CanvasKit, …).  This is the recommended mode for resources
@@ -95,8 +96,8 @@ sites.  Each entry must be a valid serialised HTTPS origin (scheme + host +
 optional port, no path).  Mixing ``'*'`` with explicit origins is a
 **link-time error**.
 
-**Same-site only** — the ``origins`` field is omitted, so the file is
-available only to same-site origins:
+**Same-site only** — pass an explicit empty list to omit the ``origins``
+field, making the file available only to same-site origins:
 
 .. code-block:: bash
 
