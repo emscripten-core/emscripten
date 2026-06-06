@@ -5,6 +5,7 @@
 
 
 import glob
+import hashlib
 import importlib
 import itertools
 import json
@@ -15575,3 +15576,97 @@ console.log('OK');'''
 
     err = self.run_process([EMCC, '-sUSE_PTHREADS', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained('emcc: warning: USE_PTHREADS is deprecated (prefer the standard -pthread flag). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
+
+
+  # ---------------------------------------------------------------------------
+  # Tests for CROSS_ORIGIN_STORAGE (-sCROSS_ORIGIN_STORAGE=1)
+  # https://github.com/WICG/cross-origin-storage
+  # ---------------------------------------------------------------------------
+
+  def test_cross_origin_storage_js_output(self):
+    """COS code is present in JS when the feature is enabled for the web target,
+    and the embedded hash is the correct SHA-256 of the compiled .wasm file."""
+    self.run_process([EMCC, test_file('hello_world.cpp'),
+                      '-sCROSS_ORIGIN_STORAGE=1',
+                      '-sENVIRONMENT=web',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+
+    # Feature-detect pattern from the WICG explainer.
+    self.assertContained("'crossOriginStorage' in navigator", js)
+
+    # Correct API call.
+    self.assertContained('navigator.crossOriginStorage.requestFileHandles', js)
+
+    # Hash object shape required by the spec.
+    self.assertContained("algorithm: 'SHA-256'", js)
+
+    # Globally-available flag appropriate for a public Wasm module.
+    self.assertContained("origins: '*'", js)
+
+    # Cache-hit and cache-miss path markers.
+    self.assertContained('getFile()', js)
+    self.assertContained('createWritable()', js)
+
+    # Error name discrimination.
+    self.assertContained("'NotFoundError'", js)
+    self.assertContained("'NotAllowedError'", js)
+
+    # The hash embedded in the JS must be a 64-char lowercase hex string …
+    m = re.search(r"value:\s*'([0-9a-f]{64})'", js)
+    self.assertTrue(m, 'could not find a 64-char hex WASM_SHA256 value in JS output')
+    embedded_hash = m.group(1)
+
+    # … and must exactly match the SHA-256 of the emitted .wasm file.
+    expected_hash = hashlib.sha256(open('hello.wasm', 'rb').read()).hexdigest()
+    self.assertEqual(embedded_hash, expected_hash,
+                     'embedded WASM_SHA256 does not match actual .wasm SHA-256')
+
+  def test_cross_origin_storage_disabled_by_default(self):
+    """COS code must NOT appear when the flag is omitted (default off)."""
+    self.run_process([EMCC, test_file('hello_world.cpp'),
+                      '-sENVIRONMENT=web',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertNotContained('crossOriginStorage', js)
+
+  def test_cross_origin_storage_not_emitted_for_node_target(self):
+    """COS code must NOT appear when targeting Node.js only, even with the flag
+    set; the #if ENVIRONMENT_MAY_BE_WEB guard should strip it."""
+    self.run_process([EMCC, test_file('hello_world.cpp'),
+                      '-sCROSS_ORIGIN_STORAGE=1',
+                      '-sENVIRONMENT=node',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertNotContained('crossOriginStorage', js)
+
+  def test_cross_origin_storage_not_emitted_for_single_file(self):
+    """COS code must NOT appear in SINGLE_FILE builds (wasm is inlined as
+    base64; there is no standalone .wasm file to key the hash on)."""
+    self.run_process([EMCC, test_file('hello_world.cpp'),
+                      '-sCROSS_ORIGIN_STORAGE=1',
+                      '-sENVIRONMENT=web',
+                      '-sSINGLE_FILE',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertNotContained('crossOriginStorage', js)
+
+  def test_cross_origin_storage_hash_changes_with_content(self):
+    """Two different programs must produce different embedded hashes."""
+    self.run_process([EMCC, test_file('hello_world.cpp'),
+                      '-sCROSS_ORIGIN_STORAGE=1',
+                      '-sENVIRONMENT=web',
+                      '-o', 'hello.js'])
+    js_a = read_file('hello.js')
+    hash_a = re.search(r"value:\s*'([0-9a-f]{64})'", js_a).group(1)
+
+    self.run_process([EMCC, test_file('hello_world_small.c'),
+                      '-sCROSS_ORIGIN_STORAGE=1',
+                      '-sENVIRONMENT=web',
+                      '-o', 'small.js'])
+    js_b = read_file('small.js')
+    hash_b = re.search(r"value:\s*'([0-9a-f]{64})'", js_b).group(1)
+
+    self.assertNotEqual(hash_a, hash_b,
+                        'different programs should produce different WASM_SHA256 hashes')
+
