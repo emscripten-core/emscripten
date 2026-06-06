@@ -48,9 +48,10 @@ Requirements and restrictions
 
 - The flag only has an effect when the output targets the **web** environment.
   It is silently ignored for Node.js-only or shell targets (``-sENVIRONMENT=node``).
-- It has no effect in **SINGLE_FILE** mode (``-sSINGLE_FILE``), because the
-  Wasm binary is embedded inline as base64 and there is no standalone
-  ``.wasm`` file to hash.
+- It produces a **hard link-time error** in **SINGLE_FILE** mode
+  (``-sSINGLE_FILE``): the Wasm binary is embedded directly into the JS
+  output and has no standalone ``.wasm`` file or fetchable URL to key the
+  hash on.
 - The COS API is a progressive enhancement. Browsers without the API
   continue to load the Wasm module via the normal ``fetch()`` and
   ``WebAssembly.instantiateStreaming()`` path without any error.

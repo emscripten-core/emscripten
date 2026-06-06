@@ -2224,7 +2224,7 @@ var CROSS_ORIGIN = false;
 //
 // Only meaningful for the Web environment (``-sENVIRONMENT=web``); has no
 // effect on Node.js or shell targets.  Also has no effect in SINGLE_FILE
-// builds where the Wasm binary is inlined as base64.
+// builds where the Wasm binary is inlined directly into the JS output.
 //
 // See :ref:`CrossOriginStorage` for the full guide, including how to test
 // with the COS browser extension polyfill.

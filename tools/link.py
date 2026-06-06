@@ -1211,7 +1211,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.CROSS_ORIGIN_STORAGE:
     if settings.SINGLE_FILE:
-      exit_with_error('CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE (the .wasm binary is inlined and cannot be identified by hash)')
+      exit_with_error('CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE (the .wasm binary is inlined directly into the JS output and has no fetchable URL to key the hash on)')
     if not settings.WASM_ASYNC_COMPILATION:
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect when WASM_ASYNC_COMPILATION=0 (synchronous instantiation does not use the COS fetch path)')
 

@@ -48,7 +48,8 @@ See docs/process.md for more on how version tagging works.
   Three optional ``Module`` callbacks are available for instrumentation:
   ``Module['onCOSCacheHit'](hash)``, ``Module['onCOSCacheMiss'](url)``, and
   ``Module['onCOSStore'](hash)``. Incompatible with ``-sSINGLE_FILE``
-  (hard error) and ``-sWASM_ASYNC_COMPILATION=0`` (warning).
+  (hard error — the wasm is inlined directly into the JS output with no
+  fetchable URL) and ``-sWASM_ASYNC_COMPILATION=0`` (warning).
 
 6.0.0 - 06/04/26
 ----------------
