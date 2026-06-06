@@ -15706,3 +15706,68 @@ console.log('OK');'''
     self.assertNotEqual(hash_a, hash_b,
                         'different programs should produce different WASM_SHA256 hashes')
 
+  # ---------------------------------------------------------------------------
+  # Tests for CROSS_ORIGIN_STORAGE_ORIGINS
+  # ---------------------------------------------------------------------------
+
+  def test_cross_origin_storage_origins_default_is_global(self):
+    """Default CROSS_ORIGIN_STORAGE_ORIGINS=['*'] must emit origins:'*'."""
+    self.run_process([EMCC, test_file('hello_world.cpp'),
+                      '-sCROSS_ORIGIN_STORAGE=1',
+                      '-sENVIRONMENT=web',
+                      '-o', 'hello.js'])
+    self.assertContained("origins: '*'", read_file('hello.js'))
+
+  def test_cross_origin_storage_origins_explicit_list(self):
+    """An explicit origins list must be emitted as a JS array."""
+    self.run_process([EMCC, test_file('hello_world.cpp'),
+                      '-sCROSS_ORIGIN_STORAGE=1',
+                      '-sENVIRONMENT=web',
+                      '-sCROSS_ORIGIN_STORAGE_ORIGINS=["https://app.example.com","https://api.example.com"]',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertContained('"https://app.example.com"', js)
+    self.assertContained('"https://api.example.com"', js)
+    self.assertNotContained("origins: '*'", js)
+
+  def test_cross_origin_storage_origins_same_site(self):
+    """Empty origins list must omit the origins key entirely (same-site only)."""
+    self.run_process([EMCC, test_file('hello_world.cpp'),
+                      '-sCROSS_ORIGIN_STORAGE=1',
+                      '-sENVIRONMENT=web',
+                      '-sCROSS_ORIGIN_STORAGE_ORIGINS=[]',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+    # { create: true } with no origins field
+    self.assertContained('{ create: true }', js)
+    self.assertNotContained('origins', js)
+
+  def test_cross_origin_storage_origins_error_mixed_wildcard(self):
+    """Mixing '*' with explicit origins must be a link-time error."""
+    self.assert_fail(
+      [EMCC, test_file('hello_world.cpp'),
+       '-sCROSS_ORIGIN_STORAGE=1',
+       '-sENVIRONMENT=web',
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=["*","https://example.com"]',
+       '-o', 'hello.js'],
+      "'*' must not be mixed with explicit origins")
+
+  def test_cross_origin_storage_origins_error_invalid_origin(self):
+    """A non-HTTPS or malformed origin must be a link-time error."""
+    self.assert_fail(
+      [EMCC, test_file('hello_world.cpp'),
+       '-sCROSS_ORIGIN_STORAGE=1',
+       '-sENVIRONMENT=web',
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=["http://example.com"]',
+       '-o', 'hello.js'],
+      'is not a valid HTTPS origin')
+
+  def test_cross_origin_storage_origins_error_origin_with_path(self):
+    """An origin with a path component must be a link-time error."""
+    self.assert_fail(
+      [EMCC, test_file('hello_world.cpp'),
+       '-sCROSS_ORIGIN_STORAGE=1',
+       '-sENVIRONMENT=web',
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=["https://example.com/path"]',
+       '-o', 'hello.js'],
+      'is not a valid HTTPS origin')

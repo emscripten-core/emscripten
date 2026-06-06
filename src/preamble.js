@@ -648,6 +648,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
   // Cache-miss path (NotFoundError):
   //   fetch() the wasm over the network → instantiate → store in COS with
   //   origins:'*' so any origin can reuse the same public binary.
+  //   (Controlled by -sCROSS_ORIGIN_STORAGE_ORIGINS; see settings.js.)
   //   The store is fire-and-forget so it never delays startup.
   //
   // Any other error (NotAllowedError, network failure, …) falls through to the
@@ -678,7 +679,11 @@ async function instantiateAsync(binary, binaryFile, imports) {
             try {
               var writeHandles = await navigator.crossOriginStorage.requestFileHandles(
                 [cosHash],
-                { create: true, origins: '*' },
+#if CROSS_ORIGIN_STORAGE_ORIGINS.length
+                { create: true, origins: {{{ JSON.stringify(CROSS_ORIGIN_STORAGE_ORIGINS.length === 1 && CROSS_ORIGIN_STORAGE_ORIGINS[0] === '*' ? '*' : CROSS_ORIGIN_STORAGE_ORIGINS) }}} },
+#else
+                { create: true },
+#endif
               );
               var writable = await writeHandles[0].createWritable();
               await writable.write(new Blob([wasmBytes], { type: 'application/wasm' }));

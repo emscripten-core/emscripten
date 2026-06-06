@@ -62,6 +62,57 @@ Pass ``-sCROSS_ORIGIN_STORAGE=1`` at link time::
 The flag is a **link-time** setting and has no effect during compilation of
 individual object files.
 
+Controlling which origins can read the cached file
+--------------------------------------------------
+
+The ``-sCROSS_ORIGIN_STORAGE_ORIGINS`` setting controls the ``origins`` field
+passed to ``requestFileHandles()`` on the write (cache-miss) path.  It has no
+effect on the read (cache-hit) path.  Three modes are available:
+
+**Globally available** (default) — any origin can retrieve the file:
+
+.. code-block:: bash
+
+   emcc hello.cpp -o hello.js \
+       -sCROSS_ORIGIN_STORAGE=1 \
+       -sCROSS_ORIGIN_STORAGE_ORIGINS=['*']
+
+Use this for widely-shared public binaries distributed from a CDN (SQLite
+Wasm, Pyodide, CanvasKit, …).  This is the recommended mode for resources
+where global COS cache hits are expected.
+
+**Restricted to a specific set of origins** — only the listed origins can
+retrieve the file:
+
+.. code-block:: bash
+
+   emcc hello.cpp -o hello.js \
+       -sCROSS_ORIGIN_STORAGE=1 \
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=["https://app.example.com","https://api.example.com"]'
+
+Use this for proprietary resources shared across a controlled set of related
+sites.  Each entry must be a valid serialised HTTPS origin (scheme + host +
+optional port, no path).  Mixing ``'*'`` with explicit origins is a
+**link-time error**.
+
+**Same-site only** — the ``origins`` field is omitted, so the file is
+available only to same-site origins:
+
+.. code-block:: bash
+
+   emcc hello.cpp -o hello.js \
+       -sCROSS_ORIGIN_STORAGE=1 \
+       -sCROSS_ORIGIN_STORAGE_ORIGINS=[]
+
+Use this for resources that should be shared across subdomains of a single
+site but not beyond.
+
+.. note::
+   The COS spec defines a **visibility upgrade** rule: a resource's
+   availability can be widened but never narrowed.  If a resource is already
+   stored as globally available (``'*'``), any subsequent attempt to store it
+   with a more restrictive ``origins`` list is ignored by the browser.
+
 Requirements and restrictions
 ------------------------------
 

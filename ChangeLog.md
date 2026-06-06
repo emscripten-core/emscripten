@@ -50,6 +50,9 @@ See docs/process.md for more on how version tagging works.
   ``Module['onCOSStore'](hash)``. Incompatible with ``-sSINGLE_FILE``
   (hard error — the wasm is inlined directly into the JS output with no
   fetchable URL) and ``-sWASM_ASYNC_COMPILATION=0`` (warning).
+  The companion ``-sCROSS_ORIGIN_STORAGE_ORIGINS`` setting controls which
+  origins may read the cached file: ``['*']`` (default, globally available),
+  an explicit HTTPS origin list (restricted), or ``[]`` (same-site only).
 
 6.0.0 - 06/04/26
 ----------------

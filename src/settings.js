@@ -2244,6 +2244,44 @@ var CROSS_ORIGIN = false;
 // [link]
 var CROSS_ORIGIN_STORAGE = 0;
 
+// Controls which origins may read the Wasm binary after it has been stored in
+// the Cross-Origin Storage (COS) cache.  Only meaningful when
+// ``-sCROSS_ORIGIN_STORAGE=1`` is set.  Has no effect on the read (cache-hit)
+// path; it is only applied during the write (cache-miss) path.
+//
+// Three modes are supported, matching the ``origins`` field of the COS API's
+// ``CrossOriginStorageRequestFileHandleOptions`` dictionary:
+//
+// **Globally available** (default) — any origin can retrieve the file::
+//
+//   -sCROSS_ORIGIN_STORAGE_ORIGINS=['*']
+//
+// This is appropriate for widely-used public binaries (SQLite Wasm, Pyodide,
+// CanvasKit, …) distributed from a public CDN where many unrelated sites load
+// the exact same bytes.  The explainer recommends ``origins: '*'`` for such
+// resources.
+//
+// **Restricted to a specific set of origins** — only listed origins can
+// retrieve the file::
+//
+//   -sCROSS_ORIGIN_STORAGE_ORIGINS=['https://app.example.com','https://api.example.com']
+//
+// Useful when a proprietary Wasm binary is shared across a controlled set of
+// related sites (for example, two subdomains of the same company) but should
+// not be globally enumerable.  Each value must be a valid serialized HTTPS
+// origin (scheme + host + optional port, no path).
+//
+// **Same-site only** — omit the ``origins`` field entirely so the file is
+// available only to same-site origins::
+//
+//   -sCROSS_ORIGIN_STORAGE_ORIGINS=[]
+//
+// Useful for resources shared across subdomains of a single site.
+//
+// Mixing ``'*'`` with explicit origins is a link-time error.
+// [link]
+var CROSS_ORIGIN_STORAGE_ORIGINS = ['*'];
+
 // This setting changes the behaviour of the ``-shared`` flag.  When set to true
 // you get the old emscripten behaviour where the ``-shared`` flag actually
 // produces a normal object file (i.e. ``ld -r``).  When set to true (the
