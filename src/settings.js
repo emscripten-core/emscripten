@@ -2208,6 +2208,18 @@ var CROSS_ORIGIN = false;
 // [experimental] Enables Cross-Origin Storage (COS) API support for Wasm
 // loading on the Web target.
 //
+// **When to use this flag**
+//
+// COS is only beneficial for Wasm binaries that are byte-identical across
+// many different origins — i.e. publicly distributed libraries fetched from
+// a CDN, where the same compiled binary is loaded by thousands of sites.
+// Good examples: SQLite Wasm, Pyodide, CanvasKit (Flutter), ffmpeg.wasm,
+// libsodium.wasm.
+//
+// If your ``.wasm`` file is bespoke application code built specifically for
+// your site, COS gives you nothing that the normal HTTP cache does not
+// already provide.  Do not enable this flag for application-specific Wasm.
+//
 // When enabled, Emscripten computes the SHA-256 hash of the final ``.wasm``
 // binary at link time, embeds it as a build-time constant in the generated
 // JavaScript glue, and uses the browser COS API as a progressive enhancement:

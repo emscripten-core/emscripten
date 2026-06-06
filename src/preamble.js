@@ -631,6 +631,11 @@ async function instantiateAsync(binary, binaryFile, imports) {
   // Cross-Origin Storage (COS) progressive enhancement.
   // https://github.com/WICG/cross-origin-storage
   //
+  // COS is only beneficial when this .wasm binary is byte-identical across
+  // many origins — i.e. a publicly distributed library (SQLite Wasm, Pyodide,
+  // CanvasKit, ffmpeg.wasm, …) fetched from a CDN.  Application-specific Wasm
+  // gains nothing from COS that the normal HTTP cache does not already provide.
+  //
   // The SHA-256 hash of the final .wasm binary is computed at link time and
   // embedded here as a build-time constant.  At runtime we feature-detect the
   // browser COS API via `'crossOriginStorage' in navigator`, then call
@@ -642,8 +647,8 @@ async function instantiateAsync(binary, binaryFile, imports) {
   //
   // Cache-miss path (NotFoundError):
   //   fetch() the wasm over the network → instantiate → store in COS with
-  //   origins:'*' (appropriate for a public Wasm module that any site may
-  //   benefit from).  The store is fire-and-forget so it never delays startup.
+  //   origins:'*' so any origin can reuse the same public binary.
+  //   The store is fire-and-forget so it never delays startup.
   //
   // Any other error (NotAllowedError, network failure, …) falls through to the
   // standard Emscripten streaming path so the page always loads.

@@ -28,10 +28,29 @@ tries to retrieve the compiled Wasm module from COS before falling back to
 a normal network fetch. If the module is not yet in COS it is stored there
 after download, making it available to other origins immediately.
 
-This is particularly beneficial for popular Wasm modules that many sites
-ship independently — game engines, scientific computing runtimes, and
-frameworks such as Flutter or Pyodide — where users would otherwise download
-the same bytes many times.
+When to use this flag
+---------------------
+
+COS only delivers a benefit when the ``.wasm`` binary is **byte-identical
+across many different origins** — that is, a publicly distributed library
+that many sites load from the same CDN URL. If every visitor to every site
+downloads the exact same bytes, COS means they only download it once, ever.
+
+Good candidates:
+
+- **SQLite Wasm** — the same ``sqlite3.wasm`` build is loaded by many
+  independent sites.
+- **Pyodide** — ``pyodide.asm.wasm`` is a large, stable binary served from
+  a public CDN and used across many origins.
+- **CanvasKit (Flutter)** — ``canvaskit.wasm`` is requested hundreds of
+  thousands of times daily from thousands of distinct hosts.
+- **ffmpeg.wasm**, **libsodium.wasm**, **WebR** — similarly widely shared,
+  version-stable, CDN-distributed binaries.
+
+**Do not** enable this flag for application-specific Wasm code built for
+your own site. That binary is unique to you; no other origin will ever have
+the same hash, so it will never get a COS cache hit. The normal HTTP cache
+already handles per-origin caching efficiently.
 
 Usage
 =====
