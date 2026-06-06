@@ -15665,6 +15665,28 @@ console.log('OK');'''
     self.assertContained('CROSS_ORIGIN_STORAGE has no effect when WASM_ASYNC_COMPILATION=0',
                          proc.stderr)
 
+  def test_cross_origin_storage_warning_with_split_module(self):
+    """CROSS_ORIGIN_STORAGE + SPLIT_MODULE must warn that secondary files are not covered."""
+    proc = self.run_process([EMCC, test_file('hello_world.cpp'),
+                             '-sCROSS_ORIGIN_STORAGE=1',
+                             '-sENVIRONMENT=web',
+                             '-sSPLIT_MODULE',
+                             '-o', 'hello.js'],
+                            stderr=PIPE)
+    self.assertContained('CROSS_ORIGIN_STORAGE only covers the primary .wasm file',
+                         proc.stderr)
+
+  def test_cross_origin_storage_warning_with_main_module(self):
+    """CROSS_ORIGIN_STORAGE + MAIN_MODULE must warn that side modules are not covered."""
+    proc = self.run_process([EMCC, test_file('hello_world.cpp'),
+                             '-sCROSS_ORIGIN_STORAGE=1',
+                             '-sENVIRONMENT=web',
+                             '-sMAIN_MODULE',
+                             '-o', 'hello.js'],
+                            stderr=PIPE)
+    self.assertContained('CROSS_ORIGIN_STORAGE only covers the primary .wasm file',
+                         proc.stderr)
+
   def test_cross_origin_storage_hash_changes_with_content(self):
     """Two different programs must produce different embedded hashes."""
     self.run_process([EMCC, test_file('hello_world.cpp'),

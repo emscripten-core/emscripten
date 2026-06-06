@@ -1214,6 +1214,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE (the .wasm binary is inlined directly into the JS output and has no fetchable URL to key the hash on)')
     if not settings.WASM_ASYNC_COMPILATION:
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect when WASM_ASYNC_COMPILATION=0 (synchronous instantiation does not use the COS fetch path)')
+    if settings.SPLIT_MODULE:
+      diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; deferred split modules (.deferred.wasm) are fetched via the normal path and are not stored in or retrieved from COS')
+    if settings.MAIN_MODULE:
+      diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; dynamically-linked side modules loaded via dlopen are fetched via the normal path and are not stored in or retrieved from COS')
 
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and options.oformat != OFormat.HTML:
     exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION is only compatible with html output')
