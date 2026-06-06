@@ -1218,6 +1218,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; deferred split modules (.deferred.wasm) are fetched via the normal path and are not stored in or retrieved from COS')
     if settings.MAIN_MODULE:
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; dynamically-linked side modules loaded via dlopen are fetched via the normal path and are not stored in or retrieved from COS')
+    if settings.SIDE_MODULE:
+      diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect on SIDE_MODULE builds (no JS glue is emitted to carry the hash or perform the COS lookup)')
 
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and options.oformat != OFormat.HTML:
     exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION is only compatible with html output')
