@@ -629,30 +629,62 @@ async function instantiateAsync(binary, binaryFile, imports) {
 #if ENVIRONMENT_MAY_BE_WEB
 #if CROSS_ORIGIN_STORAGE
   // Cross-Origin Storage (COS) progressive enhancement.
-  // The SHA-256 hash of the .wasm binary is computed at link time and embedded
-  // here.  At runtime we check whether the browser exposes the COS API; if so
-  // we attempt to retrieve the already-compiled module from the shared
-  // cross-origin cache keyed by its hash, avoiding a network round-trip.
-  // On a cache miss we fall through to the normal fetch path and then store the
-  // fetched bytes back into COS for other origins to reuse in the future.
-  var wasmHash = '{{{ WASM_SHA256 }}}';
-  if (wasmHash && typeof crossOriginStorage !== 'undefined' && crossOriginStorage) {
+  // https://github.com/WICG/cross-origin-storage
+  //
+  // The SHA-256 hash of the final .wasm binary is computed at link time and
+  // embedded here as a build-time constant.  At runtime we feature-detect the
+  // browser COS API via `'crossOriginStorage' in navigator`, then call
+  // navigator.crossOriginStorage.requestFileHandles() with the hash object
+  // required by the spec ({ algorithm: 'SHA-256', value: '<lowercase hex>' }).
+  //
+  // Cache-hit path:
+  //   requestFileHandles() succeeds → getFile() → arrayBuffer() → instantiate
+  //
+  // Cache-miss path (NotFoundError):
+  //   fetch() the wasm over the network → instantiate → store in COS with
+  //   origins:'*' (appropriate for a public Wasm module that any site may
+  //   benefit from).  The store is fire-and-forget so it never delays startup.
+  //
+  // Any other error (NotAllowedError, network failure, …) falls through to the
+  // standard Emscripten streaming path so the page always loads.
+  var wasmHashValue = '{{{ WASM_SHA256 }}}';
+  if (wasmHashValue && 'crossOriginStorage' in navigator) {
+    var cosHash = { algorithm: 'SHA-256', value: wasmHashValue };
     try {
-      var cosResult = await crossOriginStorage.get(wasmHash);
-      if (cosResult) {
-        // Cache hit — instantiate directly from the stored ArrayBuffer.
-        return WebAssembly.instantiate(cosResult, imports);
+      var cosHandles = await navigator.crossOriginStorage.requestFileHandles([cosHash]);
+      // Cache hit — read the Blob and instantiate from its ArrayBuffer.
+      var cosFile = await cosHandles[0].getFile();
+      var cosBytes = await cosFile.arrayBuffer();
+      return WebAssembly.instantiate(cosBytes, imports);
+    } catch (cosErr) {
+      if (cosErr.name === 'NotFoundError') {
+        // Cache miss — fetch normally, then store in COS for future consumers.
+        try {
+          var networkResponse = await fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
+          var wasmBytes = await networkResponse.arrayBuffer();
+          // Fire-and-forget store; never block instantiation on the write.
+          (async () => {
+            try {
+              var writeHandles = await navigator.crossOriginStorage.requestFileHandles(
+                [cosHash],
+                { create: true, origins: '*' },
+              );
+              var writable = await writeHandles[0].createWritable();
+              await writable.write(new Blob([wasmBytes], { type: 'application/wasm' }));
+              await writable.close();
+            } catch (storeErr) {
+              err(`COS store failed: ${storeErr}`);
+            }
+          })();
+          return WebAssembly.instantiate(wasmBytes, imports);
+        } catch (fetchErr) {
+          // Network fetch failed; fall through to the standard path.
+          err(`COS fallback fetch failed: ${fetchErr}`);
+        }
+      } else {
+        // NotAllowedError or unexpected error; fall through gracefully.
+        err(`Cross-Origin Storage lookup failed: ${cosErr}`);
       }
-      // Cache miss — fetch over the network, store in COS, then instantiate.
-      var networkResponse = await fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
-      var wasmBytes = await networkResponse.arrayBuffer();
-      // Store asynchronously; don't block instantiation on the write.
-      crossOriginStorage.set(wasmHash, wasmBytes).catch((e) => err(`COS store failed: ${e}`));
-      return WebAssembly.instantiate(wasmBytes, imports);
-    } catch (cosReason) {
-      // COS look-up failed for an unexpected reason; fall through to the
-      // standard streaming path below so the page still loads.
-      err(`Cross-Origin Storage lookup failed: ${cosReason}`);
     }
   }
 #endif // CROSS_ORIGIN_STORAGE
