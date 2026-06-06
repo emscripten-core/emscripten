@@ -5,6 +5,7 @@
 
 import base64
 import glob
+import hashlib
 import json
 import logging
 import os
@@ -1900,6 +1901,20 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
     phase_source_transforms(options)
 
   phase_binaryen(target, options, wasm_target)
+
+  # Compute the SHA-256 of the final .wasm binary and make it available to the
+  # JS glue preprocessor as {{{ WASM_SHA256 }}}.  We do this after phase_binaryen
+  # so that wasm-opt transformations are already reflected in the hash.
+  if settings.CROSS_ORIGIN_STORAGE and settings.ENVIRONMENT_MAY_BE_WEB:
+    if os.path.exists(wasm_target):
+      with open(wasm_target, 'rb') as f:
+        wasm_bytes = f.read()
+      settings.WASM_SHA256 = hashlib.sha256(wasm_bytes).hexdigest()
+      logger.debug(f'CROSS_ORIGIN_STORAGE: wasm SHA-256 = {settings.WASM_SHA256}')
+    else:
+      # Inline / SINGLE_FILE builds embed the wasm in JS; no file to hash.
+      logger.warning('CROSS_ORIGIN_STORAGE: wasm file not found for hashing; WASM_SHA256 will be empty')
+      settings.WASM_SHA256 = ''
 
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:

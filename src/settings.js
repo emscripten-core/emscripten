@@ -2205,6 +2205,20 @@ var GROWABLE_ARRAYBUFFERS = false;
 // indirectly using `importScripts`
 var CROSS_ORIGIN = false;
 
+// [experimental] Enables Cross-Origin Storage (COS) API support for Wasm
+// loading on the Web target.  When enabled, Emscripten will compute the
+// SHA-256 hash of the final .wasm binary at link time, embed it in the
+// generated JS glue, and use the browser COS API (if available) as a
+// progressive enhancement: the runtime first tries to retrieve the Wasm
+// module from the shared cross-origin cache keyed by its hash.  On a cache
+// miss the module is fetched over the network as usual and then stored in
+// COS so that other origins can reuse it.  Falls back transparently to the
+// standard fetch path when the browser does not expose the COS API.
+// Only meaningful for the Web environment; has no effect elsewhere.
+// Usage:  emcc -sCROSS_ORIGIN_STORAGE=1 ...
+// [link]
+var CROSS_ORIGIN_STORAGE = 0;
+
 // This setting changes the behaviour of the ``-shared`` flag.  When set to true
 // you get the old emscripten behaviour where the ``-shared`` flag actually
 // produces a normal object file (i.e. ``ld -r``).  When set to true (the

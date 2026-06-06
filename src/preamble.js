@@ -626,6 +626,37 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
+#if ENVIRONMENT_MAY_BE_WEB
+#if CROSS_ORIGIN_STORAGE
+  // Cross-Origin Storage (COS) progressive enhancement.
+  // The SHA-256 hash of the .wasm binary is computed at link time and embedded
+  // here.  At runtime we check whether the browser exposes the COS API; if so
+  // we attempt to retrieve the already-compiled module from the shared
+  // cross-origin cache keyed by its hash, avoiding a network round-trip.
+  // On a cache miss we fall through to the normal fetch path and then store the
+  // fetched bytes back into COS for other origins to reuse in the future.
+  var wasmHash = '{{{ WASM_SHA256 }}}';
+  if (wasmHash && typeof crossOriginStorage !== 'undefined' && crossOriginStorage) {
+    try {
+      var cosResult = await crossOriginStorage.get(wasmHash);
+      if (cosResult) {
+        // Cache hit — instantiate directly from the stored ArrayBuffer.
+        return WebAssembly.instantiate(cosResult, imports);
+      }
+      // Cache miss — fetch over the network, store in COS, then instantiate.
+      var networkResponse = await fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
+      var wasmBytes = await networkResponse.arrayBuffer();
+      // Store asynchronously; don't block instantiation on the write.
+      crossOriginStorage.set(wasmHash, wasmBytes).catch((e) => err(`COS store failed: ${e}`));
+      return WebAssembly.instantiate(wasmBytes, imports);
+    } catch (cosReason) {
+      // COS look-up failed for an unexpected reason; fall through to the
+      // standard streaming path below so the page still loads.
+      err(`Cross-Origin Storage lookup failed: ${cosReason}`);
+    }
+  }
+#endif // CROSS_ORIGIN_STORAGE
+#endif // ENVIRONMENT_MAY_BE_WEB
   if (!binary
 #if MIN_SAFARI_VERSION < 150000
       // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming

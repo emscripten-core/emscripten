@@ -127,6 +127,11 @@ var USER_EXPORTS = [];
 // name of the file containing wasm binary, if relevant
 var WASM_BINARY_FILE = '';
 
+// SHA-256 hex digest of the final .wasm binary, computed at link time.
+// Populated automatically by tools/link.py when CROSS_ORIGIN_STORAGE=1.
+// Available in JS glue templates as {{{ WASM_SHA256 }}}.
+var WASM_SHA256 = '';
+
 // Base URL the source mapfile, if relevant
 var SOURCE_MAP_BASE = '';
 
