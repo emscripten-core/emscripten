@@ -2,16 +2,8 @@
 <!--
   Cross-Origin Storage (COS) example for Emscripten.
 
-  Build main.cpp first (see build instructions at the top of main.cpp), then
-  serve this directory over HTTP and open this page.
-
-  On the first load the .wasm module is fetched from the network and stored in
-  COS.  On subsequent loads (from this origin or any other) it is served from
-  the cross-origin cache — no network request for the binary.
-
-  Requires the COS browser extension to be installed while the API is not yet
-  natively supported by browsers:
-  https://chromewebstore.google.com/detail/cross-origin-storage/denpnpcgjgikjpoglpjefakmdcbmlgih
+  Build main.cpp first (see README.md), then serve this directory over HTTP
+  and open this page in a browser with the COS API available.
 -->
 <html lang="en">
   <head>
@@ -40,10 +32,7 @@
   </head>
   <body>
     <h1>Emscripten — Cross-Origin Storage example</h1>
-    <p>
-      Open the browser DevTools console to see detailed COS timing.
-      Reload the page after the first load to observe the cache-hit path.
-    </p>
+    <p>Reload the page after the first load to observe the cache-hit path.</p>
     <div id="status">Loading…</div>
 
     <script>
@@ -56,24 +45,36 @@
         console.log(msg);
       };
 
-      // Detect COS API availability and report it upfront.
       if ('crossOriginStorage' in navigator) {
-        log('✓ navigator.crossOriginStorage is available (COS extension active)', 'ok');
+        log('✓ Cross-Origin Storage API is active', 'ok');
       } else {
-        log('⚠ navigator.crossOriginStorage not found — install the COS extension ' +
-            'to exercise the cross-origin cache path. The module will still load ' +
-            'via the normal fetch path.', 'warn');
+        log('✗ Cross-Origin Storage API is not available — Wasm will be loaded via the network', 'warn');
       }
 
-      // Patch Module.print / Module.printErr so Wasm stdout appears on the page.
+      // Module callbacks invoked by the Emscripten COS runtime paths.
       var Module = {
-        print: (text) => log('[wasm] ' + text, 'ok'),
+        print:    (text) => log('[wasm] ' + text, 'ok'),
         printErr: (text) => log('[wasm err] ' + text, 'err'),
+
+        // Called when the Wasm binary was found in the cross-origin cache.
+        onCOSCacheHit: (hash) => {
+          log('✓ Wasm loaded from Cross-Origin Storage (SHA-256: ' + hash + ')', 'ok');
+        },
+
+        // Called when the Wasm binary was not in COS and was fetched over the network.
+        onCOSCacheMiss: (url) => {
+          log('↓ Wasm not in Cross-Origin Storage — fetched from network: ' + url, 'warn');
+        },
+
+        // Called after the Wasm binary has been successfully written to COS.
+        onCOSStore: (hash) => {
+          log('✓ Wasm stored in Cross-Origin Storage (SHA-256: ' + hash + ')', 'ok');
+        },
+
         onRuntimeInitialized: () => {
           log('✓ Runtime initialised', 'ok');
-          // Call the exported C++ function.
           const greeting = Module.ccall('greet', 'string', [], []);
-          log('greet() returned: ' + greeting, 'ok');
+          log('greet() → ' + greeting, 'ok');
         },
       };
     </script>

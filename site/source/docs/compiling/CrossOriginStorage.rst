@@ -83,12 +83,14 @@ When the page loads, the generated JavaScript follows this logic:
    If the handle is returned (the module is already in COS), read it with
    ``handle.getFile()`` → ``.arrayBuffer()`` and pass the bytes to
    ``WebAssembly.instantiate()``.
+   Then invoke ``Module['onCOSCacheHit'](hash)`` if defined.
 
 3. **Cache miss** — if a ``NotFoundError`` is thrown, fetch the ``.wasm``
-   over the network as usual, call ``WebAssembly.instantiate()`` immediately
-   so the page loads without delay, and then write the bytes into COS in the
-   background (fire-and-forget) with ``origins: '*'`` so any other origin
-   can benefit::
+   over the network as usual, invoke ``Module['onCOSCacheMiss'](url)`` if
+   defined, call ``WebAssembly.instantiate()`` immediately so the page loads
+   without delay, and then write the bytes into COS in the background
+   (fire-and-forget) with ``origins: '*'`` so any other origin can benefit.
+   Once the write completes, invoke ``Module['onCOSStore'](hash)`` if defined::
 
      navigator.crossOriginStorage.requestFileHandles([hash], { create: true, origins: '*' })
 
@@ -96,6 +98,31 @@ When the page loads, the generated JavaScript follows this logic:
    network failure during the miss path, etc.) is logged with ``err()`` and
    the runtime falls through to the standard streaming-instantiation path
    below. The page always loads.
+
+Instrumentation callbacks
+-------------------------
+
+Three optional ``Module`` properties let you observe COS events at runtime:
+
+.. code-block:: javascript
+
+   var Module = {
+     // Called when the Wasm binary was served from the cross-origin cache.
+     onCOSCacheHit: (hash) => {
+       console.log('Cache hit, SHA-256:', hash);
+     },
+
+     // Called when the Wasm binary was not in COS and was fetched over the
+     // network.  |url| is the resolved URL of the .wasm file.
+     onCOSCacheMiss: (url) => {
+       console.log('Cache miss, fetched from:', url);
+     },
+
+     // Called after the Wasm binary has been successfully written to COS.
+     onCOSStore: (hash) => {
+       console.log('Stored in COS, SHA-256:', hash);
+     },
+   };
 
 Testing with the extension polyfill
 ====================================

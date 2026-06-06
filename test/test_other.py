@@ -15612,6 +15612,11 @@ console.log('OK');'''
     self.assertContained("'NotFoundError'", js)
     self.assertContained("'NotAllowedError'", js)
 
+    # Instrumentation callbacks invoked at each COS event.
+    self.assertContained("Module['onCOSCacheHit']", js)
+    self.assertContained("Module['onCOSCacheMiss']", js)
+    self.assertContained("Module['onCOSStore']", js)
+
     # The hash embedded in the JS must be a 64-char lowercase hex string …
     m = re.search(r"value:\s*'([0-9a-f]{64})'", js)
     self.assertTrue(m, 'could not find a 64-char hex WASM_SHA256 value in JS output')

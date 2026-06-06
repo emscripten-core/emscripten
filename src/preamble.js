@@ -655,6 +655,9 @@ async function instantiateAsync(binary, binaryFile, imports) {
       // Cache hit — read the Blob and instantiate from its ArrayBuffer.
       var cosFile = await cosHandles[0].getFile();
       var cosBytes = await cosFile.arrayBuffer();
+      // Optional instrumentation callback: Module['onCOSCacheHit'](hash)
+      // Called when the Wasm binary is served from the cross-origin cache.
+      if (typeof Module['onCOSCacheHit'] == 'function') Module['onCOSCacheHit'](wasmHashValue);
       return WebAssembly.instantiate(cosBytes, imports);
     } catch (cosErr) {
       if (cosErr.name === 'NotFoundError') {
@@ -662,6 +665,9 @@ async function instantiateAsync(binary, binaryFile, imports) {
         try {
           var networkResponse = await fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
           var wasmBytes = await networkResponse.arrayBuffer();
+          // Optional instrumentation callback: Module['onCOSCacheMiss'](url)
+          // Called when the Wasm binary is not in COS and is fetched over the network.
+          if (typeof Module['onCOSCacheMiss'] == 'function') Module['onCOSCacheMiss'](binaryFile);
           // Fire-and-forget store; never block instantiation on the write.
           (async () => {
             try {
@@ -672,6 +678,9 @@ async function instantiateAsync(binary, binaryFile, imports) {
               var writable = await writeHandles[0].createWritable();
               await writable.write(new Blob([wasmBytes], { type: 'application/wasm' }));
               await writable.close();
+              // Optional instrumentation callback: Module['onCOSStore'](hash)
+              // Called after the Wasm binary has been successfully written to COS.
+              if (typeof Module['onCOSStore'] == 'function') Module['onCOSStore'](wasmHashValue);
             } catch (storeErr) {
               err(`COS store failed: ${storeErr}`);
             }

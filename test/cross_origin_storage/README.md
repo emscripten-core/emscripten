@@ -13,13 +13,8 @@ stored in the cross-origin cache, keyed by its SHA-256 hash.
 On **subsequent loads** — from the same origin or any other — the module is
 retrieved from the cache without a network request for the binary.
 
-## Prerequisites
-
-The COS API is not yet natively supported by any browser. Install the
-polyfill extension to try it today:
-
-- **Chrome Web Store**:
-  [Cross-Origin Storage](https://chromewebstore.google.com/detail/cross-origin-storage/denpnpcgjgikjpoglpjefakmdcbmlgih)
+The page reports which path was taken and, where applicable, the SHA-256 hash
+of the Wasm resource and the URL it was fetched from.
 
 ## Build
 
@@ -33,7 +28,7 @@ emcc main.cpp -o index.js \
 ```
 
 This produces `index.js` and `index.wasm`. The SHA-256 hash of `index.wasm`
-is embedded in `index.js` at build time — you can verify them match:
+is embedded in `index.js` at build time — you can verify they match:
 
 ```bash
 sha256sum index.wasm
@@ -51,16 +46,15 @@ emrun .
 python3 -m http.server
 ```
 
-Open `http://localhost:8080` (or whichever port your server uses) in a
-browser with the COS extension installed.
+Open the page in a browser with the Cross-Origin Storage API available.
 
-Open DevTools → Console. On the first load you should see a cache-miss log
-message and a network request for `index.wasm` in the Network tab. Reload
-the page — the network request disappears and the console shows that the
-module was served from the cross-origin cache.
+The page will report:
+
+- whether the COS API is active
+- on a cache miss: the URL the Wasm was fetched from, and confirmation once it has been stored in COS with its hash
+- on a cache hit: the SHA-256 hash of the Wasm resource served from COS
 
 ## See also
 
 - [COS Emscripten docs](../../site/source/docs/compiling/CrossOriginStorage.rst)
 - [WICG explainer](https://github.com/WICG/cross-origin-storage)
-- [COS extension source](https://github.com/web-ai-community/cross-origin-storage-extension)
