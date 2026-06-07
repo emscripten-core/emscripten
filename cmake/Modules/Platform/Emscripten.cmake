@@ -380,3 +380,22 @@ endif()
 # complain about unused CMake variable.
 if (CMAKE_CROSSCOMPILING_EMULATOR)
 endif()
+
+# C++23 stl module
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 4.2 AND CMAKE_CXX_MODULE_STD)
+    set(LIBCXX_LIBRARY_DIR "${CMAKE_BINARY_DIR}/modules")
+    set(LIBCXX_GENERATED_MODULE_DIR "${LIBCXX_LIBRARY_DIR}/share/libc++/v1")
+
+    set(LIBCXX_INSTALL_LIBRARY_DIR "${LIBCXX_LIBRARY_DIR}")
+    set(LIBCXX_INSTALL_MODULES_DIR "${LIBCXX_GENERATED_MODULE_DIR}")
+
+    add_subdirectory("${EMSCRIPTEN_ROOT}/system/lib/libcxx/modules/")
+
+    set_property(SOURCE
+        "${LIBCXX_GENERATED_MODULE_DIR}/std.cppm"
+        "${LIBCXX_GENERATED_MODULE_DIR}/std.compat.cppm"
+        PROPERTY
+            COMPILE_FLAGS -Wno-reserved-module-identifier
+    )
+    set(CMAKE_CXX_STDLIB_MODULES_JSON "${LIBCXX_LIBRARY_DIR}/libc++.modules.json")
+endif()
