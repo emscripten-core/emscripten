@@ -122,9 +122,7 @@ function stackCheckInit() {
     dbg('run() called, but dependencies remain, so not running');
 #endif
 #if MODULARIZE
-    await new Promise((resolve) => {
-      dependenciesFulfilled = resolve;
-    });
+    await new Promise((resolve) => dependenciesFulfilled = resolve);
 #else
     dependenciesFulfilled = run;
     return;
@@ -152,9 +150,7 @@ function stackCheckInit() {
     dbg('run() called, but dependencies remain, so not running');
 #endif
 #if MODULARIZE
-    await new Promise((resolve) => {
-      dependenciesFulfilled = resolve;
-    });
+    await new Promise((resolve) => dependenciesFulfilled = resolve);
 #else
     dependenciesFulfilled = run;
     return;
@@ -205,6 +201,8 @@ function stackCheckInit() {
 #if expectToReceiveOnModule('setStatus')
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
+    // Yield the main thread to allow the browser to paint "Running...", then clear
+    // the status text after the synchronous doRun() completes.
 #if MODULARIZE
     await new Promise((resolve) => {
       setTimeout(() => {
@@ -326,7 +324,7 @@ if (ENVIRONMENT_IS_NODE
 )
 {
   const url = await import('node:url');
-  const isMainModule = process.argv[1] && url.pathToFileURL(process.argv[1]).href === import.meta.url;
+  const isMainModule = url.pathToFileURL(process.argv[1]).href === import.meta.url;
   if (isMainModule) await init();
 }
 #endif

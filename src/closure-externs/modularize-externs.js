@@ -6,3 +6,8 @@
  * @suppress {duplicate, undefinedVars}
  */
 var _scriptName;
+
+/**
+ * @suppress {duplicate, undefinedVars}
+ */
+var Module;
