@@ -15584,8 +15584,10 @@ console.log('OK');'''
   # ---------------------------------------------------------------------------
 
   def test_cross_origin_storage_js_output(self):
-    """COS code is present in JS when the feature is enabled for the web target,
-    and the embedded hash is the correct SHA-256 of the compiled .wasm file."""
+    """COS code is present in JS when the feature is enabled for the web target.
+
+    The embedded hash must be the correct SHA-256 of the compiled .wasm file.
+    """
     self.run_process([EMCC, test_file('hello_world.cpp'),
                       '-sCROSS_ORIGIN_STORAGE=1',
                       '-sENVIRONMENT=web',
@@ -15636,9 +15638,11 @@ console.log('OK');'''
     self.assertNotContained('crossOriginStorage', js)
 
   def test_cross_origin_storage_not_emitted_for_node_target(self):
-    """COS code must NOT appear when targeting Node.js only, even with the flag
-    set; the #if ENVIRONMENT_MAY_BE_WEB guard strips it. A warning must also
-    be emitted since the flag does nothing in this configuration."""
+    """COS code must NOT appear when targeting Node.js only, even with the flag set.
+
+    The #if ENVIRONMENT_MAY_BE_WEB guard strips it. A warning must also be
+    emitted since the flag does nothing in this configuration.
+    """
     proc = self.run_process([EMCC, test_file('hello_world.cpp'),
                              '-sCROSS_ORIGIN_STORAGE=1',
                              '-sENVIRONMENT=node',
@@ -15724,8 +15728,10 @@ console.log('OK');'''
   # ---------------------------------------------------------------------------
 
   def test_cross_origin_storage_origins_default_is_global(self):
-    """Without -sCROSS_ORIGIN_STORAGE_ORIGINS, the default must be origins:'*'
-    (globally available). The user only needs -sCROSS_ORIGIN_STORAGE=1."""
+    """Without -sCROSS_ORIGIN_STORAGE_ORIGINS, the default must be origins:'*'.
+
+    Globally available; the user only needs -sCROSS_ORIGIN_STORAGE=1.
+    """
     self.run_process([EMCC, test_file('hello_world.cpp'),
                       '-sCROSS_ORIGIN_STORAGE=1',
                       '-sENVIRONMENT=web',
@@ -15733,8 +15739,10 @@ console.log('OK');'''
     self.assertContained("origins: '*'", read_file('hello.js'))
 
   def test_cross_origin_storage_origins_explicit_wildcard(self):
-    """Explicitly passing -sCROSS_ORIGIN_STORAGE_ORIGINS=['*'] must also emit
-    origins:'*', matching the implicit default."""
+    """Explicitly passing -sCROSS_ORIGIN_STORAGE_ORIGINS=['*'] must emit origins:'*'.
+
+    This matches the implicit default.
+    """
     self.run_process([EMCC, test_file('hello_world.cpp'),
                       '-sCROSS_ORIGIN_STORAGE=1',
                       '-sENVIRONMENT=web',

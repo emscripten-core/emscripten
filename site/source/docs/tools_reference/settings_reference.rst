@@ -3360,6 +3360,86 @@ indirectly using `importScripts`
 
 Default value: false
 
+.. _cross_origin_storage:
+
+CROSS_ORIGIN_STORAGE
+====================
+
+[experimental] Enables Cross-Origin Storage (COS) API support for Wasm
+loading on the Web target.
+
+**When to use this flag**
+
+COS is only beneficial for Wasm binaries that are byte-identical across
+many different origins — i.e. popular libraries where the same compiled
+binary is loaded by many independent sites.
+Good candidates are libraries or toolkits distributed as a stable,
+version-pinned binary loaded by many independent sites.
+
+If your ``.wasm`` file is bespoke application code built specifically for
+your site, COS gives you nothing that the normal HTTP cache does not
+already provide. Do not enable this flag for application-specific Wasm.
+
+When enabled, Emscripten computes the SHA-256 hash of the final ``.wasm``
+binary at link time, embeds it as a build-time constant in the generated
+JavaScript glue, and uses the browser COS API as a progressive enhancement:
+
+- **Cache hit**: the runtime calls
+  ``navigator.crossOriginStorage.requestFileHandles()`` with the hash and,
+  if the module is found, reads it directly from the cross-origin cache.
+- **Cache miss**: the module is fetched over the network as usual, then
+  stored in COS in the background (non-blocking) with ``origins: '*'`` so
+  any other origin can reuse it.
+- **Fallback**: when the browser does not expose the COS API, or when an
+  unexpected error occurs, the runtime falls through to the standard
+  ``fetch`` / ``WebAssembly.instantiateStreaming`` path transparently.
+
+Only meaningful for the Web environment (``-sENVIRONMENT=web``); has no
+effect on Node.js or shell targets. Also has no effect in SINGLE_FILE
+builds where the Wasm binary is inlined directly into the JS output.
+
+See :ref:`CrossOriginStorage` for the full guide, including how to test
+with the COS browser extension polyfill.
+
+Default value: 0
+
+.. _cross_origin_storage_origins:
+
+CROSS_ORIGIN_STORAGE_ORIGINS
+============================
+
+Controls which origins may read the Wasm binary after it has been stored in
+the Cross-Origin Storage (COS) cache. Only meaningful when
+``-sCROSS_ORIGIN_STORAGE=1`` is set. Has no effect on the read (cache-hit)
+path; it is only applied during the write (cache-miss) path.
+
+Three modes are supported, matching the ``origins`` field of the COS API's
+``CrossOriginStorageRequestFileHandleOptions`` dictionary:
+
+**Globally available** (default when the setting is not explicitly passed) —
+any origin can retrieve the file. When ``-sCROSS_ORIGIN_STORAGE=1`` is
+used without specifying this setting, ``origins: '*'`` is used automatically.
+Appropriate for widely-used public binaries shared across many independent
+origins.
+
+**Restricted to a specific set of origins** — only listed HTTPS origins can
+retrieve the file::
+
+  -sCROSS_ORIGIN_STORAGE_ORIGINS=['https://app.example.com','https://api.example.com']
+
+For proprietary resources shared across a controlled set of related sites.
+Each value must be a valid serialized HTTPS origin (scheme + host + optional
+port, no path). Mixing ``'*'`` with explicit origins is a link-time error.
+
+**Same-site only** — pass the setting with an empty list to omit the
+``origins`` field, making the file available only to same-site origins::
+
+  -sCROSS_ORIGIN_STORAGE_ORIGINS=[]
+
+For resources shared across subdomains of a single site but not beyond.
+
+Default value: []
+
 .. _fake_dylibs:
 
 FAKE_DYLIBS
