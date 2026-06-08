@@ -18,8 +18,16 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.0 (in development)
+6.0.1 (in development)
 ----------------------
+
+6.0.0 - 06/04/26
+----------------
+- On Windows, Emscripten now ships `.exe` tool launchers, rather
+  than `.bat` and/or `.ps1`.  This means that any scripts that explicitly
+  reference, e.g. `emcc.bat`, will need to be updated to just `emcc` (or
+  `emcc.exe`).  For the time being you can still get the old `.bat` files by
+  running `tools/maint/create_entry_points.py --bat-files`. (#24858)
 - When performing a streaming Fetch operation, the max chunk size of downloaded
   bytes that is handed over to the Wasm side from JS is now capped to maximum
   of 8 megabytes. This ensures that a streaming Fetch stays streaming, rather
@@ -58,6 +66,7 @@ See docs/process.md for more on how version tagging works.
 - The `PThread.runningWorkers` field was removed from the `PThread` object.
   If you have JS code that was depending on this you can transition to using the
   `PThread.pthreads` object. (#26998)
+- The POSIX `pause()` function will now return 0 rather than EINTR. (#27044)
 
 5.0.7 - 04/30/26
 ----------------

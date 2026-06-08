@@ -504,7 +504,7 @@ commands:
             echo "-----"
             echo "Running browser tests (EMTEST_BROWSER=$EMTEST_BROWSER)"
             echo "-----"
-            test/runner.bat << parameters.test_targets >>
+            test/runner << parameters.test_targets >>
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -885,6 +885,7 @@ jobs:
     executor: linux-python
     environment:
       EMTEST_SKIP_NEW_CMAKE: "1"
+      EMTEST_SKIP_WASM64: "1"
     steps:
       - checkout
       - pip-install
@@ -1339,13 +1340,18 @@ jobs:
           python: "$EMSDK_PYTHON"
       - run:
           name: "crossplatform tests"
-          command: test/runner.bat --crossplatform-only
+          command: test/runner --crossplatform-only
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
       - run:
           name: "sockets.test_nodejs_sockets_echo*"
-          command: "test/runner.bat sockets.test_nodejs_sockets_echo*"
+          command: "test/runner sockets.test_nodejs_sockets_echo*"
       - upload-test-results
+      - run:
+          name: "check clean"
+          command: |
+            git checkout tools/pylauncher
+            $EMSDK_PYTHON test/check_clean.py
 
   test-mac-arm64:
     executor: mac-arm64
@@ -1390,9 +1396,9 @@ workflows:
       - test-core0:
           requires:
             - build-linux
-      #- test-core2:
-      #    requires:
-      #      - build-linux
+      - test-core2:
+         requires:
+           - build-linux
       - test-core3:
           requires:
             - build-linux
@@ -1411,9 +1417,9 @@ workflows:
       - test-modularize-instance:
           requires:
             - build-linux
-      #- test-esm-integration:
-      #    requires:
-      #      - build-linux
+      - test-esm-integration:
+         requires:
+           - build-linux
       - test-stress:
           requires:
             - build-linux
@@ -1435,14 +1441,14 @@ workflows:
       - test-sockets-chrome:
           requires:
             - build-linux
-      #- test-bun
-      #- test-deno
-      #- test-jsc
+      - test-bun
+      - test-deno
+      - test-jsc
       - test-spidermonkey
-      #- test-node-compat
-      #- test-windows
-      #- test-windows-browser-firefox
+      - test-node-compat
+      - test-windows
+      - test-windows-browser-firefox
       - build-windows-launcher
-      #- test-mac-arm64:
-      #    requires:
-      #      - build-linux
+      - test-mac-arm64:
+         requires:
+           - build-linux

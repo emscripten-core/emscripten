@@ -19,7 +19,6 @@ int __syscall_chdir(intptr_t path);
 int __syscall_mknod(intptr_t path, int mode, int dev);
 int __syscall_chmod(intptr_t path, int mode);
 int __syscall_getpid(void);
-int __syscall_pause(void);
 int __syscall_access(intptr_t path, int amode);
 int __syscall_sync(void);
 int __syscall_rmdir(intptr_t path);

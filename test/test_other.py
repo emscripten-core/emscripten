@@ -3014,10 +3014,7 @@ More info: https://emscripten.org
     expected_file = utils.unsuffixed(filename) + '-output.js'
     # test calling optimizer
     js = self.run_process(config.NODE_JS + [path_from_root('tools/acorn-optimizer.mjs'), filename] + passes, stdin=PIPE, stdout=PIPE).stdout
-    if common.EMTEST_REBASELINE:
-      write_file(expected_file, js)
-    else:
-      self.assertFileContents(expected_file, js)
+    self.assertFileContents(expected_file, js)
 
   def test_js_optimizer_huge(self):
     # Stress test the chunkifying code in js_optimizer.py

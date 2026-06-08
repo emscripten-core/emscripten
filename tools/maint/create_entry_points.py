@@ -84,7 +84,9 @@ def write_file(filename, content):
     f.write(content)
 
 
-def main(all_platforms, use_exe_files):
+def main(all_platforms, use_bat_file):
+  if 'EM_USE_BAT_FILES' in os.environ:
+    use_bat_file = True
   is_windows = sys.platform.startswith('win')
   is_msys2 = 'MSYSTEM' in os.environ
   do_unix = all_platforms or not is_windows or is_msys2
@@ -113,18 +115,21 @@ def main(all_platforms, use_exe_files):
         make_executable(launcher)
 
       if do_windows:
-        maybe_remove(launcher + '.bat')
+        if entry_point != 'bootstrap':
+          # The bootstrap.bat file is checked into source control so we
+          # don't want to delete it.
+          maybe_remove(launcher + '.bat')
         maybe_remove(launcher + '.ps1')
         maybe_remove(launcher + '.exe')
-        if use_exe_files:
-          shutil.copyfile(windows_exe, launcher + '.exe')
-        else:
+        if use_bat_file:
           write_file(launcher + '.bat', bat_data)
           write_file(launcher + '.ps1', ps1_data)
+        else:
+          shutil.copyfile(windows_exe, launcher + '.exe')
 
   generate_entry_points(entry_points, os.path.join(__scriptdir__, 'run_python'))
   generate_entry_points(compiler_entry_points, os.path.join(__scriptdir__, 'run_python_compiler'))
 
 
 if __name__ == '__main__':
-  sys.exit(main('--all' in sys.argv, '--exe-files' in sys.argv))
+  sys.exit(main('--all' in sys.argv, '--bat-files' in sys.argv))

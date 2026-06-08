@@ -112,10 +112,6 @@ Module["expectedDataFileDownloads"]++;
       function assert(check, msg) {
         if (!check) throw new Error(msg);
       }
-      for (var file of metadata["files"]) {
-        var name = file["filename"];
-        Module["addRunDependency"](`fp ${name}`);
-      }
       async function processPackageData(arrayBuffer) {
         assert(arrayBuffer, "Loading data file failed.");
         assert(arrayBuffer.constructor.name === ArrayBuffer.name, "bad input to processPackageData " + arrayBuffer.constructor.name);
@@ -126,7 +122,6 @@ Module["expectedDataFileDownloads"]++;
           var data = byteArray.subarray(file["start"], file["end"]);
           // canOwn this data in the filesystem, it is a slice into the heap that will never change
           Module["FS_createDataFile"](name, null, data, true, true, true);
-          Module["removeRunDependency"](`fp ${name}`);
         }
         Module["removeRunDependency"]("datafile_a.out.data");
       }
@@ -138,7 +133,7 @@ Module["expectedDataFileDownloads"]++;
       if (!fetched) {
         fetched = await fetchPromise;
       }
-      processPackageData(fetched);
+      await processPackageData(fetched);
     }
     if (Module["calledRun"]) {
       runWithFS(Module);
