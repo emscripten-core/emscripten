@@ -162,6 +162,28 @@ build-time constant::
 
 No extra files are produced; the hash is part of the regular ``.js`` output.
 
+.. warning::
+   The hash is computed over the ``.wasm`` binary **as emcc produces it**,
+   after emcc's own internal Binaryen/``wasm-opt`` pass.  If your build
+   pipeline runs additional wasm post-processing tools *after* emcc exits —
+   for example, an external ``wasm-strip`` or ``wasm-opt`` invocation in a
+   Makefile or CI script — those tools change the binary and **invalidate the
+   embedded hash**.
+
+   In that case you must recompute the SHA-256 of the final ``.wasm`` and
+   patch the hash string in the generated ``.js`` yourself before shipping.
+   A minimal shell snippet for doing so:
+
+   .. code-block:: bash
+
+      # After all post-processing is complete:
+      final_hash=$(sha256sum hello.wasm | awk '{print $1}')
+      sed -i "s/value: '[0-9a-f]\{64\}'/value: '${final_hash}'/" hello.js
+
+   On macOS, use ``shasum -a 256`` in place of ``sha256sum``, and install
+   GNU sed (``brew install gnu-sed``) or adapt the ``sed`` command for BSD
+   sed syntax.
+
 Runtime (web only)
 ------------------
 
