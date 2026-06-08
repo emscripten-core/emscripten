@@ -2213,8 +2213,8 @@ var CROSS_ORIGIN = false;
 // COS is only beneficial for Wasm binaries that are byte-identical across
 // many different origins — i.e. publicly distributed libraries fetched from
 // a CDN, where the same compiled binary is loaded by thousands of sites.
-// Good examples: SQLite Wasm, Pyodide, CanvasKit (Flutter), ffmpeg.wasm,
-// libsodium.wasm.
+// Good candidates are libraries or toolkits distributed from a public CDN
+// as a stable, version-pinned binary loaded by many independent sites.
 //
 // If your ``.wasm`` file is bespoke application code built specifically for
 // your site, COS gives you nothing that the normal HTTP cache does not
@@ -2255,8 +2255,8 @@ var CROSS_ORIGIN_STORAGE = 0;
 // **Globally available** (default when the setting is not explicitly passed) —
 // any origin can retrieve the file.  When ``-sCROSS_ORIGIN_STORAGE=1`` is
 // used without specifying this setting, ``origins: '*'`` is used automatically.
-// Appropriate for widely-used public binaries (SQLite Wasm, Pyodide,
-// CanvasKit, …) distributed from a public CDN.
+// Appropriate for widely-used public binaries distributed from a CDN
+// that are shared across many independent origins.
 //
 // **Restricted to a specific set of origins** — only listed HTTPS origins can
 // retrieve the file::

@@ -632,9 +632,9 @@ async function instantiateAsync(binary, binaryFile, imports) {
   // https://github.com/WICG/cross-origin-storage
   //
   // COS is only beneficial when this .wasm binary is byte-identical across
-  // many origins — i.e. a publicly distributed library (SQLite Wasm, Pyodide,
-  // CanvasKit, ffmpeg.wasm, …) fetched from a CDN.  Application-specific Wasm
-  // gains nothing from COS that the normal HTTP cache does not already provide.
+  // many origins — i.e. a library distributed from a CDN and shared by many
+  // independent sites.  Application-specific Wasm gains nothing from COS that
+  // the normal HTTP cache does not already provide.
   //
   // The SHA-256 hash of the final .wasm binary is computed at link time and
   // embedded here as a build-time constant.  At runtime we feature-detect the

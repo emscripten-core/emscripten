@@ -36,16 +36,13 @@ across many different origins** — that is, a publicly distributed library
 that many sites load from the same CDN URL. If every visitor to every site
 downloads the exact same bytes, COS means they only download it once, ever.
 
-Good candidates:
+Good candidates are libraries or toolkits that are:
 
-- **SQLite Wasm** — the same ``sqlite3.wasm`` build is loaded by many
-  independent sites.
-- **Pyodide** — ``pyodide.asm.wasm`` is a large, stable binary served from
-  a public CDN and used across many origins.
-- **CanvasKit (Flutter)** — ``canvaskit.wasm`` is requested hundreds of
-  thousands of times daily from thousands of distinct hosts.
-- **ffmpeg.wasm**, **libsodium.wasm**, **WebR** — similarly widely shared,
-  version-stable, CDN-distributed binaries.
+- distributed from a public CDN as a stable, version-pinned ``.wasm`` binary,
+- loaded by many independent sites (i.e. many distinct origins), and
+- a **single primary** ``.wasm`` file (COS only covers the binary that
+  Emscripten compiles; any additional Wasm files loaded at runtime are not
+  covered).
 
 **Do not** enable this flag for application-specific Wasm code built for
 your own site. That binary is unique to you; no other origin will ever have
@@ -78,8 +75,8 @@ can retrieve the file.  This is applied automatically when
 
    emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE=1
 
-Use this for widely-shared public binaries distributed from a CDN (SQLite
-Wasm, Pyodide, CanvasKit, …).  This is the recommended mode for resources
+Use this for widely-shared public binaries distributed from a CDN and loaded
+by many independent origins.  This is the recommended mode for resources
 where global COS cache hits are expected.
 
 **Restricted to a specific set of origins** — only the listed origins can
