@@ -7,11 +7,17 @@ into the standard Wasm loading path.
 
 ## What it does
 
-On the **first load** the `.wasm` module is fetched over the network and
-stored in the cross-origin cache, keyed by its SHA-256 hash.
+COS is a **progressive enhancement**: when the browser exposes the
+`navigator.crossOriginStorage` API, loading takes one of two paths:
 
-On **subsequent loads** — from the same origin or any other — the module is
-retrieved from the cache without a network request for the binary.
+- **Cache miss** (first load): the `.wasm` module is fetched over the network
+  and stored in the cross-origin cache, keyed by its SHA-256 hash.
+- **Cache hit** (subsequent loads, same or any other origin): the module is
+  retrieved from the cache without a network request for the binary.
+
+When the browser does not expose the COS API, or when an unexpected error
+occurs, the runtime falls back to the standard `fetch()` /
+`WebAssembly.instantiateStreaming()` path — the page always loads.
 
 The page reports which path was taken and, where applicable, the SHA-256 hash
 of the Wasm resource and the URL it was fetched from.
