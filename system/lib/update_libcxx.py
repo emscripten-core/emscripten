@@ -14,6 +14,7 @@ default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project'
 local_root = os.path.join(script_dir, 'libcxx')
 local_src = os.path.join(local_root, 'src')
 local_inc = os.path.join(local_root, 'include')
+local_modules = os.path.join(local_root, 'modules')
 
 preserve_files = ('readme.txt', '__assertion_handler', '__config_site')
 # ryu_long_double_constants.h from libc is unused (and very large)
@@ -40,20 +41,21 @@ def clean_dir(dirname):
       os.remove(full)
 
 
-def copy_tree(upstream_dir, local_dir):
+def copy_tree(upstream_dir, local_dir, skip_excludes=False):
   if not os.path.exists(local_dir):
     os.makedirs(local_dir)
   for f in os.listdir(upstream_dir):
     full = os.path.join(upstream_dir, f)
     if os.path.isdir(full):
       shutil.copytree(full, os.path.join(local_dir, f))
-    elif f not in excludes:
+    elif f not in excludes or skip_excludes:
       shutil.copy2(full, os.path.join(local_dir, f))
-  for root, dirs, files in os.walk(local_dir):
-    for f in files:
-      if f in excludes:
-        full = os.path.join(root, f)
-        os.remove(full)
+  if not skip_excludes:
+    for root, dirs, files in os.walk(local_dir):
+      for f in files:
+        if f in excludes:
+          full = os.path.join(root, f)
+          os.remove(full)
 
 
 def main():
@@ -64,15 +66,19 @@ def main():
   libcxx_dir = os.path.join(llvm_dir, 'libcxx')
   upstream_src = os.path.join(libcxx_dir, 'src')
   upstream_inc = os.path.join(libcxx_dir, 'include')
+  upstream_modules = os.path.join(libcxx_dir, 'modules')
   assert os.path.exists(upstream_inc)
   assert os.path.exists(upstream_src)
+  assert os.path.exists(upstream_modules)
 
   # Remove old version
   clean_dir(local_src)
   clean_dir(local_inc)
+  clean_dir(local_modules)
 
   copy_tree(upstream_src, local_src)
   copy_tree(upstream_inc, local_inc)
+  copy_tree(upstream_modules, local_modules, True)
 
   shutil.copy2(os.path.join(libcxx_dir, 'CREDITS.TXT'), local_root)
   shutil.copy2(os.path.join(libcxx_dir, 'LICENSE.TXT'), local_root)
