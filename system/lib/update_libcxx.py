@@ -14,6 +14,7 @@ default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project'
 local_root = os.path.join(script_dir, 'libcxx')
 local_src = os.path.join(local_root, 'src')
 local_inc = os.path.join(local_root, 'include')
+local_modules = os.path.join(local_root, 'modules')
 
 preserve_files = ('readme.txt', '__assertion_handler', '__config_site')
 # ryu_long_double_constants.h from libc is unused (and very large)
@@ -64,15 +65,19 @@ def main():
   libcxx_dir = os.path.join(llvm_dir, 'libcxx')
   upstream_src = os.path.join(libcxx_dir, 'src')
   upstream_inc = os.path.join(libcxx_dir, 'include')
+  upstream_modules = os.path.join(libcxx_dir, 'modules')
   assert os.path.exists(upstream_inc)
   assert os.path.exists(upstream_src)
+  assert os.path.exists(upstream_modules)
 
   # Remove old version
   clean_dir(local_src)
   clean_dir(local_inc)
+  clean_dir(local_modules)
 
   copy_tree(upstream_src, local_src)
   copy_tree(upstream_inc, local_inc)
+  copy_tree(upstream_modules, local_modules)
 
   shutil.copy2(os.path.join(libcxx_dir, 'CREDITS.TXT'), local_root)
   shutil.copy2(os.path.join(libcxx_dir, 'LICENSE.TXT'), local_root)
