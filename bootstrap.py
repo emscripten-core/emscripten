@@ -61,7 +61,7 @@ def check_deps(name, deps):
 def check():
   for name, deps, _ in actions:
     if not check_deps(name, deps):
-      utils.exit_with_error(f'emscripten setup is not complete ("{name}" is out-of-date). Run `bootstrap` to update')
+      utils.exit_with_error(f'emscripten setup is not complete ("{name}" is out-of-date). Run `bootstrap.py` to update')
 
 
 def main(args):
