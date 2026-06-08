@@ -1961,6 +1961,8 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
         js_content = read_file(final_js)
         js_content = js_content.replace(f"value: '{settings.WASM_SHA256}'",
                                         f"value: '{post_hash}'")
+        js_content = js_content.replace(f"Module['wasmSHA256'] = '{settings.WASM_SHA256}'",
+                                        f"Module['wasmSHA256'] = '{post_hash}'")
         write_file(final_js, js_content)
         settings.WASM_SHA256 = post_hash
 

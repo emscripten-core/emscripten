@@ -288,13 +288,17 @@ hash as a named Module property:
 
 This property is set by the generated JavaScript before
 ``Module['instantiateWasm']`` is called, so it is always available inside the
-callback.  A custom loader can use it to implement the same cache-hit /
-cache-miss / store / fallback logic as the built-in path:
+callback.  ``Module`` in this context is the config object passed to the module
+factory — whatever variable you use when calling ``new Module(config)`` or the
+equivalent factory function.  A custom loader can read ``Module['wasmSHA256']``
+via a reference to that config object:
 
 .. code-block:: javascript
 
    var Module = {
      instantiateWasm(imports, onSuccess) {
+       // `this` inside the callback is Emscripten's internal Module object;
+       // read the hash via the outer Module reference instead.
        const cosHash = { algorithm: 'SHA-256', value: Module['wasmSHA256'] };
        if (cosHash.value && 'crossOriginStorage' in navigator) {
          navigator.crossOriginStorage.requestFileHandles([cosHash])
