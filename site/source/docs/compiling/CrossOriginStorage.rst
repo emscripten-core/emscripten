@@ -49,6 +49,13 @@ your own site. That binary is unique to you; no other origin will ever have
 the same hash, so it will never get a COS cache hit. The normal HTTP cache
 already handles per-origin caching efficiently.
 
+The exception is a Wasm binary that you deploy across **multiple origins you
+own** — for example, the same library shared between ``https://app.example.com``
+and ``https://api.example.com``. In that case COS can eliminate the redundant
+download between your own origins. Use ``-sCROSS_ORIGIN_STORAGE_ORIGINS`` to
+restrict access to only those origins rather than opening the cache entry to
+the world.
+
 Usage
 =====
 
