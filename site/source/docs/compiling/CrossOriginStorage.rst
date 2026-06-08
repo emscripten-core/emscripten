@@ -117,6 +117,13 @@ site but not beyond.
    stored as globally available (``'*'``), any subsequent attempt to store it
    with a more restrictive ``origins`` list is ignored by the browser.
 
+   This rule also has a security implication: because storing always requires
+   writing the actual bytes of the resource, no third party can probe the
+   cache to determine whether a restricted-origin entry was previously stored
+   by another origin.  A cache hit is only possible after an explicit write
+   that provided the content, so COS cannot be used as a timing oracle to
+   detect the presence of a resource that the probing origin cannot access.
+
 Requirements and restrictions
 ------------------------------
 
