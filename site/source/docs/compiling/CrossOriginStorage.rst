@@ -95,7 +95,7 @@ retrieve the file:
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=["https://app.example.com","https://api.example.com"]'
 
 Use this for proprietary resources shared across a controlled set of related
-sites.  Each entry must be a valid serialised HTTPS origin (scheme + host +
+sites.  Each entry must be a valid serialized HTTPS origin (scheme + host +
 optional port, no path).  Mixing ``'*'`` with explicit origins is a
 **link-time error**.
 

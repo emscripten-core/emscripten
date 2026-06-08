@@ -2264,7 +2264,7 @@ var CROSS_ORIGIN_STORAGE = 0;
 //   -sCROSS_ORIGIN_STORAGE_ORIGINS=['https://app.example.com','https://api.example.com']
 //
 // For proprietary resources shared across a controlled set of related sites.
-// Each value must be a valid serialised HTTPS origin (scheme + host + optional
+// Each value must be a valid serialized HTTPS origin (scheme + host + optional
 // port, no path). Mixing ``'*'`` with explicit origins is a link-time error.
 //
 // **Same-site only** — pass the setting with an empty list to omit the
