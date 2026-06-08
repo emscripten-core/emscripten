@@ -632,9 +632,9 @@ async function instantiateAsync(binary, binaryFile, imports) {
   // https://github.com/WICG/cross-origin-storage
   //
   // COS is only beneficial when this .wasm binary is byte-identical across
-  // many origins — i.e. a library distributed from a CDN and shared by many
-  // independent sites.  Application-specific Wasm gains nothing from COS that
-  // the normal HTTP cache does not already provide.
+  // many origins — i.e. a popular library loaded by many independent sites.
+  // Application-specific Wasm gains nothing from COS that the normal HTTP
+  // cache does not already provide.
   //
   // The SHA-256 hash of the final .wasm binary is computed at link time and
   // embedded here as a build-time constant.  At runtime we feature-detect the
@@ -650,6 +650,13 @@ async function instantiateAsync(binary, binaryFile, imports) {
   //   The origins field is controlled by -sCROSS_ORIGIN_STORAGE_ORIGINS
   //   (default: '*', globally available).  The store is fire-and-forget so
   //   it never delays startup.
+  //
+  // Visibility and security: the spec allows widening visibility (e.g. a
+  // restricted entry promoted to globally available) but never narrowing it.
+  // Because storing always requires writing the actual bytes, no third party
+  // can probe the cache to discover whether a restricted entry was previously
+  // stored by another origin — a cache hit is only possible after an explicit
+  // write that provided the content.
   //
   // Any other error (NotAllowedError, network failure, …) falls through to the
   // standard Emscripten streaming path so the page always loads.
