@@ -15803,3 +15803,35 @@ console.log('OK');'''
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=["https://example.com/path"]',
        '-o', 'hello.js'],
       'is not a valid HTTPS origin')
+
+  def test_cross_origin_storage_wasm_sha256_module_property(self):
+    """Module['wasmSHA256'] must be set in the JS output and match the .wasm hash.
+
+    Custom Module['instantiateWasm'] implementations bypass instantiateAsync()
+    and therefore cannot reach the COS fetch logic that lives there.  They can
+    read Module['wasmSHA256'] instead to get the build-time hash without parsing
+    the JS source.
+    """
+    self.run_process([EMCC, test_file('hello_world.cpp'),
+                      '-sCROSS_ORIGIN_STORAGE=1',
+                      '-sENVIRONMENT=web',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+
+    # The property must be present with a 64-char hex value.
+    m = re.search(r"Module\['wasmSHA256'\]\s*=\s*'([0-9a-f]{64})'", js)
+    self.assertTrue(m, "Module['wasmSHA256'] not found in JS output")
+    embedded_hash = m.group(1)
+
+    # It must equal the SHA-256 of the actual .wasm file.
+    expected_hash = hashlib.sha256(open('hello.wasm', 'rb').read()).hexdigest()
+    self.assertEqual(embedded_hash, expected_hash,
+                     "Module['wasmSHA256'] does not match the actual .wasm SHA-256")
+
+  def test_cross_origin_storage_wasm_sha256_absent_without_flag(self):
+    """Module['wasmSHA256'] must NOT appear when CROSS_ORIGIN_STORAGE is off."""
+    self.run_process([EMCC, test_file('hello_world.cpp'),
+                      '-sENVIRONMENT=web',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertNotContained("Module['wasmSHA256']", js)

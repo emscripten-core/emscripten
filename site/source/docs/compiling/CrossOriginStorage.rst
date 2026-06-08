@@ -270,6 +270,67 @@ Both values must be identical. The Emscripten test suite checks this
 automatically via ``test_cross_origin_storage_js_output`` in
 ``test/test_other.py``.
 
+Custom ``Module['instantiateWasm']`` implementations
+=====================================================
+
+The COS fetch logic described above lives inside ``instantiateAsync()``, which
+is the standard Emscripten wasm loading path.  When a program provides its own
+``Module['instantiateWasm']`` callback, Emscripten calls that callback directly
+and **skips** ``instantiateAsync()`` entirely, so the built-in COS code is never
+reached.
+
+To support COS in a custom loader, Emscripten exposes the build-time SHA-256
+hash as a named Module property:
+
+.. code-block:: javascript
+
+   Module['wasmSHA256']  // 64-character lowercase hex string, e.g. 'a3f2…c9d1'
+
+This property is set by the generated JavaScript before
+``Module['instantiateWasm']`` is called, so it is always available inside the
+callback.  A custom loader can use it to implement the same cache-hit /
+cache-miss / store / fallback logic as the built-in path:
+
+.. code-block:: javascript
+
+   var Module = {
+     instantiateWasm(imports, onSuccess) {
+       const cosHash = { algorithm: 'SHA-256', value: Module['wasmSHA256'] };
+       if (cosHash.value && 'crossOriginStorage' in navigator) {
+         navigator.crossOriginStorage.requestFileHandles([cosHash])
+           .then(handles => handles[0].getFile())
+           .then(f => f.arrayBuffer())
+           .then(bytes => WebAssembly.instantiate(bytes, imports))
+           .then(({instance, module}) => onSuccess(instance, module))
+           .catch(err => {
+             if (err.name !== 'NotFoundError') throw err;
+             // cache miss — fetch normally and store in the background
+             fetch('hello.wasm')
+               .then(r => r.arrayBuffer())
+               .then(bytes => {
+                 WebAssembly.instantiate(bytes, imports)
+                   .then(({instance, module}) => onSuccess(instance, module));
+                 // fire-and-forget store
+                 navigator.crossOriginStorage
+                   .requestFileHandles([cosHash], { create: true, origins: '*' })
+                   .then(wh => wh[0].createWritable())
+                   .then(w => w.write(new Blob([bytes], {type:'application/wasm'}))
+                               .then(() => w.close()));
+               });
+           });
+         return;  // async; onSuccess called above
+       }
+       // fallback — normal streaming instantiation
+       WebAssembly.instantiateStreaming(fetch('hello.wasm'), imports)
+         .then(({instance, module}) => onSuccess(instance, module));
+     },
+   };
+
+``Module['wasmSHA256']`` is only present in builds compiled with
+``-sCROSS_ORIGIN_STORAGE=1``.  Always guard on its truthiness before using it,
+as shown above, so the same loader code works in builds compiled without the
+flag.
+
 Relationship to other caching mechanisms
 ==========================================
 
