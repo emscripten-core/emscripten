@@ -32,14 +32,14 @@ When to use this flag
 ---------------------
 
 COS only delivers a benefit when the ``.wasm`` binary is **byte-identical
-across many different origins** — that is, a publicly distributed library
-that many sites load from the same CDN URL. If every visitor to every site
+across many different origins** — that is, a popular library whose compiled
+binary is loaded by many independent sites. If every visitor to every site
 downloads the exact same bytes, COS means they only download it once, ever.
 
 Good candidates are libraries or toolkits that are:
 
-- distributed from a public CDN as a stable, version-pinned ``.wasm`` binary,
-- loaded by many independent sites (i.e. many distinct origins), and
+- popular enough that many independent sites load the same binary,
+- distributed as a stable, version-pinned ``.wasm`` file, and
 - a **single primary** ``.wasm`` file (COS only covers the binary that
   Emscripten compiles; any additional Wasm files loaded at runtime are not
   covered).
@@ -75,9 +75,8 @@ can retrieve the file.  This is applied automatically when
 
    emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE=1
 
-Use this for widely-shared public binaries distributed from a CDN and loaded
-by many independent origins.  This is the recommended mode for resources
-where global COS cache hits are expected.
+Use this for popular binaries loaded by many independent origins.  This is
+the recommended mode for resources where global COS cache hits are expected.
 
 **Restricted to a specific set of origins** — only the listed origins can
 retrieve the file:
