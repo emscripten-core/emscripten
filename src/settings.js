@@ -2218,7 +2218,7 @@ var CROSS_ORIGIN = false;
 //
 // If your ``.wasm`` file is bespoke application code built specifically for
 // your site, COS gives you nothing that the normal HTTP cache does not
-// already provide.  Do not enable this flag for application-specific Wasm.
+// already provide. Do not enable this flag for application-specific Wasm.
 //
 // When enabled, Emscripten computes the SHA-256 hash of the final ``.wasm``
 // binary at link time, embeds it as a build-time constant in the generated
@@ -2235,7 +2235,7 @@ var CROSS_ORIGIN = false;
 //   ``fetch`` / ``WebAssembly.instantiateStreaming`` path transparently.
 //
 // Only meaningful for the Web environment (``-sENVIRONMENT=web``); has no
-// effect on Node.js or shell targets.  Also has no effect in SINGLE_FILE
+// effect on Node.js or shell targets. Also has no effect in SINGLE_FILE
 // builds where the Wasm binary is inlined directly into the JS output.
 //
 // See :ref:`CrossOriginStorage` for the full guide, including how to test
@@ -2245,15 +2245,15 @@ var CROSS_ORIGIN = false;
 var CROSS_ORIGIN_STORAGE = 0;
 
 // Controls which origins may read the Wasm binary after it has been stored in
-// the Cross-Origin Storage (COS) cache.  Only meaningful when
-// ``-sCROSS_ORIGIN_STORAGE=1`` is set.  Has no effect on the read (cache-hit)
+// the Cross-Origin Storage (COS) cache. Only meaningful when
+// ``-sCROSS_ORIGIN_STORAGE=1`` is set. Has no effect on the read (cache-hit)
 // path; it is only applied during the write (cache-miss) path.
 //
 // Three modes are supported, matching the ``origins`` field of the COS API's
 // ``CrossOriginStorageRequestFileHandleOptions`` dictionary:
 //
 // **Globally available** (default when the setting is not explicitly passed) —
-// any origin can retrieve the file.  When ``-sCROSS_ORIGIN_STORAGE=1`` is
+// any origin can retrieve the file. When ``-sCROSS_ORIGIN_STORAGE=1`` is
 // used without specifying this setting, ``origins: '*'`` is used automatically.
 // Appropriate for widely-used public binaries shared across many independent
 // origins.
@@ -2265,7 +2265,7 @@ var CROSS_ORIGIN_STORAGE = 0;
 //
 // For proprietary resources shared across a controlled set of related sites.
 // Each value must be a valid serialised HTTPS origin (scheme + host + optional
-// port, no path).  Mixing ``'*'`` with explicit origins is a link-time error.
+// port, no path). Mixing ``'*'`` with explicit origins is a link-time error.
 //
 // **Same-site only** — pass the setting with an empty list to omit the
 // ``origins`` field, making the file available only to same-site origins::
