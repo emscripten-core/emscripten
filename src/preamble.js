@@ -670,9 +670,9 @@ async function instantiateAsync(binary, binaryFile, imports) {
         try {
           var networkResponse = await fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
           var wasmBytes = await networkResponse.arrayBuffer();
-          // Optional instrumentation callback: Module['onCOSCacheMiss'](url)
+          // Optional instrumentation callback: Module['onCOSCacheMiss'](hash, url)
           // Called when the Wasm binary is not in COS and is fetched over the network.
-          if (typeof Module['onCOSCacheMiss'] == 'function') Module['onCOSCacheMiss'](binaryFile);
+          if (typeof Module['onCOSCacheMiss'] == 'function') Module['onCOSCacheMiss'](cosHash.value, binaryFile);
           // Fire-and-forget store; never block instantiation on the write.
           (async () => {
             try {

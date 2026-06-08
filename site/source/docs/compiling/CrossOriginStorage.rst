@@ -171,7 +171,7 @@ When the page loads, the generated JavaScript follows this logic:
    Then invoke ``Module['onCOSCacheHit'](hash)`` if defined.
 
 3. **Cache miss** — if a ``NotFoundError`` is thrown, fetch the ``.wasm``
-   over the network as usual, invoke ``Module['onCOSCacheMiss'](url)`` if
+   over the network as usual, invoke ``Module['onCOSCacheMiss'](hash, url)`` if
    defined, call ``WebAssembly.instantiate()`` immediately so the page loads
    without delay, and then write the bytes into COS in the background
    (fire-and-forget) using the ``origins`` value controlled by
@@ -197,9 +197,9 @@ Three optional ``Module`` properties let you observe COS events at runtime:
      },
 
      // Called when the Wasm binary was not in COS and was fetched over the
-     // network.  |url| is the resolved URL of the .wasm file.
-     onCOSCacheMiss: (url) => {
-       console.log('Cache miss, fetched from:', url);
+     // network.  |hash| is the SHA-256 that missed; |url| is the fallback URL.
+     onCOSCacheMiss: (hash, url) => {
+       console.log('Cache miss, SHA-256:', hash, 'fetched from:', url);
      },
 
      // Called after the Wasm binary has been successfully written to COS.

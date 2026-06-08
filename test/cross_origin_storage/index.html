@@ -62,8 +62,8 @@
         },
 
         // Called when the Wasm binary was not in COS and was fetched over the network.
-        onCOSCacheMiss: (url) => {
-          log('↓ Wasm not in Cross-Origin Storage — fetched from network: ' + url, 'warn');
+        onCOSCacheMiss: (hash, url) => {
+          log('↓ Wasm not in Cross-Origin Storage — fetched from network: ' + url + ' (SHA-256: ' + hash + ')', 'warn');
         },
 
         // Called after the Wasm binary has been successfully written to COS.
