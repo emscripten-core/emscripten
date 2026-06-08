@@ -18,7 +18,7 @@ local_modules = os.path.join(local_root, 'modules')
 
 preserve_files = ('readme.txt', '__assertion_handler', '__config_site')
 # ryu_long_double_constants.h from libc is unused (and very large)
-excludes = ('ryu_long_double_constants.h')
+excludes = {'ryu_long_double_constants.h'}
 
 libc_copy_dirs = [
     'hdr',
