@@ -57,7 +57,7 @@ commands:
   bootstrap:
     description: "bootstrap"
     steps:
-      - run: ./bootstrap
+      - run: "$EMSDK_PYTHON ./bootstrap.py"
   pip-install:
     description: "pip install"
     parameters:

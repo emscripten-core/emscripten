@@ -26,7 +26,6 @@ em++
 '''.split()
 
 entry_points = '''
-bootstrap
 emar
 embuilder
 emcmake
@@ -115,10 +114,6 @@ def main(all_platforms, use_bat_file):
         make_executable(launcher)
 
       if do_windows:
-        if entry_point != 'bootstrap':
-          # The bootstrap.bat file is checked into source control so we
-          # don't want to delete it.
-          maybe_remove(launcher + '.bat')
         maybe_remove(launcher + '.ps1')
         maybe_remove(launcher + '.exe')
         if use_bat_file:

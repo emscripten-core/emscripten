@@ -1689,15 +1689,23 @@ int f() {
   def test_stdin(self, args):
     self.do_runf('module/test_stdin.c', 'abcdef\nghijkl\neof', input='abcdef\nghijkl\n', cflags=args)
 
+  def test_stdin_cpp(self):
+    self.do_runf('module/test_stdin.cpp', 'abcdef\nghijkl\neof', input='abcdef\nghijkl\n')
+
   @crossplatform
   def test_module_stdin(self):
-    self.set_setting('FORCE_FILESYSTEM')
-    create_file('pre.js', '''
-const data = 'Hello, world!\\n'.split('').map(c => c.charCodeAt(0));
+    create_file('pre.js', r'''
+const data = 'Hello\nworld!\n'.split('').map(c => c.charCodeAt(0));
 Module['stdin'] = () => data.shift() || null;
 ''')
-    self.cflags += ['--pre-js', 'pre.js']
-    self.do_runf('module/test_stdin.c', 'Hello, world!')
+    self.do_runf('module/test_stdin.c', 'Hello\nworld!\n', cflags=['--pre-js=pre.js', '-sFORCE_FILESYSTEM'])
+
+  def test_module_stdin_cpp(self):
+    create_file('pre.js', r'''
+const data = 'Hello\nworld!\n'.split('').map(c => c.charCodeAt(0));
+Module['stdin'] = () => data.shift() || null;
+''')
+    self.do_runf('module/test_stdin.cpp', 'Hello\nworld!\n', cflags=['--pre-js=pre.js', '-sFORCE_FILESYSTEM'])
 
   @crossplatform
   def test_module_stdout_stderr(self):
