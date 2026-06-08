@@ -5831,17 +5831,14 @@ int main(int argc, char **argv) {
   @requires_node
   def test_language_detection(self):
     # Test HTTP Accept-Language parsing by simulating navigator.languages #8751
-    expected_lang = os.environ.get('LANG')
-    if expected_lang is None:
-      # If the LANG env. var doesn't exist (Windows), ask Node for the language.
-      cmd = self.get_current_js_engine() + ['-e', 'console.log(navigator.languages[0] || "en_US")']
-      expected_lang = self.run_process(cmd, stdout=PIPE).stdout
-      expected_lang = expected_lang.strip().replace('-', '_')
-      expected_lang = f'{expected_lang}.UTF-8'
+    # Query the JS engine for what it thinks the language is.
+    # We use a file to be independent of engine-specific eval flags.
+    create_file('detect_lang.js', 'console.log(globalThis.navigator?.language ?? "C");')
+    expected_lang = self.run_js('detect_lang.js').strip()
+    expected_lang = expected_lang.replace('-', '_', 1)
+    expected_lang = f'{expected_lang}.UTF-8'
 
-    # We support both "C" and system LANG here since older versions of node do
-    # not expose navigator.languages.
-    self.do_runf('other/test_language_detection.c', f'LANG=({expected_lang}|en_US.UTF-8|C.UTF-8)', regex=True)
+    self.do_runf('other/test_language_detection.c', f'LANG={expected_lang}')
 
     # Accept-Language: fr,fr-FR;q=0.8,en-US;q=0.5,en;q=0.3
     create_file('pre.js', 'delete global.navigator; globalThis.navigator = { language: "fr" };')
@@ -14826,10 +14823,12 @@ addToLibrary({
       self.run_process([EMCC, '-c', test_file('hello_world.c')])
       self.assertExists('foo/bar/sysroot_install.stamp')
 
-    if not WINDOWS:
+    if not WINDOWS and os.getuid() != 0:
       # Test that we generate a nice error when we cannot create the cache
       # because it is in a read-only location.
       # For some reason this doesn't work on windows, at least not in CI.
+      # This also does not work when running as root since os.access will
+      # always return true for os.W_OK.
       os.mkdir('rodir')
       os.chmod('rodir', 0o444)
       self.assertFalse(os.access('rodir', os.W_OK))

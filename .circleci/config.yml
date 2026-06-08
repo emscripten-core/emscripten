@@ -8,11 +8,6 @@ executors:
   linux-node:
     docker:
       - image: cimg/node:24.13.1
-  linux-python:
-    docker:
-      - image: cimg/python:3.10.7
-    environment:
-      EMCC_CORES: "4"
   ubuntu-lts:
     docker:
       - image: emscripten/emscripten-ci:jammy
@@ -863,7 +858,7 @@ jobs:
             wasm64l.test_embind_val_basics_legacy"
       - upload-test-results
   test-bun:
-    executor: linux-python
+    executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NEW_CMAKE: "1"
       EMTEST_SKIP_WASM64: "1"
@@ -880,7 +875,7 @@ jobs:
       - run-tests:
           test_targets: "--crossplatform-only"
   test-deno:
-    executor: linux-python
+    executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
@@ -896,7 +891,7 @@ jobs:
       - run-tests:
           test_targets: "--crossplatform-only"
   test-jsc:
-    executor: linux-python
+    executor: ubuntu-lts
     steps:
       - checkout
       - pip-install
@@ -918,7 +913,7 @@ jobs:
             other.test_modularize_incoming
             other.test_modularize_incoming_export_name"
   test-spidermonkey:
-    executor: linux-python
+    executor: ubuntu-lts
     steps:
       - checkout
       - pip-install
