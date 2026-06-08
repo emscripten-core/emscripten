@@ -250,6 +250,7 @@ See also
 ========
 
 - `WICG Cross-Origin Storage explainer <https://github.com/WICG/cross-origin-storage>`_
-- `COS browser extension (polyfill) <https://github.com/web-ai-community/cross-origin-storage-extension>`_
+- `COS browser extension (Chrome Web Store) <https://chromewebstore.google.com/detail/cross-origin-storage/denpnpcgjgikjpoglpjefakmdcbmlgih>`_
+- `COS browser extension (source code) <https://github.com/web-ai-community/cross-origin-storage-extension>`_
 - :ref:`settings-reference` — ``CROSS_ORIGIN_STORAGE`` entry
 - :ref:`WebAssembly` — general guide to building Wasm with Emscripten
