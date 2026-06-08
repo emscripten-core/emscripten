@@ -1277,7 +1277,7 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
-def run_wasm_bindgen(infile):  # noqa
+def run_wasm_bindgen(infile):
   bindgen_out_dir = os.path.join(get_emscripten_temp_dir(), 'bindgen_out')
 
   wasm_bindgen_bin = shutil.which('wasm-bindgen')
