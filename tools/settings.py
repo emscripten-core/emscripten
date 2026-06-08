@@ -5,6 +5,7 @@
 
 import copy
 import difflib
+import itertools
 import re
 from typing import Any
 
@@ -336,6 +337,12 @@ class SettingsManager:
 
     if strict_override:
       self.attrs['STRICT'] = strict_override
+
+    # Internal consistency check that we don't have unknown / misspelled settings
+    # in the above sets.
+    for s in itertools.chain(DEPRECATED_SETTINGS, EXPERIMENTAL_SETTINGS, JS_ONLY_SETTINGS,
+                             PORTS_SETTINGS, MEM_SIZE_SETTINGS, INTERNAL_SETTINGS):
+      assert s in self.attrs, f'non-existent setting: {s}'
 
   def infer_types(self):
     for key, value in self.attrs.items():
