@@ -14811,13 +14811,13 @@ addToLibrary({
     lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
     self.assertExists(lib)
 
-    create_file('main.cpp', '')
+    create_file('empty.c', '')
     create_file('post.js', '''
       Module.onRuntimeInitialized = () => out(Module.rs_add(17, 25));
     ''')
     emcc_args = [lib, '-sWASM_BINDGEN', '--post-js=post.js', '-lexports.js']
 
-    self.do_runf('main.cpp', '42', cflags=emcc_args)
+    self.do_runf('empty.c', '42', cflags=emcc_args)
 
   def test_relative_em_cache(self):
     with env_modify({'EM_CACHE': 'foo'}):

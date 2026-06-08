@@ -302,7 +302,7 @@ def lld_flags(args, linker_inputs=None):
 
   if settings.WASM_BINDGEN:
     exported_symbols = get_wasm_bindgen_exported_symbols(linker_inputs)
-    args.extend(f'--export-if-defined={e}' for e in exported_symbols)
+    args.extend(f'--export={e}' for e in exported_symbols)
 
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
@@ -1277,7 +1277,7 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
-def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
+def run_wasm_bindgen(infile):  # noqa
   bindgen_out_dir = os.path.join(get_emscripten_temp_dir(), 'bindgen_out')
 
   wasm_bindgen_bin = shutil.which('wasm-bindgen')
@@ -1297,10 +1297,8 @@ def run_wasm_bindgen(infile, outfile=None, args=[], **kwargs):  # noqa
   # just grab the .wasm file itself.
   all_output_files = os.listdir(bindgen_out_dir)
   new_wasm_file = [x for x in all_output_files if x.endswith('.wasm')][0]
-  if outfile is None:
-    outfile = infile
 
-  shutil.copyfile(os.path.join(bindgen_out_dir, new_wasm_file), outfile)
+  shutil.copyfile(os.path.join(bindgen_out_dir, new_wasm_file), infile)
 
   return os.path.join(bindgen_out_dir, 'library_bindgen.js')
 
