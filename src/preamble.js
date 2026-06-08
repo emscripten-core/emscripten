@@ -653,9 +653,8 @@ async function instantiateAsync(binary, binaryFile, imports) {
   //
   // Any other error (NotAllowedError, network failure, …) falls through to the
   // standard Emscripten streaming path so the page always loads.
-  var wasmHashValue = '{{{ WASM_SHA256 }}}';
-  if (wasmHashValue && 'crossOriginStorage' in navigator) {
-    var cosHash = { algorithm: 'SHA-256', value: wasmHashValue };
+  var cosHash = { algorithm: 'SHA-256', value: '{{{ WASM_SHA256 }}}' };
+  if (cosHash.value && 'crossOriginStorage' in navigator) {
     try {
       var cosHandles = await navigator.crossOriginStorage.requestFileHandles([cosHash]);
       // Cache hit — read the Blob and instantiate from its ArrayBuffer.
@@ -663,7 +662,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
       var cosBytes = await cosFile.arrayBuffer();
       // Optional instrumentation callback: Module['onCOSCacheHit'](hash)
       // Called when the Wasm binary is served from the cross-origin cache.
-      if (typeof Module['onCOSCacheHit'] == 'function') Module['onCOSCacheHit'](wasmHashValue);
+      if (typeof Module['onCOSCacheHit'] == 'function') Module['onCOSCacheHit'](cosHash.value);
       return WebAssembly.instantiate(cosBytes, imports);
     } catch (cosErr) {
       if (cosErr.name === 'NotFoundError') {
@@ -679,8 +678,10 @@ async function instantiateAsync(binary, binaryFile, imports) {
             try {
               var writeHandles = await navigator.crossOriginStorage.requestFileHandles(
                 [cosHash],
-#if CROSS_ORIGIN_STORAGE_ORIGINS.length
-                { create: true, origins: {{{ JSON.stringify(CROSS_ORIGIN_STORAGE_ORIGINS.length === 1 && CROSS_ORIGIN_STORAGE_ORIGINS[0] === '*' ? '*' : CROSS_ORIGIN_STORAGE_ORIGINS) }}} },
+#if CROSS_ORIGIN_STORAGE_ORIGINS.length === 1 && CROSS_ORIGIN_STORAGE_ORIGINS[0] === '*'
+                { create: true, origins: '*' },
+#elif CROSS_ORIGIN_STORAGE_ORIGINS.length
+                { create: true, origins: {{{ JSON.stringify(CROSS_ORIGIN_STORAGE_ORIGINS) }}} },
 #else
                 { create: true },
 #endif
@@ -690,7 +691,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
               await writable.close();
               // Optional instrumentation callback: Module['onCOSStore'](hash)
               // Called after the Wasm binary has been successfully written to COS.
-              if (typeof Module['onCOSStore'] == 'function') Module['onCOSStore'](wasmHashValue);
+              if (typeof Module['onCOSStore'] == 'function') Module['onCOSStore'](cosHash.value);
             } catch (storeErr) {
               err(`COS store failed: ${storeErr}`);
             }
@@ -700,8 +701,9 @@ async function instantiateAsync(binary, binaryFile, imports) {
           // Network fetch failed; fall through to the standard path.
           err(`COS fallback fetch failed: ${fetchErr}`);
         }
+      } else if (cosErr.name === 'NotAllowedError') {
+        err(`COS: permission denied.`);
       } else {
-        // NotAllowedError or unexpected error; fall through gracefully.
         err(`Cross-Origin Storage lookup failed: ${cosErr}`);
       }
     }

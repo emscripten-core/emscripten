@@ -1922,6 +1922,20 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
     bindgen_jslib = building.run_wasm_bindgen(in_wasm)
     settings.JS_LIBRARIES.append(bindgen_jslib)
 
+  # Compute the SHA-256 of the wasm binary before phase_emscript so the hash
+  # is available to the JS-glue template as {{{ WASM_SHA256 }}}.  We read
+  # in_wasm here (the pre-binaryen binary); after phase_binaryen we recompute
+  # the hash and patch the JS if binaryen changed the binary.
+  if settings.CROSS_ORIGIN_STORAGE and settings.ENVIRONMENT_MAY_BE_WEB:
+    if os.path.exists(in_wasm):
+      with open(in_wasm, 'rb') as f:
+        wasm_bytes_pre = f.read()
+      settings.WASM_SHA256 = hashlib.sha256(wasm_bytes_pre).hexdigest()
+      logger.debug(f'CROSS_ORIGIN_STORAGE: pre-binaryen wasm SHA-256 = {settings.WASM_SHA256}')
+    else:
+      logger.warning('CROSS_ORIGIN_STORAGE: wasm file not found for hashing; WASM_SHA256 will be empty')
+      settings.WASM_SHA256 = ''
+
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
   if settings.EMBIND_AOT:
@@ -1935,22 +1949,20 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
 
   phase_binaryen(target, options, wasm_target)
 
-  # Compute the SHA-256 of the final .wasm binary and make it available to the
-  # JS glue preprocessor as {{{ WASM_SHA256 }}}.  We do this after phase_binaryen
-  # so that wasm-opt transformations are already reflected in the hash.
-  if settings.CROSS_ORIGIN_STORAGE and settings.ENVIRONMENT_MAY_BE_WEB:
+  # After binaryen, recompute the hash from the final wasm and patch the JS
+  # if binaryen changed the binary (so the embedded hash stays accurate).
+  if final_js and settings.CROSS_ORIGIN_STORAGE and settings.ENVIRONMENT_MAY_BE_WEB and settings.WASM_SHA256:
     if os.path.exists(wasm_target):
       with open(wasm_target, 'rb') as f:
-        wasm_bytes = f.read()
-      settings.WASM_SHA256 = hashlib.sha256(wasm_bytes).hexdigest()
-      logger.debug(f'CROSS_ORIGIN_STORAGE: wasm SHA-256 = {settings.WASM_SHA256}')
-    else:
-      # wasm_target does not exist — this should not normally be reached since
-      # SINGLE_FILE (which inlines the wasm) is already rejected above with a
-      # hard error.  Log a warning defensively in case of an unexpected build
-      # configuration.
-      logger.warning('CROSS_ORIGIN_STORAGE: wasm file not found for hashing; WASM_SHA256 will be empty')
-      settings.WASM_SHA256 = ''
+        wasm_bytes_post = f.read()
+      post_hash = hashlib.sha256(wasm_bytes_post).hexdigest()
+      if post_hash != settings.WASM_SHA256:
+        logger.debug(f'CROSS_ORIGIN_STORAGE: binaryen changed wasm; updating SHA-256 to {post_hash}')
+        js_content = read_file(final_js)
+        js_content = js_content.replace(f"value: '{settings.WASM_SHA256}'",
+                                        f"value: '{post_hash}'")
+        write_file(final_js, js_content)
+        settings.WASM_SHA256 = post_hash
 
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:

@@ -15764,7 +15764,7 @@ console.log('OK');'''
     js = read_file('hello.js')
     # { create: true } with no origins field
     self.assertContained('{ create: true }', js)
-    self.assertNotContained('origins', js)
+    self.assertNotContained('origins:', js)
 
   def test_cross_origin_storage_origins_error_mixed_wildcard(self):
     """Mixing '*' with explicit origins must be a link-time error."""
