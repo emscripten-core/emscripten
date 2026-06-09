@@ -25,7 +25,7 @@ See docs/process.md for more on how version tagging works.
 - Adds wasm-bindgen support. When `-sWASM_BINDGEN` is set, Emscripten will call
   out to `wasm-bindgen` in the users's path and integrate the wasm-bindgen JS
   with the normal Emscripten JS. Some wasm-bindgen features may not yet be fully
-  supported.
+  supported. (#23493)
 
 6.0.0 - 06/04/26
 ----------------
