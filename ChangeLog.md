@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 6.0.1 (in development)
 ----------------------
+- The `-sUSE_PTHREADS` and `-sMEMORY64` flags have been deprecated in favor of the
+  more standard `-pthread` and `-m64` (or `--target=wasm64`) flags. (#27025)
 
 6.0.0 - 06/04/26
 ----------------
