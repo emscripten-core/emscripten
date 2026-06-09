@@ -150,6 +150,8 @@ INCOMPATIBLE_SETTINGS = [
     ('LEGACY_VM_SUPPORT', 'MEMORY64', None),
     ('CROSS_ORIGIN', 'NO_DYNAMIC_EXECUTION', None),
     ('CROSS_ORIGIN', 'NO_PTHREADS', None),
+    ('CROSS_ORIGIN_STORAGE', 'SINGLE_FILE', 'the .wasm binary is inlined directly into the JS output and has no fetchable URL to key the hash on'),
+    ('CROSS_ORIGIN_STORAGE', 'NO_WASM_ASYNC_COMPILATION', 'synchronous instantiation does not use the COS fetch path'),
 ]
 
 EXPERIMENTAL_SETTINGS = {

@@ -2206,75 +2206,35 @@ var GROWABLE_ARRAYBUFFERS = false;
 var CROSS_ORIGIN = false;
 
 // [experimental] Enables Cross-Origin Storage (COS) API support for Wasm
-// loading on the Web target.
+// loading on the Web target. At link time Emscripten computes the SHA-256
+// hash of the final ``.wasm`` binary and embeds it in the generated JS.
+// At runtime the COS API is used as a progressive enhancement: the binary is
+// fetched from the shared cross-origin cache on a hit, or stored there after
+// a network fetch on a miss; when the API is absent or errors the runtime
+// falls through to the standard fetch path.
 //
-// **When to use this flag**
+// Only meaningful for the Web environment. Incompatible with SINGLE_FILE and
+// WASM_ASYNC_COMPILATION=0 (both produce hard link-time errors).
 //
-// COS is only beneficial for Wasm binaries that are byte-identical across
-// many different origins — i.e. popular libraries where the same compiled
-// binary is loaded by many independent sites.
-// Good candidates are libraries or toolkits distributed as a stable,
-// version-pinned binary loaded by many independent sites.
-//
-// If your ``.wasm`` file is bespoke application code built specifically for
-// your site, COS gives you nothing that the normal HTTP cache does not
-// already provide. Do not enable this flag for application-specific Wasm.
-//
-// When enabled, Emscripten computes the SHA-256 hash of the final ``.wasm``
-// binary at link time, embeds it as a build-time constant in the generated
-// JavaScript glue, and uses the browser COS API as a progressive enhancement:
-//
-// - **Cache hit**: the runtime calls
-//   ``navigator.crossOriginStorage.requestFileHandles()`` with the hash and,
-//   if the module is found, reads it directly from the cross-origin cache.
-// - **Cache miss**: the module is fetched over the network as usual, then
-//   stored in COS in the background (non-blocking) with ``origins: '*'`` so
-//   any other origin can reuse it.
-// - **Fallback**: when the browser does not expose the COS API, or when an
-//   unexpected error occurs, the runtime falls through to the standard
-//   ``fetch`` / ``WebAssembly.instantiateStreaming`` path transparently.
-//
-// Only meaningful for the Web environment (``-sENVIRONMENT=web``); has no
-// effect on Node.js or shell targets. Also has no effect in SINGLE_FILE
-// builds where the Wasm binary is inlined directly into the JS output.
-//
-// See :ref:`CrossOriginStorage` for the full guide, including how to test
-// with the COS browser extension polyfill.
+// See :ref:`CrossOriginStorage` for the full guide.
 //
 // [link]
 var CROSS_ORIGIN_STORAGE = 0;
 
-// Controls which origins may read the Wasm binary after it has been stored in
-// the Cross-Origin Storage (COS) cache. Only meaningful when
-// ``-sCROSS_ORIGIN_STORAGE=1`` is set. Has no effect on the read (cache-hit)
-// path; it is only applied during the write (cache-miss) path.
+// Controls which origins may read the Wasm binary from the COS cache. Only
+// meaningful when ``-sCROSS_ORIGIN_STORAGE`` is set. Applied only during the
+// write (cache-miss) path, not the read (cache-hit) path.
 //
-// Three modes are supported, matching the ``origins`` field of the COS API's
-// ``CrossOriginStorageRequestFileHandleOptions`` dictionary:
-//
-// **Globally available** (default when the setting is not explicitly passed) —
-// any origin can retrieve the file. When ``-sCROSS_ORIGIN_STORAGE=1`` is
-// used without specifying this setting, ``origins: '*'`` is used automatically.
-// Appropriate for widely-used public binaries shared across many independent
-// origins.
-//
-// **Restricted to a specific set of origins** — only listed HTTPS origins can
-// retrieve the file::
+// ``['*']`` (default) — any origin can retrieve the file.
+// Explicit HTTPS origin list — restricted to those origins only::
 //
 //   -sCROSS_ORIGIN_STORAGE_ORIGINS=https://app.example.com,https://api.example.com
 //
-// For proprietary resources shared across a controlled set of related sites.
-// Each value must be a valid serialized HTTPS origin (scheme + host + optional
-// port, no path). Mixing ``'*'`` with explicit origins is a link-time error.
+// ``[]`` — same-site only (omits the ``origins`` field entirely).
 //
-// **Same-site only** — pass the setting with an empty list to omit the
-// ``origins`` field, making the file available only to same-site origins::
-//
-//   -sCROSS_ORIGIN_STORAGE_ORIGINS=[]
-//
-// For resources shared across subdomains of a single site but not beyond.
+// Mixing ``'*'`` with explicit origins is a link-time error.
 // [link]
-var CROSS_ORIGIN_STORAGE_ORIGINS = [];
+var CROSS_ORIGIN_STORAGE_ORIGINS = ['*'];
 
 // This setting changes the behaviour of the ``-shared`` flag.  When set to true
 // you get the old emscripten behaviour where the ``-shared`` flag actually

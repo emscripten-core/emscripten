@@ -1210,34 +1210,21 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
 
   if settings.CROSS_ORIGIN_STORAGE:
-    if settings.SINGLE_FILE:
-      exit_with_error('CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE (the .wasm binary is inlined directly into the JS output and has no fetchable URL to key the hash on)')
     if not settings.ENVIRONMENT_MAY_BE_WEB:
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect when the target environment does not include the web (navigator.crossOriginStorage is not available outside the browser)')
-    if not settings.WASM_ASYNC_COMPILATION:
-      exit_with_error('CROSS_ORIGIN_STORAGE is not compatible with WASM_ASYNC_COMPILATION=0 (synchronous instantiation does not use the COS fetch path)')
     if settings.SPLIT_MODULE:
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; deferred split modules (.deferred.wasm) are fetched via the normal path and are not stored in or retrieved from COS')
     if settings.MAIN_MODULE:
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; dynamically-linked side modules loaded via dlopen are fetched via the normal path and are not stored in or retrieved from COS')
     if settings.SIDE_MODULE:
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect on SIDE_MODULE builds (no JS glue is emitted to carry the hash or perform the COS lookup)')
-    # Resolve and validate CROSS_ORIGIN_STORAGE_ORIGINS.
-    # The default in settings.js is [] (empty sentinel).  When the user has
-    # not explicitly passed -sCROSS_ORIGIN_STORAGE_ORIGINS we default to ['*']
-    # (globally available), which is the appropriate mode for widely-shared
-    # public Wasm binaries.  An explicit =[] means same-site only.
-    if 'CROSS_ORIGIN_STORAGE_ORIGINS' not in user_settings:
-      settings.CROSS_ORIGIN_STORAGE_ORIGINS = ['*']
     origins = settings.CROSS_ORIGIN_STORAGE_ORIGINS
-    if not isinstance(origins, list):
-      exit_with_error("CROSS_ORIGIN_STORAGE_ORIGINS must be a list, e.g. https://example.com or https://a.com,https://b.com")
     if '*' in origins and len(origins) > 1:
       exit_with_error("CROSS_ORIGIN_STORAGE_ORIGINS: '*' must not be mixed with explicit origins")
     for o in origins:
       if o == '*':
         continue
-      # Each explicit origin must be a valid serialised HTTPS origin:
+      # Each explicit origin must be a valid serialized HTTPS origin:
       # scheme "https://", host, optional ":port", no path/query/fragment.
       if not re.fullmatch(r'https://[^/]+(:\d+)?', o):
         exit_with_error(f"CROSS_ORIGIN_STORAGE_ORIGINS: {o!r} is not a valid HTTPS origin (expected 'https://host' or 'https://host:port')")
@@ -1922,19 +1909,6 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
     bindgen_jslib = building.run_wasm_bindgen(in_wasm)
     settings.JS_LIBRARIES.append(bindgen_jslib)
 
-  # Compute the SHA-256 of the wasm binary before phase_emscript so the hash
-  # is available to the JS-glue template as {{{ WASM_SHA256 }}}.  We read
-  # in_wasm here (the pre-binaryen binary); after phase_binaryen we recompute
-  # the hash and patch the JS if binaryen changed the binary.
-  if settings.CROSS_ORIGIN_STORAGE and settings.ENVIRONMENT_MAY_BE_WEB:
-    if os.path.exists(in_wasm):
-      with open(in_wasm, 'rb') as f:
-        wasm_bytes_pre = f.read()
-      settings.WASM_SHA256 = hashlib.sha256(wasm_bytes_pre).hexdigest()
-      logger.debug(f'CROSS_ORIGIN_STORAGE: pre-binaryen wasm SHA-256 = {settings.WASM_SHA256}')
-    else:
-      logger.warning('CROSS_ORIGIN_STORAGE: wasm file not found for hashing; WASM_SHA256 will be empty')
-      settings.WASM_SHA256 = ''
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
@@ -1949,22 +1923,19 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
 
   phase_binaryen(target, options, wasm_target)
 
-  # After binaryen, recompute the hash from the final wasm and patch the JS
-  # if binaryen changed the binary (so the embedded hash stays accurate).
-  if final_js and settings.CROSS_ORIGIN_STORAGE and settings.ENVIRONMENT_MAY_BE_WEB and settings.WASM_SHA256:
+  # Compute the hash of the final wasm (after binaryen) and substitute the
+  # <<< WASM_HASH_ALGORITHM >>> / <<< WASM_HASH_VALUE >>> placeholders that
+  # preamble.js left in the generated JS.
+  if final_js and settings.CROSS_ORIGIN_STORAGE:
     if os.path.exists(wasm_target):
-      with open(wasm_target, 'rb') as f:
-        wasm_bytes_post = f.read()
-      post_hash = hashlib.sha256(wasm_bytes_post).hexdigest()
-      if post_hash != settings.WASM_SHA256:
-        logger.debug(f'CROSS_ORIGIN_STORAGE: binaryen changed wasm; updating SHA-256 to {post_hash}')
-        js_content = read_file(final_js)
-        js_content = js_content.replace(f"value: '{settings.WASM_SHA256}'",
-                                        f"value: '{post_hash}'")
-        js_content = js_content.replace(f"Module['wasmSHA256'] = '{settings.WASM_SHA256}'",
-                                        f"Module['wasmSHA256'] = '{post_hash}'")
-        write_file(final_js, js_content)
-        settings.WASM_SHA256 = post_hash
+      wasm_bytes = utils.read_binary(wasm_target)
+      wasm_hash_algorithm = 'SHA-256'
+      wasm_hash_value = hashlib.sha256(wasm_bytes).hexdigest()
+      logger.debug(f'CROSS_ORIGIN_STORAGE: wasm {wasm_hash_algorithm} = {wasm_hash_value}')
+      js_content = read_file(final_js)
+      js_content = do_replace(js_content, '<<< WASM_HASH_ALGORITHM >>>', wasm_hash_algorithm)
+      js_content = do_replace(js_content, '<<< WASM_HASH_VALUE >>>', wasm_hash_value)
+      write_file(final_js, js_content)
 
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:
