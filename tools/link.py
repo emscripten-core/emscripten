@@ -2075,7 +2075,7 @@ def phase_source_transforms(options):
 
 # Unmangle previously mangled `await import` and `await` references in
 # both main code and libraries.
-# See also: `preprocess` in parseTools.mjs.
+# See also: `mangleUnsupportedSyntax` in parseTools.mjs.
 def fix_js_mangling(js_file):
   # Mangling only takes place under closure in MODULARIZE mode.
   if not settings.MODULARIZE or not settings.USE_CLOSURE_COMPILER:
