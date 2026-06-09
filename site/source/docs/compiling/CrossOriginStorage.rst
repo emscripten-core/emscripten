@@ -155,7 +155,7 @@ After all optimizations — including any ``wasm-opt`` passes run by Binaryen
 digest. That digest is embedded in the generated JavaScript glue as a
 build-time constant::
 
-  Module['wasmSHA256'] = 'a3f2...c9d1';  // 64 hex characters
+  Module['wasmHash'] = { algorithm: 'SHA-256', value: 'a3f2...c9d1' };
 
 No extra files are produced; the hash is part of the regular ``.js`` output.
 
@@ -281,13 +281,13 @@ hash as a named Module property:
 
 .. code-block:: javascript
 
-   Module['wasmSHA256']  // 64-character lowercase hex string, e.g. 'a3f2…c9d1'
+   Module['wasmHash']  // { algorithm: 'SHA-256', value: '<64 hex chars>' }
 
 This property is set by the generated JavaScript before
 ``Module['instantiateWasm']`` is called, so it is always available inside the
 callback.  ``Module`` in this context is the config object passed to the module
 factory — whatever variable you use when calling ``new Module(config)`` or the
-equivalent factory function.  A custom loader can read ``Module['wasmSHA256']``
+equivalent factory function.  A custom loader can read ``Module['wasmHash']``
 via a reference to that config object:
 
 .. code-block:: javascript
@@ -296,8 +296,8 @@ via a reference to that config object:
      instantiateWasm(imports, onSuccess) {
        // `this` inside the callback is Emscripten's internal Module object;
        // read the hash via the outer Module reference instead.
-       const cosHash = { algorithm: 'SHA-256', value: Module['wasmSHA256'] };
-       if (cosHash.value && 'crossOriginStorage' in navigator) {
+       const cosHash = Module['wasmHash'];
+       if (cosHash?.value && 'crossOriginStorage' in navigator) {
          navigator.crossOriginStorage.requestFileHandles([cosHash])
            .then(handles => handles[0].getFile())
            .then(f => f.arrayBuffer())
@@ -327,7 +327,7 @@ via a reference to that config object:
      },
    };
 
-``Module['wasmSHA256']`` is only present in builds compiled with
+``Module['wasmHash']`` is only present in builds compiled with
 :ref:`CROSS_ORIGIN_STORAGE`.  Always guard on its truthiness before using it,
 as shown above, so the same loader code works in builds compiled without the
 flag.

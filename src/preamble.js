@@ -917,13 +917,13 @@ function getWasmImports() {
   var info = getWasmImports();
 
 #if CROSS_ORIGIN_STORAGE
-  // Expose the build-time SHA-256 hash of the .wasm binary as a named Module
-  // property so that custom Module['instantiateWasm'] implementations can read
-  // it without having to parse the JS source.  The COS fetch logic lives inside
+  // Expose the build-time hash of the .wasm binary as a named Module property
+  // so that custom Module['instantiateWasm'] implementations can read it
+  // without having to parse the JS source.  The COS fetch logic lives inside
   // instantiateAsync(), which is bypassed when a custom instantiateWasm is
-  // provided.  Such loaders can use Module['wasmSHA256'] to implement their own
+  // provided.  Such loaders can use Module['wasmHash'] to implement their own
   // COS-aware loading path.
-  Module['wasmSHA256'] = '{{{ WASM_SHA256 }}}';
+  Module['wasmHash'] = { algorithm: 'SHA-256', value: '{{{ WASM_SHA256 }}}' };
 #endif
 
 #if expectToReceiveOnModule('instantiateWasm')
