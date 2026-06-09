@@ -8,7 +8,13 @@
 
 var LibraryFetch = {
   $Fetch__postset: 'Fetch.init();',
-  $Fetch__deps: ['$HandleAllocator'],
+  $Fetch__deps: [
+    '$HandleAllocator',
+#if FETCH_SUPPORT_INDEXEDDB
+    '$addRunDependency',
+    '$removeRunDependency',
+#endif
+  ],
   $Fetch: Fetch,
   _emscripten_fetch_get_response_headers_length__deps: ['$lengthBytesUTF8'],
   _emscripten_fetch_get_response_headers_length: fetchGetResponseHeadersLength,
