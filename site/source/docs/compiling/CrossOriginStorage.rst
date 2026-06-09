@@ -63,9 +63,6 @@ Pass :ref:`CROSS_ORIGIN_STORAGE` at link time::
 
   emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE
 
-The flag is a **link-time** setting and has no effect during compilation of
-individual object files.
-
 Controlling which origins can read the cached file
 --------------------------------------------------
 
