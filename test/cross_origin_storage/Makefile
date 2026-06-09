@@ -11,6 +11,7 @@ all: index.js
 
 index.js: main.cpp
 	$(EMCC) main.cpp -o index.js \
+	    -O2 \
 	    -sCROSS_ORIGIN_STORAGE \
 	    -sENVIRONMENT=web \
 	    -sEXPORTED_RUNTIME_METHODS=ccall \

@@ -5709,7 +5709,7 @@ fetch('report_result?0');
     if not is_chrome():
       self.skipTest('cross-origin storage tests require a Chromium-based browser')
     self.btest_exit('browser_test_hello_world.c',
-                    cflags=['-sCROSS_ORIGIN_STORAGE', '-sENVIRONMENT=web', '-Wno-experimental'])
+                    cflags=['-O2', '-sCROSS_ORIGIN_STORAGE', '-sENVIRONMENT=web', '-Wno-experimental'])
 
   def test_cross_origin_storage_miss_then_hit(self):
     """COS flag: first load triggers a cache-miss store; second load is a hit.
@@ -5750,6 +5750,7 @@ fetch('report_result?0');
       };
     ''')
     self.compile_btest('browser_test_hello_world.c', [
+      '-O2',
       '-sCROSS_ORIGIN_STORAGE',
       '-sENVIRONMENT=web',
       '-Wno-experimental',

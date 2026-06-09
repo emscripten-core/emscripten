@@ -7,6 +7,7 @@
 //
 // Build with:
 //   emcc main.cpp -o index.js \
+//       -O2 \
 //       -sCROSS_ORIGIN_STORAGE \
 //       -sENVIRONMENT=web \
 //       -sEXPORTED_RUNTIME_METHODS=ccall \
