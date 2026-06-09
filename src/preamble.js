@@ -795,14 +795,8 @@ function getWasmImports() {
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
 #endif
-#if WASM_ASYNC_COMPILATION && !MODULARIZE
-    removeRunDependency('wasm-instantiate');
-#endif
     return wasmExports;
   }
-#if WASM_ASYNC_COMPILATION && !MODULARIZE
-  addRunDependency('wasm-instantiate');
-#endif
 
   // Prefer streaming instantiation if available.
 #if WASM_ASYNC_COMPILATION
