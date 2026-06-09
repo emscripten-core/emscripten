@@ -15755,7 +15755,7 @@ console.log('OK');'''
     self.run_process([EMCC, test_file('hello_world.cpp'),
                       '-sCROSS_ORIGIN_STORAGE=1',
                       '-sENVIRONMENT=web',
-                      '-sCROSS_ORIGIN_STORAGE_ORIGINS=["https://app.example.com","https://api.example.com"]',
+                      '-sCROSS_ORIGIN_STORAGE_ORIGINS=https://app.example.com,https://api.example.com',
                       '-o', 'hello.js'])
     js = read_file('hello.js')
     self.assertContained('"https://app.example.com"', js)

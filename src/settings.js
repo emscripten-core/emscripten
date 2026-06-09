@@ -2261,7 +2261,7 @@ var CROSS_ORIGIN_STORAGE = 0;
 // **Restricted to a specific set of origins** — only listed HTTPS origins can
 // retrieve the file::
 //
-//   -sCROSS_ORIGIN_STORAGE_ORIGINS=['https://app.example.com','https://api.example.com']
+//   -sCROSS_ORIGIN_STORAGE_ORIGINS=https://app.example.com,https://api.example.com
 //
 // For proprietary resources shared across a controlled set of related sites.
 // Each value must be a valid serialized HTTPS origin (scheme + host + optional

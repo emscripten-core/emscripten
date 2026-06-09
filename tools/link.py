@@ -1231,7 +1231,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       settings.CROSS_ORIGIN_STORAGE_ORIGINS = ['*']
     origins = settings.CROSS_ORIGIN_STORAGE_ORIGINS
     if not isinstance(origins, list):
-      exit_with_error("CROSS_ORIGIN_STORAGE_ORIGINS must be a list, e.g. ['*'] or ['https://example.com']")
+      exit_with_error("CROSS_ORIGIN_STORAGE_ORIGINS must be a list, e.g. https://example.com or https://a.com,https://b.com")
     if '*' in origins and len(origins) > 1:
       exit_with_error("CROSS_ORIGIN_STORAGE_ORIGINS: '*' must not be mixed with explicit origins")
     for o in origins:
