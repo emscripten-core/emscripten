@@ -5745,8 +5745,14 @@ fetch('report_result?0');
     # COS callbacks; otherwise Emscripten aborts on the unknown Module props.
     create_file('cos_pre.js', '''
       var Module = {
-        onCOSStore: function(hash) { reportResultToServer('stored'); },
-        onCOSCacheHit: function(hash) { reportResultToServer('cache-hit'); },
+        onCOSStore: function(hash) {
+          console.log('[COS] stored, SHA-256:', hash);
+          reportResultToServer('stored');
+        },
+        onCOSCacheHit: function(hash) {
+          console.log('[COS] cache-hit, SHA-256:', hash);
+          reportResultToServer('cache-hit');
+        },
       };
     ''')
     self.compile_btest('browser_test_hello_world.c', [
