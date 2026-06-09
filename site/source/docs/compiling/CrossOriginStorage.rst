@@ -89,7 +89,7 @@ retrieve the file:
 
    emcc hello.cpp -o hello.js \
        -sCROSS_ORIGIN_STORAGE \
-       '-sCROSS_ORIGIN_STORAGE_ORIGINS=["https://app.example.com","https://api.example.com"]'
+       -sCROSS_ORIGIN_STORAGE_ORIGINS=https://app.example.com,https://api.example.com
 
 Use this for proprietary resources shared across a controlled set of related
 sites.  Each entry must be a valid serialized HTTPS origin (scheme + host +
