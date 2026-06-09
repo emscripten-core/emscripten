@@ -844,7 +844,7 @@ jobs:
       - run-tests:
           title: "wasm64"
           test_targets: "
-            other.*_wasm64
+            other.*_wasm64*
             core_2gb.test_*em_asm*
             core_2gb.test_*embind*
             core_2gb.test_fs_js_api_wasmfs
