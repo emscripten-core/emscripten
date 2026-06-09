@@ -6,7 +6,7 @@
 
 # SPDX-License-Identifier: Apache-2.0
 
-"""Download the Cross-Origin Storage Chrome extension for COS browser tests.
+r"""Download the Cross-Origin Storage Chrome extension for COS browser tests.
 
 The COS extension polyfills navigator.crossOriginStorage in Chrome so that
 automated browser tests can exercise the cache-miss and cache-hit paths without

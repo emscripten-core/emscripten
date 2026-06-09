@@ -3365,7 +3365,7 @@ Default value: false
 CROSS_ORIGIN_STORAGE
 ====================
 
-[experimental] Enables Cross-Origin Storage (COS) API support for Wasm
+Enables Cross-Origin Storage (COS) API support for Wasm
 loading on the Web target. At link time Emscripten computes the SHA-256
 hash of the final ``.wasm`` binary and embeds it in the generated JS.
 At runtime the COS API is used as a progressive enhancement: the binary is
@@ -3377,6 +3377,8 @@ Only meaningful for the Web environment. Incompatible with SINGLE_FILE and
 WASM_ASYNC_COMPILATION=0 (both produce hard link-time errors).
 
 See :ref:`CrossOriginStorage` for the full guide.
+
+.. note:: This is an experimental setting
 
 Default value: 0
 

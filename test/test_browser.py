@@ -5709,7 +5709,7 @@ fetch('report_result?0');
     if not is_chrome():
       self.skipTest('cross-origin storage tests require a Chromium-based browser')
     self.btest_exit('browser_test_hello_world.c',
-                    cflags=['-sCROSS_ORIGIN_STORAGE', '-sENVIRONMENT=web'])
+                    cflags=['-sCROSS_ORIGIN_STORAGE', '-sENVIRONMENT=web', '-Wno-experimental'])
 
   def test_cross_origin_storage_miss_then_hit(self):
     """COS flag: first load triggers a cache-miss store; second load is a hit.
@@ -5727,7 +5727,7 @@ fetch('report_result?0');
         'set EMTEST_COS_EXTENSION_PATH to the COS extension directory; '
         'run test/setup_cos_extension.py to download it automatically. '
         'Note: --load-extension requires Chromium or Chrome for Testing, '
-        'not the official Google Chrome release.'
+        'not the official Google Chrome release.',
       )
 
     # Restart the browser with a fresh user-data-dir so the extension starts
@@ -5752,6 +5752,7 @@ fetch('report_result?0');
     self.compile_btest('browser_test_hello_world.c', [
       '-sCROSS_ORIGIN_STORAGE',
       '-sENVIRONMENT=web',
+      '-Wno-experimental',
       '-sINCOMING_MODULE_JS_API=onAbort,onExit,onCOSStore,onCOSCacheHit',
       '--pre-js', 'cos_pre.js',
       '-o', 'page.html',
