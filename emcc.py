@@ -45,12 +45,12 @@ from tools import (
   system_libs,
   utils,
 )
-from tools.cmdline import CLANG_FLAGS_WITH_ARGS, options
+from tools.cmdline import CLANG_FLAGS_WITH_ARGS, LinkFlag, options
 from tools.response_file import substitute_response_files
 from tools.settings import COMPILE_TIME_SETTINGS, default_setting, settings, user_settings
 from tools.shared import DEBUG, DYLIB_EXTENSIONS, in_temp
 from tools.toolchain_profiler import ToolchainProfiler
-from tools.utils import LinkFlag, exit_with_error, get_file_suffix, read_file, unsuffixed_basename
+from tools.utils import exit_with_error, get_file_suffix, read_file, unsuffixed_basename
 
 logger = logging.getLogger('emcc')
 

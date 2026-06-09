@@ -46,7 +46,6 @@ from .shared import DEBUG, DYLIB_EXTENSIONS, do_replace, get_emscripten_temp_dir
 from .toolchain_profiler import ToolchainProfiler
 from .utils import (
   WINDOWS,
-  LinkFlag,
   delete_file,
   exit_with_error,
   get_file_suffix,
@@ -2022,7 +2021,7 @@ def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
     embind_tsd = run_embind_gen(options, wasm_target, js_syms, {'EMBIND_AOT': False})
   bindgen_ts_files = []
   if settings.WASM_BINDGEN:
-    bindgen_ts_files = glob.glob(get_emscripten_temp_dir() + "/bindgen_out/*.d.ts")
+    bindgen_ts_files = glob.glob(get_emscripten_temp_dir() + '/bindgen_out/*.d.ts')
     # This list comprehension then filters out any files that end with .wasm.d.ts.
     bindgen_ts_files = [file for file in bindgen_ts_files if not file.endswith('.wasm.d.ts')]
   all_tsd = emscripten.create_tsd(metadata, embind_tsd, bindgen_ts_files)
@@ -3066,14 +3065,14 @@ def run(options, linker_args):
   # We have now passed the compile phase, allow reading/writing of all settings.
   settings.limit_settings(None)
 
-  if settings.RUNTIME_LINKED_LIBS:
-    linker_args += [LinkFlag(f, False) for f in settings.RUNTIME_LINKED_LIBS]
-
   if not linker_args:
     exit_with_error('no input files')
 
   linker_inputs = [f.value for f in linker_args if f.is_file]
   linker_args = [f.value for f in linker_args]
+
+  if settings.RUNTIME_LINKED_LIBS:
+    linker_args += settings.RUNTIME_LINKED_LIBS
 
   if options.output_file and options.output_file.startswith('-'):
     exit_with_error(f'invalid output filename: `{options.output_file}`')

@@ -17,7 +17,6 @@ import shutil
 import stat
 import subprocess
 import sys
-from dataclasses import dataclass
 from pathlib import Path
 
 from . import diagnostics
@@ -246,17 +245,3 @@ def set_version_globals():
   EMSCRIPTEN_VERSION = read_file(filename).strip().strip('"')
   parts = [int(x) for x in EMSCRIPTEN_VERSION.split('-')[0].split('.')]
   EMSCRIPTEN_VERSION_MAJOR, EMSCRIPTEN_VERSION_MINOR, EMSCRIPTEN_VERSION_TINY = parts
-
-
-@dataclass
-class LinkFlag:
-  """Used to represent a linker flag.
-
-  The flag value is stored along with a bool that distinguishes input
-  files from non-files.
-
-  A list of these is returned by separate_linker_flags.
-  """
-
-  value: str
-  is_file: int
