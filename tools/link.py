@@ -3077,14 +3077,14 @@ def run(options, linker_args):
   # We have now passed the compile phase, allow reading/writing of all settings.
   settings.limit_settings(None)
 
-  if not linker_args:
-    exit_with_error('no input files')
-
   linker_inputs = [f.value for f in linker_args if f.is_file]
   linker_args = [f.value for f in linker_args]
 
   if settings.RUNTIME_LINKED_LIBS:
     linker_args += settings.RUNTIME_LINKED_LIBS
+
+  if not linker_args:
+    exit_with_error('no input files')
 
   if options.output_file and options.output_file.startswith('-'):
     exit_with_error(f'invalid output filename: `{options.output_file}`')
