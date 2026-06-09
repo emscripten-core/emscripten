@@ -347,14 +347,13 @@ if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
 #if !MODULARIZE && WASM_ASYNC_COMPILATION
 // With async instantation wasmExports is assigned asynchronously when the
 // instance is received.
-createWasm();
+createWasm().then(() => run());
 #else
 // In modularize mode the generated code is within a factory function so we
 // can use await here (since it's not top-level-await).
 wasmExports = {{{ awaitIf(MODULARIZE && WASM_ASYNC_COMPILATION) }}}createWasm();
-#endif
-
 {{{ awaitIf(MODULARIZE) }}}run();
+#endif
 
 #if WASM_WORKERS || PTHREADS
 }

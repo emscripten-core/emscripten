@@ -1,16 +1,16 @@
 {
-  "hello_world.js": 57200,
-  "hello_world.js.gz": 17815,
+  "hello_world.js": 57125,
+  "hello_world.js.gz": 17796,
   "hello_world.wasm": 15115,
   "hello_world.wasm.gz": 7464,
-  "no_asserts.js": 26773,
-  "no_asserts.js.gz": 8951,
+  "no_asserts.js": 26698,
+  "no_asserts.js.gz": 8934,
   "no_asserts.wasm": 12229,
   "no_asserts.wasm.gz": 6004,
-  "strict.js": 54833,
-  "strict.js.gz": 17054,
+  "strict.js": 54758,
+  "strict.js.gz": 17042,
   "strict.wasm": 15115,
   "strict.wasm.gz": 7457,
-  "total": 181265,
-  "total_gz": 64745
+  "total": 181040,
+  "total_gz": 64697
 }
