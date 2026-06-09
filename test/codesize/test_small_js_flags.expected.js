@@ -237,10 +237,8 @@ async function createWasm() {
     wasmExports = instance.exports;
     assignWasmExports(wasmExports);
     updateMemoryViews();
-    removeRunDependency("wasm-instantiate");
     return wasmExports;
   }
-  addRunDependency("wasm-instantiate");
   // Prefer streaming instantiation if available.
   function receiveInstantiationResult(result) {
     // 'result' is a ResultObject object which has both the module and instance.
@@ -289,21 +287,6 @@ class ExitStatus {
 var runDependencies = 0;
 
 var dependenciesFulfilled = null;
-
-var removeRunDependency = id => {
-  runDependencies--;
-  if (runDependencies == 0) {
-    if (dependenciesFulfilled) {
-      var callback = dependenciesFulfilled;
-      dependenciesFulfilled = null;
-      callback();
-    }
-  }
-};
-
-var addRunDependency = id => {
-  runDependencies++;
-};
 
 var printCharBuffers = [ null, [], [] ];
 
@@ -491,6 +474,4 @@ var wasmExports;
 
 // With async instantation wasmExports is assigned asynchronously when the
 // instance is received.
-createWasm();
-
-run();
+createWasm().then(() => run());
