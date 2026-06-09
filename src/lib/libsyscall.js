@@ -832,9 +832,6 @@ var SyscallsLibrary = {
     SYSCALLS.writeStatFs(buf, FS.statfsStream(stream));
     return 0;
   },
-  __syscall_fadvise64__nothrow: true,
-  __syscall_fadvise64__proxy: 'none',
-  __syscall_fadvise64: (fd, offset, len, advice) => 0,
   __syscall_openat__deps: ['$syscallGetVarargI'],
   __syscall_openat: (dirfd, path, flags, varargs) => {
     path = SYSCALLS.getStr(path);

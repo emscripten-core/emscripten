@@ -8,11 +8,6 @@ executors:
   linux-node:
     docker:
       - image: cimg/node:24.13.1
-  linux-python:
-    docker:
-      - image: cimg/python:3.10.7
-    environment:
-      EMCC_CORES: "4"
   ubuntu-lts:
     docker:
       - image: emscripten/emscripten-ci:jammy
@@ -57,7 +52,7 @@ commands:
   bootstrap:
     description: "bootstrap"
     steps:
-      - run: ./bootstrap
+      - run: "$EMSDK_PYTHON ./bootstrap.py"
   pip-install:
     description: "pip install"
     parameters:
@@ -801,15 +796,9 @@ jobs:
       - run-tests-linux:
           test_targets: "stress"
   test-esm-integration:
-    # We don't use `bionic` here since its too old to run recent node versions:
-    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
-    executor: linux-python
+    executor: ubuntu-lts
     steps:
       - prepare-for-tests
-      # The linux-python image uses /home/circleci rather than /root and jsvu
-      # hardcodes /root into its launcher scripts so we need to reinstall v8.
-      - run: rm -rf $HOME/.jsvu
-      - install-v8
       - install-node-newest
       - run-tests:
           title: "esm_integration"
@@ -825,15 +814,9 @@ jobs:
   test-wasm64-4gb:
     environment:
       LANG: "C.UTF-8"
-    # We don't use `bionic` here since its too old to run recent node versions:
-    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
-    executor: linux-python
+    executor: ubuntu-lts
     steps:
       - prepare-for-tests
-      # The linux-python image uses /home/circleci rather than /root and jsvu
-      # hardcodes /root into its launcher scripts so we need to reinstall v8.
-      - run: rm -rf $HOME/.jsvu
-      - install-v8
       - install-node-newest
       # When running wasm64 tests we need to make sure we use the latest
       # version of node (node 25) when running the compiler output (e.g.
@@ -848,15 +831,9 @@ jobs:
   test-wasm64-misc:
     environment:
       LANG: "C.UTF-8"
-    # We don't use `bionic` here since its too old to run recent node versions:
-    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
-    executor: linux-python
+    executor: ubuntu-lts
     steps:
       - prepare-for-tests
-      # The linux-python image uses /home/circleci rather than /root and jsvu
-      # hardcodes /root into its launcher scripts so we need to reinstall v8.
-      - run: rm -rf $HOME/.jsvu
-      - install-v8
       - install-node-newest
       # When running wasm64 tests we need to make sure we use the latest
       # version of node (node v25) when running the compiler output (e.g.
@@ -867,7 +844,7 @@ jobs:
       - run-tests:
           title: "wasm64"
           test_targets: "
-            other.*_wasm64
+            other.*_wasm64*
             core_2gb.test_*em_asm*
             core_2gb.test_*embind*
             core_2gb.test_fs_js_api_wasmfs
@@ -881,7 +858,7 @@ jobs:
             wasm64l.test_embind_val_basics_legacy"
       - upload-test-results
   test-bun:
-    executor: linux-python
+    executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NEW_CMAKE: "1"
       EMTEST_SKIP_WASM64: "1"
@@ -898,7 +875,7 @@ jobs:
       - run-tests:
           test_targets: "--crossplatform-only"
   test-deno:
-    executor: linux-python
+    executor: ubuntu-lts
     environment:
       EMTEST_SKIP_NEW_CMAKE: "1"
     steps:
@@ -914,7 +891,7 @@ jobs:
       - run-tests:
           test_targets: "--crossplatform-only"
   test-jsc:
-    executor: linux-python
+    executor: ubuntu-lts
     steps:
       - checkout
       - pip-install
@@ -936,7 +913,7 @@ jobs:
             other.test_modularize_incoming
             other.test_modularize_incoming_export_name"
   test-spidermonkey:
-    executor: linux-python
+    executor: ubuntu-lts
     steps:
       - checkout
       - pip-install
@@ -960,9 +937,7 @@ jobs:
             core2.test_demangle_stacks_symbol_map"
       - upload-test-results
   test-node-compat:
-    # We don't use `bionic` here since its too old to run recent node versions:
-    # `/lib/x86_64-linux-gnu/libc.so.6: version `GLIBC_2.28' not found`
-    executor: linux-python
+    executor: ubuntu-lts
     environment:
       LANG: "C.UTF-8"
       EMTEST_SKIP_V8: "1"
@@ -1346,6 +1321,11 @@ jobs:
           name: "sockets.test_nodejs_sockets_echo*"
           command: "test/runner sockets.test_nodejs_sockets_echo*"
       - upload-test-results
+      - run:
+          name: "check clean"
+          command: |
+            git checkout tools/pylauncher
+            $EMSDK_PYTHON test/check_clean.py
 
   test-mac-arm64:
     executor: mac-arm64

@@ -430,6 +430,12 @@ hidden long __syscall_ret(unsigned long),
 #ifdef SYS_pause
 #define __sys_pause() __syscall(SYS_pause)
 #define __sys_pause_cp() __syscall_cp(SYS_pause)
+#elif defined(__EMSCRIPTEN__)
+/* Note: When the sigmask argument is NULL, ppoll() differs from poll() only
+ * in the precision of the timeout argument.  For poll -1 means block forever
+ * as opposed to ppoll which uses NULL/0. */
+#define __sys_pause() __syscall(SYS_poll, 0, 0, -1)
+#define __sys_pause_cp() __syscall_cp(SYS_poll, 0, 0, -1)
 #else
 #define __sys_pause() __syscall(SYS_ppoll, 0, 0, 0, 0)
 #define __sys_pause_cp() __syscall_cp(SYS_ppoll, 0, 0, 0, 0)

@@ -29,22 +29,20 @@ var {{{ EXPORT_NAME }}} = (() => {
   var _scriptName = globalThis.document?.currentScript?.src;
 #endif
   return async function(moduleArg = {}) {
-    var moduleRtn;
-
+    var Module = moduleArg;
 "<<< INNER_JS_CODE >>>"
 
-    return moduleRtn;
+    return Module;
   };
 })();
 #else
 // When targeting node and ES6 we use `await import ..` in the generated code
 // so the outer function needs to be marked as async.
 async function {{{ EXPORT_NAME }}}(moduleArg = {}) {
-  var moduleRtn;
-
+  var Module = moduleArg;
 "<<< INNER_JS_CODE >>>"
 
-  return moduleRtn;
+  return Module;
 }
 #endif
 

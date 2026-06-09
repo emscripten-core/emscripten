@@ -238,7 +238,6 @@ sigs = {
   __syscall_dup__sig: 'ii',
   __syscall_dup3__sig: 'iiii',
   __syscall_faccessat__sig: 'iipii',
-  __syscall_fadvise64__sig: 'iijji',
   __syscall_fallocate__sig: 'iiijj',
   __syscall_fchdir__sig: 'ii',
   __syscall_fchmod__sig: 'iii',

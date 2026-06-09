@@ -298,9 +298,6 @@ function abort(what) {
   /** @suppress {checkTypes} */
   var e = new WebAssembly.RuntimeError(what);
 
-#if MODULARIZE
-  readyPromiseReject?.(e);
-#endif
   // Throw the error whether or not MODULARIZE is set because abort is used
   // in code paths apart from instantiation where an exception is expected
   // to be thrown when abort is called.
@@ -798,14 +795,8 @@ function getWasmImports() {
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
 #endif
-#if WASM_ASYNC_COMPILATION && !MODULARIZE
-    removeRunDependency('wasm-instantiate');
-#endif
     return wasmExports;
   }
-#if WASM_ASYNC_COMPILATION && !MODULARIZE
-  addRunDependency('wasm-instantiate');
-#endif
 
   // Prefer streaming instantiation if available.
 #if WASM_ASYNC_COMPILATION

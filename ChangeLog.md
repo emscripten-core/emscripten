@@ -18,8 +18,13 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.0 (in development)
+6.0.1 (in development)
 ----------------------
+- The `-sUSE_PTHREADS` and `-sMEMORY64` flags have been deprecated in favor of the
+  more standard `-pthread` and `-m64` (or `--target=wasm64`) flags. (#27025)
+
+6.0.0 - 06/04/26
+----------------
 - On Windows, Emscripten now ships `.exe` tool launchers, rather
   than `.bat` and/or `.ps1`.  This means that any scripts that explicitly
   reference, e.g. `emcc.bat`, will need to be updated to just `emcc` (or
@@ -63,6 +68,7 @@ See docs/process.md for more on how version tagging works.
 - The `PThread.runningWorkers` field was removed from the `PThread` object.
   If you have JS code that was depending on this you can transition to using the
   `PThread.pthreads` object. (#26998)
+- The POSIX `pause()` function will now return 0 rather than EINTR. (#27044)
 
 5.0.7 - 04/30/26
 ----------------

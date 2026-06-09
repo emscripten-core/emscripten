@@ -7,7 +7,6 @@ import json
 import math
 import os
 import re
-import shlex
 
 import common
 from common import (
@@ -120,7 +119,6 @@ class codesize(RunnerCore):
       outputs = ['a.html']
 
     args = [compiler_for(sources[0]), '-o', 'a.html'] + args + sources
-    print(shlex.join(args))
     self.run_process(args)
 
     # For certain tests, don't just check the output size but check
@@ -411,8 +409,7 @@ class codesize(RunnerCore):
     self.run_codesize_test('hello_world.c', cflags=['-sSTRICT', '-O3', '--preload-file=somefile.txt'], check_full_js=True)
 
   def test_small_js_flags(self):
-    self.emcc('browser_test_hello_world.c', ['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
-    self.check_output_sizes('a.out.js')
+    self.run_codesize_test('hello_world.c',  ['-O3', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'], check_full_js=True)
 
   # This test verifies that gzipped binary-encoded a SINGLE_FILE build results in a smaller size
   # than gzipped base64-encoded version.

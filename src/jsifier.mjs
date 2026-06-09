@@ -397,6 +397,12 @@ export async function runJSify(outputFile, symbolsOnly) {
   }
 
   async function writeOutput(str) {
+    // Unmangle previously mangled `import.meta` references.
+    // See also: `mangleUnsupportedSyntax` in parseTools.mjs.
+    if (EXPORT_ES6) {
+      str = str.replaceAll('EMSCRIPTEN$IMPORT$META', 'import.meta');
+    }
+
     await outputHandle.write(str + '\n');
   }
 

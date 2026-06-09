@@ -27,12 +27,8 @@ def get_lib_name(base_name, settings):
 
 def get(ports, settings, shared):
   ports.fetch_project('icu', f'https://github.com/unicode-org/icu/releases/download/{TAG}/icu4c-{VERSION}-src.zip', sha512hash=HASH)
-  icu_source_path = None
-
-  def prepare_build():
-    nonlocal icu_source_path
-    source_path = ports.get_dir('icu', 'icu') # downloaded icu4c path
-    icu_source_path = os.path.join(source_path, 'source')
+  source_path = ports.get_dir('icu', 'icu') # downloaded icu4c path
+  icu_source_path = os.path.join(source_path, 'source')
 
   def build_lib(lib_output, lib_src, other_includes, build_flags):
     additional_build_flags = [
@@ -61,7 +57,6 @@ def get(ports, settings, shared):
 
   # creator for libicu_common
   def create_libicu_common(lib_output):
-    prepare_build()
     lib_src = os.path.join(icu_source_path, 'common')
     ports.install_headers(os.path.join(lib_src, 'unicode'), target='unicode')
     ports.make_pkg_config('ici', VERSION, '-sUSE_ICU')
@@ -82,7 +77,6 @@ def get(ports, settings, shared):
 
   # creator for libicu_io
   def create_libicu_io(lib_output):
-    prepare_build()
     lib_src = os.path.join(icu_source_path, 'io')
     ports.install_headers(os.path.join(lib_src, 'unicode'), target='unicode')
     other_includes = [os.path.join(icu_source_path, 'common'), os.path.join(icu_source_path, 'i18n')]
