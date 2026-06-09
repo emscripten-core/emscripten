@@ -21,7 +21,7 @@ identified by their cryptographic hashes. A file stored in COS by one site
 can be retrieved by any other site using the same hash, eliminating redundant
 downloads.
 
-Emscripten's ``-sCROSS_ORIGIN_STORAGE`` flag integrates this into the
+Emscripten's :ref:`CROSS_ORIGIN_STORAGE` flag integrates this into the
 standard Wasm loading path. At build time, Emscripten computes the SHA-256
 hash of the final ``.wasm`` binary. At runtime, the generated JavaScript
 tries to retrieve the compiled Wasm module from COS before falling back to
@@ -52,14 +52,14 @@ already handles per-origin caching efficiently.
 The exception is a Wasm binary that you deploy across **multiple origins you
 own** — for example, the same library shared between ``https://app.example.com``
 and ``https://api.example.com``. In that case COS can eliminate the redundant
-download between your own origins. Use ``-sCROSS_ORIGIN_STORAGE_ORIGINS`` to
+download between your own origins. Use :ref:`CROSS_ORIGIN_STORAGE_ORIGINS` to
 restrict access to only those origins rather than opening the cache entry to
 the world.
 
 Usage
 =====
 
-Pass ``-sCROSS_ORIGIN_STORAGE`` at link time::
+Pass :ref:`CROSS_ORIGIN_STORAGE` at link time::
 
   emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE
 
@@ -69,14 +69,14 @@ individual object files.
 Controlling which origins can read the cached file
 --------------------------------------------------
 
-The ``-sCROSS_ORIGIN_STORAGE_ORIGINS`` setting controls the ``origins`` field
+The :ref:`CROSS_ORIGIN_STORAGE_ORIGINS` setting controls the ``origins`` field
 passed to ``requestFileHandles()`` on the write (cache-miss) path.  It has no
 effect on the read (cache-hit) path.  Three modes are available:
 
 **Globally available** (default, no explicit setting needed) — any origin
 can retrieve the file.  This is applied automatically when
-``-sCROSS_ORIGIN_STORAGE`` is used without specifying
-``-sCROSS_ORIGIN_STORAGE_ORIGINS``:
+:ref:`CROSS_ORIGIN_STORAGE` is used without specifying
+:ref:`CROSS_ORIGIN_STORAGE_ORIGINS`:
 
 .. code-block:: bash
 
@@ -204,7 +204,7 @@ When the page loads, the generated JavaScript follows this logic:
    defined, call ``WebAssembly.instantiate()`` immediately so the page loads
    without delay, and then write the bytes into COS in the background
    (fire-and-forget) using the ``origins`` value controlled by
-   ``-sCROSS_ORIGIN_STORAGE_ORIGINS`` (``'*'`` by default).
+   :ref:`CROSS_ORIGIN_STORAGE_ORIGINS` (``'*'`` by default).
    Once the write completes, invoke ``Module['onCOSStore'](hash)`` if defined.
 
 4. **Fallback** — any unexpected error (``NotAllowedError`` from the browser,
@@ -331,7 +331,7 @@ via a reference to that config object:
    };
 
 ``Module['wasmSHA256']`` is only present in builds compiled with
-``-sCROSS_ORIGIN_STORAGE``.  Always guard on its truthiness before using it,
+:ref:`CROSS_ORIGIN_STORAGE`.  Always guard on its truthiness before using it,
 as shown above, so the same loader code works in builds compiled without the
 flag.
 
