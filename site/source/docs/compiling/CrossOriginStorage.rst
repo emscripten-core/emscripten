@@ -155,7 +155,7 @@ After all optimizations — including any ``wasm-opt`` passes run by Binaryen
 digest. That digest is embedded in the generated JavaScript glue as a
 build-time constant::
 
-  var wasmHashValue = 'a3f2...c9d1';  // 64 hex characters
+  var cosHash = { algorithm: 'SHA-256', value: 'a3f2...c9d1' };  // value: 64 hex characters
 
 No extra files are produced; the hash is part of the regular ``.js`` output.
 
@@ -190,7 +190,7 @@ When the page loads, the generated JavaScript follows this logic:
    If the API is absent, skip to the normal fetch path immediately.
 
 2. **Cache hit** — call
-   ``navigator.crossOriginStorage.requestFileHandles([{algorithm: 'SHA-256', value: wasmHashValue}])``.
+   ``navigator.crossOriginStorage.requestFileHandles([cosHash])``.
    If the handle is returned (the module is already in COS), read it with
    ``handle.getFile()`` → ``.arrayBuffer()`` and pass the bytes to
    ``WebAssembly.instantiate()``.
