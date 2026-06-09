@@ -155,7 +155,7 @@ After all optimizations — including any ``wasm-opt`` passes run by Binaryen
 digest. That digest is embedded in the generated JavaScript glue as a
 build-time constant::
 
-  var cosHash = { algorithm: 'SHA-256', value: 'a3f2...c9d1' };  // value: 64 hex characters
+  Module['wasmSHA256'] = 'a3f2...c9d1';  // 64 hex characters
 
 No extra files are produced; the hash is part of the regular ``.js`` output.
 
@@ -175,7 +175,7 @@ No extra files are produced; the hash is part of the regular ``.js`` output.
 
       # After all post-processing is complete:
       final_hash=$(sha256sum hello.wasm | awk '{print $1}')
-      sed -i "s/value: '[0-9a-f]\{64\}'/value: '${final_hash}'/" hello.js
+      sed -i "s/'[0-9a-f]\{64\}'/'${final_hash}'/g" hello.js
 
    On macOS, use ``shasum -a 256`` in place of ``sha256sum``, and install
    GNU sed (``brew install gnu-sed``) or adapt the ``sed`` command for BSD
