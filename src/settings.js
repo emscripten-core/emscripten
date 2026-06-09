@@ -419,6 +419,32 @@ var WEBSOCKET_URL = 'ws://';
 // [link]
 var PROXY_POSIX_SOCKETS = false;
 
+// If enabled, the POSIX sockets API is backed by Node.js's ``node:net``
+// module, giving real non-blocking outgoing TCP sockets with no WebSockets,
+// proxy process or pthreads. This is the sockets counterpart to NODERAWFS:
+// where NODERAWFS gives direct access to the host filesystem, this gives
+// direct access to host sockets. It only works under node and is ignored
+// elsewhere.
+//
+// It supports full TCP (outgoing connect plus bind, listen and accept for
+// servers) and UDP. TCP clients use the public node:net API. bind needs a
+// synchronous bind() + getsockname(), so it uses the public node APIs that
+// provide them when present - net.BoundHandle for TCP and dgram
+// bindSync/connectSync for UDP - and falls back to the private tcp_wrap/udp_wrap
+// handles on older Node.js versions that lack them.
+//
+// It is event-driven. Socket readiness comes through the same
+// ``emscripten_set_socket_*_callback`` hooks the WebSocket backend uses, so it
+// works with existing readiness reactors. It cannot be combined with the
+// WebSocket emulation, PROXY_POSIX_SOCKETS or SOCKET_WEBRTC.
+//
+// It works under -pthread with PROXY_TO_PTHREAD, where main() and every socket
+// syscall run on a single worker alongside the node handles and their event
+// loop. As with the WebSocket backend, sharing a socket across threads under a
+// plain -pthread build (without PROXY_TO_PTHREAD) is not supported.
+// [link]
+var NODERAWSOCKETS = false;
+
 // A string containing a comma separated list of WebSocket subprotocols
 // as would be present in the Sec-WebSocket-Protocol header.
 // You can set 'null', if you don't want to specify it.

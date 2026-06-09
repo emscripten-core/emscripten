@@ -389,8 +389,12 @@ var SyscallsLibrary = {
   },
   __syscall_shutdown__deps: ['$getSocketFromFD'],
   __syscall_shutdown: (fd, how, u1, u2, u3, u4) => {
-    getSocketFromFD(fd);
+    var sock = getSocketFromFD(fd);
+#if NODERAWSOCKETS
+    return sock.sock_ops.shutdown(sock, how);
+#else
     return -{{{ cDefs.ENOSYS }}}; // unsupported feature
+#endif
   },
   __syscall_accept4__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
   __syscall_accept4: (fd, addr, len, flags, u1, u2) => {
@@ -445,6 +449,10 @@ var SyscallsLibrary = {
   __syscall_getsockopt__deps: ['$getSocketFromFD'],
   __syscall_getsockopt: (fd, level, optname, optval, optlen, unused) => {
     var sock = getSocketFromFD(fd);
+#if NODERAWSOCKETS
+    // The node:net backend handles all socket options.
+    return sock.sock_ops.getsockopt(sock, level, optname, optval, optlen);
+#else
     // Minimal getsockopt aimed at resolving https://github.com/emscripten-core/emscripten/issues/2211
     // so only supports SOL_SOCKET with SO_ERROR.
     if (level === {{{ cDefs.SOL_SOCKET }}}) {
@@ -456,6 +464,20 @@ var SyscallsLibrary = {
       }
     }
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
+#endif
+  },
+  // Defined in JS rather than as a weak native stub so the node:net backend can
+  // provide it without a separate libstubs variation. Without that backend it
+  // just reports the option as unknown.
+  __syscall_setsockopt__deps: ['$getSocketFromFD'],
+  __syscall_setsockopt: (fd, level, optname, optval, optlen, unused) => {
+#if NODERAWSOCKETS
+    var sock = getSocketFromFD(fd);
+    return sock.sock_ops.setsockopt(sock, level, optname, optval, optlen);
+#else
+    getSocketFromFD(fd); // validate the fd (and keep this syscall's catch reachable)
+    return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
+#endif
   },
   __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_sendmsg: (fd, message, flags, u1, u2, u3) => {
