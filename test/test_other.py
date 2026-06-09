@@ -15614,10 +15614,10 @@ console.log('OK');'''
     self.assertContained("'NotFoundError'", js)
     self.assertContained("'NotAllowedError'", js)
 
-    # Instrumentation callbacks invoked at each COS event.
-    self.assertContained("Module['onCOSCacheHit']", js)
-    self.assertContained("Module['onCOSCacheMiss']", js)
-    self.assertContained("Module['onCOSStore']", js)
+    # Callbacks are opt-in; must be absent from a default build.
+    self.assertNotContained("Module['onCOSCacheHit']", js)
+    self.assertNotContained("Module['onCOSCacheMiss']", js)
+    self.assertNotContained("Module['onCOSStore']", js)
 
     # The hash embedded in the JS must be a 64-char lowercase hex string …
     m = re.search(r"value:\s*'([0-9a-f]{64})'", js)
@@ -15628,6 +15628,18 @@ console.log('OK');'''
     expected_hash = hashlib.sha256(open('hello.wasm', 'rb').read()).hexdigest()
     self.assertEqual(embedded_hash, expected_hash,
                      'embedded wasm hash does not match actual .wasm SHA-256')
+
+  def test_cross_origin_storage_callbacks_opt_in(self):
+    """COS instrumentation callbacks are emitted only when opted in via INCOMING_MODULE_JS_API."""
+    self.run_process([EMCC, test_file('hello_world.cpp'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sENVIRONMENT=web',
+                      '-sINCOMING_MODULE_JS_API=onCOSCacheHit,onCOSCacheMiss,onCOSStore',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertContained("Module['onCOSCacheHit']", js)
+    self.assertContained("Module['onCOSCacheMiss']", js)
+    self.assertContained("Module['onCOSStore']", js)
 
   def test_cross_origin_storage_disabled_by_default(self):
     """COS code must NOT appear when the flag is omitted (default off)."""

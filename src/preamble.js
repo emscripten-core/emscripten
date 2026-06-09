@@ -639,7 +639,9 @@ async function instantiateAsync(binary, binaryFile, imports) {
       // Cache hit — read the Blob and instantiate from its ArrayBuffer.
       var cosFile = await cosHandles[0].getFile();
       var cosBytes = await cosFile.arrayBuffer();
+#if expectToReceiveOnModule('onCOSCacheHit')
       Module['onCOSCacheHit']?.(cosHash.value);
+#endif
       return WebAssembly.instantiate(cosBytes, imports);
     } catch (cosErr) {
       if (cosErr.name === 'NotFoundError') {
@@ -647,7 +649,9 @@ async function instantiateAsync(binary, binaryFile, imports) {
         try {
           var networkResponse = await fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
           var wasmBytes = await networkResponse.arrayBuffer();
+#if expectToReceiveOnModule('onCOSCacheMiss')
           Module['onCOSCacheMiss']?.(cosHash.value, binaryFile);
+#endif
           // Fire-and-forget store; never block instantiation on the write.
           (async () => {
             try {
@@ -664,7 +668,9 @@ async function instantiateAsync(binary, binaryFile, imports) {
               var writable = await writeHandles[0].createWritable();
               await writable.write(new Blob([wasmBytes], { type: 'application/wasm' }));
               await writable.close();
+#if expectToReceiveOnModule('onCOSStore')
               Module['onCOSStore']?.(cosHash.value);
+#endif
             } catch (storeErr) {
               err(`COS store failed: ${storeErr}`);
             }

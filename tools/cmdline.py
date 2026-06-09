@@ -47,6 +47,9 @@ EXTRA_INCOMING_JS_API = [
   'onRealloc',
   'onFree',
   'onSbrkGrow',
+  'onCOSCacheHit',
+  'onCOSCacheMiss',
+  'onCOSStore',
 ]
 
 logger = logging.getLogger('args')

@@ -212,7 +212,12 @@ When the page loads, the generated JavaScript follows this logic:
 Instrumentation callbacks
 -------------------------
 
-Three optional ``Module`` properties let you observe COS events at runtime:
+Three optional ``Module`` properties let you observe COS events at runtime.
+They are **opt-in**: to include the callback code in the output, list them in
+``INCOMING_MODULE_JS_API`` at link time::
+
+  emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE \
+      -sINCOMING_MODULE_JS_API=onCOSCacheHit,onCOSCacheMiss,onCOSStore
 
 .. code-block:: javascript
 
@@ -223,7 +228,7 @@ Three optional ``Module`` properties let you observe COS events at runtime:
      },
 
      // Called when the Wasm binary was not in COS and was fetched over the
-     // network.  |hash| is the SHA-256 that missed; |url| is the fallback URL.
+     // network.  |hash| is the hash that missed; |url| is the fallback URL.
      onCOSCacheMiss: (hash, url) => {
        console.log('Cache miss, SHA-256:', hash, 'fetched from:', url);
      },
