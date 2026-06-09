@@ -15731,7 +15731,7 @@ console.log('OK');'''
     hash_b = re.search(r"value:\s*'([0-9a-f]{64})'", js_b).group(1)
 
     self.assertNotEqual(hash_a, hash_b,
-                        'different programs should produce different WASM_SHA256 hashes')
+                        'different programs should produce different embedded wasm hashes')
 
   # ---------------------------------------------------------------------------
   # Tests for CROSS_ORIGIN_STORAGE_ORIGINS
@@ -15740,7 +15740,7 @@ console.log('OK');'''
   def test_cross_origin_storage_origins_default_is_global(self):
     """Without -sCROSS_ORIGIN_STORAGE_ORIGINS, the default must be origins:'*'.
 
-    Globally available; the user only needs -sCROSS_ORIGIN_STORAGE=1.
+    Globally available; the user only needs -sCROSS_ORIGIN_STORAGE.
     """
     self.run_process([EMCC, test_file('hello_world.cpp'),
                       '-sCROSS_ORIGIN_STORAGE',

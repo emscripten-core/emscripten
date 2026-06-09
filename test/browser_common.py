@@ -66,6 +66,14 @@ EMTEST_BROWSER_AUTO_CONFIG = None
 EMTEST_HEADLESS = None
 EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 
+# Path to an unpacked Chrome extension implementing the Cross-Origin Storage
+# polyfill.  When set, the extension is loaded via --load-extension when
+# launching a Chromium-based browser, enabling the COS browser test paths.
+# Point this at a local clone of:
+#   https://github.com/web-ai-community/cross-origin-storage-extension
+# (the directory that contains manifest.json).
+EMTEST_COS_EXTENSION_PATH = os.getenv('EMTEST_COS_EXTENSION_PATH', '')
+
 # Triggers the browser to restart after every given number of tests.
 # 0: Disabled (reuse the browser instance to run all tests. Default)
 # 1: Restart a fresh browser instance for every browser test.
@@ -365,6 +373,8 @@ def configure_test_browser():
       EMTEST_BROWSER += ' ' + ' '.join(config.default_flags)
       if EMTEST_HEADLESS == 1:
         EMTEST_BROWSER += f" {config.headless_flags}"
+      if EMTEST_COS_EXTENSION_PATH and is_chrome():
+        EMTEST_BROWSER += f' --load-extension="{EMTEST_COS_EXTENSION_PATH}"'
 
 
 # Create a server and a web page. When a test runs, we tell the server about it,

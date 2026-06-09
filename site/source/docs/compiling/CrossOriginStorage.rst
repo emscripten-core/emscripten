@@ -247,12 +247,38 @@ the `Cross-Origin Storage extension
 <https://chromewebstore.google.com/detail/cross-origin-storage/denpnpcgjgikjpoglpjefakmdcbmlgih>`_,
 which injects a ``navigator.crossOriginStorage`` polyfill on every page.
 
+Manual testing
+--------------
+
 1. Install the extension in Chrome.
 2. Build your project with ``-sCROSS_ORIGIN_STORAGE -sENVIRONMENT=web``.
 3. Serve the output over HTTP (e.g. with ``emrun`` or ``python3 -m http.server``).
 4. Open the page — on the first load the Wasm binary is fetched and stored in
    COS. Open the same page in a second tab or from a different origin: the
    module is loaded from COS without a network request.
+
+Automated browser testing
+--------------------------
+
+The Emscripten browser test suite includes COS tests that run against the
+polyfill extension.  The extension must be available as an **unpacked**
+directory (containing ``manifest.json``).  A helper script downloads and
+unpacks it automatically::
+
+  python3 test/setup_cos_extension.py
+
+Then run the tests, passing the printed path as ``EMTEST_COS_EXTENSION_PATH``::
+
+  EMTEST_COS_EXTENSION_PATH=$(python3 test/setup_cos_extension.py --quiet) \
+    python3 test/runner.py \
+        browser.test_cross_origin_storage_fallback \
+        browser.test_cross_origin_storage_miss_then_hit
+
+``test_cross_origin_storage_fallback`` does not require the extension and
+verifies that a ``-sCROSS_ORIGIN_STORAGE`` build loads correctly on browsers
+where the COS API is absent.  ``test_cross_origin_storage_miss_then_hit``
+requires the extension and exercises both the cache-miss store and cache-hit
+paths in sequence.
 
 Verifying the embedded hash
 ============================

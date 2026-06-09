@@ -158,6 +158,8 @@ EXPERIMENTAL_SETTINGS = {
     'SPLIT_MODULE': '-sSPLIT_MODULE is experimental and subject to change',
     'SOURCE_PHASE_IMPORTS': '-sSOURCE_PHASE_IMPORTS is experimental and not yet supported in browsers',
     'JS_BASE64_API': '-sJS_BASE64_API is experimental and not yet supported in browsers',
+    'CROSS_ORIGIN_STORAGE': '-sCROSS_ORIGIN_STORAGE is experimental; the underlying browser API is not yet shipped in any browser',
+    'GROWABLE_ARRAYBUFFERS': '-sGROWABLE_ARRAYBUFFERS is still experimental and has only recently become available in browsers',
     'SUPPORT_BIG_ENDIAN': '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.',
     'WASM_ESM_INTEGRATION': '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers',
 }
