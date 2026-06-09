@@ -9,7 +9,6 @@ import os
 import re
 import shlex
 import sys
-from dataclasses import dataclass
 from enum import Enum, auto, unique
 from subprocess import PIPE
 
@@ -864,17 +863,3 @@ def parse_arguments(args):
   apply_user_settings()
 
   return newargs
-
-
-@dataclass
-class LinkFlag:
-  """Used to represent a linker flag.
-
-  The flag value is stored along with a bool that distinguishes input
-  files from non-files.
-
-  A list of these is returned by separate_linker_flags.
-  """
-
-  value: str
-  is_file: int

@@ -27,6 +27,7 @@ import shlex
 import shutil
 import sys
 import tarfile
+from dataclasses import dataclass
 from enum import Enum, auto, unique
 
 # This assert needs to happen early, before any too-recent python syntax is used.
@@ -45,7 +46,7 @@ from tools import (
   system_libs,
   utils,
 )
-from tools.cmdline import CLANG_FLAGS_WITH_ARGS, LinkFlag, options
+from tools.cmdline import CLANG_FLAGS_WITH_ARGS, options
 from tools.response_file import substitute_response_files
 from tools.settings import COMPILE_TIME_SETTINGS, default_setting, settings, user_settings
 from tools.shared import DEBUG, DYLIB_EXTENSIONS, in_temp
@@ -93,6 +94,20 @@ class Mode(Enum):
   POST_LINK_ONLY = auto()
   # This is the default mode, in the absence of any flags such as -c, -E, etc
   COMPILE_AND_LINK = auto()
+
+
+@dataclass
+class LinkFlag:
+  """Used to represent a linker flag.
+
+  The flag value is stored along with a bool that distinguishes input
+  files from non-files.
+
+  A list of these is returned by separate_linker_flags.
+  """
+
+  value: str
+  is_file: int
 
 
 class EmccState:
