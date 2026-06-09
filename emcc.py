@@ -264,8 +264,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   print_file_name = [a for a in args if a.startswith(('-print-file-name=', '--print-file-name='))]
   if print_file_name:
-    libname = print_file_name[-1].split('=')[1]
-    system_libpath = cache.get_lib_dir(absolute=True)
+    arg = print_file_name[-1]
+    libname = arg.split('=')[1]
+    index = args.index(arg)
+    if index >= 1:
+      system_libpath = os.path.abspath(args[0])
+    else:
+      system_libpath = cache.get_lib_dir(absolute=True)
     fullpath = os.path.join(system_libpath, libname)
     if os.path.isfile(fullpath):
       print(fullpath)
