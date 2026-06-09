@@ -635,6 +635,9 @@ def add_system_js_lib(lib):
 def check_settings():
   for s, reason in DEPRECATED_SETTINGS.items():
     if s in user_settings:
+      if s == 'MEMORY64' and user_settings[s] == '2':
+        # Don't warn about -sMEMORY64=2 (since its the only way to enable the lowering pass)
+        continue
       diagnostics.warning('deprecated', f'{s} is deprecated ({reason}). Please open a bug if you have a continuing need for this setting')
 
   for name, msg in EXPERIMENTAL_SETTINGS.items():
@@ -2081,19 +2084,28 @@ def phase_source_transforms(options):
   save_intermediate('transformed')
 
 
-# Unmangle previously mangled `import.meta` and `await import` references in
+# Unmangle previously mangled `await import` and `await` references in
 # both main code and libraries.
-# See also: `preprocess` in parseTools.js.
+# See also: `mangleUnsupportedSyntax` in parseTools.mjs.
 def fix_js_mangling(js_file):
-  # We don't apply these mangliings except in MODULARIZE/EXPORT_ES6 modes.
-  if not settings.MODULARIZE:
+  # Mangling only takes place under closure in MODULARIZE mode.
+  if not settings.MODULARIZE or not settings.USE_CLOSURE_COMPILER:
     return
 
   src = read_file(js_file)
-  write_file(js_file, src
-             .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
-             .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import')
-             .replace('EMSCRIPTEN$AWAIT(', 'await ('))
+
+  if settings.EXPORT_ES6:
+    # Also remove the line containing `export{};`, which is inserted by
+    # Closure to mark the file as an ES6 module.
+    # https://github.com/google/closure-compiler/issues/4084#issuecomment-1505056519
+    # https://github.com/google/closure-compiler/blob/v20260401/src/com/google/javascript/jscomp/ConvertChunksToESModules.java#L111-L113
+    src = src \
+      .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import') \
+      .replace('export{};\n', '')
+
+  src = src.replace('EMSCRIPTEN$AWAIT(', 'await (')
+
+  write_file(js_file, src)
   save_intermediate('js-mangling')
 
 

@@ -260,6 +260,7 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // flags, which do the same thing.
 // Assumes WASM_BIGINT.
 // [compile+link]
+// [deprecated]
 var MEMORY64 = 0;
 
 // Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is used

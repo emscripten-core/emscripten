@@ -561,7 +561,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   # should not minify these symbol names.
   CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
-  if settings.MODULARIZE and settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
+  if settings.MODULARIZE:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
 
   if settings.AUDIO_WORKLET:
@@ -606,6 +606,14 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   args += ['--language_in', 'UNSTABLE']
+  # Make Closure aware of the ES6 module syntax;
+  # i.e. the `import.meta` and `await import` usages
+  if settings.EXPORT_ES6:
+    args += ['--chunk_output_type', 'ES_MODULES']
+    if settings.ENVIRONMENT_MAY_BE_NODE:
+      args += ['--module_resolution', 'NODE']
+      # https://github.com/google/closure-compiler/issues/3740
+      args += ['--jscomp_off=moduleLoad']
   # We currently only use closure compiler for minification, not transpilation.
   args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.

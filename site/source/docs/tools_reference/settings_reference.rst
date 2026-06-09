@@ -317,6 +317,8 @@ Assumes WASM_BIGINT.
 
 .. note:: Applicable during both linking and compilation
 
+.. note:: This setting is deprecated
+
 Default value: 0
 
 .. _initial_table:
@@ -3402,6 +3404,8 @@ these settings please open a bug (or reply to one of the existing bugs).
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
  - ``EXPORT_EXCEPTION_HANDLING_HELPERS``: getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.
  - ``DETERMINISTIC``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/26647)
+ - ``USE_PTHREADS``: prefer the standard -pthread flag
+ - ``MEMORY64``: prefer the standard -m64 or --target=wasm64 flags
 
 .. _legacy-settings:
 

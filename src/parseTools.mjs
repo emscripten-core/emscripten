@@ -32,6 +32,32 @@ const FLOAT_TYPES = new Set(['float', 'double']);
 // Represents a browser version that is not supported at all.
 const TARGET_NOT_SUPPORTED = 0x7fffffff;
 
+function mangleUnsupportedSyntax(text) {
+  // Do special keyword replacement after macro processing, so that
+  // macros can generate keywords (easier to read preprocessed code).
+  if (EXPORT_ES6) {
+    // `vm.runInContext` doesn't support module syntax; to allow it, we need to
+    // temporarily replace `import.meta` usages with placeholders.
+    // See also: `writeOutput` in jsifier.mjs.
+    text = text.replaceAll('import.meta', 'EMSCRIPTEN$IMPORT$META');
+  }
+  if (MODULARIZE && USE_CLOSURE_COMPILER) {
+    // Closure doesn't support "top-level await" which is not actually the top
+    // level in case of MODULARIZE. Temporarily replace `await` usages with
+    // placeholders during preprocess phase, and back after all the other ops.
+    // See also: `fix_js_mangling` in link.py.
+    // FIXME: Remove after https://github.com/google/closure-compiler/issues/3835 is fixed.
+    if (EXPORT_ES6) {
+      text = text.replaceAll('await import', 'EMSCRIPTEN$AWAIT$IMPORT');
+    }
+    text = text.replaceAll('await createWasm()', 'EMSCRIPTEN$AWAIT(createWasm())');
+    text = text.replaceAll('await run()', 'EMSCRIPTEN$AWAIT(run())');
+    text = text.replaceAll('await instantiatePromise', 'EMSCRIPTEN$AWAIT(instantiatePromise)');
+    text = text.replaceAll('await init()', 'EMSCRIPTEN$AWAIT(init())');
+  }
+  return text;
+}
+
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
@@ -41,10 +67,11 @@ export function processMacros(text, filename) {
   // `[\s\S]` works like `.` but include newline.
   pushCurrentFile(filename);
   try {
-    return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
+    text = text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
       const ret = runInMacroContext(str, {filename: filename});
       return ret?.toString() ?? '';
     });
+    return mangleUnsupportedSyntax(text);
   } finally {
     popCurrentFile();
   }
@@ -73,20 +100,6 @@ function findIncludeFile(filename, currentDir) {
 // Also handles #include x.js (similar to C #include <file>)
 export function preprocess(filename) {
   let text = readFile(filename);
-  if (EXPORT_ES6) {
-    // `eval`, Terser and Closure don't support module syntax; to allow it,
-    // we need to temporarily replace `import.meta` and `await import` usages
-    // with placeholders during preprocess phase, and back after all the other ops.
-    // See also: `phase_final_emitting` in emcc.py.
-    text = text
-      .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
-      .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
-  }
-  if (MODULARIZE) {
-    // Same for out use of "top-level-await" which is not actually top level
-    // in the case of MODULARIZE.
-    text = text.replace(/\bawait createWasm\(\)/g, 'EMSCRIPTEN$AWAIT(createWasm())');
-  }
   // Remove windows line endings, if any
   text = text.replace(/\r\n/g, '\n');
 
