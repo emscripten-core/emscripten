@@ -21,7 +21,7 @@ identified by their cryptographic hashes. A file stored in COS by one site
 can be retrieved by any other site using the same hash, eliminating redundant
 downloads.
 
-Emscripten's ``-sCROSS_ORIGIN_STORAGE=1`` flag integrates this into the
+Emscripten's ``-sCROSS_ORIGIN_STORAGE`` flag integrates this into the
 standard Wasm loading path. At build time, Emscripten computes the SHA-256
 hash of the final ``.wasm`` binary. At runtime, the generated JavaScript
 tries to retrieve the compiled Wasm module from COS before falling back to
@@ -59,9 +59,9 @@ the world.
 Usage
 =====
 
-Pass ``-sCROSS_ORIGIN_STORAGE=1`` at link time::
+Pass ``-sCROSS_ORIGIN_STORAGE`` at link time::
 
-  emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE=1
+  emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE
 
 The flag is a **link-time** setting and has no effect during compilation of
 individual object files.
@@ -75,12 +75,12 @@ effect on the read (cache-hit) path.  Three modes are available:
 
 **Globally available** (default, no explicit setting needed) — any origin
 can retrieve the file.  This is applied automatically when
-``-sCROSS_ORIGIN_STORAGE=1`` is used without specifying
+``-sCROSS_ORIGIN_STORAGE`` is used without specifying
 ``-sCROSS_ORIGIN_STORAGE_ORIGINS``:
 
 .. code-block:: bash
 
-   emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE=1
+   emcc hello.cpp -o hello.js -sCROSS_ORIGIN_STORAGE
 
 Use this for popular binaries loaded by many independent origins.  This is
 the recommended mode for resources where global COS cache hits are expected.
@@ -91,7 +91,7 @@ retrieve the file:
 .. code-block:: bash
 
    emcc hello.cpp -o hello.js \
-       -sCROSS_ORIGIN_STORAGE=1 \
+       -sCROSS_ORIGIN_STORAGE \
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=["https://app.example.com","https://api.example.com"]'
 
 Use this for proprietary resources shared across a controlled set of related
@@ -105,7 +105,7 @@ field, making the file available only to same-site origins:
 .. code-block:: bash
 
    emcc hello.cpp -o hello.js \
-       -sCROSS_ORIGIN_STORAGE=1 \
+       -sCROSS_ORIGIN_STORAGE \
        -sCROSS_ORIGIN_STORAGE_ORIGINS=[]
 
 Use this for resources that should be shared across subdomains of a single
@@ -246,7 +246,7 @@ the `Cross-Origin Storage extension
 which injects a ``navigator.crossOriginStorage`` polyfill on every page.
 
 1. Install the extension in Chrome.
-2. Build your project with ``-sCROSS_ORIGIN_STORAGE=1 -sENVIRONMENT=web``.
+2. Build your project with ``-sCROSS_ORIGIN_STORAGE -sENVIRONMENT=web``.
 3. Serve the output over HTTP (e.g. with ``emrun`` or ``python3 -m http.server``).
 4. Open the page — on the first load the Wasm binary is fetched and stored in
    COS. Open the same page in a second tab or from a different origin: the
@@ -331,7 +331,7 @@ via a reference to that config object:
    };
 
 ``Module['wasmSHA256']`` is only present in builds compiled with
-``-sCROSS_ORIGIN_STORAGE=1``.  Always guard on its truthiness before using it,
+``-sCROSS_ORIGIN_STORAGE``.  Always guard on its truthiness before using it,
 as shown above, so the same loader code works in builds compiled without the
 flag.
 
