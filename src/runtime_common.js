@@ -31,10 +31,6 @@ function growMemViews() {
 #include "binaryDecode.js"
 #endif
 
-#if MODULARIZE
-var readyPromiseResolve, readyPromiseReject;
-#endif
-
 #if (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
   // Create as web-worker-like an environment as we can.
