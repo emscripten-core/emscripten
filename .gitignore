@@ -30,6 +30,10 @@ coverage.xml
 # Test output
 /out/
 
+# COS example build artifacts
+/test/cross_origin_storage/index.js
+/test/cross_origin_storage/index.wasm
+
 # When updating the website we check it out here.
 /site/emscripten-site/
 
