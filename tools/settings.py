@@ -115,6 +115,8 @@ DEPRECATED_SETTINGS = {
     'LINKABLE': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)',
     'EXPORT_EXCEPTION_HANDLING_HELPERS': 'getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.',
     'DETERMINISTIC': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/26647)',
+    'USE_PTHREADS': 'prefer the standard -pthread flag',
+    'MEMORY64': 'prefer the standard -m64 or --target=wasm64 flags',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
@@ -152,7 +154,7 @@ EXPERIMENTAL_SETTINGS = {
     'SPLIT_MODULE': '-sSPLIT_MODULE is experimental and subject to change',
     'SOURCE_PHASE_IMPORTS': '-sSOURCE_PHASE_IMPORTS is experimental and not yet supported in browsers',
     'JS_BASE64_API': '-sJS_BASE64_API is experimental and not yet supported in browsers',
-    'GROWABLE_ARRAYBUFFERS': '-sGROWABLE_ARRAYBUFFERS is experimental and not yet supported in browsers',
+    'GROWABLE_ARRAYBUFFERS': '-sGROWABLE_ARRAYBUFFERS is still experimental and has only recently become available in browsers',
     'SUPPORT_BIG_ENDIAN': '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.',
     'WASM_ESM_INTEGRATION': '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers',
 }

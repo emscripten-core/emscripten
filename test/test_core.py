@@ -5151,6 +5151,7 @@ main main sees -524, -534, 72.
     if cmake:
       output = self.run_process(['cmake', '--version'], stdout=PIPE).stdout
       cmake_version = output.splitlines()[0].split()[-1].strip()
+      cmake_version = cmake_version.split('-')[0] # Remove trail like "4.2.0-rc3" -> "4.2.0"
       cmake_version = tuple(int(part) for part in cmake_version.split('.'))
       # We don't support dynamic linking with certain versions of cmake
       # See https://gitlab.kitware.com/cmake/cmake/-/work_items/27240
@@ -9301,18 +9302,21 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.dylink_testf(test_file('core/pthread/test_pthread_dylink_exceptions.cpp'))
 
   @needs_dylink
+  @parameterized({
+    '': ([],),
+    'proxied': (['-sPROXY_TO_PTHREAD'],),
+  })
   @requires_pthreads
-  def test_pthread_dlopen(self):
+  def test_pthread_dlopen(self, args):
     self.cflags += ['-Wno-experimental', '-pthread']
     self.build_dlfcn_lib(test_file('core/pthread/test_pthread_dlopen_side.c'))
 
     self.cflags += ['--embed-file', 'libside.so@libside.so']
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
-    self.set_setting('PROXY_TO_PTHREAD')
     self.do_runf('core/pthread/test_pthread_dlopen.c',
-                 ['side module ctor', 'done join', 'side module atexit'],
-                 assert_all=True)
+                 ['side module ctor', 'done', 'side module atexit'],
+                 assert_all=True, cflags=args)
 
   @needs_dylink
   @requires_pthreads

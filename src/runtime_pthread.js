@@ -44,7 +44,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 
   {{{ asyncIf(ASYNCIFY == 2) }}}function handleMessage(e) {
     try {
-      var msgData = e['data'];
+      var msgData = e.data;
       //dbg('msgData: ' + Object.keys(msgData));
       var cmd = msgData.cmd;
       if (cmd == {{{ CMD_LOAD }}}) { // Preload command that is called once per worker to parse and load the Emscripten code.
@@ -174,8 +174,6 @@ if (ENVIRONMENT_IS_PTHREAD) {
           dbg(`worker: Pthread 0x${_pthread_self().toString(16)} completed its main entry point with an 'unwind', keeping the worker alive for asynchronous operation.`);
 #endif
         }
-      } else if (msgData.target === 'setimmediate') {
-        // no-op
       } else if (cmd == {{{ CMD_CHECK_MAILBOX }}}) {
         if (initializedJS) {
           checkMailbox();

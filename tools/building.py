@@ -52,7 +52,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 128
+EXPECTED_BINARYEN_VERSION = 129
 
 _is_ar_cache: dict[str, bool] = {}
 # the exports the user requested
@@ -540,7 +540,7 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   # should not minify these symbol names.
   CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
-  if settings.MODULARIZE and settings.ENVIRONMENT_MAY_BE_WEB and not settings.EXPORT_ES6:
+  if settings.MODULARIZE:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
 
   if settings.AUDIO_WORKLET:

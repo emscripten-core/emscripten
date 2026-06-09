@@ -18,8 +18,18 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.0 (in development)
+6.0.1 (in development)
 ----------------------
+- The `-sUSE_PTHREADS` and `-sMEMORY64` flags have been deprecated in favor of the
+  more standard `-pthread` and `-m64` (or `--target=wasm64`) flags. (#27025)
+
+6.0.0 - 06/04/26
+----------------
+- On Windows, Emscripten now ships `.exe` tool launchers, rather
+  than `.bat` and/or `.ps1`.  This means that any scripts that explicitly
+  reference, e.g. `emcc.bat`, will need to be updated to just `emcc` (or
+  `emcc.exe`).  For the time being you can still get the old `.bat` files by
+  running `tools/maint/create_entry_points.py --bat-files`. (#24858)
 - When performing a streaming Fetch operation, the max chunk size of downloaded
   bytes that is handed over to the Wasm side from JS is now capped to maximum
   of 8 megabytes. This ensures that a streaming Fetch stays streaming, rather
@@ -37,7 +47,7 @@ See docs/process.md for more on how version tagging works.
   manually transpile the output of emscripten (e.g. using babel for JS and
   binaryen for wasm). (#26677)
 - musl libc updated from v1.2.5 to v1.2.6. (#26860)
-- libpng port updated from 1.6.55 to 1.6.56. (#26592)
+- libpng port updated from 1.6.55 to 1.6.58. (#26592 and #26983)
 - The `-m64` compiler flag is now honored, and works as an alias for
   `-sMEMORY64` and/or `--target=wasm64`. (#26765)
 - The autopersistence feature in IDBFS mount now supports registering a global
@@ -55,6 +65,10 @@ See docs/process.md for more on how version tagging works.
   implied).  Also, if you include real dynamic libraries in your link command
   emscripten will now automatically produce a dynamically linked program
   (`-sMAIN_MODULE=2` is implied). (#25930)
+- The `PThread.runningWorkers` field was removed from the `PThread` object.
+  If you have JS code that was depending on this you can transition to using the
+  `PThread.pthreads` object. (#26998)
+- The POSIX `pause()` function will now return 0 rather than EINTR. (#27044)
 
 5.0.7 - 04/30/26
 ----------------

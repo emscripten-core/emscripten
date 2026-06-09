@@ -180,14 +180,14 @@ weak int __syscall_getresgid32(intptr_t ruid, intptr_t euid, intptr_t suid) {
   return 0;
 }
 
-weak int __syscall_pause() {
-  REPORT(pause);
-  return -EINTR; // we can't pause
-}
-
 weak int __syscall_madvise(intptr_t addr, size_t length, int advice) {
   REPORT(madvise);
   // advice is welcome, but ignored
+  return 0;
+}
+
+weak int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
+  // this is purely advisory, so we don't warn
   return 0;
 }
 

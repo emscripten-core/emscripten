@@ -108,13 +108,17 @@ var LibraryPThread = {
     // terminated, but is returned to this pool as an optimization so that
     // starting the next thread is faster.
     unusedWorkers: [],
-    // Contains all Workers that are currently hosting an active pthread.
-    runningWorkers: [],
     tlsInitFunctions: [],
     // Maps pthread_t pointers to the workers on which they are running.  For
     // the reverse mapping, each worker has a `pthread_ptr` when its running a
     // pthread.
     pthreads: {},
+#if MAIN_MODULE
+    outstandingPromises: {},
+    // Finished threads are threads that have finished running but we are not yet
+    // joined.
+    finishedThreads: new Set(),
+#endif
 #if ASSERTIONS
     nextWorkerID: 1,
 #endif
@@ -130,8 +134,7 @@ var LibraryPThread = {
       while (pthreadPoolSize--) {
         PThread.allocateUnusedWorker();
       }
-#endif
-#if !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
+#if !MINIMAL_RUNTIME
       // MINIMAL_RUNTIME takes care of calling loadWasmModuleToAllWorkers
       // in postamble_minimal.js
       addOnPreRun(async () => {
@@ -142,13 +145,8 @@ var LibraryPThread = {
         removeRunDependency('loading-workers');
 #endif // PTHREAD_POOL_DELAY_LOAD
       });
-#endif // !MINIMAL_RUNTIME && PTHREAD_POOL_SIZE
-#if MAIN_MODULE
-      PThread.outstandingPromises = {};
-      // Finished threads are threads that have finished running but we are not yet
-      // joined.
-      PThread.finishedThreads = new Set();
-#endif
+#endif // !MINIMAL_RUNTIME
+#endif // PTHREAD_POOL_SIZE
     },
 
 #if PTHREADS_PROFILING
@@ -191,14 +189,13 @@ var LibraryPThread = {
       // pthreads will continue to be executing after `worker.terminate` has
       // returned.  For this reason, we don't call `returnWorkerToPool` here or
       // free the underlying pthread data structures.
-      for (var worker of PThread.runningWorkers) {
+      for (var worker of Object.values(PThread.pthreads)) {
         terminateWorker(worker);
       }
       for (var worker of PThread.unusedWorkers) {
         terminateWorker(worker);
       }
       PThread.unusedWorkers = [];
-      PThread.runningWorkers = [];
       PThread.pthreads = {};
     },
 
@@ -229,7 +226,6 @@ var LibraryPThread = {
       // Note: worker is intentionally not terminated so the pool can
       // dynamically grow.
       PThread.unusedWorkers.push(worker);
-      PThread.runningWorkers.splice(PThread.runningWorkers.indexOf(worker), 1);
       // Not a running Worker anymore
       // Detach the worker from the pthread object, and return it to the
       // worker pool as an unused worker.
@@ -275,25 +271,29 @@ var LibraryPThread = {
     //                    ready to host pthreads.
     loadWasmModuleToWorker: (worker) => new Promise((onFinishedLoading) => {
       worker.onmessage = (e) => {
-        var d = e['data'];
+        var d = e.data;
         var cmd = d.cmd;
 #if PTHREADS_DEBUG
         dbg(`main thread: received message '${cmd}' from worker. ${d}`);
 #endif
 
         // If this message is intended to a recipient that is not the main
-        // thread, forward it to the target thread.
-        if (d.targetThread && d.targetThread != _pthread_self()) {
+        // thread, forward it to the target thread. This is currently only
+        // used by `CMD_CHECK_MAILBOX`.
+        if (d.targetThread) {
+#if ASSERTIONS
+          // pthreads should not be relaying messages to themselves.
+          assert(d.targetThread != _pthread_self());
+#endif
           var targetWorker = PThread.pthreads[d.targetThread];
-          if (targetWorker) {
-            targetWorker.postMessage(d, d.transferList);
-          } else {
-            err(`worker sent message (${cmd}) to pthread (${d.targetThread}) that no longer exists`);
-          }
+#if ASSERTIONS
+          if (!targetWorker) err(`worker sent message (${cmd}) to pthread (${d.targetThread}) that no longer exists`);
+#endif
+          targetWorker?.postMessage(d);
           return;
         }
 
-        if (d === 'setimmediate') {
+        if (d === 'setimmediate' || d === '_si') {
           // Worker wants to postMessage() to itself to implement setImmediate()
           // emulation.
           worker.postMessage(d);
@@ -312,6 +312,7 @@ var LibraryPThread = {
             // back into user code to free thread data. Without this it's possible
             // the unwind or ExitStatus exception could escape here.
             callUserCallback(() => cleanupThread(d.thread));
+            break;
 #if MAIN_MODULE
           case {{{ CMD_MARK_AS_FINISHED }}}:
             markAsFinished(d.thread);
@@ -439,7 +440,7 @@ var LibraryPThread = {
         sharedModules,
 #endif
 #if ASSERTIONS
-        'workerID': worker.workerID,
+        workerID: worker.workerID,
 #endif
       });
     }),
@@ -548,6 +549,7 @@ var LibraryPThread = {
       worker.workerID = PThread.nextWorkerID++;
 #endif
       PThread.unusedWorkers.push(worker);
+      return worker;
     },
 
     getNewWorker() {
@@ -576,8 +578,8 @@ var LibraryPThread = {
 #endif
 #endif // PTHREAD_POOL_SIZE_STRICT
 #if PTHREAD_POOL_SIZE_STRICT < 2 || ENVIRONMENT_MAY_BE_NODE
-        PThread.allocateUnusedWorker();
-        PThread.loadWasmModuleToWorker(PThread.unusedWorkers[0]);
+        var newWorker = PThread.allocateUnusedWorker();
+        PThread.loadWasmModuleToWorker(newWorker);
 #endif
       }
       return PThread.unusedWorkers.pop();
@@ -596,7 +598,7 @@ var LibraryPThread = {
     // the onmessage handlers if the message was coming from a valid worker.
     worker.onmessage = (e) => {
 #if ASSERTIONS
-      var cmd = e['data'].cmd;
+      var cmd = e.data.cmd;
       err(`received "${cmd}" command from terminated worker: ${worker.workerID}`);
 #endif
     };
@@ -708,8 +710,6 @@ var LibraryPThread = {
 #if ASSERTIONS
     assert(!worker.pthread_ptr);
 #endif
-
-    PThread.runningWorkers.push(worker);
 
     // Add to pthreads map
     PThread.pthreads[threadParams.pthread_ptr] = worker;
@@ -1312,9 +1312,6 @@ var LibraryPThread = {
   },
 
   _emscripten_thread_mailbox_await__deps: ['$checkMailbox', '$waitAsyncPolyfilled'],
-  // Closure's Atomics.waitAsync extern incorrectly returns Promise<string>,
-  // but the spec returns a result object with async/value fields.
-  _emscripten_thread_mailbox_await__docs: '/** @suppress {missingProperties} */',
   _emscripten_thread_mailbox_await: (pthread_ptr) => {
     if (!waitAsyncPolyfilled) {
       // Wait on the pthread's initial self-pointer field because it is easy and

@@ -1657,7 +1657,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
   },
 
   $emscriptenWebGLGetTexPixelData__deps: ['$computeUnpackAlignedImageSize', '$colorChannelsInGlTextureFormat', '$heapObjectForWebGLType', '$toTypedArrayIndex'],
-  $emscriptenWebGLGetTexPixelData: (type, format, width, height, pixels, internalFormat) => {
+  $emscriptenWebGLGetTexPixelData: (type, format, width, height, pixels) => {
     var heap = heapObjectForWebGLType(type);
     var sizePerPixel = colorChannelsInGlTextureFormat(format) * heap.BYTES_PER_ELEMENT;
     var bytes = computeUnpackAlignedImageSize(width, height, sizePerPixel);
@@ -1711,7 +1711,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     }
 #endif
-    var pixelData = pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, internalFormat) : null;
+    var pixelData = pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels) : null;
     GLctx.texImage2D(target, level, internalFormat, width, height, border, format, type, pixelData);
   },
 
@@ -1745,7 +1745,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
     }
 #endif
-    var pixelData = pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, 0) : null;
+    var pixelData = pixels ? emscriptenWebGLGetTexPixelData(type, format, width, height, pixels) : null;
     GLctx.texSubImage2D(target, level, xoffset, yoffset, width, height, format, type, pixelData);
   },
 
@@ -1773,7 +1773,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     }
 #endif
 #if INCLUDE_WEBGL1_FALLBACK
-    var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels, format);
+    var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height, pixels);
     if (!pixelData) {
       GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS

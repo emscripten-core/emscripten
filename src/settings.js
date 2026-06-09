@@ -260,6 +260,7 @@ var MEMORY_GROWTH_LINEAR_STEP = -1;
 // flags, which do the same thing.
 // Assumes WASM_BIGINT.
 // [compile+link]
+// [deprecated]
 var MEMORY64 = 0;
 
 // Sets the initial size of the table when MAIN_MODULE or SIDE_MODULE is used
@@ -2189,8 +2190,8 @@ var WASM_ESM_INTEGRATION = false;
 var JS_BASE64_API = false;
 
 // Enable support for GrowableSharedArrayBuffer.
-// This features is only available behind a flag in recent versions of
-// node/chrome.
+// This feature has only recently become available across major browser engines
+// and Node.js.
 // [experimental]
 // [link]
 var GROWABLE_ARRAYBUFFERS = false;

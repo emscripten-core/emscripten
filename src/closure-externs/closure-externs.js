@@ -50,17 +50,6 @@ Math.clz32 = function() {};
 Math.trunc = function() {};
 
 /**
- * Atomics
- */
-
-var Atomics = {};
-/**
- * @param {number=} maxWaitMilliseconds
- * @suppress {duplicate, checkTypes}
- */
-Atomics.waitAsync = function(i32a, index, value, maxWaitMilliseconds) {};
-
-/**
  * @const
  * @suppress {duplicate, checkTypes}
  */
@@ -204,13 +193,6 @@ var id;
  * POV this is "extern".
  */
 var moduleArg;
-
-/**
- * Used in MODULARIZE mode.
- * We need to access this after the code we pass to closure so from closure's
- * POV this is "extern".
- */
-var moduleRtn;
 
 /**
  * This was removed from upstream closure compiler in
