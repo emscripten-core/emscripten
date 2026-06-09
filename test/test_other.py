@@ -15661,16 +15661,14 @@ console.log('OK');'''
                       '-o', 'hello.js'],
                      'CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE')
 
-  def test_cross_origin_storage_warning_without_async_compilation(self):
-    """CROSS_ORIGIN_STORAGE + WASM_ASYNC_COMPILATION=0 must warn."""
-    proc = self.run_process([EMCC, test_file('hello_world.cpp'),
-                             '-sCROSS_ORIGIN_STORAGE=1',
-                             '-sENVIRONMENT=web',
-                             '-sWASM_ASYNC_COMPILATION=0',
-                             '-o', 'hello.js'],
-                            stderr=PIPE)
-    self.assertContained('CROSS_ORIGIN_STORAGE has no effect when WASM_ASYNC_COMPILATION=0',
-                         proc.stderr)
+  def test_cross_origin_storage_error_without_async_compilation(self):
+    """CROSS_ORIGIN_STORAGE + WASM_ASYNC_COMPILATION=0 must be a hard link-time error."""
+    self.assert_fail([EMCC, test_file('hello_world.cpp'),
+                      '-sCROSS_ORIGIN_STORAGE=1',
+                      '-sENVIRONMENT=web',
+                      '-sWASM_ASYNC_COMPILATION=0',
+                      '-o', 'hello.js'],
+                     'CROSS_ORIGIN_STORAGE is not compatible with WASM_ASYNC_COMPILATION=0')
 
   def test_cross_origin_storage_warning_with_split_module(self):
     """CROSS_ORIGIN_STORAGE + SPLIT_MODULE must warn that secondary files are not covered."""

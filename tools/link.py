@@ -1215,7 +1215,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if not settings.ENVIRONMENT_MAY_BE_WEB:
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect when the target environment does not include the web (navigator.crossOriginStorage is not available outside the browser)')
     if not settings.WASM_ASYNC_COMPILATION:
-      diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect when WASM_ASYNC_COMPILATION=0 (synchronous instantiation does not use the COS fetch path)')
+      exit_with_error('CROSS_ORIGIN_STORAGE is not compatible with WASM_ASYNC_COMPILATION=0 (synchronous instantiation does not use the COS fetch path)')
     if settings.SPLIT_MODULE:
       diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; deferred split modules (.deferred.wasm) are fetched via the normal path and are not stored in or retrieved from COS')
     if settings.MAIN_MODULE:

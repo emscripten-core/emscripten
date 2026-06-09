@@ -132,9 +132,9 @@ Requirements and restrictions
   (``-sSINGLE_FILE``): the Wasm binary is embedded directly into the JS
   output and has no standalone ``.wasm`` file or fetchable URL to key the
   hash on.
-- It emits a **warning** with ``-sWASM_ASYNC_COMPILATION=0``: the
-  synchronous instantiation path bypasses ``instantiateAsync()`` entirely,
-  so the COS code is never reached.
+- It produces a **hard link-time error** with ``-sWASM_ASYNC_COMPILATION=0``:
+  the synchronous instantiation path bypasses ``instantiateAsync()`` entirely,
+  so the COS code can never be reached.
 - It covers **only the primary ``.wasm`` file**. Secondary files produced by
   ``-sSPLIT_MODULE`` (``.deferred.wasm``) and side modules loaded at runtime
   via ``dlopen`` in ``-sMAIN_MODULE`` builds are fetched through the normal
