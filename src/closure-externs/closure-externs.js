@@ -188,13 +188,6 @@ var devicePixelRatio;
 var id;
 
 /**
- * Used in MODULARIZE mode as the name of the incoming module argument.
- * This is generated outside of the code we pass to closure so from closure's
- * POV this is "extern".
- */
-var moduleArg;
-
-/**
  * This was removed from upstream closure compiler in
  * https://github.com/google/closure-compiler/commit/f83322c1b.
  * Perhaps we should remove it too?

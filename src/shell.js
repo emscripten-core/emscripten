@@ -25,8 +25,6 @@
 #if MODULARIZE
 #if MODULARIZE == 'instance'
 var Module = {};
-#else
-var Module = moduleArg;
 #endif
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
