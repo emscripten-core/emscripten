@@ -328,7 +328,7 @@ via a reference to that config object:
        // `this` inside the callback is Emscripten's internal Module object;
        // read the hash via the outer Module reference instead.
        const cosHash = Module['wasmHash'];
-       if (cosHash?.value && 'crossOriginStorage' in navigator) {
+       if (cosHash?.value && 'navigator' in self && 'crossOriginStorage' in navigator) {
          navigator.crossOriginStorage.requestFileHandles([cosHash])
            .then(handles => handles[0].getFile())
            .then(f => f.arrayBuffer())
