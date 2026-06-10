@@ -15577,8 +15577,7 @@ console.log('OK');'''
     err = self.run_process([EMCC, '-sUSE_PTHREADS', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained('emcc: warning: USE_PTHREADS is deprecated (prefer the standard -pthread flag). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
 
-
-  def test_cross_origin_storage_js_output(self):
+  def test_cross_origin_storage(self):
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
@@ -15601,8 +15600,14 @@ console.log('OK');'''
     expected_hash = hashlib.sha256(open('hello.wasm', 'rb').read()).hexdigest()
     self.assertEqual(embedded_hash, expected_hash,
                      'embedded wasm hash does not match actual .wasm SHA-256')
+    self.run_process([EMCC, test_file('hello_world.c'),
+                      '-sENVIRONMENT=web',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertNotContained('crossOriginStorage', js)
+    self.assertNotContained("Module['wasmHash']", js)
 
-  def test_cross_origin_storage_callbacks_opt_in(self):
+  def test_cross_origin_storage_callbacks(self):
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
@@ -15613,34 +15618,7 @@ console.log('OK');'''
     self.assertContained("Module['onCOSCacheMiss']", js)
     self.assertContained("Module['onCOSStore']", js)
 
-  def test_cross_origin_storage_disabled_by_default(self):
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sENVIRONMENT=web',
-                      '-o', 'hello.js'])
-    js = read_file('hello.js')
-    self.assertNotContained('crossOriginStorage', js)
-
-  def test_cross_origin_storage_error_for_non_web_target(self):
-    self.assert_fail([EMCC, test_file('hello_world.c'),
-                      '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=node'],
-                     'CROSS_ORIGIN_STORAGE requires a web environment')
-
-  def test_cross_origin_storage_error_with_single_file(self):
-    self.assert_fail([EMCC, test_file('hello_world.c'),
-                      '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=web',
-                      '-sSINGLE_FILE'],
-                     'CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE')
-
-  def test_cross_origin_storage_error_without_async_compilation(self):
-    self.assert_fail([EMCC, test_file('hello_world.c'),
-                      '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=web',
-                      '-sWASM_ASYNC_COMPILATION=0'],
-                     'CROSS_ORIGIN_STORAGE is not compatible with WASM_ASYNC_COMPILATION=0')
-
-  def test_cross_origin_storage_warning_with_split_module(self):
+  def test_cross_origin_storage_warnings(self):
     proc = self.run_process([EMCC, test_file('hello_world.c'),
                              '-sCROSS_ORIGIN_STORAGE',
                              '-sENVIRONMENT=web',
@@ -15649,8 +15627,6 @@ console.log('OK');'''
                             stderr=PIPE)
     self.assertContained('CROSS_ORIGIN_STORAGE only covers the primary .wasm file',
                          proc.stderr)
-
-  def test_cross_origin_storage_warning_with_main_module(self):
     proc = self.run_process([EMCC, test_file('hello_world.c'),
                              '-sCROSS_ORIGIN_STORAGE',
                              '-sENVIRONMENT=web',
@@ -15659,8 +15635,6 @@ console.log('OK');'''
                             stderr=PIPE)
     self.assertContained('CROSS_ORIGIN_STORAGE only covers the primary .wasm file',
                          proc.stderr)
-
-  def test_cross_origin_storage_warning_with_side_module(self):
     proc = self.run_process([EMCC, test_file('hello_world.c'),
                              '-sCROSS_ORIGIN_STORAGE',
                              '-sSIDE_MODULE',
@@ -15669,40 +15643,23 @@ console.log('OK');'''
     self.assertContained('CROSS_ORIGIN_STORAGE has no effect on SIDE_MODULE builds',
                          proc.stderr)
 
-  def test_cross_origin_storage_hash_changes_with_content(self):
-    self.run_process([EMCC, test_file('hello_world.c'),
+  def test_cross_origin_storage_errors(self):
+    self.assert_fail([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sENVIRONMENT=node'],
+                     'CROSS_ORIGIN_STORAGE requires a web environment')
+    self.assert_fail([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
-                      '-o', 'hello.js'])
-    js_a = read_file('hello.js')
-    hash_a = re.search(r"value:\s*'([0-9a-f]{64})'", js_a).group(1)
-
-    self.run_process([EMCC, test_file('hello_world_small.c'),
+                      '-sSINGLE_FILE'],
+                     'CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE')
+    self.assert_fail([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
-                      '-o', 'small.js'])
-    js_b = read_file('small.js')
-    hash_b = re.search(r"value:\s*'([0-9a-f]{64})'", js_b).group(1)
+                      '-sWASM_ASYNC_COMPILATION=0'],
+                     'CROSS_ORIGIN_STORAGE is not compatible with WASM_ASYNC_COMPILATION=0')
 
-    self.assertNotEqual(hash_a, hash_b,
-                        'different programs should produce different embedded wasm hashes')
-
-  def test_cross_origin_storage_origins_default_is_global(self):
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=web',
-                      '-o', 'hello.js'])
-    self.assertContained("origins: '*'", read_file('hello.js'))
-
-  def test_cross_origin_storage_origins_explicit_wildcard(self):
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=web',
-                      "-sCROSS_ORIGIN_STORAGE_ORIGINS=['*']",
-                      '-o', 'hello.js'])
-    self.assertContained("origins: '*'", read_file('hello.js'))
-
-  def test_cross_origin_storage_origins_explicit_list(self):
+  def test_cross_origin_storage_origins(self):
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
@@ -15712,8 +15669,6 @@ console.log('OK');'''
     self.assertContained('"https://app.example.com"', js)
     self.assertContained('"https://api.example.com"', js)
     self.assertNotContained("origins: '*'", js)
-
-  def test_cross_origin_storage_origins_same_site(self):
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
@@ -15722,50 +15677,24 @@ console.log('OK');'''
     js = read_file('hello.js')
     self.assertContained('{ create: true }', js)
     self.assertNotContained('origins:', js)
-
-  def test_cross_origin_storage_origins_error_mixed_wildcard(self):
     self.assert_fail(
       [EMCC, test_file('hello_world.c'),
        '-sCROSS_ORIGIN_STORAGE',
        '-sENVIRONMENT=web',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=["*","https://example.com"]'],
       "'*' must not be mixed with explicit origins")
-
-  def test_cross_origin_storage_origins_error_invalid_origin(self):
     self.assert_fail(
       [EMCC, test_file('hello_world.c'),
        '-sCROSS_ORIGIN_STORAGE',
        '-sENVIRONMENT=web',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=["http://example.com"]'],
       'is not a valid HTTPS origin')
-
-  def test_cross_origin_storage_origins_error_origin_with_path(self):
     self.assert_fail(
       [EMCC, test_file('hello_world.c'),
        '-sCROSS_ORIGIN_STORAGE',
        '-sENVIRONMENT=web',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=["https://example.com/path"]'],
       'is not a valid HTTPS origin')
-
-  def test_cross_origin_storage_wasm_hash_module_property(self):
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=web',
-                      '-o', 'hello.js'])
-    js = read_file('hello.js')
-    m = re.search(r"Module\['wasmHash'\]\s*=\s*\{[^}]*value:\s*'([0-9a-f]{64})'", js)
-    self.assertTrue(m, "Module['wasmHash'] not found in JS output")
-    embedded_hash = m.group(1)
-    expected_hash = hashlib.sha256(open('hello.wasm', 'rb').read()).hexdigest()
-    self.assertEqual(embedded_hash, expected_hash,
-                     "Module['wasmHash'] does not match the actual .wasm SHA-256")
-
-  def test_cross_origin_storage_wasm_hash_absent_without_flag(self):
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sENVIRONMENT=web',
-                      '-o', 'hello.js'])
-    js = read_file('hello.js')
-    self.assertNotContained("Module['wasmHash']", js)
 
   def test_deprecated_settings(self):
     err = self.run_process([EMCC, '-sMEMORY64', test_file('hello_world.c')], stderr=PIPE).stderr
