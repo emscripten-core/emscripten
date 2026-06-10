@@ -32,7 +32,7 @@ See docs/process.md for more on how version tagging works.
 - New experimental `-sCROSS_ORIGIN_STORAGE` linker flag integrating the
   proposed [Cross-Origin Storage browser API](https://github.com/WICG/cross-origin-storage)
   as a progressive enhancement for Wasm loading on the web target. See
-  `docs/compiling/CrossOriginStorage.rst` for details.
+  `docs/compiling/CrossOriginStorage.rst` for details. (#27066)
 - The `-sUSE_PTHREADS` and `-sMEMORY64` flags have been deprecated in favor of the
   more standard `-pthread` and `-m64` (or `--target=wasm64`) flags. (#27025)
 - Adds wasm-bindgen support. When `-sWASM_BINDGEN` is set, Emscripten will call
