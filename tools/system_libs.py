@@ -2322,7 +2322,7 @@ class libomp(Library):
     '-Wno-covered-switch-default',
     '-Wno-frame-address', '-Wno-strict-aliasing', '-Wno-switch',
     '-Wno-uninitialized', '-Wno-return-type-c-linkage', '-Wno-cast-qual',
-    '-Wno-int-to-void-pointer-cast', '-Wno-#warnings','-Wno-unused-function',
+    '-Wno-int-to-void-pointer-cast', '-Wno-#warnings', '-Wno-unused-function',
     '-Wno-sign-compare', '-Wno-comment',
   ]
   src_dir = 'system/lib/libomp/src'

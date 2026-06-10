@@ -550,7 +550,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       else:
         exit_with_error(f'invalid value for --output-eol: `{style}`')
     # Record PTHREADS setting because it controls whether --shared-memory is passed to lld
-    elif arg in ('-fopenmp', '-fopenmp=libomp'):
+    elif arg in {'-fopenmp', '-fopenmp=libomp'}:
       options.openmp = 1
       # Openmp needs pthreads, they are implied by -fopenmp
       settings.PTHREADS = 1
