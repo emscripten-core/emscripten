@@ -26,11 +26,11 @@ from tools.system_libs import USE_NINJA
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libcompiler_rt',
-    'libcompiler_rt-mt',
-    'libcompiler_rt-legacysjlj',
-    'libcompiler_rt-wasmsjlj',
-    'libcompiler_rt-ww',
+    'libclang_rt.builtins',
+    'libclang_rt.builtins-mt',
+    'libclang_rt.builtins-legacysjlj',
+    'libclang_rt.builtins-wasmsjlj',
+    'libclang_rt.builtins-ww',
     'libc',
     'libc-debug',
     'libc-mt-debug',
@@ -120,8 +120,8 @@ MINIMAL_PIC_TASKS = [
     'libGL-mt-emu-webgl2-ofb-getprocaddr',
     'libsockets_proxy',
     'crtbegin-mt',
-    'libsanitizer_common_rt',
-    'libubsan_rt',
+    'libclang_rt.sanitizer_common',
+    'libclang_rt.ubsan',
     'libwasm_workers-debug',
     'libfetch',
     'libfetch-mt',
