@@ -262,14 +262,14 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(compiler_rt.get_path(absolute=True))
     return 0
 
-  resource_dir = [a for a in args if a.startswith(('-resource-dir=', '--resource-dir='))]
-  if resource_dir:
-    resource_dir = resource_dir[-1].split('=')[1]
-
   print_file_name = [a for a in args if a.startswith(('-print-file-name=', '--print-file-name='))]
   if print_file_name:
     libname = print_file_name[-1].split('=')[1]
-    system_libpath = resource_dir or cache.get_lib_dir(absolute=True)
+    resource_dir = [a for a in args if a.startswith(('-resource-dir=', '--resource-dir='))]
+    if resource_dir:
+      system_libpath = resource_dir[-1].split('=')[1]
+    else:
+      system_libpath = cache.get_lib_dir(absolute=True)
     fullpath = os.path.join(system_libpath, libname)
     if os.path.isfile(fullpath):
       print(fullpath)
