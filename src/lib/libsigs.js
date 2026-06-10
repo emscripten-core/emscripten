@@ -359,6 +359,7 @@ sigs = {
   _emval_instanceof__sig: 'ipp',
   _emval_invoke__sig: 'dppppp',
   _emval_invoke_i64__sig: 'jppppp',
+  _emval_is_catchable_cpp_exception_object__sig: 'ip',
   _emval_is_number__sig: 'ip',
   _emval_is_string__sig: 'ip',
   _emval_iter_begin__sig: 'pp',
