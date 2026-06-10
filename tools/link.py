@@ -796,12 +796,6 @@ def get_dylibs(options, linker_args):
 def setup_cross_origin_storage():
   if not settings.ENVIRONMENT_MAY_BE_WEB:
     exit_with_error('CROSS_ORIGIN_STORAGE requires a web environment (navigator.crossOriginStorage is not available outside the browser)')
-  if settings.SPLIT_MODULE:
-    diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; deferred split modules (.deferred.wasm) are fetched via the normal path and are not stored in or retrieved from COS')
-  if settings.MAIN_MODULE:
-    diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; dynamically-linked side modules loaded via dlopen are fetched via the normal path and are not stored in or retrieved from COS')
-  if settings.SIDE_MODULE:
-    diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect on SIDE_MODULE builds (no JS glue is emitted to carry the hash or perform the COS lookup)')
   origins = settings.CROSS_ORIGIN_STORAGE_ORIGINS
   if '*' in origins and len(origins) > 1:
     exit_with_error("CROSS_ORIGIN_STORAGE_ORIGINS: '*' must not be mixed with explicit origins")

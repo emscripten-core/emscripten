@@ -15607,31 +15607,6 @@ console.log('OK');'''
     self.assertNotContained('crossOriginStorage', js)
     self.assertNotContained("Module['wasmHash']", js)
 
-  def test_cross_origin_storage_warnings(self):
-    proc = self.run_process([EMCC, test_file('hello_world.c'),
-                             '-sCROSS_ORIGIN_STORAGE',
-                             '-sENVIRONMENT=web',
-                             '-sSPLIT_MODULE',
-                             '-o', 'hello.js'],
-                            stderr=PIPE)
-    self.assertContained('CROSS_ORIGIN_STORAGE only covers the primary .wasm file',
-                         proc.stderr)
-    proc = self.run_process([EMCC, test_file('hello_world.c'),
-                             '-sCROSS_ORIGIN_STORAGE',
-                             '-sENVIRONMENT=web',
-                             '-sMAIN_MODULE',
-                             '-o', 'hello.js'],
-                            stderr=PIPE)
-    self.assertContained('CROSS_ORIGIN_STORAGE only covers the primary .wasm file',
-                         proc.stderr)
-    proc = self.run_process([EMCC, test_file('hello_world.c'),
-                             '-sCROSS_ORIGIN_STORAGE',
-                             '-sSIDE_MODULE',
-                             '-o', 'hello.wasm'],
-                            stderr=PIPE)
-    self.assertContained('CROSS_ORIGIN_STORAGE has no effect on SIDE_MODULE builds',
-                         proc.stderr)
-
   def test_cross_origin_storage_errors(self):
     self.assert_fail([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
@@ -15647,6 +15622,10 @@ console.log('OK');'''
                       '-sENVIRONMENT=web',
                       '-sWASM_ASYNC_COMPILATION=0'],
                      'CROSS_ORIGIN_STORAGE is not compatible with WASM_ASYNC_COMPILATION=0')
+    self.assert_fail([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sSIDE_MODULE'],
+                     'CROSS_ORIGIN_STORAGE is not compatible with SIDE_MODULE')
 
   def test_cross_origin_storage_origins(self):
     self.run_process([EMCC, test_file('hello_world.c'),

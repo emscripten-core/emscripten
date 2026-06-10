@@ -152,6 +152,7 @@ INCOMPATIBLE_SETTINGS = [
     ('CROSS_ORIGIN', 'NO_PTHREADS', None),
     ('CROSS_ORIGIN_STORAGE', 'SINGLE_FILE', 'the .wasm binary is inlined directly into the JS output and has no fetchable URL to key the hash on'),
     ('CROSS_ORIGIN_STORAGE', 'NO_WASM_ASYNC_COMPILATION', 'synchronous instantiation does not use the COS fetch path'),
+    ('CROSS_ORIGIN_STORAGE', 'SIDE_MODULE', 'no JS glue is emitted to carry the hash or perform the COS lookup'),
 ]
 
 EXPERIMENTAL_SETTINGS = {
