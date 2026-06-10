@@ -778,7 +778,7 @@ f.close()
 
   @crossplatform
   def test_print_file_name_with_resource_dir(self):
-    file = Path(EMCC).stem
+    file = Path(EMCC).name
     output = self.run_process([EMCC, f'-print-file-name={file}'], stdout=PIPE).stdout
     output_relative = self.run_process([EMCC, '-resource-dir=' + path_from_root(), f'-print-file-name={file}'], stdout=PIPE).stdout
     self.assertNotExists(output.rstrip())
