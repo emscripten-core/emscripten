@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 6.0.1 (in development)
 ----------------------
+- Dynamic linking now explicitly requires asynchronous Wasm compilation. The
+  process of loading side modules at startup currently depends on this. (#27086)
 - The `-sUSE_PTHREADS` and `-sMEMORY64` flags have been deprecated in favor of the
   more standard `-pthread` and `-m64` (or `--target=wasm64`) flags. (#27025)
 - Adds wasm-bindgen support. When `-sWASM_BINDGEN` is set, Emscripten will call
