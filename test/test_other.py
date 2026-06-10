@@ -15588,7 +15588,7 @@ console.log('OK');'''
 
     The embedded hash must be the correct SHA-256 of the compiled .wasm file.
     """
-    self.run_process([EMCC, test_file('hello_world.cpp'),
+    self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       '-o', 'hello.js'])
@@ -15631,7 +15631,7 @@ console.log('OK');'''
 
   def test_cross_origin_storage_callbacks_opt_in(self):
     """COS instrumentation callbacks are emitted only when opted in via INCOMING_MODULE_JS_API."""
-    self.run_process([EMCC, test_file('hello_world.cpp'),
+    self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       '-sINCOMING_MODULE_JS_API=onCOSCacheHit,onCOSCacheMiss,onCOSStore',
@@ -15643,7 +15643,7 @@ console.log('OK');'''
 
   def test_cross_origin_storage_disabled_by_default(self):
     """COS code must NOT appear when the flag is omitted (default off)."""
-    self.run_process([EMCC, test_file('hello_world.cpp'),
+    self.run_process([EMCC, test_file('hello_world.c'),
                       '-sENVIRONMENT=web',
                       '-o', 'hello.js'])
     js = read_file('hello.js')
@@ -15651,14 +15651,14 @@ console.log('OK');'''
 
   def test_cross_origin_storage_error_for_non_web_target(self):
     """CROSS_ORIGIN_STORAGE + non-web environment must be a hard link-time error."""
-    self.assert_fail([EMCC, test_file('hello_world.cpp'),
+    self.assert_fail([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=node'],
                      'CROSS_ORIGIN_STORAGE requires a web environment')
 
   def test_cross_origin_storage_error_with_single_file(self):
     """CROSS_ORIGIN_STORAGE + SINGLE_FILE must be a hard link-time error."""
-    self.assert_fail([EMCC, test_file('hello_world.cpp'),
+    self.assert_fail([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       '-sSINGLE_FILE'],
@@ -15666,7 +15666,7 @@ console.log('OK');'''
 
   def test_cross_origin_storage_error_without_async_compilation(self):
     """CROSS_ORIGIN_STORAGE + WASM_ASYNC_COMPILATION=0 must be a hard link-time error."""
-    self.assert_fail([EMCC, test_file('hello_world.cpp'),
+    self.assert_fail([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       '-sWASM_ASYNC_COMPILATION=0'],
@@ -15674,7 +15674,7 @@ console.log('OK');'''
 
   def test_cross_origin_storage_warning_with_split_module(self):
     """CROSS_ORIGIN_STORAGE + SPLIT_MODULE must warn that secondary files are not covered."""
-    proc = self.run_process([EMCC, test_file('hello_world.cpp'),
+    proc = self.run_process([EMCC, test_file('hello_world.c'),
                              '-sCROSS_ORIGIN_STORAGE',
                              '-sENVIRONMENT=web',
                              '-sSPLIT_MODULE',
@@ -15685,7 +15685,7 @@ console.log('OK');'''
 
   def test_cross_origin_storage_warning_with_main_module(self):
     """CROSS_ORIGIN_STORAGE + MAIN_MODULE must warn that side modules are not covered."""
-    proc = self.run_process([EMCC, test_file('hello_world.cpp'),
+    proc = self.run_process([EMCC, test_file('hello_world.c'),
                              '-sCROSS_ORIGIN_STORAGE',
                              '-sENVIRONMENT=web',
                              '-sMAIN_MODULE',
@@ -15696,7 +15696,7 @@ console.log('OK');'''
 
   def test_cross_origin_storage_warning_with_side_module(self):
     """CROSS_ORIGIN_STORAGE + SIDE_MODULE must warn: no JS glue is emitted."""
-    proc = self.run_process([EMCC, test_file('hello_world.cpp'),
+    proc = self.run_process([EMCC, test_file('hello_world.c'),
                              '-sCROSS_ORIGIN_STORAGE',
                              '-sSIDE_MODULE',
                              '-o', 'hello.wasm'],
@@ -15706,7 +15706,7 @@ console.log('OK');'''
 
   def test_cross_origin_storage_hash_changes_with_content(self):
     """Two different programs must produce different embedded hashes."""
-    self.run_process([EMCC, test_file('hello_world.cpp'),
+    self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       '-o', 'hello.js'])
@@ -15732,7 +15732,7 @@ console.log('OK');'''
 
     Globally available; the user only needs -sCROSS_ORIGIN_STORAGE.
     """
-    self.run_process([EMCC, test_file('hello_world.cpp'),
+    self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       '-o', 'hello.js'])
@@ -15743,7 +15743,7 @@ console.log('OK');'''
 
     This matches the implicit default.
     """
-    self.run_process([EMCC, test_file('hello_world.cpp'),
+    self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       "-sCROSS_ORIGIN_STORAGE_ORIGINS=['*']",
@@ -15752,7 +15752,7 @@ console.log('OK');'''
 
   def test_cross_origin_storage_origins_explicit_list(self):
     """An explicit origins list must be emitted as a JS array."""
-    self.run_process([EMCC, test_file('hello_world.cpp'),
+    self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       '-sCROSS_ORIGIN_STORAGE_ORIGINS=https://app.example.com,https://api.example.com',
@@ -15764,7 +15764,7 @@ console.log('OK');'''
 
   def test_cross_origin_storage_origins_same_site(self):
     """Empty origins list must omit the origins key entirely (same-site only)."""
-    self.run_process([EMCC, test_file('hello_world.cpp'),
+    self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       '-sCROSS_ORIGIN_STORAGE_ORIGINS=[]',
@@ -15777,7 +15777,7 @@ console.log('OK');'''
   def test_cross_origin_storage_origins_error_mixed_wildcard(self):
     """Mixing '*' with explicit origins must be a link-time error."""
     self.assert_fail(
-      [EMCC, test_file('hello_world.cpp'),
+      [EMCC, test_file('hello_world.c'),
        '-sCROSS_ORIGIN_STORAGE',
        '-sENVIRONMENT=web',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=["*","https://example.com"]'],
@@ -15786,7 +15786,7 @@ console.log('OK');'''
   def test_cross_origin_storage_origins_error_invalid_origin(self):
     """A non-HTTPS or malformed origin must be a link-time error."""
     self.assert_fail(
-      [EMCC, test_file('hello_world.cpp'),
+      [EMCC, test_file('hello_world.c'),
        '-sCROSS_ORIGIN_STORAGE',
        '-sENVIRONMENT=web',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=["http://example.com"]'],
@@ -15795,7 +15795,7 @@ console.log('OK');'''
   def test_cross_origin_storage_origins_error_origin_with_path(self):
     """An origin with a path component must be a link-time error."""
     self.assert_fail(
-      [EMCC, test_file('hello_world.cpp'),
+      [EMCC, test_file('hello_world.c'),
        '-sCROSS_ORIGIN_STORAGE',
        '-sENVIRONMENT=web',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=["https://example.com/path"]'],
@@ -15807,7 +15807,7 @@ console.log('OK');'''
     Custom Module['instantiateWasm'] implementations bypass instantiateAsync()
     and can read Module['wasmHash'] to get the build-time hash object.
     """
-    self.run_process([EMCC, test_file('hello_world.cpp'),
+    self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       '-o', 'hello.js'])
@@ -15825,7 +15825,7 @@ console.log('OK');'''
 
   def test_cross_origin_storage_wasm_hash_absent_without_flag(self):
     """Module['wasmHash'] must NOT appear when CROSS_ORIGIN_STORAGE is off."""
-    self.run_process([EMCC, test_file('hello_world.cpp'),
+    self.run_process([EMCC, test_file('hello_world.c'),
                       '-sENVIRONMENT=web',
                       '-o', 'hello.js'])
     js = read_file('hello.js')
