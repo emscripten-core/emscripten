@@ -756,7 +756,7 @@ f.close()
 
   @crossplatform
   def test_print_prog_name(self):
-    output = self.run_process([EMCC, '--print-prog-name=clang'], stdout=PIPE).stdout
+    output = self.run_process([EMCC, '-sASSERTIONS', '--print-prog-name=clang'], stdout=PIPE).stdout
     expected = CLANG_CC
     if WINDOWS:
       expected = os.path.normpath(utils.unsuffixed(CLANG_CC))
