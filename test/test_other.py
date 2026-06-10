@@ -15578,59 +15578,31 @@ console.log('OK');'''
     self.assertContained('emcc: warning: USE_PTHREADS is deprecated (prefer the standard -pthread flag). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
 
 
-  # ---------------------------------------------------------------------------
-  # Tests for CROSS_ORIGIN_STORAGE (-sCROSS_ORIGIN_STORAGE)
-  # https://github.com/WICG/cross-origin-storage
-  # ---------------------------------------------------------------------------
-
   def test_cross_origin_storage_js_output(self):
-    """COS code is present in JS when the feature is enabled for the web target.
-
-    The embedded hash must be the correct SHA-256 of the compiled .wasm file.
-    """
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       '-o', 'hello.js'])
     js = read_file('hello.js')
-
-    # Feature-detect pattern from the WICG explainer.
     self.assertContained("'crossOriginStorage' in navigator", js)
-
-    # Correct API call.
     self.assertContained('navigator.crossOriginStorage.requestFileHandles', js)
-
-    # Hash object shape required by the spec.
     self.assertContained("algorithm: 'SHA-256'", js)
-
-    # Globally-available flag appropriate for a public Wasm module.
     self.assertContained("origins: '*'", js)
-
-    # Cache-hit and cache-miss path markers.
     self.assertContained('getFile()', js)
     self.assertContained('createWritable()', js)
-
-    # Error name discrimination.
     self.assertContained("'NotFoundError'", js)
     self.assertContained("'NotAllowedError'", js)
-
-    # Callbacks are opt-in; must be absent from a default build.
     self.assertNotContained("Module['onCOSCacheHit']", js)
     self.assertNotContained("Module['onCOSCacheMiss']", js)
     self.assertNotContained("Module['onCOSStore']", js)
-
-    # The hash embedded in the JS must be a 64-char lowercase hex string …
     m = re.search(r"value:\s*'([0-9a-f]{64})'", js)
     self.assertTrue(m, 'could not find a 64-char hex hash value in JS output')
     embedded_hash = m.group(1)
-
-    # … and must exactly match the SHA-256 of the emitted .wasm file.
     expected_hash = hashlib.sha256(open('hello.wasm', 'rb').read()).hexdigest()
     self.assertEqual(embedded_hash, expected_hash,
                      'embedded wasm hash does not match actual .wasm SHA-256')
 
   def test_cross_origin_storage_callbacks_opt_in(self):
-    """COS instrumentation callbacks are emitted only when opted in via INCOMING_MODULE_JS_API."""
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
@@ -15642,7 +15614,6 @@ console.log('OK');'''
     self.assertContained("Module['onCOSStore']", js)
 
   def test_cross_origin_storage_disabled_by_default(self):
-    """COS code must NOT appear when the flag is omitted (default off)."""
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sENVIRONMENT=web',
                       '-o', 'hello.js'])
@@ -15650,14 +15621,12 @@ console.log('OK');'''
     self.assertNotContained('crossOriginStorage', js)
 
   def test_cross_origin_storage_error_for_non_web_target(self):
-    """CROSS_ORIGIN_STORAGE + non-web environment must be a hard link-time error."""
     self.assert_fail([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=node'],
                      'CROSS_ORIGIN_STORAGE requires a web environment')
 
   def test_cross_origin_storage_error_with_single_file(self):
-    """CROSS_ORIGIN_STORAGE + SINGLE_FILE must be a hard link-time error."""
     self.assert_fail([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
@@ -15665,7 +15634,6 @@ console.log('OK');'''
                      'CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE')
 
   def test_cross_origin_storage_error_without_async_compilation(self):
-    """CROSS_ORIGIN_STORAGE + WASM_ASYNC_COMPILATION=0 must be a hard link-time error."""
     self.assert_fail([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
@@ -15673,7 +15641,6 @@ console.log('OK');'''
                      'CROSS_ORIGIN_STORAGE is not compatible with WASM_ASYNC_COMPILATION=0')
 
   def test_cross_origin_storage_warning_with_split_module(self):
-    """CROSS_ORIGIN_STORAGE + SPLIT_MODULE must warn that secondary files are not covered."""
     proc = self.run_process([EMCC, test_file('hello_world.c'),
                              '-sCROSS_ORIGIN_STORAGE',
                              '-sENVIRONMENT=web',
@@ -15684,7 +15651,6 @@ console.log('OK');'''
                          proc.stderr)
 
   def test_cross_origin_storage_warning_with_main_module(self):
-    """CROSS_ORIGIN_STORAGE + MAIN_MODULE must warn that side modules are not covered."""
     proc = self.run_process([EMCC, test_file('hello_world.c'),
                              '-sCROSS_ORIGIN_STORAGE',
                              '-sENVIRONMENT=web',
@@ -15695,7 +15661,6 @@ console.log('OK');'''
                          proc.stderr)
 
   def test_cross_origin_storage_warning_with_side_module(self):
-    """CROSS_ORIGIN_STORAGE + SIDE_MODULE must warn: no JS glue is emitted."""
     proc = self.run_process([EMCC, test_file('hello_world.c'),
                              '-sCROSS_ORIGIN_STORAGE',
                              '-sSIDE_MODULE',
@@ -15705,7 +15670,6 @@ console.log('OK');'''
                          proc.stderr)
 
   def test_cross_origin_storage_hash_changes_with_content(self):
-    """Two different programs must produce different embedded hashes."""
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
@@ -15723,15 +15687,7 @@ console.log('OK');'''
     self.assertNotEqual(hash_a, hash_b,
                         'different programs should produce different embedded wasm hashes')
 
-  # ---------------------------------------------------------------------------
-  # Tests for CROSS_ORIGIN_STORAGE_ORIGINS
-  # ---------------------------------------------------------------------------
-
   def test_cross_origin_storage_origins_default_is_global(self):
-    """Without -sCROSS_ORIGIN_STORAGE_ORIGINS, the default must be origins:'*'.
-
-    Globally available; the user only needs -sCROSS_ORIGIN_STORAGE.
-    """
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
@@ -15739,10 +15695,6 @@ console.log('OK');'''
     self.assertContained("origins: '*'", read_file('hello.js'))
 
   def test_cross_origin_storage_origins_explicit_wildcard(self):
-    """Explicitly passing -sCROSS_ORIGIN_STORAGE_ORIGINS=['*'] must emit origins:'*'.
-
-    This matches the implicit default.
-    """
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
@@ -15751,7 +15703,6 @@ console.log('OK');'''
     self.assertContained("origins: '*'", read_file('hello.js'))
 
   def test_cross_origin_storage_origins_explicit_list(self):
-    """An explicit origins list must be emitted as a JS array."""
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
@@ -15763,19 +15714,16 @@ console.log('OK');'''
     self.assertNotContained("origins: '*'", js)
 
   def test_cross_origin_storage_origins_same_site(self):
-    """Empty origins list must omit the origins key entirely (same-site only)."""
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       '-sCROSS_ORIGIN_STORAGE_ORIGINS=[]',
                       '-o', 'hello.js'])
     js = read_file('hello.js')
-    # { create: true } with no origins field
     self.assertContained('{ create: true }', js)
     self.assertNotContained('origins:', js)
 
   def test_cross_origin_storage_origins_error_mixed_wildcard(self):
-    """Mixing '*' with explicit origins must be a link-time error."""
     self.assert_fail(
       [EMCC, test_file('hello_world.c'),
        '-sCROSS_ORIGIN_STORAGE',
@@ -15784,7 +15732,6 @@ console.log('OK');'''
       "'*' must not be mixed with explicit origins")
 
   def test_cross_origin_storage_origins_error_invalid_origin(self):
-    """A non-HTTPS or malformed origin must be a link-time error."""
     self.assert_fail(
       [EMCC, test_file('hello_world.c'),
        '-sCROSS_ORIGIN_STORAGE',
@@ -15793,7 +15740,6 @@ console.log('OK');'''
       'is not a valid HTTPS origin')
 
   def test_cross_origin_storage_origins_error_origin_with_path(self):
-    """An origin with a path component must be a link-time error."""
     self.assert_fail(
       [EMCC, test_file('hello_world.c'),
        '-sCROSS_ORIGIN_STORAGE',
@@ -15802,29 +15748,19 @@ console.log('OK');'''
       'is not a valid HTTPS origin')
 
   def test_cross_origin_storage_wasm_hash_module_property(self):
-    """Module['wasmHash'] must be set in the JS output and match the .wasm hash.
-
-    Custom Module['instantiateWasm'] implementations bypass instantiateAsync()
-    and can read Module['wasmHash'] to get the build-time hash object.
-    """
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
                       '-o', 'hello.js'])
     js = read_file('hello.js')
-
-    # The property must be present with a 64-char hex value.
     m = re.search(r"Module\['wasmHash'\]\s*=\s*\{[^}]*value:\s*'([0-9a-f]{64})'", js)
     self.assertTrue(m, "Module['wasmHash'] not found in JS output")
     embedded_hash = m.group(1)
-
-    # It must equal the SHA-256 of the actual .wasm file.
     expected_hash = hashlib.sha256(open('hello.wasm', 'rb').read()).hexdigest()
     self.assertEqual(embedded_hash, expected_hash,
                      "Module['wasmHash'] does not match the actual .wasm SHA-256")
 
   def test_cross_origin_storage_wasm_hash_absent_without_flag(self):
-    """Module['wasmHash'] must NOT appear when CROSS_ORIGIN_STORAGE is off."""
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sENVIRONMENT=web',
                       '-o', 'hello.js'])
