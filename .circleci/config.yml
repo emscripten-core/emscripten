@@ -213,7 +213,7 @@ commands:
             ls -l ~/cache/sysroot/include/emscripten/heap.h
             cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin-mt.o.ccache-log
             date
-            cat ~/cache/build/libcompiler_rt/absvdi2.o.ccache-log
+            cat ~/cache/build/libclang_rt.builtins/absvdi2.o.ccache-log
             ccache -s
             ccache --print-stats
             ccache -p

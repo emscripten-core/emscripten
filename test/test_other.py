@@ -738,7 +738,7 @@ f.close()
     settings.LTO = '-flto' in args
     settings.MEMORY64 = int('-m64' in args)
     libdir = cache.get_lib_dir(absolute=True)
-    expected = os.path.join(libdir, 'libcompiler_rt.a')
+    expected = os.path.join(libdir, 'libclang_rt.builtins.a')
     self.assertEqual(output.strip(), expected)
 
   @crossplatform
@@ -11962,7 +11962,7 @@ int main(void) {
     self.assertContained(err, self.expect_fail([EMCC, test_file('unistd/close.c'), '-nodefaultlibs']))
 
     # Build again but with explicit system libraries
-    libs = ['-lc', '-lcompiler_rt']
+    libs = ['-lc', '-lclang_rt.builtins']
     self.run_process([EMCC, test_file('unistd/close.c'), '-nostdlib'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nodefaultlibs'] + libs)
     self.run_process([EMCC, test_file('unistd/close.c'), '-nolibc', '-lc'])
@@ -12873,13 +12873,13 @@ kill -9 $$
 
   def test_standard_library_mapping(self):
     # Test the `-l` flags on the command line get mapped the correct libraries variant
-    libs = ['-lc', '-lcompiler_rt', '-lmalloc']
+    libs = ['-lc', '-lclang_rt.builtins', '-lmalloc']
     err = self.run_process([EMCC, test_file('hello_world.c'), '-pthread', '-nodefaultlibs', '-v'] + libs, stderr=PIPE).stderr
 
     # Check that the linker was run with `-mt` variants because `-pthread` was passed.
     self.assertContained(' -lc-mt-debug ', err)
     self.assertContained(' -ldlmalloc-mt-debug ', err)
-    self.assertContained(' -lcompiler_rt-mt ', err)
+    self.assertContained(' -lclang_rt.builtins-mt ', err)
 
   def test_explicit_gl_linking(self):
     # Test that libGL can be linked explicitly via `-lGL` rather than implicitly.

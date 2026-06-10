@@ -270,8 +270,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if '-print-libgcc-file-name' in args or '--print-libgcc-file-name' in args:
     settings.limit_settings(None)
-    compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
-    print(compiler_rt.get_path(absolute=True))
+    clang_rt = system_libs.Library.get_usable_variations()['libclang_rt.builtins']
+    print(clang_rt.get_path(absolute=True))
     return 0
 
   print_file_name = [a for a in args if a.startswith(('-print-file-name=', '--print-file-name='))]

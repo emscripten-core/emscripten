@@ -20,6 +20,8 @@ See docs/process.md for more on how version tagging works.
 
 6.0.1 (in development)
 ----------------------
+- The installed versions of the compiler-rt library now follow the upstream
+  naming convetion of `libclang_rt.<something>.a`. (#27089)
 - Dynamic linking now explicitly requires asynchronous Wasm compilation. The
   process of loading side modules at startup currently depends on this. (#27086)
 - The `-sUSE_PTHREADS` and `-sMEMORY64` flags have been deprecated in favor of the
