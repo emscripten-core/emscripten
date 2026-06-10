@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 import base64
+import glob
 import json
 import logging
 import os
@@ -41,7 +42,7 @@ from .settings import (
   settings,
   user_settings,
 )
-from .shared import DEBUG, DYLIB_EXTENSIONS, do_replace, in_temp
+from .shared import DEBUG, DYLIB_EXTENSIONS, do_replace, get_emscripten_temp_dir, in_temp
 from .toolchain_profiler import ToolchainProfiler
 from .utils import (
   WINDOWS,
@@ -1837,7 +1838,7 @@ def phase_calculate_system_libraries(options):
 
 
 @ToolchainProfiler.profile_block('link')
-def phase_link(linker_args, wasm_target, js_syms):
+def phase_link(linker_args, linker_inputs, wasm_target, js_syms):
   logger.debug(f'linking: {linker_args}')
 
   # Make a final pass over settings.EXPORTED_FUNCTIONS to remove any
@@ -1859,11 +1860,12 @@ def phase_link(linker_args, wasm_target, js_syms):
     # TODO(sbc): Remove this double execution of wasm-ld if we ever find a way to
     # distinguish EMSCRIPTEN_KEEPALIVE exports from `--export-dynamic` exports.
     settings.LINKABLE = False
-    building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
+    building.link_lld(linker_args, wasm_target, external_symbols=js_syms,
+                      linker_inputs=linker_inputs)
     settings.LINKABLE = True
     rtn = extract_metadata.extract_metadata(wasm_target)
 
-  building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
+  building.link_lld(linker_args, wasm_target, external_symbols=js_syms, linker_inputs=linker_inputs)
   return rtn
 
 
@@ -1884,6 +1886,10 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
     js_target = get_secondary_target(target, '.js')
 
   settings.TARGET_JS_NAME = os.path.basename(js_target)
+
+  if settings.WASM_BINDGEN:
+    bindgen_jslib = building.run_wasm_bindgen(in_wasm)
+    settings.JS_LIBRARIES.append(bindgen_jslib)
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
@@ -2016,7 +2022,12 @@ def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
   embind_tsd = ''
   if settings.EMBIND:
     embind_tsd = run_embind_gen(options, wasm_target, js_syms, {'EMBIND_AOT': False})
-  all_tsd = emscripten.create_tsd(metadata, embind_tsd)
+  bindgen_ts_files = []
+  if settings.WASM_BINDGEN:
+    bindgen_ts_files = glob.glob(get_emscripten_temp_dir() + '/bindgen_out/*.d.ts')
+    # This list comprehension then filters out any files that end with .wasm.d.ts.
+    bindgen_ts_files = [file for file in bindgen_ts_files if not file.endswith('.wasm.d.ts')]
+  all_tsd = emscripten.create_tsd(metadata, embind_tsd, bindgen_ts_files)
   out_file = os.path.join(os.path.dirname(js_target), filename)
   write_file(out_file, all_tsd)
 
@@ -3066,6 +3077,9 @@ def run(options, linker_args):
   # We have now passed the compile phase, allow reading/writing of all settings.
   settings.limit_settings(None)
 
+  linker_inputs = [f.value for f in linker_args if f.is_file]
+  linker_args = [f.value for f in linker_args]
+
   if settings.RUNTIME_LINKED_LIBS:
     linker_args += settings.RUNTIME_LINKED_LIBS
 
@@ -3129,7 +3143,7 @@ def run(options, linker_args):
       settings.ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = settings.ASYNCIFY_IMPORTS[:]
       settings.ASYNCIFY_IMPORTS += ['*.' + x for x in js_info['asyncFuncs']]
 
-  base_metadata = phase_link(linker_args, wasm_target, js_syms)
+  base_metadata = phase_link(linker_args, linker_inputs, wasm_target, js_syms)
 
   # Special handling for when the user passed '-Wl,--version'.  In this case the linker
   # does not create the output file, but just prints its version and exits with 0.

@@ -14830,6 +14830,22 @@ addToLibrary({
     }''')
     self.do_runf('main.cpp', 'Hello from rust!', cflags=[lib])
 
+  @requires_rust
+  def test_wasm_bindgen_integration(self):
+    copytree(test_file('rust/bindgen_integration'), '.')
+    self.run_process(['cargo', 'add', 'wasm-bindgen'])
+    self.run_process(['cargo', 'build'])
+    lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
+    self.assertExists(lib)
+
+    create_file('empty.c', '')
+    create_file('post.js', '''
+      Module.onRuntimeInitialized = () => out(Module.rs_add(17, 25));
+    ''')
+    emcc_args = [lib, '-sWASM_BINDGEN', '--post-js=post.js', '-lexports.js']
+
+    self.do_runf('empty.c', '42', cflags=emcc_args)
+
   def test_relative_em_cache(self):
     with env_modify({'EM_CACHE': 'foo'}):
       self.assert_fail([EMCC, '-c', test_file('hello_world.c')], 'emcc: error: environment variable EM_CACHE must be an absolute path: foo')

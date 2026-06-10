@@ -22,6 +22,10 @@ See docs/process.md for more on how version tagging works.
 ----------------------
 - The `-sUSE_PTHREADS` and `-sMEMORY64` flags have been deprecated in favor of the
   more standard `-pthread` and `-m64` (or `--target=wasm64`) flags. (#27025)
+- Adds wasm-bindgen support. When `-sWASM_BINDGEN` is set, Emscripten will call
+  out to `wasm-bindgen` in the users's path and integrate the wasm-bindgen JS
+  with the normal Emscripten JS. Some wasm-bindgen features may not yet be fully
+  supported. (#23493)
 
 6.0.0 - 06/04/26
 ----------------
