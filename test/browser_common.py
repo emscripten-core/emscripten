@@ -72,6 +72,8 @@ EMTEST_CAPTURE_STDIO = int(os.getenv('EMTEST_CAPTURE_STDIO', '0'))
 # Point this at a local clone of:
 #   https://github.com/web-ai-community/cross-origin-storage-extension
 # (the directory that contains manifest.json).
+# TODO: Remove this once Chromium ships COS natively (even behind a flag),
+# and update the browser test to use that flag instead.
 EMTEST_COS_EXTENSION_PATH = os.getenv('EMTEST_COS_EXTENSION_PATH', '')
 
 # Triggers the browser to restart after every given number of tests.
