@@ -284,10 +284,6 @@ class ExitStatus {
 
 /** @type {!Uint8Array} */ var HEAPU8;
 
-var runDependencies = 0;
-
-var dependenciesFulfilled = null;
-
 var printCharBuffers = [ null, [], [] ];
 
 var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
@@ -444,16 +440,7 @@ function callMain() {
 }
 
 function run() {
-  if (runDependencies > 0) {
-    dependenciesFulfilled = run;
-    return;
-  }
   preRun();
-  // a preRun added a dependency, run will be called later
-  if (runDependencies > 0) {
-    dependenciesFulfilled = run;
-    return;
-  }
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
