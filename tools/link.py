@@ -793,6 +793,25 @@ def get_dylibs(options, linker_args):
   return dylibs
 
 
+def setup_cross_origin_storage():
+  if not settings.ENVIRONMENT_MAY_BE_WEB:
+    exit_with_error('CROSS_ORIGIN_STORAGE requires a web environment (navigator.crossOriginStorage is not available outside the browser)')
+  if settings.SPLIT_MODULE:
+    diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; deferred split modules (.deferred.wasm) are fetched via the normal path and are not stored in or retrieved from COS')
+  if settings.MAIN_MODULE:
+    diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; dynamically-linked side modules loaded via dlopen are fetched via the normal path and are not stored in or retrieved from COS')
+  if settings.SIDE_MODULE:
+    diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect on SIDE_MODULE builds (no JS glue is emitted to carry the hash or perform the COS lookup)')
+  origins = settings.CROSS_ORIGIN_STORAGE_ORIGINS
+  if '*' in origins and len(origins) > 1:
+    exit_with_error("CROSS_ORIGIN_STORAGE_ORIGINS: '*' must not be mixed with explicit origins")
+  for o in origins:
+    if o == '*':
+      continue
+    if not re.fullmatch(r'https://[^/]+(:\d+)?', o):
+      exit_with_error(f"CROSS_ORIGIN_STORAGE_ORIGINS: {o!r} is not a valid HTTPS origin (expected 'https://host' or 'https://host:port')")
+
+
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   """Future modifications should consider refactoring to reduce complexity.
@@ -1210,24 +1229,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
 
   if settings.CROSS_ORIGIN_STORAGE:
-    if not settings.ENVIRONMENT_MAY_BE_WEB:
-      exit_with_error('CROSS_ORIGIN_STORAGE requires a web environment (navigator.crossOriginStorage is not available outside the browser)')
-    if settings.SPLIT_MODULE:
-      diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; deferred split modules (.deferred.wasm) are fetched via the normal path and are not stored in or retrieved from COS')
-    if settings.MAIN_MODULE:
-      diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE only covers the primary .wasm file; dynamically-linked side modules loaded via dlopen are fetched via the normal path and are not stored in or retrieved from COS')
-    if settings.SIDE_MODULE:
-      diagnostics.warning('emcc', 'CROSS_ORIGIN_STORAGE has no effect on SIDE_MODULE builds (no JS glue is emitted to carry the hash or perform the COS lookup)')
-    origins = settings.CROSS_ORIGIN_STORAGE_ORIGINS
-    if '*' in origins and len(origins) > 1:
-      exit_with_error("CROSS_ORIGIN_STORAGE_ORIGINS: '*' must not be mixed with explicit origins")
-    for o in origins:
-      if o == '*':
-        continue
-      # Each explicit origin must be a valid serialized HTTPS origin:
-      # scheme "https://", host, optional ":port", no path/query/fragment.
-      if not re.fullmatch(r'https://[^/]+(:\d+)?', o):
-        exit_with_error(f"CROSS_ORIGIN_STORAGE_ORIGINS: {o!r} is not a valid HTTPS origin (expected 'https://host' or 'https://host:port')")
+    setup_cross_origin_storage()
 
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and options.oformat != OFormat.HTML:
     exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION is only compatible with html output')
