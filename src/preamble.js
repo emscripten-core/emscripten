@@ -631,8 +631,8 @@ async function instantiateAsync(binary, binaryFile, imports) {
   // https://github.com/WICG/cross-origin-storage
   // Any error (NotAllowedError, network failure, …) falls through to the
   // standard Emscripten streaming path so the page always loads.
-  var cosHash = Module['wasmHash'];
-  if ('crossOriginStorage' in navigator) {
+  if (globalThis.navigator?.crossOriginStorage) {
+    var cosHash = Module['wasmHash'];
     try {
       var cosHandles = await navigator.crossOriginStorage.requestFileHandles([cosHash]);
       // Cache hit — read the Blob and instantiate from its ArrayBuffer.
@@ -890,7 +890,7 @@ function getWasmImports() {
 #if CROSS_ORIGIN_STORAGE
   // Expose the build-time hash so that custom Module['instantiateWasm']
   // callbacks can implement their own COS-aware loading path.
-  Module['wasmHash'] = { algorithm: '<<< WASM_HASH_ALGORITHM >>>', value: '<<< WASM_HASH_VALUE >>>' };
+  Module['wasmHash'] = { algorithm: 'SHA-256', value: '<<< WASM_HASH_VALUE >>>' };
 #endif
 
 #if expectToReceiveOnModule('instantiateWasm')

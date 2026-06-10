@@ -15583,7 +15583,7 @@ console.log('OK');'''
                       '-sENVIRONMENT=web',
                       '-o', 'hello.js'])
     js = read_file('hello.js')
-    self.assertContained("'crossOriginStorage' in navigator", js)
+    self.assertContained('globalThis.navigator?.crossOriginStorage', js)
     self.assertContained('navigator.crossOriginStorage.requestFileHandles', js)
     self.assertContained("algorithm: 'SHA-256'", js)
     self.assertContained("origins: '*'", js)
