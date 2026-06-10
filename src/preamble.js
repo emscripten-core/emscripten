@@ -626,7 +626,6 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
-#if ENVIRONMENT_MAY_BE_WEB
 #if CROSS_ORIGIN_STORAGE
   // Cross-Origin Storage (COS) progressive enhancement.
   // https://github.com/WICG/cross-origin-storage
@@ -689,7 +688,6 @@ async function instantiateAsync(binary, binaryFile, imports) {
     }
   }
 #endif // CROSS_ORIGIN_STORAGE
-#endif // ENVIRONMENT_MAY_BE_WEB
   if (!binary
 #if MIN_SAFARI_VERSION < 150000
       // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming

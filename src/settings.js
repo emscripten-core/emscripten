@@ -2213,14 +2213,15 @@ var CROSS_ORIGIN = false;
 // a network fetch on a miss; when the API is absent or errors the runtime
 // falls through to the standard fetch path.
 //
-// Only meaningful for the Web environment. Incompatible with SINGLE_FILE and
+// Requires the Web environment; using it without ``-sENVIRONMENT=web`` is a
+// hard link-time error. Incompatible with SINGLE_FILE and
 // WASM_ASYNC_COMPILATION=0 (both produce hard link-time errors).
 //
 // See :ref:`CrossOriginStorage` for the full guide.
 //
 // [link]
 // [experimental]
-var CROSS_ORIGIN_STORAGE = 0;
+var CROSS_ORIGIN_STORAGE = false;
 
 // Controls which origins may read the Wasm binary from the COS cache. Only
 // meaningful when ``-sCROSS_ORIGIN_STORAGE`` is set. Applied only during the

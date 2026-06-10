@@ -3373,14 +3373,15 @@ fetched from the shared cross-origin cache on a hit, or stored there after
 a network fetch on a miss; when the API is absent or errors the runtime
 falls through to the standard fetch path.
 
-Only meaningful for the Web environment. Incompatible with SINGLE_FILE and
+Requires the Web environment; using it without ``-sENVIRONMENT=web`` is a
+hard link-time error. Incompatible with SINGLE_FILE and
 WASM_ASYNC_COMPILATION=0 (both produce hard link-time errors).
 
 See :ref:`CrossOriginStorage` for the full guide.
 
 .. note:: This is an experimental setting
 
-Default value: 0
+Default value: false
 
 .. _cross_origin_storage_origins:
 
