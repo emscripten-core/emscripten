@@ -242,6 +242,12 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
   if not shared.SKIP_SUBPROCS:
     shared.check_sanity()
 
+  # For internal consistency, ensure we don't attempt to read or write any link time
+  # settings until we reach the linking phase.
+  settings.limit_settings(COMPILE_TIME_SETTINGS)
+
+  phase_setup(state)
+
   # Begin early-exit flag handling.
 
   if '--version' in args:
@@ -288,8 +294,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
       print(libname)
     return 0
 
-  # End early-exit flag handling
-
   if 'EMMAKEN_NO_SDK' in os.environ:
     exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
 
@@ -303,12 +307,6 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if 'EMCC_REPRODUCE' in os.environ:
     options.reproduce = os.environ['EMCC_REPRODUCE']
 
-  # For internal consistency, ensure we don't attempt to read or write any link time
-  # settings until we reach the linking phase.
-  settings.limit_settings(COMPILE_TIME_SETTINGS)
-
-  phase_setup(state)
-
   if '-print-resource-dir' in args or any(a.startswith('--print-prog-name') for a in args):
     shared.exec_process([clang, *compile.get_cflags(tuple(args)), *args])
     assert False, 'exec_process should not return'
@@ -319,6 +317,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     cflags = compile.get_cflags(x for x in args if x != '--cflags')
     print(shlex.join(cflags))
     return 0
+
+  # End early-exit flag handling
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
