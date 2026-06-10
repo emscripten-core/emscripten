@@ -30,5 +30,5 @@ int main() {
   // general overhead.
   assert(sizeT(after) - sizeT(before) < ALIGN + SIZE + 100);
 
-  emscripten_console_log("success");
+  emscripten_console_log("done");
 }

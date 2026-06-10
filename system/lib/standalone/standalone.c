@@ -349,6 +349,10 @@ weak int _poll_js(void *fds, int nfds, int timeout, void* ctx, void* arg) {
   return -ENOSYS;
 }
 
+weak int __syscall_poll(intptr_t fds, int nfds, int timeout) {
+  return -ENOSYS;
+}
+
 // open(), etc. - we just support the standard streams, with no
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it

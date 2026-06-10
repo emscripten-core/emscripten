@@ -106,11 +106,11 @@ commands:
             cat ~/emsdk/.emscripten
             echo "export PATH=\"$HOME/node-v${version}-linux-x64/bin:\$PATH\"" >> $BASH_ENV
   install-node-oldest:
-    description: "install node 12.22.9 (oldest)"
+    description: "install node 18.3.0 (oldest)"
     steps:
       - install-node-version:
           # Keep this in sync with `OLDEST_SUPPORTED_NODE` in `feature_matrix.py`
-          node_version: "12.22.9"
+          node_version: "18.3.0"
   install-node-lts:
     description: "install node 22.21.0 (current LTS)"
     steps:
@@ -216,7 +216,7 @@ commands:
           command: |
             ls -l ~/cache/sysroot/lib/wasm32-emscripten || echo "no build"
             ls -l ~/cache/sysroot/include/emscripten/heap.h
-            cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin.o.ccache-log
+            cat ~/cache/sysroot/lib/wasm32-emscripten/crtbegin-mt.o.ccache-log
             date
             cat ~/cache/build/libcompiler_rt/absvdi2.o.ccache-log
             ccache -s
@@ -503,7 +503,7 @@ commands:
             echo "-----"
             echo "Running browser tests (EMTEST_BROWSER=$EMTEST_BROWSER)"
             echo "-----"
-            test/runner.bat << parameters.test_targets >>
+            test/runner << parameters.test_targets >>
       - upload-test-results
   test-sockets-chrome:
     description: "Runs emscripten sockets tests under chrome"
@@ -533,7 +533,6 @@ jobs:
       - run: tools/maint/check_emcc_help_text.py
       - run: make -C site html
   ruff:
-    # Keep in sync with ruff commands in tools/maint/pre-push
     executor: ubuntu-lts
     steps:
       - checkout
@@ -704,18 +703,23 @@ jobs:
             lto0.test_exceptions_allowed_uncaught
             lto0.test_longjmp_standalone_standalone
             lto0.test_embind_i64_val
+            lto0.test_wasm_worker_futex_wait
             thinlto0.test_pthread_dlsym
             core3
             core2g.test_externref
             corez.test_dylink_iostream
             core2ss.test_pthread_dylink
+            core2ss.test_pthread_dylink_tls
             core2ss.test_pthread_thread_local_storage
+            core2ss.test_wasm_worker_futex_wait
             core2s.test_dylink_syslibs_missing_assertions
             core2s.test_module_wasm_memory
             cores.test_minimal_runtime_safe_heap
+            wasm2js0.test_autodebug_wasm
             wasm2js3.test_memorygrowth_2
             wasm2js2.test_pthread_proxying
             wasmfs.test_hello_world
+            wasmfs.test_pipe_select
             wasmfs.test_unistd_links*
             wasmfs.test_atexit_standalone
             wasmfs.test_emscripten_get_now
@@ -766,6 +770,12 @@ jobs:
             wasmfs.test_fs_llseek
             wasmfs.test_fs_llseek_rawfs
             wasmfs.test_freetype
+            wasmfs.test_unistd_close_rawfs
+            wasmfs.test_exceptions_minimal_runtime
+            wasmfs.test_minimal_runtime_safe_heap
+            wasmfs.test_minimal_runtime_global_initializer
+            wasmfs.test_minimal_runtime_hello_world*
+            wasmfs.test_dlmalloc
             minimal0.test_utf
             minimal0.test_ubsan_full_stack_trace_gsource_map
             minimal0.test_static_variable
@@ -774,6 +784,7 @@ jobs:
             omitexports0.test_emscripten_api
             strict.test_no_declare_asm_module_exports
             strict.test_dylink_global_inits_reversed
+            strict.test_wasm_worker_futex_wait_pthreads
             "
   test-modularize-instance:
     executor: ubuntu-lts
@@ -861,6 +872,8 @@ jobs:
             core_2gb.test_*embind*
             core_2gb.test_fs_js_api_wasmfs
             wasm64.test_safe_stack
+            wasm64.test_promise_await*
+            wasm64.test_pthread_join_and_asyncify
             wasm64l.test_hello_world
             wasm64l.test_bigswitch
             wasm64l.test_module_wasm_memory
@@ -871,6 +884,7 @@ jobs:
     executor: linux-python
     environment:
       EMTEST_SKIP_NEW_CMAKE: "1"
+      EMTEST_SKIP_WASM64: "1"
     steps:
       - checkout
       - pip-install
@@ -940,6 +954,8 @@ jobs:
             echo "JS_ENGINES = [SPIDERMONKEY_ENGINE]" >> ~/emsdk/.emscripten
       - run-tests:
           test_targets: "
+            other.test_prepost_jspi
+            other.test_stdint_limits_wasm64
             core0.test_hello_argc
             core2.test_demangle_stacks_symbol_map"
       - upload-test-results
@@ -970,8 +986,7 @@ jobs:
       # support in the generated code.
       - install-node-oldest
       - run-tests:
-          title: "node (oldest / 12.22.9)"
-          extra-cflags: "-sMIN_NODE_VERSION=122209"
+          title: "node (oldest / 18.3.0)"
           # We include most but not all of the nodefs and node rawfs tests here.
           # test_fs_nodefs_rw, test_fs_nodefs_statvfs, and test_unistd_io_nodefs_bigint fail.
           test_targets: "
@@ -1081,7 +1096,9 @@ jobs:
             core0.test_pthread_join_and_asyncify
             core0.test_async_ccall_promise_jspi*
             core0.test_cubescript_jspi
+            core0.test_pthread_wait_suspending*
             core0.test_poll_blocking_asyncify_jspi
+            core0.test_promise_await*
             "
       - upload-test-results
   test-other:
@@ -1165,7 +1182,9 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser_2gb"
-          test_targets: "browser_2gb"
+          # Disabling test_mainScriptUrlOrBlob due to
+          # https://github.com/emscripten-core/emscripten/issues/26882
+          test_targets: "browser_2gb skip:browser_2gb.test_mainScriptUrlOrBlob*"
   test-browser-chrome-wasm64-4gb:
     executor: ubuntu-lts
     environment:
@@ -1173,7 +1192,9 @@ jobs:
     steps:
       - run-tests-chrome:
           title: "browser64_4gb"
-          test_targets: "browser64_4gb"
+          # Disabling test_mainScriptUrlOrBlob due to
+          # https://github.com/emscripten-core/emscripten/issues/26882
+          test_targets: "browser64_4gb skip:browser64_4gb.test_mainScriptUrlOrBlob*"
   test-browser-firefox:
     executor: ubuntu-lts
     environment:
@@ -1240,13 +1261,14 @@ jobs:
             skip:browser.test_glbook
             skip:browser.test_sdl2_mixer_wav_dash_l
             "
-  # TODO(https://github.com/emscripten-core/emscripten/issues/26182):
-  # Re-enable once we figure out why the emrun tests are locking up.
-  #test-browser-chrome-emrun:
-  #  executor: ubuntu-lts
-  #  steps:
-  #    - run-tests-chrome:
-  #        test_targets: "emrun"
+  test-browser-chrome-emrun:
+    executor: ubuntu-lts
+    steps:
+      - checkout
+      - pip-install
+      - install-emsdk
+      - run-tests-chrome:
+          test_targets: "emrun"
   test-sockets-chrome:
     executor: ubuntu-lts
     steps:
@@ -1317,12 +1339,12 @@ jobs:
           python: "$EMSDK_PYTHON"
       - run:
           name: "crossplatform tests"
-          command: test/runner.bat --crossplatform-only
+          command: test/runner --crossplatform-only
       - upload-test-results
       # Run a single websockify-based test to ensure it works on windows.
       - run:
           name: "sockets.test_nodejs_sockets_echo*"
-          command: "test/runner.bat sockets.test_nodejs_sockets_echo*"
+          command: "test/runner sockets.test_nodejs_sockets_echo*"
       - upload-test-results
 
   test-mac-arm64:
@@ -1369,8 +1391,8 @@ workflows:
           requires:
             - build-linux
       - test-core2:
-          requires:
-            - build-linux
+         requires:
+           - build-linux
       - test-core3:
           requires:
             - build-linux
@@ -1390,12 +1412,13 @@ workflows:
           requires:
             - build-linux
       - test-esm-integration:
-          requires:
-            - build-linux
+         requires:
+           - build-linux
       - test-stress:
           requires:
             - build-linux
       - test-browser-chrome
+      - test-browser-chrome-emrun
       - test-browser-chrome-2gb:
           requires:
             - build-linux
@@ -1421,5 +1444,5 @@ workflows:
       - test-windows-browser-firefox
       - build-windows-launcher
       - test-mac-arm64:
-          requires:
-            - build-linux
+         requires:
+           - build-linux

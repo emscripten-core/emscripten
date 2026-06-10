@@ -8,6 +8,9 @@ int sem_init(sem_t *sem, int pshared, unsigned value)
 		errno = EINVAL;
 		return -1;
 	}
+#ifdef __EMSCRIPTEN__
+	if (pshared) return ENOTSUP;
+#endif
 	sem->__val[0] = value;
 	sem->__val[1] = 0;
 	sem->__val[2] = pshared ? 0 : 128;

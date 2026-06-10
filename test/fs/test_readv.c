@@ -32,6 +32,6 @@ int main() {
 
   close(fd);
 
-  printf("success\n");
+  printf("done\n");
   return 0;
 }

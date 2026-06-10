@@ -2,7 +2,8 @@
 
 """Find references to closed github issues in the source code.
 
-Depends on the `gh` command line tool being installed."""
+Depends on the `gh` command line tool being installed.
+"""
 
 import json
 import os

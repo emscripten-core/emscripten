@@ -35,7 +35,7 @@ void EMSCRIPTEN_KEEPALIVE finish() {
   assert(strcmp(buffer, "second") == 0);
 
   // all done
-  printf("success\n");
+  printf("done\n");
   REPORT_RESULT(0);
 }
 

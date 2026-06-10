@@ -253,8 +253,8 @@ addToLibrary({
 
     whenDone() {
 #if ASSERTIONS
-      assert(Asyncify.currData, 'Tried to wait for an async operation when none is in progress.');
-      assert(!Asyncify.asyncPromiseHandlers, 'Cannot have multiple async operations in flight at once');
+      assert(Asyncify.currData, 'tried to wait for an async operation when none is in progress');
+      assert(!Asyncify.asyncPromiseHandlers, 'cannot have multiple async operations in flight at once');
 #endif
       return new Promise((resolve, reject) => {
         Asyncify.asyncPromiseHandlers = { resolve, reject };
@@ -330,7 +330,7 @@ addToLibrary({
     // and other async methods for simple examples of usage.
     handleSleep(startAsync) {
 #if ASSERTIONS
-      assert(Asyncify.state !== Asyncify.State.Disabled, 'Asyncify cannot be done during or after the runtime exits');
+      assert(Asyncify.state !== Asyncify.State.Disabled, 'handleSleep called after Asyncify was shut down');
 #endif
       if (ABORT) return;
 #if ASYNCIFY_DEBUG
@@ -361,7 +361,7 @@ addToLibrary({
           // as it might break later operations (we can rewind ok now, but if
           // we unwind again, we would unwind through the extra compiled code
           // too).
-          assert(!Asyncify.exportCallStack.length, 'Waking up (starting to rewind) must be done from JS, without compiled code on the stack.');
+          assert(!Asyncify.exportCallStack.length, 'waking up (starting to rewind) must be done from JS, without compiled code on the stack');
 #endif
 #if ASYNCIFY_DEBUG
           dbg(`ASYNCIFY: start rewind ${Asyncify.currData}`);

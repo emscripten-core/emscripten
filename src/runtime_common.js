@@ -56,7 +56,7 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #if PTHREADS_DEBUG
     dbg(`uncaughtException on worker thread: ${err.message}`);
 #endif
-    postMessage({ cmd: 'uncaughtException', error: err });
+    postMessage({ cmd: {{{ CMD_UNCAUGHT_EXN }}}, error: err });
     // Also shut down the Worker to match the same semantics as if this uncaughtException
     // handler was not registered.
     // (n.b. this will not shut down the whole Node.js app process, but just the Worker)
@@ -135,18 +135,6 @@ function updateMemoryViews() {
   LE_HEAP_UPDATE();
 #endif
 }
-
-#if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000
-// The performance global was added to node in v16.0.0:
-// https://nodejs.org/api/globals.html#performance
-if (ENVIRONMENT_IS_NODE) {
-  // This is needed for emscripten_get_now and for pthreads support which
-  // depends on it for accurate timing.
-  // Use `global` rather than `globalThis` here since older versions of node
-  // don't have `globalThis`.
-  global.performance ??= require('perf_hooks').performance;
-}
-#endif
 
 #if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.

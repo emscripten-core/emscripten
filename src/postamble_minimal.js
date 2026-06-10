@@ -15,7 +15,7 @@
 function exitRuntime(ret) {
   <<< ATEXITS >>>
 #if PTHREADS
-  PThread.terminateAllThreads();
+  PThread.terminateRuntime();
 #endif
 
 #if ASSERTIONS

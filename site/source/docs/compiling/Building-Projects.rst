@@ -309,26 +309,15 @@ The simplest solution is usually to build the project twice: once natively, and 
 In some cases it makes sense to modify the build scripts so that they build the generated executable natively. For example, this can be done by specifying two compilers in the build scripts, *emcc* and *gcc*, and using *gcc* just for generated executables. However, this can be more complicated than the previous solution because you need to modify the project build scripts, and you may have to work around cases where code is compiled and used both for the final result and for a generated executable.
 
 
-Faux Dynamic Linking
---------------------
+Dynamic Linking
+---------------
 
 Emscripten's goal is to generate the fastest and smallest possible code. For
 that reason it focuses on compiling an entire project into a single Wasm file,
-avoiding dynamic linking when possible.
+and the recommendation is to avoiding dynamic linking in most cases.
 
-By default, when the `-shared` flag is used to build a shared library,
-Emscripten will produce an ``.so`` library that is actually just a regular
-``.o`` object file (Under the hood it uses `ld -r` to combine objects into a
-single larger object).  When these faux "shared libraries" are linked into your
-application they are effectively linked as static libraries.  When building
-these shared libraries *Emcc* will ignore other shared libraries on the command
-line.  This is to ensure that the same dynamic library is not linked multiple
-times in intermediate build stages, which would result in duplicate symbol
-errors.
-
-See :ref:`experimental support <Dynamic-Linking>` for how to build true dynamic
-libraries, which can be linked together either at load time, or at runtime (via
-dlopen).
+See :ref:`experimental support <Dynamic-Linking>` for more information if your
+project requires dynamic linking.
 
 
 Configure may run checks that appear to fail

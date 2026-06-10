@@ -18,7 +18,14 @@ set(CMAKE_SYSTEM_NAME Emscripten)
 set(CMAKE_SYSTEM_VERSION 1)
 
 set(CMAKE_CROSSCOMPILING TRUE)
-set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
+
+# Certain cmake versions are not compatible with dynnamic linking due to
+# https://gitlab.kitware.com/cmake/cmake/-/work_items/27240
+if (("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "4.2.0" AND "${CMAKE_VERSION}" VERSION_LESS "4.2.6") OR
+    ("${CMAKE_VERSION}" VERSION_GREATER_EQUAL "4.3.0" AND "${CMAKE_VERSION}" VERSION_LESS "4.3.3"))
+  message(WARNING "This version of cmake (${CMAKE_VERSION}) does not support emscripten shared libraries.  Use cmake < 4.2.0 or cmake > 4.3.3 if you need shared library support")
+  set_property(GLOBAL PROPERTY TARGET_SUPPORTS_SHARED_LIBS FALSE)
+endif()
 
 # Advertise Emscripten as a 32-bit platform (as opposed to
 # CMAKE_SYSTEM_PROCESSOR=x86_64 for 64-bit platform), since some projects (e.g.
@@ -219,7 +226,7 @@ endif()
 list(APPEND CMAKE_FIND_ROOT_PATH "${EMSCRIPTEN_SYSROOT}")
 list(APPEND CMAKE_SYSTEM_PREFIX_PATH /)
 
-if (${CMAKE_C_FLAGS} MATCHES "MEMORY64")
+if (${CMAKE_C_FLAGS} MATCHES "MEMORY64|-m64|--target=wasm64")
   set(CMAKE_LIBRARY_ARCHITECTURE "wasm64-emscripten")
   set(CMAKE_SIZEOF_VOID_P 8)
   set(CMAKE_C_SIZEOF_DATA_PTR 8)

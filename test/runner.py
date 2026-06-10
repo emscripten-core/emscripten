@@ -4,8 +4,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""This is the Emscripten test runner. To run some tests, specify which tests
-you want, for example
+"""Emscripten test runner.
+
+To run some tests, specify which tests you want, for example
 
   test/runner core0.test_hello_world
 
@@ -372,7 +373,7 @@ def create_test_run_sorter(sort_failing_tests_at_front):
 
 
 def use_parallel_suite(module):
-  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress'}
+  suite_supported = module.__name__ not in {'test_sanity', 'test_benchmark', 'test_sockets', 'test_interactive', 'test_stress', 'test_emrun'}
   if not common.EMTEST_SAVE_DIR and not shared.DEBUG:
     has_multiple_cores = parallel_testsuite.num_cores() > 1
     if suite_supported and has_multiple_cores:
@@ -456,10 +457,10 @@ def flattened_tests(loaded_tests):
 
 def run_tests(options, suite):
   # Run the discovered tests
-  if os.getenv('CI'):
+  if utils.get_env_bool('CI'):
     # output fd must remain open until after testRunner.run() below
     output = open('out/test-results.xml', 'wb')
-    import xmlrunner  # type: ignore  # noqa: PLC0415
+    import xmlrunner  # type: ignore
     testRunner = xmlrunner.XMLTestRunner(output=output, verbosity=2,
                                          failfast=options.failfast)
     print('Writing XML test output to ' + os.path.abspath(output.name))
@@ -551,16 +552,16 @@ def parse_args():
 
 def configure():
   browser_common.EMTEST_BROWSER = os.getenv('EMTEST_BROWSER')
-  browser_common.EMTEST_BROWSER_AUTO_CONFIG = int(os.getenv('EMTEST_BROWSER_AUTO_CONFIG', '1'))
-  browser_common.EMTEST_HEADLESS = int(os.getenv('EMTEST_HEADLESS', '0'))
-  common.EMTEST_DETECT_TEMPFILE_LEAKS = int(os.getenv('EMTEST_DETECT_TEMPFILE_LEAKS', '0'))
-  common.EMTEST_ALL_ENGINES = int(os.getenv('EMTEST_ALL_ENGINES', '0'))
-  common.EMTEST_SKIP_SLOW = int(os.getenv('EMTEST_SKIP_SLOW', '0'))
-  common.EMTEST_SKIP_FLAKY = int(os.getenv('EMTEST_SKIP_FLAKY', '0'))
-  common.EMTEST_RETRY_FLAKY = int(os.getenv('EMTEST_RETRY_FLAKY', '0'))
-  common.EMTEST_LACKS_NATIVE_CLANG = int(os.getenv('EMTEST_LACKS_NATIVE_CLANG', '0'))
-  common.EMTEST_REBASELINE = int(os.getenv('EMTEST_REBASELINE', '0'))
-  common.EMTEST_VERBOSE = int(os.getenv('EMTEST_VERBOSE', '0')) or shared.DEBUG
+  browser_common.EMTEST_BROWSER_AUTO_CONFIG = utils.get_env_bool('EMTEST_BROWSER_AUTO_CONFIG', '1')
+  browser_common.EMTEST_HEADLESS = utils.get_env_bool('EMTEST_HEADLESS')
+  common.EMTEST_DETECT_TEMPFILE_LEAKS = utils.get_env_bool('EMTEST_DETECT_TEMPFILE_LEAKS')
+  common.EMTEST_ALL_ENGINES = utils.get_env_bool('EMTEST_ALL_ENGINES')
+  common.EMTEST_SKIP_SLOW = utils.get_env_bool('EMTEST_SKIP_SLOW')
+  common.EMTEST_SKIP_FLAKY = utils.get_env_bool('EMTEST_SKIP_FLAKY')
+  common.EMTEST_RETRY_FLAKY = utils.get_env_int('EMTEST_RETRY_FLAKY')
+  common.EMTEST_LACKS_NATIVE_CLANG = utils.get_env_bool('EMTEST_LACKS_NATIVE_CLANG')
+  common.EMTEST_REBASELINE = utils.get_env_bool('EMTEST_REBASELINE')
+  common.EMTEST_VERBOSE = utils.get_env_bool('EMTEST_VERBOSE') or shared.DEBUG
   if common.EMTEST_VERBOSE:
     logging.root.setLevel(logging.DEBUG)
 
@@ -571,8 +572,7 @@ def configure():
 
 
 def cleanup_temp_directory():
-  """Deletes all files and directories in TEMP_DIR that look like they
-  might have been created by Emscripten."""
+  """Delete all files and directories in TEMP_DIR that look like they might have been created by Emscripten."""
   for entry in os.listdir(shared.TEMP_DIR):
     if entry.startswith(('emtest_', 'emscripten_')):
       entry = os.path.join(shared.TEMP_DIR, entry)
@@ -592,8 +592,7 @@ def print_repository_info(directory, repository_name):
 
 
 def log_test_environment():
-  """Print detailed information about the current test environment. Useful for
-  logging test run configuration in a CI."""
+  """Print detailed information about the current test environment. Useful for logging test run configuration in a CI."""
   print('======================== Test Setup ========================')
   print(f'Test time: {datetime.datetime.now(datetime.timezone.utc).strftime("%A, %B %d, %Y %H:%M:%S %Z")}')
   print(f'Python: "{sys.executable}". Version: {sys.version}')
@@ -616,6 +615,7 @@ def log_test_environment():
   node_js_version = utils.run_process(config.NODE_JS + ['--version'], stdout=subprocess.PIPE).stdout.strip()
   print(f'NODE_JS: {config.NODE_JS}. Version: {node_js_version}')
 
+  print(f'JS_ENGINES: {config.JS_ENGINES}')
   print(f'BINARYEN_ROOT: {config.BINARYEN_ROOT}')
   wasm_opt_version = building.get_binaryen_version(building.get_binaryen_bin()).strip()
   print(f'wasm-opt version: {wasm_opt_version}')

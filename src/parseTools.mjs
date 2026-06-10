@@ -113,7 +113,7 @@ export function preprocess(filename) {
 
   pushCurrentFile(filename);
   try {
-    for (let [i, line] of lines.entries()) {
+    for (const [i, line] of lines.entries()) {
       if (isHtml) {
         if (line.includes('<style') && !inStyle) {
           inStyle = true;
@@ -674,7 +674,7 @@ function makeDynCall(sig, funcPtr, promising = false) {
     !sig.includes('j'),
     'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!',
   );
-  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI.');
+  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI');
 
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
@@ -682,6 +682,7 @@ function makeDynCall(sig, funcPtr, promising = false) {
   }
   args = args.join(', ');
 
+  const needRtnConversion = MEMORY64 && sig[0] == 'p';
   const needArgConversion = MEMORY64 && sig.includes('p');
   let callArgs = args;
   if (needArgConversion) {
@@ -751,7 +752,15 @@ Please update to new syntax.`);
   }
 
   if (needArgConversion) {
-    return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+    if (needRtnConversion) {
+      if (promising) {
+        return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}).then(Number))`;
+      } else {
+        return `((${args}) => Number(${getWasmTableEntry}.call(null, ${callArgs})))`;
+      }
+    } else {
+      return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+    }
   }
   return getWasmTableEntry;
 }
@@ -847,14 +856,14 @@ export function modifyJSFunction(text, func) {
   let oneliner = false;
   let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
-    async_ = match[1] || '';
+    async_ = match[1] ?? '';
     args = match[3];
     rest = text.slice(match[0].length);
   } else {
     // Match an arrow function
     let match = text.match(/^\s*(var (\w+) = )?(async\s+)?\(([^)]*)\)\s+=>\s+/);
     if (match) {
-      async_ = match[3] || '';
+      async_ = match[3] ?? '';
       args = match[4];
       rest = text.slice(match[0].length);
       rest = rest.trim();
@@ -864,7 +873,7 @@ export function modifyJSFunction(text, func) {
       // for both, but it would be more complex).
       match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
       assert(match, `could not match function:\n${text}\n`);
-      async_ = match[1] || '';
+      async_ = match[1] ?? '';
       args = match[2];
       rest = text.slice(match[0].length);
     }
@@ -1105,14 +1114,6 @@ function formattedMinNodeVersion() {
   return `v${major}.${minor}.${rev}`;
 }
 
-function getPerformanceNow() {
-  if (DETERMINISTIC) {
-    return 'deterministicNow';
-  } else {
-    return 'performance.now';
-  }
-}
-
 function ENVIRONMENT_IS_MAIN_THREAD() {
   return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
 }
@@ -1176,7 +1177,7 @@ function pthreadDetection() {
 
 function makeExportAliases() {
   var res = ''
-  for (var [alias, ex] of Object.entries(nativeAliases)) {
+  for (const [alias, ex] of Object.entries(nativeAliases)) {
     if (ASSERTIONS) {
       res += `  assert(wasmExports['${ex}'], 'alias target "${ex}" not found in wasmExports');\n`;
     }
@@ -1228,7 +1229,6 @@ addToCompileTimeContext({
   getHeapForType,
   getHeapOffset,
   getNativeTypeSize,
-  getPerformanceNow,
   getUnsharedTextDecoderView,
   hasExportedSymbol,
   isSymbolNeeded,

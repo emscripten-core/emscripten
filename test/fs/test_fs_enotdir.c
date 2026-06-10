@@ -20,5 +20,5 @@ int main() {
     assert(open("./does-not-exist/", O_CREAT, 0777) == -1);
     assert(errno == EISDIR);
   }
-  printf("success\n");
+  printf("done\n");
 }

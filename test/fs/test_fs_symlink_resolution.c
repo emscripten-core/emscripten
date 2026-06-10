@@ -43,5 +43,5 @@ int main() {
 
   assert(truncate("a/link/../x.txt", 0) == 0);
   assert(chmod("a/link/../x.txt", 0777) == 0);
-  printf("success\n");
+  printf("done\n");
 }

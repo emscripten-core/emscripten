@@ -26,7 +26,7 @@ class MemoryDataFile : public DataFile {
   off_t getSize() override { return buffer.size(); }
   int setSize(off_t size) override {
     if (size > buffer.max_size()) {
-      return -EOVERFLOW;
+      return -EFBIG;
     }
     buffer.resize(size);
     return 0;

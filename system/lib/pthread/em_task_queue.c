@@ -14,6 +14,7 @@
 #include "em_task_queue.h"
 #include "proxying_notification_state.h"
 #include "thread_mailbox.h"
+#include "threading_internal.h"
 
 #define EM_TASK_QUEUE_INITIAL_CAPACITY 128
 
@@ -166,6 +167,7 @@ static bool em_task_queue_grow(em_task_queue* queue) {
 }
 
 void em_task_queue_execute(em_task_queue* queue) {
+  DBG("em_task_queue_execute");
   queue->processing = 1;
   pthread_mutex_lock(&queue->mutex);
   while (!em_task_queue_is_empty(queue)) {
@@ -178,6 +180,7 @@ void em_task_queue_execute(em_task_queue* queue) {
   }
   pthread_mutex_unlock(&queue->mutex);
   queue->processing = 0;
+  DBG("done em_task_queue_execute");
 }
 
 void em_task_queue_cancel(em_task_queue* queue) {
@@ -219,6 +222,7 @@ static void receive_notification(void* arg) {
   notification_state expected = NOTIFICATION_RECEIVED;
   atomic_compare_exchange_strong(
     &tasks->notification, &expected, NOTIFICATION_NONE);
+  DBG("receive_notification done");
 }
 
 static void cancel_notification(void* arg) {
@@ -246,6 +250,7 @@ bool em_task_queue_send(em_task_queue* queue, task t) {
   notification_state previous =
     atomic_exchange(&queue->notification, NOTIFICATION_PENDING);
   if (previous == NOTIFICATION_PENDING) {
+    DBG("em_task_queue_send NOTIFICATION_PENDING already set");
     emscripten_thread_mailbox_unref(queue->thread);
     return true;
   }

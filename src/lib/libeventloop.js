@@ -60,24 +60,29 @@ LibraryJSEventLoop = {
     } else if (globalThis.addEventListener) {
       var __setImmediate_id_counter = 0;
       var __setImmediate_queue = [];
-      var __setImmediate_message_id = "_si";
+      var __setImmediate_message_id = '_si';
       /** @param {Event} e */
       var __setImmediate_cb = (e) => {
         if (e.data === __setImmediate_message_id) {
           e.stopPropagation();
-          __setImmediate_queue.shift()();
+          __setImmediate_queue.shift()?.();
           ++__setImmediate_id_counter;
         }
       }
       addEventListener("message", __setImmediate_cb, true);
       emSetImmediate = (func) => {
-        postMessage(__setImmediate_message_id, "*");
+#if PTHREADS
+        if (ENVIRONMENT_IS_WORKER) {
+          postMessage(__setImmediate_message_id);
+        } else
+#endif
+        postMessage(__setImmediate_message_id, '*');
         return __setImmediate_id_counter + __setImmediate_queue.push(func) - 1;
       }
       emClearImmediate = /**@type{function(number=)}*/((id) => {
         var index = id - __setImmediate_id_counter;
         // must preserve the order and count of elements in the queue, so replace the pending callback with an empty function
-        if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = () => {};
+        if (index >= 0 && index < __setImmediate_queue.length) __setImmediate_queue[index] = null;
       })
     }`,
   $emSetImmediate: undefined,
@@ -341,17 +346,26 @@ LibraryJSEventLoop = {
       assert(mode == {{{ cDefs.EM_TIMING_SETIMMEDIATE}}});
 #endif
       if (!MainLoop.setImmediate) {
-        if (globalThis.setImmediate) {
+        if (globalThis.scheduler) {
+          // Some modern browsers implement scheduler.postTask, but not all.
+#if RUNTIME_DEBUG
+          dbg('setImmediate: using scheduler.postTask');
+#endif
+          MainLoop.setImmediate = scheduler.postTask.bind(scheduler);
+#if ENVIRONMENT_MAY_BE_NODE
+        } else if (globalThis.setImmediate) {
           MainLoop.setImmediate = setImmediate;
+#endif
         } else {
+#if RUNTIME_DEBUG
+          dbg('setImmediate: using polyfill');
+#endif
           // Emulate setImmediate. (note: not a complete polyfill, we don't emulate clearImmediate() to keep code size to minimum, since not needed)
           var setImmediates = [];
           var emscriptenMainLoopMessageId = 'setimmediate';
           /** @param {Event} event */
           var MainLoop_setImmediate_messageHandler = (event) => {
-            // When called in current thread or Worker, the main loop ID is structured slightly different to accommodate for --proxy-to-worker runtime listening to Worker events,
-            // so check for both cases.
-            if (event.data === emscriptenMainLoopMessageId || event.data.target === emscriptenMainLoopMessageId) {
+            if (event.data === emscriptenMainLoopMessageId) {
               event.stopPropagation();
               setImmediates.shift()();
             }
@@ -360,10 +374,12 @@ LibraryJSEventLoop = {
           MainLoop.setImmediate = /** @type{function(function(): ?, ...?): number} */((func) => {
             setImmediates.push(func);
             if (ENVIRONMENT_IS_WORKER) {
-              Module['setImmediates'] ??= [];
-              Module['setImmediates'].push(func);
-              postMessage({target: emscriptenMainLoopMessageId}); // In --proxy-to-worker, route the message via proxyClient.js
-            } else postMessage(emscriptenMainLoopMessageId, "*"); // On the main thread, can just send the message to itself.
+              // The postMessge API in a Worker, sends message to the main
+              // thread and does not support the `targetOrigin` (*) argument.
+              postMessage(emscriptenMainLoopMessageId);
+            } else {
+              postMessage(emscriptenMainLoopMessageId, '*');
+            }
           });
         }
       }
@@ -395,7 +411,7 @@ LibraryJSEventLoop = {
    */`,
   $setMainLoop: (iterFunc, fps, simulateInfiniteLoop, arg, noSetTiming) => {
 #if ASSERTIONS
-    assert(!MainLoop.func, 'emscripten_set_main_loop: there can only be one main loop function at once: call emscripten_cancel_main_loop to cancel the previous one before setting a new one with different parameters.');
+    assert(!MainLoop.func, 'emscripten_set_main_loop: there can only be one main loop function at once')
 #endif
     MainLoop.func = iterFunc;
     MainLoop.arg = arg;

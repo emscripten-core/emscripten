@@ -91,7 +91,7 @@ var LibraryEmVal = {
   _emval_decref: (handle) => {
     if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle + 1]) {
   #if ASSERTIONS
-      assert(emval_handles[handle] !== undefined, `Decref for unallocated handle.`);
+      assert(emval_handles[handle] !== undefined, `decref for unallocated handle`);
   #endif
       var value = emval_handles[handle];
       emval_handles[handle] = undefined;

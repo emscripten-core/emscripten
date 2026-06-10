@@ -22,7 +22,7 @@ if __name__ == '__main__':
 import clang_native
 import common
 import jsrun
-from common import read_binary, read_file, test_file
+from common import copy_asset, read_binary, read_file, test_file
 from decorators import needs_make, parameterized
 
 from tools import utils
@@ -80,7 +80,7 @@ class Benchmarker(ABC):
   def get_output_files(self):
     pass
 
-  def bench(self, args, reps, output_parser=None, expected_output=None):
+  def bench(self, args, reps=EMTEST_REPS, output_parser=None, expected_output=None):
     self.times = []
     for _ in range(reps):
       start = time.time()
@@ -167,8 +167,9 @@ class Benchmarker(ABC):
 
 
 class ToolchainBenchmarker(Benchmarker):
-  """ToolchainBenchmarker performs the compile step during run.  i.e. it measures the perf of the
-  compiler rather than the generated code.
+  """ToolchainBenchmarker performs the compile step during run.
+
+  It measures the perf of the compiler rather than the generated code.
 
   Some simple tests will just work with these benchmarkers but more complex ones will not because
   the arguments to `build` are all ignored.
@@ -389,9 +390,9 @@ named_benchmarkers = {
   'v8': EmscriptenBenchmarker('v8', aot_v8),
   'v8-lto': EmscriptenBenchmarker('v8-lto', aot_v8, ['-flto']),
   'v8-ctors': EmscriptenBenchmarker('v8-ctors', aot_v8, ['-sEVAL_CTORS']),
-  'v8-64': EmscriptenBenchmarker('v8-64', aot_v8, ['-sMEMORY64=2']),
+  'v8-64': EmscriptenBenchmarker('v8-64', aot_v8, ['-m64']),
   'node': EmscriptenBenchmarker('node', config.NODE_JS_TEST),
-  'node-64': EmscriptenBenchmarker('node-64', config.NODE_JS_TEST, ['-sMEMORY64=2']),
+  'node-64': EmscriptenBenchmarker('node-64', config.NODE_JS_TEST, ['-m64']),
   'cherp-v8': CheerpBenchmarker('cheerp-v8-wasm', aot_v8),
   # TODO: ensure no baseline compiler is used, see v8
   'sm': EmscriptenBenchmarker('sm', config.SPIDERMONKEY_ENGINE),
@@ -421,7 +422,8 @@ class benchmark(common.RunnerCore):
       pass
     try:
       with common.chdir(os.path.expanduser('~/Dev/mozilla-central')):
-        fingerprint.append('sm: ' + [line for line in run_process(['hg', 'tip'], stdout=PIPE).stdout.splitlines() if 'changeset' in line][0])
+        hg_tip = run_process(['hg', 'tip'], stdout=PIPE).stdout
+        fingerprint.append('sm: ' + next(line for line in hg_tip.splitlines() if 'changeset' in line))
     except Exception:
       pass
     fingerprint.append('llvm: ' + config.LLVM_ROOT)
@@ -1033,13 +1035,13 @@ class benchmark(common.RunnerCore):
 
   def lua(self, benchmark, expected, output_parser=None):
     self.cflags.remove('-Werror')
-    shutil.copyfile(test_file(f'third_party/lua/{benchmark}.lua'), benchmark + '.lua')
+    copy_asset(f'third_party/lua/{benchmark}.lua')
 
     def lib_builder(name, native, env_init):
-      # Inject -sMEMORY64 into node-64 benchmarking runs.
+      # Inject -m64 into node-64 benchmarking runs.
       env_init['MYCFLAGS'] = env_init.get('CFLAGS', '')
-      if '-sMEMORY64' in env_init['MYCFLAGS']:
-        env_init['MYLDFLAGS'] = '-sMEMORY64'
+      if '-m64' in env_init['MYCFLAGS']:
+        env_init['MYLDFLAGS'] = '-m64'
 
       # We force recomputation for the native benchmarker because this benchmark
       # uses native_exec=True, so we need to copy the native executable
@@ -1066,7 +1068,10 @@ class benchmark(common.RunnerCore):
     src = read_file(test_file('benchmark/test_zlib_benchmark.c'))
 
     def lib_builder(name, native, env_init):
-      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'), configure=['cmake', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '.'], make=['cmake', '--build', '.', '--'], make_args=[], native=native, cache_name_extra=name, env_init=env_init)
+      return self.get_library(os.path.join('third_party', 'zlib'), os.path.join('libz.a'),
+                              configure=['cmake', '-DCMAKE_POLICY_VERSION_MINIMUM=3.5', '-DBUILD_SHARED_LIBS=OFF', '.'],
+                              make=['cmake', '--build', '.', '--'],
+                              make_args=[], native=native, cache_name_extra=name, env_init=env_init)
 
     self.do_benchmark('zlib', src, 'ok.',
                       force_c=True, shared_args=['-I' + test_file('third_party/zlib')], lib_builder=lib_builder)
@@ -1168,9 +1173,9 @@ class benchmark(common.RunnerCore):
     ''' % DEFAULT_ARG)
 
     def lib_builder(name, native, env_init):  # noqa
-      if '-sMEMORY64' in env_init.get('CFLAGS', ''):
-        env_init['CPPFLAGS'] = '-sMEMORY64'
-        env_init['LDFLAGS'] = '-sMEMORY64'
+      if '-m64' in env_init.get('CFLAGS', ''):
+        env_init['CPPFLAGS'] = '-m64'
+        env_init['LDFLAGS'] = '-m64'
       return self.get_poppler_library(env_init=env_init)
 
     self.do_benchmark('poppler', '', 'hashed printout',
@@ -1181,6 +1186,6 @@ class benchmark(common.RunnerCore):
                                  '-sERROR_ON_UNDEFINED_SYMBOLS=0',
                                  '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder,
-                      # TODO: Fix poppler native and freetype MEMORY64 builds to be able
+                      # TODO: Fix poppler native and freetype wasm64 builds to be able
                       # to remove these skips
                       skip_benchmarkers=['clang', 'gcc', 'v8-64', 'node-64'])

@@ -24,7 +24,6 @@ from . import (
   utils,
   webassembly,
 )
-from .feature_matrix import UNSUPPORTED
 from .settings import settings
 from .shared import (
   CLANG_CC,
@@ -53,7 +52,7 @@ logger = logging.getLogger('building')
 
 #  Building
 binaryen_checked = False
-EXPECTED_BINARYEN_VERSION = 128
+EXPECTED_BINARYEN_VERSION = 129
 
 _is_ar_cache: dict[str, bool] = {}
 # the exports the user requested
@@ -73,7 +72,7 @@ def get_building_env():
   env['AR'] = EMAR
   env['LD'] = EMCC
   env['NM'] = LLVM_NM
-  env['LDSHARED'] = EMCC
+  env['LDSHARED'] = f'{EMCC} -shared'
   env['RANLIB'] = EMRANLIB
   env['EMSCRIPTEN_TOOLS'] = path_from_root('tools')
   env['HOST_CC'] = CLANG_CC
@@ -127,13 +126,11 @@ def llvm_backend_args():
 
 @ToolchainProfiler.profile()
 def link_to_object(args, target):
-  link_lld(args + ['--relocatable'], target)
+  link_lld([*args, '--relocatable'], target)
 
 
 def side_module_external_deps(external_symbols):
-  """Find the list of the external symbols that are needed by the
-  linked side modules.
-  """
+  """Find the list of the external symbols that are needed by the linked side modules."""
   deps = set()
   for sym in settings.SIDE_MODULE_IMPORTS:
     sym = demangle_c_symbol_name(sym)
@@ -143,9 +140,7 @@ def side_module_external_deps(external_symbols):
 
 
 def create_stub_object(external_symbols):
-  """Create a stub object, based on the JS library symbols and their
-  dependencies, that we can pass to wasm-ld.
-  """
+  """Create a stub object, based on the JS library symbols and their dependencies, for use by wasm-ld."""
   stubfile = shared.get_temp_files().get('libemscripten_js_symbols.so').name
   stubs = ['#STUB']
   for name, deps in external_symbols.items():
@@ -170,6 +165,12 @@ def lld_flags_for_executable(external_symbols):
     stub = create_stub_object(external_symbols)
     cmd.append(stub)
 
+  if settings.FAKE_DYLIBS or (not settings.MAIN_MODULE and not settings.SIDE_MODULE):
+    cmd.append('-Bstatic')
+  else:
+    # wasm-ld still defaults to static linking by default. If that ever changes, we can remove this line.
+    cmd.append('-Bdynamic')
+
   if not settings.ERROR_ON_UNDEFINED_SYMBOLS:
     cmd.append('--import-undefined')
 
@@ -189,9 +190,6 @@ def lld_flags_for_executable(external_symbols):
       not settings.ASYNCIFY):
     cmd.append('--strip-debug')
 
-  if settings.LINKABLE:
-    cmd.append('--export-dynamic')
-
   if settings.LTO and not settings.EXIT_RUNTIME:
     # The WebAssembly backend can generate new references to `__cxa_atexit` at
     # LTO time.  This `-u` flag forces the `__cxa_atexit` symbol to be
@@ -208,7 +206,6 @@ def lld_flags_for_executable(external_symbols):
   c_exports = [e for e in c_exports if e not in external_symbols]
   c_exports += settings.REQUIRED_EXPORTS
   if settings.MAIN_MODULE:
-    cmd.append('-Bdynamic')
     c_exports += side_module_external_deps(external_symbols)
   for export in c_exports:
     if settings.ERROR_ON_UNDEFINED_SYMBOLS:
@@ -219,7 +216,6 @@ def lld_flags_for_executable(external_symbols):
   cmd.extend(f'--export-if-defined={e}' for e in settings.EXPORT_IF_DEFINED)
 
   if settings.MAIN_MODULE or settings.SIDE_MODULE:
-    cmd.append('--experimental-pic')
     cmd.append('--unresolved-symbols=import-dynamic')
     if not settings.WASM_BIGINT:
       # When we don't have WASM_BIGINT available, JS signature legalization
@@ -233,6 +229,8 @@ def lld_flags_for_executable(external_symbols):
     if not settings.LINKABLE:
       cmd.append('--no-export-dynamic')
   else:
+    if settings.LINKABLE:
+      cmd.append('--export-dynamic')
     cmd.append('--export-table')
     if settings.ALLOW_TABLE_GROWTH:
       cmd.append('--growable-table')
@@ -287,7 +285,7 @@ def lld_flags(args):
 
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
-  if settings.LINKABLE:
+  if settings.LINKABLE and (settings.FAKE_DYLIBS or not settings.SIDE_MODULE):
     args.insert(0, '--whole-archive')
     args.append('--no-whole-archive')
 
@@ -353,16 +351,6 @@ def get_command_with_possible_response_file(cmd):
   return new_cmd
 
 
-def emar(action, output_filename, filenames, stdout=None, stderr=None, env=None):
-  utils.delete_file(output_filename)
-  cmd = [EMAR, action, output_filename] + filenames
-  cmd = get_command_with_possible_response_file(cmd)
-  run_process(cmd, stdout=stdout, stderr=stderr, env=env)
-
-  if 'c' in action:
-    assert os.path.exists(output_filename), 'emar could not create output file: ' + output_filename
-
-
 def opt_level_to_str(opt_level, shrink_level=0):
   # convert opt_level/shrink_level pair to a string argument like -O1
   if opt_level == 0:
@@ -393,7 +381,7 @@ def acorn_optimizer(filename, passes, extra_info=None, return_output=False, work
     with open(temp, 'a', encoding='utf-8') as f:
       f.write('// EXTRA_INFO: ' + json.dumps(extra_info))
     filename = temp
-  cmd = config.NODE_JS + [optimizer, filename] + passes
+  cmd = [*config.NODE_JS, optimizer, filename, *passes]
   if not worker_js:
     # Keep JS code comments intact through the acorn optimization pass so that
     # JSDoc comments will be carried over to a later Closure run.
@@ -521,7 +509,7 @@ def get_closure_compiler_and_env(user_args):
   if not native_closure_compiler_works and not any(a.startswith('--platform') for a in user_args):
     # Run with Java Closure compiler as a fallback if the native version does not work.
     # This can happen, for example, on arm64 macOS machines that do not have Rosetta installed.
-    logger.warning('falling back to java version of closure compiler')
+    logger.debug('falling back to java version of closure compiler')
     user_args.append('--platform=java')
     check_closure_compiler(closure_cmd, user_args, env, allowed_to_fail=False)
 
@@ -529,50 +517,12 @@ def get_closure_compiler_and_env(user_args):
 
 
 def version_split(v):
-  """Split version setting number (e.g. 162000) into versions string (e.g. "16.2.0")
-  """
+  """Split version setting number (e.g. 162000) into versions string (e.g. "16.2.0")."""
   v = str(v).rjust(6, '0')
   assert len(v) == 6
   m = re.match(r'(\d{2})(\d{2})(\d{2})', v)
   major, minor, rev = m.group(1, 2, 3)
   return f'{int(major)}.{int(minor)}.{int(rev)}'
-
-
-@ToolchainProfiler.profile()
-def transpile(filename):
-  config = {
-    'sourceType': 'script',
-    'presets': ['@babel/preset-env'],
-    'plugins': [],
-    'targets': {},
-    'parserOpts': {
-      # FIXME: Remove when updating to Babel 8, see:
-      # https://babeljs.io/docs/v8-migration-api#javascript-nodes
-      'createImportExpressions': True,
-    },
-  }
-  if settings.MIN_CHROME_VERSION != UNSUPPORTED:
-    config['targets']['chrome'] = str(settings.MIN_CHROME_VERSION)
-  if settings.MIN_FIREFOX_VERSION != UNSUPPORTED:
-    config['targets']['firefox'] = str(settings.MIN_FIREFOX_VERSION)
-  if settings.MIN_SAFARI_VERSION != UNSUPPORTED:
-    config['targets']['safari'] = version_split(settings.MIN_SAFARI_VERSION)
-  if settings.MIN_NODE_VERSION != UNSUPPORTED:
-    config['targets']['node'] = version_split(settings.MIN_NODE_VERSION)
-    config['plugins'] = [path_from_root('src/babel-plugins/strip-node-prefix.mjs')]
-  config_json = json.dumps(config, indent=2)
-  outfile = shared.get_temp_files().get('babel.js').name
-  config_file = shared.get_temp_files().get('babel_config.json').name
-  logger.debug(config_json)
-  utils.write_file(config_file, config_json)
-  cmd = shared.get_npm_cmd('babel') + [filename, '-o', outfile, '--config-file', config_file]
-  # Babel needs access to `node_modules` for things like `preset-env`, but the
-  # location of the config file (and the current working directory) might not be
-  # in the emscripten tree, so we explicitly set NODE_PATH here.
-  env = shared.env_with_node_in_path()
-  env['NODE_PATH'] = path_from_root('node_modules')
-  check_call(cmd, env=env)
-  return outfile
 
 
 @ToolchainProfiler.profile()
@@ -611,11 +561,10 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
 
   # Node.js specific externs
   if settings.ENVIRONMENT_MAY_BE_NODE:
-    NODE_EXTERNS_BASE = path_from_root('third_party/closure-compiler/node-externs')
-    NODE_EXTERNS = os.listdir(NODE_EXTERNS_BASE)
-    NODE_EXTERNS = [os.path.join(NODE_EXTERNS_BASE, name) for name in NODE_EXTERNS
-                    if name.endswith('.js')]
-    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/node-externs.js')] + NODE_EXTERNS
+    node_extern_dir = path_from_root('third_party/closure-compiler/node-externs')
+    node_externs = os.listdir(node_extern_dir)
+    node_externs = [os.path.join(node_extern_dir, name) for name in node_externs if name.endswith('.js')]
+    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/node-externs.js'), *node_externs]
 
   # V8/SpiderMonkey shell specific externs
   if settings.ENVIRONMENT_MAY_BE_SHELL:
@@ -625,19 +574,18 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
 
   # Web environment specific externs
   if settings.ENVIRONMENT_MAY_BE_WEB or settings.ENVIRONMENT_MAY_BE_WORKER:
-    BROWSER_EXTERNS_BASE = path_from_root('src/closure-externs/browser-externs')
-    if os.path.isdir(BROWSER_EXTERNS_BASE):
-      BROWSER_EXTERNS = os.listdir(BROWSER_EXTERNS_BASE)
-      BROWSER_EXTERNS = [os.path.join(BROWSER_EXTERNS_BASE, name) for name in BROWSER_EXTERNS
-                         if name.endswith('.js')]
-      CLOSURE_EXTERNS += BROWSER_EXTERNS
+    browser_externs_dir = path_from_root('src/closure-externs/browser-externs')
+    if os.path.isdir(browser_externs_dir):
+      browser_externs = os.listdir(browser_externs_dir)
+      browser_externs = [os.path.join(browser_externs_dir, name) for name in browser_externs if name.endswith('.js')]
+      CLOSURE_EXTERNS += browser_externs
 
   if settings.DYNCALLS:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/dyncall-externs.js')]
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   args += ['--language_in', 'UNSTABLE']
-  # We do transpilation using babel
+  # We currently only use closure compiler for minification, not transpilation.
   args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
   args += ['--emit_use_strict=false']
@@ -916,8 +864,8 @@ def metadce(js_file, wasm_file, debug_info, last):
   if settings.MINIFY_WHITESPACE:
     passes.append('--minify-whitespace')
   if DEBUG:
-    logger.debug("unused_imports: %s", str(unused_imports))
-    logger.debug("unused_exports: %s", str(unused_exports))
+    logger.debug(f'unused_imports: {unused_imports}')
+    logger.debug(f'unused_exports: {unused_exports}')
   extra_info = {'unusedImports': unused_imports, 'unusedExports': unused_exports}
   return acorn_optimizer(js_file, passes, extra_info=extra_info)
 
@@ -971,7 +919,7 @@ def minify_wasm_imports_and_exports(js_file, wasm_file, minify_exports, debug_in
     parsed = json.loads(out)
     for imp in parsed['imports']:
       # the module name is ignored; we assume no collisions can happen there
-      module, old, new = imp
+      _module, old, new = imp
       assert old not in mapping, 'imports must be unique'
       mapping[old] = new
     for exp in parsed['exports']:
@@ -1054,7 +1002,7 @@ def wasm2js(js_file, wasm_file, opt_level, use_closure_compiler, debug_info, sym
 
 @ToolchainProfiler.profile()
 def strip_sections(infile, outfile, sections):
-  """Strip specified sections from a wasm file"""
+  """Strip specified sections from a wasm file."""
   cmd = [LLVM_OBJCOPY, infile, outfile] + ['--remove-section=' + section for section in sections]
   check_call(cmd)
 
@@ -1159,8 +1107,7 @@ def write_symbol_map(wasm_file, symbols_file):
 
 
 def is_ar(filename):
-  """Return True if the given filename is an ar archive, False otherwise.
-  """
+  """Return True if the given filename is an ar archive, False otherwise."""
   try:
     header = open(filename, 'rb').read(8)
   except Exception as e:
@@ -1323,13 +1270,13 @@ def new_intermediate_filename(name):
 
 
 def save_intermediate(src, name):
-  """Copy an existing file CANONICAL_TEMP_DIR"""
+  """Copy an existing file CANONICAL_TEMP_DIR."""
   if DEBUG:
     shutil.copyfile(src, new_intermediate_filename(name))
 
 
 def write_intermediate(content, name):
-  """Generate a new debug file CANONICAL_TEMP_DIR"""
+  """Generate a new debug file CANONICAL_TEMP_DIR."""
   if DEBUG:
     utils.write_file(new_intermediate_filename(name), content)
 

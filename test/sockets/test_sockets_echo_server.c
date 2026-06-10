@@ -212,9 +212,22 @@ int main() {
 
   ioctlarg_t on = 1;
   if (ioctlsocket(server.fd, FIONBIO, &on) == SOCKET_ERROR) {
-    perror("ioctlsocket failed");
+    perror("ioctlsocket FIONBIO failed");
     exit(EXIT_FAILURE);
   }
+
+#ifndef __EMSCRIPTEN__
+  // This server is compiled using both the host compiler and using emscripten.
+  // When compiling for the host we use SO_REUSEADDR to avoid `Address already
+  // in use` errors when repeatedly running a given test. With emscripten
+  // `SO_REUSEADDR` is not implemented.
+  // TODO(sbc): Implement/stub SO_REUSEADDR in emscripten.
+  int opt = 1;
+  if (setsockopt(server.fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == SOCKET_ERROR) {
+    perror("setsockopt SO_REUSEADDR failed");
+    exit(EXIT_FAILURE);
+  }
+#endif
 
   memset(&addr, 0, sizeof(addr));
   addr.sin_family = AF_INET;
@@ -226,7 +239,7 @@ int main() {
 
   res = bind(server.fd, (struct sockaddr *)&addr, sizeof(addr));
   if (res == SOCKET_ERROR) {
-    perror("bind failed");
+    fprintf(stderr, "bind (%d) failed: %s\n", SOCKK, strerror(errno));
     exit(EXIT_FAILURE);
   }
 

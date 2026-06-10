@@ -1,6 +1,5 @@
 #!/usr/bin/env python3
-"""Find unused settings from settings.js and settings_internal.js.
-"""
+"""Find unused settings from settings.js and settings_internal.js."""
 
 import os
 import subprocess

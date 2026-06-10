@@ -38,6 +38,6 @@ int main() {
   rtn = close(fd);
   assert(rtn == 0);
 
-  printf("success\n");
+  printf("done\n");
   return 0;
 }

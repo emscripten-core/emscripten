@@ -4,11 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Wrapper script around `llvm-ar`.
-"""
+"""Wrapper script around `llvm-ar`."""
 
 import sys
 
 from tools import shared
 
-shared.exec_process([shared.LLVM_AR] + sys.argv[1:])
+shared.exec_process([shared.LLVM_AR, *sys.argv[1:]])

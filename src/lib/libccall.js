@@ -64,7 +64,7 @@ addToLibrary({
     var cArgs = [];
     var stack = 0;
 #if ASSERTIONS
-    assert(returnType !== 'array', 'Return type should not be "array".');
+    assert(returnType !== 'array', 'return type should not be "array"');
 #endif
     if (args) {
       for (var i = 0; i < args.length; i++) {

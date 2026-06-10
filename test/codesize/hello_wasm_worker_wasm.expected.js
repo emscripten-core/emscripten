@@ -1,4 +1,4 @@
-var c = Module, d = !!globalThis.WorkerGlobalScope, e = "em-ww" == globalThis.name, f, g, C, r, D, n, E, w;
+var c = Module, d = !!globalThis.WorkerGlobalScope, e = globalThis.name == "em-ww", f, g, C, q, D, m, E, v;
 
 e && (onmessage = a => {
     onmessage = null;
@@ -19,35 +19,35 @@ e || (g = c.mem || new WebAssembly.Memory({
     shared: !0
 }), h());
 
-var l = [], p = a => {
+var l = [], n = a => {
     a = a.data;
-    let b = a._wsc;
-    b && n.get(b)(...a.x);
-}, q = a => {
+    var b = a._wsc;
+    b && m.get(b)(...a.x);
+}, p = a => {
     l.push(a);
-}, t = () => {
-    r(0, !d, !e, d && 1);
-}, u = {}, v = 1, x = (a, b) => {
-    let m = u[v] = new Worker(c.js, {
+}, r = () => {
+    q(0, !d, !e, d && 1);
+}, u = {}, w = (a, b, z) => {
+    var t = u[a] = new Worker(c.js, {
         name: "em-ww"
     });
-    m.postMessage({
-        v: v,
-        m: w,
+    t.postMessage({
+        A: a,
+        m: v,
         o: g,
-        s: a,
-        u: b
+        u: b,
+        v: z
     });
-    m.onmessage = p;
-    return v++;
-}, y = () => performance.now(), z = () => !1, A = (a, b) => {
+    t.onmessage = n;
+    return !0;
+}, x = () => performance.now(), y = () => !1, A = (a, b) => {
     u[a].postMessage({
         _wsc: b,
         x: []
     });
 };
 
-e && (u[0] = globalThis, addEventListener("message", q));
+e && (u[0] = globalThis, addEventListener("message", p));
 
 function B() {
     console.log("Hello from wasm worker!");
@@ -55,10 +55,10 @@ function B() {
 
 function k() {
     E = {
-        e: t,
-        c: x,
-        b: y,
-        d: z,
+        d: r,
+        c: w,
+        b: x,
+        e: y,
         f: A,
         g: B,
         a: g
@@ -67,12 +67,12 @@ function k() {
         a: E
     }).then((a => {
         var b = (a.instance || a).exports;
-        w = a.module || c.wasm;
+        v = a.module || c.wasm;
         C = b.i;
-        r = b.k;
+        q = b.k;
         D = b.l;
-        n = b.j;
-        e ? (D(f.v, f.s, f.u), removeEventListener("message", q), l = l.forEach(p), addEventListener("message", p)) : b.h();
+        m = b.j;
+        e ? (D(f.A, f.u, f.v), removeEventListener("message", p), l = l.forEach(n), addEventListener("message", n)) : b.h();
         e || C();
     }));
 }

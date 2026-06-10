@@ -4,7 +4,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""emcc - compiler helper script
+"""\
+emcc - compiler helper script
 =============================
 
 emcc is a drop-in replacement for a compiler like gcc or clang.
@@ -18,7 +19,7 @@ emcc can be influenced by a few environment variables:
                (by default /tmp/emscripten_temp). "2" will save additional emcc-*
                steps, that would normally not be separately produced (so this
                slows down compilation).
-"""
+""" # noqa: D205, D400, D415
 
 import logging
 import os
@@ -104,6 +105,7 @@ class LinkFlag:
 
   A list of these is returned by separate_linker_flags.
   """
+
   value: str
   is_file: int
 
@@ -185,7 +187,7 @@ def main(args):
   if len(args) == 2 and args[1] == '-v':
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print(cmdline.version_string(), file=sys.stderr)
-    return shared.check_call([clang, '-v'] + compile.get_target_flags(), check=False).returncode
+    return shared.check_call([clang, '-v', *compile.get_target_flags()], check=False).returncode
 
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
@@ -293,7 +295,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   phase_setup(state)
 
   if '-print-resource-dir' in args or any(a.startswith('--print-prog-name') for a in args):
-    shared.exec_process([clang] + compile.get_cflags(tuple(args)) + args)
+    shared.exec_process([clang, *compile.get_cflags(tuple(args)), *args])
     assert False, 'exec_process should not return'
 
   if '--cflags' in args:
@@ -312,7 +314,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     linker_args = separate_linker_flags(newargs)[1]
     linker_args = [f.value for f in linker_args]
     # Delay import of link.py to avoid processing this file when only compiling
-    from tools import link  # noqa: PLC0415
+    from tools import link
     link.run_post_link(options.input_files[0], options, linker_args)
     return 0
 
@@ -335,7 +337,6 @@ def separate_linker_flags(newargs):
   - Linker flags include input files and are returned a list of LinkFlag objects.
   - Compiler flags are those to be passed to `clang -c`.
   """
-
   compiler_args = []
   linker_args = []
 
@@ -369,7 +370,7 @@ def separate_linker_flags(newargs):
         add_link_arg(flag)
     elif arg == '-Xlinker':
       add_link_arg(get_next_arg())
-    elif arg == '-s' or arg.startswith(('-l', '-L', '--js-library=', '-z', '-u')):
+    elif arg in {'-s', '-Bstatic', '-Bdynamic'} or arg.startswith(('-l', '-L', '--js-library=', '-z', '-u')):
       add_link_arg(arg)
     elif not arg.startswith('-o') and arg not in {'-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'}:
       # All other flags are for the compiler
@@ -382,9 +383,7 @@ def separate_linker_flags(newargs):
 
 @ToolchainProfiler.profile_block('setup')
 def phase_setup(state):
-  """Second phase: configure and setup the compiler based on the specified settings and arguments.
-  """
-
+  """Second phase: configure and setup the compiler based on the specified settings and arguments."""
   has_header_inputs = any(get_file_suffix(f) in HEADER_EXTENSIONS for f in options.input_files)
 
   if options.post_link:
@@ -543,7 +542,7 @@ def phase_compile_inputs(options, state, newargs):
       cmd = get_clang_command()
       if ext == '.pcm':
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
-    cmd += compile_args + ['-c', input_file, '-o', output_file]
+    cmd += [*compile_args, '-c', input_file, '-o', output_file]
     if options.requested_debug == '-gsplit-dwarf':
       # When running in COMPILE_AND_LINK mode we compile objects to a temporary location
       # but we want the `.dwo` file to be generated in the current working directory,

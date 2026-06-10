@@ -30,15 +30,9 @@
 typedef long syscall_arg_t;
 #endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 hidden long __syscall_ret(unsigned long),
 	__syscall_cp(syscall_arg_t, syscall_arg_t, syscall_arg_t, syscall_arg_t,
 	             syscall_arg_t, syscall_arg_t, syscall_arg_t);
-#ifdef __cplusplus
-}
-#endif
 
 #ifndef __EMSCRIPTEN__
 #define __syscall1(n,a) __syscall1(n,__scc(a))
@@ -433,6 +427,23 @@ hidden long __syscall_ret(unsigned long),
 #define __sys_open_cp(...) __SYSCALL_DISP(__sys_open_cp,,__VA_ARGS__)
 #define sys_open_cp(...) __syscall_ret(__sys_open_cp(__VA_ARGS__))
 
+#ifdef SYS_pause
+#define __sys_pause() __syscall(SYS_pause)
+#define __sys_pause_cp() __syscall_cp(SYS_pause)
+#elif defined(__EMSCRIPTEN__)
+/* Note: When the sigmask argument is NULL, ppoll() differs from poll() only
+ * in the precision of the timeout argument.  For poll -1 means block forever
+ * as opposed to ppoll which uses NULL/0. */
+#define __sys_pause() __syscall(SYS_poll, 0, 0, -1)
+#define __sys_pause_cp() __syscall_cp(SYS_poll, 0, 0, -1)
+#else
+#define __sys_pause() __syscall(SYS_ppoll, 0, 0, 0, 0)
+#define __sys_pause_cp() __syscall_cp(SYS_ppoll, 0, 0, 0, 0)
+#endif
+
+#define sys_pause() __syscall_ret(__sys_pause())
+#define sys_pause_cp() __syscall_ret(__sys_pause_cp())
+
 #ifdef SYS_wait4
 #define __sys_wait4(a,b,c,d) __syscall(SYS_wait4,a,b,c,d)
 #define __sys_wait4_cp(a,b,c,d) __syscall_cp(SYS_wait4,a,b,c,d)
@@ -445,11 +456,7 @@ hidden long __emulate_wait4(int, int *, int, void *, int);
 #define sys_wait4(a,b,c,d) __syscall_ret(__sys_wait4(a,b,c,d))
 #define sys_wait4_cp(a,b,c,d) __syscall_ret(__sys_wait4_cp(a,b,c,d))
 
-#ifdef __cplusplus
-hidden void __procfdname(char __buf[], unsigned);
-#else
 hidden void __procfdname(char __buf[static 15+3*sizeof(int)], unsigned);
-#endif
 
 hidden void *__vdsosym(const char *, const char *);
 

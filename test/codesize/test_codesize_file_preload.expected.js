@@ -158,7 +158,7 @@ Module["expectedDataFileDownloads"]++;
 })();
 
 // end include: <FILENAME REPLACED>
-var arguments_ = [];
+var programArgs = [];
 
 var thisProgram = "./this.program";
 
@@ -209,7 +209,7 @@ if (ENVIRONMENT_IS_NODE) {
   if (process.argv.length > 1) {
     thisProgram = process.argv[1].replace(/\\/g, "/");
   }
-  arguments_ = process.argv.slice(2);
+  programArgs = process.argv.slice(2);
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
   if (typeof module != "undefined") {
     module["exports"] = Module;
@@ -363,7 +363,6 @@ function postRun() {}
 
 /**
  * @param {string|number=} what
- * @noreturn
  */ function abort(what) {
   what = `Aborted(${what})`;
   // TODO(sbc): Should we remove printing and leave it up to whoever
@@ -1471,7 +1470,7 @@ var FS = {
     if (!PATH.isAbs(path)) {
       path = FS.cwd() + "/" + path;
     }
-    // limit max consecutive symlinks to 40 (SYMLOOP_MAX).
+    // limit max consecutive symlinks to SYMLOOP_MAX.
     linkloop: for (var nlinks = 0; nlinks < 40; nlinks++) {
       // split the absolute path
       var parts = path.split("/").filter(p => !!p);
@@ -1754,7 +1753,14 @@ var FS = {
     var arg = setattr ? stream : node;
     setattr ??= node.node_ops.setattr;
     FS.checkOpExists(setattr, 63);
-    setattr(arg, attr);
+    try {
+      setattr(arg, attr);
+    } catch (e) {
+      if (e instanceof RangeError) {
+        throw new FS.ErrnoError(22);
+      }
+      throw e;
+    }
   },
   chrdev_stream_ops: {
     open(stream) {
@@ -2485,8 +2491,8 @@ var FS = {
     return stream.stream_ops.ioctl(stream, cmd, arg);
   },
   readFile(path, opts = {}) {
-    opts.flags = opts.flags || 0;
-    opts.encoding = opts.encoding || "binary";
+    opts.flags = opts.flags ?? 0;
+    opts.encoding = opts.encoding ?? "binary";
     if (opts.encoding !== "utf8" && opts.encoding !== "binary") {
       abort(`Invalid encoding type "${opts.encoding}"`);
     }
@@ -2502,7 +2508,7 @@ var FS = {
     return buf;
   },
   writeFile(path, data, opts = {}) {
-    opts.flags = opts.flags || 577;
+    opts.flags = opts.flags ?? 577;
     var stream = FS.open(path, opts.flags, opts.mode);
     data = FS_fileDataToTypedArray(data);
     FS.write(stream, data, 0, data.byteLength, undefined, opts.canOwn);
@@ -2841,8 +2847,8 @@ var FS = {
         if (!hasByteServing) chunkSize = datalength;
         // Function to get a range from the remote URL.
         var doXHR = (from, to) => {
-          if (from > to) abort("invalid range (" + from + ", " + to + ") or no bytes requested!");
-          if (to > datalength - 1) abort("only " + datalength + " bytes available! programmer error!");
+          if (from > to) abort(`invalid range (${from}, ${to}) or no bytes requested!`);
+          if (to > datalength - 1) abort(`only ${datalength} bytes available! programmer error!`);
           // TODO: Use mozResponseArrayBuffer, responseStream, etc. if available.
           var xhr = new XMLHttpRequest;
           xhr.open("GET", url, false);
@@ -2857,7 +2863,7 @@ var FS = {
           if (xhr.response !== undefined) {
             return new Uint8Array(/** @type{Array<number>} */ (xhr.response || []));
           }
-          return intArrayFromString(xhr.responseText || "", true);
+          return intArrayFromString(xhr.responseText ?? "", true);
         };
         var lazyArray = this;
         lazyArray.setDataGetter(chunkNum => {
@@ -2991,6 +2997,7 @@ var FS = {
    */ var UTF8ToString = (ptr, maxBytesToRead, ignoreNul) => ptr ? UTF8ArrayToString(HEAPU8, ptr, maxBytesToRead, ignoreNul) : "";
 
 var SYSCALLS = {
+  currentUmask: 18,
   calculateAt(dirfd, path, allowEmpty) {
     if (PATH.isAbs(path)) {
       return path;
@@ -3082,7 +3089,7 @@ function _fd_write(fd, iov, iovcnt, pnum) {
 
 var keepRuntimeAlive = () => true;
 
-/** @noreturn */ var _proc_exit = code => {
+var _proc_exit = code => {
   EXITSTATUS = code;
   if (!keepRuntimeAlive()) {
     ABORT = true;

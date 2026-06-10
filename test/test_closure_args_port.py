@@ -5,7 +5,7 @@ def get(ports, settings, shared): # noqa: ARG001
   return []
 
 
-def clear(ports, settings, shared): # noqa: ARG001
+def clear(ports, settings, shared):
   pass
 
 

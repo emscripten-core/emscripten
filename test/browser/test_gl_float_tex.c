@@ -126,6 +126,7 @@ static void gl_init(void) {
     GLuint program = glCreateProgram();
     glAttachShader(program, createShader(vertex_shader  , GL_VERTEX_SHADER));
     glAttachShader(program, createShader(fragment_shader, GL_FRAGMENT_SHADER));
+    glBindAttribLocation(program, 0, "indices");
     glLinkProgram(program);
     GLint status;
     char msg[512];
@@ -150,7 +151,6 @@ static void gl_init(void) {
     glBufferData(GL_ARRAY_BUFFER, NUM_NODES * sizeof(float), &elements[0], GL_STATIC_DRAW);
     /* Get the locations of the uniforms so we can access them */
     nodeSamplerLocation = glGetUniformLocation(program, "nodeInfo");
-    glBindAttribLocation(program, 0, "indices");
 #ifndef __EMSCRIPTEN__ // GLES2 & WebGL do not have these, only pre 3.0 desktop GL and compatibility mode GL3.0+ GL do.
     // Enable glPoint size in shader, always enable in Open Gl ES 2.
     glEnable(GL_VERTEX_PROGRAM_POINT_SIZE);

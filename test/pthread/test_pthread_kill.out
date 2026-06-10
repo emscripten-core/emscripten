@@ -1,4 +1,9 @@
+tesing pthread_kill with pthread_self
+signal: 15 onthread=0
 thread has started, sending SIGTERM
 SIGTERM sent
 signal: 15 onthread=1
-got term signal, shutting down thread
+got term signal, sending signal back to main thread
+signal: 10 onthread=0
+joined child_thread
+got SIGUSR1. all done.

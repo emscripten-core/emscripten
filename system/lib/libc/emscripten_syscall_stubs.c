@@ -15,12 +15,12 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <syscall_arch.h>
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <sys/utsname.h>
+#include <emscripten/syscalls.h>
 #include <emscripten/console.h>
 #include <emscripten/version.h>
 #include <emscripten/stack.h>
@@ -29,7 +29,6 @@ static int g_pid = 42;
 static int g_pgid = 42;
 static int g_ppid = 1;
 static int g_sid = 42;
-static mode_t g_umask = S_IWGRP | S_IWOTH;
 
 #ifdef NDEBUG
 #define REPORT(name)
@@ -121,12 +120,6 @@ weak int __syscall_setsid() {
   return 0; // no-op
 }
 
-weak int __syscall_umask(int mask) {
-  int old = g_umask;
-  g_umask = mask;
-  return old;
-}
-
 struct kusage {
   long utime_tv_sec;
   long utime_tv_usec;
@@ -185,11 +178,6 @@ weak int __syscall_getresgid32(intptr_t ruid, intptr_t euid, intptr_t suid) {
   *((uid_t *)euid) = 0;
   *((uid_t *)suid) = 0;
   return 0;
-}
-
-weak int __syscall_pause() {
-  REPORT(pause);
-  return -EINTR; // we can't pause
 }
 
 weak int __syscall_madvise(intptr_t addr, size_t length, int advice) {
