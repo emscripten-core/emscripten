@@ -776,6 +776,14 @@ f.close()
     settings.MEMORY64 = int('-m64' in args)
     self.assertContained(cache.get_lib_name('libc.a'), str(filename))
 
+  @crossplatform
+  def test_print_file_name_with_resource_dir(self):
+    file = Path(EMCC).name
+    output = self.run_process([EMCC, f'-print-file-name={file}'], stdout=PIPE).stdout
+    output_relative = self.run_process([EMCC, '-resource-dir=' + path_from_root(), f'-print-file-name={file}'], stdout=PIPE).stdout
+    self.assertNotExists(output.rstrip())
+    self.assertExists(output_relative.rstrip())
+
   def test_emar_em_config_flag(self):
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
     # We expand this in case the EM_CONFIG is ~/.emscripten (default)
