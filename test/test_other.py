@@ -777,9 +777,9 @@ f.close()
     self.assertContained(cache.get_lib_name('libc.a'), str(filename))
 
   @crossplatform
-  def test_print_file_name_relative(self):
+  def test_print_file_name_with_resource_dir(self):
     output = self.run_process([EMCC, '-print-file-name=emcc'], stdout=PIPE).stdout
-    output_relative = self.run_process([EMCC, shlex.quote(path_from_root()), '-print-file-name=emcc'], stdout=PIPE).stdout
+    output_relative = self.run_process([EMCC, '-resource-dir=' + path_from_root(), '-print-file-name=emcc'], stdout=PIPE).stdout
     self.assertNotExists(output.rstrip())
     self.assertExists(output_relative.rstrip())
 
