@@ -15603,12 +15603,10 @@ console.log('OK');'''
                      'CROSS_ORIGIN_STORAGE requires a web environment')
     self.assert_fail([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=web',
                       '-sSINGLE_FILE'],
                      'CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE')
     self.assert_fail([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=web',
                       '-sWASM_ASYNC_COMPILATION=0'],
                      'CROSS_ORIGIN_STORAGE is not compatible with WASM_ASYNC_COMPILATION=0')
     self.assert_fail([EMCC, test_file('hello_world.c'),
