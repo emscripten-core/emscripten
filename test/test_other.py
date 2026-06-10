@@ -779,7 +779,7 @@ f.close()
   @crossplatform
   def test_print_file_name_relative(self):
     output = self.run_process([EMCC, '-print-file-name=emcc'], stdout=PIPE).stdout
-    output_relative = self.run_process([EMCC, path_from_root(), '-print-file-name=emcc'], stdout=PIPE).stdout
+    output_relative = self.run_process([EMCC, shlex.quote(path_from_root()), '-print-file-name=emcc'], stdout=PIPE).stdout
     self.assertNotExists(output.rstrip())
     self.assertExists(output_relative.rstrip())
 
