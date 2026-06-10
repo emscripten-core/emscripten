@@ -768,8 +768,8 @@ f.close()
   def test_print_file_name(self, args):
     # make sure the corresponding version of libc exists in the cache
     self.run_process([EMCC, test_file('hello_world.c'), '-O2'] + args)
-    output = self.run_process([EMCC, '-print-file-name=libc.a'] + args, stdout=PIPE).stdout
-    output2 = self.run_process([EMCC, '--print-file-name=libc.a'] + args, stdout=PIPE).stdout
+    output = self.run_process([EMCC, '-print-file-name=libc.a'] + args, stdout=PIPE).stdout.rstrip()
+    output2 = self.run_process([EMCC, '--print-file-name=libc.a'] + args, stdout=PIPE).stdout.rstrip()
     self.assertEqual(output, output2)
     filename = Path(output)
     settings.LTO = '-flto' in args
@@ -777,12 +777,18 @@ f.close()
     self.assertContained(cache.get_lib_name('libc.a'), str(filename))
 
   @crossplatform
-  def test_print_file_name_with_resource_dir(self):
-    file = Path(EMCC).name
-    output = self.run_process([EMCC, f'-print-file-name={file}'], stdout=PIPE).stdout
-    output_relative = self.run_process([EMCC, '-resource-dir=' + path_from_root(), f'-print-file-name={file}'], stdout=PIPE).stdout
-    self.assertNotExists(output.rstrip())
-    self.assertExists(output_relative.rstrip())
+  def test_print_file_name_resdir(self):
+    output = self.run_process([EMCC, '-print-file-name=include/wmmintrin.h'], stdout=PIPE).stdout.rstrip()
+    print('print-file-name: ' + output)
+    self.assertExists(output)
+
+  @crossplatform
+  def test_print_file_name_custom_resdir(self):
+    output = self.run_process([EMCC, '-print-file-name=emcc.py'], stdout=PIPE).stdout.rstrip()
+    self.assertNotExists(output)
+
+    output_relative = self.run_process([EMCC, '-resource-dir=' + path_from_root(), '-print-file-name=emcc.py'], stdout=PIPE).stdout.rstrip()
+    self.assertExists(output_relative)
 
   def test_emar_em_config_flag(self):
     # Test that the --em-config flag is accepted but not passed down do llvm-ar.
