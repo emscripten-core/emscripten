@@ -633,7 +633,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
   // Any error (NotAllowedError, network failure, …) falls through to the
   // standard Emscripten streaming path so the page always loads.
   var cosHash = Module['wasmHash'];
-  if (cosHash?.value && 'crossOriginStorage' in navigator) {
+  if ('crossOriginStorage' in navigator) {
     try {
       var cosHandles = await navigator.crossOriginStorage.requestFileHandles([cosHash]);
       // Cache hit — read the Blob and instantiate from its ArrayBuffer.
