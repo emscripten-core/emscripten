@@ -14842,9 +14842,9 @@ addToLibrary({
     create_file('post.js', '''
       Module.onRuntimeInitialized = () => out(Module.rs_add(17, 25));
     ''')
-    emcc_args = [lib, '-sWASM_BINDGEN', '--post-js=post.js', '-lexports.js']
 
-    self.do_runf('empty.c', '42', cflags=emcc_args)
+    self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
+    self.do_runf('empty.c', '42', cflags=[lib, '-sWASM_BINDGEN', '--post-js=post.js', '-lexports.js'])
 
   def test_relative_em_cache(self):
     with env_modify({'EM_CACHE': 'foo'}):
