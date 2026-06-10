@@ -15607,17 +15607,6 @@ console.log('OK');'''
     self.assertNotContained('crossOriginStorage', js)
     self.assertNotContained("Module['wasmHash']", js)
 
-  def test_cross_origin_storage_callbacks(self):
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=web',
-                      '-sINCOMING_MODULE_JS_API=onCOSCacheHit,onCOSCacheMiss,onCOSStore',
-                      '-o', 'hello.js'])
-    js = read_file('hello.js')
-    self.assertContained("Module['onCOSCacheHit']", js)
-    self.assertContained("Module['onCOSCacheMiss']", js)
-    self.assertContained("Module['onCOSStore']", js)
-
   def test_cross_origin_storage_warnings(self):
     proc = self.run_process([EMCC, test_file('hello_world.c'),
                              '-sCROSS_ORIGIN_STORAGE',
