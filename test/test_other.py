@@ -15653,8 +15653,7 @@ console.log('OK');'''
     """CROSS_ORIGIN_STORAGE + non-web environment must be a hard link-time error."""
     self.assert_fail([EMCC, test_file('hello_world.cpp'),
                       '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=node',
-                      '-o', 'hello.js'],
+                      '-sENVIRONMENT=node'],
                      'CROSS_ORIGIN_STORAGE requires a web environment')
 
   def test_cross_origin_storage_error_with_single_file(self):
@@ -15662,8 +15661,7 @@ console.log('OK');'''
     self.assert_fail([EMCC, test_file('hello_world.cpp'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
-                      '-sSINGLE_FILE',
-                      '-o', 'hello.js'],
+                      '-sSINGLE_FILE'],
                      'CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE')
 
   def test_cross_origin_storage_error_without_async_compilation(self):
@@ -15671,8 +15669,7 @@ console.log('OK');'''
     self.assert_fail([EMCC, test_file('hello_world.cpp'),
                       '-sCROSS_ORIGIN_STORAGE',
                       '-sENVIRONMENT=web',
-                      '-sWASM_ASYNC_COMPILATION=0',
-                      '-o', 'hello.js'],
+                      '-sWASM_ASYNC_COMPILATION=0'],
                      'CROSS_ORIGIN_STORAGE is not compatible with WASM_ASYNC_COMPILATION=0')
 
   def test_cross_origin_storage_warning_with_split_module(self):
@@ -15783,8 +15780,7 @@ console.log('OK');'''
       [EMCC, test_file('hello_world.cpp'),
        '-sCROSS_ORIGIN_STORAGE',
        '-sENVIRONMENT=web',
-       '-sCROSS_ORIGIN_STORAGE_ORIGINS=["*","https://example.com"]',
-       '-o', 'hello.js'],
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=["*","https://example.com"]'],
       "'*' must not be mixed with explicit origins")
 
   def test_cross_origin_storage_origins_error_invalid_origin(self):
@@ -15793,8 +15789,7 @@ console.log('OK');'''
       [EMCC, test_file('hello_world.cpp'),
        '-sCROSS_ORIGIN_STORAGE',
        '-sENVIRONMENT=web',
-       '-sCROSS_ORIGIN_STORAGE_ORIGINS=["http://example.com"]',
-       '-o', 'hello.js'],
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=["http://example.com"]'],
       'is not a valid HTTPS origin')
 
   def test_cross_origin_storage_origins_error_origin_with_path(self):
@@ -15803,8 +15798,7 @@ console.log('OK');'''
       [EMCC, test_file('hello_world.cpp'),
        '-sCROSS_ORIGIN_STORAGE',
        '-sENVIRONMENT=web',
-       '-sCROSS_ORIGIN_STORAGE_ORIGINS=["https://example.com/path"]',
-       '-o', 'hello.js'],
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=["https://example.com/path"]'],
       'is not a valid HTTPS origin')
 
   def test_cross_origin_storage_wasm_hash_module_property(self):
