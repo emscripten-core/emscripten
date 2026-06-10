@@ -5699,27 +5699,14 @@ fetch('report_result?0');
     self.btest_exit('test_pthread_memgrowth_stale_views.c',
                     cflags=['-pthread', '-sINITIAL_MEMORY=10mb', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'])
 
-  # ---------------------------------------------------------------------------
-  # Cross-Origin Storage (COS) browser tests
-  # ---------------------------------------------------------------------------
 
   def test_cross_origin_storage_fallback(self):
-    """COS flag: page loads via the normal fetch path when COS API is absent."""
-    # -sENVIRONMENT=web requires a real browser (not node).
     if not is_chrome():
       self.skipTest('cross-origin storage tests require a Chromium-based browser')
     self.btest_exit('browser_test_hello_world.c',
-                    cflags=['-O2', '-sCROSS_ORIGIN_STORAGE', '-sENVIRONMENT=web', '-Wno-experimental'])
+                    cflags=['-O2', '-sCROSS_ORIGIN_STORAGE', '-Wno-experimental'])
 
   def test_cross_origin_storage_miss_then_hit(self):
-    """COS flag: first load triggers a cache-miss store; second load is a hit.
-
-    Requires EMTEST_COS_EXTENSION_PATH to point to an unpacked copy of the
-    Cross-Origin Storage Chrome extension (manifest.json directory), which
-    polyfills navigator.crossOriginStorage.
-
-    See: https://github.com/web-ai-community/cross-origin-storage-extension
-    """
     if not is_chrome():
       self.skipTest('cross-origin storage tests require a Chromium-based browser')
     if not EMTEST_COS_EXTENSION_PATH:
@@ -5758,7 +5745,6 @@ fetch('report_result?0');
     self.compile_btest('browser_test_hello_world.c', [
       '-O2',
       '-sCROSS_ORIGIN_STORAGE',
-      '-sENVIRONMENT=web',
       '-Wno-experimental',
       '-sINCOMING_MODULE_JS_API=onAbort,onExit,onCOSStore,onCOSCacheHit',
       '--pre-js', 'cos_pre.js',
