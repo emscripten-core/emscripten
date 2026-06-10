@@ -29,6 +29,7 @@ import sys
 import tarfile
 from dataclasses import dataclass
 from enum import Enum, auto, unique
+from subprocess import PIPE
 
 # This assert needs to happen early, before any too-recent python syntax is used.
 # In particular it needs to happen before we import any python file that uses the
@@ -172,6 +173,15 @@ def create_reproduce_file(name, args):
       reproduce_file.add(rsp_name, os.path.join(root, 'response.txt'))
 
 
+def get_clang_resource_dir(args):
+  resource_dir = [a for a in args if a.startswith(('-resource-dir=', '--resource-dir='))]
+  if resource_dir:
+    return resource_dir[-1].split('=')[1]
+  else:
+    output = utils.run_process([shared.CLANG_CC, '-print-resource-dir'], stdout=PIPE).stdout
+    return output.strip()
+
+
 @ToolchainProfiler.profile()
 def main(args):
   if shared.run_via_emxx:
@@ -253,7 +263,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
 
   if '-print-search-dirs' in args or '--print-search-dirs' in args:
     print(f'programs: ={config.LLVM_ROOT}')
-    print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
+    resource_dir = get_clang_resource_dir(args)
+    libdir = cache.get_lib_dir(absolute=True)
+    print(f'libraries: ={resource_dir}{os.pathsep}{libdir}')
     return 0
 
   if '-print-libgcc-file-name' in args or '--print-libgcc-file-name' in args:
@@ -265,14 +277,13 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   print_file_name = [a for a in args if a.startswith(('-print-file-name=', '--print-file-name='))]
   if print_file_name:
     libname = print_file_name[-1].split('=')[1]
-    resource_dir = [a for a in args if a.startswith(('-resource-dir=', '--resource-dir='))]
-    if resource_dir:
-      system_libpath = resource_dir[-1].split('=')[1]
-    else:
-      system_libpath = cache.get_lib_dir(absolute=True)
-    fullpath = os.path.join(system_libpath, libname)
-    if os.path.isfile(fullpath):
-      print(fullpath)
+    resource_dir = get_clang_resource_dir(args)
+    system_libpath = cache.get_lib_dir(absolute=True)
+    for dirname in (resource_dir, system_libpath):
+      fullpath = os.path.join(dirname, libname)
+      if os.path.isfile(fullpath):
+        print(fullpath)
+        break
     else:
       print(libname)
     return 0
