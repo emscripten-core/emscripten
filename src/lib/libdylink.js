@@ -1235,7 +1235,7 @@ var LibraryDylink = {
   },
 
   $loadDylibs__internal: true,
-  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols', '$addRunDependency', '$removeRunDependency'],
+  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
   $loadDylibs: async () => {
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
@@ -1248,7 +1248,6 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('loadDylibs:', dynamicLibraries);
 #endif
-    addRunDependency('loadDylibs');
 
     // Load binaries asynchronously
     for (var lib of dynamicLibraries) {
@@ -1260,7 +1259,6 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('loadDylibs done!');
 #endif
-    removeRunDependency('loadDylibs');
   },
 
   // void* dlopen(const char* filename, int flags);

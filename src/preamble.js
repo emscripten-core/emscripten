@@ -716,7 +716,7 @@ function getWasmImports() {
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
   /** @param {WebAssembly.Module=} module*/
-  function receiveInstance(instance, module) {
+  {{{ asyncIf(MAIN_MODULE) }}}function receiveInstance(instance, module) {
 #if RUNTIME_DEBUG
     dbg('receiveInstance')
 #endif
@@ -776,19 +776,19 @@ function getWasmImports() {
     Module['wasmExports'] = wasmExports;
 #endif
 
+#if !IMPORTED_MEMORY
+    updateMemoryViews();
+#endif
+
 #if MAIN_MODULE
 #if '$LDSO' in addedLibraryItems
     LDSO.init();
 #endif
-    loadDylibs();
+    await loadDylibs();
 #endif
 
 #if ABORT_ON_WASM_EXCEPTIONS
     instrumentWasmTableWithAbort();
-#endif
-
-#if !IMPORTED_MEMORY
-    updateMemoryViews();
 #endif
 
 #if PTHREADS || WASM_WORKERS
@@ -864,7 +864,7 @@ function getWasmImports() {
 
 #if SOURCE_PHASE_IMPORTS
   var instance = await WebAssembly.instantiate(wasmModule, info);
-  var exports = receiveInstantiationResult({instance, 'module':wasmModule});
+  var exports = {{{ awaitIf(MAIN_MODULE) }}}receiveInstantiationResult({instance, 'module':wasmModule});
   return exports;
 #else
   wasmBinaryFile ??= findWasmBinary();
@@ -873,7 +873,7 @@ function getWasmImports() {
   dbg('asynchronously preparing wasm');
 #endif
   var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
-  var exports = receiveInstantiationResult(result);
+  var exports = {{{ awaitIf(MAIN_MODULE) }}}receiveInstantiationResult(result);
   return exports;
 #else // WASM_ASYNC_COMPILATION
   var result = instantiateSync(wasmBinaryFile, info);
