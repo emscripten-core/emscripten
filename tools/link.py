@@ -2087,13 +2087,9 @@ def run_embind_gen(wasm_target, js_syms, extra_settings):
   if wasm_opt_args:
     building.run_wasm_opt(outfile_wasm, outfile_wasm, wasm_opt_args)
 
-  # Build the flags needed by Node.js to properly run the output file.
-  node_args = []
-  if settings.WASM_EXCEPTIONS:
-    node_args += shared.node_exception_flags(config.NODE_JS)
   # Run the generated JS file with the proper flags to generate the TypeScript bindings.
   output_file = in_temp('embind_generated_output.js')
-  shared.run_js_tool(outfile_js, [output_file], node_args)
+  shared.run_js_tool(outfile_js, [output_file])
   settings.restore(original_settings)
   return read_file(output_file)
 
