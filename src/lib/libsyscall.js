@@ -625,7 +625,7 @@ var SyscallsLibrary = {
       }
       // A zero timeout never registers notifications: the derivation alone
       // answers, matching the non-blocking probe.
-      var count = doPoll(fds, nfds, timeout || undefined, makeNotifyCallback);
+      var count = doPoll(fds, nfds, timeout, makeNotifyCallback);
       if (count || !timeout) {
         asyncPollComplete(count);
       }
@@ -633,18 +633,18 @@ var SyscallsLibrary = {
     }
 #endif
 
-    var count = doPoll(fds, nfds, undefined, undefined);
+    var count = doPoll(fds, nfds, 0, undefined);
 #if ASSERTIONS
     if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
 #endif
     return count;
   },
   // The shared readiness derivation: one pass over the pollfds, writing
-  // revents and returning the ready count. With `timeout` defined, a
+  // revents and returning the ready count. With a nonzero `timeout`, a
   // readiness notification is also registered on each stream by the same
   // `stream_ops.poll` call that derives it, so there is no window between
-  // registration and derivation; `timeout === undefined` implies no
-  // notification (the plain probe).
+  // registration and derivation; a zero `timeout` means the caller will not
+  // wait, so no notification is registered (the plain probe).
   $doPoll__internal: true,
   $doPoll__deps: ['$FS'],
   $doPoll: (fds, nfds, timeout, makeNotifyCallback) => {
@@ -657,7 +657,7 @@ var SyscallsLibrary = {
       var stream = FS.getStream(fd);
       if (stream) {
         if (stream.stream_ops.poll) {
-          flags = timeout !== undefined
+          flags = timeout
             ? stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd))
             : stream.stream_ops.poll(stream, -1);
         } else {
@@ -678,7 +678,7 @@ var SyscallsLibrary = {
   __syscall_poll_nonblocking__proxy: 'sync',
   __syscall_poll_nonblocking__deps: ['$doPoll'],
   __syscall_poll_nonblocking: (fds, nfds) => {
-    return doPoll(fds, nfds, undefined, undefined);
+    return doPoll(fds, nfds, 0, undefined);
   },
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
