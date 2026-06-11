@@ -112,10 +112,10 @@ commands:
       - install-node-version:
          node_version: "22.21.0"
   install-node-newest:
-    description: "install node 25.4.0 (newest)"
+    description: "install node 26.3.0 (newest)"
     steps:
       - install-node-version:
-         node_version: "25.4.0"
+         node_version: "26.3.0"
   install-v8:
     description: "install v8 using jsvu"
     steps:
@@ -819,10 +819,10 @@ jobs:
       - prepare-for-tests
       - install-node-newest
       # When running wasm64 tests we need to make sure we use the latest
-      # version of node (node 25) when running the compiler output (e.g.
-      # in configure tests.
+      # version of node when running the compiler output (e.g. in configure
+      # tests).
       - run:
-          name: configure node v25
+          name: configure node (newest)
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64_4gb"
@@ -836,10 +836,10 @@ jobs:
       - prepare-for-tests
       - install-node-newest
       # When running wasm64 tests we need to make sure we use the latest
-      # version of node (node v25) when running the compiler output (e.g.
-      # in configure tests.
+      # version of node when running the compiler output (e.g. in configure
+      # tests).
       - run:
-          name: configure node v25
+          name: configure node (newest)
           command: echo "NODE_JS = NODE_JS_TEST" >> ~/emsdk/.emscripten
       - run-tests:
           title: "wasm64"
@@ -1048,7 +1048,7 @@ jobs:
       - run-tests:
           # Run tests that on older versions of node would require flags, but
           # those flags should not be injected on newer versions.
-          title: "node (latest)"
+          title: "node (newest)"
           test_targets: "-v
             other.test_deterministic
             other.test_gen_struct_info
