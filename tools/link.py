@@ -220,9 +220,9 @@ def generate_js_sym_info():
   mode of the JS compiler that would generate a list of all possible symbols
   that could be checked in.
   """
-  output = emscripten.compile_javascript(symbols_only=True)
+  output, stderr = emscripten.compile_javascript(symbols_only=True)
   # When running in symbols_only mode compiler.mjs outputs symbol metadata as JSON.
-  return json.loads(output)
+  return json.loads(output), stderr
 
 
 @ToolchainProfiler.profile_block('JS symbol generation')
@@ -230,13 +230,15 @@ def get_js_sym_info():
   # Avoiding using the cache when generating struct info since
   # this step is performed while the cache is locked.
   if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE:
-    return generate_js_sym_info()
+    syms, stderr = generate_js_sym_info()
+    emscripten.output_stderr(stderr)
+    return syms
 
   content_hash = emscripten.generate_js_compiler_input_hash(symbols_only=True)
 
   def generate_json():
-    library_syms = generate_js_sym_info()
-    return json.dumps(library_syms, separators=(',', ':'), indent=2)
+    library_syms, stderr = generate_js_sym_info()
+    return json.dumps(library_syms, separators=(',', ':'), indent=2), stderr
 
   # Limit of the overall size of the cache.
   # This code will get test coverage since a full test run of `other` or `core`

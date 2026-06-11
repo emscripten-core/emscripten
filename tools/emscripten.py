@@ -209,12 +209,6 @@ def generate_js_compiler_input_hash(symbols_only=False):
 
 @ToolchainProfiler.profile()
 def compile_javascript(symbols_only=False):
-  stderr_file = os.environ.get('EMCC_STDERR_FILE')
-  if stderr_file:
-    stderr_file = os.path.abspath(stderr_file)
-    logger.info('logging stderr in js compiler phase into %s' % stderr_file)
-    stderr_file = open(stderr_file, 'w', encoding='utf-8')
-
   # Save settings to a file to work around v8 issue 1579
   settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
   building.write_intermediate(settings_json, 'settings.json')
@@ -223,8 +217,9 @@ def compile_javascript(symbols_only=False):
   args = ['-']
   if symbols_only:
     args += ['--symbols-only']
-  return shared.run_js_tool(path_from_root('tools/compiler.mjs'),
-                            args, input=settings_json, stdout=subprocess.PIPE, stderr=stderr_file)
+  proc = shared.run_js_tool(path_from_root('tools/compiler.mjs'),
+                            args, input=settings_json, stdout=subprocess.PIPE, stderr=subprocess.PIPE, return_proc=True)
+  return proc.stdout, proc.stderr
 
 
 def set_memory(static_bump):
@@ -302,6 +297,19 @@ def trim_asm_const_body(body):
   return body
 
 
+def output_stderr(stderr):
+  if stderr is not None:
+    stderr_file = os.environ.get('EMCC_STDERR_FILE')
+    if stderr_file:
+      stderr_file = os.path.abspath(stderr_file)
+      logger.info('logging stderr in js compiler phase into %s' % stderr_file)
+      with open(stderr_file, 'w', encoding='utf-8') as f:
+        f.write(stderr)
+    elif stderr:
+      sys.stderr.write(stderr)
+      sys.stderr.flush()
+
+
 def get_cached_file(filetype, filename, generator, cache_limit):
   """Implement a file cache which lives inside the main emscripten cache directory.
 
@@ -309,6 +317,10 @@ def get_cached_file(filetype, filename, generator, cache_limit):
 
   The cache is pruned (by removing the oldest files) if it grows above
   a certain number of files.
+
+  The generator must return a tuple of (content, stderr).
+  The stderr output will be cached alongside the main file in a companion .stderr file
+  and successfully replayed on both cache hits and misses.
   """
   root = cache.get_path(filetype)
   utils.safe_ensure_dirs(root)
@@ -317,25 +329,33 @@ def get_cached_file(filetype, filename, generator, cache_limit):
 
   with filelock.FileLock(cache_file + '.lock'):
     if os.path.exists(cache_file):
-      # Cache hit, read the file
+      # Cache hit, read the file and any associated stderr output
       file_content = utils.read_file(cache_file)
+      stderr_content = utils.read_file(cache_file + '.stderr') if os.path.exists(cache_file + '.stderr') else ''
     else:
-      # Cache miss, generate the symbol list and write the file
-      file_content = generator()
+      # Cache miss, generate the content and stderr, and write to cache
+      file_content, stderr_content = generator()
       utils.write_file(cache_file, file_content)
+      if stderr_content:
+        utils.write_file(cache_file + '.stderr', stderr_content)
 
-  if len([f for f in os.listdir(root) if not f.endswith('.lock')]) > cache_limit:
+    # Replay cached stderr output to the appropriate stream/file
+    output_stderr(stderr_content)
+
+  # Exclude .stderr companion files from the cache limit count, as they are managed alongside their primary files
+  if len([f for f in os.listdir(root) if not f.endswith(('.lock', '.stderr'))]) > cache_limit:
     with filelock.FileLock(cache.get_path(f'{filetype}.lock')):
       files = []
       for f in os.listdir(root):
-        if not f.endswith('.lock'):
+        if not f.endswith(('.lock', '.stderr')):
           f = os.path.join(root, f)
           files.append((f, os.path.getmtime(f)))
       files.sort(key=lambda x: x[1])
-      # Delete all but the newest N files
+      # Delete all but the newest N files (and remove their companion .stderr files if present)
       for f, _ in files[:-cache_limit]:
         with filelock.FileLock(f + '.lock'):
           utils.delete_file(f)
+          utils.delete_file(f + '.stderr')
 
   return file_content
 
@@ -348,7 +368,9 @@ def compile_javascript_cached():
   # these libraries can import arbitrary other JS files (either vis node's `import` or via #include)
   has_user_libs = any(not lib.startswith(utils.path_from_root('src/')) for lib in settings.JS_LIBRARIES)
   if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE or has_user_libs:
-    return compile_javascript()
+    out, stderr = compile_javascript()
+    output_stderr(stderr)
+    return out
 
   content_hash = generate_js_compiler_input_hash()
 
