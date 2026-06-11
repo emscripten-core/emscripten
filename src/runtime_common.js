@@ -108,17 +108,55 @@ var runtimeExited = false;
   };
 }}}
 
+
+#if ALLOW_MEMORY_GROWTH
+// When ALLOW_MEMORY_GROWTH is enabled, the conversion from Wasm
+// memory to ArrayBuffer requires some additional logic.
+function getMemoryBuffer() {
+#if GROWABLE_ARRAYBUFFERS
+  return wasmMemory.toResizableBuffer();
+#else
+#if SHARED_MEMORY && (MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED)
+  // Using `toResizableBuffer` on a shared memory is currently broken on Firefox
+  // See: https://github.com/emscripten-core/emscripten/issues/27118
+  // See: https://bugzilla.mozilla.org/show_bug.cgi?id=2021136
+  if (!globalThis.navigator?.userAgent?.match(/firefox/i)) {
+#endif
+  try {
+    // This method may be missing or could fail with `Memory must have a maximum`
+    var b = wasmMemory.toResizableBuffer();
+#if SHARED_MEMORY
+    growMemViews = () => {};
+#endif
+    return b;
+    
+  } catch {}
+#if SHARED_MEMORY && (MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED)
+  }
+#endif
+  return wasmMemory.buffer;
+#endif // GROWABLE_ARRAYBUFFERS
+}
+#endif // ALLOW_MEMORY_GROWTH
+
 function updateMemoryViews() {
 #if RUNTIME_DEBUG
   dbg(`updateMemoryViews: first=${!HEAP8} size=${wasmMemory.buffer.byteLength}`);
 #endif
-#if !ALLOW_MEMORY_GROWTH && ASSERTIONS
+#if ALLOW_MEMORY_GROWTH
+  // If we already have a heap that is resizeable/growable buffer we don't
+  // need to do anything in updateMemoryViews.
+#if SHARED_MEMORY
+  if (HEAP8?.buffer?.growable) return;
+#else
+  if (HEAP8?.buffer?.resizable) return;
+#endif
+  var b = getMemoryBuffer();
+#else
+#if ASSERTIONS
   // When memory growth is disabled this function should be called exactly once.
   assert(!HEAP8, 'updateMemoryViews should only be called once when ALLOW_MEMORY_GROWTH=0');
 #endif
-#if GROWABLE_ARRAYBUFFERS
-  var b = wasmMemory.toResizableBuffer();
-#else
   var b = wasmMemory.buffer;
 #endif
   {{{ maybeExportHeap('HEAP8')   }}}HEAP8 = new Int8Array(b);

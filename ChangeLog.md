@@ -52,6 +52,11 @@ See docs/process.md for more on how version tagging works.
   run dependencies). This means that errors during startup (or during the
   `main()` function) will more often show up as unhandled promise rejections
   (`onunhandledreject`) rather than synchronous errors (`onerror`). (#27121)
+- Emscripten will now automatically use the `Memory.toResizableBuffer` method
+  when available at runtime. This was previously only used when
+  `GROWABLE_ARRAYBUFFERS` was explicitly enabled. Enabling
+  `GROWABLE_ARRAYBUFFERS` can still by useful as it removes the runtime fallback
+  code, avoiding its overhead in multi-threaded builds. (#27096)
 
 6.0.0 - 06/04/26
 ----------------

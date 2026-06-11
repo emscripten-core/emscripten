@@ -2220,9 +2220,14 @@ var WASM_ESM_INTEGRATION = false;
 // [link]
 var JS_BASE64_API = false;
 
-// Enable support for GrowableSharedArrayBuffer.
-// This feature has only recently become available across major browser engines
-// and Node.js.
+// Enable unconditional support for growable views of Wasm memory.
+// This is a recent Web platform feature that can make growing the Wasm memory
+// more efficient, especially in multi-threaded builds.
+// Note that Emscripten will always take advantage of this feature when it is
+// available, regardless of this setting.  Enabling this setting effectively
+// removes the fallback code (which adds overhead in multi-threaded builds).
+// Only enable this setting if you know that all of your target browser
+// engines support this feature.
 // [link]
 var GROWABLE_ARRAYBUFFERS = false;
 
