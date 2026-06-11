@@ -12,6 +12,7 @@ import re
 import shlex
 import shutil
 import subprocess
+import tempfile
 import textwrap
 from enum import IntEnum, auto
 from glob import iglob
