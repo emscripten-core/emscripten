@@ -2596,7 +2596,7 @@ def install_system_headers(stamp):
   '''))
 
   # libcxx modules
-  libcxx.install_modules()
+  libcxx.install_modules({})
 
   # Create a stamp file that signal that the headers have been installed
   # Removing this file, or running `emcc --clear-cache` or running
