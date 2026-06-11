@@ -11,8 +11,9 @@ int poll(struct pollfd *fds, nfds_t n, int timeout)
 	// import and so may only be called from a stack entered through a
 	// promising export — a requirement a readiness probe must not carry
 	// (e.g. probes from event-loop callbacks).
-	if (timeout == 0)
+	if (timeout == 0) {
 		return __syscall_ret(__syscall_poll_nonblocking((intptr_t)fds, n));
+	}
 #endif
 #ifdef SYS_poll
 	return syscall_cp(SYS_poll, fds, n, timeout);

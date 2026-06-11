@@ -563,7 +563,7 @@ var SyscallsLibrary = {
   },
   __syscall_poll__proxy: 'sync',
   __syscall_poll__async: 'auto',
-  __syscall_poll__deps: ['__syscall_poll_nonblocking'],
+  __syscall_poll__deps: ['$doPoll'],
   __syscall_poll: (fds, nfds, timeout) => {
 #if PTHREADS || ASYNCIFY
 #if PTHREADS
@@ -623,26 +623,9 @@ var SyscallsLibrary = {
         }, timeout);
         cleanupFuncs.push(() => clearTimeout(t));
       }
-      var count = 0;
-      for (var i = 0; i < nfds; i++) {
-        var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
-        var fd = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}};
-        var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
-        var flags = {{{ cDefs.POLLNVAL }}};
-        var stream = FS.getStream(fd);
-        if (stream) {
-          if (stream.stream_ops.poll) {
-            flags = timeout
-              ? stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd))
-              : stream.stream_ops.poll(stream, -1);
-          } else {
-            flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
-          }
-        }
-        flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
-        if (flags) count++;
-        {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
-      }
+      // A zero timeout never registers notifications: the derivation alone
+      // answers, matching the non-blocking probe.
+      var count = doPoll(fds, nfds, timeout || undefined, makeNotifyCallback);
       if (count || !timeout) {
         asyncPollComplete(count);
       }
@@ -650,19 +633,21 @@ var SyscallsLibrary = {
     }
 #endif
 
-    var count = ___syscall_poll_nonblocking(fds, nfds);
+    var count = doPoll(fds, nfds, undefined, undefined);
 #if ASSERTIONS
     if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
 #endif
     return count;
   },
-  // libc routes zero-timeout poll() calls here: the same synchronous
-  // readiness derivation as __syscall_poll, but as a plain import that never
-  // suspends, so probes stay callable from any context (under JSPI,
-  // __syscall_poll is a suspending import and traps when called from a stack
-  // that wasn't entered through a promising export).
-  __syscall_poll_nonblocking__proxy: 'sync',
-  __syscall_poll_nonblocking: (fds, nfds) => {
+  // The shared readiness derivation: one pass over the pollfds, writing
+  // revents and returning the ready count. With `timeout` defined, a
+  // readiness notification is also registered on each stream by the same
+  // `stream_ops.poll` call that derives it, so there is no window between
+  // registration and derivation; `timeout === undefined` implies no
+  // notification (the plain probe).
+  $doPoll__internal: true,
+  $doPoll__deps: ['$FS'],
+  $doPoll: (fds, nfds, timeout, makeNotifyCallback) => {
     var count = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
@@ -671,15 +656,29 @@ var SyscallsLibrary = {
       var flags = {{{ cDefs.POLLNVAL }}};
       var stream = FS.getStream(fd);
       if (stream) {
-        flags = stream.stream_ops.poll
-          ? stream.stream_ops.poll(stream, -1)
-          : {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
+        if (stream.stream_ops.poll) {
+          flags = timeout !== undefined
+            ? stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd))
+            : stream.stream_ops.poll(stream, -1);
+        } else {
+          flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
+        }
       }
       flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
       if (flags) count++;
       {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
     }
     return count;
+  },
+  // libc routes zero-timeout poll() calls here: the same synchronous
+  // readiness derivation as __syscall_poll, but as a plain import that never
+  // suspends, so probes stay callable from any context (under JSPI,
+  // __syscall_poll is a suspending import and traps when called from a stack
+  // that wasn't entered through a promising export).
+  __syscall_poll_nonblocking__proxy: 'sync',
+  __syscall_poll_nonblocking__deps: ['$doPoll'],
+  __syscall_poll_nonblocking: (fds, nfds) => {
+    return doPoll(fds, nfds, undefined, undefined);
   },
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
