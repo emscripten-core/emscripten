@@ -381,22 +381,21 @@ endif()
 if (CMAKE_CROSSCOMPILING_EMULATOR)
 endif()
 
-# C++23 stl module
-if(CMAKE_VERSION VERSION_GREATER_EQUAL 4.2 AND CMAKE_CXX_MODULE_STD AND NOT DEFINED CMAKE_CXX_STDLIB_MODULES_JSON)
-  set(LIBCXX_INSTALL_LIBRARY_DIR "/lib")
-  set(LIBCXX_INSTALL_MODULES_DIR "/share/libc++/v1")
+# C++23 stl modules (Ref: https://cmake.org/cmake/help/latest/manual/cmake-cxxmodules.7.html#import-std-support)
+if(CMAKE_VERSION VERSION_GREATER_EQUAL 4.3 AND CMAKE_CXX_MODULE_STD AND NOT CMAKE_CXX_STDLIB_MODULES_JSON)
+  set(CMAKE_CXX_STDLIB_MODULES_JSON "${EMSCRIPTEN_SYSROOT}/lib/${CMAKE_LIBRARY_ARCHITECTURE}/libc++.modules.json")
 
-  set(LIBCXX_BINARY_DIR libcxx)
-  set(LIBCXX_LIBRARY_DIR "${CMAKE_BINARY_DIR}/${LIBCXX_BINARY_DIR}/${LIBCXX_INSTALL_LIBRARY_DIR}")
-  set(LIBCXX_GENERATED_MODULE_DIR "${CMAKE_BINARY_DIR}/${LIBCXX_BINARY_DIR}/${LIBCXX_INSTALL_MODULES_DIR}")
-
-  add_subdirectory("${EMSCRIPTEN_ROOT_PATH}/system/lib/libcxx/modules" ${LIBCXX_BINARY_DIR})
+  # Ref: https://cmake.org/cmake/help/latest/variable/CMAKE_CXX_COMPILER_IMPORT_STD.html
+  foreach(_FEATURE IN LISTS CMAKE_CXX_COMPILE_FEATURES)
+    if(_FEATURE MATCHES [[cxx_std_([0-9]+)]] AND CMAKE_MATCH_1 GREATER_EQUAL 23 AND CMAKE_MATCH_1 LESS 98)
+      list(APPEND CMAKE_CXX_COMPILER_IMPORT_STD ${CMAKE_MATCH_1})
+    endif()
+  endforeach()
 
   set_property(SOURCE
-    "${LIBCXX_GENERATED_MODULE_DIR}/std.cppm"
-    "${LIBCXX_GENERATED_MODULE_DIR}/std.compat.cppm"
+    "${EMSCRIPTEN_SYSROOT}/share/libc++/v1/std.cppm"
+    "${EMSCRIPTEN_SYSROOT}/share/libc++/v1/std.compat.cppm"
     PROPERTY
       COMPILE_FLAGS -Wno-reserved-module-identifier
   )
-  set(CMAKE_CXX_STDLIB_MODULES_JSON "${LIBCXX_LIBRARY_DIR}/libc++.modules.json")
 endif()

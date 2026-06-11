@@ -1738,6 +1738,38 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     'tzdb_list.cpp',
     }
 
+  def install_modules():
+    with tempfile.TemporaryDirectory() as tmp:
+      lib = os.path.relpath(cache.get_lib_dir(absolute=True),
+                            cache.get_sysroot_dir())
+      share = 'share/libc++/v1'
+
+      build_dir = 'out'
+      dist = f'{tmp}/{build_dir}/dist/'
+      build_lib = dist + lib
+      build_share = dist + share
+
+      vars = [
+        ('LIBCXX_INSTALL_LIBRARY_DIR',  lib),
+        ('LIBCXX_INSTALL_MODULES_DIR',  share),
+        ('LIBCXX_LIBRARY_DIR',          build_lib),
+        ('LIBCXX_GENERATED_MODULE_DIR', build_share)
+      ]
+
+      args = str()
+      for var in vars:
+        args += f' -D{var[0]}={var[1]}'
+
+      with open(tmp + '/CMakeLists.txt', 'x') as CMakeLists:
+        CMakeLists.write(f'''\
+          cmake_minimum_required(VERSION 3.10)
+          project(libcxx-modules)
+          add_subdirectory("{utils.path_from_root('system/lib/libcxx/modules')}" libcxx)
+        ''')
+
+      subprocess.run(f'cmake -GNinja -B {build_dir} -S {tmp} {args}', cwd=tmp, stdout=subprocess.PIPE, shell=True)
+      subprocess.run(['cmake', '--build', 'out'], cwd=tmp, stdout=subprocess.PIPE)
+      shutil.copytree(dist, cache.get_sysroot_dir(), dirs_exist_ok=True)
 
 class libunwind(ExceptionLibrary, MTLibrary):
   name = 'libunwind'
@@ -2560,6 +2592,9 @@ def install_system_headers(stamp):
   #pragma clang deprecated(__EMSCRIPTEN_minor__, "Use __EMSCRIPTEN_MINOR__ instead")
   #pragma clang deprecated(__EMSCRIPTEN_tiny__, "Use __EMSCRIPTEN_TINY__ instead")
   '''))
+
+  # libcxx modules
+  libcxx.install_modules()
 
   # Create a stamp file that signal that the headers have been installed
   # Removing this file, or running `emcc --clear-cache` or running
