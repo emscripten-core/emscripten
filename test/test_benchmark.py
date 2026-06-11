@@ -298,10 +298,12 @@ class EmscriptenBenchmarker(Benchmarker):
 
 
 # This benchmarker will make a test benchmark build with Emscripten and record
-# the file output sizes in out/test/stats.json. The file format is specified at
+# the file output sizes and compile time in out/test/stats.json. The file format is specified at
 # https://skia.googlesource.com/buildbot/+/refs/heads/main/perf/FORMAT.md
 # Running the benchmark will be skipped.
-class SizeBenchmarker(EmscriptenBenchmarker):
+# Note: This is called SkiaPerfBenchmarker because it outputs results for ingestion into Skia Perf
+# monitoring dashboards, not because it benchmarks the Skia graphics library.
+class SkiaPerfBenchmarker(EmscriptenBenchmarker):
   record_stats = True
 
   def __init__(self, name):
@@ -386,7 +388,9 @@ aot_v8 = (config.V8_ENGINE if config.V8_ENGINE else []) + ['--no-liftoff']
 named_benchmarkers = {
   'clang': NativeBenchmarker('clang', [CLANG_CC], [CLANG_CXX]),
   'gcc': NativeBenchmarker('gcc', ['gcc', '-no-pie'], ['g++', '-no-pie']),
-  'size': SizeBenchmarker('size'),
+  'skia-perf': SkiaPerfBenchmarker('skia-perf'),
+  # TODO: remove this once we update emscripten releases to use the new name.
+  'size': SkiaPerfBenchmarker('size'),
   'v8': EmscriptenBenchmarker('v8', aot_v8),
   'v8-lto': EmscriptenBenchmarker('v8-lto', aot_v8, ['-flto']),
   'v8-ctors': EmscriptenBenchmarker('v8-ctors', aot_v8, ['-sEVAL_CTORS']),
@@ -489,21 +493,24 @@ class benchmark(common.RunnerCore):
         # If we won't run the benchmark, we don't need repetitions.
         reps = 0
       print('Running benchmarker: %s: %s' % (b.__class__.__name__, b.name))
+      t1 = time.time()
       b.build(self, filename, shared_args, emcc_args, native_args, native_exec, lib_builder)
+      build_time = time.time() - t1
       b.bench(args, reps, output_parser, expected_output)
-      recorded_stats = b.display(baseline)
-      if recorded_stats:
-        self.add_stats(name, recorded_stats)
+      size_stats = b.display(baseline)
+      if size_stats:
+        self.add_stats(name, size_stats, units='bytes')
+        self.add_stats(name, [{'value': 'compile_time', 'measurement': build_time}], units='s')
       if not baseline:
         # Use the first benchmarker as the baseline.  Other benchmarkers can then
         # report relative performance compared to this.
         baseline = b
 
-  def add_stats(self, name, stats):
+  def add_stats(self, name, stats, units):
     self.stats.append({
       'key': {
         'test': name,
-        'units': 'bytes',
+        'units': units,
       },
       'measurements': {
         'stats': stats,
