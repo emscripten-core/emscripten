@@ -497,16 +497,16 @@ class benchmark(common.RunnerCore):
       b.build(self, filename, shared_args, emcc_args, native_args, native_exec, lib_builder)
       build_time = time.time() - t1
       b.bench(args, reps, output_parser, expected_output)
-      recorded_stats = b.display(baseline)
-      if recorded_stats:
-        self.add_stats(name, recorded_stats)
+      size_stats = b.display(baseline)
+      if size_stats:
+        self.add_stats(name, size_stats, units='bytes')
         self.add_stats(name, [{'value': 'compile_time', 'measurement': build_time}], units='s')
       if not baseline:
         # Use the first benchmarker as the baseline.  Other benchmarkers can then
         # report relative performance compared to this.
         baseline = b
 
-  def add_stats(self, name, stats, units='bytes'):
+  def add_stats(self, name, stats, units):
     self.stats.append({
       'key': {
         'test': name,
