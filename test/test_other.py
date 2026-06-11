@@ -901,6 +901,11 @@ f.close()
         if test_dir == 'post_build':
           ret = self.run_process(['ctest'], env=env)
 
+  @requires_ninja
+  def test_cmake_cxx_import_std(self):
+    self.run_process([EMCMAKE, 'cmake','-GNinja', test_file('cmake/cxx_import_std')])
+    self.run_process(['cmake', '--build', '.'])
+
   # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten
   # toolchain match with the actual language features that Clang supports.
   # If we update LLVM version and this test fails, copy over the new advertised features from Clang
