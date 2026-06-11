@@ -1049,6 +1049,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.PURE_WASI:
     settings.STANDALONE_WASM = 1
+    settings.ALLOW_MEMORY_GROWTH = 1
     settings.WASM_BIGINT = 1
     # WASI does not support Emscripten (JS-based) exception catching, which the
     # JS-based longjmp support also uses. Emscripten EH is by default disabled
