@@ -13168,6 +13168,21 @@ void foo() {}
   def test_emscripten_set_timeout_loop(self):
     self.do_runf('emscripten_set_timeout_loop.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
 
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-sASYNCIFY'],),
+    'jspi': (['-sJSPI'],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_poll_nonblocking(self, cflags):
+    if '-sJSPI' in cflags:
+      self.require_jspi()
+    if '-pthread' in cflags:
+      self.require_pthreads()
+    self.do_runf('poll_nonblocking.c',
+                 'poll probe ok from main\npoll probe ok from callback\n',
+                 cflags=cflags)
+
   # Verify that we are able to successfully compile a script when the Windows 7
   # and Python workaround env. vars are enabled.
   # See https://bugs.python.org/issue34780

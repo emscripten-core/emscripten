@@ -563,6 +563,7 @@ var SyscallsLibrary = {
   },
   __syscall_poll__proxy: 'sync',
   __syscall_poll__async: 'auto',
+  __syscall_poll__deps: ['__syscall_poll_nonblocking'],
   __syscall_poll: (fds, nfds, timeout) => {
 #if PTHREADS || ASYNCIFY
 #if PTHREADS
@@ -622,9 +623,46 @@ var SyscallsLibrary = {
         }, timeout);
         cleanupFuncs.push(() => clearTimeout(t));
       }
+      var count = 0;
+      for (var i = 0; i < nfds; i++) {
+        var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
+        var fd = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}};
+        var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
+        var flags = {{{ cDefs.POLLNVAL }}};
+        var stream = FS.getStream(fd);
+        if (stream) {
+          if (stream.stream_ops.poll) {
+            flags = timeout
+              ? stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd))
+              : stream.stream_ops.poll(stream, -1);
+          } else {
+            flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
+          }
+        }
+        flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
+        if (flags) count++;
+        {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
+      }
+      if (count || !timeout) {
+        asyncPollComplete(count);
+      }
+      return promise;
     }
 #endif
 
+    var count = ___syscall_poll_nonblocking(fds, nfds);
+#if ASSERTIONS
+    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
+#endif
+    return count;
+  },
+  // libc routes zero-timeout poll() calls here: the same synchronous
+  // readiness derivation as __syscall_poll, but as a plain import that never
+  // suspends, so probes stay callable from any context (under JSPI,
+  // __syscall_poll is a suspending import and traps when called from a stack
+  // that wasn't entered through a promising export).
+  __syscall_poll_nonblocking__proxy: 'sync',
+  __syscall_poll_nonblocking: (fds, nfds) => {
     var count = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
@@ -633,34 +671,14 @@ var SyscallsLibrary = {
       var flags = {{{ cDefs.POLLNVAL }}};
       var stream = FS.getStream(fd);
       if (stream) {
-        if (stream.stream_ops.poll) {
-#if PTHREADS || ASYNCIFY
-          if (isAsyncContext && timeout) {
-            flags = stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd));
-          } else
-#endif
-          flags = stream.stream_ops.poll(stream, -1);
-        } else {
-          flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
-        }
+        flags = stream.stream_ops.poll
+          ? stream.stream_ops.poll(stream, -1)
+          : {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
       }
       flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
       if (flags) count++;
       {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
     }
-
-#if PTHREADS || ASYNCIFY
-    if (isAsyncContext) {
-      if (count || !timeout) {
-        asyncPollComplete(count);
-      }
-      return promise;
-    }
-#endif
-
-#if ASSERTIONS
-    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
-#endif
     return count;
   },
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
