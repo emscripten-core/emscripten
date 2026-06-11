@@ -144,10 +144,7 @@ min_browser_versions = {
     'chrome': 144,
     'firefox': 145,
     'safari': 260200,
-    # Supported with flag --experimental-wasm-rab-integration (TODO: Change
-    # this to unflagged version of Node.js 260000, see also the comment in
-    # Feature.WASM_EXCEPTIONS above)
-    'node': 240000,
+    'node': 260000,
   },
 
 # The following features we now support unconditionally, but keeping them around
