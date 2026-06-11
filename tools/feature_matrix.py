@@ -129,11 +129,7 @@ min_browser_versions = {
     'chrome': 137,
     'firefox': 131,
     'safari': 180400,
-    # Supported with flag --experimental-wasm-exnref (TODO: Change this to
-    # unflagged version of Node.js 260000 that ships Wasm EH enabled, after
-    # Emscripten unit testing has migrated to Node.js 26, and Emsdk ships
-    # Node.js 26)
-    'node': 220000,
+    'node': 260000,
   },
   # Growable SharedArrayBuffers improves memory growth feature in multithreaded
   # builds by avoiding need to poll resizes to ArrayBuffer views in Workers.
