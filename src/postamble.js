@@ -305,7 +305,9 @@ export default async function init(moduleArg = {}) {
 #if PTHREADS
   registerTLSInit(__emscripten_tls_init);
 #endif
+#if !IMPORTED_MEMORY
   updateMemoryViews();
+#endif
 #if DYNCALLS && '$dynCalls' in addedLibraryItems
   assignDynCalls();
 #endif

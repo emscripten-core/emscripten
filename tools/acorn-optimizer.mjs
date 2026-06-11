@@ -1091,7 +1091,7 @@ function growableHeap(ast) {
       if (
         !(
           node.id.type === 'Identifier' &&
-          (node.id.name === 'growMemViews' || node.id.name === 'LE_HEAP_UPDATE')
+          (node.id.name === 'growMemViews' || node.id.name === 'updateMemoryViews' || node.id.name === 'LE_HEAP_UPDATE')
         )
       ) {
         c(node.body);
