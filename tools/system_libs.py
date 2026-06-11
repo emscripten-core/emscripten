@@ -1739,7 +1739,7 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
     'tzdb_list.cpp',
     }
 
-  def install_modules():
+  def install_modules(self):
     with tempfile.TemporaryDirectory() as tmp:
       lib = os.path.relpath(cache.get_lib_dir(absolute=True),
                             cache.get_sysroot_dir())
@@ -1754,14 +1754,14 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
         ('LIBCXX_INSTALL_LIBRARY_DIR',  lib),
         ('LIBCXX_INSTALL_MODULES_DIR',  share),
         ('LIBCXX_LIBRARY_DIR',          build_lib),
-        ('LIBCXX_GENERATED_MODULE_DIR', build_share)
+        ('LIBCXX_GENERATED_MODULE_DIR', build_share),
       ]
 
-      args = str()
+      args = ''
       for var in vars:
         args += f' -D{var[0]}={var[1]}'
 
-      with open(tmp + '/CMakeLists.txt', 'x') as CMakeLists:
+      with open(tmp + '/CMakeLists.txt', 'x', encoding='utf-8') as CMakeLists:
         CMakeLists.write(f'''\
           cmake_minimum_required(VERSION 3.10)
           project(libcxx-modules)
@@ -1771,6 +1771,7 @@ class libcxx(ExceptionLibrary, MTLibrary, DebugLibrary):
       subprocess.run(f'cmake -GNinja -B {build_dir} -S {tmp} {args}', cwd=tmp, stdout=subprocess.PIPE, shell=True)
       subprocess.run(['cmake', '--build', 'out'], cwd=tmp, stdout=subprocess.PIPE)
       shutil.copytree(dist, cache.get_sysroot_dir(), dirs_exist_ok=True)
+
 
 class libunwind(ExceptionLibrary, MTLibrary):
   name = 'libunwind'
