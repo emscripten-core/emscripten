@@ -84,6 +84,7 @@ from decorators import (
   requires_network,
   requires_node,
   requires_node_25,
+  requires_node_26,
   requires_pthreads,
   requires_v8,
   requires_wasm64,
@@ -13104,8 +13105,7 @@ void foo() {}
   })
   def test_pthread_growth_mainthread(self, cflags):
     if '-sGROWABLE_ARRAYBUFFERS' in cflags:
-      self.node_args.append('--experimental-wasm-rab-integration')
-      self.require_node_25()
+      self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
@@ -13114,9 +13114,8 @@ void foo() {}
   def test_pthread_join_interrupted(self):
     self.do_runf('pthread/test_pthread_join_interrupted.c', cflags=['-pthread'])
 
-  @requires_node_25
+  @requires_node_26
   def test_growable_arraybuffers(self):
-    self.node_args.append('--experimental-wasm-rab-integration')
     self.do_runf('hello_world.c',
                  cflags=['-O2', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],
                  output_basename='growable')
@@ -13144,8 +13143,7 @@ void foo() {}
       self.require_node_25()
 
     if '-sGROWABLE_ARRAYBUFFERS' in cflags:
-      self.node_args.append('--experimental-wasm-rab-integration')
-      self.require_node_25()
+      self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.do_runf('pthread/test_pthread_memory_growth.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
