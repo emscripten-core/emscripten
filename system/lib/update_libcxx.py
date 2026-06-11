@@ -5,8 +5,11 @@
 # found in the LICENSE file.
 
 import os
+import re
 import sys
 import shutil
+import subprocess
+import tempfile
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
 emscripten_root = os.path.dirname(os.path.dirname(script_dir))
@@ -57,6 +60,48 @@ def copy_tree(upstream_dir, local_dir):
         os.remove(full)
 
 
+def generate_modules():
+  prefix = os.path.join(local_modules, 'prefix')
+  lib = 'lib/emscripten'
+  share = 'share/libc++/v1'
+
+  output = subprocess.check_output(['cmake', '--version'], text=True)
+  version = re.search(r'cmake version (\d+(?:\.\d{1,})*)', output).group(1)
+  if not version:
+    print('Could not read CMake version')
+    sys.exit(1)
+
+  with tempfile.TemporaryDirectory() as tmp:
+    build_dir = 'out'
+    dist = f'{tmp}/{build_dir}/dist/'
+    build_lib = dist + lib
+    build_share = dist + share
+
+    vars = [
+      ('LIBCXX_INSTALL_LIBRARY_DIR',  lib),
+      ('LIBCXX_INSTALL_MODULES_DIR',  share),
+      ('LIBCXX_LIBRARY_DIR',          build_lib),
+      ('LIBCXX_GENERATED_MODULE_DIR', build_share),
+    ]
+
+    args = ''
+    for var in vars:
+      args += f' -D{var[0]}={var[1]}'
+
+    with open(tmp + '/CMakeLists.txt', 'x', encoding='utf-8') as CMakeLists:
+      CMakeLists.write(f'''\
+        cmake_minimum_required(VERSION {version})
+        project(libcxx-modules)
+        add_subdirectory("{local_modules}" libcxx)
+      ''')
+
+    subprocess.run(f'cmake -B {build_dir} -S "{tmp}" {args}',
+                   cwd=tmp, shell=True, stdout=subprocess.DEVNULL)
+    subprocess.run(['cmake', '--build', build_dir], cwd=tmp,
+                   stdout=subprocess.DEVNULL)
+    shutil.copytree(dist, prefix, dirs_exist_ok=True)
+
+
 def main():
   if len(sys.argv) > 1:
     llvm_dir = os.path.abspath(sys.argv[1])
@@ -78,6 +123,7 @@ def main():
   copy_tree(upstream_src, local_src)
   copy_tree(upstream_inc, local_inc)
   copy_tree(upstream_modules, local_modules)
+  generate_modules()
 
   shutil.copy2(os.path.join(libcxx_dir, 'CREDITS.TXT'), local_root)
   shutil.copy2(os.path.join(libcxx_dir, 'LICENSE.TXT'), local_root)
