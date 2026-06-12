@@ -388,7 +388,7 @@ public:
   }
 
   EM_VAL as_handle() const {
-#ifdef _REENTRANT
+#ifdef __EMSCRIPTEN_PTHREADS__
     assert(pthread_equal(thread, pthread_self()) && "val accessed from wrong thread");
 #endif
     return handle;
@@ -568,7 +568,7 @@ public:
 private:
   // takes ownership, assumes handle already incref'd and lives on the same thread
   explicit val(EM_VAL handle) :
-#ifdef _REENTRANT
+#ifdef __EMSCRIPTEN_PTHREADS__
     thread(pthread_self()),
 #endif
     handle(handle) {}
