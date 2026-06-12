@@ -903,6 +903,9 @@ f.close()
 
   @requires_ninja
   def test_cmake_cxx_import_std(self):
+    if 'EMTEST_SKIP_NEW_CMAKE' in os.environ:
+      self.skipTest('EMTEST_SKIP_NEW_CMAKE set')
+
     self.run_process([EMCMAKE, 'cmake', '-GNinja', test_file('cmake/cxx_import_std')])
     self.run_process(['cmake', '--build', '.'])
 
