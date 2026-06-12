@@ -31,6 +31,7 @@ commands:
       - run:
           name: download chrome
           command: |
+            apt-get update
             # TODO: Make these part of the base image
             apt-get install -q -y libu2f-udev libvulkan1 xdg-utils
             wget -O ~/chrome.deb https://dl.google.com/linux/direct/google-chrome-unstable_current_amd64.deb
