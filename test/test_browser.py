@@ -5696,6 +5696,11 @@ fetch('report_result?0');
   def test_shell_minimal(self, args):
     self.btest_exit('browser_test_hello_world.c', cflags=['--shell-file', path_from_root('html/shell_minimal.html')] + args)
 
+  @no_chrome('https://github.com/emscripten-core/emscripten/issues/27084')
+  def test_pthread_memgrowth_stale_views(self):
+    self.btest_exit('test_pthread_memgrowth_stale_views.c',
+                    cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'])
+
 
 class browser64(browser):
   def setUp(self):
