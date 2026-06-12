@@ -912,3 +912,26 @@ fi
       self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-sASSERTIONS=1', '-o', 'out.js'])
 
       self.assertEqual(js_cache_size(), 2, f'Expected 2 cached JS files after compiling with different options, found: {js_cache_files()}')
+
+  def test_emcc_javascript_compilation_caching_warnings(self):
+    restore_and_set_up()
+
+    # Create a separate temporary cache folder to avoid dirtying or reading from the default cache.
+    test_cache_dir = self.in_dir('test_cache_warn')
+
+    create_file('main.c', r'''
+      void something();
+      int main() {
+        something();
+        return 0;
+      }
+      ''')
+
+    with env_modify({'EM_CACHE': test_cache_dir}):
+      # 1. First compile. Cache-miss: should compile, populate cache with .js and .stderr, and output warning.
+      proc = self.run_process([EMCC, 'main.c', '-sERROR_ON_UNDEFINED_SYMBOLS=0', '-o', 'out.js'], stderr=PIPE)
+      self.assertContained('warning: undefined symbol: something', proc.stderr)
+
+      # 2. Second compile. Cache-hit: should replay the warning from cache.
+      proc = self.run_process([EMCC, 'main.c', '-sERROR_ON_UNDEFINED_SYMBOLS=0', '-o', 'out.js'], stderr=PIPE)
+      self.assertContained('warning: undefined symbol: something', proc.stderr)

@@ -201,14 +201,17 @@ def exec_process(cmd):
   utils.exec(cmd)
 
 
-def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
+def run_js_tool(filename, jsargs=[], node_args=[], return_proc=False, **kw):  # noqa: B006
   """Execute a javascript tool.
 
   This is used by emcc to run parts of the build process that are
   implemented in javascript.
   """
   command = [*config.NODE_JS, *node_args, filename, *jsargs]
-  return check_call(command, **kw).stdout
+  proc = check_call(command, **kw)
+  if return_proc:
+    return proc
+  return proc.stdout
 
 
 def get_npm_cmd(name, missing_ok=False):
