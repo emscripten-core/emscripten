@@ -61,7 +61,7 @@ def copy_tree(upstream_dir, local_dir):
 
 
 def generate_modules():
-  prefix = os.path.join(local_modules, 'prefix')
+  dst = os.path.join(local_modules, 'prebuilt')
   lib = 'lib/emscripten'
   share = 'share/libc++/v1'
 
@@ -99,7 +99,7 @@ def generate_modules():
                    cwd=tmp, shell=True, stdout=subprocess.DEVNULL)
     subprocess.run(['cmake', '--build', build_dir], cwd=tmp,
                    stdout=subprocess.DEVNULL)
-    shutil.copytree(dist, prefix, dirs_exist_ok=True)
+    shutil.copytree(dist, dst, dirs_exist_ok=True)
 
 
 def main():
