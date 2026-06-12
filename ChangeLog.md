@@ -20,6 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.1 (in development)
 ----------------------
+- The ability to redirect JS compiler stderr using `EMCC_STDERR_FILE` was
+  removed.  These days you can use `EMCC_DEBUG` and/or `EMCC_DEBUG_SAVE` to
+  preserve all the intermediate JS compiler files. (#27101)
 - The installed versions of the compiler-rt library now follow the upstream
   naming convetion of `libclang_rt.<something>.a`. (#27089)
 - Dynamic linking now explicitly requires asynchronous Wasm compilation. The
