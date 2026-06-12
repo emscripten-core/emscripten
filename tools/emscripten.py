@@ -209,12 +209,6 @@ def generate_js_compiler_input_hash(symbols_only=False):
 
 @ToolchainProfiler.profile()
 def compile_javascript(symbols_only=False):
-  stderr_file = os.environ.get('EMCC_STDERR_FILE')
-  if stderr_file:
-    stderr_file = os.path.abspath(stderr_file)
-    logger.info('logging stderr in js compiler phase into %s' % stderr_file)
-    stderr_file = open(stderr_file, 'w', encoding='utf-8')
-
   # Save settings to a file to work around v8 issue 1579
   settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
   building.write_intermediate(settings_json, 'settings.json')
@@ -224,7 +218,7 @@ def compile_javascript(symbols_only=False):
   if symbols_only:
     args += ['--symbols-only']
   return shared.run_js_tool(path_from_root('tools/compiler.mjs'),
-                            args, input=settings_json, stdout=subprocess.PIPE, stderr=stderr_file)
+                            args, input=settings_json, stdout=subprocess.PIPE)
 
 
 def set_memory(static_bump):
