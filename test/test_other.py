@@ -757,7 +757,7 @@ f.close()
 
   @crossplatform
   def test_print_prog_name(self):
-    output = self.run_process([EMCC, '--print-prog-name=clang'], stdout=PIPE).stdout
+    output = self.run_process([EMCC, '-sASSERTIONS', '--print-prog-name=clang'], stdout=PIPE).stdout
     expected = CLANG_CC
     if WINDOWS:
       expected = os.path.normpath(utils.unsuffixed(CLANG_CC))
@@ -6427,28 +6427,21 @@ int main() {
     self.assertContained(MESSAGE, err)
     self.clear()
 
-  @parameterized({
-    '': (True,),
-    'wasm2js': (False,),
-  })
-  def test_massive_alloc(self, wasm):
+  @also_with_wasm2js
+  def test_memory_growth(self):
     create_file('main.c', r'''
-#include <stdio.h>
+#include <assert.h>
 #include <stdlib.h>
 
 int main() {
-  volatile long x = (long)malloc(1024 * 1024 * 1400);
-  return x == 0; // can't alloc it, but don't fail catastrophically, expect null
+  void* x = malloc(10 * 1024 * 1024);
+  assert(x != NULL);
+  return 0;
 }
-    ''')
-    cmd = [EMCC, 'main.c', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=16MB']
-    if not wasm:
-      cmd += ['-sWASM=0']
-    self.run_process(cmd)
-    # just care about message regarding allocating over 1GB of memory
-    output = self.run_js('a.out.js')
-    if not wasm:
-      self.assertContained('Warning: Enlarging memory arrays, this is not fast! 16777216,1468137472\n', output)
+''')
+    output = self.do_runf('main.c', cflags=['-sALLOW_MEMORY_GROWTH', '-sINITIAL_HEAP=1mb'])
+    if self.is_wasm2js():
+      self.assertContained('Warning: Enlarging memory arrays, this is not fast! 1179648,10616832\n', output)
 
   @also_with_wasm2js
   @parameterized({
@@ -13167,6 +13160,21 @@ void foo() {}
   @requires_pthreads
   def test_emscripten_set_timeout_loop(self):
     self.do_runf('emscripten_set_timeout_loop.c', args=['-pthread', '-sPROXY_TO_PTHREAD'])
+
+  @parameterized({
+    '': ([],),
+    'asyncify': (['-sASYNCIFY'],),
+    'jspi': (['-sJSPI'],),
+    'pthreads': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_poll_nonblocking(self, args):
+    if '-sJSPI' in args:
+      self.require_jspi()
+    if '-pthread' in args:
+      self.require_pthreads()
+    self.do_runf('test_poll_nonblocking.c',
+                 'poll probe ok from main\npoll probe ok from callback\n',
+                 cflags=args)
 
   # Verify that we are able to successfully compile a script when the Windows 7
   # and Python workaround env. vars are enabled.

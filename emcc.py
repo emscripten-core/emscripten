@@ -86,6 +86,19 @@ LINK_ONLY_FLAGS = {
     '--threadprofiler', '--use-preload-plugins',
 }
 
+PASSTHROUGH_FLAGS = {
+  '-print-resource-dir',
+  '--print-resource-dir',
+  '-dumpmachine',
+  '-print-target-triple',
+  '--print-target-triple',
+}
+
+PASSTHROUGH_PREFIXES = {
+  '-print-prog-name',
+  '--print-prog-name',
+}
+
 
 @unique
 class Mode(Enum):
@@ -263,10 +276,9 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(utils.EMSCRIPTEN_VERSION)
     return 0
 
-  if '-dumpmachine' in args or '-print-target-triple' in args or '--print-target-triple' in args:
-    print(shared.get_llvm_target())
-    return 0
-
+  # Sadly we cannot rely on PASSTHROUGH_FLAGS for -print-search-dirs or -print-libgcc-file-name
+  # because there is no way to tell clang today about our custom library paths.
+  # TODO: Teach clang about emscripten's library layout so we can remove this code.
   if '-print-search-dirs' in args or '--print-search-dirs' in args:
     print(f'programs: ={config.LLVM_ROOT}')
     resource_dir = get_clang_resource_dir(args)
@@ -307,8 +319,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if 'EMCC_REPRODUCE' in os.environ:
     options.reproduce = os.environ['EMCC_REPRODUCE']
 
-  if '-print-resource-dir' in args or any(a.startswith('--print-prog-name') for a in args):
-    shared.exec_process([clang, *compile.get_cflags(tuple(args)), *args])
+  if any(a in PASSTHROUGH_FLAGS for a in args) or any(a.startswith(p) for p in PASSTHROUGH_PREFIXES for a in args):
+    # For several -print-xxx-name flags we just defer to clang rather than
+    # trying to re-implement the logic.
+    shared.exec_process([clang, *compile.get_cflags(tuple(args)), *newargs])
     assert False, 'exec_process should not return'
 
   if '--cflags' in args:

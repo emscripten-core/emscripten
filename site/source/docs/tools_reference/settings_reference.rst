@@ -3346,8 +3346,6 @@ Enable support for GrowableSharedArrayBuffer.
 This feature has only recently become available across major browser engines
 and Node.js.
 
-.. note:: This is an experimental setting
-
 Default value: false
 
 .. _cross_origin:
