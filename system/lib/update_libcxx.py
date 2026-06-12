@@ -60,16 +60,10 @@ def copy_tree(upstream_dir, local_dir):
         os.remove(full)
 
 
-def generate_modules():
+def generate_modules(cmake_version: str):
   dst = os.path.join(local_modules, 'prebuilt')
   lib = 'lib/emscripten'
   share = 'share/libc++/v1'
-
-  output = subprocess.check_output(['cmake', '--version'], text=True)
-  version = re.search(r'cmake version (\d+(?:\.\d{1,})*)', output).group(1)
-  if not version:
-    print('Could not read CMake version')
-    sys.exit(1)
 
   with tempfile.TemporaryDirectory() as tmp:
     build_dir = 'out'
@@ -90,19 +84,27 @@ def generate_modules():
 
     with open(tmp + '/CMakeLists.txt', 'x', encoding='utf-8') as CMakeLists:
       CMakeLists.write(f'''\
-        cmake_minimum_required(VERSION {version})
+        cmake_minimum_required(VERSION {cmake_version})
         project(libcxx-modules)
         add_subdirectory("{local_modules}" libcxx)
       ''')
 
     subprocess.run(f'cmake -B {build_dir} -S "{tmp}" {args}',
                    cwd=tmp, shell=True, stdout=subprocess.DEVNULL)
-    subprocess.run(['cmake', '--build', build_dir], cwd=tmp,
-                   stdout=subprocess.DEVNULL)
+    subprocess.run(['cmake', '--build', build_dir],
+                   cwd=tmp, stdout=subprocess.DEVNULL)
     shutil.copytree(dist, dst, dirs_exist_ok=True)
 
 
 def main():
+  # Exit early if cmake is not found
+  try:
+    cmake_version = re.search(r'^cmake version (\d+(?:\.\d+)*)',
+      subprocess.check_output(['cmake', '--version'], text=True)).group(1)
+  except OSError:
+    print('CMake not found', file=sys.stderr)
+    sys.exit(1)
+
   if len(sys.argv) > 1:
     llvm_dir = os.path.abspath(sys.argv[1])
   else:
@@ -123,7 +125,7 @@ def main():
   copy_tree(upstream_src, local_src)
   copy_tree(upstream_inc, local_inc)
   copy_tree(upstream_modules, local_modules)
-  generate_modules()
+  generate_modules(cmake_version)
 
   shutil.copy2(os.path.join(libcxx_dir, 'CREDITS.TXT'), local_root)
   shutil.copy2(os.path.join(libcxx_dir, 'LICENSE.TXT'), local_root)
