@@ -23,6 +23,7 @@ import tarfile
 import time
 from datetime import datetime
 from functools import wraps
+from packaging.version import Version
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
@@ -903,8 +904,11 @@ f.close()
 
   @requires_ninja
   def test_cmake_cxx_import_std(self):
-    if 'EMTEST_SKIP_NEW_CMAKE' in os.environ:
-      self.skipTest('EMTEST_SKIP_NEW_CMAKE set')
+    cmake_minimum = '3.30'
+    output = self.run_process([EMCMAKE, 'cmake', '--version'], stdout=PIPE).stdout
+    cmake_version = re.search(r'^cmake version (\d+(?:\.\d+)*)', output).group(1)
+    if Version(cmake_version) < Version(cmake_minimum):
+      self.skipTest(f'CMake > {cmake_minimum} required ({cmake_version})')
 
     self.run_process([EMCMAKE, 'cmake', '-GNinja', test_file('cmake/cxx_import_std')])
     self.run_process(['cmake', '--build', '.'])
