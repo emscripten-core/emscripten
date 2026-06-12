@@ -6427,28 +6427,21 @@ int main() {
     self.assertContained(MESSAGE, err)
     self.clear()
 
-  @parameterized({
-    '': (True,),
-    'wasm2js': (False,),
-  })
-  def test_massive_alloc(self, wasm):
+  @also_with_wasm2js
+  def test_memory_growth(self):
     create_file('main.c', r'''
-#include <stdio.h>
+#include <assert.h>
 #include <stdlib.h>
 
 int main() {
-  volatile long x = (long)malloc(1024 * 1024 * 1400);
-  return x == 0; // can't alloc it, but don't fail catastrophically, expect null
+  void* x = malloc(10 * 1024 * 1024);
+  assert(x != NULL);
+  return 0;
 }
-    ''')
-    cmd = [EMCC, 'main.c', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=16MB']
-    if not wasm:
-      cmd += ['-sWASM=0']
-    self.run_process(cmd)
-    # just care about message regarding allocating over 1GB of memory
-    output = self.run_js('a.out.js')
-    if not wasm:
-      self.assertContained('Warning: Enlarging memory arrays, this is not fast! 16777216,1468137472\n', output)
+''')
+    output = self.do_runf('main.c', cflags=['-sALLOW_MEMORY_GROWTH', '-sINITIAL_HEAP=1mb'])
+    if self.is_wasm2js():
+      self.assertContained('Warning: Enlarging memory arrays, this is not fast! 1179648,10616832\n', output)
 
   @also_with_wasm2js
   @parameterized({
