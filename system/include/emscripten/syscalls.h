@@ -51,6 +51,7 @@ int __syscall_mlockall(int flags);
 int __syscall_munlockall(void);
 int __syscall_mremap(intptr_t old_addr, size_t old_size, size_t new_size, int flags, intptr_t new_addr);
 int __syscall_poll(intptr_t fds, int nfds, int timeout);
+int __syscall_poll_nonblocking(intptr_t fds, int nfds);
 int __syscall_getcwd(intptr_t buf, size_t size);
 intptr_t __syscall_mmap2(intptr_t addr, size_t len, int prot, int flags, int fd, off_t offset);
 int __syscall_truncate64(intptr_t path, off_t length);

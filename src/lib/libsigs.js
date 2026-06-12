@@ -263,6 +263,7 @@ sigs = {
   __syscall_openat__sig: 'iipip',
   __syscall_pipe2__sig: 'ipi',
   __syscall_poll__sig: 'ipii',
+  __syscall_poll_nonblocking__sig: 'ipi',
   __syscall_readlinkat__sig: 'iippp',
   __syscall_recvfrom__sig: 'iippipp',
   __syscall_recvmsg__sig: 'iipiiii',
