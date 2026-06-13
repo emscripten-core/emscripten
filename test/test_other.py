@@ -42,6 +42,7 @@ from common import (
   TEST_ROOT,
   WEBIDL_BINDER,
   RunnerCore,
+  check_node_version,
   copy_asset,
   copytree,
   create_file,
@@ -6425,21 +6426,38 @@ int main() {
     self.assertContained(MESSAGE, err)
     self.clear()
 
+  @crossplatform
   @also_with_wasm2js
   def test_memory_growth(self):
     create_file('main.c', r'''
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
+#include <emscripten/em_asm.h>
+#include <emscripten/console.h>
 
 int main() {
-  void* x = malloc(10 * 1024 * 1024);
+  // Report whether `toResizableBuffer` is availble on the wasm memory.
+  EM_ASM(out('resizable memory buffers:', Boolean(wasmMemory.toResizableBuffer)));
+
+  char* x = malloc(10 * 1024 * 1024);
   assert(x != NULL);
+  // Have JS use some of the memory in the expanded range.
+  char* str = x + 9 * 1024 * 1024;
+  strcpy(str, "Hello, world!");
+  emscripten_out(str);
   return 0;
 }
 ''')
-    output = self.do_runf('main.c', cflags=['-sALLOW_MEMORY_GROWTH', '-sINITIAL_HEAP=1mb'])
+    output = self.do_runf('main.c', 'Hello, world!\n', cflags=['-sALLOW_MEMORY_GROWTH', '-sINITIAL_HEAP=1mb'])
     if self.is_wasm2js():
       self.assertContained('Warning: Enlarging memory arrays, this is not fast! 1179648,10616832\n', output)
+
+    # Node versions older than 26 do not support toResizableBuffer
+    if self.is_wasm2js() or (self.engine_is_node() and not check_node_version(26)):
+      self.assertContained('resizable memory buffers: false\n', output)
+    else:
+      self.assertContained('resizable memory buffers: true\n', output)
 
   @also_with_wasm2js
   @parameterized({
@@ -8558,7 +8576,7 @@ int main() {
     '''
     self.cflags += ['-g']
 
-    if '-fwasm-exceptions' in self.cflags and engine_is_node(self.js_engines[0]):
+    if '-fwasm-exceptions' in self.cflags and self.engine_is_node():
       if not self.try_require_node_version(24):
         # Node versions prior to v24 do not implement the new 'traceStack' option in
         # WebAssembly.Exception constructor.
@@ -8678,7 +8696,7 @@ int main() {
         return 0;
       }
     '''
-    if '-fwasm-exceptions' in self.cflags and engine_is_node(self.js_engines[0]):
+    if '-fwasm-exceptions' in self.cflags and self.engine_is_node():
       if not self.try_require_node_version(24):
         # Node versions prior to v24 do not implement the new 'traceStack' option in
         # WebAssembly.Exception constructor.
