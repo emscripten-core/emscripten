@@ -905,29 +905,19 @@ f.close()
 
   @crossplatform
   @parameterized({
-    'std': [23, 26],
+    'std23': ['-std=c++23'],
+    'std26': ['-std=c++26'],
   })
-  def test_cxx_import(self, *standards):
-    modules = ['std', 'std.compat']
-    module_file_args = ' '.join(f'-fmodule-file={module}={module}.pcm' for module in modules)
-    # compile_args = '-stdlib=libc++' or explicitly
-    compile_args = '-nostdinc++ -isystem ' + {cache.get_include_dir('c++/v1')}
-    source_file = test_file('cmake', 'cxx_import_std/main.cpp')
-    executable = 'main.js'
+  def test_cxx_import(self, *args):
+    # cFlags = list(args) + ['-stdlib=libc++'] or explicitly
+    cFlags = list(args) + ['-nostdinc++', '-isystem', cache.get_include_dir('c++/v1')]
 
-    for standard in standards:
-      for module in modules:
-        input = os.path.join(cache.get_sysroot_dir('share/libc++/v1'), f'{module}.cppm')
-        cmd = f'{EMCC} -std=c++{standard} -Wno-reserved-module-identifier \
-              {compile_args} {module_file_args} --precompile {input} -o {module}.pcm'
-        self.run_process(cmd, shell=True)
+    for module in ['std', 'std.compat']:
+      cFlags += [f'-fmodule-file={module}={module}.pcm']
+      source = os.path.join(cache.get_sysroot_dir('share/libc++/v1'), f'{module}.cppm')
+      self.run_process([EMCC, '-Wno-reserved-module-identifier', '--precompile', source, '-o', f'{module}.pcm'] + cFlags)
 
-      cmd = f'{EMCC} -std=c++{standard} {compile_args} {module_file_args} \
-            "{source_file}" -o {executable}'
-      self.run_process(cmd, shell=True)
-
-      output = self.run_js(executable, engine=config.NODE_JS)
-      self.assertEqual(output, 'Hello, world!\n')
+    self.do_runf('cmake/cxx_import_std/main.cpp', 'Hello, world!\n', cflags=cFlags)
 
   @requires_ninja
   def test_cmake_cxx_import_std(self):
