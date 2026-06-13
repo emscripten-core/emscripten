@@ -905,13 +905,14 @@ f.close()
 
   @crossplatform
   @parameterized({
-    'std': [23, 26]
+    'std': [23, 26],
   })
   def test_cxx_import(self, *standards):
     modules = ['std', 'std.compat']
     module_file_args = ' '.join(f'-fmodule-file={module}={module}.pcm' for module in modules)
-    #compile_args = '-stdlib=libc++' or explicitly
-    compile_args = f'-nostdinc++ -isystem {cache.get_include_dir('c++/v1')}'
+    # compile_args = '-stdlib=libc++' or explicitly
+    compile_args = '-nostdinc++ -isystem ' + {cache.get_include_dir('c++/v1')}
+    source_file = test_file('cmake', 'cxx_import_std/main.cpp')
     executable = 'main.js'
 
     for standard in standards:
@@ -922,12 +923,11 @@ f.close()
         self.run_process(cmd, shell=True)
 
       cmd = f'{EMCC} -std=c++{standard} {compile_args} {module_file_args} \
-            "{test_file('cmake', 'cxx_import_std/main.cpp')}" -o {executable}'
+            "{source_file}" -o {executable}'
       self.run_process(cmd, shell=True)
 
       output = self.run_js(executable, engine=config.NODE_JS)
       self.assertEqual(output, 'Hello, world!\n')
-
 
   @requires_ninja
   def test_cmake_cxx_import_std(self):
