@@ -23,9 +23,10 @@ import tarfile
 import time
 from datetime import datetime
 from functools import wraps
-from packaging.version import Version
 from pathlib import Path
 from subprocess import PIPE, STDOUT
+
+from packaging.version import Version
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner other')
@@ -901,6 +902,32 @@ f.close()
 
         if test_dir == 'post_build':
           ret = self.run_process(['ctest'], env=env)
+
+  @crossplatform
+  @parameterized({
+    'std': [23, 26]
+  })
+  def test_cxx_import(self, *standards):
+    modules = ['std', 'std.compat']
+    module_file_args = ' '.join(f'-fmodule-file={module}={module}.pcm' for module in modules)
+    #compile_args = '-stdlib=libc++' or explicitly
+    compile_args = f'-nostdinc++ -isystem {cache.get_include_dir('c++/v1')}'
+    executable = 'main.js'
+
+    for standard in standards:
+      for module in modules:
+        input = os.path.join(cache.get_sysroot_dir('share/libc++/v1'), f'{module}.cppm')
+        cmd = f'{EMCC} -std=c++{standard} -Wno-reserved-module-identifier \
+              {compile_args} {module_file_args} --precompile {input} -o {module}.pcm'
+        self.run_process(cmd, shell=True)
+
+      cmd = f'{EMCC} -std=c++{standard} {compile_args} {module_file_args} \
+            "{test_file('cmake', 'cxx_import_std/main.cpp')}" -o {executable}'
+      self.run_process(cmd, shell=True)
+
+      output = self.run_js(executable, engine=config.NODE_JS)
+      self.assertEqual(output, 'Hello, world!\n')
+
 
   @requires_ninja
   def test_cmake_cxx_import_std(self):
