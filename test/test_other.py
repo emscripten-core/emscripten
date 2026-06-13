@@ -3063,8 +3063,7 @@ More info: https://emscripten.org
     # script calls)
     copy_asset(f'js_optimizer/{name}.js')
     self.run_process([PYTHON, path_from_root('tools/js_optimizer.py'), name + '.js'] + passes)
-    actual = read_file(name + '.js.jsopt.js')
-    self.assertFileContents(test_file('js_optimizer', name + '-output.js'), actual)
+    self.assertFilesMatch(test_file('js_optimizer', name + '-output.js'), name + '.js.jsopt.js')
 
   def test_m_mm(self):
     create_file('foo.c', '#include <emscripten.h>')
@@ -3607,8 +3606,7 @@ More info: https://emscripten.org
       copy_asset('other/embind_tsgen_package.json', 'package.json')
 
     self.run_tsc(['embind_tsgen.d.ts', 'main.ts', '--target', 'es2021'] + tsc_opts)
-    actual = read_file('embind_tsgen.d.ts')
-    self.assertFileContents(test_file('other/embind_tsgen_module.d.ts'), actual)
+    self.assertFilesMatch(test_file('other/embind_tsgen_module.d.ts'), 'embind_tsgen.d.ts')
     self.assertContained('main ran\nts ran', self.run_js('main.js'))
 
   @is_slow_test
@@ -3649,7 +3647,7 @@ More info: https://emscripten.org
   def test_embind_tsgen_ignore(self, extra_args, expected_ts_file):
     create_file('fail.js', 'assert(false);')
     self.emcc('other/embind_tsgen.cpp', ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts'] + extra_args)
-    self.assertFileContents(test_file(f'other/{expected_ts_file}'), read_file('embind_tsgen.d.ts'))
+    self.assertFilesMatch(test_file(f'other/{expected_ts_file}'), 'embind_tsgen.d.ts')
 
   def test_embind_tsgen_remove_relaxed_simd(self):
     self.emcc('other/test_relaxed_simd.cpp', ['-mrelaxed-simd', '-msse', '-lembind', '--emit-tsd', 'embind_tsgen.d.ts'])
@@ -3659,7 +3657,7 @@ More info: https://emscripten.org
     # Passing -sWASM_WORKERS requires the 'worker' environment
     # at link time. Verify that TS binding generation still works in this case.
     self.emcc('other/embind_tsgen.cpp', ['-lembind', '--emit-tsd', 'embind_tsgen.d.ts', '-sWASM_WORKERS'])
-    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+    self.assertFilesMatch(test_file('other/embind_tsgen.d.ts'), 'embind_tsgen.d.ts')
 
   def test_embind_tsgen_dylink(self):
     create_file('side.h', r'''
@@ -3705,7 +3703,7 @@ More info: https://emscripten.org
   def test_embind_tsgen_constant_only(self):
     self.run_process([EMCC, test_file('other/embind_tsgen_constant_only.cpp'),
                       '-lembind', '--emit-tsd', 'out.d.ts'])
-    self.assertFileContents(test_file('other/embind_tsgen_constant_only.d.ts'), read_file('out.d.ts'))
+    self.assertFilesMatch(test_file('other/embind_tsgen_constant_only.d.ts'), 'out.d.ts')
 
   def test_embind_tsgen_bigint(self):
     cmd = [EMXX, test_file('other/embind_tsgen_bigint.cpp'), '-lembind', '--emit-tsd', 'embind_tsgen_bigint.d.ts']
@@ -3713,7 +3711,7 @@ More info: https://emscripten.org
     self.assert_fail(cmd + ['-sWASM_BIGINT=0'], "Missing primitive type to TS type for 'long long")
     # Check that TypeScript generation works when bigint support is enabled
     self.run_process(cmd)
-    self.assertFileContents(test_file('other/embind_tsgen_bigint.d.ts'), read_file('embind_tsgen_bigint.d.ts'))
+    self.assertFilesMatch(test_file('other/embind_tsgen_bigint.d.ts'), 'embind_tsgen_bigint.d.ts')
 
   @parameterized({
     '': [[]],
@@ -3727,14 +3725,14 @@ More info: https://emscripten.org
                       '-lembind', '--emit-tsd', 'embind_tsgen_wasm64.d.ts', '-m64'] +
                      args +
                      self.get_cflags())
-    self.assertFileContents(test_file('other/embind_tsgen_wasm64.d.ts'), read_file('embind_tsgen_wasm64.d.ts'))
+    self.assertFilesMatch(test_file('other/embind_tsgen_wasm64.d.ts'), 'embind_tsgen_wasm64.d.ts')
 
   @requires_jspi
   def test_embind_tsgen_jspi(self):
     self.run_process([EMXX, test_file('other/embind_tsgen_jspi.cpp'),
                       '-lembind', '--emit-tsd', 'embind_tsgen_jspi.d.ts', '-sJSPI', '-sSTRICT', '--no-entry'] +
                      self.get_cflags())
-    self.assertFileContents(test_file('other/embind_tsgen_jspi.d.ts'), read_file('embind_tsgen_jspi.d.ts'))
+    self.assertFilesMatch(test_file('other/embind_tsgen_jspi.d.ts'), 'embind_tsgen_jspi.d.ts')
 
   @parameterized({
     '': [0],
@@ -3750,7 +3748,7 @@ More info: https://emscripten.org
                       '-lembind', '-fwasm-exceptions', '-sASSERTIONS',
                       '--emit-tsd', 'embind_tsgen.d.ts', '-Wno-deprecated'] +
                      self.get_cflags())
-    self.assertFileContents(test_file('other/embind_tsgen.d.ts'), read_file('embind_tsgen.d.ts'))
+    self.assertFilesMatch(test_file('other/embind_tsgen.d.ts'), 'embind_tsgen.d.ts')
 
   def test_embind_jsgen_method_pointer_stability(self):
     # Test that when method pointers are allocated at different addresses that
@@ -3771,7 +3769,7 @@ More info: https://emscripten.org
                       '-sMODULARIZE', '-sEXPORTED_RUNTIME_METHODS=UTF8ArrayToString,wasmTable',
                       '-o', f'test_emit_tsd{postfix}.js'] + args +
                      self.get_cflags())
-    self.assertFileContents(test_file(f'other/test_emit_tsd{postfix}.d.ts'), read_file(f'test_emit_tsd{postfix}.d.ts'))
+    self.assertFilesMatch(test_file(f'other/test_emit_tsd{postfix}.d.ts'), f'test_emit_tsd{postfix}.d.ts')
     # Test that the output compiles with a TS file that uses the definitions.
     self.run_tsc([test_file(f'other/test_tsd{postfix}.ts'), '--noEmit'])
 
@@ -3782,7 +3780,7 @@ More info: https://emscripten.org
                       '-sMODULARIZE', '-sWASM_ASYNC_COMPILATION=0',
                       '-o', 'test_emit_tsd_sync.js'] +
                      self.get_cflags())
-    self.assertFileContents(test_file('other/test_emit_tsd_sync.d.ts'), read_file('test_emit_tsd_sync.d.ts'))
+    self.assertFilesMatch(test_file('other/test_emit_tsd_sync.d.ts'), 'test_emit_tsd_sync.d.ts')
     # Test that the output compiles with a TS file that uses the definitions.
     self.run_tsc([test_file('other/test_tsd_sync.ts'), '--noEmit'])
 
@@ -5023,9 +5021,9 @@ int main() {
     elif wasm == 1:
       self.assertFalse(is_js_symbol_map('a.out.js.symbols'), 'Primary symbols file should store Wasm mappings')
       if '-O2' in opts:
-        self.assertFileContents(test_file('other/test_symbol_map.O2.symbols'), read_file('a.out.js.symbols'))
+        self.assertFilesMatch(test_file('other/test_symbol_map.O2.symbols'), 'a.out.js.symbols')
       else:
-        self.assertFileContents(test_file('other/test_symbol_map.O3.symbols'), read_file('a.out.js.symbols'))
+        self.assertFilesMatch(test_file('other/test_symbol_map.O3.symbols'), 'a.out.js.symbols')
     elif wasm == 2:
       # special case when both JS and Wasm targets are created
       minified_middle_2 = get_minified_middle('a.out.wasm.js.symbols')
@@ -12544,11 +12542,11 @@ exec "$@"
     # This test will start failing whenever the struct info changes (e.g. offset or defines
     # change).  However it's easy to rebaseline with --rebaseline.
     self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '-o', 'out.json'])
-    self.assertFileContents(path_from_root('src/struct_info_generated.json'), read_file('out.json'))
+    self.assertFilesMatch(path_from_root('src/struct_info_generated.json'), 'out.json')
 
     # Same again for wasm64
     self.run_process([PYTHON, path_from_root('tools/gen_struct_info.py'), '--wasm64', '-o', 'out.json'])
-    self.assertFileContents(path_from_root('src/struct_info_generated_wasm64.json'), read_file('out.json'))
+    self.assertFilesMatch(path_from_root('src/struct_info_generated_wasm64.json'), 'out.json')
 
   @crossplatform
   def test_gen_sig_info(self):
@@ -12556,7 +12554,7 @@ exec "$@"
     # function is added or its signature changed.  However it's easy to
     # rebaseline with --rebaseline.
     self.run_process([PYTHON, path_from_root('tools/maint/gen_sig_info.py'), '-o', 'out.js'])
-    self.assertFileContents(path_from_root('src/lib/libsigs.js'), read_file('out.js'))
+    self.assertFilesMatch(path_from_root('src/lib/libsigs.js'), 'out.js')
 
   def test_gen_struct_info_env(self):
     # gen_struct_info.py builds C code in a very specific and low level way.  We don't want

@@ -1108,7 +1108,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       fail_message += '\n' + msg
     self.fail(fail_message)
 
-  def assertFileContents(self, filename, contents):
+  def assertFileContents(self, filename, contents, tofile=None):
     if EMTEST_VERBOSE:
       print(f'Comparing results contents of file: {filename}')
 
@@ -1124,7 +1124,10 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     expected_content = read_file(filename)
     message = "Run with --rebaseline to automatically update expectations"
     self.assertTextDataIdentical(expected_content, contents, message,
-                                 filename, filename + '.new')
+                                 filename, tofile or (filename + '.new'))
+
+  def assertFilesMatch(self, expected, actual):
+    self.assertFileContents(expected, read_file(actual), tofile=actual)
 
   def assertContained(self, values, string, additional_info='', regex=False):
     if callable(string):
