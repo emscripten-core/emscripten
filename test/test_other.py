@@ -909,15 +909,15 @@ f.close()
     'std26': (['-std=c++26'],),
   })
   def test_cxx_import(self, args):
-    # cFlags = list(args) + ['-stdlib=libc++'] or explicitly
-    cFlags = ['-nostdinc++', '-isystem', cache.get_include_dir('c++/v1')] + args
+    # cflags = ['-stdlib=libc++'] + args or explicitly
+    cflags = ['-nostdinc++', '-isystem', cache.get_include_dir('c++/v1')] + args
 
     for module in ['std', 'std.compat']:
-      cFlags += [f'-fmodule-file={module}={module}.pcm']
+      cflags += [f'-fmodule-file={module}={module}.pcm']
       source = os.path.join(cache.get_sysroot_dir('share/libc++/v1'), f'{module}.cppm')
-      self.run_process([EMCC, '-Wno-reserved-module-identifier', '--precompile', source, '-o', f'{module}.pcm'] + cFlags)
+      self.run_process([EMCC, '-Wno-reserved-module-identifier', '--precompile', source, '-o', f'{module}.pcm'] + cflags)
 
-    self.do_runf('cmake/cxx_import_std/main.cpp', 'Hello, world!\n', cflags=cFlags)
+    self.do_runf('cmake/cxx_import_std/main.cpp', 'Hello, world!\n', cflags=cflags)
 
   @requires_ninja
   def test_cmake_cxx_import_std(self):
