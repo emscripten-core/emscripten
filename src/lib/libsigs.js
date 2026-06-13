@@ -262,7 +262,7 @@ sigs = {
   __syscall_newfstatat__sig: 'iippi',
   __syscall_openat__sig: 'iipip',
   __syscall_pipe2__sig: 'ipi',
-  __syscall_poll__sig: 'ippi',
+  __syscall_poll__sig: 'ipii',
   __syscall_readlinkat__sig: 'iippp',
   __syscall_recvfrom__sig: 'pippipp',
   __syscall_recvmsg__sig: 'pipiiii',
