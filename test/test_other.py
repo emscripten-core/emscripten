@@ -905,12 +905,12 @@ f.close()
 
   @crossplatform
   @parameterized({
-    'std23': ['-std=c++23'],
-    'std26': ['-std=c++26'],
+    'std23': (['-std=c++23'],),
+    'std26': (['-std=c++26'],),
   })
-  def test_cxx_import(self, *args):
+  def test_cxx_import(self, args):
     # cFlags = list(args) + ['-stdlib=libc++'] or explicitly
-    cFlags = list(args) + ['-nostdinc++', '-isystem', cache.get_include_dir('c++/v1')]
+    cFlags = ['-nostdinc++', '-isystem', cache.get_include_dir('c++/v1')] + args
 
     for module in ['std', 'std.compat']:
       cFlags += [f'-fmodule-file={module}={module}.pcm']

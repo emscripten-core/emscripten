@@ -99,11 +99,12 @@ def generate_modules(cmake_version: str):
 def main():
   # Exit early if cmake is not found
   try:
-    cmake_version = re.search(r'^cmake version (\d+(?:\.\d+)*)',
-      subprocess.check_output(['cmake', '--version'], text=True)).group(1)
+    output= subprocess.check_output(['cmake', '--version'], text=True)
   except OSError:
     print('CMake not found', file=sys.stderr)
     sys.exit(1)
+
+  cmake_version = re.search(r'^cmake version (\d+(?:\.\d+)*)', output).group(1)
 
   if len(sys.argv) > 1:
     llvm_dir = os.path.abspath(sys.argv[1])
