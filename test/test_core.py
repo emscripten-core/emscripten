@@ -9792,7 +9792,7 @@ int main() {
       err('this is a pointer:', stringToNewUTF8('hello'));
     ''')
     self.assertContained('Hello, world! (3)', self.run_js('runner.mjs'))
-    self.assertFileContents(test_file('core/test_esm_integration.expected.mjs'), read_file('hello_world.mjs'))
+    self.assertFilesMatch(test_file('core/test_esm_integration.expected.mjs'), 'hello_world.mjs')
 
   @no_omit_asm_module_exports('MODULARIZE is not compatible with DECLARE_ASM_MODULE_EXPORTS=0')
   @no_strict_js('EXPORT_ES6 is not compatible with STRICT_JS')

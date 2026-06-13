@@ -1539,9 +1539,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # Such setting must be set before this point
   feature_matrix.apply_min_browser_versions()
 
-  # TODO(sbc): Find make a generic way to expose the feature matrix to JS
-  # compiler rather then adding them all ad-hoc as internal settings
-  default_setting('WASM_BIGINT', feature_matrix.caniuse(Feature.JS_BIGINT_INTEGRATION))
+  feature_matrix.auto_enable_features()
+
   if settings.WASM_BIGINT:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$HEAP64', '$HEAPU64']
 
@@ -1965,6 +1964,7 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   # Disable proxying and thread pooling so a worker is not automatically created.
   settings.PROXY_TO_PTHREAD = False
   settings.PTHREAD_POOL_SIZE = 0
+  settings.GROWABLE_ARRAYBUFFERS = 0
   # Assume wasm support at binding generation time
   settings.WASM2JS = 0
   # Disable minify since the binaryen pass has not been run yet to change the

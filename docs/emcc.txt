@@ -622,8 +622,6 @@ Environment variables
 
    * "EMCC_LOCAL_PORTS" [compile+link]
 
-   * "EMCC_STDERR_FILE" [general]
-
    * "EMCC_CLOSURE_ARGS" [link] arguments to be passed to *Closure
      Compiler*
 
