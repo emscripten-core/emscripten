@@ -255,7 +255,7 @@ weak int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optva
 
 weak pid_t __syscall_wait4(pid_t pid, intptr_t wstatus, int options, int rusage) {
   REPORT(wait4);
-  return (pid_t)-1;
+  return -1;
 }
 
 UNIMPLEMENTED(acct, (intptr_t filename))
