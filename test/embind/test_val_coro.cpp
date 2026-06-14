@@ -2,6 +2,7 @@
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include <assert.h>
+#include <functional>
 #include <stdexcept>
 
 using namespace emscripten;
@@ -94,8 +95,55 @@ val failingPromise<0>() {
   co_return 65;
 }
 
+val catchCppExceptionPromise() {
+  try {
+    co_await throwingCoro<0>();
+  } catch (const std::runtime_error &) {
+    co_return val("successfully caught!");
+  }
+  co_return val("ignored??");
+}
+
+
+class callback_coro {
+public:
+  class promise_type {
+    std::function<void(int)> callback_;
+    std::function<void()> errorCallback_;
+  public:
+    promise_type(
+      std::function<void(int)> callback,
+      std::function<void()> errorCallback = std::terminate)
+      : callback_(std::move(callback)),
+        errorCallback_(std::move(errorCallback)) {}
+
+    callback_coro get_return_object() const noexcept {
+      return callback_coro();
+    }
+
+    auto initial_suspend() const noexcept { return std::suspend_never{}; }
+    auto final_suspend() const noexcept { return std::suspend_never{}; }
+
+    void return_value(int ret) { callback_(ret); }
+
+    void unhandled_exception() const noexcept { errorCallback_(); }
+  };
+};
+
+callback_coro sleepWithCallback(std::function<void(int)>) {
+  co_await promise_sleep(1);
+  co_return 42;
+}
+
+void awaitInNonValCoro() {
+  sleepWithCallback([](int ret) { val::global("console").call<void>("log", ret); });
+}
+
+
 EMSCRIPTEN_BINDINGS(test_val_coro) {
   function("asyncCoro", asyncCoro<3>);
   function("throwingCoro", throwingCoro<3>);
   function("failingPromise", failingPromise<3>);
+  function("catchCppExceptionPromise", catchCppExceptionPromise);
+  function("awaitInNonValCoro", awaitInNonValCoro);
 }

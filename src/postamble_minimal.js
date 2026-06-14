@@ -149,6 +149,10 @@ function initRuntime(wasmExports) {
 
 // Initialize wasm (asynchronous)
 
+#if MODULARIZE || AUDIO_WORKLET
+var instantiatePromise;
+#endif
+
 #if SINGLE_FILE && SINGLE_FILE_BINARY_ENCODE && !WASM2JS
 Module['wasm'] = binaryDecode("<<< WASM_BINARY_DATA >>>");
 #elif SINGLE_FILE && WASM == 1 && !WASM2JS
@@ -198,7 +202,7 @@ const moduleUrl = `ENVIRONMENT_IS_AUDIO_WORKLET ? '${TARGET_BASENAME}.wasm' : ne
 // precompiled WebAssembly Module.
 assert(WebAssembly.instantiateStreaming || Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm before adding compiled output .js script to the DOM');
 #endif
-#if AUDIO_WORKLET
+#if MODULARIZE || AUDIO_WORKLET
 instantiatePromise =
 #endif
 (WebAssembly.instantiateStreaming
@@ -209,7 +213,7 @@ instantiatePromise =
   ? WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports)
   : WebAssembly.instantiate(Module['wasm'], imports)).then((output) => {
 #else
-#if AUDIO_WORKLET
+#if MODULARIZE || AUDIO_WORKLET
 instantiatePromise =
 #endif
 WebAssembly.instantiateStreaming(fetch({{{ moduleUrl }}}), imports).then((output) => {
@@ -228,7 +232,7 @@ assert(Module['wasm'], 'Must load WebAssembly Module in to variable Module.wasm 
 
 // Add missingProperties supression here because closure compiler doesn't know that
 // WebAssembly.instantiate is polymorphic in its return value.
-#if AUDIO_WORKLET
+#if MODULARIZE || AUDIO_WORKLET
 instantiatePromise =
 #endif
 WebAssembly.instantiate(Module['wasm'], imports).then(/** @suppress {missingProperties} */ (output) => {
@@ -303,7 +307,7 @@ null;
   PThread.loadWasmModuleToAllWorkers();
 #endif
 
-{{{ waitOnStartupPromisesAndEmitReady(); }}}
+  return {{{ waitOnStartupPromisesAndEmitReady(); }}}
 
 }
 
@@ -333,4 +337,8 @@ null;
 
 // When running in a background thread we delay module loading until we have
 {{{ runIfMainThread('loadModule();') }}}
+#endif
+
+#if MODULARIZE
+await instantiatePromise;
 #endif

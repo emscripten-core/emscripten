@@ -31,10 +31,6 @@ function growMemViews() {
 #include "binaryDecode.js"
 #endif
 
-#if MODULARIZE
-var readyPromiseResolve, readyPromiseReject;
-#endif
-
 #if (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
   // Create as web-worker-like an environment as we can.
@@ -113,6 +109,13 @@ var runtimeExited = false;
 }}}
 
 function updateMemoryViews() {
+#if RUNTIME_DEBUG
+  dbg(`updateMemoryViews: first=${!HEAP8} size=${wasmMemory.buffer.byteLength}`);
+#endif
+#if !ALLOW_MEMORY_GROWTH && ASSERTIONS
+  // When memory growth is disabled this function should be called exactly once.
+  assert(!HEAP8, 'updateMemoryViews should only be called once when ALLOW_MEMORY_GROWTH=0');
+#endif
 #if GROWABLE_ARRAYBUFFERS
   var b = wasmMemory.toResizableBuffer();
 #else

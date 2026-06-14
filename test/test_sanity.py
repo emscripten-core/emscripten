@@ -823,11 +823,11 @@ fi
 
     # Touching package.json should cause compiler to fail with bootstrap message
     Path(utils.path_from_root('package.json')).touch()
-    expected = 'emcc: error: emscripten setup is not complete ("npm packages" is out-of-date). Run `bootstrap` to update'
+    expected = 'emcc: error: emscripten setup is not complete ("npm packages" is out-of-date). Run `bootstrap.py` to update'
     self.assert_fail([EMCC, test_file('hello_world.c')], expected)
 
     # Running bootstrap.py should fix that
-    self.run_process([utils.exe_path_from_root('bootstrap')])
+    self.run_process([sys.executable, utils.path_from_root('bootstrap.py')])
 
     # Now the compiler should work again
     self.run_process([EMCC, test_file('hello_world.c')])
@@ -846,7 +846,7 @@ fi
     env['PATH'] = path_without_tool(env['PATH'], 'clang')
 
     # Running bootstrap.py should not fail
-    self.run_process([utils.exe_path_from_root('bootstrap')], env=env)
+    self.run_process([sys.executable, utils.path_from_root('bootstrap.py')], env=env)
 
   # Verify that if user specifies a relative path to Python executable, then
   # Emscripten is still able to build.
@@ -870,3 +870,45 @@ fi
     output = self.do([EMCC, test_file('hello_world.c')], env=env)
     self.assertNotContained('error', output)
     self.assertExists('a.out.js')
+
+  def test_emcc_javascript_compilation_caching(self):
+    restore_and_set_up()
+
+    # Create a separate temporary cache folder to avoid dirtying or reading from the default cache.
+    test_cache_dir = self.in_dir('test_cache')
+    js_output_cache_dir = os.path.join(test_cache_dir, 'js_output')
+
+    def js_cache_files():
+      if not os.path.exists(js_output_cache_dir):
+        return []
+      return sorted([f for f in os.listdir(js_output_cache_dir) if f.endswith('.js')])
+
+    def js_cache_size():
+      return len(js_cache_files())
+
+    with env_modify({'EM_CACHE': test_cache_dir}):
+      # 1. First compile. Cache-miss: should compile and populate the cache.
+      self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-o', 'out.js'])
+      self.assertExists(js_output_cache_dir)
+
+      self.assertEqual(js_cache_size(), 1, f'Expected 1 cached JS file, found: {js_cache_files()}')
+
+      cached_file_path = os.path.join(js_output_cache_dir, js_cache_files()[0])
+      initial_mtime = os.path.getmtime(cached_file_path)
+
+      # 2. Second compile. Cache-hit: mtime of cache file should remain strictly identical (not overwritten).
+      self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-o', 'out.js'])
+
+      self.assertEqual(js_cache_size(), 1)
+      self.assertEqual(os.path.getmtime(cached_file_path), initial_mtime, 'Cache was overwritten on second compile (expected a cache hit)')
+
+      # 3. Third compile with custom user library. Cache-bypass: should not add any cache entries.
+      create_file('my_lib.js', 'addToLibrary({ my_custom_symbol: () => {} });')
+      self.run_process([EMCC, test_file('hello_world.c'), '-O2', '--js-library=my_lib.js', '-o', 'out.js'])
+
+      self.assertEqual(js_cache_size(), 1, 'Cache entry was incorrectly created for custom JS library compile')
+
+      # 4. Fourth compile with a changed compiler option. Distinct Cache Entry: should generate a second cache entry.
+      self.run_process([EMCC, test_file('hello_world.c'), '-O2', '-sASSERTIONS=1', '-o', 'out.js'])
+
+      self.assertEqual(js_cache_size(), 2, f'Expected 2 cached JS files after compiling with different options, found: {js_cache_files()}')

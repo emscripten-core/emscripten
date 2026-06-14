@@ -42,7 +42,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
   // notified about them.
   self.onunhandledrejection = (e) => { throw e.reason || e; };
 
-  {{{ asyncIf(ASYNCIFY == 2) }}}function handleMessage(e) {
+  {{{ asyncIf(ASYNCIFY == 2 || MAIN_MODULE) }}}function handleMessage(e) {
     try {
       var msgData = e.data;
       //dbg('msgData: ' + Object.keys(msgData));
@@ -123,7 +123,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #if MODULARIZE == 'instance'
         init();
 #else
-        createWasm();
+        {{{ awaitIf(MAIN_MODULE) }}}createWasm();
         run();
 #endif
 #endif // MINIMAL_RUNTIME

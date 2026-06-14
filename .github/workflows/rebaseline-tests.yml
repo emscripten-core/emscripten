@@ -38,7 +38,7 @@ jobs:
         run: |
           git config user.name emscripten-bot
           git config user.email emscripten-bot@users.noreply.github.com
-          ./bootstrap
+          ./bootstrap.py
           if ./tools/maint/rebaseline_tests.py --new-branch; then
              echo "rebaseline_tests returned zero, expectations up-to-date"
              # Exit early and don't create a PR

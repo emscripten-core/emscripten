@@ -237,10 +237,8 @@ async function createWasm() {
     wasmExports = instance.exports;
     assignWasmExports(wasmExports);
     updateMemoryViews();
-    removeRunDependency("wasm-instantiate");
     return wasmExports;
   }
-  addRunDependency("wasm-instantiate");
   // Prefer streaming instantiation if available.
   function receiveInstantiationResult(result) {
     // 'result' is a ResultObject object which has both the module and instance.
@@ -285,25 +283,6 @@ class ExitStatus {
 /** not-@type {!BigUint64Array} */ var HEAPU64;
 
 /** @type {!Uint8Array} */ var HEAPU8;
-
-var runDependencies = 0;
-
-var dependenciesFulfilled = null;
-
-var removeRunDependency = id => {
-  runDependencies--;
-  if (runDependencies == 0) {
-    if (dependenciesFulfilled) {
-      var callback = dependenciesFulfilled;
-      dependenciesFulfilled = null;
-      callback();
-    }
-  }
-};
-
-var addRunDependency = id => {
-  runDependencies++;
-};
 
 var printCharBuffers = [ null, [], [] ];
 
@@ -461,16 +440,7 @@ function callMain() {
 }
 
 function run() {
-  if (runDependencies > 0) {
-    dependenciesFulfilled = run;
-    return;
-  }
   preRun();
-  // a preRun added a dependency, run will be called later
-  if (runDependencies > 0) {
-    dependenciesFulfilled = run;
-    return;
-  }
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
@@ -491,6 +461,4 @@ var wasmExports;
 
 // With async instantation wasmExports is assigned asynchronously when the
 // instance is received.
-createWasm();
-
-run();
+createWasm().then(() => run());

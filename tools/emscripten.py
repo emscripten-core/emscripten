@@ -209,12 +209,6 @@ def generate_js_compiler_input_hash(symbols_only=False):
 
 @ToolchainProfiler.profile()
 def compile_javascript(symbols_only=False):
-  stderr_file = os.environ.get('EMCC_STDERR_FILE')
-  if stderr_file:
-    stderr_file = os.path.abspath(stderr_file)
-    logger.info('logging stderr in js compiler phase into %s' % stderr_file)
-    stderr_file = open(stderr_file, 'w', encoding='utf-8')
-
   # Save settings to a file to work around v8 issue 1579
   settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
   building.write_intermediate(settings_json, 'settings.json')
@@ -224,7 +218,7 @@ def compile_javascript(symbols_only=False):
   if symbols_only:
     args += ['--symbols-only']
   return shared.run_js_tool(path_from_root('tools/compiler.mjs'),
-                            args, input=settings_json, stdout=subprocess.PIPE, stderr=stderr_file)
+                            args, input=settings_json, stdout=subprocess.PIPE)
 
 
 def set_memory(static_bump):
@@ -346,7 +340,8 @@ def compile_javascript_cached():
   # this step is performed while the cache is locked.
   # Sadly we have to skip the caching whenever we have user JS libraries.  This is because
   # these libraries can import arbitrary other JS files (either vis node's `import` or via #include)
-  if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE or settings.JS_LIBRARIES:
+  has_user_libs = any(not lib.startswith(utils.path_from_root('src/')) for lib in settings.JS_LIBRARIES)
+  if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE or has_user_libs:
     return compile_javascript()
 
   content_hash = generate_js_compiler_input_hash()
@@ -680,7 +675,7 @@ def create_tsd_exported_runtime_methods(metadata):
   return utils.read_file(in_temp(f'{file}.d.ts'))
 
 
-def create_tsd(metadata, embind_tsd):
+def create_tsd(metadata, embind_tsd, bindgen_tsd):
   out = '// TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.\n'
   if settings.EXPORTED_RUNTIME_METHODS:
     out += create_tsd_exported_runtime_methods(metadata)
@@ -712,6 +707,10 @@ def create_tsd(metadata, embind_tsd):
   # Add in embind definitions.
   if embind_tsd:
     export_interfaces += ' & EmbindModule'
+  if settings.WASM_BINDGEN and bindgen_tsd:
+    for file_path in bindgen_tsd:
+      out += utils.read_file(file_path)
+    export_interfaces += ' & BindgenModule'
   out += f'export type MainModule = {export_interfaces};\n'
   if settings.MODULARIZE:
     return_type = 'MainModule'
