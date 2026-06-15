@@ -114,19 +114,14 @@ function stackCheckInit() {
 }
 #endif
 
-{{{ asyncIf(MODULARIZE) }}}function run({{{ MAIN_READS_PARAMS ? 'args = programArgs' : '' }}}) {
+{{{ asyncIf(MODULARIZE || '$runDependencies' in addedLibraryItems) }}}function run({{{ MAIN_READS_PARAMS ? 'args = programArgs' : '' }}}) {
 
 #if '$runDependencies' in addedLibraryItems
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
 #endif
-#if MODULARIZE
-    await new Promise((resolve) => dependenciesFulfilled = resolve);
-#else
-    dependenciesFulfilled = run;
-    return;
-#endif
+    await resolveRunDeps();
   }
 #endif
 
@@ -149,12 +144,7 @@ function stackCheckInit() {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
 #endif
-#if MODULARIZE
-    await new Promise((resolve) => dependenciesFulfilled = resolve);
-#else
-    dependenciesFulfilled = run;
-    return;
-#endif
+    await resolveRunDeps();
   }
 #endif
 

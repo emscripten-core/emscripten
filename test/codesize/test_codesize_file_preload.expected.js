@@ -1304,6 +1304,8 @@ var FS_createDataFile = (...args) => FS.createDataFile(...args);
 
 var getUniqueRunDependency = id => id;
 
+var resolveRunDeps = () => new Promise(resolve => dependenciesFulfilled = resolve);
+
 var runDependencies = 0;
 
 var dependenciesFulfilled = null;
@@ -3177,16 +3179,14 @@ function callMain() {
   }
 }
 
-function run() {
+async function run() {
   if (runDependencies > 0) {
-    dependenciesFulfilled = run;
-    return;
+    await resolveRunDeps();
   }
   preRun();
   // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
-    dependenciesFulfilled = run;
-    return;
+    await resolveRunDeps();
   }
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,

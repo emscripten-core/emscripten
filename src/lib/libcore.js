@@ -2266,11 +2266,14 @@ addToLibrary({
   // Note that you can add dependencies in preRun, even though
   // it happens right before run - run will be postponed until
   // the dependencies are met.
+  $runDependencies__deps: ['$resolveRunDeps'],
   $runDependencies__internal: true,
   $runDependencies: 0,
   // overridden to take different actions when all run dependencies are fulfilled
   $dependenciesFulfilled__internal: true,
   $dependenciesFulfilled: null,
+  $resolveRunDeps__internal: true,
+  $resolveRunDeps: () => new Promise((resolve) => dependenciesFulfilled = resolve),
 #if ASSERTIONS
   $runDependencyTracking__internal: true,
   $runDependencyTracking: {},
