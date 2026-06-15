@@ -4,7 +4,8 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""emcc - compiler helper script
+"""\
+emcc - compiler helper script
 =============================
 
 emcc is a drop-in replacement for a compiler like gcc or clang.
@@ -18,7 +19,7 @@ emcc can be influenced by a few environment variables:
                (by default /tmp/emscripten_temp). "2" will save additional emcc-*
                steps, that would normally not be separately produced (so this
                slows down compilation).
-"""
+""" # noqa: D205, D400, D415
 
 import logging
 import os
@@ -28,6 +29,12 @@ import sys
 import tarfile
 from dataclasses import dataclass
 from enum import Enum, auto, unique
+from subprocess import PIPE
+
+# This assert needs to happen early, before any too-recent python syntax is used.
+# In particular it needs to happen before we import any python file that uses the
+# `match` keyword.
+assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
 
 from tools import (
   building,
@@ -79,6 +86,19 @@ LINK_ONLY_FLAGS = {
     '--threadprofiler', '--use-preload-plugins',
 }
 
+PASSTHROUGH_FLAGS = {
+  '-print-resource-dir',
+  '--print-resource-dir',
+  '-dumpmachine',
+  '-print-target-triple',
+  '--print-target-triple',
+}
+
+PASSTHROUGH_PREFIXES = {
+  '-print-prog-name',
+  '--print-prog-name',
+}
+
 
 @unique
 class Mode(Enum):
@@ -99,6 +119,7 @@ class LinkFlag:
 
   A list of these is returned by separate_linker_flags.
   """
+
   value: str
   is_file: int
 
@@ -122,7 +143,7 @@ def create_reproduce_file(name, args):
     reproduce_file.add(utils.path_from_root('emscripten-version.txt'), os.path.join(root, 'version.txt'))
 
     with shared.get_temp_files().get_file(suffix='.tar') as rsp_name:
-      with open(rsp_name, 'w') as rsp:
+      with open(rsp_name, 'w', encoding='utf-8') as rsp:
         ignore_next = False
         output_arg = None
 
@@ -165,6 +186,15 @@ def create_reproduce_file(name, args):
       reproduce_file.add(rsp_name, os.path.join(root, 'response.txt'))
 
 
+def get_clang_resource_dir(args):
+  resource_dir = [a for a in args if a.startswith(('-resource-dir=', '--resource-dir='))]
+  if resource_dir:
+    return resource_dir[-1].split('=')[1]
+  else:
+    output = utils.run_process([shared.CLANG_CC, '-print-resource-dir'], stdout=PIPE).stdout
+    return output.strip()
+
+
 @ToolchainProfiler.profile()
 def main(args):
   if shared.run_via_emxx:
@@ -180,7 +210,7 @@ def main(args):
   if len(args) == 2 and args[1] == '-v':
     # autoconf likes to see 'GNU' in the output to enable shared object support
     print(cmdline.version_string(), file=sys.stderr)
-    return shared.check_call([clang, '-v'] + compile.get_target_flags(), check=False).returncode
+    return shared.check_call([clang, '-v', *compile.get_target_flags()], check=False).returncode
 
   # Additional compiler flags that we treat as if they were passed to us on the
   # commandline
@@ -225,6 +255,12 @@ emcc: supported targets: llvm bitcode, WebAssembly, NOT elf
   if not shared.SKIP_SUBPROCS:
     shared.check_sanity()
 
+  # For internal consistency, ensure we don't attempt to read or write any link time
+  # settings until we reach the linking phase.
+  settings.limit_settings(COMPILE_TIME_SETTINGS)
+
+  phase_setup(state)
+
   # Begin early-exit flag handling.
 
   if '--version' in args:
@@ -240,33 +276,35 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     print(utils.EMSCRIPTEN_VERSION)
     return 0
 
-  if '-dumpmachine' in args or '-print-target-triple' in args or '--print-target-triple' in args:
-    print(shared.get_llvm_target())
-    return 0
-
+  # Sadly we cannot rely on PASSTHROUGH_FLAGS for -print-search-dirs or -print-libgcc-file-name
+  # because there is no way to tell clang today about our custom library paths.
+  # TODO: Teach clang about emscripten's library layout so we can remove this code.
   if '-print-search-dirs' in args or '--print-search-dirs' in args:
     print(f'programs: ={config.LLVM_ROOT}')
-    print(f'libraries: ={cache.get_lib_dir(absolute=True)}')
+    resource_dir = get_clang_resource_dir(args)
+    libdir = cache.get_lib_dir(absolute=True)
+    print(f'libraries: ={resource_dir}{os.pathsep}{libdir}')
     return 0
 
   if '-print-libgcc-file-name' in args or '--print-libgcc-file-name' in args:
     settings.limit_settings(None)
-    compiler_rt = system_libs.Library.get_usable_variations()['libcompiler_rt']
-    print(compiler_rt.get_path(absolute=True))
+    clang_rt = system_libs.Library.get_usable_variations()['libclang_rt.builtins']
+    print(clang_rt.get_path(absolute=True))
     return 0
 
   print_file_name = [a for a in args if a.startswith(('-print-file-name=', '--print-file-name='))]
   if print_file_name:
     libname = print_file_name[-1].split('=')[1]
+    resource_dir = get_clang_resource_dir(args)
     system_libpath = cache.get_lib_dir(absolute=True)
-    fullpath = os.path.join(system_libpath, libname)
-    if os.path.isfile(fullpath):
-      print(fullpath)
+    for dirname in (resource_dir, system_libpath):
+      fullpath = os.path.join(dirname, libname)
+      if os.path.isfile(fullpath):
+        print(fullpath)
+        break
     else:
       print(libname)
     return 0
-
-  # End early-exit flag handling
 
   if 'EMMAKEN_NO_SDK' in os.environ:
     exit_with_error('EMMAKEN_NO_SDK is no longer supported.  The standard -nostdlib and -nostdinc flags should be used instead')
@@ -281,14 +319,10 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
   if 'EMCC_REPRODUCE' in os.environ:
     options.reproduce = os.environ['EMCC_REPRODUCE']
 
-  # For internal consistency, ensure we don't attempt to read or write any link time
-  # settings until we reach the linking phase.
-  settings.limit_settings(COMPILE_TIME_SETTINGS)
-
-  phase_setup(state)
-
-  if '-print-resource-dir' in args or any(a.startswith('--print-prog-name') for a in args):
-    shared.exec_process([clang] + compile.get_cflags(tuple(args)) + args)
+  if any(a in PASSTHROUGH_FLAGS for a in args) or any(a.startswith(p) for p in PASSTHROUGH_PREFIXES for a in args):
+    # For several -print-xxx-name flags we just defer to clang rather than
+    # trying to re-implement the logic.
+    shared.exec_process([clang, *compile.get_cflags(tuple(args)), *newargs])
     assert False, 'exec_process should not return'
 
   if '--cflags' in args:
@@ -297,6 +331,8 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     cflags = compile.get_cflags(x for x in args if x != '--cflags')
     print(shlex.join(cflags))
     return 0
+
+  # End early-exit flag handling
 
   if options.reproduce:
     create_reproduce_file(options.reproduce, args)
@@ -307,7 +343,7 @@ There is NO warranty; not even for MERCHANTABILITY or FITNESS FOR A PARTICULAR P
     linker_args = separate_linker_flags(newargs)[1]
     linker_args = [f.value for f in linker_args]
     # Delay import of link.py to avoid processing this file when only compiling
-    from tools import link  # noqa: PLC0415
+    from tools import link
     link.run_post_link(options.input_files[0], options, linker_args)
     return 0
 
@@ -330,7 +366,6 @@ def separate_linker_flags(newargs):
   - Linker flags include input files and are returned a list of LinkFlag objects.
   - Compiler flags are those to be passed to `clang -c`.
   """
-
   compiler_args = []
   linker_args = []
 
@@ -364,9 +399,9 @@ def separate_linker_flags(newargs):
         add_link_arg(flag)
     elif arg == '-Xlinker':
       add_link_arg(get_next_arg())
-    elif arg == '-s' or arg.startswith(('-l', '-L', '--js-library=', '-z', '-u')):
+    elif arg in {'-s', '-Bstatic', '-Bdynamic'} or arg.startswith(('-l', '-L', '--js-library=', '-z', '-u')):
       add_link_arg(arg)
-    elif not arg.startswith('-o') and arg not in ('-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'):
+    elif not arg.startswith('-o') and arg not in {'-nostdlib', '-nostartfiles', '-nolibc', '-nodefaultlibs', '-s'}:
       # All other flags are for the compiler
       compiler_args.append(arg)
       if skip:
@@ -377,9 +412,7 @@ def separate_linker_flags(newargs):
 
 @ToolchainProfiler.profile_block('setup')
 def phase_setup(state):
-  """Second phase: configure and setup the compiler based on the specified settings and arguments.
-  """
-
+  """Second phase: configure and setup the compiler based on the specified settings and arguments."""
   has_header_inputs = any(get_file_suffix(f) in HEADER_EXTENSIONS for f in options.input_files)
 
   if options.post_link:
@@ -399,9 +432,6 @@ def phase_setup(state):
             'unused-command-line-argument',
             "linker flag ignored during compilation: '%s'" % arg)
 
-  if settings.SIDE_MODULE:
-    settings.RELOCATABLE = 1
-
   if 'USE_PTHREADS' in user_settings:
     settings.PTHREADS = settings.USE_PTHREADS
 
@@ -413,7 +443,7 @@ def phase_setup(state):
     # If we get here then the user specified both DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED
     # on the command line.  This is no longer valid so report either an error or a warning (for
     # backwards compat with the old `DISABLE_EXCEPTION_CATCHING=2`
-    if user_settings['DISABLE_EXCEPTION_CATCHING'] in ('0', '2'):
+    if user_settings['DISABLE_EXCEPTION_CATCHING'] in {'0', '2'}:
       diagnostics.warning('deprecated', 'DISABLE_EXCEPTION_CATCHING=X is no longer needed when specifying EXCEPTION_CATCHING_ALLOWED')
     else:
       exit_with_error('DISABLE_EXCEPTION_CATCHING and EXCEPTION_CATCHING_ALLOWED are mutually exclusive')
@@ -541,7 +571,7 @@ def phase_compile_inputs(options, state, newargs):
       cmd = get_clang_command()
       if ext == '.pcm':
         cmd = [c for c in cmd if not c.startswith('-fprebuilt-module-path=')]
-    cmd += compile_args + ['-c', input_file, '-o', output_file]
+    cmd += [*compile_args, '-c', input_file, '-o', output_file]
     if options.requested_debug == '-gsplit-dwarf':
       # When running in COMPILE_AND_LINK mode we compile objects to a temporary location
       # but we want the `.dwo` file to be generated in the current working directory,
@@ -577,7 +607,7 @@ def phase_compile_inputs(options, state, newargs):
       # Default to assuming the inputs are object files and pass them to the linker
       pass
 
-  return [f.value for f in linker_args]
+  return linker_args
 
 
 if __name__ == '__main__':

@@ -8,13 +8,7 @@ hidden long __cancel(), __syscall_cp_asm(), __syscall_cp_c();
 long __cancel()
 {
 	pthread_t self = __pthread_self();
-#ifdef __EMSCRIPTEN__
-	// Emscripten doesn't have actual async cancelation so we make a best effort
-	// by cancelling cooperatively when self->cancelasync is set.
-	if (self->canceldisable == PTHREAD_CANCEL_ENABLE || self->cancelasync)
-#else
 	if (self->canceldisable == PTHREAD_CANCEL_ENABLE)
-#endif
 		pthread_exit(PTHREAD_CANCELED);
 	self->canceldisable = PTHREAD_CANCEL_DISABLE;
 	return -ECANCELED;
@@ -83,12 +77,7 @@ static void cancel_handler(int sig, siginfo_t *si, void *ctx)
 void __testcancel()
 {
 	pthread_t self = __pthread_self();
-#ifdef __EMSCRIPTEN__
-	// See comment above about cancelasync under emscripten.
-	if (self->cancel && (self->cancelasync || !self->canceldisable))
-#else
 	if (self->cancel && !self->canceldisable)
-#endif
 		__cancel();
 }
 
@@ -119,5 +108,13 @@ int pthread_cancel(pthread_t t)
 			pthread_exit(PTHREAD_CANCELED);
 		return 0;
 	}
+#ifdef __EMSCRIPTEN__
+	// Wake the target thread in case it is in emscripten_futex_wait.  Normally,
+	// this is only required when the target is the main runtime thread and there
+	// is an event added to its system queue.
+	// However, all threads need to be interrupted like this in the case they are
+	// cancelled.
+	_emscripten_thread_notify(t);
+#endif
 	return pthread_kill(t, SIGCANCEL);
 }

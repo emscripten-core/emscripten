@@ -37,14 +37,13 @@ mapped_wiki_inline_code['setValue(ptr, value, type)'] = ':js:func:`setValue(ptr,
 
 wiki_checkout = 'emscripten.wiki/'
 temp_set_of_codemarkup = set()
-logfile = open(logfilename, 'w')
+logfile = open(logfilename, 'w', encoding='utf-8')
 # snapshot_version_information = '.. note:: This is a **snapshot** of the wiki: %s\n\n' % strftime("%a, %d %b %Y %H:%M", gmtime())
 snapshot_version_information = '.. note:: This article was migrated from the wiki (%s) and is now the "master copy" (the version in the wiki will be deleted). It may not be a perfect rendering of the original but we hope to fix that soon!\n\n' % time.strftime("%a, %d %b %Y %H:%M", time.gmtime())
 
 
 def CleanWiki():
-    """Delete the wiki clone directory and all contained files.
-    """
+    """Delete the wiki clone directory and all contained files."""
 
     def errorhandler(func, path, exc_info):
         # where  func is os.listdir, os.remove, or os.rmdir; path is the argument to that function that caused it to fail; and  exc_info is a tuple returned by  sys.exc_info()
@@ -62,9 +61,7 @@ def CleanWiki():
 
 
 def CloneWiki():
-    """
-    Clone the wiki into a temporary location (first cleaning)
-    """
+    """Clone the wiki into a temporary location (first cleaning)."""
     # Clean up existing repo
     CleanWiki()
 
@@ -82,16 +79,14 @@ def CloneWiki():
 
 
 def ConvertFilesToRst():
-    """
-    Add template to specified page object (wikitools)
-    """
+    """Add template to specified page object (wikitools)."""
     indexfiletext = '============================\nWiki snapshot (ready-for-review)\n============================\n\n%s\n.. toctree::\n    :maxdepth: 2\n' % snapshot_version_information
     for file in os.listdir(wiki_checkout):
         if not file.endswith(".md"):
             continue
 
         inputfilename = wiki_checkout + file
-        markdown = Path(inputfilename).read_text()
+        markdown = Path(inputfilename).read_text(encoding='utf-8')
         if 'This article has moved from the wiki to the new site' in markdown:
             continue
         if 'This page has been migrated to the main site' in markdown:
@@ -127,27 +122,24 @@ def ConvertFilesToRst():
 
         textinfile += snapshot_version_information
 
-        with open(outputfilename) as infile:
+        with open(outputfilename, encoding='utf-8') as infile:
             for line in infile:
                 textinfile += line
 
         # print textinfile
-        with open(outputfilename, 'w') as outfile:
+        with open(outputfilename, 'w', encoding='utf-8') as outfile:
             outfile.write(textinfile)
 
         # write the index
-        with open(output_dir + 'index.rst', 'w') as outfile:
+        with open(output_dir + 'index.rst', 'w', encoding='utf-8') as outfile:
             outfile.write(indexfiletext)
 
 
 def FixupConvertedRstFiles():
-    """Add template to specified page object (wikitools)
-    """
+    """Add template to specified page object (wikitools)."""
 
     def fixInternalWikiLinks(aOldText):
-        """
-        Fixes wiki links in [[linkname]] format by changing this to a document link in current directory.
-        """
+        """Fixes wiki links in [[linkname]] format by changing this to a document link in current directory."""
         def fixwikilinks(matchobj):
             # print 'matcobj0: %s' % matchobj.group(0)
             # print 'matcobj1: %s' % matchobj.group(1)
@@ -163,9 +155,7 @@ def FixupConvertedRstFiles():
         return re.sub(r'\[\[(.+?)\]\]', fixwikilinks, aOldText)
 
     def fixWikiCodeMarkupToCodeLinks(aOldText):
-        """
-        Links "known" code objects if they are found in wiki markup.
-        """
+        """Links "known" code objects if they are found in wiki markup."""
         def fixcodemarkuplinks(matchobj):
             # print 'Inline code: %s' % matchobj.group(0)
             # print 'matcobj1: %s' % matchobj.group(1)
@@ -184,7 +174,7 @@ def FixupConvertedRstFiles():
             input_file = output_dir + file
             # print input_file
             textinfile = ''
-            with open(input_file) as infile:
+            with open(input_file, encoding='utf-8') as infile:
                 for line in infile:
                     textinfile += line
 
@@ -195,7 +185,7 @@ def FixupConvertedRstFiles():
             # convert codemarkup to links if possible
             textinfile = fixWikiCodeMarkupToCodeLinks(textinfile)
 
-            with open(input_file, 'w') as outfile:
+            with open(input_file, 'w', encoding='utf-8') as outfile:
                 outfile.write(textinfile)
 
     logfile.write('\n\nCODE MARKUP THAT WONT BE LINKED (add entry to mapped_wiki_inline_code if one of these need to be linked. The tool get-api-items.py can be used to generate the list of the documented API items. \n')
@@ -207,7 +197,7 @@ def FixupConvertedRstFiles():
 def main():
     parser = optparse.OptionParser(version="%prog 0.1.1", usage="Usage: %prog [options] version")
     parser.add_option("-c", "--clonewiki", action="store_true", default=False, dest="clonewiki", help="Clean and clone the latest wiki")
-    options, args = parser.parse_args()
+    options = parser.parse_args()[0]
 
     print('Clone wiki: %s' % options.clonewiki)
     if options.clonewiki:

@@ -3,10 +3,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import shutil
 from subprocess import PIPE
 
-from common import RunnerCore, create_file, read_file, test_file
+from common import RunnerCore, copy_asset, create_file, read_file, test_file
 from decorators import also_with_wasm64, also_without_bigint, parameterized
 
 from tools.shared import EMCC
@@ -353,10 +352,15 @@ int main() {
   # the -jsDfoo=val syntax:
   # See https://github.com/emscripten-core/emscripten/issues/10580.
   def test_jslib_custom_settings(self):
-    self.cflags += ['--js-library', test_file('jslib/test_jslib_custom_settings.js'), '-jsDCUSTOM_JS_OPTION=1']
-    self.do_run_in_out_file_test('jslib/test_jslib_custom_settings.c')
+    test_file_path = test_file('jslib/test_jslib_custom_settings.c')
+    js_lib = test_file('jslib/test_jslib_custom_settings.js')
 
-    self.assert_fail([EMCC, '-jsDWASM=0'], 'cannot change built-in settings values with a -jsD directive')
+    self.do_runf(test_file_path, '1\n', cflags=['--js-library', js_lib, '-jsDCUSTOM_JS_OPTION=1'])
+
+    # verify that the settings can be specified more than once, and that the last one wins.
+    self.do_runf(test_file_path, '2\n', cflags=['--js-library', js_lib, '-jsDCUSTOM_JS_OPTION=1', '-jsDCUSTOM_JS_OPTION=2'])
+
+    self.assert_fail([EMCC, '-jsDWASM=1'], 'cannot change built-in settings values with a -jsD directive')
 
   def test_jslib_native_deps(self):
     # Verify that memset (which lives in compiled code), can be specified as a JS library
@@ -443,7 +447,7 @@ extraLibraryFuncs.push('jsfunc');
       });
       ''')
     create_file('post.js', 'console.log("Foo:", Module.Foo())')
-    self.do_runf(test_file('hello_world.c'), cflags=['--post-js=post.js', '--js-library=lib.js', '-sEXPORTED_FUNCTIONS=Foo,_main'])
+    self.do_runf('hello_world.c', cflags=['--post-js=post.js', '--js-library=lib.js', '-sEXPORTED_FUNCTIONS=Foo,_main'])
 
   def test_jslib_search_path(self):
     create_file('libfoo.js', '''
@@ -465,7 +469,7 @@ extraLibraryFuncs.push('jsfunc');
 
   # Tests using the #warning directive in JS library files
   def test_jslib_warnings(self):
-    shutil.copy(test_file('warning_in_js_libraries.js'), '.')
+    copy_asset('warning_in_js_libraries.js')
     proc = self.run_process([EMCC, test_file('hello_world.c'), '--js-library', 'warning_in_js_libraries.js'], stdout=PIPE, stderr=PIPE)
     self.assertNotContained('This warning should not be present!', proc.stderr)
     self.assertContained('warning: warning_in_js_libraries.js:5: #warning This is a warning string!', proc.stderr)
@@ -480,7 +484,7 @@ extraLibraryFuncs.push('jsfunc');
 
   # Tests using the #error directive in JS library files
   def test_jslib_errors(self):
-    shutil.copy(test_file('error_in_js_libraries.js'), '.')
+    copy_asset('jslib/error_in_js_libraries.js')
     err = self.expect_fail([EMCC, test_file('hello_world.c'), '--js-library', 'error_in_js_libraries.js'])
     self.assertNotContained('This error should not be present!', err)
     self.assertContained('error: error_in_js_libraries.js:5: #error This is an error string!', err)
@@ -706,11 +710,11 @@ console.error('JSLIB: none of the above');
 
     # When WebGL is implicitly linked in, the implicit linking should happen before any user
     # --js-libraries, so that they can adjust the behavior afterwards.
-    self.do_run_in_out_file_test('test_jslib_override_system_symbol.c', cflags=['--js-library', test_file('test_jslib_override_system_symbol.js'), '-sMAX_WEBGL_VERSION=2'])
+    self.do_run_in_out_file_test('jslib/test_jslib_override_system_symbol.c', cflags=['--js-library', test_file('jslib/test_jslib_override_system_symbol.js'), '-sMAX_WEBGL_VERSION=2'])
 
     # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
-    self.cflags += ['-sAUTO_JS_LIBRARIES=0', '-sMAX_WEBGL_VERSION=2', '-lwebgl.js', '--js-library', test_file('test_jslib_override_system_symbol.js')]
-    self.do_run_in_out_file_test('test_jslib_override_system_symbol.c')
+    self.cflags += ['-sAUTO_JS_LIBRARIES=0', '-sMAX_WEBGL_VERSION=2', '-lwebgl.js', '--js-library', test_file('jslib/test_jslib_override_system_symbol.js')]
+    self.do_run_in_out_file_test('jslib/test_jslib_override_system_symbol.c')
 
   def test_jslib_version_check(self):
     create_file('libfoo.js', '''
@@ -757,3 +761,7 @@ console.error('JSLIB: none of the above');
   })
   def test_multiline_string(self, args):
     self.do_run_in_out_file_test('jslib/test_multiline_string.c', cflags=['--js-library', test_file('jslib/test_multiline_string.js')] + args)
+
+  def test_export(self):
+    create_file('post.js', 'Module.myFunc();')
+    self.do_runf('hello_world.c', 'myFunc included\nmyFunc called\n', cflags=['--js-library', test_file('jslib/test_export.js'), '--extern-post-js=post.js'])

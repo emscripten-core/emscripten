@@ -253,8 +253,8 @@ var LibraryOpenAL = {
           src.bufOffset = 0.0;
         } else {
           var delta = (currentTime - src.bufStartTime) * src.playbackRate;
-          var loopStart = buf.audioBuf._loopStart || 0.0;
-          var loopEnd = buf.audioBuf._loopEnd || buf.audioBuf.duration;
+          var loopStart = buf.audioBuf._loopStart ?? 0.0;
+          var loopEnd = buf.audioBuf._loopEnd ?? buf.audioBuf.duration;
           if (loopEnd <= loopStart) {
             loopEnd = buf.audioBuf.duration;
           }
@@ -760,7 +760,7 @@ var LibraryOpenAL = {
         return AL.currentCtx.distanceModel;
       default:
 #if OPENAL_DEBUG
-        dbg(`${funcname}() param ${ptrToString(param} is unknown or not implemented`);
+        dbg(`${funcname}() param ${ptrToString(param)} is unknown or not implemented`);
 #endif
         AL.currentCtx.err = {{{ cDefs.AL_INVALID_ENUM }}};
         return null;
@@ -969,8 +969,8 @@ var LibraryOpenAL = {
           return [0, 0];
         }
         return [
-          (buf.audioBuf._loopStart || 0.0) * buf.frequency,
-          (buf.audioBuf._loopEnd || buf.length) * buf.frequency
+          (buf.audioBuf._loopStart ?? 0.0) * buf.frequency,
+          (buf.audioBuf._loopEnd ?? buf.length) * buf.frequency
         ];
       default:
 #if OPENAL_DEBUG
@@ -2364,7 +2364,7 @@ var LibraryOpenAL = {
 
     default:
 #if OPENAL_DEBUG
-      dbg(`No value for `${pEnumName}` is known by alcGetEnumValue()`);
+      dbg(`No value for '${pEnumName}' is known by alcGetEnumValue()`);
 #endif
       AL.alcErr = {{{ cDefs.ALC_INVALID_VALUE }}};
       return {{{ cDefs.AL_NONE }}};
@@ -2999,7 +2999,7 @@ var LibraryOpenAL = {
 
     default:
 #if OPENAL_DEBUG
-      dbg(`No value for `${name}` is known by alGetEnumValue()`);
+      dbg(`No value for '${name}' is known by alGetEnumValue()`);
 #endif
       AL.currentCtx.err = {{{ cDefs.AL_INVALID_VALUE }}};
       return 0;

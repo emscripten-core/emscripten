@@ -115,6 +115,8 @@ no_2gb = skip_if('no_2gb', lambda t: t.get_setting('INITIAL_MEMORY') == '2200mb'
 
 no_4gb = skip_if('no_4gb', lambda t: t.is_4gb())
 
+no_highmem = skip_if('no_highmem', lambda t: t.is_2gb() or t.is_4gb())
+
 only_windows = skip_if('only_windows', lambda _: not WINDOWS)
 
 requires_native_clang = skip_if_simple('native clang tests are disabled', lambda _: common.EMTEST_LACKS_NATIVE_CLANG)
@@ -139,6 +141,17 @@ def requires_node_25(func):
   @wraps(func)
   def decorated(self, *args, **kwargs):
     self.require_node_25()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
+def requires_node_26(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_node_26()
     return func(self, *args, **kwargs)
 
   return decorated
@@ -248,6 +261,21 @@ def with_env_modify(updates):
       with common.env_modify(updates):
         return func(self, *args, **kwargs)
     return modified
+
+  return decorated
+
+
+def also_with_pthreads(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, threads, *args, **kwargs):
+    if threads:
+      self.require_pthreads()
+    f(self, *args, **kwargs)
+
+  parameterize(decorated, {'': (False,),
+                           'pthreads': (True,)})
 
   return decorated
 
@@ -400,7 +428,7 @@ def also_with_wasm64(func):
       print('parameterize:wasm64=%s' % with_wasm64)
     if with_wasm64:
       self.require_wasm64()
-      self.set_setting('MEMORY64')
+      self.cflags += ['-m64']
     return func(self, *args, **kwargs)
 
   parameterize(metafunc, {'': (False,),
@@ -442,10 +470,10 @@ def also_with_wasm2js(func):
 
 
 def can_do_standalone(self, impure=False):
-  # Pure standalone engines don't support MEMORY64 yet.  Even with MEMORY64=2 (lowered)
+  # Pure standalone engines don't support wasm64 yet.  Even with MEMORY64=2 (lowered)
   # the WASI APIs that take pointer values don't have 64-bit variants yet.
   if not impure:
-    if self.get_setting('MEMORY64'):
+    if self.is_wasm64():
       return False
     # This is way to detect the core_2gb test mode in test_core.py
     if self.get_setting('INITIAL_MEMORY') == '2200mb':
@@ -594,7 +622,7 @@ def parameterize(func, parameters):
   test functions.
   """
   prev = getattr(func, '_parameterize', None)
-  assert not any(p.startswith('_') for p in parameters)
+  assert not any(p.startswith('_') for p in parameters), 'test variant names should not start with _'
   if prev:
     # If we're parameterizing 2nd time, construct a cartesian product for various combinations.
     func._parameterize = {
@@ -605,8 +633,7 @@ def parameterize(func, parameters):
 
 
 def parameterized(parameters):
-  """
-  Mark a test as parameterized.
+  """Mark a test as parameterized.
 
   Usage:
     @parameterized({

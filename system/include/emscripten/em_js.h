@@ -79,6 +79,7 @@
 // additional macro later is added these will be expanded and we want
 // to make sure the resulting expansion doesn't break the expectations
 // of JS code
+#include <stdbool.h>
 #if defined(true) && defined(false)
 #undef true
 #undef false

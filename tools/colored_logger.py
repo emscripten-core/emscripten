@@ -3,7 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Enables colored logger just by importing this module
+"""Enables colored logger just by importing this module.
 
 Also, provides utility functions to use ANSI colors in the terminal.
 """

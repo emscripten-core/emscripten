@@ -20,16 +20,16 @@ var decoder = new TextDecoder('utf-8');
 var port = 8089;
 var ws = require('ws');
 var wss = new ws.WebSocketServer({ port: port });
-console.log('WebSocket server listening on ws://localhost:' + port + '/');
+console.log(`WebSocket server listening on ws://localhost:${port}/`);
 wss.on('connection', function(ws) {
   console.log('Client connected!');
   ws.on('message', function(message, isBinary) {
     if (!isBinary) {
       var text = decoder.decode((new Uint8Array(message)).buffer);
-      console.log('received TEXT: ' + text.length + ' characters:');
-      console.log('  "' + text + '"');
+      console.log(`received TEXT: ${text.length} characters:`);
+      console.log(`  "${text}"`);
     } else {
-      console.log('received BINARY: ' + message.length + ' bytes:');
+      console.log(`received BINARY: ${message.length} bytes:`);
       hexDump(message);
     }
     console.log('');

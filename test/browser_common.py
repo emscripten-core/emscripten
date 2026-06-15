@@ -25,6 +25,7 @@ from common import (
   TEST_ROOT,
   RunnerCore,
   compiler_for,
+  copy_asset,
   create_file,
   errlog,
   force_delete_dir,
@@ -34,10 +35,10 @@ from common import (
   test_file,
 )
 
-from tools import feature_matrix, shared, utils
-from tools.feature_matrix import UNSUPPORTED
+from tools import feature_matrix, utils
+from tools.feature_matrix import OLDEST_SUPPORTED_FIREFOX, UNSUPPORTED
 from tools.shared import DEBUG, EMCC, exit_with_error
-from tools.utils import MACOS, WINDOWS, memoize, path_from_root, read_binary
+from tools.utils import LINUX, MACOS, WINDOWS, memoize, path_from_root, read_binary
 
 logger = logging.getLogger('common')
 
@@ -78,10 +79,13 @@ browser_spawn_lock_filename = path_from_root('out/browser_spawn_lock')
 
 
 class Reporting(Enum):
-  """When running browser tests we normally automatically include support
+  """Browser reporting method.
+
+  When running browser tests we normally automatically include support
   code for reporting results back to the browser.  This enum allows tests
   to decide what type of support code they need/want.
   """
+
   NONE = 0
   # Include the JS helpers for reporting results
   JS_ONLY = 1
@@ -137,8 +141,7 @@ def init(force_browser_process_termination):
 
 
 def find_browser_test_file(filename):
-  """Looks for files in test/browser and then in test/
-  """
+  """Looks for files in test/browser and then in test/."""
   if not os.path.exists(filename):
     fullname = test_file('browser', filename)
     if not os.path.exists(fullname):
@@ -165,8 +168,22 @@ def get_safari_version():
 def get_firefox_version():
   if not is_firefox():
     return UNSUPPORTED
-  exe_path = shlex.split(EMTEST_BROWSER)[0]
+  exe_path = shutil.which(shlex.split(EMTEST_BROWSER)[0])
   ini_path = os.path.join(os.path.dirname(exe_path), '../Resources/platform.ini' if MACOS else 'platform.ini')
+  # On Linux, Firefox system installation uses a specific directory structure,
+  # where platform.ini is not located in same directory as the browser executable.
+  if LINUX and exe_path.startswith('/usr/bin/'):
+    def find_system_firefox_platform_ini():
+      for path in ['/usr/lib/firefox-esr/', '/usr/lib/firefox/']:
+        ini = os.path.join(path, 'platform.ini')
+        if os.path.isfile(ini):
+          return ini
+
+    ini_path = find_system_firefox_platform_ini()
+    if not ini_path:
+      logger.warning(f'Firefox browser detected in {EMTEST_BROWSER}, but could not find Firefox platform.ini to detect Firefox version. Assuming OLDEST_SUPPORTED_FIREFOX={OLDEST_SUPPORTED_FIREFOX}')
+      return OLDEST_SUPPORTED_FIREFOX
+
   # Extract the first numeric part before any dot (e.g. "Milestone=102.15.1" → 102)
   m = re.search(r"^Milestone=(.*)$", read_file(ini_path), re.MULTILINE)
   milestone = m.group(1).strip()
@@ -215,7 +232,7 @@ class ChromeConfig:
     # --no-sandbox because we are running as root and chrome requires
     # this flag for now: https://crbug.com/638180
     '--no-first-run -start-maximized --no-sandbox --enable-unsafe-swiftshader --use-gl=swiftshader --enable-experimental-web-platform-features --enable-features=JavaScriptSourcePhaseImports',
-    '--enable-experimental-webassembly-features --js-flags="--experimental-wasm-type-reflection --experimental-wasm-rab-integration"',
+    '--enable-experimental-webassembly-features',
     # The runners lack sound hardware so fallback to a dummy device (and
     # bypass the user gesture so audio tests work without interaction)
     '--use-fake-device-for-media-stream --autoplay-policy=no-user-gesture-required',
@@ -247,7 +264,7 @@ class FirefoxConfig:
 
   @staticmethod
   def configure(data_dir):
-    shutil.copy(test_file('firefox_user.js'), os.path.join(data_dir, 'user.js'))
+    copy_asset('firefox_user.js', os.path.join(data_dir, 'user.js'))
 
   @staticmethod
   def open_url_args(url):
@@ -270,7 +287,7 @@ class SafariConfig:
 
   @staticmethod
   def configure(data_dir):
-    """ Safari has no special configuration step."""
+    """Safari has no special configuration step."""
 
   @staticmethod
   def open_url_args(url):
@@ -319,6 +336,21 @@ def configure_test_browser():
 
   if not EMTEST_BROWSER:
     EMTEST_BROWSER = 'google-chrome'
+    if not shutil.which(EMTEST_BROWSER):
+      EMTEST_BROWSER = 'firefox'
+      if not shutil.which(EMTEST_BROWSER):
+        # FIXME: This should really be an error, but this code currently also runs for non-browser tests.
+        EMTEST_BROWSER = 'default-browser-not-found'
+
+        if MACOS and os.path.isdir('/Applications/Safari.app'):
+          EMTEST_BROWSER = '/Applications/Safari.app'
+        elif WINDOWS:
+          for browser in [
+            f'{os.getenv("ProgramFiles(x86)", "")}\\Microsoft\\Edge\\Application\\msedge.exe',
+            f'{os.getenv("ProgramFiles", "")}\\Mozilla Firefox\\firefox.exe',
+            f'{os.getenv("LOCALAPPDATA", "")}\\Google\\Chrome SxS\\Application\\chrome.exe']:
+            if os.path.isfile(browser):
+              EMTEST_BROWSER = browser
 
   if WINDOWS and '"' not in EMTEST_BROWSER and "'" not in EMTEST_BROWSER:
     # On Windows env. vars canonically use backslashes as directory delimiters, e.g.
@@ -355,8 +387,8 @@ def make_test_server(in_queue, out_queue, port):
         ctype = self.guess_type(path)
         self.send_header('Content-Type', ctype)
         pieces = self.headers.get('Range').split('=')[1].split('-')
-        start = int(pieces[0]) if pieces[0] != '' else 0
-        end = int(pieces[1]) if pieces[1] != '' else fsize - 1
+        start = int(pieces[0]) if pieces[0] else 0
+        end = int(pieces[1]) if pieces[1] else fsize - 1
         end = min(fsize - 1, end)
         length = end - start + 1
         self.send_header('Content-Range', f'bytes {start}-{end}/{fsize}')
@@ -404,7 +436,7 @@ def make_test_server(in_queue, out_queue, port):
       elif urlinfo.path.startswith('/status/'):
         code_str = urlinfo.path[len('/status/'):]
         code = int(code_str)
-        if code in (301, 302, 303, 307, 308):
+        if code in {301, 302, 303, 307, 308}:
           self.send_response(code)
           self.send_header('Location', '/status/200')
           self.end_headers()
@@ -430,7 +462,7 @@ def make_test_server(in_queue, out_queue, port):
       elif info.path.startswith('/status/'):
         code_str = info.path[len('/status/'):]
         code = int(code_str)
-        if code in (301, 302, 303, 307, 308):
+        if code in {301, 302, 303, 307, 308}:
           # Redirect to /status/200
           self.send_response(code)
           self.send_header('Location', '/status/200')
@@ -496,8 +528,8 @@ def make_test_server(in_queue, out_queue, port):
           ctype = self.guess_type(path)
           self.send_header('Content-type', ctype)
           pieces = self.headers.get('Range').split('=')[1].split('-')
-          start = int(pieces[0]) if pieces[0] != '' else 0
-          end = int(pieces[1]) if pieces[1] != '' else len(data) - 1
+          start = int(pieces[0]) if pieces[0] else 0
+          end = int(pieces[1]) if pieces[1] else len(data) - 1
           end = min(len(data) - 1, end)
           length = end - start + 1
           self.send_header('Content-Length', str(length))
@@ -522,6 +554,7 @@ def make_test_server(in_queue, out_queue, port):
 
 class HttpServerThread(threading.Thread):
   """A generic thread class to create and run an http server."""
+
   def __init__(self, server):
     super().__init__()
     self.server = server
@@ -531,7 +564,7 @@ class HttpServerThread(threading.Thread):
     self.server.shutdown()
 
   def run(self):
-    """Creates the server instance and serves forever until stop() is called."""
+    """Create a server instance and serve forever until stop() is called."""
     # Start the server's main loop (this blocks until shutdown() is called)
     self.server.serve_forever()
 
@@ -542,7 +575,8 @@ worker_id = None
 
 
 def init_worker(counter, lock):
-  """ Initializer function for each worker.
+  """Initializer function for each worker.
+
   It acquires a lock, gets a unique ID from the shared counter,
   and stores it in a global variable specific to this worker process.
   """
@@ -555,8 +589,11 @@ def init_worker(counter, lock):
 
 
 def move_browser_window(pid, x, y):
-  """Utility function to move the top-level window owned by given process to
-  (x,y) coordinate. Used to ensure each browser window has some visible area."""
+  """Utility function to move the top-level window.
+
+  Move the windows owned by given process to (x,y) coordinate.
+  Used to ensure each browser window has some visible area.
+  """
   import win32con
   import win32gui
   import win32process
@@ -588,9 +625,13 @@ def increment_suffix_number(str_with_maybe_suffix):
 
 
 class FileLock:
-  """Implements a filesystem-based mutex, with an additional feature that it
-  returns an integer counter denoting how many times the lock has been locked
-  before (during the current python test run instance)"""
+  """Implements a filesystem-based mutex.
+
+  In additon the context manager returns an integer counter denoting how
+  many times the lock has been locked before (during the current python test
+  run instance)
+  """
+
   def __init__(self, path):
     self.path = path
     self.counter = 0
@@ -605,15 +646,14 @@ class FileLock:
         time.sleep(0.1)
     # Return the locking count number
     try:
-      self.counter = int(open(f'{self.path}_counter').read())
+      self.counter = int(utils.read_file(f'{self.path}_counter'))
     except Exception:
       pass
     return self.counter
 
   def __exit__(self, *a):
     # Increment locking count number before releasing the lock
-    with open(f'{self.path}_counter', 'w') as f:
-      f.write(str(self.counter + 1))
+    utils.write_file(f'{self.path}_counter', str(self.counter + 1))
     # And release the lock
     os.close(self.fd)
     try:
@@ -689,7 +729,7 @@ class BrowserCore(RunnerCore):
     if hasattr(config, 'launch_prefix'):
       browser_args = list(config.launch_prefix) + browser_args
 
-    logger.info('Launching browser: %s', str(browser_args))
+    logger.info(f'Launching browser: {browser_args}')
 
     if (WINDOWS and is_firefox()) or is_safari():
       cls.launch_browser_harness_with_proc_snapshot_workaround(parallel_harness, config, browser_args, url)
@@ -698,10 +738,12 @@ class BrowserCore(RunnerCore):
 
   @classmethod
   def launch_browser_harness_with_proc_snapshot_workaround(cls, parallel_harness, config, browser_args, url):
-    ''' Dedicated function for launching browser harness in scenarios where
-    we need to identify the launched browser processes via a before-after
-    subprocess snapshotting delta workaround.'''
+    """Launch a browser using before-after subprocess snapshotting.
 
+    Dedicated function for launching browser harness in scenarios where
+    we need to identify the launched browser processes via a before-after
+    subprocess snapshotting delta workaround.
+    """
     # In order for this to work, each browser needs to be launched one at a time
     # so that we know which process belongs to which browser.
     with FileLock(browser_spawn_lock_filename) as count:
@@ -830,7 +872,7 @@ class BrowserCore(RunnerCore):
           output = self.harness_out_queue.get(block=True, timeout=timeout)
         except queue.Empty:
           BrowserCore.unresponsive_tests += 1
-          print(f'[unresponsive test: {self.id()} total unresponsive={str(BrowserCore.unresponsive_tests)}]')
+          print(f'[unresponsive test: {self.id()} total unresponsive={BrowserCore.unresponsive_tests}]')
           self.browser_restart()
           # Rather than fail the test here, let fail on the `assertContained` so
           # that the test can be retried via `extra_tries`
@@ -890,8 +932,7 @@ class BrowserCore(RunnerCore):
     utils.delete_file('browser_reporting.js')
 
   def btest_exit(self, filename, assert_returncode=0, *args, **kwargs):
-    """Special case of `btest` that reports its result solely via exiting
-    with a given result code.
+    """Special case of `btest` that reports its result solely via exiting with a given result code.
 
     In this case we set EXIT_RUNTIME and we don't need to provide the
     REPORT_RESULT macro to the C code.
@@ -929,8 +970,6 @@ class BrowserCore(RunnerCore):
     if not isinstance(expected, list):
       expected = [expected]
     if EMTEST_BROWSER == 'node':
-      nodejs = self.require_node()
-      self.node_args += shared.node_pthread_flags(nodejs)
       output = self.run_js(f'{output_basename}.js')
       self.assertContained('RESULT: ' + expected[0], output)
     else:

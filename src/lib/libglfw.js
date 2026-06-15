@@ -1320,18 +1320,8 @@ var LibraryGLFW = {
       // in the coordinates.
       const rect = Browser.getCanvas().getBoundingClientRect();
 
-      // Neither .scrollX or .pageXOffset are defined in a spec, but
-      // we prefer .scrollX because it is currently in a spec draft.
-      // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
-      var scrollX = ((typeof window.scrollX != 'undefined') ? window.scrollX : window.pageXOffset);
-      var scrollY = ((typeof window.scrollY != 'undefined') ? window.scrollY : window.pageYOffset);
-#if ASSERTIONS
-      // If this assert lands, it's likely because the browser doesn't support scrollX or pageXOffset
-      // and we have no viable fallback.
-      assert((typeof scrollX != 'undefined') && (typeof scrollY != 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
-#endif
-      var adjustedX = pageX - (scrollX + rect.left);
-      var adjustedY = pageY - (scrollY + rect.top);
+      var adjustedX = pageX - (window.scrollX + rect.left);
+      var adjustedY = pageY - (window.scrollY + rect.top);
 
       // getBoundingClientRect() returns dimension affected by CSS, so as a result:
       // - when CSS scaling is enabled, this will fix the mouse coordinates to match the width/height of the window

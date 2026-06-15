@@ -4,9 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Automatically rebaseline tests that have codesize expectations and create
-a git commit containing the resulting changes along with readable details of
-the generated changes.
+"""Automatically rebaseline tests that have codesize expectations.
+
+This script can also create a git commit containing the resulting changes
+along with some details of the changes.
 """
 
 import argparse
@@ -41,7 +42,7 @@ def read_size_from_json(content):
 
 
 def process_changed_file(filename):
-  content = open(filename).read()
+  content = utils.read_file(filename)
   old_content = run(['git', 'show', f'HEAD:{filename}'])
   print(f'processing {filename}')
 

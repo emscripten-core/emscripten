@@ -32,6 +32,13 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
+      - name: Install emsdk
+        uses: emscripten-core/setup-emsdk@v16
+        with:
+          version: tot
+      - name: Set EM_CONFIG
+        run:
+          echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
       - name: Checkout repo
         uses: actions/checkout@v4
         with:
@@ -42,19 +49,6 @@ jobs:
           which python3
           python3 --version
           python3 -m pip install -r requirements-dev.txt
-      - name: Install emsdk
-        run: |
-          EM_CONFIG=$HOME/emsdk/.emscripten
-          echo "emscripten config file: $EM_CONFIG"
-          echo "EM_CONFIG=$EM_CONFIG" >> $GITHUB_ENV
-          curl -# -L -o ~/emsdk-main.tar.gz https://github.com/emscripten-core/emsdk/archive/main.tar.gz
-          tar -C ~ -xf ~/emsdk-main.tar.gz
-          mv ~/emsdk-main ~/emsdk
-          cd ~/emsdk
-          ./emsdk install tot
-          ./emsdk activate tot
-          echo "emscripten config file ($EM_CONFIG) contents:"
-          cat $EM_CONFIG
       - name: Check test expectations on target branch
         # Skip this step for rebaseline PRs, since the target branch is expected
         # to be out of date in this case.
@@ -66,7 +60,7 @@ jobs:
           # Uncomment this like to pull the rebaseline_tests.py from the
           # current branch:
           # git checkout - ./tools/maint/rebaseline_tests.py
-          ./bootstrap
+          ./bootstrap.py
           if ! ./tools/maint/rebaseline_tests.py --check-only; then
             echo ""
             echo "Test expectations are out-of-date on the target branch."
@@ -89,7 +83,7 @@ jobs:
           # since it doesn't recognise it.
           git checkout ${{ github.sha }}
           git rev-parse HEAD
-          ./bootstrap
+          ./bootstrap.py
           if ! ./tools/maint/rebaseline_tests.py --check-only --clear-cache; then
             echo "Test expectations are out-of-date on the PR branch."
             echo "You can run './tools/maint/rebaseline_tests.py' to"
@@ -98,3 +92,20 @@ jobs:
             echo "-- This failure is only a warning and can be ignored"
             exit 1
           fi
+
+  clang-format-diff:
+    # This job is disabled until we can make it more precise
+    if: false
+    env:
+      LLVM_VERSION: 19
+    runs-on: ubuntu-latest
+    steps:
+    - uses: actions/checkout@v4
+      # Fetch all history for all tags and branches
+      with:
+        fetch-depth: 0
+    - name: Install clang-format
+      run: |
+        sudo apt-get install clang-format-19
+        sudo update-alternatives --install /usr/bin/git-clang-format git-clang-format /usr/bin/git-clang-format-19 100
+    - run: tools/maint/clang-format-diff.sh origin/$GITHUB_BASE_REF

@@ -337,15 +337,17 @@ var LibraryEmbind = {
       out.push(`  ${this.name}: {`);
       const outItems = [];
       for (const [name, value] of this.items) {
+        // Quote keys that aren't valid JS identifiers.
+        const key = /^[a-zA-Z_$][\w$]*$/.test(name) ? name : `'${name}'`;
         switch (this.valueType) {
           case 'object':
-            outItems.push(`${name}: ${this.name}Value<${value}>`);
+            outItems.push(`${key}: ${this.name}Value<${value}>`);
             break;
           case 'number':
-            outItems.push(`${name}: ${value}`);
+            outItems.push(`${key}: ${value}`);
             break;
           case 'string':
-            outItems.push(`${name}: '${name}'`);
+            outItems.push(`${key}: '${name}'`);
             break;
         }
       }

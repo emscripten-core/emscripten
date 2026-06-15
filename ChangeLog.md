@@ -18,8 +18,180 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-5.0.1 (in development)
+6.0.1 (in development)
 ----------------------
+- The ability to redirect JS compiler stderr using `EMCC_STDERR_FILE` was
+  removed.  These days you can use `EMCC_DEBUG` and/or `EMCC_DEBUG_SAVE` to
+  preserve all the intermediate JS compiler files. (#27101)
+- The installed versions of the compiler-rt library now follow the upstream
+  naming convetion of `libclang_rt.<something>.a`. (#27089)
+- Dynamic linking now explicitly requires asynchronous Wasm compilation. The
+  process of loading side modules at startup currently depends on this. (#27086)
+- The `-sUSE_PTHREADS` and `-sMEMORY64` flags have been deprecated in favor of the
+  more standard `-pthread` and `-m64` (or `--target=wasm64`) flags. (#27025)
+- Adds wasm-bindgen support. When `-sWASM_BINDGEN` is set, Emscripten will call
+  out to `wasm-bindgen` in the users's path and integrate the wasm-bindgen JS
+  with the normal Emscripten JS. Some wasm-bindgen features may not yet be fully
+  supported. (#23493)
+
+6.0.0 - 06/04/26
+----------------
+- On Windows, Emscripten now ships `.exe` tool launchers, rather
+  than `.bat` and/or `.ps1`.  This means that any scripts that explicitly
+  reference, e.g. `emcc.bat`, will need to be updated to just `emcc` (or
+  `emcc.exe`).  For the time being you can still get the old `.bat` files by
+  running `tools/maint/create_entry_points.py --bat-files`. (#24858)
+- When performing a streaming Fetch operation, the max chunk size of downloaded
+  bytes that is handed over to the Wasm side from JS is now capped to maximum
+  of 8 megabytes. This ensures that a streaming Fetch stays streaming, rather
+  than transferring the whole (potentially large) file as one huge chunk, which
+  might not fit in the WebAssembly memory. (#26898)
+- The minimum versions of browser engines supported by emscripten's generated
+  code were bumped, allowing us to remove our internal support for transpilation
+  via babel:
+    MIN_CHROME_VERSION: 74 -> 85
+    MIN_FIREFOX_VERSION: 68 -> 79
+    MIN_SAFARI_VERSION: 12.2 -> 14.1
+  This allows us to assume that features such as mutable-globals and sign-ext
+  are universally available.  Disabling these is no longer possible in
+  emscripten.  If you still need to support extremely old browsers, you can
+  manually transpile the output of emscripten (e.g. using babel for JS and
+  binaryen for wasm). (#26677)
+- musl libc updated from v1.2.5 to v1.2.6. (#26860)
+- libpng port updated from 1.6.55 to 1.6.58. (#26592 and #26983)
+- The `-m64` compiler flag is now honored, and works as an alias for
+  `-sMEMORY64` and/or `--target=wasm64`. (#26765)
+- The autopersistence feature in IDBFS mount now supports registering a global
+  callback `IDBFS.onAutoPersistStateChanged = active => {}`, which will be
+  notified of all IDBFS sync start and end events. (#26895)
+- google-closure-compiler was updated to 20260429.0.0. (#26869)
+  Closure compiler now provides a native macOS arm64 binary for Apple Silicon,
+  in addition to having native binaries for Win-x64, Linux-x64 and Linux-ARM64.
+  For other platforms for which Closure compiler does not ship a native binary,
+  e.g. Intel x64 Macs and Windows-on-ARM, downloading Java SE Development Kit
+  21.0.11 from https://www.oracle.com/europe/java/technologies/downloads/#java21
+  is required in order to use Emscripten's Closure Compiler integration.
+- The `FAKE_DYLIBS` setting is now disabled by default. This means that
+  `-shared` will produce real dynamic libraries by default (`-sSIDE_MODULE` is
+  implied).  Also, if you include real dynamic libraries in your link command
+  emscripten will now automatically produce a dynamically linked program
+  (`-sMAIN_MODULE=2` is implied). (#25930)
+- The `PThread.runningWorkers` field was removed from the `PThread` object.
+  If you have JS code that was depending on this you can transition to using the
+  `PThread.pthreads` object. (#26998)
+- The POSIX `pause()` function will now return 0 rather than EINTR. (#27044)
+
+5.0.7 - 04/30/26
+----------------
+- mimalloc was updated to 3.3.1. (#26696)
+- The `WASM_JS_TYPES` setting was removed, as the corresponsing propsal was
+  pushed back to phase 1. (#26739)
+- The `-sDETERMINISTIC` setting was removed.  This setting just injected
+  `src/deterministic.js` as a `--pre-js`.  For now, this file remains part of
+  emscripten so folks can sill use it manually if needed.  If you are a user of
+  this feature please let us know otherwise this may be deleted in a future
+  release. (#26648)
+- The emscripten_futex_wait internals were improved to avoid unnecessary thread
+  wakeups.  As part of this change emscripten_futex_wait is now documented to
+  explicitly allow for returning EINTR when the wait is interrupted by an async
+  operation.  All callers of emscripten_futex_wait are advised to use a loop
+  to handle these types of spurious wakeups / interruptions. (#26659, #26735)
+- Attempting to use PTHREAD_PROCESS_SHARED when creating pthread primitives such
+  as locks and condvars will now fail with ENOTSUP. (#26743)
+- When building code with both Wasm Workers and pthreads (hybrid mode) it is now
+  possible to call most of the core pthread APIs (e.g. lock, condvar, etc) from
+  a Wasm Worker.  This mode increases the memory used by each Wasm Worker by
+  ~500 bytes (in the same way that declaring ~500 bytes of TLS data would).
+  (#26757)
+- The filesystem opteration that create new files now honor the global umask,
+  which defaults for 0o222 and can be updated by calling `umask()`. (#50739)
+
+5.0.6 - 04/14/26
+----------------
+- The minimum version of node supported by the generated code was bumped from
+  v12.22.0 to v18.3.0. (#26604)
+- The DETERMINISTIC settings was marked as deprecated (#26653)
+- Some musl-internal headers are no longer installed into the sysroot include
+  directory.  In particular, `syscall_arch.h` no longer exists, but can be
+  replaced with `emscripten/syscalls.h`. (#26658)
+
+5.0.5 - 04/03/26
+----------------
+- C++ exceptions are now always thrown as CppException objects rather than raw
+  pointers/numbers.  However, the `.message` and `.stack` fields of the thrown
+  object will only be populated if `-sEXCEPTION_STACK_TRACES` is set. (#26523)
+- `emcmake` no longer automatically injects `--experimental-wasm-threads` and
+  `--experimental-wasm-bulk-memory` flags when used with versions of node older
+  than v16. (#26560)
+- SDL3 port updated from 3.2.30 to 3.4.2 (#26572)
+- Fixed a race condition in syscall proxying that caused some hangs and ASan
+  errors (#26582)
+
+5.0.4 - 03/23/26
+----------------
+- `EXPORT_EXCEPTION_HANDLING_HELPERS` is deprecated and setting it will not do
+  anything. `getExceptionMessage` is exported anyway when `ASSERTIONS` or
+  `EXCEPTION_STACK_TRACES` is set, which are set by default at `-O0`. At `-O1`
+  or above, you can export it separately by
+  `-sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount`.
+  (#26499)
+- The deprecated `EMSCRIPTEN` macro is now defined in `emscripten.h` rather than
+  on the command line (`__EMSCRIPTEN__`, which is built into LLVM, should be
+  used instead). (#26417)
+- All pthread functions are now undefined when building with `-sWASM_WORKERS`.
+  This is an extension of #26336 which removed many of them.  These APIs were
+  not previously functional under Wasm Workers, but if there is strong use case
+  it may be possible to enable them in future. (#26487)
+- pipe2 implementation was added (with limited flag support) (#26480)
+- ppoll and pselect implementations were added (#26482)
+
+5.0.3 - 03/14/26
+----------------
+- The low level FS.write API now only accepts TypedArray.  The higher level
+  writeFile and createDataFile file still also accept string and Array.
+  (#26413)
+- Warn on usage of the deprecated `EMSCRIPTEN` macro (`__EMSCRIPTEN__` should
+  be used instead). (#26381)
+- The `-sRELOCATABLE` setting was effectively removed (moved to legacy
+  settings).  This setting was deprecated in #25265 and has not been used
+  internally since #25522.
+- When building with `-sWASM_WORKERS` emscripten will no longer include pthread
+  API stub functions.  These stub functions where never designed to work under
+  Wasm Workers, so its safer to error at link time if pthread APIs are used
+  in Wasm Worker-based programs. (#26336)
+- SDL2 port updated to include stub functions for `SDL_hid_init()` and related
+  functions. (#26297)
+- libpng port updated from 1.6.39 to 1.6.55. (#26388)
+- Added sdl3_ttf port. (#24601)
+
+5.0.2 - 02/25/26
+----------------
+- The `NODEJS_CATCH_REJECTION` setting was removed. This setting only has an
+  effect when targeting very old versions of node (< 15).  Its trivial to replace
+  with a simple `--pre-js` file or with the `--unhandled-rejections=strict`
+  command line flag which it essentially emulates. Versions of node above v15
+  have this behavior by default. (#26330)
+- The `NODEJS_CATCH_EXIT` setting was removed.  This setting was disabled by
+  default in #22257, and is no longer used by emscripten itself.  It is also
+  problematic as it injects a global process.on handler.  It is easy to replace
+  with a simple `--pre-js` file for those that require it. (#26326)
+- The following APIs are now available in Wasm Workers:
+   - emscripten_futex_wait
+   - emscripten_futex_wake
+   - emscripten_is_main_runtime_thread
+   - emscripten_is_main_browser_thread
+  (#26325)
+- Several low level emscripten APIs that return success/failure now return the
+  C `bool` type rather than `int`.  For example `emscripten_proxy_sync` and
+  `emscripten_is_main_runtime_thread`. (#26316)
+- SDL2 port updated from 2.32.8 to 2.32.10. (#26298)
+- The remaining launcher scripts (e.g. `emcc.bat`) were removed from the git
+  repository.  These scripts are created by the `./bootstrap` script which
+  must be run before the toolchain is usable (for folks using a git checkout of
+  emscripten). (#26247)
+
+5.0.1 - 02/13/26
+----------------
 - `logReadFiles` was removed from the default `INCOMING_MODULE_JS_API` list.
   To use this feature you now need to explictly add `logReadFiles` to
   `INCOMING_MODULE_JS_API`. (#26190);

@@ -32,6 +32,32 @@ const FLOAT_TYPES = new Set(['float', 'double']);
 // Represents a browser version that is not supported at all.
 const TARGET_NOT_SUPPORTED = 0x7fffffff;
 
+function mangleUnsupportedSyntax(text) {
+  // Do special keyword replacement after macro processing, so that
+  // macros can generate keywords (easier to read preprocessed code).
+  if (EXPORT_ES6) {
+    // `vm.runInContext` doesn't support module syntax; to allow it, we need to
+    // temporarily replace `import.meta` usages with placeholders.
+    // See also: `writeOutput` in jsifier.mjs.
+    text = text.replaceAll('import.meta', 'EMSCRIPTEN$IMPORT$META');
+  }
+  if (MODULARIZE && USE_CLOSURE_COMPILER) {
+    // Closure doesn't support "top-level await" which is not actually the top
+    // level in case of MODULARIZE. Temporarily replace `await` usages with
+    // placeholders during preprocess phase, and back after all the other ops.
+    // See also: `fix_js_mangling` in link.py.
+    // FIXME: Remove after https://github.com/google/closure-compiler/issues/3835 is fixed.
+    if (EXPORT_ES6) {
+      text = text.replaceAll('await import', 'EMSCRIPTEN$AWAIT$IMPORT');
+    }
+    text = text.replaceAll('await createWasm()', 'EMSCRIPTEN$AWAIT(createWasm())');
+    text = text.replaceAll('await run()', 'EMSCRIPTEN$AWAIT(run())');
+    text = text.replaceAll('await instantiatePromise', 'EMSCRIPTEN$AWAIT(instantiatePromise)');
+    text = text.replaceAll('await init()', 'EMSCRIPTEN$AWAIT(init())');
+  }
+  return text;
+}
+
 // Does simple 'macro' substitution, using Django-like syntax,
 // {{{ code }}} will be replaced with |eval(code)|.
 // NOTE: Be careful with that ret check. If ret is |0|, |ret ? ret.toString() : ''| would result in ''!
@@ -41,10 +67,11 @@ export function processMacros(text, filename) {
   // `[\s\S]` works like `.` but include newline.
   pushCurrentFile(filename);
   try {
-    return text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
+    text = text.replace(/{{{([\s\S]+?)}}}/g, (_, str) => {
       const ret = runInMacroContext(str, {filename: filename});
       return ret?.toString() ?? '';
     });
+    return mangleUnsupportedSyntax(text);
   } finally {
     popCurrentFile();
   }
@@ -73,20 +100,6 @@ function findIncludeFile(filename, currentDir) {
 // Also handles #include x.js (similar to C #include <file>)
 export function preprocess(filename) {
   let text = readFile(filename);
-  if (EXPORT_ES6) {
-    // `eval`, Terser and Closure don't support module syntax; to allow it,
-    // we need to temporarily replace `import.meta` and `await import` usages
-    // with placeholders during preprocess phase, and back after all the other ops.
-    // See also: `phase_final_emitting` in emcc.py.
-    text = text
-      .replace(/\bimport\.meta\b/g, 'EMSCRIPTEN$IMPORT$META')
-      .replace(/\bawait import\b/g, 'EMSCRIPTEN$AWAIT$IMPORT');
-  }
-  if (MODULARIZE) {
-    // Same for out use of "top-level-await" which is not actually top level
-    // in the case of MODULARIZE.
-    text = text.replace(/\bawait createWasm\(\)/g, 'EMSCRIPTEN$AWAIT(createWasm())');
-  }
   // Remove windows line endings, if any
   text = text.replace(/\r\n/g, '\n');
 
@@ -113,7 +126,7 @@ export function preprocess(filename) {
 
   pushCurrentFile(filename);
   try {
-    for (let [i, line] of lines.entries()) {
+    for (const [i, line] of lines.entries()) {
       if (isHtml) {
         if (line.includes('<style') && !inStyle) {
           inStyle = true;
@@ -648,22 +661,21 @@ export function makeReturn64(value) {
   return `(setTempRet0(${pair[1]}), ${pair[0]})`;
 }
 
-function makeThrow(excPtr) {
-  if (ASSERTIONS && DISABLE_EXCEPTION_CATCHING) {
-    var assertInfo =
-      'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
-    if (MAIN_MODULE) {
-      assertInfo +=
-        ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
+function makeThrow() {
+  if (DISABLE_EXCEPTION_CATCHING) {
+    if (ASSERTIONS) {
+      var assertInfo =
+        'Exception thrown, but exception catching is not enabled. Compile with -sNO_DISABLE_EXCEPTION_CATCHING or -sEXCEPTION_CATCHING_ALLOWED=[..] to catch.';
+      if (MAIN_MODULE) {
+        assertInfo +=
+          ' (note: in dynamic linking, if a side module wants exceptions, the main module must be built with that support)';
+      }
+      return `assert(false, '${assertInfo}');`;
+    } else {
+      return 'abort()';
     }
-    return `assert(false, '${assertInfo}');`;
   }
-  return `throw ${excPtr};`;
-}
-
-function storeException(varName, excPtr) {
-  var exceptionToStore = EXCEPTION_STACK_TRACES ? `new CppException(${excPtr})` : `${excPtr}`;
-  return `${varName} = ${exceptionToStore};`;
+  return 'throw exceptionLast;';
 }
 
 function charCode(char) {
@@ -675,7 +687,7 @@ function makeDynCall(sig, funcPtr, promising = false) {
     !sig.includes('j'),
     'Cannot specify 64-bit signatures ("j" in signature string) with makeDynCall!',
   );
-  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI.');
+  assert(!(DYNCALLS && promising), 'DYNCALLS cannot be used with JSPI');
 
   let args = [];
   for (let i = 1; i < sig.length; ++i) {
@@ -683,6 +695,7 @@ function makeDynCall(sig, funcPtr, promising = false) {
   }
   args = args.join(', ');
 
+  const needRtnConversion = MEMORY64 && sig[0] == 'p';
   const needArgConversion = MEMORY64 && sig.includes('p');
   let callArgs = args;
   if (needArgConversion) {
@@ -752,7 +765,15 @@ Please update to new syntax.`);
   }
 
   if (needArgConversion) {
-    return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+    if (needRtnConversion) {
+      if (promising) {
+        return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}).then(Number))`;
+      } else {
+        return `((${args}) => Number(${getWasmTableEntry}.call(null, ${callArgs})))`;
+      }
+    } else {
+      return `((${args}) => ${getWasmTableEntry}.call(null, ${callArgs}))`;
+    }
   }
   return getWasmTableEntry;
 }
@@ -848,14 +869,14 @@ export function modifyJSFunction(text, func) {
   let oneliner = false;
   let match = text.match(/^\s*(async\s+)?function\s+([^(]*)?\s*\(([^)]*)\)/);
   if (match) {
-    async_ = match[1] || '';
+    async_ = match[1] ?? '';
     args = match[3];
     rest = text.slice(match[0].length);
   } else {
     // Match an arrow function
     let match = text.match(/^\s*(var (\w+) = )?(async\s+)?\(([^)]*)\)\s+=>\s+/);
     if (match) {
-      async_ = match[3] || '';
+      async_ = match[3] ?? '';
       args = match[4];
       rest = text.slice(match[0].length);
       rest = rest.trim();
@@ -865,7 +886,7 @@ export function modifyJSFunction(text, func) {
       // for both, but it would be more complex).
       match = text.match(/^\s*(async\s+)?function\(([^)]*)\)/);
       assert(match, `could not match function:\n${text}\n`);
-      async_ = match[1] || '';
+      async_ = match[1] ?? '';
       args = match[2];
       rest = text.slice(match[0].length);
     }
@@ -1106,14 +1127,6 @@ function formattedMinNodeVersion() {
   return `v${major}.${minor}.${rev}`;
 }
 
-function getPerformanceNow() {
-  if (DETERMINISTIC) {
-    return 'deterministicNow';
-  } else {
-    return 'performance.now';
-  }
-}
-
 function ENVIRONMENT_IS_MAIN_THREAD() {
   return `(!${ENVIRONMENT_IS_WORKER_THREAD()})`;
 }
@@ -1159,9 +1172,25 @@ function nodeWWDetection() {
   }
 }
 
+function wasmWorkerDetection() {
+  if (ASSERTIONS) {
+    return "globalThis.name?.startsWith('em-ww')";
+  } else {
+    return "globalThis.name == 'em-ww'";
+  }
+}
+
+function pthreadDetection() {
+  if (ASSERTIONS) {
+    return "globalThis.name?.startsWith('em-pthread')";
+  } else {
+    return "globalThis.name == 'em-pthread'";
+  }
+}
+
 function makeExportAliases() {
   var res = ''
-  for (var [alias, ex] of Object.entries(nativeAliases)) {
+  for (const [alias, ex] of Object.entries(nativeAliases)) {
     if (ASSERTIONS) {
       res += `  assert(wasmExports['${ex}'], 'alias target "${ex}" not found in wasmExports');\n`;
     }
@@ -1213,7 +1242,6 @@ addToCompileTimeContext({
   getHeapForType,
   getHeapOffset,
   getNativeTypeSize,
-  getPerformanceNow,
   getUnsharedTextDecoderView,
   hasExportedSymbol,
   isSymbolNeeded,
@@ -1239,9 +1267,10 @@ addToCompileTimeContext({
   runtimeKeepalivePop,
   runtimeKeepalivePush,
   splitI64,
-  storeException,
   to64,
   toIndexType,
   nodePthreadDetection,
   nodeWWDetection,
+  wasmWorkerDetection,
+  pthreadDetection,
 });

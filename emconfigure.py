@@ -4,9 +4,12 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""This is a helper script. It runs ./configure (or cmake,
-etc.) for you, setting the environment variables to use
-emcc and so forth. Usage:
+"""Helper for running ./configure.
+
+This script runs ./configure (or cmake, etc.) for you,
+setting the environment variables to use emcc and so forth.
+
+Usage:
 
   emconfigure ./configure [FLAGS]
 
@@ -27,7 +30,7 @@ from tools import building, shared
 # Main run() function
 #
 def run():
-  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
+  if len(sys.argv) < 2 or sys.argv[1] in {'--version', '--help'}:
     print('''\
 emconfigure is a helper for configure, setting various environment
 variables so that emcc etc. are used. Typical usage:

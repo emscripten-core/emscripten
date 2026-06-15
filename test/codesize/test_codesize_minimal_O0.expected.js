@@ -19,8 +19,8 @@
   // Note: We use a typeof check here instead of optional chaining using
   // globalThis because older browsers might not have globalThis defined.
   var currentNodeVersion = typeof process !== 'undefined' && process.versions?.node ? humanReadableVersionToPacked(process.versions.node) : TARGET_NOT_SUPPORTED;
-  if (currentNodeVersion < 160000) {
-    throw new Error(`This emscripten-generated code requires node v${ packedVersionToHumanReadable(160000) } (detected v${packedVersionToHumanReadable(currentNodeVersion)})`);
+  if (currentNodeVersion < 180300) {
+    throw new Error(`This emscripten-generated code requires node v${ packedVersionToHumanReadable(180300) } (detected v${packedVersionToHumanReadable(currentNodeVersion)})`);
   }
 
   var userAgent = typeof navigator !== 'undefined' && navigator.userAgent;
@@ -75,7 +75,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 // refer to Module (if they choose; they can also define Module)
 
 
-var arguments_ = [];
+var programArgs = [];
 var thisProgram = './this.program';
 var quit_ = (status, toThrow) => {
   throw toThrow;
@@ -132,7 +132,7 @@ readAsync = async (filename, binary = true) => {
     thisProgram = process.argv[1].replace(/\\/g, '/');
   }
 
-  arguments_ = process.argv.slice(2);
+  programArgs = process.argv.slice(2);
 
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
   if (typeof module != 'undefined') {
@@ -224,7 +224,7 @@ var NODEFS = 'NODEFS is no longer included by default; build with -lnodefs.js';
 // perform assertions in shell.js after we set up out() and err(), as otherwise
 // if an assertion fails it cannot print the message
 
-assert(!ENVIRONMENT_IS_SHELL, 'shell environment detected but not enabled at build time.  Add `shell` to `-sENVIRONMENT` to enable.');
+assert(!ENVIRONMENT_IS_SHELL, 'shell environment detected but not enabled at build time (add `shell` to `-sENVIRONMENT` to enable)');
 
 // end include: shell.js
 
@@ -327,6 +327,11 @@ function checkStackCookie() {
 }
 // end include: runtime_stack_check.js
 // include: runtime_exceptions.js
+// Base Emscripten EH error class
+class EmscriptenEH {}
+
+class EmscriptenSjLj extends EmscriptenEH {}
+
 // end include: runtime_exceptions.js
 // include: runtime_debug.js
 var runtimeDebug = true; // Switch to false at runtime to disable logging at the right times
@@ -454,37 +459,14 @@ function unexportedRuntimeSymbol(sym) {
 
 // end include: runtime_debug.js
 // Memory management
-var
-/** @type {!Int8Array} */
-  HEAP8,
-/** @type {!Uint8Array} */
-  HEAPU8,
-/** @type {!Int16Array} */
-  HEAP16,
-/** @type {!Uint16Array} */
-  HEAPU16,
-/** @type {!Int32Array} */
-  HEAP32,
-/** @type {!Uint32Array} */
-  HEAPU32,
-/** @type {!Float32Array} */
-  HEAPF32,
-/** @type {!Float64Array} */
-  HEAPF64;
-
-// BigInt64Array type is not correctly defined in closure
-var
-/** not-@type {!BigInt64Array} */
-  HEAP64,
-/* BigUint64Array type is not correctly defined in closure
-/** not-@type {!BigUint64Array} */
-  HEAPU64;
 
 var runtimeInitialized = false;
 
 
 
 function updateMemoryViews() {
+  // When memory growth is disabled this function should be called exactly once.
+  assert(!HEAP8, 'updateMemoryViews should only be called once when ALLOW_MEMORY_GROWTH=0');
   var b = wasmMemory.buffer;
   HEAP8 = new Int8Array(b);
   HEAP16 = new Int16Array(b);
@@ -528,10 +510,12 @@ function postRun() {
   // No ATPOSTRUNS hooks
 }
 
-/** @param {string|number=} what */
+/**
+ * @param {string|number=} what
+ */
 function abort(what) {
 
-  what = 'Aborted(' + what + ')';
+  what = `Aborted(${what})`;
   // TODO(sbc): Should we remove printing and leave it up to whoever
   // catches the exception?
   err(what);
@@ -561,20 +545,19 @@ function abort(what) {
 }
 
 // show errors on likely calls to FS when it was not included
+function fsMissing() {
+  abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM');
+}
 var FS = {
-  error() {
-    abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM');
-  },
-  init() { FS.error() },
-  createDataFile() { FS.error() },
-  createPreloadedFile() { FS.error() },
-  createLazyFile() { FS.error() },
-  open() { FS.error() },
-  mkdev() { FS.error() },
-  registerDevice() { FS.error() },
-  analyzePath() { FS.error() },
-
-  ErrnoError() { FS.error() },
+  init: fsMissing,
+  createDataFile: fsMissing,
+  createPreloadedFile: fsMissing,
+  createLazyFile: fsMissing,
+  open: fsMissing,
+  mkdev: fsMissing,
+  registerDevice:  fsMissing,
+  analyzePath: fsMissing,
+  ErrnoError: fsMissing,
 };
 
 
@@ -686,10 +669,8 @@ async function createWasm() {
 
     updateMemoryViews();
 
-    removeRunDependency('wasm-instantiate');
     return wasmExports;
   }
-  addRunDependency('wasm-instantiate');
 
   // Prefer streaming instantiation if available.
   // Async compilation can be confusing when an error on the page overwrites Module
@@ -727,66 +708,35 @@ async function createWasm() {
       }
     }
 
-  var runDependencies = 0;
-  
-  
-  var dependenciesFulfilled = null;
-  
-  var runDependencyTracking = {
-  };
-  
-  var runDependencyWatcher = null;
-  var removeRunDependency = (id) => {
-      runDependencies--;
-  
-      assert(id, 'removeRunDependency requires an ID');
-      assert(runDependencyTracking[id]);
-      delete runDependencyTracking[id];
-      if (runDependencies == 0) {
-        if (runDependencyWatcher !== null) {
-          clearInterval(runDependencyWatcher);
-          runDependencyWatcher = null;
-        }
-        if (dependenciesFulfilled) {
-          var callback = dependenciesFulfilled;
-          dependenciesFulfilled = null;
-          callback(); // can add another dependenciesFulfilled
-        }
-      }
-    };
-  
-  
-  var addRunDependency = (id) => {
-      runDependencies++;
-  
-      assert(id, 'addRunDependency requires an ID')
-      assert(!runDependencyTracking[id]);
-      runDependencyTracking[id] = 1;
-      if (runDependencyWatcher === null && globalThis.setInterval) {
-        // Check for missing dependencies every few seconds
-        runDependencyWatcher = setInterval(() => {
-          if (ABORT) {
-            clearInterval(runDependencyWatcher);
-            runDependencyWatcher = null;
-            return;
-          }
-          var shown = false;
-          for (var dep in runDependencyTracking) {
-            if (!shown) {
-              shown = true;
-              err('still waiting on run dependencies:');
-            }
-            err(`dependency: ${dep}`);
-          }
-          if (shown) {
-            err('(end of list)');
-          }
-        }, 10000);
-        // Prevent this timer from keeping the runtime alive if nothing
-        // else is.
-        runDependencyWatcher.unref?.()
-      }
-    };
+  /** @type {!Int16Array} */
+  var HEAP16;
+
+  /** @type {!Int32Array} */
+  var HEAP32;
+
+  /** not-@type {!BigInt64Array} */
+  var HEAP64;
+
+  /** @type {!Int8Array} */
+  var HEAP8;
+
+  /** @type {!Float32Array} */
+  var HEAPF32;
+
+  /** @type {!Float64Array} */
+  var HEAPF64;
+
+  /** @type {!Uint16Array} */
+  var HEAPU16;
+
+  /** @type {!Uint32Array} */
+  var HEAPU32;
+
+  /** not-@type {!BigUint64Array} */
+  var HEAPU64;
+
+  /** @type {!Uint8Array} */
+  var HEAPU8;
 
   var callRuntimeCallbacks = (callbacks) => {
       while (callbacks.length > 0) {
@@ -815,13 +765,12 @@ async function createWasm() {
     }
   }
 
-  var ptrToString = (ptr) => {
+  function ptrToString(ptr) {
       assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
       // Convert to 32-bit unsigned value
       ptr >>>= 0;
       return '0x' + ptr.toString(16).padStart(8, '0');
-    };
-
+    }
 
   
     /**
@@ -944,6 +893,8 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'mmapAlloc',
   'HandleAllocator',
   'getUniqueRunDependency',
+  'addRunDependency',
+  'removeRunDependency',
   'addOnPreRun',
   'addOnInit',
   'addOnPostCtor',
@@ -1038,6 +989,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'registerPreMainLoop',
   'getPromise',
   'makePromise',
+  'addPromise',
   'idsToPromises',
   'makePromiseCallback',
   'Browser_asyncPrepareDataCounter',
@@ -1051,6 +1003,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'FS_preloadFile',
   'FS_modeStringToFlags',
   'FS_getMode',
+  'FS_fileDataToTypedArray',
   'FS_stdin_getChar',
   'FS_mkdirTree',
   '_setNetworkCallback',
@@ -1064,20 +1017,20 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'callMain',
   'abort',
   'wasmExports',
-  'HEAPF32',
-  'HEAPF64',
+  'writeStackCookie',
+  'checkStackCookie',
+  'INT53_MAX',
+  'INT53_MIN',
   'HEAP8',
   'HEAPU8',
   'HEAP16',
   'HEAPU16',
   'HEAP32',
   'HEAPU32',
+  'HEAPF32',
+  'HEAPF64',
   'HEAP64',
   'HEAPU64',
-  'writeStackCookie',
-  'checkStackCookie',
-  'INT53_MAX',
-  'INT53_MIN',
   'stackSave',
   'stackRestore',
   'ptrToString',
@@ -1092,8 +1045,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'wasmTable',
   'wasmMemory',
   'noExitRuntime',
-  'addRunDependency',
-  'removeRunDependency',
   'freeTableIndexes',
   'functionsInTableMap',
   'setValue',
@@ -1238,12 +1189,6 @@ missingLibrarySymbols.forEach(missingLibrarySymbol)
   'FS_createDataFile',
   'FS_forceLoadFile',
   'FS_createLazyFile',
-  'FS_absolutePath',
-  'FS_createFolder',
-  'FS_createLink',
-  'FS_joinPath',
-  'FS_mmapAlloc',
-  'FS_standardizePath',
   'MEMFS',
   'TTY',
   'PIPEFS',
@@ -1283,10 +1228,7 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('noInitialRun');
   ignoredModuleProp('onAbort');
   ignoredModuleProp('onExit');
-  ignoredModuleProp('onFree');
   ignoredModuleProp('onFullScreen');
-  ignoredModuleProp('onMalloc');
-  ignoredModuleProp('onRealloc');
   ignoredModuleProp('onRuntimeInitialized');
   ignoredModuleProp('postMainLoop');
   ignoredModuleProp('postRun');
@@ -1309,6 +1251,10 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('fetchSettings');
   ignoredModuleProp('logReadFiles');
   ignoredModuleProp('loadSplitModule');
+  ignoredModuleProp('onMalloc');
+  ignoredModuleProp('onRealloc');
+  ignoredModuleProp('onFree');
+  ignoredModuleProp('onSbrkGrow');
 }
 
 // Imports from the Wasm binary.
@@ -1374,20 +1320,9 @@ function stackCheckInit() {
 
 function run() {
 
-  if (runDependencies > 0) {
-    dependenciesFulfilled = run;
-    return;
-  }
-
   stackCheckInit();
 
   preRun();
-
-  // a preRun added a dependency, run will be called later
-  if (runDependencies > 0) {
-    dependenciesFulfilled = run;
-    return;
-  }
 
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
@@ -1444,9 +1379,7 @@ var wasmExports;
 
 // With async instantation wasmExports is assigned asynchronously when the
 // instance is received.
-createWasm();
-
-run();
+createWasm().then(() => run());
 
 // end include: postamble.js
 

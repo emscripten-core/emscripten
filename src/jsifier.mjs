@@ -107,7 +107,7 @@ function stringifyWithFunctions(obj) {
     if (typeof value === 'function' && (str.startsWith(key) || str.startsWith('async ' + key))) {
       rtn += str + ',\n';
     } else {
-      rtn += escapeJSONKey(key) + ':' + str + ',\n';
+      rtn += `${escapeJSONKey(key)}:${str},\n`;
     }
   }
   return rtn + '}';
@@ -122,7 +122,7 @@ function isDefined(symName) {
   }
   // 'invoke_' symbols are created at runtime in library_dylink.py so can
   // always be considered as defined.
-  if ((MAIN_MODULE || RELOCATABLE) && symName.startsWith('invoke_')) {
+  if (MAIN_MODULE && symName.startsWith('invoke_')) {
     return true;
   }
   return false;
@@ -136,7 +136,7 @@ function getTransitiveDeps(symbol) {
   while (toVisit.length) {
     const sym = toVisit.pop();
     if (!seen.has(sym)) {
-      let directDeps = LibraryManager.library[sym + '__deps'] || [];
+      let directDeps = LibraryManager.library[sym + '__deps'] ?? [];
       directDeps = directDeps.filter((d) => typeof d === 'string');
       for (const dep of directDeps) {
         if (!transitiveDeps.has(dep)) {
@@ -228,7 +228,7 @@ function checkDependencies(symbol, snippet, deps, postset) {
       continue;
     }
     const mangled = mangleCSymbolName(dep);
-    if (!snippet.includes(mangled) && (!postset || !postset.includes(mangled))) {
+    if (!snippet.includes(mangled) && !postset?.includes(mangled)) {
       error(`${symbol}: unused dependency: ${dep}`);
     }
   }
@@ -286,8 +286,7 @@ function handleI64Signatures(symbol, snippet, sig, i53abi, isAsyncFunction) {
       error(`handleI64Signatures: signature '${sig}' too long for ${symbol}(${argNames.join(', ')})`);
       return snippet;
     }
-    for (let i = 0; i < argNames.length; i++) {
-      const name = argNames[i];
+    for (const [i, name] of argNames.entries()) {
       // If sig is shorter than argNames list then argType will be undefined
       // here, which will result in the default case below.
       const argType = sig[i + 1];
@@ -398,6 +397,12 @@ export async function runJSify(outputFile, symbolsOnly) {
   }
 
   async function writeOutput(str) {
+    // Unmangle previously mangled `import.meta` references.
+    // See also: `mangleUnsupportedSyntax` in parseTools.mjs.
+    if (EXPORT_ES6) {
+      str = str.replaceAll('EMSCRIPTEN$IMPORT$META', 'import.meta');
+    }
+
     await outputHandle.write(str + '\n');
   }
 
@@ -498,7 +503,7 @@ function(${args}) {
                 proxyMode = PROXY_SYNC;
               }
             }
-            const rtnType = sig && sig.length ? sig[0] : null;
+            const rtnType = sig?.[0];
             const proxyFunc =
               MEMORY64 && rtnType == 'p' ? 'proxyToMainThreadPtr' : 'proxyToMainThread';
             deps.push('$' + proxyFunc);
@@ -516,7 +521,7 @@ ${body}
             snippet,
             (args, body) => `
 function(${args}) {
-  assert(!ENVIRONMENT_IS_WASM_WORKER, "Attempted to call proxied function '${mangled}' in a Wasm Worker, but in Wasm Worker enabled builds, proxied function architecture is not available!");
+  assert(!ENVIRONMENT_IS_WASM_WORKER, "attempt to call proxied function '${mangled}' from a Wasm Worker (where proxying is not possible)");
   ${body}
 }\n`,
           );
@@ -568,11 +573,7 @@ function(${args}) {
       }
       addedLibraryItems[symbol] = true;
 
-      if (!(symbol + '__deps' in LibraryManager.library)) {
-        LibraryManager.library[symbol + '__deps'] = [];
-      }
-
-      const deps = LibraryManager.library[symbol + '__deps'];
+      const deps = LibraryManager.library[symbol + '__deps'] ??= [];
       let sig = LibraryManager.library[symbol + '__sig'];
       if (!WASM_BIGINT && sig && sig[0] == 'j') {
         // Without WASM_BIGINT functions that return i64 depend on setTempRet0
@@ -607,7 +608,7 @@ function(${args}) {
       if (!LibraryManager.library.hasOwnProperty(symbol)) {
         const isWeakImport = WEAK_IMPORTS.has(symbol);
         if (!isDefined(symbol) && !isWeakImport) {
-          if (PROXY_TO_PTHREAD && !(MAIN_MODULE || RELOCATABLE) && symbol == '__main_argc_argv') {
+          if (PROXY_TO_PTHREAD && !MAIN_MODULE && symbol == '__main_argc_argv') {
             error('PROXY_TO_PTHREAD proxies main() for you, but no main exists');
             return;
           }
@@ -638,7 +639,7 @@ function(${args}) {
 
         // emit a stub that will fail at runtime
         var stubFunctionBody = `abort('missing function: ${symbol}');`
-        if (RELOCATABLE || MAIN_MODULE) {
+        if (MAIN_MODULE) {
           // Create a stub for this symbol which can later be replaced by the
           // dynamic linker.  If this stub is called before the symbol is
           // resolved assert in debug builds or trap in release builds.
@@ -703,7 +704,7 @@ function(${args}) {
           // signatures are relevant and they differ between and alais and
           // it's target) we need to construct a forwarding function from
           // one to the other.
-          const isSigRelevant = MAIN_MODULE || RELOCATABLE || MEMORY64 || CAN_ADDRESS_2GB || (sig && sig.includes('j'));
+          const isSigRelevant = MAIN_MODULE || MEMORY64 || CAN_ADDRESS_2GB || sig?.includes('j');
           const targetSig = LibraryManager.library[aliasTarget + '__sig'];
           if (isSigRelevant && sig && targetSig && sig != targetSig) {
             debugLog(`${symbol}: Alias target (${aliasTarget}) has different signature (${sig} vs ${targetSig})`)
@@ -714,6 +715,9 @@ function(${args}) {
       } else if (typeof snippet == 'object') {
         snippet = stringifyWithFunctions(snippet);
         addImplicitDeps(snippet, deps);
+      } else if (typeof snippet == 'string' && (snippet.match(/^\s*\([^}]*\)\s*=>/) || snippet.match(/^function\b/))) {
+        // Support functions that are already "stringified"
+        isFunction = true;
       }
 
       if (isFunction) {
@@ -802,7 +806,7 @@ function(${args}) {
       }
 
       // Dynamic linking needs signatures to create proper wrappers.
-      if (sig && (MAIN_MODULE || RELOCATABLE)) {
+      if (sig && MAIN_MODULE) {
         if (!WASM_BIGINT) {
           sig = sig[0].replace('j', 'i') + sig.slice(1).replace(/j/g, 'ii');
         }
@@ -814,7 +818,7 @@ function(${args}) {
       }
       if (isStub) {
         contentText += `\n${mangled}.stub = true;`;
-        if (ASYNCIFY && (MAIN_MODULE || RELOCATABLE)) {
+        if (ASYNCIFY && MAIN_MODULE) {
           contentText += `\nasyncifyStubs['${symbol}'] = undefined;`;
         }
       }
@@ -869,7 +873,7 @@ function(${args}) {
           orderedPostSets[j] = temp;
           i--;
           limit--;
-          assert(limit > 0, 'Could not sort postsets!');
+          assert(limit > 0, 'could not sort postsets');
           break;
         }
       }
@@ -885,7 +889,7 @@ function(${args}) {
 
     writeOutput('// Begin JS library code\n');
     for (const item of libraryItems.concat(postSets)) {
-      writeOutput(indentify(item || '', 2));
+      writeOutput(indentify(item ?? '', 2));
     }
     writeOutput('// End JS library code\n');
 

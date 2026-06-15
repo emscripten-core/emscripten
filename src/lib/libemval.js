@@ -11,6 +11,9 @@
 var LibraryEmVal = {
   // Stack of handles available for reuse.
   $emval_freelist: [],
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+  $emval_exception_decrefs: [],
+#endif
   // Array of alternating pairs (value, refcount).
   // reserve 0 and some special values. These never get de-allocated.
   $emval_handles: [
@@ -80,13 +83,27 @@ var LibraryEmVal = {
     }
   },
 
-  _emval_decref__deps: ['$emval_freelist', '$emval_handles'],
+  _emval_decref__deps: ['$emval_freelist', '$emval_handles',
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    '$emval_exception_decrefs',
+#endif
+  ],
   _emval_decref: (handle) => {
     if (handle > {{{ EMVAL_LAST_RESERVED_HANDLE }}} && 0 === --emval_handles[handle + 1]) {
   #if ASSERTIONS
-      assert(emval_handles[handle] !== undefined, `Decref for unallocated handle.`);
+      assert(emval_handles[handle] !== undefined, `decref for unallocated handle`);
   #endif
+      var value = emval_handles[handle];
       emval_handles[handle] = undefined;
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+      // In case the value is a C++ exception, decrement the refcount, so the
+      // memory can be freed correctly
+      var destructor = emval_exception_decrefs[handle];
+      if (destructor) {
+        emval_exception_decrefs[handle] = undefined;
+        destructor(value);
+      }
+#endif
       emval_freelist.push(handle);
     }
   },
@@ -392,9 +409,56 @@ ${functionBody}
     return delete object[property];
   },
 
-  _emval_throw__deps: ['$Emval'],
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+  $isCppExceptionObject__deps: ['$Emval'],
+  $isCppExceptionObject: (object) => {
+#if !DISABLE_EXCEPTION_CATCHING
+    return object instanceof CppException;
+#else // WASM_EXCEPTIONS
+    return object instanceof WebAssembly.Exception;
+#endif
+  },
+#endif
+
+  _emval_is_catchable_cpp_exception_object__deps: [
+    '$Emval',
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    '$isCppExceptionObject',
+#endif
+  ],
+  _emval_is_catchable_cpp_exception_object: (object) => {
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    return isCppExceptionObject(Emval.toValue(object));
+#else
+    return false;
+#endif
+  },
+
+  _emval_throw__deps: ['$Emval',
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+#if !DISABLE_EXCEPTION_CATCHING
+    '$exceptionLast',
+    '$ExceptionInfo',
+#endif
+    '$incrementExceptionRefcount',
+    '$incrementUncaughtExceptionCount',
+    '$isCppExceptionObject',
+#endif
+  ],
   _emval_throw: (object) => {
     object = Emval.toValue(object);
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    if (isCppExceptionObject(object)) {
+#if !DISABLE_EXCEPTION_CATCHING
+      var info = new ExceptionInfo(object.excPtr);
+      info.set_caught(false);
+      info.set_rethrown(false);
+      exceptionLast = object;
+#endif
+      incrementUncaughtExceptionCount();
+      incrementExceptionRefcount(object);
+    }
+#endif
     throw object;
   },
 
@@ -435,7 +499,15 @@ ${functionBody}
     }));
   },
 
-  _emval_from_current_cxa_exception__deps: ['$Emval', '__cxa_rethrow'],
+  _emval_from_current_cxa_exception__deps: ['$Emval', '__cxa_rethrow',
+#if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
+    '$decrementUncaughtExceptionCount',
+#endif
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+    '$decrementExceptionRefcount',
+    '$emval_exception_decrefs',
+#endif
+  ],
   _emval_from_current_cxa_exception: () => {
     try {
       // Use __cxa_rethrow which already has mechanism for generating
@@ -444,7 +516,16 @@ ${functionBody}
       // with metadata optimised out otherwise.
       ___cxa_rethrow();
     } catch (e) {
-      return Emval.toHandle(e);
+#if !DISABLE_EXCEPTION_THROWING || WASM_EXCEPTIONS
+      // ___cxa_rethrow incremented uncaughtExceptionCount.
+      // Since we caught it in JS, we need to manually decrement it to balance.
+      decrementUncaughtExceptionCount();
+#endif
+      var handle = Emval.toHandle(e);
+#if !DISABLE_EXCEPTION_CATCHING || WASM_EXCEPTIONS
+      emval_exception_decrefs[handle] = decrementExceptionRefcount;
+#endif
+      return handle;
     }
   },
 };

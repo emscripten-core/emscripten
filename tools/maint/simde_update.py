@@ -4,8 +4,9 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Updates the arm_neon.h header taken from SIMDe
-(https://github.com/simd-everywhere/simde) in system/include/neon
+"""Updates the arm_neon.h header in system/include/neon.
+
+Taken from SIMDe (https://github.com/simd-everywhere/simde).
 """
 
 import os
@@ -19,9 +20,9 @@ __rootdir__ = os.path.dirname(os.path.dirname(__scriptdir__))
 sys.path.insert(0, __rootdir__)
 
 from tools.shared import get_emscripten_temp_dir
+from tools.utils import path_from_root
 
 tmpdir = get_emscripten_temp_dir()
-emdir = __rootdir__
 
 
 def main():
@@ -50,9 +51,9 @@ def main():
     return 1
 
   try:
-    os.mkdir(path.join(emdir, "system", "include", "compat"))
+    os.mkdir(path_from_root('system/include/compat'))
   except FileExistsError:
-    if not path.isdir(path.join(emdir, "system", "include", "compat")):
+    if not path.isdir(path_from_root('system/include/compat')):
       print("system/include/compat exists and is not a directory, exiting...")
       return 1
 
@@ -70,7 +71,7 @@ def main():
     return 1
   neon_h_buf = neon_h_buf[:insert_location] + line_to_insert + neon_h_buf[insert_location:]
 
-  with open(path.join(emdir, "system", "include", "compat", "arm_neon.h"), "w+") as f:
+  with open(path_from_root('system/include/compat/arm_neon.h'), 'w', encoding='utf-8') as f:
     try:
       f.write("#define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
       f.write("#define SIMDE_ARM_NEON_A32V8_ENABLE_NATIVE_ALIASES\n")

@@ -4,8 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Convert src/settings.js into ReSt docs that get published as
-part of the emscripten docs.
+"""Convert src/settings.js into `.rst` format for the website.
 
 This parser for src/settings.js is somewhat fragile, and
 comments need to be written in a ReSt friendly way.  This
@@ -165,14 +164,14 @@ def main(args):
   if '--check' in args:
     safe_ensure_dirs(path_from_root('out'))
     tmp_output = path_from_root('out/settings_reference.rst')
-    with open(tmp_output, 'w') as f:
+    with open(tmp_output, 'w', encoding='utf-8') as f:
       write_file(f)
     if read_file(tmp_output) != read_file(output_file):
       print(f'{output_file} is out-of-date.  Please run tools/maint/update_settings_docs.py')
       subprocess.call(['diff', '-u', output_file, tmp_output])
       return 1
   else:
-    with open(output_file, 'w') as f:
+    with open(output_file, 'w', encoding='utf-8') as f:
       write_file(f)
 
   return 0

@@ -1,0 +1,4 @@
+Before Uncaught: 0
+Destructor Uncaught: 1
+In catch Uncaught: 0
+After Uncaught: 0

@@ -4,7 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Size helper script
+"""Size helper script.
 
 This script acts as a frontend replacement for `size` that supports combining
 JS and wasm output from emscripten.

@@ -179,7 +179,7 @@ By default:
 -  ``stdout`` will use a ``print`` function if one such is defined, printing to the terminal in command line engines and to the browser console in browsers that have a console (again, line-buffered).
 -  ``stderr`` will use the same output function as ``stdout``.
 
-.. note:: All the configuration should be done before the main ``run()`` method is executed, typically by implementing :js:attr:`Module.preRun`. See :ref:`Interacting-with-code` for more information.
+.. note:: All the configuration should be done before the ``main()`` is executed, typically by implementing :js:attr:`Module.preRun`. See :ref:`Interacting-with-code` for more information.
 
 
 .. js:function:: FS.init(input, output, error)
@@ -718,7 +718,7 @@ File system API
 
 .. js:function:: FS.createPreloadedFile(parent, name, url, canRead, canWrite)
 
-  Preloads a file asynchronously, and uses preload plugins to prepare its content. You should call this in ``preRun``, ``run()`` will be delayed until all preloaded files are ready. This is how the :ref:`preload-file <emcc-preload-file>` option works in *emcc* when ``--use-preload-plugins`` has been specified (if you use this method by itself, you will need to build the program with that option).
+  Preloads a file asynchronously, and uses preload plugins to prepare its content. You should call this in ``preRun``, ``main()`` will then be delayed until all preloaded files are ready. This is how the :ref:`preload-file <emcc-preload-file>` option works in *emcc* when ``--use-preload-plugins`` has been specified (if you use this method by itself, you will need to build the program with that option).
 
   :param parent: The parent folder, either as a path (e.g. **'/usr/lib'**) or an object previously returned from a `FS.mkdir()` or `FS.createPath()` call.
   :type parent: string/object

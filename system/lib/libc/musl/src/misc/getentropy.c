@@ -18,11 +18,11 @@ int getentropy(void *buffer, size_t len)
 		return -1;
 	}
 
-	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
-
 #ifdef __EMSCRIPTEN__
 	ret = __wasi_syscall_ret(__wasi_random_get(buffer, len));
 #else
+	pthread_setcancelstate(PTHREAD_CANCEL_DISABLE, &cs);
+
 	while (len) {
 		ret = getrandom(pos, len, 0);
 		if (ret < 0) {
@@ -33,9 +33,9 @@ int getentropy(void *buffer, size_t len)
 		len -= ret;
 		ret = 0;
 	}
-#endif
 
 	pthread_setcancelstate(cs, 0);
+#endif
 
 	return ret;
 }

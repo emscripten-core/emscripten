@@ -26,7 +26,6 @@ from decorators import (
   requires_native_clang,
   test_file,
 )
-from test_browser import requires_shared_array_buffer
 
 from tools import config
 from tools.shared import CLANG_CC, EMCC
@@ -50,20 +49,19 @@ def requires_python_dev_packages(func):
   return decorated
 
 
-def clean_processes(processes):
-  for p in processes:
-    if getattr(p, 'exitcode', None) is None and getattr(p, 'returncode', None) is None:
-      # ask nicely (to try and catch the children)
-      try:
-        p.terminate() # SIGTERM
-      except OSError:
-        pass
-      time.sleep(1)
-      # send a forcible kill immediately afterwards. If the process did not die before, this should clean it.
-      try:
-        p.terminate() # SIGKILL
-      except OSError:
-        pass
+def clean_process(p):
+  if getattr(p, 'exitcode', None) is None and getattr(p, 'returncode', None) is None:
+    # ask nicely (to try and catch the children)
+    try:
+      p.terminate() # SIGTERM
+    except OSError:
+      pass
+    time.sleep(1)
+    # send a forcible kill immediately afterwards. If the process did not die before, this should clean it.
+    try:
+      p.terminate() # SIGKILL
+    except OSError:
+      pass
 
 
 class WebsockifyServerHarness:
@@ -76,27 +74,27 @@ class WebsockifyServerHarness:
     self.do_server_check = do_server_check
 
   def __enter__(self):
+    try:
+      import websockify  # type: ignore
+    except ModuleNotFoundError:
+      raise Exception('Unable to import module websockify. Run "python3 -m pip install websockify" or set environment variable EMTEST_SKIP_PYTHON_DEV_PACKAGES=1 to skip this test.') from None
+
     # compile the server
     # NOTE empty filename support is a hack to support
     # the current test_enet
     if self.filename:
-      cmd = [CLANG_CC, test_file(self.filename), '-o', 'server', '-DSOCKK=%d' % self.target_port] + clang_native.get_clang_native_args() + self.args
+      cmd = [CLANG_CC, test_file(self.filename), '-o', 'server', f'-DSOCKK={self.target_port}', *clang_native.get_clang_native_args(), *self.args]
       print(cmd)
       run_process(cmd, env=clang_native.get_clang_native_env())
       process = Popen([os.path.abspath('server')])
       self.processes.append(process)
-
-    try:
-      import websockify  # type: ignore # noqa: PLC0415
-    except ModuleNotFoundError:
-      raise Exception('Unable to import module websockify. Run "python3 -m pip install websockify" or set environment variable EMTEST_SKIP_PYTHON_DEV_PACKAGES=1 to skip this test.') from None
 
     # start the websocket proxy
     print('running websockify on %d, forward to tcp %d' % (self.listen_port, self.target_port), file=sys.stderr)
     # source_is_ipv6=True here signals to websockify that it should prefer ipv6 address when
     # resolving host names.  This matches what the node `ws` module does and means that `localhost`
     # resolves to `::1` on IPv6 systems.
-    wsp = websockify.WebSocketProxy(verbose=True, source_is_ipv6=True, listen_port=self.listen_port, target_host="127.0.0.1", target_port=self.target_port, run_once=True)
+    wsp = websockify.WebSocketProxy(verbose=True, source_is_ipv6=True, listen_host="127.0.0.1", listen_port=self.listen_port, target_host="127.0.0.1", target_port=self.target_port, run_once=True)
     self.websockify = multiprocessing.Process(target=wsp.start_server)
     self.websockify.start()
     self.processes.append(self.websockify)
@@ -112,7 +110,7 @@ class WebsockifyServerHarness:
       except OSError:
         time.sleep(1)
     else:
-      clean_processes(self.processes)
+      self.clean_processes()
       raise Exception('[Websockify failed to start up in a timely manner]')
 
     print('[Websockify on process %s]' % str(self.processes[-2:]))
@@ -125,12 +123,16 @@ class WebsockifyServerHarness:
     self.websockify.join()
 
     # clean up any processes we started
-    clean_processes(self.processes)
+    self.clean_processes()
+
+  def clean_processes(self):
+    for p in self.processes:
+      clean_process(p)
 
 
 class CompiledServerHarness:
   def __init__(self, filename, args, listen_port):
-    self.processes = []
+    self.process = None
     self.filename = filename
     self.listen_port = listen_port
     self.args = args or []
@@ -140,22 +142,20 @@ class CompiledServerHarness:
     # the ws module is installed
     global npm_checked
     if not npm_checked:
-      child = run_process(config.NODE_JS + ['-e', 'require("ws");'], check=False)
+      child = run_process([*config.NODE_JS, '-e', 'require("ws");'], check=False)
       assert child.returncode == 0, '"ws" node module not found. Run "npm install" to obtain Node.js dev dependencies, or set environment variable EMTEST_SKIP_NODE_DEV_PACKAGES=1 to skip this test.'
       npm_checked = True
 
     # compile the server
     suffix = '.mjs' if '-sEXPORT_ES6' in self.args else '.js'
-    proc = run_process([EMCC, '-Werror', test_file(self.filename), '-o', 'server' + suffix, '-DSOCKK=%d' % self.listen_port] + self.args)
+    proc = run_process([EMCC, '-Werror', test_file(self.filename), '-o', 'server' + suffix, f'-DSOCKK={self.listen_port}', *self.args])
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
-    process = Popen(config.NODE_JS + ['server' + suffix])
-    self.processes.append(process)
+    self.process = Popen([*config.NODE_JS, 'server' + suffix])
     return self
 
   def __exit__(self, *args, **kwargs):
-    # clean up any processes we started
-    clean_processes(self.processes)
+    clean_process(self.process)
 
     # always run these tests last
     # make sure to use different ports in each one because it takes a while for the processes to be cleaned up
@@ -164,21 +164,20 @@ class CompiledServerHarness:
 # Executes a native executable server process
 class BackgroundServerProcess:
   def __init__(self, args):
-    self.processes = []
+    self.process = None
     self.args = args
 
   def __enter__(self):
     print('Running background server: ' + str(self.args))
-    process = Popen(self.args)
-    self.processes.append(process)
+    self.process = Popen(self.args)
     return self
 
   def __exit__(self, *args, **kwargs):
-    clean_processes(self.processes)
+    clean_process(self.process)
 
 
 def NodeJsWebSocketEchoServerProcess():
-  return BackgroundServerProcess(config.NODE_JS + [test_file('websocket/nodejs_websocket_echo_server.js')])
+  return BackgroundServerProcess([*config.NODE_JS, test_file('websocket/nodejs_websocket_echo_server.js')])
 
 
 def PythonTcpEchoServerProcess(port):
@@ -217,17 +216,17 @@ class sockets(BrowserCore):
       self.skipTest('requires node ws and EMTEST_SKIP_NODE_DEV_PACKAGES=1')
 
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
-      self.btest_exit('sockets/test_sockets_echo_client.c', cflags=['-DSOCKK=%d' % harness.listen_port] + args)
+      self.btest_exit('sockets/test_sockets_echo_client.c', cflags=[f'-DSOCKK={harness.listen_port}', *args])
 
   @requires_dev_dependency('ws')
   def test_sockets_echo_pthreads(self):
     with CompiledServerHarness(test_file('sockets/test_sockets_echo_server.c'), [], 49161) as harness:
-      self.btest_exit('sockets/test_sockets_echo_client.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD', '-DSOCKK=%d' % harness.listen_port])
+      self.btest_exit('sockets/test_sockets_echo_client.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD', f'-DSOCKK={harness.listen_port}'])
 
   @requires_dev_dependency('ws')
   def test_sdl2_sockets_echo(self):
     with CompiledServerHarness('sockets/sdl2_net_server.c', ['-sUSE_SDL=2', '-sUSE_SDL_NET=2'], 49164) as harness:
-      self.btest_exit('sockets/sdl2_net_client.c', cflags=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', '-DSOCKK=%d' % harness.listen_port])
+      self.btest_exit('sockets/sdl2_net_client.c', cflags=['-sUSE_SDL=2', '-sUSE_SDL_NET=2', f'-DSOCKK={harness.listen_port}'])
 
   @parameterized({
     'websockify': [WebsockifyServerHarness, 49166, ['-DTEST_DGRAM=0']],
@@ -246,7 +245,7 @@ class sockets(BrowserCore):
 
     args.append('-DTEST_ASYNC=1')
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
-      self.btest_exit('sockets/test_sockets_echo_client.c', cflags=['-DSOCKK=%d' % harness.listen_port] + args)
+      self.btest_exit('sockets/test_sockets_echo_client.c', cflags=[f'-DSOCKK={harness.listen_port}', *args])
 
   def test_sockets_async_bad_port(self):
     # Deliberately attempt a connection on a port that will fail to test the error callback and
@@ -277,7 +276,7 @@ class sockets(BrowserCore):
     create_file('test_sockets_echo_bigdata.c', src.replace('#define MESSAGE "pingtothepong"', '#define MESSAGE "%s"' % message))
 
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
-      self.btest_exit('test_sockets_echo_bigdata.c', cflags=[sockets_include, '-DSOCKK=%d' % harness.listen_port] + args)
+      self.btest_exit('test_sockets_echo_bigdata.c', cflags=[sockets_include, f'-DSOCKK={harness.listen_port}', *args])
 
   @no_windows('This test is Unix-specific.')
   @requires_python_dev_packages
@@ -288,7 +287,7 @@ class sockets(BrowserCore):
       CompiledServerHarness(test_file('sockets/test_sockets_partial_server.c'), [], 49181),
     ]:
       with harness:
-        self.btest_exit('sockets/test_sockets_partial_client.c', assert_returncode=165, cflags=['-DSOCKK=%d' % harness.listen_port])
+        self.btest_exit('sockets/test_sockets_partial_client.c', assert_returncode=165, cflags=[f'-DSOCKK={harness.listen_port}'])
 
   @no_windows('This test is Unix-specific.')
   @requires_python_dev_packages
@@ -323,7 +322,7 @@ class sockets(BrowserCore):
       enet = [self.in_dir('enet', '.libs', 'libenet.a'), '-I' + self.in_dir('enet', 'include')]
 
     with CompiledServerHarness(test_file('sockets/test_enet_server.c'), enet, 49210) as harness:
-      self.btest_exit('sockets/test_enet_client.c', cflags=enet + ['-DSOCKK=%d' % harness.listen_port])
+      self.btest_exit('sockets/test_enet_client.c', cflags=[*enet, f'-DSOCKK={harness.listen_port}'])
 
   @crossplatform
   @parameterized({
@@ -343,7 +342,7 @@ class sockets(BrowserCore):
     # Basic test of node client against both a Websockified and compiled echo server.
     with harness_class(test_file('sockets/test_sockets_echo_server.c'), args, port) as harness:
       expected = 'do_msg_read: read 14 bytes'
-      self.do_runf('sockets/test_sockets_echo_client.c', expected, cflags=['-DSOCKK=%d' % harness.listen_port] + args)
+      self.do_runf('sockets/test_sockets_echo_client.c', expected, cflags=[f'-DSOCKK={harness.listen_port}', *args])
 
   def test_nodejs_sockets_connect_failure(self):
     self.do_runf('sockets/test_sockets_echo_client.c', r'connect failed: (Connection refused|Host is unreachable)', regex=True, cflags=['-DSOCKK=666'], assert_returncode=NON_ZERO)
@@ -393,11 +392,13 @@ class sockets(BrowserCore):
   @requires_dev_dependency('ws')
   def test_websocket_send(self, args):
     with NodeJsWebSocketEchoServerProcess():
-      self.btest_exit('websocket/test_websocket_send.c', cflags=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG'] + args)
+      self.btest_exit('websocket/test_websocket_send.c', cflags=['-lwebsocket', '-sNO_EXIT_RUNTIME', '-sWEBSOCKET_DEBUG', *args])
+
+  def test_websocket_new(self):
+    self.btest_exit('websocket/test_websocket_new.c', cflags=['-lwebsocket'])
 
   # Test that native POSIX sockets API can be used by proxying calls to an intermediate WebSockets
   # -> POSIX sockets bridge server
-  @requires_shared_array_buffer
   def test_posix_proxy_sockets(self):
     # Build the websocket bridge server
     self.run_process(['cmake', path_from_root('tools/websocket_to_posix_proxy')])
@@ -422,5 +423,5 @@ class sockets(BrowserCore):
 class sockets64(sockets):
   def setUp(self):
     super().setUp()
-    self.set_setting('MEMORY64')
+    self.cflags.append('-m64')
     self.require_wasm64()

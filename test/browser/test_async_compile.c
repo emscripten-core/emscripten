@@ -10,7 +10,7 @@
 #include <emscripten.h>
 
 int main() {
-  printf("hello, world!\n");
+  printf("Hello, world!\n");
   int result = EM_ASM_INT(return Module.sawAsyncCompilation);
   printf("sawAsyncCompilation => %d\n", result);
   return result;

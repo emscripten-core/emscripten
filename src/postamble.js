@@ -10,10 +10,6 @@
 #include "source_map_support.js"
 #endif
 
-#if DETERMINISTIC
-#include "deterministic.js"
-#endif
-
 #if ASSERTIONS
 var calledRun;
 #endif
@@ -112,37 +108,30 @@ function stackCheckInit() {
   // See $establishStackSpace for the equivalent code that runs on a thread
   assert(!ENVIRONMENT_IS_PTHREAD);
 #endif
-#if RELOCATABLE
-  _emscripten_stack_set_limits({{{ STACK_HIGH }}} , {{{ STACK_LOW }}});
-#else
   _emscripten_stack_init();
-#endif
   // TODO(sbc): Move writeStackCookie to native to to avoid this.
   writeStackCookie();
 }
 #endif
 
-#if MAIN_READS_PARAMS
-function run(args = arguments_) {
-#else
-function run() {
-#endif
+{{{ asyncIf(MODULARIZE) }}}function run({{{ MAIN_READS_PARAMS ? 'args = programArgs' : '' }}}) {
 
 #if '$runDependencies' in addedLibraryItems
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
 #endif
+#if MODULARIZE
+    await new Promise((resolve) => dependenciesFulfilled = resolve);
+#else
     dependenciesFulfilled = run;
     return;
+#endif
   }
 #endif
 
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
-#if MODULARIZE
-    readyPromiseResolve?.(Module);
-#endif
     initRuntime();
     return;
   }
@@ -160,8 +149,12 @@ function run() {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
 #endif
+#if MODULARIZE
+    await new Promise((resolve) => dependenciesFulfilled = resolve);
+#else
     dependenciesFulfilled = run;
     return;
+#endif
   }
 #endif
 
@@ -182,9 +175,6 @@ function run() {
     preMain();
 #endif
 
-#if MODULARIZE
-    readyPromiseResolve?.(Module);
-#endif
 #if expectToReceiveOnModule('onRuntimeInitialized')
     Module['onRuntimeInitialized']?.();
 #if ASSERTIONS
@@ -211,10 +201,22 @@ function run() {
 #if expectToReceiveOnModule('setStatus')
   if (Module['setStatus']) {
     Module['setStatus']('Running...');
+    // Yield the main thread to allow the browser to paint "Running...", then clear
+    // the status text after the synchronous doRun() completes.
+#if MODULARIZE
+    await new Promise((resolve) => {
+      setTimeout(() => {
+        setTimeout(() => Module['setStatus'](''), 1);
+        doRun();
+        resolve();
+      }, 1);
+    });
+#else
     setTimeout(() => {
       setTimeout(() => Module['setStatus'](''), 1);
       doRun();
     }, 1);
+#endif
   } else
 #endif
   {
@@ -303,15 +305,16 @@ export default async function init(moduleArg = {}) {
 #if PTHREADS
   registerTLSInit(__emscripten_tls_init);
 #endif
+#if !IMPORTED_MEMORY
   updateMemoryViews();
+#endif
 #if DYNCALLS && '$dynCalls' in addedLibraryItems
-
   assignDynCalls();
 #endif
 #else
   wasmExports = await createWasm();
 #endif
-  run();
+  await run();
 }
 
 #if ENVIRONMENT_MAY_BE_NODE
@@ -343,23 +346,16 @@ if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
 // Worker threads call this once they receive the module via postMessage
 #endif
 
-#if WASM_ASYNC_COMPILATION
-
-#if MODULARIZE
-// In modularize mode the generated code is within a factory function so we
-// can use await here (since it's not top-level-await).
-wasmExports = await createWasm();
-#else
+#if !MODULARIZE && WASM_ASYNC_COMPILATION
 // With async instantation wasmExports is assigned asynchronously when the
 // instance is received.
-createWasm();
-#endif
-
+createWasm().then(() => run());
 #else
-wasmExports = createWasm();
+// In modularize mode the generated code is within a factory function so we
+// can use await here (since it's not top-level-await).
+wasmExports = {{{ awaitIf(MODULARIZE && WASM_ASYNC_COMPILATION) }}}createWasm();
+{{{ awaitIf(MODULARIZE) }}}run();
 #endif
-
-run();
 
 #if WASM_WORKERS || PTHREADS
 }

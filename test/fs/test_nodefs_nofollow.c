@@ -19,6 +19,6 @@ int main(void)
         FS.close(FS.open('/working/test.txt', 'w'));
     );
     assert(open("/working/test.txt", O_NOFOLLOW) != -1);
-    printf("success\n");
+    printf("done\n");
     return 0;
 }

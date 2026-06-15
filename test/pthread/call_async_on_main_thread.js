@@ -6,7 +6,7 @@ addToLibrary({
     if (typeof ENVIRONMENT_IS_WORKER !== 'undefined' && ENVIRONMENT_IS_WORKER) {
       console.error('This function should be getting called on the main thread!');
     }
-    console.log('got ' + param1 + ' ' + param2 + ' ' + param3);
+    console.log(`got ${param1} ${param2} ${param3}`);
     reportResultToServer(param1 + param2 * param3);
   }
 });

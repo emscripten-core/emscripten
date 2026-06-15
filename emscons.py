@@ -1,11 +1,13 @@
 #!/usr/bin/env python3
-"""Wrapping the scons invocation, EMSCRIPTEN_TOOL_PATH is set in the process
-environment, and can be used to locate the emscripten SCons Tool.
+"""Wrapper for the scons invocation.
+
+EMSCRIPTEN_TOOL_PATH is set in the process environment, and can be used to
+locate the emscripten SCons Tool.
 
 Example:
-
 # Load emscripten Tool
 my_env = Environment(tools=['emscripten'], toolpath=[os.environ['EMSCRIPTEN_TOOL_PATH']])
+
 """
 
 import os

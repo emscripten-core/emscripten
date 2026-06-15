@@ -29,6 +29,27 @@ close(f1): 0
 DUP2 pipe
 buf: abc
 
+DUP3
+errno: Success
+f: 1
+f2,f3: 1
+close(f1): 0
+close(f2): 0
+close(f3): -1
+
+DUP3 bad fds
+f: -1
+errno: Invalid argument
+close(f): -1
+
+DUP3 same fds
+f2: -1
+errno: Invalid argument
+
+DUP3 invalid flags
+f2: -1
+errno: Invalid argument
+
 DUP shared seek position
 close(f): 0
 close(f2): 0

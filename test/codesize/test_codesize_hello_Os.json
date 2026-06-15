@@ -1,10 +1,10 @@
 {
-  "a.out.js": 4266,
-  "a.out.js.gz": 2093,
-  "a.out.nodebug.wasm": 1671,
-  "a.out.nodebug.wasm.gz": 964,
-  "total": 5937,
-  "total_gz": 3057,
+  "a.out.js": 4161,
+  "a.out.js.gz": 2030,
+  "a.out.nodebug.wasm": 1654,
+  "a.out.nodebug.wasm.gz": 953,
+  "total": 5815,
+  "total_gz": 2983,
   "sent": [
     "a (fd_write)"
   ],
@@ -19,7 +19,6 @@
   "funcs": [
     "$__emscripten_stdout_close",
     "$__emscripten_stdout_seek",
-    "$__fwritex",
     "$__stdio_write",
     "$__towrite",
     "$__wasi_syscall_ret",

@@ -3,9 +3,8 @@
  * Copyright 2010 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  */
-#if STRICT_JS
+#if STRICT_JS && !MODULARIZE // MODULARIZE handles this itself
 "use strict";
-
 #endif
 
 #include "minimum_runtime_check.js"
@@ -26,8 +25,6 @@
 #if MODULARIZE
 #if MODULARIZE == 'instance'
 var Module = {};
-#else
-var Module = moduleArg;
 #endif
 #elif USE_CLOSURE_COMPILER
 /** @type{Object} */
@@ -50,7 +47,7 @@ var Module = typeof {{{ EXPORT_NAME }}} != 'undefined' ? {{{ EXPORT_NAME }}} : {
 #if WASM_WORKERS
 // The way we signal to a worker that it is hosting a pthread is to construct
 // it with a specific name.
-var ENVIRONMENT_IS_WASM_WORKER = globalThis.name == 'em-ww';
+var ENVIRONMENT_IS_WASM_WORKER = {{{ wasmWorkerDetection() }}};
 #endif
 
 #if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
@@ -97,7 +94,7 @@ var ENVIRONMENT_IS_SHELL = !ENVIRONMENT_IS_WEB && !ENVIRONMENT_IS_NODE && !ENVIR
 
 // The way we signal to a worker that it is hosting a pthread is to construct
 // it with a specific name.
-var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && self.name?.startsWith('em-pthread');
+var ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && {{{ pthreadDetection() }}}
 
 #if MODULARIZE && ASSERTIONS
 if (ENVIRONMENT_IS_PTHREAD) {
@@ -119,25 +116,25 @@ if (ENVIRONMENT_IS_NODE) {
 
 #if PTHREADS || WASM_WORKERS
   var worker_threads = require('node:worker_threads');
-  global.Worker = worker_threads.Worker;
+  globalThis.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 #if PTHREADS
   // Under node we set `workerData` to `em-pthread` to signal that the worker
   // is hosting a pthread.
-  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-pthread'
+  ENVIRONMENT_IS_PTHREAD = ENVIRONMENT_IS_WORKER && worker_threads.workerData == 'em-pthread'
 #endif // PTHREADS
 #if WASM_WORKERS
-  ENVIRONMENT_IS_WASM_WORKER = ENVIRONMENT_IS_WORKER && worker_threads['workerData'] == 'em-ww'
+  ENVIRONMENT_IS_WASM_WORKER = ENVIRONMENT_IS_WORKER && worker_threads.workerData == 'em-ww'
 #endif
 #endif // PTHREADS || WASM_WORKERS
 }
-#endif // ENVIRONMENT_MAY_BE_NODE
+#endif // ENVIRONMENT_MAY_BE_NODE && (EXPORT_ES6 || PTHREADS || WASM_WORKERS)
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
 {{{ preJS() }}}
 
-var arguments_ = [];
+var programArgs = [];
 var thisProgram = './this.program';
 var quit_ = (status, toThrow) => {
   throw toThrow;
@@ -216,36 +213,12 @@ if (ENVIRONMENT_IS_NODE) {
     thisProgram = process.argv[1].replace(/\\/g, '/');
   }
 
-  arguments_ = process.argv.slice(2);
+  programArgs = process.argv.slice(2);
 
 #if !MODULARIZE
   // MODULARIZE will export the module in the proper place outside, we don't need to export here
   if (typeof module != 'undefined') {
     module['exports'] = Module;
-  }
-#endif
-
-#if NODEJS_CATCH_EXIT
-  process.on('uncaughtException', (ex) => {
-    // suppress ExitStatus exceptions from showing an error
-#if RUNTIME_DEBUG
-    dbg(`node: uncaughtException: ${ex}`)
-#endif
-    if (ex !== 'unwind' && !(ex instanceof ExitStatus) && !(ex.context instanceof ExitStatus)) {
-      throw ex;
-    }
-  });
-#endif
-
-#if NODEJS_CATCH_REJECTION
-  // Without this older versions of node (< v15) will log unhandled rejections
-  // but return 0, which is not normally the desired behaviour.  This is
-  // not be needed with node v15 and about because it is now the default
-  // behaviour:
-  // See https://nodejs.org/api/cli.html#cli_unhandled_rejections_mode
-  var nodeMajor = process.versions.node.split(".")[0];
-  if (nodeMajor < 15) {
-    process.on('unhandledRejection', (reason) => { throw reason; });
   }
 #endif
 
@@ -280,11 +253,8 @@ if (ENVIRONMENT_IS_SHELL) {
 
   globalThis.clearTimeout ??= (id) => {};
 
-  // spidermonkey lacks setTimeout but we use it above in readAsync.
-  globalThis.setTimeout ??= (f) => f();
-
-  // v8 uses `arguments_` whereas spidermonkey uses `scriptArgs`
-  arguments_ = globalThis.arguments || globalThis.scriptArgs;
+  // v8 and jsc both use `arguments`. spidermonkey uses `scriptArgs`
+  programArgs = globalThis.arguments ?? globalThis.scriptArgs;
 
   if (globalThis.quit) {
     quit_ = (status, toThrow) => {
@@ -311,11 +281,11 @@ if (ENVIRONMENT_IS_SHELL) {
     };
   }
 
-  if (typeof print != 'undefined') {
-    // Prefer to use print/printErr where they exist, as they usually work better.
+  if (globalThis.print) {
+    // Use `print` to implement console.log/error/warn as needed.
     globalThis.console ??= /** @type{!Console} */({});
-    console.log = /** @type{!function(this:Console, ...*): undefined} */ (print);
-    console.warn = console.error = /** @type{!function(this:Console, ...*): undefined} */ (globalThis.printErr ?? print);
+    console.log ??= /** @type{!function(this:Console, ...*): undefined} */ (print);
+    console.warn ??= console.error ??= /** @type{!function(this:Console, ...*): undefined} */ (globalThis.printErr ?? print);
   }
 
 #if WASM == 2
@@ -409,24 +379,24 @@ assert(
 #if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
   ENVIRONMENT_IS_AUDIO_WORKLET ||
 #endif
-  ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'Pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
+  ENVIRONMENT_IS_WEB || ENVIRONMENT_IS_WORKER || ENVIRONMENT_IS_NODE, 'pthreads do not work in this environment yet (need Web Workers, or an alternative to them)');
 #else
 #endif // PTHREADS
 
 #if !ENVIRONMENT_MAY_BE_WEB
-assert(!ENVIRONMENT_IS_WEB, 'web environment detected but not enabled at build time.  Add `web` to `-sENVIRONMENT` to enable.');
+assert(!ENVIRONMENT_IS_WEB, 'web environment detected but not enabled at build time (add `web` to `-sENVIRONMENT` to enable)');
 #endif
 
 #if !ENVIRONMENT_MAY_BE_WORKER
-assert(!ENVIRONMENT_IS_WORKER, 'worker environment detected but not enabled at build time.  Add `worker` to `-sENVIRONMENT` to enable.');
+assert(!ENVIRONMENT_IS_WORKER, 'worker environment detected but not enabled at build time (add `worker` to `-sENVIRONMENT` to enable)');
 #endif
 
 #if !ENVIRONMENT_MAY_BE_NODE
-assert(!ENVIRONMENT_IS_NODE, 'node environment detected but not enabled at build time.  Add `node` to `-sENVIRONMENT` to enable.');
+assert(!ENVIRONMENT_IS_NODE, 'node environment detected but not enabled at build time (add `node` to `-sENVIRONMENT` to enable)');
 #endif
 
 #if !ENVIRONMENT_MAY_BE_SHELL
-assert(!ENVIRONMENT_IS_SHELL, 'shell environment detected but not enabled at build time.  Add `shell` to `-sENVIRONMENT` to enable.');
+assert(!ENVIRONMENT_IS_SHELL, 'shell environment detected but not enabled at build time (add `shell` to `-sENVIRONMENT` to enable)');
 #endif
 
 #endif // ASSERTIONS

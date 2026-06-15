@@ -11,6 +11,7 @@
 #include <emscripten/emscripten.h>
 #include <emscripten/heap.h>
 #include <emscripten/html5.h>
+#include <emscripten/syscalls.h>
 #include <errno.h>
 #include <mutex>
 #include <poll.h>
@@ -20,7 +21,6 @@
 #include <sys/mman.h>
 #include <sys/stat.h>
 #include <sys/statfs.h>
-#include <syscall_arch.h>
 #include <unistd.h>
 #include <utility>
 #include <vector>
@@ -50,8 +50,10 @@ extern "C" {
 using namespace wasmfs;
 
 int __syscall_dup3(int oldfd, int newfd, int flags) {
-  if (flags & !O_CLOEXEC) {
-    // TODO: Test this case.
+  if (flags & ~O_CLOEXEC) {
+    return -EINVAL;
+  }
+  if (oldfd == newfd) {
     return -EINVAL;
   }
 
@@ -62,9 +64,6 @@ int __syscall_dup3(int oldfd, int newfd, int flags) {
   }
   if (newfd < 0 || newfd >= WASMFS_FD_MAX) {
     return -EBADF;
-  }
-  if (oldfd == newfd) {
-    return -EINVAL;
   }
 
   // If the file descriptor newfd was previously open, it will just be
@@ -459,6 +458,7 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 
       // Mask out everything except the permissions bits.
       mode &= S_IALLUGO;
+      mode &= ~wasmFS.getUmask();
 
       // If there is no explicitly provided backend, use the parent's backend.
       if (!backend) {
@@ -619,6 +619,7 @@ doMkdir(path::ParsedParent parsed, int mode, backend_t backend = NullBackend) {
   // This prevents users from entering S_IFREG for example.
   // https://www.gnu.org/software/libc/manual/html_node/Permission-Bits.html
   mode &= S_IRWXUGO | S_ISVTX;
+  mode &= ~wasmFS.getUmask();
 
   if (!(lockedParent.getMode() & WASMFS_PERM_WRITE)) {
     return -EACCES;
@@ -664,6 +665,12 @@ int wasmfs_create_directory(char* path, int mode, backend_t backend) {
 // TODO: Test this.
 int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
   return doMkdir(path::parseParent((char*)path, dirfd), mode);
+}
+
+int __syscall_umask(int mask) {
+  mode_t old = wasmFS.getUmask();
+  wasmFS.setUmask(mask);
+  return old;
 }
 
 __wasi_errno_t __wasi_fd_seek(__wasi_fd_t fd,
@@ -1307,7 +1314,28 @@ int __syscall_ioctl(int fd, int request, ...) {
   if (!openFile) {
     return -EBADF;
   }
-  if (!isTTY(openFile->locked().getFile())) {
+
+  va_list args;
+  va_start(args, request);
+  void* argp = va_arg(args, void*);
+  va_end(args);
+
+  auto openHandle = openFile->locked();
+  auto file = openHandle.getFile();
+
+  if (request == FIONREAD) {
+    off_t size = file->locked().getSize();
+    if (size < 0) {
+      return (int)size;
+    }
+    if (file->isSeekable()) {
+      size -= openHandle.getPosition();
+    }
+    *static_cast<int*>(argp) = static_cast<int>(size);
+    return 0;
+  }
+
+  if (!isTTY(file)) {
     return -ENOTTY;
   }
   // TODO: Full TTY support. For now this is limited, and matches the old FS.
@@ -1331,8 +1359,11 @@ int __syscall_ioctl(int fd, int request, ...) {
   }
 }
 
-int __syscall_pipe(intptr_t fd) {
+int __syscall_pipe2(intptr_t fd, int flags) {
   auto* fds = (__wasi_fd_t*)fd;
+  if (flags && flags != O_CLOEXEC) {
+    return -ENOTSUP;
+  }
 
   // Make a pipe: Two PipeFiles that share a single data source between them, so
   // that writing to one can be read in the other.
@@ -1403,6 +1434,12 @@ int __syscall_poll(intptr_t fds_, int nfds, int timeout) {
   //       to web limitations, which we should perhaps revisit (especially with
   //       pthreads and asyncify).
   return nonzero;
+}
+
+// libc routes zero-timeout poll() calls here (see musl's poll.c). WasmFS's
+// __syscall_poll never blocks, so the zero-timeout probe is the same call.
+int __syscall_poll_nonblocking(intptr_t fds, int nfds) {
+  return __syscall_poll(fds, nfds, 0);
 }
 
 int __syscall_fallocate(int fd, int mode, off_t offset, off_t len) {
@@ -1487,19 +1524,12 @@ int __syscall_fcntl64(int fd, int cmd, ...) {
       va_start(v1, cmd);
       flags = va_arg(v1, int);
       va_end(v1);
+
+      auto lockedOpenFile = openFile->locked();
+      auto oldFlags = lockedOpenFile.getFlags();
       // This syscall should ignore most flags.
-      flags = flags & ~(O_RDONLY | O_WRONLY | O_RDWR | O_CREAT | O_EXCL |
-                        O_NOCTTY | O_TRUNC);
-      // Also ignore this flag which musl always adds constantly, but does not
-      // matter for us.
-      flags = flags & ~O_LARGEFILE;
-      // On linux only a few flags can be modified, and we support only a subset
-      // of those. Error on anything else.
-      auto supportedFlags = flags & O_APPEND;
-      if (flags != supportedFlags) {
-        return -EINVAL;
-      }
-      openFile->locked().setFlags(flags);
+      int mask = O_APPEND | O_NONBLOCK | O_ASYNC | O_DIRECT | O_NOATIME;
+      lockedOpenFile.setFlags((oldFlags & ~mask) | (flags & mask));
       return 0;
     }
     case F_GETLK: {

@@ -6,6 +6,7 @@
  */
 
 #include <stdio.h>
+
 int main() {
   int x = 10;
   int y = __sync_add_and_fetch(&x, 5);
@@ -21,5 +22,13 @@ int main() {
   printf("*%d,%d*\n", x, y);
   y = __sync_bool_compare_and_swap(&x, 10, 7);
   printf("*%d,%d*\n", x, y);
+
+  // Test 128-bit CAS
+  __int128 val128 = 0;
+  __int128 expected = 0;
+  __int128 desired = 42;
+  __int128 result = __sync_val_compare_and_swap(&val128, expected, desired);
+  printf("__sync_val_compare_and_swap: %lld %lld\n", (uint64_t)result, (uint64_t)val128);
+
   return 0;
 }

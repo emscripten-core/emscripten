@@ -3,8 +3,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Shared code specific to emscripten.  General purpose and low-level helpers belong instead in
-utils.py."""
+"""Shared code specific to emscripten.
+
+General purpose and low-level helpers belong instead in utils.py.
+"""
 
 import atexit
 import logging
@@ -19,17 +21,23 @@ from subprocess import PIPE
 
 from .toolchain_profiler import ToolchainProfiler
 
-# We depend on python 3.10 features
-if sys.version_info < (3, 10): # noqa: UP036
-  print(f'error: emscripten requires python 3.10 or above ({sys.executable} {sys.version})', file=sys.stderr)
-  sys.exit(1)
+assert sys.version_info >= (3, 10), f'emscripten requires python 3.10 or above ({sys.executable} {sys.version})'
 
 from . import colored_logger
+from .utils import (
+  exe_path_from_root,
+  exit_with_error,
+  get_env_bool,
+  get_env_int,
+  memoize,
+  path_from_root,
+  safe_ensure_dirs,
+)
 
 # Configure logging before importing any other local modules so even
 # log message during import are shown as expected.
-DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
-EMCC_LOGGING = int(os.environ.get('EMCC_LOGGING', '1'))
+DEBUG = get_env_int('EMCC_DEBUG')
+EMCC_LOGGING = get_env_bool('EMCC_LOGGING', '1')
 log_level = logging.ERROR
 if DEBUG:
   log_level = logging.DEBUG
@@ -43,10 +51,9 @@ import contextlib
 
 from . import cache, config, diagnostics, filelock, tempfiles, utils
 from .settings import settings
-from .utils import exe_path_from_root, exit_with_error, memoize, path_from_root, safe_ensure_dirs
 
-DEBUG_SAVE = DEBUG or int(os.environ.get('EMCC_DEBUG_SAVE', '0'))
-PRINT_SUBPROCS = int(os.getenv('EMCC_VERBOSE', '0'))
+DEBUG_SAVE = DEBUG or get_env_bool('EMCC_DEBUG_SAVE')
+PRINT_SUBPROCS = get_env_bool('EMCC_VERBOSE')
 SKIP_SUBPROCS = False
 
 # Minimum node version required to run the emscripten compiler.  This is
@@ -70,6 +77,8 @@ diagnostics.add_warning('absolute-paths', enabled=False, part_of_all=False)
 diagnostics.add_warning('almost-asm')
 diagnostics.add_warning('experimental')
 # Don't show legacy settings warnings by default
+# See https://github.com/emscripten-core/emscripten/pull/10615 for the rationale
+# behind not showing this warning by default.
 diagnostics.add_warning('legacy-settings', enabled=False, part_of_all=False)
 # Catch-all for other emcc warnings
 diagnostics.add_warning('linkflags')
@@ -81,7 +90,6 @@ diagnostics.add_warning('export-main')
 diagnostics.add_warning('map-unrecognized-libraries')
 diagnostics.add_warning('unused-command-line-argument', shared=True)
 diagnostics.add_warning('pthreads-mem-growth')
-diagnostics.add_warning('transpile')
 diagnostics.add_warning('limited-postlink-optimizations')
 diagnostics.add_warning('em-js-i64')
 diagnostics.add_warning('js-compiler')
@@ -105,13 +113,12 @@ def run_multiple_processes(commands,
                            env=None,
                            route_stdout_to_temp_files_suffix=None,
                            cwd=None):
-  """Runs multiple subprocess commands.
+  """Run multiple subprocess commands.
 
   route_stdout_to_temp_files_suffix : string
     if not None, all stdouts are instead written to files, and an array
     of filenames is returned.
   """
-
   if env is None:
     env = os.environ.copy()
 
@@ -200,7 +207,7 @@ def run_js_tool(filename, jsargs=[], node_args=[], **kw):  # noqa: B006
   This is used by emcc to run parts of the build process that are
   implemented in javascript.
   """
-  command = config.NODE_JS + node_args + [filename] + jsargs
+  command = [*config.NODE_JS, *node_args, filename, *jsargs]
   return check_call(command, **kw).stdout
 
 
@@ -208,7 +215,7 @@ def get_npm_cmd(name, missing_ok=False):
   if utils.WINDOWS:
     cmd = [path_from_root('node_modules/.bin', name + '.cmd')]
   else:
-    cmd = config.NODE_JS + [path_from_root('node_modules/.bin', name)]
+    cmd = [*config.NODE_JS, path_from_root('node_modules/.bin', name)]
   if not os.path.exists(cmd[-1]):
     if missing_ok:
       return None
@@ -278,7 +285,7 @@ def env_with_node_in_path():
 
 
 def _get_node_version_pair(nodejs):
-  actual = utils.run_process(nodejs + ['--version'], stdout=PIPE).stdout.strip()
+  actual = utils.run_process([*nodejs, '--version'], stdout=PIPE).stdout.strip()
   version = actual.removeprefix('v')
   version = version.split('-')[0].split('.')
   version = tuple(int(v) for v in version)
@@ -327,20 +334,11 @@ def node_exception_flags(nodejs):
   return []
 
 
-def node_pthread_flags(nodejs):
-  node_version = get_node_version(nodejs)
-  # bulk memory and wasm threads were enabled by default in node v16.
-  if node_version and node_version < (16, 0, 0):
-    return ['--experimental-wasm-bulk-memory', '--experimental-wasm-threads']
-  else:
-    return []
-
-
 @memoize
 @ToolchainProfiler.profile()
 def check_node():
   try:
-    utils.run_process(config.NODE_JS + ['-e', 'console.log("hello")'], stdout=PIPE)
+    utils.run_process([*config.NODE_JS, '-e', 'console.log("hello")'], stdout=PIPE)
   except Exception as e:
     exit_with_error('the configured node executable (%s) does not seem to work, check the paths in %s (%s)', config.NODE_JS, config.EM_CONFIG, e)
 
@@ -357,7 +355,7 @@ def perform_sanity_checks(quiet=False):
 
   llvm_ok = check_llvm()
 
-  if os.environ.get('EM_IGNORE_SANITY'):
+  if utils.get_env_bool('EM_IGNORE_SANITY'):
     logger.info('EM_IGNORE_SANITY set, ignoring sanity checks')
     return
 
@@ -377,15 +375,14 @@ def perform_sanity_checks(quiet=False):
 
 @ToolchainProfiler.profile()
 def check_sanity(force=False, quiet=False):
-  """Check that basic stuff we need (a JS engine to compile, Node.js, and Clang
-  and LLVM) exists.
+  """Check that basic stuff we need (Node.js, and Clang and LLVM) exists.
 
   The test runner always does this check (through |force|). emcc does this less
   frequently, only when ${EM_CONFIG}_sanity does not exist or is older than
   EM_CONFIG (so, we re-check sanity when the settings are changed).  We also
   re-check sanity and clear the cache when the version changes.
   """
-  if not force and os.environ.get('EMCC_SKIP_SANITY_CHECK') == '1':
+  if not force and utils.get_env_bool('EMCC_SKIP_SANITY_CHECK'):
     return
 
   # We set EMCC_SKIP_SANITY_CHECK so that any subprocesses that we launch will
@@ -402,7 +399,7 @@ def check_sanity(force=False, quiet=False):
       perform_sanity_checks(quiet)
     return
 
-  if os.environ.get('EM_IGNORE_SANITY'):
+  if utils.get_env_bool('EM_IGNORE_SANITY'):
     perform_sanity_checks(quiet)
     return
 
@@ -481,7 +478,7 @@ def replace_or_append_suffix(filename, new_suffix):
 # temp directory (TEMP_DIR/emscripten_temp).
 @memoize
 def get_emscripten_temp_dir():
-  """Returns a path to EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist."""
+  """Return path of EMSCRIPTEN_TEMP_DIR, creating one if it didn't exist."""
   global EMSCRIPTEN_TEMP_DIR
   if not EMSCRIPTEN_TEMP_DIR:
     EMSCRIPTEN_TEMP_DIR = tempfile.mkdtemp(prefix='emscripten_temp_', dir=TEMP_DIR)
@@ -509,7 +506,7 @@ def setup_temp_dirs():
   global EMSCRIPTEN_TEMP_DIR, CANONICAL_TEMP_DIR, TEMP_DIR
   EMSCRIPTEN_TEMP_DIR = None
 
-  TEMP_DIR = os.environ.get("EMCC_TEMP_DIR", tempfile.gettempdir())
+  TEMP_DIR = os.environ.get('EMCC_TEMP_DIR', tempfile.gettempdir())
   if not os.path.isdir(TEMP_DIR):
     exit_with_error(f'The temporary directory `{TEMP_DIR}` does not exist! Please make sure that the path is correct.')
 
@@ -550,8 +547,7 @@ def get_temp_files():
 
 
 def print_compiler_stage(cmd):
-  """Emulate the '-v/-###' flags of clang/gcc by printing the sub-commands
-  that we run."""
+  """Emulate the '-v/-###' flags of clang/gcc by printing the sub-commands that we run."""
 
   def maybe_quote(arg):
     if all(c.isalnum() or c in './-_' for c in arg):
@@ -583,13 +579,13 @@ def is_internal_global(name):
                                  '__start_em_lib_deps', '__stop_em_lib_deps',
                                  '__em_lib_deps'}
   internal_prefixes = ('__em_js__', '__em_lib_deps')
-  return name in internal_start_stop_symbols or any(name.startswith(p) for p in internal_prefixes)
+  return name in internal_start_stop_symbols or name.startswith(internal_prefixes)
 
 
 def is_user_export(name):
   if is_internal_global(name):
     return False
-  return name not in ['__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'] and not name.startswith(('dynCall_', 'orig$'))
+  return name not in {'__asyncify_data', '__asyncify_state', '__indirect_function_table', 'memory'} and not name.startswith(('dynCall_', 'orig$'))
 
 
 def asmjs_mangle(name):

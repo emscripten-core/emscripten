@@ -13,6 +13,7 @@ var SyscallsLibrary = {
   ],
   $SYSCALLS: {
 #if SYSCALLS_REQUIRE_FILESYSTEM
+    currentUmask: 0o022,
     // global constants
 
     // shared utilities
@@ -194,13 +195,22 @@ var SyscallsLibrary = {
     var old = SYSCALLS.getStreamFromFD(fd);
     return FS.dupStream(old).fd;
   },
-  __syscall_pipe__deps: ['$PIPEFS'],
-  __syscall_pipe: (fdPtr) => {
+  __syscall_pipe2__deps: ['$PIPEFS'],
+  __syscall_pipe2: (fdPtr, flags) => {
     if (fdPtr == 0) {
       throw new FS.ErrnoError({{{ cDefs.EFAULT }}});
     }
+    var validFlags = {{{ cDefs.O_CLOEXEC }}} | {{{ cDefs.O_NONBLOCK }}};
+    if (flags & ~validFlags) {
+      throw new FS.ErrnoError({{{ cDefs.ENOTSUP }}});
+    }
 
     var res = PIPEFS.createPipe();
+
+    if (flags & {{{ cDefs.O_NONBLOCK }}}) {
+      FS.getStream(res.readable_fd).flags |= {{{ cDefs.O_NONBLOCK }}};
+      FS.getStream(res.writable_fd).flags |= {{{ cDefs.O_NONBLOCK }}};
+    }
 
     {{{ makeSetValue('fdPtr', 0, 'res.readable_fd', 'i32') }}};
     {{{ makeSetValue('fdPtr', 4, 'res.writable_fd', 'i32') }}};
@@ -336,7 +346,7 @@ var SyscallsLibrary = {
     if (info.errno) throw new FS.ErrnoError(info.errno);
     info.addr = DNS.lookup_addr(info.addr) || info.addr;
 #if SYSCALL_DEBUG
-    dbg('    (socketaddress: "' + [info.addr, info.port] + '")');
+    dbg(`    (socketaddress: "${[info.addr, info.port]}")`);
 #endif
     return info;
   },
@@ -543,7 +553,7 @@ var SyscallsLibrary = {
   },
   _msync_js__i53abi: true,
   _msync_js: (addr, len, prot, flags, fd, offset) => {
-    if (isNaN(offset)) return -{{{ cDefs.EOVERFLOW }}};
+    if (isNaN(offset)) return -{{{ cDefs.EFBIG }}};
     SYSCALLS.doMsync(addr, SYSCALLS.getStreamFromFD(fd), len, flags, offset);
     return 0;
   },
@@ -553,6 +563,7 @@ var SyscallsLibrary = {
   },
   __syscall_poll__proxy: 'sync',
   __syscall_poll__async: 'auto',
+  __syscall_poll__deps: ['$doPoll'],
   __syscall_poll: (fds, nfds, timeout) => {
 #if PTHREADS || ASYNCIFY
 #if PTHREADS
@@ -612,9 +623,31 @@ var SyscallsLibrary = {
         }, timeout);
         cleanupFuncs.push(() => clearTimeout(t));
       }
+      // A zero timeout never registers notifications: the derivation alone
+      // answers, matching the non-blocking probe.
+      var count = doPoll(fds, nfds, timeout, makeNotifyCallback);
+      if (count || !timeout) {
+        asyncPollComplete(count);
+      }
+      return promise;
     }
 #endif
 
+    var count = doPoll(fds, nfds, 0, undefined);
+#if ASSERTIONS
+    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
+#endif
+    return count;
+  },
+  // The shared readiness derivation: one pass over the pollfds, writing
+  // revents and returning the ready count. With a nonzero `timeout`, a
+  // readiness notification is also registered on each stream by the same
+  // `stream_ops.poll` call that derives it, so there is no window between
+  // registration and derivation; a zero `timeout` means the caller will not
+  // wait, so no notification is registered (the plain probe).
+  $doPoll__internal: true,
+  $doPoll__deps: ['$FS'],
+  $doPoll: (fds, nfds, timeout, makeNotifyCallback) => {
     var count = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
@@ -624,12 +657,9 @@ var SyscallsLibrary = {
       var stream = FS.getStream(fd);
       if (stream) {
         if (stream.stream_ops.poll) {
-#if PTHREADS || ASYNCIFY
-          if (isAsyncContext && timeout) {
-            flags = stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd));
-          } else
-#endif
-          flags = stream.stream_ops.poll(stream, -1);
+          flags = timeout
+            ? stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd))
+            : stream.stream_ops.poll(stream, -1);
         } else {
           flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
         }
@@ -638,20 +668,17 @@ var SyscallsLibrary = {
       if (flags) count++;
       {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
     }
-
-#if PTHREADS || ASYNCIFY
-    if (isAsyncContext) {
-      if (count || !timeout) {
-        asyncPollComplete(count);
-      }
-      return promise;
-    }
-#endif
-
-#if ASSERTIONS
-    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
-#endif
     return count;
+  },
+  // libc routes zero-timeout poll() calls here: the same synchronous
+  // readiness derivation as __syscall_poll, but as a plain import that never
+  // suspends, so probes stay callable from any context (under JSPI,
+  // __syscall_poll is a suspending import and traps when called from a stack
+  // that wasn't entered through a promising export).
+  __syscall_poll_nonblocking__proxy: 'sync',
+  __syscall_poll_nonblocking__deps: ['$doPoll'],
+  __syscall_poll_nonblocking: (fds, nfds) => {
+    return doPoll(fds, nfds, 0, undefined);
   },
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
@@ -664,14 +691,14 @@ var SyscallsLibrary = {
   },
   __syscall_truncate64__i53abi: true,
   __syscall_truncate64: (path, length) => {
-    if (isNaN(length)) return -{{{ cDefs.EOVERFLOW }}};
+    if (isNaN(length)) return -{{{ cDefs.EFBIG }}};
     path = SYSCALLS.getStr(path);
     FS.truncate(path, length);
     return 0;
   },
   __syscall_ftruncate64__i53abi: true,
   __syscall_ftruncate64: (fd, length) => {
-    if (isNaN(length)) return -{{{ cDefs.EOVERFLOW }}};
+    if (isNaN(length)) return -{{{ cDefs.EFBIG }}};
     FS.ftruncate(fd, length);
     return 0;
   },
@@ -776,7 +803,8 @@ var SyscallsLibrary = {
         return stream.flags;
       case {{{ cDefs.F_SETFL }}}: {
         var arg = syscallGetVarargI();
-        stream.flags |= arg;
+        var mask = {{{ cDefs.O_APPEND | cDefs.O_ASYNC | cDefs.O_DIRECT | cDefs.O_NOATIME | cDefs.O_NONBLOCK }}};
+        stream.flags = (stream.flags & ~mask) | (arg & mask);
         return 0;
       }
       case {{{ cDefs.F_GETLK }}}: {
@@ -821,25 +849,32 @@ var SyscallsLibrary = {
     SYSCALLS.writeStatFs(buf, FS.statfsStream(stream));
     return 0;
   },
-  __syscall_fadvise64__nothrow: true,
-  __syscall_fadvise64__proxy: 'none',
-  __syscall_fadvise64: (fd, offset, len, advice) => 0,
   __syscall_openat__deps: ['$syscallGetVarargI'],
   __syscall_openat: (dirfd, path, flags, varargs) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
     var mode = varargs ? syscallGetVarargI() : 0;
+    if (flags & {{{ cDefs.O_CREAT }}}) {
+      mode &= ~SYSCALLS.currentUmask;
+    }
     return FS.open(path, flags, mode).fd;
+  },
+  __syscall_umask: (mask) => {
+    var old = SYSCALLS.currentUmask;
+    SYSCALLS.currentUmask = mask;
+    return old;
   },
   __syscall_mkdirat: (dirfd, path, mode) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
+    mode &= ~SYSCALLS.currentUmask;
     FS.mkdir(path, mode, 0);
     return 0;
   },
   __syscall_mknodat: (dirfd, path, mode, dev) => {
     path = SYSCALLS.getStr(path);
     path = SYSCALLS.calculateAt(dirfd, path);
+    mode &= ~SYSCALLS.currentUmask;
     // we don't want this in the JS API as it uses mknod to create all nodes.
     switch (mode & {{{ cDefs.S_IFMT }}}) {
       case {{{ cDefs.S_IFREG }}}:
@@ -989,7 +1024,7 @@ var SyscallsLibrary = {
   },
   __syscall_fallocate__i53abi: true,
   __syscall_fallocate: (fd, mode, offset, len) => {
-    if (isNaN(offset) || isNaN(len)) return -{{{ cDefs.EOVERFLOW }}};
+    if (isNaN(offset) || isNaN(len)) return -{{{ cDefs.EFBIG }}};
     if (mode != 0) {
       return -{{{ cDefs.ENOTSUP }}}
     }
@@ -1006,21 +1041,23 @@ var SyscallsLibrary = {
     return 0;
   },
   __syscall_dup3: (fd, newfd, flags) => {
+    if (fd === newfd) return -{{{ cDefs.EINVAL }}};
+    if (flags & ~{{{ cDefs.O_CLOEXEC }}}) return -{{{ cDefs.EINVAL }}};
     var old = SYSCALLS.getStreamFromFD(fd);
-#if ASSERTIONS
-    assert(!flags);
-#endif
-    if (old.fd === newfd) return -{{{ cDefs.EINVAL }}};
     // Check newfd is within range of valid open file descriptors.
     if (newfd < 0 || newfd >= FS.MAX_OPEN_FDS) return -{{{ cDefs.EBADF }}};
     var existing = FS.getStream(newfd);
     if (existing) FS.close(existing);
-    return FS.dupStream(old, newfd).fd;
+    var stream = FS.dupStream(old, newfd);
+    if (flags & {{{ cDefs.O_CLOEXEC }}}) {
+      stream.flags |= {{{ cDefs.O_CLOEXEC }}};
+    }
+    return stream.fd;
   },
 };
 
-for (var x in SyscallsLibrary) {
-  wrapSyscallFunction(x, SyscallsLibrary, false);
+for (const name of Object.keys(SyscallsLibrary)) {
+  wrapSyscallFunction(name, SyscallsLibrary, false);
 }
 
 addToLibrary(SyscallsLibrary);

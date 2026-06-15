@@ -15,12 +15,12 @@
 #include <stdio.h>
 #include <sys/types.h>
 #include <unistd.h>
-#include <syscall_arch.h>
 #include <string.h>
 #include <sys/resource.h>
 #include <sys/stat.h>
 #include <time.h>
 #include <sys/utsname.h>
+#include <emscripten/syscalls.h>
 #include <emscripten/console.h>
 #include <emscripten/version.h>
 #include <emscripten/stack.h>
@@ -29,7 +29,6 @@ static int g_pid = 42;
 static int g_pgid = 42;
 static int g_ppid = 1;
 static int g_sid = 42;
-static mode_t g_umask = S_IWGRP | S_IWOTH;
 
 #ifdef NDEBUG
 #define REPORT(name)
@@ -121,12 +120,6 @@ weak int __syscall_setsid() {
   return 0; // no-op
 }
 
-weak int __syscall_umask(int mask) {
-  int old = g_umask;
-  g_umask = mask;
-  return old;
-}
-
 struct kusage {
   long utime_tv_sec;
   long utime_tv_usec;
@@ -187,14 +180,14 @@ weak int __syscall_getresgid32(intptr_t ruid, intptr_t euid, intptr_t suid) {
   return 0;
 }
 
-weak int __syscall_pause() {
-  REPORT(pause);
-  return -EINTR; // we can't pause
-}
-
 weak int __syscall_madvise(intptr_t addr, size_t length, int advice) {
   REPORT(madvise);
   // advice is welcome, but ignored
+  return 0;
+}
+
+weak int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
+  // this is purely advisory, so we don't warn
   return 0;
 }
 
@@ -262,9 +255,6 @@ weak int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optva
 
 UNIMPLEMENTED(acct, (intptr_t filename))
 UNIMPLEMENTED(mincore, (intptr_t addr, size_t length, intptr_t vec))
-UNIMPLEMENTED(pipe2, (intptr_t fds, int flags))
-UNIMPLEMENTED(pselect6, (int nfds, intptr_t readfds, intptr_t writefds, intptr_t exceptfds, intptr_t timeout, intptr_t sigmaks))
-UNIMPLEMENTED(ppoll, (intptr_t fds, int nfds, intptr_t timeout, intptr_t sigmask, int size))
 UNIMPLEMENTED(recvmmsg, (int sockfd, intptr_t msgvec, size_t vlen, int flags, ...))
 UNIMPLEMENTED(sendmmsg, (int sockfd, intptr_t msgvec, size_t vlen, int flags, ...))
 UNIMPLEMENTED(shutdown, (int sockfd, int how, int dummy, int dummy2, int dummy3, int dummy4))

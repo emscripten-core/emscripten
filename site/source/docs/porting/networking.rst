@@ -96,3 +96,9 @@ Direct UDP communication is not available in browsers, but as a close
 alternative, the WebRTC specification provides a mechanism to perform UDP-like
 communication with WebRTC Data Channels. Currently Emscripten does not provide a
 C/C++ API for interacting with WebRTC.
+
+WebTransport and QUIC
+=====================
+
+WebTransport may be used to send UDP like datagrams over QUIC.
+Currently Emscripten does not provide a C/C++ API for interacting with WebTransport.

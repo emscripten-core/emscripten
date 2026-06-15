@@ -135,15 +135,7 @@ def make_invoke(sig):
   exceptional_ret = '\n    return 0n;' if legal_sig[0] == 'j' else ''
   body = '%s%s;' % (ret, make_dynCall(sig, args))
   # Create a try-catch guard that rethrows the Emscripten EH exception.
-  if settings.EXCEPTION_STACK_TRACES:
-    # Exceptions thrown from C++ and longjmps will be an instance of
-    # EmscriptenEH.
-    maybe_rethrow = 'if (!(e instanceof EmscriptenEH)) throw e;'
-  else:
-    # Exceptions thrown from C++ will be a pointer (number) and longjmp will
-    # throw the number Infinity. Use the compact and fast "e !== e+0" test to
-    # check if e was not a Number.
-    maybe_rethrow = 'if (e !== e+0) throw e;'
+  maybe_rethrow = 'if (!(e instanceof EmscriptenEH)) throw e;'
 
   ret = '''\
 function invoke_%s(%s) {

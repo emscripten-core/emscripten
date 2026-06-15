@@ -13,7 +13,6 @@
 #include "emscripten_internal.h"
 
 extern struct sigaction __sig_actions[_NSIG];
-extern sigset_t __sig_pending;
 
 bool __sig_is_blocked(int sig);
 
@@ -71,10 +70,10 @@ int raise(int sig) {
         handler(sig);
       }
     } else if (handler != SIG_IGN) {
-        // Avoid a direct call to the handler, and instead call via JS so we can
-        // avoid strict signature checking.
-        // https://github.com/emscripten-core/posixtestsuite/issues/6
-        __call_sighandler(handler, sig);
+      // Avoid a direct call to the handler, and instead call via JS so we can
+      // avoid strict signature checking.
+      // https://github.com/emscripten-core/posixtestsuite/issues/6
+      __call_sighandler(handler, sig);
     }
   }
   return 0;

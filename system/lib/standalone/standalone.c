@@ -66,7 +66,11 @@ weak int _munmap_js(
   return -ENOSYS;
 }
 
-weak int _poll_js(void *fds, int nfds, int timeout, void* ctx, void* arg) {
+weak int __syscall_poll(intptr_t fds, int nfds, int timeout) {
+  return -ENOSYS;
+}
+
+weak int __syscall_poll_nonblocking(intptr_t fds, int nfds) {
   return -ENOSYS;
 }
 
@@ -128,7 +132,7 @@ size_t emscripten_get_heap_max() {
   return emscripten_get_heap_size();
 }
 
-int emscripten_resize_heap(size_t size) {
+bool emscripten_resize_heap(size_t size) {
 #if defined(EMSCRIPTEN_MEMORY_GROWTH)
   size_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
   assert(old_size < size);
@@ -139,10 +143,10 @@ int emscripten_resize_heap(size_t size) {
     // Success, update JS (see https://github.com/WebAssembly/WASI/issues/82)
     emscripten_notify_memory_growth(0);
 #endif
-    return 1;
+    return true;
   }
 #endif
-  return 0;
+  return false;
 }
 
 // Call clock_gettime with a particular clock and return the result in ms.

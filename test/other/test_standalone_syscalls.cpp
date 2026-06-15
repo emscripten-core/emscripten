@@ -24,7 +24,7 @@ int main() {
   assert(f < 0);
 
   // write to standard streams works.
-  write(1, "hello, world!", 5);
+  write(1, "Hello, world!", 5);
   write(1, "\n", 1);
 
   // emscripten_log API works

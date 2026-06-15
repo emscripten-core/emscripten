@@ -1,75 +1,80 @@
-var c = Module, d = "em-ww" == globalThis.name, e, f, y, z, l, A, t;
+var c = Module, d = !!globalThis.WorkerGlobalScope, e = globalThis.name == "em-ww", f, g, C, q, D, m, E, v;
 
-d && (onmessage = a => {
+e && (onmessage = a => {
     onmessage = null;
-    e = a = a.data;
-    f = a.l;
-    g();
-    c ||= {};
-    c.wasm = a.j;
+    f = a = a.data;
+    g = a.o;
     h();
-    a.j = a.l = 0;
+    c ||= {};
+    c.wasm = a.m;
+    k();
+    a.m = a.o = 0;
 });
 
-function g() {}
+function h() {}
 
-d || (f = c.mem || new WebAssembly.Memory({
+e || (g = c.mem || new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0
-}), g());
+}), h());
 
-var k = [], n = a => {
+var l = [], n = a => {
     a = a.data;
-    let b = a._wsc;
-    b && l.get(b)(...a.x);
+    var b = a._wsc;
+    b && m.get(b)(...a.x);
 }, p = a => {
-    k.push(a);
-}, q = {}, r = 1, u = (a, b) => {
-    let m = q[r] = new Worker(c.js, {
+    l.push(a);
+}, r = () => {
+    q(0, !d, !e, d && 1);
+}, u = {}, w = (a, b, z) => {
+    var t = u[a] = new Worker(c.js, {
         name: "em-ww"
     });
-    m.postMessage({
-        s: r,
-        j: t,
-        l: f,
-        m: a,
-        o: b
+    t.postMessage({
+        A: a,
+        m: v,
+        o: g,
+        u: b,
+        v: z
     });
-    m.onmessage = n;
-    return r++;
-}, v = () => !1, w = (a, b) => {
-    q[a].postMessage({
+    t.onmessage = n;
+    return !0;
+}, x = () => performance.now(), y = () => !1, A = (a, b) => {
+    u[a].postMessage({
         _wsc: b,
         x: []
     });
 };
 
-d && (q[0] = globalThis, addEventListener("message", p));
+e && (u[0] = globalThis, addEventListener("message", p));
 
-function x() {
+function B() {
     console.log("Hello from wasm worker!");
 }
 
-function h() {
-    A = {
-        b: u,
-        c: v,
-        d: w,
-        e: x,
-        a: f
+function k() {
+    E = {
+        d: r,
+        c: w,
+        b: x,
+        e: y,
+        f: A,
+        g: B,
+        a: g
     };
     WebAssembly.instantiate(c.wasm, {
-        a: A
+        a: E
     }).then((a => {
         var b = (a.instance || a).exports;
-        t = a.module || c.wasm;
-        y = b.g;
-        z = b.i;
-        l = b.h;
-        d ? (z(e.m, e.o), removeEventListener("message", p), k = k.forEach(n), addEventListener("message", n)) : b.f();
-        d || y();
+        v = a.module || c.wasm;
+        C = b.i;
+        q = b.k;
+        D = b.l;
+        m = b.j;
+        e ? (D(f.A, f.u, f.v), removeEventListener("message", p), l = l.forEach(n), addEventListener("message", n)) : b.h();
+        e || C();
     }));
 }
 
-d || h();
+e || k();

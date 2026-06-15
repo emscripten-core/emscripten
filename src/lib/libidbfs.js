@@ -6,10 +6,7 @@
 
 addToLibrary({
   $IDBFS__deps: ['$FS', '$MEMFS', '$PATH'],
-  $IDBFS__postset: () => {
-    addAtExit('IDBFS.quit();');
-    return '';
-  },
+  $IDBFS__postset: () => addAtExit('IDBFS.quit();'),
   $IDBFS: {
     dbs: {},
     indexedDB: () => {
@@ -21,14 +18,31 @@ addToLibrary({
     DB_VERSION: 21,
     DB_STORE_NAME: 'FILE_DATA',
 
+    // When using the autopersistence mechanism, users can set
+    // IDBFS.onAutoPersistStateChanged callback to receive notification events
+    // for when persistence operations are in-flight. Use the following syntax:
+    /*
+    IDBFS.onAutoPersistStateChanged = autoPersistActive => {
+      if (autoPersistActive) {
+        console.log('IDBFS persistence operation has started.');
+      } else {
+        console.log('IDBFS persistence operation has finished.');
+      }
+    };
+    */
+
     // Queues a new VFS -> IDBFS synchronization operation
     queuePersist: (mount) => {
       function onPersistComplete() {
         if (mount.idbPersistState === 'again') startPersist(); // If a new sync request has appeared in between, kick off a new sync
-        else mount.idbPersistState = 0; // Otherwise reset sync state back to idle to wait for a new sync later
+        else {
+          mount.idbPersistState = 0; // Otherwise reset sync state back to idle to wait for a new sync later
+          IDBFS.onAutoPersistStateChanged?.(false);
+        }
       }
       function startPersist() {
         mount.idbPersistState = 'idb'; // Mark that we are currently running a sync operation
+        IDBFS.onAutoPersistStateChanged?.(true);
         IDBFS.syncfs(mount, /*populate:*/false, onPersistComplete);
       }
 
@@ -180,7 +194,7 @@ addToLibrary({
         var stat;
 
         try {
-          stat = FS.stat(path);
+          stat = FS.lstat(path);
         } catch (e) {
           return callback(e);
         }
@@ -232,13 +246,15 @@ addToLibrary({
       try {
         var lookup = FS.lookupPath(path);
         node = lookup.node;
-        stat = FS.stat(path);
+        stat = FS.lstat(path);
       } catch (e) {
         return callback(e);
       }
 
       if (FS.isDir(stat.mode)) {
         return callback(null, { 'timestamp': stat.mtime, 'mode': stat.mode });
+      } else if (FS.isLink(stat.mode)) {
+        return callback(null, { 'timestamp': stat.mtime, 'mode': stat.mode, 'link': node.link, });
       } else if (FS.isFile(stat.mode)) {
         // Performance consideration: storing a normal JavaScript array to a IndexedDB is much slower than storing a typed array.
         // Therefore always convert the file contents to a typed array first before writing the data to IndexedDB.
@@ -252,6 +268,8 @@ addToLibrary({
       try {
         if (FS.isDir(entry['mode'])) {
           FS.mkdirTree(path, entry['mode']);
+        } else if (FS.isLink(entry['mode'])) {
+          FS.symlink(entry['link'], path);
         } else if (FS.isFile(entry['mode'])) {
           FS.writeFile(path, entry['contents'], { canOwn: true });
         } else {
@@ -268,11 +286,11 @@ addToLibrary({
     },
     removeLocalEntry: (path, callback) => {
       try {
-        var stat = FS.stat(path);
+        var stat = FS.lstat(path);
 
         if (FS.isDir(stat.mode)) {
           FS.rmdir(path);
-        } else if (FS.isFile(stat.mode)) {
+        } else {
           FS.unlink(path);
         }
       } catch (e) {

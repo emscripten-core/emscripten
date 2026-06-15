@@ -17,6 +17,9 @@ addToLibrary({
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_min, 'i32') }}},
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
                         0);
+    if (isNaN(date.getTime())) {
+      return -1;
+    }
 
     // There's an ambiguous hour when the time goes back; the tm_isdst field is
     // used to disambiguate it.  Date() basically guesses, so we fix it up if it
@@ -48,12 +51,8 @@ addToLibrary({
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_mon, 'date.getMonth()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_year, 'date.getYear()', 'i32') }}};
 
-    var timeMs = date.getTime();
-    if (isNaN(timeMs)) {
-      return -1;
-    }
-    // Return time in microseconds
-    return timeMs / 1000;
+    // Return time in seconds
+    return date.getTime() / 1000;
   },
 
   _gmtime_js__i53abi: true,

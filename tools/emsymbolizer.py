@@ -67,13 +67,8 @@ def has_linking_section(module):
   return module.get_custom_section('linking') is not None
 
 
-def symbolize_address_symbolizer(module, address, is_dwarf):
-  if is_dwarf:
-    vma_adjust = get_codesec_offset(module)
-  else:
-    vma_adjust = 0
-  cmd = [LLVM_SYMBOLIZER, '-e', module.filename, f'--adjust-vma={vma_adjust}',
-         str(address)]
+def symbolize_address_symbolizer(module, address):
+  cmd = [LLVM_SYMBOLIZER, '-e', module.filename, str(address)]
   if shared.DEBUG:
     print(f'Running {" ".join(cmd)}')
   out = utils.run_process(cmd, stdout=subprocess.PIPE).stdout.strip()
@@ -122,10 +117,9 @@ class WasmSourceMap:
     self.offsets = []
 
   def parse(self, filename):
-    with open(filename) as f:
-      source_map_json = json.loads(f.read())
-      if shared.DEBUG:
-        print(source_map_json)
+    source_map_json = json.loads(utils.read_file(filename))
+    if shared.DEBUG:
+      print(source_map_json)
 
     self.version = source_map_json['version']
     self.sources = source_map_json['sources']
@@ -244,11 +238,10 @@ def symbolize_address_symbolmap(module, address, symbol_map_file):
     assert ':' in line, f'invalid symbolmap line: {line}'
     return line.split(':', 1)
 
-  with open(symbol_map_file) as f:
-    lines = f.read().splitlines()
-    for line in lines:
-      index, name = split_symbolmap_line(line)
-      func_names[int(index)] = name
+  lines = utils.read_file(symbol_map_file).splitlines()
+  for line in lines:
+    index, name = split_symbolmap_line(line)
+    func_names[int(index)] = name
 
   func_index = -1
   for i, func in module.iter_functions_by_index():
@@ -282,16 +275,16 @@ def main(args):
 
     if ((has_debug_line_section(module) and not args.source) or
        'dwarf' in args.source):
-      print_loc(symbolize_address_symbolizer(module, address, is_dwarf=True))
+      print_loc(symbolize_address_symbolizer(module, address))
     elif ((get_sourceMappingURL_section(module) and not args.source) or
           'sourcemap' in args.source):
       print_loc(symbolize_address_sourcemap(module, address, args.file))
     elif ((has_name_section(module) and not args.source) or
           'names' in args.source):
-      print_loc(symbolize_address_symbolizer(module, address, is_dwarf=False))
+      print_loc(symbolize_address_symbolizer(module, address))
     elif ((has_linking_section(module) and not args.source) or
           'symtab' in args.source):
-      print_loc(symbolize_address_symbolizer(module, address, is_dwarf=False))
+      print_loc(symbolize_address_symbolizer(module, address))
     elif (args.source == 'symbolmap'):
       print_loc(symbolize_address_symbolmap(module, address, args.file))
     else:
@@ -325,6 +318,6 @@ if __name__ == '__main__':
   try:
     rv = main(get_args())
   except (Error, webassembly.InvalidWasmError, OSError) as e:
-    print(f'{sys.argv[0]}: {str(e)}', file=sys.stderr)
+    print(f'{sys.argv[0]}: {e}', file=sys.stderr)
     rv = 1
   sys.exit(rv)

@@ -309,8 +309,7 @@ int main() {
   CHECK_ERR(-100, "Unknown error");
 #endif
 
-  puts("success");
-
-  return EXIT_SUCCESS;
+  puts("done");
+  return 0;
 }
 

@@ -31,7 +31,6 @@ int main() {
 
   assert(len_inet == sizeof(struct sockaddr_in));
 
-  puts("success");
-
-  return EXIT_SUCCESS;
+  puts("done");
+  return 0;
 }

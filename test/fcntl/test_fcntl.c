@@ -57,7 +57,52 @@ int main() {
   printf("\n");
   errno = 0;
 
-  printf("F_GETFL/2: %d\n", !!(fcntl(f, F_GETFL) & (O_RDWR | O_APPEND)));
+  int flags = fcntl(f, F_GETFL);
+  printf("F_GETFL/2 (O_RDWR and O_APPEND): %d %d\n", !!(flags & O_RDWR), !!(flags & O_APPEND));
+  printf("errno: %d\n", errno);
+  printf("\n");
+  errno = 0;
+
+  printf("F_SETFL clear O_APPEND: %d\n", fcntl(f, F_SETFL, flags & ~O_APPEND));
+  printf("errno: %d\n", errno);
+  printf("\n");
+  errno = 0;
+
+  flags = fcntl(f, F_GETFL);
+  printf("F_GETFL/3 (O_RDWR and no O_APPEND): %d %d\n", !!(flags & O_RDWR), !!(flags & O_APPEND));
+  printf("errno: %d\n", errno);
+  printf("\n");
+  errno = 0;
+
+  printf("F_SETFL O_NONBLOCK: %d\n", fcntl(f, F_SETFL, O_NONBLOCK));
+  printf("errno: %d\n", errno);
+  printf("\n");
+  errno = 0;
+
+  flags = fcntl(f, F_GETFL);
+  printf("F_GETFL/4 (O_NONBLOCK): %d\n", !!(flags & O_NONBLOCK));
+  printf("errno: %d\n", errno);
+  printf("\n");
+  errno = 0;
+
+  printf("F_SETFL clear O_NONBLOCK: %d\n", fcntl(f, F_SETFL, 0));
+  printf("errno: %d\n", errno);
+  printf("\n");
+  errno = 0;
+
+  flags = fcntl(f, F_GETFL);
+  printf("F_GETFL/5 (no O_NONBLOCK): %d\n", !!(flags & O_NONBLOCK));
+  printf("errno: %d\n", errno);
+  printf("\n");
+  errno = 0;
+
+  printf("F_SETFL ignore O_TRUNC: %d\n", fcntl(f, F_SETFL, O_TRUNC));
+  printf("errno: %d\n", errno);
+  printf("\n");
+  errno = 0;
+
+  flags = fcntl(f, F_GETFL);
+  printf("F_GETFL/6 (no O_TRUNC): %d\n", !!(flags & O_TRUNC));
   printf("errno: %d\n", errno);
   printf("\n");
   errno = 0;

@@ -4,10 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""
-Wrapper for 'wasm-split --multi-split' functionality. This script generates a
-.manifest file based on the list of user source paths, using source map
-information.
+"""Wrapper for 'wasm-split --multi-split' functionality.
+
+This script generates a .manifest file based on the list of user source paths,
+using source map information.
 
 This assumes the name section exists in the input wasm file, and also assumes
 the sourceMappingURL section exists in the input or a source map file is
@@ -142,9 +142,9 @@ def check_errors(args):
 
   # Check source map validity. Just perform simple checks to make sure mandatory
   # fields exist.
+  json_data = utils.read_file(sourcemap)
   try:
-    with open(sourcemap) as f:
-      source_map_data = json.load(f)
+    source_map_data = json.loads(json_data)
   except json.JSONDecodeError:
     exit_with_error(f'Invalid JSON format in file {args.sourcemap}')
   for field in ['version', 'sources', 'mappings']:
@@ -160,11 +160,11 @@ def get_sourceMappingURL(wasm, arg_sourcemap):
 
 
 def print_sources(sourcemap):
-  with open(sourcemap) as f:
-    sources = json.load(f).get('sources')
-    assert(isinstance(sources, list))
-    for src in sources:
-      print(src)
+  contents = utils.read_file(sourcemap)
+  sources = json.loads(contents).get('sources')
+  assert isinstance(sources, list)
+  for src in sources:
+    print(src)
 
 
 def get_path_to_functions_map(wasm, sourcemap, paths):
@@ -319,7 +319,7 @@ def main():
   path_to_funcs = get_path_to_functions_map(args.wasm, sourcemap, all_paths)
 
   # Write .manifest file
-  f = tempfile.NamedTemporaryFile(suffix=".manifest", mode='w+', delete=False)
+  f = tempfile.NamedTemporaryFile(suffix=".manifest", mode='w', encoding='utf-8', delete=False)
   manifest = f.name
   try:
     for i, (module, paths) in enumerate(module_to_paths.items()):

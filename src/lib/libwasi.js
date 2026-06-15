@@ -22,7 +22,7 @@ var WasiLibrary = {
     throw `exit(${code})`;
 #else
 #if RUNTIME_DEBUG
-    dbg(`proc_exit: ${code}`);
+    dbg(`proc_exit: ${code} (keepRuntimeAlive=${keepRuntimeAlive()})`);
 #endif
     EXITSTATUS = code;
     if (!keepRuntimeAlive()) {
@@ -49,13 +49,7 @@ var WasiLibrary = {
   $getEnvStrings: () => {
     if (!getEnvStrings.strings) {
       // Default values.
-#if DETERMINISTIC
-      // Deterministic language detection, ignore the browser's language.
-      var lang = 'C.UTF-8';
-#else
-      // Browser language detection #8751
       var lang = (globalThis.navigator?.language ?? 'C').replace('-', '_') + '.UTF-8';
-#endif
       var env = {
 #if !PURE_WASI
         'USER': 'web_user',
@@ -302,7 +296,7 @@ var WasiLibrary = {
   fd_pwrite__i53abi: true,
   fd_pwrite: (fd, iov, iovcnt, offset, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(offset)) return {{{ cDefs.EFBIG }}};
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = doWritev(stream, iov, iovcnt, offset);
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
@@ -355,7 +349,7 @@ var WasiLibrary = {
   fd_pread__i53abi: true,
   fd_pread: (fd, iov, iovcnt, offset, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(offset)) return {{{ cDefs.EFBIG }}};
     var stream = SYSCALLS.getStreamFromFD(fd)
     var num = doReadv(stream, iov, iovcnt, offset);
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
@@ -370,7 +364,7 @@ var WasiLibrary = {
   fd_seek__i53abi: true,
   fd_seek: (fd, offset, whence, newOffset) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
-    if (isNaN(offset)) return {{{ cDefs.EOVERFLOW }}};
+    if (isNaN(offset)) return {{{ cDefs.EFBIG }}};
     var stream = SYSCALLS.getStreamFromFD(fd);
     FS.llseek(stream, offset, whence);
     {{{ makeSetValue('newOffset', '0', 'stream.position', 'i64') }}};
@@ -593,31 +587,34 @@ var WasiLibrary = {
     }
 #endif
 
+#if ENVIRONMENT_MAY_BE_AUDIO_WORKLET
+    // Audio worklets don't support crypto.getRandomValues
+    if (ENVIRONMENT_IS_AUDIO_WORKLET) { //!globalThis.crypto) {
+      return () => {{{ cDefs.ENOTSUP }}};
+    }
+#endif
+
 #if SHARED_MEMORY
     // like with most Web APIs, we can't use Web Crypto API directly on shared memory,
     // so we need to create an intermediate buffer and copy it to the destination
-    return (view) => view.set(crypto.getRandomValues(new Uint8Array(view.byteLength)));
+    return (view) => (view.set(crypto.getRandomValues(new Uint8Array(view.byteLength))), 0);
 #else
-    return (view) => crypto.getRandomValues(view);
+    return (view) => (crypto.getRandomValues(view), 0);
 #endif
   },
 
   $randomFill__deps: ['$initRandomFill'],
-  $randomFill: (view) => {
-    // Lazily init on the first invocation.
-    (randomFill = initRandomFill())(view);
-  },
+  // Lazily init on the first invocation.
+  $randomFill: (view) => (randomFill = initRandomFill())(view),
 
   random_get__proxy: 'none',
+  random_get__nothrow: true,
   random_get__deps: ['$randomFill'],
-  random_get: (buffer, size) => {
-    randomFill(HEAPU8.subarray(buffer, buffer + size));
-    return 0;
-  },
+  random_get: (buffer, size) => randomFill(HEAPU8.subarray(buffer, buffer + size)),
 };
 
-for (var x in WasiLibrary) {
-  wrapSyscallFunction(x, WasiLibrary, true);
+for (const name of Object.keys(WasiLibrary)) {
+  wrapSyscallFunction(name, WasiLibrary, true);
 }
 
 addToLibrary(WasiLibrary);

@@ -16,9 +16,9 @@
 # All configuration values have a default; values that are commented out
 # serve to show the default.
 
-import sys
 import os
 from pathlib import Path
+from sphinx.locale import _
 
 
 # At the top. #HamishW https://pypi.python.org/pypi/sphinx-bootstrap-theme/ ...
@@ -33,12 +33,6 @@ from pathlib import Path
 # At the top. #HamishW https://github.com/snide/sphinx_rtd_theme   easy_install sphinx_rtd_theme
 #import sphinx_rtd_theme
 #html_theme_path = [sphinx_rtd_theme.get_html_theme_path()]
-
-html_theme_path = ['_themes',]
-
-
-
-
 
 
 
@@ -56,7 +50,6 @@ html_theme_path = ['_themes',]
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom
 # ones.
-sys.path.insert(0, os.path.abspath('_themes'))
 extensions = [
     'sphinx.ext.autodoc',
     'sphinx.ext.doctest',
@@ -65,8 +58,8 @@ extensions = [
     'sphinx.ext.coverage',
     'sphinx.ext.ifconfig',
     'sphinx.ext.viewcode',
+    'sphinx_design',
     'sphinxcontrib.jquery',
-    'emscripten_sphinx_rtd_theme',
     # 'breathe', #added by HamishW
 ]
 
@@ -88,9 +81,7 @@ master_doc = 'index'
 
 # General information about the project.
 project = u'Emscripten'
-copyright = u'2015, '
-  # Note, theme was modified to allow this to display (fix breaks the translation code, which was breaking the above link and rendering it as text).
-  # Also so I could link to specific copyright page.
+copyright = u'Copyright &copy; 2015, Emscripten Contributors.'
 
 
 # The version info for the project you're documenting, acts as replacement for
@@ -146,28 +137,72 @@ pygments_style = 'sphinx'
 
 # -- Options for HTML output ----------------------------------------------
 
-# The theme to use for HTML and HTML Help pages.  See the documentation for
-# a list of builtin themes.
-#html_theme = 'default'
-#html_theme = 'sphinxdoc'
-#html_theme = 'agogo' #like this
-#html_theme = 'scrolls'
-#html_theme = 'bootstrap'
-#html_theme_path = sphinx_bootstrap_theme.get_html_theme_path()
-#html_theme = 'better'
-#html_theme = 'pyramid'
-#html_theme = 'nature'
-#html_theme = 'haiku'
-#html_theme = "sphinx_rtd_theme"
-html_theme = "emscripten_sphinx_rtd_theme"
+# The theme to use for HTML and HTML Help pages.
+html_theme = "shibuya"
 
 # Theme options are theme-specific and customize the look and feel of a theme
 # further.  For a list of options available for each theme, see the
 # documentation.
 html_theme_options = {
-  'logo_only': True
+  "nav_links": [
+    {
+      "title": _("Documentation"),
+      "url": "docs/index",
+      "children": [
+        {
+          "title": _("Downloads"),
+          "url": "docs/getting_started/downloads",
+        },
+        {
+          "title": _("Report Bug"),
+          "url": "docs/getting_started/bug_reports",
+        },
+        {
+          "title": _("Licensing"),
+          "url": "docs/introducing_emscripten/emscripten_license",
+        },
+        {
+          "title": _("Contributing"),
+          "url": "docs/contributing/contributing",
+        },
+        {
+          "title": _("Release Notes"),
+          "url": "docs/introducing_emscripten/release_notes",
+        },
+      ],
+    },
+    {
+      "title": _("Community"),
+      "url": "docs/introducing_emscripten/community",
+      "children": [
+        {
+          "title": _("Mailing List"),
+          "url": "https://groups.google.com/forum/#!forum/emscripten-discuss",
+          "external": True,
+        },
+        {
+          "title": _("Wiki"),
+          "url": "https://github.com/emscripten-core/emscripten/wiki",
+          "external": True,
+        },
+      ],
+    },
+  ],
+  "github_url": "https://github.com/emscripten-core/emscripten",
+  "discord_url": "https://discord.gg/53u3EKq",
+  "discussion_url": "https://github.com/emscripten-core/emscripten/discussions",
+  "show_ai_links": False,
 }
 
+# A dictionary of values to pass into the template engine's context for all pages.
+html_context = {
+    # Edit this page
+    "source_type": "github",
+    "source_user": "emscripten-core",
+    "source_repo": "emscripten",
+    "source_version": "main",
+    "source_docs_path": "/site/source/",
+}
 
 # Add any paths that contain custom themes here, relative to this directory.
 #html_theme_path = []
@@ -181,7 +216,7 @@ html_theme_options = {
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = '_static/Emscripten_logo_full.png'
+html_logo = '_static/Emscripten_logo_full.svg'
 
 
 # The name of an image file (within the static path) to use as favicon of the

@@ -4,10 +4,11 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Utility tools that extracts DWARF information encoded in a wasm output
-produced by the LLVM tools, and encodes it as a wasm source map. Additionally,
-it can collect original sources, change files prefixes, and strip debug
-sections from a wasm file.
+"""Utility tools that extracts DWARF information from a WebAssembly file.
+
+This script take the output produced by the LLVM tools, and encodes it as
+a wasm source map. Additionally, it can collect original sources, change
+files prefixes, and strip debug sections from a wasm file.
 """
 
 import argparse
@@ -110,8 +111,8 @@ def encode_vlq(n):
   x = (n << 1) if n >= 0 else ((-n << 1) + 1)
   result = ""
   while x > 31:
-    result = result + VLQ_CHARS[32 + (x & 31)]
-    x = x >> 5
+    result += VLQ_CHARS[32 + (x & 31)]
+    x >>= 5
   return result + VLQ_CHARS[x]
 
 
@@ -119,11 +120,11 @@ def read_var_uint(wasm, pos):
   n = 0
   shift = 0
   b = ord(wasm[pos:pos + 1])
-  pos = pos + 1
+  pos += 1
   while b >= 128:
-    n = n | ((b - 128) << shift)
+    n |= ((b - 128) << shift)
     b = ord(wasm[pos:pos + 1])
-    pos = pos + 1
+    pos += 1
     shift += 7
   return n + (b << shift), pos
 
@@ -144,7 +145,7 @@ def strip_debug_sections(wasm):
       name = str(wasm[name_pos:name_end])
       if name in {'linking', 'sourceMappingURL'} or name.startswith(('reloc..debug_', '.debug_')):
         continue  # skip debug related sections
-    stripped = stripped + wasm[section_start:pos]
+    stripped += wasm[section_start:pos]
 
   return stripped
 
@@ -153,7 +154,7 @@ def encode_uint_var(n):
   result = bytearray()
   while n > 127:
     result.append(128 | (n & 127))
-    n = n >> 7
+    n >>= 7
   result.append(n)
   return bytes(result)
 
@@ -174,7 +175,7 @@ def get_code_section_offset(wasm):
     section_size, pos = read_var_uint(wasm, pos_)
     if section_id == 10:
       return pos
-    pos = pos + section_size
+    pos += section_size
 
 
 def remove_dead_entries(entries):
@@ -567,8 +568,7 @@ def build_sourcemap(entries, func_ranges, code_section_offset, options):
       if collect_sources:
         load_name = prefixes.load.resolve(file_name)
         try:
-          with open(load_name) as infile:
-            source_content = infile.read()
+          source_content = utils.read_file(load_name)
           sources_content.append(source_content)
         except OSError:
           print('Failed to read source: %s' % load_name)

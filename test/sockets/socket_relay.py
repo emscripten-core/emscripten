@@ -35,7 +35,7 @@ class Listener(threading.Thread):
     s.bind(('127.0.0.1', port))
     s.listen(1)
     print('listener', port, 'waiting for connection')
-    conn, addr = s.accept()
+    conn, _addr = s.accept()
     self.conn = conn
     while True:
       time.sleep(0.5)

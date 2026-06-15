@@ -274,7 +274,7 @@ addToLibrary({
       handlePeerEvents(sock, peer) {
         var first = true;
 
-        var handleOpen = function () {
+        function handleOpen() {
 #if SOCKET_DEBUG
           dbg('websocket: handle open');
 #endif
@@ -296,7 +296,7 @@ addToLibrary({
             // lied and said this data was sent. shut it down.
             peer.socket.close();
           }
-        };
+        }
 
         function handleMessage(data) {
           if (typeof data == 'string') {
@@ -336,43 +336,39 @@ addToLibrary({
 
           sock.recv_queue.push({ addr: peer.addr, port: peer.port, data: data });
           SOCKFS.emit('message', sock.stream.fd);
-        };
+        }
 
+#if ENVIRONMENT_MAY_BE_NODE
         if (ENVIRONMENT_IS_NODE) {
+           // EventEmitter-style events use by ws library objects in Node.js).
           peer.socket.on('open', handleOpen);
-          peer.socket.on('message', function(data, isBinary) {
+          peer.socket.on('message', (data, isBinary) => {
             if (!isBinary) {
               return;
             }
             handleMessage((new Uint8Array(data)).buffer); // copy from node Buffer -> ArrayBuffer
           });
-          peer.socket.on('close', function() {
-            SOCKFS.emit('close', sock.stream.fd);
-          });
-          peer.socket.on('error', function(error) {
+          peer.socket.on('close', () => SOCKFS.emit('close', sock.stream.fd));
+          peer.socket.on('error', (error) =>{
             // Although the ws library may pass errors that may be more descriptive than
             // ECONNREFUSED they are not necessarily the expected error code e.g.
             // ENOTFOUND on getaddrinfo seems to be node.js specific, so using ECONNREFUSED
             // is still probably the most useful thing to do.
             sock.error = {{{ cDefs.ECONNREFUSED }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
             SOCKFS.emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
-            // don't throw
           });
-        } else {
-          peer.socket.onopen = handleOpen;
-          peer.socket.onclose = function() {
-            SOCKFS.emit('close', sock.stream.fd);
-          };
-          peer.socket.onmessage = function peer_socket_onmessage(event) {
-            handleMessage(event.data);
-          };
-          peer.socket.onerror = function(error) {
-            // The WebSocket spec only allows a 'simple event' to be thrown on error,
-            // so we only really know as much as ECONNREFUSED.
-            sock.error = {{{ cDefs.ECONNREFUSED }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
-            SOCKFS.emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
-          };
+          return;
         }
+#endif
+        peer.socket.onopen = handleOpen;
+        peer.socket.onclose = () => SOCKFS.emit('close', sock.stream.fd);
+        peer.socket.onmessage = (event) => handleMessage(event.data);
+        peer.socket.onerror = (error) => {
+          // The WebSocket spec only allows a 'simple event' to be thrown on error,
+          // so we only really know as much as ECONNREFUSED.
+          sock.error = {{{ cDefs.ECONNREFUSED }}}; // Used in getsockopt for SOL_SOCKET/SO_ERROR test.
+          SOCKFS.emit('error', [sock.stream.fd, sock.error, 'ECONNREFUSED: Connection refused']);
+        };
       },
 
       //
@@ -534,7 +530,7 @@ addToLibrary({
         });
         SOCKFS.emit('listen', sock.stream.fd); // Send Event with listen fd.
 
-        sock.server.on('connection', function(ws) {
+        sock.server.on('connection', (ws) => {
 #if SOCKET_DEBUG
           dbg(`websocket: received connection from: ${ws._socket.remoteAddress}:${ws._socket.remotePort}`);
 #endif
@@ -557,11 +553,11 @@ addToLibrary({
             SOCKFS.emit('connection', sock.stream.fd);
           }
         });
-        sock.server.on('close', function() {
+        sock.server.on('close', () => {
           SOCKFS.emit('close', sock.stream.fd);
           sock.server = null;
         });
-        sock.server.on('error', function(error) {
+        sock.server.on('error', (error) => {
           // Although the ws library may pass errors that may be more descriptive than
           // ECONNREFUSED they are not necessarily the expected error code e.g.
           // ENOTFOUND on getaddrinfo seems to be node.js specific, so using EHOSTUNREACH

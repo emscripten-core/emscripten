@@ -48,7 +48,7 @@ void test() {
   err = remove("dir");
   assert(!err);
 
-  printf("success\n");
+  printf("done\n");
 }
 
 int main() {

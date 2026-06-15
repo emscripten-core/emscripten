@@ -13,7 +13,7 @@ addToLibrary({
   $getCFunc: (ident) => {
     var func = Module['_' + ident]; // closure exported function
 #if ASSERTIONS
-    assert(func, 'Cannot call unknown function ' + ident + ', make sure it is exported');
+    assert(func, `Cannot call unknown function ${ident}, make sure it is exported`);
 #endif
     return func;
   },
@@ -64,7 +64,7 @@ addToLibrary({
     var cArgs = [];
     var stack = 0;
 #if ASSERTIONS
-    assert(returnType !== 'array', 'Return type should not be "array".');
+    assert(returnType !== 'array', 'return type should not be "array"');
 #endif
     if (args) {
       for (var i = 0; i < args.length; i++) {
@@ -112,7 +112,7 @@ addToLibrary({
       // We need to return a Promise that resolves the return value
       // once the stack is rewound and execution finishes.
 #if ASSERTIONS
-      assert(asyncMode, 'The call to ' + ident + ' is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.');
+      assert(asyncMode, `The call to ${ident} is running asynchronously. If this was intended, add the async option to the ccall/cwrap call.`);
 #endif
       return Asyncify.whenDone().then(onDone);
     }

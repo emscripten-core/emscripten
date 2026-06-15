@@ -33,6 +33,6 @@ int main(int argc, char* argv[]) {
   pthread_create(&thread, NULL, thread_main, NULL);
   pthread_join(thread, NULL);
 
-  printf("success\n");
+  printf("done\n");
   return 0;
 }

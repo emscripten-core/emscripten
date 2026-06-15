@@ -145,7 +145,7 @@ void test() {
   // assert(utime("", &tb) == -1);
   // assert(errno == ENOENT); 
 
-  puts("success");
+  puts("done");
 }
 
 int main() {

@@ -60,6 +60,7 @@
 #include <stdio.h>
 #include <emscripten/heap.h>
 #include <emscripten/threading.h>
+#include <emscripten/console.h>
 
 void *_sbrk64(int64_t numBytes);
 
@@ -1421,9 +1422,9 @@ size_t emmalloc_compute_free_dynamic_memory_fragmentation_map(size_t freeMemoryS
 void emmalloc_dump_free_dynamic_memory_fragmentation_map() {
   size_t freeMemorySizeMap[32];
   size_t numFreeMemoryRegions = emmalloc_compute_free_dynamic_memory_fragmentation_map(freeMemorySizeMap);
-  printf("numFreeMemoryRegions: %zu\n", numFreeMemoryRegions);
+  emscripten_errf("numFreeMemoryRegions: %zu", numFreeMemoryRegions);
   for (int i = 0; i < 32; ++i) {
-    printf("Free memory regions of size [%llu,%llu[ bytes: %zu regions\n", 1ull<<i, 1ull<<(i+1), freeMemorySizeMap[i]);
+    emscripten_errf("Free memory regions of size [%llu,%llu[ bytes: %zu regions", 1ull<<i, 1ull<<(i+1), freeMemorySizeMap[i]);
   }
 }
 

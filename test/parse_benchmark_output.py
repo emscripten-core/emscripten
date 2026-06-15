@@ -25,7 +25,7 @@ def main(args):
   # other lines have:   [benchmark name, result 1          , ..]
   matrix = []
 
-  for line in open(args[0]).readlines():
+  for line in open(args[0], encoding='utf-8').readlines():
     line = line.strip()
     if line.startswith('test_'):
       benchmark = line.split(' ')[0][5:]
@@ -57,7 +57,7 @@ def main(args):
     if len(line) >= 2:
       base = line[1]
       for i in range(1, len(line)):
-        line[i] = line[i] / base
+        line[i] /= base
 
   col0_width = max(len(r[0]) for r in matrix)
 

@@ -397,18 +397,8 @@ var LibraryBrowser = {
       var canvas = Browser.getCanvas();
       var rect = canvas.getBoundingClientRect();
 
-      // Neither .scrollX or .pageXOffset are defined in a spec, but
-      // we prefer .scrollX because it is currently in a spec draft.
-      // (see: http://www.w3.org/TR/2013/WD-cssom-view-20131217/)
-      var scrollX = ((typeof window.scrollX != 'undefined') ? window.scrollX : window.pageXOffset);
-      var scrollY = ((typeof window.scrollY != 'undefined') ? window.scrollY : window.pageYOffset);
-#if ASSERTIONS
-      // If this assert lands, it's likely because the browser doesn't support scrollX or pageXOffset
-      // and we have no viable fallback.
-      assert((typeof scrollX != 'undefined') && (typeof scrollY != 'undefined'), 'Unable to retrieve scroll position, mouse positions likely broken.');
-#endif
-      var adjustedX = pageX - (scrollX + rect.left);
-      var adjustedY = pageY - (scrollY + rect.top);
+      var adjustedX = pageX - (window.scrollX + rect.left);
+      var adjustedY = pageY - (window.scrollY + rect.top);
 
       // the canvas might be CSS-scaled compared to its backbuffer;
       // SDL-using content will want mouse coordinates in terms
@@ -568,12 +558,14 @@ var LibraryBrowser = {
     var _file = UTF8ToString(file);
     var data = FS.analyzePath(_file);
     if (!data.exists) return -1;
+    // Here we assume data.object.contents is a TypedArray.
+#if ASSERTIONS
+    assert(data.object.contents.subarray, 'unexpected file content')
+#endif
     FS.createPreloadedFile(
       PATH.dirname(_file),
       PATH.basename(_file),
-      // TODO: This copy is not needed if the contents are already a Uint8Array,
-      //       which they often are (and always are in WasmFS).
-      new Uint8Array(data.object.contents), true, true,
+      data.object.contents, /*canRead=*/true, /*canWrite=*/true,
       () => {
         {{{ runtimeKeepalivePop() }}}
         if (onload) {{{ makeDynCall('vp', 'onload') }}}(file);
@@ -582,7 +574,7 @@ var LibraryBrowser = {
         {{{ runtimeKeepalivePop() }}}
         if (onerror) {{{ makeDynCall('vp', 'onerror') }}}(file);
       },
-      true // don'tCreateFile - it's already there
+      /*dontCreateFile=*/true // it's already there
     );
     return 0;
   },
@@ -594,8 +586,8 @@ var LibraryBrowser = {
   emscripten_run_preload_plugins_data: (data, size, suffix, arg, onload, onerror) => {
     {{{ runtimeKeepalivePush() }}}
 
-    var _suffix = UTF8ToString(suffix);
-    var name = 'prepare_data_' + (Browser_asyncPrepareDataCounter++) + '.' + _suffix;
+    suffix = UTF8ToString(suffix);
+    var name = `prepare_data_${Browser_asyncPrepareDataCounter++}.${suffix}`;
     var cname = stringToNewUTF8(name);
     FS.createPreloadedFile(
       '/',
@@ -622,7 +614,7 @@ var LibraryBrowser = {
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
-  emscripten_async_load_script__deps: ['$UTF8ToString'],
+  emscripten_async_load_script__deps: ['$UTF8ToString', '$runDependencies', '$dependenciesFulfilled'],
   emscripten_async_load_script: async (url, onload, onerror) => {
     url = UTF8ToString(url);
 #if PTHREADS

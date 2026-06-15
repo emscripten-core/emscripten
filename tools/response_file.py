@@ -9,14 +9,13 @@ import shlex
 import tempfile
 
 from . import shared
-from .utils import WINDOWS
+from .utils import WINDOWS, get_env_int
 
-DEBUG = int(os.environ.get('EMCC_DEBUG', '0'))
+DEBUG = get_env_int('EMCC_DEBUG')
 
 
 def create_response_file_contents(args):
-  """Create response file contents based on list of arguments.
-  """
+  """Create response file contents based on list of arguments."""
   escape_chars = ['\\', '\"']
   # When calling llvm-ar on Linux and macOS, single quote characters ' should be escaped.
   if not WINDOWS:
@@ -40,9 +39,7 @@ def create_response_file_contents(args):
 
 
 def create_response_file(args, directory):
-  """Routes the given cmdline param list in args into a new response file and
-  returns the filename to it.
-  """
+  """Route the given cmdline into a new response file and return its name."""
   # Backslashes and other special chars need to be escaped in the response file.
   contents = create_response_file_contents(args)
 
@@ -62,16 +59,15 @@ def create_response_file(args, directory):
 
 
 def expand_response_file(arg):
-  """Reads a response file, and returns the list of cmdline params found in the
-  file.
+  """Read a response file, and returns the list of cmdline params found in the file.
 
   The encoding that the response filename should be read with can be specified
   as a suffix to the file, e.g. "foo.rsp.utf-8" or "foo.rsp.cp1252". If not
   specified, first UTF-8 and then Python locale.getpreferredencoding() are
   attempted.
 
-  The parameter `arg` is the command line argument to be expanded."""
-
+  The parameter `arg` is the command line argument to be expanded.
+  """
   if arg.startswith('@'):
     response_filename = arg[1:]
   elif arg.startswith('-Wl,@'):
@@ -103,7 +99,7 @@ def expand_response_file(arg):
     if DEBUG:
       logging.warning(f'failed to parse response file {response_filename} with guessed encoding "{guessed_encoding}". Trying default system encoding...')
     # If that fails, try with the Python default locale.getpreferredencoding()
-    with open(response_filename) as f:
+    with open(response_filename) as f:  # noqa: PLW1514
       args = f.read()
 
   args = shlex.split(args)

@@ -30,6 +30,7 @@ actions = [
    ], ['npm', 'ci']),
   ('create entry points', [
      'tools/maint/create_entry_points.py',
+     'tools/pylauncher/pylauncher.exe',
      'tools/maint/run_python.bat',
      'tools/maint/run_python.sh',
      'tools/maint/run_python.ps1',
@@ -60,7 +61,7 @@ def check_deps(name, deps):
 def check():
   for name, deps, _ in actions:
     if not check_deps(name, deps):
-      utils.exit_with_error(f'emscripten setup is not complete ("{name}" is out-of-date). Run `bootstrap` to update')
+      utils.exit_with_error(f'emscripten setup is not complete ("{name}" is out-of-date). Run `bootstrap.py` to update')
 
 
 def main(args):

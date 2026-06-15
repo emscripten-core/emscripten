@@ -21,6 +21,31 @@
 // new function with an '_', it will not be found.
 
 addToLibrary({
+  // HEAP definitions are here to help with TypeScript type generation.
+  $HEAP8__docs: '/** @type {!Int8Array} */',
+  $HEAP8: undefined,
+  $HEAPU8__docs: '/** @type {!Uint8Array} */',
+  $HEAPU8: undefined,
+  $HEAP16__docs: '/** @type {!Int16Array} */',
+  $HEAP16: undefined,
+  $HEAPU16__docs: '/** @type {!Uint16Array} */',
+  $HEAPU16: undefined,
+  $HEAP32__docs: '/** @type {!Int32Array} */',
+  $HEAP32: undefined,
+  $HEAPU32__docs: '/** @type {!Uint32Array} */',
+  $HEAPU32: undefined,
+  $HEAPF32__docs: '/** @type {!Float32Array} */',
+  $HEAPF32: undefined,
+  $HEAPF64__docs: '/** @type {!Float64Array} */',
+  $HEAPF64: undefined,
+#if WASM_BIGINT
+  // BigInt64Array type is not correctly defined in closure
+  $HEAP64__docs: '/** not-@type {!BigInt64Array} */',
+  $HEAP64: undefined,
+  $HEAPU64__docs: '/** not-@type {!BigUint64Array} */',
+  $HEAPU64: undefined,
+#endif
+
   // JS aliases for native stack manipulation functions and tempret handling
   $stackSave__deps: ['emscripten_stack_get_current'],
   $stackSave: () => _emscripten_stack_get_current(),
@@ -45,7 +70,11 @@ addToLibrary({
   // purposes in cases where new functions are created at runtime.
   $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
 
-  $ptrToString: (ptr) => {
+  // This function is referenced *very* early on in some configurations
+  // (e.g WASM_WORKERS + RUNTIME_DEBUG) so we explictly use a function here
+  // rather than an arrow function so that it gets hoisted to the top of the
+  // scope.
+  $ptrToString: function(ptr) {
 #if ASSERTIONS
     assert(typeof ptr === 'number', `ptrToString expects a number, got ${typeof ptr}`);
 #endif
@@ -125,9 +154,6 @@ addToLibrary({
     // if exit() was called explicitly, warn the user if the runtime isn't actually being shut down
     if (keepRuntimeAlive() && !implicit) {
       var msg = `program exited (with status: ${status}), but keepRuntimeAlive() is set (counter=${runtimeKeepaliveCounter}) due to an async operation, so halting execution but not exiting the runtime or preventing further async execution (you can use emscripten_force_exit, if you want to force a true shutdown)`;
-#if MODULARIZE
-      readyPromiseReject?.(msg);
-#endif // MODULARIZE
       err(msg);
     }
 #endif // ASSERTIONS
@@ -455,11 +481,7 @@ addToLibrary({
   // a proxy and declare the dependency here.
   _emscripten_throw_longjmp__deps: ['setThrew'],
   _emscripten_throw_longjmp: () => {
-#if EXCEPTION_STACK_TRACES
     throw new EmscriptenSjLj;
-#else
-    throw Infinity;
-#endif
   },
 #elif !SUPPORT_LONGJMP
 #if !INCLUDE_FULL_LIBRARY
@@ -1259,11 +1281,19 @@ addToLibrary({
 
   $timers: {},
 
+  $clearTimers__internal: true,
+  $clearTimers: () => {
+    for (var t of Object.values(timers)) {
+      clearTimeout(t.id);
+    }
+  },
+
   // Helper function for setitimer that registers timers with the eventloop.
   // Timers always fire on the main thread, either directly from JS (here) or
   // or when the main thread is busy waiting calling _emscripten_yield.
+  _setitimer_js__postset: () => addAtExit('clearTimers();'),
   _setitimer_js__proxy: 'sync',
-  _setitimer_js__deps: ['$timers', '$callUserCallback', '_emscripten_timeout', 'emscripten_get_now'],
+  _setitimer_js__deps: ['$timers', '$clearTimers', '$callUserCallback', '_emscripten_timeout', 'emscripten_get_now'],
   _setitimer_js: (which, timeout_ms) => {
 #if RUNTIME_DEBUG
     dbg(`setitimer_js ${which} timeout=${timeout_ms}`);
@@ -1330,13 +1360,13 @@ addToLibrary({
 
   emscripten_date_now: () => Date.now(),
 
-  emscripten_performance_now: () => {{{ getPerformanceNow() }}}(),
+  emscripten_performance_now: () => performance.now(),
 
 #if PTHREADS && !AUDIO_WORKLET
   // Pthreads need their clocks synchronized to the execution of the main
   // thread, so, when using them, make sure to adjust all timings to the
   // respective time origins.
-  emscripten_get_now: () => performance.timeOrigin + {{{ getPerformanceNow() }}}(),
+  emscripten_get_now: () => performance.timeOrigin + performance.now(),
 #else
 #if AUDIO_WORKLET // https://github.com/WebAudio/web-audio-api/issues/2413
   emscripten_get_now: `;
@@ -1344,11 +1374,11 @@ addToLibrary({
     // (https://github.com/WebAudio/web-audio-api/issues/2527), so if building
     // with
     // Audio Worklets enabled, do a dynamic check for its presence.
-    if (globalThis.performance && {{{ getPerformanceNow() }}}) {
+    if (globalThis.performance?.now) {
 #if PTHREADS
-      _emscripten_get_now = () => performance.timeOrigin + {{{ getPerformanceNow() }}}();
+      _emscripten_get_now = () => performance.timeOrigin + performance.now();
 #else
-      _emscripten_get_now = () => {{{ getPerformanceNow() }}}();
+      _emscripten_get_now = () => performance.now();
 #endif
     } else {
       _emscripten_get_now = Date.now;
@@ -1358,7 +1388,7 @@ addToLibrary({
   // Modern environment where performance.now() is supported:
   // N.B. a shorter form "_emscripten_get_now = performance.now;" is
   // unfortunately not allowed even in current browsers (e.g. FF Nightly 75).
-  emscripten_get_now: () => {{{ getPerformanceNow() }}}(),
+  emscripten_get_now: () => performance.now(),
 #endif
 #endif
 
@@ -1489,7 +1519,7 @@ addToLibrary({
 
   _emscripten_sanitizer_get_option__deps: ['$stringToNewUTF8', '$UTF8ToString'],
   _emscripten_sanitizer_get_option__sig: 'pp',
-  _emscripten_sanitizer_get_option: (name) => stringToNewUTF8(Module[UTF8ToString(name)] || ''),
+  _emscripten_sanitizer_get_option: (name) => stringToNewUTF8(Module[UTF8ToString(name)] ?? ''),
 #endif
 
   $readEmAsmArgsArray: [],
@@ -1692,7 +1722,7 @@ addToLibrary({
     return "./this.program";
   },
 #else
-  $getExecutableName: () => thisProgram || './this.program',
+  $getExecutableName: () => thisProgram,
 #endif
 
   // Receives a Web Audio context plus a set of elements to listen for user
@@ -1859,7 +1889,7 @@ addToLibrary({
     }
 #if ASSERTIONS && ASYNCIFY != 2 // With JSPI the function stored in the table will be a wrapper.
     /** @suppress {checkTypes} */
-    assert(wasmTable.get({{{ toIndexType('funcPtr') }}}) == func, 'JavaScript-side Wasm function table mirror is out of date!');
+    assert(wasmTable.get({{{ toIndexType('funcPtr') }}}) == func, 'table mirror is out of date');
 #endif
     return func;
   },
@@ -1934,44 +1964,17 @@ addToLibrary({
   _emscripten_get_progname__deps: ['$getExecutableName', '$stringToUTF8'],
   _emscripten_get_progname: (str, len) => stringToUTF8(getExecutableName(), str, len),
 
-  emscripten_console_log: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    console.log(UTF8ToString(str));
-  },
+  // These single-line arrow functions use curly braces since otherwise closure
+  // compiler will inject a extra `return` keyword when inlining.
+  // https://github.com/emscripten-core/emscripten/issues/26922
+  emscripten_console_log: (str) => { console.log(UTF8ToString(str)) },
+  emscripten_console_warn: (str) => { console.warn(UTF8ToString(str)) },
+  emscripten_console_error: (str) => { console.error(UTF8ToString(str)) },
+  emscripten_console_trace: (str) => { console.trace(UTF8ToString(str)) },
 
-  emscripten_console_warn: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    console.warn(UTF8ToString(str));
-  },
+  emscripten_throw_number: (number) => { throw number; },
 
-  emscripten_console_error: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    console.error(UTF8ToString(str));
-  },
-
-  emscripten_console_trace: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    console.trace(UTF8ToString(str));
-  },
-
-  emscripten_throw_number: (number) => {
-    throw number;
-  },
-
-  emscripten_throw_string: (str) => {
-#if ASSERTIONS
-    assert(typeof str == 'number');
-#endif
-    throw UTF8ToString(str);
-  },
+  emscripten_throw_string: (str) => { throw UTF8ToString(str); },
 
 #if !MINIMAL_RUNTIME
 #if STACK_OVERFLOW_CHECK
@@ -1998,7 +2001,7 @@ addToLibrary({
     }
 #endif
 #if RUNTIME_DEBUG
-    dbg("handleException: got unexpected exception, calling quit_")
+    dbg(`handleException: got unexpected exception ${e}, calling quit_`)
 #endif
     quit_(1, e);
   },
@@ -2152,7 +2155,7 @@ addToLibrary({
 
   $alignMemory: (size, alignment) => {
 #if ASSERTIONS
-    assert(alignment, "alignment argument is required");
+    assert(alignment, 'alignment argument is required');
 #endif
     return Math.ceil(size / alignment) * alignment;
   },
@@ -2175,31 +2178,6 @@ addToLibrary({
 #endif
   },
 
-#if RELOCATABLE
-  // Globals that are normally exported from the wasm module but in relocatable
-  // mode are created here and imported by the module.
-  __stack_pointer: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': true}, {{{ to64(STACK_HIGH) }}})",
-  // tell the memory segments where to place themselves
-  __memory_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(GLOBAL_BASE) }}})",
-  // the wasm backend reserves slot 0 for the NULL function pointer
-  __table_base: "new WebAssembly.Global({'value': '{{{ POINTER_WASM_TYPE }}}', 'mutable': false}, {{{ to64(TABLE_BASE) }}})",
-#if MEMORY64 == 2
-  __memory_base32: "new WebAssembly.Global({'value': 'i32', 'mutable': false}, {{{ GLOBAL_BASE }}})",
-#endif
-#if MEMORY64
-  __table_base32: {{{ TABLE_BASE }}},
-#endif
-  // To support such allocations during startup, track them on __heap_base and
-  // then when the main module is loaded it reads that value and uses it to
-  // initialize sbrk (the main module is relocatable itself, and so it does not
-  // have __heap_base hardcoded into it - it receives it from JS as an extern
-  // global, basically).
-  __heap_base: '{{{ HEAP_BASE }}}',
-  __stack_high: '{{{ STACK_HIGH }}}',
-  __stack_low: '{{{ STACK_LOW }}}',
-  __global_base: '{{{ GLOBAL_BASE }}}',
-#endif // RELOCATABLE
-
   _emscripten_fs_load_embedded_files__deps: ['$FS', '$PATH'],
   _emscripten_fs_load_embedded_files: (ptr) => {
 #if RUNTIME_DEBUG
@@ -2218,7 +2196,7 @@ addToLibrary({
 #endif
       FS.createPath('/', PATH.dirname(name), true, true);
       // canOwn this data in the filesystem, it is a slice of wasm memory that will never change
-      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, true);
+      FS.createDataFile(name, null, HEAP8.subarray(content, content + len), true, true, /*canOwn=*/true);
     } while ({{{ makeGetValue('ptr', '0', '*') }}});
 #if RUNTIME_DEBUG
     dbg('done preloading data files');
@@ -2238,7 +2216,7 @@ addToLibrary({
       return this.allocated[id] !== undefined;
     }
     allocate(handle) {
-      var id = this.freelist.pop() || this.allocated.length;
+      var id = this.freelist.pop() ?? this.allocated.length;
       this.allocated[id] = handle;
       return id;
     }
@@ -2253,24 +2231,9 @@ addToLibrary({
     }
   },
 
-  $wasmTable__docs: '/** @type {WebAssembly.Table} */',
-#if RELOCATABLE
-  // In RELOCATABLE mode we create the table in JS.
-  $wasmTable: `=new WebAssembly.Table({
-  'initial': {{{ toIndexType(INITIAL_TABLE) }}},
-#if !ALLOW_TABLE_GROWTH
-  'maximum': {{{ toIndexType(INITIAL_TABLE) }}},
-#endif
-#if MEMORY64 == 1
-  'address': 'i64',
-#endif
-  'element': 'anyfunc'
-});
-`,
-#else
   // `wasmTable` is a JS alias for the Wasm `__indirect_function_table` export
+  $wasmTable__docs: '/** @type {WebAssembly.Table} */',
   $wasmTable: '__indirect_function_table',
-#endif
 
 #if IMPORTED_MEMORY
   // This gets defined in src/runtime_init_memory.js
@@ -2608,7 +2571,7 @@ function wrapSyscallFunction(x, library, isWasi) {
     t = modifyJSFunction(t, (args, body, async_) => `${async_}function (${args}) {\n${pre}${body}${post}}\n`);
   }
 
-  library[x] = eval('(' + t + ')');
+  library[x] = t;
   // Automatically add dependency on `$SYSCALLS`
   if (!WASMFS && t.includes('SYSCALLS')) {
     library[x + '__deps'].push('$SYSCALLS');
@@ -2623,8 +2586,6 @@ function wrapSyscallFunction(x, library, isWasi) {
   // instead of synchronously, and marked with
   //  __proxy: 'async'
   // (but essentially all syscalls do have return values).
-  if (library[x + '__proxy'] === undefined) {
-    library[x + '__proxy'] = 'sync';
-  }
+  library[x + '__proxy'] ??= 'sync';
 #endif
 }

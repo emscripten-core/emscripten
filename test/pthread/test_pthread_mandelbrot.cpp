@@ -307,7 +307,9 @@ void *mandelbrot_thread(void *arg)
 
   for(;;)
   {
-    emscripten_futex_wait(&tasksPending[idx], 0, INFINITY);
+    while (tasksPending[idx] == 0) {
+      emscripten_futex_wait(&tasksPending[idx], 0, INFINITY);
+    }
     tasksPending[idx] = 0;
     double t0 = emscripten_get_now();
     int ni;
@@ -502,7 +504,7 @@ void main_tick()
       var updatesPerFrame = (new RegExp("[\\?&]updates=([^&#]*)")).exec(location.href);
       if (updatesPerFrame) return updatesPerFrame[1];
     }
-    if (arguments_ && arguments_.length >= 1) return parseInt(arguments_[0]);
+    if (programArgs && programArgs.length >= 1) return parseInt(programArgs[0]);
     if (globalThis.document?.getElementById('updates_per_frame')) return parseInt(document.getElementById('updates_per_frame').value);
     return 50;
   });
@@ -603,7 +605,7 @@ int main(int argc, char** argv)
   if (ENVIRONMENT_IS_WEB) {
     emscripten_set_main_loop(main_tick, 0, 0);
   } else {
-    int numTotalFrames = EM_ASM_INT(return (arguments_ && arguments_.length >= 2) ? parseInt(arguments_[1]) : 1000);
+    int numTotalFrames = EM_ASM_INT(return (programArgs && programArgs.length >= 2) ? parseInt(programArgs[1]) : 1000);
     printf("Rendering %d frames of Mandelbrot. Invoke \"node|js mandelbrot.js numItersPerFrame numFrames\" to configure.\n", numTotalFrames);
     double t0 = emscripten_get_now();
     for(int i = 0; i < numTotalFrames; ++i) {

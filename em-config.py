@@ -4,8 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""This is a helper tool which is designed to make it possible
-for other apps to read emscripten's configuration variables
+"""Display emscripten configure file settings.
+
+Helper script which is designed to make it possible for
+other apps to read emscripten's configuration variables
 in a unified way.  Usage:
 
   em-config VAR_NAME

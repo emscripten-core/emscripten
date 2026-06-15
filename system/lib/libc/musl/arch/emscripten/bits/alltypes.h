@@ -147,58 +147,62 @@ typedef _Int64 suseconds_t;
 #endif
 
 
+// XXX EMSCRIPTEN: This file has been modified from the upstream musl version
+// to make use of clang pre-defined macros whereever possible, eliminating
+// possible inconsistencies.
+
 #if defined(__NEED_int8_t) && !defined(__DEFINED_int8_t)
-typedef signed char     int8_t;
+typedef __INT8_TYPE__    int8_t;
 #define __DEFINED_int8_t
 #endif
 
 #if defined(__NEED_int16_t) && !defined(__DEFINED_int16_t)
-typedef signed short    int16_t;
+typedef __INT16_TYPE__   int16_t;
 #define __DEFINED_int16_t
 #endif
 
 #if defined(__NEED_int32_t) && !defined(__DEFINED_int32_t)
-typedef signed int      int32_t;
+typedef __INT32_TYPE__   int32_t;
 #define __DEFINED_int32_t
 #endif
 
 #if defined(__NEED_int64_t) && !defined(__DEFINED_int64_t)
-typedef signed _Int64   int64_t;
+typedef __INT64_TYPE__   int64_t;
 #define __DEFINED_int64_t
 #endif
 
 #if defined(__NEED_intmax_t) && !defined(__DEFINED_intmax_t)
-typedef signed _Int64   intmax_t;
+typedef __INTMAX_TYPE__  intmax_t;
 #define __DEFINED_intmax_t
 #endif
 
 #if defined(__NEED_uint8_t) && !defined(__DEFINED_uint8_t)
-typedef unsigned char   uint8_t;
+typedef __UINT8_TYPE__   uint8_t;
 #define __DEFINED_uint8_t
 #endif
 
 #if defined(__NEED_uint16_t) && !defined(__DEFINED_uint16_t)
-typedef unsigned short  uint16_t;
+typedef __UINT16_TYPE__  uint16_t;
 #define __DEFINED_uint16_t
 #endif
 
 #if defined(__NEED_uint32_t) && !defined(__DEFINED_uint32_t)
-typedef unsigned int    uint32_t;
+typedef __UINT32_TYPE__  uint32_t;
 #define __DEFINED_uint32_t
 #endif
 
 #if defined(__NEED_uint64_t) && !defined(__DEFINED_uint64_t)
-typedef unsigned _Int64 uint64_t;
+typedef __UINT64_TYPE__  uint64_t;
 #define __DEFINED_uint64_t
 #endif
 
 #if defined(__NEED_u_int64_t) && !defined(__DEFINED_u_int64_t)
-typedef unsigned _Int64 u_int64_t;
+typedef __UINT64_TYPE__  u_int64_t;
 #define __DEFINED_u_int64_t
 #endif
 
 #if defined(__NEED_uintmax_t) && !defined(__DEFINED_uintmax_t)
-typedef unsigned _Int64 uintmax_t;
+typedef __UINTMAX_TYPE__ uintmax_t;
 #define __DEFINED_uintmax_t
 #endif
 
@@ -400,8 +404,15 @@ typedef struct __locale_struct * locale_t;
 #endif
 
 
+// Musl uses 128 bytes for sigset_t, presumably for some kind of ABI
+// compatability with the kernel or GLIBC, but in emscripten we can be precise.
+// Since we have _NSIG = 65 which only need 2 `long`s for the bitmask.
+// The signals we support are
+// 1 - 31 - standard POSIX signals (see emscripten/bits/signal.h)
+// 32 - 34 - pthread-specific signals (see pthread_impl.h>
+// 35 - 65 - user-defined RT signals (we don't currently have any test coverage of these).
 #if defined(__NEED_sigset_t) && !defined(__DEFINED_sigset_t)
-typedef struct __sigset_t { unsigned long __bits[128/sizeof(long)]; } sigset_t;
+typedef struct __sigset_t { unsigned long __bits[2]; } sigset_t;
 #define __DEFINED_sigset_t
 #endif
 

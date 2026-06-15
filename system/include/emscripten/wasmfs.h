@@ -17,7 +17,7 @@ extern "C" {
 typedef struct Backend* backend_t;
 
 // Obtains the backend_t of a specified path.
-backend_t wasmfs_get_backend_by_path(const char* path __attribute__((nonnull)));
+backend_t wasmfs_get_backend_by_path(const char* _Nonnull path);
 
 // Obtains the backend_t of a specified fd.
 backend_t wasmfs_get_backend_by_fd(int fd);
@@ -27,16 +27,16 @@ backend_t wasmfs_get_backend_by_fd(int fd);
 // value on error. TODO: It might be worth returning a more specialized type
 // like __wasi_fd_t here.
 // TODO: Remove this function so that only directories can be mounted.
-int wasmfs_create_file(const char* pathname __attribute__((nonnull)), mode_t mode, backend_t backend);
+int wasmfs_create_file(const char* _Nonnull pathname, mode_t mode, backend_t backend);
 
 // Creates a new directory using a specific backend.
 // Returns 0 on success like `mkdir`, or a negative value on error.
 // TODO: Add an alias with wasmfs_mount.
-int wasmfs_create_directory(const char* path __attribute__((nonnull)), mode_t mode, backend_t backend);
+int wasmfs_create_directory(const char* _Nonnull path, mode_t mode, backend_t backend);
 
 // Unmounts the directory (Which must be a valid mountpoint) at a specific path.
 // Returns 0 on success, or a negative value on error.
-int wasmfs_unmount(const char* path __attribute__((nonnull)));
+int wasmfs_unmount(const char* _Nonnull path);
 
 // Backend creation
 
@@ -75,10 +75,9 @@ backend_t wasmfs_create_memory_backend(void);
 // TODO: Add an async version of this function that will work on the main
 // thread.
 //
-backend_t wasmfs_create_fetch_backend(const char* base_url __attribute__((nonnull)),
-                                      uint32_t chunk_size);
+backend_t wasmfs_create_fetch_backend(const char* _Nonnull base_url, uint32_t chunk_size);
 
-backend_t wasmfs_create_node_backend(const char* root __attribute__((nonnull)));
+backend_t wasmfs_create_node_backend(const char* _Nonnull root);
 
 // Note: this cannot be called on the browser main thread because it might
 // deadlock while waiting for the OPFS dedicated worker thread to be spawned.

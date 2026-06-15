@@ -27,6 +27,6 @@ int main(void) {
   EM_ASM(checkStackCookie());
   printf("data address %p\n", data);
 
-  printf("success\n");
+  printf("done\n");
   return 0;
 }

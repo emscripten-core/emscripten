@@ -85,20 +85,17 @@ void __get_exception_message(void* thrown_object, char** type, char** message) {
   *message = NULL;
   const __shim_type_info* catch_type =
     static_cast<const __shim_type_info*>(&typeid(std::exception));
-  int can_catch = catch_type->can_catch(thrown_type, thrown_object);
-  if (can_catch) {
+
 #if __WASM_EXCEPTIONS__
-    if (isDependentException(&exception_header->unwindHeader)) {
-      thrown_object =
-        reinterpret_cast<__cxa_dependent_exception*>(exception_header)
-          ->primaryException;
-      // can_catch can adjust thrown_object ptr, so rerun it
-      [[maybe_unused]] bool ret =
-        catch_type->can_catch(thrown_type, thrown_object);
-      assert(ret);
-    }
+  if (isDependentException(&exception_header->unwindHeader)) {
+    thrown_object =
+      reinterpret_cast<__cxa_dependent_exception*>(exception_header)
+        ->primaryException;
+  }
 #endif
 
+  int can_catch = catch_type->can_catch(thrown_type, thrown_object);
+  if (can_catch) {
     const char* what =
       static_cast<const std::exception*>(thrown_object)->what();
     *message = (char*)malloc(strlen(what) + 1);
@@ -123,6 +120,17 @@ char* __get_exception_terminate_message(void* thrown_object) {
   free(type);
   return result;
 }
+
+#ifdef __WASM_EXCEPTIONS__
+void __increment_uncaught_exception() throw() {
+  __cxa_get_globals()->uncaughtExceptions += 1;
+}
+
+void __decrement_uncaught_exception() throw() {
+  __cxa_get_globals()->uncaughtExceptions -= 1;
+}
+#endif
+
 } // extern "C"
 
 } // namespace __cxxabiv1

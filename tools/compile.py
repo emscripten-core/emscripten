@@ -50,10 +50,10 @@ def get_clang_flags(user_args):
     if '-mbulk-memory' not in user_args:
       flags.append('-mbulk-memory')
 
-  if (settings.MAIN_MODULE or settings.RELOCATABLE) and '-fPIC' not in user_args:
+  if (settings.MAIN_MODULE or settings.SIDE_MODULE) and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
-  if settings.MAIN_MODULE or settings.RELOCATABLE or settings.LINKABLE or '-fPIC' in user_args:
+  if settings.MAIN_MODULE or settings.SIDE_MODULE or settings.LINKABLE or '-fPIC' in user_args:
     if not any(a.startswith('-fvisibility') for a in user_args):
       # For relocatable code we default to visibility=default in emscripten even
       # though the upstream backend defaults visibility=hidden.  This matches the
@@ -95,11 +95,6 @@ def get_cflags(user_args):
 
   if settings.WASM_WORKERS:
     cflags.append('-D__EMSCRIPTEN_WASM_WORKERS__=1')
-
-  if not settings.STRICT:
-    # The preprocessor define EMSCRIPTEN is deprecated. Don't pass it to code
-    # in strict mode. Code should use the define __EMSCRIPTEN__ instead.
-    cflags.append('-DEMSCRIPTEN')
 
   ports.add_cflags(cflags, settings)
 

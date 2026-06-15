@@ -1,0 +1,228 @@
+/*
+ * Copyright 2025 The Emscripten Authors.  All rights reserved.
+ * Emscripten is available under two separate licenses, the MIT license and the
+ * University of Illinois/NCSA Open Source License.  Both these licenses can be
+ * found in the LICENSE file.
+ *
+ * This file is essentially a copy of test_select_blocking.c but with select
+ * calls converted to pselect.  This basically entails chaning the timeout from
+ * a `timeval` to `timespec` and passing an extra NULL argument for the sigmask.
+ */
+#include <sys/select.h>
+#include <time.h>
+#include <assert.h>
+#include <stdio.h>
+#include <unistd.h>
+#include <pthread.h>
+#include <string.h>
+#include <sys/time.h>
+
+#define TIMEOUT_MS 300
+#define TIMEOUT_NS (TIMEOUT_MS * 1000000)
+
+// It is possible for the node timers (such as setTimeout or Atomics.wait) to wake up
+// slightly earlier than requested. Because we measure times accurately using
+// clock_gettime, we give tests a 5 milliseconds error margin to avoid flaky timeouts.
+#define TIMEOUT_MARGIN_MS 5
+
+void sleep_ms(int ms) {
+  usleep(ms * 1000);
+}
+
+int64_t timespec_delta_ms(struct timespec* begin, struct timespec* end) {
+  int64_t delta_sec = end->tv_sec - begin->tv_sec;
+  int64_t delta_nsec = end->tv_nsec - begin->tv_nsec;
+
+  assert(delta_sec >= 0);
+  assert(delta_nsec > -1000000000 && delta_nsec < 1000000000);
+
+  int64_t delta_ms = (delta_sec * 1000) + (delta_nsec / 1000000);
+  assert(delta_ms >= 0);
+  return delta_ms;
+}
+
+// Check if timeout works without fds
+void test_timeout_without_fds() {
+  printf("test_timeout_without_fds\n");
+  struct timespec begin, end;
+  struct timespec timeout;
+
+  timeout.tv_sec = 0;
+  timeout.tv_nsec = TIMEOUT_NS;
+  clock_gettime(CLOCK_MONOTONIC, &begin);
+  assert(pselect(0, NULL, NULL, NULL, &timeout, NULL) == 0);
+  clock_gettime(CLOCK_MONOTONIC, &end);
+
+  int64_t duration = timespec_delta_ms(&begin, &end);
+  printf(" -> duration: %lld ms\n", duration);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
+}
+
+// Check if timeout works with fds without events
+void test_timeout_with_fds_without_events() {
+  printf("test_timeout_with_fds_without_events\n");
+  struct timespec begin, end;
+  struct timespec timeout;
+  fd_set readfds;
+  int pipe_a[2];
+
+  assert(pipe(pipe_a) == 0);
+
+  timeout.tv_sec = 0;
+  timeout.tv_nsec = TIMEOUT_NS;
+  FD_ZERO(&readfds);
+  FD_SET(pipe_a[0], &readfds);
+  clock_gettime(CLOCK_MONOTONIC, &begin);
+  assert(pselect(pipe_a[0] + 1, &readfds, NULL, NULL, &timeout, NULL) == 0);
+  clock_gettime(CLOCK_MONOTONIC, &end);
+
+  int64_t duration = timespec_delta_ms(&begin, &end);
+  printf(" -> duration: %lld ms\n", duration);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
+
+  close(pipe_a[0]); close(pipe_a[1]);
+}
+
+int pipe_shared[2];
+
+void *write_after_sleep(void * arg) {
+  const char *t = "test\n";
+
+  sleep_ms(TIMEOUT_MS);
+  write(pipe_shared[1], t, strlen(t));
+
+  return NULL;
+}
+
+// Check if select can unblock on an event
+void test_unblock_pselect() {
+  printf("test_unblock_pselect\n");
+  struct timespec begin, end;
+  fd_set readfds;
+  pthread_t tid;
+  int pipe_a[2];
+
+  assert(pipe(pipe_a) == 0);
+  assert(pipe(pipe_shared) == 0);
+
+  FD_ZERO(&readfds);
+  FD_SET(pipe_a[0], &readfds);
+  FD_SET(pipe_shared[0], &readfds);
+  int maxfd = (pipe_a[0] > pipe_shared[0] ? pipe_a[0] : pipe_shared[0]);
+  clock_gettime(CLOCK_MONOTONIC, &begin);
+  assert(pthread_create(&tid, NULL, write_after_sleep, NULL) == 0);
+  assert(pselect(maxfd + 1, &readfds, NULL, NULL, NULL, NULL) == 1);
+  clock_gettime(CLOCK_MONOTONIC, &end);
+  assert(FD_ISSET(pipe_shared[0], &readfds));
+
+  int64_t duration = timespec_delta_ms(&begin, &end);
+  printf(" -> duration: %lld ms\n", duration);
+  assert(duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS);
+
+  pthread_join(tid, NULL);
+
+  close(pipe_a[0]); close(pipe_a[1]);
+  close(pipe_shared[0]); close(pipe_shared[1]);
+}
+
+int threads_running = 0;
+pthread_mutex_t running_lock = PTHREAD_MUTEX_INITIALIZER;
+pthread_cond_t running_cv = PTHREAD_COND_INITIALIZER;
+
+void *do_pselect_in_thread(void * arg) {
+  struct timespec begin, end;
+  struct timespec timeout;
+  fd_set readfds;
+  timeout.tv_sec = 4;
+  timeout.tv_nsec = 0;
+
+  FD_ZERO(&readfds);
+  FD_SET(pipe_shared[0], &readfds);
+  int maxfd = pipe_shared[0];
+
+  clock_gettime(CLOCK_MONOTONIC, &begin);
+  pthread_mutex_lock(&running_lock);
+  threads_running++;
+  pthread_cond_signal(&running_cv);
+  pthread_mutex_unlock(&running_lock);
+  assert(pselect(maxfd + 1, &readfds, NULL, NULL, &timeout, NULL) == 1);
+  clock_gettime(CLOCK_MONOTONIC, &end);
+  assert(FD_ISSET(pipe_shared[0], &readfds));
+
+  int64_t duration = timespec_delta_ms(&begin, &end);
+  printf(" -> duration: %lld ms\n", duration);
+  assert((duration >= TIMEOUT_MS - TIMEOUT_MARGIN_MS) && (duration < 4000));
+
+  return NULL;
+}
+
+// Check if select works in threads
+void test_pselect_in_threads() {
+  printf("test_pselect_in_threads\n");
+  pthread_t tid1, tid2;
+  const char *t = "test\n";
+
+  assert(pipe(pipe_shared) == 0);
+
+  assert(pthread_create(&tid1, NULL, do_pselect_in_thread, NULL) == 0);
+  assert(pthread_create(&tid2, NULL, do_pselect_in_thread, NULL) == 0);
+  pthread_mutex_lock(&running_lock);
+  while (threads_running != 2) {
+    pthread_cond_wait(&running_cv, &running_lock);
+  }
+  pthread_mutex_unlock(&running_lock);
+
+  sleep_ms(2 * TIMEOUT_MS);
+  write(pipe_shared[1], t, strlen(t));
+
+  pthread_join(tid1, NULL);
+  pthread_join(tid2, NULL);
+
+  close(pipe_shared[0]); close(pipe_shared[1]);
+}
+
+// Check if pselect works with ready fds
+void test_ready_fds() {
+  printf("test_ready_fds\n");
+  struct timespec timeout;
+  fd_set readfds;
+  const char *t = "test\n";
+  int pipe_c[2];
+  int pipe_d[2];
+
+  assert(pipe(pipe_c) == 0);
+  assert(pipe(pipe_d) == 0);
+
+  write(pipe_c[1], t, strlen(t));
+  write(pipe_d[1], t, strlen(t));
+  int maxfd = (pipe_c[0] > pipe_d[0] ? pipe_c[0] : pipe_d[0]);
+
+  timeout.tv_sec = 0;
+  timeout.tv_nsec = 0;
+  FD_ZERO(&readfds);
+  FD_SET(pipe_c[0], &readfds);
+  FD_SET(pipe_d[0], &readfds);
+  assert(pselect(maxfd + 1, &readfds, NULL, NULL, &timeout, NULL) == 2);
+  assert(FD_ISSET(pipe_c[0], &readfds));
+  assert(FD_ISSET(pipe_d[0], &readfds));
+
+  FD_ZERO(&readfds);
+  FD_SET(pipe_c[0], &readfds);
+  FD_SET(pipe_d[0], &readfds);
+  assert(pselect(maxfd + 1, &readfds, NULL, NULL, NULL, NULL) == 2);
+  assert(FD_ISSET(pipe_c[0], &readfds));
+  assert(FD_ISSET(pipe_d[0], &readfds));
+
+  close(pipe_c[0]); close(pipe_c[1]);
+  close(pipe_d[0]); close(pipe_d[1]);
+}
+
+int main() {
+  test_pselect_in_threads();
+  test_timeout_without_fds();
+  test_timeout_with_fds_without_events();
+  test_unblock_pselect();
+  test_ready_fds();
+  printf("done\n");
+  return 0;
+}

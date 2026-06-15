@@ -31,21 +31,17 @@ function growMemViews() {
 #include "binaryDecode.js"
 #endif
 
-#if MODULARIZE
-var readyPromiseResolve, readyPromiseReject;
-#endif
-
 #if (PTHREADS || WASM_WORKERS) && (ENVIRONMENT_MAY_BE_NODE && !WASM_ESM_INTEGRATION)
 if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
   // Create as web-worker-like an environment as we can.
   globalThis.self = globalThis;
-  var parentPort = worker_threads['parentPort'];
+  var parentPort = worker_threads.parentPort;
   // Deno and Bun already have `postMessage` defined on the global scope and
   // deliver messages to `globalThis.onmessage`, so we must not duplicate that
   // behavior here if `postMessage` is already present.
   if (!globalThis.postMessage) {
     parentPort.on('message', (msg) => globalThis.onmessage?.({ data: msg }));
-    globalThis.postMessage = (msg) => parentPort['postMessage'](msg);
+    globalThis.postMessage = (msg) => parentPort.postMessage(msg);
   }
   // Node.js Workers do not pass postMessage()s and uncaught exception events to the parent
   // thread necessarily in the same order where they were generated in sequential program order.
@@ -56,7 +52,7 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #if PTHREADS_DEBUG
     dbg(`uncaughtException on worker thread: ${err.message}`);
 #endif
-    postMessage({ cmd: 'uncaughtException', error: err });
+    postMessage({ cmd: {{{ CMD_UNCAUGHT_EXN }}}, error: err });
     // Also shut down the Worker to match the same semantics as if this uncaughtException
     // handler was not registered.
     // (n.b. this will not shut down the whole Node.js app process, but just the Worker)
@@ -78,33 +74,6 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 #endif
 
 // Memory management
-var
-/** @type {!Int8Array} */
-  HEAP8,
-/** @type {!Uint8Array} */
-  HEAPU8,
-/** @type {!Int16Array} */
-  HEAP16,
-/** @type {!Uint16Array} */
-  HEAPU16,
-/** @type {!Int32Array} */
-  HEAP32,
-/** @type {!Uint32Array} */
-  HEAPU32,
-/** @type {!Float32Array} */
-  HEAPF32,
-/** @type {!Float64Array} */
-  HEAPF64;
-
-#if WASM_BIGINT
-// BigInt64Array type is not correctly defined in closure
-var
-/** not-@type {!BigInt64Array} */
-  HEAP64,
-/* BigUint64Array type is not correctly defined in closure
-/** not-@type {!BigUint64Array} */
-  HEAPU64;
-#endif
 
 #if SUPPORT_BIG_ENDIAN
 /** @type {!DataView} */
@@ -126,7 +95,7 @@ var runtimeExited = false;
     let shouldExport = false;
     if (MODULARIZE && EXPORT_ALL) {
       shouldExport = true;
-    } else if (EXPORTED_RUNTIME_METHODS.includes(x)) {
+    } else if (EXPORTED_RUNTIME_METHODS.has(x)) {
       shouldExport = true;
     }
     return shouldExport;
@@ -140,6 +109,13 @@ var runtimeExited = false;
 }}}
 
 function updateMemoryViews() {
+#if RUNTIME_DEBUG
+  dbg(`updateMemoryViews: first=${!HEAP8} size=${wasmMemory.buffer.byteLength}`);
+#endif
+#if !ALLOW_MEMORY_GROWTH && ASSERTIONS
+  // When memory growth is disabled this function should be called exactly once.
+  assert(!HEAP8, 'updateMemoryViews should only be called once when ALLOW_MEMORY_GROWTH=0');
+#endif
 #if GROWABLE_ARRAYBUFFERS
   var b = wasmMemory.toResizableBuffer();
 #else
@@ -162,18 +138,6 @@ function updateMemoryViews() {
   LE_HEAP_UPDATE();
 #endif
 }
-
-#if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 160000
-// The performance global was added to node in v16.0.0:
-// https://nodejs.org/api/globals.html#performance
-if (ENVIRONMENT_IS_NODE) {
-  // This is needed for emscripten_get_now and for pthreads support which
-  // depends on it for accurate timing.
-  // Use `global` rather than `globalThis` here since older versions of node
-  // don't have `globalThis`.
-  global.performance ??= require('perf_hooks').performance;
-}
-#endif
 
 #if IMPORTED_MEMORY
 // In non-standalone/normal mode, we create the memory here.

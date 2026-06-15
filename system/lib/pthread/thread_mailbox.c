@@ -77,6 +77,7 @@ void _emscripten_check_mailbox() {
   // For example, in PROXY_TO_PTHREAD the atexit functions are called via
   // a proxied call, and without this call to synchronize we would crash if
   // any atexit functions were registered from a side module.
+  DBG("_emscripten_check_mailbox");
   assert(pthread_self());
   em_task_queue* mailbox = pthread_self()->mailbox;
   mailbox->notification = NOTIFICATION_RECEIVED;

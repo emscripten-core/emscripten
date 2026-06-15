@@ -11,20 +11,32 @@
 #include <assert.h>
 #include <unistd.h>
 #include <errno.h>
+
+#ifdef __EMSCRIPTEN__
 #include <emscripten/console.h>
-
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-_Atomic long res = 43;
-_Atomic int started = false;
-
-static void cleanup_handler(void *arg)
-{
-  long a = (long)arg;
-  emscripten_outf("Called clean-up handler with arg %ld", a);
-  res -= a;
+#else
+void emscripten_out(const char* msg) {
+  printf("%s\n", msg);
 }
 
-static void *thread_start(void *arg) {
+void emscripten_outf(const char* msg, ...) {
+  printf("%s\n", msg);
+}
+#endif
+
+pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
+_Atomic bool started = false;
+_Atomic bool timedlock_returned = false;
+_Atomic bool done_cleanup = false;
+
+void cleanup_handler(void *arg) {
+  long a = (long)arg;
+  emscripten_outf("Called clean-up handler with arg %ld", a);
+  assert(a == 42);
+  done_cleanup = true;
+}
+
+void *thread_start(void *arg) {
   // Setup thread for async cancellation only
   pthread_setcancelstate(PTHREAD_CANCEL_ENABLE, NULL);
   pthread_setcanceltype(PTHREAD_CANCEL_ASYNCHRONOUS, NULL);
@@ -36,12 +48,20 @@ static void *thread_start(void *arg) {
   // Signal the main thread that are started
   started = true;
 
-  // This mutex is locked by the main thread so this call should never return.
-  // pthread_mutex_lock is not a cancellation point so deferred cancellation
-  // won't work here, async cancellation should.
-  pthread_mutex_lock(&mutex);
+  // At least under musl, async cancellation also does not work for
+  // pthread_mutex_lock so this call to pthread_mutex_timedlock should always
+  // timeout.
+  struct timespec ts;
+  clock_gettime(CLOCK_REALTIME, &ts);
+  ts.tv_sec += 2;
+  int rc = pthread_mutex_timedlock(&mutex, &ts);
+  timedlock_returned = true;
+  assert(rc == ETIMEDOUT);
+  emscripten_out("pthread_mutex_timedlock timed out");
 
-  assert(false && "pthread_mutex_lock returned!");
+  pthread_testcancel();
+
+  assert(false && "pthread_testcancel returned!");
   pthread_cleanup_pop(0);
 }
 
@@ -61,13 +81,14 @@ int main() {
   s = pthread_cancel(thr);
   assert(s == 0);
   // Busy wait until thread cancel handler has been run
-  while (res != 1) {
+  while (!done_cleanup) {
     sched_yield();
   }
 
   emscripten_out("Joining thread..");
   s = pthread_join(thr, NULL);
   assert(s == 0);
+  assert(timedlock_returned);
   emscripten_out("done");
   return 0;
 }

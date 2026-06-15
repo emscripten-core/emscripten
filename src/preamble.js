@@ -108,7 +108,7 @@ assert(globalThis.Int32Array && globalThis.Float64Array && Int32Array.prototype.
        'JS engine does not provide full typed array support');
 #endif
 
-#if RELOCATABLE || MAIN_MODULE
+#if MAIN_MODULE
 var __RELOC_FUNCS__ = [];
 #endif
 
@@ -155,7 +155,7 @@ function initRuntime() {
   checkStackCookie();
 #endif
 
-#if MAIN_MODULE || RELOCATABLE
+#if MAIN_MODULE
   callRuntimeCallbacks(__RELOC_FUNCS__);
 #endif
 
@@ -188,12 +188,22 @@ function preMain() {
 #endif
 
 #if EXIT_RUNTIME
+
+#if ASSERTIONS
+var runtimeExiting = false;
+#endif
+
 function exitRuntime() {
 #if RUNTIME_DEBUG
   dbg('exitRuntime');
 #endif
 #if ASSERTIONS
   assert(!runtimeExited);
+  assert(!runtimeExiting, 'Re-entrant call to exitRuntime()! This can happen if an atexit() registered callback throws an exception.');
+  runtimeExiting = true;
+#if PTHREADS || WASM_WORKERS
+  assert(!{{{ ENVIRONMENT_IS_WORKER_THREAD() }}}, 'exitRuntime() should only be called from the main thread');
+#endif
 #endif
 #if ASYNCIFY == 1 && ASSERTIONS
   // ASYNCIFY cannot be used once the runtime starts shutting down.
@@ -202,13 +212,12 @@ function exitRuntime() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  {{{ runIfWorkerThread('return;') }}} // PThreads reuse the runtime from the main thread.
 #if !STANDALONE_WASM
   ___funcs_on_exit(); // Native atexit() functions
 #endif
   <<< ATEXITS >>>
 #if PTHREADS
-  PThread.terminateAllThreads();
+  PThread.terminateRuntime();
 #endif
   runtimeExited = true;
 }
@@ -235,13 +244,15 @@ function postRun() {
   <<< ATPOSTRUNS >>>
 }
 
-/** @param {string|number=} what */
+/**
+ * @param {string|number=} what
+ */
 function abort(what) {
 #if expectToReceiveOnModule('onAbort')
   Module['onAbort']?.(what);
 #endif
 
-  what = 'Aborted(' + what + ')';
+  what = `Aborted(${what})`;
   // TODO(sbc): Should we remove printing and leave it up to whoever
   // catches the exception?
   err(what);
@@ -287,9 +298,6 @@ function abort(what) {
   /** @suppress {checkTypes} */
   var e = new WebAssembly.RuntimeError(what);
 
-#if MODULARIZE
-  readyPromiseReject?.(e);
-#endif
   // Throw the error whether or not MODULARIZE is set because abort is used
   // in code paths apart from instantiation where an exception is expected
   // to be thrown when abort is called.
@@ -298,20 +306,19 @@ function abort(what) {
 
 #if ASSERTIONS && !('$FS' in addedLibraryItems)
 // show errors on likely calls to FS when it was not included
+function fsMissing() {
+  abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM');
+}
 var FS = {
-  error() {
-    abort('Filesystem support (FS) was not included. The problem is that you are using files from JS, but files were not used from C/C++, so filesystem support was not auto-included. You can force-include filesystem support with -sFORCE_FILESYSTEM');
-  },
-  init() { FS.error() },
-  createDataFile() { FS.error() },
-  createPreloadedFile() { FS.error() },
-  createLazyFile() { FS.error() },
-  open() { FS.error() },
-  mkdev() { FS.error() },
-  registerDevice() { FS.error() },
-  analyzePath() { FS.error() },
-
-  ErrnoError() { FS.error() },
+  init: fsMissing,
+  createDataFile: fsMissing,
+  createPreloadedFile: fsMissing,
+  createLazyFile: fsMissing,
+  open: fsMissing,
+  mkdev: fsMissing,
+  registerDevice:  fsMissing,
+  analyzePath: fsMissing,
+  ErrnoError: fsMissing,
 };
 {{{
 addAtModule(`
@@ -360,11 +367,7 @@ function makeAbortWrapper(original) {
         ABORT // rethrow exception if abort() was called in the original function call above
         || abortWrapperDepth > 1 // rethrow exceptions not caught at the top level if exception catching is enabled; rethrow from exceptions from within callMain
 #if SUPPORT_LONGJMP == 'emscripten' // Rethrow longjmp if enabled
-#if EXCEPTION_STACK_TRACES
-        || e instanceof EmscriptenSjLj // EXCEPTION_STACK_TRACES=1 will throw an instance of EmscriptenSjLj
-#else
-        || e === Infinity // EXCEPTION_STACK_TRACES=0 will throw Infinity
-#endif // EXCEPTION_STACK_TRACES
+        || e instanceof EmscriptenSjLj
 #endif
         || e === 'unwind'
       ) {
@@ -506,7 +509,7 @@ async function getWasmBinary(binaryFile) {
 #endif
 
 #if SPLIT_MODULE
-{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, 'instantiateSync') }}}
+{{{ makeModuleReceiveWithVar('loadSplitModule', undefined, JSPI ? '(secondaryFile, imports) => instantiateAsync(null, secondaryFile, imports)' : 'instantiateSync') }}}
 var splitModuleProxyHandler = {
   get(target, moduleName, receiver) {
     if (moduleName.startsWith('placeholder')) {
@@ -519,28 +522,23 @@ var splitModuleProxyHandler = {
       }
       return new Proxy({}, {
         get(target, base, receiver) {
-          return (...args) => {
-#if ASYNCIFY == 2
-            throw new Error('Placeholder function "' + base + '" should not be called when using JSPI.');
-#else
+          let ret = {{{ asyncIf(ASYNCIFY == 2) }}} (...args) => {
 #if RUNTIME_DEBUG
             dbg(`placeholder function called: ${base}`);
 #endif
             var imports = {'primary': wasmRawExports};
             // Replace '.wasm' suffix with '.deferred.wasm'.
-            loadSplitModule(secondaryFile, imports, base);
+            {{{ awaitIf(ASYNCIFY == 2) }}}loadSplitModule(secondaryFile, imports, base);
 #if RUNTIME_DEBUG
             dbg('instantiated deferred module, continuing');
 #endif
-#if RELOCATABLE
-            // When the table is dynamically laid out, the placeholder functions names
-            // are offsets from the table base. In the main module, the table base is
-            // always 1.
-            base = 1 + parseInt(base);
-#endif
             return wasmTable.get({{{ toIndexType('base') }}})(...args);
+          };
+#if JSPI
+          return new WebAssembly.Suspending(ret);
+#else
+          return ret;
 #endif
-          }
         }
       });
     }
@@ -690,7 +688,7 @@ function getWasmImports() {
 #endif
 #endif
   // prepare imports
-#if MAIN_MODULE || RELOCATABLE
+#if MAIN_MODULE
   var GOTProxyHandler = new Proxy(new Set({{{ JSON.stringify(Array.from(WEAK_IMPORTS)) }}}), GOTHandler);
 #endif
   var imports = {
@@ -700,7 +698,7 @@ function getWasmImports() {
     'env': wasmImports,
     '{{{ WASI_MODULE_NAME }}}': wasmImports,
 #endif // MINIFY_WASM_IMPORTED_MODULES
-#if MAIN_MODULE || RELOCATABLE
+#if MAIN_MODULE
     'GOT.mem': GOTProxyHandler,
     'GOT.func': GOTProxyHandler,
 #endif
@@ -718,16 +716,13 @@ function getWasmImports() {
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
   /** @param {WebAssembly.Module=} module*/
-  function receiveInstance(instance, module) {
+  {{{ asyncIf(MAIN_MODULE) }}}function receiveInstance(instance, module) {
 #if RUNTIME_DEBUG
     dbg('receiveInstance')
 #endif
     wasmExports = instance.exports;
 
 #if MAIN_MODULE
-#if RELOCATABLE
-    wasmExports = relocateExports(wasmExports, {{{ GLOBAL_BASE }}});
-#endif
     var origExports = wasmExports;
 #endif
 #if SPLIT_MODULE
@@ -777,39 +772,31 @@ function getWasmImports() {
     updateGOT(origExports);
 #endif
 
-#if EXPORTED_RUNTIME_METHODS.includes('wasmExports')
+#if EXPORTED_RUNTIME_METHODS.has('wasmExports')
     Module['wasmExports'] = wasmExports;
-#endif
-
-#if MAIN_MODULE
-#if '$LDSO' in addedLibraryItems
-    LDSO.init();
-#endif
-    loadDylibs();
-#elif RELOCATABLE
-    reportUndefinedSymbols();
-#endif
-
-#if ABORT_ON_WASM_EXCEPTIONS
-    instrumentWasmTableWithAbort();
 #endif
 
 #if !IMPORTED_MEMORY
     updateMemoryViews();
 #endif
 
+#if MAIN_MODULE
+#if '$LDSO' in addedLibraryItems
+    LDSO.init();
+#endif
+    await loadDylibs();
+#endif
+
+#if ABORT_ON_WASM_EXCEPTIONS
+    instrumentWasmTableWithAbort();
+#endif
+
 #if PTHREADS || WASM_WORKERS
     // We now have the Wasm module loaded up, keep a reference to the compiled module so we can post it to the workers.
     wasmModule = module;
 #endif
-#if WASM_ASYNC_COMPILATION && !MODULARIZE
-    removeRunDependency('wasm-instantiate');
-#endif
     return wasmExports;
   }
-#if WASM_ASYNC_COMPILATION && !MODULARIZE
-  addRunDependency('wasm-instantiate');
-#endif
 
   // Prefer streaming instantiation if available.
 #if WASM_ASYNC_COMPILATION
@@ -877,7 +864,7 @@ function getWasmImports() {
 
 #if SOURCE_PHASE_IMPORTS
   var instance = await WebAssembly.instantiate(wasmModule, info);
-  var exports = receiveInstantiationResult({instance, 'module':wasmModule});
+  var exports = {{{ awaitIf(MAIN_MODULE) }}}receiveInstantiationResult({instance, 'module':wasmModule});
   return exports;
 #else
   wasmBinaryFile ??= findWasmBinary();
@@ -886,7 +873,7 @@ function getWasmImports() {
   dbg('asynchronously preparing wasm');
 #endif
   var result = await instantiateAsync(wasmBinary, wasmBinaryFile, info);
-  var exports = receiveInstantiationResult(result);
+  var exports = {{{ awaitIf(MAIN_MODULE) }}}receiveInstantiationResult(result);
   return exports;
 #else // WASM_ASYNC_COMPILATION
   var result = instantiateSync(wasmBinaryFile, info);

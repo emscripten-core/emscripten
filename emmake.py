@@ -4,8 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""This is a helper script. It runs make for you, setting
-the environment variables to use emcc and so forth. Usage:
+"""Helper script for running make.
+
+This script runs make with correct environment
+variables to use emcc and so forth. Usage:
 
   emmake make [FLAGS]
 
@@ -33,7 +35,7 @@ from tools import building, utils
 # Main run() function
 #
 def run():
-  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
+  if len(sys.argv) < 2 or sys.argv[1] in {'--version', '--help'}:
     print('''\
 emmake is a helper for make, setting various environment
 variables so that emcc etc. are used. Typical usage:

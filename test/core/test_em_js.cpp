@@ -95,6 +95,10 @@ EM_JS(int, _prefixed, (void), {
   return 1;
 });
 
+EM_JS(int, strip_whitespace, ( void ), {
+  return 1;
+});
+
 EM_JS(int, transitive, (void), {
   // Verify that EM_JS functions can call other EM_JS functions by their
   // unmangled name.
@@ -126,6 +130,7 @@ int main() {
   free(s2);
 
   printf("    _prefixed: %d\n", _prefixed());
+  printf("    strip_whitespace: %d\n", strip_whitespace());
   printf("    transitive: %d\n", transitive());
 
   printf("END\n");

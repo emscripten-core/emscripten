@@ -4,26 +4,19 @@
 #include <stdio.h>
 #include <stdlib.h>
 
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-bool should_exit;
+pthread_barrier_t exit_barrier;
 
 pthread_t thread;
 
 void *workerThread(void* arg) {
-  pthread_mutex_lock(&mutex);
-  while (!should_exit)
-    pthread_cond_wait(&cond, &mutex);
-  pthread_mutex_unlock(&mutex);
-
+  pthread_barrier_wait(&exit_barrier);
+  printf("done workerThread\n");
   return NULL;
 }
 
 void terminateThread() {
-  pthread_mutex_lock(&mutex);
-  should_exit = true;
-  pthread_cond_signal(&cond);
-  pthread_mutex_unlock(&mutex);
+  printf("terminateThread\n");
+  pthread_barrier_wait(&exit_barrier);
 
   int res = 0;
   int rc = pthread_join(thread, (void**)&res);
@@ -34,10 +27,12 @@ void terminateThread() {
 }
 
 int main(int argc, char* argv[]) {
+  pthread_barrier_init(&exit_barrier, NULL, 2);
   int rc = atexit(terminateThread);
   assert(rc == 0);
 
   rc = pthread_create(&thread, NULL, workerThread, NULL);
   assert(rc == 0);
+  printf("done main\n");
   return 0;
 }

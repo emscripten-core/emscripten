@@ -9,7 +9,8 @@ var LibraryTracing = {
     '$traceConfigure', 'emscripten_trace_configure_for_google_wtf',
     '$traceEnterContext', 'emscripten_trace_exit_context',
     '$traceLogMessage', '$traceMark',
-    'emscripten_get_now'
+    'emscripten_get_now',
+    '$jsStackTrace'
   ],
   $EmscriptenTrace__postset: 'EmscriptenTrace.init()',
   $EmscriptenTrace: {
@@ -40,6 +41,7 @@ var LibraryTracing = {
     EVENT_OFF_HEAP: 'off-heap',
     EVENT_REALLOCATE: 'reallocate',
     EVENT_REPORT_ERROR: 'report-error',
+    EVENT_SBRK_GROW: 'sbrk-grow',
     EVENT_SESSION_NAME: 'session-name',
     EVENT_TASK_ASSOCIATE_DATA: 'task-associate-data',
     EVENT_TASK_END: 'task-end',
@@ -209,8 +211,17 @@ var LibraryTracing = {
                           UTF8ToString(error), callstack]);
   },
 
+  emscripten_trace_sbrk_grow: (old_brk, new_brk) => {
+    Module['onSbrkGrow']?.(old_brk, new_brk, jsStackTrace());
+    if (EmscriptenTrace.postEnabled) {
+      var now = EmscriptenTrace.now();
+      EmscriptenTrace.post([EmscriptenTrace.EVENT_SBRK_GROW,
+                            now, old_brk, new_brk]);
+    }
+  },
+
   emscripten_trace_record_allocation: (address, size) => {
-    Module['onMalloc']?.(address, size);
+    Module['onMalloc']?.(address, size, jsStackTrace());
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_ALLOCATE,
@@ -219,7 +230,7 @@ var LibraryTracing = {
   },
 
   emscripten_trace_record_reallocation: (old_address, new_address, size) => {
-    Module['onRealloc']?.(old_address, new_address, size);
+    Module['onRealloc']?.(old_address, new_address, size, jsStackTrace());
     if (EmscriptenTrace.postEnabled) {
       var now = EmscriptenTrace.now();
       EmscriptenTrace.post([EmscriptenTrace.EVENT_REALLOCATE,

@@ -263,7 +263,11 @@ pid_t gettid(void);
 #else
 #define _POSIX_THREADS          _POSIX_VERSION
 #endif
+#ifndef __EMSCRIPTEN__
 #define _POSIX_THREAD_PROCESS_SHARED _POSIX_VERSION
+#else
+#define _POSIX_THREAD_PROCESS_SHARED -1
+#endif
 #define _POSIX_THREAD_SAFE_FUNCTIONS _POSIX_VERSION
 #define _POSIX_THREAD_ATTR_STACKADDR _POSIX_VERSION
 #define _POSIX_THREAD_ATTR_STACKSIZE _POSIX_VERSION
@@ -289,7 +293,13 @@ pid_t gettid(void);
 
 #define _POSIX2_C_BIND          _POSIX_VERSION
 
-#include <bits/posix.h>
+#if __LONG_MAX == 0x7fffffffL
+#define _POSIX_V6_ILP32_OFFBIG  1
+#define _POSIX_V7_ILP32_OFFBIG  1
+#else
+#define _POSIX_V6_LP64_OFF64  1
+#define _POSIX_V7_LP64_OFF64  1
+#endif
 
 
 

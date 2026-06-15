@@ -308,6 +308,29 @@ void NOINLINE test_zextpd128_pd256() { Ret_M128d(__m256d, _mm256_zextpd128_pd256
 void NOINLINE test_zextps128_ps256() { Ret_M128(__m256, _mm256_zextps128_ps256); }
 void NOINLINE test_zextsi128_si256() { Ret_M128i(__m256i, _mm256_zextsi128_si256); }
 
+void NOINLINE test_cast_m256_variants() {
+  __m256 float_ = _mm256_setzero_ps();
+  __m256i int_ = _mm256_setzero_si256();
+  __m256d double_ = _mm256_setzero_pd();
+
+  float_ = (__m256)int_;
+  float_ = (__m256)double_;
+
+  int_ = (__m256i)float_;
+  int_ = (__m256i)double_;
+
+  double_ = (__m256d)float_;
+  double_ = (__m256d)int_;
+}
+
+void NOINLINE test_cast_m256i_u() {
+  char buf[32] = {};
+  __m256i result;
+
+  result = _mm256_loadu_si256((__m256i*)buf);
+  result = _mm256_loadu_si256((__m256i_u*)buf);
+}
+
 int main() {
   assert(numInterestingFloats % 8 == 0);
   assert(numInterestingInts % 8 == 0);
@@ -540,4 +563,7 @@ int main() {
   test_zextpd128_pd256();
   test_zextps128_ps256();
   test_zextsi128_si256();
+
+  test_cast_m256_variants();
+  test_cast_m256i_u();
 }

@@ -146,6 +146,7 @@ void test_sigaction() {
 
 void test_sigemptyset() {
   sigset_t s = { 0 };
+  printf("sizeof sigset_t: %zu\n", sizeof(sigset_t));
   assert(sigisemptyset(&s));
   sigaddset(&s, SIGUSR1);
   assert(!sigisemptyset(&s));

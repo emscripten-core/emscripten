@@ -1,10 +1,18 @@
 #!/usr/bin/env node
 
 import * as acorn from 'acorn';
+import importPhases from 'acorn-import-phases';
 import * as terser from '../third_party/terser/terser.js';
 import * as fs from 'node:fs';
 import assert from 'node:assert';
 import {parseArgs} from 'node:util';
+
+// Extend acorn to understand source-phase import syntax
+// (`import source foo from './bar.wasm'`) emitted under -sSOURCE_PHASE_IMPORTS.
+// The plugin annotates ImportDeclaration nodes with a `phase` field; the
+// bundled terser carries this through from_mozilla_ast / to_mozilla_ast and
+// emits it back on output.
+const parser = acorn.Parser.extend(importPhases());
 
 // Utilities
 
@@ -1083,7 +1091,7 @@ function growableHeap(ast) {
       if (
         !(
           node.id.type === 'Identifier' &&
-          (node.id.name === 'growMemViews' || node.id.name === 'LE_HEAP_UPDATE')
+          (node.id.name === 'growMemViews' || node.id.name === 'updateMemoryViews' || node.id.name === 'LE_HEAP_UPDATE')
         )
       ) {
         c(node.body);
@@ -1718,6 +1726,7 @@ const params = {
   ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
   allowAwaitOutsideFunction: true,
+  allowImportExportEverywhere: exportES6,
 };
 if (closureFriendly) {
   const currentComments = [];
@@ -1750,7 +1759,7 @@ const registry = {
 
 let ast;
 try {
-  ast = acorn.parse(input, params);
+  ast = parser.parse(input, params);
   for (let pass of passes) {
     const resolvedPass = registry[pass];
     assert(resolvedPass, `unknown optimizer pass: ${pass}`);

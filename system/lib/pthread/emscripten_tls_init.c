@@ -60,11 +60,12 @@ void _emscripten_tls_free() {
 void* _emscripten_tls_init(void) {
   size_t tls_size = __builtin_wasm_tls_size();
   void* tls_block = __builtin_wasm_tls_base();
-  if (pthread_self()->tls_base) {
+  pthread_t self = pthread_self();
+  if (self->tls_base) {
     // The TLS block for the main module is allocated alongside the pthread
     // itself and its stack.
-    tls_block = pthread_self()->tls_base;
-    pthread_self()->tls_base = NULL;
+    tls_block = self->tls_base;
+    self->tls_base = NULL;
   } else if (needs_dynamic_alloc() || (!tls_block && tls_size)) {
     // For non-main modules we do a dynamic allocation.
     set_needs_dynamic_alloc();

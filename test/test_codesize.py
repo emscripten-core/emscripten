@@ -7,7 +7,6 @@ import json
 import math
 import os
 import re
-import shlex
 
 import common
 from common import (
@@ -76,7 +75,7 @@ class codesize(RunnerCore):
                                '-ffast-math']
 
     math_sources = [test_file('codesize/math.c')]
-    hello_world_sources = [test_file('small_hello_world.c'),
+    hello_world_sources = [test_file('hello_world_small.c'),
                            '-sMALLOC=none']
     random_printf_sources = [test_file('hello_random_printf.c'),
                              '-sMALLOC=none',
@@ -120,7 +119,6 @@ class codesize(RunnerCore):
       outputs = ['a.html']
 
     args = [compiler_for(sources[0]), '-o', 'a.html'] + args + sources
-    print(shlex.join(args))
     self.run_process(args)
 
     # For certain tests, don't just check the output size but check
@@ -133,13 +131,13 @@ class codesize(RunnerCore):
     # Note that we do not compare the full wasm output since that is
     # even more fragile and can change with LLVM updates.
     if compare_js_output:
-      js_out = test_file('codesize', test_name + '.expected.js')
+      expected_js = test_file('codesize', test_name + '.expected.js')
       terser = shared.get_npm_cmd('terser')
       # N.b. this requires node in PATH, it does not run against NODE from
       # Emscripten config file. If you have this line fail, make sure 'node' is
       # visible in PATH.
       self.run_process(terser + ['-b', 'beautify=true', 'a.js', '-o', 'pretty.js'], env=shared.env_with_node_in_path())
-      self.assertFileContents(js_out, read_file('pretty.js'))
+      self.assertFilesMatch(expected_js, 'pretty.js')
 
     self.check_output_sizes(*outputs)
 
@@ -303,13 +301,13 @@ class codesize(RunnerCore):
     'O1': (['-O1'],),
     'O2': (['-O2'],),
     # in -O3, -Os and -Oz we metadce, and they shrink it down to the minimal output we want
-    'O3': (['-O3'],), # noqa
-    'Os': (['-Os'],), # noqa
-    'Oz': (['-Oz'],), # noqa
+    'O3': (['-O3'],),
+    'Os': (['-Os'],),
+    'Oz': (['-Oz'],),
     'Os_mr': (['-Os', '-sMINIMAL_RUNTIME'],),
     # EVAL_CTORS also removes the __wasm_call_ctors function
     'Oz-ctors': (['-Oz', '-sEVAL_CTORS'],),
-    '64': (['-Oz', '-sMEMORY64'],),
+    '64': (['-Oz', '-m64'],),
     # WasmFS should not be fully linked into a minimal program.
     'wasmfs': (['-Oz', '-sWASMFS'],),
     'esm': (['-Oz', '-sEXPORT_ES6'],),
@@ -328,11 +326,11 @@ class codesize(RunnerCore):
     self.run_codesize_test('minimal_main.c', ['-Oz', '-pthread', '-sPROXY_TO_PTHREAD', '-sSTRICT'] + args)
 
   @parameterized({
-    'noexcept': (['-O2'],), # noqa
+    'noexcept': (['-O2'],),
     # exceptions increases code size significantly
-    'except':   (['-O2', '-fexceptions'],), # noqa
+    'except':   (['-O2', '-fexceptions'],),
     # exceptions does not pull in demangling by default, which increases code size
-    'mangle':   (['-O2', '-fexceptions', '-sEXPORTED_FUNCTIONS=_main,_free,___cxa_demangle', '-Wno-deprecated'],), # noqa
+    'mangle':   (['-O2', '-fexceptions', '-sEXPORTED_FUNCTIONS=_main,_free,___cxa_demangle', '-Wno-deprecated'],),
     # Wasm EH's code size increase is smaller than that of Emscripten EH
     'except_wasm': (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS=0'],),
     'except_wasm_legacy': (['-O2', '-fwasm-exceptions', '-sWASM_LEGACY_EXCEPTIONS'],),
@@ -363,7 +361,7 @@ class codesize(RunnerCore):
     # larger for wasm backend.
     # This test seems to produce different results under gzip on macOS and Windows machines
     # so skip the gzip size reporting here.
-    'dylink_all': (['-O3', '-sMAIN_MODULE'], {'skip_gz': True}),
+    'dylink_all': (['-O3', '-sMAIN_MODULE', '-sFULL_ES3'], {'skip_gz': True}),
     'dylink': (['-O3', '-sMAIN_MODULE=2'],),
     # WasmFS should not be fully linked into a hello world program.
     'wasmfs': (['-O3', '-sWASMFS'],),
@@ -386,7 +384,7 @@ class codesize(RunnerCore):
     'O3_grow_standalone': ('mem.c', ['-O3', '-sALLOW_MEMORY_GROWTH', '-sSTANDALONE_WASM']),
     # without argc/argv, no support code for them is emitted, even with lto
     'O3_standalone_narg_flto':
-                          ('mem_no_argv.c', ['-O3', '-sSTANDALONE_WASM', '-flto']),         # noqa
+                          ('mem_no_argv.c', ['-O3', '-sSTANDALONE_WASM', '-flto']),
   })
   def test_codesize_mem(self, filename, args):
     self.run_codesize_test(filename, args)
@@ -400,8 +398,8 @@ class codesize(RunnerCore):
     self.run_codesize_test('libcxxabi_message.cpp', args)
 
   @parameterized({
-    'js_fs':  (['-O3', '-sNO_WASMFS'],), # noqa
-    'wasmfs': (['-O3', '-sWASMFS'],), # noqa
+    'js_fs':  (['-O3', '-sNO_WASMFS'],),
+    'wasmfs': (['-O3', '-sWASMFS'],),
   })
   def test_codesize_files(self, args):
     self.run_codesize_test('files.cpp', args)
@@ -411,8 +409,7 @@ class codesize(RunnerCore):
     self.run_codesize_test('hello_world.c', cflags=['-sSTRICT', '-O3', '--preload-file=somefile.txt'], check_full_js=True)
 
   def test_small_js_flags(self):
-    self.emcc('browser_test_hello_world.c', ['-O3', '--closure=1', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'])
-    self.check_output_sizes('a.out.js')
+    self.run_codesize_test('hello_world.c',  ['-O3', '-sINCOMING_MODULE_JS_API=[]', '-sENVIRONMENT=web', '--output-eol=linux'], check_full_js=True)
 
   # This test verifies that gzipped binary-encoded a SINGLE_FILE build results in a smaller size
   # than gzipped base64-encoded version.

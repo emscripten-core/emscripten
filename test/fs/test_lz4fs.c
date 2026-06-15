@@ -158,7 +158,7 @@ int main() {
       var compressedSize = Module['compressedData']['data'].length;
       var low = COMPLETE_SIZE/3;
       var high = COMPLETE_SIZE/2;
-      console.log('seeing compressed size of ' + compressedSize + ', expect in ' + [low, high]);
+      console.log(`seeing compressed size of ${compressedSize}, expect in ${[low, high]}`);
       assert(compressedSize > low && compressedSize < high); // more than 1/3, because 1/3 is uncompressible, but still, less than 1/2
 
       ccall('finish');

@@ -3,9 +3,11 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Runs conformance test from the upstream posixtest suite in:
+"""Runs conformance test from the upstream posixtest.
+
+See:
    ./test/third_party/posixtestsuite
-See
+See:
    https://github.com/emscripten-core/posixtestsuite
 """
 
@@ -14,33 +16,31 @@ import os
 import unittest
 
 import test_posixtest_browser
-from browser_common import browser_should_skip_feature
 from common import RunnerCore, path_from_root
 from decorators import requires_pthreads
-
-from tools.feature_matrix import Feature
 
 testsuite_root = path_from_root('test/third_party/posixtestsuite')
 
 
 class posixtest(RunnerCore):
-  """Run the suite under node (and in parallel)
+  """Run the suite under node (and in parallel).
 
   This class get populated dynamically below.
   """
+
   pass  # noqa: PIE790
 
 
 def filter_tests(all_tests):
-  prefixes = [
+  prefixes = (
     'pthread_',
     'strftime',
     'asctime',
     'gmtime',
-  ]
+  )
 
   def enable_test(t):
-    return any(t.startswith(p) for p in prefixes)
+    return t.startswith(prefixes)
 
   return [t for t in all_tests if enable_test(t)]
 
@@ -60,6 +60,25 @@ def get_tests():
 # Mark certain tests as unsupported
 # TODO: Investigate failing semaphores tests.
 unsupported_noreturn = {
+  'test_pthread_mutex_lock_5_1': 'signals are not supported',
+  'test_pthread_spin_lock_1_1': 'signals are not supported during spin lock',
+  'test_pthread_spin_lock_3_1': 'signals are not supported during spin lock',
+  'test_pthread_join_6_3': 'creates too many threads',
+  'test_pthread_barrier_wait_3_2': 'signals are not supported',
+  'test_pthread_cond_broadcast_1_2': 'tries to create 10,0000 threads, then depends on fork()',
+  'test_pthread_setcanceltype_1_1': 'async cancelation does not work withing pthread_mutex_lock',
+}
+
+unsupported = {
+  'test_pthread_cond_init_4_2': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_barrierattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_condattr_getpshared_1_2': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_mutexattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_rwlockattr_setpshared_1_1': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_condattr_setpshared_1_2': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_mutexattr_getpshared_1_2': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_mutexattr_setpshared_2_2': 'PTHREAD_PROCESS_SHARED not supported',
+  'test_pthread_exit_6_1': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_1_1': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_1_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_2_1': 'fork() and multiple processes are not supported',
@@ -67,19 +86,6 @@ unsupported_noreturn = {
   'test_pthread_atfork_3_2': 'fork() and multiple processes are not supported',
   'test_pthread_atfork_4_1': 'fork() and multiple processes are not supported',
   'test_pthread_create_1_5': 'fork() and multiple processes are not supported',
-  'test_pthread_exit_6_1': 'lacking necessary mmap() support',
-  'test_pthread_spin_lock_1_1': 'signals are not supported',
-  'test_pthread_mutex_lock_5_1': 'signals are not supported',
-  'test_pthread_mutexattr_settype_2_1': 'interrupting pthread_mutex_lock wait via SIGALRM is not supported',
-  'test_pthread_spin_lock_3_1': 'signals are not supported',
-  'test_pthread_create_14_1': 'creates too many threads',
-  'test_pthread_detach_4_3': 'creates too many threads',
-  'test_pthread_join_6_3': 'creates too many threads',
-  'test_pthread_barrier_wait_3_2': 'signals are not supported',
-  'test_pthread_cond_broadcast_1_2': 'tries to create 10,0000 threads, then depends on fork()',
-}
-
-unsupported = {
   'test_pthread_attr_setinheritsched_2_2': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_3': 'scheduling policy/parameters are not supported',
   'test_pthread_attr_setinheritsched_2_4': 'scheduling policy/parameters are not supported',
@@ -88,17 +94,10 @@ unsupported = {
   'test_pthread_attr_setschedpolicy_4_1': 'scheduling policy/parameters are not supported',
   'test_pthread_barrierattr_getpshared_2_1': 'shm_open and shm_unlink are not supported',
   'test_pthread_barrier_wait_3_1': 'signals are not supported',
-  'test_pthread_cond_broadcast_2_3': 'lacking necessary mmap() support',
-  'test_pthread_cond_destroy_2_1': 'lacking necessary mmap() support',
   'test_pthread_cond_init_1_2': 'clock_settime() is not supported',
   'test_pthread_cond_init_1_3': 'lacking necessary mmap() support',
   'test_pthread_cond_init_2_2': 'clock_settime() is not supported',
   'test_pthread_cond_init_4_1': 'fork() and multiple processes are not supported',
-  'test_pthread_cond_signal_1_2': 'lacking necessary mmap() support',
-  'test_pthread_cond_timedwait_2_4': 'lacking necessary mmap() support',
-  'test_pthread_cond_timedwait_2_7': 'lacking necessary mmap() support',
-  'test_pthread_cond_timedwait_4_2': 'lacking necessary mmap() support',
-  'test_pthread_cond_wait_2_2': 'lacking necessary mmap() support',
   'test_pthread_create_8_1': 'signals are not supported',
   'test_pthread_create_8_2': 'signals are not supported',
   'test_pthread_create_11_1': '_POSIX_THREAD_CPUTIME not supported',
@@ -113,9 +112,6 @@ unsupported = {
   'test_pthread_mutexattr_setprotocol_1_1': 'setting pthread_mutexattr_setprotocol to a nonzero value is not supported',
   'test_pthread_mutex_getprioceiling_1_1': 'pthread_mutex_getprioceiling is not supported',
   'test_pthread_mutex_init_5_1': 'fork() and multiple processes are not supported',
-  'test_pthread_mutex_trylock_1_2': 'lacking necessary mmap() support',
-  'test_pthread_mutex_trylock_2_1': 'lacking necessary mmap() support',
-  'test_pthread_mutex_trylock_4_2': 'lacking necessary mmap() support',
   'test_pthread_rwlockattr_getpshared_2_1': 'shm_open and shm_unlink are not supported',
   'test_pthread_rwlock_rdlock_2_1': 'thread priorities not supported, cannot test rwlocking in priority order',
   'test_pthread_rwlock_rdlock_2_2': 'thread priorities not supported, cannot test rwlocking in priority order',
@@ -143,6 +139,10 @@ flaky = {
   'test_pthread_mutex_init_3_2': 'flaky: https://github.com/emscripten-core/posixtestsuite/pull/9',
 }
 
+no_assert_tests = {
+  'test_pthread_mutexattr_settype_2_1': 'contains deliberate deadlock',
+}
+
 # Mark certain tests as disabled.  These are tests that are either flaky or never return.
 disabled = {
   **flaky,
@@ -158,14 +158,18 @@ expect_fail = {
 }
 
 
+# Debugging test mode where we only run the `unsupported_noreturn` tests.  This allows us
+# to periocially confirm this test test set. Normally combined with lowering the timeout with e.g.
+# EMTEST_TIMEOUT=5
+NORETURN_ONLY = os.environ.get('EMTEST_NORETURN_ONLY')
+
+
 def make_test(name, testfile, browser):
 
   @requires_pthreads
   def f(self):
-    if name in disabled:
+    if not NORETURN_ONLY and name in disabled:
       self.skipTest(disabled[name])
-    if browser and browser_should_skip_feature('EMTEST_LACKS_SHARED_ARRAY_BUFFER', Feature.THREADS):
-      self.skipTest('This test requires a browser with SharedArrayBuffer support')
 
     args = ['-I' + os.path.join(testsuite_root, 'include'),
             '-Werror',
@@ -177,9 +181,11 @@ def make_test(name, testfile, browser):
             # of log messages on CI runs.
             '--profiling-funcs',
             '-sEXIT_RUNTIME',
-            '-sTOTAL_MEMORY=256mb',
-            '-sPTHREAD_POOL_SIZE=40']
+            '-sTOTAL_MEMORY=256mb']
+    if name in no_assert_tests:
+      args.append('-sASSERTIONS=0')
     if browser:
+      args.append('-sPTHREAD_POOL_SIZE=40')
       self.btest_exit(testfile, cflags=args)
     else:
       self.do_runf(testfile, cflags=args, output_basename=name)
@@ -198,5 +204,7 @@ for testdir in get_tests():
     test_suffix = os.path.splitext(os.path.basename(test_file))[0]
     test_suffix = test_suffix.replace('-', '_')
     test_name = 'test_' + basename + '_' + test_suffix
+    if NORETURN_ONLY and test_name not in unsupported_noreturn:
+      continue
     setattr(posixtest, test_name, make_test(test_name, test_file, browser=False))
     setattr(test_posixtest_browser.posixtest_browser, test_name, make_test(test_name, test_file, browser=True))

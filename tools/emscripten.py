@@ -3,12 +3,14 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""A small wrapper script around the core JS compiler. This calls that
-compiler with the settings given to it. It can also read data from C/C++
-header files (so that the JS compiler can see the constants in those
+"""A small wrapper script around the core JS compiler.
+
+This calls that compiler with the settings given to it. It can also read data
+from C/C++ header files (so that the JS compiler can see the constants in those
 headers, for the libc implementation in JS).
 """
 
+import fnmatch
 import glob
 import hashlib
 import json
@@ -123,7 +125,7 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
     settings.WASM_EXPORTS += ['__asyncify_state', '__asyncify_data']
 
   # start with the MVP features, and add any detected features.
-  building.binaryen_features = ['--mvp-features'] + metadata.features
+  building.binaryen_features = ['--mvp-features', *metadata.features]
   if settings.ASYNCIFY == 2:
     building.binaryen_features += ['--enable-reference-types']
 
@@ -207,12 +209,6 @@ def generate_js_compiler_input_hash(symbols_only=False):
 
 @ToolchainProfiler.profile()
 def compile_javascript(symbols_only=False):
-  stderr_file = os.environ.get('EMCC_STDERR_FILE')
-  if stderr_file:
-    stderr_file = os.path.abspath(stderr_file)
-    logger.info('logging stderr in js compiler phase into %s' % stderr_file)
-    stderr_file = open(stderr_file, 'w')
-
   # Save settings to a file to work around v8 issue 1579
   settings_json = json.dumps(settings.external_dict(), sort_keys=True, indent=2)
   building.write_intermediate(settings_json, 'settings.json')
@@ -222,7 +218,7 @@ def compile_javascript(symbols_only=False):
   if symbols_only:
     args += ['--symbols-only']
   return shared.run_js_tool(path_from_root('tools/compiler.mjs'),
-                            args, input=settings_json, stdout=subprocess.PIPE, stderr=stderr_file)
+                            args, input=settings_json, stdout=subprocess.PIPE)
 
 
 def set_memory(static_bump):
@@ -301,9 +297,9 @@ def trim_asm_const_body(body):
 
 
 def get_cached_file(filetype, filename, generator, cache_limit):
-  """This function implements a file cache which lives inside the main
-  emscripten cache directory but uses a per-file lock rather than a
-  cache-wide lock.
+  """Implement a file cache which lives inside the main emscripten cache directory.
+
+  The defference here is that we use a per-file lock rather than a cache-wide lock.
 
   The cache is pruned (by removing the oldest files) if it grows above
   a certain number of files.
@@ -344,7 +340,8 @@ def compile_javascript_cached():
   # this step is performed while the cache is locked.
   # Sadly we have to skip the caching whenever we have user JS libraries.  This is because
   # these libraries can import arbitrary other JS files (either vis node's `import` or via #include)
-  if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE or settings.JS_LIBRARIES:
+  has_user_libs = any(not lib.startswith(utils.path_from_root('src/')) for lib in settings.JS_LIBRARIES)
+  if DEBUG or settings.BOOTSTRAPPING_STRUCT_INFO or config.FROZEN_CACHE or has_user_libs:
     return compile_javascript()
 
   content_hash = generate_js_compiler_input_hash()
@@ -372,9 +369,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
       shutil.copy(in_wasm, out_wasm)
     metadata = get_metadata(in_wasm, out_wasm, False, [])
 
-  if settings.RELOCATABLE and settings.MEMORY64 == 2:
-    metadata.imports += ['__memory_base32']
-
   # If the binary has already been finalized the settings have already been
   # updated and we can skip updating them.
   if finalize:
@@ -382,14 +376,16 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   if not settings.WASM_BIGINT and metadata.em_js_funcs:
     for em_js_func, raw in metadata.em_js_funcs.items():
-      c_sig = raw.split('<::>')[0].strip('()')
-      if not c_sig or c_sig == 'void':
-        c_sig = []
+      args, _ = raw.split('<::>', 1)
+      args = args[1:-1].strip()
+
+      if not args or args == 'void':
+        args = []
       else:
-        c_sig = c_sig.split(',')
+        args = args.split(',')
       signature = metadata.em_js_func_types.get(em_js_func)
-      if signature and len(signature.params) != len(c_sig):
-        diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, c_sig, signature.params)
+      if signature and len(signature.params) != len(args):
+        diagnostics.warning('em-js-i64', 'using 64-bit arguments in EM_JS function without WASM_BIGINT is not yet fully supported: `%s` (%s, %s)', em_js_func, args, signature.params)
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
@@ -402,13 +398,13 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     # check_call doesn't support the `input` argument.
     if asm_consts:
       validate = '\n'.join([f'var tmp = {f};' for _, f in asm_consts])
-      proc = subprocess.run(config.NODE_JS + ['--check', '-'], input=validate.encode('utf-8'))
+      proc = subprocess.run([*config.NODE_JS, '--check', '-'], input=validate.encode('utf-8'))
       if proc.returncode:
         exit_with_error(f'EM_ASM function validation failed (node returned {proc.returncode})')
 
     if em_js_funcs:
       validate = '\n'.join(em_js_funcs)
-      proc = subprocess.run(config.NODE_JS + ['--check', '-'], input=validate.encode('utf-8'))
+      proc = subprocess.run([*config.NODE_JS, '--check', '-'], input=validate.encode('utf-8'))
       if proc.returncode:
         exit_with_error(f'EM_JS function validation failed (node returned {proc.returncode})')
 
@@ -420,20 +416,6 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
   for e in settings.EXPORTED_FUNCTIONS:
     if not js_manipulation.isidentifier(e):
       diagnostics.warning('js-compiler', f'export name is not a valid JS symbol: "{e}".  Use `Module` or `wasmExports` to access this symbol')
-
-  # memory and global initializers
-
-  if settings.RELOCATABLE:
-    dylink_sec = webassembly.parse_dylink_section(in_wasm)
-    static_bump = align_memory(dylink_sec.mem_size)
-    set_memory(static_bump)
-    logger.debug('stack_low: %d, stack_high: %d, heap_base: %d', settings.STACK_LOW, settings.STACK_HIGH, settings.HEAP_BASE)
-
-    # When building relocatable output (e.g. MAIN_MODULE) the reported table
-    # size does not include the reserved slot at zero for the null pointer.
-    # So we need to offset the elements by 1.
-    if settings.INITIAL_TABLE == -1:
-      settings.INITIAL_TABLE = dylink_sec.table_size + 1
 
   if metadata.invoke_funcs:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getWasmTableEntry']
@@ -555,7 +537,9 @@ def finalize_wasm(infile, outfile, js_syms):
     args.append('--side-module')
   if settings.STACK_OVERFLOW_CHECK >= 2:
     args.append('--check-stack-overflow')
+    # The check-stack pass in binaryen needs to be able to locate `__stack_pointer` by name.
     modify_wasm = True
+    need_name_section = True
   if settings.STANDALONE_WASM:
     args.append('--standalone-wasm')
 
@@ -625,7 +609,7 @@ def finalize_wasm(infile, outfile, js_syms):
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
-  if not settings.STANDALONE_WASM and 'main' in metadata.all_exports or '__main_argc_argv' in metadata.all_exports:
+  if (not settings.STANDALONE_WASM and 'main' in metadata.all_exports) or '__main_argc_argv' in metadata.all_exports:
     if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTS:
       # If `_main` was unexpectedly exported we assume it was added to
       # EXPORT_IF_DEFINED by `phase_linker_setup` in order that we can detect
@@ -670,8 +654,8 @@ def create_tsd_exported_runtime_methods(metadata):
           snippet = ' = null'
     js_doc += f'{docs}\nRuntimeExports[\'{name}\']{snippet};\n'
 
-  js_doc_file = in_temp('jsdoc.js')
-  tsc_output_file = in_temp('jsdoc.d.ts')
+  file = 'jsdoc'
+  js_doc_file = in_temp(f'{file}.js')
   utils.write_file(js_doc_file, js_doc)
   tsc = shared.get_npm_cmd('tsc', missing_ok=True)
   # Prefer the npm install'd version of tsc since we know that one is compatible
@@ -683,16 +667,15 @@ def create_tsd_exported_runtime_methods(metadata):
       exit_with_error('tsc executable not found in node_modules or in $PATH')
     # Use the full path from the which command so windows can find tsc.
     tsc = [tsc]
-  cmd = tsc + ['--outFile', tsc_output_file,
-               '--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
+  cmd = [*tsc, '--skipLibCheck', # Avoid checking any of the user's types e.g. node_modules/@types.
                '--declaration',
                '--emitDeclarationOnly',
                '--allowJs', js_doc_file]
   shared.check_call(cmd, cwd=path_from_root())
-  return utils.read_file(tsc_output_file)
+  return utils.read_file(in_temp(f'{file}.d.ts'))
 
 
-def create_tsd(metadata, embind_tsd):
+def create_tsd(metadata, embind_tsd, bindgen_tsd):
   out = '// TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.\n'
   if settings.EXPORTED_RUNTIME_METHODS:
     out += create_tsd_exported_runtime_methods(metadata)
@@ -709,10 +692,12 @@ def create_tsd(metadata, embind_tsd):
     out += f'  {mangled}({", ".join(arguments)}): '
     assert len(functype.returns) <= 1, 'One return type only supported'
     if functype.returns:
-      out += f'{type_to_ts_type(functype.returns[0])}'
+      ret_ts_type = type_to_ts_type(functype.returns[0])
     else:
-      out += 'void'
-    out += ';\n'
+      ret_ts_type = 'void'
+    if settings.ASYNCIFY == 2 and any(fnmatch.fnmatch(name, pat) for pat in settings.ASYNCIFY_EXPORTS):
+      ret_ts_type = f'Promise<{ret_ts_type}>'
+    out += f'{ret_ts_type};\n'
   out += '}\n'
   out += f'\n{embind_tsd}'
   # Combine all the various exports.
@@ -722,6 +707,10 @@ def create_tsd(metadata, embind_tsd):
   # Add in embind definitions.
   if embind_tsd:
     export_interfaces += ' & EmbindModule'
+  if settings.WASM_BINDGEN and bindgen_tsd:
+    for file_path in bindgen_tsd:
+      out += utils.read_file(file_path)
+    export_interfaces += ' & BindgenModule'
   out += f'export type MainModule = {export_interfaces};\n'
   if settings.MODULARIZE:
     return_type = 'MainModule'
@@ -747,8 +736,6 @@ def create_asm_consts(metadata):
       func = f'function({args}) {{ {body} }}'
     else:
       func = f'({args}) => {{ {body} }}'
-    if settings.RELOCATABLE:
-      addr += settings.GLOBAL_BASE
     asm_consts[addr] = func
   asm_consts = sorted(asm_consts.items())
   return asm_consts
@@ -793,8 +780,8 @@ def create_em_js(metadata):
   for name, raw in metadata.em_js_funcs.items():
     assert separator in raw
     args, body = raw.split(separator, 1)
-    args = args[1:-1]
-    if args == 'void':
+    args = args[1:-1].strip()
+    if not args or args == 'void':
       args = []
     else:
       args = args.split(',')
@@ -825,11 +812,6 @@ def add_standard_wasm_imports(send_items_map):
   # TODO(sbc): can we make these into normal library symbols?
   if settings.IMPORTED_MEMORY:
     send_items_map['memory'] = 'wasmMemory'
-
-  if settings.RELOCATABLE:
-    send_items_map['__indirect_function_table'] = 'wasmTable'
-    if settings.MEMORY64:
-      send_items_map['__table_base32'] = '___table_base32'
 
   if settings.AUTODEBUG:
     extra_sent_items += [
@@ -863,11 +845,6 @@ def add_standard_wasm_imports(send_items_map):
       'memory_grow_pre',
       'memory_grow_post',
     ]
-
-  if settings.SPLIT_MODULE and settings.ASYNCIFY == 2:
-    # Calls to this function are generated by binaryen so it must be manually
-    # imported.
-    extra_sent_items.append('__load_secondary_module')
 
   for s in extra_sent_items:
     send_items_map[s] = s
@@ -965,7 +942,8 @@ def install_debug_wrapper(sym):
   # `__trap` can occur before the runtime is initialized since it is used in abort.
   # `emscripten_get_sbrk_ptr` can be called prior to runtime initialization by
   # the dynamic linking code.
-  return sym not in ['__trap', 'emscripten_get_sbrk_ptr']
+  # `pthread_self` is used in `checkMailbox` after program shutdown.
+  return sym not in {'__trap', 'emscripten_get_sbrk_ptr', 'pthread_self'}
 
 
 def should_export(sym):
@@ -1205,8 +1183,9 @@ def create_pointer_conversion_wrappers(metadata):
     '_emscripten_thread_init': '_p_____',
     '_emscripten_thread_free_data': '_p',
     '_emscripten_dlsync_self_async': '_p',
+    '_emscripten_proxy_dlsync': '_p',
     '_emscripten_proxy_dlsync_async': '_pp',
-    '_emscripten_wasm_worker_initialize': '_p_',
+    '_emscripten_wasm_worker_initialize': '__p_',
     '_emscripten_proxy_poll_finish': '_pp_',
     '_wasmfs_rename': '_pp',
     '_wasmfs_readlink': '_pp',

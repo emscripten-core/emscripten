@@ -4,9 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Install the parts of emscripten needed for end users. This works like
-a traditional `make dist` target but is written in python so it can be portable
-and run on non-unix platforms (basically windows).
+"""Install the parts of emscripten needed for end users.
+
+This works like a traditional `make dist` target but is written in python
+so it can be portable and run on non-unix platforms (i.e. windows).
 """
 
 import argparse
@@ -38,12 +39,6 @@ out
 bootstrap.py
 '''.split()]
 
-LAUNCHER_BAT_SCRIPTS = '''
-emcc.bat
-em++.bat
-bootstrap.bat
-'''.split()
-
 EXCLUDE_PATTERNS = '''
 *.pyc
 .*
@@ -56,7 +51,7 @@ logger = logging.getLogger('install')
 def add_revision_file(target):
   # text=True would be better than encoding here, but it's only supported in 3.7+
   git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], encoding='utf-8').strip()
-  with open(os.path.join(target, 'emscripten-revision.txt'), 'w') as f:
+  with open(os.path.join(target, 'emscripten-revision.txt'), 'w', encoding='utf-8') as f:
     f.write(git_hash + '\n')
 
 
@@ -65,12 +60,6 @@ def copy_emscripten(target):
   emscripten_root = os.path.dirname(script_dir)
 
   excludes = EXCLUDES
-  # We have a few launcher scripts that are checked into git still.
-  # Exclude the ones not designed for the current platforms.
-  if WINDOWS and not MSYS2:
-    excludes += [os.path.splitext(l)[0] for l in LAUNCHER_BAT_SCRIPTS]
-  elif not MSYS2:
-    excludes += LAUNCHER_BAT_SCRIPTS
 
   os.chdir(emscripten_root)
   for root, dirs, files in os.walk('.'):

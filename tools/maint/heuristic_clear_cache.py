@@ -44,7 +44,7 @@ def newest_mtime(paths):
 def heuristic_clear_cache():
   mtime_file = cache.get_path('system_libs_mtime.txt')
   try:
-    system_libs_mtime = open(mtime_file).read()
+    system_libs_mtime = utils.read_file(mtime_file)
   except Exception:
     system_libs_mtime = 0
 
@@ -53,7 +53,7 @@ def heuristic_clear_cache():
   if newest_system_libs_mtime != system_libs_mtime:
     print(f'Cache timestamp {system_libs_mtime} does not match with current timestamp {newest_system_libs_mtime}. Clearing cache...')
     cache.erase()
-    open(mtime_file, 'w').write(str(newest_system_libs_mtime))
+    utils.write_file(mtime_file, str(newest_system_libs_mtime))
   else:
     print('Cache timestamp is up to date, no clear needed.')
 

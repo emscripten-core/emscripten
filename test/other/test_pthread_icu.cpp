@@ -6,7 +6,7 @@
 int main() {
   std::thread([] {
     std::string str;
-    icu::UnicodeString ustr("Hello world!");
+    icu::UnicodeString ustr("Hello, world!");
     ustr.toUTF8String(str);
     std::cout << str << std::endl;
   }).join();

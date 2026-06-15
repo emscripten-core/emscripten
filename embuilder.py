@@ -26,11 +26,11 @@ from tools.system_libs import USE_NINJA
 
 # Minimal subset of targets used by CI systems to build enough to be useful
 MINIMAL_TASKS = [
-    'libcompiler_rt',
-    'libcompiler_rt-mt',
-    'libcompiler_rt-legacysjlj',
-    'libcompiler_rt-wasmsjlj',
-    'libcompiler_rt-ww',
+    'libclang_rt.builtins',
+    'libclang_rt.builtins-mt',
+    'libclang_rt.builtins-legacysjlj',
+    'libclang_rt.builtins-wasmsjlj',
+    'libclang_rt.builtins-ww',
     'libc',
     'libc-debug',
     'libc-mt-debug',
@@ -81,6 +81,7 @@ MINIMAL_TASKS = [
     'libGL-emu-getprocaddr',
     'libGL-emu-webgl2-ofb-getprocaddr',
     'libGL-webgl2-ofb-getprocaddr',
+    'libGL-webgl2-ofb-full_es3-getprocaddr',
     'libGL-ww-getprocaddr',
     'libhtml5',
     'libsockets',
@@ -91,7 +92,7 @@ MINIMAL_TASKS = [
     'libstandalonewasm-nocatch',
     'crt1',
     'crt1_proxy_main',
-    'crtbegin',
+    'crtbegin-mt',
     'libunwind-legacyexcept',
     'libunwind-wasmexcept',
     'libnoexit',
@@ -100,7 +101,8 @@ MINIMAL_TASKS = [
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
 # CI (which has slightly more tests than other modes that want to use MINIMAL)
-MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
+MINIMAL_PIC_TASKS = [
+    *MINIMAL_TASKS,
     'libc-mt',
     'libc_optz-mt',
     'libc_optz-mt-debug',
@@ -117,11 +119,10 @@ MINIMAL_PIC_TASKS = MINIMAL_TASKS + [
     'libGL-mt-emu-webgl2-getprocaddr',
     'libGL-mt-emu-webgl2-ofb-getprocaddr',
     'libsockets_proxy',
-    'crtbegin',
-    'libsanitizer_common_rt',
-    'libubsan_rt',
+    'crtbegin-mt',
+    'libclang_rt.sanitizer_common',
+    'libclang_rt.ubsan',
     'libwasm_workers-debug',
-    'libwasm_workers-debug-stub',
     'libfetch',
     'libfetch-mt',
     'libwasmfs',
@@ -236,11 +237,16 @@ def main():
     shared.PRINT_SUBPROCS = True
 
   if args.pic:
-    settings.RELOCATABLE = 1
+    settings.MAIN_MODULE = 1
+    # Note: we have to filter out the `-ww` libraries here because wasm workers don't
+    # support dynamic linking.
+    global MINIMAL_TASKS
+    global MINIMAL_PIC_TASKS
+    MINIMAL_TASKS = [t for t in MINIMAL_TASKS if '-ww' not in t]
+    MINIMAL_PIC_TASKS = [t for t in MINIMAL_PIC_TASKS if '-ww' not in t]
 
   if args.wasm64:
-    settings.MEMORY64 = 2
-    MINIMAL_TASKS[:] = [t for t in MINIMAL_TASKS if 'emmalloc' not in t]
+    settings.MEMORY64 = 1
 
   do_build = args.operation == 'build'
   do_clear = args.operation == 'clear'

@@ -7,7 +7,21 @@
 
 #pragma once
 
+#include <emscripten/proxying.h>
+
+#include <inttypes.h>
 #include <pthread.h>
+#include <stdbool.h>
+
+// Defined THREADING_DEBUG here (or in the build system) to enabled verbose
+// logging using emscripten_dbgf.
+// #define THREADING_DEBUG
+
+#ifdef THREADING_DEBUG
+#define DBG(format, ...) emscripten_dbgf(format, ##__VA_ARGS__)
+#else
+#define DBG(format, ...)
+#endif
 
 #define EM_THREAD_NAME_MAX 32
 
@@ -41,7 +55,9 @@ typedef struct thread_profiler_block {
 // argument.  This can save _emscripten_check_timers from needing to call out to
 // JS to get the current time.  Passing 0 means that caller doesn't know the
 // current time.
-void _emscripten_yield(double now);
+//
+// Returns true is a timer was fired, false otherwise.
+bool _emscripten_yield(double now);
 
 void _emscripten_init_main_thread_js(void* tb);
 void _emscripten_thread_profiler_enable();
@@ -68,8 +84,9 @@ int _emscripten_thread_is_valid(pthread_t thread);
 void _emscripten_thread_exit_joinable(pthread_t thread);
 void _emscripten_thread_exit(void* result);
 void _emscripten_process_dlopen_queue(void);
+extern em_proxying_queue* _Atomic _dlopen_proxying_queue;
 
-#ifdef NDEBUG
+#if !defined(__EMSCRIPTEN_PTHREADS__) || defined(NDEBUG)
 #define emscripten_set_current_thread_status(newStatus)
 #define emscripten_conditional_set_current_thread_status(expectedStatus, newStatus)
 #else
@@ -92,8 +109,7 @@ void emscripten_conditional_set_current_thread_status(EM_THREAD_STATUS expectedS
 #endif
 
 int __pthread_kill_js(pthread_t t, int sig);
-int __pthread_create_js(struct __pthread *thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
-int _emscripten_default_pthread_stack_size();
+int __pthread_create_js(pthread_t thread, const pthread_attr_t *attr, void *(*start_routine) (void *), void *arg);
 void __set_thread_state(pthread_t ptr, int is_main, int is_runtime, int can_block);
 
 double _emscripten_receive_on_main_thread_js(int funcIndex, void* emAsmAddr, pthread_t callingThread, int numCallArgs, double* args, void* ctx, void* ctxArgs);
@@ -104,3 +120,27 @@ void _emscripten_run_js_on_main_thread_done(void* ctx, void* arg, double result)
 // if called from the main browser thread, this function will return zero
 // since blocking is not allowed there).
 int _emscripten_thread_supports_atomics_wait(void);
+
+pid_t _emscripten_get_next_tid();
+
+// Initialize pthread data, at start of memory region pointed to `base`.
+// `size` is an in/out parameter representing the size of the `base` region
+// on input, and the size of new/adjusted region on output.
+// Return a new/adjusted memory base to be used to stack/tls data.
+void* _emscripten_init_pthread(void *base, size_t* size, pid_t tid);
+
+// Wake the target thread in case it is blocked in emscripten_futex_wait.
+// Note: If threads directly use lower level APIs such
+// __builtin_wasm_memory_atomic_waitXX then they will not be woken by
+// this method.
+void _emscripten_thread_notify(pthread_t thread);
+
+// Internal, promise-returning API used to implement
+// emscripten_atomic_wait_suspending.
+intptr_t _emscripten_atomic_wait_promise(volatile void *addr,
+                                         uint32_t value,
+                                         double maxWaitMilliseconds);
+
+// Internal function used in wasm worker builds (included here solely for
+// gen_sig_info.py).
+void __do_set_thread_state(void);

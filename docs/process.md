@@ -34,6 +34,33 @@ webside.
  * Add a `[prefix]` to start of the PR title to signify the subsystem or area
    that the PR targets. e.g. `[test] Update foo test` or `[ports] Fix zlib port`
 
+### Writing Tests
+
+See [Emscripten Test Suite][test_suite] for information on how to get started
+running tests.
+
+Almost all PRs should be accompanied by some kind of test.
+
+ * For bug fixes, try to update an existing test rather than adding a new one.
+ * The majority of tests live in `test_other.py` and `test_core.py`.  The
+   difference between these is that tests in `test_core.py` are testing under
+   many different combinations of settings, and so each test added there is
+   the equivalent of adding ~10 new tests to `test_other.py`.
+ * Prefer black box testing where possible (i.e. test the compiler using its
+   public command line interface).
+ * For C/C++ tests longer than a few lines, prefer separate source files over
+   inline C/C++ within python.
+ * C/C++ should use `assert` internally to check expectations and should return
+   0 from their `main` function.
+ * For regression tests, try to minimize and understand the reproducer so that
+   a minimal test can be created.
+ * For simple tests, always prefer C over C++ since it comes with less baggage
+   (i.e. it minimizes the scope of the system under test) and can be compiled
+   very fast.
+ * When testing changes to system libraries, remember to rebuild the libraries
+   you touch (e.g. using `./embuilder`) before running tests (or use `emcc
+   --clear-cache` as a blunt implement for forcing a rebuild of all libraries).
+
 ## Coding Style
 
 ### C/C++ Code
@@ -158,14 +185,22 @@ How:
 
 ## Updating the `emscripten.org` Website
 
-The site is currently hosted in `gh-pages` branch of the separate [site
-repository][site_repo]. To update the docs, rebuild them and copy them into
-this repository.  There is a script that will perform these steps automatically:
-[`tools/maint/update_docs.py`][update_docs].  Just run this script with no
-arguments if the emscripten-site repository is checked out alongside emscripten
+The `emscripten.org` site is maintained in the `site/source` directory.  It is
+written in reStructuredText and maintained using the Sphinx tool.
+
+The site is hosted in the `gh-pages` branch of the separate [site
+repository][site_repo].  There is a CI job which runs on the `main` branch that
+will automatically update the `gh-pages` branch whenever the generated site
+contents change so checking out the `emscripten-site` repository should not
+normally be necessary.
+
+If for some reason you need to update the `emscripten-site` repository manually
+there is a script that will perform the update steps:
+[`tools/maint/update_website.py`][update_website].  Run this script with no
+arguments if the `emscripten-site` repository is checked out alongside emscripten
 itself, or pass the location of the checkout if not.
 
-You will need the specific sphinx version installed, which you can do using
+You will need the specific Sphinx version installed, which you can get by running
 `pip3 install -r requirements-dev.txt` (depending on your system, you may then
 need to add `~/.local/bin` to your path, if pip installs to there).
 
@@ -173,7 +208,7 @@ need to add `~/.local/bin` to your path, if pip installs to there).
 ### Building and viewing the Website locally
 
 To build the site locally for testing purposes you only need a subset of the
-`update_docs.py` command just mentioned above. Specifically:
+`update_website.py` command just mentioned above. Specifically:
 
 1. Run `pip3` to install python dependencies, as described above.
 2. Run `make -C site html`.
@@ -346,7 +381,7 @@ decide collectively to abandon the deprecation, or to delay it.
 [clang-format]: https://github.com/emscripten-core/emscripten/blob/main/.clang-format
 [pyproject.toml]: https://github.com/emscripten-core/emscripten/blob/main/pyproject.toml
 [mypy]: https://github.com/emscripten-core/emscripten/blob/main/.mypy
-[update_docs]: https://github.com/emscripten-core/emscripten/blob/main/tools/maint/update_docs.py
+[update_website]: https://github.com/emscripten-core/emscripten/blob/main/tools/maint/update_website.py
 [llvm_repo]: https://github.com/llvm/llvm-project
 [llvm_emscripten_fork]: https://github.com/emscripten-core/llvm-project
 [push_llvm_changes_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/push_llvm_changes.py
@@ -357,3 +392,4 @@ decide collectively to abandon the deprecation, or to delay it.
 [update_libunwind_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_libunwind.py
 [update_musl_emscripten]: https://github.com/emscripten-core/emscripten/blob/main/system/lib/update_musl.py
 [global_github_search]: https://github.com/search?q=%2F%28%3F-i%29%5CbMY_SETTING%5Cb%2F+-org%3Aemscripten-core+-path%3Aemcc.*+-path%3Asettings.*+-path%3Asettings_reference.*&type=code
+[test_suite]: https://emscripten.org/docs/getting_started/test-suite.html

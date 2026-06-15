@@ -98,7 +98,7 @@ c3.virtualFunc2 = function() {
   console.log('*js virtualf2 replacement*');
 };
 c3.virtualFunc3 = function(x) {
-  console.log('*js virtualf3 replacement ' + x + '*');
+  console.log(`*js virtualf3 replacement ${x}*`);
 };
 
 c3.virtualFunc();

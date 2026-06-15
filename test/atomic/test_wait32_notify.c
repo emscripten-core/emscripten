@@ -88,7 +88,7 @@ int main() {
   emscripten_out("main: creating worker");
 
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
-  static char stack[1024];
+  static char stack[4096];
   emscripten_wasm_worker_t worker = emscripten_create_wasm_worker(stack, sizeof(stack));
   emscripten_wasm_worker_post_function_v(worker, worker_main);
 #else

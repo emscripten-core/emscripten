@@ -6,6 +6,8 @@
 import os
 
 TAG = 'VER-2-13-3'
+# See version_info in builds/unix/configure.raw or `freetype-config --version`
+PKG_VERSION = '26.2.20'
 HASH = 'ce413487c24e689631d705f53b64725256f89fffe9aade7cf07bbd785a9cd49eb6b8d2297a55554f3fee0a50b17e8af78f505cdab565768afab833794f968c2f'
 
 variants = {'freetype-legacysjlj': {'SUPPORT_LONGJMP': 'wasm', 'WASM_LEGACY_EXCEPTIONS': 1}}
@@ -96,7 +98,7 @@ def get(ports, settings, shared):
     if settings.SUPPORT_LONGJMP == 'wasm':
       flags.append('-sSUPPORT_LONGJMP=wasm')
 
-    ports.make_pkg_config('freetype', TAG, '-sUSE_FREETYPE')
+    ports.make_pkg_config('freetype2', PKG_VERSION, '-sUSE_FREETYPE')
     ports.build_port(source_path, final, 'freetype', flags=flags, srcs=srcs)
 
   return [shared.cache.get_lib(get_lib_name(settings), create, what='port')]

@@ -85,6 +85,7 @@ addToLibrary({
 
   // convert the 'r', 'r+', etc. to its corresponding set of O_* flags
   $FS_modeStringToFlags: (str) => {
+    if (typeof str != 'string') return str;
     var flagModes = {
       'r': {{{ cDefs.O_RDONLY }}},
       'r+': {{{ cDefs.O_RDWR }}},
@@ -104,6 +105,16 @@ addToLibrary({
     if (canRead) mode |= {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
     if (canWrite) mode |= {{{ cDefs.S_IWUGO }}};
     return mode;
+  },
+
+  $FS_fileDataToTypedArray: (data) => {
+    if (typeof data == 'string') {
+      data = intArrayFromString(data, true);
+    }
+    if (!data.subarray) {
+      data = new Uint8Array(data);
+    }
+    return data;
   },
 
   $FS_stdin_getChar_buffer: [],

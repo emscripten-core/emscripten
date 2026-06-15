@@ -311,9 +311,13 @@ The "architecture" to compile for. 0 means the default wasm32, 1 is
 the full end-to-end wasm64 mode, and 2 is wasm64 for clang/lld but lowered to
 wasm32 in Binaryen (such that it can run on wasm32 engines, while internally
 using i64 pointers).
+Nowadays we recommend using the more standard `-m64` or `--target=wasm64`
+flags, which do the same thing.
 Assumes WASM_BIGINT.
 
 .. note:: Applicable during both linking and compilation
+
+.. note:: This setting is deprecated
 
 Default value: 0
 
@@ -952,15 +956,6 @@ can also vary between browsers.
 
 Default value: false
 
-.. _polyfill_old_math_functions:
-
-POLYFILL_OLD_MATH_FUNCTIONS
-===========================
-
-If set, enables polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround.
-
-Default value: false
-
 .. _legacy_vm_support:
 
 LEGACY_VM_SUPPORT
@@ -970,7 +965,6 @@ Set this to enable compatibility emulations for old JavaScript engines. This giv
 the highest possible probability of the code working everywhere, even in rare old
 browsers and shell environments. Specifically:
 
-- Add polyfilling for Math.clz32, Math.trunc, Math.imul, Math.fround. (-sPOLYFILL_OLD_MATH_FUNCTIONS)
 - Disable WebAssembly. (Must be paired with -sWASM=0)
 - Adjusts MIN_X_VERSION settings to 0 to include support for all browser versions.
 - Avoid TypedArray.fill, if necessary, in zeroMemory utility function.
@@ -1139,6 +1133,8 @@ manipulate the refcount manually to avoid memory leaks.
 See test_EXPORT_EXCEPTION_HANDLING_HELPERS in test/test_core.py for an
 example usage.
 
+.. note:: This setting is deprecated
+
 Default value: false
 
 .. _exception_stack_traces:
@@ -1165,37 +1161,6 @@ If false, emit instructions for the standardized exception handling proposal:
 https://github.com/WebAssembly/exception-handling/blob/main/proposals/exception-handling/Exceptions.md
 
 .. note:: Applicable during both linking and compilation
-
-Default value: true
-
-.. _nodejs_catch_exit:
-
-NODEJS_CATCH_EXIT
-=================
-
-Emscripten throws an ExitStatus exception to unwind when exit() is called.
-Without this setting enabled this can show up as a top level unhandled
-exception.
-
-With this setting enabled a global uncaughtException handler is used to
-catch and handle ExitStatus exceptions.  However, this means all other
-uncaught exceptions are also caught and re-thrown, which is not always
-desirable.
-
-Default value: false
-
-.. _nodejs_catch_rejection:
-
-NODEJS_CATCH_REJECTION
-======================
-
-Catch unhandled rejections in node. This only affects versions of node older
-than 15.  Without this, old version node will print a warning, but exit
-with a zero return code.  With this setting enabled, we handle any unhandled
-rejection and throw an exception, which will cause the process to exit
-immediately with a non-0 return code.
-This is not needed in Node 15+ so this setting will default to false if
-MIN_NODE_VERSION is 150000 or above.
 
 Default value: true
 
@@ -1638,21 +1603,6 @@ the module.
 
 Default value: false
 
-.. _relocatable:
-
-RELOCATABLE
-===========
-
-If set to 1, we emit relocatable code from the LLVM backend; both
-globals and function pointers are all offset (by gb and fp, respectively)
-Automatically set for SIDE_MODULE or MAIN_MODULE.
-
-.. note:: Applicable during both linking and compilation
-
-.. note:: This setting is deprecated
-
-Default value: false
-
 .. _main_module:
 
 MAIN_MODULE
@@ -1757,14 +1707,11 @@ Set the environment variable EMCC_STRICT=1 or pass -sSTRICT to test that a
 codebase builds nicely in forward compatible manner.
 Changes enabled by this:
 
-  - The C define EMSCRIPTEN is not defined (__EMSCRIPTEN__ always is, and
-    is the correct thing to use).
   - STRICT_JS is enabled.
   - IGNORE_MISSING_MAIN is disabled.
   - AUTO_JS_LIBRARIES is disabled.
   - AUTO_NATIVE_LIBRARIES is disabled.
   - DEFAULT_TO_CXX is disabled.
-  - USE_GLFW is set to 0 rather than 2 by default.
   - ALLOW_UNIMPLEMENTED_SYSCALLS is disabled.
   - INCOMING_MODULE_JS_API is set to empty by default.
 
@@ -1829,20 +1776,6 @@ SMALL_XHR_CHUNKS
 
 Use small chunk size for binary synchronous XHR's in Web Workers.  Used for
 testing.  See test_chunked_synchronous_xhr in runner.py and library.js.
-
-Default value: false
-
-.. _deterministic:
-
-DETERMINISTIC
-=============
-
-If 1, we force Date.now(), Math.random, etc. to return deterministic results.
-This also tries to make execution deterministic across machines and
-environments, for example, not doing anything different based on the
-browser's language setting (which would mean you can get different results
-in different browsers, or in the browser and in node).
-Good for comparing builds for debugging purposes (and nothing else).
 
 Default value: false
 
@@ -2936,18 +2869,14 @@ MIN_SAFARI_VERSION
 ==================
 
 Specifies the oldest version of desktop Safari to target. Version is encoded
-in MMmmVV, e.g. 70101 denotes Safari 7.1.1.
-Safari 14.1.0 was released on April 26, 2021, bundled with macOS 11.0 Big
-Sur and iOS 14.5.
-The previous default, Safari 12.0.0 was released on September 17, 2018,
-bundled with macOS 10.14.0 Mojave.
+in MMmmVV, e.g. 160101 denotes Safari 16.1.1.
+Safari 15 was released on September 20, 2021, bundled with macOS 12.0
+Monterey and iOS 15.
 NOTE: Emscripten is unable to produce code that would work in iOS 9.3.5 and
 older, i.e. iPhone 4s, iPad 2, iPad 3, iPad Mini 1, Pod Touch 5 and older,
 see https://github.com/emscripten-core/emscripten/pull/7191.
-Multithreaded Emscripten code will need Safari 12.2 (iPhone 5s+) at minimum,
-with support for DedicatedWorkerGlobalScope.name parameter.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 120200 which was released on 2019-03-25 (see
+Minimum supported value is 140100 which was released on 2021-04-26 (see
 feature_matrix.py).
 
 Default value: 150000
@@ -2957,13 +2886,13 @@ Default value: 150000
 MIN_CHROME_VERSION
 ==================
 
-Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=78 to
-drop support for Chrome 77 and older.
+Specifies the oldest version of Chrome. E.g. pass -sMIN_CHROME_VERSION=100 to
+drop support for Chrome 99 and older.
 This setting also applies to modern Chromium-based Edge, which shares version
 numbers with Chrome.
 Chrome 85 was released on 2020-08-25.
 MAX_INT (0x7FFFFFFF, or -1) specifies that target is not supported.
-Minimum supported value is 74, which was released on 2019-04-23 (see
+Minimum supported value is 85, which was released on 2020-08-25 (see
 feature_matrix.py).
 
 Default value: 85
@@ -2976,10 +2905,11 @@ MIN_NODE_VERSION
 Specifies minimum node version to target for the generated code.  This is
 distinct from the minimum version required to run the emscripten compiler.
 Version is encoded in MMmmVV, e.g. 181401 denotes Node 18.14.01.
-Minimum supported value is 122209, which was released 2022-01-11 (see
-feature_matrix.py). This version aligns with the Ubuntu TLS 22.04 (Jammy).
+Minimum supported value is 180300, which was released 2022-05-18 (see
+feature_matrix.py). This version aligns with the version available in
+debian/stable (bookworm).
 
-Default value: 160000
+Default value: 180300
 
 .. _minimal_runtime:
 
@@ -3184,7 +3114,7 @@ changes to the wasm after link. This can be useful in testing, for example.
 Some example of features that require post-link wasm changes are:
 
 - Lowering i64 to i32 pairs at the JS boundary (See WASM_BIGINT)
-- Lowering sign-extension operation when targeting older browsers.
+- Lowering nontrapping-float-to-int operations when targeting older browsers.
 
 Default value: false
 
@@ -3276,9 +3206,9 @@ Default value: true
 ALLOW_UNIMPLEMENTED_SYSCALLS
 ============================
 
-Include unimplemented JS syscalls to be included in the final output.  This
-allows programs that depend on these syscalls at runtime to be compiled, even
-though these syscalls will fail (or do nothing) at runtime.
+Link against stub implementations of unsupported/unimplemented syscalls. This
+allows programs that depend on these syscalls to be compiled, even though
+these functions will fail (or do nothing) at runtime.
 
 Default value: true
 
@@ -3358,6 +3288,15 @@ Example use ``-sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p``
 
 Default value: []
 
+.. _wasm_bindgen:
+
+WASM_BINDGEN
+============
+
+Run wasm-bindgen and integrate the rust-exported symbols into the rest of Emscripten's JS output.
+
+Default value: 0
+
 .. _source_phase_imports:
 
 SOURCE_PHASE_IMPORTS
@@ -3404,23 +3343,8 @@ GROWABLE_ARRAYBUFFERS
 =====================
 
 Enable support for GrowableSharedArrayBuffer.
-This features is only available behind a flag in recent versions of
-node/chrome.
-
-.. note:: This is an experimental setting
-
-Default value: false
-
-.. _wasm_js_types:
-
-WASM_JS_TYPES
-=============
-
-Experimental support for WebAssembly js-types proposal.
-It's currently only available under a flag in certain browsers,
-so we disable it by default to save on code size.
-
-.. note:: This is an experimental setting
+This feature has only recently become available across major browser engines
+and Node.js.
 
 Default value: false
 
@@ -3441,13 +3365,13 @@ Default value: false
 FAKE_DYLIBS
 ===========
 
-This setting changes the behaviour of the ``-shared`` flag.  The default
-setting of ``true`` means the ``-shared`` flag actually produces a normal
-object file (i.e. ``ld -r``).  Setting this to false will cause ``-shared``
-to behave like :ref:`SIDE_MODULE` and produce a dynamically linked
-library.
+This setting changes the behaviour of the ``-shared`` flag.  When set to true
+you get the old emscripten behaviour where the ``-shared`` flag actually
+produces a normal object file (i.e. ``ld -r``).  When set to true (the
+default) the ``-shared`` flag is equivelent to :ref:`SIDE_MODULE` and will
+produce a Wasn dynamic library.
 
-Default value: true
+Default value: false
 
 .. _executable:
 
@@ -3476,7 +3400,10 @@ these settings please open a bug (or reply to one of the existing bugs).
  - ``LEGALIZE_JS_FFI``: to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`
  - ``ASYNCIFY_EXPORTS``: please use JSPI_EXPORTS instead
  - ``LINKABLE``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
- - ``RELOCATABLE``:  under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)
+ - ``EXPORT_EXCEPTION_HANDLING_HELPERS``: getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.
+ - ``DETERMINISTIC``: under consideration for removal (https://github.com/emscripten-core/emscripten/issues/26647)
+ - ``USE_PTHREADS``: prefer the standard -pthread flag
+ - ``MEMORY64``: prefer the standard -m64 or --target=wasm64 flags
 
 .. _legacy-settings:
 
@@ -3563,3 +3490,9 @@ for backwards compatibility with older versions:
  - ``ASYNCIFY_LAZY_LOAD_CODE``: No longer supported (Valid values: [0])
  - ``USE_WEBGPU``: No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py (Valid values: [0])
  - ``PROXY_TO_WORKER``: No longer supported (Valid values: [0])
+ - ``NODEJS_CATCH_EXIT``: No longer supported (Valid values: [0])
+ - ``NODEJS_CATCH_REJECTION``: No longer supported (Valid values: [0])
+ - ``POLYFILL_OLD_MATH_FUNCTIONS``: No longer supported (Valid values: [0])
+ - ``RELOCATABLE``: No longer supported (Valid values: [0])
+ - ``WASM_JS_TYPES``: No longer supported (Valid values: [0])
+ - ``DETERMINISTIC``: No longer supported (Valid values: [0])

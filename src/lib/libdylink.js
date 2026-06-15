@@ -6,8 +6,8 @@
  * Dynamic library loading
  */
 
-#if !MAIN_MODULE && !RELOCATABLE
-#error "library_dylink.js requires MAIN_MODULE or RELOCATABLE"
+#if !MAIN_MODULE
+#error "library_dylink.js requires MAIN_MODULE"
 #endif
 
 {{{
@@ -93,16 +93,9 @@ var LibraryDylink = {
     } catch(e) {
       stackRestore(sp);
       // Create a try-catch guard that rethrows the Emscripten EH exception.
-#if EXCEPTION_STACK_TRACES
       // Exceptions thrown from C++ and longjmps will be an instance of
       // EmscriptenEH.
       if (!(e instanceof EmscriptenEH)) throw e;
-#else
-      // Exceptions thrown from C++ will be a pointer (number) and longjmp
-      // will throw the number Infinity. Use the compact and fast "e !== e+0"
-      // test to check if e was not a Number.
-      if (e !== e+0) throw e;
-#endif
       _setThrew(1, 0);
 #if WASM_BIGINT
       // In theory this if statement could be done on
@@ -430,13 +423,6 @@ var LibraryDylink = {
     // that once the program starts it doesn't use this region.  In relocatable
     // mode we can just update the __heap_base symbol that we are exporting to
     // the main module.
-    // When not relocatable `__heap_base` is fixed and exported by the main
-    // module, but we can update the `sbrk_ptr` value instead.  We call
-    // `_emscripten_get_sbrk_ptr` knowing that it is safe to call prior to
-    // runtime initialization (unlike, the higher level sbrk function)
-#if RELOCATABLE
-    GOT['__heap_base'].value = {{{ to64('end') }}};
-#else
 #if PTHREADS
     if (!ENVIRONMENT_IS_PTHREAD) {
 #endif
@@ -444,7 +430,6 @@ var LibraryDylink = {
       {{{ makeSetValue('sbrk_ptr', 0, 'end', '*') }}}
 #if PTHREADS
     }
-#endif
 #endif
     return ret;
   },
@@ -1122,7 +1107,7 @@ var LibraryDylink = {
     if (dso) {
       // the library is being loaded or has been loaded already.
 #if ASSERTIONS
-      assert(dso.exports !== 'loading', `Attempt to load '${libName}' twice before the first load completed`);
+      assert(dso.exports !== 'loading', `attempt to load '${libName}' a second time, before the first load completed`);
 #endif
       if (!flags.global) {
         if (localScope) {
@@ -1250,7 +1235,7 @@ var LibraryDylink = {
   },
 
   $loadDylibs__internal: true,
-  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols', '$addRunDependency', '$removeRunDependency'],
+  $loadDylibs__deps: ['$loadDynamicLibrary', '$reportUndefinedSymbols'],
   $loadDylibs: async () => {
     if (!dynamicLibraries.length) {
 #if DYLINK_DEBUG
@@ -1263,7 +1248,6 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('loadDylibs:', dynamicLibraries);
 #endif
-    addRunDependency('loadDylibs');
 
     // Load binaries asynchronously
     for (var lib of dynamicLibraries) {
@@ -1275,7 +1259,6 @@ var LibraryDylink = {
 #if DYLINK_DEBUG
     dbg('loadDylibs done!');
 #endif
-    removeRunDependency('loadDylibs');
   },
 
   // void* dlopen(const char* filename, int flags);

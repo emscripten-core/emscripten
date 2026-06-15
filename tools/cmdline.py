@@ -43,6 +43,10 @@ EXTRA_INCOMING_JS_API = [
   'fetchSettings',
   'logReadFiles',
   'loadSplitModule',
+  'onMalloc',
+  'onRealloc',
+  'onFree',
+  'onSbrkGrow',
 ]
 
 logger = logging.getLogger('args')
@@ -50,8 +54,7 @@ logger = logging.getLogger('args')
 
 @unique
 class OFormat(Enum):
-  # Output a relocatable object file.  We use this
-  # today for `-r` and `-shared`.
+  # Output a relocatable object file. i.e. `-r` linker flag
   OBJECT = auto()
   WASM = auto()
   JS = auto()
@@ -155,7 +158,7 @@ def is_valid_abspath(path_name):
 
     # return true, if the common prefix of both is equal to directory
     # e.g. /a/b/c/d.rst and directory is /a/b, the common prefix is /a/b
-    return os.path.commonprefix([root, child]) == root
+    return os.path.commonpath([root, child]) == root
 
   for valid_abspath in options.valid_abspaths:
     if in_directory(valid_abspath, path_name):
@@ -212,6 +215,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
   """
   should_exit = False
   skip = False
+  builtin_settings = set(settings.keys())
   LEGACY_ARGS = {'--js-opts', '--llvm-opts', '--llvm-lto', '--memory-init-file'}
   LEGACY_FLAGS = {'--separate-asm', '--jcache', '--proxy-to-worker', '--default-obj-ext',
                   '--embind-emit-tsd', '--remove-duplicates', '--no-heap-copy'}
@@ -403,7 +407,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
             settings.SEPARATE_DWARF = True
           settings.GENERATE_DWARF = 1
           settings.DEBUG_LEVEL = 3
-        elif debug_level in ['source-map', 'source-map=inline']:
+        elif debug_level in {'source-map', 'source-map=inline'}:
           settings.GENERATE_SOURCE_MAP = 1 if debug_level == 'source-map' else 2
           newargs[i] = '-g'
         elif debug_level == 'z':
@@ -503,9 +507,9 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.cpu_profiler = True
     elif check_flag('--threadprofiler'):
       settings.PTHREADS_PROFILING = 1
-    elif arg in ('-fcolor-diagnostics', '-fdiagnostics-color', '-fdiagnostics-color=always'):
+    elif arg in {'-fcolor-diagnostics', '-fdiagnostics-color', '-fdiagnostics-color=always'}:
       colored_logger.enable(force=True)
-    elif arg in ('-fno-color-diagnostics', '-fno-diagnostics-color', '-fdiagnostics-color=never'):
+    elif arg in {'-fno-color-diagnostics', '-fno-diagnostics-color', '-fdiagnostics-color=never'}:
       colored_logger.disable()
     elif arg == '-fno-exceptions':
       settings.DISABLE_EXCEPTION_CATCHING = 1
@@ -516,12 +520,6 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
                                     override=True)
     elif arg == '-mno-bulk-memory':
       feature_matrix.disable_feature(feature_matrix.Feature.BULK_MEMORY)
-    elif arg == '-msign-ext':
-      feature_matrix.enable_feature(feature_matrix.Feature.SIGN_EXT,
-                                    '-msign-ext',
-                                    override=True)
-    elif arg == '-mno-sign-ext':
-      feature_matrix.disable_feature(feature_matrix.Feature.SIGN_EXT)
     elif arg == '-mnontrapping-fptoint':
       feature_matrix.enable_feature(feature_matrix.Feature.NON_TRAPPING_FPTOINT,
                                     '-mnontrapping-fptoint',
@@ -568,12 +566,12 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
     elif arg.startswith('-jsD'):
       key = arg.removeprefix('-jsD')
       if '=' in key:
-        key, value = key.split('=')
+        key, value = key.split('=', 1)
       else:
         value = '1'
-      if key in settings.keys():
+      if key in builtin_settings:
         exit_with_error(f'{arg}: cannot change built-in settings values with a -jsD directive. Pass -s{key}={value} instead!')
-      # Apply user -jsD settings
+      # Allow overrides/duplicates for user-defined -jsD flags
       settings[key] = value
       newargs[i] = ''
     elif check_flag('-shared'):
@@ -582,19 +580,23 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       options.relocatable = True
     elif arg.startswith('-o'):
       options.output_file = arg.removeprefix('-o')
+    elif check_flag('-m64'):
+      settings.MEMORY64 = 1
+    elif check_flag('-m32'):
+      settings.MEMORY64 = 0
     elif check_arg('-target') or check_arg('--target'):
       options.target = consume_arg()
-      if options.target not in ('wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'):
+      if options.target not in {'wasm32', 'wasm64', 'wasm64-unknown-emscripten', 'wasm32-unknown-emscripten'}:
         exit_with_error(f'unsupported target: {options.target} (emcc only supports wasm64-unknown-emscripten and wasm32-unknown-emscripten)')
     elif check_arg('--use-port'):
       ports.handle_use_port_arg(settings, consume_arg())
-    elif arg in ('-c', '--precompile'):
+    elif arg in {'-c', '--precompile'}:
       options.dash_c = True
     elif arg == '-S':
       options.dash_S = True
     elif arg == '-E':
       options.dash_E = True
-    elif arg in ('-M', '-MM'):
+    elif arg in {'-M', '-MM'}:
       options.dash_M = True
     elif arg.startswith('-x'):
       # TODO(sbc): Handle multiple -x flags on the same command line
@@ -631,9 +633,7 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
 
 
 def expand_byte_size_suffixes(value):
-  """Given a string with KB/MB size suffixes, such as "32MB", computes how
-  many bytes that is and returns it as an integer.
-  """
+  """Convert a string with KB/MB size suffix, such as "32MB", to number of bytes."""
   value = value.strip()
   match = re.match(r'^(\d+)\s*([kmgt]?b)?$', value, re.I)
   if not match:
@@ -647,9 +647,10 @@ def expand_byte_size_suffixes(value):
 
 
 def parse_symbol_list_file(contents):
-  """Parse contents of one-symbol-per-line response file.  This format can by used
-  with, for example, -sEXPORTED_FUNCTIONS=@filename and avoids the need for any
-  kind of quoting or escaping.
+  """Parse contents of one-symbol-per-line response file.
+
+  This format can by used with, for example, -sEXPORTED_FUNCTIONS=@filename and
+  avoids the need for any kind of quoting or escaping.
   """
   values = contents.splitlines()
   return [v.strip() for v in values if not v.startswith('#')]
@@ -707,7 +708,7 @@ def parse_value(text, expected_type):
       if text[-1] != ']':
         raise ValueError('unterminated string list. expected final character to be "]"')
       text = text[1:-1]
-    if text.strip() == "":
+    if not text.strip():
       return []
     return parse_string_list_members(text)
 
@@ -720,12 +721,12 @@ def parse_value(text, expected_type):
       return parse_string_list(text)
 
     # if we succeeded in parsing as json, check some properties of it before returning
-    if type(parsed) not in (str, list):
-      raise ValueError(f'settings must be strings or lists (not ${type(parsed)})')
+    if type(parsed) not in {str, list}:
+      raise ValueError(f'settings must be strings or lists (not {type(parsed)})')
     if type(parsed) is list:
       for elem in parsed:
         if type(elem) is not str:
-          raise ValueError(f'list members in settings must be strings (not ${type(elem)})')
+          raise ValueError(f'list members in settings must be strings (not {type(elem)})')
 
     return parsed
 
@@ -746,10 +747,7 @@ def parse_value(text, expected_type):
 
 
 def apply_user_settings():
-  """Take a map of users settings {NAME: VALUE} and apply them to the global
-  settings object.
-  """
-
+  """Take a map of users settings {NAME: VALUE} and apply them to the global settings object."""
   # Stash a copy of all available incoming APIs before the user can potentially override it
   settings.ALL_INCOMING_MODULE_JS_API = settings.INCOMING_MODULE_JS_API + EXTRA_INCOMING_JS_API
 
@@ -806,10 +804,33 @@ def normalize_boolean_setting(name, value):
   # (note that *non*-boolean setting values have special meanings,
   # and we can't just flip them, so leave them as-is to be
   # handled in a special way later)
-  if name.startswith('NO_') and value in ('0', '1'):
+  if name.startswith('NO_') and value in {'0', '1'}:
     name = name.removeprefix('NO_')
     value = str(1 - int(value))
   return name, value
+
+
+def normalize_args(args):
+  """Normalize argument that can be specific as either one or two arguments.
+
+  In some cases these arguments are simply joined together.  For example
+  [`-o` `foo`] becomes `-ofoo` and [`-L` `bar`] becomes `-Lbar`.
+
+  In other cases they are joined by an equals sign.  For example ['--js-library`, `foo.js`]
+  becomes `--js-library=foo.js`.
+  """
+  equals_args = {'--js-library'}
+  join_args = {'-l', '-L', '-I', '-z', '-o', '-x', '-u'} | equals_args
+  for i in range(len(args)):
+    if args[i] in join_args:
+      if args[i] in equals_args:
+        args[i] += '='
+      if len(args) <= i + 1:
+        exit_with_error(f"option '{args[i]}' requires an argument")
+      args[i] += args[i + 1]
+      args[i + 1] = ''
+
+  return [a for a in args if a]
 
 
 @ToolchainProfiler.profile()
@@ -824,17 +845,7 @@ def parse_arguments(args):
   if not diagnostics.is_enabled('deprecated'):
     settings.WARN_DEPRECATED = 0
 
-  for i in range(len(newargs)):
-    if newargs[i] in ('-l', '-L', '-I', '-z', '--js-library', '-o', '-x', '-u'):
-      # Scan for flags that can be written as either one or two arguments
-      # and normalize them to the single argument form.
-      if newargs[i] == '--js-library':
-        newargs[i] += '='
-      if len(newargs) <= i + 1:
-        exit_with_error(f"option '{newargs[i]}' requires an argument")
-      newargs[i] += newargs[i + 1]
-      newargs[i + 1] = ''
-
+  newargs = normalize_args(newargs)
   newargs = parse_args(newargs)
 
   if options.post_link or options.oformat == OFormat.BARE:

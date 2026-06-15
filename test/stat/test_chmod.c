@@ -175,11 +175,11 @@ void test() {
   assert(chown("", 1000, 1000) == -1);
   assert(errno == ENOENT);
 
-  puts("success");
+  puts("done");
 }
 
 int main() {
   setup();
   test();
-  return EXIT_SUCCESS;
+  return 0;
 }

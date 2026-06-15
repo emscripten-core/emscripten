@@ -3,8 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Simple color-enabled diagnostics reporting functions.
-"""
+"""Simple color-enabled diagnostics reporting functions."""
 
 import logging
 import os
@@ -38,7 +37,7 @@ def diag(level, msg, *args):
   prefix = level_prefixes[level]
   color = level_colors[level]
   if args:
-    msg = msg % args
+    msg %= args
 
   # Add colors
   prefix = colored_logger.with_bold_color(color, prefix)

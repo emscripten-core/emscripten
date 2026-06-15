@@ -1,8 +1,9 @@
 #!/usr/bin/env python3
 
-"""Find files in the test/ that are not referenced and can
-be deleted.  This is a work in progress and still contains
-false positives in the output."""
+"""Find files in the test/ that are not referenced and can be deleted.
+
+This is a work in progress and still contains false positives in the output.
+"""
 
 import fnmatch
 import os
@@ -27,8 +28,14 @@ ignore_files = {
 ignore_root_patterns = ['runner.*', 'test_*.py']
 ignore_root_files = {
   'check_clean.py',
+  'decorators.py',
   'jsrun.py',
   'clang_native.py',
+  'line_endings.py',
+  'single_line_runner.py',
+  'color_runner.py',
+  'retryable_unittest.py',
+  'browser_common.py',
   'common.py',
   'parallel_testsuite.py',
   'parse_benchmark_output.py',
@@ -57,7 +64,7 @@ def check_file(dirpath, filename):
     return
 
   # .out files are live if and only if they live alongside a live source file
-  if ext == '.out' and os.path.exists(stem + '.cpp') or os.path.exists(stem + '.c'):
+  if ext == '.out' and (os.path.exists(stem + '.cpp') or os.path.exists(stem + '.c')):
     return
 
   # Files under 'core' can be live if they are find in a `do_core_test` call.

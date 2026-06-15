@@ -22,7 +22,7 @@ int main(int argc, char **argv) {
   EM_ASM(emrun_file_dump("heap.dat", HEAPU8));
   EM_ASM(emrun_file_dump("nested/with space.dat", HEAPU8.subarray(128, 256)););
 
-  printf("hello, world!\n");
+  printf("Hello, world!\n");
   fprintf(stderr, "hello, error stream!\n");
 
   printf("Testing ASCII characters: !\"$%%&'()*+,-./:;<=>?@[\\]^_`{|}~\n");

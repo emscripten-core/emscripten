@@ -4,7 +4,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""This tool extracts information about structs and defines from the C headers.
+"""Tools that extracts information about structs and defines from the C headers.
 
 The JSON input format is as follows:
 [
@@ -78,6 +78,8 @@ CFLAGS = [
 ]
 
 INTERNAL_CFLAGS = [
+    '-I' + utils.path_from_root('system/lib/libc/musl/arch/emscripten'),
+    '-I' + utils.path_from_root('system/lib/libc/musl/arch/generic'),
     '-I' + utils.path_from_root('system/lib/libc/musl/src/internal'),
     '-I' + utils.path_from_root('system/lib/libc/musl/src/include'),
     '-I' + utils.path_from_root('system/lib/pthread/'),
@@ -154,16 +156,17 @@ class Scope:
     prefix += path[0]
 
     with self.child(path[-1]) as scope:
-      path_for_sizeof = [f'({prefix}){{}}'] + path[1:]
+      path_for_sizeof = [f'({prefix}){{}}', *path[1:]]
       scope.set('__size__', '%zu', f'sizeof ({".".join(path_for_sizeof)})')
 
       for field in struct:
         if isinstance(field, dict):
           # We have to recurse to inspect the nested dict.
           fname = list(field.keys())[0]
-          self.gen_inspect_code(path + [fname], field[fname])
+          self.gen_inspect_code([*path, fname], field[fname])
         else:
-          scope.set(field, '%zu', f'offsetof({prefix}, {".".join(path[1:] + [field])})')
+          member = ".".join([*path[1:], field])
+          scope.set(field, '%zu', f'offsetof({prefix}, {member})')
 
 
 def generate_c_code(headers):
@@ -206,16 +209,16 @@ def generate_cmd(js_file_path, src_file_path, cflags):
     compiler = shared.EMCC
 
   # -O1+ produces calls to iprintf, which libcompiler_rt doesn't support
-  cmd = [compiler] + cflags + ['-o', js_file_path, src_file_path,
-                               '-O0',
-                               '-Werror',
-                               '-Wno-format',
-                               '-sBOOTSTRAPPING_STRUCT_INFO',
-                               '-sWASM_ASYNC_COMPILATION=0',
-                               '-sINCOMING_MODULE_JS_API=',
-                               '-sSTRICT',
-                               '-sSUPPORT_LONGJMP=0',
-                               '-sASSERTIONS=0']
+  cmd = [compiler, *cflags, '-o', js_file_path, src_file_path,
+         '-O0',
+         '-Werror',
+         '-Wno-format',
+         '-sBOOTSTRAPPING_STRUCT_INFO',
+         '-sWASM_ASYNC_COMPILATION=0',
+         '-sINCOMING_MODULE_JS_API=',
+         '-sSTRICT',
+         '-sSUPPORT_LONGJMP=0',
+         '-sASSERTIONS=0']
 
   # Default behavior for emcc is to warn for binaryen version check mismatches
   # so we should try to match that behavior.
@@ -290,7 +293,7 @@ def inspect_code(headers, cflags):
 def parse_json(path):
   header_files = []
 
-  with open(path) as stream:
+  with open(path, encoding='utf-8') as stream:
     # Remove comments before loading the JSON.
     data = json.loads(re.sub(r'//.*\n', '', stream.read()))
 
@@ -299,7 +302,7 @@ def parse_json(path):
 
   for item in data:
     for key in item:
-      if key not in ['file', 'defines', 'structs']:
+      if key not in {'file', 'defines', 'structs'}:
         raise 'Unexpected key in json file: %s' % key
 
     header = {'name': item['file'], 'structs': {}, 'defines': {}}
@@ -393,7 +396,7 @@ def main(args):
   else:
     output_file = utils.path_from_root('src/struct_info_generated.json')
 
-  with open(output_file, 'w') as f:
+  with open(output_file, 'w', encoding='utf-8') as f:
     output_json(info, f)
 
   return 0

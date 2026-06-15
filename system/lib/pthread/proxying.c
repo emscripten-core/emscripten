@@ -146,7 +146,7 @@ void emscripten_proxy_execute_queue(em_proxying_queue* q) {
   }
 }
 
-static int do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
+static bool do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   assert(q != NULL);
   pthread_mutex_lock(&q->mutex);
   bool is_system_queue = q == &system_proxying_queue;
@@ -159,13 +159,29 @@ static int do_proxy(em_proxying_queue* q, pthread_t target_thread, task t) {
   }
   pthread_mutex_unlock(&q->mutex);
   if (tasks == NULL) {
-    return 0;
+    return false;
   }
 
-  return em_task_queue_send(tasks, t);
+  bool ret = em_task_queue_send(tasks, t);
+
+  // When proxying work to the main thread using the system queue we have a
+  // special case in that we need to wake the target thread in case it is in
+  // `emscripten_futex_wait`. Additionally, the _dlopen_proxying_queue also
+  // requires a wakeup of the target thread after enqueuing work.
+  bool needs_notify =
+#ifdef EMSCRIPTEN_DYNAMIC_LINKING
+    q == _dlopen_proxying_queue ||
+#endif
+    (is_system_queue &&
+     pthread_equal(target_thread, emscripten_main_runtime_thread_id()));
+  if (ret && needs_notify) {
+    DBG("waking target thread using _emscripten_thread_notify");
+    _emscripten_thread_notify(target_thread);
+  }
+  return ret;
 }
 
-int emscripten_proxy_async(em_proxying_queue* q,
+bool emscripten_proxy_async(em_proxying_queue* q,
                            pthread_t target_thread,
                            void (*func)(void*),
                            void* arg) {
@@ -339,8 +355,11 @@ void emscripten_proxy_finish(em_proxying_ctx* ctx) {
     pthread_mutex_lock(&ctx->sync.mutex);
     ctx->sync.state = DONE;
     remove_active_ctx(ctx);
-    pthread_mutex_unlock(&ctx->sync.mutex);
+    // Signal must come before unlock to avoid emscripten_proxy_sync_with ctx
+    // seeing the state as DONE and freeing the ctx before we call unlock.
+    // See https://github.com/emscripten-core/emscripten/pull/26582
     pthread_cond_signal(&ctx->sync.cond);
+    pthread_mutex_unlock(&ctx->sync.mutex);
   } else {
     // Schedule the callback on the caller thread. If the caller thread has
     // already died or dies before the callback is executed, then at least make
@@ -365,8 +384,9 @@ static void cancel_ctx(void* arg) {
   if (ctx->kind == SYNC) {
     pthread_mutex_lock(&ctx->sync.mutex);
     ctx->sync.state = CANCELED;
-    pthread_mutex_unlock(&ctx->sync.mutex);
+    // Signal must be first, see comment in emscripten_proxy_finish.
     pthread_cond_signal(&ctx->sync.cond);
+    pthread_mutex_unlock(&ctx->sync.mutex);
   } else {
     if (ctx->cb.cancel == NULL ||
         !do_proxy(ctx->cb.queue,
@@ -384,7 +404,7 @@ static void call_with_ctx(void* arg) {
   ctx->func(ctx, ctx->arg);
 }
 
-int emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
+bool emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
                                    pthread_t target_thread,
                                    void (*func)(em_proxying_ctx*, void*),
                                    void* arg) {
@@ -394,7 +414,7 @@ int emscripten_proxy_sync_with_ctx(em_proxying_queue* q,
   em_proxying_ctx_init_sync(&ctx, func, arg);
   if (!do_proxy(q, target_thread, (task){call_with_ctx, cancel_ctx, &ctx})) {
     em_proxying_ctx_deinit(&ctx);
-    return 0;
+    return false;
   }
   pthread_mutex_lock(&ctx.sync.mutex);
   while (ctx.sync.state == PENDING) {
@@ -413,7 +433,7 @@ static void call_then_finish_task(em_proxying_ctx* ctx, void* arg) {
   emscripten_proxy_finish(ctx);
 }
 
-int emscripten_proxy_sync(em_proxying_queue* q,
+bool emscripten_proxy_sync(em_proxying_queue* q,
                           pthread_t target_thread,
                           void (*func)(void*),
                           void* arg) {
@@ -422,32 +442,32 @@ int emscripten_proxy_sync(em_proxying_queue* q,
     q, target_thread, call_then_finish_task, &t);
 }
 
-static int do_proxy_callback(em_proxying_queue* q,
-                             pthread_t target_thread,
-                             void (*func)(em_proxying_ctx* ctx, void*),
-                             void (*callback)(void*),
-                             void (*cancel)(void*),
-                             void* arg,
-                             em_proxying_ctx* ctx) {
+static bool do_proxy_callback(em_proxying_queue* q,
+                              pthread_t target_thread,
+                              void (*func)(em_proxying_ctx* ctx, void*),
+                              void (*callback)(void*),
+                              void (*cancel)(void*),
+                              void* arg,
+                              em_proxying_ctx* ctx) {
   em_proxying_ctx_init_callback(
     ctx, q, pthread_self(), func, callback, cancel, arg);
   if (!do_proxy(q, target_thread, (task){call_with_ctx, cancel_ctx, ctx})) {
     free_ctx(ctx);
-    return 0;
+    return false;
   }
-  return 1;
+  return true;
 }
 
-int emscripten_proxy_callback_with_ctx(em_proxying_queue* q,
-                                       pthread_t target_thread,
-                                       void (*func)(em_proxying_ctx* ctx,
-                                                    void*),
-                                       void (*callback)(void*),
-                                       void (*cancel)(void*),
-                                       void* arg) {
+bool emscripten_proxy_callback_with_ctx(em_proxying_queue* q,
+                                        pthread_t target_thread,
+                                        void (*func)(em_proxying_ctx* ctx,
+                                                     void*),
+                                        void (*callback)(void*),
+                                        void (*cancel)(void*),
+                                        void* arg) {
   em_proxying_ctx* ctx = malloc(sizeof(*ctx));
   if (ctx == NULL) {
-    return 0;
+    return false;
   }
   return do_proxy_callback(q, target_thread, func, callback, cancel, arg, ctx);
 }
@@ -477,12 +497,12 @@ static void callback_cancel(void* arg) {
   }
 }
 
-int emscripten_proxy_callback(em_proxying_queue* q,
-                              pthread_t target_thread,
-                              void (*func)(void*),
-                              void (*callback)(void*),
-                              void (*cancel)(void*),
-                              void* arg) {
+bool emscripten_proxy_callback(em_proxying_queue* q,
+                               pthread_t target_thread,
+                               void (*func)(void*),
+                               void (*callback)(void*),
+                               void (*cancel)(void*),
+                               void* arg) {
   // Allocate the em_proxying_ctx and the user ctx as a single block that will
   // be freed when the `em_proxying_ctx` is freed.
   struct block {
@@ -491,7 +511,7 @@ int emscripten_proxy_callback(em_proxying_queue* q,
   };
   struct block* block = malloc(sizeof(*block));
   if (block == NULL) {
-    return 0;
+    return false;
   }
   block->cb_ctx = (callback_ctx){func, callback, cancel, arg};
   return do_proxy_callback(q,

@@ -65,7 +65,7 @@ addToLibrary({
     function classifyChar(str, idx) {
       var cc = str.charCodeAt(idx);
   #if ASSERTIONS
-      assert(!(cc > 127), "Only 7-bit ASCII can be used in preprocessor #if/#ifdef/#define statements!");
+      assert(!(cc > 127), "only 7-bit ASCII can be used in preprocessor #if/#ifdef/#define statements");
   #endif
       if (cc > 32) {
         if (cc < 48) return 1; // an operator symbol, any of !"#$%&'()*+,-./
@@ -128,7 +128,12 @@ addToLibrary({
             var kind2 = classifyChar(str, j);
             if (kind2 != 2/*0-9*/ && kind2 != 3/*a-z*/) {
               var symbol = str.substring(i, j);
+#if MIN_FIREFOX_VERSION < 92
+              // Firefox only introduced Object.hasOwn() in Firefox 92.
+              if (defs.hasOwnProperty(symbol)) {
+#else
               if (Object.hasOwn(defs, symbol)) {
+#endif
                 var pp = defs[symbol], expanded;
                 if (typeof pp == 'function') { // definition is a function?
                   if (pp.length) { // Expanding a macro? (#define FOO(X) ...)
@@ -204,24 +209,25 @@ addToLibrary({
           if (operatorAndPriority >= 0) {
             var left = buildExprTree(tokens.slice(0, i));
             var right = buildExprTree(tokens.slice(i+1));
-            switch(tokens[i]) {
-              case '&&': return [function() { return left() && right(); }];
-              case '||': return [function() { return left() || right(); }];
-              case '==': return [function() { return left() == right(); }];
-              case '!=': return [function() { return left() != right(); }];
-              case '<' : return [function() { return left() <  right(); }];
-              case '<=': return [function() { return left() <= right(); }];
-              case '>' : return [function() { return left() >  right(); }];
-              case '>=': return [function() { return left() >= right(); }];
-              case  '+': return [function() { return left()  + right(); }];
-              case  '-': return [function() { return left()  - right(); }];
-              case  '*': return [function() { return left()  * right(); }];
-              case  '/': return [function() { return Math.floor(left() / right()); }];
-            }
+            var opers = {
+              '&&': () => left() && right(),
+              '||': () => left() || right(),
+              '==': () => left() == right(),
+              '!=': () => left() != right(),
+              '<' : () => left() <  right(),
+              '<=': () => left() <= right(),
+              '>' : () => left() >  right(),
+              '>=': () => left() >= right(),
+               '+': () => left()  + right(),
+               '-': () => left()  - right(),
+               '*': () => left()  * right(),
+               '/': () => Math.floor(left() / right())
+            };
+            return [opers[tokens[i]]];
           }
           // else a number:
 #if ASSERTIONS
-          assert(tokens[i] !== ')', 'Parsing failure, mismatched parentheses in parsing!' + tokens.toString());
+          assert(tokens[i] !== ')', 'parse failure, mismatched parentheses in parsing' + tokens.toString());
           assert(operatorAndPriority == -1);
 #endif
           var num = Number(tokens[i]);

@@ -9,7 +9,7 @@ import logging
 from enum import IntEnum, auto
 
 from . import diagnostics
-from .settings import settings, user_settings
+from .settings import default_setting, settings, user_settings
 
 logger = logging.getLogger('feature_matrix')
 
@@ -22,22 +22,18 @@ UNSUPPORTED = 0x7FFFFFFF
 
 # N.b. when modifying these values, update comments in src/settings.js on
 # MIN_x_VERSION fields to match accordingly.
-OLDEST_SUPPORTED_CHROME = 74  # Released on 2019-04-23
-OLDEST_SUPPORTED_FIREFOX = 68  # Released on 2019-07-09
-OLDEST_SUPPORTED_SAFARI = 120200  # Released on 2019-03-25
-# 12.22.09 is the oldest version of node that we do any testing with.
+OLDEST_SUPPORTED_CHROME = 85  # Released on 2020-08-25
+OLDEST_SUPPORTED_FIREFOX = 79  # Released on 2020-07-28
+OLDEST_SUPPORTED_SAFARI = 140100  # Released on 2021-04-26
+# This is the oldest version of node that we do any testing with.
 # Keep this in sync with the test-node-compat in .circleci/config.yml.
-OLDEST_SUPPORTED_NODE = 122209
+OLDEST_SUPPORTED_NODE = 180300
 
 
 class Feature(IntEnum):
-  MUTABLE_GLOBALS = auto()
   NON_TRAPPING_FPTOINT = auto()
-  SIGN_EXT = auto()
   BULK_MEMORY = auto()
   JS_BIGINT_INTEGRATION = auto()
-  THREADS = auto()
-  PROMISE_ANY = auto()
   MEMORY64 = auto()
   WORKER_ES6_MODULES = auto()
   OFFSCREENCANVAS_SUPPORT = auto()
@@ -52,56 +48,37 @@ disable_override_features = set()
 enable_override_features = set()
 
 min_browser_versions = {
-  Feature.MUTABLE_GLOBALS: {
-    'chrome': 74,
-    'firefox': 61,
-    'safari': 130100,
-    'node': 120000,
-  },
+  # https://caniuse.com/wasm-nontrapping-fptoint
   Feature.NON_TRAPPING_FPTOINT: {
     'chrome': 75,
-    'firefox': 65,
+    'firefox': 64,
     'safari': 150000,
     'node': 130000,
   },
-  Feature.SIGN_EXT: {
-    'chrome': 74,
-    'firefox': 62,
-    'safari': 140100,
-    'node': 120000,
-  },
+  # https://caniuse.com/wasm-bulk-memory
   Feature.BULK_MEMORY: {
     'chrome': 75,
     'firefox': 79,
     'safari': 150000,
     'node': 130000,
   },
+  # https://caniuse.com/wasm-bigint
   Feature.JS_BIGINT_INTEGRATION: {
     'chrome': 67,
     'firefox': 78,
     'safari': 150000,
     'node': 130000,
   },
-  Feature.THREADS: {
-    'chrome': 74,
-    'firefox': 79,
-    'safari': 140100,
-    'node': 160400,
-  },
-  Feature.PROMISE_ANY: {
-    'chrome': 85,
-    'firefox': 79,
-    'safari': 140000,
-    'node': 150000,
-  },
+  # https://caniuse.com/wf-wasm-memory64
   Feature.MEMORY64: {
-    'chrome': 128,
-    'firefox': 129,
+    'chrome': 133,
+    'firefox': 134,
     'safari': UNSUPPORTED,
-    'node': 230000,
+    'node': 240000,
   },
   # Emscripten itself does not use this feature but we use it in our browser
   # tests.
+  # https://caniuse.com/webgl2
   Feature.WEBGL2: {
     'chrome': 56,
     'firefox': 51,
@@ -110,6 +87,7 @@ min_browser_versions = {
   },
   # Emscripten itself does not use this feature but we use it in our browser
   # tests.
+  # https://caniuse.com/webgpu
   Feature.WEBGPU: {
     'chrome': 113,
     'firefox': 141,
@@ -137,6 +115,7 @@ min_browser_versions = {
   },
   # Legacy Wasm exceptions was the first (now legacy) format for native
   # exception handling in WebAssembly.
+  # https://caniuse.com/wf-wasm-exception-handling
   Feature.WASM_LEGACY_EXCEPTIONS: {
     'chrome': 95,
     'firefox': 100,
@@ -145,6 +124,7 @@ min_browser_versions = {
   },
   # Wasm exceptions is a newer format for native exception handling in
   # WebAssembly.
+  # https://caniuse.com/wf-wasm-exnref-exceptions
   Feature.WASM_EXCEPTIONS: {
     'chrome': 137,
     'firefox': 131,
@@ -159,12 +139,45 @@ min_browser_versions = {
   # builds by avoiding need to poll resizes to ArrayBuffer views in Workers.
   # This feature is not used anywhere else except the test harness to detect
   # browser version.
+  # https://caniuse.com/mdn-webassembly_api_memory_toresizablebuffer
   Feature.GROWABLE_ARRAYBUFFERS: {
-    'chrome': 136,
+    'chrome': 144,
     'firefox': 145,
-    'safari': UNSUPPORTED,
-    'node': 240000,
+    'safari': 260200,
+    'node': 260000,
   },
+
+# The following features we now support unconditionally, but keeping them around
+# in code comments for future reference
+
+#  Feature.MUTABLE_GLOBALS: {
+#    'chrome': 74,
+#    'firefox': 61,
+#    'safari': 130100,
+#    'node': 120000,
+#  },
+
+#  Feature.SIGN_EXT: {
+#    'chrome': 74,
+#    'firefox': 62,
+#    'safari': 140100,
+#    'node': 120000,
+#  },
+
+#  Feature.THREADS: {
+#    'chrome': 74,
+#    'firefox': 79,
+#    'safari': 140100,
+#    'node': 160400,
+#  },
+
+#  Feature.PROMISE_ANY: {
+#    'chrome': 85,
+#    'firefox': 79,
+#    'safari': 140000,
+#    'node': 150000,
+#  },
+
 }
 
 # Static assertion to check that we actually need each of the above feature flags
@@ -182,6 +195,12 @@ def caniuse(feature):
     return False
   if feature in enable_override_features:
     return True
+
+  # Certain features are incompatible with certain settings.
+  # TODO(sbc): Make this more generate, perhaps based on INCOMPATIBLE_SETTINGS
+  if feature == Feature.GROWABLE_ARRAYBUFFERS and settings.WASM2JS:
+    logger.debug(f'cannot use {feature.name} because WASM2JS is enabled')
+    return False
 
   min_versions = min_browser_versions[feature]
 
@@ -205,9 +224,7 @@ def caniuse(feature):
 
 
 def enable_feature(feature, reason, override=False):
-  """Updates default settings for browser versions such that the given
-  feature is available everywhere.
-  """
+  """Update default settings for browser versions such that the given feature is available everywhere."""
   if override:
     enable_override_features.add(feature)
   for name, min_version in min_browser_versions[feature].items():
@@ -233,26 +250,24 @@ def enable_feature(feature, reason, override=False):
 
 
 def disable_feature(feature):
-  """Allow the user to disable a feature that would otherwise be on by default.
-  """
+  """Allow the user to disable a feature that would otherwise be on by default."""
   disable_override_features.add(feature)
 
 
-# apply minimum browser version defaults based on user settings. if
-# a user requests a feature that we know is only supported in browsers
-# from a specific version and above, we can assume that browser version.
 def apply_min_browser_versions():
+  """Update minimum browser version defaults based on user settings.
+
+  If a user requests a feature that we know is only supported in browsers
+  from a specific version and above, we can assume that browser version.
+  """
   if settings.WASM_BIGINT and 'WASM_BIGINT' in user_settings:
     # WASM_BIGINT is enabled by default, don't use it to enable other features
     # unless the user explicitly enabled it.
     enable_feature(Feature.JS_BIGINT_INTEGRATION, 'WASM_BIGINT')
   if settings.PTHREADS:
-    enable_feature(Feature.THREADS, 'pthreads')
     enable_feature(Feature.BULK_MEMORY, 'pthreads')
   elif settings.WASM_WORKERS or settings.SHARED_MEMORY:
     enable_feature(Feature.BULK_MEMORY, 'shared-mem')
-  if settings.RELOCATABLE:
-    enable_feature(Feature.MUTABLE_GLOBALS, 'dynamic linking')
   if settings.MEMORY64 == 1:
     enable_feature(Feature.MEMORY64, 'MEMORY64')
   if settings.EXPORT_ES6 and settings.PTHREADS:
@@ -266,3 +281,13 @@ def apply_min_browser_versions():
       enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, 'Wasm Legacy exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=1)')
     else:
       enable_feature(Feature.WASM_EXCEPTIONS, 'Wasm exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')
+  if settings.GROWABLE_ARRAYBUFFERS:
+    enable_feature(Feature.GROWABLE_ARRAYBUFFERS, 'GrowableSharedArrayBuffer')
+
+
+def auto_enable_features():
+  """Enable settings based on usable features."""
+  # TODO(sbc): Find make a generic way to expose the feature matrix to JS
+  # compiler rather then adding them all ad-hoc as internal settings
+  default_setting('WASM_BIGINT', caniuse(Feature.JS_BIGINT_INTEGRATION))
+  default_setting('GROWABLE_ARRAYBUFFERS', caniuse(Feature.GROWABLE_ARRAYBUFFERS))

@@ -10,7 +10,7 @@ assert(!FULL_ES3, 'cannot emulate both ES3 and legacy GL');
 
 {{{
   const copySigs = (func) => {
-    if (!MAIN_MODULE && !RELOCATABLE) return '';
+    if (!MAIN_MODULE) return '';
     return ` _${func}.sig = _emscripten_${func}.sig = orig_${func}.sig;`;
   };
   const fromPtr = (arg) => {
@@ -34,43 +34,41 @@ var LibraryGLEmulation = {
     'glVertexAttribPointer', 'glActiveTexture', '$stringToNewUTF8',
     '$ptrToString', '$getEmscriptenSupportedExtensions',
   ],
-  $GLEmulation__postset:
-#if MAYBE_CLOSURE_COMPILER
-    // Forward declare GL functions that are overridden by GLEmulation here to appease Closure compiler.
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawArrays;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawElements;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glActiveTexture;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glEnable;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDisable;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvf;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvi;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvfv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetIntegerv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glIsEnabled;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetBooleanv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetString;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glCreateShader;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glShaderSource;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glCompileShader;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glAttachShader;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDetachShader;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glUseProgram;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDeleteProgram;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glBindAttribLocation;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glLinkProgram;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glBindBuffer;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetFloatv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glHint;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glEnableVertexAttribArray;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glDisableVertexAttribArray;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _emscripten_glVertexAttribPointer;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glTexEnvf;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glTexEnvi;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glTexEnvfv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glGetTexEnviv;' +
-    '/**@suppress {duplicate, undefinedVars}*/var _glGetTexEnvfv;' +
-#endif
-    'GLEmulation.init();',
+  $GLEmulation__postset: `
+    // Forward declare GL functions that are overridden by GLEmulation.
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawArrays;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDrawElements;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glActiveTexture;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glEnable;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDisable;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvf;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvi;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glTexEnvfv;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetIntegerv;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glIsEnabled;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetBooleanv;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetString;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glCreateShader;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glShaderSource;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glCompileShader;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glAttachShader;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDetachShader;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glUseProgram;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDeleteProgram;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glBindAttribLocation;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glLinkProgram;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glBindBuffer;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glGetFloatv;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glHint;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glEnableVertexAttribArray;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glDisableVertexAttribArray;
+    /**@suppress {duplicate, undefinedVars}*/var _emscripten_glVertexAttribPointer;
+    /**@suppress {duplicate, undefinedVars}*/var _glTexEnvf;
+    /**@suppress {duplicate, undefinedVars}*/var _glTexEnvi;
+    /**@suppress {duplicate, undefinedVars}*/var _glTexEnvfv;
+    /**@suppress {duplicate, undefinedVars}*/var _glGetTexEnviv;
+    /**@suppress {duplicate, undefinedVars}*/var _glGetTexEnvfv;
+    GLEmulation.init();`,
   $GLEmulation: {
     // Fog support. Partial, we assume shaders are used that implement fog. We just pass them uniforms
     fogStart: 0,
@@ -859,7 +857,7 @@ var LibraryGLEmulation = {
 #if !FULL_ES2
   $GLImmediate__postset: 'GLImmediate.setupFuncs(); Browser.moduleContextCreatedCallbacks.push(() => GLImmediate.init());',
 #endif
-  $GLImmediate__deps: ['$Browser', '$GL', '$GLEmulation'],
+  $GLImmediate__deps: ['$Browser', '$GL', '$GLEmulation', '$webglBufferSubData'],
   $GLImmediate: {
     MapTreeLib: null,
     spawnMapTreeLib: () => {
@@ -2554,7 +2552,7 @@ var LibraryGLEmulation = {
               GLImmediate.lastArrayBuffer = arrayBuffer;
             }
 
-            GLctx.bufferSubData(GLctx.ARRAY_BUFFER, start, GLImmediate.vertexData.subarray(start >> 2, end >> 2));
+            webglBufferSubData(GLctx.ARRAY_BUFFER, start, (end - start) >> 2, start >> 2, GLImmediate.vertexData);
           }
 #if GL_UNSAFE_OPTS
           if (canSkip) return;
@@ -3038,7 +3036,7 @@ var LibraryGLEmulation = {
           // upload based on the indices. If they are in a buffer on the GPU, that is very
           // inconvenient! So if you do not have an array buffer, you should also not have
           // an element array buffer. But best is to use both buffers!
-          assert(!GLctx.currentElementArrayBufferBinding);
+          assert(!GLctx.currentElementArrayBufferBinding, 'must use array buffers when using element buffer');
 #endif
           for (var i = 0; i < numProvidedIndexes; i++) {
             var currIndex = {{{ makeGetValue('ptr', 'i*2', 'u16') }}};
@@ -3048,12 +3046,13 @@ var LibraryGLEmulation = {
         }
         if (!GLctx.currentElementArrayBufferBinding) {
           // If no element array buffer is bound, then indices is a literal pointer to clientside data
+          var byteSize = numProvidedIndexes << 1;
 #if ASSERTIONS
-          assert(numProvidedIndexes << 1 <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
+          assert(byteSize <= GL.MAX_TEMP_BUFFER_SIZE, 'too many immediate mode indexes (a)');
 #endif
-          var indexBuffer = GL.getTempIndexBuffer(numProvidedIndexes << 1);
+          var indexBuffer = GL.getTempIndexBuffer(byteSize);
           GLctx.bindBuffer(GLctx.ELEMENT_ARRAY_BUFFER, indexBuffer);
-          GLctx.bufferSubData(GLctx.ELEMENT_ARRAY_BUFFER, 0, {{{ makeHEAPView('U16', 'ptr', 'ptr + (numProvidedIndexes << 1)') }}});
+          webglBufferSubData(GLctx.ELEMENT_ARRAY_BUFFER, 0, byteSize, ptr);
           ptr = 0;
           emulatedElementArrayBuffer = true;
         }

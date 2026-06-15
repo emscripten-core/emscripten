@@ -5,11 +5,10 @@
 
 import copy
 import difflib
-import os
 import re
 from typing import Any
 
-from . import diagnostics
+from . import diagnostics, utils
 from .utils import exit_with_error, path_from_root
 
 # Subset of settings that take a memory size (i.e. 1Gb, 64kb etc)
@@ -83,7 +82,6 @@ COMPILE_TIME_SETTINGS = {
     'WASM_LEGACY_EXCEPTIONS',
     'MAIN_MODULE',
     'SIDE_MODULE',
-    'RELOCATABLE',
     'LINKABLE',
     'STRICT',
     'EMSCRIPTEN_TRACING',
@@ -115,7 +113,10 @@ DEPRECATED_SETTINGS = {
     'LEGALIZE_JS_FFI': 'to disable JS type legalization use `-sWASM_BIGINT` or `-sSTANDALONE_WASM`',
     'ASYNCIFY_EXPORTS': 'please use JSPI_EXPORTS instead',
     'LINKABLE': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)',
-    'RELOCATABLE': ' under consideration for removal (https://github.com/emscripten-core/emscripten/issues/25262)',
+    'EXPORT_EXCEPTION_HANDLING_HELPERS': 'getExceptionMessage is exported anyway when ASSERTIONS or EXCEPTION_STACK_TRACES is set, which are set by default at -O0. At -O1 or above, you can export it separately by -sEXPORTED_RUNTIME_METHODS=getExceptionMessage,decrementExceptionRefcount.',
+    'DETERMINISTIC': 'under consideration for removal (https://github.com/emscripten-core/emscripten/issues/26647)',
+    'USE_PTHREADS': 'prefer the standard -pthread flag',
+    'MEMORY64': 'prefer the standard -m64 or --target=wasm64 flags',
 }
 
 # Settings that don't need to be externalized when serializing to json because they
@@ -126,27 +127,26 @@ INTERNAL_SETTINGS = {
 
 # List of incompatible settings, of the form (SETTINGS_A, SETTING_B, OPTIONAL_REASON_FOR_INCOMPAT)
 INCOMPATIBLE_SETTINGS = [
-    ('MINIMAL_RUNTIME', 'RELOCATABLE', None),
+    ('MINIMAL_RUNTIME', 'MAIN_MODULE', None),
+    ('WASM_WORKERS', 'MAIN_MODULE', 'dynamic linking is not supported with -sWASM_WORKERS'),
     ('WASM2JS', 'MAIN_MODULE', 'wasm2js does not support dynamic linking'),
     ('WASM2JS', 'SIDE_MODULE', 'wasm2js does not support dynamic linking'),
+    ('WASM2JS', 'GROWABLE_ARRAYBUFFERS',  None),
+    ('MAIN_MODULE', 'NO_WASM_ASYNC_COMPILATION', 'dynamic linking requires async wasm compilation'),
     ('MODULARIZE', 'NO_DECLARE_ASM_MODULE_EXPORTS', None),
     ('EVAL_CTORS', 'WASM2JS', None),
-    ('EVAL_CTORS', 'RELOCATABLE', 'movable segments'),
     # In Asyncify exports can be called more than once, and this seems to not
     # work properly yet (see test_emscripten_scan_registers).
     ('EVAL_CTORS', 'ASYNCIFY', None),
     ('PTHREADS_PROFILING', 'NO_ASSERTIONS', 'only works with ASSERTIONS enabled'),
     ('SOURCE_PHASE_IMPORTS', 'NO_EXPORT_ES6', None),
     ('STANDALONE_WASM', 'MINIMAL_RUNTIME', None),
-    ('STRICT_JS', 'MODULARIZE', None),
     ('STRICT_JS', 'EXPORT_ES6', None),
     ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'they are mutually exclusive'),
     ('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION', 'SINGLE_FILE', None),
     ('MINIMAL_RUNTIME_STREAMING_WASM_INSTANTIATION', 'SINGLE_FILE', None),
     ('SEPARATE_DWARF', 'WASM2JS', 'as there is no wasm file'),
     ('GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS', 'NO_GL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS', None),
-    ('MODULARIZE', 'NODEJS_CATCH_REJECTION', None),
-    ('MODULARIZE', 'NODEJS_CATCH_EXIT', None),
     ('LEGACY_VM_SUPPORT', 'MEMORY64', None),
     ('CROSS_ORIGIN', 'NO_DYNAMIC_EXECUTION', None),
     ('CROSS_ORIGIN', 'NO_PTHREADS', None),
@@ -154,10 +154,8 @@ INCOMPATIBLE_SETTINGS = [
 
 EXPERIMENTAL_SETTINGS = {
     'SPLIT_MODULE': '-sSPLIT_MODULE is experimental and subject to change',
-    'WASM_JS_TYPES': '-sWASM_JS_TYPES is only supported under a flag in certain browsers',
     'SOURCE_PHASE_IMPORTS': '-sSOURCE_PHASE_IMPORTS is experimental and not yet supported in browsers',
     'JS_BASE64_API': '-sJS_BASE64_API is experimental and not yet supported in browsers',
-    'GROWABLE_ARRAYBUFFERS': '-sGROWABLE_ARRAYBUFFERS is experimental and not yet supported in browsers',
     'SUPPORT_BIG_ENDIAN': '-sSUPPORT_BIG_ENDIAN is experimental, not all features are fully supported.',
     'WASM_ESM_INTEGRATION': '-sWASM_ESM_INTEGRATION is still experimental and not yet supported in browsers',
 }
@@ -252,6 +250,12 @@ LEGACY_SETTINGS = [
     ['ASYNCIFY_LAZY_LOAD_CODE', [0], 'No longer supported'],
     ['USE_WEBGPU', [0], 'No longer supported; replaced by --use-port=emdawnwebgpu, which implements a newer (but incompatible) version of webgpu.h - see tools/ports/emdawnwebgpu.py'],
     ['PROXY_TO_WORKER', [0], 'No longer supported'],
+    ['NODEJS_CATCH_EXIT', [0], 'No longer supported'],
+    ['NODEJS_CATCH_REJECTION', [0], 'No longer supported'],
+    ['POLYFILL_OLD_MATH_FUNCTIONS', [0], 'No longer supported'],
+    ['RELOCATABLE', [0], 'No longer supported'],
+    ['WASM_JS_TYPES', [0], 'No longer supported'],
+    ['DETERMINISTIC', [0], 'No longer supported'],
 ]
 
 user_settings: dict[str, str] = {}
@@ -281,8 +285,7 @@ class SettingsManager:
 
     # Load the JS defaults into python.
     def read_js_settings(filename, attrs):
-      with open(filename) as fh:
-        settings = fh.read()
+      settings = utils.read_file(filename)
       # Use a bunch of regexs to convert the file from JS to python
       # TODO(sbc): This is kind hacky and we should probably convert
       # this file in format that python can read directly (since we
@@ -299,9 +302,7 @@ class SettingsManager:
     self.attrs.update(internal_attrs)
     self.infer_types()
 
-    strict_override = False
-    if 'EMCC_STRICT' in os.environ:
-      strict_override = int(os.environ.get('EMCC_STRICT'))
+    strict_override = utils.get_env_bool('EMCC_STRICT')
 
     # Special handling for LEGACY_SETTINGS.  See src/setting.js for more
     # details
@@ -403,16 +404,16 @@ class SettingsManager:
 
   def check_type(self, name, value):
     # These settings have a variable type so cannot be easily type checked.
-    if name in ('EXECUTABLE', 'SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO', 'MODULARIZE'):
+    if name in {'EXECUTABLE', 'SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO', 'MODULARIZE'}:
       return
     expected_type = self.types.get(name)
     if not expected_type:
       return
     # Allow integers 1 and 0 for type `bool`
     if expected_type == bool:
-      if value in (1, 0):
+      if value in (1, 0):  # noqa: PLR6201
         value = bool(value)
-      if value in ('True', 'False', 'true', 'false'):
+      if value in ('True', 'False', 'true', 'false'):  # noqa: PLR6201
         exit_with_error(f'attempt to set `{name}` to `{value}`; use 1/0 to set boolean settings')
     if type(value) is not expected_type:
       exit_with_error(f'setting `{name}` expects `{expected_type.__name__}` but got `{type(value).__name__}`')

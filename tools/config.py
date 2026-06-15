@@ -74,6 +74,20 @@ def normalize_config_settings():
     PORTS = os.path.join(CACHE, 'ports')
 
 
+def normalize_relative_python_path():
+  # User may have specified the EMSDK_PYTHON environment variable to point to
+  # the Python interpreter, e.g.
+  #
+  #  EMSDK_PYTHON=../../path/to/python emcc test/hello_world.c
+  #
+  # As part of its operation, emcc may spawn sub-emcc tasks when building
+  # libraries to cache. These sub-emcc tasks will run in a different CWD, so
+  # reinitialize EMSDK_PYTHON here so that sub-tool spawns will use the same
+  # Python interpreter as the parent.
+  if os.environ.get('EMSDK_PYTHON'):
+    os.environ['EMSDK_PYTHON'] = sys.executable
+
+
 def set_config_from_tool_location(config_key, tool_binary, f):
   val = globals()[config_key]
   if val is None:
@@ -124,12 +138,12 @@ def parse_config_file():
     env_var = 'EM_' + key
     env_value = os.environ.get(env_var)
     if env_value is not None:
-      if env_value in ('', '0'):
+      if env_value in {'', '0'}:
         env_value = None
       # Unlike the other keys these two should always be lists.
-      if env_var in ('EM_JS_ENGINES', 'EM_WASM_ENGINES'):
+      if env_var in {'EM_JS_ENGINES', 'EM_WASM_ENGINES'}:
         env_value = env_value.split(',')
-      if env_var in ('EM_CONFIG', 'EM_CACHE', 'EM_PORTS', 'EM_LLVM_ROOT', 'EM_BINARYEN_ROOT'):
+      if env_var in {'EM_CONFIG', 'EM_CACHE', 'EM_PORTS', 'EM_LLVM_ROOT', 'EM_BINARYEN_ROOT'}:
         if not os.path.isabs(env_value):
           exit_with_error(f'environment variable {env_var} must be an absolute path: {env_value}')
       globals()[key] = env_value
@@ -168,6 +182,7 @@ def read_config():
   set_config_from_tool_location('BINARYEN_ROOT', 'wasm-opt', lambda x: os.path.dirname(os.path.dirname(x)))
 
   normalize_config_settings()
+  normalize_relative_python_path()
 
 
 def generate_config(path):
@@ -182,13 +197,13 @@ def generate_config(path):
   config_data = '\n'.join(config_data) + '\n'
   # autodetect some default paths
   llvm_root = os.path.dirname(shutil.which('wasm-ld') or '/usr/bin/wasm-ld')
-  config_data = config_data.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
+  config_data = config_data.replace("'{{{ LLVM_ROOT }}}'", repr(llvm_root))
 
   binaryen_root = os.path.dirname(os.path.dirname(shutil.which('wasm-opt') or '/usr/local/bin/wasm-opt'))
-  config_data = config_data.replace('\'{{{ BINARYEN_ROOT }}}\'', repr(binaryen_root))
+  config_data = config_data.replace("'{{{ BINARYEN_ROOT }}}'", repr(binaryen_root))
 
   node = shutil.which('node') or shutil.which('nodejs') or 'node'
-  config_data = config_data.replace('\'{{{ NODE }}}\'', repr(node))
+  config_data = config_data.replace("'{{{ NODE }}}'", repr(node))
 
   # write
   utils.write_file(path, config_data)

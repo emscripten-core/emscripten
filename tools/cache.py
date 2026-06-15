@@ -3,8 +3,7 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Permanent cache for system libraries and ports.
-"""
+"""Permanent cache for system libraries and ports."""
 
 import contextlib
 import logging
@@ -64,7 +63,7 @@ def release_cache_lock():
 
 @contextlib.contextmanager
 def lock(reason):
-  """A context manager that performs actions in the given directory."""
+  """Context manager that can be used to performs actions in the given directory."""
   acquire_cache_lock(reason)
   try:
     yield
@@ -124,7 +123,7 @@ def get_lib_dir(absolute):
       subdir.append('thinlto')
     else:
       subdir.append('lto')
-  if settings.RELOCATABLE or settings.MAIN_MODULE:
+  if settings.MAIN_MODULE or settings.SIDE_MODULE:
     subdir.append('pic')
   if subdir:
     path = Path(path, '-'.join(subdir))

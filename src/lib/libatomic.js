@@ -22,12 +22,7 @@ addToLibrary({
   //   https://github.com/tc39/proposal-atomics-wait-async/blob/master/PROPOSAL.md
   // This polyfill performs polling with setTimeout() to observe a change in the
   // target memory location.
-#if ENVIRONMENT_MAY_BE_NODE
-  // Under Deno Atomics.waitAsync currently broken: https://github.com/denoland/deno/issues/14786
-  $waitAsyncPolyfilled: '=(!Atomics.waitAsync || globalThis.Deno || (globalThis.navigator?.userAgent && Number((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91));',
-#else
   $waitAsyncPolyfilled: '=(!Atomics.waitAsync || (globalThis.navigator?.userAgent && Number((navigator.userAgent.match(/Chrom(e|ium)\\/([0-9]+)\\./)||[])[2]) < 91));',
-#endif
   $polyfillWaitAsync__deps: ['$waitAsyncPolyfilled'],
   $polyfillWaitAsync__postset: `if (waitAsyncPolyfilled) {
   let __Atomics_waitAsyncAddresses = [/*[i32a, index, value, maxWaitMilliseconds, promiseResolve]*/];
@@ -52,9 +47,6 @@ addToLibrary({
   #if ASSERTIONS && WASM_WORKERS
     if (!ENVIRONMENT_IS_WASM_WORKER) err('Current environment does not support Atomics.waitAsync(): polyfilling it, but this is going to be suboptimal.');
   #endif
-  /**
-   * @param {number=} maxWaitMilliseconds
-   */
   Atomics.waitAsync = (i32a, index, value, maxWaitMilliseconds) => {
     let val = Atomics.load(i32a, index);
     if (val != value) return { async: false, value: 'not-equal' };
@@ -77,6 +69,25 @@ addToLibrary({
     // included exactly once and only included when needed.
     // Any function using Atomics.waitAsync should depend on this.
   },
+
+#if ASYNCIFY
+  _emscripten_atomic_wait_promise__deps: ['$polyfillWaitAsync', '$atomicWaitStates', '$addPromise'],
+  _emscripten_atomic_wait_promise: (addr, val, maxWaitMilliseconds) => {
+    var wait = Atomics.waitAsync(HEAP32, {{{ getHeapOffset('addr', 'i32') }}}, val, maxWaitMilliseconds);
+    if (wait.async) {
+      // In the async case return the promise ID.
+      var chainedPromise = wait.value.then((value) => atomicWaitStates.indexOf(value));
+      var id = addPromise(chainedPromise);
+      return id;
+    }
+    // In the synchronous case return the negative result code
+    return -atomicWaitStates.indexOf(wait.value);
+  },
+#else
+  _emscripten_atomic_wait_promise: (addr, val, maxWaitMilliseconds) => {
+    abort('Please compile your program with async support in order to use asynchronous operations like emscripten_atomic_wait_suspending');
+  },
+#endif
 
   $atomicWaitStates__internal: true,
   $atomicWaitStates: ['ok', 'not-equal', 'timed-out'],
@@ -164,4 +175,6 @@ addToLibrary({
     ENVIRONMENT_IS_NODE ? require('node:os').cpus().length :
 #endif
     navigator['hardwareConcurrency'],
+
+  emscripten_atomics_is_lock_free: (width) => Atomics.isLockFree(width),
 });

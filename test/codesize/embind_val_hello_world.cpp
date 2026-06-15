@@ -4,5 +4,5 @@
 using emscripten::val;
 
 int main() {
-  val::global("console").call<void>("log", std::string("Hello world! The answer is"), 42);
+  val::global("console").call<void>("log", std::string("Hello, world! The answer is"), 42);
 }

@@ -16,7 +16,7 @@ var LibraryWebGL2 = {
       if (index < 0 || index >= stringiCache.length) {
         GL.recordError(0x501/*GL_INVALID_VALUE*/);
 #if GL_ASSERTIONS
-        err('GL_INVALID_VALUE in glGetStringi: index out of range (' + index + ')!');
+        err(`GL_INVALID_VALUE in glGetStringi: index out of range (${index})!`);
 #endif
         return 0;
       }
@@ -29,7 +29,7 @@ var LibraryWebGL2 = {
         if (index < 0 || index >= stringiCache.length) {
           GL.recordError(0x501/*GL_INVALID_VALUE*/);
 #if GL_ASSERTIONS
-          err('GL_INVALID_VALUE in glGetStringi: index out of range (' + index + ') in a call to GL_EXTENSIONS!');
+          err(`GL_INVALID_VALUE in glGetStringi: index out of range (${index}) in a call to GL_EXTENSIONS!`);
 #endif
           return 0;
         }
@@ -37,7 +37,7 @@ var LibraryWebGL2 = {
       default:
         GL.recordError(0x500/*GL_INVALID_ENUM*/);
 #if GL_ASSERTIONS
-        err('GL_INVALID_ENUM in glGetStringi: Unknown parameter ' + name + '!');
+        err(`GL_INVALID_ENUM in glGetStringi: Unknown parameter ${name}!`);
 #endif
         return 0;
     }
@@ -52,7 +52,7 @@ var LibraryWebGL2 = {
 #if GL_TRACK_ERRORS
     if (bufSize < 0) {
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetInternalformativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=' + params + '): Function called with bufSize < 0!');
+      err(`GL_INVALID_VALUE in glGetInternalformativ(target=${target}, internalformat=${internalformat}, pname=${pname}, bufSize=${bufSize}, params=${params}): Function called with bufSize < 0!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -61,7 +61,7 @@ var LibraryWebGL2 = {
       // GLES3 specification does not specify how to behave if values is a null pointer. Since calling this function does not make sense
       // if values == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetInternalformativ(target=' + target + ', internalformat=' + internalformat + ', pname=' + pname + ', bufSize=' + bufSize + ', params=0): Function called with null out pointer!');
+      err(`GL_INVALID_VALUE in glGetInternalformativ(target=${target}, internalformat=${internalformat}, pname=${pname}, bufSize=${bufSize}, params=0): Function called with null out pointer!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -97,7 +97,7 @@ var LibraryWebGL2 = {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
       // if data == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetBufferParameteri64v(target=' + target + ', value=' + value + ', data=0): Function called with null out data pointer!');
+      err(`GL_INVALID_VALUE in glGetBufferParameteri64v(target=${target}, value=${value}, data=0): Function called with null out data pointer!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -112,7 +112,7 @@ var LibraryWebGL2 = {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
       // if data == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetBufferSubData(target=' + target + ', offset=' + offset + ', size=' + size + ', data=0): Function called with null out data pointer!');
+      err(`GL_INVALID_VALUE in glGetBufferSubData(target=${target}, offset=${offset}, size=${size}, data=0): Function called with null out data pointer!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -128,7 +128,7 @@ var LibraryWebGL2 = {
   glInvalidateFramebuffer__deps: ['$tempFixedLengthArray'],
   glInvalidateFramebuffer: (target, numAttachments, attachments) => {
 #if GL_ASSERTIONS
-    assert(numAttachments < tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateFramebuffer (that many attachment points do not exist in GL)');
+    assert(numAttachments < tempFixedLengthArray.length, `Invalid count of numAttachments=${numAttachments} passed to glInvalidateFramebuffer (that many attachment points do not exist in GL)`);
 #endif
     var list = tempFixedLengthArray[numAttachments];
     for (var i = 0; i < numAttachments; i++) {
@@ -141,7 +141,7 @@ var LibraryWebGL2 = {
   glInvalidateSubFramebuffer__deps: ['$tempFixedLengthArray'],
   glInvalidateSubFramebuffer: (target, numAttachments, attachments, x, y, width, height) => {
 #if GL_ASSERTIONS
-    assert(numAttachments < tempFixedLengthArray.length, 'Invalid count of numAttachments=' + numAttachments + ' passed to glInvalidateSubFramebuffer (that many attachment points do not exist in GL)');
+    assert(numAttachments < tempFixedLengthArray.length, `Invalid count of numAttachments=${numAttachments} passed to glInvalidateSubFramebuffer (that many attachment points do not exist in GL)`);
 #endif
     var list = tempFixedLengthArray[numAttachments];
     for (var i = 0; i < numAttachments; i++) {
@@ -164,7 +164,7 @@ var LibraryWebGL2 = {
 #if WEBGL_USE_GARBAGE_FREE_APIS
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, heap, toTypedArrayIndex(pixels, heap));
 #else
-      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels, internalFormat);
+      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels);
       GLctx.texImage3D(target, level, internalFormat, width, height, depth, border, format, type, pixelData);
 #endif
     } else {
@@ -172,13 +172,22 @@ var LibraryWebGL2 = {
     }
   },
 
-  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex'],
+  glTexSubImage3D__deps: ['$heapObjectForWebGLType', '$toTypedArrayIndex',
+#if !WEBGL_USE_GARBAGE_FREE_APIS
+    '$emscriptenWebGLGetTexPixelData',
+#endif
+  ],
   glTexSubImage3D: (target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels) => {
     if (GLctx.currentPixelUnpackBufferBinding) {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixels);
     } else if (pixels) {
       var heap = heapObjectForWebGLType(type);
+#if WEBGL_USE_GARBAGE_FREE_APIS
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, heap, toTypedArrayIndex(pixels, heap));
+#else
+      var pixelData = emscriptenWebGLGetTexPixelData(type, format, width, height * depth, pixels);
+      GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, pixelData);
+#endif
     } else {
       GLctx.texSubImage3D(target, level, xoffset, yoffset, zoffset, width, height, depth, format, type, null);
     }
@@ -222,7 +231,7 @@ var LibraryWebGL2 = {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
       // if p == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetQueryiv(target=' + target +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      err(`GL_INVALID_VALUE in glGetQueryiv(target=${target}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -237,7 +246,7 @@ var LibraryWebGL2 = {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
       // if p == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetQueryObjectuiv(id=' + id +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      err(`GL_INVALID_VALUE in glGetQueryObjectuiv(id=${id}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -326,7 +335,7 @@ var LibraryWebGL2 = {
       // GLES3 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
       // if p == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetSamplerParameterfv(sampler=' + sampler +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      err(`GL_INVALID_VALUE in glGetSamplerParameterfv(sampler=${sampler}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -341,7 +350,7 @@ var LibraryWebGL2 = {
       // GLES3 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
       // if p == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetSamplerParameteriv(sampler=' + sampler +', pname=' + pname + ', params=0): Function called with null out pointer!');
+      err(`GL_INVALID_VALUE in glGetSamplerParameteriv(sampler=${sampler}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -417,7 +426,7 @@ var LibraryWebGL2 = {
       // GLES2 specification does not specify how to behave if data is a null pointer. Since calling this function does not make sense
       // if data == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetInteger(64)i_v(target=' + target + ', index=' + index + ', data=0): Function called with null out pointer!');
+      err(`GL_INVALID_VALUE in glGetInteger(64)i_v(target=${target}, index=${index}, data=0): Function called with null out pointer!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -506,7 +515,7 @@ var LibraryWebGL2 = {
       // GLES2 specification does not specify how to behave if uniformIndices is a null pointer. Since calling this function does not make sense
       // if uniformIndices == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetUniformIndices(program=' + program + ', uniformCount=' + uniformCount + ', uniformNames=' + uniformNames + ', uniformIndices=0): Function called with null out pointer!');
+      err(`GL_INVALID_VALUE in glGetUniformIndices(program=${program}, uniformCount=${uniformCount}, uniformNames=${uniformNames}, uniformIndices=0): Function called with null out pointer!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -539,7 +548,7 @@ var LibraryWebGL2 = {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
       // if params == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetActiveUniformsiv(program=' + program + ', uniformCount=' + uniformCount + ', uniformIndices=' + uniformIndices + ', pname=' + pname + ', params=0): Function called with null out pointer!');
+      err(`GL_INVALID_VALUE in glGetActiveUniformsiv(program=${program}, uniformCount=${uniformCount}, uniformIndices=${uniformIndices}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -577,7 +586,7 @@ var LibraryWebGL2 = {
       // GLES2 specification does not specify how to behave if params is a null pointer. Since calling this function does not make sense
       // if params == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetActiveUniformBlockiv(program=' + program + ', uniformBlockIndex=' + uniformBlockIndex + ', pname=' + pname + ', params=0): Function called with null out pointer!');
+      err(`GL_INVALID_VALUE in glGetActiveUniformBlockiv(program=${program}, uniformBlockIndex=${uniformBlockIndex}, pname=${pname}, params=0): Function called with null out pointer!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -632,7 +641,7 @@ var LibraryWebGL2 = {
 
   glClearBufferiv: (buffer, drawbuffer, value) => {
 #if GL_ASSERTIONS
-    assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferiv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glClearBufferiv must be 4-byte aligned');
 #endif
 
     GLctx.clearBufferiv(buffer, drawbuffer, HEAP32, {{{ getHeapOffset('value', 'i32') }}});
@@ -640,7 +649,7 @@ var LibraryWebGL2 = {
 
   glClearBufferuiv: (buffer, drawbuffer, value) => {
 #if GL_ASSERTIONS
-    assert((value & 3) == 0, 'Pointer to integer data passed to glClearBufferuiv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glClearBufferuiv must be 4-byte aligned');
 #endif
 
     GLctx.clearBufferuiv(buffer, drawbuffer, HEAPU32, {{{ getHeapOffset('value', 'u32') }}});
@@ -648,7 +657,7 @@ var LibraryWebGL2 = {
 
   glClearBufferfv: (buffer, drawbuffer, value) => {
 #if GL_ASSERTIONS
-    assert((value & 3) == 0, 'Pointer to float data passed to glClearBufferfv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glClearBufferfv must be 4-byte aligned');
 #endif
 
     GLctx.clearBufferfv(buffer, drawbuffer, HEAPF32, {{{ getHeapOffset('value', 'float') }}});
@@ -704,7 +713,7 @@ var LibraryWebGL2 = {
       // GLES3 specification does not specify how to behave if bufSize < 0, however in the spec wording for glGetInternalformativ, it does say that GL_INVALID_VALUE should be raised,
       // so raise GL_INVALID_VALUE here as well.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetSynciv(sync=' + sync + ', pname=' + pname + ', bufSize=' + bufSize + ', length=' + length + ', values='+values+'): Function called with bufSize < 0!');
+      err(`GL_INVALID_VALUE in glGetSynciv(sync=${sync}, pname=${pname}, bufSize=${bufSize}, length=${length}, values=${values}): Function called with bufSize < 0!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -713,7 +722,7 @@ var LibraryWebGL2 = {
       // GLES3 specification does not specify how to behave if values is a null pointer. Since calling this function does not make sense
       // if values == null, issue a GL error to notify user about it.
 #if GL_ASSERTIONS
-      err('GL_INVALID_VALUE in glGetSynciv(sync=' + sync + ', pname=' + pname + ', bufSize=' + bufSize + ', length=' + length + ', values=0): Function called with null out pointer!');
+      err(`GL_INVALID_VALUE in glGetSynciv(sync=${sync}, pname=${pname}, bufSize=${bufSize}, length=${length}, values=0): Function called with null out pointer!`);
 #endif
       GL.recordError(0x501 /* GL_INVALID_VALUE */);
       return;
@@ -787,7 +796,7 @@ var LibraryWebGL2 = {
   glUniform1uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform1uiv', 'location');
-    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform1uiv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniform1uiv must be 4-byte aligned');
 #endif
     count && GLctx.uniform1uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count);
   },
@@ -796,7 +805,7 @@ var LibraryWebGL2 = {
   glUniform2uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform2uiv', 'location');
-    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform2uiv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniform2uiv must be 4-byte aligned');
 #endif
     count && GLctx.uniform2uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*2);
   },
@@ -805,7 +814,7 @@ var LibraryWebGL2 = {
   glUniform3uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform3uiv', 'location');
-    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform3uiv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniform3uiv must be 4-byte aligned');
 #endif
     count && GLctx.uniform3uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*3);
   },
@@ -814,7 +823,7 @@ var LibraryWebGL2 = {
   glUniform4uiv: (location, count, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniform4uiv', 'location');
-    assert((value & 3) == 0, 'Pointer to integer data passed to glUniform4uiv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniform4uiv must be 4-byte aligned');
 #endif
     count && GLctx.uniform4uiv(webglGetUniformLocation(location), HEAPU32, {{{ getHeapOffset('value', 'u32') }}}, count*4);
   },
@@ -823,7 +832,7 @@ var LibraryWebGL2 = {
   glUniformMatrix2x3fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x3fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x3fv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniformMatrix2x3fv must be 4-byte aligned');
 #endif
     count && GLctx.uniformMatrix2x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*6);
   },
@@ -832,7 +841,7 @@ var LibraryWebGL2 = {
   glUniformMatrix3x2fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x2fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x2fv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniformMatrix3x2fv must be 4-byte aligned');
 #endif
     count && GLctx.uniformMatrix3x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*6);
   },
@@ -841,7 +850,7 @@ var LibraryWebGL2 = {
   glUniformMatrix2x4fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix2x4fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix2x4fv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniformMatrix2x4fv must be 4-byte aligned');
 #endif
     count && GLctx.uniformMatrix2x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*8);
   },
@@ -850,7 +859,7 @@ var LibraryWebGL2 = {
   glUniformMatrix4x2fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x2fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x2fv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniformMatrix4x2fv must be 4-byte aligned');
 #endif
     count && GLctx.uniformMatrix4x2fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*8);
   },
@@ -859,7 +868,7 @@ var LibraryWebGL2 = {
   glUniformMatrix3x4fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix3x4fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix3x4fv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniformMatrix3x4fv must be 4-byte aligned');
 #endif
     count && GLctx.uniformMatrix3x4fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*12);
   },
@@ -868,23 +877,23 @@ var LibraryWebGL2 = {
   glUniformMatrix4x3fv: (location, count, transpose, value) => {
 #if GL_ASSERTIONS
     GL.validateGLObjectID(GLctx.currentProgram.uniformLocsById, location, 'glUniformMatrix4x3fv', 'location');
-    assert((value & 3) == 0, 'Pointer to float data passed to glUniformMatrix4x3fv must be aligned to four bytes!');
+    assert((value & 3) == 0, 'pointer passed to glUniformMatrix4x3fv must be 4-byte aligned');
 #endif
     count && GLctx.uniformMatrix4x3fv(webglGetUniformLocation(location), !!transpose, HEAPF32, {{{ getHeapOffset('value', 'float') }}}, count*12);
   },
 
   glVertexAttribI4iv: (index, v) => {
 #if GL_ASSERTIONS
-    assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4iv must be aligned to four bytes!');
-    assert(v != 0, 'Null pointer passed to glVertexAttribI4iv!');
+    assert((v & 3) == 0, 'pointer passed to glVertexAttribI4iv must be 4-byte aligned');
+    assert(v != 0, 'null pointer passed to glVertexAttribI4iv');
 #endif
     GLctx.vertexAttribI4i(index, HEAP32[v>>2], HEAP32[v+4>>2], HEAP32[v+8>>2], HEAP32[v+12>>2]);
   },
 
   glVertexAttribI4uiv: (index, v) => {
 #if GL_ASSERTIONS
-    assert((v & 3) == 0, 'Pointer to integer data passed to glVertexAttribI4uiv must be aligned to four bytes!');
-    assert(v != 0, 'Null pointer passed to glVertexAttribI4uiv!');
+    assert((v & 3) == 0, 'pointer passed to glVertexAttribI4uiv must be 4-byte aligned');
+    assert(v != 0, 'null pointer passed to glVertexAttribI4uiv');
 #endif
     GLctx.vertexAttribI4ui(index, HEAPU32[v>>2], HEAPU32[v+4>>2], HEAPU32[v+8>>2], HEAPU32[v+12>>2]);
   },
@@ -930,7 +939,7 @@ var LibraryWebGL2 = {
       cb.stride = stride;
       cb.ptr = ptr;
       cb.clientside = true;
-      cb.vertexAttribPointerAdaptor = function(index, size, type, normalized, stride, ptr) {
+      cb.vertexAttribPointerAdaptor = /** @this {WebGLRenderingContext} */ function(index, size, type, normalized, stride, ptr) {
         this.vertexAttribIPointer(index, size, type, stride, ptr);
       };
       return;
@@ -1039,7 +1048,7 @@ var webgl2PassthroughFuncs = [
 // If user passes -sMAX_WEBGL_VERSION >= 2 -sSTRICT but not -lGL (to link in
 // WebGL 1), then WebGL2 library should not be linked in as well.
 if (typeof createGLPassthroughFunctions == 'undefined') {
-  error('In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL!');
+  error('In order to use WebGL 2 in strict mode with -sMAX_WEBGL_VERSION=2, you need to link in WebGL support with -lGL');
 }
 
 createGLPassthroughFunctions(LibraryWebGL2, webgl2PassthroughFuncs);

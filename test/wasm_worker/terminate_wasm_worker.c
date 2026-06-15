@@ -32,7 +32,7 @@ void worker_main() {
   emscripten_set_timeout(this_function_should_not_be_called, 2000, 0);
 }
 
-char stack[1024];
+char stack[4096];
 
 EM_JS_DEPS(deps, "$dynCall");
 

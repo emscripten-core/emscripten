@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 
-"""Find entries in struct_info.json that are not needed by
-any JS library code and can be removed."""
+"""Find entries in struct_info.json that are not needed by any JS library code and can be removed."""
 
 import json
 import os
@@ -33,7 +32,10 @@ def check_structs(info):
 
 def check_defines(info):
   for define in info['defines']:
-    key = r'cDefs\.' + define + r'\>'
+    if ':' in define:
+      key = fr"cDefs\['{define}'\]"
+    else:
+      key = fr'cDefs\.{define}\>'
     # grep --quiet returns 0 when there is a match
     if subprocess.run(['git', 'grep', '--quiet', key], check=False).returncode != 0:
       print(define)

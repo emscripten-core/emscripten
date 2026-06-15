@@ -14,6 +14,7 @@ __stack_chk_guard
 __stack_pointer
 __threwValue
 __timezone
+__tls_locale
 __tzname
 _environ
 _ns_flagdata

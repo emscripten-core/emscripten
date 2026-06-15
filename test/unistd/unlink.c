@@ -171,12 +171,11 @@ void test() {
   err = access("dir-empty", F_OK);
   assert(err == -1);
 
-  puts("success");
+  puts("done");
 }
 
 int main() {
   setup();
   test();
-
   return 0;
 }

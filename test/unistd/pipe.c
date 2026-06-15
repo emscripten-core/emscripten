@@ -94,7 +94,7 @@ void test_poll(int *fd, int data_available) {
   test_select(fd, data_available);
 }
 
-int test_most() {
+void test_most() {
   int fd[2];
   unsigned char wchar = 0;
   unsigned char rchar = 0;
@@ -191,11 +191,10 @@ int test_most() {
   // The error number is EBADF
   assert(errno == EBADF);
 
-  puts("success");
-  return 0;
+  puts("done");
 }
 
-int test_redirect_stderr_to_pipe() {
+void test_redirect_stderr_to_pipe() {
   int stderrfd = fileno(stderr);
   int pipefd[2];
   int original_fd = dup(stderrfd); // duplicate stderr to original_fd, and original_fd is used to restore stderr later
@@ -218,8 +217,7 @@ int test_redirect_stderr_to_pipe() {
   assert(read(read_end_fd, buffer, 10) == 3);
   assert(strcmp(buffer, "xyz") == 0);
   assert(close(read_end_fd) == 0); // Close the read end of the pipe
-  printf("success\n");
-  return 0;
+  puts("done");
 }
 
 int main() {
