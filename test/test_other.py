@@ -347,7 +347,7 @@ class other(RunnerCore):
       os.close(slave)
 
   def create_huge_file(self, name, length):
-    f = open(name,"wb")
+    f = open(name, "wb")
     f.seek(length - 1)
     f.write(b"\0")
     f.close()
@@ -6488,6 +6488,7 @@ int main() {
       create_file('load.js', result.stdout)
       cflags.insert(0, '--pre-js=load.js')
 
+    expected_sizes = ',\n    '.join(f'{size}LL' for size in sizes)
     create_file('src.c', f'''
 #include <assert.h>
 #include <sys/stat.h>
@@ -6495,7 +6496,7 @@ int main() {
 
 int main() {{
   static const long long expected_sizes[] = {{
-    {',\n    '.join(f'{size}LL' for size in sizes)}
+    {expected_sizes}
   }};
   char filename[32];
   struct stat buf;

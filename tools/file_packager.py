@@ -576,7 +576,7 @@ def main():  # noqa: C901, PLR0912, PLR0915
     for counter, data_files in enumerate(file_chunks):
       metadata = {'files': []}
 
-      def construct_data_file_name(base,ext):
+      def construct_data_file_name(base, ext):
         return f"{base}{f'_{counter}' if counter else ''}.{ext}"
       data_file = construct_data_file_name(*data_target.rsplit('.', 1))
       js_file = None if options.jsoutput is None else construct_data_file_name(*options.jsoutput.rsplit('.', 1))
