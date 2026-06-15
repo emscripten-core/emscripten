@@ -35,6 +35,11 @@ See docs/process.md for more on how version tagging works.
   supported. (#23493)
 - Fixed `getentropy`/`random_get` spuriously failing under Node.js and the
   shell environment for small requests. (#27122)
+- The startup process for the generated program now makes use of `async` /
+  `await` under more circumstances (specifically when using `setStatus`, or
+  run dependencies). This means that errors during startup (or during the
+  `main()` function) will more often show up as unhandled promise rejections
+  (`onunhandledreject`) rather than synchronous errors (`onerror`). (#27121)
 
 6.0.0 - 06/04/26
 ----------------
