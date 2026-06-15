@@ -570,7 +570,7 @@ var WasiLibrary = {
 #if ENVIRONMENT_MAY_BE_NODE && MIN_NODE_VERSION < 190000
     // This block is not needed on v19+ since crypto.getRandomValues is builtin
     if (ENVIRONMENT_IS_NODE) {
-      var nodeCrypto = require('node:crypto');
+      var nodeCrypto = getBuiltinModule('crypto');
       return (view) => (nodeCrypto.randomFillSync(view), 0);
     }
 #endif // ENVIRONMENT_MAY_BE_NODE

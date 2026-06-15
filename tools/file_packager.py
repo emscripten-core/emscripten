@@ -627,11 +627,16 @@ def generate_preload_js(data_target, data_files, metadata):
   if options.support_node:
     ret += "    var isNode = globalThis.process && globalThis.process.versions && globalThis.process.versions.node && globalThis.process.type != 'renderer';\n"
 
-  if options.support_node and options.export_es6:
+  if options.support_node:
     ret += '''if (isNode) {
-    const { createRequire } = await import('node:module');
-    /** @suppress{duplicate} */
-    var require = createRequire(import.meta.url);
+    if (process['getBuiltinModule']) {
+      var getBuiltinModule = process['getBuiltinModule'];
+    } else {\n'''
+    if options.export_es6:
+      ret += '''      var getBuiltinModule = (await import('node:module')).createRequire(import.meta.url);\n'''
+    else:
+      ret += '''      var getBuiltinModule = require;\n'''
+    ret += '''    }
   }\n'''
 
   if options.export_es6:
@@ -910,7 +915,7 @@ def generate_preload_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          var contents = require('fs').readFileSync(packageName);
+          var contents = getBuiltinModule('fs').readFileSync(packageName);
           return new Uint8Array(contents).buffer;
         }'''.strip()
 
@@ -1045,7 +1050,7 @@ def generate_preload_js(data_target, data_files, metadata):
     if options.support_node:
       node_support_code = '''
         if (isNode) {
-          var contents = require('fs').readFileSync(metadataUrl, 'utf8');
+          var contents = getBuiltinModule('fs').readFileSync(metadataUrl, 'utf8');
           // The await here is needed, even though JSON.parse is a sync API.  It works
           // around a issue with `removeRunDependency` otherwise being called to early
           // on the metadata object.

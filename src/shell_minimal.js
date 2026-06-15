@@ -33,6 +33,21 @@ var Module = {{{ EXPORT_NAME }}};
 
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};
+
+// `process.getBuiltinModule()` loads builtins under both CJS and ESM. On older
+// node (pre v18.20.4/v20.16/v22.3) fall back to `require()`.
+var getBuiltinModule;
+if (ENVIRONMENT_IS_NODE) {
+  if (process['getBuiltinModule']) {
+    getBuiltinModule = process['getBuiltinModule'];
+  } else {
+#if EXPORT_ES6
+    getBuiltinModule = (await import('node:module')).createRequire(import.meta.url);
+#else
+    getBuiltinModule = require;
+#endif
+  }
+}
 #endif
 
 #if ENVIRONMENT_MAY_BE_SHELL
@@ -59,7 +74,7 @@ var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 
 #if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
 if (ENVIRONMENT_IS_NODE) {
-  var worker_threads = require('node:worker_threads');
+  var worker_threads = getBuiltinModule('worker_threads');
   globalThis.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 }
@@ -104,7 +119,7 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 var defaultPrint = console.log.bind(console);
 var defaultPrintErr = console.error.bind(console);
 if (ENVIRONMENT_IS_NODE) {
-  var fs = require('node:fs');
+  var fs = getBuiltinModule('fs');
   defaultPrint = (...args) => fs.writeSync(1, args.join(' ') + '\n');
   defaultPrintErr = (...args) => fs.writeSync(2, args.join(' ') + '\n');
 }
@@ -179,7 +194,7 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 // Wasm or Wasm2JS loading:
 
 if (ENVIRONMENT_IS_NODE) {
-  var fs = require('node:fs');
+  var fs = getBuiltinModule('fs');
 #if WASM == 2
   if (globalThis.WebAssembly) Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
   else eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm.js')+'');

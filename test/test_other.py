@@ -1665,16 +1665,14 @@ int f() {
 
     self.emcc('main.c', ['-sMODULARIZE=1', '-sMINIMAL_RUNTIME=2', '-sEXPORT_ALL', '-sEXPORT_ES6', '-o', 'test.mjs'])
 
-    # We must expose __dirname and require globally because emscripten
-    # uses those under the hood.
+    # We must expose __dirname globally because emscripten uses it under the
+    # hood (builtin modules are loaded via process.getBuiltinModule).
     create_file('main.mjs', '''
       import { dirname } from 'node:path';
-      import { createRequire } from 'node:module';
       import { fileURLToPath } from 'node:url';
 
       // `fileURLToPath` is used to get a valid path on Windows.
       globalThis.__dirname = dirname(fileURLToPath(import.meta.url));
-      globalThis.require = createRequire(import.meta.url);
 
       import Test from './test.mjs';
       async function main() {

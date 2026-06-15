@@ -5,10 +5,28 @@
  */
 
 addToLibrary({
+#if ENVIRONMENT_MAY_BE_NODE
+  // Memoized `require()` for the non-builtin `ws` module (getBuiltinModule only
+  // handles builtins).
+  $req: `(() => {
+    var req;
+    return (id) => (req ??= getBuiltinModule('module').createRequire(
+#if EXPORT_ES6
+      import.meta.url
+#else
+      __filename
+#endif
+    ))(id);
+  })()`,
+#endif
   $SOCKFS__postset: () => {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
+#if ENVIRONMENT_MAY_BE_NODE
+  $SOCKFS__deps: ['$FS', '$req'],
+#else
   $SOCKFS__deps: ['$FS'],
+#endif
   $SOCKFS: {
 #if expectToReceiveOnModule('websocket')
     websocketArgs: {},
@@ -216,7 +234,7 @@ addToLibrary({
             var WebSocketConstructor;
 #if ENVIRONMENT_MAY_BE_NODE
             if (ENVIRONMENT_IS_NODE) {
-              WebSocketConstructor = /** @type{(typeof WebSocket)} */(require('ws'));
+              WebSocketConstructor = /** @type{(typeof WebSocket)} */(req('ws'));
             } else
 #endif // ENVIRONMENT_MAY_BE_NODE
             {
@@ -518,7 +536,7 @@ addToLibrary({
         if (sock.server) {
            throw new FS.ErrnoError({{{ cDefs.EINVAL }}});  // already listening
         }
-        var WebSocketServer = require('ws').Server;
+        var WebSocketServer = req('ws').Server;
         var host = sock.saddr;
 #if SOCKET_DEBUG
         dbg(`websocket: listen: ${host}:${sock.sport}`);

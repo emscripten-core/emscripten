@@ -10,7 +10,7 @@ addToLibrary({
     if (!ENVIRONMENT_IS_NODE) {
       throw new Error("NODERAWFS is currently only supported on Node.js environment.")
     }
-    var nodeTTY = require('node:tty');
+    var nodeTTY = getBuiltinModule('tty');
     function _wrapNodeError(func) {
       return (...args) => {
         try {
