@@ -6764,6 +6764,30 @@ void* operator new(size_t size) {
     self.do_runf(src, native_result)
 
   @wasm_simd
+  @no_big_endian('SIMD support is currently not compatible with big endian')
+  def test_fma(self):
+    src = test_file('sse/test_fma.cpp')
+    self.cflags += ['-mavx', '-mfma', '-sSTACK_SIZE=1MB']
+    self.do_runf(src, 'All FMA tests PASSED')
+
+  # Exhaustive FMA test with relaxed SIMD — compared against native x86.
+  # With -mrelaxed-simd on an x86 host, Wasm relaxed SIMD FMA lowers to a
+  # hardware fused operation that matches native x86 FMA bit-for-bit. This
+  # test is gated to x64 CPUs (@requires_x64_cpu) to guarantee that fusion.
+  @wasm_relaxed_simd
+  @requires_native_clang
+  @requires_x64_cpu
+  @is_slow_test
+  @no_big_endian('SIMD support is currently not compatible with big endian')
+  def test_fma_relaxed(self):
+    src = test_file('sse/test_fma_relaxed.cpp')
+    self.run_process([shared.CLANG_CXX, src, '-mfma', '-mavx', '-o', 'test_fma_relaxed', '-D_CRT_SECURE_NO_WARNINGS=1'] + clang_native.get_clang_native_args(), stdout=PIPE)
+    native_result = self.run_process('./test_fma_relaxed', stdout=PIPE).stdout
+
+    self.cflags += ['-I' + test_file('sse'), '-mavx', '-mfma', '-sSTACK_SIZE=1MB']
+    self.do_runf(src, native_result)
+
+  @wasm_simd
   def test_sse_diagnostics(self):
     self.cflags.remove('-Werror')
     src = test_file('sse/test_sse_diagnostic.cpp')
