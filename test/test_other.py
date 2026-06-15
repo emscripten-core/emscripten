@@ -26,6 +26,8 @@ from functools import wraps
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
+from packaging.version import Version
+
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner other')
 
@@ -918,6 +920,33 @@ f.close()
 
         if test_dir == 'post_build':
           ret = self.run_process(['ctest'], env=env)
+
+  @crossplatform
+  @parameterized({
+    'std23': (['-std=c++23'],),
+    'std26': (['-std=c++26'],),
+  })
+  def test_cxx_import(self, args):
+    # cflags = ['-stdlib=libc++'] + args or explicitly
+    cflags = ['-nostdinc++', '-isystem', cache.get_include_dir('c++/v1')] + args
+
+    for module in ['std', 'std.compat']:
+      cflags += [f'-fmodule-file={module}={module}.pcm']
+      source = os.path.join(cache.get_sysroot_dir('share/libc++/v1'), f'{module}.cppm')
+      self.run_process([EMCC, '-Wno-reserved-module-identifier', '--precompile', source, '-o', f'{module}.pcm'] + cflags)
+
+    self.do_runf('cmake/cxx_import_std/main.cpp', 'Hello, world!\n', cflags=cflags)
+
+  @requires_ninja
+  def test_cmake_cxx_import_std(self):
+    cmake_minimum = '3.30'
+    output = self.run_process([EMCMAKE, 'cmake', '--version'], stdout=PIPE).stdout
+    cmake_version = re.search(r'^cmake version (\d+(?:\.\d+)*)', output).group(1)
+    if Version(cmake_version) < Version(cmake_minimum):
+      self.skipTest(f'CMake > {cmake_minimum} required ({cmake_version})')
+
+    self.run_process([EMCMAKE, 'cmake', '-GNinja', test_file('cmake/cxx_import_std')])
+    self.run_process(['cmake', '--build', '.'])
 
   # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten
   # toolchain match with the actual language features that Clang supports.
