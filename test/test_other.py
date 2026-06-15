@@ -15160,7 +15160,7 @@ addToLibrary({
     # important case: if the JS implementation returns the filled buffer rather
     # than the `0` success code, the buffer coerces to its (non-zero) byte value
     # and the call appears to fail.
-    create_file('main.c', '''
+    create_file('main.c', r'''
       #include <assert.h>
       #include <stdio.h>
       #include <unistd.h>
@@ -15170,11 +15170,11 @@ addToLibrary({
           unsigned char buf[1];
           assert(getentropy(buf, sizeof(buf)) == 0);
         }
-        printf("ok\\n");
+        printf("done\n");
         return 0;
       }
     ''')
-    self.do_runf('main.c', 'ok\n')
+    self.do_runf('main.c', 'done\n')
 
   def test_em_js_bool_macro_expansion(self):
     # Normally macros like `true` and `false` are not expanded inside
