@@ -9,7 +9,6 @@ import re
 import sys
 import shutil
 import subprocess
-import tempfile
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
 emscripten_root = os.path.dirname(os.path.dirname(script_dir))
@@ -65,36 +64,32 @@ def generate_modules(cmake_version: str):
   lib = 'lib/emscripten'
   share = 'share/libc++/v1'
 
-  with tempfile.TemporaryDirectory() as tmp:
-    build_dir = 'out'
-    dist = f'{tmp}/{build_dir}/dist/'
-    build_lib = dist + lib
-    build_share = dist + share
+  build_dir = f'{emscripten_root}/out/libcxx/modules'
+  binary_dir = f'{build_dir}/out'
+  dist = f'{binary_dir}/dist/'
 
-    vars = [
-      ('LIBCXX_INSTALL_LIBRARY_DIR',  lib),
-      ('LIBCXX_INSTALL_MODULES_DIR',  share),
-      ('LIBCXX_LIBRARY_DIR',          build_lib),
-      ('LIBCXX_GENERATED_MODULE_DIR', build_share),
-    ]
+  clean_dir(build_dir)
+  os.makedirs(build_dir, exist_ok=True)
+  with open(f'{build_dir}/CMakeLists.txt', 'x', encoding='utf-8') as CMakeLists:
+    CMakeLists.write(f'''\
+      cmake_minimum_required(VERSION {cmake_version})
+      project(libcxx-modules)
+      add_subdirectory("{local_modules}" libcxx)
+    ''')
 
-    args = ''
-    for var in vars:
-      args += f' -D{var[0]}={var[1]}'
+  vars = [
+    ('LIBCXX_INSTALL_LIBRARY_DIR',  lib),
+    ('LIBCXX_INSTALL_MODULES_DIR',  share),
+    ('LIBCXX_LIBRARY_DIR',          dist + lib),
+    ('LIBCXX_GENERATED_MODULE_DIR', dist + share),
+  ]
 
-    with open(tmp + '/CMakeLists.txt', 'x', encoding='utf-8') as CMakeLists:
-      CMakeLists.write(f'''\
-        cmake_minimum_required(VERSION {cmake_version})
-        project(libcxx-modules)
-        add_subdirectory("{local_modules}" libcxx)
-      ''')
+  cmd = ['cmake', '-B', binary_dir, '-S', build_dir]
+  cmd += [f'-D{key}={val}' for key, val in vars]
 
-    subprocess.run(f'cmake -B {build_dir} -S "{tmp}" {args}',
-                   cwd=tmp, shell=True, stdout=subprocess.DEVNULL)
-    subprocess.run(['cmake', '--build', build_dir],
-                   cwd=tmp, stdout=subprocess.DEVNULL)
-    shutil.copytree(dist, dst, dirs_exist_ok=True)
-
+  subprocess.run(cmd, stdout=subprocess.DEVNULL)
+  subprocess.run(['cmake', '--build', binary_dir], stdout=subprocess.DEVNULL)
+  shutil.copytree(dist, dst, dirs_exist_ok=True)
 
 def main():
   # Exit early if cmake is not found
