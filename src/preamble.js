@@ -634,9 +634,9 @@ async function instantiateAsync(binary, binaryFile, imports) {
   if (globalThis.navigator?.crossOriginStorage) {
     var cosHash = Module['wasmHash'];
     try {
-      var cosHandles = await navigator.crossOriginStorage.requestFileHandles([cosHash]);
+      var cosHandle = await navigator.crossOriginStorage.requestFileHandle(cosHash);
       // Cache hit — read the Blob and instantiate from its ArrayBuffer.
-      var cosFile = await cosHandles[0].getFile();
+      var cosFile = await cosHandle.getFile();
       var cosBytes = await cosFile.arrayBuffer();
 #if expectToReceiveOnModule('onCOSCacheHit')
       Module['onCOSCacheHit']?.(cosHash.value);
@@ -654,8 +654,8 @@ async function instantiateAsync(binary, binaryFile, imports) {
           // Fire-and-forget store; never block instantiation on the write.
           (async () => {
             try {
-              var writeHandles = await navigator.crossOriginStorage.requestFileHandles(
-                [cosHash],
+              var writeHandle = await navigator.crossOriginStorage.requestFileHandle(
+                cosHash,
 #if CROSS_ORIGIN_STORAGE_ORIGINS.length === 1 && CROSS_ORIGIN_STORAGE_ORIGINS[0] === '*'
                 { create: true, origins: '*' },
 #elif CROSS_ORIGIN_STORAGE_ORIGINS.length
@@ -664,7 +664,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
                 { create: true },
 #endif
               );
-              var writable = await writeHandles[0].createWritable();
+              var writable = await writeHandle.createWritable();
               await writable.write(new Blob([wasmBytes], { type: 'application/wasm' }));
               await writable.close();
 #if expectToReceiveOnModule('onCOSStore')
