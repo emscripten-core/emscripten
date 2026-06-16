@@ -1585,7 +1585,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     }
 #endif
 #if INCLUDE_WEBGL1_FALLBACK
-    GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}});
+    GLctx.compressedTexImage2D(target, level, internalFormat, width, height, border, HEAPU8.subarray(data, data + imageSize));
 #endif
   },
 
@@ -1604,7 +1604,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
     }
 #endif
 #if INCLUDE_WEBGL1_FALLBACK
-    GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, {{{ makeHEAPView('U8', 'data', 'data+imageSize') }}});
+    GLctx.compressedTexSubImage2D(target, level, xoffset, yoffset, width, height, format, HEAPU8.subarray(data, data + imageSize));
 #endif
   },
 
