@@ -571,7 +571,7 @@ var WasiLibrary = {
     // This block is not needed on v19+ since crypto.getRandomValues is builtin
     if (ENVIRONMENT_IS_NODE) {
       var nodeCrypto = require('node:crypto');
-      return (view) => nodeCrypto.randomFillSync(view);
+      return (view) => (nodeCrypto.randomFillSync(view), 0);
     }
 #endif // ENVIRONMENT_MAY_BE_NODE
 
@@ -583,6 +583,7 @@ var WasiLibrary = {
         }
         const b64 = os.system('sh', ['-c', `head -c${view.byteLength} /dev/urandom | base64 --wrap=0`]);
         view.set(base64Decode(b64));
+        return 0;
       };
     }
 #endif

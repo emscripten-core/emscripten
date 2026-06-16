@@ -15153,6 +15153,29 @@ addToLibrary({
     self.v8_args += ['--enable-os-system']
     self.do_runf('main.c')
 
+  @also_with_minimal_runtime
+  def test_getentropy(self):
+    # Regression test for `getentropy`/`random_get` returning a spurious
+    # non-zero (errno) result for small requests.  A single-byte buffer is the
+    # important case: if the JS implementation returns the filled buffer rather
+    # than the `0` success code, the buffer coerces to its (non-zero) byte value
+    # and the call appears to fail.
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <unistd.h>
+
+      int main() {
+        for (int i = 0; i < 256; i++) {
+          unsigned char buf[1];
+          assert(getentropy(buf, sizeof(buf)) == 0);
+        }
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c', 'done\n')
+
   def test_em_js_bool_macro_expansion(self):
     # Normally macros like `true` and `false` are not expanded inside
     # of `EM_JS` or `EM_ASM` blocks.  However, in the case that an

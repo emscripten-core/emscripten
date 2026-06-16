@@ -599,7 +599,7 @@ var initRandomFill = () => {
   // This block is not needed on v19+ since crypto.getRandomValues is builtin
   if (ENVIRONMENT_IS_NODE) {
     var nodeCrypto = require("node:crypto");
-    return view => nodeCrypto.randomFillSync(view);
+    return view => (nodeCrypto.randomFillSync(view), 0);
   }
   return view => (crypto.getRandomValues(view), 0);
 };

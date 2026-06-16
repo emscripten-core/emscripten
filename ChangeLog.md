@@ -33,6 +33,8 @@ See docs/process.md for more on how version tagging works.
   out to `wasm-bindgen` in the users's path and integrate the wasm-bindgen JS
   with the normal Emscripten JS. Some wasm-bindgen features may not yet be fully
   supported. (#23493)
+- Fixed `getentropy`/`random_get` spuriously failing under Node.js and the
+  shell environment for small requests. (#27122)
 
 6.0.0 - 06/04/26
 ----------------
