@@ -6557,7 +6557,7 @@ int main() {{
 
   @with_env_modify({'EM_FILE_PACKAGER_MAX_CHUNK_SIZE_MB': '10'})
   def test_file_packager_huge_split_too_large_env(self):
-    self.create_huge_file('huge.dat', (10 * 1024 * 1024)+ 1)
+    self.create_huge_file('huge.dat', (10 * 1024 * 1024) + 1)
     proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], check=False, stdout=PIPE, stderr=PIPE)
     self.assertEqual(proc.returncode, 1)
     self.assertContained('error: cannot package file huge.dat, which is larger than maximum individual file size limit 10 MB', proc.stderr)
