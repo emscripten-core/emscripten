@@ -2420,27 +2420,22 @@ void *getBindBuffer() {
   def test_cwrap_early(self):
     self.btest('browser/test_cwrap_early.c', cflags=['-O2', '-sASSERTIONS', '--pre-js', test_file('browser/test_cwrap_early.js'), '-sEXPORTED_RUNTIME_METHODS=cwrap'], expected='0')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api(self):
     self.compile_btest('worker_api_worker.cpp', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-sEXPORTED_FUNCTIONS=_one'])
     self.btest('worker_api_main.cpp', expected='566')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api_2(self):
     self.compile_btest('worker_api_2_worker.cpp', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-O2', '--minify=0', '-sEXPORTED_FUNCTIONS=_one,_two,_three,_four', '--closure=1'])
     self.btest('worker_api_2_main.cpp', cflags=['-O2', '--minify=0'], expected='11')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api_3(self):
     self.compile_btest('worker_api_3_worker.cpp', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-sEXPORTED_FUNCTIONS=_one'])
     self.btest('worker_api_3_main.cpp', expected='5')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api_sleep(self):
     self.compile_btest('worker_api_worker_sleep.cpp', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-sEXPORTED_FUNCTIONS=_one', '-sASYNCIFY'])
     self.btest('worker_api_main.cpp', expected='566')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api_with_pthread_compilation_fails(self):
     self.run_process([EMCC, '-c', '-o', 'hello.o', test_file('hello_world.c')])
     expected = "pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
