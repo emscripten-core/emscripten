@@ -5,25 +5,22 @@
  */
 
 addToLibrary({
-#if ENVIRONMENT_MAY_BE_NODE
-  // Memoized `require()` for the non-builtin `ws` module (getBuiltinModule only
-  // handles builtins).
-  $req: `(() => {
-    var req;
-    return (id) => (req ??= getBuiltinModule('module').createRequire(
-#if EXPORT_ES6
-      import.meta.url
-#else
-      __filename
-#endif
-    ))(id);
-  })()`,
+#if ENVIRONMENT_MAY_BE_NODE && EXPORT_ES6
+  // ESM has no native `require`. Lazily construct one (node-gated, so it never
+  // runs during web startup) for loading the non-builtin `ws` module. The call
+  // site stays a literal `require('ws')` so third-party bundlers can still
+  // statically discover the dependency.
+  $require: undefined,
+  $ensureCreateRequire__deps: ['$require'],
+  $ensureCreateRequire: () => {
+    require ??= getBuiltinModule('module').createRequire(import.meta.url);
+  },
 #endif
   $SOCKFS__postset: () => {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
-#if ENVIRONMENT_MAY_BE_NODE
-  $SOCKFS__deps: ['$FS', '$req'],
+#if ENVIRONMENT_MAY_BE_NODE && EXPORT_ES6
+  $SOCKFS__deps: ['$FS', '$ensureCreateRequire'],
 #else
   $SOCKFS__deps: ['$FS'],
 #endif
@@ -234,7 +231,10 @@ addToLibrary({
             var WebSocketConstructor;
 #if ENVIRONMENT_MAY_BE_NODE
             if (ENVIRONMENT_IS_NODE) {
-              WebSocketConstructor = /** @type{(typeof WebSocket)} */(req('ws'));
+#if EXPORT_ES6
+              ensureCreateRequire();
+#endif
+              WebSocketConstructor = /** @type{(typeof WebSocket)} */(require('ws'));
             } else
 #endif // ENVIRONMENT_MAY_BE_NODE
             {
@@ -536,7 +536,10 @@ addToLibrary({
         if (sock.server) {
            throw new FS.ErrnoError({{{ cDefs.EINVAL }}});  // already listening
         }
-        var WebSocketServer = req('ws').Server;
+#if EXPORT_ES6
+        ensureCreateRequire();
+#endif
+        var WebSocketServer = require('ws').Server;
         var host = sock.saddr;
 #if SOCKET_DEBUG
         dbg(`websocket: listen: ${host}:${sock.sport}`);
