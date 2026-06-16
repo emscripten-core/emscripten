@@ -5,6 +5,7 @@
 
 #include <stdio.h>
 #include <assert.h>
+#include <stdbool.h>
 #include <emscripten.h>
 
 int w1;
@@ -46,4 +47,3 @@ int main() {
 
   return 0;
 }
-

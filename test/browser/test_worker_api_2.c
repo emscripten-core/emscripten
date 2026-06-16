@@ -7,17 +7,17 @@
 #include <assert.h>
 #include <emscripten.h>
 
-struct Info {
+typedef struct Info {
   int i;
   float f;
   char c;
   double d;
-};
+} Info;
 
 int w1;
 
 Info x[3] = { {    22,      3.159,  97, 2.1828 },
-              { 55123, 987612.563, static_cast<char>(190), 0.0009 },
+              { 55123, 987612.563, (char)(190), 0.0009 },
               {  -102,    -12.532, -21, -51252 } };
 
 int stage = -1;
@@ -110,4 +110,3 @@ int main() {
 
   return 0;
 }
-
