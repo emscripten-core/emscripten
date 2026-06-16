@@ -6435,55 +6435,59 @@ int main() {
     'no_split': (False, False),
     'split': (True, False),
     'split_metadata': (True, True),
+    'no_split_metadata': (False, True),
   })
+  @with_env_modify({'EM_FILE_PACKAGER_MAX_CHUNK_SIZE_MB': '10'})
   def test_file_packager_huge_data(self, split, separate_metadata):
-    # Verify the packager's 2046MB split boundary, with and without separate metadata.
-    large_size = 1024 * 1024 * 256
-    final_size = (1024 * 1024 * 254) + (1 if split else 0)
-    sizes = [large_size] * 7 + [final_size]
+    # Verify the packager's split boundary, with and without separate metadata.
+    large_size = 1024 * 1024
+    sizes = [large_size] * 10
+    if split:
+      sizes[-1] += 1
     for i, size in enumerate(sizes):
       self.create_huge_file(f'huge{i}.dat', size)
 
     args = [FILE_PACKAGER, 'test.data']
     if separate_metadata:
       args += ['--separate-metadata', '--js-output=immutable.js']
-    args += ['--preload', 'huge7.dat'] + [f'huge{i}.dat' for i in range(7)]
+    args += ['--preload'] + [f'huge{i}.dat' for i in range(10)]
     result = self.run_process(args, stdout=PIPE, stderr=PIPE)
-
     self.assertExists('test.data')
     if split:
-      self.assertContained('warning: file packager is creating an asset bundle of 1792 MB. this is very large, and browsers might have trouble loading it', result.stderr)
       self.assertContained('warning: file packager is splitting bundle into 2 chunks', result.stderr)
       self.assertExists('test_1.data')
-      self.assertEqual(os.path.getsize('test.data'), large_size * 7)
-      self.assertEqual(os.path.getsize('test_1.data'), final_size)
+      self.assertEqual(os.path.getsize('test.data'), large_size * 9)
+      self.assertEqual(os.path.getsize('test_1.data'), sizes[-1])
     else:
-      self.assertContained('warning: file packager is creating an asset bundle of 2046 MB. this is very large, and browsers might have trouble loading it', result.stderr)
       self.assertNotExists('test_1.data')
-      self.assertEqual(os.path.getsize('test.data'), (1024 * 1024 * 1024) + (1022 * 1024 * 1024))
+      self.assertEqual(os.path.getsize('test.data'), (large_size * 10))
 
     cflags = ['-sFORCE_FILESYSTEM']
     if separate_metadata:
       self.assertExists('immutable.js')
-      self.assertExists('immutable_1.js')
-
       self.assertExists('immutable.js.metadata')
       metadata = json.loads(read_file('immutable.js.metadata'))
-      self.assertEqual(len(metadata['files']), 7)
+      self.assertEqual(len(metadata['files']), 9 if split else 10)
       for i, file_metadata in enumerate(metadata['files']):
         self.assertEqual(file_metadata['start'], i * large_size)
         self.assertEqual(file_metadata['end'], (i * large_size) + large_size)
         self.assertEqual(file_metadata['filename'], f'/huge{i}.dat')
-      self.assertEqual(metadata['remote_package_size'], 7 * large_size)
+      self.assertEqual(metadata['remote_package_size'], (9 if split else 10) * large_size)
 
-      self.assertExists('immutable_1.js.metadata')
-      metadata = json.loads(read_file('immutable_1.js.metadata'))
-      self.assertEqual(len(metadata['files']), 1)
-      self.assertEqual(metadata['files'][0]['start'], 0)
-      self.assertEqual(metadata['files'][0]['end'], final_size)
-      self.assertEqual(metadata['files'][0]['filename'], '/huge7.dat')
-      self.assertEqual(metadata['remote_package_size'], final_size)
-      cflags[:0] = ['--pre-js=immutable.js', '--pre-js=immutable_1.js']
+      if split:
+        self.assertExists('immutable_1.js')
+        self.assertExists('immutable_1.js.metadata')
+        metadata = json.loads(read_file('immutable_1.js.metadata'))
+        self.assertEqual(len(metadata['files']), 1)
+        self.assertEqual(metadata['files'][0]['start'], 0)
+        self.assertEqual(metadata['files'][0]['end'], sizes[-1])
+        self.assertEqual(metadata['files'][0]['filename'], '/huge9.dat')
+        self.assertEqual(metadata['remote_package_size'], sizes[-1])
+        cflags[:0] = ['--pre-js=immutable.js', '--pre-js=immutable_1.js']
+      else:
+        self.assertNotExists('immutable_1.js')
+        self.assertNotExists('immutable_1.js.metadata')
+        cflags[:0] = ['--pre-js=immutable.js']
     else:
       create_file('load.js', result.stdout)
       cflags.insert(0, '--pre-js=load.js')
@@ -6514,11 +6518,19 @@ int main() {{
     self.do_runf('src.c', cflags=cflags)
     self.clear()
 
-  def test_file_packager_huge_split_too_large(self):
+  def test_file_packager_huge_split_too_large_default(self):
     self.create_huge_file('huge.dat', (1024 * 1024 * 1024) + ((1022 * 1024 * 1024) + 1))
     proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], check=False, stdout=PIPE, stderr=PIPE)
     self.assertEqual(proc.returncode, 1)
     self.assertContained('error: cannot package file huge.dat, which is larger than maximum individual file size limit 2046 MB', proc.stderr)
+    self.clear()
+
+  @with_env_modify({'EM_FILE_PACKAGER_MAX_CHUNK_SIZE_MB': '10'})
+  def test_file_packager_huge_split_too_large_env(self):
+    self.create_huge_file('huge.dat', (10 * 1024 * 1024)+ 1)
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], check=False, stdout=PIPE, stderr=PIPE)
+    self.assertEqual(proc.returncode, 1)
+    self.assertContained('error: cannot package file huge.dat, which is larger than maximum individual file size limit 10 MB', proc.stderr)
     self.clear()
 
   @also_with_wasm2js

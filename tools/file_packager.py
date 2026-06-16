@@ -89,7 +89,7 @@ from tools.response_file import substitute_response_files
 DEBUG = os.environ.get('EMCC_DEBUG')
 
 # chrome limit is 2MB under 2Gi
-PRELOAD_DATA_FILE_LIMIT = 2046 * 1024 * 1024
+PRELOAD_DATA_FILE_LIMIT = int(os.environ.get('EM_FILE_PACKAGER_MAX_CHUNK_SIZE_MB', '2046')) * 1024 * 1024
 
 excluded_patterns: list[str] = []
 new_data_files = []
@@ -577,13 +577,15 @@ def main():  # noqa: C901, PLR0912, PLR0915
       metadata = {'files': []}
 
       def construct_data_file_name(base, ext):
-        return f"{base}{f'_{counter}' if counter else ''}.{ext}"
-      data_file = construct_data_file_name(*data_target.rsplit('.', 1))
-      js_file = None if options.jsoutput is None else construct_data_file_name(*options.jsoutput.rsplit('.', 1))
+        return f"{base}{f'_{counter}' if counter else ''}{ext}"
+      data_file = construct_data_file_name(*os.path.splitext(data_target))
+      js_file = None
+      if options.jsoutput:
+        js_file = construct_data_file_name(*os.path.splitext(options.jsoutput))
       targets.append(data_file)
       ret = generate_preload_js(data_file, data_files, metadata, js_file)
       if options.force or len(data_files):
-        if options.jsoutput is None:
+        if not js_file:
           print(ret)
         else:
           # Overwrite the old jsoutput file (if exists) only when its content
