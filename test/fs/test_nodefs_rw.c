@@ -18,7 +18,7 @@ int main() {
 
   // write something locally with node
   EM_ASM(
-    var fs = require('fs');
+    var fs = process.getBuiltinModule('fs');
     fs.writeFileSync('foobar.txt', 'yeehaw');
   );
 
@@ -42,7 +42,7 @@ int main() {
 
   // validate the changes were persisted to the underlying fs
   EM_ASM(
-    var fs = require('fs');
+    var fs = process.getBuiltinModule('fs');
     var contents = fs.readFileSync('foobar.txt', { encoding: 'utf8' });
     assert(contents === 'cheez');
   );

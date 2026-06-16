@@ -11,7 +11,7 @@
 int main(void)
 {
     EM_ASM(
-        var path = require("path");
+        var path = process.getBuiltinModule("path");
         var home = process.env.HOME;
         // On Windows HOME environment variable doesn't exist, but concatenating HOMEDRIVE and HOMEPATH
         // does the same thing.

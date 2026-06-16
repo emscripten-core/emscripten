@@ -924,7 +924,7 @@ var LibraryEmbind = {
     const printer = new TsPrinter(moduleDefinitions);
 #endif
     const output = printer.print();
-    var fs = require('node:fs');
+    var fs = getBuiltinModule('fs');
     fs.writeFileSync(process.argv[2], output + '\n');
   },
 

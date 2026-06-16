@@ -104,18 +104,26 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
 #endif
 
-#if ENVIRONMENT_MAY_BE_NODE && (EXPORT_ES6 || PTHREADS || WASM_WORKERS)
+#if ENVIRONMENT_MAY_BE_NODE
+// `process.getBuiltinModule()` loads builtins under both CJS and ESM. On older
+// node (pre v18.20.4/v20.16/v22.3) fall back to `require()`.
+var getBuiltinModule;
 if (ENVIRONMENT_IS_NODE) {
+  if (process['getBuiltinModule']) {
+    getBuiltinModule = process['getBuiltinModule'];
+  } else {
 #if EXPORT_ES6
-  // When building an ES module `require` is not normally available.
-  // We need to use `createRequire()` to construct the require()` function.
-  const { createRequire } = await import('node:module');
-  /** @suppress{duplicate} */
-  var require = createRequire(import.meta.url);
+    getBuiltinModule = (await import('node:module')).createRequire(import.meta.url);
+#else
+    getBuiltinModule = require;
 #endif
+  }
+}
+#endif // ENVIRONMENT_MAY_BE_NODE
 
-#if PTHREADS || WASM_WORKERS
-  var worker_threads = require('node:worker_threads');
+#if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
+if (ENVIRONMENT_IS_NODE) {
+  var worker_threads = getBuiltinModule('worker_threads');
   globalThis.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 #if PTHREADS
@@ -126,9 +134,8 @@ if (ENVIRONMENT_IS_NODE) {
 #if WASM_WORKERS
   ENVIRONMENT_IS_WASM_WORKER = ENVIRONMENT_IS_WORKER && worker_threads.workerData == 'em-ww'
 #endif
-#endif // PTHREADS || WASM_WORKERS
 }
-#endif // ENVIRONMENT_MAY_BE_NODE && (EXPORT_ES6 || PTHREADS || WASM_WORKERS)
+#endif // ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
 
 // --pre-jses are emitted after the Module integration code, so that they can
 // refer to Module (if they choose; they can also define Module)
@@ -197,11 +204,11 @@ if (ENVIRONMENT_IS_NODE) {
 
   // These modules will usually be used on Node.js. Load them eagerly to avoid
   // the complexity of lazy-loading.
-  var fs = require('node:fs');
+  var fs = getBuiltinModule('fs');
 
 #if EXPORT_ES6
   if (_scriptName.startsWith('file:')) {
-    scriptDirectory = require('node:path').dirname(require('node:url').fileURLToPath(_scriptName)) + '/';
+    scriptDirectory = getBuiltinModule('path').dirname(getBuiltinModule('url').fileURLToPath(_scriptName)) + '/';
   }
 #else
   scriptDirectory = __dirname + '/';
@@ -346,7 +353,7 @@ if (!ENVIRONMENT_IS_AUDIO_WORKLET)
 var defaultPrint = console.log.bind(console);
 var defaultPrintErr = console.error.bind(console);
 if (ENVIRONMENT_IS_NODE) {
-  var utils = require('node:util');
+  var utils = getBuiltinModule('util');
   var stringify = (a) => typeof a == 'object' ? utils.inspect(a) : a;
   defaultPrint = (...args) => fs.writeSync(1, args.map(stringify).join(' ') + '\n');
   defaultPrintErr = (...args) => fs.writeSync(2, args.map(stringify).join(' ') + '\n');
