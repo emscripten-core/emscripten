@@ -26,6 +26,8 @@ from functools import wraps
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
+from packaging.version import Version
+
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner other')
 
@@ -42,6 +44,7 @@ from common import (
   TEST_ROOT,
   WEBIDL_BINDER,
   RunnerCore,
+  check_node_version,
   copy_asset,
   copytree,
   create_file,
@@ -924,6 +927,33 @@ f.close()
 
         if test_dir == 'post_build':
           ret = self.run_process(['ctest'], env=env)
+
+  @crossplatform
+  @parameterized({
+    'std23': (['-std=c++23'],),
+    'std26': (['-std=c++26'],),
+  })
+  def test_cxx_import(self, args):
+    # cflags = ['-stdlib=libc++'] + args or explicitly
+    cflags = ['-nostdinc++', '-isystem', cache.get_include_dir('c++/v1')] + args
+
+    for module in ['std', 'std.compat']:
+      cflags += [f'-fmodule-file={module}={module}.pcm']
+      source = os.path.join(cache.get_sysroot_dir('share/libc++/v1'), f'{module}.cppm')
+      self.run_process([EMCC, '-Wno-reserved-module-identifier', '--precompile', source, '-o', f'{module}.pcm'] + cflags)
+
+    self.do_runf('cmake/cxx_import_std/main.cpp', 'Hello, world!\n', cflags=cflags)
+
+  @requires_ninja
+  def test_cmake_cxx_import_std(self):
+    cmake_minimum = '3.30'
+    output = self.run_process([EMCMAKE, 'cmake', '--version'], stdout=PIPE).stdout
+    cmake_version = re.search(r'^cmake version (\d+(?:\.\d+)*)', output).group(1)
+    if Version(cmake_version) < Version(cmake_minimum):
+      self.skipTest(f'CMake > {cmake_minimum} required ({cmake_version})')
+
+    self.run_process([EMCMAKE, 'cmake', '-GNinja', test_file('cmake/cxx_import_std')])
+    self.run_process(['cmake', '--build', '.'])
 
   # Test that the various CMAKE_xxx_COMPILE_FEATURES that are advertised for the Emscripten
   # toolchain match with the actual language features that Clang supports.
@@ -6533,21 +6563,38 @@ int main() {{
     self.assertContained('error: cannot package file huge.dat, which is larger than maximum individual file size limit 10 MB', proc.stderr)
     self.clear()
 
+  @crossplatform
   @also_with_wasm2js
   def test_memory_growth(self):
     create_file('main.c', r'''
 #include <assert.h>
 #include <stdlib.h>
+#include <string.h>
+#include <emscripten/em_asm.h>
+#include <emscripten/console.h>
 
 int main() {
-  void* x = malloc(10 * 1024 * 1024);
+  // Report whether `toResizableBuffer` is availble on the wasm memory.
+  EM_ASM(out('resizable memory buffers:', Boolean(wasmMemory.toResizableBuffer)));
+
+  char* x = malloc(10 * 1024 * 1024);
   assert(x != NULL);
+  // Have JS use some of the memory in the expanded range.
+  char* str = x + 9 * 1024 * 1024;
+  strcpy(str, "Hello, world!");
+  emscripten_out(str);
   return 0;
 }
 ''')
-    output = self.do_runf('main.c', cflags=['-sALLOW_MEMORY_GROWTH', '-sINITIAL_HEAP=1mb'])
+    output = self.do_runf('main.c', 'Hello, world!\n', cflags=['-sALLOW_MEMORY_GROWTH', '-sINITIAL_HEAP=1mb'])
     if self.is_wasm2js():
       self.assertContained('Warning: Enlarging memory arrays, this is not fast! 1179648,10616832\n', output)
+
+    # Node versions older than 26 do not support toResizableBuffer
+    if self.is_wasm2js() or (self.engine_is_node() and not check_node_version(26)):
+      self.assertContained('resizable memory buffers: false\n', output)
+    else:
+      self.assertContained('resizable memory buffers: true\n', output)
 
   @also_with_wasm2js
   @parameterized({
@@ -8666,7 +8713,7 @@ int main() {
     '''
     self.cflags += ['-g']
 
-    if '-fwasm-exceptions' in self.cflags and engine_is_node(self.js_engines[0]):
+    if '-fwasm-exceptions' in self.cflags and self.engine_is_node():
       if not self.try_require_node_version(24):
         # Node versions prior to v24 do not implement the new 'traceStack' option in
         # WebAssembly.Exception constructor.
@@ -8786,7 +8833,7 @@ int main() {
         return 0;
       }
     '''
-    if '-fwasm-exceptions' in self.cflags and engine_is_node(self.js_engines[0]):
+    if '-fwasm-exceptions' in self.cflags and self.engine_is_node():
       if not self.try_require_node_version(24):
         # Node versions prior to v24 do not implement the new 'traceStack' option in
         # WebAssembly.Exception constructor.
@@ -15213,6 +15260,29 @@ addToLibrary({
     self.do_runf('main.c', msg, assert_returncode=1)
     self.v8_args += ['--enable-os-system']
     self.do_runf('main.c')
+
+  @also_with_minimal_runtime
+  def test_getentropy(self):
+    # Regression test for `getentropy`/`random_get` returning a spurious
+    # non-zero (errno) result for small requests.  A single-byte buffer is the
+    # important case: if the JS implementation returns the filled buffer rather
+    # than the `0` success code, the buffer coerces to its (non-zero) byte value
+    # and the call appears to fail.
+    create_file('main.c', r'''
+      #include <assert.h>
+      #include <stdio.h>
+      #include <unistd.h>
+
+      int main() {
+        for (int i = 0; i < 256; i++) {
+          unsigned char buf[1];
+          assert(getentropy(buf, sizeof(buf)) == 0);
+        }
+        printf("done\n");
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c', 'done\n')
 
   def test_em_js_bool_macro_expansion(self):
     # Normally macros like `true` and `false` are not expanded inside

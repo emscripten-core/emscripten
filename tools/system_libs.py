@@ -2528,6 +2528,10 @@ def install_system_headers(stamp):
     'system/lib/libcxx/include': 'c++/v1',
     'system/lib/libcxxabi/include': 'c++/v1',
     'system/lib/mimalloc/include': '',
+    'system/lib/libcxx/modules/prebuilt/lib/emscripten': cache.get_lib_dir(absolute=True),
+    'system/lib/libcxx/modules/prebuilt/share': cache.get_sysroot_dir('share'),
+    'system/lib/libcxx/modules/std': cache.get_sysroot_dir('share/libc++/v1/std'),
+    'system/lib/libcxx/modules/std.compat': cache.get_sysroot_dir('share/libc++/v1/std.compat'),
   }
 
   target_include_dir = cache.get_include_dir()
