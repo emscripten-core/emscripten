@@ -1036,6 +1036,7 @@ jobs:
           test_targets: "
             browser.test_gl_stride
             browser.test_memory_growth_during_startup
+            browser.test_pthread_memgrowth_stale_views
             browser.test_pthread_large_pthread_allocation
             browser.test_pthread_sbrk*
             browser.test_pthread_asan*
