@@ -2766,7 +2766,7 @@ var LibrarySDL = {
       // audio data, but for <media> element, a view to existing data is
       // sufficient.
       if (SDL.webAudioAvailable()) {
-        bytes = HEAPU8.buffer.slice(rwops.bytes, rwops.bytes + rwops.count);
+        bytes = HEAPU8.slice(rwops.bytes, rwops.bytes + rwops.count);
       } else {
         bytes = HEAPU8.subarray(rwops.bytes, rwops.bytes + rwops.count);
       }
