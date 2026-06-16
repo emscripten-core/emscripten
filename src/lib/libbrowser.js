@@ -592,7 +592,7 @@ var LibraryBrowser = {
     FS.createPreloadedFile(
       '/',
       name,
-      {{{ makeHEAPView('U8', 'data', 'data + size') }}},
+      HEAPU8.subarray(data, data + size),
       true, true,
       () => {
         {{{ runtimeKeepalivePop() }}}
@@ -784,7 +784,7 @@ var LibraryBrowser = {
     var transferObject = {
       'funcName': funcName,
       'callbackId': callbackId,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+      'data': data ? HEAPU8.slice(data, data + size) : 0
     };
     if (data) {
       info.worker.postMessage(transferObject, [transferObject.data.buffer]);
@@ -800,7 +800,7 @@ var LibraryBrowser = {
     var transferObject = {
       'callbackId': workerCallbackId,
       'finalResponse': false,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+      'data': data ? HEAPU8.slice(data, data + size) : 0
     };
     if (data) {
       postMessage(transferObject, [transferObject.data.buffer]);
@@ -816,7 +816,7 @@ var LibraryBrowser = {
     var transferObject = {
       'callbackId': workerCallbackId,
       'finalResponse': true,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+      'data': data ? HEAPU8.slice(data, data + size) : 0
     };
     if (data) {
       postMessage(transferObject, [transferObject.data.buffer]);
