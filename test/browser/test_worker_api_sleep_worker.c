@@ -6,9 +6,7 @@
 #include <assert.h>
 #include <emscripten.h>
 
-extern "C" {
-
-void one(char *data, int size) {
+EMSCRIPTEN_KEEPALIVE void one(char *data, int size) {
   int *x = (int*)data;
   int num = size/sizeof(int);
   for (int i = 0; i < num; i++) {
@@ -17,6 +15,3 @@ void one(char *data, int size) {
   emscripten_sleep(1000);
   emscripten_worker_respond(data, size);
 }
-
-}
-

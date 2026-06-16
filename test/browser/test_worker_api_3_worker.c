@@ -6,11 +6,9 @@
 #include <assert.h>
 #include <emscripten.h>
 
-extern "C" {
-
 // Respond with 0, 1, 2, 3 each with finalResponse=false, and 4 with
 // finalResponse=true.
-void one(char *data, int size) {
+EMSCRIPTEN_KEEPALIVE void one(char *data, int size) {
   int *x = (int*)data;
 
   if (*x == 0) {
@@ -25,6 +23,3 @@ void one(char *data, int size) {
   *x = 4;
   emscripten_worker_respond(data, size);
 }
-
-}
-
