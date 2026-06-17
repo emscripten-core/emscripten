@@ -55,11 +55,8 @@ def has_ipv6_loopback():
   if not socket.has_ipv6:
     return False
   try:
-    s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
-    try:
+    with socket.socket(socket.AF_INET6, socket.SOCK_STREAM) as s:
       s.bind(('::1', 0))
-    finally:
-      s.close()
     return True
   except OSError:
     return False
