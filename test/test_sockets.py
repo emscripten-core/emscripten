@@ -49,6 +49,22 @@ def requires_python_dev_packages(func):
   return decorated
 
 
+def has_ipv6_loopback():
+  # Some CI containers have no IPv6 loopback, so bind(::1) fails with
+  # EADDRNOTAVAIL. Probe once so the IPv6 tests can skip there.
+  if not socket.has_ipv6:
+    return False
+  try:
+    s = socket.socket(socket.AF_INET6, socket.SOCK_STREAM)
+    try:
+      s.bind(('::1', 0))
+    finally:
+      s.close()
+    return True
+  except OSError:
+    return False
+
+
 def clean_process(p):
   if getattr(p, 'exitcode', None) is None and getattr(p, 'returncode', None) is None:
     # ask nicely (to try and catch the children)
@@ -461,10 +477,14 @@ class sockets(BrowserCore):
   def test_noderawsockets_tcp_ipv6(self):
     # Self-contained IPv6 TCP loopback accept+echo over ::1: bind(:0)+getsockname,
     # listen, accept, non-blocking connect, send/recv on AF_INET6 sockets.
+    if not has_ipv6_loopback():
+      self.skipTest('no IPv6 loopback available')
     self.do_runf('sockets/test_tcp_ipv6.c', 'TCP IPV6 PASS', cflags=['-sNODERAWSOCKETS'])
 
   def test_noderawsockets_udp_ipv6(self):
     # Self-contained IPv6 UDP loopback echo over ::1 on AF_INET6 sockets.
+    if not has_ipv6_loopback():
+      self.skipTest('no IPv6 loopback available')
     self.do_runf('sockets/test_udp_ipv6.c', 'UDP IPV6 PASS', cflags=['-sNODERAWSOCKETS'])
 
   @parameterized({'': [[]], 'pthread': [['-pthread', '-sPROXY_TO_PTHREAD']]})
