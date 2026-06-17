@@ -861,6 +861,7 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'stackAlloc',
   'getTempRet0',
   'setTempRet0',
+  'isInitialized',
   'createNamedFunction',
   'zeroMemory',
   'exitJS',
@@ -1329,7 +1330,6 @@ function run() {
     // or while the async setStatus time below was happening
     assert(!calledRun);
     calledRun = true;
-    Module['calledRun'] = true;
 
     if (ABORT) return;
 

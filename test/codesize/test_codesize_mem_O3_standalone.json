@@ -1,10 +1,10 @@
 {
-  "a.out.js": 3945,
-  "a.out.js.gz": 1893,
+  "a.out.js": 3930,
+  "a.out.js.gz": 1883,
   "a.out.nodebug.wasm": 5565,
   "a.out.nodebug.wasm.gz": 2598,
-  "total": 9510,
-  "total_gz": 4491,
+  "total": 9495,
+  "total_gz": 4481,
   "sent": [
     "args_get",
     "args_sizes_get",

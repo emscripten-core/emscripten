@@ -995,10 +995,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('MODULARIZE=instance requires EXPORT_ES6')
     if settings.MINIMAL_RUNTIME:
       exit_with_error('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
-    if options.use_preload_plugins or len(options.preload_files):
+    if options.use_preload_plugins or options.preload_files:
       exit_with_error('MODULARIZE=instance is not compatible with --embed-file/--preload-file')
 
-  if settings.MINIMAL_RUNTIME and len(options.preload_files):
+  if settings.MINIMAL_RUNTIME and options.preload_files:
     exit_with_error('MINIMAL_RUNTIME is not compatible with --preload-file')
 
   if options.oformat in {OFormat.WASM, OFormat.BARE}:
@@ -1389,7 +1389,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.MIN_WEBGL_VERSION > settings.MAX_WEBGL_VERSION:
     exit_with_error('MIN_WEBGL_VERSION must be smaller or equal to MAX_WEBGL_VERSION!')
 
-  if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
+  if options.use_preload_plugins or options.preload_files or options.embed_files:
     if settings.NODERAWFS:
       exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
     # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
@@ -1573,6 +1573,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       ]
 
     settings.EXPORTED_RUNTIME_METHODS += [
+      'isInitialized',
       'addRunDependency',
       'removeRunDependency',
     ]
@@ -3098,7 +3099,7 @@ def run(options, linker_args):
   linker_args = phase_calculate_linker_inputs(options, linker_args)
 
   # Embed and preload files
-  if len(options.preload_files) or len(options.embed_files):
+  if options.preload_files or options.embed_files:
     linker_args += package_files(options, target)
 
   if options.oformat == OFormat.OBJECT:

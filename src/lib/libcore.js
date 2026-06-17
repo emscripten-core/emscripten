@@ -66,6 +66,10 @@ addToLibrary({
   setTempRet0: '$setTempRet0',
   getTempRet0: '$getTempRet0',
 
+  // Used by the file_packager-generated code to detect if program has already
+  // be started.
+  $isInitialized: () => runtimeInitialized,
+
   // Assign a name to a given function. This is mostly useful for debugging
   // purposes in cases where new functions are created at runtime.
   $createNamedFunction: (name, func) => Object.defineProperty(func, 'name', { value: name }),
