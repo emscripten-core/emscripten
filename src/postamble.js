@@ -10,10 +10,6 @@
 #include "source_map_support.js"
 #endif
 
-#if ASSERTIONS
-var calledRun;
-#endif
-
 #if STANDALONE_WASM && MAIN_READS_PARAMS
 var mainArgs = undefined;
 #endif
@@ -115,11 +111,6 @@ function stackCheckInit() {
 #endif
 
 {{{ asyncIf(MODULARIZE || ASYNCIFY == 2 || expectToReceiveOnModule('setStatus') || '$runDependencies' in addedLibraryItems) }}}function run({{{ MAIN_READS_PARAMS ? 'args = programArgs' : '' }}}) {
-#if ASSERTIONS
-  assert(!calledRun);
-  calledRun = true;
-#endif
-
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
     initRuntime();
