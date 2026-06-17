@@ -135,7 +135,7 @@ Module["expectedDataFileDownloads"]++;
       }
       await processPackageData(fetched);
     }
-    if (Module["calledRun"]) {
+    if (Module["isInitialized"]?.()) {
       runWithFS(Module);
     } else {
       if (!Module["preRun"]) Module["preRun"] = [];
@@ -3115,6 +3115,8 @@ var FS_createLazyFile = (...args) => FS.createLazyFile(...args);
 
 var FS_createDevice = (...args) => FS.createDevice(...args);
 
+var isInitialized = () => runtimeInitialized;
+
 FS.createPreloadedFile = FS_createPreloadedFile;
 
 FS.preloadFile = FS_preloadFile;
@@ -3128,6 +3130,8 @@ FS.staticInit();
 {}
 
 // Begin runtime exports
+Module["isInitialized"] = isInitialized;
+
 Module["addRunDependency"] = addRunDependency;
 
 Module["removeRunDependency"] = removeRunDependency;
@@ -3191,7 +3195,6 @@ function run() {
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
-    Module["calledRun"] = true;
     if (ABORT) return;
     initRuntime();
     preMain();

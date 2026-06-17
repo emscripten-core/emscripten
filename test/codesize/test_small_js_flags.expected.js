@@ -444,7 +444,6 @@ function run() {
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
-    Module["calledRun"] = true;
     if (ABORT) return;
     initRuntime();
     preMain();

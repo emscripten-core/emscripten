@@ -165,7 +165,6 @@ function stackCheckInit() {
     assert(!calledRun);
     calledRun = true;
 #endif
-    Module['calledRun'] = true;
 
     if (ABORT) return;
 
