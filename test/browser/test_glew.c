@@ -49,8 +49,5 @@ int main() {
     assert(glewIsSupported("GL_EXT_texture_filter_anisotropic GL_EXT_framebuffer_object") == 1);
   }
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
   return 0;
 }

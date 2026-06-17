@@ -2520,11 +2520,14 @@ void *getBindBuffer() {
     self.btest_exit('test_uuid.c', cflags=['-luuid'])
 
   @requires_graphics_hardware
-  def test_glew(self):
-    self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW'], expected='1')
-    self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW', '-sLEGACY_GL_EMULATION'], expected='1')
-    self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW', '-DGLEW_MX'], expected='1')
-    self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW', '-sLEGACY_GL_EMULATION', '-DGLEW_MX'], expected='1')
+  @parameterized({
+    '': ([],),
+    'glemu': (['-sLEGACY_GL_EMULATION'],),
+    'mx': (['-DGLEW_MX'],),
+    'glemu_mx': (['-sLEGACY_GL_EMULATION', '-DGLEW_MX'],),
+  })
+  def test_glew(self, args):
+    self.btest_exit('test_glew.c', cflags=['-lGL', '-lSDL', '-lGLEW'] + args)
 
   def test_doublestart_bug(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
@@ -2535,7 +2538,7 @@ Module["preRun"] = () => {
 };
 ''')
 
-    self.btest('doublestart.c', cflags=['--pre-js', 'pre.js'], expected='1')
+    self.btest_exit('test_doublestart_bug.c', cflags=['--pre-js', 'pre.js'])
 
   @parameterized({
     '': ([],),
