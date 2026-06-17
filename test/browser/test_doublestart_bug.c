@@ -5,13 +5,14 @@
  * found in the LICENSE file.
  */
 
+#include <assert.h>
 #include <stdio.h>
 #include <emscripten.h>
 
 int times = 0;
 
 void later(void* nada) {
-  REPORT_RESULT(times);
+  exit(0);
 }
 
 void main_loop(void) {
@@ -21,6 +22,7 @@ void main_loop(void) {
 
 int main(void) {
   emscripten_async_call(later, NULL, 2000);
+  assert(times == 0);
   times++;
   printf("This should only appear once.\n");
   emscripten_set_main_loop(main_loop, 10, 0);

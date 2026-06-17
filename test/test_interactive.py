@@ -158,7 +158,7 @@ class interactive(BrowserCore):
   })
   def test_openal_playback(self, args):
     copy_asset('sounds/audio.wav')
-    self.btest('openal/test_openal_playback.c', '1', cflags=['-O2', '--preload-file', 'audio.wav'] + args)
+    self.btest_exit('openal/test_openal_playback.c', cflags=['-O2', '--preload-file', 'audio.wav'] + args)
 
   def test_openal_buffers(self):
     self.btest_exit('openal/test_openal_buffers.c', cflags=['-DTEST_INTERACTIVE=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/'])
@@ -167,34 +167,34 @@ class interactive(BrowserCore):
     self.btest_exit('openal/test_openal_buffers.c', cflags=['-DTEST_INTERACTIVE=1', '-DTEST_ANIMATED_PITCH=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/'])
 
   def test_openal_looped_pitched_playback(self):
-    self.btest('openal/test_openal_playback.c', '1', cflags=['-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
+    self.btest_exit('openal/test_openal_playback.c', cflags=['-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
 
   def test_openal_looped_seek_playback(self):
-    self.btest('openal/test_openal_playback.c', '1', cflags=['-DTEST_LOOPED_SEEK_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
+    self.btest_exit('openal/test_openal_playback.c', cflags=['-DTEST_LOOPED_SEEK_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
 
   def test_openal_animated_looped_pitched_playback(self):
-    self.btest('openal/test_openal_playback.c', '1', cflags=['-DTEST_ANIMATED_LOOPED_PITCHED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
+    self.btest_exit('openal/test_openal_playback.c', cflags=['-DTEST_ANIMATED_LOOPED_PITCHED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
 
   def test_openal_animated_looped_distance_playback(self):
-    self.btest('openal/test_openal_playback.c', '1', cflags=['-DTEST_ANIMATED_LOOPED_DISTANCE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
+    self.btest_exit('openal/test_openal_playback.c', cflags=['-DTEST_ANIMATED_LOOPED_DISTANCE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
 
   def test_openal_animated_looped_doppler_playback(self):
-    self.btest('openal/test_openal_playback.c', '1', cflags=['-DTEST_ANIMATED_LOOPED_DOPPLER_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
+    self.btest_exit('openal/test_openal_playback.c', cflags=['-DTEST_ANIMATED_LOOPED_DOPPLER_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
 
   def test_openal_animated_looped_panned_playback(self):
-    self.btest('openal/test_openal_playback.c', '1', cflags=['-DTEST_ANIMATED_LOOPED_PANNED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
+    self.btest_exit('openal/test_openal_playback.c', cflags=['-DTEST_ANIMATED_LOOPED_PANNED_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
 
   def test_openal_animated_looped_relative_playback(self):
-    self.btest('openal/test_openal_playback.c', '1', cflags=['-DTEST_ANIMATED_LOOPED_RELATIVE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
+    self.btest_exit('openal/test_openal_playback.c', cflags=['-DTEST_ANIMATED_LOOPED_RELATIVE_PLAYBACK=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
 
   def test_openal_al_soft_loop_points(self):
-    self.btest('openal/test_openal_playback.c', '1', cflags=['-DTEST_AL_SOFT_LOOP_POINTS=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
+    self.btest_exit('openal/test_openal_playback.c', cflags=['-DTEST_AL_SOFT_LOOP_POINTS=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
 
   def test_openal_alc_soft_pause_device(self):
-    self.btest('openal/test_openal_playback.c', '1', cflags=['-DTEST_ALC_SOFT_PAUSE_DEVICE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
+    self.btest_exit('openal/test_openal_playback.c', cflags=['-DTEST_ALC_SOFT_PAUSE_DEVICE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
 
   def test_openal_al_soft_source_spatialize(self):
-    self.btest('openal/test_openal_playback.c', '1', cflags=['-DTEST_AL_SOFT_SOURCE_SPATIALIZE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
+    self.btest_exit('openal/test_openal_playback.c', cflags=['-DTEST_AL_SOFT_SOURCE_SPATIALIZE=1', '-DTEST_LOOPED_PLAYBACK=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/audio.wav'])
 
   def test_openal_capture(self):
     self.btest_exit('openal/test_openal_capture.c')
