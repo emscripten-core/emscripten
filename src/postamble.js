@@ -115,21 +115,6 @@ function stackCheckInit() {
 #endif
 
 {{{ asyncIf(MODULARIZE) }}}function run({{{ MAIN_READS_PARAMS ? 'args = programArgs' : '' }}}) {
-
-#if '$runDependencies' in addedLibraryItems
-  if (runDependencies > 0) {
-#if RUNTIME_DEBUG
-    dbg('run() called, but dependencies remain, so not running');
-#endif
-#if MODULARIZE
-    await new Promise((resolve) => dependenciesFulfilled = resolve);
-#else
-    dependenciesFulfilled = run;
-    return;
-#endif
-  }
-#endif
-
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
     initRuntime();
@@ -144,7 +129,6 @@ function stackCheckInit() {
   preRun();
 
 #if '$runDependencies' in addedLibraryItems
-  // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
