@@ -134,7 +134,7 @@
         }
       };
       setStatus('Downloading...');
-      window.onerror = () => {
+      window.onerror = window.onunhandledrejection = () => {
         setStatus('Exception thrown, see JavaScript console');
         spinnerElement.style.display = 'none';
         setStatus = (text) => {
