@@ -66,7 +66,7 @@ addToLibrary({
   setTempRet0: '$setTempRet0',
   getTempRet0: '$getTempRet0',
 
-  // Used by the file_packager-generated code to detect if program has already
+  // Used by the file_packager-generated code to detect if the program has already
   // be started.
   $isInitialized: () => runtimeInitialized,
 
