@@ -1308,7 +1308,17 @@ def run_wasm_bindgen(infile):
 
   shutil.copyfile(os.path.join(bindgen_out_dir, new_wasm_file), infile)
 
-  return os.path.join(bindgen_out_dir, 'library_bindgen.js')
+  bindgen_jslib = os.path.join(bindgen_out_dir, 'library_bindgen.js')
+  return bindgen_jslib, get_wasm_bindgen_js_exports(bindgen_jslib)
+
+
+def get_wasm_bindgen_js_exports(bindgen_jslib):
+  # wasm-bindgen communicates the names of its clean, user-facing JS exports by
+  # assigning them to `Module` (e.g. `Module.fetch = fetch;`) inside the library
+  # it generates.  Collect those names so they can be re-exported as named ES
+  # module exports under MODULARIZE=instance.
+  contents = utils.read_file(bindgen_jslib)
+  return re.findall(r'(?<![\w.])Module\.(\w+)\s*=\s*\1;', contents)
 
 
 intermediate_counter = 0

@@ -14914,6 +14914,30 @@ addToLibrary({
     self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
     self.do_runf('empty.c', '42', cflags=[lib, '-sWASM_BINDGEN', '--post-js=post.js', '-lexports.js'])
 
+  @requires_rust
+  def test_wasm_bindgen_integration_instance(self):
+    # In MODULARIZE=instance mode the wasm-bindgen exports must be emitted as
+    # named ES module exports, mirroring how they are reachable as `Module.foo`
+    # in factory mode.
+    copytree(test_file('rust/bindgen_integration'), '.')
+    self.run_process(['cargo', 'add', 'wasm-bindgen'])
+    self.run_process(['cargo', 'build'])
+    lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
+    self.assertExists(lib)
+
+    create_file('empty.c', '')
+    self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
+    self.run_process([EMCC, 'empty.c', lib, '-sWASM_BINDGEN',
+                      '-sMODULARIZE=instance', '-Wno-experimental',
+                      '-o', 'out.mjs'])
+
+    create_file('runner.mjs', '''
+      import init, { rs_add } from './out.mjs';
+      await init();
+      console.log(rs_add(17, 25));
+    ''')
+    self.assertContained('42', self.run_js('runner.mjs'))
+
   def test_relative_em_cache(self):
     with env_modify({'EM_CACHE': 'foo'}):
       self.assert_fail([EMCC, '-c', test_file('hello_world.c')], 'emcc: error: environment variable EM_CACHE must be an absolute path: foo')

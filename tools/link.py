@@ -1510,6 +1510,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if settings.MODULARIZE == 'instance':
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addOnPostCtor']
 
+  # Needed to assign the wasm-bindgen exports to the ES exports.
+  if settings.WASM_BINDGEN and settings.MODULARIZE == 'instance':
+    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addOnPostCtor']
+
   if options.emit_tsd:
     settings.EMIT_TSD = True
 
@@ -1888,11 +1892,15 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
 
   settings.TARGET_JS_NAME = os.path.basename(js_target)
 
+  bindgen_exports = []
   if settings.WASM_BINDGEN:
-    bindgen_jslib = building.run_wasm_bindgen(in_wasm)
+    bindgen_jslib, bindgen_exports = building.run_wasm_bindgen(in_wasm)
     settings.JS_LIBRARIES.append(bindgen_jslib)
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
+
+  if settings.WASM_BINDGEN and settings.MODULARIZE == 'instance':
+    phase_wasm_bindgen_instance_exports(bindgen_exports)
 
   if settings.EMBIND_AOT:
     phase_embind_aot(options, wasm_target, js_syms)
@@ -2032,6 +2040,27 @@ def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
   all_tsd = emscripten.create_tsd(metadata, embind_tsd, bindgen_ts_files)
   out_file = os.path.join(os.path.dirname(js_target), filename)
   write_file(out_file, all_tsd)
+
+
+def phase_wasm_bindgen_instance_exports(bindgen_exports):
+  # In MODULARIZE=instance mode the wasm-bindgen library only assigns its clean
+  # JS exports to `Module` (a dead assignment, since consumers receive the ESM
+  # named exports rather than `Module`).  Mirror the embind approach and
+  # re-export them as named ES module exports, binding them once the runtime is
+  # initialized (the wasm-bindgen wrappers are populated via `addOnInit`, which
+  # runs before `addOnPostCtor`).
+  if not bindgen_exports:
+    return
+  src = read_file(final_js)
+  decls = '\n'.join(f'export var {name};' for name in bindgen_exports)
+  assigns = '\n'.join(f"{name} = Module['{name}'];" for name in bindgen_exports)
+  src += f'''
+// start wasm-bindgen exports
+function assignBindgenExports() {{ {assigns} }};
+addOnPostCtor(assignBindgenExports);
+{decls}
+// end wasm-bindgen exports'''
+  write_file(final_js, src)
 
 
 @ToolchainProfiler.profile_block('embind aot js')
