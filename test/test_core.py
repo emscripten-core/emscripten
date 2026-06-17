@@ -155,7 +155,6 @@ def asan(func):
   @wraps(func)
   @no_safe_heap('asan does not work with SAFE_HEAP')
   @no_wasm2js('TODO: ASAN in wasm2js')
-  @no_wasm64('TODO: ASAN in memory64')
   @no_highmem("asan doesn't support GLOBAL_BASE")
   def decorated(self, *args, **kwargs):
     return func(self, *args, **kwargs)
@@ -9043,7 +9042,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       'AddressSanitizer: stack-buffer-overflow',
     ], ['-fno-builtin-memset']),
     'memset_null': ('test_asan_memset_null.c', [
-      'AddressSanitizer: null-pointer-dereference on address 0x00000001',
+      'AddressSanitizer: null-pointer-dereference on address 0x0*1',
     ], ['-fno-builtin-memset']),
     'memset_freed': ('test_asan_memset_freed.c', [
       'AddressSanitizer: heap-use-after-free on address',
@@ -9070,7 +9069,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if cflags:
       self.cflags += cflags
     self.do_runf('core/' + name,
-                 expected_output=expected_output, assert_all=True,
+                 expected_output=expected_output, assert_all=True, regex=True,
                  cflags=['-fsanitize=address'],
                  check_for_error=False, assert_returncode=NON_ZERO)
 
