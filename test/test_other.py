@@ -11257,6 +11257,7 @@ int main(void) {
       ])
 
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
+  @also_with_wasm64
   def test_asan_sync_compilation(self):
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.do_runf(
@@ -14847,10 +14848,6 @@ addToLibrary({
     js_out = read_file('test_uuid.js')
     self.assertContained('.randomFillSync(', js_out)
     self.assertContained('.getRandomValues(', js_out)
-
-  def test_wasm64_no_asan(self):
-    expected = 'error: MEMORY64 does not yet work with ASAN'
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-m64', '-fsanitize=address'], expected)
 
   def test_mimalloc_no_asan(self):
     # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
