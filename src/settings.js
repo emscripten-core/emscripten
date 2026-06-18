@@ -2205,13 +2205,13 @@ var GROWABLE_ARRAYBUFFERS = false;
 // indirectly using `importScripts`
 var CROSS_ORIGIN = false;
 
-// Enables Cross-Origin Storage (COS) API support for Wasm
-// loading on the Web target. At link time Emscripten computes the SHA-256
-// hash of the final ``.wasm`` binary and embeds it in the generated JS.
-// At runtime the COS API is used as a progressive enhancement: the binary is
-// fetched from the shared cross-origin cache on a hit, or stored there after
-// a network fetch on a miss; when the API is absent or errors the runtime
-// falls through to the standard fetch path.
+// Enables Cross-Origin Storage (COS) API support for Wasm loading on the
+// Web target. At link time Emscripten computes the SHA-256 hash of the
+// final ``.wasm`` binary and embeds it in the generated JS. At runtime the
+// COS API is used as a progressive enhancement: the binary is fetched from
+// the shared cross-origin cache on a hit, or stored there after a network
+// fetch on a miss; when the API is absent or errors the runtime falls
+// through to the standard fetch path.
 //
 // Requires the Web environment; using it without ``-sENVIRONMENT=web`` is a
 // hard link-time error. Incompatible with SINGLE_FILE and

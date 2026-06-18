@@ -656,7 +656,7 @@ async function instantiateAsync(binary, binaryFile, imports) {
           try {
             var writeHandle = await navigator.crossOriginStorage.requestFileHandle(
               cosHash,
-#if CROSS_ORIGIN_STORAGE_ORIGINS.length === 1 && CROSS_ORIGIN_STORAGE_ORIGINS[0] === '*'
+#if CROSS_ORIGIN_STORAGE_ORIGINS[0] === '*'
               { create: true, origins: '*' },
 #elif CROSS_ORIGIN_STORAGE_ORIGINS.length
               { create: true, origins: {{{ JSON.stringify(CROSS_ORIGIN_STORAGE_ORIGINS) }}} },
