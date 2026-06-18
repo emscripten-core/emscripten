@@ -15635,18 +15635,15 @@ console.log('OK');'''
     self.assert_fail(
       [EMCC, test_file('hello_world.c'),
        '-sCROSS_ORIGIN_STORAGE',
-       '-sENVIRONMENT=web',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=*,https://example.com'],
       "'*' must not be mixed with explicit origins")
     self.assert_fail(
       [EMCC, test_file('hello_world.c'),
        '-sCROSS_ORIGIN_STORAGE',
-       '-sENVIRONMENT=web',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=http://example.com'],
       'is not a valid HTTPS origin')
     self.assert_fail(
       [EMCC, test_file('hello_world.c'),
        '-sCROSS_ORIGIN_STORAGE',
-       '-sENVIRONMENT=web',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=https://example.com/path'],
       'is not a valid HTTPS origin')
