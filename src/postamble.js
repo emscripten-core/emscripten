@@ -114,7 +114,12 @@ function stackCheckInit() {
 }
 #endif
 
-{{{ asyncIf(MODULARIZE) }}}function run({{{ MAIN_READS_PARAMS ? 'args = programArgs' : '' }}}) {
+{{{ asyncIf(MODULARIZE || ASYNCIFY == 2 || expectToReceiveOnModule('setStatus') || '$runDependencies' in addedLibraryItems) }}}function run({{{ MAIN_READS_PARAMS ? 'args = programArgs' : '' }}}) {
+#if ASSERTIONS
+  assert(!calledRun);
+  calledRun = true;
+#endif
+
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
     initRuntime();
@@ -131,80 +136,51 @@ function stackCheckInit() {
 #if '$runDependencies' in addedLibraryItems
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
-    dbg('run() called, but dependencies remain, so not running');
+    dbg('run: waiting on runDependencies');
 #endif
-#if MODULARIZE
     await new Promise((resolve) => dependenciesFulfilled = resolve);
-#else
-    dependenciesFulfilled = run;
-    return;
-#endif
   }
 #endif
 
-  {{{ asyncIf(ASYNCIFY == 2) }}}function doRun() {
-    // run may have just been called through dependencies being fulfilled just in this very frame,
-    // or while the async setStatus time below was happening
-#if ASSERTIONS
-    assert(!calledRun);
-    calledRun = true;
+#if expectToReceiveOnModule('setStatus')
+  var setStatus = Module['setStatus'];
+  if (setStatus) {
+    setStatus('Running...');
+    // Yield to the event loop to allow the browser to paint "Running..."
+    await new Promise((resolve) => setTimeout(resolve, 1));
+    // Then we want to clear the status text, but only after the rest of this function runs.
+    setTimeout(setStatus, 1, '');
+  }
 #endif
 
-    if (ABORT) return;
+  if (ABORT) return;
 
-    initRuntime();
+  initRuntime();
 
 #if HAS_MAIN
-    preMain();
+  preMain();
 #endif
 
 #if expectToReceiveOnModule('onRuntimeInitialized')
-    Module['onRuntimeInitialized']?.();
+  Module['onRuntimeInitialized']?.();
 #if ASSERTIONS
-    consumedModuleProp('onRuntimeInitialized');
+  consumedModuleProp('onRuntimeInitialized');
 #endif
 #endif
 
 #if HAS_MAIN
-    var noInitialRun = {{{ makeModuleReceiveExpr('noInitialRun', !INVOKE_RUN) }}};
+  var noInitialRun = {{{ makeModuleReceiveExpr('noInitialRun', !INVOKE_RUN) }}};
 #if MAIN_READS_PARAMS
-    if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain(args);
+  if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain(args);
 #else
-    if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain();
+  if (!noInitialRun) {{{ awaitIf(ASYNCIFY == 2) }}}callMain();
 #endif
-#else
-#if ASSERTIONS
-    assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
-#endif // ASSERTIONS
+#elif ASSERTIONS
+  assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
 #endif // HAS_MAIN
 
-    postRun();
-  }
+  postRun();
 
-#if expectToReceiveOnModule('setStatus')
-  if (Module['setStatus']) {
-    Module['setStatus']('Running...');
-    // Yield the main thread to allow the browser to paint "Running...", then clear
-    // the status text after the synchronous doRun() completes.
-#if MODULARIZE
-    await new Promise((resolve) => {
-      setTimeout(() => {
-        setTimeout(() => Module['setStatus'](''), 1);
-        doRun();
-        resolve();
-      }, 1);
-    });
-#else
-    setTimeout(() => {
-      setTimeout(() => Module['setStatus'](''), 1);
-      doRun();
-    }, 1);
-#endif
-  } else
-#endif
-  {
-    doRun();
-  }
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif

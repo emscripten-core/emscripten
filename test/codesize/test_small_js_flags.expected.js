@@ -441,19 +441,12 @@ function callMain() {
 
 function run() {
   preRun();
-  function doRun() {
-    // run may have just been called through dependencies being fulfilled just in this very frame,
-    // or while the async setStatus time below was happening
-    if (ABORT) return;
-    initRuntime();
-    preMain();
-    var noInitialRun = false;
-    if (!noInitialRun) callMain();
-    postRun();
-  }
-  {
-    doRun();
-  }
+  if (ABORT) return;
+  initRuntime();
+  preMain();
+  var noInitialRun = false;
+  if (!noInitialRun) callMain();
+  postRun();
 }
 
 var wasmExports;
