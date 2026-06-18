@@ -1323,8 +1323,6 @@ var wasmImports = {
 // include: postamble.js
 // === Auto-generated postamble setup entry stuff ===
 
-var calledRun;
-
 function stackCheckInit() {
   // This is normally called automatically during __wasm_call_ctors but need to
   // get these values before even running any of the ctors so we call it redundantly
@@ -1335,8 +1333,6 @@ function stackCheckInit() {
 }
 
 function run() {
-  assert(!calledRun);
-  calledRun = true;
 
   stackCheckInit();
 
