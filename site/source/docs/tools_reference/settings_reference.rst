@@ -3373,16 +3373,16 @@ Default value: false
 GROWABLE_ARRAYBUFFERS
 =====================
 
-Enable unconditional support for growable views of Wasm memory.
-This is a recent Web platform feature that can make growing the Wasm memory
-more efficient, especially in multi-threaded builds.
-Note that Emscripten will always take advantage of this feature when it is
-available, regardless of this setting.  Enabling this setting effectively
-removes the fallback code (which adds overhead in multi-threaded builds).
-Only enable this setting if you know that all of your target browser
-engines support this feature.
+Enable support for growable views of Wasm memory. This is a recent Web
+platform feature that can make growing the Wasm memory more efficient,
+especially in multi-threaded builds.
+Setting this to 1 will auto-detect the presence of this API and use it
+when available.
+Setting this to 2 will unconditionally require it. This is the only way
+to completely remove the overhead of growable memory + pthreads.
+This settings does nothing unless ALLOW_MEMORY_GROWTH is set.
 
-Default value: false
+Default value: 0
 
 .. _cross_origin:
 

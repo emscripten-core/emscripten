@@ -12,7 +12,7 @@
 #include "runtime_safe_heap.js"
 #endif
 
-#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && !GROWABLE_ARRAYBUFFERS
+#if SHARED_MEMORY && ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS != 2
 // Support for growable heap + pthreads, where the buffer may change, so JS views
 // must be updated.
 function growMemViews() {
@@ -113,11 +113,12 @@ var runtimeExited = false;
 // When ALLOW_MEMORY_GROWTH is enabled, the conversion from Wasm
 // memory to ArrayBuffer requires some additional logic.
 function getMemoryBuffer() {
-#if GROWABLE_ARRAYBUFFERS
+#if GROWABLE_ARRAYBUFFERS == 2
   return wasmMemory.toResizableBuffer();
 #else
+#if GROWABLE_ARRAYBUFFERS == 1
 #if SHARED_MEMORY && (MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED)
-  // Using `toResizableBuffer` on a shared memory is currently broken on Firefox
+  // Deserializing a growable SharedArrayBuffer is currently broken in Firefox.
   // See: https://github.com/emscripten-core/emscripten/issues/27118
   // See: https://bugzilla.mozilla.org/show_bug.cgi?id=2021136
   if (!globalThis.navigator?.userAgent?.match(/firefox/i)) {
@@ -134,8 +135,9 @@ function getMemoryBuffer() {
 #if SHARED_MEMORY && (MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED)
   }
 #endif
+#endif // GROWABLE_ARRAYBUFFERS == 1
   return wasmMemory.buffer;
-#endif // GROWABLE_ARRAYBUFFERS
+#endif // GROWABLE_ARRAYBUFFERS == 2
 }
 #endif // ALLOW_MEMORY_GROWTH
 
