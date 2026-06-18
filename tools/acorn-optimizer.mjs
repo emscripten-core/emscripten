@@ -1091,7 +1091,7 @@ function growableHeap(ast) {
       if (
         !(
           node.id.type === 'Identifier' &&
-          (node.id.name === 'growMemViews' || node.id.name === 'LE_HEAP_UPDATE')
+          (node.id.name === 'growMemViews' || node.id.name === 'updateMemoryViews' || node.id.name === 'LE_HEAP_UPDATE')
         )
       ) {
         c(node.body);
@@ -1726,6 +1726,7 @@ const params = {
   ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
   allowAwaitOutsideFunction: true,
+  allowImportExportEverywhere: exportES6,
 };
 if (closureFriendly) {
   const currentComments = [];

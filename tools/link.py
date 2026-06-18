@@ -4,6 +4,7 @@
 # found in the LICENSE file.
 
 import base64
+import glob
 import json
 import logging
 import os
@@ -41,7 +42,7 @@ from .settings import (
   settings,
   user_settings,
 )
-from .shared import DEBUG, DYLIB_EXTENSIONS, do_replace, in_temp
+from .shared import DEBUG, DYLIB_EXTENSIONS, do_replace, get_emscripten_temp_dir, in_temp
 from .toolchain_profiler import ToolchainProfiler
 from .utils import (
   WINDOWS,
@@ -994,10 +995,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('MODULARIZE=instance requires EXPORT_ES6')
     if settings.MINIMAL_RUNTIME:
       exit_with_error('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
-    if options.use_preload_plugins or len(options.preload_files):
+    if options.use_preload_plugins or options.preload_files:
       exit_with_error('MODULARIZE=instance is not compatible with --embed-file/--preload-file')
 
-  if settings.MINIMAL_RUNTIME and len(options.preload_files):
+  if settings.MINIMAL_RUNTIME and options.preload_files:
     exit_with_error('MINIMAL_RUNTIME is not compatible with --preload-file')
 
   if options.oformat in {OFormat.WASM, OFormat.BARE}:
@@ -1048,6 +1049,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.PURE_WASI:
     settings.STANDALONE_WASM = 1
+    settings.ALLOW_MEMORY_GROWTH = 1
     settings.WASM_BIGINT = 1
     # WASI does not support Emscripten (JS-based) exception catching, which the
     # JS-based longjmp support also uses. Emscripten EH is by default disabled
@@ -1252,8 +1254,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
 
-    # Certain configurations require the removeRunDependency/addRunDependency system.
-    if settings.LOAD_SOURCE_MAP or (settings.WASM_ASYNC_COMPILATION and not settings.MODULARIZE):
+    if settings.LOAD_SOURCE_MAP:
+      # Loading the source map uses the addRunDependency/removeRunDependency system.
       settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$addRunDependency', '$removeRunDependency']
 
   if settings.ABORT_ON_WASM_EXCEPTIONS or settings.SPLIT_MODULE:
@@ -1387,7 +1389,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.MIN_WEBGL_VERSION > settings.MAX_WEBGL_VERSION:
     exit_with_error('MIN_WEBGL_VERSION must be smaller or equal to MAX_WEBGL_VERSION!')
 
-  if options.use_preload_plugins or len(options.preload_files) or len(options.embed_files):
+  if options.use_preload_plugins or options.preload_files or options.embed_files:
     if settings.NODERAWFS:
       exit_with_error('--preload-file and --embed-file cannot be used with NODERAWFS which disables virtual filesystem')
     # if we include any files, or intend to use preload plugins, then we definitely need filesystem support
@@ -1537,9 +1539,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   # Such setting must be set before this point
   feature_matrix.apply_min_browser_versions()
 
-  # TODO(sbc): Find make a generic way to expose the feature matrix to JS
-  # compiler rather then adding them all ad-hoc as internal settings
-  default_setting('WASM_BIGINT', feature_matrix.caniuse(Feature.JS_BIGINT_INTEGRATION))
+  feature_matrix.auto_enable_features()
+
   if settings.WASM_BIGINT:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$HEAP64', '$HEAPU64']
 
@@ -1837,7 +1838,7 @@ def phase_calculate_system_libraries(options):
 
 
 @ToolchainProfiler.profile_block('link')
-def phase_link(linker_args, wasm_target, js_syms):
+def phase_link(linker_args, linker_inputs, wasm_target, js_syms):
   logger.debug(f'linking: {linker_args}')
 
   # Make a final pass over settings.EXPORTED_FUNCTIONS to remove any
@@ -1859,11 +1860,12 @@ def phase_link(linker_args, wasm_target, js_syms):
     # TODO(sbc): Remove this double execution of wasm-ld if we ever find a way to
     # distinguish EMSCRIPTEN_KEEPALIVE exports from `--export-dynamic` exports.
     settings.LINKABLE = False
-    building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
+    building.link_lld(linker_args, wasm_target, external_symbols=js_syms,
+                      linker_inputs=linker_inputs)
     settings.LINKABLE = True
     rtn = extract_metadata.extract_metadata(wasm_target)
 
-  building.link_lld(linker_args, wasm_target, external_symbols=js_syms)
+  building.link_lld(linker_args, wasm_target, external_symbols=js_syms, linker_inputs=linker_inputs)
   return rtn
 
 
@@ -1884,6 +1886,10 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
     js_target = get_secondary_target(target, '.js')
 
   settings.TARGET_JS_NAME = os.path.basename(js_target)
+
+  if settings.WASM_BINDGEN:
+    bindgen_jslib = building.run_wasm_bindgen(in_wasm)
+    settings.JS_LIBRARIES.append(bindgen_jslib)
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
@@ -1953,11 +1959,12 @@ def run_embind_gen(options, wasm_target, js_syms, extra_settings):
   settings.MIN_NODE_VERSION = feature_matrix.OLDEST_SUPPORTED_NODE
   settings.MINIMAL_RUNTIME = 0
   # Required function to trigger TS generation.
-  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks', '$addRunDependency', '$removeRunDependency']
+  settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$callRuntimeCallbacks']
   settings.EXPORT_ES6 = False
   # Disable proxying and thread pooling so a worker is not automatically created.
   settings.PROXY_TO_PTHREAD = False
   settings.PTHREAD_POOL_SIZE = 0
+  settings.GROWABLE_ARRAYBUFFERS = 0
   # Assume wasm support at binding generation time
   settings.WASM2JS = 0
   # Disable minify since the binaryen pass has not been run yet to change the
@@ -2016,7 +2023,12 @@ def phase_emit_tsd(options, wasm_target, js_target, js_syms, metadata):
   embind_tsd = ''
   if settings.EMBIND:
     embind_tsd = run_embind_gen(options, wasm_target, js_syms, {'EMBIND_AOT': False})
-  all_tsd = emscripten.create_tsd(metadata, embind_tsd)
+  bindgen_ts_files = []
+  if settings.WASM_BINDGEN:
+    bindgen_ts_files = glob.glob(get_emscripten_temp_dir() + '/bindgen_out/*.d.ts')
+    # This list comprehension then filters out any files that end with .wasm.d.ts.
+    bindgen_ts_files = [file for file in bindgen_ts_files if not file.endswith('.wasm.d.ts')]
+  all_tsd = emscripten.create_tsd(metadata, embind_tsd, bindgen_ts_files)
   out_file = os.path.join(os.path.dirname(js_target), filename)
   write_file(out_file, all_tsd)
 
@@ -2073,19 +2085,28 @@ def phase_source_transforms(options):
   save_intermediate('transformed')
 
 
-# Unmangle previously mangled `import.meta` and `await import` references in
+# Unmangle previously mangled `await import` and `await` references in
 # both main code and libraries.
-# See also: `preprocess` in parseTools.js.
+# See also: `mangleUnsupportedSyntax` in parseTools.mjs.
 def fix_js_mangling(js_file):
-  # We don't apply these mangliings except in MODULARIZE/EXPORT_ES6 modes.
-  if not settings.MODULARIZE:
+  # Mangling only takes place under closure in MODULARIZE mode.
+  if not settings.MODULARIZE or not settings.USE_CLOSURE_COMPILER:
     return
 
   src = read_file(js_file)
-  write_file(js_file, src
-             .replace('EMSCRIPTEN$IMPORT$META', 'import.meta')
-             .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import')
-             .replace('EMSCRIPTEN$AWAIT(', 'await ('))
+
+  if settings.EXPORT_ES6:
+    # Also remove the line containing `export{};`, which is inserted by
+    # Closure to mark the file as an ES6 module.
+    # https://github.com/google/closure-compiler/issues/4084#issuecomment-1505056519
+    # https://github.com/google/closure-compiler/blob/v20260401/src/com/google/javascript/jscomp/ConvertChunksToESModules.java#L111-L113
+    src = src \
+      .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import') \
+      .replace('export{};\n', '')
+
+  src = src.replace('EMSCRIPTEN$AWAIT(', 'await (')
+
+  write_file(js_file, src)
   save_intermediate('js-mangling')
 
 
@@ -3057,6 +3078,9 @@ def run(options, linker_args):
   # We have now passed the compile phase, allow reading/writing of all settings.
   settings.limit_settings(None)
 
+  linker_inputs = [f.value for f in linker_args if f.is_file]
+  linker_args = [f.value for f in linker_args]
+
   if settings.RUNTIME_LINKED_LIBS:
     linker_args += settings.RUNTIME_LINKED_LIBS
 
@@ -3074,7 +3098,7 @@ def run(options, linker_args):
   linker_args = phase_calculate_linker_inputs(options, linker_args)
 
   # Embed and preload files
-  if len(options.preload_files) or len(options.embed_files):
+  if options.preload_files or options.embed_files:
     linker_args += package_files(options, target)
 
   if options.oformat == OFormat.OBJECT:
@@ -3120,7 +3144,7 @@ def run(options, linker_args):
       settings.ASYNCIFY_IMPORTS_EXCEPT_JS_LIBS = settings.ASYNCIFY_IMPORTS[:]
       settings.ASYNCIFY_IMPORTS += ['*.' + x for x in js_info['asyncFuncs']]
 
-  base_metadata = phase_link(linker_args, wasm_target, js_syms)
+  base_metadata = phase_link(linker_args, linker_inputs, wasm_target, js_syms)
 
   # Special handling for when the user passed '-Wl,--version'.  In this case the linker
   # does not create the output file, but just prints its version and exits with 0.

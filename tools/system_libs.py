@@ -947,8 +947,8 @@ class AsanInstrumentedLibrary(Library):
 
 
 # Subclass of SjLjLibrary because emscripten_setjmp.c uses SjLj support
-class libcompiler_rt(MTLibrary, SjLjLibrary):
-  name = 'libcompiler_rt'
+class libclang_rt_builtins(MTLibrary, SjLjLibrary):
+  name = 'libclang_rt.builtins'
   # compiler_rt files can't currently be part of LTO although we are hoping to remove this
   # restriction soon: https://reviews.llvm.org/D71738
   force_object_files = True
@@ -2137,8 +2137,8 @@ class CompilerRTLibrary(Library):
   force_object_files = True
 
 
-class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
-  name = 'libubsan_minimal_rt'
+class libclang_rt_ubsan_minimal(CompilerRTLibrary, MTLibrary):
+  name = 'libclang_rt.ubsan_minimal'
   never_force = True
 
   includes = ['system/lib/compiler-rt/lib']
@@ -2146,8 +2146,8 @@ class libubsan_minimal_rt(CompilerRTLibrary, MTLibrary):
   src_files = ['ubsan_minimal_handlers.cpp']
 
 
-class libsanitizer_common_rt(CompilerRTLibrary, MTLibrary):
-  name = 'libsanitizer_common_rt'
+class libclang_rt_sanitizer_common(CompilerRTLibrary, MTLibrary):
+  name = 'libclang_rt.sanitizer_common'
   includes = ['system/lib/compiler-rt/lib',
               'system/lib/libc']
   never_force = True
@@ -2172,8 +2172,8 @@ class SanitizerLibrary(CompilerRTLibrary, MTLibrary):
   src_glob = '*.cpp'
 
 
-class libubsan_rt(SanitizerLibrary):
-  name = 'libubsan_rt'
+class libclang_rt_ubsan(SanitizerLibrary):
+  name = 'libclang_rt.ubsan'
 
   includes = ['system/lib/libc']
   cflags = ['-DUBSAN_CAN_USE_CXXABI']
@@ -2181,15 +2181,15 @@ class libubsan_rt(SanitizerLibrary):
   src_glob_exclude = {'ubsan_diag_standalone.cpp'}
 
 
-class liblsan_common_rt(SanitizerLibrary):
-  name = 'liblsan_common_rt'
+class libclang_rt_lsan_common(SanitizerLibrary):
+  name = 'libclang_rt.lsan_common'
 
   src_dir = 'system/lib/compiler-rt/lib/lsan'
   src_glob = 'lsan_common*.cpp'
 
 
-class liblsan_rt(SanitizerLibrary):
-  name = 'liblsan_rt'
+class libclang_rt_lsan(SanitizerLibrary):
+  name = 'libclang_rt.lsan'
 
   includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/lsan'
@@ -2197,8 +2197,8 @@ class liblsan_rt(SanitizerLibrary):
                       'lsan_common_emscripten.cpp'}
 
 
-class libasan_rt(SanitizerLibrary):
-  name = 'libasan_rt'
+class libclang_rt_asan(SanitizerLibrary):
+  name = 'libclang_rt.asan'
 
   includes = ['system/lib/libc']
   src_dir = 'system/lib/compiler-rt/lib/asan'
@@ -2414,25 +2414,25 @@ def get_libs_to_link(options):
 
   def add_sanitizer_libs():
     if settings.USE_ASAN:
-      force_include.append('libasan_rt')
-      add_library('libasan_rt')
+      force_include.append('libclang_rt.asan')
+      add_library('libclang_rt.asan')
     elif settings.USE_LSAN:
-      force_include.append('liblsan_rt')
-      add_library('liblsan_rt')
+      force_include.append('libclang_rt.lsan')
+      add_library('libclang_rt.lsan')
 
     if settings.UBSAN_RUNTIME == 1:
-      add_library('libubsan_minimal_rt')
+      add_library('libclang_rt.ubsan_minimal')
     elif settings.UBSAN_RUNTIME == 2:
-      add_library('libubsan_rt')
+      add_library('libclang_rt.ubsan')
 
     if settings.USE_LSAN or settings.USE_ASAN:
-      add_library('liblsan_common_rt')
+      add_library('libclang_rt.lsan_common')
 
     if sanitize:
-      add_library('libsanitizer_common_rt')
+      add_library('libclang_rt.sanitizer_common')
 
   if only_forced:
-    add_library('libcompiler_rt')
+    add_library('libclang_rt.builtins')
     add_sanitizer_libs()
     add_forced_libs()
     return libs_to_link
@@ -2471,7 +2471,7 @@ def get_libs_to_link(options):
         utils.exit_with_error('mimalloc is not compatible with -fsanitize=address')
     elif settings.MALLOC != 'none':
       add_library('libmalloc')
-  add_library('libcompiler_rt')
+  add_library('libclang_rt.builtins')
   if settings.LINK_AS_CXX:
     add_library('libc++')
   if settings.LINK_AS_CXX or sanitize:
@@ -2567,6 +2567,10 @@ def install_system_headers(stamp):
     'system/lib/mimalloc/include': '',
     # Install openmp headers
     'system/lib/libomp/include': '',
+    'system/lib/libcxx/modules/prebuilt/lib/emscripten': cache.get_lib_dir(absolute=True),
+    'system/lib/libcxx/modules/prebuilt/share': cache.get_sysroot_dir('share'),
+    'system/lib/libcxx/modules/std': cache.get_sysroot_dir('share/libc++/v1/std'),
+    'system/lib/libcxx/modules/std.compat': cache.get_sysroot_dir('share/libc++/v1/std.compat'),
   }
 
   target_include_dir = cache.get_include_dir()

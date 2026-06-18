@@ -6,6 +6,10 @@
 
 // Utilities for browser environments
 var LibraryBrowser = {
+  $workerHandles__internal: true,
+  $workerHandles__deps: ['$HandleAllocator'],
+  $workerHandles: 'new HandleAllocator();',
+
   $Browser__deps: [
     '$callUserCallback',
     '$getFullscreenElement',
@@ -24,7 +28,6 @@ var LibraryBrowser = {
     isFullscreen: false,
     pointerLock: false,
     moduleContextCreatedCallbacks: [],
-    workers: [],
     preloadedImages: {},
     preloadedAudios: {},
 
@@ -592,7 +595,7 @@ var LibraryBrowser = {
     FS.createPreloadedFile(
       '/',
       name,
-      {{{ makeHEAPView('U8', 'data', 'data + size') }}},
+      HEAPU8.subarray(data, data + size),
       true, true,
       () => {
         {{{ runtimeKeepalivePop() }}}
@@ -614,7 +617,7 @@ var LibraryBrowser = {
   },
 
   // TODO: currently not callable from a pthread, but immediately calls onerror() if not on main thread.
-  emscripten_async_load_script__deps: ['$UTF8ToString'],
+  emscripten_async_load_script__deps: ['$UTF8ToString', '$runDependencies', '$dependenciesFulfilled'],
   emscripten_async_load_script: async (url, onload, onerror) => {
     url = UTF8ToString(url);
 #if PTHREADS
@@ -717,20 +720,21 @@ var LibraryBrowser = {
 
   // To avoid creating worker parent->child chains, always proxies to execute on the main thread.
   emscripten_create_worker__proxy: 'sync',
-  emscripten_create_worker__deps: ['$UTF8ToString', 'realloc'],
+  emscripten_create_worker__deps: ['$UTF8ToString', 'realloc', '$workerHandles'],
   emscripten_create_worker: (url) => {
     url = UTF8ToString(url);
-    var id = Browser.workers.length;
+    var worker = new Worker(url);
     var info = {
-      worker: new Worker(url),
+      worker,
       callbacks: [],
       awaited: 0,
       buffer: 0,
     };
-    info.worker.onmessage = (msg) => {
+    var id = workerHandles.allocate(info);
+    worker.onmessage = (msg) => {
       if (ABORT) return;
-      var info = Browser.workers[id];
-      if (!info) return; // worker was destroyed meanwhile
+      if (!workerHandles.has(id)) return; // worker was destroyed meanwhile
+      var info = workerHandles.get(id);
       var callbackId = msg.data['callbackId'];
       var callbackInfo = info.callbacks[callbackId];
       if (!callbackInfo) return; // no callback or callback removed meanwhile
@@ -750,23 +754,23 @@ var LibraryBrowser = {
         callbackInfo.func(0, 0, callbackInfo.arg);
       }
     };
-    Browser.workers.push(info);
     return id;
   },
 
-  emscripten_destroy_worker__deps: ['free'],
+  emscripten_destroy_worker__deps: ['free', '$workerHandles'],
   emscripten_destroy_worker__proxy: 'sync',
   emscripten_destroy_worker: (id) => {
-    var info = Browser.workers[id];
+    var info = workerHandles.get(id);
     info.worker.terminate();
     _free(info.buffer);
-    Browser.workers[id] = null;
+    workerHandles.free(id);
   },
 
+  emscripten_call_worker__deps: ['$workerHandles'],
   emscripten_call_worker__proxy: 'sync',
   emscripten_call_worker: (id, funcName, data, size, callback, arg) => {
     funcName = UTF8ToString(funcName);
-    var info = Browser.workers[id];
+    var info = workerHandles.get(id);
     var callbackId = -1;
     if (callback) {
       // If we are waiting for a response from the worker we need to keep
@@ -784,7 +788,7 @@ var LibraryBrowser = {
     var transferObject = {
       'funcName': funcName,
       'callbackId': callbackId,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+      'data': data ? HEAPU8.slice(data, data + size) : 0
     };
     if (data) {
       info.worker.postMessage(transferObject, [transferObject.data.buffer]);
@@ -800,7 +804,7 @@ var LibraryBrowser = {
     var transferObject = {
       'callbackId': workerCallbackId,
       'finalResponse': false,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+      'data': data ? HEAPU8.slice(data, data + size) : 0
     };
     if (data) {
       postMessage(transferObject, [transferObject.data.buffer]);
@@ -816,7 +820,7 @@ var LibraryBrowser = {
     var transferObject = {
       'callbackId': workerCallbackId,
       'finalResponse': true,
-      'data': data ? new Uint8Array({{{ makeHEAPView('U8', 'data', 'data + size') }}}) : 0
+      'data': data ? HEAPU8.slice(data, data + size) : 0
     };
     if (data) {
       postMessage(transferObject, [transferObject.data.buffer]);
@@ -826,10 +830,11 @@ var LibraryBrowser = {
   },
 #endif
 
+  emscripten_get_worker_queue_size__deps: ['$workerHandles'],
   emscripten_get_worker_queue_size__proxy: 'sync',
   emscripten_get_worker_queue_size: (id) => {
-    var info = Browser.workers[id];
-    if (!info) return -1;
+    if (!workerHandles.has(id)) return -1;
+    var info = workerHandles.get(id);
     return info.awaited;
   },
 

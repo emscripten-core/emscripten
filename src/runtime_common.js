@@ -80,7 +80,7 @@ if (ENVIRONMENT_IS_NODE && {{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
 var HEAP_DATA_VIEW;
 #endif
 
-#if !MINIMAL_RUNTIME || ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE
+#if !MINIMAL_RUNTIME || ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE || PTHREADS
 var runtimeInitialized = false;
 #endif
 
@@ -109,6 +109,13 @@ var runtimeExited = false;
 }}}
 
 function updateMemoryViews() {
+#if RUNTIME_DEBUG
+  dbg(`updateMemoryViews: first=${!HEAP8} size=${wasmMemory.buffer.byteLength}`);
+#endif
+#if !ALLOW_MEMORY_GROWTH && ASSERTIONS
+  // When memory growth is disabled this function should be called exactly once.
+  assert(!HEAP8, 'updateMemoryViews should only be called once when ALLOW_MEMORY_GROWTH=0');
+#endif
 #if GROWABLE_ARRAYBUFFERS
   var b = wasmMemory.toResizableBuffer();
 #else

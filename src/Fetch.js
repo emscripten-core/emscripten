@@ -568,7 +568,7 @@ function fetchXHR(fetch, onsuccess, onerror, onprogress, onreadystatechange) {
   dbg(`fetch: id=${id}`);
 #endif
   {{{ makeSetValue('fetch', C_STRUCTS.emscripten_fetch_t.id, 'id', 'u32') }}};
-  var data = (dataPtr && dataLength) ? HEAPU8.slice(dataPtr, dataPtr + dataLength) : null;
+  var data = (dataPtr && dataLength) ? HEAPU8.subarray(dataPtr, dataPtr + dataLength) : null;
   // TODO: Support specifying custom headers to the request.
 
   // Share the code to save the response, as we need to do so both on success
@@ -844,7 +844,7 @@ function startFetch(fetch, successcb, errorcb, progresscb, readystatechangecb) {
     // TODO(?): Here we perform a clone of the data, because storing shared typed arrays to IndexedDB does not seem to be allowed.
     var ptr = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestData, '*') }}};
     var size = {{{ makeGetValue('fetch_attr', C_STRUCTS.emscripten_fetch_attr_t.requestDataSize, '*') }}};
-    fetchCacheData(Fetch.dbInstance, fetch, HEAPU8.slice(ptr, ptr + size), reportSuccess, reportError);
+    fetchCacheData(Fetch.dbInstance, fetch, HEAPU8.subarray(ptr, ptr + size), reportSuccess, reportError);
   } else if (requestMethod === 'EM_IDB_DELETE') {
     fetchDeleteCachedData(Fetch.dbInstance, fetch, reportSuccess, reportError);
   } else if (!fetchAttrReplace) {

@@ -2282,7 +2282,7 @@ var LibrarySDL = {
         var imageData = surfData.ctx.getImageData(0, 0, surfData.width, surfData.height);
         if (raw.bpp == 4) {
           // rgba
-          imageData.data.set({{{ makeHEAPView('U8', 'raw.data', 'raw.data+raw.size') }}});
+          imageData.data.set(HEAPU8.subarray(raw.data, raw.data + raw.size));
         } else if (raw.bpp == 3) {
           // rgb
           var pixels = raw.size/3;
@@ -2766,7 +2766,7 @@ var LibrarySDL = {
       // audio data, but for <media> element, a view to existing data is
       // sufficient.
       if (SDL.webAudioAvailable()) {
-        bytes = HEAPU8.buffer.slice(rwops.bytes, rwops.bytes + rwops.count);
+        bytes = HEAPU8.slice(rwops.bytes, rwops.bytes + rwops.count);
       } else {
         bytes = HEAPU8.subarray(rwops.bytes, rwops.bytes + rwops.count);
       }

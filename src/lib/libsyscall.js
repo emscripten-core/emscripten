@@ -80,7 +80,7 @@ var SyscallsLibrary = {
         // MAP_PRIVATE calls need not to be synced back to underlying fs
         return 0;
       }
-      var buffer = HEAPU8.slice(addr, addr + len);
+      var buffer = HEAPU8.subarray(addr, addr + len);
       FS.msync(stream, buffer, offset, len, flags);
     },
     // Just like `FS.getStream` but will throw EBADF if stream is undefined.
@@ -563,6 +563,7 @@ var SyscallsLibrary = {
   },
   __syscall_poll__proxy: 'sync',
   __syscall_poll__async: 'auto',
+  __syscall_poll__deps: ['$doPoll'],
   __syscall_poll: (fds, nfds, timeout) => {
 #if PTHREADS || ASYNCIFY
 #if PTHREADS
@@ -622,9 +623,31 @@ var SyscallsLibrary = {
         }, timeout);
         cleanupFuncs.push(() => clearTimeout(t));
       }
+      // A zero timeout never registers notifications: the derivation alone
+      // answers, matching the non-blocking probe.
+      var count = doPoll(fds, nfds, timeout, makeNotifyCallback);
+      if (count || !timeout) {
+        asyncPollComplete(count);
+      }
+      return promise;
     }
 #endif
 
+    var count = doPoll(fds, nfds, 0, undefined);
+#if ASSERTIONS
+    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
+#endif
+    return count;
+  },
+  // The shared readiness derivation: one pass over the pollfds, writing
+  // revents and returning the ready count. With a nonzero `timeout`, a
+  // readiness notification is also registered on each stream by the same
+  // `stream_ops.poll` call that derives it, so there is no window between
+  // registration and derivation; a zero `timeout` means the caller will not
+  // wait, so no notification is registered (the plain probe).
+  $doPoll__internal: true,
+  $doPoll__deps: ['$FS'],
+  $doPoll: (fds, nfds, timeout, makeNotifyCallback) => {
     var count = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
@@ -634,12 +657,9 @@ var SyscallsLibrary = {
       var stream = FS.getStream(fd);
       if (stream) {
         if (stream.stream_ops.poll) {
-#if PTHREADS || ASYNCIFY
-          if (isAsyncContext && timeout) {
-            flags = stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd));
-          } else
-#endif
-          flags = stream.stream_ops.poll(stream, -1);
+          flags = timeout
+            ? stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd))
+            : stream.stream_ops.poll(stream, -1);
         } else {
           flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
         }
@@ -648,20 +668,17 @@ var SyscallsLibrary = {
       if (flags) count++;
       {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
     }
-
-#if PTHREADS || ASYNCIFY
-    if (isAsyncContext) {
-      if (count || !timeout) {
-        asyncPollComplete(count);
-      }
-      return promise;
-    }
-#endif
-
-#if ASSERTIONS
-    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
-#endif
     return count;
+  },
+  // libc routes zero-timeout poll() calls here: the same synchronous
+  // readiness derivation as __syscall_poll, but as a plain import that never
+  // suspends, so probes stay callable from any context (under JSPI,
+  // __syscall_poll is a suspending import and traps when called from a stack
+  // that wasn't entered through a promising export).
+  __syscall_poll_nonblocking__proxy: 'sync',
+  __syscall_poll_nonblocking__deps: ['$doPoll'],
+  __syscall_poll_nonblocking: (fds, nfds) => {
+    return doPoll(fds, nfds, 0, undefined);
   },
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {

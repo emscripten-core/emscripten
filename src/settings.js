@@ -2167,6 +2167,10 @@ var LEGACY_RUNTIME = false;
 // [link]
 var SIGNATURE_CONVERSIONS = [];
 
+// Run wasm-bindgen and integrate the rust-exported symbols into the rest of Emscripten's JS output.
+// [link]
+var WASM_BINDGEN = 0;
+
 // Experimental support for wasm source phase imports.
 // This is only currently implemented in the pre-release/nightly version of
 // node, and not yet supported by browsers.
@@ -2192,7 +2196,6 @@ var JS_BASE64_API = false;
 // Enable support for GrowableSharedArrayBuffer.
 // This feature has only recently become available across major browser engines
 // and Node.js.
-// [experimental]
 // [link]
 var GROWABLE_ARRAYBUFFERS = false;
 

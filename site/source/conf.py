@@ -216,7 +216,7 @@ html_context = {
 
 # The name of an image file (relative to this directory) to place at the top
 # of the sidebar.
-html_logo = '_static/Emscripten_logo_full.png'
+html_logo = '_static/emscripten_logo_full.svg'
 
 
 # The name of an image file (within the static path) to use as favicon of the

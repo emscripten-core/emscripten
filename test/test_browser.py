@@ -2420,31 +2420,25 @@ void *getBindBuffer() {
   def test_cwrap_early(self):
     self.btest('browser/test_cwrap_early.c', cflags=['-O2', '-sASSERTIONS', '--pre-js', test_file('browser/test_cwrap_early.js'), '-sEXPORTED_RUNTIME_METHODS=cwrap'], expected='0')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api(self):
-    self.compile_btest('worker_api_worker.cpp', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-sEXPORTED_FUNCTIONS=_one'])
-    self.btest('worker_api_main.cpp', expected='566')
+    self.compile_btest('browser/test_worker_api_worker.c', ['-o', 'worker.js', '-sBUILD_AS_WORKER'])
+    self.btest('browser/test_worker_api.c', expected='566')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api_2(self):
-    self.compile_btest('worker_api_2_worker.cpp', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-O2', '--minify=0', '-sEXPORTED_FUNCTIONS=_one,_two,_three,_four', '--closure=1'])
-    self.btest('worker_api_2_main.cpp', cflags=['-O2', '--minify=0'], expected='11')
+    self.compile_btest('browser/test_worker_api_2_worker.c', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-O2', '--minify=0', '--closure=1'])
+    self.btest('browser/test_worker_api_2.c', cflags=['-O2', '--minify=0'], expected='11')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api_3(self):
-    self.compile_btest('worker_api_3_worker.cpp', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-sEXPORTED_FUNCTIONS=_one'])
-    self.btest('worker_api_3_main.cpp', expected='5')
+    self.compile_btest('browser/test_worker_api_3_worker.c', ['-o', 'worker.js', '-sBUILD_AS_WORKER'])
+    self.btest('browser/test_worker_api_3.c', expected='5')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api_sleep(self):
-    self.compile_btest('worker_api_worker_sleep.cpp', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-sEXPORTED_FUNCTIONS=_one', '-sASYNCIFY'])
-    self.btest('worker_api_main.cpp', expected='566')
+    self.compile_btest('browser/test_worker_api_sleep_worker.c', ['-o', 'worker.js', '-sBUILD_AS_WORKER', '-sASYNCIFY'])
+    self.btest('browser/test_worker_api.c', expected='566')
 
-  @no_wasm64('TODO: wasm64 + BUILD_AS_WORKER')
   def test_worker_api_with_pthread_compilation_fails(self):
-    self.run_process([EMCC, '-c', '-o', 'hello.o', test_file('hello_world.c')])
     expected = "pthreads + BUILD_AS_WORKER require separate modes that don't work together, see https://github.com/emscripten-core/emscripten/issues/8854"
-    self.assert_fail([EMCC, 'hello.o', '-o', 'a.js', '-g', '--closure=1', '-pthread', '-sBUILD_AS_WORKER'], expected)
+    self.assert_fail([EMCC, test_file('hello_world.c'), '-pthread', '-sBUILD_AS_WORKER'], expected)
 
   @also_with_wasmfs
   def test_wget(self):
@@ -2526,11 +2520,14 @@ void *getBindBuffer() {
     self.btest_exit('test_uuid.c', cflags=['-luuid'])
 
   @requires_graphics_hardware
-  def test_glew(self):
-    self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW'], expected='1')
-    self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW', '-sLEGACY_GL_EMULATION'], expected='1')
-    self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW', '-DGLEW_MX'], expected='1')
-    self.btest('glew.c', cflags=['-lGL', '-lSDL', '-lGLEW', '-sLEGACY_GL_EMULATION', '-DGLEW_MX'], expected='1')
+  @parameterized({
+    '': ([],),
+    'glemu': (['-sLEGACY_GL_EMULATION'],),
+    'mx': (['-DGLEW_MX'],),
+    'glemu_mx': (['-sLEGACY_GL_EMULATION', '-DGLEW_MX'],),
+  })
+  def test_glew(self, args):
+    self.btest_exit('test_glew.c', cflags=['-lGL', '-lSDL', '-lGLEW'] + args)
 
   def test_doublestart_bug(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', '$addRunDependency,$removeRunDependency')
@@ -2541,7 +2538,7 @@ Module["preRun"] = () => {
 };
 ''')
 
-    self.btest('doublestart.c', cflags=['--pre-js', 'pre.js'], expected='1')
+    self.btest_exit('test_doublestart_bug.c', cflags=['--pre-js', 'pre.js'])
 
   @parameterized({
     '': ([],),
@@ -5695,6 +5692,11 @@ fetch('report_result?0');
   })
   def test_shell_minimal(self, args):
     self.btest_exit('browser_test_hello_world.c', cflags=['--shell-file', path_from_root('html/shell_minimal.html')] + args)
+
+  @no_highmem('uses INITIAL_MEMORY')
+  def test_pthread_memgrowth_stale_views(self):
+    self.btest_exit('test_pthread_memgrowth_stale_views.c',
+                    cflags=['-pthread', '-sINITIAL_MEMORY=10mb', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'])
 
 
 class browser64(browser):

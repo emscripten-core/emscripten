@@ -11,8 +11,7 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
-// Special placeholder for `import.meta` and `await import`.
-var EMSCRIPTEN$IMPORT$META;
+// Special placeholder for `await import` and `await`.
 var EMSCRIPTEN$AWAIT$IMPORT;
 var EMSCRIPTEN$AWAIT;
 
@@ -187,13 +186,6 @@ var devicePixelRatio;
  * Avoid closure minifying anything to "id". See #13965
  */
 var id;
-
-/**
- * Used in MODULARIZE mode as the name of the incoming module argument.
- * This is generated outside of the code we pass to closure so from closure's
- * POV this is "extern".
- */
-var moduleArg;
 
 /**
  * This was removed from upstream closure compiler in

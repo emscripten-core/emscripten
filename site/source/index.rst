@@ -10,7 +10,7 @@
 
     This documentation contains everything you need to :ref:`start developing <Tutorial>` with the Emscripten SDK.
 
-.. image:: _static/Emscripten_logo_full.png
+.. image:: _static/emscripten_logo_full.svg
   :alt: Emscripten logo
   :align: center
 

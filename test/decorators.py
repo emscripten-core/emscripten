@@ -146,6 +146,17 @@ def requires_node_25(func):
   return decorated
 
 
+def requires_node_26(func):
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    self.require_node_26()
+    return func(self, *args, **kwargs)
+
+  return decorated
+
+
 # Used to mark dependencies in various tests to npm developer dependency
 # packages, which might not be installed on Emscripten end users' systems.
 def requires_dev_dependency(package):

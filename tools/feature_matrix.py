@@ -9,7 +9,7 @@ import logging
 from enum import IntEnum, auto
 
 from . import diagnostics
-from .settings import settings, user_settings
+from .settings import default_setting, settings, user_settings
 
 logger = logging.getLogger('feature_matrix')
 
@@ -144,10 +144,7 @@ min_browser_versions = {
     'chrome': 144,
     'firefox': 145,
     'safari': 260200,
-    # Supported with flag --experimental-wasm-rab-integration (TODO: Change
-    # this to unflagged version of Node.js 260000, see also the comment in
-    # Feature.WASM_EXCEPTIONS above)
-    'node': 240000,
+    'node': 260000,
   },
 
 # The following features we now support unconditionally, but keeping them around
@@ -198,6 +195,12 @@ def caniuse(feature):
     return False
   if feature in enable_override_features:
     return True
+
+  # Certain features are incompatible with certain settings.
+  # TODO(sbc): Make this more generate, perhaps based on INCOMPATIBLE_SETTINGS
+  if feature == Feature.GROWABLE_ARRAYBUFFERS and settings.WASM2JS:
+    logger.debug(f'cannot use {feature.name} because WASM2JS is enabled')
+    return False
 
   min_versions = min_browser_versions[feature]
 
@@ -251,10 +254,12 @@ def disable_feature(feature):
   disable_override_features.add(feature)
 
 
-# apply minimum browser version defaults based on user settings. if
-# a user requests a feature that we know is only supported in browsers
-# from a specific version and above, we can assume that browser version.
 def apply_min_browser_versions():
+  """Update minimum browser version defaults based on user settings.
+
+  If a user requests a feature that we know is only supported in browsers
+  from a specific version and above, we can assume that browser version.
+  """
   if settings.WASM_BIGINT and 'WASM_BIGINT' in user_settings:
     # WASM_BIGINT is enabled by default, don't use it to enable other features
     # unless the user explicitly enabled it.
@@ -278,3 +283,11 @@ def apply_min_browser_versions():
       enable_feature(Feature.WASM_EXCEPTIONS, 'Wasm exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')
   if settings.GROWABLE_ARRAYBUFFERS:
     enable_feature(Feature.GROWABLE_ARRAYBUFFERS, 'GrowableSharedArrayBuffer')
+
+
+def auto_enable_features():
+  """Enable settings based on usable features."""
+  # TODO(sbc): Find make a generic way to expose the feature matrix to JS
+  # compiler rather then adding them all ad-hoc as internal settings
+  default_setting('WASM_BIGINT', caniuse(Feature.JS_BIGINT_INTEGRATION))
+  default_setting('GROWABLE_ARRAYBUFFERS', caniuse(Feature.GROWABLE_ARRAYBUFFERS))

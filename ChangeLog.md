@@ -20,8 +20,21 @@ See docs/process.md for more on how version tagging works.
 
 6.0.1 (in development)
 ----------------------
+- The ability to redirect JS compiler stderr using `EMCC_STDERR_FILE` was
+  removed.  These days you can use `EMCC_DEBUG` and/or `EMCC_DEBUG_SAVE` to
+  preserve all the intermediate JS compiler files. (#27101)
+- The installed versions of the compiler-rt library now follow the upstream
+  naming convetion of `libclang_rt.<something>.a`. (#27089)
+- Dynamic linking now explicitly requires asynchronous Wasm compilation. The
+  process of loading side modules at startup currently depends on this. (#27086)
 - The `-sUSE_PTHREADS` and `-sMEMORY64` flags have been deprecated in favor of the
   more standard `-pthread` and `-m64` (or `--target=wasm64`) flags. (#27025)
+- Adds wasm-bindgen support. When `-sWASM_BINDGEN` is set, Emscripten will call
+  out to `wasm-bindgen` in the users's path and integrate the wasm-bindgen JS
+  with the normal Emscripten JS. Some wasm-bindgen features may not yet be fully
+  supported. (#23493)
+- Fixed `getentropy`/`random_get` spuriously failing under Node.js and the
+  shell environment for small requests. (#27122)
 
 6.0.0 - 06/04/26
 ----------------

@@ -332,6 +332,14 @@ def get_deno():
   return get_engine(engine_is_deno)
 
 
+def check_node_version(major, minor=0, revision=0):
+  nodejs = get_nodejs()
+  if not nodejs:
+    return False
+  version = shared.get_node_version(nodejs)
+  return version >= (major, minor, revision)
+
+
 def clean_js_output(output):
   """Cleanup the JS output prior to running verification steps on it.
 
@@ -495,6 +503,17 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
         self.skipTest('test requires node v25 and current Node.js version is older than this, with EMTEST_AUTOSKIP being set')
       self.fail('node v25 required to run this test.  Use EMTEST_SKIP_NODE_25 to skip')
 
+  def require_node_26(self):
+    if 'EMTEST_SKIP_NODE_26' in os.environ or 'EMTEST_SKIP_NODE_25' in os.environ:
+      self.skipTest('test requires node v26 and EMTEST_SKIP_NODE_25/EMTEST_SKIP_NODE_26 is set')
+    nodejs = get_nodejs()
+    if not nodejs:
+      self.skipTest('Test requires nodejs to run')
+    if not self.try_require_node_version(26, 0, 0):
+      if utils.get_env_bool('EMTEST_AUTOSKIP'):
+        self.skipTest('test requires node v26 and current Node.js version is older than this, with EMTEST_AUTOSKIP being set')
+      self.fail('node v26 required to run this test.  Use EMTEST_SKIP_NODE_25/EMTEST_SKIP_NODE_26 to skip')
+
   def require_engine(self, engine, force=False):
     logger.debug(f'require_engine: {engine}')
     if not force and self.required_engine and self.required_engine != engine:
@@ -532,14 +551,10 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.fail('either d8, node >= 24 or deno required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def try_require_node_version(self, major, minor=0, revision=0):
-    nodejs = get_nodejs()
-    if not nodejs:
-      return False
-    version = shared.get_node_version(nodejs)
-    if version < (major, minor, revision):
+    if not check_node_version(major, minor, revision):
       return False
 
-    self.require_engine(nodejs)
+    self.require_engine(get_nodejs())
     return True
 
   def require_wasm_legacy_eh(self):
@@ -1097,7 +1112,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       fail_message += '\n' + msg
     self.fail(fail_message)
 
-  def assertFileContents(self, filename, contents):
+  def assertFileContents(self, filename, contents, tofile=None):
     if EMTEST_VERBOSE:
       print(f'Comparing results contents of file: {filename}')
 
@@ -1113,7 +1128,10 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     expected_content = read_file(filename)
     message = "Run with --rebaseline to automatically update expectations"
     self.assertTextDataIdentical(expected_content, contents, message,
-                                 filename, filename + '.new')
+                                 filename, tofile or (filename + '.new'))
+
+  def assertFilesMatch(self, expected, actual):
+    self.assertFileContents(expected, read_file(actual), tofile=actual)
 
   def assertContained(self, values, string, additional_info='', regex=False):
     if callable(string):

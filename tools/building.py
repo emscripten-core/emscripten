@@ -277,11 +277,32 @@ def lld_flags_for_executable(external_symbols):
   return cmd
 
 
-def lld_flags(args):
+def get_wasm_bindgen_exported_symbols(input_files):
+  nm_args = [LLVM_NM, '--defined-only', '--extern-only', '--format=just-symbols',
+             '--print-file-name', '--quiet']
+  nm_args += input_files
+
+  result = check_call(nm_args, stdout=PIPE)
+  symbols = []
+  for line in result.stdout.splitlines():
+    _, symbol = line.split()
+    # Skip mangled (non-C) symbols
+    if symbol.startswith(('_Z', '_R', 'anon.')):
+      continue
+    symbols.append(symbol)
+
+  return symbols
+
+
+def lld_flags(args, linker_inputs=None):
   # lld doesn't currently support --start-group/--end-group since the
   # semantics are more like the windows linker where there is no need for
   # grouping.
   args = [a for a in args if a not in {'--start-group', '--end-group'}]
+
+  if settings.WASM_BINDGEN:
+    exported_symbols = get_wasm_bindgen_exported_symbols(linker_inputs)
+    args.extend(f'--export={e}' for e in exported_symbols)
 
   # Emscripten currently expects linkable output (SIDE_MODULE/MAIN_MODULE) to
   # include all archive contents.
@@ -316,7 +337,7 @@ def lld_flags(args):
   return args
 
 
-def link_lld(args, target, external_symbols=None):
+def link_lld(args, target, external_symbols=None, linker_inputs=None):
   # runs lld to link things.
   if not os.path.exists(WASM_LD):
     exit_with_error('linker binary not found in LLVM directory: %s', WASM_LD)
@@ -325,7 +346,7 @@ def link_lld(args, target, external_symbols=None):
   # normal linker flags that are used when building and executable
   if '--relocatable' not in args and '-r' not in args:
     cmd += lld_flags_for_executable(external_symbols)
-  cmd += lld_flags(args)
+  cmd += lld_flags(args, linker_inputs)
   cmd = get_command_with_possible_response_file(cmd)
   check_call(cmd)
 
@@ -585,6 +606,14 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   args += ['--language_in', 'UNSTABLE']
+  # Make Closure aware of the ES6 module syntax;
+  # i.e. the `import.meta` and `await import` usages
+  if settings.EXPORT_ES6:
+    args += ['--chunk_output_type', 'ES_MODULES']
+    if settings.ENVIRONMENT_MAY_BE_NODE:
+      args += ['--module_resolution', 'NODE']
+      # https://github.com/google/closure-compiler/issues/3740
+      args += ['--jscomp_off=moduleLoad']
   # We currently only use closure compiler for minification, not transpilation.
   args += ['--language_out', 'NO_TRANSPILE']
   # Tell closure never to inject the 'use strict' directive.
@@ -1254,6 +1283,32 @@ def run_binaryen_command(tool, infile, outfile=None, args=None, debug=False, std
 
 def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
+
+
+def run_wasm_bindgen(infile):
+  bindgen_out_dir = os.path.join(get_emscripten_temp_dir(), 'bindgen_out')
+
+  wasm_bindgen_bin = shutil.which('wasm-bindgen')
+  if not wasm_bindgen_bin:
+    exit_with_error('wasm-bindgen executable not found in $PATH')
+  cmd = [
+      wasm_bindgen_bin,
+      infile,
+      '--keep-lld-exports',
+      '--keep-debug',
+      '--out-dir',
+      bindgen_out_dir,
+  ]
+  check_call(cmd)
+
+  # Don't try to predict the .wasm filename that wasm-bindgen outputs. Instead
+  # just grab the .wasm file itself.
+  all_output_files = os.listdir(bindgen_out_dir)
+  new_wasm_file = [x for x in all_output_files if x.endswith('.wasm')][0]
+
+  shutil.copyfile(os.path.join(bindgen_out_dir, new_wasm_file), infile)
+
+  return os.path.join(bindgen_out_dir, 'library_bindgen.js')
 
 
 intermediate_counter = 0

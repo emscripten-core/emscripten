@@ -3288,6 +3288,15 @@ Example use ``-sSIGNATURE_CONVERSIONS=someFunction:_p,anotherFunction:p``
 
 Default value: []
 
+.. _wasm_bindgen:
+
+WASM_BINDGEN
+============
+
+Run wasm-bindgen and integrate the rust-exported symbols into the rest of Emscripten's JS output.
+
+Default value: 0
+
 .. _source_phase_imports:
 
 SOURCE_PHASE_IMPORTS
@@ -3336,8 +3345,6 @@ GROWABLE_ARRAYBUFFERS
 Enable support for GrowableSharedArrayBuffer.
 This feature has only recently become available across major browser engines
 and Node.js.
-
-.. note:: This is an experimental setting
 
 Default value: false
 

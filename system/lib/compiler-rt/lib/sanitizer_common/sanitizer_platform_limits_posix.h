@@ -869,7 +869,7 @@ struct __sanitizer_pollfd {
   short revents;
 };
 
-#  if SANITIZER_ANDROID || SANITIZER_APPLE
+#  if SANITIZER_ANDROID || SANITIZER_APPLE || SANITIZER_EMSCRIPTEN
 typedef unsigned __sanitizer_nfds_t;
 #  else
 typedef unsigned long __sanitizer_nfds_t;

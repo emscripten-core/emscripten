@@ -1033,7 +1033,8 @@ def generate_preload_js(data_target, data_files, metadata):
   ret += code
   ret += '''
     }
-    if (Module['calledRun']) {
+    // Detect whether the module JS file has already been loaded.
+    if (Module['FS_createPath']) {
       runWithFS(Module)%s;
     } else {
       if (!Module['preRun']) Module['preRun'] = [];
@@ -1069,7 +1070,8 @@ def generate_preload_js(data_target, data_files, metadata):
     loadPackage(json);
   }
 
-  if (Module['calledRun']) {
+  // Detect whether the module JS file has already been loaded.
+  if (Module['FS_createPath']) {
     runMetaWithFS();
   } else {
     if (!Module['preRun']) Module['preRun'] = [];

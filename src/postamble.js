@@ -115,21 +115,6 @@ function stackCheckInit() {
 #endif
 
 {{{ asyncIf(MODULARIZE) }}}function run({{{ MAIN_READS_PARAMS ? 'args = programArgs' : '' }}}) {
-
-#if '$runDependencies' in addedLibraryItems
-  if (runDependencies > 0) {
-#if RUNTIME_DEBUG
-    dbg('run() called, but dependencies remain, so not running');
-#endif
-#if MODULARIZE
-    await new Promise((resolve) => dependenciesFulfilled = resolve);
-#else
-    dependenciesFulfilled = run;
-    return;
-#endif
-  }
-#endif
-
 #if PTHREADS || WASM_WORKERS
   if ({{{ ENVIRONMENT_IS_WORKER_THREAD() }}}) {
     initRuntime();
@@ -144,7 +129,6 @@ function stackCheckInit() {
   preRun();
 
 #if '$runDependencies' in addedLibraryItems
-  // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
 #if RUNTIME_DEBUG
     dbg('run() called, but dependencies remain, so not running');
@@ -165,7 +149,6 @@ function stackCheckInit() {
     assert(!calledRun);
     calledRun = true;
 #endif
-    Module['calledRun'] = true;
 
     if (ABORT) return;
 
@@ -305,7 +288,9 @@ export default async function init(moduleArg = {}) {
 #if PTHREADS
   registerTLSInit(__emscripten_tls_init);
 #endif
+#if !IMPORTED_MEMORY
   updateMemoryViews();
+#endif
 #if DYNCALLS && '$dynCalls' in addedLibraryItems
   assignDynCalls();
 #endif
@@ -347,14 +332,13 @@ if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
 #if !MODULARIZE && WASM_ASYNC_COMPILATION
 // With async instantation wasmExports is assigned asynchronously when the
 // instance is received.
-createWasm();
+createWasm().then(() => run());
 #else
 // In modularize mode the generated code is within a factory function so we
 // can use await here (since it's not top-level-await).
 wasmExports = {{{ awaitIf(MODULARIZE && WASM_ASYNC_COMPILATION) }}}createWasm();
-#endif
-
 {{{ awaitIf(MODULARIZE) }}}run();
+#endif
 
 #if WASM_WORKERS || PTHREADS
 }
