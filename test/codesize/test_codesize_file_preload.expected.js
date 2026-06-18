@@ -3182,12 +3182,7 @@ function callMain() {
 }
 
 function run() {
-  if (runDependencies > 0) {
-    dependenciesFulfilled = run;
-    return;
-  }
   preRun();
-  // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
     dependenciesFulfilled = run;
     return;
