@@ -5287,7 +5287,6 @@ Module["preRun"] = () => {
       self.set_setting('MAXIMUM_MEMORY', '4GB')
     self.btest_exit('alloc_3gb.c', cflags=['-sMALLOC=dlmalloc', '-sALLOW_MEMORY_GROWTH=1'])
 
-  @no_wasm64()
   @parameterized({
     # the fetch backend works even on the main thread: we proxy to a background
     # thread and busy-wait
@@ -5314,7 +5313,6 @@ Module["preRun"] = () => {
                             '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @no_firefox('no OPFS support yet')
-  @no_wasm64()
   @parameterized({
     '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'jspi': (['-Wno-experimental', '-sJSPI'],),
