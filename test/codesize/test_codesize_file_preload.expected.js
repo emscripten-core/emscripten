@@ -135,7 +135,8 @@ Module["expectedDataFileDownloads"]++;
       }
       await processPackageData(fetched);
     }
-    if (Module["isInitialized"]?.()) {
+    // Detect whether the module JS file has already been loaded.
+    if (Module["FS_createPath"]) {
       runWithFS(Module);
     } else {
       if (!Module["preRun"]) Module["preRun"] = [];
@@ -3115,8 +3116,6 @@ var FS_createLazyFile = (...args) => FS.createLazyFile(...args);
 
 var FS_createDevice = (...args) => FS.createDevice(...args);
 
-var isInitialized = () => runtimeInitialized;
-
 FS.createPreloadedFile = FS_createPreloadedFile;
 
 FS.preloadFile = FS_preloadFile;
@@ -3130,8 +3129,6 @@ FS.staticInit();
 {}
 
 // Begin runtime exports
-Module["isInitialized"] = isInitialized;
-
 Module["addRunDependency"] = addRunDependency;
 
 Module["removeRunDependency"] = removeRunDependency;

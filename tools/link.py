@@ -1573,7 +1573,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       ]
 
     settings.EXPORTED_RUNTIME_METHODS += [
-      'isInitialized',
       'addRunDependency',
       'removeRunDependency',
     ]

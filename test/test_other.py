@@ -15043,7 +15043,7 @@ addToLibrary({
     # it runs.
     for prop in ('onRuntimeInitialized', 'postRun', 'preRun', 'preInit'):
       create_file('post.js', f'Module.{prop} = () => console.log("will never fire since assigned too late")')
-      expected = f"Aborted(Attempt to set `Module.{prop}` after it has already been processed.  This can happen, for example, when code is injected via '--post-js' rather than '--pre-js')"
+      expected = f"Aborted(Attempt to modify `Module.{prop}` after it has already been processed.  This can happen, for example, when code is injected via '--post-js' rather than '--pre-js')"
       self.do_runf('hello_world.c', expected, cflags=['--post-js=post.js', '-sWASM_ASYNC_COMPILATION=0'], assert_returncode=NON_ZERO)
 
   @crossplatform
