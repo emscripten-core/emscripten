@@ -5,6 +5,7 @@
 
 
 import glob
+import hashlib
 import importlib
 import itertools
 import json
@@ -15577,3 +15578,67 @@ console.log('OK');'''
 
     err = self.run_process([EMCC, '-sUSE_PTHREADS', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained('emcc: warning: USE_PTHREADS is deprecated (prefer the standard -pthread flag). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
+
+  def test_cross_origin_storage(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sCROSS_ORIGIN_STORAGE', '-o', 'hello.js'])
+    js = read_file('hello.js')
+    m = re.search(r"algorithm:\s*'SHA-256',\s*value:\s*'([0-9a-f]{64})'", js)
+    self.assertTrue(m, 'could not find a 64-char hex hash value in JS output')
+    embedded_hash = m.group(1)
+    expected_hash = hashlib.sha256(open('hello.wasm', 'rb').read()).hexdigest()
+    self.assertEqual(embedded_hash, expected_hash,
+                     'embedded wasm hash does not match actual .wasm SHA-256')
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertNotContained('crossOriginStorage', js)
+    self.assertNotContained("Module['wasmHash']", js)
+
+  def test_cross_origin_storage_errors(self):
+    self.assert_fail([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sENVIRONMENT=node'],
+                     'CROSS_ORIGIN_STORAGE requires a web environment')
+    self.assert_fail([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sSINGLE_FILE'],
+                     'CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE')
+    self.assert_fail([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sWASM_ASYNC_COMPILATION=0'],
+                     'CROSS_ORIGIN_STORAGE is not compatible with WASM_ASYNC_COMPILATION=0')
+    self.assert_fail([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sSIDE_MODULE'],
+                     'CROSS_ORIGIN_STORAGE is not compatible with SIDE_MODULE')
+
+  def test_cross_origin_storage_origins(self):
+    self.run_process([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sCROSS_ORIGIN_STORAGE_ORIGINS=https://app.example.com,https://api.example.com',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertContained('"https://app.example.com"', js)
+    self.assertContained('"https://api.example.com"', js)
+    self.assertNotContained("origins: '*'", js)
+    self.run_process([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sCROSS_ORIGIN_STORAGE_ORIGINS=[]',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertContained('{ create: true }', js)
+    self.assertNotContained('origins:', js)
+    self.assert_fail(
+      [EMCC, test_file('hello_world.c'),
+       '-sCROSS_ORIGIN_STORAGE',
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=*,https://example.com'],
+      "'*' must not be mixed with explicit origins")
+    self.assert_fail(
+      [EMCC, test_file('hello_world.c'),
+       '-sCROSS_ORIGIN_STORAGE',
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=http://example.com'],
+      'is not a valid HTTPS origin')
+    self.assert_fail(
+      [EMCC, test_file('hello_world.c'),
+       '-sCROSS_ORIGIN_STORAGE',
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=https://example.com/path'],
+      'is not a valid HTTPS origin')

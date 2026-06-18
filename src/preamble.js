@@ -626,6 +626,63 @@ async function instantiateArrayBuffer(binaryFile, imports) {
 
 async function instantiateAsync(binary, binaryFile, imports) {
 #if !SINGLE_FILE
+#if CROSS_ORIGIN_STORAGE
+  // Cross-Origin Storage (COS) progressive enhancement.
+  // https://github.com/WICG/cross-origin-storage
+  // Any error (not found, not allowed, network failure, …) falls through
+  // to the standard Emscripten streaming path so the page always loads.
+  if (globalThis.navigator?.crossOriginStorage) {
+    var cosHash = Module['wasmHash'];
+    try {
+      var cosHandle = await navigator.crossOriginStorage.requestFileHandle(cosHash);
+      // Cache hit — read the Blob and instantiate from its ArrayBuffer.
+      var cosFile = await cosHandle.getFile();
+      var cosBytes = await cosFile.arrayBuffer();
+#if expectToReceiveOnModule('onCOSCacheHit')
+      Module['onCOSCacheHit']?.(cosHash.value);
+#endif
+      return WebAssembly.instantiate(cosBytes, imports);
+    } catch {
+      // Any error (not found, not allowed, …) — fetch from the network and
+      // attempt to store in COS for future page loads.
+      try {
+        var networkResponse = await fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
+        var wasmBytes = await networkResponse.arrayBuffer();
+#if expectToReceiveOnModule('onCOSCacheMiss')
+        Module['onCOSCacheMiss']?.(cosHash.value, binaryFile);
+#endif
+        // Fire-and-forget store; never block instantiation on the write.
+        (async () => {
+          try {
+            var writeHandle = await navigator.crossOriginStorage.requestFileHandle(
+              cosHash,
+#if CROSS_ORIGIN_STORAGE_ORIGINS[0] === '*'
+              { create: true, origins: '*' },
+#elif CROSS_ORIGIN_STORAGE_ORIGINS.length
+              { create: true, origins: {{{ JSON.stringify(CROSS_ORIGIN_STORAGE_ORIGINS) }}} },
+#else
+              { create: true },
+#endif
+            );
+            var writable = await writeHandle.createWritable();
+            await writable.write(new Blob([wasmBytes], { type: 'application/wasm' }));
+            await writable.close();
+#if expectToReceiveOnModule('onCOSStore')
+            Module['onCOSStore']?.(cosHash.value);
+#endif
+          } catch (storeErr) {
+            err(`COS store failed: ${storeErr}`);
+          }
+        })();
+        return WebAssembly.instantiate(wasmBytes, imports);
+      } catch (fetchErr) {
+        // Network fetch failed; fall through to the standard path below.
+        err(`COS fallback fetch failed: ${fetchErr}`);
+      }
+      // Fall through to the standard streaming path below.
+    }
+  }
+#endif // CROSS_ORIGIN_STORAGE
   if (!binary
 #if MIN_SAFARI_VERSION < 150000
       // See: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/WebAssembly/instantiateStreaming
@@ -824,6 +881,12 @@ function getWasmImports() {
 #endif // WASM_ASYNC_COMPILATION
 
   var info = getWasmImports();
+
+#if CROSS_ORIGIN_STORAGE
+  // Expose the build-time hash so that custom Module['instantiateWasm']
+  // callbacks can implement their own COS-aware loading path.
+  Module['wasmHash'] = { algorithm: 'SHA-256', value: '<<< WASM_HASH_VALUE >>>' };
+#endif
 
 #if expectToReceiveOnModule('instantiateWasm')
   // User shell pages can write their own Module.instantiateWasm = function(imports, successCallback) callback

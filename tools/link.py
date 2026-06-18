@@ -5,6 +5,7 @@
 
 import base64
 import glob
+import hashlib
 import json
 import logging
 import os
@@ -792,6 +793,19 @@ def get_dylibs(options, linker_args):
   return dylibs
 
 
+def setup_cross_origin_storage():
+  if not settings.ENVIRONMENT_MAY_BE_WEB:
+    exit_with_error('CROSS_ORIGIN_STORAGE requires a web environment (navigator.crossOriginStorage is not available outside the browser)')
+  origins = settings.CROSS_ORIGIN_STORAGE_ORIGINS
+  if '*' in origins and len(origins) > 1:
+    exit_with_error("CROSS_ORIGIN_STORAGE_ORIGINS: '*' must not be mixed with explicit origins")
+  for o in origins:
+    if o == '*':
+      continue
+    if not re.fullmatch(r'https://[^/]+(:\d+)?', o):
+      exit_with_error(f"CROSS_ORIGIN_STORAGE_ORIGINS: {o!r} is not a valid HTTPS origin (expected 'https://host' or 'https://host:port')")
+
+
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   """Future modifications should consider refactoring to reduce complexity.
@@ -1207,6 +1221,9 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   if settings.WASM == 2 and settings.SINGLE_FILE:
     exit_with_error('cannot have both WASM=2 and SINGLE_FILE enabled at the same time')
+
+  if settings.CROSS_ORIGIN_STORAGE:
+    setup_cross_origin_storage()
 
   if settings.MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION and options.oformat != OFormat.HTML:
     exit_with_error('MINIMAL_RUNTIME_STREAMING_WASM_COMPILATION is only compatible with html output')
@@ -1900,6 +1917,14 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
     phase_source_transforms(options)
 
   phase_binaryen(target, options, wasm_target)
+
+  # Compute the SHA-256 hash of the final wasm (after binaryen) and substitute
+  # the <<< WASM_HASH_VALUE >>> placeholder that preamble.js left in the JS.
+  if final_js and settings.CROSS_ORIGIN_STORAGE:
+    wasm_hash_value = hashlib.sha256(utils.read_binary(wasm_target)).hexdigest()
+    logger.debug(f'CROSS_ORIGIN_STORAGE: wasm SHA-256 = {wasm_hash_value}')
+    js_content = do_replace(read_file(final_js), '<<< WASM_HASH_VALUE >>>', wasm_hash_value)
+    write_file(final_js, js_content)
 
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:
