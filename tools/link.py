@@ -764,9 +764,6 @@ def setup_sanitizers(options):
       # by SAFE_HEAP as a null pointer dereference.
       exit_with_error('ASan does not work with SAFE_HEAP')
 
-    if settings.MEMORY64:
-      exit_with_error('MEMORY64 does not yet work with ASAN')
-
   if settings.GENERATE_SOURCE_MAP:
     settings.LOAD_SOURCE_MAP = 1
 

@@ -1,7 +1,7 @@
 {
   "a.out.js": 268210,
-  "a.out.nodebug.wasm": 587533,
-  "total": 855743,
+  "a.out.nodebug.wasm": 587558,
+  "total": 855768,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -5324,11 +5324,9 @@
     "$vwarnx",
     "$vwprintf",
     "$vwscanf",
-    "$wait",
     "$wait3",
     "$wait4",
     "$waitid",
-    "$waitpid",
     "$walk",
     "$warn",
     "$warnx",
