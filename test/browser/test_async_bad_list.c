@@ -9,8 +9,9 @@
 int main() {
   int x = EM_ASM_INT({
     globalThis.disableErrorReporting = true;
-    window.onerror = async (e) => {
-      var message = e.toString();
+    var checkError = (err) => {
+      if (!err) return;
+      var message = err.toString();
       var success = message.indexOf("unreachable") >= 0 || // firefox
                     message.indexOf("Script error.") >= 0; // chrome
       if (success && !Module.reported) {
@@ -19,6 +20,12 @@ int main() {
         // manually REPORT_RESULT; we shouldn't call back into native code at this point
         reportResultToServer(0);
       }
+    };
+    window.onerror = (message, source, lineno, colno, error) => {
+      checkError(error || message);
+    };
+    window.onunhandledrejection = (e) => {
+      checkError(e.reason);
     };
     return 0;
   });
