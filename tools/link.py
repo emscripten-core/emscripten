@@ -1921,11 +1921,10 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
   # Compute the SHA-256 hash of the final wasm (after binaryen) and substitute
   # the <<< WASM_HASH_VALUE >>> placeholder that preamble.js left in the JS.
   if final_js and settings.CROSS_ORIGIN_STORAGE:
-    if os.path.exists(wasm_target):
-      wasm_hash_value = hashlib.sha256(utils.read_binary(wasm_target)).hexdigest()
-      logger.debug(f'CROSS_ORIGIN_STORAGE: wasm SHA-256 = {wasm_hash_value}')
-      js_content = do_replace(read_file(final_js), '<<< WASM_HASH_VALUE >>>', wasm_hash_value)
-      write_file(final_js, js_content)
+    wasm_hash_value = hashlib.sha256(utils.read_binary(wasm_target)).hexdigest()
+    logger.debug(f'CROSS_ORIGIN_STORAGE: wasm SHA-256 = {wasm_hash_value}')
+    js_content = do_replace(read_file(final_js), '<<< WASM_HASH_VALUE >>>', wasm_hash_value)
+    write_file(final_js, js_content)
 
   # If we are not emitting any JS then we are all done now
   if options.oformat != OFormat.WASM:
