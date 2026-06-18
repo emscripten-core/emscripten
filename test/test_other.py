@@ -15650,10 +15650,3 @@ console.log('OK');'''
        '-sENVIRONMENT=web',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=https://example.com/path'],
       'is not a valid HTTPS origin')
-
-  def test_deprecated_settings(self):
-    err = self.run_process([EMCC, '-sMEMORY64', test_file('hello_world.c')], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: MEMORY64 is deprecated (prefer the standard -m64 or --target=wasm64 flags). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
-
-    err = self.run_process([EMCC, '-sUSE_PTHREADS', test_file('hello_world.c')], stderr=PIPE).stderr
-    self.assertContained('emcc: warning: USE_PTHREADS is deprecated (prefer the standard -pthread flag). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)

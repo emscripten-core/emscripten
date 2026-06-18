@@ -5699,7 +5699,6 @@ fetch('report_result?0');
     self.btest_exit('test_pthread_memgrowth_stale_views.c',
                     cflags=['-pthread', '-sINITIAL_MEMORY=10mb', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'])
 
-
   def test_cross_origin_storage_fallback(self):
     if not is_chrome():
       self.skipTest('cross-origin storage tests require a Chromium-based browser')

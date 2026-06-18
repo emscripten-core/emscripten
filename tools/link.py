@@ -1905,7 +1905,6 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
     bindgen_jslib = building.run_wasm_bindgen(in_wasm)
     settings.JS_LIBRARIES.append(bindgen_jslib)
 
-
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
   if settings.EMBIND_AOT:
