@@ -135,7 +135,8 @@ Module["expectedDataFileDownloads"]++;
       }
       await processPackageData(fetched);
     }
-    if (Module["calledRun"]) {
+    // Detect whether the module JS file has already been loaded.
+    if (Module["FS_createPath"]) {
       runWithFS(Module);
     } else {
       if (!Module["preRun"]) Module["preRun"] = [];
@@ -599,7 +600,7 @@ var initRandomFill = () => {
   // This block is not needed on v19+ since crypto.getRandomValues is builtin
   if (ENVIRONMENT_IS_NODE) {
     var nodeCrypto = require("node:crypto");
-    return view => nodeCrypto.randomFillSync(view);
+    return view => (nodeCrypto.randomFillSync(view), 0);
   }
   return view => (crypto.getRandomValues(view), 0);
 };
@@ -3054,7 +3055,7 @@ var SYSCALLS = {
       // MAP_PRIVATE calls need not to be synced back to underlying fs
       return 0;
     }
-    var buffer = HEAPU8.slice(addr, addr + len);
+    var buffer = HEAPU8.subarray(addr, addr + len);
     FS.msync(stream, buffer, offset, len, flags);
   },
   getStreamFromFD(fd) {
@@ -3178,12 +3179,7 @@ function callMain() {
 }
 
 function run() {
-  if (runDependencies > 0) {
-    dependenciesFulfilled = run;
-    return;
-  }
   preRun();
-  // a preRun added a dependency, run will be called later
   if (runDependencies > 0) {
     dependenciesFulfilled = run;
     return;
@@ -3191,7 +3187,6 @@ function run() {
   function doRun() {
     // run may have just been called through dependencies being fulfilled just in this very frame,
     // or while the async setStatus time below was happening
-    Module["calledRun"] = true;
     if (ABORT) return;
     initRuntime();
     preMain();

@@ -117,7 +117,7 @@ function run() {
 #endif
 
 function initRuntime(wasmExports) {
-#if ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE
+#if ASSERTIONS || SAFE_HEAP || USE_ASAN || MODULARIZE || PTHREADS
   runtimeInitialized = true;
 #endif
 

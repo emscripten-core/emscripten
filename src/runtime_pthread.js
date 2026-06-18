@@ -131,6 +131,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
       } else if (cmd == {{{ CMD_RUN }}}) {
 #if ASSERTIONS
         assert(msgData.pthread_ptr);
+        assert(wasmMemory, "CMD_RUN received before CMD_LOAD");
 #endif
         // Call inside JS module to set up the stack frame for this pthread in JS module scope.
         // This needs to be the first thing that we do, as we cannot call to any C/C++ functions
@@ -190,7 +191,7 @@ if (ENVIRONMENT_IS_PTHREAD) {
       err(`worker: onmessage() captured an uncaught exception: ${ex}`);
       if (ex?.stack) err(ex.stack);
 #endif
-      __emscripten_thread_crashed();
+      if (runtimeInitialized) __emscripten_thread_crashed();
       throw ex;
     }
   };

@@ -332,6 +332,14 @@ def get_deno():
   return get_engine(engine_is_deno)
 
 
+def check_node_version(major, minor=0, revision=0):
+  nodejs = get_nodejs()
+  if not nodejs:
+    return False
+  version = shared.get_node_version(nodejs)
+  return version >= (major, minor, revision)
+
+
 def clean_js_output(output):
   """Cleanup the JS output prior to running verification steps on it.
 
@@ -543,14 +551,10 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     self.fail('either d8, node >= 24 or deno required to run wasm64 tests.  Use EMTEST_SKIP_WASM64 to skip')
 
   def try_require_node_version(self, major, minor=0, revision=0):
-    nodejs = get_nodejs()
-    if not nodejs:
-      return False
-    version = shared.get_node_version(nodejs)
-    if version < (major, minor, revision):
+    if not check_node_version(major, minor, revision):
       return False
 
-    self.require_engine(nodejs)
+    self.require_engine(get_nodejs())
     return True
 
   def require_wasm_legacy_eh(self):

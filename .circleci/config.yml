@@ -985,6 +985,7 @@ jobs:
             other.test_node_emscripten_num_logical_cores
             other.test_js_base64_api
             other.test_pthread_growth*
+            other.test_memory_growth
             core2.test_hello_world
             core2.test_pthread_create
             core2.test_i64_invoke_bigint
@@ -1035,6 +1036,7 @@ jobs:
           test_targets: "
             browser.test_gl_stride
             browser.test_memory_growth_during_startup
+            browser.test_pthread_memgrowth_stale_views
             browser.test_pthread_large_pthread_allocation
             browser.test_pthread_sbrk*
             browser.test_pthread_asan*
