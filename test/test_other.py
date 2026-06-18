@@ -15578,10 +15578,7 @@ console.log('OK');'''
     self.assertContained('emcc: warning: USE_PTHREADS is deprecated (prefer the standard -pthread flag). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
 
   def test_cross_origin_storage(self):
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=web',
-                      '-o', 'hello.js'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-sCROSS_ORIGIN_STORAGE', '-o', 'hello.js'])
     js = read_file('hello.js')
     m = re.search(r"algorithm:\s*'SHA-256',\s*value:\s*'([0-9a-f]{64})'", js)
     self.assertTrue(m, 'could not find a 64-char hex hash value in JS output')
@@ -15589,9 +15586,7 @@ console.log('OK');'''
     expected_hash = hashlib.sha256(open('hello.wasm', 'rb').read()).hexdigest()
     self.assertEqual(embedded_hash, expected_hash,
                      'embedded wasm hash does not match actual .wasm SHA-256')
-    self.run_process([EMCC, test_file('hello_world.c'),
-                      '-sENVIRONMENT=web',
-                      '-o', 'hello.js'])
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'hello.js'])
     js = read_file('hello.js')
     self.assertNotContained('crossOriginStorage', js)
     self.assertNotContained("Module['wasmHash']", js)
@@ -15617,7 +15612,6 @@ console.log('OK');'''
   def test_cross_origin_storage_origins(self):
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=web',
                       '-sCROSS_ORIGIN_STORAGE_ORIGINS=https://app.example.com,https://api.example.com',
                       '-o', 'hello.js'])
     js = read_file('hello.js')
@@ -15626,7 +15620,6 @@ console.log('OK');'''
     self.assertNotContained("origins: '*'", js)
     self.run_process([EMCC, test_file('hello_world.c'),
                       '-sCROSS_ORIGIN_STORAGE',
-                      '-sENVIRONMENT=web',
                       '-sCROSS_ORIGIN_STORAGE_ORIGINS=[]',
                       '-o', 'hello.js'])
     js = read_file('hello.js')
