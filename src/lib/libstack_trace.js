@@ -231,7 +231,7 @@ var LibraryStackTrace = {
     }
 
     for (var i = 0; i < count && stack[i+offset]; ++i) {
-      {{{ makeSetValue('buffer', 'i*4', 'convertFrameToPC(stack[i + offset])', 'i32') }}};
+      {{{ makeSetValue('buffer', `i*${POINTER_SIZE}`, 'convertFrameToPC(stack[i + offset])', '*') }}};
     }
     return i;
   },

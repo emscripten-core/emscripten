@@ -11174,11 +11174,12 @@ int main(void) {
     self.assert_fail([EMCC, test_file('malloc_none.c'), '-sMALLOC=none'], 'undefined symbol: malloc')
 
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
+  @also_with_wasm64
   @parameterized({
-    'c': ['c', []],
-    'cpp': ['cpp', []],
-    'growth': ['cpp', ['-sALLOW_MEMORY_GROWTH']],
-    'wasmfs': ['c', ['-sWASMFS']],
+    '': ('c', []),
+    'cpp': ('cpp', []),
+    'growth': ('cpp', ['-sALLOW_MEMORY_GROWTH']),
+    'wasmfs': ('c', ['-sWASMFS']),
   })
   def test_lsan_leaks(self, ext, args):
     self.do_runf(
@@ -13139,6 +13140,7 @@ void foo() {}
 
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
   @requires_pthreads
+  @also_with_wasm64
   def test_pthread_lsan_leak(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
