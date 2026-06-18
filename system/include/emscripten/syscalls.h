@@ -111,10 +111,10 @@ int __syscall_getsockopt(int sockfd, int level, int optname, intptr_t optval, in
 int __syscall_setsockopt(int sockfd, int level, int optname, intptr_t optval, socklen_t optlen, int dummy);
 int __syscall_getsockname(int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3);
 int __syscall_getpeername(int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3);
-ssize_t __syscall_sendto(int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, socklen_t alen);
-ssize_t __syscall_sendmsg(int sockfd, intptr_t msg , int flags, intptr_t addr, size_t alen, int dummy);
-ssize_t __syscall_recvfrom(int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, intptr_t alen);
-ssize_t __syscall_recvmsg(int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3);
+int __syscall_sendto(int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, socklen_t alen);
+int __syscall_sendmsg(int sockfd, intptr_t msg , int flags, intptr_t addr, size_t alen, int dummy);
+int __syscall_recvfrom(int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, intptr_t alen);
+int __syscall_recvmsg(int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3);
 int __syscall_shutdown(int sockfd, int how, int dummy, int dummy2, int dummy3, int dummy4);
 
 #ifdef __cplusplus

@@ -1769,26 +1769,30 @@ int __syscall_getpeername(
   return -ENOSYS;
 }
 
-ssize_t __syscall_sendto(
-  int sockfd, intptr_t msg, size_t len, int flags, intptr_t addr, socklen_t alen) {
+int __syscall_sendto(int sockfd,
+                     intptr_t msg,
+                     size_t len,
+                     int flags,
+                     intptr_t addr,
+                     socklen_t alen) {
   return -ENOSYS;
 }
 
-ssize_t __syscall_sendmsg(
+int __syscall_sendmsg(
   int sockfd, intptr_t msg, int flags, intptr_t addr, size_t alen, int dummy) {
   return -ENOSYS;
 }
 
-ssize_t __syscall_recvfrom(int sockfd,
-                           intptr_t msg,
-                           size_t len,
-                           int flags,
-                           intptr_t addr,
-                           intptr_t alen) {
+int __syscall_recvfrom(int sockfd,
+                       intptr_t msg,
+                       size_t len,
+                       int flags,
+                       intptr_t addr,
+                       intptr_t alen) {
   return -ENOSYS;
 }
 
-ssize_t __syscall_recvmsg(
+int __syscall_recvmsg(
   int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3) {
   return -ENOSYS;
 }
