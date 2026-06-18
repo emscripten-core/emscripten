@@ -60,7 +60,6 @@ from decorators import (
   no_bun,
   no_deno,
   no_highmem,
-  no_wasm64,
   no_windows,
   parameterize,
   parameterized,
@@ -9859,7 +9858,6 @@ int main() {
     self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
 
   @no_esm_integration('fcoverage is not compatible with WASM_ESM_INTEGRATION')
-  @no_wasm64('https://github.com/emscripten-core/emscripten/issues/26865')
   @no_wasm2js('wasm binary required to produce code coverage results with llvm-cov')
   def test_fcoverage_mapping(self):
     expected = '''\
