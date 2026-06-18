@@ -642,47 +642,42 @@ async function instantiateAsync(binary, binaryFile, imports) {
       Module['onCOSCacheHit']?.(cosHash.value);
 #endif
       return WebAssembly.instantiate(cosBytes, imports);
-    } catch (cosErr) {
-      if (cosErr.name === 'NotFoundError') {
-        // Cache miss — fetch normally, then store in COS for future consumers.
-        try {
-          var networkResponse = await fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
-          var wasmBytes = await networkResponse.arrayBuffer();
+    } catch {
+      // Any error (not found, not allowed, …) — fetch from the network and
+      // attempt to store in COS for future page loads.
+      try {
+        var networkResponse = await fetch(binaryFile, {{{ makeModuleReceiveExpr('fetchSettings', "{ credentials: 'same-origin' }") }}});
+        var wasmBytes = await networkResponse.arrayBuffer();
 #if expectToReceiveOnModule('onCOSCacheMiss')
-          Module['onCOSCacheMiss']?.(cosHash.value, binaryFile);
+        Module['onCOSCacheMiss']?.(cosHash.value, binaryFile);
 #endif
-          // Fire-and-forget store; never block instantiation on the write.
-          (async () => {
-            try {
-              var writeHandle = await navigator.crossOriginStorage.requestFileHandle(
-                cosHash,
+        // Fire-and-forget store; never block instantiation on the write.
+        (async () => {
+          try {
+            var writeHandle = await navigator.crossOriginStorage.requestFileHandle(
+              cosHash,
 #if CROSS_ORIGIN_STORAGE_ORIGINS.length === 1 && CROSS_ORIGIN_STORAGE_ORIGINS[0] === '*'
-                { create: true, origins: '*' },
+              { create: true, origins: '*' },
 #elif CROSS_ORIGIN_STORAGE_ORIGINS.length
-                { create: true, origins: {{{ JSON.stringify(CROSS_ORIGIN_STORAGE_ORIGINS) }}} },
+              { create: true, origins: {{{ JSON.stringify(CROSS_ORIGIN_STORAGE_ORIGINS) }}} },
 #else
-                { create: true },
+              { create: true },
 #endif
-              );
-              var writable = await writeHandle.createWritable();
-              await writable.write(new Blob([wasmBytes], { type: 'application/wasm' }));
-              await writable.close();
+            );
+            var writable = await writeHandle.createWritable();
+            await writable.write(new Blob([wasmBytes], { type: 'application/wasm' }));
+            await writable.close();
 #if expectToReceiveOnModule('onCOSStore')
-              Module['onCOSStore']?.(cosHash.value);
+            Module['onCOSStore']?.(cosHash.value);
 #endif
-            } catch (storeErr) {
-              err(`COS store failed: ${storeErr}`);
-            }
-          })();
-          return WebAssembly.instantiate(wasmBytes, imports);
-        } catch (fetchErr) {
-          // Network fetch failed; fall through to the standard path below.
-          err(`COS fallback fetch failed: ${fetchErr}`);
-        }
-      } else if (cosErr.name === 'NotAllowedError') {
-        err(`COS: permission denied.`);
-      } else {
-        err(`Cross-Origin Storage lookup failed: ${cosErr}`);
+          } catch (storeErr) {
+            err(`COS store failed: ${storeErr}`);
+          }
+        })();
+        return WebAssembly.instantiate(wasmBytes, imports);
+      } catch (fetchErr) {
+        // Network fetch failed; fall through to the standard path below.
+        err(`COS fallback fetch failed: ${fetchErr}`);
       }
       // Fall through to the standard streaming path below.
     }
