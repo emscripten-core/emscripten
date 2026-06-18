@@ -629,8 +629,8 @@ async function instantiateAsync(binary, binaryFile, imports) {
 #if CROSS_ORIGIN_STORAGE
   // Cross-Origin Storage (COS) progressive enhancement.
   // https://github.com/WICG/cross-origin-storage
-  // Any error (NotAllowedError, network failure, …) falls through to the
-  // standard Emscripten streaming path so the page always loads.
+  // Any error (not found, not allowed, network failure, …) falls through
+  // to the standard Emscripten streaming path so the page always loads.
   if (globalThis.navigator?.crossOriginStorage) {
     var cosHash = Module['wasmHash'];
     try {
