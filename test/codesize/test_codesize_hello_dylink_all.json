@@ -1,7 +1,7 @@
 {
   "a.out.js": 268255,
-  "a.out.nodebug.wasm": 587563,
-  "total": 855818,
+  "a.out.nodebug.wasm": 587339,
+  "total": 855594,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -4649,7 +4649,6 @@
     "$getpwnam",
     "$getpwnam_r",
     "$getrlimit",
-    "$getrusage",
     "$gets",
     "$getservbyname",
     "$getservbyname_r",
@@ -5329,7 +5328,6 @@
     "$wait3",
     "$wait4",
     "$waitid",
-    "$waitpid",
     "$walk",
     "$warn",
     "$warnx",
