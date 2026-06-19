@@ -27,8 +27,6 @@ from functools import wraps
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
-from packaging.version import Version
-
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner other')
 
@@ -947,10 +945,10 @@ f.close()
 
   @requires_ninja
   def test_cmake_cxx_import_std(self):
-    cmake_minimum = '3.30'
+    cmake_minimum = (3, 30)
     output = self.run_process([EMCMAKE, 'cmake', '--version'], stdout=PIPE).stdout
     cmake_version = re.search(r'^cmake version (\d+(?:\.\d+)*)', output).group(1)
-    if Version(cmake_version) < Version(cmake_minimum):
+    if tuple(map(int, cmake_version.split('.'))) < cmake_minimum:
       self.skipTest(f'CMake > {cmake_minimum} required ({cmake_version})')
 
     self.run_process([EMCMAKE, 'cmake', '-GNinja', test_file('cmake/cxx_import_std')])
