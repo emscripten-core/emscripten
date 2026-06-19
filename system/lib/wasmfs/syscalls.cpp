@@ -1723,30 +1723,38 @@ int _munmap_js(
 
 int __syscall_accept4(int sockfd,
                       intptr_t addr,
-                      intptr_t addrlen,
+                      intptr_t len,
                       int flags,
-                      int dummy1,
-                      int dummy2) {
+                      int unused1,
+                      int unused2) {
   return -ENOSYS;
 }
 
-int __syscall_bind(
-  int sockfd, intptr_t addr, socklen_t alen, int dummy, int dummy2, int dummy3) {
+int __syscall_bind(int sockfd,
+                   intptr_t addr,
+                   socklen_t alen,
+                   int unused1,
+                   int unused2,
+                   int unused3) {
   return -ENOSYS;
 }
 
-int __syscall_connect(
-  int sockfd, intptr_t addr, socklen_t len, int dummy, int dummy2, int dummy3) {
+int __syscall_connect(int sockfd,
+                      intptr_t addr,
+                      socklen_t len,
+                      int unused1,
+                      int unused2,
+                      int unused3) {
   return -ENOSYS;
 }
 
 int __syscall_socket(
-  int domain, int type, int protocol, int dummy1, int dummy2, int dummy3) {
+  int domain, int type, int protocol, int unused1, int unused2, int unused3) {
   return -ENOSYS;
 }
 
 int __syscall_listen(
-  int sockfd, int backlog, int dummy1, int dummy2, int dummy3, int dummy4) {
+  int sockfd, int backlog, int unused1, int unused2, int unused3, int unused4) {
   return -ENOSYS;
 }
 
@@ -1755,22 +1763,30 @@ int __syscall_getsockopt(int sockfd,
                          int optname,
                          intptr_t optval,
                          intptr_t optlen,
-                         int dummy) {
+                         int unused) {
   return -ENOSYS;
 }
 
-int __syscall_getsockname(
-  int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3) {
+int __syscall_getsockname(int sockfd,
+                          intptr_t addr,
+                          intptr_t len,
+                          int unused1,
+                          int unused2,
+                          int unused3) {
   return -ENOSYS;
 }
 
-int __syscall_getpeername(
-  int sockfd, intptr_t addr, intptr_t len, int dummy, int dummy2, int dummy3) {
+int __syscall_getpeername(int sockfd,
+                          intptr_t addr,
+                          intptr_t len,
+                          int unused1,
+                          int unused2,
+                          int unused3) {
   return -ENOSYS;
 }
 
 int __syscall_sendto(int sockfd,
-                     intptr_t msg,
+                     intptr_t buf,
                      size_t len,
                      int flags,
                      intptr_t addr,
@@ -1779,12 +1795,12 @@ int __syscall_sendto(int sockfd,
 }
 
 int __syscall_sendmsg(
-  int sockfd, intptr_t msg, int flags, intptr_t addr, size_t alen, int dummy) {
+  int sockfd, intptr_t msg, int flags, int unused1, int unused2, int unused3) {
   return -ENOSYS;
 }
 
 int __syscall_recvfrom(int sockfd,
-                       intptr_t msg,
+                       intptr_t buf,
                        size_t len,
                        int flags,
                        intptr_t addr,
@@ -1793,7 +1809,7 @@ int __syscall_recvfrom(int sockfd,
 }
 
 int __syscall_recvmsg(
-  int sockfd, intptr_t msg, int flags, int dummy, int dummy2, int dummy3) {
+  int sockfd, intptr_t msg, int flags, int unused1, int unused2, int unused3) {
   return -ENOSYS;
 }
 

@@ -269,7 +269,7 @@ sigs = {
   __syscall_recvmsg__sig: 'iipiiii',
   __syscall_renameat__sig: 'iipip',
   __syscall_rmdir__sig: 'ip',
-  __syscall_sendmsg__sig: 'iipippi',
+  __syscall_sendmsg__sig: 'iipiiii',
   __syscall_sendto__sig: 'iippipi',
   __syscall_shutdown__sig: 'iiiiiii',
   __syscall_socket__sig: 'iiiiiii',

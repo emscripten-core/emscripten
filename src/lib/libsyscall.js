@@ -351,7 +351,7 @@ var SyscallsLibrary = {
     return info;
   },
   __syscall_socket__deps: ['$SOCKFS'],
-  __syscall_socket: (domain, type, protocol) => {
+  __syscall_socket: (domain, type, protocol, u1, u2, u3) => {
     var sock = SOCKFS.createSocket(domain, type, protocol);
 #if ASSERTIONS
     assert(sock.stream.fd < 64); // XXX ? select() assumes socket fd values are in 0..63
@@ -359,45 +359,45 @@ var SyscallsLibrary = {
     return sock.stream.fd;
   },
   __syscall_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_getsockname: (fd, addr, addrlen, d1, d2, d3) => {
+  __syscall_getsockname: (fd, addr, len, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
     // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
-    var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport, addrlen);
+    var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport, len);
 #if ASSERTIONS
     assert(!errno);
 #endif
     return 0;
   },
   __syscall_getpeername__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_getpeername: (fd, addr, addrlen, d1, d2, d3) => {
+  __syscall_getpeername: (fd, addr, len, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
     if (!sock.daddr) {
       return -{{{ cDefs.ENOTCONN }}}; // The socket is not connected.
     }
-    var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport, addrlen);
+    var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport, len);
 #if ASSERTIONS
     assert(!errno);
 #endif
     return 0;
   },
   __syscall_connect__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_connect: (fd, addr, addrlen, d1, d2, d3) => {
+  __syscall_connect: (fd, addr, len, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
-    var info = getSocketAddress(addr, addrlen);
+    var info = getSocketAddress(addr, len);
     sock.sock_ops.connect(sock, info.addr, info.port);
     return 0;
   },
   __syscall_shutdown__deps: ['$getSocketFromFD'],
-  __syscall_shutdown: (fd, how) => {
+  __syscall_shutdown: (fd, how, u1, u2, u3, u4) => {
     getSocketFromFD(fd);
     return -{{{ cDefs.ENOSYS }}}; // unsupported feature
   },
   __syscall_accept4__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_accept4: (fd, addr, addrlen, flags, d1, d2) => {
+  __syscall_accept4: (fd, addr, len, flags, u1, u2) => {
     var sock = getSocketFromFD(fd);
     var newsock = sock.sock_ops.accept(sock);
     if (addr) {
-      var errno = writeSockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport, addrlen);
+      var errno = writeSockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport, len);
 #if ASSERTIONS
       assert(!errno);
 #endif
@@ -405,25 +405,25 @@ var SyscallsLibrary = {
     return newsock.stream.fd;
   },
   __syscall_bind__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_bind: (fd, addr, addrlen, d1, d2, d3) => {
+  __syscall_bind: (fd, addr, len, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
-    var info = getSocketAddress(addr, addrlen);
+    var info = getSocketAddress(addr, len);
     sock.sock_ops.bind(sock, info.addr, info.port);
     return 0;
   },
   __syscall_listen__deps: ['$getSocketFromFD'],
-  __syscall_listen: (fd, backlog) => {
+  __syscall_listen: (fd, backlog, u1, u2, u3, u4) => {
     var sock = getSocketFromFD(fd);
     sock.sock_ops.listen(sock, backlog);
     return 0;
   },
   __syscall_recvfrom__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_recvfrom: (fd, buf, len, flags, addr, addrlen) => {
+  __syscall_recvfrom: (fd, buf, len, flags, addr, alen) => {
     var sock = getSocketFromFD(fd);
     var msg = sock.sock_ops.recvmsg(sock, len);
     if (!msg) return 0; // socket is closed
     if (addr) {
-      var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port, addrlen);
+      var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port, alen);
 #if ASSERTIONS
       assert(!errno);
 #endif
@@ -432,18 +432,18 @@ var SyscallsLibrary = {
     return msg.buffer.byteLength;
   },
   __syscall_sendto__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_sendto: (fd, message, length, flags, addr, addr_len) => {
+  __syscall_sendto: (fd, buf, len, flags, addr, alen) => {
     var sock = getSocketFromFD(fd);
     if (!addr) {
       // send, no address provided
-      return FS.write(sock.stream, HEAP8, message, length);
+      return FS.write(sock.stream, HEAP8, buf, len);
     }
-    var dest = getSocketAddress(addr, addr_len);
+    var dest = getSocketAddress(addr, alen);
     // sendto an address
-    return sock.sock_ops.sendmsg(sock, HEAP8, message, length, dest.addr, dest.port);
+    return sock.sock_ops.sendmsg(sock, HEAP8, buf, len, dest.addr, dest.port);
   },
   __syscall_getsockopt__deps: ['$getSocketFromFD'],
-  __syscall_getsockopt: (fd, level, optname, optval, optlen, d1) => {
+  __syscall_getsockopt: (fd, level, optname, optval, optlen, unused) => {
     var sock = getSocketFromFD(fd);
     // Minimal getsockopt aimed at resolving https://github.com/emscripten-core/emscripten/issues/2211
     // so only supports SOL_SOCKET with SO_ERROR.
@@ -458,7 +458,7 @@ var SyscallsLibrary = {
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
   },
   __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress'],
-  __syscall_sendmsg: (fd, message, flags, d1, d2, d3) => {
+  __syscall_sendmsg: (fd, message, flags, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
     var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
@@ -489,7 +489,7 @@ var SyscallsLibrary = {
     return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
   },
   __syscall_recvmsg__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
-  __syscall_recvmsg: (fd, message, flags, d1, d2, d3) => {
+  __syscall_recvmsg: (fd, message, flags, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
     var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
     var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
