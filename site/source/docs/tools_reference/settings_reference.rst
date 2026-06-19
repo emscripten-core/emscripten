@@ -601,11 +601,8 @@ direct access to host sockets. It only works under node and is ignored
 elsewhere.
 
 It supports full TCP (outgoing connect plus bind, listen and accept for
-servers) and UDP. TCP clients use the public node:net API. bind needs a
-synchronous bind() + getsockname(), so it uses the public node APIs that
-provide them when present - net.BoundHandle for TCP and dgram
-bindSync/connectSync for UDP - and falls back to the private tcp_wrap/udp_wrap
-handles on older Node.js versions that lack them.
+servers) and UDP. TCP clients use the public node:net API when possible,
+falling back to the private tcp_wrap/udp_wrap handles on older Node.js.
 
 It is event-driven. Socket readiness comes through the same
 ``emscripten_set_socket_*_callback`` hooks the WebSocket backend uses, so it

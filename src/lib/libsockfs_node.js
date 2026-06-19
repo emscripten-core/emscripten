@@ -13,7 +13,7 @@
 // promotion, a conflict surfaces right here as EADDRINUSE, and the handle is
 // adopted as-is by listen() (server.listen) or connect() (net.Socket). The bind
 // primitive is chosen once per capability: the public, synchronous
-// net.BoundHandle when the runtime offers it, else the private tcp_wrap binding
+// net.BoundSocket when the runtime offers it, else the private tcp_wrap binding
 // as a fallback (net.Server's listen is async and cannot report an assigned
 // ephemeral port up front, so it can't drive bind on its own). connect() goes
 // through net.Socket, adopting the bound handle when one exists so an explicit
@@ -83,27 +83,27 @@ var NodeSockFSLibrary = {
     },
     // TCP binds eagerly and synchronously, so there is no deferred bind and no
     // lazy handle promotion - the only difference between the two backends is how
-    // a bound handle is produced: the public net.BoundHandle when node offers it,
+    // a bound handle is produced: the public net.BoundSocket when node offers it,
     // else the private tcp_wrap binding. Chosen once, like useDgram().
-    useBoundHandle() {
-      return nodeSockOps.boundHandleOk ??=
-        typeof nodeSockOps.getNet().BoundHandle == 'function';
+    useBoundSocket() {
+      return nodeSockOps.boundSocketOk ??=
+        typeof nodeSockOps.getNet().BoundSocket == 'function';
     },
     // Synchronously bind a TCP socket to addr:port (0 = ephemeral) and record the
     // kernel-assigned name immediately. sock.bound is the resulting role-neutral
-    // handle - a net.BoundHandle, or a raw tcp_wrap handle - adopted as-is by
+    // handle - a net.BoundSocket, or a raw tcp_wrap handle - adopted as-is by
     // listen() (server.listen) and connect() (net.Socket). So getsockname() needs
     // no promotion, a conflict surfaces here as EADDRINUSE (exactly when POSIX
     // bind() would), and close() releases it if unadopted.
     bindHandle(sock, addr, port) {
       var o = sock.opts || {};
-      if (nodeSockOps.useBoundHandle()) {
+      if (nodeSockOps.useBoundSocket()) {
         var bh;
         // The constructor binds synchronously and throws a bind conflict
         // (EADDRINUSE etc.) right here; address() on the bound handle is safe.
         // ipv6Only/reusePort are bind-time options, applied here from the cache.
         try {
-          bh = new (nodeSockOps.getNet().BoundHandle)({
+          bh = new (nodeSockOps.getNet().BoundSocket)({
             host: addr, port, ipv6Only: o.ipv6Only, reusePort: o.reusePort,
           });
         }
@@ -634,7 +634,7 @@ var NodeSockFSLibrary = {
             // reports 1). It cannot be turned off.
             return 0;
           case {{{ cDefs.SO_REUSEPORT }}}: // SO_REUSEPORT. Bind-time: cached and
-            // passed to the BoundHandle at bind. Set after bind has no effect.
+            // passed to the BoundSocket at bind. Set after bind has no effect.
             sock.opts.reusePort = !!val;
             return 0;
         }
@@ -648,7 +648,7 @@ var NodeSockFSLibrary = {
         if (optname === {{{ cDefs.IPV6_V6ONLY }}}) {
           // Bind-time only: IPV6_V6ONLY cannot change once the socket is bound,
           // so reject a late change (POSIX returns EINVAL). Before any
-          // bind/connect/listen we cache it for the BoundHandle constructor.
+          // bind/connect/listen we cache it for the BoundSocket constructor.
           if (sock.state) return -{{{ cDefs.EINVAL }}};
           sock.opts.ipv6Only = !!val;
           return 0;
