@@ -13651,6 +13651,9 @@ int main() {
   def test_wasm_worker_cxx_init(self):
     self.do_run_in_out_file_test('wasm_worker/wasm_worker_cxx_init.cpp', cflags=['-sWASM_WORKERS'])
 
+  def test_wasm_worker_hello_libcxx(self):
+    self.do_runf('codesize/hello_libcxx.cpp', 'hello, world!\n', cflags=['-sWASM_WORKERS'])
+
   @parameterized({
     # we will warn here since -O2 runs the optimizer and -g enables DWARF
     'O2_g': (True, ['-O2', '-g']),
