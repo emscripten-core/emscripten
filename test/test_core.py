@@ -60,6 +60,7 @@ from decorators import (
   no_bun,
   no_deno,
   no_highmem,
+  no_wasm64,
   no_windows,
   parameterize,
   parameterized,
