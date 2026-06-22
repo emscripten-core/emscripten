@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.1 (in development)
+6.0.2 (in development)
 ----------------------
+
+6.0.1 - 06/22/26
+----------------
 - The ability to redirect JS compiler stderr using `EMCC_STDERR_FILE` was
   removed.  These days you can use `EMCC_DEBUG` and/or `EMCC_DEBUG_SAVE` to
   preserve all the intermediate JS compiler files. (#27101)
