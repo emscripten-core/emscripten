@@ -24,6 +24,7 @@ from urllib.request import urlopen
 import common
 from browser_common import (
   CHROMIUM_BASED_BROWSERS,
+  EMTEST_COS_EXTENSION_PATH,
   BrowserCore,
   HttpServerThread,
   Reporting,
@@ -4027,7 +4028,6 @@ Module["preRun"] = () => {
     # same stack size as the main thread normally would.
     self.btest('core/test_safe_stack.c', expected='abort:stack overflow', cflags=['-pthread', '-sPROXY_TO_PTHREAD', '-sSTACK_OVERFLOW_CHECK=2', '-sSTACK_SIZE=64KB'])
 
-  @no_wasm64('TODO: ASAN in memory64')
   @parameterized({
     'leak': ['test_pthread_lsan_leak', ['-gsource-map']],
     'no_leak': ['test_pthread_lsan_no_leak', []],
@@ -4037,7 +4037,6 @@ Module["preRun"] = () => {
   def test_pthread_lsan(self, name, args):
     self.btest(Path('pthread', name + '.cpp'), expected='1', cflags=['-fsanitize=leak', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
-  @no_wasm64('TODO: ASAN in memory64')
   @no_highmem('ASAN + GLOBAL_BASE')
   @parameterized({
     # Reusing the LSan test files for ASan.
@@ -4048,12 +4047,10 @@ Module["preRun"] = () => {
   def test_pthread_asan(self, name, args):
     self.btest(Path('pthread', name + '.cpp'), expected='1', cflags=['-fsanitize=address', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread', name + '.js')] + args)
 
-  @no_wasm64('TODO: ASAN in memory64')
   @no_highmem('ASAN + GLOBAL_BASE')
   def test_pthread_asan_use_after_free(self):
     self.btest('pthread/test_pthread_asan_use_after_free.cpp', expected='1', cflags=['-fsanitize=address', '-pthread', '-sPROXY_TO_PTHREAD', '--pre-js', test_file('pthread/test_pthread_asan_use_after_free.js')])
 
-  @no_wasm64('TODO: ASAN in memory64')
   @no_highmem('ASAN + GLOBAL_BASE')
   @no_firefox('https://github.com/emscripten-core/emscripten/issues/20006')
   @no_safari('TODO: Hangs') # Fails in Safari 17.6 (17618.3.11.11.7, 17618), Safari 26.0.1 (21622.1.22.11.15)
@@ -5287,7 +5284,6 @@ Module["preRun"] = () => {
       self.set_setting('MAXIMUM_MEMORY', '4GB')
     self.btest_exit('alloc_3gb.c', cflags=['-sMALLOC=dlmalloc', '-sALLOW_MEMORY_GROWTH=1'])
 
-  @no_wasm64()
   @parameterized({
     # the fetch backend works even on the main thread: we proxy to a background
     # thread and busy-wait
@@ -5314,7 +5310,6 @@ Module["preRun"] = () => {
                             '--js-library', test_file('wasmfs/wasmfs_fetch.js')] + args)
 
   @no_firefox('no OPFS support yet')
-  @no_wasm64()
   @parameterized({
     '': (['-pthread', '-sPROXY_TO_PTHREAD'],),
     'jspi': (['-Wno-experimental', '-sJSPI'],),
@@ -5697,6 +5692,61 @@ fetch('report_result?0');
   def test_pthread_memgrowth_stale_views(self):
     self.btest_exit('test_pthread_memgrowth_stale_views.c',
                     cflags=['-pthread', '-sINITIAL_MEMORY=10mb', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'])
+
+  def test_cross_origin_storage_fallback(self):
+    if not is_chrome():
+      self.skipTest('cross-origin storage tests require a Chromium-based browser')
+    self.btest_exit('browser_test_hello_world.c',
+                    cflags=['-O2', '-sCROSS_ORIGIN_STORAGE', '-Wno-experimental'])
+
+  def test_cross_origin_storage_miss_then_hit(self):
+    if not is_chrome():
+      self.skipTest('cross-origin storage tests require a Chromium-based browser')
+    if not EMTEST_COS_EXTENSION_PATH:
+      self.skipTest(
+        'set EMTEST_COS_EXTENSION_PATH to the COS extension directory; '
+        'run test/setup_cos_extension.py to download it automatically. '
+        'Note: --load-extension requires Chromium or Chrome for Testing, '
+        'not the official Google Chrome release.',
+      )
+
+    # Restart the browser with a fresh user-data-dir so the extension starts
+    # with empty storage.  Without this, a wasm entry written by a previous
+    # test run (or a retry of this test) would cause the first page load below
+    # to be a cache-hit instead of the expected cache-miss.
+    self.browser_restart()
+
+    # A pre-js that reports via the callbacks instead of from C.
+    # onCOSStore fires after writable.close() completes, so the data is
+    # durably written before the window closes and the second load begins.
+    #
+    # -sINCOMING_MODULE_JS_API replaces the entire default list, so we must
+    # include onAbort and onExit (used by browser_reporting.js) alongside the
+    # COS callbacks; otherwise Emscripten aborts on the unknown Module props.
+    create_file('cos_pre.js', '''
+      var Module = {
+        onCOSStore: function(hash) {
+          console.log('[COS] stored, SHA-256:', hash);
+          reportResultToServer('stored');
+        },
+        onCOSCacheHit: function(hash) {
+          console.log('[COS] cache-hit, SHA-256:', hash);
+          reportResultToServer('cache-hit');
+        },
+      };
+    ''')
+    self.compile_btest('browser_test_hello_world.c', [
+      '-O2',
+      '-sCROSS_ORIGIN_STORAGE',
+      '-Wno-experimental',
+      '-sINCOMING_MODULE_JS_API=onAbort,onExit,onCOSStore,onCOSCacheHit',
+      '--pre-js', 'cos_pre.js',
+      '-o', 'page.html',
+    ], reporting=Reporting.JS_ONLY)
+    # First page load: wasm is fetched from network and written into COS.
+    self.run_browser('page.html', '/report_result?stored')
+    # Second page load: wasm is served from COS.
+    self.run_browser('page.html', '/report_result?cache-hit')
 
 
 class browser64(browser):

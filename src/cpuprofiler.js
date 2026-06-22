@@ -742,13 +742,13 @@ setInterval = (fn, delay) => {
 // Hook into setTimeout to be able to capture the time spent executing them.
 emscriptenCpuProfiler.createSection(3, 'setTimeout', emscriptenCpuProfiler.colorSetTimeoutSection, /*traceable=*/true);
 var realSetTimeout = setTimeout;
-setTimeout = (fn, delay) => {
-  function wrappedSetTimeout() {
+setTimeout = (fn, delay, ...args) => {
+  function wrappedSetTimeout(...args) {
     emscriptenCpuProfiler.enterSection(3);
-    fn();
+    fn(...args);
     emscriptenCpuProfiler.endSection(3);
   };
-  return realSetTimeout(wrappedSetTimeout, delay);
+  return realSetTimeout(wrappedSetTimeout, delay, ...args);
 }
 
 // Backwards compatibility with previously compiled code. Don't call this anymore!

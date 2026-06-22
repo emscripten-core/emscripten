@@ -27,6 +27,10 @@ See docs/process.md for more on how version tagging works.
   naming convetion of `libclang_rt.<something>.a`. (#27089)
 - Dynamic linking now explicitly requires asynchronous Wasm compilation. The
   process of loading side modules at startup currently depends on this. (#27086)
+- New experimental `-sCROSS_ORIGIN_STORAGE` linker flag integrating the
+  proposed [Cross-Origin Storage browser API](https://github.com/WICG/cross-origin-storage)
+  as a progressive enhancement for Wasm loading on the web target. See
+  `docs/compiling/CrossOriginStorage.rst` for details. (#27066)
 - The `-sUSE_PTHREADS` and `-sMEMORY64` flags have been deprecated in favor of the
   more standard `-pthread` and `-m64` (or `--target=wasm64`) flags. (#27025)
 - Adds wasm-bindgen support. When `-sWASM_BINDGEN` is set, Emscripten will call
@@ -35,6 +39,11 @@ See docs/process.md for more on how version tagging works.
   supported. (#23493)
 - Fixed `getentropy`/`random_get` spuriously failing under Node.js and the
   shell environment for small requests. (#27122)
+- The startup process for the generated program now makes use of `async` /
+  `await` under more circumstances (specifically when using `setStatus`, or
+  run dependencies). This means that errors during startup (or during the
+  `main()` function) will more often show up as unhandled promise rejections
+  (`onunhandledreject`) rather than synchronous errors (`onerror`). (#27121)
 
 6.0.0 - 06/04/26
 ----------------

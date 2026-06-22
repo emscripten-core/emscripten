@@ -5,6 +5,7 @@
 
 
 import glob
+import hashlib
 import importlib
 import itertools
 import json
@@ -25,8 +26,6 @@ from datetime import datetime
 from functools import wraps
 from pathlib import Path
 from subprocess import PIPE, STDOUT
-
-from packaging.version import Version
 
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner other')
@@ -348,6 +347,12 @@ class other(RunnerCore):
     finally:
       os.close(master)
       os.close(slave)
+
+  def create_huge_file(self, name, length):
+    f = open(name, "wb")
+    f.seek(length - 1)
+    f.write(b"\0")
+    f.close()
 
   def run_tsc(self, args):
     # We use skipLibCheck to prevent tsc from type checking the node_modules in the parent directory
@@ -940,10 +945,10 @@ f.close()
 
   @requires_ninja
   def test_cmake_cxx_import_std(self):
-    cmake_minimum = '3.30'
+    cmake_minimum = (3, 30)
     output = self.run_process([EMCMAKE, 'cmake', '--version'], stdout=PIPE).stdout
     cmake_version = re.search(r'^cmake version (\d+(?:\.\d+)*)', output).group(1)
-    if Version(cmake_version) < Version(cmake_minimum):
+    if tuple(map(int, cmake_version.split('.'))) < cmake_minimum:
       self.skipTest(f'CMake > {cmake_minimum} required ({cmake_version})')
 
     self.run_process([EMCMAKE, 'cmake', '-GNinja', test_file('cmake/cxx_import_std')])
@@ -6448,12 +6453,114 @@ int main() {
 
   def test_file_packager_huge(self):
     MESSAGE = 'warning: file packager is creating an asset bundle of 257 MB. this is very large, and browsers might have trouble loading it'
-    create_file('huge.dat', 'a' * (1024 * 1024 * 257))
+    self.create_huge_file('huge.dat', 1024 * 1024 * 257)
     create_file('tiny.dat', 'a')
     err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'tiny.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertNotContained(MESSAGE, err)
     err = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], stdout=PIPE, stderr=PIPE).stderr
     self.assertContained(MESSAGE, err)
+    self.clear()
+
+  @parameterized({
+    'no_split': (False, False),
+    'split': (True, False),
+    'split_metadata': (True, True),
+    'no_split_metadata': (False, True),
+  })
+  @with_env_modify({'EM_FILE_PACKAGER_MAX_CHUNK_SIZE_MB': '10'})
+  def test_file_packager_huge_data(self, split, separate_metadata):
+    # Verify the packager's split boundary, with and without separate metadata.
+    large_size = 1024 * 1024
+    sizes = [large_size] * 10
+    if split:
+      sizes[-1] += 1
+    for i, size in enumerate(sizes):
+      self.create_huge_file(f'huge{i}.dat', size)
+
+    args = [FILE_PACKAGER, 'test.data']
+    if separate_metadata:
+      args += ['--separate-metadata', '--js-output=immutable.js']
+    args += ['--preload'] + [f'huge{i}.dat' for i in range(10)]
+    result = self.run_process(args, stdout=PIPE, stderr=PIPE)
+    self.assertExists('test.data')
+    if split:
+      self.assertContained('warning: file packager is splitting bundle into 2 chunks', result.stderr)
+      self.assertExists('test_1.data')
+      self.assertEqual(os.path.getsize('test.data'), large_size * 9)
+      self.assertEqual(os.path.getsize('test_1.data'), sizes[-1])
+    else:
+      self.assertNotExists('test_1.data')
+      self.assertEqual(os.path.getsize('test.data'), (large_size * 10))
+
+    cflags = ['-sFORCE_FILESYSTEM']
+    if separate_metadata:
+      self.assertExists('immutable.js')
+      self.assertExists('immutable.js.metadata')
+      metadata = json.loads(read_file('immutable.js.metadata'))
+      self.assertEqual(len(metadata['files']), 9 if split else 10)
+      for i, file_metadata in enumerate(metadata['files']):
+        self.assertEqual(file_metadata['start'], i * large_size)
+        self.assertEqual(file_metadata['end'], (i * large_size) + large_size)
+        self.assertEqual(file_metadata['filename'], f'/huge{i}.dat')
+      self.assertEqual(metadata['remote_package_size'], (9 if split else 10) * large_size)
+
+      if split:
+        self.assertExists('immutable_1.js')
+        self.assertExists('immutable_1.js.metadata')
+        metadata = json.loads(read_file('immutable_1.js.metadata'))
+        self.assertEqual(len(metadata['files']), 1)
+        self.assertEqual(metadata['files'][0]['start'], 0)
+        self.assertEqual(metadata['files'][0]['end'], sizes[-1])
+        self.assertEqual(metadata['files'][0]['filename'], '/huge9.dat')
+        self.assertEqual(metadata['remote_package_size'], sizes[-1])
+        cflags[:0] = ['--pre-js=immutable.js', '--pre-js=immutable_1.js']
+      else:
+        self.assertNotExists('immutable_1.js')
+        self.assertNotExists('immutable_1.js.metadata')
+        cflags[:0] = ['--pre-js=immutable.js']
+    else:
+      create_file('load.js', result.stdout)
+      cflags.insert(0, '--pre-js=load.js')
+
+    expected_sizes = ',\n    '.join(f'{size}LL' for size in sizes)
+    create_file('src.c', f'''
+#include <assert.h>
+#include <sys/stat.h>
+#include <stdio.h>
+
+int main() {{
+  static const long long expected_sizes[] = {{
+    {expected_sizes}
+  }};
+  char filename[32];
+  struct stat buf;
+  const int num_files = sizeof(expected_sizes) / sizeof(expected_sizes[0]);
+
+  for (int i = 0; i < num_files; ++i) {{
+    snprintf(filename, sizeof(filename), "huge%d.dat", i);
+    assert(stat(filename, &buf) == 0);
+    assert(buf.st_size == expected_sizes[i]);
+  }}
+  printf("done\\n");
+  return 0;
+}}
+''')
+    self.do_runf('src.c', cflags=cflags)
+    self.clear()
+
+  def test_file_packager_huge_split_too_large_default(self):
+    self.create_huge_file('huge.dat', (1024 * 1024 * 1024) + ((1022 * 1024 * 1024) + 1))
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], check=False, stdout=PIPE, stderr=PIPE)
+    self.assertEqual(proc.returncode, 1)
+    self.assertContained('error: cannot package file huge.dat, which is larger than maximum individual file size limit 2046 MB', proc.stderr)
+    self.clear()
+
+  @with_env_modify({'EM_FILE_PACKAGER_MAX_CHUNK_SIZE_MB': '10'})
+  def test_file_packager_huge_split_too_large_env(self):
+    self.create_huge_file('huge.dat', (10 * 1024 * 1024) + 1)
+    proc = self.run_process([FILE_PACKAGER, 'test.data', '--preload', 'huge.dat'], check=False, stdout=PIPE, stderr=PIPE)
+    self.assertEqual(proc.returncode, 1)
+    self.assertContained('error: cannot package file huge.dat, which is larger than maximum individual file size limit 10 MB', proc.stderr)
     self.clear()
 
   @crossplatform
@@ -11067,11 +11174,12 @@ int main(void) {
     self.assert_fail([EMCC, test_file('malloc_none.c'), '-sMALLOC=none'], 'undefined symbol: malloc')
 
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
+  @also_with_wasm64
   @parameterized({
-    'c': ['c', []],
-    'cpp': ['cpp', []],
-    'growth': ['cpp', ['-sALLOW_MEMORY_GROWTH']],
-    'wasmfs': ['c', ['-sWASMFS']],
+    '': ('c', []),
+    'cpp': ('cpp', []),
+    'growth': ('cpp', ['-sALLOW_MEMORY_GROWTH']),
+    'wasmfs': ('c', ['-sWASMFS']),
   })
   def test_lsan_leaks(self, ext, args):
     self.do_runf(
@@ -11150,6 +11258,7 @@ int main(void) {
       ])
 
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
+  @also_with_wasm64
   def test_asan_sync_compilation(self):
     self.set_setting('WASM_ASYNC_COMPILATION', 0)
     self.do_runf(
@@ -13031,6 +13140,7 @@ void foo() {}
 
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
   @requires_pthreads
+  @also_with_wasm64
   def test_pthread_lsan_leak(self):
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
@@ -14741,10 +14851,6 @@ addToLibrary({
     self.assertContained('.randomFillSync(', js_out)
     self.assertContained('.getRandomValues(', js_out)
 
-  def test_wasm64_no_asan(self):
-    expected = 'error: MEMORY64 does not yet work with ASAN'
-    self.assert_fail([EMCC, test_file('hello_world.c'), '-m64', '-fsanitize=address'], expected)
-
   def test_mimalloc_no_asan(self):
     # See https://github.com/emscripten-core/emscripten/issues/23288#issuecomment-2571648258
     expected = 'error: mimalloc is not compatible with -fsanitize=address'
@@ -15471,3 +15577,67 @@ console.log('OK');'''
 
     err = self.run_process([EMCC, '-sUSE_PTHREADS', test_file('hello_world.c')], stderr=PIPE).stderr
     self.assertContained('emcc: warning: USE_PTHREADS is deprecated (prefer the standard -pthread flag). Please open a bug if you have a continuing need for this setting [-Wdeprecated]', err)
+
+  def test_cross_origin_storage(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sCROSS_ORIGIN_STORAGE', '-o', 'hello.js'])
+    js = read_file('hello.js')
+    m = re.search(r"algorithm:\s*'SHA-256',\s*value:\s*'([0-9a-f]{64})'", js)
+    self.assertTrue(m, 'could not find a 64-char hex hash value in JS output')
+    embedded_hash = m.group(1)
+    expected_hash = hashlib.sha256(open('hello.wasm', 'rb').read()).hexdigest()
+    self.assertEqual(embedded_hash, expected_hash,
+                     'embedded wasm hash does not match actual .wasm SHA-256')
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertNotContained('crossOriginStorage', js)
+    self.assertNotContained("Module['wasmHash']", js)
+
+  def test_cross_origin_storage_errors(self):
+    self.assert_fail([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sENVIRONMENT=node'],
+                     'CROSS_ORIGIN_STORAGE requires a web environment')
+    self.assert_fail([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sSINGLE_FILE'],
+                     'CROSS_ORIGIN_STORAGE is not compatible with SINGLE_FILE')
+    self.assert_fail([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sWASM_ASYNC_COMPILATION=0'],
+                     'CROSS_ORIGIN_STORAGE is not compatible with WASM_ASYNC_COMPILATION=0')
+    self.assert_fail([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sSIDE_MODULE'],
+                     'CROSS_ORIGIN_STORAGE is not compatible with SIDE_MODULE')
+
+  def test_cross_origin_storage_origins(self):
+    self.run_process([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sCROSS_ORIGIN_STORAGE_ORIGINS=https://app.example.com,https://api.example.com',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertContained('"https://app.example.com"', js)
+    self.assertContained('"https://api.example.com"', js)
+    self.assertNotContained("origins: '*'", js)
+    self.run_process([EMCC, test_file('hello_world.c'),
+                      '-sCROSS_ORIGIN_STORAGE',
+                      '-sCROSS_ORIGIN_STORAGE_ORIGINS=[]',
+                      '-o', 'hello.js'])
+    js = read_file('hello.js')
+    self.assertContained('{ create: true }', js)
+    self.assertNotContained('origins:', js)
+    self.assert_fail(
+      [EMCC, test_file('hello_world.c'),
+       '-sCROSS_ORIGIN_STORAGE',
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=*,https://example.com'],
+      "'*' must not be mixed with explicit origins")
+    self.assert_fail(
+      [EMCC, test_file('hello_world.c'),
+       '-sCROSS_ORIGIN_STORAGE',
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=http://example.com'],
+      'is not a valid HTTPS origin')
+    self.assert_fail(
+      [EMCC, test_file('hello_world.c'),
+       '-sCROSS_ORIGIN_STORAGE',
+       '-sCROSS_ORIGIN_STORAGE_ORIGINS=https://example.com/path'],
+      'is not a valid HTTPS origin')
