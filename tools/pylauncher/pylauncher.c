@@ -177,9 +177,9 @@ void launcher_main() {
 
   const wchar_t* application_name = get_python_executable();
   wchar_t* script_path_w = get_script_path();
-  size_t command_line_len = wcslen(ccache_prefix) + wcslen(application_name) + wcslen(script_path_w) + 9;
+  size_t command_line_len = wcslen(ccache_prefix) + wcslen(application_name) + wcslen(script_path_w) + 17;
   wchar_t* command_line = malloc(sizeof(wchar_t) * command_line_len);
-  swprintf(command_line, command_line_len, L"%ls\"%ls\" -E \"%ls\"", ccache_prefix, application_name, script_path_w);
+  swprintf(command_line, command_line_len, L"%ls\"%ls\" -E -X utf8 \"%ls\"", ccache_prefix, application_name, script_path_w);
   free(script_path_w);
 
   // -E will not ignore _PYTHON_SYSCONFIGDATA_NAME an internal
