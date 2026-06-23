@@ -6,9 +6,9 @@
 #include <stdio.h>
 #include <string.h>
 
-// Set by the test runner: does the browser under test honor `desynchronized`?
+// Expected desynchronized round-trip value, set by the test runner; -1 = skip.
 #ifndef EXPECT_DESYNCHRONIZED
-#define EXPECT_DESYNCHRONIZED 0
+#define EXPECT_DESYNCHRONIZED -1
 #endif
 
 GLuint compile_shader(GLenum shaderType, const char *src) {
@@ -39,9 +39,12 @@ int main() {
   emscripten_webgl_make_context_current(context);
 
   // #8406: desynchronized should round-trip on browsers that support it.
-  EmscriptenWebGLContextAttributes actualAttrs;
-  emscripten_webgl_get_context_attributes(context, &actualAttrs);
-  assert(actualAttrs.desynchronized == EXPECT_DESYNCHRONIZED);
+  // Skipped for OffscreenCanvas, which doesn't honor it.
+  if (EXPECT_DESYNCHRONIZED >= 0) {
+    EmscriptenWebGLContextAttributes actualAttrs;
+    emscripten_webgl_get_context_attributes(context, &actualAttrs);
+    assert(actualAttrs.desynchronized == EXPECT_DESYNCHRONIZED);
+  }
 
   // Test emscripten_webgl_get_supported_extensions() API
   char *extensions = emscripten_webgl_get_supported_extensions();

@@ -2683,9 +2683,12 @@ Module["preRun"] = () => {
   def test_html5_webgl_api(self, args):
     if '-sOFFSCREENCANVAS_SUPPORT' in args and os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
       return
-    # The `desynchronized` attribute is honored by Chrome but not all browsers.
-    expect_desync = '1' if is_chrome() else '0'
-    self.btest_exit('html5_webgl.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL', f'-DEXPECT_DESYNCHRONIZED={expect_desync}'] + args)
+    cflags = ['-sMAX_WEBGL_VERSION=2', '-lGL'] + args
+    # Check the desynchronized round-trip only on a normal canvas; OffscreenCanvas
+    # doesn't honor it. Chrome supports it, other browsers report it back as false.
+    if not args:
+      cflags.append('-DEXPECT_DESYNCHRONIZED=' + ('1' if is_chrome() else '0'))
+    self.btest_exit('html5_webgl.c', cflags=cflags)
 
   @parameterized({
     'webgl1': (['-DWEBGL_VERSION=1'],),
