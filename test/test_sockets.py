@@ -485,6 +485,42 @@ class sockets(BrowserCore):
     self.do_runf('sockets/test_udp_ipv6.c', 'UDP IPV6 PASS', cflags=['-sNODERAWSOCKETS'])
 
   @parameterized({'': [[]], 'pthread': [['-pthread', '-sPROXY_TO_PTHREAD']]})
+  def test_noderawsockets_dns_async(self, args):
+    # getaddrinfo() resolves numeric and /etc/hosts names (read via emscripten's
+    # FS) synchronously and returns EAI_AGAIN for a real hostname.
+    # emscripten_dns_lookup_async() is the async getaddrinfo: a pollable fd whose
+    # emscripten_dns_lookup_result() yields the addrinfo payload directly.
+    self.do_runf('sockets/test_dns_async.c', 'DNS ASYNC PASS', cflags=['-sNODERAWSOCKETS'] + args)
+
+  @parameterized({'': [[]], 'pthread': [['-pthread', '-sPROXY_TO_PTHREAD']]})
+  def test_noderawsockets_dns_callback(self, args):
+    # The async lookup fd also delivers the socket message callback on
+    # completion, so the lookup can be driven purely via
+    # emscripten_set_socket_message_callback with no poll/select.
+    self.do_runf('sockets/test_dns_callback.c', 'DNS CALLBACK PASS', cflags=['-sNODERAWSOCKETS', '-sFORCE_FILESYSTEM'] + args)
+
+  def test_noderawsockets_dns_async_net(self):
+    # A real public hostname is EAI_AGAIN synchronously, then resolves via the
+    # async getaddrinfo, whose result is delivered as an addrinfo payload. This
+    # hits the real network (like test_getaddrinfo).
+    self.do_runf('sockets/test_dns_async_net.c', 'DNS ASYNC NET PASS', cflags=['-sNODERAWSOCKETS'])
+
+  def test_dns_async_default(self):
+    # The async getaddrinfo API is available without -sNODERAWSOCKETS, resolving
+    # synchronously (the same fake address getaddrinfo() returns) and delivering
+    # it via the pollable fd.
+    self.do_runf('sockets/test_dns_async_default.c', 'DNS ASYNC DEFAULT PASS')
+
+  @parameterized({'': [[]], 'pthread': [['-pthread', '-sPROXY_TO_PTHREAD']]})
+  def test_noderawsockets_dns_jspi(self, args):
+    # Under JSPI, getaddrinfo() of a real public hostname blocks on the
+    # node:dns lookup (suspending the wasm stack) and resolves directly,
+    # without the EAI_AGAIN + async retry needed in non-JSPI builds. This
+    # hits the real network (like test_getaddrinfo).
+    self.require_jspi()
+    self.do_runf('sockets/test_dns_jspi.c', 'DNS JSPI PASS', cflags=['-sNODERAWSOCKETS'] + args)
+
+  @parameterized({'': [[]], 'pthread': [['-pthread', '-sPROXY_TO_PTHREAD']]})
   def test_noderawsockets_udp(self, args):
     # Self-contained loopback UDP echo: the server binds(:0)+getsockname for its
     # ephemeral port, the client sends a datagram, the server echoes it back.

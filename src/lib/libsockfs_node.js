@@ -36,7 +36,7 @@
 // is safe.
 
 var NodeSockFSLibrary = {
-  $nodeSockOps__deps: ['$SOCKFS', '$ERRNO_CODES'],
+  $nodeSockOps__deps: ['$SOCKFS', '$ERRNO_CODES', '$FS', '$inetPton4', '$inetPton6'],
   $nodeSockOps: {
     // node builtins, resolved once each. getBuiltinModule works in both
     // CommonJS and ESM output, with require as the fallback.
@@ -49,6 +49,67 @@ var NodeSockFSLibrary = {
     getDgram() {
       return nodeSockOps.dgramModule ??= (process.getBuiltinModule || require)('dgram');
     },
+    getDns() {
+      return nodeSockOps.dnsModule ??= (process.getBuiltinModule || require)('dns');
+    },
+    // Look up `name` in /etc/hosts, read fresh on each call through emscripten's
+    // FS so live edits (MEMFS or a mounted real fs) are honored. Returns a list
+    // of {family, addr}; a missing or unreadable file is just empty.
+    readHosts(name) {
+      var out = [];
+      var text;
+      try {
+        text = FS.readFile('/etc/hosts', { encoding: 'utf8' });
+      } catch (e) {
+        return out;
+      }
+      for (var line of text.split('\n')) {
+        var hash = line.indexOf('#');
+        if (hash !== -1) line = line.slice(0, hash);
+        var parts = line.split(/\s+/).filter((p) => p.length);
+        if (parts.length < 2 || !parts.slice(1).includes(name)) continue;
+        var addr = parts[0];
+        out.push({ family: addr.includes(':') ? {{{ cDefs.AF_INET6 }}} : {{{ cDefs.AF_INET }}}, addr });
+      }
+      return out;
+    },
+    // Map a node:dns error to an EAI_* code. node:dns surfaces either getaddrinfo
+    // EAI_* names or libuv/system codes; the transient ones become EAI_AGAIN and
+    // everything else a hard "name not found".
+    eaiForDns(e) {
+      switch (e && e.code) {
+        case 'EAI_AGAIN':
+        case 'ETIMEDOUT':
+        case 'ESERVFAIL':
+        case 'EREFUSED':
+          return {{{ cDefs.EAI_AGAIN }}};
+        default:
+          return {{{ cDefs.EAI_NONAME }}};
+      }
+    },
+    // The resolve stage: take a needs-DNS descriptor (from getAddrInfo) and fill
+    // in desc.entries via node:dns. Returns a promise of the EAI_* code (0 on
+    // success). Pure: no fd, no C allocation - just name -> addresses, so a
+    // future ring/aio backend can reuse it verbatim.
+    resolveAddrInfo(desc) {
+      var opts = { all: true };
+      if (desc.family === {{{ cDefs.AF_INET }}}) opts.family = 4;
+      else if (desc.family === {{{ cDefs.AF_INET6 }}}) opts.family = 6;
+      return new Promise((resolve) => {
+        nodeSockOps.getDns().lookup(desc.node, opts, (err, addresses) => {
+          if (err) {
+            resolve(nodeSockOps.eaiForDns(err));
+          } else {
+            desc.entries = addresses.map((a) => {
+              var fam = a.family === 6 ? {{{ cDefs.AF_INET6 }}} : {{{ cDefs.AF_INET }}};
+              return { family: fam, addr: fam === {{{ cDefs.AF_INET6 }}} ? inetPton6(a.address) : inetPton4(a.address) };
+            });
+            resolve(addresses.length ? 0 : {{{ cDefs.EAI_NONAME }}});
+          }
+        });
+      });
+    },
+
     // True when node:dgram exposes both synchronous bindSync and connectSync
     // (a recent addition), letting UDP run entirely on the public API. A runtime
     // missing either falls back to the private udp_wrap handle, which provides

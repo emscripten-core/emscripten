@@ -63,6 +63,7 @@
         "EADV": 122,
         "EAFNOSUPPORT": 5,
         "EAGAIN": 6,
+        "EAI_AGAIN": -3,
         "EAI_BADFLAGS": -1,
         "EAI_FAMILY": -6,
         "EAI_NONAME": -2,
