@@ -83,8 +83,11 @@ var LibraryHtml5WebGL = {
       'powerPreference': webglPowerPreferences[powerPreference],
       'failIfMajorPerformanceCaveat': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}],
       'desynchronized': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.desynchronized }}}],
-      // 'lowLatency' is the legacy name for 'desynchronized'.
+#if MIN_CHROME_VERSION < 75
+      // 'lowLatency' was Chrome's experimental name for 'desynchronized', renamed in Chrome 75.
+      // See https://caniuse.com/?search=desynchronized. Drop once we no longer support Chrome < 75.
       'lowLatency': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.desynchronized }}}],
+#endif
       // The following are not predefined WebGL context attributes in the WebGL specification, so the property names can be minified by Closure.
       majorVersion: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)],
       minorVersion: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)],

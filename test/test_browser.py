@@ -2683,7 +2683,9 @@ Module["preRun"] = () => {
   def test_html5_webgl_api(self, args):
     if '-sOFFSCREENCANVAS_SUPPORT' in args and os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
       return
-    self.btest_exit('html5_webgl.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'] + args)
+    # The `desynchronized` attribute is honored by Chrome but not all browsers.
+    expect_desync = '1' if is_chrome() else '0'
+    self.btest_exit('html5_webgl.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL', f'-DEXPECT_DESYNCHRONIZED={expect_desync}'] + args)
 
   @parameterized({
     'webgl1': (['-DWEBGL_VERSION=1'],),

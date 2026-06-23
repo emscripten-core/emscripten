@@ -6,6 +6,11 @@
 #include <stdio.h>
 #include <string.h>
 
+// Set by the test runner: does the browser under test honor `desynchronized`?
+#ifndef EXPECT_DESYNCHRONIZED
+#define EXPECT_DESYNCHRONIZED 0
+#endif
+
 GLuint compile_shader(GLenum shaderType, const char *src) {
   GLuint shader = glCreateShader(shaderType);
   glShaderSource(shader, 1, &src, NULL);
@@ -29,8 +34,14 @@ int main() {
   attrs.majorVersion = 2;
   attrs.proxyContextToMainThread = EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK;
   attrs.renderViaOffscreenBackBuffer = true;
+  attrs.desynchronized = true;
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE context = emscripten_webgl_create_context("#canvas", &attrs);
   emscripten_webgl_make_context_current(context);
+
+  // #8406: desynchronized should round-trip on browsers that support it.
+  EmscriptenWebGLContextAttributes actualAttrs;
+  emscripten_webgl_get_context_attributes(context, &actualAttrs);
+  assert(actualAttrs.desynchronized == EXPECT_DESYNCHRONIZED);
 
   // Test emscripten_webgl_get_supported_extensions() API
   char *extensions = emscripten_webgl_get_supported_extensions();
