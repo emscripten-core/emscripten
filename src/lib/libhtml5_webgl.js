@@ -82,6 +82,9 @@ var LibraryHtml5WebGL = {
       'preserveDrawingBuffer': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.preserveDrawingBuffer }}}],
       'powerPreference': webglPowerPreferences[powerPreference],
       'failIfMajorPerformanceCaveat': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat }}}],
+      'desynchronized': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.desynchronized }}}],
+      // 'lowLatency' is the legacy name for 'desynchronized'.
+      'lowLatency': !!HEAP8[attributes + {{{ C_STRUCTS.EmscriptenWebGLContextAttributes.desynchronized }}}],
       // The following are not predefined WebGL context attributes in the WebGL specification, so the property names can be minified by Closure.
       majorVersion: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion }}}>>2)],
       minorVersion: HEAP32[attr32 + ({{{ C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion }}}>>2)],
@@ -318,6 +321,7 @@ var LibraryHtml5WebGL = {
     var power = t['powerPreference'] && webglPowerPreferences.indexOf(t['powerPreference']);
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.powerPreference, 'power', 'i32') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.failIfMajorPerformanceCaveat, 't.failIfMajorPerformanceCaveat', 'i8') }}};
+    {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.desynchronized, 't.desynchronized', 'i8') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.majorVersion, 'c.version', 'i32') }}};
     {{{ makeSetValue('a', C_STRUCTS.EmscriptenWebGLContextAttributes.minorVersion, 0, 'i32') }}};
 #if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS

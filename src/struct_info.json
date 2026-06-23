@@ -1016,7 +1016,8 @@
               "enableExtensionsByDefault",
               "explicitSwapControl",
               "proxyContextToMainThread",
-              "renderViaOffscreenBackBuffer"
+              "renderViaOffscreenBackBuffer",
+              "desynchronized"
             ],
             "EmscriptenFullscreenStrategy": [
               "scaleMode",

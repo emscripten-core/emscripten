@@ -694,6 +694,7 @@
             "alpha": 0,
             "antialias": 3,
             "depth": 1,
+            "desynchronized": 33,
             "enableExtensionsByDefault": 24,
             "explicitSwapControl": 25,
             "failIfMajorPerformanceCaveat": 12,
