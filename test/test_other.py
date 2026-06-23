@@ -12712,6 +12712,11 @@ exec "$@"
     self.run_process([PYTHON, path_from_root('tools/maint/gen_sig_info.py'), '-o', 'out.js'])
     self.assertFilesMatch(path_from_root('src/lib/libsigs.js'), 'out.js')
 
+  @crossplatform
+  def test_gen_native_sig_info(self):
+    self.run_process([PYTHON, path_from_root('tools/maint/gen_native_sig_info.py'), '-o', 'out.py'])
+    self.assertFilesMatch(path_from_root('tools/native_sigs.py'), 'out.py')
+
   def test_gen_struct_info_env(self):
     # gen_struct_info.py builds C code in a very specific and low level way.  We don't want
     # EMCC_CFLAGS (or any of the other environment variables that might effect compilation or
