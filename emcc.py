@@ -373,12 +373,11 @@ def separate_linker_flags(newargs):
     linker_args.append(LinkFlag(flag, is_file))
 
   skip = False
-  for i in range(len(newargs)):
+  for i, arg in enumerate(newargs):
     if skip:
       skip = False
       continue
 
-    arg = newargs[i]
     if arg in CLANG_FLAGS_WITH_ARGS:
       skip = True
 
