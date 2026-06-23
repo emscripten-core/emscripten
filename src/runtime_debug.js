@@ -8,23 +8,24 @@
 var runtimeDebug = true; // Switch to false at runtime to disable logging at the right times
 
 // Used by XXXXX_DEBUG settings to output debug messages.
+#if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
+// dbg_node_fs and dbg_node_utils are declared and initialized in shell.js
+// when node modules (fs/utils) become available.
+#endif
 function dbg(...args) {
   if (!runtimeDebug && typeof runtimeDebug != 'undefined') return;
 #if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
   // Avoid using the console for debugging in multi-threaded node applications
   // See https://github.com/emscripten-core/emscripten/issues/14804
-  if (ENVIRONMENT_IS_NODE) {
-    // TODO(sbc): Unify with err/out implementation in shell.sh.
-    var fs = require('node:fs');
-    var utils = require('node:util');
+  if (ENVIRONMENT_IS_NODE && dbg_node_fs) {
     function stringify(a) {
       switch (typeof a) {
-        case 'object': return utils.inspect(a);
+        case 'object': return dbg_node_utils.inspect(a);
         case 'undefined': return 'undefined';
       }
       return a;
     }
-    fs.writeSync(2, args.map(stringify).join(' ') + '\n');
+    dbg_node_fs.writeSync(2, args.map(stringify).join(' ') + '\n');
   } else
 #endif
   // TODO(sbc): Make this configurable somehow.  Its not always convenient for

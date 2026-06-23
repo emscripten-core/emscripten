@@ -5,10 +5,18 @@
  */
 
 addToLibrary({
+#if ENVIRONMENT_MAY_BE_NODE && EXPORT_ES6
+  // In ESM mode, require() is not natively available. When SOCKFS is used,
+  // we need require() to lazily load the 'ws' npm package for WebSocket
+  // support on Node.js. Set up a createRequire-based polyfill.
+  $nodeRequire: `ENVIRONMENT_IS_NODE ? (await import('node:module')).createRequire(import.meta.url) : undefined`,
+  $SOCKFS__deps: ['$FS', '$nodeRequire'],
+#else
+  $SOCKFS__deps: ['$FS'],
+#endif
   $SOCKFS__postset: () => {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
-  $SOCKFS__deps: ['$FS'],
   $SOCKFS: {
 #if expectToReceiveOnModule('websocket')
     websocketArgs: {},
@@ -216,7 +224,11 @@ addToLibrary({
             var WebSocketConstructor;
 #if ENVIRONMENT_MAY_BE_NODE
             if (ENVIRONMENT_IS_NODE) {
+#if EXPORT_ES6
+              WebSocketConstructor = /** @type{(typeof WebSocket)} */(nodeRequire('ws'));
+#else
               WebSocketConstructor = /** @type{(typeof WebSocket)} */(require('ws'));
+#endif
             } else
 #endif // ENVIRONMENT_MAY_BE_NODE
             {
@@ -518,7 +530,11 @@ addToLibrary({
         if (sock.server) {
            throw new FS.ErrnoError({{{ cDefs.EINVAL }}});  // already listening
         }
+#if EXPORT_ES6
+        var WebSocketServer = nodeRequire('ws').Server;
+#else
         var WebSocketServer = require('ws').Server;
+#endif
         var host = sock.saddr;
 #if SOCKET_DEBUG
         dbg(`websocket: listen: ${host}:${sock.sport}`);

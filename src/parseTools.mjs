@@ -975,6 +975,39 @@ function makeModuleReceiveWithVar(localName, moduleName, defaultValue) {
   return ret;
 }
 
+function makeNodeImport(module, guard = true) {
+  assert(ENVIRONMENT_MAY_BE_NODE, 'makeNodeImport called when environment can never be node');
+  var expr;
+  if (EXPORT_ES6) {
+    // Emit a plain top-level `await import()`.  When Closure is enabled,
+    // `mangleUnsupportedSyntax()` rewrites `await import` to the
+    // EMSCRIPTEN$AWAIT$IMPORT placeholder before Closure runs and
+    // `fix_js_mangling()` restores it afterwards (Closure can't parse
+    // top-level await); without Closure it is left as-is.
+    //
+    // The `/* webpackIgnore: true */` hint is required because webpack does
+    // NOT auto-handle `node:`-prefixed URIs for dynamic import; without it,
+    // webpack fails with `UnhandledSchemeError: Reading from "node:xxx" is
+    // not handled by plugins` (see test_webpack_esm_output_clean).
+    // `/* @vite-ignore */` similarly silences vite's dynamic-import analysis.
+    expr = `await import(/* webpackIgnore: true */ /* @vite-ignore */ '${module}')`;
+  } else {
+    expr = `require('${module}')`;
+  }
+  if (guard) {
+    return `ENVIRONMENT_IS_NODE ? ${expr} : undefined`;
+  }
+  return expr;
+}
+
+function makeNodeFilePath(filename) {
+  assert(ENVIRONMENT_MAY_BE_NODE, 'makeNodeFilePath called when environment can never be node');
+  if (EXPORT_ES6) {
+    return `new URL('${filename}', import.meta.url)`;
+  }
+  return `__dirname + '/${filename}'`;
+}
+
 function makeRemovedFSAssert(fsName) {
   assert(ASSERTIONS);
   const lower = fsName.toLowerCase();
@@ -1253,6 +1286,8 @@ addToCompileTimeContext({
   makeModuleReceive,
   makeModuleReceiveExpr,
   makeModuleReceiveWithVar,
+  makeNodeFilePath,
+  makeNodeImport,
   makeRemovedFSAssert,
   makeRetainedCompilerSettings,
   makeReturn64,

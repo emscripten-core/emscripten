@@ -484,6 +484,31 @@ class other(RunnerCore):
   def test_esm_requires_modularize(self):
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-sMODULARIZE=0'], 'EXPORT_ES6 requires MODULARIZE to be set')
 
+  # Verify that EXPORT_ES6 output uses `await import()` instead of `require()`
+  # for Node.js built-in modules. Using `require()` in ESM files breaks
+  # bundlers (webpack, rollup, vite, esbuild) which cannot resolve CommonJS
+  # require() calls inside ES modules.
+  @crossplatform
+  @parameterized({
+    'default': ([],),
+    'node': (['-sENVIRONMENT=node'],),
+    'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
+  })
+  def test_esm_no_require(self, args):
+    self.run_process([EMCC, '-o', 'hello_world.mjs',
+                      '--extern-post-js', test_file('modularize_post_js.js'),
+                      test_file('hello_world.c')] + args)
+    src = read_file('hello_world.mjs')
+    # EXPORT_ES6 output must not contain require() calls as these are
+    # incompatible with ES modules and break bundlers.
+    # The only acceptable require-like pattern is inside a string/comment.
+    require_calls = re.findall(r'(?<![\w.])require\s*\(', src)
+    self.assertEqual(require_calls, [],
+                     'EXPORT_ES6 output must not contain require() calls '
+                     '(breaks bundlers). Use await import() instead.')
+    # Also verify createRequire is not used as a polyfill
+    self.assertNotContained('createRequire', src)
+
   def test_emcc_out_file(self):
     # Verify that "-ofile" works in addition to "-o" "file"
     self.run_process([EMCC, '-c', '-ofoo.o', test_file('hello_world.c')])
@@ -15168,6 +15193,48 @@ addToLibrary({
     shutil.copy('hello.wasm', 'dist/')
     self.assertContained('Hello, world!', self.run_js('dist/bundle.mjs'))
 
+  @crossplatform
+  @requires_dev_dependency('webpack')
+  def test_webpack_esm_output_clean(self):
+    """Verify webpack can build EXPORT_ES6 output without errors.
+
+    When emscripten generates require() in EXPORT_ES6 output (via
+    createRequire from 'node:module'), webpack fails with:
+      UnhandledSchemeError: Reading from "node:module" is not handled by plugins
+    This breaks any webpack/Next.js/Nuxt project using emscripten's ESM output.
+    """
+    copytree(test_file('webpack_es6'), '.')
+    # ESM output is implied by the .mjs extension (EXPORT_ES6 + MODULARIZE).
+    # On main, this generates require() calls for node support, which
+    # webpack cannot resolve for web targets.
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'src/hello.mjs'])
+    self.run_process(shared.get_npm_cmd('webpack') + ['--mode=development', '--no-devtool'])
+
+  @crossplatform
+  # vite 8 is rolldown-based and its win32 native binding
+  # (@rolldown/binding-win32-x64-msvc) is not installed by `npm ci` on the
+  # Windows CI image due to the npm optional-dependencies bug (npm/cli#4828),
+  # so `vite build` cannot start there.  The same "no require() in ESM output"
+  # property is covered cross-platform (incl. Windows) by the pure-JS
+  # test_webpack_esm_output_clean below.
+  @no_windows('vite 8 rolldown native binding is not installed on Windows CI (npm/cli#4828)')
+  @requires_dev_dependency('vite')
+  def test_vite_esm_output_clean(self):
+    """Verify vite bundles EXPORT_ES6 output without require() or externalizing.
+
+    When emscripten generates require() in EXPORT_ES6 output, vite externalizes
+    the node modules for browser compatibility, emitting a warning. The resulting
+    bundle contains code that references modules unavailable in browsers.
+    """
+    copytree(test_file('vite'), '.')
+    # ESM output is implied by the .mjs extension (EXPORT_ES6 + MODULARIZE).
+    # On main, this generates require() calls for node support which vite
+    # externalizes but leaves as require() in the bundle output.
+    self.run_process([EMCC, test_file('hello_world.c'), '-o', 'hello.mjs'])
+    # vite.config.js turns externalization warnings into errors, so vite
+    # will fail with non-zero exit code if require() appears in ESM output.
+    self.run_process(shared.get_npm_cmd('vite') + ['build'])
+
   def test_rlimit(self):
     self.do_other_test('test_rlimit.c', cflags=['-O1'])
 
@@ -15221,9 +15288,11 @@ addToLibrary({
   })
   def test_locate_file_abspath_esm(self, args):
     # Verify that `scriptDirectory` is an absolute path when `EXPORT_ES6`
+    # Use dynamic import for path module since ESM output supports top-level await
     create_file('pre.js', '''
+      var nodePath = await import('node:path');
       Module['locateFile'] = (fileName, scriptDirectory) => {
-        assert(require('path')['isAbsolute'](scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
+        assert(nodePath.isAbsolute(scriptDirectory), `scriptDirectory (${scriptDirectory}) should be an absolute path`);
         return scriptDirectory + fileName;
       };
       ''')

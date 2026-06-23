@@ -59,7 +59,7 @@ var ENVIRONMENT_IS_WORKER = !!globalThis.WorkerGlobalScope;
 
 #if ENVIRONMENT_MAY_BE_NODE && (PTHREADS || WASM_WORKERS)
 if (ENVIRONMENT_IS_NODE) {
-  var worker_threads = require('node:worker_threads');
+  var worker_threads = {{{ makeNodeImport('node:worker_threads', false) }}};
   globalThis.Worker = worker_threads.Worker;
   ENVIRONMENT_IS_WORKER = !worker_threads.isMainThread;
 }
@@ -104,15 +104,30 @@ if (ENVIRONMENT_IS_NODE && ENVIRONMENT_IS_SHELL) {
 var defaultPrint = console.log.bind(console);
 var defaultPrintErr = console.error.bind(console);
 if (ENVIRONMENT_IS_NODE) {
-  var fs = require('node:fs');
+  var fs = {{{ makeNodeImport('node:fs', false) }}};
   defaultPrint = (...args) => fs.writeSync(1, args.join(' ') + '\n');
   defaultPrintErr = (...args) => fs.writeSync(2, args.join(' ') + '\n');
+#if (ASSERTIONS || RUNTIME_DEBUG || AUTODEBUG)
+  var utils = {{{ makeNodeImport('node:util', false) }}};
+  var dbg_node_fs = fs;
+  var dbg_node_utils = utils;
+#endif
 }
 var out = defaultPrint;
 var err = defaultPrintErr;
 #else
 var out = (...args) => console.log(...args);
 var err = (...args) => console.error(...args);
+#endif
+
+#if !PTHREADS && WASM_WORKERS && ENVIRONMENT_MAY_BE_NODE && (ASSERTIONS || RUNTIME_DEBUG || AUTODEBUG)
+// Initialize dbg() node module references for WASM_WORKERS without PTHREADS.
+// (With PTHREADS these are set in the print setup block above.)
+var dbg_node_fs, dbg_node_utils;
+if (ENVIRONMENT_IS_NODE) {
+  dbg_node_fs = {{{ makeNodeImport('node:fs', false) }}};
+  dbg_node_utils = {{{ makeNodeImport('node:util', false) }}};
+}
 #endif
 
 // Override this function in a --pre-js file to get a signal for when
@@ -179,13 +194,13 @@ if (!ENVIRONMENT_IS_PTHREAD) {
 // Wasm or Wasm2JS loading:
 
 if (ENVIRONMENT_IS_NODE) {
-  var fs = require('node:fs');
+  var fs = {{{ makeNodeImport('node:fs', false) }}};
 #if WASM == 2
-  if (globalThis.WebAssembly) Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
-  else eval(fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm.js')+'');
+  if (globalThis.WebAssembly) Module['wasm'] = fs.readFileSync({{{ makeNodeFilePath(TARGET_BASENAME + '.wasm') }}});
+  else eval(fs.readFileSync({{{ makeNodeFilePath(TARGET_BASENAME + '.wasm.js') }}})+'');
 #else
 #if !WASM2JS
-  Module['wasm'] = fs.readFileSync(__dirname + '/{{{ TARGET_BASENAME }}}.wasm');
+  Module['wasm'] = fs.readFileSync({{{ makeNodeFilePath(TARGET_BASENAME + '.wasm') }}});
 #endif
 #endif
 }
