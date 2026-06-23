@@ -2052,7 +2052,7 @@ Struct
 
   .. c:member:: bool desynchronized
 
-    If ``true``, requests a "desynchronized" WebGL context, which can lower latency by bypassing the browser's normal compositing/double-buffering of the canvas. This maps to the ``desynchronized`` attribute on the JavaScript ``getContext()`` call (and its legacy name ``lowLatency``). Whether the request is honored depends on the browser and platform; use ``emscripten_webgl_get_context_attributes()`` to read back the value the context was actually created with. Default value is ``false``.
+    If ``true``, requests a "desynchronized" WebGL context, which can lower latency by bypassing the browser's normal compositing/double-buffering of the canvas. This maps to the ``desynchronized`` attribute on the JavaScript ``getContext()`` call. Whether the request is honored depends on the browser and platform; use ``emscripten_webgl_get_context_attributes()`` to read back the value the context was actually created with. Default value is ``false``.
 
 Callback functions
 ------------------
