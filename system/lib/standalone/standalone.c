@@ -179,21 +179,21 @@ void __cxa_throw(void* ptr, void* type, void* destructor) {
 // WasmFS integration. We stub out file preloading and such, that are not
 // expected to work anyhow.
 
-size_t _wasmfs_get_num_preloaded_files() { return 0; }
+int _wasmfs_get_num_preloaded_files() { return 0; }
 
-size_t _wasmfs_get_num_preloaded_dirs() { return 0; }
+int _wasmfs_get_num_preloaded_dirs() { return 0; }
 
-int _wasmfs_get_preloaded_file_size(int index) { return 0; }
+size_t _wasmfs_get_preloaded_file_size(uint32_t index) { return 0; }
 
 int _wasmfs_get_preloaded_file_mode(int index) { return 0; }
 
-void _wasmfs_copy_preloaded_file_data(int index, void* buffer) {}
+void _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* buffer) {}
 
-void _wasmfs_get_preloaded_parent_path(int index, void* buffer) {}
+void _wasmfs_get_preloaded_parent_path(int index, char* buffer) {}
 
-void _wasmfs_get_preloaded_child_path(int index, void* buffer) {}
+void _wasmfs_get_preloaded_child_path(int index, char* buffer) {}
 
-void _wasmfs_get_preloaded_path_name(int index, void* buffer) {}
+void _wasmfs_get_preloaded_path_name(int index, char* buffer) {}
 
 // Import the VM's fd_write under a different name. Then we can interpose in
 // between it and WasmFS's fd_write. That is, libc calls fd_write, which WasmFS
