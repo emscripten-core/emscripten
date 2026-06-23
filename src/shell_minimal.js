@@ -6,8 +6,9 @@
 
 #include "minimum_runtime_check.js"
 
-#if !MODULARIZE
-#if USE_CLOSURE_COMPILER
+#if MODULARIZE
+#include "preamble_modularize.js"
+#elif USE_CLOSURE_COMPILER
 /** @type{Object} */
 var Module;
 // if (!Module) is crucial for Closure Compiler here as it will
@@ -28,8 +29,7 @@ var Module = globalThis.{{{ EXPORT_NAME }}} || {};
 
 #else
 var Module = {{{ EXPORT_NAME }}};
-#endif
-#endif // !MODULARIZE
+#endif // USE_CLOSURE_COMPILER
 
 #if ENVIRONMENT_MAY_BE_NODE
 var ENVIRONMENT_IS_NODE = {{{ nodeDetectionCode() }}};

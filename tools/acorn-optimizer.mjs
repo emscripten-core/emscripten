@@ -276,7 +276,8 @@ function JSDCE(ast, aggressive) {
           }
         },
         FunctionDeclaration(node, _c) {
-          if (names.has(node.id.name)) {
+          // FIXME: Check for `EXPORT_NAME` instead of `Module`
+          if (names.has(node.id.name) && node.id.name != 'Module') {
             removed++;
             emptyOut(node);
             return;
@@ -361,7 +362,7 @@ function JSDCE(ast, aggressive) {
         ensureData(scopes[scopes.length - 1], name).use = 1;
       },
       ExportDefaultDeclaration(node, c) {
-        const name = node.declaration.id.name;
+        const name = node.declaration.name;
         ensureData(scopes[scopes.length - 1], name).use = 1;
         c(node.declaration);
       },

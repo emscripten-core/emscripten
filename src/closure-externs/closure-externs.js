@@ -11,10 +11,6 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
-// Special placeholder for `await import` and `await`.
-var EMSCRIPTEN$AWAIT$IMPORT;
-var EMSCRIPTEN$AWAIT;
-
 // Don't minify createRequire
 var createRequire;
 
@@ -124,9 +120,10 @@ var wakaUnknownBefore;
 // Module loaders externs, for AMD etc.
 
 /**
+ * @param {Object} deps
  * @param {Function} wrapper
  */
-var define = function (wrapper) {};
+var define = function (deps, wrapper) {};
 
 /**
  * @type {Worker}

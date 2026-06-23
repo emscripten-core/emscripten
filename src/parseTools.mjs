@@ -41,20 +41,6 @@ function mangleUnsupportedSyntax(text) {
     // See also: `writeOutput` in jsifier.mjs.
     text = text.replaceAll('import.meta', 'EMSCRIPTEN$IMPORT$META');
   }
-  if (MODULARIZE && USE_CLOSURE_COMPILER) {
-    // Closure doesn't support "top-level await" which is not actually the top
-    // level in case of MODULARIZE. Temporarily replace `await` usages with
-    // placeholders during preprocess phase, and back after all the other ops.
-    // See also: `fix_js_mangling` in link.py.
-    // FIXME: Remove after https://github.com/google/closure-compiler/issues/3835 is fixed.
-    if (EXPORT_ES6) {
-      text = text.replaceAll('await import', 'EMSCRIPTEN$AWAIT$IMPORT');
-    }
-    text = text.replaceAll('await createWasm()', 'EMSCRIPTEN$AWAIT(createWasm())');
-    text = text.replaceAll('await run()', 'EMSCRIPTEN$AWAIT(run())');
-    text = text.replaceAll('await instantiatePromise', 'EMSCRIPTEN$AWAIT(instantiatePromise)');
-    text = text.replaceAll('await init()', 'EMSCRIPTEN$AWAIT(init())');
-  }
   return text;
 }
 

@@ -18,3 +18,17 @@ for (const prop of Object.keys(Module)) {
   }
 }
 #endif
+
+  return Module;
+} // End factory function
+
+// Export using a UMD style export
+#if !EXPORT_ES6 && !MINIMAL_RUNTIME
+if (typeof exports === 'object' && typeof module === 'object') {
+  module.exports = {{{ EXPORT_NAME }}};
+  // This default export looks redundant, but it allows TS to import this
+  // commonjs style module.
+  module.exports.default = {{{ EXPORT_NAME }}};
+} else if (typeof define === 'function' && define['amd'])
+  define([], () => {{{ EXPORT_NAME }}});
+#endif

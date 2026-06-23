@@ -2107,29 +2107,29 @@ def phase_source_transforms(options):
   save_intermediate('transformed')
 
 
-# Unmangle previously mangled `await import` and `await` references in
-# both main code and libraries.
-# See also: `mangleUnsupportedSyntax` in parseTools.mjs.
-def fix_js_mangling(js_file):
-  # Mangling only takes place under closure in MODULARIZE mode.
+def fix_closure(js_file):
+  # This only takes place under closure in MODULARIZE mode.
   if not settings.MODULARIZE or not settings.USE_CLOSURE_COMPILER:
     return
 
   src = read_file(js_file)
 
+  # Replace `globalThis.Module = async function` with
+  # `export default async function`
+  # See also: `preamble_modularize.js`
+  src = re.sub(f'globalThis.{settings.EXPORT_NAME}\\s*=\\s*async function',
+               f'{'export default ' if settings.EXPORT_ES6 else ''}'
+               f'async function {settings.EXPORT_NAME}', src)
+
   if settings.EXPORT_ES6:
-    # Also remove the line containing `export{};`, which is inserted by
+    # Remove the line containing `export{};`, which is inserted by
     # Closure to mark the file as an ES6 module.
     # https://github.com/google/closure-compiler/issues/4084#issuecomment-1505056519
     # https://github.com/google/closure-compiler/blob/v20260401/src/com/google/javascript/jscomp/ConvertChunksToESModules.java#L111-L113
-    src = src \
-      .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import') \
-      .replace('export{};\n', '')
-
-  src = src.replace('EMSCRIPTEN$AWAIT(', 'await (')
+    src = src.replace('export{};\n', '')
 
   write_file(js_file, src)
-  save_intermediate('js-mangling')
+  save_intermediate('js-closure')
 
 
 def node_detection_code():
@@ -2194,9 +2194,10 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   if shared.SKIP_SUBPROCS:
     return
 
-  if settings.MODULARIZE and settings.MODULARIZE != 'instance':
+  if settings.MODULARIZE and (settings.PTHREADS or settings.WASM_WORKERS):
     modularize()
-  elif settings.USE_CLOSURE_COMPILER:
+
+  if not settings.MODULARIZE and settings.USE_CLOSURE_COMPILER:
     module_export_name_substitution()
 
   # Run a final optimization pass to clean up items that were not possible to
@@ -2217,7 +2218,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
     shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
     save_intermediate('unsafe-optimizations2')
 
-  fix_js_mangling(final_js)
+  fix_closure(final_js)
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:
@@ -2243,7 +2244,7 @@ def phase_final_emitting(options, target, js_target, wasm_target):
       support_target = unsuffixed(js_target) + '.pthread.mjs'
       pthread_code = building.read_and_preprocess(utils.path_from_root('src/pthread_esm_startup.mjs'), expand_macros=True)
       write_file(support_target, pthread_code)
-      fix_js_mangling(support_target)
+      fix_closure(support_target)
   else:
     move_file(final_js, js_target)
 
@@ -2437,29 +2438,22 @@ def phase_binaryen(target, options, wasm_target):
     delete_file(wasm_target)
     write_file(final_js, js)
 
-
 def modularize():
   global final_js
-  logger.debug(f'Modularizing, creating factory function called `{settings.EXPORT_NAME}`')
-  modularize_src = building.read_and_preprocess(utils.path_from_root('src/modularize.js'), expand_macros=True)
+  logger.debug(f'Modularizing for PTHREADS/WASM_WORKERS')
+
+  modularize_src = building.read_and_preprocess(utils.path_from_root('src/postamble_modularize_worker.js'), expand_macros=True)
   if settings.MINIFY_WHITESPACE:
     with shared.get_temp_files().get_file(suffix='.js') as tmp:
       write_file(tmp, modularize_src)
       minified_file = building.acorn_optimizer(tmp, ['--minify-whitespace'])
       modularize_src = read_file(minified_file)
 
-  # Replace INNER_JS_CODE in the minified code
-  full_src = do_replace(modularize_src, '"<<< INNER_JS_CODE >>>"', read_file(final_js))
-  final_js += '.modular.js'
+  full_src = read_file(final_js) + modularize_src
+  final_js += '.modular-worker.js'
   write_file(final_js, full_src)
   shared.get_temp_files().note(final_js)
-  save_intermediate('modularized')
-
-  # FIXME(https://github.com/emscripten-core/emscripten/issues/24558): Running acorn at this
-  # late phase seems to cause OOM (some kind of infinite loop perhaps) in node.
-  # Instead we minify src/modularize.js in isolation above.
-  # if settings.MINIFY_WHITESPACE:
-  #   final_js = building.acorn_optimizer(final_js, ['--minify-whitespace'])
+  save_intermediate('modular-worker')
 
 
 def module_export_name_substitution():

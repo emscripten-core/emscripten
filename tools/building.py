@@ -561,9 +561,6 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
   # should not minify these symbol names.
   CLOSURE_EXTERNS = [path_from_root('src/closure-externs/closure-externs.js')]
 
-  if settings.MODULARIZE:
-    CLOSURE_EXTERNS += [path_from_root('src/closure-externs/modularize-externs.js')]
-
   if settings.AUDIO_WORKLET:
     CLOSURE_EXTERNS += [path_from_root('src/closure-externs/audio-worklet-externs.js')]
 
@@ -606,6 +603,8 @@ def closure_compiler(filename, advanced=True, extra_closure_args=None):
 
   args = ['--compilation_level', 'ADVANCED_OPTIMIZATIONS' if advanced else 'SIMPLE_OPTIMIZATIONS']
   args += ['--language_in', 'UNSTABLE']
+  if settings.MODULARIZE:
+    args += ['--assume_function_wrapper']
   # Make Closure aware of the ES6 module syntax;
   # i.e. the `import.meta` and `await import` usages
   if settings.EXPORT_ES6:

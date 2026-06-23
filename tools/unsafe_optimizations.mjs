@@ -33,34 +33,6 @@ function visitNodes(root, types, func) {
   }
 }
 
-function optPassSimplifyModularizeFunction(ast) {
-  visitNodes(ast, ['FunctionExpression'], (node) => {
-    if (node.params.length == 1 && node.params[0].name == 'Module') {
-      const body = node.body.body;
-      // Nuke 'Module = Module || {};'
-      if (
-        body[0].type == 'ExpressionStatement' &&
-        body[0].expression.type == 'AssignmentExpression' &&
-        body[0].expression.left.name == 'Module'
-      ) {
-        body.splice(0, 1);
-      }
-      // Replace 'function(Module) {var f = Module;' -> 'function(f) {'
-      if (
-        body[0].type == 'VariableDeclaration' &&
-        body[0].declarations[0]?.init?.name == 'Module'
-      ) {
-        node.params[0].name = body[0].declarations[0].id.name;
-        body[0].declarations.splice(0, 1);
-        if (body[0].declarations.length == 0) {
-          body.splice(0, 1);
-        }
-      }
-      return false;
-    }
-  });
-}
-
 // Finds redundant operator new statements that are not assigned anywhere.
 // (we aren't interested in side effects of the calls if no assignment)
 function optPassRemoveRedundantOperatorNews(ast) {
@@ -218,8 +190,6 @@ function runOnJsText(js, pretty = false) {
     progress = progress || optPassMergeEmptyVarDeclarators(ast);
   }
 
-  optPassSimplifyModularizeFunction(ast);
-
   const terserAst = terser.AST_Node.from_mozilla_ast(ast);
   const output = terserAst.print_to_string({
     wrap_func_args: false,
@@ -250,12 +220,6 @@ function test(input, expected) {
 }
 
 function runTests() {
-  // optPassSimplifyModularizeFunction:
-  test(
-    'var Module = function(Module) {Module = Module || {};var f = Module;}',
-    'var Module=function(f){};',
-  );
-
   // optPassRemoveRedundantOperatorNews:
   test('new Uint16Array(a);', '');
   test('new Uint16Array(a),new Uint16Array(a);', ';');
