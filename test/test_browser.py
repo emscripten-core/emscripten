@@ -51,6 +51,7 @@ from decorators import (
   also_with_asan,
   also_with_fetch_streaming,
   also_with_minimal_runtime,
+  also_with_proxy_to_pthread,
   also_with_pthreads,
   also_with_wasm2js,
   also_with_wasmfs,
@@ -60,7 +61,6 @@ from decorators import (
   no_4gb,
   no_highmem,
   no_wasm64,
-  parameterize,
   parameterized,
   requires_dev_dependency,
   requires_wasm2js,
@@ -184,21 +184,6 @@ requires_firefox_version = requires_version('firefox', get_firefox_version)
 
 def is_jspi(args):
   return '-sJSPI' in args
-
-
-def also_with_proxy_to_pthread(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, threads, *args, **kwargs):
-    if threads:
-      self.cflags += ['-pthread', '-sPROXY_TO_PTHREAD']
-    f(self, *args, **kwargs)
-
-  parameterize(decorated, {'': (False,),
-                           'proxy_to_pthread': (True,)})
-
-  return decorated
 
 
 def skipIfFeatureNotAvailable(skip_env_var, feature, message):

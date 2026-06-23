@@ -1818,6 +1818,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # Node-specific settings only make sense if ENVIRONMENT_MAY_BE_NODE
     if settings.NODERAWFS:
       diagnostics.warning('unused-command-line-argument', 'NODERAWFS ignored since `node` not in `ENVIRONMENT`')
+    if settings.NODERAWSOCKETS:
+      diagnostics.warning('unused-command-line-argument', 'NODERAWSOCKETS ignored since `node` not in `ENVIRONMENT`')
     if settings.NODE_CODE_CACHING:
       diagnostics.warning('unused-command-line-argument', 'NODE_CODE_CACHING ignored since `node` not in `ENVIRONMENT`')
 

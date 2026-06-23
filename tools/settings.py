@@ -153,6 +153,9 @@ INCOMPATIBLE_SETTINGS = [
     ('CROSS_ORIGIN_STORAGE', 'SINGLE_FILE', 'the .wasm binary is inlined directly into the JS output and has no fetchable URL to key the hash on'),
     ('CROSS_ORIGIN_STORAGE', 'NO_WASM_ASYNC_COMPILATION', 'synchronous instantiation does not use the COS fetch path'),
     ('CROSS_ORIGIN_STORAGE', 'SIDE_MODULE', 'no JS glue is emitted to carry the hash or perform the COS lookup'),
+    ('NODERAWSOCKETS', 'WASMFS', 'the node:net backend is not wired into WASMFS sockets'),
+    ('NODERAWSOCKETS', 'PROXY_POSIX_SOCKETS', 'they are alternative socket backends'),
+    ('NODERAWSOCKETS', 'SOCKET_WEBRTC', 'they are alternative socket backends'),
 ]
 
 EXPERIMENTAL_SETTINGS = {
