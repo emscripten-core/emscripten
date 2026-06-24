@@ -11,15 +11,9 @@
  * 3. Return ENOSYS and warn at runtime if called.
  */
 
+#define _GNU_SOURCE // for struct mmsghdr
 #include <errno.h>
-#include <stdio.h>
-#include <sys/types.h>
-#include <unistd.h>
 #include <string.h>
-#include <sys/resource.h>
-#include <sys/stat.h>
-#include <time.h>
-#include <sys/utsname.h>
 #include <emscripten/syscalls.h>
 #include <emscripten/console.h>
 #include <emscripten/version.h>
@@ -46,7 +40,7 @@ static pid_t g_sid = 42;
 #define STRINGIFY(s) #s
 #define STR(s) STRINGIFY(s)
 
-weak int __syscall_uname(intptr_t buf) {
+weak int __syscall_uname(struct utsname *buf) {
   if (!buf) {
     return -EFAULT;
   }
@@ -54,16 +48,14 @@ weak int __syscall_uname(intptr_t buf) {
                              STR(__EMSCRIPTEN_MINOR__) "." \
                              STR(__EMSCRIPTEN_TINY__);
 
-  struct utsname *utsname = (struct utsname *)buf;
-
-  strcpy(utsname->sysname, "Emscripten");
-  strcpy(utsname->nodename, "emscripten");
-  strcpy(utsname->release, full_version);
-  strcpy(utsname->version, "#1");
+  strcpy(buf->sysname, "Emscripten");
+  strcpy(buf->nodename, "emscripten");
+  strcpy(buf->release, full_version);
+  strcpy(buf->version, "#1");
 #ifdef __wasm64__
-  strcpy(utsname->machine, "wasm64");
+  strcpy(buf->machine, "wasm64");
 #else
-  strcpy(utsname->machine, "wasm32");
+  strcpy(buf->machine, "wasm32");
 #endif
   return 0;
 }
@@ -104,15 +96,15 @@ weak pid_t __syscall_getppid() {
   return g_ppid;
 }
 
-weak int __syscall_linkat(int olddirfd, intptr_t oldpath, int newdirfd, intptr_t newpath, int flags) {
+weak int __syscall_linkat(int olddirfd, const char *oldpath, int newdirfd, const char *newpath, int flags) {
   return -EMLINK; // no hardlinks for us
 }
 
-weak int __syscall_getgroups32(int count, intptr_t list) {
+weak int __syscall_getgroups32(int count, gid_t list[]) {
   if (count < 1) {
     return -EINVAL;
   }
-  ((gid_t*)list)[0] = 0;
+  list[0] = 0;
   return 1;
 }
 
@@ -120,20 +112,12 @@ weak pid_t __syscall_setsid() {
   return 0; // no-op
 }
 
-struct kusage {
-  long utime_tv_sec;
-  long utime_tv_usec;
-  long stime_tv_sec;
-  long stime_tv_usec;
-};
-
-weak int __syscall_getrusage(int who, intptr_t usage) {
+weak int __syscall_getrusage(int who, struct rusage *usage) {
   REPORT(getrusage);
-  struct kusage *u = (struct kusage*)usage;
-  u->utime_tv_sec = 1;
-  u->utime_tv_usec = 2;
-  u->stime_tv_sec = 3;
-  u->stime_tv_usec = 4;
+  usage->ru_utime = (struct timeval)
+    { .tv_sec = 1, .tv_usec = 2 };
+  usage->ru_stime = (struct timeval)
+    { .tv_sec = 3, .tv_usec = 4 };
   return 0;
 }
 
@@ -145,7 +129,7 @@ weak int __syscall_setpriority(int which, id_t who, int prio) {
   return -EPERM;
 }
 
-weak int __syscall_setdomainname(intptr_t name, size_t size) {
+weak int __syscall_setdomainname(const char *name, size_t len) {
   return -EPERM;
 }
 
@@ -165,22 +149,22 @@ weak gid_t __syscall_getegid32(void) {
   return 0;
 }
 
-weak int __syscall_getresuid32(intptr_t ruid, intptr_t euid, intptr_t suid) {
-  *((uid_t *)ruid) = 0;
-  *((uid_t *)euid) = 0;
-  *((uid_t *)suid) = 0;
+weak int __syscall_getresuid32(uid_t *ruid, uid_t *euid, uid_t *suid) {
+  *ruid = 0;
+  *euid = 0;
+  *suid = 0;
   return 0;
 }
 
-weak int __syscall_getresgid32(intptr_t ruid, intptr_t euid, intptr_t suid) {
+weak int __syscall_getresgid32(gid_t *rgid, gid_t *egid, gid_t *sgid) {
   REPORT(getresgid32);
-  *((uid_t *)ruid) = 0;
-  *((uid_t *)euid) = 0;
-  *((uid_t *)suid) = 0;
+  *rgid = 0;
+  *egid = 0;
+  *sgid = 0;
   return 0;
 }
 
-weak int __syscall_madvise(intptr_t addr, size_t length, int advice) {
+weak int __syscall_madvise(void *addr, size_t length, int advice) {
   REPORT(madvise);
   // advice is welcome, but ignored
   return 0;
@@ -191,22 +175,22 @@ weak int __syscall_fadvise64(int fd, off_t offset, off_t length, int advice) {
   return 0;
 }
 
-weak int __syscall_mlock(intptr_t addr, size_t len) {
+weak int __syscall_mlock(const void *addr, size_t len) {
   REPORT(mlock);
   return 0;
 }
 
-weak int __syscall_munlock(intptr_t addr, size_t len) {
+weak int __syscall_munlock(const void *addr, size_t len) {
   REPORT(munlock);
   return 0;
 }
 
-weak int __syscall_mprotect(size_t addr, size_t len, int prot) {
+weak int __syscall_mprotect(size_t start, size_t len, int prot) {
   REPORT(mprotect);
   return 0; // let's not and say we did
 }
 
-weak int __syscall_mremap(intptr_t old_addr, size_t old_size, size_t new_size, int flags, intptr_t new_addr) {
+weak int __syscall_mremap(void *old_addr, size_t old_size, size_t new_size, int flags, void *new_addr) {
   REPORT(mremap);
   return -ENOMEM; // never succeed
 }
@@ -221,40 +205,39 @@ weak int __syscall_munlockall() {
   return 0;
 }
 
-weak int __syscall_prlimit64(pid_t pid, int resource, intptr_t new_limit, intptr_t old_limit) {
+weak int __syscall_prlimit64(pid_t pid, int resource, const struct rlimit *new_limit, struct rlimit *old_limit) {
   REPORT(prlimit64);
-  struct rlimit *old = (struct rlimit *)old_limit;
   if (new_limit) {
     return -EPERM;
   }
-  if (old) {
+  if (old_limit) {
     if (resource == RLIMIT_NOFILE) {
       // See FS.MAX_OPEN_FDS in src/lib/libfs.js
-      old->rlim_cur = 4096;
-      old->rlim_max = 4096;
+      old_limit->rlim_cur = 4096;
+      old_limit->rlim_max = 4096;
     } else if (resource == RLIMIT_STACK) {
       uintptr_t end = emscripten_stack_get_end();
       uintptr_t base = emscripten_stack_get_base();
 
-      old->rlim_cur = base - end;
+      old_limit->rlim_cur = base - end;
       // we can not change the stack size, so the maximum is the same as the current
-      old->rlim_max = base - end;
+      old_limit->rlim_max = base - end;
     } else {
       // Just report no limits
-      old->rlim_cur = RLIM_INFINITY;
-      old->rlim_max = RLIM_INFINITY;
+      old_limit->rlim_cur = RLIM_INFINITY;
+      old_limit->rlim_max = RLIM_INFINITY;
     }
   }
   return 0;
 }
 
-weak pid_t __syscall_wait4(pid_t pid, intptr_t wstatus, int options, int rusage) {
+weak pid_t __syscall_wait4(pid_t pid, int *wstatus, int options, struct rusage *rusage) {
   REPORT(wait4);
   return -1;
 }
 
-UNIMPLEMENTED(acct, (intptr_t filename))
-UNIMPLEMENTED(mincore, (intptr_t addr, size_t length, intptr_t vec))
-UNIMPLEMENTED(recvmmsg, (int sockfd, intptr_t msgvec, unsigned int vlen, unsigned int flags, intptr_t timeout))
-UNIMPLEMENTED(sendmmsg, (int sockfd, intptr_t msgvec, unsigned int vlen, unsigned int flags))
-UNIMPLEMENTED(socketpair, (int domain, int type, int protocol, intptr_t fds, int unused1, int unused2))
+UNIMPLEMENTED(acct, (const char *filename))
+UNIMPLEMENTED(mincore, (void *addr, size_t length, unsigned char *vec))
+UNIMPLEMENTED(recvmmsg, (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags, struct timespec *timeout))
+UNIMPLEMENTED(sendmmsg, (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags))
+UNIMPLEMENTED(socketpair, (int domain, int type, int protocol, int fd[2], int unused1, int unused2))
