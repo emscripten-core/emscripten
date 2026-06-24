@@ -618,6 +618,7 @@ def get_llvm_target():
 
 def init():
   utils.set_version_globals()
+  utils.set_process_title()
   setup_temp_dirs()
 
 
