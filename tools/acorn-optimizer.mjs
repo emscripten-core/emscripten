@@ -1723,6 +1723,7 @@ if (extraInfoStart > 0) {
 // outputted code if --closureFriendly was requested.
 const sourceComments = {};
 const params = {
+  // Keep in sync with ecmaVersion in tools/unsafe_optimizations.mjs
   ecmaVersion: 'latest',
   sourceType: exportES6 ? 'module' : 'script',
   allowAwaitOutsideFunction: true,

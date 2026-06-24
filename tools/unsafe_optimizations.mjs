@@ -206,8 +206,14 @@ function optPassMergeVarInitializationAssignments(ast) {
   return progress;
 }
 
-function runOnJsText(js, pretty = false) {
-  const ast = acorn.parse(js, {ecmaVersion: 2021});
+function runOnJsText(js, pretty = false, exportES6 = false) {
+  const ast = acorn.parse(js, {
+    // Keep in sync with in tools/acorn-optimizer.mjs
+    ecmaVersion: 'latest',
+    sourceType: exportES6 ? 'module' : 'script',
+    allowAwaitOutsideFunction: true,
+    allowImportExportEverywhere: exportES6,
+  });
 
   optPassRemoveRedundantOperatorNews(ast);
 
@@ -230,9 +236,9 @@ function runOnJsText(js, pretty = false) {
   return output;
 }
 
-function runOnFile(input, pretty = false, output = null) {
+function runOnFile(input, pretty = false, exportES6 = false, output = null) {
   let js = fs.readFileSync(input).toString();
-  js = runOnJsText(js, pretty);
+  js = runOnJsText(js, pretty, exportES6);
   if (output) fs.writeFileSync(output, js);
   else console.log(js);
 }
@@ -297,12 +303,13 @@ function runTests() {
 }
 
 const {
-  values: {test: testMode, pretty, output},
+  values: {test: testMode, pretty, 'export-es6': exportES6, output},
   positionals: [input],
 } = parseArgs({
   options: {
     test: {type: 'boolean'},
     pretty: {type: 'boolean'},
+    'export-es6': {type: 'boolean'},
     output: {type: 'string', short: 'o'},
   },
   allowPositionals: true,
@@ -311,5 +318,5 @@ const {
 if (testMode) {
   runTests();
 } else {
-  runOnFile(input, pretty, output);
+  runOnFile(input, pretty, exportES6, output);
 }
