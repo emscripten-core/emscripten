@@ -643,7 +643,7 @@ def create_tsd_exported_runtime_methods(metadata):
     if name in metadata.library_definitions:
       definition = metadata.library_definitions[name]
       if definition['snippet']:
-        snippet = ' = ' + definition['snippet']
+        snippet = f' = {definition["snippet"]}'
         # Clear the doc so the type is either computed from the snippet or
         # defined by the definition below.
         docs = ''

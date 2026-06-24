@@ -3801,7 +3801,7 @@ More info: https://emscripten.org
       self.require_jspi()
     self.run_process([EMCC, test_file('other/test_emit_tsd.c'),
                       '--emit-tsd', f'test_emit_tsd{postfix}.d.ts', '-sEXPORT_ES6',
-                      '-sMODULARIZE', '-sEXPORTED_RUNTIME_METHODS=UTF8ArrayToString,wasmTable',
+                      '-sMODULARIZE', '-sEXPORTED_RUNTIME_METHODS=POINTER_SIZE,UTF8ArrayToString,wasmTable',
                       '-o', f'test_emit_tsd{postfix}.js'] + args +
                      self.get_cflags())
     self.assertFilesMatch(test_file(f'other/test_emit_tsd{postfix}.d.ts'), f'test_emit_tsd{postfix}.d.ts')
