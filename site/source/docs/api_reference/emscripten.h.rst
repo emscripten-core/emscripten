@@ -1605,6 +1605,34 @@ Functions
                                       arbitrary ``userData`` passed to this function.
 
 
+.. c:function:: int emscripten_dns_lookup_async(const char *node, const char *service, const struct addrinfo *hints)
+
+  Asynchronous :c:func:`getaddrinfo`. Takes the same ``node``/``service``/``hints``
+  inputs and returns a file descriptor that becomes readable once resolution
+  completes. Wait on it with ``poll``/``select``/``epoll``, then read
+  the result with :c:func:`emscripten_dns_lookup_result`. The caller owns the fd
+  and should ``close()`` it.
+
+  With ``-sNODERAWSOCKETS`` a hostname is resolved asynchronously via ``node:dns``;
+  otherwise (and for numeric or ``/etc/hosts`` names) resolution is synchronous,
+  as :c:func:`getaddrinfo`, and the fd is simply readable on the next turn.
+
+  :param node: The hostname or numeric address to resolve.
+  :param service: The service name or port string (may be ``NULL``).
+  :param hints: ``addrinfo`` filter (``ai_family``/``ai_socktype``/etc.; may be ``NULL``).
+  :returns: A pollable file descriptor, or ``-1`` on failure to start the lookup.
+
+
+.. c:function:: int emscripten_dns_lookup_result(int fd, struct addrinfo **res)
+
+  Reads the outcome of a lookup started by :c:func:`emscripten_dns_lookup_async`,
+  once its ``fd`` is readable.
+
+  :param int fd: The file descriptor returned by :c:func:`emscripten_dns_lookup_async`.
+  :param res: On success, receives the head of the resulting ``addrinfo`` list (free it with :c:func:`freeaddrinfo`, as for :c:func:`getaddrinfo`).
+  :returns: ``0`` on success, or an ``EAI_*`` error code on failure (``EAI_AGAIN`` if the lookup has not completed yet).
+
+
 Unaligned types
 ===============
 
