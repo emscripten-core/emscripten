@@ -934,6 +934,10 @@ var proxiedFunctionTable = [
       '//FORWARDED_DATA:' +
         JSON.stringify({
           librarySymbols,
+          // The final EXPORTED_FUNCTIONS set, including additions made by JS
+          // libraries (e.g. wasm-bindgen self-registering its exports), so the
+          // caller can re-derive which library symbols were exported.
+          exportedFunctions: Array.from(EXPORTED_FUNCTIONS),
           nativeAliases,
           warnings: warningOccured(),
           asyncFuncs,

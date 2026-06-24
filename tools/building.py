@@ -57,6 +57,10 @@ EXPECTED_BINARYEN_VERSION = 129
 _is_ar_cache: dict[str, bool] = {}
 # the exports the user requested
 user_requested_exports: set[str] = set()
+# JS library symbols that were exported (MODULARIZE=instance), derived from the
+# JS compiler's librarySymbols and EXPORTED_FUNCTIONS; the WASM_ESM_INTEGRATION
+# wrapper re-exports them.
+exported_js_library_symbols: set[str] = set()
 # A list of feature flags to pass to each binaryen invocation (like `wasm-opt`,
 # etc.). This is received by the first call to binaryen (e.g. `wasm-emscripten-finalize`)
 # which reads it using `--detect-features`.
@@ -1285,6 +1289,14 @@ def run_wasm_opt(infile, outfile=None, args=[], **kwargs):  # noqa
   return run_binaryen_command('wasm-opt', infile, outfile, args=args, **kwargs)
 
 
+def is_wasm_bindgen_module(wasm_file):
+  # wasm-bindgen marks modules built for the emscripten target with this custom
+  # section so emcc, when used as the linker (e.g. by cargo/rustc), knows to run
+  # wasm-bindgen as a post-link step.
+  with webassembly.Module(wasm_file) as module:
+    return module.get_custom_section('__wasm_bindgen_emscripten_marker') is not None
+
+
 def run_wasm_bindgen(infile):
   bindgen_out_dir = os.path.join(get_emscripten_temp_dir(), 'bindgen_out')
 
@@ -1299,16 +1311,33 @@ def run_wasm_bindgen(infile):
       '--out-dir',
       bindgen_out_dir,
   ]
+  exports_before = {e.name for e in webassembly.get_exports(infile)}
+
   check_call(cmd)
 
   # Don't try to predict the .wasm filename that wasm-bindgen outputs. Instead
   # just grab the .wasm file itself.
   all_output_files = os.listdir(bindgen_out_dir)
   new_wasm_file = [x for x in all_output_files if x.endswith('.wasm')][0]
+  new_wasm_path = os.path.join(bindgen_out_dir, new_wasm_file)
 
-  shutil.copyfile(os.path.join(bindgen_out_dir, new_wasm_file), infile)
+  # Report which placeholder exports wasm-bindgen consumed so the caller can
+  # drop them from EXPORTED_FUNCTIONS.
+  removed_exports = exports_before - {e.name for e in webassembly.get_exports(new_wasm_path)}
 
-  return os.path.join(bindgen_out_dir, 'library_bindgen.js')
+  shutil.copyfile(new_wasm_path, infile)
+
+  # wasm-bindgen emits imported JS snippets into `snippets/` and the `import`
+  # statements referencing them into `library_bindgen.extern-pre.js`, only when
+  # the crate actually imports JS.
+  extern_pre_js = os.path.join(bindgen_out_dir, 'library_bindgen.extern-pre.js')
+  if not os.path.exists(extern_pre_js):
+    extern_pre_js = None
+  snippets_dir = os.path.join(bindgen_out_dir, 'snippets')
+  if not os.path.isdir(snippets_dir):
+    snippets_dir = None
+
+  return os.path.join(bindgen_out_dir, 'library_bindgen.js'), removed_exports, extern_pre_js, snippets_dir
 
 
 intermediate_counter = 0

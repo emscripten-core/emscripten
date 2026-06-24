@@ -1,0 +1,10 @@
+[package]
+name = "bindgen_greeter"
+edition = "2021"
+
+[[bin]]
+name = "bindgen_greeter"
+path = "src/main.rs"
+
+[dependencies]
+wasm-bindgen = "=0.2.126"

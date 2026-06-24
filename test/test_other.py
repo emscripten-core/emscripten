@@ -271,6 +271,11 @@ def requires_rust(func):
   return requires_tool('cargo', 'RUST')(func)
 
 
+def requires_wasm_bindgen(func):
+  assert callable(func)
+  return requires_tool('wasm-bindgen', 'WASM_BINDGEN')(func)
+
+
 def requires_pkg_config(func):
   assert callable(func)
 
@@ -15014,9 +15019,12 @@ addToLibrary({
     self.do_runf('main.cpp', 'Hello from rust!', cflags=[lib])
 
   @requires_rust
+  @requires_wasm_bindgen
   def test_wasm_bindgen_integration(self):
     copytree(test_file('rust/bindgen_integration'), '.')
-    self.run_process(['cargo', 'add', 'wasm-bindgen'])
+    # Pin the library to the (managed) wasm-bindgen-cli version on PATH;
+    # wasm-bindgen requires the CLI and the library to match exactly.
+    self.run_process(['cargo', 'add', 'wasm-bindgen@=0.2.126'])
     self.run_process(['cargo', 'build'])
     lib = 'target/wasm32-unknown-emscripten/debug/libbindgen_integration.a'
     self.assertExists(lib)
@@ -15026,8 +15034,52 @@ addToLibrary({
       Module.onRuntimeInitialized = () => out(Module.rs_add(17, 25));
     ''')
 
-    self.run_process(['cargo', 'install', 'wasm-bindgen-cli'])
     self.do_runf('empty.c', '42', cflags=[lib, '-sWASM_BINDGEN', '--post-js=post.js', '-lexports.js'])
+
+  # ESM-integration and factory (MODULARIZE) surface the clean wasm-bindgen API
+  # differently (named ESM exports vs `Module.<name>`). Both must expose exactly
+  # the `Greeter` class and none of the raw wasm exports rustc lists.
+  @requires_rust
+  @requires_wasm_bindgen
+  @parameterized({
+    'esm': (['-sWASM_ESM_INTEGRATION'], '''
+      import init, * as mod from './bindgen_greeter.js';
+      await init();
+    '''),
+    'factory': (['-sMODULARIZE', '-sEXPORT_ES6'], '''
+      import Module from './bindgen_greeter.js';
+      const mod = await Module();
+    '''),
+  })
+  def test_wasm_bindgen_rustc_driven(self, cflags, prelude):
+    # cargo/rustc links via emcc; the wasm carries wasm-bindgen's marker section,
+    # which emcc detects and runs wasm-bindgen against (no -sWASM_BINDGEN needed).
+    copytree(test_file('rust/bindgen_greeter'), '.')
+    # rustc invokes emcc as the linker; ensure it uses *this* emcc and pass the
+    # output-mode settings through.
+    with env_modify({'CARGO_TARGET_WASM32_UNKNOWN_EMSCRIPTEN_LINKER': EMCC,
+                     'EMCC_CFLAGS': ' '.join(cflags)}):
+      self.run_process(['cargo', 'build'])
+
+    # cargo copies only the .js and .wasm; the ESM support module and snippets
+    # stay in deps/, so run from there.
+    out_dir = 'target/wasm32-unknown-emscripten/debug/deps'
+    create_file(os.path.join(out_dir, 'run.mjs'), prelude + '''
+      const greeting = new mod.Greeter('Hello').greet('world');
+      if (greeting !== 'Hello, world!') throw new Error('unexpected greeting: ' + greeting);
+      // None of the raw wasm exports leak into the user-facing API.
+      for (const name of ['_main', 'greeter_greet', '_greeter_greet',
+                          '__wbindgen_malloc', '___wbindgen_malloc']) {
+        if (mod[name] !== undefined) throw new Error('leaked export: ' + name);
+      }
+      console.log(greeting);
+    ''')
+    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
+    output = self.run_js(os.path.join(out_dir, 'run.mjs'))
+    self.assertContained('Hello, world!', output)
+    # `main` runs automatically on init (matching the emscripten C++ idiom),
+    # even though `_main` is not surfaced as a user-facing export.
+    self.assertContained('main ran', output)
 
   def test_relative_em_cache(self):
     with env_modify({'EM_CACHE': 'foo'}):

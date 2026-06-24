@@ -440,6 +440,13 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     pre += "}\n"
 
   report_missing_exports(forwarded_json['librarySymbols'])
+  # A JS library symbol is exported (MODULARIZE=instance) when it is in
+  # EXPORTED_FUNCTIONS; derive that set rather than tracking it separately. The
+  # forwarded EXPORTED_FUNCTIONS includes additions made by JS libraries (e.g.
+  # wasm-bindgen self-registering its exports).
+  exported_functions = set(forwarded_json['exportedFunctions'])
+  building.exported_js_library_symbols.update(
+    s for s in forwarded_json['librarySymbols'] if s in exported_functions)
 
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   if asm_const_pairs or settings.MAIN_MODULE:
@@ -610,8 +617,14 @@ def finalize_wasm(infile, outfile, js_syms):
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
+  # Marker-driven flow (rustc linked via emcc, no user -sWASM_BINDGEN): rustc's
+  # EXPORTED_FUNCTIONS is the raw wasm export set, not a user-chosen API. Treat
+  # it like a build with no exports specified - `main` still runs as the entry,
+  # but no raw wasm exports are surfaced.
+  marker_driven = settings.WASM_BINDGEN and 'WASM_BINDGEN' not in user_settings
+
   if (not settings.STANDALONE_WASM and 'main' in metadata.all_exports) or '__main_argc_argv' in metadata.all_exports:
-    if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTS:
+    if not marker_driven and 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTS:
       # If `_main` was unexpectedly exported we assume it was added to
       # EXPORT_IF_DEFINED by `phase_linker_setup` in order that we can detect
       # it and report this warning.  After reporting the warning we explicitly
@@ -625,6 +638,11 @@ def finalize_wasm(infile, outfile, js_syms):
         metadata.all_exports.remove('__main_argc_argv')
     else:
       unexpected_exports.append('_main')
+
+  # The user-facing API is exclusively wasm-bindgen's library symbols; the raw
+  # wasm exports are internal (including `_main`, which still runs via the entry).
+  if marker_driven:
+    unexpected_exports = []
 
   building.user_requested_exports.update(unexpected_exports)
   settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)

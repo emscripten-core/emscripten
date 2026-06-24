@@ -1903,9 +1903,39 @@ def phase_post_link(options, in_wasm, wasm_target, target, js_syms, base_metadat
 
   settings.TARGET_JS_NAME = os.path.basename(js_target)
 
+  # Two wasm-bindgen modes:
+  #  - C++-driven: user passes -sWASM_BINDGEN and owns EXPORTED_FUNCTIONS (the
+  #    staticlib flow); their exports are left untouched.
+  #  - marker-driven: user did *not* pass it, but cargo/rustc linked via emcc and
+  #    the wasm carries the marker section; rustc's EXPORTED_FUNCTIONS is the raw
+  #    wasm export set, not a user-facing API (see below).
+  marker_driven = 'WASM_BINDGEN' not in user_settings and building.is_wasm_bindgen_module(in_wasm)
+  if marker_driven:
+    settings.WASM_BINDGEN = 1
+
   if settings.WASM_BINDGEN:
-    bindgen_jslib = building.run_wasm_bindgen(in_wasm)
+    bindgen_jslib, removed_exports, extern_pre_js, snippets_dir = building.run_wasm_bindgen(in_wasm)
     settings.JS_LIBRARIES.append(bindgen_jslib)
+    # Drop the placeholder symbols wasm-bindgen consumed so they aren't reported
+    # as undefined exports.
+    removed = {shared.asmjs_mangle(e) for e in removed_exports}
+    settings.EXPORTED_FUNCTIONS = [e for e in settings.EXPORTED_FUNCTIONS if e not in removed]
+    settings.USER_EXPORTS = [e for e in settings.USER_EXPORTS if e not in removed]
+    building.user_requested_exports.difference_update(removed)
+    if marker_driven:
+      # rustc's exports are all wasm exports the glue reaches by name, not a
+      # user-facing API. Drop them from every user-export layer: the ESM wrapper
+      # (user_requested_exports) and the factory Module attachment
+      # (EXPORTED_FUNCTIONS, via should_export).
+      settings.EXPORTED_FUNCTIONS = [e for e in settings.EXPORTED_FUNCTIONS if e not in settings.USER_EXPORTS]
+      settings.USER_EXPORTS = []
+      building.user_requested_exports.clear()
+    # Imported JS: emit wasm-bindgen's `import` statements as extern-pre-js and
+    # place the snippet files alongside the output so relative imports resolve.
+    if extern_pre_js:
+      options.extern_pre_js.append(extern_pre_js)
+    if snippets_dir:
+      shutil.copytree(snippets_dir, os.path.join(os.path.dirname(js_target), 'snippets'), dirs_exist_ok=True)
 
   metadata = phase_emscript(in_wasm, wasm_target, js_syms, base_metadata)
 
@@ -2140,6 +2170,9 @@ def node_detection_code():
 
 def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   js_exports = building.user_requested_exports.union(settings.EXPORTED_RUNTIME_METHODS)
+  # JS library symbols the support module exports at declaration (e.g.
+  # wasm-bindgen's); the wrapper must forward these too.
+  js_exports |= building.exported_js_library_symbols
   js_exports = ', '.join(sorted(js_exports))
 
   wrapper = []
