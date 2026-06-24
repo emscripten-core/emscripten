@@ -2703,6 +2703,39 @@ F1 -> ''
     self.do_run_in_out_file_test('test_freetype.c', cflags=['--embed-file=LiberationSansBold.ttf', '-pthread', '-sUSE_FREETYPE'])
 
   @requires_network
+  def test_freetype_wasm_eh(self):
+    # Verify that the freetype port selects the correct new-EH variant
+    # (libfreetype-wasmsjlj.a) when using standardized Wasm EH combined with
+    # SUPPORT_LONGJMP=wasm.  Without the new-EH variant the port falls back to
+    # libfreetype-legacysjlj.a which is built with legacy EH instructions,
+    # causing "module uses a mix of legacy and new exception handling
+    # instructions" at instantiation time in browsers.
+    # Node.js with --experimental-wasm-exnref tolerates mixed EH, so we
+    # verify correctness by checking the cached library name and also
+    # confirming the program runs.
+    self.require_wasm_eh()
+
+    # Build with -v and capture stderr to verify the correct variant is used.
+    proc = self.run_process([
+      EMCC, '-v',
+      test_file('test_freetype_exc.cpp'),
+      '-fwasm-exceptions',
+      '-sUSE_FREETYPE',
+      '-sSUPPORT_LONGJMP=wasm',
+      '-sWASM_LEGACY_EXCEPTIONS=0',
+      '-o', 'test_out.js',
+    ], stderr=PIPE)
+    self.assertContained('libfreetype-wasmsjlj', proc.stderr)
+    self.assertNotContained('libfreetype-legacysjlj', proc.stderr)
+
+    # Also verify the program actually runs.
+    self.do_runf('test_freetype_exc.cpp', 'caught: test\nFreeType initialized successfully\n', cflags=[
+      '-fwasm-exceptions',
+      '-sUSE_FREETYPE',
+      '-sSUPPORT_LONGJMP=wasm',
+    ])
+
+  @requires_network
   def test_icu(self):
     self.set_setting('USE_ICU')
     self.do_runf('other/test_icu.cpp')
