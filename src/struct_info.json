@@ -236,12 +236,15 @@
         }
     },
     {
-        "file": "netinet/in.h",
-        "defines": [
-            "IPPROTO_UDP",
-            "IPPROTO_TCP",
-            "INADDR_LOOPBACK"
-        ]
+         "file": "netinet/in.h",
+         "defines": [
+             "IPPROTO_IP",
+             "IPPROTO_IPV6",
+             "IPPROTO_UDP",
+             "IPPROTO_TCP",
+             "IPV6_V6ONLY",
+             "INADDR_LOOPBACK"
+         ]
     },
     {
         "file": "bits/fcntl.h",
@@ -289,11 +292,12 @@
             "SOCK_STREAM",
             "SOCK_CLOEXEC",
             "SOCK_NONBLOCK",
-            "AF_INET",
-            "AF_UNSPEC",
-            "AF_INET6",
-            "SOL_SOCKET",
-            "SO_ERROR"
+             "AF_INET",
+             "AF_UNSPEC",
+             "AF_INET6",
+             "SOL_SOCKET",
+             "SO_ERROR",
+             "SO_REUSEPORT"
         ]
     },
     {

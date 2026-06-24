@@ -1767,6 +1767,24 @@ int __syscall_getsockopt(int sockfd,
   return -ENOSYS;
 }
 
+int __syscall_setsockopt(int sockfd,
+                         int level,
+                         int optname,
+                         intptr_t optval,
+                         socklen_t optlen,
+                         int unused) {
+  return -ENOSYS;
+}
+
+int __syscall_shutdown(int sockfd,
+                       int how,
+                       int unused1,
+                       int unused2,
+                       int unused3,
+                       int unused4) {
+  return -ENOSYS;
+}
+
 int __syscall_getsockname(int sockfd,
                           intptr_t addr,
                           intptr_t len,
