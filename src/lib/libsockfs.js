@@ -36,6 +36,13 @@ addToLibrary({
       // 'listen' has no readiness mapping; skip it.
       if (flags) FS.getStream(fd)?.node.notifyListeners(flags);
     },
+    // Mark an async-completion pseudo-socket ready: flip it readable and wake
+    // its waiters through the generic wait-queue. A future ring/aio completion
+    // fd would reuse the same mechanism rather than re-adding one.
+    finishDns(sock) {
+      sock.dnsDone = true;
+      sock.stream.node?.notifyListeners({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+    },
     mount(mount) {
 #if expectToReceiveOnModule('websocket')
       // The incoming Module['websocket'] can be used for configuring 
@@ -128,6 +135,11 @@ addToLibrary({
     stream_ops: {
       poll(stream) {
         var sock = stream.node.sock;
+        // A DNS request fd (emscripten_dns_lookup_async) is readable once the
+        // lookup completes; read the result with emscripten_dns_lookup_result.
+        if (sock.dns) {
+          return sock.dnsDone ? ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}}) : 0;
+        }
         return sock.sock_ops.poll(sock);
       },
       ioctl(stream, request, varargs) {
@@ -150,6 +162,8 @@ addToLibrary({
       },
       close(stream) {
         var sock = stream.node.sock;
+        // A DNS request fd is a pseudo-socket with no backend resources.
+        if (sock.dns) return;
         sock.sock_ops.close(sock);
       }
     },
@@ -803,4 +817,71 @@ addToLibrary({
   emscripten_set_socket_close_callback__deps: ['$_setNetworkCallback'],
   emscripten_set_socket_close_callback: (userData, callback) =>
     _setNetworkCallback('close', userData, callback),
+
+  // Asynchronous getaddrinfo: same (node, service, hint) inputs as the sync call.
+  // Returns a pollable fd that becomes readable when resolution completes (wait
+  // on it with poll/select or emscripten_epoll_set_callback); read the result
+  // with emscripten_dns_lookup_result. Returns -1 on failure to allocate the fd.
+  // Without -sNODERAWSOCKETS this resolves synchronously (like getaddrinfo) and
+  // the fd is simply readable on the next turn.
+  emscripten_dns_lookup_async__deps: ['$SOCKFS', '$getAddrInfo', '$safeSetTimeout',
+#if NODERAWSOCKETS
+    '$nodeSockHelpers',
+#endif
+  ],
+  emscripten_dns_lookup_async__proxy: 'sync',
+  emscripten_dns_lookup_async: (node, service, hint) => {
+    var sock;
+    try {
+      sock = SOCKFS.createSocket({{{ cDefs.AF_INET }}}, {{{ cDefs.SOCK_STREAM }}}, 0);
+    } catch (e) {
+      return -1;
+    }
+    sock.dns = true;
+    // Read the request synchronously (the input pointers are only valid now). No
+    // C memory is allocated here; the resolved descriptor is stashed on the sock
+    // and minted into an addrinfo only when the caller takes it via
+    // emscripten_dns_lookup_result.
+    var desc = getAddrInfo(node, service, hint);
+#if NODERAWSOCKETS
+    if (typeof desc === 'object' && !desc.entries) {
+      // A real hostname: resolve via node:dns (fills desc.entries), then stash
+      // the same descriptor for the caller to mint from.
+      nodeSockHelpers.resolveAddrInfo(desc).then((eai) => {
+        sock.dnsResult = eai;
+        sock.dnsDesc = desc;
+        SOCKFS.finishDns(sock);
+      });
+      return sock.stream.fd;
+    }
+#endif
+    // Resolved synchronously (numeric/`/etc/hosts`/fake/null-node success, or a
+    // validation error). Deliver readiness on a later turn regardless, so the
+    // contract is uniformly async (the caller can poll or attach a listener
+    // first); safeSetTimeout keeps the runtime alive until it fires.
+    if (typeof desc === 'object') {
+      sock.dnsDesc = desc;
+      sock.dnsResult = 0;
+    } else {
+      sock.dnsResult = desc;
+    }
+    safeSetTimeout(() => SOCKFS.finishDns(sock), 0);
+    return sock.stream.fd;
+  },
+
+  // Read the outcome of a completed async lookup: 0 on success - minting the
+  // addrinfo list and writing its head to *res (freed with freeaddrinfo, as for
+  // getaddrinfo) - or an EAI_* code on failure (EAI_AGAIN if not yet complete).
+  // The memory is allocated here, so a caller that closes the fd without reading
+  // leaks nothing. The caller owns the fd and should close() it.
+  emscripten_dns_lookup_result__deps: ['$SOCKFS', '$writeAddrInfoList'],
+  emscripten_dns_lookup_result__proxy: 'sync',
+  emscripten_dns_lookup_result: (fd, res) => {
+    var sock = SOCKFS.getSocket(fd);
+    if (!sock || !sock.dns || !sock.dnsDone) return {{{ cDefs.EAI_AGAIN }}};
+    if (sock.dnsResult === 0) {
+      {{{ makeSetValue('res', '0', 'writeAddrInfoList(sock.dnsDesc)', '*') }}};
+    }
+    return sock.dnsResult;
+  },
 });

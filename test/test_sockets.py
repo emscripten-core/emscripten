@@ -512,6 +512,54 @@ class sockets(BrowserCore):
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
   @also_with_proxy_to_pthread
+  def test_noderawsockets_dns_async(self):
+    # getaddrinfo() resolves numeric and /etc/hosts names (read via emscripten's
+    # FS) synchronously and returns EAI_AGAIN for a real hostname.
+    # emscripten_dns_lookup_async() is the async getaddrinfo: a pollable fd whose
+    # emscripten_dns_lookup_result() yields the addrinfo payload directly.
+    self.do_runf('sockets/test_dns_async.c', 'DNS ASYNC PASS', cflags=['-sNODERAWSOCKETS'])
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_dns_callback(self):
+    # The async lookup fd becomes readable on completion; it is added to an epoll
+    # set and emscripten_epoll_set_callback() awaits it without blocking, driving the
+    # lookup purely via its callback, with no main loop or blocking poll/select.
+    # EXIT_RUNTIME so the proxy_to_pthread variant tears down cleanly once the
+    # callback's keepalive is released (otherwise the worker lingers).
+    self.do_runf('sockets/test_dns_callback.c', 'DNS CALLBACK PASS', cflags=['-sNODERAWSOCKETS', '-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_dns_async_net(self):
+    # A real public hostname is EAI_AGAIN synchronously, then resolves via the
+    # async getaddrinfo, whose result is delivered as an addrinfo payload. The
+    # async resolution pre-warms the shared cache, so a following synchronous
+    # getaddrinfo() of the same name then succeeds. This hits the real network
+    # (like test_getaddrinfo).
+    self.do_runf('sockets/test_dns_async_net.c', 'DNS ASYNC NET PASS', cflags=['-sNODERAWSOCKETS'])
+
+  def test_dns_async_default(self):
+    # The async getaddrinfo API is available without -sNODERAWSOCKETS, resolving
+    # synchronously (the same fake address getaddrinfo() returns) and delivering
+    # it via the pollable fd.
+    self.do_runf('sockets/test_dns_async_default.c', 'DNS ASYNC DEFAULT PASS')
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_dns_jspi(self):
+    # Under JSPI, getaddrinfo() of a real public hostname blocks on the
+    # node:dns lookup (suspending the wasm stack) and resolves directly,
+    # without the EAI_AGAIN + async retry needed in non-JSPI builds. This
+    # hits the real network (like test_getaddrinfo). Gate on node's own JSPI
+    # support (v24) since NODERAWSOCKETS runs under node.
+    if 'EMTEST_SKIP_JSPI' in os.environ:
+      self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
+    if not self.try_require_node_version(24):
+      self.skipTest('JSPI requires node v24')
+    if not common.check_node_version(26):
+      self.node_args += ['--experimental-wasm-stack-switching']
+    self.cflags += ['-Wno-experimental']
+    self.set_setting('JSPI')
+    self.do_runf('sockets/test_dns_jspi.c', 'DNS JSPI PASS', cflags=['-sNODERAWSOCKETS'])
+
+  @also_with_proxy_to_pthread
   def test_noderawsockets_udp(self):
     # Self-contained loopback UDP echo: the server binds(:0)+getsockname for its
     # ephemeral port, the client sends a datagram, the server echoes it back.
