@@ -947,53 +947,61 @@ addToLibrary({
     return inetPton4(DNS.lookup_name(nameString));
   },
 
-  getaddrinfo__deps: ['$DNS', '$inetPton4', '$inetNtop4', '$inetPton6', '$inetNtop6', '$writeSockaddr', 'malloc', 'htonl'],
-  getaddrinfo__proxy: 'sync',
-  getaddrinfo: (node, service, hint, out) => {
-    // Note getaddrinfo currently only returns a single addrinfo with ai_next defaulting to NULL. When NULL
-    // hints are specified or ai_family set to AF_UNSPEC or ai_socktype or ai_protocol set to 0 then we
-    // really should provide a linked list of suitable addrinfo values.
-    var addrs = [];
-    var canon = null;
+  // The encode/mint stage: turn a resolved descriptor ({entries, type, proto,
+  // port}, addr in parsed inetPton form) into an addrinfo linked list and return
+  // the head (0 for an empty list). This is the sole point that mints C memory,
+  // and the whole chain is freed uniformly by freeaddrinfo - one ownership rule.
+  // (A future ring/aio backend would add a sibling encoder here, e.g. one that
+  // writes into a caller buffer, without touching parse/resolve.)
+  $writeAddrInfoList__deps: ['$inetNtop4', '$inetNtop6', '$writeSockaddr', 'malloc'],
+  $writeAddrInfoList: (desc) => {
+    var head = 0, prev = 0;
+    for (var entry of desc.entries) {
+      var family = entry.family;
+      var salen = family === {{{ cDefs.AF_INET6 }}} ?
+        {{{ C_STRUCTS.sockaddr_in6.__size__ }}} :
+        {{{ C_STRUCTS.sockaddr_in.__size__ }}};
+      var sa = _malloc(salen);
+      var errno = writeSockaddr(sa, family, family === {{{ cDefs.AF_INET6 }}} ? inetNtop6(entry.addr) : inetNtop4(entry.addr), desc.port);
+#if ASSERTIONS
+      assert(!errno);
+#endif
+      var ai = _malloc({{{ C_STRUCTS.addrinfo.__size__ }}});
+      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_family, 'family', 'i32') }}};
+      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_socktype, 'desc.type', 'i32') }}};
+      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_protocol, 'desc.proto', 'i32') }}};
+      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_canonname, '0', '*') }}};
+      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addr, 'sa', '*') }}};
+      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, 'salen', 'i32') }}};
+      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_next, '0', 'i32') }}};
+      if (prev) {
+        {{{ makeSetValue('prev', C_STRUCTS.addrinfo.ai_next, 'ai', '*') }}};
+      } else {
+        head = ai;
+      }
+      prev = ai;
+    }
+    return head;
+  },
+
+  // Shared getaddrinfo core. Allocates nothing: returns a resolved descriptor
+  // {entries, type, proto, port} (entries are {family, addr} with addr in parsed
+  // inetPton form), a negative EAI_* code on failure, or - under NODERAWSOCKETS,
+  // for a hostname needing DNS - a {node, family, type, proto, port} descriptor
+  // (no entries) for the caller to resolve. The result is minted from a
+  // descriptor by writeAddrInfoList at the point ownership passes to the caller.
+  $getAddrInfo__deps: ['$DNS', '$inetPton4', '$inetPton6', 'htonl', '$UTF8ToString',
+#if NODERAWSOCKETS
+    '$nodeSockHelpers',
+#endif
+  ],
+  $getAddrInfo: (node, service, hint) => {
     var addr = 0;
     var port = 0;
     var flags = 0;
     var family = {{{ cDefs.AF_UNSPEC }}};
     var type = 0;
     var proto = 0;
-    var ai, last;
-
-    function allocaddrinfo(family, type, proto, canon, addr, port) {
-      var sa, salen, ai;
-      var errno;
-
-      salen = family === {{{ cDefs.AF_INET6 }}} ?
-        {{{ C_STRUCTS.sockaddr_in6.__size__ }}} :
-        {{{ C_STRUCTS.sockaddr_in.__size__ }}};
-      addr = family === {{{ cDefs.AF_INET6 }}} ?
-        inetNtop6(addr) :
-        inetNtop4(addr);
-      sa = _malloc(salen);
-      errno = writeSockaddr(sa, family, addr, port);
-#if ASSERTIONS
-      assert(!errno);
-#endif
-
-      ai = _malloc({{{ C_STRUCTS.addrinfo.__size__ }}});
-      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_family, 'family', 'i32') }}};
-      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_socktype, 'type', 'i32') }}};
-      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_protocol, 'proto', 'i32') }}};
-      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_canonname, 'canon', '*') }}};
-      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addr, 'sa', '*') }}};
-      if (family === {{{ cDefs.AF_INET6 }}}) {
-        {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, C_STRUCTS.sockaddr_in6.__size__, 'i32') }}};
-      } else {
-        {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_addrlen, C_STRUCTS.sockaddr_in.__size__, 'i32') }}};
-      }
-      {{{ makeSetValue('ai', C_STRUCTS.addrinfo.ai_next, '0', 'i32') }}};
-
-      return ai;
-    }
 
     if (hint) {
       flags = {{{ makeGetValue('hint', C_STRUCTS.addrinfo.ai_flags, 'i32') }}};
@@ -1063,9 +1071,7 @@ addToLibrary({
           addr = [0, 0, 0, _htonl(1)];
         }
       }
-      ai = allocaddrinfo(family, type, proto, null, addr, port);
-      {{{ makeSetValue('out', '0', 'ai', '*') }}};
-      return 0;
+      return { entries: [{ family, addr }], type, proto, port };
     }
 
     //
@@ -1096,9 +1102,7 @@ addToLibrary({
       }
     }
     if (addr != null) {
-      ai = allocaddrinfo(family, type, proto, node, addr, port);
-      {{{ makeSetValue('out', '0', 'ai', '*') }}};
-      return 0;
+      return { entries: [{ family, addr }], type, proto, port };
     }
     if (flags & {{{ cDefs.AI_NUMERICHOST }}}) {
       return {{{ cDefs.EAI_NONAME }}};
@@ -1107,6 +1111,22 @@ addToLibrary({
     //
     // try as a hostname
     //
+#if NODERAWSOCKETS
+    // /etc/hosts resolves synchronously (read fresh through emscripten's FS).
+    var hosts = nodeSockHelpers.readHosts(node).filter((e) =>
+      family === {{{ cDefs.AF_UNSPEC }}} || e.family === family);
+    if (hosts.length) {
+      var entries = hosts.map((e) => ({
+        family: e.family,
+        addr: e.family === {{{ cDefs.AF_INET6 }}} ? inetPton6(e.addr) : inetPton4(e.addr),
+      }));
+      return { entries, type, proto, port };
+    }
+    // A real hostname needs a DNS lookup; hand the request back to the caller to
+    // resolve asynchronously (getaddrinfo suspends under JSPI / returns
+    // EAI_AGAIN otherwise; emscripten_dns_lookup_async drives the poll-fd flow).
+    return { node, family, type, proto, port };
+#else
     // resolve the hostname to a temporary fake address
     node = DNS.lookup_name(node);
     addr = inetPton4(node);
@@ -1115,9 +1135,50 @@ addToLibrary({
     } else if (family === {{{ cDefs.AF_INET6 }}}) {
       addr = [0, 0, _htonl(0xffff), addr];
     }
-    ai = allocaddrinfo(family, type, proto, null, addr, port);
-    {{{ makeSetValue('out', '0', 'ai', '*') }}};
-    return 0;
+    return { entries: [{ family, addr }], type, proto, port };
+#endif
+  },
+
+  getaddrinfo__deps: ['$getAddrInfo', '$writeAddrInfoList',
+#if NODERAWSOCKETS
+    '$nodeSockHelpers',
+#endif
+  ],
+  getaddrinfo__proxy: 'sync',
+#if NODERAWSOCKETS && ASYNCIFY == 2
+  // Under JSPI a hostname miss suspends the wasm stack on the real node:dns
+  // lookup (returning a promise) rather than reporting EAI_AGAIN. A resolved
+  // descriptor (numeric/hosts) or error does not suspend.
+  getaddrinfo__async: true,
+#endif
+  getaddrinfo: (node, service, hint, out) => {
+    // parse -> (resolve) -> mint. One descriptor threads through all three.
+    var desc = getAddrInfo(node, service, hint);
+    if (typeof desc === 'object') {
+      if (desc.entries) {
+        {{{ makeSetValue('out', '0', 'writeAddrInfoList(desc)', '*') }}};
+        return 0;
+      }
+#if NODERAWSOCKETS && ASYNCIFY == 2
+      // JSPI: suspend on the real node:dns lookup, which fills desc.entries, then
+      // mint from the same descriptor.
+      return nodeSockHelpers.resolveAddrInfo(desc).then((eai) => {
+        if (eai) return eai;
+        {{{ makeSetValue('out', '0', 'writeAddrInfoList(desc)', '*') }}};
+        return 0;
+      });
+#elif NODERAWSOCKETS
+      // No synchronous DNS available: numeric and /etc/hosts names resolve above.
+      // A name pre-warmed by emscripten_dns_lookup_async() answers from the shared
+      // cache; otherwise it must be resolved out-of-band via that async syscall.
+      if (nodeSockHelpers.dnsCacheGet(desc)) {
+        {{{ makeSetValue('out', '0', 'writeAddrInfoList(desc)', '*') }}};
+        return 0;
+      }
+      return {{{ cDefs.EAI_AGAIN }}};
+#endif
+    }
+    return desc;
   },
 
   getnameinfo__deps: ['$DNS', '$readSockaddr', '$stringToUTF8'],

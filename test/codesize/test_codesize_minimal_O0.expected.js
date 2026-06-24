@@ -895,6 +895,8 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'inetNtop6',
   'readSockaddr',
   'writeSockaddr',
+  'writeAddrInfoList',
+  'getAddrInfo',
   'readEmAsmArgs',
   'jstoi_q',
   'getExecutableName',

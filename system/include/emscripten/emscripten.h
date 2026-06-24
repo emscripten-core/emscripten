@@ -68,6 +68,23 @@ void emscripten_set_socket_connection_callback(void *userData, em_socket_callbac
 void emscripten_set_socket_message_callback(void *userData, em_socket_callback callback);
 void emscripten_set_socket_close_callback(void *userData, em_socket_callback callback);
 
+// Asynchronous getaddrinfo. emscripten_dns_lookup_async() takes the same
+// node/service/hints inputs as getaddrinfo() and returns a file descriptor that
+// becomes readable once resolution completes, or -1 on error. Wait on it with
+// poll/select/epoll, or without blocking by adding it to an epoll set and using
+// emscripten_epoll_set_callback(). Once readable, call emscripten_dns_lookup_result()
+// to read the outcome: 0 on success - writing the addrinfo list head to *res
+// (free it with freeaddrinfo, as for getaddrinfo) - or an EAI_* code on failure.
+// The caller owns the fd and should close() it.
+// With -sNODERAWSOCKETS a hostname is resolved asynchronously via node:dns;
+// otherwise resolution is synchronous (as getaddrinfo) and the fd is simply
+// readable on the next turn. A successful resolution pre-warms getaddrinfo()'s
+// cache, so a subsequent synchronous getaddrinfo() of the same name resolves
+// from it rather than returning EAI_AGAIN.
+struct addrinfo;
+int emscripten_dns_lookup_async(const char *node, const char *service, const struct addrinfo *hints);
+int emscripten_dns_lookup_result(int fd, struct addrinfo **res);
+
 void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
 void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
 #define emscripten_push_main_loop_blocker(func, arg) \

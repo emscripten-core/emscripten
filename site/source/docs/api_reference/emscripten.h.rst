@@ -1606,6 +1606,69 @@ Functions
                                       arbitrary ``userData`` passed to this function.
 
 
+.. c:function:: int emscripten_dns_lookup_async(const char *node, const char *service, const struct addrinfo *hints)
+
+  Asynchronous :c:func:`getaddrinfo`. Takes the same ``node``/``service``/``hints``
+  inputs and returns a file descriptor that becomes readable once resolution
+  completes. Wait on it with ``poll``/``select``/``epoll`` or, without blocking, by
+  adding it to an epoll set and using :c:func:`emscripten_epoll_set_callback`, then read
+  the result with :c:func:`emscripten_dns_lookup_result`. The caller owns the fd
+  and should ``close()`` it.
+
+  With ``-sNODERAWSOCKETS`` a hostname is resolved asynchronously via ``node:dns``;
+  otherwise (and for numeric or ``/etc/hosts`` names) resolution is synchronous,
+  as :c:func:`getaddrinfo`, and the fd is simply readable on the next turn.
+
+  :param node: The hostname or numeric address to resolve.
+  :param service: The service name or port string (may be ``NULL``).
+  :param hints: ``addrinfo`` filter (``ai_family``/``ai_socktype``/etc.; may be ``NULL``).
+  :returns: A pollable file descriptor, or ``-1`` on failure to start the lookup.
+
+
+.. c:function:: int emscripten_dns_lookup_result(int fd, struct addrinfo **res)
+
+  Reads the outcome of a lookup started by :c:func:`emscripten_dns_lookup_async`,
+  once its ``fd`` is readable.
+
+  :param int fd: The file descriptor returned by :c:func:`emscripten_dns_lookup_async`.
+  :param res: On success, receives the head of the resulting ``addrinfo`` list (free it with :c:func:`freeaddrinfo`, as for :c:func:`getaddrinfo`).
+  :returns: ``0`` on success, or an ``EAI_*`` error code on failure (``EAI_AGAIN`` if the lookup has not completed yet).
+
+
+.. c:type:: em_epoll_callback
+
+  Function pointer type for the :c:func:`emscripten_epoll_set_callback` callback,
+  defined as: ::
+
+    typedef void (*em_epoll_callback)(int epfd, struct epoll_event *events, int nready, void *userdata);
+
+  ``events`` is a runtime-owned buffer of ``nready`` ready entries, valid only for
+  the duration of the call.
+
+
+.. c:function:: int emscripten_epoll_set_callback(int epfd, int maxevents, em_epoll_callback callback, void *userdata)
+
+  Register a persistent readiness callback on an existing epoll fd (built with
+  :c:func:`epoll_create1`/:c:func:`epoll_ctl`): instead of blocking in
+  :c:func:`epoll_wait`, the runtime calls ``callback`` every time the set makes
+  progress, delivering up to ``maxevents`` ready events. The interest is armed once
+  and reused across every delivery. Unlike :c:func:`epoll_wait` it never blocks the
+  calling stack, so it works without ASYNCIFY/JSPI, and it keeps the runtime alive
+  while armed.
+
+  There is at most one callback per epoll: calling again replaces it. A ``NULL``
+  ``callback`` unregisters; the interest also ends when the epoll fd is closed.
+  Per-fd ``EPOLLET``/``EPOLLONESHOT`` behave exactly as with the blocking
+  :c:func:`epoll_wait`.
+
+  :param epfd: An epoll fd from :c:func:`epoll_create1`.
+  :param maxevents: Maximum number of ready events to deliver per callback.
+  :param callback: Invoked with ``epfd``, the runtime-owned ``events`` buffer, the ready count ``nready``, and ``userdata``. ``NULL`` unregisters.
+  :param userdata: Opaque pointer passed through to the callback.
+  :returns: ``0`` on success, or ``-errno`` (``-EBADF``/``-EINVAL``).
+
+
+
 Unaligned types
 ===============
 
