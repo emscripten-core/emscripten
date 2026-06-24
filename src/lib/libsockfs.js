@@ -8,7 +8,11 @@ addToLibrary({
   $SOCKFS__postset: () => {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
-  $SOCKFS__deps: ['$FS'],
+  $SOCKFS__deps: ['$FS',
+#if NODERAWSOCKETS
+    '$nodeSockOps',
+#endif
+  ],
   $SOCKFS: {
 #if expectToReceiveOnModule('websocket')
     websocketArgs: {},
@@ -44,8 +48,12 @@ addToLibrary({
       return FS.createNode(null, '/', {{{ cDefs.S_IFDIR | 0o777 }}}, 0);
     },
     createSocket(family, type, protocol) {
-      // Emscripten only supports AF_INET
-      if (family != {{{ cDefs.AF_INET }}}) {
+      if (family != {{{ cDefs.AF_INET }}}
+#if NODERAWSOCKETS
+          // The node:net backend supports IPv6; other backends are IPv4 only.
+          && family != {{{ cDefs.AF_INET6 }}}
+#endif
+         ) {
         throw new FS.ErrnoError({{{ cDefs.EAFNOSUPPORT }}});
       }
       type &= ~{{{ cDefs.SOCK_CLOEXEC | cDefs.SOCK_NONBLOCK }}}; // Some applications may pass it; it makes no sense for a single process.
@@ -69,6 +77,8 @@ addToLibrary({
         pending: [],
         recv_queue: [],
 #if SOCKET_WEBRTC
+#elif NODERAWSOCKETS
+        sock_ops: nodeSockOps
 #else
         sock_ops: SOCKFS.websocket_sock_ops
 #endif
@@ -726,7 +736,7 @@ addToLibrary({
 
         return res;
       }
-    }
+    },
   },
 
   /*

@@ -280,6 +280,21 @@ def also_with_pthreads(f):
   return decorated
 
 
+def also_with_proxy_to_pthread(f):
+  assert callable(f)
+
+  @wraps(f)
+  def decorated(self, threads, *args, **kwargs):
+    if threads:
+      self.cflags += ['-pthread', '-sPROXY_TO_PTHREAD']
+    f(self, *args, **kwargs)
+
+  parameterize(decorated, {'': (False,),
+                           'proxy_to_pthread': (True,)})
+
+  return decorated
+
+
 def also_with_wasmfs(func):
   assert callable(func)
 

@@ -18,8 +18,16 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.1 (in development)
+6.0.2 (in development)
 ----------------------
+- New `-sNODERAWSOCKETS` setting that backs the POSIX sockets API with real TCP
+  (`node:net`) and UDP (`node:dgram`) sockets on Node.js, with no `ws`, proxy
+  process, or pthreads required. Supports incoming and outgoing TCP, UDP, IPv6,
+  and `-pthread` with `PROXY_TO_PTHREAD`. Uses the public node APIs where
+  available, falling back to `tcp_wrap`/`udp_wrap` on older Node.js. (#27080)
+
+6.0.1 - 06/22/26
+----------------
 - The ability to redirect JS compiler stderr using `EMCC_STDERR_FILE` was
   removed.  These days you can use `EMCC_DEBUG` and/or `EMCC_DEBUG_SAVE` to
   preserve all the intermediate JS compiler files. (#27101)

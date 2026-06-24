@@ -231,11 +231,6 @@ weak int __syscall_prlimit64(pid_t pid, int resource, const struct rlimit *new_l
   return 0;
 }
 
-weak int __syscall_setsockopt(int sockfd, int level, int optname, const void *optval, socklen_t optlen, int unused) {
-  REPORT(setsockopt);
-  return -ENOPROTOOPT; // The option is unknown at the level indicated.
-}
-
 weak pid_t __syscall_wait4(pid_t pid, int *wstatus, int options, struct rusage *rusage) {
   REPORT(wait4);
   return -1;
@@ -245,5 +240,4 @@ UNIMPLEMENTED(acct, (const char *filename))
 UNIMPLEMENTED(mincore, (void *addr, size_t length, unsigned char *vec))
 UNIMPLEMENTED(recvmmsg, (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags, struct timespec *timeout))
 UNIMPLEMENTED(sendmmsg, (int sockfd, struct mmsghdr *msgvec, unsigned int vlen, unsigned int flags))
-UNIMPLEMENTED(shutdown, (int sockfd, int how, int unused1, int unused2, int unused3, int unused4))
 UNIMPLEMENTED(socketpair, (int domain, int type, int protocol, int fd[2], int unused1, int unused2))
