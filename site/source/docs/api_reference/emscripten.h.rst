@@ -1280,6 +1280,38 @@ Functions
   :param em_socket_callback callback: Pointer to a callback function. The callback returns a file descriptor and the arbitrary ``userData`` passed to this function.
 
 
+.. c:type:: em_poll_callback
+
+  Function pointer type for the :c:func:`emscripten_poll_with_callback` callback,
+  defined as: ::
+
+    typedef void (*em_poll_callback)(int fd, int revents);
+
+  ``revents`` is delivered by value (the same bitmask :c:func:`poll` would leave
+  in ``pollfd.revents``), so there is nothing to own or free.
+
+
+.. c:function:: int emscripten_poll_with_callback(int fd, int events, int timeout, em_poll_callback callback)
+
+  Asynchronous, callback-based wait on a single fd's readiness. Registers interest
+  in ``events`` (``POLLIN``/``POLLOUT``/...) on ``fd`` and invokes
+  ``callback(fd, revents)`` once any of them is ready - or ``timeout`` milliseconds
+  elapse, in which case ``revents`` is ``0``. Unlike :c:func:`poll`, this never
+  blocks the calling stack, so it works without ASYNCIFY/JSPI; it is the single-fd
+  dual of a blocking :c:func:`poll` (wait on a set with several of these).
+
+  Capability is a property of the descriptor type, checked before arming: only
+  types that announce readiness (sockets, pipes) can be waited on. An unsupported
+  fd is rejected with ``-EPERM`` even when it is currently ready, mirroring
+  :c:func:`epoll_ctl`.
+
+  :param fd: The file descriptor to wait on.
+  :param events: Requested event mask, as for :c:func:`poll` (``POLLIN``, ``POLLOUT``, ...).
+  :param timeout: Milliseconds to wait before giving up; ``-1`` waits indefinitely and ``0`` is a non-blocking probe.
+  :param callback: Invoked with ``fd`` and the ready ``revents`` (``0`` on timeout).
+  :returns: ``0`` once armed, ``-EBADF`` if ``fd`` is not open, or ``-EPERM`` if ``fd``'s descriptor type cannot deliver readiness callbacks.
+
+
 Unaligned types
 ===============
 

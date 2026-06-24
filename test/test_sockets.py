@@ -476,6 +476,26 @@ class sockets(BrowserCore):
     self.do_runf('sockets/test_udp_ipv6.c', 'UDP IPV6 PASS', cflags=['-sNODERAWSOCKETS'])
 
   @also_with_proxy_to_pthread
+  def test_noderawsockets_poll_callback(self):
+    # emscripten_poll_with_callback waits on a real socket's readiness (a UDP
+    # datagram arrival) via the SOCKFS emit -> poll-callback bridge, and rejects
+    # descriptor types that can't deliver callbacks (-EPERM) and bad fds (-EBADF).
+    self.do_runf('sockets/test_poll_callback.c', 'POLL CALLBACK PASS', cflags=['-sNODERAWSOCKETS', '-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_poll_socket_blocking(self):
+    # A blocking poll() on a socket is woken by incoming data through the unified
+    # readiness wait-queue - a capability sockets gained from the poll() /
+    # poll_with_callback convergence (sock_ops.poll never registered notifiers).
+    self.do_runf('sockets/test_poll_socket_blocking.c', 'POLL SOCKET BLOCKING PASS',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_poll_socket_blocking_jspi(self):
+    # Same, but the blocking poll() suspends the wasm stack under JSPI.
+    self.require_jspi()
+    self.do_runf('sockets/test_poll_socket_blocking.c', 'POLL SOCKET BLOCKING PASS',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  @also_with_proxy_to_pthread
   def test_noderawsockets_udp(self):
     # Self-contained loopback UDP echo: the server binds(:0)+getsockname for its
     # ephemeral port, the client sends a datagram, the server echoes it back.

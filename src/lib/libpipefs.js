@@ -6,7 +6,7 @@
 
 addToLibrary({
   $PIPEFS__postset: () => addAtInit('PIPEFS.root = FS.mount(PIPEFS, {}, null);'),
-  $PIPEFS__deps: ['$FS'],
+  $PIPEFS__deps: ['$FS', '$notifyPollCallback'],
   $PIPEFS: {
     BUCKET_BUFFER_SIZE: 1024 * 8, // 8KiB Buffer
     mount(mount) {
@@ -21,23 +21,6 @@ addToLibrary({
         // able to read from the read end after write end is closed.
         refcnt : 2,
         timestamp: new Date(),
-#if PTHREADS || ASYNCIFY
-        readableHandlers: [],
-        registerReadableHandler: (callback) => {
-          callback.registerCleanupFunc(() => {
-            const i = pipe.readableHandlers.indexOf(callback);
-            if (i !== -1) pipe.readableHandlers.splice(i, 1);
-          });
-          pipe.readableHandlers.push(callback);
-        },
-        notifyReadableHandlers: () => {
-          while (pipe.readableHandlers.length > 0) {
-            const cb = pipe.readableHandlers.shift();
-            if (cb) cb({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
-          }
-          pipe.readableHandlers = [];
-        }
-#endif
       };
 
       pipe.buckets.push({
@@ -53,6 +36,8 @@ addToLibrary({
 
       rNode.pipe = pipe;
       wNode.pipe = pipe;
+      // The read end's node carries the poll wait-queue; writes wake it.
+      pipe.readNode = rNode;
 
       var readableStream = FS.createStream({
         path: rName,
@@ -97,7 +82,10 @@ addToLibrary({
           blocks: 0,
         };
       },
-      poll(stream, timeout, notifyCallback) {
+      // Pure readiness derivation; registration/notification go through the
+      // shared node wait-queue (notifyPollCallback on write/close).
+      pollAsync: true,
+      poll(stream) {
         var pipe = stream.node.pipe;
 
         if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
@@ -108,10 +96,6 @@ addToLibrary({
             return ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
           }
         }
-
-#if PTHREADS || ASYNCIFY
-        if (notifyCallback) pipe.registerReadableHandler(notifyCallback);
-#endif
         return 0;
       },
       dup(stream) {
@@ -233,9 +217,7 @@ addToLibrary({
         if (freeBytesInCurrBuffer >= dataLen) {
           currBucket.buffer.set(data, currBucket.offset);
           currBucket.offset += dataLen;
-#if PTHREADS || ASYNCIFY
-          pipe.notifyReadableHandlers();
-#endif
+          notifyPollCallback(pipe.readNode, {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
           return dataLen;
         } else if (freeBytesInCurrBuffer > 0) {
           currBucket.buffer.set(data.subarray(0, freeBytesInCurrBuffer), currBucket.offset);
@@ -267,9 +249,7 @@ addToLibrary({
           newBucket.buffer.set(data);
         }
 
-#if PTHREADS || ASYNCIFY
-        pipe.notifyReadableHandlers();
-#endif
+        notifyPollCallback(pipe.readNode, {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
         return dataLen;
       },
       close(stream) {

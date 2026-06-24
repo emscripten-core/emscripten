@@ -20,6 +20,8 @@
  *    is up at http://kripken.github.io/emscripten-site/docs/api_reference/emscripten.h.html
  */
 
+#include <poll.h>
+
 #include "em_asm.h"
 #include "em_js.h"
 #include "em_macros.h"
@@ -67,6 +69,20 @@ void emscripten_set_socket_listen_callback(void *userData, em_socket_callback ca
 void emscripten_set_socket_connection_callback(void *userData, em_socket_callback callback);
 void emscripten_set_socket_message_callback(void *userData, em_socket_callback callback);
 void emscripten_set_socket_close_callback(void *userData, em_socket_callback callback);
+
+// Asynchronous, callback-based wait on a single fd's readiness. Registers
+// interest in `events` (POLLIN/POLLOUT/...) on `fd` and invokes
+// callback(fd, revents) once any of them is ready - or `timeout` ms elapse, in
+// which case revents is 0. revents is delivered by value, so there is nothing to
+// allocate, own, or keep alive across the call. Unlike poll() this never blocks
+// the calling stack, so it works without ASYNCIFY/JSPI; it is the single-fd dual
+// of a blocking poll() (wait on a set with several of these).
+//
+// Returns 0 once armed, -EBADF if `fd` is not open, or -EPERM if `fd`'s
+// descriptor type cannot deliver readiness callbacks (checked first, so an
+// unsupported fd is rejected even when currently ready, as epoll_ctl does).
+typedef void (*em_poll_callback)(int fd, int revents);
+int emscripten_poll_with_callback(int fd, int events, int timeout, em_poll_callback callback);
 
 void _emscripten_push_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);
 void _emscripten_push_uncounted_main_loop_blocker(em_arg_callback_func func, void *arg, const char *name);

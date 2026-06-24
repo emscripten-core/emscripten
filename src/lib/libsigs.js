@@ -722,6 +722,7 @@ sigs = {
   emscripten_pc_get_function__sig: 'pp',
   emscripten_pc_get_line__sig: 'ip',
   emscripten_performance_now__sig: 'd',
+  emscripten_poll_with_callback__sig: 'iiiip',
   emscripten_print_double__sig: 'idpi',
   emscripten_promise_all__sig: 'pppp',
   emscripten_promise_all_settled__sig: 'pppp',

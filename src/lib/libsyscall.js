@@ -602,7 +602,7 @@ var SyscallsLibrary = {
     }
 #endif
 
-    var count = doPoll(fds, nfds, 0, undefined);
+    var count = doPoll(fds, nfds);
 #if ASSERTIONS
     if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
 #endif
@@ -610,79 +610,59 @@ var SyscallsLibrary = {
   },
 #if PTHREADS || ASYNCIFY
   $doPollAsync__internal: true,
-  $doPollAsync__deps: ['$FS', '$doPoll'],
+  $doPollAsync__deps: ['$FS', '$doPoll', '$addPollCallback'],
   $doPollAsync: (fds, nfds, timeout) => {
 #if RUNTIME_DEBUG
     dbg('async poll start');
 #endif
-
-    // Enable event handlers only when the poll call is proxied from a worker.
-    // TODO: Could use `Promise.withResolvers` here if we know its available.
     var resolve;
     var promise = new Promise((resolve_) => { resolve = resolve_; });
-    var cleanupFuncs = [];
+    var removers = [];
+    var timer;
     var notifyDone = false;
-
-    function asyncPollComplete(count) {
-      if (notifyDone) {
-        return;
-      }
+    function complete(count) {
+      if (notifyDone) return;
       notifyDone = true;
 #if RUNTIME_DEBUG
       dbg('asyncPollComplete', count);
 #endif
-      cleanupFuncs.forEach(cb => cb());
+      removers.forEach((r) => r());
+      if (timer) clearTimeout(timer);
       resolve(count);
     }
 
-    function makeNotifyCallback(stream, pollfd) {
-      var cb = (flags) => {
-        if (notifyDone) {
-          return;
-        }
-#if RUNTIME_DEBUG
-        dbg(`async poll notify: stream=${stream}`);
-#endif
-        var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
-        flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
-#if ASSERTIONS
-        assert(flags)
-#endif
-        {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
-        asyncPollComplete(1);
-      }
-      cb.registerCleanupFunc = (f) => {
-        if (f) cleanupFuncs.push(f);
-      }
-      return cb;
-    }
-    if (timeout > 0) {
-      var t = setTimeout(() => {
-#if RUNTIME_DEBUG
-        dbg('poll: timeout', timeout);
-#endif
-        asyncPollComplete(0);
-      }, timeout);
-      cleanupFuncs.push(() => clearTimeout(t));
-    }
-    // A zero timeout never registers notifications: the derivation alone
-    // answers, matching the non-blocking probe.
-    var count = doPoll(fds, nfds, timeout, makeNotifyCallback);
+    var count = doPoll(fds, nfds);
     if (count || !timeout) {
-      asyncPollComplete(count);
+      // Ready now, or a zero-timeout probe: the derivation alone answers.
+      complete(count);
+    } else {
+      // Suspend: register one waiter per fd on its node wait-queue. Any wake
+      // re-derives the whole set (the wake flags are only the trigger) and
+      // resolves with the full ready count, as poll() reports. Registration
+      // follows the derivation with no event-loop turn between, so on the
+      // (single) main thread there is no lost-wakeup window.
+      var recheck = () => {
+        if (notifyDone) return;
+        var c = doPoll(fds, nfds);
+        if (c) complete(c);
+      };
+      for (var i = 0; i < nfds; i++) {
+        var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
+        var stream = FS.getStream({{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}});
+        if (stream) removers.push(addPollCallback(stream.node, recheck));
+      }
+      if (timeout > 0) timer = setTimeout(() => complete(0), timeout);
     }
     return promise;
   },
 #endif
-  // The shared readiness derivation: one pass over the pollfds, writing
-  // revents and returning the ready count. With a nonzero `timeout`, a
-  // readiness notification is also registered on each stream by the same
-  // `stream_ops.poll` call that derives it, so there is no window between
-  // registration and derivation; a zero `timeout` means the caller will not
-  // wait, so no notification is registered (the plain probe).
+  // The shared readiness derivation: one pure pass over the pollfds, writing
+  // revents and returning the ready count. Notification is not registered here -
+  // that is the consumer's job, on the node wait-queue (see doPollAsync and
+  // emscripten_poll_with_callback).
   $doPoll__internal: true,
   $doPoll__deps: ['$FS'],
-  $doPoll: (fds, nfds, timeout, makeNotifyCallback) => {
+  $doPoll: (fds, nfds) => {
     var count = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
@@ -691,13 +671,7 @@ var SyscallsLibrary = {
       var flags = {{{ cDefs.POLLNVAL }}};
       var stream = FS.getStream(fd);
       if (stream) {
-        if (stream.stream_ops.poll) {
-          flags = timeout
-            ? stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd))
-            : stream.stream_ops.poll(stream, -1);
-        } else {
-          flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
-        }
+        flags = stream.stream_ops.poll ? stream.stream_ops.poll(stream) : ({{{ cDefs.POLLIN | cDefs.POLLOUT }}});
       }
       flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
       if (flags) count++;
@@ -713,7 +687,84 @@ var SyscallsLibrary = {
   __syscall_poll_nonblocking__proxy: 'sync',
   __syscall_poll_nonblocking__deps: ['$doPoll'],
   __syscall_poll_nonblocking: (fds, nfds) => {
-    return doPoll(fds, nfds, 0, undefined);
+    return doPoll(fds, nfds);
+  },
+
+  // The descriptor-layer readiness wait-queue. It lives on the *node* (so dup'd
+  // fds sharing a node share one queue) and is the single seam consumed by both
+  // emscripten_poll_with_callback (single-fd) and the async __syscall_poll
+  // (multi-fd), and fed by every producer (SOCKFS.emit, pipe writes, ...).
+  // `stream_ops.poll(stream)` is pure derivation; registration and notification
+  // are entirely here.
+  $notifyPollCallback: (node, flags) => {
+    // Copy first: a woken waiter removes itself as it completes.
+    node?.pollCallbacks?.slice().forEach((cb) => cb(flags));
+  },
+  $addPollCallback: (node, cb) => {
+    (node.pollCallbacks ??= []).push(cb);
+    return () => {
+      var i = node.pollCallbacks.indexOf(cb);
+      if (i >= 0) node.pollCallbacks.splice(i, 1);
+    };
+  },
+
+  // Asynchronous, callback-based wait on a single fd. Registers interest in
+  // `events` on `fd` and invokes callback(fd, revents) once any are ready, or
+  // `timeout` ms elapse (-1 = no timeout, 0 = probe), with revents passed by
+  // value. Unlike poll() this never suspends the calling stack, so it works
+  // without ASYNCIFY/JSPI. The single-fd, by-value dual of a blocking poll() -
+  // waiting on a set is just several of these.
+  //
+  // Returns 0 once armed/scheduled, -EBADF if `fd` is not open, or -EPERM if the
+  // descriptor type cannot deliver readiness callbacks (checked first, so an
+  // unsupported fd is rejected even when it is currently ready - as epoll does).
+  emscripten_poll_with_callback__deps: ['$FS', '$callUserCallback', '$safeSetTimeout', '$addPollCallback'],
+  emscripten_poll_with_callback__proxy: 'sync',
+  emscripten_poll_with_callback: (fd, events, timeout, callback) => {
+    var stream = FS.getStream(fd);
+    if (!stream) return -{{{ cDefs.EBADF }}};
+    // Capability is a property of the descriptor: only types that announce
+    // readiness through $notifyPollCallback can be waited on. `pollAsync` is a
+    // flag, or a predicate when an instance (e.g. a listening socket) can't.
+    var pollAsync = stream.stream_ops.pollAsync;
+    if (typeof pollAsync == 'function') pollAsync = pollAsync(stream);
+    if (!pollAsync) return -{{{ cDefs.EPERM }}};
+
+    // poll() always reports these regardless of the requested events.
+    var mask = events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLNVAL }}};
+    var done = false, removePoll, timer;
+    function finish(revents) {
+      if (done) return;
+      done = true;
+      removePoll?.();
+      if (timer) clearTimeout(timer);
+      // Always deliver on a fresh tick: finish() can be reached synchronously
+      // (ready-now, or a close() that wakes us), and the callback must never run
+      // - nor trigger runtime exit via maybeExit - inside the caller's stack.
+      safeSetTimeout(() => {
+        {{{ runtimeKeepalivePop() }}}
+        callUserCallback(() => {
+          {{{ makeDynCall('vii', 'callback') }}}(fd, revents);
+        });
+      }, 0);
+    }
+
+    {{{ runtimeKeepalivePush() }}}
+    var revents = (stream.stream_ops.poll?.(stream) ?? {{{ cDefs.POLLIN | cDefs.POLLOUT }}}) & mask;
+    if (revents || !timeout) {
+      // Ready now, or a zero-timeout probe.
+      finish(revents);
+    } else {
+      // Enqueue on the node wait-queue; a later notify wakes us. On wake we
+      // re-derive the full current readiness (the wake flags are only the edge
+      // that triggered us) and report it as poll() would.
+      removePoll = addPollCallback(stream.node, (flags) => {
+        var ready = ((stream.stream_ops.poll?.(stream) ?? 0) | flags) & mask;
+        if (ready) finish(ready);
+      });
+      if (timeout > 0) timer = setTimeout(() => finish(0), timeout);
+    }
+    return 0;
   },
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
