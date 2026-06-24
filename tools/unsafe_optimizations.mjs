@@ -208,7 +208,7 @@ function optPassMergeVarInitializationAssignments(ast) {
 
 function runOnJsText(js, pretty = false, exportES6 = false) {
   const ast = acorn.parse(js, {
-    // Keep in sync with in tools/acorn-optimizer.mjs
+    // Keep in sync with tools/acorn-optimizer.mjs
     ecmaVersion: 'latest',
     sourceType: exportES6 ? 'module' : 'script',
     allowAwaitOutsideFunction: true,
