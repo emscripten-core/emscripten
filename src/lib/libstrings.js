@@ -18,6 +18,14 @@ addToLibrary({
   $UTF8Decoder: "globalThis.TextDecoder && new TextDecoder()",
 #endif
 
+  $findStringEnd__docs: `
+  /**
+   * heapOrArray is either a regular array, or a JavaScript typed array view.
+   * @param {number} idx
+   * @param {number=} maxBytesToRead
+   * @param {boolean=} ignoreNul
+   * @return {number}
+   */`,
   $findStringEnd: (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
     var maxIdx = idx + maxBytesToRead;
     if (ignoreNul) return maxIdx;
@@ -357,15 +365,13 @@ addToLibrary({
   //                    maxBytesToWrite<2 does not write any bytes to the
   //                    output, not even the null terminator.
   // Returns the number of bytes written, EXCLUDING the null terminator.
-  $stringToUTF16: (str, outPtr, maxBytesToWrite) => {
+  $stringToUTF16: (str, outPtr, maxBytesToWrite = 0x7FFFFFFF) => {
 #if ASSERTIONS
     assert(outPtr % 2 == 0, 'pointer passed to stringToUTF16 must be 2-byte aligned');
 #endif
 #if ASSERTIONS
     assert(typeof maxBytesToWrite == 'number', 'stringToUTF16 requires a third parameter that specifies the length of the output buffer');
 #endif
-    // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
-    maxBytesToWrite ??= 0x7FFFFFFF;
     if (maxBytesToWrite < 2) return 0;
     maxBytesToWrite -= 2; // Null terminator.
     var startPtr = outPtr;
@@ -416,7 +422,7 @@ addToLibrary({
   //                    maxBytesToWrite<4 does not write any bytes to the
   //                    output, not even the null terminator.
   // Returns the number of bytes written, EXCLUDING the null terminator.
-  $stringToUTF32: (str, outPtr, maxBytesToWrite) => {
+  $stringToUTF32: (str, outPtr, maxBytesToWrite = 0x7FFFFFFF) => {
 #if CAN_ADDRESS_2GB
     outPtr >>>= 0;
 #endif
@@ -426,8 +432,6 @@ addToLibrary({
 #if ASSERTIONS
     assert(typeof maxBytesToWrite == 'number', 'stringToUTF32 requires a third parameter that specifies the length of the output buffer');
 #endif
-    // Backwards compatibility: if max bytes is not specified, assume unsafe unbounded write is allowed.
-    maxBytesToWrite ??= 0x7FFFFFFF;
     if (maxBytesToWrite < 4) return 0;
     var startPtr = outPtr;
     var endPtr = startPtr + maxBytesToWrite - 4;
