@@ -134,11 +134,11 @@ function stackCheckInit() {
   preRun();
 
 #if '$runDependencies' in addedLibraryItems
-  if (runDependencies > 0) {
+  if (runDependencies) {
 #if RUNTIME_DEBUG
     dbg('run: waiting on runDependencies');
 #endif
-    await new Promise((resolve) => dependenciesFulfilled = resolve);
+    await resolveRunDependencies();
   }
 #endif
 
