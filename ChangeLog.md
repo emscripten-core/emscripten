@@ -77,6 +77,7 @@ See docs/process.md for more on how version tagging works.
   manually transpile the output of emscripten (e.g. using babel for JS and
   binaryen for wasm). (#26677)
 - musl libc updated from v1.2.5 to v1.2.6. (#26860)
+- Backport fix for musl's qsort (CVE-2026-40200) (#27029)
 - libpng port updated from 1.6.55 to 1.6.58. (#26592 and #26983)
 - The `-m64` compiler flag is now honored, and works as an alias for
   `-sMEMORY64` and/or `--target=wasm64`. (#26765)
