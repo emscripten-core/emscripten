@@ -47,6 +47,14 @@ function mangleUnsupportedSyntax(text) {
     // placeholders during preprocess phase, and back after all the other ops.
     // See also: `fix_js_mangling` in link.py.
     // FIXME: Remove after https://github.com/google/closure-compiler/issues/3835 is fixed.
+    if (EXPORT_ES6) {
+      // We must use a low-priority pattern (`void 0 ||`) instead of a normal function name.
+      // Closure treats a normal name like a function call, so it thinks parentheses around it
+      // are useless and removes them (e.g. turning `(PLACEHOLDER).y` into `PLACEHOLDER.y`).
+      // When we swap `await` back in, `await x.y` runs in the wrong order. The `void 0 ||` trick
+      // forces Closure to keep the parentheses safely intact.
+      text = text.replaceAll('await import', 'void 0||EMSCRIPTEN$AWAIT$IMPORT');
+    }
     text = text.replaceAll('await createWasm()', 'EMSCRIPTEN$AWAIT(createWasm())');
     text = text.replaceAll('await run()', 'EMSCRIPTEN$AWAIT(run())');
     text = text.replaceAll('await instantiatePromise', 'EMSCRIPTEN$AWAIT(instantiatePromise)');
@@ -99,15 +107,6 @@ export function preprocess(filename) {
   let text = readFile(filename);
   // Remove windows line endings, if any
   text = text.replace(/\r\n/g, '\n');
-  if (EXPORT_ES6 && USE_CLOSURE_COMPILER) {
-    // Replace `await import` with a placeholder during preprocessing, and restore
-    // it after other transforms. This must be done in `preprocess` (rather than
-    // `mangleUnsupportedSyntax`) to avoid accidentally rewriting `await import`
-    // inside `nodePthreadDetection()` and `nodeWWDetection()` macro expansions.
-    // See also: `fix_js_mangling` in link.py.
-    // FIXME: Remove after https://github.com/google/closure-compiler/issues/3835 is fixed.
-    text = text.replaceAll('await import', 'EMSCRIPTEN$AWAIT$IMPORT');
-  }
 
   const IGNORE = 0;
   const SHOW = 1;

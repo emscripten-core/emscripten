@@ -17,3 +17,7 @@ var moduleArg;
  * @suppress {duplicate, undefinedVars}
  */
 var Module;
+
+// Special placeholder for `await import` and `await`.
+var EMSCRIPTEN$AWAIT$IMPORT;
+var EMSCRIPTEN$AWAIT;
