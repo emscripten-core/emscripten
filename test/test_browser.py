@@ -464,7 +464,12 @@ window.close = () => {
     self.set_setting('INCOMING_MODULE_JS_API', 'mainScriptUrlOrBlob,canvas,monitorRunDependencies,onAbort,onExit,postRun,print,printErr,setStatus')
 
     self.compile_btest('browser/test_manual_download_data.c', ['-sEXIT_RUNTIME', '-o', 'out.js', '--preload-file', 'file.txt@/file.txt'])
-    copy_asset('browser/test_manual_download_data.html')
+    # Generate test_manual_download_data.html from shell_minimal.html
+    shell = read_file(path_from_root('html/shell_minimal.html'))
+    parts = shell.split("<script type='text/javascript'>")
+    header = parts[0]
+    custom_script = read_file(test_file('browser/test_manual_download_data.js'))
+    create_file('test_manual_download_data.html', header + "<script type='text/javascript'>\n" + custom_script + "\n</script>\n</body>\n</html>")
 
     # Move .data file out of server root to ensure that getPreloadedPackage is actually used
     os.mkdir('test')
@@ -1258,7 +1263,13 @@ window.close = () => {
   # Test that -sGL_PREINITIALIZED_CONTEXT works and allows user to set Module['preinitializedWebGLContext'] to a preinitialized WebGL context.
   @requires_graphics_hardware
   def test_preinitialized_webgl_context(self):
-    self.btest_exit('test_preinitialized_webgl_context.c', cflags=['-sGL_PREINITIALIZED_CONTEXT', '--shell-file', test_file('browser/test_preinitialized_webgl_context.html')])
+    create_file('pre.js', '''
+      Module['preinitializedWebGLContext'] = Module['canvas'].getContext('webgl');
+      Module['preinitializedWebGLContext'].activeTexture(Module['preinitializedWebGLContext'].TEXTURE0 + 5);
+    ''')
+    self.btest_exit('test_preinitialized_webgl_context.c',
+                    cflags=['-sGL_PREINITIALIZED_CONTEXT',
+                            '--pre-js', 'pre.js'])
 
   @parameterized({
     '': ([],),
@@ -1272,7 +1283,40 @@ window.close = () => {
     self.btest_exit('write_file.c', cflags=['-sENVIRONMENT=web', '-Os', '--closure=1'])
 
   def test_fflush(self):
-    self.btest('test_fflush.cpp', '0', cflags=['-sEXIT_RUNTIME', '--shell-file', test_file('test_fflush.html')], reporting=Reporting.NONE)
+    create_file('pre.js', '''
+      Module.gotStdout = false;
+      Module.gotStderr = false;
+      Module.gotStdCerr = false;
+      Module.reportSuccess = function() {
+        fetch('/report_result?0').then(() => window.close());
+      };
+
+      var oldPrint = Module.print;
+      Module.print = function(text) {
+        if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+        if (oldPrint) oldPrint(text);
+        if (text == 'hello!') {
+          Module.gotStdout = true;
+          if (Module.gotStderr && Module.gotStdCerr) Module.reportSuccess();
+        }
+      };
+
+      Module.printErr = function(text) {
+        if (arguments.length > 1) text = Array.prototype.slice.call(arguments).join(' ');
+        console.error(text);
+        if (text == 'hello from stderr too!') {
+          Module.gotStderr = true;
+          if (Module.gotStdout && Module.gotStdCerr) Module.reportSuccess();
+        }
+        if (text == 'std::cerr in two parts.') {
+          Module.gotStdCerr = true;
+          if (Module.gotStdout && Module.gotStderr) Module.reportSuccess();
+        }
+      };
+    ''')
+    self.btest('test_fflush.cpp', '0',
+               cflags=['-sEXIT_RUNTIME', '--pre-js', 'pre.js'],
+               reporting=Reporting.NONE)
 
   @parameterized({
     '': ([],),
@@ -1436,9 +1480,14 @@ window.close = () => {
     self.btest_exit('test_sdl_pumpevents.c', cflags=['--pre-js', test_file('browser/fake_events.js'), '-lSDL', '-lGL'])
 
   def test_sdl_canvas_size(self):
+    create_file('pre.js', '''
+      Module['canvas'].width = 700;
+      Module['canvas'].height = 200;
+      Module['canvas'].removeAttribute('tabindex');
+    ''')
     self.btest_exit('test_sdl_canvas_size.c',
-                    cflags=['-O2', '--minify=0', '--shell-file',
-                               test_file('browser/test_sdl_canvas_size.html'), '-lSDL', '-lGL'])
+                    cflags=['-O2', '--minify=0',
+                            '--pre-js', 'pre.js', '-lSDL', '-lGL'])
 
   @requires_graphics_hardware
   def test_sdl_gl_extensions(self):
@@ -2613,11 +2662,26 @@ Module["preRun"] = () => {
     'full_es2': (['-sFULL_ES2'],),
   })
   def test_html5_webgl_destroy_context(self, args):
-    self.btest_exit('webgl_destroy_context.c', cflags=args + ['--shell-file', test_file('browser/webgl_destroy_context_shell.html'), '-lGL'])
+    create_file('pre.js', '''
+      var oldCanvas = document.getElementById('canvas');
+      var newCanvas = oldCanvas.cloneNode(true);
+      newCanvas.removeAttribute('tabindex');
+      oldCanvas.parentNode.replaceChild(newCanvas, oldCanvas);
+      Module.canvas = newCanvas;
+    ''')
+    self.btest_exit('webgl_destroy_context.c',
+                    cflags=args + ['--pre-js', 'pre.js', '-lGL'])
 
   @requires_graphics_hardware
   def test_html5_webgl_context_lost_pthread(self):
-    self.btest_exit('webgl_context_lost_pthread.c', cflags=['-pthread', '-lGL', '-sASSERTIONS', '--shell-file', test_file('browser/webgl_destroy_context_shell.html')])
+    create_file('pre.js', '''
+      var oldCanvas = document.getElementById('canvas');
+      var newCanvas = oldCanvas.cloneNode(true);
+      newCanvas.removeAttribute('tabindex');
+      oldCanvas.parentNode.replaceChild(newCanvas, oldCanvas);
+      Module.canvas = newCanvas;
+    ''')
+    self.btest_exit('webgl_context_lost_pthread.c', cflags=['-pthread', '-lGL', '-sASSERTIONS', '--pre-js', 'pre.js'])
 
   @requires_graphics_hardware
   def test_webgl_context_params(self):
@@ -4147,7 +4211,12 @@ Module["preRun"] = () => {
   def test_manual_wasm_instantiate(self):
     self.set_setting('EXIT_RUNTIME')
     self.compile_btest('test_manual_wasm_instantiate.c', ['-o', 'manual_wasm_instantiate.js'], reporting=Reporting.JS_ONLY)
-    copy_asset('test_manual_wasm_instantiate.html')
+    # Generate test_manual_wasm_instantiate.html from shell_minimal.html
+    shell = read_file(path_from_root('html/shell_minimal.html'))
+    parts = shell.split("<script type='text/javascript'>")
+    header = parts[0]
+    custom_script = read_file(test_file('test_manual_wasm_instantiate.js'))
+    create_file('test_manual_wasm_instantiate.html', header + "<script type='text/javascript'>\n" + custom_script + "\n</script>\n</body>\n</html>")
     self.run_browser('test_manual_wasm_instantiate.html', '/report_result?exit:0')
 
   def test_wasm_locate_file(self):
@@ -4411,7 +4480,13 @@ Module["preRun"] = () => {
   # Preallocating the buffer in this was is asm.js only (wasm needs a Memory).
   @requires_wasm2js
   def test_preallocated_heap(self):
-    self.btest_exit('test_preallocated_heap.c', cflags=['-sWASM=0', '-sIMPORTED_MEMORY', '-sINITIAL_MEMORY=16MB', '-sABORTING_MALLOC=0', '--shell-file', test_file('browser/test_preallocated_heap_shell.html')])
+    create_file('pre.js', '''
+      Module['buffer'] = new ArrayBuffer(32*1024*1024);
+      Module['INITIAL_MEMORY'] = 32*1024*1024;
+    ''')
+    self.btest_exit('test_preallocated_heap.c',
+                    cflags=['-sWASM=0', '-sIMPORTED_MEMORY', '-sINITIAL_MEMORY=16MB', '-sABORTING_MALLOC=0',
+                            '--pre-js', 'pre.js'])
 
   # Tests emscripten_fetch() usage to XHR data directly to memory without persisting results to IndexedDB.
   @also_with_wasm2js
@@ -4716,7 +4791,20 @@ Module["preRun"] = () => {
     # Now run the test with the JS file renamed and with its content
     # stored in Module['mainScriptUrlOrBlob'].
     shutil.move('out.js', js_name)
-    copy_asset('pthread/main_js_with_loader.html', 'hello_thread_with_loader.html')
+    # Generate hello_thread_with_loader.html from shell_minimal.html
+    shell = read_file(path_from_root('html/shell_minimal.html'))
+    shell = shell.replace('''#if MODULARIZE && !EXPORT_ES6
+      var moduleArgs = {
+#else
+      var Module = {
+#endif''', '      var Module = {')
+    shell = shell.replace('''    {{{ SCRIPT }}}
+#if MODULARIZE && !EXPORT_ES6
+    <script type='text/javascript'>
+      {{{ EXPORT_NAME }}}(moduleArgs);
+    </script>
+#endif''', '    <script type="module" src="loader.mjs"></script>')
+    create_file('hello_thread_with_loader.html', shell)
     self.run_browser('hello_thread_with_loader.html', '/report_result?exit:0')
 
   # Tests that SINGLE_FILE works as intended in generated HTML (with and without Worker)
