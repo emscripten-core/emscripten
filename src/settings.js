@@ -1006,7 +1006,7 @@ var EXPORTED_RUNTIME_METHODS = [];
 var INCOMING_MODULE_JS_API = [
   'ENVIRONMENT', 'GL_MAX_TEXTURE_IMAGE_UNITS', 'SDL_canPlayWithWebAudio',
   'SDL_numSimultaneouslyQueuedBuffers', 'INITIAL_MEMORY', 'wasmMemory', 'arguments',
-  'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
+  'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
   'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
   'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
   'locateFile', 'mainScriptUrlOrBlob', 'mem',

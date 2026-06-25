@@ -1226,7 +1226,6 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('INITIAL_MEMORY');
   ignoredModuleProp('wasmMemory');
   ignoredModuleProp('arguments');
-  ignoredModuleProp('buffer');
   ignoredModuleProp('canvas');
   ignoredModuleProp('doNotCaptureKeyboard');
   ignoredModuleProp('dynamicLibraries');
