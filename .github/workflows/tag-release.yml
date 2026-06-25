@@ -7,6 +7,8 @@ on:
       release-sha:
         required: true
         type: string
+permissions:
+  contents: read
 
 jobs:
   create-release:
