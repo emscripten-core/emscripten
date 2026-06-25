@@ -490,7 +490,7 @@ var LibraryPThread = {
         if (Module['mainScriptUrlOrBlob']) {
           var pthreadMainJs = Module['mainScriptUrlOrBlob'];
           if (typeof pthreadMainJs != 'string') {
-            pthreadMainJs = URL.createObjectURL(pthreadMainJs);
+            pthreadMainJs = PThread.blobURL ??= URL.createObjectURL(pthreadMainJs);
           }
           worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
         } else
@@ -501,8 +501,8 @@ var LibraryPThread = {
       // due to CORS restrictions.
       // https://github.com/emscripten-core/emscripten/issues/21937
       if (ENVIRONMENT_IS_WEB) {
-        var url = URL.createObjectURL(new Blob([`import '${import.meta.url}'`], { type: 'application/javascript' }));
-        worker = new Worker(url, {{{ pthreadWorkerOptions }}});
+        PThread.blobURL ??= URL.createObjectURL(new Blob([`import '${import.meta.url}'`], { type: 'application/javascript' }));
+        worker = new Worker(PThread.blobURL, {{{ pthreadWorkerOptions }}});
       } else
 #endif
       // We need to generate the URL with import.meta.url as the base URL of the JS file
@@ -520,7 +520,7 @@ var LibraryPThread = {
       // itself does not allow this.
       // https://github.com/emscripten-core/emscripten/issues/21937
       if (ENVIRONMENT_IS_WEB) {
-        pthreadMainJs = URL.createObjectURL(new Blob([`importScripts('${_scriptName}')`], { type: 'application/javascript' }));
+        pthreadMainJs = PThread.blobURL ??= URL.createObjectURL(new Blob([`importScripts('${_scriptName}')`], { type: 'application/javascript' }));
       }
 #endif
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
@@ -529,7 +529,7 @@ var LibraryPThread = {
       if (Module['mainScriptUrlOrBlob']) {
         pthreadMainJs = Module['mainScriptUrlOrBlob'];
         if (typeof pthreadMainJs != 'string') {
-          pthreadMainJs = URL.createObjectURL(pthreadMainJs);
+          pthreadMainJs = PThread.blobURL ??= URL.createObjectURL(pthreadMainJs);
         }
       }
 #endif
@@ -737,7 +737,7 @@ var LibraryPThread = {
 #if ENVIRONMENT_MAY_BE_WEB
     // Feature detect whether the main thread can block.
     try {
-      Atomics.wait(HEAP32, 0, 0, 0)
+      Atomics.wait(HEAP32, 0, 0, 0);
       can_block = true;
     } catch (e) {}
 #endif
@@ -1292,7 +1292,7 @@ var LibraryPThread = {
                         '_emscripten_thread_mailbox_await'],
   $checkMailbox: () => {
     // checkMailbox can be called after the pthread has shut down. See
-    // Pthread.terminateRuntime().
+    // PThread.terminateRuntime().
     // In this case we return silently without re-registering using waitAsync.
     // Perhaps there is a more universal way we can detect runtime has exited.
     // TODO(https://github.com/emscripten-core/emscripten/issues/25076)
