@@ -175,16 +175,11 @@ function initRuntime() {
 #if RUNTIME_DEBUG
   dbg('done ATPOSTCTORS');
 #endif
-}
 
-#if HAS_MAIN
-function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  <<< ATMAINS >>>
 }
-#endif
 
 #if EXIT_RUNTIME
 
@@ -226,7 +221,6 @@ function postRun() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  {{{ runIfWorkerThread('return;') }}} // PThreads reuse the runtime from the main thread.
 
 #if expectToReceiveOnModule('postRun')
   var postRun = Module['postRun'];
