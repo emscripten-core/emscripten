@@ -491,7 +491,16 @@ class sockets(BrowserCore):
 
   def test_noderawsockets_poll_socket_blocking_jspi(self):
     # Same, but the blocking poll() suspends the wasm stack under JSPI.
-    self.require_jspi()
+    # NODERAWSOCKETS runs under node rather than the browser, so gate JSPI on
+    # node's own support (v24) instead of require_jspi's browser-test path.
+    if 'EMTEST_SKIP_JSPI' in os.environ:
+      self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
+    if not self.try_require_node_version(24):
+      self.skipTest('JSPI requires node v24')
+    if not common.check_node_version(26):
+      self.node_args += ['--experimental-wasm-stack-switching']
+    self.cflags += ['-Wno-experimental']
+    self.set_setting('JSPI')
     self.do_runf('sockets/test_poll_socket_blocking.c', 'POLL SOCKET BLOCKING PASS',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
