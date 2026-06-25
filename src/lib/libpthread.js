@@ -591,17 +591,6 @@ var LibraryPThread = {
     dbg(`terminateWorker: ${worker.workerID}`);
 #endif
     worker.terminate();
-    // terminate() can be asynchronous, so in theory the worker can continue
-    // to run for some amount of time after termination.  However from our POV
-    // the worker is now dead and we don't want to hear from it again, so we stub
-    // out its message handler here.  This avoids having to check in each of
-    // the onmessage handlers if the message was coming from a valid worker.
-    worker.onmessage = (e) => {
-#if ASSERTIONS
-      var cmd = e.data.cmd;
-      err(`received "${cmd}" command from terminated worker: ${worker.workerID}`);
-#endif
-    };
   },
 
   _emscripten_thread_cleanup: (thread) => {
