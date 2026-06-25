@@ -53,9 +53,11 @@ jobs:
         # Skip this step for rebaseline PRs, since the target branch is expected
         # to be out of date in this case.
         if: "!contains(github.event.pull_request.title, 'Automatic rebaseline of codesize expectations')"
+        env:
+          BASE_REF: ${{ github.base_ref }}
         run: |
-          echo "Checking out ${{ github.base_ref }}"
-          git checkout ${{ github.base_ref }}
+          echo "Checking out $BASE_REF"
+          git checkout "$BASE_REF"
           git rev-parse HEAD
           # Uncomment this like to pull the rebaseline_tests.py from the
           # current branch:
@@ -77,11 +79,14 @@ jobs:
             exit 1
           fi
       - name: Check test expectations on PR branch
+        env:
+          GITHUB_REF: ${{ github.ref }}
+          GITHUB_SHA: ${{ github.sha }}
         run: |
-          echo "Checking out ${{ github.ref }} (${{ github.sha }})"
-          # For some reason we cannot pass ${{ github.ref }} direclty to git
+          echo "Checking out $GITHUB_REF ($GITHUB_SHA)"
+          # For some reason we cannot pass $GITHUB_REF direclty to git
           # since it doesn't recognise it.
-          git checkout ${{ github.sha }}
+          git checkout "$GITHUB_SHA"
           git rev-parse HEAD
           ./bootstrap.py
           if ! ./tools/maint/rebaseline_tests.py --check-only --clear-cache; then

@@ -18,10 +18,11 @@ jobs:
           token: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
           fetch-depth: 0
       - name: Create Release
-        run: python3 tools/maint/create_release.py --release-commit ${{ inputs.release-sha }}
         env:
+          RELEASE_SHA: ${{ inputs.release-sha }}
           GH_TOKEN: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
           GIT_AUTHOR_NAME: emscripten-bot
           GIT_AUTHOR_EMAIL: emscripten-bot@users.noreply.github.com
           GIT_COMMITTER_NAME: emscripten-bot
           GIT_COMMITTER_EMAIL: emscripten-bot@users.noreply.github.com
+        run: python3 tools/maint/create_release.py --release-commit "$RELEASE_SHA"
