@@ -192,7 +192,6 @@ commands:
           name: embuilder (LTO)
           command: |
             ./embuilder build MINIMAL --lto
-            ./test/runner test_hello_world
       - run:
           name: embuilder (WASM64)
           command: |
@@ -201,12 +200,14 @@ commands:
           name: embuilder (PIC)
           command: |
             ./embuilder build MINIMAL_PIC --pic
-            ./test/runner test_hello_world
+      - run:
+          name: embuilder (PIC+WASM64)
+          command: |
+            ./embuilder build MINIMAL_PIC --pic --wasm64
       - run:
           name: embuilder (PIC+LTO)
           command: |
             ./embuilder build MINIMAL --pic --lto
-            ./test/runner test_hello_world
       - run:
           name: "Ccache stats and configuration"
           command: |
@@ -1101,6 +1102,9 @@ jobs:
   test-browser-firefox:
     executor: ubuntu-lts
     environment:
+      # Deserializing a growable SharedArrayBuffer is currently broken in Firefox.
+      # See: https://github.com/emscripten-core/emscripten/issues/27118
+      # See: https://bugzilla.mozilla.org/show_bug.cgi?id=2021136
       EMTEST_LACKS_GROWABLE_ARRAYBUFFERS: "1"
     steps:
       - prepare-for-tests

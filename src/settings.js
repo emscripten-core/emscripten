@@ -419,6 +419,30 @@ var WEBSOCKET_URL = 'ws://';
 // [link]
 var PROXY_POSIX_SOCKETS = false;
 
+// If enabled, the POSIX sockets API is backed by Node.js's ``node:net``
+// module, giving real non-blocking outgoing TCP sockets with no WebSockets,
+// proxy process or pthreads. This is the sockets counterpart to
+// :ref:`NODERAWFS`: where :ref:`NODERAWFS` gives direct access to the host
+// filesystem, this gives direct access to host sockets. It only works under
+// node and is ignored elsewhere.
+//
+// It supports full TCP (outgoing connect plus bind, listen and accept for
+// servers) and UDP. TCP clients use the public ``node:net`` API when possible,
+// falling back to the private ``tcp_wrap``/``udp_wrap`` handles on older
+// Node.js.
+//
+// It is event-driven. Socket readiness comes through the same
+// ``emscripten_set_socket_*_callback`` hooks the WebSocket backend uses, so it
+// works with existing readiness reactors. It cannot be combined with the
+// WebSocket emulation, :ref:`PROXY_POSIX_SOCKETS` or :ref:`SOCKET_WEBRTC`.
+//
+// It works under -pthread with :ref:`PROXY_TO_PTHREAD`, where main() and every socket
+// syscall run on a single worker alongside the node handles and their event
+// loop. As with the WebSocket backend, sharing a socket across threads under a
+// plain -pthread build (without PROXY_TO_PTHREAD) is not supported.
+// [link]
+var NODERAWSOCKETS = false;
+
 // A string containing a comma separated list of WebSocket subprotocols
 // as would be present in the Sec-WebSocket-Protocol header.
 // You can set 'null', if you don't want to specify it.
@@ -1847,15 +1871,18 @@ var SINGLE_FILE = false;
 // encoding, and will not work with the default legacy Windows-1252 encoding
 // that browsers might use on Windows. To enable UTF-8 encoding in a
 // hand-crafted index.html file, apply any of:
+//
 // 1. Add `<meta charset="utf-8">` inside the <head> section of HTML, or
 // 2. Add `<meta http-equiv="content-type" content="text/html; charset=UTF-8" />`` inside <head>, or
 // 3. Add `<meta http-equiv="content-type" content="application/json; charset=utf-8" />` inside <head>
-// (if using -o foo.js with SINGLE_FILE mode to build HTML+JS), or
+//    (if using -o foo.js with SINGLE_FILE mode to build HTML+JS), or
 // 4. pass the header `Content-Type: text/html; charset=utf-8` and/or header
-// `Content-Type: application/javascript; charset=utf-8` when serving the
-// relevant files that contain binary encoded content.
+//    `Content-Type: application/javascript; charset=utf-8` when serving the
+//    relevant files that contain binary encoded content.
+//
 // If none of these are possible, disable binary encoding with
 // -sSINGLE_FILE_BINARY_ENCODE=0 to fall back to base64 encoding.
+//
 // [link]
 var SINGLE_FILE_BINARY_ENCODE = true;
 
@@ -2193,11 +2220,16 @@ var WASM_ESM_INTEGRATION = false;
 // [link]
 var JS_BASE64_API = false;
 
-// Enable support for GrowableSharedArrayBuffer.
-// This feature has only recently become available across major browser engines
-// and Node.js.
+// Enable support for growable views of Wasm memory. This is a recent Web
+// platform feature that can make growing the Wasm memory more efficient,
+// especially in multi-threaded builds.
+// Setting this to 1 will auto-detect the presence of this API and use it
+// when available.
+// Setting this to 2 will unconditionally require it. This is the only way
+// to completely remove the overhead of growable memory + pthreads.
+// This settings does nothing unless ALLOW_MEMORY_GROWTH is set.
 // [link]
-var GROWABLE_ARRAYBUFFERS = false;
+var GROWABLE_ARRAYBUFFERS = 0;
 
 // If the emscripten-generated program is hosted on separate origin then
 // starting new pthread worker can violate CSP rules.  Enabling

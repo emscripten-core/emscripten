@@ -1305,22 +1305,25 @@ var FS_createDataFile = (...args) => FS.createDataFile(...args);
 
 var getUniqueRunDependency = id => id;
 
-var runDependencies = 0;
+var dependenciesPromise = null;
 
-var dependenciesFulfilled = null;
+var resolveRunDependencies = async () => dependenciesPromise;
+
+var runDependencies = 0;
 
 var removeRunDependency = id => {
   runDependencies--;
-  if (runDependencies == 0) {
-    if (dependenciesFulfilled) {
-      var callback = dependenciesFulfilled;
-      dependenciesFulfilled = null;
-      callback();
-    }
+  if (!runDependencies) {
+    dependenciesPromise.resolve();
   }
 };
 
 var addRunDependency = id => {
+  if (!runDependencies) {
+    var resolve;
+    dependenciesPromise = new Promise(r => resolve = r);
+    dependenciesPromise.resolve = resolve;
+  }
   runDependencies++;
 };
 
@@ -3180,8 +3183,8 @@ function callMain() {
 
 async function run() {
   preRun();
-  if (runDependencies > 0) {
-    await new Promise(resolve => dependenciesFulfilled = resolve);
+  if (runDependencies) {
+    await resolveRunDependencies();
   }
   if (ABORT) return;
   initRuntime();

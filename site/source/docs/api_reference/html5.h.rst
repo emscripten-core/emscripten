@@ -2052,6 +2052,10 @@ Struct
 
     Default value of ``proxyContextToMainThread`` after calling ``emscripten_webgl_init_context_attributes()`` is ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW``, if the WebGL context is being created on the main thread. This means that by default WebGL contexts created on the main thread are not shareable between multiple threads (to avoid accidental performance loss from enabling proxying when/if it is not needed). To create a context that can be shared between multiple pthreads, set the ``proxyContextToMainThread`` flag ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS``.
 
+  .. c:member:: bool desynchronized
+
+    If ``true``, requests a "desynchronized" WebGL context, which can lower latency by bypassing the browser's normal compositing/double-buffering of the canvas. This maps to the ``desynchronized`` attribute on the JavaScript ``getContext()`` call. Whether the request is honored depends on the browser and platform; use ``emscripten_webgl_get_context_attributes()`` to read back the value the context was actually created with. Default value is ``false``.
+
 Callback functions
 ------------------
 

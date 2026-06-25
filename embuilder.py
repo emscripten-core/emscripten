@@ -97,6 +97,10 @@ MINIMAL_TASKS = [
     'libunwind-wasmexcept',
     'libnoexit',
     'bullet',
+    'libstb_image',
+    'libwasmfs_no_fs',
+    'libwasmfs-debug',
+    'libwasm_workers-debug',
 ]
 
 # Additional tasks on top of MINIMAL_TASKS that are necessary for PIC testing on
@@ -119,15 +123,11 @@ MINIMAL_PIC_TASKS = [
     'libGL-mt-emu-webgl2-getprocaddr',
     'libGL-mt-emu-webgl2-ofb-getprocaddr',
     'libsockets_proxy',
-    'crtbegin-mt',
     'libclang_rt.sanitizer_common',
     'libclang_rt.ubsan',
-    'libwasm_workers-debug',
     'libfetch',
     'libfetch-mt',
     'libwasmfs',
-    'libwasmfs-debug',
-    'libwasmfs_no_fs',
     'giflib',
     'sdl2',
     'sdl2_gfx',

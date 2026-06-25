@@ -490,7 +490,7 @@ def setup_pthreads():
   # pthreads + dynamic linking has certain limitations
   if settings.MAIN_MODULE:
     diagnostics.warning('experimental', 'dynamic linking + pthreads is experimental')
-  if settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
+  if settings.ALLOW_MEMORY_GROWTH and settings.GROWABLE_ARRAYBUFFERS != 2:
     diagnostics.warning('pthreads-mem-growth', '-pthread + ALLOW_MEMORY_GROWTH may run non-wasm code slowly, see https://github.com/WebAssembly/design/issues/1271')
 
   default_setting('DEFAULT_PTHREAD_STACK_SIZE', settings.STACK_SIZE)
@@ -1818,6 +1818,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     # Node-specific settings only make sense if ENVIRONMENT_MAY_BE_NODE
     if settings.NODERAWFS:
       diagnostics.warning('unused-command-line-argument', 'NODERAWFS ignored since `node` not in `ENVIRONMENT`')
+    if settings.NODERAWSOCKETS:
+      diagnostics.warning('unused-command-line-argument', 'NODERAWSOCKETS ignored since `node` not in `ENVIRONMENT`')
     if settings.NODE_CODE_CACHING:
       diagnostics.warning('unused-command-line-argument', 'NODE_CODE_CACHING ignored since `node` not in `ENVIRONMENT`')
 
@@ -2332,7 +2334,7 @@ def phase_binaryen(target, options, wasm_target):
     # unsigning pass.
     # we also must do this after the asan or safe_heap instrumentation, as they
     # wouldn't be able to recognize patterns produced by the growth pass.
-    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH and not settings.GROWABLE_ARRAYBUFFERS:
+    if settings.SHARED_MEMORY and settings.ALLOW_MEMORY_GROWTH and settings.GROWABLE_ARRAYBUFFERS != 2:
       with ToolchainProfiler.profile_block('apply_wasm_memory_growth'):
         final_js = building.apply_wasm_memory_growth(final_js)
 

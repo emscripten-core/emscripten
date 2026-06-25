@@ -228,10 +228,27 @@ void force_memory_growth() {
   assert(val::global("oldheap")["byteLength"].as<size_t>() == old_size);
   emscripten_resize_heap(old_size + EMSCRIPTEN_PAGE_SIZE);
   assert(emscripten_get_heap_size() > old_size);
-  // HEAP8 on the module should now be rebound, and our oldheap should be
-  // detached
+  // HEAP8 on the module should always be correct after the resize.
+  // Our oldheap reference may be detached, depending on whether the
+  // buffer is resizable.
   assert(val::module_property("HEAP8")["byteLength"].as<size_t>() > old_size);
-  assert(val::global("oldheap")["byteLength"].as<size_t>() == 0);
+
+  val oldheap = val::global("oldheap");
+  val buffer = oldheap["buffer"];
+  bool growable = false;
+  if (!buffer.isUndefined()) {
+    if (!buffer["resizable"].isUndefined()) {
+      growable = buffer["resizable"].as<bool>();
+    } else if (!buffer["growable"].isUndefined()) {
+      growable = buffer["growable"].as<bool>();
+    }
+  }
+
+  if (growable) {
+    assert(oldheap["byteLength"].as<size_t>() == emscripten_get_heap_size());
+  } else {
+    assert(oldheap["byteLength"].as<size_t>() == 0);
+  }
 }
 
 std::string emval_test_take_and_return_const_char_star(const char* str) {

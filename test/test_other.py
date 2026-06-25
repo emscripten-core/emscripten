@@ -27,8 +27,6 @@ from functools import wraps
 from pathlib import Path
 from subprocess import PIPE, STDOUT
 
-from packaging.version import Version
-
 if __name__ == '__main__':
   raise Exception('do not run this file directly; do something like: test/runner other')
 
@@ -436,7 +434,6 @@ class other(RunnerCore):
     'O3': (['-O3'],),
   })
   def test_esm_source_phase_imports(self, args):
-    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-sSOURCE_PHASE_IMPORTS',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
@@ -947,10 +944,10 @@ f.close()
 
   @requires_ninja
   def test_cmake_cxx_import_std(self):
-    cmake_minimum = '3.30'
+    cmake_minimum = (3, 30)
     output = self.run_process([EMCMAKE, 'cmake', '--version'], stdout=PIPE).stdout
     cmake_version = re.search(r'^cmake version (\d+(?:\.\d+)*)', output).group(1)
-    if Version(cmake_version) < Version(cmake_minimum):
+    if tuple(map(int, cmake_version.split('.'))) < cmake_minimum:
       self.skipTest(f'CMake > {cmake_minimum} required ({cmake_version})')
 
     self.run_process([EMCMAKE, 'cmake', '-GNinja', test_file('cmake/cxx_import_std')])
@@ -12714,6 +12711,11 @@ exec "$@"
     self.run_process([PYTHON, path_from_root('tools/maint/gen_sig_info.py'), '-o', 'out.js'])
     self.assertFilesMatch(path_from_root('src/lib/libsigs.js'), 'out.js')
 
+  @crossplatform
+  def test_gen_native_sig_info(self):
+    self.run_process([PYTHON, path_from_root('tools/maint/gen_native_sig_info.py'), '-o', 'out.py'])
+    self.assertFilesMatch(path_from_root('tools/native_sigs.py'), 'out.py')
+
   def test_gen_struct_info_env(self):
     # gen_struct_info.py builds C code in a very specific and low level way.  We don't want
     # EMCC_CFLAGS (or any of the other environment variables that might effect compilation or
@@ -13250,11 +13252,11 @@ void foo() {}
   @requires_pthreads
   @parameterized({
     '': ([],),
-    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'],),
     'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_pthread_growth_mainthread(self, cflags):
-    if '-sGROWABLE_ARRAYBUFFERS' in cflags:
+    if '-sGROWABLE_ARRAYBUFFERS=2' in cflags:
       self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
@@ -13267,7 +13269,7 @@ void foo() {}
   @requires_node_26
   def test_growable_arraybuffers(self):
     self.do_runf('hello_world.c',
-                 cflags=['-O2', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],
+                 cflags=['-O2', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'],
                  output_basename='growable')
     self.do_runf('hello_world.c',
                  cflags=['-O2', '-pthread', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'],
@@ -13281,7 +13283,7 @@ void foo() {}
   @requires_pthreads
   @parameterized({
     '': ([],),
-    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'],),
     'assert': (['-sASSERTIONS'],),
     'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
@@ -13292,7 +13294,7 @@ void foo() {}
       # TODO: Switch this to a "require Node.js 24" check
       self.require_node_25()
 
-    if '-sGROWABLE_ARRAYBUFFERS' in cflags:
+    if '-sGROWABLE_ARRAYBUFFERS=2' in cflags:
       self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
@@ -14127,11 +14129,15 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       self.assertTrue(name.startswith('wasi_'), 'Unexpected import %s' % name)
 
   @is_slow_test
-  def test_googletest(self):
+  @parameterized({
+    '': ([],),
+    # See https://github.com/google/googletest/issues/5004
+    'cxx20': (['-std=c++20', '-Wno-character-conversion'],),
+  })
+  def test_googletest(self, args):
     # TODO(sbc): Should we package gtest as an emscripten "port"?  I guess we should if
     # we plan on using it in more places.
-    self.do_other_test('test_googletest.cc', cflags=[
-      '-Wno-character-conversion', '-Wno-unknown-warning-option',
+    self.do_other_test('test_googletest.cc', cflags=args + [
       '-I' + test_file('third_party/googletest/googletest'),
       '-I' + test_file('third_party/googletest/googletest/include'),
       test_file('third_party/googletest/googletest/src/gtest-all.cc'),
@@ -14985,7 +14991,7 @@ addToLibrary({
     'O3': [['-O3']],
   })
   def test_fp16(self, args):
-    self.v8_args += ['--experimental-wasm-fp16']
+    self.v8_args += ['--wasm-fp16']
     self.do_runf('test_fp16.c', cflags=['-msimd128', '-mfp16', '-mrelaxed-simd', '-sENVIRONMENT=shell'] + args)
 
   def test_embool(self):
