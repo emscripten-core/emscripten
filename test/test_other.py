@@ -434,7 +434,6 @@ class other(RunnerCore):
     'O3': (['-O3'],),
   })
   def test_esm_source_phase_imports(self, args):
-    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-sSOURCE_PHASE_IMPORTS',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
@@ -14992,7 +14991,7 @@ addToLibrary({
     'O3': [['-O3']],
   })
   def test_fp16(self, args):
-    self.v8_args += ['--experimental-wasm-fp16']
+    self.v8_args += ['--wasm-fp16']
     self.do_runf('test_fp16.c', cflags=['-msimd128', '-mfp16', '-mrelaxed-simd', '-sENVIRONMENT=shell'] + args)
 
   def test_embool(self):

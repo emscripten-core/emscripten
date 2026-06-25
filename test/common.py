@@ -597,7 +597,9 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       return
 
     if self.try_require_node_version(22):
-      self.node_args.append('--experimental-wasm-exnref')
+      # v25 and up don't require a flag at all
+      if not self.try_require_node_version(25):
+        self.node_args.append('--experimental-wasm-exnref')
       return
 
     deno = get_deno()
@@ -614,7 +616,6 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     if v8:
       self.cflags.append('-sENVIRONMENT=shell')
       self.require_engine(v8)
-      self.v8_args.append('--experimental-wasm-exnref')
       return
 
     self.fail('either d8, deno, bun or node v24 required to run wasm-eh tests.  Use EMTEST_SKIP_WASM_EH to skip')
