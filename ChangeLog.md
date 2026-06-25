@@ -25,6 +25,27 @@ See docs/process.md for more on how version tagging works.
   process, or pthreads required. Supports incoming and outgoing TCP, UDP, IPv6,
   and `-pthread` with `PROXY_TO_PTHREAD`. Uses the public node APIs where
   available, falling back to `tcp_wrap`/`udp_wrap` on older Node.js. (#27080)
+- The following symbols are no longer included in `INCOMING_MODULE_JS_API`
+  by default:
+  - GL_MAX_TEXTURE_IMAGE_UNITS
+  - SDL_canPlayWithWebAudio
+  - SDL_numSimultaneouslyQueuedBuffers
+  - freePreloadedMediaOnUse
+  - preinitializedWebGLContext
+  - keyboardListeningElement
+  - doNotCaptureKeyboard
+  - extraStackTrace
+  - preloadPlugins
+  - postMainLoop
+  - preMainLoop
+  - forcedAspectRatio
+  - mainScriptUrlOrBlob
+  - onFullScreen
+  - INITIAL_MEMORY
+  - wasmMemory
+  - wasmBinary
+  Anybody using these will see a clear error in their debug builds signaling
+  that they now need to be explicitly added to `-sINCOMING_MODULE_JS_API`.
 
 6.0.1 - 06/22/26
 ----------------

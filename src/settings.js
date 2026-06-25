@@ -1001,21 +1001,36 @@ var EXPORTED_RUNTIME_METHODS = [];
 // - onCOSCacheHit
 // - onCOSCacheMiss
 // - onCOSStore
+// - GL_MAX_TEXTURE_IMAGE_UNITS
+// - SDL_canPlayWithWebAudio
+// - SDL_numSimultaneouslyQueuedBuffers
+// - freePreloadedMediaOnUse
+// - preinitializedWebGLContext
+// - keyboardListeningElement
+// - doNotCaptureKeyboard
+// - extraStackTrace
+// - preloadPlugins
+// - preMainLoop
+// - postMainLoop
+// - forcedAspectRatio
+// - mainScriptUrlOrBlob
+// - onFullScreen
+// - INITIAL_MEMORY
+// - wasmMemory
+// - wasmBinary
 //
 // [link]
 var INCOMING_MODULE_JS_API = [
-  'ENVIRONMENT', 'GL_MAX_TEXTURE_IMAGE_UNITS', 'SDL_canPlayWithWebAudio',
-  'SDL_numSimultaneouslyQueuedBuffers', 'INITIAL_MEMORY', 'wasmMemory', 'arguments',
-  'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
-  'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
-  'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
-  'locateFile', 'mainScriptUrlOrBlob',
+  'ENVIRONMENT', 'arguments',
+  'canvas', 'dynamicLibraries',
+  'elementPointerLock',
+  'instantiateWasm',
+  'locateFile',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
-  'onExit', 'onFullScreen', 'onRuntimeInitialized', 'postMainLoop', 'postRun',
-  'preInit', 'preMainLoop', 'preRun',
-  'preinitializedWebGLContext', 'preloadPlugins',
+  'onExit', 'onRuntimeInitialized', 'postRun',
+  'preInit', 'preRun',
   'print', 'printErr', 'setStatus', 'statusMessage', 'stderr',
-  'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
+  'stdin', 'stdout', 'thisProgram', 'wasm', 'websocket'
 ];
 
 // If set to nonzero, the provided virtual filesystem is treated
