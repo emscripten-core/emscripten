@@ -474,7 +474,7 @@ native_sigs = {
   '__syscall_uname': '_p',
   '__syscall_unlinkat': '__p_',
   '__syscall_utimensat': '__pp_',
-  '__syscall_wait4': '__p__',
+  '__syscall_wait4': '__p_p',
   '__sysv_signal': 'p_p',
   '__tanl': '_p_____',
   '__thrown_object_from_unwind_exception': 'pp',

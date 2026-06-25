@@ -585,7 +585,11 @@ var SyscallsLibrary = {
   },
   __syscall_poll__proxy: 'sync',
   __syscall_poll__async: 'auto',
-  __syscall_poll__deps: ['$doPoll'],
+  __syscall_poll__deps: ['$doPoll',
+#if PTHREADS || ASYNCIFY
+    '$doPollAsync',
+#endif
+  ],
   __syscall_poll: (fds, nfds, timeout) => {
 #if PTHREADS || ASYNCIFY
 #if PTHREADS
@@ -593,12 +597,32 @@ var SyscallsLibrary = {
 #else
     const isAsyncContext = true;
 #endif
+    if (isAsyncContext) {
+      return doPollAsync(fds, nfds, timeout);
+    }
+#endif
+
+    var count = doPoll(fds, nfds, 0, undefined);
+#if ASSERTIONS
+    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
+#endif
+    return count;
+  },
+#if PTHREADS || ASYNCIFY
+  $doPollAsync__internal: true,
+  $doPollAsync__deps: ['$FS', '$doPoll'],
+  $doPollAsync: (fds, nfds, timeout) => {
+#if RUNTIME_DEBUG
+    dbg('async poll start');
+#endif
+
     // Enable event handlers only when the poll call is proxied from a worker.
     // TODO: Could use `Promise.withResolvers` here if we know its available.
     var resolve;
     var promise = new Promise((resolve_) => { resolve = resolve_; });
     var cleanupFuncs = [];
     var notifyDone = false;
+
     function asyncPollComplete(count) {
       if (notifyDone) {
         return;
@@ -610,6 +634,7 @@ var SyscallsLibrary = {
       cleanupFuncs.forEach(cb => cb());
       resolve(count);
     }
+
     function makeNotifyCallback(stream, pollfd) {
       var cb = (flags) => {
         if (notifyDone) {
@@ -631,36 +656,24 @@ var SyscallsLibrary = {
       }
       return cb;
     }
-
-    if (isAsyncContext) {
+    if (timeout > 0) {
+      var t = setTimeout(() => {
 #if RUNTIME_DEBUG
-      dbg('async poll start');
+        dbg('poll: timeout', timeout);
 #endif
-      if (timeout > 0) {
-        var t = setTimeout(() => {
-#if RUNTIME_DEBUG
-          dbg('poll: timeout', timeout);
-#endif
-          asyncPollComplete(0);
-        }, timeout);
-        cleanupFuncs.push(() => clearTimeout(t));
-      }
-      // A zero timeout never registers notifications: the derivation alone
-      // answers, matching the non-blocking probe.
-      var count = doPoll(fds, nfds, timeout, makeNotifyCallback);
-      if (count || !timeout) {
-        asyncPollComplete(count);
-      }
-      return promise;
+        asyncPollComplete(0);
+      }, timeout);
+      cleanupFuncs.push(() => clearTimeout(t));
     }
-#endif
-
-    var count = doPoll(fds, nfds, 0, undefined);
-#if ASSERTIONS
-    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
-#endif
-    return count;
+    // A zero timeout never registers notifications: the derivation alone
+    // answers, matching the non-blocking probe.
+    var count = doPoll(fds, nfds, timeout, makeNotifyCallback);
+    if (count || !timeout) {
+      asyncPollComplete(count);
+    }
+    return promise;
   },
+#endif
   // The shared readiness derivation: one pass over the pollfds, writing
   // revents and returning the ready count. With a nonzero `timeout`, a
   // readiness notification is also registered on each stream by the same

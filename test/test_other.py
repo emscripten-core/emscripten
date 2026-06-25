@@ -14140,11 +14140,15 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       self.assertTrue(name.startswith('wasi_'), 'Unexpected import %s' % name)
 
   @is_slow_test
-  def test_googletest(self):
+  @parameterized({
+    '': ([],),
+    # See https://github.com/google/googletest/issues/5004
+    'cxx20': (['-std=c++20', '-Wno-character-conversion'],),
+  })
+  def test_googletest(self, args):
     # TODO(sbc): Should we package gtest as an emscripten "port"?  I guess we should if
     # we plan on using it in more places.
-    self.do_other_test('test_googletest.cc', cflags=[
-      '-Wno-character-conversion', '-Wno-unknown-warning-option',
+    self.do_other_test('test_googletest.cc', cflags=args + [
       '-I' + test_file('third_party/googletest/googletest'),
       '-I' + test_file('third_party/googletest/googletest/include'),
       test_file('third_party/googletest/googletest/src/gtest-all.cc'),
