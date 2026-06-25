@@ -418,6 +418,7 @@ class other(RunnerCore):
   @parameterized({
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
+    'minimal': (['-O2', '-sMINIMAL_RUNTIME=2', '--closure=1'],),
     # load a worker before startup to check ES6 modules there as well
     'pthreads': (['-pthread', '-sPTHREAD_POOL_SIZE=1'],),
   })
@@ -425,7 +426,8 @@ class other(RunnerCore):
     self.run_process([EMCC, '-o', 'hello_world.mjs',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
-    self.assertContained('export default Module;', read_file('hello_world.mjs'))
+    if '-sMINIMAL_RUNTIME=2' not in args:
+      self.assertContained('export default Module;', read_file('hello_world.mjs'))
     self.assertContained('Hello, world!', self.run_js('hello_world.mjs'))
 
   @requires_node_25

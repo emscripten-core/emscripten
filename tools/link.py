@@ -2201,28 +2201,28 @@ def phase_final_emitting(options, target, js_target, wasm_target):
   elif settings.USE_CLOSURE_COMPILER:
     module_export_name_substitution()
 
-  fix_js_mangling(final_js)
-
   # Run a final optimization pass to clean up items that were not possible to
   # optimize by Closure, or unoptimalities that were left behind by processing
   # steps that occurred after Closure.
   if settings.MINIMAL_RUNTIME == 2 and settings.USE_CLOSURE_COMPILER and settings.DEBUG_LEVEL == 0:
     args = [final_js, '-o', final_js]
+    flags = []
     if not settings.MINIFY_WHITESPACE:
-      args.append('--pretty')
+      flags.append('--pretty')
     if settings.EXPORT_ES6:
-      args.append('--export-es6')
-    shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), args, cwd=utils.path_from_root('.'))
+      flags.append('--export-es6')
+    shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), args + flags, cwd=utils.path_from_root('.'))
     save_intermediate('unsafe-optimizations')
-    if not settings.EXPORT_ES6:
-      # Finally, rerun Closure compile with simple optimizations. It will be able
-      # to further minify the code. (n.b. it would not be safe to run in advanced
-      # mode)
-      final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=settings.CLOSURE_ARGS)
-      # Run unsafe_optimizations.js once more.  This allows the cleanup of newly
-      # unused things that closure compiler leaves behind (e.g `new Float64Array(x)`).
-      shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), [final_js, '-o', final_js], cwd=utils.path_from_root('.'))
-      save_intermediate('unsafe-optimizations2')
+    # Finally, rerun Closure compile with simple optimizations. It will be able
+    # to further minify the code. (n.b. it would not be safe to run in advanced
+    # mode)
+    final_js = building.closure_compiler(final_js, advanced=False, extra_closure_args=settings.CLOSURE_ARGS)
+    # Run unsafe_optimizations.js once more.  This allows the cleanup of newly
+    # unused things that closure compiler leaves behind (e.g `new Float64Array(x)`).
+    shared.run_js_tool(utils.path_from_root('tools/unsafe_optimizations.mjs'), [final_js, '-o', final_js] + flags, cwd=utils.path_from_root('.'))
+    save_intermediate('unsafe-optimizations2')
+
+  fix_js_mangling(final_js)
 
   # Apply pre and postjs files
   if options.extern_pre_js or options.extern_post_js:

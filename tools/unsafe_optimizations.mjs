@@ -206,7 +206,13 @@ function optPassMergeVarInitializationAssignments(ast) {
   return progress;
 }
 
-function runOnJsText(js, pretty = false, exportES6 = false) {
+function runOnJsText(js, pretty, exportES6) {
+  if (exportES6) {
+    // Acorn rewrites `export{};` incorrectly into `export`,
+    // which is not valid JS.
+    js = js.replaceAll('export{};', '');
+  }
+
   const ast = acorn.parse(js, {
     // Keep in sync with tools/acorn-optimizer.mjs
     ecmaVersion: 'latest',
@@ -227,16 +233,23 @@ function runOnJsText(js, pretty = false, exportES6 = false) {
   optPassSimplifyModularizeFunction(ast);
 
   const terserAst = terser.AST_Node.from_mozilla_ast(ast);
-  const output = terserAst.print_to_string({
+  let output = terserAst.print_to_string({
     wrap_func_args: false,
     beautify: pretty,
     indent_level: pretty ? 2 : 0,
   });
 
+  if (exportES6) {
+    // Closure doesn't understand `export default Module;`,
+    // FIXME: This means the Module isn't exported when building with
+    // `-sMINIMAL_RUNTIME=2 --closure=1 -sEXPORT_ES6`
+    output = output.replace(/export default \w+;/g, '');
+  }
+
   return output;
 }
 
-function runOnFile(input, pretty = false, exportES6 = false, output = null) {
+function runOnFile(input, pretty, exportES6, output) {
   let js = fs.readFileSync(input).toString();
   js = runOnJsText(js, pretty, exportES6);
   if (output) fs.writeFileSync(output, js);
