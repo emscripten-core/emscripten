@@ -13263,11 +13263,11 @@ void foo() {}
   @requires_pthreads
   @parameterized({
     '': ([],),
-    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'],),
     'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_pthread_growth_mainthread(self, cflags):
-    if '-sGROWABLE_ARRAYBUFFERS' in cflags:
+    if '-sGROWABLE_ARRAYBUFFERS=2' in cflags:
       self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
@@ -13280,7 +13280,7 @@ void foo() {}
   @requires_node_26
   def test_growable_arraybuffers(self):
     self.do_runf('hello_world.c',
-                 cflags=['-O2', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],
+                 cflags=['-O2', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'],
                  output_basename='growable')
     self.do_runf('hello_world.c',
                  cflags=['-O2', '-pthread', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'],
@@ -13294,7 +13294,7 @@ void foo() {}
   @requires_pthreads
   @parameterized({
     '': ([],),
-    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'],),
     'assert': (['-sASSERTIONS'],),
     'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
@@ -13305,7 +13305,7 @@ void foo() {}
       # TODO: Switch this to a "require Node.js 24" check
       self.require_node_25()
 
-    if '-sGROWABLE_ARRAYBUFFERS' in cflags:
+    if '-sGROWABLE_ARRAYBUFFERS=2' in cflags:
       self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')

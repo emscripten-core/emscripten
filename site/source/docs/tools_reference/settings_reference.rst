@@ -3373,11 +3373,16 @@ Default value: false
 GROWABLE_ARRAYBUFFERS
 =====================
 
-Enable support for GrowableSharedArrayBuffer.
-This feature has only recently become available across major browser engines
-and Node.js.
+Enable support for growable views of Wasm memory. This is a recent Web
+platform feature that can make growing the Wasm memory more efficient,
+especially in multi-threaded builds.
+Setting this to 1 will auto-detect the presence of this API and use it
+when available.
+Setting this to 2 will unconditionally require it. This is the only way
+to completely remove the overhead of growable memory + pthreads.
+This settings does nothing unless ALLOW_MEMORY_GROWTH is set.
 
-Default value: false
+Default value: 0
 
 .. _cross_origin:
 

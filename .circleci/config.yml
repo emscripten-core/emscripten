@@ -1102,6 +1102,9 @@ jobs:
   test-browser-firefox:
     executor: ubuntu-lts
     environment:
+      # Deserializing a growable SharedArrayBuffer is currently broken in Firefox.
+      # See: https://github.com/emscripten-core/emscripten/issues/27118
+      # See: https://bugzilla.mozilla.org/show_bug.cgi?id=2021136
       EMTEST_LACKS_GROWABLE_ARRAYBUFFERS: "1"
     steps:
       - prepare-for-tests
