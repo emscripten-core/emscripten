@@ -477,9 +477,10 @@ class sockets(BrowserCore):
 
   @also_with_proxy_to_pthread
   def test_noderawsockets_poll_callback(self):
-    # emscripten_poll_with_callback waits on a real socket's readiness (a UDP
-    # datagram arrival) via the SOCKFS emit -> poll-callback bridge, and rejects
-    # descriptor types that can't deliver callbacks (-EPERM) and bad fds (-EBADF).
+    # emscripten_poll_with_callback waits on real socket readiness via the SOCKFS
+    # emit -> poll-callback bridge: a UDP datagram arrival, and a listening socket
+    # becoming readable when a client is queued for accept. It rejects descriptor
+    # types that can't deliver callbacks (-EPERM) and bad fds (-EBADF).
     self.do_runf('sockets/test_poll_callback.c', 'POLL CALLBACK PASS', cflags=['-sNODERAWSOCKETS', '-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_noderawsockets_poll_socket_blocking(self):

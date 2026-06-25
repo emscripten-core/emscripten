@@ -6,7 +6,7 @@
 
 addToLibrary({
   $PIPEFS__postset: () => addAtInit('PIPEFS.root = FS.mount(PIPEFS, {}, null);'),
-  $PIPEFS__deps: ['$FS', '$notifyPollCallback'],
+  $PIPEFS__deps: ['$FS', '$notifyNodeListeners'],
   $PIPEFS: {
     BUCKET_BUFFER_SIZE: 1024 * 8, // 8KiB Buffer
     mount(mount) {
@@ -82,9 +82,7 @@ addToLibrary({
           blocks: 0,
         };
       },
-      // Pure readiness derivation; registration/notification go through the
-      // shared node wait-queue (notifyPollCallback on write/close).
-      pollAsync: true,
+      pollable: true,
       poll(stream) {
         var pipe = stream.node.pipe;
 
@@ -217,7 +215,7 @@ addToLibrary({
         if (freeBytesInCurrBuffer >= dataLen) {
           currBucket.buffer.set(data, currBucket.offset);
           currBucket.offset += dataLen;
-          notifyPollCallback(pipe.readNode, {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+          notifyNodeListeners(pipe.readNode, {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
           return dataLen;
         } else if (freeBytesInCurrBuffer > 0) {
           currBucket.buffer.set(data.subarray(0, freeBytesInCurrBuffer), currBucket.offset);
@@ -249,7 +247,7 @@ addToLibrary({
           newBucket.buffer.set(data);
         }
 
-        notifyPollCallback(pipe.readNode, {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+        notifyNodeListeners(pipe.readNode, {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
         return dataLen;
       },
       close(stream) {

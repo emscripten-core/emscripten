@@ -4,12 +4,13 @@
  * University of Illinois/NCSA Open Source License.  Both these licenses can be
  * found in the LICENSE file.
  *
- * Verifies emscripten_poll_with_callback against a real socket: a datagram
- * arriving on a bound UDP socket wakes the callback through the SOCKFS readiness
- * -> poll-callback bridge, with no select and no main loop.
- * Also checks the capability gate: a descriptor type that cannot deliver
- * readiness callbacks (a regular file) is rejected with -EPERM even though it is
- * always "ready", and a bad fd with -EBADF.
+ * Verifies emscripten_poll_with_callback against real sockets, all through the
+ * SOCKFS readiness -> poll-callback bridge, with no select and no main loop:
+ *   - a datagram arriving on a bound UDP socket wakes the callback (POLLIN);
+ *   - a listening socket is readable when a client is queued for accept;
+ *   - closing an fd with a pending waiter delivers POLLNVAL;
+ *   - the capability gate rejects a regular file (-EPERM, even though it is
+ *     always "ready") and a bad fd (-EBADF).
  */
 
 #include <arpa/inet.h>
@@ -25,8 +26,9 @@
 #include <sys/socket.h>
 #include <unistd.h>
 
-static int rx = -1, tx = -1;
+static int rx = -1, tx = -1, lfd = -1, client = -1;
 static volatile int cancel_revents = -1;
+static struct sockaddr_in rx_addr;
 
 static void fail(const char* why) {
   printf("POLL CALLBACK FAIL: %s\n", why);
@@ -37,7 +39,6 @@ static void on_cancel(int fd, int revents) {
   cancel_revents = revents;
 }
 
-// revents arrives by value - nothing to own or free.
 static void on_readable(int fd, int revents) {
   if (!(revents & POLLIN)) fail("socket reported not readable");
   char buf[4];
@@ -48,6 +49,26 @@ static void on_readable(int fd, int revents) {
   close(rx);
   close(tx);
   printf("POLL CALLBACK PASS\n");
+}
+
+// Listener is readable once a client is queued; accept, then chain the
+// datagram phase for deterministic ordering.
+static void on_accept(int fd, int revents) {
+  if (!(revents & POLLIN)) fail("listener reported not readable");
+  struct sockaddr_in caddr;
+  socklen_t clen = sizeof(caddr);
+  int c = accept(lfd, (struct sockaddr*)&caddr, &clen);
+  if (c < 0) fail("accept after readiness");
+  close(c);
+  close(lfd);
+  close(client);
+
+  if (emscripten_poll_with_callback(rx, POLLIN, -1, on_readable) != 0) {
+    fail("poll_with_callback did not arm");
+  }
+  if (sendto(tx, "ping", 4, 0, (struct sockaddr*)&rx_addr, sizeof(rx_addr)) != 4) {
+    fail("sendto");
+  }
 }
 
 int main(void) {
@@ -65,23 +86,7 @@ int main(void) {
     fail("invalid fd should be rejected with -EBADF");
   }
 
-  // A listening socket can't yet deliver accept readiness through the seam, so
-  // it is reported unpollable rather than arming a waiter that never fires.
-  int lfd = socket(AF_INET, SOCK_STREAM, 0);
-  assert(lfd >= 0);
-  struct sockaddr_in laddr;
-  memset(&laddr, 0, sizeof(laddr));
-  laddr.sin_family = AF_INET;
-  inet_pton(AF_INET, "127.0.0.1", &laddr.sin_addr);
-  assert(bind(lfd, (struct sockaddr*)&laddr, sizeof(laddr)) == 0);
-  assert(listen(lfd, 1) == 0);
-  if (emscripten_poll_with_callback(lfd, POLLIN, 0, on_readable) != -EPERM) {
-    fail("listening socket should be rejected with -EPERM");
-  }
-  close(lfd);
-
-  // Closing an fd with a pending waiter delivers POLLNVAL (no leak, no hang).
-  // The callback fires on a later tick, so it's checked in on_readable below.
+  // Closing an fd with a pending waiter delivers POLLNVAL (checked in on_readable).
   int cfd = socket(AF_INET, SOCK_DGRAM, 0);
   assert(cfd >= 0);
   if (emscripten_poll_with_callback(cfd, POLLIN, -1, on_cancel) != 0) {
@@ -89,29 +94,38 @@ int main(void) {
   }
   close(cfd);
 
+  // Prepare the datagram receiver up front; it is armed and fed from on_accept.
   rx = socket(AF_INET, SOCK_DGRAM, 0);
   tx = socket(AF_INET, SOCK_DGRAM, 0);
   assert(rx >= 0 && tx >= 0);
+  memset(&rx_addr, 0, sizeof(rx_addr));
+  rx_addr.sin_family = AF_INET;
+  rx_addr.sin_port = htons(0); // ephemeral
+  inet_pton(AF_INET, "127.0.0.1", &rx_addr.sin_addr);
+  if (bind(rx, (struct sockaddr*)&rx_addr, sizeof(rx_addr)) != 0) fail("bind rx");
+  socklen_t l = sizeof(rx_addr);
+  if (getsockname(rx, (struct sockaddr*)&rx_addr, &l) != 0) fail("getsockname rx");
 
-  struct sockaddr_in addr;
-  memset(&addr, 0, sizeof(addr));
-  addr.sin_family = AF_INET;
-  addr.sin_port = htons(0); // ephemeral
-  inet_pton(AF_INET, "127.0.0.1", &addr.sin_addr);
-  if (bind(rx, (struct sockaddr*)&addr, sizeof(addr)) != 0) fail("bind");
-
-  socklen_t l = sizeof(addr);
-  if (getsockname(rx, (struct sockaddr*)&addr, &l) != 0) fail("getsockname");
-
-  // Arm the callback before the datagram is sent: rx isn't readable yet, so this
-  // registers a waiter that the arriving datagram (SOCKFS 'message' emit) wakes.
-  if (emscripten_poll_with_callback(rx, POLLIN, -1, on_readable) != 0) {
-    fail("poll_with_callback did not arm");
+  // A listening socket is pollable: arm a callback, then connect a client. The
+  // queued connection wakes the listener with POLLIN (see on_accept).
+  lfd = socket(AF_INET, SOCK_STREAM, 0);
+  assert(lfd >= 0);
+  struct sockaddr_in laddr;
+  memset(&laddr, 0, sizeof(laddr));
+  laddr.sin_family = AF_INET;
+  laddr.sin_port = htons(0);
+  inet_pton(AF_INET, "127.0.0.1", &laddr.sin_addr);
+  assert(bind(lfd, (struct sockaddr*)&laddr, sizeof(laddr)) == 0);
+  socklen_t ll = sizeof(laddr);
+  assert(getsockname(lfd, (struct sockaddr*)&laddr, &ll) == 0);
+  assert(listen(lfd, 1) == 0);
+  if (emscripten_poll_with_callback(lfd, POLLIN, -1, on_accept) != 0) {
+    fail("listening socket should arm");
   }
-
-  if (sendto(tx, "ping", 4, 0, (struct sockaddr*)&addr, sizeof(addr)) != 4) {
-    fail("sendto");
-  }
+  client = socket(AF_INET, SOCK_STREAM, 0);
+  assert(client >= 0);
+  // connect is async; EINPROGRESS is expected, not an error.
+  connect(client, (struct sockaddr*)&laddr, sizeof(laddr));
 
   return 0;
 }

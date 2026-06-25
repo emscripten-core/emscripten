@@ -8,7 +8,7 @@ addToLibrary({
   $SOCKFS__postset: () => {
     addAtInit('SOCKFS.root = FS.mount(SOCKFS, {}, null);');
   },
-  $SOCKFS__deps: ['$FS', '$notifyPollCallback',
+  $SOCKFS__deps: ['$FS', '$notifyNodeListeners',
 #if NODERAWSOCKETS
     '$nodeSockOps',
 #endif
@@ -23,9 +23,7 @@ addToLibrary({
     },
     emit(event, param) {
       SOCKFS.callbacks[event]?.(param);
-      // Bridge socket readiness into the generic poll-callback wait-queue, so
-      // emscripten_poll_with_callback observes every socket event the same way
-      // the legacy global callbacks do.
+      // Bridge socket readiness into the inode wait-queue.
       var fd = event === 'error' ? param[0] : param;
       var flags = {
         'message':    {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}},
@@ -34,7 +32,7 @@ addToLibrary({
         'close':      {{{ cDefs.POLLIN }}} | {{{ cDefs.POLLHUP }}},
         'error':      {{{ cDefs.POLLERR }}},
       }[event];
-      if (flags) notifyPollCallback(FS.getStream(fd)?.node, flags);
+      if (flags) notifyNodeListeners(FS.getStream(fd)?.node, flags);
     },
     mount(mount) {
 #if expectToReceiveOnModule('websocket')
@@ -126,11 +124,8 @@ addToLibrary({
     },
     // node and stream ops are backend agnostic
     stream_ops: {
-      // Sockets announce readiness through SOCKFS.emit -> notifyPollCallback, so
-      // they can be awaited with emscripten_poll_with_callback. Listening sockets
-      // are excluded for now: 'connection' is emitted on the accepted fd, not the
-      // listener, so accept readiness isn't yet delivered through the seam.
-      pollAsync: (stream) => !stream.node.sock.server,
+      // Readiness is announced through SOCKFS.emit -> notifyNodeListeners.
+      pollable: true,
       poll(stream) {
         var sock = stream.node.sock;
         return sock.sock_ops.poll(sock);
@@ -155,9 +150,8 @@ addToLibrary({
       },
       close(stream) {
         var sock = stream.node.sock;
-        // Wake any pending poll-callback waiters: the fd is going away (POLLNVAL),
-        // so they complete and release their keepalive rather than hang.
-        notifyPollCallback(stream.node, {{{ cDefs.POLLNVAL }}});
+        // The fd is going away: wake waiters with POLLNVAL so they don't hang.
+        notifyNodeListeners(stream.node, {{{ cDefs.POLLNVAL }}});
         sock.sock_ops.close(sock);
       }
     },
@@ -575,6 +569,8 @@ addToLibrary({
             // push to queue for accept to pick up
             sock.pending.push(newsock);
             SOCKFS.emit('connection', newsock.stream.fd);
+            // A queued client makes the listener readable (POLLIN).
+            notifyNodeListeners(sock.stream.node, {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
           } else {
             // create a peer on the listen socket so calling sendto
             // with the listen socket and an address will resolve

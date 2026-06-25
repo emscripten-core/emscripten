@@ -314,7 +314,7 @@ var NodeSockFSLibrary = {
       });
     },
   },
-  $nodeSockOps__deps: ['$nodeSockHelpers', '$SOCKFS', '$ERRNO_CODES'],
+  $nodeSockOps__deps: ['$nodeSockHelpers', '$SOCKFS', '$ERRNO_CODES', '$notifyNodeListeners'],
   $nodeSockOps__postset: `
     if (!ENVIRONMENT_IS_NODE) {
       throw new Error("NODERAWSOCKETS is currently only supported on Node.js environment.")
@@ -507,6 +507,8 @@ var NodeSockFSLibrary = {
         try { conn.resume(); } catch (e) {} // paused by pauseOnConnect
         sock.pending.push(newsock);
         SOCKFS.emit('connection', newsock.stream.fd);
+        // A queued client makes the listener readable (POLLIN).
+        notifyNodeListeners(sock.stream.node, {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
       });
       server.on('error', (e) => {
         sock.error = nodeSockHelpers.nodeErrToErrno(e);

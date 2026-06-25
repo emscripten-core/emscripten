@@ -1015,8 +1015,6 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'addDays',
   'getSocketFromFD',
   'getSocketAddress',
-  'notifyPollCallback',
-  'addPollCallback',
   'FS_createPreloadedFile',
   'FS_preloadFile',
   'FS_modeStringToFlags',
