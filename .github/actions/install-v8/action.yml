@@ -1,0 +1,14 @@
+name: 'Install V8'
+description: 'Installs V8 via jsvu'
+runs:
+  using: "composite"
+  steps:
+    - name: Get V8
+      run: |
+        cd $HOME
+        wget https://nodejs.org/dist/v15.14.0/node-v15.14.0-linux-x64.tar.xz
+        tar -xf node-v15.14.0-linux-x64.tar.xz
+        export PATH="`pwd`/node-v15.14.0-linux-x64/bin:${PATH}"
+        npm install jsvu -g
+        jsvu --os=default --engines=v8
+      shell: bash
