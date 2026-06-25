@@ -2252,7 +2252,7 @@ class libstandalonewasm(MuslInternalLibrary, MTLibrary):
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
-      is_pure=settings.PURE_WASI or settings.GROWABLE_ARRAYBUFFERS,
+      is_pure=settings.PURE_WASI or settings.GROWABLE_ARRAYBUFFERS == 2,
       nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
       **kwargs,
     )

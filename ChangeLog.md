@@ -52,6 +52,9 @@ See docs/process.md for more on how version tagging works.
   run dependencies). This means that errors during startup (or during the
   `main()` function) will more often show up as unhandled promise rejections
   (`onunhandledreject`) rather than synchronous errors (`onerror`). (#27121)
+- The `GROWABLE_ARRAYBUFFERS` setting now support both `=1` (auto-detect and
+  use the feature) and `=2` (unconditionally use the feature). The second mode
+  is still useful for avoiding the overhead in multi-threaded builds. (#27096)
 
 6.0.0 - 06/04/26
 ----------------
