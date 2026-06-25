@@ -788,6 +788,7 @@ sigs = {
   emscripten_set_mouseout_callback_on_thread__sig: 'ippipp',
   emscripten_set_mouseover_callback_on_thread__sig: 'ippipp',
   emscripten_set_mouseup_callback_on_thread__sig: 'ippipp',
+  emscripten_set_contextmenu_callback_on_thread__sig: 'ippipp',
   emscripten_set_orientationchange_callback_on_thread__sig: 'ipipp',
   emscripten_set_pointerlockchange_callback_on_thread__sig: 'ippipp',
   emscripten_set_pointerlockerror_callback_on_thread__sig: 'ippipp',

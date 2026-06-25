@@ -583,6 +583,11 @@ var LibraryHTML5 = {
   emscripten_set_mouseout_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
     registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_MOUSEOUT }}}, "mouseout", targetThread),
 
+  emscripten_set_contextmenu_callback_on_thread__proxy: 'sync',
+  emscripten_set_contextmenu_callback_on_thread__deps: ['$registerMouseEventCallback'],
+  emscripten_set_contextmenu_callback_on_thread: (target, userData, useCapture, callbackfunc, targetThread) =>
+    registerMouseEventCallback(target, userData, useCapture, callbackfunc, {{{ cDefs.EMSCRIPTEN_EVENT_CONTEXTMENU }}}, "contextmenu", targetThread),
+
   // HTML5 does not really have a polling API for mouse events, so implement one
   // manually by returning the data from the most recently received event. This
   // requires that user has registered at least some no-op function as an event

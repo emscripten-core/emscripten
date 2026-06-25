@@ -894,6 +894,7 @@
     "emscripten_set_main_loop_arg",
     "emscripten_set_main_loop_expected_blockers",
     "emscripten_set_main_loop_timing",
+    "emscripten_set_contextmenu_callback_on_thread",
     "emscripten_set_mousedown_callback_on_thread",
     "emscripten_set_mouseenter_callback_on_thread",
     "emscripten_set_mouseleave_callback_on_thread",
