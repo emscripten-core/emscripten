@@ -2120,6 +2120,9 @@ def fix_js_mangling(js_file):
   src = read_file(js_file)
 
   if settings.EXPORT_ES6:
+    # Unmangle `await import`, this is done in two passes because Closure
+    # optimizes away some, but not all, `void 0||` wrappers, leaving
+    # `void 0||await import` in the output.
     # Also remove the line containing `export{};`, which is inserted by
     # Closure to mark the file as an ES6 module.
     # https://github.com/google/closure-compiler/issues/4084#issuecomment-1505056519
