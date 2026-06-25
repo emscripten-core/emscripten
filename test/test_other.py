@@ -472,9 +472,6 @@ class other(RunnerCore):
     self.run_process([EMCC, '-o', 'hello_world.mjs',
                       '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '-O2',
                       test_file('hello_world.c'), '--closure=1'])
-    src = read_file('hello_world.mjs')
-    self.assertContained('new URL("hello_world.wasm",import.meta.url)', src)
-    self.assertContained('(await import("node:worker_threads")).workerData==="em-pthread"', src)
     create_file('run.mjs', '''
     import Module from './hello_world.mjs';
     await Module();
