@@ -160,6 +160,10 @@ class interactive(BrowserCore):
     copy_asset('sounds/audio.wav')
     self.btest_exit('openal/test_openal_playback.c', cflags=['-O2', '--preload-file', 'audio.wav'] + args)
 
+  def test_openal_stopped_seek_playback(self):
+    copy_asset('sounds/audio.wav')
+    self.btest('openal/test_openal_playback.c', '1', cflags=['-DTEST_STOPPED_SEEK=1', '-O2', '--preload-file', 'audio.wav'])
+
   def test_openal_buffers(self):
     self.btest_exit('openal/test_openal_buffers.c', cflags=['-DTEST_INTERACTIVE=1', '--preload-file', test_file('sounds/the_entertainer.wav') + '@/'])
 

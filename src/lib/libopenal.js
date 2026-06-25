@@ -724,9 +724,9 @@ var LibraryOpenAL = {
         AL.setSourceState(src, {{{ cDefs.AL_INITIAL }}});
       }
 
-      if (src.bufQueue[src.bufsProcessed].audioBuf !== null) {
-        src.bufsProcessed = 0;
-        while (offset > src.bufQueue[src.bufsProcessed].audioBuf.duration) {
+      src.bufsProcessed = 0;
+      if (src.bufQueue.length && src.bufQueue[0].audioBuf) {
+        while (src.bufsProcessed < src.bufQueue.length && offset > src.bufQueue[src.bufsProcessed].audioBuf.duration) {
           offset -= src.bufQueue[src.bufsProcessed].audioBuf.duration;
           src.bufsProcessed++;
         }
