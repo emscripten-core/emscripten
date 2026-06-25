@@ -271,6 +271,7 @@ sigs = {
   __syscall_rmdir__sig: 'ip',
   __syscall_sendmsg__sig: 'iipiiii',
   __syscall_sendto__sig: 'iippipi',
+  __syscall_setsockopt__sig: 'iiiipii',
   __syscall_shutdown__sig: 'iiiiiii',
   __syscall_socket__sig: 'iiiiiii',
   __syscall_stat64__sig: 'ipp',

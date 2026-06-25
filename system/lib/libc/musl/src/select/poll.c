@@ -12,7 +12,7 @@ int poll(struct pollfd *fds, nfds_t n, int timeout)
 	// promising export — a requirement a readiness probe must not carry
 	// (e.g. probes from event-loop callbacks).
 	if (timeout == 0) {
-		return __syscall_ret(__syscall_poll_nonblocking((intptr_t)fds, n));
+		return __syscall_ret(__syscall_poll_nonblocking(fds, n));
 	}
 #endif
 #ifdef SYS_poll
