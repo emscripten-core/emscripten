@@ -42,7 +42,6 @@ exclude_files = (
   'aio.h',
   'auxv.h',
   'cachectl.h',
-  'epoll.h',
   'eventfd.h',
   'fanotify.h',
   'fsuid.h',
