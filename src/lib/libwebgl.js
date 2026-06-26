@@ -736,7 +736,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       function onContextCreationError(event) {
         errorInfo = event.statusMessage || errorInfo;
       }
-      canvas.addEventListener('webglcontextcreationerror', onContextCreationError, false);
+      canvas.addEventListener('webglcontextcreationerror', onContextCreationError);
 #endif
 
 #if GL_PREINITIALIZED_CONTEXT
@@ -794,7 +794,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
 #endif
 
 #if GL_DEBUG
-      canvas.removeEventListener('webglcontextcreationerror', onContextCreationError, false);
+      canvas.removeEventListener('webglcontextcreationerror', onContextCreationError);
       if (!ctx) {
         dbg('Could not create canvas: ' + [errorInfo, JSON.stringify(webGLContextAttributes)]);
         return 0;
