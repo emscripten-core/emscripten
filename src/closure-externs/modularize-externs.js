@@ -18,6 +18,5 @@ var moduleArg;
  */
 var Module;
 
-// Special placeholder for `await import` and `await`.
-var EMSCRIPTEN$AWAIT$IMPORT;
+// Special placeholder for `await`.
 var EMSCRIPTEN$AWAIT;

@@ -45,20 +45,12 @@ function mangleUnsupportedSyntax(text) {
     // Closure doesn't support "top-level await" which is not actually the top
     // level in case of MODULARIZE. Temporarily replace `await` usages with
     // placeholders during preprocess phase, and back after all the other ops.
+    // Use a low-precedence `||` pattern so Closure doesn't strip defensive parentheses.
+    // High-precedence placeholders trick Closure into optimizing `(PLACEHOLDER).y`
+    // into `PLACEHOLDER.y`, breaking execution order once swapped back to `await`.
     // See also: `fix_js_mangling` in link.py.
     // FIXME: Remove after https://github.com/google/closure-compiler/issues/3835 is fixed.
-    if (EXPORT_ES6) {
-      // We must use a low-priority pattern (`void 0 ||`) instead of a normal function name.
-      // Closure treats a normal name like a function call, so it thinks parentheses around it
-      // are useless and removes them (e.g. turning `(PLACEHOLDER).y` into `PLACEHOLDER.y`).
-      // When we swap `await` back in, `await x.y` runs in the wrong order. The `void 0 ||` trick
-      // forces Closure to keep the parentheses safely intact.
-      text = text.replaceAll('await import', 'void 0||EMSCRIPTEN$AWAIT$IMPORT');
-    }
-    text = text.replaceAll('await createWasm()', 'EMSCRIPTEN$AWAIT(createWasm())');
-    text = text.replaceAll('await run()', 'EMSCRIPTEN$AWAIT(run())');
-    text = text.replaceAll('await instantiatePromise', 'EMSCRIPTEN$AWAIT(instantiatePromise)');
-    text = text.replaceAll('await init()', 'EMSCRIPTEN$AWAIT(init())');
+    text = text.replaceAll('await ', 'EMSCRIPTEN$AWAIT|| ');
   }
   return text;
 }
