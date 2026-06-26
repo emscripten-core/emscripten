@@ -96,7 +96,7 @@ function y() {
     E = new Float32Array(a);
 }
 
-u || (x = m.mem || new WebAssembly.Memory({
+u || (x = new WebAssembly.Memory({
     initial: 256,
     maximum: 256,
     shared: !0

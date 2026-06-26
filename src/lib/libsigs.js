@@ -762,6 +762,7 @@ sigs = {
   emscripten_set_canvas_element_size__sig: 'ipii',
   emscripten_set_canvas_size__sig: 'vii',
   emscripten_set_click_callback_on_thread__sig: 'ippipp',
+  emscripten_set_contextmenu_callback_on_thread__sig: 'ippipp',
   emscripten_set_dblclick_callback_on_thread__sig: 'ippipp',
   emscripten_set_devicemotion_callback_on_thread__sig: 'ipipp',
   emscripten_set_deviceorientation_callback_on_thread__sig: 'ipipp',
