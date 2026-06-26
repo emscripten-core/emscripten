@@ -715,6 +715,13 @@ var SyscallsLibrary = {
   __syscall_poll_nonblocking: (fds, nfds) => {
     return doPoll(fds, nfds, 0, undefined);
   },
+  // epoll is not yet implemented in the legacy (non-WASMFS) JS syscall layer.
+  __syscall_epoll_create1__nothrow: true,
+  __syscall_epoll_create1: (flags) => -{{{ cDefs.ENOSYS }}},
+  __syscall_epoll_ctl__nothrow: true,
+  __syscall_epoll_ctl: (epfd, op, fd, ev) => -{{{ cDefs.ENOSYS }}},
+  __syscall_epoll_pwait__nothrow: true,
+  __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize) => -{{{ cDefs.ENOSYS }}},
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
     if (size === 0) return -{{{ cDefs.EINVAL }}};

@@ -86,3 +86,6 @@
 #define SYS_recvfrom		__syscall_recvfrom
 #define SYS_recvmsg		__syscall_recvmsg
 #define SYS_shutdown		__syscall_shutdown
+#define SYS_epoll_create1	__syscall_epoll_create1
+#define SYS_epoll_ctl		__syscall_epoll_ctl
+#define SYS_epoll_pwait		__syscall_epoll_pwait
