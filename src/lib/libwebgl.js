@@ -739,7 +739,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
       canvas.addEventListener('webglcontextcreationerror', onContextCreationError);
 #endif
 
-#if GL_PREINITIALIZED_CONTEXT
+#if expectToReceiveOnModule('preinitializedWebGLContext')
       // If WebGL context has already been preinitialized for the page on the JS
       // side, reuse that context instead. This is useful for example when the
       // main page precompiles shaders for the application, in which case the
@@ -789,7 +789,7 @@ for (/**@suppress{duplicate}*/var i = 0; i <= {{{ GL_POOL_TEMP_BUFFERS_SIZE }}};
         canvas.getContext("webgl", webGLContextAttributes);
 #endif // MAX_WEBGL_VERSION >= 2
 
-#if GL_PREINITIALIZED_CONTEXT
+#if expectToReceiveOnModule('preinitializedWebGLContext')
       }
 #endif
 

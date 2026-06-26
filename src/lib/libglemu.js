@@ -2848,7 +2848,8 @@ var LibraryGLEmulation = {
       // User can override the maximum number of texture units that we emulate. Using fewer texture units increases runtime performance
       // slightly, so it is advantageous to choose as small value as needed.
       // Limit to a maximum of 28 to not overflow the state bits used for renderer caching (31 bits = 3 attributes + 28 texture units).
-      GLImmediate.MAX_TEXTURES = Math.min(Module['GL_MAX_TEXTURE_IMAGE_UNITS'] || GLctx.getParameter(GLctx.MAX_TEXTURE_IMAGE_UNITS), 28);
+      var maxTextureUnits = {{{ makeModuleReceiveExpr('GL_MAX_TEXTURE_IMAGE_UNITS', 'GLctx.getParameter(GLctx.MAX_TEXTURE_IMAGE_UNITS)') }}};
+      GLImmediate.MAX_TEXTURES = Math.min(maxTextureUnits, 28);
 
       GLImmediate.TexEnvJIT.init(GLctx, GLImmediate.MAX_TEXTURES);
 

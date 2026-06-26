@@ -15180,15 +15180,15 @@ addToLibrary({
   })
   def test_mainScriptUrlOrBlob(self, es6):
     ext = "js"
-    args = []
+    args = ['-sEXIT_RUNTIME', '-sINCOMING_MODULE_JS_API=mainScriptUrlOrBlob', '-sPROXY_TO_PTHREAD', '-pthread']
     if es6:
       ext = "mjs"
-      args = ['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]
+      args += ['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]
     outfile = ('a.out.%s' % ext)
     # Use `foo.js` instead of the current script name when creating new threads
     create_file('pre.js', 'Module = { mainScriptUrlOrBlob: "./foo.%s" }' % ext)
 
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '--pre-js=pre.js', '-o', outfile] + args)
+    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js=pre.js', '-o', outfile] + args)
 
     # First run without foo.[m]js present to verify that the pthread creation fails
     err = self.run_js(outfile, assert_returncode=NON_ZERO)

@@ -1322,6 +1322,15 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
                                   'emscripten_stack_get_current']
     settings.INCOMING_MODULE_JS_API += ['preRun']
 
+  if settings.GL_PREINITIALIZED_CONTEXT:
+    settings.INCOMING_MODULE_JS_API += ['preinitializedWebGLContext']
+
+  if settings.IMPORTED_MEMORY:
+    settings.INCOMING_MODULE_JS_API += ['INITIAL_MEMORY', 'wasmMemory']
+
+  if not settings.WASM_ASYNC_COMPILATION:
+    settings.INCOMING_MODULE_JS_API += ['wasmBinary']
+
   settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ADD)
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
   settings.ASYNCIFY_ONLY = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ONLY)

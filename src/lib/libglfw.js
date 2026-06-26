@@ -1243,8 +1243,10 @@ var LibraryGLFW = {
             Browser.updateResizeListeners();
           }
         }
+#if expectToReceiveOnModule('onFullScreen')
         Module['onFullScreen']?.(Browser.isFullscreen);
         Module['onFullscreen']?.(Browser.isFullscreen);
+#endif
       }
 
       if (!Browser.fullscreenHandlersInstalled) {
@@ -1283,6 +1285,7 @@ var LibraryGLFW = {
       }
       var w = wNative;
       var h = hNative;
+#if expectToReceiveOnModule('forcedAspectRatio')
       if (Module['forcedAspectRatio'] && Module['forcedAspectRatio'] > 0) {
         if (w/h < Module['forcedAspectRatio']) {
           w = Math.round(h * Module['forcedAspectRatio']);
@@ -1290,6 +1293,7 @@ var LibraryGLFW = {
           h = Math.round(w / Module['forcedAspectRatio']);
         }
       }
+#endif
       if ((getFullscreenElement() === canvas.parentNode) && (typeof screen != 'undefined')) {
         var factor = Math.min(screen.width / w, screen.height / h);
         w = Math.round(w * factor);

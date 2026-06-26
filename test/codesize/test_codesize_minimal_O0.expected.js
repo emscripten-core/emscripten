@@ -1219,37 +1219,21 @@ unexportedSymbols.forEach(unexportedRuntimeSymbol);
 
 function checkIncomingModuleAPI() {
   ignoredModuleProp('ENVIRONMENT');
-  ignoredModuleProp('GL_MAX_TEXTURE_IMAGE_UNITS');
-  ignoredModuleProp('SDL_canPlayWithWebAudio');
-  ignoredModuleProp('SDL_numSimultaneouslyQueuedBuffers');
-  ignoredModuleProp('INITIAL_MEMORY');
-  ignoredModuleProp('wasmMemory');
   ignoredModuleProp('arguments');
   ignoredModuleProp('canvas');
-  ignoredModuleProp('doNotCaptureKeyboard');
   ignoredModuleProp('dynamicLibraries');
   ignoredModuleProp('elementPointerLock');
-  ignoredModuleProp('extraStackTrace');
-  ignoredModuleProp('forcedAspectRatio');
   ignoredModuleProp('instantiateWasm');
-  ignoredModuleProp('keyboardListeningElement');
-  ignoredModuleProp('freePreloadedMediaOnUse');
   ignoredModuleProp('locateFile');
-  ignoredModuleProp('mainScriptUrlOrBlob');
   ignoredModuleProp('monitorRunDependencies');
   ignoredModuleProp('noExitRuntime');
   ignoredModuleProp('noInitialRun');
   ignoredModuleProp('onAbort');
   ignoredModuleProp('onExit');
-  ignoredModuleProp('onFullScreen');
   ignoredModuleProp('onRuntimeInitialized');
-  ignoredModuleProp('postMainLoop');
   ignoredModuleProp('postRun');
   ignoredModuleProp('preInit');
-  ignoredModuleProp('preMainLoop');
   ignoredModuleProp('preRun');
-  ignoredModuleProp('preinitializedWebGLContext');
-  ignoredModuleProp('preloadPlugins');
   ignoredModuleProp('print');
   ignoredModuleProp('printErr');
   ignoredModuleProp('setStatus');
@@ -1259,7 +1243,6 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('stdout');
   ignoredModuleProp('thisProgram');
   ignoredModuleProp('wasm');
-  ignoredModuleProp('wasmBinary');
   ignoredModuleProp('websocket');
   ignoredModuleProp('fetchSettings');
   ignoredModuleProp('logReadFiles');
@@ -1271,6 +1254,23 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('onCOSCacheHit');
   ignoredModuleProp('onCOSCacheMiss');
   ignoredModuleProp('onCOSStore');
+  ignoredModuleProp('GL_MAX_TEXTURE_IMAGE_UNITS');
+  ignoredModuleProp('SDL_canPlayWithWebAudio');
+  ignoredModuleProp('SDL_numSimultaneouslyQueuedBuffers');
+  ignoredModuleProp('freePreloadedMediaOnUse');
+  ignoredModuleProp('preinitializedWebGLContext');
+  ignoredModuleProp('keyboardListeningElement');
+  ignoredModuleProp('doNotCaptureKeyboard');
+  ignoredModuleProp('extraStackTrace');
+  ignoredModuleProp('preloadPlugins');
+  ignoredModuleProp('preMainLoop');
+  ignoredModuleProp('postMainLoop');
+  ignoredModuleProp('forcedAspectRatio');
+  ignoredModuleProp('mainScriptUrlOrBlob');
+  ignoredModuleProp('onFullScreen');
+  ignoredModuleProp('INITIAL_MEMORY');
+  ignoredModuleProp('wasmMemory');
+  ignoredModuleProp('wasmBinary');
 }
 
 // Imports from the Wasm binary.

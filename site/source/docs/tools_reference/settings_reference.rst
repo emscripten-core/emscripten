@@ -1459,6 +1459,23 @@ In addition to the default symbols, the following are also available:
 - onCOSCacheHit
 - onCOSCacheMiss
 - onCOSStore
+- GL_MAX_TEXTURE_IMAGE_UNITS
+- SDL_canPlayWithWebAudio
+- SDL_numSimultaneouslyQueuedBuffers
+- freePreloadedMediaOnUse
+- preinitializedWebGLContext
+- keyboardListeningElement
+- doNotCaptureKeyboard
+- extraStackTrace
+- preloadPlugins
+- preMainLoop
+- postMainLoop
+- forcedAspectRatio
+- mainScriptUrlOrBlob
+- onFullScreen
+- INITIAL_MEMORY
+- wasmMemory
+- wasmBinary
 
 Default value: (multi-line value, see settings.js)
 
