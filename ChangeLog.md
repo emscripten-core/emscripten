@@ -23,6 +23,13 @@ See docs/process.md for more on how version tagging works.
 
 - JavaScript library symbols can now use the `__force` and `__export`
   decorators to control inclusion and export visibility. (#27436)
+- `-sWASM_BINDGEN` now runs wasm-bindgen (0.2.127 or later) as a post-link
+  step, unifying its output with emscripten's: wasm-bindgen's bindings are
+  surfaced as the user-facing API across the standard output modes (including
+  `-sMODULARIZE` and `-sWASM_ESM_INTEGRATION`) and its raw wasm exports are no
+  longer leaked. `-sWASM_BINDGEN=auto` enables this automatically when the
+  linked wasm was built with wasm-bindgen, so cargo/rustc builds that link via
+  emcc work without extra flags. (#27208)
 
 6.0.6 - 08/05/26
 ----------------
