@@ -1,7 +1,7 @@
 {
-  "a.out.js": 270728,
+  "a.out.js": 270684,
   "a.out.nodebug.wasm": 587900,
-  "total": 858628,
+  "total": 858584,
   "sent": [
     "IMG_Init",
     "IMG_Load",
@@ -879,6 +879,7 @@
     "emscripten_set_canvas_element_size",
     "emscripten_set_canvas_size",
     "emscripten_set_click_callback_on_thread",
+    "emscripten_set_contextmenu_callback_on_thread",
     "emscripten_set_dblclick_callback_on_thread",
     "emscripten_set_devicemotion_callback_on_thread",
     "emscripten_set_deviceorientation_callback_on_thread",
