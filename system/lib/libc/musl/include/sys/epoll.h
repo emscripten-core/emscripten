@@ -1,14 +1,17 @@
-#ifndef _SYS_EPOLL_H
-#define _SYS_EPOLL_H
+#ifndef	_SYS_EPOLL_H
+#define	_SYS_EPOLL_H
+
 #ifdef __cplusplus
 extern "C" {
 #endif
 
 #include <stdint.h>
 #include <sys/types.h>
+#include <sys/ioctl.h>
 #include <fcntl.h>
 
 #define __NEED_sigset_t
+
 #include <bits/alltypes.h>
 
 #define EPOLL_CLOEXEC O_CLOEXEC
@@ -19,6 +22,7 @@ enum EPOLL_EVENTS { __EPOLL_DUMMY };
 #define EPOLLPRI 0x002
 #define EPOLLOUT 0x004
 #define EPOLLRDNORM 0x040
+#define EPOLLNVAL 0x020
 #define EPOLLRDBAND 0x080
 #define EPOLLWRNORM 0x100
 #define EPOLLWRBAND 0x200
@@ -45,7 +49,23 @@ typedef union epoll_data {
 struct epoll_event {
 	uint32_t events;
 	epoll_data_t data;
-} __attribute__((__packed__));
+}
+#ifdef __x86_64__
+__attribute__ ((__packed__))
+#endif
+;
+
+struct epoll_params {
+	uint32_t busy_poll_usecs;
+	uint16_t busy_poll_budget;
+	uint8_t prefer_busy_poll;
+
+	uint8_t __pad;
+};
+
+#define EPOLL_IOC_TYPE 0x8A
+#define EPIOCSPARAMS _IOW(EPOLL_IOC_TYPE, 0x01, struct epoll_params)
+#define EPIOCGPARAMS _IOR(EPOLL_IOC_TYPE, 0x02, struct epoll_params)
 
 int epoll_create(int);
 int epoll_create1(int);
@@ -53,7 +73,9 @@ int epoll_ctl(int, int, int, struct epoll_event *);
 int epoll_wait(int, struct epoll_event *, int, int);
 int epoll_pwait(int, struct epoll_event *, int, int, const sigset_t *);
 
+
 #ifdef __cplusplus
 }
 #endif
-#endif
+
+#endif /* sys/epoll.h */

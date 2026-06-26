@@ -1032,8 +1032,8 @@
             "user_data": 16
         },
         "epoll_event": {
-            "__size__": 12,
-            "data": 4,
+            "__size__": 16,
+            "data": 8,
             "events": 0
         },
         "flock": {
