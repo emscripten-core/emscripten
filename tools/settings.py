@@ -411,7 +411,7 @@ class SettingsManager:
 
   def check_type(self, name, value):
     # These settings have a variable type so cannot be easily type checked.
-    if name in {'EXECUTABLE', 'SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO', 'MODULARIZE'}:
+    if name in {'EXECUTABLE', 'SUPPORT_LONGJMP', 'PTHREAD_POOL_SIZE', 'SEPARATE_DWARF', 'LTO', 'MODULARIZE', 'WASM_BINDGEN'}:
       return
     expected_type = self.types.get(name)
     if not expected_type:

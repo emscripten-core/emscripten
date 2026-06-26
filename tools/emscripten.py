@@ -440,6 +440,13 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
     pre += "}\n"
 
   report_missing_exports(forwarded_json['librarySymbols'])
+  # A JS library symbol is exported (MODULARIZE=instance) when it is in
+  # EXPORTED_FUNCTIONS; derive that set rather than tracking it separately. The
+  # forwarded EXPORTED_FUNCTIONS includes additions made by JS libraries (e.g.
+  # wasm-bindgen self-registering its exports).
+  exported_functions = set(forwarded_json['exportedFunctions'])
+  building.exported_js_library_symbols.update(
+    s for s in forwarded_json['librarySymbols'] if s in exported_functions)
 
   asm_const_pairs = ['%s: %s' % (key, value) for key, value in asm_consts]
   if asm_const_pairs or settings.MAIN_MODULE:
@@ -610,8 +617,15 @@ def finalize_wasm(infile, outfile, js_syms):
   unexpected_exports = [asmjs_mangle(e) for e in unexpected_exports]
   unexpected_exports = [e for e in unexpected_exports if e not in expected_exports]
 
+  # Under WASM_BINDGEN, `main` runs automatically on init via the entry but
+  # `_main` is not surfaced as a public export (it is part of wasm-bindgen's
+  # internal export set, see below).
   if (not settings.STANDALONE_WASM and 'main' in metadata.all_exports) or '__main_argc_argv' in metadata.all_exports:
-    if 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTS:
+    if settings.WASM_BINDGEN:
+      # `main` stays a wasm export so it runs automatically on init, but `_main`
+      # is internal and is not surfaced.
+      pass
+    elif 'EXPORTED_FUNCTIONS' in user_settings and '_main' not in settings.USER_EXPORTS:
       # If `_main` was unexpectedly exported we assume it was added to
       # EXPORT_IF_DEFINED by `phase_linker_setup` in order that we can detect
       # it and report this warning.  After reporting the warning we explicitly
@@ -625,6 +639,13 @@ def finalize_wasm(infile, outfile, js_syms):
         metadata.all_exports.remove('__main_argc_argv')
     else:
       unexpected_exports.append('_main')
+
+  # Keep wasm-bindgen's internal glue exports (the raw symbols its generated
+  # bindings reach by name, including `_main`) off the public surface. Genuine
+  # EMSCRIPTEN_KEEPALIVE exports are not in this set and remain.
+  if settings.WASM_BINDGEN:
+    unexpected_exports = [e for e in unexpected_exports
+                          if e not in building.wasm_bindgen_internal_exports]
 
   building.user_requested_exports.update(unexpected_exports)
   settings.EXPORTED_FUNCTIONS.extend(unexpected_exports)

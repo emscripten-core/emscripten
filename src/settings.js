@@ -2247,7 +2247,12 @@ var LEGACY_RUNTIME = false;
 // [link]
 var SIGNATURE_CONVERSIONS = [];
 
-// Run wasm-bindgen and integrate the rust-exported symbols into the rest of Emscripten's JS output.
+// Run wasm-bindgen and integrate the rust-exported symbols into the rest of
+// Emscripten's JS output.
+// Set to 1 to always run wasm-bindgen (e.g. a C/C++ build linking a Rust
+// staticlib). Set to 'auto' to run it only when the linked wasm carries
+// wasm-bindgen's marker section, which is how cargo/rustc opts in when driving
+// emcc as the linker; otherwise 'auto' is a no-op.
 // [link]
 var WASM_BINDGEN = 0;
 
