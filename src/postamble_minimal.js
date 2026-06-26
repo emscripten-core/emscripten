@@ -340,5 +340,6 @@ null;
 #endif
 
 #if MODULARIZE
+/** @suppress {uselessCode} */
 await instantiatePromise;
 #endif
