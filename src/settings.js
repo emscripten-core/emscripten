@@ -989,12 +989,24 @@ var EXPORTED_RUNTIME_METHODS = [];
 // actually use, can be very useful for reducing code size. By default, the
 // list contains a set of commonly used symbols.
 //
-// FIXME: should this just be  0  if we want everything?
+// In addition to the default symbols, the following are also available:
+//
+// - fetchSettings
+// - logReadFiles
+// - loadSplitModule
+// - onMalloc
+// - onRealloc
+// - onFree
+// - onSbrkGrow
+// - onCOSCacheHit
+// - onCOSCacheMiss
+// - onCOSStore
+//
 // [link]
 var INCOMING_MODULE_JS_API = [
   'ENVIRONMENT', 'GL_MAX_TEXTURE_IMAGE_UNITS', 'SDL_canPlayWithWebAudio',
   'SDL_numSimultaneouslyQueuedBuffers', 'INITIAL_MEMORY', 'wasmMemory', 'arguments',
-  'buffer', 'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
+  'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
   'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
   'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
   'locateFile', 'mainScriptUrlOrBlob', 'mem',

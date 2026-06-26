@@ -16,13 +16,13 @@ jobs:
     name: Archive
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@8ade135a41bc03ea155e62e844d188df1ea18608 # v4.1.0
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
     - name: make dist
       run: |
         make dist
         version=`cat emscripten-version.txt | sed s/\"//g`
         echo "VERSION=$version" >> $GITHUB_ENV
-    - uses: actions/upload-artifact@4cec3d8aa04e39d1a68397de0c4cd6fb9dce8ec1 # v4.5
+    - uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
       with:
         name: emscripten-${{ env.VERSION }}
         path: emscripten-${{ env.VERSION }}.tar.bz2
@@ -33,14 +33,14 @@ jobs:
     if: github.event_name == 'pull_request'
     steps:
       - name: Install emsdk
-        uses: emscripten-core/setup-emsdk@v16
+        uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
         with:
           version: tot
       - name: Set EM_CONFIG
         run:
           echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
       - name: Checkout repo
-        uses: actions/checkout@v4
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           submodules: true
           fetch-depth: 0 # We want access to other branches, specifically `main`
@@ -101,7 +101,7 @@ jobs:
       LLVM_VERSION: 19
     runs-on: ubuntu-latest
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
       # Fetch all history for all tags and branches
       with:
         fetch-depth: 0
