@@ -75,7 +75,7 @@ var LibraryTracing = {
       EmscriptenTrace.worker.addEventListener('error', (e) => {
         out('TRACE WORKER ERROR:');
         out(e);
-      }, false);
+      });
       EmscriptenTrace.worker.postMessage({ 'cmd': 'configure',
                                            'data_version': EmscriptenTrace.DATA_VERSION,
                                            'session_id': session_id,
