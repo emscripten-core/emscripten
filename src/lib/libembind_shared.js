@@ -216,8 +216,8 @@ var LibraryEmbindShared = {
       argsList.push(`arg${i}`)
       argsListWired.push(`arg${i}Wired`)
     }
-    argsList = argsList.join(',')
-    argsListWired = argsListWired.join(',')
+    argsList = argsList.join()
+    argsListWired = argsListWired.join()
 
     var invokerFnBody = `return function (${argsList}) {\n`;
 
