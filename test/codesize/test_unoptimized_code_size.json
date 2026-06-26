@@ -7,10 +7,10 @@
   "no_asserts.js.gz": 8668,
   "no_asserts.wasm": 12229,
   "no_asserts.wasm.gz": 6004,
-  "strict.js": 52950,
-  "strict.js.gz": 16590,
+  "strict.js": 52922,
+  "strict.js.gz": 16585,
   "strict.wasm": 15115,
   "strict.wasm.gz": 7461,
-  "total": 176227,
-  "total_gz": 63571
+  "total": 176199,
+  "total_gz": 63566
 }
