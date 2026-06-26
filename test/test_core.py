@@ -5755,6 +5755,24 @@ got: 10
       self.set_setting('FORCE_FILESYSTEM')
     self.do_core_test('test_poll.c')
 
+  @no_wasmfs('epoll is implemented in the JS (non-WASMFS) syscall layer')
+  def test_epoll(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    self.do_core_test('test_epoll.c')
+
+  @no_wasmfs('epoll is implemented in the JS (non-WASMFS) syscall layer')
+  def test_epoll_advanced(self):
+    self.set_setting('FORCE_FILESYSTEM')
+    self.do_core_test('test_epoll_advanced.c')
+
+  @no_wasmfs('epoll is implemented in the JS (non-WASMFS) syscall layer')
+  @requires_node
+  def test_epoll_noderawfs(self):
+    # Regular-file streams under NODERAWFS carry no stream_ops; the readiness
+    # layer must not dereference a missing poll handler (poll/epoll on a file).
+    self.set_setting('NODERAWFS')
+    self.do_core_test('test_epoll_noderawfs.c')
+
   @no_wasmfs('st.f_ffree > st.f_files, same issue than in wasmfs.test_fs_nodefs_statvfs. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_statvfs(self):
     self.do_core_test('test_statvfs.c')
@@ -9671,6 +9689,14 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
       self.skipTest('test requires setTimeout which is not supported under v8')
     self.do_runf('core/test_poll_blocking_asyncify.c', 'done\n')
+
+  @with_asyncify_and_jspi
+  @no_wasmfs('epoll is implemented in the JS (non-WASMFS) syscall layer')
+  def test_epoll_blocking_asyncify(self):
+    if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
+      self.skipTest('test requires setTimeout which is not supported under v8')
+    self.set_setting('FORCE_FILESYSTEM')
+    self.do_runf('core/test_epoll_blocking_asyncify.c', 'done\n')
 
   @parameterized({
     '': ([],),

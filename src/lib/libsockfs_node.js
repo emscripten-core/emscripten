@@ -314,7 +314,7 @@ var NodeSockFSLibrary = {
       });
     },
   },
-  $nodeSockOps__deps: ['$nodeSockHelpers', '$SOCKFS', '$ERRNO_CODES'],
+  $nodeSockOps__deps: ['$nodeSockHelpers', '$SOCKFS', '$ERRNO_CODES', '$notifyNodeListeners'],
   $nodeSockOps__postset: `
     if (!ENVIRONMENT_IS_NODE) {
       throw new Error("NODERAWSOCKETS is currently only supported on Node.js environment.")
@@ -341,7 +341,10 @@ var NodeSockFSLibrary = {
       } else if (sock.connection && sock.state === {{{ SOCK_STATE_CONNECTED }}} && !sock.writeBlocked) {
         mask |= {{{ cDefs.POLLOUT }}};
       }
-      if (sock.readClosed) mask |= {{{ cDefs.POLLHUP }}};
+      // A peer FIN / read-side hangup (recv will see EOF) is POLLRDHUP; only a
+      // fully closed connection is a POLLHUP.
+      if (sock.readClosed) mask |= {{{ cDefs.POLLRDHUP }}};
+      if (sock.state === {{{ SOCK_STATE_CLOSED }}}) mask |= {{{ cDefs.POLLHUP }}};
       return mask;
     },
     ioctl(sock, request, arg) {
@@ -507,6 +510,8 @@ var NodeSockFSLibrary = {
         try { conn.resume(); } catch (e) {} // paused by pauseOnConnect
         sock.pending.push(newsock);
         SOCKFS.emit('connection', newsock.stream.fd);
+        // A queued client makes the listening socket readable (POLLIN).
+        notifyNodeListeners(sock.stream.node, {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
       });
       server.on('error', (e) => {
         sock.error = nodeSockHelpers.nodeErrToErrno(e);

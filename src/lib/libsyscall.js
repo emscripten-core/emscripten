@@ -583,11 +583,51 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
+  // The inode readiness wait-queue. It lives on the FS node (so dup'd fds share
+  // one queue) as a Set of identity entries {cb}: identity lets the same `cb` be
+  // registered more than once (a dup'd fd) and removed in O(1) without copying.
+  // Producers (SOCKFS.emit, pipe writes, epoll_ctl) feed it; poll()/epoll_wait
+  // consume it.
+  $notifyNodeListeners__internal: true,
+  $notifyNodeListeners: (node, flags) => {
+    // No copy: this runs synchronously and only fires our own internal
+    // listeners (any user callback is deferred to a later tick), so the only
+    // mutation here is a woken listener deleting its own entry - which a Set
+    // tolerates mid-iteration (a not-yet-visited deleted entry is skipped).
+    if (node?.listeners) for (var entry of node.listeners) entry.cb(flags);
+  },
+  $addNodeListener__internal: true,
+  $addNodeListener: (node, cb) => {
+    var entry = {cb};
+    var listeners = (node.listeners ??= new Set());
+    listeners.add(entry);
+    return {listeners, entry};
+  },
+  // Derive readiness for one fd against its requested `events`: POLLNVAL for a
+  // closed/bad fd, default readable+writable for types without a poll handler.
+  // POLLERR/POLLHUP/POLLNVAL are output-only conditions reported regardless of
+  // `events` (a bad fd reports POLLNVAL even if the caller didn't ask for it).
+  $pollOne__internal: true,
+  $pollOne__deps: ['$FS'],
+  $pollOne: (fd, events) => {
+    var flags = {{{ cDefs.POLLNVAL }}};
+    var stream = FS.getStream(fd);
+    if (stream) {
+      // Streams without a poll handler (regular files, incl. NODERAWFS/NODEFS
+      // which leave stream_ops unset) are treated as always readable+writable.
+      if (stream.stream_ops?.poll) {
+        flags = stream.stream_ops.poll(stream);
+      } else {
+        flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
+      }
+    }
+    return flags & (events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLNVAL }}});
+  },
   __syscall_poll__proxy: 'sync',
   __syscall_poll__async: 'auto',
   __syscall_poll__deps: ['$doPoll',
 #if PTHREADS || ASYNCIFY
-    '$doPollAsync',
+    '$readPollfds', '$writePollfds', '$pollWait',
 #endif
   ],
   __syscall_poll: (fds, nfds, timeout) => {
@@ -597,114 +637,113 @@ var SyscallsLibrary = {
 #else
     const isAsyncContext = true;
 #endif
+    // When proxied from a worker (PTHREADS) or able to suspend (ASYNCIFY/JSPI),
+    // block on the wait-queue: read the interests out of memory, wait, then
+    // write revents back into the (still-live) pollfd array and resolve.
     if (isAsyncContext) {
-      return doPollAsync(fds, nfds, timeout);
+#if RUNTIME_DEBUG
+      dbg('async poll start');
+#endif
+      var pfds = readPollfds(fds, nfds);
+      return new Promise((resolve) => pollWait(pfds, timeout, (count) => {
+        writePollfds(fds, pfds);
+        resolve(count);
+      }));
     }
 #endif
-
-    var count = doPoll(fds, nfds, 0, undefined);
+    var count = doPoll(fds, nfds);
 #if ASSERTIONS
     if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
 #endif
     return count;
   },
-#if PTHREADS || ASYNCIFY
-  $doPollAsync__internal: true,
-  $doPollAsync__deps: ['$FS', '$doPoll'],
-  $doPollAsync: (fds, nfds, timeout) => {
-#if RUNTIME_DEBUG
-    dbg('async poll start');
-#endif
-
-    // Enable event handlers only when the poll call is proxied from a worker.
-    // TODO: Could use `Promise.withResolvers` here if we know its available.
-    var resolve;
-    var promise = new Promise((resolve_) => { resolve = resolve_; });
-    var cleanupFuncs = [];
-    var notifyDone = false;
-
-    function asyncPollComplete(count) {
-      if (notifyDone) {
-        return;
-      }
-      notifyDone = true;
-#if RUNTIME_DEBUG
-      dbg('asyncPollComplete', count);
-#endif
-      cleanupFuncs.forEach(cb => cb());
-      resolve(count);
-    }
-
-    function makeNotifyCallback(stream, pollfd) {
-      var cb = (flags) => {
-        if (notifyDone) {
-          return;
-        }
-#if RUNTIME_DEBUG
-        dbg(`async poll notify: stream=${stream}`);
-#endif
-        var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
-        flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
-#if ASSERTIONS
-        assert(flags)
-#endif
-        {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
-        asyncPollComplete(1);
-      }
-      cb.registerCleanupFunc = (f) => {
-        if (f) cleanupFuncs.push(f);
-      }
-      return cb;
-    }
-    if (timeout > 0) {
-      var t = setTimeout(() => {
-#if RUNTIME_DEBUG
-        dbg('poll: timeout', timeout);
-#endif
-        asyncPollComplete(0);
-      }, timeout);
-      cleanupFuncs.push(() => clearTimeout(t));
-    }
-    // A zero timeout never registers notifications: the derivation alone
-    // answers, matching the non-blocking probe.
-    var count = doPoll(fds, nfds, timeout, makeNotifyCallback);
-    if (count || !timeout) {
-      asyncPollComplete(count);
-    }
-    return promise;
-  },
-#endif
-  // The shared readiness derivation: one pass over the pollfds, writing
-  // revents and returning the ready count. With a nonzero `timeout`, a
-  // readiness notification is also registered on each stream by the same
-  // `stream_ops.poll` call that derives it, so there is no window between
-  // registration and derivation; a zero `timeout` means the caller will not
-  // wait, so no notification is registered (the plain probe).
+  // Synchronous poll(): derive each fd in place, writing revents and returning
+  // the ready count. Used by the non-suspending syscall paths.
   $doPoll__internal: true,
-  $doPoll__deps: ['$FS'],
-  $doPoll: (fds, nfds, timeout, makeNotifyCallback) => {
+  $doPoll__deps: ['$pollOne'],
+  $doPoll: (fds, nfds) => {
     var count = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
-      var fd = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}};
-      var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
-      var flags = {{{ cDefs.POLLNVAL }}};
-      var stream = FS.getStream(fd);
-      if (stream) {
-        if (stream.stream_ops.poll) {
-          flags = timeout
-            ? stream.stream_ops.poll(stream, timeout, makeNotifyCallback(stream, pollfd))
-            : stream.stream_ops.poll(stream, -1);
-        } else {
-          flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
-        }
-      }
-      flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
-      if (flags) count++;
-      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
+      var revents = pollOne(
+        {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}},
+        {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}});
+      if (revents) count++;
+      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'revents', 'i16') }}};
     }
     return count;
   },
+#if PTHREADS || ASYNCIFY
+  // Read a pollfd array into JS interests (fd + events); the source buffer need
+  // not persist afterwards.
+  $readPollfds__internal: true,
+  $readPollfds: (fds, nfds) => {
+    var pfds = [];
+    for (var i = 0; i < nfds; i++) {
+      var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
+      pfds.push({
+        fd: {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}},
+        events: {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}},
+        revents: 0,
+      });
+    }
+    return pfds;
+  },
+  // Write JS interests (fd + events + revents) into a pollfd array.
+  $writePollfds__internal: true,
+  $writePollfds: (fds, pfds) => {
+    for (var i = 0; i < pfds.length; i++) {
+      var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
+      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.fd, 'pfds[i].fd', 'i32') }}};
+      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.events, 'pfds[i].events', 'i16') }}};
+      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'pfds[i].revents', 'i16') }}};
+    }
+  },
+  // Wait for readiness across a set of interests {fd, events, revents}, calling
+  // complete(count) once: now if any are ready (or timeout 0), else register one
+  // waiter per fd on its node wait-queue and re-derive the whole set on any wake
+  // (the wake flags are just the trigger), completing then or after `timeout`.
+  $pollWait__internal: true,
+  $pollWait__deps: ['$FS', '$pollOne', '$addNodeListener'],
+  $pollWait: (pfds, timeout, complete) => {
+    var regs = [];
+    var timer;
+    var done = false;
+    function derive() {
+      var count = 0;
+      for (var p of pfds) {
+        p.revents = pollOne(p.fd, p.events);
+        if (p.revents) count++;
+      }
+      return count;
+    }
+    function teardown() {
+      done = true;
+      for (var r of regs) r.listeners.delete(r.entry);
+      if (timer) clearTimeout(timer);
+    }
+    function finish(count) {
+      if (done) return;
+      teardown();
+      complete(count);
+    }
+    var count = derive();
+    if (count || !timeout) {
+      finish(count);
+    } else {
+      var recheck = () => {
+        if (done) return;
+        var c = derive();
+        if (c) finish(c);
+      };
+      for (var p of pfds) {
+        var stream = FS.getStream(p.fd);
+        if (stream) regs.push(addNodeListener(stream.node, recheck));
+      }
+      if (timeout > 0) timer = setTimeout(() => finish(0), timeout);
+    }
+  },
+#endif
   // libc routes zero-timeout poll() calls here: the same synchronous
   // readiness derivation as __syscall_poll, but as a plain import that never
   // suspends, so probes stay callable from any context (under JSPI,
@@ -713,7 +752,209 @@ var SyscallsLibrary = {
   __syscall_poll_nonblocking__proxy: 'sync',
   __syscall_poll_nonblocking__deps: ['$doPoll'],
   __syscall_poll_nonblocking: (fds, nfds) => {
-    return doPoll(fds, nfds, 0, undefined);
+    return doPoll(fds, nfds);
+  },
+
+  // An epoll instance is a real FS fd whose stream carries an interest map
+  // `epoll` (fd -> reg). Each registration arms a persistent listener on the
+  // watched node's wait-queue at EPOLL_CTL_ADD (not per-wait) so edge state and
+  // nesting can be tracked across waits. Being an fd, close(2) reclaims it (and
+  // tears every registration down) and it can itself be added to another epoll.
+  $newEpollInstance__internal: true,
+  $newEpollInstance__deps: ['$FS', '$pollOne'],
+  $newEpollInstance: () => FS.createStream({
+    // Its own node, so the epoll fd can be watched by a parent epoll (nesting).
+    node: {},
+    epoll: new Map(),
+    stream_ops: {
+      // Readable when any registration is currently ready: this is what lets an
+      // epoll fd be polled/nested. Edge/oneshot/exclusive are reporting-time
+      // concerns, so they are masked out of the level derivation here.
+      poll(stream) {
+        for (var [fd, reg] of stream.epoll) {
+          if (reg.disabled) continue;
+          if (pollOne(fd, reg.events & ~{{{ cDefs.EPOLLET | cDefs.EPOLLONESHOT | cDefs.EPOLLEXCLUSIVE }}})) {
+            return {{{ cDefs.POLLIN }}};
+          }
+        }
+        return 0;
+      },
+      // close(2): drop every registration's listener from its watched node.
+      close(stream) {
+        for (var reg of stream.epoll.values()) {
+          reg.listener.listeners.delete(reg.listener.entry);
+        }
+        stream.epoll.clear();
+      },
+    },
+  }),
+
+  __syscall_epoll_create1__deps: ['$newEpollInstance'],
+  __syscall_epoll_create1__proxy: 'sync',
+  __syscall_epoll_create1: (flags) => {
+    return newEpollInstance().fd;
+  },
+
+  __syscall_epoll_ctl__deps: ['$FS', '$addNodeListener', '$notifyNodeListeners'],
+  __syscall_epoll_ctl__proxy: 'sync',
+  __syscall_epoll_ctl: (epfd, op, fd, ev) => {
+    var ep = FS.getStream(epfd);
+    if (!ep?.epoll) return -{{{ cDefs.EBADF }}};
+    var target = FS.getStream(fd);
+    if (!target) return -{{{ cDefs.EBADF }}};
+    if (op != {{{ cDefs.EPOLL_CTL_ADD }}} && op != {{{ cDefs.EPOLL_CTL_MOD }}} && op != {{{ cDefs.EPOLL_CTL_DEL }}}) {
+      return -{{{ cDefs.EINVAL }}};
+    }
+    // An epoll cannot watch itself.
+    if (fd == epfd) return -{{{ cDefs.EINVAL }}};
+
+    var has = ep.epoll.has(fd);
+    if (op == {{{ cDefs.EPOLL_CTL_DEL }}}) {
+      if (!has) return -{{{ cDefs.ENOENT }}};
+      var reg = ep.epoll.get(fd);
+      reg.listener.listeners.delete(reg.listener.entry);
+      ep.epoll.delete(fd);
+      return 0;
+    }
+
+    var events = {{{ makeGetValue('ev', C_STRUCTS.epoll_event.events, 'u32') }}};
+    if (op == {{{ cDefs.EPOLL_CTL_ADD }}}) {
+      if (has) return -{{{ cDefs.EEXIST }}};
+      // Only descriptors with a readiness derivation can be epoll-watched
+      // (sockets/pipes/epoll itself). Regular files have no poll handler and so
+      // are not epoll-capable, matching Linux (-EPERM).
+      if (!target.stream_ops?.poll) return -{{{ cDefs.EPERM }}};
+      // Nesting another epoll: reject cycles and chains deeper than 5 (ELOOP).
+      if (target.epoll) {
+        var reaches = (from, goal, seen) => {
+          if (from === goal) return true;
+          if (!from?.epoll || seen.has(from)) return false;
+          seen.add(from);
+          for (var f of from.epoll.keys()) {
+            if (reaches(FS.getStream(f), goal, seen)) return true;
+          }
+          return false;
+        };
+        var depth = (s, seen) => {
+          if (!s?.epoll || seen.has(s)) return 0;
+          seen.add(s);
+          var max = 0;
+          for (var f of s.epoll.keys()) max = Math.max(max, depth(FS.getStream(f), seen));
+          seen.delete(s);
+          return 1 + max;
+        };
+        if (reaches(target, ep, new Set()) || 1 + depth(target, new Set()) > 5) {
+          return -{{{ cDefs.ELOOP }}};
+        }
+      }
+    } else { // EPOLL_CTL_MOD
+      if (!has) return -{{{ cDefs.ENOENT }}};
+      // EPOLLEXCLUSIVE may only be set at ADD time.
+      if (events & {{{ cDefs.EPOLLEXCLUSIVE }}}) return -{{{ cDefs.EINVAL }}};
+    }
+
+    // `data` is opaque user data echoed back by epoll_wait; keep its 8 bytes.
+    var reg = ep.epoll.get(fd) ?? {};
+    reg.events = events;
+    reg.dataLo = {{{ makeGetValue('ev', C_STRUCTS.epoll_event.data, 'i32') }}};
+    reg.dataHi = {{{ makeGetValue('ev', C_STRUCTS.epoll_event.data + 4, 'i32') }}};
+    reg.disabled = false; // (re-)arm: clears a fired EPOLLONESHOT on MOD
+    reg.edge = true;      // report initial readiness, including under EPOLLET
+    if (op == {{{ cDefs.EPOLL_CTL_ADD }}}) {
+      // A persistent listener on the watched node: each notification refreshes
+      // the edge and wakes a blocking wait on this epoll (and any parent epoll).
+      reg.listener = addNodeListener(target.node, () => {
+        reg.edge = true;
+        notifyNodeListeners(ep.node, {{{ cDefs.POLLIN }}});
+      });
+      ep.epoll.set(fd, reg);
+    }
+    return 0;
+  },
+
+  // Derive the ready set, writing up to `maxevents` epoll_events into `ev` and
+  // returning the count. Level-triggered registrations report whenever ready;
+  // EPOLLET ones report only on a fresh edge (consumed here); EPOLLONESHOT ones
+  // disable themselves after firing (re-armed by EPOLL_CTL_MOD). A registration
+  // whose fd has closed is auto-removed.
+  $doEpollWait__internal: true,
+  $doEpollWait__deps: ['$FS', '$pollOne'],
+  $doEpollWait: (ep, ev, maxevents) => {
+    var n = 0;
+    for (var [fd, reg] of ep.epoll) {
+      if (n >= maxevents) break;
+      if (!FS.getStream(fd)) {
+        // The watched fd closed: drop the (now dead) registration.
+        reg.listener.listeners.delete(reg.listener.entry);
+        ep.epoll.delete(fd);
+        continue;
+      }
+      if (reg.disabled) continue;
+      var revents = pollOne(fd, reg.events & ~{{{ cDefs.EPOLLET | cDefs.EPOLLONESHOT | cDefs.EPOLLEXCLUSIVE }}});
+      if (!revents) continue;
+      if ((reg.events & {{{ cDefs.EPOLLET }}}) && !reg.edge) continue;
+      var out = ev + {{{ C_STRUCTS.epoll_event.__size__ }}} * n;
+      {{{ makeSetValue('out', C_STRUCTS.epoll_event.events, 'revents', 'u32') }}};
+      {{{ makeSetValue('out', C_STRUCTS.epoll_event.data, 'reg.dataLo', 'i32') }}};
+      {{{ makeSetValue('out', C_STRUCTS.epoll_event.data + 4, 'reg.dataHi', 'i32') }}};
+      if (reg.events & {{{ cDefs.EPOLLET }}}) reg.edge = false;
+      if (reg.events & {{{ cDefs.EPOLLONESHOT }}}) reg.disabled = true;
+      n++;
+    }
+    return n;
+  },
+
+  __syscall_epoll_pwait__proxy: 'sync',
+  __syscall_epoll_pwait__async: 'auto',
+  __syscall_epoll_pwait__deps: ['$FS', '$doEpollWait',
+#if PTHREADS || ASYNCIFY
+    '$addNodeListener',
+#endif
+  ],
+  __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize) => {
+    var ep = FS.getStream(epfd);
+    if (!ep?.epoll) return -{{{ cDefs.EBADF }}};
+    if (maxevents <= 0) return -{{{ cDefs.EINVAL }}};
+#if PTHREADS || ASYNCIFY
+#if PTHREADS
+    const isAsyncContext = PThread.currentProxiedOperationCallerThread;
+#else
+    const isAsyncContext = true;
+#endif
+    // Always resolve through a Promise here: when proxied from a worker the
+    // result is delivered by promise resolution, so a bare value would break
+    // the proxy (it has no `.then`). Block on the epoll's own readiness - each
+    // registration's persistent listener wakes ep.node on a leaf edge - and
+    // re-derive on wake, resolving the count or 0 after `timeout`.
+    if (isAsyncContext) {
+      return new Promise((resolve) => {
+        var count = doEpollWait(ep, ev, maxevents);
+        if (count || !timeout) {
+          resolve(count);
+          return;
+        }
+        var done = false;
+        var reg = addNodeListener(ep.node, () => {
+          if (done) return;
+          var c = doEpollWait(ep, ev, maxevents);
+          if (c) finish(c);
+        });
+        var timer = timeout > 0 ? setTimeout(() => finish(0), timeout) : undefined;
+        function finish(c) {
+          if (done) return;
+          done = true;
+          reg.listeners.delete(reg.entry);
+          if (timer) clearTimeout(timer);
+          resolve(c);
+        }
+      });
+    }
+#endif
+    var count = doEpollWait(ep, ev, maxevents);
+#if ASSERTIONS
+    if (!count && timeout != 0) warnOnce('non-zero epoll_wait() timeout not supported: ' + timeout)
+#endif
+    return count;
   },
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {

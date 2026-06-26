@@ -20,6 +20,11 @@ See docs/process.md for more on how version tagging works.
 
 6.0.2 (in development)
 ----------------------
+- Added support for `epoll` (`epoll_create1`/`epoll_ctl`/`epoll_wait`/
+  `epoll_pwait`) on the legacy (non-WASMFS) JS filesystem, including
+  level- and edge-triggered modes, `EPOLLONESHOT`, `EPOLLEXCLUSIVE`,
+  `EPOLLRDHUP`, nesting, and blocking waits under `PROXY_TO_PTHREAD`,
+  `ASYNCIFY`, and `JSPI`.
 - New `-sNODERAWSOCKETS` setting that backs the POSIX sockets API with real TCP
   (`node:net`) and UDP (`node:dgram`) sockets on Node.js, with no `ws`, proxy
   process, or pthreads required. Supports incoming and outgoing TCP, UDP, IPv6,
