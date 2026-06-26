@@ -396,6 +396,7 @@ Defines
   EMSCRIPTEN_EVENT_MOUSEMOVE
   EMSCRIPTEN_EVENT_MOUSEENTER
   EMSCRIPTEN_EVENT_MOUSELEAVE
+  EMSCRIPTEN_EVENT_CONTEXTMENU
 
     Emscripten mouse events.
 
@@ -405,7 +406,7 @@ Struct
 
 .. c:type:: EmscriptenMouseEvent
 
-  The event structure passed in `mouse events <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#interface-MouseEvent>`_: `click <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-click>`_, `mousedown <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousedown>`_, `mouseup <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseup>`_, `dblclick <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-dblclick>`_, `mousemove <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousemove>`_, `mouseenter <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseenter>`_ and `mouseleave <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseleave>`_.
+  The event structure passed in `mouse events <https://w3c.github.io/pointerevents/#mouseevent>`_: `click <https://w3c.github.io/pointerevents/#click>`_, `mousedown <https://w3c.github.io/pointerevents/#mousedown>`_, `mouseup <https://w3c.github.io/pointerevents/#mouseup>`_, `dblclick <https://w3c.github.io/pointerevents/#dblclick>`_, `mousemove <https://w3c.github.io/pointerevents/#mousemove>`_, `mouseenter <https://w3c.github.io/pointerevents/#mouseenter>`_, `mouseleave <https://w3c.github.io/pointerevents/#mouseleave>`_ and `contextmenu <https://w3c.github.io/pointerevents/#contextmenu>`_.
 
 
   .. c:member:: double timestamp
@@ -498,6 +499,7 @@ Functions
   EMSCRIPTEN_RESULT emscripten_set_mousemove_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_mouseenter_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_contextmenu_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
 
   Registers a callback function for receiving browser-generated `mouse input events <https://developer.mozilla.org/en/DOM/MouseEvent>`_.
 
@@ -1369,7 +1371,7 @@ Functions
 
   Registers a callback function for receiving the `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
-  Pointer lock hides the mouse cursor and exclusively gives the target element relative mouse movement events via the `mousemove <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousemove>`_ event.
+  Pointer lock hides the mouse cursor and exclusively gives the target element relative mouse movement events via the `mousemove <https://w3c.github.io/pointerevents/#mousemove>`_ event.
 
   :param target: |target-parameter-doc|
   :type target: const char*
