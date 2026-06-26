@@ -772,8 +772,11 @@ function getWasmImports() {
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
-  /** @param {WebAssembly.Module=} module*/
+#if SHARED_MEMORY || MAIN_MODULE
   {{{ asyncIf(MAIN_MODULE) }}}function receiveInstance(instance, module) {
+#else
+  {{{ asyncIf(MAIN_MODULE) }}}function receiveInstance(instance) {
+#endif
 #if RUNTIME_DEBUG
     dbg('receiveInstance')
 #endif
@@ -900,9 +903,11 @@ function getWasmImports() {
 #if ASSERTIONS
       try {
 #endif
-        Module['instantiateWasm'](info, (inst, mod) => {
-          resolve(receiveInstance(inst, mod));
-        });
+#if SHARED_MEMORY || MAIN_MODULE
+        Module['instantiateWasm'](info, (inst, mod) => resolve(receiveInstance(inst, mod)));
+#else
+        Module['instantiateWasm'](info, (inst) => resolve(receiveInstance(inst)));
+#endif
 #if ASSERTIONS
       } catch(e) {
         err(`Module.instantiateWasm callback failed with error: ${e}`);
@@ -940,7 +945,7 @@ function getWasmImports() {
   return exports;
 #else // WASM_ASYNC_COMPILATION
   var result = instantiateSync(wasmBinaryFile, info);
-#if PTHREADS || MAIN_MODULE
+#if SHARED_MEMORY || MAIN_MODULE
   return receiveInstance(result[0], result[1]);
 #else
   // TODO: Due to Closure regression https://github.com/google/closure-compiler/issues/3193,

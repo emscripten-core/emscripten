@@ -677,8 +677,7 @@ async function createWasm() {
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
-  /** @param {WebAssembly.Module=} module*/
-  function receiveInstance(instance, module) {
+  function receiveInstance(instance) {
     wasmExports = instance.exports;
 
     assignWasmExports(wasmExports);
@@ -1226,7 +1225,6 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('INITIAL_MEMORY');
   ignoredModuleProp('wasmMemory');
   ignoredModuleProp('arguments');
-  ignoredModuleProp('buffer');
   ignoredModuleProp('canvas');
   ignoredModuleProp('doNotCaptureKeyboard');
   ignoredModuleProp('dynamicLibraries');
