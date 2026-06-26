@@ -598,7 +598,7 @@ function handleWebGLProxying(funcs) {
       funcs[i + '__deps'].push(i + '_main_thread');
       delete funcs[i + '__proxy'];
       const funcArgs = listOfNFunctionArgs(funcs[i]);
-      const funcArgsString = funcArgs.join(',');
+      const funcArgsString = funcArgs.join();
       const retStatement = sig[0] != 'v' ? 'return' : '';
       const contextCheck = proxyContextHandle ? 'GL.contexts[p0]' : 'GLctx';
       var funcBody = `${retStatement} ${contextCheck} ? _${i}_calling_thread(${funcArgsString}) : _${i}_main_thread(${funcArgsString});`;
