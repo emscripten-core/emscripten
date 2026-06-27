@@ -1,10 +1,10 @@
 {
   "a.out.js": 5161,
   "a.out.js.gz": 2457,
-  "a.out.nodebug.wasm": 58520,
-  "a.out.nodebug.wasm.gz": 18224,
-  "total": 63681,
-  "total_gz": 20681,
+  "a.out.nodebug.wasm": 58562,
+  "a.out.nodebug.wasm.gz": 18269,
+  "total": 63723,
+  "total_gz": 20726,
   "sent": [
     "a (emscripten_date_now)",
     "b (emscripten_err)",
@@ -135,6 +135,7 @@
     "$wasmfs::MemoryBackend::createDirectory\\28unsigned\\20int\\29",
     "$wasmfs::MemoryBackend::createFile\\28unsigned\\20int\\29",
     "$wasmfs::MemoryBackend::createSymlink\\28std::__2::basic_string<char\\2c\\20std::__2::char_traits<char>\\2c\\20std::__2::allocator<char>>\\29",
+    "$wasmfs::MemoryBackend::populateRoot\\28wasmfs::Directory::Handle&\\29",
     "$wasmfs::MemoryDataFile::getSize\\28\\29",
     "$wasmfs::MemoryDataFile::read\\28unsigned\\20char*\\2c\\20unsigned\\20long\\2c\\20long\\20long\\29",
     "$wasmfs::MemoryDataFile::setSize\\28long\\20long\\29",
