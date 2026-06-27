@@ -9,7 +9,8 @@ assignees: ''
 
 Tracking issue for the deprecation and removal of <FEATURE>.
 
-The process for deprecating and removing features from emscripten is laid out out in https://github.com/emscripten-core/emscripten/blob/main/docs/process.md#deprecating-settings-and-features.
+The process for deprecating and removing features from emscripten is laid out
+in https://github.com/emscripten-core/emscripten/blob/main/CONTRIBUTING.md#deprecating-settings-and-features.
 
 At any point in the process we may decide to delay or abort the deprecation and close this issue.
 
