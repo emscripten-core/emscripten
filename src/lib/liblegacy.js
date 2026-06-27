@@ -121,7 +121,9 @@ legacyFuncs = {
   $stackTrace__deps: ['$jsStackTrace'],
   $stackTrace: () => {
     var js = jsStackTrace();
+#if expectToReceiveOnModule('extraStackTrace')
     if (Module['extraStackTrace']) js += '\n' + Module['extraStackTrace']();
+#endif
     return js;
   },
 

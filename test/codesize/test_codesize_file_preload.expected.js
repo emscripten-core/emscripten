@@ -352,8 +352,6 @@ function initRuntime() {
   FS.ignorePermissions = false;
 }
 
-function preMain() {}
-
 function postRun() {}
 
 /**
@@ -3191,7 +3189,7 @@ async function run() {
   }
   if (ABORT) return;
   initRuntime();
-  preMain();
+  // No ATMAINS hooks
   var noInitialRun = false;
   if (!noInitialRun) callMain();
   postRun();

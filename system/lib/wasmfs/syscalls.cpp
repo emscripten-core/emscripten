@@ -1846,4 +1846,20 @@ int __syscall_fadvise64(int fd, off_t offset, off_t len, int advice) {
   return 0;
 }
 
+// epoll is implemented in the legacy (non-WASMFS) JS syscall layer only.
+int __syscall_epoll_create1(int flags) { return -ENOSYS; }
+
+int __syscall_epoll_ctl(int epfd, int op, int fd, struct epoll_event* ev) {
+  return -ENOSYS;
+}
+
+int __syscall_epoll_pwait(int epfd,
+                          struct epoll_event* ev,
+                          int maxevents,
+                          int timeout,
+                          const sigset_t* sigmask,
+                          size_t sigsetsize) {
+  return -ENOSYS;
+}
+
 } // extern "C"

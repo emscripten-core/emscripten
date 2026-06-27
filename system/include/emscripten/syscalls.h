@@ -9,6 +9,7 @@
 
 #include <poll.h>
 #include <stdint.h>
+#include <sys/epoll.h>
 #include <sys/resource.h>
 #include <sys/socket.h>
 #include <sys/stat.h>
@@ -120,6 +121,9 @@ int __syscall_sendmsg(int sockfd, const struct msghdr *msg, int flags, int unuse
 int __syscall_recvfrom(int sockfd, void *buf, size_t len, int flags, struct sockaddr *addr, socklen_t *alen);
 int __syscall_recvmsg(int sockfd, struct msghdr *msg, int flags, int unused1, int unused2, int unused3);
 int __syscall_shutdown(int sockfd, int how, int unused1, int unused2, int unused3, int unused4);
+int __syscall_epoll_create1(int flags);
+int __syscall_epoll_ctl(int epfd, int op, int fd, struct epoll_event *ev);
+int __syscall_epoll_pwait(int epfd, struct epoll_event *ev, int maxevents, int timeout, const sigset_t *sigmask, size_t sigsetsize);
 
 #ifdef __cplusplus
 }

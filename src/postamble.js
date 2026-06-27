@@ -158,7 +158,7 @@ function stackCheckInit() {
   initRuntime();
 
 #if HAS_MAIN
-  preMain();
+  <<< ATMAINS >>>
 #endif
 
 #if expectToReceiveOnModule('onRuntimeInitialized')
@@ -180,10 +180,6 @@ function stackCheckInit() {
 #endif // HAS_MAIN
 
   postRun();
-
-#if STACK_OVERFLOW_CHECK
-  checkStackCookie();
-#endif
 }
 
 #if ASSERTIONS

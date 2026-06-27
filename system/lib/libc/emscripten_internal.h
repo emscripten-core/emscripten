@@ -47,8 +47,8 @@ void emscripten_notify_memory_growth(size_t memory_index);
 
 time_t _timegm_js(struct tm* tm);
 time_t _mktime_js(struct tm* tm);
-void _localtime_js(time_t t, struct tm* __restrict__ tm);
-void _gmtime_js(time_t t, struct tm* __restrict__ tm);
+int _localtime_js(time_t t, struct tm* __restrict__ tm);
+int _gmtime_js(time_t t, struct tm* __restrict__ tm);
 
 void _tzset_js(long* timezone, int* daylight, char* std_name, char* dst_name);
 

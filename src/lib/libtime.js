@@ -32,14 +32,18 @@ addToLibrary({
     var dstOffset = Math.min(winterOffset, summerOffset); // DST is in December in South
     if (dst < 0) {
       // Attention: some regions don't have DST at all.
-      {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'Number(summerOffset != winterOffset && dstOffset == guessedOffset)', 'i32') }}};
+      dst = Number(summerOffset != winterOffset && dstOffset == guessedOffset);
     } else if ((dst > 0) != (dstOffset == guessedOffset)) {
       var nonDstOffset = Math.max(winterOffset, summerOffset);
       var trueOffset = dst > 0 ? dstOffset : nonDstOffset;
       // Don't try setMinutes(date.getMinutes() + ...) -- it's messed up.
       date.setTime(date.getTime() + (trueOffset - guessedOffset)*60000);
+      if (isNaN(date.getTime())) {
+        return -1;
+      }
     }
 
+    {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getDay()', 'i32') }}};
     var yday = ydayFromDate(date)|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
@@ -58,6 +62,9 @@ addToLibrary({
   _gmtime_js__i53abi: true,
   _gmtime_js: (time, tmPtr) => {
     var date = new Date(time * 1000);
+    if (isNaN(date.getTime())) {
+      return 1;
+    }
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getUTCSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getUTCMinutes()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getUTCHours()', 'i32') }}};
@@ -68,6 +75,7 @@ addToLibrary({
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
     var yday = ((date.getTime() - start) / (1000 * 60 * 60 * 24))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_yday, 'yday', 'i32') }}};
+    return 0;
   },
 
   _timegm_js__i53abi: true,
@@ -80,6 +88,9 @@ addToLibrary({
                         {{{ makeGetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'i32') }}},
                         0);
     var date = new Date(time);
+    if (isNaN(date.getTime())) {
+      return -1;
+    }
 
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_wday, 'date.getUTCDay()', 'i32') }}};
     var start = Date.UTC(date.getUTCFullYear(), 0, 1, 0, 0, 0, 0);
@@ -93,6 +104,9 @@ addToLibrary({
   _localtime_js__deps: ['$ydayFromDate'],
   _localtime_js: (time, tmPtr) => {
     var date = new Date(time*1000);
+    if (isNaN(date.getTime())) {
+      return 1;
+    }
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_sec, 'date.getSeconds()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_min, 'date.getMinutes()', 'i32') }}};
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_hour, 'date.getHours()', 'i32') }}};
@@ -111,6 +125,7 @@ addToLibrary({
     var winterOffset = start.getTimezoneOffset();
     var dst = (summerOffset != winterOffset && date.getTimezoneOffset() == Math.min(winterOffset, summerOffset))|0;
     {{{ makeSetValue('tmPtr', C_STRUCTS.tm.tm_isdst, 'dst', 'i32') }}};
+    return 0;
   },
 
   // musl-internal function used to implement both `asctime` and `asctime_r`

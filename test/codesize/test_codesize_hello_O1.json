@@ -1,10 +1,10 @@
 {
-  "a.out.js": 5863,
-  "a.out.js.gz": 2332,
+  "a.out.js": 5720,
+  "a.out.js.gz": 2279,
   "a.out.nodebug.wasm": 2544,
   "a.out.nodebug.wasm.gz": 1436,
-  "total": 8407,
-  "total_gz": 3768,
+  "total": 8264,
+  "total_gz": 3715,
   "sent": [
     "fd_write"
   ],

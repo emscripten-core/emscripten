@@ -517,11 +517,12 @@ function initRuntime() {
   wasmExports['__wasm_call_ctors']();
 
   // No ATPOSTCTORS hooks
+
+  checkStackCookie();
 }
 
 function postRun() {
   checkStackCookie();
-   // PThreads reuse the runtime from the main thread.
 
   // No ATPOSTRUNS hooks
 }
@@ -577,14 +578,13 @@ var FS = {
 };
 
 
-function createExportWrapper(name, nargs) {
+function createExportWrapper(name, func, nargs) {
+  assert(func);
   return (...args) => {
     assert(runtimeInitialized, `native function \`${name}\` called before runtime initialization`);
-    var f = wasmExports[name];
-    assert(f, `exported native function \`${name}\` not found`);
     // Only assert for too many arguments. Too few can be valid since the missing arguments will be zero filled.
     assert(args.length <= nargs, `native function \`${name}\` called with ${args.length} args but expects ${nargs}`);
-    return f(...args);
+    return func(...args);
   };
 }
 
@@ -1219,37 +1219,21 @@ unexportedSymbols.forEach(unexportedRuntimeSymbol);
 
 function checkIncomingModuleAPI() {
   ignoredModuleProp('ENVIRONMENT');
-  ignoredModuleProp('GL_MAX_TEXTURE_IMAGE_UNITS');
-  ignoredModuleProp('SDL_canPlayWithWebAudio');
-  ignoredModuleProp('SDL_numSimultaneouslyQueuedBuffers');
-  ignoredModuleProp('INITIAL_MEMORY');
-  ignoredModuleProp('wasmMemory');
   ignoredModuleProp('arguments');
   ignoredModuleProp('canvas');
-  ignoredModuleProp('doNotCaptureKeyboard');
   ignoredModuleProp('dynamicLibraries');
   ignoredModuleProp('elementPointerLock');
-  ignoredModuleProp('extraStackTrace');
-  ignoredModuleProp('forcedAspectRatio');
   ignoredModuleProp('instantiateWasm');
-  ignoredModuleProp('keyboardListeningElement');
-  ignoredModuleProp('freePreloadedMediaOnUse');
   ignoredModuleProp('locateFile');
-  ignoredModuleProp('mainScriptUrlOrBlob');
   ignoredModuleProp('monitorRunDependencies');
   ignoredModuleProp('noExitRuntime');
   ignoredModuleProp('noInitialRun');
   ignoredModuleProp('onAbort');
   ignoredModuleProp('onExit');
-  ignoredModuleProp('onFullScreen');
   ignoredModuleProp('onRuntimeInitialized');
-  ignoredModuleProp('postMainLoop');
   ignoredModuleProp('postRun');
   ignoredModuleProp('preInit');
-  ignoredModuleProp('preMainLoop');
   ignoredModuleProp('preRun');
-  ignoredModuleProp('preinitializedWebGLContext');
-  ignoredModuleProp('preloadPlugins');
   ignoredModuleProp('print');
   ignoredModuleProp('printErr');
   ignoredModuleProp('setStatus');
@@ -1259,7 +1243,6 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('stdout');
   ignoredModuleProp('thisProgram');
   ignoredModuleProp('wasm');
-  ignoredModuleProp('wasmBinary');
   ignoredModuleProp('websocket');
   ignoredModuleProp('fetchSettings');
   ignoredModuleProp('logReadFiles');
@@ -1271,6 +1254,23 @@ function checkIncomingModuleAPI() {
   ignoredModuleProp('onCOSCacheHit');
   ignoredModuleProp('onCOSCacheMiss');
   ignoredModuleProp('onCOSStore');
+  ignoredModuleProp('GL_MAX_TEXTURE_IMAGE_UNITS');
+  ignoredModuleProp('SDL_canPlayWithWebAudio');
+  ignoredModuleProp('SDL_numSimultaneouslyQueuedBuffers');
+  ignoredModuleProp('freePreloadedMediaOnUse');
+  ignoredModuleProp('preinitializedWebGLContext');
+  ignoredModuleProp('keyboardListeningElement');
+  ignoredModuleProp('doNotCaptureKeyboard');
+  ignoredModuleProp('extraStackTrace');
+  ignoredModuleProp('preloadPlugins');
+  ignoredModuleProp('preMainLoop');
+  ignoredModuleProp('postMainLoop');
+  ignoredModuleProp('forcedAspectRatio');
+  ignoredModuleProp('mainScriptUrlOrBlob');
+  ignoredModuleProp('onFullScreen');
+  ignoredModuleProp('INITIAL_MEMORY');
+  ignoredModuleProp('wasmMemory');
+  ignoredModuleProp('wasmBinary');
 }
 
 // Imports from the Wasm binary.
@@ -1301,8 +1301,8 @@ function assignWasmExports(wasmExports) {
   assert(typeof wasmExports['memory'] != 'undefined', 'missing Wasm export: memory');
   assert(typeof wasmExports['global_val'] != 'undefined', 'missing Wasm export: global_val');
   assert(typeof wasmExports['__indirect_function_table'] != 'undefined', 'missing Wasm export: __indirect_function_table');
-  _add = Module['_add'] = createExportWrapper('add', 2);
-  _fflush = createExportWrapper('fflush', 1);
+  _add = Module['_add'] = createExportWrapper('add', wasmExports['add'], 2);
+  _fflush = createExportWrapper('fflush', wasmExports['fflush'], 1);
   _emscripten_stack_init = wasmExports['emscripten_stack_init'];
   _emscripten_stack_get_free = wasmExports['emscripten_stack_get_free'];
   _emscripten_stack_get_base = wasmExports['emscripten_stack_get_base'];
@@ -1349,8 +1349,6 @@ function run() {
   assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
 
   postRun();
-
-  checkStackCookie();
 }
 
 function checkUnflushedContent() {

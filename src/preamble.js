@@ -175,16 +175,11 @@ function initRuntime() {
 #if RUNTIME_DEBUG
   dbg('done ATPOSTCTORS');
 #endif
-}
 
-#if HAS_MAIN
-function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  <<< ATMAINS >>>
 }
-#endif
 
 #if EXIT_RUNTIME
 
@@ -226,7 +221,6 @@ function postRun() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  {{{ runIfWorkerThread('return;') }}} // PThreads reuse the runtime from the main thread.
 
 #if expectToReceiveOnModule('postRun')
   var postRun = Module['postRun'];
@@ -327,17 +321,16 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
 
 #if ASSERTIONS
-function createExportWrapper(name, nargs) {
+function createExportWrapper(name, func, nargs) {
+  assert(func);
   return (...args) => {
     assert(runtimeInitialized, `native function \`${name}\` called before runtime initialization`);
 #if EXIT_RUNTIME
     assert(!runtimeExited, `native function \`${name}\` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)`);
 #endif
-    var f = wasmExports[name];
-    assert(f, `exported native function \`${name}\` not found`);
     // Only assert for too many arguments. Too few can be valid since the missing arguments will be zero filled.
     assert(args.length <= nargs, `native function \`${name}\` called with ${args.length} args but expects ${nargs}`);
-    return f(...args);
+    return func(...args);
   };
 }
 #endif

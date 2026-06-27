@@ -130,8 +130,6 @@ function initRuntime() {
   wasmExports["c"]();
 }
 
-function preMain() {}
-
 function postRun() {}
 
 /**
@@ -449,7 +447,7 @@ function run() {
   preRun();
   if (ABORT) return;
   initRuntime();
-  preMain();
+  // No ATMAINS hooks
   var noInitialRun = false;
   if (!noInitialRun) callMain();
   postRun();
