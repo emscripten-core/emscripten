@@ -517,11 +517,12 @@ function initRuntime() {
   wasmExports['__wasm_call_ctors']();
 
   // No ATPOSTCTORS hooks
+
+  checkStackCookie();
 }
 
 function postRun() {
   checkStackCookie();
-   // PThreads reuse the runtime from the main thread.
 
   // No ATPOSTRUNS hooks
 }
@@ -1349,8 +1350,6 @@ function run() {
   assert(!Module['_main'], 'compiled without a main, but one is present. if you added it from JS, use Module["onRuntimeInitialized"]');
 
   postRun();
-
-  checkStackCookie();
 }
 
 function checkUnflushedContent() {
