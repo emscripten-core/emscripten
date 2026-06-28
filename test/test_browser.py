@@ -3196,6 +3196,33 @@ Module["preRun"] = () => {
     self.cflags.append('-Wno-experimental')
     self.btest_exit('test_sdl3_canvas_write.c', cflags=['-sUSE_SDL=3'])
 
+  @parameterized({
+    '': (['-sUSE_SDL=3', '-sUSE_SDL_MIXER=3'],),
+    'dash_l': (['-lSDL3', '-lSDL3_mixer'],),
+  })
+  @requires_sound_hardware
+  def test_sdl3_mixer_wav(self, flags):
+    copy_asset('sounds/the_entertainer.wav', 'sound.wav')
+    self.cflags.append('-Wno-experimental')
+    self.btest_exit('test_sdl3_mixer.c', cflags=['--preload-file', 'sound.wav', '-DSOUND_PATH="sound.wav"'] + flags)
+
+  @parameterized({
+    'ogg': (['ogg'], 'alarmvictory_1.ogg',),
+    'mp3': (['mp3'], 'pudinha.mp3'),
+  })
+  @requires_sound_hardware
+  def test_sdl3_mixer_music(self, formats, music_name):
+    copy_asset(f'sounds/{music_name}')
+    self.cflags.append('-Wno-experimental')
+    args = [
+      '--preload-file', music_name,
+      '-DSOUND_PATH="%s"' % music_name,
+      '-sUSE_SDL=3',
+      '-sUSE_SDL_MIXER=3',
+      '-sSDL3_MIXER_FORMATS=' + ','.join(formats),
+    ]
+    self.btest_exit('test_sdl3_mixer.c', cflags=args)
+
   @requires_graphics_hardware
   @no_wasm64('cocos2d ports does not compile with wasm64')
   def test_cocos2d_hello(self):
