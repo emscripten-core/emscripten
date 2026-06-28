@@ -5609,6 +5609,8 @@ __EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALI
   def test_fs_dev_random(self):
     if WINDOWS and self.get_setting('NODERAWFS'):
       self.skipTest('Crashes on Windows and NodeFS')
+    if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24830')
     self.do_runf('fs/test_fs_dev_random.c', 'done\n')
 
   @parameterized({
@@ -13480,6 +13482,8 @@ Module.postRun = () => {{
 
   @wasmfs_all_backends
   def test_wasmfs_getdents(self):
+    if self.get_setting('NODERAWFS'):
+      self.skipTest('test expectations assumes /dev is virtualized')
     # Run only in WASMFS for now.
     self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
