@@ -359,15 +359,28 @@ ${body};
   });
 }
 
-function handleAsyncFunction(snippet, sig) {
+function handleAsyncFunction(snippet, sig, proxyingMode) {
   const return64 = sig && (MEMORY64 && sig.startsWith('p') || sig.startsWith('j'))
   let handleAsync = 'Asyncify.handleAsync(innerFunc)'
   if (return64 && ASYNCIFY == 1) {
     handleAsync = makeReturn64(handleAsync);
   }
+  // When a function uses both __proxy:'sync' and __async:'auto', the proxy
+  // mechanism (PROXY_SYNC_ASYNC) handles the async return itself.  In that
+  // case, skip the Asyncify unwind and call the inner function directly so
+  // the proxy can use .then() on the returned Promise.
+  const skipHandleAsync = PTHREADS && proxyingMode === 'sync';
   return modifyJSFunction(snippet, (args, body, async_, oneliner) => {
     if (!oneliner) {
       body = `{\n${body}\n}`;
+    }
+    if (skipHandleAsync) {
+      return `\
+function(${args}) {
+  let innerFunc = async () => ${body};
+  if (PThread.currentProxiedOperationCallerThread) return innerFunc();
+  return ${handleAsync};
+}\n`;
     }
     return `\
 function(${args}) {
@@ -479,11 +492,11 @@ function(${args}) {
       compileTimeContext.i53ConversionDeps.forEach((d) => deps.push(d));
     }
 
-    if (ASYNCIFY && isAsyncFunction == 'auto') {
-      snippet = handleAsyncFunction(snippet, sig);
-    }
-
     const proxyingMode = LibraryManager.library[symbol + '__proxy'];
+
+    if (ASYNCIFY && isAsyncFunction == 'auto') {
+      snippet = handleAsyncFunction(snippet, sig, proxyingMode);
+    }
     if (proxyingMode) {
       if (!['sync', 'async', 'none'].includes(proxyingMode)) {
         error(`JS library error: invalid proxying mode '${symbol}__proxy: ${proxyingMode}' specified`);
