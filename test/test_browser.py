@@ -4201,6 +4201,11 @@ Module["preRun"] = () => {
   def test_webgl_offscreen_canvas_only_in_pthread(self):
     self.btest_exit('gl_only_in_pthread.c', cflags=['-pthread', '-sPTHREAD_POOL_SIZE', '-sOFFSCREENCANVAS_SUPPORT', '-lGL', '-sOFFSCREEN_FRAMEBUFFER'])
 
+  @requires_offscreen_canvas
+  @requires_graphics_hardware
+  def test_std_thread_transferred_canvas(self):
+    self.btest_exit('std_thread_transferred_canvas.cpp', cflags=['-pthread', '-sOFFSCREENCANVAS_SUPPORT', '-lGL'])
+
   # Tests that rendering from client side memory without default-enabling extensions works.
   @requires_graphics_hardware
   def test_webgl_from_client_side_memory_without_default_enabled_extensions(self):

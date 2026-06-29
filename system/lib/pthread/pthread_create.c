@@ -28,6 +28,13 @@
 #define dbg(fmt, ...)
 #endif
 
+static _Thread_local const char* next_thread_transferredcanvases;
+
+int emscripten_set_next_thread_transferredcanvases(const char* str) {
+  next_thread_transferredcanvases = (str && str[0]) ? str : NULL;
+  return 0;
+}
+
 // See musl's pthread_create.c
 
 static void dummy_0() {}
@@ -129,6 +136,12 @@ int __pthread_create(pthread_t* restrict res,
   if (attrp && attrp != __ATTRP_C11_THREAD) attr = *attrp;
   if (!attr._a_stacksize) {
     attr._a_stacksize = __default_stacksize;
+  }
+  if (!attr._a_transferredcanvases) {
+    if (next_thread_transferredcanvases) {
+      attr._a_transferredcanvases = next_thread_transferredcanvases;
+      next_thread_transferredcanvases = NULL;
+    }
   }
 
   // Allocate memory for new thread.  The layout of the thread block is
