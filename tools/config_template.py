@@ -1,8 +1,9 @@
 # This file will be edited (the {{{ }}} things), and written to `.emscripten`
 # when emscripten is first used and no config file is found.
 
-# Note: If you put paths relative to the home directory, do not forget
-# os.path.expanduser
+# Note: Use can use environment variables in your settings, e.g. use `$HOME`
+# for paths relative to the home directory.  You can also use `$EM_CONFIG_DIR`
+# for the directory where the config file lives.
 #
 # Any config setting <KEY> in this file can be overridden by setting the
 # EM_<KEY> environment variable. For example, settings EM_LLVM_ROOT override
@@ -34,9 +35,8 @@ NODE_JS = '{{{ NODE }}}' # executable
 #
 # JS_ENGINES = [NODE_JS_TEST] # add V8_ENGINE or SPIDERMONKEY_ENGINE if you have them installed too.
 #
-# import os
-# WASMER = os.path.expanduser(os.path.join('~', '.wasmer', 'bin', 'wasmer'))
-# WASMTIME = os.path.expanduser(os.path.join('~', 'wasmtime'))
+# WASMER = '$HOME/.wasmer/bin/wasmer'
+# WASMTIME = '$HOME/wasmtime'
 #
 # Wasm engines to use in STANDALONE_WASM tests.
 #
