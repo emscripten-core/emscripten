@@ -1124,6 +1124,63 @@ The example can be compiled on the Linux/macOS terminal with::
    emcc -O2 -Wall -Werror -lembind -o oscillator.html oscillator.cpp
 
 
+Argument policies
+-----------------
+
+When calling JavaScript functions via ``val``, arguments are converted from C++ to JavaScript. By default, objects are copied.
+To control this behavior, you can use argument policies.
+
+The following policies are supported:
+
+* :cpp:type:`policy::take_ownership` - Ownership is transferred to JavaScript. The C++ object is moved.
+* :cpp:type:`policy::reference` - A reference is passed to JavaScript. The C++ object is not copied or moved.
+
+Policies can be specified for specific arguments using the ``arg`` template parameter.
+
+.. code-block:: cpp
+
+    #include <emscripten/val.h>
+    #include <emscripten/bind.h>
+
+    using namespace emscripten;
+
+    struct MyClass {
+        MyClass() {}
+        MyClass(const MyClass&) { printf("copy\n"); }
+        MyClass(MyClass&&) { printf("move\n"); }
+    };
+
+    EMSCRIPTEN_BINDINGS(my_module) {
+        class_<MyClass>("MyClass");
+    }
+
+    int main() {
+        MyClass obj;
+
+        // Default: copy
+        val::global("someFunction")(obj);
+
+        // Take ownership: move
+        val::global("someFunction")(obj, policy::take_ownership<arg<0>>());
+
+        // Reference: no copy/move
+        val::global("someFunction")(obj, policy::reference<arg<0>>());
+    }
+
+Policies can also be used with ``val::call``, ``val::new_``, and ``val::set``.
+
+.. code-block:: cpp
+
+    // Use policy with val::call
+    val::global().call<void>("someFunction", obj, policy::reference<arg<0>>());
+
+    // Use policy with val::new_
+    val v = val::global("MyClass").new_(obj, policy::take_ownership<arg<0>>());
+
+    // Use policy with val::set
+    val::global().set("prop", obj, policy::reference());
+
+
 Built-in type conversions
 =========================
 
