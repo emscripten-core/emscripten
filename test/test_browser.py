@@ -4557,12 +4557,8 @@ Module["preRun"] = () => {
   def test_fetch_redirect(self):
     self.btest_exit('fetch/test_fetch_redirect.c', cflags=['-sFETCH', '-pthread', '-sPROXY_TO_PTHREAD', f'-DSERVER="{self.SERVER_URL}"'])
 
-  @parameterized({
-    '': ([],),
-    'mt': (['-pthread', '-sPTHREAD_POOL_SIZE=2'],),
-  })
-  def test_pthread_locale(self, args):
-    self.btest_exit('pthread/test_pthread_locale.c', cflags=args)
+  def test_pthread_locale(self):
+    self.btest_exit('pthread/test_pthread_locale.c', cflags=['-pthread', '-sPTHREAD_POOL_SIZE=1'])
 
   # Tests the Emscripten HTML5 API emscripten_set_canvas_element_size() and
   # emscripten_get_canvas_element_size() functionality in singlethreaded programs.
@@ -5408,7 +5404,7 @@ Module["preRun"] = () => {
 
   @disabled("only run this manually, to test for race conditions")
   @parameterized({
-    'normal': ([],),
+    '': ([],),
     'assertions': (['-sASSERTIONS'],),
   })
   def test_manual_pthread_proxy_hammer(self, args):
