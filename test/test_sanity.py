@@ -15,6 +15,7 @@ from subprocess import PIPE, STDOUT
 
 from common import (
   EMBUILDER,
+  EMCONFIG,
   RunnerCore,
   create_file,
   ensure_dir,
@@ -549,6 +550,32 @@ fi
 
     self.run_process([EMCC, '--em-config', 'custom_config', *MINIMAL_HELLO_WORLD])
     self.assertContained('Hello, world!', self.run_js('a.out.js'))
+
+  def test_config_expandvars(self):
+    restore_and_set_up()
+    config_dir = self.in_dir('config_dir')
+    ensure_dir(config_dir)
+    cfg_file = os.path.join(config_dir, 'custom_config')
+    custom_var_dir = self.in_dir('custom_var_dir')
+    ensure_dir(custom_var_dir)
+
+    extra_config = '''
+FROZEN_CACHE = True
+LLVM_ROOT = '$TEST_CUSTOM_ENV_VAR/llvm'
+NODE_JS = ['$CFGDIR/node', '$CFGDIR/node2']
+WASMER = '~/wasmer'
+'''
+    create_file(cfg_file, get_basic_config() + extra_config, absolute=True)
+
+    with env_modify({'EM_CONFIG': cfg_file, 'TEST_CUSTOM_ENV_VAR': custom_var_dir, 'EM_LLVM_ROOT': None, 'EM_NODE_JS': None}):
+      def get_em_config(var_name):
+        out = self.run_process([EMCONFIG, var_name], stdout=PIPE).stdout.strip()
+        return out
+
+      self.assertEqual(get_em_config('LLVM_ROOT'), os.path.join(custom_var_dir, 'llvm'))
+      self.assertEqual(get_em_config('NODE_JS'), f"['{os.path.join(config_dir, 'node')}', '{os.path.join(config_dir, 'node2')}']")
+      self.assertEqual(get_em_config('WASMER'), os.path.expanduser('~/wasmer'))
+      self.assertEqual(get_em_config('FROZEN_CACHE'), 'True')
 
   def test_emcc_ports(self):
     restore_and_set_up()

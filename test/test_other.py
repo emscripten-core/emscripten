@@ -37,6 +37,7 @@ import line_endings
 from common import (
   EMBUILDER,
   EMCMAKE,
+  EMCONFIG,
   EMCONFIGURE,
   EMMAKE,
   NON_ZERO,
@@ -128,7 +129,6 @@ from tools.utils import (
   write_file,
 )
 
-emconfig = exe_path_from_root('em-config')
 emsize = exe_path_from_root('emsize')
 empath_split = exe_path_from_root('empath-split')
 emprofile = exe_path_from_root('emprofile')
@@ -3865,21 +3865,21 @@ More info: https://emscripten.org
     self.assertContained("    let HEAPF64: Float64Array;", actual)
 
   def test_emconfig(self):
-    output = self.run_process([emconfig, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
+    output = self.run_process([EMCONFIG, 'LLVM_ROOT'], stdout=PIPE).stdout.strip()
     self.assertEqual(output, config.LLVM_ROOT)
     # EMSCRIPTEN_ROOT is kind of special since it should always report the location of em-config
     # itself (its not configurable via the config file but driven by the location for arg0)
-    output = self.run_process([emconfig, 'EMSCRIPTEN_ROOT'], stdout=PIPE).stdout.strip()
-    self.assertEqual(output, os.path.dirname(emconfig))
+    output = self.run_process([EMCONFIG, 'EMSCRIPTEN_ROOT'], stdout=PIPE).stdout.strip()
+    self.assertEqual(output, os.path.dirname(EMCONFIG))
     invalid = 'Usage: em-config VAR_NAME'
     # Don't accept variables that do not exist
-    self.assert_fail([emconfig, 'VAR_WHICH_DOES_NOT_EXIST'], invalid)
+    self.assert_fail([EMCONFIG, 'VAR_WHICH_DOES_NOT_EXIST'], invalid)
     # Don't accept no arguments
-    self.assert_fail([emconfig], invalid)
+    self.assert_fail([EMCONFIG], invalid)
     # Don't accept more than one variable
-    self.assert_fail([emconfig, 'LLVM_ROOT', 'EMCC'], invalid)
+    self.assert_fail([EMCONFIG, 'LLVM_ROOT', 'EMCC'], invalid)
     # Don't accept arbitrary python code
-    self.assert_fail([emconfig, 'sys.argv[1]'], invalid)
+    self.assert_fail([EMCONFIG, 'sys.argv[1]'], invalid)
 
   def test_link_s(self):
     # -s OPT=VALUE can conflict with -s as a linker option. We warn and ignore
