@@ -1880,4 +1880,10 @@ int __syscall_epoll_pwait(int epfd,
   return -ENOSYS;
 }
 
+int __syscall_epoll_pwait_nonblocking(int epfd,
+                                      struct epoll_event* ev,
+                                      int maxevents) {
+  return -ENOSYS;
+}
+
 } // extern "C"

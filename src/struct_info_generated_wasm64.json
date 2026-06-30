@@ -260,6 +260,19 @@
         "EPERM": 63,
         "EPFNOSUPPORT": 139,
         "EPIPE": 64,
+        "EPOLLERR": 8,
+        "EPOLLET": -2147483648,
+        "EPOLLEXCLUSIVE": 268435456,
+        "EPOLLHUP": 16,
+        "EPOLLIN": 1,
+        "EPOLLONESHOT": 1073741824,
+        "EPOLLOUT": 4,
+        "EPOLLRDNORM": 64,
+        "EPOLLWRNORM": 256,
+        "EPOLL_CLOEXEC": 524288,
+        "EPOLL_CTL_ADD": 1,
+        "EPOLL_CTL_DEL": 2,
+        "EPOLL_CTL_MOD": 3,
         "EPROTO": 65,
         "EPROTONOSUPPORT": 66,
         "EPROTOTYPE": 67,
@@ -1018,6 +1031,11 @@
             "stack_limit": 8,
             "stack_ptr": 16,
             "user_data": 32
+        },
+        "epoll_event": {
+            "__size__": 16,
+            "data": 8,
+            "events": 0
         },
         "flock": {
             "__size__": 32,
