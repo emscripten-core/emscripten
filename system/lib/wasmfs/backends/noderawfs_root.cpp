@@ -6,5 +6,7 @@
 #include "emscripten/wasmfs.h"
 
 backend_t wasmfs_create_root_dir(void) {
-  return wasmfs_create_node_backend(".");
+  // Use an empty string as the backend "mountPath" to indicate that paths are
+  // passed as-is (i.e. without the "./" prefix).
+  return wasmfs_create_node_backend("");
 }

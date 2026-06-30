@@ -6164,9 +6164,12 @@ Module.onRuntimeInitialized = () => {
 
     # Several differences/bugs on non-linux including https://github.com/nodejs/node/issues/18014
     # TODO: NODERAWFS in WasmFS
-    if '-DNODERAWFS' in self.cflags and os.geteuid() == 0:
+    if '-DNODERAWFS' in self.cflags:
       # 0 if root user
-      self.cflags += ['-DSKIP_ACCESS_TESTS']
+      if os.geteuid() == 0:
+        self.cflags += ['-DSKIP_ACCESS_TESTS']
+      if self.get_setting('WASMFS'):
+        self.skipTest('https://github.com/emscripten-core/emscripten/issues/18112')
 
     self.do_runf('unistd/unlink.c', 'done\n')
 
