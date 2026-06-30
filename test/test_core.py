@@ -5614,11 +5614,12 @@ got: 10
     self.cflags += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
-  # @no_wasm64('Not supported for wasm64') # Test
+  # @no_wasm64('Not supported for wasm64')
   @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
   def test_openmp_max_threads(self):
     src = r"""
       #include <omp.h>
+      #include <assert.h>
       int main(void) {
         assert(omp_get_max_threads() > 0);
         return 0;
