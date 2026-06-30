@@ -23,6 +23,11 @@ See docs/process.md for more on how version tagging works.
 - The `GROWABLE_ARRAYBUFFERS` setting now defaults to 1, which means it will be
   used when available. Note that this only affects programs that are built with
   `ALLOW_MEMORY_GROWTH`, which is not enabled by default. (#27212)
+- The async `poll()`/`select()` implementation was refactored onto a per-inode
+  readiness wait-queue. As part of this, the (undocumented) `stream_ops.poll`
+  FS-backend handler signature changed from `poll(stream, timeout)` to
+  `poll(stream)` returning the current readiness mask; out-of-tree custom FS
+  backends with a `poll` handler must update. (#27207)
 - New `-sNODERAWSOCKETS` setting that backs the POSIX sockets API with real TCP
   (`node:net`) and UDP (`node:dgram`) sockets on Node.js, with no `ws`, proxy
   process, or pthreads required. Supports incoming and outgoing TCP, UDP, IPv6,
