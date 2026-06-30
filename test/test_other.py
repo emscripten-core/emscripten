@@ -13251,6 +13251,7 @@ void foo() {}
     self.do_runf('pthread/test_pthread_sigmask.c', 'done\n', cflags=args)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
+  @crossplatform
   @requires_pthreads
   @parameterized({
     '': ([],),
@@ -13259,7 +13260,8 @@ void foo() {}
   })
   def test_pthread_growth_mainthread(self, cflags):
     if '-sGROWABLE_ARRAYBUFFERS=2' in cflags:
-      self.require_node_26()
+      if self.engine_is_node():
+        self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
@@ -13282,6 +13284,8 @@ void foo() {}
     self.assertLess(growable_size, no_growable_size)
 
   # Tests memory growth in a pthread.
+  @crossplatform
+  @no_deno('https://github.com/denoland/deno/issues/35658')
   @requires_pthreads
   @parameterized({
     '': ([],),
@@ -13297,7 +13301,8 @@ void foo() {}
       self.require_node_25()
 
     if '-sGROWABLE_ARRAYBUFFERS=2' in cflags:
-      self.require_node_26()
+      if self.engine_is_node():
+        self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.do_runf('pthread/test_pthread_memory_growth.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
