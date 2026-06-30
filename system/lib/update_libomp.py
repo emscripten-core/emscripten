@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-# Copyright 2023 The Emscripten Authors.  All rights reserved.
+# Copyright 2026 The Emscripten Authors.  All rights reserved.
 # Emscripten is available under two separate licenses, the MIT license and the
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
@@ -79,7 +79,8 @@ def main():
     os.mkdir("build")
   os.chdir("build")
 
-  subprocess.call(
+  # Generates header files for OpenMP library build
+  subprocess.run(
     [
       "emcmake",
       "cmake",
@@ -104,22 +105,14 @@ def main():
   os.chdir(cwd)
 
   shutil.copy2(os.path.join(upstream_root, "LICENSE.TXT"), local_root)
-  shutil.copy2(
-    os.path.join(upstream_build_src, "omp.h"),
-    local_src,
-  )
-  shutil.copy2(
-    os.path.join(upstream_build_src, "kmp_config.h"),
-    local_src,
-  )
-  shutil.copy2(
-    os.path.join(upstream_build_src, "kmp_i18n_id.inc"),
-    local_src,
-  )
-  shutil.copy2(
-    os.path.join(upstream_build_src, "kmp_i18n_default.inc"),
-    local_src,
-  )
+
+  files_to_copy = ["omp.h", "kmp_config.h", "kmp_i18n_id.inc",  "kmp_i18n_default.inc"]
+
+  for file in files_to_copy:
+    shutil.copy2(
+      os.path.join(upstream_build_src, file),
+      local_src,
+    )
 
 
 if __name__ == "__main__":
