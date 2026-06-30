@@ -56,7 +56,7 @@ def main():
     llvm_dir = default_llvm_dir
   upstream_root = os.path.join(llvm_dir, "openmp/")
   upstream_runtime_root = os.path.join(upstream_root, "runtime/src")
-  upstream_inc = os.path.join(upstream_root, "build/usr/include")
+  upstream_inc = os.path.join(upstream_root, "install/usr/include")
   upstream_build_src = os.path.join(upstream_root, "build/runtime/src")
   print(upstream_inc)
   assert os.path.exists(upstream_runtime_root)
@@ -73,11 +73,9 @@ def main():
   copy_tree(upstream_runtime_root, local_src)
   copy_tree(upstream_inc, local_inc)
 
-  cwd = os.getcwd()
-  os.chdir(upstream_root)
-  if not os.path.exists("build"):
-    os.mkdir("build")
-  os.chdir("build")
+  build_dir = os.path.join(upstream_root, "build")
+  if not os.path.exists(build_dir):
+    os.mkdir(build_dir)
 
   # Generates header files for OpenMP library build
   subprocess.run(
@@ -98,11 +96,11 @@ def main():
       "-DLIBOMP_ARCH=wasm32",
       "-DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF",
       "-DCMAKE_INSTALL_PREFIX=/",
-    ]
+    ],
+    cwd=build_dir,
   )
-  subprocess.call("ninja")
-  subprocess.call(["env", "DESTDIR=.", "ninja", "install"])
-  os.chdir(cwd)
+  subprocess.call(["cmake", "--build", "."], cwd=build_dir)
+  subprocess.call(["cmake", "--install", ".", "--destdir", "../install"], cwd=build_dir)
 
   shutil.copy2(os.path.join(upstream_root, "LICENSE.TXT"), local_root)
 
