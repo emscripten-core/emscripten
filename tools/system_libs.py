@@ -2307,9 +2307,9 @@ class libstubs(DebugLibrary):
 class libomp(Library):
   name = 'libomp'
   includes = [
-    'system/lib/libomp/src',
-    'system/lib/libomp/src/i18n',
-    'system/lib/libomp/src/thirdparty/ittnotify',
+    'system/lib/llvm-openmp/src',
+    'system/lib/llvm-openmp/src/i18n',
+    'system/lib/llvm-openmp/src/thirdparty/ittnotify',
   ]
   # This needs to come from the flags. If it does not, llvm won't add propper magic symbols
   never_force = True
@@ -2325,7 +2325,7 @@ class libomp(Library):
     '-Wno-int-to-void-pointer-cast', '-Wno-#warnings', '-Wno-unused-function',
     '-Wno-sign-compare', '-Wno-comment',
   ]
-  src_dir = 'system/lib/libomp/src'
+  src_dir = 'system/lib/llvm-openmp/src'
   src_files = [
     'kmp_alloc.cpp', 'kmp_atomic.cpp', 'kmp_csupport.cpp', 'kmp_debug.cpp',
     'kmp_itt.cpp', 'kmp_environment.cpp', 'kmp_error.cpp', 'kmp_global.cpp',
@@ -2566,7 +2566,7 @@ def install_system_headers(stamp):
     'system/lib/libcxxabi/include': 'c++/v1',
     'system/lib/mimalloc/include': '',
     # Install openmp headers
-    'system/lib/libomp/include': '',
+    'system/lib/llvm-openmp/include': '',
     'system/lib/libcxx/modules/prebuilt/lib/emscripten': cache.get_lib_dir(absolute=True),
     'system/lib/libcxx/modules/prebuilt/share': cache.get_sysroot_dir('share'),
     'system/lib/libcxx/modules/std': cache.get_sysroot_dir('share/libc++/v1/std'),
