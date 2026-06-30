@@ -475,11 +475,61 @@ class sockets(BrowserCore):
       self.skipTest('no IPv6 loopback available')
     self.do_runf('sockets/test_udp_ipv6.c', 'UDP IPV6 PASS', cflags=['-sNODERAWSOCKETS'])
 
+  def test_noderawsockets_epoll_socket_blocking(self):
+    # A blocking epoll_wait() on a socket is woken by an incoming datagram
+    # through the unified readiness wait-queue (the SOCKFS.emit bridge), with
+    # main() proxied to a worker so the wait can suspend.
+    self.do_runf('sockets/test_epoll_socket_blocking.c', 'EPOLL SOCKET BLOCKING PASS',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_epoll_socket_blocking_jspi(self):
+    # Same, but the blocking epoll_wait() suspends the wasm stack under JSPI.
+    # NODERAWSOCKETS runs under node rather than the browser, so gate JSPI on
+    # node's own support (v24) instead of require_jspi's browser-test path.
+    if 'EMTEST_SKIP_JSPI' in os.environ:
+      self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
+    if not self.try_require_node_version(24):
+      self.skipTest('JSPI requires node v24')
+    if not common.check_node_version(26):
+      self.node_args += ['--experimental-wasm-stack-switching']
+    self.cflags += ['-Wno-experimental']
+    self.set_setting('JSPI')
+    self.do_runf('sockets/test_epoll_socket_blocking.c', 'EPOLL SOCKET BLOCKING PASS',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_epoll_rdhup(self):
+    # A blocking epoll_wait reports EPOLLRDHUP when the TCP peer half-closes its
+    # write side (FIN), distinct from a full EPOLLHUP, and only when requested.
+    self.do_runf('sockets/test_epoll_rdhup.c', 'EPOLL RDHUP PASS',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_epoll_rdhup_jspi(self):
+    # Same, but the blocking calls suspend the wasm stack under JSPI. Gate on
+    # node's own JSPI support (v24) since NODERAWSOCKETS runs under node.
+    if 'EMTEST_SKIP_JSPI' in os.environ:
+      self.skipTest('skipping JSPI (EMTEST_SKIP_JSPI is set)')
+    if not self.try_require_node_version(24):
+      self.skipTest('JSPI requires node v24')
+    if not common.check_node_version(26):
+      self.node_args += ['--experimental-wasm-stack-switching']
+    self.cflags += ['-Wno-experimental']
+    self.set_setting('JSPI')
+    self.do_runf('sockets/test_epoll_rdhup.c', 'EPOLL RDHUP PASS',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp(self):
     # Self-contained loopback UDP echo: the server binds(:0)+getsockname for its
     # ephemeral port, the client sends a datagram, the server echoes it back.
     self.do_runf('sockets/test_udp_echo.c', 'UDP ECHO PASS', cflags=['-sNODERAWSOCKETS'])
+
+  def test_noderawsockets_epoll_callback(self):
+    # emscripten_epoll_set_callback woken repeatedly by arriving datagrams on a
+    # real socket via the SOCKFS -> wait-queue bridge, with no ASYNCIFY/JSPI.
+    # Not run under PROXY_TO_PTHREAD: the callback fires on the main-thread event
+    # loop, which is not where the proxied application thread runs (use a blocking
+    # epoll_wait from a pthread instead).
+    self.do_runf('sockets/test_epoll_callback.c', 'done', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
   @also_with_proxy_to_pthread
   def test_noderawsockets_udp_connect(self):

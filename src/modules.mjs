@@ -88,6 +88,7 @@ function calculateLibraries() {
 
   if (!WASMFS) {
     libraries.push('libsyscall.js');
+    libraries.push('libepoll.js');
   }
 
   if (MAIN_MODULE) {
