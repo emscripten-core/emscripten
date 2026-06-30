@@ -62,15 +62,15 @@ weak int _mmap_js(size_t length,
 }
 
 weak int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
+  void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
   return -ENOSYS;
 }
 
-weak int __syscall_poll(intptr_t fds, nfds_t nfds, int timeout) {
+weak int __syscall_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
   return -ENOSYS;
 }
 
-weak int __syscall_poll_nonblocking(intptr_t fds, nfds_t nfds) {
+weak int __syscall_poll_nonblocking(struct pollfd *fds, nfds_t nfds) {
   return -ENOSYS;
 }
 
@@ -78,14 +78,14 @@ weak int __syscall_poll_nonblocking(intptr_t fds, nfds_t nfds) {
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
 // open()
-weak int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
-  if (!strcmp((const char*)path, "/dev/stdin")) {
+weak int __syscall_openat(int dirfd, const char *path, int flags, ...) {
+  if (!strcmp(path, "/dev/stdin")) {
     return STDIN_FILENO;
   }
-  if (!strcmp((const char*)path, "/dev/stdout")) {
+  if (!strcmp(path, "/dev/stdout")) {
     return STDOUT_FILENO;
   }
-  if (!strcmp((const char*)path, "/dev/stderr")) {
+  if (!strcmp(path, "/dev/stderr")) {
     return STDERR_FILENO;
   }
   return -EPERM;
@@ -99,11 +99,11 @@ weak int __syscall_fcntl64(int fd, int cmd, ...) {
   return -ENOSYS;
 }
 
-weak int __syscall_fstat64(int fd, intptr_t buf) {
+weak int __syscall_fstat64(int fd, struct stat *buf) {
   return -ENOSYS;
 }
 
-weak int __syscall_stat64(intptr_t path, intptr_t buf) {
+weak int __syscall_stat64(const char *path, struct stat *buf) {
   return -ENOSYS;
 }
 
@@ -111,15 +111,15 @@ weak int __syscall_dup(int fd) {
   return -ENOSYS;
 }
 
-weak int __syscall_mkdirat(int dirfd, intptr_t path, mode_t mode) {
+weak int __syscall_mkdirat(int dirfd, const char *path, mode_t mode) {
   return -ENOSYS;
 }
 
-weak int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
+weak int __syscall_newfstatat(int dirfd, const char *path, struct stat *buf, int flags) {
   return -ENOSYS;
 }
 
-weak int __syscall_lstat64(intptr_t path, intptr_t buf) {
+weak int __syscall_lstat64(const char *path, struct stat *buf) {
   return -ENOSYS;
 }
 
@@ -179,21 +179,21 @@ void __cxa_throw(void* ptr, void* type, void* destructor) {
 // WasmFS integration. We stub out file preloading and such, that are not
 // expected to work anyhow.
 
-size_t _wasmfs_get_num_preloaded_files() { return 0; }
+int _wasmfs_get_num_preloaded_files() { return 0; }
 
-size_t _wasmfs_get_num_preloaded_dirs() { return 0; }
+int _wasmfs_get_num_preloaded_dirs() { return 0; }
 
-int _wasmfs_get_preloaded_file_size(int index) { return 0; }
+size_t _wasmfs_get_preloaded_file_size(uint32_t index) { return 0; }
 
 int _wasmfs_get_preloaded_file_mode(int index) { return 0; }
 
-void _wasmfs_copy_preloaded_file_data(int index, void* buffer) {}
+void _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* buffer) {}
 
-void _wasmfs_get_preloaded_parent_path(int index, void* buffer) {}
+void _wasmfs_get_preloaded_parent_path(int index, char* buffer) {}
 
-void _wasmfs_get_preloaded_child_path(int index, void* buffer) {}
+void _wasmfs_get_preloaded_child_path(int index, char* buffer) {}
 
-void _wasmfs_get_preloaded_path_name(int index, void* buffer) {}
+void _wasmfs_get_preloaded_path_name(int index, char* buffer) {}
 
 // Import the VM's fd_write under a different name. Then we can interpose in
 // between it and WasmFS's fd_write. That is, libc calls fd_write, which WasmFS

@@ -434,7 +434,6 @@ class other(RunnerCore):
     'O3': (['-O3'],),
   })
   def test_esm_source_phase_imports(self, args):
-    self.node_args += ['--experimental-wasm-modules', '--no-warnings']
     self.run_process([EMCC, '-o', 'hello_world.mjs', '-sSOURCE_PHASE_IMPORTS',
                       '--extern-post-js', test_file('modularize_post_js.js'),
                       test_file('hello_world.c')] + args)
@@ -5610,6 +5609,8 @@ __EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALI
   def test_fs_dev_random(self):
     if WINDOWS and self.get_setting('NODERAWFS'):
       self.skipTest('Crashes on Windows and NodeFS')
+    if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24830')
     self.do_runf('fs/test_fs_dev_random.c', 'done\n')
 
   @parameterized({
@@ -12712,6 +12713,11 @@ exec "$@"
     self.run_process([PYTHON, path_from_root('tools/maint/gen_sig_info.py'), '-o', 'out.js'])
     self.assertFilesMatch(path_from_root('src/lib/libsigs.js'), 'out.js')
 
+  @crossplatform
+  def test_gen_native_sig_info(self):
+    self.run_process([PYTHON, path_from_root('tools/maint/gen_native_sig_info.py'), '-o', 'out.py'])
+    self.assertFilesMatch(path_from_root('tools/native_sigs.py'), 'out.py')
+
   def test_gen_struct_info_env(self):
     # gen_struct_info.py builds C code in a very specific and low level way.  We don't want
     # EMCC_CFLAGS (or any of the other environment variables that might effect compilation or
@@ -13248,11 +13254,11 @@ void foo() {}
   @requires_pthreads
   @parameterized({
     '': ([],),
-    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'],),
     'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
   })
   def test_pthread_growth_mainthread(self, cflags):
-    if '-sGROWABLE_ARRAYBUFFERS' in cflags:
+    if '-sGROWABLE_ARRAYBUFFERS=2' in cflags:
       self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
@@ -13265,7 +13271,7 @@ void foo() {}
   @requires_node_26
   def test_growable_arraybuffers(self):
     self.do_runf('hello_world.c',
-                 cflags=['-O2', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],
+                 cflags=['-O2', '-pthread', '-sALLOW_MEMORY_GROWTH', '-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'],
                  output_basename='growable')
     self.do_runf('hello_world.c',
                  cflags=['-O2', '-pthread', '-sALLOW_MEMORY_GROWTH', '-Wno-pthreads-mem-growth'],
@@ -13279,7 +13285,7 @@ void foo() {}
   @requires_pthreads
   @parameterized({
     '': ([],),
-    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'],),
     'assert': (['-sASSERTIONS'],),
     'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'],),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
@@ -13290,7 +13296,7 @@ void foo() {}
       # TODO: Switch this to a "require Node.js 24" check
       self.require_node_25()
 
-    if '-sGROWABLE_ARRAYBUFFERS' in cflags:
+    if '-sGROWABLE_ARRAYBUFFERS=2' in cflags:
       self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
@@ -13476,6 +13482,8 @@ Module.postRun = () => {{
 
   @wasmfs_all_backends
   def test_wasmfs_getdents(self):
+    if self.get_setting('NODERAWFS'):
+      self.skipTest('test expectations assumes /dev is virtualized')
     # Run only in WASMFS for now.
     self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
@@ -14125,11 +14133,15 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
       self.assertTrue(name.startswith('wasi_'), 'Unexpected import %s' % name)
 
   @is_slow_test
-  def test_googletest(self):
+  @parameterized({
+    '': ([],),
+    # See https://github.com/google/googletest/issues/5004
+    'cxx20': (['-std=c++20', '-Wno-character-conversion'],),
+  })
+  def test_googletest(self, args):
     # TODO(sbc): Should we package gtest as an emscripten "port"?  I guess we should if
     # we plan on using it in more places.
-    self.do_other_test('test_googletest.cc', cflags=[
-      '-Wno-character-conversion', '-Wno-unknown-warning-option',
+    self.do_other_test('test_googletest.cc', cflags=args + [
       '-I' + test_file('third_party/googletest/googletest'),
       '-I' + test_file('third_party/googletest/googletest/include'),
       test_file('third_party/googletest/googletest/src/gtest-all.cc'),
@@ -14983,7 +14995,7 @@ addToLibrary({
     'O3': [['-O3']],
   })
   def test_fp16(self, args):
-    self.v8_args += ['--experimental-wasm-fp16']
+    self.v8_args += ['--wasm-fp16']
     self.do_runf('test_fp16.c', cflags=['-msimd128', '-mfp16', '-mrelaxed-simd', '-sENVIRONMENT=shell'] + args)
 
   def test_embool(self):
@@ -15172,15 +15184,15 @@ addToLibrary({
   })
   def test_mainScriptUrlOrBlob(self, es6):
     ext = "js"
-    args = []
+    args = ['-sEXIT_RUNTIME', '-sINCOMING_MODULE_JS_API=mainScriptUrlOrBlob', '-sPROXY_TO_PTHREAD', '-pthread']
     if es6:
       ext = "mjs"
-      args = ['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]
+      args += ['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]
     outfile = ('a.out.%s' % ext)
     # Use `foo.js` instead of the current script name when creating new threads
     create_file('pre.js', 'Module = { mainScriptUrlOrBlob: "./foo.%s" }' % ext)
 
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '--pre-js=pre.js', '-o', outfile] + args)
+    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js=pre.js', '-o', outfile] + args)
 
     # First run without foo.[m]js present to verify that the pthread creation fails
     err = self.run_js(outfile, assert_returncode=NON_ZERO)
@@ -15640,3 +15652,50 @@ console.log('OK');'''
        '-sCROSS_ORIGIN_STORAGE',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=https://example.com/path'],
       'is not a valid HTTPS origin')
+
+  @disabled('https://github.com/emscripten-core/emscripten/issues/27189')
+  @requires_dev_dependency('rollup')
+  @requires_dev_dependency('prettier')
+  def test_dead_code_esm(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-O2', '-o', 'hello.mjs'])
+    rollup_cmd = shared.get_npm_cmd('rollup') + [
+        'hello.mjs', '--format', 'es', '--file', 'hello.rolled.mjs',
+        '--external', 'node:module',
+    ]
+    self.run_process(rollup_cmd)
+    prettier_cmd = shared.get_npm_cmd('prettier')
+    self.run_process(prettier_cmd + ['hello.mjs', '--write'])
+    self.run_process(prettier_cmd + ['hello.rolled.mjs', '--write'])
+    original = read_file('hello.mjs')
+    rolled = read_file('hello.rolled.mjs')
+
+    # We need to normalize the JS before diffing because Rollup's code generator
+    # introduces structural and syntax changes that Prettier (which only formats
+    # without changing the AST) cannot resolve. Specifically:
+    # 1. Export syntax: Rollup normalizes `export default Module;` to `export { Module as default };`.
+    # 2. Empty blocks: Rollup simplifies empty blocks like `else {}` to `else;`.
+    # 3. Comments: Rollup strips comments or moves them around. We strip them completely to focus
+    #    strictly on executable logic.
+    def normalize(code):
+      # Strip comments to avoid diffs from comment displacement/removal
+      code = re.sub(r'//.*', '', code)
+      code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
+      # Normalize export syntax to a standard form
+      code = re.sub(r'export\s+default\s+(\w+);', r'export { \1 as default };', code)
+      code = re.sub(r'export\s*\{\s*(\w+)\s*as\s*default\s*\}\s*;', r'export {\1 as default};', code)
+      # Normalize empty else blocks
+      code = re.sub(r'else\s*\{\s*\}', 'else;', code)
+
+      # Normalize whitespace and empty lines
+      lines = [line.rstrip() for line in code.splitlines() if line.strip()]
+      return '\n'.join(lines)
+
+    normalized_original = normalize(original)
+    normalized_rolled = normalize(rolled)
+
+    # Write both normalized files to CWD so they can be inspected manually on failure
+    write_file('hello.normalized.mjs', normalized_original)
+    write_file('hello.rolled.normalized.mjs', normalized_rolled)
+
+    self.assertTextDataIdentical(normalized_original, normalized_rolled,
+                                 fromfile='hello.normalized.mjs', tofile='hello.rolled.normalized.mjs')

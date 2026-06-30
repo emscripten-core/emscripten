@@ -18,8 +18,37 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.1 (in development)
+6.0.2 (in development)
 ----------------------
+- New `-sNODERAWSOCKETS` setting that backs the POSIX sockets API with real TCP
+  (`node:net`) and UDP (`node:dgram`) sockets on Node.js, with no `ws`, proxy
+  process, or pthreads required. Supports incoming and outgoing TCP, UDP, IPv6,
+  and `-pthread` with `PROXY_TO_PTHREAD`. Uses the public node APIs where
+  available, falling back to `tcp_wrap`/`udp_wrap` on older Node.js. (#27080)
+- The following symbols are no longer included in `INCOMING_MODULE_JS_API`
+  by default:
+  - GL_MAX_TEXTURE_IMAGE_UNITS
+  - SDL_canPlayWithWebAudio
+  - SDL_numSimultaneouslyQueuedBuffers
+  - freePreloadedMediaOnUse
+  - preinitializedWebGLContext
+  - keyboardListeningElement
+  - doNotCaptureKeyboard
+  - extraStackTrace
+  - preloadPlugins
+  - postMainLoop
+  - preMainLoop
+  - forcedAspectRatio
+  - mainScriptUrlOrBlob
+  - onFullScreen
+  - INITIAL_MEMORY
+  - wasmMemory
+  - wasmBinary
+  Anybody using these will see a clear error in their debug builds signaling
+  that they now need to be explicitly added to `-sINCOMING_MODULE_JS_API`.
+
+6.0.1 - 06/22/26
+----------------
 - The ability to redirect JS compiler stderr using `EMCC_STDERR_FILE` was
   removed.  These days you can use `EMCC_DEBUG` and/or `EMCC_DEBUG_SAVE` to
   preserve all the intermediate JS compiler files. (#27101)
@@ -44,6 +73,9 @@ See docs/process.md for more on how version tagging works.
   run dependencies). This means that errors during startup (or during the
   `main()` function) will more often show up as unhandled promise rejections
   (`onunhandledreject`) rather than synchronous errors (`onerror`). (#27121)
+- The `GROWABLE_ARRAYBUFFERS` setting now support both `=1` (auto-detect and
+  use the feature) and `=2` (unconditionally use the feature). The second mode
+  is still useful for avoiding the overhead in multi-threaded builds. (#27096)
 
 6.0.0 - 06/04/26
 ----------------

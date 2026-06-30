@@ -9352,7 +9352,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.prep_dlfcn_main()
     self.set_setting('EXIT_RUNTIME')
     self.do_runf('core/pthread/test_pthread_dlopen.c',
-                 ['side module ctor', 'done', 'side module atexit'],
+                 ['side module ctor', 'done\n', 'side module atexit'],
                  assert_all=True, cflags=args)
 
   @needs_dylink
@@ -9381,7 +9381,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
       });
     ''')
     self.do_runf('core/pthread/test_pthread_dlopen_many.c',
-                 ['side module ctor', 'main done', 'side module atexit'],
+                 ['side module ctor', 'done\n', 'side module atexit'],
                  cflags=[f'-DNUM_THREADS={nthreads}', '--js-library=lib.js'],
                  assert_all=True)
 

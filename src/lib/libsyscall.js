@@ -389,8 +389,12 @@ var SyscallsLibrary = {
   },
   __syscall_shutdown__deps: ['$getSocketFromFD'],
   __syscall_shutdown: (fd, how, u1, u2, u3, u4) => {
-    getSocketFromFD(fd);
+    var sock = getSocketFromFD(fd);
+#if NODERAWSOCKETS
+    return sock.sock_ops.shutdown(sock, how);
+#else
     return -{{{ cDefs.ENOSYS }}}; // unsupported feature
+#endif
   },
   __syscall_accept4__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
   __syscall_accept4: (fd, addr, len, flags, u1, u2) => {
@@ -445,6 +449,10 @@ var SyscallsLibrary = {
   __syscall_getsockopt__deps: ['$getSocketFromFD'],
   __syscall_getsockopt: (fd, level, optname, optval, optlen, unused) => {
     var sock = getSocketFromFD(fd);
+#if NODERAWSOCKETS
+    // The node:net backend handles all socket options.
+    return sock.sock_ops.getsockopt(sock, level, optname, optval, optlen);
+#else
     // Minimal getsockopt aimed at resolving https://github.com/emscripten-core/emscripten/issues/2211
     // so only supports SOL_SOCKET with SO_ERROR.
     if (level === {{{ cDefs.SOL_SOCKET }}}) {
@@ -456,6 +464,20 @@ var SyscallsLibrary = {
       }
     }
     return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
+#endif
+  },
+  // Defined in JS rather than as a weak native stub so the node:net backend can
+  // provide it without a separate libstubs variation. Without that backend it
+  // just reports the option as unknown.
+  __syscall_setsockopt__deps: ['$getSocketFromFD'],
+  __syscall_setsockopt: (fd, level, optname, optval, optlen, unused) => {
+#if NODERAWSOCKETS
+    var sock = getSocketFromFD(fd);
+    return sock.sock_ops.setsockopt(sock, level, optname, optval, optlen);
+#else
+    getSocketFromFD(fd); // validate the fd (and keep this syscall's catch reachable)
+    return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
+#endif
   },
   __syscall_sendmsg__deps: ['$getSocketFromFD', '$getSocketAddress'],
   __syscall_sendmsg: (fd, message, flags, u1, u2, u3) => {
@@ -563,7 +585,11 @@ var SyscallsLibrary = {
   },
   __syscall_poll__proxy: 'sync',
   __syscall_poll__async: 'auto',
-  __syscall_poll__deps: ['$doPoll'],
+  __syscall_poll__deps: ['$doPoll',
+#if PTHREADS || ASYNCIFY
+    '$doPollAsync',
+#endif
+  ],
   __syscall_poll: (fds, nfds, timeout) => {
 #if PTHREADS || ASYNCIFY
 #if PTHREADS
@@ -571,12 +597,32 @@ var SyscallsLibrary = {
 #else
     const isAsyncContext = true;
 #endif
+    if (isAsyncContext) {
+      return doPollAsync(fds, nfds, timeout);
+    }
+#endif
+
+    var count = doPoll(fds, nfds, 0, undefined);
+#if ASSERTIONS
+    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
+#endif
+    return count;
+  },
+#if PTHREADS || ASYNCIFY
+  $doPollAsync__internal: true,
+  $doPollAsync__deps: ['$FS', '$doPoll'],
+  $doPollAsync: (fds, nfds, timeout) => {
+#if RUNTIME_DEBUG
+    dbg('async poll start');
+#endif
+
     // Enable event handlers only when the poll call is proxied from a worker.
     // TODO: Could use `Promise.withResolvers` here if we know its available.
     var resolve;
     var promise = new Promise((resolve_) => { resolve = resolve_; });
     var cleanupFuncs = [];
     var notifyDone = false;
+
     function asyncPollComplete(count) {
       if (notifyDone) {
         return;
@@ -588,6 +634,7 @@ var SyscallsLibrary = {
       cleanupFuncs.forEach(cb => cb());
       resolve(count);
     }
+
     function makeNotifyCallback(stream, pollfd) {
       var cb = (flags) => {
         if (notifyDone) {
@@ -597,7 +644,7 @@ var SyscallsLibrary = {
         dbg(`async poll notify: stream=${stream}`);
 #endif
         var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
-        flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
+        flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLNVAL }}};
 #if ASSERTIONS
         assert(flags)
 #endif
@@ -609,36 +656,24 @@ var SyscallsLibrary = {
       }
       return cb;
     }
-
-    if (isAsyncContext) {
+    if (timeout > 0) {
+      var t = setTimeout(() => {
 #if RUNTIME_DEBUG
-      dbg('async poll start');
+        dbg('poll: timeout', timeout);
 #endif
-      if (timeout > 0) {
-        var t = setTimeout(() => {
-#if RUNTIME_DEBUG
-          dbg('poll: timeout', timeout);
-#endif
-          asyncPollComplete(0);
-        }, timeout);
-        cleanupFuncs.push(() => clearTimeout(t));
-      }
-      // A zero timeout never registers notifications: the derivation alone
-      // answers, matching the non-blocking probe.
-      var count = doPoll(fds, nfds, timeout, makeNotifyCallback);
-      if (count || !timeout) {
-        asyncPollComplete(count);
-      }
-      return promise;
+        asyncPollComplete(0);
+      }, timeout);
+      cleanupFuncs.push(() => clearTimeout(t));
     }
-#endif
-
-    var count = doPoll(fds, nfds, 0, undefined);
-#if ASSERTIONS
-    if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
-#endif
-    return count;
+    // A zero timeout never registers notifications: the derivation alone
+    // answers, matching the non-blocking probe.
+    var count = doPoll(fds, nfds, timeout, makeNotifyCallback);
+    if (count || !timeout) {
+      asyncPollComplete(count);
+    }
+    return promise;
   },
+#endif
   // The shared readiness derivation: one pass over the pollfds, writing
   // revents and returning the ready count. With a nonzero `timeout`, a
   // readiness notification is also registered on each stream by the same
@@ -664,7 +699,7 @@ var SyscallsLibrary = {
           flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
         }
       }
-      flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
+      flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLNVAL }}};
       if (flags) count++;
       {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
     }
@@ -680,6 +715,13 @@ var SyscallsLibrary = {
   __syscall_poll_nonblocking: (fds, nfds) => {
     return doPoll(fds, nfds, 0, undefined);
   },
+  // epoll is not yet implemented in the legacy (non-WASMFS) JS syscall layer.
+  __syscall_epoll_create1__nothrow: true,
+  __syscall_epoll_create1: (flags) => -{{{ cDefs.ENOSYS }}},
+  __syscall_epoll_ctl__nothrow: true,
+  __syscall_epoll_ctl: (epfd, op, fd, ev) => -{{{ cDefs.ENOSYS }}},
+  __syscall_epoll_pwait__nothrow: true,
+  __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize) => -{{{ cDefs.ENOSYS }}},
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
     if (size === 0) return -{{{ cDefs.EINVAL }}};

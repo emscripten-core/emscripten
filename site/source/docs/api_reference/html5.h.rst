@@ -396,6 +396,7 @@ Defines
   EMSCRIPTEN_EVENT_MOUSEMOVE
   EMSCRIPTEN_EVENT_MOUSEENTER
   EMSCRIPTEN_EVENT_MOUSELEAVE
+  EMSCRIPTEN_EVENT_CONTEXTMENU
 
     Emscripten mouse events.
 
@@ -405,7 +406,7 @@ Struct
 
 .. c:type:: EmscriptenMouseEvent
 
-  The event structure passed in `mouse events <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#interface-MouseEvent>`_: `click <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-click>`_, `mousedown <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousedown>`_, `mouseup <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseup>`_, `dblclick <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-dblclick>`_, `mousemove <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousemove>`_, `mouseenter <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseenter>`_ and `mouseleave <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseleave>`_.
+  The event structure passed in `mouse events <https://w3c.github.io/pointerevents/#mouseevent>`_: `click <https://w3c.github.io/pointerevents/#click>`_, `mousedown <https://w3c.github.io/pointerevents/#mousedown>`_, `mouseup <https://w3c.github.io/pointerevents/#mouseup>`_, `dblclick <https://w3c.github.io/pointerevents/#dblclick>`_, `mousemove <https://w3c.github.io/pointerevents/#mousemove>`_, `mouseenter <https://w3c.github.io/pointerevents/#mouseenter>`_, `mouseleave <https://w3c.github.io/pointerevents/#mouseleave>`_ and `contextmenu <https://w3c.github.io/pointerevents/#contextmenu>`_.
 
 
   .. c:member:: double timestamp
@@ -498,6 +499,7 @@ Functions
   EMSCRIPTEN_RESULT emscripten_set_mousemove_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_mouseenter_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_contextmenu_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
 
   Registers a callback function for receiving browser-generated `mouse input events <https://developer.mozilla.org/en/DOM/MouseEvent>`_.
 
@@ -1369,7 +1371,7 @@ Functions
 
   Registers a callback function for receiving the `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
-  Pointer lock hides the mouse cursor and exclusively gives the target element relative mouse movement events via the `mousemove <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousemove>`_ event.
+  Pointer lock hides the mouse cursor and exclusively gives the target element relative mouse movement events via the `mousemove <https://w3c.github.io/pointerevents/#mousemove>`_ event.
 
   :param target: |target-parameter-doc|
   :type target: const char*
@@ -2049,6 +2051,10 @@ Struct
     The ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS`` WebGL context creation flag will always create a proxied context, even if the browser did support OffscreenCanvas. If you would like to prefer to create a higher performance OffscreenCanvas context whenever supported by the browser, but only fall back to a proxied WebGL context to keep compatibility with browsers that do not yet have OffscreenCanvas support, you can specify the ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_FALLBACK`` context creation flag. In order to use this flag, code should be compiled with both ``-sOFFSCREEN_FRAMEBUFFER`` and ``-sOFFSCREENCANVAS_SUPPORT`` linker flags.
 
     Default value of ``proxyContextToMainThread`` after calling ``emscripten_webgl_init_context_attributes()`` is ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW``, if the WebGL context is being created on the main thread. This means that by default WebGL contexts created on the main thread are not shareable between multiple threads (to avoid accidental performance loss from enabling proxying when/if it is not needed). To create a context that can be shared between multiple pthreads, set the ``proxyContextToMainThread`` flag ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS``.
+
+  .. c:member:: bool desynchronized
+
+    If ``true``, requests a "desynchronized" WebGL context, which can lower latency by bypassing the browser's normal compositing/double-buffering of the canvas. This maps to the ``desynchronized`` attribute on the JavaScript ``getContext()`` call. Whether the request is honored depends on the browser and platform; use ``emscripten_webgl_get_context_attributes()`` to read back the value the context was actually created with. Default value is ``false``.
 
 Callback functions
 ------------------

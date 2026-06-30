@@ -130,8 +130,6 @@ function initRuntime() {
   wasmExports["c"]();
 }
 
-function preMain() {}
-
 function postRun() {}
 
 /**
@@ -233,7 +231,7 @@ async function createWasm() {
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
-  /** @param {WebAssembly.Module=} module*/ function receiveInstance(instance, module) {
+  function receiveInstance(instance) {
     wasmExports = instance.exports;
     assignWasmExports(wasmExports);
     updateMemoryViews();
@@ -288,7 +286,13 @@ var printCharBuffers = [ null, [], [] ];
 
 var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
 
-var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
+/**
+   * heapOrArray is either a regular array, or a JavaScript typed array view.
+   * @param {number} idx
+   * @param {number=} maxBytesToRead
+   * @param {boolean=} ignoreNul
+   * @return {number}
+   */ var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
   var maxIdx = idx + maxBytesToRead;
   if (ignoreNul) return maxIdx;
   // TextDecoder needs to know the byte length in advance, it doesn't stop on
@@ -443,7 +447,7 @@ function run() {
   preRun();
   if (ABORT) return;
   initRuntime();
-  preMain();
+  // No ATMAINS hooks
   var noInitialRun = false;
   if (!noInitialRun) callMain();
   postRun();

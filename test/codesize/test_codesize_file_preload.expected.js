@@ -332,11 +332,10 @@ function updateMemoryViews() {
 // end include: memoryprofiler.js
 // end include: runtime_common.js
 function preRun() {
-  if (Module["preRun"]) {
-    if (typeof Module["preRun"] == "function") Module["preRun"] = [ Module["preRun"] ];
-    while (Module["preRun"].length) {
-      addOnPreRun(Module["preRun"].shift());
-    }
+  var preRun = Module["preRun"];
+  if (preRun) {
+    if (typeof preRun == "function") preRun = [ preRun ];
+    onPreRuns.push(...preRun);
   }
   // Begin ATPRERUNS hooks
   callRuntimeCallbacks(onPreRuns);
@@ -352,8 +351,6 @@ function initRuntime() {
   // Begin ATPOSTCTORS hooks
   FS.ignorePermissions = false;
 }
-
-function preMain() {}
 
 function postRun() {}
 
@@ -456,7 +453,7 @@ async function createWasm() {
   // Load the wasm module and create an instance of using native support in the JS engine.
   // handle a generated wasm instance, receiving its exports and
   // performing other necessary setup
-  /** @param {WebAssembly.Module=} module*/ function receiveInstance(instance, module) {
+  function receiveInstance(instance) {
     wasmExports = instance.exports;
     assignWasmExports(wasmExports);
     updateMemoryViews();
@@ -515,8 +512,6 @@ var callRuntimeCallbacks = callbacks => {
 };
 
 var onPreRuns = [];
-
-var addOnPreRun = cb => onPreRuns.push(cb);
 
 /** @param {number=} offset */ var doWritev = (stream, iov, iovcnt, offset) => {
   var ret = 0;
@@ -662,7 +657,13 @@ var PATH_FS = {
 
 var UTF8Decoder = globalThis.TextDecoder && new TextDecoder;
 
-var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
+/**
+   * heapOrArray is either a regular array, or a JavaScript typed array view.
+   * @param {number} idx
+   * @param {number=} maxBytesToRead
+   * @param {boolean=} ignoreNul
+   * @return {number}
+   */ var findStringEnd = (heapOrArray, idx, maxBytesToRead, ignoreNul) => {
   var maxIdx = idx + maxBytesToRead;
   if (ignoreNul) return maxIdx;
   // TextDecoder needs to know the byte length in advance, it doesn't stop on
@@ -1305,22 +1306,25 @@ var FS_createDataFile = (...args) => FS.createDataFile(...args);
 
 var getUniqueRunDependency = id => id;
 
-var runDependencies = 0;
+var dependenciesPromise = null;
 
-var dependenciesFulfilled = null;
+var resolveRunDependencies = async () => dependenciesPromise;
+
+var runDependencies = 0;
 
 var removeRunDependency = id => {
   runDependencies--;
-  if (runDependencies == 0) {
-    if (dependenciesFulfilled) {
-      var callback = dependenciesFulfilled;
-      dependenciesFulfilled = null;
-      callback();
-    }
+  if (!runDependencies) {
+    dependenciesPromise.resolve();
   }
 };
 
 var addRunDependency = id => {
+  if (!runDependencies) {
+    var resolve;
+    dependenciesPromise = new Promise(r => resolve = r);
+    dependenciesPromise.resolve = resolve;
+  }
   runDependencies++;
 };
 
@@ -3180,12 +3184,12 @@ function callMain() {
 
 async function run() {
   preRun();
-  if (runDependencies > 0) {
-    await new Promise(resolve => dependenciesFulfilled = resolve);
+  if (runDependencies) {
+    await resolveRunDependencies();
   }
   if (ABORT) return;
   initRuntime();
-  preMain();
+  // No ATMAINS hooks
   var noInitialRun = false;
   if (!noInitialRun) callMain();
   postRun();

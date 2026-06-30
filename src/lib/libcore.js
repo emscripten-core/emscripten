@@ -217,7 +217,7 @@ addToLibrary({
     try {
       // round size grow request up to wasm page size (fixed 64KB per spec)
       wasmMemory.grow({{{ toIndexType('pages') }}}); // .grow() takes a delta compared to the previous size
-#if !GROWABLE_ARRAYBUFFERS
+#if GROWABLE_ARRAYBUFFERS != 2
       updateMemoryViews();
 #endif
 #if MEMORYPROFILER
@@ -357,7 +357,7 @@ addToLibrary({
 #endif // ALLOW_MEMORY_GROWTH
   },
 
-#if !GROWABLE_ARRAYBUFFERS
+#if GROWABLE_ARRAYBUFFERS != 2
   // Called after wasm grows memory. At that time we need to update the views.
   // Without this notification, we'd need to check the buffer in JS every time
   // we return from any wasm, which adds overhead. See
@@ -2268,10 +2268,13 @@ addToLibrary({
   // it happens right before run - run will be postponed until
   // the dependencies are met.
   $runDependencies__internal: true,
+  $runDependencies__deps: ['$resolveRunDependencies'],
   $runDependencies: 0,
-  // overridden to take different actions when all run dependencies are fulfilled
-  $dependenciesFulfilled__internal: true,
-  $dependenciesFulfilled: null,
+  $dependenciesPromise__internal: true,
+  $dependenciesPromise: null,
+  $resolveRunDependencies__internal: true,
+  $resolveRunDependencies__deps: ['$dependenciesPromise'],
+  $resolveRunDependencies: async () => dependenciesPromise,
 #if ASSERTIONS
   $runDependencyTracking__internal: true,
   $runDependencyTracking: {},
@@ -2279,13 +2282,18 @@ addToLibrary({
   $runDependencyWatcher: null,
 #endif
 
-  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency',
+  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency', '$dependenciesPromise',
 #if ASSERTIONS
     '$runDependencyTracking',
     '$runDependencyWatcher',
 #endif
   ],
   $addRunDependency: (id) => {
+    if (!runDependencies) {
+      var resolve;
+      dependenciesPromise = new Promise((r) => resolve = r);
+      dependenciesPromise.resolve = resolve;
+    }
     runDependencies++;
 
 #if expectToReceiveOnModule('monitorRunDependencies')
@@ -2328,7 +2336,7 @@ addToLibrary({
 #endif
   },
 
-  $removeRunDependency__deps: ['$runDependencies', '$dependenciesFulfilled',
+  $removeRunDependency__deps: ['$runDependencies', '$dependenciesPromise',
 #if ASSERTIONS
     '$runDependencyTracking',
     '$runDependencyWatcher',
@@ -2349,18 +2357,14 @@ addToLibrary({
     assert(runDependencyTracking[id]);
     delete runDependencyTracking[id];
 #endif
-    if (runDependencies == 0) {
+    if (!runDependencies) {
 #if ASSERTIONS
       if (runDependencyWatcher !== null) {
         clearInterval(runDependencyWatcher);
         runDependencyWatcher = null;
       }
 #endif
-      if (dependenciesFulfilled) {
-        var callback = dependenciesFulfilled;
-        dependenciesFulfilled = null;
-        callback(); // can add another dependenciesFulfilled
-      }
+      dependenciesPromise.resolve();
     }
   },
 #endif
@@ -2511,7 +2515,7 @@ function wrapSyscallFunction(x, library, isWasi) {
 
   library[x + '__deps'] ??= [];
 
-#if PURE_WASI && !GROWABLE_ARRAYBUFFERS
+#if PURE_WASI && GROWABLE_ARRAYBUFFERS != 2
   // In PURE_WASI mode we can't assume the wasm binary was built by emscripten
   // and politely notify us on memory growth.  Instead we have to check for
   // possible memory growth on each syscall.

@@ -373,9 +373,22 @@ class Ports:
 
     def unpack():
       logger.info(f'unpacking port: {name}')
-      utils.safe_ensure_dirs(fullname)
-      shutil.unpack_archive(filename=fullpath, extract_dir=fullname)
-      utils.write_file(marker, url + '\n')
+      unpack_dir = fullname + '.tmp'
+      # We unpack to a temporary directory and then atomically rename it to the
+      # final destination. This ensures that the destination directory either
+      # does not exist or is 100% complete, avoiding races where other processes
+      # might see a partially unpacked directory (lacking the marker) and
+      # incorrectly assume it is invalid or needs to be cleared.
+      utils.delete_dir(unpack_dir)
+      utils.safe_ensure_dirs(unpack_dir)
+
+      shutil.unpack_archive(filename=fullpath, extract_dir=unpack_dir)
+      tmp_marker = os.path.join(unpack_dir, '.emscripten_url')
+      utils.write_file(tmp_marker, url + '\n')
+
+      # Atomically replace the target directory
+      utils.delete_dir(fullname)
+      os.replace(unpack_dir, fullname)
 
     def up_to_date():
       return os.path.exists(marker) and utils.read_file(marker).strip() == url

@@ -51,6 +51,7 @@ from decorators import (
   also_with_asan,
   also_with_fetch_streaming,
   also_with_minimal_runtime,
+  also_with_proxy_to_pthread,
   also_with_pthreads,
   also_with_wasm2js,
   also_with_wasmfs,
@@ -60,7 +61,6 @@ from decorators import (
   no_4gb,
   no_highmem,
   no_wasm64,
-  parameterize,
   parameterized,
   requires_dev_dependency,
   requires_wasm2js,
@@ -184,21 +184,6 @@ requires_firefox_version = requires_version('firefox', get_firefox_version)
 
 def is_jspi(args):
   return '-sJSPI' in args
-
-
-def also_with_proxy_to_pthread(f):
-  assert callable(f)
-
-  @wraps(f)
-  def decorated(self, threads, *args, **kwargs):
-    if threads:
-      self.cflags += ['-pthread', '-sPROXY_TO_PTHREAD']
-    f(self, *args, **kwargs)
-
-  parameterize(decorated, {'': (False,),
-                           'proxy_to_pthread': (True,)})
-
-  return decorated
 
 
 def skipIfFeatureNotAvailable(skip_env_var, feature, message):
@@ -476,6 +461,7 @@ window.close = () => {
   @also_with_proxy_to_pthread
   def test_preload_file_with_manual_data_download(self):
     create_file('file.txt', 'Hello!')
+    self.set_setting('INCOMING_MODULE_JS_API', 'mainScriptUrlOrBlob,canvas,monitorRunDependencies,onAbort,onExit,postRun,print,printErr,setStatus')
 
     self.compile_btest('browser/test_manual_download_data.c', ['-sEXIT_RUNTIME', '-o', 'out.js', '--preload-file', 'file.txt@/file.txt'])
     copy_asset('browser/test_manual_download_data.html')
@@ -2683,7 +2669,12 @@ Module["preRun"] = () => {
   def test_html5_webgl_api(self, args):
     if '-sOFFSCREENCANVAS_SUPPORT' in args and os.getenv('EMTEST_LACKS_OFFSCREEN_CANVAS'):
       return
-    self.btest_exit('html5_webgl.c', cflags=['-sMAX_WEBGL_VERSION=2', '-lGL'] + args)
+    cflags = ['-sMAX_WEBGL_VERSION=2', '-lGL'] + args
+    # Check the desynchronized round-trip only on a normal canvas; OffscreenCanvas
+    # doesn't honor it. Chrome supports it, other browsers report it back as false.
+    if not args:
+      cflags.append('-DEXPECT_DESYNCHRONIZED=' + ('1' if is_chrome() else '0'))
+    self.btest_exit('html5_webgl.c', cflags=cflags)
 
   @parameterized({
     'webgl1': (['-DWEBGL_VERSION=1'],),
@@ -4637,21 +4628,21 @@ Module["preRun"] = () => {
   # Tests memory growth in pthreads mode, but still on the main thread.
   @parameterized({
     '': ([], 1),
-    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'], 1),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'], 1),
     'proxy': (['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'], 2),
   })
   @no_highmem('uses INITIAL_MEMORY')
   @requires_growable_arraybuffers
   def test_pthread_growth_mainthread(self, cflags, pthread_pool_size):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
-    if '-sGROWABLE_ARRAYBUFFERS' not in cflags:
+    if '-sGROWABLE_ARRAYBUFFERS=2' not in cflags:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.btest_exit('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
   # Tests memory growth in a pthread.
   @parameterized({
     '': ([],),
-    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS', '-Wno-experimental'],),
+    'growable_arraybuffers': (['-sGROWABLE_ARRAYBUFFERS=2', '-Wno-experimental'],),
     'assert': (['-sASSERTIONS'],),
     'proxy': (['-sPROXY_TO_PTHREAD'], 2),
     'minimal': (['-sMINIMAL_RUNTIME', '-sMODULARIZE', '-sEXPORT_NAME=MyModule'],),
@@ -4660,7 +4651,7 @@ Module["preRun"] = () => {
   @requires_growable_arraybuffers
   def test_pthread_growth(self, cflags, pthread_pool_size=1):
     self.set_setting('PTHREAD_POOL_SIZE', pthread_pool_size)
-    if '-sGROWABLE_ARRAYBUFFERS' not in cflags:
+    if '-sGROWABLE_ARRAYBUFFERS=2' not in cflags:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.btest_exit('pthread/test_pthread_memory_growth.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
 
@@ -4681,6 +4672,10 @@ Module["preRun"] = () => {
   @requires_es6_workers
   def test_mainScriptUrlOrBlob(self, es6, use_blob):
     self.set_setting('EXIT_RUNTIME')
+    needed_api = 'mainScriptUrlOrBlob,locateFile'
+    default_api = 'canvas,monitorRunDependencies,onAbort,onExit,postRun,print,printErr,setStatus'
+
+    self.set_setting('INCOMING_MODULE_JS_API', ','.join([needed_api, default_api]))
     js_name = 'hello_thread_with_loader.%s' % ('mjs' if es6 else 'js')
     if es6:
       self.cflags += ['-sEXPORT_ES6']

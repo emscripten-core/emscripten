@@ -1338,7 +1338,7 @@ class libc(MuslInternalLibrary,
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/linux',
-        filenames=['getdents.c', 'gettid.c', 'utimes.c', 'statx.c', 'wait4.c', 'wait3.c'])
+        filenames=['getdents.c', 'gettid.c', 'utimes.c', 'statx.c', 'wait4.c', 'wait3.c', 'epoll.c'])
 
     libc_files += files_in_path(
         path='system/lib/libc/musl/src/malloc',
@@ -2252,7 +2252,7 @@ class libstandalonewasm(MuslInternalLibrary, MTLibrary):
   def get_default_variation(cls, **kwargs):
     return super().get_default_variation(
       is_mem_grow=settings.ALLOW_MEMORY_GROWTH,
-      is_pure=settings.PURE_WASI or settings.GROWABLE_ARRAYBUFFERS,
+      is_pure=settings.PURE_WASI or settings.GROWABLE_ARRAYBUFFERS == 2,
       nocatch=settings.DISABLE_EXCEPTION_CATCHING and not settings.WASM_EXCEPTIONS,
       **kwargs,
     )

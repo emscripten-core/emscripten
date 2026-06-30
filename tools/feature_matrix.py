@@ -137,8 +137,6 @@ min_browser_versions = {
   },
   # Growable SharedArrayBuffers improves memory growth feature in multithreaded
   # builds by avoiding need to poll resizes to ArrayBuffer views in Workers.
-  # This feature is not used anywhere else except the test harness to detect
-  # browser version.
   # https://caniuse.com/mdn-webassembly_api_memory_toresizablebuffer
   Feature.GROWABLE_ARRAYBUFFERS: {
     'chrome': 144,
@@ -281,7 +279,7 @@ def apply_min_browser_versions():
       enable_feature(Feature.WASM_LEGACY_EXCEPTIONS, 'Wasm Legacy exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=1)')
     else:
       enable_feature(Feature.WASM_EXCEPTIONS, 'Wasm exceptions (-fwasm-exceptions with -sWASM_LEGACY_EXCEPTIONS=0)')
-  if settings.GROWABLE_ARRAYBUFFERS:
+  if settings.GROWABLE_ARRAYBUFFERS == 2:
     enable_feature(Feature.GROWABLE_ARRAYBUFFERS, 'GrowableSharedArrayBuffer')
 
 
@@ -290,4 +288,5 @@ def auto_enable_features():
   # TODO(sbc): Find make a generic way to expose the feature matrix to JS
   # compiler rather then adding them all ad-hoc as internal settings
   default_setting('WASM_BIGINT', caniuse(Feature.JS_BIGINT_INTEGRATION))
-  default_setting('GROWABLE_ARRAYBUFFERS', caniuse(Feature.GROWABLE_ARRAYBUFFERS))
+  if caniuse(Feature.GROWABLE_ARRAYBUFFERS):
+    default_setting('GROWABLE_ARRAYBUFFERS', 2)
