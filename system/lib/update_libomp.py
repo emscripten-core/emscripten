@@ -99,8 +99,8 @@ def main():
     ],
     cwd=build_dir,
   )
-  subprocess.call(["cmake", "--build", "."], cwd=build_dir)
-  subprocess.call(["cmake", "--install", ".", "--destdir", "../install"], cwd=build_dir)
+  subprocess.run(["cmake", "--build", "."], cwd=build_dir)
+  subprocess.run(["cmake", "--install", ".", "--destdir", "../install"], cwd=build_dir)
 
   shutil.copy2(os.path.join(upstream_root, "LICENSE.TXT"), local_root)
 
