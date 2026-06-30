@@ -5620,12 +5620,11 @@ got: 10
     src = r"""
       #include <omp.h>
       int main(void) {
-        omp_get_max_threads();
+        assert(omp_get_max_threads() > 0);
         return 0;
       }
     """
-    self.cflags += ["-fopenmp=libomp"]
-    self.do_run(src, "")
+    self.do_run(src, "", cflags=["-fopenmp=libomp"])
 
   def test_fscanf(self):
     create_file('three_numbers.txt', '-1 0.1 -.1')
