@@ -1637,7 +1637,10 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       not settings.MAIN_MODULE and \
           settings.MINIFY_WASM_EXPORT_NAMES:
     settings.MINIFY_WASM_IMPORTS_AND_EXPORTS = 1
-    settings.MINIFY_WASM_IMPORTED_MODULES = 1
+    # Under WASM_ESM_INTEGRATION every wasm import is rewritten to come from the
+    # single support module (see create_esm_wrapper), so minifying the import
+    # module names buys nothing and would break that rewrite.
+    settings.MINIFY_WASM_IMPORTED_MODULES = not settings.WASM_ESM_INTEGRATION
 
   if settings.WASM_BIGINT:
     settings.LEGALIZE_JS_FFI = 0

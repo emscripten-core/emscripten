@@ -3058,10 +3058,13 @@ More info: https://emscripten.org
     'emitDCEGraph-sig': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-prefixing': (['emitDCEGraph', '--no-print'],),
     'emitDCEGraph-scopes': (['emitDCEGraph', '--no-print'],),
+    'emitDCEGraph-esm': (['emitDCEGraph', '--no-print', '--export-es6'],),
     'minimal-runtime-applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
     'applyDCEGraphRemovals': (['applyDCEGraphRemovals'],),
+    'applyDCEGraphRemovals-esm': (['applyDCEGraphRemovals', '--export-es6'],),
     'applyImportAndExportNameChanges': (['applyImportAndExportNameChanges'],),
     'applyImportAndExportNameChanges2': (['applyImportAndExportNameChanges'],),
+    'applyImportAndExportNameChanges-esm': (['applyImportAndExportNameChanges', '--export-es6'],),
     'minimal-runtime-emitDCEGraph': (['emitDCEGraph', '--no-print'],),
     'minimal-runtime-2-emitDCEGraph': (['emitDCEGraph', '--no-print'],),
     'standalone-emitDCEGraph': (['emitDCEGraph', '--no-print'],),
@@ -12312,6 +12315,29 @@ int main(int argc, char **argv) {
   return (x % (x - 20)) == 42;
 }''')
     self.do_runf('src.c', cflags=['-O3', '-sWASM=0'])
+
+  def test_metadce_esm_integration(self):
+    # Regression test for https://github.com/emscripten-core/emscripten/issues/27217.
+    # Under WASM_ESM_INTEGRATION the wasm<->JS boundary is expressed with native
+    # ES import/export syntax rather than the `wasmImports` object and
+    # `wasmExports['x']` member uses. metadce (which runs at -O2 and above) must
+    # understand that form rather than asserting that it cannot find the
+    # `wasmImports` assignment.
+    self.run_process([EMCC, test_file('hello_world.c'), '-O3',
+                      '-sWASM_ESM_INTEGRATION', '-sEXPORT_ES6', '-Wno-experimental',
+                      '-o', 'hello.mjs'])
+    support = read_file('hello.support.mjs')
+    # An unused wasm export (here the indirect function table) must be removed
+    # from both the wasm and the ES import that receives it, so the two module
+    # interfaces stay in sync.
+    self.assertNotContained('__indirect_function_table', support)
+    # The import module name is rewritten to the wasm module and is not minified
+    # (every import resolves through it), and the re-export of the user `main`
+    # export is preserved.
+    self.assertContained('from"./hello.wasm"', support)
+    self.assertContained('export{_main}', support)
+    if self.try_require_node_version(25, 0, 0):
+      self.assertContained('Hello, world!', self.run_js('hello.mjs'))
 
   @crossplatform
   def test_deterministic(self):

@@ -438,6 +438,25 @@ function getWasmImportsValue(node) {
   }
 }
 
+// Under WASM_ESM_INTEGRATION the wasm exports are received as a native ES
+// import from the wasm module itself:
+//   import { malloc as _malloc, memory } from './a.out.wasm';
+function isWasmExportsImport(node) {
+  return (
+    node.type === 'ImportDeclaration' &&
+    isLiteralString(node.source) &&
+    node.source.value.endsWith('.wasm')
+  );
+}
+
+// A sourceless `export { a as b, .. };` statement (not `export <decl>` and not
+// a re-export `export {..} from '..'`).
+function isExportSpecifierList(node) {
+  return (
+    node.type === 'ExportNamedDeclaration' && !node.declaration && !node.source
+  );
+}
+
 function isExportUse(node) {
   // Match usages of symbols on the `wasmExports` object. e.g:
   //   wasmExports['X']
@@ -494,6 +513,29 @@ function applyImportAndExportNameChanges(ast) {
       if (mapping[name]) {
         setLiteralValue(prop, mapping[name]);
       }
+    } else if (isWasmExportsImport(node)) {
+      // WASM_ESM_INTEGRATION: rename the wasm-facing name of each received
+      // export, e.g. `import { malloc as _malloc }` -> `import { a as _malloc }`.
+      // Replace the imported slot (rather than mutate it in place) since for an
+      // unaliased specifier acorn shares one node for both sides.
+      node.specifiers.forEach((spec) => {
+        const newName = mapping[spec.imported.name];
+        if (newName) {
+          spec.imported = makeIdentifier(newName);
+        }
+      });
+    } else if (isExportSpecifierList(node)) {
+      // WASM_ESM_INTEGRATION: rename the wasm-facing name of each JS function
+      // sent to wasm, e.g. `export { _fd_write as fd_write }` ->
+      // `export { _fd_write as a }`. Re-exports of wasm exports (`export {
+      // _main }`) carry a JS-local name that is never in the mapping, so they
+      // are left untouched.
+      node.specifiers.forEach((spec) => {
+        const newName = mapping[spec.exported.name];
+        if (newName) {
+          spec.exported = makeIdentifier(newName);
+        }
+      });
     }
   });
 }
@@ -607,6 +649,10 @@ function emitDCEGraph(ast) {
   const exportNameToGraphName = {}; // identical to wasmExports['..'] nameToGraphName
   let foundWasmImportsAssign = false;
   let foundMinimalRuntimeExports = false;
+  // Under WASM_ESM_INTEGRATION, JS names bound to wasm exports via an ES import
+  // from the wasm module. Lets us tell a re-export of a wasm export apart from a
+  // JS function that is itself exported to wasm (both are `export {..}`).
+  const wasmExportLocals = new Set();
 
   function saveAsmExport(name, asmName) {
     // the asmName is what the wasm provides directly; the outside JS
@@ -649,6 +695,49 @@ function emitDCEGraph(ast) {
         });
         foundWasmImportsAssign = true;
         emptyOut(node); // ignore this in the second pass; this does not root
+      } else if (isWasmExportsImport(node)) {
+        // WASM_ESM_INTEGRATION: wasm exports received as
+        //   import { malloc as _malloc, memory } from './a.out.wasm';
+        // Each binding is a wasm export, exactly like `var _x = wasmExports['x']`.
+        node.specifiers.forEach((spec) => {
+          const jsName = spec.local.name; // JS-side name
+          const asmName = spec.imported.name; // wasm-provided name
+          if (exportNameToGraphName.hasOwnProperty(asmName)) {
+            // Another local already binds this wasm export (e.g. both `memory`
+            // and `memory as wasmMemory`): point this local at the same node so
+            // a use of either roots the one underlying export.
+            nameToGraphName[jsName] = exportNameToGraphName[asmName];
+          } else {
+            saveAsmExport(jsName, asmName);
+          }
+          wasmExportLocals.add(jsName);
+        });
+        // This ES form stands in for the `wasmImports`/`wasmExports` idioms the
+        // non-ESM build emits, so it satisfies the sanity check below.
+        foundWasmImportsAssign = true;
+        // Drop from the second pass: the local bindings must not be seen as
+        // top-level uses (that would root every export and defeat DCE).
+        emptyOut(node);
+      } else if (isExportSpecifierList(node)) {
+        // WASM_ESM_INTEGRATION emits two sourceless `export {..}` forms:
+        //   (a) JS functions sent to wasm:  export { _fd_write as fd_write };
+        //   (b) re-exports of wasm exports: export { _main };
+        // (a) are the wasm imports; (b) are ordinary top-level uses that should
+        // root the underlying export (handled in the second pass), so only (a)
+        // is recorded and removed here.
+        let isImportEdge = false;
+        node.specifiers.forEach((spec) => {
+          if (wasmExportLocals.has(spec.local.name)) {
+            return; // (b) re-export of a wasm export
+          }
+          // (a) `export { jsName as nativeName }` - jsName implements the import.
+          imports.push([spec.local.name, spec.exported.name]);
+          isImportEdge = true;
+        });
+        if (isImportEdge) {
+          foundWasmImportsAssign = true;
+          emptyOut(node); // does not root; second pass ignores it
+        }
       } else if (node.type === 'AssignmentExpression') {
         const target = node.left;
         // Ignore assignment to the wasmExports object (as happens in
@@ -891,6 +980,26 @@ function applyDCEGraphRemovals(ast) {
         if (unusedImports.has(name)) {
           foundUnusedImports.add(name);
           return hasSideEffects(value);
+        }
+        return true;
+      });
+    } else if (isWasmExportsImport(node)) {
+      // WASM_ESM_INTEGRATION: drop unused wasm exports from
+      //   import { malloc as _malloc, .. } from './a.out.wasm';
+      node.specifiers = node.specifiers.filter((spec) => {
+        if (unusedExports.has(spec.imported.name)) {
+          foundUnusedExports.add(spec.imported.name);
+          return false;
+        }
+        return true;
+      });
+    } else if (isExportSpecifierList(node)) {
+      // WASM_ESM_INTEGRATION: drop unused wasm imports from
+      //   export { _fd_write as fd_write, .. };
+      node.specifiers = node.specifiers.filter((spec) => {
+        if (unusedImports.has(spec.exported.name)) {
+          foundUnusedImports.add(spec.exported.name);
+          return false;
         }
         return true;
       });
