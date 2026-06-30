@@ -118,8 +118,9 @@ mypy_path = "third_party/,third_party/ply,third_party/websockify"
 files = [ "." ]
 exclude = '''
 (?x)(
-cache |
-third_party |
+out/ |
+cache/ |
+third_party/ |
 conf\.py |
 emrun\.py |
 site/source/_themes/ |
