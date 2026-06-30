@@ -77,6 +77,12 @@ def set_config_from_tool_location(config_key, tool_binary, f):
     exit_with_error('%s is set to empty value in %s', config_key, EM_CONFIG)
 
 
+def expandvars(value):
+  if type(value) == list:
+    return [expandvars(v) for v in value]
+  return os.path.expandvars(value)
+
+
 def parse_config_file():
   """Parse the emscripten config file using python's exec.
 
@@ -84,6 +90,7 @@ def parse_config_file():
   """
   config = {'__file__': EM_CONFIG}
   config_text = utils.read_file(EM_CONFIG)
+  os.environ['EM_CONFIG_DIR'] = os.path.dirname(EM_CONFIG)
   try:
     exec(config_text, config)
   except Exception as e:
@@ -132,7 +139,7 @@ def parse_config_file():
           exit_with_error(f'environment variable {env_var} must be an absolute path: {env_value}')
       globals()[key] = env_value
     elif key in config:
-      globals()[key] = config[key]
+      globals()[key] = expandvars(config[key])
 
 
 def read_config():
