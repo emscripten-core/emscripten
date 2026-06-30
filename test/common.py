@@ -765,7 +765,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       if node_version < emcc_min_node_version:
         self.cflags.append('-sMIN_NODE_VERSION=%02d%02d%02d' % node_version)
 
-    self.v8_args = ['--wasm-staging']
+    self.v8_args = ['--wasm-staging', '--enable-os-system']
     self.env = {}
     self.temp_files_before_run = []
     self.required_engine = None
