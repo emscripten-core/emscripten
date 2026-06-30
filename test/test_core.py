@@ -400,6 +400,19 @@ def no_wasmfs(note):
   return decorator
 
 
+def needs_epoll(func):
+  # epoll is implemented in the JS (non-WASMFS) syscall layer and needs the FS.
+  assert callable(func)
+
+  @wraps(func)
+  def decorated(self, *args, **kwargs):
+    if self.get_setting('WASMFS'):
+      self.skipTest('epoll is implemented in the JS (non-WASMFS) syscall layer')
+    self.set_setting('FORCE_FILESYSTEM')
+    return func(self, *args, **kwargs)
+  return decorated
+
+
 def make_no_decorator_for_setting(name):
   def outer_decorator(note):
     assert not callable(note)
@@ -5783,6 +5796,75 @@ got: 10
       self.set_setting('FORCE_FILESYSTEM')
     self.do_core_test('test_poll.c')
 
+  @needs_epoll
+  def test_epoll(self):
+    self.do_runf('core/test_epoll.c', 'EPOLL PASS')
+
+  @needs_epoll
+  def test_epoll_advanced(self):
+    self.do_runf('core/test_epoll_advanced.c', 'EPOLL ADVANCED PASS')
+
+  @needs_epoll
+  def test_epoll_fairness(self):
+    # More ready fds than maxevents: successive waits rotate (round-robin) so no
+    # fd starves.
+    self.do_runf('core/test_epoll_fairness.c', 'done\n')
+
+  @needs_epoll
+  @requires_node
+  def test_epoll_noderawfs(self):
+    # Regular-file streams under NODERAWFS carry no stream_ops; the readiness
+    # layer must not dereference a missing poll handler (poll/epoll on a file).
+    self.do_runf('core/test_epoll_noderawfs.c', 'EPOLL NODERAWFS PASS', cflags=['-sNODERAWFS'])
+
+  @needs_epoll
+  def test_epoll_callback(self):
+    # emscripten_epoll_set_callback delivers an epoll set's readiness by a
+    # persistent callback with no blocking and no ASYNCIFY/JSPI.
+    self.do_runf('core/test_epoll_callback.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
+
+  @needs_epoll
+  def test_epoll_callback_overflow(self):
+    # maxevents < ready count: the callback re-triggers to drain the remainder
+    # across ticks (no app loop to re-call it).
+    self.do_runf('core/test_epoll_callback_overflow.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
+
+  @needs_epoll
+  def test_epoll_callback_replace(self):
+    # A second register replaces the callback (no stacking); a NULL callback
+    # unregisters regardless of maxevents.
+    self.do_runf('core/test_epoll_callback_replace.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
+
+  @needs_epoll
+  def test_epoll_callback_close(self):
+    # Closing the last watched fd makes the epoll terminal, so the callback stops
+    # keeping the runtime alive and the process exits (no explicit unregister).
+    self.do_runf('core/test_epoll_callback_close.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
+
+  @needs_epoll
+  def test_epoll_callback_nested(self):
+    # A callback on an outer epoll fires when a leaf edge propagates through an
+    # inner (nested) epoll.
+    self.do_runf('core/test_epoll_callback_nested.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
+
+  @needs_epoll
+  def test_epoll_callback_nested_close(self):
+    # Closing the inner epoll wakes the outer to drop its stale registration, so
+    # an outer callback watching only the inner stops holding the runtime.
+    self.do_runf('core/test_epoll_callback_nested_close.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
+
+  @needs_epoll
+  def test_epoll_callback_edge(self):
+    # EPOLLET on the callback path: fires once per edge, stays silent while
+    # continuously readable, re-fires only on a fresh edge.
+    self.do_runf('core/test_epoll_callback_edge.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
+
+  @needs_epoll
+  def test_epoll_callback_level(self):
+    # A structurally-always-ready level fd (EPOLLOUT on a writable end) re-fires
+    # the callback every tick: documents the spin contract (use EPOLLET/unregister).
+    self.do_runf('core/test_epoll_callback_level.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
+
   @no_wasmfs('st.f_ffree > st.f_files, same issue than in wasmfs.test_fs_nodefs_statvfs. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_statvfs(self):
     self.do_core_test('test_statvfs.c')
@@ -9736,6 +9818,22 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
       self.skipTest('test requires setTimeout which is not supported under v8')
     self.do_runf('core/test_poll_blocking.c', cflags=['-pthread', '-sPROXY_TO_PTHREAD=1', '-sEXIT_RUNTIME=1'])
+
+  @with_asyncify_and_jspi
+  @needs_epoll
+  def test_epoll_blocking_asyncify(self):
+    if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
+      self.skipTest('test requires setTimeout which is not supported under v8')
+    self.do_runf('core/test_epoll_blocking_asyncify.c', 'done\n')
+
+  @with_asyncify_and_jspi
+  @needs_epoll
+  def test_epoll_wait_and_callback(self):
+    # A suspended blocking epoll_wait and a persistent callback on one epoll
+    # share a single ready list: they take disjoint slices, never the same edge.
+    if self.get_setting('JSPI') and engine_is_v8(self.get_current_js_engine()):
+      self.skipTest('test requires setTimeout which is not supported under v8')
+    self.do_runf('core/test_epoll_wait_and_callback.c', 'done\n', cflags=['-sEXIT_RUNTIME'])
 
   @parameterized({
     '': ([],),
