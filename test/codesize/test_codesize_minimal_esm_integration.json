@@ -1,0 +1,22 @@
+{
+  "a.out.mjs": 683,
+  "a.out.mjs.gz": 410,
+  "a.out.support.mjs": 3343,
+  "a.out.support.mjs.gz": 1350,
+  "a.out.nodebug.wasm": 75,
+  "a.out.nodebug.wasm.gz": 87,
+  "total": 4101,
+  "total_gz": 1847,
+  "sent": [],
+  "imports": [],
+  "exports": [
+    "a (memory)",
+    "b (__wasm_call_ctors)",
+    "c (add)",
+    "d (global_val)"
+  ],
+  "funcs": [
+    "$__wasm_call_ctors",
+    "$add"
+  ]
+}

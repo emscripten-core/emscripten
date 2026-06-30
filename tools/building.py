@@ -883,7 +883,11 @@ def metadce(js_file, wasm_file, debug_info, last):
         unused_imports.append(native_name)
       elif name.startswith('emcc$export$') and settings.DECLARE_ASM_MODULE_EXPORTS:
         native_name = export_name_map[name]
-        if shared.is_user_export(native_name):
+        # Under WASM_ESM_INTEGRATION the JS receives every wasm export as an ES
+        # import, so any export binaryen drops (including internal ones like the
+        # indirect function table) must also be dropped from the JS import to
+        # keep the two module interfaces in sync.
+        if shared.is_user_export(native_name) or settings.WASM_ESM_INTEGRATION:
           unused_exports.append(native_name)
   if not unused_exports and not unused_imports:
     # nothing found to be unused, so we have nothing to remove
