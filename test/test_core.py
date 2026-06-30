@@ -6766,8 +6766,7 @@ void* operator new(size_t size) {
   @wasm_simd
   @no_big_endian('SIMD support is currently not compatible with big endian')
   def test_fma(self):
-    src = test_file('sse/test_fma.cpp')
-    self.do_runf(src, 'All FMA tests PASSED',
+    self.do_runf('sse/test_fma.cpp', 'All FMA tests PASSED',
                  cflags=['-mavx', '-mfma', '-sSTACK_SIZE=1MB'])
 
   # Exhaustive FMA test with relaxed SIMD — compared against native x86.

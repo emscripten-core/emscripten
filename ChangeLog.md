@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 6.0.2 (in development)
 ----------------------
+- Added support for compiling FMA intrinsics. All 32 FMA intrinsics are
+  supported, with 256-bit variants emulated via two 128-bit operations. Pass
+  ``-msimd128 -mfma`` to enable. With ``-mrelaxed-simd -mfma``, Wasm relaxed
+  SIMD FMA is used. (#27183)
 - New `-sNODERAWSOCKETS` setting that backs the POSIX sockets API with real TCP
   (`node:net`) and UDP (`node:dgram`) sockets on Node.js, with no `ws`, proxy
   process, or pthreads required. Supports incoming and outgoing TCP, UDP, IPv6,
@@ -49,10 +53,6 @@ See docs/process.md for more on how version tagging works.
 
 6.0.1 - 06/22/26
 ----------------
-- Added support for compiling FMA intrinsics. All 32 FMA intrinsics are
-  supported, with 256-bit variants emulated via two 128-bit operations. Pass
-  ``-msimd128 -mfma`` to enable. With ``-mrelaxed-simd -mfma``, Wasm relaxed
-  SIMD FMA is used.
 - The ability to redirect JS compiler stderr using `EMCC_STDERR_FILE` was
   removed.  These days you can use `EMCC_DEBUG` and/or `EMCC_DEBUG_SAVE` to
   preserve all the intermediate JS compiler files. (#27101)
