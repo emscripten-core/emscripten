@@ -2768,6 +2768,7 @@ More info: https://emscripten.org
 ''', stdout)
 
   @requires_network
+  @also_with_pthreads
   def test_port_contrib_lua(self):
     self.do_runf('other/test_port_contrib_lua.c', 'hello world\nHELLO WORLD\nsqrt(16)=4\n', cflags=['--use-port=contrib.lua'])
 
