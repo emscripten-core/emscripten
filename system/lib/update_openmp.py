@@ -13,10 +13,13 @@ import subprocess
 script_dir = os.path.abspath(os.path.dirname(__file__))
 emscripten_root = os.path.dirname(os.path.dirname(script_dir))
 default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project')
-local_root = os.path.join(script_dir, 'libomp')
+
+# system/lib/llvm-openmp (to be updated)
+local_root = os.path.join(script_dir, 'llvm-openmp')
 local_src = os.path.join(local_root, 'src')
 local_inc = os.path.join(local_root, 'include')
 
+# Files to ignore during copy_tree
 excludes = [
   'doc',
   'build',
@@ -54,35 +57,38 @@ def main():
     llvm_dir = os.path.join(os.path.abspath(sys.argv[1]))
   else:
     llvm_dir = default_llvm_dir
+
+  # Output directory for build and install
+  output_dir = os.path.join(emscripten_root, 'out')
+  build_dir = os.path.join(output_dir, 'build_openmp')
+  install_dir = os.path.join(output_dir, 'install_openmp')
+
+  # LLVM/OpenMP folder containing latest version
   upstream_root = os.path.join(llvm_dir, 'openmp/')
   upstream_runtime_root = os.path.join(upstream_root, 'runtime/src')
-  upstream_inc = os.path.join(upstream_root, 'install/usr/include')
-  upstream_build_src = os.path.join(upstream_root, 'build/runtime/src')
-  print(upstream_inc)
   assert os.path.exists(upstream_runtime_root)
-  assert os.path.exists(upstream_inc)
-  assert os.path.exists(upstream_build_src)
+
+  # Build and install output paths
+  upstream_inc = os.path.join(install_dir, 'include') # contains omp.h and ompx.h
+  upstream_build_src = os.path.join(build_dir, 'runtime/src') # contains various *.a and generated *.h
 
   # Remove old version
-  # clean_dir(local_src)
   clean_dir(local_root)
-
   os.mkdir(local_src)
   os.mkdir(local_inc)
 
+  # Update source
   copy_tree(upstream_runtime_root, local_src)
-  copy_tree(upstream_inc, local_inc)
-
-  build_dir = os.path.join(upstream_root, 'build')
-  if not os.path.exists(build_dir):
-    os.mkdir(build_dir)
 
   # Generates header files for OpenMP library build
   subprocess.run(
     [
       'emcmake',
       'cmake',
-      '..',
+      '-S',
+      f'{upstream_root}',
+      '-B',
+      f'{build_dir}',
       '-G',
       'Ninja',
       '-DOPENMP_STANDALONE_BUILD=ON',
@@ -95,17 +101,21 @@ def main():
       '-DLIBOMP_ENABLE_SHARED=OFF',
       '-DLIBOMP_ARCH=wasm32',
       '-DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF',
-      '-DCMAKE_INSTALL_PREFIX=/',
-    ],
-    cwd=build_dir,
+      f'-DCMAKE_INSTALL_PREFIX={install_dir}',
+    ]
   )
   subprocess.run(['cmake', '--build', '.'], cwd=build_dir)
-  subprocess.run(['cmake', '--install', '.', '--destdir', '../install'], cwd=build_dir)
+  subprocess.run(['cmake', '--install', '.'], cwd=build_dir)
 
+  # Update includes
+  assert os.path.exists(upstream_inc)
+  copy_tree(upstream_inc, local_inc)
+
+  # Update license file
   shutil.copy2(os.path.join(upstream_root, 'LICENSE.TXT'), local_root)
 
+  # Update generated header files
   built_files = ['omp.h', 'kmp_config.h', 'kmp_i18n_id.inc',  'kmp_i18n_default.inc']
-
   for file in built_files:
     shutil.copy2(os.path.join(upstream_build_src, file), local_src)
 
