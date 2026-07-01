@@ -603,7 +603,7 @@ var SyscallsLibrary = {
   __syscall_poll__async: 'auto',
   __syscall_poll__deps: ['$doPollSync',
 #if PTHREADS || ASYNCIFY
-    '$readPollfds', '$writePollfds', '$pollWait',
+    '$doPollAsync',
 #endif
   ],
   __syscall_poll: (fds, nfds, timeout) => {
@@ -614,19 +614,14 @@ var SyscallsLibrary = {
     const isAsyncContext = true;
 #endif
     // When proxied from a worker (PTHREADS) or able to suspend (ASYNCIFY/JSPI),
-    // block on the wait-queue: read the interests out of memory, wait, then
-    // write revents back into the (still-live) pollfd array and resolve. This
-    // must run for every timeout (including zero): a proxied syscall's return is
-    // awaited by the caller thread, so it has to be a Promise even for a probe.
+    // block on the wait-queue. This must run for every timeout (including zero):
+    // a proxied syscall's return is awaited by the caller thread, so it has to
+    // be a Promise even for a probe.
     if (isAsyncContext) {
 #if RUNTIME_DEBUG
       dbg('async poll start');
 #endif
-      var pfds = readPollfds(fds, nfds);
-      return new Promise((resolve) => pollWait(pfds, timeout, (count) => {
-        writePollfds(fds, pfds);
-        resolve(count);
-      }));
+      return doPollAsync(fds, nfds, timeout);
     }
 #endif
     var count = doPollSync(fds, nfds);
@@ -641,8 +636,7 @@ var SyscallsLibrary = {
   $doPollSync__deps: ['$pollOne'],
   $doPollSync: (fds, nfds) => {
     var count = 0;
-    for (var i = 0; i < nfds; i++) {
-      var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
+    for (var i = 0, pollfd = fds; i < nfds; i++, pollfd += {{{ C_STRUCTS.pollfd.__size__ }}}) {
       var revents = pollOne(
         {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}},
         {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}});
@@ -652,59 +646,34 @@ var SyscallsLibrary = {
     return count;
   },
 #if PTHREADS || ASYNCIFY
-  // Read a pollfd array into JS interests (fd + events); the source buffer need
-  // not persist afterwards.
-  $readPollfds__internal: true,
-  $readPollfds: (fds, nfds) => {
-    var pfds = [];
-    for (var i = 0; i < nfds; i++) {
-      var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
-      pfds.push({
-        fd: {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}},
-        events: {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}},
-        revents: 0,
-      });
-    }
-    return pfds;
-  },
-  // Write JS interests (fd + events + revents) into a pollfd array.
-  $writePollfds__internal: true,
-  $writePollfds: (fds, pfds) => {
-    for (var i = 0; i < pfds.length; i++) {
-      var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
-      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.fd, 'pfds[i].fd', 'i32') }}};
-      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.events, 'pfds[i].events', 'i16') }}};
-      {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'pfds[i].revents', 'i16') }}};
-    }
-  },
-  // Wait for readiness across a set of interests {fd, events, revents}, calling
-  // complete(count) once: now if any are ready (or timeout 0), else register one
-  // waiter per fd on its node wait-queue and re-derive the whole set on any wake
-  // (the wake flags are just the trigger), completing then or, for a positive
-  // `timeout`, once it elapses. A negative `timeout` waits forever.
-  $pollWait__internal: true,
-  $pollWait__deps: ['$FS', '$pollOne'],
-  $pollWait: (pfds, timeout, complete) => {
+  // Async poll(): derive each fd in place (like doPollSync), but if nothing is
+  // ready and `timeout` is non-zero, register one waiter per fd on its node
+  // wait-queue and re-derive the whole set on any wake (the wake flags are just
+  // the trigger), resolving then or, for a positive `timeout`, once it elapses.
+  // A negative `timeout` waits forever. Returns a Promise of the ready count.
+  $doPollAsync__internal: true,
+  $doPollAsync__deps: ['$FS', '$pollOne'],
+  $doPollAsync: (fds, nfds, timeout) => new Promise((resolve) => {
     var regs = [];
     var timer;
     var done = false;
     function derive() {
       var count = 0;
-      for (var p of pfds) {
-        p.revents = pollOne(p.fd, p.events);
-        if (p.revents) count++;
+      for (var i = 0, pollfd = fds; i < nfds; i++, pollfd += {{{ C_STRUCTS.pollfd.__size__ }}}) {
+        var revents = pollOne(
+          {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}},
+          {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}});
+        if (revents) count++;
+        {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'revents', 'i16') }}};
       }
       return count;
     }
-    function teardown() {
+    function finish(count) {
+      if (done) return;
       done = true;
       for (var r of regs) r.listeners.delete(r.entry);
       if (timer) clearTimeout(timer);
-    }
-    function finish(count) {
-      if (done) return;
-      teardown();
-      complete(count);
+      resolve(count);
     }
     var count = derive();
     if (count || !timeout) {
@@ -715,13 +684,13 @@ var SyscallsLibrary = {
         var c = derive();
         if (c) finish(c);
       }
-      for (var p of pfds) {
-        var stream = FS.getStream(p.fd);
+      for (var i = 0, pollfd = fds; i < nfds; i++, pollfd += {{{ C_STRUCTS.pollfd.__size__ }}}) {
+        var stream = FS.getStream({{{ makeGetValue('pollfd', C_STRUCTS.pollfd.fd, 'i32') }}});
         if (stream) regs.push(stream.node.addListener(recheck));
       }
       if (timeout > 0) timer = setTimeout(() => finish(0), timeout);
     }
-  },
+  }),
 #endif
   // libc routes zero-timeout poll() calls here: the same synchronous
   // readiness derivation as __syscall_poll, but as a plain import that never
