@@ -644,7 +644,7 @@ var SyscallsLibrary = {
         dbg(`async poll notify: stream=${stream}`);
 #endif
         var events = {{{ makeGetValue('pollfd', C_STRUCTS.pollfd.events, 'i16') }}};
-        flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
+        flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLNVAL }}};
 #if ASSERTIONS
         assert(flags)
 #endif
@@ -699,7 +699,7 @@ var SyscallsLibrary = {
           flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
         }
       }
-      flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
+      flags &= events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLNVAL }}};
       if (flags) count++;
       {{{ makeSetValue('pollfd', C_STRUCTS.pollfd.revents, 'flags', 'i16') }}};
     }

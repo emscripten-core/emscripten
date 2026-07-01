@@ -1752,6 +1752,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('wasm2js does not support WASM_BIGINT')
     if settings.CAN_ADDRESS_2GB:
       exit_with_error('wasm2js does not support >2gb address space')
+    # WASM2JS does not support GROWABLE_ARRAYBUFFERS at all
+    default_setting('GROWABLE_ARRAYBUFFERS', 0)
 
   if settings.NODE_CODE_CACHING:
     if settings.WASM_ASYNC_COMPILATION:

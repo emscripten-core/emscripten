@@ -15652,3 +15652,50 @@ console.log('OK');'''
        '-sCROSS_ORIGIN_STORAGE',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=https://example.com/path'],
       'is not a valid HTTPS origin')
+
+  @disabled('https://github.com/emscripten-core/emscripten/issues/27189')
+  @requires_dev_dependency('rollup')
+  @requires_dev_dependency('prettier')
+  def test_dead_code_esm(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-O2', '-o', 'hello.mjs'])
+    rollup_cmd = shared.get_npm_cmd('rollup') + [
+        'hello.mjs', '--format', 'es', '--file', 'hello.rolled.mjs',
+        '--external', 'node:module',
+    ]
+    self.run_process(rollup_cmd)
+    prettier_cmd = shared.get_npm_cmd('prettier')
+    self.run_process(prettier_cmd + ['hello.mjs', '--write'])
+    self.run_process(prettier_cmd + ['hello.rolled.mjs', '--write'])
+    original = read_file('hello.mjs')
+    rolled = read_file('hello.rolled.mjs')
+
+    # We need to normalize the JS before diffing because Rollup's code generator
+    # introduces structural and syntax changes that Prettier (which only formats
+    # without changing the AST) cannot resolve. Specifically:
+    # 1. Export syntax: Rollup normalizes `export default Module;` to `export { Module as default };`.
+    # 2. Empty blocks: Rollup simplifies empty blocks like `else {}` to `else;`.
+    # 3. Comments: Rollup strips comments or moves them around. We strip them completely to focus
+    #    strictly on executable logic.
+    def normalize(code):
+      # Strip comments to avoid diffs from comment displacement/removal
+      code = re.sub(r'//.*', '', code)
+      code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
+      # Normalize export syntax to a standard form
+      code = re.sub(r'export\s+default\s+(\w+);', r'export { \1 as default };', code)
+      code = re.sub(r'export\s*\{\s*(\w+)\s*as\s*default\s*\}\s*;', r'export {\1 as default};', code)
+      # Normalize empty else blocks
+      code = re.sub(r'else\s*\{\s*\}', 'else;', code)
+
+      # Normalize whitespace and empty lines
+      lines = [line.rstrip() for line in code.splitlines() if line.strip()]
+      return '\n'.join(lines)
+
+    normalized_original = normalize(original)
+    normalized_rolled = normalize(rolled)
+
+    # Write both normalized files to CWD so they can be inspected manually on failure
+    write_file('hello.normalized.mjs', normalized_original)
+    write_file('hello.rolled.normalized.mjs', normalized_rolled)
+
+    self.assertTextDataIdentical(normalized_original, normalized_rolled,
+                                 fromfile='hello.normalized.mjs', tofile='hello.rolled.normalized.mjs')
