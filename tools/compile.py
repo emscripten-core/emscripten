@@ -131,6 +131,9 @@ def get_cflags(user_args):
   if user_args_contains_any(SIMD_INTEL_FEATURE_TOWER[8:]):
     cflags += ['-D__AVX2__=1']
 
+  if user_args_contains_any(SIMD_INTEL_FEATURE_TOWER[9:]):
+    cflags += ['-D__FMA__=1']
+
   if user_args_contains_any(SIMD_NEON_FLAGS):
     cflags += ['-D__ARM_NEON__=1']
 

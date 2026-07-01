@@ -20,6 +20,10 @@ See docs/process.md for more on how version tagging works.
 
 6.0.2 (in development)
 ----------------------
+- Added support for compiling FMA intrinsics. All 32 FMA intrinsics are
+  supported, with 256-bit variants emulated via two 128-bit operations. Pass
+  ``-msimd128 -mfma`` to enable. With ``-mrelaxed-simd -mfma``, Wasm relaxed
+  SIMD FMA is used. (#27183)
 - The `GROWABLE_ARRAYBUFFERS` setting now defaults to 1, which means it will be
   used when available. Note that this only affects programs that are built with
   `ALLOW_MEMORY_GROWTH`, which is not enabled by default. (#27212)

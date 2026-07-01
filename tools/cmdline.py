@@ -26,7 +26,7 @@ from tools.settings import MEM_SIZE_SETTINGS, settings, user_settings
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import exit_with_error, read_file
 
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2', '-mfma']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 CLANG_FLAGS_WITH_ARGS = {
     '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
