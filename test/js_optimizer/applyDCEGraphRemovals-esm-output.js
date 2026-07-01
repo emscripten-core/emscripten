@@ -9,3 +9,7 @@ import { memory, main as _main, used_export as _used_export, memory as wasmMemor
 export { fd_write_impl as fd_write, fd_close_impl as fd_close };
 
 export { _main };
+
+var HEAP32;
+
+export { HEAP32 };

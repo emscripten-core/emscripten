@@ -38,6 +38,12 @@ export {
 // root the underlying `main` export, not be treated as a wasm import.
 export { _main };
 
+// MODULARIZE=instance runtime exports. These are plain JS bindings, not wasm
+// import edges, and must be left untouched (bare `export {..}` form).
+var HEAP32;
+var baz = () => {};
+export { HEAP32, baz };
+
 // Top-level uses: root the memory export (via the alias) and one wasm export.
 wasmMemory.buffer;
 _used_export();

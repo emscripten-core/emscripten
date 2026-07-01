@@ -73,8 +73,8 @@ See docs/process.md for more on how version tagging works.
   - INITIAL_MEMORY
   - wasmMemory
   - wasmBinary
-   Anybody using these will see a clear error in their debug builds signaling
-   that they now need to be explicitly added to `-sINCOMING_MODULE_JS_API`.
+  Anybody using these will see a clear error in their debug builds signaling
+  that they now need to be explicitly added to `-sINCOMING_MODULE_JS_API`.
 - Fixed `-sWASM_ESM_INTEGRATION` builds at `-O2` and above, which previously
   failed in the JS optimizer's metadce (dead code elimination) pass. metadce now
   understands the native ES import/export wasm boundary that this mode emits.

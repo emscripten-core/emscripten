@@ -719,22 +719,22 @@ function emitDCEGraph(ast) {
         // top-level uses (that would root every export and defeat DCE).
         emptyOut(node);
       } else if (isExportSpecifierList(node)) {
-        // WASM_ESM_INTEGRATION emits two sourceless `export {..}` forms:
+        // Sourceless `export {..}` statements come in three forms:
         //   (a) JS functions sent to wasm:  export { _fd_write as fd_write };
         //   (b) re-exports of wasm exports: export { _main };
-        // (a) are the wasm imports; (b) are ordinary top-level uses that should
-        // root the underlying export (handled in the second pass), so only (a)
-        // is recorded and removed here.
-        let isImportEdge = false;
-        node.specifiers.forEach((spec) => {
-          if (wasmExportLocals.has(spec.local.name)) {
-            return; // (b) re-export of a wasm export
-          }
+        //   (c) runtime/library exports:    export { HEAP32, baz };
+        // Only (a) are wasm import edges (recorded and removed here). (b) and
+        // (c) are ordinary top-level uses left in place to root in the second
+        // pass. (a) is the only form written with an alias (`x as y`), which
+        // acorn represents with distinct local/exported nodes; bare specifiers
+        // reuse a single node for both sides.
+        const importEdges = node.specifiers.filter(
+          (spec) =>
+            spec.local !== spec.exported && !wasmExportLocals.has(spec.local.name),
+        );
+        if (importEdges.length) {
           // (a) `export { jsName as nativeName }` - jsName implements the import.
-          imports.push([spec.local.name, spec.exported.name]);
-          isImportEdge = true;
-        });
-        if (isImportEdge) {
+          importEdges.forEach((spec) => imports.push([spec.local.name, spec.exported.name]));
           foundWasmImportsAssign = true;
           emptyOut(node); // does not root; second pass ignores it
         }

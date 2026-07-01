@@ -23,4 +23,8 @@ export {
 // Re-export of a wasm export: the local name (_main) is never in the mapping.
 export { _main };
 
+// MODULARIZE=instance runtime export (bare form): never in the mapping.
+var HEAP32;
+export { HEAP32 };
+
 // EXTRA_INFO: { "mapping": { "main": "b", "malloc": "c", "fd_write": "d", "fd_close": "e" } }

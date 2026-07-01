@@ -27,4 +27,8 @@ export {
 
 export { _main };
 
+// MODULARIZE=instance runtime exports (bare form) must be left untouched.
+var HEAP32;
+export { HEAP32 };
+
 // EXTRA_INFO: { "unusedImports": ["unused_import"], "unusedExports": ["unused_export", "__indirect_function_table"] }
