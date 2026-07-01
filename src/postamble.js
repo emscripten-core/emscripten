@@ -238,7 +238,14 @@ function checkUnflushedContent() {
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
+#if WASM_ESM_INTEGRATION
+// Provide the aggregate exports object for code that reaches the wasm exports by
+// name (e.g. wasm-bindgen's glue) via a namespace import. Emscripten's own named
+// imports are unaffected and remain tree-shakable.
+import * as wasmExports from './{{{ WASM_BINARY_FILE }}}';
+#else
 var wasmExports;
+#endif
 #if SPLIT_MODULE
 var wasmRawExports;
 #endif
