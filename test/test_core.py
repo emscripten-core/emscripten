@@ -1770,8 +1770,12 @@ int main() {
         });
 
         int main(int argc, char **argv) {
-          Classey *p = argc == 100 ? new D1() : (Classey*)%s;
-
+          // Instantiate D1 and D2 in theoretical code paths that are never
+          // reached. We need to do this so that whole-program-devirtualization
+          // does not simplify this too much and avoid the crash.
+          Classey *p = argc == 100 ? (Classey*)new D1()
+                     : argc == 101 ? (Classey*)new D2()
+                                   : (Classey*)%s;
           p->doIt();
           delete p;
 
