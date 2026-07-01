@@ -18,9 +18,14 @@
 
   // Note: We use a typeof check here instead of optional chaining using
   // globalThis because older browsers might not have globalThis defined.
-  var currentNodeVersion = typeof process !== 'undefined' && process.versions?.node ? humanReadableVersionToPacked(process.versions.node) : TARGET_NOT_SUPPORTED;
-  if (currentNodeVersion < 180300) {
-    throw new Error(`This emscripten-generated code requires node v${ packedVersionToHumanReadable(180300) } (detected v${packedVersionToHumanReadable(currentNodeVersion)})`);
+
+  // We skip the node version checking when running on Bun/Deno since the node
+  // version they report is not completely.
+  if (typeof process !== 'undefined' && !process.versions?.bun && typeof Deno == "undefined") {
+    var currentNodeVersion = process.versions?.node ? humanReadableVersionToPacked(process.versions.node) : TARGET_NOT_SUPPORTED;
+    if (currentNodeVersion < 180300) {
+      throw new Error(`This emscripten-generated code requires node v${ packedVersionToHumanReadable(180300) } (detected v${packedVersionToHumanReadable(currentNodeVersion)})`);
+    }
   }
 
   var userAgent = typeof navigator !== 'undefined' && navigator.userAgent;

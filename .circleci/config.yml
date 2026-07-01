@@ -1264,6 +1264,7 @@ jobs:
       EMTEST_SKIP_WASM64: "1"
       EMTEST_SKIP_SCONS: "1"
       EMTEST_SKIP_RUST: "1"
+      EMTEST_SKIP_NODE_25: "1"
       # Some native clang tests assume x86 clang (e.g. -sse2)
       EMTEST_LACKS_NATIVE_CLANG: "1"
       EMCC_SKIP_SANITY_CHECK: "1"
