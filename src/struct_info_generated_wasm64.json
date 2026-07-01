@@ -352,6 +352,7 @@
         "POLLIN": 1,
         "POLLNVAL": 32,
         "POLLOUT": 4,
+        "POLLRDHUP": 8192,
         "POLLRDNORM": 64,
         "POLLWRNORM": 256,
         "PROT_WRITE": 2,
