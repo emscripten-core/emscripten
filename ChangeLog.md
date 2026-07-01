@@ -60,7 +60,8 @@ See docs/process.md for more on how version tagging works.
   that they now need to be explicitly added to `-sINCOMING_MODULE_JS_API`.
 - Use `-fwhole-program-vtables` with clang when possible, automatically (in
   `-flto` builds without dynamic linking). This should allow better
-  devirtualization (but may in theory uncover LLVM LTO bugs). (#21825)
+  devirtualization (but may in theory uncover LLVM LTO bugs). This only runs in
+  full LTO, not thin (`-flto=thin`). (#21825)
 
 6.0.1 - 06/22/26
 ----------------
