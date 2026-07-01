@@ -12,19 +12,19 @@ import subprocess
 
 script_dir = os.path.abspath(os.path.dirname(__file__))
 emscripten_root = os.path.dirname(os.path.dirname(script_dir))
-default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), "llvm-project")
-local_root = os.path.join(script_dir, "libomp")
-local_src = os.path.join(local_root, "src")
-local_inc = os.path.join(local_root, "include")
+default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project')
+local_root = os.path.join(script_dir, 'libomp')
+local_src = os.path.join(local_root, 'src')
+local_inc = os.path.join(local_root, 'include')
 
 excludes = [
-  "doc",
-  "build",
-  "tests",
-  "CMakeFiles",
-  "libgomp.a",
-  "libiomp5.a",
-  "libomp.a",
+  'doc',
+  'build',
+  'tests',
+  'CMakeFiles',
+  'libgomp.a',
+  'libiomp5.a',
+  'libomp.a',
 ]
 
 
@@ -54,10 +54,10 @@ def main():
     llvm_dir = os.path.join(os.path.abspath(sys.argv[1]))
   else:
     llvm_dir = default_llvm_dir
-  upstream_root = os.path.join(llvm_dir, "openmp/")
-  upstream_runtime_root = os.path.join(upstream_root, "runtime/src")
-  upstream_inc = os.path.join(upstream_root, "install/usr/include")
-  upstream_build_src = os.path.join(upstream_root, "build/runtime/src")
+  upstream_root = os.path.join(llvm_dir, 'openmp/')
+  upstream_runtime_root = os.path.join(upstream_root, 'runtime/src')
+  upstream_inc = os.path.join(upstream_root, 'install/usr/include')
+  upstream_build_src = os.path.join(upstream_root, 'build/runtime/src')
   print(upstream_inc)
   assert os.path.exists(upstream_runtime_root)
   assert os.path.exists(upstream_inc)
@@ -73,45 +73,42 @@ def main():
   copy_tree(upstream_runtime_root, local_src)
   copy_tree(upstream_inc, local_inc)
 
-  build_dir = os.path.join(upstream_root, "build")
+  build_dir = os.path.join(upstream_root, 'build')
   if not os.path.exists(build_dir):
     os.mkdir(build_dir)
 
   # Generates header files for OpenMP library build
   subprocess.run(
     [
-      "emcmake",
-      "cmake",
-      "..",
-      "-G",
-      "Ninja",
-      "-DOPENMP_STANDALONE_BUILD=ON",
-      "-DOPENMP_ENABLE_LIBOMPTARGET=OFF",
-      "-DLIBOMP_HAVE_OMPT_SUPPORT=OFF",
-      "-DLIBOMP_OMPT_SUPPORT=OFF",
-      "-DLIBOMP_OMPD_SUPPORT=OFF",
-      "-DLIBOMP_USE_DEBUGGER=OFF",
-      "-DLIBOMP_FORTRAN_MODULES=OFF",
-      "-DLIBOMP_ENABLE_SHARED=OFF",
-      "-DLIBOMP_ARCH=wasm32",
-      "-DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF",
-      "-DCMAKE_INSTALL_PREFIX=/",
+      'emcmake',
+      'cmake',
+      '..',
+      '-G',
+      'Ninja',
+      '-DOPENMP_STANDALONE_BUILD=ON',
+      '-DOPENMP_ENABLE_LIBOMPTARGET=OFF',
+      '-DLIBOMP_HAVE_OMPT_SUPPORT=OFF',
+      '-DLIBOMP_OMPT_SUPPORT=OFF',
+      '-DLIBOMP_OMPD_SUPPORT=OFF',
+      '-DLIBOMP_USE_DEBUGGER=OFF',
+      '-DLIBOMP_FORTRAN_MODULES=OFF',
+      '-DLIBOMP_ENABLE_SHARED=OFF',
+      '-DLIBOMP_ARCH=wasm32',
+      '-DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF',
+      '-DCMAKE_INSTALL_PREFIX=/',
     ],
     cwd=build_dir,
   )
-  subprocess.run(["cmake", "--build", "."], cwd=build_dir)
-  subprocess.run(["cmake", "--install", ".", "--destdir", "../install"], cwd=build_dir)
+  subprocess.run(['cmake', '--build', '.'], cwd=build_dir)
+  subprocess.run(['cmake', '--install', '.', '--destdir', '../install'], cwd=build_dir)
 
-  shutil.copy2(os.path.join(upstream_root, "LICENSE.TXT"), local_root)
+  shutil.copy2(os.path.join(upstream_root, 'LICENSE.TXT'), local_root)
 
-  files_to_copy = ["omp.h", "kmp_config.h", "kmp_i18n_id.inc",  "kmp_i18n_default.inc"]
+  built_files = ['omp.h', 'kmp_config.h', 'kmp_i18n_id.inc',  'kmp_i18n_default.inc']
 
-  for file in files_to_copy:
-    shutil.copy2(
-      os.path.join(upstream_build_src, file),
-      local_src,
-    )
+  for file in built_files:
+    shutil.copy2(os.path.join(upstream_build_src, file), local_src)
 
 
-if __name__ == "__main__":
+if __name__ == '__main__':
   main()
