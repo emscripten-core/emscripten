@@ -440,6 +440,18 @@ class other(RunnerCore):
     self.assertContained('import source wasmModule from', read_file('hello_world.mjs'))
     self.assertContained('Hello, world!', self.run_js('hello_world.mjs'))
 
+  @requires_node_25
+  @parameterized({
+    '': ([],),
+    'O3': (['-O3'],),
+  })
+  def test_esm_source_phase_imports_instance(self, args):
+    self.run_process([EMCC, '-o', 'hello_world.mjs', '-sSOURCE_PHASE_IMPORTS',
+                      '-sMODULARIZE=instance', '-Wno-experimental',
+                      test_file('hello_world.c')] + args)
+    self.assertContained('import source wasmModule from', read_file('hello_world.mjs'))
+    self.assertContained('Hello, world!', self.run_js('hello_world.mjs'))
+
   @parameterized({
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
