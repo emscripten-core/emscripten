@@ -37,7 +37,7 @@ int _wasmfs_node_symlink(const char *target, const char *linkpath);
 int _wasmfs_node_readlink(const char *path, const char *buf, int bufsize);
 
 // Open the file and return the underlying file descriptor.
-[[nodiscard]] int _wasmfs_node_open(const char* path, const char* mode);
+[[nodiscard]] int _wasmfs_node_open(const char* path, const char* flags);
 
 // Close the underlying file descriptor.
 [[nodiscard]] int _wasmfs_node_close(int fd);
