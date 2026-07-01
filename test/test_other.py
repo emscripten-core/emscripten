@@ -13311,6 +13311,54 @@ void foo() {}
   def test_emscripten_main_loop_setimmediate(self):
     self.do_runf('test_emscripten_main_loop_setimmediate.c')
 
+  # epoll is implemented in the JS (non-WASMFS) syscall layer and needs the FS.
+  # These exercise the JS API/readiness logic, which does not vary by wasm
+  # config, so they live here rather than in the test_core.py config matrix.
+  def test_epoll_fairness(self):
+    # More ready fds than maxevents: successive waits rotate (round-robin) so no
+    # fd starves.
+    self.do_runf('core/test_epoll_fairness.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
+
+  def test_epoll_callback(self):
+    # emscripten_epoll_set_callback delivers an epoll set's readiness by a
+    # persistent callback with no blocking and no ASYNCIFY/JSPI.
+    self.do_runf('core/test_epoll_callback.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_overflow(self):
+    # maxevents < ready count: the callback re-triggers to drain the remainder
+    # across ticks (no app loop to re-call it).
+    self.do_runf('core/test_epoll_callback_overflow.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_replace(self):
+    # A second register replaces the callback (no stacking); a NULL callback
+    # unregisters regardless of maxevents.
+    self.do_runf('core/test_epoll_callback_replace.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_close(self):
+    # Closing the last watched fd makes the epoll terminal, so the callback stops
+    # keeping the runtime alive and the process exits (no explicit unregister).
+    self.do_runf('core/test_epoll_callback_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_nested(self):
+    # A callback on an outer epoll fires when a leaf edge propagates through an
+    # inner (nested) epoll.
+    self.do_runf('core/test_epoll_callback_nested.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_nested_close(self):
+    # Closing the inner epoll wakes the outer to drop its stale registration, so
+    # an outer callback watching only the inner stops holding the runtime.
+    self.do_runf('core/test_epoll_callback_nested_close.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_edge(self):
+    # EPOLLET on the callback path: fires once per edge, stays silent while
+    # continuously readable, re-fires only on a fresh edge.
+    self.do_runf('core/test_epoll_callback_edge.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
+  def test_epoll_callback_level(self):
+    # A structurally-always-ready level fd (EPOLLOUT on a writable end) re-fires
+    # the callback every tick: documents the spin contract (use EPOLLET/unregister).
+    self.do_runf('core/test_epoll_callback_level.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26197')
   def test_pthread_trap(self):
