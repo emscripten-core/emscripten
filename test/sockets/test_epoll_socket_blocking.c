@@ -62,6 +62,9 @@ int main(void) {
   // Arrange the datagram to arrive only after epoll_wait() is already blocking,
   // so it can only complete by being woken - not by the initial derivation.
 #ifdef __EMSCRIPTEN_PTHREADS__
+  // Under PROXY_TO_PTHREAD main() runs on a worker that parks in epoll_wait, so
+  // its event loop can't fire an emscripten_async_call timer - the wake is a
+  // cross-thread memory notify. Send from a separate thread instead.
   pthread_t t;
   assert(pthread_create(&t, NULL, sender, NULL) == 0);
 #else
@@ -79,6 +82,6 @@ int main(void) {
   close(ep);
   close(rx);
   close(tx);
-  printf("EPOLL SOCKET BLOCKING PASS\n");
+  printf("done\n");
   return 0;
 }
