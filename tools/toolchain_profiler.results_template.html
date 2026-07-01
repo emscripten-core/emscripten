@@ -288,7 +288,7 @@ function createSwimlaneChart(data) {
         startOrder: startOrder++,
         cmdLine: d.cmdLine,
         cmd: findInterestingBits(d.cmdLine).join(' '),
-        color: d3.rgb('#80ff80'),
+        color: d.color || d3.rgb('#80ff80'),
         parent: null,
         children: []
       };
@@ -312,7 +312,7 @@ function createSwimlaneChart(data) {
         startOrder: startOrder++,
         cmdLine: d.cmdLine,
         cmd: findInterestingBits(d.cmdLine).join(' '),
-        color: d3.rgb('#80ff80'),
+        color: d.color || d3.rgb('#80ff80'),
         parent: topOnStack(d.pid),
         children: []
       };
@@ -336,7 +336,7 @@ function createSwimlaneChart(data) {
         end: null,
         startOrder: startOrder++,
         cmd: d.name,
-        color: d3.rgb('#8080ff'),
+        color: d.color || d3.rgb('#8080ff'),
         parent: topOnStack(d.pid),
         children: []
       };
@@ -588,11 +588,12 @@ function createSwimlaneChart(data) {
     .attr('d', function(d) { return d.path; });
 
   // draw the selection area
+  var selectionExtent = [
+         d3.min(items, function(d) { return d.start; }),
+         d3.max(items, function(d) { return d.end; })];
   var brush = d3.svg.brush()
     .x(x)
-    .extent([
-         d3.min(items, function(d) { return d.start; }),
-         d3.max(items, function(d) { return d.end; })])
+    .extent(selectionExtent)
     .on("brush", display);
 
   mini.append('g')
@@ -606,8 +607,8 @@ function createSwimlaneChart(data) {
   display();
 
   function display () {
-    var minExtent = Math.max(0, brush.extent()[0]);
-    var maxExtent = Math.min(lastEndTime, brush.extent()[1]);
+    var minExtent = Math.max(selectionExtent[0], brush.extent()[0]);
+    var maxExtent = Math.min(selectionExtent[1], brush.extent()[1]);
     var visItems = items.filter(function (d) { return d.start < maxExtent && d.end > minExtent});
 
     mini.select('.brush').call(brush.extent([minExtent, maxExtent]));
@@ -631,7 +632,7 @@ function createSwimlaneChart(data) {
           .duration(500)
           .style("opacity", 0);
     }
-    // upate the item rects
+    // update the item rects
     var rects = itemRects.selectAll('rect')
       .data(visItems, function (d) { return d.id; })
       .attr('x', function(d) { return x1(d.start); })

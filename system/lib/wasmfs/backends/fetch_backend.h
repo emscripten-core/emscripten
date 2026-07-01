@@ -6,7 +6,6 @@
 #include "wasmfs.h"
 
 extern "C" {
-
 // See library_wasmfs_fetch.js
 void _wasmfs_create_fetch_backend_js(wasmfs::backend_t);
 }

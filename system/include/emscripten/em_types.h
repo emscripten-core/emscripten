@@ -5,8 +5,6 @@
  * found in the LICENSE file.
  */
 
-#include <stdbool.h>
-
 #pragma once
 
 #include <stdbool.h>

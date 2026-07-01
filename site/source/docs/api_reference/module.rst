@@ -119,7 +119,7 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
 .. js:attribute:: Module.noExitRuntime
 
-  If ``noExitRuntime`` is set to ``true``, the runtime is not shut down after ``run`` completes. Shutting down the runtime calls shutdown callbacks, for example ``atexit`` calls. If you want to continue using the code after ``run()`` finishes, it is necessary to set this. This is automatically set for you if you use an API command that implies that you want the runtime to not be shut down, for example ``emscripten_set_main_loop``.
+  If ``noExitRuntime`` is set to ``true``, the runtime is not shut down after ``main()`` completes. Shutting down the runtime calls shutdown callbacks, for example ``atexit`` calls. If you want to continue using the code after ``main()`` finishes, it is necessary to set this. This is automatically set for you if you use an API command that implies that you want the runtime to not be shut down, for example ``emscripten_set_main_loop``.
 
 .. js:attribute:: Module.noInitialRun
 
@@ -135,9 +135,13 @@ The following ``Module`` attributes affect code execution. Set them to customize
 
 .. js:attribute:: Module.preRun
 
-  An array of functions to call right before calling ``run()``, but after defining and setting up the environment, including global initializers. This is useful, for example, to set up directories and files using the :ref:`Filesystem-API` — as this needs to happen after the FileSystem API has been loaded, but before the program starts to run.
+  A function (or array of functions) to call right before calling ``main()``, but after defining and setting up the environment, including global initializers. This is useful, for example, to set up directories and files using the :ref:`Filesystem-API` — as this needs to happen after the FileSystem API has been loaded, but before the program starts to run.
 
   .. note:: If code needs to affect global initializers, it should instead be run using :js:attr:`preInit`.
+
+.. js:attribute:: Module.postRun
+
+  A function (or array of functions) to call after the program's ``main()`` returns.
 
 .. js:attribute:: Module.print
 
@@ -173,10 +177,6 @@ Other methods
   Overriding the WebAssembly instantiation procedure via this function is useful when you have other custom asynchronous startup actions or downloads that can be performed in parallel to WebAssembly compilation. Implementing this callback allows performing all of these in parallel. See the file ``test/manual_wasm_instantiate.html`` and the test ``browser.test_manual_wasm_instantiate`` for an example of how this construct works in action.
 
   .. note:: Sanitizers or source map is currently not supported if overriding WebAssembly instantiation with Module.instantiateWasm. Providing Module.instantiateWasm when source map or sanitizer is enabled can prevent WebAssembly instantiation from finishing.
-
-.. js:function:: Module.onCustomMessage
-
-  When compiled with ``PROXY_TO_WORKER = 1`` (see `settings.js <https://github.com/emscripten-core/emscripten/blob/main/src/settings.js>`_), this callback (which should be implemented on both the client and worker's ``Module`` object) allows sending custom messages and data between the web worker and the main thread (using the ``postCustomMessage`` function defined in `proxyClient.js <https://github.com/emscripten-core/emscripten/blob/main/src/proxyClient.js>`_ and `proxyWorker.js <https://github.com/emscripten-core/emscripten/blob/main/src/proxyWorker.js>`_).
 
 .. js:function:: Module.fetchSettings
 

@@ -1,57 +1,53 @@
-SAFE_HEAP_STORE(x, 1, 1);
+HEAP8[SAFE_HEAP_INDEX(HEAP8, x, "storing")] = 1;
 
-SAFE_HEAP_STORE(x * 2, 2, 2);
+HEAP16[SAFE_HEAP_INDEX(HEAP16, x, "storing")] = 2;
 
-SAFE_HEAP_STORE(x * 4, 3, 4);
+HEAP32[SAFE_HEAP_INDEX(HEAP32, x, "storing")] = 3;
 
-SAFE_HEAP_STORE(x, 4, 1);
+HEAPU8[SAFE_HEAP_INDEX(HEAPU8, x, "storing")] = 4;
 
-SAFE_HEAP_STORE(x * 2, 5, 2);
+HEAPU16[SAFE_HEAP_INDEX(HEAPU16, x, "storing")] = 5;
 
-SAFE_HEAP_STORE(x * 4, 6, 4);
+HEAPU32[SAFE_HEAP_INDEX(HEAPU32, x, "storing")] = 6;
 
-SAFE_HEAP_STORE_D(x * 4, 7, 4);
+HEAPF32[SAFE_HEAP_INDEX(HEAPF32, x, "storing")] = 7;
 
-SAFE_HEAP_STORE_D(x * 8, 8, 8);
+HEAPF64[SAFE_HEAP_INDEX(HEAPF64, x, "storing")] = 8;
 
-a1 = SAFE_HEAP_LOAD(x, 1, 0);
+HEAP64[SAFE_HEAP_INDEX(HEAP64, x, "storing")] = 9n;
 
-a2 = SAFE_HEAP_LOAD(x * 2, 2, 0);
+HEAPU64[SAFE_HEAP_INDEX(HEAPU64, x, "storing")] = 10n;
 
-a3 = SAFE_HEAP_LOAD(x * 4, 4, 0);
+a1 = HEAP8[SAFE_HEAP_INDEX(HEAP8, x, "loading")];
 
-a4 = SAFE_HEAP_LOAD(x, 1, 1);
+a2 = HEAP16[SAFE_HEAP_INDEX(HEAP16, x, "loading")];
 
-a5 = SAFE_HEAP_LOAD(x * 2, 2, 1);
+a3 = HEAP32[SAFE_HEAP_INDEX(HEAP32, x, "loading")];
 
-a6 = SAFE_HEAP_LOAD(x * 4, 4, 1);
+a4 = HEAPU8[SAFE_HEAP_INDEX(HEAPU8, x, "loading")];
 
-a7 = SAFE_HEAP_LOAD_D(x * 4, 4, 0);
+a5 = HEAPU16[SAFE_HEAP_INDEX(HEAPU16, x, "loading")];
 
-a8 = SAFE_HEAP_LOAD_D(x * 8, 8, 0);
+a6 = HEAPU32[SAFE_HEAP_INDEX(HEAPU32, x, "loading")];
 
-foo = SAFE_HEAP_STORE(1337, 42, 1);
+a7 = HEAPF32[SAFE_HEAP_INDEX(HEAPF32, x, "loading")];
 
-SAFE_HEAP_LOAD(bar(SAFE_HEAP_LOAD_D(5 * 8, 8, 0)) * 2, 2, 0);
+a8 = HEAPF64[SAFE_HEAP_INDEX(HEAPF64, x, "loading")];
 
-SAFE_HEAP_STORE_D(x * 4, SAFE_HEAP_LOAD(y * 4, 4, 0), 4);
+a9 = HEAP64[SAFE_HEAP_INDEX(HEAP64, x, "loading")];
 
-function SAFE_HEAP_FOO(ptr) {
-  return HEAP8[ptr];
-}
+a10 = HEAPU64[SAFE_HEAP_INDEX(HEAPU64, x, "loading")];
 
-function setValue_safe(ptr) {
-  return HEAP8[ptr];
-}
+foo = HEAPU8[SAFE_HEAP_INDEX(HEAPU8, 1337, "storing")] = 42;
 
-function getValue_safe(ptr) {
-  return HEAP8[ptr];
-}
+HEAP16[SAFE_HEAP_INDEX(HEAP16, bar(HEAPF64[SAFE_HEAP_INDEX(HEAPF64, 5, "loading")]), "loading")];
+
+HEAPF32[SAFE_HEAP_INDEX(HEAPF32, x, "storing")] = HEAP32[SAFE_HEAP_INDEX(HEAP32, y, "loading")];
 
 function somethingElse() {
-  return SAFE_HEAP_LOAD(ptr, 1, 0);
+  return HEAP8[SAFE_HEAP_INDEX(HEAP8, ptr, "loading")];
 }
 
 HEAP8.length;
 
-SAFE_HEAP_LOAD(length, 1, 0);
+HEAP8[SAFE_HEAP_INDEX(HEAP8, length, "loading")];

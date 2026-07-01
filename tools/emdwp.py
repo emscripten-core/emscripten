@@ -4,11 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Wrapper scripte around `llvm-dwp`.
-"""
+"""Wrapper script around `llvm-dwp`."""
 
-import sys
 import os
+import sys
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
 __rootdir__ = os.path.dirname(__scriptdir__)
@@ -16,4 +15,4 @@ sys.path.insert(0, __rootdir__)
 
 from tools import shared
 
-shared.exec_process([shared.LLVM_DWP] + sys.argv[1:])
+shared.exec_process([shared.LLVM_DWP, *sys.argv[1:]])

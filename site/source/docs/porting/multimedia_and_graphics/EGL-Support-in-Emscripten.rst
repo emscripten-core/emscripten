@@ -118,4 +118,4 @@ Currently, Emscripten does not implement any extensions in the `EGL Extension Re
 EGL-related bugs and todos
 ---------------------------
 
-The `Emscripten issue tracker <https://github.com/emscripten-core/emscripten/issues?labels=EGL&state=open>`_ lists EGL-relates issues using the label EGL. Check that page to report or find issues in Emscripten related to EGL.
+The `Emscripten issue tracker <https://github.com/emscripten-core/emscripten/issues?labels=EGL&state=open>`_ lists EGL-related issues using the label EGL. Check that page to report or find issues in Emscripten related to EGL.

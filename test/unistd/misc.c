@@ -12,15 +12,11 @@
 #include <fcntl.h>
 #include <grp.h>
 #include <assert.h>
-#include <emscripten.h>
+#include <sys/stat.h>
+
 
 int main() {
-  EM_ASM(
-    FS.mkdir('working');
-#if NODEFS
-    FS.mount(NODEFS, { root: '.' }, 'working');
-#endif
-  );
+  mkdir("working", 0777);
 
   int f = open("working", O_RDONLY);
   assert(f);
@@ -81,6 +77,21 @@ int main() {
   printf(", errno: %d\n", errno);
   errno = 0;
   printf("pipe(bad): %d", pipe(0));
+  printf(", errno: %d\n", errno);
+  errno = 0;
+
+  printf("pipe2(good): %d", pipe2(pipe_arg, 0));
+  printf(", errno: %d\n", errno);
+  errno = 0;
+  printf("pipe2(bad): %d", pipe2(0, 0));
+  printf(", errno: %d\n", errno);
+  errno = 0;
+  printf("pipe2(O_NONBLOCK): %d", pipe2(pipe_arg, O_NONBLOCK));
+  printf(", errno: %d\n", errno);
+  printf("pipe2(O_NONBLOCK) read flags: %d\n", (fcntl(pipe_arg[0], F_GETFL) & O_NONBLOCK) != 0);
+  printf("pipe2(O_NONBLOCK) write flags: %d\n", (fcntl(pipe_arg[1], F_GETFL) & O_NONBLOCK) != 0);
+  errno = 0;
+  printf("pipe2(O_CLOEXEC|O_NONBLOCK): %d", pipe2(pipe_arg, O_CLOEXEC | O_NONBLOCK));
   printf(", errno: %d\n", errno);
   errno = 0;
 

@@ -11,17 +11,11 @@
 #include <emscripten/proxying.h>
 
 pthread_t t;
-pthread_cond_t cond = PTHREAD_COND_INITIALIZER;
-pthread_mutex_t mutex = PTHREAD_MUTEX_INITIALIZER;
-
-bool running = false;
+pthread_barrier_t started;
 
 void timeout(void* arg) {
   emscripten_err("timeout");
-  pthread_mutex_lock(&mutex);
-  running = true;
-  pthread_mutex_unlock(&mutex);
-  pthread_cond_signal(&cond);
+  pthread_barrier_wait(&started);
 }
 
 void* thread_main(void* arg) {
@@ -44,14 +38,12 @@ void keepalive_pop(void* arg) {
 
 int main() {
   printf("main\n");
-  pthread_mutex_lock(&mutex);
+  pthread_barrier_init(&started, NULL, 2);
   int rc = pthread_create(&t, NULL, thread_main, NULL);
   assert(rc == 0);
 
   // Wait until the thread is running from the event loop
-  while (!running) {
-    pthread_cond_wait(&cond, &mutex);
-  }
+  pthread_barrier_wait(&started);
 
   // Run something from the thread's event loop
   emscripten_proxy_sync(emscripten_proxy_get_system_queue(), t, &say_hello, NULL);

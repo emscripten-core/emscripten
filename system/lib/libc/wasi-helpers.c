@@ -7,6 +7,7 @@
 
 #include <errno.h>
 #include <stdlib.h>
+#include <time.h>
 #include <wasi/api.h>
 #include <wasi/wasi-helpers.h>
 
@@ -25,4 +26,11 @@ int  __wasi_fd_is_valid(__wasi_fd_t fd) {
     return 0;
   }
   return 1;
+}
+
+#define NSEC_PER_SEC (1000 * 1000 * 1000)
+
+struct timespec __wasi_timestamp_to_timespec(__wasi_timestamp_t timestamp) {
+  return (struct timespec){.tv_sec = timestamp / NSEC_PER_SEC,
+                           .tv_nsec = timestamp % NSEC_PER_SEC};
 }

@@ -40,14 +40,6 @@ void setup() {
   create_file("foobar/file.txt", "ride into the danger zone", 0666);
 }
 
-void cleanup() {
-  rmdir("nocanread");
-  unlink("foobar/file.txt");
-  rmdir("foobar");
-  chdir("..");
-  rmdir("testtmp");
-}
-
 void test() {
   int err;
   long loc, loc2;
@@ -187,7 +179,6 @@ void test() {
   err = closedir(dir);
   assert(!err);
 
-  puts("success");
 }
 
 void test_scandir() {
@@ -208,11 +199,9 @@ void test_scandir() {
 }
 
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
   test_scandir();
-
-  return EXIT_SUCCESS;
+  puts("done");
+  return 0;
 }

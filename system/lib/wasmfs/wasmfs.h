@@ -2,9 +2,8 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-// This file defines the global state of the new file system.
-// Current Status: Work in Progress.
-// See https://github.com/emscripten-core/emscripten/issues/15041.
+
+// This file defines the global state.
 
 #pragma once
 
@@ -26,11 +25,10 @@ class WasmFS {
   FileTable fileTable;
   std::shared_ptr<Directory> rootDirectory;
   std::shared_ptr<Directory> cwd;
+  std::atomic<mode_t> umask = 0022;
   std::mutex mutex;
 
   // Private method to initialize root directory once.
-  // Initializes default directories including dev/stdin, dev/stdout,
-  // dev/stderr. Refers to the same std streams in the open file table.
   std::shared_ptr<Directory> initRootDirectory();
 
   // Initialize files specified by --preload-file option.
@@ -53,6 +51,14 @@ public:
     const std::lock_guard<std::mutex> lock(mutex);
     cwd = directory;
   };
+
+  mode_t getUmask() {
+    return umask;
+  }
+
+  void setUmask(mode_t mask) {
+    umask = mask;
+  }
 
   backend_t addBackend(std::unique_ptr<Backend> backend) {
     const std::lock_guard<std::mutex> lock(mutex);

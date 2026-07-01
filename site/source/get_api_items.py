@@ -22,12 +22,11 @@ api_reference_directory = './docs/api_reference/'
 # if you change here, change everywhere.
 api_item_filename = 'api_items.py'
 
-api_reference_items = dict()
+api_reference_items = {}
 
 
 def parseFiles():
-    """Parse api-reference files to extract the code items.
-    """
+    """Parse api-reference files to extract the code items."""
 
     def addapiitems(matchobj):
         # print 'matcobj0: %s' % matchobj.group(0)
@@ -65,22 +64,19 @@ def parseFiles():
             filepath = api_reference_directory + file
             print(file)
             # open file
-            with open(filepath, 'r') as infile:
+            with open(filepath, encoding='utf-8') as infile:
                 for line in infile:
                     # parse line for API items
                     re.sub(r'^\.\.\s+((\w+)\:(\w+)\:\:(.*))', addapiitems, line)
 
 
 def exportItems():
-    """Export the API items into form for use in another script.
-    """
-    with open(api_item_filename, 'w') as infile:
+    """Export the API items into form for use in another script."""
+    with open(api_item_filename, 'w', encoding='utf-8') as infile:
         # write function lead in
         infile.write("# Auto-generated file (see get_api_items.py)\n\ndef get_mapped_items():\n    mapped_wiki_inline_code = dict()\n")
 
-        items = list((key, value) for key, value in api_reference_items.items())
-        items.sort()
-        for key, value in items:
+        for key, value in sorted(api_reference_items.items()):
             # Write out each API item to add
             infile.write("    mapped_wiki_inline_code['%s'] = '%s'\n" % (key, value))
 
@@ -91,7 +87,7 @@ def exportItems():
 def main():
     parser = optparse.OptionParser(usage="Usage: %prog [options] version")
     parser.add_option("-s", "--siteapi", dest="siteapi", default="http://www.developer.nokia.com/Community/Wiki/api.php", help="Location of API")
-    (options, args) = parser.parse_args()
+    _options, _args = parser.parse_args()
     # print 'Site: %s' % options.siteapi
     parseFiles()
     exportItems()

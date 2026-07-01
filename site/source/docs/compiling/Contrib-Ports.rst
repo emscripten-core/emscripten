@@ -17,17 +17,53 @@ available in emscripten. In order to use a contrib port you use the
 contrib.glfw3
 =============
 
-This project is an emscripten port of GLFW written in C++ for the
+This project is an Emscripten port of GLFW written in C++ for the
 web/webassembly platform.
 
 .. note::
-  emscripten includes support for both GLFW 2 and 3 written in Javascript.
+  Emscripten includes support for both GLFW 2 and 3 written in Javascript.
   These can be activated with the :ref:`settings <use_glfw>` ``-sUSE_GLFW=2``
   and ``-sUSE_GLFW=3``. This non-official contribution, written in C++,
   provides a more extensive and up-to-date implementation of the GLFW 3 API
   than the built-in port. It is enabled with the option
   ``--use-port=contrib.glfw3``.
 
-`Project information <https://github.com/pongasoft/emscripten-glfw>`_
+`Project information <https://github.com/pongasoft/emscripten-glfw>`__
 
 License: Apache 2.0 license
+
+.. _contrib.lua:
+
+contrib.lua
+===========
+
+Lua is a powerful, efficient, lightweight, embeddable scripting language.
+
+Example usage:
+
+.. code-block:: text
+
+  // main.c
+  #include <lua.h>
+  #include <lualib.h>
+  #include <lauxlib.h>
+  #include <stdio.h>
+
+  int main() {
+    lua_State *L = luaL_newstate();
+    luaL_openlibs(L);
+    if (luaL_dostring(L, "print('hello world')") != LUA_OK) {
+      printf("Error running Lua code %s\n", lua_tostring(L, -1));
+      lua_pop(L, 1);
+    }
+    lua_close(L);
+    return 0;
+  }
+
+  // compile with
+  emcc --use-port=contrib.lua main.c -o /tmp/index.html
+
+
+`Project information <https://www.lua.org/>`__
+
+License: MIT License

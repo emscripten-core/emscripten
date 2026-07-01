@@ -9,7 +9,7 @@
 
 int main() {
   FILE* f = fopen("/dev/stdout", "w");
-  fprintf(f, "hello, world!\n");
+  fprintf(f, "Hello, world!\n");
   fclose(f);
   return 0;
 }

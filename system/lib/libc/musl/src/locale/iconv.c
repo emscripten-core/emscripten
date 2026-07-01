@@ -52,7 +52,7 @@ static const unsigned char charmaps[] =
 "shiftjis\0sjis\0cp932\0\0\321"
 "iso2022jp\0\0\322"
 "gb18030\0\0\330"
-"gbk\0\0\331"
+"gbk\0cp936\0windows936\0\0\331"
 "gb2312\0\0\332"
 "big5\0bigfive\0cp950\0big5hkscs\0\0\340"
 "euckr\0ksc5601\0ksx1001\0cp949\0\0\350"
@@ -339,7 +339,10 @@ size_t iconv(iconv_t cd, char **restrict in, size_t *restrict inb, char **restri
 			} else if (d-159 <= 252-159) {
 				c++;
 				d -= 159;
+			} else {
+				goto ilseq;
 			}
+			if (c>=84) goto ilseq;
 			c = jis0208[c][d];
 			if (!c) goto ilseq;
 			break;
@@ -403,6 +406,10 @@ size_t iconv(iconv_t cd, char **restrict in, size_t *restrict inb, char **restri
 			if (c < 128) break;
 			if (c < 0xa1) goto ilseq;
 		case GBK:
+			if (c == 128) {
+				c = 0x20ac;
+				break;
+			}
 		case GB18030:
 			if (c < 128) break;
 			c -= 0x81;
@@ -495,7 +502,7 @@ size_t iconv(iconv_t cd, char **restrict in, size_t *restrict inb, char **restri
 			if (c >= 93 || d >= 94) {
 				c += (0xa1-0x81);
 				d += 0xa1;
-				if (c >= 93 || c>=0xc6-0x81 && d>0x52)
+				if (c > 0xc6-0x81 || c==0xc6-0x81 && d>0x52)
 					goto ilseq;
 				if (d-'A'<26) d = d-'A';
 				else if (d-'a'<26) d = d-'a'+26;
@@ -538,6 +545,10 @@ size_t iconv(iconv_t cd, char **restrict in, size_t *restrict inb, char **restri
 				if (*outb < k) goto toobig;
 				memcpy(*out, tmp, k);
 			} else k = wctomb_utf8(*out, c);
+			/* This failure condition should be unreachable, but
+			 * is included to prevent decoder bugs from translating
+			 * into advancement outside the output buffer range. */
+			if (k>4) goto ilseq;
 			*out += k;
 			*outb -= k;
 			break;

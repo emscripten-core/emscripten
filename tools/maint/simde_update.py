@@ -4,15 +4,15 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Updates the arm_neon.h header taken from SIMDe
-(https://github.com/simd-everywhere/simde) in system/include/neon
+"""Updates the arm_neon.h header in system/include/neon.
+
+Taken from SIMDe (https://github.com/simd-everywhere/simde).
 """
 
 import os
 import re
 import subprocess
 import sys
-
 from os import path
 
 __scriptdir__ = os.path.dirname(os.path.abspath(__file__))
@@ -20,9 +20,9 @@ __rootdir__ = os.path.dirname(os.path.dirname(__scriptdir__))
 sys.path.insert(0, __rootdir__)
 
 from tools.shared import get_emscripten_temp_dir
+from tools.utils import path_from_root
 
 tmpdir = get_emscripten_temp_dir()
-emdir = __rootdir__
 
 
 def main():
@@ -51,18 +51,18 @@ def main():
     return 1
 
   try:
-    os.mkdir(path.join(emdir, "system", "include", "compat"))
+    os.mkdir(path_from_root('system/include/compat'))
   except FileExistsError:
-    if not path.isdir(path.join(emdir, "system", "include", "compat")):
+    if not path.isdir(path_from_root('system/include/compat')):
       print("system/include/compat exists and is not a directory, exiting...")
       return 1
 
   SIMDE_FILE_HEADER_RE = r'^(/\* :: )(Begin |End )[^ ]+/(simde/simde/[^ ]+ :: \*/$)'
-  # Replace file headers, which contains tmp directory names and changes every time we
+  # Replace file headers, which contain tmp directory names and changes every time we
   # update simde, causing a larger diff than necessary.
   neon_h_buf = re.sub(SIMDE_FILE_HEADER_RE, r'\1\2\3', neon_h_buf, count=0, flags=re.MULTILINE)
 
-  line_to_prefix = "#  define HEDLEY_EMSCRIPTEN_VERSION HEDLEY_VERSION_ENCODE(__EMSCRIPTEN_major__, __EMSCRIPTEN_minor__, __EMSCRIPTEN_tiny__)\n"
+  line_to_prefix = "#  define HEDLEY_EMSCRIPTEN_VERSION HEDLEY_VERSION_ENCODE(__EMSCRIPTEN_MAJOR__, __EMSCRIPTEN_MINOR__, __EMSCRIPTEN_TINY__)\n"
   line_to_insert = "#include <emscripten/version.h>\n"
   try:
     insert_location = neon_h_buf.index(line_to_prefix)
@@ -71,12 +71,14 @@ def main():
     return 1
   neon_h_buf = neon_h_buf[:insert_location] + line_to_insert + neon_h_buf[insert_location:]
 
-  with open(path.join(emdir, "system", "include", "compat", "arm_neon.h"), "w+") as f:
+  with open(path_from_root('system/include/compat/arm_neon.h'), 'w', encoding='utf-8') as f:
     try:
       f.write("#define SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
+      f.write("#define SIMDE_ARM_NEON_A32V8_ENABLE_NATIVE_ALIASES\n")
       f.write("#define SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
       f.write(neon_h_buf)
       f.write("#undef SIMDE_ARM_NEON_A32V7_ENABLE_NATIVE_ALIASES\n")
+      f.write("#undef SIMDE_ARM_NEON_A32V8_ENABLE_NATIVE_ALIASES\n")
       f.write("#undef SIMDE_ARM_NEON_A64V8_ENABLE_NATIVE_ALIASES\n")
     except Exception:
       print("error writing 'system/include/compat/arm_neon.h'")

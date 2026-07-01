@@ -110,7 +110,7 @@ The following command line flags affect logging output:
 
 - ``--verbose``: Print detailed information about *emrun* internal steps.
 - ``--log_stdout <filename>``: Write all ``stdout`` messages from the application to the named file (instead of printing to terminal).
-- ``--lot_stderr <filename>``: Write all ``stderr`` messages from the application to the named file (instead of printing to terminal).
+- ``--log_stderr <filename>``: Write all ``stderr`` messages from the application to the named file (instead of printing to terminal).
 - ``--system_info``: Print detailed information about the current system before launching. This is useful during automated runs when you want to capture hardware information to logs.
 - ``--browser_info``: Print information about which browser is about to be launched.
 - ``--no_emrun_detect``: Hide the warning message that is launched if a target **.html** file is detected to not have been built with ``--emrun``.

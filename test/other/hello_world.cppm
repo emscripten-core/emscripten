@@ -4,5 +4,5 @@ module;
 
 export module hello_world; // module declaration
 export void hello() {      // export declaration
-  std::cout << "Hello world!\n";
+  std::cout << "Hello, world!\n";
 }

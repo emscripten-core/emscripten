@@ -17,8 +17,9 @@
 #include <AL/alc.h>
 #include <AL/alext.h>
 
-#define NUM_ALC_EXTENSIONS 2
+#define NUM_ALC_EXTENSIONS 3
 static const ALCchar *alc_extensions[NUM_ALC_EXTENSIONS] = {
+  "ALC_EXT_capture",
   "ALC_SOFT_pause_device",
   "ALC_SOFT_HRTF",
 };

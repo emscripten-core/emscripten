@@ -13,40 +13,44 @@
 
 #include <emscripten.h>
 
-int main(int argc, char *argv[])
-{
-    SDL_Window *window;
+int main(int argc, char *argv[]) {
+  SDL_Window *window;
 
-    if ( SDL_Init(SDL_INIT_VIDEO) != 0 ) {
-        printf("Unable to initialize SDL: %s\n", SDL_GetError());
-        return 1;
-    }
+  if (SDL_Init(SDL_INIT_VIDEO) != 0) {
+    printf("Unable to initialize SDL: %s\n", SDL_GetError());
+    return 1;
+  }
 
-    window = SDL_CreateWindow(
-        "sdl2_misc",
-        SDL_WINDOWPOS_UNDEFINED,
-        SDL_WINDOWPOS_UNDEFINED,
-        100,
-        100,
-        0
-    );
+  window = SDL_CreateWindow(
+    "sdl2_misc",
+    SDL_WINDOWPOS_UNDEFINED,
+    SDL_WINDOWPOS_UNDEFINED,
+    100,
+    100,
+    0
+  );
 
-    EM_ASM({
-      assert(document.title === 'sdl2_misc');
-    });
-    const char* intended = "a custom window title";
-    SDL_SetWindowTitle(window, intended);
-    const char* seen = SDL_GetWindowTitle(window);
-    if (strcmp(intended, seen) != 0) {
-        printf("Got a weird title back: %s\n", seen);
-        return 1;
-    }
-    EM_ASM({
-      assert(document.title === 'a custom window title');
-    });
+  EM_ASM({
+    assert(document.title === 'sdl2_misc');
+  });
+  const char* intended = "a custom window title";
+  SDL_SetWindowTitle(window, intended);
+  const char* seen = SDL_GetWindowTitle(window);
+  if (strcmp(intended, seen) != 0) {
+      printf("Got a weird title back: %s\n", seen);
+      return 1;
+  }
 
-    SDL_DestroyWindow(window);
-    SDL_Quit();
+  EM_ASM({
+    assert(document.title === 'a custom window title');
+  });
 
-    return 0;
+  // Check if linking works with some of the HIDAPI functions added in SDL 2.0.18.
+  SDL_hid_init();
+  SDL_hid_exit();
+
+  SDL_DestroyWindow(window);
+  SDL_Quit();
+
+  return 0;
 }

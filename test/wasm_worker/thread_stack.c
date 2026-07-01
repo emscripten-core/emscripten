@@ -7,7 +7,7 @@
 #include <stdlib.h>
 
 #define ALIGN(x,y) ((x)+(y)-1 & -(y))
-#define THREAD_STACK_SIZE 2048
+#define THREAD_STACK_SIZE 4096
 #define NUM_THREADS 2
 void *thread_stack[NUM_THREADS];
 
@@ -21,8 +21,8 @@ void test_stack(int i) {
     THREAD_STACK_SIZE);
   assert(emscripten_stack_get_base() == (uintptr_t)thread_stack[i] + THREAD_STACK_SIZE);
   emscripten_outf("__builtin_wasm_tls_size: %lu", __builtin_wasm_tls_size());
-  // The stack region in wasm workers also incldues TLS, so we need to take
-  // this into account when calulating our expected stack end.
+  // The stack region in wasm workers also includes TLS, so we need to take
+  // this into account when calculating our expected stack end.
   size_t expected_stack_end = (uintptr_t)thread_stack[i] + ALIGN(__builtin_wasm_tls_size(), 16);
   assert(emscripten_stack_get_end() == expected_stack_end);
 

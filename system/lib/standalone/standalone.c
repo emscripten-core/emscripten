@@ -25,6 +25,7 @@
 
 #include "lock.h"
 #include "emscripten_internal.h"
+#include "unwind.h"
 
 /*
  * WASI support code. These are compiled with the program, and call out
@@ -45,28 +46,6 @@ _Static_assert(CLOCK_MONOTONIC == __WASI_CLOCKID_MONOTONIC, "must match");
 _Static_assert(CLOCK_PROCESS_CPUTIME_ID == __WASI_CLOCKID_PROCESS_CPUTIME_ID, "must match");
 _Static_assert(CLOCK_THREAD_CPUTIME_ID == __WASI_CLOCKID_THREAD_CPUTIME_ID, "must match");
 
-#define NSEC_PER_SEC (1000 * 1000 * 1000)
-
-struct timespec __wasi_timestamp_to_timespec(__wasi_timestamp_t timestamp) {
-  return (struct timespec){.tv_sec = timestamp / NSEC_PER_SEC,
-                           .tv_nsec = timestamp % NSEC_PER_SEC};
-}
-
-int clock_getres(clockid_t clk_id, struct timespec *tp) {
-  // See https://github.com/bytecodealliance/wasmtime/issues/3714
-  if (clk_id > __WASI_CLOCKID_THREAD_CPUTIME_ID || clk_id < 0) {
-    errno = EINVAL;
-    return -1;
-  }
-  __wasi_timestamp_t res;
-  __wasi_errno_t error = __wasi_clock_res_get(clk_id, &res);
-  if (error != __WASI_ERRNO_SUCCESS) {
-    return __wasi_syscall_ret(error);
-  }
-  *tp = __wasi_timestamp_to_timespec(res);
-  return 0;
-}
-
 // mmap support is nonexistent. TODO: emulate simple mmaps using
 // stdio + malloc, which is slow but may help some things?
 
@@ -83,7 +62,15 @@ weak int _mmap_js(size_t length,
 }
 
 weak int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset) {
+  void *addr, size_t length, int prot, int flags, int fd, off_t offset) {
+  return -ENOSYS;
+}
+
+weak int __syscall_poll(struct pollfd *fds, nfds_t nfds, int timeout) {
+  return -ENOSYS;
+}
+
+weak int __syscall_poll_nonblocking(struct pollfd *fds, nfds_t nfds) {
   return -ENOSYS;
 }
 
@@ -91,14 +78,14 @@ weak int _munmap_js(
 // corner case error checking; everything else is not permitted.
 // TODO: full file support for WASI, or an option for it
 // open()
-weak int __syscall_openat(int dirfd, intptr_t path, int flags, ...) {
-  if (!strcmp((const char*)path, "/dev/stdin")) {
+weak int __syscall_openat(int dirfd, const char *path, int flags, ...) {
+  if (!strcmp(path, "/dev/stdin")) {
     return STDIN_FILENO;
   }
-  if (!strcmp((const char*)path, "/dev/stdout")) {
+  if (!strcmp(path, "/dev/stdout")) {
     return STDOUT_FILENO;
   }
-  if (!strcmp((const char*)path, "/dev/stderr")) {
+  if (!strcmp(path, "/dev/stderr")) {
     return STDERR_FILENO;
   }
   return -EPERM;
@@ -112,11 +99,11 @@ weak int __syscall_fcntl64(int fd, int cmd, ...) {
   return -ENOSYS;
 }
 
-weak int __syscall_fstat64(int fd, intptr_t buf) {
+weak int __syscall_fstat64(int fd, struct stat *buf) {
   return -ENOSYS;
 }
 
-weak int __syscall_stat64(intptr_t path, intptr_t buf) {
+weak int __syscall_stat64(const char *path, struct stat *buf) {
   return -ENOSYS;
 }
 
@@ -124,15 +111,15 @@ weak int __syscall_dup(int fd) {
   return -ENOSYS;
 }
 
-weak int __syscall_mkdirat(int dirfd, intptr_t path, int mode) {
+weak int __syscall_mkdirat(int dirfd, const char *path, mode_t mode) {
   return -ENOSYS;
 }
 
-weak int __syscall_newfstatat(int dirfd, intptr_t path, intptr_t buf, int flags) {
+weak int __syscall_newfstatat(int dirfd, const char *path, struct stat *buf, int flags) {
   return -ENOSYS;
 }
 
-weak int __syscall_lstat64(intptr_t path, intptr_t buf) {
+weak int __syscall_lstat64(const char *path, struct stat *buf) {
   return -ENOSYS;
 }
 
@@ -145,7 +132,7 @@ size_t emscripten_get_heap_max() {
   return emscripten_get_heap_size();
 }
 
-int emscripten_resize_heap(size_t size) {
+bool emscripten_resize_heap(size_t size) {
 #if defined(EMSCRIPTEN_MEMORY_GROWTH)
   size_t old_size = __builtin_wasm_memory_size(0) * WASM_PAGE_SIZE;
   assert(old_size < size);
@@ -156,10 +143,10 @@ int emscripten_resize_heap(size_t size) {
     // Success, update JS (see https://github.com/WebAssembly/WASI/issues/82)
     emscripten_notify_memory_growth(0);
 #endif
-    return 1;
+    return true;
   }
 #endif
-  return 0;
+  return false;
 }
 
 // Call clock_gettime with a particular clock and return the result in ms.
@@ -192,21 +179,21 @@ void __cxa_throw(void* ptr, void* type, void* destructor) {
 // WasmFS integration. We stub out file preloading and such, that are not
 // expected to work anyhow.
 
-size_t _wasmfs_get_num_preloaded_files() { return 0; }
+int _wasmfs_get_num_preloaded_files() { return 0; }
 
-size_t _wasmfs_get_num_preloaded_dirs() { return 0; }
+int _wasmfs_get_num_preloaded_dirs() { return 0; }
 
-int _wasmfs_get_preloaded_file_size(int index) { return 0; }
+size_t _wasmfs_get_preloaded_file_size(uint32_t index) { return 0; }
 
 int _wasmfs_get_preloaded_file_mode(int index) { return 0; }
 
-void _wasmfs_copy_preloaded_file_data(int index, void* buffer) {}
+void _wasmfs_copy_preloaded_file_data(uint32_t index, uint8_t* buffer) {}
 
-void _wasmfs_get_preloaded_parent_path(int index, void* buffer) {}
+void _wasmfs_get_preloaded_parent_path(int index, char* buffer) {}
 
-void _wasmfs_get_preloaded_child_path(int index, void* buffer) {}
+void _wasmfs_get_preloaded_child_path(int index, char* buffer) {}
 
-void _wasmfs_get_preloaded_path_name(int index, void* buffer) {}
+void _wasmfs_get_preloaded_path_name(int index, char* buffer) {}
 
 // Import the VM's fd_write under a different name. Then we can interpose in
 // between it and WasmFS's fd_write. That is, libc calls fd_write, which WasmFS
@@ -274,7 +261,7 @@ int _wasmfs_stdin_get_char(void) {
 }
 
 // In the non-standalone build we define this helper function in JS to avoid
-// signture mismatch issues.
+// signature mismatch issues.
 // See: https://github.com/emscripten-core/posixtestsuite/issues/6
 void __call_sighandler(sighandler_t handler, int sig) {
   handler(sig);
@@ -330,3 +317,7 @@ weak void _emscripten_get_progname(char* buf, int length) {
 }
 
 weak void _emscripten_runtime_keepalive_clear() {}
+
+void __throw_exception_with_stack_trace(_Unwind_Exception* exception_object) {
+  _Unwind_RaiseException(exception_object);
+}

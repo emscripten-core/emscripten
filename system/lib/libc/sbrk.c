@@ -14,20 +14,16 @@
 
 #include <errno.h>
 #include <limits.h>
+#include <stdatomic.h>
 #include <stddef.h>
 #include <stdint.h>
-#ifdef __EMSCRIPTEN_SHARED_MEMORY__ // for error handling, see below
-#include <stdio.h>
-#include <stdlib.h>
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
+#include <stdlib.h> // for abort
 #endif
 
-#ifdef __EMSCRIPTEN_TRACING__
-void emscripten_memprof_sbrk_grow(intptr_t old, intptr_t new);
-#else
-#define emscripten_memprof_sbrk_grow(...) ((void)0)
-#endif
-
+#include <emscripten/console.h>
 #include <emscripten/heap.h>
+#include <emscripten/trace.h>
 
 extern size_t __heap_base;
 
@@ -50,26 +46,25 @@ uintptr_t* emscripten_get_sbrk_ptr() {
 // Enforce preserving a minimal alignof(maxalign_t) alignment for sbrk.
 #define SBRK_ALIGNMENT (__alignof__(max_align_t))
 
-#ifdef __EMSCRIPTEN_SHARED_MEMORY__
-#define READ_SBRK_PTR(sbrk_ptr) (__c11_atomic_load((_Atomic(uintptr_t)*)(sbrk_ptr), __ATOMIC_SEQ_CST))
-#else
-#define READ_SBRK_PTR(sbrk_ptr) (*(sbrk_ptr))
-#endif
+void *_sbrk64(int64_t increment) {
+  if (increment >= 0) {
+    increment = (increment + (SBRK_ALIGNMENT-1)) & ~((int64_t)SBRK_ALIGNMENT-1);
+  } else {
+    increment = -(-increment & ~((int64_t)SBRK_ALIGNMENT-1));
+  }
 
-void *sbrk(intptr_t increment_) {
-  uintptr_t increment = (uintptr_t)increment_;
-  increment = (increment + (SBRK_ALIGNMENT-1)) & ~(SBRK_ALIGNMENT-1);
-  uintptr_t *sbrk_ptr = (uintptr_t*)emscripten_get_sbrk_ptr();
+  _Atomic uintptr_t *sbrk_ptr = (_Atomic uintptr_t *)emscripten_get_sbrk_ptr();
 
   // To make sbrk thread-safe, implement a CAS loop to update the
   // value of sbrk_ptr.
   while (1) {
-    uintptr_t old_brk = READ_SBRK_PTR(sbrk_ptr);
-    uintptr_t new_brk = old_brk + increment;
-    // Check for a) an overflow, which would indicate that we are trying to
-    // allocate over maximum addressable memory. and b) if necessary,
+    uintptr_t old_brk = *sbrk_ptr;
+    int64_t new_brk64 = (int64_t)old_brk + increment;
+    uintptr_t new_brk = (uintptr_t)new_brk64;
+    // Check for a) an over/underflow, which would indicate that we are
+    // allocating over maximum addressable memory. and b) if necessary,
     // increase the WebAssembly Memory size, and abort if that fails.
-    if ((increment > 0 && new_brk <= old_brk)
+    if (new_brk < 0 || new_brk64 != (int64_t)new_brk
      || (new_brk > emscripten_get_heap_size() && !emscripten_resize_heap(new_brk))) {
       errno = ENOMEM;
       return (void*)-1;
@@ -80,23 +75,44 @@ void *sbrk(intptr_t increment_) {
     // by iterating the loop body again.
     uintptr_t expected = old_brk;
 
-    __c11_atomic_compare_exchange_strong((_Atomic(uintptr_t)*)sbrk_ptr,
-      &expected, new_brk, __ATOMIC_SEQ_CST, __ATOMIC_SEQ_CST);
+    atomic_compare_exchange_strong(sbrk_ptr, &expected, new_brk);
 
     if (expected != old_brk) continue; // CAS failed, another thread raced in between.
 #else
     *sbrk_ptr = new_brk;
 #endif
 
-    emscripten_memprof_sbrk_grow(old_brk, new_brk);
+    emscripten_trace_sbrk_grow(old_brk, new_brk);
     return (void*)old_brk;
   }
+}
+
+void *sbrk(intptr_t increment_) {
+#if defined(__wasm64__) // TODO || !defined(wasm2gb)
+  // In the correct https://linux.die.net/man/2/sbrk spec, sbrk() parameter is
+  // intended to be treated as signed, meaning that it is not possible in a
+  // 32-bit program to sbrk alloc (or dealloc) more than 2GB of memory at once.
+
+  // Treat sbrk() parameter as signed.
+  return _sbrk64((int64_t)increment_);
+#else
+  // BUG: Currently the Emscripten test suite codifies expectations that sbrk()
+  // values passed to this function are to be treated as unsigned, which means
+  // that in 2GB and 4GB build modes, it is not possible to shrink memory.
+  // To satisfy that mode, treat sbrk() parameters in 32-bit builds as unsigned.
+  // https://github.com/emscripten-core/emscripten/issues/25138
+
+  // Treat sbrk() parameter as unsigned.
+  return _sbrk64((int64_t)(uintptr_t)increment_);
+#endif
 }
 
 int brk(void* ptr) {
 #ifdef __EMSCRIPTEN_SHARED_MEMORY__
   // FIXME
-  printf("brk() is not theadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
+#ifndef NDEBUG
+  emscripten_err("brk() is not threadsafe yet, https://github.com/emscripten-core/emscripten/issues/10006");
+#endif
   abort();
 #else
   uintptr_t last = (uintptr_t)sbrk(0);

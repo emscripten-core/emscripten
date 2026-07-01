@@ -1,7 +1,7 @@
 #include <stdlib.h>
 
 // Musl has an aligned_alloc routine, but that builds on top of standard malloc(). We are using dlmalloc, so
-// can route to its implementation instead.
+// we can route to its implementation instead.
 void * weak aligned_alloc(size_t alignment, size_t size)
 {
   void *ptr;

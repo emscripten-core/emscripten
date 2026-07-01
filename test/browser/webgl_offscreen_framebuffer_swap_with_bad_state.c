@@ -27,9 +27,22 @@ int main() {
 
   EMSCRIPTEN_WEBGL_CONTEXT_HANDLE ctx = emscripten_webgl_create_context("#canvas", &attr);
   emscripten_webgl_make_context_current(ctx);
+#ifdef TEST_DISABLE_VAO
+  EM_ASM({
+    console.log(GL.currentContext.defaultVao);
+    assert(GL.currentContext.defaultVao);
+    GL.currentContext.defaultVao = undefined;
+  });
+#endif
 
-#if !TEST_WEBGL2 && TEST_VAO
+#if !TEST_WEBGL2 && TEST_VERIFY_WEBGL1_VAO_SUPPORT
   // This test cannot run without browser support for OES_vertex_array_object.
+  // This check is just to verify that the browser has support; otherwise, we
+  // will end up testing the non-VAO path. Enabling it here does not actually do
+  // anything, because offscreen framebuffer has already been initialized. Note
+  // that if GL_SUPPORT_AUTOMATIC_ENABLE_EXTENSIONS=0, then offscreen
+  // framebuffer will _never_ use VAOs on WebGL 1 (unless something enables
+  // OES_vertex_array_object before createOffscreenFramebuffer runs).
   if (!emscripten_webgl_enable_extension(ctx, "OES_vertex_array_object")) {
     return 1;
   }

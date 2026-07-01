@@ -9,9 +9,9 @@
 
 #pragma once
 
-#include <stdarg.h>
-
 #include <emscripten/html5.h>
+
+#include <stdarg.h>
 
 #ifdef __cplusplus
 extern "C" {
@@ -113,6 +113,7 @@ typedef struct em_queued_call em_queued_call;
 #define EM_FUNC_SIG_I     (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(0))
 #define EM_FUNC_SIG_II    (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(1) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I))
 #define EM_FUNC_SIG_III   (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(2) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I))
+#define EM_FUNC_SIG_IIIJ  (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(3) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_J))
 #define EM_FUNC_SIG_IIII  (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(3) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I))
 #define EM_FUNC_SIG_IIPP  (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(3) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_P) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_P))
 #define EM_FUNC_SIG_IIIII (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(4) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I))
@@ -128,6 +129,7 @@ typedef struct em_queued_call em_queued_call;
 #define EM_FUNC_SIG_PII   (EM_FUNC_SIG_RETURN_VALUE_P | EM_FUNC_SIG_WITH_N_PARAMETERS(2) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I))
 #define EM_FUNC_SIG_PIIII (EM_FUNC_SIG_RETURN_VALUE_P | EM_FUNC_SIG_WITH_N_PARAMETERS(4) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(3, EM_FUNC_SIG_PARAM_I))
 #define EM_FUNC_SIG_VIIP  (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(3) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_P))
+#define EM_FUNC_SIG_VIIJ  (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(3) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_J))
 #define EM_FUNC_SIG_VIPI  (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(3) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_P) | EM_FUNC_SIG_SET_PARAM(2, EM_FUNC_SIG_PARAM_I))
 #define EM_FUNC_SIG_VIP   (EM_FUNC_SIG_RETURN_VALUE_V | EM_FUNC_SIG_WITH_N_PARAMETERS(2) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_P))
 #define EM_FUNC_SIG_IIP   (EM_FUNC_SIG_RETURN_VALUE_I | EM_FUNC_SIG_WITH_N_PARAMETERS(2) | EM_FUNC_SIG_SET_PARAM(0, EM_FUNC_SIG_PARAM_I) | EM_FUNC_SIG_SET_PARAM(1, EM_FUNC_SIG_PARAM_P))
@@ -154,7 +156,7 @@ typedef struct em_queued_call em_queued_call;
 //  - Calling emscripten_sync_* functions requires that the application was
 //    compiled with pthreads support enabled (-pthread) and that the
 //    browser supports SharedArrayBuffer specification.
-int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr __attribute__((nonnull)), ...);
+int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void * _Nonnull func_ptr, ...);
 
 // The 'async' variant of the run_in_main_thread functions are otherwise the
 // same as the synchronous ones, except that the operation is performed in a
@@ -164,7 +166,7 @@ int emscripten_sync_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *fun
 //  - Note that multiple asynchronous commands from a single pthread/Worker are
 //    guaranteed to be executed on the main thread in the program order they
 //    were called in.
-void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr __attribute__((nonnull)), ...);
+void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void * _Nonnull func_ptr, ...);
 
 // The 'async_waitable' variant of the run_in_main_runtime_thread functions run
 // like the 'async' variants, except that while the operation starts off
@@ -173,7 +175,7 @@ void emscripten_async_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *f
 //  - The object returned by this function call is dynamically allocated, and
 //    should be freed up via a call to emscripten_async_waitable_close() after
 //    the wait has been performed.
-em_queued_call *emscripten_async_waitable_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void *func_ptr __attribute__((nonnull)), ...);
+em_queued_call *emscripten_async_waitable_run_in_main_runtime_thread_(EM_FUNC_SIGNATURE sig, void * _Nonnull func_ptr, ...);
 
 // Since we can't validate the function pointer type, allow implicit casting of
 // functions to void* without complaining.
@@ -182,7 +184,7 @@ em_queued_call *emscripten_async_waitable_run_in_main_runtime_thread_(EM_FUNC_SI
 #ifdef __wasm64__
 // For wasm64 we need to special handling of pointer (P) return types since
 // int and pointer have different widths
-void* emscripten_sync_run_in_main_runtime_thread_ptr_(EM_FUNC_SIGNATURE sig, void *func_ptr __attribute__((nonnull)), ...);
+void* emscripten_sync_run_in_main_runtime_thread_ptr_(EM_FUNC_SIGNATURE sig, void * _Nonnull func_ptr, ...);
 #define emscripten_sync_run_in_main_runtime_thread_ptr(sig, func_ptr, ...) emscripten_sync_run_in_main_runtime_thread_ptr_((sig), (void*)(func_ptr),##__VA_ARGS__)
 #else
 #define emscripten_sync_run_in_main_runtime_thread_ptr emscripten_sync_run_in_main_runtime_thread
@@ -191,10 +193,10 @@ void* emscripten_sync_run_in_main_runtime_thread_ptr_(EM_FUNC_SIGNATURE sig, voi
 #define emscripten_async_run_in_main_runtime_thread(sig, func_ptr, ...) emscripten_async_run_in_main_runtime_thread_((sig), (void*)(func_ptr),##__VA_ARGS__)
 #define emscripten_async_waitable_run_in_main_runtime_thread(sig, func_ptr, ...) emscripten_async_waitable_run_in_main_runtime_thread_((sig), (void*)(func_ptr),##__VA_ARGS__)
 
-EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call *call __attribute__((nonnull)), double timeoutMSecs);
-EMSCRIPTEN_RESULT emscripten_wait_for_call_i(em_queued_call *call __attribute__((nonnull)), double timeoutMSecs, int *outResult);
+EMSCRIPTEN_RESULT emscripten_wait_for_call_v(em_queued_call * _Nonnull call, double timeoutMSecs);
+EMSCRIPTEN_RESULT emscripten_wait_for_call_i(em_queued_call * _Nonnull call, double timeoutMSecs, int *outResult);
 
-void emscripten_async_waitable_close(em_queued_call *call __attribute__((nonnull)));
+void emscripten_async_waitable_close(em_queued_call * _Nonnull call);
 
 // Runs the given function on the specified thread. If we are currently on
 // that target thread then we just execute the call synchronously; otherwise it
@@ -203,12 +205,12 @@ void emscripten_async_waitable_close(em_queued_call *call __attribute__((nonnull
 // otherwise.
 int emscripten_dispatch_to_thread_args(pthread_t target_thread,
                                        EM_FUNC_SIGNATURE sig,
-                                       void* func_ptr __attribute__((nonnull)),
+                                       void* _Nonnull func_ptr,
                                        void* satellite,
                                        va_list args);
 int emscripten_dispatch_to_thread_(pthread_t target_thread,
                                    EM_FUNC_SIGNATURE sig,
-                                   void* func_ptr __attribute__((nonnull)),
+                                   void* _Nonnull func_ptr,
                                    void* satellite,
                                    ...);
 #define emscripten_dispatch_to_thread(                                         \
@@ -221,12 +223,12 @@ int emscripten_dispatch_to_thread_(pthread_t target_thread,
 // but may be simpler to reason about in some cases.
 int emscripten_dispatch_to_thread_async_args(pthread_t target_thread,
                                              EM_FUNC_SIGNATURE sig,
-                                             void* func_ptr __attribute__((nonnull)),
+                                             void* _Nonnull func_ptr,
                                              void* satellite,
                                              va_list args);
 int emscripten_dispatch_to_thread_async_(pthread_t target_thread,
                                          EM_FUNC_SIGNATURE sig,
-                                         void* func_ptr __attribute__((nonnull)),
+                                         void* _Nonnull func_ptr,
                                          void* satellite,
                                          ...);
 #define emscripten_dispatch_to_thread_async(                                   \

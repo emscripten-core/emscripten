@@ -13,5 +13,5 @@ int main() {
   assert(EM_ASM_INT({
     return Module['wasmMemory'] === wasmMemory && wasmMemory.buffer === HEAP8.buffer;
   }));
-  puts("success");
+  puts("done");
 }

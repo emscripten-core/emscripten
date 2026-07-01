@@ -18,7 +18,7 @@
 
 .section .globals,"",@
 
-# TODO(sbc): It would be nice if these we initialized directly
+# TODO(sbc): It would be nice if these were initialized directly
 # using PTR.const rather than using the `emscripten_stack_init`
 .globaltype __stack_end, PTR
 __stack_end:
@@ -43,7 +43,7 @@ emscripten_stack_init:
   # emscripten_stack_get_base, or emscripten_stack_get_free are called
   .functype emscripten_stack_init () -> ()
 
-  # What llvm calls __stack_high is the high address from where is grows
+  # What llvm calls __stack_high is the high address from where it grows
   # downwards.  We call this the stack base here in emscripten.
 #ifdef __PIC__
   global.get __stack_high@GOT

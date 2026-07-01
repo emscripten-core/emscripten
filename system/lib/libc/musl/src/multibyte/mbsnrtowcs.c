@@ -2,11 +2,13 @@
 
 size_t mbsnrtowcs(wchar_t *restrict wcs, const char **restrict src, size_t n, size_t wn, mbstate_t *restrict st)
 {
+	static unsigned internal_state;
 	size_t l, cnt=0, n2;
 	wchar_t *ws, wbuf[256];
 	const char *s = *src;
 	const char *tmp_s;
 
+	if (!st) st = (void *)&internal_state;
 	if (!wcs) ws = wbuf, wn = sizeof wbuf / sizeof *wbuf;
 	else ws = wcs;
 
@@ -41,8 +43,8 @@ size_t mbsnrtowcs(wchar_t *restrict wcs, const char **restrict src, size_t n, si
 				s = 0;
 				break;
 			}
-			/* have to roll back partial character */
-			*(unsigned *)st = 0;
+			s += n;
+			n -= n;
 			break;
 		}
 		s += l; n -= l;

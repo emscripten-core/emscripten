@@ -84,7 +84,7 @@ static void InitializeFlags() {
 #if SANITIZER_EMSCRIPTEN
   char *options = _emscripten_sanitizer_get_option("LSAN_OPTIONS");
   parser.ParseString(options);
-  emscripten_builtin_free(options);
+  free(options);
 #else
   parser.ParseString(GetEnv("LSAN_OPTIONS"));
 #endif // SANITIZER_EMSCRIPTEN
@@ -112,10 +112,10 @@ extern "C" void __lsan_init() {
   CacheBinaryName();
   AvoidCVE_2016_2143();
   InitializeFlags();
+  InitializePlatformEarly();
   InitCommonLsan();
   InitializeAllocator();
   ReplaceSystemMalloc();
-  InitTlsSize();
   InitializeInterceptors();
   InitializeThreads();
 #if !SANITIZER_EMSCRIPTEN

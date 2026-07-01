@@ -3,11 +3,20 @@
  * Copyright 2013 The Emscripten Authors
  * SPDX-License-Identifier: MIT
  *
- * This file gets implicatly injected as a `--post-js` file when
+ * This file gets implicitly injected as a `--post-js` file when
  * emcc is run with `--emrun`
  */
 
-if (typeof window == "object" && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
+// POSTs the given binary data represented as a (typed) array data back to the
+// emrun-based web server.
+// To use from C code, call e.g:
+//   EM_ASM({emrun_file_dump("file.dat", HEAPU8.subarray($0, $0 + $1));}, my_data_pointer, my_data_pointer_byte_length);
+// Note: this functions does nothing by default but gets redefined below
+// in `emrun_register_handlers` when emrun is active, along with `out` and
+// `err`.
+var emrun_file_dump = (filename, data) => {};
+
+if (globalThis.window && globalThis.document && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' || !ENVIRONMENT_IS_PTHREAD)) {
   var emrun_register_handlers = () => {
     // When C code exit()s, we may still have remaining stdout and stderr
     // messages in flight. In that case, we can't close the browser until all
@@ -29,7 +38,7 @@ if (typeof window == "object" && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' |
         window.close();
       } catch(e) {}
     };
-    var post = (msg) => {
+    var post = (url, msg) => {
       var http = new XMLHttpRequest();
       ++emrun_num_post_messages_in_flight;
       http.onreadystatechange = () => {
@@ -39,7 +48,7 @@ if (typeof window == "object" && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' |
           }
         }
       }
-      http.open("POST", "stdio.html", true);
+      http.open("POST", url, true);
       http.send(msg);
     };
     // If the address contains localhost, or we are running the page from port
@@ -57,19 +66,26 @@ if (typeof window == "object" && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' |
         }
       });
       out = (text) => {
-        post('^out^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text));
+        post('stdio.html', '^out^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text));
         prevPrint(text);
       };
       err = (text) => {
-        post('^err^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text));
+        post('stdio.html', '^err^'+(emrun_http_sequence_number++)+'^'+encodeURIComponent(text));
         prevErr(text);
+      };
+      emrun_file_dump = (filename, data) => {
+        out(`Dumping out file "${filename}" with ${data.length} bytes of data.`);
+        if (ArrayBuffer.isView(data) && typeof SharedArrayBuffer !== "undefined" && data.buffer instanceof SharedArrayBuffer) {
+          data = new data.constructor(data); // Make a clone of the typed array of the same type, since http.send() does not allow SharedArrayBuffer backing.
+        }
+        post("stdio.html?file=" + filename, data);
       };
 
       // Notify emrun web server that this browser has successfully launched the
       // page. Note that we may need to wait for the server to be ready.
       var tryToSendPageload = () => {
         try {
-          post('^pageload^');
+          post('stdio.html', '^pageload^');
         } catch (e) {
           setTimeout(tryToSendPageload, 50);
         }
@@ -78,18 +94,5 @@ if (typeof window == "object" && (typeof ENVIRONMENT_IS_PTHREAD == 'undefined' |
     }
   };
 
-  // POSTs the given binary data represented as a (typed) array data back to the
-  // emrun-based web server.
-  // To use from C code, call e.g:
-  //   EM_ASM({emrun_file_dump("file.dat", HEAPU8.subarray($0, $0 + $1));}, my_data_pointer, my_data_pointer_byte_length);
-  var emrun_file_dump = (filename, data) => {
-    var http = new XMLHttpRequest();
-    out(`Dumping out file "${filename}" with ${data.length} bytes of data.`);
-    http.open("POST", "stdio.html?file=" + filename, true);
-    http.send(data); // XXX  this does not work in workers, for some odd reason (issue #2681)
-  };
-
-  if (typeof document != 'undefined') {
-    emrun_register_handlers();
-  }
+  emrun_register_handlers();
 }

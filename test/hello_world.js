@@ -13,4 +13,4 @@ if (typeof print === 'undefined') {
   global.print = console.log
 }
 
-print('hello, world!');
+print('Hello, world!');

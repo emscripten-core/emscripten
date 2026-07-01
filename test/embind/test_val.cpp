@@ -41,6 +41,7 @@ EMSCRIPTEN_BINDINGS(test_bindings) {
 
 int main() {
   printf("start\n");
+  Dummy *dummy;
 
   test("val array()");
   val::global().set("a", val::array());
@@ -164,8 +165,15 @@ int main() {
 
   test("bool isNull()");
   EM_ASM(
-    a = null;
-    b = false;
+    globalThis.a = null;
+    globalThis.b = false;
+    globalThis.c = null;
+    globalThis.d = null;
+    globalThis.e = null;
+    globalThis.f = null;
+    globalThis.g = null;
+    globalThis.h = null;
+    globalThis.i = null;
   );
   ensure(val::global("a").isNull());
   ensure_not(val::global("b").isNull());
@@ -384,7 +392,7 @@ int main() {
 
   test("template<typename... Args> val new_(Args&&... args)");
   EM_ASM(
-    A = function() {
+    globalThis.A = function() {
       this.value = 2;
     }
   );
@@ -392,7 +400,7 @@ int main() {
   ensure_js("a instanceof A");
   ensure_js("a.value == 2");
   EM_ASM(
-    A = function(arg1, arg2) {
+    globalThis.A = function(arg1, arg2) {
       this.arg1 = arg1;
       this.arg2 = arg2;
     }
@@ -401,6 +409,14 @@ int main() {
   ensure_js("a instanceof A");
   ensure_js("a.arg1 == 2");
   ensure_js("a.arg2 == 'b'");
+#if __cplusplus >= 201703L
+  dummy = new Dummy();
+  val::global().set("a", val::global("A").new_(dummy, val("b"), allow_raw_pointers()));
+  ensure_js("a instanceof A");
+  ensure_js("a.arg1 instanceof Module.Dummy");
+  ensure_js("a.arg2 == 'b'");
+  delete dummy;
+#endif
 
   test("template<typename T> val operator[](const T& key)");
   EM_ASM(
@@ -441,31 +457,48 @@ int main() {
   ensure(val::global("f")().as<int>() == 2);
   ensure_not(val::global("f")().as<int>() == 3);
   EM_ASM(
-    f1 = function(arg1, arg2) {
+    globalThis.f1 = function(arg1, arg2) {
       return arg1;
     };
-    f2 = function(arg1, arg2) {
+    globalThis.f2 = function(arg1, arg2) {
       return arg2;
     };
   );
   ensure(val::global("f1")(val(2),val("3")).as<int>() == 2);
   ensure(val::global("f2")(val(2),val("3")).as<string>() == "3");
+#if __cplusplus >= 201703L
+  dummy = new Dummy();
+  ensure(val::global("f1")(dummy, 42, allow_raw_pointers()).as<Dummy*>(allow_raw_pointers()) == dummy);
+  delete dummy;
+#endif
 
   test("template<typename ReturnValue, typename... Args> ReturnValue call(const char* name, Args&&... args)");
   EM_ASM(
-    C = function() {
+    globalThis.C = function() {
       this.method = function() { return this; };
     };
     c = new C;
   );
   ensure(val::global("c").call<val>("method") == val::global("c"));
   EM_ASM(
-    C = function() {
+    globalThis.C = function() {
       this.method = function(arg) { return arg; };
     };
     c = new C;
   );
   ensure(val::global("c").call<int>("method", val(2)) == 2);
+#if __cplusplus >= 201703L
+  dummy = new Dummy();
+  EM_ASM(
+    globalThis.C = function() {
+      this.method = function(arg) { this.obj = arg; };
+    };
+    c = new C;
+  );
+  val::global("c").call<void>("method", dummy, allow_raw_pointers());
+  ensure_js("c.obj instanceof Module.Dummy");
+  delete dummy;
+#endif
 
   test("template<typename T, typename ...Policies> T as(Policies...)");
   EM_ASM(
@@ -536,8 +569,8 @@ int main() {
 
   test("bool instanceof(const val& v)");
   EM_ASM(
-    A = function() {};
-    B = function() {};
+    globalThis.A = function() {};
+    globalThis.B = function() {};
     a = new A;
   );
   ensure(val::global("a").instanceof(val::global("A")));
@@ -545,7 +578,7 @@ int main() {
 
   test("bool in(const val& v)");
   EM_ASM(
-    // can't declare like this because i get:
+    // can't declare like this because I get:
     //   error: use of undeclared identifier 'c'
     // possibly a bug with EM_ASM
     //a = {b: 'bb',c: 'cc'};
@@ -583,15 +616,11 @@ int main() {
 
   test("void throw_() const");
   EM_ASM(
-    test_val_throw_ = function(error)
-    {
-      try
-      {
+    globalThis.test_val_throw_ = function(error) {
+      try {
         Module.throw_js_error(error);
         return false;
-      }
-      catch(error_thrown)
-      {
+      } catch(error_thrown) {
         if (error_thrown != error)
           throw error_thrown;
       }
@@ -607,7 +636,7 @@ int main() {
   // these tests should probably go elsewhere as it is not a member of val
   test("template<typename T> std::vector<T> vecFromJSArray(const val& v)");
   EM_ASM(
-    // can't declare like this because i get:
+    // can't declare like this because I get:
     //   error: expected ')'
     // possibly a bug with EM_ASM
     //a = [1, '2'];
@@ -672,6 +701,25 @@ int main() {
   const char16_t* s = u"😃 = \U0001F603 is :-D";
   val::global().set("a", val::u16string(s));
   ensure_js("a == '😃 = \U0001F603 is :-D'");
+
+  test("val set() with policy");
+  dummy = new Dummy();
+  val::global().set("a", dummy, allow_raw_pointers());
+  ensure_js("a instanceof Module.Dummy");
+  val::global().set("a", val::null());
+  delete dummy;
+
+  test("val as<> with reference");
+  EM_ASM(
+    globalThis.staticDummy =  Module.makeDummy();
+    globalThis.c = function(obj) {
+      return globalThis.staticDummy;
+    };
+  );
+  Dummy& staticDummy = val::global("c")().as<Dummy&>();
+  EM_ASM(
+    globalThis.staticDummy.delete();
+  );
 
   printf("end\n");
   return 0;

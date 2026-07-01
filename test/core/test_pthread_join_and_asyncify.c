@@ -13,19 +13,23 @@ EM_ASYNC_JS(int, async_call, (), {
   return 42;
 });
 
-// TODO Remove EMSCRIPTEN_KEEPALIVE when support for async attributes is enabled.
-EMSCRIPTEN_KEEPALIVE void *run_thread(void *args) {
-  int ret = async_call();
+void *run_thread(void *args) {
+  intptr_t ret = async_call();
+  printf("async_call done %ld\n", ret);
   assert(ret == 42);
-  return NULL;
+  return (void*)ret;
 }
 
 int main() {
   pthread_t id;
+  // Test that JSPI works on the main thread.
+  emscripten_sleep(1);
+  // Also test that JSPI works on other threads.
   pthread_create(&id, NULL, run_thread, NULL);
   printf("joining thread!\n");
-  pthread_join(id, NULL);
-  printf("joined thread!\n");
-
+  void* rtn;
+  pthread_join(id, &rtn);
+  printf("join returned -> %ld\n", (intptr_t)rtn);
+  assert((intptr_t)rtn == 42);
   return 0;
 }

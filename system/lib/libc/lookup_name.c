@@ -8,7 +8,7 @@
 int __lookup_name(struct address buf[static MAXADDRS], char canon[static 256], const char *name, int family, int flags)
 {
 	/* We currently only support the callsite in gethostbyname2_r which
-	 * passes AI_CANONNAME.  Remove this assertion when if we ever expand
+	 * passes AI_CANONNAME.  Remove this assertion if we ever expand
 	 * this support. */
 	assert(flags == AI_CANONNAME);
 
@@ -16,7 +16,7 @@ int __lookup_name(struct address buf[static MAXADDRS], char canon[static 256], c
 		return EAI_SYSTEM;
 	}
 
-	/* This hunk is a duplicated from musl/src/network/lookup_name.c */
+	/* This hunk is duplicated from musl/src/network/lookup_name.c */
 	*canon = 0;
 	if (name) {
 		/* reject empty name and check len so it fits into temp bufs */

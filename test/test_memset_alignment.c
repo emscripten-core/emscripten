@@ -58,8 +58,6 @@ void test_copysize(int copySize) {
 }
 
 int main() {
-  srand(time(NULL));
-
   for (int copySize = 0; copySize < 128; ++copySize) {
     test_copysize(copySize);
   }
@@ -70,5 +68,5 @@ int main() {
     }
   }
 
-  printf("OK.\n");
+  printf("done\n");
 }

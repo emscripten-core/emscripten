@@ -3,7 +3,7 @@
 #include <string.h>
 #include <stdio.h>
 
-char mystring[] = "Hello world";
+char mystring[] = "Hello, world!";
 
 int main() {
   char buf[10];

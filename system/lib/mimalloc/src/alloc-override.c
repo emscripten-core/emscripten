@@ -1,5 +1,5 @@
 /* ----------------------------------------------------------------------------
-Copyright (c) 2018-2021, Microsoft Research, Daan Leijen
+Copyright (c) 2018-2026, Microsoft Research, Daan Leijen
 This is free software; you can redistribute it and/or modify it under the
 terms of the MIT license. A copy of the license can be found in the file
 "LICENSE" at the root of this distribution.
@@ -9,11 +9,8 @@ terms of the MIT license. A copy of the license can be found in the file
 #error "this file should be included from 'alloc.c' (so aliases can work)"
 #endif
 
-#if defined(MI_MALLOC_OVERRIDE) && defined(_WIN32) && !(defined(MI_SHARED_LIB) && defined(_DLL))
-#error "It is only possible to override "malloc" on Windows when building as a DLL (and linking the C runtime as a DLL)"
-#endif
 
-#if defined(MI_MALLOC_OVERRIDE) && !(defined(_WIN32))
+#if defined(MI_MALLOC_OVERRIDE) && !defined(_DLL)
 
 #if defined(__APPLE__)
 #include <AvailabilityMacros.h>
@@ -23,7 +20,7 @@ mi_decl_externc size_t malloc_good_size(size_t size);
 #endif
 
 // helper definition for C override of C++ new
-typedef struct mi_nothrow_s { int _tag; } mi_nothrow_t;
+typedef void* mi_nothrow_t;
 
 // ------------------------------------------------------
 // Override system malloc
@@ -52,7 +49,6 @@ typedef struct mi_nothrow_s { int _tag; } mi_nothrow_t;
   #define MI_FORWARD02(fun,x,y)   { fun(x,y); }
 #endif
 
-
 #if defined(__APPLE__) && defined(MI_SHARED_LIB_EXPORT) && defined(MI_OSX_INTERPOSE)
   // define MI_OSX_IS_INTERPOSED as we should not provide forwarding definitions for
   // functions that are interposed (or the interposing does not work)
@@ -72,22 +68,20 @@ typedef struct mi_nothrow_s { int _tag; } mi_nothrow_t;
   #define MI_INTERPOSE_FUN(oldfun,newfun) { (const void*)&newfun, (const void*)&oldfun }
   #define MI_INTERPOSE_MI(fun)            MI_INTERPOSE_FUN(fun,mi_##fun)
 
-  __attribute__((used)) static struct mi_interpose_s _mi_interposes[]  __attribute__((section("__DATA, __interpose"))) =
+  #define MI_INTERPOSE_DECLS(name)        __attribute__((used)) static struct mi_interpose_s name[]  __attribute__((section("__DATA, __interpose")))
+
+  MI_INTERPOSE_DECLS(_mi_interposes) =
   {
     MI_INTERPOSE_MI(malloc),
     MI_INTERPOSE_MI(calloc),
     MI_INTERPOSE_MI(realloc),
     MI_INTERPOSE_MI(strdup),
-    MI_INTERPOSE_MI(strndup),
     MI_INTERPOSE_MI(realpath),
     MI_INTERPOSE_MI(posix_memalign),
     MI_INTERPOSE_MI(reallocf),
     MI_INTERPOSE_MI(valloc),
     MI_INTERPOSE_FUN(malloc_size,mi_malloc_size_checked),
     MI_INTERPOSE_MI(malloc_good_size),
-    #if defined(MAC_OS_X_VERSION_10_15) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_15
-    MI_INTERPOSE_MI(aligned_alloc),
-    #endif
     #ifdef MI_OSX_ZONE
     // we interpose malloc_default_zone in alloc-override-osx.c so we can use mi_free safely
     MI_INTERPOSE_MI(free),
@@ -98,6 +92,12 @@ typedef struct mi_nothrow_s { int _tag; } mi_nothrow_t;
     MI_INTERPOSE_FUN(vfree,mi_cfree),
     #endif
   };
+  #if defined(MAC_OS_X_VERSION_10_7) && (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7)
+  MI_INTERPOSE_DECLS(_mi_interposes_10_7)  = { MI_INTERPOSE_MI(strndup) };
+  #endif
+  #if defined(MAC_OS_X_VERSION_10_15) && (MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_15)
+  MI_INTERPOSE_DECLS(_mi_interposes_10_15) = { MI_INTERPOSE_MI(aligned_alloc) };
+  #endif
 
   #ifdef __cplusplus
   extern "C" {
@@ -108,9 +108,8 @@ typedef struct mi_nothrow_s { int _tag; } mi_nothrow_t;
   void  _ZdaPvm(void* p, size_t n);  // delete[]
   void* _Znwm(size_t n);  // new
   void* _Znam(size_t n);  // new[]
-  // XXX EMSCRIPTEN: Use pointer type for nothrow argument
-  void* _ZnwmRKSt9nothrow_t(size_t n, mi_nothrow_t* tag); // new nothrow
-  void* _ZnamRKSt9nothrow_t(size_t n, mi_nothrow_t* tag); // new[] nothrow
+  void* _ZnwmRKSt9nothrow_t(size_t n, mi_nothrow_t tag); // new nothrow
+  void* _ZnamRKSt9nothrow_t(size_t n, mi_nothrow_t tag); // new[] nothrow
   #ifdef __cplusplus
   }
   #endif
@@ -127,14 +126,104 @@ typedef struct mi_nothrow_s { int _tag; } mi_nothrow_t;
   };
 
 #elif defined(_MSC_VER)
-  // cannot override malloc unless using a dll.
-  // we just override new/delete which does work in a static library.
+  _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Size) _ACRTIMP _CRTALLOCATOR _CRT_HYBRIDPATCHABLE
+  void* __cdecl _expand(_Pre_notnull_ void* _Block, _In_ _CRT_GUARDOVERFLOW size_t _Size) {
+    return mi_expand(_Block, _Size);
+  }
+  _Check_return_ _ACRTIMP 
+  size_t __cdecl _msize_base(_Pre_notnull_ void* _Block) _CRT_NOEXCEPT {
+    return mi_malloc_size(_Block);
+  }
+  _Check_return_ _ACRTIMP _CRT_HYBRIDPATCHABLE 
+  size_t __cdecl _msize(_Pre_notnull_ void* _Block) {
+    return mi_malloc_size(_Block);
+  }
+  _ACRTIMP 
+  void __cdecl _free_base(_Pre_maybenull_ _Post_invalid_ void* _Block) {
+    mi_free(_Block);
+  }
+  _ACRTIMP _CRT_HYBRIDPATCHABLE 
+  void __cdecl free(_Pre_maybenull_ _Post_invalid_ void* _Block) {
+    mi_free(_Block);
+  }
+  _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Size) _ACRTIMP _CRTALLOCATOR _CRT_JIT_INTRINSIC _CRTRESTRICT _CRT_HYBRIDPATCHABLE
+  void* __cdecl malloc(_In_ _CRT_GUARDOVERFLOW size_t _Size) {
+    return mi_malloc(_Size);
+  }
+  _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Size) _ACRTIMP _CRTALLOCATOR _CRTRESTRICT
+  void* __cdecl _malloc_base(_In_ size_t _Size) {
+    return mi_malloc(_Size);
+  }
+  _Success_(return != 0) _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Size) _ACRTIMP _CRTALLOCATOR _CRTRESTRICT
+  void* __cdecl _realloc_base(_Pre_maybenull_ _Post_invalid_  void*  _Block, _In_ size_t _Size) {
+    return mi_realloc(_Block, _Size);
+  }
+  _Success_(return != 0) _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Size) _ACRTIMP _CRTALLOCATOR _CRTRESTRICT _CRT_HYBRIDPATCHABLE
+  void* __cdecl realloc(_Pre_maybenull_ _Post_invalid_ void*  _Block, _In_ _CRT_GUARDOVERFLOW  size_t _Size) {
+    return mi_realloc(_Block, _Size);
+  }
+  _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Count * _Size) _ACRTIMP _CRTALLOCATOR _CRTRESTRICT 
+  void* __cdecl _calloc_base(_In_ size_t _Count, _In_ size_t _Size) {
+    return mi_calloc(_Count, _Size);
+  }
+  _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Count * _Size) _ACRTIMP _CRT_JIT_INTRINSIC _CRTALLOCATOR _CRTRESTRICT
+  void* __cdecl calloc(_In_ _CRT_GUARDOVERFLOW size_t _Count, _In_ _CRT_GUARDOVERFLOW size_t _Size) {
+    return mi_calloc(_Count, _Size);
+  }
+  _Success_(return != 0) _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Count * _Size) _ACRTIMP _CRTALLOCATOR _CRTRESTRICT
+  void* __cdecl _recalloc_base(_Pre_maybenull_ _Post_invalid_ void*  _Block, _In_ size_t _Count, _In_ size_t _Size) {
+    return mi_recalloc(_Block, _Count, _Size);
+  }
+  _Success_(return != 0) _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Count * _Size) _ACRTIMP _CRTALLOCATOR _CRTRESTRICT
+  void* __cdecl _recalloc(_Pre_maybenull_ _Post_invalid_ void*  _Block, _In_ _CRT_GUARDOVERFLOW size_t _Count, _In_ _CRT_GUARDOVERFLOW size_t _Size) {
+    return mi_recalloc(_Block, _Count, _Size);
+  }
+  _ACRTIMP 
+  void __cdecl _aligned_free(_Pre_maybenull_ _Post_invalid_ void* _Block) {
+    mi_free(_Block);
+  }
+  _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Size) _ACRTIMP _CRTALLOCATOR _CRTRESTRICT
+  void* __cdecl _aligned_malloc(_In_ _CRT_GUARDOVERFLOW size_t _Size, _In_ size_t _Alignment) {
+    return mi_malloc_aligned(_Size, _Alignment);
+  }
+  _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Size) _ACRTIMP _CRTALLOCATOR _CRTRESTRICT
+  void* __cdecl _aligned_offset_malloc(_In_ _CRT_GUARDOVERFLOW size_t _Size, _In_ size_t _Alignment, _In_ size_t _Offset) {
+    return mi_malloc_aligned_at(_Size, _Alignment, _Offset);
+  }
+  _Check_return_ _ACRTIMP 
+  size_t __cdecl _aligned_msize(_Pre_notnull_ void*  _Block, _In_ size_t _Alignment, _In_ size_t _Offset) {
+    MI_UNUSED(_Alignment); MI_UNUSED(_Offset); return mi_malloc_size(_Block);
+  }
+  _Success_(return != 0) _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Size) _ACRTIMP _CRTALLOCATOR _CRTRESTRICT
+  void* __cdecl _aligned_offset_realloc(_Pre_maybenull_ _Post_invalid_ void*  _Block, _In_ _CRT_GUARDOVERFLOW size_t _Size, _In_ size_t _Alignment, _In_ size_t _Offset) {
+    return mi_realloc_aligned_at(_Block, _Size, _Alignment, _Offset);
+  }
+  _Success_(return != 0) _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Count * _Size) _ACRTIMP _CRTALLOCATOR _CRTRESTRICT
+  void* __cdecl _aligned_offset_recalloc(_Pre_maybenull_ _Post_invalid_ void*  _Block, _In_ _CRT_GUARDOVERFLOW size_t _Count, _In_ _CRT_GUARDOVERFLOW size_t _Size, _In_ size_t _Alignment, _In_ size_t _Offset) {
+    return mi_recalloc_aligned_at(_Block, _Count, _Size, _Alignment, _Offset);
+  }
+  _Success_(return != 0) _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Size) _ACRTIMP _CRTALLOCATOR _CRTRESTRICT
+  void* __cdecl _aligned_realloc(_Pre_maybenull_ _Post_invalid_ void*  _Block, _In_ _CRT_GUARDOVERFLOW size_t _Size, _In_ size_t _Alignment) {
+    return mi_realloc_aligned(_Block, _Size, _Alignment);
+  }
+  _Success_(return != 0) _Check_return_ _Ret_maybenull_ _Post_writable_byte_size_(_Count * _Size) _ACRTIMP _CRTALLOCATOR _CRTRESTRICT
+  void* __cdecl _aligned_recalloc(_Pre_maybenull_ _Post_invalid_ void*  _Block, _In_ _CRT_GUARDOVERFLOW size_t _Count, _In_ _CRT_GUARDOVERFLOW size_t _Size, _In_ size_t _Alignment) {
+    return mi_recalloc_aligned(_Block, _Count, _Size, _Alignment);
+  }
 #else
-  // On all other systems forward to our API
+  // On all other systems forward allocation primitives to our API
   mi_decl_export void* malloc(size_t size)              MI_FORWARD1(mi_malloc, size)
   mi_decl_export void* calloc(size_t size, size_t n)    MI_FORWARD2(mi_calloc, size, n)
   mi_decl_export void* realloc(void* p, size_t newsize) MI_FORWARD2(mi_realloc, p, newsize)
   mi_decl_export void  free(void* p)                    MI_FORWARD0(mi_free, p)
+  // In principle we do not need to forward `strdup`/`strndup` but on some systems these do not use `malloc` internally (but a more primitive call)
+  // We only override if `strdup` is not a macro (as on some older libc's, see issue #885)
+  #if !defined(strdup)
+  mi_decl_export char* strdup(const char* str)             MI_FORWARD1(mi_strdup, str)
+  #endif
+  #if !defined(strndup) && (!defined(__APPLE__) || (defined(MAC_OS_X_VERSION_10_7) && MAC_OS_X_VERSION_MAX_ALLOWED >= MAC_OS_X_VERSION_10_7))
+  mi_decl_export char* strndup(const char* str, size_t n)  MI_FORWARD2(mi_strndup, str, n)
+  #endif
 #endif
 
 #if (defined(__GNUC__) || defined(__clang__)) && !defined(__APPLE__)
@@ -194,31 +283,35 @@ typedef struct mi_nothrow_s { int _tag; } mi_nothrow_t;
   void _ZdaPv(void* p)            MI_FORWARD0(mi_free,p) // delete[]
   void _ZdlPvm(void* p, size_t n) MI_FORWARD02(mi_free_size,p,n)
   void _ZdaPvm(void* p, size_t n) MI_FORWARD02(mi_free_size,p,n)
+
   void _ZdlPvSt11align_val_t(void* p, size_t al)            { mi_free_aligned(p,al); }
   void _ZdaPvSt11align_val_t(void* p, size_t al)            { mi_free_aligned(p,al); }
   void _ZdlPvmSt11align_val_t(void* p, size_t n, size_t al) { mi_free_size_aligned(p,n,al); }
   void _ZdaPvmSt11align_val_t(void* p, size_t n, size_t al) { mi_free_size_aligned(p,n,al); }
 
-  #if (MI_INTPTR_SIZE==8)
+  void _ZdlPvRKSt9nothrow_t(void* p, mi_nothrow_t tag)      { MI_UNUSED(tag); mi_free(p); }  // operator delete(void*, std::nothrow_t const&)
+  void _ZdaPvRKSt9nothrow_t(void* p, mi_nothrow_t tag)      { MI_UNUSED(tag); mi_free(p); }  // operator delete[](void*, std::nothrow_t const&)
+  void _ZdlPvSt11align_val_tRKSt9nothrow_t(void* p, size_t al, mi_nothrow_t tag) { MI_UNUSED(tag); mi_free_aligned(p,al); } // operator delete(void*, std::align_val_t, std::nothrow_t const&)
+  void _ZdaPvSt11align_val_tRKSt9nothrow_t(void* p, size_t al, mi_nothrow_t tag) { MI_UNUSED(tag); mi_free_aligned(p,al); } // operator delete[](void*, std::align_val_t, std::nothrow_t const&)
+
+  #if (MI_INTPTR_SIZE==8) || (MI_INTPTR_SIZE==4 && defined(__EMSCRIPTEN__))  // pr #1257
     void* _Znwm(size_t n)                             MI_FORWARD1(mi_new,n)  // new 64-bit
     void* _Znam(size_t n)                             MI_FORWARD1(mi_new,n)  // new[] 64-bit
-    // XXX EMSCRIPTEN: Use pointer type for nothrow argument
-    void* _ZnwmRKSt9nothrow_t(size_t n, mi_nothrow_t* tag) { MI_UNUSED(tag); return mi_new_nothrow(n); }
-    void* _ZnamRKSt9nothrow_t(size_t n, mi_nothrow_t* tag) { MI_UNUSED(tag); return mi_new_nothrow(n); }
+    void* _ZnwmRKSt9nothrow_t(size_t n, mi_nothrow_t tag) { MI_UNUSED(tag); return mi_new_nothrow(n); }
+    void* _ZnamRKSt9nothrow_t(size_t n, mi_nothrow_t tag) { MI_UNUSED(tag); return mi_new_nothrow(n); }
     void* _ZnwmSt11align_val_t(size_t n, size_t al)   MI_FORWARD2(mi_new_aligned, n, al)
     void* _ZnamSt11align_val_t(size_t n, size_t al)   MI_FORWARD2(mi_new_aligned, n, al)
-    void* _ZnwmSt11align_val_tRKSt9nothrow_t(size_t n, size_t al, mi_nothrow_t* tag) { MI_UNUSED(tag); return mi_new_aligned_nothrow(n,al); }
-    void* _ZnamSt11align_val_tRKSt9nothrow_t(size_t n, size_t al, mi_nothrow_t* tag) { MI_UNUSED(tag); return mi_new_aligned_nothrow(n,al); }
+    void* _ZnwmSt11align_val_tRKSt9nothrow_t(size_t n, size_t al, mi_nothrow_t tag) { MI_UNUSED(tag); return mi_new_aligned_nothrow(n,al); }
+    void* _ZnamSt11align_val_tRKSt9nothrow_t(size_t n, size_t al, mi_nothrow_t tag) { MI_UNUSED(tag); return mi_new_aligned_nothrow(n,al); }
   #elif (MI_INTPTR_SIZE==4)
     void* _Znwj(size_t n)                             MI_FORWARD1(mi_new,n)  // new 64-bit
     void* _Znaj(size_t n)                             MI_FORWARD1(mi_new,n)  // new[] 64-bit
-    // XXX EMSCRIPTEN: Use pointer type for nothrow argument
-    void* _ZnwjRKSt9nothrow_t(size_t n, mi_nothrow_t* tag) { MI_UNUSED(tag); return mi_new_nothrow(n); }
-    void* _ZnajRKSt9nothrow_t(size_t n, mi_nothrow_t* tag) { MI_UNUSED(tag); return mi_new_nothrow(n); }
+    void* _ZnwjRKSt9nothrow_t(size_t n, mi_nothrow_t tag) { MI_UNUSED(tag); return mi_new_nothrow(n); }
+    void* _ZnajRKSt9nothrow_t(size_t n, mi_nothrow_t tag) { MI_UNUSED(tag); return mi_new_nothrow(n); }
     void* _ZnwjSt11align_val_t(size_t n, size_t al)   MI_FORWARD2(mi_new_aligned, n, al)
     void* _ZnajSt11align_val_t(size_t n, size_t al)   MI_FORWARD2(mi_new_aligned, n, al)
-    void* _ZnwjSt11align_val_tRKSt9nothrow_t(size_t n, size_t al, mi_nothrow_t* tag) { MI_UNUSED(tag); return mi_new_aligned_nothrow(n,al); }
-    void* _ZnajSt11align_val_tRKSt9nothrow_t(size_t n, size_t al, mi_nothrow_t* tag) { MI_UNUSED(tag); return mi_new_aligned_nothrow(n,al); }
+    void* _ZnwjSt11align_val_tRKSt9nothrow_t(size_t n, size_t al, mi_nothrow_t tag) { MI_UNUSED(tag); return mi_new_aligned_nothrow(n,al); }
+    void* _ZnajSt11align_val_tRKSt9nothrow_t(size_t n, size_t al, mi_nothrow_t tag) { MI_UNUSED(tag); return mi_new_aligned_nothrow(n,al); }
   #else
     #error "define overloads for new/delete for this platform (just for performance, can be skipped)"
   #endif
@@ -236,18 +329,18 @@ extern "C" {
   // Forward Posix/Unix calls as well
   void*  reallocf(void* p, size_t newsize) MI_FORWARD2(mi_reallocf,p,newsize)
   size_t malloc_size(const void* p)        MI_FORWARD1(mi_usable_size,p)
-  #if !defined(__ANDROID__) && !defined(__FreeBSD__)
+  #if !defined(__ANDROID__) && !defined(__FreeBSD__) && !defined(__DragonFly__) && !defined(__EMSCRIPTEN__)
   size_t malloc_usable_size(void *p)       MI_FORWARD1(mi_usable_size,p)
   #else
   size_t malloc_usable_size(const void *p) MI_FORWARD1(mi_usable_size,p)
   #endif
 
   // No forwarding here due to aliasing/name mangling issues
-  __attribute__((weak)) // XXX EMSCRIPTEN
+  mi_decl_weak // XXX EMSCRIPTEN
   void*  valloc(size_t size)               { return mi_valloc(size); }
   void   vfree(void* p)                    { mi_free(p); }
   size_t malloc_good_size(size_t size)     { return mi_malloc_good_size(size); }
-  __attribute__((weak)) // XXX EMSCRIPTEN
+  mi_decl_weak // XXX EMSCRIPTEN
   int    posix_memalign(void** p, size_t alignment, size_t size) { return mi_posix_memalign(p, alignment, size); }
 
   // `aligned_alloc` is only available when __USE_ISOC11 is defined.
@@ -258,7 +351,7 @@ extern "C" {
   // Fortunately, in the case where `aligned_alloc` is declared as `static inline` it
   // uses internally `memalign`, `posix_memalign`, or `_aligned_malloc` so we  can avoid overriding it ourselves.
   #if !defined(__GLIBC__) || __USE_ISOC11
-  __attribute__((weak)) // XXX EMSCRIPTEN
+  mi_decl_weak // XXX EMSCRIPTEN
   void* aligned_alloc(size_t alignment, size_t size) { return mi_aligned_alloc(alignment, size); }
   #endif
 #endif
@@ -266,12 +359,15 @@ extern "C" {
 // no forwarding here due to aliasing/name mangling issues
 void  cfree(void* p)                                    { mi_free(p); }
 void* pvalloc(size_t size)                              { return mi_pvalloc(size); }
-__attribute__((weak)) // XXX EMSCRIPTEN
-void* reallocarray(void* p, size_t count, size_t size)  { return mi_reallocarray(p, count, size); }
-int   reallocarr(void* p, size_t count, size_t size)    { return mi_reallocarr(p, count, size); }
-__attribute__((weak)) // XXX EMSCRIPTEN
+mi_decl_weak // XXX EMSCRIPTEN
 void* memalign(size_t alignment, size_t size)           { return mi_memalign(alignment, size); }
-void* _aligned_malloc(size_t alignment, size_t size)    { return mi_aligned_alloc(alignment, size); }
+#if !defined(_WIN32)
+void* _aligned_malloc(size_t size, size_t alignment)    { return mi_malloc_aligned(size,alignment); }
+#endif
+mi_decl_weak // XXX EMSCRIPTEN
+void* reallocarray(void* p, size_t count, size_t size)  { return mi_reallocarray(p, count, size); }
+// some systems define reallocarr so mark it as a weak symbol (#751)
+mi_decl_weak int reallocarr(void* p, size_t count, size_t size)    { return mi_reallocarr(p, count, size); }
 
 #if defined(__wasi__)
   // forward __libc interface (see PR #667)
@@ -279,18 +375,19 @@ void* _aligned_malloc(size_t alignment, size_t size)    { return mi_aligned_allo
   void* __libc_calloc(size_t count, size_t size)        MI_FORWARD2(mi_calloc, count, size)
   void* __libc_realloc(void* p, size_t size)            MI_FORWARD2(mi_realloc, p, size)
   void  __libc_free(void* p)                            MI_FORWARD0(mi_free, p)
-  __attribute__((weak)) // XXX EMSCRIPTEN
+  mi_decl_weak // XXX EMSCRIPTEN
   void* __libc_memalign(size_t alignment, size_t size)  { return mi_memalign(alignment, size); }
 
 #ifdef __EMSCRIPTEN__ // emscripten adds some more on top of WASI
   void* emscripten_builtin_malloc(size_t size)                      MI_FORWARD1(mi_malloc, size)
-  void* emscripten_builtin_free(void* p)                            MI_FORWARD0(mi_free, p)
+  void* emscripten_builtin_realloc(void* p, size_t size)            MI_FORWARD2(mi_realloc, p, size)
+  void  emscripten_builtin_free(void* p)                            MI_FORWARD0(mi_free, p)
   void* emscripten_builtin_memalign(size_t alignment, size_t size)  { return mi_memalign(alignment, size); }
   void* emscripten_builtin_calloc(size_t nmemb, size_t size)        MI_FORWARD2(mi_calloc, nmemb, size)
 #endif
 
-#elif defined(__GLIBC__) && defined(__linux__)
-  // forward __libc interface (needed for glibc-based Linux distributions)
+#elif defined(__linux__)
+  // forward __libc interface (needed for glibc-based and musl-based Linux distributions)
   void* __libc_malloc(size_t size)                      MI_FORWARD1(mi_malloc,size)
   void* __libc_calloc(size_t count, size_t size)        MI_FORWARD2(mi_calloc,count,size)
   void* __libc_realloc(void* p, size_t size)            MI_FORWARD2(mi_realloc,p,size)
@@ -311,4 +408,4 @@ void* _aligned_malloc(size_t alignment, size_t size)    { return mi_aligned_allo
 #pragma GCC visibility pop
 #endif
 
-#endif // MI_MALLOC_OVERRIDE && !_WIN32
+#endif // MI_MALLOC_OVERRIDE

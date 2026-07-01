@@ -7,11 +7,13 @@
 
 #pragma once
 
-#include <stddef.h>
-#include <stdint.h>
 #include <emscripten/emscripten.h>
-#include <stdint.h>
+
+#include <stdbool.h>
 #include <stddef.h>
+#include <stddef.h>
+#include <stdint.h>
+#include <stdint.h>
 
 #define WASM_PAGE_SIZE 65536
 #define EMSCRIPTEN_PAGE_SIZE WASM_PAGE_SIZE
@@ -31,7 +33,8 @@ uintptr_t *emscripten_get_sbrk_ptr(void);
 // src/settings.js variables MEMORY_GROWTH_GEOMETRIC_STEP,
 // MEMORY_GROWTH_GEOMETRIC_CAP and MEMORY_GROWTH_LINEAR_STEP. This function
 // cannot be used to shrink the size of the memory.
-int emscripten_resize_heap(size_t requested_size) EM_IMPORT(emscripten_resize_heap);
+// Returns true on success, false otherwise.
+bool emscripten_resize_heap(size_t requested_size) EM_IMPORT(emscripten_resize_heap);
 
 // Returns the current size of the WebAssembly memory (referred to as heap for
 // legacy reason).
@@ -42,10 +45,11 @@ size_t emscripten_get_heap_size(void);
 size_t emscripten_get_heap_max(void);
 
 // Direct access to the system allocator.  Use these to access that underlying
-// allocator when intercepting/wrapping the allocator API.  Works with with both
+// allocator when intercepting/wrapping the allocator API.  Works with both
 // dlmalloc and emmalloc.
 void *emscripten_builtin_memalign(size_t alignment, size_t size);
 void *emscripten_builtin_malloc(size_t size);
+void *emscripten_builtin_realloc(void *ptr, size_t size);
 void *emscripten_builtin_calloc(size_t nmemb, size_t size);
 void emscripten_builtin_free(void *ptr);
 

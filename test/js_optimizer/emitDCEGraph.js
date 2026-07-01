@@ -18,18 +18,18 @@ function used() {
 }
 
 function useExportA() {
-  expI3();
+  expD7();
 }
 
 function useExportB() {
-  Module['expI3']();
+  Module['expD7']();
 }
 
 function useManySorted() {
-  Module['expI4']();
-  expI3();
-  expI1();
-  Module['expI2']();
+  Module['expD9']();
+  expD8();
+  expD7();
+  Module['expD7']();
 }
 
 var wasmImports = {
@@ -51,29 +51,20 @@ var expD3 = Module['expD3'] = wasmExports['expD3'];
 var expD4 = Module['expD4'] = wasmExports['expD4'];
 // Same as above but not export on the Module
 var expD5 = wasmExports['expD5'];
-
-// exports gotten indirectly (async compilation
-var expI1 = Module['expI1'] = () => (expI1 = Module['expI1'] = wasmExports['expI1'])();
-var expI2 = Module['expI2'] = () => (expI2 = Module['expI2'] = wasmExports['expI2'])();
-var expI3 = Module['expI3'] = () => (expI3 = Module['expI3'] = wasmExports['expI3'])();
-var expI4 = Module['expI4'] = () => (expI4 = Module['expI4'] = wasmExports['expI4'])();
-
-// Same as above but not export on the Module.
-var expI5 = () => (expI5 = wasmExports['expI5'])();
+var expD6 = wasmExports['expD6'];
+var expD7 = wasmExports['expD7'];
+var expD8 = wasmExports['expD8'];
+var expD9 = wasmExports['expD9'];
 
 function applySignatureConversions() {
   // Wrapping functions should not constitute a usage
-  wasmExports['expI5'] = foo(wasmExports['expI5']);
+  wasmExports['expD6'] = foo(wasmExports['expD6']);
 }
 
 // add uses for some of them
 expD1;
 Module['expD2'];
 wasmExports['expD3'];
-
-expI1;
-Module['expI2'];
-wasmExports['expI3'];
 
 // deep uses, that we can't scan
 function usedFromDeep() {

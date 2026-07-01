@@ -19,26 +19,13 @@
 #endif
 
 #ifndef __scc
-#ifdef __EMSCRIPTEN__
-// With emscripten we allow the passing of longer-than-word-sized
-// argument (such as off_t on wasm32) and let binaryen handle splitting
-// them into a pair of i32 arguments.
-#define __scc(X) ((long long) (X))
-#else
 #define __scc(X) ((long) (X))
 #endif
 typedef long syscall_arg_t;
-#endif
 
-#ifdef __cplusplus
-extern "C" {
-#endif
 hidden long __syscall_ret(unsigned long),
 	__syscall_cp(syscall_arg_t, syscall_arg_t, syscall_arg_t, syscall_arg_t,
 	             syscall_arg_t, syscall_arg_t, syscall_arg_t);
-#ifdef __cplusplus
-}
-#endif
 
 #ifndef __EMSCRIPTEN__
 #define __syscall1(n,a) __syscall1(n,__scc(a))
@@ -50,12 +37,12 @@ hidden long __syscall_ret(unsigned long),
 #else // __EMSCRIPTEN__
 #define __syscall_emscripten(n, ...) n(__VA_ARGS__)
 #define __syscall_emscripten0(n) __syscall_emscripten(n)
-#define __syscall_emscripten1(n,a) __syscall_emscripten(n,__scc(a))
-#define __syscall_emscripten2(n,a,b) __syscall_emscripten(n,__scc(a),__scc(b))
-#define __syscall_emscripten3(n,a,b,c) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c))
-#define __syscall_emscripten4(n,a,b,c,d) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c),__scc(d))
-#define __syscall_emscripten5(n,a,b,c,d,e) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e))
-#define __syscall_emscripten6(n,a,b,c,d,e,f) __syscall_emscripten(n,__scc(a),__scc(b),__scc(c),__scc(d),__scc(e),__scc(f))
+#define __syscall_emscripten1(n,a) __syscall_emscripten(n,a)
+#define __syscall_emscripten2(n,a,b) __syscall_emscripten(n,a,b)
+#define __syscall_emscripten3(n,a,b,c) __syscall_emscripten(n,a,b,c)
+#define __syscall_emscripten4(n,a,b,c,d) __syscall_emscripten(n,a,b,c,d)
+#define __syscall_emscripten5(n,a,b,c,d,e) __syscall_emscripten(n,a,b,c,d,e)
+#define __syscall_emscripten6(n,a,b,c,d,e,f) __syscall_emscripten(n,a,b,c,d,e,f)
 #endif // __EMSCRIPTEN__
 
 #define __SYSCALL_NARGS_X(a,b,c,d,e,f,g,h,n,...) n
@@ -421,10 +408,10 @@ hidden long __syscall_ret(unsigned long),
 #define __sys_open_cp3(x,pn,fl,mo) __syscall_cp4(SYS_openat, AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
 #endif
 #else // __EMSCRIPTEN__
-#define __sys_open2(x,pn,fl) __syscall_openat(__scc(AT_FDCWD), __scc(pn), __scc((fl)|O_LARGEFILE))
-#define __sys_open3(x,pn,fl,mo) __syscall_openat(__scc(AT_FDCWD), __scc(pn), __scc((fl)|O_LARGEFILE), __scc(mo))
-#define __sys_open_cp2(x,pn,fl) __syscall_openat(__scc(AT_FDCWD), __scc(pn), __scc((fl)|O_LARGEFILE))
-#define __sys_open_cp3(x,pn,fl,mo) __syscall_openat(__scc(AT_FDCWD), __scc(pn), __scc((fl)|O_LARGEFILE), __scc(mo))
+#define __sys_open2(x,pn,fl) __syscall_openat(AT_FDCWD, pn, (fl)|O_LARGEFILE)
+#define __sys_open3(x,pn,fl,mo) __syscall_openat(AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
+#define __sys_open_cp2(x,pn,fl) __syscall_openat(AT_FDCWD, pn, (fl)|O_LARGEFILE)
+#define __sys_open_cp3(x,pn,fl,mo) __syscall_openat(AT_FDCWD, pn, (fl)|O_LARGEFILE, mo)
 #endif
 
 #define __sys_open(...) __SYSCALL_DISP(__sys_open,,__VA_ARGS__)
@@ -432,6 +419,23 @@ hidden long __syscall_ret(unsigned long),
 
 #define __sys_open_cp(...) __SYSCALL_DISP(__sys_open_cp,,__VA_ARGS__)
 #define sys_open_cp(...) __syscall_ret(__sys_open_cp(__VA_ARGS__))
+
+#ifdef SYS_pause
+#define __sys_pause() __syscall(SYS_pause)
+#define __sys_pause_cp() __syscall_cp(SYS_pause)
+#elif defined(__EMSCRIPTEN__)
+/* Note: When the sigmask argument is NULL, ppoll() differs from poll() only
+ * in the precision of the timeout argument.  For poll -1 means block forever
+ * as opposed to ppoll which uses NULL/0. */
+#define __sys_pause() __syscall(SYS_poll, 0, 0, -1)
+#define __sys_pause_cp() __syscall_cp(SYS_poll, 0, 0, -1)
+#else
+#define __sys_pause() __syscall(SYS_ppoll, 0, 0, 0, 0)
+#define __sys_pause_cp() __syscall_cp(SYS_ppoll, 0, 0, 0, 0)
+#endif
+
+#define sys_pause() __syscall_ret(__sys_pause())
+#define sys_pause_cp() __syscall_ret(__sys_pause_cp())
 
 #ifdef SYS_wait4
 #define __sys_wait4(a,b,c,d) __syscall(SYS_wait4,a,b,c,d)
@@ -445,11 +449,7 @@ hidden long __emulate_wait4(int, int *, int, void *, int);
 #define sys_wait4(a,b,c,d) __syscall_ret(__sys_wait4(a,b,c,d))
 #define sys_wait4_cp(a,b,c,d) __syscall_ret(__sys_wait4_cp(a,b,c,d))
 
-#ifdef __cplusplus
-hidden void __procfdname(char __buf[], unsigned);
-#else
 hidden void __procfdname(char __buf[static 15+3*sizeof(int)], unsigned);
-#endif
 
 hidden void *__vdsosym(const char *, const char *);
 

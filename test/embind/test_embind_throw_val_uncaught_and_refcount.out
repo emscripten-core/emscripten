@@ -1,0 +1,10 @@
+Captured exception.
+Uncaught before throw 1: 0
+Throwing 1...
+Caught 1: test exception
+Uncaught during catch 1: 0
+Uncaught between throws: 0
+Throwing 2...
+Caught 2: test exception
+Uncaught during catch 2: 0
+Done.

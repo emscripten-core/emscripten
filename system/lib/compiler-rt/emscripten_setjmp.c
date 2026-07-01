@@ -13,7 +13,7 @@
 
 #include "emscripten_internal.h"
 
-#ifdef __USING_WASM_SJLJ__
+#ifdef __WASM_SJLJ__
 struct __WasmLongjmpArgs {
   void *env;
   int val;
@@ -25,7 +25,7 @@ struct __WasmLongjmpArgs {
 struct jmp_buf_impl {
   void* func_invocation_id;
   uint32_t label;
-#ifdef __USING_WASM_SJLJ__
+#ifdef __WASM_SJLJ__
   struct __WasmLongjmpArgs arg;
 #endif
 };
@@ -48,13 +48,13 @@ uint32_t __wasm_setjmp_test(void* env, void* func_invocation_id) {
   return 0;
 }
 
-#ifdef __USING_WASM_SJLJ__
+#ifdef __WASM_SJLJ__
 // llvm uses `1` for the __c_longjmp tag.
 // See https://github.com/llvm/llvm-project/blob/main/llvm/include/llvm/CodeGen/WasmEHFuncInfo.h
 #define C_LONGJMP 1
 
 // Wasm EH allows us to throw and catch multiple values, but that requires
-// multivalue support in the toolchain, whch is not reliable at the time.
+// multivalue support in the toolchain, which is not reliable at the time.
 // TODO Consider switching to throwing two values at the same time later.
 void __wasm_longjmp(void* env, int val) {
   struct jmp_buf_impl* jb = env;

@@ -1,7 +1,7 @@
 #include <stdio.h>
 #include <emscripten/em_js.h>
 
-EM_JS_DEPS(deps, "$dynCall");
+EM_JS_DEPS(deps, "$UTF8ToString,$dynCall");
 
 EM_JS(void, testDynCall, (void* ptr, const char* str), {
   let rtn = dynCall("pipp", Number(ptr), [42, 43, Number(str)]);

@@ -9,5 +9,5 @@ speed_t cfgetospeed(const struct termios *tio)
 
 speed_t cfgetispeed(const struct termios *tio)
 {
-	return cfgetospeed(tio);
+	return (tio->c_cflag & CIBAUD) / (CIBAUD/CBAUD);
 }

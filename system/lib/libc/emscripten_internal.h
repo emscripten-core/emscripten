@@ -7,12 +7,15 @@
  * Declarations for internal-only JS library functions.
  *
  * All JS library functions must be declares in one header or anther in order
- * for `tools/gen_sig_info.py` to work.   This file contains declarations for
+ * for `tools/maint/gen_sig_info.py` to work.   This file contains declarations for
  * functions that are not declared in any other public or private header.
  */
+#ifndef __EMSCRIPTEN_INTERNAL_H__
+#define __EMSCRIPTEN_INTERNAL_H__
 
 #include <emscripten/em_macros.h>
 #include <emscripten/proxying.h>
+#include <emscripten/webaudio.h>
 #include <emscripten/html5.h>
 #include <emscripten/wasm_worker.h>
 
@@ -20,21 +23,20 @@
 #include <stdbool.h>   // for `bool`
 #include <stdint.h>    // for `intptr_t`
 #include <sys/types.h> // for `off_t`
+#include <threads.h>   // for `thread_local`
 #include <time.h>      // for `struct tm`
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
+// Pending signals for the current thread.  This gets populated when a signal
+// is raised but it's blocked by pthread_sigmask.
+extern thread_local sigset_t __sig_pending;
+
 _Noreturn void _abort_js(void);
 
 void setThrew(uintptr_t threw, int value);
-
-// An external JS implementation that is efficient for very large copies, using
-// HEAPU8.set()
-void _emscripten_memcpy_js(void* __restrict__ dest,
-                           const void* __restrict__ src,
-                           size_t n) EM_IMPORT(_emscripten_memcpy_js);
 
 void* _emscripten_memcpy_bulkmem(void* __restrict__ dest,
                                  const void* __restrict__ src,
@@ -45,8 +47,8 @@ void emscripten_notify_memory_growth(size_t memory_index);
 
 time_t _timegm_js(struct tm* tm);
 time_t _mktime_js(struct tm* tm);
-void _localtime_js(time_t t, struct tm* __restrict__ tm);
-void _gmtime_js(time_t t, struct tm* __restrict__ tm);
+int _localtime_js(time_t t, struct tm* __restrict__ tm);
+int _gmtime_js(time_t t, struct tm* __restrict__ tm);
 
 void _tzset_js(long* timezone, int* daylight, char* std_name, char* dst_name);
 
@@ -67,7 +69,7 @@ bool _emscripten_get_now_is_monotonic(void);
 
 void _emscripten_get_progname(char*, int);
 
-// Not defined in musl, but defined in library.js.  Included here to for
+// Not defined in musl, but defined in library.js.  Included here for
 // the benefit of gen_sig_info.py
 char* strptime_l(const char* __restrict __s,
                  const char* __restrict __fmt,
@@ -82,9 +84,9 @@ int _mmap_js(size_t length,
              int* allocated,
              void** addr);
 int _munmap_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset);
+  void* addr, size_t length, int prot, int flags, int fd, off_t offset);
 int _msync_js(
-  intptr_t addr, size_t length, int prot, int flags, int fd, off_t offset);
+  void* addr, size_t length, int prot, int flags, int fd, off_t offset);
 
 struct dso;
 
@@ -100,18 +102,10 @@ void* _dlsym_catchup_js(struct dso* handle, int sym_index);
 
 int _setitimer_js(int which, double timeout);
 
-// Synchronous version of "dlsync_threads".  Called only on the main thread.
+// Synchronize loaded modules across threads.
 // Runs _emscripten_dlsync_self on each of the threads that are running at
 // the time of the call.
 void _emscripten_dlsync_threads();
-
-// Asynchronous version of "dlsync_threads".  Called only on the main thread.
-// Runs _emscripten_dlsync_self on each of the threads that are running at
-// the time of the call.  Once this is done the callback is called with the
-// given em_proxying_ctx.
-void _emscripten_dlsync_threads_async(pthread_t calling_thread,
-                                      void (*callback)(em_proxying_ctx*),
-                                      em_proxying_ctx* ctx);
 
 #ifdef _GNU_SOURCE
 void __call_sighandler(sighandler_t handler, int sig);
@@ -137,13 +131,13 @@ struct emscripten_fetch_t;
 void emscripten_start_fetch(struct emscripten_fetch_t* fetch);
 size_t _emscripten_fetch_get_response_headers_length(int32_t fetchID);
 size_t _emscripten_fetch_get_response_headers(int32_t fetchID, char *dst, size_t dstSizeBytes);
-void _emscripten_fetch_free(unsigned int);
-
-EMSCRIPTEN_RESULT _emscripten_set_offscreencanvas_size(const char *target, int width, int height);
+void emscripten_fetch_free(unsigned int);
 
 // Internal implementation function in JavaScript side that emscripten_create_wasm_worker() calls to
 // to perform the wasm worker creation.
-emscripten_wasm_worker_t _emscripten_create_wasm_worker(void *stackLowestAddress, uint32_t stackSize);
+bool _emscripten_create_wasm_worker(emscripten_wasm_worker_t wwID, void *stackLowestAddress, uint32_t stackSize, void* pthreadPtr);
+
+void _emscripten_create_audio_worklet(emscripten_wasm_worker_t wwID, EMSCRIPTEN_WEBAUDIO_T audioContext, void *stackLowestAddress, uint32_t stackSize, void* pthreadPtr, EmscriptenStartWebAudioWorkletCallback callback, void *userData2);
 
 void __resumeException(void* exn);
 void __cxa_call_unexpected(void* exn);
@@ -153,6 +147,14 @@ uint32_t _emscripten_lookup_name(const char *name);
 
 int _emscripten_system(const char *command);
 
+void _emscripten_log_formatted(int flags, const char* str);
+
+EmscriptenDeviceOrientationEvent* _emscripten_get_last_deviceorientation_event();
+EmscriptenDeviceMotionEvent* _emscripten_get_last_devicemotion_event();
+EmscriptenMouseEvent* _emscripten_get_last_mouse_event();
+
 #ifdef __cplusplus
 }
 #endif
+
+#endif /* __EMSCRIPTEN_INTERNAL_H__ */

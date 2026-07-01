@@ -5,19 +5,18 @@
 # found in the LICENSE file.
 
 import os
+import shlex
 import shutil
 import sys
-from tools import shared
-from tools import config
-from tools import utils
-from subprocess import CalledProcessError
+
+from tools import config, shared, utils
 
 
 #
 # Main run() function
 #
 def run():
-  if len(sys.argv) < 2 or sys.argv[1] in ('--version', '--help'):
+  if len(sys.argv) < 2 or sys.argv[1] in {'--version', '--help'}:
     print('''\
 emcmake is a helper for cmake, setting various environment
 variables so that emcc etc. are used. Typical usage:
@@ -36,13 +35,14 @@ variables so that emcc etc. are used. Typical usage:
     args.append('-DCMAKE_TOOLCHAIN_FILE=' + utils.path_from_root('cmake/Modules/Platform/Emscripten.cmake'))
 
   if not has_substr(args, '-DCMAKE_CROSSCOMPILING_EMULATOR'):
-    node_js = [config.NODE_JS[0]]
-    # In order to allow cmake to run code built with pthreads we need to pass
-    # some extra flags to node.
-    node_js += shared.node_pthread_flags(config.NODE_JS)
-    node_js = ';'.join(node_js)
+    node_js = config.NODE_JS[0]
     # See https://github.com/emscripten-core/emscripten/issues/15522
     args.append(f'-DCMAKE_CROSSCOMPILING_EMULATOR={node_js}')
+
+  # Print a better error if we have no CMake executable on the PATH
+  if not os.path.dirname(args[0]) and not shutil.which(args[0]):
+    print(f'emcmake: cmake executable not found on PATH: `{args[0]}`', file=sys.stderr)
+    return 1
 
   # On Windows specify MinGW Makefiles or ninja if we have them and no other
   # toolchain was specified, to keep CMake from pulling in a native Visual
@@ -56,12 +56,8 @@ variables so that emcc etc. are used. Typical usage:
       print('emcmake: no compatible cmake generator found; Please install ninja or mingw32-make, or specify a generator explicitly using -G', file=sys.stderr)
       return 1
 
-  print('configure: ' + shared.shlex_join(args), file=sys.stderr)
-  try:
-    shared.check_call(args)
-    return 0
-  except CalledProcessError as e:
-    return e.returncode
+  print(f'emcmake: {shlex.join(args)} in directory {os.getcwd()}', file=sys.stderr)
+  shared.exec_process(args)
 
 
 if __name__ == '__main__':

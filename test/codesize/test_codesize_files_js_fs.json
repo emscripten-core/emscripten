@@ -1,0 +1,29 @@
+{
+  "a.out.js": 17831,
+  "a.out.js.gz": 7311,
+  "a.out.nodebug.wasm": 381,
+  "a.out.nodebug.wasm.gz": 258,
+  "total": 18212,
+  "total_gz": 7569,
+  "sent": [
+    "a (fd_write)",
+    "b (fd_read)",
+    "c (fd_close)",
+    "d (__syscall_openat)"
+  ],
+  "imports": [
+    "a (fd_write)",
+    "b (fd_read)",
+    "c (fd_close)",
+    "d (__syscall_openat)"
+  ],
+  "exports": [
+    "e (memory)",
+    "f (__wasm_call_ctors)",
+    "g (main)"
+  ],
+  "funcs": [
+    "$__wasm_call_ctors",
+    "$main"
+  ]
+}

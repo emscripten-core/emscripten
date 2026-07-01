@@ -1,24 +1,13 @@
 // TypeScript bindings for emscripten-generated code.  Automatically generated at compile time.
 declare namespace RuntimeExports {
-    let HEAPF32: any;
-    let HEAPF64: any;
-    let HEAP_DATA_VIEW: any;
-    let HEAP8: any;
-    let HEAPU8: any;
-    let HEAP16: any;
-    let HEAPU16: any;
-    let HEAP32: any;
-    let HEAPU32: any;
-    let HEAP64: any;
-    let HEAPU64: any;
-    let FS_createPath: any;
-    function FS_createDataFile(parent: any, name: any, fileData: any, canRead: any, canWrite: any, canOwn: any): void;
-    function FS_createPreloadedFile(parent: any, name: any, url: any, canRead: any, canWrite: any, onload: any, onerror: any, dontCreateFile: any, canOwn: any, preFinish: any): void;
-    function FS_unlink(path: any): any;
-    let FS_createLazyFile: any;
-    let FS_createDevice: any;
-    let addRunDependency: any;
-    let removeRunDependency: any;
+    function FS_createPath(...args: any[]): any;
+    function FS_createDataFile(...args: any[]): any;
+    function FS_preloadFile(parent: any, name: any, url: any, canRead: any, canWrite: any, dontCreateFile: any, canOwn: any, preFinish: any): Promise<void>;
+    function FS_unlink(...args: any[]): any;
+    function FS_createLazyFile(...args: any[]): any;
+    function FS_createDevice(...args: any[]): any;
+    function addRunDependency(id: any): void;
+    function removeRunDependency(id: any): void;
 }
 interface WasmModule {
   _main(_0: number, _1: number): number;
@@ -31,6 +20,8 @@ export interface ClassHandle {
   delete(): void;
   deleteLater(): this;
   isDeleted(): boolean;
+  // @ts-ignore - If targeting lower than ESNext, this symbol might not exist.
+  [Symbol.dispose](): void;
   clone(): this;
 }
 export interface Test extends ClassHandle {
@@ -51,24 +42,35 @@ export interface Test extends ClassHandle {
 export interface Obj extends ClassHandle {
 }
 
-export interface BarValue<T extends number> {
+export interface FirstEnumValue<T extends number> {
   value: T;
 }
-export type Bar = BarValue<0>|BarValue<1>|BarValue<2>;
+export type FirstEnum = FirstEnumValue<0>|FirstEnumValue<1>|FirstEnumValue<2>;
+
+export type SecondEnum = 0|1|2;
+
+export type ThirdEnum = 'kValueAlpha'|'kValueBeta'|'kValueGamma';
+
+export type HyphenatedEnum = 'k-hyphen-a'|'k-hyphen-b';
 
 export interface EmptyEnumValue<T extends number> {
   value: T;
 }
 export type EmptyEnum = never/* Empty Enumerator */;
 
-export type ValArrIx = [ Bar, Bar, Bar, Bar ];
+export type ValArrIx = [ FirstEnum, FirstEnum, FirstEnum, FirstEnum ];
 
-export interface IntVec extends ClassHandle {
+export interface IntVec extends ClassHandle, Iterable<number> {
   push_back(_0: number): void;
   resize(_0: number, _1: number): void;
   size(): number;
   get(_0: number): number | undefined;
   set(_0: number, _1: number): boolean;
+}
+
+export interface IterableClass extends ClassHandle, Iterable<number> {
+  count(): number;
+  at(_0: number): number;
 }
 
 export interface MapIntInt extends ClassHandle {
@@ -93,11 +95,7 @@ export interface ClassWithSmartPtrConstructor extends ClassHandle {
   fn(_0: number): number;
 }
 
-export type ValObj = {
-  foo: Foo,
-  bar: Bar,
-  callback: (message: string) => void
-};
+export type AliasedVal = number;
 
 export interface BaseClass extends ClassHandle {
   fn(_0: number): number;
@@ -117,6 +115,15 @@ export interface InterfaceWrapper extends Interface {
 
 export type ValArr = [ number, number, number ];
 
+export type ValObj = {
+  string: EmbindString,
+  firstEnum: FirstEnum,
+  secondEnum: SecondEnum,
+  thirdEnum: ThirdEnum,
+  optionalInt?: number | undefined,
+  callback: (message: string) => void
+};
+
 interface EmbindModule {
   Test: {
     staticFunction(_0: number): number;
@@ -131,12 +138,20 @@ interface EmbindModule {
   getPointer(_0: Obj | null): Obj | null;
   getNonnullPointer(): Obj;
   a_class_instance: Test;
-  an_enum: Bar;
-  Bar: {valueOne: BarValue<0>, valueTwo: BarValue<1>, valueThree: BarValue<2>};
+  an_enum: FirstEnum;
+  FirstEnum: {kValueOne: FirstEnumValue<0>, kValueTwo: FirstEnumValue<1>, kValueThree: FirstEnumValue<2>};
+  SecondEnum: {kValueA: 0, kValueB: 1, kValueC: 2};
+  ThirdEnum: {kValueAlpha: 'kValueAlpha', kValueBeta: 'kValueBeta', kValueGamma: 'kValueGamma'};
+  HyphenatedEnum: {'k-hyphen-a': 'k-hyphen-a', 'k-hyphen-b': 'k-hyphen-b'};
   EmptyEnum: {};
-  enum_returning_fn(): Bar;
+  enum_returning_fn(): FirstEnum;
+  num_enum_returning_fn(): SecondEnum;
+  str_enum_returning_fn(): ThirdEnum;
   IntVec: {
     new(): IntVec;
+  };
+  IterableClass: {
+    new(): IterableClass;
   };
   MapIntInt: {
     new(): MapIntInt;
@@ -159,6 +174,7 @@ interface EmbindModule {
     extend(_0: EmbindString, _1: any): any;
   };
   InterfaceWrapper: {};
+  function_consuming_aliased_val(_0: AliasedVal): void;
   a_bool: boolean;
   an_int: number;
   optional_test(_0?: Foo): number | undefined;
@@ -167,7 +183,10 @@ interface EmbindModule {
   smart_ptr_function(_0: ClassWithSmartPtrConstructor | null): number;
   smart_ptr_function_with_params(foo: ClassWithSmartPtrConstructor | null): number;
   function_with_callback_param(_0: (message: string) => void): number;
+  getValObj(): ValObj;
+  setValObj(_0: ValObj): void;
   string_test(_0: EmbindString): string;
+  optional_string_test(_0: EmbindString): string | undefined;
   wstring_test(_0: string): string;
 }
 

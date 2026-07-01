@@ -14,6 +14,7 @@
 #include "em_task_queue.h"
 #include "proxying_notification_state.h"
 #include "thread_mailbox.h"
+#include "threading_internal.h"
 
 #define EM_TASK_QUEUE_INITIAL_CAPACITY 128
 
@@ -133,12 +134,12 @@ void em_task_queue_destroy(em_task_queue* queue) {
 }
 
 // Not thread safe. Returns 1 on success and 0 on failure.
-static int em_task_queue_grow(em_task_queue* queue) {
+static bool em_task_queue_grow(em_task_queue* queue) {
   // Allocate a larger task queue.
   int new_capacity = queue->capacity * 2;
   task* new_tasks = malloc(sizeof(task) * new_capacity);
   if (new_tasks == NULL) {
-    return 0;
+    return false;
   }
   // Copy the tasks such that the head of the queue is at the beginning of the
   // buffer. There are two cases to handle: either the queue wraps around the
@@ -162,10 +163,11 @@ static int em_task_queue_grow(em_task_queue* queue) {
   queue->capacity = new_capacity;
   queue->head = 0;
   queue->tail = queued_tasks;
-  return 1;
+  return true;
 }
 
 void em_task_queue_execute(em_task_queue* queue) {
+  DBG("em_task_queue_execute");
   queue->processing = 1;
   pthread_mutex_lock(&queue->mutex);
   while (!em_task_queue_is_empty(queue)) {
@@ -178,6 +180,7 @@ void em_task_queue_execute(em_task_queue* queue) {
   }
   pthread_mutex_unlock(&queue->mutex);
   queue->processing = 0;
+  DBG("done em_task_queue_execute");
 }
 
 void em_task_queue_cancel(em_task_queue* queue) {
@@ -197,13 +200,13 @@ void em_task_queue_cancel(em_task_queue* queue) {
   queue->notification = NOTIFICATION_NONE;
 }
 
-int em_task_queue_enqueue(em_task_queue* queue, task t) {
+bool em_task_queue_enqueue(em_task_queue* queue, task t) {
   if (em_task_queue_is_full(queue) && !em_task_queue_grow(queue)) {
-    return 0;
+    return false;
   }
   queue->tasks[queue->tail] = t;
   queue->tail = (queue->tail + 1) % queue->capacity;
-  return 1;
+  return true;
 }
 
 task em_task_queue_dequeue(em_task_queue* queue) {
@@ -219,6 +222,7 @@ static void receive_notification(void* arg) {
   notification_state expected = NOTIFICATION_RECEIVED;
   atomic_compare_exchange_strong(
     &tasks->notification, &expected, NOTIFICATION_NONE);
+  DBG("receive_notification done");
 }
 
 static void cancel_notification(void* arg) {
@@ -226,19 +230,19 @@ static void cancel_notification(void* arg) {
   em_task_queue_cancel(tasks);
 }
 
-int em_task_queue_send(em_task_queue* queue, task t) {
+bool em_task_queue_send(em_task_queue* queue, task t) {
   // Ensure the target mailbox will remain open or detect that it is already
   // closed.
   if (!emscripten_thread_mailbox_ref(queue->thread)) {
-    return 0;
+    return false;
   }
 
   pthread_mutex_lock(&queue->mutex);
-  int enqueued = em_task_queue_enqueue(queue, t);
+  bool enqueued = em_task_queue_enqueue(queue, t);
   pthread_mutex_unlock(&queue->mutex);
   if (!enqueued) {
     emscripten_thread_mailbox_unref(queue->thread);
-    return 0;
+    return false;
   }
 
   // We're done if there is already a pending notification for this task queue.
@@ -246,8 +250,9 @@ int em_task_queue_send(em_task_queue* queue, task t) {
   notification_state previous =
     atomic_exchange(&queue->notification, NOTIFICATION_PENDING);
   if (previous == NOTIFICATION_PENDING) {
+    DBG("em_task_queue_send NOTIFICATION_PENDING already set");
     emscripten_thread_mailbox_unref(queue->thread);
-    return 1;
+    return true;
   }
 
   emscripten_thread_mailbox_send(queue->thread,
@@ -255,5 +260,5 @@ int em_task_queue_send(em_task_queue* queue, task t) {
                                         .cancel = cancel_notification,
                                         .arg = queue});
   emscripten_thread_mailbox_unref(queue->thread);
-  return 1;
+  return true;
 }

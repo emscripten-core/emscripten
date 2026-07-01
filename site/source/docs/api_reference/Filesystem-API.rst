@@ -23,7 +23,7 @@ A high level overview of the way File Systems work in Emscripten-ported code is 
 New File System: WasmFS
 =======================
 
-.. note:: Current Status: Work in Progress
+.. note:: Current Status: Stable, but not yet feature-complete with the old FS.
 
 WasmFS is a high-performance, fully-multithreaded, WebAssembly-based file system layer for Emscripten that will replace the existing JavaScript version.
 
@@ -171,7 +171,7 @@ The device node acts as an interface between the device and the file system. Any
 Setting up standard I/O devices
 ===============================
 
-Emscripten standard I/O works by going though the virtual ``/dev/stdin``, ``/dev/stdout`` and ``/dev/stderr`` devices. You can set them up using your own I/O functions by calling :js:func:`FS.init`.
+Emscripten standard I/O works by going through the virtual ``/dev/stdin``, ``/dev/stdout`` and ``/dev/stderr`` devices. You can set them up using your own I/O functions by calling :js:func:`FS.init`.
 
 By default:
 
@@ -179,7 +179,7 @@ By default:
 -  ``stdout`` will use a ``print`` function if one such is defined, printing to the terminal in command line engines and to the browser console in browsers that have a console (again, line-buffered).
 -  ``stderr`` will use the same output function as ``stdout``.
 
-.. note:: All the configuration should be done before the main ``run()`` method is executed, typically by implementing :js:attr:`Module.preRun`. See :ref:`Interacting-with-code` for more information.
+.. note:: All the configuration should be done before the ``main()`` is executed, typically by implementing :js:attr:`Module.preRun`. See :ref:`Interacting-with-code` for more information.
 
 
 .. js:function:: FS.init(input, output, error)
@@ -294,6 +294,20 @@ File system API
   .. note:: The underlying implementation does not support user or group permissions. The caller is always treated as the owner of the folder, and only permissions relevant to the owner apply.
 
   :param string path: The path name for the new directory node.
+  :param int mode: :ref:`File permissions <fs-read-and-write-flags>` for the new node. The default setting (`in octal numeric notation <http://en.wikipedia.org/wiki/File_system_permissions#Numeric_notation>`_) is 0777.
+
+
+.. js:function:: FS.mkdirTree(path, mode)
+
+  Creates a new directory node and all parent directories in the file system. For example:
+
+  .. code-block:: javascript
+
+    FS.mkdirTree('/data/subdir1/subdir2');
+
+  .. note:: The underlying implementation does not support user or group permissions. The caller is always treated as the owner of the folder, and only permissions relevant to the owner apply.
+
+  :param string path: The path name for the new directory node.  
   :param int mode: :ref:`File permissions <fs-read-and-write-flags>` for the new node. The default setting (`in octal numeric notation <http://en.wikipedia.org/wiki/File_system_permissions#Numeric_notation>`_) is 0777.
 
 
@@ -704,7 +718,7 @@ File system API
 
 .. js:function:: FS.createPreloadedFile(parent, name, url, canRead, canWrite)
 
-  Preloads a file asynchronously, and uses preload plugins to prepare its content. You should call this in ``preRun``, ``run()`` will be delayed until all preloaded files are ready. This is how the :ref:`preload-file <emcc-preload-file>` option works in *emcc* when ``--use-preload-plugins`` has been specified (if you use this method by itself, you will need to build the program with that option).
+  Preloads a file asynchronously, and uses preload plugins to prepare its content. You should call this in ``preRun``, ``main()`` will then be delayed until all preloaded files are ready. This is how the :ref:`preload-file <emcc-preload-file>` option works in *emcc* when ``--use-preload-plugins`` has been specified (if you use this method by itself, you will need to build the program with that option).
 
   :param parent: The parent folder, either as a path (e.g. **'/usr/lib'**) or an object previously returned from a `FS.mkdir()` or `FS.createPath()` call.
   :type parent: string/object

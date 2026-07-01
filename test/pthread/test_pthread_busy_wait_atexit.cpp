@@ -21,7 +21,7 @@ void* thread_main(void*) {
 }
 
 // Similar to test_pthread_busy_wait.cpp but with lower level pthreads
-// API and explcit use of atexit before setting done to true.
+// API and explicit use of atexit before setting done to true.
 // We also don't make any calls during the busy loop which means that
 // proxied calls are *not* processed.
 int main() {

@@ -7,13 +7,8 @@
 // wasm2js.js - enough of a polyfill for the WebAssembly object so that we can load
 // wasm2js code that way.
 
-// Emit "var WebAssembly" if definitely using wasm2js. Otherwise, in MAYBE_WASM2JS
-// mode, we can't use a "var" since it would prevent normal wasm from working.
-/** @suppress{duplicate, const} */
-#if WASM2JS || WASM == 2
-var
-#endif
-WebAssembly = {
+/** @suppress{duplicate, const, checkTypes} */
+var WebAssembly = {
   // Note that we do not use closure quoting (this['buffer'], etc.) on these
   // functions, as they are just meant for internal use. In other words, this is
   // not a fully general polyfill.
@@ -25,36 +20,6 @@ WebAssembly = {
     this.buffer = new ArrayBuffer(opts['initial'] * {{{ WASM_PAGE_SIZE }}});
 #endif
   },
-
-#if RELOCATABLE
-  // Only needed in RELOCATABLE builds since normal builds export the table
-  // from the wasm module.
-  // Table is not a normal constructor and instead returns the array object.
-  // That lets us use the length property automatically, which is simpler and
-  // smaller (but instanceof will not report that an instance of Table is an
-  // instance of this function).
-  Table: /** @constructor */ function(opts) {
-    var ret = new Array(opts['initial']);
-#if ALLOW_TABLE_GROWTH
-    ret.grow = function(by) {
-      ret.push(null);
-    };
-#else
-#if ASSERTIONS // without assertions we'll throw on calling the missing function
-    ret.grow = function(by) {
-      abort('Unable to grow wasm table. Build with ALLOW_TABLE_GROWTH.')
-    };
-#endif // ASSERTIONS
-#endif // ALLOW_TABLE_GROWTH
-    ret.set = function(i, func) {
-      ret[i] = func;
-    };
-    ret.get = function(i) {
-      return ret[i];
-    };
-    return ret;
-  },
-#endif
 
   Module: function(binary) {
     // TODO: use the binary and info somehow - right now the wasm2js output is embedded in

@@ -11,16 +11,16 @@ extern "C" {
    system/lib/dlmalloc.c.  */
 
 struct mallinfo {
-  int arena;    /* total space allocated from system */
-  int ordblks;  /* number of non-inuse chunks */
-  int smblks;   /* unused -- always zero */
-  int hblks;    /* number of mmapped regions */
-  int hblkhd;   /* total space in mmapped regions */
-  int usmblks;  /* unused -- always zero */
-  int fsmblks;  /* unused -- always zero */
-  int uordblks; /* total allocated space */
-  int fordblks; /* total non-inuse space */
-  int keepcost; /* top-most, releasable (via malloc_trim) space */
+  size_t arena;    /* total space allocated from system */
+  size_t ordblks;  /* number of non-inuse chunks */
+  size_t smblks;   /* unused -- always zero */
+  size_t hblks;    /* number of mmapped regions */
+  size_t hblkhd;   /* total space in mmapped regions */
+  size_t usmblks;  /* unused -- always zero */
+  size_t fsmblks;  /* unused -- always zero */
+  size_t uordblks; /* total allocated space */
+  size_t fordblks; /* total non-inuse space */
+  size_t keepcost; /* top-most, releasable (via malloc_trim) space */
 };
 
 /* The routines.  */

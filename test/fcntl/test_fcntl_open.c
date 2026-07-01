@@ -10,7 +10,6 @@
 #include <fcntl.h>
 #include <signal.h>
 #include <stdio.h>
-#include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
 #include <sys/stat.h>
@@ -37,20 +36,6 @@ void setup() {
   assert(!errno);
 }
 
-void cleanup() {
-  unlink("test-file");
-  rmdir("test-folder");
-  for (int i = 0; i < 3; i++) {
-    for (int j = 0; j < 32; j++) {
-      sprintf(nonexistent_name, "noexist-%c%d", 'a' + i, j);
-      unlink(nonexistent_name);
-    }
-  }
-  errno = 0;
-  unlink("creat-me");
-  assert(!errno);
-}
-
 void test() {
   struct stat s;
   int modes[] = {O_RDONLY, O_WRONLY, O_RDWR};
@@ -67,7 +52,7 @@ void test() {
       printf("EXISTING FILE %d,%d\n", i, j);
       int success = open("test-file", flags, 0777) != -1;
       printf("success: %d\n", success);
-      printf("errno: %d\n", errno);
+      printf("errno: %s\n", strerror(errno));
       if ((flags & O_CREAT) && (flags & O_EXCL)) {
         assert(!success);
         assert(errno == EEXIST);
@@ -89,11 +74,11 @@ void test() {
       printf("EXISTING FOLDER %d,%d\n", i, j);
       success = open("test-folder", flags, 0777) != -1;
       printf("success: %d\n", success);
-      printf("errno: %d\n", errno);
+      printf("errno: %s\n", strerror(errno));
       if ((flags & O_CREAT) && (flags & O_EXCL)) {
         assert(!success);
         assert(errno == EEXIST);
-      } else if ((flags & O_TRUNC) || i != 0 /*mode != O_RDONLY*/) {
+      } else if ((flags & O_TRUNC) || i != 0 /*mode != O_RDONLY*/ || (flags & O_CREAT)) {
         assert(!success);
         assert(errno == EISDIR);
       } else {
@@ -115,7 +100,7 @@ void test() {
       printf("NON-EXISTING %d,%d\n", i, j);
       success = open(nonexistent_name, flags, 0777) != -1;
       printf("success: %d\n", success);
-      printf("errno: %d\n", errno);
+      printf("errno: %s\n", strerror(errno));
       if ((flags & O_CREAT)) {
         assert(success);
         assert(errno == 0);
@@ -147,7 +132,7 @@ void test() {
       printf("EXISTING LINK %d,%d\n", i, j);
       int success = open("test-link", flags, 0777) != -1;
       printf("success: %d\n", success);
-      printf("errno: %d\n", errno);
+      printf("errno: %s\n", strerror(errno));
       if (flags & O_NOFOLLOW) {
         assert(!success);
         assert(errno == ELOOP);
@@ -162,14 +147,22 @@ void test() {
 
   printf("CREAT\n");
   printf("success: %d\n", creat("creat-me", 0777) != -1);
-  printf("errno: %d\n", errno);
+  printf("errno: %s\n", strerror(errno));
   errno = 0;
 }
 
+void test_open_create_no_permissions() {
+  int res = open("a", O_CREAT, 0);
+  printf("error: %s\n", strerror(errno));
+  assert(res >= 0);
+  struct stat st;
+  assert(stat("a", &st) == 0);
+  assert((st.st_mode & 0777) == 0);
+}
+
 int main() {
-  atexit(cleanup);
-  signal(SIGABRT, cleanup);
   setup();
   test();
-  return EXIT_SUCCESS;
+  test_open_create_no_permissions();
+  return 0;
 }

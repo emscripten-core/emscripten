@@ -2,6 +2,7 @@
 #include <emscripten/bind.h>
 #include <emscripten/val.h>
 #include <assert.h>
+#include <functional>
 #include <stdexcept>
 
 using namespace emscripten;
@@ -16,8 +17,22 @@ EM_JS(EM_VAL, promise_sleep_impl, (int ms, int result), {
   return handle;
 });
 
+EM_JS(EM_VAL, promise_fail_impl, (), {
+  let promise = new Promise((_, reject) => setTimeout(reject, 1, new Error("bang from JS promise!")));
+  let handle = Emval.toHandle(promise);
+  // FIXME. See https://github.com/emscripten-core/emscripten/issues/16975.
+#if __wasm64__
+  handle = BigInt(handle);
+#endif
+  return handle;
+});
+
 val promise_sleep(int ms, int result = 0) {
   return val::take_ownership(promise_sleep_impl(ms, result));
+}
+
+val promise_fail() {
+  return val::take_ownership(promise_fail_impl());
 }
 
 // Test that we can subclass and make custom awaitable types.
@@ -37,7 +52,13 @@ public:
   }
 };
 
+template <size_t N>
 val asyncCoro() {
+  co_return co_await asyncCoro<N - 1>();
+}
+
+template <>
+val asyncCoro<0>() {
   // check that just sleeping works
   co_await promise_sleep(1);
   // check that sleeping and receiving value works
@@ -50,12 +71,79 @@ val asyncCoro() {
   co_return 34;
 }
 
+template <size_t N>
 val throwingCoro() {
+  co_await throwingCoro<N - 1>();
+  co_return 56;
+}
+
+template <>
+val throwingCoro<0>() {
   throw std::runtime_error("bang from throwingCoro!");
   co_return 56;
 }
 
+template <size_t N>
+val failingPromise() {
+  co_await failingPromise<N - 1>();
+  co_return 65;
+}
+
+template <>
+val failingPromise<0>() {
+  co_await promise_fail();
+  co_return 65;
+}
+
+val catchCppExceptionPromise() {
+  try {
+    co_await throwingCoro<0>();
+  } catch (const std::runtime_error &) {
+    co_return val("successfully caught!");
+  }
+  co_return val("ignored??");
+}
+
+
+class callback_coro {
+public:
+  class promise_type {
+    std::function<void(int)> callback_;
+    std::function<void()> errorCallback_;
+  public:
+    promise_type(
+      std::function<void(int)> callback,
+      std::function<void()> errorCallback = std::terminate)
+      : callback_(std::move(callback)),
+        errorCallback_(std::move(errorCallback)) {}
+
+    callback_coro get_return_object() const noexcept {
+      return callback_coro();
+    }
+
+    auto initial_suspend() const noexcept { return std::suspend_never{}; }
+    auto final_suspend() const noexcept { return std::suspend_never{}; }
+
+    void return_value(int ret) { callback_(ret); }
+
+    void unhandled_exception() const noexcept { errorCallback_(); }
+  };
+};
+
+callback_coro sleepWithCallback(std::function<void(int)>) {
+  co_await promise_sleep(1);
+  co_return 42;
+}
+
+void awaitInNonValCoro() {
+  sleepWithCallback([](int ret) { val::global("console").call<void>("log", ret); });
+}
+
+
 EMSCRIPTEN_BINDINGS(test_val_coro) {
-  function("asyncCoro", asyncCoro);
-  function("throwingCoro", throwingCoro);
+  function("asyncCoro", asyncCoro<3>);
+  function("throwingCoro", throwingCoro<3>);
+  function("failingPromise", failingPromise<3>);
+  function("catchCppExceptionPromise", catchCppExceptionPromise);
+  function("awaitInNonValCoro", awaitInNonValCoro);
 }

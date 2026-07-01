@@ -12,7 +12,6 @@ import tempfile
 import time
 from pathlib import Path
 
-
 profiler_logs_path = os.path.join(tempfile.gettempdir(), 'emscripten_toolchain_profiler_logs')
 
 
@@ -36,15 +35,15 @@ def create_profiling_graph(outfile):
   log_files = [f for f in list_files_in_directory(profiler_logs_path) if 'toolchain_profiler.pid_' in f]
 
   all_results = []
-  if len(log_files):
+  if log_files:
     print(f'Processing {len(log_files)} profile log files in {profiler_logs_path}...')
   for f in log_files:
     print(f'Processing: {f}')
-    json_data = Path(f).read_text()
+    json_data = Path(f).read_text(encoding='utf-8')
     if len(json_data.strip()) == 0:
       continue
     lines = json_data.split('\n')
-    lines = [x for x in lines if x != '[' and x != ']' and x != ',' and len(x.strip())]
+    lines = [x for x in lines if x not in {'[', ']', ','} and len(x.strip())]
     lines = [(x + ',') if not x.endswith(',') else x for x in lines]
     lines[-1] = lines[-1][:-1]
     json_data = '[' + '\n'.join(lines) + ']'
@@ -63,8 +62,8 @@ def create_profiling_graph(outfile):
   emprofile_json_data = json.dumps(all_results, indent=2)
 
   html_file = outfile + '.html'
-  html_contents = Path(os.path.dirname(os.path.realpath(__file__)), 'toolchain_profiler.results_template.html').read_text().replace('{{{ emprofile_json_data }}}', emprofile_json_data)
-  Path(html_file).write_text(html_contents)
+  html_contents = Path(os.path.dirname(os.path.realpath(__file__)), 'toolchain_profiler.results_template.html').read_text(encoding='utf-8').replace('{{{ emprofile_json_data }}}', emprofile_json_data)
+  Path(html_file).write_text(html_contents, encoding='utf-8')
   print(f'Wrote "{html_file}"')
   return 0
 
@@ -96,7 +95,7 @@ Optional parameters:
   else:
     outfile = 'toolchain_profiler.results_' + time.strftime('%Y%m%d_%H%M')
     for i, arg in enumerate(args):
-      if arg.startswith('--outfile=') or arg.startswith('-o='):
+      if arg.startswith(('--outfile=', '-o=')):
         outfile = arg.split('=', 1)[1].strip().replace('.html', '')
       elif arg == '-o':
         outfile = args[i + 1].strip().replace('.html', '')

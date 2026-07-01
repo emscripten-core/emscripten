@@ -35,7 +35,7 @@ struct _LIBCXXABI_HIDDEN __cxa_exception {
   void *padding;
 };
 
-static_assert(sizeof(__cxa_exception) % alignof(max_align_t) == 0, "__cxa_exception must have a size that is multipl of max alignment");
+static_assert(sizeof(__cxa_exception) % alignof(max_align_t) == 0, "__cxa_exception must have a size that is multiple of max alignment");
 
 #else
 

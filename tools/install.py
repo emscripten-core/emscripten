@@ -4,9 +4,10 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-"""Install the parts of emscripten needed for end users. This works like
-a traditional `make dist` target but is written in python so it can be portable
-and run on non-unix platforms (basically windows).
+"""Install the parts of emscripten needed for end users.
+
+This works like a traditional `make dist` target but is written in python
+so it can be portable and run on non-unix platforms (i.e. windows).
 """
 
 import argparse
@@ -17,15 +18,24 @@ import shutil
 import subprocess
 import sys
 
+WINDOWS = sys.platform.startswith('win')
+MSYS2 = 'MSYSTEM' in os.environ
+
 EXCLUDES = [os.path.normpath(x) for x in '''
 test/third_party
 tools/maint
+tools/install.py
 site
 node_modules
 Makefile
 .git
+.circleci
+.github
+.mypy_cache
+.ruff_cache
 cache
 cache.lock
+out
 bootstrap.py
 '''.split()]
 
@@ -41,13 +51,16 @@ logger = logging.getLogger('install')
 def add_revision_file(target):
   # text=True would be better than encoding here, but it's only supported in 3.7+
   git_hash = subprocess.check_output(['git', 'rev-parse', 'HEAD'], encoding='utf-8').strip()
-  with open(os.path.join(target, 'emscripten-revision.txt'), 'w') as f:
+  with open(os.path.join(target, 'emscripten-revision.txt'), 'w', encoding='utf-8') as f:
     f.write(git_hash + '\n')
 
 
 def copy_emscripten(target):
   script_dir = os.path.dirname(os.path.abspath(__file__))
   emscripten_root = os.path.dirname(script_dir)
+
+  excludes = EXCLUDES
+
   os.chdir(emscripten_root)
   for root, dirs, files in os.walk('.'):
     # Handle the case where the target directory is underneath emscripten_root
@@ -76,11 +89,15 @@ def copy_emscripten(target):
         logger.debug('skipping file: ' + os.path.join(root, f))
         continue
       full = os.path.normpath(os.path.join(root, f))
-      if full in EXCLUDES:
+      if full in excludes:
         logger.debug('skipping file: ' + os.path.join(root, f))
         continue
       logger.debug('installing file: ' + os.path.join(root, f))
       shutil.copy2(full, os.path.join(target, root, f), follow_symlinks=False)
+
+
+def npm_install(target):
+  subprocess.check_call([shutil.which('npm'), 'ci', '--omit=dev'], cwd=target)
 
 
 def main():
@@ -96,6 +113,7 @@ def main():
   logging.basicConfig(level=logging.DEBUG if args.verbose else logging.INFO)
   os.makedirs(target)
   copy_emscripten(target)
+  npm_install(target)
   if os.path.isdir('.git'):
     # Add revision flag only if the source directory is a Git repository
     # and not a source archive

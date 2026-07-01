@@ -27,13 +27,12 @@
  END_NODE_INCLUDE
  */
     
-var os = {};
 
 /**
  * @return {string}
  * @nosideeffects
  */
-os.tmdDir = function() {};
+os.tmpdir = function() {};
 
 /**
  * @return {string}

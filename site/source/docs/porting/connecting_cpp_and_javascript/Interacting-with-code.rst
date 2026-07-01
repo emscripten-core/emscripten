@@ -146,11 +146,6 @@ parameters to pass to the function:
        including function names.
        Exporting functions allows you to continue to access them using the
        original name through the global ``Module`` object.
-     - If you want to export a JS library function (something from a
-       ``src/library*.js`` file, for example), then in addition to
-       ``EXPORTED_FUNCTIONS``, you need to add it to ``DEFAULT_LIBRARY_FUNCS_TO_INCLUDE``,
-       as the latter will force the method to actually be included in
-       the build.
 
    - The compiler will remove code it does not see is used, to improve code
      size. If you use ``ccall`` in a place it sees, like code in a ``--pre-js``
@@ -362,20 +357,18 @@ Implement a C API in JavaScript
 It is possible to implement a C API in JavaScript! This is the approach
 used in many of Emscripten's libraries, like SDL1 and OpenGL.
 
-You can use it to write your own APIs to call from C/C++. To do this
-you define the interface, decorating with ``extern`` to mark the methods
-in the API as external symbols. You then implement the symbols in
-JavaScript by simply adding their definition to `library.js`_ (by
-default). When compiling the C code, the compiler looks in the JavaScript
-libraries for relevant external symbols.
+You can use it to write your own APIs to call from C/C++. To do this you define
+the interface, decorating with ``extern`` to mark the methods in the API as
+external symbols. You can then implement the symbols in JavaScript by simply
+adding their definition to one of the `core JS library`_ files.  Undefined 
+native symbols will be resolved by looking for them in JavaScript library files.
 
-By default, the implementation is added to **library.js** (and this is
-where you'll find parts of Emscripten's *libc*). You can put
-the JavaScript implementation in your own library file and add it using
-the :ref:`emcc option <emcc-js-library>` ``--js-library``. See
-`test_js_libraries`_ in **test/test_other.py** for a complete working
-example, including the syntax you should use inside the JavaScript library
-file.
+The `core JS library`_ files are where you will find Emscripten internals. For
+example, parts of Emscripten's *libc* are implemented there. You can also put
+the JavaScript implementation in your own library file and add it using the
+:ref:`emcc option <emcc-js-library>` ``--js-library``. See `test_jslib`_ in
+**test/test_other.py** for a complete working example, including the syntax you
+should use inside the JavaScript library file.
 
 As a simple example, consider the case where you have some C code like this:
 
@@ -438,7 +431,7 @@ that you can't use a closure directly, for example, as ``toString``
 isn't compatible with that - just like when using a string to create
 a Web Worker, where you also can't pass a closure. (Note that this
 limitation is just for the values for the keys of the object
-passes to ``addToLibrary`` in the JS library, that is, the toplevel
+passed to ``addToLibrary`` in the JS library, that is, the toplevel
 key-value pairs are special. Interior code inside a function can
 have arbitrary JS, of course).
 
@@ -669,7 +662,7 @@ a 53 bit (double) and returns an integer error code:
     
 Using ``-sWASM_BIGINT`` when linking is an alternative method of handling
 64-bit types in libraries.  ```Number()``` may be needed on the JavaScript
-side to convert it to a useable value.  See `settings reference <https://emscripten.org/docs/tools_reference/settings_reference.html?highlight=environment#wasm-bigint>`_.
+side to convert it to a usable value.  See `settings reference <https://emscripten.org/docs/tools_reference/settings_reference.html?highlight=environment#wasm-bigint>`_.
 
 
 .. _interacting-with-code-access-memory:
@@ -843,8 +836,8 @@ on Emscripten. If you would like to port existing Node-API addon to WebAssembly
 or compile the same binding code to both Node.js native addon and WebAssembly,
 you can give it a try. See `Emnapi documentation`_ for more details.
 
-.. _library.js: https://github.com/emscripten-core/emscripten/blob/main/src/library.js
-.. _test_js_libraries: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L5043
+.. _core JS library: https://github.com/emscripten-core/emscripten/blob/main/src/lib/
+.. _test_jslib: https://github.com/emscripten-core/emscripten/blob/4.0.9/test/test_core.py#L6261
 .. _tools/system_libs.py: https://github.com/emscripten-core/emscripten/blob/main/tools/system_libs.py
 .. _library_\*.js: https://github.com/emscripten-core/emscripten/tree/main/src
 .. _test_add_function in test/test_core.py: https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L6237

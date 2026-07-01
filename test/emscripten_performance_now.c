@@ -1,6 +1,7 @@
 #include <emscripten/html5.h>
 #include <emscripten/threading.h>
 #include <assert.h>
+#include <stdio.h>
 
 double performanceNow;
 double dateNow;
@@ -12,9 +13,8 @@ void test(void *userData) {
   double now3 = emscripten_date_now();
   assert(now3 >= dateNow + 100);
 
-#ifdef REPORT_RESULT
-  REPORT_RESULT(0);
-#endif
+  printf("done\n");
+  exit(0);
 }
 
 int main() {
@@ -30,4 +30,6 @@ int main() {
 #else
   emscripten_set_timeout(test, 200, 0);
 #endif
+
+  return 99;
 }

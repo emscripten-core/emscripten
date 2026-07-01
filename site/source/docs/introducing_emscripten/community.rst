@@ -12,7 +12,7 @@ Welcome to the Emscripten community!
 Get in touch
 ============
 
-The best ways contact the community are:
+The best ways to contact the community are:
 
 - The GitHub `Issue Tracker <https://github.com/emscripten-core/emscripten/issues?state=open>`_
 - Mailing list: `emscripten-discuss <http://groups.google.com/group/emscripten-discuss>`_

@@ -8,7 +8,6 @@
 volatile int32_t addr = 0;
 
 void run_test() {
-  emscripten_out("worker_main");
 #if __EMSCRIPTEN_WASM_WORKERS__
   emscripten_wasm_worker_sleep(1000 * 1000000ull); // Sleep one second.
 #else
@@ -85,7 +84,7 @@ int main() {
   emscripten_out("main: creating worker");
 
 #ifdef __EMSCRIPTEN_WASM_WORKERS__
-  emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
+  emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(4096);
   emscripten_wasm_worker_post_function_v(worker, worker_main);
 #else
   pthread_create(&t, NULL, thread_main, NULL);

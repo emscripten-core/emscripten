@@ -14,6 +14,7 @@
 #include <string.h>
 #ifdef _WIN32
 #include <winsock2.h>
+#include <ws2tcpip.h>
 typedef int socklen_t;
 #define close closesocket
 #pragma comment(lib, "Ws2_32.lib")
@@ -27,6 +28,15 @@ typedef int socklen_t;
 #include <sys/types.h>
 #ifdef __EMSCRIPTEN__
 #include <emscripten.h>
+#endif
+
+#ifdef _WIN32
+typedef u_long ioctlarg_t;
+#else
+#define INVALID_SOCKET -1
+#define SOCKET_ERROR -1
+#define ioctlsocket ioctl
+typedef int ioctlarg_t;
 #endif
 
 #include "test_sockets_msg.h"
@@ -67,6 +77,8 @@ void main_loop() {
   int res;
   fd_set fdr;
   fd_set fdw;
+  // Timeout of zero means don't block. Emscripten doesn't support blocking select in the general case
+  struct timeval tv = {0};
 
   // see if there are any connections to accept or read / write from
   FD_ZERO(&fdr);
@@ -77,7 +89,7 @@ void main_loop() {
   if (client.fd) FD_SET(client.fd, &fdr);
   if (client.fd) FD_SET(client.fd, &fdw);
 #endif
-  res = select(64, &fdr, &fdw, NULL, NULL);
+  res = select(64, &fdr, &fdw, NULL, &tv);
   if (res == -1) {
     perror("select failed");
     exit(EXIT_SUCCESS);
@@ -193,15 +205,28 @@ int main() {
 #else
   server.fd = socket(PF_INET, SOCK_DGRAM, IPPROTO_UDP);
 #endif
-  if (server.fd == -1) {
+  if (server.fd == INVALID_SOCKET) {
     perror("cannot create socket");
     exit(EXIT_FAILURE);
   }
-#ifdef _WIN32
-  unsigned long nonblocking = 1;
-  ioctlsocket(server.fd, FIONBIO, &nonblocking);
-#else
-  fcntl(server.fd, F_SETFL, O_NONBLOCK);
+
+  ioctlarg_t on = 1;
+  if (ioctlsocket(server.fd, FIONBIO, &on) == SOCKET_ERROR) {
+    perror("ioctlsocket FIONBIO failed");
+    exit(EXIT_FAILURE);
+  }
+
+#ifndef __EMSCRIPTEN__
+  // This server is compiled using both the host compiler and using emscripten.
+  // When compiling for the host we use SO_REUSEADDR to avoid `Address already
+  // in use` errors when repeatedly running a given test. With emscripten
+  // `SO_REUSEADDR` is not implemented.
+  // TODO(sbc): Implement/stub SO_REUSEADDR in emscripten.
+  int opt = 1;
+  if (setsockopt(server.fd, SOL_SOCKET, SO_REUSEADDR, &opt, sizeof(opt)) == SOCKET_ERROR) {
+    perror("setsockopt SO_REUSEADDR failed");
+    exit(EXIT_FAILURE);
+  }
 #endif
 
   memset(&addr, 0, sizeof(addr));
@@ -213,14 +238,14 @@ int main() {
   }
 
   res = bind(server.fd, (struct sockaddr *)&addr, sizeof(addr));
-  if (res == -1) {
-    perror("bind failed");
+  if (res == SOCKET_ERROR) {
+    fprintf(stderr, "bind (%d) failed: %s\n", SOCKK, strerror(errno));
     exit(EXIT_FAILURE);
   }
 
 #if !TEST_DGRAM
   res = listen(server.fd, 50);
-  if (res == -1) {
+  if (res == SOCKET_ERROR) {
     perror("listen failed");
     exit(EXIT_FAILURE);
   }

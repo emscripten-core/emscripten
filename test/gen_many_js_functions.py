@@ -15,7 +15,7 @@ def func_name(i):
 
 
 def generate_js_library_with_lots_of_functions(out_file):
-  with open(out_file, 'w') as f:
+  with open(out_file, 'w', encoding='utf-8') as f:
     f.write('var FunctionsLibrary = {\n')
 
     for i in range(NUM_FUNCS_TO_GENERATE):
@@ -26,7 +26,7 @@ def generate_js_library_with_lots_of_functions(out_file):
 
 
 def generate_c_program_that_calls_js_library_with_lots_of_functions(out_file):
-  with open(out_file, 'w') as f:
+  with open(out_file, 'w', encoding='utf-8') as f:
     f.write('#include <stdio.h>\n\n')
 
     for i in range(NUM_FUNCS_TO_GENERATE):

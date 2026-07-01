@@ -307,5 +307,8 @@ int main() {
   size = strftime(s, sizeof(s), "%Ec", &tm);
   TEST(!cmp(s, "Mon Dec 17 00:00:00 2018"), "strftime test #36a", s);
 
+  size = strftime(s, sizeof(s), "trailing %", &tm);
+  TEST((size == 10), "strftime test #37", s);
+  TEST(!cmp(s, "trailing %"), "strftime test #37", s);
   return 0;
 }

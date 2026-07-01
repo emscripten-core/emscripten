@@ -1,0 +1,6 @@
+[package]
+name = "basics"
+edition = "2021"
+
+[lib]
+crate-type = ["staticlib"]

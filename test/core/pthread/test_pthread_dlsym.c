@@ -10,7 +10,7 @@ func_t g_two;
 func_t g_three;
 
 void* open_lib() {
-  void* handle = dlopen("liblib.so", RTLD_NOW|RTLD_GLOBAL);
+  void* handle = dlopen("libside.so", RTLD_NOW|RTLD_GLOBAL);
   if (!handle) {
     printf("dlerror: %s\n", dlerror());
     assert(handle);

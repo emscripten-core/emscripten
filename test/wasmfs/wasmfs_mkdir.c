@@ -30,14 +30,14 @@ int main() {
   struct stat directory;
   fstat(fdStat, &directory);
   assert((directory.st_mode & S_IFMT) == S_IFDIR);
-  assert(directory.st_mode == (S_IRWXUGO | S_IFDIR));
+  assert(directory.st_mode == (0755 | S_IFDIR));
   close(fdStat);
 
   // Check that the file type is correct on mode (01777 = S_ISVTX | S_IRWXUGO)
   int fdStat2 = open("/foobar", O_RDONLY | O_DIRECTORY);
   struct stat directory2;
   fstat(fdStat2, &directory2);
-  assert(directory2.st_mode == (S_IRWXUGO | S_ISVTX | S_IFDIR));
+  assert(directory2.st_mode == (0755 | S_ISVTX | S_IFDIR));
   close(fdStat2);
 
   // Try to create a file in the same directory.
@@ -66,11 +66,7 @@ int main() {
   // Try to make the root directory.
   errno = 0;
   mkdir("/", 0777);
-#ifdef WASMFS
   assert(errno == EEXIST);
-#else
-  assert(errno == EINVAL);
-#endif
 
   // Try to make a directory that exists already.
   errno = 0;
@@ -81,13 +77,7 @@ int main() {
   // Try to make a directory with a path component that is not a directory.
   errno = 0;
   mkdir("/dev/stdout/fake-directory", 0777);
-  // TODO: This may have to change when access modes are implemented, depending
-  // on if we check access mode before file type.
-#ifdef WASMFS
   assert(errno == ENOTDIR);
-#else
-  assert(errno == EACCES);
-#endif
 
   // Try to make a directory with a path component that does not exist.
   errno = 0;

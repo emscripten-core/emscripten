@@ -32,6 +32,6 @@ int main(int argc, char* argv[]) {
     assert(stack_address > bss_address);
   }
   assert(bss_address > data_address);
-  printf("success.\n");
+  printf("done\n");
   return 0;
 }

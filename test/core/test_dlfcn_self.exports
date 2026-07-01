@@ -2,6 +2,7 @@ __THREW__
 ___environ
 __daylight
 __environ
+__heap_base
 __optpos
 __optreset
 __progname
@@ -10,8 +11,10 @@ __sig_actions
 __sig_pending
 __signgam
 __stack_chk_guard
+__stack_pointer
 __threwValue
 __timezone
+__tls_locale
 __tzname
 _environ
 _ns_flagdata
@@ -28,9 +31,11 @@ optopt
 optreset
 program_invocation_name
 program_invocation_short_name
+reset_fn_list
 signgam
 stderr
 stdin
 stdout
 timezone
 tzname
+writeout_fn_list

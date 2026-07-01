@@ -52,6 +52,6 @@ int main() {
   assert(rc == 0);
   assert(S_ISLNK(buf.stx_mode));
 
-  printf("success\n");
+  printf("done\n");
   return 0;
 }

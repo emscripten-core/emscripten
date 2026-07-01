@@ -5,9 +5,10 @@
 
 import os
 
-TAG = 'release-2.30.9'
-HASH = '00079415bd3aab9ab2cf67c466ca0ab96076ff8b9c8ed6d4e11db15e10f5cf91f49da6356cf3ed9adc91e185c1aada3886baa80d14d421729805adaa98563e36'
-SUBDIR = 'SDL-' + TAG
+VERSION = '2.32.10'
+TAG = f'release-{VERSION}'
+HASH = '001738b610b42a8f8badfd6af3402f0a1a8601034adef0b8c702dd2b1951dc1b71b733a6779d97499b6f7314d226ec0c8dcffeb753f35a5c51e995ca20bdd459'
+SUBDIR = f'SDL-{TAG}'
 
 variants = {'sdl2-mt': {'PTHREADS': 1}}
 
@@ -20,6 +21,16 @@ def get_lib_name(settings):
   return 'libSDL2' + ('-mt' if settings.PTHREADS else '') + '.a'
 
 
+def process_dependencies(settings, cflags_only):
+  if not cflags_only:
+    # SDL2 includes an internal reference to Module['createContext']
+    settings.EXPORTED_RUNTIME_METHODS.append('createContext')
+
+    # SDL2 requires eglGetProcAddress() to work.
+    # NOTE: if SDL2 is updated to not rely on eglGetProcAddress(), this can be removed
+    settings.GL_ENABLE_GET_PROC_ADDRESS = 1
+
+
 def get(ports, settings, shared):
   # get the port
   ports.fetch_project('sdl2', f'https://github.com/libsdl-org/SDL/archive/{TAG}.zip', sha512hash=HASH)
@@ -29,6 +40,11 @@ def get(ports, settings, shared):
     src_dir = ports.get_dir('sdl2', SUBDIR)
     source_include_path = os.path.join(src_dir, 'include')
     ports.install_headers(source_include_path, target='SDL2')
+    ports.make_pkg_config('sdl2', VERSION, '-sUSE_SDL=2')
+
+    # copy sdl2-config.cmake
+    cmake_file = os.path.join(os.path.dirname(__file__), 'sdl2/sdl2-config.cmake')
+    ports.install_file(cmake_file, 'lib/cmake/SDL2/sdl2-config.cmake')
 
     # build
     srcs = '''SDL.c SDL_assert.c SDL_dataqueue.c SDL_error.c SDL_guid.c SDL_hints.c SDL_list.c SDL_log.c
@@ -37,7 +53,7 @@ def get(ports, settings, shared):
     dynapi/SDL_dynapi.c events/SDL_clipboardevents.c events/SDL_displayevents.c events/SDL_dropevents.c
     events/SDL_events.c events/SDL_gesture.c events/SDL_keyboard.c events/SDL_keysym_to_scancode.c
     events/SDL_scancode_tables.c events/SDL_mouse.c events/SDL_quit.c
-    events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c
+    events/SDL_touch.c events/SDL_windowevents.c file/SDL_rwops.c haptic/SDL_haptic.c hidapi/SDL_hidapi.c
     joystick/controller_type.c joystick/SDL_gamecontroller.c joystick/SDL_joystick.c
     joystick/SDL_steam_virtual_gamepad.c
     power/SDL_power.c render/SDL_d3dmath.c render/SDL_render.c
@@ -70,7 +86,8 @@ def get(ports, settings, shared):
     srcs += ['thread/%s/%s' % (thread_backend, s) for s in thread_srcs]
 
     srcs = [os.path.join(src_dir, 'src', s) for s in srcs]
-    flags = ['-sUSE_SDL=0']
+    # TODO: Remove fwrapv when we update to a version which includes https://github.com/libsdl-org/SDL/pull/12581
+    flags = ['-sUSE_SDL=0', '-fwrapv-pointer']
     includes = [ports.get_include_dir('SDL2')]
     if settings.PTHREADS:
       flags += ['-pthread']

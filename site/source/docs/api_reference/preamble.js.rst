@@ -81,7 +81,7 @@ Calling compiled C functions from JavaScript
 
   Returns a native JavaScript wrapper for a C function.
 
-  This is similar to :js:func:`ccall`, but returns a JavaScript function that can be reused as many time as needed. The C function can be defined in a C file, or be a C-compatible C++ function defined using ``extern "C"`` (to prevent name mangling).
+  This is similar to :js:func:`ccall`, but returns a JavaScript function that can be reused as many times as needed. The C function can be defined in a C file, or be a C-compatible C++ function defined using ``extern "C"`` (to prevent name mangling).
 
 
   .. code-block:: javascript
@@ -159,12 +159,13 @@ Accessing memory
 Conversion functions — strings, pointers and arrays
 ===================================================
 
-.. js:function:: UTF8ToString(ptr[, maxBytesToRead])
+.. js:function:: UTF8ToString(ptr[, maxBytesToRead], [ignoreNul])
 
   Given a pointer ``ptr`` to a null-terminated UTF8-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript ``String`` object.
 
   :param ptr: A pointer to a null-terminated UTF8-encoded string in the Emscripten HEAP.
-  :param maxBytesToRead: An optional length that specifies the maximum number of bytes to read. You can omit this parameter to scan the string until the first \0 byte. If maxBytesToRead is passed, and the string at ``[ptr, ptr+maxBytesToReadr)`` contains a null byte in the middle, then the string will cut short at that byte index (i.e. maxBytesToRead will not produce a string of exact length ``[ptr, ptr+maxBytesToRead)``) N.B. mixing frequent uses of ``UTF8ToString()`` with and without maxBytesToRead may throw JS JIT optimizations off, so it is worth to consider consistently using one style or the other.
+  :param maxBytesToRead: An optional length that specifies the maximum number of bytes to read. You can omit this parameter to scan the string until the first \0 byte. If maxBytesToRead is passed, and the string at ``[ptr, ptr+maxBytesToReadr)`` contains a null byte in the middle, then the string will cut short at that byte index. N.B. mixing frequent uses of this function with and without maxBytesToRead may throw JS JIT optimizations off, so it is worth to consider consistently using one style or the other.
+  :param ignoreNul: If ``true``, the function will not stop on a NUL character, but will read the entire string up to ``maxBytesToRead``.
   :returns: A JavaScript ``String`` object
 
 
@@ -180,11 +181,13 @@ Conversion functions — strings, pointers and arrays
   :param maxBytesToWrite: A limit on the number of bytes that this function can at most write out. If the string is longer than this, the output is truncated. The outputted string will always be null terminated, even if truncation occurred, as long as ``maxBytesToWrite > 0``.
 
 
-.. js:function:: UTF16ToString(ptr)
+.. js:function:: UTF16ToString(ptr[, maxBytesToRead], [ignoreNul])
 
   Given a pointer ``ptr`` to a null-terminated UTF16LE-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript ``String`` object.
 
   :param ptr: A pointer to a null-terminated UTF16LE-encoded string in the Emscripten HEAP.
+  :param maxBytesToRead: An optional length that specifies the maximum number of bytes to read. You can omit this parameter to scan the string until the first \0 byte. If maxBytesToRead is passed, and the string at ``[ptr, ptr+maxBytesToReadr)`` contains a null byte in the middle, then the string will cut short at that byte index. N.B. mixing frequent uses of this function with and without maxBytesToRead may throw JS JIT optimizations off, so it is worth to consider consistently using one style or the other.
+  :param ignoreNul: If ``true``, the function will not stop on a NUL character, but will read the entire string up to ``maxBytesToRead``.
   :returns: A JavaScript ``String`` object
 
 
@@ -202,11 +205,13 @@ Conversion functions — strings, pointers and arrays
 
 
 
-.. js:function:: UTF32ToString(ptr)
+.. js:function:: UTF32ToString(ptr[, maxBytesToRead], [ignoreNul])
 
   Given a pointer ``ptr`` to a null-terminated UTF32LE-encoded string in the Emscripten HEAP, returns a copy of that string as a JavaScript ``String`` object.
 
   :param ptr: A pointer to a null-terminated UTF32LE-encoded string in the Emscripten HEAP.
+  :param maxBytesToRead: An optional length that specifies the maximum number of bytes to read. You can omit this parameter to scan the string until the first \0 byte. If maxBytesToRead is passed, and the string at ``[ptr, ptr+maxBytesToReadr)`` contains a null byte in the middle, then the string will cut short at that byte index. N.B. mixing frequent uses of this function with and without maxBytesToRead may throw JS JIT optimizations off, so it is worth to consider consistently using one style or the other.
+  :param ignoreNul: If ``true``, the function will not stop on a NUL character, but will read the entire string up to ``maxBytesToRead``.
   :returns: A JavaScript ``String`` object.
 
 
@@ -234,7 +239,7 @@ Conversion functions — strings, pointers and arrays
 
 .. js:function:: intArrayFromString(stringy, dontAddNull[, length])
 
-  This converts a JavaScript string into a C-line array of numbers, 0-terminated.
+  This converts a JavaScript string into a C-like array of numbers, 0-terminated.
 
   :param stringy: The string to be converted.
   :type stringy: String
@@ -246,7 +251,7 @@ Conversion functions — strings, pointers and arrays
 
 .. js:function:: intArrayToString(array)
 
-  This creates a JavaScript string from a zero-terminated C-line array of numbers.
+  This creates a JavaScript string from a zero-terminated C-like array of numbers.
 
   :param array: The array to convert.
   :returns: A ``String``, containing the content of ``array``.

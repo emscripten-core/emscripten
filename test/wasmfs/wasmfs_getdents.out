@@ -1,15 +1,15 @@
-------------- Reading from /root/working Directory -------------
+------------- Reading from root/working Directory -------------
 d.d_name = .
 d.d_reclen = 280
-d.d_type = directory
+d.d_type = DT_DIR
 
 d.d_name = ..
 d.d_reclen = 280
-d.d_type = directory
+d.d_type = DT_DIR
 
 d.d_name = test
 d.d_reclen = 280
-d.d_type = directory
+d.d_type = DT_DIR
 
 Errno: Bad file descriptor
 Errno: Invalid argument
@@ -18,35 +18,35 @@ Errno: Not a directory
 ------------- Reading from /dev Directory -------------
 d.d_name = .
 d.d_reclen = 280
-d.d_type = directory
+d.d_type = DT_DIR
 
 d.d_name = ..
 d.d_reclen = 280
-d.d_type = directory
+d.d_type = DT_DIR
 
 d.d_name = null
 d.d_reclen = 280
-d.d_type = regular
+d.d_type = DT_REG
 
 d.d_name = random
 d.d_reclen = 280
-d.d_type = regular
+d.d_type = DT_REG
 
 d.d_name = stderr
 d.d_reclen = 280
-d.d_type = regular
+d.d_type = DT_REG
 
 d.d_name = stdin
 d.d_reclen = 280
-d.d_type = regular
+d.d_type = DT_REG
 
 d.d_name = stdout
 d.d_reclen = 280
-d.d_type = regular
+d.d_type = DT_REG
 
 d.d_name = urandom
 d.d_reclen = 280
-d.d_type = regular
+d.d_type = DT_REG
 
 ------------- Reading from /dev Directory via JS -------------
 .
@@ -58,25 +58,35 @@ stdin
 stdout
 urandom
 
-/root/working file position is: 1
-------------- Reading one from /root/working Directory -------------
-d.d_name = ..
-d.d_reclen = 280
-d.d_type = directory
-
-------------- Reading from /root/working Directory -------------
+------------- Reading one from root/working Directory -------------
 d.d_name = .
 d.d_reclen = 280
-d.d_type = directory
+d.d_type = DT_DIR
+
+------------- Reading and then seeking backwards -------------
+d.d_name = ..
+d.d_reclen = 280
+d.d_type = DT_DIR
+
+rewinding from position 2 to 1
+d.d_name = ..
+d.d_reclen = 280
+d.d_type = DT_DIR
+
+------------- Reading from root/working Directory -------------
+d.d_name = .
+d.d_reclen = 280
+d.d_type = DT_DIR
 
 d.d_name = ..
 d.d_reclen = 280
-d.d_type = directory
+d.d_type = DT_DIR
 
 d.d_name = foobar
 d.d_reclen = 280
-d.d_type = regular
+d.d_type = DT_REG
 
 d.d_name = test
 d.d_reclen = 280
-d.d_type = directory
+d.d_type = DT_DIR
+

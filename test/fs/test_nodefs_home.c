@@ -24,6 +24,6 @@ int main(void)
         // C:/Users on Windows disallows write access but should still allow access to its children
         FS.readdir('/nodefs_home/' + relative);
     );
-    printf("success\n");
+    printf("done\n");
     return 0;
 }

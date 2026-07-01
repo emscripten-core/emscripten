@@ -226,7 +226,13 @@ size_t __strftime_l(char *restrict s, size_t n, const char *restrict f, const st
 			s[l] = 0;
 			return l;
 		}
+#ifdef __EMSCRIPTEN__
+		// Handle trailing % by outputting a % rather than returning 0. Ideally
+		// this 6 character change could be upstreamed into musl...
+		if (*f != '%' || !f[1]) {
+#else
 		if (*f != '%') {
+#endif
 			s[l++] = *f;
 			continue;
 		}

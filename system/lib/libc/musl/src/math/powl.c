@@ -57,14 +57,6 @@
  *    IEEE     0,8700       60000      6.5e-18      1.0e-18
  * 0.99 < x < 1.01, 0 < y < 8700, uniformly distributed.
  *
- *
- * ERROR MESSAGES:
- *
- *   message         condition      value returned
- * pow overflow     x**y > MAXNUM      INFINITY
- * pow underflow   x**y < 1/MAXNUM       0.0
- * pow domain      x<0 and y noninteger  0.0
- *
  */
 
 #include "libm.h"

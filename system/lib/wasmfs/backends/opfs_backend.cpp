@@ -404,8 +404,8 @@ backend_t wasmfs_create_opfs_backend() {
   // thread. See comment in thread_utils.h for more details.
   assert(
     !emscripten_is_main_browser_thread() ||
-    emscripten_has_asyncify() == 2 &&
-      "Cannot safely create OPFS backend on main browser thread without JSPI");
+    emscripten_has_asyncify() &&
+      "Cannot safely create OPFS backend on main browser thread without Asyncify or JSPI");
 
   return wasmFS.addBackend(std::make_unique<OPFSBackend>());
 }

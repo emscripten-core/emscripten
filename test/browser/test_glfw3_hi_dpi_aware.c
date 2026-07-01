@@ -12,6 +12,44 @@
 #include <stdbool.h>
 #include <emscripten/html5.h>
 
+/**
+ * History:
+ * - HiDPI awareness is a feature that was added in 3.1.51 / December 2023
+ * - It allows to render the canvas for modern 4k/retina screens in hi resolution
+ * - It behaves similarly to the way it is handled on the native desktop platform:
+ *   - `glfwGetWindowSize` returns the size of the GLFW window (as set via `glfwCreateWindow` or `glfwSetWindowSize`)
+ *   - `glfwGetFramebufferSize` returns the actual size of the framebuffer and is usually used for the viewport (ex: `glViewport(0, 0, fbWidth, fbHeight)`)
+ *
+ * The feature is enabled via a window hint: `glfwWindowHint(GLFW_SCALE_TO_MONITOR, GLFW_TRUE)`
+ *
+ * From an implementation point of view, the actual size of the canvas (canvas.width and canvas.height) is defined to be the framebuffer size.
+ * CSS is used to scale the canvas to the GLFW window size. The factor used for HiDPI scaling is `devicePixelRatio`.
+ *
+ * For example, assuming a window size of 640x480 and a devicePixelRatio of 2, the canvas element handled by the library would look like this:
+ * <canvas width="1280" height="960" style="width: 640; height: 480;">
+ *
+ * Important note: when HiDPI awareness is enabled, the library takes over the size of the canvas, in particular its CSS width and height.
+ * As a result, CSS Scaling (see `test_glfw3_css_scaling.c` for details) is disabled.
+ * If you need the canvas to be resized dynamically (for example when the browser window is resized),
+ * you can use a different HTML element with CSS sizing and set a callback to update the size of the canvas appropriately.
+ *
+ * Example:
+ *
+ * GLFWWindow *window = ...;
+ * emscripten_set_resize_callback(EMSCRIPTEN_EVENT_TARGET_WINDOW, window, false, OnResize);
+ *
+ * // assuming HTML like this <div id="canvas-container" style="width: 100%"><canvas id="canvas"></div>
+ * static EM_BOOL OnResize(int event_type, const EmscriptenUiEvent* event, void* user_data) {
+ *   GLFWWindow *window = (GLFWWindow*) user_data;
+ *   double w, h;
+ *   // use ANOTHER HTML element
+ *   emscripten_get_element_css_size("#canvas-container", &w, &h);
+ *   // set the size of the GLFW window accordingly
+ *   glfwSetWindowSize(window, (int)w, (int)h);
+ *   return true;
+ * }
+ */
+
 // installing mock devicePixelRatio (independent of the browser/screen resolution)
 static void installMockDevicePixelRatio() {
   printf("installing mock devicePixelRatio...\n");
@@ -64,7 +102,7 @@ int main() {
 
   GLFWwindow* window;
 
-  assert(glfwInit() == GL_TRUE);
+  assert(glfwInit() == GLFW_TRUE);
 
   installMockDevicePixelRatio();
 

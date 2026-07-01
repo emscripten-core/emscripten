@@ -95,7 +95,7 @@ void start_worker(int arg) {
 int main() {
 #define NUM_THREADS 10
   for (int i = 0; i < NUM_THREADS; ++i) {
-    emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(1024);
+    emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(4096);
     emscripten_wasm_worker_post_function_vi(worker, start_worker, 0);
   }
 

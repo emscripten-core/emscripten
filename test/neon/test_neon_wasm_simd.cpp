@@ -279,8 +279,81 @@ test_simde_vshl_s64 () {
   return 0;
 }
 
+static int
+test_simde_vdotq_s32 () {
+  static const struct {
+    int32_t a[4];
+    int8_t b[16];
+    int8_t c[16];
+    int32_t r[4];
+  } test_vec[] = {
+    { { -INT32_C(  1315274814),  INT32_C(  1813013239), -INT32_C(   878005830),  INT32_C(   996395424) },
+      { -INT8_C(  46), -INT8_C(  66),  INT8_C(  35), -INT8_C( 112), -INT8_C(  26), -INT8_C(  23), -INT8_C(  99), -INT8_C(  11),
+        -INT8_C(  89),  INT8_C(  77), -INT8_C(  31), -INT8_C(  32), -INT8_C(  24),  INT8_C(  93), -INT8_C( 104), -INT8_C(  86) },
+      { -INT8_C(  36),  INT8_C(  50),  INT8_C(  91), -INT8_C(  45), -INT8_C( 107),  INT8_C( 107),  INT8_C(  63),  INT8_C(  79),
+         INT8_C(  28), -INT8_C(  22),  INT8_C(  26), -INT8_C(  68), -INT8_C(  77),  INT8_C( 125), -INT8_C(   8), -INT8_C( 123) },
+      { -INT32_C(  1315268233),  INT32_C(  1813006454), -INT32_C(   878008646),  INT32_C(   996420307) } },
+    { {  INT32_C(   555031355), -INT32_C(  1424575996), -INT32_C(   410257409),  INT32_C(   831595604) },
+      {  INT8_C(  86), -INT8_C(  19),  INT8_C(   4), -INT8_C(  21),  INT8_C(  88),  INT8_C(  68),  INT8_C(  58),  INT8_C( 117),
+         INT8_C(  46),  INT8_C(  84),  INT8_C(  49), -INT8_C(  31), -INT8_C(  47),  INT8_C(  41),  INT8_C( 102),  INT8_C(  13) },
+      {  INT8_C(  68),  INT8_C( 123),  INT8_C(  46),  INT8_C(  72),  INT8_C(  45),  INT8_C(  69), -INT8_C(  13),  INT8_C(  45),
+         INT8_C(  60),      INT8_MAX,  INT8_C(  20), -INT8_C( 111), -INT8_C(  93), -INT8_C(  90), -INT8_C(  62), -INT8_C(   7) },
+      {  INT32_C(   555033538), -INT32_C(  1424562833), -INT32_C(   410239560),  INT32_C(   831589870) } },
+    { { -INT32_C(   337262957),  INT32_C(   945823498),  INT32_C(  1159303796),  INT32_C(     5406651) },
+      { -INT8_C(   6), -INT8_C( 127),  INT8_C(  72),  INT8_C(  40), -INT8_C(  58),  INT8_C(  60),  INT8_C(  85),  INT8_C(   2),
+        -INT8_C(  69),  INT8_C( 105), -INT8_C( 109),  INT8_C(  94),  INT8_C(  15),  INT8_C(  85),  INT8_C(  87), -INT8_C(  94) },
+      {  INT8_C(  28),  INT8_C(  60), -INT8_C( 114),  INT8_C(  38),  INT8_C(  92), -INT8_C(  18),  INT8_C(  95), -INT8_C(  48),
+             INT8_MIN,  INT8_C( 120),  INT8_C(  21),  INT8_C(  60), -INT8_C(   8),  INT8_C( 104),  INT8_C(  60), -INT8_C(  14) },
+      { -INT32_C(   337277433),  INT32_C(   945825061),  INT32_C(  1159328579),  INT32_C(     5421907) } },
+    { { -INT32_C(  1357216535),  INT32_C(  2075226048), -INT32_C(   388413991), -INT32_C(  1232391782) },
+      {  INT8_C( 109),  INT8_C(  25), -INT8_C(  35), -INT8_C(  55),  INT8_C(   7),  INT8_C(  60), -INT8_C( 103), -INT8_C( 120),
+        -INT8_C(  76), -INT8_C(  81), -INT8_C(  60), -INT8_C(  84),  INT8_C(  23),  INT8_C(   0), -INT8_C(  97),  INT8_C(   0) },
+      { -INT8_C( 124), -INT8_C(  71), -INT8_C(  81),  INT8_C(  69),  INT8_C(  41),  INT8_C(  96), -INT8_C(  64),  INT8_C(   2),
+        -INT8_C(  91), -INT8_C( 102), -INT8_C(  22),  INT8_C(  64), -INT8_C(  53),  INT8_C( 117), -INT8_C(  10),  INT8_C(  56) },
+      { -INT32_C(  1357232786),  INT32_C(  2075238447), -INT32_C(   388402869), -INT32_C(  1232392031) } },
+    { { -INT32_C(  1778199666), -INT32_C(  1004627185),  INT32_C(  1634787914),  INT32_C(  1717637090) },
+      { -INT8_C(  55),  INT8_C(  16), -INT8_C(  85), -INT8_C(  14),  INT8_C( 113),  INT8_C( 108), -INT8_C(  12),  INT8_C(  22),
+         INT8_C(   6), -INT8_C(  34),  INT8_C(  86), -INT8_C(  47),  INT8_C(  84),  INT8_C(  77),  INT8_C(   9), -INT8_C(  30) },
+      {  INT8_C(  32),  INT8_C(  11),  INT8_C( 120),  INT8_C(  48), -INT8_C(  89), -INT8_C( 106), -INT8_C(  12), -INT8_C(  15),
+         INT8_C( 120),  INT8_C( 100),  INT8_C(  83),  INT8_C(  90),  INT8_C( 116), -INT8_C(  76), -INT8_C(  63),  INT8_C(  61) },
+      { -INT32_C(  1778212122), -INT32_C(  1004648876),  INT32_C(  1634788142),  INT32_C(  1717638585) } },
+    { {  INT32_C(   909077701), -INT32_C(   565435432),  INT32_C(  1437573889),  INT32_C(   272153072) },
+      { -INT8_C(  60), -INT8_C(  80),  INT8_C(  64),  INT8_C( 107),  INT8_C(  71),  INT8_C(  52),  INT8_C(  93), -INT8_C(  65),
+        -INT8_C( 103), -INT8_C(  80),  INT8_C(  26),  INT8_C(  13),  INT8_C( 100), -INT8_C(  37),  INT8_C(  74),  INT8_C(  41) },
+      {  INT8_C(  71),  INT8_C( 121),  INT8_C(  95),  INT8_C(  32), -INT8_C( 100), -INT8_C(  84), -INT8_C(   2), -INT8_C(  99),
+         INT8_C(  79), -INT8_C(  82), -INT8_C(  13),  INT8_C(  63),  INT8_C( 103),  INT8_C(  43),  INT8_C(  79),  INT8_C(  43) },
+      {  INT32_C(   909073265), -INT32_C(   565440651),  INT32_C(  1437572793),  INT32_C(   272169390) } },
+    { {  INT32_C(   580358363),  INT32_C(  1575154884),  INT32_C(   141229220),  INT32_C(   506639575) },
+      {  INT8_C(  45), -INT8_C( 111),  INT8_C(  62), -INT8_C(  55),  INT8_C(  61),  INT8_C(  61),  INT8_C( 103), -INT8_C( 116),
+        -INT8_C(  21),  INT8_C(  90), -INT8_C(  53),  INT8_C(  82), -INT8_C( 123),  INT8_C(  27),  INT8_C( 125),  INT8_C(  96) },
+      { -INT8_C(  85),  INT8_C(  20), -INT8_C( 125),  INT8_C( 111),  INT8_C(   8),  INT8_C( 101), -INT8_C(  51), -INT8_C(  84),
+         INT8_C(  97),  INT8_C(  55), -INT8_C(  75),  INT8_C(  56), -INT8_C(  20), -INT8_C(  25),  INT8_C(  86),  INT8_C(  25) },
+      {  INT32_C(   580338463),  INT32_C(  1575166024),  INT32_C(   141240700),  INT32_C(   506654510) } },
+    { { -INT32_C(  1226599048), -INT32_C(  1119728942),  INT32_C(   688852644), -INT32_C(   729183191) },
+      { -INT8_C(  95),  INT8_C(  12),  INT8_C(  67), -INT8_C(  87),  INT8_C( 113),  INT8_C(  16),  INT8_C(  86), -INT8_C(  46),
+         INT8_C(  72),  INT8_C(  11),  INT8_C(  10),  INT8_C(  52), -INT8_C(  14),  INT8_C(  97),  INT8_C(  77),  INT8_C( 106) },
+      { -INT8_C(  10),  INT8_C(  48),  INT8_C(  32), -INT8_C(  56),  INT8_C( 122),  INT8_C(  99), -INT8_C( 123),  INT8_C(  30),
+         INT8_C( 113), -INT8_C( 108),  INT8_C(  71), -INT8_C( 102),  INT8_C(  32), -INT8_C(  47),  INT8_C( 110), -INT8_C(  63) },
+      { -INT32_C(  1226590506), -INT32_C(  1119725530),  INT32_C(   688854998), -INT32_C(   729186406) } },
+
+  };
+
+  for (size_t i = 0 ; i < (sizeof(test_vec) / sizeof(test_vec[0])) ; i++) {
+    int32x4_t a = vld1q_s32(test_vec[i].a);
+    int8x16_t b = vld1q_s8(test_vec[i].b);
+    int8x16_t c = vld1q_s8(test_vec[i].c);
+    int32x4_t r = vdotq_s32(a, b, c);
+    int32_t r_[4];
+    vst1q_s32(r_, r);
+    assert(memcmp(r_, test_vec[i].r, sizeof(int32_t) * 4) == 0);
+  }
+
+  return 0;
+}
+
 int main() {
         printf("Testing NEON Wasm SIMD\n");
+        test_simde_vdotq_s32();
         test_simde_vaddq_s32();
         test_simde_vsubq_s16();
         test_simde_vmulq_u32();

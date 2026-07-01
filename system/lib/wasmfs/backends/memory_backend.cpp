@@ -3,12 +3,11 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-// This file defines the memory file backend of the new file system.
-// Current Status: Work in Progress.
-// See https://github.com/emscripten-core/emscripten/issues/15041.
+// This file defines the memory file backend.
 
 #include "memory_backend.h"
 #include "backend.h"
+#include "special_files.h"
 #include "wasmfs.h"
 
 namespace wasmfs {
@@ -105,6 +104,27 @@ public:
   }
   std::shared_ptr<Symlink> createSymlink(std::string target) override {
     return std::make_shared<MemorySymlink>(target, this);
+  }
+
+  // Initializes default directories including /dev/stdin, /dev/stdout,
+  // /dev/stderr. Refers to the same std streams in the open file table.
+  void populateRoot(Directory::Handle& lockedRoot) override {
+    // If the /dev/ directory does not already exist, create it. (It may already
+    // exist if those files have been preloaded.)
+    auto devDir = lockedRoot.insertDirectory("dev", S_IRUGO | S_IXUGO);
+    if (devDir) {
+      auto lockedDev = devDir->locked();
+      lockedDev.mountChild("null", SpecialFiles::getNull());
+      lockedDev.mountChild("stdin", SpecialFiles::getStdin());
+      lockedDev.mountChild("stdout", SpecialFiles::getStdout());
+      lockedDev.mountChild("stderr", SpecialFiles::getStderr());
+      lockedDev.mountChild("random", SpecialFiles::getRandom());
+      lockedDev.mountChild("urandom", SpecialFiles::getURandom());
+    }
+
+    // As with the /dev/ directory, it is not an error for /tmp/ to already
+    // exist.
+    lockedRoot.insertDirectory("tmp", S_IRWXUGO);
   }
 };
 

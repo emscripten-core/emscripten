@@ -6,8 +6,8 @@
 import atexit
 import logging
 import os
-import sys
 import subprocess
+import sys
 import tempfile
 import time
 from contextlib import ContextDecorator
@@ -144,7 +144,8 @@ if EMPROFILE == 1:
       # the parent->child process spawns for the subprocessing pools. Therefore
       # any profiling events that the subprocess children generate are virtually
       # treated as if they were performed by the parent PID.
-      return open(os.path.join(ToolchainProfiler.profiler_logs_path, 'toolchain_profiler.pid_' + str(os.getpid()) + '.json'), 'a')
+      filename = 'toolchain_profiler.pid_' + str(os.getpid()) + '.json'
+      return open(os.path.join(ToolchainProfiler.profiler_logs_path, filename), 'a', encoding='utf-8')
 
     @staticmethod
     def escape_string(arg):
@@ -152,7 +153,7 @@ if EMPROFILE == 1:
 
     @staticmethod
     def escape_args(args):
-      return map(lambda arg: ToolchainProfiler.escape_string(arg), args)
+      return [ToolchainProfiler.escape_string(arg) for arg in args]
 
     @staticmethod
     def record_process_start(write_log_entry=True):
@@ -188,7 +189,12 @@ if EMPROFILE == 1:
 
     @staticmethod
     def record_subprocess_spawn(process_pid, process_cmdline):
-      expanded_cmdline = response_file.substitute_response_files(process_cmdline)
+      try:
+        expanded_cmdline = response_file.substitute_response_files(process_cmdline)
+      except OSError:
+        # If user is passing a malformed input command line, then the toolchain profiler should not
+        # throw an exception, but profile the bad input command line as-is
+        expanded_cmdline = process_cmdline
 
       with ToolchainProfiler.log_access() as f:
         f.write(',\n{"pid":' + ToolchainProfiler.mypid_str + ',"subprocessPid":' + str(os.getpid()) + ',"op":"spawn","targetPid":' + str(process_pid) + ',"time":' + ToolchainProfiler.timestamp() + ',"cmdLine":["' + '","'.join(ToolchainProfiler.escape_args(expanded_cmdline)) + '"]}')

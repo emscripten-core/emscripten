@@ -90,6 +90,54 @@ The ``useCapture`` parameter  maps to ``useCapture`` in `EventTarget.addEventLis
 
 Most functions return the result using the type :c:data:`EMSCRIPTEN_RESULT`. Zero and positive values denote success. Negative values signal failure. None of the functions fail or abort by throwing a JavaScript or C++ exception. If a particular browser does not support the given feature, the value :c:data:`EMSCRIPTEN_RESULT_NOT_SUPPORTED` will be returned at the time the callback is registered.
 
+Unregister function
+-------------------
+
+In order to unregister a single event handler callback, call the following function:
+
+  .. code-block:: cpp
+
+    EMSCRIPTEN_RESULT emscripten_html5_remove_event_listener(
+      const char *target,   // ID of the target HTML element.
+      void *userData,       // User-defined data (passed to the callback).
+      int eventTypeId,      // The event type ID (EMSCRIPTEN_EVENT_XXX).
+      void *callback        // Callback function.
+    );
+
+
+The ``target``, ``userData`` and ``callback`` parameters are the same parameters provided in ``emscripten_set_some_callback`` with the only difference being that, since this function applies to all types of callbacks, the type of ``callback`` is ``void *``.
+
+Note in particular that the value of ``userData`` will need to match with the call that was used to register the callback. If you are having trouble, double check the value of ``userData``.
+
+The ``eventTypeId`` represents the event type, the same Id received in the callback functions.
+
+The function returns ``EMSCRIPTEN_RESULT_SUCCESS`` when the event handler callback is removed and ``EMSCRIPTEN_RESULT_INVALID_PARAM`` otherwise.
+
+  .. code-block:: cpp
+
+    // Example
+
+    bool my_mouse_callback_1(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData) {
+      // ...
+    }
+
+    bool my_mouse_callback_2(int eventType, const EmscriptenMouseEvent *mouseEvent, void *userData) {
+      // ...
+    }
+
+    void main() {
+
+      // 1. set callbacks for mouse down and mouse move
+      emscripten_set_mousedown_callback("#mydiv", 0, my_mouse_callback_1);
+      emscripten_set_mousedown_callback("#mydiv", (void *) 34, my_mouse_callback_2);
+      emscripten_set_mousemove_callback("#mydiv", 0, my_mouse_callback_1);
+
+      // 2. remove these callbacks
+      emscripten_html5_remove_event_listener("#mydiv", 0, EMSCRIPTEN_EVENT_MOUSEDOWN, my_mouse_callback_1);
+      emscripten_html5_remove_event_listener("#mydiv", (void *) 34, EMSCRIPTEN_EVENT_MOUSEDOWN, my_mouse_callback_2);
+      emscripten_html5_remove_event_listener("#mydiv", 0, EMSCRIPTEN_EVENT_MOUSEMOVE, my_mouse_callback_1);
+    }
+
 
 Callback functions
 ------------------
@@ -106,7 +154,7 @@ When the event occurs the callback is invoked with the relevant event "type" (fo
 
 .. _callback-handler-return-em_bool-html5-api:
 
-Callback handlers that return an :c:data:`bool` may specify ``true`` to signal that the handler *consumed* the event (this suppresses the default action for that event by calling its ``.preventDefault();`` member). Returning ``false`` indicates that the event was not consumed — the default browser event action is carried out and the event is allowed to pass on/bubble up as normal.
+Callback handlers that return a ``bool`` may specify ``true`` to signal that the handler *consumed* the event (this suppresses the default action for that event by calling its ``.preventDefault();`` member). Returning ``false`` indicates that the event was not consumed — the default browser event action is carried out and the event is allowed to pass on/bubble up as normal.
 
 Calling a registration function with a ``null`` pointer for the callback causes a de-registration of that callback from the given ``target`` element. All event handlers are also automatically unregistered when the C ``exit()`` function is invoked during the ``atexit`` handler pass. Either use the function :c:func:`emscripten_set_main_loop` or set ``Module.noExitRuntime = true;`` to make sure that leaving ``main()`` will not immediately cause an ``exit()`` and clean up the event handlers.
 
@@ -131,9 +179,9 @@ Test/Example code
 
 The HTML5 test code demonstrates how to use this API:
 
-  - `test_html5_core.c <https://github.com/emscripten-core/emscripten/blob/main/test/test_html5_core.c>`_
-  - `test_html5_fullscreen.c <https://github.com/emscripten-core/emscripten/blob/main/test/test_html5_fullscreen.c>`_
-  - `test_html5_mouse.c <https://github.com/emscripten-core/emscripten/blob/main/test/test_html5_mouse.c>`_
+  - `test_html5_core.c <https://github.com/emscripten-core/emscripten/blob/main/test/browser/test_html5_core.c>`_
+  - `test_html5_fullscreen.c <https://github.com/emscripten-core/emscripten/blob/main/test/browser/test_html5_fullscreen.c>`_
+  - `test_html5_mouse.c <https://github.com/emscripten-core/emscripten/blob/main/test/browser/test_html5_mouse.c>`_
 
 
 General types
@@ -244,7 +292,7 @@ Struct
 
     Maximum size 32 ``char`` (i.e. ``EM_UTF8 code[32]``).
 
-  .. c:member:: unsigned long location
+  .. c:member:: unsigned int location
 
     Indicates the location of the key on the keyboard. One of the :c:data:`DOM_KEY_LOCATION <DOM_KEY_LOCATION_STANDARD>` values.
 
@@ -273,24 +321,24 @@ Struct
 
     .. warning:: This attribute has been dropped from DOM Level 3 events.
 
-  .. c:member:: unsigned long charCode
+  .. c:member:: unsigned int charCode
 
     The Unicode reference number of the key; this attribute is used only by the keypress event. For keys whose ``char`` attribute contains multiple characters, this is the Unicode value of the first character in that attribute.
 
     .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available.
 
-  .. c:member:: unsigned long keyCode
+  .. c:member:: unsigned int keyCode
 
     A system and implementation dependent numerical code identifying the unmodified value of the pressed key.
 
     .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available.
 
 
-  .. c:member:: unsigned long which
+  .. c:member:: unsigned int which
 
     A system and implementation dependent numeric code identifying the unmodified value of the pressed key; this is usually the same as ``keyCode``.
 
-    .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available. Note thought that while this field is deprecated, the cross-browser support for ``which`` may be better than for the other fields, so experimentation is recommended. Read issue https://github.com/emscripten-core/emscripten/issues/2817 for more information.
+    .. warning:: This attribute is deprecated, you should use the field ``key`` instead, if available. Note though that while this field is deprecated, the cross-browser support for ``which`` may be better than for the other fields, so experimentation is recommended. Read issue https://github.com/emscripten-core/emscripten/issues/2817 for more information.
 
 
 Callback functions
@@ -348,6 +396,7 @@ Defines
   EMSCRIPTEN_EVENT_MOUSEMOVE
   EMSCRIPTEN_EVENT_MOUSEENTER
   EMSCRIPTEN_EVENT_MOUSELEAVE
+  EMSCRIPTEN_EVENT_CONTEXTMENU
 
     Emscripten mouse events.
 
@@ -357,20 +406,20 @@ Struct
 
 .. c:type:: EmscriptenMouseEvent
 
-  The event structure passed in `mouse events <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#interface-MouseEvent>`_: `click <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-click>`_, `mousedown <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousedown>`_, `mouseup <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseup>`_, `dblclick <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-dblclick>`_, `mousemove <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousemove>`_, `mouseenter <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseenter>`_ and `mouseleave <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mouseleave>`_.
+  The event structure passed in `mouse events <https://w3c.github.io/pointerevents/#mouseevent>`_: `click <https://w3c.github.io/pointerevents/#click>`_, `mousedown <https://w3c.github.io/pointerevents/#mousedown>`_, `mouseup <https://w3c.github.io/pointerevents/#mouseup>`_, `dblclick <https://w3c.github.io/pointerevents/#dblclick>`_, `mousemove <https://w3c.github.io/pointerevents/#mousemove>`_, `mouseenter <https://w3c.github.io/pointerevents/#mouseenter>`_, `mouseleave <https://w3c.github.io/pointerevents/#mouseleave>`_ and `contextmenu <https://w3c.github.io/pointerevents/#contextmenu>`_.
 
 
   .. c:member:: double timestamp
 
     Absolute wallclock time when the data was recorded (milliseconds).
 
-  .. c:member:: long screenX
-    long screenY
+  .. c:member:: int screenX
+    int screenY
 
     The coordinates relative to the browser screen coordinate system.
 
-  .. c:member:: long clientX
-    long clientY
+  .. c:member:: int clientX
+    int clientY
 
     The coordinates relative to the viewport associated with the event.
 
@@ -396,24 +445,24 @@ Struct
 
     A bitmask that indicates which combinations of mouse buttons were being held down at the time of the event.
 
-  .. c:member:: long movementX
-    long movementY;
+  .. c:member:: int movementX
+    int movementY;
 
     If pointer lock is active, these two extra fields give relative mouse movement since the last event.
 
-  .. c:member:: long targetX
-     long targetY
+  .. c:member:: int targetX
+     int targetY
 
     These fields give the mouse coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension; coordinates are rounded down to the nearest integer).
 
 
-  .. c:member:: long canvasX
-     long canvasY
+  .. c:member:: int canvasX
+     int canvasY
 
-    These fields give the mouse coordinates mapped to the Emscripten canvas client area (Emscripten-specific extension; coordinates are rounded down the nearest integer).
+    These fields give the mouse coordinates mapped to the Emscripten canvas client area (Emscripten-specific extension; coordinates are rounded down to the nearest integer).
 
 
-  .. c:member:: long padding
+  .. c:member:: int padding
 
     Internal, and can be ignored.
 
@@ -450,6 +499,7 @@ Functions
   EMSCRIPTEN_RESULT emscripten_set_mousemove_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_mouseenter_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_mouseleave_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
+  EMSCRIPTEN_RESULT emscripten_set_contextmenu_callback(const char *target, void *userData, bool useCapture, em_mouse_callback_func callback)
 
   Registers a callback function for receiving browser-generated `mouse input events <https://developer.mozilla.org/en/DOM/MouseEvent>`_.
 
@@ -467,7 +517,7 @@ Functions
 
   Returns the most recently received mouse event state.
 
-  Note that for this function call to succeed, :c:func:`emscripten_set_xxx_callback <emscripten_set_click_callback>` must have first been called with one of the mouse event types and a non-zero callback function pointer to enable the Mouse state capture.
+  Note that for this function call to succeed, :c:func:`emscripten_set_xxx_callback <emscripten_set_click_callback>` must have first been called with one of the mouse event types and a non-zero callback function pointer to enable the mouse state capture.
 
   :param EmscriptenMouseEvent* mouseState: The most recently received mouse event state.
   :returns: :c:data:`EMSCRIPTEN_RESULT_SUCCESS`, or one of the other result values.
@@ -513,11 +563,11 @@ Struct
     double deltaY
     double deltaZ
 
-    Movement of the wheel on each of the axis. Note that these values may be fractional, so you should avoid simply casting them to integer, or it might result
+    Movement of the wheel on each of the axes. Note that these values may be fractional, so you should avoid simply casting them to integer, or it might result
     in scroll values of 0. The positive Y scroll direction is when scrolling the page downwards (page CSS pixel +Y direction), which corresponds to scrolling
     the mouse wheel downwards (away from the screen) on Windows, Linux, and also on macOS when the 'natural scroll' option is disabled.
 
-  .. c:member:: unsigned long deltaMode
+  .. c:member:: unsigned int deltaMode
 
     One of the :c:data:`DOM_DELTA_<DOM_DELTA_PIXEL>` values that indicates the units of measurement for the delta values.
 
@@ -579,7 +629,7 @@ Struct
   The event structure passed in DOM element `UIEvent <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#interface-UIEvent>`_ events: `resize <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-resize>`_ and `scroll <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-scroll>`_.
 
 
-  .. c:member:: long detail
+  .. c:member:: int detail
 
     For resize and scroll events this is always zero.
 
@@ -746,7 +796,7 @@ Struct
 
     The `orientation <https://developer.mozilla.org/en-US/Apps/Build/gather_and_modify_data/responding_to_device_orientation_changes#Device_Orientation_API>`_ of the device in terms of the transformation from a coordinate frame fixed on the Earth to a coordinate frame fixed in the device.
 
-    The image (source: `dev.opera.com <http://dev.opera.com/articles/view/w3c-device-orientation-api/>`_) and definitions below illustrate the co-ordinate frame:
+    The image (source: `dev.opera.com <http://dev.opera.com/articles/view/w3c-device-orientation-api/>`_) and definitions below illustrate the coordinate frame:
 
       - :c:type:`~EmscriptenDeviceOrientationEvent.alpha`: the rotation of the device around the Z axis.
       - :c:type:`~EmscriptenDeviceOrientationEvent.beta`: the rotation of the device around the X axis.
@@ -800,7 +850,7 @@ Functions
 
   Returns the most recently received ``deviceorientation`` event state.
 
-  Note that for this function call to succeed, :c:func:`emscripten_set_deviceorientation_callback` must have first been called with one of the mouse event types and a non-zero callback function pointer to enable the ``deviceorientation`` state capture.
+  Note that for this function call to succeed, :c:func:`emscripten_set_deviceorientation_callback` must have first been called with a non-zero callback function pointer to enable the ``deviceorientation`` state capture.
 
   :param orientationState: The most recently received ``deviceorientation`` event state.
   :type orientationState: EmscriptenDeviceOrientationEvent*
@@ -892,7 +942,7 @@ Functions
 
   Returns the most recently received `devicemotion <http://w3c.github.io/deviceorientation/spec-source-orientation.html#devicemotion>`_ event state.
 
-  Note that for this function call to succeed, :c:func:`emscripten_set_devicemotion_callback` must have first been called with one of the mouse event types and a non-zero callback function pointer to enable the ``devicemotion`` state capture.
+  Note that for this function call to succeed, :c:func:`emscripten_set_devicemotion_callback` must have first been called with a non-zero callback function pointer to enable the ``devicemotion`` state capture.
 
   :param motionState: The most recently received ``devicemotion`` event state.
   :type motionState: EmscriptenDeviceMotionEvent*
@@ -1321,7 +1371,7 @@ Functions
 
   Registers a callback function for receiving the `pointerlockchange <http://www.w3.org/TR/pointerlock/#pointerlockchange-and-pointerlockerror-events>`_ event.
 
-  Pointer lock hides the mouse cursor and exclusively gives the target element relative mouse movement events via the `mousemove <https://dvcs.w3.org/hg/dom3events/raw-file/tip/html/DOM3-Events.html#event-type-mousemove>`_ event.
+  Pointer lock hides the mouse cursor and exclusively gives the target element relative mouse movement events via the `mousemove <https://w3c.github.io/pointerevents/#mousemove>`_ event.
 
   :param target: |target-parameter-doc|
   :type target: const char*
@@ -1487,22 +1537,22 @@ Struct
 
   Specifies the status of a single `touch point <http://www.w3.org/TR/touch-events/#touch-interface>`_ on the page.
 
-  .. c:member:: long identifier
+  .. c:member:: int identifier
 
     An identification number for each touch point.
 
-  .. c:member:: long screenX
-    long screenY
+  .. c:member:: int screenX
+    int screenY
 
     The touch coordinate relative to the whole screen origin, in pixels.
 
-  .. c:member:: long clientX
-    long clientY
+  .. c:member:: int clientX
+    int clientY
 
     The touch coordinate relative to the viewport, in pixels.
 
-  .. c:member:: long pageX
-    long pageY
+  .. c:member:: int pageX
+    int pageY
 
     The touch coordinate relative to the viewport, in pixels, and including any scroll offset.
 
@@ -1514,13 +1564,13 @@ Struct
 
     Specifies whether this touch point is still above the original target on which it was initially pressed.
 
-  .. c:member:: long targetX
-     long targetY
+  .. c:member:: int targetX
+     int targetY
 
     These fields give the touch coordinates mapped relative to the coordinate space of the target DOM element receiving the input events (Emscripten-specific extension).
 
-  .. c:member:: long canvasX
-    long canvasY
+  .. c:member:: int canvasX
+    int canvasY
 
     The touch coordinates mapped to the Emscripten canvas client area, in pixels (Emscripten-specific extension).
 
@@ -1643,7 +1693,7 @@ Struct
 
     Specifies whether this gamepad is connected to the browser page.
 
-  .. c:member:: long index
+  .. c:member:: int index
 
     An ordinal associated with this gamepad, zero-based.
 
@@ -1719,7 +1769,7 @@ Functions
   .. note::
 
      Gamepad API uses an array of gamepad state objects to return the state of
-     each device. The devices are identified via the index they are present in in
+     each device. The devices are identified via the index they are present in
      this array. Because of that, if one first connects gamepad A, then gamepad
      B, and then disconnects gamepad A, the gamepad B shall not take the place of
      gamepad A, so in this scenario, this function will still keep returning two
@@ -1755,7 +1805,7 @@ Defines
 .. c:macro:: EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE
   EMSCRIPTEN_EVENT_BATTERYLEVELCHANGE
 
-    Emscripten `batterymanager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events.
+    Emscripten `BatteryManager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events.
 
 
 Struct
@@ -1763,7 +1813,7 @@ Struct
 
 .. c:type:: EmscriptenBatteryEvent
 
-  The event structure passed in the `batterymanager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
+  The event structure passed in the `BatteryManager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
 
 
   .. c:member:: double chargingTime
@@ -1788,14 +1838,14 @@ Callback functions
 
 .. c:type:: em_battery_callback_func
 
-  Function pointer for the :c:func:`batterymanager event callback functions <emscripten_set_batterychargingchange_callback>`, defined as:
+  Function pointer for the :c:func:`BatteryManager event callback functions <emscripten_set_batterychargingchange_callback>`, defined as:
 
   .. code-block:: cpp
 
     typedef bool (*em_battery_callback_func)(int eventType, const EmscriptenBatteryEvent *batteryEvent, void *userData);
 
-  :param int eventType: The type of ``batterymanager`` event (:c:data:`EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE`).
-  :param batteryEvent: Information about the ``batterymanager`` event that occurred.
+  :param int eventType: The type of ``BatteryManager`` event (:c:data:`EMSCRIPTEN_EVENT_BATTERYCHARGINGCHANGE`).
+  :param batteryEvent: Information about the ``BatteryManager`` event that occurred.
   :type batteryEvent: const EmscriptenBatteryEvent*
   :param void* userData: The ``userData`` originally passed to the registration function.
   :returns: |callback-handler-return-value-doc|
@@ -1809,7 +1859,7 @@ Functions
 .. c:function:: EMSCRIPTEN_RESULT emscripten_set_batterychargingchange_callback(void *userData, em_battery_callback_func callback)
   EMSCRIPTEN_RESULT emscripten_set_batterylevelchange_callback(void *userData, em_battery_callback_func callback)
 
-  Registers a callback function for receiving the `batterymanager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
+  Registers a callback function for receiving the `BatteryManager <http://www.w3.org/TR/battery-status/#batterymanager-interface>`_ events: ``chargingchange`` and ``levelchange``.
 
   :param void* userData: |userData-parameter-doc|
   :param em_battery_callback_func callback: |callback-function-parameter-doc|
@@ -2002,6 +2052,10 @@ Struct
 
     Default value of ``proxyContextToMainThread`` after calling ``emscripten_webgl_init_context_attributes()`` is ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_DISALLOW``, if the WebGL context is being created on the main thread. This means that by default WebGL contexts created on the main thread are not shareable between multiple threads (to avoid accidental performance loss from enabling proxying when/if it is not needed). To create a context that can be shared between multiple pthreads, set the ``proxyContextToMainThread`` flag ``EMSCRIPTEN_WEBGL_CONTEXT_PROXY_ALWAYS``.
 
+  .. c:member:: bool desynchronized
+
+    If ``true``, requests a "desynchronized" WebGL context, which can lower latency by bypassing the browser's normal compositing/double-buffering of the canvas. This maps to the ``desynchronized`` attribute on the JavaScript ``getContext()`` call. Whether the request is honored depends on the browser and platform; use ``emscripten_webgl_get_context_attributes()`` to read back the value the context was actually created with. Default value is ``false``.
+
 Callback functions
 ------------------
 
@@ -2069,7 +2123,11 @@ Functions
   .. note::
 
     - A successful call to this function will not immediately make that rendering context active. Call :c:func:`emscripten_webgl_make_context_current` after creating a context to activate it.
-    - This function will try to initialize the context version that was *exactly* requested. It will not e.g. initialize a newer backwards-compatible version or similar.
+    - A word of caution about :c:type:`EmscriptenWebGLContextAttributes.majorVersion`:
+
+      - When no (WEBGL) linker flags are set, then this attribute is ignored and the context returned is WebGL 1.0
+      - When the linker flag ``-sMIN_WEBGL_VERSION=2`` is set, then this attribute is ignored and the context returned is WebGL 2.0
+      - When the linker flag ``-sMAX_WEBGL_VERSION=2`` is set, then this attribute is used and the context returned matches the value of this attribute
 
   :param target: The DOM canvas element in which to initialize the WebGL context.
   :type target: const char*

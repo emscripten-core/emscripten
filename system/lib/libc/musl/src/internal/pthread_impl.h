@@ -39,7 +39,10 @@ struct pthread {
 
 	/* Part 2 -- implementation details, non-ABI. */
 	int tid;
+#ifndef __EMSCRIPTEN__
+	// Emscripten uses C11 _Thread_local instead for errno
 	int errno_val;
+#endif
 	volatile int detach_state;
 	volatile int cancel;
 	volatile unsigned char canceldisable, cancelasync;
@@ -58,10 +61,17 @@ struct pthread {
 		long off;
 		volatile void *volatile pending;
 	} robust_list;
+#ifndef __EMSCRIPTEN__
+	// Emscripten uses C11 _Thread_local instead for h_errno
 	int h_errno_val;
+#endif
 	volatile int timer_id;
+#ifndef __EMSCRIPTEN__
+	// Emscripten uses C11 _Thread_local instead for locale
 	locale_t locale;
+	// Emscripten doesn't use this field.
 	volatile int killlock[1];
+#endif
 	char *dlerror_buf;
 	void *stdio_locks;
 
@@ -105,14 +115,22 @@ struct pthread {
 	// postMessage path. Once this becomes true, it remains true so we never
 	// fall back to postMessage unnecessarily.
 	_Atomic int waiting_async;
-#endif
-#ifdef EMSCRIPTEN_DYNAMIC_LINKING
-	// When dynamic linking is enabled, threads use this to facilitate the
-	// synchronization of loaded code between threads.
-	// See emscripten_futex_wait.c.
-	_Atomic char sleeping;
+	// The address the thread is currently waiting on in emscripten_futex_wait.
+	//
+	// This field encodes the state using the following bitmask:
+	// - NULL: Not waiting, no pending notification.
+	// - NOTIFY_BIT (0x1): Not waiting, but a notification was sent.
+	// - addr: Waiting on `addr`, no pending notification.
+	// - addr | NOTIFY_BIT: Waiting on `addr`, notification sent.
+	//
+	// Since futex addresses must be 4-byte aligned, the low bit is safe to use.
+	_Atomic uintptr_t wait_addr;
 #endif
 };
+
+#ifdef __EMSCRIPTEN__
+#define NOTIFY_BIT (1 << 0)
+#endif
 
 enum {
 	DT_EXITED,
@@ -268,5 +286,14 @@ extern hidden unsigned __default_guardsize;
 #define DEFAULT_GUARD_MAX (1<<20)
 
 #define __ATTRP_C11_THREAD ((void*)(uintptr_t)-1)
+
+#ifdef __EMSCRIPTEN_SHARED_MEMORY__
+pid_t gettid(void);
+// Unlike `__pthread_self()->tid, `gettid` works under both wasm workers and
+// pthreads.
+#define CURRENT_THREAD_ID gettid()
+#else
+#define CURRENT_THREAD_ID __pthread_self()->tid
+#endif
 
 #endif

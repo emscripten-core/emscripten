@@ -16,7 +16,6 @@
 #define ABORT __builtin_unreachable()
 /* allow malloc stats only in debug builds, which brings in stdio code. */
 #define NO_MALLOC_STATS 1
-#define MALLINFO_FIELD_TYPE int
 #endif
 /* XXX Emscripten Tracing API. This defines away the code if tracing is disabled. */
 #include <emscripten/trace.h>
@@ -885,7 +884,7 @@ extern "C" {
 #if defined(__EMSCRIPTEN__)
 void* __libc_malloc(size_t) __attribute__((weak, alias("dlmalloc")));
 void  __libc_free(void*) __attribute__((weak, alias("dlfree")));
-void* __libc_calloc(size_t) __attribute__((weak, alias("dlcalloc")));
+void* __libc_calloc(size_t, size_t) __attribute__((weak, alias("dlcalloc")));
 void* __libc_realloc(void*, size_t) __attribute__((weak, alias("dlrealloc")));
 void* malloc(size_t) __attribute__((weak, alias("dlmalloc")));
 void  free(void*) __attribute__((weak, alias("dlfree")));
@@ -904,7 +903,7 @@ int malloc_trim(size_t) __attribute__((weak, alias("dlmalloc_trim")));
 #if !NO_MALLOC_STATS
 void malloc_stats(void) __attribute__((weak, alias("dlmalloc_stats")));
 #endif
-size_t malloc_usable_size(const void*) __attribute__((weak, alias("dlmalloc_usable_size")));
+size_t malloc_usable_size(void*) __attribute__((weak, alias("dlmalloc_usable_size")));
 size_t malloc_footprint(void) __attribute__((weak, alias("dlmalloc_footprint")));
 size_t malloc_max_footprint(void) __attribute__((weak, alias("dlmalloc_max_footprint")));
 size_t malloc_footprint_limit(void) __attribute__((weak, alias("dlmalloc_footprint_limit")));
@@ -6082,6 +6081,7 @@ int mspace_mallopt(int param_number, int value) {
 // This allows an easy mechanism for hooking into memory allocation.
 #if defined(__EMSCRIPTEN__) && !ONLY_MSPACES
 extern __typeof(malloc) emscripten_builtin_malloc __attribute__((alias("dlmalloc")));
+extern __typeof(realloc) emscripten_builtin_realloc __attribute__((alias("dlrealloc")));
 extern __typeof(calloc) emscripten_builtin_calloc __attribute__((alias("dlcalloc")));
 extern __typeof(free) emscripten_builtin_free __attribute__((alias("dlfree")));
 extern __typeof(memalign) emscripten_builtin_memalign __attribute__((alias("dlmemalign")));

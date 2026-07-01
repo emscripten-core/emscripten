@@ -4,9 +4,9 @@
 About this site
 ===============
 
-The site is built using `Sphinx <https://www.sphinx-doc.org/en/master/>`_ (2.4.4), the open source tool used to create the official Python documentation and many other sites. This is a very mature and stable tool, and was selected for, among other reasons, its support for defining API items and linking to them from code.
+The site is built using `Sphinx <https://www.sphinx-doc.org/en/master/>`_ (7.4.7), the open source tool used to create the official Python documentation and many other sites. This is a very mature and stable tool, and was selected for, among other reasons, its support for defining API items and linking to them from code.
 
-The site uses a custom theme, which is based on the :ref:`read-the-docs-theme`.
+The site uses the `Shibuya theme <https://shibuya.lepture.com/>`_.
 
 .. _about-this-site-search:
 
@@ -198,35 +198,6 @@ Working in markdown
 New articles may be authored and discussed on the `wiki <https://github.com/emscripten-core/emscripten/wiki>`_ using Markdown syntax before being included in the documentation set. The easiest way to convert these to restructured text is to use a tool like `Pandoc <http://johnmacfarlane.net/pandoc/try/?text=&from=markdown_github&to=rst>`_.
 
 .. note:: The *get_wiki.py* tool (**/site/source/get_wiki.py**) can be used to automate getting a snapshot of the wiki. It clones the wiki and calls *pandoc* on each file. The output is copied to a folder **wiki_static**. The tool also adds a heading, a note stating that the file is a "wiki snapshot", and fixes up links marked as "inline code" to matching links in the API Reference.
-
-
-.. _read-the-docs-theme:
-
-Read the docs theme
-===================
-
-The site uses a modification of the `Read the docs theme <http://read-the-docs.readthedocs.org/en/latest/theme.html>`_ (this can be found in the source at */emscripten/site/source/_themes/emscripten_sphinx_rtd_theme*).
-
-The main changes to the original theme are listed below.
-
-- **Footer.html**
-
-  - Copyright changed to link to Emscripten authors (some code was broken by translation markup)
-  - Added footer menu bar
-
-- **Layout.html**
-
-  - Added header menu bar with items
-
-- **Breadcrumb.html**
-
-  - Changed the text of the first link from "docs" to "Home"
-  - Moved the "View Page Source" code into the bottom footer
-
-- **theme.css**
-
-  - Changed to support 4 levels of depth in sidebar toc.
-  - Centred theme. Made sidebar reach bottom of page using absolute positioning.
 
 
 Site license

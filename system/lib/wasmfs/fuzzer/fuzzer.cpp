@@ -3,10 +3,8 @@
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
 
-// This file defines a fuzzer that will validate operations in the new file
-// system in a multi-threaded setting.
-// Current Status: Work in Progress. See
-// https://github.com/emscripten-core/emscripten/issues/15041.
+// This file defines a fuzzer that validates operations in a multi-threaded
+// setting.
 
 #include "parameters.h"
 #include "random.h"

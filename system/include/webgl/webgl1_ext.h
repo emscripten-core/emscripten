@@ -83,12 +83,12 @@ bool emscripten_webgl_enable_OES_vertex_array_object(EMSCRIPTEN_WEBGL_CONTEXT_HA
 // call emscripten_webgl_enable_extension(ctx, "OES_vertex_array_object");
 #define GL_VERTEX_ARRAY_BINDING_OES 0x85B5
 WEBGL_APICALL void GL_APIENTRY emscripten_glBindVertexArrayOES(GLuint array);
-WEBGL_APICALL void GL_APIENTRY emscripten_glDeleteVertexArraysOES(GLsizei n, const GLuint *arrays __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY emscripten_glGenVertexArraysOES(GLsizei n, GLuint *arrays __attribute__((nonnull)));
+WEBGL_APICALL void GL_APIENTRY emscripten_glDeleteVertexArraysOES(GLsizei n, const GLuint * _Nonnull arrays);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGenVertexArraysOES(GLsizei n, GLuint * _Nonnull arrays);
 WEBGL_APICALL GLboolean GL_APIENTRY emscripten_glIsVertexArrayOES(GLuint array);
 WEBGL_APICALL void GL_APIENTRY glBindVertexArrayOES(GLuint array);
-WEBGL_APICALL void GL_APIENTRY glDeleteVertexArraysOES(GLsizei n, const GLuint *arrays __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY glGenVertexArraysOES(GLsizei n, GLuint *arrays __attribute__((nonnull)));
+WEBGL_APICALL void GL_APIENTRY glDeleteVertexArraysOES(GLsizei n, const GLuint * _Nonnull arrays);
+WEBGL_APICALL void GL_APIENTRY glGenVertexArraysOES(GLsizei n, GLuint * _Nonnull arrays);
 WEBGL_APICALL GLboolean GL_APIENTRY glIsVertexArrayOES(GLuint array);
 #endif /* EMSCRIPTEN_GL_OES_vertex_array_object */
 
@@ -106,7 +106,7 @@ WEBGL_APICALL GLboolean GL_APIENTRY glIsVertexArrayOES(GLuint array);
 #define EMSCRIPTEN_GL_WEBGL_debug_shaders 1
 // To enable: call emscripten_webgl_enable_extension(ctx, "WEBGL_debug_shaders");
 //TODO:
-//WEBGL_APICALL void GL_APIENTRY emscripten_webgl_getTranslatedShaderSource(GLuint shader, GLsizei bufSize, GLsizei *length __attribute__((nonnull)), GLchar *source __attribute__((nonnull)));
+//WEBGL_APICALL void GL_APIENTRY emscripten_webgl_getTranslatedShaderSource(GLuint shader, GLsizei bufSize, GLsizei * _Nonnull length, GLchar * _Nonnull source);
 #endif /* EMSCRIPTEN_GL_WEBGL_debug_shaders */
 
 // 8. https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_s3tc/
@@ -305,28 +305,28 @@ WEBGL_APICALL void GL_APIENTRY glVertexAttribDivisorANGLE(GLuint index, GLuint d
 #define GL_TIME_ELAPSED_EXT 0x88BF
 #define GL_TIMESTAMP_EXT 0x8E28
 #define GL_GPU_DISJOINT_EXT 0x8FBB
-WEBGL_APICALL void GL_APIENTRY emscripten_glGenQueriesEXT(GLsizei n, GLuint *ids __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY emscripten_glDeleteQueriesEXT(GLsizei n, const GLuint *ids __attribute__((nonnull)));
+WEBGL_APICALL void GL_APIENTRY emscripten_glGenQueriesEXT(GLsizei n, GLuint * _Nonnull ids);
+WEBGL_APICALL void GL_APIENTRY emscripten_glDeleteQueriesEXT(GLsizei n, const GLuint * _Nonnull ids);
 WEBGL_APICALL GLboolean GL_APIENTRY emscripten_glIsQueryEXT(GLuint id);
 WEBGL_APICALL void GL_APIENTRY emscripten_glBeginQueryEXT(GLenum target, GLuint id);
 WEBGL_APICALL void GL_APIENTRY emscripten_glEndQueryEXT(GLenum target);
 WEBGL_APICALL void GL_APIENTRY emscripten_glQueryCounterEXT(GLuint id, GLenum target);
-WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryivEXT(GLenum target, GLenum pname, GLint *params __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryObjectivEXT(GLuint id, GLenum pname, GLint *params __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryObjectuivEXT(GLuint id, GLenum pname, GLuint *params __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryObjecti64vEXT(GLuint id, GLenum pname, GLint64 *params __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryObjectui64vEXT(GLuint id, GLenum pname, GLuint64 *params __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY glGenQueriesEXT(GLsizei n, GLuint *ids __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY glDeleteQueriesEXT(GLsizei n, const GLuint *ids __attribute__((nonnull)));
+WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryivEXT(GLenum target, GLenum pname, GLint * _Nonnull params);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryObjectivEXT(GLuint id, GLenum pname, GLint * _Nonnull params);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryObjectuivEXT(GLuint id, GLenum pname, GLuint * _Nonnull params);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryObjecti64vEXT(GLuint id, GLenum pname, GLint64 * _Nonnull params);
+WEBGL_APICALL void GL_APIENTRY emscripten_glGetQueryObjectui64vEXT(GLuint id, GLenum pname, GLuint64 * _Nonnull params);
+WEBGL_APICALL void GL_APIENTRY glGenQueriesEXT(GLsizei n, GLuint * _Nonnull ids);
+WEBGL_APICALL void GL_APIENTRY glDeleteQueriesEXT(GLsizei n, const GLuint * _Nonnull ids);
 WEBGL_APICALL GLboolean GL_APIENTRY glIsQueryEXT(GLuint id);
 WEBGL_APICALL void GL_APIENTRY glBeginQueryEXT(GLenum target, GLuint id);
 WEBGL_APICALL void GL_APIENTRY glEndQueryEXT(GLenum target);
 WEBGL_APICALL void GL_APIENTRY glQueryCounterEXT(GLuint id, GLenum target);
-WEBGL_APICALL void GL_APIENTRY glGetQueryivEXT(GLenum target, GLenum pname, GLint *params __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY glGetQueryObjectivEXT(GLuint id, GLenum pname, GLint *params __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY glGetQueryObjectuivEXT(GLuint id, GLenum pname, GLuint *params __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY glGetQueryObjecti64vEXT(GLuint id, GLenum pname, GLint64 *params __attribute__((nonnull)));
-WEBGL_APICALL void GL_APIENTRY glGetQueryObjectui64vEXT(GLuint id, GLenum pname, GLuint64 *params __attribute__((nonnull)));
+WEBGL_APICALL void GL_APIENTRY glGetQueryivEXT(GLenum target, GLenum pname, GLint * _Nonnull params);
+WEBGL_APICALL void GL_APIENTRY glGetQueryObjectivEXT(GLuint id, GLenum pname, GLint * _Nonnull params);
+WEBGL_APICALL void GL_APIENTRY glGetQueryObjectuivEXT(GLuint id, GLenum pname, GLuint * _Nonnull params);
+WEBGL_APICALL void GL_APIENTRY glGetQueryObjecti64vEXT(GLuint id, GLenum pname, GLint64 * _Nonnull params);
+WEBGL_APICALL void GL_APIENTRY glGetQueryObjectui64vEXT(GLuint id, GLenum pname, GLuint64 * _Nonnull params);
 #endif /* EMSCRIPTEN_GL_EXT_disjoint_timer_query */
 
 // 29. https://www.khronos.org/registry/webgl/extensions/WEBGL_compressed_texture_etc/
@@ -379,7 +379,7 @@ WEBGL_APICALL void GL_APIENTRY glGetQueryObjectui64vEXT(GLuint id, GLenum pname,
 #define GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x10_KHR 0x93DC
 #define GL_COMPRESSED_SRGB8_ALPHA8_ASTC_12x12_KHR 0x93DD
 //TODO:
-//WEBGL_APICALL void GL_APIENTRY emscripten_webgl_getSupportedAstcProfiles(GLsizei bufSize, GLsizei *length __attribute__((nonnull)), GLchar *buf __attribute__((nonnull)));
+//WEBGL_APICALL void GL_APIENTRY emscripten_webgl_getSupportedAstcProfiles(GLsizei bufSize, GLsizei * _Nonnull length, GLchar * _Nonnull buf);
 #endif /* EMSCRIPTEN_GL_WEBGL_compressed_texture_astc */
 
 // 31. https://www.khronos.org/registry/webgl/extensions/EXT_color_buffer_float/
@@ -416,44 +416,44 @@ bool emscripten_webgl_enable_WEBGL_multi_draw(EMSCRIPTEN_WEBGL_CONTEXT_HANDLE co
 // or link with -sGL_SUPPORT_SIMPLE_ENABLE_EXTENSIONS=1 and
 // call emscripten_webgl_enable_extension(ctx, "WEBGL_multi_draw");
 WEBGL_APICALL void GL_APIENTRY emscripten_glMultiDrawArraysWEBGL(GLenum mode,
-                                                                 const GLint* firsts __attribute__((nonnull)),
-                                                                 const GLsizei* counts __attribute__((nonnull)),
+                                                                 const GLint* _Nonnull firsts,
+                                                                 const GLsizei* _Nonnull counts,
                                                                  GLsizei drawcount);
 WEBGL_APICALL void GL_APIENTRY emscripten_glMultiDrawArraysInstancedWEBGL(GLenum mode,
-                                                                          const GLint* firsts __attribute__((nonnull)),
-                                                                          const GLsizei* counts __attribute__((nonnull)),
-                                                                          const GLsizei* instanceCounts __attribute__((nonnull)),
+                                                                          const GLint* _Nonnull firsts,
+                                                                          const GLsizei* _Nonnull counts,
+                                                                          const GLsizei* _Nonnull instanceCounts,
                                                                           GLsizei drawcount);
 WEBGL_APICALL void GL_APIENTRY emscripten_glMultiDrawElementsWEBGL(GLenum mode,
-                                                                   const GLsizei* counts __attribute__((nonnull)),
+                                                                   const GLsizei* _Nonnull counts,
                                                                    GLenum type,
-                                                                   const GLvoid* const* offsets __attribute__((nonnull)),
+                                                                   const GLvoid* const* _Nonnull offsets,
                                                                    GLsizei drawcount);
 WEBGL_APICALL void GL_APIENTRY emscripten_glMultiDrawElementsInstancedWEBGL(GLenum mode,
-                                                                            const GLsizei* counts __attribute__((nonnull)),
+                                                                            const GLsizei* _Nonnull counts,
                                                                             GLenum type,
-                                                                            const GLvoid* const* offsets __attribute__((nonnull)),
-                                                                            const GLsizei* instanceCounts __attribute__((nonnull)),
+                                                                            const GLvoid* const* _Nonnull offsets,
+                                                                            const GLsizei* _Nonnull instanceCounts,
                                                                             GLsizei drawcount);
 WEBGL_APICALL void GL_APIENTRY glMultiDrawArraysWEBGL(GLenum mode,
-                                                      const GLint* firsts __attribute__((nonnull)),
-                                                      const GLsizei* counts __attribute__((nonnull)),
+                                                      const GLint* _Nonnull firsts,
+                                                      const GLsizei* _Nonnull counts,
                                                       GLsizei drawcount);
 WEBGL_APICALL void GL_APIENTRY glMultiDrawArraysInstancedWEBGL(GLenum mode,
-                                                               const GLint* firsts __attribute__((nonnull)),
-                                                               const GLsizei* counts __attribute__((nonnull)),
-                                                               const GLsizei* instanceCounts __attribute__((nonnull)),
+                                                               const GLint* _Nonnull firsts,
+                                                               const GLsizei* _Nonnull counts,
+                                                               const GLsizei* _Nonnull instanceCounts,
                                                                GLsizei drawcount);
 WEBGL_APICALL void GL_APIENTRY glMultiDrawElementsWEBGL(GLenum mode,
-                                                        const GLsizei* counts __attribute__((nonnull)),
+                                                        const GLsizei* _Nonnull counts,
                                                         GLenum type,
-                                                        const GLvoid* const* offsets __attribute__((nonnull)),
+                                                        const GLvoid* const* _Nonnull offsets,
                                                         GLsizei drawcount);
 WEBGL_APICALL void GL_APIENTRY glMultiDrawElementsInstancedWEBGL(GLenum mode,
-                                                                 const GLsizei* counts __attribute__((nonnull)),
+                                                                 const GLsizei* _Nonnull counts,
                                                                  GLenum type,
-                                                                 const GLvoid* const* offsets __attribute__((nonnull)),
-                                                                 const GLsizei* instanceCounts __attribute__((nonnull)),
+                                                                 const GLvoid* const* _Nonnull offsets,
+                                                                 const GLsizei* _Nonnull instanceCounts,
                                                                  GLsizei drawcount);
 #endif /* EMSCRIPTEN_GL_WEBGL_multi_draw */
 

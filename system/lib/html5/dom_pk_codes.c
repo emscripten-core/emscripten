@@ -1,27 +1,29 @@
-/* This file was automatically generated from script
-tools/create_dom_pk_codes.py. Edit that file to make changes here.
-Run
-
-  python tools/create_dom_pk_codes.py
-
-in Emscripten root directory to regenerate this file. */
+/*
+ * This file was automatically generated from script
+ * tools/maint/create_dom_pk_codes.py. Edit that file to make changes here.
+ * Then run:
+ *
+ *  tools/maint/create_dom_pk_codes.py
+ *
+ * in Emscripten root directory to regenerate this file.
+ */
 
 #include <emscripten/dom_pk_codes.h>
 
-DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code(const char *keyCodeString)
-{
+DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code(const char *keyCodeString) {
   if (!keyCodeString) return 0;
 
   /* Compute the collision free hash. */
   unsigned int hash = 0;
-  while(*keyCodeString) hash = ((hash ^ 0x7E057D79U) << 3) ^ (unsigned int)*keyCodeString++;
+  while (*keyCodeString) hash = ((hash ^ 0x7E057D79U) << 3) ^ (unsigned int)*keyCodeString++;
 
-  /* Don't expose the hash values out to the application, but map to fixed IDs. This is useful for
-     mapping back codes to MDN documentation page at
-
-       https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code */
-  switch(hash)
-  {
+  /*
+   * Don't expose the hash values out to the application, but map to fixed IDs.
+   * This is useful for mapping back codes to MDN documentation page at
+   *
+   *   https://developer.mozilla.org/en-US/docs/Web/API/KeyboardEvent/code
+   */
+  switch (hash) {
     case 0x98051284U /* Unidentified       */: return DOM_PK_UNKNOWN;              /* 0x0000 */
     case 0x67243A2DU /* Escape             */: return DOM_PK_ESCAPE;               /* 0x0001 */
     case 0x67251058U /* Digit0             */: return DOM_PK_0;                    /* 0x0002 */
@@ -183,10 +185,8 @@ DOM_PK_CODE_TYPE emscripten_compute_dom_pk_code(const char *keyCodeString)
   }
 }
 
-const char *emscripten_dom_pk_code_to_string(DOM_PK_CODE_TYPE code)
-{
-  switch(code)
-  {
+const char *emscripten_dom_pk_code_to_string(DOM_PK_CODE_TYPE code) {
+  switch (code) {
     case DOM_PK_UNKNOWN:              return "DOM_PK_UNKNOWN";
     case DOM_PK_ESCAPE:               return "DOM_PK_ESCAPE";
     case DOM_PK_0:                    return "DOM_PK_0";

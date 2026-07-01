@@ -75,12 +75,6 @@
 #error __BIG_ENDIAN__ is defined
 #endif
 
-// We prefer to use __EMSCRIPTEN__, but for compatibility, we define
-// EMSCRIPTEN too.
-#ifndef EMSCRIPTEN
-#error EMSCRIPTEN is not defined
-#endif
-
 #include <stdalign.h>
 #include <stdint.h>
 #include <stddef.h>

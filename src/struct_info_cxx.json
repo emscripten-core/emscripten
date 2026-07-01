@@ -4,7 +4,6 @@
         "structs": {
             "__cxxabiv1::__cxa_exception": [
               "exceptionDestructor",
-              "referenceCount",
               "exceptionType",
               "caught",
               "rethrown",
@@ -22,6 +21,16 @@
             "wasmfs::File::DataFileKind",
             "wasmfs::File::DirectoryKind",
             "wasmfs::File::SymlinkKind"
+        ]
+    },
+    // Embind
+    {
+        "file": "emscripten/val.h",
+        "defines": [
+            "emscripten::internal::EM_INVOKER_KIND::FUNCTION",
+            "emscripten::internal::EM_INVOKER_KIND::METHOD",
+            "emscripten::internal::EM_INVOKER_KIND::CONSTRUCTOR",
+            "emscripten::internal::EM_INVOKER_KIND::CAST"
         ]
     }
 ]

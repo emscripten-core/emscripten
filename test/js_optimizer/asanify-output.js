@@ -1,49 +1,57 @@
-_asan_js_store_1(x, 1);
+HEAP8[_asan_js_check_index(HEAP8, x, ___asan_storeN)] = 1;
 
-_asan_js_store_2(x, 2);
+HEAP16[_asan_js_check_index(HEAP16, x, ___asan_storeN)] = 2;
 
-_asan_js_store_4(x, 3);
+HEAP32[_asan_js_check_index(HEAP32, x, ___asan_storeN)] = 3;
 
-_asan_js_store_1u(x, 4);
+HEAPU8[_asan_js_check_index(HEAPU8, x, ___asan_storeN)] = 4;
 
-_asan_js_store_2u(x, 5);
+HEAPU16[_asan_js_check_index(HEAPU16, x, ___asan_storeN)] = 5;
 
-_asan_js_store_4u(x, 6);
+HEAPU32[_asan_js_check_index(HEAPU32, x, ___asan_storeN)] = 6;
 
-_asan_js_store_f(x, 7);
+HEAPF32[_asan_js_check_index(HEAPF32, x, ___asan_storeN)] = 7;
 
-_asan_js_store_d(x, 8);
+HEAPF64[_asan_js_check_index(HEAPF64, x, ___asan_storeN)] = 8;
 
-a1 = _asan_js_load_1(x);
+HEAP64[_asan_js_check_index(HEAP64, x, ___asan_storeN)] = 9n;
 
-a2 = _asan_js_load_2(x);
+HEAPU64[_asan_js_check_index(HEAPU64, x, ___asan_storeN)] = 10n;
 
-a3 = _asan_js_load_4(x);
+a1 = HEAP8[_asan_js_check_index(HEAP8, x, ___asan_loadN)];
 
-a4 = _asan_js_load_1u(x);
+a2 = HEAP16[_asan_js_check_index(HEAP16, x, ___asan_loadN)];
 
-a5 = _asan_js_load_2u(x);
+a3 = HEAP32[_asan_js_check_index(HEAP32, x, ___asan_loadN)];
 
-a6 = _asan_js_load_4u(x);
+a4 = HEAPU8[_asan_js_check_index(HEAPU8, x, ___asan_loadN)];
 
-a7 = _asan_js_load_f(x);
+a5 = HEAPU16[_asan_js_check_index(HEAPU16, x, ___asan_loadN)];
 
-a8 = _asan_js_load_d(x);
+a6 = HEAPU32[_asan_js_check_index(HEAPU32, x, ___asan_loadN)];
 
-foo = _asan_js_store_1u(1337, 42);
+a7 = HEAPF32[_asan_js_check_index(HEAPF32, x, ___asan_loadN)];
 
-_asan_js_load_2(bar(_asan_js_load_d(5)));
+a8 = HEAPF64[_asan_js_check_index(HEAPF64, x, ___asan_loadN)];
 
-_asan_js_store_f(x, _asan_js_load_4(y));
+a9 = HEAP64[_asan_js_check_index(HEAP64, x, ___asan_loadN)];
 
-function _asan_js_load_1(ptr) {
-  return HEAP8[ptr];
+a10 = HEAPU64[_asan_js_check_index(HEAPU64, x, ___asan_loadN)];
+
+foo = HEAPU8[_asan_js_check_index(HEAPU8, 1337, ___asan_storeN)] = 42;
+
+HEAP16[_asan_js_check_index(HEAP16, bar(HEAPF64[_asan_js_check_index(HEAPF64, 5, ___asan_loadN)]), ___asan_loadN)];
+
+HEAPF32[_asan_js_check_index(HEAPF32, x, ___asan_storeN)] = HEAP32[_asan_js_check_index(HEAP32, y, ___asan_loadN)];
+
+function establishStackSpace() {
+  HEAP32[0];
 }
 
 function somethingElse() {
-  return _asan_js_load_1(ptr);
+  return HEAP8[_asan_js_check_index(HEAP8, ptr, ___asan_loadN)];
 }
 
 HEAP8.length;
 
-_asan_js_load_1(length);
+HEAP8[_asan_js_check_index(HEAP8, length, ___asan_loadN)];

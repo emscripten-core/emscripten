@@ -30,3 +30,19 @@ mark_as_advanced(
   OPENGL_glu_LIBRARY
   OPENGL_gl_LIBRARY
 )
+
+if (NOT TARGET OpenGL::GL)
+  add_library(OpenGL::GL INTERFACE IMPORTED)
+  set_target_properties(OpenGL::GL PROPERTIES
+    IMPORTED_LIBNAME "${OPENGL_gl_LIBRARY}"
+    INTERFACE_INCLUDE_DIRECTORIES "${OPENGL_INCLUDE_DIR}"
+  )
+endif()
+
+if (NOT TARGET OpenGL::GLU)
+  add_library(OpenGL::GLU INTERFACE IMPORTED)
+  set_target_properties(OpenGL::GLU PROPERTIES
+    IMPORTED_LIBNAME "${OPENGL_glu_LIBRARY}"
+    INTERFACE_LINK_LIBRARIES OpenGL::GL
+  )
+endif()

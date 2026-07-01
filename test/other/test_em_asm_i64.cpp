@@ -11,7 +11,7 @@ int main() {
     console.log("js     = " + $0);
   }, num);
 
-  // EM_ASM doesn't currently have any supprot for unsigned values so UINT64_MAX
+  // EM_ASM doesn't currently have any support for unsigned values so UINT64_MAX
   // will show up on the JS side -1.
   uint64_t unsigned_num = UINT64_MAX;
   printf("native = %llu\n", unsigned_num);

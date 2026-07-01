@@ -17,6 +17,6 @@ int main() {
         puts("TIOCSWINSZ failed");
         return -1;
     }
-    puts("success");
+    puts("done");
     return 0;
 }

@@ -3,39 +3,31 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
+import logging
 import os
 import shutil
 import sys
-import logging
-from typing import List, Optional
 
-from . import utils, diagnostics
-from .utils import path_from_root, exit_with_error, __rootpath__
+from . import diagnostics, utils
+from .utils import __rootpath__, exit_with_error, path_from_root
 
 logger = logging.getLogger('config')
 
 # The following class can be overridden by the config file and/or
 # environment variables.  Specifically any variable whose name
-# is in ALL_UPPER_CASE is condifered a valid config file key.
+# is in ALL_UPPER_CASE is considered a valid config file key.
 # See parse_config_file below.
 EMSCRIPTEN_ROOT = __rootpath__
 NODE_JS = None
-NODE_JS_TEST = None
 BINARYEN_ROOT = None
-SPIDERMONKEY_ENGINE = None
-V8_ENGINE: Optional[List[str]] = None
-LLVM_ROOT = None
 LLVM_ADD_VERSION = None
 CLANG_ADD_VERSION = None
 CLOSURE_COMPILER = None
-JS_ENGINES: List[List[str]] = []
-WASMER = None
-WASMTIME = None
-WASM_ENGINES: List[List[str]] = []
 FROZEN_CACHE = None
 CACHE = None
 PORTS = None
 COMPILER_WRAPPER = None
+LLVM_ROOT = None
 
 # Set by init()
 EM_CONFIG = None
@@ -47,38 +39,29 @@ def listify(x):
   return [x]
 
 
-def fix_js_engine(old, new):
-  if old is None:
-    return
-  global JS_ENGINES
-  JS_ENGINES = [new if x == old else x for x in JS_ENGINES]
-  return new
-
-
 def normalize_config_settings():
-  global CACHE, PORTS, LLVM_ADD_VERSION, CLANG_ADD_VERSION, CLOSURE_COMPILER
-  global NODE_JS, NODE_JS_TEST, V8_ENGINE, JS_ENGINES, SPIDERMONKEY_ENGINE, WASM_ENGINES
+  global CACHE, PORTS, CLOSURE_COMPILER, NODE_JS
 
-  # EM_CONFIG stuff
-  if not JS_ENGINES:
-    JS_ENGINES = [NODE_JS]
-
-  # Engine tweaks
-  if SPIDERMONKEY_ENGINE:
-    new_spidermonkey = SPIDERMONKEY_ENGINE
-    if '-w' not in str(new_spidermonkey):
-      new_spidermonkey += ['-w']
-    SPIDERMONKEY_ENGINE = fix_js_engine(SPIDERMONKEY_ENGINE, new_spidermonkey)
-  NODE_JS = fix_js_engine(NODE_JS, listify(NODE_JS))
-  NODE_JS_TEST = fix_js_engine(NODE_JS_TEST, listify(NODE_JS_TEST))
-  V8_ENGINE = fix_js_engine(V8_ENGINE, listify(V8_ENGINE))
-  JS_ENGINES = [listify(engine) for engine in JS_ENGINES]
-  WASM_ENGINES = [listify(engine) for engine in WASM_ENGINES]
+  NODE_JS = listify(NODE_JS)
   CLOSURE_COMPILER = listify(CLOSURE_COMPILER)
   if not CACHE:
     CACHE = path_from_root('cache')
   if not PORTS:
     PORTS = os.path.join(CACHE, 'ports')
+
+
+def normalize_relative_python_path():
+  # User may have specified the EMSDK_PYTHON environment variable to point to
+  # the Python interpreter, e.g.
+  #
+  #  EMSDK_PYTHON=../../path/to/python emcc test/hello_world.c
+  #
+  # As part of its operation, emcc may spawn sub-emcc tasks when building
+  # libraries to cache. These sub-emcc tasks will run in a different CWD, so
+  # reinitialize EMSDK_PYTHON here so that sub-tool spawns will use the same
+  # Python interpreter as the parent.
+  if os.environ.get('EMSDK_PYTHON'):
+    os.environ['EMSDK_PYTHON'] = sys.executable
 
 
 def set_config_from_tool_location(config_key, tool_binary, f):
@@ -99,43 +82,54 @@ def parse_config_file():
 
   Also check EM_<KEY> environment variables to override specific config keys.
   """
-  config = {}
+  config = {'__file__': EM_CONFIG}
   config_text = utils.read_file(EM_CONFIG)
   try:
     exec(config_text, config)
   except Exception as e:
-    exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, str(e), config_text)
+    exit_with_error('error in evaluating config file (%s): %s, text: %s', EM_CONFIG, e, config_text)
 
   CONFIG_KEYS = (
     'NODE_JS',
-    'NODE_JS_TEST',
     'BINARYEN_ROOT',
-    'SPIDERMONKEY_ENGINE',
-    'V8_ENGINE',
     'LLVM_ROOT',
     'LLVM_ADD_VERSION',
     'CLANG_ADD_VERSION',
     'CLOSURE_COMPILER',
-    'JS_ENGINES',
-    'WASMER',
-    'WASMTIME',
-    'WASM_ENGINES',
     'FROZEN_CACHE',
     'CACHE',
     'PORTS',
     'COMPILER_WRAPPER',
   )
 
+  if '_EM_TEST_RUNNER' in os.environ:
+    # TODO(sbc): Move this completely out of the core compiler and into the test framework.
+    TEST_KEYS = (
+      'NODE_JS_TEST',
+      'V8_ENGINE',
+      'SPIDERMONKEY_ENGINE',
+      'JS_ENGINES',
+      'WASMER',
+      'WASMTIME',
+      'WASM_ENGINES',
+    )
+    CONFIG_KEYS += TEST_KEYS
+    for key in TEST_KEYS:
+      globals()[key] = None
+
   # Only propagate certain settings from the config file.
   for key in CONFIG_KEYS:
     env_var = 'EM_' + key
     env_value = os.environ.get(env_var)
     if env_value is not None:
-      if env_value in ('', '0'):
+      if env_value in {'', '0'}:
         env_value = None
       # Unlike the other keys these two should always be lists.
-      if key in ('JS_ENGINES', 'WASM_ENGINES'):
+      if env_var in {'EM_JS_ENGINES', 'EM_WASM_ENGINES'}:
         env_value = env_value.split(',')
+      if env_var in {'EM_CONFIG', 'EM_CACHE', 'EM_PORTS', 'EM_LLVM_ROOT', 'EM_BINARYEN_ROOT'}:
+        if not os.path.isabs(env_value):
+          exit_with_error(f'environment variable {env_var} must be an absolute path: {env_value}')
       globals()[key] = env_value
     elif key in config:
       globals()[key] = config[key]
@@ -172,6 +166,7 @@ def read_config():
   set_config_from_tool_location('BINARYEN_ROOT', 'wasm-opt', lambda x: os.path.dirname(os.path.dirname(x)))
 
   normalize_config_settings()
+  normalize_relative_python_path()
 
 
 def generate_config(path):
@@ -186,13 +181,13 @@ def generate_config(path):
   config_data = '\n'.join(config_data) + '\n'
   # autodetect some default paths
   llvm_root = os.path.dirname(shutil.which('wasm-ld') or '/usr/bin/wasm-ld')
-  config_data = config_data.replace('\'{{{ LLVM_ROOT }}}\'', repr(llvm_root))
+  config_data = config_data.replace("'{{{ LLVM_ROOT }}}'", repr(llvm_root))
 
   binaryen_root = os.path.dirname(os.path.dirname(shutil.which('wasm-opt') or '/usr/local/bin/wasm-opt'))
-  config_data = config_data.replace('\'{{{ BINARYEN_ROOT }}}\'', repr(binaryen_root))
+  config_data = config_data.replace("'{{{ BINARYEN_ROOT }}}'", repr(binaryen_root))
 
   node = shutil.which('node') or shutil.which('nodejs') or 'node'
-  config_data = config_data.replace('\'{{{ NODE }}}\'', repr(node))
+  config_data = config_data.replace("'{{{ NODE }}}'", repr(node))
 
   # write
   utils.write_file(path, config_data)
@@ -226,7 +221,21 @@ def find_config_file():
   #    see below)
   # 5. User home directory config (~/.emscripten), if found.
 
+  if '--em-config' in sys.argv:
+    i = sys.argv.index('--em-config')
+    if len(sys.argv) <= i + 1:
+      exit_with_error('--em-config must be followed by a filename')
+    del sys.argv[i]
+    # Now the i'th argument is the emconfig filename
+    return sys.argv.pop(i)
+
+  if 'EM_CONFIG' in os.environ:
+    return os.environ['EM_CONFIG']
+
   embedded_config = path_from_root('.emscripten')
+  if os.path.isfile(embedded_config):
+    return embedded_config
+
   # For compatibility with `emsdk --embedded` mode also look two levels up.  The
   # layout of the emsdk puts emcc two levels below emsdk.  For example:
   #  - emsdk/upstream/emscripten/emcc
@@ -241,25 +250,11 @@ def find_config_file():
   # See: https://github.com/emscripten-core/emsdk/pull/367
   emsdk_root = os.path.dirname(os.path.dirname(path_from_root()))
   emsdk_embedded_config = os.path.join(emsdk_root, '.emscripten')
-  user_home_config = os.path.expanduser('~/.emscripten')
-
-  if '--em-config' in sys.argv:
-    i = sys.argv.index('--em-config')
-    if len(sys.argv) <= i + 1:
-      exit_with_error('--em-config must be followed by a filename')
-    del sys.argv[i]
-    # Now the i'th argument is the emconfig filename
-    return sys.argv.pop(i)
-
-  if 'EM_CONFIG' in os.environ:
-    return os.environ['EM_CONFIG']
-
-  if os.path.isfile(embedded_config):
-    return embedded_config
 
   if os.path.isfile(emsdk_embedded_config):
     return emsdk_embedded_config
 
+  user_home_config = os.path.expanduser('~/.emscripten')
   if os.path.isfile(user_home_config):
     return user_home_config
 

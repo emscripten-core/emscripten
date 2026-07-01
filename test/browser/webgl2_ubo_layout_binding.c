@@ -83,6 +83,11 @@ int main(int argc, char *argv[])
     "out vec4 outColor;\n"
     "void main() { outColor = vec4(r, green.g, blue[0].b + blue[1].b, 1.0); }");
 
+  // The above shader compilation should preserve the std140 layout part in the uniforms, so
+  // make sure that did happen. (https://github.com/emscripten-core/emscripten/issues/25828)
+  assert(strstr(emscripten_webgl_get_shader_source_utf8(ps), "layout(std140) uniform Green"));
+  assert(strstr(emscripten_webgl_get_shader_source_utf8(ps), "layout(std140) uniform Blue"));
+
   GLuint program = CreateProgram(vs, ps);
   glUseProgram(program);
 

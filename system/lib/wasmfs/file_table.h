@@ -2,9 +2,8 @@
 // Emscripten is available under two separate licenses, the MIT license and the
 // University of Illinois/NCSA Open Source License.  Both these licenses can be
 // found in the LICENSE file.
-// This file defines the open file table of the new file system.
-// Current Status: Work in Progress.
-// See https://github.com/emscripten-core/emscripten/issues/15041.
+
+// This file defines the open file table.
 
 #pragma once
 
@@ -15,6 +14,9 @@
 #include <utility>
 #include <vector>
 #include <wasi/api.h>
+
+// Copied from legacy FS (FS.MAX_OPEN_FDS)
+#define WASMFS_FD_MAX 4096
 
 namespace wasmfs {
 static_assert(std::is_same<size_t, __wasi_size_t>::value,

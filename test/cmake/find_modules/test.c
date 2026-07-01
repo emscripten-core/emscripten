@@ -1,4 +1,4 @@
-// Invlude emscripten/version.h to ensure that the in-tree
+// Include emscripten/version.h to ensure that the in-tree
 // include directory has not been added to the include path.
 #include <emscripten/version.h>
 #include <stdio.h>

@@ -178,7 +178,6 @@ void randoms() {
   for (int i = 0; i < BINS; i++) {
     bins[i] = NULL;
   }
-  srandom(1337101);
   for (int i = 0; i < RANDOM_ITERS; i++) {
     unsigned int r = random();
     int alloc = r & 1;

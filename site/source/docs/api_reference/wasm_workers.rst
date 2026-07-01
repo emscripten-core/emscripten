@@ -23,7 +23,7 @@ Quick Example
 
   int main()
   {
-    emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stackSize: */1024);
+    emscripten_wasm_worker_t worker = emscripten_malloc_wasm_worker(/*stackSize: */4096);
     emscripten_wasm_worker_post_function_v(worker, run_in_worker);
   }
 
@@ -86,6 +86,7 @@ the middle.
 Pthreads and Wasm Workers share several similarities:
 
  * Both can use emscripten_atomic_* Atomics API,
+ * Both can use emscripten_futex_wait/wake API,
  * Both can use GCC __sync_* Atomics API,
  * Both can use C11 and C++11 Atomics APIs,
  * Both types of threads have a local stack.
@@ -94,7 +95,8 @@ Pthreads and Wasm Workers share several similarities:
  * Both types of threads support TLS via explicitly linked in Wasm globals (see
    ``test/wasm_worker/wasm_worker_tls_wasm_assembly.c/.S`` for example code)
  * Both types of threads have a concept of a thread ID (``pthread_self()`` for pthreads,
-   ``emscripten_wasm_worker_self_id()`` for Wasm Workers)
+   ``emscripten_wasm_worker_self_id()`` for Wasm Workers).  `gettid()` works in
+   both contexts so is more portable.
  * Both types of threads can perform an event-based and an infinite loop programming model.
  * Both can use ``EM_ASM`` and ``EM_JS`` API to execute JS code on the calling thread.
  * Both can call out to JS library functions (linked in with ``--js-library`` directive) to
@@ -102,6 +104,19 @@ Pthreads and Wasm Workers share several similarities:
  * Neither pthreads nor Wasm Workers can be used in conjunction with ``-sSINGLE_FILE`` linker flag.
 
 However, the differences are more notable.
+
+C11 thread APIs are not available under Wasm Workers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Becuase our C11 threading API is based on pthreads internally these APIs are not
+available under Wasm Worker.
+
+Some standard C++ APIs are not available under Wasm Workers
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+Some parts of the libc++ stndard library are not available under Wasm Workers
+becuase they depend on pthreads internally.  For example `std::call_once``:
+https://github.com/emscripten-core/emscripten/issues/26375.
 
 Pthreads can proxy JS functions
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -116,8 +131,6 @@ function with Wasm Workers can be done by explicitly passing the address of that
 If you need to synchronously wait for the posted function to finish from within a Worker, use one of
 the ``emscripten_wasm_worker_*()`` thread synchronization functions to sleep the calling thread until
 the callee has finished the operation.
-
-Note that Wasm Workers cannot 
 
 Pthreads have cancellation points
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -153,17 +166,34 @@ a Wasm Worker, consider which type of hierarchy you would like, and if necessary
 hierarchy manually by posting the Worker creation over to the main thread yourself.
 
 Note that support for nested Workers varies across browsers. As of 02/2022, nested Workers are `not
-supported in Safari <https://bugs.webkit.org/show_bug.cgi?id=22723>`_. See `here 
+supported in Safari <https://webkit.org/b/22723>`_. See `here 
 <https://github.com/johanholmerin/nested-worker>`_ for a polyfill.
 
-Pthreads can use the Wasm Worker synchronization API, but not vice versa
-^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Pthreads can use the Wasm Worker synchronization API
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
 The multithreading synchronization primitives offered in ``emscripten/wasm_worker.h``
 (``emscripten_lock_*``, ``emscripten_semaphore_*``, ``emscripten_condvar_*``) can be freely invoked
-from within pthreads if one so wishes, but Wasm Workers cannot utilize any of the synchronization
-functionality in the Pthread API (``pthread_mutex_*``, ``pthread_cond_``, ``pthread_rwlock_*``, etc),
-since they lack the needed pthread runtime.
+from within pthreads if one so wishes.
+
+Wasm Workers cannot use the pthread API, unless building in hybrid mode
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+By default, Wasm Workers cannot call any pthread APIs (``pthread_mutex_*``,
+``pthread_cond_*``, ``pthread_self()``, etc.), since they lack the needed
+thread metadata.
+
+However, when building in **hybrid mode** (linking with both ``-sWASM_WORKERS``
+and ``-pthread``), Wasm Workers are created with the additional metadata needed.
+In this mode, Wasm Workers support a subset of the pthread API:
+
+- ``pthread_self()`` and ``pthread_equal()``
+- Thread Specific Data (TSD) via ``pthread_getspecific()`` and ``pthread_setspecific()``
+- Thread synchronization API such was `pthread_mutex_*` and `pthread_cond_*`.
+
+APIs that manage the thread lifecycle (like ``pthread_create``,
+``pthread_join``, ``pthread_detach``, ``pthread_cancel``) are still not
+supported for Wasm Workers, even in hybrid mode.
 
 Pthreads have a "thread main" function and atexit handlers
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
@@ -275,7 +305,7 @@ table.
 
     <tr><td class='cellborder'>Thread ID</td>
     <td class='cellborder'>Creating a pthread obtains its ID. Call <pre>pthread_self()</pre> to acquire ID of calling thread.</td>
-    <td class='cellborder'>Creating a Worker obtains its ID. Call <pre>emscripten_wasm_worker_self_id()</pre> acquire ID of calling thread.</td></tr>
+    <td class='cellborder'>Creating a Worker obtains its ID. Call <pre>emscripten_wasm_worker_self_id()</pre> acquire ID of calling thread.<br>In hybrid mode, <pre>pthread_self()</pre> also works.</td></tr>
 
     <tr><td class='cellborder'>High resolution timer</td>
     <td class='cellborder'>``emscripten_get_now()``</td>
@@ -318,7 +348,7 @@ table.
 
     <tr><td class='cellborder'>Recursive mutex</td>
     <td class='cellborder'><pre>pthread_mutex_*</pre></td>
-    <td class='cellborder'>N/A</td></tr>
+    <td class='cellborder'>Supported in hybrid mode</td></tr>
 
     <tr><td class='cellborder'>Semaphores</td>
     <td class='cellborder'>N/A</td>
@@ -330,7 +360,7 @@ table.
 
     <tr><td class='cellborder'>Read-Write locks</td>
     <td class='cellborder'><pre>pthread_rwlock_*</pre></td>
-    <td class='cellborder'>N/A</td></tr>
+    <td class='cellborder'>Supported in hybrid mode</td></tr>
 
     <tr><td class='cellborder'>Spinlocks</td>
     <td class='cellborder'><pre>pthread_spin_*</pre></td>
@@ -371,7 +401,7 @@ Both APIs allow one to spawn Web Workers from the main thread, though the semant
 
 With the Worker API, the user will be able to spawn a Web Worker from a custom URL. This URL can point to a completely separate JS file that was not compiled with Emscripten, to load up Workers from arbitrary URLs. With Wasm Workers, a custom URL is not specified: Wasm Workers will always spawn a Web Worker that computes in the same WebAssembly+JavaScript context as the main program.
 
-The Worker API does not integrate with SharedArrayBuffer, so interaction with the loaded Worker will always be asynchronous. Wasm Workers howerer is built on top of SharedArrayBuffer, and each Wasm Worker shares and computes in the same WebAssembly Memory address space of the main thread.
+The Worker API does not integrate with SharedArrayBuffer, so interaction with the loaded Worker will always be asynchronous. Wasm Workers however is built on top of SharedArrayBuffer, and each Wasm Worker shares and computes in the same WebAssembly Memory address space of the main thread.
 
 Both the Worker API and Wasm Workers API provide the user with ability to postMessage() function calls to the Worker. In Worker API, this message posting is restricted to need to originate/initiate from the main thread towards the Worker (using the API ``emscripten_call_worker()`` and ``emscripten_worker_respond()`` in ``<emscripten.h>``). With Wasm Workers however one can also postMessage() function calls to their parent (owning) thread.
 
@@ -396,10 +426,9 @@ The following build options are not supported at the moment with Wasm Workers:
 
 - -sSINGLE_FILE
 - Dynamic linking (-sLINKABLE, -sMAIN_MODULE, -sSIDE_MODULE)
-- -sPROXY_TO_WORKER
 - -sPROXY_TO_PTHREAD
 
 Example Code
 ============
 
-See the directory ``test/wasm_workers/`` for code examples on different Wasm Workers API functionality.
+See the directory ``test/wasm_worker/`` for code examples on different Wasm Workers API functionality.

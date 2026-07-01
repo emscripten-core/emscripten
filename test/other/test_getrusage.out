@@ -1,0 +1,5 @@
+warning: unsupported syscall: __syscall_getrusage
+ru_utime.tv_sec: 1
+ru_utime.tv_usec: 2
+ru_stime.tv_sec: 3
+ru_stime.tv_usec: 4

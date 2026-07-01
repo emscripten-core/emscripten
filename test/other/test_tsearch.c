@@ -39,6 +39,10 @@ static void action(const void *nodep, VISIT which, int depth) {
     }
 }
 
+static void free_node(void* nodep) {
+    // no-op since we didn't allocate any per-node data
+}
+
 int main(void) {
     int  ptr[12];
     void *val = NULL;
@@ -51,6 +55,6 @@ int main(void) {
         assert(val);
     }
     twalk(root, action);
-    tdestroy(root, free);
+    tdestroy(root, free_node);
     return 0;
-} 
+}

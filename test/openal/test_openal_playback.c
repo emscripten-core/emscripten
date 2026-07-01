@@ -16,14 +16,11 @@
 #include <emscripten.h>
 #endif
 
-#ifndef EMSCRIPTEN_KEEPALIVE
-#define EMSCRIPTEN_KEEPALIVE
+#ifdef __EMSCRIPTEN__
+EMSCRIPTEN_KEEPALIVE
 #endif
-
-void EMSCRIPTEN_KEEPALIVE test_finished() {
-#ifdef REPORT_RESULT
-  REPORT_RESULT(1);
-#endif
+void test_finished() {
+  exit(0);
 }
 
 #if defined(TEST_ALC_SOFT_PAUSE_DEVICE)
@@ -295,10 +292,11 @@ int main() {
 
 #ifdef __EMSCRIPTEN__
 
+  intptr_t first_src = sources[0];
 #if defined(TEST_LOOPED_PLAYBACK)
-  emscripten_set_main_loop_arg(main_tick, (void*)sources[0], 0, 0);
+  emscripten_set_main_loop_arg(main_tick, (void*)first_src, 0, 0);
 #else
-  emscripten_async_call(playSource, (void*)(sources[0]), 700);
+  emscripten_async_call(playSource, (void*)first_src, 700);
 #endif
 #else
   usleep(700000);

@@ -12,7 +12,7 @@ addToLibrary({
     return 0;
   },
 
-  // receiveI64ParamAsDoulbe is a legacy function that is no longer
+  // receiveI64ParamAsDouble is a legacy function that is no longer
   // used within emscripten, but we continue to test it in case
   // there are external users.
   test_receiveI64ParamAsDouble: function({{{ defineI64Param('arg1') }}},
@@ -39,7 +39,7 @@ addToLibrary({
     // When interpreted as an unsigned value that bytes stored at in the linear
     // memory represent a number outside of the i53 range so we get some
     // rounding here.
-    // readI53FromU64 doesn't currently have any kind of range checkes, even in
+    // readI53FromU64 doesn't currently have any kind of range checks, even in
     // debug mode.
     val = {{{ makeGetValue('ptr', '0', 'u53') }}};
     out('u53: ' + val.toString(16))
@@ -55,11 +55,6 @@ addToLibrary({
     out('u32: ' + val.toString(16))
     assert(val == 0xedcba988);
 
-    // unsigned i32 (legacy)
-    val = {{{ makeGetValue('ptr', '0', 'i32', undefined, /*unsigned=*/true) }}};
-    out('u32 legacy: ' + val.toString(16))
-    assert(val == 0xedcba988);
-
     // i16
     val = {{{ makeGetValue('ptr', '0', 'i16') }}};
     out('i16: ' + val.toString(16))
@@ -70,11 +65,6 @@ addToLibrary({
     out('u16: ' + val.toString(16))
     assert(val == 43400);
 
-    // unsigned i16 (legacy)
-    val = {{{ makeGetValue('ptr', '0', 'i16', undefined, /*unsigned=*/true) }}};
-    out('u16 legacy: ' + val.toString(16))
-    assert(val == 43400);
-
     // i8
     val = {{{ makeGetValue('ptr', '0', 'i8') }}};
     out('i8: ' + val.toString(16))
@@ -83,11 +73,6 @@ addToLibrary({
     // u8
     val = {{{ makeGetValue('ptr', '0', 'u8') }}};
     out('u8: ' + val.toString(16))
-    assert(val == 0x88);
-
-    // unsigned i8 (legacy)
-    val = {{{ makeGetValue('ptr', '0', 'i8', undefined, /*unsigned=*/true) }}};
-    out('u8 legacy: ' + val.toString(16))
     assert(val == 0x88);
 
     // pointer
@@ -106,9 +91,12 @@ addToLibrary({
     {{{ makeSetValue('ptr', '0', 0x12345678AB, 'i64') }}};
     _printI64(ptr);
 
-    // This value doesn't fit into i64.  The current behaviour truncate (i.e.
-    // ignore the upper bits), in the same way that `BigInt64Array[X] = Y` does.
-    // (see splitI16 in parseTools.js)
+    // This value doesn't fit into i64.  The current behaviour is
+    // in unspecified, subject to a double rounding problem. See
+    // note in castToBigInt() in parseTools.mjs.
+    // FIXME: Find a way to improve BigInt-enabled case to avoid
+    // double rounding, and BigInt-disabled case to be at least
+    // less wrong.
     _clearI64(ptr);
     {{{ makeSetValue('ptr', '0', 0x1122334455667788AA, 'i64') }}};
     _printI64(ptr);

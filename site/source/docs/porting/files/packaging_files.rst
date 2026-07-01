@@ -68,6 +68,19 @@ The file packager generates a **.data** file and **.js** file. The **.js** file 
   -  Using the *file packager* allows you to run file packaging separately from compiling the code.
   -  You can load multiple datafiles by running the file packager on each and loading the **.js** outputs. See `BananaBread <https://github.com/kripken/BananaBread>`_ for an example of dynamic loading (`cube2/js/game-setup.js <https://github.com/kripken/BananaBread/blob/master/cube2/js/game-setup.js>`_).
 
+You can exclude files from packaging with ``--exclude``:
+
+.. code-block:: bash
+
+    python tools/file_packager.py assets.data \
+      --preload assets \
+      --exclude "*.psd" "*.tmp" "!assets/keep.tmp" \
+      --js-output=assets.js
+
+``--exclude`` patterns use Python ``fnmatch`` syntax. Patterns beginning with ``!``
+act as negative patterns (re-include matches after an earlier exclude pattern).
+Patterns are checked in order.
+
 
 .. _packaging-files-data-file-location:
 
@@ -113,9 +126,15 @@ Monitoring file usage
 
 .. important:: Only package the files your app actually needs, in order to reduce download size and improve startup speed.
 
-There is an option to log which files are actually used at runtime. To use it, define the :js:attr:`Module.logReadFiles` object. Each file that is read will be logged to stderr.
+There is an option to log which files are actually used at runtime. To use it,
+define the :js:attr:`Module.logReadFiles` object. Each file that is read will be
+logged to stderr.  To use this feautre you need to add ``logReadFiles`` to
+:ref:`INCOMING_MODULE_JS_API`.
 
-An alternative approach is to look at :js:func:`FS.readFiles` in your compiled JavaScript. This is an object with keys for all the files that were read from. You may find it easier to use than logging as it records files rather than potentially multiple file accesses.
+An alternative approach is to look at :js:func:`FS.readFiles` in your compiled
+JavaScript. This is an object with keys for all the files that were read from.
+You may find it easier to use than logging as it records files rather than
+potentially multiple file accesses.
 
 .. note:: You can also modify the :js:func:`FS.readFiles` object or remove it entirely. This can be useful, say, in order to see which files are read between two points in time in your app.
 

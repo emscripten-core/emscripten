@@ -6,6 +6,8 @@
 #include <emscripten.h>
 #include <stdio.h>
 
+EM_JS_DEPS(deps, "$UTF8ToString");
+
 int main() {
   printf("BEGIN\n");
   EM_ASM({ out("no args works"); });

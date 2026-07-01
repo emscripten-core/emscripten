@@ -99,7 +99,7 @@ typedef enum
     SDL_ASSERTION_BREAK,  /**< Make the debugger trigger a breakpoint. */
     SDL_ASSERTION_ABORT,  /**< Terminate the program. */
     SDL_ASSERTION_IGNORE,  /**< Ignore the assert. */
-    SDL_ASSERTION_ALWAYS_IGNORE,  /**< Ignore the assert from now on. */
+    SDL_ASSERTION_ALWAYS_IGNORE  /**< Ignore the assert from now on. */
 } SDL_assert_state;
 
 typedef struct SDL_assert_data

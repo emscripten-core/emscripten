@@ -87,6 +87,12 @@ Buffer.from = function(arrayBufferOrString, byteOffsetOrEncoding, length) {};
 Buffer.alloc = function(size, fill, encoding) {};
 
 /**
+ * @return {boolean}
+ * @nosideeffects
+ */
+Buffer.isBuffer = function(obj) {};
+
+/**
  * @param {number=} start
  * @param {number=} end
  * @return {Buffer}
@@ -119,3 +125,44 @@ fs.Stats.prototype.mtimeMs;
  * @type {number}
  */
 fs.Stats.prototype.ctimeMs;
+
+/**
+ * @type {number}
+ */
+fs.Stats.prototype.blksize;
+
+/**
+ * @param {string} p
+ * @return {boolean}
+ * @nosideeffects
+ */
+path.isAbsolute;
+
+/**
+ * @type {Object.<string,*>}
+ */
+path.posix;
+
+crypto.randomFillSync;
+
+/**
+ * @suppress {duplicate}
+ */
+var worker_threads = {};
+
+/**
+ * @type {boolean}
+ */
+worker_threads.isMainThread;
+
+/**
+ * @type {function()}
+ */
+worker_threads.Worker;
+
+/**
+ * @type {Object}
+ */
+worker_threads.workerData;
+
+worker_threads.parentPort;

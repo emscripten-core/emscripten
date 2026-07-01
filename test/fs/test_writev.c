@@ -29,6 +29,6 @@ int main() {
   assert(strcmp(buf0, "a=1\nb=2\n") == 0);
   close(fd);
 
-  printf("success\n");
+  printf("done\n");
   return 0;
 }

@@ -6,6 +6,8 @@
 #include <errno.h>
 #include <stdio.h>
 #include <stdlib.h>
+#include <stdint.h>
+#include <limits.h>
 #include <time.h>
 #include <string.h>
 #include <assert.h>
@@ -27,7 +29,7 @@ void check_gmtime_localtime(time_t time) {
   assert(loc);
   assert(strftime(locbuf, sizeof(locbuf) - 1, fmt, loc) > 0);
 
-  printf("time: %lld, gmtime: %s\n", time, gmbuf);
+  printf("time: %jd, gmtime: %s\n", (intmax_t)time, gmbuf);
 
   // gmtime and localtime should be equal when timezone is UTC
   assert(timezone != 0 || strcmp(gmbuf, locbuf) == 0);
@@ -208,7 +210,7 @@ void test_yday() {
     localtime_r(&test, &this_tm);
 
     if (this_tm.tm_year != prev_tm.tm_year) {
-      assert(this_tm.tm_yday == 0 && prev_tm.tm_yday == 364); //flipped over to 2003, 2002 was non-leap
+      assert(this_tm.tm_yday == 0 && prev_tm.tm_yday == 364); // flipped over to 2003, 2002 was non-leap
     } else if (this_tm.tm_mday != prev_tm.tm_mday) {
       assert(this_tm.tm_yday == prev_tm.tm_yday + 1);
     }
@@ -218,13 +220,88 @@ void test_yday() {
 }
 
 void test_year_overflow() {
-  // Verify that timestamps outside of the range supported by date.getNow()
-  // cause failure with EOVERFLOW.
+  // Verify that timestamps outside of the range supported JavaScript Date
+  // object with result in a graceful failure with EOVERFLOW.
   struct tm tm_big = {0};
-  tm_big.tm_year = 292278994;
+  // The range of is approximately 273,790 years from the epoc in either
+  // direction.
+  tm_big.tm_year = 300000;
+  struct tm tm_big_copy = tm_big;
+  errno = 0;
   time_t tbig = mktime(&tm_big);
-  assert((tbig == -1 && errno == EOVERFLOW) || tbig == 9223431975273600);
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE)
+  assert(tbig == -1);
+  assert(errno == EOVERFLOW);
+  // When mktime fails with EOVERFLOW it should not touch the bits of
+  // its argument.
+  assert(memcmp(&tm_big, &tm_big_copy, sizeof(tm_big)) == 0);
+#else
+  // Outside of emscripten, or in standalone mode mktime can support larger
+  // values like this. According to the C standard, the range of tm_year (and
+  // time_t) is implementation-defined
+  assert(errno == 0);
+  assert(tbig > 9464876000000);
+#endif
+
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE)
+  // JS Date max value is 8,640,000,000,000,000 ms from epoch
+  // Which is 8,640,000,000,000 seconds.
+  // 10^15 is definitely out of range.
+  time_t way_too_big = 1000000000000000LL;
+  assert(localtime(&way_too_big) == NULL);
+  assert(gmtime(&way_too_big) == NULL);
+
+  time_t way_too_small = -1000000000000000LL;
+  assert(localtime(&way_too_small) == NULL);
+  assert(gmtime(&way_too_small) == NULL);
+#else
+  // In standalone mode, or native, 10^15 is representable.
+  time_t way_too_big = 1000000000000000LL;
+  assert(localtime(&way_too_big) != NULL);
+  assert(gmtime(&way_too_big) != NULL);
+
+  time_t way_too_small = -1000000000000000LL;
+  assert(localtime(&way_too_small) != NULL);
+  assert(gmtime(&way_too_small) != NULL);
+
+  // We need much larger values to trigger overflow in musl (year > INT_MAX)
+  time_t musl_too_big = 1000000000000000000LL; // 10^18
+  assert(localtime(&musl_too_big) == NULL);
+  assert(gmtime(&musl_too_big) == NULL);
+
+  time_t musl_too_small = -1000000000000000000LL;
+  assert(localtime(&musl_too_small) == NULL);
+  assert(gmtime(&musl_too_small) == NULL);
+#endif
 }
+
+void test_mktime_constancy() {
+  // mktime shall not modify the tm struct if it fails
+  struct tm t;
+  memset(&t, 0, sizeof(t));
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE)
+  t.tm_year = 200000000; // Large year to trigger failure
+#else
+  t.tm_year = INT_MAX;
+  t.tm_mon = INT_MAX;    // Together they trigger overflow in musl
+#endif
+  struct tm t_orig = t;
+  assert(mktime(&t) == -1);
+  assert(memcmp(&t, &t_orig, sizeof(t)) == 0);
+
+#if defined(__EMSCRIPTEN__) && !defined(STANDALONE)
+  // localtime_r shall not modify the tm struct if it fails
+  // This is only guaranteed by Emscripten's JS-based implementation.
+  // Musl's native localtime_r may modify the struct before failing.
+  time_t big_time = 1000000000000000LL;
+  struct tm t_local;
+  memset(&t_local, 0xAA, sizeof(t_local));
+  struct tm t_local_orig = t_local;
+  assert(localtime_r(&big_time, &t_local) == NULL);
+  assert(memcmp(&t_local, &t_local_orig, sizeof(t_local)) == 0);
+#endif
+}
+
 
 void test_difftime() {
   // Verify difftime() calculates accurate time difference.
@@ -310,6 +387,7 @@ int main() {
   test_gmtime_roundtrip();
   test_mktime_roundtrip();
   test_year_overflow();
+  test_mktime_constancy();
   test_difftime();
   test_dysize();
   test_asctime();
@@ -328,6 +406,6 @@ int main() {
   check_gmtime_localtime(-62135596800); // beginning of year 1
   check_gmtime_localtime(0x83d4d9a5); // some time in 2040 (time_t > MAX_INT32)
 
-  puts("success");
+  puts("done");
   return 0;
 }
