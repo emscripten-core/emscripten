@@ -27,7 +27,7 @@ See docs/process.md for more on how version tagging works.
   readiness wait-queue. As part of this, the (undocumented) `stream_ops.poll`
   FS-backend handler signature changed from `poll(stream, timeout)` to
   `poll(stream)` returning the current readiness mask; out-of-tree custom FS
-  backends with a `poll` handler must update. (#27207)
+  backends with a `poll` handler must update. (#27226)
 - New `-sNODERAWSOCKETS` setting that backs the POSIX sockets API with real TCP
   (`node:net`) and UDP (`node:dgram`) sockets on Node.js, with no `ws`, proxy
   process, or pthreads required. Supports incoming and outgoing TCP, UDP, IPv6,
