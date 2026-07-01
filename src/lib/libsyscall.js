@@ -583,11 +583,6 @@ var SyscallsLibrary = {
     var stream = SYSCALLS.getStreamFromFD(fd);
     return 0; // we can't do anything synchronously; the in-memory FS is already synced to
   },
-  // The inode readiness wait-queue. It lives on the FS node (so dup'd fds share
-  // one queue) as a Set of identity entries {cb}: identity lets the same `cb` be
-  // registered more than once (a dup'd fd) and removed in O(1) without copying.
-  // Producers (SOCKFS.emit, pipe writes, epoll_ctl) feed it; poll()/epoll_wait
-  // consume it.
   // Derive readiness for one fd against its requested `events`: POLLNVAL for a
   // closed/bad fd, default readable+writable for types without a poll handler.
   // POLLERR/POLLHUP/POLLNVAL are output-only conditions reported regardless of
@@ -595,22 +590,18 @@ var SyscallsLibrary = {
   $pollOne__internal: true,
   $pollOne__deps: ['$FS'],
   $pollOne: (fd, events) => {
-    var flags = {{{ cDefs.POLLNVAL }}};
     var stream = FS.getStream(fd);
-    if (stream) {
-      // Streams without a poll handler (regular files, incl. NODERAWFS/NODEFS
-      // which leave stream_ops unset) are treated as always readable+writable.
-      if (stream.stream_ops?.poll) {
-        flags = stream.stream_ops.poll(stream);
-      } else {
-        flags = {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
-      }
-    }
+    if (!stream) return {{{ cDefs.POLLNVAL }}};
+    // Streams without a poll handler (regular files, incl. NODERAWFS/NODEFS
+    // which leave stream_ops unset) are treated as always readable+writable.
+    var flags = stream.stream_ops?.poll
+      ? stream.stream_ops.poll(stream)
+      : {{{ cDefs.POLLIN | cDefs.POLLOUT }}};
     return flags & (events | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLNVAL }}});
   },
   __syscall_poll__proxy: 'sync',
   __syscall_poll__async: 'auto',
-  __syscall_poll__deps: ['$doPoll',
+  __syscall_poll__deps: ['$doPollSync',
 #if PTHREADS || ASYNCIFY
     '$readPollfds', '$writePollfds', '$pollWait',
 #endif
@@ -624,7 +615,9 @@ var SyscallsLibrary = {
 #endif
     // When proxied from a worker (PTHREADS) or able to suspend (ASYNCIFY/JSPI),
     // block on the wait-queue: read the interests out of memory, wait, then
-    // write revents back into the (still-live) pollfd array and resolve.
+    // write revents back into the (still-live) pollfd array and resolve. This
+    // must run for every timeout (including zero): a proxied syscall's return is
+    // awaited by the caller thread, so it has to be a Promise even for a probe.
     if (isAsyncContext) {
 #if RUNTIME_DEBUG
       dbg('async poll start');
@@ -636,7 +629,7 @@ var SyscallsLibrary = {
       }));
     }
 #endif
-    var count = doPoll(fds, nfds);
+    var count = doPollSync(fds, nfds);
 #if ASSERTIONS
     if (!count && timeout != 0) warnOnce('non-zero poll() timeout not supported: ' + timeout)
 #endif
@@ -644,9 +637,9 @@ var SyscallsLibrary = {
   },
   // Synchronous poll(): derive each fd in place, writing revents and returning
   // the ready count. Used by the non-suspending syscall paths.
-  $doPoll__internal: true,
-  $doPoll__deps: ['$pollOne'],
-  $doPoll: (fds, nfds) => {
+  $doPollSync__internal: true,
+  $doPollSync__deps: ['$pollOne'],
+  $doPollSync: (fds, nfds) => {
     var count = 0;
     for (var i = 0; i < nfds; i++) {
       var pollfd = fds + {{{ C_STRUCTS.pollfd.__size__ }}} * i;
@@ -687,7 +680,8 @@ var SyscallsLibrary = {
   // Wait for readiness across a set of interests {fd, events, revents}, calling
   // complete(count) once: now if any are ready (or timeout 0), else register one
   // waiter per fd on its node wait-queue and re-derive the whole set on any wake
-  // (the wake flags are just the trigger), completing then or after `timeout`.
+  // (the wake flags are just the trigger), completing then or, for a positive
+  // `timeout`, once it elapses. A negative `timeout` waits forever.
   $pollWait__internal: true,
   $pollWait__deps: ['$FS', '$pollOne'],
   $pollWait: (pfds, timeout, complete) => {
@@ -716,11 +710,11 @@ var SyscallsLibrary = {
     if (count || !timeout) {
       finish(count);
     } else {
-      var recheck = () => {
+      function recheck() {
         if (done) return;
         var c = derive();
         if (c) finish(c);
-      };
+      }
       for (var p of pfds) {
         var stream = FS.getStream(p.fd);
         if (stream) regs.push(stream.node.addListener(recheck));
@@ -735,9 +729,9 @@ var SyscallsLibrary = {
   // __syscall_poll is a suspending import and traps when called from a stack
   // that wasn't entered through a promising export).
   __syscall_poll_nonblocking__proxy: 'sync',
-  __syscall_poll_nonblocking__deps: ['$doPoll'],
+  __syscall_poll_nonblocking__deps: ['$doPollSync'],
   __syscall_poll_nonblocking: (fds, nfds) => {
-    return doPoll(fds, nfds);
+    return doPollSync(fds, nfds);
   },
   // epoll is not yet implemented in the legacy (non-WASMFS) JS syscall layer.
   __syscall_epoll_create1__nothrow: true,
