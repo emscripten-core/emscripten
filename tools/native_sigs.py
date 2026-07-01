@@ -421,6 +421,7 @@ native_sigs = {
   '__syscall_connect': '__p____',
   '__syscall_epoll_ctl': '____p',
   '__syscall_epoll_pwait': '__p__pp',
+  '__syscall_epoll_pwait_nonblocking': '__p_',
   '__syscall_faccessat': '__p__',
   '__syscall_fchmodat2': '__p__',
   '__syscall_fchownat': '__p___',
