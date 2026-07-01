@@ -40,6 +40,8 @@ import {
   warningOccured,
   localFile,
   timer,
+  toValidIdentifier,
+  quoteExportName,
 } from './utility.mjs';
 import {LibraryManager, librarySymbols, nativeAliases} from './modules.mjs';
 
@@ -604,6 +606,11 @@ function(${args}) {
       let isStub = false;
 
       const mangled = mangleCSymbolName(symbol);
+      // The JS binding identifier for this symbol.  This is the same as
+      // `mangled` for the common case, but differs when `mangled` is not a
+      // valid JS identifier (e.g. a reserved word), in which case we bind it to
+      // a legal name and export it under its original name via an alias.
+      const binding = toValidIdentifier(mangled);
 
       if (!LibraryManager.library.hasOwnProperty(symbol)) {
         const isWeakImport = WEAK_IMPORTS.has(symbol);
@@ -761,20 +768,20 @@ function(${args}) {
         // modifyJSFunction which could have changed or removed the name.
         if (contentText.match(/^\s*([^}]*)\s*=>/s)) {
           // Handle arrow functions
-          contentText = `var ${mangled} = ` + contentText + ';';
+          contentText = `var ${binding} = ` + contentText + ';';
         } else if (contentText.startsWith('class ')) {
           // Handle class declarations (which also have typeof == 'function'.)
-          contentText = contentText.replace(/^class(?:\s+(?!extends\b)[^{\s]+)?/, `class ${mangled}`);
+          contentText = contentText.replace(/^class(?:\s+(?!extends\b)[^{\s]+)?/, `class ${binding}`);
         } else {
           // Handle regular (non-arrow) functions
-          contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${mangled}(`);
+          contentText = contentText.replace(/function(?:\s+([^(]+))?\s*\(/, `function ${binding}(`);
         }
       } else if (typeof snippet == 'string' && snippet.startsWith(';')) {
         // In JS libraries
         //   foo: ';[code here verbatim]'
         //  emits
         //   'var foo;[code here verbatim];'
-        contentText = 'var ' + mangled + snippet;
+        contentText = 'var ' + binding + snippet;
         if (snippet[snippet.length - 1] != ';' && snippet[snippet.length - 1] != '}') {
           contentText += ';';
         }
@@ -786,7 +793,7 @@ function(${args}) {
         if (isNativeAlias) {
           contentText = '';
         } else {
-          contentText = `var ${mangled};`;
+          contentText = `var ${binding};`;
         }
       } else {
         // In JS libraries
@@ -796,13 +803,18 @@ function(${args}) {
         if (typeof snippet == 'string' && snippet[0] == '=') {
           snippet = snippet.slice(1);
         }
-        contentText = `var ${mangled} = ${snippet};`;
+        contentText = `var ${binding} = ${snippet};`;
       }
 
       if (contentText && MODULARIZE == 'instance' && (EXPORT_ALL || EXPORTED_FUNCTIONS.has(mangled)) && !isStub) {
         // In MODULARIZE=instance mode mark JS library symbols are exported at
-        // the point of declaration.
-        contentText = 'export ' + contentText;
+        // the point of declaration.  When the binding had to be renamed to a
+        // legal identifier, export it under its original name via an alias.
+        if (binding == mangled) {
+          contentText = 'export ' + contentText;
+        } else {
+          contentText += `\nexport { ${binding} as ${quoteExportName(mangled)} };`;
+        }
       }
 
       // Dynamic linking needs signatures to create proper wrappers.
@@ -810,14 +822,14 @@ function(${args}) {
         if (!WASM_BIGINT) {
           sig = sig[0].replace('j', 'i') + sig.slice(1).replace(/j/g, 'ii');
         }
-        contentText += `\n${mangled}.sig = '${sig}';`;
+        contentText += `\n${binding}.sig = '${sig}';`;
       }
       if (ASYNCIFY && isAsyncFunction) {
         assert(isFunction);
-        contentText += `\n${mangled}.isAsync = true;`;
+        contentText += `\n${binding}.isAsync = true;`;
       }
       if (isStub) {
-        contentText += `\n${mangled}.stub = true;`;
+        contentText += `\n${binding}.stub = true;`;
         if (ASYNCIFY && MAIN_MODULE) {
           contentText += `\nasyncifyStubs['${symbol}'] = undefined;`;
         }
