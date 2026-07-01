@@ -24,6 +24,11 @@ See docs/process.md for more on how version tagging works.
   supported, with 256-bit variants emulated via two 128-bit operations. Pass
   ``-msimd128 -mfma`` to enable. With ``-mrelaxed-simd -mfma``, Wasm relaxed
   SIMD FMA is used. (#27183)
+- New `AUTO_INIT` setting to opt an instance ES module (`MODULARIZE=instance` or
+  `WASM_ESM_INTEGRATION`) into self-initialization via top-level await on import,
+  rather than exporting a default `init` function. Since there is no
+  init/moduleArg, module-level configuration is unavailable:
+  `INCOMING_MODULE_JS_API` is disabled and passing a non-empty one is an error.
 - The async `poll()`/`select()` implementation was refactored onto a per-inode
   readiness wait-queue. As part of this, the (undocumented) `stream_ops.poll`
   FS-backend handler signature changed from `poll(stream, timeout)` to

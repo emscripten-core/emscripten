@@ -6216,6 +6216,71 @@ int main(void) {
     expected = 'add-dep\nremove-dep\nHello, world!\ngot module\n'
     self.assertContained(expected, self.run_js('run.mjs'))
 
+  def test_modularize_instance_auto_init(self):
+    create_file('library.js', '''\
+    addToLibrary({
+      $baz: () => console.log('baz'),
+      $qux: () => console.log('qux'),
+    });''')
+    # With AUTO_INIT the module self-initializes via top-level await and does not
+    # export `init`.
+    self.run_process([EMCC, test_file('modularize_instance.c'),
+                      '-sMODULARIZE=instance', '-sAUTO_INIT',
+                      '-Wno-experimental',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
+                      '--js-library', 'library.js',
+                      '-o', 'modularize_instance.mjs'] + self.get_cflags())
+
+    # Named exports are usable directly on import; there is no `init` export.
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import * as mod from "./modularize_instance.mjs";
+      import { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_instance.mjs";
+      assert(mod.default === undefined); // no `init` export when self-initializing
+      foo(); // exported with EMSCRIPTEN_KEEPALIVE
+      bar(); // exported with EXPORTED_FUNCTIONS
+      baz(); // exported library function with EXPORTED_RUNTIME_METHODS
+      qux(); // exported library function with EXPORTED_FUNCTIONS
+      assert(typeof addOnExit === 'function'); // exported runtime function with EXPORTED_RUNTIME_METHODS
+      assert(typeof HEAP32 === 'object'); // exported runtime value by default
+    ''')
+
+    self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
+
+  @also_with_pthreads
+  @requires_node_25
+  def test_esm_integration_auto_init(self):
+    # Instance-phase wasm imports currently generate an ExperimentalWarning under node.
+    self.node_args += ['--no-warnings']
+    create_file('library.js', '''\
+    addToLibrary({
+      $baz: () => console.log('baz'),
+      $qux: () => console.log('qux'),
+    });''')
+    self.run_process([EMCC, test_file('modularize_instance.c'),
+                      '-Wno-experimental',
+                      '-sWASM_ESM_INTEGRATION', '-sAUTO_INIT',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
+                      '--js-library', 'library.js',
+                      '-o', 'modularize_instance.mjs'] + self.get_cflags())
+
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import * as mod from "./modularize_instance.mjs";
+      import { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_instance.mjs";
+      assert(mod.default === undefined); // no `init` export when self-initializing
+      foo();
+      bar();
+      baz();
+      qux();
+      assert(typeof addOnExit === 'function');
+      assert(typeof HEAP32 === 'object');
+    ''')
+
+    self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
+
   def test_modularize_instantiation_error(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs'] + self.get_cflags())
     create_file('run.mjs', '''

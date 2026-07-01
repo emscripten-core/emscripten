@@ -128,6 +128,9 @@ if (ENVIRONMENT_IS_PTHREAD) {
 #endif
 #endif // MINIMAL_RUNTIME
 #endif
+#if !MINIMAL_RUNTIME
+        startWorker();
+#endif
       } else if (cmd == {{{ CMD_RUN }}}) {
 #if ASSERTIONS
         assert(msgData.pthread_ptr);
