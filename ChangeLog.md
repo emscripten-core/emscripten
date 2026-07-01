@@ -18,8 +18,11 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-6.0.2 (in development)
+6.0.3 (in development)
 ----------------------
+
+6.0.2 - 07/01/26
+----------------
 - Added support for compiling FMA intrinsics. All 32 FMA intrinsics are
   supported, with 256-bit variants emulated via two 128-bit operations. Pass
   ``-msimd128 -mfma`` to enable. With ``-mrelaxed-simd -mfma``, Wasm relaxed
