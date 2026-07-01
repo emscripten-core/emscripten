@@ -61,7 +61,7 @@ def update_changelog(release_version, new_version):
   utils.write_file(changelog_file, changelog)
 
 
-def create_git_branch(release_version, dry_run):
+def create_release_pr(release_version, dry_run):
   branch_name = 'version_' + release_version
 
   print(f'Creating new branch {branch_name}')
@@ -73,9 +73,10 @@ def create_git_branch(release_version, dry_run):
   print('New release created in branch: `%s`' % branch_name)
 
   if not dry_run:
-    # Push the new branch to emscripten repo
+    # Push the new branch to emscripten repo and create PR
     repo_url = get_repo_url()
     subprocess.check_call(['git', 'push', repo_url, branch_name], cwd=root_dir)
+    subprocess.check_call(['gh', 'pr', 'create', '--fill', '--reviewer', 'release-reviewers', '-R', REPO], cwd=root_dir)
 
 
 def create_draft_release(version, base_commit):
@@ -132,7 +133,7 @@ def main():
 
   print('Creating new release: %s' % release_version)
 
-  create_git_branch(release_version, args.dry_run)
+  create_release_pr(release_version, args.dry_run)
 
   if not args.dry_run:
     create_draft_release(release_version, args.release_commit)
