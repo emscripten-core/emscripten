@@ -78,7 +78,16 @@ def get_clang_flags(user_args):
 
     # If this code will be used in a whole-program link (no dynamically-linked
     # code is relevant) then informing clang of that can help devirtualization.
-    if not dylink_supported:
+    # We can only do this in full LTO, however: in thinlto, LLVM does not keep
+    # enough signature information in bitcode files. Specifically, in full LTO
+    # LLVM links all the bitcode files, then does processing, while in thinlto
+    # there are separate bitcode files which are processed independently for
+    # things like function signatures (LowerTypeTests etc.). The wasm target has
+    # typed function symbol tables (the type must be right, for calls to work),
+    # so modifying bitcode files independently in a whole-program way can only
+    # be done if we process the whole program as one, not separate files as in
+    # thinlto.
+    if not dylink_supported and settings.LTO == 'full':
       flags += ['-fwhole-program-vtables']
 
   else:
