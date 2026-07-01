@@ -18,11 +18,6 @@ to browse the changes between the tags.
 
 See docs/process.md for more on how version tagging works.
 
-3.1.72 (in development)
------------------------
-- Use `-fwhole-program-vtables` with clang when possible, automatically (in
-  `-flto` builds without dynamic linking). This should allow better
-  devirtualization (but may in theory uncover LLVM LTO bugs).
 6.0.2 (in development)
 ----------------------
 - Added support for compiling FMA intrinsics. All 32 FMA intrinsics are
@@ -63,6 +58,9 @@ See docs/process.md for more on how version tagging works.
   - wasmBinary
   Anybody using these will see a clear error in their debug builds signaling
   that they now need to be explicitly added to `-sINCOMING_MODULE_JS_API`.
+- Use `-fwhole-program-vtables` with clang when possible, automatically (in
+  `-flto` builds without dynamic linking). This should allow better
+  devirtualization (but may in theory uncover LLVM LTO bugs). (#21825)
 
 6.0.1 - 06/22/26
 ----------------
