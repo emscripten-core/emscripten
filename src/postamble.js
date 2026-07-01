@@ -238,6 +238,11 @@ function checkUnflushedContent() {
 #endif // EXIT_RUNTIME
 #endif // ASSERTIONS
 
+#if SOURCE_PHASE_IMPORTS && MODULARIZE == 'instance'
+// In MODULARIZE=instance mode the output is not wrapped by modularize.js, so the
+// source phase import (normally emitted there) is emitted here at module scope.
+import source wasmModule from './{{{ WASM_BINARY_FILE }}}';
+#endif
 var wasmExports;
 #if SPLIT_MODULE
 var wasmRawExports;
