@@ -1312,18 +1312,18 @@ var resolveRunDependencies = async () => dependenciesPromise;
 
 var runDependencies = 0;
 
+var dependenciesPromiseResolve = null;
+
 var removeRunDependency = id => {
   runDependencies--;
   if (!runDependencies) {
-    dependenciesPromise.resolve();
+    dependenciesPromiseResolve();
   }
 };
 
 var addRunDependency = id => {
   if (!runDependencies) {
-    var resolve;
-    dependenciesPromise = new Promise(r => resolve = r);
-    dependenciesPromise.resolve = resolve;
+    dependenciesPromise = new Promise(resolve => dependenciesPromiseResolve = resolve);
   }
   runDependencies++;
 };
