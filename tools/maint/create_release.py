@@ -76,7 +76,7 @@ def create_release_pr(release_version, dry_run):
     # Push the new branch to emscripten repo and create PR
     repo_url = get_repo_url()
     subprocess.check_call(['git', 'push', repo_url, branch_name], cwd=root_dir)
-    subprocess.check_call(['gh', 'pr', 'create', '--fill', '--reviewer', 'release-reviewers', '-R', REPO], cwd=root_dir)
+    subprocess.check_call(['gh', 'pr', 'create', '--fill', '--reviewer', 'release-reviewers', '--head', branch_name, '-R', REPO], cwd=root_dir)
 
 
 def create_draft_release(version, base_commit):
