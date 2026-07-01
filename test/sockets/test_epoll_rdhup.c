@@ -74,6 +74,6 @@ int main(void) {
   close(client_fd);
   close(peer_fd);
   close(listen_fd);
-  printf("EPOLL RDHUP PASS\n");
+  printf("done\n");
   return 0;
 }
