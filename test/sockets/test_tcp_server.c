@@ -42,7 +42,7 @@ void set_nonblocking(int fd) {
 }
 
 void test_success(void) {
-  printf("TCP SERVER PASS\n");
+  printf("done\n");
   if (listen_fd >= 0) close(listen_fd);
   if (client_fd >= 0) close(client_fd);
   if (peer_fd >= 0) close(peer_fd);

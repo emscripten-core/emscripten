@@ -28,7 +28,7 @@
 int fd = -1;
 
 void test_success(void) {
-  printf("REFUSED PASS\n");
+  printf("done\n");
   if (fd >= 0) close(fd);
 #ifdef __EMSCRIPTEN__
   emscripten_cancel_main_loop();
