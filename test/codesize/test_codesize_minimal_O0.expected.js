@@ -20,7 +20,7 @@
   // globalThis because older browsers might not have globalThis defined.
 
   // We skip the node version checking when running on Bun/Deno since the node
-  // version they report doesn't seem to be useful.
+  // version they report is not completely.
   if (typeof process !== 'undefined' && !process.versions?.bun && typeof Deno == "undefined") {
     var currentNodeVersion = process.versions?.node ? humanReadableVersionToPacked(process.versions.node) : TARGET_NOT_SUPPORTED;
     if (currentNodeVersion < 180300) {
