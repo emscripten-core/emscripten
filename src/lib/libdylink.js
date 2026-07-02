@@ -834,7 +834,7 @@ var LibraryDylink = {
             if (!body.includes(argName)) break;
             args.push(argName);
           }
-          args = args.join(',');
+          args = args.join();
           var func = `(${args}) => { ${body} };`;
 #if DYLINK_DEBUG
           dbg('adding new EM_ASM constant at:', ptrToString(start));

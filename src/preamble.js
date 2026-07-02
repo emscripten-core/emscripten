@@ -117,11 +117,10 @@ function preRun() {
   assert(!ENVIRONMENT_IS_PTHREAD); // PThreads reuse the runtime from the main thread.
 #endif
 #if expectToReceiveOnModule('preRun')
-  if (Module['preRun']) {
-    if (typeof Module['preRun'] == 'function') Module['preRun'] = [Module['preRun']];
-    while (Module['preRun'].length) {
-      addOnPreRun(Module['preRun'].shift());
-    }
+  var preRun = Module['preRun'];
+  if (preRun) {
+    if (typeof preRun == 'function') preRun = [preRun];
+    onPreRuns.push(...preRun);
   }
 #if ASSERTIONS
   consumedModuleProp('preRun');
@@ -144,7 +143,7 @@ function initRuntime() {
 #endif
 
 #if PTHREADS
-  if (ENVIRONMENT_IS_PTHREAD) return startWorker();
+  if (ENVIRONMENT_IS_PTHREAD) return;
 #endif
 
 #if STACK_OVERFLOW_CHECK >= 2
@@ -176,16 +175,11 @@ function initRuntime() {
 #if RUNTIME_DEBUG
   dbg('done ATPOSTCTORS');
 #endif
-}
 
-#if HAS_MAIN
-function preMain() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  <<< ATMAINS >>>
 }
-#endif
 
 #if EXIT_RUNTIME
 
@@ -227,14 +221,12 @@ function postRun() {
 #if STACK_OVERFLOW_CHECK
   checkStackCookie();
 #endif
-  {{{ runIfWorkerThread('return;') }}} // PThreads reuse the runtime from the main thread.
 
 #if expectToReceiveOnModule('postRun')
-  if (Module['postRun']) {
-    if (typeof Module['postRun'] == 'function') Module['postRun'] = [Module['postRun']];
-    while (Module['postRun'].length) {
-      addOnPostRun(Module['postRun'].shift());
-    }
+  var postRun = Module['postRun'];
+  if (postRun) {
+    if (typeof postRun == 'function') postRun = [postRun];
+    onPostRuns.push(...postRun);
   }
 #if ASSERTIONS
   consumedModuleProp('postRun');
@@ -329,17 +321,16 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
 #endif
 
 #if ASSERTIONS
-function createExportWrapper(name, nargs) {
+function createExportWrapper(name, func, nargs) {
+  assert(func);
   return (...args) => {
     assert(runtimeInitialized, `native function \`${name}\` called before runtime initialization`);
 #if EXIT_RUNTIME
     assert(!runtimeExited, `native function \`${name}\` called after runtime exit (use NO_EXIT_RUNTIME to keep it alive after main() exits)`);
 #endif
-    var f = wasmExports[name];
-    assert(f, `exported native function \`${name}\` not found`);
     // Only assert for too many arguments. Too few can be valid since the missing arguments will be zero filled.
     assert(args.length <= nargs, `native function \`${name}\` called with ${args.length} args but expects ${nargs}`);
-    return f(...args);
+    return func(...args);
   };
 }
 #endif
@@ -898,20 +889,21 @@ function getWasmImports() {
   // performing.
   // Also pthreads and wasm workers initialize the wasm instance through this
   // path.
-  if (Module['instantiateWasm']) {
-    return new Promise((resolve, reject) => {
+  var instantiateWasm = Module['instantiateWasm'];
+  if (instantiateWasm) {
+    return new Promise((resolve) => {
 #if ASSERTIONS
       try {
 #endif
 #if SHARED_MEMORY || MAIN_MODULE
-        Module['instantiateWasm'](info, (inst, mod) => resolve(receiveInstance(inst, mod)));
+        instantiateWasm(info, (inst, mod) => resolve(receiveInstance(inst, mod)));
 #else
-        Module['instantiateWasm'](info, (inst) => resolve(receiveInstance(inst)));
+        instantiateWasm(info, (inst) => resolve(receiveInstance(inst)));
 #endif
 #if ASSERTIONS
       } catch(e) {
         err(`Module.instantiateWasm callback failed with error: ${e}`);
-        reject(e);
+        throw e;
       }
 #endif
     });

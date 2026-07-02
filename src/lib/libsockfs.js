@@ -23,6 +23,18 @@ addToLibrary({
     },
     emit(event, param) {
       SOCKFS.callbacks[event]?.(param);
+      // Bridge socket readiness into the inode wait-queue (poll/epoll). The
+      // 'error' event carries [fd, ...]; the rest carry the fd directly.
+      var fd = event === 'error' ? param[0] : param;
+      var flags = {
+        'message':    {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}},
+        'open':       {{{ cDefs.POLLOUT }}},
+        'connection': {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}},
+        'close':      {{{ cDefs.POLLIN }}} | {{{ cDefs.POLLHUP }}},
+        'error':      {{{ cDefs.POLLERR }}},
+      }[event];
+      // 'listen' has no readiness mapping; skip it.
+      if (flags) FS.getStream(fd)?.node.notifyListeners(flags);
     },
     mount(mount) {
 #if expectToReceiveOnModule('websocket')
@@ -417,7 +429,8 @@ addToLibrary({
           if (sock.connecting) {
             mask |= {{{ cDefs.POLLOUT }}};
           } else  {
-            mask |= {{{ cDefs.POLLHUP }}};
+            // A closed peer is both a full hangup and a read-side hangup.
+            mask |= {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLRDHUP }}};
           }
         }
 
@@ -555,6 +568,8 @@ addToLibrary({
             // push to queue for accept to pick up
             sock.pending.push(newsock);
             SOCKFS.emit('connection', newsock.stream.fd);
+            // A queued client makes the listening socket readable (POLLIN).
+            sock.stream.node.notifyListeners({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
           } else {
             // create a peer on the listen socket so calling sendto
             // with the listen socket and an address will resolve

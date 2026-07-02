@@ -26,7 +26,7 @@ from tools.settings import MEM_SIZE_SETTINGS, settings, user_settings
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import exit_with_error, read_file
 
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2', '-mfma']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 CLANG_FLAGS_WITH_ARGS = {
     '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
@@ -37,20 +37,7 @@ CLANG_FLAGS_WITH_ARGS = {
     '-current_version', '-I', '-L', '-include-pch', '-u',
     '-undefined', '-target', '-Xlinker', '-Xclang', '-z',
 }
-# These symbol names are allowed in INCOMING_MODULE_JS_API but are not part of the
-# default set.
-EXTRA_INCOMING_JS_API = [
-  'fetchSettings',
-  'logReadFiles',
-  'loadSplitModule',
-  'onMalloc',
-  'onRealloc',
-  'onFree',
-  'onSbrkGrow',
-  'onCOSCacheHit',
-  'onCOSCacheMiss',
-  'onCOSStore',
-]
+
 
 logger = logging.getLogger('args')
 
@@ -752,7 +739,7 @@ def parse_value(text, expected_type):
 def apply_user_settings():
   """Take a map of users settings {NAME: VALUE} and apply them to the global settings object."""
   # Stash a copy of all available incoming APIs before the user can potentially override it
-  settings.ALL_INCOMING_MODULE_JS_API = settings.INCOMING_MODULE_JS_API + EXTRA_INCOMING_JS_API
+  settings.ALL_INCOMING_MODULE_JS_API = settings.INCOMING_MODULE_JS_API + settings.EXTRA_INCOMING_JS_API
 
   for key, value in user_settings.items():
     if key in settings.internal_settings:

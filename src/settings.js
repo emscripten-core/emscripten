@@ -1001,21 +1001,36 @@ var EXPORTED_RUNTIME_METHODS = [];
 // - onCOSCacheHit
 // - onCOSCacheMiss
 // - onCOSStore
+// - GL_MAX_TEXTURE_IMAGE_UNITS
+// - SDL_canPlayWithWebAudio
+// - SDL_numSimultaneouslyQueuedBuffers
+// - freePreloadedMediaOnUse
+// - preinitializedWebGLContext
+// - keyboardListeningElement
+// - doNotCaptureKeyboard
+// - extraStackTrace
+// - preloadPlugins
+// - preMainLoop
+// - postMainLoop
+// - forcedAspectRatio
+// - mainScriptUrlOrBlob
+// - onFullScreen
+// - INITIAL_MEMORY
+// - wasmMemory
+// - wasmBinary
 //
 // [link]
 var INCOMING_MODULE_JS_API = [
-  'ENVIRONMENT', 'GL_MAX_TEXTURE_IMAGE_UNITS', 'SDL_canPlayWithWebAudio',
-  'SDL_numSimultaneouslyQueuedBuffers', 'INITIAL_MEMORY', 'wasmMemory', 'arguments',
-  'canvas', 'doNotCaptureKeyboard', 'dynamicLibraries',
-  'elementPointerLock', 'extraStackTrace', 'forcedAspectRatio',
-  'instantiateWasm', 'keyboardListeningElement', 'freePreloadedMediaOnUse',
-  'locateFile', 'mainScriptUrlOrBlob', 'mem',
+  'ENVIRONMENT', 'arguments',
+  'canvas', 'dynamicLibraries',
+  'elementPointerLock',
+  'instantiateWasm',
+  'locateFile',
   'monitorRunDependencies', 'noExitRuntime', 'noInitialRun', 'onAbort',
-  'onExit', 'onFullScreen', 'onRuntimeInitialized', 'postMainLoop', 'postRun',
-  'preInit', 'preMainLoop', 'preRun',
-  'preinitializedWebGLContext', 'preloadPlugins',
+  'onExit', 'onRuntimeInitialized', 'postRun',
+  'preInit', 'preRun',
   'print', 'printErr', 'setStatus', 'statusMessage', 'stderr',
-  'stdin', 'stdout', 'thisProgram', 'wasm', 'wasmBinary', 'websocket'
+  'stdin', 'stdout', 'thisProgram', 'wasm', 'websocket'
 ];
 
 // If set to nonzero, the provided virtual filesystem is treated
@@ -1317,8 +1332,34 @@ var SMALL_XHR_CHUNKS = false;
 //   foo();
 //   bar();
 //
+// The ``init`` function exists so the caller can configure the instance (via
+// ``moduleArg``) before it starts. When there is nothing to configure, see
+// ``AUTO_INIT`` to have the module self-initialize on import.
+//
 // [link]
 var MODULARIZE = false;
+
+// When set, an instance ES module (``MODULARIZE=instance`` or
+// ``WASM_ESM_INTEGRATION``) initializes itself via top-level await on import
+// rather than exporting an ``init`` function to be called by the consumer. The
+// named Wasm/runtime exports are ready to use as soon as the module is
+// imported::
+//
+//   import { foo, bar } from "./my_module.mjs"
+//   foo();
+//   bar();
+//
+// Since the module initializes without any caller involvement, there is no
+// opportunity for module-level configuration: ``moduleArg`` cannot be passed
+// and the entire ``INCOMING_MODULE_JS_API`` is disabled (passing a non-empty
+// ``INCOMING_MODULE_JS_API`` is an error).
+//
+// Because no default ``init`` export is emitted, this also frees up the
+// ``default`` export name for the program's own use.
+//
+// Requires ``MODULARIZE=instance`` or ``WASM_ESM_INTEGRATION``.
+// [link]
+var AUTO_INIT = false;
 
 // Export using an ES6 Module export rather than a UMD export.  MODULARIZE must
 // be enabled for ES6 exports and is implicitly enabled if not already set.
@@ -2235,13 +2276,13 @@ var JS_BASE64_API = false;
 // Enable support for growable views of Wasm memory. This is a recent Web
 // platform feature that can make growing the Wasm memory more efficient,
 // especially in multi-threaded builds.
-// Setting this to 1 will auto-detect the presence of this API and use it
-// when available.
+// The default setting of 1 will auto-detect the presence of this API and use
+// it when available.
 // Setting this to 2 will unconditionally require it. This is the only way
 // to completely remove the overhead of growable memory + pthreads.
 // This settings does nothing unless ALLOW_MEMORY_GROWTH is set.
 // [link]
-var GROWABLE_ARRAYBUFFERS = 0;
+var GROWABLE_ARRAYBUFFERS = 1;
 
 // If the emscripten-generated program is hosted on separate origin then
 // starting new pthread worker can violate CSP rules.  Enabling

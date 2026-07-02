@@ -17,7 +17,18 @@ sys.path.insert(0, root_dir)
 from tools import utils
 
 REPO = 'emscripten-core/emscripten'
-GIT_REMOTE = 'upstream'
+
+
+def get_repo_url():
+  # Pick correct URL for pushing to REPO (emscripten-core/emscripten).
+  remotes = subprocess.check_output(['git', 'remote', '-v'], text=True, cwd=root_dir)
+  for line in remotes.splitlines():
+    _name, url, url_type = line.split()
+    if REPO in url and url_type == '(push)':
+      return url
+
+  # If we can't find a URL to push to then just abort
+  raise Exception(f'Unable to determine remote URL for {REPO}')
 
 
 def update_version_txt(release_version, new_version):
@@ -50,12 +61,11 @@ def update_changelog(release_version, new_version):
   utils.write_file(changelog_file, changelog)
 
 
-def create_git_branch(release_version, dry_run):
+def create_release_pr(release_version, dry_run):
   branch_name = 'version_' + release_version
 
-  # Create a new git branch from upstream/main
-  print(f'Checking out new branch {branch_name} from {GIT_REMOTE}/main')
-  subprocess.check_call(['git', 'checkout', '-b', branch_name, f'{GIT_REMOTE}/main'], cwd=root_dir)
+  print(f'Creating new branch {branch_name}')
+  subprocess.check_call(['git', 'checkout', '-b', branch_name], cwd=root_dir)
 
   # Create auto-generated changes to the new git branch
   subprocess.check_call(['git', 'add', '-u', '.'], cwd=root_dir)
@@ -63,8 +73,10 @@ def create_git_branch(release_version, dry_run):
   print('New release created in branch: `%s`' % branch_name)
 
   if not dry_run:
-    # Push new branch to upstream
-    subprocess.check_call(['git', 'push', GIT_REMOTE, branch_name], cwd=root_dir)
+    # Push the new branch to emscripten repo and create PR
+    repo_url = get_repo_url()
+    subprocess.check_call(['git', 'push', repo_url, branch_name], cwd=root_dir)
+    subprocess.check_call(['gh', 'pr', 'create', '--fill', '--reviewer', 'emscripten-core/release-reviewers', '--head', branch_name, '-R', REPO], cwd=root_dir)
 
 
 def create_draft_release(version, base_commit):
@@ -121,7 +133,7 @@ def main():
 
   print('Creating new release: %s' % release_version)
 
-  create_git_branch(release_version, args.dry_run)
+  create_release_pr(release_version, args.dry_run)
 
   if not args.dry_run:
     create_draft_release(release_version, args.release_commit)

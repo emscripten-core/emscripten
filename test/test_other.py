@@ -5619,6 +5619,8 @@ __EMSCRIPTEN_MAJOR__ __EMSCRIPTEN_MINOR__ __EMSCRIPTEN_TINY__ EMSCRIPTEN_KEEPALI
   def test_fs_dev_random(self):
     if WINDOWS and self.get_setting('NODERAWFS'):
       self.skipTest('Crashes on Windows and NodeFS')
+    if self.get_setting('NODERAWFS') and self.get_setting('WASMFS'):
+      self.skipTest('https://github.com/emscripten-core/emscripten/issues/24830')
     self.do_runf('fs/test_fs_dev_random.c', 'done\n')
 
   @parameterized({
@@ -6223,6 +6225,71 @@ int main(void) {
 
     expected = 'add-dep\nremove-dep\nHello, world!\ngot module\n'
     self.assertContained(expected, self.run_js('run.mjs'))
+
+  def test_modularize_instance_auto_init(self):
+    create_file('library.js', '''\
+    addToLibrary({
+      $baz: () => console.log('baz'),
+      $qux: () => console.log('qux'),
+    });''')
+    # With AUTO_INIT the module self-initializes via top-level await and does not
+    # export `init`.
+    self.run_process([EMCC, test_file('modularize_instance.c'),
+                      '-sMODULARIZE=instance', '-sAUTO_INIT',
+                      '-Wno-experimental',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
+                      '--js-library', 'library.js',
+                      '-o', 'modularize_instance.mjs'] + self.get_cflags())
+
+    # Named exports are usable directly on import; there is no `init` export.
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import * as mod from "./modularize_instance.mjs";
+      import { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_instance.mjs";
+      assert(mod.default === undefined); // no `init` export when self-initializing
+      foo(); // exported with EMSCRIPTEN_KEEPALIVE
+      bar(); // exported with EXPORTED_FUNCTIONS
+      baz(); // exported library function with EXPORTED_RUNTIME_METHODS
+      qux(); // exported library function with EXPORTED_FUNCTIONS
+      assert(typeof addOnExit === 'function'); // exported runtime function with EXPORTED_RUNTIME_METHODS
+      assert(typeof HEAP32 === 'object'); // exported runtime value by default
+    ''')
+
+    self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
+
+  @also_with_pthreads
+  @requires_node_25
+  def test_esm_integration_auto_init(self):
+    # Instance-phase wasm imports currently generate an ExperimentalWarning under node.
+    self.node_args += ['--no-warnings']
+    create_file('library.js', '''\
+    addToLibrary({
+      $baz: () => console.log('baz'),
+      $qux: () => console.log('qux'),
+    });''')
+    self.run_process([EMCC, test_file('modularize_instance.c'),
+                      '-Wno-experimental',
+                      '-sWASM_ESM_INTEGRATION', '-sAUTO_INIT',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
+                      '--js-library', 'library.js',
+                      '-o', 'modularize_instance.mjs'] + self.get_cflags())
+
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import * as mod from "./modularize_instance.mjs";
+      import { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_instance.mjs";
+      assert(mod.default === undefined); // no `init` export when self-initializing
+      foo();
+      bar();
+      baz();
+      qux();
+      assert(typeof addOnExit === 'function');
+      assert(typeof HEAP32 === 'object');
+    ''')
+
+    self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
 
   def test_modularize_instantiation_error(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs'] + self.get_cflags())
@@ -9059,8 +9126,8 @@ int main() {
         print('header: ' + header)
         # These headers cannot be included in isolation.
         # e.g: error: unknown type name 'EGLDisplay'
-        # Don't include avxintrin.h and avx2inrin.h directly, include immintrin.h instead
-        if header in {'eglext.h', 'SDL_config_macosx.h', 'glext.h', 'gl2ext.h', 'avxintrin.h', 'avx2intrin.h'}:
+        # Don't include avxintrin.h, avx2intrin.h, fmaintrin.h directly, include immintrin.h instead
+        if header in {'eglext.h', 'SDL_config_macosx.h', 'glext.h', 'gl2ext.h', 'avxintrin.h', 'avx2intrin.h', 'fmaintrin.h'}:
           continue
         # These headers are C++ only and cannot be included from C code.
         # But we still want to check they can be included on there own without
@@ -9075,7 +9142,7 @@ int main() {
         inc = f'#include <{header}>\n__attribute__((weak)) int foo;\n'
         cflags = ['-Werror', '-Wall', '-pedantic', '-msimd128', '-msse4']
         if header == 'immintrin.h':
-          cflags.append('-mavx2')
+          cflags += ['-mavx2', '-mfma']
         if cxx_only:
           create_file('a.cxx', inc)
           create_file('b.cxx', inc)
@@ -13259,6 +13326,7 @@ void foo() {}
     self.do_runf('pthread/test_pthread_sigmask.c', 'done\n', cflags=args)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
+  @crossplatform
   @requires_pthreads
   @parameterized({
     '': ([],),
@@ -13267,7 +13335,8 @@ void foo() {}
   })
   def test_pthread_growth_mainthread(self, cflags):
     if '-sGROWABLE_ARRAYBUFFERS=2' in cflags:
-      self.require_node_26()
+      if self.engine_is_node():
+        self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
@@ -13290,6 +13359,8 @@ void foo() {}
     self.assertLess(growable_size, no_growable_size)
 
   # Tests memory growth in a pthread.
+  @crossplatform
+  @no_deno('https://github.com/denoland/deno/issues/35658')
   @requires_pthreads
   @parameterized({
     '': ([],),
@@ -13305,7 +13376,8 @@ void foo() {}
       self.require_node_25()
 
     if '-sGROWABLE_ARRAYBUFFERS=2' in cflags:
-      self.require_node_26()
+      if self.engine_is_node():
+        self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.do_runf('pthread/test_pthread_memory_growth.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
@@ -13490,6 +13562,8 @@ Module.postRun = () => {{
 
   @wasmfs_all_backends
   def test_wasmfs_getdents(self):
+    if self.get_setting('NODERAWFS'):
+      self.skipTest('test expectations assumes /dev is virtualized')
     # Run only in WASMFS for now.
     self.set_setting('FORCE_FILESYSTEM')
     self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
@@ -15190,15 +15264,15 @@ addToLibrary({
   })
   def test_mainScriptUrlOrBlob(self, es6):
     ext = "js"
-    args = []
+    args = ['-sEXIT_RUNTIME', '-sINCOMING_MODULE_JS_API=mainScriptUrlOrBlob', '-sPROXY_TO_PTHREAD', '-pthread']
     if es6:
       ext = "mjs"
-      args = ['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]
+      args += ['-sEXPORT_ES6', '--extern-post-js', test_file('modularize_post_js.js')]
     outfile = ('a.out.%s' % ext)
     # Use `foo.js` instead of the current script name when creating new threads
     create_file('pre.js', 'Module = { mainScriptUrlOrBlob: "./foo.%s" }' % ext)
 
-    self.run_process([EMCC, test_file('hello_world.c'), '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '--pre-js=pre.js', '-o', outfile] + args)
+    self.run_process([EMCC, test_file('hello_world.c'), '--pre-js=pre.js', '-o', outfile] + args)
 
     # First run without foo.[m]js present to verify that the pthread creation fails
     err = self.run_js(outfile, assert_returncode=NON_ZERO)
@@ -15658,3 +15732,50 @@ console.log('OK');'''
        '-sCROSS_ORIGIN_STORAGE',
        '-sCROSS_ORIGIN_STORAGE_ORIGINS=https://example.com/path'],
       'is not a valid HTTPS origin')
+
+  @disabled('https://github.com/emscripten-core/emscripten/issues/27189')
+  @requires_dev_dependency('rollup')
+  @requires_dev_dependency('prettier')
+  def test_dead_code_esm(self):
+    self.run_process([EMCC, test_file('hello_world.c'), '-sEXPORT_ES6', '-O2', '-o', 'hello.mjs'])
+    rollup_cmd = shared.get_npm_cmd('rollup') + [
+        'hello.mjs', '--format', 'es', '--file', 'hello.rolled.mjs',
+        '--external', 'node:module',
+    ]
+    self.run_process(rollup_cmd)
+    prettier_cmd = shared.get_npm_cmd('prettier')
+    self.run_process(prettier_cmd + ['hello.mjs', '--write'])
+    self.run_process(prettier_cmd + ['hello.rolled.mjs', '--write'])
+    original = read_file('hello.mjs')
+    rolled = read_file('hello.rolled.mjs')
+
+    # We need to normalize the JS before diffing because Rollup's code generator
+    # introduces structural and syntax changes that Prettier (which only formats
+    # without changing the AST) cannot resolve. Specifically:
+    # 1. Export syntax: Rollup normalizes `export default Module;` to `export { Module as default };`.
+    # 2. Empty blocks: Rollup simplifies empty blocks like `else {}` to `else;`.
+    # 3. Comments: Rollup strips comments or moves them around. We strip them completely to focus
+    #    strictly on executable logic.
+    def normalize(code):
+      # Strip comments to avoid diffs from comment displacement/removal
+      code = re.sub(r'//.*', '', code)
+      code = re.sub(r'/\*.*?\*/', '', code, flags=re.DOTALL)
+      # Normalize export syntax to a standard form
+      code = re.sub(r'export\s+default\s+(\w+);', r'export { \1 as default };', code)
+      code = re.sub(r'export\s*\{\s*(\w+)\s*as\s*default\s*\}\s*;', r'export {\1 as default};', code)
+      # Normalize empty else blocks
+      code = re.sub(r'else\s*\{\s*\}', 'else;', code)
+
+      # Normalize whitespace and empty lines
+      lines = [line.rstrip() for line in code.splitlines() if line.strip()]
+      return '\n'.join(lines)
+
+    normalized_original = normalize(original)
+    normalized_rolled = normalize(rolled)
+
+    # Write both normalized files to CWD so they can be inspected manually on failure
+    write_file('hello.normalized.mjs', normalized_original)
+    write_file('hello.rolled.normalized.mjs', normalized_rolled)
+
+    self.assertTextDataIdentical(normalized_original, normalized_rolled,
+                                 fromfile='hello.normalized.mjs', tofile='hello.rolled.normalized.mjs')

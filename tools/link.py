@@ -1009,6 +1009,15 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if options.use_preload_plugins or options.preload_files:
       exit_with_error('MODULARIZE=instance is not compatible with --embed-file/--preload-file')
 
+  if settings.AUTO_INIT:
+    if settings.MODULARIZE != 'instance':
+      exit_with_error('AUTO_INIT requires MODULARIZE=instance or WASM_ESM_INTEGRATION')
+    # There is no `init`/`moduleArg` to configure the instance with, so any
+    # incoming module API is meaningless.
+    if 'INCOMING_MODULE_JS_API' in user_settings:
+      exit_with_error('AUTO_INIT is not compatible with INCOMING_MODULE_JS_API')
+    settings.INCOMING_MODULE_JS_API = []
+
   if settings.MINIMAL_RUNTIME and options.preload_files:
     exit_with_error('MINIMAL_RUNTIME is not compatible with --preload-file')
 
@@ -1321,6 +1330,15 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
                                   'emscripten_stack_get_end',
                                   'emscripten_stack_get_current']
     settings.INCOMING_MODULE_JS_API += ['preRun']
+
+  if settings.GL_PREINITIALIZED_CONTEXT:
+    settings.INCOMING_MODULE_JS_API += ['preinitializedWebGLContext']
+
+  if settings.IMPORTED_MEMORY:
+    settings.INCOMING_MODULE_JS_API += ['INITIAL_MEMORY', 'wasmMemory']
+
+  if not settings.WASM_ASYNC_COMPILATION:
+    settings.INCOMING_MODULE_JS_API += ['wasmBinary']
 
   settings.ASYNCIFY_ADD = unmangle_symbols_from_cmdline(settings.ASYNCIFY_ADD)
   settings.ASYNCIFY_REMOVE = unmangle_symbols_from_cmdline(settings.ASYNCIFY_REMOVE)
@@ -1743,6 +1761,8 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       exit_with_error('wasm2js does not support WASM_BIGINT')
     if settings.CAN_ADDRESS_2GB:
       exit_with_error('wasm2js does not support >2gb address space')
+    # WASM2JS does not support GROWABLE_ARRAYBUFFERS at all
+    default_setting('GROWABLE_ARRAYBUFFERS', 0)
 
   if settings.NODE_CODE_CACHING:
     if settings.WASM_ASYNC_COMPILATION:
@@ -2148,13 +2168,21 @@ def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   wrapper.append('// in order to avoid issues with circular dependencies.')
   wrapper.append(f"import * as unused from './{settings.WASM_BINARY_FILE}';")
   support_url = f'./{os.path.basename(support_target)}'
-  if js_exports:
-    wrapper.append(f"export {{ default, {js_exports} }} from '{support_url}';")
+  if settings.AUTO_INIT:
+    # Self-initialize via top-level await and don't re-export `init`, freeing up
+    # the `default` export name for the program's own use.
+    if js_exports:
+      wrapper.append(f"export {{ {js_exports} }} from '{support_url}';")
+    wrapper.append(f"import init from '{support_url}';")
+    wrapper.append('await init();')
   else:
-    wrapper.append(f"export {{ default }} from '{support_url}';")
+    if js_exports:
+      wrapper.append(f"export {{ default, {js_exports} }} from '{support_url}';")
+    else:
+      wrapper.append(f"export {{ default }} from '{support_url}';")
 
-  if settings.ENVIRONMENT_MAY_BE_NODE:
-    wrapper.append(f'''
+    if settings.ENVIRONMENT_MAY_BE_NODE:
+      wrapper.append(f'''
 // When run as the main module under node, create the module directly.  This will
 // execute any startup code along with main (if it exists).
 import init from '{support_url}';

@@ -117,11 +117,11 @@ function getMemoryBuffer() {
   return wasmMemory.toResizableBuffer();
 #else
 #if GROWABLE_ARRAYBUFFERS == 1
-#if SHARED_MEMORY && (MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED)
-  // Deserializing a growable SharedArrayBuffer is currently broken in Firefox.
-  // See: https://github.com/emscripten-core/emscripten/issues/27118
+#if SHARED_MEMORY && (MIN_FIREFOX_VERSION < 154)
+  // Deserializing a growable SharedArrayBuffer was broken until Firefox 154
   // See: https://bugzilla.mozilla.org/show_bug.cgi?id=2021136
-  if (!globalThis.navigator?.userAgent?.match(/firefox/i)) {
+  var firefoxMatch = globalThis.navigator?.userAgent?.match(/Firefox\/(\d+)/);
+  if (!firefoxMatch || Number(firefoxMatch[1]) >= 154) {
 #endif
   try {
     // This method may be missing or could fail with `Memory must have a maximum`
@@ -132,7 +132,7 @@ function getMemoryBuffer() {
     return b;
     
   } catch {}
-#if SHARED_MEMORY && (MIN_FIREFOX_VERSION != TARGET_NOT_SUPPORTED)
+#if SHARED_MEMORY && (MIN_FIREFOX_VERSION < 154)
   }
 #endif
 #endif // GROWABLE_ARRAYBUFFERS == 1

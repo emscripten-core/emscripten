@@ -935,6 +935,8 @@ def create_reexports(metadata):
 def install_debug_wrapper(sym):
   if settings.MINIMAL_RUNTIME or not settings.ASSERTIONS:
     return False
+  if settings.EMBIND_GEN_MODE and sym.startswith('asyncify_'):
+    return False
   # The emscripten stack functions are called very early (by writeStackCookie) before
   # the runtime is initialized so we can't create these wrappers that check for
   # runtimeInitialized.
@@ -1062,7 +1064,7 @@ def create_receiving(function_exports, other_exports, library_symbols, aliases):
           assignment += f" = Module['{target}']"
     if is_function and install_debug_wrapper(sym):
       nargs = len(info.params)
-      receiving.append(f"  {assignment} = createExportWrapper('{sym}', {nargs});")
+      receiving.append(f"  {assignment} = createExportWrapper('{sym}', wasmExports['{sym}'], {nargs});")
     elif not is_function and info[0].kind == webassembly.ExternType.GLOBAL and not info[1].mutable:
       if settings.LEGACY_VM_SUPPORT:
         value = f"typeof wasmExports['{sym}'] == 'object' ? wasmExports['{sym}'].value : wasmExports['{sym}']"

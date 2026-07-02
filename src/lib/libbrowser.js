@@ -97,7 +97,7 @@ var LibraryBrowser = {
           var b = new Blob([byteArray], { type: Browser.getMimetype(name) });
           var url = URL.createObjectURL(b); // XXX we never revoke this!
           var audio = new Audio();
-          audio.addEventListener('canplaythrough', () => finish(audio), false); // use addEventListener due to chromium bug 124926
+          audio.addEventListener('canplaythrough', () => finish(audio)); // use addEventListener due to chromium bug 124926
           audio.onerror = (event) => {
             if (done) return;
             err(`warning: browser could not fully decode audio ${name}, trying slower base64 approach`);
@@ -149,16 +149,18 @@ var LibraryBrowser = {
         // forced aspect ratio can be enabled by defining 'forcedAspectRatio' on Module
         // Module['forcedAspectRatio'] = 4 / 3;
 
-        document.addEventListener('pointerlockchange', pointerLockChange, false);
+        document.addEventListener('pointerlockchange', pointerLockChange);
 
+#if expectToReceiveOnModule('elementPointerLock')
         if (Module['elementPointerLock']) {
           canvas.addEventListener("click", (ev) => {
             if (!Browser.pointerLock && Browser.getCanvas().requestPointerLock) {
               Browser.getCanvas().requestPointerLock();
               ev.preventDefault();
             }
-          }, false);
+          });
         }
+#endif
       }
     },
 
@@ -248,16 +250,18 @@ var LibraryBrowser = {
             Browser.updateCanvasDimensions(canvas);
           }
         }
+#if expectToReceiveOnModule('onFullScreen')
         Module['onFullScreen']?.(Browser.isFullscreen);
         Module['onFullscreen']?.(Browser.isFullscreen);
+#endif
       }
 
       if (!Browser.fullscreenHandlersInstalled) {
         Browser.fullscreenHandlersInstalled = true;
-        document.addEventListener('fullscreenchange', fullscreenChange, false);
-        document.addEventListener('mozfullscreenchange', fullscreenChange, false);
-        document.addEventListener('webkitfullscreenchange', fullscreenChange, false);
-        document.addEventListener('MSFullscreenChange', fullscreenChange, false);
+        document.addEventListener('fullscreenchange', fullscreenChange);
+        document.addEventListener('mozfullscreenchange', fullscreenChange);
+        document.addEventListener('webkitfullscreenchange', fullscreenChange);
+        document.addEventListener('MSFullscreenChange', fullscreenChange);
       }
 
       // create a new parent to ensure the canvas has no siblings. this allows browsers to optimize full screen performance when its parent is the full screen root
@@ -510,6 +514,7 @@ var LibraryBrowser = {
       }
       var w = wNative;
       var h = hNative;
+#if expectToReceiveOnModule('forcedAspectRatio')
       if (Module['forcedAspectRatio'] > 0) {
         if (w/h < Module['forcedAspectRatio']) {
           w = Math.round(h * Module['forcedAspectRatio']);
@@ -517,6 +522,7 @@ var LibraryBrowser = {
           h = Math.round(w / Module['forcedAspectRatio']);
         }
       }
+#endif
       if ((getFullscreenElement() === canvas.parentNode) && (typeof screen != 'undefined')) {
          var factor = Math.min(screen.width / w, screen.height / h);
          w = Math.round(w * factor);

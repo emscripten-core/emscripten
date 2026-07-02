@@ -461,6 +461,7 @@ window.close = () => {
   @also_with_proxy_to_pthread
   def test_preload_file_with_manual_data_download(self):
     create_file('file.txt', 'Hello!')
+    self.set_setting('INCOMING_MODULE_JS_API', 'mainScriptUrlOrBlob,canvas,monitorRunDependencies,onAbort,onExit,postRun,print,printErr,setStatus')
 
     self.compile_btest('browser/test_manual_download_data.c', ['-sEXIT_RUNTIME', '-o', 'out.js', '--preload-file', 'file.txt@/file.txt'])
     copy_asset('browser/test_manual_download_data.html')
@@ -4671,6 +4672,10 @@ Module["preRun"] = () => {
   @requires_es6_workers
   def test_mainScriptUrlOrBlob(self, es6, use_blob):
     self.set_setting('EXIT_RUNTIME')
+    needed_api = 'mainScriptUrlOrBlob,locateFile'
+    default_api = 'canvas,monitorRunDependencies,onAbort,onExit,postRun,print,printErr,setStatus'
+
+    self.set_setting('INCOMING_MODULE_JS_API', ','.join([needed_api, default_api]))
     js_name = 'hello_thread_with_loader.%s' % ('mjs' if es6 else 'js')
     if es6:
       self.cflags += ['-sEXPORT_ES6']

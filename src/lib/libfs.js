@@ -134,6 +134,15 @@ FS.staticInit();`;
       readMode = {{{ cDefs.S_IRUGO }}} | {{{ cDefs.S_IXUGO }}};
       writeMode = {{{ cDefs.S_IWUGO }}};
       mounted = null;
+#if USE_CLOSURE_COMPILER
+      // Closure (@struct) requires these declared ahead of time. The readiness
+      // wait-queue is populated lazily, and only on nodes that derive real
+      // readiness (sockets, pipes, an epoll's own node).
+      /** @type {Set<?>|null} */
+      listeners = null;
+      /** @type {number} */
+      exclTurn = 0;
+#endif
       constructor(parent, name, mode, rdev) {
         if (!parent) {
           parent = this;  // root node sets parent to itself
@@ -163,6 +172,48 @@ FS.staticInit();`;
       }
       get isDevice() {
         return FS.isChrdev(this.mode);
+      }
+      // The per-inode readiness wait-queue. The node carries a Set of listener
+      // entries {cb}; producers (SOCKFS, PIPEFS) call notifyListeners on a
+      // readiness transition, and poll()/epoll consume it. It lives on the node
+      // (not the fd) so dup'd fds share one queue. Only nodes that derive real
+      // readiness (sockets, pipes, and an epoll's own node) ever use this -
+      // always-ready types (regular files, ttys) never register or notify.
+      addListener(cb, exclusive = false) {
+        var entry = {cb, exclusive};
+        var listeners = (this.listeners ??= new Set());
+        listeners.add(entry);
+        return {listeners, entry};
+      }
+      notifyListeners(flags) {
+        // Iterates the set without copying, which is safe ONLY under a
+        // load-bearing contract that every internal listener must honour:
+        //   1. A listener must not run user code synchronously (a poll waiter only
+        //      resolves a Promise; an epoll registration only re-lists +
+        //      re-notifies; the epoll callback only schedules a tick). User code
+        //      runs on a later tick, never inside this loop.
+        //   2. A listener may delete entries only from ITS OWN waiter, never from
+        //      a sibling node's set that may be mid-iteration. (Deleting an entry
+        //      of the set being iterated here is fine - a Set tolerates removal of
+        //      a not-yet-visited entry mid-iteration; mutating a *different* node's
+        //      set is fine because that set is not being iterated.)
+        // Violating either gives silently skipped wakeups that are near-impossible
+        // to reproduce. Any new producer/listener must preserve it.
+        if (!this.listeners) return;
+        // Fire every non-exclusive listener. Among EPOLLEXCLUSIVE registrations
+        // (one fd watched by several epolls) wake only one, rotating round-robin
+        // per node, to avoid a thundering herd. (Only epoll registrations are ever
+        // exclusive; poll waiters and a node's own consumers are not.)
+        var excl;
+        for (var entry of this.listeners) {
+          if (entry.exclusive) (excl ||= []).push(entry);
+          else entry.cb(flags);
+        }
+        if (excl) {
+          var i = (this.exclTurn || 0) % excl.length;
+          this.exclTurn = i + 1;
+          excl[i].cb(flags);
+        }
       }
     },
 
@@ -1189,6 +1240,11 @@ FS.staticInit();`;
         throw new FS.ErrnoError({{{ cDefs.EBADF }}});
       }
       if (stream.getdents) stream.getdents = null; // free readdir state
+      // The fd is going away: wake anything waiting on it (poll/epoll) with
+      // POLLNVAL so a blocking wait unblocks and an epoll registration is evicted
+      // on its next derive. Only sockets/pipes/epoll ever carry a wait-queue, so
+      // for every other stream (incl. nodeless noderawfs stdio) this is a no-op.
+      stream.node?.notifyListeners({{{ cDefs.POLLNVAL }}});
       try {
         if (stream.stream_ops.close) {
           stream.stream_ops.close(stream);
