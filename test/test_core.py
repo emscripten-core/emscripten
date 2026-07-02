@@ -60,6 +60,7 @@ from decorators import (
   no_bun,
   no_deno,
   no_highmem,
+  no_wasm64,
   no_windows,
   parameterize,
   parameterized,
@@ -5612,6 +5613,19 @@ got: 10
     create_file('eol.txt', b'\n', binary=True)
     self.cflags += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
+
+  @no_wasm64('https://github.com/emscripten-core/emscripten/issues/27221')
+  @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
+  def test_openmp_max_threads(self):
+    src = r"""
+      #include <omp.h>
+      #include <assert.h>
+      int main(void) {
+        assert(omp_get_max_threads() > 0);
+        return 0;
+      }
+    """
+    self.do_run(src, "", cflags=["-fopenmp=libomp"])
 
   def test_fscanf(self):
     create_file('three_numbers.txt', '-1 0.1 -.1')
