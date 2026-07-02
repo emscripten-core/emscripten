@@ -1078,27 +1078,45 @@ function runtimeKeepalivePop() {
   return 'runtimeKeepalivePop();';
 }
 
-// Some web functions like TextDecoder.decode() may not work with a view of a
-// SharedArrayBuffer, see https://github.com/whatwg/encoding/issues/172
-// To avoid that, this function allows obtaining an unshared copy of an
-// ArrayBuffer.
+// Some web functions like TextDecoder.decode() do not work with a view of a
+// SharedArrayBuffer (see https://github.com/whatwg/encoding/issues/172) or of
+// a resizable ArrayBuffer (see
+// https://github.com/emscripten-core/emscripten/issues/27241).
+// To avoid that, this function allows obtaining a copy in those cases.
 function getUnsharedTextDecoderView(heap, start, end) {
-  const shared = `${heap}.slice(${start}, ${end})`;
-  const unshared = `${heap}.subarray(${start}, ${end})`;
+  const copy = `${heap}.slice(${start}, ${end})`;
+  const view = `${heap}.subarray(${start}, ${end})`;
 
-  // No need to worry about this in non-shared memory builds
-  if (!SHARED_MEMORY) return unshared;
+  // The heap can be backed by a resizable ArrayBuffer in non-shared memory
+  // builds with memory growth enabled.
+  const maybeResizable = !SHARED_MEMORY && ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS;
 
-  // If asked to get an unshared view to what we know will be a shared view, or
-  // if in -Oz, then unconditionally do a .slice() for smallest code size.
+  // No need to worry about this in builds where the buffer can be neither
+  // shared nor resizable.
+  if (!SHARED_MEMORY && !maybeResizable) return view;
+
+  // If in -Oz, then unconditionally do a .slice() for smallest code size.
   // This is guaranteed to work but could be slower since it performs a copy.
-  if (SHRINK_LEVEL == 2 || heap.startsWith('HEAP')) return shared;
+  if (SHRINK_LEVEL == 2) return copy;
 
-  // Otherwise, generate a runtime type check: must do a .slice() if looking at
-  // a SAB, or can use .subarray() otherwise.  Note: We compare with
-  // `ArrayBuffer` here to avoid referencing `SharedArrayBuffer` which could be
-  // undefined.
-  return `${heap}.buffer instanceof ArrayBuffer ? ${unshared} : ${shared}`;
+  if (SHARED_MEMORY) {
+    // If asked to get an unshared view to what we know will be a shared view,
+    // then unconditionally do a .slice().
+    if (heap.startsWith('HEAP')) return copy;
+
+    // Otherwise, generate a runtime type check: must do a .slice() if looking
+    // at a SAB, or can use .subarray() otherwise.  Note: We compare with
+    // `ArrayBuffer` here to avoid referencing `SharedArrayBuffer` which could
+    // be undefined.
+    return `${heap}.buffer instanceof ArrayBuffer ? ${view} : ${copy}`;
+  }
+
+  // With GROWABLE_ARRAYBUFFERS == 2 the heap is always resizable; with
+  // GROWABLE_ARRAYBUFFERS == 1 resizability is feature-detected at runtime,
+  // and non-heap views passed to UTF8ArrayToString may not be resizable at
+  // all, so generate a runtime check in those cases.
+  if (GROWABLE_ARRAYBUFFERS == 2 && heap.startsWith('HEAP')) return copy;
+  return `${heap}.buffer.resizable ? ${copy} : ${view}`;
 }
 
 function getEntryFunction() {

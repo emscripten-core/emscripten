@@ -15492,6 +15492,40 @@ addToLibrary({
     expected = '#error "TEXTDECODER must be either 1 or 2"'
     self.assert_fail([EMCC, test_file('hello_world.c'), '-sTEXTDECODER=3'], expected)
 
+  # Verify that strings can be decoded when the heap is backed by a resizable
+  # ArrayBuffer (ALLOW_MEMORY_GROWTH + GROWABLE_ARRAYBUFFERS).
+  # TextDecoder.decode() rejects views of resizable ArrayBuffers, so we must
+  # pass it a copy of the data instead.  Node's TextDecoder happens to accept
+  # such views, so emulate the browser behaviour in a --pre-js.
+  # See https://github.com/emscripten-core/emscripten/issues/27241
+  @requires_node_26
+  @parameterized({
+    '': ([],),
+    'textdecoder_2': (['-sTEXTDECODER=2'],),
+  })
+  def test_TextDecoder_resizable_buffer(self, args):
+    create_file('pre.js', '''
+      var realDecode = TextDecoder.prototype.decode;
+      TextDecoder.prototype.decode = function(data) {
+        if (data && data.buffer && (data.buffer.resizable || data.buffer.growable)) {
+          throw new TypeError('The provided ArrayBuffer value must not be resizable');
+        }
+        return realDecode.call(this, data);
+      };
+    ''')
+    create_file('main.c', r'''
+      #include <emscripten.h>
+
+      int main() {
+        // Long enough (> 16 bytes) that UTF8ToString on the script string
+        // takes the TextDecoder path.
+        emscripten_run_script("out('the quick brown fox jumps over the lazy dog')");
+        return 0;
+      }
+    ''')
+    self.do_runf('main.c', 'the quick brown fox jumps over the lazy dog',
+                 cflags=['--pre-js=pre.js', '-sALLOW_MEMORY_GROWTH'] + args)
+
   def test_reallocarray(self):
     self.do_other_test('test_reallocarray.c')
 
