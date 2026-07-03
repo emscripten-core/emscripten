@@ -34,8 +34,7 @@ See docs/process.md for more on how version tagging works.
   FS-backend handler signature changed from `poll(stream, timeout)` to
   `poll(stream)` returning the current readiness mask; out-of-tree custom FS
   backends with a `poll` handler must update. (#27226)
-- libunwind was updated to LLVM 22.1.8. (#27246)
-- compiler-rt was updated to LLVM 22.1.8. (#27245)
+- compiler-rt and libunwind were updated to LLVM 22.1.8. (#27245 and #27246)
 
 6.0.2 - 07/01/26
 ----------------
@@ -273,7 +272,6 @@ See docs/process.md for more on how version tagging works.
   21.1.8. (#26036, #26045, #26058, and #26151)
 - Calling pthread_create in a single-threaded build will now return ENOTSUP
   rather then EAGAIN.  (#26105)
-- compiler-rt and libunwind were updated to LLVM 21.1.8. (#26036 and #26045)
 - A new `-sEXECUTABLE` setting was added which adds a #! line to the resulting
   JavaScript and makes it executable.  This setting defaults to true when the
   output filename has no extension, or ends in `.out` (e.g. `a.out`) (#26085)
