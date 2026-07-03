@@ -517,7 +517,7 @@ See docs/process.md for more on how version tagging works.
   example, when you run `pkg-config --list-all` or `pkg-config --cflags
   <portname>`. Bare in mind that the correct PKG_CONFIG_PATH needs to be set for
   this to work.  One way to do this is to run `emmake pkg-config`. (#24426)
-- libcxx, libcxxabi, and compiler-rt were updated to LLVM 20.1.4. (#24346 and
+- libcxx, libcxxabi, and compiler-rt were updated to LLVM 20.1.4. (#24346,
   #24357)
 - Emscripten will not longer generate trampoline functions for Wasm exports
   prior to the module being instantiated.  Storing a reference to a Wasm export
@@ -1034,8 +1034,7 @@ See docs/process.md for more on how version tagging works.
   community and supported on a "best effort" basis. See 
   `tools/ports/contrib/README.md` for details.A first contrib port is 
   available via `--use-port=contrib.glfw3`: an emscripten port of glfw written 
-  in C++ with many features like support for multiple windows. (#21244 and 
-  #21276)
+  in C++ with many features like support for multiple windows. (#21244, #21276)
 - Added concept of external ports which live outside emscripten and are
   loaded on demand using the syntax `--use-port=/path/to/my_port.py` (#21316)
 - `embuilder` can now build ports with options as well as external ports using
@@ -1571,7 +1570,7 @@ See docs/process.md for more on how version tagging works.
 3.1.24 - 10/11/22
 -----------------
 - In Wasm exception mode (`-fwasm-exceptions`), when `ASSERTIONS` is enabled,
-  uncaught exceptions will display stack traces and what() message. (#17979 and
+  uncaught exceptions will display stack traces and what() message. (#17979,
   #18003)
 - It is now possible to specify indirect dependencies on JS library functions
   directly in C/C++ source code.  For example, in the case of a EM_JS or EM_ASM
