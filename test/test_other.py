@@ -15524,7 +15524,7 @@ addToLibrary({
       }
     ''')
     self.do_runf('main.c', 'the quick brown fox jumps over the lazy dog',
-                 cflags=['--pre-js=pre.js', '-sALLOW_MEMORY_GROWTH'] + args)
+                 cflags=['--pre-js=pre.js', '-sALLOW_MEMORY_GROWTH', '-sGROWABLE_ARRAYBUFFERS=1'] + args)
 
   def test_reallocarray(self):
     self.do_other_test('test_reallocarray.c')
