@@ -34,7 +34,7 @@ See docs/process.md for more on how version tagging works.
   FS-backend handler signature changed from `poll(stream, timeout)` to
   `poll(stream)` returning the current readiness mask; out-of-tree custom FS
   backends with a `poll` handler must update. (#27226)
-- compiler-rt and libunwind were updated to LLVM 22.1.8. (#27245 and #27246)
+- compiler-rt and libunwind were updated to LLVM 22.1.8. (#27245, #27246)
 
 6.0.2 - 07/01/26
 ----------------
