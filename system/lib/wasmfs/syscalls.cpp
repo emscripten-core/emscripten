@@ -127,7 +127,11 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     }
   }
 
-  // TODO: Check open file access mode for write permissions.
+  // A file opened for reading only (O_RDONLY) cannot be written. POSIX write(2)
+  // returns EBADF when the file descriptor is not open for writing.
+  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_RDONLY) {
+    return __WASI_ERRNO_BADF;
+  }
 
   size_t bytesWritten = 0;
   for (size_t i = 0; i < iovs_len; i++) {
@@ -197,7 +201,11 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_INVAL;
   }
 
-  // TODO: Check open file access mode for read permissions.
+  // A file opened for writing only (O_WRONLY) cannot be read. POSIX read(2)
+  // returns EBADF when the file descriptor is not open for reading.
+  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
+    return __WASI_ERRNO_BADF;
+  }
 
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
