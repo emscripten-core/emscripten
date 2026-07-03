@@ -122,7 +122,7 @@ See docs/process.md for more on how version tagging works.
   manually transpile the output of emscripten (e.g. using babel for JS and
   binaryen for wasm). (#26677)
 - musl libc updated from v1.2.5 to v1.2.6. (#26860)
-- libpng port updated from 1.6.55 to 1.6.58. (#26592 and #26983)
+- libpng port updated from 1.6.55 to 1.6.58. (#26592, #26983)
 - The `-m64` compiler flag is now honored, and works as an alias for
   `-sMEMORY64` and/or `--target=wasm64`. (#26765)
 - The autopersistence feature in IDBFS mount now supports registering a global
@@ -269,10 +269,10 @@ See docs/process.md for more on how version tagging works.
   inconsistent with JS and was not supported in browser devtools. We plan to
   provide this information using Scopes encoding later. (#26149)
 - compiler-rt, libcxx, libcxxabi, libunwind, and llvm-libc were updated to LLVM
-  21.1.8. (#26036, #26045, #26058, and #26151)
+  21.1.8. (#26036, #26045, #26058, #26151)
 - Calling pthread_create in a single-threaded build will now return ENOTSUP
   rather then EAGAIN.  (#26105)
-- compiler-rt and libunwind were updated to LLVM 21.1.8. (#26036 and #26045)
+- compiler-rt and libunwind were updated to LLVM 21.1.8. (#26036, #26045)
 - A new `-sEXECUTABLE` setting was added which adds a #! line to the resulting
   JavaScript and makes it executable.  This setting defaults to true when the
   output filename has no extension, or ends in `.out` (e.g. `a.out`) (#26085)
@@ -704,7 +704,7 @@ See docs/process.md for more on how version tagging works.
   new proposal by default yet. This option replaces the existing
   `-sWASM_EXNREF`, whose meaning was the opposite.
 - compiler-rt, libcxx, libcxxabi, and libunwind were updated to LLVM 19.1.6.
-  (#22937, #22994, and #23294)
+  (#22937, #22994, #23294)
 - The default Safari version targeted by Emscripten has been raised from 14.1
   to 15.0 (the `MIN_SAFARI_VERSION` setting) (#23312). This has several effects:
   - The Wasm nontrapping-fptoint feature is enabled by default. Clang will
@@ -953,7 +953,7 @@ See docs/process.md for more on how version tagging works.
 3.1.57 - 04/10/24
 -----------------
 - libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 18.1.2.
-  (#21607, #21638, and #21663)
+  (#21607, #21638, #21663)
 - musl libc updated from v1.2.4 to v1.2.5. (#21598)
 - In `MODULARIZE` mode we no longer export the module ready promise as `ready`.
   This was previously exposed on the Module for historical reasons even though
@@ -1143,7 +1143,7 @@ See docs/process.md for more on how version tagging works.
   For those that would rather perform transpilation separately outside of
   emscripten you can use the `-sPOLYFILL=0` setting. (#20700)
 - libcxx, libcxxabi, libunwind, and compiler-rt were updated to LLVM 17.0.4.
-  (#20705, #20707, and #20708)
+  (#20705, #20707, #20708)
 - Remove `BENCHMARK` setting. That has not been used by the benchmark suite for
   some time now (at least not by default), and is much less useful these days
   given lazy compilation in VMs (which makes it impossible to truly benchmark
@@ -1422,7 +1422,7 @@ See docs/process.md for more on how version tagging works.
 - Added new linker option `-sEXCEPTION_STACK_TRACES` which will display a stack
   trace when an uncaught exception occurs. This defaults to true when
   `ASSERTIONS` is enabled. This option is mainly for the users who want only
-  exceptions' stack traces without turning `ASSERTIONS` on. (#18642 and #18535)
+  exceptions' stack traces without turning `ASSERTIONS` on. (#18642, #18535)
 - `SUPPORT_LONGJMP`'s default value now depends on the exception mode. If Wasm
   EH (`-fwasm-exceptions`) is used, it defaults to `wasm`, and if Emscripten EH
   (`-sDISABLE_EXCEPTION_CATCHING=0`) is used or no exception support is used, it
@@ -1880,7 +1880,7 @@ See docs/process.md for more on how version tagging works.
   `-sDISABLE_EXCEPTION_CATCHING=0`). When using Wasm EH with Wasm SjLj, there is
   one restriction that you cannot directly call `setjmp` within a `catch`
   clause. (Calling another function that calls `setjmp` is fine.)
-  (#14976 and #16072)
+  (#14976, #16072)
 
 3.1.2 - 01/20/2022
 ------------------
@@ -3887,7 +3887,7 @@ v1.36.6: 8/8/2016
  - Fixed inconsistencies in fullscreen API signatures (#4310, #4318, #4379)
  - Changed the behavior of Emscripten WebGL createContext() to not forcibly set
    CSS style on created canvases, but let page customize the style themselves
-   (#3406, #4194 and #4350, #4355)
+   (#3406, #4194, #4350, #4355)
  - Adjusted the reported GL_VERSION field to adapt to the OpenGL ES
    specifications (#4345)
  - Added support for GLES3 GL_MAJOR/MINOR_VERSION fields. (#4368)
