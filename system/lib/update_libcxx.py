@@ -34,7 +34,7 @@ def clean_dir(dirname):
   if not os.path.exists(dirname):
     return
   for f in os.listdir(dirname):
-    if f in preserve_files:
+    if f in preserve_files or 'emscripten' in f:
       continue
     full = os.path.join(dirname, f)
     if os.path.isdir(full):
@@ -105,6 +105,10 @@ def main():
     llvm_dir = os.path.abspath(sys.argv[1])
   else:
     llvm_dir = default_llvm_dir
+  if not os.path.isdir(llvm_dir):
+    print(f'LLVM directory not found: {llvm_dir}', file=sys.stderr)
+    print(f'Usage: {sys.argv[0]} [llvm_dir]', file=sys.stderr)
+    sys.exit(1)
   libcxx_dir = os.path.join(llvm_dir, 'libcxx')
   upstream_src = os.path.join(libcxx_dir, 'src')
   upstream_inc = os.path.join(libcxx_dir, 'include')

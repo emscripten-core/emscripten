@@ -73,6 +73,10 @@ if len(sys.argv) > 1:
   musl_dir = os.path.abspath(sys.argv[1])
 else:
   musl_dir = default_musl_dir
+if not os.path.isdir(musl_dir):
+  print(f'musl directory not found: {musl_dir}', file=sys.stderr)
+  print(f'Usage: {sys.argv[0]} [musl_dir]', file=sys.stderr)
+  sys.exit(1)
 
 
 def make_ignore(root):

@@ -16,12 +16,12 @@ local_src = os.path.join(local_root, 'src')
 local_inc = os.path.join(local_root, 'include')
 
 excludes = ('CMakeLists.txt',)
-preserve_files = ()
+preserve_files = ('cxa_exception_js_utils.cpp', '__cpp_exception.S')
 
 
 def clean_dir(dirname):
   for f in os.listdir(dirname):
-    if f in preserve_files:
+    if f in preserve_files or 'emscripten' in f:
       continue
     full = os.path.join(dirname, f)
     if os.path.isdir(full):
@@ -44,6 +44,10 @@ def main():
     llvm_dir = os.path.join(os.path.abspath(sys.argv[1]))
   else:
     llvm_dir = default_llvm_dir
+  if not os.path.isdir(llvm_dir):
+    print(f'LLVM directory not found: {llvm_dir}', file=sys.stderr)
+    print(f'Usage: {sys.argv[0]} [llvm_dir]', file=sys.stderr)
+    sys.exit(1)
   upstream_root = os.path.join(llvm_dir, 'libcxxabi')
   upstream_src = os.path.join(upstream_root, 'src')
   upstream_inc = os.path.join(upstream_root, 'include')
