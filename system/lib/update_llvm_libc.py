@@ -50,7 +50,7 @@ def clean_dir(dirname):
   if not os.path.exists(dirname):
     return
   for f in os.listdir(dirname):
-    if f in preserve_files:
+    if f in preserve_files or 'emscripten' in f:
       continue
     full = os.path.join(dirname, f)
     if os.path.isdir(full):
