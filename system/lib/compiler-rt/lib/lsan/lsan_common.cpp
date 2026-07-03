@@ -454,7 +454,7 @@ extern "C" SANITIZER_WEAK_ATTRIBUTE void __libc_iterate_dynamic_tls(
 #    endif
 
 #if SANITIZER_EMSCRIPTEN
-void ProcessThreads(SuspendedThreadsList const &, Frontier *, tid_t, uptr);
+void ProcessThreads(SuspendedThreadsList const &, Frontier *, ThreadID, uptr);
 #else
 static void ProcessThreadRegistry(Frontier *frontier) {
   InternalMmapVector<uptr> ptrs;
