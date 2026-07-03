@@ -11,10 +11,6 @@
  * The closure_compiler() method in tools/shared.py refers to this file when calling closure.
  */
 
-// Special placeholder for `await import` and `await`.
-var EMSCRIPTEN$AWAIT$IMPORT;
-var EMSCRIPTEN$AWAIT;
-
 // Don't minify createRequire
 var createRequire;
 
@@ -210,3 +206,9 @@ var os = {};
 AudioWorkletProcessor.parameterDescriptors;
 
 var scheduler = {};
+
+/** @type {boolean} */
+ArrayBuffer.prototype.resizable;
+
+/** @type {boolean} */
+SharedArrayBuffer.prototype.growable;

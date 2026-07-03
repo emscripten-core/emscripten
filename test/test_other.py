@@ -467,6 +467,16 @@ class other(RunnerCore):
     self.assertContained("new Worker(new URL('hello_world.mjs', import.meta.url), {", src)
     self.assertContained('Hello, world!', self.run_js('hello_world.mjs'))
 
+  def test_esm_worker_closure(self):
+    self.run_process([EMCC, '-o', 'hello_world.mjs',
+                      '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '-O2',
+                      test_file('hello_world.c'), '--closure=1'])
+    create_file('run.mjs', '''
+    import Module from './hello_world.mjs';
+    await Module();
+    ''')
+    self.assertContained('Hello, world!', self.run_js('run.mjs'))
+
   def test_esm_closure(self):
     self.run_process([EMCC, '-o', 'hello_world.mjs',
                       '--extern-post-js', test_file('modularize_post_js.js'),

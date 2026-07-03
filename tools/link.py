@@ -2129,8 +2129,8 @@ def phase_source_transforms(options):
   save_intermediate('transformed')
 
 
-# Unmangle previously mangled `await import` and `await` references in
-# both main code and libraries.
+# Unmangle previously mangled `await` references in both
+# main code and libraries.
 # See also: `mangleUnsupportedSyntax` in parseTools.mjs.
 def fix_js_mangling(js_file):
   # Mangling only takes place under closure in MODULARIZE mode.
@@ -2140,13 +2140,14 @@ def fix_js_mangling(js_file):
   src = read_file(js_file)
 
   if settings.EXPORT_ES6:
-    # Also remove the line containing `export{};`, which is inserted by
+    # Safely matches 'EMSCRIPTEN$AWAIT' with any amount of surrounding
+    # whitespace around '||'
+    src = re.sub(r'EMSCRIPTEN\$AWAIT\s*\|\|\s*', 'await ', src)
+    # Remove the line containing `export{};`, which is inserted by
     # Closure to mark the file as an ES6 module.
     # https://github.com/google/closure-compiler/issues/4084#issuecomment-1505056519
     # https://github.com/google/closure-compiler/blob/v20260401/src/com/google/javascript/jscomp/ConvertChunksToESModules.java#L111-L113
-    src = src \
-      .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import') \
-      .replace('export{};\n', '')
+    src = src.replace('export{};\n', '')
 
   src = src.replace('EMSCRIPTEN$AWAIT(', 'await (')
 
