@@ -15,8 +15,7 @@ void error2() {
 }
 
 void load2() {
-  char buffer[10];
-  memset(buffer, 0, 10);
+  char buffer[10] = {0};
   FILE *f = fopen("/target/file1.txt", "r");
   assert(f);
   fread(buffer, 1, 5, f);
