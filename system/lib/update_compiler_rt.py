@@ -46,6 +46,10 @@ def main():
     llvm_dir = os.path.join(os.path.abspath(sys.argv[1]))
   else:
     llvm_dir = default_llvm_dir
+  if not os.path.isdir(llvm_dir):
+    print(f'LLVM directory not found: {llvm_dir}', file=sys.stderr)
+    print(f'Usage: {sys.argv[0]} [llvm_dir]', file=sys.stderr)
+    sys.exit(1)
   upstream_dir = os.path.join(llvm_dir, 'compiler-rt')
   assert os.path.exists(upstream_dir)
   upstream_src = os.path.join(upstream_dir, 'lib', 'builtins')
