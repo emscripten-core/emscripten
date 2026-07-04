@@ -820,7 +820,7 @@ int getaddrinfo(const char* node,
     int ai_family;
     int ai_socktype;
     int ai_protocol;
-  } d;
+  } d = {0};
 
   typedef struct ResAddrinfo {
     int ai_flags;
@@ -838,7 +838,6 @@ int getaddrinfo(const char* node,
     uint8_t /*ResAddrinfo[]*/ addr[];
   } Result;
 
-  memset(&d, 0, sizeof(d));
   PosixSocketCallResult *b = allocate_call_result(sizeof(Result));
   d.header.callId = b->callId;
   d.header.function = POSIX_SOCKET_MSG_GETADDRINFO;
