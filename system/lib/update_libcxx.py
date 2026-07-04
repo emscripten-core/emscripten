@@ -63,6 +63,8 @@ def generate_modules(cmake_version: str):
   shutil.copytree(dist, dst, dirs_exist_ok=True)
 
 def main():
+  llvm_dir, force = parse_args(default_llvm_dir, 'llvm_dir')
+  check_clean(force)
   # Exit early if cmake is not found
   try:
     output= subprocess.check_output(['cmake', '--version'], text=True)
@@ -112,6 +114,7 @@ def main():
     copy_tree(upstream_dir, local_dir, excludes)
 
   shutil.copy2(os.path.join(libc_upstream_dir, 'LICENSE.TXT'), libc_local_dir)
+  update_readme(local_root, llvm_dir)
 
 if __name__ == '__main__':
   main()

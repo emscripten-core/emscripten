@@ -19,7 +19,8 @@ preserve_files = ()
 
 
 def main():
-  llvm_dir = get_llvm_dir()
+  llvm_dir, force = parse_args(default_llvm_dir, 'llvm_dir')
+  check_clean(force)
   upstream_root = os.path.join(llvm_dir, 'libunwind')
   upstream_src = os.path.join(upstream_root, 'src')
   upstream_inc = os.path.join(upstream_root, 'include')
@@ -33,6 +34,7 @@ def main():
   copy_tree(upstream_src, local_src, excludes)
   copy_tree(upstream_inc, local_inc, excludes)
   shutil.copy2(os.path.join(upstream_root, 'LICENSE.TXT'), local_root)
+  update_readme(local_root, llvm_dir)
 
 
 if __name__ == '__main__':
