@@ -31,7 +31,6 @@ preserve_files = ('readme.txt',)
 
 def main():
   llvm_dir = parse_args(default_llvm_dir, 'llvm_dir')
-  check_clean()
   upstream_dir = os.path.join(llvm_dir, 'compiler-rt')
   assert os.path.exists(upstream_dir)
   upstream_src = os.path.join(upstream_dir, 'lib', 'builtins')

@@ -92,9 +92,8 @@ def make_ignore(root):
 
 
 def main():
-  musl_dir, force = parse_args(default_musl_dir, 'musl_dir')
+  musl_dir = parse_args(default_musl_dir, 'musl_dir')
   assert os.path.exists(musl_dir)
-  check_clean(force)
 
   # Remove old version
   shutil.rmtree(local_src)
