@@ -12,8 +12,7 @@
 int main() {
 #define CHECK(str)                     \
   {                                    \
-    char name[1000];                   \
-    memset(name, 0, 1000);             \
+    char name[1000] = {0};             \
     int prio = 99;                     \
     sscanf(str, "%s %d", name, &prio); \
     printf("%s : %d\n", name, prio);   \
@@ -70,8 +69,7 @@ int main() {
     printf("%i\n", a);
   }
 
-  char buf1[100], buf2[100], buf3[100], buf4[100];
-  memset(buf4, 0, 100);
+  char buf1[100], buf2[100], buf3[100], buf4[100] = {0};
 
 
   int numItems = sscanf("level=4:ref=3", "%99[^:=]=%99[^:]:%99[^=]=%c",

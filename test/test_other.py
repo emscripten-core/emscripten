@@ -329,7 +329,7 @@ class other(RunnerCore):
     self.assertTrue(building.is_wasm_dylib(filename))
 
   def do_other_test(self, testname, cflags=None, **kwargs):
-    return self.do_run_in_out_file_test(test_file('other', testname), cflags=cflags, **kwargs)
+    return self.do_runf_out_file(test_file('other', testname), cflags=cflags, **kwargs)
 
   def run_on_pty(self, cmd):
     master, slave = os.openpty()
@@ -466,6 +466,16 @@ class other(RunnerCore):
     self.assertNotContained("new URL('data:", src)
     self.assertContained("new Worker(new URL('hello_world.mjs', import.meta.url), {", src)
     self.assertContained('Hello, world!', self.run_js('hello_world.mjs'))
+
+  def test_esm_worker_closure(self):
+    self.run_process([EMCC, '-o', 'hello_world.mjs',
+                      '-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD', '-pthread', '-O2',
+                      test_file('hello_world.c'), '--closure=1'])
+    create_file('run.mjs', '''
+    import Module from './hello_world.mjs';
+    await Module();
+    ''')
+    self.assertContained('Hello, world!', self.run_js('run.mjs'))
 
   def test_esm_closure(self):
     self.run_process([EMCC, '-o', 'hello_world.mjs',
@@ -2140,10 +2150,10 @@ Module['postRun'] = () => {
     self.do_runf('main.c', cflags=['--embed-file', 'tst', '--exclude-file', '!*hello.exe', '--exclude-file', '*.exe'])
 
   def test_dylink_strict(self):
-    self.do_run_in_out_file_test('hello_world.c', cflags=['-sSTRICT', '-sMAIN_MODULE=1'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSTRICT', '-sMAIN_MODULE=1'])
 
   def test_dylink_legacy(self):
-    self.do_run_in_out_file_test('hello_world.c', cflags=['-sLEGACY_GL_EMULATION', '-sMAIN_MODULE=2'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sLEGACY_GL_EMULATION', '-sMAIN_MODULE=2'])
 
   def test_dylink_exceptions_and_assertions(self):
     # Linking side modules using the STL and exceptions should not abort with
@@ -2693,13 +2703,13 @@ F1 -> ''
     # the test program will print an ascii representation of a bitmap where the
     # 'w' character has been rendered using the Liberation Sans Bold font.
     # See test_freetype.out
-    self.do_run_in_out_file_test('test_freetype.c', cflags=['--use-port=freetype'])
+    self.do_runf_out_file('test_freetype.c', cflags=['--use-port=freetype'])
 
   @requires_network
   def test_freetype_pthreads(self):
     # This test also verifies the `-sUSE_FREETYPE` alternative to --use-port=freetype works.
     copy_asset('freetype/LiberationSansBold.ttf')
-    self.do_run_in_out_file_test('test_freetype.c', cflags=['--embed-file=LiberationSansBold.ttf', '-pthread', '-sUSE_FREETYPE'])
+    self.do_runf_out_file('test_freetype.c', cflags=['--embed-file=LiberationSansBold.ttf', '-pthread', '-sUSE_FREETYPE'])
 
   @requires_network
   def test_icu(self):
@@ -6216,6 +6226,71 @@ int main(void) {
     expected = 'add-dep\nremove-dep\nHello, world!\ngot module\n'
     self.assertContained(expected, self.run_js('run.mjs'))
 
+  def test_modularize_instance_auto_init(self):
+    create_file('library.js', '''\
+    addToLibrary({
+      $baz: () => console.log('baz'),
+      $qux: () => console.log('qux'),
+    });''')
+    # With AUTO_INIT the module self-initializes via top-level await and does not
+    # export `init`.
+    self.run_process([EMCC, test_file('modularize_instance.c'),
+                      '-sMODULARIZE=instance', '-sAUTO_INIT',
+                      '-Wno-experimental',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
+                      '--js-library', 'library.js',
+                      '-o', 'modularize_instance.mjs'] + self.get_cflags())
+
+    # Named exports are usable directly on import; there is no `init` export.
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import * as mod from "./modularize_instance.mjs";
+      import { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_instance.mjs";
+      assert(mod.default === undefined); // no `init` export when self-initializing
+      foo(); // exported with EMSCRIPTEN_KEEPALIVE
+      bar(); // exported with EXPORTED_FUNCTIONS
+      baz(); // exported library function with EXPORTED_RUNTIME_METHODS
+      qux(); // exported library function with EXPORTED_FUNCTIONS
+      assert(typeof addOnExit === 'function'); // exported runtime function with EXPORTED_RUNTIME_METHODS
+      assert(typeof HEAP32 === 'object'); // exported runtime value by default
+    ''')
+
+    self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
+
+  @also_with_pthreads
+  @requires_node_25
+  def test_esm_integration_auto_init(self):
+    # Instance-phase wasm imports currently generate an ExperimentalWarning under node.
+    self.node_args += ['--no-warnings']
+    create_file('library.js', '''\
+    addToLibrary({
+      $baz: () => console.log('baz'),
+      $qux: () => console.log('qux'),
+    });''')
+    self.run_process([EMCC, test_file('modularize_instance.c'),
+                      '-Wno-experimental',
+                      '-sWASM_ESM_INTEGRATION', '-sAUTO_INIT',
+                      '-sEXPORTED_RUNTIME_METHODS=baz,addOnExit,HEAP32',
+                      '-sEXPORTED_FUNCTIONS=_bar,_main,qux',
+                      '--js-library', 'library.js',
+                      '-o', 'modularize_instance.mjs'] + self.get_cflags())
+
+    create_file('runner.mjs', '''
+      import { strict as assert } from 'assert';
+      import * as mod from "./modularize_instance.mjs";
+      import { _foo as foo, _bar as bar, baz, qux, addOnExit, HEAP32 } from "./modularize_instance.mjs";
+      assert(mod.default === undefined); // no `init` export when self-initializing
+      foo();
+      bar();
+      baz();
+      qux();
+      assert(typeof addOnExit === 'function');
+      assert(typeof HEAP32 === 'object');
+    ''')
+
+    self.assertContained('main1\nmain2\nfoo\nbar\nbaz\n', self.run_js('runner.mjs'))
+
   def test_modularize_instantiation_error(self):
     self.run_process([EMCC, test_file('hello_world.c'), '-o', 'out.mjs'] + self.get_cflags())
     create_file('run.mjs', '''
@@ -8672,9 +8747,9 @@ int main() {
     self.set_setting('EXCEPTION_DEBUG')
     self.cflags += ['-fwasm-exceptions', '-flto']
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
     self.set_setting('WASM_LEGACY_EXCEPTIONS')
-    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
 
   @parameterized({
     '': ([],),
@@ -10804,7 +10879,7 @@ ok.
     self.do_runf('sockets/test_getnameinfo.c', 'done\n')
 
   def test_gethostbyname(self):
-    self.do_run_in_out_file_test('sockets/test_gethostbyname.c')
+    self.do_runf_out_file('sockets/test_gethostbyname.c')
 
   def test_getprotobyname(self):
     self.do_runf('sockets/test_getprotobyname.c', 'done\n')
@@ -11000,7 +11075,7 @@ int main () {
     # via the environment EMCC_STRICT=1 and from the command line `-sSTRICT`
     self.do_runf('hello_world.c', cflags=['-sSTRICT'])
     with env_modify({'EMCC_STRICT': '1'}):
-      self.do_run_in_out_file_test('hello_world.c')
+      self.do_runf_out_file('hello_world.c')
 
   def test_strict_mode_full_library(self):
     self.do_runf('hello_world.c', cflags=['-sSTRICT', '-sINCLUDE_FULL_LIBRARY'])
@@ -11917,7 +11992,7 @@ int main(void) {
   def test_pthread_unavailable(self):
     # Run a simple hello world program that uses pthreads
     self.cflags += ['-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME', '-sDEFAULT_LIBRARY_FUNCS_TO_INCLUDE=$stringToNewUTF8,$UTF8ToString']
-    self.do_run_in_out_file_test('hello_world.c')
+    self.do_runf_out_file('hello_world.c')
 
     # Now run the same program but with SharedArrayBuffer undefined, it should run
     # fine and then fail on the first call to pthread_create.
@@ -12326,9 +12401,9 @@ int main () {
     self.wasm_engines = []
     self.cflags += ['-fwasm-exceptions']
     self.set_setting('WASM_LEGACY_EXCEPTIONS', 0)
-    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
     self.set_setting('WASM_LEGACY_EXCEPTIONS')
-    self.do_run_in_out_file_test('core/test_exceptions.cpp', out_suffix='_caught')
+    self.do_runf_out_file('core/test_exceptions.cpp', out_suffix='_caught')
 
   def test_missing_malloc_export(self):
     # we used to include malloc by default. show a clear error in builds with
@@ -12463,7 +12538,7 @@ exec "$@"
       self.assertContained(r'emcc: error: WASM2JS is not compatible with .*_MODULE \(wasm2js does not support dynamic linking\)', err, regex=True)
 
   def test_wasm2js_standalone(self):
-    self.do_run_in_out_file_test('hello_world.c', cflags=['-sSTANDALONE_WASM', '-sWASM=0'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sSTANDALONE_WASM', '-sWASM=0'])
 
   def test_oformat(self):
     self.run_process([EMCC, test_file('hello_world.c'), '--oformat=wasm', '-o', 'out.foo'])
@@ -12496,7 +12571,7 @@ exec "$@"
     'dyncalls': (['-sDYNCALLS'],),
   })
   def test_this_in_dyncall(self, args):
-    self.do_run_in_out_file_test('test_this_in_dyncall.c', cflags=['--js-library', test_file('test_this_in_dyncall.js')] + args)
+    self.do_runf_out_file('test_this_in_dyncall.c', cflags=['--js-library', test_file('test_this_in_dyncall.js')] + args)
 
   # Tests that dynCalls are produced in Closure-safe way in DYNCALLS mode when no actual dynCalls are used
   @parameterized({
@@ -12745,7 +12820,7 @@ exec "$@"
   def test_shell_Oz(self):
     # regression test for -Oz working on non-web, non-node environments that
     # lack TextDecoder
-    self.do_run_in_out_file_test('hello_world.c', cflags=['-Oz'])
+    self.do_runf_out_file('hello_world.c', cflags=['-Oz'])
 
   def test_runtime_keepalive(self):
     # Depends on Module['onExit']
@@ -13140,8 +13215,8 @@ void foo() {}
     self.set_setting('PROXY_TO_PTHREAD')
     self.set_setting('EXIT_RUNTIME')
     self.cflags += ['-gsource-map', '-pthread']
-    self.do_run_in_out_file_test('pthread/test_pthread_lsan_no_leak.cpp', cflags=['-fsanitize=leak'])
-    self.do_run_in_out_file_test('pthread/test_pthread_lsan_no_leak.cpp', cflags=['-fsanitize=address'])
+    self.do_runf_out_file('pthread/test_pthread_lsan_no_leak.cpp', cflags=['-fsanitize=leak'])
+    self.do_runf_out_file('pthread/test_pthread_lsan_no_leak.cpp', cflags=['-fsanitize=address'])
 
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26198')
   @requires_pthreads
@@ -13233,7 +13308,7 @@ void foo() {}
   @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/24725')
   def test_pthread_kill(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_kill.c')
+    self.do_runf_out_file('pthread/test_pthread_kill.c')
 
   @parameterized({
     '': (['-pthread'],),
@@ -13251,6 +13326,7 @@ void foo() {}
     self.do_runf('pthread/test_pthread_sigmask.c', 'done\n', cflags=args)
 
   # Tests memory growth in pthreads mode, but still on the main thread.
+  @crossplatform
   @requires_pthreads
   @parameterized({
     '': ([],),
@@ -13259,7 +13335,8 @@ void foo() {}
   })
   def test_pthread_growth_mainthread(self, cflags):
     if '-sGROWABLE_ARRAYBUFFERS=2' in cflags:
-      self.require_node_26()
+      if self.engine_is_node():
+        self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.do_runf('pthread/test_pthread_memory_growth_mainthread.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
@@ -13282,6 +13359,8 @@ void foo() {}
     self.assertLess(growable_size, no_growable_size)
 
   # Tests memory growth in a pthread.
+  @crossplatform
+  @no_deno('https://github.com/denoland/deno/issues/35658')
   @requires_pthreads
   @parameterized({
     '': ([],),
@@ -13297,7 +13376,8 @@ void foo() {}
       self.require_node_25()
 
     if '-sGROWABLE_ARRAYBUFFERS=2' in cflags:
-      self.require_node_26()
+      if self.engine_is_node():
+        self.require_node_26()
     else:
       self.cflags.append('-Wno-pthreads-mem-growth')
     self.do_runf('pthread/test_pthread_memory_growth.c', cflags=['-pthread', '-sALLOW_MEMORY_GROWTH', '-sINITIAL_MEMORY=32MB', '-sMAXIMUM_MEMORY=256MB'] + cflags)
@@ -13308,7 +13388,7 @@ void foo() {}
 
   # Test emscripten_console_log(), emscripten_console_warn() and emscripten_console_error()
   def test_emscripten_console_log(self):
-    self.do_run_in_out_file_test('emscripten_console_log.c', cflags=['--pre-js', test_file('emscripten_console_log_pre.js')])
+    self.do_runf_out_file('emscripten_console_log.c', cflags=['--pre-js', test_file('emscripten_console_log_pre.js')])
 
   # Tests emscripten_unwind_to_js_event_loop() behavior
   def test_emscripten_unwind_to_js_event_loop(self):
@@ -13377,16 +13457,16 @@ void foo() {}
   # unistd tests
 
   def test_unistd_confstr(self):
-    self.do_run_in_out_file_test('unistd/confstr.c')
+    self.do_runf_out_file('unistd/confstr.c')
 
   def test_unistd_ttyname(self):
     self.do_runf('unistd/ttyname.c', 'done\n')
 
   def test_unistd_pathconf(self):
-    self.do_run_in_out_file_test('unistd/pathconf.c')
+    self.do_runf_out_file('unistd/pathconf.c')
 
   def test_unistd_swab(self):
-    self.do_run_in_out_file_test('unistd/swab.c')
+    self.do_runf_out_file('unistd/swab.c')
 
   @also_with_noderawfs
   @crossplatform
@@ -13402,17 +13482,17 @@ void foo() {}
     self.do_runf('unistd/isatty.c', 'done\n')
 
   def test_unistd_login(self):
-    self.do_run_in_out_file_test('unistd/login.c')
+    self.do_runf_out_file('unistd/login.c')
 
   def test_unistd_sleep(self):
-    self.do_run_in_out_file_test('unistd/sleep.c')
+    self.do_runf_out_file('unistd/sleep.c')
 
   @crossplatform
   @with_all_fs
   def test_unistd_fstatfs(self):
     if '-DNODERAWFS' in self.cflags and WINDOWS:
       self.skipTest('depends on /dev filesystem')
-    self.do_run_in_out_file_test('unistd/fstatfs.c', cflags=['-sASSERTIONS=2'])
+    self.do_runf_out_file('unistd/fstatfs.c', cflags=['-sASSERTIONS=2'])
 
   @no_windows("test is Linux-specific")
   @no_mac("test is Linux-specific")
@@ -13435,19 +13515,19 @@ Module.postRun = () => {{
     'Post: \\n' + openFilesPost);
 }}
 ''')
-    self.do_run_in_out_file_test('unistd/close.c', cflags=['--pre-js', 'pre.js'])
+    self.do_runf_out_file('unistd/close.c', cflags=['--pre-js', 'pre.js'])
 
   @also_with_wasmfs
   def test_unistd_dup(self):
-    self.do_run_in_out_file_test('wasmfs/wasmfs_dup.c')
+    self.do_runf_out_file('wasmfs/wasmfs_dup.c')
 
   @also_with_wasmfs
   def test_unistd_open(self):
-    self.do_run_in_out_file_test('wasmfs/wasmfs_open.c')
+    self.do_runf_out_file('wasmfs/wasmfs_open.c')
 
   @also_with_wasmfs
   def test_unistd_open_append(self):
-    self.do_run_in_out_file_test('wasmfs/wasmfs_open_append.c')
+    self.do_runf_out_file('wasmfs/wasmfs_open_append.c')
 
   @also_with_wasmfs
   def test_unistd_stat(self):
@@ -13456,29 +13536,29 @@ Module.postRun = () => {{
   @also_with_wasmfs
   def test_unistd_create(self):
     self.set_setting('WASMFS')
-    self.do_run_in_out_file_test('wasmfs/wasmfs_create.c')
+    self.do_runf_out_file('wasmfs/wasmfs_create.c')
 
   def test_unistd_fdatasync(self):
     # TODO: Remove this test in favor of unistd/misc.c
     self.set_setting('WASMFS')
-    self.do_run_in_out_file_test('wasmfs/wasmfs_fdatasync.c')
+    self.do_runf_out_file('wasmfs/wasmfs_fdatasync.c')
 
   @also_with_wasmfs
   def test_unistd_seek(self):
-    self.do_run_in_out_file_test('wasmfs/wasmfs_seek.c')
+    self.do_runf_out_file('wasmfs/wasmfs_seek.c')
 
   @also_with_wasmfs
   def test_unistd_mkdir(self):
-    self.do_run_in_out_file_test('wasmfs/wasmfs_mkdir.c')
+    self.do_runf_out_file('wasmfs/wasmfs_mkdir.c')
 
   @also_with_wasmfs
   def test_unistd_cwd(self):
-    self.do_run_in_out_file_test('wasmfs/wasmfs_chdir.c')
+    self.do_runf_out_file('wasmfs/wasmfs_chdir.c')
 
   def test_unistd_chown(self):
     # TODO: Remove this test in favor of unistd/misc.c
     self.set_setting('WASMFS')
-    self.do_run_in_out_file_test('wasmfs/wasmfs_chown.c')
+    self.do_runf_out_file('wasmfs/wasmfs_chown.c')
 
   @wasmfs_all_backends
   def test_wasmfs_getdents(self):
@@ -13486,23 +13566,23 @@ Module.postRun = () => {{
       self.skipTest('test expectations assumes /dev is virtualized')
     # Run only in WASMFS for now.
     self.set_setting('FORCE_FILESYSTEM')
-    self.do_run_in_out_file_test('wasmfs/wasmfs_getdents.c')
+    self.do_runf_out_file('wasmfs/wasmfs_getdents.c')
 
   def test_wasmfs_jsfile(self):
     self.set_setting('WASMFS')
-    self.do_run_in_out_file_test('wasmfs/wasmfs_jsfile.c')
+    self.do_runf_out_file('wasmfs/wasmfs_jsfile.c')
 
   def test_wasmfs_before_preload(self):
     self.set_setting('WASMFS')
     os.mkdir('js_backend_files')
     create_file('js_backend_files/file.dat', 'data')
-    self.do_run_in_out_file_test('wasmfs/wasmfs_before_preload.c', cflags=['--preload-file', 'js_backend_files/file.dat'])
+    self.do_runf_out_file('wasmfs/wasmfs_before_preload.c', cflags=['--preload-file', 'js_backend_files/file.dat'])
 
   def test_hello_world_above_2gb(self):
-    self.do_run_in_out_file_test('hello_world.c', cflags=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
+    self.do_runf_out_file('hello_world.c', cflags=['-sGLOBAL_BASE=2GB', '-sINITIAL_MEMORY=3GB'])
 
   def test_unistd_strerror(self):
-    self.do_run_in_out_file_test('unistd/strerror.c')
+    self.do_runf_out_file('unistd/strerror.c')
 
   def test_hello_function(self):
     # hello_function.cpp is referenced/used in the docs.  This test ensures that it
@@ -13623,7 +13703,7 @@ int main() {
 
     # Try again with INCOMING_MODULE_JS_API set
     self.set_setting('INCOMING_MODULE_JS_API', 'fetchSettings')
-    self.do_run_in_out_file_test('hello_world.c')
+    self.do_runf_out_file('hello_world.c')
     src = read_file('hello_world.js')
     self.assertContained("fetch(binaryFile, Module['fetchSettings'] || ", src)
 
@@ -13657,7 +13737,7 @@ int main() {
 
   @also_with_minimal_runtime
   def test_wasm_worker_cxx_init(self):
-    self.do_run_in_out_file_test('wasm_worker/wasm_worker_cxx_init.cpp', cflags=['-sWASM_WORKERS'])
+    self.do_runf_out_file('wasm_worker/wasm_worker_cxx_init.cpp', cflags=['-sWASM_WORKERS'])
 
   @parameterized({
     # we will warn here since -O2 runs the optimizer and -g enables DWARF
@@ -13677,19 +13757,19 @@ int main() {
       self.run_process([EMCC, test_file('hello_world.c'), '-Werror'] + args)
 
   def test_wasm_worker_trusted_types(self):
-    self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sTRUSTED_TYPES'])
+    self.do_runf_out_file('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS', '-sTRUSTED_TYPES'])
 
   def test_wasm_worker_export_es6(self):
-    self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS',
-                                                                            '-sEXPORT_ES6',
-                                                                            '--extern-post-js',
-                                                                            test_file('modularize_post_js.js')])
+    self.do_runf_out_file('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS',
+                                                                     '-sEXPORT_ES6',
+                                                                     '--extern-post-js',
+                                                                     test_file('modularize_post_js.js')])
 
   def test_wasm_worker_terminate(self):
     self.do_runf('wasm_worker/terminate_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
   def test_wasm_worker_dbg(self):
-    self.do_run_in_out_file_test('wasm_worker/test_wasm_worker_dbg.c', cflags=['-sWASM_WORKERS'])
+    self.do_runf_out_file('wasm_worker/test_wasm_worker_dbg.c', cflags=['-sWASM_WORKERS'])
 
   @also_with_minimal_runtime
   def test_wasm_worker_closure(self):
@@ -13736,7 +13816,7 @@ int main() {
   })
   @requires_wasm64
   def test_wasm64(self, args):
-    self.do_run_in_out_file_test('core/test_hello_argc.c', args=['hello', 'world'], cflags=['-m64'] + args)
+    self.do_runf_out_file('core/test_hello_argc.c', args=['hello', 'world'], cflags=['-m64'] + args)
 
   # Verfy that MAIN_MODULE=1 (which includes all symbols from all libraries)
   # works with -sPROXY_POSIX_SOCKETS and -Oz, both of which affect linking of
@@ -14383,7 +14463,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.cflags += args + ['--post-js', test_file('interop/test_add_function_post.js')]
 
     print('basics')
-    self.do_run_in_out_file_test('interop/test_add_function.cpp')
+    self.do_runf_out_file('interop/test_add_function.cpp')
 
     print('with ALLOW_TABLE_GROWTH=0')
     self.set_setting('ALLOW_TABLE_GROWTH', 0)
@@ -14401,7 +14481,7 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.set_setting('ALLOW_TABLE_GROWTH')
     # enable costly assertions to verify correct table behavior
     self.set_setting('ASSERTIONS', 2)
-    self.do_run_in_out_file_test('interop/test_add_function.cpp', interleaved_output=False, cflags=['-DGROWTH'])
+    self.do_runf_out_file('interop/test_add_function.cpp', interleaved_output=False, cflags=['-DGROWTH'])
 
   @parameterized({
     'memory64_wasm_function': (True, True),
@@ -14600,19 +14680,19 @@ w:0,t:0x[0-9a-fA-F]+: formatted: 42
     self.set_setting('EXIT_RUNTIME')
 
     # Normally, with EXIT_RUNTIME set we expect onExit to be called.
-    output = self.do_run_in_out_file_test('hello_world.c')
+    output = self.do_runf_out_file('hello_world.c')
     self.assertContained(onexit_called, output)
 
     # However, if we set `Module.noExitRuntime = true`, then it should
     # not be called.
     create_file('noexit.js', 'Module.noExitRuntime = true;\n')
-    output = self.do_run_in_out_file_test('hello_world.c', cflags=['--pre-js=noexit.js'])
+    output = self.do_runf_out_file('hello_world.c', cflags=['--pre-js=noexit.js'])
     self.assertNotContained(onexit_called, output)
 
     # Setting the internal `noExitRuntime` after startup should have the
     # same effect.
     create_file('noexit_oninit.js', 'Module.preRun = () => { noExitRuntime = true; }')
-    output = self.do_run_in_out_file_test('hello_world.c', cflags=['--pre-js=noexit_oninit.js'])
+    output = self.do_runf_out_file('hello_world.c', cflags=['--pre-js=noexit_oninit.js'])
     self.assertNotContained(onexit_called, output)
 
   def test_noExitRuntime_deps(self):
@@ -14973,7 +15053,7 @@ addToLibrary({
   @also_with_wasmfs
   def test_fs_writev_partial_write(self):
     self.set_setting('FORCE_FILESYSTEM')
-    self.do_run_in_out_file_test('fs/test_writev_partial_write.c')
+    self.do_runf_out_file('fs/test_writev_partial_write.c')
 
   def test_fs_lzfs(self):
     # generate data
@@ -15525,7 +15605,7 @@ addToLibrary({
   def test_linkable(self):
     # This setting is due for removal:
     # https://github.com/emscripten-core/emscripten/issues/25262
-    self.do_run_in_out_file_test('hello_world.c', cflags=['-Wno-deprecated', '-sLINKABLE'])
+    self.do_runf_out_file('hello_world.c', cflags=['-Wno-deprecated', '-sLINKABLE'])
 
   # Tests encoding of all byte pairs for binary encoding in SINGLE_FILE mode.
   @parameterized({

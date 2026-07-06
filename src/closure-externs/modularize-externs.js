@@ -17,3 +17,6 @@ var moduleArg;
  * @suppress {duplicate, undefinedVars}
  */
 var Module;
+
+// Special placeholder for `await`.
+var EMSCRIPTEN$AWAIT;

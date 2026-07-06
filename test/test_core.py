@@ -496,7 +496,7 @@ class TestCoreBase(RunnerCore):
     self.run_js(strict_filename)
 
   def do_core_test(self, testname, **kwargs):
-    self.do_run_in_out_file_test(Path('core', testname), **kwargs)
+    self.do_runf_out_file(Path('core', testname), **kwargs)
 
   def get_bullet_library(self, use_cmake):
     if use_cmake:
@@ -648,7 +648,7 @@ class TestCoreBase(RunnerCore):
 
   @only_wasm2js('tests va_arg()')
   def test_vararg_copy(self):
-    self.do_run_in_out_file_test('va_arg/test_va_copy.c')
+    self.do_runf_out_file('va_arg/test_va_copy.c')
 
   def test_llvm_fabs(self):
     self.do_core_test('test_llvm_fabs.c')
@@ -892,11 +892,11 @@ class TestCoreBase(RunnerCore):
 
   @only_wasm2js('tests lgamma and signbit')
   def test_math_lgamma(self):
-    self.do_run_in_out_file_test('math/lgamma.c', assert_returncode=NON_ZERO)
+    self.do_runf_out_file('math/lgamma.c', assert_returncode=NON_ZERO)
 
   @only_wasm2js('tests fmodf (which may use JS math)')
   def test_math_fmodf(self):
-    self.do_run_in_out_file_test('math/fmodf.c')
+    self.do_runf_out_file('math/fmodf.c')
 
   def test_rounding(self):
     self.do_core_test('test_rounding.c')
@@ -1806,16 +1806,16 @@ int main() {
   def test_rename(self):
     if is_sanitizing(self.cflags) and self.get_setting('WASMFS'):
       self.skipTest('https://github.com/emscripten-core/emscripten/issues/15820')
-    self.do_run_in_out_file_test('stdio/test_rename.c')
+    self.do_runf_out_file('stdio/test_rename.c')
 
   def test_remove(self):
-   self.do_run_in_out_file_test('stdio/test_remove.c')
+   self.do_runf_out_file('stdio/test_remove.c')
 
   def test_alloca_stack(self):
     self.do_core_test('test_alloca_stack.c')
 
   def test_life(self):
-    self.do_run_in_out_file_test('life.c', args=['2'])
+    self.do_runf_out_file('life.c', args=['2'])
 
   def test_array2(self):
     self.do_core_test('test_array2.c')
@@ -1997,8 +1997,8 @@ int main(int argc, char **argv) {
     expected_result = read_file(test_file('core/test_em_asm_2.out'))
     create_file('test.out', expected_result.replace('EM_ASM', 'MAIN_THREAD_EM_ASM'))
 
-    self.do_run_in_out_file_test('test.cpp', cflags=args)
-    self.do_run_in_out_file_test('test.cpp', cflags=args, force_c=True)
+    self.do_runf_out_file('test.cpp', cflags=args)
+    self.do_runf_out_file('test.cpp', cflags=args, force_c=True)
 
   @needs_dylink
   @parameterized({
@@ -2543,7 +2543,7 @@ The current type of b is: 9
 
   def test_force_exit(self):
     self.set_setting('EXIT_RUNTIME')
-    self.do_run_in_out_file_test('test_force_exit.c')
+    self.do_runf_out_file('test_force_exit.c')
 
   @no_lsan('https://github.com/emscripten-core/emscripten/issues/15988')
   def test_atexit_threads_stub(self):
@@ -2558,11 +2558,11 @@ The current type of b is: 9
 
   @requires_pthreads
   def test_pthread_cancel(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_cancel.c')
+    self.do_runf_out_file('pthread/test_pthread_cancel.c')
 
   @requires_pthreads
   def test_pthread_cancel_async(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_cancel_async.c')
+    self.do_runf_out_file('pthread/test_pthread_cancel_async.c')
 
   @no_asan('cannot replace malloc/free with ASan')
   @no_lsan('cannot replace malloc/free with LSan')
@@ -2572,10 +2572,10 @@ The current type of b is: 9
 
   @no_asan('test relies on null pointer reads')
   def test_pthread_specific(self):
-    self.do_run_in_out_file_test('pthread/specific.c')
+    self.do_runf_out_file('pthread/specific.c')
 
   def test_pthread_equal(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_equal.cpp')
+    self.do_runf_out_file('pthread/test_pthread_equal.cpp')
 
   @requires_pthreads
   @also_with_modularize
@@ -2588,24 +2588,24 @@ The current type of b is: 9
     self.set_setting('PROXY_TO_PTHREAD')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY=32mb')
-    self.do_run_in_out_file_test('pthread/test_pthread_proxying.c', interleaved_output=False)
+    self.do_runf_out_file('pthread/test_pthread_proxying.c', interleaved_output=False)
 
   @requires_pthreads
   def test_pthread_proxying_cpp(self):
     self.set_setting('PROXY_TO_PTHREAD')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY=32mb')
-    self.do_run_in_out_file_test('pthread/test_pthread_proxying_cpp.cpp',
+    self.do_runf_out_file('pthread/test_pthread_proxying_cpp.cpp',
                                  interleaved_output=False)
 
   @requires_pthreads
   def test_pthread_proxying_dropped_work(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_proxying_dropped_work.c')
+    self.do_runf_out_file('pthread/test_pthread_proxying_dropped_work.c')
 
   @requires_pthreads
   def test_pthread_proxying_canceled_work(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.do_run_in_out_file_test(
+    self.do_runf_out_file(
         'pthread/test_pthread_proxying_canceled_work.c',
         interleaved_output=False)
 
@@ -2614,21 +2614,21 @@ The current type of b is: 9
   def test_pthread_proxying_refcount(self):
     self.set_setting('EXIT_RUNTIME')
     self.set_setting('ASSERTIONS=0')
-    self.do_run_in_out_file_test('pthread/test_pthread_proxying_refcount.c')
+    self.do_runf_out_file('pthread/test_pthread_proxying_refcount.c')
 
   @requires_pthreads
   def test_pthread_dispatch_after_exit(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_dispatch_after_exit.c', interleaved_output=False)
+    self.do_runf_out_file('pthread/test_pthread_dispatch_after_exit.c', interleaved_output=False)
 
   @requires_pthreads
   def test_pthread_atexit(self):
     # Test to ensure threads are still running when atexit-registered functions are called
     self.set_setting('EXIT_RUNTIME')
-    self.do_run_in_out_file_test('pthread/test_pthread_atexit.c')
+    self.do_runf_out_file('pthread/test_pthread_atexit.c')
 
   @requires_pthreads
   def test_pthread_nested_work_queue(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_nested_work_queue.c')
+    self.do_runf_out_file('pthread/test_pthread_nested_work_queue.c')
 
   @requires_pthreads
   @flaky('Times out in bigendian0 suite only. https://github.com/emscripten-core/emscripten/issues/25316')
@@ -2637,11 +2637,11 @@ The current type of b is: 9
     self.set_setting('EXIT_RUNTIME')
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '300mb')
-    self.do_run_in_out_file_test('pthread/test_pthread_thread_local_storage.c')
+    self.do_runf_out_file('pthread/test_pthread_thread_local_storage.c')
 
   @requires_pthreads
   def test_pthread_cleanup(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_cleanup.c')
+    self.do_runf_out_file('pthread/test_pthread_cleanup.c')
 
   @requires_pthreads
   def test_pthread_setspecific_mainthread(self):
@@ -2650,14 +2650,14 @@ The current type of b is: 9
     print('.. exit')
     self.do_runf('pthread/test_pthread_setspecific_mainthread.c', 'done!', cflags=['-DEXIT'])
     print('.. pthread_exit')
-    self.do_run_in_out_file_test('pthread/test_pthread_setspecific_mainthread.c')
+    self.do_runf_out_file('pthread/test_pthread_setspecific_mainthread.c')
 
   @requires_pthreads
   @also_with_minimal_runtime
   def test_pthread_attr_getstack(self):
     if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.cflags):
       self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
-    self.do_run_in_out_file_test('pthread/test_pthread_attr_getstack.c')
+    self.do_runf_out_file('pthread/test_pthread_attr_getstack.c')
 
   @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26199')
@@ -2669,7 +2669,7 @@ The current type of b is: 9
     # was passed in by pre-populating the module object on prior to loading).
     self.add_pre_run("Module.onAbort = () => console.log('My custom onAbort called');")
     self.cflags += ['-sINCOMING_MODULE_JS_API=preRun,onAbort']
-    self.do_run_in_out_file_test('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
+    self.do_runf_out_file('pthread/test_pthread_abort.c', assert_returncode=NON_ZERO)
 
   @requires_pthreads
   def test_pthread_abort_interrupt(self):
@@ -2695,12 +2695,12 @@ The current type of b is: 9
 
   @requires_pthreads
   def test_pthread_proxy_to_pthread(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_proxy_to_pthread.c', cflags=['-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD'])
+    self.do_runf_out_file('pthread/test_pthread_proxy_to_pthread.c', cflags=['-sEXIT_RUNTIME', '-sPROXY_TO_PTHREAD'])
 
   @requires_pthreads
   @needs_dylink
   def test_pthread_tls_dylink(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_tls_dylink.c', cflags=['-sMAIN_MODULE=2', '-Wno-experimental'])
+    self.do_runf_out_file('pthread/test_pthread_tls_dylink.c', cflags=['-sMAIN_MODULE=2', '-Wno-experimental'])
 
   @requires_pthreads
   @also_with_minimal_runtime
@@ -2725,21 +2725,21 @@ The current type of b is: 9
 
   @requires_pthreads
   def test_pthread_mutex_robust(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_mutex_robust.c')
+    self.do_runf_out_file('pthread/test_pthread_mutex_robust.c')
 
   @requires_pthreads
   def test_pthread_wait32_notify(self):
-    self.do_run_in_out_file_test('atomic/test_wait32_notify.c')
+    self.do_runf_out_file('atomic/test_wait32_notify.c')
 
   @requires_pthreads
   @no_wasm2js('https://github.com/WebAssembly/binaryen/issues/5991')
   def test_pthread_wait64_notify(self):
-    self.do_run_in_out_file_test('atomic/test_wait64_notify.c')
+    self.do_runf_out_file('atomic/test_wait64_notify.c')
 
   @requires_pthreads
   def test_pthread_wait_async(self):
     self.set_setting('PROXY_TO_PTHREAD')
-    self.do_run_in_out_file_test('atomic/test_wait_async.c')
+    self.do_runf_out_file('atomic/test_wait_async.c')
 
   # Include @requires_node_25 explictly here so that this test will be disabled
   # by EMTEST_SKIP_NODE_25.  Without this, the `requires_pthreads` and `requires_jspi` can
@@ -2751,14 +2751,14 @@ The current type of b is: 9
   @with_asyncify_and_jspi
   @also_with_wasm_workers
   def test_pthread_wait_suspending(self):
-    self.do_run_in_out_file_test('atomic/test_wait_suspending.c')
+    self.do_runf_out_file('atomic/test_wait_suspending.c')
 
   @requires_pthreads
   @also_with_minimal_runtime
   def test_pthread_run_on_main_thread(self):
     if self.get_setting('MINIMAL_RUNTIME') and is_sanitizing(self.cflags):
       self.skipTest('MINIMAL_RUNTIME + threads + asan does not work')
-    self.do_run_in_out_file_test('pthread/test_pthread_run_on_main_thread.c')
+    self.do_runf_out_file('pthread/test_pthread_run_on_main_thread.c')
 
   @requires_pthreads
   def test_pthread_is_lock_free(self):
@@ -5351,16 +5351,16 @@ int main()
       out_suffix = '64'
     else:
       out_suffix = ''
-    self.do_run_in_out_file_test('printf/test_printf.c', out_suffix=out_suffix)
+    self.do_runf_out_file('printf/test_printf.c', out_suffix=out_suffix)
 
   def test_printf_2(self):
     self.do_core_test('test_printf_2.c')
 
   def test_printf_float(self):
-    self.do_run_in_out_file_test('printf/test_float.c')
+    self.do_runf_out_file('printf/test_float.c')
 
   def test_printf_octal(self):
-    self.do_run_in_out_file_test('printf/test_octal.c')
+    self.do_runf_out_file('printf/test_octal.c')
 
   def test_printf_macros(self):
     self.do_core_test('test_printf_macros.c')
@@ -5518,7 +5518,7 @@ Module = {
 
     create_file('test.file', 'some data')
 
-    self.do_run_in_out_file_test('test_files.c')
+    self.do_runf_out_file('test_files.c')
 
   @no_wasmfs('Error: EAGAIN: resource temporarily unavailable. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_module_stdin(self):
@@ -5565,14 +5565,14 @@ got: 10
     self.do_runf('fs/test_getdents64.c', '..')
 
   def test_getdents64_special_cases(self):
-    self.do_run_in_out_file_test('fs/test_getdents64_special_cases.c')
+    self.do_runf_out_file('fs/test_getdents64_special_cases.c')
 
   def test_getcwd_with_non_ascii_name(self):
-    self.do_run_in_out_file_test('fs/test_getcwd_with_non_ascii_name.c')
+    self.do_runf_out_file('fs/test_getcwd_with_non_ascii_name.c')
 
   @no_wasmfs('no support for /proc/self/fd/, see https://github.com/emscripten-core/emscripten/issues/19430')
   def test_proc_self_fd(self):
-    self.do_run_in_out_file_test('fs/test_proc_self_fd.c')
+    self.do_runf_out_file('fs/test_proc_self_fd.c')
 
   def test_fwrite_0(self):
     self.do_core_test('test_fwrite_0.c')
@@ -5691,14 +5691,14 @@ got: 10
       # https://github.com/emscripten-core/emscripten/issues/19418
       # We need to tell the test we are in this mode so it can ignore them.
       self.cflags += ['-DWASMFS_NODERAWFS']
-    self.do_run_in_out_file_test('dirent/test_readdir.c')
+    self.do_runf_out_file('dirent/test_readdir.c')
 
   @also_without_bigint
   def test_readdir_empty(self):
-    self.do_run_in_out_file_test('dirent/test_readdir_empty.c')
+    self.do_runf_out_file('dirent/test_readdir_empty.c')
 
   def test_readdir_unlink(self):
-    self.do_run_in_out_file_test('dirent/test_readdir_unlink.c')
+    self.do_runf_out_file('dirent/test_readdir_unlink.c')
 
   def test_stat(self):
     self.set_setting("FORCE_FILESYSTEM")
@@ -5731,7 +5731,7 @@ got: 10
     if self.get_setting('WASMFS'):
       self.cflags += ['-sFORCE_FILESYSTEM']
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
-    self.do_run_in_out_file_test('fcntl/test_fcntl.c')
+    self.do_runf_out_file('fcntl/test_fcntl.c')
 
   @crossplatform
   @also_with_nodefs_both
@@ -5745,14 +5745,14 @@ got: 10
       self.skipTest('Stat mode behavior does not match on Windows')
     if '-DNODERAWFS' in self.cflags and not LINUX:
       self.skipTest('noderawfs fails here under non-linux')
-    self.do_run_in_out_file_test('fcntl/test_fcntl_open.c')
+    self.do_runf_out_file('fcntl/test_fcntl_open.c')
 
   @also_without_bigint
   def test_fcntl_misc(self):
     if self.get_setting('WASMFS'):
       self.cflags += ['-sFORCE_FILESYSTEM']
     self.add_pre_run("FS.createDataFile('/', 'test', 'abcdef', true, true, false);")
-    self.do_run_in_out_file_test('fcntl/test_fcntl_misc.c')
+    self.do_runf_out_file('fcntl/test_fcntl_misc.c')
 
   def test_poll(self):
     if self.get_setting('WASMFS'):
@@ -5834,7 +5834,7 @@ got: 10
   def test_fs_base(self):
     self.set_setting('DEFAULT_LIBRARY_FUNCS_TO_INCLUDE', ['$FS'])
     self.add_pre_run(read_file(test_file('fs/test_fs_base.js')))
-    self.do_run_in_out_file_test('fs/test_fs_base.c')
+    self.do_runf_out_file('fs/test_fs_base.c')
 
   @also_with_noderawfs
   @is_slow_test
@@ -5891,7 +5891,7 @@ got: 10
       suffix = '.wasmfs_win' if WINDOWS else '.wasmfs'
     elif self.is_wasm2js():
       suffix = ".wasm2js"
-    self.do_run_in_out_file_test('fs/test_nodefs_readdir.c', out_suffix=suffix, cflags=['-lnodefs.js'])
+    self.do_runf_out_file('fs/test_nodefs_readdir.c', out_suffix=suffix, cflags=['-lnodefs.js'])
 
   @requires_node
   @crossplatform
@@ -5913,13 +5913,13 @@ got: 10
 
   @no_wasmfs('depends on FS.trackingDelegate which WASMFS does not have')
   def test_fs_trackingdelegate(self):
-    self.do_run_in_out_file_test('fs/test_trackingdelegate.c', cflags=['-sFS_DEBUG'])
+    self.do_runf_out_file('fs/test_trackingdelegate.c', cflags=['-sFS_DEBUG'])
 
   @with_all_fs
   def test_fs_writeFile(self):
     if self.get_setting('WASMFS'):
       self.set_setting("FORCE_FILESYSTEM")
-    self.do_run_in_out_file_test('fs/test_writeFile.cpp')
+    self.do_runf_out_file('fs/test_writeFile.cpp')
 
   @with_all_fs
   @crossplatform
@@ -5935,11 +5935,11 @@ got: 10
   def test_fs_write(self):
     if self.get_setting('WASMFS'):
       self.set_setting("FORCE_FILESYSTEM")
-    self.do_run_in_out_file_test('fs/test_fs_write.c')
+    self.do_runf_out_file('fs/test_fs_write.c')
 
   @also_with_noderawfs
   def test_fs_emptyPath(self):
-    self.do_run_in_out_file_test('fs/test_emptyPath.c')
+    self.do_runf_out_file('fs/test_emptyPath.c')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @crossplatform
@@ -5958,7 +5958,7 @@ got: 10
   def test_fs_mmap(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    self.do_run_in_out_file_test('fs/test_mmap.c')
+    self.do_runf_out_file('fs/test_mmap.c')
 
   @no_wasmfs('wasmfs will (?) need a non-JS mechanism to ignore permissions during startup')
   @also_with_minimal_runtime
@@ -6097,20 +6097,20 @@ Module.onRuntimeInitialized = () => {
       out_suffix = '.win'
     else:
       out_suffix = ''
-    self.do_run_in_out_file_test('unistd/access.c', out_suffix=out_suffix)
+    self.do_runf_out_file('unistd/access.c', out_suffix=out_suffix)
 
   def test_unistd_curdir(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    self.do_run_in_out_file_test('unistd/curdir.c')
+    self.do_runf_out_file('unistd/curdir.c')
 
   @also_with_noderawfs
   def test_unistd_close(self):
     self.maybe_closure()
-    self.do_run_in_out_file_test('unistd/close.c')
+    self.do_runf_out_file('unistd/close.c')
 
   def test_unistd_fsync_stdout(self):
-    self.do_run_in_out_file_test('unistd/fsync_stdout.c')
+    self.do_runf_out_file('unistd/fsync_stdout.c')
 
   @also_with_noderawfs
   def test_unistd_pipe(self):
@@ -6118,7 +6118,7 @@ Module.onRuntimeInitialized = () => {
 
   @also_with_noderawfs
   def test_unistd_dup(self):
-    self.do_run_in_out_file_test('unistd/dup.c')
+    self.do_runf_out_file('unistd/dup.c')
 
   @with_all_fs
   def test_unistd_truncate(self):
@@ -6126,7 +6126,7 @@ Module.onRuntimeInitialized = () => {
       self.set_setting('FORCE_FILESYSTEM')
     if WINDOWS or os.geteuid() == 0:
       self.skipTest('Root access invalidates this test by being able to write on readonly files')
-    self.do_run_in_out_file_test('unistd/truncate.c')
+    self.do_runf_out_file('unistd/truncate.c')
 
   @also_with_standalone_wasm()
   def test_unistd_sysconf(self):
@@ -6134,7 +6134,7 @@ Module.onRuntimeInitialized = () => {
       out_suffix = '64'
     else:
       out_suffix = ''
-    self.do_run_in_out_file_test('unistd/sysconf.c', out_suffix=out_suffix)
+    self.do_runf_out_file('unistd/sysconf.c', out_suffix=out_suffix)
 
   @no_asan('ASan alters memory layout')
   def test_unistd_sysconf_phys_pages(self):
@@ -6188,13 +6188,13 @@ Module.onRuntimeInitialized = () => {
         self.skipTest('TODO: wasmfs+node')
       self.cflags += ['-sFORCE_FILESYSTEM']
 
-    self.do_run_in_out_file_test('unistd/links.c')
+    self.do_runf_out_file('unistd/links.c')
 
   @also_with_noderawfs
   @no_windows('TODO: Fails on Windows due to an unknown reason.')
   @no_wasmfs('Assertion failed: "r == 3" in test_unistd_write_broken_link.c line 22. https://github.com/emscripten-core/emscripten/issues/25035')
   def test_unistd_write_broken_link(self):
-    self.do_run_in_out_file_test('unistd/test_unistd_write_broken_link.c')
+    self.do_runf_out_file('unistd/test_unistd_write_broken_link.c')
 
   @no_windows('Skipping NODEFS test, since it would require administrative privileges.')
   @requires_node
@@ -6206,14 +6206,14 @@ Module.onRuntimeInitialized = () => {
     # Also, other detected discrepancies if you do end up running this test on NODEFS:
     # test expects /, but Windows gives \ as path slashes.
     # Calling readlink() on a non-link gives error 22 EINVAL on Unix, but simply error 0 OK on Windows.
-    self.do_run_in_out_file_test('unistd/symlink_on_nodefs.c', cflags=['-lnodefs.js'])
+    self.do_runf_out_file('unistd/symlink_on_nodefs.c', cflags=['-lnodefs.js'])
 
   @also_without_bigint
   @also_with_nodefs
   def test_unistd_io(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
-    self.do_run_in_out_file_test('unistd/io.c')
+    self.do_runf_out_file('unistd/io.c')
 
   @no_windows('https://github.com/emscripten-core/emscripten/issues/8882')
   @also_with_nodefs
@@ -6221,7 +6221,7 @@ Module.onRuntimeInitialized = () => {
   def test_unistd_misc(self):
     if self.get_setting('STRICT'):
       self.set_setting('ALLOW_UNIMPLEMENTED_SYSCALLS')
-    self.do_run_in_out_file_test('unistd/misc.c', interleaved_output=False)
+    self.do_runf_out_file('unistd/misc.c', interleaved_output=False)
 
   @also_with_standalone_wasm()
   def test_posixtime(self):
@@ -6302,7 +6302,7 @@ PORT: 3979
     self.do_core_test('test_phiundef.c')
 
   def test_netinet_in(self):
-    self.do_run_in_out_file_test('netinet/in.cpp')
+    self.do_runf_out_file('netinet/in.cpp')
 
   @needs_dylink
   @no_js_math('JS_MATH is not compatible with MAIN_MODULE=1')
@@ -6396,7 +6396,7 @@ PORT: 3979
       self.assert_fail([PYTHON, 'expect_fail.py'], 'UnicodeDecodeError', expect_traceback=True)
 
     self.cflags += ['-sMODULARIZE', '--js-library', test_file('unicode_library.js'), '--extern-post-js', test_file('modularize_post_js.js'), '--post-js', test_file('unicode_postjs.js')]
-    self.do_run_in_out_file_test('test_unicode_js_library.c')
+    self.do_runf_out_file('test_unicode_js_library.c')
 
   def test_funcptr_import_type(self):
     self.do_core_test('test_funcptr_import_type.cpp', cflags=['--js-library', test_file('core/test_funcptr_import_type.js')])
@@ -6804,7 +6804,7 @@ void* operator new(size_t size) {
   def test_relaxed_simd_implies_simd128(self):
     # When using -msse, one has to also add -msimd128.
     # This test verifies passing -mrelaxed-simd also implies -msimd128.
-    self.do_run_in_out_file_test('sse/hello_sse.cpp', cflags=['-msse'])
+    self.do_runf_out_file('sse/hello_sse.cpp', cflags=['-msse'])
 
   @no_asan('call stack exceeded on some versions of node')
   def test_gcc_unmangler(self):
@@ -6829,26 +6829,26 @@ void* operator new(size_t size) {
     ))
 
     # Main
-    self.do_run_in_out_file_test('freetype/main.c',
+    self.do_runf_out_file('freetype/main.c',
                                  args=['font.ttf', 'test!', '150', '120', '25'],
                                  libraries=ftlib,
                                  includes=[test_file('third_party/freetype/include')])
 
     # github issue 324
     print('[issue 324]')
-    self.do_run_in_out_file_test('freetype/main_2.c',
+    self.do_runf_out_file('freetype/main_2.c',
                                  args=['font.ttf', 'w', '32', '32', '25'],
                                  libraries=ftlib,
                                  includes=[test_file('third_party/freetype/include')])
 
     print('[issue 324 case 2]')
-    self.do_run_in_out_file_test('freetype/main_3.c',
+    self.do_runf_out_file('freetype/main_3.c',
                                  args=['font.ttf', 'W', '32', '32', '0'],
                                  libraries=ftlib,
                                  includes=[test_file('third_party/freetype/include')])
 
     print('[issue 324 case 3]')
-    self.do_run_in_out_file_test('freetype/main_3.c',
+    self.do_runf_out_file('freetype/main_3.c',
                                  out_suffix='_alt',
                                  args=['font.ttf', 'ea', '40', '32', '0'],
                                  libraries=ftlib,
@@ -6862,7 +6862,7 @@ void* operator new(size_t size) {
   def test_sqlite(self):
     if self.get_setting('STRICT'):
       self.cflags += ['-lstubs']
-    self.do_run_in_out_file_test('sqlite/test.c', cflags=['-sUSE_SQLITE3'])
+    self.do_runf_out_file('sqlite/test.c', cflags=['-sUSE_SQLITE3'])
 
   @needs_make('mingw32-make')
   @is_slow_test
@@ -7502,7 +7502,7 @@ void* operator new(size_t size) {
       if self.is_wasm64():
         self.skipTest('LEGACY_VM_SUPPORT is not compatible with wasm64')
     self.maybe_closure()
-    self.do_run_in_out_file_test('embind/test_embind_val_basics.cpp', cflags=args)
+    self.do_runf_out_file('embind/test_embind_val_basics.cpp', cflags=args)
 
   @requires_pthreads
   def test_embind_basics(self):
@@ -7634,21 +7634,21 @@ void* operator new(size_t size) {
 
   def test_embind_custom_marshal(self):
     self.cflags += ['-lembind', '--pre-js', test_file('embind/test_custom_marshal.js')]
-    self.do_run_in_out_file_test('embind/test_custom_marshal.cpp', assert_identical=True)
+    self.do_runf_out_file('embind/test_custom_marshal.cpp', assert_identical=True)
 
   def test_embind_float_constants(self):
-    self.do_run_in_out_file_test('embind/test_float_constants.cpp', cflags=['-lembind'])
+    self.do_runf_out_file('embind/test_float_constants.cpp', cflags=['-lembind'])
 
   def test_embind_negative_constants(self):
-    self.do_run_in_out_file_test('embind/test_negative_constants.cpp', cflags=['-lembind'])
+    self.do_runf_out_file('embind/test_negative_constants.cpp', cflags=['-lembind'])
 
   @also_without_bigint
   @no_esm_integration('embind is not compatible with WASM_ESM_INTEGRATION')
   def test_embind_unsigned(self):
-    self.do_run_in_out_file_test('embind/test_unsigned.cpp', cflags=['-lembind'])
+    self.do_runf_out_file('embind/test_unsigned.cpp', cflags=['-lembind'])
 
   def test_embind_val(self):
-    self.do_run_in_out_file_test('embind/test_val.cpp', cflags=['-lembind'])
+    self.do_runf_out_file('embind/test_val.cpp', cflags=['-lembind'])
 
   @no_big_endian("Incompatible with SUPPORT_BIG_ENDIAN")
   def test_embind_val_read_pointer(self):
@@ -7766,7 +7766,7 @@ void* operator new(size_t size) {
 
   def test_embind_dynamic_initialization(self):
     self.cflags += ['-lembind']
-    self.do_run_in_out_file_test('embind/test_dynamic_initialization.cpp')
+    self.do_runf_out_file('embind/test_dynamic_initialization.cpp')
 
   @no_wasm2js('wasm_bigint')
   @parameterized({
@@ -7779,12 +7779,12 @@ void* operator new(size_t size) {
       self.skipTest('asan does not work with SAFE_HEAP')
     self.set_setting('SAFE_HEAP', safe_heap)
     out_suffix = '64' if self.is_wasm64() else ''
-    self.do_run_in_out_file_test('embind/test_i64_val.cpp', assert_identical=True, out_suffix=out_suffix, cflags=['-lembind'])
+    self.do_runf_out_file('embind/test_i64_val.cpp', assert_identical=True, out_suffix=out_suffix, cflags=['-lembind'])
 
   @no_wasm2js('wasm_bigint')
   def test_embind_i64_binding(self):
     self.cflags += ['-lembind', '--js-library', test_file('embind/test_i64_binding.js')]
-    self.do_run_in_out_file_test('embind/test_i64_binding.cpp', assert_identical=True)
+    self.do_runf_out_file('embind/test_i64_binding.cpp', assert_identical=True)
 
   def test_embind_no_rtti(self):
     create_file('main.cpp', r'''
@@ -7850,15 +7850,15 @@ void* operator new(size_t size) {
 
   @requires_wasm_workers
   def test_embind_wasm_workers(self):
-    self.do_run_in_out_file_test('embind/test_embind_wasm_workers.cpp', cflags=['-lembind', '-sWASM_WORKERS'])
+    self.do_runf_out_file('embind/test_embind_wasm_workers.cpp', cflags=['-lembind', '-sWASM_WORKERS'])
 
   @with_all_eh_sjlj
   def test_embind_throw_cpp_exception(self):
-    self.do_run_in_out_file_test('embind/test_embind_throw_cpp_exception.cpp', cflags=['-lembind', '-std=c++20'])
+    self.do_runf_out_file('embind/test_embind_throw_cpp_exception.cpp', cflags=['-lembind', '-std=c++20'])
 
   @with_all_eh_sjlj
   def test_embind_throw_val_uncaught_and_refcount(self):
-    self.do_run_in_out_file_test('embind/test_embind_throw_val_uncaught_and_refcount.cpp', cflags=['-lembind', '-std=c++20'])
+    self.do_runf_out_file('embind/test_embind_throw_val_uncaught_and_refcount.cpp', cflags=['-lembind', '-std=c++20'])
 
   @parameterized({
     '': ('DEFAULT', False),
@@ -7912,7 +7912,7 @@ void* operator new(size_t size) {
       if self.get_setting('INITIAL_MEMORY') == '4200mb':
         self.set_setting('MAXIMUM_MEMORY', '4300mb')
 
-    self.do_run_in_out_file_test(test_file('webidl/test.cpp'), out_suffix='_' + mode, includes=['.'])
+    self.do_runf_out_file(test_file('webidl/test.cpp'), out_suffix='_' + mode, includes=['.'])
 
   # Test that we can perform fully-synchronous initialization when combining
   # WASM_ASYNC_COMPILATION=0 + PTHREAD_POOL_DELAY_LOAD=1.  Also checks that
@@ -8192,10 +8192,10 @@ void* operator new(size_t size) {
     self.cflags += ['-g', '-DRUN_FROM_JS_SHELL', '-Wno-deprecated-pragma']
     if self.maybe_closure():
       self.cflags += ['-g1'] # extra testing
-    self.do_run_in_out_file_test('test_emscripten_log.cpp', interleaved_output=False)
+    self.do_runf_out_file('test_emscripten_log.cpp', interleaved_output=False)
 
   def test_float_literals(self):
-    self.do_run_in_out_file_test('test_float_literals.cpp')
+    self.do_runf_out_file('test_float_literals.cpp')
 
   def test_exit_status(self):
     # needs to flush stdio streams
@@ -8703,7 +8703,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
 
   @requires_pthreads
   def test_binaryen_2170_emscripten_atomic_cas_u8(self):
-    self.do_run_in_out_file_test('binaryen_2170_emscripten_atomic_cas_u8.cpp', cflags=['-pthread'])
+    self.do_runf_out_file('binaryen_2170_emscripten_atomic_cas_u8.cpp', cflags=['-pthread'])
 
   @also_with_standalone_wasm()
   def test_sbrk(self):
@@ -8834,7 +8834,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     # compiler.  lsan also pulls in $FS
     if '-fsanitize=leak' not in self.cflags and extra_setting != 'FORCE_FILESYSTEM':
       self.maybe_closure()
-    self.do_run_in_out_file_test('hello_world.c')
+    self.do_runf_out_file('hello_world.c')
 
   # Tests that -sMINIMAL_RUNTIME works well with SAFE_HEAP
   @no_modularize_instance('MODULARIZE=instance is not compatible with MINIMAL_RUNTIME')
@@ -9122,7 +9122,7 @@ NODEFS is no longer included by default; build with -lnodefs.js
     self.set_setting('USE_CLOSURE_COMPILER')
     self.set_setting('ALLOW_MEMORY_GROWTH')
     self.set_setting('INITIAL_MEMORY', '300mb')
-    self.do_run_in_out_file_test('hello_world.c', cflags=['-fsanitize=address', '--extern-post-js=post.js'])
+    self.do_runf_out_file('hello_world.c', cflags=['-fsanitize=address', '--extern-post-js=post.js'])
 
   def test_safe_stack(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 2)
@@ -9225,20 +9225,20 @@ NODEFS is no longer included by default; build with -lnodefs.js
     if not self.has_changed_setting('INITIAL_MEMORY'):
       self.set_setting('INITIAL_MEMORY', '64mb')
     self.set_setting('ENVIRONMENT', 'node')
-    self.do_run_in_out_file_test('pthread/test_pthread_c11_threads.c', cflags=args)
+    self.do_runf_out_file('pthread/test_pthread_c11_threads.c', cflags=args)
 
   @requires_pthreads
   def test_pthread_cxx_threads(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_cxx_threads.cpp')
+    self.do_runf_out_file('pthread/test_pthread_cxx_threads.cpp')
 
   @requires_pthreads
   def test_pthread_busy_wait(self):
-    self.do_run_in_out_file_test('pthread/test_pthread_busy_wait.cpp')
+    self.do_runf_out_file('pthread/test_pthread_busy_wait.cpp')
 
   @requires_pthreads
   def test_pthread_busy_wait_atexit(self):
     self.set_setting('EXIT_RUNTIME')
-    self.do_run_in_out_file_test('pthread/test_pthread_busy_wait_atexit.cpp')
+    self.do_runf_out_file('pthread/test_pthread_busy_wait_atexit.cpp')
 
   @requires_pthreads
   def test_pthread_create_embind_stack_check(self):
@@ -9775,7 +9775,7 @@ int main() {
     if self.is_wasm2js() and '-sMODULARIZE' in self.cflags:
       self.skipTest('WASM2JS + MODULARIZE + WASM_WORKERS is not supported')
     self.maybe_closure()
-    self.do_run_in_out_file_test('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS'])
+    self.do_runf_out_file('wasm_worker/hello_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
   @requires_wasm_workers
   def test_wasm_worker_exceptions(self):
@@ -9783,7 +9783,7 @@ int main() {
 
   @requires_wasm_workers
   def test_wasm_worker_malloc(self):
-    self.do_run_in_out_file_test('wasm_worker/malloc_wasm_worker.c', cflags=['-sWASM_WORKERS'])
+    self.do_runf_out_file('wasm_worker/malloc_wasm_worker.c', cflags=['-sWASM_WORKERS'])
 
   @requires_wasm_workers
   def test_wasm_worker_runtime_debug(self):

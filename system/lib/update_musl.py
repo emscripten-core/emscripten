@@ -23,9 +23,9 @@ import shutil
 
 from pathlib import Path
 
-script_dir = os.path.abspath(os.path.dirname(__file__))
+from update_common import *
+
 local_src = os.path.join(script_dir, 'libc', 'musl')
-emscripten_root = os.path.dirname(os.path.dirname(script_dir))
 default_musl_dir = os.path.join(os.path.dirname(emscripten_root), 'musl')
 exclude_dirs = (
   # Top level directories we don't include
@@ -73,6 +73,10 @@ if len(sys.argv) > 1:
   musl_dir = os.path.abspath(sys.argv[1])
 else:
   musl_dir = default_musl_dir
+if not os.path.isdir(musl_dir):
+  print(f'musl directory not found: {musl_dir}', file=sys.stderr)
+  print(f'Usage: {sys.argv[0]} [musl_dir]', file=sys.stderr)
+  sys.exit(1)
 
 
 def make_ignore(root):

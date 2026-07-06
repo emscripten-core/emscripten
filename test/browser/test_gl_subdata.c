@@ -139,8 +139,7 @@ static void gl_init(void) {
     /* Store the vertices in a vertex buffer object (VBO) */
     glGenBuffers(1, &indicesVBO);
     glBindBuffer(GL_ARRAY_BUFFER, indicesVBO);
-    float zeroes[NUM_NODES];
-    memset(zeroes, 0, sizeof(zeroes));
+    float zeroes[NUM_NODES] = {0};
     glBufferData(GL_ARRAY_BUFFER, NUM_NODES * sizeof(float), zeroes, GL_STATIC_DRAW);
     for (int x = 0; x < NUM_NODES; x++) {
       glBufferSubData(GL_ARRAY_BUFFER, x * sizeof(float), sizeof(float), &elements[x]);

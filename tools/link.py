@@ -1009,6 +1009,15 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
     if options.use_preload_plugins or options.preload_files:
       exit_with_error('MODULARIZE=instance is not compatible with --embed-file/--preload-file')
 
+  if settings.AUTO_INIT:
+    if settings.MODULARIZE != 'instance':
+      exit_with_error('AUTO_INIT requires MODULARIZE=instance or WASM_ESM_INTEGRATION')
+    # There is no `init`/`moduleArg` to configure the instance with, so any
+    # incoming module API is meaningless.
+    if 'INCOMING_MODULE_JS_API' in user_settings:
+      exit_with_error('AUTO_INIT is not compatible with INCOMING_MODULE_JS_API')
+    settings.INCOMING_MODULE_JS_API = []
+
   if settings.MINIMAL_RUNTIME and options.preload_files:
     exit_with_error('MINIMAL_RUNTIME is not compatible with --preload-file')
 
@@ -2120,8 +2129,8 @@ def phase_source_transforms(options):
   save_intermediate('transformed')
 
 
-# Unmangle previously mangled `await import` and `await` references in
-# both main code and libraries.
+# Unmangle previously mangled `await` references in both
+# main code and libraries.
 # See also: `mangleUnsupportedSyntax` in parseTools.mjs.
 def fix_js_mangling(js_file):
   # Mangling only takes place under closure in MODULARIZE mode.
@@ -2131,13 +2140,14 @@ def fix_js_mangling(js_file):
   src = read_file(js_file)
 
   if settings.EXPORT_ES6:
-    # Also remove the line containing `export{};`, which is inserted by
+    # Safely matches 'EMSCRIPTEN$AWAIT' with any amount of surrounding
+    # whitespace around '||'
+    src = re.sub(r'EMSCRIPTEN\$AWAIT\s*\|\|\s*', 'await ', src)
+    # Remove the line containing `export{};`, which is inserted by
     # Closure to mark the file as an ES6 module.
     # https://github.com/google/closure-compiler/issues/4084#issuecomment-1505056519
     # https://github.com/google/closure-compiler/blob/v20260401/src/com/google/javascript/jscomp/ConvertChunksToESModules.java#L111-L113
-    src = src \
-      .replace('EMSCRIPTEN$AWAIT$IMPORT', 'await import') \
-      .replace('export{};\n', '')
+    src = src.replace('export{};\n', '')
 
   src = src.replace('EMSCRIPTEN$AWAIT(', 'await (')
 
@@ -2158,13 +2168,21 @@ def create_esm_wrapper(wrapper_file, support_target, wasm_target):
   wrapper.append('// in order to avoid issues with circular dependencies.')
   wrapper.append(f"import * as unused from './{settings.WASM_BINARY_FILE}';")
   support_url = f'./{os.path.basename(support_target)}'
-  if js_exports:
-    wrapper.append(f"export {{ default, {js_exports} }} from '{support_url}';")
+  if settings.AUTO_INIT:
+    # Self-initialize via top-level await and don't re-export `init`, freeing up
+    # the `default` export name for the program's own use.
+    if js_exports:
+      wrapper.append(f"export {{ {js_exports} }} from '{support_url}';")
+    wrapper.append(f"import init from '{support_url}';")
+    wrapper.append('await init();')
   else:
-    wrapper.append(f"export {{ default }} from '{support_url}';")
+    if js_exports:
+      wrapper.append(f"export {{ default, {js_exports} }} from '{support_url}';")
+    else:
+      wrapper.append(f"export {{ default }} from '{support_url}';")
 
-  if settings.ENVIRONMENT_MAY_BE_NODE:
-    wrapper.append(f'''
+    if settings.ENVIRONMENT_MAY_BE_NODE:
+      wrapper.append(f'''
 // When run as the main module under node, create the module directly.  This will
 // execute any startup code along with main (if it exists).
 import init from '{support_url}';
