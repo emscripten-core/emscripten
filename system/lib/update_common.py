@@ -1,7 +1,6 @@
 import os
 import sys
 import shutil
-import subprocess
 import re
 import argparse
 
@@ -12,7 +11,6 @@ default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project'
 
 def parse_args(default_dir, dir_name='llvm_dir'):
   parser = argparse.ArgumentParser(description=f'Update library from {dir_name}')
-  parser.add_argument('-f', '--force', action='store_true', help='Force update even if the Emscripten tree is not clean')
   parser.add_argument('src_dir', nargs='?', default=default_dir, help=f'Path to {dir_name}')
   args = parser.parse_args()
 
@@ -22,7 +20,7 @@ def parse_args(default_dir, dir_name='llvm_dir'):
     parser.print_help(sys.stderr)
     sys.exit(1)
 
-  return src_dir, args.force
+  return src_dir
 
 
 def clean_dir(dirname, preserve_files=()):
@@ -53,21 +51,6 @@ def copy_tree(upstream_dir, local_dir, excludes=()):
         if f in excludes:
           full = os.path.join(root, f)
           os.remove(full)
-
-
-def check_clean(force=False):
-  if force:
-    return
-  try:
-    status = subprocess.check_output(['git', 'status', '--porcelain', '--untracked-files=no'], cwd=emscripten_root, stderr=subprocess.PIPE).decode('utf-8').strip()
-    if status:
-      print('Emscripten tree is not clean (has uncommitted changes).', file=sys.stderr)
-      sys.exit(1)
-  except subprocess.CalledProcessError as e:
-    print('Emscripten tree is not a valid git repository or git failed.', file=sys.stderr)
-    if e.stderr:
-      print(e.stderr.decode('utf-8').strip(), file=sys.stderr)
-    sys.exit(1)
 
 
 def get_llvm_version(upstream_dir):

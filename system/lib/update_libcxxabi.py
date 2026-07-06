@@ -19,8 +19,7 @@ preserve_files = ('cxa_exception_js_utils.cpp', '__cpp_exception.S')
 
 
 def main():
-  llvm_dir, force = parse_args(default_llvm_dir, 'llvm_dir')
-  check_clean(force)
+  llvm_dir = parse_args(default_llvm_dir, 'llvm_dir')
   upstream_root = os.path.join(llvm_dir, 'libcxxabi')
   upstream_src = os.path.join(upstream_root, 'src')
   upstream_inc = os.path.join(upstream_root, 'include')

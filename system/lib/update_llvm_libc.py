@@ -46,8 +46,7 @@ libc_exclusion_patterns = [
 
 
 def main():
-  llvm_dir, force = parse_args(default_llvm_dir, 'llvm_dir')
-  check_clean(force)
+  llvm_dir = parse_args(default_llvm_dir, 'llvm_dir')
   libc_upstream_dir = os.path.join(llvm_dir, 'libc')
   assert os.path.exists(libc_upstream_dir)
   libc_local_dir = os.path.join(script_dir, 'llvm-libc')

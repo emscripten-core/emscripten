@@ -63,8 +63,7 @@ def generate_modules(cmake_version: str):
   shutil.copytree(dist, dst, dirs_exist_ok=True)
 
 def main():
-  llvm_dir, force = parse_args(default_llvm_dir, 'llvm_dir')
-  check_clean(force)
+  llvm_dir = parse_args(default_llvm_dir, 'llvm_dir')
   # Exit early if cmake is not found
   try:
     output= subprocess.check_output(['cmake', '--version'], text=True)

@@ -19,8 +19,7 @@ preserve_files = ()
 
 
 def main():
-  llvm_dir, force = parse_args(default_llvm_dir, 'llvm_dir')
-  check_clean(force)
+  llvm_dir = parse_args(default_llvm_dir, 'llvm_dir')
   upstream_root = os.path.join(llvm_dir, 'libunwind')
   upstream_src = os.path.join(upstream_root, 'src')
   upstream_inc = os.path.join(upstream_root, 'include')
