@@ -38,6 +38,8 @@ See docs/process.md for more on how version tagging works.
 - `-fcoverage-mapping` is currently broken due to a mismatch between the version
   of LLVM used and the imported version of compiler-rt.  We hope to fix this
   in the next release. (#27261)
+- The default value for `GROWABLE_ARRAYBUFFERS` was reverted to `0` since we
+  found issues with Web API compatibility. (#27260)
 
 6.0.2 - 07/01/26
 ----------------

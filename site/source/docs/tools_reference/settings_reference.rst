@@ -3435,13 +3435,13 @@ GROWABLE_ARRAYBUFFERS
 Enable support for growable views of Wasm memory. This is a recent Web
 platform feature that can make growing the Wasm memory more efficient,
 especially in multi-threaded builds.
-The default setting of 1 will auto-detect the presence of this API and use
+Setting this to 1 will auto-detect the presence of this API and use
 it when available.
 Setting this to 2 will unconditionally require it. This is the only way
 to completely remove the overhead of growable memory + pthreads.
 This settings does nothing unless ALLOW_MEMORY_GROWTH is set.
 
-Default value: 1
+Default value: 0
 
 .. _cross_origin:
 
