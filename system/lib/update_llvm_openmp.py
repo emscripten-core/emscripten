@@ -18,6 +18,7 @@ default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project'
 local_root = os.path.join(script_dir, 'llvm-openmp')
 local_src = os.path.join(local_root, 'src')
 local_inc = os.path.join(local_root, 'include')
+local_prebuilt = os.path.join(local_root, 'prebuilt')
 
 # Files to ignore during copy_tree
 excludes = [
@@ -77,6 +78,7 @@ def main():
   clean_dir(local_root)
   os.mkdir(local_src)
   os.mkdir(local_inc)
+  os.mkdir(local_prebuilt)
 
   # Update source
   copy_tree(upstream_runtime_root, local_src)
@@ -120,7 +122,7 @@ def main():
   # Update generated header files
   built_files = ['kmp_config.h', 'kmp_i18n_id.inc',  'kmp_i18n_default.inc']
   for file in built_files:
-    shutil.copy2(os.path.join(upstream_build_src, file), local_src)
+    shutil.copy2(os.path.join(upstream_build_src, file), local_prebuilt)
 
 
 if __name__ == '__main__':

@@ -2310,6 +2310,7 @@ class libllvmopenmp(Library):
     'system/lib/llvm-openmp/src',
     'system/lib/llvm-openmp/src/i18n',
     'system/lib/llvm-openmp/src/thirdparty/ittnotify',
+    'system/lib/llvm-openmp/prebuilt',
   ]
   # This needs to come from the flags. If it does not, llvm won't add proper magic symbols
   never_force = True
