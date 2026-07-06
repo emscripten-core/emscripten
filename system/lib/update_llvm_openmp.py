@@ -17,6 +17,7 @@ default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project'
 # system/lib/llvm-openmp (to be updated)
 local_root = os.path.join(script_dir, 'llvm-openmp')
 local_src = os.path.join(local_root, 'src')
+local_include = os.path.join(local_root, 'include')
 local_prebuilt = os.path.join(local_root, 'prebuilt')
 
 # Files to ignore during copy_tree
@@ -74,6 +75,7 @@ def main():
   # Remove old version
   clean_dir(local_root)
   os.mkdir(local_src)
+  os.mkdir(local_include)
   os.mkdir(local_prebuilt)
 
   # Update source
@@ -109,8 +111,13 @@ def main():
   # Update license file
   shutil.copy2(os.path.join(upstream_root, 'LICENSE.TXT'), local_root)
 
+  # Update include headers
+  header_files = ['omp.h', 'ompx.h']
+  for file in header_files:
+    shutil.copy2(os.path.join(upstream_build_src, file), local_include)
+
   # Update generated header files
-  built_files = ['omp.h', 'ompx.h', 'kmp_config.h', 'kmp_i18n_id.inc',  'kmp_i18n_default.inc']
+  built_files = ['kmp_config.h', 'kmp_i18n_id.inc',  'kmp_i18n_default.inc']
   for file in built_files:
     shutil.copy2(os.path.join(upstream_build_src, file), local_prebuilt)
 
