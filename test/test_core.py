@@ -9880,6 +9880,7 @@ int main() {
 
     self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
 
+  @disabled('https://github.com/emscripten-core/emscripten/issues/27223')
   @no_esm_integration('fcoverage is not compatible with WASM_ESM_INTEGRATION')
   @no_wasm2js('wasm binary required to produce code coverage results with llvm-cov')
   def test_fcoverage_mapping(self):
