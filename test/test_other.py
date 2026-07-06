@@ -10609,8 +10609,8 @@ _d
     self.assertContained('   DOS_ReadFile(unsigned short', proc.stderr)
     self.assertContained('Try using a response file', proc.stderr)
 
+  @disabled('Expected error message needs updating after the Binaryen roll')
   def test_asyncify_response_file(self):
-    self.skipTest('Expected error message needs updating after the Binaryen roll')
     create_file('a.txt', r'''[
   "DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)"
 ]
@@ -15525,8 +15525,8 @@ addToLibrary({
     self.do_runf('main.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '--post-js=post.js'])
 
   @crossplatform
+  @disabled('Needs updates after Binaryen roll changes function name escaping')
   def test_empath_split(self):
-    self.skipTest('Needs updates after Binaryen roll changes function name escaping')
     create_file('main.cpp', r'''
       #include <iostream>
       void foo();
