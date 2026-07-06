@@ -122,6 +122,13 @@ var LibraryPThread = {
 #if ASSERTIONS
     nextWorkerID: 1,
 #endif
+#if TRUSTED_TYPES
+    // Cached Trusted Types policies for pthread Worker creation. Per the
+    // Trusted Types spec, createPolicy() with the same name throws on the
+    // second call unless CSP uses 'allow-duplicates'.
+    trustedWorkerPolicy1: null,
+    trustedWorkerPolicy2: null,
+#endif
     init() {
       if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
         PThread.initMainThread();
@@ -482,8 +489,8 @@ var LibraryPThread = {
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
       if (globalThis.trustedTypes?.createPolicy) {
-        var p = trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (ignored) => new URL('{{{ pthreadWorkerScript }}}', import.meta.url) });
-        worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
+        PThread.trustedWorkerPolicy1 ??= trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (url) => url });
+        worker = new Worker(PThread.trustedWorkerPolicy1.createScriptURL(new URL('{{{ pthreadWorkerScript }}}', import.meta.url)), {{{ pthreadWorkerOptions }}});
       } else
 #endif
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
@@ -539,8 +546,8 @@ var LibraryPThread = {
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
       if (globalThis.trustedTypes?.createPolicy) {
-        var p = trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (ignored) => pthreadMainJs });
-        worker = new Worker(p.createScriptURL('ignored'), {{{ pthreadWorkerOptions }}});
+        PThread.trustedWorkerPolicy2 ??= trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (url) => url });
+        worker = new Worker(PThread.trustedWorkerPolicy2.createScriptURL(pthreadMainJs), {{{ pthreadWorkerOptions }}});
       } else
 #endif
       worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});

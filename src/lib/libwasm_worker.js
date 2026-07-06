@@ -63,6 +63,10 @@
 
 addToLibrary({
   $_wasmWorkers: {},
+#if TRUSTED_TYPES
+  // Cached Trusted Types policy for Wasm Worker creation.
+  $_emscriptenWasmWorkerPolicy: 'null',
+#endif
 
   // Starting up a Wasm Worker is an asynchronous operation, hence if the parent
   // thread performs any postMessage()-based wasm function calls to the
@@ -194,10 +198,9 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #if TRUSTED_TYPES
     // Use Trusted Types compatible wrappers.
     if (globalThis.trustedTypes?.createPolicy) {
-      var p = trustedTypes.createPolicy(
-          'emscripten#workerPolicy1', { createScriptURL: (ignored) => {{{ wasmWorkerJs }}}}
-      );
-      worker = _wasmWorkers[wwID] = new Worker(p.createScriptURL('ignored'), {{{ wasmWorkerOptions }}});
+      _emscriptenWasmWorkerPolicy ??= trustedTypes.createPolicy(
+          'emscripten#workerPolicy1', { createScriptURL: (url) => url });
+      worker = _wasmWorkers[wwID] = new Worker(_emscriptenWasmWorkerPolicy.createScriptURL({{{ wasmWorkerJs }}}), {{{ wasmWorkerOptions }}});
     } else
 #endif
     worker = _wasmWorkers[wwID] = new Worker({{{ wasmWorkerJs }}}, {{{ wasmWorkerOptions }}});
