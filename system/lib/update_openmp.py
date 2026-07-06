@@ -115,7 +115,7 @@ def main():
   shutil.copy2(os.path.join(upstream_root, 'LICENSE.TXT'), local_root)
 
   # Update generated header files
-  built_files = ['omp.h', 'kmp_config.h', 'kmp_i18n_id.inc',  'kmp_i18n_default.inc']
+  built_files = ['kmp_config.h', 'kmp_i18n_id.inc',  'kmp_i18n_default.inc']
   for file in built_files:
     shutil.copy2(os.path.join(upstream_build_src, file), local_src)
 
