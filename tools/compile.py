@@ -87,8 +87,8 @@ def get_clang_flags(user_args):
     # so modifying bitcode files independently in a whole-program way can only
     # be done if we process the whole program as one, not separate files as in
     # thinlto.
-    #if not dylink_supported and settings.LTO == 'full':
-    #  flags += ['-fwhole-program-vtables']
+    if not dylink_supported and settings.LTO == 'full':
+      flags += ['-fwhole-program-vtables']
 
   else:
     # In LTO mode these args get passed instead at link time when the backend runs.
