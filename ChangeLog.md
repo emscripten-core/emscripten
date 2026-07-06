@@ -35,6 +35,9 @@ See docs/process.md for more on how version tagging works.
   `poll(stream)` returning the current readiness mask; out-of-tree custom FS
   backends with a `poll` handler must update. (#27226)
 - compiler-rt and libunwind were updated to LLVM 22.1.8. (#27245, #27246)
+- `-fcoverage-mapping` is currently broken due to a mismatch between the version
+  of LLVM used and the imported version of compiler-rt.  We hope to fix this
+  in the next release. (#27261)
 
 6.0.2 - 07/01/26
 ----------------
