@@ -64,13 +64,14 @@ def main():
   install_dir = os.path.join(output_dir, 'install_openmp')
 
   # LLVM/OpenMP folder containing latest version
+  upstream_runtimes = os.path.join(llvm_dir, 'runtimes/')
   upstream_root = os.path.join(llvm_dir, 'openmp/')
   upstream_runtime_root = os.path.join(upstream_root, 'runtime/src')
   assert os.path.exists(upstream_runtime_root)
 
   # Build and install output paths
   upstream_inc = os.path.join(install_dir, 'include') # contains omp.h and ompx.h
-  upstream_build_src = os.path.join(build_dir, 'runtime/src') # contains various *.a and generated *.h
+  upstream_build_src = os.path.join(build_dir, 'openmp/runtime/src') # contains various *.a and generated *.h
 
   # Remove old version
   clean_dir(local_root)
@@ -86,12 +87,14 @@ def main():
       'emcmake',
       'cmake',
       '-S',
-      f'{upstream_root}',
+      f'{upstream_runtimes}',
       '-B',
       f'{build_dir}',
       '-G',
       'Ninja',
-      '-DOPENMP_STANDALONE_BUILD=ON',
+      '-DLLVM_ENABLE_RUNTIMES=openmp',
+      f'-DLLVM_BINARY_DIR={os.environ.get("LLVM_ROOT", "")}',
+      '-DLLVM_DEFAULT_TARGET_TRIPLE=wasm32-unknown-emscripten',
       '-DOPENMP_ENABLE_LIBOMPTARGET=OFF',
       '-DLIBOMP_HAVE_OMPT_SUPPORT=OFF',
       '-DLIBOMP_OMPT_SUPPORT=OFF',

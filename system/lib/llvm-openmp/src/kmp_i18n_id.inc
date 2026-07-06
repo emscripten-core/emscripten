@@ -411,6 +411,8 @@ enum kmp_i18n_id {
     kmp_i18n_msg_TargetMemNotAvailable,
     kmp_i18n_msg_AffIgnoringNonHybrid,
     kmp_i18n_msg_AffIgnoringNotAvailable,
+    kmp_i18n_msg_SetNumTeamsInParOrTeamsRegion,
+    kmp_i18n_msg_SetTeamsThreadLimitInParOrTeamsRegion,
     kmp_i18n_msg_last,
 
     // Set #5, hints.

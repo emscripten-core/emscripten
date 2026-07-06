@@ -95,10 +95,10 @@ void __kmp_get_hierarchy(kmp_uint32 nproc, kmp_bstate_t *thr_bar) {
   thr_bar->skip_per_level = machine_hierarchy.skipPerLevel;
 }
 
-[[maybe_unused]] static int nCoresPerPkg, nPackages;
-[[maybe_unused]] static int __kmp_nThreadsPerCore;
+static int nCoresPerPkg, nPackages;
+static int __kmp_nThreadsPerCore;
 #ifndef KMP_DFLT_NTH_CORES
-[[maybe_unused]] static int __kmp_ncores;
+static int __kmp_ncores;
 #endif
 
 const char *__kmp_hw_get_catalog_string(kmp_hw_t type, bool plural) {

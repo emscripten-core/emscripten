@@ -417,6 +417,8 @@ __kmp_i18n_default_messages[] =
         "Target memory not available, will use default allocator.",
         "%1$s ignored: This machine is not a hybrid architecutre. Using \"%2$s\" instead.",
         "%1$s ignored: %2$s is not available. Using \"%3$s\" instead.",
+        "%1$s() called inside a parallel or teams region; call ignored.",
+        "%1$s() called inside a parallel or teams region; call ignored.",
         NULL
     };
 
@@ -469,7 +471,7 @@ __kmp_i18n_sections[] =
         { 5, __kmp_i18n_default_meta },
         { 79, __kmp_i18n_default_strings },
         { 6, __kmp_i18n_default_formats },
-        { 301, __kmp_i18n_default_messages },
+        { 303, __kmp_i18n_default_messages },
         { 29, __kmp_i18n_default_hints },
         { 0, NULL }
     };
