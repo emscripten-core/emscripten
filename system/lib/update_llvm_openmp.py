@@ -93,7 +93,6 @@ def main():
       '-G',
       'Ninja',
       '-DLLVM_ENABLE_RUNTIMES=openmp',
-      f'-DLLVM_BINARY_DIR={os.environ.get("LLVM_ROOT", "")}',
       '-DLLVM_DEFAULT_TARGET_TRIPLE=wasm32-unknown-emscripten',
       '-DOPENMP_ENABLE_LIBOMPTARGET=OFF',
       '-DLIBOMP_HAVE_OMPT_SUPPORT=OFF',
