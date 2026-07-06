@@ -17,7 +17,6 @@ default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project'
 # system/lib/llvm-openmp (to be updated)
 local_root = os.path.join(script_dir, 'llvm-openmp')
 local_src = os.path.join(local_root, 'src')
-local_inc = os.path.join(local_root, 'include')
 local_prebuilt = os.path.join(local_root, 'prebuilt')
 
 # Files to ignore during copy_tree
@@ -59,10 +58,9 @@ def main():
   else:
     llvm_dir = default_llvm_dir
 
-  # Output directory for build and install
+  # Output directory for build
   output_dir = os.path.join(emscripten_root, 'out')
   build_dir = os.path.join(output_dir, 'build_openmp')
-  install_dir = os.path.join(output_dir, 'install_openmp')
 
   # LLVM/OpenMP folder containing latest version
   upstream_runtimes = os.path.join(llvm_dir, 'runtimes/')
@@ -70,14 +68,12 @@ def main():
   upstream_runtime_root = os.path.join(upstream_root, 'runtime/src')
   assert os.path.exists(upstream_runtime_root)
 
-  # Build and install output paths
-  upstream_inc = os.path.join(install_dir, 'include') # contains omp.h and ompx.h
+  # Build output paths
   upstream_build_src = os.path.join(build_dir, 'openmp/runtime/src') # contains various *.a and generated *.h
 
   # Remove old version
   clean_dir(local_root)
   os.mkdir(local_src)
-  os.mkdir(local_inc)
   os.mkdir(local_prebuilt)
 
   # Update source
@@ -106,21 +102,15 @@ def main():
       '-DLIBOMP_ENABLE_SHARED=OFF',
       '-DLIBOMP_ARCH=wasm32',
       '-DOPENMP_ENABLE_LIBOMPTARGET_PROFILING=OFF',
-      f'-DCMAKE_INSTALL_PREFIX={install_dir}',
     ]
   )
   subprocess.run(['cmake', '--build', '.'], cwd=build_dir)
-  subprocess.run(['cmake', '--install', '.'], cwd=build_dir)
-
-  # Update includes
-  assert os.path.exists(upstream_inc)
-  copy_tree(upstream_inc, local_inc)
 
   # Update license file
   shutil.copy2(os.path.join(upstream_root, 'LICENSE.TXT'), local_root)
 
   # Update generated header files
-  built_files = ['kmp_config.h', 'kmp_i18n_id.inc',  'kmp_i18n_default.inc']
+  built_files = ['omp.h', 'ompx.h', 'kmp_config.h', 'kmp_i18n_id.inc',  'kmp_i18n_default.inc']
   for file in built_files:
     shutil.copy2(os.path.join(upstream_build_src, file), local_prebuilt)
 
