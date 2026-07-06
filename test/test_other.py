@@ -1564,6 +1564,90 @@ int f() {
     self.run_process([EMCC, 'out.o'])
     self.assertContained('Hello', self.run_js('a.out.js'))
 
+  # Test that when we link object files in different LTO ways, the combined
+  # program still works. E.g. one file with thin LTO and another with full.
+  @parameterized({
+    'none': ([],),
+    'thin': (['-flto=thin'],),
+    'full': (['-flto'],),
+  })
+  @parameterized({
+    'none': ([],),
+    'thin': (['-flto=thin'],),
+    'full': (['-flto'],),
+  })
+  @parameterized({
+    'none': ([],),
+    'thin': (['-flto=thin'],),
+    'full': (['-flto'],),
+  })
+  def test_mix_lto(self, first_args, second_args, link_args):
+    # In the test name, we want to have |first, second, link|, but the other of
+    # parameterized applications is reversed, so flip it here.
+    first_args, link_args = link_args, first_args
+    print(first_args, second_args, link_args)
+
+    create_file('shared.hpp', r'''
+      struct Classey {
+        virtual void doIt() = 0;
+        virtual ~Classey() = default;
+      };
+
+      struct D1 : Classey {
+        virtual void doIt();
+      };
+
+      struct D2 : Classey {
+        virtual void doIt();
+      };
+    ''')
+
+    create_file('first.cpp', r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      #include "shared.hpp"
+
+      void D1::doIt() { printf("D1\n"); }
+    ''')
+
+    create_file('second.cpp', r'''
+      #include <stdio.h>
+      #include <emscripten.h>
+      #include "shared.hpp"
+
+      void D2::doIt() { printf("D2\n"); }
+
+      int main(int argc, char **argv) {
+        // Use argv to avoid simple optimizations removing this code: it looks
+        // like more than one class can be used here.
+        Classey *p;
+        // The condition is true: D1.
+        p = argc != 100 ? (Classey*)new D1() : (Classey*)new D2();
+        p->doIt();
+        delete p;
+
+        // The condition is false: D2.
+        p = argc == 101 ? (Classey*)new D1() : (Classey*)new D2();
+        p->doIt();
+        delete p;
+      }
+    ''')
+
+    self.run_process([EMCC, 'first.cpp', '-c', '-o', 'first.o'] + first_args)
+    self.run_process([EMCC, 'second.cpp', '-c', '-o', 'second.o'] + second_args)
+    link_cmd = [EMCC, 'first.o', 'second.o'] + link_args
+
+    # Compiling with thin LTO and linking with full will error in LLVM as an
+    # unsupported mode.
+    compile_args = first_args + second_args
+    if link_args == ['-flto'] and '-flto=thin' in compile_args:
+      expected = 'wasm-ld: error: inconsistent LTO Unit splitting'
+      self.assert_fail(link_cmd, expected)
+      return
+
+    self.run_process(link_cmd)
+    self.assertContained('D1\nD2\n', self.run_js('a.out.js'))
+
   # We deliberately ignore duplicate input files in order to allow
   # "libA.so" on the command line twice. This is not really .so support
   # and the .so files are really object files.

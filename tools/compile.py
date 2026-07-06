@@ -53,7 +53,11 @@ def get_clang_flags(user_args):
   if (settings.MAIN_MODULE or settings.SIDE_MODULE) and '-fPIC' not in user_args:
     flags.append('-fPIC')
 
-  if settings.MAIN_MODULE or settings.SIDE_MODULE or settings.LINKABLE or '-fPIC' in user_args:
+  # Whether this compile command is emitting something that may be used in a
+  # dynamic linking context.
+  dylink_supported = settings.MAIN_MODULE or settings.SIDE_MODULE or settings.LINKABLE or '-fPIC' in user_args
+
+  if dylink_supported:
     if not any(a.startswith('-fvisibility') for a in user_args):
       # For relocatable code we default to visibility=default in emscripten even
       # though the upstream backend defaults visibility=hidden.  This matches the
@@ -71,6 +75,20 @@ def get_clang_flags(user_args):
     # enabled so that it can be added to the attributes in LLVM IR.
     if settings.SUPPORT_LONGJMP == 'wasm':
       flags.append('-mexception-handling')
+
+    # If this code will be used in a whole-program link (no dynamically-linked
+    # code is relevant) then informing clang of that can help devirtualization.
+    # We can only do this in full LTO, however: in thinlto, LLVM does not keep
+    # enough signature information in bitcode files. Specifically, in full LTO
+    # LLVM links all the bitcode files, then does processing, while in thinlto
+    # there are separate bitcode files which are processed independently for
+    # things like function signatures (LowerTypeTests etc.). The wasm target has
+    # typed function symbol tables (the type must be right, for calls to work),
+    # so modifying bitcode files independently in a whole-program way can only
+    # be done if we process the whole program as one, not separate files as in
+    # thinlto.
+    if not dylink_supported and settings.LTO == 'full':
+      flags += ['-fwhole-program-vtables']
 
   else:
     # In LTO mode these args get passed instead at link time when the backend runs.

@@ -35,6 +35,10 @@ See docs/process.md for more on how version tagging works.
   `poll(stream)` returning the current readiness mask; out-of-tree custom FS
   backends with a `poll` handler must update. (#27226)
 - compiler-rt and libunwind were updated to LLVM 22.1.8. (#27245, #27246)
+- Use `-fwhole-program-vtables` with clang when possible, automatically (in
+  `-flto` builds without dynamic linking). This should allow better
+  devirtualization (but may in theory uncover LLVM LTO bugs). This only runs in
+  full LTO, not thin (`-flto=thin`). (#21825)
 
 6.0.2 - 07/01/26
 ----------------
