@@ -2616,6 +2616,10 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_destroy_context.c', cflags=args + ['--shell-file', test_file('browser/webgl_destroy_context_shell.html'), '-lGL'])
 
   @requires_graphics_hardware
+  def test_html5_webgl_context_lost_pthread(self):
+    self.btest_exit('webgl_context_lost_pthread.c', cflags=['-pthread', '-lGL', '-sASSERTIONS', '--shell-file', test_file('browser/webgl_destroy_context_shell.html')])
+
+  @requires_graphics_hardware
   def test_webgl_context_params(self):
     self.btest_exit('webgl_color_buffer_readpixels.c', cflags=['-lGL'])
 
