@@ -40,6 +40,10 @@ See docs/process.md for more on how version tagging works.
   in the next release. (#27261)
 - The default value for `GROWABLE_ARRAYBUFFERS` was reverted to `0` since we
   found issues with Web API compatibility. (#27260)
+- Fixed `-sWASM_ESM_INTEGRATION` builds at `-O2` and above, which previously
+  failed in the JS optimizer's metadce (dead code elimination) pass. metadce now
+  understands the native ES import/export wasm boundary that this mode emits.
+  (#27217)
 
 6.0.2 - 07/01/26
 ----------------
@@ -75,10 +79,6 @@ See docs/process.md for more on how version tagging works.
   - wasmBinary
   Anybody using these will see a clear error in their debug builds signaling
   that they now need to be explicitly added to `-sINCOMING_MODULE_JS_API`.
-- Fixed `-sWASM_ESM_INTEGRATION` builds at `-O2` and above, which previously
-  failed in the JS optimizer's metadce (dead code elimination) pass. metadce now
-  understands the native ES import/export wasm boundary that this mode emits.
-  (#27217)
 
 6.0.1 - 06/22/26
 ----------------
