@@ -441,7 +441,7 @@ function getWasmImportsValue(node) {
 // Under WASM_ESM_INTEGRATION the wasm exports are received as a native ES
 // import from the wasm module itself:
 //   import { malloc as _malloc, memory } from './a.out.wasm';
-function isWasmExportsImport(node) {
+function isImportFromWasm(node) {
   return (
     node.type === 'ImportDeclaration' &&
     isLiteralString(node.source) &&
@@ -513,7 +513,7 @@ function applyImportAndExportNameChanges(ast) {
       if (mapping[name]) {
         setLiteralValue(prop, mapping[name]);
       }
-    } else if (isWasmExportsImport(node)) {
+    } else if (isImportFromWasm(node)) {
       // WASM_ESM_INTEGRATION: rename the wasm-facing name of each received
       // export, e.g. `import { malloc as _malloc }` -> `import { a as _malloc }`.
       // Replace the imported slot (rather than mutate it in place) since for an
@@ -695,7 +695,7 @@ function emitDCEGraph(ast) {
         });
         foundWasmImportsAssign = true;
         emptyOut(node); // ignore this in the second pass; this does not root
-      } else if (isWasmExportsImport(node)) {
+      } else if (isImportFromWasm(node)) {
         // WASM_ESM_INTEGRATION: wasm exports received as
         //   import { malloc as _malloc, memory } from './a.out.wasm';
         // Each binding is a wasm export, exactly like `var _x = wasmExports['x']`.
@@ -983,7 +983,7 @@ function applyDCEGraphRemovals(ast) {
         }
         return true;
       });
-    } else if (isWasmExportsImport(node)) {
+    } else if (isImportFromWasm(node)) {
       // WASM_ESM_INTEGRATION: drop unused wasm exports from
       //   import { malloc as _malloc, .. } from './a.out.wasm';
       node.specifiers = node.specifiers.filter((spec) => {
