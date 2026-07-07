@@ -111,6 +111,12 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_ISDIR;
   }
 
+  // A file opened for reading only (O_RDONLY) cannot be written. POSIX write(2)
+  // returns EBADF when the file descriptor is not open for writing.
+  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_RDONLY) {
+    return __WASI_ERRNO_BADF;
+  }
+
   auto lockedFile = file->locked();
 
   if (setOffset == OffsetHandling::OpenFileState) {
@@ -125,12 +131,6 @@ static __wasi_errno_t writeAtOffset(OffsetHandling setOffset,
     } else {
       offset = lockedOpenFile.getPosition();
     }
-  }
-
-  // A file opened for reading only (O_RDONLY) cannot be written. POSIX write(2)
-  // returns EBADF when the file descriptor is not open for writing.
-  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_RDONLY) {
-    return __WASI_ERRNO_BADF;
   }
 
   size_t bytesWritten = 0;
@@ -201,17 +201,17 @@ static __wasi_errno_t readAtOffset(OffsetHandling setOffset,
     return __WASI_ERRNO_INVAL;
   }
 
-  // A file opened for writing only (O_WRONLY) cannot be read. POSIX read(2)
-  // returns EBADF when the file descriptor is not open for reading.
-  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
-    return __WASI_ERRNO_BADF;
-  }
-
   auto file = lockedOpenFile.getFile()->dynCast<DataFile>();
 
   // If file is nullptr, then the file was not a DataFile.
   if (!file) {
     return __WASI_ERRNO_ISDIR;
+  }
+
+  // A file opened for writing only (O_WRONLY) cannot be read. POSIX read(2)
+  // returns EBADF when the file descriptor is not open for reading.
+  if ((lockedOpenFile.getFlags() & O_ACCMODE) == O_WRONLY) {
+    return __WASI_ERRNO_BADF;
   }
 
   auto lockedFile = file->locked();
@@ -577,7 +577,8 @@ static __wasi_fd_t doOpen(path::ParsedParent parsed,
 int wasmfs_create_file(const char* pathname, mode_t mode, backend_t backend) {
   static_assert(std::is_same_v<decltype(doOpen(0, 0, 0, 0)), unsigned int>,
                 "unexpected conversion from result of doOpen to int");
-  return doOpen(path::parseParent(pathname), O_CREAT | O_EXCL, mode, backend);
+  return doOpen(
+    path::parseParent(pathname), O_CREAT | O_EXCL | O_RDWR, mode, backend);
 }
 
 // TODO: Test this with non-AT_FDCWD values.
