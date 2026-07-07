@@ -2403,7 +2403,6 @@ Functions
 .. |callback-function-parameter-doc| replace:: A callback function. The function is called with the type of event, information about the event, and user data passed from this registration function. The callback should return ``true`` if the event is consumed.
 
 .. _gamepad: http://www.w3.org/TR/gamepad/#gamepad-interface
-.. _webgl_context: http://www.khronos.org/registry/webgl/specs/latest/1.0/#5.15.2
 
 Animation and Timing
 ====================
