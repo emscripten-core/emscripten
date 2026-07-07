@@ -14102,6 +14102,27 @@ int main() {
                  cflags=['-O1', '--profiling-funcs'],
                  assert_returncode=NON_ZERO)
 
+  @also_with_wasm64
+  @parameterized({
+    '': ([],),
+    'no_stack_first': (['-Wl,--no-stack-first'],),
+  })
+  def test_stack_cookie_curruption(self, args):
+    create_file('test.c', r'''
+      #include <emscripten/stack.h>
+      #include <stdint.h>
+
+      int main() {
+        uint32_t *stack_end = (uint32_t *)emscripten_stack_get_end();
+        if (stack_end == 0) stack_end++;
+        stack_end[0] = 0xfffffff0;
+        stack_end[1] = 0xaaaaaaa0;
+        return 0;
+      }
+    ''')
+    expected = 'Stack overflow! Stack cookie has been overwritten at 0x[a-f0-9]*, expected hex dwords 0x89bacdfe and 0x02135467, but received 0xaaaaaaa0 0xfffffff0'
+    self.do_runf('test.c', expected, regex=True, cflags=args + ['-sSTACK_OVERFLOW_CHECK=1'], assert_returncode=NON_ZERO)
+
   @crossplatform
   def test_reproduce(self):
     ensure_dir('tmp')
