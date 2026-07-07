@@ -5,7 +5,7 @@
  * found in the LICENSE file.
  */
 
-// Verify that the kernel enforces the open file access mode on read/write, as
+// Verify that the file system enforces the open file access mode on read/write, as
 // POSIX requires: writing to an O_RDONLY descriptor and reading from an
 // O_WRONLY descriptor must fail with EBADF. This should behave identically
 // across all of our filesystems (MEMFS, WASMFS, NODEFS, NODERAWFS).
