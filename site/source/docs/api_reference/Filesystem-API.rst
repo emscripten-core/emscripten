@@ -4,30 +4,56 @@
 File System API
 ===============
 
-File operations in Emscripten are provided by the `FS <https://github.com/emscripten-core/emscripten/blob/main/src/library_fs.js>`_ library. It is used internally for all of Emscripten's **libc** and **libcxx** file I/O.
+File operations in Emscripten are provided by the `FS
+<https://github.com/emscripten-core/emscripten/blob/main/src/library_fs.js>`_
+library. It is used internally for all of Emscripten's **libc** and **libcxx**
+file I/O.
 
-.. note:: The API is *inspired* by the Linux/POSIX `File System API <http://linux.die.net/man/2/>`_, with each presenting a very similar interface.
+.. note:: The API is *inspired* by the Linux/POSIX `File System API
+   <http://linux.die.net/man/2/>`_, with each presenting a very similar
+   interface.
 
-  The underlying behaviour is also similar, except where differences between the
-  native and browser environments make this unreasonable. For example, user and
-  group permissions are defined but ignored in :js:func:`FS.open`.
+   The underlying behaviour is also similar, except where differences between the
+   native and browser environments make this unreasonable. For example, user and
+   group permissions are defined but ignored in :js:func:`FS.open`.
 
-Emscripten predominantly compiles code that uses synchronous file I/O, so the majority of the ``FS`` member functions offer a synchronous interface (with errors being reported by raising exceptions of type `FS.ErrnoError <https://github.com/emscripten-core/emscripten/blob/main/system/lib/libc/musl/arch/emscripten/bits/errno.h>`_).
+Emscripten predominantly compiles code that uses synchronous file I/O, so the
+majority of the ``FS`` member functions offer a synchronous interface (with
+errors being reported by raising exceptions of type `FS.ErrnoError
+<https://github.com/emscripten-core/emscripten/blob/main/system/lib/libc/musl/arch/emscripten/bits/errno.h>`_).
 
-File data in Emscripten is partitioned by mounted file systems. Several file systems are provided. An instance of :ref:`MEMFS <filesystem-api-memfs>` is mounted to ``/`` by default. The subdirectories `/home/web_user` and `/tmp` are also created automatically, in addition to several other special devices and streams (e.g. `/dev/null`, `/dev/random`, `/dev/stdin`, `/proc/self/fd`); see `FS.staticInit()` in the FS library for full details. Instances of :ref:`NODEFS <filesystem-api-nodefs>` and :ref:`IDBFS <filesystem-api-idbfs>` can be mounted to other directories if your application needs to :ref:`persist data <filesystem-api-persist-data>`.
+File data in Emscripten is partitioned by mounted file systems. Several file
+systems are provided. An instance of :ref:`MEMFS <filesystem-api-memfs>` is
+mounted to ``/`` by default. The subdirectories `/home/web_user` and `/tmp` are
+also created automatically, in addition to several other special devices and
+streams (e.g. `/dev/null`, `/dev/random`, `/dev/stdin`, `/proc/self/fd`); see
+`FS.staticInit()` in the FS library for full details. Instances of :ref:`NODEFS
+<filesystem-api-nodefs>` and :ref:`IDBFS <filesystem-api-idbfs>` can be mounted
+to other directories if your application needs to :ref:`persist data
+<filesystem-api-persist-data>`.
 
-The automatic tests in `test/test_core.py <https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4285>`_ (search for ``test_files``) contain many examples of how to use this API. The :ref:`tutorial <tutorial-files>` also shows how to pre-load a file so that it can be read from compiled C/C++.
+The automatic tests in `test/test_core.py
+<https://github.com/emscripten-core/emscripten/blob/1.29.12/tests/test_core.py#L4285>`_
+(search for ``test_files``) contain many examples of how to use this API. The
+:ref:`tutorial <tutorial-files>` also shows how to pre-load a file so that it
+can be read from compiled C/C++.
 
-A high level overview of the way File Systems work in Emscripten-ported code is provided in the :ref:`file-system-overview`.
+A high level overview of the way File Systems work in Emscripten-ported code is
+provided in the :ref:`file-system-overview`.
 
 New File System: WasmFS
 =======================
 
 .. note:: Current Status: Stable, but not yet feature-complete with the old FS.
 
-WasmFS is a high-performance, fully-multithreaded, WebAssembly-based file system layer for Emscripten that will replace the existing JavaScript version.
+WasmFS is a high-performance, fully-multithreaded, WebAssembly-based file system
+layer for Emscripten that will replace the existing JavaScript version.
 
-The JavaScript-based file system was originally written before pthreads were supported and when it was more optimal to write code in JS. As a result it has overhead in pthreads builds because we must proxy to the main thread where all filesystem operations are done. WasmFS, instead, is compiled to Wasm and has full multithreading support. It also aims to be more modular and extensible.
+The JavaScript-based file system was originally written before pthreads were
+supported and when it was more optimal to write code in JS. As a result it has
+overhead in pthreads builds because we must proxy to the main thread where all
+filesystem operations are done. WasmFS, instead, is compiled to Wasm and has
+full multithreading support. It also aims to be more modular and extensible.
 
 `Design Doc Link <https://docs.google.com/document/d/1-ZxybGvz0nCqygUDuWxCcCBhCebev3EbUSYoSOlc49Q/edit?usp=sharing>`_
 
@@ -50,11 +76,25 @@ Differences you may notice with the original JS filesystem include:
 Including File System Support
 =============================
 
-Emscripten decides whether to include file system support automatically. Many programs don't need files, and file system support is not negligible in size, so Emscripten avoids including it when it doesn't see a reason to. That means that if your C/C++ code does not access files, then  the ``FS`` object and other file system APIs will not be included in the output. And, on the other hand, if your C/C++ code does use files, then file system support will be automatically included. So normally things will "just work" and you don't need to think about this at all.
+Emscripten decides whether to include file system support automatically. Many
+programs don't need files, and file system support is not negligible in size, so
+Emscripten avoids including it when it doesn't see a reason to. That means that
+if your C/C++ code does not access files, then  the ``FS`` object and other file
+system APIs will not be included in the output. And, on the other hand, if your
+C/C++ code does use files, then file system support will be automatically
+included. So normally things will "just work" and you don't need to think about
+this at all.
 
-However, if your C/C++ code doesn't use files, but you want to use them from JavaScript, then you can build with ``-sFORCE_FILESYSTEM``, which will make the compiler include file system support even though it doesn't see it being used.
+However, if your C/C++ code doesn't use files, but you want to use them from
+JavaScript, then you can build with ``-sFORCE_FILESYSTEM``, which will make the
+compiler include file system support even though it doesn't see it being used.
 
-On the other hand, if you want to **not** include any filesystem support code (which may be included even due to printf or iostreams, due to how musl and libc++ are structured), you can build with ``-sFILESYSTEM=0``. Very simple stdout support will be included if necessary in such a case, enough for printf and such to work, but no filesystem code will be added, which can save a significant amount of code size.
+On the other hand, if you want to **not** include any filesystem support code
+(which may be included even due to printf or iostreams, due to how musl and
+libc++ are structured), you can build with ``-sFILESYSTEM=0``. Very simple
+stdout support will be included if necessary in such a case, enough for printf
+and such to work, but no filesystem code will be added, which can save a
+significant amount of code size.
 
 
 .. _filesystem-api-persist-data:
@@ -62,23 +102,35 @@ On the other hand, if you want to **not** include any filesystem support code (w
 Persistent data
 ===============
 
-Applications compiled with Emscripten usually expect synchronous I/O, so Emscripten itself provides file systems with completely synchronous interfaces.
+Applications compiled with Emscripten usually expect synchronous I/O, so
+Emscripten itself provides file systems with completely synchronous interfaces.
 
-However, due to JavaScript's event-driven nature, most *persistent* storage options offer only asynchronous interfaces. Emscripten offers :ref:`multiple file systems <filesystem-api-filesystems>` that can be mounted with :js:func:`FS.mount` to help deal with persistence depending on the execution context.
+However, due to JavaScript's event-driven nature, most *persistent* storage
+options offer only asynchronous interfaces. Emscripten offers :ref:`multiple
+file systems <filesystem-api-filesystems>` that can be mounted with
+:js:func:`FS.mount` to help deal with persistence depending on the execution
+context.
 
 .. _filesystem-api-filesystems:
 
 File systems
 ============
 
-.. note:: Only the :ref:`MEMFS <filesystem-api-memfs>` filesystem is included by default. All others must be enabled explicitly, using ``-lnodefs.js`` (:ref:`NODEFS <filesystem-api-nodefs>`), ``-lidbfs.js`` (:ref:`IDBFS <filesystem-api-idbfs>`), ``-lworkerfs.js`` (:ref:`WORKERFS <filesystem-api-workerfs>`), or ``-lproxyfs.js`` (:ref:`PROXYFS <filesystem-api-proxyfs>`).
+.. note:: Only the :ref:`MEMFS <filesystem-api-memfs>` filesystem is included by
+   default. All others must be enabled explicitly, using ``-lnodefs.js``
+   (:ref:`NODEFS <filesystem-api-nodefs>`), ``-lidbfs.js`` (:ref:`IDBFS
+   <filesystem-api-idbfs>`), ``-lworkerfs.js`` (:ref:`WORKERFS
+   <filesystem-api-workerfs>`), or ``-lproxyfs.js`` (:ref:`PROXYFS
+   <filesystem-api-proxyfs>`).
 
 .. _filesystem-api-memfs:
 
 MEMFS
 -----
 
-This is the default file system mounted at ``/`` when the runtime is initialized. All files exist strictly in-memory, and any data written to them is lost when the page is reloaded.
+This is the default file system mounted at ``/`` when the runtime is
+initialized. All files exist strictly in-memory, and any data written to them is
+lost when the page is reloaded.
 
 .. _filesystem-api-nodefs:
 
@@ -87,7 +139,11 @@ NODEFS
 
 .. note:: This file system is only for use when running inside :term:`node.js`.
 
-This file system lets a program in *node* map directories (via a mount operation) on the host filesystem to directories in Emscripten's virtual filesystem. It uses node's synchronous `FS API <http://nodejs.org/api/fs.html>`_ to immediately persist any data written to the Emscripten file system to your local disk.
+This file system lets a program in *node* map directories (via a mount
+operation) on the host filesystem to directories in Emscripten's virtual
+filesystem. It uses node's synchronous `FS API <http://nodejs.org/api/fs.html>`_
+to immediately persist any data written to the Emscripten file system to your
+local disk.
 
 See `this test <https://github.com/emscripten-core/emscripten/blob/main/test/fs/test_nodefs_rw.c>`_ for an example.
 
@@ -98,7 +154,14 @@ NODERAWFS
 
 .. note:: This file system is only for use when running inside :term:`node.js`.
 
-This is a special backend as it replaces all normal filesystem access with direct Node.js operations, without the need to do `FS.mount()`. The initial working directory will be same as process.cwd() instead of VFS root directory.  Because this mode directly uses Node.js to access the real local filesystem on your OS, the code will not necessarily be portable between OSes - it will be as portable as a Node.js program would be, which means that differences in how the underlying OS handles permissions and errors and so forth may be noticeable.  This has mostly been tested on Linux so far.
+This is a special backend as it replaces all normal filesystem access with
+direct Node.js operations, without the need to do `FS.mount()`. The initial
+working directory will be same as process.cwd() instead of VFS root directory.
+Because this mode directly uses Node.js to access the real local filesystem on
+your OS, the code will not necessarily be portable between OSes - it will be as
+portable as a Node.js program would be, which means that differences in how the
+underlying OS handles permissions and errors and so forth may be noticeable.
+This has mostly been tested on Linux so far.
 
 See `this <https://github.com/emscripten-core/emscripten/blob/d936e807c4d7a6163827c1fdc4a8e87abe41db44/tests/fs/test_nodefs_rw.c#L31>`_ section on NODEFS, where you can see a mount operation - this is not needed in NODERAWFS.
 
@@ -109,11 +172,18 @@ IDBFS
 
 .. note:: This file system is only for use when running code inside a browser.
 
-The *IDBFS* file system implements the :js:func:`FS.syncfs` interface, which when called will persist any operations to an ``IndexedDB`` instance.
+The *IDBFS* file system implements the :js:func:`FS.syncfs` interface, which
+when called will persist any operations to an ``IndexedDB`` instance.
 
-This is provided to overcome the limitation that browsers do not offer synchronous APIs for persistent storage, and so (by default) all writes exist only temporarily in-memory.
+This is provided to overcome the limitation that browsers do not offer
+synchronous APIs for persistent storage, and so (by default) all writes exist
+only temporarily in-memory.
 
-If the mount option `autoPersist: true` is passed when mounting IDBFS, then whenever any changes are made to the IDBFS directory tree, they will be automatically persisted to the IndexedDB backend. This lets users avoid needing to manually call `FS.syncfs` to persist changes to the IDBFS mounted directory tree.
+If the mount option `autoPersist: true` is passed when mounting IDBFS, then
+whenever any changes are made to the IDBFS directory tree, they will be
+automatically persisted to the IndexedDB backend. This lets users avoid needing
+to manually call `FS.syncfs` to persist changes to the IDBFS mounted directory
+tree.
 
 .. _filesystem-api-workerfs:
 
@@ -122,14 +192,18 @@ WORKERFS
 
 .. note:: This file system is only for use when running code inside a worker.
 
-This file system provides read-only access to ``File`` and ``Blob`` objects inside a worker without copying the entire data into memory and can potentially be used for huge files.
+This file system provides read-only access to ``File`` and ``Blob`` objects
+inside a worker without copying the entire data into memory and can potentially
+be used for huge files.
 
 .. _filesystem-api-proxyfs:
 
 PROXYFS
 --------
 
-This allows a module to mount another module's file system. This is useful when separate modules need to share a file system without manually syncing file contents. For example:
+This allows a module to mount another module's file system. This is useful when
+separate modules need to share a file system without manually syncing file
+contents. For example:
 
 .. code-block:: js
 
@@ -144,15 +218,26 @@ This allows a module to mount another module's file system. This is useful when 
 Devices
 =======
 
-Emscripten supports registering arbitrary device drivers composed of a device id and a set of device-specific stream callbacks. Once a driver has been registered with :js:func:`FS.registerDevice`, a device node can be created to reference it (using :js:func:`FS.mkdev`).
+Emscripten supports registering arbitrary device drivers composed of a device id
+and a set of device-specific stream callbacks. Once a driver has been registered
+with :js:func:`FS.registerDevice`, a device node can be created to reference it
+(using :js:func:`FS.mkdev`).
 
-The device node acts as an interface between the device and the file system. Any stream referencing the new node will inherit the stream callbacks registered for the device, making all of the high-level FS operations transparently interact with the device.
+The device node acts as an interface between the device and the file system. Any
+stream referencing the new node will inherit the stream callbacks registered for
+the device, making all of the high-level FS operations transparently interact
+with the device.
 
-.. note:: Every device is different and unique. While common file operations like ``open``, ``close``, ``read``, and ``write`` are typically supported (and inherited by file streams to provide a layer of abstraction for the equivalent *libc* functions to call), each device should implement whatever callbacks it needs based on its unique characteristics.
+.. note:: Every device is different and unique. While common file operations
+   like ``open``, ``close``, ``read``, and ``write`` are typically supported
+   (and inherited by file streams to provide a layer of abstraction for the
+   equivalent *libc* functions to call), each device should implement whatever
+   callbacks it needs based on its unique characteristics.
 
 .. js:function:: FS.makedev(ma, mi)
 
-  Converts a major and minor number into a single unique integer. This is used as an id to represent the device.
+  Converts a major and minor number into a single unique integer. This is used
+  as an id to represent the device.
 
   :param ma: Major number.
   :param mi: Minor number.
@@ -164,33 +249,48 @@ The device node acts as an interface between the device and the file system. Any
   Registers the specified device driver with a set of callbacks.
 
   :param dev: The specific device driver id, created using :js:func:`makedev`.
-  :param object ops: The set of callbacks required by the device. For an example, see the `NODEFS default callbacks <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/library_nodefs.js#L213>`_.
+  :param object ops: The set of callbacks required by the device. For an
+   example, see the `NODEFS default callbacks <https://github.com/emscripten-core/emscripten/blob/1.29.12/src/library_nodefs.js#L213>`_.
 
 
 
 Setting up standard I/O devices
 ===============================
 
-Emscripten standard I/O works by going through the virtual ``/dev/stdin``, ``/dev/stdout`` and ``/dev/stderr`` devices. You can set them up using your own I/O functions by calling :js:func:`FS.init`.
+Emscripten standard I/O works by going through the virtual ``/dev/stdin``,
+``/dev/stdout`` and ``/dev/stderr`` devices. You can set them up using your own
+I/O functions by calling :js:func:`FS.init`.
 
 By default:
 
--  ``stdin`` will read from the terminal in command line engines and use ``window.prompt()`` in browsers (in both cases, with line buffering).
--  ``stdout`` will use a ``print`` function if one such is defined, printing to the terminal in command line engines and to the browser console in browsers that have a console (again, line-buffered).
--  ``stderr`` will use the same output function as ``stdout``.
+- ``stdin`` will read from the terminal in command line engines and use
+  ``window.prompt()`` in browsers (in both cases, with line buffering).
+- ``stdout`` will use a ``print`` function if one such is defined, printing to
+  the terminal in command line engines and to the browser console in browsers
+  that have a console (again, line-buffered).
+- ``stderr`` will use the same output function as ``stdout``.
 
-.. note:: All the configuration should be done before the ``main()`` is executed, typically by implementing :js:attr:`Module.preRun`. See :ref:`Interacting-with-code` for more information.
+.. note:: All the configuration should be done before the ``main()`` is
+   executed, typically by implementing :js:attr:`Module.preRun`. See
+   :ref:`Interacting-with-code` for more information.
 
 
 .. js:function:: FS.init(input, output, error)
 
   Sets up standard I/O devices for ``stdin``, ``stdout``, and ``stderr``.
 
-  The devices are set up using the following (optional) callbacks. If any of the callbacks throw an exception, it will be caught and handled as if the device malfunctioned.
+  The devices are set up using the following (optional) callbacks. If any of the
+  callbacks throw an exception, it will be caught and handled as if the device
+  malfunctioned.
 
-  :param input: Input callback. This will be called with no parameters whenever the program attempts to read from ``stdin``. It should return an ASCII character code when data is available, or ``null`` when it isn't.
-  :param output: Output callback. This will be called with an ASCII character code whenever the program writes to ``stdout``. It may also be called with ``null`` to flush the output.
-  :param error: Error callback. This is similar to ``output``, except it is called when data is written to ``stderr``.
+  :param input: Input callback. This will be called with no parameters whenever
+   the program attempts to read from ``stdin``. It should return an ASCII
+   character code when data is available, or ``null`` when it isn't.
+  :param output: Output callback. This will be called with an ASCII character
+   code whenever the program writes to ``stdout``. It may also be called with
+   ``null`` to flush the output.
+  :param error: Error callback. This is similar to ``output``, except it is
+   called when data is written to ``stderr``.
 
 
 File system API
@@ -200,7 +300,8 @@ File system API
 
 .. js:function:: FS.mount(type, opts, mountpoint)
 
-  Mounts the FS object specified by ``type`` to the directory specified by ``mountpoint``. The ``opts`` object is specific to each file system type.
+  Mounts the FS object specified by ``type`` to the directory specified by
+  ``mountpoint``. The ``opts`` object is specific to each file system type.
 
   :param type: The :ref:`file system type <filesystem-api-filesystems>`: ``MEMFS``, ``NODEFS``, ``IDBFS`` or ``WORKERFS``.
   :param object opts: A generic settings object used by the underlying file system.
@@ -291,7 +392,9 @@ File system API
 
     FS.mkdir('/data');
 
-  .. note:: The underlying implementation does not support user or group permissions. The caller is always treated as the owner of the folder, and only permissions relevant to the owner apply.
+  .. note:: The underlying implementation does not support user or group
+     permissions. The caller is always treated as the owner of the folder, and only
+     permissions relevant to the owner apply.
 
   :param string path: The path name for the new directory node.
   :param int mode: :ref:`File permissions <fs-read-and-write-flags>` for the new node. The default setting (`in octal numeric notation <http://en.wikipedia.org/wiki/File_system_permissions#Numeric_notation>`_) is 0777.
@@ -305,7 +408,9 @@ File system API
 
     FS.mkdirTree('/data/subdir1/subdir2');
 
-  .. note:: The underlying implementation does not support user or group permissions. The caller is always treated as the owner of the folder, and only permissions relevant to the owner apply.
+  .. note:: The underlying implementation does not support user or group
+     permissions. The caller is always treated as the owner of the folder, and only
+     permissions relevant to the owner apply.
 
   :param string path: The path name for the new directory node.  
   :param int mode: :ref:`File permissions <fs-read-and-write-flags>` for the new node. The default setting (`in octal numeric notation <http://en.wikipedia.org/wiki/File_system_permissions#Numeric_notation>`_) is 0777.
@@ -371,7 +476,8 @@ File system API
 
   Unlinks the node at ``path``.
 
-  This removes a name from the file system. If that name was the last link to a file (and no processes have the file open) the file is deleted.
+  This removes a name from the file system. If that name was the last link to a
+  file (and no processes have the file open) the file is deleted.
 
   For example:
 
@@ -584,7 +690,10 @@ File system API
   - ``a+`` — Open file for reading and appending. The file is created if it does not exist.
   - ``ax+`` — Like ``a+`` but fails if path exists.
 
-  .. note:: The underlying implementation does not support user or group permissions. The file permissions set in ``mode`` are only used if the file is created. The caller is always treated as the owner of the file, and only those permissions apply.
+  .. note:: The underlying implementation does not support user or group
+     permissions. The file permissions set in ``mode`` are only used if the file is
+     created. The caller is always treated as the owner of the file, and only those
+     permissions apply.
 
 
   :param string path: The path of the file to open.
@@ -604,22 +713,31 @@ File system API
 
 .. js:function:: FS.llseek(stream, offset, whence)
 
-  Repositions the offset of the stream ``offset`` bytes relative to the beginning, current position, or end of the file, depending on the ``whence`` parameter.
+  Repositions the offset of the stream ``offset`` bytes relative to the
+  beginning, current position, or end of the file, depending on the ``whence``
+  parameter.
 
-  The ``_llseek()`` function repositions the ``offset`` of the open file associated with the file descriptor ``fd`` to ``(offset_high<<32) | offset_low`` bytes relative to the beginning of the file, the current position in the file, or the end of the file, depending on whether whence is ``SEEK_SET``, ``SEEK_CUR``, or ``SEEK_END``, respectively. It returns the resulting file position in the argument result.
+  The ``_llseek()`` function repositions the ``offset`` of the open file
+  associated with the file descriptor ``fd`` to
+  ``(offset_high<<32) | offset_low`` bytes relative to the beginning of the
+  file, the current position in the file, or the end of the file, depending on
+  whether whence is ``SEEK_SET``, ``SEEK_CUR``, or ``SEEK_END``, respectively.
+  It returns the resulting file position in the argument result.
 
   .. todo:: **HamishW** Above sentence does not make sense. Have requested feedback.
 
   :param object stream: The stream for which the offset is to be repositioned.
   :param int offset: The offset (in bytes) relative to ``whence``.
-  :param int whence: Point in file (beginning, current point, end) from which to calculate the offset: ``SEEK_SET`` (0), ``SEEK_CUR`` (1) or ``SEEK_END`` (2)
+  :param int whence: Point in file (beginning, current point, end) from which to
+   calculate the offset: ``SEEK_SET`` (0), ``SEEK_CUR`` (1) or ``SEEK_END`` (2)
 
 
 .. js:function:: FS.read(stream, buffer, offset, length [, position])
 
   Read ``length`` bytes from the stream, storing them into ``buffer`` starting at ``offset``.
 
-  By default, reading starts from the stream's current offset, however, a specific offset can be specified with the ``position`` argument. For example:
+  By default, reading starts from the stream's current offset, however, a
+  specific offset can be specified with the ``position`` argument. For example:
 
   .. code-block:: javascript
 
@@ -640,7 +758,8 @@ File system API
 
   Writes ``length`` bytes from ``buffer``, starting at ``offset``.
 
-  By default, writing starts from the stream's current offset, however, a specific offset can be specified with the ``position`` argument. For example:
+  By default, writing starts from the stream's current offset, however, a
+  specific offset can be specified with the ``position`` argument. For example:
 
   .. code-block:: javascript
 
@@ -660,7 +779,8 @@ File system API
 
 .. js:function:: FS.readFile(path, opts)
 
-  Reads the entire file at ``path`` and returns it as a ``string`` (encoding is ``utf8``), or as a new ``Uint8Array`` buffer (encoding is ``binary``).
+  Reads the entire file at ``path`` and returns it as a ``string`` (encoding is
+  ``utf8``), or as a new ``Uint8Array`` buffer (encoding is ``binary``).
 
   :param string path: The file to read.
   :param object opts:
@@ -694,9 +814,12 @@ File system API
 
 .. js:function:: FS.createLazyFile(parent, name, url, canRead, canWrite)
 
-  Creates a file that will be loaded lazily on first access from a given URL or local file system path, and returns a reference to it.
+  Creates a file that will be loaded lazily on first access from a given URL or
+  local file system path, and returns a reference to it.
 
-  .. warning:: Firefox and Chrome have recently disabled synchronous binary XHRs, which means this cannot work for JavaScript in regular HTML pages (but it works within Web Workers).
+  .. warning:: Firefox and Chrome have recently disabled synchronous binary
+     XHRs, which means this cannot work for JavaScript in regular HTML pages (but
+     it works within Web Workers).
 
   Example
 
@@ -706,10 +829,14 @@ File system API
     FS.createLazyFile('/', 'bar', '/get_file.php?name=baz', true, true);
 
 
-  :param parent: The parent folder, either as a path (e.g. `'/usr/lib'`) or an object previously returned from a `FS.mkdir()` or `FS.createPath()` call.
+  :param parent: The parent folder, either as a path (e.g. `'/usr/lib'`) or an
+   object previously returned from a `FS.mkdir()` or `FS.createPath()` call.
   :type parent: string/object
   :param string name: The name of the new file.
-  :param string url: In the browser, this is the URL whose contents will be returned when this file is accessed. In a command line engine like *node.js*, this will be the local (real) file system path from where the contents will be loaded. Note that writes to this file are virtual.
+  :param string url: In the browser, this is the URL whose contents will be
+   returned when this file is accessed. In a command line engine like *node.js*,
+   this will be the local (real) file system path from where the contents will be
+   loaded. Note that writes to this file are virtual.
   :param bool canRead: Whether the file should have read permissions set from the program's point of view.
   :param bool canWrite: Whether the file should have write permissions set from the program's point of view.
   :returns: A reference to the new file.
@@ -718,20 +845,32 @@ File system API
 
 .. js:function:: FS.createPreloadedFile(parent, name, url, canRead, canWrite)
 
-  Preloads a file asynchronously, and uses preload plugins to prepare its content. You should call this in ``preRun``, ``main()`` will then be delayed until all preloaded files are ready. This is how the :ref:`preload-file <emcc-preload-file>` option works in *emcc* when ``--use-preload-plugins`` has been specified (if you use this method by itself, you will need to build the program with that option).
+  Preloads a file asynchronously, and uses preload plugins to prepare its
+  content. You should call this in ``preRun``, ``main()`` will then be delayed
+  until all preloaded files are ready. This is how the :ref:`preload-file
+  <emcc-preload-file>` option works in *emcc* when ``--use-preload-plugins`` has
+  been specified (if you use this method by itself, you will need to build the
+  program with that option).
 
-  :param parent: The parent folder, either as a path (e.g. **'/usr/lib'**) or an object previously returned from a `FS.mkdir()` or `FS.createPath()` call.
+  :param parent: The parent folder, either as a path (e.g. **'/usr/lib'**) or an
+   object previously returned from a `FS.mkdir()` or `FS.createPath()` call.
   :type parent: string/object
   :param string name: The name of the new file.
-  :param string url: In the browser, this is the URL whose contents will be returned when the file is accessed. In a command line engine, this will be the local (real) file system path the contents will be loaded from. Note that writes to this file are virtual.
-  :param bool canRead: Whether the file should have read permissions set from the program's point of view.
-  :param bool canWrite: Whether the file should have write permissions set from the program's point of view.
+  :param string url: In the browser, this is the URL whose contents will be
+   returned when the file is accessed. In a command line engine, this will be the
+   local (real) file system path the contents will be loaded from. Note that
+   writes to this file are virtual.
+  :param bool canRead: Whether the file should have read permissions set from
+   the program's point of view.
+  :param bool canWrite: Whether the file should have write permissions set from
+   the program's point of view.
 
 
 
 .. js:data:: FS.trackingDelegate[callback name]
 
-  Users can specify callbacks to receive different filesystem events. This is useful for tracking changes in the filesystem. This requires -sFS_DEBUG.
+  Users can specify callbacks to receive different filesystem events. This is
+  useful for tracking changes in the filesystem. This requires -sFS_DEBUG.
 
   .. _fs-callback-names:
 
@@ -831,7 +970,10 @@ File system API
 File types
 ==========
 
-Emscripten's file system supports regular files, directories, symlinks, character devices, block devices and sockets. Similarly to most Unix systems, all of these file types can be operated on using the higher-level FS operations like :js:func:`FS.read` and :js:func:`FS.write`.
+Emscripten's file system supports regular files, directories, symlinks,
+character devices, block devices and sockets. Similarly to most Unix systems,
+all of these file types can be operated on using the higher-level FS operations
+like :js:func:`FS.read` and :js:func:`FS.write`.
 
 
 .. js:function:: FS.isFile(mode)
@@ -918,7 +1060,9 @@ Paths
 
   Looks up the incoming path and returns an object containing both the resolved path and node.
 
-  The options (``opts``) allow you to specify whether the object, its parent component, a symlink, or the item the symlink points to are returned. For example: ::
+  The options (``opts``) allow you to specify whether the object, its parent
+  component, a symlink, or the item the symlink points to are returned. For
+  example: ::
 
     var lookup = FS.lookupPath(path, { parent: true });
 
@@ -927,10 +1071,14 @@ Paths
 
     - **parent** (*bool*)
       If true, stop resolving the path once the penultimate component is reached.
-      For example, the path ``/foo/bar`` with ``{ parent: true }`` would return an object representing ``/foo``. The default is ``false``.
+      For example, the path ``/foo/bar`` with ``{ parent: true }`` would return
+      an object representing ``/foo``. The default is ``false``.
     - **follow** (*bool*)
       If true, follow the last component if it is a symlink.
-      For example, consider a symlink ``/foo/symlink`` that links to ``/foo/notes.txt``. If ``{ follow: true }``, an object representing ``/foo/notes.txt`` would be returned. If ``{ follow: false }``, an object representing the symlink file would be returned. The default is ``false``.
+      For example, consider a symlink ``/foo/symlink`` that links to
+      ``/foo/notes.txt``. If ``{ follow: true }``, an object representing
+      ``/foo/notes.txt`` would be returned. If ``{ follow: false }``, an object
+      representing the symlink file would be returned. The default is ``false``.
 
   :returns: an object with the format:
 
