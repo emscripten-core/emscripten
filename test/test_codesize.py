@@ -301,7 +301,7 @@ class codesize(RunnerCore):
         exports = deminify_syms(exports, 'minify.map')
         # Under ESM integration the import module is the support module path
         # (which itself contains dots), so take the field after the last dot.
-        imports = [i.rsplit('.', 1)[1] if esm else i.split('.', 1)[1] for i in imports]
+        imports = [i.rsplit('.', 1)[1] for i in imports]
         imports = deminify_syms(imports, 'minify.map')
 
       imports.sort()
