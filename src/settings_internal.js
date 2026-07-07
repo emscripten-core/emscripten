@@ -295,5 +295,8 @@ var LOAD_SOURCE_MAP = false;
 
 var ALIASES = [];
 
+// Internal setting for passing EM_JS and EM_ASM function code snippets to JSifier.
+var EM_JS_SNIPPETS = [];
+
 // List of public setting names (Used by RETAIN_COMPILER_SETTINGS)
 var PUBLIC_SETTINGS = [];
