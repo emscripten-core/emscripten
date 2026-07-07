@@ -247,12 +247,70 @@ function addImplicitDeps(snippet, deps) {
     'runtimeKeepalivePush',
     'runtimeKeepalivePop',
     'UTF8ToString',
+    'getValue',
+    'setValue',
   ];
   for (const dep of autoDeps) {
     if (snippet.includes(dep + '(')) {
       deps.push('$' + dep);
     }
   }
+  if (snippet.includes('eval(')) {
+    deps.push('$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16', '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64');
+    if (WASM_BIGINT || MEMORY64) {
+      deps.push('$HEAP64', '$HEAPU64');
+    }
+  }
+  const heapDeps = [
+    'HEAP8', 'HEAP16', 'HEAPU8', 'HEAPU16',
+    'HEAP32', 'HEAPU32', 'HEAPF32', 'HEAPF64',
+    'HEAP64', 'HEAPU64',
+  ];
+  for (const heap of heapDeps) {
+    if (snippet.includes(heap)) {
+      deps.push('$' + heap);
+    }
+  }
+}
+
+// Auto-include heap views and helper symbols required by certain build modes or runtime
+// scaffolding files (e.g., postamble.js, runtime_stack_check.js, memoryprofiler.js).
+// Because addImplicitDeps only scans library functions and user code (pre-js/post-js/EM_JS),
+// runtime scaffolding files that access linear memory directly must have their heap views
+// explicitly declared here so they are emitted in the final JS bundle.
+function getRequiredHeapSymbols() {
+  const heaps = new Set();
+  if (MAIN_MODULE || EXPORT_ALL || SAFE_HEAP) {
+    // Dynamic linking side modules, full symbol exports, or safe heap instrumentation
+    // require all standard heap views and value helpers to be available.
+    heaps.add('$getValue').add('$setValue');
+    heaps.add('$HEAP8').add('$HEAPU8').add('$HEAP16').add('$HEAPU16')
+         .add('$HEAP32').add('$HEAPU32').add('$HEAPF32').add('$HEAPF64');
+    if (WASM_BIGINT || MEMORY64) {
+      heaps.add('$HEAP64').add('$HEAPU64');
+    }
+  } else {
+    // STACK_OVERFLOW_CHECK accesses HEAP32/HEAPU32 in runtime_stack_check.js.
+    // MAIN_READS_PARAMS populates argv pointers in linear memory in postamble.js (callMain).
+    if (STACK_OVERFLOW_CHECK || (HAS_MAIN && MAIN_READS_PARAMS)) {
+      heaps.add('$HEAP32').add('$HEAPU32');
+      if ((HAS_MAIN && MAIN_READS_PARAMS) && (WASM_BIGINT || MEMORY64)) {
+        heaps.add('$HEAP64').add('$HEAPU64');
+      }
+    }
+    // MEMORYPROFILER accesses HEAP8 in memoryprofiler.js.
+    if (MEMORYPROFILER) {
+      heaps.add('$HEAP8');
+    }
+    // AUDIO_WORKLET accesses HEAP32, HEAPU32, and HEAPF32 in audio_worklet.js.
+    if (AUDIO_WORKLET) {
+      heaps.add('$HEAP32').add('$HEAPU32').add('$HEAPF32');
+      if (WASM_BIGINT || MEMORY64) {
+        heaps.add('$HEAP64').add('$HEAPU64');
+      }
+    }
+  }
+  return Array.from(heaps);
 }
 
 function sigToArgs(sig) {
@@ -415,6 +473,15 @@ export async function runJSify(outputFile, symbolsOnly) {
 
   const symbolsNeeded = DEFAULT_LIBRARY_FUNCS_TO_INCLUDE;
   symbolsNeeded.push(...extraLibraryFuncs);
+  symbolsNeeded.push(...getRequiredHeapSymbols());
+
+  for (const fileName of [...PRE_JS_FILES, ...POST_JS_FILES]) {
+    const content = readFile(fileName);
+    addImplicitDeps(content, symbolsNeeded);
+  }
+  for (const snippet of EM_JS_SNIPPETS) {
+    addImplicitDeps(snippet, symbolsNeeded);
+  }
   for (const sym of EXPORTED_RUNTIME_METHODS) {
     if ('$' + sym in LibraryManager.library) {
       symbolsNeeded.push('$' + sym);

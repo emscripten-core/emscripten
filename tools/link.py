@@ -1196,8 +1196,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
 
   settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += [
     '$wasmMemory',
-    '$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16',
-    '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64',
   ]
 
   if 'noExitRuntime' in settings.INCOMING_MODULE_JS_API:
@@ -1272,8 +1270,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
       if settings.ASSERTIONS:
         # "checkUnflushedContent()" and "missingLibrarySymbol()" depend on warnOnce
         settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$warnOnce']
-
-      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$getValue', '$setValue']
 
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$ExitStatus']
 
@@ -1572,9 +1568,6 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   feature_matrix.apply_min_browser_versions()
 
   feature_matrix.auto_enable_features()
-
-  if settings.WASM_BIGINT:
-    settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE += ['$HEAP64', '$HEAPU64']
 
   if settings.AUDIO_WORKLET:
     add_system_js_lib('libwebaudio.js')

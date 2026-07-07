@@ -390,6 +390,7 @@ def emscript(in_wasm, out_wasm, outfile_js, js_syms, finalize=True, base_metadat
 
   asm_consts = create_asm_consts(metadata)
   em_js_funcs = create_em_js(metadata)
+  settings.EM_JS_SNIPPETS = em_js_funcs + [f for _, f in asm_consts]
 
   if settings.SIDE_MODULE:
     # When building side modules, validate the EM_ASM and EM_JS string by running

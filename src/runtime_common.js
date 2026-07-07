@@ -28,7 +28,7 @@
 // must be updated.
 function growMemViews() {
   // `updateMemoryViews` updates all the views simultaneously, so it's enough to check any of them.
-  if (wasmMemory.buffer != HEAP8.buffer) {
+  if (typeof HEAP8 != 'undefined' && wasmMemory.buffer != HEAP8.buffer) {
     updateMemoryViews();
   }
 }
@@ -102,10 +102,19 @@ var runtimeExited = false;
       shouldExport = true;
     }
     return shouldExport;
-  }
+  };
   const maybeExportHeap = (x) => {
     if (shouldExportHeap(x) && MODULARIZE != 'instance') {
       return `Module['${x}'] = `;
+    }
+    return '';
+  };
+  const isHeapNeeded = (x) => {
+    return shouldExportHeap(x) || addedLibraryItems['$' + x];
+  };
+  const updateHeap = (x, type) => {
+    if (isHeapNeeded(x)) {
+      return `${maybeExportHeap(x)}${x} = new ${type}(b);`;
     }
     return '';
   };
@@ -146,35 +155,35 @@ function getMemoryBuffer() {
 
 function updateMemoryViews() {
 #if RUNTIME_DEBUG
-  dbg(`updateMemoryViews: first=${!HEAP8} size=${wasmMemory.buffer.byteLength}`);
+  dbg(`updateMemoryViews: first=${typeof HEAP8 == 'undefined' || !HEAP8} size=${wasmMemory.buffer.byteLength}`);
 #endif
 #if ALLOW_MEMORY_GROWTH
   // If we already have a heap that is resizeable/growable buffer we don't
   // need to do anything in updateMemoryViews.
 #if SHARED_MEMORY
-  if (HEAP8?.buffer?.growable) return;
+  if (typeof HEAP8 != 'undefined' && HEAP8?.buffer?.growable) return;
 #else
-  if (HEAP8?.buffer?.resizable) return;
+  if (typeof HEAP8 != 'undefined' && HEAP8?.buffer?.resizable) return;
 #endif
   var b = getMemoryBuffer();
 #else
 #if ASSERTIONS
   // When memory growth is disabled this function should be called exactly once.
-  assert(!HEAP8, 'updateMemoryViews should only be called once when ALLOW_MEMORY_GROWTH=0');
+  assert(typeof HEAP8 == 'undefined' || !HEAP8, 'updateMemoryViews should only be called once when ALLOW_MEMORY_GROWTH=0');
 #endif
   var b = wasmMemory.buffer;
 #endif
-  {{{ maybeExportHeap('HEAP8')   }}}HEAP8 = new Int8Array(b);
-  {{{ maybeExportHeap('HEAP16')  }}}HEAP16 = new Int16Array(b);
-  {{{ maybeExportHeap('HEAPU8')  }}}HEAPU8 = new Uint8Array(b);
-  {{{ maybeExportHeap('HEAPU16') }}}HEAPU16 = new Uint16Array(b);
-  {{{ maybeExportHeap('HEAP32')  }}}HEAP32 = new Int32Array(b);
-  {{{ maybeExportHeap('HEAPU32') }}}HEAPU32 = new Uint32Array(b);
-  {{{ maybeExportHeap('HEAPF32') }}}HEAPF32 = new Float32Array(b);
-  {{{ maybeExportHeap('HEAPF64') }}}HEAPF64 = new Float64Array(b);
+  {{{ updateHeap('HEAP8',   'Int8Array')    }}}
+  {{{ updateHeap('HEAP16',  'Int16Array')   }}}
+  {{{ updateHeap('HEAPU8',  'Uint8Array')   }}}
+  {{{ updateHeap('HEAPU16', 'Uint16Array')  }}}
+  {{{ updateHeap('HEAP32',  'Int32Array')   }}}
+  {{{ updateHeap('HEAPU32', 'Uint32Array')  }}}
+  {{{ updateHeap('HEAPF32', 'Float32Array') }}}
+  {{{ updateHeap('HEAPF64', 'Float64Array') }}}
 #if WASM_BIGINT
-  {{{ maybeExportHeap('HEAP64')  }}}HEAP64 = new BigInt64Array(b);
-  {{{ maybeExportHeap('HEAPU64') }}}HEAPU64 = new BigUint64Array(b);
+  {{{ updateHeap('HEAP64',  'BigInt64Array') }}}
+  {{{ updateHeap('HEAPU64', 'BigUint64Array') }}}
 #endif
 #if SUPPORT_BIG_ENDIAN
   {{{ maybeExportHeap('HEAP_DATA_VIEW') }}} HEAP_DATA_VIEW = new DataView(b);

@@ -2336,3 +2336,7 @@ var FAKE_DYLIBS = false;
 // This setting can also be set to a string value, in which case that string
 // will be used as the #! command to embed in the generated file.
 var EXECUTABLE = false;
+
+// Internal setting for passing EM_JS and EM_ASM function code snippets to JSifier.
+// [internal]
+var EM_JS_SNIPPETS = [];
