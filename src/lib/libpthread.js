@@ -123,11 +123,10 @@ var LibraryPThread = {
     nextWorkerID: 1,
 #endif
 #if TRUSTED_TYPES
-    // Cached Trusted Types policies for pthread Worker creation. Per the
+    // Cached Trusted Types policy for pthread Worker creation. Per the
     // Trusted Types spec, createPolicy() with the same name throws on the
     // second call unless CSP uses 'allow-duplicates'.
-    trustedWorkerPolicy1: null,
-    trustedWorkerPolicy2: null,
+    trustedWorkerPolicy: null,
 #endif
     init() {
       if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}}) {
@@ -489,8 +488,8 @@ var LibraryPThread = {
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
       if (globalThis.trustedTypes?.createPolicy) {
-        PThread.trustedWorkerPolicy1 ??= trustedTypes.createPolicy('emscripten#workerPolicy1', { createScriptURL: (url) => url });
-        worker = new Worker(PThread.trustedWorkerPolicy1.createScriptURL(new URL('{{{ pthreadWorkerScript }}}', import.meta.url)), {{{ pthreadWorkerOptions }}});
+        PThread.trustedWorkerPolicy ??= trustedTypes.createPolicy('emscripten#workerPolicy', { createScriptURL: (url) => url });
+        worker = new Worker(PThread.trustedWorkerPolicy.createScriptURL(new URL('{{{ pthreadWorkerScript }}}', import.meta.url)), {{{ pthreadWorkerOptions }}});
       } else
 #endif
 #if expectToReceiveOnModule('mainScriptUrlOrBlob')
@@ -546,8 +545,8 @@ var LibraryPThread = {
 #if TRUSTED_TYPES
       // Use Trusted Types compatible wrappers.
       if (globalThis.trustedTypes?.createPolicy) {
-        PThread.trustedWorkerPolicy2 ??= trustedTypes.createPolicy('emscripten#workerPolicy2', { createScriptURL: (url) => url });
-        worker = new Worker(PThread.trustedWorkerPolicy2.createScriptURL(pthreadMainJs), {{{ pthreadWorkerOptions }}});
+        PThread.trustedWorkerPolicy ??= trustedTypes.createPolicy('emscripten#workerPolicy', { createScriptURL: (url) => url });
+        worker = new Worker(PThread.trustedWorkerPolicy.createScriptURL(pthreadMainJs), {{{ pthreadWorkerOptions }}});
       } else
 #endif
       worker = new Worker(pthreadMainJs, {{{ pthreadWorkerOptions }}});
