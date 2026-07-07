@@ -893,6 +893,7 @@ def create_sending(metadata, library_symbols):
   if settings.WASM_ESM_INTEGRATION:
     exports = '// Export JS functions to the wasm module with demangled names.\n'
     if not sorted_items:
+      # With no JS->wasm imports emit no `export {}` at all rather than an empty one.
       return exports
     elems = ',\n  '.join(f'{v} as {k}' for k, v in sorted_items)
     exports += f"export {{\n  {elems}\n}};"
@@ -928,6 +929,7 @@ def create_reexports(metadata):
       elif demangled == 'main' and '__main_argc_argv' in settings.WASM_EXPORTS:
         wasm_exports.append('_main')
   if wasm_exports:
+    # With nothing to re-export emit no `export {}` at all rather than an empty one.
     exports += f"export {{ {', '.join(wasm_exports)} }};"
   return exports
 

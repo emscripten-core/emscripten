@@ -228,7 +228,7 @@ class codesize(RunnerCore):
 
     # Under WASM_ESM_INTEGRATION the wasm<->JS boundary uses native ES
     # import/export syntax and the JS glue lives in a separate support module.
-    esm = self.get_setting('WASM_ESM_INTEGRATION') or any(a.startswith('-sWASM_ESM_INTEGRATION') for a in cflags)
+    esm = any(a.startswith('-sWASM_ESM_INTEGRATION') for a in cflags)
     outfile = 'a.out.mjs' if esm else 'a.out.js'
     js_file = 'a.out.support.mjs' if esm else outfile
 
