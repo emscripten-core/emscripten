@@ -6037,6 +6037,9 @@ Module.onRuntimeInitialized = () => {
   def test_fs_writev(self):
     self.do_runf('fs/test_writev.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
 
+  def test_fs_readv_eagain(self):
+    self.do_runf('fs/test_readv_eagain.c', 'done\n', cflags=['-sFORCE_FILESYSTEM'])
+
   def test_fs_64bit(self):
     if self.get_setting('WASMFS'):
       self.set_setting('FORCE_FILESYSTEM')
