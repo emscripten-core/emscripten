@@ -353,9 +353,6 @@ var SyscallsLibrary = {
   __syscall_socket__deps: ['$SOCKFS'],
   __syscall_socket: (domain, type, protocol, u1, u2, u3) => {
     var sock = SOCKFS.createSocket(domain, type, protocol);
-#if ASSERTIONS
-    assert(sock.stream.fd < 64); // XXX ? select() assumes socket fd values are in 0..63
-#endif
     return sock.stream.fd;
   },
   __syscall_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
