@@ -202,9 +202,8 @@ var WasiLibrary = {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      var curr;
       try {
-        curr = FS.read(stream, HEAP8, ptr, len, offset);
+        var curr = FS.read(stream, HEAP8, ptr, len, offset);
       } catch (e) {
         // On a non-blocking stream a subsequent read may would-block after we
         // already gathered data. POSIX readv is a single gather-read: return
@@ -231,9 +230,8 @@ var WasiLibrary = {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      var curr;
       try {
-        curr = FS.write(stream, HEAP8, ptr, len, offset);
+        var curr = FS.write(stream, HEAP8, ptr, len, offset);
       } catch (e) {
         // On a non-blocking stream a subsequent write may would-block after we
         // already sent data. POSIX writev is a single gather-write: return
