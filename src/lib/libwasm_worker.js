@@ -65,7 +65,7 @@ addToLibrary({
   $_wasmWorkers: {},
 #if TRUSTED_TYPES
   // Cached Trusted Types policy for Wasm Worker creation.
-  $_emscriptenWasmWorkerPolicy: 'null',
+  $_emscriptenWasmWorkerPolicy: null,
 #endif
 
   // Starting up a Wasm Worker is an asynchronous operation, hence if the parent
