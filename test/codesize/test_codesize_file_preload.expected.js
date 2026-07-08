@@ -514,33 +514,27 @@ var callRuntimeCallbacks = callbacks => {
 var onPreRuns = [];
 
 /** @param {number=} offset */ var doWritev = (stream, iov, iovcnt, offset) => {
-  var ret = 0;
-  for (var i = 0; i < iovcnt; i++) {
-    var ptr = HEAPU32[((iov) >> 2)];
-    var len = HEAPU32[(((iov) + (4)) >> 2)];
-    iov += 8;
-    try {
-      var curr = FS.write(stream, HEAP8, ptr, len, offset);
-    } catch (e) {
-      // On a non-blocking stream a subsequent write may would-block after we
-      // already sent data. POSIX writev is a single gather-write: return
-      // what we have rather than failing the whole call.
-      if (ret > 0 && e instanceof FS.ErrnoError && (e.errno == 6 || e.errno == 6)) {
-        break;
-      }
-      throw e;
-    }
-    if (curr < 0) return -1;
-    ret += curr;
-    if (curr < len) {
-      // No more space to write.
-      break;
-    }
-    if (typeof offset != "undefined") {
-      offset += curr;
-    }
+  // Gather all iovecs into one contiguous buffer and issue a single
+  // FS.write, matching POSIX writev's single gather-write semantics (as
+  // __syscall_sendmsg already does). Per-iovec writes fragment a stream
+  // socket send into multiple segments, breaking stream byte semantics.
+  if (iovcnt == 1) {
+    // Single iovec: write directly from HEAP8, no gather buffer needed.
+    return FS.write(stream, HEAP8, HEAPU32[((iov) >> 2)], HEAPU32[(((iov) + (4)) >> 2)], offset);
   }
-  return ret;
+  var total = 0;
+  for (var i = 0; i < iovcnt; i++) {
+    total += HEAPU32[(((iov) + ((8 * i) + 4)) >> 2)];
+  }
+  var view = new Uint8Array(total);
+  var voff = 0;
+  for (var i = 0; i < iovcnt; i++) {
+    var ptr = HEAPU32[(((iov) + ((8 * i) + 0)) >> 2)];
+    var len = HEAPU32[(((iov) + ((8 * i) + 4)) >> 2)];
+    view.set(HEAPU8.subarray(ptr, ptr + len), voff);
+    voff += len;
+  }
+  return FS.write(stream, view, 0, total, offset);
 };
 
 var PATH = {
