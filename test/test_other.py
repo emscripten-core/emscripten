@@ -15514,12 +15514,12 @@ addToLibrary({
       };
     ''')
     create_file('main.c', r'''
-      #include <emscripten.h>
+      #include <emscripten/console.h>
 
       int main() {
-        // Long enough (> 16 bytes) that UTF8ToString on the script string
-        // takes the TextDecoder path.
-        emscripten_run_script("out('the quick brown fox jumps over the lazy dog')");
+        // Long enough (> 16 bytes) that UTF8ToString on the string takes the
+        // TextDecoder path.
+        emscripten_out("the quick brown fox jumps over the lazy dog");
         return 0;
       }
     ''')
