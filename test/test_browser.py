@@ -2616,6 +2616,10 @@ Module["preRun"] = () => {
     self.btest_exit('webgl_destroy_context.c', cflags=args + ['--shell-file', test_file('browser/webgl_destroy_context_shell.html'), '-lGL'])
 
   @requires_graphics_hardware
+  def test_html5_webgl_context_lost_pthread(self):
+    self.btest_exit('webgl_context_lost_pthread.c', cflags=['-pthread', '-lGL', '-sASSERTIONS', '--shell-file', test_file('browser/webgl_destroy_context_shell.html')])
+
+  @requires_graphics_hardware
   def test_webgl_context_params(self):
     self.btest_exit('webgl_color_buffer_readpixels.c', cflags=['-lGL'])
 
@@ -5239,7 +5243,7 @@ Module["preRun"] = () => {
     # test that we can allocate in the 2-4GB range, if we enable growth and
     # set the max appropriately
     self.cflags += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=4GB']
-    self.do_run_in_out_file_test('browser/test_4gb.cpp')
+    self.do_runf_out_file('browser/test_4gb.cpp')
 
   # Tests that emmalloc supports up to 4GB Wasm heaps.
   @no_firefox('no 4GB support yet')
@@ -5375,7 +5379,7 @@ Module["preRun"] = () => {
     # test that growth doesn't go beyond 2GB without the max being set for that,
     # and that we can catch an allocation failure exception for that
     self.cflags += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sMAXIMUM_MEMORY=2GB']
-    self.do_run_in_out_file_test('browser/test_2gb_fail.c')
+    self.do_runf_out_file('browser/test_2gb_fail.c')
 
   @no_firefox('no 4GB support yet')
   @no_highmem('uses MAXIMUM_MEMORY')
@@ -5390,7 +5394,7 @@ Module["preRun"] = () => {
     # 4GB.
     self.set_setting('MAXIMUM_MEMORY', '4GB')
     self.cflags += ['-O2', '-sALLOW_MEMORY_GROWTH', '-sABORTING_MALLOC=0', '-sASSERTIONS']
-    self.do_run_in_out_file_test('browser/test_4gb_fail.c')
+    self.do_runf_out_file('browser/test_4gb_fail.c')
 
   # Tests that Emscripten-compiled applications can be run when a slash in the URL query or fragment of the js file
   def test_browser_run_with_slash_in_query_and_hash(self):

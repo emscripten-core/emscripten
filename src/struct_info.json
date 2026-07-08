@@ -130,7 +130,8 @@
             "POLLWRNORM",
             "POLLIN",
             "POLLOUT",
-            "POLLNVAL"
+            "POLLNVAL",
+            "POLLRDHUP"
         ],
         "structs": {
             "pollfd": [

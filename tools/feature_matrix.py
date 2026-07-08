@@ -137,8 +137,6 @@ min_browser_versions = {
   },
   # Growable SharedArrayBuffers improves memory growth feature in multithreaded
   # builds by avoiding need to poll resizes to ArrayBuffer views in Workers.
-  # This feature is not used anywhere else except the test harness to detect
-  # browser version.
   # https://caniuse.com/mdn-webassembly_api_memory_toresizablebuffer
   Feature.GROWABLE_ARRAYBUFFERS: {
     'chrome': 144,

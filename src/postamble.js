@@ -249,12 +249,19 @@ var wasmRawExports;
 #if ASSERTIONS
 var initCalled = false;
 #endif
+#if AUTO_INIT && !WASM_ESM_INTEGRATION
+// In AUTO_INIT mode `init` is not exported; we self-initialize below.
+async function init() {
+#else
 export default async function init(moduleArg = {}) {
+#endif
 #if ASSERTIONS
   assert(!initCalled);
   initCalled = true;
 #endif
+#if !AUTO_INIT || WASM_ESM_INTEGRATION
   Object.assign(Module, moduleArg);
+#endif
   processModuleArgs();
 #if WASM_ESM_INTEGRATION
 #if PTHREADS
@@ -271,6 +278,16 @@ export default async function init(moduleArg = {}) {
 #endif
   await run();
 }
+
+#if AUTO_INIT && !WASM_ESM_INTEGRATION
+#if PTHREADS || WASM_WORKERS
+// Worker threads self-init on demand from the CMD_LOAD handler (see
+// runtime_pthread.js), so only the main thread inits here.
+if ({{{ ENVIRONMENT_IS_MAIN_THREAD() }}})
+#endif
+await init();
+
+#else
 
 #if ENVIRONMENT_MAY_BE_NODE
 // When run as the main script under node we run `init` immediately.
@@ -291,6 +308,8 @@ if (ENVIRONMENT_IS_SHELL) {
   // When run in a shell we run `init` immediately.
   await init();
 }
+#endif
+
 #endif
 
 #else // MODULARIZE == instance

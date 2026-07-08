@@ -79,13 +79,26 @@ WASM_DIS = os.path.join(building.get_binaryen_bin(), 'wasm-dis')
 LLVM_OBJDUMP = shared.llvm_tool_path('llvm-objdump')
 PYTHON = sys.executable
 
-assert config.NODE_JS # assert for mypy's benefit
-# By default we run the tests in the same version of node as emscripten itself used.
-if not config.NODE_JS_TEST:
-  config.NODE_JS_TEST = config.NODE_JS
-# The default set of JS_ENGINES contains just node.
-if not config.JS_ENGINES:
-  config.JS_ENGINES = [config.NODE_JS_TEST]
+
+def setup_test_config():
+  assert config.NODE_JS # assert for mypy's benefit
+  # By default we run the tests in the same version of node as emscripten itself used.
+  if not config.NODE_JS_TEST:
+    config.NODE_JS_TEST = config.NODE_JS
+  # The default set of JS_ENGINES contains just node.
+  if not config.JS_ENGINES:
+    config.JS_ENGINES = [config.NODE_JS_TEST]
+  if not config.WASM_ENGINES:
+    config.WASM_ENGINES = []
+
+  config.SPIDERMONKEY_ENGINE = config.listify(config.SPIDERMONKEY_ENGINE)
+  config.NODE_JS_TEST = config.listify(config.NODE_JS_TEST)
+  config.V8_ENGINE = config.listify(config.V8_ENGINE)
+  config.JS_ENGINES = [config.listify(e) for e in config.JS_ENGINES]
+  config.WASM_ENGINES = [config.listify(e) for e in config.WASM_ENGINES]
+
+
+setup_test_config()
 
 
 def errlog(*args):
@@ -1010,7 +1023,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       engine += ['--unstable-detect-cjs', '--allow-all', '--v8-flags=--expose-gc']
     elif engine_is_v8(engine):
       engine += self.v8_args
-    elif engine == config.SPIDERMONKEY_ENGINE:
+    elif engine_is_spidermonkey(engine):
       engine += self.spidermonkey_args
     return engine
 
@@ -1437,7 +1450,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
   def do_runf(self, filename, expected_output=None, **kwargs):
     return self._build_and_run(filename, expected_output, **kwargs)
 
-  def do_run_in_out_file_test(self, srcfile, **kwargs):
+  def do_runf_out_file(self, srcfile, **kwargs):
     srcfile = maybe_test_file(srcfile)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = utils.unsuffixed(srcfile) + out_suffix + '.out'

@@ -10,9 +10,8 @@ import sys
 import shutil
 import subprocess
 
-script_dir = os.path.abspath(os.path.dirname(__file__))
-emscripten_root = os.path.dirname(os.path.dirname(script_dir))
-default_llvm_dir = os.path.join(os.path.dirname(emscripten_root), 'llvm-project')
+from update_common import *
+
 local_root = os.path.join(script_dir, 'libcxx')
 local_src = os.path.join(local_root, 'src')
 local_inc = os.path.join(local_root, 'include')
@@ -30,34 +29,6 @@ libc_copy_dirs = [
     'config',
 ]
 
-def clean_dir(dirname):
-  if not os.path.exists(dirname):
-    return
-  for f in os.listdir(dirname):
-    if f in preserve_files:
-      continue
-    full = os.path.join(dirname, f)
-    if os.path.isdir(full):
-      shutil.rmtree(full)
-    else:
-      os.remove(full)
-
-
-def copy_tree(upstream_dir, local_dir):
-  if not os.path.exists(local_dir):
-    os.makedirs(local_dir)
-  for f in os.listdir(upstream_dir):
-    full = os.path.join(upstream_dir, f)
-    if os.path.isdir(full):
-      shutil.copytree(full, os.path.join(local_dir, f))
-    elif f not in excludes:
-      shutil.copy2(full, os.path.join(local_dir, f))
-  for root, dirs, files in os.walk(local_dir):
-    for f in files:
-      if f in excludes:
-        full = os.path.join(root, f)
-        os.remove(full)
-
 
 def generate_modules(cmake_version: str):
   dst = os.path.join(local_modules, 'prebuilt')
@@ -68,7 +39,7 @@ def generate_modules(cmake_version: str):
   binary_dir = f'{build_dir}/out'
   dist = f'{binary_dir}/dist/'
 
-  clean_dir(build_dir)
+  clean_dir(build_dir, preserve_files)
   os.makedirs(build_dir, exist_ok=True)
   with open(f'{build_dir}/CMakeLists.txt', 'x', encoding='utf-8') as CMakeLists:
     CMakeLists.write(f'''\
@@ -92,6 +63,7 @@ def generate_modules(cmake_version: str):
   shutil.copytree(dist, dst, dirs_exist_ok=True)
 
 def main():
+  llvm_dir = parse_args(default_llvm_dir, 'llvm_dir')
   # Exit early if cmake is not found
   try:
     output= subprocess.check_output(['cmake', '--version'], text=True)
@@ -101,10 +73,7 @@ def main():
 
   cmake_version = re.search(r'^cmake version (\d+(?:\.\d+)*)', output).group(1)
 
-  if len(sys.argv) > 1:
-    llvm_dir = os.path.abspath(sys.argv[1])
-  else:
-    llvm_dir = default_llvm_dir
+  llvm_dir = get_llvm_dir()
   libcxx_dir = os.path.join(llvm_dir, 'libcxx')
   upstream_src = os.path.join(libcxx_dir, 'src')
   upstream_inc = os.path.join(libcxx_dir, 'include')
@@ -114,13 +83,13 @@ def main():
   assert os.path.exists(upstream_modules)
 
   # Remove old version
-  clean_dir(local_src)
-  clean_dir(local_inc)
-  clean_dir(local_modules)
+  clean_dir(local_src, preserve_files)
+  clean_dir(local_inc, preserve_files)
+  clean_dir(local_modules, preserve_files)
 
-  copy_tree(upstream_src, local_src)
-  copy_tree(upstream_inc, local_inc)
-  copy_tree(upstream_modules, local_modules)
+  copy_tree(upstream_src, local_src, excludes)
+  copy_tree(upstream_inc, local_inc, excludes)
+  copy_tree(upstream_modules, local_modules, excludes)
   generate_modules(cmake_version)
 
   shutil.copy2(os.path.join(libcxx_dir, 'CREDITS.TXT'), local_root)
@@ -136,14 +105,15 @@ def main():
 
   for dirname in libc_copy_dirs:
     local_dir = os.path.join(libc_local_dir, dirname)
-    clean_dir(local_dir)
+    clean_dir(local_dir, preserve_files)
 
   for dirname in libc_copy_dirs:
     upstream_dir = os.path.join(libc_upstream_dir, dirname)
     local_dir = os.path.join(libc_local_dir, dirname)
-    copy_tree(upstream_dir, local_dir)
+    copy_tree(upstream_dir, local_dir, excludes)
 
   shutil.copy2(os.path.join(libc_upstream_dir, 'LICENSE.TXT'), libc_local_dir)
+  update_readme(local_root, llvm_dir)
 
 if __name__ == '__main__':
   main()

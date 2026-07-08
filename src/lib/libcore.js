@@ -2272,6 +2272,8 @@ addToLibrary({
   $runDependencies: 0,
   $dependenciesPromise__internal: true,
   $dependenciesPromise: null,
+  $dependenciesPromiseResolve__internal: true,
+  $dependenciesPromiseResolve: null,
   $resolveRunDependencies__internal: true,
   $resolveRunDependencies__deps: ['$dependenciesPromise'],
   $resolveRunDependencies: async () => dependenciesPromise,
@@ -2282,7 +2284,7 @@ addToLibrary({
   $runDependencyWatcher: null,
 #endif
 
-  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency', '$dependenciesPromise',
+  $addRunDependency__deps: ['$runDependencies', '$removeRunDependency', '$dependenciesPromise', '$dependenciesPromiseResolve',
 #if ASSERTIONS
     '$runDependencyTracking',
     '$runDependencyWatcher',
@@ -2290,9 +2292,7 @@ addToLibrary({
   ],
   $addRunDependency: (id) => {
     if (!runDependencies) {
-      var resolve;
-      dependenciesPromise = new Promise((r) => resolve = r);
-      dependenciesPromise.resolve = resolve;
+      dependenciesPromise = new Promise((resolve) => dependenciesPromiseResolve = resolve);
     }
     runDependencies++;
 
@@ -2336,7 +2336,7 @@ addToLibrary({
 #endif
   },
 
-  $removeRunDependency__deps: ['$runDependencies', '$dependenciesPromise',
+  $removeRunDependency__deps: ['$runDependencies', '$dependenciesPromiseResolve',
 #if ASSERTIONS
     '$runDependencyTracking',
     '$runDependencyWatcher',
@@ -2364,7 +2364,7 @@ addToLibrary({
         runDependencyWatcher = null;
       }
 #endif
-      dependenciesPromise.resolve();
+      dependenciesPromiseResolve();
     }
   },
 #endif

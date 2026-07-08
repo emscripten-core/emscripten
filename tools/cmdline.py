@@ -26,7 +26,7 @@ from tools.settings import MEM_SIZE_SETTINGS, settings, user_settings
 from tools.toolchain_profiler import ToolchainProfiler
 from tools.utils import exit_with_error, read_file
 
-SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2']
+SIMD_INTEL_FEATURE_TOWER = ['-msse', '-msse2', '-msse3', '-mssse3', '-msse4.1', '-msse4.2', '-msse4', '-mavx', '-mavx2', '-mfma']
 SIMD_NEON_FLAGS = ['-mfpu=neon']
 CLANG_FLAGS_WITH_ARGS = {
     '-MT', '-MF', '-MJ', '-MQ', '-D', '-U', '-o', '-x',
@@ -78,6 +78,7 @@ class EmccOptions:
   no_entry = False
   no_minify = False
   nodefaultlibs = False
+  openmp = False
   nolibc = False
   nostartfiles = False
   nostdlib = False
@@ -539,6 +540,8 @@ def parse_args(newargs):  # noqa: C901, PLR0912, PLR0915
       else:
         exit_with_error(f'invalid value for --output-eol: `{style}`')
     # Record PTHREADS setting because it controls whether --shared-memory is passed to lld
+    elif arg in {'-fopenmp', '-fopenmp=libomp'}:
+      options.openmp = 1
     elif arg == '-pthread':
       settings.PTHREADS = 1
       # Also set the legacy setting name, in case use JS code depends on it.

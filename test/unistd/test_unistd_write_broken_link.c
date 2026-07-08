@@ -16,8 +16,7 @@ int main() {
   {
     int target_fd = open("link_target", O_RDONLY);
     printf("target_fd: %d, errno: %d %s\n", target_fd, errno, strerror(errno));
-    char buf[10];
-    memset(buf, 0, 10);
+    char buf[10] = {0};
     size_t r = read(target_fd, buf, 10);
     assert(r == 3);
     printf("buf: '%s'\n", buf);
@@ -26,8 +25,7 @@ int main() {
   {
     int target_fd = open("link_source", O_RDONLY);
     printf("target_fd: %d, errno: %d %s\n", target_fd, errno, strerror(errno));
-    char buf[10];
-    memset(buf, 0, 10);
+    char buf[10] = {0};
     size_t r = read(target_fd, buf, 10);
     assert(r == 3);
     printf("buf: '%s'\n", buf);

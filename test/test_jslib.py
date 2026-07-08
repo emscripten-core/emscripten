@@ -99,7 +99,7 @@ addToLibrary({
 });
 ''')
 
-    self.do_run_in_out_file_test('hello_world.c', cflags=['--js-library', 'lib.js'])
+    self.do_runf_out_file('hello_world.c', cflags=['--js-library', 'lib.js'])
 
   def test_jslib_proxying(self):
     # Regression test for a bug we had where jsifier would find and use
@@ -710,11 +710,11 @@ console.error('JSLIB: none of the above');
 
     # When WebGL is implicitly linked in, the implicit linking should happen before any user
     # --js-libraries, so that they can adjust the behavior afterwards.
-    self.do_run_in_out_file_test('jslib/test_jslib_override_system_symbol.c', cflags=['--js-library', test_file('jslib/test_jslib_override_system_symbol.js'), '-sMAX_WEBGL_VERSION=2'])
+    self.do_runf_out_file('jslib/test_jslib_override_system_symbol.c', cflags=['--js-library', test_file('jslib/test_jslib_override_system_symbol.js'), '-sMAX_WEBGL_VERSION=2'])
 
     # When WebGL is explicitly linked to in strict mode, the linking order on command line should enable overriding.
     self.cflags += ['-sAUTO_JS_LIBRARIES=0', '-sMAX_WEBGL_VERSION=2', '-lwebgl.js', '--js-library', test_file('jslib/test_jslib_override_system_symbol.js')]
-    self.do_run_in_out_file_test('jslib/test_jslib_override_system_symbol.c')
+    self.do_runf_out_file('jslib/test_jslib_override_system_symbol.c')
 
   def test_jslib_version_check(self):
     create_file('libfoo.js', '''
@@ -760,7 +760,7 @@ console.error('JSLIB: none of the above');
     'closure': (['--closure', '1'],),
   })
   def test_multiline_string(self, args):
-    self.do_run_in_out_file_test('jslib/test_multiline_string.c', cflags=['--js-library', test_file('jslib/test_multiline_string.js')] + args)
+    self.do_runf_out_file('jslib/test_multiline_string.c', cflags=['--js-library', test_file('jslib/test_multiline_string.js')] + args)
 
   def test_export(self):
     create_file('post.js', 'Module.myFunc();')

@@ -1913,6 +1913,37 @@ used. An example of using the module is below.
   foo();
   bar();
 
+The ``init`` function exists so the caller can configure the instance (via
+``moduleArg``) before it starts. When there is nothing to configure, see
+``AUTO_INIT`` to have the module self-initialize on import.
+
+Default value: false
+
+.. _auto_init:
+
+AUTO_INIT
+=========
+
+When set, an instance ES module (``MODULARIZE=instance`` or
+``WASM_ESM_INTEGRATION``) initializes itself via top-level await on import
+rather than exporting an ``init`` function to be called by the consumer. The
+named Wasm/runtime exports are ready to use as soon as the module is
+imported::
+
+  import { foo, bar } from "./my_module.mjs"
+  foo();
+  bar();
+
+Since the module initializes without any caller involvement, there is no
+opportunity for module-level configuration: ``moduleArg`` cannot be passed
+and the entire ``INCOMING_MODULE_JS_API`` is disabled (passing a non-empty
+``INCOMING_MODULE_JS_API`` is an error).
+
+Because no default ``init`` export is emitted, this also frees up the
+``default`` export name for the program's own use.
+
+Requires ``MODULARIZE=instance`` or ``WASM_ESM_INTEGRATION``.
+
 Default value: false
 
 .. _export_es6:
@@ -3404,8 +3435,8 @@ GROWABLE_ARRAYBUFFERS
 Enable support for growable views of Wasm memory. This is a recent Web
 platform feature that can make growing the Wasm memory more efficient,
 especially in multi-threaded builds.
-Setting this to 1 will auto-detect the presence of this API and use it
-when available.
+Setting this to 1 will auto-detect the presence of this API and use
+it when available.
 Setting this to 2 will unconditionally require it. This is the only way
 to completely remove the overhead of growable memory + pthreads.
 This settings does nothing unless ALLOW_MEMORY_GROWTH is set.

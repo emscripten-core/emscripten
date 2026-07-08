@@ -2,7 +2,7 @@
 #
 # Git pre-push script that runs some quick/simple tests.
 #
-# This script can be installed using `bootstrap.py -i`.
+# This script is normally installed by `bootstrap.py`.
 
 set -o errexit
 
