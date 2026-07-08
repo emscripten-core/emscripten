@@ -536,12 +536,12 @@ class sockets(BrowserCore):
     # ephemeral port, the client sends a datagram, the server echoes it back.
     self.do_runf('sockets/test_udp_echo.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
+  @also_with_proxy_to_pthread
   def test_noderawsockets_epoll_callback(self):
     # emscripten_epoll_set_callback woken repeatedly by arriving datagrams on a
     # real socket via the SOCKFS -> wait-queue bridge, with no ASYNCIFY/JSPI.
-    # Not run under PROXY_TO_PTHREAD: the callback fires on the main-thread event
-    # loop, which is not where the proxied application thread runs (use a blocking
-    # epoll_wait from a pthread instead).
+    # Under PROXY_TO_PTHREAD the readiness is tracked on the FS-owning main thread
+    # but each delivery is back-proxied to the registering pthread.
     self.do_runf('sockets/test_epoll_callback.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
   @also_with_proxy_to_pthread
