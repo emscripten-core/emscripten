@@ -521,6 +521,21 @@ class sockets(BrowserCore):
     self.do_runf('sockets/test_epoll_socket_blocking.c', 'done\n',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
+  def test_noderawsockets_blocking_echo(self):
+    # A self-contained loopback echo using only blocking socket calls (no
+    # O_NONBLOCK, no poll/select, no main loop): blocking connect, accept, recv
+    # and send. Each suspends the worker while the main thread's event loop
+    # services the sockets, with main() proxied to a worker (Part B topology).
+    self.do_runf('sockets/test_tcp_blocking_echo.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-pthread', '-sPROXY_TO_PTHREAD', '-sEXIT_RUNTIME'])
+
+  def test_noderawsockets_blocking_echo_jspi(self):
+    # Same, but the blocking socket calls suspend the wasm stack under JSPI on a
+    # single thread - no threads at all.
+    self.setup_jspi_node()
+    self.do_runf('sockets/test_tcp_blocking_echo.c', 'done\n',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
   def test_noderawsockets_epoll_rdhup(self):
     # A blocking epoll_wait reports EPOLLRDHUP when the TCP peer half-closes its
     # write side (FIN), distinct from a full EPOLLHUP, and only when requested.

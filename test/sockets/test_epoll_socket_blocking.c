@@ -68,7 +68,7 @@ int main(void) {
   pthread_t t;
   assert(pthread_create(&t, NULL, sender, NULL) == 0);
 #else
-  emscripten_async_call(send_ping, NULL, 100);
+  emscripten_async_call_promising(send_ping, NULL, 100);
 #endif
 
   struct epoll_event out[4];

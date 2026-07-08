@@ -318,6 +318,7 @@
             "SOCK_CLOEXEC",
             "SOCK_NONBLOCK",
              "MSG_PEEK",
+             "MSG_DONTWAIT",
              "AF_INET",
              "AF_UNSPEC",
              "AF_INET6",

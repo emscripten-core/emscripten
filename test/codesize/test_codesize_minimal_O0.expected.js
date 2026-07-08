@@ -1019,8 +1019,6 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'ydayFromDate',
   'arraySum',
   'addDays',
-  'getSocketFromFD',
-  'getSocketAddress',
   'FS_createPreloadedFile',
   'FS_preloadFile',
   'FS_modeStringToFlags',
@@ -1029,6 +1027,8 @@ Module['FS_createPreloadedFile'] = FS.createPreloadedFile;
   'FS_stdin_getChar',
   'FS_mkdirTree',
   '_setNetworkCallback',
+  'getSocketFromFD',
+  'getSocketAddress',
 ];
 missingLibrarySymbols.forEach(missingLibrarySymbol)
 

@@ -79,6 +79,11 @@ void emscripten_set_main_loop_expected_blockers(int num);
 
 void emscripten_async_call(em_arg_callback_func func, void *arg, int millis);
 
+// Like emscripten_async_call, but the callback is dispatched so that it may
+// suspend the wasm stack (e.g. perform blocking calls) under JSPI. Without JSPI
+// this is identical to emscripten_async_call.
+void emscripten_async_call_promising(em_arg_callback_func func, void *arg, int millis);
+
 void emscripten_exit_with_live_runtime(void) __attribute__((__noreturn__));
 void emscripten_force_exit(int status) __attribute__((__noreturn__));
 

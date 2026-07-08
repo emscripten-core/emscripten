@@ -268,7 +268,12 @@ var WasiLibrary = {
 #endif // SYSCALLS_REQUIRE_FILESYSTEM
 
 #if SYSCALLS_REQUIRE_FILESYSTEM
+#if ASYNCIFY || PTHREADS
+  fd_write__deps: ['$doWritev', '$streamWaitOp'],
+  fd_write__async: 'auto',
+#else
   fd_write__deps: ['$doWritev'],
+#endif
 #elif (!MINIMAL_RUNTIME || EXIT_RUNTIME)
   $flush_NO_FILESYSTEM__deps: ['$printChar', '$printCharBuffers'],
   $flush_NO_FILESYSTEM: () => {
@@ -287,7 +292,23 @@ var WasiLibrary = {
   fd_write: (fd, iov, iovcnt, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
+#if ASYNCIFY || PTHREADS
+    // A blocking write on a socket/pipe suspends via $streamWaitOp when the send
+    // buffer would-block, then retries once writable.
+    var r = streamWaitOp(fd, () => {
+      var num = doWritev(stream, iov, iovcnt);
+      {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
+      return 0;
+    });
+    // $streamWaitOp yields 0 (success; pnum written) or a negative -errno; WASI
+    // wants a positive errno, so flip the sign.
+    var toWasi = (v) => v < 0 ? -v : 0;
+    return (typeof r?.then == 'function') ? r.then(toWasi) : toWasi(r);
+#else
     var num = doWritev(stream, iov, iovcnt);
+    {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
+    return 0;
+#endif
 #else
     // hack to support printf in SYSCALLS_REQUIRE_FILESYSTEM=0
     var num = 0;
@@ -300,9 +321,9 @@ var WasiLibrary = {
       }
       num += len;
     }
-#endif // SYSCALLS_REQUIRE_FILESYSTEM
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
     return 0;
+#endif // SYSCALLS_REQUIRE_FILESYSTEM
   },
 
 #if SYSCALLS_REQUIRE_FILESYSTEM
@@ -343,14 +364,33 @@ var WasiLibrary = {
   },
 
 #if SYSCALLS_REQUIRE_FILESYSTEM
+#if ASYNCIFY || PTHREADS
+  fd_read__deps: ['$doReadv', '$streamWaitOp'],
+  fd_read__async: 'auto',
+#else
   fd_read__deps: ['$doReadv'],
+#endif
 #endif
   fd_read: (fd, iov, iovcnt, pnum) => {
 #if SYSCALLS_REQUIRE_FILESYSTEM
     var stream = SYSCALLS.getStreamFromFD(fd);
+#if ASYNCIFY || PTHREADS
+    // A blocking read on a socket or pipe suspends (JSPI/pthread proxy) via
+    // $streamWaitOp until the inode signals readiness, then retries.
+    var r = streamWaitOp(fd, () => {
+      var num = doReadv(stream, iov, iovcnt);
+      {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
+      return 0;
+    });
+    // $streamWaitOp yields 0 (success; pnum written) or a negative -errno; WASI
+    // wants a positive errno, so flip the sign.
+    var toWasi = (v) => v < 0 ? -v : 0;
+    return (typeof r?.then == 'function') ? r.then(toWasi) : toWasi(r);
+#else
     var num = doReadv(stream, iov, iovcnt);
     {{{ makeSetValue('pnum', 0, 'num', SIZE_TYPE) }}};
     return 0;
+#endif
 #elif ASSERTIONS
     abort('fd_read called without SYSCALLS_REQUIRE_FILESYSTEM');
 #else

@@ -62,6 +62,15 @@ See docs/process.md for more on how version tagging works.
   process, or pthreads required. Supports incoming and outgoing TCP, UDP, IPv6,
   and `-pthread` with `PROXY_TO_PTHREAD`. Uses the public node APIs where
   available, falling back to `tcp_wrap`/`udp_wrap` on older Node.js. (#27080)
+- The socket data syscalls (`connect`, `accept`, `recv*`, `send*`) on the legacy
+  (non-WASMFS) JS filesystem now block on the per-inode readiness wait-queue
+  rather than always returning `EAGAIN`, so blocking sockets work under
+  `PROXY_TO_PTHREAD`, `ASYNCIFY`, and `JSPI` (purely-synchronous builds keep the
+   old immediate-`EAGAIN` behaviour). `MSG_DONTWAIT` is honored for a single
+   non-blocking `recv`/`send`. (#NNNNN)
+- Added `emscripten_async_call_promising`, a variant of `emscripten_async_call`
+  whose callback may suspend the wasm stack (e.g. perform blocking calls) under
+  `JSPI`. Without `JSPI` it is identical to `emscripten_async_call`. (#NNNNN)
 - The following symbols are no longer included in `INCOMING_MODULE_JS_API`
   by default:
   - GL_MAX_TEXTURE_IMAGE_UNITS

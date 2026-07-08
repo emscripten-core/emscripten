@@ -5,6 +5,64 @@
  */
 
 var LibraryFS = {
+  // Retry a stream op until it stops reporting EAGAIN, blocking on the stream
+  // node's readiness wait-queue in between (the same queue poll()/epoll consume
+  // and that SOCKFS/PIPEFS emit into). `op` attempts the operation once and
+  // returns the syscall result, throwing FS.ErrnoError (EAGAIN = would-block)
+  // exactly as the underlying sock/stream op already does; the helper owns the
+  // blocking-vs-nonblocking decision from the stream's own O_NONBLOCK flag (or a
+  // per-call `nonblocking` hint for MSG_DONTWAIT). It is fd-generic: sockets,
+  // pipes and ttys all share it. Callers are __async:'auto', so a ready op
+  // resolves synchronously and only a genuine would-block yields a Promise.
+  //
+  // The first op() attempt runs to completion before we register the waiter, so
+  // (JS being single-threaded) no readiness event can slip in between - the same
+  // safety $doPollAsync relies on. On a purely-synchronous build there is no way
+  // to suspend, so it degrades to a single attempt (status quo EAGAIN).
+  $streamWaitOp__internal: true,
+  $streamWaitOp__deps: ['$FS'],
+  $streamWaitOp: (fd, op, nonblocking = 0) => {
+    function attempt() {
+      try {
+        return op();
+      } catch (e) {
+        if (typeof FS == 'undefined' || e.name !== 'ErrnoError') throw e;
+        return -e.errno;
+      }
+    }
+    var r = attempt();
+#if ASYNCIFY || PTHREADS
+#if !ASYNCIFY
+    // PTHREADS without ASYNCIFY/JSPI: the stack can only suspend when this runs
+    // as the target of a worker's sync-proxy, whose result is delivered by
+    // promise resolution. A direct main-thread call cannot block, so degrade to
+    // a single attempt (mirrors $doPollAsync's isAsyncContext gate).
+    if (!PThread.currentProxiedOperationCallerThread) return r;
+#endif
+    var stream = FS.getStream(fd);
+    var wait = r == -{{{ cDefs.EAGAIN }}} && !nonblocking && !(stream.flags & {{{ cDefs.O_NONBLOCK }}});
+#if ASYNCIFY
+    // JSPI/Asyncify: handleAsync accepts a plain value or a Promise, so a ready
+    // op resolves synchronously without suspending.
+    if (!wait) return r;
+#else
+    // A proxied result must be a thenable even when ready synchronously.
+    if (!wait) return Promise.resolve(r);
+#endif
+    return new Promise((resolve) => {
+      var reg;
+      function wake() {
+        var r = attempt();
+        if (r == -{{{ cDefs.EAGAIN }}}) return; // spurious wake: keep waiting
+        reg.listeners.delete(reg.entry);
+        resolve(r);
+      }
+      reg = stream.node.addListener(wake);
+    });
+#else
+    return r;
+#endif
+  },
   $FS__deps: ['$randomFill', '$PATH', '$PATH_FS', '$TTY', '$MEMFS',
     '$FS_modeStringToFlags',
     '$FS_fileDataToTypedArray',

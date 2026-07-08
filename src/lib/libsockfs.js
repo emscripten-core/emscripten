@@ -810,3 +810,329 @@ addToLibrary({
   emscripten_set_socket_close_callback: (userData, callback) =>
     _setNetworkCallback('close', userData, callback),
 });
+
+// The socket syscalls. Relocated here from libsyscall.js because they are
+// SOCKFS-coupled ($getSocketFromFD / SOCKFS) and the blocking data ops build on
+// $streamWaitOp (libfs.js). Under PROXY_POSIX_SOCKETS the socket syscalls are
+// native (libsockets.a); under WASMFS this file is not linked at all.
+//
+// __proxy: 'sync' consolidates socket ownership on the main thread (a node:net
+// handle is a per-realm JS object; only linear memory is shared), matching the
+// FS + epoll model - inert unless SHARED_MEMORY. The blocking data ops carry
+// __async: 'auto' and delegate to $streamWaitOp, which suspends the wasm stack
+// (JSPI/Asyncify) or, when proxied from a worker, resolves the sync-proxy across
+// the main-thread event loop; on a purely-synchronous build they degrade to the
+// old immediate-EAGAIN behaviour.
+#if PROXY_POSIX_SOCKETS == 0 && WASMFS == 0
+var SockFSSyscalls = {
+  $getSocketFromFD__deps: ['$SOCKFS', '$FS'],
+  $getSocketFromFD: (fd) => {
+    var socket = SOCKFS.getSocket(fd);
+    if (!socket) throw new FS.ErrnoError({{{ cDefs.EBADF }}});
+#if SYSCALL_DEBUG
+    dbg(`    (socket: "${socket.path}")`);
+#endif
+    return socket;
+  },
+  $getSocketAddress__deps: ['$readSockaddr', '$FS', '$DNS'],
+  $getSocketAddress: (addrp, addrlen) => {
+    var info = readSockaddr(addrp, addrlen);
+    if (info.errno) throw new FS.ErrnoError(info.errno);
+    info.addr = DNS.lookup_addr(info.addr) || info.addr;
+#if SYSCALL_DEBUG
+    dbg(`    (socketaddress: "${[info.addr, info.port]}")`);
+#endif
+    return info;
+  },
+  __syscall_socket__proxy: 'sync',
+  __syscall_socket__deps: ['$SOCKFS'],
+  __syscall_socket: (domain, type, protocol, u1, u2, u3) => {
+    var sock = SOCKFS.createSocket(domain, type, protocol);
+    return sock.stream.fd;
+  },
+  __syscall_getsockname__proxy: 'sync',
+  __syscall_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __syscall_getsockname: (fd, addr, len, u1, u2, u3) => {
+    var sock = getSocketFromFD(fd);
+    // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
+    var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport, len);
+#if ASSERTIONS
+    assert(!errno);
+#endif
+    return 0;
+  },
+  __syscall_getpeername__proxy: 'sync',
+  __syscall_getpeername__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __syscall_getpeername: (fd, addr, len, u1, u2, u3) => {
+    var sock = getSocketFromFD(fd);
+    if (!sock.daddr) {
+      return -{{{ cDefs.ENOTCONN }}}; // The socket is not connected.
+    }
+    var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.daddr), sock.dport, len);
+#if ASSERTIONS
+    assert(!errno);
+#endif
+    return 0;
+  },
+  // Blocking connect: the first attempt initiates the connect and reports it
+  // pending; the wait resolves once the socket becomes writable (or errors),
+  // reading SO_ERROR to distinguish success (0) from a failed connect (-err).
+  // The pending/completion signalling is backend-agnostic: it uses the same
+  // poll()/SO_ERROR the reactor uses, driven by the node backend's
+  // 'connect'/'error' (main: 'open'/'error') wait-queue emissions.
+  __syscall_connect__proxy: 'sync',
+  __syscall_connect__async: 'auto',
+  __syscall_connect__deps: ['$streamWaitOp', '$getSocketFromFD', '$getSocketAddress'],
+  __syscall_connect: (fd, addr, len, u1, u2, u3) => {
+    var sock = getSocketFromFD(fd);
+    var info = getSocketAddress(addr, len);
+    var started = false;
+    return streamWaitOp(fd, () => {
+      if (!started) {
+        started = true;
+        sock.sock_ops.connect(sock, info.addr, info.port);
+        // Datagram connect is synchronous.
+        if (sock.type == {{{ cDefs.SOCK_DGRAM }}}) return 0;
+#if ASYNCIFY || PTHREADS
+        // Non-blocking: report the connect in progress; blocking: wait.
+        return (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}}) ? -{{{ cDefs.EINPROGRESS }}} : -{{{ cDefs.EAGAIN }}};
+#else
+        // No suspension available: non-blocking reports EINPROGRESS, blocking
+        // keeps the legacy fire-and-forget success.
+        return (sock.stream.flags & {{{ cDefs.O_NONBLOCK }}}) ? -{{{ cDefs.EINPROGRESS }}} : 0;
+#endif
+      }
+      // Woken: writable/error means the connect resolved. Read (and clear)
+      // SO_ERROR to map success/failure onto the syscall result.
+      var mask = sock.sock_ops.poll(sock);
+      if (!(mask & ({{{ cDefs.POLLOUT }}} | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}}))) {
+        return -{{{ cDefs.EAGAIN }}};
+      }
+      var err = sock.error;
+      sock.error = null;
+      return err ? -err : 0;
+    });
+  },
+  __syscall_shutdown__proxy: 'sync',
+  __syscall_shutdown__deps: ['$getSocketFromFD'],
+  __syscall_shutdown: (fd, how, u1, u2, u3, u4) => {
+    var sock = getSocketFromFD(fd);
+#if NODERAWSOCKETS
+    return sock.sock_ops.shutdown(sock, how);
+#else
+    return -{{{ cDefs.ENOSYS }}}; // unsupported feature
+#endif
+  },
+  // Blocking accept: waits until a connection is pending (listener readable),
+  // then hands it out. `flags` (SOCK_NONBLOCK/SOCK_CLOEXEC) apply to the new fd
+  // only, never to the listener's own blocking behaviour.
+  __syscall_accept4__proxy: 'sync',
+  __syscall_accept4__async: 'auto',
+  __syscall_accept4__deps: ['$streamWaitOp', '$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __syscall_accept4: (fd, addr, len, flags, u1, u2) => {
+    var sock = getSocketFromFD(fd);
+    return streamWaitOp(fd, () => {
+      var newsock = sock.sock_ops.accept(sock); // throws EAGAIN until one is pending
+      if (addr) {
+        var errno = writeSockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport, len);
+#if ASSERTIONS
+        assert(!errno);
+#endif
+      }
+      if (flags & {{{ cDefs.SOCK_NONBLOCK }}}) newsock.stream.flags |= {{{ cDefs.O_NONBLOCK }}};
+      else newsock.stream.flags &= ~{{{ cDefs.O_NONBLOCK }}};
+      if (flags & {{{ cDefs.SOCK_CLOEXEC }}}) newsock.stream.flags |= {{{ cDefs.O_CLOEXEC }}};
+      return newsock.stream.fd;
+    });
+  },
+  __syscall_bind__proxy: 'sync',
+  __syscall_bind__deps: ['$getSocketFromFD', '$getSocketAddress'],
+  __syscall_bind: (fd, addr, len, u1, u2, u3) => {
+    var sock = getSocketFromFD(fd);
+    var info = getSocketAddress(addr, len);
+    sock.sock_ops.bind(sock, info.addr, info.port);
+    return 0;
+  },
+  __syscall_listen__proxy: 'sync',
+  __syscall_listen__deps: ['$getSocketFromFD'],
+  __syscall_listen: (fd, backlog, u1, u2, u3, u4) => {
+    var sock = getSocketFromFD(fd);
+    sock.sock_ops.listen(sock, backlog);
+    return 0;
+  },
+  // Blocking recv: waits until data is present (or EOF); MSG_DONTWAIT forces a
+  // single non-blocking attempt for that call.
+  __syscall_recvfrom__proxy: 'sync',
+  __syscall_recvfrom__async: 'auto',
+  __syscall_recvfrom__deps: ['$streamWaitOp', '$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __syscall_recvfrom: (fd, buf, len, flags, addr, alen) => {
+    var sock = getSocketFromFD(fd);
+    return streamWaitOp(fd, () => {
+      var msg = sock.sock_ops.recvmsg(sock, len, flags); // throws EAGAIN until data present
+      if (!msg) return 0; // socket is closed
+      if (addr) {
+        var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port, alen);
+#if ASSERTIONS
+        assert(!errno);
+#endif
+      }
+      HEAPU8.set(msg.buffer, buf);
+      return msg.buffer.byteLength;
+    }, flags & {{{ cDefs.MSG_DONTWAIT }}});
+  },
+  // Blocking send: a blocking socket's backend never would-blocks (it buffers),
+  // so this normally resolves synchronously; the wait exists for symmetry with a
+  // backend that reports EAGAIN on a full send buffer (wakes on writable).
+  __syscall_sendto__proxy: 'sync',
+  __syscall_sendto__async: 'auto',
+  __syscall_sendto__deps: ['$streamWaitOp', '$getSocketFromFD', '$getSocketAddress'],
+  __syscall_sendto: (fd, buf, len, flags, addr, alen) => {
+    var sock = getSocketFromFD(fd);
+    return streamWaitOp(fd, () => {
+      if (!addr) {
+        // send, no address provided
+        return FS.write(sock.stream, HEAP8, buf, len);
+      }
+      var dest = getSocketAddress(addr, alen);
+      // sendto an address
+      return sock.sock_ops.sendmsg(sock, HEAP8, buf, len, dest.addr, dest.port);
+    }, flags & {{{ cDefs.MSG_DONTWAIT }}});
+  },
+  __syscall_getsockopt__proxy: 'sync',
+  __syscall_getsockopt__deps: ['$getSocketFromFD'],
+  __syscall_getsockopt: (fd, level, optname, optval, optlen, unused) => {
+    var sock = getSocketFromFD(fd);
+#if NODERAWSOCKETS
+    // The node:net backend handles all socket options.
+    return sock.sock_ops.getsockopt(sock, level, optname, optval, optlen);
+#else
+    // Minimal getsockopt aimed at resolving https://github.com/emscripten-core/emscripten/issues/2211
+    // so only supports SOL_SOCKET with SO_ERROR.
+    if (level === {{{ cDefs.SOL_SOCKET }}}) {
+      if (optname === {{{ cDefs.SO_ERROR }}}) {
+        {{{ makeSetValue('optval', 0, 'sock.error', 'i32') }}};
+        {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
+        sock.error = null; // Clear the error (The SO_ERROR option obtains and then clears this field).
+        return 0;
+      }
+    }
+    return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
+#endif
+  },
+  // Defined in JS rather than as a weak native stub so the node:net backend can
+  // provide it without a separate libstubs variation. Without that backend it
+  // just reports the option as unknown.
+  __syscall_setsockopt__proxy: 'sync',
+  __syscall_setsockopt__deps: ['$getSocketFromFD'],
+  __syscall_setsockopt: (fd, level, optname, optval, optlen, unused) => {
+#if NODERAWSOCKETS
+    var sock = getSocketFromFD(fd);
+    return sock.sock_ops.setsockopt(sock, level, optname, optval, optlen);
+#else
+    getSocketFromFD(fd); // validate the fd (and keep this syscall's catch reachable)
+    return -{{{ cDefs.ENOPROTOOPT }}}; // The option is unknown at the level indicated.
+#endif
+  },
+  __syscall_sendmsg__proxy: 'sync',
+  __syscall_sendmsg__async: 'auto',
+  __syscall_sendmsg__deps: ['$streamWaitOp', '$getSocketFromFD', '$getSocketAddress'],
+  __syscall_sendmsg: (fd, message, flags, u1, u2, u3) => {
+    var sock = getSocketFromFD(fd);
+    return streamWaitOp(fd, () => {
+      var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
+      var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
+      // read the address and port to send to
+      var addr, port;
+      var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
+      var namelen = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_namelen, 'i32') }}};
+      if (name) {
+        var info = getSocketAddress(name, namelen);
+        port = info.port;
+        addr = info.addr;
+      }
+      // concatenate scatter-gather arrays into one message buffer
+      var total = 0;
+      for (var i = 0; i < num; i++) {
+        total += {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
+      }
+      var view = new Uint8Array(total);
+      var offset = 0;
+      for (var i = 0; i < num; i++) {
+        var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, '*') }}};
+        var iovlen = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
+        for (var j = 0; j < iovlen; j++) {
+          view[offset++] = {{{ makeGetValue('iovbase', 'j', 'i8') }}};
+        }
+      }
+      // write the buffer
+      return sock.sock_ops.sendmsg(sock, view, 0, total, addr, port);
+    }, flags & {{{ cDefs.MSG_DONTWAIT }}});
+  },
+  // Blocking recvmsg: like recvfrom, waits until data is present (or EOF).
+  __syscall_recvmsg__proxy: 'sync',
+  __syscall_recvmsg__async: 'auto',
+  __syscall_recvmsg__deps: ['$streamWaitOp', '$getSocketFromFD', '$writeSockaddr', '$DNS'],
+  __syscall_recvmsg: (fd, message, flags, u1, u2, u3) => {
+    var sock = getSocketFromFD(fd);
+    return streamWaitOp(fd, () => {
+      var iov = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iov, '*') }}};
+      var num = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_iovlen, 'i32') }}};
+      // get the total amount of data we can read across all arrays
+      var total = 0;
+      for (var i = 0; i < num; i++) {
+        total += {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
+      }
+      // try to read total data (MSG_PEEK, when set, leaves it buffered)
+      var msg = sock.sock_ops.recvmsg(sock, total, flags); // throws EAGAIN until data present
+      if (!msg) return 0; // socket is closed
+
+      // TODO honor flags:
+      // MSG_OOB
+      // Requests out-of-band data. The significance and semantics of out-of-band data are protocol-specific.
+      // MSG_WAITALL
+      // Requests that the function block until the full amount of data requested can be returned. The function may return a smaller amount of data if a signal is caught, if the connection is terminated, if MSG_PEEK was specified, or if an error is pending for the socket.
+
+      // write the source address out
+      var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
+      if (name) {
+        var errno = writeSockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port);
+#if ASSERTIONS
+        assert(!errno);
+#endif
+      }
+      // write the buffer out to the scatter-gather arrays
+      var bytesRead = 0;
+      var bytesRemaining = msg.buffer.byteLength;
+      for (var i = 0; bytesRemaining > 0 && i < num; i++) {
+        var iovbase = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, '*') }}};
+        var iovlen = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
+        if (!iovlen) {
+          continue;
+        }
+        var length = Math.min(iovlen, bytesRemaining);
+        var buf = msg.buffer.subarray(bytesRead, bytesRead + length);
+        HEAPU8.set(buf, iovbase + bytesRead);
+        bytesRead += length;
+        bytesRemaining -= length;
+      }
+
+      // TODO set msghdr.msg_flags
+      // MSG_EOR
+      // End of record was received (if supported by the protocol).
+      // MSG_OOB
+      // Out-of-band data was received.
+      // MSG_TRUNC
+      // Normal data was truncated.
+      // MSG_CTRUNC
+
+      return bytesRead;
+    }, flags & {{{ cDefs.MSG_DONTWAIT }}});
+  },
+};
+
+for (const name of Object.keys(SockFSSyscalls)) {
+  wrapSyscallFunction(name, SockFSSyscalls, false);
+}
+
+addToLibrary(SockFSSyscalls);
+#endif // PROXY_POSIX_SOCKETS == 0 && WASMFS == 0

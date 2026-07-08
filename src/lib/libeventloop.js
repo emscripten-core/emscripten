@@ -170,10 +170,9 @@ LibraryJSEventLoop = {
     clearInterval(id);
   },
 
-  emscripten_async_call__deps: ['$safeSetTimeout', '$safeRequestAnimationFrame'],
-  emscripten_async_call: (func, arg, millis) => {
-    var wrapper = () => {{{ makeDynCall('vp', 'func') }}}(arg);
-
+  $scheduleAsyncCall__internal: true,
+  $scheduleAsyncCall__deps: ['$safeSetTimeout', '$safeRequestAnimationFrame'],
+  $scheduleAsyncCall: (wrapper, millis) => {
     if (millis >= 0
 #if ENVIRONMENT_MAY_BE_NODE
       // node does not support requestAnimationFrame
@@ -184,6 +183,19 @@ LibraryJSEventLoop = {
     } else {
       safeRequestAnimationFrame(wrapper);
     }
+  },
+
+  emscripten_async_call__deps: ['$scheduleAsyncCall'],
+  emscripten_async_call: (func, arg, millis) => {
+    scheduleAsyncCall(() => {{{ makeDynCall('vp', 'func') }}}(arg), millis);
+  },
+
+  // Like emscripten_async_call, but the callback is dispatched so it may suspend
+  // the wasm stack (e.g. perform blocking calls) under JSPI. Without JSPI this
+  // is identical to emscripten_async_call.
+  emscripten_async_call_promising__deps: ['$scheduleAsyncCall'],
+  emscripten_async_call_promising: (func, arg, millis) => {
+    scheduleAsyncCall(() => {{{ makeDynCall('vp', 'func', ASYNCIFY == 2) }}}(arg), millis);
   },
 
   $registerPostMainLoop: (f) => {
