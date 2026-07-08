@@ -519,7 +519,17 @@ var onPreRuns = [];
     var ptr = HEAPU32[((iov) >> 2)];
     var len = HEAPU32[(((iov) + (4)) >> 2)];
     iov += 8;
-    var curr = FS.write(stream, HEAP8, ptr, len, offset);
+    try {
+      var curr = FS.write(stream, HEAP8, ptr, len, offset);
+    } catch (e) {
+      // On a non-blocking stream a subsequent write may would-block after we
+      // already sent data. POSIX writev is a single gather-write: return
+      // what we have rather than failing the whole call.
+      if (ret > 0 && e instanceof FS.ErrnoError && (e.errno == 6 || e.errno == 6)) {
+        break;
+      }
+      throw e;
+    }
     if (curr < 0) return -1;
     ret += curr;
     if (curr < len) {
