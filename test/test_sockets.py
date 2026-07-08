@@ -140,10 +140,10 @@ class WebsockifyServerHarness:
     # Make sure both the actual server and the websocket proxy are running
     if self.do_server_check and not verify_tcp_connection(('localhost', self.target_port)):
       self.clean_processes()
-      raise Exception('[Websockify failed to start up in a timely manner]')
+      raise Exception('[Socket server failed to start up in a timely manner]')
     if not verify_tcp_connection(('localhost', self.listen_port)):
       self.clean_processes()
-      raise Exception('[Websockify failed to start up in a timely manner]')
+      raise Exception('[Websockify proxy failed to start up in a timely manner]')
 
     print('[Websockify on process %s]' % str(self.processes[-2:]))
     return self
