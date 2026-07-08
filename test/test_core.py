@@ -60,6 +60,7 @@ from decorators import (
   no_bun,
   no_deno,
   no_highmem,
+  no_wasm64,
   no_windows,
   parameterize,
   parameterized,
@@ -5613,6 +5614,19 @@ got: 10
     self.cflags += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
+  @no_wasm64('https://github.com/emscripten-core/emscripten/issues/27221')
+  @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
+  def test_openmp_max_threads(self):
+    src = r"""
+      #include <omp.h>
+      #include <assert.h>
+      int main(void) {
+        assert(omp_get_max_threads() > 0);
+        return 0;
+      }
+    """
+    self.do_run(src, "", cflags=["-fopenmp=libomp"])
+
   def test_fscanf(self):
     create_file('three_numbers.txt', '-1 0.1 -.1')
     src = r'''
@@ -7647,7 +7661,6 @@ void* operator new(size_t size) {
     self.do_runf_out_file('embind/test_negative_constants.cpp', cflags=['-lembind'])
 
   @also_without_bigint
-  @no_esm_integration('embind is not compatible with WASM_ESM_INTEGRATION')
   def test_embind_unsigned(self):
     self.do_runf_out_file('embind/test_unsigned.cpp', cflags=['-lembind'])
 
@@ -9808,7 +9821,7 @@ int main() {
   })
   @esm_integration
   def test_esm_integration_main(self, args):
-    self.do_runf('hello_world.c', 'Hello, world!', cflags=args)
+    self.do_runf_out_file('hello_world.c', cflags=args)
 
   @esm_integration
   def test_esm_integration(self):

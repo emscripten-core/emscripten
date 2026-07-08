@@ -419,8 +419,8 @@ class sockets(BrowserCore):
       thread.join()
 
   def test_noderawsockets_client_semantics(self):
-    # EISCONN on a second connect, shutdown(SHUT_WR) leaving reads working, and
-    # EPIPE on a write after that.
+    # EISCONN on a second connect, shutdown(SHUT_WR) leaving reads working,
+    # EPIPE on a write after that, and POLLHUP after a full shutdown(SHUT_RDWR).
     self._run_against_echo_server('sockets/test_tcp_client_semantics.c', 'CLIENT SEMANTICS PASS')
 
   def test_noderawsockets_refused(self):
