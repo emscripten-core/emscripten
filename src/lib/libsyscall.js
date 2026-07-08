@@ -706,17 +706,17 @@ var SyscallsLibrary = {
   __syscall_epoll_ctl__proxy: 'sync',
   __syscall_epoll_ctl: (epfd, op, fd, ev) => {
     var ep = FS.getStream(epfd);
-    if (!ep?.epoll) return -{{{ cDefs.EBADF }}};
-    return epollCtl(ep, op, fd, ev);
+    if (!ep?.shared.epoll) return -{{{ cDefs.EBADF }}};
+    return epollCtl(ep.shared, op, fd, ev);
   },
   __syscall_epoll_pwait__proxy: 'sync',
   __syscall_epoll_pwait__async: 'auto',
   __syscall_epoll_pwait__deps: ['$FS', '$epollPwait'],
   __syscall_epoll_pwait: (epfd, ev, maxevents, timeout, sigmask, sigsetsize) => {
     var ep = FS.getStream(epfd);
-    if (!ep?.epoll) return -{{{ cDefs.EBADF }}};
+    if (!ep?.shared.epoll) return -{{{ cDefs.EBADF }}};
     if (maxevents <= 0) return -{{{ cDefs.EINVAL }}};
-    return epollPwait(ep, ev, maxevents, timeout);
+    return epollPwait(ep.shared, ev, maxevents, timeout);
   },
   // libc routes zero-timeout epoll_wait()/epoll_pwait() calls here: a plain
   // import that never suspends, so probes stay callable from any context (under
@@ -727,9 +727,9 @@ var SyscallsLibrary = {
   __syscall_epoll_pwait_nonblocking__deps: ['$FS', '$doEpollWait'],
   __syscall_epoll_pwait_nonblocking: (epfd, ev, maxevents) => {
     var ep = FS.getStream(epfd);
-    if (!ep?.epoll) return -{{{ cDefs.EBADF }}};
+    if (!ep?.shared.epoll) return -{{{ cDefs.EBADF }}};
     if (maxevents <= 0) return -{{{ cDefs.EINVAL }}};
-    return doEpollWait(ep, ev, maxevents);
+    return doEpollWait(ep.shared, ev, maxevents);
   },
   __syscall_getcwd__deps: ['$lengthBytesUTF8', '$stringToUTF8'],
   __syscall_getcwd: (buf, size) => {
