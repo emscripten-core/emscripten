@@ -38,7 +38,10 @@ var EpollLibrary = {
           var ep = stream.shared;
           for (var reg = ep.rdlHead, next; reg; reg = next) {
             next = reg.rdlNext;
-            if (FS.getStream(reg.fd)?.shared !== reg.shared) { epollEvict(ep, reg); continue; }
+            if (FS.getStream(reg.fd)?.shared !== reg.shared) {
+              epollEvict(ep, reg);
+              continue;
+            }
             if (pollOne(reg.fd, reg.events & ~{{{ cDefs.EPOLLET | cDefs.EPOLLONESHOT | cDefs.EPOLLEXCLUSIVE }}})) {
               return {{{ cDefs.POLLIN }}};
             }
@@ -425,13 +428,15 @@ var EpollLibrary = {
   emscripten_epoll_set_callback__proxy: 'sync',
   emscripten_epoll_set_callback: (epfd, maxevents, callback, userdata) => {
     var stream = FS.getStream(epfd);
-    if (!stream?.shared.epoll) return -{{{ cDefs.EBADF }}};
+    // This is a direct public API (not a syscall), so it returns a positive
+    // errno rather than the -errno syscall convention.
+    if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
     // Operate on the shared instance so a callback armed on one fd sees
     // registrations made through any dup of it.
     var ep = stream.shared;
     // maxevents only matters when (re-)arming; validate before any mutation so a
     // bad register call has no side effects (an unregister ignores it).
-    if (callback && maxevents <= 0) return -{{{ cDefs.EINVAL }}};
+    if (callback && maxevents <= 0) return {{{ cDefs.EINVAL }}};
 
 #if PTHREADS
     // __proxy: 'sync' runs this (and every delivery) on the thread that owns the

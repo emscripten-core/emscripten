@@ -88,7 +88,6 @@ function calculateLibraries() {
 
   if (!WASMFS) {
     libraries.push('libsyscall.js');
-    libraries.push('libepoll.js');
   }
 
   if (MAIN_MODULE) {
@@ -114,6 +113,7 @@ function calculateLibraries() {
         'libtty.js',
         'libpipefs.js', // ok to include it by default since it's only used if the syscall is used
         'libsockfs.js', // ok to include it by default since it's only used if the syscall is used
+        'libepoll.js', // ok to include it by default since it's only used if the syscall is used
       );
 
       if (NODERAWSOCKETS) {

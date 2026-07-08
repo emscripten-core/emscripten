@@ -35,7 +35,7 @@ extern "C" {
 // `maxevents`) to unregister, or close the epoll fd. There is at most one
 // callback per epoll: calling again replaces it (it does not stack). `events` is
 // a runtime-owned buffer valid only for the duration of each callback. Returns 0,
-// or -errno (-EBADF if `epfd` is not an epoll fd, -EINVAL).
+// or a positive errno (EBADF if `epfd` is not an epoll fd, EINVAL).
 //
 // Each registration's trigger mode (set per-fd via epoll_ctl) controls how often
 // the callback fires for it - identically to epoll_wait, so one callback can mix
