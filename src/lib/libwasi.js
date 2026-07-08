@@ -202,7 +202,19 @@ var WasiLibrary = {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      var curr = FS.read(stream, HEAP8, ptr, len, offset);
+      var curr;
+      try {
+        curr = FS.read(stream, HEAP8, ptr, len, offset);
+      } catch (e) {
+        // On a non-blocking stream a subsequent read may would-block after we
+        // already gathered data. POSIX readv is a single gather-read: return
+        // what we have rather than failing the whole call.
+        if (ret > 0 && e instanceof FS.ErrnoError &&
+            (e.errno == {{{ cDefs.EAGAIN }}} || e.errno == {{{ cDefs.EWOULDBLOCK }}})) {
+          break;
+        }
+        throw e;
+      }
       if (curr < 0) return -1;
       ret += curr;
       if (curr < len) break; // nothing more to read
@@ -219,7 +231,19 @@ var WasiLibrary = {
       var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
       var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       iov += {{{ C_STRUCTS.iovec.__size__ }}};
-      var curr = FS.write(stream, HEAP8, ptr, len, offset);
+      var curr;
+      try {
+        curr = FS.write(stream, HEAP8, ptr, len, offset);
+      } catch (e) {
+        // On a non-blocking stream a subsequent write may would-block after we
+        // already sent data. POSIX writev is a single gather-write: return
+        // what we have rather than failing the whole call.
+        if (ret > 0 && e instanceof FS.ErrnoError &&
+            (e.errno == {{{ cDefs.EAGAIN }}} || e.errno == {{{ cDefs.EWOULDBLOCK }}})) {
+          break;
+        }
+        throw e;
+      }
       if (curr < 0) return -1;
       ret += curr;
       if (curr < len) {
