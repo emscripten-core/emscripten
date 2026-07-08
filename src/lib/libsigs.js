@@ -327,6 +327,7 @@ sigs = {
   _emscripten_create_wasm_worker__sig: 'iipip',
   _emscripten_dlopen_js__sig: 'vpppp',
   _emscripten_dlsync_threads__sig: 'v',
+  _emscripten_epoll_delivery_done__sig: 'vi',
   _emscripten_fetch_get_response_headers__sig: 'pipp',
   _emscripten_fetch_get_response_headers_length__sig: 'pi',
   _emscripten_fs_load_embedded_files__sig: 'vp',

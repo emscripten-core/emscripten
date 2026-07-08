@@ -22,8 +22,10 @@ extern "C" {
 // ready events. An epoll is a long-lived readiness aggregator, so the interest is
 // armed once and reused across every delivery - no per-spin re-arming. Unlike
 // epoll_wait it never blocks the calling stack, so it works without ASYNCIFY/JSPI.
-// The callback is delivered on the main thread's event loop; under
-// PROXY_TO_PTHREAD use a blocking epoll_wait from the pthread instead.
+// The callback is delivered on the calling thread's event loop: with pthreads the
+// epoll readiness is tracked on the thread that owns the filesystem (the syscalls
+// are proxied there), but each delivery is dispatched back to the thread that
+// registered the callback.
 //
 // While armed it keeps the runtime alive only as long as it can still fire - i.e.
 // while the epoll has at least one open watched fd. Once every watched fd is
