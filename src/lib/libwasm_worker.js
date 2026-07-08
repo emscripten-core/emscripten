@@ -198,8 +198,7 @@ if (ENVIRONMENT_IS_WASM_WORKER
 #if TRUSTED_TYPES
     // Use Trusted Types compatible wrappers.
     if (globalThis.trustedTypes?.createPolicy) {
-      _emscriptenWasmWorkerPolicy ??= trustedTypes.createPolicy(
-          'emscripten#workerPolicy1', { createScriptURL: (url) => url });
+      _emscriptenWasmWorkerPolicy ??= trustedTypes.createPolicy('emscripten#workerPolicy', { createScriptURL: (url) => url });
       worker = _wasmWorkers[wwID] = new Worker(_emscriptenWasmWorkerPolicy.createScriptURL({{{ wasmWorkerJs }}}), {{{ wasmWorkerOptions }}});
     } else
 #endif
