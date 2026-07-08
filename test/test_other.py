@@ -13324,6 +13324,12 @@ void foo() {}
     # persistent callback with no blocking and no ASYNCIFY/JSPI.
     self.do_runf('core/test_epoll_callback.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
+  def test_epoll_callback_dup(self):
+    # dup(2) of an epoll fd shares one instance: a registration added via the dup
+    # is delivered to a callback armed on the original fd, and closing one dup
+    # does not tear the instance down.
+    self.do_runf('core/test_epoll_dup.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
+
   def test_epoll_callback_overflow(self):
     # maxevents < ready count: the callback re-triggers to drain the remainder
     # across ticks (no app loop to re-call it).

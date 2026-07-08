@@ -10,58 +10,82 @@
 // derivation ($pollOne) defined in libsyscall.js.
 
 var EpollLibrary = {
-  // An epoll instance is a real FS fd whose stream carries an interest map
-  // `epoll` (fd -> reg) and a ready list (rdlHead/rdlTail). Each registration
-  // arms a persistent listener on the watched node's wait-queue at EPOLL_CTL_ADD
-  // (not per-wait), feeding the ready list on each edge so readiness can be
-  // tracked across waits and up a nesting chain. Being an fd, close(2) reclaims
-  // it (tearing every registration down) and it can itself be added to another
-  // epoll.
+  // An epoll instance's state lives on the stream's `shared` object - the open
+  // file description (Linux's struct file / eventpoll) that dup'd fds share. It
+  // carries an interest map `epoll` (fd -> reg) and a ready list
+  // (rdlHead/rdlTail). Each registration arms a persistent listener on the
+  // watched node's wait-queue at EPOLL_CTL_ADD (not per-wait), feeding the ready
+  // list on each edge so readiness can be tracked across waits and up a nesting
+  // chain. dup(2) yields another fd to the SAME instance (registrations, ready
+  // list, and callback all shared); close(2) drops one reference and only the
+  // last close reclaims it (tearing every registration down). An epoll fd can
+  // itself be added to another epoll.
   $newEpollInstance__internal: true,
   $newEpollInstance__deps: ['$FS', '$pollOne', '$clearEpollInterest', '$reconcileEpollKeepalive', '$epollEvict'],
-  $newEpollInstance: () => FS.createStream({
+  $newEpollInstance: () => {
     // Its own (detached) node, so the epoll fd can be watched by a parent epoll
-    // (nesting) and carry the readiness wait-queue methods.
-    node: new FS.FSNode(0, 'epoll', 0, 0),
-    epoll: new Map(),
-    // Count of armed registrations: those with a live watched-node listener. A
-    // fired EPOLLONESHOT drops its listener (so it stops counting until a MOD
-    // re-arm), a plain registration counts until evicted. This - not the raw
-    // interest-map size - is what the callback keepalive keys on: a set with no
-    // armed registration can never fire again on its own, so it is terminal.
-    armed: 0,
-    stream_ops: {
-      // Readable when any listed registration is currently ready: this is what
-      // lets an epoll fd be polled/nested. Walks only the ready list (O(ready));
-      // edge/oneshot/exclusive are reporting-time concerns, masked out here. A
-      // closed/reused fd is evicted here too, so a nested epoll that is only ever
-      // polled (never directly waited) does not accumulate dead registrations.
-      poll(stream) {
-        for (var reg = stream.rdlHead, next; reg; reg = next) {
-          next = reg.rdlNext;
-          if (FS.getStream(reg.fd)?.shared !== reg.shared) { epollEvict(stream, reg); continue; }
-          if (pollOne(reg.fd, reg.events & ~{{{ cDefs.EPOLLET | cDefs.EPOLLONESHOT | cDefs.EPOLLEXCLUSIVE }}})) {
-            return {{{ cDefs.POLLIN }}};
+    // (nesting) and carry the readiness wait-queue methods. Shared across dups.
+    var node = new FS.FSNode(0, 'epoll', 0, 0);
+    var stream = FS.createStream({
+      node,
+      stream_ops: {
+        // Readable when any listed registration is currently ready: this is what
+        // lets an epoll fd be polled/nested. Walks only the ready list (O(ready));
+        // edge/oneshot/exclusive are reporting-time concerns, masked out here. A
+        // closed/reused fd is evicted here too, so a nested epoll that is only ever
+        // polled (never directly waited) does not accumulate dead registrations.
+        poll(stream) {
+          var ep = stream.shared;
+          for (var reg = ep.rdlHead, next; reg; reg = next) {
+            next = reg.rdlNext;
+            if (FS.getStream(reg.fd)?.shared !== reg.shared) { epollEvict(ep, reg); continue; }
+            if (pollOne(reg.fd, reg.events & ~{{{ cDefs.EPOLLET | cDefs.EPOLLONESHOT | cDefs.EPOLLEXCLUSIVE }}})) {
+              return {{{ cDefs.POLLIN }}};
+            }
           }
-        }
-        return 0;
+          return 0;
+        },
+        // dup(2): another fd to the same epoll instance (Linux: another reference
+        // to the eventpoll). The instance state lives on the shared open file
+        // description, already propagated by reference to the dup'd stream, so
+        // there is nothing to copy - just count the new reference.
+        dup(stream) {
+          stream.shared.refcount++;
+        },
+        // close(2): drop one reference. Only the last close reclaims the
+        // instance: clear the readiness callback interest (if any), then drop
+        // every registration's listener (a fired EPOLLONESHOT has already dropped
+        // its own) from its watched node. A surviving dup keeps it all live.
+        close(stream) {
+          var ep = stream.shared;
+          // FS.close already fired POLLNVAL on the (shared) node, waking any
+          // parent epoll watching this fd so it re-derives and drops the
+          // now-stale registration (via doEpollWait's shared check).
+          if (--ep.refcount) return;
+          clearEpollInterest(ep);
+          reconcileEpollKeepalive(ep); // drop the keepalive if it was held
+          for (var reg of ep.epoll.values()) {
+            reg.listener?.listeners.delete(reg.listener.entry);
+          }
+          ep.epoll.clear();
+        },
       },
-      // close(2): drop the readiness callback interest (if any), then every
-      // registration's listener (a fired EPOLLONESHOT has already dropped its
-      // own) from its watched node.
-      close(stream) {
-        // FS.close already fires POLLNVAL on this node, waking any parent epoll
-        // watching this epoll fd so it re-derives and drops the now-stale
-        // registration (via doEpollWait's shared check).
-        clearEpollInterest(stream);
-        reconcileEpollKeepalive(stream); // drop the keepalive if it was held
-        for (var reg of stream.epoll.values()) {
-          reg.listener?.listeners.delete(reg.listener.entry);
-        }
-        stream.epoll.clear();
-      },
-    },
-  }),
+    });
+    // Hoist the instance state onto `shared` so every dup observes one instance.
+    Object.assign(stream.shared, {
+      node,
+      epoll: new Map(),
+      // Count of armed registrations: those with a live watched-node listener. A
+      // fired EPOLLONESHOT drops its listener (so it stops counting until a MOD
+      // re-arm), a plain registration counts until evicted. This - not the raw
+      // interest-map size - is what the callback keepalive keys on: a set with no
+      // armed registration can never fire again on its own, so it is terminal.
+      armed: 0,
+      // Open references (fds) to this instance; the last close reclaims it.
+      refcount: 1,
+    });
+    return stream;
+  },
 
   // Drop an epoll's persistent readiness callback interest: remove its listener
   // on the epoll node and free the output buffer. Keepalive is managed by the
@@ -170,8 +194,8 @@ var EpollLibrary = {
     if (op != {{{ cDefs.EPOLL_CTL_ADD }}} && op != {{{ cDefs.EPOLL_CTL_MOD }}} && op != {{{ cDefs.EPOLL_CTL_DEL }}}) {
       return -{{{ cDefs.EINVAL }}};
     }
-    // An epoll cannot watch itself.
-    if (fd == ep.fd) return -{{{ cDefs.EINVAL }}};
+    // An epoll cannot watch itself (via any fd referring to the same instance).
+    if (target.shared === ep) return -{{{ cDefs.EINVAL }}};
 
     // A registration keys on the open file description (stream.shared) - the
     // struct-file analog that dup'd fds share. If this fd's number now resolves
@@ -199,22 +223,26 @@ var EpollLibrary = {
       if (!target.stream_ops?.poll) return -{{{ cDefs.EPERM }}};
       // Nesting another epoll: reject cycles, and chains deeper than 5 levels of
       // epoll (ELOOP) - the Linux cap is EP_MAX_NESTS (4) plus the leaf level.
-      if (target.epoll) {
+      if (target.shared.epoll) {
+        // Walk streams but key the graph on instances (stream.shared), so dup'd
+        // fds of one epoll count as a single node.
         var reaches = (from, goal, seen) => {
-          if (from === goal) return true;
-          if (!from?.epoll || seen.has(from)) return false;
-          seen.add(from);
-          for (var f of from.epoll.keys()) {
+          var inst = from?.shared;
+          if (inst === goal) return true;
+          if (!inst?.epoll || seen.has(inst)) return false;
+          seen.add(inst);
+          for (var f of inst.epoll.keys()) {
             if (reaches(FS.getStream(f), goal, seen)) return true;
           }
           return false;
         };
-        var depth = (s, seen) => {
-          if (!s?.epoll || seen.has(s)) return 0;
-          seen.add(s);
+        var depth = (from, seen) => {
+          var inst = from?.shared;
+          if (!inst?.epoll || seen.has(inst)) return 0;
+          seen.add(inst);
           var max = 0;
-          for (var f of s.epoll.keys()) max = Math.max(max, depth(FS.getStream(f), seen));
-          seen.delete(s);
+          for (var f of inst.epoll.keys()) max = Math.max(max, depth(FS.getStream(f), seen));
+          seen.delete(inst);
           return 1 + max;
         };
         if (reaches(target, ep, new Set()) || 1 + depth(target, new Set()) > 5) {
@@ -396,8 +424,11 @@ var EpollLibrary = {
   ],
   emscripten_epoll_set_callback__proxy: 'sync',
   emscripten_epoll_set_callback: (epfd, maxevents, callback, userdata) => {
-    var ep = FS.getStream(epfd);
-    if (!ep?.epoll) return -{{{ cDefs.EBADF }}};
+    var stream = FS.getStream(epfd);
+    if (!stream?.shared.epoll) return -{{{ cDefs.EBADF }}};
+    // Operate on the shared instance so a callback armed on one fd sees
+    // registrations made through any dup of it.
+    var ep = stream.shared;
     // maxevents only matters when (re-)arming; validate before any mutation so a
     // bad register call has no side effects (an unregister ignores it).
     if (callback && maxevents <= 0) return -{{{ cDefs.EINVAL }}};
