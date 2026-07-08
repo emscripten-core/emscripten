@@ -341,10 +341,14 @@ var NodeSockFSLibrary = {
       } else if (sock.connection && sock.state === {{{ SOCK_STATE_CONNECTED }}} && !sock.writeBlocked) {
         mask |= {{{ cDefs.POLLOUT }}};
       }
-      // A peer FIN / read-side hangup (recv will see EOF) is POLLRDHUP; only a
-      // fully closed connection is a POLLHUP.
+      // A peer FIN / read-side hangup (recv will see EOF) is POLLRDHUP. POLLHUP
+      // means both halves are hung up: either the connection is fully closed, or
+      // we locally shut down both directions (shutdown(SHUT_RDWR)), which Linux
+      // epoll reports as a hangup even though the node connection is still live.
       if (sock.readClosed) mask |= {{{ cDefs.POLLRDHUP }}};
-      if (sock.state === {{{ SOCK_STATE_CLOSED }}}) mask |= {{{ cDefs.POLLHUP }}};
+      if (sock.state === {{{ SOCK_STATE_CLOSED }}} || (sock.readClosed && sock.writeShutdown)) {
+        mask |= {{{ cDefs.POLLHUP }}};
+      }
       return mask;
     },
     ioctl(sock, request, arg) {
