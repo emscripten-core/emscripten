@@ -40,6 +40,15 @@ See docs/process.md for more on how version tagging works.
   FS-backend handler signature changed from `poll(stream, timeout)` to
   `poll(stream)` returning the current readiness mask; out-of-tree custom FS
   backends with a `poll` handler must update. (#27226)
+- Added support for `epoll` (`epoll_create1`/`epoll_ctl`/`epoll_wait`/
+  `epoll_pwait`) on the legacy (non-WASMFS) JS filesystem, including
+  level- and edge-triggered modes, `EPOLLONESHOT`, `EPOLLEXCLUSIVE`,
+  `EPOLLRDHUP`, nesting, and blocking waits under `PROXY_TO_PTHREAD`,
+  `ASYNCIFY`, and `JSPI`. Also added `emscripten_epoll_set_callback`
+  (in the new `<emscripten/epoll.h>`, experimental), a non-blocking variant
+  that signals an epoll set's readiness to a callback (which collects the
+  events itself via a zero-timeout `epoll_wait`) with no `ASYNCIFY`/`JSPI`.
+  (#27207)
 - compiler-rt and libunwind were updated to LLVM 22.1.8. (#27245, #27246)
 - `-fcoverage-mapping` is currently broken due to a mismatch between the version
   of LLVM used and the imported version of compiler-rt.  We hope to fix this
@@ -55,18 +64,6 @@ See docs/process.md for more on how version tagging works.
   feature will be used when available. Note that this only affects programs
   that are built with `ALLOW_MEMORY_GROWTH`, which is not enabled by default.
   (#27096, #27212)
-- The `GROWABLE_ARRAYBUFFERS` setting now defaults to 1, which means it will be
-  used when available. Note that this only affects programs that are built with
-  `ALLOW_MEMORY_GROWTH`, which is not enabled by default. (#27212)
-  backends with a `poll` handler must update. (#27207)
-- Added support for `epoll` (`epoll_create1`/`epoll_ctl`/`epoll_wait`/
-  `epoll_pwait`) on the legacy (non-WASMFS) JS filesystem, including
-  level- and edge-triggered modes, `EPOLLONESHOT`, `EPOLLEXCLUSIVE`,
-  `EPOLLRDHUP`, nesting, and blocking waits under `PROXY_TO_PTHREAD`,
-  `ASYNCIFY`, and `JSPI`. Also added `emscripten_epoll_set_callback`
-  (in the new `<emscripten/epoll.h>`, experimental), a non-blocking variant
-  that delivers an epoll set's readiness to a JS callback with no
-  `ASYNCIFY`/`JSPI`. (#27207)
 - New `-sNODERAWSOCKETS` setting that backs the POSIX sockets API with real TCP
   (`node:net`) and UDP (`node:dgram`) sockets on Node.js, with no `ws`, proxy
   process, or pthreads required. Supports incoming and outgoing TCP, UDP, IPv6,

@@ -29,8 +29,9 @@ static void send_one(const char* msg) {
   assert(sendto(tx, msg, 4, 0, (struct sockaddr*)&addr, sizeof addr) == 4);
 }
 
-static void on_ready(int epfd, struct epoll_event* ev, int n, void* ud) {
-  assert(n == 1);
+static void on_ready(void* ud) {
+  struct epoll_event ev[4];
+  assert(epoll_wait(ep, ev, 4, 0) == 1);
   assert(ev[0].events & EPOLLIN);
   assert(ev[0].data.fd == rx);
   char b[4];
@@ -69,7 +70,7 @@ int main(void) {
 
   // Arm once (no ASYNCIFY), then send the first datagram; it arrives after we
   // return and wakes the callback. The callback drives the second send itself.
-  assert(emscripten_epoll_set_callback(ep, 4, on_ready, 0) == 0);
+  assert(emscripten_epoll_set_callback(ep, on_ready, 0) == 0);
   send_one("one");
   return 0;
 }

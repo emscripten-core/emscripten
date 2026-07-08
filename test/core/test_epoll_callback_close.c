@@ -20,8 +20,9 @@
 
 static int ep, rfd, wfd;
 
-static void on_ready(int epfd, struct epoll_event* ev, int n, void* ud) {
-  assert(n == 1 && (ev[0].events & EPOLLIN));
+static void on_ready(void* ud) {
+  struct epoll_event ev[4];
+  assert(epoll_wait(ep, ev, 4, 0) == 1 && (ev[0].events & EPOLLIN));
   char b[1];
   assert(read(rfd, b, 1) == 1);
   printf("done\n");
@@ -40,7 +41,7 @@ int main(void) {
   ev.data.fd = rfd;
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
 
-  assert(emscripten_epoll_set_callback(ep, 4, on_ready, 0) == 0);
+  assert(emscripten_epoll_set_callback(ep, on_ready, 0) == 0);
   assert(write(wfd, "x", 1) == 1);
   return 0;
 }

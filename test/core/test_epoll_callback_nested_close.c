@@ -20,9 +20,9 @@
 
 static int epA, epB, rfd, wfd;
 
-static void on_ready(int epfd, struct epoll_event* ev, int n, void* ud) {
-  assert(epfd == epA);
-  assert(n == 1 && ev[0].data.fd == epB);
+static void on_ready(void* ud) {
+  struct epoll_event ev[4];
+  assert(epoll_wait(epA, ev, 4, 0) == 1 && ev[0].data.fd == epB);
   printf("done\n");
   close(epB); // inner epoll gone -> outer's only registration becomes terminal
 }
@@ -41,7 +41,7 @@ int main(void) {
   ev.data.fd = epB;
   assert(epoll_ctl(epA, EPOLL_CTL_ADD, epB, &ev) == 0); // inner in the outer
 
-  assert(emscripten_epoll_set_callback(epA, 4, on_ready, 0) == 0);
+  assert(emscripten_epoll_set_callback(epA, on_ready, 0) == 0);
   assert(write(wfd, "x", 1) == 1); // leaf ready -> propagates up to epA's callback
   return 0;
 }

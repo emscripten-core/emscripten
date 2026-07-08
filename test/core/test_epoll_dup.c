@@ -25,16 +25,16 @@
 static int ep_a, ep_b, rfd, wfd;
 static int fires;
 
-static void on_ready(int epfd, struct epoll_event* events, int nready, void* ud) {
-  assert(epfd == ep_a);
-  assert(nready == 1);
+static void on_ready(void* ud) {
+  struct epoll_event events[4];
+  assert(epoll_wait(ep_a, events, 4, 0) == 1);
   assert(events[0].events & EPOLLIN);
   assert(events[0].data.u32 == 0x1234);
   fires++;
 
   char b[1];
   assert(read(rfd, b, 1) == 1);
-  assert(emscripten_epoll_set_callback(ep_a, 4, NULL, NULL) == 0);
+  assert(emscripten_epoll_set_callback(ep_a, NULL, NULL) == 0);
   printf("done\n");
 }
 
@@ -42,7 +42,7 @@ int main(void) {
   ep_a = epoll_create1(0);
 
   // Arm the persistent callback on the original fd.
-  assert(emscripten_epoll_set_callback(ep_a, 4, on_ready, NULL) == 0);
+  assert(emscripten_epoll_set_callback(ep_a, on_ready, NULL) == 0);
 
   // dup: a second fd to the SAME epoll instance (like tokio's registry handle).
   ep_b = dup(ep_a);
