@@ -67,7 +67,7 @@ Controlling which origins can read the cached file
 --------------------------------------------------
 
 The :ref:`CROSS_ORIGIN_STORAGE_ORIGINS` setting controls the ``origins`` field
-passed to ``requestFileHandles()`` on the write (cache-miss) path.  It has no
+passed to ``requestFileHandle()`` on the write (cache-miss) path.  It has no
 effect on the read (cache-hit) path.  Three modes are available:
 
 **Globally available** (default, no explicit setting needed) — any origin
@@ -190,7 +190,7 @@ When the page loads, the generated JavaScript follows this logic:
    If the API is absent, skip to the normal fetch path immediately.
 
 2. **Cache hit** — call
-   ``navigator.crossOriginStorage.requestFileHandles([cosHash])``.
+   ``navigator.crossOriginStorage.requestFileHandle(cosHash)``.
    If the handle is returned (the module is already in COS), read it with
    ``handle.getFile()`` → ``.arrayBuffer()`` and pass the bytes to
    ``WebAssembly.instantiate()``.
@@ -329,8 +329,8 @@ via a reference to that config object:
        // read the hash via the outer Module reference instead.
        const cosHash = Module['wasmHash'];
        if (cosHash?.value && globalThis.navigator?.crossOriginStorage) {
-         navigator.crossOriginStorage.requestFileHandles([cosHash])
-           .then(handles => handles[0].getFile())
+         navigator.crossOriginStorage.requestFileHandles(cosHash)
+           .then(handle => handle.getFile())
            .then(f => f.arrayBuffer())
            .then(bytes => WebAssembly.instantiate(bytes, imports))
            .then(({instance, module}) => onSuccess(instance, module))
@@ -344,8 +344,8 @@ via a reference to that config object:
                    .then(({instance, module}) => onSuccess(instance, module));
                  // fire-and-forget store
                  navigator.crossOriginStorage
-                   .requestFileHandles([cosHash], { create: true, origins: '*' })
-                   .then(wh => wh[0].createWritable())
+                   .requestFileHandle(cosHash, { create: true, origins: '*' })
+                   .then(wh => wh.createWritable())
                    .then(w => w.write(new Blob([bytes], {type:'application/wasm'}))
                                .then(() => w.close()));
                });
