@@ -288,9 +288,9 @@ Other methods
   ``browser.test_manual_wasm_instantiate`` for an example of how this construct
   works in action.
 
-  .. note:: Sanitizers or source map is currently not supported if overriding
+  .. note:: Source maps are currently not supported if overriding
      WebAssembly instantiation with Module.instantiateWasm. Providing
-     Module.instantiateWasm when source map or sanitizer is enabled can prevent
+     Module.instantiateWasm when source maps are enabled can prevent
      WebAssembly instantiation from finishing.
 
 .. js:function:: Module.fetchSettings
