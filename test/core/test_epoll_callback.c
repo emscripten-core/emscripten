@@ -5,11 +5,12 @@
  * found in the LICENSE file.
  *
  * emscripten_epoll_set_callback: a persistent, non-blocking, non-suspending epoll
- * readiness callback (no ASYNCIFY/JSPI). A single arm delivers repeatedly. The
- * arming itself is an event source - matching Linux, where the set becomes ready
- * with no producer wakeup to follow:
- *   - EPOLL_CTL_ADD of an already-readable fd reports it.
- *   - EPOLL_CTL_MOD re-arming a still-readable EPOLLONESHOT fd reports it again.
+ * readiness callback (no ASYNCIFY/JSPI). The callback receives only its userdata
+ * and collects the ready events itself with a zero-timeout epoll_wait. A single
+ * arm delivers repeatedly. The arming itself is an event source - matching Linux,
+ * where the set becomes ready with no producer wakeup to follow:
+ *   - EPOLL_CTL_ADD of an already-readable fd signals it.
+ *   - EPOLL_CTL_MOD re-arming a still-readable EPOLLONESHOT fd signals it again.
  * Clearing the interest (NULL callback) stops delivery and lets the runtime exit.
  */
 
@@ -29,12 +30,13 @@ static void arm_rfd(int op) {
   assert(epoll_ctl(ep, op, rfd, &ev) == 0);
 }
 
-static void on_ready(int epfd, struct epoll_event* events, int nready, void* ud) {
-  assert(epfd == ep);
+static void on_ready(void* ud) {
+  assert((long)ud == 42);
+  struct epoll_event events[4];
+  int nready = epoll_wait(ep, events, 4, 0);
   assert(nready == 1);
   assert(events[0].events & EPOLLIN);
   assert(events[0].data.u32 == 0x1234);
-  assert((long)ud == 42);
   fires++;
 
   if (fires == 1) {
@@ -50,7 +52,7 @@ static void on_ready(int epfd, struct epoll_event* events, int nready, void* ud)
   // cleared there is nothing left to fire, and the runtime exits cleanly.
   char b[1];
   assert(read(rfd, b, 1) == 1);
-  assert(emscripten_epoll_set_callback(ep, 4, NULL, NULL) == 0);
+  assert(emscripten_epoll_set_callback(ep, NULL, NULL) == 0);
   assert(write(wfd, "x", 1) == 1);
   arm_rfd(EPOLL_CTL_MOD);
   printf("done\n");
@@ -64,7 +66,7 @@ int main(void) {
   wfd = p[1];
 
   // Arm the persistent callback on an empty set: nothing ready, no fire.
-  assert(emscripten_epoll_set_callback(ep, 4, on_ready, (void*)42) == 0);
+  assert(emscripten_epoll_set_callback(ep, on_ready, (void*)42) == 0);
 
   // Make rfd readable, then ADD it. The fd is already ready with no producer
   // wakeup to come, so the ADD itself must trigger the first delivery.

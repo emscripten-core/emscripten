@@ -20,11 +20,12 @@
 
 static int ep, fires;
 
-static void on_ready(int e, struct epoll_event* ev, int n, void* ud) {
-  assert(n == 1);
+static void on_ready(void* ud) {
+  struct epoll_event ev[4];
+  assert(epoll_wait(ep, ev, 4, 0) == 1);
   assert(ev[0].events & EPOLLOUT);
   if (++fires == 3) { // re-fired every tick despite no new event and no drain
-    assert(emscripten_epoll_set_callback(ep, 4, NULL, NULL) == 0);
+    assert(emscripten_epoll_set_callback(ep, NULL, NULL) == 0);
     printf("done\n");
   }
 }
@@ -37,6 +38,6 @@ int main(void) {
   ev.data.fd = p[1];
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, p[1], &ev) == 0);
 
-  assert(emscripten_epoll_set_callback(ep, 4, on_ready, 0) == 0);
+  assert(emscripten_epoll_set_callback(ep, on_ready, 0) == 0);
   return 0;
 }

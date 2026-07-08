@@ -13331,13 +13331,13 @@ void foo() {}
     self.do_runf('core/test_epoll_dup.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_overflow(self):
-    # maxevents < ready count: the callback re-triggers to drain the remainder
-    # across ticks (no app loop to re-call it).
+    # A callback that collects one event per tick (epoll_wait maxevents=1) is
+    # re-triggered to drain the remainder across ticks (no app loop to re-call it).
     self.do_runf('core/test_epoll_callback_overflow.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_replace(self):
     # A second register replaces the callback (no stacking); a NULL callback
-    # unregisters regardless of maxevents.
+    # unregisters.
     self.do_runf('core/test_epoll_callback_replace.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '-sEXIT_RUNTIME'])
 
   def test_epoll_callback_close(self):

@@ -20,8 +20,32 @@ var EpollLibrary = {
   // list, and callback all shared); close(2) drops one reference and only the
   // last close reclaims it (tearing every registration down). An epoll fd can
   // itself be added to another epoll.
+  // Is the epoll set currently readable - i.e. does any listed registration have
+  // a genuine ready event? Walks the ready list (O(ready)), masking out the
+  // reporting-time flags (edge/oneshot/exclusive), and evicts a closed/reused fd
+  // as it goes (so a set only ever derived, never drained, does not accumulate
+  // dead registrations). This is the shared readiness derivation behind both the
+  // epoll fd's own poll handler (nesting) and the callback's fire gate: a stale
+  // ready-list entry (a spurious edge, or one left after its fd was drained then
+  // closed) is not a ready event, so neither fires on it.
+  $epollDerive__internal: true,
+  $epollDerive__deps: ['$FS', '$pollOne', '$epollEvict'],
+  $epollDerive: (ep) => {
+    for (var reg = ep.rdlHead, next; reg; reg = next) {
+      next = reg.rdlNext;
+      if (FS.getStream(reg.fd)?.shared !== reg.shared) {
+        epollEvict(ep, reg);
+        continue;
+      }
+      if (pollOne(reg.fd, reg.events & ~{{{ cDefs.EPOLLET | cDefs.EPOLLONESHOT | cDefs.EPOLLEXCLUSIVE }}})) {
+        return true;
+      }
+    }
+    return false;
+  },
+
   $newEpollInstance__internal: true,
-  $newEpollInstance__deps: ['$FS', '$pollOne', '$clearEpollInterest', '$reconcileEpollKeepalive', '$epollEvict'],
+  $newEpollInstance__deps: ['$FS', '$epollDerive', '$clearEpollInterest', '$reconcileEpollKeepalive', '$epollEvict'],
   $newEpollInstance: () => {
     // Its own (detached) node, so the epoll fd can be watched by a parent epoll
     // (nesting) and carry the readiness wait-queue methods. Shared across dups.
@@ -30,20 +54,9 @@ var EpollLibrary = {
       node,
       stream_ops: {
         // Readable when any listed registration is currently ready: this is what
-        // lets an epoll fd be polled/nested. Walks only the ready list (O(ready));
-        // edge/oneshot/exclusive are reporting-time concerns, masked out here. A
-        // closed/reused fd is evicted here too, so a nested epoll that is only ever
-        // polled (never directly waited) does not accumulate dead registrations.
+        // lets an epoll fd be polled/nested.
         poll(stream) {
-          var ep = stream.shared;
-          for (var reg = ep.rdlHead, next; reg; reg = next) {
-            next = reg.rdlNext;
-            if (FS.getStream(reg.fd)?.shared !== reg.shared) { epollEvict(ep, reg); continue; }
-            if (pollOne(reg.fd, reg.events & ~{{{ cDefs.EPOLLET | cDefs.EPOLLONESHOT | cDefs.EPOLLEXCLUSIVE }}})) {
-              return {{{ cDefs.POLLIN }}};
-            }
-          }
-          return 0;
+          return epollDerive(stream.shared) ? {{{ cDefs.POLLIN }}} : 0;
         },
         // dup(2): another fd to the same epoll instance (Linux: another reference
         // to the eventpoll). The instance state lives on the shared open file
@@ -88,16 +101,14 @@ var EpollLibrary = {
   },
 
   // Drop an epoll's persistent readiness callback interest: remove its listener
-  // on the epoll node and free the output buffer. Keepalive is managed by the
-  // caller (popped on clear/close, kept on replace).
+  // on the epoll node. Keepalive is managed by the caller (popped on
+  // clear/close, kept on replace).
   $clearEpollInterest__internal: true,
-  $clearEpollInterest__deps: ['free'],
   $clearEpollInterest: (ep) => {
     var it = ep.interest;
     if (!it) return;
     ep.interest = null;
     it.listener.listeners.delete(it.listener.entry);
-    _free(it.buf);
 #if PTHREADS
     // Retire its delivery token; a still-in-flight cross-thread delivery whose
     // completion arrives after this finds nothing and is dropped.
@@ -406,32 +417,35 @@ var EpollLibrary = {
   },
 
   // Register a persistent readiness callback on an existing epoll fd: instead of
-  // blocking in epoll_wait, the runtime delivers the ready set to `callback`
-  // every time the epoll set makes progress. An epoll is a long-lived readiness
-  // aggregator, so the interest (a single listener on the epoll's own node plus a
-  // runtime-owned output buffer) is armed once and reused across every delivery -
-  // no per-spin register/deregister. Per-fd EPOLLET/EPOLLONESHOT apply exactly as
-  // in epoll_wait (one-shot is a property of the registration, not of this call),
-  // so a long-lived callback can mix level/edge/oneshot fds in one set.
+  // blocking in epoll_wait, the runtime invokes `callback` on the event loop
+  // whenever the epoll set has ready events waiting to be collected. The callback
+  // receives only `userdata` and does NOT drain the set - to collect the events
+  // it calls epoll_wait(epfd, ..., 0) (a non-blocking, zero-timeout wait)
+  // itself. An epoll is a long-lived readiness aggregator, so the interest (a
+  // single listener on the epoll's own node) is armed once and reused across
+  // every delivery - no per-spin register/deregister. Per-fd EPOLLET/EPOLLONESHOT
+  // apply exactly as in epoll_wait, so the callback re-fires while ready events
+  // remain in the poll queue: a level fd left undrained re-fires every tick, an
+  // edge fd fires once per edge.
   //
   // The interest persists until replaced (call again), cleared (callback == NULL),
   // or the epoll fd is closed. It never suspends the stack, so it works without
-  // ASYNCIFY/JSPI, and it keeps the runtime alive while armed. Returns 0 or -errno.
-  emscripten_epoll_set_callback__deps: ['$FS', '$doEpollWait', '$clearEpollInterest', '$reconcileEpollKeepalive', '$callUserCallback', 'malloc', 'free',
+  // ASYNCIFY/JSPI, and it keeps the runtime alive while armed. Returns 0, or a
+  // positive errno (EBADF if `epfd` is not an epoll fd).
+  emscripten_epoll_set_callback__deps: ['$FS', '$epollDerive', '$clearEpollInterest', '$reconcileEpollKeepalive', '$callUserCallback',
 #if PTHREADS
     '$epollDeliveries', '_emscripten_epoll_run_callback_on_thread',
 #endif
   ],
   emscripten_epoll_set_callback__proxy: 'sync',
-  emscripten_epoll_set_callback: (epfd, maxevents, callback, userdata) => {
+  emscripten_epoll_set_callback: (epfd, callback, userdata) => {
     var stream = FS.getStream(epfd);
-    if (!stream?.shared.epoll) return -{{{ cDefs.EBADF }}};
+    // This is a direct public API (not a syscall), so it returns a positive
+    // errno rather than the -errno syscall convention.
+    if (!stream?.shared.epoll) return {{{ cDefs.EBADF }}};
     // Operate on the shared instance so a callback armed on one fd sees
     // registrations made through any dup of it.
     var ep = stream.shared;
-    // maxevents only matters when (re-)arming; validate before any mutation so a
-    // bad register call has no side effects (an unregister ignores it).
-    if (callback && maxevents <= 0) return -{{{ cDefs.EINVAL }}};
 
 #if PTHREADS
     // __proxy: 'sync' runs this (and every delivery) on the thread that owns the
@@ -449,9 +463,7 @@ var EpollLibrary = {
     reconcileEpollKeepalive(ep);
     if (!callback) return 0;
 
-    // Runtime-owned output buffer reused across every delivery; freed at clear.
-    var buf = _malloc(maxevents * {{{ C_STRUCTS.epoll_event.__size__ }}});
-    var it = ep.interest = {buf};
+    var it = ep.interest = {};
 #if PTHREADS
     // The registering thread owns the callback and, once armed, its runtime
     // keepalive. 0 is the FS thread itself (delivered inline, keepalive local).
@@ -459,42 +471,39 @@ var EpollLibrary = {
 #endif
     // Producer notifies arrive synchronously (SOCKFS.emit, pipe writes); coalesce
     // them into one delivery on a microtask (the callback must not run in the
-    // producer's/caller's stack), re-deriving the ready set at that tick. A
-    // microtask keeps delivery latency minimal (no setTimeout clamp). Edges are
-    // still disjoint from any concurrent blocking epoll_wait on the same epoll -
-    // that waiter drains synchronously in the producer's stack, ahead of this
-    // tick - but the tick may now run before vs after the waiter's async
-    // resumption; that relative ordering is not guaranteed.
+    // producer's/caller's stack). A microtask keeps delivery latency minimal (no
+    // setTimeout clamp). The callback only signals that the set has ready events -
+    // it does not drain them; the callback calls epoll_wait(epfd, ..., 0) to
+    // collect them. So fire whenever the set is readable, and re-fire while it
+    // stays readable (whether the callback left a level fd undrained, or a drain
+    // re-listed a still-ready level fd).
     function deliver() {
       if (ep.interest !== it) return; // cleared before the tick fired
 #if PTHREADS
       // One cross-thread delivery in flight at a time: the registering thread
-      // drains inside the callback, so re-deriving before it completes would just
-      // re-see (and re-deliver) the same still-ready level fd in a tight spin.
-      // The delivery's completion (do_epoll_done -> epoll_delivery_done) clears
-      // this and re-wakes.
+      // collects (drains) inside the callback via a proxied epoll_wait, so firing
+      // again before it completes would just re-see the same still-ready level fd
+      // in a tight spin. The delivery's completion (do_epoll_done ->
+      // epoll_delivery_done) clears this and re-wakes.
       if (it.inflight) return;
 #endif
-      var c = doEpollWait(ep, buf, maxevents);
-      if (!c) return;
+      if (!epollDerive(ep)) return; // no genuine ready event to signal
 #if PTHREADS
       if (callerThread) {
-        // The helper copies the events out synchronously, so buf is free to be
-        // reused; it also reports back on completion to pace the next delivery.
+        // The delivery reports back on completion to pace the next one.
         it.inflight = true;
-        __emscripten_epoll_run_callback_on_thread(callerThread, callback, epfd, buf, c, userdata, it.token);
+        __emscripten_epoll_run_callback_on_thread(callerThread, callback, userdata, it.token);
         return;
       }
 #endif
-      callUserCallback(() => {{{ makeDynCall('vipip', 'callback') }}}(epfd, buf, c, userdata));
-      // Still ready (overflow past maxevents, or a still-ready level fd
-      // re-listed): keep draining on the next tick. Note this is NOT a
-      // blocking epoll_wait loop - there the app owns the loop and may block
-      // elsewhere. A level-triggered fd that is structurally always ready and
-      // never drained (e.g. EPOLLOUT on a writable socket) will re-schedule a
+      callUserCallback(() => {{{ makeDynCall('vp', 'callback') }}}(userdata));
+      // Still readable (the callback didn't drain, or drained a still-ready level
+      // fd that re-listed): fire again on the next tick. Note this is NOT a
+      // blocking epoll_wait loop - a level-triggered fd that is structurally
+      // always ready (e.g. EPOLLOUT on a writable socket) will re-schedule a
       // microtask each tick and so starve the event loop; use EPOLLET or
       // unregister for such fds.
-      if (ep.interest === it && ep.rdlHead) wake();
+      if (ep.interest === it && epollDerive(ep)) wake();
     }
     function wake() {
       if (it.scheduled) return;

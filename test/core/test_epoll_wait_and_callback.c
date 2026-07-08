@@ -43,7 +43,7 @@ static int idx(int fd) {
 static void maybe_done(void) {
   if (seen[0] && seen[1] && seen[2] && !done_printed) {
     done_printed = 1;
-    assert(emscripten_epoll_set_callback(ep, 8, NULL, NULL) == 0);
+    assert(emscripten_epoll_set_callback(ep, NULL, NULL) == 0);
     printf("done\n");
   }
 }
@@ -56,7 +56,9 @@ static void make_ready(void* arg) {
   for (int i = 0; i < 3; i++) assert(write(wfd[i], "x", 1) == 1);
 }
 
-static void on_ready(int epfd, struct epoll_event* ev, int n, void* ud) {
+static void on_ready(void* ud) {
+  struct epoll_event ev[8];
+  int n = epoll_wait(ep, ev, 8, 0); // collect our slice off the shared list
   for (int k = 0; k < n; k++) {
     int i = idx(ev[k].data.fd);
     assert(i >= 0 && !seen[i]); // disjoint: never an fd the blocking wait took
@@ -81,7 +83,7 @@ int main(void) {
 
   // Arm the callback and schedule the writes, then block. Both consumers are now
   // on the epoll's wait-queue with an empty ready list.
-  assert(emscripten_epoll_set_callback(ep, 8, on_ready, 0) == 0);
+  assert(emscripten_epoll_set_callback(ep, on_ready, 0) == 0);
   emscripten_async_call(make_ready, NULL, 0);
 
   struct epoll_event out[8];
