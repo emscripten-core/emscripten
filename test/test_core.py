@@ -7661,7 +7661,6 @@ void* operator new(size_t size) {
     self.do_runf_out_file('embind/test_negative_constants.cpp', cflags=['-lembind'])
 
   @also_without_bigint
-  @no_esm_integration('embind is not compatible with WASM_ESM_INTEGRATION')
   def test_embind_unsigned(self):
     self.do_runf_out_file('embind/test_unsigned.cpp', cflags=['-lembind'])
 
