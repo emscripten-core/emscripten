@@ -472,6 +472,12 @@ class sockets(BrowserCore):
     # and recv over real OS sockets via the tcp_wrap server path.
     self.do_runf('sockets/test_tcp_server.c', 'TCP SERVER PASS', cflags=['-sNODERAWSOCKETS'])
 
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_peek(self):
+    # recv(MSG_PEEK) must leave the data buffered: a peek returns the bytes, the
+    # socket stays readable, and the following plain recv returns them again.
+    self.do_runf('sockets/test_tcp_peek.c', 'TCP PEEK PASS', cflags=['-sNODERAWSOCKETS'])
+
   def test_noderawsockets_server_autobind(self):
     # listen() without a prior bind() must auto-bind an ephemeral port and
     # getsockname() must report it (POSIX), then accept+echo as usual.

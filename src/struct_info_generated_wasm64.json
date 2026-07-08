@@ -323,6 +323,7 @@
         "KMOD_RCTRL": 128,
         "KMOD_RSHIFT": 2,
         "MAP_PRIVATE": 2,
+        "MSG_PEEK": 2,
         "NCCS": 32,
         "NI_NAMEREQD": 8,
         "NI_NUMERICHOST": 1,
