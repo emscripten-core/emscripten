@@ -178,6 +178,21 @@ class CompiledServerHarness:
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
     self.process = Popen([*config.NODE_JS, 'server' + suffix])
+
+    # Wait for the server to start listening before returning: the node ws
+    # server binds its port asynchronously after process startup, so a client
+    # that connects too early races the listen() and sees ECONNREFUSED.
+    for _ in range(10):
+      try:
+        sock = socket.create_connection(('localhost', self.listen_port), timeout=1)
+        sock.close()
+        break
+      except OSError:
+        time.sleep(1)
+    else:
+      clean_process(self.process)
+      raise Exception('[Compiled server failed to start up in a timely manner]')
+
     return self
 
   def __exit__(self, *args, **kwargs):
