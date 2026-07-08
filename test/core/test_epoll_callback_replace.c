@@ -45,8 +45,8 @@ int main(void) {
   ev.data.fd = rfd;
   assert(epoll_ctl(ep, EPOLL_CTL_ADD, rfd, &ev) == 0);
 
-  // A non-epoll fd is rejected with -EBADF.
-  assert(emscripten_epoll_set_callback(rfd, 4, cb1, 0) == -EBADF);
+  // A non-epoll fd is rejected with a positive EBADF.
+  assert(emscripten_epoll_set_callback(rfd, 4, cb1, 0) == EBADF);
 
   // Register then immediately replace, before any tick runs: only cb2 is armed.
   assert(emscripten_epoll_set_callback(ep, 4, cb1, 0) == 0);
