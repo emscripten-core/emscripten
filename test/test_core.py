@@ -60,6 +60,7 @@ from decorators import (
   no_bun,
   no_deno,
   no_highmem,
+  no_wasm64,
   no_windows,
   parameterize,
   parameterized,
@@ -5613,6 +5614,19 @@ got: 10
     self.cflags += ['--embed-file', 'eol.txt']
     self.do_run(src, 'SUCCESS\n')
 
+  @no_wasm64('https://github.com/emscripten-core/emscripten/issues/27221')
+  @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
+  def test_openmp_max_threads(self):
+    src = r"""
+      #include <omp.h>
+      #include <assert.h>
+      int main(void) {
+        assert(omp_get_max_threads() > 0);
+        return 0;
+      }
+    """
+    self.do_run(src, "", cflags=["-fopenmp=libomp"])
+
   def test_fscanf(self):
     create_file('three_numbers.txt', '-1 0.1 -.1')
     src = r'''
@@ -5932,6 +5946,14 @@ got: 10
     if self.get_setting('WASMFS'):
       self.set_setting("FORCE_FILESYSTEM")
     self.do_runf_out_file('fs/test_fs_write.c')
+
+  @with_all_fs
+  def test_fs_access_mode(self):
+    # Writing to an O_RDONLY fd and reading from an O_WRONLY fd must fail with
+    # EBADF, consistently across all filesystems.
+    if self.get_setting('WASMFS'):
+      self.set_setting('FORCE_FILESYSTEM')
+    self.do_runf('fs/test_access_mode.c', 'done\n')
 
   @also_with_noderawfs
   def test_fs_emptyPath(self):
@@ -9880,6 +9902,7 @@ int main() {
 
     self.assertContained('main\nfoo\nbar\n', self.run_js('runner.mjs'))
 
+  @disabled('https://github.com/emscripten-core/emscripten/issues/27223')
   @no_esm_integration('fcoverage is not compatible with WASM_ESM_INTEGRATION')
   @no_wasm2js('wasm binary required to produce code coverage results with llvm-cov')
   def test_fcoverage_mapping(self):

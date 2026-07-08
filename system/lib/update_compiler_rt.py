@@ -30,7 +30,7 @@ preserve_files = ('readme.txt',)
 
 
 def main():
-  llvm_dir = get_llvm_dir()
+  llvm_dir = parse_args(default_llvm_dir, 'llvm_dir')
   upstream_dir = os.path.join(llvm_dir, 'compiler-rt')
   assert os.path.exists(upstream_dir)
   upstream_src = os.path.join(upstream_dir, 'lib', 'builtins')
@@ -53,6 +53,7 @@ def main():
 
   shutil.copy2(os.path.join(upstream_dir, 'CREDITS.TXT'), local_src)
   shutil.copy2(os.path.join(upstream_dir, 'LICENSE.TXT'), local_src)
+  update_readme(local_src, llvm_dir)
 
 
 if __name__ == '__main__':
