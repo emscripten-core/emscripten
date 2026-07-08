@@ -75,6 +75,19 @@ def _probe_ipv6_loopback():
 HAS_IPV6_LOOPBACK = _probe_ipv6_loopback()
 
 
+def verify_tcp_connection(address, retries=10, timeout=1):
+  # Poll a listening TCP address until it accepts a connection, so a harness
+  # doesn't return before its server is ready and race the client.
+  for _ in range(retries):
+    try:
+      sock = socket.create_connection(address, timeout=timeout)
+      sock.close()
+      return True
+    except OSError:
+      time.sleep(1)
+  return False
+
+
 def clean_process(p):
   if getattr(p, 'exitcode', None) is None and getattr(p, 'returncode', None) is None:
     # ask nicely (to try and catch the children)
@@ -125,17 +138,10 @@ class WebsockifyServerHarness:
     self.websockify.start()
     self.processes.append(self.websockify)
     # Make sure both the actual server and the websocket proxy are running
-    for _ in range(10):
-      try:
-        if self.do_server_check:
-            server_sock = socket.create_connection(('localhost', self.target_port), timeout=1)
-            server_sock.close()
-        proxy_sock = socket.create_connection(('localhost', self.listen_port), timeout=1)
-        proxy_sock.close()
-        break
-      except OSError:
-        time.sleep(1)
-    else:
+    if self.do_server_check and not verify_tcp_connection(('localhost', self.target_port)):
+      self.clean_processes()
+      raise Exception('[Websockify failed to start up in a timely manner]')
+    if not verify_tcp_connection(('localhost', self.listen_port)):
       self.clean_processes()
       raise Exception('[Websockify failed to start up in a timely manner]')
 
@@ -182,14 +188,7 @@ class CompiledServerHarness:
     # Wait for the server to start listening before returning: the node ws
     # server binds its port asynchronously after process startup, so a client
     # that connects too early races the listen() and sees ECONNREFUSED.
-    for _ in range(10):
-      try:
-        sock = socket.create_connection(('localhost', self.listen_port), timeout=1)
-        sock.close()
-        break
-      except OSError:
-        time.sleep(1)
-    else:
+    if not verify_tcp_connection(('localhost', self.listen_port)):
       clean_process(self.process)
       raise Exception('[Compiled server failed to start up in a timely manner]')
 
