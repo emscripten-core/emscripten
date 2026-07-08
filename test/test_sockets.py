@@ -163,11 +163,12 @@ class WebsockifyServerHarness:
 
 
 class CompiledServerHarness:
-  def __init__(self, filename, args, listen_port):
+  def __init__(self, filename, args, listen_port, do_server_check=True):
     self.process = None
     self.filename = filename
     self.listen_port = listen_port
     self.args = args or []
+    self.do_server_check = do_server_check
 
   def __enter__(self):
     # assuming this is only used for WebSocket tests at the moment, validate that
@@ -187,8 +188,9 @@ class CompiledServerHarness:
 
     # Wait for the server to start listening before returning: the node ws
     # server binds its port asynchronously after process startup, so a client
-    # that connects too early races the listen() and sees ECONNREFUSED.
-    if not verify_tcp_connection(('localhost', self.listen_port)):
+    # that connects too early races the listen() and sees ECONNREFUSED. Skipped
+    # for tests whose server intentionally never listens (e.g. server-down).
+    if self.do_server_check and not verify_tcp_connection(('localhost', self.listen_port)):
       clean_process(self.process)
       raise Exception('[Compiled server failed to start up in a timely manner]')
 
@@ -335,7 +337,7 @@ class sockets(BrowserCore):
   def test_sockets_select_server_down(self):
     for harness in [
       WebsockifyServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49190, do_server_check=False),
-      CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191),
+      CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191, do_server_check=False),
     ]:
       with harness:
         self.btest_exit('sockets/test_sockets_select_server_down_client.c', cflags=['-DSOCKK=%d' % harness.listen_port])
