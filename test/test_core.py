@@ -9822,7 +9822,7 @@ int main() {
   })
   @esm_integration
   def test_esm_integration_main(self, args):
-    self.do_runf('hello_world.c', 'Hello, world!', cflags=args)
+    self.do_runf_out_file('hello_world.c', cflags=args)
 
   @esm_integration
   def test_esm_integration(self):
