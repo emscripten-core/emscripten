@@ -599,9 +599,13 @@ var NodeSockFSLibrary = {
       if (!ok) sock.writeBlocked = true; // cleared on 'drain', gates poll's POLLOUT
       return length;
     },
-    recvmsg(sock, length) {
+    recvmsg(sock, length, flags) {
+      // MSG_PEEK returns the data from the head of the queue without consuming
+      // it: no shift, no recv_bytes/flow-control adjustment, so a later recv
+      // sees the same bytes and poll still reports the socket readable.
+      var peek = flags & {{{ cDefs.MSG_PEEK }}};
       if (sock.type === {{{ cDefs.SOCK_DGRAM }}}) {
-        var dgram = sock.recv_queue.shift();
+        var dgram = sock.recv_queue[0];
         if (!dgram) {
           // poll reports the socket readable on a pending error, so surface
           // (and clear) it here rather than spinning on EAGAIN.
@@ -614,9 +618,11 @@ var NodeSockFSLibrary = {
         }
         // A datagram is atomic: return up to length bytes and drop the rest.
         var dd = dgram.data;
-        return { buffer: dd.subarray(0, Math.min(length, dd.length)), addr: dgram.addr, port: dgram.port };
+        var res = { buffer: dd.subarray(0, Math.min(length, dd.length)), addr: dgram.addr, port: dgram.port };
+        if (!peek) sock.recv_queue.shift();
+        return res;
       }
-      var queued = sock.recv_queue.shift();
+      var queued = sock.recv_queue[0];
       if (!queued) {
         if (sock.readClosed) return null; // EOF
         if (!sock.connection) {
@@ -627,6 +633,8 @@ var NodeSockFSLibrary = {
       var q = queued.data;
       var bytesRead = Math.min(length, q.length);
       var res = { buffer: q.subarray(0, bytesRead), addr: queued.addr, port: queued.port };
+      if (peek) return res;
+      sock.recv_queue.shift();
       if (bytesRead < q.length) {
         queued.data = q.subarray(bytesRead);
         sock.recv_queue.unshift(queued);
