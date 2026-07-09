@@ -344,6 +344,10 @@ var SyscallsLibrary = {
   $getSocketAddress: (addrp, addrlen) => {
     var info = readSockaddr(addrp, addrlen);
     if (info.errno) throw new FS.ErrnoError(info.errno);
+#if NODERAWSOCKETS
+    // AF_UNIX addresses are filesystem paths, not IP names; pass them verbatim.
+    if (info.family != {{{ cDefs.AF_UNIX }}})
+#endif
     info.addr = DNS.lookup_addr(info.addr) || info.addr;
 #if SYSCALL_DEBUG
     dbg(`    (socketaddress: "${[info.addr, info.port]}")`);
@@ -358,6 +362,14 @@ var SyscallsLibrary = {
   __syscall_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
   __syscall_getsockname: (fd, addr, len, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
+#if NODERAWSOCKETS
+    if (sock.family == {{{ cDefs.AF_UNIX }}}) {
+      // AF_UNIX names are filesystem paths; report the bound path verbatim (an
+      // unbound socket is unnamed -> family-only address).
+      writeSockaddr(addr, sock.family, sock.saddr || '', 0, len);
+      return 0;
+    }
+#endif
     // TODO: sock.saddr should never be undefined, see TODO in websocket_sock_ops.getname
     var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(sock.saddr || '0.0.0.0'), sock.sport, len);
 #if ASSERTIONS
@@ -368,6 +380,17 @@ var SyscallsLibrary = {
   __syscall_getpeername__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
   __syscall_getpeername: (fd, addr, len, u1, u2, u3) => {
     var sock = getSocketFromFD(fd);
+#if NODERAWSOCKETS
+    if (sock.family == {{{ cDefs.AF_UNIX }}}) {
+      // A connected AF_UNIX socket has daddr set (possibly '' for an unnamed
+      // peer, e.g. a socketpair end); an unconnected one has it undefined.
+      if (sock.daddr === undefined) {
+        return -{{{ cDefs.ENOTCONN }}};
+      }
+      writeSockaddr(addr, sock.family, sock.daddr, 0, len);
+      return 0;
+    }
+#endif
     if (!sock.daddr) {
       return -{{{ cDefs.ENOTCONN }}}; // The socket is not connected.
     }
@@ -398,10 +421,17 @@ var SyscallsLibrary = {
     var sock = getSocketFromFD(fd);
     var newsock = sock.sock_ops.accept(sock);
     if (addr) {
-      var errno = writeSockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport, len);
-#if ASSERTIONS
-      assert(!errno);
+#if NODERAWSOCKETS
+      if (newsock.family == {{{ cDefs.AF_UNIX }}}) {
+        writeSockaddr(addr, newsock.family, newsock.daddr || '', 0, len);
+      } else
 #endif
+      {
+        var errno = writeSockaddr(addr, newsock.family, DNS.lookup_name(newsock.daddr), newsock.dport, len);
+#if ASSERTIONS
+        assert(!errno);
+#endif
+      }
     }
     return newsock.stream.fd;
   },
@@ -424,10 +454,17 @@ var SyscallsLibrary = {
     var msg = sock.sock_ops.recvmsg(sock, len, flags);
     if (!msg) return 0; // socket is closed
     if (addr) {
-      var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port, alen);
-#if ASSERTIONS
-      assert(!errno);
+#if NODERAWSOCKETS
+      if (sock.family == {{{ cDefs.AF_UNIX }}}) {
+        writeSockaddr(addr, sock.family, msg.addr || '', 0, alen);
+      } else
 #endif
+      {
+        var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port, alen);
+#if ASSERTIONS
+        assert(!errno);
+#endif
+      }
     }
     HEAPU8.set(msg.buffer, buf);
     return msg.buffer.byteLength;
@@ -531,10 +568,17 @@ var SyscallsLibrary = {
     var name = {{{ makeGetValue('message', C_STRUCTS.msghdr.msg_name, '*') }}};
     if (name) {
       var namelen = message + {{{ C_STRUCTS.msghdr.msg_namelen }}};
-      var errno = writeSockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port, namelen);
-#if ASSERTIONS
-      assert(!errno);
+#if NODERAWSOCKETS
+      if (sock.family == {{{ cDefs.AF_UNIX }}}) {
+        writeSockaddr(name, sock.family, msg.addr || '', 0, namelen);
+      } else
 #endif
+      {
+        var errno = writeSockaddr(name, sock.family, DNS.lookup_name(msg.addr), msg.port, namelen);
+#if ASSERTIONS
+        assert(!errno);
+#endif
+      }
     }
     // write the buffer out to the scatter-gather arrays
     var bytesRead = 0;

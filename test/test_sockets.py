@@ -476,6 +476,24 @@ class sockets(BrowserCore):
     # socket stays readable, and the following plain recv returns them again.
     self.do_runf('sockets/test_tcp_peek.c', 'done\n', cflags=['-sNODERAWSOCKETS'])
 
+  # AF_UNIX is gated behind NODERAWFS: the socket path lives in the host
+  # filesystem, which only stays coherent with the program's own file syscalls
+  # (bind's parent dir, getsockname, unlink) when the FS is the host FS.
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_unix_server(self):
+    # Self-contained named AF_UNIX (pathname) loopback accept+echo: bind(path),
+    # listen, getsockname (the bound path), accept, getpeername, non-blocking
+    # connect-by-path, send and recv over a real node pipe.
+    self.do_runf('sockets/test_unix_server.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sNODERAWFS'])
+
+  def test_noderawsockets_unix_refused(self):
+    # A connect to an AF_UNIX path with no socket file reports ENOENT.
+    self.do_runf('sockets/test_unix_refused.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sNODERAWFS'])
+
+  def test_noderawsockets_unix_bind_inuse(self):
+    # Binding an already-bound AF_UNIX path fails synchronously with EADDRINUSE.
+    self.do_runf('sockets/test_unix_bind_inuse.c', 'done\n', cflags=['-sNODERAWSOCKETS', '-sNODERAWFS'])
+
   def test_noderawsockets_server_autobind(self):
     # listen() without a prior bind() must auto-bind an ephemeral port and
     # getsockname() must report it (POSIX), then accept+echo as usual.
