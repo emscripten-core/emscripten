@@ -978,6 +978,14 @@ class benchmark(common.RunnerCore):
                        emcc_args=['--js-library', test_file('benchmark/benchmark_ffis.js'), '-sMINIMAL_RUNTIME=0'],
                        shared_args=['-DBENCHMARK_FOREIGN_FUNCTION=1', '-DBUILD_FOR_SHELL', '-I' + test_file('benchmark')])
 
+  def test_embind(self):
+    self.do_benchmarkf('embind', 'benchmark/benchmark_embind.cpp', 'done',
+                       emcc_args=['-lembind',
+                                  '--js-library', test_file('benchmark/benchmark_embind.js'),
+                                  '-sEXPORTED_RUNTIME_METHODS=HEAP8',
+                                  '-sSTACK_SIZE=1MB'],
+                       skip_benchmarkers=['clang', 'gcc'])
+
   @non_core
   def test_memcpy_128b(self):
     def output_parser(output):

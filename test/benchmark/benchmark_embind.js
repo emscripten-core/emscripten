@@ -2,7 +2,7 @@ addToLibrary({
     increment_counter_benchmark_js: function(N) {
         var ctr = _get_counter();
         var a = _emscripten_get_now();
-        for(i = 0; i < N; ++i) {
+        for(var i = 0; i < N; ++i) {
             _increment_counter();
             _increment_counter();
             _increment_counter();
@@ -22,7 +22,7 @@ addToLibrary({
     increment_class_counter_benchmark_embind_js: function(N) {
         var foo = new Module['Foo']();
         var a = _emscripten_get_now();
-        for(i = 0; i < N; ++i) {
+        for(var i = 0; i < N; ++i) {
             foo['incr_class_counter']();
             foo['incr_class_counter']();
             foo['incr_class_counter']();
@@ -42,7 +42,7 @@ addToLibrary({
     returns_input_benchmark_js: function() {
         var a = _emscripten_get_now();
         var t = 0;
-        for(i = 0; i < 100000; ++i) {
+        for(var i = 0; i < 100000; ++i) {
             t += _returns_input(i);
             t += _returns_input(i);
             t += _returns_input(i);
@@ -61,7 +61,7 @@ addToLibrary({
     sum_int_benchmark_js: function() {
         var a = _emscripten_get_now();
         var r = 0;
-        for(i = 0; i < 100000; ++i) {
+        for(var i = 0; i < 100000; ++i) {
             r += _sum_int(i, 2, 3, 4, 5, 6, 7, 8, 9);
             r += _sum_int(i, 2, 3, 4, 5, 6, 7, 8, 9);
             r += _sum_int(i, 2, 3, 4, 5, 6, 7, 8, 9);
@@ -80,7 +80,7 @@ addToLibrary({
     sum_float_benchmark_js: function() {
         var a = _emscripten_get_now();
         var r = 0;
-        for(i = 0; i < 100000; ++i) {
+        for(var i = 0; i < 100000; ++i) {
             r += _sum_float(i, 2, 3, 4, 5, 6, 7, 8, 9);
             r += _sum_float(i, 2, 3, 4, 5, 6, 7, 8, 9);
             r += _sum_float(i, 2, 3, 4, 5, 6, 7, 8, 9);
@@ -99,7 +99,7 @@ addToLibrary({
     increment_counter_benchmark_embind_js: function (N) {
         var ctr = _get_counter();
         var a = _emscripten_get_now();
-        for(i = 0; i < N; ++i) {
+        for(var i = 0; i < N; ++i) {
             Module['increment_counter']();
             Module['increment_counter']();
             Module['increment_counter']();
@@ -119,7 +119,7 @@ addToLibrary({
     returns_input_benchmark_embind_js: function() {
         var a = _emscripten_get_now();
         var t = 0;
-        for(i = 0; i < 100000; ++i) {
+        for(var i = 0; i < 100000; ++i) {
             t += Module['returns_input'](i);
             t += Module['returns_input'](i);
             t += Module['returns_input'](i);
@@ -138,7 +138,7 @@ addToLibrary({
     sum_int_benchmark_embind_js: function() {
         var a = _emscripten_get_now();
         var r = 0;
-        for(i = 0; i < 100000; ++i) {
+        for(var i = 0; i < 100000; ++i) {
             r += Module['sum_int'](i, 2, 3, 4, 5, 6, 7, 8, 9);
             r += Module['sum_int'](i, 2, 3, 4, 5, 6, 7, 8, 9);
             r += Module['sum_int'](i, 2, 3, 4, 5, 6, 7, 8, 9);
@@ -157,7 +157,7 @@ addToLibrary({
     sum_float_benchmark_embind_js: function() {
         var a = _emscripten_get_now();
         var r = 0;
-        for(i = 0; i < 100000; ++i) {
+        for(var i = 0; i < 100000; ++i) {
             r += Module['sum_float'](i, 2, 3, 4, 5, 6, 7, 8, 9);
             r += Module['sum_float'](i, 2, 3, 4, 5, 6, 7, 8, 9);
             r += Module['sum_float'](i, 2, 3, 4, 5, 6, 7, 8, 9);
@@ -176,12 +176,12 @@ addToLibrary({
     move_gameobjects_benchmark_embind_js: function() {
         var N = 10000;
         var objects = [];
-        for(i = 0; i < N; ++i) {
+        for(var i = 0; i < N; ++i) {
             objects.push(Module['create_game_object']());
         }
         
         var a = _emscripten_get_now();
-        for(i = 0; i < N; ++i) {
+        for(var i = 0; i < N; ++i) {
             var t = objects[i]['GetTransform']();
             var pos = Module['add'](t['GetPosition'](), [2, 0, 1]);
             var rot = Module['add'](t['GetRotation'](), [0.1, 0.2, 0.3]);
@@ -192,7 +192,7 @@ addToLibrary({
         var b = _emscripten_get_now();
         
         var accum = [0,0,0];
-        for(i = 0; i < N; ++i) {
+        for(var i = 0; i < N; ++i) {
             var t = objects[i]['GetTransform']();
             accum = Module['add'](Module['add'](accum, t['GetPosition']()), t['GetRotation']());
             t['delete']();
@@ -205,18 +205,18 @@ addToLibrary({
     pass_gameobject_ptr_benchmark_embind_js: function() {
         var N = 100000;
         var objects = [];
-        for(i = 0; i < N; ++i) {
+        for(var i = 0; i < N; ++i) {
             objects.push(Module['create_game_object']());
         }
         
         var a = _emscripten_get_now();
-        for(i = 0; i < N; ++i) {
+        for(var i = 0; i < N; ++i) {
             var t = Module['pass_gameobject_ptr'](objects[i]);
             t['delete']();
         }
         var b = _emscripten_get_now();
         
-        for(i = 0; i < N; ++i) {
+        for(var i = 0; i < N; ++i) {
             objects[i]['delete']();
         }
         
@@ -225,21 +225,21 @@ addToLibrary({
 
     call_through_interface0: function() {
         var N = 1000000;
-        var obj = Module['Interface'].implement({
-            call0: function() {
+        var obj = Module['Interface']['implement']({
+            'call0': function() {
             }
         });
         var start = _emscripten_get_now();
         Module['callInterface0'](N, obj);
         var elapsed = _emscripten_get_now() - start;
         out("C++ -> JS void through interface " + N + " iters: " + elapsed + " msecs.");
-        obj.delete();
+        obj['delete']();
     },
 
     call_through_interface1: function () {
         var N = 1000000;
-        var obj = Module['Interface'].implement({
-            call1: function(s1, s2) {
+        var obj = Module['Interface']['implement']({
+            'call1': function(s1, s2) {
                 return s1 + s2;
             }
         });
@@ -247,17 +247,17 @@ addToLibrary({
         Module['callInterface1'](N, obj);
         var elapsed = _emscripten_get_now() - start;
         out("C++ -> JS std::wstring through interface " + N + " iters: " + elapsed + " msecs.");
-        obj.delete();
+        obj['delete']();
     },
 
     call_through_interface2: function() {
         var N = 1000000;
         var total = 0;
-        var obj = Module['Interface'].implement({
-            call_with_typed_array: function(ta) {
+        var obj = Module['Interface']['implement']({
+            'call_with_typed_array': function(ta) {
                 total += ta.length;
             },
-            call_with_memory_view: function(ta) {
+            'call_with_memory_view': function(ta) {
                 total += ta.length;
             },
         });
@@ -271,7 +271,7 @@ addToLibrary({
         Module['callInterface3'](N, obj);
         var elapsed = _emscripten_get_now() - start;
         out("C++ -> JS memory_view instantiation" + N + " iters: " + elapsed + " msecs.");
-        obj.delete();
+        obj['delete']();
     },
 
     returns_val_benchmark: function() {
