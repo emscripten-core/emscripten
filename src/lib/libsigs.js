@@ -590,6 +590,7 @@ sigs = {
   emscripten_asm_const_ptr__sig: 'pppp',
   emscripten_asm_const_ptr_sync_on_main_thread__sig: 'pppp',
   emscripten_async_call__sig: 'vppi',
+  emscripten_async_call_promising__sig: 'vppi',
   emscripten_async_load_script__sig: 'vppp',
   emscripten_async_run_script__sig: 'vpi',
   emscripten_async_wget__sig: 'vpppp',
