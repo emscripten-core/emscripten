@@ -4,12 +4,17 @@
 # University of Illinois/NCSA Open Source License.  Both these licenses can be
 # found in the LICENSE file.
 
-import os
-import sys
-import shutil
 import glob
+import os
 
-from update_common import *
+from update_common import (
+  clean_dir,
+  copy_tree,
+  default_llvm_dir,
+  parse_args,
+  script_dir,
+  update_readme,
+)
 
 preserve_files = ('readme.txt', '__assertion_handler', '__config_site')
 # ryu_long_double_constants.h from libc is unused (and very large)
@@ -67,6 +72,7 @@ def main():
       os.remove(file)
 
   update_readme(libc_local_dir, llvm_dir)
+
 
 if __name__ == '__main__':
   main()
