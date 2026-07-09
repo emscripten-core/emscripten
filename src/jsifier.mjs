@@ -255,6 +255,9 @@ function addImplicitDeps(snippet, deps) {
       deps.push('$' + dep);
     }
   }
+  // If the snippet contains eval(), it may dynamically evaluate strings that reference any
+  // heap view (e.g., eval('HEAP8[0]')). Since static string matching cannot detect which
+  // heap views are used inside dynamically evaluated code, we must include all of them.
   if (snippet.includes('eval(')) {
     deps.push('$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16', '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64');
     if (WASM_BIGINT || MEMORY64) {
@@ -309,8 +312,14 @@ function getRequiredHeapSymbols() {
         heaps.add('$HEAP64').add('$HEAPU64');
       }
     }
+    // runtime_common.js accesses HEAP8 under ALLOW_MEMORY_GROWTH (to check buffer resizability),
+    // RUNTIME_DEBUG (to log initial setup), and ASSERTIONS (to guard against re-entrancy when
+    // ALLOW_MEMORY_GROWTH is 0).
+    if (ALLOW_MEMORY_GROWTH || RUNTIME_DEBUG || ASSERTIONS) {
+      heaps.add('$HEAP8');
+    }
   }
-  return Array.from(heaps);
+  return heaps;
 }
 
 function sigToArgs(sig) {

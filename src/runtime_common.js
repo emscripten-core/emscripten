@@ -28,7 +28,7 @@
 // must be updated.
 function growMemViews() {
   // `updateMemoryViews` updates all the views simultaneously, so it's enough to check any of them.
-  if (typeof HEAP8 != 'undefined' && wasmMemory.buffer != HEAP8.buffer) {
+  if (wasmMemory.buffer != HEAP8.buffer) {
     updateMemoryViews();
   }
 }
@@ -155,21 +155,21 @@ function getMemoryBuffer() {
 
 function updateMemoryViews() {
 #if RUNTIME_DEBUG
-  dbg(`updateMemoryViews: first=${typeof HEAP8 == 'undefined' || !HEAP8} size=${wasmMemory.buffer.byteLength}`);
+  dbg(`updateMemoryViews: first=${!HEAP8} size=${wasmMemory.buffer.byteLength}`);
 #endif
 #if ALLOW_MEMORY_GROWTH
   // If we already have a heap that is resizeable/growable buffer we don't
   // need to do anything in updateMemoryViews.
 #if SHARED_MEMORY
-  if (typeof HEAP8 != 'undefined' && HEAP8?.buffer?.growable) return;
+  if (HEAP8?.buffer?.growable) return;
 #else
-  if (typeof HEAP8 != 'undefined' && HEAP8?.buffer?.resizable) return;
+  if (HEAP8?.buffer?.resizable) return;
 #endif
   var b = getMemoryBuffer();
 #else
 #if ASSERTIONS
   // When memory growth is disabled this function should be called exactly once.
-  assert(typeof HEAP8 == 'undefined' || !HEAP8, 'updateMemoryViews should only be called once when ALLOW_MEMORY_GROWTH=0');
+  assert(!HEAP8, 'updateMemoryViews should only be called once when ALLOW_MEMORY_GROWTH=0');
 #endif
   var b = wasmMemory.buffer;
 #endif
