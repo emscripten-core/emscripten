@@ -5617,15 +5617,17 @@ got: 10
   @no_wasm64('https://github.com/emscripten-core/emscripten/issues/27221')
   @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
   def test_openmp_max_threads(self):
-    src = r"""
+    src = r'''
       #include <omp.h>
+      #include <stdio.h>
       #include <assert.h>
       int main(void) {
         assert(omp_get_max_threads() > 0);
+        puts("done");
         return 0;
       }
-    """
-    self.do_run(src, "", cflags=["-fopenmp=libomp"])
+    '''
+    self.do_run(src, 'done\n', cflags=['-fopenmp=libomp', '-Wno-pthreads-mem-growth'])
 
   def test_fscanf(self):
     create_file('three_numbers.txt', '-1 0.1 -.1')
@@ -10069,7 +10071,7 @@ strict_js = make_run('strict_js', cflags=[], settings={'STRICT_JS': 1})
 ubsan = make_run('ubsan', cflags=['-fsanitize=undefined', '--profiling'])
 lsan = make_run('lsan', cflags=['-fsanitize=leak', '--profiling'], settings={'ALLOW_MEMORY_GROWTH': 1})
 asan = make_run('asan', cflags=['-fsanitize=address', '--profiling'], settings={'ALLOW_MEMORY_GROWTH': 1})
-asani = make_run('asani', cflags=['-fsanitize=address', '--profiling', '--pre-js', os.path.join(os.path.dirname(__file__), 'asan-no-leak.js')],
+asani = make_run('asani', cflags=['-fsanitize=address', '--profiling', '--pre-js', test_file('asan-no-leak.js')],
                  settings={'ALLOW_MEMORY_GROWTH': 1})
 
 # Experimental modes (not tested by CI)
