@@ -30,6 +30,8 @@
 #      define SANITIZER_HAS_STAT64 0
 #      define SANITIZER_HAS_STATFS64 0
 #    endif
+#  elif SANITIZER_HAIKU
+#    include <stdint.h>
 #  elif SANITIZER_EMSCRIPTEN
 #    define SANITIZER_HAS_STAT64 0
 #    define SANITIZER_HAS_STATFS64 0
@@ -644,7 +646,7 @@ typedef unsigned long __sanitizer_sigset_t;
 #  elif SANITIZER_APPLE
 typedef unsigned __sanitizer_sigset_t;
 #  elif SANITIZER_HAIKU
-typedef unsigned long long __sanitizer_sigset_t;
+typedef uint64_t __sanitizer_sigset_t;
 #  elif SANITIZER_LINUX
 struct __sanitizer_sigset_t {
   // The size is determined by looking at sizeof of real sigset_t on linux.

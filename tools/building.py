@@ -883,7 +883,10 @@ def metadce(js_file, wasm_file, debug_info, last):
         unused_imports.append(native_name)
       elif name.startswith('emcc$export$') and settings.DECLARE_ASM_MODULE_EXPORTS:
         native_name = export_name_map[name]
-        if shared.is_user_export(native_name):
+        # Internal/system exports (e.g. memory, __asyncify_data, dynCall_*, etc.)
+        # do not have standard JS receiving assignments (_name = wasmExports['name']),
+        # so including them in unused_exports would fail applyDCEGraphRemovals's assertion.
+        if not shared.is_internal_symbol(native_name):
           unused_exports.append(native_name)
   if not unused_exports and not unused_imports:
     # nothing found to be unused, so we have nothing to remove

@@ -48,7 +48,10 @@ function mangleUnsupportedSyntax(text) {
     // See also: `fix_js_mangling` in link.py.
     // FIXME: Remove after https://github.com/google/closure-compiler/issues/3835 is fixed.
     if (EXPORT_ES6) {
-      text = text.replaceAll('await import', 'EMSCRIPTEN$AWAIT$IMPORT');
+      // Use a low-precedence `||` pattern so Closure doesn't strip parentheses.
+      // High-precedence placeholders trick Closure into optimizing `(PLACEHOLDER).y`
+      // into `PLACEHOLDER.y`, breaking execution order once swapped back to `await`.
+      text = text.replaceAll('await import', 'EMSCRIPTEN$AWAIT||import');
     }
     text = text.replaceAll('await createWasm()', 'EMSCRIPTEN$AWAIT(createWasm())');
     text = text.replaceAll('await run()', 'EMSCRIPTEN$AWAIT(run())');

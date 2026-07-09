@@ -75,6 +75,19 @@ def _probe_ipv6_loopback():
 HAS_IPV6_LOOPBACK = _probe_ipv6_loopback()
 
 
+def verify_tcp_connection(address, retries=10, timeout=1):
+  # Poll a listening TCP address until it accepts a connection, so a harness
+  # doesn't return before its server is ready and race the client.
+  for _ in range(retries):
+    try:
+      sock = socket.create_connection(address, timeout=timeout)
+      sock.close()
+      return True
+    except OSError:
+      time.sleep(1)
+  return False
+
+
 def clean_process(p):
   if getattr(p, 'exitcode', None) is None and getattr(p, 'returncode', None) is None:
     # ask nicely (to try and catch the children)
@@ -125,19 +138,12 @@ class WebsockifyServerHarness:
     self.websockify.start()
     self.processes.append(self.websockify)
     # Make sure both the actual server and the websocket proxy are running
-    for _ in range(10):
-      try:
-        if self.do_server_check:
-            server_sock = socket.create_connection(('localhost', self.target_port), timeout=1)
-            server_sock.close()
-        proxy_sock = socket.create_connection(('localhost', self.listen_port), timeout=1)
-        proxy_sock.close()
-        break
-      except OSError:
-        time.sleep(1)
-    else:
+    if self.do_server_check and not verify_tcp_connection(('localhost', self.target_port)):
       self.clean_processes()
-      raise Exception('[Websockify failed to start up in a timely manner]')
+      raise Exception('[Socket server failed to start up in a timely manner]')
+    if not verify_tcp_connection(('localhost', self.listen_port)):
+      self.clean_processes()
+      raise Exception('[Websockify proxy failed to start up in a timely manner]')
 
     print('[Websockify on process %s]' % str(self.processes[-2:]))
     return self
@@ -157,11 +163,12 @@ class WebsockifyServerHarness:
 
 
 class CompiledServerHarness:
-  def __init__(self, filename, args, listen_port):
+  def __init__(self, filename, args, listen_port, do_server_check=True):
     self.process = None
     self.filename = filename
     self.listen_port = listen_port
     self.args = args or []
+    self.do_server_check = do_server_check
 
   def __enter__(self):
     # assuming this is only used for WebSocket tests at the moment, validate that
@@ -178,6 +185,15 @@ class CompiledServerHarness:
     print('Socket server build: out:', proc.stdout or '', '/ err:', proc.stderr or '')
 
     self.process = Popen([*config.NODE_JS, 'server' + suffix])
+
+    # Wait for the server to start listening before returning: the node ws
+    # server binds its port asynchronously after process startup, so a client
+    # that connects too early races the listen() and sees ECONNREFUSED. Skipped
+    # for tests whose server intentionally never listens (e.g. server-down).
+    if self.do_server_check and not verify_tcp_connection(('localhost', self.listen_port)):
+      clean_process(self.process)
+      raise Exception('[Compiled server failed to start up in a timely manner]')
+
     return self
 
   def __exit__(self, *args, **kwargs):
@@ -321,7 +337,7 @@ class sockets(BrowserCore):
   def test_sockets_select_server_down(self):
     for harness in [
       WebsockifyServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49190, do_server_check=False),
-      CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191),
+      CompiledServerHarness(test_file('sockets/test_sockets_select_server_down_server.c'), [], 49191, do_server_check=False),
     ]:
       with harness:
         self.btest_exit('sockets/test_sockets_select_server_down_client.c', cflags=['-DSOCKK=%d' % harness.listen_port])
@@ -419,8 +435,8 @@ class sockets(BrowserCore):
       thread.join()
 
   def test_noderawsockets_client_semantics(self):
-    # EISCONN on a second connect, shutdown(SHUT_WR) leaving reads working, and
-    # EPIPE on a write after that.
+    # EISCONN on a second connect, shutdown(SHUT_WR) leaving reads working,
+    # EPIPE on a write after that, and POLLHUP after a full shutdown(SHUT_RDWR).
     self._run_against_echo_server('sockets/test_tcp_client_semantics.c', 'CLIENT SEMANTICS PASS')
 
   def test_noderawsockets_refused(self):
@@ -455,6 +471,12 @@ class sockets(BrowserCore):
     # (synchronous ephemeral port), listen, accept, non-blocking connect, send
     # and recv over real OS sockets via the tcp_wrap server path.
     self.do_runf('sockets/test_tcp_server.c', 'TCP SERVER PASS', cflags=['-sNODERAWSOCKETS'])
+
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_peek(self):
+    # recv(MSG_PEEK) must leave the data buffered: a peek returns the bytes, the
+    # socket stays readable, and the following plain recv returns them again.
+    self.do_runf('sockets/test_tcp_peek.c', 'TCP PEEK PASS', cflags=['-sNODERAWSOCKETS'])
 
   def test_noderawsockets_server_autobind(self):
     # listen() without a prior bind() must auto-bind an ephemeral port and

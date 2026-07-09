@@ -13,8 +13,7 @@
 
 void PrintWide ( const wchar_t * format, ... )
 {
-  wchar_t buffer[MAX_CHARS_SMALL];
-  memset(buffer, 0, MAX_CHARS_SMALL);
+  wchar_t buffer[MAX_CHARS_SMALL] = {0};
   va_list args;
   va_start ( args, format );
   wprintf(L"format    starts with 0x%x\n", *(int*)format);
@@ -77,8 +76,7 @@ int main ()
    wprintf (L"Width trick: %*d \n", 5, 10);
    wprintf (L"%ls \n", L"A wide string");
 
-   wchar_t buffer [100];
-   memset(buffer, 0, sizeof(buffer));
+   wchar_t buffer [100] = {0};
    int cx;
    cx = swprintf(buffer, 100, L"The half of %d is %d", 80, 80/2);
    wprintf(L"swprintf told us %d\n", cx);

@@ -1436,7 +1436,7 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
     ''' % locals(),
            'a: loaded\na: b (prev: (null))\na: c (prev: b)\n', cflags=extra_args)
 
-  def do_run(self, src, expected_output=None, force_c=False, **kwargs):
+  def do_run(self, src, *args, force_c=False, **kwargs):
     if 'no_build' in kwargs:
       filename = src
     else:
@@ -1445,12 +1445,12 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       else:
         filename = 'src.cpp'
       create_file(filename, src)
-    return self._build_and_run(filename, expected_output, **kwargs)
+    return self._build_and_run(filename, *args, **kwargs)
 
-  def do_runf(self, filename, expected_output=None, **kwargs):
-    return self._build_and_run(filename, expected_output, **kwargs)
+  def do_runf(self, filename, *args, **kwargs):
+    return self._build_and_run(filename, *args, **kwargs)
 
-  def do_run_in_out_file_test(self, srcfile, **kwargs):
+  def do_runf_out_file(self, srcfile, *args, **kwargs):
     srcfile = maybe_test_file(srcfile)
     out_suffix = kwargs.pop('out_suffix', '')
     outfile = utils.unsuffixed(srcfile) + out_suffix + '.out'
@@ -1458,13 +1458,13 @@ class RunnerCore(RetryableTestCase, metaclass=RunnerMeta):
       expected = None
     else:
       expected = read_file(outfile)
-    output = self._build_and_run(srcfile, expected, **kwargs)
+    output = self._build_and_run(srcfile, expected, *args, **kwargs)
     if EMTEST_REBASELINE:
       utils.write_file(outfile, output)
     return output
 
   # Does a complete test - builds, runs, checks output, etc.
-  def _build_and_run(self, filename, expected_output, args=None,
+  def _build_and_run(self, filename, expected_output=None, args=None,
                      no_build=False,
                      assert_returncode=0, assert_identical=False, assert_all=False,
                      check_for_error=True,

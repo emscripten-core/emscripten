@@ -353,9 +353,6 @@ var SyscallsLibrary = {
   __syscall_socket__deps: ['$SOCKFS'],
   __syscall_socket: (domain, type, protocol, u1, u2, u3) => {
     var sock = SOCKFS.createSocket(domain, type, protocol);
-#if ASSERTIONS
-    assert(sock.stream.fd < 64); // XXX ? select() assumes socket fd values are in 0..63
-#endif
     return sock.stream.fd;
   },
   __syscall_getsockname__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
@@ -424,7 +421,7 @@ var SyscallsLibrary = {
   __syscall_recvfrom__deps: ['$getSocketFromFD', '$writeSockaddr', '$DNS'],
   __syscall_recvfrom: (fd, buf, len, flags, addr, alen) => {
     var sock = getSocketFromFD(fd);
-    var msg = sock.sock_ops.recvmsg(sock, len);
+    var msg = sock.sock_ops.recvmsg(sock, len, flags);
     if (!msg) return 0; // socket is closed
     if (addr) {
       var errno = writeSockaddr(addr, sock.family, DNS.lookup_name(msg.addr), msg.port, alen);
@@ -520,15 +517,13 @@ var SyscallsLibrary = {
     for (var i = 0; i < num; i++) {
       total += {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, 'i32') }}};
     }
-    // try to read total data
-    var msg = sock.sock_ops.recvmsg(sock, total);
+    // try to read total data (MSG_PEEK, when set, leaves it buffered)
+    var msg = sock.sock_ops.recvmsg(sock, total, flags);
     if (!msg) return 0; // socket is closed
 
     // TODO honor flags:
     // MSG_OOB
     // Requests out-of-band data. The significance and semantics of out-of-band data are protocol-specific.
-    // MSG_PEEK
-    // Peeks at the incoming message.
     // MSG_WAITALL
     // Requests that the function block until the full amount of data requested can be returned. The function may return a smaller amount of data if a signal is caught, if the connection is terminated, if MSG_PEEK was specified, or if an error is pending for the socket.
 

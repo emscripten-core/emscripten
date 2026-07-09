@@ -7,7 +7,8 @@
  * Outgoing TCP client error/state semantics against a loopback echo server
  * started by the test harness (port in argv[1]). Checks connecting twice gives
  * EISCONN, that shutdown(SHUT_WR) half-closes the write side while reads still
- * work, and that writing after that gives EPIPE. Plain POSIX, also runs
+ * work, that writing after that gives EPIPE, and that a full
+ * shutdown(SHUT_RDWR) hangs up both halves (POLLHUP). Plain POSIX, also runs
  * natively.
  */
 
@@ -16,6 +17,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <signal.h>
 #include <stdbool.h>
 #include <stdio.h>
@@ -84,6 +86,13 @@ void main_loop(void) {
     // Writing after a write-shutdown is a broken pipe.
     ssize_t w = send(fd, "more", 4, 0);
     assert(w == -1 && errno == EPIPE);
+
+    // A full local shutdown hangs up both halves: poll must report POLLHUP,
+    // matching Linux epoll even though the peer hasn't closed.
+    assert(shutdown(fd, SHUT_RDWR) == 0);
+    struct pollfd pfd = {.fd = fd, .events = POLLIN | POLLOUT};
+    assert(poll(&pfd, 1, 1000) > 0);
+    assert(pfd.revents & POLLHUP);
 
     test_success();
   }
