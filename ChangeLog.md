@@ -20,12 +20,9 @@ See docs/process.md for more on how version tagging works.
 
 6.0.3 (in development)
 ----------------------
-- The `GROWABLE_ARRAYBUFFERS` setting default was reverted back to 0 (it was
-  changed to 1 in 6.0.2) because `TextDecoder.decode()` rejects views of
-  resizable ArrayBuffers in browsers, breaking `UTF8ToString` in programs
-  built with `ALLOW_MEMORY_GROWTH`. String decoding now copies the data when
-  the heap buffer is resizable, so the setting can still be enabled
-  explicitly. (#27241)
+- Fixed `UTF8ToString` with `GROWABLE_ARRAYBUFFERS` set. String decoding now
+  copies the data when the heap buffer is resizable, just like it does in
+  the shared memory case. (#27242)
 - Added support for compiling FMA intrinsics. All 32 FMA intrinsics are
   supported, with 256-bit variants emulated via two 128-bit operations. Pass
   ``-msimd128 -mfma`` to enable. With ``-mrelaxed-simd -mfma``, Wasm relaxed
