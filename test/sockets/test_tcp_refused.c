@@ -47,8 +47,7 @@ void main_loop(void) {
 
   if (FD_ISSET(fd, &fdw)) {
     // Poll before reading SO_ERROR (which clears the pending error). A refused
-    // connect is Linux POLLERR|POLLHUP (plus writable), so epoll's
-    // is_write_closed() reports the write side hung up.
+    // connect is Linux POLLERR|POLLHUP (plus writable).
     struct pollfd pfd = {fd, POLLIN | POLLOUT, 0};
     assert(poll(&pfd, 1, 0) == 1);
     printf("poll revents 0x%x\n", pfd.revents);

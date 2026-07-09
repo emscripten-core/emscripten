@@ -17,13 +17,15 @@ addToLibrary({
     createPipe() {
       var pipe = {
         buckets: [],
-        // refcnt 2 because pipe has a read end and a write end. We need to be
-        // able to read from the read end after write end is closed.
-        refcnt : 2,
-        // Number of open write ends. When it drops to 0 the reader sees EOF and
-        // poll must report POLLHUP (Linux semantics), so track it separately.
+        // Open write ends. When it drops to 0 the reader sees EOF and poll must
+        // report POLLHUP (Linux semantics). Buckets are freed once both counts
+        // reach 0.
         writerCount: 1,
         writeClosed: false,
+        // Open read ends. When it drops to 0 the writer sees POLLERR (a further
+        // write would get EPIPE).
+        readerCount: 1,
+        readClosed: false,
         timestamp: new Date(),
       };
 
@@ -40,8 +42,10 @@ addToLibrary({
 
       rNode.pipe = pipe;
       wNode.pipe = pipe;
-      // The read end's node carries the poll wait-queue; writes wake it.
+      // The read end's node carries the reader poll wait-queue (writes wake it);
+      // the write end's node carries the writer wait-queue (read-end close wakes it).
       pipe.readNode = rNode;
+      pipe.writeNode = wNode;
 
       var readableStream = FS.createStream({
         path: rName,
@@ -90,7 +94,13 @@ addToLibrary({
         var pipe = stream.node.pipe;
 
         if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
-          return ({{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}});
+          // Linux keeps the write end writable (the write itself fails with
+          // EPIPE) while also signalling POLLERR once every read end is closed.
+          var mask = {{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}};
+          if (pipe.readClosed) {
+            mask |= {{{ cDefs.POLLERR }}};
+          }
+          return mask;
         }
         var mask = 0;
         for (var bucket of pipe.buckets) {
@@ -108,9 +118,10 @@ addToLibrary({
       },
       dup(stream) {
         var pipe = stream.node.pipe;
-        pipe.refcnt++;
         if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
           pipe.writerCount++;
+        } else {
+          pipe.readerCount++;
         }
       },
       ioctl(stream, request, argp) {
@@ -268,11 +279,18 @@ addToLibrary({
         var pipe = stream.node.pipe;
         // When the last write end closes, wake any poll/epoll waiter on the read
         // end with POLLHUP so a reader blocked on the writer dropping unblocks.
-        if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}} && --pipe.writerCount === 0) {
-          pipe.writeClosed = true;
-          pipe.readNode.notifyListeners({{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+        if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
+          if (--pipe.writerCount === 0) {
+            pipe.writeClosed = true;
+            pipe.readNode.notifyListeners({{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+          }
+        } else if (--pipe.readerCount === 0) {
+          // Mirror: when the last read end closes, wake any poll/epoll waiter on
+          // the write end with POLLERR (a further write would get EPIPE).
+          pipe.readClosed = true;
+          pipe.writeNode.notifyListeners({{{ cDefs.POLLERR }}} | {{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}});
         }
-        if (--pipe.refcnt === 0) {
+        if (pipe.readerCount === 0 && pipe.writerCount === 0) {
           pipe.buckets = null;
         }
       }
