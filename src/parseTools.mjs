@@ -1090,13 +1090,9 @@ function getUnsharedTextDecoderView(heap, start, end) {
   const copy = `${heap}.slice(${start}, ${end})`;
   const view = `${heap}.subarray(${start}, ${end})`;
 
-  // The heap can be backed by a resizable ArrayBuffer in non-shared memory
-  // builds with memory growth enabled.
-  const maybeResizable = !SHARED_MEMORY && ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS;
-
   // No need to worry about this in builds where the buffer can be neither
   // shared nor resizable.
-  if (!SHARED_MEMORY && !maybeResizable) return view;
+  if (!SHARED_MEMORY && !(ALLOW_MEMORY_GROWTH && GROWABLE_ARRAYBUFFERS)) return view;
 
   // If in -Oz, then unconditionally do a .slice() for smallest code size.
   // This is guaranteed to work but could be slower since it performs a copy.
