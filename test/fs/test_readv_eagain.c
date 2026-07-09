@@ -66,8 +66,10 @@ int main() {
   char out1[4] = "EFGH";
   struct iovec wiov[] = {{.iov_base = out0, .iov_len = 4},
                          {.iov_base = out1, .iov_len = 4}};
+  // writev gathers both iovecs into a single write, so the whole 8 bytes go
+  // out in one call and the would-block second call never happens.
   ssize_t nwrite = writev(wfd, wiov, 2);
-  assert(nwrite == 4);
+  assert(nwrite == 8);
   close(wfd);
 
   printf("done\n");
