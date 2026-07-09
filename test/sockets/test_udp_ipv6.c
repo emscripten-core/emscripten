@@ -37,7 +37,7 @@ bool pong_sent = false;
 void set_nonblocking(int fd) { fcntl(fd, F_SETFL, O_NONBLOCK); }
 
 void test_success(void) {
-  printf("UDP IPV6 PASS\n");
+  printf("done\n");
   if (server_fd >= 0) close(server_fd);
   if (client_fd >= 0) close(client_fd);
 #ifdef __EMSCRIPTEN__

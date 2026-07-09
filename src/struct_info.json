@@ -142,6 +142,30 @@
         }
     },
     {
+        "file": "sys/epoll.h",
+        "defines": [
+            "EPOLLIN",
+            "EPOLLOUT",
+            "EPOLLERR",
+            "EPOLLHUP",
+            "EPOLLRDNORM",
+            "EPOLLWRNORM",
+            "EPOLLET",
+            "EPOLLONESHOT",
+            "EPOLLEXCLUSIVE",
+            "EPOLL_CTL_ADD",
+            "EPOLL_CTL_DEL",
+            "EPOLL_CTL_MOD",
+            "EPOLL_CLOEXEC"
+        ],
+        "structs": {
+            "epoll_event": [
+                "events",
+                "data"
+            ]
+        }
+    },
+    {
         "file": "time.h",
         "defines": [
             "CLOCK_REALTIME"
@@ -182,7 +206,8 @@
             "NI_NAMEREQD",
             "EAI_NONAME",
             "EAI_SOCKTYPE",
-            "EAI_BADFLAGS"
+            "EAI_BADFLAGS",
+            "EAI_AGAIN"
         ],
         "structs": {
             "addrinfo": [
