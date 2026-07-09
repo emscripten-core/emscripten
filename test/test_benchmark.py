@@ -38,7 +38,7 @@ from tools.utils import run_process
 # 3: 1 second
 # 4: 5 seconds
 # 5: 10 seconds
-DEFAULT_ARG = '4'
+BENCHMARK_MODE = '4'
 
 EMTEST_REPS = int(os.environ.get('EMTEST_REPS', '5'))
 
@@ -90,7 +90,7 @@ class Benchmarker(ABC):
       if expected_output is not None and expected_output not in output:
         raise ValueError('Incorrect benchmark output:\n' + output)
 
-      if not output_parser or args == ['0']: # if arg is 0, we are not running code, and have no output to parse
+      if not output_parser or BENCHMARK_MODE == '0': # When BENCHMARK_MODE is 0, we are not running code, and have no output to parse
         curr = time.time() - start
       else:
         try:
@@ -487,7 +487,7 @@ class benchmark(common.RunnerCore):
       raise Exception('error, no benchmarkers')
 
     filename = common.maybe_test_file(filename)
-    args = args or [DEFAULT_ARG]
+    args = (args or []) + [BENCHMARK_MODE]
 
     dirname = self.get_dir()
     dest_filename = os.path.join(dirname, os.path.basename(filename))
@@ -936,13 +936,13 @@ class benchmark(common.RunnerCore):
 
   @non_core
   def test_life(self):
-    self.do_benchmarkf('life', 'life.c', '''--------------------------------''')
+    self.do_benchmarkf('life', 'life.c', '--------------------------------')
 
   def test_zzz_linpack(self):
     def output_parser(output):
       mflops = re.search(r'Unrolled Double  Precision ([\d\.]+) Mflops', output).group(1)
       return 10000.0 / float(mflops)
-    self.do_benchmarkf('linpack_double', 'benchmark/linpack2.c', '''Unrolled Double  Precision''',
+    self.do_benchmarkf('linpack_double', 'benchmark/linpack2.c', 'Unrolled Double  Precision',
                        output_parser=output_parser)
 
   # Benchmarks the synthetic performance of calling native functions.
@@ -1063,7 +1063,7 @@ class benchmark(common.RunnerCore):
       return self.get_library(os.path.join('third_party', 'lua_native' if native else 'lua'), [os.path.join('src', 'lua.o'), os.path.join('src', 'liblua.a')], make=['make', 'generic'], configure=None, native=native, cache_name_extra=name, env_init=env_init, force_rebuild=native)
 
     self.do_benchmark('lua_' + benchmark, '', expected,
-                      force_c=True, args=[benchmark + '.lua', DEFAULT_ARG],
+                      force_c=True, args=[benchmark + '.lua'],
                       emcc_args=['--embed-file', benchmark + '.lua', '-sFORCE_FILESYSTEM', '-sMINIMAL_RUNTIME=0'], # not minimal because of files
                       lib_builder=lib_builder, native_exec=os.path.join('building', 'third_party', 'lua_native', 'src', 'lua'),
                       output_parser=output_parser)
@@ -1178,7 +1178,7 @@ class benchmark(common.RunnerCore):
           out(files.length + ' files emitted, total output size: ' + totalSize + ', hashed printout: ' + hash);
         };
       }
-    ''' % DEFAULT_ARG)
+    ''' % BENCHMARK_MODE)
 
     def lib_builder(name, native, env_init):  # noqa
       if '-m64' in env_init.get('CFLAGS', ''):
