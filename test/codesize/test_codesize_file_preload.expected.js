@@ -523,14 +523,14 @@ var onPreRuns = [];
     return FS.write(stream, HEAP8, HEAPU32[((iov) >> 2)], HEAPU32[(((iov) + (4)) >> 2)], offset);
   }
   var total = 0;
-  for (var i = 0; i < iovcnt; i++) {
-    total += HEAPU32[(((iov) + ((8 * i) + 4)) >> 2)];
+  for (var i = 0, p = iov; i < iovcnt; i++, p += 8) {
+    total += HEAPU32[(((p) + (4)) >> 2)];
   }
   var view = new Uint8Array(total);
   var voff = 0;
-  for (var i = 0; i < iovcnt; i++) {
-    var ptr = HEAPU32[(((iov) + ((8 * i) + 0)) >> 2)];
-    var len = HEAPU32[(((iov) + ((8 * i) + 4)) >> 2)];
+  for (var i = 0; i < iovcnt; i++, iov += 8) {
+    var ptr = HEAPU32[((iov) >> 2)];
+    var len = HEAPU32[(((iov) + (4)) >> 2)];
     view.set(HEAPU8.subarray(ptr, ptr + len), voff);
     voff += len;
   }

@@ -234,14 +234,14 @@ var WasiLibrary = {
       return FS.write(stream, HEAP8, {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}}, {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}}, offset);
     }
     var total = 0;
-    for (var i = 0; i < iovcnt; i++) {
-      total += {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, '*') }}};
+    for (var i = 0, p = iov; i < iovcnt; i++, p += {{{ C_STRUCTS.iovec.__size__ }}}) {
+      total += {{{ makeGetValue('p', C_STRUCTS.iovec.iov_len, '*') }}};
     }
     var view = new Uint8Array(total);
     var voff = 0;
-    for (var i = 0; i < iovcnt; i++) {
-      var ptr = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_base}`, '*') }}};
-      var len = {{{ makeGetValue('iov', `(${C_STRUCTS.iovec.__size__} * i) + ${C_STRUCTS.iovec.iov_len}`, '*') }}};
+    for (var i = 0; i < iovcnt; i++, iov += {{{ C_STRUCTS.iovec.__size__ }}}) {
+      var ptr = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_base, '*') }}};
+      var len = {{{ makeGetValue('iov', C_STRUCTS.iovec.iov_len, '*') }}};
       view.set(HEAPU8.subarray(ptr, ptr + len), voff);
       voff += len;
     }
