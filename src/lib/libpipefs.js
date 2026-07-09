@@ -20,6 +20,10 @@ addToLibrary({
         // refcnt 2 because pipe has a read end and a write end. We need to be
         // able to read from the read end after write end is closed.
         refcnt : 2,
+        // Number of open write ends. When it drops to 0 the reader sees EOF and
+        // poll must report POLLHUP (Linux semantics), so track it separately.
+        writerCount: 1,
+        writeClosed: false,
         timestamp: new Date(),
       };
 
@@ -88,15 +92,26 @@ addToLibrary({
         if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
           return ({{{ cDefs.POLLWRNORM }}} | {{{ cDefs.POLLOUT }}});
         }
+        var mask = 0;
         for (var bucket of pipe.buckets) {
           if (bucket.offset - bucket.roffset > 0) {
-            return ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+            mask = {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}};
+            break;
           }
         }
-        return 0;
+        // With every write end closed the read end is at EOF: readable (read
+        // returns 0) and hung up.
+        if (pipe.writeClosed) {
+          mask |= {{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLIN }}};
+        }
+        return mask;
       },
       dup(stream) {
-        stream.node.pipe.refcnt++;
+        var pipe = stream.node.pipe;
+        pipe.refcnt++;
+        if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}}) {
+          pipe.writerCount++;
+        }
       },
       ioctl(stream, request, argp) {
         if (request == {{{ cDefs.FIONREAD }}}) {
@@ -251,8 +266,13 @@ addToLibrary({
       },
       close(stream) {
         var pipe = stream.node.pipe;
-        pipe.refcnt--;
-        if (pipe.refcnt === 0) {
+        // When the last write end closes, wake any poll/epoll waiter on the read
+        // end with POLLHUP so a reader blocked on the writer dropping unblocks.
+        if ((stream.flags & {{{ cDefs.O_ACCMODE }}}) === {{{ cDefs.O_WRONLY }}} && --pipe.writerCount === 0) {
+          pipe.writeClosed = true;
+          pipe.readNode.notifyListeners({{{ cDefs.POLLHUP }}} | {{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
+        }
+        if (--pipe.refcnt === 0) {
           pipe.buckets = null;
         }
       }

@@ -13,6 +13,7 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <netinet/in.h>
+#include <poll.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
@@ -45,10 +46,18 @@ void main_loop(void) {
   select(64, NULL, &fdw, NULL, &tv);
 
   if (FD_ISSET(fd, &fdw)) {
+    // Poll before reading SO_ERROR (which clears the pending error). A refused
+    // connect is Linux POLLERR|POLLHUP (plus writable), so epoll's
+    // is_write_closed() reports the write side hung up.
+    struct pollfd pfd = {fd, POLLIN | POLLOUT, 0};
+    assert(poll(&pfd, 1, 0) == 1);
+    printf("poll revents 0x%x\n", pfd.revents);
+    assert(pfd.revents & POLLERR);
+    assert(pfd.revents & POLLHUP);
+
     int err = 0;
     socklen_t l = sizeof(err);
     getsockopt(fd, SOL_SOCKET, SO_ERROR, &err, &l);
-    if (err == 0) return; // not resolved yet
     printf("connect resolved with errno %d (%s)\n", err, strerror(err));
     assert(err == ECONNREFUSED && "expected ECONNREFUSED");
     test_success();
