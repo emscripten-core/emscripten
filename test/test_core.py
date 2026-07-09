@@ -5616,6 +5616,8 @@ got: 10
 
   @no_wasm64('https://github.com/emscripten-core/emscripten/issues/27221')
   @no_wasm2js('Legacy JS does not support threads and atomics, which are needed by OpenMP')
+  # We don't use the `requires_pthreads` decorator because we want to test that pthreads is
+  # automatically enabled when OpenMP is used.
   def test_openmp_max_threads(self):
     src = r"""
       #include <omp.h>
@@ -5625,7 +5627,9 @@ got: 10
         return 0;
       }
     """
-    self.do_run(src, "", cflags=["-fopenmp=libomp"])
+    # We need to explicitly add the `-Wno-pthreads-mem-growth` flag because
+    # ASAN uses `-sALLOW_MEMORY_GROWTH`.
+    self.do_run(src, "", cflags=['-fopenmp=libomp', '-Wno-pthreads-mem-growth'])
 
   def test_fscanf(self):
     create_file('three_numbers.txt', '-1 0.1 -.1')
