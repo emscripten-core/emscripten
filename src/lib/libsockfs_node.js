@@ -336,8 +336,10 @@ var NodeSockFSLibrary = {
         mask |= ({{{ cDefs.POLLRDNORM }}} | {{{ cDefs.POLLIN }}});
       }
       if (sock.error) {
-        // Mark writable on error so SO_ERROR can be read.
-        mask |= {{{ cDefs.POLLOUT }}};
+        // A pending socket error (e.g. a refused connect) is Linux's
+        // POLLERR|POLLHUP, plus writable so SO_ERROR can be read. POLLOUT|POLLERR
+        // also satisfies epoll's is_write_closed() mapping.
+        mask |= {{{ cDefs.POLLOUT }}} | {{{ cDefs.POLLERR }}} | {{{ cDefs.POLLHUP }}};
       } else if (sock.connection && sock.state === {{{ SOCK_STATE_CONNECTED }}} && !sock.writeBlocked) {
         mask |= {{{ cDefs.POLLOUT }}};
       }
