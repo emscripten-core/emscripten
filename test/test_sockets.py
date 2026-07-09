@@ -513,8 +513,11 @@ class sockets(BrowserCore):
   def test_noderawsockets_udp_sockopts(self):
     # UDP multicast socket options: IP_MULTICAST_TTL/LOOP and their IPv6
     # counterparts round-trip through set/getsockopt, with POSIX defaults
-    # readable before any set.
-    self.do_runf('sockets/test_udp_sockopts.c', 'UDP SOCKOPTS PASS', cflags=['-sNODERAWSOCKETS'])
+    # readable before any set. EXIT_RUNTIME so the plain synchronous main()
+    # tears down the proxy worker on return (otherwise noExitRuntime keeps the
+    # worker, and thus node, alive under PROXY_TO_PTHREAD).
+    self.do_runf('sockets/test_udp_sockopts.c', 'UDP SOCKOPTS PASS',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
   @requires_native_clang
   @requires_python_dev_packages
