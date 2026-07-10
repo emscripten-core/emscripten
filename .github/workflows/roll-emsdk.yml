@@ -1,51 +1,48 @@
-name: Rebaseline Tests
+name: Roll emsdk
 
 on:
   workflow_dispatch:
+  # Trigger every day at 3.30 AM PST (= 10:30 AM UTC)
+  schedule:
+    - cron: "30 10 * * *"
 
 permissions:
   contents: write
   pull-requests: write
 
 jobs:
-  rebaseline-tests:
-    name: Rebaseline Tests
+  roll-emsdk:
+    name: Roll emsdk
     runs-on: ubuntu-latest
     env:
       GH_TOKEN: ${{ secrets.EMSCRIPTEN_BOT_TOKEN }}
     steps:
+      - name: Install emsdk
+        uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
+        with:
+          version: tot
+      - name: Set EM_CONFIG
+        run:
+          echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
       - name: Checkout repo
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           fetch-depth: 0
           submodules: true
-      - name: Read emsdk version
-        id: emsdk_version
-        run: echo "version=$(cat test/emsdk_version.txt)" >> $GITHUB_OUTPUT
-      - name: Install emsdk
-        uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
-        with:
-          version: ${{ steps.emsdk_version.outputs.version }}
-          # The version of the emsdk repo that we use here is still not pinned.
-          # TODO(sbc): Pin (and auto-roll) this revision too.
-          emsdk-version: main
-      - name: Set EM_CONFIG
-        run:
-          echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
       - name: pip install
         run: |
           which python3
           python3 --version
           python3 -m pip install -r requirements-dev.txt
-      - name: Rebaseline tests
+      - name: Roll emsdk and rebaseline tests
         env:
           REF_NAME: ${{ github.ref_name }}
         run: |
           git config user.name emscripten-bot
           git config user.email emscripten-bot@users.noreply.github.com
           ./bootstrap.py
-          if ./tools/maint/rebaseline_tests.py --new-branch; then
-             echo "rebaseline_tests returned zero, expectations up-to-date"
+          if ./tools/maint/rebaseline_tests.py --new-branch --bump-emsdk; then
+             echo "rebaseline_tests returned zero, emsdk version up-to-date"
              # Exit early and don't create a PR
              exit 0
           else
@@ -55,6 +52,6 @@ jobs:
                exit 1
             fi
           fi
-          git push origin rebaseline_tests
+          git push origin roll_emsdk
           gh pr create --fill --base "$REF_NAME" --reviewer sbc100,kripken
           gh pr merge --squash --auto
