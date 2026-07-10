@@ -806,6 +806,49 @@ def setup_cross_origin_storage():
       exit_with_error(f"CROSS_ORIGIN_STORAGE_ORIGINS: {o!r} is not a valid HTTPS origin (expected 'https://host' or 'https://host:port')")
 
 
+def add_required_heap_symbols():
+  """Auto-include heap views and helper symbols required by certain build modes or runtime.
+
+  Because addImplicitDeps only scans library functions and user code (pre-js/post-js/EM_JS),
+  runtime scaffolding files (e.g., postamble.js, runtime_stack_check.js, memoryprofiler.js)
+  that access linear memory directly must have their heap views explicitly declared here
+  so they are emitted in the final JS bundle.
+  """
+  heaps = []
+  if settings.MAIN_MODULE or settings.EXPORT_ALL or settings.SAFE_HEAP:
+    # Dynamic linking side modules, full symbol exports, or safe heap instrumentation
+    # require all standard heap views and value helpers to be available.
+    heaps += ['$getValue', '$setValue']
+    heaps += ['$HEAP8', '$HEAPU8', '$HEAP16', '$HEAPU16',
+              '$HEAP32', '$HEAPU32', '$HEAPF32', '$HEAPF64']
+    if settings.WASM_BIGINT or settings.MEMORY64:
+      heaps += ['$HEAP64', '$HEAPU64']
+  else:
+    # STACK_OVERFLOW_CHECK accesses HEAP32/HEAPU32 in runtime_stack_check.js.
+    # MAIN_READS_PARAMS populates argv pointers in linear memory in postamble.js (callMain).
+    if settings.STACK_OVERFLOW_CHECK or (settings.HAS_MAIN and settings.MAIN_READS_PARAMS):
+      heaps += ['$HEAP32', '$HEAPU32']
+      if (settings.HAS_MAIN and settings.MAIN_READS_PARAMS) and (settings.WASM_BIGINT or settings.MEMORY64):
+        heaps += ['$HEAP64', '$HEAPU64']
+    # MEMORYPROFILER accesses HEAP8 in memoryprofiler.js.
+    if settings.MEMORYPROFILER:
+      heaps.append('$HEAP8')
+    # AUDIO_WORKLET accesses HEAP32, HEAPU32, and HEAPF32 in audio_worklet.js.
+    if settings.AUDIO_WORKLET:
+      heaps += ['$HEAP32', '$HEAPU32', '$HEAPF32']
+      if settings.WASM_BIGINT or settings.MEMORY64:
+        heaps += ['$HEAP64', '$HEAPU64']
+    # runtime_common.js accesses HEAP8 under ALLOW_MEMORY_GROWTH (to check buffer resizability),
+    # RUNTIME_DEBUG (to log initial setup), and ASSERTIONS (to guard against re-entrancy when
+    # ALLOW_MEMORY_GROWTH is 0).
+    if settings.ALLOW_MEMORY_GROWTH or settings.RUNTIME_DEBUG or settings.ASSERTIONS:
+      heaps.append('$HEAP8')
+
+  for h in heaps:
+    if h not in settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE:
+      settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.append(h)
+
+
 @ToolchainProfiler.profile_block('linker_setup')
 def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   """Future modifications should consider refactoring to reduce complexity.
@@ -1851,6 +1894,7 @@ def phase_linker_setup(options, linker_args):  # noqa: C901, PLR0912, PLR0915
   if settings.USE_CLOSURE_COMPILER or not settings.MINIFY_WHITESPACE:
     settings.MAYBE_CLOSURE_COMPILER = 1
 
+  add_required_heap_symbols()
   check_settings()
 
   return target, wasm_target

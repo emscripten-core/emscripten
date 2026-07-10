@@ -30,6 +30,7 @@ from tools import (
   extract_metadata,
   filelock,
   js_manipulation,
+  link,
   shared,
   utils,
   webassembly,
@@ -154,6 +155,8 @@ def update_settings_glue(wasm_file, metadata, base_metadata):
 
   for deps in metadata.js_deps:
     settings.DEFAULT_LIBRARY_FUNCS_TO_INCLUDE.extend(deps.split(','))
+
+  link.add_required_heap_symbols()
 
 
 def apply_static_code_hooks(forwarded_json, code):
