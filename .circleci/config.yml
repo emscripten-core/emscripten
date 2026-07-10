@@ -137,12 +137,16 @@ commands:
       - run:
           name: install emsdk
           command: |
+            EMSDK_VERSION=$(cat test/emsdk_version.txt)
+            echo "Installing emsdk version from test/emsdk_version.txt: ${EMSDK_VERSION}"
+            # The version of the emsdk repo that we use here is still not pinned.
+            # TODO(sbc): Pin (and auto-roll) this revision too.
             curl -# -L -o ~/emsdk-main.tar.gz https://github.com/emscripten-core/emsdk/archive/main.tar.gz
             tar -C ~ -xf ~/emsdk-main.tar.gz
             mv ~/emsdk-main ~/emsdk
             cd ~/emsdk
-            ./emsdk install tot
-            ./emsdk activate tot
+            ./emsdk install ${EMSDK_VERSION}
+            ./emsdk activate ${EMSDK_VERSION}
             # Write the version of clang into a file for use in the ccache key
             ./upstream/bin/clang --version > clang_version.txt
             echo "clang version:"

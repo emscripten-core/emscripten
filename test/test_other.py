@@ -440,6 +440,17 @@ class other(RunnerCore):
     self.assertContained('import source wasmModule from', read_file('hello_world.mjs'))
     self.assertContained('Hello, world!', self.run_js('hello_world.mjs'))
 
+  @requires_node_25
+  @parameterized({
+    '': ([],),
+    'O3': (['-O3'],),
+  })
+  def test_esm_source_phase_imports_instance(self, args):
+    self.set_setting('SOURCE_PHASE_IMPORTS')
+    self.set_setting('MODULARIZE', 'instance')
+    self.do_runf_out_file('hello_world.c', cflags=['-Wno-experimental'] + args)
+    self.assertContained('import source wasmModule from', read_file(self.output_name('hello_world')))
+
   @parameterized({
     '': ([],),
     'node': (['-sENVIRONMENT=node'],),
@@ -6318,9 +6329,10 @@ int main(void) {
   @crossplatform
   @requires_pthreads
   @flaky('https://github.com/emscripten-core/emscripten/issues/19683')
-  # The flakiness of this test is very high on macOS so just disable it
-  # completely.
+  # The flakiness of this test is very high on macOS, and deno so just disable it
+  # completely in these cases.
   @no_mac('https://github.com/emscripten-core/emscripten/issues/19683')
+  @no_deno('https://github.com/emscripten-core/emscripten/issues/19683')
   def test_pthread_print_override_modularize(self):
     self.set_setting('EXPORT_NAME', 'Test')
     self.set_setting('PROXY_TO_PTHREAD')
@@ -14090,6 +14102,27 @@ int main() {
                  'Stack overflow detected.  You can try increasing -sSTACK_SIZE',
                  cflags=['-O1', '--profiling-funcs'],
                  assert_returncode=NON_ZERO)
+
+  @also_with_wasm64
+  @parameterized({
+    '': ([],),
+    'no_stack_first': (['-Wl,--no-stack-first'],),
+  })
+  def test_stack_cookie_curruption(self, args):
+    create_file('test.c', r'''
+      #include <emscripten/stack.h>
+      #include <stdint.h>
+
+      int main() {
+        uint32_t *stack_end = (uint32_t *)emscripten_stack_get_end();
+        if (stack_end == 0) stack_end++;
+        stack_end[0] = 0xfffffff0;
+        stack_end[1] = 0xaaaaaaa0;
+        return 0;
+      }
+    ''')
+    expected = 'Stack overflow! Stack cookie has been overwritten at 0x[a-f0-9]*, expected hex dwords 0x89bacdfe and 0x02135467, but received 0xaaaaaaa0 0xfffffff0'
+    self.do_runf('test.c', expected, regex=True, cflags=args + ['-sSTACK_OVERFLOW_CHECK=1'], assert_returncode=NON_ZERO)
 
   @crossplatform
   def test_reproduce(self):

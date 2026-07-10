@@ -32,18 +32,24 @@ jobs:
     runs-on: ubuntu-latest
     if: github.event_name == 'pull_request'
     steps:
-      - name: Install emsdk
-        uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
-        with:
-          version: tot
-      - name: Set EM_CONFIG
-        run:
-          echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
       - name: Checkout repo
         uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
           submodules: true
           fetch-depth: 0 # We want access to other branches, specifically `main`
+      - name: Read emsdk version
+        id: emsdk_version
+        run: echo "version=$(cat test/emsdk_version.txt)" >> $GITHUB_OUTPUT
+      - name: Install emsdk
+        uses: emscripten-core/setup-emsdk@4528d102f7230f0e7b276855c01ea1159be0e984 # v16
+        with:
+          version: ${{ steps.emsdk_version.outputs.version }}
+          # The version of the emsdk repo that we use here is still not pinned.
+          # TODO(sbc): Pin (and auto-roll) this revision too.
+          emsdk-version: main
+      - name: Set EM_CONFIG
+        run:
+          echo "EM_CONFIG=$EMSDK/.emscripten" >> $GITHUB_ENV
       - name: pip install
         run: |
           which python3
@@ -95,7 +101,7 @@ jobs:
             echo "You can run './tools/maint/rebaseline_tests.py' to"
             echo "create a commit updating the expectations."
             echo ""
-            echo "Be sure to have 'emsdk install tot' first."
+            echo "Be sure that you have installed the current emsdk version.  See test/emsdk_version.txt ($(cat test/emsdk_version.txt))."
             exit 1
           fi
 

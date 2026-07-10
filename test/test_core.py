@@ -9735,6 +9735,9 @@ NODEFS is no longer included by default; build with -lnodefs.js
       self.require_pthreads()
     self.do_runf('core/test_pipe_select.c', cflags=args)
 
+  def test_pipe_pollhup(self):
+    self.do_runf('core/test_pipe_pollhup.c', 'done\n')
+
   @also_without_bigint
   def test_jslib_i64_params(self):
     # Tests the defineI64Param and receiveI64ParamAsI53 helpers that are

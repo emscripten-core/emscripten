@@ -19,17 +19,28 @@ Setting up
 For contributing to core Emscripten code, such as ``emcc.py``, you don't need to
 build any binaries as ``emcc.py`` is in Python, and the core JS generation is
 in JavaScript. You do still need binaries for LLVM and Binaryen, which you can
-get using the emsdk:
+get using the emsdk.
+
+If you want to contribute back to Emscripten, it is recommended that you install
+the precise version of the emsdk binaries that are used by Emscripten CI when
+running the test suite:
+
+::
+
+    emsdk install $(cat test/emsdk_version.txt)
+    emsdk activate $(cat test/emsdk_version.txt)
+
+You can use these emsdk-provided binaries with a git checkout of the Emscripten
+repository.  To do this, you can either edit your local ``.emscripten`` config
+file, or set ``EM_CONFIG=/path/to/emsdk/.emscripten`` in your environment.
+
+Alternatively, if you want to test against the latest "tip-of-tree" binaries,
+you can install the ``tot`` target:
 
 ::
 
     emsdk install tot
     emsdk activate tot
-
-This will install the latest "tip-of-tree" binaries needed to run Emscripten.
-You can use these emsdk-provided binaries with a git checkout of the Emscripten
-repository.  To do this, you can either edit your local ``.emscripten`` config
-file, or set ``EM_CONFIG=/path/to/emsdk/.emscripten`` in your environment.
 
 If you do want to contribute to LLVM or Binaryen, or to test modifications
 to them, you can

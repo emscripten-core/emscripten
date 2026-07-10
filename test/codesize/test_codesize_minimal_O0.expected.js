@@ -294,6 +294,9 @@ var isFileURI = (filename) => filename.startsWith('file://');
 
 // include: runtime_common.js
 // include: runtime_stack_check.js
+const stackCookie1 = 0x02135467;
+const stackCookie2 = 0x89BACDFE;
+
 // Initializes the stack cookie. Called at the startup of main and at the startup of each thread in pthreads mode.
 function writeStackCookie() {
   var max = _emscripten_stack_get_end();
@@ -307,10 +310,14 @@ function writeStackCookie() {
   // The stack grow downwards towards _emscripten_stack_get_end.
   // We write cookies to the final two words in the stack and detect if they are
   // ever overwritten.
-  HEAPU32[((max)>>2)] = 0x02135467;
-  HEAPU32[(((max)+(4))>>2)] = 0x89BACDFE;
+  HEAPU32[((max)>>2)] = stackCookie1;
+  HEAPU32[(((max)+(4))>>2)] = stackCookie2;
   // Also test the global address 0 for integrity.
   HEAPU32[((0)>>2)] = 1668509029;
+}
+
+function u32ToHexString(num) {
+  return '0x' + (num >>> 0).toString(16).padStart(8, '0');
 }
 
 function checkStackCookie() {
@@ -320,16 +327,17 @@ function checkStackCookie() {
   if (max == 0) {
     max += 4;
   }
-  var cookie1 = HEAPU32[((max)>>2)];
-  var cookie2 = HEAPU32[(((max)+(4))>>2)];
-  if (cookie1 != 0x02135467 || cookie2 != 0x89BACDFE) {
-    abort(`Stack overflow! Stack cookie has been overwritten at ${ptrToString(max)}, expected hex dwords 0x89BACDFE and 0x2135467, but received ${ptrToString(cookie2)} ${ptrToString(cookie1)}`);
+  var val1 = HEAPU32[((max)>>2)];
+  var val2 = HEAPU32[(((max)+(4))>>2)];
+  if (val1 != stackCookie1 || val2 != stackCookie2) {
+    abort(`Stack overflow! Stack cookie has been overwritten at ${ptrToString(max)}, expected hex dwords ${u32ToHexString(stackCookie2)} and ${u32ToHexString(stackCookie1)}, but received ${u32ToHexString(val2)} ${u32ToHexString(val1)}`);
   }
   // Also test the global address 0 for integrity.
   if (HEAPU32[((0)>>2)] != 0x63736d65 /* 'emsc' */) {
     abort('Runtime error: The application has corrupted its heap memory area (address zero)!');
   }
 }
+
 // end include: runtime_stack_check.js
 // include: runtime_exceptions.js
 // Base Emscripten EH error class
