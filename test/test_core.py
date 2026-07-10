@@ -2663,7 +2663,7 @@ The current type of b is: 9
   @requires_pthreads
   def test_pthread_guardsize_overflow(self):
     self.set_setting('STACK_OVERFLOW_CHECK', 1)
-    expected = r'Aborted\(Stack overflow! Stack cookie has been overwritten at 0x[0-9a-fA-F]+, expected hex dwords 0x89BACDFE and 0x2135467, but received 0x0*aaaaaaaa 0x0*aaaaaaaa\)'
+    expected = r'Aborted\(Stack overflow! Stack cookie has been overwritten at 0x[0-9a-f]+, expected hex dwords 0x89bacdfe and 0x02135467, but received 0xaaaaaaaa 0xaaaaaaaa\)'
     self.do_runf('pthread/test_pthread_guardsize_overflow.c', expected, regex=True, assert_returncode=NON_ZERO)
 
   @requires_pthreads

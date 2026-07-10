@@ -125,19 +125,15 @@ int __pthread_create(pthread_t* restrict res,
     libc.threaded = 1;
   }
 
+  int c11 = (attrp == __ATTRP_C11_THREAD);
   pthread_attr_t attr = { 0 };
-  if (attrp && attrp != __ATTRP_C11_THREAD) attr = *attrp;
-  if (!attr._a_stacksize) {
+  if (attrp && !c11) attr = *attrp;
+  if (!attrp || c11) {
     attr._a_stacksize = __default_stacksize;
-  }
-  if (!attrp || attrp == __ATTRP_C11_THREAD) {
     attr._a_guardsize = __default_guardsize;
   }
 
   size_t guard_size = 0;
-  if (!attr._a_stackaddr) {
-    guard_size = ROUND_UP(attr._a_guardsize, STACK_ALIGN);
-  }
 
   // Allocate memory for new thread.  The layout of the thread block is
   // as follows.  From low to high address:
@@ -154,6 +150,7 @@ int __pthread_create(pthread_t* restrict res,
   size += __pthread_tsd_size + TSD_ALIGN - 1;
   size_t zero_size = size;
   if (!attr._a_stackaddr) {
+    guard_size = attr._a_guardsize;
     size += guard_size + attr._a_stacksize + STACK_ALIGN - 1;
     zero_size += guard_size;
   }
