@@ -42,7 +42,7 @@ jobs:
           git config user.email emscripten-bot@users.noreply.github.com
           ./bootstrap.py
           if ./tools/maint/rebaseline_tests.py --new-branch --bump-emsdk; then
-             echo "rebaseline_tests returned zero, expectations up-to-date"
+             echo "rebaseline_tests returned zero, emsdk version up-to-date"
              # Exit early and don't create a PR
              exit 0
           else

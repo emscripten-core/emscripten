@@ -101,7 +101,7 @@ jobs:
             echo "You can run './tools/maint/rebaseline_tests.py' to"
             echo "create a commit updating the expectations."
             echo ""
-            echo "Be sure that you have installed the currext emsdk version.  See test/emsdk_version.txt ($(cat test/emsdk_version.txt))."
+            echo "Be sure that you have installed the current emsdk version.  See test/emsdk_version.txt ($(cat test/emsdk_version.txt))."
             exit 1
           fi
 

@@ -59,21 +59,22 @@ def get_installed_emsdk_sha():
 def get_emsdk_revision_log(old_sha, new_sha, limit=30):
   assert old_sha != 'none'
   assert old_sha != new_sha
-  url = f'https://chromium.googlesource.com/emscripten-releases/+log/{old_sha}..{new_sha}?format=JSON&n={limit + 1}'
+  log_url = f'https://chromium.googlesource.com/emscripten-releases/+log/{old_sha}..{new_sha}'
+  url = f'{log_url}?format=JSON&n={limit + 1}'
   data = urllib.request.urlopen(url, timeout=5).read().decode('utf-8')
   if data.startswith(")]}'"):
     data = data[4:]
   j = json.loads(data)
   entries = j.get('log', [])
-  if not entries:
-    return ''
-  lines = ['']
-  for entry in entries[:limit]:
-    short_sha = entry['commit'][:8]
-    subject = entry['message'].splitlines()[0]
-    lines.append(f'  {short_sha} {subject}')
-  if len(entries) > limit:
-    lines.append('  ... (and more, see full log)')
+  lines = [f'emsdk_version: {old_sha} => {new_sha} ({log_url})']
+  if entries:
+    lines.append('')
+    for entry in entries[:limit]:
+      short_sha = entry['commit'][:8]
+      subject = entry['message'].splitlines()[0]
+      lines.append(f'  {short_sha} {subject}')
+    if len(entries) > limit:
+      lines.append('  ... (and more, see full log)')
   lines.append('')
   return '\n'.join(lines)
 
@@ -84,10 +85,7 @@ def format_emsdk_version_update():
   old_content = run(['git', 'show', f'HEAD:{filename}'])
   old_sha = old_content.strip() if old_content else 'none'
   new_sha = content.strip()
-  log_url = f'https://chromium.googlesource.com/emscripten-releases/+log/{old_sha}..{new_sha}'
-  result = f'emsdk_version: {old_sha} => {new_sha} ({log_url})\n'
-  result += get_emsdk_revision_log(old_sha, new_sha)
-  return result
+  return get_emsdk_revision_log(old_sha, new_sha)
 
 
 def process_changed_file(filename):
