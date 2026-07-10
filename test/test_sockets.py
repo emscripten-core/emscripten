@@ -519,6 +519,13 @@ class sockets(BrowserCore):
     self.do_runf('sockets/test_udp_sockopts.c', 'UDP SOCKOPTS PASS',
                  cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
 
+  @also_with_proxy_to_pthread
+  def test_noderawsockets_socket_options(self):
+    # Socket metadata/options on a fresh socket: fstat reports S_ISSOCK, SO_TYPE
+    # reports the socket type, and SO_LINGER round-trips a struct linger.
+    self.do_runf('sockets/test_socket_options.c', 'SOCKET OPTIONS PASS',
+                 cflags=['-sNODERAWSOCKETS', '-sEXIT_RUNTIME'])
+
   @requires_native_clang
   @requires_python_dev_packages
   def test_nodejs_sockets_echo_subprotocol(self):

@@ -387,7 +387,26 @@ var NodeSockFSLibrary = {
         sock.udp = null;
       }
       if (sock.server) { try { sock.server.close(); } catch (e) {} sock.server = null; }
-      if (sock.connection) { try { sock.connection.destroy(); } catch (e) {} sock.connection = null; }
+      if (sock.connection) {
+        var conn = sock.connection;
+        var linger = sock.opts?.linger;
+        try {
+          if (linger?.onoff && linger.linger === 0 && conn.resetAndDestroy) {
+            // SO_LINGER with a zero timeout: abortive close - send RST and
+            // discard any unsent data.
+            conn.resetAndDestroy();
+          } else if (linger?.onoff && linger.linger > 0) {
+            // Positive timeout: flush gracefully, but node has no blocking
+            // close, so force the connection down once the interval elapses.
+            conn.end();
+            var timer = setTimeout(() => { try { conn.destroy(); } catch (e) {} }, linger.linger * 1000);
+            timer.unref?.();
+          } else {
+            conn.destroy();
+          }
+        } catch (e) {}
+        sock.connection = null;
+      }
       // A bound handle that was never adopted by listen()/connect() is ours to
       // release; once adopted the server/connection owns it.
       if (sock.bound && !sock.server && !sock.connection) {
@@ -690,6 +709,12 @@ var NodeSockFSLibrary = {
             // passed to the BoundSocket at bind. Set after bind has no effect.
             sock.opts.reusePort = !!val;
             return 0;
+          case 13: // SO_LINGER (struct linger: l_onoff, l_linger)
+            sock.opts.linger = {
+              onoff: val,
+              linger: {{{ makeGetValue('optval', 4, 'i32') }}},
+            };
+            return 0;
         }
       } else if (level === {{{ cDefs.IPPROTO_IP }}}) {
         switch (optname) {
@@ -757,6 +782,14 @@ var NodeSockFSLibrary = {
             {{{ makeSetValue('optlen', 0, 4, 'i32') }}};
             sock.error = null; // SO_ERROR reads and clears
             return 0;
+          case 3: val = sock.type; break; // SO_TYPE
+          case 13: { // SO_LINGER (struct linger: l_onoff, l_linger)
+            var linger = sock.opts.linger || { onoff: 0, linger: 0 };
+            {{{ makeSetValue('optval', 0, 'linger.onoff', 'i32') }}};
+            {{{ makeSetValue('optval', 4, 'linger.linger', 'i32') }}};
+            {{{ makeSetValue('optlen', 0, 8, 'i32') }}};
+            return 0;
+          }
           case 9: val = sock.opts.keepAlive ? 1 : 0; break; // SO_KEEPALIVE
           // SO_RCVBUF/SO_SNDBUF: report the live value from the udp_wrap handle
           // when bound, else the stored/default.
@@ -783,6 +816,10 @@ var NodeSockFSLibrary = {
         }
       } else if (level === {{{ cDefs.IPPROTO_TCP }}}) {
         switch (optname) {
+          // TCP_MAXSEG: node exposes no MSS, so report RFC 879's 536-byte default
+          // before the handshake and the (large) loopback-negotiated value once
+          // connected. Enough for callers that only compare pre/post-connect MSS.
+          case 2: val = (sock.state === {{{ SOCK_STATE_CONNECTED }}}) ? 65483 : 536; break;
           case 1: val = sock.opts.noDelay ? 1 : 0; break;    // TCP_NODELAY
           case 4: val = sock.opts.keepAliveIdle || 0; break; // TCP_KEEPIDLE
           case 5: val = sock.opts.keepAliveIntvl || 0; break;// TCP_KEEPINTVL
