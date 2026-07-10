@@ -70,14 +70,14 @@ def format_emsdk_version_update(old_sha, new_sha, limit=30):
   lines.append('')
   lines.append('This includes the following revisions:')
   lines.append('')
-  lines.append("'''")
+  lines.append('```')
   for entry in entries[:limit]:
     short_sha = entry['commit'][:8]
     subject = entry['message'].splitlines()[0]
     lines.append(f'- {short_sha} {subject}')
   if len(entries) > limit:
     lines.append('  ... (and more, see full log)')
-  lines.append("'''")
+  lines.append('```')
   lines.append("")
   lines.append(f"Full log: {log_url}")
 
