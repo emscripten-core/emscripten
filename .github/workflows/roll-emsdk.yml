@@ -33,7 +33,7 @@ jobs:
         run: |
           which python3
           python3 --version
-          python3 -m pip install -r requirements-dev.txt
+          python3 -m pip install --only-binary :all: -r requirements-dev.txt
       - name: Roll emsdk and rebaseline tests
         env:
           REF_NAME: ${{ github.ref_name }}
