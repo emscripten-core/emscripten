@@ -2657,6 +2657,16 @@ The current type of b is: 9
     self.do_runf_out_file('pthread/test_pthread_attr_getstack.c')
 
   @requires_pthreads
+  def test_pthread_guardsize(self):
+    self.do_runf_out_file('pthread/test_pthread_guardsize.c')
+
+  @requires_pthreads
+  def test_pthread_guardsize_overflow(self):
+    self.set_setting('STACK_OVERFLOW_CHECK', 1)
+    expected = r'Aborted\(Stack overflow! Stack cookie has been overwritten at 0x[0-9a-f]+, expected hex dwords 0x89bacdfe and 0x02135467, but received 0xaaaaaaaa 0xaaaaaaaa\)'
+    self.do_runf('pthread/test_pthread_guardsize_overflow.c', expected, regex=True, assert_returncode=NON_ZERO)
+
+  @requires_pthreads
   @no_bun('https://github.com/emscripten-core/emscripten/issues/26199')
   @flaky('flaky specifically in esm_integration suite. https://github.com/emscripten-core/emscripten/issues/25151')
   def test_pthread_abort(self):
