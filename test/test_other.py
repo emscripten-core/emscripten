@@ -10620,7 +10620,6 @@ _d
     self.assertContained('   DOS_ReadFile(unsigned short', proc.stderr)
     self.assertContained('Try using a response file', proc.stderr)
 
-  @disabled('Expected error message needs updating after the Binaryen roll')
   def test_asyncify_response_file(self):
     create_file('a.txt', r'''[
   "DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)"
@@ -10632,7 +10631,7 @@ _d
       proc = self.run_process([EMCC, test_file('hello_world.c'), '-sASYNCIFY', f'-sASYNCIFY_ONLY=@{file}'], stdout=PIPE, stderr=PIPE)
       # we should parse the response file properly, and then issue a proper warning for the missing function
       self.assertContained(
-          'Asyncify onlylist contained a non-matching pattern: DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)',
+          "Asyncify onlylist contained a non-matching pattern: 'DOS_ReadFile(unsigned short, unsigned char*, unsigned short*, bool)'",
           proc.stderr)
 
   def test_asyncify_advise(self):
@@ -15593,7 +15592,6 @@ addToLibrary({
     self.do_runf('main.c', 'done\n', cflags=['-sFORCE_FILESYSTEM', '--post-js=post.js'])
 
   @crossplatform
-  @disabled('Needs updates after Binaryen roll changes function name escaping')
   def test_empath_split(self):
     create_file('main.cpp', r'''
       #include <iostream>
@@ -15629,22 +15627,23 @@ addToLibrary({
     # paths. When one path contains another, the inner path should take its
     # functions first, and the rest is split with the outer path.
     def has_defined_function(file, func):
+      func = ''.join('\\' + c if c in {'(', ')'} else c for c in func)
       self.run_process([common.WASM_DIS, file, '-o', 'test.wast'])
-      pattern = re.compile(r'^\s*\(\s*func\s+\$' + func + r'[\s\(\)]', flags=re.MULTILINE)
+      pattern = re.compile(r'^\s*\(\s*func\s+\$("?)' + func + r'\1[\s\(\)]', flags=re.MULTILINE)
       return pattern.search(utils.read_file('test.wast')) is not None
 
     # main.cpp
     self.assertTrue(has_defined_function('test_myapp.wasm', '__original_main'))
     # foo.cpp
-    self.assertTrue(has_defined_function('test_myapp.wasm', r'foo\\28\\29'))
+    self.assertTrue(has_defined_function('test_myapp.wasm', 'foo()'))
     # /emsdk/emscripten/system
     self.assertTrue(has_defined_function('test_lib1.wasm', '__abort_message'))
     self.assertTrue(has_defined_function('test_lib1.wasm', 'pthread_cond_wait'))
     # /emsdk/emscripten/system/lib/libc/musl
     self.assertTrue(has_defined_function('test_lib2.wasm', 'strcmp'))
     # /emsdk/emscripten/system/lib/libcxx
-    self.assertTrue(has_defined_function('test_lib2.wasm', r'std::__2::ios_base::getloc\\28\\29\\20const'))
-    self.assertTrue(has_defined_function('test_lib2.wasm', r'std::uncaught_exceptions\\28\\29'))
+    self.assertTrue(has_defined_function('test_lib2.wasm', 'std::__2::ios_base::getloc() const'))
+    self.assertTrue(has_defined_function('test_lib2.wasm', 'std::uncaught_exceptions()'))
 
     # When --preserve-manifest is NOT given, the files should be deleted
     match = re.search(r'wasm-split(?:\.exe)?\s+.*--manifest\s+(\S+)', out)
