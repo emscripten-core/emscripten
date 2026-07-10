@@ -26,12 +26,12 @@ in order to generate one in the default location.
 1. Navigate to the directory where you cloned the Emscripten repository.
 2. Enter the command:
 
-  ::
+   ::
 
-    ./emcc --generate-config
+      ./emcc --generate-config
 
-  You should get a ``An Emscripten settings file has been generated at:``
-  message, along with the contents of the config file.
+   You should get a ``An Emscripten settings file has been generated at:``
+   message, along with the contents of the config file.
 
 When generating this file Emscripten will make its "best guess" at the correct
 locations for tools based on the current ``PATH``.
@@ -48,12 +48,12 @@ The settings file (``.emscripten``) is created by default within the emscripten
 directory (alongside ``emcc`` itself).  In cases where the emscripten directory
 is read-only the user's home directory will be used:
 
-  - On Linux and macOS this file is named **~/.emscripten**, where ~ is the
-    user's home directory.
+- On Linux and macOS this file is named **~/.emscripten**, where ~ is the
+  user's home directory.
 
-    .. note:: Files with the "." prefix are hidden by default. You may need to change your view settings to find the file.
+  .. note:: Files with the "." prefix are hidden by default. You may need to change your view settings to find the file.
 
-  - On Windows the file can be found at a path like: **C:/Users/yourusername_000/.emscripten**.
+- On Windows the file can be found at a path like: **C:/Users/yourusername_000/.emscripten**.
 
 
 Compiler configuration file-format
@@ -80,10 +80,10 @@ update the variable ``LLVM_ROOT``
 #. Edit the variable ``LLVM_ROOT`` to point to the directory where you built the
    LLVM binaries, such as:
 
-    ::
+   ::
 
       LLVM_ROOT = '/home/ubuntu/a-path/llvm/build/bin'
 
-    .. note:: Use forward slashes!
+   .. note:: Use forward slashes!
 
 After setting those paths, run ``emcc`` again. It should again perform the sanity checks to test the specified paths. There are further validation tests available at :ref:`verifying-the-emscripten-environment`.

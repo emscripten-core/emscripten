@@ -276,9 +276,9 @@ Options that are modified or new in *emcc* are listed below:
   [link]
   Runs the :term:`Closure Compiler`. Possible values are:
 
-    - ``0``: No closure compiler (default).
-    - ``1``: Run closure compiler. This greatly reduces the size of the support JavaScript code (everything but the WebAssembly or asm.js). Note that this increases compile time significantly.
-    - ``2``: Run closure compiler on *all* the emitted code, even on **asm.js** output in **asm.js** mode. This can further reduce code size, but does prevent a significant amount of **asm.js** optimizations, so it is not recommended unless you want to reduce code size at all costs.
+  - ``0``: No closure compiler (default).
+  - ``1``: Run closure compiler. This greatly reduces the size of the support JavaScript code (everything but the WebAssembly or asm.js). Note that this increases compile time significantly.
+  - ``2``: Run closure compiler on *all* the emitted code, even on **asm.js** output in **asm.js** mode. This can further reduce code size, but does prevent a significant amount of **asm.js** optimizations, so it is not recommended unless you want to reduce code size at all costs.
 
   .. note::
 
@@ -560,10 +560,10 @@ Options that are modified or new in *emcc* are listed below:
   [link]
   When linking an executable, the ``target`` file name extension defines the output type to be generated:
 
-    - <name> **.js** : JavaScript (+ separate **<name>.wasm** file if emitting WebAssembly). (default)
-    - <name> **.mjs** : ES6 JavaScript module (+ separate **<name>.wasm** file if emitting WebAssembly).
-    - <name> **.html** : HTML + separate JavaScript file (**<name>.js**; + separate **<name>.wasm** file if emitting WebAssembly).
-    - <name> **.wasm** : WebAssembly without JavaScript support code ("standalone Wasm"; this enables ``STANDALONE_WASM``).
+  - <name> **.js** : JavaScript (+ separate **<name>.wasm** file if emitting WebAssembly). (default)
+  - <name> **.mjs** : ES6 JavaScript module (+ separate **<name>.wasm** file if emitting WebAssembly).
+  - <name> **.html** : HTML + separate JavaScript file (**<name>.js**; + separate **<name>.wasm** file if emitting WebAssembly).
+  - <name> **.wasm** : WebAssembly without JavaScript support code ("standalone Wasm"; this enables ``STANDALONE_WASM``).
 
   These rules only apply when linking.  When compiling to object code (See `-c`
   below) the name of the output file is irrelevant.
@@ -592,22 +592,22 @@ Environment variables
 =====================
 *emcc* is affected by several environment variables, as listed below:
 
-  - ``EMMAKEN_JUST_CONFIGURE`` [other]
-  - ``EMCC_AUTODEBUG`` [compile+link]
-  - ``EMCC_CFLAGS`` [compile+link]
-  - ``EMCC_CORES`` [general]
-  - ``EMCC_DEBUG`` [general]
-  - ``EMCC_DEBUG_SAVE`` [general]
-  - ``EMCC_FORCE_STDLIBS`` [link]
-  - ``EMCC_ONLY_FORCED_STDLIBS`` [link]
-  - ``EMCC_LOCAL_PORTS`` [compile+link]
-  - ``EMCC_CLOSURE_ARGS`` [link] arguments to be passed to *Closure Compiler*
-  - ``EMCC_STRICT`` [general]
-  - ``EMCC_SKIP_SANITY_CHECK`` [general]
-  - ``EM_IGNORE_SANITY`` [general]
-  - ``EM_CONFIG`` [general]
-  - ``EM_LLVM_ROOT`` [compile+link]
-  - ``_EMCC_CCACHE`` [general] Internal setting that is set to 1 by emsdk when integrating with ccache compiler frontend
+- ``EMMAKEN_JUST_CONFIGURE`` [other]
+- ``EMCC_AUTODEBUG`` [compile+link]
+- ``EMCC_CFLAGS`` [compile+link]
+- ``EMCC_CORES`` [general]
+- ``EMCC_DEBUG`` [general]
+- ``EMCC_DEBUG_SAVE`` [general]
+- ``EMCC_FORCE_STDLIBS`` [link]
+- ``EMCC_ONLY_FORCED_STDLIBS`` [link]
+- ``EMCC_LOCAL_PORTS`` [compile+link]
+- ``EMCC_CLOSURE_ARGS`` [link] arguments to be passed to *Closure Compiler*
+- ``EMCC_STRICT`` [general]
+- ``EMCC_SKIP_SANITY_CHECK`` [general]
+- ``EM_IGNORE_SANITY`` [general]
+- ``EM_CONFIG`` [general]
+- ``EM_LLVM_ROOT`` [compile+link]
+- ``_EMCC_CCACHE`` [general] Internal setting that is set to 1 by emsdk when integrating with ccache compiler frontend
 
 Search for 'os.environ' in `emcc.py <https://github.com/emscripten-core/emscripten/blob/main/emcc.py>`_ to see how these are used. The most interesting is possibly ``EMCC_DEBUG``, which forces the compiler to dump its build and temporary files to a temporary directory where they can be reviewed.
 

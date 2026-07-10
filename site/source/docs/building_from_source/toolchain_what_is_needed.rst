@@ -22,13 +22,13 @@ Emscripten tools and dependencies
 
 In general a complete Emscripten environment requires the following tools. First test to see if they are already installed using the :ref:`instructions below <toolchain-test-which-dependencies-are-installed>`.
 
-  - :term:`Node.js` (18.3.0 or above)
-  - :term:`Python` (3.8 or above)
-  - :term:`Java` (1.6.0_31 or later). Java is optional. It can be used to run the java version of term:`Closure Compiler`.
-  - :term:`Git` client. Git is required if building tools from source.
-  - :term:`LLVM` (LLVM, including clang and wasm-ld)
-  - :term:`Binaryen` (Binaryen, including wasm-opt, wasm-emscripten-finalize, etc.)
-  - The `Emscripten code <https://github.com/emscripten-core/emscripten>`_, from GitHub
+- :term:`Node.js` (18.3.0 or above)
+- :term:`Python` (3.8 or above)
+- :term:`Java` (1.6.0_31 or later). Java is optional. It can be used to run the java version of term:`Closure Compiler`.
+- :term:`Git` client. Git is required if building tools from source.
+- :term:`LLVM` (LLVM, including clang and wasm-ld)
+- :term:`Binaryen` (Binaryen, including wasm-opt, wasm-emscripten-finalize, etc.)
+- The `Emscripten code <https://github.com/emscripten-core/emscripten>`_, from GitHub
 
 .. note: 64-bit versions of all needed dependencies are preferred, and may be required if you are building large projects.
 

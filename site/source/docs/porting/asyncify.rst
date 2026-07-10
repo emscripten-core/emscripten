@@ -7,22 +7,22 @@ Asynchronous Code
 Emscripten supports two ways (Asyncify and JSPI) that let **synchronous** C or
 C++ code interact with **asynchronous** JavaScript. This allows things like:
 
- * A synchronous call in C that yields to the event loop, which
-   allows browser events to be handled.
- * A synchronous call in C that waits for an asynchronous operation in JS to
-   complete.
+* A synchronous call in C that yields to the event loop, which
+  allows browser events to be handled.
+* A synchronous call in C that waits for an asynchronous operation in JS to
+  complete.
 
 In general the two options are very similar, but rely on different underlying
 mechanisms to work.
 
-  * `Asyncify` - Asyncify automatically transforms your compiled code into a
-    form that can be paused and resumed, and handles pausing and resuming for
-    you, so that it is asynchronous (hence the name "Asyncify") even though you
-    wrote it in a normal synchronous way. This works in most environments, but
-    can cause the Wasm output to be much larger.
-  * `JSPI` (experimental) - Uses the VM's support for JavaScript Promise
-    Integration (JSPI) for interacting with async JavaScript. The code size will
-    remain the same, but support for this feature is still experimental.
+* `Asyncify` - Asyncify automatically transforms your compiled code into a
+  form that can be paused and resumed, and handles pausing and resuming for
+  you, so that it is asynchronous (hence the name "Asyncify") even though you
+  wrote it in a normal synchronous way. This works in most environments, but
+  can cause the Wasm output to be much larger.
+* `JSPI` (experimental) - Uses the VM's support for JavaScript Promise
+  Integration (JSPI) for interacting with async JavaScript. The code size will
+  remain the same, but support for this feature is still experimental.
 
 For more on Asyncify see the
 `Asyncify introduction blogpost <https://kripken.github.io/blog/wasm/2019/07/16/asyncify.html>`_
@@ -528,8 +528,8 @@ should just work as they did before.
 
 Some minor differences include:
 
- * The Emterpreter had "yielding" as a concept, but it isn't needed in Asyncify.
-   You can replace ``emscripten_sleep_with_yield()`` calls with ``emscripten_sleep()``.
- * The internal JS API is different. See notes above on
-   ``Asyncify.handleSleep()``, and see ``src/library_async.js`` for more
-   examples.
+* The Emterpreter had "yielding" as a concept, but it isn't needed in Asyncify.
+  You can replace ``emscripten_sleep_with_yield()`` calls with ``emscripten_sleep()``.
+* The internal JS API is different. See notes above on
+  ``Asyncify.handleSleep()``, and see ``src/library_async.js`` for more
+  examples.

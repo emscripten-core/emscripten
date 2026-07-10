@@ -23,7 +23,7 @@ prerequisites.
 The core Emscripten SDK (emsdk) driver is a Python script. You can get it for
 the first time with:
 
-  ::
+::
 
     # Get the emsdk repo
     git clone https://github.com/emscripten-core/emsdk.git
@@ -38,7 +38,7 @@ the first time with:
 Run the following :ref:`emsdk <emsdk>` commands to get the latest tools from
 GitHub and set them as :term:`active <Active Tool/SDK>`:
 
-  ::
+::
 
     # Fetch the latest version of the emsdk (not needed the first time you clone)
     git pull
@@ -72,7 +72,7 @@ which is the latest tagged release. That is often what you want.
 
 You can also install a specific version by specifying it, for example,
 
-  ::
+::
 
     ./emsdk install 1.38.45
 
@@ -96,9 +96,9 @@ Tip-of-tree builds may also be useful if you want to test a feature that just la
 but didn't reach a release yet. To use a tip-of-tree build, use the ``tot``
 target, and note that you must specify the backend explicitly,
 
-  ::
+::
 
-    # Get a tip-of-tree 
+    # Get a tip-of-tree
     ./emsdk install tot
 
 (In the above examples, we installed the various targets; remember to also
@@ -114,8 +114,8 @@ Windows
 
 #. Install Python 3.8 or newer.
 
-  .. note:: Instead of running emscripten on Windows directly, you can use the
-     Windows Subsystem for Linux to run it in a Linux environment.
+   .. note:: Instead of running emscripten on Windows directly, you can use the
+       Windows Subsystem for Linux to run it in a Linux environment.
 
 macOS
 +++++
@@ -132,18 +132,18 @@ skip those steps.
 
 #. Install the *Xcode Command Line Tools*. These are a precondition for *git*.
 
-  -  Install Xcode from the `macOS App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
-  -  In **Xcode | Preferences | Downloads**, install *Command Line Tools*.
+   -  Install Xcode from the `macOS App Store <http://superuser.com/questions/455214/where-is-svn-on-os-x-mountain-lion>`_.
+   -  In **Xcode | Preferences | Downloads**, install *Command Line Tools*.
 
 #. Install *git*:
 
-  - `Make sure the OS allows installing git <https://support.apple.com/en-gb/HT202491>`_.
-  - Install Xcode and the Xcode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
-  - Download and install git directly from http://git-scm.com/.
+   - `Make sure the OS allows installing git <https://support.apple.com/en-gb/HT202491>`_.
+   - Install Xcode and the Xcode Command Line Tools (should already have been done). This will provide *git* to the system PATH (see `this stackoverflow post <http://stackoverflow.com/questions/9329243/xcode-4-4-command-line-tools>`_).
+   - Download and install git directly from http://git-scm.com/.
 
 #. Install *cmake* if you do not have it yet:
 
-  -  Download and install latest CMake from `Kitware CMake downloads <http://www.cmake.org/download/>`_.
+   -  Download and install latest CMake from `Kitware CMake downloads <http://www.cmake.org/download/>`_.
 
 Linux
 +++++
@@ -152,23 +152,21 @@ Linux
    interact with Linux package managers. All file changes are done inside the
    **emsdk/** directory.
 
-- *Python* is not provided by *emsdk*. The user is expected to install this
-  beforehand with the *system package manager*:
+#. *Python* is not provided by *emsdk*. The user is expected to install this
+   beforehand with the *system package manager*::
 
-  ::
+      # Install Python
+      sudo apt-get install python3
 
-    # Install Python
-    sudo apt-get install python3
+      # Install CMake (optional, only needed for tests and building Binaryen or LLVM)
+      sudo apt-get install cmake
 
-    # Install CMake (optional, only needed for tests and building Binaryen or LLVM)
-    sudo apt-get install cmake
+#. *Git* is not installed automatically. Git is only needed if you want to use tools from a development branch.
 
-- *Git* is not installed automatically. Git is only needed if you want to use tools from a development branch.
+   ::
 
-  ::
-
-    # Install git
-    sudo apt-get install git
+      # Install git
+      sudo apt-get install git
 
 
 Verifying the installation
@@ -190,19 +188,19 @@ Updating the SDK
 .. tip:: You only need to install the SDK once! After that you can update to the
    latest SDK at any time using :ref:`Emscripten SDK (emsdk) <emsdk>`.
 
-Type the following in a command prompt ::
+Type the following in a command prompt::
 
-  # Fetch the latest registry of available tools.
-  ./emsdk update
+    # Fetch the latest registry of available tools.
+    ./emsdk update
 
-  # Download and install the latest SDK tools.
-  ./emsdk install latest
+    # Download and install the latest SDK tools.
+    ./emsdk install latest
 
-  # Set up the compiler configuration to point to the "latest" SDK.
-  ./emsdk activate latest
+    # Set up the compiler configuration to point to the "latest" SDK.
+    ./emsdk activate latest
 
-  # Activate PATH and other environment variables in the current terminal
-  source ./emsdk_env.sh
+    # Activate PATH and other environment variables in the current terminal
+    source ./emsdk_env.sh
 
 The package manager can do many other maintenance tasks ranging from fetching
 specific old versions of the SDK through to using the :ref:`versions of the

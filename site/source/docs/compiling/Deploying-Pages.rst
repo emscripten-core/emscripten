@@ -82,17 +82,17 @@ To provide the best possible user experience, make sure that the different ways 
 
 - If a particular browser is known to not be supported, resist the temptation to read ``navigator.userAgent`` field to gate users with that browser, if at all possible. For example, if your page needs WebGL 2 but Safari is known not to support it, do not exclude out Safari users with a following type of check:
 
-   .. code:: js
+  .. code:: js
 
     if (navigator.userAgent.indexOf('Safari') != -1) alert('Your browser does not support WebGL 2!');
 
-but instead, detect the actual errors:
+  but instead, detect the actual errors:
 
-   .. code:: js
+  .. code:: js
 
     if (!canvas.getContext('webgl2')) alert('Your browser does not support WebGL 2!'); // And look for webglcontextcreationerror here for an error reason.
 
-This way the page will be future compatible once support for the particular feature later becomes available.
+  This way the page will be future compatible once support for the particular feature later becomes available.
 
 - Test various failure cases up front by simulating different issues and browser limitations. For example, on Firefox, it is possible to manually disable WebGL 2 by navigating to ``about:config`` and setting the preference ``webgl.enable-webgl2`` to ``false``. This allows you to debug what kind of error reporting your page will present to the user in such a scenario. To disable WebGL support altogether for testing purposes, set the preference ``webgl.disabled`` to ``true``.
 
@@ -108,11 +108,11 @@ This way the page will be future compatible once support for the particular feat
 
 - Catch all exceptions that come from within entry points that call to compiled asm.js and WebAssembly code. There are three distinct exception classes that compiled code can throw:
 
-    1. C++ exceptions that are represented by a thrown integer and not caught by the C++ program. This integer points to a memory location in the application heap that contains pointer to the thrown object.
+  1. C++ exceptions that are represented by a thrown integer and not caught by the C++ program. This integer points to a memory location in the application heap that contains pointer to the thrown object.
 
-    2. Exceptions caused by Emscripten runtime calling the ``abort()`` function. These correspond to a fatal error that execution of the compiled code cannot recover from. For example, this can occur when calling an invalid function pointer.
+  2. Exceptions caused by Emscripten runtime calling the ``abort()`` function. These correspond to a fatal error that execution of the compiled code cannot recover from. For example, this can occur when calling an invalid function pointer.
 
-    3. Traps caused by compiled WebAssembly code. These correspond to fatal errors coming from the WebAssembly VM. This can occur for example when performing an integer division by zero, or when converting a large floating point number to an integer when the float is out of range of the numbers representable by that integer type.
+  3. Traps caused by compiled WebAssembly code. These correspond to fatal errors coming from the WebAssembly VM. This can occur for example when performing an integer division by zero, or when converting a large floating point number to an integer when the float is out of range of the numbers representable by that integer type.
 
 - Implement a final "catch all" error handler on the page by implementing a ``window.onerror`` script. This will be called as a last resort if no other source handled an exception that was raised on the page. See `window.onerror <https://developer.mozilla.org/en-US/docs/Web/API/GlobalEventHandlers/onerror#window.onerror>`_ documentation on MDN.
 

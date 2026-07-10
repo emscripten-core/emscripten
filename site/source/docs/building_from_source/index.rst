@@ -33,14 +33,12 @@ Building LLVM
 
 Build LLVM from the `git repo <https://github.com/llvm/llvm-project>`_.
 Include clang and wasm-ld (using something like ``-DLLVM_ENABLE_PROJECTS='lld;clang'``) and the Wasm backend (which is included by default; just don't disable it), following `that project's instructions <http://llvm.org/docs/CMake.html>`_.
-For example, something like this can work:
+For example, something like this can work::
 
-  ::
-
-      mkdir build
-      cd build/
-      cmake ../llvm -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS='lld;clang' -DLLVM_TARGETS_TO_BUILD="host;WebAssembly" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF  # -DLLVM_ENABLE_ASSERTIONS=ON
-      cmake --build .
+    mkdir build
+    cd build/
+    cmake ../llvm -DCMAKE_BUILD_TYPE=Release -DLLVM_ENABLE_PROJECTS='lld;clang' -DLLVM_TARGETS_TO_BUILD="host;WebAssembly" -DLLVM_INCLUDE_EXAMPLES=OFF -DLLVM_INCLUDE_TESTS=OFF  # -DLLVM_ENABLE_ASSERTIONS=ON
+    cmake --build .
 
 Then set the environment variable ``EM_LLVM_ROOT`` to ``<llvm_src>/build/bin`` (no need to install).
 

@@ -51,7 +51,7 @@ In WebGL, every single GL function call has some amount of overhead, even those 
 
 - Consider lazily setting GL state only when it needs to take effect. For example, in the following call stream
 
-   .. code:: cpp
+  .. code:: cpp
 
     // First draw
     glBindBuffer(...);
@@ -101,17 +101,17 @@ Avoid GPU-CPU Sync Points
 
 The most important aspect of efficient GPU usage is to make sure that the CPU will never need to block on the GPU during render time, and vice versa. These types of stalls create extremely costly CPU-GPU sync points, which lead to poor utilization of both resources. Generally a hint of this type of a scenario happening can be detected by observing overall GPU and CPU utilization rates. If a GPU profiler is claiming that the GPU is idle for large portions of the time, but a CPU profiler is claiming that the CPU in turn is idle, or that certain GL functions take a very long time to complete, it suggests that frames are not being efficiently submitted to the GPU, but GPU-CPU sync(s) occur somewhere during draw call submission. Unfortunately OpenGL specifications do not provide any performance guarantees of which GL calls may cause a stall, so look out for the following behavior and experiment by changing these and reprofiling the effects.
 
- - Avoid creating new GL resources at render time. This means optimizing out calls to ``glGen*()`` and ``glCreate*()`` functions (``glGenTextures()``, ``glGenBuffers()``, ``glCreateShader()`` and so on) at render time. If new resources are needed, try to create and upload them a couple of frames before attempting to render using them.
+- Avoid creating new GL resources at render time. This means optimizing out calls to ``glGen*()`` and ``glCreate*()`` functions (``glGenTextures()``, ``glGenBuffers()``, ``glCreateShader()`` and so on) at render time. If new resources are needed, try to create and upload them a couple of frames before attempting to render using them.
 
- - Likewise, do not delete any GL resources that have just been rendered with. The functions ``glDelete*()`` can introduce a full pipeline flush if the driver detects that any of the resources are in use. It is better to delete resources at loading time only.
+- Likewise, do not delete any GL resources that have just been rendered with. The functions ``glDelete*()`` can introduce a full pipeline flush if the driver detects that any of the resources are in use. It is better to delete resources at loading time only.
 
- - Never call ``glGetError()`` or ``glCheckFramebufferStatus()`` at render time. These functions should be restricted to be checked at loading time only, since both of these can do a full pipeline sync.
+- Never call ``glGetError()`` or ``glCheckFramebufferStatus()`` at render time. These functions should be restricted to be checked at loading time only, since both of these can do a full pipeline sync.
 
- - Similarly, do not call any of the ``glGet*()`` API functions at render time, but query them at startup and loading time, and refer to cached results at render time.
+- Similarly, do not call any of the ``glGet*()`` API functions at render time, but query them at startup and loading time, and refer to cached results at render time.
 
- - Try to avoid compiling shaders at render time, both ``glCompileShader()`` and ``glLinkProgram()`` can be extremely slow.
+- Try to avoid compiling shaders at render time, both ``glCompileShader()`` and ``glLinkProgram()`` can be extremely slow.
 
- - Do not call ``glReadPixels()`` to copy texture contents back to main memory at render time. If necessary, use the WebGL 2 ``GL_PIXEL_PACK_BUFFER`` binding target instead to copy a GPU surface to an offscreen target first, and only later ``glReadPixels()`` the contents of that surface back to main memory.
+- Do not call ``glReadPixels()`` to copy texture contents back to main memory at render time. If necessary, use the WebGL 2 ``GL_PIXEL_PACK_BUFFER`` binding target instead to copy a GPU surface to an offscreen target first, and only later ``glReadPixels()`` the contents of that surface back to main memory.
 
 GPU Driver Friendly Memory Access Behavior
 ==========================================
@@ -181,7 +181,7 @@ To migrate from WebGL 1 to WebGL 2, pay attention to the following list of known
 
 - The full list of WebGL 1 extensions that were adopted to the core WebGL 2 specification is:
 
-   .. code:: cpp
+  .. code:: cpp
 
     ANGLE_instanced_arrays
     EXT_blend_minmax
