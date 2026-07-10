@@ -1081,12 +1081,13 @@ function runtimeKeepalivePop() {
   return 'runtimeKeepalivePop();';
 }
 
-// Some web functions like TextDecoder.decode() do not work with a view of a
-// SharedArrayBuffer (see https://github.com/whatwg/encoding/issues/172) or of
-// a resizable ArrayBuffer (see
-// https://github.com/emscripten-core/emscripten/issues/27241).
-// To avoid that, this function allows obtaining a copy in those cases.
-function getUnsharedTextDecoderView(heap, start, end) {
+// Some web APIs like TextDecoder.decode() and XMLHttpRequest.send() do not
+// work with a view of a SharedArrayBuffer (see
+// https://github.com/whatwg/encoding/issues/172) or of a resizable ArrayBuffer
+// (see https://github.com/emscripten-core/emscripten/issues/27241).
+// To avoid that, this function allows obtaining a copy in those cases, or a view
+// otherwise.
+function getHeapViewOrCopy(heap, start, end) {
   const copy = `${heap}.slice(${start}, ${end})`;
   const view = `${heap}.subarray(${start}, ${end})`;
 
@@ -1259,7 +1260,7 @@ addToCompileTimeContext({
   getHeapForType,
   getHeapOffset,
   getNativeTypeSize,
-  getUnsharedTextDecoderView,
+  getHeapViewOrCopy,
   hasExportedSymbol,
   isSymbolNeeded,
   makeDynCall,

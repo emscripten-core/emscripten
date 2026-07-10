@@ -4524,8 +4524,12 @@ Module["preRun"] = () => {
     self.btest_exit('fetch/test_fetch_idb_delete.cpp', cflags=['-pthread', '-sFETCH_DEBUG', '-sFETCH', '-sWASM=0', '-sPROXY_TO_PTHREAD'])
 
   @also_with_fetch_streaming
-  def test_fetch_post(self):
-    self.btest_exit('fetch/test_fetch_post.c', cflags=['-sFETCH'])
+  @parameterized({
+    '': ([],),
+    'pthread': (['-pthread', '-sPROXY_TO_PTHREAD'],),
+  })
+  def test_fetch_post(self, args):
+    self.btest_exit('fetch/test_fetch_post.c', cflags=['-sFETCH'] + args)
 
   @also_with_fetch_streaming
   def test_fetch_progress(self):
